@@ -48,34 +48,62 @@ describe("structured logging safety", () => {
     expect(safeErrorCode(new Error("sensitive detail"))).toBe("INTERNAL_ERROR");
   });
 
-  it("records only existing project files with line/column; never message, names or fake frames", () => {
-    // Astra (#183): çok satırlı mesaj yol biçimli sahte çerçeve taşıyabilir; işlev/sınıf
-    // adı dinamik olabilir; eval sourceURL yol uydurabilir.
+  it("never takes frames from the message, even ones pointing at a real file", () => {
+    // Astra (#183 2. tur): mesaj var olan bir dosyayı gösterip satır/sütunda sayısal
+    // sır taşıyabilir. Çerçeveler yalnız `String(error)` başlığından sonrasından okunur.
     const root = process.cwd();
     const realFile = path.join(root, "src/lib/logging/logger.ts");
     const secretClass = { ["TEST_ONLY_TOKEN"]: class extends Error {} }.TEST_ONLY_TOKEN;
     const error = new secretClass(
-      `driver rejected input\n    at fake (${root}/src/password=TEST_ONLY_SECRET:1:1)`,
+      [
+        "driver rejected input user@example.test",
+        `    at fake (${realFile}:424242:987654)`,
+        `    at fake (${root}/src/password=TEST_ONLY_SECRET:1:1)`,
+      ].join("\n"),
     );
+    const diagnostics = safeErrorDiagnostics(error);
+    expect(diagnostics?.errorName).toBe("Error");
+    expect(diagnostics?.errorFrames[0]).toMatch(
+      /^tests\/unit\/logging\/logger\.test\.ts:\d+:\d+$/u,
+    );
+    const serialized = JSON.stringify(diagnostics);
+    for (const secret of [
+      "424242",
+      "987654",
+      "TEST_ONLY",
+      "user@example.test",
+      "driver rejected",
+    ]) {
+      expect(serialized).not.toContain(secret);
+    }
+  });
+
+  it("keeps only existing project files as relative path:line:column", () => {
+    const root = process.cwd();
+    const realFile = path.join(root, "src/lib/logging/logger.ts");
+    const error = new Error("x");
     error.stack = [
-      "TEST_ONLY_TOKEN: driver rejected input user@example.test",
-      `    at fake (${root}/src/password=TEST_ONLY_SECRET:1:1)`,
-      `    at TEST_ONLY_TOKEN (${realFile}:42:11)`,
+      String(error),
+      `    at TEST_ONLY_NAME (${realFile}:42:11)`,
       `    at async runApi (file://${realFile}:47:26)`,
       `    at ${root}/src/driver.js?token=TEST_ONLY_SECRET&email=user%40example.test:1:1`,
       `    at eval (${root}/src/token=TEST_ONLY_SECRET.js:1:1)`,
+      `    at ${root}/src/../../etc/passwd:1:1`,
       "    at node:internal/process/task_queues:105:5",
-      "    at /etc/passwd:1:1",
     ].join("\n");
     const diagnostics = safeErrorDiagnostics(error);
     expect(diagnostics).toEqual({
       errorName: "Error",
       errorFrames: ["src/lib/logging/logger.ts:42:11", "src/lib/logging/logger.ts:47:26"],
     });
-    const serialized = JSON.stringify(diagnostics);
-    for (const secret of ["TEST_ONLY", "user@example.test", "driver rejected", "passwd"]) {
-      expect(serialized).not.toContain(secret);
-    }
+    expect(JSON.stringify(diagnostics)).not.toContain("TEST_ONLY");
+  });
+
+  it("takes no frames when the stack does not start with the error header", () => {
+    const realFile = path.join(process.cwd(), "src/lib/logging/logger.ts");
+    const error = new Error("x");
+    error.stack = `Error: başka\n    at a (${realFile}:1:1)`;
+    expect(safeErrorDiagnostics(error)).toEqual({ errorName: "Error", errorFrames: [] });
   });
 
   it("keeps known library error names and real frames from a thrown error", () => {
@@ -94,7 +122,7 @@ describe("structured logging safety", () => {
     const deep = new Error("x");
     const realFile = path.join(process.cwd(), "src/lib/logging/logger.ts");
     deep.stack = [
-      "Error: x",
+      String(deep),
       ...Array.from({ length: 30 }, (_, i) => `    at f${i} (${realFile}:${i + 1}:1)`),
     ].join("\n");
     expect(safeErrorDiagnostics(deep)?.errorFrames).toHaveLength(10);

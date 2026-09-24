@@ -160,7 +160,18 @@ export function safeErrorDiagnostics(
       ? error.name
       : "Error";
   const errorFrames: string[] = [];
-  const lines = (error.stack ?? "").slice(0, maxStackCharacters).split("\n", maxStackLines);
+  /*
+    Mesaj, stack'in başındaki `String(error)` başlığıdır (V8: `Ad: mesaj`). Çerçeveler
+    YALNIZ bu başlıktan sonrasından okunur; başlık eşleşmezse (stack elle değiştirilmiş)
+    hiç çerçeve alınmaz. Böylece mesaja gömülü, var olan dosyayı gösteren ve satır/
+    sütunda sayısal sır taşıyan uydurma satır çerçeve sayılamaz (Astra, #183 2. tur).
+  */
+  const stack = error.stack ?? "";
+  const header = String(error);
+  if (!stack.startsWith(header)) return { errorName, errorFrames: [] };
+  const lines = stack
+    .slice(header.length, header.length + maxStackCharacters)
+    .split("\n", maxStackLines);
   for (const line of lines) {
     const match = stackFrame.exec(line);
     if (!match) continue;
