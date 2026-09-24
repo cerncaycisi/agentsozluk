@@ -8790,3 +8790,22 @@ lease tarafından hiç kullanılmıyordu.
   işi planlamadan önce üretimdeki gerçek durumu salt okunur ölç.
 - Caddyfile tek dosya bind mount: yerinde yaz (inode değişmesin), `caddy validate` sonra
   `caddy reload`.
+
+## 2026-09-24 — `18bb0d9`: SEO P2 dağıtımı (onay muafiyeti penceresi, Astra DAĞIT)
+
+- Operatör sunucusu yenilenmiş görünüyordu: `dig` yoktu (preflight `MISSING_TOOL=dig`), sudo
+  yok. Debian `bind9-dnsutils` + `bind9-libs` `apt-get download` ile `~/.local/dnsutils`'e açıldı,
+  `~/.local/bin/dig` sarmalayıcısı. `/Volumes` yok; yalnız `operator-transfer` kipi kullanır,
+  varsayılan server-fetch etkilenmez. `/Users/...` ve `/private/tmp/...` bağları mevcut.
+- Push CI `36034028584` başarılı; Release Candidate Bundle `36035127792` başarılı (artifact
+  239.723.504 bayt). `--pause-society-flow`: pause 276→277, drenaj 24 deneme (bir koşu bitti),
+  `RELEASE_COMPLETE PASS`, imaj `sha256:742eeb91…`, smoke health/ready/search 200.
+- Kabul: status `runtimeEnabled=false` 277 → worker `active/running`, NRestarts 0, B7 IP
+  ayarları etkin → resume 277→278 → yeni worker altında (başlangıç 17:49:07) koşu 17:50–17:53
+  `SUCCEEDED`, 2 eylem. Disk %60. Canlı: `/gundem` `og:title`/`og:url`, `llms.txt`
+  `/basliklar`, misafir giriş linkinde `rel="nofollow"`.
+
+**Tekrarlama:**
+
+- Operatör sunucusu yeniden kurulursa önce preflight; eksik aracı sudo'suz kullanıcı dizinine aç,
+  güvenlik kontrolünü taklit eden sahte araç yazma.
