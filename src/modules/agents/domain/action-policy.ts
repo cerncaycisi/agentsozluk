@@ -186,18 +186,28 @@ function semanticConcepts(value: string, ignoredBases: ReadonlySet<string>): Set
   "20–22" ↔ "20, 21 ve 22"). Uzun entry'de yalnız sayısı değişen aday tekrar sayılmaya
   devam eder; bu bilinen sınırdır.
 */
-/** Cümle başına token dizileri; olumsuzluk ve hâl penceresi cümle sınırını aşmaz. */
-function relationSentences(value: string): string[][] {
-  return normalizeEntrySearchText(value)
-    .normalize("NFKC")
-    .split(/[.!?;:…]+/u)
-    .map((sentence) =>
-      sentence
+/**
+ * Cümle başına token dizileri; olumsuzluk ve hâl penceresi cümle ya da satır sınırını
+ * aşmaz. Satır sonları normalleştirmeden ÖNCE bölünür, çünkü normalleştirme boşlukları
+ * birleştirir (Astra 2. tur: satır sonuyla ayrılmış iki cümle tek pencereye düşüyordu).
+ */
+function relationSentences(value: string): Array<{ tokens: string[]; question: boolean }> {
+  return value
+    .split(/\r\n|[\n\r\u2028\u2029]/u)
+    .flatMap(
+      (line) =>
+        normalizeEntrySearchText(line)
+          .normalize("NFKC")
+          .match(/[^.!?;:…]+[.!?;:…]*/gu) ?? [],
+    )
+    .map((sentence) => ({
+      tokens: sentence
         .replaceAll(/[^\p{L}\p{N}’'\s]/gu, " ")
         .split(/\s+/u)
         .filter(Boolean),
-    )
-    .filter((tokens) => tokens.length > 0);
+      question: sentence.includes("?"),
+    }))
+    .filter((sentence) => sentence.tokens.length > 0);
 }
 
 function relationBase(token: string): string {
@@ -218,7 +228,18 @@ function assignRole<K>(roles: Map<K, RelationRole | null>, key: K, role: Relatio
   roles.set(key, existing === undefined || existing === role ? role : null);
 }
 
+/*
+  Önermeyi aktaran, yanlışlayan ya da soran cümle kendi hükmünü kurmaz: "Ev sahibini değil
+  kiracıyı koruyor demek yanlış" önceki "kiracıyı değil ev sahibini" hükmünü yineler
+  (Astra 2. tur). Böyle cümlede olumsuzluk rolü kanıt sayılmaz; iki "değil" de öyle.
+*/
+// Yanlış eşleşme güvenli yöndedir: kanıt düşer, eski tekrar kararı geçerli kalır.
+const reportedClaimMarker =
+  /^(?:yanlış|hatalı|sanıl|sanıyor|sanan|sanır|sanm|zann|iddia|deniyor|denir|denil|diye|diyen|diyor|söyle|efsane|yanıl|abart)|^(?:demek|m[ıiuü]|m[ıiuü]d[ıiuü]r)$/u;
+
 function collectNegationRoles(tokens: string[], roles: Map<string, RelationRole | null>) {
+  if (tokens.filter((token) => token === "değil").length !== 1) return;
+  if (tokens.some((token) => reportedClaimMarker.test(token))) return;
   tokens.forEach((token, index) => {
     if (token !== "değil") return;
     const before = tokens[index - 1];
@@ -231,31 +252,40 @@ function collectNegationRoles(tokens: string[], roles: Map<string, RelationRole 
 
 const accusativeSuffixes = ["ı", "i", "u", "ü", "yı", "yi", "yu", "yü", "nı", "ni", "nu", "nü"];
 
-/** Aynı metinde hem yalın hem belirtme hâliyle geçen adın niteleyicilerini rolleriyle eşler. */
+/**
+ * Aynı cümlede hem yalın hem belirtme hâliyle geçen adın niteleyicilerini rolleriyle eşler.
+ * Anahtar ad + yüklemdir (belirtme hâlli addan sonraki sözcük): "yendi" ilişkisindeki roller
+ * "kutladı" ilişkisindekilerle karşılaştırılmaz (Astra 2. tur).
+ */
 function collectHeadRoles(tokens: string[], roles: Map<string, Map<string, RelationRole | null>>) {
   const present = new Set(tokens);
+  const predicates = new Map<string, string | null>();
+  const occurrences: Array<{ head: string; modifier: string; role: RelationRole }> = [];
   tokens.forEach((token, index) => {
     const modifier = tokens[index - 1];
     if (!modifier || semanticStopWords.has(modifier)) return;
-    let head: string | null = null;
-    let role: RelationRole | null = null;
     if (accusativeSuffixes.some((suffix) => present.has(`${token}${suffix}`))) {
-      head = token;
-      role = "bare";
-    } else {
-      const suffix = accusativeSuffixes.find(
-        (candidate) => token.endsWith(candidate) && present.has(token.slice(0, -candidate.length)),
-      );
-      if (suffix) {
-        head = token.slice(0, -suffix.length);
-        role = "marked";
-      }
+      occurrences.push({ head: token, modifier, role: "bare" });
+      return;
     }
-    if (!head || !role) return;
-    const byModifier = roles.get(head) ?? new Map<string, RelationRole | null>();
-    assignRole(byModifier, relationBase(modifier), role);
-    roles.set(head, byModifier);
+    const suffix = accusativeSuffixes.find(
+      (candidate) => token.endsWith(candidate) && present.has(token.slice(0, -candidate.length)),
+    );
+    if (!suffix) return;
+    const head = token.slice(0, -suffix.length);
+    occurrences.push({ head, modifier, role: "marked" });
+    const predicate = tokens[index + 1] ? relationBase(tokens[index + 1]!) : null;
+    const known = predicates.get(head);
+    predicates.set(head, known === undefined || known === predicate ? predicate : null);
   });
+  for (const { head, modifier, role } of occurrences) {
+    const predicate = predicates.get(head);
+    if (!predicate) continue;
+    const key = `${head}${conceptRoleSeparator}${predicate}`;
+    const byModifier = roles.get(key) ?? new Map<string, RelationRole | null>();
+    assignRole(byModifier, relationBase(modifier), role);
+    roles.set(key, byModifier);
+  }
 }
 
 interface RelationProfile {
@@ -265,8 +295,8 @@ interface RelationProfile {
 
 function relationProfile(value: string): RelationProfile {
   const profile: RelationProfile = { negation: new Map(), heads: new Map() };
-  for (const tokens of relationSentences(value)) {
-    collectNegationRoles(tokens, profile.negation);
+  for (const { tokens, question } of relationSentences(value)) {
+    if (!question) collectNegationRoles(tokens, profile.negation);
     collectHeadRoles(tokens, profile.heads);
   }
   return profile;

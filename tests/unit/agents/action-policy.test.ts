@@ -791,6 +791,24 @@ describe("aynı başlıkta öz-tekrar", () => {
         "Kiracıyı değil ev sahibini koruyor bu düzenleme.",
         "Bu düzenleme ev sahibini koruyor, kiracıyı değil. Ev sahibi de bunu biliyor.",
       ],
+      // Astra 2. tur (2e2ff82): roller farklı yüklemlerde; ters önerme yanlışlanıyor;
+      // satır sonu cümle sınırıdır.
+      [
+        "Kırmızı takım mavi takımı yendi, yenilen ekip rakibini kutladı; tribünde tempo yüksekti, savunma disiplini sonucu belirledi.",
+        "Mavi takım kırmızı takımı kutladı; rakibi maçı kazandı, tribünde tempo yüksekti ve sonucu savunma disiplini belirledi.",
+      ],
+      [
+        "Yeni kira düzenlemesi kiracıyı değil ev sahibini koruyor; artış sınırı esnetiliyor, tahliye süresi kısalıyor.",
+        "Ev sahibini değil kiracıyı koruyor demek yanlış; artış sınırı esnetiliyor, tahliye süresi kısalıyor bu düzenlemeyle.",
+      ],
+      [
+        "Bu ürün pahalı değil\nKaliteli olduğunu söylemek de zor; plastik gövde, basit işçilik.",
+        "Kaliteli değil\nPahalı olduğu da söylenemez; ürün basit işçilik ve plastik gövde sunuyor.",
+      ],
+      [
+        "Bu ürün pahalı değil\r\n\r\nKaliteli olduğunu söylemek de zor; plastik gövde, basit işçilik.",
+        "Kaliteli değil\u2029Pahalı olduğu da söylenemez; ürün basit işçilik ve plastik gövde sunuyor.",
+      ],
     ])("gerçek parafraz yine tekrar: %s ↔ %s", (previous, candidate) => {
       expect(semanticRelationDiffers(candidate, previous)).toBe(false);
       expect(topicSemanticRepetition(candidate, title, [previous])).not.toBeNull();

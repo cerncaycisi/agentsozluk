@@ -1549,19 +1549,26 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       **Düzeltme:** `semanticRelationDiffers` iki dar kural uygular: (1) "X değil Y" kalıbında
       olumsuzlanan ile karşıtlanan iki AYRI kavram yer değiştirmişse; (2) aynı baş sözcükte en
       az iki niteleyicinin yalın/belirtme hâli rolleri takas edilmişse aday o önceki entry'ye
-      karşı tekrar sayılmaz. Pencere cümle sınırını aşmaz; aynı metinde iki rolde geçen kavram
-      belirsiz sayılır ve kanıt olmaz. Kontrol yalnız tekrar sayılacak entry'de koşar.
-      **Astra 1. tur (PR #192, `b2870f3`): BİRLEŞTİRME.** Üç gerçek parafrazı serbest bırakan
-      yanlış pozitif (aynı kavramın iki rolde geçmesi: "yasak değil; yasak olmadığı",
-      "Işık değil Işık'ın kardeşi", iki cümlede iki yönde kurulan takım ilişkisi) ve uzun
-      bağlamda karesel maliyet (800 token × 100 bağlamda ~9 sn). Üçü birim testine "yine
-      tekrar" olarak girdi ve kapandı; maliyet doğrusal (aynı ölçüde ~0,1–0,2 sn).
+      karşı tekrar sayılmaz. Olumsuzluk ve hâl penceresi noktalama (`.!?;:…`) ve satır
+      sonlarında biter; aynı metinde iki rolde geçen kavram belirsizdir, kanıt olmaz; hâl
+      rolleri yalnız aynı yüklem üzerinde karşılaştırılır; önermeyi aktaran/yanlışlayan
+      ("… demek yanlış", "sanılıyor", "iddia") ya da soru cümlesindeki olumsuzluk kanıt
+      sayılmaz. Kontrol yalnız tekrar sayılacak entry'de koşar.
+      **Astra 1. tur (`b2870f3`): BİRLEŞTİRME.** Aynı kavramın iki rolde geçtiği üç gerçek
+      parafraz serbest kalıyordu ("yasak değil; yasak olmadığı", "Işık değil Işık'ın
+      kardeşi", iki cümlede iki yönde kurulan takım ilişkisi) ve maliyet karesel idi (Astra
+      ölçümü: 800 token × 100 bağlamda ~9 sn). **Astra 2. tur (`2e2ff82`): BİRLEŞTİRME.**
+      Önceki bulgular kapandı; üç yeni yanlış serbest bırakma: farklı yüklemlerdeki roller
+      ("yendi" ↔ "kutladı"), yanlışlanan ters önerme ("… koruyor demek yanlış"), satır
+      sonuyla ayrılan cümleler. Altısı da birim testinde "yine tekrar" olarak sabit. Maliyet
+      doğrusal (bu sunucuda her bağlamın ilişki kontrolüne girdiği en kötü durumda 800 × 100
+      ~0,2 sn, 1600 × 100 ~0,33 sn).
       **Sonuç:** 935 gerçek retten **0**'ı değişti. Bu, örneklemde etki görülmediğini
       gösterir; yanlış serbest bırakma olmadığını kanıtlamaz. Farklı sözcüklerle kurulan ters
       hüküm artık geçiyor; entegrasyon testi ret zincirinin tamamını (trigram eşiği 0,82,
       çerçeve, kendi ve başka yazar semantik kapısı) PostgreSQL'de sınıyor. **Zincirde kalan
       sınır:** sözcükleri birebir aynı, yalnız sırası değişmiş kısa karşı hüküm ("kırmızı takım
-      maviyi yendi" ↔ "mavi takım kırmızıyı yendi") trigram kapısında 1,0 benzerlikle
+      mavi takımı yendi" ↔ "mavi takım kırmızı takımı yendi") trigram kapısında 1,0 benzerlikle
       `DUPLICATE_SIMILARITY` alır; semantik kapıya hiç ulaşmaz. Trigram kapısını değiştirmek
       bu işin kapsamı dışında.
       **Denenip bırakılan:** sayı farkını yeni hüküm sayan kural; gerçek retlerden 5'ini
