@@ -8823,3 +8823,21 @@ lease tarafından hiç kullanılmıyordu.
 **Tekrarlama:**
 
 - Kabul sorgusunda "yeni worker" sınırı olarak `ExecMainStartTimestamp`'i kullan.
+
+## 2026-09-24 — Astra kullanım sınırı; PR #200 hakemsiz bekliyor
+
+- PR #200 (`ci/actions-sha-pin`, Actions SHA kilidi): genel pin denetçisi beş Astra turunda
+  (`126eaaf`, `bfdda0a`, `04c31c9`, `feb51a0`, `fb6cda5`) her seferinde yeni kenar durumu verdi;
+  önceden verilen söz gereği bırakıldı, dar test `36b2d11`. O SHA için Astra turu yarıda kaldı:
+  `ERROR: You've hit your usage limit … try again at Sep 25th, 2026 12:55 PM`. Hüküm yok.
+- AGENTS.md hakem kuralı gereği aynı/başka modele dönülmedi; PR birleştirilmedi. Astra
+  onayı gerektiren dağıtımlar da (onay muafiyeti sürse bile) Astra dönene kadar yapılmaz.
+- Ayrıca: PR #200 CI `36051054963` `container` işi `next/font` Google Fonts indirmesinde
+  `TypeError: Cannot read properties of null (reading '1')` ile düştü; yalnız test dosyası
+  değişmişti, önceki üç commit'te aynı iş geçmişti. `gh run rerun --failed` ile 7/7 yeşil.
+  Dış kaynaklı kırılgan hata.
+
+**Tekrarlama:**
+
+- Astra sınırı dolunca hakem değiştirme; engeli kaydet ve bekle.
+- `next/font` indirme hatasını kod regresyonu sayma; önce `--failed` yeniden koşusu.
