@@ -1,7 +1,17 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { isMap, isPair, isScalar, isSeq, parse, parseDocument, visit } from "yaml";
+import { isMap, isPair, isScalar, isSeq, parse, parseAllDocuments, visit } from "yaml";
 
 const root = path.join(process.cwd(), ".github");
 
@@ -29,7 +39,16 @@ const actionPaths = [/^jobs\/[^/]+\/steps$/u, /^jobs\/[^/]+$/u, /^runs\/steps$/u
  */
 function actionUsages(source: string): Usage[] {
   const usages: Usage[] = [];
-  visit(parseDocument(source), {
+  // Ayrıştırma hatası ya da ikinci YAML belgesi sessizce geçmesin (Astra, 4. tur).
+  const documents = parseAllDocuments(source);
+  const list = Array.isArray(documents) ? documents : [documents];
+  if (list.length !== 1) return [{ reference: "tek YAML belgesi olmalı", comment: undefined }];
+  const document = list[0]!;
+  if (document.errors.length > 0)
+    return [
+      { reference: `YAML ayrıştırma hatası: ${document.errors[0]!.code}`, comment: undefined },
+    ];
+  visit(document, {
     Alias() {
       usages.push({ reference: "YAML alias yasak", comment: undefined });
     },
@@ -59,6 +78,43 @@ function actionUsages(source: string): Usage[] {
  * ile gerçekten eşleştiğini bu test DOĞRULAMAZ (ağ yok); eşleme kanıtı pin güncellemesinde
  * GitHub API'den alınıp PR'a/ATTEMPT_LOG'a yazılır.
  */
+/**
+ * Yerel `./yol` çağrısının hedef `action.yml`/`action.yaml` dosyası (depo köküne göre).
+ * `.github` dışına konmuş yerel composite eylem de böylece denetlenir (Astra, 4. tur).
+ * Depo dışına çıkan ya da dosyası olmayan yerel çağrı `null`.
+ */
+function localActionFile(reference: string, repository = process.cwd()): string | null {
+  const directory = path.resolve(repository, reference);
+  if (!directory.startsWith(`${repository}${path.sep}`)) return null;
+  for (const name of ["action.yml", "action.yaml"]) {
+    const file = path.join(directory, name);
+    if (existsSync(file)) return file;
+  }
+  return null;
+}
+
+/** Workflow dosyalarından başlayıp yerel eylemleri özyinelemeli izleyerek kural dışı kullanımlar. */
+function repositoryViolations(entryFiles: string[], repository = process.cwd()): string[] {
+  const seen = new Set<string>();
+  const queue = [...entryFiles];
+  const violations: string[] = [];
+  while (queue.length > 0) {
+    const file = queue.shift()!;
+    if (seen.has(file)) continue;
+    seen.add(file);
+    const source = readFileSync(file, "utf8");
+    const label = path.relative(repository, file);
+    violations.push(...unpinnedReferences(source).map((reference) => `${label}: ${reference}`));
+    for (const { reference } of actionUsages(source)) {
+      if (!reference.startsWith("./")) continue;
+      const target = localActionFile(reference, repository);
+      if (target) queue.push(target);
+      else violations.push(`${label}: yerel eylem bulunamadı ${reference}`);
+    }
+  }
+  return violations;
+}
+
 function unpinnedReferences(source: string): string[] {
   return actionUsages(source)
     .filter(({ reference, comment }) => {
@@ -87,12 +143,28 @@ describe("GitHub Actions sürüm kilidi", () => {
       ),
     );
     expect(external.length).toBeGreaterThan(10);
-    const unpinned = files.flatMap((file) =>
-      unpinnedReferences(readFileSync(file, "utf8")).map(
-        (reference) => `${path.relative(process.cwd(), file)}: ${reference}`,
-      ),
-    );
-    expect(unpinned).toStrictEqual([]);
+    expect(repositoryViolations(files)).toStrictEqual([]);
+  });
+
+  it("yerel eylemin hedefini, .github dışında olsa da izler", () => {
+    const repository = mkdtempSync(path.join(tmpdir(), "pin-"));
+    try {
+      mkdirSync(path.join(repository, ".github/workflows"), { recursive: true });
+      mkdirSync(path.join(repository, "ops/unpinned"), { recursive: true });
+      const workflow = path.join(repository, ".github/workflows/w.yml");
+      writeFileSync(workflow, "jobs:\n  a:\n    steps:\n      - uses: ./ops/unpinned\n");
+      writeFileSync(
+        path.join(repository, "ops/unpinned/action.yml"),
+        "runs:\n  using: composite\n  steps:\n    - uses: actions/checkout@v4\n",
+      );
+      expect(repositoryViolations([workflow], repository)).toStrictEqual([
+        "ops/unpinned/action.yml: actions/checkout@v4",
+      ]);
+      writeFileSync(workflow, "jobs:\n  a:\n    steps:\n      - uses: ./../dışarı\n");
+      expect(repositoryViolations([workflow], repository)).toHaveLength(1);
+    } finally {
+      rmSync(repository, { recursive: true, force: true });
+    }
   });
 
   const sha = "11d5960a326750d5838078e36cf38b85af677262";
@@ -120,6 +192,8 @@ describe("GitHub Actions sürüm kilidi", () => {
       "alias ile pinsiz eylem",
       `jobs:\n  a:\n    strategy:\n      matrix:\n        setup:\n          - &checkout\n            uses: actions/checkout@v4\n    steps:\n      - *checkout\n`,
     ],
+    ["ayrıştırma hatası", `jobs:\n  a:\n    steps:\n      - uses: [\n`],
+    ["ikinci belge", `jobs: {}\n---\njobs:\n  a:\n    steps:\n      - uses: actions/checkout@v4\n`],
   ])("reddeder: %s", (_label, source) => {
     expect(unpinnedReferences(source).length).toBeGreaterThan(0);
   });
