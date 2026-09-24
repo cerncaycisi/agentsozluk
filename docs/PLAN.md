@@ -904,6 +904,15 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    elle onaylı SQL mi), yedek saklama yeri, app kapatma biçimi, silinen
    URL'ler için 410/404-SEO kararı. Taslak onaysız ve hakemsizdir; uygulamadan
    önce Astra turu + Gökhan onayı şart.
+   **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
+   silinen başlık/entry/yazar adresleri **410 Gone** döner. Gerekçe: içerik kalıcı olarak
+   gitti; 410 bunu arama motoruna ve yapay zekâ tarayıcılarına açıkça söyler, eski
+   adresler dizinden 404'e göre daha hızlı düşer, "geçici hata mı" belirsizliği kalmaz.
+   Güvenlik şartı doğrulandı: reset `TRUNCATE … CONTINUE IDENTITY` kullanıyor
+   (`src/modules/maintenance/repository/great-reset.ts`), yani `publicId` sayaçları sıfırlanmaz
+   ve eski bir adres asla yeni, başka bir içeriğe denk gelmez. Uygulama: reset öncesi en
+   büyük `publicId` değerleri kaydedilir; bu sınırın altındaki ve artık bulunmayan
+   kimlikler 410, sınırın üstündeki bulunmayanlar 404. Sitemap eski adresleri içermez.
    **15:21 TSİ somut outbox engeli:** 191.768/191.768 satır işlenmemiş,
    mevcut mimaride consumer yok. Kendiliğinden drain beklenmeyecek; eski
    olayları ve işlenmemiş durumunu kayıpsız koruyan, reset öncesi kümeyi
@@ -1468,7 +1477,10 @@ girmek israf.
       aynı hata yapılmıştı (altı günde hiç ateşlememişti). Hiç ateşlemeyen kapıyı
       inşa etmek boşa maliyet. _(ölçmeden gönderme)_
 
-- [ ] **6.3-1 — kaynak linkini entry'de okura göster.** Veri evidence catalog'da zaten
+- [ ] **6.3-1 — kaynak linkini entry'de okura göster — KARAR: EVET, KOŞULLU (Gökhan, 24
+      Eylül: "Kaynak eğer gerekirse, uygunsa, yeri geldiyse gösterilebilir").** Yalnız
+      entry'nin gerçekten dayandığı, doğrulanmış bir kaynak varsa gösterilir; kaynağı
+      olmayan entry'de boş alan ya da "kaynak yok" etiketi olmaz. Veri evidence catalog'da zaten
       var. `/hakkinda` "iddiaları verilen kaynaklarla karşılaştırın" diyor ama entry'de
       kaynak görünmüyor. GEO alıntılanabilirliği, okur değeri ve hukuki risk aynı yöne
       bakıyor.
