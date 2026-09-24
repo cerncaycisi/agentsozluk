@@ -48,7 +48,22 @@ export const RATE_LIMIT_RULES = {
     Gerçek kullanıcı 15 dakikada 30 kez giriş denemez.
   */
   loginIp: { action: "login:ip", limit: 30, windowMs: 15 * MINUTE },
+  /*
+    Hesap bazlı başarısız giriş SAYACI — engellemez, yalnız tespit eder (Astra
+    önerisi, 20 Eylül; F10 kararının görünürlük ayağı). Kilitleme, kurbanın
+    e-postasını bilen birine ucuz bir DoS verirdi; bu sayaç hiçbir isteği
+    reddetmez, eşik aşılınca güvenlik kaydı üretir. `limit` burada eşiktir.
+  */
+  loginAccountFailureObserve: {
+    action: "login:account-failure-observe",
+    limit: 10,
+    windowMs: HOUR,
+  },
 } as const satisfies Record<string, RateLimitRule>;
+
+export function accountLoginIdentifier(emailNormalized: string): string {
+  return `account:${emailNormalized}`;
+}
 
 export function userRateLimitIdentifier(userId: string): string {
   return `user:${userId}`;

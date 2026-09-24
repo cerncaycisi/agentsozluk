@@ -476,9 +476,14 @@ oturumu bir trafik ölçümüdür, saldırı ölçümü değildir; azlık kanıt
 4. ADMIN/moderatör hesaplarının sayısı artarsa: bu hesaplarda etki daha ağır
    olduğu için ayrı ve daha sıkı bir politika gerekebilir.
 
-**Açık takip maddeleri:** (a) hesap bazlı sayaç **engellemeden**, yalnız tespit
-için tutulabilir; (b) ADMIN/moderatör için TOTP veya passkey şifreye bağımlılığı
-azaltır. İkisi de `PLAN.md`'de.
+**Takip maddeleri:** (a) hesap bazlı sayaç **engellemeden**, yalnız tespit için:
+kodda (24 Eylül). Hatalı şifrede `login:account-failure-observe` kovası (hesap
+başına 1 saatte 10) sayılır, hiçbir istek reddedilmez; eşik penceresinde ilk
+aşımda `security.login_failure_threshold` kaydı üretilir. Kayıtta e-posta değil
+HMAC anahtarının ilk 16 karakteri bulunur; var olan ve olmayan hesap aynı işlenir.
+Sayaç hatası yanıtı değiştirmez. Kural hiçbir yerde reddeden kovaya verilemez
+(statik test). (b) ADMIN/moderatör için TOTP veya passkey şifreye bağımlılığı
+azaltır; `PLAN.md`'de.
 
 ### Giriş maliyeti: iki bilinen sınır (20 Eylül 2026)
 

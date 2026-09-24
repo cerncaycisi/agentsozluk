@@ -1280,7 +1280,9 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       ölçümü değildir" uyarısı
       [tehdit modelinde](THREAT_MODEL.md#residual-risk-özeti).
 
-- [ ] **Hesap bazlı sayaç — engellemeden, yalnız TESPİT için.** Yukarıdaki
+- [ ] **Hesap bazlı sayaç — engellemeden, yalnız TESPİT için — kod hazır (24 Eylül),
+      inceleme bekliyor.** `observeRateLimit` + `login:account-failure-observe` (1 saatte
+      10); eşikte `security.login_failure_threshold` kaydı (e-posta yok). Önceki metin: Yukarıdaki
       kararın görünürlük ayağı: hesap başına başarısız giriş sayılır, hiçbir
       isteği reddetmez, eşiği aşınca kayıt/uyarı üretir. Kilitleme DoS'u
       doğurmadan "deneme var mı" sorusunu cevaplar ve yeniden değerlendirme

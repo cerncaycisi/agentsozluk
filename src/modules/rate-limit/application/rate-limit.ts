@@ -7,10 +7,15 @@ import {
   claimRateLimitInterval,
   incrementRateLimitBucket,
 } from "@/modules/rate-limit/repository/rate-limit";
-import { fixedWindow, type RateLimitRule } from "@/modules/rate-limit/domain/rules";
+import {
+  fixedWindow,
+  type FixedWindowRateLimitRule,
+  type RateLimitRule,
+} from "@/modules/rate-limit/domain/rules";
 import { rateLimitIdentifierSchema } from "@/modules/rate-limit/validation/schemas";
 
 export {
+  accountLoginIdentifier,
   fixedWindow,
   ipRateLimitIdentifier,
   RATE_LIMIT_RULES,
@@ -86,4 +91,29 @@ export function requestIp(request: { headers: { get(name: string): string | null
     return forwarded?.at(-(hops + 1)) ?? "unknown";
   }
   return "unknown";
+}
+
+/**
+ * Sabit pencerede sayar ama HİÇBİR ZAMAN reddetmez (tespit sayaçları için).
+ * Dönen `keyHash` HMAC'tir; kayıtta kimlik yerine kısaltılmış hâli kullanılabilir.
+ */
+export async function observeRateLimit(
+  client: Client,
+  identifier: string,
+  rule: FixedWindowRateLimitRule,
+  now = new Date(),
+): Promise<{ count: number; keyHash: string; thresholdCrossed: boolean }> {
+  const keyHash = hmacIdentifier(
+    getEnvironment().APP_SECRET,
+    rateLimitIdentifierSchema.parse(identifier),
+  );
+  const { windowStart } = fixedWindow(now, rule.windowMs);
+  const count = await incrementRateLimitBucket(client, {
+    keyHash,
+    action: rule.action,
+    windowStart,
+    expiresAt: addMilliseconds(windowStart, rule.windowMs * 2),
+  });
+  // Eşik penceresinde yalnız bir kez: tam aşıldığı anda.
+  return { count, keyHash, thresholdCrossed: count === rule.limit + 1 };
 }

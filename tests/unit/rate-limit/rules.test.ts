@@ -37,6 +37,12 @@ describe("milestone rate-limit rules", () => {
       // HESAP bazlı kova bilerek YOK — kilitleme DoS'u doğuruyordu; gerekçe ve
       // yeniden değerlendirme koşulları `docs/THREAT_MODEL.md` içinde.
       loginIp: { action: "login:ip", limit: 30, windowMs: 900_000 },
+      // Hesap bazlı sayaç YALNIZ TESPİT: hiçbir isteği reddetmez (`observeRateLimit`).
+      loginAccountFailureObserve: {
+        action: "login:account-failure-observe",
+        limit: 10,
+        windowMs: 3_600_000,
+      },
     });
   });
 
