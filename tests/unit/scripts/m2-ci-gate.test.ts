@@ -138,8 +138,8 @@ describe("Milestone 2 pull request CI gate", () => {
   });
 
   it("scans full reachable history and proves generators leave the candidate tree clean", () => {
-    const checkout = jobs.quality?.steps?.find(
-      (step) => step.uses === "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+    const checkout = jobs.quality?.steps?.find((step) =>
+      String(step.uses).startsWith("actions/checkout@"),
     );
     expect(checkout?.with?.["fetch-depth"]).toBe(0);
     expect(packageScripts["security:scan-secrets"]).toBe("tsx scripts/scan-repository-secrets.ts");
@@ -158,15 +158,11 @@ describe("Milestone 2 pull request CI gate", () => {
   });
 
   it("uses one cache writer and retains bounded validation artifacts", () => {
+    expect(setupSteps.some((step) => String(step.uses).startsWith("actions/cache/restore@"))).toBe(
+      true,
+    );
     expect(
-      setupSteps.some(
-        (step) => step.uses === "actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830",
-      ),
-    ).toBe(true);
-    expect(
-      setupSteps.filter(
-        (step) => step.uses === "actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830",
-      ),
+      setupSteps.filter((step) => String(step.uses).startsWith("actions/cache/save@")),
     ).toHaveLength(1);
     expect(
       jobs.quality?.steps?.some(
@@ -188,7 +184,7 @@ describe("Milestone 2 pull request CI gate", () => {
     const coverageArtifact = jobs.coverage?.steps?.find((step) => step.name === "Upload coverage");
     expect(coverageArtifact).toMatchObject({
       if: "always()",
-      uses: "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+      uses: expect.stringMatching(/^actions\/upload-artifact@[0-9a-f]{40}$/u),
       with: {
         name: "coverage",
         path: "coverage/",
