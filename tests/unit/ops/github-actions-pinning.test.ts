@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { isMap, isPair, isScalar, parse, parseDocument, visit } from "yaml";
+import { isMap, isPair, isScalar, isSeq, parse, parseDocument, visit } from "yaml";
 
 const root = path.join(process.cwd(), ".github");
 
@@ -19,29 +19,35 @@ function pairKey(node: unknown): string | undefined {
   return isPair(node) && isScalar(node.key) ? String(node.key.value) : undefined;
 }
 
+const actionPaths = [/^jobs\/[^/]+\/steps$/u, /^jobs\/[^/]+$/u, /^runs\/steps$/u];
+
 /**
- * YAML düğümlerinden bulunan her `uses` kullanımı ve O KULLANIMIN satır sonu yorumu: iş
- * adımları (`…steps[].uses`), reusable workflow çağrıları (`jobs.<ad>.uses`) ve composite
- * adımlar (`runs.steps[].uses`). `run:` metni ya da başka anahtarların altındaki `uses`
- * sayılmaz. Akış eşlemesinde (`- { uses: … } # v1.2.3`) yorum eşlemeye bağlanır.
+ * YAML düğümlerinden bulunan her `uses` kullanımı ve O KULLANIMIN satır sonu yorumu. Yalnız
+ * üç tam yol: `jobs.<ad>.steps[].uses`, `jobs.<ad>.uses`, `runs.steps[].uses`. Alias/anchor ve
+ * akış (`{…}`/`[…]`) biçimi `.github` altında YASAK — ikisi de denetimi atlatabiliyordu
+ * (Astra, PR #200 3. tur); yasak ihlali de kural dışı kullanım olarak raporlanır.
  */
 function actionUsages(source: string): Usage[] {
   const usages: Usage[] = [];
   visit(parseDocument(source), {
+    Alias() {
+      usages.push({ reference: "YAML alias yasak", comment: undefined });
+    },
+    Node(_key, node) {
+      if ("anchor" in node && node.anchor)
+        usages.push({ reference: "YAML anchor yasak", comment: undefined });
+    },
     Pair(_key, pair, path) {
       if (pairKey(pair) !== "uses") return;
-      const ancestors = path.filter(isPair).map(pairKey);
-      const inSteps = ancestors.at(-1) === "steps";
-      const isJob = ancestors.at(-2) === "jobs";
-      if (!inSteps && !isJob) return;
-      const parent = path.at(-1);
+      const route = path.filter(isPair).map(pairKey).join("/");
+      if (!actionPaths.some((pattern) => pattern.test(route))) return;
       const value = pair.value;
-      usages.push({
-        reference: isScalar(value) ? String(value.value) : String(value),
-        comment:
-          (isScalar(value) ? value.comment : undefined) ??
-          (isMap(parent) && parent.flow ? parent.comment : undefined),
-      });
+      const reference = isScalar(value) ? String(value.value) : String(value);
+      if (path.some((node) => (isMap(node) || isSeq(node)) && node.flow)) {
+        usages.push({ reference: `akış biçimi yasak: ${reference}`, comment: undefined });
+        return;
+      }
+      usages.push({ reference, comment: isScalar(value) ? value.comment : undefined });
     },
   });
   return usages;
@@ -106,8 +112,16 @@ describe("GitHub Actions sürüm kilidi", () => {
       "yorum yalnız run metninde",
       `jobs:\n  a:\n    steps:\n      - run: |\n          echo "actions/checkout@${sha} # v4.4.0"\n      - uses: actions/checkout@${sha}\n`,
     ],
+    [
+      "akış eşlemesi",
+      `jobs:\n  a:\n    steps:\n      - { uses: actions/checkout@${sha} } # v4.4.0\n`,
+    ],
+    [
+      "alias ile pinsiz eylem",
+      `jobs:\n  a:\n    strategy:\n      matrix:\n        setup:\n          - &checkout\n            uses: actions/checkout@v4\n    steps:\n      - *checkout\n`,
+    ],
   ])("reddeder: %s", (_label, source) => {
-    expect(unpinnedReferences(source)).toHaveLength(1);
+    expect(unpinnedReferences(source).length).toBeGreaterThan(0);
   });
 
   it.each([
@@ -118,8 +132,8 @@ describe("GitHub Actions sürüm kilidi", () => {
     ],
     ["tırnaklı yerel", `jobs:\n  a:\n    steps:\n      - uses: "./.github/actions/x"\n`],
     [
-      "akış eşlemesi",
-      `jobs:\n  a:\n    steps:\n      - { uses: actions/checkout@${sha} } # v4.4.0\n`,
+      "matrix verisindeki uses",
+      `jobs:\n  a:\n    strategy:\n      matrix:\n        steps:\n          - uses: fixture-data\n    steps:\n      - run: echo ok\n`,
     ],
     [
       "kaçışlı tırnaklı",
