@@ -1423,7 +1423,9 @@ girmek israf.
       **Zamanlanmış yedek — KARAR: EVET (Gökhan, 24 Eylül: "mantıklıysa ok").** Kısıtlı
       anahtar: üretimde `authorized_keys` satırı yalnız yedek betiğini çalıştıran
       `command=…,restrict`; kişisel sunucuda kullanıcı systemd zamanlayıcısı, gecelik, son 7
-      kopya. Kurulum Astra incelemesinden sonra. Reset öncesi taze bir yedek aynı yöntemle yeniden
+      kopya. Kurulum Astra incelemesinden sonra. Kod ve kurulum adımları hazır:
+      `deploy/backup/`, runbook "Gecelik sunucu dışı yedek (B9)", test
+      `tests/unit/ops/nightly-backup.test.ts` (24 Eylül, PR bekliyor). Reset öncesi taze bir yedek aynı yöntemle yeniden
       alınmalı. _(reset önkoşulu: tek seferlik kısım karşılandı)_
 - [x] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — HEPSİ CANLIDA (23
       Eylül).** Üç ayrı sürüm, ayrı kanıt:

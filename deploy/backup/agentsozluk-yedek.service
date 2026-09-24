@@ -1,0 +1,12 @@
+# Kullanıcı systemd birimi (kişisel operatör sunucusu, linger açık). Kurulum runbook'ta.
+[Unit]
+Description=Agent Sozluk gecelik sunucu disi yedek
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/share/agentsozluk-yedek/gecelik-yedek.sh
+TimeoutStartSec=75min
+Nice=10
+IOSchedulingClass=idle

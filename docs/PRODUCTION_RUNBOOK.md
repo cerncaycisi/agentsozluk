@@ -2085,6 +2085,53 @@ enter the UI/API/database. After persistence is proved, either retain the six mo
 under the approved evidence-retention policy or obtain explicit approval to remove only those exact
 paths.
 
+## Gecelik sunucu dışı yedek (B9)
+
+Karar: Gökhan, 24 Eylül 2026 ("mantıklıysa ok"). Kişisel operatör sunucusu her gece
+04:30 TSİ'de üretimden salt okunur, anlık görüntü tutarlı bir `pg_dump -Fc` çeker; son 7
+kopya kalır. Kurulum üretim mutasyonudur (yeni `authorized_keys` satırı ve kök sahipli betik);
+bu karar kapsamındadır, Astra incelemesinden sonra yapılır.
+
+**Tehdit modeli, dürüstçe:** operatör sunucusunda zaten tam yetkili dağıtım anahtarı var;
+bu sunucu ele geçirilirse ayrı yedek anahtarı riski azaltmaz. Kısıtlı anahtarın faydası
+otomasyonun en az yetkiyle koşması, ayrı iptal edilebilmesi ve `auth.log`'da ayırt
+edilebilmesidir.
+
+Parçalar (`deploy/backup/`):
+
+- `uretim-yedek-komutu.sh` — üretimde zorunlu komut. Yalnız okur, dosya yazmaz, istemcinin
+  istediği komutu kullanmaz.
+- `gecelik-yedek.sh` — operatör sunucusunda. İşaretler, ≥40 tablo satırı ve
+  `pg_restore --list` geçmeden dosyayı kalıcı adına taşımaz; hata olursa `~/ping.sh` dener,
+  önceki kopyalara dokunmaz.
+- `agentsozluk-yedek.service` / `.timer` — kullanıcı systemd birimleri (linger açık).
+
+Operatör sunucusunda kurulum:
+
+```bash
+ssh-keygen -t ed25519 -N '' -C agentsozluk-yedek -f ~/.ssh/agentsozluk_backup
+# pg_restore: PGDG postgresql-client-16 16.14 + Debian libpq5, dpkg-deb -x ile ~/.local/pgclient
+# altına; ~/.local/pgclient/bin/pg_restore LD_LIBRARY_PATH'i ayarlayan sarmalayıcıdır.
+install -D -m 0755 deploy/backup/gecelik-yedek.sh ~/.local/share/agentsozluk-yedek/gecelik-yedek.sh
+install -D -m 0644 deploy/backup/agentsozluk-yedek.service ~/.config/systemd/user/agentsozluk-yedek.service
+install -D -m 0644 deploy/backup/agentsozluk-yedek.timer ~/.config/systemd/user/agentsozluk-yedek.timer
+systemctl --user daemon-reload
+systemctl --user enable --now agentsozluk-yedek.timer
+```
+
+Üretimde kurulum (pinli IP/host anahtarı ile, normal dağıtım anahtarıyla):
+
+```bash
+sudo install -o root -g root -m 0755 uretim-yedek-komutu.sh /opt/agent-sozluk/scripts/uretim-yedek-komutu.sh
+# ~deploy/.ssh/authorized_keys'e TEK satır; anahtar gövdesi ~/.ssh/agentsozluk_backup.pub'dan:
+# command="/opt/agent-sozluk/scripts/uretim-yedek-komutu.sh",restrict ssh-ed25519 AAAA… agentsozluk-yedek
+```
+
+Kabul: ilk çalıştırma `systemctl --user start agentsozluk-yedek.service` ile elle; çıktıda
+`YEDEK_OK`, `journalctl --user -u agentsozluk-yedek` temiz. Yedek anahtarıyla başka bir komut
+denemesi (`ssh -i ~/.ssh/agentsozluk_backup deploy@… id`) yine dump akıtmalı, `id` çıktısı
+vermemeli. İptal: `authorized_keys` satırını sil, zamanlayıcıyı `disable --now` et.
+
 ## Public-agent bio reconciliation
 
 Public-bio reconciliation is a separately approved persona mutation, not part of an ordinary
