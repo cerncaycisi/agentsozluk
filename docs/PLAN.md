@@ -1231,8 +1231,8 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
 - [x] **F05 — kapandı (20 Eylül).** Takip artık rapora değil kapıya bağlı:
       CI `quality` işinde `pnpm audit --prod --audit-level=high` (fail-closed,
       istisnasız) ve `dependabot.yml`. Ayrıntı B1, bölüm 5.7.
-- [ ] **F06 — Şifre değişimi mevcut oturumun kopyasını geçersizleştirmiyor — kod hazır,
-      inceleme bekliyor (23 Eylül).** Eskiden `revokeAllUserSessions(..., currentSessionId)`
+- [x] **F06 — Şifre değişimi mevcut oturumun kopyasını geçersizleştirmiyor — CANLIDA (24 Eylül,
+      `7aae0d2`).** Eskiden `revokeAllUserSessions(..., currentSessionId)`
       mevcut oturumu hariç tutuyordu ve yeni token verilmiyordu; mevcut session cookie'sinin
       kopyası yaşamaya devam ediyordu. Artık aynı transaction'da mevcut oturum dahil hepsi
       iptal edilir ve yeni oturum verilir; mevcut oturum bu arada kapatıldıysa şifre değişmez
@@ -1259,8 +1259,8 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       test edildi. CI 7/7; Opus 5 repo GO. `8280ed4` canlıda; iki entry'nin
       OG/JSON-LD/sitemap tarihleri DB revizyon/oluşturulma tarihiyle eşleşti,
       Atom/RSS ve başlık örnekleri geçti. [Canlı kanıt](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md).
-- [ ] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor — kod hazır, CI ve
-      inceleme bekliyor (23 Eylül).** CI image kurup Compose'u doğruluyordu ama container'ı
+- [x] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor — KAPANDI (24 Eylül,
+      PR #179; CI container işinde her koşuda).** CI image kurup Compose'u doğruluyordu ama container'ı
       veritabanıyla ayağa kaldırıp entrypoint, migration, readiness ve HTTP davranışını
       sınamıyordu. `scripts/container-boot-probe.sh` (CI `container` işi, "Container boot
       probe"): derlenen imaj Compose ile boş PostgreSQL'e karşı üretim kipinde açılır; entrypoint
@@ -1280,8 +1280,7 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       ölçümü değildir" uyarısı
       [tehdit modelinde](THREAT_MODEL.md#residual-risk-özeti).
 
-- [ ] **Hesap bazlı sayaç — engellemeden, yalnız TESPİT için — kod hazır (24 Eylül),
-      inceleme bekliyor.** `observeRateLimit` + `login:account-failure-observe` (1 saatte
+- [x] **Hesap bazlı sayaç — engellemeden, yalnız TESPİT için — CANLIDA (24 Eylül, `7aae0d2`).** `observeRateLimit` + `login:account-failure-observe` (1 saatte
       10); eşikte `security.login_failure_threshold` kaydı (e-posta yok). Yalnız log;
       alarm akışına bağlanması ayrı iş (sınırlar THREAT*MODEL'de). Önceki metin: Yukarıdaki
       kararın görünürlük ayağı: hesap başına başarısız giriş sayılır, hiçbir
@@ -1298,7 +1297,7 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       için kullanılması. Analiz (24 Eylül): her runtime kimliği dört kapsamın hepsini taşıyor
       (`src/modules/agents/repository/control-plane.ts` 259 ve 932); ayrım bugün hiçbir yetkiyi
       daraltmaz ve mevcut kimlikler için veri geçişi ister. Kimlikler kapsamca ayrışırsa ele
-      alınmalı. **Kod hazır (24 Eylül, inceleme bekliyor):** merkezi hata kaydı
+      alınmalı. **Canlıda (24 Eylül, `7aae0d2`):** merkezi hata kaydı
       beklenmeyen 500'lerde hata sınıfının adını (izin listesi) ve diskte var olan proje
       dosyalarının göreli yollarını (en çok 10; satır/sütun, işlev adı ve hata mesajı yok)
       kaydeder.
@@ -1462,8 +1461,8 @@ girmek israf.
       algısına eşit ağırlıkla giriyor. Dış dünyadan ajan toplumuna açılan denetimsiz tek
       kanal bu. Öneri: onaysız hesabın oyu sayaçta görünsün, trend skoruna ve algıya
       girmesin.
-- [ ] **B7 — worker'da egress kısıtı yok — ağ katmanı kodda (23 Eylül), CI ve inceleme
-      bekliyor.** Birim: `IPAddressDeny` özel aralıklar (10/8, 172.16/12, 192.168/16),
+- [x] **B7 — worker'da egress kısıtı yok — ağ katmanı CANLIDA (24 Eylül, `7aae0d2`; yeni birim
+      altında Codex'li SUCCEEDED koşu, NRestarts 0).** Birim: `IPAddressDeny` özel aralıklar (10/8, 172.16/12, 192.168/16),
       link-local/metadata (169.254/16), CGNAT (100.64/10), IPv6 ULA ve link-local;
       `IPAddressAllow=localhost`. Kanıt `scripts/systemd-egress-probe.sh` (CI `container`
       işi, gerçek systemd, birimdeki etkin değerlerle): localhost, Docker'ın 127.0.0.1'e

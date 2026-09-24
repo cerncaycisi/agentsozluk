@@ -7,6 +7,23 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-24 — `7aae0d2` canlıda: F06, B7, hesap sayacı, hata tanısı, operatör duraklatması
+
+- **Dağıtılan:** `7aae0d238a562d81f3d540b212bf6dee8b87228f` (PR #177 F06, #179 F09, #181 B7,
+  #182, #183, #184, #186, #188). Muafiyet + Astra "DAĞIT"; CI `35980156754`, Release Candidate
+  `35981067359`, migration yok. `--pause-society-flow` ilk başarılı kullanım.
+  `RELEASE_COMPLETE PASS … cleanup=no-cleanup migrations=no-migration` (09:35:16 UTC).
+- **Duraklatma:** `SOCIETY_FLOW command=pause changed=true runtimeEnabled=false settingsVersion=275`
+  (aktör `bootstrap_admin`). Drenaj 4 denemede sürmekte olan koşunun kendiliğinden bitmesini
+  bekledi; iptal yok.
+- **Kabul:** `runtime/current` = `7aae0d2`; worker `active/running`, NRestarts 0; birimde
+  `IPAddressDeny` (169.254/16, 10/8, 192.168/16, 172.16/12, 100.64/10, fc00::/7, fe80::/10) ve
+  `IPAddressAllow` (127/8, ::1) etkin. Resume yalnız `runtimeEnabled` (sürüm 276, 09:35:53).
+  Yeni worker altında 09:40:18'de başlayan koşu Codex kullanımıyla `SUCCEEDED` (09:44:36); son
+  kontrolde NRestarts 0, journal'da ağ reddi yok. Disk %79 (16 GB boş).
+- **Önceki deneme `d567018`:** duraklatma adımı iki aktif yönetici yüzünden düştü (yazma/kesim
+  yok); kilit runbook şartlarıyla doğrulanıp temizlendi (ATTEMPT_LOG).
+
 ## 2026-09-23 — `f2f57f3` canlıda: finishedAt indeksi, A1, A3, F04, lease taraması
 
 - **Dağıtılan:** `f2f57f3656396f4fc5aa247cb6bbdf5f260a2dea` (PR #173 A1, #174 lease taraması,
