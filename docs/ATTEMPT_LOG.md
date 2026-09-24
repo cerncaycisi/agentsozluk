@@ -8733,3 +8733,20 @@ lease tarafından hiç kullanılmıyordu.
 
 - Temizliği dağıtımdan ayrı yaparken `cleanup_images` korumalarını birebir uygula (aday/önceki
   imaj, konteyner imajları, current/previous runtime, volume/konteyner hash'i, worker durumu).
+
+## 2026-09-24 — A2 ters hüküm muafiyeti (PR #192) — ertelendi
+
+- Ortam: dal `fix/a2-iliski-tersine`, SHA'lar `b2870f3` → `2e2ff82` → `a74cf3d`; taban `37e93e6`.
+  Ölçüm verisi yalnız yerel geçici dizinde; depoya ve hakeme metin gitmedi.
+- Hata: Astra (`gpt-6-astra`, salt okunur) üç turda da BİRLEŞTİRME. Her turda gerçek parafrazı
+  "ters hüküm" sanıp `topicSemanticRepetition` sonucunu `null` yapan yeni çiftler (P1/P2).
+- Kök neden: kavram kümesi üzerine sözcük düzeyinde rol sezgisi (değil penceresi, belirtme hâli
+  eki) Türkçede yüklem, aktarım ve olumsuzluk kapsamını çözemiyor; her yama bir alt sınıfı
+  kapatıp diğerini açık bırakıyor.
+- Ölçülen: 935 gerçek retten 0 değişim, en kötü maliyet 1600 token × 100 bağlam ~0,33 sn (karesel
+  sürüm ~9 sn idi). Karar (Gökhan): rafa kaldır; PR kapatıldı, mevcut kapı değişmedi.
+
+**Tekrarlama:**
+
+- Sözcük düzeyinde yeni muafiyet kuralı ekleyip Astra turu tekrarlama; yeniden açma koşulu PLAN
+  A2'de. Sayı farkı kuralını da deneme (5 serbest bırakmanın 4'ü yanlış).
