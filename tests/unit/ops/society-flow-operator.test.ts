@@ -34,11 +34,11 @@ describe("toplum akışı operatör duraklatması", () => {
     expect(pause).toBeGreaterThan(fetchRuntime);
     expect(remote).toBeGreaterThan(pause);
     const block = wrapper.slice(
-      wrapper.indexOf('if test "$pause_society_flow" = 1; then\n  timeout 180 ssh'),
+      wrapper.indexOf('if test "$pause_society_flow" = 1; then\n  "$local_timeout" 180 ssh'),
       remote,
     );
     expect(block).toContain("$lock_check");
-    expect(block).toContain("timeout 180 ssh");
+    expect(block).toContain('"$local_timeout" 180 ssh');
     expect(block).toContain("timeout --kill-after=10 120 ./node_modules/.bin/tsx");
     expect(block).toContain("$scope_check");
     expect(block).toContain("release=/opt/agent-sozluk/runtime/releases/$candidate_sha");
@@ -71,5 +71,13 @@ describe("toplum akışı operatör duraklatması", () => {
     }
     expect(failure?.status).toBe(90);
     expect(failure?.stderr).toContain("PAUSE_REQUIRES_ARTIFACT_RELEASE");
+  });
+
+  it("yerel süre sınırlayıcı yoksa ilk uzak işlemden önce durur", () => {
+    const toolCheck = wrapper.indexOf("PAUSE_TIMEOUT_TOOL_MISSING");
+    const firstRemote = wrapper.indexOf('ssh "${ssh_options[@]}" deploy@"$expected_ip"');
+    expect(toolCheck).toBeGreaterThan(0);
+    expect(toolCheck).toBeLessThan(firstRemote);
+    expect(wrapper).toContain("command -v gtimeout");
   });
 });

@@ -117,6 +117,19 @@ if test "$pause_society_flow" = 1 && test "$build_on_host" = 1; then
   printf 'RELEASE_WRAPPER_FAIL code=PAUSE_REQUIRES_ARTIFACT_RELEASE\n' >&2
   exit 90
 fi
+# Yerel süre sınırlayıcı İLK uzak işlemden önce seçilir: macOS'ta GNU `timeout` yok,
+# Homebrew coreutils `gtimeout` verir. Yoksa kilit alınmadan durulur (Astra, #186).
+local_timeout=""
+if test "$pause_society_flow" = 1; then
+  if command -v timeout >/dev/null 2>&1; then
+    local_timeout=timeout
+  elif command -v gtimeout >/dev/null 2>&1; then
+    local_timeout=gtimeout
+  else
+    printf 'RELEASE_WRAPPER_FAIL code=PAUSE_TIMEOUT_TOOL_MISSING\n' >&2
+    exit 90
+  fi
+fi
 # Migration listesi SHA onayından ayrı, birebir onaylanır (A5).
 migration_mode=no-migration
 if test -n "$approved_migrations"; then
@@ -596,7 +609,7 @@ fi
 # sonlandırılır), yerelde SSH 180 sn; aşılırsa dağıtım durur, kilit kalır ve operatör
 # aynı release'ten `status` ile gerçek durumu okur (runbook).
 if test "$pause_society_flow" = 1; then
-  timeout 180 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+  "$local_timeout" 180 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
     "set -euo pipefail
      test \"\$(hostname)\" = '$expected_host' || exit 91
      $scope_check

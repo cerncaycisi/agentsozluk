@@ -640,7 +640,11 @@ script is trustworthy in that respect — a failed attempt does not corrupt prod
      AGENT_FLOW_REASON='<neden>' ./node_modules/.bin/tsx scripts/agent-society-flow.ts resume
    ```
 
-   A pause error or timeout does not prove that nothing was written: read `status` first.
+   A pause error or timeout does not prove that nothing was written, and a dropped SSH
+   session does not prove the remote pause process has ended — a late pause could close
+   the flow again after a recovery resume. Before `status`/`resume`, confirm no pause is
+   still running on the host: `test -z "$(pgrep -f 'agent-society-flow.ts pause')"`
+   (wait or stop it first), then read `status`.
    If the deploy then retries, the already-paused state writes nothing. If it is abandoned,
    `resume` restores only `runtimeEnabled`. Do not cancel a running run, let it finish on its own.
 
