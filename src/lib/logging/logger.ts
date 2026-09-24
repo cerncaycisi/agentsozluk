@@ -1,3 +1,5 @@
+import { statSync } from "node:fs";
+import nodePath from "node:path";
 import pino from "pino";
 import { AppError } from "@/lib/http/errors";
 
@@ -92,26 +94,58 @@ export function safeErrorCode(error: unknown): string {
 
 /*
   Beklenmeyen hatanın tanısı (18 Eylül incelemesi, "küçük ama biriken"): merkezi
-  kayıtta yalnız `INTERNAL_ERROR` kalıyordu, gerçek neden bulunamıyordu. Kaydedilen
-  yalnız hata sınıfının adı ve stack ÇERÇEVELERİDİR. Hata mesajı hiç kaydedilmez:
-  sürücü ve kütüphane mesajları sorgu parametresi, e-posta ya da token taşıyabilir.
-  Çerçeve yalnız katı `at işlev (yol:satır:sütun)` biçimine uyuyorsa alınır; çok
-  satırlı bir mesajın "at …" diye başlayan satırı yol biçimine uymadıkça düşer. Yol
-  proje köküne göre kısaltılır, e-posta biçimi yine sansürlenir.
-*/
-const identifier = /^[A-Za-z][A-Za-z0-9_]{0,60}$/u;
-const stackFrame =
-  /^\s+at (?:([\w.$<>[\] ]{1,120}) \()?((?:file:\/\/|node:|\/)[^\s()]{1,400}):(\d{1,7}):(\d{1,7})\)?$/u;
-const maxFrames = 10;
+  kayıtta yalnız `INTERNAL_ERROR` kalıyordu, gerçek neden bulunamıyordu.
 
-function shortFramePath(path: string): string {
-  if (path.startsWith("node:")) return path;
-  const withoutScheme = path.replace(/^file:\/\//u, "");
-  for (const marker of ["/node_modules/", "/src/", "/scripts/", "/.next/"]) {
-    const index = withoutScheme.lastIndexOf(marker);
-    if (index >= 0) return withoutScheme.slice(index + 1);
+  Stack metni GÜVENİLMEZDİR (Astra, #183): ilk satırlar hata mesajıdır ve çok
+  satırlı bir mesaj yol biçimli sahte "at …" satırları içerebilir; işlev/sınıf
+  adları dinamik olabilir; `eval` `sourceURL` ile yol uydurabilir. Bu yüzden:
+  - hata adı yalnız bilinen sınıflardan (izin listesi), aksi hâlde `Error`;
+  - işlev adı hiç kaydedilmez;
+  - bir çerçeve yalnız proje kökü altında DİSKTE VAR OLAN bir dosyayı gösteriyorsa
+    alınır ve yalnız `göreli/yol:satır:sütun` (sayılar) olarak kaydedilir. Mesajdaki
+    uydurma yol, `?token=` taşıyan yol ya da `eval` kaynağı diskte yoktur, düşer;
+  - `node:` çerçeveleri alınmaz; en çok 16 KiB / 200 satır taranır, 10 çerçeve kalır.
+  Hata mesajı hiçbir koşulda kaydedilmez.
+*/
+const knownErrorNames = new Set([
+  "Error",
+  "TypeError",
+  "RangeError",
+  "ReferenceError",
+  "SyntaxError",
+  "EvalError",
+  "URIError",
+  "AggregateError",
+  "AbortError",
+  "TimeoutError",
+  "ZodError",
+  "PrismaClientKnownRequestError",
+  "PrismaClientUnknownRequestError",
+  "PrismaClientValidationError",
+  "PrismaClientInitializationError",
+  "PrismaClientRustPanicError",
+]);
+const stackFrame =
+  /^\s+at (?:.{0,200}? \()?(?:file:\/\/)?(\/[^\s()]{1,400}):(\d{1,7}):(\d{1,7})\)?$/u;
+const maxFrames = 10;
+const maxStackCharacters = 16_384;
+const maxStackLines = 200;
+const existingProjectFiles = new Map<string, boolean>();
+
+function projectRelativeFile(candidate: string): string | null {
+  const root = process.cwd();
+  const resolved = nodePath.resolve(candidate);
+  if (!resolved.startsWith(`${root}${nodePath.sep}`)) return null;
+  let exists = existingProjectFiles.get(resolved);
+  if (exists === undefined) {
+    try {
+      exists = statSync(resolved).isFile();
+    } catch {
+      exists = false;
+    }
+    if (existingProjectFiles.size < 2_000) existingProjectFiles.set(resolved, exists);
   }
-  return withoutScheme.split("/").slice(-2).join("/");
+  return exists ? nodePath.relative(root, resolved) : null;
 }
 
 export function safeErrorDiagnostics(
@@ -120,18 +154,20 @@ export function safeErrorDiagnostics(
   if (error instanceof AppError) return null;
   if (!(error instanceof Error)) return { errorName: "NonError", errorFrames: [] };
   const constructorName = error.constructor?.name ?? "";
-  const errorName = identifier.test(constructorName)
+  const errorName = knownErrorNames.has(constructorName)
     ? constructorName
-    : identifier.test(error.name)
+    : knownErrorNames.has(error.name)
       ? error.name
       : "Error";
   const errorFrames: string[] = [];
-  for (const line of (error.stack ?? "").split("\n")) {
+  const lines = (error.stack ?? "").slice(0, maxStackCharacters).split("\n", maxStackLines);
+  for (const line of lines) {
     const match = stackFrame.exec(line);
     if (!match) continue;
-    const [, fn, path, row, column] = match;
-    const frame = `${fn ? `${fn} ` : ""}${shortFramePath(path ?? "")}:${row}:${column}`;
-    errorFrames.push(frame.replace(emailValue, "[REDACTED]"));
+    const [, filePath, row, column] = match;
+    const relative = projectRelativeFile(filePath ?? "");
+    if (!relative) continue;
+    errorFrames.push(`${relative}:${row}:${column}`);
     if (errorFrames.length === maxFrames) break;
   }
   return { errorName, errorFrames };
