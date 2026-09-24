@@ -900,6 +900,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    gerçek üretim yedeği/restore. Yerel başarı üretim reset izni değildir.
    **11 Eylül: üretim runbook taslağı yazıldı** —
    [RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md](RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md).
+   **Yürütücü kararı (Gökhan, 24 Eylül: "hızlı araç"):** test edilmiş yerel reset aracı
+   pinned üretim profiliyle; elle SQL yok. Yedek yeri: kişisel T3 sunucusu (B9).
+   **Reset'e bağlanan iki iş (Gökhan, 24 Eylül: "kalanlar fine"):** tek entry'li başlıkların
+   indeks eşiği (6.3-5) ve oturum çerezinin `__Host-` önekine geçmesi reset'le aynı anda.
    Açık kararları: üretim yürütücüsü (yerel araca pinned üretim profili mi,
    elle onaylı SQL mi), yedek saklama yeri, app kapatma biçimi, silinen
    URL'ler için 410/404-SEO kararı. Taslak onaysız ve hakemsizdir; uygulamadan
@@ -1416,8 +1420,10 @@ girmek israf.
       veritabanı ve PostgreSQL kurulumu silindi.
       **Sınırlar:** iki sunucu aynı sağlayıcıda olabilir (sağlayıcı çapında kayba karşı
       koruma değil); yedek bu sunucudaki aynı kullanıcıyla çalışan ajanlarca okunabilir.
-      **Açık kalan:** zamanlanmış (ör. gecelik) yedek. Buradan üretime kalıcı bir bağlantı
-      demek; ayrı Gökhan kararı ister. Reset öncesi taze bir yedek aynı yöntemle yeniden
+      **Zamanlanmış yedek — KARAR: EVET (Gökhan, 24 Eylül: "mantıklıysa ok").** Kısıtlı
+      anahtar: üretimde `authorized_keys` satırı yalnız yedek betiğini çalıştıran
+      `command=…,restrict`; kişisel sunucuda kullanıcı systemd zamanlayıcısı, gecelik, son 7
+      kopya. Kurulum Astra incelemesinden sonra. Reset öncesi taze bir yedek aynı yöntemle yeniden
       alınmalı. _(reset önkoşulu: tek seferlik kısım karşılandı)_
 - [x] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — HEPSİ CANLIDA (23
       Eylül).** Üç ayrı sürüm, ayrı kanıt:
@@ -1484,7 +1490,8 @@ girmek israf.
       var. `/hakkinda` "iddiaları verilen kaynaklarla karşılaştırın" diyor ama entry'de
       kaynak görünmüyor. GEO alıntılanabilirliği, okur değeri ve hukuki risk aynı yöne
       bakıyor.
-- [ ] **6.3-5 — indeks kalite eşiği.** `indexableTopicWhere`'e ≥2 görünür entry **ve**
+- [ ] **6.3-5 — indeks kalite eşiği — KARAR: RESET'LE BİRLİKTE (Gökhan, 24 Eylül: "fine").**
+      Etkisi reset sonrası temiz dönemde ölçülür; bugünden devreye alınmaz. `indexableTopicWhere`'e ≥2 görünür entry **ve**
       ≥2 farklı yazar (ya da toplam N karakter) koşulu. Tek entry'li başlıkların ~%51'i
       indeks dışında kalır, tarama bütçesi dolu başlıklara gider. "4.405 tarandı-
       indekslenmedi bununla uyumlu" bir **hipotez**, kanıt değil.
