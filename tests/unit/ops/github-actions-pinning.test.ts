@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { parse } from "yaml";
+import { isMap, isPair, isScalar, parse, parseDocument, visit } from "yaml";
 
 const root = path.join(process.cwd(), ".github");
 
@@ -13,39 +13,57 @@ function yamlFiles(directory: string): string[] {
   });
 }
 
-type Step = { uses?: unknown };
-type Workflow = {
-  jobs?: Record<string, { uses?: unknown; steps?: Step[] }>;
-  runs?: { steps?: Step[] };
-};
+type Usage = { reference: string; comment: string | undefined };
 
-/** YAML ayrıştırılarak bulunan bütün `uses` değerleri: iş adımları, reusable workflow çağrıları, composite adımlar. */
-function actionReferences(source: string): string[] {
-  const document = (parse(source) ?? {}) as Workflow;
-  const steps: Step[] = [
-    ...Object.values(document.jobs ?? {}).flatMap((job) => [
-      ...(job.uses === undefined ? [] : [{ uses: job.uses }]),
-      ...(job.steps ?? []),
-    ]),
-    ...(document.runs?.steps ?? []),
-  ];
-  return steps.flatMap((step) => (step.uses === undefined ? [] : [String(step.uses)]));
+function pairKey(node: unknown): string | undefined {
+  return isPair(node) && isScalar(node.key) ? String(node.key.value) : undefined;
 }
 
 /**
- * Kurala uymayan referanslar. Yerel `./` muaf. `docker://` yalnız `@sha256:<64 hex>` ile.
- * Dış eylem 40 haneli commit SHA'sı taşır ve kaynak satırında `# vX.Y.Z` yorumu bulunur.
- * Yorumun SHA ile gerçekten eşleştiğini bu test DOĞRULAMAZ (ağ yok); eşleme kanıtı pin
- * güncellemesinde GitHub API'den alınıp PR'a/ATTEMPT_LOG'a yazılır.
+ * YAML düğümlerinden bulunan her `uses` kullanımı ve O KULLANIMIN satır sonu yorumu: iş
+ * adımları (`…steps[].uses`), reusable workflow çağrıları (`jobs.<ad>.uses`) ve composite
+ * adımlar (`runs.steps[].uses`). `run:` metni ya da başka anahtarların altındaki `uses`
+ * sayılmaz. Akış eşlemesinde (`- { uses: … } # v1.2.3`) yorum eşlemeye bağlanır.
+ */
+function actionUsages(source: string): Usage[] {
+  const usages: Usage[] = [];
+  visit(parseDocument(source), {
+    Pair(_key, pair, path) {
+      if (pairKey(pair) !== "uses") return;
+      const ancestors = path.filter(isPair).map(pairKey);
+      const inSteps = ancestors.at(-1) === "steps";
+      const isJob = ancestors.at(-2) === "jobs";
+      if (!inSteps && !isJob) return;
+      const parent = path.at(-1);
+      const value = pair.value;
+      usages.push({
+        reference: isScalar(value) ? String(value.value) : String(value),
+        comment:
+          (isScalar(value) ? value.comment : undefined) ??
+          (isMap(parent) && parent.flow ? parent.comment : undefined),
+      });
+    },
+  });
+  return usages;
+}
+
+/**
+ * Kurala uymayan kullanımlar. Yerel `./` muaf. `docker://` yalnız `@sha256:<64 hex>` ile.
+ * Dış eylem 40 haneli commit SHA'sı ve kendi satırında `# vX.Y.Z` yorumu taşır. Yorumun SHA
+ * ile gerçekten eşleştiğini bu test DOĞRULAMAZ (ağ yok); eşleme kanıtı pin güncellemesinde
+ * GitHub API'den alınıp PR'a/ATTEMPT_LOG'a yazılır.
  */
 function unpinnedReferences(source: string): string[] {
-  return actionReferences(source).filter((reference) => {
-    if (reference.startsWith("./")) return false;
-    if (reference.startsWith("docker://")) return !/@sha256:[0-9a-f]{64}$/u.test(reference);
-    if (!/^[\w.-]+\/[\w./-]+@[0-9a-f]{40}$/u.test(reference)) return true;
-    const escaped = reference.replaceAll(/[.*+?^${}()|[\]\\/]/gu, "\\$&");
-    return !new RegExp(`${escaped}["']?\\s+#\\s*v\\d+\\.\\d+\\.\\d+\\s*$`, "mu").test(source);
-  });
+  return actionUsages(source)
+    .filter(({ reference, comment }) => {
+      if (reference.startsWith("./")) return false;
+      if (reference.startsWith("docker://")) return !/@sha256:[0-9a-f]{64}$/u.test(reference);
+      return !(
+        /^[\w.-]+\/[\w./-]+@[0-9a-f]{40}$/u.test(reference) &&
+        /^\s*v\d+\.\d+\.\d+\s*$/u.test(comment ?? "")
+      );
+    })
+    .map(({ reference }) => reference);
 }
 
 /*
@@ -53,11 +71,14 @@ function unpinnedReferences(source: string): string[] {
   yeniden yazan bir tedarik zinciri saldırısı, release artifact'ını üreten işe de girer.
 */
 describe("GitHub Actions sürüm kilidi", () => {
-  const files = yamlFiles(root).filter((file) => !file.endsWith("dependabot.yml"));
+  const dependabot = path.join(root, "dependabot.yml");
+  const files = yamlFiles(root).filter((file) => file !== dependabot);
 
   it("depodaki bütün workflow ve composite eylemler kilitli", () => {
     const external = files.flatMap((file) =>
-      actionReferences(readFileSync(file, "utf8")).filter((ref) => !ref.startsWith("./")),
+      actionUsages(readFileSync(file, "utf8")).filter(
+        ({ reference }) => !reference.startsWith("./"),
+      ),
     );
     expect(external.length).toBeGreaterThan(10);
     const unpinned = files.flatMap((file) =>
@@ -77,6 +98,14 @@ describe("GitHub Actions sürüm kilidi", () => {
     ["composite", `runs:\n  using: composite\n  steps:\n    - uses: actions/cache@v4\n`],
     ["docker etiketi", `jobs:\n  a:\n    steps:\n      - uses: docker://alpine:3.20\n`],
     ["sürüm yorumsuz SHA", `jobs:\n  a:\n    steps:\n      - uses: actions/checkout@${sha}\n`],
+    [
+      "ikinci kullanım yorumsuz",
+      `jobs:\n  a:\n    steps:\n      - uses: actions/checkout@${sha} # v4.4.0\n      - uses: actions/checkout@${sha}\n`,
+    ],
+    [
+      "yorum yalnız run metninde",
+      `jobs:\n  a:\n    steps:\n      - run: |\n          echo "actions/checkout@${sha} # v4.4.0"\n      - uses: actions/checkout@${sha}\n`,
+    ],
   ])("reddeder: %s", (_label, source) => {
     expect(unpinnedReferences(source)).toHaveLength(1);
   });
@@ -88,6 +117,14 @@ describe("GitHub Actions sürüm kilidi", () => {
       `jobs:\n  a:\n    steps:\n      - uses: "actions/checkout@${sha}" # v4.4.0\n`,
     ],
     ["tırnaklı yerel", `jobs:\n  a:\n    steps:\n      - uses: "./.github/actions/x"\n`],
+    [
+      "akış eşlemesi",
+      `jobs:\n  a:\n    steps:\n      - { uses: actions/checkout@${sha} } # v4.4.0\n`,
+    ],
+    [
+      "kaçışlı tırnaklı",
+      `jobs:\n  a:\n    steps:\n      - uses: "actions\\x2fcheckout@${sha}" # v4.4.0\n`,
+    ],
     [
       "run metnindeki uses",
       `jobs:\n  a:\n    steps:\n      - run: |\n          echo "uses: actions/checkout@v4"\n`,
