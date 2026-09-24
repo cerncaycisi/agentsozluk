@@ -1517,9 +1517,10 @@ girmek israf.
       `/basliklar`'ı listeliyor. Canlıda ölçüldü. Astra notu: `?page=` alan liste sayfalarında
       canonical/og:url ilk sayfayı gösteriyor — önceden de öyleydi, açık. Entry sayfasının
       oturumsuz okurda entry ve içerik tarihini iki kez çekmesi React `cache()` ile teke
-      indi (24 Eylül, PR bekliyor). Kalanlar aşağıda.)_
+      indi — **CANLIDA `bb49b28`, PR #198, Astra DAĞIT**; oturumlu yol bilerek aynı kaldı.
+      Astra P2: çağrı sayısını gerçek RSC kapsamında sınayan kalıcı test yok, açık.
+      Kalanlar aşağıda.)_
       F06, F04, F09 (bölüm 5.6'da zaten açık) dışında:
-      entry'nin `generateMetadata` + gövdede iki kez çekilmesi (React `cache()` yok),
       `/basliklar`'ın her istekte COUNT'u, entry JSON-LD `@id`/`url` ile canonical
       tutarsızlığı, misafir oy/favori linklerinde `rel` yokluğu, liste sayfalarında sabit
       `og:title` ve eksik `og:url`, `llms.txt`'in `/basliklar` dizinini listelememesi,
