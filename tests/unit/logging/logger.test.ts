@@ -99,6 +99,26 @@ describe("structured logging safety", () => {
       },
     });
     expect(safeErrorDiagnostics(hostile)).toEqual({ errorName: "Error", errorFrames: [] });
+
+    // Adı ilk okumada izinli, sonra hassas dönen getter: tek okuma.
+    const shifty = new Error("x");
+    let reads = 0;
+    Object.defineProperty(shifty, "name", {
+      get() {
+        reads += 1;
+        return reads === 1 ? "TypeError" : "TEST_ONLY_SECRET";
+      },
+    });
+    Object.defineProperty(shifty, "constructor", { value: { name: "Unknown" } });
+    expect(JSON.stringify(safeErrorDiagnostics(shifty))).not.toContain("TEST_ONLY");
+
+    // instanceof'u fırlatan Proxy de yanıtı bozmaz.
+    const trap = new Proxy(new Error("x"), {
+      getPrototypeOf() {
+        throw new Error("proxy");
+      },
+    });
+    expect(safeErrorDiagnostics(trap)).toEqual({ errorName: "Error", errorFrames: [] });
   });
 
   it("adds no diagnostics for expected application errors and caps the frame count", () => {

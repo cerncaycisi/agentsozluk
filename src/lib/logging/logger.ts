@@ -151,10 +151,10 @@ function projectRelativeFile(candidate: string): string | null {
 export function safeErrorDiagnostics(
   error: unknown,
 ): { errorName: string; errorFrames: string[] } | null {
-  if (error instanceof AppError) return null;
-  if (!(error instanceof Error)) return { errorName: "NonError", errorFrames: [] };
-  // Tanı hiçbir koşulda hata yanıtını bozmamalı: getter/toString fırlatabilir (Astra).
+  // Tanı hiçbir koşulda hata yanıtını bozmamalı: getter/toString/Proxy fırlatabilir.
   try {
+    if (error instanceof AppError) return null;
+    if (!(error instanceof Error)) return { errorName: "NonError", errorFrames: [] };
     return errorDiagnostics(error);
   } catch {
     return { errorName: "Error", errorFrames: [] };
@@ -162,11 +162,13 @@ export function safeErrorDiagnostics(
 }
 
 function errorDiagnostics(error: Error): { errorName: string; errorFrames: string[] } {
-  const constructorName = error.constructor?.name ?? "";
+  // Her alan BİR kez okunur: getter ikinci okumada izin listesi dışı değer dönebilir.
+  const constructorName = String(error.constructor?.name ?? "");
+  const ownName = String(error.name);
   const errorName = knownErrorNames.has(constructorName)
     ? constructorName
-    : knownErrorNames.has(error.name)
-      ? error.name
+    : knownErrorNames.has(ownName)
+      ? ownName
       : "Error";
   /*
     Mesaj ile çerçevelerin ayrımı kanıtlanamaz: mesaj stack oluştuktan sonra
@@ -175,7 +177,8 @@ function errorDiagnostics(error: Error): { errorName: string; errorFrames: strin
     kanaldan çıkar. Kalan yalnız diskte var olan proje dosyalarının göreli yolları;
     art arda aynı dosya tek kez yazılır.
   */
-  const stack = typeof error.stack === "string" ? error.stack : "";
+  const rawStack: unknown = error.stack;
+  const stack = typeof rawStack === "string" ? rawStack : "";
   const errorFrames: string[] = [];
   for (const line of stack.slice(0, maxStackCharacters).split("\n", maxStackLines)) {
     const match = stackFrame.exec(line);
