@@ -13,6 +13,7 @@ import {
   titleRepairCandidateIsSafe,
   seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
+  semanticRelationDiffers,
   topicSemanticRepetition,
   userEntryContainsHighRiskReproduction,
 } from "@/modules/agents";
@@ -732,5 +733,53 @@ describe("aynı başlıkta öz-tekrar", () => {
         { ...base, actionType: "CREATE_ENTRY" },
       ),
     ).toBe(false);
+  });
+
+  describe("A2 — ilişkiyi tersine çeviren aday tekrar sayılmaz", () => {
+    // 22 Eylül incelemesi §6 ve Astra süzgeci: kavram kümesi rol ve olumsuzluk hedefini
+    // kaybediyordu; üçü de kapsama 1,0 ile "tekrar" sayılıyordu.
+    const title = "gündelik hayat";
+    it.each([
+      ["Kırmızı takım mavi takımı yendi.", "Mavi takım kırmızı takımı yendi."],
+      ["Bu karar üreticiyi değil tüketiciyi korur.", "Bu karar tüketiciyi değil üreticiyi korur."],
+      [
+        "Enflasyon işsizliği değil gelir eşitsizliğini artırıyor.",
+        "Enflasyon gelir eşitsizliğini değil işsizliği artırıyor.",
+      ],
+      // Türkçe varyantlar: virgül, ünlü kaynaştırmalı belirtme hâli.
+      [
+        "Bu karar üreticiyi değil, tüketiciyi korur.",
+        "Bu karar tüketiciyi değil, üreticiyi korur.",
+      ],
+      ["Kırmızı araba mavi arabayı geçti.", "Mavi araba kırmızı arabayı geçti."],
+    ])("karşı örnek: %s ↔ %s", (previous, candidate) => {
+      expect(semanticRelationDiffers(candidate, previous)).toBe(true);
+      expect(topicSemanticRepetition(candidate, title, [previous])).toBeNull();
+    });
+
+    it("aynı ilişkiyi koruyan tekrar ve sıra değiştiren parafraz yine tekrar sayılır", () => {
+      expect(
+        topicSemanticRepetition("Otobüs durağı kaldırıldı.", title, ["Otobüs durağı kaldırıldı."]),
+      ).not.toBeNull();
+      const previous =
+        "Yeni kira düzenlemesi kiracıyı değil ev sahibini koruyor; artış sınırı esnetiliyor, tahliye süresi kısalıyor.";
+      // Olumsuzluk hedefi aynı, yalnız sıra değişmiş (gerçek parafrazlar böyle).
+      const paraphrase =
+        "Kiracıyı değil ev sahibini koruyan yeni kira düzenlemesinde artış sınırı esnetiliyor, tahliye süresi kısalıyor.";
+      expect(semanticRelationDiffers(paraphrase, previous)).toBe(false);
+      expect(topicSemanticRepetition(paraphrase, "kira düzenlemesi", [previous])).not.toBeNull();
+      expect(
+        topicSemanticRepetition("Müze pazar günü ücretsiz.", title, ["Otobüs durağı kaldırıldı."]),
+      ).toBeNull();
+    });
+
+    it("bilinen sınır: uzun entry'de yalnız sayısı değişen aday tekrar sayılır", () => {
+      // Sayı çelişkisi kuralı gerçek 935 redde 4/5 yanlış serbest bırakma verdi, bırakıldı.
+      const previous =
+        "Araştırmaya göre Avrupa'da orman yangınlarının etkilediği alan yüzyıl sonunda en iyimser iklim senaryosunda bile yüzde 39 artabilir; yangın yönetimi bu artışı belirgin azaltabilir.";
+      const candidate =
+        "Araştırmaya göre Avrupa'da orman yangınlarının etkilediği alan yüzyıl sonunda en iyimser iklim senaryosunda bile yüzde 93 artabilir; yangın yönetimi bu artışı belirgin azaltabilir.";
+      expect(topicSemanticRepetition(candidate, "orman yangını", [previous])).not.toBeNull();
+    });
   });
 });

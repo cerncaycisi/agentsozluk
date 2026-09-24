@@ -170,6 +170,122 @@ function semanticConcepts(value: string, ignoredBases: ReadonlySet<string>): Set
   );
 }
 
+/*
+  A2 (22 Eylül incelemesi, Astra): kavram KÜMESİ sırayı, rolleri ve olumsuzluğun
+  hedefini kaybediyor; "kırmızı takım mavi takımı yendi" ile "mavi takım kırmızı
+  takımı yendi" aynı kümeye düşüp tekrar sayılıyordu. Aşağıdaki kontrol genel bir
+  gevşetme DEĞİLDİR: gerçek parafrazlar kavram sırasını sık değiştirir (üretimdeki 935
+  reddin rastgele 60'lık örneğinde neredeyse hepsi sıra değiştiren gerçek tekrardı).
+  Yalnız iki metnin aynı kavramlar arasındaki ilişkiyi AÇIKÇA tersine çevirdiği iki dar
+  biçim tanınır; o önceki entry için tekrar kararı verilmez:
+  1. olumsuzluk hedefinin yer değiştirmesi: "X değil Y" ↔ "Y değil X";
+  2. aynı ad üzerinde yalın/belirtme rolünün yer değiştirmesi: "A takım B takımı" ↔
+     "B takım A takımı".
+  Sayı çelişkisi kuralı denendi ve BIRAKILDI: gerçek 935 redde 5 aday serbest kaldı, 4'ü
+  aynı olgunun başka yazımıydı ("1800–1950" ↔ "19. yüzyıldan…", "1978’de" ↔ "1978",
+  "20–22" ↔ "20, 21 ve 22"). Uzun entry'de yalnız sayısı değişen aday tekrar sayılmaya
+  devam eder; bu bilinen sınırdır.
+*/
+function relationTokens(value: string): string[] {
+  return normalizeEntrySearchText(value)
+    .normalize("NFKC")
+    .replaceAll(/[^\p{L}\p{N}’'\s]/gu, " ")
+    .split(/\s+/u)
+    .filter(Boolean);
+}
+
+function relationBase(token: string): string {
+  return conceptBase(semanticStem(token));
+}
+
+function negationFrame(tokens: string[]): { negated: Set<string>; contrasted: Set<string> } {
+  const negated = new Set<string>();
+  const contrasted = new Set<string>();
+  tokens.forEach((token, index) => {
+    if (token !== "değil") return;
+    const before = tokens[index - 1];
+    if (before && !semanticStopWords.has(before)) negated.add(relationBase(before));
+    for (const after of tokens.slice(index + 1, index + 3))
+      if (!semanticStopWords.has(after)) contrasted.add(relationBase(after));
+  });
+  return { negated, contrasted };
+}
+
+function intersects(left: Set<string>, right: Set<string>): boolean {
+  for (const value of left) if (right.has(value)) return true;
+  return false;
+}
+
+function negationTargetReversed(candidate: string[], previous: string[]): boolean {
+  const a = negationFrame(candidate);
+  const b = negationFrame(previous);
+  return intersects(a.negated, b.contrasted) && intersects(a.contrasted, b.negated);
+}
+
+const accusativeMarker = /^(?:[yn])?[ıiuü]$/u;
+
+/** Aynı metinde hem yalın hem belirtme hâliyle geçen adın niteleyicilerini rolleriyle eşler. */
+function headRoles(tokens: string[]): Map<string, Map<string, "bare" | "marked">> {
+  const present = new Set(tokens);
+  const roles = new Map<string, Map<string, "bare" | "marked">>();
+  tokens.forEach((token, index) => {
+    const modifier = tokens[index - 1];
+    if (!modifier || semanticStopWords.has(modifier)) return;
+    let head: string | null = null;
+    let role: "bare" | "marked" | null = null;
+    if (
+      [...present].some(
+        (other) =>
+          other !== token &&
+          other.startsWith(token) &&
+          accusativeMarker.test(other.slice(token.length)),
+      )
+    ) {
+      head = token;
+      role = "bare";
+    } else {
+      for (const other of present)
+        if (
+          other !== token &&
+          token.startsWith(other) &&
+          accusativeMarker.test(token.slice(other.length))
+        ) {
+          head = other;
+          role = "marked";
+          break;
+        }
+    }
+    if (!head || !role) return;
+    const byModifier = roles.get(head) ?? new Map<string, "bare" | "marked">();
+    byModifier.set(relationBase(modifier), role);
+    roles.set(head, byModifier);
+  });
+  return roles;
+}
+
+function caseRolesSwapped(candidate: string[], previous: string[]): boolean {
+  const a = headRoles(candidate);
+  const b = headRoles(previous);
+  for (const [head, candidateRoles] of a) {
+    const previousRoles = b.get(head);
+    if (!previousRoles) continue;
+    let swapped = 0;
+    for (const [modifier, role] of candidateRoles) {
+      const other = previousRoles.get(modifier);
+      if (other && other !== role) swapped += 1;
+    }
+    if (swapped >= 2) return true;
+  }
+  return false;
+}
+
+/** İki metin aynı kavramlar arasındaki ilişkiyi açıkça tersine çeviriyor mu? */
+export function semanticRelationDiffers(candidate: string, previous: string): boolean {
+  const a = relationTokens(candidate);
+  const b = relationTokens(previous);
+  return negationTargetReversed(a, b) || caseRolesSwapped(a, b);
+}
+
 export interface TopicSemanticRepetition {
   matchedBody: string;
   sharedConceptCount: number;
@@ -207,6 +323,8 @@ export function topicSemanticRepetition(
   if (candidateConcepts.size < minimumComparableConcepts) return null;
 
   for (const body of previousBodies) {
+    // Aynı kavramlar arasındaki ilişki açıkça tersine dönmüşse yeni hüküm (A2).
+    if (semanticRelationDiffers(candidate, body)) continue;
     const previousConcepts = semanticConcepts(body, ignored);
     if (previousConcepts.size < minimumComparableConcepts) continue;
     let sharedConceptCount = 0;

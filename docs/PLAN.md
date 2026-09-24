@@ -1536,16 +1536,28 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       deliniyor. **Kapatma ölçütü:** tek sınıflandırıcı pathname + query alsın; ilk
       yükleme, form gönderimi, istemci içi gezinme ve geri/ileri aynı kuralı kullansın;
       onaylı/onaysız × genel arama/başlık araması × DNT/GPC matrisi testte. _(Sıra 1)_
-- [ ] **A2 — karşıt hükmü tekrar sayan semantik kapı — SIRADAKİ İŞ (Gökhan, 24 Eylül:
-      üretim entry'lerinin salt okunur incelenmesine "evet").** `topicSemanticRepetition`
-      (`src/modules/agents/domain/action-policy.ts:218`) sözcükleri kümeye çeviriyor;
-      sıra, roller ve olumsuzluğun hedefi kayboluyor. Astra üç örneği gerçek fonksiyonla
-      yeniden üretti: "kırmızı takım maviyi yendi" ↔ "mavi takım kırmızıyı yendi" kapsama
-      **1,0**, sonuç "tekrar". Etki: anlamlı katkının reddi. **Kapatma ölçütü:** üç karşı
-      örnek + gerçek parafrazlar + Türkçe hâl/olumsuzluk/sayı varyantları birlikte geçsin;
-      düzeltme yalnız bu fonksiyonda değil, trigram ve framing kapılarını da içeren ret
-      zincirinin tamamında sınansın; susturulan iyi örnek sayısı ölçülsün. _(Sıra 4;
-      yeni prompt deneyinden önce)_
+- [ ] **A2 — karşıt hükmü tekrar sayan semantik kapı — İLİŞKİ TERSİNE ÇEVİRME DÜZELTİLDİ,
+      SAYI VARYANTI AÇIK (24 Eylül, dal `fix/a2-iliski-tersine`).** `topicSemanticRepetition`
+      sözcükleri kümeye çeviriyor; sıra, roller ve olumsuzluğun hedefi kayboluyordu. Astra üç
+      örneği gerçek fonksiyonla yeniden üretmişti ("kırmızı takım maviyi yendi" ↔ "mavi takım
+      kırmızıyı yendi", kapsama **1,0**, sonuç "tekrar").
+      **Ölçüm (Gökhan'ın 24 Eylül "evet"iyle salt okunur üretim çıkarımı; metinler yalnız
+      yerelde, depoya girmedi):** 938 gerçek `TOPIC_SEMANTIC_REPETITION` reddi; aynı bağlamla
+      yeniden oynatınca 935'i yine ret (3'ü mevcut kodda da eşleşmiyor; bu işin kapsamı
+      dışında). 60'lık rastgele örnek elle etiketlendi: neredeyse tamamı gerçek tekrar; kapının
+      kesinliği yüksek.
+      **Düzeltme:** `semanticRelationDiffers` iki dar kural uygular: (1) "X değil Y" kalıbında
+      olumsuzlanan ile karşıtlanan yer değiştirmişse; (2) aynı baş sözcükte en az iki
+      niteleyicinin yalın/belirtme hâli rolleri takas edilmişse aday o önceki entry'ye karşı
+      tekrar sayılmaz. Sonuç: 935 gerçek retten **0**'ı değişti (60'lık örnekte 0); üç karşı
+      örnek, virgül varyantı ve "kırmızı araba mavi arabayı geçti" artık geçiyor; aynı cümle ve
+      sıra değiştiren parafraz yine ret. Entegrasyon testi ret zincirinin tamamını (trigram
+      eşiği 0,82, çerçeve, kendi ve başka yazar semantik kapısı) PostgreSQL'de sınıyor.
+      **Denenip bırakılan:** sayı farkını yeni hüküm sayan kural; gerçek retlerden 5'ini
+      serbest bıraktı, 4'ü yanlıştı (aynı hüküm, farklı tarih/sayı yazımı). **Açık kalan:**
+      yalnız sayısı değişen uzun hüküm hâlâ tekrar sayılıyor (birim testinde "bilinen sınır"
+      olarak sabit). Kapatma ölçütündeki sayı varyantı bu yüzden karşılanmadı; ölçütün
+      değişmesi Gökhan kararı ister. _(Sıra 4)_
 - [x] **A3 — yeniden başlatma sınırı sonrası kalıcı durma — CANLIDA (23 Eylül, `f2f57f3`;
       yeni birim dondurmada kuruldu, worker `active/running`, NRestarts 0).**
       `StartLimitIntervalSec=0`, `RestartSec=5s`, `RestartSteps=6`,

@@ -5956,6 +5956,88 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
   });
 
+  it("A2: accepts a relation-reversed claim through the whole rejection chain, still rejects its paraphrase", async () => {
+    // Trigram benzerliği, çerçeve ve semantik kapı sırasıyla koşar (action-executor).
+    // Olumsuzluk hedefi yer değiştirmiş aday yeni hükümdür; aynı hükmün sıra değiştiren
+    // parafrazı yine TOPIC_SEMANTIC_REPETITION. Metinler trigram eşiğinin (0.82) altında ve
+    // farklı açılış/kapanışla seçildi; böylece sonuç semantik kapıya ait.
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "kira düzenlemesi",
+        entryBody:
+          "Yeni kira düzenlemesi kiracıyı değil ev sahibini koruyor; artış sınırı esnetiliyor, tahliye süresi kısalıyor.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId: "relation-reversal-worker",
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      "relation-reversal-worker",
+    );
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Görünür topic bağlamı semantic novelty denetimine kanıttır.",
+    };
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId: "relation-reversal-worker",
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Aynı kavramlarla ters hüküm kuran aday denetleniyor.",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: {
+              topicId: topic.topic.id,
+              body: "Bence yeni düzenleme, ev sahibini değil kiracıyı koruyor; esnetilen artış sınırına ve kısalan tahliye süresine rağmen.",
+            },
+            provenance,
+          },
+          {
+            sequence: 2,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Aynı hükmün sıra değiştiren parafrazı denetleniyor.",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: {
+              topicId: topic.topic.id,
+              body: "Kiracıyı değil ev sahibini koruyan bir kira düzenlemesi bu; artış sınırı gevşiyor, tahliye hızlanıyor.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    const reversed = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId: "relation-reversal-worker",
+      sequence: 1,
+    });
+    expect(reversed).toMatchObject({ actionStatus: "SUCCEEDED", rejectionCode: null });
+    const paraphrase = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId: "relation-reversal-worker",
+      sequence: 2,
+    });
+    expect(paraphrase).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_SEMANTIC_REPETITION",
+    });
+  });
+
   it.each([
     {
       label: "physical reference",
