@@ -13,7 +13,7 @@ function yamlFiles(directory: string): string[] {
   });
 }
 
-type Usage = { reference: string; comment: string | undefined };
+type Usage = { reference: string; comment: string | null | undefined };
 
 function pairKey(node: unknown): string | undefined {
   return isPair(node) && isScalar(node.key) ? String(node.key.value) : undefined;
