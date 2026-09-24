@@ -42,6 +42,7 @@ describe("milestone rate-limit rules", () => {
         action: "login:account-failure-observe",
         limit: 10,
         windowMs: 3_600_000,
+        observeOnly: true,
       },
     });
   });

@@ -68,7 +68,7 @@ describe("POST /api/v1/auth/login — başarısız giriş tespiti", () => {
     expect(JSON.stringify(warn.mock.calls)).not.toContain("kurban@example.test");
   }, 120_000);
 
-  it("başarılı girişte sayaç çalışmaz; sayaç hatası yanıtı değiştirmez", async () => {
+  it("hatalı şifre dışındaki hatalarda sayaç çalışmaz; sayaç hatası yanıtı değiştirmez", async () => {
     mocks.loginHuman.mockRejectedValue(new AppError("VALIDATION_ERROR", 422, "Geçersiz."));
     const { POST } = await import("@/app/api/v1/auth/login/route");
     const other = await POST(loginRequest("biri@example.test"));

@@ -1,5 +1,3 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const increment = vi.hoisted(() => vi.fn());
@@ -32,16 +30,16 @@ describe("observeRateLimit — engellemeyen tespit sayacı", () => {
     expect(increment.mock.calls[0]?.[1]).toMatchObject({ action: "login:account-failure-observe" });
   }, 120_000);
 
-  it("tespit kuralı hiçbir yerde reddeden kovaya verilmez (kilitleme DoS'u)", () => {
-    const files = (root: string): string[] =>
-      readdirSync(root).flatMap((name) => {
-        const full = path.join(root, name);
-        if (statSync(full).isDirectory()) return files(full);
-        return /\.(ts|tsx)$/u.test(name) ? [full] : [];
-      });
-    const offenders = files(path.join(process.cwd(), "src")).filter((file) =>
-      /enforceRateLimit\([^;]{0,400}loginAccountFailureObserve/u.test(readFileSync(file, "utf8")),
-    );
-    expect(offenders).toEqual([]);
-  });
+  it("tespit kuralı reddeden kovaya verilemez: derleme hatası ve çalışma anı reddi", async () => {
+    // Astra (#184): metin araması `const rule = …; enforceRateLimit(…, rule)` ile
+    // atlatılabiliyordu. Engel artık tipte (`observeOnly: true`) ve çalışma anında.
+    const { enforceRateLimit, RATE_LIMIT_RULES } =
+      await import("@/modules/rate-limit/application/rate-limit");
+    const rule = RATE_LIMIT_RULES.loginAccountFailureObserve;
+    await expect(
+      // @ts-expect-error — tespit kuralı `RateLimitRule` değildir (tip engeli).
+      enforceRateLimit({} as never, "account:a@b.test", rule),
+    ).rejects.toThrow("RATE_LIMIT_OBSERVE_ONLY_RULE_ENFORCED");
+    expect(increment).not.toHaveBeenCalled();
+  }, 120_000);
 });

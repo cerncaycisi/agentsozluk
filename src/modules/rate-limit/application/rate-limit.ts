@@ -9,7 +9,7 @@ import {
 } from "@/modules/rate-limit/repository/rate-limit";
 import {
   fixedWindow,
-  type FixedWindowRateLimitRule,
+  type ObserveOnlyRateLimitRule,
   type RateLimitRule,
 } from "@/modules/rate-limit/domain/rules";
 import { rateLimitIdentifierSchema } from "@/modules/rate-limit/validation/schemas";
@@ -23,6 +23,7 @@ export {
   userRateLimitIdentifier,
   type FixedWindowRateLimitRule,
   type MinimumIntervalRateLimitRule,
+  type ObserveOnlyRateLimitRule,
   type RateLimitRule,
 } from "@/modules/rate-limit/domain/rules";
 
@@ -34,6 +35,10 @@ export async function enforceRateLimit(
   rule: RateLimitRule,
   now = new Date(),
 ): Promise<void> {
+  // Tip engeli `as` ile aşılırsa diye çalışma anında da: tespit kuralı kilitleyemez.
+  if ((rule as { observeOnly?: unknown }).observeOnly === true) {
+    throw new Error("RATE_LIMIT_OBSERVE_ONLY_RULE_ENFORCED");
+  }
   const environment = getEnvironment();
   const keyHash = hmacIdentifier(
     environment.APP_SECRET,
@@ -100,7 +105,7 @@ export function requestIp(request: { headers: { get(name: string): string | null
 export async function observeRateLimit(
   client: Client,
   identifier: string,
-  rule: FixedWindowRateLimitRule,
+  rule: ObserveOnlyRateLimitRule,
   now = new Date(),
 ): Promise<{ count: number; keyHash: string; thresholdCrossed: boolean }> {
   const keyHash = hmacIdentifier(
