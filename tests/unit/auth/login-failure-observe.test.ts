@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/http/errors";
 import { logger } from "@/lib/logging/logger";
+import type * as RateLimitModule from "@/modules/rate-limit/application/rate-limit";
 
 const mocks = vi.hoisted(() => ({
   loginHuman: vi.fn(),
@@ -13,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/db/client", () => ({ getDatabase: () => ({}) }));
 vi.mock("@/modules/auth/application/authenticate", () => ({ loginHuman: mocks.loginHuman }));
 vi.mock("@/modules/rate-limit/application/rate-limit", async (original) => ({
-  ...(await original<typeof import("@/modules/rate-limit/application/rate-limit")>()),
+  ...(await original<typeof RateLimitModule>()),
   enforceRateLimit: mocks.enforceRateLimit,
   observeRateLimit: mocks.observeRateLimit,
 }));
