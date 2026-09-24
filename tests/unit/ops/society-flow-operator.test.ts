@@ -2,6 +2,9 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { AppError } from "@/lib/http/errors";
+import { operatorFailureCode } from "../../../scripts/agent-society-flow";
 
 const root = process.cwd();
 const wrapper = readFileSync(path.join(root, "scripts/deploy-production-no-migration.sh"), "utf8");
@@ -41,6 +44,11 @@ describe("toplum akışı operatör duraklatması", () => {
     expect(block).toContain('"$local_timeout" 180 ssh');
     expect(block).toContain("timeout --kill-after=10 120 ./node_modules/.bin/tsx");
     expect(block).toContain("$scope_check");
+    // İki geçerli yönetici: aktör açıkça `bootstrap_admin`, kimlik basılmaz (ATTEMPT_LOG).
+    expect(block).toContain("username = 'bootstrap_admin'");
+    expect(block).toContain('AGENT_OPERATOR_ADMIN_ID=\\"\\$admin_id\\"');
+    expect(block).toContain("OPERATOR_ADMIN_UNRESOLVED");
+    expect(block).not.toMatch(/(echo|printf)[^\n]*\$admin_id/u);
     expect(block).toContain("release=/opt/agent-sozluk/runtime/releases/$candidate_sha");
     expect(block).toContain(".release-sha\\\")\\\" = '$candidate_sha'");
     // Devam ettirme otomatik değil.
@@ -71,6 +79,29 @@ describe("toplum akışı operatör duraklatması", () => {
     }
     expect(failure?.status).toBe(90);
     expect(failure?.stderr).toContain("PAUSE_REQUIRES_ARTIFACT_RELEASE");
+  });
+
+  it("hata kodları: Zod girdi hatası yönetici belirsizliğinden önce ayrılır", () => {
+    const zod = z
+      .object({ AGENT_OPERATOR_ADMIN_ID: z.string().uuid() })
+      .safeParse({ AGENT_OPERATOR_ADMIN_ID: "bozuk" });
+    expect(zod.success).toBe(false);
+    if (!zod.success) expect(operatorFailureCode(zod.error)).toBe("OPERATOR_INPUT_INVALID");
+    expect(
+      operatorFailureCode(
+        new Error("AGENT_OPERATOR_ADMIN_ID aktif HUMAN ADMIN hesabını göstermelidir."),
+      ),
+    ).toBe("OPERATOR_ADMIN_SELECTION_AMBIGUOUS");
+    expect(operatorFailureCode(new AppError("FORBIDDEN", 403, "x"))).toBe("FORBIDDEN");
+    expect(operatorFailureCode(new Error("başka"))).toBe("INTERNAL_ERROR");
+  });
+
+  it("uzak duraklatma metninde yerelde çalışacak ters tırnak ya da $( yok", () => {
+    const start = wrapper.indexOf('if test "$pause_society_flow" = 1; then\n');
+    const remoteText = wrapper.slice(start, wrapper.indexOf("\nfi\n", start));
+    expect(remoteText).not.toContain("`");
+    // Yalnız kaçırılmış \$( uzakta çalışır; kaçırılmamış $( yerelde çalışırdı.
+    expect(remoteText).not.toMatch(/[^\\]\$\(/u);
   });
 
   it("yerel süre sınırlayıcı yoksa ilk uzak işlemden önce durur", () => {

@@ -31,6 +31,15 @@ import {
 
 export type FlowCommand = "status" | "pause" | "resume";
 
+/** Güvenli hata kodu; ZodError önce: alan yolu da "AGENT_OPERATOR_ADMIN_ID" içerir (Astra, #188). */
+export function operatorFailureCode(error: unknown): string {
+  if (error instanceof AppError) return error.code;
+  if (error instanceof z.ZodError) return "OPERATOR_INPUT_INVALID";
+  if (error instanceof Error && error.message.includes("AGENT_OPERATOR_ADMIN_ID"))
+    return "OPERATOR_ADMIN_SELECTION_AMBIGUOUS";
+  return "INTERNAL_ERROR";
+}
+
 const commandSchema = z.enum(["status", "pause", "resume"]);
 const environmentSchema = z
   .object({
@@ -86,8 +95,7 @@ async function main(): Promise<void> {
 if (process.argv[1]?.endsWith("agent-society-flow.ts")) {
   main().catch((error: unknown) => {
     // Yalnız güvenli kod; logger (pino) runtime release'inde yok.
-    const code = error instanceof AppError ? error.code : "INTERNAL_ERROR";
-    process.stderr.write(`SOCIETY_FLOW_FAIL code=${code}\n`);
+    process.stderr.write(`SOCIETY_FLOW_FAIL code=${operatorFailureCode(error)}\n`);
     process.exitCode = 1;
   });
 }

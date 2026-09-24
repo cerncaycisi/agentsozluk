@@ -601,6 +601,9 @@ if test "$build_on_host" = 0; then
   fi
 fi
 
+# Operatör aktörü: üretimde iki geçerli aktif HUMAN ADMIN var; aktör tek bootstrap_admin
+# hesabıdır, kimliği uzakta çözülür ve BASILMADAN verilir (ATTEMPT_LOG, 24 Eylül). Uzak
+# metin çift tırnaklıdır: içine ters tırnak ya da $( koyma, yerelde çalışır (Astra, #188).
 # Genel duraklatma (runbook "Deploy-day failure modes" 2-3): uzak betik ayar parmak
 # izini almadan ÖNCE, adayın kendi release'indeki operatör betiğiyle; panelle aynı
 # uygulama servisi ve denetim kaydı. İdempotent: yeniden denemede zaten duraklatılmışsa
@@ -620,7 +623,10 @@ if test "$pause_society_flow" = 1; then
      db_container=\"\$(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml ps -q db)\"
      db_ip=\"\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \"\$db_container\")\"
      test -n \"\$db_ip\"
+     admin_id=\"\$(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T db psql -X -U agent_sozluk -d agent_sozluk -At -v ON_ERROR_STOP=1 -c \"SELECT id FROM users WHERE kind = 'HUMAN' AND role = 'ADMIN' AND status = 'ACTIVE' AND username = 'bootstrap_admin'\" </dev/null)\"
+     [[ \"\$admin_id\" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\$ ]] || { printf 'RELEASE_WRAPPER_FAIL code=OPERATOR_ADMIN_UNRESOLVED\\n' >&2; exit 95; }
      cd \"\$release\"
+     AGENT_OPERATOR_ADMIN_ID=\"\$admin_id\" \\
      AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP=\"\$db_ip\" \\
        AGENT_FLOW_REASON='deploy ${candidate_sha:0:12} op $op_id' \\
        timeout --kill-after=10 120 ./node_modules/.bin/tsx scripts/agent-society-flow.ts pause"
