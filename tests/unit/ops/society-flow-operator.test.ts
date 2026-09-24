@@ -2,7 +2,6 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { flowWriteNeeded } from "../../../scripts/agent-society-flow";
 
 const root = process.cwd();
 const wrapper = readFileSync(path.join(root, "scripts/deploy-production-no-migration.sh"), "utf8");
@@ -16,17 +15,11 @@ const assemble = readFileSync(path.join(root, "scripts/assemble-runtime-release.
   adayın release'inden duraklatır.
 */
 describe("toplum akışı operatör duraklatması", () => {
-  it("idempotent: istenen durum zaten geçerliyse yazmaz", () => {
-    expect(flowWriteNeeded("pause", true)).toBe(true);
-    expect(flowWriteNeeded("pause", false)).toBe(false);
-    expect(flowWriteNeeded("resume", false)).toBe(true);
-    expect(flowWriteNeeded("resume", true)).toBe(false);
-    expect(flowWriteNeeded("status", true)).toBe(false);
-    expect(flowWriteNeeded("status", false)).toBe(false);
-  });
-
-  it("panelle aynı uygulama servisini ve operatör yönetici çözümünü kullanır", () => {
-    expect(operator).toContain("setSocietyFlowEnabled(database, actor");
+  it("kilit altında idempotent, yalnız runtimeEnabled'ı değiştiren servisi kullanır", () => {
+    // Durum kontrolü servis içinde, ayar kilidi altında (Astra, #186); geniş
+    // `setSocietyFlowEnabled` (zamanlayıcı/yayın/mod) kullanılmaz.
+    expect(operator).toContain("setGlobalRuntimeEnabledIfChanged(");
+    expect(operator).not.toContain("setSocietyFlowEnabled");
     expect(operator).toContain("resolveOperatorAdmin(database");
     expect(operator).toContain("runtimeControlSchema.parse");
     // Doğrudan ayar yazımı yok: denetim kaydı servisin içinde.
@@ -35,16 +28,18 @@ describe("toplum akışı operatör duraklatması", () => {
   });
 
   it("sarmalayıcı duraklatmayı uzak dağıtım betiğinden ÖNCE, adayın release'inden yapar", () => {
-    const pause = wrapper.indexOf("./node_modules/.bin/tsx scripts/agent-society-flow.ts pause");
+    const pause = wrapper.indexOf("agent-society-flow.ts pause");
     const remote = wrapper.indexOf("exec '$remote_script' '$candidate_sha'");
     const fetchRuntime = wrapper.indexOf("exec '$remote_github_fetcher'");
     expect(pause).toBeGreaterThan(fetchRuntime);
     expect(remote).toBeGreaterThan(pause);
     const block = wrapper.slice(
-      wrapper.indexOf('if test "$pause_society_flow" = 1; then\n  ssh'),
+      wrapper.indexOf('if test "$pause_society_flow" = 1; then\n  timeout 180 ssh'),
       remote,
     );
     expect(block).toContain("$lock_check");
+    expect(block).toContain("timeout 180 ssh");
+    expect(block).toContain("timeout --kill-after=10 120 ./node_modules/.bin/tsx");
     expect(block).toContain("$scope_check");
     expect(block).toContain("release=/opt/agent-sozluk/runtime/releases/$candidate_sha");
     expect(block).toContain(".release-sha\\\")\\\" = '$candidate_sha'");

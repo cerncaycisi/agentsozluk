@@ -592,9 +592,11 @@ fi
 # izini almadan ÖNCE, adayın kendi release'indeki operatör betiğiyle; panelle aynı
 # uygulama servisi ve denetim kaydı. İdempotent: yeniden denemede zaten duraklatılmışsa
 # hiçbir şey yazmaz, parmak izi değişmez. Devam ettirme otomatik DEĞİL: kabulden sonra
-# operatör `agent:flow resume` ile yapar.
+# operatör `agent:flow resume` ile yapar. Süre sınırlı: uzakta 120 sn (süreç
+# sonlandırılır), yerelde SSH 180 sn; aşılırsa dağıtım durur, kilit kalır ve operatör
+# aynı release'ten `status` ile gerçek durumu okur (runbook).
 if test "$pause_society_flow" = 1; then
-  ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+  timeout 180 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
     "set -euo pipefail
      test \"\$(hostname)\" = '$expected_host' || exit 91
      $scope_check
@@ -608,7 +610,7 @@ if test "$pause_society_flow" = 1; then
      cd \"\$release\"
      AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP=\"\$db_ip\" \\
        AGENT_FLOW_REASON='deploy ${candidate_sha:0:12} op $op_id' \\
-       ./node_modules/.bin/tsx scripts/agent-society-flow.ts pause"
+       timeout --kill-after=10 120 ./node_modules/.bin/tsx scripts/agent-society-flow.ts pause"
 fi
 
 trap - EXIT INT TERM HUP

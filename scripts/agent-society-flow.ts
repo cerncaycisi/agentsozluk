@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getDatabase } from "@/lib/db/client";
 import { AppError } from "@/lib/http/errors";
-import { runtimeControlSchema, setSocietyFlowEnabled } from "@/modules/agents";
+import { runtimeControlSchema, setGlobalRuntimeEnabledIfChanged } from "@/modules/agents";
 import { resolveOperatorAdmin } from "./agent-operator";
 import {
   prepareOperatorCliEnvironment,
@@ -11,17 +11,18 @@ import {
 } from "./operator-cli-environment";
 
 /*
-  Toplum akışını (genel runtime) operatör olarak duraklatır/devam ettirir.
-  Yönetim panelindeki "duraklat/başlat" ile AYNI uygulama servisi
-  (`setSocietyFlowEnabled`): kilit, ayar sürümü, denetim kaydı ve runtime olayı
-  aynı yoldan yazılır; yalnız aktör, sunucuda tek aktif HUMAN ADMIN hesabıdır
+  Genel runtime'ı (toplum akışı) operatör olarak duraklatır/devam ettirir.
+  Uygulama servisi `setGlobalRuntimeEnabledIfChanged`: yalnız `runtimeEnabled`
+  değişir (panelin "Global runtime pause/resume" komutuyla aynı alan, denetim kaydı
+  ve runtime olayı); zamanlayıcı, yayın, mod ELLENMEZ — `resume` yalnız `pause`un
+  kapattığını geri açar (Astra, #186). Aktör sunucudaki tek aktif HUMAN ADMIN
   (`resolveOperatorAdmin`, ya da AGENT_OPERATOR_ADMIN_ID).
 
   Neden var: migration'sız dağıtım runbook gereği ÖNCE genel duraklatma ister;
   bu yalnız panelden yapılabiliyordu ve dağıtım o yüzden takıldı (24 Eylül).
 
-  İdempotent: istenen durum zaten geçerliyse HİÇBİR ŞEY yazmaz. Dağıtımın yeniden
-  denemesinde ayar parmak izinin değişmemesi buna bağlıdır. Çıktı değer/sır basmaz.
+  İdempotent ve kilit altında: istenen durum zaten geçerliyse HİÇBİR ŞEY yazmaz,
+  ayar sürümü değişmez; eşzamanlı ikinci çağrı da yazmaz. Çıktı sır basmaz.
 
     tsx scripts/agent-society-flow.ts status
     AGENT_FLOW_REASON='deploy <sha12>' tsx scripts/agent-society-flow.ts pause
@@ -29,12 +30,6 @@ import {
 */
 
 export type FlowCommand = "status" | "pause" | "resume";
-
-export function flowWriteNeeded(command: FlowCommand, runtimeEnabled: boolean): boolean {
-  if (command === "pause") return runtimeEnabled;
-  if (command === "resume") return !runtimeEnabled;
-  return false;
-}
 
 const commandSchema = z.enum(["status", "pause", "resume"]);
 const environmentSchema = z
@@ -61,16 +56,20 @@ async function main(): Promise<void> {
       ]);
       return { ...settings, running, queued };
     };
-    const before = await read();
     let changed = false;
-    if (flowWriteNeeded(command, before.runtimeEnabled)) {
+    if (command !== "status") {
       const input = runtimeControlSchema.parse({ reason: environment.AGENT_FLOW_REASON });
       const actor = {
         ...(await resolveOperatorAdmin(database, environment.AGENT_OPERATOR_ADMIN_ID)),
         requestId: randomUUID(),
       };
-      await setSocietyFlowEnabled(database, actor, command === "resume", input);
-      changed = true;
+      const result = await setGlobalRuntimeEnabledIfChanged(
+        database,
+        actor,
+        command === "resume",
+        input,
+      );
+      changed = result.changed;
     }
     const after = await read();
     process.stdout.write(
