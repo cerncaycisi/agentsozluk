@@ -40,6 +40,15 @@ describe("observeRateLimit — engellemeyen tespit sayacı", () => {
       // @ts-expect-error — tespit kuralı `RateLimitRule` değildir (tip engeli).
       enforceRateLimit({} as never, "account:a@b.test", rule),
     ).rejects.toThrow("RATE_LIMIT_OBSERVE_ONLY_RULE_ENFORCED");
+    // Minimum aralık türevi de tipte reddedilir.
+    await expect(
+      enforceRateLimit(
+        {} as never,
+        "account:a@b.test",
+        // @ts-expect-error — `observeOnly: true` minimum aralık kuralına da uymaz.
+        { ...rule, strategy: "minimum-interval" as const, minimumIntervalMs: 1_000 },
+      ),
+    ).rejects.toThrow("RATE_LIMIT_OBSERVE_ONLY_RULE_ENFORCED");
     // İşareti düşüren yapı bozma: eylem adı yine yakalanır.
     const { observeOnly: _drop, ...stripped } = rule;
     void _drop;

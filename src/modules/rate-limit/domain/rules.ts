@@ -24,6 +24,7 @@ export interface MinimumIntervalRateLimitRule {
   action: string;
   minimumIntervalMs: number;
   strategy: "minimum-interval";
+  observeOnly?: never;
 }
 
 export type RateLimitRule = FixedWindowRateLimitRule | MinimumIntervalRateLimitRule;
