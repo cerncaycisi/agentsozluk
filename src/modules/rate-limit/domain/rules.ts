@@ -13,7 +13,8 @@ export interface FixedWindowRateLimitRule {
  * derleme hatasıdır ve çalışma anında da reddedilir (Astra, #184).
  */
 export interface ObserveOnlyRateLimitRule {
-  action: string;
+  /** `-observe` ile biter; `enforceRateLimit` bu eylemleri çalışma anında reddeder. */
+  action: `${string}-observe`;
   limit: number;
   windowMs: number;
   observeOnly: true;

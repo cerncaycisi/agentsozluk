@@ -35,8 +35,12 @@ export async function enforceRateLimit(
   rule: RateLimitRule,
   now = new Date(),
 ): Promise<void> {
-  // Tip engeli `as` ile aşılırsa diye çalışma anında da: tespit kuralı kilitleyemez.
-  if ((rule as { observeOnly?: unknown }).observeOnly === true) {
+  // Tip engeli `as` ya da alanı düşüren yapı bozmayla aşılırsa diye çalışma anında da:
+  // tespit kuralı (işaret ya da `-observe` eylem adı) hiçbir zaman kilitleyemez.
+  if (
+    (rule as { observeOnly?: unknown }).observeOnly === true ||
+    rule.action.endsWith("-observe")
+  ) {
     throw new Error("RATE_LIMIT_OBSERVE_ONLY_RULE_ENFORCED");
   }
   const environment = getEnvironment();

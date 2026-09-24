@@ -40,6 +40,12 @@ describe("observeRateLimit — engellemeyen tespit sayacı", () => {
       // @ts-expect-error — tespit kuralı `RateLimitRule` değildir (tip engeli).
       enforceRateLimit({} as never, "account:a@b.test", rule),
     ).rejects.toThrow("RATE_LIMIT_OBSERVE_ONLY_RULE_ENFORCED");
+    // İşareti düşüren yapı bozma: eylem adı yine yakalanır.
+    const { observeOnly: _drop, ...stripped } = rule;
+    void _drop;
+    await expect(enforceRateLimit({} as never, "account:a@b.test", stripped)).rejects.toThrow(
+      "RATE_LIMIT_OBSERVE_ONLY_RULE_ENFORCED",
+    );
     expect(increment).not.toHaveBeenCalled();
   }, 120_000);
 });
