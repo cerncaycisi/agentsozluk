@@ -8773,3 +8773,20 @@ lease tarafından hiç kullanılmıyordu.
 
 - Uzak betiği stdin'den veriyorsan betikteki her `docker exec -T` stdin'ini `/dev/null`'a bağla.
 - Kullanıcı dizinindeki PG'de `jit = off` kullan; libLLVM çekme.
+
+## 2026-09-24 — B4 edge kuralı zaten üretimdeydi (Gökhan onayı B4 için; salt okunur doğrulama)
+
+- Üretim `7aae0d2`. `/opt/agent-sozluk/runtime/Caddyfile` (bind mount, `deploy:deploy 644`)
+  yorum dışı satırlarıyla depo örneğine eşit; mtime `2026-09-20 16:55:14 UTC`, örnek commit'i
+  `7bccff7` 16:35. Caddy konteyneri 23 Eylül 22:37'de başlamış; admin config'de
+  `/api/v1/internal/*` var. Uygulama kaydı yoktu; PLAN ve 22 Eylül analizi "onay bekliyor"
+  diyordu.
+- Anonim ölçüm: yedi yol varyantının hepsi 404 (Caddy gövdesiz; `/api/v1/internal` tam yolu
+  uygulama 404'ü). `/api/health`, `/api/ready` 200. Üretimde değişiklik yapılmadı.
+
+**Tekrarlama:**
+
+- Üretimde elle yapılan her yapılandırma değişikliğini aynı gün ATTEMPT_LOG'a yaz; yapılacak
+  işi planlamadan önce üretimdeki gerçek durumu salt okunur ölç.
+- Caddyfile tek dosya bind mount: yerinde yaz (inode değişmesin), `caddy validate` sonra
+  `caddy reload`.
