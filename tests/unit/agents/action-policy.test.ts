@@ -773,6 +773,29 @@ describe("aynı başlıkta öz-tekrar", () => {
       ).toBeNull();
     });
 
+    // Astra (PR #192, b2870f3): ilk sürüm bu üç gerçek parafrazı serbest bırakıyordu. Aynı
+    // kavram aynı metinde iki rolde geçiyorsa (yasak/yasak, Işık/Işık'ın, iki yönde kurulan
+    // takım cümleleri) rol belirsizdir ve ters ilişki kanıtı sayılmaz.
+    it.each([
+      ["Bu yasak değil; yasak olmadığı açık.", "Bence yasak değil; yasak olmadığı gayet açık."],
+      [
+        "IŞIK değil IŞIK’ın kardeşi kazandı; sonuç tartışmasız, yarış bitti.",
+        "Bence tartışmasız sonuç ortada: Işık değil, Işık'ın kardeşi kazandı; yarış bitti zaten.",
+      ],
+      [
+        "Kırmızı takım mavi takımı yendi. Tribünde tempo yüksekti. Savunma disiplini sonucu belirledi. Mavi takım kırmızı takımı kutladı.",
+        "Bana kalırsa sonucu savunma disiplini belirledi; tribünde tempo yüksekti. Maç sonunda mavi takım kırmızı takımı kutladı. Kazanan kırmızı takım mavi takımı yendi zaten.",
+      ],
+      // Olumsuzluk penceresi cümle sınırını aşmaz: aynı hüküm, sonra gelen cümle.
+      [
+        "Kiracıyı değil ev sahibini koruyor bu düzenleme.",
+        "Bu düzenleme ev sahibini koruyor, kiracıyı değil. Ev sahibi de bunu biliyor.",
+      ],
+    ])("gerçek parafraz yine tekrar: %s ↔ %s", (previous, candidate) => {
+      expect(semanticRelationDiffers(candidate, previous)).toBe(false);
+      expect(topicSemanticRepetition(candidate, title, [previous])).not.toBeNull();
+    });
+
     it("bilinen sınır: uzun entry'de yalnız sayısı değişen aday tekrar sayılır", () => {
       // Sayı çelişkisi kuralı gerçek 935 redde 4/5 yanlış serbest bırakma verdi, bırakıldı.
       const previous =

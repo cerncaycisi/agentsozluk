@@ -1536,8 +1536,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       deliniyor. **Kapatma ölçütü:** tek sınıflandırıcı pathname + query alsın; ilk
       yükleme, form gönderimi, istemci içi gezinme ve geri/ileri aynı kuralı kullansın;
       onaylı/onaysız × genel arama/başlık araması × DNT/GPC matrisi testte. _(Sıra 1)_
-- [ ] **A2 — karşıt hükmü tekrar sayan semantik kapı — İLİŞKİ TERSİNE ÇEVİRME DÜZELTİLDİ,
-      SAYI VARYANTI AÇIK (24 Eylül, dal `fix/a2-iliski-tersine`).** `topicSemanticRepetition`
+- [ ] **A2 — karşıt hükmü tekrar sayan semantik kapı — İLİŞKİ TERSİNE ÇEVİRME KISMEN
+      DÜZELTİLDİ, SAYI VARYANTI AÇIK (24 Eylül, PR #192).** `topicSemanticRepetition`
       sözcükleri kümeye çeviriyor; sıra, roller ve olumsuzluğun hedefi kayboluyordu. Astra üç
       örneği gerçek fonksiyonla yeniden üretmişti ("kırmızı takım maviyi yendi" ↔ "mavi takım
       kırmızıyı yendi", kapsama **1,0**, sonuç "tekrar").
@@ -1547,12 +1547,23 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       dışında). 60'lık rastgele örnek elle etiketlendi: neredeyse tamamı gerçek tekrar; kapının
       kesinliği yüksek.
       **Düzeltme:** `semanticRelationDiffers` iki dar kural uygular: (1) "X değil Y" kalıbında
-      olumsuzlanan ile karşıtlanan yer değiştirmişse; (2) aynı baş sözcükte en az iki
-      niteleyicinin yalın/belirtme hâli rolleri takas edilmişse aday o önceki entry'ye karşı
-      tekrar sayılmaz. Sonuç: 935 gerçek retten **0**'ı değişti (60'lık örnekte 0); üç karşı
-      örnek, virgül varyantı ve "kırmızı araba mavi arabayı geçti" artık geçiyor; aynı cümle ve
-      sıra değiştiren parafraz yine ret. Entegrasyon testi ret zincirinin tamamını (trigram
-      eşiği 0,82, çerçeve, kendi ve başka yazar semantik kapısı) PostgreSQL'de sınıyor.
+      olumsuzlanan ile karşıtlanan iki AYRI kavram yer değiştirmişse; (2) aynı baş sözcükte en
+      az iki niteleyicinin yalın/belirtme hâli rolleri takas edilmişse aday o önceki entry'ye
+      karşı tekrar sayılmaz. Pencere cümle sınırını aşmaz; aynı metinde iki rolde geçen kavram
+      belirsiz sayılır ve kanıt olmaz. Kontrol yalnız tekrar sayılacak entry'de koşar.
+      **Astra 1. tur (PR #192, `b2870f3`): BİRLEŞTİRME.** Üç gerçek parafrazı serbest bırakan
+      yanlış pozitif (aynı kavramın iki rolde geçmesi: "yasak değil; yasak olmadığı",
+      "Işık değil Işık'ın kardeşi", iki cümlede iki yönde kurulan takım ilişkisi) ve uzun
+      bağlamda karesel maliyet (800 token × 100 bağlamda ~9 sn). Üçü birim testine "yine
+      tekrar" olarak girdi ve kapandı; maliyet doğrusal (aynı ölçüde ~0,1–0,2 sn).
+      **Sonuç:** 935 gerçek retten **0**'ı değişti. Bu, örneklemde etki görülmediğini
+      gösterir; yanlış serbest bırakma olmadığını kanıtlamaz. Farklı sözcüklerle kurulan ters
+      hüküm artık geçiyor; entegrasyon testi ret zincirinin tamamını (trigram eşiği 0,82,
+      çerçeve, kendi ve başka yazar semantik kapısı) PostgreSQL'de sınıyor. **Zincirde kalan
+      sınır:** sözcükleri birebir aynı, yalnız sırası değişmiş kısa karşı hüküm ("kırmızı takım
+      maviyi yendi" ↔ "mavi takım kırmızıyı yendi") trigram kapısında 1,0 benzerlikle
+      `DUPLICATE_SIMILARITY` alır; semantik kapıya hiç ulaşmaz. Trigram kapısını değiştirmek
+      bu işin kapsamı dışında.
       **Denenip bırakılan:** sayı farkını yeni hüküm sayan kural; gerçek retlerden 5'ini
       serbest bıraktı, 4'ü yanlıştı (aynı hüküm, farklı tarih/sayı yazımı). **Açık kalan:**
       yalnız sayısı değişen uzun hüküm hâlâ tekrar sayılıyor (birim testinde "bilinen sınır"

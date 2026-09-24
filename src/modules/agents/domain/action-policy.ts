@@ -186,104 +186,121 @@ function semanticConcepts(value: string, ignoredBases: ReadonlySet<string>): Set
   "20–22" ↔ "20, 21 ve 22"). Uzun entry'de yalnız sayısı değişen aday tekrar sayılmaya
   devam eder; bu bilinen sınırdır.
 */
-function relationTokens(value: string): string[] {
+/** Cümle başına token dizileri; olumsuzluk ve hâl penceresi cümle sınırını aşmaz. */
+function relationSentences(value: string): string[][] {
   return normalizeEntrySearchText(value)
     .normalize("NFKC")
-    .replaceAll(/[^\p{L}\p{N}’'\s]/gu, " ")
-    .split(/\s+/u)
-    .filter(Boolean);
+    .split(/[.!?;:…]+/u)
+    .map((sentence) =>
+      sentence
+        .replaceAll(/[^\p{L}\p{N}’'\s]/gu, " ")
+        .split(/\s+/u)
+        .filter(Boolean),
+    )
+    .filter((tokens) => tokens.length > 0);
 }
 
 function relationBase(token: string): string {
   return conceptBase(semanticStem(token));
 }
 
-function negationFrame(tokens: string[]): { negated: Set<string>; contrasted: Set<string> } {
-  const negated = new Set<string>();
-  const contrasted = new Set<string>();
+type RelationRole = "negated" | "contrasted" | "bare" | "marked";
+
+/**
+ * Bir metinde her kavrama TEK bir rol düşüyorsa o rolü, aynı metinde iki farklı rolle
+ * geçiyorsa `null` (belirsiz) saklar. Belirsiz kavram hiçbir zaman ters ilişki kanıtı
+ * sayılmaz: "yasak değil; yasak olmadığı açık" ya da iki cümlede iki yönde kurulan
+ * "kırmızı takım mavi takımı" / "mavi takım kırmızı takımı" ilişkisi bir yön taşımaz
+ * (Astra, PR #192).
+ */
+function assignRole<K>(roles: Map<K, RelationRole | null>, key: K, role: RelationRole) {
+  const existing = roles.get(key);
+  roles.set(key, existing === undefined || existing === role ? role : null);
+}
+
+function collectNegationRoles(tokens: string[], roles: Map<string, RelationRole | null>) {
   tokens.forEach((token, index) => {
     if (token !== "değil") return;
     const before = tokens[index - 1];
-    if (before && !semanticStopWords.has(before)) negated.add(relationBase(before));
+    if (before && !semanticStopWords.has(before))
+      assignRole(roles, relationBase(before), "negated");
     for (const after of tokens.slice(index + 1, index + 3))
-      if (!semanticStopWords.has(after)) contrasted.add(relationBase(after));
+      if (!semanticStopWords.has(after)) assignRole(roles, relationBase(after), "contrasted");
   });
-  return { negated, contrasted };
 }
 
-function intersects(left: Set<string>, right: Set<string>): boolean {
-  for (const value of left) if (right.has(value)) return true;
-  return false;
-}
-
-function negationTargetReversed(candidate: string[], previous: string[]): boolean {
-  const a = negationFrame(candidate);
-  const b = negationFrame(previous);
-  return intersects(a.negated, b.contrasted) && intersects(a.contrasted, b.negated);
-}
-
-const accusativeMarker = /^(?:[yn])?[ıiuü]$/u;
+const accusativeSuffixes = ["ı", "i", "u", "ü", "yı", "yi", "yu", "yü", "nı", "ni", "nu", "nü"];
 
 /** Aynı metinde hem yalın hem belirtme hâliyle geçen adın niteleyicilerini rolleriyle eşler. */
-function headRoles(tokens: string[]): Map<string, Map<string, "bare" | "marked">> {
+function collectHeadRoles(tokens: string[], roles: Map<string, Map<string, RelationRole | null>>) {
   const present = new Set(tokens);
-  const roles = new Map<string, Map<string, "bare" | "marked">>();
   tokens.forEach((token, index) => {
     const modifier = tokens[index - 1];
     if (!modifier || semanticStopWords.has(modifier)) return;
     let head: string | null = null;
-    let role: "bare" | "marked" | null = null;
-    if (
-      [...present].some(
-        (other) =>
-          other !== token &&
-          other.startsWith(token) &&
-          accusativeMarker.test(other.slice(token.length)),
-      )
-    ) {
+    let role: RelationRole | null = null;
+    if (accusativeSuffixes.some((suffix) => present.has(`${token}${suffix}`))) {
       head = token;
       role = "bare";
     } else {
-      for (const other of present)
-        if (
-          other !== token &&
-          token.startsWith(other) &&
-          accusativeMarker.test(token.slice(other.length))
-        ) {
-          head = other;
-          role = "marked";
-          break;
-        }
+      const suffix = accusativeSuffixes.find(
+        (candidate) => token.endsWith(candidate) && present.has(token.slice(0, -candidate.length)),
+      );
+      if (suffix) {
+        head = token.slice(0, -suffix.length);
+        role = "marked";
+      }
     }
     if (!head || !role) return;
-    const byModifier = roles.get(head) ?? new Map<string, "bare" | "marked">();
-    byModifier.set(relationBase(modifier), role);
+    const byModifier = roles.get(head) ?? new Map<string, RelationRole | null>();
+    assignRole(byModifier, relationBase(modifier), role);
     roles.set(head, byModifier);
   });
-  return roles;
 }
 
-function caseRolesSwapped(candidate: string[], previous: string[]): boolean {
-  const a = headRoles(candidate);
-  const b = headRoles(previous);
-  for (const [head, candidateRoles] of a) {
-    const previousRoles = b.get(head);
-    if (!previousRoles) continue;
-    let swapped = 0;
-    for (const [modifier, role] of candidateRoles) {
-      const other = previousRoles.get(modifier);
-      if (other && other !== role) swapped += 1;
-    }
-    if (swapped >= 2) return true;
+interface RelationProfile {
+  negation: Map<string, RelationRole | null>;
+  heads: Map<string, Map<string, RelationRole | null>>;
+}
+
+function relationProfile(value: string): RelationProfile {
+  const profile: RelationProfile = { negation: new Map(), heads: new Map() };
+  for (const tokens of relationSentences(value)) {
+    collectNegationRoles(tokens, profile.negation);
+    collectHeadRoles(tokens, profile.heads);
+  }
+  return profile;
+}
+
+/** En az iki AYRI kavramın rolü iki metin arasında, her iki metinde de tek anlamlıyken değişmiş mi? */
+function rolesSwapped(
+  candidate: Map<string, RelationRole | null>,
+  previous: Map<string, RelationRole | null>,
+): boolean {
+  const swappedRoles = new Set<RelationRole>();
+  let swapped = 0;
+  for (const [concept, role] of candidate) {
+    const other = previous.get(concept);
+    if (!role || !other || role === other) continue;
+    swapped += 1;
+    swappedRoles.add(role);
+  }
+  // İki kavram yer değiştirmeli: biri bir rolden diğerine, öbürü tersine.
+  return swapped >= 2 && swappedRoles.size === 2;
+}
+
+function relationProfilesDiffer(candidate: RelationProfile, previous: RelationProfile): boolean {
+  if (rolesSwapped(candidate.negation, previous.negation)) return true;
+  for (const [head, candidateRoles] of candidate.heads) {
+    const previousRoles = previous.heads.get(head);
+    if (previousRoles && rolesSwapped(candidateRoles, previousRoles)) return true;
   }
   return false;
 }
 
 /** İki metin aynı kavramlar arasındaki ilişkiyi açıkça tersine çeviriyor mu? */
 export function semanticRelationDiffers(candidate: string, previous: string): boolean {
-  const a = relationTokens(candidate);
-  const b = relationTokens(previous);
-  return negationTargetReversed(a, b) || caseRolesSwapped(a, b);
+  return relationProfilesDiffer(relationProfile(candidate), relationProfile(previous));
 }
 
 export interface TopicSemanticRepetition {
@@ -322,9 +339,8 @@ export function topicSemanticRepetition(
   const candidateConcepts = semanticConcepts(candidate, ignored);
   if (candidateConcepts.size < minimumComparableConcepts) return null;
 
+  let candidateRelations: RelationProfile | null = null;
   for (const body of previousBodies) {
-    // Aynı kavramlar arasındaki ilişki açıkça tersine dönmüşse yeni hüküm (A2).
-    if (semanticRelationDiffers(candidate, body)) continue;
     const previousConcepts = semanticConcepts(body, ignored);
     if (previousConcepts.size < minimumComparableConcepts) continue;
     let sharedConceptCount = 0;
@@ -352,8 +368,13 @@ export function topicSemanticRepetition(
       shortRestatement ||
       broadRestatement ||
       ornateRestatement
-    )
+    ) {
+      // Aynı kavramlar arasındaki ilişki açıkça tersine dönmüşse yeni hüküm (A2). Yalnız
+      // tekrar sayılacak entry'de hesaplanır; aday profili bir kez çıkarılır.
+      candidateRelations ??= relationProfile(candidate);
+      if (relationProfilesDiffer(candidateRelations, relationProfile(body))) continue;
       return { matchedBody: body, sharedConceptCount, candidateCoverage, previousCoverage };
+    }
   }
   return null;
 }
