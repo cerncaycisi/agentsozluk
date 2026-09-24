@@ -1271,35 +1271,76 @@ export async function setGlobalRuntimeEnabled(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
-    if (enabled) await assertProductionRolloutMutationAllowed(transaction, new Date());
-    const current = await getGlobalSettingsRecord(transaction);
-    const updated = await updateGlobalSettingsRecord(transaction, actor.actorId, {
-      runtimeEnabled: enabled,
-    });
-    await recordControlPlaneChange(transaction, actor, {
-      eventType: "agent.settings.changed",
-      entityType: "AgentGlobalSettings",
-      entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
-      reason: input.reason,
-      before: { runtimeEnabled: current.runtimeEnabled },
-      after: { runtimeEnabled: updated.runtimeEnabled },
-      metadata: {
-        settingsKey: "global",
-        changedFields: ["runtimeEnabled"],
-        settingsVersion: updated.settingsVersion,
-        reason: input.reason,
-        command: enabled ? "RESUME" : "PAUSE",
-      },
-    });
-    await appendRuntimeEvent(transaction, {
-      eventType: enabled ? "breaker.reset" : "runtime.global.paused",
-      safeMessage: enabled
-        ? "Global runtime admin tarafından açıldı ve breaker geçmişi resetlendi."
-        : "Global runtime admin tarafından pause edildi.",
-      metadata: { settingsVersion: updated.settingsVersion, reason: input.reason },
-    });
-    return updated;
+    return applyGlobalRuntimeEnabled(transaction, actor, enabled, input);
   });
+}
+
+/**
+ * Operatör/dağıtım yolu: yalnız `runtimeEnabled`'ı değiştirir ve durum kontrolünü
+ * AYARLAR KİLİDİ ALTINDA yapar; istenen durum zaten geçerliyse hiçbir şey yazmaz
+ * (ayar sürümü değişmez). Eşzamanlı iki çağrıdan geciken ikinci çağrı da yazmaz,
+ * böylece dağıtımın ayar parmak izi bozulmaz (Astra, #186).
+ */
+export async function setGlobalRuntimeEnabledIfChanged(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  enabled: boolean,
+  input: RuntimeControlInput,
+): Promise<{ changed: boolean; runtimeEnabled: boolean; settingsVersion: number }> {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSettings(transaction);
+    const current = await getGlobalSettingsRecord(transaction);
+    if (current.runtimeEnabled === enabled) {
+      return {
+        changed: false,
+        runtimeEnabled: current.runtimeEnabled,
+        settingsVersion: current.settingsVersion,
+      };
+    }
+    const updated = await applyGlobalRuntimeEnabled(transaction, actor, enabled, input);
+    return {
+      changed: true,
+      runtimeEnabled: updated.runtimeEnabled,
+      settingsVersion: updated.settingsVersion,
+    };
+  });
+}
+
+async function applyGlobalRuntimeEnabled(
+  transaction: TransactionClient,
+  actor: ActorContext,
+  enabled: boolean,
+  input: RuntimeControlInput,
+) {
+  if (enabled) await assertProductionRolloutMutationAllowed(transaction, new Date());
+  const current = await getGlobalSettingsRecord(transaction);
+  const updated = await updateGlobalSettingsRecord(transaction, actor.actorId, {
+    runtimeEnabled: enabled,
+  });
+  await recordControlPlaneChange(transaction, actor, {
+    eventType: "agent.settings.changed",
+    entityType: "AgentGlobalSettings",
+    entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
+    reason: input.reason,
+    before: { runtimeEnabled: current.runtimeEnabled },
+    after: { runtimeEnabled: updated.runtimeEnabled },
+    metadata: {
+      settingsKey: "global",
+      changedFields: ["runtimeEnabled"],
+      settingsVersion: updated.settingsVersion,
+      reason: input.reason,
+      command: enabled ? "RESUME" : "PAUSE",
+    },
+  });
+  await appendRuntimeEvent(transaction, {
+    eventType: enabled ? "breaker.reset" : "runtime.global.paused",
+    safeMessage: enabled
+      ? "Global runtime admin tarafından açıldı ve breaker geçmişi resetlendi."
+      : "Global runtime admin tarafından pause edildi.",
+    metadata: { settingsVersion: updated.settingsVersion, reason: input.reason },
+  });
+  return updated;
 }
 
 function societyFlowSnapshot(settings: {

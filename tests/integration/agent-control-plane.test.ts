@@ -22,6 +22,7 @@ import {
   recordRuntimeCapabilityPackage,
   rollbackPersona,
   setGlobalRuntimeEnabled,
+  setGlobalRuntimeEnabledIfChanged,
   setSocietyFlowEnabled,
   startProductionRolloutAttempt,
   runtimeCapabilityMeasurementSchema,
@@ -1836,6 +1837,53 @@ describe("agent control plane with PostgreSQL", () => {
       const kosul = `${tarama.Filter ?? ""} ${tarama["Index Cond"] ?? ""} ${tarama["Recheck Cond"] ?? ""}`;
       expect(kosul, "agent_runs taramasında finishedAt ön filtresi yok").toContain("finishedAt");
     }
+  });
+
+  it("operatör duraklatması kilit altında idempotent; devam yalnız runtimeEnabled'ı açar", async () => {
+    // Dağıtım sarmalayıcısının `--pause-society-flow` yolu (Astra, #186): eşzamanlı ya da
+    // tekrarlanan duraklatma ayar sürümünü bir kez artırır; devam zamanlayıcıyı açmaz.
+    const admin = await createPrincipal();
+    const reason = { reason: "Operatör dağıtım duraklatması testi." };
+    await setGlobalRuntimeEnabled(integrationDatabase, actor(admin.id), true, reason);
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { schedulerEnabled: false },
+    });
+    const start = await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+      where: { id: "global" },
+    });
+
+    const concurrent = await Promise.all([
+      setGlobalRuntimeEnabledIfChanged(integrationDatabase, actor(admin.id), false, reason),
+      setGlobalRuntimeEnabledIfChanged(integrationDatabase, actor(admin.id), false, reason),
+    ]);
+    expect(concurrent.filter((result) => result.changed)).toHaveLength(1);
+    const again = await setGlobalRuntimeEnabledIfChanged(
+      integrationDatabase,
+      actor(admin.id),
+      false,
+      reason,
+    );
+    expect(again).toEqual({
+      changed: false,
+      runtimeEnabled: false,
+      settingsVersion: start.settingsVersion + 1,
+    });
+
+    const resumed = await setGlobalRuntimeEnabledIfChanged(
+      integrationDatabase,
+      actor(admin.id),
+      true,
+      reason,
+    );
+    expect(resumed.changed).toBe(true);
+    const end = await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+      where: { id: "global" },
+    });
+    expect(end.runtimeEnabled).toBe(true);
+    expect(end.schedulerEnabled).toBe(false);
+    expect(end.runtimeOperatingMode).toBe(start.runtimeOperatingMode);
+    expect(end.settingsVersion).toBe(start.settingsVersion + 2);
   });
 
   it("koşunun finishedAt'inden SONRA biten aralığı düşürmez", async () => {

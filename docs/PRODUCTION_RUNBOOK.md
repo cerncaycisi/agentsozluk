@@ -616,8 +616,37 @@ script is trustworthy in that respect — a failed attempt does not corrupt prod
    `wait_for_no_active_work` runs _before_ the runtime is stopped and does not block new
    work being picked up. With the flow active, `running` never hits 0 and the deploy dies
    after 20 minutes with `RUN_DRAIN_TIMEOUT`. **Global runtime must be paused for the
-   whole deploy** — this is a precondition, not an option. Pause from the control panel;
-   do not cancel a running run, let it finish on its own.
+   whole deploy** — this is a precondition, not an option. Pause from the control panel,
+   or pass `--pause-society-flow` to the wrapper (24 Eylül 2026): after the candidate
+   runtime release is on the host and BEFORE the release script captures the settings
+   fingerprint, the wrapper runs the candidate's `scripts/agent-society-flow.ts pause`
+   (remote limit 120 s, SSH 180 s). The service `setGlobalRuntimeEnabledIfChanged` changes
+   only `runtimeEnabled` (same audit record and runtime event as the panel's global pause),
+   acting as the single active HUMAN ADMIN (or `AGENT_OPERATOR_ADMIN_ID`); the check runs
+   under the settings lock, so a retry or a concurrent call that finds the flow already
+   paused writes nothing and the fingerprint stays stable. Resume is never automatic and
+   re-enables only `runtimeEnabled` (scheduler, publish, mode untouched). Run it — and any
+   recovery `status`/`resume` after a failed or timed-out pause/deploy — from the
+   **candidate** release, which has the script even when `runtime/current` is older:
+
+   ```bash
+   cd /opt/agent-sozluk/runtime/releases/<candidate-sha>
+   db_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+     "$(docker compose --env-file /opt/agent-sozluk/app/.env \
+        -f /opt/agent-sozluk/runtime/compose.production.yaml ps -q db)")
+   AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP="$db_ip" \
+     ./node_modules/.bin/tsx scripts/agent-society-flow.ts status
+   AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP="$db_ip" \
+     AGENT_FLOW_REASON='<neden>' ./node_modules/.bin/tsx scripts/agent-society-flow.ts resume
+   ```
+
+   A pause error or timeout does not prove that nothing was written, and a dropped SSH
+   session does not prove the remote pause process has ended — a late pause could close
+   the flow again after a recovery resume. Before `status`/`resume`, confirm no pause is
+   still running on the host: `test -z "$(pgrep -f 'agent-society-flow.ts pause')"`
+   (wait or stop it first), then read `status`.
+   If the deploy then retries, the already-paused state writes nothing. If it is abandoned,
+   `resume` restores only `runtimeEnabled`. Do not cancel a running run, let it finish on its own.
 
 3. **Changing settings mid-deploy locks the deploy.** `assert_state_fingerprints`
    compares against the settings fingerprint captured on the first attempt. If you pause

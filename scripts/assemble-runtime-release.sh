@@ -143,6 +143,7 @@ for required in \
   pnpm-lock.yaml \
   tsconfig.json \
   scripts/agent-runtime-worker.ts \
+  scripts/agent-society-flow.ts \
   node_modules/tsx/dist/cli.mjs \
   node_modules/.bin/tsx \
   node_modules/.bin/prisma; do
