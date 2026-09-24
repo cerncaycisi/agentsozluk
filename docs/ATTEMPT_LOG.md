@@ -8714,3 +8714,22 @@ lease tarafından hiç kullanılmıyordu.
 
 - Operatör resume/status için `runtime/current` (artık betik içeriyor) ya da aday release
   dizinini kullan; `bootstrap_admin` kimliğini basma.
+
+## 2026-09-24 — üretim imaj ve runtime temizliği (Gökhan onayı: "sil")
+
+- Kalan: çalışan `7aae0d2` (`agent-sozluk:production` ile aynı imaj) ve geri dönüş `f2f57f3`
+  imajları, ikisinin runtime release'i. `…-luna-max-…` adlı SHA dışı dizin bilerek atlandı.
+- Süzgeç: `reference=agent-sozluk:*`; aday/önceki imaj kimliği ve herhangi bir konteynerin
+  kullandığı imaj hariç; `docker builder prune --filter until=24h`; runtime'larda yalnız
+  `^[0-9a-f]{40}$` adlı, current/previous olmayan dizinler (+ artifact makbuzu). Volume'lara
+  dokunulmadı.
+- Silinen: 8 imaj (`1be2d0f`, `37c6618`, `545b676`, `c0dbe73`, `c21a798`, `c9a1bc7`, `d567018`,
+  `e12bdd0`), 8 runtime release, derleme önbelleği 209,9 MB.
+- Disk %79 (16.211.080 KiB boş) → %58 (32.195.580 KiB boş). Volume hash ve konteyner imaj hash'i
+  öncesi/sonrası aynı; app imajı `sha256:81ab58bc7d3c…` değişmedi; worker `active/running`,
+  NRestarts 0, aynı PID. Dış health/ready 200.
+
+**Tekrarlama:**
+
+- Temizliği dağıtımdan ayrı yaparken `cleanup_images` korumalarını birebir uygula (aday/önceki
+  imaj, konteyner imajları, current/previous runtime, volume/konteyner hash'i, worker durumu).
