@@ -102,8 +102,8 @@ export function safeErrorCode(error: unknown): string {
   - hata adı yalnız bilinen sınıflardan (izin listesi), aksi hâlde `Error`;
   - işlev adı hiç kaydedilmez;
   - bir çerçeve yalnız proje kökü altında DİSKTE VAR OLAN bir dosyayı gösteriyorsa
-    alınır ve yalnız `göreli/yol:satır:sütun` (sayılar) olarak kaydedilir. Mesajdaki
-    uydurma yol, `?token=` taşıyan yol ya da `eval` kaynağı diskte yoktur, düşer;
+    alınır ve yalnız göreli yolu kaydedilir (satır/sütun yok). Mesajdaki uydurma yol,
+    `?token=` taşıyan yol ya da `eval` kaynağı diskte yoktur, düşer;
   - `node:` çerçeveleri alınmaz; en çok 16 KiB / 200 satır taranır, 10 çerçeve kalır.
   Hata mesajı hiçbir koşulda kaydedilmez.
 */
@@ -153,32 +153,36 @@ export function safeErrorDiagnostics(
 ): { errorName: string; errorFrames: string[] } | null {
   if (error instanceof AppError) return null;
   if (!(error instanceof Error)) return { errorName: "NonError", errorFrames: [] };
+  // Tanı hiçbir koşulda hata yanıtını bozmamalı: getter/toString fırlatabilir (Astra).
+  try {
+    return errorDiagnostics(error);
+  } catch {
+    return { errorName: "Error", errorFrames: [] };
+  }
+}
+
+function errorDiagnostics(error: Error): { errorName: string; errorFrames: string[] } {
   const constructorName = error.constructor?.name ?? "";
   const errorName = knownErrorNames.has(constructorName)
     ? constructorName
     : knownErrorNames.has(error.name)
       ? error.name
       : "Error";
-  const errorFrames: string[] = [];
   /*
-    Mesaj, stack'in başındaki `String(error)` başlığıdır (V8: `Ad: mesaj`). Çerçeveler
-    YALNIZ bu başlıktan sonrasından okunur; başlık eşleşmezse (stack elle değiştirilmiş)
-    hiç çerçeve alınmaz. Böylece mesaja gömülü, var olan dosyayı gösteren ve satır/
-    sütunda sayısal sır taşıyan uydurma satır çerçeve sayılamaz (Astra, #183 2. tur).
+    Mesaj ile çerçevelerin ayrımı kanıtlanamaz: mesaj stack oluştuktan sonra
+    değişebilir ve başlık kontrolünü atlatır (Astra, #183 3. tur). Bu yüzden satır
+    ve sütun numarası HİÇ kaydedilmez — mesajdan sızabilecek tek içerik (sayılar)
+    kanaldan çıkar. Kalan yalnız diskte var olan proje dosyalarının göreli yolları;
+    art arda aynı dosya tek kez yazılır.
   */
-  const stack = error.stack ?? "";
-  const header = String(error);
-  if (!stack.startsWith(header)) return { errorName, errorFrames: [] };
-  const lines = stack
-    .slice(header.length, header.length + maxStackCharacters)
-    .split("\n", maxStackLines);
-  for (const line of lines) {
+  const stack = typeof error.stack === "string" ? error.stack : "";
+  const errorFrames: string[] = [];
+  for (const line of stack.slice(0, maxStackCharacters).split("\n", maxStackLines)) {
     const match = stackFrame.exec(line);
     if (!match) continue;
-    const [, filePath, row, column] = match;
-    const relative = projectRelativeFile(filePath ?? "");
-    if (!relative) continue;
-    errorFrames.push(`${relative}:${row}:${column}`);
+    const relative = projectRelativeFile(match[1] ?? "");
+    if (!relative || errorFrames.at(-1) === relative) continue;
+    errorFrames.push(relative);
     if (errorFrames.length === maxFrames) break;
   }
   return { errorName, errorFrames };

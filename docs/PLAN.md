@@ -1295,9 +1295,10 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       için kullanılması. Analiz (24 Eylül): her runtime kimliği dört kapsamın hepsini taşıyor
       (`src/modules/agents/repository/control-plane.ts` 259 ve 932); ayrım bugün hiçbir yetkiyi
       daraltmaz ve mevcut kimlikler için veri geçişi ister. Kimlikler kapsamca ayrışırsa ele
-      alınmalı. **Kod hazır (23 Eylül, inceleme bekliyor):** merkezi hata kaydı
-      beklenmeyen 500'lerde hata sınıfının adını ve en çok 10 stack çerçevesini
-      (`işlev yol:satır:sütun`) kaydeder; hata mesajı hiç kaydedilmez.
+      alınmalı. **Kod hazır (24 Eylül, inceleme bekliyor):** merkezi hata kaydı
+      beklenmeyen 500'lerde hata sınıfının adını (izin listesi) ve diskte var olan proje
+      dosyalarının göreli yollarını (en çok 10; satır/sütun, işlev adı ve hata mesajı yok)
+      kaydeder.
       **Kapandı (23 Eylül):** "Ana içeriğe geç" sonrası odak artık `main#ana-icerik`'e taşınıyor
       (19 hedefte `tabIndex={-1}`, E2E ile ölçülüyor); README rota örneği
       `/baslik/{slug}--{publicId}`; reset notundaki model sayısı güncel.
