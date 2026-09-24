@@ -634,10 +634,16 @@ script is trustworthy in that respect — a failed attempt does not corrupt prod
    db_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
      "$(docker compose --env-file /opt/agent-sozluk/app/.env \
         -f /opt/agent-sozluk/runtime/compose.production.yaml ps -q db)")
+   # İki geçerli aktif HUMAN ADMIN var; operatör aktörü `bootstrap_admin`. Kimliği basma.
+   admin_id=$(docker compose --env-file /opt/agent-sozluk/app/.env \
+     -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T db psql -X -U agent_sozluk \
+     -d agent_sozluk -At -c "SELECT id FROM users WHERE kind = 'HUMAN' AND role = 'ADMIN'
+       AND status = 'ACTIVE' AND username = 'bootstrap_admin'" </dev/null)
    AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP="$db_ip" \
      ./node_modules/.bin/tsx scripts/agent-society-flow.ts status
-   AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP="$db_ip" \
-     AGENT_FLOW_REASON='<neden>' ./node_modules/.bin/tsx scripts/agent-society-flow.ts resume
+   AGENT_OPERATOR_ADMIN_ID="$admin_id" AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env \
+     AGENT_DB_IP="$db_ip" AGENT_FLOW_REASON='<neden>' \
+     ./node_modules/.bin/tsx scripts/agent-society-flow.ts resume
    ```
 
    A pause error or timeout does not prove that nothing was written, and a dropped SSH

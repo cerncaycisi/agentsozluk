@@ -41,6 +41,11 @@ describe("toplum akışı operatör duraklatması", () => {
     expect(block).toContain('"$local_timeout" 180 ssh');
     expect(block).toContain("timeout --kill-after=10 120 ./node_modules/.bin/tsx");
     expect(block).toContain("$scope_check");
+    // İki geçerli yönetici: aktör açıkça `bootstrap_admin`, kimlik basılmaz (ATTEMPT_LOG).
+    expect(block).toContain("username = 'bootstrap_admin'");
+    expect(block).toContain('AGENT_OPERATOR_ADMIN_ID=\\"\\$admin_id\\"');
+    expect(block).toContain("OPERATOR_ADMIN_UNRESOLVED");
+    expect(block).not.toMatch(/(echo|printf)[^\n]*\$admin_id/u);
     expect(block).toContain("release=/opt/agent-sozluk/runtime/releases/$candidate_sha");
     expect(block).toContain(".release-sha\\\")\\\" = '$candidate_sha'");
     // Devam ettirme otomatik değil.

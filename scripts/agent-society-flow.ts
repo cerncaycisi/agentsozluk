@@ -86,7 +86,14 @@ async function main(): Promise<void> {
 if (process.argv[1]?.endsWith("agent-society-flow.ts")) {
   main().catch((error: unknown) => {
     // Yalnız güvenli kod; logger (pino) runtime release'inde yok.
-    const code = error instanceof AppError ? error.code : "INTERNAL_ERROR";
+    const code =
+      error instanceof AppError
+        ? error.code
+        : error instanceof Error && error.message.includes("AGENT_OPERATOR_ADMIN_ID")
+          ? "OPERATOR_ADMIN_SELECTION_AMBIGUOUS"
+          : error instanceof z.ZodError
+            ? "OPERATOR_INPUT_INVALID"
+            : "INTERNAL_ERROR";
     process.stderr.write(`SOCIETY_FLOW_FAIL code=${code}\n`);
     process.exitCode = 1;
   });

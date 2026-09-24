@@ -8679,3 +8679,23 @@ lease tarafından hiç kullanılmıyordu.
 - Tam SHA'yı asla elle yazma; `git rev-parse` çıktısını değişkenle geçir ve uzunluğunu sına.
 - Migration'sız dağıtıma genel duraklatma olmadan başlama (runbook "Deploy-day failure
   modes" 2-3); duraklatma dağıtımdan ÖNCE, panelden.
+
+## 2026-09-24 — `d567018` dağıtımı: operatör duraklatması yönetici seçiminde durdu
+
+- `d567018e2c54ccca8a63fcf22bc4609a92e3d1b0`, CI `35976302406`, Release Candidate `35977206442`,
+  Astra "DAĞIT", `--pause-society-flow` ile ilk kullanım. Artifact image/runtime sunucuya indi;
+  duraklatma adımı `SOCIETY_FLOW_FAIL code=INTERNAL_ERROR` ile düştü, sarmalayıcı uzak dağıtım
+  betiğine geçmeden `RELEASE_WRAPPER_FAIL code=UNEXPECTED line=612` ile durdu.
+- Kök neden: üretimde iki geçerli aktif HUMAN ADMIN var; betik `AGENT_OPERATOR_ADMIN_ID`
+  verilmeyince tek yönetici bekliyor. Bu ders bu kayıtta zaten vardı (Ağustos: "resolve the unique
+  active `bootstrap_admin` internally and pass its ID explicitly"); dağıtımdan önce okumadım.
+- Etki: yazma yok (`runtimeEnabled=true`, sürüm 274 değişmedi), kesim yok; yalnız aday dosyaları
+  indirildi ve dağıtım kilidi kaldı.
+- Düzeltme: sarmalayıcı `bootstrap_admin` kimliğini uzakta çözüp basmadan verir; betik bu durumu
+  `OPERATOR_ADMIN_SELECTION_AMBIGUOUS` olarak adlandırır.
+
+**Tekrarlama:**
+
+- Üretim operatör araçlarında "tek aktif yönetici" varsayma; aktör açıkça `bootstrap_admin`.
+- Dağıtım/operatör işine başlamadan ATTEMPT_LOG'daki operatör derslerini oku.
+- Yönetici kimliğini oturum çıktısına bile basma.
