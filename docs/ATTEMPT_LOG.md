@@ -8809,3 +8809,17 @@ lease tarafından hiç kullanılmıyordu.
 
 - Operatör sunucusu yeniden kurulursa önce preflight; eksik aracı sudo'suz kullanıcı dizinine aç,
   güvenlik kontrolünü taklit eden sahte araç yazma.
+
+## 2026-09-24 — `bb49b28`: entry sayfası tek okuma (onay muafiyeti penceresi, Astra DAĞIT)
+
+- PR #198 (`998a911`), Astra DAĞIT; push CI `36042265771`, bundle `36043563095`. Dağıtım 18:54–18:56
+  UTC, `--pause-society-flow`: pause 278→279, `RELEASE_COMPLETE PASS`, imaj `sha256:55b375a2…`.
+- Kabul: status 279 `runtimeEnabled=false` → worker `active/running` (18:56:12), NRestarts 0, B7
+  IP ayarları → resume 279→280 → koşu 18:57–19:01 `SUCCEEDED`. Disk %63. `/entry/19091`,
+  `/api/health`, `/api/ready` 200.
+- Yan bulgu: bu sunucudan ntfy.sh `429 daily message quota reached` (IP kotası); `~/ping.sh`
+  artık `curl -f` ile başarısızlığı bildiriyor. Konu adı depoya yazılmaz.
+
+**Tekrarlama:**
+
+- Kabul sorgusunda "yeni worker" sınırı olarak `ExecMainStartTimestamp`'i kullan.
