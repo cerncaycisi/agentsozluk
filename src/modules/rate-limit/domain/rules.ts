@@ -3,12 +3,28 @@ export interface FixedWindowRateLimitRule {
   limit: number;
   windowMs: number;
   strategy?: "fixed-window";
+  /** Tespit kuralları reddeden kovaya verilemez (tip düzeyinde engel). */
+  observeOnly?: never;
+}
+
+/**
+ * Yalnız sayan, HİÇBİR ZAMAN reddetmeyen tespit kuralı. `observeOnly: true`
+ * taşıdığı için `RateLimitRule` yerine geçemez: `enforceRateLimit`'e verilmesi
+ * derleme hatasıdır ve çalışma anında da reddedilir (Astra, #184).
+ */
+export interface ObserveOnlyRateLimitRule {
+  /** `-observe` ile biter; `enforceRateLimit` bu eylemleri çalışma anında reddeder. */
+  action: `${string}-observe`;
+  limit: number;
+  windowMs: number;
+  observeOnly: true;
 }
 
 export interface MinimumIntervalRateLimitRule {
   action: string;
   minimumIntervalMs: number;
   strategy: "minimum-interval";
+  observeOnly?: never;
 }
 
 export type RateLimitRule = FixedWindowRateLimitRule | MinimumIntervalRateLimitRule;
@@ -48,7 +64,24 @@ export const RATE_LIMIT_RULES = {
     Gerçek kullanıcı 15 dakikada 30 kez giriş denemez.
   */
   loginIp: { action: "login:ip", limit: 30, windowMs: 15 * MINUTE },
-} as const satisfies Record<string, RateLimitRule>;
+  /*
+    Hesap bazlı başarısız giriş SAYACI — engellemez, yalnız tespit eder (Astra
+    önerisi, 20 Eylül; F10 kararının görünürlük ayağı). Kilitleme, kurbanın
+    e-postasını bilen birine ucuz bir DoS verirdi; bu sayaç hiçbir isteği
+    reddetmez, eşik aşılınca güvenlik KAYDI üretir (yalnız log; alarm akışına
+    girmez, en fazla bir kez ve kaybolabilir). `limit` burada eşiktir.
+  */
+  loginAccountFailureObserve: {
+    action: "login:account-failure-observe",
+    limit: 10,
+    windowMs: HOUR,
+    observeOnly: true,
+  },
+} as const satisfies Record<string, RateLimitRule | ObserveOnlyRateLimitRule>;
+
+export function accountLoginIdentifier(emailNormalized: string): string {
+  return `account:${emailNormalized}`;
+}
 
 export function userRateLimitIdentifier(userId: string): string {
   return `user:${userId}`;

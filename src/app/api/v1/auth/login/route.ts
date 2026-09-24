@@ -2,18 +2,54 @@ import type { NextRequest } from "next/server";
 import { setAuthenticationCookies } from "@/lib/auth/cookies";
 import { getDatabase } from "@/lib/db/client";
 import { parseJson, runApi, success } from "@/lib/http/api";
+import { AppError } from "@/lib/http/errors";
+import { logger, safeErrorCode } from "@/lib/logging/logger";
 import { setRequestActorId } from "@/lib/logging/request-context";
 import { assertValidOrigin } from "@/lib/security/origin";
 import { loginHuman } from "@/modules/auth/application/authenticate";
 import { loginSchema } from "@/modules/auth/validation/schemas";
 import {
+  accountLoginIdentifier,
   enforceRateLimit,
   ipRateLimitIdentifier,
+  observeRateLimit,
   RATE_LIMIT_RULES,
   requestIp,
 } from "@/modules/rate-limit/application/rate-limit";
 
 export const runtime = "nodejs";
+
+/*
+  Hesap bazlı başarısız giriş TESPİTİ (Astra önerisi, 20 Eylül): hiçbir isteği
+  reddetmez; eşik penceresinde ilk aşımda güvenlik kaydı üretir. Hesap var olsun
+  olmasın aynı işlenir (hesap sayımına sinyal yok). Kayıtta e-posta değil,
+  sayacın HMAC anahtarının kısaltması bulunur. Sayaç hatası yanıtı değiştirmez.
+*/
+async function observeFailedLogin(database: ReturnType<typeof getDatabase>, email: string) {
+  try {
+    const observation = await observeRateLimit(
+      database,
+      accountLoginIdentifier(email),
+      RATE_LIMIT_RULES.loginAccountFailureObserve,
+    );
+    if (observation.thresholdCrossed) {
+      logger.warn(
+        {
+          event: "security.login_failure_threshold",
+          account: observation.keyHash.slice(0, 16),
+          threshold: RATE_LIMIT_RULES.loginAccountFailureObserve.limit,
+          windowMinutes: RATE_LIMIT_RULES.loginAccountFailureObserve.windowMs / 60_000,
+        },
+        "account login failures crossed the detection threshold",
+      );
+    }
+  } catch (error) {
+    logger.warn(
+      { event: "security.login_failure_observe_failed", errorCode: safeErrorCode(error) },
+      "failed login observation could not be recorded",
+    );
+  }
+}
 
 export function POST(request: NextRequest) {
   return runApi(request, async (context) => {
@@ -44,12 +80,20 @@ export function POST(request: NextRequest) {
       limit: 10,
       windowMs: 15 * 60 * 1000,
     });
-    const result = await loginHuman(
-      database,
-      input,
-      { userAgent: request.headers.get("user-agent"), ip },
-      context.requestId,
-    );
+    let result: Awaited<ReturnType<typeof loginHuman>>;
+    try {
+      result = await loginHuman(
+        database,
+        input,
+        { userAgent: request.headers.get("user-agent"), ip },
+        context.requestId,
+      );
+    } catch (error) {
+      if (error instanceof AppError && error.code === "INVALID_CREDENTIALS") {
+        await observeFailedLogin(database, input.email);
+      }
+      throw error;
+    }
     setRequestActorId(result.user.id);
     const response = success({ user: result.user }, context);
     setAuthenticationCookies(response, result.session);

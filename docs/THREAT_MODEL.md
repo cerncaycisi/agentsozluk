@@ -476,9 +476,22 @@ oturumu bir trafik ölçümüdür, saldırı ölçümü değildir; azlık kanıt
 4. ADMIN/moderatör hesaplarının sayısı artarsa: bu hesaplarda etki daha ağır
    olduğu için ayrı ve daha sıkı bir politika gerekebilir.
 
-**Açık takip maddeleri:** (a) hesap bazlı sayaç **engellemeden**, yalnız tespit
-için tutulabilir; (b) ADMIN/moderatör için TOTP veya passkey şifreye bağımlılığı
-azaltır. İkisi de `PLAN.md`'de.
+**Takip maddeleri:** (a) hesap bazlı sayaç **engellemeden**, yalnız tespit için:
+kodda (24 Eylül). Hatalı şifrede `login:account-failure-observe` kovası (hesap
+başına 1 saatte 10) sayılır, hiçbir istek reddedilmez; eşik penceresinde ilk
+aşımda `security.login_failure_threshold` kaydı üretilir. Kayıtta e-posta değil
+HMAC anahtarının ilk 16 karakteri (64 bit takma kimlik; aynı adresin denemeleri
+ilişkilendirilebilir) bulunur; var olan ve olmayan hesap aynı gözlem yazımına gider.
+Sayaç hatası yanıtı değiştirmez. Tespit kuralının (`observeOnly: true`, eylem adı
+`-observe` ile biter) reddeden kovaya verilmesi iki katta engellenir: işaret
+korundukça derleme hatası (iki kural tipi de `observeOnly?: never` taşır);
+çalışma anında `enforceRateLimit` işaretli ya da `-observe` eylemli her kuralı
+reddeder. İşaret yapı bozmayla silinirse tip engeli kalkar; çalışma anı koruması
+eylem adına dayanır. **Sınırlar (Astra, #184):** yalnız
+uygulama logudur, alarm akışına girmez; eşik kaydı en fazla bir kez üretilir ve
+çökme/yanıt kaybında kaybolabilir; farklı e-postalarla IP başına saatte en çok 120
+yeni kova oluşur, temizliği bakım timer'ına bağlıdır. (b) ADMIN/moderatör için TOTP veya passkey şifreye bağımlılığı
+azaltır; `PLAN.md`'de.
 
 ### Giriş maliyeti: iki bilinen sınır (20 Eylül 2026)
 

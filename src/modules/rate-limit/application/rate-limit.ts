@@ -7,10 +7,15 @@ import {
   claimRateLimitInterval,
   incrementRateLimitBucket,
 } from "@/modules/rate-limit/repository/rate-limit";
-import { fixedWindow, type RateLimitRule } from "@/modules/rate-limit/domain/rules";
+import {
+  fixedWindow,
+  type ObserveOnlyRateLimitRule,
+  type RateLimitRule,
+} from "@/modules/rate-limit/domain/rules";
 import { rateLimitIdentifierSchema } from "@/modules/rate-limit/validation/schemas";
 
 export {
+  accountLoginIdentifier,
   fixedWindow,
   ipRateLimitIdentifier,
   RATE_LIMIT_RULES,
@@ -18,6 +23,7 @@ export {
   userRateLimitIdentifier,
   type FixedWindowRateLimitRule,
   type MinimumIntervalRateLimitRule,
+  type ObserveOnlyRateLimitRule,
   type RateLimitRule,
 } from "@/modules/rate-limit/domain/rules";
 
@@ -29,6 +35,14 @@ export async function enforceRateLimit(
   rule: RateLimitRule,
   now = new Date(),
 ): Promise<void> {
+  // Tip engeli `as` ya da alanı düşüren yapı bozmayla aşılırsa diye çalışma anında da:
+  // tespit kuralı (işaret ya da `-observe` eylem adı) hiçbir zaman kilitleyemez.
+  if (
+    (rule as { observeOnly?: unknown }).observeOnly === true ||
+    rule.action.endsWith("-observe")
+  ) {
+    throw new Error("RATE_LIMIT_OBSERVE_ONLY_RULE_ENFORCED");
+  }
   const environment = getEnvironment();
   const keyHash = hmacIdentifier(
     environment.APP_SECRET,
@@ -86,4 +100,29 @@ export function requestIp(request: { headers: { get(name: string): string | null
     return forwarded?.at(-(hops + 1)) ?? "unknown";
   }
   return "unknown";
+}
+
+/**
+ * Sabit pencerede sayar ama HİÇBİR ZAMAN reddetmez (tespit sayaçları için).
+ * Dönen `keyHash` HMAC'tir; kayıtta kimlik yerine kısaltılmış hâli kullanılabilir.
+ */
+export async function observeRateLimit(
+  client: Client,
+  identifier: string,
+  rule: ObserveOnlyRateLimitRule,
+  now = new Date(),
+): Promise<{ count: number; keyHash: string; thresholdCrossed: boolean }> {
+  const keyHash = hmacIdentifier(
+    getEnvironment().APP_SECRET,
+    rateLimitIdentifierSchema.parse(identifier),
+  );
+  const { windowStart } = fixedWindow(now, rule.windowMs);
+  const count = await incrementRateLimitBucket(client, {
+    keyHash,
+    action: rule.action,
+    windowStart,
+    expiresAt: addMilliseconds(windowStart, rule.windowMs * 2),
+  });
+  // Eşik penceresinde yalnız bir kez: tam aşıldığı anda.
+  return { count, keyHash, thresholdCrossed: count === rule.limit + 1 };
 }
