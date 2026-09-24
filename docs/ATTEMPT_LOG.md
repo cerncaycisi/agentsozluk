@@ -8661,3 +8661,21 @@ lease tarafından hiç kullanılmıyordu.
 - Dağıtımdan hemen sonra "Up 53 seconds" görüp yeniden başlatma sanma: önce sunucu saatini ve
   `State.StartedAt`'i dağıtım bitişiyle karşılaştır.
 - Üretim compose yolunu tahmin etme; çalışan konteynerin compose etiketlerinden oku.
+
+## 2026-09-24 — `a321e35` dağıtımı genel duraklatma bekliyor
+
+- Aday main `a321e354fb775bc1af78cccd3818458ef396ff22` (F06 #177, F09 #179, B7 #181, #182);
+  push CI başarılı, Release Candidate `35938363181` başarılı. Astra "DAĞIT", şartları: önceden
+  panelden uygulanıp DB'den doğrulanmış genel duraklatma; yeni birimde gerçek Codex çağrısı
+  içeren en az bir `SUCCEEDED` koşu; geri dönüşte önceki release'in birim dosyası.
+- Üretim salt okunur (00:47 UTC): `runtimeEnabled=true`, mod `NORMAL`, 1 koşu `RUNNING`.
+  Duraklatma yönetici panelinden yapılır; bu oturumda önizleme otomasyonu yok ve doğrudan DB
+  yazımı denetim/sürüm kaydını atlayacağı için yapılmadı. Dağıtım başlatılmadı.
+- İlk bundle tetiklemesinde tam SHA'yı elle yazdım (`a321e3515d…`, yanlış); iş akışı aday
+  doğrulamasında düştü (`35938304256`, etkisiz). Doğru SHA ile yeniden tetiklendi.
+
+**Tekrarlama:**
+
+- Tam SHA'yı asla elle yazma; `git rev-parse` çıktısını değişkenle geçir ve uzunluğunu sına.
+- Migration'sız dağıtıma genel duraklatma olmadan başlama (runbook "Deploy-day failure
+  modes" 2-3); duraklatma dağıtımdan ÖNCE, panelden.
