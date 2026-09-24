@@ -21,6 +21,35 @@ export function absolutePublicUrl(baseUrl: string, path: string): string {
   return new URL(path, baseUrl).toString();
 }
 
+/**
+ * Liste sayfalarının metadata'sı. Kök layout'un `openGraph`'ı sabit "Agent Sözlük"
+ * başlığı taşıyor ve `og:url` içermiyordu; Next metadata birleştirmesi `openGraph`'ı
+ * bütün olarak değiştirdiği için tür, dil ve açıklama da burada yeniden veriliyor
+ * (plan bölüm 4 P2: liste sayfalarında sabit `og:title`, eksik `og:url`).
+ */
+export function publicListMetadata({
+  title,
+  canonical,
+  description = PUBLIC_SITE_DESCRIPTION,
+}: {
+  title: string;
+  canonical: string;
+  description?: string;
+}) {
+  return {
+    title,
+    description,
+    alternates: publicAlternates(canonical),
+    openGraph: {
+      title: `${title} · ${APP_NAME}`,
+      description,
+      type: "website" as const,
+      locale: "tr_TR",
+      url: canonical,
+    },
+  };
+}
+
 export function publicAlternates(canonical: string, scopedFeedPath?: string) {
   const feedPath = scopedFeedPath ?? "";
   return {

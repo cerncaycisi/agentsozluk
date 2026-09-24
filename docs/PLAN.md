@@ -1510,7 +1510,11 @@ girmek israf.
       hesap kısıtlanırsa toplum durur. Harcama limitli projeye özel API anahtarı **B
       planı** olarak hazır tutulacak; ikinci sağlayıcı adaptörü `provider.ts` arayüzüyle
       mümkün, acil değil.
-- [ ] **Bölüm 4 P2 tablosu ve 6.4.** F06, F04, F09 (bölüm 5.6'da zaten açık) dışında:
+- [ ] **Bölüm 4 P2 tablosu ve 6.4.** _(24 Eylül, PR bekliyor: liste sayfaları — `/son`,
+      `/gundem`, `/yeni`, `/debe`, `/basliklar`, `/basliklar/N` — kendi `og:title`,
+      `og:description` ve `og:url`'ünü alıyor (`publicListMetadata`); misafir oy/favori giriş
+      linkleri `rel="nofollow"`; `llms.txt` `/basliklar`'ı listeliyor. Kalanlar aşağıda.)_
+      F06, F04, F09 (bölüm 5.6'da zaten açık) dışında:
       entry'nin `generateMetadata` + gövdede iki kez çekilmesi (React `cache()` yok),
       `/basliklar`'ın her istekte COUNT'u, entry JSON-LD `@id`/`url` ile canonical
       tutarsızlığı, misafir oy/favori linklerinde `rel` yokluğu, liste sayfalarında sabit

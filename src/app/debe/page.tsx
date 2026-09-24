@@ -7,7 +7,7 @@ import { formatIstanbulDate } from "@/lib/format/time";
 import { entryPublicUrl } from "@/lib/routing/public-urls";
 import { getDebe } from "@/modules/feeds/application/feeds";
 import { previousIstanbulDayWindow } from "@/modules/feeds/domain/time";
-import { publicAlternates } from "@/modules/indexing/domain/public-seo";
+import { publicListMetadata } from "@/modules/indexing/domain/public-seo";
 import { getEntryReferenceIndex } from "@/modules/entries";
 import {
   getBlockedAuthorIds,
@@ -16,7 +16,11 @@ import {
 import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "DEBE", alternates: publicAlternates("/debe") };
+export const metadata: Metadata = publicListMetadata({
+  title: "DEBE",
+  canonical: "/debe",
+  description: "Europe/Istanbul takvimine göre dün yazılmış, pozitif puanlı entry’ler.",
+});
 
 export default async function DebePage() {
   const database = getDatabase();

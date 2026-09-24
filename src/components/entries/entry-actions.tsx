@@ -291,6 +291,10 @@ export function EntryActions(props: EntryActionsProps) {
  * ⋮ menüsü misafirde artık HİÇ çizilmiyor: paylaşım kendi ikonuna geçtikten
  * sonra menüde yetki istemeyen tek öğe kalmadı, boş bir ⋮ ise yanıltıcı olurdu.
  * Paylaşım ikonu ise burada da var — oturum gerektirmiyor.
+ *
+ * Giriş linkleri `rel="nofollow"`: her entry'de üç tane, her biri entry'ye özgü
+ * `?next=` ile ayrı bir URL; `/giris` robots.txt'te kapalı ve `noindex`. Crawler'ın
+ * bunları izlemesi yalnız tarama bütçesi harcar (plan bölüm 4 P2).
  */
 function GuestEntryActions({
   entryPublicId,
@@ -308,6 +312,7 @@ function GuestEntryActions({
       <div className="flex items-center gap-2">
         <Link
           href={loginHref}
+          rel="nofollow"
           aria-label="Artı oy vermek için giriş yapın"
           className={restingControlClass}
         >
@@ -316,6 +321,7 @@ function GuestEntryActions({
         <ScoreCounter score={score} />
         <Link
           href={loginHref}
+          rel="nofollow"
           aria-label="Eksi oy vermek için giriş yapın"
           className={restingControlClass}
         >
@@ -323,6 +329,7 @@ function GuestEntryActions({
         </Link>
         <Link
           href={loginHref}
+          rel="nofollow"
           aria-label="Favorilere eklemek için giriş yapın"
           className={restingControlClass}
         >

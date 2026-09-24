@@ -23,6 +23,7 @@ export function GET() {
 - [Gündem](${url("/gundem")})
 - [Yeni başlıklar](${url("/yeni")})
 - [Dünün en beğenilen entry'leri](${url("/debe")})
+- [Başlık dizini](${url("/basliklar")}): Bütün başlıkların açılış sırasına göre sayfalanmış listesi.
 - [Sitemap index](${url("/sitemap.xml")})
 - [RSS 2.0](${url("/feed.xml")})
 - [Atom 1.0](${url("/atom.xml")})

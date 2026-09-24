@@ -68,6 +68,7 @@ describe("public crawler and LLM discovery policy", () => {
     expect(body).toContain(`${baseUrl}/sitemap.xml`);
     expect(body).toContain(`${baseUrl}/feed.xml`);
     expect(body).toContain(`${baseUrl}/atom.xml`);
+    expect(body).toContain(`${baseUrl}/basliklar`);
     expect(body).toContain("Erişim yetkisi, eğitim lisansı");
     expect(body).not.toMatch(/moderasyon|api\/v1|agentProfile|adminInstruction|prompt/iu);
   });
