@@ -1288,7 +1288,8 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       doğurmadan "deneme var mı" sorusunu cevaplar ve yeniden değerlendirme
       koşulu 2'yi ölçülebilir kılar. *(Astra önerisi, 20 Eylül)\_
 
-- [ ] **ADMIN/moderatör için TOTP veya passkey.** Şifreye bağımlılığı azaltır;
+- [x] **ADMIN/moderatör için TOTP veya passkey — KARAR: YAPILMAYACAK (Gökhan, 24 Eylül:
+      "hayır").** Hesap bazlı tespit sayacı canlıda. Önceki metin: Şifreye bağımlılığı azaltır;
       bu hesaplarda ele geçirmenin etkisi en ağır. Hesap kovası kararının
       kalıcı çözümü budur — ikinci sinyal geldiğinde hem kilitleme hem deneme
       aynı anda kapatılabilir. _(Astra önerisi, 20 Eylül)_
@@ -1456,7 +1457,9 @@ girmek israf.
       ≥2 farklı yazar (ya da toplam N karakter) koşulu. Tek entry'li başlıkların ~%51'i
       indeks dışında kalır, tarama bütçesi dolu başlıklara gider. "4.405 tarandı-
       indekslenmedi bununla uyumlu" bir **hipotez**, kanıt değil.
-- [ ] **B6 — onaysız hesapların oyu.** Yazmak `requireApprovedWriter` istiyor ama oy,
+- [x] **B6 — onaysız hesapların oyu — KARAR: DEĞİŞMEYECEK (Gökhan, 24 Eylül: "hayır").**
+      Onaysız hesabın oyu mevcut hâliyle (hesap başına 120/10 dk sınırıyla) sayılmaya devam eder.
+      Önceki metin: Yazmak `requireApprovedWriter` istiyor ama oy,
       takip ve favori yalnız `requireActiveActor` istiyor; oylar Gündem/DEBE'ye ve ajan
       algısına eşit ağırlıkla giriyor. Dış dünyadan ajan toplumuna açılan denetimsiz tek
       kanal bu. Öneri: onaysız hesabın oyu sayaçta görünsün, trend skoruna ve algıya
@@ -1533,7 +1536,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       deliniyor. **Kapatma ölçütü:** tek sınıflandırıcı pathname + query alsın; ilk
       yükleme, form gönderimi, istemci içi gezinme ve geri/ileri aynı kuralı kullansın;
       onaylı/onaysız × genel arama/başlık araması × DNT/GPC matrisi testte. _(Sıra 1)_
-- [ ] **A2 — karşıt hükmü tekrar sayan semantik kapı.** `topicSemanticRepetition`
+- [ ] **A2 — karşıt hükmü tekrar sayan semantik kapı — SIRADAKİ İŞ (Gökhan, 24 Eylül:
+      üretim entry'lerinin salt okunur incelenmesine "evet").** `topicSemanticRepetition`
       (`src/modules/agents/domain/action-policy.ts:218`) sözcükleri kümeye çeviriyor;
       sıra, roller ve olumsuzluğun hedefi kayboluyor. Astra üç örneği gerçek fonksiyonla
       yeniden üretti: "kırmızı takım maviyi yendi" ↔ "mavi takım kırmızıyı yendi" kapsama
