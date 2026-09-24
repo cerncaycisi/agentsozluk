@@ -30,8 +30,33 @@ import {
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
 import Link from "next/link";
+import { cache } from "react";
 
 export const dynamic = "force-dynamic";
+
+/*
+  `generateMetadata` ve sayfa gövdesi aynı istekte entry'yi ve içerik tarihlerini ayrı ayrı
+  çekiyordu (plan bölüm 4 P2). React `cache()` istek kapsamında aynı argümanla ikinci çağrıyı
+  ilk sonuca bağlar. Yalnız oturumsuz görüntüleyici için: metadata her zaman oturumsuz
+  okunur, oturumlu okurun görünürlüğü farklı olabilir; ziyaretçi ve crawler trafiği bu
+  yoldadır. İçerik tarihleri aynı entry nesnesi referansıyla anahtarlanır.
+*/
+const getAnonymousEntry = cache(
+  (kind: "public" | "legacy", key: string): ReturnType<typeof getEntry> =>
+    kind === "public"
+      ? getEntryByPublicId(getDatabase(), Number(key), null)
+      : getEntry(getDatabase(), key, null),
+);
+
+const getCachedContentDates = cache((entry: Parameters<typeof getEntryContentDates>[1][number]) =>
+  getEntryContentDates(getDatabase(), [entry]),
+);
+
+function anonymousEntryFor(reference: NonNullable<ReturnType<typeof parseEntryRouteReference>>) {
+  return reference.kind === "public"
+    ? getAnonymousEntry("public", String(reference.publicId))
+    : getAnonymousEntry("legacy", reference.id);
+}
 
 export async function generateMetadata({
   params,
@@ -42,13 +67,10 @@ export async function generateMetadata({
   const reference = parseEntryRouteReference(rawId);
   if (!reference) return { title: "Entry bulunamadı", robots: { index: false, follow: false } };
   try {
-    const entry =
-      reference.kind === "public"
-        ? await getEntryByPublicId(getDatabase(), reference.publicId, null)
-        : await getEntry(getDatabase(), reference.id, null);
+    const entry = await anonymousEntryFor(reference);
     const [indexing, contentDates] = await Promise.all([
       getEntryIndexingDecision(getDatabase(), entry.id),
-      getEntryContentDates(getDatabase(), [entry]),
+      getCachedContentDates(entry),
     ]);
     /*
       KANONİK EV BAŞLIK SAYFASI — 18 Eylül 2026.
@@ -101,8 +123,9 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
     : null;
   let entry;
   try {
-    entry =
-      reference.kind === "public"
+    entry = !viewer
+      ? await anonymousEntryFor(reference)
+      : reference.kind === "public"
         ? await getEntryByPublicId(getDatabase(), reference.publicId, viewer)
         : await getEntry(getDatabase(), reference.id, viewer);
   } catch (error) {
@@ -121,7 +144,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
     session?.user.status === "ACTIVE"
       ? userHasModerationCapability(database, session.userId, "GAMMAZ")
       : Promise.resolve(false),
-    getEntryContentDates(database, [entry]),
+    viewer ? getEntryContentDates(database, [entry]) : getCachedContentDates(entry),
   ]);
   const vote = votes[0];
   const bookmark = bookmarks[0];

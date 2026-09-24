@@ -1515,7 +1515,9 @@ girmek israf.
       `/basliklar/N` — kendi `og:title`, `og:description` ve `og:url`'ünü alıyor
       (`publicListMetadata`); misafir oy/favori giriş linkleri `rel="nofollow"`; `llms.txt`
       `/basliklar`'ı listeliyor. Canlıda ölçüldü. Astra notu: `?page=` alan liste sayfalarında
-      canonical/og:url ilk sayfayı gösteriyor — önceden de öyleydi, açık. Kalanlar aşağıda.)_
+      canonical/og:url ilk sayfayı gösteriyor — önceden de öyleydi, açık. Entry sayfasının
+      oturumsuz okurda entry ve içerik tarihini iki kez çekmesi React `cache()` ile teke
+      indi (24 Eylül, PR bekliyor). Kalanlar aşağıda.)_
       F06, F04, F09 (bölüm 5.6'da zaten açık) dışında:
       entry'nin `generateMetadata` + gövdede iki kez çekilmesi (React `cache()` yok),
       `/basliklar`'ın her istekte COUNT'u, entry JSON-LD `@id`/`url` ile canonical
