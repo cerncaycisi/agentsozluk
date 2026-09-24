@@ -8699,3 +8699,18 @@ lease tarafından hiç kullanılmıyordu.
 - Üretim operatör araçlarında "tek aktif yönetici" varsayma; aktör açıkça `bootstrap_admin`.
 - Dağıtım/operatör işine başlamadan ATTEMPT_LOG'daki operatör derslerini oku.
 - Yönetici kimliğini oturum çıktısına bile basma.
+
+## 2026-09-24 — `7aae0d2`: operatör duraklatmasıyla dağıtım başarılı
+
+- `d567018` denemesinin kilidi runbook "Elle kilit temizliği" şartlarıyla salt okunur doğrulandı
+  (pam_systemd yok, tek deploy oturumu, başka scope süreci yok, a5 konteyner/backend yok, migration
+  işareti yok; owner `d567018…:e952baa5…`; `runtime/current` f2f57f3 ve app imajı değişmemiş) ve
+  yalnız `.release-lock` kaldırıldı.
+- `7aae0d2` (`bootstrap_admin` açık çözümü, #188) `--pause-society-flow` ile: pause 274→275,
+  drenaj 4 deneme, `RELEASE_COMPLETE PASS`. Resume 275→276 yalnız `runtimeEnabled`. Kabul: yeni
+  worker altında Codex'li `SUCCEEDED` koşu, NRestarts 0, B7 IP ayarları etkin.
+
+**Tekrarlama:**
+
+- Operatör resume/status için `runtime/current` (artık betik içeriyor) ya da aday release
+  dizinini kullan; `bootstrap_admin` kimliğini basma.
