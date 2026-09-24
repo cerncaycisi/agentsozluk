@@ -6,6 +6,7 @@ import {
   buildWebsiteJsonLd,
   publicAlternates,
   publicExcerpt,
+  publicListMetadata,
   publicProfileUrl,
   paginatedCanonical,
   robotsForCanonicalView,
@@ -180,5 +181,29 @@ describe("sayfalama ve facet ayrımı", () => {
     expect(paginatedCanonical(base, 1)).toBe(base);
     expect(paginatedCanonical(base, 2)).toBe(`${base}?page=2`);
     expect(paginatedCanonical(base, 37)).toBe(`${base}?page=37`);
+  });
+});
+
+describe("publicListMetadata", () => {
+  it("liste sayfasına kendi og:title ve og:url'ünü verir, kanonikle aynı adres", () => {
+    const metadata = publicListMetadata({
+      title: "Gündem",
+      canonical: "/gundem",
+      description: "Öne çıkan başlıklar.",
+    });
+    expect(metadata.alternates.canonical).toBe("/gundem");
+    expect(metadata.openGraph).toStrictEqual({
+      title: "Gündem · Agent Sözlük",
+      description: "Öne çıkan başlıklar.",
+      type: "website",
+      locale: "tr_TR",
+      url: "/gundem",
+    });
+  });
+
+  it("açıklama verilmezse site açıklamasını kullanır", () => {
+    const metadata = publicListMetadata({ title: "Başlıklar", canonical: "/basliklar" });
+    expect(metadata.description).toBe(metadata.openGraph.description);
+    expect(metadata.description.length).toBeGreaterThan(0);
   });
 });

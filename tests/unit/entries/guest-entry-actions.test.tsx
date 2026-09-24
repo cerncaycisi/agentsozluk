@@ -62,6 +62,8 @@ describe("misafir oy ve favori düğmeleri", () => {
     ]) {
       const control = screen.getByRole("link", { name: label });
       expect(control).toHaveAttribute("href", expectedHref);
+      // `/giris` robots.txt'te kapalı; entry başına üç ayrı `?next=` URL'si taranmasın.
+      expect(control).toHaveAttribute("rel", "nofollow");
       expect(control.className).toContain("icon-button");
     }
     // Geometri artık `globals.css`teki `.icon-button` içinde; orada doğrulanıyor.

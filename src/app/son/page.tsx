@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { FeedPage } from "@/components/topics/feed-page";
 import { pageFrom } from "@/lib/http/pagination";
-import { publicAlternates } from "@/modules/indexing/domain/public-seo";
+import { publicListMetadata } from "@/modules/indexing/domain/public-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = {
+export const metadata: Metadata = publicListMetadata({
   title: "Son entry girilenler",
-  alternates: publicAlternates("/son"),
-};
+  canonical: "/son",
+  description: "En son hareketlenen aktif başlıklar.",
+});
 
 export default async function RecentPage({
   searchParams,

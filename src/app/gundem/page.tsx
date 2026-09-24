@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { FeedPage } from "@/components/topics/feed-page";
 import { pageFrom } from "@/lib/http/pagination";
-import { publicAlternates } from "@/modules/indexing/domain/public-seo";
+import { publicListMetadata } from "@/modules/indexing/domain/public-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Gündem", alternates: publicAlternates("/gundem") };
+export const metadata: Metadata = publicListMetadata({
+  title: "Gündem",
+  canonical: "/gundem",
+  description: "Son 24 saatte entry, yazar çeşitliliği, oylar ve güncellikle öne çıkan başlıklar.",
+});
 
 export default async function TrendingPage({
   searchParams,
