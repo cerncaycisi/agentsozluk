@@ -1,6 +1,6 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
 
-FROM node:22-alpine AS base
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN apk add --no-cache libc6-compat \
@@ -37,7 +37,7 @@ RUN --mount=type=secret,id=host_ca \
   if [ -s /run/secrets/host_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/host_ca; fi; \
   pnpm install --prod --frozen-lockfile
 
-FROM node:22-alpine AS runner
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS runner
 ARG SOURCE_REVISION=unverified
 LABEL org.opencontainers.image.revision=$SOURCE_REVISION
 RUN apk add --no-cache libc6-compat \
