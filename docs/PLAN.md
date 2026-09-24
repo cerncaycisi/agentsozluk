@@ -1362,14 +1362,23 @@ girmek israf.
       canlıda 404. Kayıt [deneme günlüğü](ATTEMPT_LOG.md) 20 Eylül girdisi.
       **Bu, F05'in kapatma ölçütüydü; F05 kapandı.**
 
-- [~] **B4 — internal runtime API public origin'de; örnek Caddyfile depoda.**
-  **Ölçüldü (20 Eylül, anonim):** `POST /api/v1/internal/agent-runtime/lease`
-  → **401 AUTH_REQUIRED**. Koruma çalışıyor ama istek uygulamaya ulaşıyor.
-  Kaynak doğrulandı: `agent-runtime-action.ts:133` önce
-  `authenticateRuntimeRequest`, oran sınırı (`rateLimitRuntime`) **sonra** —
-  yani kimliksiz her istek sınırsız bir veritabanı sorgusu tetikliyor.
-  Worker zaten `127.0.0.1:3000` üzerinden gittiği için bu yolun internetten
-  erişilebilir olması hiçbir işe yaramıyor.
+- [x] **B4 — internal runtime API dışarıya kapalı — ÜRETİMDE ETKİN (20 Eylül 16:55 UTC'den
+      beri; 24 Eylül ölçüldü).** Üretim `/opt/agent-sozluk/runtime/Caddyfile` yorum dışı satırlarıyla
+      `deploy/caddy/Caddyfile.example` ile birebir aynı; Caddy'nin etkin yapılandırmasında
+      `/api/v1/internal/*` var. Anonim POST: `/api/v1/internal/agent-runtime/lease`, `//api/…`,
+      `/api/v1//internal/…`, büyük harf, `%69nternal`, `../` varyantları → Caddy'den gövdesiz
+      **404** (`/api/v1/internal` tam yolu uygulamanın 404 sayfası; route yok, DB sorgusu yok).
+      `/api/health` ve `/api/ready` 200. Worker taban adresi kodda `127.0.0.1:3000`'e sabit
+      (`canonicalRuntimeControlPlaneBaseUrl`), edge kuralından etkilenmez. **Kayıt boşluğu:**
+      dosya örnek commit'inden (`7bccff7`, 16:35) 20 dk sonra değişmiş; değişikliği kimin
+      uyguladığı hiçbir kayıtta yok (ATTEMPT_LOG). Aşağıdaki metin tarihsel.
+      **Ölçüldü (20 Eylül, anonim):** `POST /api/v1/internal/agent-runtime/lease`
+      → **401 AUTH_REQUIRED**. Koruma çalışıyor ama istek uygulamaya ulaşıyor.
+      Kaynak doğrulandı: `agent-runtime-action.ts:133` önce
+      `authenticateRuntimeRequest`, oran sınırı (`rateLimitRuntime`) **sonra** —
+      yani kimliksiz her istek sınırsız bir veritabanı sorgusu tetikliyor.
+      Worker zaten `127.0.0.1:3000` üzerinden gittiği için bu yolun internetten
+      erişilebilir olması hiçbir işe yaramıyor.
 
       `deploy/caddy/Caddyfile.example` eklendi: üretimdekinin sırsız kopyası +
       `@internal path /api/v1/internal/*` → **404** (403 değil; 403 yüzeyin
