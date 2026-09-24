@@ -1294,8 +1294,14 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       kalıcı çözümü budur — ikinci sinyal geldiğinde hem kilitleme hem deneme
       aynı anda kapatılabilir. _(Astra önerisi, 20 Eylül)_
 
-- [ ] **Küçük ama biriken:** merkezi hata kaydında gerçek neden/stack yerine güvenli kodun
-      kalması; `runtime:plan` scope'unun hem planlama hem credential roster için kullanılması.
+- [ ] **Küçük ama biriken:** `runtime:plan` scope'unun hem planlama hem credential roster
+      için kullanılması. Analiz (24 Eylül): her runtime kimliği dört kapsamın hepsini taşıyor
+      (`src/modules/agents/repository/control-plane.ts` 259 ve 932); ayrım bugün hiçbir yetkiyi
+      daraltmaz ve mevcut kimlikler için veri geçişi ister. Kimlikler kapsamca ayrışırsa ele
+      alınmalı. **Kod hazır (24 Eylül, inceleme bekliyor):** merkezi hata kaydı
+      beklenmeyen 500'lerde hata sınıfının adını (izin listesi) ve diskte var olan proje
+      dosyalarının göreli yollarını (en çok 10; satır/sütun, işlev adı ve hata mesajı yok)
+      kaydeder.
       **Kapandı (23 Eylül):** "Ana içeriğe geç" sonrası odak artık `main#ana-icerik`'e taşınıyor
       (19 hedefte `tabIndex={-1}`, E2E ile ölçülüyor); README rota örneği
       `/baslik/{slug}--{publicId}`; reset notundaki model sayısı güncel.
