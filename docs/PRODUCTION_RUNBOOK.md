@@ -616,8 +616,17 @@ script is trustworthy in that respect — a failed attempt does not corrupt prod
    `wait_for_no_active_work` runs _before_ the runtime is stopped and does not block new
    work being picked up. With the flow active, `running` never hits 0 and the deploy dies
    after 20 minutes with `RUN_DRAIN_TIMEOUT`. **Global runtime must be paused for the
-   whole deploy** — this is a precondition, not an option. Pause from the control panel;
-   do not cancel a running run, let it finish on its own.
+   whole deploy** — this is a precondition, not an option. Pause from the control panel,
+   or pass `--pause-society-flow` to the wrapper (24 Eylül 2026): after the candidate
+   runtime release is on the host and BEFORE the release script captures the settings
+   fingerprint, the wrapper runs the candidate's `scripts/agent-society-flow.ts pause` —
+   the same `setSocietyFlowEnabled` service and audit record as the panel, acting as the
+   single active HUMAN ADMIN (or `AGENT_OPERATOR_ADMIN_ID`). It is idempotent: a retry that
+   finds the flow already paused writes nothing, so the fingerprint stays stable. Resume is
+   never automatic; after acceptance run on the host, from `runtime/current`:
+   `AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP=<db-ip>
+AGENT_FLOW_REASON='<neden>' ./node_modules/.bin/tsx scripts/agent-society-flow.ts resume`
+   (`status` is read-only). Do not cancel a running run, let it finish on its own.
 
 3. **Changing settings mid-deploy locks the deploy.** `assert_state_fingerprints`
    compares against the settings fingerprint captured on the first attempt. If you pause

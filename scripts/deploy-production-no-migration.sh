@@ -15,6 +15,7 @@ cleanup=no-cleanup
 artifact_run=''
 build_on_host=0
 keep_artifact=0
+pause_society_flow=0
 artifact_transport=server-fetch
 approved_migrations=''
 
@@ -30,6 +31,10 @@ usage() {
     '' \
     'The default artifact path passes a short-lived GitHub redirect to the pinned server; the' \
     'artifact never transits the operator Mac. Use --operator-transfer only as an explicit fallback.' \
+    '' \
+    '--pause-society-flow pauses the society flow (same service and audit as the admin panel)' \
+    'from the candidate release before the release script captures settings; resume after' \
+    'acceptance with pnpm agent:flow resume. Not available with --build-on-host.' \
     '' \
     'Fallback only when the exact approval explicitly permits a production-host build:' \
     '  ... --sha <40-char-sha> --build-on-host --execute [--cleanup]' \
@@ -72,6 +77,10 @@ while (($# > 0)); do
       keep_artifact=1
       shift
       ;;
+    --pause-society-flow)
+      pause_society_flow=1
+      shift
+      ;;
     --server-fetch)
       artifact_transport=server-fetch
       shift
@@ -104,6 +113,10 @@ test "${AGENT_SOZLUK_PRODUCTION_APPROVED_SHA:-}" = "$candidate_sha" || {
   printf 'RELEASE_WRAPPER_FAIL code=EXACT_APPROVAL_RECEIPT_REQUIRED\n' >&2
   exit 90
 }
+if test "$pause_society_flow" = 1 && test "$build_on_host" = 1; then
+  printf 'RELEASE_WRAPPER_FAIL code=PAUSE_REQUIRES_ARTIFACT_RELEASE\n' >&2
+  exit 90
+fi
 # Migration listesi SHA onayından ayrı, birebir onaylanır (A5).
 migration_mode=no-migration
 if test -n "$approved_migrations"; then
@@ -573,6 +586,29 @@ if test "$build_on_host" = 0; then
       <"$runtime_archive"
   fi
   fi
+fi
+
+# Genel duraklatma (runbook "Deploy-day failure modes" 2-3): uzak betik ayar parmak
+# izini almadan ÖNCE, adayın kendi release'indeki operatör betiğiyle; panelle aynı
+# uygulama servisi ve denetim kaydı. İdempotent: yeniden denemede zaten duraklatılmışsa
+# hiçbir şey yazmaz, parmak izi değişmez. Devam ettirme otomatik DEĞİL: kabulden sonra
+# operatör `agent:flow resume` ile yapar.
+if test "$pause_society_flow" = 1; then
+  ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+    "set -euo pipefail
+     test \"\$(hostname)\" = '$expected_host' || exit 91
+     $scope_check
+     $lock_check
+     release=/opt/agent-sozluk/runtime/releases/$candidate_sha
+     test -f \"\$release/scripts/agent-society-flow.ts\"
+     test \"\$(cat \"\$release/.release-sha\")\" = '$candidate_sha'
+     db_container=\"\$(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml ps -q db)\"
+     db_ip=\"\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \"\$db_container\")\"
+     test -n \"\$db_ip\"
+     cd \"\$release\"
+     AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP=\"\$db_ip\" \\
+       AGENT_FLOW_REASON='deploy ${candidate_sha:0:12} op $op_id' \\
+       ./node_modules/.bin/tsx scripts/agent-society-flow.ts pause"
 fi
 
 trap - EXIT INT TERM HUP
