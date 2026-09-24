@@ -24,11 +24,13 @@ vi.mock("@/modules/rate-limit/application/rate-limit", async (original) => ({
   eşikte bir kez güvenlik kaydı üretir; kayıtta e-posta yoktur.
 */
 function loginRequest(email: string) {
-  return new NextRequest("http://localhost:3000/api/v1/auth/login", {
+  // Köken kontrolü ortamın APP_URL'ine göre (yerel ve CI farklı).
+  const origin = new URL(process.env.APP_URL ?? "http://localhost:3000").origin;
+  return new NextRequest(`${origin}/api/v1/auth/login`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      origin: "http://localhost:3000",
+      origin,
       "x-forwarded-for": "203.0.113.7",
     },
     body: JSON.stringify({ email, password: "YanlisSifre123!" }),
