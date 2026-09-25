@@ -7,6 +7,21 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-25 — great reset çekirdek kapıları main'de; üretim tasarımı açık
+
+- PR #225 exact `d35984e61863e8b7c4bc55a334bc6a2115750e1c`, 7/7 CI ve
+  Claude Opus 5.5 salt okunur **KOD GO** sonrası main'e
+  `890b4673415c8fe292c227c6eb66bb4fbd887e6f` olarak birleşti. Hakemin
+  önceki iki P2 bulgusu kapandı; üç P3 sınır üretim profiline taşındı.
+- Yerel PostgreSQL 16 yedek kopyasında 2.292.255 silinecek satırlı başlangıç,
+  bozuk `DEFAULT` için `PUBLIC_ID_SEQUENCE_UNSAFE`, kapalı iç trigger için
+  `TRIGGER_STATE_UNSAFE`, sonra temiz geri dönüş görüldü. FORCE RLS davranışı
+  ayrı geçici tabloda doğrulandı. 30 birim testi, format, lint, typecheck geçti.
+- Üretim profili v3 `146a319` için Opus 5.5 **TASARIM DÜZELTİLMELİ** dedi
+  (6 P2, 3 P3). v4/runbook düzeltmeleri taslaktır; kod, geniş ID geçişi,
+  tam digest/bütçe, production kontrol/restore yolu ve yeni hakemlik bekler.
+  Üretime bağlanılmadı ve reset/dağıtım yapılmadı.
+
 ## 2026-09-25 — B5.3 yerel yedek ön taraması
 
 - 25 Eylül 14:18 UTC yedeğinin yalnız yerel kopyasında, önceki 30 günde 7.375 içerik

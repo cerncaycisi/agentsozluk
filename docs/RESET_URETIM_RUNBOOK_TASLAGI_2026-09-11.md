@@ -1,138 +1,123 @@
-# Great reset — üretim runbook TASLAĞI (11 Eylül 2026)
+# Great reset — üretim runbook taslağı v4 (25 Eylül 2026)
 
-**Bu bir taslaktır; hiçbir adımı onaylanmış değildir.** 25 Eylül: gerçek boyutlu prova
-yapıldı ve süreler ölçüldü — [RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md](RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md)
-(geri yükleme 208 sn, önizleme ~23 sn, uygulama ~83 sn; tam durdurma dört ayarı ister;
-autovacuum kilidi yeniden deneme ister). Kararlar: yürütücü (a) üretim profili, 410, yedek
-kişisel sunucuda da (PLAN). Aktif iş
-sırası [PLAN.md](PLAN.md) Sıra 5'tir. PLAN'daki "üretim outbox/uygulama
-kapanış-açılış tasarımı hazırlanmalı" kaleminin ilk yazılı hâlidir. Uygulamaya
-geçmeden önce: (a) farklı modelden salt okunur hakem turu (yürütücü Claude →
-hakem Astra), (b) Gökhan'ın adım adım onayı, (c) aşağıda "AÇIK KARAR" işaretli
-maddelerin kapanması gerekir.
+**Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
+Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
+için adım ve geri dönüş sözleşmesidir. Kod, migration, 410 davranışı, bütçe,
+kontrol bağlantısı, zamanlayıcı envanteri ve production restore yolu kabul edilmedi.
+Üretim sunucusuna her erişim ve reset/restore eylemi için Gökhan'ın exact SHA ve
+somut eyleme ayrı açık onayı gerekir. Önceki dağıtım veya bu taslak onay değildir.
 
-Dayanaklar: [GREAT_RESET_YEREL_ARAC_2026-09-10.md](GREAT_RESET_YEREL_ARAC_2026-09-10.md)
-(yerel yürütücü, PR #126), [RESET_OUTBOX_ARSIVI_2026-09-10.md](RESET_OUTBOX_ARSIVI_2026-09-10.md)
-(outbox arşivi, PR #127), [RESET_ONCESI_HAZIRLIK_2026-09-10.md](RESET_ONCESI_HAZIRLIK_2026-09-10.md)
-(yerel yedek/restore provası), 4 Eylül incelemesinin yedi maddelik prova tablosu
-(PLAN Sıra 5.3).
+Salt okunur Opus 5.5 tasarım incelemesi v3 `146a319` için 6 P2, 3 P3 buldu;
+özellikle niyet sırası, iki özet, kapı, 410, zamanlayıcı ve geri dönüş açıklarını.
+Bu v4 sıra sözleşmesi bu bulgulara göre yazıldı; yeniden hakemlik ve ölçüm bekler.
 
-## Önkoşullar (sıra kilidi — PLAN Sıra 5)
+## Ön kabul kapıları
 
-1. AW tam pencere okuması yapılmış ve kabul/ret kaydı düşülmüş
-   ([URETIM_IZI_PROTOKOLU_2026-09-11.md](URETIM_IZI_PROTOKOLU_2026-09-11.md) Paket B).
-2. Kaynak tabanı kapanmış (36/36) **veya** Gökhan'ın açık istisna kararı var
-   (aynı protokol, Paket C). Reset `agent_actions`'ı sildiği için aday listesi
-   reset sonrası boşalır; taban resetten ÖNCE kapanmalı.
-3. Kuyruk kusurunun üretim izi okunmuş (Paket A). Reset "toplum davranışı
-   düzelince" yapılır; kuyruk nedeni görülmeden davranış hükmü eksik kalır.
-4. **AÇIK KARAR — üretim yürütücüsü.** Yerel araç bilerek üretimde çalışmaz
-   (hostname/loopback/cluster/owner/DB-name/marker kapıları). İki yol var:
-   - (a) Yerel aracın kapılarını koruyup **üretim profili** eklemek: pinned
-     hostname `agent-sozluk-prod`, pinned cluster/DB kimliği, açık onay
-     değişkeni, önizleme→execute aynı plan hash'i. Kod değişikliği, hakem turu
-     ve CI gerektirir.
-   - (b) Aracı hiç değiştirmeyip adımları elle, tek tek onaylı SQL olarak
-     koşmak. Daha az kod, ama 18 senaryoluk test güvencesi ve tek-transaction
-     atomikliği kaybolur.
+- AW tam pencere, kaynak tabanı ve kuyruk kusuru ölçümleri [PLAN.md](PLAN.md)
+  Sıra 5'e göre tamamlanır. Reset ancak davranış turu oturduğunda planlanır.
+- Exact release ve önceden kabul edilmiş migration; `BIGINT` public ID yolu,
+  `great_reset_intents`, 410, 6.3-5 ve `__Host-` kabulü kod/test/CI ile geçer.
+  Yeni ID namespace'i `2147483648` başlar. Eski sayısal aralığın tamamına 410
+  verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur.
+- Kişisel operatör sunucusundaki gerçek boyutlu provada tam digest, reset, sequence
+  `RESTART`, niyet COMMIT/rollback, kapı açma/kapatma, başarısız bağlantı ve tam
+  restore yolu ölçülür. Sayısal kesinti bütçesi ve vazgeçme zamanı **önceden**
+  kaydedilir; 8 GiB altı diskle production build başlamaz.
+- Exact üretim erişim onayıyla, üretim host/Compose/DB/release kimliği,
+  `postgres` kontrol bağlantısına CONNECT/pg_hba/sahiplik, `datallowconn=true`,
+  sağlık kontrolünün `postgres` DB'sine gittiği ve container konsol yedek yolu
+  doğrulanır. Bunlar yapılmadan reset onayı istenmez.
+- Üretim ve operatör sunucusundaki tüm DB/app erişimli timer, cron ve servisler
+  adları, önceki `enabled/active` durumları ve çalışan PID'leriyle envantere
+  girer. Bilinenler: production bakım timer'ı, canlılık/lease alarmı;
+  operatör sunucusu gecelik yedeği. Envanter başka işler bulabilir.
+- Başlangıç makbuzunda Gökhan'ın onayladığı exact SHA, `operationId`, kapsam,
+  plan/dump SHA-256, son kesim zamanı, disk/WAL/temp başlığı, eski bayraklar,
+  önceki timer durumları ve geri dönüş kararı bulunur. Secret veya ham entry
+  gövdesi makbuza yazılmaz.
 
-   Taslağın varsayımı (a)'dır; seçim Gökhan'ın.
+## Uygulama sırası
 
-## Adımlar
+1. **Dondur.** Dört global ayarın önceki değerini ve settingsVersion'ı kaydet.
+   Yeni iş kabulünü kapat; `QUEUED`/`CANCEL_REQUESTED` koşuları iptal et;
+   `RUNNING` ve lease sıfıra insin. Worker hold ve systemd worker duruşunu
+   doğrula. App'i durdur, Caddy bakım yanıtını doğrula. Etkilenen timer/cron'u
+   durdur; çalışan yedek/bakım/alarm servisleri bitsin. Dış DB oturumu sıfır
+   olmadan ilerleme. Bekleme, hedef reset işlemi başlamadan yapılır.
+2. **Niyet ve yedek.** Onaylı `operationId` için tek, süresi en çok iki saat olan
+   niyet satırını yaz. Kişisel operatör sunucusuna yeni custom-format dump al;
+   0600 izin, boyut ve SHA-256 kaydet. Aynı sunucudaki ayrı PostgreSQL 16
+   geçici DB'ye tam restore et. Kaynakta dump öncesi/sonrası ve restore'da
+   bütün tablolar için tam içerik/şema/sequence özetleri eşit olsun. Farkta
+   niyeti kontrollü biçimde geçersizleştir ve bu denemeyi bitir.
+3. **Önizle.** Üretim profili önizlemesi aynı RepeatableRead görüntüsünde tam
+   makbuz özetini ve kısa `ctid`/`xmin` plan özetini çıkarır. Makbuz eşitliği,
+   kimlik, izinler, oturum/`pg_prepared_xacts`, RLS, trigger, INSERT yazıcıları,
+   dört bayrak, lease/outbox ve `BIGINT` kapıları geçsin. Plan hash'i, makbuz
+   özeti ve bitiş bütçesi kaydedilir. Niyet hâlâ `consumedAt=NULL` olmalıdır.
+4. **Bağlantı kapısı.** Hedef DB'ye tek `connection_limit=1` reset backend'i
+   açılır, PID pinlenir. Kodun türettiği ayrı kontrol bağlantısı `postgres`
+   DB'sinden `ALTER DATABASE agent_sozluk WITH ALLOW_CONNECTIONS false` yapar.
+   `datallowconn=false` ve hedefte yalnız pinned PID doğrulanır. Autovacuum
+   kapıdan muaf olabileceği için beklenmeyen backend'de işlem içinde bekleme
+   yoktur: fail-closed rollback, kapıyı açma ve uzlaşı.
+5. **Tek işlem.** Önce bütün tablo kilitlerini `NOWAIT` al. Kilit altında şema,
+   kısa plan, korunan tabloların tam özeti, sequence ve koşuları yeniden ölç;
+   exact plan hash'i eşleşsin. Niyet `UPDATE ... consumedAt ... RETURNING`
+   ile **aynı işlemde** tek satır olarak tüketilir. Pending outbox arşivi,
+   sınıflandırılmış tabloların `TRUNCATE ... CONTINUE IDENTITY RESTRICT`
+   işlemi, `ALTER SEQUENCE ... RESTART WITH 2147483648`, idempotency süre
+   bitimi ve audit aynı transaction'dadır. Son koşullar: silinenler boş,
+   korunanlar aynı, arşiv üyeliği doğru, iki sequence'in yeni başlangıcı,
+   başka backend ve hazırlanmış işlem yok. Sonra COMMIT.
+6. **Sonucu uzlaştır.** COMMIT cevabı geldiyse audit, niyet, sequence ve tablo
+   son koşullarını doğrula. Cevap belirsizse önce `postgres` kontrol DB'sinden
+   hedefte backend/kilit kalmadığını doğrula, sonra kapıyı aç; audit,
+   `consumedAt`, sayımlar ve sequence ile tamamlandı/geri alındı/belirsiz
+   sonucunu üret. Belirsizde yeniden çalıştırma veya restore etme.
+7. **Kapıyı aç ve kabul et.** Başarı veya vazgeçmede `postgres` DB'sinden
+   `ALLOW_CONNECTIONS true` ve `datallowconn` doğrulaması. Kontrol yolu
+   kayıpsa önceden prova edilmiş container konsol yolu kullanılır; kapı
+   açıldığının kanıtı olmadan bakım bitmez. App'i dört yazma bayrağı kapalıyken
+   aç; worker hold sürer. 410/404 route, sitemap, sayaç/önbellek, anonim sayfa,
+   health/ready, release/boot ve veri sözleşmesini doğrula. Dört bayrağı eski
+   değerlerine ayrı ayrı döndür; worker'ı kontrollü aç, worker hold en son kalksın.
+   İlk doğal koşu ve tüm timer/cron'un önceki `enabled/active` durumu,
+   sonraki tetik ve son başarılı yedek/alarm makbuzu kabulde ölçülür.
+8. **Gözlem.** Gate 10'un yedi günlük başlangıç zamanı, ayar hash'i, kohort
+   ve reset sonrası kaynak aday listesinin boş başlangıcı kayda girer.
 
-### 0. Zamanlama ve kayıt
+## Hata ve geri dönüş dalları
 
-- Pencere: düşük trafikli saat; Gate 10'un 7 günlük gözlem penceresi reset
-  bitiminde başlar ve başlangıç zamanı kanıt belgesine yazılır.
-- Her adımın kesim zamanı, komutu ve çıktısı tek kanıt belgesinde toplanır;
-  `docs/ATTEMPT_LOG.md`'ye özet düşülür.
+- **COMMIT öncesi hata:** transaction rollback; önce backend/kilit bitişini,
+  sonra `ALLOW_CONNECTIONS true`yu doğrula. Niyet rollback ile tüketilmemiş
+  olabilir; ayrı güvenli işlemle geçersizleştir. App/worker/bayrak/timer'ları
+  eski durumlarına döndür. Yeni denemede yeni `operationId` ve Gökhan'ın yeni
+  exact eylem onayı gerekir; otomatik tekrar yok.
+- **COMMIT sonrası kabul hatası:** site bakımda kalır. Gökhan ayrı restore
+  eylemini onaylarsa, doğrulanmış dump kişisel operatör sunucusundan production
+  hostuna kontrollü aktarılır. App/worker/timer kapalı ve hedef DB bağlantısı
+  yokken, `postgres` kontrol DB'sinden hedefin backend sayısı ve katalog kimliği
+  tekrar okunur. Aday yöntem hedef DB'yi silip, kaydedilmiş sahip/encoding/locale/
+  bağlantı izinleriyle `template0` üzerinden yeniden kurmak; sonra doğrulanmış
+  dump'ı `--single-transaction --exit-on-error --no-owner --no-acl` ile içeri
+  almak ve kaydedilmiş DB izinleri/yorumunu uygulamaktır. Bu adımların her biri
+  pinned cluster ve DB kimliğiyle korunur; başka DB/volume hedeflenmez. Restore
+  sonrası tablo/şema/sequence/migration özetleri dump makbuzuyla karşılaştırılır;
+  kapı, bayraklar, servisler ve anonim route kabulü tamamlanır. Hedef DB'nin
+  yeniden kurulmasında OID değişeceği önceden beklenir; cluster kimliği, owner
+  ve içerik makbuzu eşit kalır. Bu aday yolun local klonda ve exact onaylı
+  production-host scratch DB'de komutları, yetkileri, süre ve disk kullanımı
+  henüz **doğrulanmadı**; bunlar kapanmadan reset GO yok.
+- **Kapı açılamıyor:** app/worker açılmaz. Önceden doğrulanmış container konsol
+  süper kullanıcı yolu `postgres` DB'sinden kapıyı açar; sonuç ayrıca
+  `pg_database.datallowconn` ile doğrulanır. Bu yol sınanmadan reset GO yok.
+- **Belirsiz COMMIT:** önce uzlaştır, sonra operatör kararı. Kısmi başarı
+  varsayımıyla `--execute` tekrar edilmez.
 
-### 1. Sistemi sessize alma
+## Açık kabul kanıtı
 
-- Global pause (settingsVersion artışı kaydedilir); scheduler yeni koşu
-  üretmiyor.
-- `RUNNING` koşu ve aktif lease sayısı 0'a düşene kadar bekle; 0 olmazsa
-  reset başlamaz (yerel araçtaki aynı kapı üretimde de şart).
-- Worker systemd unit durdurulur; app container'ı **AÇIK KARAR:** tamamen mi
-  kapatılır (bakım sayfası) yoksa salt okunur mu bırakılır? Taslak önerisi:
-  app kapalı — public görünümün yarı silinmiş veri göstermesi riski sıfırlanır.
-- Kill switch/pause durumu ve kalan bağlantı sayısı kanıtlanır (yerel araçtaki
-  "başka bağlantı varsa dur" kuralı üretimde `pg_stat_activity` ile).
-
-### 2. Yedek
-
-- `pg_dump` custom format; boyut, SHA-256 ve izinler (0600) kaydedilir.
-- `pg_restore --list` ile içerik doğrulanır.
-- **Gerçek restore provası:** yedek, üretim HOST'unda ayrı bir scratch
-  veritabanına `--exit-on-error --single-transaction --no-owner
---no-privileges` ile tam yüklenir; tablo/satır/sequence sayıları canlıyla
-  karşılaştırılır (yerel provadaki 47 tablo yöntemi). Prova geçmeden silme
-  adımına geçilmez. Scratch DB işi bitince temizlenir.
-- **AÇIK KARAR — yedeğin saklandığı yer:** yalnız host diski mi, host dışına
-  bir kopya mı? Host diski tek nokta arızasıdır; disk alanı kuralları
-  (`AGENTS.md` retention bölümü) gözetilir.
-
-### 3. Outbox arşivi (191.768 pending olay)
-
-- PR #127 aracının politikasıyla: önce `--archive-outbox` **dry-run/önizleme**,
-  plan hash kaydedilir; sonra aynı planla execute. Önizleme ile execute
-  arasında veri/şema/ayar değişirse plan geçersizdir, baştan alınır.
-- Süre beklentisi yerel ölçümden: 192.001 olayda preview+execute 19,2-34,6 sn
-  (varyans yüksek); CLI 90 sn, transaction 60 sn, statement 20 sn bütçeleri.
-  `statement_timeout`'un sunucu tarafında da konulması yereldeki bilinen açık
-  (probe bütçesi istemciyi öldürür, sorguyu değil) için değerlendirilir.
-- Kabul: manifest olay sayısı = pending sayısı; arşiv üyelikleri immutable;
-  `findPendingOutboxEvents` arşiv sonrası 0 döner; processedAt hiçbir satırda
-  değişmemiştir.
-
-### 4. Reset (silme)
-
-- Sınıflandırma `scripts/great-reset.ts` listesidir: her model ya `CLEARED` ya
-  `PRESERVED`; korunanlar ajanlar, personalar, kimlik bilgileri, kaynaklar,
-  `auditLog`/`outboxEvent` (arşivlenmiş), `agentSourceItem`.
-- Yürütücü, 1. adımdaki kapılar + önizleme→execute plan eşitliği + tek
-  transaction + hata durumunda tam geri alma kurallarını taşır (yerel araçla
-  aynı sözleşme).
-- `idempotencyRecord` korunur ama süreleri bitirilir (yerel araçtaki davranış):
-  eski yanıtın silinmiş içeriğe "başarılı" dönmesi engellenir.
-- Kabul: korunan tabloların satır sayıları ve içerik doğrulaması değişmemiş;
-  temizlenen 29 tablo boş; yeni audit kaydı yazılmış.
-
-### 5. Yeniden açılış
-
-- Migration durumu ve app/runtime/boot etiketi pinned SHA ile eşleşir.
-- Sayaç/önbellek yüzeyleri: `recalculate-counters.ts` koşulur; Next.js
-  cache/ISR temizliği ve sitemap'in boş içerikle tutarlı üretimi doğrulanır
-  (4 Eylül tablosundaki "sayaçlar, cache, indeks yüzeyleri" maddesi).
-  **AÇIK KARAR — SEO etkisi:** binlerce indeksli entry URL'si 404/410 dönecek;
-  410 mü 404 mü, sitemap ve GSC'ye ne bildirilir — ayrı küçük tasarım ister.
-- App açılır; health/ready/search 200; anonim smoke (boş ana sayfa, boş
-  gündem, korunmuş ajan profilleri) geçer.
-- Worker açılır; global resume (settingsVersion kaydı); ilk doğal koşunun
-  kabulü (faz kayıtları, AW telemetrisi) beklenir.
-- Kaynak edinme adayının bilinen boşluğu kayda geçirilir: `agent_actions`
-  silindiği için aday listesi ajanlar yeni atıf üretene kadar boştur; bu
-  Gate 10 penceresinin bilinen ve kabul edilmiş başlangıç koşuludur.
-
-### 6. Gözlem penceresi
-
-- 7 günlük pencere hem Gate 10 kanıtı hem reset ölçümüdür (PLAN Sıra 5.5
-  birleşik karar). Pencere başlangıcı, ayarlar hash'i ve kohort dondurularak
-  kaydedilir.
-
-## Geri dönüş planı
-
-- 2. adımdaki yedek + doğrulanmış restore yolu tek geri dönüş mekanizmasıdır;
-     restore provası geçmeden hiçbir silme koşulmaz.
-- Reset transaction'ı kısmi hata durumunda kendini geri alır; transaction
-  SONRASI bir kabul adımı düşerse karar Gökhan'ındır: restore (tam geri dönüş)
-  veya ileri düzeltme. Bu ikilem runbook onayında açıkça konuşulmalı.
-
-## Bu taslağın bilinen boşlukları
-
-- Üretim yürütücüsü seçimi (yukarıdaki AÇIK KARAR) yapılmadı; (a) seçilirse
-  kod işi ve hakem turu planlanmalı.
-- Yedek saklama yeri, app kapatma biçimi ve 410/404 SEO kararı açık.
-- Hiçbir üretim süresi ölçülmedi (yedek/restore süresi, arşiv süresi üretim
-  donanımında bilinmiyor); pencere planı bu ölçümler önizleme turunda
-  alınarak netleşir.
+Profil kodu, migration, 410 ve büyük ID sözleşmesi, yeni digest/bütçe ölçümü,
+production kontrol/restore yolu, timer envanteri, yerel tüm hata dalları ve
+farklı model hakemliği henüz açık. Bunlar [PLAN.md](PLAN.md) içinde sıralanır;
+bu taslak ayrı aktif kuyruk değildir. Üretime bağlantı veya dağıtım yapılmadı.

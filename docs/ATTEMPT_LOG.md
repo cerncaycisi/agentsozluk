@@ -8968,3 +8968,25 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   verdi. İlgili 30 birim testi, format, lint ve typecheck geçti.
 - **Tekrarlama:** `OWNED BY` bağlılığı, sütunun gerçekten o sequence'den değer aldığını
   göstermez; `DEFAULT` ifadesini ayrıca doğrula. RLS açıkken gizli satırlarla karar verme.
+
+## 2026-09-25 — great reset çekirdek hakemi, birleşme ve tasarım v3 reddi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur kod hakemi exact
+  `d35984e61863e8b7c4bc55a334bc6a2115750e1c` için **KOD GO** verdi.
+  Önceki iki P2 ve üç P3 güvenlik yönünden kapandı; yeni P1/P2 yok. Kalan P3:
+  bazı yetki hatalarında genel güvenli kod, baştan var olan özel INSERT yazıcıları,
+  FORCE RLS'nin CLI üzerinden uçtan uca sınanmaması. Hakem kod değiştirmedi,
+  üretime bağlanmadı; migration SQL'inin tamamını taradığını iddia etmedi.
+- PR #225 exact head 7/7 CI, review state boş, `mergeable=MERGEABLE`,
+  `mergeStateStatus=CLEAN` olarak hemen yeniden okundu; `890b4673415c8fe292c227c6eb66bb4fbd887e6f`
+  ile main'e birleşti. Merge'in ilk ebeveyni `b788cda`, ikincisi `d35984e`;
+  main'de yalnız çekirdek kod ve deneme günlüğü değişti. Üretim dağıtımı yok.
+- Claude Opus 5.5 salt okunur tasarım hakemi v3 exact
+  `146a319793fbaceaf1b71a0a0a21e3766e5b3f91` için
+  **TASARIM DÜZELTİLMELİ** dedi (6 P2, 3 P3). Niyetin işlem sırası, makbuz/plan
+  özetlerinin ayrımı, kontrol bağlantısı, 410 yüksek su, runbook restore yolu ve
+  timer envanteri eksikti. v4 ile runbook taslağı yeniden yazıldı; yeniden hakemlik
+  ve ölçüm henüz açık.
+- **Tekrarlama:** yerel `CONTINUE IDENTITY` ve mevcut satırların `max(publicId)`
+  değeri, geçmişte silinmiş bütün ID'lerin üst sınırını kanıtlamaz. 410 güvenliği
+  için doğrulanmış ayrı namespace olmadan reset onayı isteme.

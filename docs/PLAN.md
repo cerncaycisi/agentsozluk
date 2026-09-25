@@ -55,9 +55,10 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 2. **B5.3 ölçümü** — hassas konu kuralı son 30 günde kaç eylemi tetiklerdi; ölçmeden kural yok.
 3. **Great reset hazırlığı** — 25 Eylül: gerçek boyutlu prova yapıldı, araç üretim boyutuna
    uyarlandı ([prova](RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md): önizleme ~23 sn, uygulama
-   ~83 sn). Kalanlar: 410 uygulaması, üretim reset profili (hızlı araç),
-   outbox/uygulama kapanış-açılış kabulü, reset runbook'unun Astra turu ve Gökhan onayı;
-   reset anında 6.3-5 ve `__Host-` çerez öneki.
+   ~83 sn). Çekirdek kapılar PR #225 ile main'de; üretimde değil. Kalanlar: geniş public ID
+   namespace'i ve 410 uygulaması, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
+   outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
+   ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
    cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
    serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma
@@ -942,19 +943,25 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    pinned üretim profiliyle; elle SQL yok. Yedek yeri: kişisel T3 sunucusu (B9).
    **Reset'e bağlanan iki iş (Gökhan, 24 Eylül: "kalanlar fine"):** tek entry'li başlıkların
    indeks eşiği (6.3-5) ve oturum çerezinin `__Host-` önekine geçmesi reset'le aynı anda.
-   Açık kararları: üretim yürütücüsü (yerel araca pinned üretim profili mi,
-   elle onaylı SQL mi), yedek saklama yeri, app kapatma biçimi, silinen
-   URL'ler için 410/404-SEO kararı. Taslak onaysız ve hakemsizdir; uygulamadan
-   önce Astra turu + Gökhan onayı şart.
+   **25 Eylül çekirdek teslimi:** PR #225, incelenen exact `d35984e` ve 7/7 CI sonrası
+   `890b467` olarak main'e birleşti. Opus 5.5 salt okunur kod hakemi `KOD GO` verdi:
+   diğer backend/hazırlanmış işlem, trigger/RLS ve public ID sequence `DEFAULT` kapıları
+   yerel çekirdekte; üretim profili veya dağıtım yok. Hakemin kalan P3 sınırları
+   [üretim tasarımına](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md) taşındı.
+   **Üretim profili tasarımı v3:** Opus 5.5 `146a319` için 6 P2, 3 P3 ile
+   `TASARIM DÜZELTİLMELİ` dedi. v4 ve runbook bu bulgulara göre düzeltildi; yeni
+   hakemlik, kod, migration, bütçe, kontrol yolu ve restore kanıtı hâlâ açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
    silinen başlık/entry/yazar adresleri **410 Gone** döner. Gerekçe: içerik kalıcı olarak
    gitti; 410 bunu arama motoruna ve yapay zekâ tarayıcılarına açıkça söyler, eski
    adresler dizinden 404'e göre daha hızlı düşer, "geçici hata mı" belirsizliği kalmaz.
-   Güvenlik şartı doğrulandı: reset `TRUNCATE … CONTINUE IDENTITY` kullanıyor
-   (`src/modules/maintenance/repository/great-reset.ts`), yani `publicId` sayaçları sıfırlanmaz
-   ve eski bir adres asla yeni, başka bir içeriğe denk gelmez. Uygulama: reset öncesi en
-   büyük `publicId` değerleri kaydedilir; bu sınırın altındaki ve artık bulunmayan
-   kimlikler 410, sınırın üstündeki bulunmayanlar 404. Sitemap eski adresleri içermez.
+   İlk güvenlik varsayımı eksik çıktı: `TRUNCATE … CONTINUE IDENTITY` mevcut sequence
+   değerini korur, ancak geçmişte silinmiş ve o andaki en büyük değerden yüksek bir
+   ID'nin yeniden kullanılmadığını tek başına kanıtlamaz. v4 tasarımında güvenli
+   çözüm, eski `INTEGER` namespace'ini tamamen 410 alanı yapıp ayrı onaylı `BIGINT`
+   geçişiyle yeni ID'leri `2147483648` üstünden başlatmaktır. Bu, eski aralıkta hiç
+   üretilmemiş sayıya da 410 verebilir; ürün/SEO kabulü Gökhan'a açıkça gösterilmeli.
+   Geçiş ve kabul olmadan reset GO yok. Sitemap eski adresleri içermez.
    **15:21 TSİ somut outbox engeli:** 191.768/191.768 satır işlenmemiş,
    mevcut mimaride consumer yok. Kendiliğinden drain beklenmeyecek; eski
    olayları ve işlenmemiş durumunu kayıpsız koruyan, reset öncesi kümeyi
