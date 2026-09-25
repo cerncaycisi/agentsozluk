@@ -76,3 +76,7 @@ değiştirilmez.
   ≤ 29/36 kalır, aksi hâlde geri alınır.
 - **Yetersiz veri:** pencerede 18 çift oluşmazsa pencere bir kez 72 saat uzatılır; yine oluşmazsa
   sonuç raporlanır ve karar Gökhan'a bırakılır.
+
+**Pencere başlangıcı (kayıt, 25 Eylül):** v43 `b2eac11` dağıtımı `RELEASE_COMPLETE` 16:48:54 UTC,
+yeni worker 16:48:50 UTC. Pencere 16:58:54 UTC – 28 Eylül 16:48:54 UTC. Üretimde koşuların
+kaydettiği v43 hash öneki `892552db9fb6`.

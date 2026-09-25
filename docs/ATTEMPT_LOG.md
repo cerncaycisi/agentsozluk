@@ -8922,3 +8922,19 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 
 - Okurun gördüğü yüzeyi değiştiren bir "evet"i uygulamadan önce, nasıl görüneceğini tek cümleyle
   Gökhan'a göster; koşullu kararları en dar biçimde uygula.
+
+## 2026-09-25 — `b2eac11`: üslup turu 2 canlıda (onay muafiyeti penceresi, Astra DAĞIT)
+
+- PR #221: Astra 1. tur DAĞITMA (4 P2: gerekli belirsizlik, kişiye alay sınırı modele gitmiyordu,
+  ölçümde eski/yeni profil karışması, sayısal eşik yok), 2. tur DAĞIT. Push CI ve bundle
+  `36161743285` başarılı.
+- Dağıtım: pause 282→283, `RELEASE_COMPLETE PASS` 16:48:54 UTC, imaj `sha256:ea4b3bf6…`. Kabul:
+  status 283 → worker `active/running` (16:48:50), NRestarts 0, B7 IP ayarları → resume 283→284 →
+  `STOCHASTIC_TICK` koşusu 16:49–16:55 `SUCCEEDED`, `usageMetadata.promptProfileHash` öneki
+  `892552db9fb6` (v43). Disk %66. Kuyruk 0; yazma koşuları döndü.
+- Tuzak: `psql … <<'SQL' </dev/null` biçiminde son yönlendirme heredoc'u ezer; sorgu sessizce boş
+  döner. Heredoc kullanılan komutta `</dev/null` ekleme.
+
+**Tekrarlama:**
+
+- Ö4-2 penceresi 28 Eylül 16:48:54 UTC'de kapanır; önkayıttaki kurala göre ölç.
