@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v5 (25 Eylül 2026)
+# Great reset — üretim profili tasarımı v6 (25 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -11,7 +11,11 @@ okunur v3 incelemesi `146a319793fbaceaf1b71a0a0a21e3766e5b3f91` için
 **TASARIM DÜZELTİLMELİ** (6 P2, 3 P3) verdi. v4 için exact
 `3a7d6894ebd2b8ac4371c601672d1fad33c207ce` üzerinde yine Opus 5.5
 **TASARIM DÜZELTİLMELİ** (4 P2, 6 P3) dedi: 410 sırası/mezar taşı ve restore
-niyeti/sahipliği başlıca açıklar. v5 bunları runbook ile birlikte uzlaştırır.
+niyeti/sahipliği başlıca açıklar. v5 exact
+`4a5dc8772c5587b4bddf08c67ebee5d07c6e8e0f` için Opus 5.5
+**TASARIM DÜZELTİLMELİ** dedi (1 P2, 7 P3): yalın slug yolu ile mezar taşı
+çelişiyordu. v6, bu adresi kanonik permalink kapsamından çıkarır ve kalan
+uygulama/restore ayrıntılarını sabitler.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -54,20 +58,25 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
 3. **410 için seçilen güvenli namespace yolu:** bugün eski `publicId` sütunları
    `INTEGER` olduğu için geçmişte atanmış her sayısal ID en fazla `2147483647` olabilir.
    Ayrı, önceden onaylı migration `entries`/`topics.publicId` ve sequence'leri
-   `BIGINT` yapar; sequence `AS bigint`, `MAXVALUE ≥ 2147483648`, `CACHE 1`,
-   `NO CYCLE` tanımı önizleme kapısında aranır. Public API ve istemci alanları
+   `BIGINT` yapar; üretim profili, yerel çekirdekteki `data_type = integer`
+   koşulunu `AS bigint`, `2147483648 ≤ MAXVALUE ≤ Number.MAX_SAFE_INTEGER`,
+   `CACHE 1`, `NO CYCLE` koşuluyla **değiştirir**. Public API ve istemci alanları
    `number` olarak kalır: Prisma `bigint` değerleri repository sınırında yalnız
    `Number.isSafeInteger` koşuluyla çevrilir, giriş de güvenle `bigint`e dönüşür.
    Sequence üst sınırı `Number.MAX_SAFE_INTEGER` değerini aşmaz. Envanter;
    route regex ve ayrıştırıcıları, tüm `publicId` seçen repository/service/UI
    tipleri, worker wire/Zod şemaları, feed/sitemap, gövde içi `#id` bağlantıları,
-   prompt kataloğu ve JSON çıktısını kapsar. `2147483648` ve `2^53` sınır
+   prompt kataloğu, JSON çıktısı, ham SQL'deki `::int`/`int4` cast'leri,
+   SQL fonksiyon ve trigger parametrelerini kapsar. `2147483648` ve `2^53` sınır
    testleri ile production build geçmeden migration kabul edilmez. Migration
    sonrası reset öncesinde eski değer üretimi devam eder. Reset işlemi, iki tablo
    temizlendikten sonra **aynı transaction**
    içinde `ALTER SEQUENCE ... RESTART WITH 2147483648` uygular; `setval()` kullanılmaz.
-   Son koşulda iki sequence'in sonraki değerinin `2147483648` olduğu ve yeni
-   içeriklerin bu sınırdan başladığı doğrulanır. PostgreSQL 16'da `RESTART`
+   Son koşul iki sequence satırını **değer tüketmeden** okur:
+   `last_value = 2147483648 AND is_called = false`. Reset transaction'ında
+   `nextval()` ve deneme INSERT'i yasaktır. Açılış sonrasında ilk gerçek yeni
+   içerik için `publicId ≥ 2147483648` aranır; tam eşitlik iddia edilmez.
+   PostgreSQL 16'da `RESTART`
    transaction'a bağlıdır; bu davranış ve kilit süresi yerel gerçek boyutlu provada
    ayrıca sınanacaktır. Ayrı, korunan `great_reset_commits` satırı reset
    transaction'ında audit ve niyet tüketimiyle birlikte eklenir; rollback veya
@@ -77,19 +86,28 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    reset öncesinde ve pre-reset yedekten restore sonrasında canlı eski içerik
    200 kalır. Eski aralıkta hiç üretilmemiş ID'ye reset sonrası 410 verilebilir;
    SEO/ürün kabulünde Gökhan'a açıkça gösterilir.
-4. Eski UUID ve slug adresleri için korunan `great_reset_tombstones` tablosu
+4. Eski **UUID permalinkleri** için korunan `great_reset_tombstones` tablosu
    migration'la eklenir; cleared içerikle FK bağı taşımaz. Reset transaction'ı,
-   `topics`, `topic_aliases` ve `entries` silinmeden önce eski UUID/slug/alias
-   anahtarlarını burada toplar, satır sayısı ve benzersizliği doğrular. Public
-   route **önce canlı içeriği**, sonra committed reset işaretiyle mezar taşını
-   arar: canlı içerik aynı slug'ı yeniden kullanıyorsa 200 ve güncel içerik
-   kazanır; yalnız eski silinen UUID/slug 410, hiç bilinmeyen 404. Kanonik
-   `slug--publicId` zaten sayısal sınırla ayrılır. Korunan `users`/ajan profili
-   silinmediği için var olan yazar profilinin 410'a dönmesi beklenmez; yalnız
-   gerçekten silinen adres için 410 uygulanır. Eski/yeniden kullanılan slug,
-   UUID ve restore sonrası route testleri zorunludur.
+   `topics` ve `entries` silinmeden önce `(kind, uuid)` anahtarlarını burada
+   toplar; UUID benzersizliği ve sayı doğrulanır. Public route önce canlı
+   içeriği, sonra committed reset işaretiyle UUID mezar taşını arar. Kanonik
+   `/baslik/{slug}--{publicId}` ve `/entry/{publicId}` sayısal namespace ile
+   ayrılır. **Yalın `/baslik/{slug}` bir silinmiş içerik permalink'i değildir:**
+   mevcut uygulamada açılmamış başlık için noindex yazma formudur ve resetten
+   sonra da 410'a çevrilmez. `Topic.slug`/`TopicAlias.slug` benzersiz olmadığı
+   için slug mezar taşı üretilmez. Korunan `users`/ajan profili silinmediğinden
+   var olan yazar profili 410 olmaz. Eski UUID, kanonik sayısal, yalın slug,
+   yeniden kullanılan slug ve restore sonrası route testleri zorunludur.
    `BIGINT` geçişi veya bu ürün kararı kabul edilmezse **reset GO yok**; mevcut
    sequence'den tarihsel en yüksek silinmiş ID'yi çıkardığımız iddia edilmez.
+   HTTP 410 için aday uygulama, Node runtime'lı permalink route handler'ıdır:
+   mevcut `page.tsx` aynı segmentte `route.ts` ile birlikte duramayacağı için
+   sayfa iç rota altına taşınır; handler içerik varsa URL'yi koruyan rewrite,
+   silinmiş anahtar varsa doğrudan `Response(status: 410)` üretir. Edge
+   `middleware.ts` DB kararı vermez. Next.js 15.5.25'te rewrite, RSC gezinmesi,
+   `generateMetadata`, anonim/oturumlu HTML ve gerçek HTTP durum kodu yerel
+   production build/E2E ile kanıtlanmadan bu aday seçilmiş sayılmaz; başarısızsa
+   eşdeğer Node/Caddy mekanizması ayrıca tasarlanıp hakemden geçer.
 5. Önizleme, hedef DB rolünün okuma, tüm tablo kilidi, silinecek tablo `TRUNCATE`,
    outbox/audit/idempotency yazma, sequence okuma, `TEMP` ve `pg_control_system()`
    yetkilerini yoklar. Ayrı kontrol bağlantısı için doğrulanmış URL ile `postgres`
@@ -108,7 +126,9 @@ ve açık `COLLATE "C"` ile satırların SHA-256'ları sıralanıp tablo SHA-256
 Tablo satır sayısı, şema/enum/trigger/fonksiyon/kural tanımları, bütün nesnelerin
 sahibi ve ACL'si (`relowner`, `relacl`, `nspowner`, varsayılan yetkiler, sequence ve
 fonksiyon izinleri, DB `datacl` dahil) ve sequence tanımı ile `last_value`/
-`is_called` ayrıca girer. Kaynak tam özet dump'ın hemen öncesi ve
+`is_called` ayrıca girer. DB yorumu, `datconnlimit`, `pg_db_role_setting`,
+encoding/locale ve extension listesi de makbuza girer; custom dump bunları
+tek başına taşır varsayılmaz. Kaynak tam özet dump'ın hemen öncesi ve
 sonrası aynı olmalı; operatör sunucusundaki ayrı PostgreSQL 16 prova kümesine
 restore sonrası tam özet de aynı olmalı. Sequence MVCC görüntüsünden bağımsız
 olduğundan iki kaynak okumasında ayrıca eşit olmalıdır. SHA-256 kriptografik
@@ -203,12 +223,22 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
 6. Reset COMMIT'i olmuş ama site kabulü düşmüşse rollback **ayrı bir üretim eylemidir**.
    Gökhan onaylarsa doğrulanmış dump production hostunda **yeni gölge DB'ye**,
    DB sahibi `agent_sozluk` rolüyle veya `--role=agent_sozluk` altında restore
-   edilir; canlı DB önce silinmez. Gölge, kaynak makbuzuyla içerik, şema,
-   sahiplik/ACL ve sequence açısından karşılaştırılır. Uygulama rolüyle
-   rollback edilen DML smoke geçer. Backup'tan gelen geçerli/tüketilmemiş
-   bütün niyetlere gölgede `invalidatedAt` yazılır; ayrı bu beklenen fark
-   kaydedilir ve geçerli niyet sayısı sıfır doğrulanır. Gölge DB'de reset
-   commit işareti yokluğu veya eski makbuzla uyumu doğrulanır. App/worker
+   edilir; canlı DB önce silinmez. Kaynakta gerçek GRANT varsa restore ACL'leri
+   yeniden uygular; `--no-acl` ancak makbuzda bütün açık ACL'lerin boşluğu
+   kanıtlandıysa kullanılır. Aynı owner/ACL politikası operatör sunucusundaki
+   prova restore'unda da geçer. Önceden ölçülen DB yorumu, `datconnlimit`,
+   `pg_db_role_setting`, encoding/locale ve extension'lar gölgeye uygulanır.
+   Sonra `ANALYZE` ve sıcak sorgu plan denetimi yapılır; içerik, şema,
+   sahiplik/ACL, DB durumu ve sequence kaynak makbuzuyla eşit olmalıdır.
+   Backup'tan gelen geçerli/tüketilmemiş bütün niyetlere gölgede yalnız
+   `invalidatedAt` yazılır; **yalnız bu farkla** ikinci makbuz karşılaştırması
+   ve geçerli niyet sayısı sıfır kanıtı alınır. Uygulama rolünün DML smoke'u
+   sequence'e dokunmayan bir korunan tablo yazısını transaction içinde yapar,
+   `SET CONSTRAINTS ALL IMMEDIATE` ile ertelemeli kısıtları yoklar ve rollback
+   eder; `entries`/`topics` INSERT'i ile `nextval` kullanılmaz. Gölgeye
+   `operationId` ve dump SHA-256'sı için ayrı rollback audit satırı yazılır;
+   bu da makbuzun kayıtlı izinli farkıdır. Gölge DB'de reset commit işareti
+   yokluğu veya eski makbuzla uyumu doğrulanır. App/worker
    kapalıyken iki DB'de `ALLOW_CONNECTIONS false` ve bağlantı sıfır doğrulanır;
    kontrol DB'sindeki **tek transaction**
    ile eski canonical DB rollback adına, doğrulanmış gölge canonical ada
@@ -219,6 +249,10 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    kanıtı olarak saklanır. Yeni canonical DB için gate ve app kabulü tekrar
    doğrulanır. Gölge restore'a disk yetmezse **reset GO yok**; eski DB'yi önce
    silen yol bu tasarımın geri dönüşü değildir. Otomatik restore yok.
+   Kesim önkontrolünde kontrol rolünün `rolcreatedb`/`rolsuper`, rol üyeliği,
+   shadow sahibi olabilmesi, `ALTER DATABASE RENAME` ve dump'taki untrusted
+   extension gereksinimleri ölçülür; yetki yoksa exact onaylı container konsol
+   yolu kanıtlanmadan reset GO yok.
 
 ## Açık kabul ölçümleri
 

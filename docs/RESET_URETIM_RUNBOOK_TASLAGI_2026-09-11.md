@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v5 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v6 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -8,21 +8,23 @@ kontrol bağlantısı, zamanlayıcı envanteri ve production restore yolu kabul 
 somut eyleme ayrı açık onayı gerekir. Önceki dağıtım veya bu taslak onay değildir.
 
 Salt okunur Opus 5.5 tasarım incelemesi v3 `146a319` için 6 P2, 3 P3;
-v4 `3a7d689` için 4 P2, 6 P3 buldu. v5, 410 route sırası ve mezar taşlarıyla
-restore niyeti ve nesne sahipliği açıklarını düzeltir; yeniden hakemlik ve ölçüm bekler.
+v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için 1 P2, 7 P3 buldu.
+v6, yalın slug yolunu 410 kapsamından çıkarır, restore ve sequence ölçüm sırasını
+netleştirir; yeniden hakemlik ve ölçüm bekler.
 
 ## Ön kabul kapıları
 
 - AW tam pencere, kaynak tabanı ve kuyruk kusuru ölçümleri [PLAN.md](PLAN.md)
   Sıra 5'e göre tamamlanır. Reset ancak davranış turu oturduğunda planlanır.
 - Exact release ve önceden kabul edilmiş migration; `BIGINT` public ID yolu,
-  `great_reset_intents`/`great_reset_commits`/`great_reset_tombstones`, 410,
+  `great_reset_intents`/`great_reset_commits`/UUID `great_reset_tombstones`, 410,
   6.3-5 ve `__Host-` kabulü kod/test/CI ile geçer.
   Yeni ID namespace'i `2147483648` başlar. Eski sayısal aralığın tamamına 410
   verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur. Route
   canlı içerik kaydını **önce** arar; içerik yoksa ve commit işareti varsa eski
-  sayısal aralık veya mezar taşı 410, bilinmeyen adres 404. Reset öncesi ve
-  pre-reset restore sonrası var olan içerik normal yanıt verir.
+  sayısal aralık veya UUID mezar taşı 410, bilinmeyen adres 404. Yalın
+  `/baslik/{slug}` açılmamış başlık formudur; 410 kapsamına girmez. Reset
+  öncesi ve pre-reset restore sonrası var olan içerik normal yanıt verir.
 - Kişisel operatör sunucusundaki gerçek boyutlu provada tam digest, reset, sequence
   `RESTART`, niyet COMMIT/rollback, kapı açma/kapatma, başarısız bağlantı ve tam
   gölge restore/DB adı değiştirme yolu ölçülür. Üretim hostunda iki DB'ye aynı
@@ -31,7 +33,9 @@ restore niyeti ve nesne sahipliği açıklarını düzeltir; yeniden hakemlik ve
 - Exact üretim erişim onayıyla, üretim host/Compose/DB/release kimliği,
   `postgres` kontrol bağlantısına CONNECT/pg_hba/sahiplik, `datallowconn=true`,
   sağlık kontrolünün `postgres` DB'sine gittiği ve container konsol yedek yolu
-  doğrulanır. Bunlar yapılmadan reset onayı istenmez.
+  doğrulanır. Shadow restore için `rolcreatedb`/`rolsuper`, `--role` üyeliği,
+  rename ve untrusted extension ihtiyacı da ölçülür. Bunlar yapılmadan reset
+  onayı istenmez.
 - Üretim ve operatör sunucusundaki tüm DB/app erişimli timer, cron ve servisler
   adları, önceki `enabled/active` durumları ve çalışan PID'leriyle envantere
   girer. Bilinenler: production bakım timer'ı, canlılık/lease alarmı;
@@ -59,7 +63,8 @@ restore niyeti ve nesne sahipliği açıklarını düzeltir; yeniden hakemlik ve
 3. **Önizle.** Üretim profili önizlemesi aynı RepeatableRead görüntüsünde tam
    makbuz özetini ve kısa `ctid`/`xmin` plan özetini çıkarır. Makbuz eşitliği,
    kimlik, izinler, oturum/`pg_prepared_xacts`, RLS, trigger, INSERT yazıcıları,
-   dört bayrak, lease/outbox, `BIGINT AS`/`MAXVALUE` ve yazıcı kapıları geçsin.
+   dört bayrak, lease/outbox, `AS bigint`, `2147483648 ≤ MAXVALUE ≤ 2^53−1`
+   ve yazıcı kapıları geçsin.
    Plan hash'i, makbuz özeti ve bitiş bütçesi kaydedilir. Niyet hâlâ
    `consumedAt=NULL`, `invalidatedAt=NULL` olmalıdır.
 4. **Bağlantı kapısı.** Hedef DB'ye tek `connection_limit=1` reset backend'i
@@ -72,14 +77,16 @@ restore niyeti ve nesne sahipliği açıklarını düzeltir; yeniden hakemlik ve
    kısa plan, korunan tabloların tam özeti, sequence ve koşuları yeniden ölç;
    exact plan hash'i eşleşsin. Niyet `UPDATE ... consumedAt ... RETURNING`
    ile **aynı işlemde**, `invalidatedAt IS NULL` şartıyla tek satır olarak
-   tüketilir. Pending outbox arşivi, silinecek topic/alias/entry UUID ve
-   slug anahtarlarının korunan mezar taşına kopyası, sınıflandırılmış
+   tüketilir. Pending outbox arşivi, silinecek topic/entry UUID'lerinin
+   korunan mezar taşına kopyası, sınıflandırılmış
    tabloların `TRUNCATE ... CONTINUE IDENTITY RESTRICT` işlemi,
    `ALTER SEQUENCE ... RESTART WITH 2147483648`, commit işareti,
    idempotency süre bitimi ve audit aynı transaction'dadır. Son koşullar:
-   silinenler boş, mezar taşları ve işaret beklenen sayıda, izin verilen
+   silinenler boş, UUID mezar taşları ve işaret beklenen sayıda, izin verilen
    korunan tablo farkları dışında içerik aynı, arşiv üyeliği doğru, iki
-   sequence'in yeni başlangıcı, başka backend ve hazırlanmış işlem yok.
+   sequence satırında `last_value=2147483648 AND is_called=false`, başka
+   backend ve hazırlanmış işlem yok. Reset işlemi `nextval`/deneme INSERT'i
+   çağırmaz; ilk gerçek yeni ID ancak açılıştan sonra `≥2147483648` ölçülür.
    Sonra COMMIT.
 6. **Sonucu uzlaştır.** COMMIT cevabı geldiyse audit, niyet, sequence ve tablo
    son koşullarını doğrula. Cevap belirsizse önce `postgres` kontrol DB'sinden
@@ -114,14 +121,22 @@ restore niyeti ve nesne sahipliği açıklarını düzeltir; yeniden hakemlik ve
   kalır. Canlı DB'yi silmeden, kaydedilmiş sahip/encoding/locale/DB ACL ile
   `template0` üzerinden yeni **gölge DB** oluşturulur. Dump bu DB'ye
   `agent_sozluk` rolü altında (`--role=agent_sozluk` veya rol bağlantısı),
-  `--single-transaction --exit-on-error --no-owner --no-acl` ile yüklenir.
-  Kaynak makbuzuyla tablo/şema/sequence/migration ve **nesne sahibi/ACL**
-  eşitliği doğrulanır; uygulama rolüyle DML smoke işlemi rollback edilir.
-  Backup'tan geri gelen geçerli ve tüketilmemiş bütün niyetlere gölgede yalnız
-  `invalidatedAt` yazılır; bu beklenen makbuz farkı ayrıca kaydedilir.
-  `consumedAt` değiştirilmez, geçerli niyet sayısı sıfır ve reset commit işareti
-  backup ile aynı olmalıdır. Her iki DB'de `ALLOW_CONNECTIONS false` ve backend
-  sıfır doğrulanınca `postgres` kontrol
+  `--single-transaction --exit-on-error --no-owner` ile yüklenir; kaynakta
+  açık GRANT varsa ACL yeniden uygulanır, `--no-acl` ancak bunların boşluğu
+  kanıtlandıysa kullanılır. Operatör sunucusundaki prova restore'u da aynı
+  owner/ACL politikasını kullanır. DB yorumu, `datconnlimit`,
+  `pg_db_role_setting`, extension ve kaydedilmiş DB izinleri gölgeye uygulanır.
+  `ANALYZE` ve sıcak sorgu plan denetiminden sonra kaynak makbuzuyla
+  tablo/şema/sequence/migration, DB durumu ve **nesne sahibi/ACL** eşitliği
+  doğrulanır. Backup'tan geri gelen geçerli ve tüketilmemiş bütün niyetlere
+  gölgede yalnız `invalidatedAt` yazılır; yalnız bu beklenen farkla ikinci
+  makbuz karşılaştırması yapılır. `consumedAt` değişmez, geçerli niyet sayısı
+  sıfırdır. Uygulama rolüyle, sequence'e dokunmayan korunan tablo DML smoke'u
+  `SET CONSTRAINTS ALL IMMEDIATE` ile transaction içinde çalıştırılır ve
+  rollback edilir; `entries`/`topics` INSERT'i yapılmaz. Gölgeye `operationId`
+  ve dump SHA-256 ile rollback audit'i yazılır; bu da izinli makbuz farkıdır.
+  Reset commit işareti backup ile aynı olmalıdır. Her iki DB'de
+  `ALLOW_CONNECTIONS false` ve backend sıfır doğrulanınca `postgres` kontrol
   bağlantısındaki tek transaction, canlı canonical DB'yi rollback adına,
   doğrulanmış gölge DB'yi canonical ada çevirir; hata transaction'ı geri alır.
   Eski DB kabul bitene kadar tutulur. Yeni canonical DB'nin `datallowconn`,

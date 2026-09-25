@@ -9011,3 +9011,22 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** restore edilen yedek tüketilmemiş niyeti de geri getirir;
   dump eşitliği başarılı diye niyeti tekrar kullanılabilir bırakma. Restore
   nesnelerinin sahibini ve ACL'sini de makbuzla karşılaştır.
+
+## 2026-09-25 — üretim reset tasarımı v5 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `4a5dc8772c5587b4bddf08c67ebee5d07c6e8e0f` v5 için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 7 P3). P2: yalın slug, mevcut
+  açılmamış başlık formudur ve slug/alias benzersiz değildir; slug mezar
+  taşı 410 koşuluyla çelişir. P3'ler sequence son değerinin tüketilmeden
+  okunması, `BIGINT` çekirdek kapısı/SQL cast envanteri, restore smoke sırası,
+  DB düzeyi ayarları/ACL, restore yetkileri ve gerçek HTTP 410 yoludur.
+- Yerel PostgreSQL 16 geçici sequence'inde `RESTART WITH 2147483648` sonrası
+  `last_value=2147483648`, `is_called=false` satır okumasıyla değer tüketmeden
+  görüldü. Geçici nesne oturum sonunda kalktı; ürün testinin yerine geçmez.
+- v6 taslağı UUID-only mezar taşı ve yalın slug istisnası, `AS bigint` kapısı,
+  DB düzeyi restore makbuzu ve güvenli smoke sırasıyla güncellendi. Yeniden
+  hakemlik/CI açık.
+- **Tekrarlama:** kanonik `slug--publicId` ile yalın `/baslik/{slug}` aynı
+  yüzey değildir; yalın açılmamış başlık formunu geçmiş slug nedeniyle 410'a
+  çevirmek yeni başlık açmayı engeller.
