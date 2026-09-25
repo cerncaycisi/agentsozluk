@@ -405,7 +405,8 @@ export async function getTopicEntries(
 
 /**
  * Sayfadaki entry'lerin doğrulanmış kaynak bağlantıları (plan 6.3-1). Kaynağı olmayan entry
- * haritada yer almaz. Sayfa başına sabit iki sorgu.
+ * haritada yer almaz; silinmiş, gizli ya da düzenlenmiş entry de. Sayfa başına sabit sayıda
+ * sorgu.
  */
 export async function getEntrySourceLinks(
   client: DatabaseClient,

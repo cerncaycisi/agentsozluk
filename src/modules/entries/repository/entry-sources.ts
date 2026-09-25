@@ -19,7 +19,7 @@ function provenanceFields(value: Prisma.JsonValue | null): {
   return { evidenceType, evidenceIds };
 }
 
-/** Sayfadaki entry'lerin kaynak kanıtı: iki sorgu, entry başına sorgu yok. */
+/** Sayfadaki entry'lerin kaynak kanıtı: sabit sayıda sorgu, entry başına sorgu yok. */
 export async function findEntrySourceEvidence(
   transaction: Prisma.TransactionClient,
   entryIds: readonly string[],
@@ -27,13 +27,26 @@ export async function findEntrySourceEvidence(
   if (entryIds.length === 0) return { evidence: [], items: [] };
   const records = await transaction.agentContentRecord.findMany({
     where: { entryId: { in: [...entryIds] } },
-    select: { entryId: true, action: { select: { provenance: true } } },
+    select: {
+      entryId: true,
+      action: { select: { provenance: true } },
+      entry: { select: { status: true, _count: { select: { revisions: true } } } },
+    },
   });
   const evidence = records.map((record) => ({
     entryId: record.entryId,
     ...provenanceFields(record.action.provenance),
+    entryActive: record.entry.status === "ACTIVE",
+    entryEdited: record.entry._count.revisions > 0,
   }));
-  const itemIds = [...new Set(evidence.flatMap((record) => record.evidenceIds))];
+  // Gösterilmeyecek entry'lerin kaynakları hiç okunmaz.
+  const itemIds = [
+    ...new Set(
+      evidence
+        .filter((record) => record.entryActive && !record.entryEdited)
+        .flatMap((record) => record.evidenceIds),
+    ),
+  ];
   if (itemIds.length === 0) return { evidence, items: [] };
   const rows = await transaction.agentSourceItem.findMany({
     where: { id: { in: itemIds } },

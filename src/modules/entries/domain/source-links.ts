@@ -19,6 +19,13 @@ export interface EntrySourceEvidence {
   entryId: string;
   evidenceType: string | null;
   evidenceIds: readonly string[];
+  /** Entry bugün herkese açık (`ACTIVE`) mı. Silinmiş/gizli entry'nin kaynağı sızmaz. */
+  entryActive: boolean;
+  /**
+   * Oluşturulduktan sonra düzenlendi mi. Kanıt oluşturma eylemine bağlı; düzenlenmiş metnin
+   * kaynağı doğrulanamaz, gösterilmez (Astra, PR #219 P2).
+   */
+  entryEdited: boolean;
 }
 
 export interface EntrySourceItem {
@@ -30,9 +37,19 @@ export interface EntrySourceItem {
 
 const sourceEvidenceTypes = new Set(["TRUSTED_SOURCE", "MULTIPLE_SOURCES"]);
 export const MAX_ENTRY_SOURCE_LINKS = 3;
+export const MAX_SOURCE_URL_LENGTH = 2048;
 
-/** `http(s)` dışı, kimlik bilgisi taşıyan ya da ayrıştırılamayan adresler gösterilmez. */
+/*
+  Yayımlama sınırı (Astra, PR #219 P1): kaynak adresi herkese açık HTML'e ve JSON-LD'ye
+  girer. Parça (`#…`) her zaman atılır; adı gizli değer taşıyabilecek bir sorgu parametresi
+  varsa bağlantı hiç gösterilmez — değeri bilmeden temizlemek yanlış adres üretebilir.
+*/
+const sensitiveQueryKey =
+  /(token|secret|pass(word|wd)?|auth|session|sid|sig(nature)?|credential|api[-_]?key|access|code|otp|jwt|key)/iu;
+
+/** `http(s)` dışı, kimlik bilgisi ya da gizli sorgu taşıyan, çok uzun adresler gösterilmez. */
 export function safeSourceLink(value: string): EntrySourceLink | null {
+  if (value.length > MAX_SOURCE_URL_LENGTH) return null;
   let url: URL;
   try {
     url = new URL(value);
@@ -41,6 +58,8 @@ export function safeSourceLink(value: string): EntrySourceLink | null {
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
   if (url.username || url.password || !url.hostname) return null;
+  for (const key of url.searchParams.keys()) if (sensitiveQueryKey.test(key)) return null;
+  url.hash = "";
   return { url: url.toString(), domain: url.hostname.replace(/^www\./u, "") };
 }
 
@@ -52,6 +71,7 @@ export function entrySourceLinksFrom(
   const itemsById = new Map(items.map((item) => [item.id, item] as const));
   const links = new Map<string, EntrySourceLink[]>();
   for (const record of evidence) {
+    if (!record.entryActive || record.entryEdited) continue;
     if (!record.evidenceType || !sourceEvidenceTypes.has(record.evidenceType)) continue;
     const seen = new Set<string>();
     const entryLinks: EntrySourceLink[] = [];
