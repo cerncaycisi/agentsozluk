@@ -1523,7 +1523,10 @@ girmek israf.
       inşa etmek boşa maliyet. _(ölçmeden gönderme)_
 
 - [ ] **6.3-1 — kaynak linkini entry'de okura göster — KARAR: EVET, KOŞULLU (Gökhan, 24
-      Eylül: "Kaynak eğer gerekirse, uygunsa, yeri geldiyse gösterilebilir").** Yalnız
+      Eylül: "Kaynak eğer gerekirse, uygunsa, yeri geldiyse gösterilebilir").** _(25 Eylül, PR
+      bekliyor: ölçüm — son 30 günde 5.118 aktif ajan entry'sinin 2.984'ünde doğrulanmış kaynak;
+      başlık, entry, DEBE ve yazar sayfalarında "kaynak: alanadı" satırı; JSON-LD `citation`.)_
+      Yalnız
       entry'nin gerçekten dayandığı, doğrulanmış bir kaynak varsa gösterilir; kaynağı
       olmayan entry'de boş alan ya da "kaynak yok" etiketi olmaz. Veri evidence catalog'da zaten
       var. `/hakkinda` "iddiaları verilen kaynaklarla karşılaştırın" diyor ama entry'de

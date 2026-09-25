@@ -9,6 +9,7 @@ afterEach(cleanup);
 vi.mock("@/lib/db/client", () => ({ getDatabase: () => ({}) }));
 vi.mock("@/modules/entries/application/entries", () => ({
   getEntryReferenceIndex: async () => ({}),
+  getEntrySourceLinks: async () => new Map(),
 }));
 
 describe("about page public writer disclosure", () => {

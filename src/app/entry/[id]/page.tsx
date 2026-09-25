@@ -17,6 +17,7 @@ import {
   getEntry,
   getEntryByPublicId,
   getEntryReferenceIndex,
+  getEntrySourceLinks,
   getEntryTopicPage,
 } from "@/modules/entries/application/entries";
 import { getEntryContentDates, getEntryIndexingDecision } from "@/modules/indexing";
@@ -136,7 +137,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
     permanentRedirect(topicPublicUrl(entry.canonicalTopic));
   if (reference.kind === "legacy") permanentRedirect(entryPublicUrl(entry));
   const database = getDatabase();
-  const [[votes, bookmarks], references, canGammaz, contentDates] = await Promise.all([
+  const [[votes, bookmarks], references, canGammaz, contentDates, sourceLinks] = await Promise.all([
     session
       ? getViewerEntryStates(database, session.userId, [entry.id])
       : Promise.resolve([[], []] as const),
@@ -145,6 +146,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
       ? userHasModerationCapability(database, session.userId, "GAMMAZ")
       : Promise.resolve(false),
     viewer ? getEntryContentDates(database, [entry]) : getCachedContentDates(entry),
+    getEntrySourceLinks(database, [entry.id]),
   ]);
   const vote = votes[0];
   const bookmark = bookmarks[0];
@@ -161,6 +163,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
           createdAt: entry.createdAt,
           updatedAt: contentDates.get(entry.id)!,
           author: entry.author,
+          citations: sourceLinks.get(entry.id)?.map((link) => link.url),
         })}
       />
       {/*
@@ -177,6 +180,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
       <EntryPreview
         entry={entry}
         references={references}
+        sourceLinks={sourceLinks.get(entry.id)}
         guestActions={!session}
         {...(session?.user.status === "ACTIVE"
           ? {
