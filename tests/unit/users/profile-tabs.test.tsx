@@ -36,7 +36,10 @@ vi.mock("@/modules/interactions/application/interactions", () => ({
 vi.mock("@/modules/indexing", () => ({
   getProfileIndexingDecision: async () => ({ index: true, follow: true }),
 }));
-vi.mock("@/modules/entries", () => ({ getEntryReferenceIndex: async () => ({}) }));
+vi.mock("@/modules/entries", () => ({
+  getEntryReferenceIndex: async () => ({}),
+  getEntrySourceLinks: async () => new Map(),
+}));
 
 const PROFILE_URL = "/yazar/yazar1";
 

@@ -4,7 +4,7 @@ import { BlockedEntryBody } from "@/components/entries/blocked-entry-body";
 import { EntryActions } from "@/components/entries/entry-actions";
 import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { entryPublicUrl, topicPublicUrl } from "@/lib/routing/public-urls";
-import type { ReferenceIndex } from "@/modules/entries";
+import type { EntrySourceLink, ReferenceIndex } from "@/modules/entries";
 import { publicProfileUrl } from "@/modules/indexing/domain/public-seo";
 
 export interface EntryPreviewItem {
@@ -83,6 +83,7 @@ export function EntryPreview({
   entry,
   actions,
   references,
+  sourceLinks,
   showTopicTitle = true,
   collapsible = false,
   guestActions = false,
@@ -91,6 +92,11 @@ export function EntryPreview({
   entry: EntryPreviewItem;
   showTopicTitle?: boolean;
   references?: ReferenceIndex;
+  /**
+   * Entry'nin dayandığı doğrulanmış kaynaklar (plan 6.3-1). Yoksa hiçbir şey çizilmez;
+   * "kaynak yok" etiketi bilerek yok.
+   */
+  sourceLinks?: readonly EntrySourceLink[] | undefined;
   collapsible?: boolean;
   /**
    * Ziyaretçinin misafir OLDUĞU bilindiğinde `true` verin: oy/favori düğmeleri
@@ -207,6 +213,23 @@ export function EntryPreview({
           )}
         </div>
       )}
+      {sourceLinks && sourceLinks.length > 0 && !entry.blockedByViewer ? (
+        /*
+          Dış bağlantı: `nofollow` (sıralama sinyali aktarmaz), `ugc` (içerik ajan ürünü),
+          `noopener noreferrer` (yeni sekmede açılsa bile pencere ve adres sızmaz).
+        */
+        <p className="prose-measure mt-2 text-sm text-muted">
+          kaynak:{" "}
+          {sourceLinks.map((link, index) => (
+            <span key={link.url}>
+              {index > 0 ? ", " : null}
+              <a href={link.url} rel="nofollow noopener noreferrer ugc" className="link-quiet">
+                {link.domain}
+              </a>
+            </span>
+          ))}
+        </p>
+      ) : null}
       {/*
         Entry başına TEK yatay ayraç kalır ve o da listeyi bölen üstteki çizgidir;
         footer artık kendi çizgisini çizmiyor — akan listede iki çizgi arasında

@@ -41,6 +41,8 @@ import {
   type ReferenceIndex,
 } from "@/modules/entries/domain/renderer";
 import { openAuthorDeletedTrashCase } from "@/modules/moderation/application/trash-appeal";
+import { entrySourceLinksFrom, type EntrySourceLink } from "@/modules/entries/domain/source-links";
+import { findEntrySourceEvidence } from "@/modules/entries/repository/entry-sources";
 
 export interface EntryViewer {
   userId: string;
@@ -399,6 +401,22 @@ export async function getTopicEntries(
       totalItems,
     };
   });
+}
+
+/**
+ * Sayfadaki entry'lerin doğrulanmış kaynak bağlantıları (plan 6.3-1). Kaynağı olmayan entry
+ * haritada yer almaz; silinmiş, gizli ya da düzenlenmiş entry de. Sayfa başına sabit sayıda
+ * sorgu.
+ */
+export async function getEntrySourceLinks(
+  client: DatabaseClient,
+  entryIds: readonly string[],
+): Promise<Map<string, EntrySourceLink[]>> {
+  if (entryIds.length === 0) return new Map();
+  const { evidence, items } = await client.$transaction((transaction) =>
+    findEntrySourceEvidence(transaction, entryIds),
+  );
+  return entrySourceLinksFrom(evidence, items);
 }
 
 export async function getEntryReferenceIndex(
