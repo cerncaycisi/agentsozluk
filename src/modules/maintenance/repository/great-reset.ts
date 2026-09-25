@@ -7,7 +7,7 @@ import {
   greatResetClearedModels,
   greatResetPreservedModels,
 } from "../domain/great-reset";
-import { localResetIdentity, localResetTarget } from "../domain/great-reset-local-guard";
+import { localResetTarget, type LocalResetIdentity } from "../domain/great-reset-local-guard";
 import {
   archivePendingOutboxEvents,
   assertExpectedOutboxArchive,
@@ -67,6 +67,24 @@ function tableSql(table: string): Prisma.Sql {
   return Prisma.raw(`ONLY "public"."${table}"`);
 }
 
+/*
+  Silinecek tablolar yalnız SAYILIR (25 Eylül 2026, gerçek boyutlu prova). Operatör
+  sunucusunda üretim yedeğinin kopyasında tam içerik özeti `agent_runtime_events` (1,94 M satır)
+  için 74 sn, `agent_runs` için 36 sn sürdü; 20 sn sorgu / 60 sn işlem bütçesiyle önizleme
+  `GREAT_RESET_QUERY_CANCELLED` verdi. Bu tabloların içeriği zaten tamamen silinir: plan için
+  gereken, kaç satırın gideceği. Korunan tabloların tam içerik özeti aynen kalır — "korunan veri
+  değişmedi" kanıtı ondan gelir (en büyüğü `idempotency_records`, ~5 sn). Önizleme ile uygulama
+  arasındaki yazma, uygulamanın tüm tabloları ACCESS EXCLUSIVE kilitleyip başka bağlantı
+  olmamasını şart koşmasıyla dışlanır.
+*/
+async function rowCount(tx: Tx, table: string): Promise<Fingerprint> {
+  const [result] = await tx.$queryRaw<{ rows: number }[]>(
+    Prisma.sql`SELECT count(*)::int AS rows FROM ${tableSql(table)}`,
+  );
+  if (!result) throw new Error("GREAT_RESET_FINGERPRINT_FAILED");
+  return { rows: result.rows, sha256: "COUNT_ONLY" };
+}
+
 async function fingerprint(
   tx: Tx,
   table: string,
@@ -102,7 +120,10 @@ async function fingerprint(
 
 async function snapshot(tx: Tx, list: Table[], auditId?: string, archiveId?: string) {
   const result: Record<string, Fingerprint> = {};
-  for (const { table } of list) result[table] = await fingerprint(tx, table, auditId, archiveId);
+  for (const { table, cleared } of list)
+    result[table] = cleared
+      ? await rowCount(tx, table)
+      : await fingerprint(tx, table, auditId, archiveId);
   // expiresAt ayrıca plan hash'ine girer; koruma karşılaştırmasında tek istisnadır.
   const expiry = await tx.$queryRaw<{ sha256: string }[]>`
     SELECT encode(sha256(convert_to(coalesce(string_agg(id::text || ':' ||
@@ -114,7 +135,7 @@ async function snapshot(tx: Tx, list: Table[], auditId?: string, archiveId?: str
   return { tables: result, expiry, sequences };
 }
 
-async function identity(tx: Tx, databaseName: string) {
+async function identity(tx: Tx, databaseName: string, expected: LocalResetIdentity) {
   const [actual] = await tx.$queryRaw<
     {
       database: string;
@@ -142,10 +163,10 @@ async function identity(tx: Tx, databaseName: string) {
     actual.port !== 5432 ||
     actual.version < 160000 ||
     actual.version >= 170000 ||
-    actual.owner !== localResetIdentity.owner ||
-    actual.user !== localResetIdentity.owner ||
-    actual.cluster !== localResetIdentity.clusterId ||
-    actual.marker !== localResetIdentity.marker
+    actual.owner !== expected.owner ||
+    actual.user !== expected.owner ||
+    actual.cluster !== expected.clusterId ||
+    actual.marker !== expected.marker
   ) {
     throw new Error("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
   }
@@ -265,11 +286,15 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     return await database.$transaction(
       async (tx) => {
         if (request.mode === "DRY_RUN") await tx.$executeRaw`SET TRANSACTION READ ONLY`;
-        await tx.$executeRaw`SET LOCAL statement_timeout = '20s'`;
+        // Bütçe gerçek boyutlu provadan (25 Eylül, operatör sunucusu, üretim yedeği kopyası):
+        // önizleme ~23 sn; uygulamada en uzun tek sorgu 234.962 olaylık outbox arşiv INSERT'i,
+        // bir koşuda 60 sn'yi aştı (eşzamanlı checkpoint). Bakım penceresinde uygulama ve worker
+        // kapalıdır; sınır sorguyu değil kaçak durumu yakalamak içindir.
+        await tx.$executeRaw`SET LOCAL statement_timeout = '300s'`;
         await tx.$executeRaw`SET LOCAL lock_timeout = '1s'`;
         await tx.$executeRaw`SET LOCAL timezone = 'UTC'`;
         await tx.$executeRaw`SET LOCAL extra_float_digits = 3`;
-        const actual = await identity(tx, target.databaseName);
+        const actual = await identity(tx, target.databaseName, target.identity);
         if (request.mode === "EXECUTE") {
           // Önce tüm tablo yazıcılarını dışla. Bekleyen işlem varsa bekleme/öldürme yok.
           await tx.$executeRaw(
@@ -390,7 +415,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         // Execute tüm tablo kilitlerinden SONRA güncel veriyi okumalı.
         // Daha erken alınmış MVCC snapshot'ı TRUNCATE ile güvenli değildir.
         isolationLevel: request.mode === "DRY_RUN" ? "RepeatableRead" : "ReadCommitted",
-        timeout: 60_000,
+        timeout: 900_000,
         maxWait: 5_000,
       },
     );

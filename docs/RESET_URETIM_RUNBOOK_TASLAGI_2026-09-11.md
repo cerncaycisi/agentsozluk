@@ -1,6 +1,10 @@
 # Great reset — üretim runbook TASLAĞI (11 Eylül 2026)
 
-**Bu bir taslaktır; hiçbir adımı onaylanmış veya ölçülmüş değildir.** Aktif iş
+**Bu bir taslaktır; hiçbir adımı onaylanmış değildir.** 25 Eylül: gerçek boyutlu prova
+yapıldı ve süreler ölçüldü — [RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md](RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md)
+(geri yükleme 208 sn, önizleme ~23 sn, uygulama ~83 sn; tam durdurma dört ayarı ister;
+autovacuum kilidi yeniden deneme ister). Kararlar: yürütücü (a) üretim profili, 410, yedek
+kişisel sunucuda da (PLAN). Aktif iş
 sırası [PLAN.md](PLAN.md) Sıra 5'tir. PLAN'daki "üretim outbox/uygulama
 kapanış-açılış tasarımı hazırlanmalı" kaleminin ilk yazılı hâlidir. Uygulamaya
 geçmeden önce: (a) farklı modelden salt okunur hakem turu (yürütücü Claude →

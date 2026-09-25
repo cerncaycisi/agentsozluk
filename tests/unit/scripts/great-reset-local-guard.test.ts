@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  localResetIdentities,
   localResetIdentity,
+  localResetIdentityFor,
   localResetTarget,
   parseLocalResetArguments,
 } from "../../../scripts/great-reset-local-guard";
@@ -37,6 +39,30 @@ describe("yerel great reset sınırı", () => {
     base.replace(name, `${name}%00`),
   ])("yanlış/kararsız hedefi bağlantıdan önce reddeder: %s", (url) => {
     expect(() => localResetTarget(url, localResetIdentity.hostname)).toThrow(/GREAT_RESET_/u);
+  });
+
+  it("operatör sunucusu kendi sahibi ve küme kimliğiyle kabul edilir; kimlikler çaprazlanmaz", () => {
+    const server = `postgresql://agent@127.0.0.1:5432/${name}`;
+    const target = localResetTarget(server, "agentic-server");
+    expect(target.databaseName).toBe(name);
+    expect(target.identity).toMatchObject({ owner: "agent", clusterId: "7689521646432264978" });
+    // Mac'in sahibi operatör sunucusunda, operatör sunucusunun sahibi Mac'te geçmez.
+    expect(() => localResetTarget(base, "agentic-server")).toThrow(
+      "GREAT_RESET_LOCAL_SYNTHETIC_TARGET_REQUIRED",
+    );
+    expect(() => localResetTarget(server, localResetIdentity.hostname)).toThrow(
+      "GREAT_RESET_LOCAL_SYNTHETIC_TARGET_REQUIRED",
+    );
+  });
+
+  it("üretim ve bilinmeyen hostlar kimlik listesinde yok", () => {
+    expect(localResetIdentities.map(({ hostname }) => hostname)).toStrictEqual([
+      "MacBook-Pro-26.local",
+      "agentic-server",
+    ]);
+    for (const host of ["agent-sozluk-prod", "localhost", "", "agentic-server.local"])
+      expect(() => localResetIdentityFor(host)).toThrow("GREAT_RESET_LOCAL_HOST_REQUIRED");
+    expect(new Set(localResetIdentities.map(({ clusterId }) => clusterId)).size).toBe(2);
   });
 
   it("varsayılan dry-run; execute için DB ve tam plan hash'i zorunlu", () => {
