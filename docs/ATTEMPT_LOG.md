@@ -8869,3 +8869,27 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   `RELEASE_COMPLETE PASS`, imaj `sha256:26b2f499…`. Kabul: status 281 → worker `active/running`
   (13:45:06), NRestarts 0, B7 IP ayarları → resume 281→282 → koşu 13:45–13:47 `SUCCEEDED`
   (bakım koşusu; kuyruk eriyor). Disk %63. `/`, `/api/health`, `/api/ready` 200.
+
+## 2026-09-25 — gecelik sunucu dışı yedek kuruldu (B9, Gökhan: "mantıklıysa ok", ek tur "evet")
+
+- PR #204: Astra 1. tur BİRLEŞTİRME (2 P1, 4 P2), 2. tur BİRLEŞTİRME (1 P1, 1 P2, 1 P3); bütçe
+  dolunca Gökhan'dan ek tur izni; 3. tur (`0c539b1`) BİRLEŞTİR. Kalan: P2 döndürmede `sort`
+  hatası denetlenmiyor, P3 `stat` hatasında boş `bytes=`.
+- Operatör: `~/.ssh/agentsozluk_backup` (ed25519, yeni), PGDG `postgresql-client-16` 16.14 +
+  Debian `libpq5` `~/.local/pgclient`'e açıldı (sha256 Packages ile doğrulandı), kullanıcı
+  systemd birimleri, zamanlayıcı etkin (sonraki 26 Eylül 01:33 UTC).
+- Üretim: `sshd -T` → `permituserenvironment no`, `acceptenv LANG`, `acceptenv LC_*`,
+  `forcecommand none`. `/opt/agent-sozluk/scripts/uretim-yedek-komutu.sh` `root:root 755`
+  (sha256 yerel dosyayla eşit); `~deploy/.ssh/authorized_keys`'e tek
+  `command="…",restrict` satırı, önceki dosya `authorized_keys.yedek-oncesi-20260925` olarak saklı.
+- Kabul: yedek anahtarıyla `id` → dump aktı (`PGDMP`), 5 baytta kapatıldı; 20 sn sonra üretimde
+  yedek süreci 0, `application_name='agentsozluk-yedek'` oturumu 0, kilit serbest. İlk servis
+  çalışması `YEDEK_OK file=agent-sozluk-20260925T141828Z.dump bytes=1168993394 tables=50`;
+  sürerken ikinci bağlantı `YEDEK_BUSY` (çıkış 75). Sonrasında üretim yine temiz.
+- Yan not: `pgrep -fc` uzak komut satırının kendisini de sayıyor (surec=2 yanıltıcıydı);
+  `ps | grep '[u]retim…'` ile doğrulandı.
+
+**Tekrarlama:**
+
+- Uzak süreç sayarken desenin ilk harfini köşeli paranteze al; `pgrep -f` kendi komutunu sayar.
+- İptal sırası runbook'ta; yalnız `authorized_keys` satırını silmek açık oturumu kapatmaz.
