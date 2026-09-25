@@ -68,21 +68,31 @@ function tableSql(table: string): Prisma.Sql {
 }
 
 /*
-  Silinecek tablolar yalnız SAYILIR (25 Eylül 2026, gerçek boyutlu prova). Operatör
-  sunucusunda üretim yedeğinin kopyasında tam içerik özeti `agent_runtime_events` (1,94 M satır)
-  için 74 sn, `agent_runs` için 36 sn sürdü; 20 sn sorgu / 60 sn işlem bütçesiyle önizleme
-  `GREAT_RESET_QUERY_CANCELLED` verdi. Bu tabloların içeriği zaten tamamen silinir: plan için
-  gereken, kaç satırın gideceği. Korunan tabloların tam içerik özeti aynen kalır — "korunan veri
-  değişmedi" kanıtı ondan gelir (en büyüğü `idempotency_records`, ~5 sn). Önizleme ile uygulama
-  arasındaki yazma, uygulamanın tüm tabloları ACCESS EXCLUSIVE kilitleyip başka bağlantı
-  olmamasını şart koşmasıyla dışlanır.
+  Silinecek tablolar için SATIR SÜRÜMÜ özeti (25 Eylül 2026, gerçek boyutlu prova).
+
+  Operatör sunucusunda üretim yedeğinin kopyasında tam içerik özeti `agent_runtime_events`
+  (1,94 M satır) için 74 sn, `agent_runs` için 36 sn sürdü; önizleme bütçeyi aştı. Bu tabloların
+  içeriği zaten silinir, ama önizlemede onaylanan içerikle silinen içeriğin aynı olduğu garantisi
+  korunmalı (Astra, PR #223): önizlemeden sonra biri bir entry metnini değiştirip bağlantısını
+  kapatırsa, satır sayısı aynı kalsa bile plan bayatlamalı. PostgreSQL'de her INSERT/UPDATE yeni
+  bir satır sürümü (yeni `ctid` ve `xmin`) yaratır; sürüm kimliklerinin sırasız toplamı içerik
+  okumadan her değişikliği yakalar (74 sn → 2,4 sn). VACUUM FULL/CLUSTER gibi fiziksel taşıma da
+  özeti değiştirir; bu yanlış alarm güvenli yöndedir (`GREAT_RESET_STALE_PLAN`). Korunan tablolar
+  tam içerik özetiyle kalır — "korunan veri değişmedi" kanıtı ondan gelir.
 */
-async function rowCount(tx: Tx, table: string): Promise<Fingerprint> {
-  const [result] = await tx.$queryRaw<{ rows: number }[]>(
-    Prisma.sql`SELECT count(*)::int AS rows FROM ${tableSql(table)}`,
+async function rowVersionFingerprint(tx: Tx, table: string): Promise<Fingerprint> {
+  const [result] = await tx.$queryRaw<{ rows: number; versions: string }[]>(
+    Prisma.sql`SELECT count(*)::int AS rows,
+      coalesce(sum(hashtextextended(t.ctid::text || ':' || t.xmin::text, 0)), 0)::text AS versions
+      FROM ${tableSql(table)} t`,
   );
   if (!result) throw new Error("GREAT_RESET_FINGERPRINT_FAILED");
-  return { rows: result.rows, sha256: "COUNT_ONLY" };
+  return {
+    rows: result.rows,
+    sha256: createHash("sha256")
+      .update(`row-versions:${result.rows}:${result.versions}`)
+      .digest("hex"),
+  };
 }
 
 async function fingerprint(
@@ -122,7 +132,7 @@ async function snapshot(tx: Tx, list: Table[], auditId?: string, archiveId?: str
   const result: Record<string, Fingerprint> = {};
   for (const { table, cleared } of list)
     result[table] = cleared
-      ? await rowCount(tx, table)
+      ? await rowVersionFingerprint(tx, table)
       : await fingerprint(tx, table, auditId, archiveId);
   // expiresAt ayrıca plan hash'ine girer; koruma karşılaştırmasında tek istisnadır.
   const expiry = await tx.$queryRaw<{ sha256: string }[]>`

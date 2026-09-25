@@ -7,20 +7,27 @@ küme kimliği `7689521646432264978`). Veri: 25 Eylül 14:18 UTC gecelik yedeği
 
 ## Neden
 
-Yerel reset aracı (PR #126/#127) yalnız eski Mac'teki küçük sentetik veriyle (29 tabloda 316 satır)
-sınanmıştı; runbook taslağı "üretim süreleri ölçülmedi" diyordu. Mac artık yok; bu sunucuda
-gerçek boyutlu yedek var.
+Yerel reset aracı (PR #126/#127) eski Mac'te sentetik veriyle sınanmıştı: reset düzeneği küçük
+veriyle (29 tabloda 316 satır), outbox arşivi ayrıca 192.001 sentetik olayla
+([RESET_OUTBOX_ARSIVI_2026-09-10.md](RESET_OUTBOX_ARSIVI_2026-09-10.md)). Runbook taslağı "üretim
+süreleri ölçülmedi" diyordu. Mac artık yok; bu sunucuda gerçek boyutlu yedek var.
 
 ## Bulgular
 
 1. **Araç gerçek boyutta çalışmıyordu.** Önizleme 27 sn'de `GREAT_RESET_QUERY_CANCELLED`. Her tabloya
    tam içerik özeti çıkarılıyordu; `agent_runtime_events` (1.937.744 satır) tek başına **74 sn**,
    `agent_runs` (35.165 satır, büyük JSON) **36 sn**. Bütçe 20 sn sorgu / 60 sn işlemdi.
-   **Düzeltme:** silinecek 29 tablo yalnız sayılır (içerikleri zaten silinir); korunan 20 tablonun
-   tam içerik özeti aynen kalır (en büyüğü `idempotency_records`, ~5 sn).
+   **Düzeltme:** silinecek 29 tablo için içerik yerine **satır sürümü özeti** (`ctid` + `xmin`
+   sırasız toplamı): her INSERT/UPDATE yeni sürüm yarattığından önizlemeden sonraki her değişikliği
+   yakalar, 74 sn → 2,4 sn. İlk denemedeki "yalnız sayım" bu garantiyi zayıflatıyordu (Astra,
+   PR #223: aynı satır sayısıyla entry metni değişirse plan bayatlamıyordu). Korunan 20 tablonun tam
+   içerik özeti aynen kalır (en büyüğü `idempotency_records`, ~5 sn).
 2. **Outbox arşiv INSERT'i 60 sn'yi aşabiliyor.** 234.962 olaylık üyelik INSERT'i bir koşuda
    sınırı aştı (eşzamanlı 2 GB checkpoint), bir koşuda altında kaldı. **Düzeltme:** bakım penceresi
-   bütçesi — sorgu 300 sn, işlem 900 sn. Sınır kaçak durumu yakalamak içindir.
+   bütçesi — sorgu 300 sn, işlem 900 sn. Sınır kaçak durumu yakalamak içindir. Uygulama bütün
+   tabloları işlemin başında kilitler ve işlem sonuna kadar tutar; `lock_timeout` yalnız kilidi
+   alma beklemesini sınırlar. Yani işlem boyunca (ölçülen ~83 sn) okuyucular da bekler: uygulama
+   ve worker kapalı bakım penceresi şarttır.
 3. **Otomatik bakım (autovacuum) reset'i durdurabilir.** Bir denemede `idempotency_records`
    üzerinde çalışan autovacuum yüzünden araç `GREAT_RESET_LOCK_NOT_AVAILABLE` ile hiçbir şey
    silmeden durdu (kilit beklemez, süreç öldürmez). Runbook: bakım bitince yeniden dene.
@@ -51,8 +58,10 @@ entry/başlık/ajan olayları 0; kullanıcılar 51, ajan profilleri 36, kaynakla
 - Başarılı reset'ten sonra aynı plan → `GREAT_RESET_STALE_PLAN`.
 - Autovacuum sırasında → `GREAT_RESET_LOCK_NOT_AVAILABLE`, hiçbir şey silinmedi.
 
-Mac'teki 18 senaryoluk sentetik düzenek bu sunucuda koşulmadı: sentetik dökümü üreten betik depoda
-yok. Prova DB'si iş bitince silindi.
+Mac'teki sentetik düzenek (`tests/rehearsal/great-reset-local.py`, güncel kapsamı 36 senaryo) bu
+sunucuda koşulmadı: host, kullanıcı ve küme kimliği hâlâ Mac'e bağlı ve sentetik dökümü üreten betik
+depoda yok. Düzeneğin CLI zaman sınırı yeni bütçeyle uyumlu olsun diye 90 sn → 1000 sn yapıldı.
+Prova DB'leri iş bitince silindi.
 
 ## Kalan (reset öncesi)
 

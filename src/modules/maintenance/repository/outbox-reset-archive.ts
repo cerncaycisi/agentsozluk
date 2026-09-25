@@ -96,12 +96,22 @@ export async function archivePendingOutboxEvents(
   if (bumped !== expected.rows) throw new Error("GREAT_RESET_OUTBOX_ARCHIVE_MISMATCH");
   // Mührün niyet kapısı yalnız bu INSERT boyunca ve yalnız BU arşiv için açılır;
   // aynı transaction'da sonradan kazara eklenecek üyelik yine reddedilir.
+  /*
+    Aday kümesi ÖNCE tam olarak somutlaşır, üyelik sonra eklenir (25 Eylül 2026, gerçek boyutlu
+    prova). Tek `INSERT … SELECT … WHERE NOT EXISTS (… archive_events …)` biçiminde planlayıcı
+    istatistik tazelenince iç içe döngü + arşiv tablosunda sıralı tarama seçiyordu; aynı komutun
+    eklediği (görünmeyen) satırlar da fiziksel olarak taranınca iş karesel büyüyordu: 234.962
+    olayda 600 sn'de bitmedi. Geçici tablo komut başında doldurulduğu için taranan küme büyümez.
+  */
+  await tx.$executeRaw`
+    CREATE TEMP TABLE reset_outbox_archive_candidates ON COMMIT DROP AS
+    SELECT e.id FROM public.outbox_events e
+    WHERE e."processedAt" IS NULL AND NOT EXISTS (
+      SELECT 1 FROM public.outbox_reset_archive_events m WHERE m."eventId" = e.id)`;
   await tx.$queryRaw`SELECT set_config('agentsozluk.archiving', ${archiveId}, true)`;
   const inserted = await tx.$executeRaw`
     INSERT INTO public.outbox_reset_archive_events ("eventId", "archiveId")
-    SELECT e.id, ${archiveId}::uuid FROM public.outbox_events e
-    WHERE e."processedAt" IS NULL AND NOT EXISTS (
-      SELECT 1 FROM public.outbox_reset_archive_events m WHERE m."eventId" = e.id)`;
+    SELECT c.id, ${archiveId}::uuid FROM reset_outbox_archive_candidates c`;
   await tx.$queryRaw`SELECT set_config('agentsozluk.archiving', '', true)`;
   if (inserted !== expected.rows || !(await outboxArchivesAreValid(tx)))
     throw new Error("GREAT_RESET_OUTBOX_ARCHIVE_MISMATCH");

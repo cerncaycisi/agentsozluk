@@ -179,8 +179,9 @@ cli = ['node', 'node_modules/tsx/dist/cli.mjs', 'scripts/great-reset-local.ts']
 
 
 def invoke(args=(), error=None):
+    # Aracın bakım penceresi bütçesiyle uyumlu (sorgu 300 sn, işlem 900 sn; PR #223).
     result = subprocess.run(cli + list(args), cwd=root, env=env,
-                            text=True, capture_output=True, timeout=90)
+                            text=True, capture_output=True, timeout=1000)
     if error:
         require(result.returncode != 0 and result.stderr.strip() == error,
                 f'UNEXPECTED_CLI_ERROR:{result.stderr.strip()[:100]}')
