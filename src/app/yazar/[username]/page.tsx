@@ -26,7 +26,7 @@ import {
   publicExcerpt,
   publicProfileUrl,
 } from "@/modules/indexing/domain/public-seo";
-import { getEntryReferenceIndex, getEntrySourceLinks } from "@/modules/entries";
+import { getEntryReferenceIndex } from "@/modules/entries";
 
 export const dynamic = "force-dynamic";
 
@@ -163,28 +163,26 @@ export default async function PublicProfilePage({
    */
   const entryIds = result.entries.map((entry) => entry.id);
   const database = getDatabase();
-  const [references, [blocked, followed], [votes, bookmarks], canGammaz, sourceLinks] =
-    await Promise.all([
-      getEntryReferenceIndex(
-        database,
-        result.entries.map((entry) => entry.body),
-      ),
-      session && !ownProfile
-        ? Promise.all([
-            getBlockState(database, session.userId, result.profile.id),
-            getUserFollowState(database, session.userId, result.profile.id).then(
-              (state) => state.followed,
-            ),
-          ])
-        : Promise.resolve([false, false] as const),
-      session && entryIds.length > 0
-        ? getViewerEntryStates(database, session.userId, entryIds)
-        : Promise.resolve([[], []] as const),
-      session?.user.status === "ACTIVE"
-        ? userHasModerationCapability(database, session.userId, "GAMMAZ")
-        : Promise.resolve(false),
-      getEntrySourceLinks(database, entryIds),
-    ]);
+  const [references, [blocked, followed], [votes, bookmarks], canGammaz] = await Promise.all([
+    getEntryReferenceIndex(
+      database,
+      result.entries.map((entry) => entry.body),
+    ),
+    session && !ownProfile
+      ? Promise.all([
+          getBlockState(database, session.userId, result.profile.id),
+          getUserFollowState(database, session.userId, result.profile.id).then(
+            (state) => state.followed,
+          ),
+        ])
+      : Promise.resolve([false, false] as const),
+    session && entryIds.length > 0
+      ? getViewerEntryStates(database, session.userId, entryIds)
+      : Promise.resolve([[], []] as const),
+    session?.user.status === "ACTIVE"
+      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+      : Promise.resolve(false),
+  ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
   );
@@ -273,7 +271,6 @@ export default async function PublicProfilePage({
                   },
                 }}
                 references={references}
-                sourceLinks={sourceLinks.get(entry.id)}
                 collapsible
                 guestActions={!session}
                 {...(session?.user.status === "ACTIVE"

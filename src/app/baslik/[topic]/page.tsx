@@ -20,11 +20,7 @@ import {
 import { UnopenedTopicView } from "@/app/baslik/[topic]/unopened-topic-view";
 import { parseProposedTopicTitle } from "@/modules/topics/validation/schemas";
 import { currentPageSession } from "@/lib/auth/server-session";
-import {
-  getEntryReferenceIndex,
-  getEntrySourceLinks,
-  getTopicEntries,
-} from "@/modules/entries/application/entries";
+import { getEntryReferenceIndex, getTopicEntries } from "@/modules/entries/application/entries";
 import {
   DEFAULT_TOPIC_TIME_WINDOW,
   TOPIC_TIME_WINDOWS,
@@ -321,7 +317,7 @@ export default async function TopicPage({
     result = { entries: [], totalItems: 0 };
   }
   const entryIds = result.entries.map((entry) => entry.id);
-  const [[votes, bookmarks], references, canGammaz, contentDates, sourceLinks] = await Promise.all([
+  const [[votes, bookmarks], references, canGammaz, contentDates] = await Promise.all([
     session && entryIds.length > 0
       ? getViewerEntryStates(database, session.userId, entryIds)
       : Promise.resolve([[], []] as const),
@@ -333,7 +329,6 @@ export default async function TopicPage({
       ? userHasModerationCapability(database, session.userId, "GAMMAZ")
       : Promise.resolve(false),
     getEntryContentDates(database, result.entries),
-    getEntrySourceLinks(database, entryIds),
   ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
@@ -374,7 +369,6 @@ export default async function TopicPage({
               createdAt: entry.createdAt,
               updatedAt: contentDates.get(entry.id)!,
               author: entry.author,
-              citations: sourceLinks.get(entry.id)?.map((link) => link.url),
             })),
         })}
       />
@@ -539,7 +533,6 @@ export default async function TopicPage({
             key={entry.id}
             entry={entry}
             references={references}
-            sourceLinks={sourceLinks.get(entry.id)}
             showTopicTitle={false}
             guestActions={!session}
             {...(session?.user.status === "ACTIVE"

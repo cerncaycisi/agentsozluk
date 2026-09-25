@@ -4,7 +4,6 @@ export {
   editEntry,
   getEntry,
   getEntryReferenceIndex,
-  getEntrySourceLinks,
   getEntryRevisions,
   getTopicEntries,
   type EntryViewer,
@@ -41,4 +40,3 @@ export {
   type EntryUpdateInput,
   type TopicEntrySort,
 } from "@/modules/entries/validation/schemas";
-export { type EntrySourceLink } from "@/modules/entries/domain/source-links";
