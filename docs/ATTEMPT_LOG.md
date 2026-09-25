@@ -8990,3 +8990,24 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** yerel `CONTINUE IDENTITY` ve mevcut satırların `max(publicId)`
   değeri, geçmişte silinmiş bütün ID'lerin üst sınırını kanıtlamaz. 410 güvenliği
   için doğrulanmış ayrı namespace olmadan reset onayı isteme.
+
+## 2026-09-25 — üretim reset tasarımı v4 hakemi ve yerel sequence/isim deneyi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `3a7d6894ebd2b8ac4371c601672d1fad33c207ce` v4 için
+  **TASARIM DÜZELTİLMELİ** dedi (4 P2, 6 P3). P2: 410'un canlı kayıt öncesi
+  uygulanma riski, eski UUID/slug kaynağı yokluğu, restore'un geçerli niyeti
+  geri getirmesi ve restore nesne sahipliği. Hakem kod değiştirmedi ve üretime
+  bağlanmadı.
+- Yerel PostgreSQL 16 geçici sequence'de `RESTART WITH 2147483648` işlem içinde
+  o değeri verdi; rollback sonrası eski sıradaki değer `2` geldi. Ayrı iki geçici
+  DB'nin adları tek transaction'da değiştirildi ve rollback eski adları geri
+  getirdi. İki geçici DB için `ALLOW_CONNECTIONS false` sonrası tek transaction'da
+  ad kesimi COMMIT edildi; iki yeni ad da kapalı kaldı. Geçici nesneler temizlendi;
+  gerçek boyutlu süre/izin kanıtı değildir.
+- v5 taslağı canlı kaydı önce arayan 410 sırası, korunan mezar taşı ve commit
+  işareti, `invalidatedAt` ayrımı ve gölge DB restore yolu ile güncellendi.
+  Yeniden hakemlik ve CI bekler.
+- **Tekrarlama:** restore edilen yedek tüketilmemiş niyeti de geri getirir;
+  dump eşitliği başarılı diye niyeti tekrar kullanılabilir bırakma. Restore
+  nesnelerinin sahibini ve ACL'sini de makbuzla karşılaştır.

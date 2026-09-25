@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v4 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v5 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -7,21 +7,26 @@ kontrol bağlantısı, zamanlayıcı envanteri ve production restore yolu kabul 
 Üretim sunucusuna her erişim ve reset/restore eylemi için Gökhan'ın exact SHA ve
 somut eyleme ayrı açık onayı gerekir. Önceki dağıtım veya bu taslak onay değildir.
 
-Salt okunur Opus 5.5 tasarım incelemesi v3 `146a319` için 6 P2, 3 P3 buldu;
-özellikle niyet sırası, iki özet, kapı, 410, zamanlayıcı ve geri dönüş açıklarını.
-Bu v4 sıra sözleşmesi bu bulgulara göre yazıldı; yeniden hakemlik ve ölçüm bekler.
+Salt okunur Opus 5.5 tasarım incelemesi v3 `146a319` için 6 P2, 3 P3;
+v4 `3a7d689` için 4 P2, 6 P3 buldu. v5, 410 route sırası ve mezar taşlarıyla
+restore niyeti ve nesne sahipliği açıklarını düzeltir; yeniden hakemlik ve ölçüm bekler.
 
 ## Ön kabul kapıları
 
 - AW tam pencere, kaynak tabanı ve kuyruk kusuru ölçümleri [PLAN.md](PLAN.md)
   Sıra 5'e göre tamamlanır. Reset ancak davranış turu oturduğunda planlanır.
 - Exact release ve önceden kabul edilmiş migration; `BIGINT` public ID yolu,
-  `great_reset_intents`, 410, 6.3-5 ve `__Host-` kabulü kod/test/CI ile geçer.
+  `great_reset_intents`/`great_reset_commits`/`great_reset_tombstones`, 410,
+  6.3-5 ve `__Host-` kabulü kod/test/CI ile geçer.
   Yeni ID namespace'i `2147483648` başlar. Eski sayısal aralığın tamamına 410
-  verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur.
+  verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur. Route
+  canlı içerik kaydını **önce** arar; içerik yoksa ve commit işareti varsa eski
+  sayısal aralık veya mezar taşı 410, bilinmeyen adres 404. Reset öncesi ve
+  pre-reset restore sonrası var olan içerik normal yanıt verir.
 - Kişisel operatör sunucusundaki gerçek boyutlu provada tam digest, reset, sequence
   `RESTART`, niyet COMMIT/rollback, kapı açma/kapatma, başarısız bağlantı ve tam
-  restore yolu ölçülür. Sayısal kesinti bütçesi ve vazgeçme zamanı **önceden**
+  gölge restore/DB adı değiştirme yolu ölçülür. Üretim hostunda iki DB'ye aynı
+  anda disk yetmiyorsa reset yok. Sayısal kesinti bütçesi ve vazgeçme zamanı **önceden**
   kaydedilir; 8 GiB altı diskle production build başlamaz.
 - Exact üretim erişim onayıyla, üretim host/Compose/DB/release kimliği,
   `postgres` kontrol bağlantısına CONNECT/pg_hba/sahiplik, `datallowconn=true`,
@@ -45,16 +50,18 @@ Bu v4 sıra sözleşmesi bu bulgulara göre yazıldı; yeniden hakemlik ve ölç
    durdur; çalışan yedek/bakım/alarm servisleri bitsin. Dış DB oturumu sıfır
    olmadan ilerleme. Bekleme, hedef reset işlemi başlamadan yapılır.
 2. **Niyet ve yedek.** Onaylı `operationId` için tek, süresi en çok iki saat olan
-   niyet satırını yaz. Kişisel operatör sunucusuna yeni custom-format dump al;
+   `consumedAt=NULL`, `invalidatedAt=NULL` niyet satırını yaz. Kişisel operatör
+   sunucusuna yeni custom-format dump al;
    0600 izin, boyut ve SHA-256 kaydet. Aynı sunucudaki ayrı PostgreSQL 16
    geçici DB'ye tam restore et. Kaynakta dump öncesi/sonrası ve restore'da
    bütün tablolar için tam içerik/şema/sequence özetleri eşit olsun. Farkta
-   niyeti kontrollü biçimde geçersizleştir ve bu denemeyi bitir.
+   niyete yalnız `invalidatedAt` yazarak geçersizleştir ve bu denemeyi bitir.
 3. **Önizle.** Üretim profili önizlemesi aynı RepeatableRead görüntüsünde tam
    makbuz özetini ve kısa `ctid`/`xmin` plan özetini çıkarır. Makbuz eşitliği,
    kimlik, izinler, oturum/`pg_prepared_xacts`, RLS, trigger, INSERT yazıcıları,
-   dört bayrak, lease/outbox ve `BIGINT` kapıları geçsin. Plan hash'i, makbuz
-   özeti ve bitiş bütçesi kaydedilir. Niyet hâlâ `consumedAt=NULL` olmalıdır.
+   dört bayrak, lease/outbox, `BIGINT AS`/`MAXVALUE` ve yazıcı kapıları geçsin.
+   Plan hash'i, makbuz özeti ve bitiş bütçesi kaydedilir. Niyet hâlâ
+   `consumedAt=NULL`, `invalidatedAt=NULL` olmalıdır.
 4. **Bağlantı kapısı.** Hedef DB'ye tek `connection_limit=1` reset backend'i
    açılır, PID pinlenir. Kodun türettiği ayrı kontrol bağlantısı `postgres`
    DB'sinden `ALTER DATABASE agent_sozluk WITH ALLOW_CONNECTIONS false` yapar.
@@ -64,24 +71,30 @@ Bu v4 sıra sözleşmesi bu bulgulara göre yazıldı; yeniden hakemlik ve ölç
 5. **Tek işlem.** Önce bütün tablo kilitlerini `NOWAIT` al. Kilit altında şema,
    kısa plan, korunan tabloların tam özeti, sequence ve koşuları yeniden ölç;
    exact plan hash'i eşleşsin. Niyet `UPDATE ... consumedAt ... RETURNING`
-   ile **aynı işlemde** tek satır olarak tüketilir. Pending outbox arşivi,
-   sınıflandırılmış tabloların `TRUNCATE ... CONTINUE IDENTITY RESTRICT`
-   işlemi, `ALTER SEQUENCE ... RESTART WITH 2147483648`, idempotency süre
-   bitimi ve audit aynı transaction'dadır. Son koşullar: silinenler boş,
-   korunanlar aynı, arşiv üyeliği doğru, iki sequence'in yeni başlangıcı,
-   başka backend ve hazırlanmış işlem yok. Sonra COMMIT.
+   ile **aynı işlemde**, `invalidatedAt IS NULL` şartıyla tek satır olarak
+   tüketilir. Pending outbox arşivi, silinecek topic/alias/entry UUID ve
+   slug anahtarlarının korunan mezar taşına kopyası, sınıflandırılmış
+   tabloların `TRUNCATE ... CONTINUE IDENTITY RESTRICT` işlemi,
+   `ALTER SEQUENCE ... RESTART WITH 2147483648`, commit işareti,
+   idempotency süre bitimi ve audit aynı transaction'dadır. Son koşullar:
+   silinenler boş, mezar taşları ve işaret beklenen sayıda, izin verilen
+   korunan tablo farkları dışında içerik aynı, arşiv üyeliği doğru, iki
+   sequence'in yeni başlangıcı, başka backend ve hazırlanmış işlem yok.
+   Sonra COMMIT.
 6. **Sonucu uzlaştır.** COMMIT cevabı geldiyse audit, niyet, sequence ve tablo
    son koşullarını doğrula. Cevap belirsizse önce `postgres` kontrol DB'sinden
    hedefte backend/kilit kalmadığını doğrula, sonra kapıyı aç; audit,
-   `consumedAt`, sayımlar ve sequence ile tamamlandı/geri alındı/belirsiz
+   `consumedAt`, commit işareti, sayımlar ve sequence ile tamamlandı/geri alındı/belirsiz
    sonucunu üret. Belirsizde yeniden çalıştırma veya restore etme.
 7. **Kapıyı aç ve kabul et.** Başarı veya vazgeçmede `postgres` DB'sinden
    `ALLOW_CONNECTIONS true` ve `datallowconn` doğrulaması. Kontrol yolu
    kayıpsa önceden prova edilmiş container konsol yolu kullanılır; kapı
-   açıldığının kanıtı olmadan bakım bitmez. App'i dört yazma bayrağı kapalıyken
-   aç; worker hold sürer. 410/404 route, sitemap, sayaç/önbellek, anonim sayfa,
-   health/ready, release/boot ve veri sözleşmesini doğrula. Dört bayrağı eski
-   değerlerine ayrı ayrı döndür; worker'ı kontrollü aç, worker hold en son kalksın.
+   açıldığının kanıtı olmadan bakım bitmez. **Caddy bakım yanıtı açık kalır.**
+   App'i dört yazma bayrağı kapalıyken aç; worker hold sürer. İç Host/loopback
+   üzerinden 410/404 route, sitemap, sayaç/önbellek, anonim sayfa, health/ready,
+   release/boot ve veri sözleşmesini doğrula. Kabul geçince Caddy bakım yanıtı
+   kaldırılır. Dört bayrağı eski değerlerine ayrı ayrı döndür; worker'ı
+   kontrollü aç, worker hold en son kalksın.
    İlk doğal koşu ve tüm timer/cron'un önceki `enabled/active` durumu,
    sonraki tetik ve son başarılı yedek/alarm makbuzu kabulde ölçülür.
 8. **Gözlem.** Gate 10'un yedi günlük başlangıç zamanı, ayar hash'i, kohort
@@ -91,24 +104,32 @@ Bu v4 sıra sözleşmesi bu bulgulara göre yazıldı; yeniden hakemlik ve ölç
 
 - **COMMIT öncesi hata:** transaction rollback; önce backend/kilit bitişini,
   sonra `ALLOW_CONNECTIONS true`yu doğrula. Niyet rollback ile tüketilmemiş
-  olabilir; ayrı güvenli işlemle geçersizleştir. App/worker/bayrak/timer'ları
-  eski durumlarına döndür. Yeni denemede yeni `operationId` ve Gökhan'ın yeni
-  exact eylem onayı gerekir; otomatik tekrar yok.
+  olabilir; ayrı güvenli işlemde yalnız `invalidatedAt` yazarak geçersizleştir.
+  App/worker/bayrak/timer'ları eski durumlarına döndür. Autovacuum veya `NOWAIT`
+  hatası olsa da yeni denemede yeni `operationId`, Gökhan'ın yeni exact eylem
+  onayı, yeni dump/restore/tam özet ve plan gerekir; otomatik tekrar yok.
 - **COMMIT sonrası kabul hatası:** site bakımda kalır. Gökhan ayrı restore
   eylemini onaylarsa, doğrulanmış dump kişisel operatör sunucusundan production
-  hostuna kontrollü aktarılır. App/worker/timer kapalı ve hedef DB bağlantısı
-  yokken, `postgres` kontrol DB'sinden hedefin backend sayısı ve katalog kimliği
-  tekrar okunur. Aday yöntem hedef DB'yi silip, kaydedilmiş sahip/encoding/locale/
-  bağlantı izinleriyle `template0` üzerinden yeniden kurmak; sonra doğrulanmış
-  dump'ı `--single-transaction --exit-on-error --no-owner --no-acl` ile içeri
-  almak ve kaydedilmiş DB izinleri/yorumunu uygulamaktır. Bu adımların her biri
-  pinned cluster ve DB kimliğiyle korunur; başka DB/volume hedeflenmez. Restore
-  sonrası tablo/şema/sequence/migration özetleri dump makbuzuyla karşılaştırılır;
-  kapı, bayraklar, servisler ve anonim route kabulü tamamlanır. Hedef DB'nin
-  yeniden kurulmasında OID değişeceği önceden beklenir; cluster kimliği, owner
-  ve içerik makbuzu eşit kalır. Bu aday yolun local klonda ve exact onaylı
-  production-host scratch DB'de komutları, yetkileri, süre ve disk kullanımı
-  henüz **doğrulanmadı**; bunlar kapanmadan reset GO yok.
+  hostuna kontrollü aktarılır. App/worker/timer kapalı, Caddy bakım yanıtı açık
+  kalır. Canlı DB'yi silmeden, kaydedilmiş sahip/encoding/locale/DB ACL ile
+  `template0` üzerinden yeni **gölge DB** oluşturulur. Dump bu DB'ye
+  `agent_sozluk` rolü altında (`--role=agent_sozluk` veya rol bağlantısı),
+  `--single-transaction --exit-on-error --no-owner --no-acl` ile yüklenir.
+  Kaynak makbuzuyla tablo/şema/sequence/migration ve **nesne sahibi/ACL**
+  eşitliği doğrulanır; uygulama rolüyle DML smoke işlemi rollback edilir.
+  Backup'tan geri gelen geçerli ve tüketilmemiş bütün niyetlere gölgede yalnız
+  `invalidatedAt` yazılır; bu beklenen makbuz farkı ayrıca kaydedilir.
+  `consumedAt` değiştirilmez, geçerli niyet sayısı sıfır ve reset commit işareti
+  backup ile aynı olmalıdır. Her iki DB'de `ALLOW_CONNECTIONS false` ve backend
+  sıfır doğrulanınca `postgres` kontrol
+  bağlantısındaki tek transaction, canlı canonical DB'yi rollback adına,
+  doğrulanmış gölge DB'yi canonical ada çevirir; hata transaction'ı geri alır.
+  Eski DB kabul bitene kadar tutulur. Yeni canonical DB'nin `datallowconn`,
+  sahip/ACL, sequence, app rolü ve iç Host/loopback route kabulü doğrulanır;
+  sonra bakım yanıtı kaldırılır. Gölge restore için disk yetmiyorsa reset
+  başlamaz. Bu yöntemin local gerçek boyutlu ve exact onaylı production-host
+  scratch provasında süre, yetki ve disk kanıtı henüz **yok**; bunlar kapanmadan
+  reset GO yok.
 - **Kapı açılamıyor:** app/worker açılmaz. Önceden doğrulanmış container konsol
   süper kullanıcı yolu `postgres` DB'sinden kapıyı açar; sonuç ayrıca
   `pg_database.datallowconn` ile doğrulanır. Bu yol sınanmadan reset GO yok.

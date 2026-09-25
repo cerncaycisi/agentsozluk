@@ -948,9 +948,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    diğer backend/hazırlanmış işlem, trigger/RLS ve public ID sequence `DEFAULT` kapıları
    yerel çekirdekte; üretim profili veya dağıtım yok. Hakemin kalan P3 sınırları
    [üretim tasarımına](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md) taşındı.
-   **Üretim profili tasarımı v3:** Opus 5.5 `146a319` için 6 P2, 3 P3 ile
-   `TASARIM DÜZELTİLMELİ` dedi. v4 ve runbook bu bulgulara göre düzeltildi; yeni
-   hakemlik, kod, migration, bütçe, kontrol yolu ve restore kanıtı hâlâ açık.
+   **Üretim profili tasarımı:** Opus 5.5 v3 `146a319` için 6 P2, 3 P3;
+   v4 `3a7d689` için 4 P2, 6 P3 ile `TASARIM DÜZELTİLMELİ` dedi. v5, canlı kaydı
+   önce arayan 410 kuralı, korunan UUID/slug mezar taşları, restore sonrası
+   niyet geçersizleştirme ve gölge DB geri dönüşünü tanımlar. Yeni hakemlik,
+   kod, migration, bütçe, kontrol yolu ve restore kanıtı hâlâ açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
    silinen başlık/entry/yazar adresleri **410 Gone** döner. Gerekçe: içerik kalıcı olarak
    gitti; 410 bunu arama motoruna ve yapay zekâ tarayıcılarına açıkça söyler, eski
