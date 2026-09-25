@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 22 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Altı kaynağın
+**Son güncelleme: 25 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Altı kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -32,6 +32,34 @@ hakem **Fable veya Opus 5**; yürütücü **Claude ise hakem Astra** (`gpt-6-ast
 read-only); Sol kullanılmaz — _Gökhan kararı, 23 Eylül 2026_. Aynı modelin ayrı oturumu
 bu şartı karşılamaz; tarihsel hakem bulguları (18–23 Eylül Sol turları dahil) kendi
 adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
+
+---
+
+## Şu an neredeyiz (25 Eylül 2026)
+
+**Üretim:** `b53408e` (Docker taban imajı digest kilidi). 24–25 Eylül'de canlıya çıkanlar: SEO P2
+(`18bb0d9`), entry sayfası tek okuma (`bb49b28`), taban imajı kilidi (`b53408e`); CI eylemleri
+SHA kilidi (#200, dağıtım gerekmez); gecelik sunucu dışı yedek (B9, kuruldu).
+
+**Kapananlar:** 18 Eylül incelemesinden B1, B2, B3, B4, B6, B7, B9 ve B5.1-2. A2 ertelendi.
+404/410, kaynak linki, reset aracı, gecelik yedek kararları verildi (aşağıda ilgili maddelerde).
+
+**Olay:** Astra turları ile üretim ajanları aynı Codex kotasını paylaşıyor; 24–25 Eylül'de
+kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. Bu, B8'in (tek
+oturum bağımlılığı) somut örneğidir.
+
+**Sıradaki iş, sırayla:**
+
+1. **6.3-1 kaynak linki** — karar verildi (koşullu evet); resetten bağımsız, okur ve GEO değeri.
+2. **B5.3 ölçümü** — hassas konu kuralı son 30 günde kaç eylemi tetiklerdi; ölçmeden kural yok.
+3. **Great reset hazırlığı** — kalanlar: 410 uygulaması, üretim reset profili (hızlı araç),
+   outbox/uygulama kapanış-açılış kabulü, reset runbook'unun Astra turu ve Gökhan onayı;
+   reset anında 6.3-5 ve `__Host-` çerez öneki.
+4. **Sıra 4 davranış ölçümü (Ö4 kör okuma)** — Gökhan'dan konu-eşleştirilmiş gerçek sözlük
+   entry kümesi gerekiyor; o gelene kadar bekler.
+
+**Gökhan'dan beklenen:** Ö4 için entry kümesi; B8 için B planı (ayrı API anahtarı) isteyip
+istemediği.
 
 ---
 
