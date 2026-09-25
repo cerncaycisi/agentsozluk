@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v13 (25 Eylül 2026)
+# Great reset — üretim profili tasarımı v14 (25 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -31,7 +31,10 @@ v11 exact `6c032eec369fa4796ce7395a28a1096ad79af09f` için Opus 5.5
 kayıt, geri yüklenmiş DB'de trafik olayı olmaması nedeniyle tekrar
 kullanılabiliyordu. v12 exact `c0442c8a9252734f90bc199b6f93aadd257c132d`
 için **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 uygulama sınırı var.
-v13 bu sınırları fail-closed kabul koşullarına taşır.
+v13 exact `483886a53e605ec92c2334fef6f6c960dfdfb29b` için Opus 5.5
+**TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): geri dönüş penceresindeki iç kabul
+yazıları tam özet eşitliğini bozabilirdi. v14 iç kabulü DB açısından salt okunur
+yapar.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -220,7 +223,10 @@ başlangıç yedeği, operatör sunucusunda 0600 korumalıdır; ham satırlar Gi
 - Ayrı, önceden onaylı release migration'ı korunan `great_reset_intents`,
   `great_reset_commits`, `great_reset_tombstones` ve append-only
   `great_reset_exposure_events` tablolarını ekler. Son tablo reset anında
-  boştur, silinmez ve içerik makbuzuna girer. Niyetin
+  boştur, silinmez ve içerik makbuzuna girer. `great_reset_commits` ve
+  `great_reset_tombstones` için de UPDATE/DELETE/TRUNCATE reddi negatif
+  testlerle kanıtlanır; tablo sahibi/süper kullanıcı sınırı ayrıca kaydedilir.
+  Niyetin
   `consumedAt` ve `invalidatedAt` alanları aynı anda dolu olamaz (DB `CHECK`).
   Operatör, exact SHA/eylem onayından sonra `operationId`, kapsam, release SHA
   ve en çok iki saatlik son kullanmayı tek satırda kaydeder. Bu kayıt yedekten
@@ -279,16 +285,31 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
 4. COMMIT cevabı belirsizse önce `postgres` DB'sinden hedef backend ve kilitlerin
    bittiği doğrulanır; sonra gate açılır; `operationId` audit, `consumedAt`, silinen
    tablo sayımları, commit işareti ve sequence sınırıyla sonuç **tamamlandı / geri alındı /
-   belirsiz** olarak uzlaştırılır. Belirsizde operatör kararı beklenir.
-5. Başarılı reset sonrası app dört yazma bayrağı kapalı, worker hold açıkken
-   başlatılır. Caddy bakım yanıtı sürerken iç Host/loopback ile 410 route'ları,
-   sitemap, sayaç/önbellek, anonim sayfalar ve health/ready ölçülür; dış trafik
-   ancak kabul geçip madde 6'daki `TRAFFIC_OPEN` iki kanıtla doğrulanınca açılır.
-   İlk doğal koşu açılış sonrası ölçülür.
+   belirsiz** olarak uzlaştırılır. Bu okumada app, worker ve DB erişimli bütün
+   timer/cron'un hâlâ kapalı olduğu yeniden doğrulanır. Belirsizde operatör
+   kararı beklenir.
+5. Başarılı reset sonrası **yalnız iç kabul için** aynı release/app, aynı
+   `DATABASE_URL` kimliğiyle ama bütün DB oturumlarında doğrulanmış
+   `default_transaction_read_only=on` koşuluyla başlatılır; dört yazma
+   bayrağı kapalı, worker hold açık kalır. Ayrı credential/rol yoktur.
+   Caddy bakım yanıtı sürerken iç Host/loopback ile yalnız GET/HEAD 410/404,
+   sitemap, anonim sayfa, health/ready ve salt okunur sayaç/önbellek okumaları
+   ölçülür. Login, Server Action POST, oturum/CSRF üretimi, `__Host-` canlı
+   giriş kontrolü, mutasyon yapan açılış veya write smoke **geri dönüş
+   penceresinde koşulmaz**. İç kabul app'i kapatılır; korunan tabloların tam
+   özeti, silinen 29 tablonun boşluğu, iki sequence'in tüketilmemiş başlangıcı
+   ve audit/niyet durumu reset sonrası imzalı makbuzla tekrar eşit olmalıdır.
+   Salt okunur DB oturumunun tüm havuzda sağlanması ve bu ölçümlerin gerçek
+   standalone build'de kanıtı yoksa reset GO yok; beklenmedik yazı denemesi
+   kabul hatasıdır. Dış trafik ancak kabul geçip madde 6'daki `TRAFFIC_OPEN`
+   iki kanıtla doğrulanınca açılır. Bundan sonra normal DB bağlantılı app
+   başlatılır; yazan `__Host-` giriş kontrolü ve ilk doğal koşu rollback
+   penceresi kapandıktan sonra ölçülür.
    Dört bayrak eski değerlerine ayrı ayrı
    döndürülür, worker hold en son kaldırılır. Durdurulan her timer/cron eski
    etkinlik durumuna getirilir; sonraki tetik ve son başarılı yedek/alarm kayıtları
-   doğrulanır. `__Host-` çerez geçişi ve 6.3-5 indeks eşiği exact release kabulünde.
+   doğrulanır. `__Host-` çerez geçişi ve 6.3-5 indeks eşiği release kod/E2E
+   kabulündedir; üretim giriş smoke'u `TRAFFIC_OPEN` sonrasındadır.
 6. Reset COMMIT'i olmuş ama site kabulü düşmüşse rollback **ayrı bir üretim eylemidir**.
    Bu yol yalnız Caddy bakım yanıtı kaldırılmadan ve yazma bayrakları/worker
    açılmadan önce geçerlidir. Dış trafik veya yeni içerik başladıktan sonra
@@ -376,19 +397,24 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    doğrulanır. App/worker kapalıyken canonical ve gölge DB'de birer pinned
    salt okunur bağlantı kurulur; bunların dışındaki backend ve hazırlanmış
    işlem sıfır olmalıdır. Kontrol DB'si iki DB'yi `ALLOW_CONNECTIONS false`
-   yapar; sonra `pg_stat_clear_snapshot()` ve kısa bekleme ile iki DB'de
-   **yalnız iki pinned PID** kaldığı yeniden doğrulanır. Pinned bağlantılar
+   yapar; sonra `pg_stat_clear_snapshot()` ve en çok 5 saniyelik beklemeyle
+   iki DB'de **yalnız iki pinned PID** kaldığı yeniden doğrulanır. Autovacuum
+   veya başka backend kalırsa bu restore denemesi fail-closed durur; otomatik
+   tekrar yoktur. Pinned bağlantılar
    kapı sonrası açılan yeni `READ COMMITTED` transaction'larda denetler;
    kapı öncesi RepeatableRead görüntüsü kullanılmaz. Pinned canonical
-   bağlantı **aynı `operationId` commit'i, restore
+   bağlantı **aynı `operationId` commit'i ve önceden audit'e yazılan commit
+   satırı özetiyle eşitliği, restore
    audit yokluğu, trafik olayı yokluğu, yeni namespace satır yokluğu ve iki
-   sequence'in tüketilmemiş başlangıcını, korunan tablo tam özetini ve silinen
+   sequence'in `DEFAULT`/`OWNED BY` bağlarıyla doğru nesne olduğuna dair Aşama
+   1 madde 2 kapısını, tüketilmemiş başlangıcını, korunan tablo tam özetini ve silinen
    29 tablonun boşluğunu** kapı kapandıktan sonra yeniden doğrular; pinned
    gölge bağlantı restore makbuzunu doğrular. Restore audit'i önceden okunan
    commit satırının özetini taşır. İkisi de
    bırakılır, kontrol DB'si backend sıfırını yeniden ölçer; kapalı DB'ye
    yeni bağlantı giremediğinden bu son kanıtla rename arasındaki değişiklik
-   yarışı kapanır. Kontrol DB'sindeki **tek transaction**
+   yarışı kapanır. Bu kapıdaki tam özetin süre/temp/WAL maliyeti gerçek boyutlu
+   provanın bakım bütçesine ayrıca girer. Kontrol DB'sindeki **tek transaction**
    ile eski canonical DB rollback adına, doğrulanmış gölge canonical ada
    çevrilir. Yerel PG16'da iki `ALTER DATABASE ... RENAME` ve rollback mümkün
    olduğu görüldü; gerçek boyut/izin/disk ve iki DB'nin `datallowconn` durumu

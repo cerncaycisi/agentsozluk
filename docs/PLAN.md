@@ -963,7 +963,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    sonrası eski imzalı kayıt yine kullanılabiliyordu. v12 exact `c0442c8`
    için Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v13 sequence'in
    doğrudan olumlu kontrolünü, kapı sonrası PID/snapshot kontrolünü ve gerçek
-   tablo sahibi sınırını kabul kapısına ekler.
+   tablo sahibi sınırını kabul kapısına ekledi. Opus 5.5 v13 exact `483886a`
+   için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): geri dönüş penceresindeki
+   iç kabul yazıları tam özet eşitliğini bozabilirdi. v14 iç kabulü DB açısından
+   salt okunur yapar; yazan `__Host-` smoke'u ileri aşamaya taşır.
    Kod, migration,
    bütçe, kontrol yolu, gerçek boyutlu restore ve uygulama hakemliği açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te

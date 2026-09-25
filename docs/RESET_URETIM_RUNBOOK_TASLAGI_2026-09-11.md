@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v13 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v14 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -17,8 +17,9 @@ v9 exact `6ca052f` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 4 P3).
 Opus 5.5 v10 exact `719e191` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3).
 Opus 5.5 v11 exact `6c032ee` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3):
 rollback sonrası eski imzalı kayıt yeniden kullanılabiliyordu. Opus 5.5 v12
-exact `c0442c8` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3). v13 bu P3'leri
-kabul koşullarına taşır.
+exact `c0442c8` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3). v13 exact
+`483886a` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): iç kabul yazısı
+geri dönüş özetini bozabilirdi. v14 iç kabulü DB açısından salt okunur yapar.
 
 ## Ön kabul kapıları
 
@@ -82,7 +83,9 @@ kabul koşullarına taşır.
   yeni credential/rol yoktur. Bu rol tablo sahibi olabileceğinden GRANT geri
   alma sahiplik sınırı değildir. UPDATE/DELETE/TRUNCATE trigger ile reddedilir;
   sahip/süper kullanıcının trigger'ı kapatması tehdit modeli dışındaki yetkili
-  operatör eylemidir. Kazara/app DML'i negatif testlerle yakalanır.
+  operatör eylemidir. `great_reset_commits` ve `great_reset_tombstones` için
+  de UPDATE/DELETE/TRUNCATE reddi ve tablo sahibi sınırı negatif testlerle
+  kanıtlanır. Kazara/app DML'i negatif testlerle yakalanır.
 - Başlangıç makbuzunda Gökhan'ın onayladığı exact SHA, `operationId`, kapsam,
   plan/dump SHA-256, son kesim zamanı, disk/WAL/temp başlığı, eski bayraklar,
   önceki timer durumları ve geri dönüş kararı bulunur. Secret veya ham entry
@@ -143,7 +146,8 @@ kabul koşullarına taşır.
    son koşullarını doğrula. Cevap belirsizse önce `postgres` kontrol DB'sinden
    hedefte backend/kilit kalmadığını doğrula, sonra kapıyı aç; audit,
    `consumedAt`, commit işareti, sayımlar ve sequence ile tamamlandı/geri alındı/belirsiz
-   sonucunu üret. Belirsizde dış kayıt `PREPARED` kalır; yeniden çalıştırma
+   sonucunu üret. Bu okumada app, worker ve DB erişimli timer/cron'un hâlâ
+   kapalı olduğu tekrar doğrulanır. Belirsizde dış kayıt `PREPARED` kalır; yeniden çalıştırma
    veya restore etme. COMMIT öncesi hata `ABORTED` ile biter. Tamamlandıysa
    imzalı dış kayıt `COMMITTED_MAINTENANCE(operationId, dumpSha,
 protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
@@ -154,19 +158,31 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
    `ALLOW_CONNECTIONS true` ve `datallowconn` doğrulaması. Kontrol yolu
    kayıpsa önceden prova edilmiş container konsol yolu kullanılır; kapı
    açıldığının kanıtı olmadan bakım bitmez. **Caddy bakım yanıtı açık kalır.**
-   App'i dört yazma bayrağı kapalıyken aç; worker hold sürer. İç Host/loopback
-   üzerinden 410/404 route, sitemap, sayaç/önbellek, anonim sayfa, health/ready,
-   release/boot ve veri sözleşmesini doğrula. Kabul geçince imzalı dış kayıt
-   aynı `operationId` için canonical commit satırı ve restore audit yokluğu
-   yeniden doğrulanır; sonra dış kayıt atomik/fsync ile `TRAFFIC_OPEN`
+   Aynı release/app'i yalnız iç kabul için mevcut DB credential'ıyla,
+   bütün havuz oturumlarında kanıtlanmış `default_transaction_read_only=on`
+   modunda aç; dört yazma bayrağı kapalı, worker hold sürer. İç Host/loopback
+   üzerinden yalnız GET/HEAD 410/404, sitemap, salt okunur sayaç/önbellek,
+   anonim sayfa, health/ready, release/boot ve veri sözleşmesini doğrula.
+   Login, Server Action POST, oturum/CSRF üretimi, `__Host-` canlı giriş ve
+   başka mutasyon testi bu pencerede yoktur. Salt okunur app'i kapat;
+   korunan tablo tam özeti, silinen 29 tablonun boşluğu, iki sequence'in
+   tüketilmemiş başlangıcı ve audit/niyet durumunu reset sonrası imzalı
+   makbuzla yeniden karşılaştır. Havuzdaki bütün DB oturumlarının gerçekten
+   salt okunur olduğu ve bu adımların standalone build'de write yapmadığı
+   önceden kanıtlanmadıysa reset GO yok. Kabul geçince canonical DB'de aynı
+   `operationId` için commit satırı ve restore audit yokluğu yeniden
+   doğrulanır; sonra imzalı dış kayıt atomik/fsync ile `TRAFFIC_OPEN`
    durumuna **önceden** geçirilip tekrar
    doğrulanır. Korunan `great_reset_exposure_events` tablosuna aynı
    `operationId` için append-only trafik açılış satırı yazılıp okunur;
    `UNIQUE(operationId)` ile aynı satırı tekrar okuyan/yazan idempotent yol
    kullanılır. Dış kayıt `TRAFFIC_OPEN` olmuş ama DB yazısı düşmüşse yalnız
    bu DB adımı yeniden denenir, restore yoktur. İki kanıttan biri başarısızsa
-   bakım sürer. Ancak sonra Caddy bakım yanıtı
-   kaldırılır. Dört bayrağı eski değerlerine ayrı ayrı döndür; worker'ı
+   bakım sürer. İki kanıt sonrası geri dönüş penceresi kapanır; normal DB
+   bağlantılı app açılır, yazan `__Host-` giriş smoke'u iç Host'tan yapılır.
+   Bu smoke başarısızsa eski dump restore edilmez, bakımda ileri düzeltme
+   gerekir. Sonra Caddy bakım yanıtı kaldırılır. Dört bayrağı eski
+   değerlerine ayrı ayrı döndür; worker'ı
    kontrollü aç, worker hold en son kalksın.
    İlk doğal koşu ve tüm timer/cron'un önceki `enabled/active` durumu,
    sonraki tetik ve son başarılı yedek/alarm makbuzu kabulde ölçülür.
@@ -231,11 +247,15 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
   App/worker kapalıyken canonical ve gölge DB'de birer pinned salt okunur
   bağlantı dışında backend/hazırlanmış işlem sıfır doğrulanır. Kontrol DB'si
   iki DB'yi `ALLOW_CONNECTIONS false` yapar. `pg_stat_clear_snapshot()` ve
-  kısa bekleme sonrası yalnız iki pinned PID kaldığı tekrar sayılır. Her
+  en çok 5 saniye bekleme sonrası yalnız iki pinned PID kaldığı tekrar
+  sayılır; autovacuum veya başka backend varsa restore denemesi durur. Her
   pinned bağlantı kapıdan sonra **yeni `READ COMMITTED` transaction** açar;
   önceki RepeatableRead görüntüsü kullanılmaz. Canonical bağlantı aynı
-  commit/audit/trafik olayı/satır/sequence koşullarını, korunan tam özeti ve
-  silinen 29 tablonun boşluğunu; gölge bağlantı restore makbuzunu tekrar okur.
+  commit satırı özetinin audit'tekiyle eşitliğini, audit/trafik
+  olayı/satır/sequence koşullarını, sequence'in `DEFAULT`/`OWNED BY`
+  kimliğini, korunan tam özeti ve silinen 29 tablonun boşluğunu; gölge
+  bağlantı restore makbuzunu tekrar okur. Bu tam ölçümün süre/temp/WAL
+  maliyeti gerçek boyutlu provanın bakım bütçesine girer.
   İkisi de kapanınca
   kontrol DB'si backend sıfırını yeniden doğrular; başka bağlantı artık
   giremez. `postgres` kontrol bağlantısındaki tek transaction, canlı

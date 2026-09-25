@@ -9146,3 +9146,22 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** `pg_sequences.last_value` NULL olabilir; `!=` ile yazılan
   olumsuz SQL kapısı NULL'u güvenli ret olarak yorumlamaz. Gerçek sequence
   ilişkisinden eşitliği **true** arayarak fail-closed denetle.
+
+## 2026-09-25 — üretim reset tasarımı v13 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `483886a53e605ec92c2334fef6f6c960dfdfb29b` v13 için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). P2: geri dönüşe izin verilen
+  iç kabul penceresindeki bir oturum/audit veya açılış yazısı, korunan tam
+  özet eşitliğini bozup restore yolunu kapatabilir. Hakem yalnız Read kullandı,
+  üretime bağlanmadı; app açılışının gerçekten yazıp yazmadığını bu tur
+  kaynakla doğrulamadığını belirtti.
+- v14, iç kabul app'inin mevcut DB kimliğiyle ama bütün havuz bağlantılarında
+  `default_transaction_read_only=on` koşuluyla çalışmasını, yalnız GET/HEAD
+  smoke'unu ve sonunda tam özet/sequence eşitliğini kapı yapar. Login,
+  Server Action ve yazan `__Host-` smoke'u geri dönüş penceresinden çıkarıldı.
+  Read-only oturum kanıtı yoksa reset GO yok. Kısa bekleme, autovacuum,
+  sequence nesne kimliği, commit özeti ve tam ölçüm bütçesi de açıklandı.
+- **Tekrarlama:** geri dönüş için birebir makbuz eşitliği isteniyorsa,
+  kabul penceresinde çalışan app'e DB yazısı yaptırma. Yazılı adımları
+  rollback penceresi kapandıktan sonraya taşı.
