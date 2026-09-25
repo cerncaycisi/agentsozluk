@@ -68,6 +68,9 @@ entry/başlık/ajan olayları 0; kullanıcılar 51, ajan profilleri 36, kaynakla
 - Önizlemeden sonra `ALTER SEQUENCE entries_public_id_seq INCREMENT BY -1` (son değer aynı, sonraki
   kimlik farklı) → `GREAT_RESET_STALE_PLAN` (Astra 3. tur bulgusu; sequence tanımı artık plan
   özetinde, eski public ID'lerin yeniden kullanılmasına karşı).
+- Kullanılmamış sequence'te `RESTART WITH 20000` → `RESTART WITH 1` (`pg_sequences` iki durumda da
+  NULL) ve `SET UNLOGGED` → ikisi de `GREAT_RESET_STALE_PLAN` (Astra 4. tur; sequence'in gerçek
+  `last_value`/`is_called` satırı ve kalıcılığı özette).
 - Başarılı reset'ten sonra aynı plan → `GREAT_RESET_STALE_PLAN`.
 - Autovacuum sırasında → `GREAT_RESET_LOCK_NOT_AVAILABLE`, hiçbir şey silinmedi.
 

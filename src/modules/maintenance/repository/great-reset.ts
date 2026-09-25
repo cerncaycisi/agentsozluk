@@ -141,21 +141,39 @@ async function snapshot(tx: Tx, list: Table[], auditId?: string, archiveId?: str
     SELECT encode(sha256(convert_to(coalesce(string_agg(id::text || ':' ||
       "expiresAt"::text, ',' ORDER BY id), ''), 'UTF8')), 'hex') AS sha256
     FROM public.idempotency_records`;
-  // Sequence'in yalnız son değeri değil tanımı da (Astra, PR #223 3. tur): önizlemeden sonra
-  // `ALTER SEQUENCE … INCREMENT BY -1` son değeri değiştirmeden sonraki kimliği değiştirir ve
-  // reset sonrası eski public ID'lerin yeniden kullanılmasına yol açardı (410 kararının şartı).
-  const sequences = await tx.$queryRaw<{ name: string; value: string }[]>`
+  // Sequence'in yalnız son değeri değil tanımı ve GERÇEK durumu da (Astra, PR #223 3.-4. tur):
+  // `ALTER SEQUENCE … INCREMENT BY -1`, `RESTART WITH` (kullanılmadan önce `pg_sequences` NULL
+  // döndürür) ya da `SET UNLOGGED` son görünen değeri değiştirmeden sonraki kimliği veya çöküş
+  // sonrası davranışı değiştirir; reset sonrası eski public ID'lerin yeniden kullanılmasına yol
+  // açardı (410 kararının şartı).
+  const definitions = await tx.$queryRaw<{ name: string; value: string }[]>`
     SELECT s.sequencename AS name, jsonb_build_object(
-      'lastValue', s.last_value::text, 'dataType', s.data_type::text,
+      'dataType', s.data_type::text,
       'start', s.start_value::text, 'min', s.min_value::text, 'max', s.max_value::text,
       'increment', s.increment_by::text, 'cycle', s.cycle, 'cache', s.cache_size::text,
+      'persistence', c.relpersistence::text,
       'ownedBy', (SELECT d.refobjid::regclass::text || '.' || a.attname
-        FROM pg_depend d JOIN pg_class c ON c.oid = d.objid
+        FROM pg_depend d
         JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
-        WHERE c.relname = s.sequencename AND c.relnamespace = 'public'::regnamespace
-          AND d.classid = 'pg_class'::regclass AND d.deptype IN ('a', 'i') LIMIT 1)
+        WHERE d.objid = c.oid AND d.classid = 'pg_class'::regclass AND d.deptype IN ('a', 'i')
+        LIMIT 1)
     )::text AS value
-    FROM pg_sequences s WHERE s.schemaname = 'public' ORDER BY s.sequencename`;
+    FROM pg_sequences s
+    JOIN pg_class c ON c.relname = s.sequencename AND c.relnamespace = 'public'::regnamespace
+    WHERE s.schemaname = 'public' ORDER BY s.sequencename`;
+  const sequences: { name: string; value: string }[] = [];
+  for (const definition of definitions) {
+    if (!/^[a-z_]+$/u.test(definition.name)) throw new Error("GREAT_RESET_INVALID_TABLE");
+    const [state] = await tx.$queryRaw<{ lastValue: string; isCalled: boolean }[]>(
+      Prisma.sql`SELECT last_value::text AS "lastValue", is_called AS "isCalled"
+        FROM ${Prisma.raw(`"public"."${definition.name}"`)}`,
+    );
+    if (!state) throw new Error("GREAT_RESET_FINGERPRINT_FAILED");
+    sequences.push({
+      name: definition.name,
+      value: JSON.stringify({ definition: definition.value, ...state }),
+    });
+  }
   return { tables: result, expiry, sequences };
 }
 
