@@ -1,0 +1,11 @@
+[Unit]
+Description=Agent Sozluk gecelik yedek zamanlayicisi
+
+[Timer]
+# Trafiğin en düşük olduğu saat; kaçırılan çalışma açılışta telafi edilir.
+OnCalendar=*-*-* 04:30:00 Europe/Istanbul
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
