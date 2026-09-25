@@ -66,11 +66,14 @@ describe("Dockerfile taban imajı kilidi", () => {
         "package-ecosystem": string;
         directory?: string;
         schedule?: { interval?: string };
+        ignore?: Array<{ "dependency-name": string; "update-types": string[] }>;
       }>;
     };
     expect(config.updates.find((entry) => entry["package-ecosystem"] === "docker")).toMatchObject({
       directory: "/",
       schedule: { interval: "weekly" },
+      // Node 22 kilitli karar: major atlama önerilmez.
+      ignore: [{ "dependency-name": "node", "update-types": ["version-update:semver-major"] }],
     });
   });
 });

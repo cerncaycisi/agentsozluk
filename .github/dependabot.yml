@@ -31,6 +31,11 @@ updates:
       - /.github/actions/*
     schedule:
       interval: weekly
+    # Major sürüm atlamaları (ör. checkout 4→7) girdi/davranış değiştirebilir; ayrı ve elle
+    # incelenir. Dependabot yalnız minor/yama ve SHA güncellemesi önerir (25 Eylül).
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Dockerfile `FROM` imajları digest'e kilitli (24 Eylül); Dependabot yeni digest'i PR
   # olarak getirir. Üretim imajını değiştirdiği için her güncelleme normal inceleme +
@@ -40,3 +45,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Node 22 kilitli karar (AGENTS.md). Dependabot 22 içinde digest/yama önerir, major atlamaz.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
