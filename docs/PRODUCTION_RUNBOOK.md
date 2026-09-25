@@ -2095,15 +2095,24 @@ bu karar kapsamındadır, Astra incelemesinden sonra yapılır.
 **Tehdit modeli, dürüstçe:** operatör sunucusunda zaten tam yetkili dağıtım anahtarı var;
 bu sunucu ele geçirilirse ayrı yedek anahtarı riski azaltmaz. Kısıtlı anahtarın faydası
 otomasyonun en az yetkiyle koşması, ayrı iptal edilebilmesi ve `auth.log`'da ayırt
-edilebilmesidir.
+edilebilmesidir. Yedek anahtarı bütün veritabanını okuyabilir ve üretimde yük başlatabilir;
+bu yük tek-çalışma kilidi (`/tmp/agentsozluk-yedek.lock`, ikinci bağlantı `YEDEK_BUSY`) ve
+50 dakikalık üst sınırla (anlık görüntüyü tutan oturumda
+`idle_in_transaction_session_timeout`, süre dolunca `application_name = 'agentsozluk-yedek'`
+oturumlarını `pg_terminate_backend` ile kapatan bekçi) sınırlıdır. Tablo verisi aynı anlık
+görüntüdendir; sequence değerleri PostgreSQL gereği anlık görüntüye bağlı değildir.
 
 Parçalar (`deploy/backup/`):
 
 - `uretim-yedek-komutu.sh` — üretimde zorunlu komut. Yalnız okur, dosya yazmaz, istemcinin
   istediği komutu kullanmaz.
 - `gecelik-yedek.sh` — operatör sunucusunda. İşaretler, ≥40 tablo satırı ve
-  `pg_restore --list` geçmeden dosyayı kalıcı adına taşımaz; hata olursa `~/ping.sh` dener,
-  önceki kopyalara dokunmaz.
+  `pg_restore --list` geçmeden dosyayı kalıcı adına taşımaz; tek-çalışma kilidi, çalışma başına
+  benzersiz geçici dosya, var olan kopyanın üzerine yazmama, her hata ve TERM için tek
+  yakalayıcı (bildirim + yalnız bu çalışmanın dosyalarını silme). Döndürme yalnız
+  `agent-sozluk-YYYYMMDDTHHMMSSZ.dump` biçimini seçer, bu çalışmanın yedeğini silmez.
+  `--list` yalnız içindekiler listesini okur; veri bloklarının geri yüklenebilirliğini
+  kanıtlamaz — tam restore provası (24 Eylül yöntemi) ayda bir elle yapılır.
 - `agentsozluk-yedek.service` / `.timer` — kullanıcı systemd birimleri (linger açık).
 
 Operatör sunucusunda kurulum:
@@ -2127,10 +2136,32 @@ sudo install -o root -g root -m 0755 uretim-yedek-komutu.sh /opt/agent-sozluk/sc
 # command="/opt/agent-sozluk/scripts/uretim-yedek-komutu.sh",restrict ssh-ed25519 AAAA… agentsozluk-yedek
 ```
 
+Kurulum önkoşulu (üretimde, salt okunur): `sudo sshd -T | grep -Ei
+'^(acceptenv|permituserenvironment|forcecommand) '` çıktısında `PermitUserEnvironment no`
+olmalı ve `AcceptEnv` `BASH_ENV`, `ENV`, `LD_*` gibi kabuk/yükleyici değişkenlerini
+kabul etmemeli; `restrict` ortam değişkenlerini temizlemez. Uymuyorsa kurulum durur.
+
 Kabul: ilk çalıştırma `systemctl --user start agentsozluk-yedek.service` ile elle; çıktıda
 `YEDEK_OK`, `journalctl --user -u agentsozluk-yedek` temiz. Yedek anahtarıyla başka bir komut
 denemesi (`ssh -i ~/.ssh/agentsozluk_backup deploy@… id`) yine dump akıtmalı, `id` çıktısı
-vermemeli. İptal: `authorized_keys` satırını sil, zamanlayıcıyı `disable --now` et.
+vermemeli; iki eşzamanlı bağlantıdan ikincisi `YEDEK_BUSY` almalı.
+
+İptal (sırayla; yalnız satırı silmek açık oturumu kapatmaz):
+
+```bash
+# operatör sunucusu
+systemctl --user disable --now agentsozluk-yedek.timer
+systemctl --user stop agentsozluk-yedek.service
+# üretim
+#  1) ~deploy/.ssh/authorized_keys içinden `agentsozluk-yedek` satırını sil
+#  2) açık yedek oturumlarını kapat:
+sudo pkill -f /opt/agent-sozluk/scripts/uretim-yedek-komutu.sh || true
+#  3) kalan PostgreSQL oturumlarını kapat:
+docker compose --env-file /opt/agent-sozluk/app/.env \
+  -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T db psql -XAtq \
+  -U agent_sozluk -d agent_sozluk -c "SELECT count(pg_terminate_backend(pid)) FROM \
+  pg_stat_activity WHERE application_name = 'agentsozluk-yedek'" </dev/null
+```
 
 ## Public-agent bio reconciliation
 
