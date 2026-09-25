@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v6 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v7 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -9,8 +9,9 @@ somut eyleme ayrı açık onayı gerekir. Önceki dağıtım veya bu taslak onay
 
 Salt okunur Opus 5.5 tasarım incelemesi v3 `146a319` için 6 P2, 3 P3;
 v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için 1 P2, 7 P3 buldu.
-v6, yalın slug yolunu 410 kapsamından çıkarır, restore ve sequence ölçüm sırasını
-netleştirir; yeniden hakemlik ve ölçüm bekler.
+v6 `eeb1b54` için **TASARIM UYGUN**, P1/P2 yok, 8 P3 verdi. v7 tek reset
+sınırını, kodlanmış başlık URL'sini ve Node middleware adayını netleştirir;
+uygulama ve ölçüm bekler.
 
 ## Ön kabul kapıları
 
@@ -20,10 +21,13 @@ netleştirir; yeniden hakemlik ve ölçüm bekler.
   `great_reset_intents`/`great_reset_commits`/UUID `great_reset_tombstones`, 410,
   6.3-5 ve `__Host-` kabulü kod/test/CI ile geçer.
   Yeni ID namespace'i `2147483648` başlar. Eski sayısal aralığın tamamına 410
-  verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur. Route
+  verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur.
+  `great_reset_commits` zaten doluysa ikinci reset bu tasarımla yasaktır. Route
   canlı içerik kaydını **önce** arar; içerik yoksa ve commit işareti varsa eski
   sayısal aralık veya UUID mezar taşı 410, bilinmeyen adres 404. Yalın
-  `/baslik/{slug}` açılmamış başlık formudur; 410 kapsamına girmez. Reset
+  `/baslik/{kodlanmış başlık}` açılmamış başlık formudur; 410 kapsamına girmez.
+  `--rakam` sonekinin mevcut parser'la çakışması ayrıca envanter/validasyon
+  kapısıdır. Reset
   öncesi ve pre-reset restore sonrası var olan içerik normal yanıt verir.
 - Kişisel operatör sunucusundaki gerçek boyutlu provada tam digest, reset, sequence
   `RESTART`, niyet COMMIT/rollback, kapı açma/kapatma, başarısız bağlantı ve tam
@@ -57,13 +61,16 @@ netleştirir; yeniden hakemlik ve ölçüm bekler.
    `consumedAt=NULL`, `invalidatedAt=NULL` niyet satırını yaz. Kişisel operatör
    sunucusuna yeni custom-format dump al;
    0600 izin, boyut ve SHA-256 kaydet. Aynı sunucudaki ayrı PostgreSQL 16
-   geçici DB'ye tam restore et. Kaynakta dump öncesi/sonrası ve restore'da
-   bütün tablolar için tam içerik/şema/sequence özetleri eşit olsun. Farkta
+   geçici DB'ye gerekli roller/üyelikleri önceden kurup tam restore et;
+   DB yorumu, limit, DB/rol ayarı ve extension sahipliğini uygula. Kaynakta
+   dump öncesi/sonrası ve restore'da bütün tablolar için tam içerik/şema/
+   sequence, DB durumu ve yetki özetleri tanımlı farklar dışında eşit olsun. Farkta
    niyete yalnız `invalidatedAt` yazarak geçersizleştir ve bu denemeyi bitir.
 3. **Önizle.** Üretim profili önizlemesi aynı RepeatableRead görüntüsünde tam
    makbuz özetini ve kısa `ctid`/`xmin` plan özetini çıkarır. Makbuz eşitliği,
    kimlik, izinler, oturum/`pg_prepared_xacts`, RLS, trigger, INSERT yazıcıları,
-   dört bayrak, lease/outbox, `AS bigint`, `2147483648 ≤ MAXVALUE ≤ 2^53−1`
+   dört bayrak, lease/outbox, boş `great_reset_commits`, `AS bigint`,
+   `2147483648 ≤ MAXVALUE ≤ 2^53−1`
    ve yazıcı kapıları geçsin.
    Plan hash'i, makbuz özeti ve bitiş bütçesi kaydedilir. Niyet hâlâ
    `consumedAt=NULL`, `invalidatedAt=NULL` olmalıdır.
@@ -135,7 +142,9 @@ netleştirir; yeniden hakemlik ve ölçüm bekler.
   `SET CONSTRAINTS ALL IMMEDIATE` ile transaction içinde çalıştırılır ve
   rollback edilir; `entries`/`topics` INSERT'i yapılmaz. Gölgeye `operationId`
   ve dump SHA-256 ile rollback audit'i yazılır; bu da izinli makbuz farkıdır.
-  Reset commit işareti backup ile aynı olmalıdır. Her iki DB'de
+  Audit sonrası son özet yalnız `invalidatedAt` ve bu audit istisnasıyla
+  tekrar karşılaştırılır. Reset commit işareti backup ile aynı olmalıdır.
+  Her iki DB'de
   `ALLOW_CONNECTIONS false` ve backend sıfır doğrulanınca `postgres` kontrol
   bağlantısındaki tek transaction, canlı canonical DB'yi rollback adına,
   doğrulanmış gölge DB'yi canonical ada çevirir; hata transaction'ı geri alır.

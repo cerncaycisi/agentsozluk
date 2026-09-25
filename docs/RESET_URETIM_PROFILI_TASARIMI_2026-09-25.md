@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v6 (25 Eylül 2026)
+# Great reset — üretim profili tasarımı v7 (25 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -16,6 +16,9 @@ niyeti/sahipliği başlıca açıklar. v5 exact
 **TASARIM DÜZELTİLMELİ** dedi (1 P2, 7 P3): yalın slug yolu ile mezar taşı
 çelişiyordu. v6, bu adresi kanonik permalink kapsamından çıkarır ve kalan
 uygulama/restore ayrıntılarını sabitler.
+Opus 5.5, v6 exact `eeb1b5445cc7b114bc6325a4c06618b6426801b0` için
+**TASARIM UYGUN** dedi; P1/P2 yok, sekiz P3 uygulama sınırı kaydetti. v7, özellikle
+ikinci resetin ID yeniden kullanımını engeller ve HTTP 410 adayını netleştirir.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -92,23 +95,37 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    toplar; UUID benzersizliği ve sayı doğrulanır. Public route önce canlı
    içeriği, sonra committed reset işaretiyle UUID mezar taşını arar. Kanonik
    `/baslik/{slug}--{publicId}` ve `/entry/{publicId}` sayısal namespace ile
-   ayrılır. **Yalın `/baslik/{slug}` bir silinmiş içerik permalink'i değildir:**
-   mevcut uygulamada açılmamış başlık için noindex yazma formudur ve resetten
-   sonra da 410'a çevrilmez. `Topic.slug`/`TopicAlias.slug` benzersiz olmadığı
+   ayrılır. **Yalın `/baslik/{kodlanmış başlık}` bir silinmiş içerik
+   permalink'i değildir:** mevcut uygulamada açılmamış başlık için noindex
+   yazma formudur ve resetten sonra da 410'a çevrilmez. `Topic.slug`/
+   `TopicAlias.slug` benzersiz olmadığı
    için slug mezar taşı üretilmez. Korunan `users`/ajan profili silinmediğinden
-   var olan yazar profili 410 olmaz. Eski UUID, kanonik sayısal, yalın slug,
-   yeniden kullanılan slug ve restore sonrası route testleri zorunludur.
+   var olan yazar profili 410 olmaz. Eski UUID (ilk 36 karakterden sonra
+   sonek taşıyan legacy yol dahil), kanonik sayısal, Türkçe kodlanmış yalın
+   başlık, 308 kanonikleştirme ve restore sonrası route testleri zorunludur.
+   `--[0-9]+` ile biten başlık mevcut parser'da ID sanılır; migration öncesi
+   mevcut veri taranır, yeni başlık doğrulamasında bu çakışma engellenir veya
+   ayrı bir kaçış yolu kanıtlanır. Çakışma çözülmeden reset GO yok.
    `BIGINT` geçişi veya bu ürün kararı kabul edilmezse **reset GO yok**; mevcut
    sequence'den tarihsel en yüksek silinmiş ID'yi çıkardığımız iddia edilmez.
-   HTTP 410 için aday uygulama, Node runtime'lı permalink route handler'ıdır:
-   mevcut `page.tsx` aynı segmentte `route.ts` ile birlikte duramayacağı için
-   sayfa iç rota altına taşınır; handler içerik varsa URL'yi koruyan rewrite,
-   silinmiş anahtar varsa doğrudan `Response(status: 410)` üretir. Edge
-   `middleware.ts` DB kararı vermez. Next.js 15.5.25'te rewrite, RSC gezinmesi,
-   `generateMetadata`, anonim/oturumlu HTML ve gerçek HTTP durum kodu yerel
-   production build/E2E ile kanıtlanmadan bu aday seçilmiş sayılmaz; başarısızsa
-   eşdeğer Node/Caddy mekanizması ayrıca tasarlanıp hakemden geçer.
-5. Önizleme, hedef DB rolünün okuma, tüm tablo kilidi, silinecek tablo `TRUNCATE`,
+   HTTP 410 için birincil aday, Next.js 15.5.25'in **Node runtime middleware**
+   yoludur (`src/middleware.ts`, `config.runtime = 'nodejs'`). Dar permalink
+   matcher'ı GET/HEAD, RSC ve prefetch yollarını kapsar; mevcut CSP nonce ve
+   analytics başlıkları her cevapta korunur. Middleware Prisma'yı doğrudan
+   kullanmaz; aynı uygulama servisi üzerinden canlı kayıt → commit işareti →
+   eski numeric/UUID kararını verir. İşaret için global/in-memory cache yoktur:
+   restore sonrası bayat 410 üretilemez. Bilinen silinmiş adreste doğrudan
+   `Response(status: 410)`, diğerlerinde `NextResponse.next()`; yalın başlık
+   formu ve başka route'lar değişmez. Node middleware bundle, CSP, RSC,
+   `generateMetadata`, anonim/oturumlu HTML, prefetch, gerçek HTTP 410 ve
+   restore sonrası 200/404 yerel production build/E2E ile kanıtlanmadan GO yok.
+   Middleware yolu çalışmazsa eşdeğer Caddy/Node çözümü ayrıca tasarlanıp
+   hakemden geçer; doğrulanmamış route handler rewrite kullanılmaz.
+5. **Tek reset sınırı:** `great_reset_commits` tablosunda herhangi bir commit
+   satırı varsa önizleme ve uygulama `RESET_ALREADY_COMMITTED` ile durur.
+   `RESTART WITH 2147483648` yalnız ilk reset içindir; ikinci reset ayrı ID
+   namespace tasarımı ve Gökhan kararı olmadan yapılamaz.
+6. Önizleme, hedef DB rolünün okuma, tüm tablo kilidi, silinecek tablo `TRUNCATE`,
    outbox/audit/idempotency yazma, sequence okuma, `TEMP` ve `pg_control_system()`
    yetkilerini yoklar. Ayrı kontrol bağlantısı için doğrulanmış URL ile `postgres`
    DB'sine gerçekten bağlanma, `pg_hba` kabulü, hedef DB sahipliği ve başlangıç
@@ -127,10 +144,14 @@ Tablo satır sayısı, şema/enum/trigger/fonksiyon/kural tanımları, bütün n
 sahibi ve ACL'si (`relowner`, `relacl`, `nspowner`, varsayılan yetkiler, sequence ve
 fonksiyon izinleri, DB `datacl` dahil) ve sequence tanımı ile `last_value`/
 `is_called` ayrıca girer. DB yorumu, `datconnlimit`, `pg_db_role_setting`,
-encoding/locale ve extension listesi de makbuza girer; custom dump bunları
-tek başına taşır varsayılmaz. Kaynak tam özet dump'ın hemen öncesi ve
-sonrası aynı olmalı; operatör sunucusundaki ayrı PostgreSQL 16 prova kümesine
-restore sonrası tam özet de aynı olmalı. Sequence MVCC görüntüsünden bağımsız
+encoding/locale, gerekli roller/üyelik ve extension listesi (`extowner` dahil)
+de makbuza girer; custom dump bunları tek başına taşır varsayılmaz. Kaynak
+tam özet dump'ın hemen öncesi ve sonrası aynı olmalı. Operatör sunucusundaki
+ayrı PostgreSQL 16 prova kümesinde gerekli roller/üyelikler önceden kurulur;
+DB yorumu, bağlantı limiti, DB/rol ayarı ve extension sahipliği uygulanır.
+Extension sahibi veya üye nesneleri birebir kurulamıyorsa beklenen fark
+önceden ölçülüp ayrı onaylanır; sessiz eşitlik iddiası yoktur. Restore sonrası
+tam özet bu açık kapsamla aynı olmalı. Sequence MVCC görüntüsünden bağımsız
 olduğundan iki kaynak okumasında ayrıca eşit olmalıdır. SHA-256 kriptografik
 bütünlük kanıtıdır, matematiksel eşitlik teoremi değildir.
 
@@ -237,7 +258,9 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    `SET CONSTRAINTS ALL IMMEDIATE` ile ertelemeli kısıtları yoklar ve rollback
    eder; `entries`/`topics` INSERT'i ile `nextval` kullanılmaz. Gölgeye
    `operationId` ve dump SHA-256'sı için ayrı rollback audit satırı yazılır;
-   bu da makbuzun kayıtlı izinli farkıdır. Gölge DB'de reset commit işareti
+   bu da makbuzun kayıtlı izinli farkıdır. Audit sonrası son özet yalnız
+   `invalidatedAt` ve bu audit istisnasıyla yeniden karşılaştırılır.
+   Gölge DB'de reset commit işareti
    yokluğu veya eski makbuzla uyumu doğrulanır. App/worker
    kapalıyken iki DB'de `ALLOW_CONNECTIONS false` ve bağlantı sıfır doğrulanır;
    kontrol DB'sindeki **tek transaction**

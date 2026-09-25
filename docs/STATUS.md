@@ -19,8 +19,8 @@
   ayrı geçici tabloda doğrulandı. 30 birim testi, format, lint, typecheck geçti.
 - Üretim profili v3 `146a319` için Opus 5.5 **TASARIM DÜZELTİLMELİ** dedi
   (6 P2, 3 P3); v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için
-  1 P2, 7 P3 buldu. v6/runbook
-  düzeltmeleri taslaktır; kod, geniş ID geçişi,
+  1 P2, 7 P3 buldu. v6 exact `eeb1b54` için **TASARIM UYGUN** dedi
+  (P1/P2 yok; 8 P3 uygulama sınırı). v7/runbook hâlâ taslaktır; kod, geniş ID geçişi,
   tam digest/bütçe, production kontrol/restore yolu ve yeni hakemlik bekler.
   Üretime bağlanılmadı ve reset/dağıtım yapılmadı.
 

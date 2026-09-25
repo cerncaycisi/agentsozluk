@@ -9030,3 +9030,20 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** kanonik `slug--publicId` ile yalın `/baslik/{slug}` aynı
   yüzey değildir; yalın açılmamış başlık formunu geçmiş slug nedeniyle 410'a
   çevirmek yeni başlık açmayı engeller.
+
+## 2026-09-25 — üretim reset tasarımı v6 hakem sonucu
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `eeb1b5445cc7b114bc6325a4c06618b6426801b0` v6 için
+  **TASARIM UYGUN** dedi; yeni P1/P2 veya tasarım çelişkisi yok. Sekiz P3:
+  yalın başlık URL'sinin kodlanmış title olması, `--rakam` parser çakışması,
+  route handler rewrite riski, operatör restore'unda DB durumu/roller,
+  extension sahipliği, ikinci reset ID yeniden kullanımı ve UUID sonek
+  ayrıştırması. Hakem yalnız Read kullandı; üretime bağlanmadı.
+- v7 taslağı `great_reset_commits` doluyken ikinci reseti durdurur; Node
+  middleware 410 adayını, rol/DB/extension restore makbuzunu, kodlanmış
+  başlık ve UUID sonek testlerini açık kabul kapısı yapar. Uygulama ve
+  gerçek boyutlu ölçüm yapılmadı.
+- **Tekrarlama:** ikinci reset aynı `2147483648` başlangıcını tekrar
+  kullanırsa eski yeni-nesil URL başka içeriğe bağlanabilir. İlk reset
+  işareti varken yürütücüyü fail-closed durdur.

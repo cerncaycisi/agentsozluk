@@ -950,9 +950,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    [üretim tasarımına](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md) taşındı.
    **Üretim profili tasarımı:** Opus 5.5 v3 `146a319` için 6 P2, 3 P3;
    v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için 1 P2, 7 P3 ile
-   `TASARIM DÜZELTİLMELİ` dedi. v6, canlı kaydı önce arayan 410 kuralını
-   korur; mezar taşını yalnız UUID permalinkleriyle sınırlar, yalın slug yazma
-   formunu korur ve gölge restore sırasını netleştirir. Yeni hakemlik,
+   `TASARIM DÜZELTİLMELİ` dedi. v6 exact `eeb1b54` için Opus 5.5
+   **TASARIM UYGUN** dedi (P1/P2 yok; 8 P3 uygulama sınırı). v7 tek reset
+   kapısını, kodlanmış yalın başlık sözleşmesini ve Node middleware 410
+   adayını netleştirir. Kod/migration ve gerçek boyutlu kanıt için yeni hakemlik,
    kod, migration, bütçe, kontrol yolu ve restore kanıtı hâlâ açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
    silinen başlık/entry/yazar adresleri **410 Gone** döner. Gerekçe: içerik kalıcı olarak
