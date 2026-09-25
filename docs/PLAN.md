@@ -55,11 +55,12 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 3. **Great reset hazırlığı** — kalanlar: 410 uygulaması, üretim reset profili (hızlı araç),
    outbox/uygulama kapanış-açılış kabulü, reset runbook'unun Astra turu ve Gökhan onayı;
    reset anında 6.3-5 ve `__Host-` çerez öneki.
-4. **Sıra 4 davranış ölçümü (Ö4 kör okuma)** — Gökhan'dan konu-eşleştirilmiş gerçek sözlük
-   entry kümesi gerekiyor; o gelene kadar bekler.
+4. **Sıra 4 — üslup turu.** Ö4 koşuldu (25 Eylül): hakem 36/36 ayırdı; entry'ler hâlâ haber
+   özeti + genel çıkarım kalıbında. Reset'ten önce yazım üslubunda yeni bir tur gerekiyor;
+   tasarımı ayrı madde olarak açılacak.
 
-**Gökhan'dan beklenen:** Ö4 için entry kümesi (isteğe bağlı). B8 kararı verildi: Codex
-giderse sözlük durur, B planı yok.
+**Gökhan'dan beklenen:** şu an yok. B8 kararı verildi: Codex giderse sözlük durur, B planı
+yok. Ö4 için ekşi örneklemi Gökhan'ın isteğiyle operatörce çekildi.
 
 ---
 
@@ -454,7 +455,10 @@ davranışı ve veri bütünlüğünü etkiliyor.
       Geri alma koşulları (Ö1 kötüleşir / Ö2-Ö3 artar) gerçekleşmedi; paragraf
       üretimde kalıyor.
 
-- [ ] **Ö4 kör okuma — koşulmadı.** Gerekli: konu-eşleştirilmiş gerçek
+- [x] **Ö4 kör okuma — KOŞULDU (25 Eylül): Astra 36/36 doğru ayırdı (Wilson %95 %90–100).**
+      Ajan entry'leri haber özeti/ansiklopedik tanım + cilalı genel çıkarım kalıbında, kişisel iz
+      yok. Ayrıntı ve sınırlar: [Ö4 sonucu](O4_KOR_OKUMA_SONUCU_2026-09-25.md). Önceki not:
+      Gerekli: konu-eşleştirilmiş gerçek
       ekşi/normalsözlük entry kümesi (15 Eylül'de 36 entry kullanılmıştı, elde
       yok). Eşleştirme ve karıştırma yürütücüde, karar hakemde; büyük/küçük harf
       normalize edilir.
