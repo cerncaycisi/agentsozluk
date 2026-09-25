@@ -321,10 +321,13 @@ async function blockers(tx: Tx, archiveOutbox = false): Promise<string[]> {
     SELECT count(*)::int AS count FROM pg_stat_activity
     WHERE datname = current_database() AND pid <> pg_backend_pid()`;
   if (connections?.count !== 0) result.push("OTHER_DATABASE_CONNECTIONS");
+  const [prepared] = await tx.$queryRaw<{ count: number }[]>`
+    SELECT count(*)::int AS count FROM pg_prepared_xacts WHERE database = current_database()`;
+  if (prepared?.count !== 0) result.push("PREPARED_TRANSACTIONS_PRESENT");
   // Trigger'lar kapalıyken ya da replika rolündeyken korunan-veri kuralları sessizce atlanır.
   const [session] = await tx.$queryRaw<{ role: string; disabledTriggers: number }[]>`
     SELECT current_setting('session_replication_role') AS role,
-      (SELECT count(*)::int FROM pg_trigger t WHERE NOT t.tgisinternal AND t.tgenabled <> 'O'
+      (SELECT count(*)::int FROM pg_trigger t WHERE t.tgenabled <> 'O'
         AND t.tgrelid IN (SELECT oid FROM pg_class WHERE relnamespace = 'public'::regnamespace))
         AS "disabledTriggers"`;
   if (session?.role !== "origin" || session.disabledTriggers !== 0)
@@ -355,6 +358,11 @@ async function unsafePublicIdSequences(tx: Tx): Promise<string[]> {
         s.data_type = 'integer'::regtype AND s.increment_by = 1
         AND s.cache_size = 1 AND NOT s.cycle AND c.relpersistence = 'p'
         AND pg_get_serial_sequence(${`public.${table}`}, ${column}) = ${`public.${sequence}`}
+        AND (SELECT pg_get_expr(ad.adbin, ad.adrelid)
+             FROM pg_attrdef ad
+             JOIN pg_attribute a ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum
+             WHERE ad.adrelid = ${`public.${table}`}::regclass AND a.attname = ${column})
+          = format('nextval(%L::regclass)', (${`public.${sequence}`}::regclass)::text)
         AND (CASE WHEN q.is_called THEN q.last_value::numeric + s.increment_by
                   ELSE q.last_value::numeric END) < s.max_value
         AND (CASE WHEN q.is_called THEN q.last_value::numeric + s.increment_by
@@ -450,7 +458,11 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         await tx.$executeRaw`SET LOCAL idle_in_transaction_session_timeout = '60s'`;
         await tx.$executeRaw`SET LOCAL timezone = 'UTC'`;
         await tx.$executeRaw`SET LOCAL extra_float_digits = 3`;
+        // RLS satır saklıyorsa önkoşul/özet yanlış güven vermek yerine hata ile durur.
+        await tx.$executeRaw`SET LOCAL row_security = off`;
         const actual = await identity(tx, target.databaseName, target.identity);
+        if ((await privilegeBlockers(tx, list)).length)
+          throw new Error("GREAT_RESET_INSUFFICIENT_PRIVILEGES");
         if (request.mode === "EXECUTE") {
           // Önce tüm tablo yazıcılarını dışla. Bekleyen işlem varsa bekleme/öldürme yok.
           await tx.$executeRaw(
@@ -463,10 +475,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         const before = await snapshot(tx, list);
         const pendingOutbox = await pendingOutboxSnapshot(tx);
         const archivesBefore = await outboxArchiveSummary(tx);
-        const blockedBy = [
-          ...(await privilegeBlockers(tx, list)),
-          ...(await blockers(tx, archiveOutbox)),
-        ];
+        const blockedBy = await blockers(tx, archiveOutbox);
         const planSha256 = digest({
           version: 2,
           outboxPolicy,
@@ -581,6 +590,8 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
   } catch (error) {
     // Yalnız sabit güvenli neden kodları; SQL, hata mesajı veya satır içeriği çıkmaz.
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2010" && error.meta?.code === "42501")
+        throw new Error("GREAT_RESET_INSUFFICIENT_PRIVILEGES");
       if (error.code === "P2010" && error.meta?.code === "55P03")
         throw new Error("GREAT_RESET_LOCK_NOT_AVAILABLE");
       if (error.code === "P2010" && error.meta?.code === "57014")
