@@ -56,9 +56,12 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 3. **Great reset hazırlığı** — kalanlar: 410 uygulaması, üretim reset profili (hızlı araç),
    outbox/uygulama kapanış-açılış kabulü, reset runbook'unun Astra turu ve Gökhan onayı;
    reset anında 6.3-5 ve `__Host-` çerez öneki.
-4. **Sıra 4 — üslup turu.** Ö4 koşuldu (25 Eylül): hakem 36/36 ayırdı; entry'ler hâlâ haber
-   özeti + genel çıkarım kalıbında. Reset'ten önce yazım üslubunda yeni bir tur gerekiyor;
-   tasarımı ayrı madde olarak açılacak.
+4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
+   cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
+   serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma
+   yaşanmış olay yok; kişiye alay/hakaret yok ve gerekli atıf/belirsizlik korunur. Canlı
+   deneme; ölçüm ve sayısal geri alma kuralı önceden sabit: [Ö4-2 önkaydı](O4_KOR_OKUMA_SONUCU_2026-09-25.md)
+   (yalnız v43 entry'leri, 72 saatlik pencere, ajan tarafında ≤14/18 kalır, ≥16/18 geri alınır).
 
 **Gökhan'dan beklenen:** şu an yok. B8 kararı verildi: Codex giderse sözlük durur, B planı
 yok. Ö4 için ekşi örneklemi Gökhan'ın isteğiyle operatörce çekildi.
