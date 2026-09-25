@@ -9079,3 +9079,20 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** tek "izinli fark" listesi ayrı kümelerde aynı sahipliği
   temsil etmez. Reset öncesi gecelik yedeği trafik açıldıktan sonra geri
   yüklemek, reset dump'ına konan yasağı dolanır.
+
+## 2026-09-25 — üretim reset tasarımı v9 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `6ca052fa893b47931d9f99c43094d02a11742a7f` v9 için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 4 P3). P2: DB dışı imzalı yedek
+  nesli kaydının reset COMMIT, trafik açılışı ve rollback geçişleri tanımsız;
+  eski yedeğe dönüş yasağı bu yüzden uygulanabilir bir kapı değildi.
+  Hakem yalnız Read kullandı, üretime bağlanmadı; ayrıştırıcı ve son deneme
+  günlüğünü doğrulayamadığını açıkladı.
+- v10, exact reset-anı dump SHA'sına bağlı `COMMITTED_MAINTENANCE`, Caddy
+  açılmadan önce `TRAFFIC_OPEN`, geri yükleme sonrası `ROLLED_BACK` durumlarını
+  ve fail-closed imza/nesil doğrulamasını tanımlar. 410 yalnız `GET`/`HEAD`
+  eski ID/UUID adaylarında çalışır; POST ve yeni/yalın yollar DB'ye uğramaz.
+- **Tekrarlama:** trafik açıldı bilgisini açılıştan sonra yazmak, aradaki
+  boşlukta eski gecelik yedeğe hatalı restore izni verebilir. Dar rollback
+  penceresinde bile yalnız o `operationId`'nin exact reset-anı dump'ı geçerlidir.

@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v9 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v10 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -12,8 +12,9 @@ v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için 1 P2, 7 P3 buldu.
 v6 `eeb1b54` için **TASARIM UYGUN**, P1/P2 yok, 8 P3 verdi. v7 tek reset
 sınırını, kodlanmış başlık URL'sini ve Node middleware adayını netleştirdi.
 Opus 5.5 v7 `19a6c85` için de **TASARIM UYGUN** dedi (P1/P2 yok, 7 P3).
-Opus 5.5 v8 exact `ace70f6` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3).
-v9, eski gecelik yedek, yoğun prefetch ve ortam bazlı restore farkı kapılarını ekler.
+Opus 5.5 v8 exact `ace70f6` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3);
+v9 exact `6ca052f` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 4 P3).
+v10 imzalı yedek neslinin durum geçişini ve HTTP metot kapsamını sabitler.
 
 ## Ön kabul kapıları
 
@@ -36,10 +37,13 @@ v9, eski gecelik yedek, yoğun prefetch ve ortam bazlı restore farkı kapılar�
   Node middleware uygulaması mevcut geniş matcher/prefetch dışlamasını korur;
   permalinkler için ikinci, prefetch'i kapsayan matcher ve gerçek 410 yanıtında
   `Cache-Control: no-store`, CSP, `X-Robots-Tag: noindex` aranır. Standalone
-  build/E2E, DB hata yolunda `503 no-store`, RSC/Server Action geçişi,
+  build/E2E, yalnız `GET`/`HEAD` eski ID/UUID adaylarında 410,
+  POST/yalın başlık/yeni ID'de DB sorgusuz `next()`, DB hata yolunda
+  `503 no-store`, RSC/Server Action geçişi,
   tek havuz, toplam bağlantı sayısı ve yoğun prefetch sorgu/p95 ölçümünü
   kanıtlamadan GO yok. İşaret önbelleği kullanılırsa reset/restore süresince
-  bütün app süreçleri kapatılıp işaret değişiminden sonra yeniden başlatılır.
+  bütün app süreçleri kapatılıp işaret değişiminden sonra yeniden başlatılır;
+  her yeni süreçte boş önbellek iç Host kabulünde ölçülür.
 - Kişisel operatör sunucusundaki gerçek boyutlu provada tam digest, reset, sequence
   `RESTART`, niyet COMMIT/rollback, kapı açma/kapatma, başarısız bağlantı ve tam
   gölge restore/DB adı değiştirme yolu ölçülür. Üretim hostunda iki DB'ye aynı
@@ -55,10 +59,12 @@ v9, eski gecelik yedek, yoğun prefetch ve ortam bazlı restore farkı kapılar�
   adları, önceki `enabled/active` durumları ve çalışan PID'leriyle envantere
   girer. Bilinenler: production bakım timer'ı, canlılık/lease alarmı;
   operatör sunucusu gecelik yedeği. Envanter başka işler bulabilir.
-- Operatör sunucusunda üretim DB'sinden bağımsız imzalı reset nesli ve backup
-  envanteri hazırlanır. Reset öncesi gecelik yedekler etiketlenir; tüm restore
-  yolları yedek neslini bu kayıtla karşılaştırıp trafik açıldıktan sonra
-  pre-reset yedeğini fail-closed reddeder. Bu kapı test edilmeden GO yok.
+- Operatör sunucusunda üretim DB'si ve yedek dizini dışındaki 0600 anahtarla
+  HMAC imzalı reset nesli/backup envanteri hazırlanır. Yedek nesli dosya
+  adından değil ayrı gölge DB'de doğrulanan commit tablosu/satırı/operationId
+  ve public ID tipinden çıkarılır; migration öncesi şema reddedilir. İmzayı
+  restore kapısı doğrular; kaydın atomik yazma/fsync, bozuk/eksik imza ve
+  eski gecelik yedek ret yolları test edilmeden GO yok.
 - Başlangıç makbuzunda Gökhan'ın onayladığı exact SHA, `operationId`, kapsam,
   plan/dump SHA-256, son kesim zamanı, disk/WAL/temp başlığı, eski bayraklar,
   önceki timer durumları ve geri dönüş kararı bulunur. Secret veya ham entry
@@ -81,6 +87,8 @@ v9, eski gecelik yedek, yoğun prefetch ve ortam bazlı restore farkı kapılar�
    dump öncesi/sonrası ve restore'da bütün tablolar için tam içerik/şema/
    sequence, DB durumu ve yetki özetleri tanımlı farklar dışında eşit olsun. Farkta
    niyete yalnız `invalidatedAt` yazarak geçersizleştir ve bu denemeyi bitir.
+   Doğrulanmış exact dump SHA'sı ve `operationId` dış kayda `PREPARED` olarak
+   atomik/imzalı yazılıp tekrar doğrulanır; bu durum restore izni vermez.
 3. **Önizle.** Üretim profili önizlemesi aynı RepeatableRead görüntüsünde tam
    makbuz özetini ve kısa `ctid`/`xmin` plan özetini çıkarır. Makbuz eşitliği,
    kimlik, izinler, oturum/`pg_prepared_xacts`, RLS, trigger, INSERT yazıcıları,
@@ -115,14 +123,19 @@ v9, eski gecelik yedek, yoğun prefetch ve ortam bazlı restore farkı kapılar�
    son koşullarını doğrula. Cevap belirsizse önce `postgres` kontrol DB'sinden
    hedefte backend/kilit kalmadığını doğrula, sonra kapıyı aç; audit,
    `consumedAt`, commit işareti, sayımlar ve sequence ile tamamlandı/geri alındı/belirsiz
-   sonucunu üret. Belirsizde yeniden çalıştırma veya restore etme.
+   sonucunu üret. Belirsizde yeniden çalıştırma veya restore etme. Tamamlandıysa
+   imzalı dış kayıt `COMMITTED_MAINTENANCE(operationId, dumpSha)` olarak atomik
+   yazılıp fsync edilir ve tekrar doğrulanır; bu kanıt yoksa app kabulü ve
+   restore başlamaz.
 7. **Kapıyı aç ve kabul et.** Başarı veya vazgeçmede `postgres` DB'sinden
    `ALLOW_CONNECTIONS true` ve `datallowconn` doğrulaması. Kontrol yolu
    kayıpsa önceden prova edilmiş container konsol yolu kullanılır; kapı
    açıldığının kanıtı olmadan bakım bitmez. **Caddy bakım yanıtı açık kalır.**
    App'i dört yazma bayrağı kapalıyken aç; worker hold sürer. İç Host/loopback
    üzerinden 410/404 route, sitemap, sayaç/önbellek, anonim sayfa, health/ready,
-   release/boot ve veri sözleşmesini doğrula. Kabul geçince Caddy bakım yanıtı
+   release/boot ve veri sözleşmesini doğrula. Kabul geçince imzalı dış kayıt
+   atomik/fsync ile `TRAFFIC_OPEN` durumuna **önceden** geçirilip tekrar
+   doğrulanır; başarısızsa bakım sürer. Ancak sonra Caddy bakım yanıtı
    kaldırılır. Dört bayrağı eski değerlerine ayrı ayrı döndür; worker'ı
    kontrollü aç, worker hold en son kalksın.
    İlk doğal koşu ve tüm timer/cron'un önceki `enabled/active` durumu,
@@ -144,7 +157,10 @@ v9, eski gecelik yedek, yoğun prefetch ve ortam bazlı restore farkı kapılar�
   pre-reset yedeğe dönüş **yasaktır**; ileri
   düzeltme/ayrı namespace planı gerekir. Bu dar pencerede Gökhan ayrı restore
   eylemini onaylarsa, doğrulanmış dump kişisel operatör sunucusundan production
-  hostuna kontrollü aktarılır. App/worker/timer kapalı, Caddy bakım yanıtı açık
+  hostuna kontrollü aktarılır. Önce dış imza `COMMITTED_MAINTENANCE` olmalı;
+  yalnız bu `operationId`'nin exact reset-anı `dumpSha`'sı ve gölgede
+  içerikten doğrulanan nesli kabul edilir, eksik/bozuk kayıt fail-closed durur.
+  App/worker/timer kapalı, Caddy bakım yanıtı açık
   kalır. Canlı DB'yi silmeden, kaydedilmiş sahip/encoding/locale/DB ACL ile
   `template0` üzerinden yeni **gölge DB** oluşturulur. Dump bu DB'ye
   `agent_sozluk` rolü altında (`--role=agent_sozluk` veya rol bağlantısı),
@@ -177,7 +193,8 @@ v9, eski gecelik yedek, yoğun prefetch ve ortam bazlı restore farkı kapılar�
   Eski reset DB'si `datallowconn=false` kalır ve kabul bitene kadar tutulur.
   Yeni canonical DB'nin `datallowconn`,
   sahip/ACL, sequence, app rolü ve iç Host/loopback route kabulü doğrulanır;
-  sonra bakım yanıtı kaldırılır. Gölge restore için disk yetmiyorsa reset
+  imzalı dış kayıt atomik/fsync ile `ROLLED_BACK` durumuna geçirilip tekrar
+  doğrulanır. Yalnız bundan sonra bakım yanıtı kaldırılır. Gölge restore için disk yetmiyorsa reset
   başlamaz. Bu yöntemin local gerçek boyutlu ve exact onaylı production-host
   scratch provasında süre, yetki ve disk kanıtı henüz **yok**; bunlar kapanmadan
   reset GO yok.

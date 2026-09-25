@@ -22,7 +22,8 @@
   1 P2, 7 P3 buldu. v6 exact `eeb1b54` için **TASARIM UYGUN** dedi
   (P1/P2 yok; 8 P3 uygulama sınırı). v7 exact `19a6c85` için de
   **TASARIM UYGUN** dedi (P1/P2 yok; 7 P3). v8 exact `ace70f6` için de
-  **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v9/runbook hâlâ taslaktır;
+  **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v9 exact `6ca052f` için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 4 P3); v10/runbook hâlâ taslaktır;
   kod, geniş ID geçişi, tam digest/bütçe, production kontrol/restore yolu ve
   uygulama hakemliği bekler.
   Üretime bağlanılmadı ve reset/dağıtım yapılmadı.

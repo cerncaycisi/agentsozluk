@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v9 (25 Eylül 2026)
+# Great reset — üretim profili tasarımı v10 (25 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -22,8 +22,9 @@ ikinci resetin ID yeniden kullanımını engeller ve HTTP 410 adayını netleşt
 Opus 5.5, v7 exact `19a6c8513943b82154715ec8abbee847d572f948`
 için **TASARIM UYGUN** dedi; P1/P2 yok, yedi P3 kabul ayrıntısı kaydetti.
 v8 exact `ace70f611796101ca2a6b175271c3de9deac4788` için Opus 5.5
-**TASARIM UYGUN** dedi; P1/P2 yok, altı P3 kabul ayrıntısı var. v9 bu
-ayrıntıları uygulama ve geri yükleme kapısına taşır.
+**TASARIM UYGUN** dedi; P1/P2 yok, altı P3 kabul ayrıntısı var. v9 exact
+`6ca052fa893b47931d9f99c43094d02a11742a7f` için **TASARIM DÜZELTİLMELİ**
+dedi (1 P2, 4 P3). v10 yedek nesli durum geçişini ve 410 metot kapsamını tanımlar.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -120,18 +121,24 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    410 kararı çalışır; normal yanıttaki CSP/analytics davranışı değişmez.
    Middleware Prisma'yı doğrudan kullanmaz; aynı application service ve aynı
    `parseTopicRouteReference`/`parseEntryRouteReference` ayrıştırıcılarıyla
-   karar verir. **Önce commit işareti** okunur; yoksa `next()`. İşaret varsa
-   `>2147483647` sayısal ID veya yalın başlık da `next()`; yalnız eski
-   namespace/legacy UUID için canlı kayıt, ardından mezar taşı aranır.
+   karar verir. **Önce metot ve URL sözdizimi** sınıflandırılır: yalnız
+   `GET`/`HEAD` ve eski sayısal namespace veya legacy UUID adayı 410 yoluna
+   girer. `POST` (eski sekmenin Server Action'ı dahil), yalın başlık,
+   `>2147483647` sayısal ID ve ayrıştırılamayan yol DB'ye dokunmadan `next()`
+   alır; POST'un mevcut uygulama güvenli hata kodu test edilir. Adayda
+   **önce commit işareti** okunur; yoksa `next()`. İşaret varsa canlı kayıt,
+   ardından mezar taşı aranır.
    İşaret sonucu yalnız uygulama süreci ömründe, başarılı okumadan sonra
    önbelleklenebilir; reset ve restore sırasında bütün app süreçleri kapatılır,
-   işaret değişiminden sonra yeniden başlatılır. Bu değişmez ve yoğun permalink
+   işaret değişiminden sonra yeniden başlatılır; her yeni süreçte boş önbellek
+   iç Host kabulünde ölçülür. Bu değişmez ve yoğun permalink
    prefetch'inde sorgu sayısı/p95 gecikme ölçülmeden önbellek kabul edilmez.
    İşaret veya mezar taşı sorgusu hata verirse 410 uydurulmaz; ilgili eski yol
    için `503` ve `Cache-Control: no-store` döner. Bilinen silinmiş
    adreste statik kısa HTML gövdeli doğrudan 410 yanıtı; `Cache-Control: no-store`,
    mevcut nonce/CSP, `X-Robots-Tag: noindex` ve
-   `Content-Type: text/html; charset=utf-8` taşır.
+   `Content-Type: text/html; charset=utf-8` taşır. `HEAD` aynı statü ve
+   başlıkları gövdesiz taşır.
    Böylece rollback sonrası tarayıcı/proxy bayat 410 saklamaz. Diğer yanıtta
    mevcut `NextResponse.next()` başlıkları korunur. Migration tabloları
    middleware release'inden **önce** kabul edilmiş olmalıdır. `0123`, güvenli
@@ -274,12 +281,24 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
 6. Reset COMMIT'i olmuş ama site kabulü düşmüşse rollback **ayrı bir üretim eylemidir**.
    Bu yol yalnız Caddy bakım yanıtı kaldırılmadan ve yazma bayrakları/worker
    açılmadan önce geçerlidir. Dış trafik veya yeni içerik başladıktan sonra
-   pre-reset dump'a dönüş bu tasarımda **yasaktır**; bu yasak reset anı dump'ı
-   kadar eski gecelik yedekler için de geçerlidir. Operatör sunucusundaki
-   üretim DB'si dışında saklanan imzalı reset nesli/backup envanteri, her
-   restore öncesi yedek neslini karşılaştırır; reset öncesi yedek trafik
-   açıldıktan sonra fail-closed reddedilir. İleri düzeltme ya da yeni
-   namespace tasarımı gerekir. Gölgeye yazılan reset geri yükleme audit kaydı
+   pre-reset dump'a dönüş bu tasarımda **yasaktır**; ileri düzeltme veya yeni
+   namespace tasarımı gerekir. Bu yasak reset anı dump'ı kadar eski gecelik
+   yedekler için de geçerlidir. Operatör sunucusundaki
+   üretim DB'si ve yedek dizini dışında, 0600 erişimli ayrı anahtarla HMAC
+   imzalı reset nesli/backup envanteri tutulur. Yedek nesli dosya adından
+   değil, ayrı gölge DB'de doğrulanan dump içeriğindeki `great_reset_commits`
+   tablosu/satırı/`operationId` ve public ID sütun tipinden belirlenir;
+   migration öncesi şema uyumsuzdur. Reset COMMIT'i uzlaştırılınca imzalı kayıt
+   atomik yazma/fsync ile `COMMITTED_MAINTENANCE(operationId, dumpSha)` olur;
+   kayıt doğrulanmadan app kabulü veya restore yok. Caddy bakım yanıtı ancak
+   kayıt atomik/imzalı biçimde `TRAFFIC_OPEN` durumuna **önceden** geçirilip
+   tekrar doğrulanırsa kaldırılır; yazma başarısızsa bakım sürer. Bu geçiş
+   rollback penceresini ihtiyatlı olarak kapatır. Restore kapısı varsayılan
+   olarak reddeder: yalnız `COMMITTED_MAINTENANCE` ve aynı `operationId` için
+   exact reset-anı `dumpSha`'lı, içerikten doğrulanmış dump kabul edilir;
+   eski gecelik yedekler dar pencerede bile reddedilir. Başarılı restore
+   sonrası kayıt `ROLLED_BACK` olur ve bu doğrulanmadan trafik açılmaz.
+   Gölgeye yazılan reset geri yükleme audit kaydı
    da ikinci reseti kapatır.
    Gökhan onaylarsa doğrulanmış dump production hostunda **yeni gölge DB'ye**,
    DB sahibi `agent_sozluk` rolüyle veya `--role=agent_sozluk` altında restore

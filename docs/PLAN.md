@@ -954,8 +954,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    **TASARIM UYGUN** dedi (P1/P2 yok; 8 P3 uygulama sınırı). v7 exact
    `19a6c85` için de Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; 7 P3).
    v8 exact `ace70f6` için de Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok;
-   6 P3). Tasarım eski gecelik yedeklere dönüş kapısını, yoğun prefetch sorgu
-   yükünü ve ortam bazlı restore farklarını kabul şartı yapar. Kod, migration,
+   6 P3). v9 exact `6ca052f` için bir P2 ve dört P3 ile
+   **TASARIM DÜZELTİLMELİ** dedi: dış trafik açılmadan önce imzalı yedek
+   neslinin durum geçişi tanımsızdı. v10 bunu ve HTTP metot sınırını tanımlar.
+   Kod, migration,
    bütçe, kontrol yolu, gerçek boyutlu restore ve uygulama hakemliği açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
    silinen başlık/entry/yazar adresleri **410 Gone** döner. Gerekçe: içerik kalıcı olarak
