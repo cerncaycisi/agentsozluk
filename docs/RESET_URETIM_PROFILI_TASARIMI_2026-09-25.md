@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v12 (25 Eylül 2026)
+# Great reset — üretim profili tasarımı v13 (25 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -29,7 +29,9 @@ için **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 kabul ayrıntısı var.
 v11 exact `6c032eec369fa4796ce7395a28a1096ad79af09f` için Opus 5.5
 **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): rollback sonrası eski imzalı
 kayıt, geri yüklenmiş DB'de trafik olayı olmaması nedeniyle tekrar
-kullanılabiliyordu. v12 canlı DB'nin aynı reset işlemi olduğunu olumlu koşul yapar.
+kullanılabiliyordu. v12 exact `c0442c8a9252734f90bc199b6f93aadd257c132d`
+için **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 uygulama sınırı var.
+v13 bu sınırları fail-closed kabul koşullarına taşır.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -304,28 +306,35 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    rename öncesi bu içerik ve beklenen boş commit işareti yeniden doğrulanır;
    migration öncesi şema uyumsuzdur. Reset COMMIT'i uzlaştırılınca imzalı kayıt
    geçici dosya fsync → aynı dizinde rename → dizin fsync → geri okuyup
-   imzayı doğrulama sırasıyla `COMMITTED_MAINTENANCE(operationId, dumpSha)` olur;
+   imzayı doğrulama sırasıyla
+   `COMMITTED_MAINTENANCE(operationId, dumpSha, protectedDigest, clearedCounts)`
+   olur. Korunan tabloların reset sonrası tam özeti ve silinen 29 tablonun boş
+   sayımı bu kayda girer; restore öncesi canonical aynı makbuzla karşılaştırılır;
    kayıt doğrulanmadan app kabulü veya restore yok. Caddy bakım yanıtı ancak
    kayıt aynı sırayla `TRAFFIC_OPEN` durumuna **önceden** geçirilip tekrar
    doğrulanırsa ve korunan `great_reset_exposure_events` tablosuna aynı
    `operationId` için `UNIQUE(operationId)` korumalı append-only trafik açılış
    satırı yazılıp okunursa
-   kaldırılır; iki kanıttan biri başarısızsa bakım sürer. Bu geçiş
+   kaldırılır. `TRAFFIC_OPEN` öncesi canonical DB'de aynı `operationId` commit'i
+   ve restore audit yokluğu doğrulanır. İki kanıttan biri başarısızsa bakım sürer. Bu geçiş
    rollback penceresini ihtiyatlı olarak kapatır. Dış durum yazılıp DB olayı
    düşerse yalnız idempotent DB satırı yeniden denenir; restore yoktur.
-   Tabloya yalnız ayrı operatör rolü INSERT yapar; uygulama rolünün
-   UPDATE/DELETE/TRUNCATE yetkisi yoktur ve trigger bunları reddeder.
-   Sahip/süper kullanıcının trigger'ı kapatması tehdit modeli dışındaki
-   yetkili operatör eylemidir; kazara/app değişikliği negatif testle yakalanır.
+   Olayı pinned üretim CLI, mevcut doğrulanmış tek `DATABASE_URL` rolüyle yazar;
+   yeni credential/rol eklenmez. Bu rol tablonun sahibi olabilir; dolayısıyla
+   GRANT geri alma gerçek bir sahiplik sınırı değildir. UPDATE/DELETE/TRUNCATE
+   trigger ile reddedilir; sahip/süper kullanıcının trigger'ı kapatması tehdit
+   modeli dışındaki yetkili operatör eylemidir. Koruma kazara/app DML'ine
+   yöneliktir ve negatif testlerle kanıtlanır.
    Restore kapısı varsayılan
    olarak reddeder: yalnız `COMMITTED_MAINTENANCE` ve aynı `operationId` için
    exact reset-anı `dumpSha`'lı, içerikten doğrulanmış dump kabul edilir;
    canlı canonical DB'de **aynı `operationId` için tam bir
    `great_reset_commits` satırı** ve **hiçbir
    `GREAT_RESET_PRODUCTION_RESTORE` audit olayı olmaması** olumlu koşuldur.
-   Herhangi bir `great_reset_exposure_events` satırı, yeni namespace'te satır
-   veya iki sequence'ten birinde `last_value != 2147483648` ya da
-   `is_called != false` durumu varsa restore durur. Bu koşullar geri
+   Herhangi bir `great_reset_exposure_events` satırı veya yeni namespace'te
+   satır varsa restore durur. İki sequence ilişkisinden doğrudan okunan
+   `last_value = 2147483648 AND is_called = false` sonucu **true** olmalıdır;
+   satır/alan yokluğu veya NULL fail-closed durur. Bu koşullar geri
    yüklenmiş pre-reset DB'de eski imzalı kaydın tekrarını da reddeder.
    Eski gecelik yedekler dar pencerede bile reddedilir.
    Dış kayıt `PREPARED → COMMITTED_MAINTENANCE → TRAFFIC_OPEN | ROLLED_BACK`
@@ -336,8 +345,11 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    `ABORTED` son durumdur; diğer geçişler reddedilir. Her geçiş artan sıra
    numarası ve önceki kaydın özetini taşıyan zincire yazılır; yeni dosya eskisinin
    byte düzeyinde birebir öneki ve tek yeni kayıttan oluşmalıdır.
-   Restore kapısı en yüksek sırayı doğrular. Başarılı restore
-   sonrası kayıt `ROLLED_BACK` olur ve bu doğrulanmadan trafik açılmaz.
+   Restore kapısı en yüksek sırayı doğrular. Başarılı restore sonrası
+   `ROLLED_BACK` için canonical DB'de aynı `operationId` ve `dumpSha`'lı restore
+   audit'i, commit yokluğu gerekir. Rename COMMIT'i sonrası kayıt yazılamazsa
+   bu kanıtlarla geçiş idempotent olarak yeniden denenir; doğrulanmadan trafik
+   açılmaz.
    Gölgeye yazılan `GREAT_RESET_PRODUCTION_RESTORE` audit kaydı
    da ikinci reseti kapatır.
    Gökhan onaylarsa doğrulanmış dump production hostunda **yeni gölge DB'ye**,
@@ -364,10 +376,16 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    doğrulanır. App/worker kapalıyken canonical ve gölge DB'de birer pinned
    salt okunur bağlantı kurulur; bunların dışındaki backend ve hazırlanmış
    işlem sıfır olmalıdır. Kontrol DB'si iki DB'yi `ALLOW_CONNECTIONS false`
-   yapar. Pinned canonical bağlantı **aynı `operationId` commit'i, restore
+   yapar; sonra `pg_stat_clear_snapshot()` ve kısa bekleme ile iki DB'de
+   **yalnız iki pinned PID** kaldığı yeniden doğrulanır. Pinned bağlantılar
+   kapı sonrası açılan yeni `READ COMMITTED` transaction'larda denetler;
+   kapı öncesi RepeatableRead görüntüsü kullanılmaz. Pinned canonical
+   bağlantı **aynı `operationId` commit'i, restore
    audit yokluğu, trafik olayı yokluğu, yeni namespace satır yokluğu ve iki
-   sequence'in tüketilmemiş başlangıcını** kapı kapandıktan sonra yeniden
-   doğrular; pinned gölge bağlantı restore makbuzunu doğrular. İkisi de
+   sequence'in tüketilmemiş başlangıcını, korunan tablo tam özetini ve silinen
+   29 tablonun boşluğunu** kapı kapandıktan sonra yeniden doğrular; pinned
+   gölge bağlantı restore makbuzunu doğrular. Restore audit'i önceden okunan
+   commit satırının özetini taşır. İkisi de
    bırakılır, kontrol DB'si backend sıfırını yeniden ölçer; kapalı DB'ye
    yeni bağlantı giremediğinden bu son kanıtla rename arasındaki değişiklik
    yarışı kapanır. Kontrol DB'sindeki **tek transaction**
@@ -377,8 +395,12 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    ayrıca prova edilir. İsim kesiminde hata olursa transaction geri alınır,
    eski canonical DB kalır. Eski reset DB'si `datallowconn=false` durumda,
    ilk kabul bitene dek rollback kanıtı olarak saklanır. Yeni canonical DB
-   için gate ve app kabulü tekrar
-   doğrulanır. Gölge restore'a disk yetmezse **reset GO yok**; eski DB'yi önce
+   için gate ve app kabulü tekrar doğrulanır. Bu kabul düşerse eski reset
+   DB'sine ikinci ad değişimiyle dönüş bu tasarımda yoktur; site bakımda kalır
+   ve yeni exact onaylı iyileşme planı gerekir. Başarılı rollback sonrası
+   `GREAT_RESET_PRODUCTION_RESTORE` audit'i ikinci reseti kalıcı olarak
+   engeller; bu ürün sonucu Gökhan'ın exact onay metninde açık yazılır.
+   Gölge restore'a disk yetmezse **reset GO yok**; eski DB'yi önce
    silen yol bu tasarımın geri dönüşü değildir. Otomatik restore yok.
    Kesim önkontrolünde kontrol rolünün `rolcreatedb`/`rolsuper`, rol üyeliği,
    shadow sahibi olabilmesi, `ALTER DATABASE RENAME` ve dump'taki untrusted

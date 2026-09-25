@@ -25,7 +25,8 @@
   **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v9 exact `6ca052f` için
   **TASARIM DÜZELTİLMELİ** dedi (1 P2, 4 P3). v10 exact `719e191` için
   **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v11 exact `6c032ee` için
-  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3); v12/runbook hâlâ taslaktır;
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). v12 exact `c0442c8` için
+  **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3); v13/runbook hâlâ taslaktır;
   kod, geniş ID geçişi, tam digest/bütçe, production kontrol/restore yolu ve
   uygulama hakemliği bekler.
   Üretime bağlanılmadı ve reset/dağıtım yapılmadı.

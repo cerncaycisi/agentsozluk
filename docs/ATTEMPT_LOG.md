@@ -9130,3 +9130,19 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** yalnız olumsuz koşullar, rollback sonrası pre-reset DB'yi
   reset sonrası DB'den ayıramaz. Restore kapısı canlı DB'nin doğru nesil ve
   işlem kimliğinde olduğunu olumlu kanıtlamalıdır.
+
+## 2026-09-25 — üretim reset tasarımı v12 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `c0442c8a9252734f90bc199b6f93aadd257c132d` v12 için
+  **TASARIM UYGUN** dedi; v11 P2 kapandı, yeni P1/P2 yok, altı P3 kabul
+  ayrıntısı var. Hakem yalnız Read kullandı, üretime bağlanmadı; PostgreSQL
+  davranışı yorumunu bu tur kaynak/deneyle doğrulamadığını açıkça bildirdi.
+- v13, sequence ilişkisinden `last_value/is_called` değerlerinin olumlu
+  kontrolünü, kapı sonrası yeni snapshot ve yalnız pinned PID sayımını,
+  `TRAFFIC_OPEN`/`ROLLED_BACK` için DB kimliğini, gerçek tablo sahibi/trigger
+  sınırını, rollback'in kalıcı ürün sonucunu ve korunan tam özeti açık kabul
+  koşulu yapar. Kod, migration ve gerçek boyutlu ölçüm yapılmadı.
+- **Tekrarlama:** `pg_sequences.last_value` NULL olabilir; `!=` ile yazılan
+  olumsuz SQL kapısı NULL'u güvenli ret olarak yorumlamaz. Gerçek sequence
+  ilişkisinden eşitliği **true** arayarak fail-closed denetle.

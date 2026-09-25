@@ -960,8 +960,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v11 eski imzalı kaydın tekrarını
    korunan DB trafik olayıyla engellemeyi hedefledi; Opus 5.5 v11 exact
    `6c032ee` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): rollback
-   sonrası eski imzalı kayıt yine kullanılabiliyordu. v12 canlı canonical
-   DB'de aynı reset commit'ini olumlu koşul yapar.
+   sonrası eski imzalı kayıt yine kullanılabiliyordu. v12 exact `c0442c8`
+   için Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v13 sequence'in
+   doğrudan olumlu kontrolünü, kapı sonrası PID/snapshot kontrolünü ve gerçek
+   tablo sahibi sınırını kabul kapısına ekler.
    Kod, migration,
    bütçe, kontrol yolu, gerçek boyutlu restore ve uygulama hakemliği açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
