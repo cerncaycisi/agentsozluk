@@ -9096,3 +9096,20 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** trafik açıldı bilgisini açılıştan sonra yazmak, aradaki
   boşlukta eski gecelik yedeğe hatalı restore izni verebilir. Dar rollback
   penceresinde bile yalnız o `operationId`'nin exact reset-anı dump'ı geçerlidir.
+
+## 2026-09-25 — üretim reset tasarımı v10 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `719e1917a4805947101cbd4dbbdb7e4022164200` v10 için
+  **TASARIM UYGUN** dedi; v9'daki P2 kapandı, yeni P1/P2 yok, altı P3 kabul
+  ayrıntısı var. Hakem yalnız Read kullandı, üretime bağlanmadı; route
+  ayrıştırıcı kaynağını okumadığını bildirdi. Yürütücü kaynak yolunu ayrıca
+  `src/lib/routing/public-urls.ts` içinde doğruladı; bu hakem onayı değildir.
+- v11, `PREPARED/ABORTED` geçişini, artan/önceki özetli dış kayıt zincirini,
+  korunan `great_reset_exposure_events` trafik açılış satırını, operatör
+  sunucusundan çıkmayan HMAC anahtarını, üretim öncesi SHA karşılaştırmasını
+  ve dosya+dizin fsync sırasını kabul kapısına ekledi. Kod, migration ve
+  gerçek boyutlu ölçüm henüz yok.
+- **Tekrarlama:** HMAC imzası bir eski kaydın geçerli olduğunu kanıtlar,
+  en yeni kayıt olduğunu tek başına kanıtlamaz. Canlı DB'deki append-only
+  trafik açılış olayıyla restore'u ayrıca engelle.

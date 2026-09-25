@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v10 (25 Eylül 2026)
+# Great reset — üretim profili tasarımı v11 (25 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -24,7 +24,9 @@ için **TASARIM UYGUN** dedi; P1/P2 yok, yedi P3 kabul ayrıntısı kaydetti.
 v8 exact `ace70f611796101ca2a6b175271c3de9deac4788` için Opus 5.5
 **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 kabul ayrıntısı var. v9 exact
 `6ca052fa893b47931d9f99c43094d02a11742a7f` için **TASARIM DÜZELTİLMELİ**
-dedi (1 P2, 4 P3). v10 yedek nesli durum geçişini ve 410 metot kapsamını tanımlar.
+dedi (1 P2, 4 P3). v10 exact `719e1917a4805947101cbd4dbbdb7e4022164200`
+için **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 kabul ayrıntısı var.
+v11 eski imzalı kayıt tekrarını DB kanıtıyla da engeller.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -152,8 +154,9 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    sorgu yükü kaynak sınırını aşarsa aday kabul edilmez.
    Middleware yolu çalışmazsa eşdeğer Caddy/Node çözümü ayrıca tasarlanıp
    hakemden geçer; doğrulanmamış route handler rewrite kullanılmaz.
-5. **Tek reset sınırı:** `great_reset_commits` tablosunda herhangi bir commit
-   satırı **veya** reset geri yükleme audit kaydı varsa önizleme ve uygulama
+5. **Tek reset sınırı:** `great_reset_commits` veya
+   `great_reset_exposure_events` tablosunda herhangi bir satır **veya** reset
+   geri yükleme audit kaydı varsa önizleme ve uygulama
    `RESET_ALREADY_COMMITTED` ile durur.
    `RESTART WITH 2147483648` yalnız ilk reset içindir; ikinci reset ayrı ID
    namespace tasarımı ve Gökhan kararı olmadan yapılamaz.
@@ -210,7 +213,9 @@ başlangıç yedeği, operatör sunucusunda 0600 korumalıdır; ham satırlar Gi
 ## Aşama 3 — tek kullanımlık niyet ve bağlantı kapısı
 
 - Ayrı, önceden onaylı release migration'ı korunan `great_reset_intents`,
-  `great_reset_commits` ve `great_reset_tombstones` tablolarını ekler. Niyetin
+  `great_reset_commits`, `great_reset_tombstones` ve append-only
+  `great_reset_exposure_events` tablolarını ekler. Son tablo reset anında
+  boştur, silinmez ve içerik makbuzuna girer. Niyetin
   `consumedAt` ve `invalidatedAt` alanları aynı anda dolu olamaz (DB `CHECK`).
   Operatör, exact SHA/eylem onayından sonra `operationId`, kapsam, release SHA
   ve en çok iki saatlik son kullanmayı tek satırda kaydeder. Bu kayıt yedekten
@@ -273,7 +278,8 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
 5. Başarılı reset sonrası app dört yazma bayrağı kapalı, worker hold açıkken
    başlatılır. Caddy bakım yanıtı sürerken iç Host/loopback ile 410 route'ları,
    sitemap, sayaç/önbellek, anonim sayfalar ve health/ready ölçülür; dış trafik
-   ancak kabul geçince açılır. İlk doğal koşu açılış sonrası ölçülür.
+   ancak kabul geçip madde 6'daki `TRAFFIC_OPEN` iki kanıtla doğrulanınca açılır.
+   İlk doğal koşu açılış sonrası ölçülür.
    Dört bayrak eski değerlerine ayrı ayrı
    döndürülür, worker hold en son kaldırılır. Durdurulan her timer/cron eski
    etkinlik durumuna getirilir; sonraki tetik ve son başarılı yedek/alarm kayıtları
@@ -285,18 +291,34 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    namespace tasarımı gerekir. Bu yasak reset anı dump'ı kadar eski gecelik
    yedekler için de geçerlidir. Operatör sunucusundaki
    üretim DB'si ve yedek dizini dışında, 0600 erişimli ayrı anahtarla HMAC
-   imzalı reset nesli/backup envanteri tutulur. Yedek nesli dosya adından
-   değil, ayrı gölge DB'de doğrulanan dump içeriğindeki `great_reset_commits`
-   tablosu/satırı/`operationId` ve public ID sütun tipinden belirlenir;
+   imzalı reset nesli/backup envanteri tutulur. İmza yalnız operatör
+   sunucusunda doğrulanır; anahtar oradan çıkmaz. Dump'ı production hostuna
+   yalnız bu kapı aktarır; production `pg_restore` öncesi dosyanın SHA-256'sını
+   `dumpSha` ile tekrar karşılaştırır. Yedek nesli dosya adından değil,
+   operatör sunucusundaki prova DB'sinde doğrulanan dump içeriğindeki
+   `great_reset_commits` tablosu/satırı/`operationId` ve public ID sütun
+   tipinden belirlenir; sınıf `PREPARED` kaydına yazılır. Üretim gölgesinde
+   rename öncesi bu içerik ve beklenen boş commit işareti yeniden doğrulanır;
    migration öncesi şema uyumsuzdur. Reset COMMIT'i uzlaştırılınca imzalı kayıt
-   atomik yazma/fsync ile `COMMITTED_MAINTENANCE(operationId, dumpSha)` olur;
+   geçici dosya fsync → aynı dizinde rename → dizin fsync → geri okuyup
+   imzayı doğrulama sırasıyla `COMMITTED_MAINTENANCE(operationId, dumpSha)` olur;
    kayıt doğrulanmadan app kabulü veya restore yok. Caddy bakım yanıtı ancak
-   kayıt atomik/imzalı biçimde `TRAFFIC_OPEN` durumuna **önceden** geçirilip
-   tekrar doğrulanırsa kaldırılır; yazma başarısızsa bakım sürer. Bu geçiş
+   kayıt aynı sırayla `TRAFFIC_OPEN` durumuna **önceden** geçirilip tekrar
+   doğrulanırsa ve korunan `great_reset_exposure_events` tablosuna aynı
+   `operationId` için append-only trafik açılış satırı yazılıp okunursa
+   kaldırılır; iki kanıttan biri başarısızsa bakım sürer. Bu geçiş
    rollback penceresini ihtiyatlı olarak kapatır. Restore kapısı varsayılan
    olarak reddeder: yalnız `COMMITTED_MAINTENANCE` ve aynı `operationId` için
    exact reset-anı `dumpSha`'lı, içerikten doğrulanmış dump kabul edilir;
-   eski gecelik yedekler dar pencerede bile reddedilir. Başarılı restore
+   canlı DB'de herhangi bir `great_reset_exposure_events` satırı veya yeni
+   namespace'te satır/sequence tüketimi varsa imzalı eski kayıt oynatılsa da
+   restore durur. Eski gecelik yedekler dar pencerede bile reddedilir.
+   Dış kayıt `PREPARED → COMMITTED_MAINTENANCE → TRAFFIC_OPEN | ROLLED_BACK`
+   geçişleriyle sınırlıdır; COMMIT öncesi hata `PREPARED → ABORTED` olur,
+   belirsiz COMMIT'te hiçbir geçiş yapılmaz. `TRAFFIC_OPEN`, `ROLLED_BACK` ve
+   `ABORTED` son durumdur; diğer geçişler reddedilir. Her geçiş artan sıra
+   numarası ve önceki kaydın özetini taşıyan yalnız eklemeli zincire yazılır;
+   restore kapısı en yüksek sırayı doğrular. Başarılı restore
    sonrası kayıt `ROLLED_BACK` olur ve bu doğrulanmadan trafik açılmaz.
    Gölgeye yazılan reset geri yükleme audit kaydı
    da ikinci reseti kapatır.

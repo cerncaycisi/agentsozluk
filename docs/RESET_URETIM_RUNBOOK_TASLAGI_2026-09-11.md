@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v10 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v11 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -14,14 +14,16 @@ sınırını, kodlanmış başlık URL'sini ve Node middleware adayını netleş
 Opus 5.5 v7 `19a6c85` için de **TASARIM UYGUN** dedi (P1/P2 yok, 7 P3).
 Opus 5.5 v8 exact `ace70f6` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3);
 v9 exact `6ca052f` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 4 P3).
-v10 imzalı yedek neslinin durum geçişini ve HTTP metot kapsamını sabitler.
+Opus 5.5 v10 exact `719e191` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3).
+v11 eski imzalı kayıt tekrarını DB kanıtı ve artan kayıt zinciriyle kapatır.
 
 ## Ön kabul kapıları
 
 - AW tam pencere, kaynak tabanı ve kuyruk kusuru ölçümleri [PLAN.md](PLAN.md)
   Sıra 5'e göre tamamlanır. Reset ancak davranış turu oturduğunda planlanır.
 - Exact release ve önceden kabul edilmiş migration; `BIGINT` public ID yolu,
-  `great_reset_intents`/`great_reset_commits`/UUID `great_reset_tombstones`, 410,
+  `great_reset_intents`/`great_reset_commits`/UUID `great_reset_tombstones`/
+  `great_reset_exposure_events`, 410,
   6.3-5 ve `__Host-` kabulü kod/test/CI ile geçer.
   Yeni ID namespace'i `2147483648` başlar. Eski sayısal aralığın tamamına 410
   verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur.
@@ -61,10 +63,15 @@ v10 imzalı yedek neslinin durum geçişini ve HTTP metot kapsamını sabitler.
   operatör sunucusu gecelik yedeği. Envanter başka işler bulabilir.
 - Operatör sunucusunda üretim DB'si ve yedek dizini dışındaki 0600 anahtarla
   HMAC imzalı reset nesli/backup envanteri hazırlanır. Yedek nesli dosya
-  adından değil ayrı gölge DB'de doğrulanan commit tablosu/satırı/operationId
+  adından değil operatör prova DB'sinde doğrulanan commit tablosu/satırı/operationId
   ve public ID tipinden çıkarılır; migration öncesi şema reddedilir. İmzayı
-  restore kapısı doğrular; kaydın atomik yazma/fsync, bozuk/eksik imza ve
-  eski gecelik yedek ret yolları test edilmeden GO yok.
+  yalnız operatör sunucusundaki restore kapısı doğrular; anahtar oradan
+  çıkmaz. Kapı dışındaki dump aktarımı yoktur; üretim `pg_restore` öncesi
+  SHA-256'yı yeniden doğrular. Kayıt artan sıra/önceki özetle yalnız eklenir;
+  geçici dosya fsync → aynı dizin rename → dizin fsync → geri okuma/imza
+  doğrulaması, eski imzalı kayıt tekrarı ve eski gecelik yedek ret yolları
+  test edilmeden GO yok. Korunan `great_reset_exposure_events` tablosu migration
+  ve app kodu kabulüne girer; trafik açılışı tek append-only satırdır.
 - Başlangıç makbuzunda Gökhan'ın onayladığı exact SHA, `operationId`, kapsam,
   plan/dump SHA-256, son kesim zamanı, disk/WAL/temp başlığı, eski bayraklar,
   önceki timer durumları ve geri dönüş kararı bulunur. Secret veya ham entry
@@ -88,7 +95,8 @@ v10 imzalı yedek neslinin durum geçişini ve HTTP metot kapsamını sabitler.
    sequence, DB durumu ve yetki özetleri tanımlı farklar dışında eşit olsun. Farkta
    niyete yalnız `invalidatedAt` yazarak geçersizleştir ve bu denemeyi bitir.
    Doğrulanmış exact dump SHA'sı ve `operationId` dış kayda `PREPARED` olarak
-   atomik/imzalı yazılıp tekrar doğrulanır; bu durum restore izni vermez.
+   atomik/imzalı yazılıp tekrar doğrulanır; dump içerik sınıfı da kayda girer.
+   Bu durum restore izni vermez.
 3. **Önizle.** Üretim profili önizlemesi aynı RepeatableRead görüntüsünde tam
    makbuz özetini ve kısa `ctid`/`xmin` plan özetini çıkarır. Makbuz eşitliği,
    kimlik, izinler, oturum/`pg_prepared_xacts`, RLS, trigger, INSERT yazıcıları,
@@ -123,7 +131,8 @@ v10 imzalı yedek neslinin durum geçişini ve HTTP metot kapsamını sabitler.
    son koşullarını doğrula. Cevap belirsizse önce `postgres` kontrol DB'sinden
    hedefte backend/kilit kalmadığını doğrula, sonra kapıyı aç; audit,
    `consumedAt`, commit işareti, sayımlar ve sequence ile tamamlandı/geri alındı/belirsiz
-   sonucunu üret. Belirsizde yeniden çalıştırma veya restore etme. Tamamlandıysa
+   sonucunu üret. Belirsizde dış kayıt `PREPARED` kalır; yeniden çalıştırma
+   veya restore etme. COMMIT öncesi hata `ABORTED` ile biter. Tamamlandıysa
    imzalı dış kayıt `COMMITTED_MAINTENANCE(operationId, dumpSha)` olarak atomik
    yazılıp fsync edilir ve tekrar doğrulanır; bu kanıt yoksa app kabulü ve
    restore başlamaz.
@@ -135,7 +144,9 @@ v10 imzalı yedek neslinin durum geçişini ve HTTP metot kapsamını sabitler.
    üzerinden 410/404 route, sitemap, sayaç/önbellek, anonim sayfa, health/ready,
    release/boot ve veri sözleşmesini doğrula. Kabul geçince imzalı dış kayıt
    atomik/fsync ile `TRAFFIC_OPEN` durumuna **önceden** geçirilip tekrar
-   doğrulanır; başarısızsa bakım sürer. Ancak sonra Caddy bakım yanıtı
+   doğrulanır. Korunan `great_reset_exposure_events` tablosuna aynı
+   `operationId` için append-only trafik açılış satırı yazılıp okunur;
+   iki kanıttan biri başarısızsa bakım sürer. Ancak sonra Caddy bakım yanıtı
    kaldırılır. Dört bayrağı eski değerlerine ayrı ayrı döndür; worker'ı
    kontrollü aç, worker hold en son kalksın.
    İlk doğal koşu ve tüm timer/cron'un önceki `enabled/active` durumu,
@@ -160,6 +171,9 @@ v10 imzalı yedek neslinin durum geçişini ve HTTP metot kapsamını sabitler.
   hostuna kontrollü aktarılır. Önce dış imza `COMMITTED_MAINTENANCE` olmalı;
   yalnız bu `operationId`'nin exact reset-anı `dumpSha`'sı ve gölgede
   içerikten doğrulanan nesli kabul edilir, eksik/bozuk kayıt fail-closed durur.
+  Canlı DB'de `great_reset_exposure_events` satırı veya yeni namespace'te
+  satır/sequence tüketimi varsa restore yasaktır; eski imzalı kaydın tekrar
+  kullanımı da böylece engellenir.
   App/worker/timer kapalı, Caddy bakım yanıtı açık
   kalır. Canlı DB'yi silmeden, kaydedilmiş sahip/encoding/locale/DB ACL ile
   `template0` üzerinden yeni **gölge DB** oluşturulur. Dump bu DB'ye
