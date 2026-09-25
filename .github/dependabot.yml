@@ -31,3 +31,12 @@ updates:
       - /.github/actions/*
     schedule:
       interval: weekly
+
+  # Dockerfile `FROM` imajları digest'e kilitli (24 Eylül); Dependabot yeni digest'i PR
+  # olarak getirir. Üretim imajını değiştirdiği için her güncelleme normal inceleme +
+  # dağıtım kapısından geçer; Node 22 major'ı korunmalı. `# syntax=` BuildKit frontend
+  # satırını Dependabot GÜNCELLEMEZ (Astra, PR #202): o digest elle yenilenir.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
