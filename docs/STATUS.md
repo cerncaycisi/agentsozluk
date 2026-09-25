@@ -7,6 +7,15 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-25 — B5.3 yerel yedek ön taraması
+
+- 25 Eylül 14:18 UTC yedeğinin yalnız yerel kopyasında, önceki 30 günde 7.375 içerik
+  eylemi sayıldı: 5.138 `SUCCEEDED`, 2.226 `REJECTED`, 11 `PROPOSED`.
+- Geniş yargı/sağlık/siyasi görev sözcük taraması 1.092 aday verdi (675 başarılı).
+  Yaşayan kişiyle ilgili gerçek bağlam henüz etiketlenmedi; B5.3 açık, kural eklenmedi.
+  Yöntem ve sınırlar [ölçüm kaydında](B53_HASSAS_KONU_ILK_TARAMA_2026-09-25.md).
+- Üretime erişilmedi; geçici yerel veritabanı silindi.
+
 ## 2026-09-24 — `7aae0d2` canlıda: F06, B7, hesap sayacı, hata tanısı, operatör duraklatması
 
 - **Dağıtılan:** `7aae0d238a562d81f3d540b212bf6dee8b87228f` (PR #177 F06, #179 F09, #181 B7,
