@@ -126,6 +126,32 @@ describe("gecelik sunucu dışı yedek", () => {
     expect(readFileSync(path.join(root, "pings"), "utf8")).toContain(code);
   });
 
+  it("saat geri alınsa da yeni yedeği tutar ve sayımı bozmaz", () => {
+    const { backups, run } = sandbox();
+    mkdirSync(backups, { recursive: true });
+    for (let day = 1; day <= 7; day += 1)
+      writeFileSync(
+        path.join(backups, `agent-sozluk-209901${String(day).padStart(2, "0")}T010000Z.dump`),
+        "gelecek",
+      );
+    const result = run();
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("kept=7");
+    const dumps = readdirSync(backups).filter((name) =>
+      /^agent-sozluk-\d{8}T\d{6}Z\.dump$/u.test(name),
+    );
+    expect(dumps).toHaveLength(7);
+    // Yeni (saat geri alındığı için "en eski" görünen) yedek silinmedi; en eski gelecek kopya gitti.
+    expect(dumps.some((name) => !name.startsWith("agent-sozluk-2099"))).toBe(true);
+    expect(dumps).not.toContain("agent-sozluk-20990101T010000Z.dump");
+  });
+
+  it("ERR yakalayıcısı alt kabuklara geçmez (çifte FAIL/OK yok)", () => {
+    const script = readFileSync(nightly, "utf8");
+    expect(script).toMatch(/^set -euo pipefail$/mu);
+    expect(script).not.toMatch(/^set -E/mu);
+  });
+
   it("kilit başka çalışmadayken durur, var olan kopyaya dokunmaz", () => {
     const { backups, run } = sandbox();
     mkdirSync(backups, { recursive: true });
@@ -186,6 +212,11 @@ describe("gecelik sunucu dışı yedek", () => {
     // Bekçi kilidi ve SSH akışını devralmaz.
     expect(remote).toMatch(/\(\n\s+exec 9>&-\n\s+sleep "\$LIMIT_S" 8>&-/u);
     // Coprocess PID'i hemen saklanır; `HOLDER_PID` yeniden okunmaz (Astra: 250'de 10 düşüş).
+    // İstemci okumayı bırakırsa bloklanan dump ve sayım da süreyle sınırlı (Astra 2. tur P1).
+    expect(remote).toMatch(
+      /timeout --kill-after=30 "\$LIMIT_S" "\$\{compose\[@\]\}" exec [^\n]*db pg_dump/u,
+    );
+    expect(remote).toMatch(/timeout --kill-after=30 600 "\$\{compose\[@\]\}" exec/u);
     expect(remote).toContain("holder_pid=$HOLDER_PID");
     expect(remote).toContain('wait "$holder_pid"');
     expect(remote.match(/HOLDER_PID/gu)).toHaveLength(2);

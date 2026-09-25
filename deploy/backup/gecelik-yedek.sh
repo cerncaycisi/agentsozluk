@@ -14,7 +14,10 @@
 # dosyaları; var olan kalıcı yedeğin üzerine yazılmaz; her hata ve TERM/INT tek yakalayıcıdan
 # geçer (bildirim denenir, yalnız bu çalışmanın geçici dosyaları silinir); döndürme yalnız
 # tam adlandırma biçimine uyan dosyaları seçer ve bu çalışmanın yedeğini asla silmez.
-set -Eeuo pipefail
+# `set -E` BİLEREK yok: ERR yakalayıcısı alt kabuklara (komut/süreç ikamesi) geçerse orada
+# `fail` çalışıp ana betik devam ediyor, hem YEDEK_FAIL hem YEDEK_OK basıp 0 ile çıkıyordu
+# (Astra, PR #204 2. tur P2). Alt kabuk hataları ana kabukta açıkça ele alınır.
+set -euo pipefail
 umask 077
 DIR="${AGENTSOZLUK_BACKUP_DIR:-$HOME/agentsozluk-backups}"
 KEEP="${AGENTSOZLUK_BACKUP_KEEP:-7}"
@@ -94,14 +97,21 @@ tmp_dump=""
 tmp_meta=""
 
 stage="dondurme"
-mapfile -t dumps < <(find "$DIR" -maxdepth 1 -type f -name 'agent-sozluk-*.dump' -printf '%f\n' |
-  grep -E "$NAME_PATTERN" | sort)
-excess=$((${#dumps[@]} - KEEP))
+# Bu çalışmanın yedeği listeden baştan çıkarılır: saat geri alınsa bile sayım doğru kalır
+# ve yeni yedek hiçbir koşulda silinmez (Astra P3).
+listing=$(find "$DIR" -maxdepth 1 -type f -name 'agent-sozluk-*.dump' -printf '%f\n') ||
+  fail ROTATION_LIST
+others=()
+while IFS= read -r name; do
+  if [[ -n "$name" && "$name" =~ $NAME_PATTERN && "$DIR/$name" != "$final" ]]; then
+    others+=("$name")
+  fi
+done < <(printf '%s\n' "$listing" | sort)
+excess=$((${#others[@]} + 1 - KEEP))
 removed=0
 for ((i = 0; i < excess; i++)); do
-  old="$DIR/${dumps[$i]}"
-  [[ "$old" == "$final" ]] && continue
-  rm -f -- "$old" "$old.sha256" "${old%.dump}.meta"
+  old="$DIR/${others[$i]}"
+  rm -f -- "$old" "$old.sha256" "${old%.dump}.meta" || fail ROTATION_DELETE
   removed=$((removed + 1))
 done
-echo "YEDEK_OK file=$(basename "$final") bytes=$(stat -c %s "$final") tables=$tables kept=$((${#dumps[@]} - removed))"
+echo "YEDEK_OK file=$(basename "$final") bytes=$(stat -c %s "$final") tables=$tables kept=$((${#others[@]} + 1 - removed))"

@@ -59,11 +59,15 @@ echo "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SELECT pg_export_snapshot
 read -r -t 60 snapshot <&"${HOLDER[0]}"
 [[ "$snapshot" =~ ^[0-9A-F]+-[0-9A-F]+-[0-9]+$ ]]
 echo "SNAPSHOT_OK" >&2
-"${compose[@]}" exec -T "${pg_env[@]}" db pg_dump -U agent_sozluk -d agent_sozluk \
-  --snapshot="$snapshot" --format=custom --no-owner --no-privileges </dev/null
+# İstemci akışı okumayı bırakırsa `pg_dump` yazarken bloklanır ve PostgreSQL oturumunun
+# kapanması onu uyandırmaz; bu yüzden istemci süreci de süreyle sınırlı. Ölünce betik hata
+# ile çıkar ve kilit bırakılır (Astra, PR #204 2. tur P1).
+timeout --kill-after=30 "$LIMIT_S" "${compose[@]}" exec -T "${pg_env[@]}" db pg_dump \
+  -U agent_sozluk -d agent_sozluk --snapshot="$snapshot" --format=custom --no-owner \
+  --no-privileges </dev/null
 echo "DUMP_DONE" >&2
 # Sequence değerleri anlık görüntüye bağlı değildir (PostgreSQL davranışı); bilgi amaçlı.
-"${compose[@]}" exec -T "${pg_env[@]}" db \
+timeout --kill-after=30 600 "${compose[@]}" exec -T "${pg_env[@]}" db \
   psql -XAtq -F '|' -v ON_ERROR_STOP=1 -U agent_sozluk -d agent_sozluk >&2 <<SQL
 BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET TRANSACTION SNAPSHOT '$snapshot';
