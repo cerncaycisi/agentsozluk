@@ -76,9 +76,11 @@ function tableSql(table: string): Prisma.Sql {
   korunmalı (Astra, PR #223): önizlemeden sonra biri bir entry metnini değiştirip bağlantısını
   kapatırsa, satır sayısı aynı kalsa bile plan bayatlamalı. PostgreSQL'de her INSERT/UPDATE yeni
   bir satır sürümü (yeni `ctid` ve `xmin`) yaratır; sürüm kimliklerinin sırasız toplamı içerik
-  okumadan her değişikliği yakalar (74 sn → 2,4 sn). VACUUM FULL/CLUSTER gibi fiziksel taşıma da
-  özeti değiştirir; bu yanlış alarm güvenli yöndedir (`GREAT_RESET_STALE_PLAN`). Korunan tablolar
-  tam içerik özetiyle kalır — "korunan veri değişmedi" kanıtı ondan gelir.
+  okumadan olağan INSERT/UPDATE/DELETE'i yakalar (74 sn → 2,4 sn). SINIRLAR (Astra, PR #223 2.
+  tur): satır sürümünü değiştirmeyen DDL (ör. enum etiketi adı) şema özetine eklendi; toplam
+  çakışması ve 32 bit `xmin`'in yeniden kullanılması kuramsal olarak kaçırabilir — önizleme ile
+  uygulama aynı bakım penceresinde, dakikalar arayla koşar. Korunan tablolar tam içerik özetiyle
+  kalır — "korunan veri değişmedi" kanıtı ondan gelir.
 */
 async function rowVersionFingerprint(tx: Tx, table: string): Promise<Fingerprint> {
   const [result] = await tx.$queryRaw<{ rows: number; versions: string }[]>(
@@ -209,7 +211,13 @@ async function inspectSchema(tx: Tx, list: Table[]) {
       'triggers', (SELECT jsonb_agg(jsonb_build_array(pg_get_triggerdef(t.oid),
         t.tgenabled, pg_get_functiondef(t.tgfoid)) ORDER BY t.tgrelid, t.tgname)
         FROM pg_trigger t WHERE NOT t.tgisinternal AND
-          t.tgrelid IN (SELECT oid FROM pg_class WHERE relnamespace = 'public'::regnamespace))
+          t.tgrelid IN (SELECT oid FROM pg_class WHERE relnamespace = 'public'::regnamespace)),
+      -- Enum etiketleri ve sırası (Astra, PR #223 2. tur): ALTER TYPE … RENAME VALUE satır
+      -- sürümünü değiştirmeden görünen içeriği değiştirir; satır sürümü özeti bunu göremez.
+      'enums', (SELECT jsonb_agg(jsonb_build_array(t.typname, e.enumlabel, e.enumsortorder)
+        ORDER BY t.typname, e.enumsortorder)
+        FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typnamespace = 'public'::regnamespace)
     )::text AS description`;
   const migration = await fingerprint(tx, "_prisma_migrations");
   return digest({ structure, migration });

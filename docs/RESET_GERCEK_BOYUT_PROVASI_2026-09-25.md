@@ -19,7 +19,7 @@ süreleri ölçülmedi" diyordu. Mac artık yok; bu sunucuda gerçek boyutlu yed
    `agent_runs` (35.165 satır, büyük JSON) **36 sn**. Bütçe 20 sn sorgu / 60 sn işlemdi.
    **Düzeltme:** silinecek 29 tablo için içerik yerine **satır sürümü özeti** (`ctid` + `xmin`
    sırasız toplamı): her INSERT/UPDATE yeni sürüm yarattığından önizlemeden sonraki her değişikliği
-   yakalar, 74 sn → 2,4 sn. İlk denemedeki "yalnız sayım" bu garantiyi zayıflatıyordu (Astra,
+   olağan INSERT/UPDATE/DELETE'i yakalar, 74 sn → 2,4 sn; satır sürümünü değiştirmeyen enum etiketi adı değişikliği şema özetine eklendi (Astra 2. tur); toplam çakışması ve 32 bit `xmin` yeniden kullanımı kuramsal sınırlardır. İlk denemedeki "yalnız sayım" bu garantiyi zayıflatıyordu (Astra,
    PR #223: aynı satır sayısıyla entry metni değişirse plan bayatlamıyordu). Korunan 20 tablonun tam
    içerik özeti aynen kalır (en büyüğü `idempotency_records`, ~5 sn).
 2. **Outbox arşiv INSERT'i karesel büyüyebiliyordu (gerçek hata).** Tek `INSERT … SELECT … WHERE
@@ -32,7 +32,7 @@ NOT EXISTS (arşiv üyeliği)` sorgusunda, istatistik tazelendiğinde planlayıc
    bütçesi — sorgu 300 sn, işlem 900 sn. Sınır kaçak durumu yakalamak içindir. Uygulama bütün
    tabloları işlemin başında kilitler ve işlem sonuna kadar tutar; `lock_timeout` yalnız kilidi
    alma beklemesini sınırlar. Yani işlem boyunca (ölçülen ~83 sn) okuyucular da bekler: uygulama
-   ve worker kapalı bakım penceresi şarttır.
+   ve worker kapalı bakım penceresi şarttır. Kilitlerin en geç bırakılma süresi işlem bütçesiyle kesin sınırlı değildir: 900 sn'nin sonunda başlayan 300 sn'lik sorgu bitmeden geri alma işlenmez (en kötü ~20 dk).
 3. **Otomatik bakım (autovacuum) reset'i durdurabilir.** Bir denemede `idempotency_records`
    üzerinde çalışan autovacuum yüzünden araç `GREAT_RESET_LOCK_NOT_AVAILABLE` ile hiçbir şey
    silmeden durdu (kilit beklemez, süreç öldürmez). Runbook: bakım bitince yeniden dene.
@@ -63,12 +63,14 @@ entry/başlık/ajan olayları 0; kullanıcılar 51, ajan profilleri 36, kaynakla
 - Önizlemeden sonra silinecek tabloda satır sayısı aynı kalarak içerik değişti (seed olmayan bir
   entry'nin metni) → `GREAT_RESET_STALE_PLAN`, veri değişmedi.
 - İstatistik tazelenmiş kopyada (kötü planı tetikleyen koşul) tam uygulama → 89 sn, doğrulandı.
+- Önizlemeden sonra `ALTER TYPE … RENAME VALUE` ile enum etiketi değişti (satır sürümü aynı) →
+  `GREAT_RESET_STALE_PLAN`, veri değişmedi (Astra 2. tur bulgusu).
 - Başarılı reset'ten sonra aynı plan → `GREAT_RESET_STALE_PLAN`.
 - Autovacuum sırasında → `GREAT_RESET_LOCK_NOT_AVAILABLE`, hiçbir şey silinmedi.
 
 Mac'teki sentetik düzenek (`tests/rehearsal/great-reset-local.py`, güncel kapsamı 36 senaryo) bu
 sunucuda koşulmadı: host, kullanıcı ve küme kimliği hâlâ Mac'e bağlı ve sentetik dökümü üreten betik
-depoda yok. Düzeneğin CLI zaman sınırı yeni bütçeyle uyumlu olsun diye 90 sn → 1000 sn yapıldı.
+depoda yok. Düzeneğin CLI zaman sınırı bu en kötü duruma göre 90 sn → 1300 sn yapıldı.
 Prova DB'leri iş bitince silindi.
 
 ## Kalan (reset öncesi)

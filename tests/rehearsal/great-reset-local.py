@@ -179,9 +179,10 @@ cli = ['node', 'node_modules/tsx/dist/cli.mjs', 'scripts/great-reset-local.ts']
 
 
 def invoke(args=(), error=None):
-    # Aracın bakım penceresi bütçesiyle uyumlu (sorgu 300 sn, işlem 900 sn; PR #223).
+    # En kötü durum (Astra, PR #223 2. tur): işlem 900 sn'nin sonunda başlayan 300 sn'lik sorgu
+    # bitmeden Prisma'nın ROLLBACK'i işlenmez; üstüne bağlantı/kapanış payı.
     result = subprocess.run(cli + list(args), cwd=root, env=env,
-                            text=True, capture_output=True, timeout=1000)
+                            text=True, capture_output=True, timeout=1300)
     if error:
         require(result.returncode != 0 and result.stderr.strip() == error,
                 f'UNEXPECTED_CLI_ERROR:{result.stderr.strip()[:100]}')
