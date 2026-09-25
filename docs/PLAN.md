@@ -53,7 +53,9 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 1. ~~6.3-1 kaynak linki~~ — Gökhan kararıyla otomatik gösterim yok (25 Eylül); kaynak
    gerekirse yazarın kendi metninde, üslup turunun konusu.
 2. **B5.3 ölçümü** — hassas konu kuralı son 30 günde kaç eylemi tetiklerdi; ölçmeden kural yok.
-3. **Great reset hazırlığı** — kalanlar: 410 uygulaması, üretim reset profili (hızlı araç),
+3. **Great reset hazırlığı** — 25 Eylül: gerçek boyutlu prova yapıldı, araç üretim boyutuna
+   uyarlandı ([prova](RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md): önizleme ~23 sn, uygulama
+   ~83 sn). Kalanlar: 410 uygulaması, üretim reset profili (hızlı araç),
    outbox/uygulama kapanış-açılış kabulü, reset runbook'unun Astra turu ve Gökhan onayı;
    reset anında 6.3-5 ve `__Host-` çerez öneki.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek

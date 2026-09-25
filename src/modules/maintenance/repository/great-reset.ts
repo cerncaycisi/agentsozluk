@@ -7,7 +7,7 @@ import {
   greatResetClearedModels,
   greatResetPreservedModels,
 } from "../domain/great-reset";
-import { localResetIdentity, localResetTarget } from "../domain/great-reset-local-guard";
+import { localResetTarget, type LocalResetIdentity } from "../domain/great-reset-local-guard";
 import {
   archivePendingOutboxEvents,
   assertExpectedOutboxArchive,
@@ -67,6 +67,36 @@ function tableSql(table: string): Prisma.Sql {
   return Prisma.raw(`ONLY "public"."${table}"`);
 }
 
+/*
+  Silinecek tablolar için SATIR SÜRÜMÜ özeti (25 Eylül 2026, gerçek boyutlu prova).
+
+  Operatör sunucusunda üretim yedeğinin kopyasında tam içerik özeti `agent_runtime_events`
+  (1,94 M satır) için 74 sn, `agent_runs` için 36 sn sürdü; önizleme bütçeyi aştı. Bu tabloların
+  içeriği zaten silinir, ama önizlemede onaylanan içerikle silinen içeriğin aynı olduğu garantisi
+  korunmalı (Astra, PR #223): önizlemeden sonra biri bir entry metnini değiştirip bağlantısını
+  kapatırsa, satır sayısı aynı kalsa bile plan bayatlamalı. PostgreSQL'de her INSERT/UPDATE yeni
+  bir satır sürümü (yeni `ctid` ve `xmin`) yaratır; sürüm kimliklerinin sırasız toplamı içerik
+  okumadan olağan INSERT/UPDATE/DELETE'i yakalar (74 sn → 2,4 sn). SINIRLAR (Astra, PR #223 2.
+  tur): satır sürümünü değiştirmeyen DDL (ör. enum etiketi adı) şema özetine eklendi; toplam
+  çakışması ve 32 bit `xmin`'in yeniden kullanılması kuramsal olarak kaçırabilir — önizleme ile
+  uygulama aynı bakım penceresinde, dakikalar arayla koşar. Korunan tablolar tam içerik özetiyle
+  kalır — "korunan veri değişmedi" kanıtı ondan gelir.
+*/
+async function rowVersionFingerprint(tx: Tx, table: string): Promise<Fingerprint> {
+  const [result] = await tx.$queryRaw<{ rows: number; versions: string }[]>(
+    Prisma.sql`SELECT count(*)::int AS rows,
+      coalesce(sum(hashtextextended(t.ctid::text || ':' || t.xmin::text, 0)), 0)::text AS versions
+      FROM ${tableSql(table)} t`,
+  );
+  if (!result) throw new Error("GREAT_RESET_FINGERPRINT_FAILED");
+  return {
+    rows: result.rows,
+    sha256: createHash("sha256")
+      .update(`row-versions:${result.rows}:${result.versions}`)
+      .digest("hex"),
+  };
+}
+
 async function fingerprint(
   tx: Tx,
   table: string,
@@ -102,19 +132,52 @@ async function fingerprint(
 
 async function snapshot(tx: Tx, list: Table[], auditId?: string, archiveId?: string) {
   const result: Record<string, Fingerprint> = {};
-  for (const { table } of list) result[table] = await fingerprint(tx, table, auditId, archiveId);
+  for (const { table, cleared } of list)
+    result[table] = cleared
+      ? await rowVersionFingerprint(tx, table)
+      : await fingerprint(tx, table, auditId, archiveId);
   // expiresAt ayrıca plan hash'ine girer; koruma karşılaştırmasında tek istisnadır.
   const expiry = await tx.$queryRaw<{ sha256: string }[]>`
     SELECT encode(sha256(convert_to(coalesce(string_agg(id::text || ':' ||
       "expiresAt"::text, ',' ORDER BY id), ''), 'UTF8')), 'hex') AS sha256
     FROM public.idempotency_records`;
-  const sequences = await tx.$queryRaw<{ name: string; value: string | null }[]>`
-    SELECT sequencename AS name, last_value::text AS value FROM pg_sequences
-    WHERE schemaname = 'public' ORDER BY sequencename`;
+  // Sequence'in yalnız son değeri değil tanımı ve GERÇEK durumu da (Astra, PR #223 3.-4. tur):
+  // `ALTER SEQUENCE … INCREMENT BY -1`, `RESTART WITH` (kullanılmadan önce `pg_sequences` NULL
+  // döndürür) ya da `SET UNLOGGED` son görünen değeri değiştirmeden sonraki kimliği veya çöküş
+  // sonrası davranışı değiştirir; reset sonrası eski public ID'lerin yeniden kullanılmasına yol
+  // açardı (410 kararının şartı).
+  const definitions = await tx.$queryRaw<{ name: string; value: string }[]>`
+    SELECT s.sequencename AS name, jsonb_build_object(
+      'dataType', s.data_type::text,
+      'start', s.start_value::text, 'min', s.min_value::text, 'max', s.max_value::text,
+      'increment', s.increment_by::text, 'cycle', s.cycle, 'cache', s.cache_size::text,
+      'persistence', c.relpersistence::text,
+      'ownedBy', (SELECT d.refobjid::regclass::text || '.' || a.attname
+        FROM pg_depend d
+        JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+        WHERE d.objid = c.oid AND d.classid = 'pg_class'::regclass AND d.deptype IN ('a', 'i')
+        LIMIT 1)
+    )::text AS value
+    FROM pg_sequences s
+    JOIN pg_class c ON c.relname = s.sequencename AND c.relnamespace = 'public'::regnamespace
+    WHERE s.schemaname = 'public' ORDER BY s.sequencename`;
+  const sequences: { name: string; value: string }[] = [];
+  for (const definition of definitions) {
+    if (!/^[a-z_]+$/u.test(definition.name)) throw new Error("GREAT_RESET_INVALID_TABLE");
+    const [state] = await tx.$queryRaw<{ lastValue: string; isCalled: boolean }[]>(
+      Prisma.sql`SELECT last_value::text AS "lastValue", is_called AS "isCalled"
+        FROM ${Prisma.raw(`"public"."${definition.name}"`)}`,
+    );
+    if (!state) throw new Error("GREAT_RESET_FINGERPRINT_FAILED");
+    sequences.push({
+      name: definition.name,
+      value: JSON.stringify({ definition: definition.value, ...state }),
+    });
+  }
   return { tables: result, expiry, sequences };
 }
 
-async function identity(tx: Tx, databaseName: string) {
+async function identity(tx: Tx, databaseName: string, expected: LocalResetIdentity) {
   const [actual] = await tx.$queryRaw<
     {
       database: string;
@@ -142,10 +205,10 @@ async function identity(tx: Tx, databaseName: string) {
     actual.port !== 5432 ||
     actual.version < 160000 ||
     actual.version >= 170000 ||
-    actual.owner !== localResetIdentity.owner ||
-    actual.user !== localResetIdentity.owner ||
-    actual.cluster !== localResetIdentity.clusterId ||
-    actual.marker !== localResetIdentity.marker
+    actual.owner !== expected.owner ||
+    actual.user !== expected.owner ||
+    actual.cluster !== expected.clusterId ||
+    actual.marker !== expected.marker
   ) {
     throw new Error("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
   }
@@ -178,7 +241,13 @@ async function inspectSchema(tx: Tx, list: Table[]) {
       'triggers', (SELECT jsonb_agg(jsonb_build_array(pg_get_triggerdef(t.oid),
         t.tgenabled, pg_get_functiondef(t.tgfoid)) ORDER BY t.tgrelid, t.tgname)
         FROM pg_trigger t WHERE NOT t.tgisinternal AND
-          t.tgrelid IN (SELECT oid FROM pg_class WHERE relnamespace = 'public'::regnamespace))
+          t.tgrelid IN (SELECT oid FROM pg_class WHERE relnamespace = 'public'::regnamespace)),
+      -- Enum etiketleri ve sırası (Astra, PR #223 2. tur): ALTER TYPE … RENAME VALUE satır
+      -- sürümünü değiştirmeden görünen içeriği değiştirir; satır sürümü özeti bunu göremez.
+      'enums', (SELECT jsonb_agg(jsonb_build_array(t.typname, e.enumlabel, e.enumsortorder)
+        ORDER BY t.typname, e.enumsortorder)
+        FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typnamespace = 'public'::regnamespace)
     )::text AS description`;
   const migration = await fingerprint(tx, "_prisma_migrations");
   return digest({ structure, migration });
@@ -265,11 +334,15 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     return await database.$transaction(
       async (tx) => {
         if (request.mode === "DRY_RUN") await tx.$executeRaw`SET TRANSACTION READ ONLY`;
-        await tx.$executeRaw`SET LOCAL statement_timeout = '20s'`;
+        // Bütçe gerçek boyutlu provadan (25 Eylül, operatör sunucusu, üretim yedeği kopyası):
+        // önizleme ~23 sn; uygulamada en uzun tek sorgu 234.962 olaylık outbox arşiv INSERT'i,
+        // bir koşuda 60 sn'yi aştı (eşzamanlı checkpoint). Bakım penceresinde uygulama ve worker
+        // kapalıdır; sınır sorguyu değil kaçak durumu yakalamak içindir.
+        await tx.$executeRaw`SET LOCAL statement_timeout = '300s'`;
         await tx.$executeRaw`SET LOCAL lock_timeout = '1s'`;
         await tx.$executeRaw`SET LOCAL timezone = 'UTC'`;
         await tx.$executeRaw`SET LOCAL extra_float_digits = 3`;
-        const actual = await identity(tx, target.databaseName);
+        const actual = await identity(tx, target.databaseName, target.identity);
         if (request.mode === "EXECUTE") {
           // Önce tüm tablo yazıcılarını dışla. Bekleyen işlem varsa bekleme/öldürme yok.
           await tx.$executeRaw(
@@ -390,7 +463,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         // Execute tüm tablo kilitlerinden SONRA güncel veriyi okumalı.
         // Daha erken alınmış MVCC snapshot'ı TRUNCATE ile güvenli değildir.
         isolationLevel: request.mode === "DRY_RUN" ? "RepeatableRead" : "ReadCommitted",
-        timeout: 60_000,
+        timeout: 900_000,
         maxWait: 5_000,
       },
     );
