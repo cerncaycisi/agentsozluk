@@ -308,10 +308,124 @@ async function blockers(tx: Tx, archiveOutbox = false): Promise<string[]> {
   )
     result.push("OUTBOX_PENDING");
   if (!(await outboxArchivesAreValid(tx))) result.push("OUTBOX_ARCHIVE_INVALID");
+  /*
+    Oturum denetimi (Astra, üretim profili tasarım turu, 25 Eylül 2026): yetkisiz rol başka bir
+    rolün oturumunda `datname`'i görür ama `backend_type`/`state` NULL gelir (prova kümesinde
+    doğrulandı); eski `backend_type = 'client backend'` filtresi bu oturumları SAYMIYORDU. Artık
+    aynı veritabanındaki kendisi dışındaki HER oturum engeldir (autovacuum dahil; bitince yeniden
+    denenir). `pg_stat_activity` işlem boyunca önbelleğe alınabildiği için her denetimden önce
+    görüntü tazelenir; bu fonksiyon önizlemede, kilitlerden sonra ve COMMIT'ten hemen önce çağrılır.
+  */
+  await tx.$queryRaw`SELECT 1 AS ok FROM (SELECT pg_stat_clear_snapshot()) AS cleared`;
   const [connections] = await tx.$queryRaw<{ count: number }[]>`
     SELECT count(*)::int AS count FROM pg_stat_activity
-    WHERE datname = current_database() AND pid <> pg_backend_pid() AND backend_type = 'client backend'`;
+    WHERE datname = current_database() AND pid <> pg_backend_pid()`;
   if (connections?.count !== 0) result.push("OTHER_DATABASE_CONNECTIONS");
+  const [prepared] = await tx.$queryRaw<{ count: number }[]>`
+    SELECT count(*)::int AS count FROM pg_prepared_xacts WHERE database = current_database()`;
+  if (prepared?.count !== 0) result.push("PREPARED_TRANSACTIONS_PRESENT");
+  // Trigger'lar kapalıyken ya da replika rolündeyken korunan-veri kuralları sessizce atlanır.
+  const [session] = await tx.$queryRaw<{ role: string; disabledTriggers: number }[]>`
+    SELECT current_setting('session_replication_role') AS role,
+      (SELECT count(*)::int FROM pg_trigger t WHERE t.tgenabled <> 'O'
+        AND t.tgrelid IN (SELECT oid FROM pg_class WHERE relnamespace = 'public'::regnamespace))
+        AS "disabledTriggers"`;
+  if (session?.role !== "origin" || session.disabledTriggers !== 0)
+    result.push("TRIGGER_STATE_UNSAFE");
+  if ((await unsafePublicIdSequences(tx)).length) result.push("PUBLIC_ID_SEQUENCE_UNSAFE");
+  return result;
+}
+
+/*
+  Güvenli başlangıç (Astra, üretim profili tasarım 2. tur): önizleme–uygulama eşitliği, sequence
+  BAŞTAN (yedekten ve önizlemeden önce) bozulmuşsa hiçbir şey söylemez. Mevcut satırların
+  adreslerinin yeniden kullanılmaması için public ID sequence'leri
+  +1 artışlı, döngüsüz, kalıcı, önbelleksiz, doğru sütuna bağlı olmalı ve SONRAKİ değer mevcut
+  en büyük kimliğin üstünde ve INTEGER sınırının altında kalmalı (en az bir sonraki atamaya
+  daha yer bırakmalı). Önceden silinmiş ID'lerin 410 sınırı üretim profilinde ayrıca
+  doğrulanacaktır. `nextval()` çağrılmaz; sonraki değer tanım ve durumdan hesaplanır.
+*/
+const publicIdSequences = [
+  { sequence: "entries_public_id_seq", table: "entries", column: "publicId" },
+  { sequence: "topics_public_id_seq", table: "topics", column: "publicId" },
+] as const;
+
+async function unsafePublicIdSequences(tx: Tx): Promise<string[]> {
+  const unsafe: string[] = [];
+  for (const { sequence, table, column } of publicIdSequences) {
+    const [row] = await tx.$queryRaw<{ safe: boolean }[]>(Prisma.sql`
+      SELECT (
+        s.data_type = 'integer'::regtype AND s.increment_by = 1
+        AND s.cache_size = 1 AND NOT s.cycle AND c.relpersistence = 'p'
+        AND pg_get_serial_sequence(${`public.${table}`}, ${column}) = ${`public.${sequence}`}
+        AND (SELECT pg_get_expr(ad.adbin, ad.adrelid)
+             FROM pg_attrdef ad
+             JOIN pg_attribute a ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum
+             WHERE ad.adrelid = ${`public.${table}`}::regclass AND a.attname = ${column})
+          = format('nextval(%L::regclass)', (${`public.${sequence}`}::regclass)::text)
+        AND (CASE WHEN q.is_called THEN q.last_value::numeric + s.increment_by
+                  ELSE q.last_value::numeric END) < s.max_value
+        AND (CASE WHEN q.is_called THEN q.last_value::numeric + s.increment_by
+                  ELSE q.last_value::numeric END)
+          > coalesce((SELECT max(${Prisma.raw(`"${column}"`)}) FROM ${Prisma.raw(`public."${table}"`)}), 0)
+      ) AS safe
+      FROM pg_sequences s
+      JOIN pg_class c ON c.relname = s.sequencename
+        AND c.relnamespace = 'public'::regnamespace
+      CROSS JOIN ${Prisma.raw(`public."${sequence}"`)} q
+      WHERE s.schemaname = 'public' AND s.sequencename = ${sequence}`);
+    if (!row?.safe) unsafe.push(sequence);
+  }
+  return unsafe;
+}
+
+/**
+ * Önizlemede yetki önkontrolü: eksik yetki pahalı arşiv aşamasında değil, baştan görünsün
+ * (Astra, tasarım turu P2). Süper kullanıcı olmayan üretim rolü için anlamlı.
+ */
+async function privilegeBlockers(tx: Tx, list: Table[]): Promise<string[]> {
+  const cleared = list.filter((row) => row.cleared).map((row) => row.table);
+  const all = [...list.map((row) => row.table), "_prisma_migrations"];
+  const [privileges] = await tx.$queryRaw<
+    {
+      truncate: boolean;
+      readAll: boolean;
+      lockAll: boolean;
+      writes: boolean;
+      temp: boolean;
+      control: boolean;
+      sequences: boolean;
+    }[]
+  >`
+    SELECT
+      bool_and(has_table_privilege(format('public.%I', t), 'TRUNCATE'))
+        FILTER (WHERE t = ANY(${cleared})) AS truncate,
+      bool_and(has_table_privilege(format('public.%I', t), 'SELECT')) AS "readAll",
+      -- ACCESS EXCLUSIVE kilidi UPDATE, DELETE ya da TRUNCATE yetkisi ister (Astra, tasarım 2. tur).
+      bool_and(has_table_privilege(format('public.%I', t), 'UPDATE,DELETE,TRUNCATE')) AS "lockAll",
+      -- Uygulamanın gerçek yazmaları: outbox güncellemesi, arşiv/audit eklemeleri, idempotency.
+      (has_table_privilege('public.outbox_events', 'UPDATE')
+        AND has_table_privilege('public.outbox_reset_archives', 'INSERT')
+        AND has_table_privilege('public.outbox_reset_archive_events', 'INSERT')
+        AND has_table_privilege('public.audit_logs', 'INSERT')
+        AND has_table_privilege('public.idempotency_records', 'UPDATE')) AS writes,
+      has_database_privilege(current_database(), 'TEMP') AS temp,
+      has_function_privilege('pg_control_system()', 'EXECUTE') AS control,
+      (SELECT coalesce(bool_and(has_sequence_privilege(format('public.%I', sequencename), 'SELECT')), true)
+        FROM pg_sequences WHERE schemaname = 'public') AS sequences
+    FROM unnest(${all}::text[]) AS t`;
+  const result: string[] = [];
+  if (
+    !privileges ||
+    !privileges.truncate ||
+    !privileges.readAll ||
+    !privileges.lockAll ||
+    !privileges.writes ||
+    !privileges.temp ||
+    !privileges.control ||
+    !privileges.sequences
+  )
+    result.push("INSUFFICIENT_PRIVILEGES");
   return result;
 }
 
@@ -340,9 +454,15 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         // kapalıdır; sınır sorguyu değil kaçak durumu yakalamak içindir.
         await tx.$executeRaw`SET LOCAL statement_timeout = '300s'`;
         await tx.$executeRaw`SET LOCAL lock_timeout = '1s'`;
+        // İstemci işlem içinde takılırsa sunucu kilitleri kendisi bırakır (Astra, tasarım 2. tur).
+        await tx.$executeRaw`SET LOCAL idle_in_transaction_session_timeout = '60s'`;
         await tx.$executeRaw`SET LOCAL timezone = 'UTC'`;
         await tx.$executeRaw`SET LOCAL extra_float_digits = 3`;
+        // RLS satır saklıyorsa önkoşul/özet yanlış güven vermek yerine hata ile durur.
+        await tx.$executeRaw`SET LOCAL row_security = off`;
         const actual = await identity(tx, target.databaseName, target.identity);
+        if ((await privilegeBlockers(tx, list)).length)
+          throw new Error("GREAT_RESET_INSUFFICIENT_PRIVILEGES");
         if (request.mode === "EXECUTE") {
           // Önce tüm tablo yazıcılarını dışla. Bekleyen işlem varsa bekleme/öldürme yok.
           await tx.$executeRaw(
@@ -470,6 +590,8 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
   } catch (error) {
     // Yalnız sabit güvenli neden kodları; SQL, hata mesajı veya satır içeriği çıkmaz.
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2010" && error.meta?.code === "42501")
+        throw new Error("GREAT_RESET_INSUFFICIENT_PRIVILEGES");
       if (error.code === "P2010" && error.meta?.code === "55P03")
         throw new Error("GREAT_RESET_LOCK_NOT_AVAILABLE");
       if (error.code === "P2010" && error.meta?.code === "57014")
