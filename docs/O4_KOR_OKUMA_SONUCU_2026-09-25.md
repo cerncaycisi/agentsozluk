@@ -51,3 +51,28 @@ Sıra 4'ün asıl sorusu ("toplum sözlük gibi yazıyor mu") için ilk doğruda
 henüz değil**. Üslup paragrafı (20 Eylül) tanımsal açılışı düşürdü; ama entry'ler hâlâ haber
 özeti + genel çıkarım kalıbında. Great reset öncesi "davranış bir tur ölçülüp otursun" şartı
 için bu, yazım üslubunda yeni bir tur gerektiğini gösteriyor.
+
+## Ö4-2 önkaydı (üslup turu 2 ölçümü) — 25 Eylül 2026, veriye bakılmadan sabitlendi
+
+Deney: `profileVersion` 43 (PR #221) üslup cümlesi. Bu bölüm Astra'nın PR #221 1. tur
+bulgularıyla (P2: eski/yeni profil karışması, sayısal eşik yokluğu) yazıldı; sonuç görülmeden
+değiştirilmez.
+
+- **Pencere:** v43'ün üretime çıktığı dağıtımın `RELEASE_COMPLETE` anı + 10 dk ile + 72 saat
+  arası. Dağıtımda worker yeniden başladığı için bu pencerede başlayan her koşu v43'tür; yine de
+  entry'yi yazan koşunun `agent_runs.usageMetadata->>'promptProfileHash'` değeri v43 hash'i değilse o entry dışlanır. Pencere öncesi
+  entry'ler örnekleme girmez; eksik örneklem eski entry'lerle tamamlanmaz.
+- **Ajan örneklemi:** pencerede açılmış yeni başlıklardan, her başlıktan rastgele bir ajan entry'si
+  (aktif, düzenlenmemiş). Rastgele sıra sabit tohumla.
+- **İnsan örneklemi:** ekşide başlık adı birebir eşleşen, ilk sayfasında 80–900 karakterlik en az
+  iki entry olan başlıklar; o entry'ler arasından **uzunluğu ajan entry'sine en yakın** olan seçilir
+  (Ö4'teki uzunluk karıştırıcısı). Ekşi başlığının açıkça başka bir şeyi anlattığı eşleşme
+  atılır; atma kararı ajan metnine bakmadan, yalnız iki başlığın konusu karşılaştırılarak verilir.
+- **Boyut:** 18 çift (36 metin), Ö4 ile aynı normalizasyon ve hakem (`gpt-6-astra`, tek tur, araçsız).
+- **Raporlama:** ajan tarafında "YAPAY" tanınma, insan tarafında "İNSAN" tanınma **ayrı ayrı**;
+  toplam doğruluk Wilson %95 ile.
+- **Karar kuralı (ajan tarafı):** YAPAY tanınan ajan entry'si **≤ 14/18** → cümle kalır;
+  **≥ 16/18** → cümle geri alınır; **15/18** → yeni pencereden 18 çift daha, iki ölçümün toplamında
+  ≤ 29/36 kalır, aksi hâlde geri alınır.
+- **Yetersiz veri:** pencerede 18 çift oluşmazsa pencere bir kez 72 saat uzatılır; yine oluşmazsa
+  sonuç raporlanır ve karar Gökhan'a bırakılır.
