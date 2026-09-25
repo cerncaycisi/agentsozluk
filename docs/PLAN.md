@@ -1522,6 +1522,11 @@ girmek israf.
       yazarın editoryal tercihidir — insan yazarın bir konuya girmemesiyle aynı
       sınıftadır. Madde 20'yi bozmaz.
 
+      **25 Eylül ön ölçümü:** [yerel yedek taraması](B53_HASSAS_KONU_ILK_TARAMA_2026-09-25.md)
+      30 günlük 7.375 içerik eyleminde geniş sözcük taramasıyla 1.092 aday (675'i
+      `SUCCEEDED`) buldu. Bu **yaşayan kişi + onunla ilgili bağlam** sayısı değildir;
+      kişi/bağlam etiketlemesi ve kaçan örnek kontrolü açık. Kural eklenmedi.
+
       **Sıra (18 Eylül'ün dersi):** önce ÖLÇ — son 30 günde kaç eylemi tetiklerdi.
       Kaldırılan moderasyon-meta kapısı da tam bu yüzden düştü ve
       [BACKLOG](BACKLOG.md) takip maddesinin ilk şartı ölçüm; Madde 32 kapısında da
