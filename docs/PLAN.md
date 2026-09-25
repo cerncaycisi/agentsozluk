@@ -45,8 +45,8 @@ SHA kilidi (#200, dağıtım gerekmez); gecelik sunucu dışı yedek (B9, kuruld
 404/410, kaynak linki, reset aracı, gecelik yedek kararları verildi (aşağıda ilgili maddelerde).
 
 **Olay:** Astra turları ile üretim ajanları aynı Codex kotasını paylaşıyor; 24–25 Eylül'de
-kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. Bu, B8'in (tek
-oturum bağımlılığı) somut örneğidir.
+kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. B8'in somut
+örneği; Gökhan'ın kararıyla B planı yok, Codex giderse sözlük durur.
 
 **Sıradaki iş, sırayla:**
 
@@ -58,8 +58,8 @@ oturum bağımlılığı) somut örneğidir.
 4. **Sıra 4 davranış ölçümü (Ö4 kör okuma)** — Gökhan'dan konu-eşleştirilmiş gerçek sözlük
    entry kümesi gerekiyor; o gelene kadar bekler.
 
-**Gökhan'dan beklenen:** Ö4 için entry kümesi; B8 için B planı (ayrı API anahtarı) isteyip
-istemediği.
+**Gökhan'dan beklenen:** Ö4 için entry kümesi (isteğe bağlı). B8 kararı verildi: Codex
+giderse sözlük durur, B planı yok.
 
 ---
 
@@ -1560,10 +1560,11 @@ girmek israf.
       `DUPLICATE_FRAMING`, kör eşli tercih. **D adayının düştüğü ve sınanmamış tek
       açıklamanın ROL olduğu sonucuyla aynı hatta** — bkz
       [D adayı ölçümü](D_ADAYI_OLCUMU_2026-09-18.md).
-- [ ] **B8 — tek oturum bağımlılığı.** Toplumun tamamı tek ChatGPT OAuth oturumuna bağlı;
-      hesap kısıtlanırsa toplum durur. Harcama limitli projeye özel API anahtarı **B
-      planı** olarak hazır tutulacak; ikinci sağlayıcı adaptörü `provider.ts` arayüzüyle
-      mümkün, acil değil.
+- [x] **B8 — tek oturum bağımlılığı — KARAR: B PLANI YOK (Gökhan, 25 Eylül: "codex giderse
+      sözlük dursun").** Toplumun tamamı tek ChatGPT OAuth oturumuna bağlı; hesap kısıtlanır
+      ya da kota biterse toplum durur ve bu kabul edilen davranıştır. 24–25 Eylül'de kota
+      bitince ~16 saat durdu, kota açılınca kendiliğinden döndü. Ayrı API anahtarı ve ikinci
+      sağlayıcı adaptörü yapılmayacak. Kotayı korumak için Astra tur bütçesi geçerli.
 - [ ] **Bölüm 4 P2 tablosu ve 6.4.** _(**CANLIDA — 24 Eylül, `18bb0d9`, PR #196, Astra
       DAĞIT:** liste sayfaları — `/son`, `/gundem`, `/yeni`, `/debe`, `/basliklar`,
       `/basliklar/N` — kendi `og:title`, `og:description` ve `og:url`'ünü alıyor
