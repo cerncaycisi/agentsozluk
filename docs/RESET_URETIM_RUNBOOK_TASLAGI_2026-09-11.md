@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v14 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v15 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -19,7 +19,9 @@ Opus 5.5 v11 exact `6c032ee` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3)
 rollback sonrası eski imzalı kayıt yeniden kullanılabiliyordu. Opus 5.5 v12
 exact `c0442c8` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3). v13 exact
 `483886a` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): iç kabul yazısı
-geri dönüş özetini bozabilirdi. v14 iç kabulü DB açısından salt okunur yapar.
+geri dönüş özetini bozabilirdi. Opus 5.5 v14 exact `a8b52ca` için
+**TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve altı P3 kabul ayrıntısı).
+v15 bakım yanıtı sırasını ve read-only havuz kanıtını netleştirir.
 
 ## Ön kabul kapıları
 
@@ -160,8 +162,18 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
    açıldığının kanıtı olmadan bakım bitmez. **Caddy bakım yanıtı açık kalır.**
    Aynı release/app'i yalnız iç kabul için mevcut DB credential'ıyla,
    bütün havuz oturumlarında kanıtlanmış `default_transaction_read_only=on`
-   modunda aç; dört yazma bayrağı kapalı, worker hold sürer. İç Host/loopback
-   üzerinden yalnız GET/HEAD 410/404, sitemap, salt okunur sayaç/önbellek,
+   modunda aç; dört yazma bayrağı kapalı, worker hold sürer.
+   Salt okunur ayar app'in bütün bağlantılarına connection-startup parametresiyle
+   gider; Prisma/sürücü ile gerçek standalone build'de havuz üst sınırı,
+   `pg_stat_activity` sayısı ve her backend'de `SHOW default_transaction_read_only`
+   sonucu karşılaştırılır. `ALTER ROLE`/`ALTER DATABASE` ayarıyla makbuz
+   değiştirilmez. `SET ... READ WRITE` ve entrypoint migrate/seed/bootstrap
+   yazıcıları taranır; açık kalırsa GO yok. İç kabul boyunca app/PostgreSQL
+   loglarında güvenli `SQLSTATE 25006` sayısı sıfır olmalıdır.
+   İç kabul cache'i atılabilir ayrı runtime'dadır; app kapatılınca dosya/ISR/data
+   cache'i temizlenir ve container yeniden yaratılır. Rollback sonrası da
+   bayat reset cache'iyle servis açılmaz.
+   İç Host/loopback üzerinden yalnız GET/HEAD 410/404, sitemap, salt okunur sayaç/önbellek,
    anonim sayfa, health/ready, release/boot ve veri sözleşmesini doğrula.
    Login, Server Action POST, oturum/CSRF üretimi, `__Host-` canlı giriş ve
    başka mutasyon testi bu pencerede yoktur. Salt okunur app'i kapat;
@@ -178,8 +190,11 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
    `UNIQUE(operationId)` ile aynı satırı tekrar okuyan/yazan idempotent yol
    kullanılır. Dış kayıt `TRAFFIC_OPEN` olmuş ama DB yazısı düşmüşse yalnız
    bu DB adımı yeniden denenir, restore yoktur. İki kanıttan biri başarısızsa
-   bakım sürer. İki kanıt sonrası geri dönüş penceresi kapanır; normal DB
-   bağlantılı app açılır, yazan `__Host-` giriş smoke'u iç Host'tan yapılır.
+   bakım sürer. İki kanıt sonrası **yalnız geri dönüş penceresi kapanır;
+   Caddy bakım yanıtı sürer**. Normal DB bağlantılı app açılır, mevcut yetkili
+   smoke hesabıyla credential basılmadan yazan `__Host-` giriş smoke'u iç
+   Host'tan yapılır. Smoke'un oturum/audit kimlikleri kaydedilir; Gate 10
+   doğal kohortu smoke bittikten sonra başlar.
    Bu smoke başarısızsa eski dump restore edilmez, bakımda ileri düzeltme
    gerekir. Sonra Caddy bakım yanıtı kaldırılır. Dört bayrağı eski
    değerlerine ayrı ayrı döndür; worker'ı

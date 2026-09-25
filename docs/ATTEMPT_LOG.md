@@ -9165,3 +9165,21 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** geri dönüş için birebir makbuz eşitliği isteniyorsa,
   kabul penceresinde çalışan app'e DB yazısı yaptırma. Yazılı adımları
   rollback penceresi kapandıktan sonraya taşı.
+
+## 2026-09-25 — üretim reset tasarımı v14 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `a8b52ca8167e5f33cb45e24a5bc599e7510c3697` v14 için
+  **TASARIM UYGUN** dedi; v13 P2 kapandı, yeni P1/P2 yok. Bir P3 sıra
+  belirsizliği ve altı P3 uygulama ayrıntısı buldu. Hakem yalnız Read kullandı,
+  üretime bağlanmadı; PostgreSQL/Prisma davranışını bu tur deneyle
+  doğrulamadığını belirtti.
+- v15, `TRAFFIC_OPEN` yalnız rollback penceresini kapattıktan sonra Caddy
+  bakım yanıtının açık kaldığını; normal app ve iç Host yazan smoke PASS sonrası
+  dış trafiğin açıldığını yazar. Read-only havuzun connection-startup ayarını,
+  her bağlantıda `SHOW` kanıtını, güvenli `SQLSTATE 25006` sayımını, açılış
+  yazıcı envanterini, atılabilir Next.js cache'ini ve smoke hesabı/kohort
+  sınırını kabul kapısı yapar. Kod/production ölçümü henüz yok.
+- **Tekrarlama:** `TRAFFIC_OPEN` dış kaydı, Caddy'nin dış trafiği açıldığı
+  anlamına otomatik gelmez; normal app ve yazan smoke'u bakım yanıtı sürerken
+  tamamla. Read-only kabulü yalnız tek Prisma bağlantısında kanıtlama.

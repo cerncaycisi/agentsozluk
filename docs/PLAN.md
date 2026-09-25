@@ -965,8 +965,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    doğrudan olumlu kontrolünü, kapı sonrası PID/snapshot kontrolünü ve gerçek
    tablo sahibi sınırını kabul kapısına ekledi. Opus 5.5 v13 exact `483886a`
    için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): geri dönüş penceresindeki
-   iç kabul yazıları tam özet eşitliğini bozabilirdi. v14 iç kabulü DB açısından
-   salt okunur yapar; yazan `__Host-` smoke'u ileri aşamaya taşır.
+   iç kabul yazıları tam özet eşitliğini bozabilirdi. v14 exact `a8b52ca`
+   için Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve altı
+   P3 kabul ayrıntısı). v15 bakım yanıtı sırasını ve salt okunur havuz/cache
+   kanıtını netleştirir.
    Kod, migration,
    bütçe, kontrol yolu, gerçek boyutlu restore ve uygulama hakemliği açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te

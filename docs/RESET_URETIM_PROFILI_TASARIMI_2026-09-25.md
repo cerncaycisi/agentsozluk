@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v14 (25 Eylül 2026)
+# Great reset — üretim profili tasarımı v15 (25 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -33,8 +33,10 @@ kullanılabiliyordu. v12 exact `c0442c8a9252734f90bc199b6f93aadd257c132d`
 için **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 uygulama sınırı var.
 v13 exact `483886a53e605ec92c2334fef6f6c960dfdfb29b` için Opus 5.5
 **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): geri dönüş penceresindeki iç kabul
-yazıları tam özet eşitliğini bozabilirdi. v14 iç kabulü DB açısından salt okunur
-yapar.
+yazıları tam özet eşitliğini bozabilirdi. v14 exact
+`a8b52ca8167e5f33cb45e24a5bc599e7510c3697` için Opus 5.5
+**TASARIM UYGUN** dedi; P1/P2 yok, bir P3 sıra çelişkisi ve altı P3 kabul
+ayrıntısı kaldı. v15 sırayı ve bu kabul sınırlarını netleştirir.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -292,6 +294,15 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    `DATABASE_URL` kimliğiyle ama bütün DB oturumlarında doğrulanmış
    `default_transaction_read_only=on` koşuluyla başlatılır; dört yazma
    bayrağı kapalı, worker hold açık kalır. Ayrı credential/rol yoktur.
+   Salt okunur ayar app'in bütün bağlantılarını kapsayan connection-startup
+   parametresiyle verilir; Prisma/sürücü bu parametreyi iletmiyorsa GO yok.
+   `ALTER ROLE`/`ALTER DATABASE ... SET default_transaction_read_only` yolu
+   kullanılmaz; DB ayar makbuzu değiştirilmez. Havuzun sabit bağlantı üst
+   sınırı, `pg_stat_activity` backend sayısı ve her açılan bağlantıda
+   `SHOW default_transaction_read_only` sonucu gerçek standalone build'de
+   karşılaştırılır. Kaynakta `SET ... READ WRITE` veya read-only ayarını
+   geri alan yol ve container entrypoint'inde migrate/seed/bootstrap yazısı
+   taranır; iç kabul modunda yazan yol açık kalırsa GO yok.
    Caddy bakım yanıtı sürerken iç Host/loopback ile yalnız GET/HEAD 410/404,
    sitemap, anonim sayfa, health/ready ve salt okunur sayaç/önbellek okumaları
    ölçülür. Login, Server Action POST, oturum/CSRF üretimi, `__Host-` canlı
@@ -301,15 +312,24 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    ve audit/niyet durumu reset sonrası imzalı makbuzla tekrar eşit olmalıdır.
    Salt okunur DB oturumunun tüm havuzda sağlanması ve bu ölçümlerin gerçek
    standalone build'de kanıtı yoksa reset GO yok; beklenmedik yazı denemesi
-   kabul hatasıdır. Dış trafik ancak kabul geçip madde 6'daki `TRAFFIC_OPEN`
-   iki kanıtla doğrulanınca açılır. Bundan sonra normal DB bağlantılı app
-   başlatılır; yazan `__Host-` giriş kontrolü ve ilk doğal koşu rollback
-   penceresi kapandıktan sonra ölçülür.
+   kabul hatasıdır; iç kabul süresinde PostgreSQL/app loglarında güvenli kod
+   düzeyinde `SQLSTATE 25006` sayısı sıfır olmalıdır, ham SQL/entry yazılmaz.
+   İç kabul app'inin kalıcı Next.js dosya/ISR/data cache'i izole, atılabilir
+   runtime'dadır; app kapatılınca cache temizliği ve container yeniden
+   yaratılması doğrulanır. Rollback sonrası da bayat reset cache'iyle app
+   açılmaz. `TRAFFIC_OPEN` dış kayıt ve DB trafik olayı doğrulanınca **yalnız
+   rollback penceresi kapanır**; Caddy bakım yanıtı sürerken normal DB
+   bağlantılı app açılır. Mevcut yetkili smoke hesabıyla, credential'ı basmadan
+   iç Host `__Host-` giriş smoke'u yapılır; ürettiği oturum/audit kimlikleri
+   ölçülür, Gate 10 doğal kohortu bu smoke'tan sonra başlar. Smoke PASS olursa
+   Caddy bakım yanıtı kaldırılır; düşerse eski dump restore edilmez, bakımda
+   ileri düzeltme gerekir. İlk doğal koşu dış trafik açıldıktan sonra ölçülür.
    Dört bayrak eski değerlerine ayrı ayrı
    döndürülür, worker hold en son kaldırılır. Durdurulan her timer/cron eski
    etkinlik durumuna getirilir; sonraki tetik ve son başarılı yedek/alarm kayıtları
    doğrulanır. `__Host-` çerez geçişi ve 6.3-5 indeks eşiği release kod/E2E
-   kabulündedir; üretim giriş smoke'u `TRAFFIC_OPEN` sonrasındadır.
+   kabulündedir; üretim giriş smoke'u `TRAFFIC_OPEN` sonrası, Caddy açılmadan
+   öncedir.
 6. Reset COMMIT'i olmuş ama site kabulü düşmüşse rollback **ayrı bir üretim eylemidir**.
    Bu yol yalnız Caddy bakım yanıtı kaldırılmadan ve yazma bayrakları/worker
    açılmadan önce geçerlidir. Dış trafik veya yeni içerik başladıktan sonra
@@ -336,8 +356,9 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    doğrulanırsa ve korunan `great_reset_exposure_events` tablosuna aynı
    `operationId` için `UNIQUE(operationId)` korumalı append-only trafik açılış
    satırı yazılıp okunursa
-   kaldırılır. `TRAFFIC_OPEN` öncesi canonical DB'de aynı `operationId` commit'i
-   ve restore audit yokluğu doğrulanır. İki kanıttan biri başarısızsa bakım sürer. Bu geçiş
+   **kaldırılabilir**; ayrıca normal app ile iç Host yazan smoke PASS olmalıdır.
+   `TRAFFIC_OPEN` öncesi canonical DB'de aynı `operationId` commit'i ve restore
+   audit yokluğu doğrulanır. İki kanıttan biri başarısızsa bakım sürer. Bu geçiş
    rollback penceresini ihtiyatlı olarak kapatır. Dış durum yazılıp DB olayı
    düşerse yalnız idempotent DB satırı yeniden denenir; restore yoktur.
    Olayı pinned üretim CLI, mevcut doğrulanmış tek `DATABASE_URL` rolüyle yazar;
