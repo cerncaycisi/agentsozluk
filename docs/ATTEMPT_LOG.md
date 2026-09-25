@@ -9064,3 +9064,18 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** 410 yanıtı `no-store` olmadan cache'lenebilir; restore
   sonrası bayat 410 kalabilir. Dışarıya yeni public ID çıktıktan sonra
   eski dump'a dönüp aynı sequence başlangıcını kullanma.
+
+## 2026-09-25 — üretim reset tasarımı v8 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `ace70f611796101ca2a6b175271c3de9deac4788` v8 için
+  **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 kabul ayrıntısı var. Hakem
+  yalnız Read kullandı, üretime bağlanmadı. Ayrıştırıcı kaynağını ve deneme
+  günlüğünün sonunu okuyamadığını açıkça bildirdi; bunları doğrulanmış saymadı.
+- v9 taslağı yoğun prefetch sorgu/p95 ölçümünü, süreç ömrü işaret önbelleği
+  değişmezini, DB hatasında `503 no-store`, RSC/Server Action ve UTF-8 testini,
+  ortam başına restore farkını ve eski gecelik yedekler için DB dışı reset
+  nesli kapısını ekledi. Uygulama, migration, restore ölçümü yapılmadı.
+- **Tekrarlama:** tek "izinli fark" listesi ayrı kümelerde aynı sahipliği
+  temsil etmez. Reset öncesi gecelik yedeği trafik açıldıktan sonra geri
+  yüklemek, reset dump'ına konan yasağı dolanır.

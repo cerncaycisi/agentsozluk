@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v8 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v9 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -12,7 +12,8 @@ v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için 1 P2, 7 P3 buldu.
 v6 `eeb1b54` için **TASARIM UYGUN**, P1/P2 yok, 8 P3 verdi. v7 tek reset
 sınırını, kodlanmış başlık URL'sini ve Node middleware adayını netleştirdi.
 Opus 5.5 v7 `19a6c85` için de **TASARIM UYGUN** dedi (P1/P2 yok, 7 P3).
-v8, dış trafik sonrası geri dönüş yasağı ve 410/restore kabul sınırlarını sabitler.
+Opus 5.5 v8 exact `ace70f6` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3).
+v9, eski gecelik yedek, yoğun prefetch ve ortam bazlı restore farkı kapılarını ekler.
 
 ## Ön kabul kapıları
 
@@ -35,8 +36,10 @@ v8, dış trafik sonrası geri dönüş yasağı ve 410/restore kabul sınırlar
   Node middleware uygulaması mevcut geniş matcher/prefetch dışlamasını korur;
   permalinkler için ikinci, prefetch'i kapsayan matcher ve gerçek 410 yanıtında
   `Cache-Control: no-store`, CSP, `X-Robots-Tag: noindex` aranır. Standalone
-  build/E2E, DB hata yolunda `next()`, tek havuz ve toplam bağlantı sayısını
-  kanıtlamadan GO yok.
+  build/E2E, DB hata yolunda `503 no-store`, RSC/Server Action geçişi,
+  tek havuz, toplam bağlantı sayısı ve yoğun prefetch sorgu/p95 ölçümünü
+  kanıtlamadan GO yok. İşaret önbelleği kullanılırsa reset/restore süresince
+  bütün app süreçleri kapatılıp işaret değişiminden sonra yeniden başlatılır.
 - Kişisel operatör sunucusundaki gerçek boyutlu provada tam digest, reset, sequence
   `RESTART`, niyet COMMIT/rollback, kapı açma/kapatma, başarısız bağlantı ve tam
   gölge restore/DB adı değiştirme yolu ölçülür. Üretim hostunda iki DB'ye aynı
@@ -52,6 +55,10 @@ v8, dış trafik sonrası geri dönüş yasağı ve 410/restore kabul sınırlar
   adları, önceki `enabled/active` durumları ve çalışan PID'leriyle envantere
   girer. Bilinenler: production bakım timer'ı, canlılık/lease alarmı;
   operatör sunucusu gecelik yedeği. Envanter başka işler bulabilir.
+- Operatör sunucusunda üretim DB'sinden bağımsız imzalı reset nesli ve backup
+  envanteri hazırlanır. Reset öncesi gecelik yedekler etiketlenir; tüm restore
+  yolları yedek neslini bu kayıtla karşılaştırıp trafik açıldıktan sonra
+  pre-reset yedeğini fail-closed reddeder. Bu kapı test edilmeden GO yok.
 - Başlangıç makbuzunda Gökhan'ın onayladığı exact SHA, `operationId`, kapsam,
   plan/dump SHA-256, son kesim zamanı, disk/WAL/temp başlığı, eski bayraklar,
   önceki timer durumları ve geri dönüş kararı bulunur. Secret veya ham entry
@@ -133,7 +140,8 @@ v8, dış trafik sonrası geri dönüş yasağı ve 410/restore kabul sınırlar
   onayı, yeni dump/restore/tam özet ve plan gerekir; otomatik tekrar yok.
 - **COMMIT sonrası kabul hatası:** yalnız Caddy bakım yanıtı kaldırılmadan,
   yazma bayrakları ve worker açılmadan önce site bakımda kalır. Dış trafik
-  veya yeni içerik başladıysa pre-reset dump'a dönüş **yasaktır**; ileri
+  veya yeni içerik başladıysa reset dump'ı ve eski gecelik yedek dahil
+  pre-reset yedeğe dönüş **yasaktır**; ileri
   düzeltme/ayrı namespace planı gerekir. Bu dar pencerede Gökhan ayrı restore
   eylemini onaylarsa, doğrulanmış dump kişisel operatör sunucusundan production
   hostuna kontrollü aktarılır. App/worker/timer kapalı, Caddy bakım yanıtı açık
@@ -145,8 +153,10 @@ v8, dış trafik sonrası geri dönüş yasağı ve 410/restore kabul sınırlar
   kanıtlandıysa kullanılır. Operatör sunucusundaki prova restore'u da aynı
   owner/ACL politikasını kullanır. DB yorumu, `datconnlimit`,
   `pg_db_role_setting`, extension ve kaydedilmiş DB izinleri gölgeye uygulanır.
-  Operatör prova ve gölge restore aynı önceden onaylı owner/extension fark
-  listesini kullanır; DB adı ve `datallowconn` içerik eşitliğinden çıkarılır,
+  Tek imzalı manifestte operatör prova ve üretim gölgesi için değer düzeyinde
+  ayrı owner/extension farkları kullanılır; gölge farkı üretim önkontrolünden
+  türetilir ve izinli farkların alt kümesi olmalıdır. DB adı ve `datallowconn`
+  içerik eşitliğinden çıkarılır,
   kimlik ve gate olarak ayrıca doğrulanır.
   `ANALYZE` ve sıcak sorgu plan denetiminden sonra kaynak makbuzuyla
   tablo/şema/sequence/migration, DB durumu ve **nesne sahibi/ACL** eşitliği
@@ -158,7 +168,7 @@ v8, dış trafik sonrası geri dönüş yasağı ve 410/restore kabul sınırlar
   rollback edilir; `entries`/`topics` INSERT'i yapılmaz. Gölgeye `operationId`
   ve dump SHA-256 ile rollback audit'i yazılır; bu da izinli makbuz farkıdır.
   Audit sonrası son özet yalnız `invalidatedAt`, rollback audit'i ve onaylı
-  owner/extension fark listesiyle tekrar karşılaştırılır. Reset commit
+  üretim gölgesine özgü owner/extension farkıyla tekrar karşılaştırılır. Reset commit
   işareti backup ile aynı olmalıdır; geri yükleme audit'i sonraki reseti durdurur.
   Her iki DB'de
   `ALLOW_CONNECTIONS false` ve backend sıfır doğrulanınca `postgres` kontrol
