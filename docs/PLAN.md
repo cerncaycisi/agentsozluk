@@ -1408,8 +1408,10 @@ girmek israf.
       içinden çağrılan sürüm kapıya girmez — beklemek bağlantıyı tutardı.
       Hesap kovası kararı ve kalan iki takip maddesi için Sıra 5.6 / F10.
 
-- [ ] **B9 — canlılık alarmı + sunucu dışı yedek kanıtı — TEK SEFERLİK YEDEK VE RESTORE
-      KANITI VAR (24 Eylül); ZAMANLANMIŞ YEDEK AÇIK.** Alarm maddesi bölüm 5.5'te.
+- [x] **B9 — canlılık alarmı + sunucu dışı yedek kanıtı — GECELİK YEDEK KURULDU (25 Eylül,
+      PR #204, Astra 3. turda BİRLEŞTİR; ilk yedek 1.168.993.394 bayt, 50 tablo).** Kalan
+      Astra bulguları (sonraya): P2 döndürme listesindeki `sort` hatası ana kabukta
+      denetlenmiyor; P3 `stat` hatası `YEDEK_OK` satırında boş `bytes=` bırakabiliyor. Alarm maddesi bölüm 5.5'te.
       **Yapılan (Gökhan onayı, 24 Eylül: "onaylıyorum"):** üretimden salt okunur, dışa
       aktarılmış tek anlık görüntüden `pg_dump -Fc` doğrudan kişisel T3 sunucusuna
       akıtıldı (üretime dosya yazılmadı). Yedek 1.139.690.537 bayt, sha256 `522e18ba3247…`,
@@ -1423,9 +1425,12 @@ girmek israf.
       **Zamanlanmış yedek — KARAR: EVET (Gökhan, 24 Eylül: "mantıklıysa ok").** Kısıtlı
       anahtar: üretimde `authorized_keys` satırı yalnız yedek betiğini çalıştıran
       `command=…,restrict`; kişisel sunucuda kullanıcı systemd zamanlayıcısı, gecelik, son 7
-      kopya. Kurulum Astra incelemesinden sonra. Kod ve kurulum adımları hazır:
-      `deploy/backup/`, runbook "Gecelik sunucu dışı yedek (B9)", test
-      `tests/unit/ops/nightly-backup.test.ts` (24 Eylül, PR bekliyor). Reset öncesi taze bir yedek aynı yöntemle yeniden
+      kopya. **Kuruldu (25 Eylül):** üretimde kök sahipli zorunlu komut + `restrict` anahtar
+      satırı; sshd önkoşulu (`PermitUserEnvironment no`, `AcceptEnv LANG LC_*`) sağlandı.
+      Kabul: `id` isteği yok sayılıp dump aktı ve erken kapatınca üretimde süreç/oturum/kilit
+      kalmadı; eşzamanlı ikinci bağlantı `YEDEK_BUSY` (75); ilk tam çalışma `YEDEK_OK`, ~2,5
+      dk. Zamanlayıcı her gece 04:30 TSİ (+≤10 dk). Kod, runbook ve 14 test: `deploy/backup/`,
+      `tests/unit/ops/nightly-backup.test.ts`. Reset öncesi taze bir yedek aynı yöntemle yeniden
       alınmalı. _(reset önkoşulu: tek seferlik kısım karşılandı)_
 - [x] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — HEPSİ CANLIDA (23
       Eylül).** Üç ayrı sürüm, ayrı kanıt:
