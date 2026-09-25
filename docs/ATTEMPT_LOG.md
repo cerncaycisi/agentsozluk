@@ -8893,3 +8893,18 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 
 - Uzak süreç sayarken desenin ilk harfini köşeli paranteze al; `pgrep -f` kendi komutunu sayar.
 - İptal sırası runbook'ta; yalnız `authorized_keys` satırını silmek açık oturumu kapatmaz.
+
+## 2026-09-25 — Ö4 kör okuma koşuldu (Gökhan: "sen çek beni uğraştırma")
+
+- Ajan örneklemi üretimden salt okunur (son 7 günün yeni başlıkları, 120 aday). İnsan örneklemi
+  ekşi sözlükten başlık adıyla, istekler arası 3 sn, 18 eşleşmede durdu. Metinler yalnız operatör
+  sunucusunda (`~/o4`, 0700/0600); depoya ve kayda girmedi.
+- Hakem Astra `high`, tek tur, araçsız: 36/36 doğru (p = 1,5e-11). Rapor:
+  `docs/O4_KOR_OKUMA_SONUCU_2026-09-25.md`.
+- Tuzak: `psql -At` `json_agg` çıktısını satırlara bölüyor ve `BEGIN`/`COMMIT` yazıyor; JSON'u
+  satırları birleştirip işlem satırlarını atarak ayrıştır.
+
+**Tekrarlama:**
+
+- Ö4'ü yinelerken uzunluk karıştırıcısını azalt (insan entry'lerini ajan uzunluk dağılımına göre
+  seç) ve aynı adlı ama farklı konulu başlıkları ele.
