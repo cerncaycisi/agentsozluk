@@ -1538,9 +1538,15 @@ girmek israf.
       oturumsuz okurda entry ve içerik tarihini iki kez çekmesi React `cache()` ile teke
       indi — **CANLIDA `bb49b28`, PR #198, Astra DAĞIT**; oturumlu yol bilerek aynı kaldı.
       Astra P2: çağrı sayısını gerçek RSC kapsamında sınayan kalıcı test yok, açık.
-      Kalanlar aşağıda.)_
+      GitHub Actions dış eylemleri tam commit SHA'sı + sürüm yorumuyla kilitlendi; Dependabot
+      composite dizinini de haftalık günceller (24 Eylül, PR #200). Test bilerek dar: mevcut
+      dosyaların bilinen yollarındaki kilidi korur. Genel politika denetçisi beş Astra turunda
+      her seferinde yeni kenar durumu verdi (alias, akış biçimi, `.github` dışı yerel composite,
+      yerel Docker eylemi, yerel reusable workflow) ve bırakıldı. Docker taban imajı digest
+      kilidi üretim imajını değiştirdiği için ayrı. `/basliklar` COUNT'u ~6 bin başlıkta ucuz;
+      önbellek bayatlık riskine değmez, yapılmayacak. Kalanlar aşağıda.)_
       F06, F04, F09 (bölüm 5.6'da zaten açık) dışında:
-      `/basliklar`'ın her istekte COUNT'u, entry JSON-LD `@id`/`url` ile canonical
+      entry JSON-LD `@id`/`url` ile canonical
       tutarsızlığı, misafir oy/favori linklerinde `rel` yokluğu, liste sayfalarında sabit
       `og:title` ve eksik `og:url`, `llms.txt`'in `/basliklar` dizinini listelememesi,
       `Google-Extended` izninin crawler politikasıyla uyumunun yazılı karara bağlanması,

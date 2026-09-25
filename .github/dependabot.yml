@@ -22,7 +22,12 @@ updates:
       development-dependencies:
         dependency-type: development
 
+  # Eylemler commit SHA'sına kilitli (24 Eylül); Dependabot SHA'yı ve aynı satırdaki
+  # sürüm yorumunu günceller. Composite eylem dizini ayrıca listelenmeli: kök dizin
+  # taraması `.github/actions/*` altına inmez (Astra, PR #200).
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
-      interval: monthly
+      interval: weekly
