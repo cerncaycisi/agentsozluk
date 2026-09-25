@@ -8938,3 +8938,33 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 **Tekrarlama:**
 
 - Ö4-2 penceresi 28 Eylül 16:48:54 UTC'de kapanır; önkayıttaki kurala göre ölç.
+
+## 2026-09-25 — B5.3 ilk tarama CI yeniden koşusu
+
+- PR #224 ilk head `f94cd88f5c6ef0431ba5ad1021583de34927e3dd`: tarayıcı işi `next/font`
+  Google yükleyicisinde `TypeError: Cannot read properties of null (reading '1')` ile düştü.
+  Bu hata önceki CI denemelerinde de görülmüştü; kod regresyonunun kök nedeni olarak
+  sınıflandırılmadı. Aynı SHA'nın yalnız başarısız işleri yeniden koşulunca 7/7 geçti.
+- Head, denetimler, review ve merge durumu birleşmeden hemen önce tekrar okundu; #224 main'e
+  `b788cdac30d516a91209ac490fda70c6c4b5e78d` olarak birleşti. Birleşme ağacı
+  `f94cd88` ile aynı. Üretim erişimi yok.
+- **Tekrarlama:** dış font yükleyici hatasını, aynı SHA'nın odaklı yeniden koşusu ve önceki
+  CI örüntüsü görülmeden uygulama regresyonu sayma.
+
+## 2026-09-25 — great reset çekirdek kapıları, yerel yedek kopyası
+
+- Yerel kaynak: `agent-sozluk-20260925T141828Z.dump`, SHA-256
+  `6a98413850e60486b178a7ef3660dda95f69cb9b112cd73e690be0e3d099cd55`.
+  PostgreSQL 16 kümesi `7689521646432264978` üzerinde yalnız geçici sentetik prova DB'sine
+  geri yüklendi; testten sonra DB silindi. Üretim erişimi yok.
+- Opus 5.5 salt okunur hakem `03ec899ed10a9f010035e582b10931d5521be89c` için
+  iki P2 buldu: public ID sütununun `DEFAULT` ifadesi denetlenmiyordu ve RLS satırları
+  gizleyebilirdi. Üç P3: yetki önkontrol sırası/hata kodu, iç trigger'lar ve hazırlanmış
+  işlemler. Kod düzeltmesi `85f434b` üzerinde; yeni SHA'nın hakemliği ayrıca yapılacak.
+- Tam boyutlu kopyada normal public ID kapısı geçti (silinecek tablolarda 2.292.255 satır).
+  `entries.publicId DEFAULT 0` → `PUBLIC_ID_SEQUENCE_UNSAFE`; iç trigger'lar kapalı →
+  `TRIGGER_STATE_UNSAFE`; iki değişiklik geri alınınca bu engeller temizlendi. Ayrı geçici
+  tabloda FORCE RLS ve `row_security = off` ile satır okuması beklenen PostgreSQL hatasını
+  verdi. İlgili 30 birim testi, format, lint ve typecheck geçti.
+- **Tekrarlama:** `OWNED BY` bağlılığı, sütunun gerçekten o sequence'den değer aldığını
+  göstermez; `DEFAULT` ifadesini ayrıca doğrula. RLS açıkken gizli satırlarla karar verme.
