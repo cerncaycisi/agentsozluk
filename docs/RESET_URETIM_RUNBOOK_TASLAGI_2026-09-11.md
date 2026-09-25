@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v11 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v12 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -15,7 +15,9 @@ Opus 5.5 v7 `19a6c85` için de **TASARIM UYGUN** dedi (P1/P2 yok, 7 P3).
 Opus 5.5 v8 exact `ace70f6` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3);
 v9 exact `6ca052f` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 4 P3).
 Opus 5.5 v10 exact `719e191` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3).
-v11 eski imzalı kayıt tekrarını DB kanıtı ve artan kayıt zinciriyle kapatır.
+Opus 5.5 v11 exact `6c032ee` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3):
+rollback sonrası eski imzalı kayıt yeniden kullanılabiliyordu. v12 canlı
+DB'nin aynı reset işlemi olmasını olumlu koşul yapar.
 
 ## Ön kabul kapıları
 
@@ -27,7 +29,8 @@ v11 eski imzalı kayıt tekrarını DB kanıtı ve artan kayıt zinciriyle kapat
   6.3-5 ve `__Host-` kabulü kod/test/CI ile geçer.
   Yeni ID namespace'i `2147483648` başlar. Eski sayısal aralığın tamamına 410
   verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur.
-  `great_reset_commits` doluysa veya reset geri yükleme audit'i varsa ikinci
+  `great_reset_commits`/`great_reset_exposure_events` doluysa veya reset geri
+  yükleme audit'i varsa ikinci
   reset bu tasarımla yasaktır. Route
   commit işaretine ön koşul olarak bakar; işaret varsa canlı içerik kaydı
   mezar taşından önce kazanır. İçerik yoksa eski
@@ -68,10 +71,16 @@ v11 eski imzalı kayıt tekrarını DB kanıtı ve artan kayıt zinciriyle kapat
   yalnız operatör sunucusundaki restore kapısı doğrular; anahtar oradan
   çıkmaz. Kapı dışındaki dump aktarımı yoktur; üretim `pg_restore` öncesi
   SHA-256'yı yeniden doğrular. Kayıt artan sıra/önceki özetle yalnız eklenir;
-  geçici dosya fsync → aynı dizin rename → dizin fsync → geri okuma/imza
+  her yeni dosya önceki dosyanın byte düzeyinde birebir öneki ile tek yeni
+  kayıttır; yazıcı bunu doğrular. Yeni `operationId` önceki terminal kaydı
+  yeniden açmaz. Geçici dosya fsync → aynı dizin rename → dizin fsync → geri okuma/imza
   doğrulaması, eski imzalı kayıt tekrarı ve eski gecelik yedek ret yolları
   test edilmeden GO yok. Korunan `great_reset_exposure_events` tablosu migration
   ve app kodu kabulüne girer; trafik açılışı tek append-only satırdır.
+  Yalnız ayrı operatör rolü INSERT yapar; uygulama rolünde
+  UPDATE/DELETE/TRUNCATE izni yoktur ve trigger bunları reddeder. Sahip/süper
+  kullanıcının trigger'ı kapatması tehdit modeli dışındaki yetkili operatör
+  eylemidir; kazara/app değişikliği negatif testlerle yakalanır.
 - Başlangıç makbuzunda Gökhan'ın onayladığı exact SHA, `operationId`, kapsam,
   plan/dump SHA-256, son kesim zamanı, disk/WAL/temp başlığı, eski bayraklar,
   önceki timer durumları ve geri dönüş kararı bulunur. Secret veya ham entry
@@ -100,7 +109,8 @@ v11 eski imzalı kayıt tekrarını DB kanıtı ve artan kayıt zinciriyle kapat
 3. **Önizle.** Üretim profili önizlemesi aynı RepeatableRead görüntüsünde tam
    makbuz özetini ve kısa `ctid`/`xmin` plan özetini çıkarır. Makbuz eşitliği,
    kimlik, izinler, oturum/`pg_prepared_xacts`, RLS, trigger, INSERT yazıcıları,
-   dört bayrak, lease/outbox, boş `great_reset_commits`, geri yükleme audit'i
+   dört bayrak, lease/outbox, boş `great_reset_commits` ve
+   `great_reset_exposure_events`, geri yükleme audit'i
    yokluğu, `AS bigint`,
    `2147483648 ≤ MAXVALUE ≤ 2^53−1`
    ve yazıcı kapıları geçsin.
@@ -146,7 +156,10 @@ v11 eski imzalı kayıt tekrarını DB kanıtı ve artan kayıt zinciriyle kapat
    atomik/fsync ile `TRAFFIC_OPEN` durumuna **önceden** geçirilip tekrar
    doğrulanır. Korunan `great_reset_exposure_events` tablosuna aynı
    `operationId` için append-only trafik açılış satırı yazılıp okunur;
-   iki kanıttan biri başarısızsa bakım sürer. Ancak sonra Caddy bakım yanıtı
+   `UNIQUE(operationId)` ile aynı satırı tekrar okuyan/yazan idempotent yol
+   kullanılır. Dış kayıt `TRAFFIC_OPEN` olmuş ama DB yazısı düşmüşse yalnız
+   bu DB adımı yeniden denenir, restore yoktur. İki kanıttan biri başarısızsa
+   bakım sürer. Ancak sonra Caddy bakım yanıtı
    kaldırılır. Dört bayrağı eski değerlerine ayrı ayrı döndür; worker'ı
    kontrollü aç, worker hold en son kalksın.
    İlk doğal koşu ve tüm timer/cron'un önceki `enabled/active` durumu,
@@ -171,9 +184,14 @@ v11 eski imzalı kayıt tekrarını DB kanıtı ve artan kayıt zinciriyle kapat
   hostuna kontrollü aktarılır. Önce dış imza `COMMITTED_MAINTENANCE` olmalı;
   yalnız bu `operationId`'nin exact reset-anı `dumpSha`'sı ve gölgede
   içerikten doğrulanan nesli kabul edilir, eksik/bozuk kayıt fail-closed durur.
-  Canlı DB'de `great_reset_exposure_events` satırı veya yeni namespace'te
-  satır/sequence tüketimi varsa restore yasaktır; eski imzalı kaydın tekrar
-  kullanımı da böylece engellenir.
+  Canlı canonical DB'de **aynı `operationId` için tam
+  `great_reset_commits` satırı ve hiçbir
+  `GREAT_RESET_PRODUCTION_RESTORE` audit olayı olmaması** zorunludur. Herhangi
+  bir `great_reset_exposure_events` satırı, yeni namespace satırı veya iki
+  sequence'ten birinde `last_value != 2147483648`/`is_called != false`
+  restore'u durdurur. Başarılı rollback'ten sonraki pre-reset DB'de aynı
+  commit bulunmadığı için eski imzalı kayıt tekrar kullanılamaz; bu dal
+  negatif testle kanıtlanır.
   App/worker/timer kapalı, Caddy bakım yanıtı açık
   kalır. Canlı DB'yi silmeden, kaydedilmiş sahip/encoding/locale/DB ACL ile
   `template0` üzerinden yeni **gölge DB** oluşturulur. Dump bu DB'ye
@@ -196,13 +214,19 @@ v11 eski imzalı kayıt tekrarını DB kanıtı ve artan kayıt zinciriyle kapat
   sıfırdır. Uygulama rolüyle, sequence'e dokunmayan korunan tablo DML smoke'u
   `SET CONSTRAINTS ALL IMMEDIATE` ile transaction içinde çalıştırılır ve
   rollback edilir; `entries`/`topics` INSERT'i yapılmaz. Gölgeye `operationId`
-  ve dump SHA-256 ile rollback audit'i yazılır; bu da izinli makbuz farkıdır.
+  ve dump SHA-256 ile `GREAT_RESET_PRODUCTION_RESTORE` audit'i yazılır; bu da
+  izinli makbuz farkıdır.
   Audit sonrası son özet yalnız `invalidatedAt`, rollback audit'i ve onaylı
   üretim gölgesine özgü owner/extension farkıyla tekrar karşılaştırılır. Reset commit
   işareti backup ile aynı olmalıdır; geri yükleme audit'i sonraki reseti durdurur.
-  Her iki DB'de
-  `ALLOW_CONNECTIONS false` ve backend sıfır doğrulanınca `postgres` kontrol
-  bağlantısındaki tek transaction, canlı canonical DB'yi rollback adına,
+  App/worker kapalıyken canonical ve gölge DB'de birer pinned salt okunur
+  bağlantı dışında backend/hazırlanmış işlem sıfır doğrulanır. Kontrol DB'si
+  iki DB'yi `ALLOW_CONNECTIONS false` yapar. Pinned canonical bağlantı
+  aynı commit/audit/trafik olayı/satır/sequence koşullarını, pinned gölge
+  bağlantı makbuzu kapı kapandıktan sonra tekrar okur. İkisi de kapanınca
+  kontrol DB'si backend sıfırını yeniden doğrular; başka bağlantı artık
+  giremez. `postgres` kontrol bağlantısındaki tek transaction, canlı
+  canonical DB'yi rollback adına,
   doğrulanmış gölge DB'yi canonical ada çevirir; hata transaction'ı geri alır.
   Eski reset DB'si `datallowconn=false` kalır ve kabul bitene kadar tutulur.
   Yeni canonical DB'nin `datallowconn`,

@@ -9113,3 +9113,20 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** HMAC imzası bir eski kaydın geçerli olduğunu kanıtlar,
   en yeni kayıt olduğunu tek başına kanıtlamaz. Canlı DB'deki append-only
   trafik açılış olayıyla restore'u ayrıca engelle.
+
+## 2026-09-25 — üretim reset tasarımı v11 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `6c032eec369fa4796ce7395a28a1096ad79af09f` v11 için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). P2: başarılı rollback'ten
+  sonra eski imzalı `COMMITTED_MAINTENANCE` kaydı tekrar oynatılırsa canlı
+  DB pre-reset olduğundan trafik olayı ve yeni namespace kullanımı yoktur;
+  sonraki yazılar eski dump'a dönülerek kaybolabilir. Hakem yalnız Read
+  kullandı, üretime bağlanmadı.
+- v12, aynı `operationId`'li canlı reset commit'ini ve restore audit yokluğunu
+  olumlu koşul yapar; iki sequence'in tüketilmemiş başlangıcını, trafik olayı
+  ve yeni namespace yokluğunu kapalı DB'de pinned bağlantıyla tekrar ölçer.
+  Dış durum ve DB olayı arasındaki hata yolu idempotent onarımla tanımlanır.
+- **Tekrarlama:** yalnız olumsuz koşullar, rollback sonrası pre-reset DB'yi
+  reset sonrası DB'den ayıramaz. Restore kapısı canlı DB'nin doğru nesil ve
+  işlem kimliğinde olduğunu olumlu kanıtlamalıdır.
