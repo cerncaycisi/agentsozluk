@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v7 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v8 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -10,8 +10,9 @@ somut eyleme ayrı açık onayı gerekir. Önceki dağıtım veya bu taslak onay
 Salt okunur Opus 5.5 tasarım incelemesi v3 `146a319` için 6 P2, 3 P3;
 v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için 1 P2, 7 P3 buldu.
 v6 `eeb1b54` için **TASARIM UYGUN**, P1/P2 yok, 8 P3 verdi. v7 tek reset
-sınırını, kodlanmış başlık URL'sini ve Node middleware adayını netleştirir;
-uygulama ve ölçüm bekler.
+sınırını, kodlanmış başlık URL'sini ve Node middleware adayını netleştirdi.
+Opus 5.5 v7 `19a6c85` için de **TASARIM UYGUN** dedi (P1/P2 yok, 7 P3).
+v8, dış trafik sonrası geri dönüş yasağı ve 410/restore kabul sınırlarını sabitler.
 
 ## Ön kabul kapıları
 
@@ -22,13 +23,20 @@ uygulama ve ölçüm bekler.
   6.3-5 ve `__Host-` kabulü kod/test/CI ile geçer.
   Yeni ID namespace'i `2147483648` başlar. Eski sayısal aralığın tamamına 410
   verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur.
-  `great_reset_commits` zaten doluysa ikinci reset bu tasarımla yasaktır. Route
-  canlı içerik kaydını **önce** arar; içerik yoksa ve commit işareti varsa eski
+  `great_reset_commits` doluysa veya reset geri yükleme audit'i varsa ikinci
+  reset bu tasarımla yasaktır. Route
+  commit işaretine ön koşul olarak bakar; işaret varsa canlı içerik kaydı
+  mezar taşından önce kazanır. İçerik yoksa eski
   sayısal aralık veya UUID mezar taşı 410, bilinmeyen adres 404. Yalın
   `/baslik/{kodlanmış başlık}` açılmamış başlık formudur; 410 kapsamına girmez.
   `--rakam` sonekinin mevcut parser'la çakışması ayrıca envanter/validasyon
   kapısıdır. Reset
   öncesi ve pre-reset restore sonrası var olan içerik normal yanıt verir.
+  Node middleware uygulaması mevcut geniş matcher/prefetch dışlamasını korur;
+  permalinkler için ikinci, prefetch'i kapsayan matcher ve gerçek 410 yanıtında
+  `Cache-Control: no-store`, CSP, `X-Robots-Tag: noindex` aranır. Standalone
+  build/E2E, DB hata yolunda `next()`, tek havuz ve toplam bağlantı sayısını
+  kanıtlamadan GO yok.
 - Kişisel operatör sunucusundaki gerçek boyutlu provada tam digest, reset, sequence
   `RESTART`, niyet COMMIT/rollback, kapı açma/kapatma, başarısız bağlantı ve tam
   gölge restore/DB adı değiştirme yolu ölçülür. Üretim hostunda iki DB'ye aynı
@@ -69,7 +77,8 @@ uygulama ve ölçüm bekler.
 3. **Önizle.** Üretim profili önizlemesi aynı RepeatableRead görüntüsünde tam
    makbuz özetini ve kısa `ctid`/`xmin` plan özetini çıkarır. Makbuz eşitliği,
    kimlik, izinler, oturum/`pg_prepared_xacts`, RLS, trigger, INSERT yazıcıları,
-   dört bayrak, lease/outbox, boş `great_reset_commits`, `AS bigint`,
+   dört bayrak, lease/outbox, boş `great_reset_commits`, geri yükleme audit'i
+   yokluğu, `AS bigint`,
    `2147483648 ≤ MAXVALUE ≤ 2^53−1`
    ve yazıcı kapıları geçsin.
    Plan hash'i, makbuz özeti ve bitiş bütçesi kaydedilir. Niyet hâlâ
@@ -122,7 +131,10 @@ uygulama ve ölçüm bekler.
   App/worker/bayrak/timer'ları eski durumlarına döndür. Autovacuum veya `NOWAIT`
   hatası olsa da yeni denemede yeni `operationId`, Gökhan'ın yeni exact eylem
   onayı, yeni dump/restore/tam özet ve plan gerekir; otomatik tekrar yok.
-- **COMMIT sonrası kabul hatası:** site bakımda kalır. Gökhan ayrı restore
+- **COMMIT sonrası kabul hatası:** yalnız Caddy bakım yanıtı kaldırılmadan,
+  yazma bayrakları ve worker açılmadan önce site bakımda kalır. Dış trafik
+  veya yeni içerik başladıysa pre-reset dump'a dönüş **yasaktır**; ileri
+  düzeltme/ayrı namespace planı gerekir. Bu dar pencerede Gökhan ayrı restore
   eylemini onaylarsa, doğrulanmış dump kişisel operatör sunucusundan production
   hostuna kontrollü aktarılır. App/worker/timer kapalı, Caddy bakım yanıtı açık
   kalır. Canlı DB'yi silmeden, kaydedilmiş sahip/encoding/locale/DB ACL ile
@@ -133,6 +145,9 @@ uygulama ve ölçüm bekler.
   kanıtlandıysa kullanılır. Operatör sunucusundaki prova restore'u da aynı
   owner/ACL politikasını kullanır. DB yorumu, `datconnlimit`,
   `pg_db_role_setting`, extension ve kaydedilmiş DB izinleri gölgeye uygulanır.
+  Operatör prova ve gölge restore aynı önceden onaylı owner/extension fark
+  listesini kullanır; DB adı ve `datallowconn` içerik eşitliğinden çıkarılır,
+  kimlik ve gate olarak ayrıca doğrulanır.
   `ANALYZE` ve sıcak sorgu plan denetiminden sonra kaynak makbuzuyla
   tablo/şema/sequence/migration, DB durumu ve **nesne sahibi/ACL** eşitliği
   doğrulanır. Backup'tan geri gelen geçerli ve tüketilmemiş bütün niyetlere
@@ -142,13 +157,15 @@ uygulama ve ölçüm bekler.
   `SET CONSTRAINTS ALL IMMEDIATE` ile transaction içinde çalıştırılır ve
   rollback edilir; `entries`/`topics` INSERT'i yapılmaz. Gölgeye `operationId`
   ve dump SHA-256 ile rollback audit'i yazılır; bu da izinli makbuz farkıdır.
-  Audit sonrası son özet yalnız `invalidatedAt` ve bu audit istisnasıyla
-  tekrar karşılaştırılır. Reset commit işareti backup ile aynı olmalıdır.
+  Audit sonrası son özet yalnız `invalidatedAt`, rollback audit'i ve onaylı
+  owner/extension fark listesiyle tekrar karşılaştırılır. Reset commit
+  işareti backup ile aynı olmalıdır; geri yükleme audit'i sonraki reseti durdurur.
   Her iki DB'de
   `ALLOW_CONNECTIONS false` ve backend sıfır doğrulanınca `postgres` kontrol
   bağlantısındaki tek transaction, canlı canonical DB'yi rollback adına,
   doğrulanmış gölge DB'yi canonical ada çevirir; hata transaction'ı geri alır.
-  Eski DB kabul bitene kadar tutulur. Yeni canonical DB'nin `datallowconn`,
+  Eski reset DB'si `datallowconn=false` kalır ve kabul bitene kadar tutulur.
+  Yeni canonical DB'nin `datallowconn`,
   sahip/ACL, sequence, app rolü ve iç Host/loopback route kabulü doğrulanır;
   sonra bakım yanıtı kaldırılır. Gölge restore için disk yetmiyorsa reset
   başlamaz. Bu yöntemin local gerçek boyutlu ve exact onaylı production-host

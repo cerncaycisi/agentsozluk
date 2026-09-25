@@ -9047,3 +9047,20 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** ikinci reset aynı `2147483648` başlangıcını tekrar
   kullanırsa eski yeni-nesil URL başka içeriğe bağlanabilir. İlk reset
   işareti varken yürütücüyü fail-closed durdur.
+
+## 2026-09-25 — üretim reset tasarımı v7 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `19a6c8513943b82154715ec8abbee847d572f948` v7 için
+  **TASARIM UYGUN** dedi; P1/P2 yok, yedi P3 kabul ayrıntısı var.
+  Önemlileri: dış trafik sonrası pre-reset restore'un ikinci resetle ID
+  yeniden kullanımına yol açması, 410 yanıtında `no-store` yokluğu,
+  prefetch matcher'ı ve restore fark listesinin tutarsızlığı. Hakem yalnız
+  Read kullandı, üretime bağlanmadı.
+- v8, geri yüklemeyi Caddy bakım yanıtı kaldırılmadan ve worker/yazma
+  açılmadan önceki dar kabul penceresiyle sınırlar. Geri yükleme audit'i
+  ikinci reseti durdurur. Node middleware için cache/CSP/prefetch/DB hata
+  yolu ve standalone bağlantı sayımı açık kabul kapısıdır; uygulama yok.
+- **Tekrarlama:** 410 yanıtı `no-store` olmadan cache'lenebilir; restore
+  sonrası bayat 410 kalabilir. Dışarıya yeni public ID çıktıktan sonra
+  eski dump'a dönüp aynı sequence başlangıcını kullanma.

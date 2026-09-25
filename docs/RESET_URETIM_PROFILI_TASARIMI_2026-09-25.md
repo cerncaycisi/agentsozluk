@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v7 (25 Eylül 2026)
+# Great reset — üretim profili tasarımı v8 (25 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -19,6 +19,9 @@ uygulama/restore ayrıntılarını sabitler.
 Opus 5.5, v6 exact `eeb1b5445cc7b114bc6325a4c06618b6426801b0` için
 **TASARIM UYGUN** dedi; P1/P2 yok, sekiz P3 uygulama sınırı kaydetti. v7, özellikle
 ikinci resetin ID yeniden kullanımını engeller ve HTTP 410 adayını netleştirir.
+Opus 5.5, v7 exact `19a6c8513943b82154715ec8abbee847d572f948`
+için **TASARIM UYGUN** dedi; P1/P2 yok, yedi P3 kabul ayrıntısı kaydetti.
+v8, dış trafik sonrası restore yasağını ve middleware/restore sınırlarını sabitler.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -83,8 +86,8 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    transaction'a bağlıdır; bu davranış ve kilit süresi yerel gerçek boyutlu provada
    ayrıca sınanacaktır. Ayrı, korunan `great_reset_commits` satırı reset
    transaction'ında audit ve niyet tüketimiyle birlikte eklenir; rollback veya
-   reset öncesinde satır yoktur. Public route sırası **önce canlı kaydı ara**:
-   varsa normal yanıt; yoksa yalnız commit işareti varsa eski sayısal namespace
+   reset öncesinde satır yoktur. Public sözleşme: canlı kayıt varsa normal yanıt;
+   yoksa yalnız commit işareti varsa eski sayısal namespace
    (`≤2147483647`) 410; diğer bulunmayan sayılar 404. Böylece migration sonrası
    reset öncesinde ve pre-reset yedekten restore sonrasında canlı eski içerik
    200 kalır. Eski aralıkta hiç üretilmemiş ID'ye reset sonrası 410 verilebilir;
@@ -92,8 +95,8 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
 4. Eski **UUID permalinkleri** için korunan `great_reset_tombstones` tablosu
    migration'la eklenir; cleared içerikle FK bağı taşımaz. Reset transaction'ı,
    `topics` ve `entries` silinmeden önce `(kind, uuid)` anahtarlarını burada
-   toplar; UUID benzersizliği ve sayı doğrulanır. Public route önce canlı
-   içeriği, sonra committed reset işaretiyle UUID mezar taşını arar. Kanonik
+   toplar; UUID benzersizliği ve sayı doğrulanır. İşaret varken bile canlı
+   içerik UUID mezar taşından önce kazanır. Kanonik
    `/baslik/{slug}--{publicId}` ve `/entry/{publicId}` sayısal namespace ile
    ayrılır. **Yalın `/baslik/{kodlanmış başlık}` bir silinmiş içerik
    permalink'i değildir:** mevcut uygulamada açılmamış başlık için noindex
@@ -109,20 +112,33 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    `BIGINT` geçişi veya bu ürün kararı kabul edilmezse **reset GO yok**; mevcut
    sequence'den tarihsel en yüksek silinmiş ID'yi çıkardığımız iddia edilmez.
    HTTP 410 için birincil aday, Next.js 15.5.25'in **Node runtime middleware**
-   yoludur (`src/middleware.ts`, `config.runtime = 'nodejs'`). Dar permalink
-   matcher'ı GET/HEAD, RSC ve prefetch yollarını kapsar; mevcut CSP nonce ve
-   analytics başlıkları her cevapta korunur. Middleware Prisma'yı doğrudan
-   kullanmaz; aynı uygulama servisi üzerinden canlı kayıt → commit işareti →
-   eski numeric/UUID kararını verir. İşaret için global/in-memory cache yoktur:
-   restore sonrası bayat 410 üretilemez. Bilinen silinmiş adreste doğrudan
-   `Response(status: 410)`, diğerlerinde `NextResponse.next()`; yalın başlık
-   formu ve başka route'lar değişmez. Node middleware bundle, CSP, RSC,
-   `generateMetadata`, anonim/oturumlu HTML, prefetch, gerçek HTTP 410 ve
-   restore sonrası 200/404 yerel production build/E2E ile kanıtlanmadan GO yok.
+   yoludur (`src/middleware.ts`, `config.runtime = 'nodejs'`). Mevcut geniş
+   matcher ve prefetch dışlaması korunur; yalnız `/baslik/:seg` ve `/entry/:seg`
+   için `missing` koşulu olmayan ikinci dar matcher eklenir. Prefetch'te yalnız
+   410 kararı çalışır; normal yanıttaki CSP/analytics davranışı değişmez.
+   Middleware Prisma'yı doğrudan kullanmaz; aynı application service ve aynı
+   `parseTopicRouteReference`/`parseEntryRouteReference` ayrıştırıcılarıyla
+   karar verir. **Önce commit işareti** okunur; yoksa `next()`. İşaret varsa
+   `>2147483647` sayısal ID veya yalın başlık da `next()`; yalnız eski
+   namespace/legacy UUID için canlı kayıt, ardından mezar taşı aranır.
+   İşaret için global/in-memory cache yoktur. DB hatasında 410 uydurulmaz,
+   `next()` ile sayfanın kendi hata davranışına bırakılır. Bilinen silinmiş
+   adreste statik kısa HTML gövdeli doğrudan 410 yanıtı; `Cache-Control: no-store`,
+   mevcut nonce/CSP, `X-Robots-Tag: noindex` ve `Content-Type: text/html` taşır.
+   Böylece rollback sonrası tarayıcı/proxy bayat 410 saklamaz. Diğer yanıtta
+   mevcut `NextResponse.next()` başlıkları korunur. Migration tabloları
+   middleware release'inden **önce** kabul edilmiş olmalıdır. `0123`, güvenli
+   tamsayı üstü ve UUID+sonek ayrıştırması test edilir. Node middleware bundle,
+   CSP, RSC, `generateMetadata`, anonim/oturumlu HTML, prefetch, gerçek HTTP
+   410 ve restore sonrası 200/404 yerel production build/E2E ile kanıtlanmadan
+   GO yok. Production ile aynı standalone açılışında `server-only` importu,
+   dosya izlemesi ve `pg_stat_activity` ile toplam DB havuzu/bağlantı sayısı
+   ölçülür; ayrı havuz kaynak sınırını aşarsa aday kabul edilmez.
    Middleware yolu çalışmazsa eşdeğer Caddy/Node çözümü ayrıca tasarlanıp
    hakemden geçer; doğrulanmamış route handler rewrite kullanılmaz.
 5. **Tek reset sınırı:** `great_reset_commits` tablosunda herhangi bir commit
-   satırı varsa önizleme ve uygulama `RESET_ALREADY_COMMITTED` ile durur.
+   satırı **veya** reset geri yükleme audit kaydı varsa önizleme ve uygulama
+   `RESET_ALREADY_COMMITTED` ile durur.
    `RESTART WITH 2147483648` yalnız ilk reset içindir; ikinci reset ayrı ID
    namespace tasarımı ve Gökhan kararı olmadan yapılamaz.
 6. Önizleme, hedef DB rolünün okuma, tüm tablo kilidi, silinecek tablo `TRUNCATE`,
@@ -150,7 +166,10 @@ tam özet dump'ın hemen öncesi ve sonrası aynı olmalı. Operatör sunucusund
 ayrı PostgreSQL 16 prova kümesinde gerekli roller/üyelikler önceden kurulur;
 DB yorumu, bağlantı limiti, DB/rol ayarı ve extension sahipliği uygulanır.
 Extension sahibi veya üye nesneleri birebir kurulamıyorsa beklenen fark
-önceden ölçülüp ayrı onaylanır; sessiz eşitlik iddiası yoktur. Restore sonrası
+önceden ölçülüp ayrı onaylanır; **aynı imzalı fark listesi** operatör provası,
+gölge restore ve kabul makbuzunda kullanılır. DB adı ve kapı anına bağlı
+`datallowconn` karşılaştırma dışında tutulur; ayrı kimlik/gate koşullarıyla
+doğrulanır. Sessiz eşitlik iddiası yoktur. Restore sonrası
 tam özet bu açık kapsamla aynı olmalı. Sequence MVCC görüntüsünden bağımsız
 olduğundan iki kaynak okumasında ayrıca eşit olmalıdır. SHA-256 kriptografik
 bütünlük kanıtıdır, matematiksel eşitlik teoremi değildir.
@@ -242,6 +261,11 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    etkinlik durumuna getirilir; sonraki tetik ve son başarılı yedek/alarm kayıtları
    doğrulanır. `__Host-` çerez geçişi ve 6.3-5 indeks eşiği exact release kabulünde.
 6. Reset COMMIT'i olmuş ama site kabulü düşmüşse rollback **ayrı bir üretim eylemidir**.
+   Bu yol yalnız Caddy bakım yanıtı kaldırılmadan ve yazma bayrakları/worker
+   açılmadan önce geçerlidir. Dış trafik veya yeni içerik başladıktan sonra
+   pre-reset dump'a dönüş bu tasarımda **yasaktır**; ileri düzeltme ya da yeni
+   namespace tasarımı gerekir. Gölgeye yazılan reset geri yükleme audit kaydı
+   da ikinci reseti kapatır.
    Gökhan onaylarsa doğrulanmış dump production hostunda **yeni gölge DB'ye**,
    DB sahibi `agent_sozluk` rolüyle veya `--role=agent_sozluk` altında restore
    edilir; canlı DB önce silinmez. Kaynakta gerçek GRANT varsa restore ACL'leri
@@ -259,7 +283,9 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    eder; `entries`/`topics` INSERT'i ile `nextval` kullanılmaz. Gölgeye
    `operationId` ve dump SHA-256'sı için ayrı rollback audit satırı yazılır;
    bu da makbuzun kayıtlı izinli farkıdır. Audit sonrası son özet yalnız
-   `invalidatedAt` ve bu audit istisnasıyla yeniden karşılaştırılır.
+   `invalidatedAt`, bu audit ve önceden onaylı owner/extension fark listesiyle
+   yeniden karşılaştırılır. Gölge/kanonik DB adı ve `datallowconn` bu içerik
+   eşitliğine girmez; ayrı doğrulanır.
    Gölge DB'de reset commit işareti
    yokluğu veya eski makbuzla uyumu doğrulanır. App/worker
    kapalıyken iki DB'de `ALLOW_CONNECTIONS false` ve bağlantı sıfır doğrulanır;
@@ -268,8 +294,9 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
    çevrilir. Yerel PG16'da iki `ALTER DATABASE ... RENAME` ve rollback mümkün
    olduğu görüldü; gerçek boyut/izin/disk ve iki DB'nin `datallowconn` durumu
    ayrıca prova edilir. İsim kesiminde hata olursa transaction geri alınır,
-   eski canonical DB kalır. Eski reset DB'si ilk kabul bitene dek rollback
-   kanıtı olarak saklanır. Yeni canonical DB için gate ve app kabulü tekrar
+   eski canonical DB kalır. Eski reset DB'si `datallowconn=false` durumda,
+   ilk kabul bitene dek rollback kanıtı olarak saklanır. Yeni canonical DB
+   için gate ve app kabulü tekrar
    doğrulanır. Gölge restore'a disk yetmezse **reset GO yok**; eski DB'yi önce
    silen yol bu tasarımın geri dönüşü değildir. Otomatik restore yok.
    Kesim önkontrolünde kontrol rolünün `rolcreatedb`/`rolsuper`, rol üyeliği,
