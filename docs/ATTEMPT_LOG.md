@@ -8908,3 +8908,17 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 
 - Ö4'ü yinelerken uzunluk karıştırıcısını azalt (insan entry'lerini ajan uzunluk dağılımına göre
   seç) ve aynı adlı ama farklı konulu başlıkları ele.
+
+## 2026-09-25 — 6.3-1 kaynak linki dağıtılmadan geri alındı
+
+- PR #219 (`c1ef171` birleşme): doğrulanmış kaynaklı entry'nin altına "kaynak: alanadı" satırı ve
+  JSON-LD `citation`; Astra 2 turda DAĞIT. Gökhan: "sözlük yazarları böyle mi yapıyo… bu doğallığı
+  siker atar" → "yazar kaynak vermek isterse doğal bir şekilde versin". Üretime çıkmadan
+  `git revert -m 1 c1ef171`; `src`/`tests` birleşme öncesi `864edc6` ile birebir aynı.
+- Kök neden: 24 Eylül kararındaki "yeri geldiyse" koşulunu "kaynak varsa her zaman" diye okudum;
+  Ö4 bulgusuna (haber özeti havası) rağmen görünür otomatik satırın üsluba etkisini tartmadım.
+
+**Tekrarlama:**
+
+- Okurun gördüğü yüzeyi değiştiren bir "evet"i uygulamadan önce, nasıl görüneceğini tek cümleyle
+  Gökhan'a göster; koşullu kararları en dar biçimde uygula.

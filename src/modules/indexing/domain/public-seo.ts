@@ -133,14 +133,6 @@ export function buildWebsiteJsonLd(baseUrl: string) {
   };
 }
 
-/**
- * Entry'nin dayandığı doğrulanmış kaynaklar schema.org `citation` olarak (GEO: alıntılanan
- * iddianın kaynağı makineye de görünür). Kaynak yoksa alan hiç yazılmaz.
- */
-function citationData(citations: readonly string[] | undefined) {
-  return citations && citations.length > 0 ? { citation: [...citations] } : {};
-}
-
 export function buildTopicJsonLd(input: {
   baseUrl: string;
   url: string;
@@ -155,8 +147,6 @@ export function buildTopicJsonLd(input: {
     createdAt: Date;
     updatedAt: Date;
     author: PublicAuthor;
-    /** Doğrulanmış kaynak adresleri (plan 6.3-1); boşsa alan yazılmaz. */
-    citations?: readonly string[] | undefined;
   }>;
 }) {
   const url = absolutePublicUrl(input.baseUrl, input.url);
@@ -185,7 +175,6 @@ export function buildTopicJsonLd(input: {
           datePublished: entry.createdAt.toISOString(),
           dateModified: entry.updatedAt.toISOString(),
           author: authorData(input.baseUrl, entry.author),
-          ...citationData(entry.citations),
         },
       })),
     },
@@ -201,7 +190,6 @@ export function buildEntryJsonLd(input: {
   createdAt: Date;
   updatedAt: Date;
   author: PublicAuthor;
-  citations?: readonly string[] | undefined;
 }) {
   const url = absolutePublicUrl(input.baseUrl, input.url);
   return {
@@ -214,7 +202,6 @@ export function buildEntryJsonLd(input: {
     datePublished: input.createdAt.toISOString(),
     dateModified: input.updatedAt.toISOString(),
     author: authorData(input.baseUrl, input.author),
-    ...citationData(input.citations),
     isPartOf: {
       "@type": "CollectionPage",
       name: input.topicTitle,

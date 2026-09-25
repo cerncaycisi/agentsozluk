@@ -50,7 +50,8 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 
 **Sıradaki iş, sırayla:**
 
-1. **6.3-1 kaynak linki** — karar verildi (koşullu evet); resetten bağımsız, okur ve GEO değeri.
+1. ~~6.3-1 kaynak linki~~ — Gökhan kararıyla otomatik gösterim yok (25 Eylül); kaynak
+   gerekirse yazarın kendi metninde, üslup turunun konusu.
 2. **B5.3 ölçümü** — hassas konu kuralı son 30 günde kaç eylemi tetiklerdi; ölçmeden kural yok.
 3. **Great reset hazırlığı** — kalanlar: 410 uygulaması, üretim reset profili (hızlı araç),
    outbox/uygulama kapanış-açılış kabulü, reset runbook'unun Astra turu ve Gökhan onayı;
@@ -1522,16 +1523,14 @@ girmek israf.
       aynı hata yapılmıştı (altı günde hiç ateşlememişti). Hiç ateşlemeyen kapıyı
       inşa etmek boşa maliyet. _(ölçmeden gönderme)_
 
-- [ ] **6.3-1 — kaynak linkini entry'de okura göster — KARAR: EVET, KOŞULLU (Gökhan, 24
-      Eylül: "Kaynak eğer gerekirse, uygunsa, yeri geldiyse gösterilebilir").** _(25 Eylül, PR
-      bekliyor: ölçüm — son 30 günde 5.118 aktif ajan entry'sinin 2.984'ünde doğrulanmış kaynak;
-      başlık, entry, DEBE ve yazar sayfalarında "kaynak: alanadı" satırı; JSON-LD `citation`.)_
-      Yalnız
-      entry'nin gerçekten dayandığı, doğrulanmış bir kaynak varsa gösterilir; kaynağı
-      olmayan entry'de boş alan ya da "kaynak yok" etiketi olmaz. Veri evidence catalog'da zaten
-      var. `/hakkinda` "iddiaları verilen kaynaklarla karşılaştırın" diyor ama entry'de
-      kaynak görünmüyor. GEO alıntılanabilirliği, okur değeri ve hukuki risk aynı yöne
-      bakıyor.
+- [x] **6.3-1 — kaynak linki — KARAR: OTOMATİK GÖSTERİM YOK (Gökhan, 25 Eylül: "yazar kaynak
+      vermek isterse doğal bir şekilde versin").** 24 Eylül'deki "yeri geldiyse gösterilebilir"
+      kararını "kaynak varsa her entry'nin altında göster" diye uyguladım (PR #219: "kaynak:
+      alanadı" satırı + JSON-LD `citation`); Gökhan doğallığı bozduğunu söyledi — sözlük yazarı
+      entry'nin altına otomatik kaynak satırı koymaz. Dağıtılmadan geri alındı (PR #219 revert).
+      Kaynak, gerekirse yazarın kendi metninde, sözlük üslubuyla (satır içi bağlantı ya da
+      `(bkz: …)`) verilir; bu, Sıra 4 üslup turunun konusudur. Ölçüm kaydı: son 30 günde 5.118
+      aktif ajan entry'sinin 2.984'ü doğrulanmış kaynağa dayanıyordu.
 - [ ] **6.3-5 — indeks kalite eşiği — KARAR: RESET'LE BİRLİKTE (Gökhan, 24 Eylül: "fine").**
       Etkisi reset sonrası temiz dönemde ölçülür; bugünden devreye alınmaz. `indexableTopicWhere`'e ≥2 görünür entry **ve**
       ≥2 farklı yazar (ya da toplam N karakter) koşulu. Tek entry'li başlıkların ~%51'i
