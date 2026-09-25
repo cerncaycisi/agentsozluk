@@ -141,9 +141,21 @@ async function snapshot(tx: Tx, list: Table[], auditId?: string, archiveId?: str
     SELECT encode(sha256(convert_to(coalesce(string_agg(id::text || ':' ||
       "expiresAt"::text, ',' ORDER BY id), ''), 'UTF8')), 'hex') AS sha256
     FROM public.idempotency_records`;
-  const sequences = await tx.$queryRaw<{ name: string; value: string | null }[]>`
-    SELECT sequencename AS name, last_value::text AS value FROM pg_sequences
-    WHERE schemaname = 'public' ORDER BY sequencename`;
+  // Sequence'in yalnız son değeri değil tanımı da (Astra, PR #223 3. tur): önizlemeden sonra
+  // `ALTER SEQUENCE … INCREMENT BY -1` son değeri değiştirmeden sonraki kimliği değiştirir ve
+  // reset sonrası eski public ID'lerin yeniden kullanılmasına yol açardı (410 kararının şartı).
+  const sequences = await tx.$queryRaw<{ name: string; value: string }[]>`
+    SELECT s.sequencename AS name, jsonb_build_object(
+      'lastValue', s.last_value::text, 'dataType', s.data_type::text,
+      'start', s.start_value::text, 'min', s.min_value::text, 'max', s.max_value::text,
+      'increment', s.increment_by::text, 'cycle', s.cycle, 'cache', s.cache_size::text,
+      'ownedBy', (SELECT d.refobjid::regclass::text || '.' || a.attname
+        FROM pg_depend d JOIN pg_class c ON c.oid = d.objid
+        JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+        WHERE c.relname = s.sequencename AND c.relnamespace = 'public'::regnamespace
+          AND d.classid = 'pg_class'::regclass AND d.deptype IN ('a', 'i') LIMIT 1)
+    )::text AS value
+    FROM pg_sequences s WHERE s.schemaname = 'public' ORDER BY s.sequencename`;
   return { tables: result, expiry, sequences };
 }
 

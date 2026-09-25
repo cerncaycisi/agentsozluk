@@ -65,6 +65,9 @@ entry/başlık/ajan olayları 0; kullanıcılar 51, ajan profilleri 36, kaynakla
 - İstatistik tazelenmiş kopyada (kötü planı tetikleyen koşul) tam uygulama → 89 sn, doğrulandı.
 - Önizlemeden sonra `ALTER TYPE … RENAME VALUE` ile enum etiketi değişti (satır sürümü aynı) →
   `GREAT_RESET_STALE_PLAN`, veri değişmedi (Astra 2. tur bulgusu).
+- Önizlemeden sonra `ALTER SEQUENCE entries_public_id_seq INCREMENT BY -1` (son değer aynı, sonraki
+  kimlik farklı) → `GREAT_RESET_STALE_PLAN` (Astra 3. tur bulgusu; sequence tanımı artık plan
+  özetinde, eski public ID'lerin yeniden kullanılmasına karşı).
 - Başarılı reset'ten sonra aynı plan → `GREAT_RESET_STALE_PLAN`.
 - Autovacuum sırasında → `GREAT_RESET_LOCK_NOT_AVAILABLE`, hiçbir şey silinmedi.
 
