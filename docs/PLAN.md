@@ -1542,8 +1542,11 @@ girmek israf.
       composite dizinini de haftalık günceller (24 Eylül, PR #200). Test bilerek dar: mevcut
       dosyaların bilinen yollarındaki kilidi korur. Genel politika denetçisi beş Astra turunda
       her seferinde yeni kenar durumu verdi (alias, akış biçimi, `.github` dışı yerel composite,
-      yerel Docker eylemi, yerel reusable workflow) ve bırakıldı. Docker taban imajı digest
-      kilidi üretim imajını değiştirdiği için ayrı. `/basliklar` COUNT'u ~6 bin başlıkta ucuz;
+      yerel Docker eylemi, yerel reusable workflow) ve bırakıldı. PR #200 birleşti (25 Eylül,
+      Astra BİRLEŞTİR). Docker taban imajı (`node:22-alpine@sha256:0a7108bf…`) ve BuildKit
+      frontend'i digest'e kilitli — **CANLIDA `b53408e`, PR #202, Astra DAĞIT**; frontend
+      digest'ini Dependabot güncellemez (elle). Astra P3 açık: pin testi `--platform` bayraklı
+      aşama adını tanımıyor (mevcut Dockerfile'ı etkilemez). `/basliklar` COUNT'u ~6 bin başlıkta ucuz;
       önbellek bayatlık riskine değmez, yapılmayacak. Kalanlar aşağıda.)_
       F06, F04, F09 (bölüm 5.6'da zaten açık) dışında:
       entry JSON-LD `@id`/`url` ile canonical

@@ -8841,3 +8841,31 @@ lease tarafından hiç kullanılmıyordu.
 
 - Astra sınırı dolunca hakem değiştirme; engeli kaydet ve bekle.
 - `next/font` indirme hatasını kod regresyonu sayma; önce `--failed` yeniden koşusu.
+
+## 2026-09-25 — Astra turları ortak Codex kotasını bitirdi; toplum ~16 saat durdu
+
+- Kök neden: operatör sunucusundaki `codex exec --model gpt-6-astra` hakem turları ile üretim
+  worker'ı aynı ChatGPT/Codex kullanım kotasını kullanıyor. 24 Eylül akşamı PR #192/#200/#204
+  için çok sayıda xhigh tur kotayı bitirdi (`You've hit your usage limit`).
+- Etki: 24 Eylül 20:27 – 25 Eylül 12:22 UTC arası 99 koşu `CODEX_DECISION_FAILED`; kritik kesici
+  açıldı, her 10 dk'da bir DRY_RUN yarı-açık deneme. Kota 12:55 UTC'de açıldı, kesici 13:04'te
+  kapandı (`CONSECUTIVE_CODEX_FAILURES`, `RUNTIME_ERROR_RATE` temizlendi).
+- Sonraki sıkışma: gece biriken 27 bakım koşusu (11 `NIGHTLY_MEMORY_CONSOLIDATION`, 12
+  `DAILY_SOURCE_REFRESH`, 3 deneme, 1 yazma) kuyrukta; planlayıcı `availableLanes = concurrency −
+running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açmıyor. Son yazma
+  koşusu 24 Eylül 21:00. Gökhan kararı: beklensin (bakım koşuları iptal edilmedi).
+- Karar (Gökhan, 25 Eylül: "tur bütçesi koy"): iş başına en fazla 2 Astra turu; bütçe dolunca
+  dur ve sor; kota sınırı görülünce hemen bildir.
+
+**Tekrarlama:**
+
+- Uzun yinelemeli Astra turlarına girme; Codex sınır hatası = üretim koşuları da düşecek.
+- Kesici kapandıktan sonra yazma gecikirse önce kuyruğu ve `QUEUE_NOT_EMPTY` koşulunu kontrol et.
+
+## 2026-09-25 — `b53408e`: Docker taban imajı digest kilidi (onay muafiyeti penceresi, Astra DAĞIT)
+
+- PR #202 (`b9abb04`, main'e rebase, dependabot.yml çakışması çözüldü), Astra 1. tur DAĞIT + 2 P2, 2. tur DAĞIT (P2'ler kapandı, P3 açık). Push CI `36140804402`, bundle `36141791061`.
+- Dağıtım 13:43–13:45 UTC, `--pause-society-flow`: pause 280→281 (running 1, queued 26),
+  `RELEASE_COMPLETE PASS`, imaj `sha256:26b2f499…`. Kabul: status 281 → worker `active/running`
+  (13:45:06), NRestarts 0, B7 IP ayarları → resume 281→282 → koşu 13:45–13:47 `SUCCEEDED`
+  (bakım koşusu; kuyruk eriyor). Disk %63. `/`, `/api/health`, `/api/ready` 200.
