@@ -40,11 +40,16 @@ const contentTables = [
   },
 ] as const;
 
-/** Namespace açılışında tanımı değişen kısıtlar; şema özeti bunları ayrıca doğrulanmış sayar. */
-export const namespaceConstraintNames: readonly string[] = contentTables.flatMap((row) => [
-  row.legacyCheck,
-  row.namespaceCheck,
-]);
+/**
+ * Namespace açılışında tanımı değişen kısıtlar, `(tablo, ad)` çifti olarak: PostgreSQL'de kısıt
+ * adı şema genelinde benzersiz değildir; başka tablodaki aynı adlı kısıt istisnaya girmemeli
+ * (Astra, PR #230 P2).
+ */
+export const namespaceConstraintPairs: readonly { table: string; name: string }[] =
+  contentTables.flatMap((row) => [
+    { table: `public.${row.table}`, name: row.legacyCheck },
+    { table: `public.${row.table}`, name: row.namespaceCheck },
+  ]);
 /** Namespace açılışında durumu değişen sequence'ler; sequence özeti bunları ayrıca doğrular. */
 export const namespaceSequenceNames: readonly string[] = contentTables.map((row) => row.sequence);
 
@@ -183,7 +188,7 @@ export async function insertCommitMarker(
  */
 export async function namespacePostconditionsHold(
   tx: Tx,
-  input: NamespaceResetInput & { topics: number; entries: number },
+  input: NamespaceResetInput & { planSha256: string; topics: number; entries: number },
 ): Promise<boolean> {
   for (const { kind, table, sequence, legacyCheck, namespaceCheck } of contentTables) {
     const [row] = await tx.$queryRaw<
@@ -214,9 +219,9 @@ export async function namespacePostconditionsHold(
         s.data_type::text AS "dataType", s.max_value::text AS "maxValue",
         s.increment_by::text AS increment, s.cache_size::text AS cache, s.cycle,
         q.last_value::text AS "lastValue", q.is_called AS "isCalled",
+        -- Tablonun TÜM satırları: başka işlem kimliğiyle eklenmiş satır da 410 alırdı (P2).
         (SELECT count(*)::int FROM public.great_reset_tombstones
-          WHERE kind = ${kind}::"GreatResetContentKind"
-            AND "operationId" = ${input.operationId}::uuid) AS tombstones
+          WHERE kind = ${kind}::"GreatResetContentKind") AS tombstones
       FROM pg_sequences s CROSS JOIN ${Prisma.raw(`public."${sequence}"`)} q
       WHERE s.schemaname = 'public' AND s.sequencename = ${sequence}`);
     if (
@@ -237,16 +242,30 @@ export async function namespacePostconditionsHold(
     )
       return false;
   }
-  const [state] = await tx.$queryRaw<{ commits: number; consumed: number; valid: number }[]>`
+  const [state] = await tx.$queryRaw<
+    { commits: number; allCommits: number; foreign: number; consumed: number; valid: number }[]
+  >`
     SELECT
+      -- Commit'in bütün bağlayıcı alanları girişle birebir (Astra, PR #230 P2).
       (SELECT count(*)::int FROM public.great_reset_commits
         WHERE "operationId" = ${input.operationId}::uuid
+          AND "releaseSha" = ${input.releaseSha} AND "planSha256" = ${input.planSha256}
+          AND "receiptSha256" = ${input.receiptSha256}
           AND "topicTombstones" = ${input.topics} AND "entryTombstones" = ${input.entries}) AS commits,
+      (SELECT count(*)::int FROM public.great_reset_commits) AS "allCommits",
+      (SELECT count(*)::int FROM public.great_reset_tombstones
+        WHERE "operationId" <> ${input.operationId}::uuid) AS foreign,
       (SELECT count(*)::int FROM public.great_reset_intents
         WHERE "operationId" = ${input.operationId}::uuid AND "consumedAt" IS NOT NULL
           AND "invalidatedAt" IS NULL) AS consumed,
       (SELECT count(*)::int FROM public.great_reset_intents
         WHERE "consumedAt" IS NULL AND "invalidatedAt" IS NULL
           AND "expiresAt" > clock_timestamp()) AS valid`;
-  return state?.commits === 1 && state.consumed === 1 && state.valid === 0;
+  return (
+    state?.commits === 1 &&
+    state.allCommits === 1 &&
+    state.foreign === 0 &&
+    state.consumed === 1 &&
+    state.valid === 0
+  );
 }

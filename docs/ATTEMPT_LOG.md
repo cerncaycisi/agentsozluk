@@ -9356,3 +9356,10 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   kimlik 2147483648, rollback'te eski kısıt ve `MAXVALUE 2147483647` geri gelir).
 - **Tekrarlama:** kısıt kanıtı için elle INSERT'te bütün NOT NULL alanları doldur; aksi
   hâlde red nedeni kısıt değil.
+- Astra PR #230 1. tur `5538075`: **KOD DÜZELTİLMELİ** (4 P2, 1 P3) — izinli fark istisnaları
+  geniş: başka işlemin mezar taşı, commit'in SHA/makbuz alanları, sequence'in tamamen dışlanması,
+  şema genelinde kısıt adı istisnası; rollback testi tam akışı ölçmüyordu. Düzeltme: mezar taşı
+  son koşulu tablonun tamamını sayar ve yabancı işlemi reddeder; commit'in bütün bağlayıcı
+  alanları; sequence'te yalnız `max`/`lastValue`/`isCalled` farkı; kısıt istisnası
+  `(tablo, ad)` çifti; tam akış rollback testi. Yeniden prova: `users` tablosuna aynı adlı
+  kısıt eklenince eski plan `GREAT_RESET_STALE_PLAN`, niyet tüketilmedi; uygulama 87 sn verified.

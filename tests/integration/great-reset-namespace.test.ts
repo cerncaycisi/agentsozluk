@@ -82,15 +82,6 @@ async function intent(tx: Prisma.TransactionClient, operationId: string, expires
   });
 }
 
-async function namespaceState(tx: Prisma.TransactionClient) {
-  return tx.$queryRaw<{ name: string; max: string }[]>`
-    SELECT conname AS name, '' AS max FROM pg_constraint
-      WHERE conname LIKE '%public_id_%range_check'
-    UNION ALL
-    SELECT sequencename, max_value::text FROM pg_sequences WHERE sequencename LIKE '%public_id_seq'
-    ORDER BY 1`;
-}
-
 describe("great reset namespace adımlarının PostgreSQL sınırı", () => {
   beforeEach(resetIntegrationDatabase);
   afterAll(closeIntegrationDatabase);
@@ -109,8 +100,18 @@ describe("great reset namespace adımlarının PostgreSQL sınırı", () => {
       expect(counts).toEqual({ topics: 1, entries: 1 });
       await tx.$executeRaw`TRUNCATE TABLE "entries", "topics" CASCADE`;
       await openNewNamespace(tx);
-      await insertCommitMarker(tx, { ...input, planSha256: "e".repeat(64), ...counts });
-      expect(await namespacePostconditionsHold(tx, { ...input, ...counts })).toBe(true);
+      const planSha256 = "e".repeat(64);
+      await insertCommitMarker(tx, { ...input, planSha256, ...counts });
+      expect(await namespacePostconditionsHold(tx, { ...input, planSha256, ...counts })).toBe(true);
+      // Commit'in bağlayıcı alanlarından biri farklıysa son koşul düşer.
+      for (const mismatch of [
+        { planSha256: "f".repeat(64) },
+        { releaseSha: "f".repeat(40) },
+        { receiptSha256: "f".repeat(64) },
+      ])
+        expect(
+          await namespacePostconditionsHold(tx, { ...input, planSha256, ...counts, ...mismatch }),
+        ).toBe(false);
 
       const tombstones = await tx.greatResetTombstone.findMany({ orderBy: { kind: "asc" } });
       expect(tombstones.map((row) => [row.kind, row.contentId, Number(row.publicId)])).toEqual([
@@ -141,6 +142,15 @@ describe("great reset namespace adımlarının PostgreSQL sınırı", () => {
         },
       });
       expect(fresh.publicId).toBe(2147483648n);
+      await tx.topic.delete({ where: { id: fresh.id } });
+
+      // Başka işlem kimliğiyle eklenmiş fazladan mezar taşı son koşulu düşürür (Astra, P2).
+      await tx.greatResetTombstone.create({
+        data: { kind: "ENTRY", contentId: randomUUID(), publicId: 999, operationId: randomUUID() },
+      });
+      expect(await namespacePostconditionsHold(tx, { ...input, planSha256, ...counts })).toBe(
+        false,
+      );
     }));
 
   it("süresi dolmuş ya da başka sürümün niyetini tüketmez", () =>
@@ -158,23 +168,46 @@ describe("great reset namespace adımlarının PostgreSQL sınırı", () => {
       ).rejects.toThrow("GREAT_RESET_INTENT_INVALID");
     }));
 
-  it("geri alınan reset transaction'ı eski namespace'i ve kısıtları geri getirir", async () => {
-    const before = await namespaceState(integrationDatabase);
+  it("commit işaretinden sonra düşen transaction bütün durumu başlangıca döndürür", async () => {
+    const operationId = randomUUID();
+    const state = async () => {
+      const [row] = await integrationDatabase.$queryRaw<Record<string, unknown>[]>`
+        SELECT
+          (SELECT count(*)::int FROM topics) AS topics,
+          (SELECT count(*)::int FROM entries) AS entries,
+          (SELECT count(*)::int FROM great_reset_tombstones) AS tombstones,
+          (SELECT count(*)::int FROM great_reset_commits) AS commits,
+          (SELECT count(*)::int FROM great_reset_intents WHERE "consumedAt" IS NOT NULL) AS consumed,
+          (SELECT string_agg(conname, ',' ORDER BY conname) FROM pg_constraint
+            WHERE conname LIKE '%public_id_%range_check') AS checks,
+          (SELECT string_agg(sequencename || '=' || max_value, ',' ORDER BY sequencename)
+            FROM pg_sequences WHERE sequencename LIKE '%public_id_seq') AS maxima,
+          (SELECT last_value::text || ':' || is_called FROM topics_public_id_seq) AS topic_seq,
+          (SELECT last_value::text || ':' || is_called FROM entries_public_id_seq) AS entry_seq`;
+      return row;
+    };
+    await integrationDatabase.$transaction(async (tx) => {
+      await seedContent(tx);
+      await intent(tx, operationId);
+    });
+    const before = await state();
     await inRolledBackTransaction(async (tx) => {
+      const input = { operationId, releaseSha, receiptSha256 };
+      await consumeIntent(tx, input);
+      const counts = await copyTombstones(tx, operationId);
       await tx.$executeRaw`TRUNCATE TABLE "entries", "topics" CASCADE`;
       await openNewNamespace(tx);
-      expect(await namespaceState(tx)).not.toEqual(before);
+      await insertCommitMarker(tx, { ...input, planSha256: "e".repeat(64), ...counts });
     });
-    expect(await namespaceState(integrationDatabase)).toEqual(before);
-    expect(before.map((row) => row.name)).toEqual([
-      "entries_public_id_legacy_range_check",
-      "entries_public_id_seq",
-      "topics_public_id_legacy_range_check",
-      "topics_public_id_seq",
-    ]);
-    expect(before.filter((row) => row.max).map((row) => row.max)).toEqual([
-      "2147483647",
-      "2147483647",
-    ]);
+    expect(await state()).toEqual(before);
+    expect(before).toMatchObject({
+      topics: 1,
+      entries: 1,
+      tombstones: 0,
+      commits: 0,
+      consumed: 0,
+      checks: "entries_public_id_legacy_range_check,topics_public_id_legacy_range_check",
+      maxima: "entries_public_id_seq=2147483647,topics_public_id_seq=2147483647",
+    });
   });
 });

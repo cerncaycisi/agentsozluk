@@ -14,7 +14,7 @@ import {
   copyTombstones,
   insertCommitMarker,
   namespaceBlockers,
-  namespaceConstraintNames,
+  namespaceConstraintPairs,
   namespacePostconditionsHold,
   namespaceSequenceNames,
   openNewNamespace,
@@ -235,7 +235,13 @@ async function identity(tx: Tx, databaseName: string, expected: LocalResetIdenti
   Namespace modunda eski/yeni public ID kısıtları şema özetinin dışında tutulur: reset onları
   bilerek değiştirir ve `namespacePostconditionsHold` birebir tanımlarını ayrıca doğrular.
 */
-async function inspectSchema(tx: Tx, list: Table[], excludedConstraints: readonly string[] = []) {
+async function inspectSchema(
+  tx: Tx,
+  list: Table[],
+  excludedConstraints: readonly { table: string; name: string }[] = [],
+) {
+  const excludedTables = excludedConstraints.map((row) => row.table);
+  const excludedNames = excludedConstraints.map((row) => row.name);
   const actual = await tx.$queryRaw<{ name: string; kind: string }[]>`
     SELECT c.relname AS name, c.relkind::text AS kind FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -257,8 +263,9 @@ async function inspectSchema(tx: Tx, list: Table[], excludedConstraints: readonl
       'columns', (SELECT jsonb_agg(to_jsonb(c) ORDER BY table_name, ordinal_position)
         FROM information_schema.columns c WHERE table_schema = 'public'),
       'constraints', (SELECT jsonb_agg(pg_get_constraintdef(oid) ORDER BY conrelid, conname)
-        FROM pg_constraint WHERE connamespace = 'public'::regnamespace
-          AND NOT conname = ANY(${[...excludedConstraints]}::text[])),
+        FROM pg_constraint k WHERE connamespace = 'public'::regnamespace
+          AND NOT EXISTS (SELECT 1 FROM unnest(${excludedTables}::text[], ${excludedNames}::text[])
+            AS x(t, n) WHERE k.conrelid = x.t::regclass AND k.conname = x.n)),
       'triggers', (SELECT jsonb_agg(jsonb_build_array(pg_get_triggerdef(t.oid),
         t.tgenabled, pg_get_functiondef(t.tgfoid)) ORDER BY t.tgrelid, t.tgname)
         FROM pg_trigger t WHERE NOT t.tgisinternal AND
@@ -523,7 +530,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     throw new Error("GREAT_RESET_CONFIRMATION_MISMATCH");
   const namespace = request.namespace;
   if (namespace) assertNamespaceInput(namespace);
-  const excludedConstraints = namespace ? namespaceConstraintNames : [];
+  const excludedConstraints = namespace ? namespaceConstraintPairs : [];
   const list = tables();
   const archiveOutbox = request.archiveOutbox === true;
   const outboxPolicy = archiveOutbox
@@ -678,8 +685,19 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
             throw new Error("GREAT_RESET_POSTCONDITION_FAILED");
           }
         }
+        /*
+          İki public ID sequence'inde yalnız `max` ile `lastValue`/`isCalled` değişebilir; sahiplik,
+          başlangıç, alt sınır, artış, önbellek, döngü ve kalıcılık birebir korunur (Astra, PR #230
+          P2). Beklenen yeni değerleri `namespacePostconditionsHold` ayrıca doğrular.
+        */
         const unchangedSequences = (value: typeof before.sequences) =>
-          value.filter(({ name }) => !namespace || !namespaceSequenceNames.includes(name));
+          value.map(({ name, value: state }) => {
+            if (!namespace || !namespaceSequenceNames.includes(name)) return { name, value: state };
+            const parsed = JSON.parse(state) as { definition: string };
+            const definition = JSON.parse(parsed.definition) as Record<string, unknown>;
+            delete definition.max;
+            return { name, value: JSON.stringify(definition) };
+          });
         if (
           digest(unchangedSequences(before.sequences)) !==
             digest(unchangedSequences(after.sequences)) ||
@@ -694,7 +712,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
             intentsAfter.rows !== intentsBefore.rows ||
             intentsAfter.sha256 !== intentsBefore.sha256 ||
             intentsAfter.consumed !== intentsBefore.consumed + 1 ||
-            !(await namespacePostconditionsHold(tx, { ...namespace, ...tombstones }))
+            !(await namespacePostconditionsHold(tx, { ...namespace, planSha256, ...tombstones }))
           )
             throw new Error("GREAT_RESET_POSTCONDITION_FAILED");
         }
