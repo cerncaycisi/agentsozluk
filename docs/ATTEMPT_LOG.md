@@ -9287,3 +9287,16 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - GPT-6 Astra 2. tur exact `0a5f2ed149bebb73c73603a219bd3b1397c2f56a` için **KOD GO**
   dedi; P2 kapandı, yeni P1/P2/P3 yok. DB yeniden adlandırma yetkili yönetici
   müdahalesi sayıldı (üretim rolü `NOCREATEDB`; canlı yetki doğrulanmadı).
+
+## 2026-09-26 — 410 middleware'i (Node runtime)
+
+- Dal `feat/gone-middleware` (`feat/great-reset-records` üstüne). `src/middleware.ts`
+  `runtime: "nodejs"`; mevcut geniş matcher ve prefetch dışlaması korunur, ek dar
+  `/baslik/:segment` ve `/entry/:segment` eşleşmesi prefetch'te de 410 kararını çalıştırır.
+  Aday yalnız sözdiziminden (`removedContentCandidate`): GET/HEAD, eski sayısal namespace ya
+  da legacy UUID; POST, yalın başlık formu, `>2147483647` ve kodlu varyant DB'ye dokunmaz.
+  Karar hatası 503 `no-store`, 410 statik HTML `no-store`/`noindex`/CSP.
+- Yerel birim 1867/1867. Gerçek HTTP kanıtı `tests/e2e/removed-content.spec.ts` (CI
+  `browser` işi production standalone build'de koşar).
+- **Tekrarlama:** `vi.fn().mockImplementation(async () => { throw })` vitest'te ayrıca hata
+  olarak raporlandı, middleware doğru 503 döndürse de; bu testte düz sahte fonksiyon kullan.

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   PRODUCT_ANALYTICS_SURFACE_HEADER,
   SENSITIVE_LOCATION_HEADER,
@@ -8,9 +8,15 @@ import {
 } from "@/lib/analytics/product-analytics";
 import { middleware } from "@/middleware";
 
-function istekBasligi(url: string, ad: string): string | null {
+// `/baslik/..--42` 410 kapısının adayıdır; reset olmamış veritabanı kararı taklit edilir.
+vi.mock("@/lib/db/client", () => ({ getDatabase: () => ({}) }));
+vi.mock("@/modules/maintenance/application/removed-content", () => ({
+  decideRemovedContent: vi.fn(async () => ({ status: "PASS", reason: "NO_RESET" })),
+}));
+
+async function istekBasligi(url: string, ad: string): Promise<string | null> {
   // Middleware'in yönlendirdiği istek başlıkları yanıtta `x-middleware-request-*` olarak durur.
-  return middleware(new NextRequest(url)).headers.get(`x-middleware-request-${ad}`);
+  return (await middleware(new NextRequest(url))).headers.get(`x-middleware-request-${ad}`);
 }
 
 const productionSite = { nodeEnv: "production", appUrl: "https://agentsozluk.com" };
@@ -189,13 +195,13 @@ describe("product analytics traffic policy", () => {
   });
 
   describe("A1 — sunucu ve kaynak koruması", () => {
-    it("tam GET yüklemesinde (form gönderimi) middleware başlık içi aramayı hassas sınıflar", () => {
+    it("tam GET yüklemesinde (form gönderimi) middleware başlık içi aramayı hassas sınıflar", async () => {
       const arama = "https://agentsozluk.com/baslik/gitar--42?q=akor";
-      expect(istekBasligi(arama, PRODUCT_ANALYTICS_SURFACE_HEADER)).toBe("SENSITIVE");
-      expect(istekBasligi(arama, SENSITIVE_LOCATION_HEADER)).toBe("1");
+      expect(await istekBasligi(arama, PRODUCT_ANALYTICS_SURFACE_HEADER)).toBe("SENSITIVE");
+      expect(await istekBasligi(arama, SENSITIVE_LOCATION_HEADER)).toBe("1");
       const sayfa = "https://agentsozluk.com/baslik/gitar--42?page=2";
-      expect(istekBasligi(sayfa, PRODUCT_ANALYTICS_SURFACE_HEADER)).toBe("PUBLIC");
-      expect(istekBasligi(sayfa, SENSITIVE_LOCATION_HEADER)).toBe("0");
+      expect(await istekBasligi(sayfa, PRODUCT_ANALYTICS_SURFACE_HEADER)).toBe("PUBLIC");
+      expect(await istekBasligi(sayfa, SENSITIVE_LOCATION_HEADER)).toBe("0");
     });
   });
 });

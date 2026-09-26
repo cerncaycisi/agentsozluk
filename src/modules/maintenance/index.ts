@@ -11,3 +11,8 @@ export {
   type ExpiredRecordTableTelemetry,
 } from "@/modules/maintenance/domain/expired-operational-records";
 export { expiredRecordCleanupOptionsSchema } from "@/modules/maintenance/validation/schemas";
+export {
+  decideRemovedContent,
+  LEGACY_PUBLIC_ID_MAX,
+  type RemovedContentDecision,
+} from "@/modules/maintenance/application/removed-content";
