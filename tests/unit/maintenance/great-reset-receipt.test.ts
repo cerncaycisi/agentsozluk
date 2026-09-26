@@ -1,22 +1,36 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   compareReceipts,
   type GreatResetReceipt,
 } from "@/modules/maintenance/repository/great-reset-receipt";
 
-function receipt(change: (value: GreatResetReceipt) => void = () => undefined): GreatResetReceipt {
+const sha = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+const owner = JSON.stringify('["r","agent_sozluk",null,false,false]');
+const postgresOwner = JSON.stringify('["r","postgres",null,false,false]');
+
+/** Bölüm özetleri, gerçek makbuz gibi ayrıntılardan hesaplanır. */
+function receipt(
+  change: (value: GreatResetReceipt) => void = () => undefined,
+  schema = "s",
+): GreatResetReceipt {
   const value: GreatResetReceipt = {
     version: 2,
-    sha256: "x",
-    sections: { content: "c", sequences: "q", schema: "s", security: "a", database: "d" },
+    sha256: "",
+    sections: { content: "", sequences: "", schema, security: "", database: "" },
     tables: { topics: { rows: 2, sha256: "t" }, entries: { rows: 3, sha256: "e" } },
     details: {
-      sequences: { topics_public_id_seq: "q1" },
-      security: { "relation:topics": '["r","agent_sozluk",null,false,false]' },
+      sequences: { topics_public_id_seq: '"q1"' },
+      security: { "relation:topics": owner },
       database: { comment: "null" },
     },
   };
   change(value);
+  value.sections.content = sha(value.tables);
+  value.sections.sequences = sha(value.details.sequences);
+  value.sections.security = sha(value.details.security);
+  value.sections.database = sha(value.details.database);
+  value.sha256 = sha(value.sections);
   return value;
 }
 
@@ -24,7 +38,6 @@ describe("great reset receipt comparison", () => {
   it("is equal only when every section, table and detail matches", () => {
     expect(compareReceipts(receipt(), receipt()).equal).toBe(true);
     const changed = receipt((value) => {
-      value.sections.content = "c2";
       value.tables.topics = { rows: 2, sha256: "t2" };
     });
     expect(compareReceipts(receipt(), changed)).toMatchObject({
@@ -48,36 +61,38 @@ describe("great reset receipt comparison", () => {
   });
 
   it("accepts only value-level expected differences and rejects any extra change", () => {
-    const owner = receipt((value) => {
-      value.sections.security = "a2";
-      value.details.security["relation:topics"] = '["r","postgres",null,false,false]';
+    const moved = receipt((value) => {
+      value.details.security["relation:topics"] = postgresOwner;
     });
     const allowed = [
       {
         section: "security" as const,
         key: "relation:topics",
-        expected: '["r","agent_sozluk",null,false,false]',
-        actual: '["r","postgres",null,false,false]',
+        expected: owner,
+        actual: postgresOwner,
       },
     ];
-    expect(compareReceipts(receipt(), owner, allowed).equal).toBe(true);
-    expect(compareReceipts(receipt(), owner).equal).toBe(false);
-    // Aynı bölümde izinli sahiplik farkına ek bir GRANT eklenirse reddedilir.
-    const ownerAndGrant = receipt((value) => {
-      value.sections.security = "a3";
-      value.details.security["relation:topics"] = '["r","postgres",null,false,false]';
-      value.details.security["column:users.passwordHash"] = "{=r/postgres}";
+    expect(compareReceipts(receipt(), moved, allowed).equal).toBe(true);
+    expect(compareReceipts(receipt(), moved).equal).toBe(false);
+    const movedAndGranted = receipt((value) => {
+      value.details.security["relation:topics"] = postgresOwner;
+      value.details.security["column:users.passwordHash"] = JSON.stringify("{=r/postgres}");
     });
-    expect(compareReceipts(receipt(), ownerAndGrant, allowed)).toMatchObject({
+    expect(compareReceipts(receipt(), movedAndGranted, allowed)).toMatchObject({
       equal: false,
       unexpected: [{ key: "column:users.passwordHash" }],
     });
   });
 
-  it("never accepts a content or schema difference", () => {
-    const schema = receipt((value) => {
-      value.sections.schema = "s2";
-    });
-    expect(compareReceipts(receipt(), schema).equal).toBe(false);
+  it("never accepts a schema difference", () => {
+    expect(compareReceipts(receipt(), receipt(undefined, "s2")).equal).toBe(false);
+  });
+
+  it("rejects a section digest that does not match its own details", () => {
+    const forged = receipt();
+    forged.sections.security = sha("başka");
+    forged.sha256 = sha(forged.sections);
+    expect(compareReceipts(receipt(), forged).equal).toBe(false);
+    expect(compareReceipts(forged, forged).equal).toBe(false);
   });
 });

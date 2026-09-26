@@ -9461,3 +9461,13 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   metin birleştirmesinde `42725` verdi; `::text` ile düzeltildi.
 - **Tekrarlama:** `pkill -f <kalıp>` bu kabuğun kendi komut satırıyla da eşleşip onu öldürür;
   süreçleri alan bazlı (`ps -eo pid=,comm=,args=` + awk) seç.
+- Astra PR #234 2. tur `fd570da`: **KOD DÜZELTİLMELİ** (1 P1, 6 P2, 3 P3). P1: `t` adlı sütun
+  varsa `t::text` yalnız o sütunu verir. Düzeltme: `ROW(t.*)::text`; public dışı her kullanıcı
+  şeması, domain, bağımsız composite ret (geçici şema tam desenle); nitelikli collation ve DB ICU;
+  rol `VALID UNTIL`; bölüm özetleri ayrıntılardan doğrulanır; sütun ve enum mantıksal sırası;
+  değerler JSON (NULL ≠ "null"); policy rolleri sıralı; NaN için mantıksal eşitlik sözleşmesi.
+  Yeni PostgreSQL entegrasyon testi makbuz SQL'ini CI'da çalıştırır (bir tanımlayıcı hatasını
+  yerelde yakaladı).
+- Yeniden prova: kaynakta sütun boşluğu ve `BEFORE` enum değeriyle dump/restore birebir; `t`
+  sütunlu tabloda diğer sütun değişikliği yakalandı; domain ve `pgxtempx` şeması
+  `GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED`; makbuz 83–89 sn.
