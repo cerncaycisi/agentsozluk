@@ -9254,3 +9254,10 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** doğrudan Prisma fixture'ının `publicId`'sini repository çıktısıyla
   karşılaştırırken önce `Number(...)`; negatif `not.toContain` beklentisi tip
   uyuşmazlığında sessizce geçer.
+- Astra 2. tur `b5ccdce`: P2 ve `__proto__` P3 kapandı, opak tip P3 açık kaldı
+  (`toJSON` taşıyan düz nesne). 3. tur `64bd294`: o kapandı, iç içe `publicId`
+  taşıyan sınıf örneği P3'ü açıldı. Düzeltme: çalışma anında yalnız `Date`,
+  `Uint8Array`, `Prisma.Decimal` geçer; diğer sınıf örnekleri `PUBLIC_ID_UNSAFE`.
+- GPT-6 Astra 4. tur exact `98725c55cac490e6649efcd2644611bd0674be4d` için
+  **KOD GO** dedi (56 çağrı noktası, yeni P1/P2/P3 yok). Aynı SHA'da CI 7/7 yeşil
+  (`database`, `coverage`, `browser` dahil); yerel birim 1853/1853.
