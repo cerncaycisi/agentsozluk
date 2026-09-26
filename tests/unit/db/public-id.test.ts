@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import { publicIdToNumber, UnsafePublicIdError, withNumericPublicIds } from "@/lib/db/public-id";
 
@@ -56,5 +57,22 @@ describe("public ID bigint boundary", () => {
       publicId = 5n;
     }
     expect(() => withNumericPublicIds({ row: new Row() })).toThrow(UnsafePublicIdError);
+  });
+
+  it("types a plain row with a toJSON method the same way it converts it", () => {
+    const row = withNumericPublicIds({
+      publicId: 7n,
+      toJSON() {
+        return "row";
+      },
+    });
+    const next: number = row.publicId + 1;
+    expect(next).toBe(8);
+  });
+
+  it("keeps Prisma Decimal values usable", () => {
+    const converted = withNumericPublicIds({ amount: new Prisma.Decimal("1.5"), publicId: 2n });
+    expect(converted.amount.toFixed(2)).toBe("1.50");
+    expect(converted.publicId).toBe(2);
   });
 });

@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 /*
   `entries`/`topics.publicId` veritabanında BIGINT'tir (great reset üretim
   tasarımı v18, madde 3): reset sonrası yeni içerik `2147483648`'den başlar.
@@ -25,10 +27,12 @@ export function publicIdToNumber(value: bigint): number {
 type PublicIdField<T> = T extends bigint ? number : T extends null ? T : NumericPublicIds<T>;
 
 /*
-  Düz veri olmayan nesneler (Date, Decimal, Buffer ve `toJSON`/fonksiyon taşıyan diğerleri)
-  çalışma anında olduğu gibi kalır; tip de onları olduğu gibi bırakır (Astra, PR #227 P3).
+  Prisma'nın düz veri olmayan sonuç değerleri (Date, Decimal, Buffer/Uint8Array) çalışma anında
+  olduğu gibi kalır; tip de onları olduğu gibi bırakır. Fonksiyonlar opaktır, böylece eşlenen
+  nesnelerde metot imzaları bozulmaz. Genel `toJSON` ölçütü kullanılmaz: düz nesnede çalışma
+  anı dönüştürürken tipin dönüştürmemesine yol açar (Astra, PR #227 2. tur P3).
 */
-type OpaqueValue = Date | Uint8Array | ((...args: never[]) => unknown) | { toJSON(): unknown };
+type OpaqueValue = Date | Uint8Array | Prisma.Decimal | ((...args: never[]) => unknown);
 
 /** `publicId: bigint` alanlarını her derinlikte `publicId: number` yapan tip. */
 export type NumericPublicIds<T> = T extends OpaqueValue
