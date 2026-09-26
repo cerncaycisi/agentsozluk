@@ -9227,3 +9227,15 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   `4b8bace4c408aa3360b8e0e56a828a2b2a77ae5f` için **TASARIM UYGUN** dedi; üç
   bulgu kapandı, yeni P1/P2/P3 yok. Statik tasarım incelemesidir; migration,
   PostgreSQL rollback/restore provası ve HTTP/E2E kabulü açık.
+
+## 2026-09-26 — depo dal temizliği
+
+- Gökhan isteği ve kararıyla ("Yalnız güvenli 71'i"; kalanlar "Astrayla birlikte karar verin").
+  Uzakta 71 birleşmiş dal (bütün commit'leri `main`'de) silindi. Beş birleşmiş ama `main`'de
+  olmayan commit taşıyan dal (#118, #119, #121, #122, #123) için dal ucu ile squash birleştirme
+  commit'i arasında değiştirilen dosyalarda fark olmadığı ölçüldü; Astra bağımsız tekrarladı,
+  silindi. Kapatılmış iki PR dalı açıklamalı `archive/codex-decision-context-tables` ve
+  `archive/fix-a2-iliski-tersine` etiketleriyle korunup silindi. Birleşmiş dal tutan iki temiz
+  worktree kaldırıldı. Açık PR dalları ve `main` korunur.
+- **Tekrarlama:** "main'de olmayan commit" squash geçmişi olabilir; silmeden önce dal ucunu PR'ın
+  birleştirme commit'iyle değişen dosyalarda karşılaştır.
