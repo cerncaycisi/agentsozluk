@@ -9284,3 +9284,6 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   `current_database()` adının test kuralına (`(^|[_-])test$`) uymasını ister. Yerel
   probe: test dışı adlı DB'de GUC `on` iken `TRUNCATE great_reset_commits CASCADE`
   reddedildi; `*_test` DB'de geçti.
+- GPT-6 Astra 2. tur exact `0a5f2ed149bebb73c73603a219bd3b1397c2f56a` için **KOD GO**
+  dedi; P2 kapandı, yeni P1/P2/P3 yok. DB yeniden adlandırma yetkili yönetici
+  müdahalesi sayıldı (üretim rolü `NOCREATEDB`; canlı yetki doğrulanmadı).
