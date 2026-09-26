@@ -113,6 +113,18 @@ describe("great reset namespace adımlarının PostgreSQL sınırı", () => {
           await namespacePostconditionsHold(tx, { ...input, planSha256, ...counts, ...mismatch }),
         ).toBe(false);
 
+      // Başka işlem kimliğiyle eklenmiş fazladan mezar taşı son koşulu düşürür (Astra, P2).
+      // Sequence henüz tüketilmedi; red nedeni yalnız yabancı satırdır (Astra, 2. tur P3).
+      await tx.$executeRaw`SAVEPOINT foreign_tombstone`;
+      await tx.greatResetTombstone.create({
+        data: { kind: "ENTRY", contentId: randomUUID(), publicId: 999, operationId: randomUUID() },
+      });
+      expect(await namespacePostconditionsHold(tx, { ...input, planSha256, ...counts })).toBe(
+        false,
+      );
+      await tx.$executeRaw`ROLLBACK TO SAVEPOINT foreign_tombstone`;
+      expect(await namespacePostconditionsHold(tx, { ...input, planSha256, ...counts })).toBe(true);
+
       const tombstones = await tx.greatResetTombstone.findMany({ orderBy: { kind: "asc" } });
       expect(tombstones.map((row) => [row.kind, row.contentId, Number(row.publicId)])).toEqual([
         ["TOPIC", topic.id, Number(topic.publicId)],
@@ -142,15 +154,6 @@ describe("great reset namespace adımlarının PostgreSQL sınırı", () => {
         },
       });
       expect(fresh.publicId).toBe(2147483648n);
-      await tx.topic.delete({ where: { id: fresh.id } });
-
-      // Başka işlem kimliğiyle eklenmiş fazladan mezar taşı son koşulu düşürür (Astra, P2).
-      await tx.greatResetTombstone.create({
-        data: { kind: "ENTRY", contentId: randomUUID(), publicId: 999, operationId: randomUUID() },
-      });
-      expect(await namespacePostconditionsHold(tx, { ...input, planSha256, ...counts })).toBe(
-        false,
-      );
     }));
 
   it("süresi dolmuş ya da başka sürümün niyetini tüketmez", () =>

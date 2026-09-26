@@ -9363,3 +9363,7 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   alanları; sequence'te yalnız `max`/`lastValue`/`isCalled` farkı; kısıt istisnası
   `(tablo, ad)` çifti; tam akış rollback testi. Yeniden prova: `users` tablosuna aynı adlı
   kısıt eklenince eski plan `GREAT_RESET_STALE_PLAN`, niyet tüketilmedi; uygulama 87 sn verified.
+- GPT-6 Astra 2. tur exact `5d5f6497a191ed7da20c31fee14883da7846b9e8` için **KOD GO**;
+  önceki 4 P2 + 1 P3 kapalı. Tek P3 test kör noktası (yabancı mezar taşı kontrolü sequence
+  tüketildikten sonra yanlış nedenle `false` alıyordu) sonraki commit'te düzeltildi: kontrol
+  sequence'ten önce, savepoint içinde `false`, geri alınınca `true`.
