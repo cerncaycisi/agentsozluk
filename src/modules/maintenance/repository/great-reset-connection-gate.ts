@@ -84,22 +84,29 @@ export async function otherTargetBackends(
   databaseName: string,
   pinnedPid: number,
 ): Promise<{ pinned: number; others: number; starting: number; prepared: number }> {
+  /*
+    Sıra önemlidir (Astra, PR #231 2. tur P2): başlayan backend başlangıç kilidini
+    `pgstat_bestart()`'tan SONRA bırakır. Önce kilitler okunur; o anda kilidi olmayan backend ya
+    kapıdan önce hiç girmemiştir (artık giremez) ya da zaten görünürdür. Ardından activity
+    görüntüsü tazelenip ayrı ifadeyle sayılır; iki kaynak tek ifadede okunmaz.
+  */
+  const [locks] = await control.$queryRaw<{ starting: number }[]>`
+    SELECT count(DISTINCT l.pid)::int AS starting FROM pg_locks l
+    WHERE l.locktype = 'object' AND l.classid = 'pg_database'::regclass
+      AND l.objid = (SELECT oid FROM pg_database WHERE datname = ${databaseName})
+      AND l.pid <> ${pinnedPid} AND l.pid <> pg_backend_pid()`;
   await control.$queryRaw`SELECT 1 AS ok FROM (SELECT pg_stat_clear_snapshot()) AS cleared`;
-  const [state] = await control.$queryRaw<
-    { pinned: number; others: number; starting: number; prepared: number }[]
+  const [activity] = await control.$queryRaw<
+    { pinned: number; others: number; prepared: number }[]
   >`
     SELECT
       (SELECT count(*)::int FROM pg_stat_activity
         WHERE datname = ${databaseName} AND pid = ${pinnedPid}) AS pinned,
       (SELECT count(*)::int FROM pg_stat_activity
         WHERE datname = ${databaseName} AND pid <> ${pinnedPid}) AS others,
-      (SELECT count(DISTINCT l.pid)::int FROM pg_locks l
-        WHERE l.locktype = 'object' AND l.classid = 'pg_database'::regclass
-          AND l.objid = (SELECT oid FROM pg_database WHERE datname = ${databaseName})
-          AND l.pid <> ${pinnedPid} AND l.pid <> pg_backend_pid()) AS starting,
       (SELECT count(*)::int FROM pg_prepared_xacts WHERE database = ${databaseName}) AS prepared`;
-  if (!state) throw new Error("GREAT_RESET_GATE_STATE_UNAVAILABLE");
-  return state;
+  if (!locks || !activity) throw new Error("GREAT_RESET_GATE_STATE_UNAVAILABLE");
+  return { ...activity, starting: locks.starting };
 }
 
 export async function closeConnectionGate(
@@ -120,9 +127,15 @@ export async function closeConnectionGate(
 }
 
 export async function openConnectionGate(control: Control, databaseName: string): Promise<void> {
-  // Kapıyı yalnız kilidin sahibi açar; başka yürütücünün kapısına dokunulmaz (Astra, P2).
+  /*
+    Kapıyı yalnız kilidin sahibi açar; başka yürütücünün kapısına dokunulmaz (Astra, P2). Kontrol
+    oturumu gerçekten koptuysa kilit düşmüştür: yeniden alınabiliyorsa başka yürütücü yoktur ve
+    açılış güvenlidir; alınamıyorsa başka bir reset kapıyı tutuyordur, dokunulmaz.
+  */
   if (!(await holdsRunnerLock(control, databaseName)))
-    throw new Error("GREAT_RESET_RUNNER_LOCK_LOST");
+    await acquireRunnerLock(control, databaseName).catch(() => {
+      throw new Error("GREAT_RESET_RUNNER_LOCK_LOST");
+    });
   await boundedGateStatements(databaseName, true)(control);
   const [state] = await control.$queryRaw<{ allowed: boolean }[]>`
     SELECT datallowconn AS allowed FROM pg_database WHERE datname = ${databaseName}`;

@@ -9392,3 +9392,12 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   tüketilmedi; eşzamanlı ikinci yürütücü `GREAT_RESET_ANOTHER_RUN_ACTIVE`; birinci 89 sn verified.
 - **Tekrarlama:** `pg_stat_activity` tek başına "tek backend" kanıtı değildir; başlangıç kilidini
   (`pg_locks`, `classid = pg_database`) birlikte say.
+- Astra PR #231 2. tur `9ed543b`: **KOD DÜZELTİLMELİ** (2 P2, 1 P3): Prisma boşta bağlantıyı
+  300 sn'de kapatınca advisory kilit düşüp kapı açılamıyordu; activity ile başlangıç kilidi aynı
+  ifadede okununca geçiş yarışı; `cause` ham hata taşıyordu. Düzeltme: kontrol URL'sinde
+  `max_idle_connection_lifetime=7200`; kopmada kilit yeniden alınabiliyorsa açılış, alınamıyorsa
+  dokunulmaz; sayım sırası kilitler → görüntü tazeleme → activity (ayrı ifadeler, COMMIT öncesi
+  kontrolde de); `cause` yalnız güvenli kod.
+- Yeniden prova: uygulama sürerken kontrol oturumu `pg_terminate_backend` ile öldürüldü; reset
+  82 sn verified, kilit yeniden alındı, `datallowconn = t`. Görünmez başlayan backend ve ikinci
+  yürütücü senaryoları yine doğru durdu.
