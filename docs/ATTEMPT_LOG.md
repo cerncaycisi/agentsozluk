@@ -9407,3 +9407,6 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   Düzeltme: sahiplik/yeniden alma/`ALTER DATABASE`/doğrulama tek pinli interactive transaction'da;
   autovacuum için kabul sözleşmesi tasarıma yazıldı (tek backend istemciler içindir; tablolar
   `ACCESS EXCLUSIVE` iken autovacuum veriye dokunamaz). Prova senaryoları yeniden geçti.
+- GPT-6 Astra PR #231 4. tur exact `d92532d16c40ccd2b32df3ee8e017e0447c6063b` için **KOD GO**:
+  iki P2 kapalı; kapı–kilit arası autovacuum penceresi fail-closed. Tek P3 (garanti ifadesi
+  geniş: TOAST/katalog/sequence ayrımı) sonraki commit'te yorum ve tasarımda daraltıldı.

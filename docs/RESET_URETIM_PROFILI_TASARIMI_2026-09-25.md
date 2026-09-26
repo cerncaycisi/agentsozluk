@@ -309,8 +309,12 @@ başlangıç yedeği, operatör sunucusunda 0600 korumalıdır; ham satırlar Gi
   autovacuum worker'ı bu kapıdan muaf olabilir; kapıdan sonra yeni bir backend
   görünürse beklenmez, işlem geri alınır. **Kabul sözleşmesi (Astra, PR #231):** "tek backend"
   garantisi istemci backend'leri içindir; muaf autovacuum her an başlayabilir ve hiçbir
-  sayım sırası onu tamamen dışlayamaz. Autovacuum tabloya `ShareUpdateExclusiveLock`
-  ister; reset bütün tabloları `ACCESS EXCLUSIVE` ile tuttuğu sürece veriye dokunamaz.
+  sayım sırası onu tamamen dışlayamaz. Garanti kilitlenen uygulama tablolarının
+  mantıksal içeriğidir: autovacuum `ShareUpdateExclusiveLock` tutuyorsa `ACCESS
+EXCLUSIVE … NOWAIT` düşer (fail-closed); TOAST vacuum'u görünür içeriği değiştirmez,
+  TRUNCATE'in TOAST kilidi çatışırsa `lock_timeout` geri aldırır; katalog bakım
+  istatistikleri değişebilir, mantıksal şema tanımları değişmez; sequence'leri
+  autovacuum işlemez.
   Kapı, sahiplik denetimi ve `ALTER DATABASE` tek pinli kontrol transaction'ında koşar;
   başlamakta olan istemci backend'i `pg_locks` başlangıç kilidiyle de sayılır. Kapı koruması `pg_stat_activity` sayımıyla
   birlikte kullanılır; `CONNECTION LIMIT 0` kullanılmaz.

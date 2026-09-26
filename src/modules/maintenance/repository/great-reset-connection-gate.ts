@@ -23,11 +23,13 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 
   Autovacuum kabul sözleşmesi (Astra, 3. tur P2): autovacuum işçisi `datallowconn` kapısından
   muaftır ve her an başlayabilir; hiçbir sayım sırası onun başlangıcını tamamen dışlayamaz. "Tek
-  backend" garantisi İSTEMCİ backend'leri içindir. Autovacuum bir tabloya dokunmak için
-  `ShareUpdateExclusiveLock` ister; reset bütün tabloları `ACCESS EXCLUSIVE` ile tuttuğu sürece
-  (kilitler `NOWAIT` ile, kapıdan hemen sonra alınır) içerik tablolarına ve sequence'e dokunamaz.
-  Kapı kontrolünde GÖRÜLEN autovacuum yine ihtiyatla reset'i durdurur; görülmeden başlayan işçi
-  veri bütünlüğünü bozamaz.
+  backend" garantisi İSTEMCİ backend'leri içindir. Garanti: kilitlenen uygulama tablolarının
+  MANTIKSAL içeriği korunur. Autovacuum tabloya `ShareUpdateExclusiveLock` ister; kilit hâlâ
+  tutuluyorsa `ACCESS EXCLUSIVE … NOWAIT` hata verir ve reset geri alınır (fail-closed). TOAST
+  tabloları ayrıca seçilebilir; normal vacuum görünür içeriği değiştirmez ve TRUNCATE'in TOAST
+  kilidi çatışırsa `lock_timeout` reseti geri aldırır. Katalogda bakım/istatistik değişebilir;
+  karşılaştırılan mantıksal şema tanımları değişmez. Sequence'leri autovacuum işlemez; durumları
+  önce/sonra ayrıca doğrulanır (Astra, PR #231 4. tur P3). Görülen autovacuum yine durdurur.
 */
 
 type Control = Pick<PrismaClient, "$executeRaw" | "$queryRaw" | "$transaction">;
