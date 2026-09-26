@@ -9278,3 +9278,9 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   (fixture metni kısaydı), kod hatası değildi.
 - **Tekrarlama:** doğrudan Prisma ile entry fixture'ı kurarken gövde uzunluk kısıtını
   karşıla; kısa metin kısıt hatası verir.
+- GPT-6 Astra, PR #228 exact `8ae8f7a0265517ca1a02874ede97f7e2cd19d46b` için
+  **KOD DÜZELTİLMELİ** dedi (1 P2): TRUNCATE istisnası yalnız GUC'ye bağlıydı, üretim
+  oturumunda açık kalırsa commit/trafik olayı silinebilirdi. Düzeltme: istisna ayrıca
+  `current_database()` adının test kuralına (`(^|[_-])test$`) uymasını ister. Yerel
+  probe: test dışı adlı DB'de GUC `on` iken `TRUNCATE great_reset_commits CASCADE`
+  reddedildi; `*_test` DB'de geçti.

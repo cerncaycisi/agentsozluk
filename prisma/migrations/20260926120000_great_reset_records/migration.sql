@@ -56,10 +56,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- TRUNCATE yalnız test veritabanı temizliği için açık oturum niyetiyle geçer.
+-- TRUNCATE yalnız test veritabanı temizliği için geçer: oturum niyeti (GUC) TEK BAŞINA
+-- yetmez, veritabanı adı da `scripts/test-database-safety.ts` kuralıyla test olmalı. Üretim
+-- `agent_sozluk` veritabanında GUC açık kalsa bile commit/mezar taşı silinemez (Astra, PR #228).
 CREATE FUNCTION protect_great_reset_record_truncate() RETURNS trigger AS $$
 BEGIN
-  IF coalesce(current_setting('agentsozluk.allow_great_reset_truncate', true), '') <> 'on' THEN
+  IF current_database() !~* '(^|[_-])test$'
+    OR coalesce(current_setting('agentsozluk.allow_great_reset_truncate', true), '') <> 'on' THEN
     RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'GREAT_RESET_RECORD_IMMUTABLE';
   END IF;
   RETURN NULL;

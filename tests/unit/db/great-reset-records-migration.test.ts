@@ -19,6 +19,8 @@ describe("great reset records migration", () => {
       expect(migration).toContain(`BEFORE TRUNCATE ON "${table}"`);
     }
     expect(migration).toContain("agentsozluk.allow_great_reset_truncate");
+    // GUC tek başına yetmez; üretim veritabanı adı test kuralına uymaz.
+    expect(migration).toContain("current_database() !~* '(^|[_-])test$'");
   });
 
   it("keeps commits, tombstones and exposure events append-only", () => {
