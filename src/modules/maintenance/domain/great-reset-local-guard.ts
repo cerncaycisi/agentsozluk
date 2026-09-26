@@ -92,7 +92,14 @@ function takeNamespace(args: readonly string[]) {
 export function parseLocalResetArguments(input: readonly string[]) {
   const taken = takeNamespace(input);
   let args = taken.args;
-  const namespaceOption = taken.namespace ? { namespace: taken.namespace } : {};
+  const gateIndex = args.indexOf("--connection-gate");
+  if (gateIndex !== -1 && args.indexOf("--connection-gate", gateIndex + 1) !== -1)
+    throw new Error("GREAT_RESET_INVALID_ARGUMENTS");
+  if (gateIndex !== -1) args = [...args.slice(0, gateIndex), ...args.slice(gateIndex + 1)];
+  const namespaceOption = {
+    ...(taken.namespace ? { namespace: taken.namespace } : {}),
+    ...(gateIndex !== -1 ? { connectionGate: true as const } : {}),
+  };
   const archiveOutbox = args.at(-1) === "--archive-outbox";
   if (archiveOutbox) args = args.slice(0, -1);
   if (!args.length || (args.length === 1 && args[0] === "--dry-run")) {

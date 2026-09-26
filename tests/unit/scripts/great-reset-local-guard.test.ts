@@ -140,4 +140,25 @@ describe("yerel great reset sınırı", () => {
     ])
       expect(() => parseLocalResetArguments(args)).toThrow("GREAT_RESET_INVALID_ARGUMENTS");
   });
+
+  it("accepts the connection gate flag once, in either mode", () => {
+    expect(parseLocalResetArguments(["--connection-gate"])).toEqual({
+      mode: "DRY_RUN",
+      connectionGate: true,
+    });
+    expect(
+      parseLocalResetArguments([
+        "--execute",
+        "--database",
+        "agent_sozluk_reset_rehearsal_20260926000000_execution_test",
+        "--plan-sha256",
+        "a".repeat(64),
+        "--connection-gate",
+        "--archive-outbox",
+      ]),
+    ).toMatchObject({ mode: "EXECUTE", connectionGate: true, archiveOutbox: true });
+    expect(() => parseLocalResetArguments(["--connection-gate", "--connection-gate"])).toThrow(
+      "GREAT_RESET_INVALID_ARGUMENTS",
+    );
+  });
 });

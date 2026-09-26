@@ -9,6 +9,11 @@ import {
 } from "../domain/great-reset";
 import { localResetTarget, type LocalResetIdentity } from "../domain/great-reset-local-guard";
 import {
+  closeConnectionGate,
+  connectionGatePreflight,
+  openConnectionGate,
+} from "./great-reset-connection-gate";
+import {
   assertNamespaceInput,
   consumeIntent,
   copyTombstones,
@@ -35,7 +40,7 @@ type Request = (
       databaseName: string;
       planSha256: string;
     }
-) & { archiveOutbox?: true; namespace?: NamespaceResetInput };
+) & { archiveOutbox?: true; namespace?: NamespaceResetInput; connectionGate?: true };
 type Fingerprint = { rows: number; sha256: string };
 type Table = { model: string; table: string; cleared: boolean };
 type Tx = Prisma.TransactionClient;
@@ -52,6 +57,7 @@ function implementationDigest(): string {
     readFileSync(new URL(import.meta.url), "utf8"),
     readFileSync(new URL("./outbox-reset-archive.ts", import.meta.url), "utf8"),
     readFileSync(new URL("./great-reset-namespace.ts", import.meta.url), "utf8"),
+    readFileSync(new URL("./great-reset-connection-gate.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../../outbox/repository/pending.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset-local-guard.ts", import.meta.url), "utf8"),
@@ -538,8 +544,15 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     : "REQUIRE_NO_UNARCHIVED_PENDING_KEEP_ROWS";
   const implementationSha256 = implementationDigest();
   const database = new PrismaClient({ datasourceUrl: target.databaseUrl, log: [] });
+  // Kontrol bağlantısı aynı doğrulanmış host/port/kullanıcıyla, yalnız yol `postgres` yapılarak
+  // kodda türetilir; operatör ayrı URL vermez (tasarım v19, Sabit üretim kimliği).
+  const control = request.connectionGate
+    ? new PrismaClient({ datasourceUrl: controlDatabaseUrl(target.databaseUrl), log: [] })
+    : null;
+  let gateClosed = false;
+  let outcome: "COMMITTED" | "FAILED" = "FAILED";
   try {
-    return await database.$transaction(
+    const result = await database.$transaction(
       async (tx) => {
         if (request.mode === "DRY_RUN") await tx.$executeRaw`SET TRANSACTION READ ONLY`;
         // Bütçe gerçek boyutlu provadan (25 Eylül, operatör sunucusu, üretim yedeği kopyası):
@@ -557,6 +570,13 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         const actual = await identity(tx, target.databaseName, target.identity);
         if ((await privilegeBlockers(tx, list)).length)
           throw new Error("GREAT_RESET_INSUFFICIENT_PRIVILEGES");
+        if (request.mode === "EXECUTE" && control) {
+          // Kilitlerden ÖNCE: yeni bağlantı girişi kapanır, yalnız bu backend kalır.
+          const [backend] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+          if (!backend) throw new Error("GREAT_RESET_GATE_PINNED_BACKEND_MISSING");
+          gateClosed = true;
+          await closeConnectionGate(control, target.databaseName, backend.pid);
+        }
         if (request.mode === "EXECUTE") {
           // Önce tüm tablo yazıcılarını dışla. Bekleyen işlem varsa bekleme/öldürme yok.
           await tx.$executeRaw(
@@ -572,10 +592,14 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         const blockedBy = [
           ...(await blockers(tx, archiveOutbox)),
           ...(namespace ? await namespaceBlockers(tx, namespace) : []),
+          ...(control && request.mode === "DRY_RUN"
+            ? await connectionGatePreflight(control, target.databaseName)
+            : []),
         ];
         const planSha256 = digest({
           version: namespace ? 3 : 2,
           ...(namespace ? { namespace } : {}),
+          ...(control ? { connectionGate: true } : {}),
           outboxPolicy,
           pendingOutbox,
           ...archivesBefore,
@@ -737,6 +761,8 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         maxWait: 5_000,
       },
     );
+    outcome = "COMMITTED";
+    return result;
   } catch (error) {
     // Yalnız sabit güvenli neden kodları; SQL, hata mesajı veya satır içeriği çıkmaz.
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -751,5 +777,26 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     throw error;
   } finally {
     await database.$disconnect();
+    if (control) {
+      try {
+        // Başarıda da hatada da kapı açılır; açılamazsa commit durumunu ayıran güvenli kod.
+        if (gateClosed) await openConnectionGate(control, target.databaseName);
+      } catch {
+        throw new Error(
+          outcome === "COMMITTED"
+            ? "GREAT_RESET_COMMITTED_GATE_NOT_REOPENED"
+            : "GREAT_RESET_FAILED_GATE_NOT_REOPENED",
+        );
+      } finally {
+        await control.$disconnect();
+      }
+    }
   }
+}
+
+/** Hedef URL'den yalnız veritabanı yolu `postgres` yapılarak kontrol URL'si türetilir. */
+function controlDatabaseUrl(targetUrl: string): string {
+  const url = new URL(targetUrl);
+  url.pathname = "/postgres";
+  return url.toString();
 }

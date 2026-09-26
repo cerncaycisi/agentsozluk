@@ -9367,3 +9367,16 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   önceki 4 P2 + 1 P3 kapalı. Tek P3 test kör noktası (yabancı mezar taşı kontrolü sequence
   tüketildikten sonra yanlış nedenle `false` alıyordu) sonraki commit'te düzeltildi: kontrol
   sequence'ten önce, savepoint içinde `false`, geri alınınca `true`.
+
+## 2026-09-26 — bağlantı kapısı ve üretim kimlik guard'ı
+
+- Dal `feat/reset-connection-gate` (`feat/reset-namespace-core` üstüne). Kontrol bağlantısı
+  hedef URL'den yalnız yolu `postgres` yapılarak türetilir; uygulama transaction'ı PID'yi
+  pinler, kilitlerden önce `ALTER DATABASE … ALLOW_CONNECTIONS false` yapılır, yalnız pinli
+  backend kaldığı doğrulanır; kapı başarıda da hatada da açılır ve `datallowconn` doğrulanır.
+- Gerçek boyutlu yerel prova (aynı yedek): başka oturum açıkken uygulama
+  `GREAT_RESET_GATE_OTHER_BACKEND`, kapı yeniden açık, niyet tüketilmedi; uygulama sırasında
+  dış bağlantı "not currently accepting connections" ile reddedildi; uygulama 93 sn verified,
+  sonrasında `datallowconn = t`.
+- Üretim guard'ı saf fonksiyon (host, release dizini/`.release-sha`, tek `DATABASE_URL`,
+  kodda sabit bağlantı sınırları, türetilmiş kontrol URL'si); üretimde hiçbir şey çalıştırılmadı.
