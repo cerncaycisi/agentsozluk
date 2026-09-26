@@ -9496,3 +9496,6 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - Astra PR #234 7. tur `e786e0b`: 2 P2 (süper kullanıcısız subscription ve kullanıcı eşlemesi).
   Düzeltme: bu DB'ye ait `pg_subscription` ve `pg_user_mappings` görünümü ret; sorguların süper
   kullanıcı olmayan rolle çalıştığı yerelde doğrulandı. Gerçek boyutlu prova (7. tur kodu) geçti.
+- Astra PR #234 8. tur `4abf1f9`: 2 P2 (dil sahibi/ACL ve `pg_parameter_acl` makbuz dışıydı).
+  Düzeltme: güvenlik bölümüne dil, parametre yetkisi ve tablespace anahtarları; entegrasyon testi
+  `REVOKE USAGE ON LANGUAGE plpgsql` ve `GRANT SET ON PARAMETER` farklarını yakaladı.

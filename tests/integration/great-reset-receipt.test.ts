@@ -135,4 +135,25 @@ describe("great reset receipt against PostgreSQL", () => {
     }
     await computeReceipt(integrationDatabase, expected);
   });
+
+  it("sees language usage and parameter privilege changes", async () => {
+    const expected = await identity();
+    const before = await computeReceipt(integrationDatabase, expected);
+    await integrationDatabase.$executeRawUnsafe("REVOKE USAGE ON LANGUAGE plpgsql FROM PUBLIC");
+    await integrationDatabase.$executeRawUnsafe(
+      "GRANT SET ON PARAMETER session_replication_role TO PUBLIC",
+    );
+    try {
+      const after = await computeReceipt(integrationDatabase, expected);
+      const keys = compareReceipts(before, after).unexpected.map((item) => item.key);
+      expect(keys).toEqual(
+        expect.arrayContaining(["language:plpgsql", "parameter:session_replication_role"]),
+      );
+    } finally {
+      await integrationDatabase.$executeRawUnsafe("GRANT USAGE ON LANGUAGE plpgsql TO PUBLIC");
+      await integrationDatabase.$executeRawUnsafe(
+        "REVOKE SET ON PARAMETER session_replication_role FROM PUBLIC",
+      );
+    }
+  });
 });

@@ -370,6 +370,18 @@ async function securitySection(tx: Tx) {
           rolvaliduntil::text)::text
         FROM pg_roles WHERE rolname NOT LIKE 'pg\\_%'
       UNION ALL
+      -- Küme genelindeki yetkiler (Astra, PR #234 8. tur): dil sahipliği/ACL'si, parametre
+      -- yetkileri ve tablespace'ler; extension üyeliği ya da rol nitelikleri bunları kanıtlamaz.
+      SELECT 'language:' || lanname, jsonb_build_array(pg_get_userbyid(lanowner), lanpltrusted,
+          lanacl::text)::text
+        FROM pg_language
+      UNION ALL
+      SELECT 'parameter:' || parname, paracl::text FROM pg_parameter_acl
+      UNION ALL
+      SELECT 'tablespace:' || spcname, jsonb_build_array(pg_get_userbyid(spcowner), spcacl::text,
+          spcoptions::text)::text
+        FROM pg_tablespace
+      UNION ALL
       SELECT 'membership:' || pg_get_userbyid(roleid) || '>' || pg_get_userbyid(member)
           || ':' || pg_get_userbyid(grantor),
           jsonb_build_array(admin_option, inherit_option, set_option)::text
