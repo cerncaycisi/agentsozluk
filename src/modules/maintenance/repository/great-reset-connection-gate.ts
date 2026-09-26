@@ -33,6 +33,17 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 */
 
 type Control = Pick<PrismaClient, "$executeRaw" | "$queryRaw" | "$transaction">;
+
+/**
+ * Kontrol bağlantısının beklenen kimliği. Her kapı mutasyonundan önce aynı transaction'da
+ * doğrulanır: yanlış kümeye giden kontrol bağlantısı hiçbir `ALTER DATABASE` yapamaz
+ * (Astra, PR #232 P1).
+ */
+export type ControlIdentity = {
+  clusterId: string;
+  user: string;
+  serverAddresses: readonly string[];
+};
 type Session = Pick<PrismaClient, "$executeRaw" | "$queryRaw">;
 
 function databaseIdentifier(databaseName: string): Prisma.Sql {
@@ -79,8 +90,27 @@ async function holdsRunnerLock(control: Session, databaseName: string): Promise<
   kontrol oturumu arada koparsa transaction hata verir, eski oturumdaki sahiplik sonucu yeni
   oturumda kullanılamaz. Oturum advisory kilidi transaction bitince bırakılmaz.
 */
+async function assertControlIdentity(session: Session, expected: ControlIdentity) {
+  const [actual] = await session.$queryRaw<
+    { database: string; user: string; host: string | null; cluster: string }[]
+  >`
+    SELECT current_database() AS database, current_user AS user,
+      host(inet_server_addr()) AS host,
+      (SELECT system_identifier::text FROM pg_control_system()) AS cluster`;
+  if (
+    !actual ||
+    actual.database !== "postgres" ||
+    actual.user !== expected.user ||
+    !actual.host ||
+    !expected.serverAddresses.includes(actual.host) ||
+    actual.cluster !== expected.clusterId
+  )
+    throw new Error("GREAT_RESET_CONTROL_IDENTITY_MISMATCH");
+}
+
 async function withOwnedGate<T>(
   control: Control,
+  expected: ControlIdentity,
   databaseName: string,
   reacquire: boolean,
   work: (session: Session) => Promise<T>,
@@ -89,6 +119,7 @@ async function withOwnedGate<T>(
     async (session) => {
       await session.$executeRaw`SET LOCAL statement_timeout = '10s'`;
       await session.$executeRaw`SET LOCAL lock_timeout = '5s'`;
+      await assertControlIdentity(session, expected);
       if (!(await holdsRunnerLock(session, databaseName))) {
         // Kopan oturumda kilit düşmüştür; yeniden alınabiliyorsa başka yürütücü yoktur.
         const [lock] = reacquire
@@ -151,10 +182,11 @@ export async function otherTargetBackends(
 
 export async function closeConnectionGate(
   control: Control,
+  expected: ControlIdentity,
   databaseName: string,
   pinnedPid: number,
 ): Promise<void> {
-  await withOwnedGate(control, databaseName, false, async (session) => {
+  await withOwnedGate(control, expected, databaseName, false, async (session) => {
     if ((await setAllowConnections(session, databaseName, false)) !== false)
       throw new Error("GREAT_RESET_GATE_NOT_CLOSED");
   });
@@ -164,13 +196,17 @@ export async function closeConnectionGate(
     throw new Error("GREAT_RESET_GATE_OTHER_BACKEND");
 }
 
-export async function openConnectionGate(control: Control, databaseName: string): Promise<void> {
+export async function openConnectionGate(
+  control: Control,
+  expected: ControlIdentity,
+  databaseName: string,
+): Promise<void> {
   /*
     Kapıyı yalnız kilidin sahibi açar; başka yürütücünün kapısına dokunulmaz (Astra, P2). Kontrol
     oturumu koptuysa kilit düşmüştür: aynı transaction'da yeniden alınabiliyorsa başka yürütücü
     yoktur ve açılış güvenlidir; alınamıyorsa başka bir reset kapıyı tutuyordur, dokunulmaz.
   */
-  await withOwnedGate(control, databaseName, true, async (session) => {
+  await withOwnedGate(control, expected, databaseName, true, async (session) => {
     if ((await setAllowConnections(session, databaseName, true)) !== true)
       throw new Error("GREAT_RESET_GATE_NOT_REOPENED");
   });

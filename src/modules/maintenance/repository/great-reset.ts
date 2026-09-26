@@ -9,6 +9,12 @@ import {
 } from "../domain/great-reset";
 import { localResetTarget, type LocalResetIdentity } from "../domain/great-reset-local-guard";
 import {
+  productionResetIdentity,
+  productionResetTarget,
+} from "../domain/great-reset-production-guard";
+import { collectProductionEnvironment } from "./great-reset-production-environment";
+import {
+  type ControlIdentity,
   acquireRunnerLock,
   closeConnectionGate,
   connectionGatePreflight,
@@ -63,6 +69,9 @@ function implementationDigest(): string {
     readFileSync(new URL("../../outbox/repository/pending.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset-local-guard.ts", import.meta.url), "utf8"),
+    readFileSync(new URL("../domain/great-reset-production-guard.ts", import.meta.url), "utf8"),
+    readFileSync(new URL("../../../../scripts/great-reset-production.ts", import.meta.url), "utf8"),
+    readFileSync(new URL("./great-reset-production-environment.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../../../../scripts/great-reset-local.ts", import.meta.url), "utf8"),
     readFileSync(
       new URL("../../../../scripts/great-reset-local-guard.ts", import.meta.url),
@@ -243,6 +252,52 @@ async function identity(tx: Tx, databaseName: string, expected: LocalResetIdenti
   Namespace modunda eski/yeni public ID kısıtları şema özetinin dışında tutulur: reset onları
   bilerek değiştirir ve `namespacePostconditionsHold` birebir tanımlarını ayrıca doğrular.
 */
+/*
+  Üretim veritabanı kimliği (tasarım v19, Sabit üretim kimliği): bağlanılan sunucu adresi URL
+  host'unun çözüldüğü adreslerden biri, DB/sahip/kullanıcı `agent_sozluk`, PostgreSQL 16 ve
+  sabit küme kimliği. Uyuşmazlıkta hiçbir mutasyon yapılmadan durulur.
+*/
+async function productionIdentity(tx: Tx, serverAddresses: readonly string[]) {
+  const expected = productionResetIdentity;
+  const [actual] = await tx.$queryRaw<
+    {
+      database: string;
+      owner: string;
+      user: string;
+      host: string | null;
+      version: number;
+      cluster: string;
+    }[]
+  >`
+    SELECT current_database() AS database, pg_get_userbyid(d.datdba) AS owner,
+      current_user AS user, host(inet_server_addr()) AS host,
+      current_setting('server_version_num')::int AS version,
+      (SELECT system_identifier::text FROM pg_control_system()) AS cluster
+    FROM pg_database d WHERE datname = current_database()`;
+  if (
+    !actual ||
+    actual.database !== expected.databaseName ||
+    actual.owner !== expected.owner ||
+    actual.user !== expected.owner ||
+    !actual.host ||
+    !serverAddresses.includes(actual.host) ||
+    actual.version < 160000 ||
+    actual.version >= 170000 ||
+    actual.cluster !== expected.clusterId
+  )
+    throw new Error("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
+  return actual;
+}
+
+type ResetProfile = {
+  kind: "LOCAL" | "PRODUCTION";
+  databaseName: string;
+  databaseUrl: string;
+  verifyIdentity: (tx: Tx) => Promise<object & { database: string }>;
+  /** Kontrol bağlantısının beklenen kimliği; her kapı mutasyonundan önce doğrulanır. */
+  controlIdentity: ControlIdentity;
+};
+
 async function inspectSchema(
   tx: Tx,
   list: Table[],
@@ -537,9 +592,55 @@ const namespaceRecordTables = new Set([
   "great_reset_tombstones",
 ]);
 
-/** Üretim aracı değildir. Hedef kapısı bu repository girişinde de zorunludur. */
+/** Yerel sentetik prova girişi. Hedef kapısı bu repository girişinde de zorunludur. */
 export async function runLocalGreatReset(value: string | undefined, request: Request) {
   const target = localResetTarget(value, hostname());
+  return runGreatReset(
+    {
+      kind: "LOCAL",
+      databaseName: target.databaseName,
+      databaseUrl: target.databaseUrl,
+      verifyIdentity: (tx) => identity(tx, target.databaseName, target.identity),
+      controlIdentity: {
+        clusterId: target.identity.clusterId,
+        user: target.identity.owner,
+        serverAddresses: ["127.0.0.1"],
+      },
+    },
+    request,
+  );
+}
+
+/**
+ * Üretim girişi. Hedef çağırandan ALINMAZ: host, fiziksel release, `.release-sha`, `.env` ve
+ * Compose `db` container kimliği bu girişte okunur ve guard'dan geçer (Astra, PR #232 P2).
+ * Namespace ve bağlantı kapısı zorunludur; niyetin release SHA'sı çalışan release'e eşit olmalıdır.
+ * Yalnız exact onaylı üretim eyleminde, runbook sırasıyla çağrılır.
+ */
+export async function runProductionGreatReset(request: Request) {
+  if (!request.namespace || request.connectionGate !== true)
+    throw new Error("GREAT_RESET_PRODUCTION_PROFILE_REQUIRED");
+  const target = productionResetTarget(await collectProductionEnvironment());
+  if (request.namespace.releaseSha !== target.releaseSha)
+    throw new Error("GREAT_RESET_PRODUCTION_PROFILE_REQUIRED");
+  return runGreatReset(
+    {
+      kind: "PRODUCTION",
+      databaseName: target.databaseName,
+      databaseUrl: target.databaseUrl,
+      verifyIdentity: (tx) => productionIdentity(tx, target.serverAddresses),
+      controlIdentity: {
+        clusterId: productionResetIdentity.clusterId,
+        user: productionResetIdentity.owner,
+        serverAddresses: target.serverAddresses,
+      },
+    },
+    request,
+  );
+}
+
+async function runGreatReset(profile: ResetProfile, request: Request) {
+  const target = profile;
   if (
     request.mode === "EXECUTE" &&
     (request.databaseName !== target.databaseName || !/^[a-f0-9]{64}$/u.test(request.planSha256))
@@ -585,7 +686,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         await tx.$executeRaw`SET LOCAL extra_float_digits = 3`;
         // RLS satır saklıyorsa önkoşul/özet yanlış güven vermek yerine hata ile durur.
         await tx.$executeRaw`SET LOCAL row_security = off`;
-        const actual = await identity(tx, target.databaseName, target.identity);
+        const actual = await profile.verifyIdentity(tx);
         if ((await privilegeBlockers(tx, list)).length)
           throw new Error("GREAT_RESET_INSUFFICIENT_PRIVILEGES");
         if (request.mode === "EXECUTE" && control) {
@@ -593,7 +694,12 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
           const [backend] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
           if (!backend) throw new Error("GREAT_RESET_GATE_PINNED_BACKEND_MISSING");
           gateClosed = true;
-          await closeConnectionGate(control, target.databaseName, backend.pid);
+          await closeConnectionGate(
+            control,
+            profile.controlIdentity,
+            target.databaseName,
+            backend.pid,
+          );
         }
         if (request.mode === "EXECUTE") {
           // Önce tüm tablo yazıcılarını dışla. Bekleyen işlem varsa bekleme/öldürme yok.
@@ -616,6 +722,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         ];
         const planSha256 = digest({
           version: namespace ? 3 : 2,
+          profile: profile.kind,
           ...(namespace ? { namespace } : {}),
           ...(control ? { connectionGate: true } : {}),
           outboxPolicy,
@@ -687,8 +794,12 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         const expired = await tx.idempotencyRecord.updateMany({ data: { expiresAt: new Date(0) } });
         const audit = await tx.auditLog.create({
           data: {
-            action: "GREAT_RESET_LOCAL_EXECUTED",
-            entityType: "LOCAL_SYNTHETIC_DATABASE",
+            action:
+              profile.kind === "PRODUCTION"
+                ? "GREAT_RESET_PRODUCTION_EXECUTED"
+                : "GREAT_RESET_LOCAL_EXECUTED",
+            entityType:
+              profile.kind === "PRODUCTION" ? "PRODUCTION_DATABASE" : "LOCAL_SYNTHETIC_DATABASE",
             entityId: resetId,
             requestId: resetId,
             metadata: {
@@ -700,7 +811,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
               archivedOutboxRows: outboxArchiveId ? pendingOutbox.rows : 0,
               archivesBefore,
               policy: "TRUNCATE_ONLY_CONTINUE_IDENTITY_RESTRICT",
-              scope: "LOCAL_SYNTHETIC_ONLY",
+              scope: profile.kind === "PRODUCTION" ? "PRODUCTION" : "LOCAL_SYNTHETIC_ONLY",
               ...(namespace && tombstones
                 ? {
                     operationId: namespace.operationId,
@@ -797,7 +908,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     if (control) {
       if (gateClosed) {
         try {
-          await openConnectionGate(control, target.databaseName);
+          await openConnectionGate(control, profile.controlIdentity, target.databaseName);
         } catch {
           gateError =
             outcome === "COMMITTED"
