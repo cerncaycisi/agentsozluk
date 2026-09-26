@@ -9367,3 +9367,46 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   önceki 4 P2 + 1 P3 kapalı. Tek P3 test kör noktası (yabancı mezar taşı kontrolü sequence
   tüketildikten sonra yanlış nedenle `false` alıyordu) sonraki commit'te düzeltildi: kontrol
   sequence'ten önce, savepoint içinde `false`, geri alınınca `true`.
+
+## 2026-09-26 — bağlantı kapısı ve üretim kimlik guard'ı
+
+- Dal `feat/reset-connection-gate` (`feat/reset-namespace-core` üstüne). Kontrol bağlantısı
+  hedef URL'den yalnız yolu `postgres` yapılarak türetilir; uygulama transaction'ı PID'yi
+  pinler, kilitlerden önce `ALTER DATABASE … ALLOW_CONNECTIONS false` yapılır, yalnız pinli
+  backend kaldığı doğrulanır; kapı başarıda da hatada da açılır ve `datallowconn` doğrulanır.
+- Gerçek boyutlu yerel prova (aynı yedek): başka oturum açıkken uygulama
+  `GREAT_RESET_GATE_OTHER_BACKEND`, kapı yeniden açık, niyet tüketilmedi; uygulama sırasında
+  dış bağlantı "not currently accepting connections" ile reddedildi; uygulama 93 sn verified,
+  sonrasında `datallowconn = t`.
+- Üretim guard'ı saf fonksiyon (host, release dizini/`.release-sha`, tek `DATABASE_URL`,
+  kodda sabit bağlantı sınırları, türetilmiş kontrol URL'si); üretimde hiçbir şey çalıştırılmadı.
+- Astra PR #231 1. tur `3d4ac60`: **KOD DÜZELTİLMELİ** (1 P1, 4 P2, 1 P3). P1: kapıdan önce
+  `CheckMyDatabase()`'i geçip `pgstat_bestart()`'a varmamış backend `pg_stat_activity`'de
+  görünmez; yerelde `post_auth_delay` ile doğrulandı (görünür 0, kapı kapandıktan sonra sorgu
+  çalıştı) ve o backend'in hedef DB nesnesinde `RowExclusiveLock` başlangıç kilidi tuttuğu
+  görüldü. Düzeltme: kapı ve COMMIT öncesi engel kontrolü `pg_locks` başlangıç kilidini de sayar;
+  hedefe özel tek yürütücü advisory kilidi; kontrol işlemleri süre sınırlı transaction'da;
+  temizlik adımları birbirini engellemez, ilk hata `cause`; `.env` atamaları tırnak/çok satır/
+  yorum izlenerek sayılır ve `dotenv` ile karşılaştırılır; kullanıcı adı çözümü güvenli.
+- Yeniden prova: görünmez başlayan backend `GREAT_RESET_GATE_OTHER_BACKEND`, kapı açık, niyet
+  tüketilmedi; eşzamanlı ikinci yürütücü `GREAT_RESET_ANOTHER_RUN_ACTIVE`; birinci 89 sn verified.
+- **Tekrarlama:** `pg_stat_activity` tek başına "tek backend" kanıtı değildir; başlangıç kilidini
+  (`pg_locks`, `classid = pg_database`) birlikte say.
+- Astra PR #231 2. tur `9ed543b`: **KOD DÜZELTİLMELİ** (2 P2, 1 P3): Prisma boşta bağlantıyı
+  300 sn'de kapatınca advisory kilit düşüp kapı açılamıyordu; activity ile başlangıç kilidi aynı
+  ifadede okununca geçiş yarışı; `cause` ham hata taşıyordu. Düzeltme: kontrol URL'sinde
+  `max_idle_connection_lifetime=7200`; kopmada kilit yeniden alınabiliyorsa açılış, alınamıyorsa
+  dokunulmaz; sayım sırası kilitler → görüntü tazeleme → activity (ayrı ifadeler, COMMIT öncesi
+  kontrolde de); `cause` yalnız güvenli kod.
+- Yeniden prova: uygulama sürerken kontrol oturumu `pg_terminate_backend` ile öldürüldü; reset
+  82 sn verified, kilit yeniden alındı, `datallowconn = t`. Görünmez başlayan backend ve ikinci
+  yürütücü senaryoları yine doğru durdu.
+- Astra PR #231 3. tur `623dd4b`: **KOD DÜZELTİLMELİ** (2 P2): sahiplik kontrolü ile
+  `ALTER DATABASE` ayrı çağrılardı, oturum arada değişirse başka yürütücünün kapısı açılabilirdi;
+  autovacuum `datallowconn`'dan muaf olduğu için sayım sırası "tek backend"i tam kanıtlamıyordu.
+  Düzeltme: sahiplik/yeniden alma/`ALTER DATABASE`/doğrulama tek pinli interactive transaction'da;
+  autovacuum için kabul sözleşmesi tasarıma yazıldı (tek backend istemciler içindir; tablolar
+  `ACCESS EXCLUSIVE` iken autovacuum veriye dokunamaz). Prova senaryoları yeniden geçti.
+- GPT-6 Astra PR #231 4. tur exact `d92532d16c40ccd2b32df3ee8e017e0447c6063b` için **KOD GO**:
+  iki P2 kapalı; kapı–kilit arası autovacuum penceresi fail-closed. Tek P3 (garanti ifadesi
+  geniş: TOAST/katalog/sequence ayrımı) sonraki commit'te yorum ve tasarımda daraltıldı.

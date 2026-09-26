@@ -9,6 +9,13 @@ import {
 } from "../domain/great-reset";
 import { localResetTarget, type LocalResetIdentity } from "../domain/great-reset-local-guard";
 import {
+  acquireRunnerLock,
+  closeConnectionGate,
+  connectionGatePreflight,
+  openConnectionGate,
+  releaseRunnerLock,
+} from "./great-reset-connection-gate";
+import {
   assertNamespaceInput,
   consumeIntent,
   copyTombstones,
@@ -35,7 +42,7 @@ type Request = (
       databaseName: string;
       planSha256: string;
     }
-) & { archiveOutbox?: true; namespace?: NamespaceResetInput };
+) & { archiveOutbox?: true; namespace?: NamespaceResetInput; connectionGate?: true };
 type Fingerprint = { rows: number; sha256: string };
 type Table = { model: string; table: string; cleared: boolean };
 type Tx = Prisma.TransactionClient;
@@ -52,6 +59,7 @@ function implementationDigest(): string {
     readFileSync(new URL(import.meta.url), "utf8"),
     readFileSync(new URL("./outbox-reset-archive.ts", import.meta.url), "utf8"),
     readFileSync(new URL("./great-reset-namespace.ts", import.meta.url), "utf8"),
+    readFileSync(new URL("./great-reset-connection-gate.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../../outbox/repository/pending.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset-local-guard.ts", import.meta.url), "utf8"),
@@ -348,6 +356,15 @@ async function blockers(tx: Tx, archiveOutbox = false, afterNamespace = false): 
     denenir). `pg_stat_activity` işlem boyunca önbelleğe alınabildiği için her denetimden önce
     görüntü tazelenir; bu fonksiyon önizlemede, kilitlerden sonra ve COMMIT'ten hemen önce çağrılır.
   */
+  // Önce başlangıç kilitleri, sonra tazelenmiş activity (sıra: `otherTargetBackends`). Başlamakta
+  // olan backend pg_stat_activity'de henüz görünmez ama hedef DB nesnesinde başlangıç kilidi tutar
+  // (Astra, PR #231 P1; post_auth_delay ile yerelde doğrulandı).
+  const [starting] = await tx.$queryRaw<{ count: number }[]>`
+    SELECT count(DISTINCT pid)::int AS count FROM pg_locks
+    WHERE locktype = 'object' AND classid = 'pg_database'::regclass
+      AND objid = (SELECT oid FROM pg_database WHERE datname = current_database())
+      AND pid <> pg_backend_pid()`;
+  if (starting?.count !== 0) result.push("STARTING_DATABASE_CONNECTIONS");
   await tx.$queryRaw`SELECT 1 AS ok FROM (SELECT pg_stat_clear_snapshot()) AS cleared`;
   const [connections] = await tx.$queryRaw<{ count: number }[]>`
     SELECT count(*)::int AS count FROM pg_stat_activity
@@ -538,8 +555,22 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     : "REQUIRE_NO_UNARCHIVED_PENDING_KEEP_ROWS";
   const implementationSha256 = implementationDigest();
   const database = new PrismaClient({ datasourceUrl: target.databaseUrl, log: [] });
+  // Kontrol bağlantısı aynı doğrulanmış host/port/kullanıcıyla, yalnız yol `postgres` yapılarak
+  // kodda türetilir; operatör ayrı URL vermez (tasarım v19, Sabit üretim kimliği).
+  const control = request.connectionGate
+    ? new PrismaClient({ datasourceUrl: controlDatabaseUrl(target.databaseUrl), log: [] })
+    : null;
+  let gateClosed = false;
+  let runnerLocked = false;
+  let pendingError: unknown = undefined;
+  let outcome: "COMMITTED" | "FAILED" = "FAILED";
   try {
-    return await database.$transaction(
+    if (control && request.mode === "EXECUTE") {
+      // Tek yürütücü: kilit hedef transaction'dan ÖNCE alınır; alınamazsa kapıya dokunulmaz.
+      await acquireRunnerLock(control, target.databaseName);
+      runnerLocked = true;
+    }
+    const result = await database.$transaction(
       async (tx) => {
         if (request.mode === "DRY_RUN") await tx.$executeRaw`SET TRANSACTION READ ONLY`;
         // Bütçe gerçek boyutlu provadan (25 Eylül, operatör sunucusu, üretim yedeği kopyası):
@@ -557,6 +588,13 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         const actual = await identity(tx, target.databaseName, target.identity);
         if ((await privilegeBlockers(tx, list)).length)
           throw new Error("GREAT_RESET_INSUFFICIENT_PRIVILEGES");
+        if (request.mode === "EXECUTE" && control) {
+          // Kilitlerden ÖNCE: yeni bağlantı girişi kapanır, yalnız bu backend kalır.
+          const [backend] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+          if (!backend) throw new Error("GREAT_RESET_GATE_PINNED_BACKEND_MISSING");
+          gateClosed = true;
+          await closeConnectionGate(control, target.databaseName, backend.pid);
+        }
         if (request.mode === "EXECUTE") {
           // Önce tüm tablo yazıcılarını dışla. Bekleyen işlem varsa bekleme/öldürme yok.
           await tx.$executeRaw(
@@ -572,10 +610,14 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         const blockedBy = [
           ...(await blockers(tx, archiveOutbox)),
           ...(namespace ? await namespaceBlockers(tx, namespace) : []),
+          ...(control && request.mode === "DRY_RUN"
+            ? await connectionGatePreflight(control, target.databaseName)
+            : []),
         ];
         const planSha256 = digest({
           version: namespace ? 3 : 2,
           ...(namespace ? { namespace } : {}),
+          ...(control ? { connectionGate: true } : {}),
           outboxPolicy,
           pendingOutbox,
           ...archivesBefore,
@@ -737,19 +779,67 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         maxWait: 5_000,
       },
     );
+    outcome = "COMMITTED";
+    return result;
   } catch (error) {
     // Yalnız sabit güvenli neden kodları; SQL, hata mesajı veya satır içeriği çıkmaz.
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2010" && error.meta?.code === "42501")
-        throw new Error("GREAT_RESET_INSUFFICIENT_PRIVILEGES");
-      if (error.code === "P2010" && error.meta?.code === "55P03")
-        throw new Error("GREAT_RESET_LOCK_NOT_AVAILABLE");
-      if (error.code === "P2010" && error.meta?.code === "57014")
-        throw new Error("GREAT_RESET_QUERY_CANCELLED");
-      if (error.code === "P2028") throw new Error("GREAT_RESET_TRANSACTION_FAILED");
-    }
-    throw error;
+    const safe = safeResetError(error);
+    pendingError = safe;
+    throw safe;
   } finally {
-    await database.$disconnect();
+    /*
+      Temizlik adımları birbirini engellemez (Astra, PR #231 P2): hedef bağlantısı kapanamasa da
+      kapı açılmaya çalışılır; kilit ve kontrol bağlantısı ayrı ayrı bırakılır. Açılış düşerse
+      commit durumunu ayıran güvenli kod fırlatılır, ilk hata `cause` olarak korunur.
+    */
+    await database.$disconnect().catch(() => undefined);
+    let gateError: string | null = null;
+    if (control) {
+      if (gateClosed) {
+        try {
+          await openConnectionGate(control, target.databaseName);
+        } catch {
+          gateError =
+            outcome === "COMMITTED"
+              ? "GREAT_RESET_COMMITTED_GATE_NOT_REOPENED"
+              : "GREAT_RESET_FAILED_GATE_NOT_REOPENED";
+        }
+      }
+      if (runnerLocked)
+        await releaseRunnerLock(control, target.databaseName).catch(() => undefined);
+      await control.$disconnect().catch(() => undefined);
+    }
+    if (gateError)
+      throw new Error(gateError, {
+        cause:
+          pendingError instanceof Error && /^GREAT_RESET_[A-Z_]+$/u.test(pendingError.message)
+            ? pendingError
+            : new Error("GREAT_RESET_DATABASE_OPERATION_FAILED"),
+      });
   }
+}
+
+function safeResetError(error: unknown): unknown {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2010" && error.meta?.code === "42501")
+      return new Error("GREAT_RESET_INSUFFICIENT_PRIVILEGES");
+    if (error.code === "P2010" && error.meta?.code === "55P03")
+      return new Error("GREAT_RESET_LOCK_NOT_AVAILABLE");
+    if (error.code === "P2010" && error.meta?.code === "57014")
+      return new Error("GREAT_RESET_QUERY_CANCELLED");
+    if (error.code === "P2028") return new Error("GREAT_RESET_TRANSACTION_FAILED");
+  }
+  if (error instanceof Error && /^GREAT_RESET_[A-Z_]+$/u.test(error.message)) return error;
+  // Bilinmeyen hata dışarıda ham kalır (CLI yalnız güvenli kod basar); `cause` için genel kod.
+  return error;
+}
+
+/** Hedef URL'den yalnız veritabanı yolu `postgres` yapılarak kontrol URL'si türetilir. */
+function controlDatabaseUrl(targetUrl: string): string {
+  const url = new URL(targetUrl);
+  url.pathname = "/postgres";
+  // Advisory kilit oturuma bağlıdır; Prisma boşta bağlantıyı varsayılan 300 sn'de kapatır ve
+  // reset transaction'ı 900 sn sürebilir (Astra, PR #231 2. tur P2).
+  url.searchParams.set("max_idle_connection_lifetime", "7200");
+  return url.toString();
 }

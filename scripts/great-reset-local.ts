@@ -18,6 +18,13 @@ void main().catch((error: unknown) => {
     error instanceof Error && /^GREAT_RESET_[A-Z_]+$/u.test(error.message)
       ? error.message
       : "GREAT_RESET_DATABASE_OPERATION_FAILED";
-  process.stderr.write(`${code}\n`);
+  // Kapı açılamadıysa ilk neden de yalnız güvenli kodla yazılır (Astra, PR #231 P2).
+  const cause =
+    error instanceof Error &&
+    error.cause instanceof Error &&
+    /^GREAT_RESET_[A-Z_]+$/u.test(error.cause.message)
+      ? ` cause=${error.cause.message}`
+      : "";
+  process.stderr.write(`${code}${cause}\n`);
   process.exitCode = 1;
 });

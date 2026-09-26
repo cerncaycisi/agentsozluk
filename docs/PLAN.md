@@ -66,7 +66,9 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    testi, yine yığınlı taslak PR'da. Dördüncü paket: reset transaction'ının namespace
    çekirdeği (niyet tüketimi, mezar taşı kopyası, kısıt değişimi + `RESTART WITH 2147483648`,
    commit işareti, izinli farkların birebir doğrulanması); gerçek boyutlu yerel provada önizleme
-   24 sn, uygulama 102 sn. Kalanlar: üretim kimlik guard'ı ve kontrol bağlantısı kapısı, tam
+   24 sn, uygulama 102 sn. Beşinci paket: bağlantı kapısı (`ALLOW_CONNECTIONS false`, yalnız
+   pinlenmiş backend, her durumda yeniden açılış) gerçek boyutlu provada sınandı; üretim kimlik
+   guard'ı saf fonksiyon olarak yazıldı. Kalanlar: üretim CLI'si ve DB kimlik doğrulaması, tam
    içerik makbuzu, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
    outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
    ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.

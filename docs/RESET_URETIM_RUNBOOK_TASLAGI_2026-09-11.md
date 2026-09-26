@@ -319,6 +319,12 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
 - **Kapı açılamıyor:** app/worker açılmaz. Önceden doğrulanmış container konsol
   süper kullanıcı yolu `postgres` DB'sinden kapıyı açar; sonuç ayrıca
   `pg_database.datallowconn` ile doğrulanır. Bu yol sınanmadan reset GO yok.
+- **Yürütücü süreci öldü (SIGKILL, OOM, oturum kopması):** `finally` çalışmaz; kapı
+  kapalı ve tek yürütücü advisory kilidi kontrol oturumuyla birlikte düşmüş olabilir.
+  Otomatik tekrar yok. Önce `postgres` DB'sinden hedef backend'in ve kilitlerin bittiği
+  doğrulanır, sonra kapı açılır ve `datallowconn` doğrulanır, ardından audit, niyet,
+  commit işareti, mezar taşı ve sequence ile sonuç tamamlandı/geri alındı/belirsiz
+  diye uzlaştırılır (Astra, PR #231).
 - **Belirsiz COMMIT:** önce uzlaştır, sonra operatör kararı. Kısmi başarı
   varsayımıyla `--execute` tekrar edilmez.
 
