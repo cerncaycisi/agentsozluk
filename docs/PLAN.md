@@ -55,9 +55,10 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 2. **B5.3 ölçümü** — hassas konu kuralı son 30 günde kaç eylemi tetiklerdi; ölçmeden kural yok.
 3. **Great reset hazırlığı** — 25 Eylül: gerçek boyutlu prova yapıldı, araç üretim boyutuna
    uyarlandı ([prova](RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md): önizleme ~23 sn, uygulama
-   ~83 sn). Kalanlar: 410 uygulaması, üretim reset profili (hızlı araç),
-   outbox/uygulama kapanış-açılış kabulü, reset runbook'unun Astra turu ve Gökhan onayı;
-   reset anında 6.3-5 ve `__Host-` çerez öneki.
+   ~83 sn). Çekirdek kapılar PR #225 ile main'de; üretimde değil. Kalanlar: geniş public ID
+   namespace'i ve 410 uygulaması, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
+   outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
+   ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
    cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
    serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma
@@ -942,19 +943,57 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    pinned üretim profiliyle; elle SQL yok. Yedek yeri: kişisel T3 sunucusu (B9).
    **Reset'e bağlanan iki iş (Gökhan, 24 Eylül: "kalanlar fine"):** tek entry'li başlıkların
    indeks eşiği (6.3-5) ve oturum çerezinin `__Host-` önekine geçmesi reset'le aynı anda.
-   Açık kararları: üretim yürütücüsü (yerel araca pinned üretim profili mi,
-   elle onaylı SQL mi), yedek saklama yeri, app kapatma biçimi, silinen
-   URL'ler için 410/404-SEO kararı. Taslak onaysız ve hakemsizdir; uygulamadan
-   önce Astra turu + Gökhan onayı şart.
+   **25 Eylül çekirdek teslimi:** PR #225, incelenen exact `d35984e` ve 7/7 CI sonrası
+   `890b467` olarak main'e birleşti. Opus 5.5 salt okunur kod hakemi `KOD GO` verdi:
+   diğer backend/hazırlanmış işlem, trigger/RLS ve public ID sequence `DEFAULT` kapıları
+   yerel çekirdekte; üretim profili veya dağıtım yok. Hakemin kalan P3 sınırları
+   [üretim tasarımına](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md) taşındı.
+   **Üretim profili tasarımı:** Opus 5.5 v3 `146a319` için 6 P2, 3 P3;
+   v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için 1 P2, 7 P3 ile
+   `TASARIM DÜZELTİLMELİ` dedi. v6 exact `eeb1b54` için Opus 5.5
+   **TASARIM UYGUN** dedi (P1/P2 yok; 8 P3 uygulama sınırı). v7 exact
+   `19a6c85` için de Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; 7 P3).
+   v8 exact `ace70f6` için de Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok;
+   6 P3). v9 exact `6ca052f` için bir P2 ve dört P3 ile
+   **TASARIM DÜZELTİLMELİ** dedi: dış trafik açılmadan önce imzalı yedek
+   neslinin durum geçişi tanımsızdı. v10 exact `719e191` için Opus 5.5
+   **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v11 eski imzalı kaydın tekrarını
+   korunan DB trafik olayıyla engellemeyi hedefledi; Opus 5.5 v11 exact
+   `6c032ee` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): rollback
+   sonrası eski imzalı kayıt yine kullanılabiliyordu. v12 exact `c0442c8`
+   için Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v13 sequence'in
+   doğrudan olumlu kontrolünü, kapı sonrası PID/snapshot kontrolünü ve gerçek
+   tablo sahibi sınırını kabul kapısına ekledi. Opus 5.5 v13 exact `483886a`
+   için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): geri dönüş penceresindeki
+   iç kabul yazıları tam özet eşitliğini bozabilirdi. v14 exact `a8b52ca`
+   için Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve altı
+   P3 kabul ayrıntısı). v15 exact `2a34d8e` için de Opus 5.5
+   **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v16 restore penceresinin
+   `TRAFFIC_OPEN` geçişinde bittiğini ve normal app'in boş cache/TLS smoke
+   kabulünü netleştirir. v17 aşağıdaki 26 Eylül 410 kararını ve Astra'nın üst
+   namespace kilidini işler. Astra v17 exact `e34fa5a` için **TASARIM
+   DÜZELTİLMELİ** dedi (2 P2, 1 P3); v18 reset sonrası `publicId` alt sınır
+   kısıtını ve runbook adım eşlemesini ekler; Astra v18 exact `4b8bace` için
+   **TASARIM UYGUN** dedi (P1/P2/P3 yok).
+   Kod, migration,
+   bütçe, kontrol yolu, gerçek boyutlu restore ve uygulama hakemliği açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
    silinen başlık/entry/yazar adresleri **410 Gone** döner. Gerekçe: içerik kalıcı olarak
    gitti; 410 bunu arama motoruna ve yapay zekâ tarayıcılarına açıkça söyler, eski
    adresler dizinden 404'e göre daha hızlı düşer, "geçici hata mı" belirsizliği kalmaz.
-   Güvenlik şartı doğrulandı: reset `TRUNCATE … CONTINUE IDENTITY` kullanıyor
-   (`src/modules/maintenance/repository/great-reset.ts`), yani `publicId` sayaçları sıfırlanmaz
-   ve eski bir adres asla yeni, başka bir içeriğe denk gelmez. Uygulama: reset öncesi en
-   büyük `publicId` değerleri kaydedilir; bu sınırın altındaki ve artık bulunmayan
-   kimlikler 410, sınırın üstündeki bulunmayanlar 404. Sitemap eski adresleri içermez.
+   (Astra 26 Eylül: "daha hızlı düşer" iddiası repoda ölçülmedi; seçim gerekçesi
+   sayılmaz.)
+   İlk güvenlik varsayımı eksik çıktı: `TRUNCATE … CONTINUE IDENTITY` mevcut sequence
+   değerini korur, ancak geçmişte silinmiş ve o andaki en büyük değerden yüksek bir
+   ID'nin yeniden kullanılmadığını tek başına kanıtlamaz. v4 tasarımında güvenli
+   çözüm, eski `INTEGER` namespace'ini tamamen 410 alanı yapıp ayrı onaylı `BIGINT`
+   geçişiyle yeni ID'leri `2147483648` üstünden başlatmaktır. **26 Eylül Gökhan
+   kararı ("Yalnız bilinen silinmişe 410", Astra önerisi):** eski aralığın tamamına
+   410 verilmez; reset anında silinen kayıtların `(kind, uuid, publicId)` mezar taşı
+   tutulur, yalnız bunlara 410, bilinmeyen/hiç kullanılmamış ID'ye 404. Reset öncesi
+   fiziksel silinmiş içerik 404 kalır. `BIGINT` yeniden kullanımı önlemek için korunur;
+   migration–reset arasında üst aralık `CHECK` ve sequence `MAXVALUE` ile kapalıdır.
+   Geçiş ve kabul olmadan reset GO yok. Sitemap eski adresleri içermez.
    **15:21 TSİ somut outbox engeli:** 191.768/191.768 satır işlenmemiş,
    mevcut mimaride consumer yok. Kendiliğinden drain beklenmeyecek; eski
    olayları ve işlenmemiş durumunu kayıpsız koruyan, reset öncesi kümeyi

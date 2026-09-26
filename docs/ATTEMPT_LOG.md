@@ -8968,3 +8968,262 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   verdi. İlgili 30 birim testi, format, lint ve typecheck geçti.
 - **Tekrarlama:** `OWNED BY` bağlılığı, sütunun gerçekten o sequence'den değer aldığını
   göstermez; `DEFAULT` ifadesini ayrıca doğrula. RLS açıkken gizli satırlarla karar verme.
+
+## 2026-09-25 — great reset çekirdek hakemi, birleşme ve tasarım v3 reddi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur kod hakemi exact
+  `d35984e61863e8b7c4bc55a334bc6a2115750e1c` için **KOD GO** verdi.
+  Önceki iki P2 ve üç P3 güvenlik yönünden kapandı; yeni P1/P2 yok. Kalan P3:
+  bazı yetki hatalarında genel güvenli kod, baştan var olan özel INSERT yazıcıları,
+  FORCE RLS'nin CLI üzerinden uçtan uca sınanmaması. Hakem kod değiştirmedi,
+  üretime bağlanmadı; migration SQL'inin tamamını taradığını iddia etmedi.
+- PR #225 exact head 7/7 CI, review state boş, `mergeable=MERGEABLE`,
+  `mergeStateStatus=CLEAN` olarak hemen yeniden okundu; `890b4673415c8fe292c227c6eb66bb4fbd887e6f`
+  ile main'e birleşti. Merge'in ilk ebeveyni `b788cda`, ikincisi `d35984e`;
+  main'de yalnız çekirdek kod ve deneme günlüğü değişti. Üretim dağıtımı yok.
+- Claude Opus 5.5 salt okunur tasarım hakemi v3 exact
+  `146a319793fbaceaf1b71a0a0a21e3766e5b3f91` için
+  **TASARIM DÜZELTİLMELİ** dedi (6 P2, 3 P3). Niyetin işlem sırası, makbuz/plan
+  özetlerinin ayrımı, kontrol bağlantısı, 410 yüksek su, runbook restore yolu ve
+  timer envanteri eksikti. v4 ile runbook taslağı yeniden yazıldı; yeniden hakemlik
+  ve ölçüm henüz açık.
+- **Tekrarlama:** yerel `CONTINUE IDENTITY` ve mevcut satırların `max(publicId)`
+  değeri, geçmişte silinmiş bütün ID'lerin üst sınırını kanıtlamaz. 410 güvenliği
+  için doğrulanmış ayrı namespace olmadan reset onayı isteme.
+
+## 2026-09-25 — üretim reset tasarımı v4 hakemi ve yerel sequence/isim deneyi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `3a7d6894ebd2b8ac4371c601672d1fad33c207ce` v4 için
+  **TASARIM DÜZELTİLMELİ** dedi (4 P2, 6 P3). P2: 410'un canlı kayıt öncesi
+  uygulanma riski, eski UUID/slug kaynağı yokluğu, restore'un geçerli niyeti
+  geri getirmesi ve restore nesne sahipliği. Hakem kod değiştirmedi ve üretime
+  bağlanmadı.
+- Yerel PostgreSQL 16 geçici sequence'de `RESTART WITH 2147483648` işlem içinde
+  o değeri verdi; rollback sonrası eski sıradaki değer `2` geldi. Ayrı iki geçici
+  DB'nin adları tek transaction'da değiştirildi ve rollback eski adları geri
+  getirdi. İki geçici DB için `ALLOW_CONNECTIONS false` sonrası tek transaction'da
+  ad kesimi COMMIT edildi; iki yeni ad da kapalı kaldı. Geçici nesneler temizlendi;
+  gerçek boyutlu süre/izin kanıtı değildir.
+- v5 taslağı canlı kaydı önce arayan 410 sırası, korunan mezar taşı ve commit
+  işareti, `invalidatedAt` ayrımı ve gölge DB restore yolu ile güncellendi.
+  Yeniden hakemlik ve CI bekler.
+- **Tekrarlama:** restore edilen yedek tüketilmemiş niyeti de geri getirir;
+  dump eşitliği başarılı diye niyeti tekrar kullanılabilir bırakma. Restore
+  nesnelerinin sahibini ve ACL'sini de makbuzla karşılaştır.
+
+## 2026-09-25 — üretim reset tasarımı v5 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `4a5dc8772c5587b4bddf08c67ebee5d07c6e8e0f` v5 için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 7 P3). P2: yalın slug, mevcut
+  açılmamış başlık formudur ve slug/alias benzersiz değildir; slug mezar
+  taşı 410 koşuluyla çelişir. P3'ler sequence son değerinin tüketilmeden
+  okunması, `BIGINT` çekirdek kapısı/SQL cast envanteri, restore smoke sırası,
+  DB düzeyi ayarları/ACL, restore yetkileri ve gerçek HTTP 410 yoludur.
+- Yerel PostgreSQL 16 geçici sequence'inde `RESTART WITH 2147483648` sonrası
+  `last_value=2147483648`, `is_called=false` satır okumasıyla değer tüketmeden
+  görüldü. Geçici nesne oturum sonunda kalktı; ürün testinin yerine geçmez.
+- v6 taslağı UUID-only mezar taşı ve yalın slug istisnası, `AS bigint` kapısı,
+  DB düzeyi restore makbuzu ve güvenli smoke sırasıyla güncellendi. Yeniden
+  hakemlik/CI açık.
+- **Tekrarlama:** kanonik `slug--publicId` ile yalın `/baslik/{slug}` aynı
+  yüzey değildir; yalın açılmamış başlık formunu geçmiş slug nedeniyle 410'a
+  çevirmek yeni başlık açmayı engeller.
+
+## 2026-09-25 — üretim reset tasarımı v6 hakem sonucu
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `eeb1b5445cc7b114bc6325a4c06618b6426801b0` v6 için
+  **TASARIM UYGUN** dedi; yeni P1/P2 veya tasarım çelişkisi yok. Sekiz P3:
+  yalın başlık URL'sinin kodlanmış title olması, `--rakam` parser çakışması,
+  route handler rewrite riski, operatör restore'unda DB durumu/roller,
+  extension sahipliği, ikinci reset ID yeniden kullanımı ve UUID sonek
+  ayrıştırması. Hakem yalnız Read kullandı; üretime bağlanmadı.
+- v7 taslağı `great_reset_commits` doluyken ikinci reseti durdurur; Node
+  middleware 410 adayını, rol/DB/extension restore makbuzunu, kodlanmış
+  başlık ve UUID sonek testlerini açık kabul kapısı yapar. Uygulama ve
+  gerçek boyutlu ölçüm yapılmadı.
+- **Tekrarlama:** ikinci reset aynı `2147483648` başlangıcını tekrar
+  kullanırsa eski yeni-nesil URL başka içeriğe bağlanabilir. İlk reset
+  işareti varken yürütücüyü fail-closed durdur.
+
+## 2026-09-25 — üretim reset tasarımı v7 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `19a6c8513943b82154715ec8abbee847d572f948` v7 için
+  **TASARIM UYGUN** dedi; P1/P2 yok, yedi P3 kabul ayrıntısı var.
+  Önemlileri: dış trafik sonrası pre-reset restore'un ikinci resetle ID
+  yeniden kullanımına yol açması, 410 yanıtında `no-store` yokluğu,
+  prefetch matcher'ı ve restore fark listesinin tutarsızlığı. Hakem yalnız
+  Read kullandı, üretime bağlanmadı.
+- v8, geri yüklemeyi Caddy bakım yanıtı kaldırılmadan ve worker/yazma
+  açılmadan önceki dar kabul penceresiyle sınırlar. Geri yükleme audit'i
+  ikinci reseti durdurur. Node middleware için cache/CSP/prefetch/DB hata
+  yolu ve standalone bağlantı sayımı açık kabul kapısıdır; uygulama yok.
+- **Tekrarlama:** 410 yanıtı `no-store` olmadan cache'lenebilir; restore
+  sonrası bayat 410 kalabilir. Dışarıya yeni public ID çıktıktan sonra
+  eski dump'a dönüp aynı sequence başlangıcını kullanma.
+
+## 2026-09-25 — üretim reset tasarımı v8 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `ace70f611796101ca2a6b175271c3de9deac4788` v8 için
+  **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 kabul ayrıntısı var. Hakem
+  yalnız Read kullandı, üretime bağlanmadı. Ayrıştırıcı kaynağını ve deneme
+  günlüğünün sonunu okuyamadığını açıkça bildirdi; bunları doğrulanmış saymadı.
+- v9 taslağı yoğun prefetch sorgu/p95 ölçümünü, süreç ömrü işaret önbelleği
+  değişmezini, DB hatasında `503 no-store`, RSC/Server Action ve UTF-8 testini,
+  ortam başına restore farkını ve eski gecelik yedekler için DB dışı reset
+  nesli kapısını ekledi. Uygulama, migration, restore ölçümü yapılmadı.
+- **Tekrarlama:** tek "izinli fark" listesi ayrı kümelerde aynı sahipliği
+  temsil etmez. Reset öncesi gecelik yedeği trafik açıldıktan sonra geri
+  yüklemek, reset dump'ına konan yasağı dolanır.
+
+## 2026-09-25 — üretim reset tasarımı v9 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `6ca052fa893b47931d9f99c43094d02a11742a7f` v9 için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 4 P3). P2: DB dışı imzalı yedek
+  nesli kaydının reset COMMIT, trafik açılışı ve rollback geçişleri tanımsız;
+  eski yedeğe dönüş yasağı bu yüzden uygulanabilir bir kapı değildi.
+  Hakem yalnız Read kullandı, üretime bağlanmadı; ayrıştırıcı ve son deneme
+  günlüğünü doğrulayamadığını açıkladı.
+- v10, exact reset-anı dump SHA'sına bağlı `COMMITTED_MAINTENANCE`, Caddy
+  açılmadan önce `TRAFFIC_OPEN`, geri yükleme sonrası `ROLLED_BACK` durumlarını
+  ve fail-closed imza/nesil doğrulamasını tanımlar. 410 yalnız `GET`/`HEAD`
+  eski ID/UUID adaylarında çalışır; POST ve yeni/yalın yollar DB'ye uğramaz.
+- **Tekrarlama:** trafik açıldı bilgisini açılıştan sonra yazmak, aradaki
+  boşlukta eski gecelik yedeğe hatalı restore izni verebilir. Dar rollback
+  penceresinde bile yalnız o `operationId`'nin exact reset-anı dump'ı geçerlidir.
+
+## 2026-09-25 — üretim reset tasarımı v10 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `719e1917a4805947101cbd4dbbdb7e4022164200` v10 için
+  **TASARIM UYGUN** dedi; v9'daki P2 kapandı, yeni P1/P2 yok, altı P3 kabul
+  ayrıntısı var. Hakem yalnız Read kullandı, üretime bağlanmadı; route
+  ayrıştırıcı kaynağını okumadığını bildirdi. Yürütücü kaynak yolunu ayrıca
+  `src/lib/routing/public-urls.ts` içinde doğruladı; bu hakem onayı değildir.
+- v11, `PREPARED/ABORTED` geçişini, artan/önceki özetli dış kayıt zincirini,
+  korunan `great_reset_exposure_events` trafik açılış satırını, operatör
+  sunucusundan çıkmayan HMAC anahtarını, üretim öncesi SHA karşılaştırmasını
+  ve dosya+dizin fsync sırasını kabul kapısına ekledi. Kod, migration ve
+  gerçek boyutlu ölçüm henüz yok.
+- **Tekrarlama:** HMAC imzası bir eski kaydın geçerli olduğunu kanıtlar,
+  en yeni kayıt olduğunu tek başına kanıtlamaz. Canlı DB'deki append-only
+  trafik açılış olayıyla restore'u ayrıca engelle.
+
+## 2026-09-25 — üretim reset tasarımı v11 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `6c032eec369fa4796ce7395a28a1096ad79af09f` v11 için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). P2: başarılı rollback'ten
+  sonra eski imzalı `COMMITTED_MAINTENANCE` kaydı tekrar oynatılırsa canlı
+  DB pre-reset olduğundan trafik olayı ve yeni namespace kullanımı yoktur;
+  sonraki yazılar eski dump'a dönülerek kaybolabilir. Hakem yalnız Read
+  kullandı, üretime bağlanmadı.
+- v12, aynı `operationId`'li canlı reset commit'ini ve restore audit yokluğunu
+  olumlu koşul yapar; iki sequence'in tüketilmemiş başlangıcını, trafik olayı
+  ve yeni namespace yokluğunu kapalı DB'de pinned bağlantıyla tekrar ölçer.
+  Dış durum ve DB olayı arasındaki hata yolu idempotent onarımla tanımlanır.
+- **Tekrarlama:** yalnız olumsuz koşullar, rollback sonrası pre-reset DB'yi
+  reset sonrası DB'den ayıramaz. Restore kapısı canlı DB'nin doğru nesil ve
+  işlem kimliğinde olduğunu olumlu kanıtlamalıdır.
+
+## 2026-09-25 — üretim reset tasarımı v12 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `c0442c8a9252734f90bc199b6f93aadd257c132d` v12 için
+  **TASARIM UYGUN** dedi; v11 P2 kapandı, yeni P1/P2 yok, altı P3 kabul
+  ayrıntısı var. Hakem yalnız Read kullandı, üretime bağlanmadı; PostgreSQL
+  davranışı yorumunu bu tur kaynak/deneyle doğrulamadığını açıkça bildirdi.
+- v13, sequence ilişkisinden `last_value/is_called` değerlerinin olumlu
+  kontrolünü, kapı sonrası yeni snapshot ve yalnız pinned PID sayımını,
+  `TRAFFIC_OPEN`/`ROLLED_BACK` için DB kimliğini, gerçek tablo sahibi/trigger
+  sınırını, rollback'in kalıcı ürün sonucunu ve korunan tam özeti açık kabul
+  koşulu yapar. Kod, migration ve gerçek boyutlu ölçüm yapılmadı.
+- **Tekrarlama:** `pg_sequences.last_value` NULL olabilir; `!=` ile yazılan
+  olumsuz SQL kapısı NULL'u güvenli ret olarak yorumlamaz. Gerçek sequence
+  ilişkisinden eşitliği **true** arayarak fail-closed denetle.
+
+## 2026-09-25 — üretim reset tasarımı v13 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `483886a53e605ec92c2334fef6f6c960dfdfb29b` v13 için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). P2: geri dönüşe izin verilen
+  iç kabul penceresindeki bir oturum/audit veya açılış yazısı, korunan tam
+  özet eşitliğini bozup restore yolunu kapatabilir. Hakem yalnız Read kullandı,
+  üretime bağlanmadı; app açılışının gerçekten yazıp yazmadığını bu tur
+  kaynakla doğrulamadığını belirtti.
+- v14, iç kabul app'inin mevcut DB kimliğiyle ama bütün havuz bağlantılarında
+  `default_transaction_read_only=on` koşuluyla çalışmasını, yalnız GET/HEAD
+  smoke'unu ve sonunda tam özet/sequence eşitliğini kapı yapar. Login,
+  Server Action ve yazan `__Host-` smoke'u geri dönüş penceresinden çıkarıldı.
+  Read-only oturum kanıtı yoksa reset GO yok. Kısa bekleme, autovacuum,
+  sequence nesne kimliği, commit özeti ve tam ölçüm bütçesi de açıklandı.
+- **Tekrarlama:** geri dönüş için birebir makbuz eşitliği isteniyorsa,
+  kabul penceresinde çalışan app'e DB yazısı yaptırma. Yazılı adımları
+  rollback penceresi kapandıktan sonraya taşı.
+
+## 2026-09-25 — üretim reset tasarımı v14 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `a8b52ca8167e5f33cb45e24a5bc599e7510c3697` v14 için
+  **TASARIM UYGUN** dedi; v13 P2 kapandı, yeni P1/P2 yok. Bir P3 sıra
+  belirsizliği ve altı P3 uygulama ayrıntısı buldu. Hakem yalnız Read kullandı,
+  üretime bağlanmadı; PostgreSQL/Prisma davranışını bu tur deneyle
+  doğrulamadığını belirtti.
+- v15, `TRAFFIC_OPEN` yalnız rollback penceresini kapattıktan sonra Caddy
+  bakım yanıtının açık kaldığını; normal app ve iç Host yazan smoke PASS sonrası
+  dış trafiğin açıldığını yazar. Read-only havuzun connection-startup ayarını,
+  her bağlantıda `SHOW` kanıtını, güvenli `SQLSTATE 25006` sayımını, açılış
+  yazıcı envanterini, atılabilir Next.js cache'ini ve smoke hesabı/kohort
+  sınırını kabul kapısı yapar. Kod/production ölçümü henüz yok.
+- **Tekrarlama:** `TRAFFIC_OPEN` dış kaydı, Caddy'nin dış trafiği açıldığı
+  anlamına otomatik gelmez; normal app ve yazan smoke'u bakım yanıtı sürerken
+  tamamla. Read-only kabulü yalnız tek Prisma bağlantısında kanıtlama.
+
+## 2026-09-25 — üretim reset tasarımı v15 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `2a34d8e69b8ea6637ba09a142027edf642f230fb` v15 için
+  **TASARIM UYGUN** dedi; yeni P1/P2 yok, sıra çelişkisi kapandı, altı P3
+  uygulama ayrıntısı var. Hakem yalnız Read kullandı, üretime bağlanmadı;
+  PostgreSQL/Prisma davranışını deneyle doğrulamadığını bildirdi.
+- v16, restore penceresinin dış kayıt `TRAFFIC_OPEN` geçişinde bittiğini,
+  normal app'in yeni container/boş cache ile açılıp GET/HEAD yeniden kabul
+  edileceğini ve TLS'li iç Host yazan smoke'un Caddy açılmadan önce geçeceğini
+  yazar. Read-only parametresi yalnız geçici runtime'dadır; normal havuzun
+  `off` sonucu, güvenli `SQLSTATE 25006` sayımı ve dört bayrak kapalı giriş
+  E2E'si açık uygulama kapısıdır. Kod/üretim ölçümü yapılmadı.
+- **Tekrarlama:** bakım yanıtının hâlâ açık olması restore izni değildir;
+  `TRAFFIC_OPEN` dış durumuna geçildikten sonra eski dump'a dönme.
+
+## 2026-09-26 — 410 kapsamı ürün kararı ve üst namespace açığı
+
+- GPT-6 Astra salt okunur, `2a34d8e69b8ea6637ba09a142027edf642f230fb` ve çalışma
+  ağacındaki v16 farkları üzerinde 410 kapsamını inceledi. Önerisi: eski sayısal
+  aralığın tamamına 410 verme; reset anında silinen kayıtların `publicId` değerini
+  mezar taşına ekle, bilinen silinmiş ID 410, bilinmeyen 404. Ayrıca BIGINT
+  migration'ı ile reset arasında `2147483648` ve üstünün DB düzeyinde
+  engellenmediğini buldu (koşullu açık; gerçekleştiğine dair bulgu yok).
+- Gökhan kararı (26 Eylül): "Yalnız bilinen silinmişe 410". v17 bunu işler; üst
+  aralık migration'dan resete kadar `CHECK ("publicId" <= 2147483647)` ve sequence
+  `MAXVALUE = 2147483647` ile kapalıdır, reset transaction'ı ikisini kaldırır.
+  Kod/üretim ölçümü yapılmadı; üretime bağlanılmadı.
+- **Tekrarlama:** mezar taşını tarihsel tam envanter sanma; yalnız reset anında
+  var olan kayıtları kapsar. "410, 404'ten daha hızlı düşer" iddiasını ölçmeden
+  gerekçe yapma.
+- GPT-6 Astra v17 exact `e34fa5a2a301a10a9f2e89f988166429ab50dbbc` için
+  **TASARIM DÜZELTİLMELİ** dedi (2 P2, 1 P3; P1 yok). P2: reset sonrası açık
+  değerli INSERT, alt sınır kısıtı olmadığı için eski ID'yi yeniden
+  kullanabiliyordu; P2: runbook önizlemesi hâlâ `MAXVALUE ≥ 2147483648`
+  istiyordu ve uygulama adımında MAXVALUE yükseltmesi yoktu; P3: runbook
+  mezar taşını yalnız UUID üzerinden anlatıyordu. v18 üçünü de karşılar.
+- **Tekrarlama:** üst sınır kısıtını kaldırırken alt sınır kısıtını aynı
+  transaction'da ekle; `DEFAULT nextval()` açık değeri sınırlamaz.
+- GPT-6 Astra (`gpt-6-astra`) v18 exact
+  `4b8bace4c408aa3360b8e0e56a828a2b2a77ae5f` için **TASARIM UYGUN** dedi; üç
+  bulgu kapandı, yeni P1/P2/P3 yok. Statik tasarım incelemesidir; migration,
+  PostgreSQL rollback/restore provası ve HTTP/E2E kabulü açık.

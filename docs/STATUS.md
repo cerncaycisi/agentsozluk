@@ -7,6 +7,37 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-25 — great reset çekirdek kapıları main'de; üretim tasarımı açık
+
+- PR #225 exact `d35984e61863e8b7c4bc55a334bc6a2115750e1c`, 7/7 CI ve
+  Claude Opus 5.5 salt okunur **KOD GO** sonrası main'e
+  `890b4673415c8fe292c227c6eb66bb4fbd887e6f` olarak birleşti. Hakemin
+  önceki iki P2 bulgusu kapandı; üç P3 sınır üretim profiline taşındı.
+- Yerel PostgreSQL 16 yedek kopyasında 2.292.255 silinecek satırlı başlangıç,
+  bozuk `DEFAULT` için `PUBLIC_ID_SEQUENCE_UNSAFE`, kapalı iç trigger için
+  `TRIGGER_STATE_UNSAFE`, sonra temiz geri dönüş görüldü. FORCE RLS davranışı
+  ayrı geçici tabloda doğrulandı. 30 birim testi, format, lint, typecheck geçti.
+- Üretim profili v3 `146a319` için Opus 5.5 **TASARIM DÜZELTİLMELİ** dedi
+  (6 P2, 3 P3); v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için
+  1 P2, 7 P3 buldu. v6 exact `eeb1b54` için **TASARIM UYGUN** dedi
+  (P1/P2 yok; 8 P3 uygulama sınırı). v7 exact `19a6c85` için de
+  **TASARIM UYGUN** dedi (P1/P2 yok; 7 P3). v8 exact `ace70f6` için de
+  **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v9 exact `6ca052f` için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 4 P3). v10 exact `719e191` için
+  **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v11 exact `6c032ee` için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). v12 exact `c0442c8` için
+  **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v13 exact `483886a` için
+  **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). v14 exact `a8b52ca` için
+  **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve 6 P3). v15 exact
+  `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v17, Gökhan'ın 26 Eylül
+  kararıyla 410'u yalnız mezar taşında kayıtlı silinmiş sayısal ID'ye daraltır (bilinmeyen 404) ve migration–reset arası üst namespace'i DB kısıtıyla kapatır. Astra v17 exact `e34fa5a` için **TASARIM DÜZELTİLMELİ** dedi
+  (2 P2, 1 P3); v18 reset sonrası alt sınır kısıtını ve runbook eşlemesini ekler. Astra v18
+  exact `4b8bace` için **TASARIM UYGUN** dedi (P1/P2/P3 yok); v18/runbook
+  hâlâ taslaktır;
+  kod, geniş ID geçişi, tam digest/bütçe, production kontrol/restore yolu ve
+  uygulama hakemliği bekler.
+  Üretime bağlanılmadı ve reset/dağıtım yapılmadı.
+
 ## 2026-09-25 — B5.3 yerel yedek ön taraması
 
 - 25 Eylül 14:18 UTC yedeğinin yalnız yerel kopyasında, önceki 30 günde 7.375 içerik
