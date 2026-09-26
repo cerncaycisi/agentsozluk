@@ -9223,3 +9223,7 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   mezar taşını yalnız UUID üzerinden anlatıyordu. v18 üçünü de karşılar.
 - **Tekrarlama:** üst sınır kısıtını kaldırırken alt sınır kısıtını aynı
   transaction'da ekle; `DEFAULT nextval()` açık değeri sınırlamaz.
+- GPT-6 Astra (`gpt-6-astra`) v18 exact
+  `4b8bace4c408aa3360b8e0e56a828a2b2a77ae5f` için **TASARIM UYGUN** dedi; üç
+  bulgu kapandı, yeni P1/P2/P3 yok. Statik tasarım incelemesidir; migration,
+  PostgreSQL rollback/restore provası ve HTTP/E2E kabulü açık.

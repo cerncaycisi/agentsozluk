@@ -31,7 +31,8 @@
   **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve 6 P3). v15 exact
   `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v17, Gökhan'ın 26 Eylül
   kararıyla 410'u yalnız mezar taşında kayıtlı silinmiş sayısal ID'ye daraltır (bilinmeyen 404) ve migration–reset arası üst namespace'i DB kısıtıyla kapatır. Astra v17 exact `e34fa5a` için **TASARIM DÜZELTİLMELİ** dedi
-  (2 P2, 1 P3); v18 reset sonrası alt sınır kısıtını ve runbook eşlemesini ekler; v18/runbook
+  (2 P2, 1 P3); v18 reset sonrası alt sınır kısıtını ve runbook eşlemesini ekler. Astra v18
+  exact `4b8bace` için **TASARIM UYGUN** dedi (P1/P2/P3 yok); v18/runbook
   hâlâ taslaktır;
   kod, geniş ID geçişi, tam digest/bütçe, production kontrol/restore yolu ve
   uygulama hakemliği bekler.

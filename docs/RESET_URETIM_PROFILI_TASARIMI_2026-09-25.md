@@ -46,6 +46,8 @@ exact `e34fa5a2a301a10a9f2e89f988166429ab50dbbc` için **TASARIM DÜZELTİLMELİ
 dedi (2 P2, 1 P3): reset sonrası açık değerli INSERT eski ID'yi yeniden
 kullanabiliyordu ve runbook önizleme/uygulama adımları yeni sınırla
 çelişiyordu. v18 reset sonrasına alt sınır kısıtı ekler ve runbook'u eşler.
+Astra v18 exact `4b8bace4c408aa3360b8e0e56a828a2b2a77ae5f` için **TASARIM
+UYGUN** dedi; üç bulgu kapandı, yeni P1/P2/P3 yok.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
