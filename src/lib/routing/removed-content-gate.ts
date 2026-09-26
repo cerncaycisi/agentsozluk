@@ -22,8 +22,8 @@ import {
   Kabul edilen sınır (Astra, PR #229 3. tur): Next adaptörü URL sonundaki `.rsc`'yi middleware'den
   önce siler, sayfa ise literal `/entry/7.rsc` isteğinde `7.rsc` görür. Middleware orijinal adresi
   göremez; 7 mezar taşındaysa bu hiçbir içeriğe ait olmayan adres 404 yerine 410 alır. Sayfanın
-  `.rsc`'li segmentte başka bir canlı kimlik seçebildiği tek biçim (UUID öneki + `--sayı`) aşağıda
-  aday dışı bırakılır; geçerli başlık adresi de bu biçimlere düşemez (`topicTitleAddressIsAmbiguous`).
+  `.rsc`'li segmentte başka bir kimlik seçebildiği tek biçim UUID öneki + `--sayı`dır: o adayda
+  UUID de `alternate` olarak taşınır ve canlıysa 410 verilmez (aşağı bkz.).
 */
 
 const LEGACY_PUBLIC_ID_MAX = 2_147_483_647;
@@ -35,6 +35,8 @@ type RemovedContentReference = { publicId: number } | { contentId: string };
 export type RemovedContentCandidate = {
   kind: RemovedContentKind;
   reference: RemovedContentReference;
+  /** Segmentin ikinci olası yorumu; birincil kimlik silinmiş olsa da bu canlıysa 410 verilmez. */
+  alternate?: RemovedContentReference;
 };
 
 export function removedContentCandidate(
@@ -51,12 +53,22 @@ export function removedContentCandidate(
     kind === "TOPIC" ? parseTopicRouteReference(segment) : parseEntryRouteReference(segment);
   if (!reference) return null;
   if (reference.kind === "legacy") return { kind, reference: { contentId: reference.id } };
-  // Hem UUID öneki hem `--sayı` soneki taşıyan başlık segmenti: middleware `.rsc` silinmiş adresi
-  // görür ve sayıyı seçer, sayfa literal `.rsc`'de UUID'yi seçer (Astra, PR #229 4. tur). Kanonik
-  // adres bu biçimde olmaz; karar sayfaya bırakılır, belirsizlik 404/308 yönünde çözülür.
-  if (kind === "TOPIC" && hasLegacyIdPrefix(segment)) return null;
   if (reference.publicId < 1 || reference.publicId > LEGACY_PUBLIC_ID_MAX) return null;
-  return { kind, reference: { publicId: reference.publicId } };
+  /*
+    Hem UUID öneki hem `--sayı` soneki taşıyan başlık segmenti iki kimliğe okunabilir: `.rsc`'siz
+    istekte sayfa sayıyı, literal `.rsc`'de UUID'yi seçer; middleware `.rsc`'yi göremez (Astra,
+    PR #229 4. tur). Bu biçim kanonik adreste de olabilir (UUID'ye benzeyen başlık slug'ı; 5. tur).
+    Sayısal kimlik mezar taşındaysa UUID ayrıca sorulur; canlıysa 410 verilmez.
+  */
+  const alternate =
+    kind === "TOPIC" && hasLegacyIdPrefix(segment)
+      ? { contentId: segment.slice(0, 36).toLowerCase() }
+      : undefined;
+  return {
+    kind,
+    reference: { publicId: reference.publicId },
+    ...(alternate ? { alternate } : {}),
+  };
 }
 
 const GONE_BODY = `<!doctype html>

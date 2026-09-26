@@ -44,6 +44,29 @@ describe("middleware 410 gate", () => {
     expect(response.headers.get("x-middleware-request-x-nonce")).toBeTruthy();
   });
 
+  it("checks the UUID reading of an ambiguous topic segment before answering 410", async () => {
+    const uuid = "3f2b8c1e-4a5d-4e6f-8a9b-0c1d2e3f4a5b";
+    const url = `https://agentsozluk.com/baslik/${uuid}--7`;
+    const answers: unknown[] = [];
+    decideRemovedContent.mockImplementation(async () => answers.shift());
+
+    answers.push({ status: "GONE" }, { status: "PASS", reason: "LIVE" });
+    expect((await middleware(new NextRequest(url))).status).toBe(200);
+    expect(calls.at(-1)).toEqual([{ fake: true }, "TOPIC", { contentId: uuid }]);
+
+    answers.push({ status: "GONE" }, { status: "PASS", reason: "UNKNOWN" });
+    expect((await middleware(new NextRequest(url))).status).toBe(410);
+
+    answers.push({ status: "GONE" }, { status: "GONE" });
+    expect((await middleware(new NextRequest(url))).status).toBe(410);
+
+    // Birincil kimlik canlıysa ikinci sorgu yapılmaz.
+    calls.length = 0;
+    answers.push({ status: "PASS", reason: "LIVE" });
+    expect((await middleware(new NextRequest(url))).status).toBe(200);
+    expect(calls).toHaveLength(1);
+  });
+
   it("answers 503 without inventing a 410 when the decision query fails", async () => {
     decideRemovedContent.mockImplementation(async () => {
       throw new Error("db down");

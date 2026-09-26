@@ -185,7 +185,14 @@ nextval()` açıkça verilen değeri sınırlamaz ve mevcut değişmezlik trigge
    matcher prefetch yanıtına CSP/analytics eklerdi. Prefetch eskisi gibi
    middleware'e uğramaz; silinmiş adrese tıklama RSC navigasyonudur, 410 alır ve
    istemci tam sayfa gezinmesine düşer. Kapı segmenti sayfanın `params` biçimine
-   (`encodeURIComponent(decodeURIComponent(ham))`) getirerek ayrıştırır.
+   (`encodeURIComponent(decodeURIComponent(ham))`, baştaki `_NEXTSEP_` silinerek)
+   getirerek ayrıştırır. UUID öneki + `--sayı` başlık segmenti iki kimliğe okunabilir
+   (literal `.rsc` adreste sayfa UUID'yi seçer, middleware `.rsc`'yi göremez): sayısal
+   kimlik mezar taşındaysa UUID de sorulur, canlıysa 410 verilmez. Kalan kabul edilmiş
+   fark: hiçbir içeriğe ait olmayan `/entry/7.rsc` 7 silinmişse 404 yerine 410 alır.
+   **Açık GO kapısı:** tamamlanmış bir prefetch'in reset sonrası Router Cache'ten bayat
+   içerik göstermediği kanıtlanmadı; mevcut E2E yalnız tıklamanın sunucuya gidip 410
+   aldığını ölçer (Next 15.5 kısmi prefetch akışı CI'da tamamlanmadı).
    Middleware Prisma'yı doğrudan kullanmaz; aynı application service ve aynı
    `parseTopicRouteReference`/`parseEntryRouteReference` ayrıştırıcılarıyla
    karar verir. **Önce metot ve URL sözdizimi** sınıflandırılır: yalnız

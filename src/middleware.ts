@@ -37,12 +37,15 @@ export async function middleware(request: NextRequest) {
   const candidate = removedContentCandidate(request.method, request.nextUrl.pathname);
   if (candidate) {
     try {
-      const decision = await decideRemovedContent(
-        getDatabase(),
-        candidate.kind,
-        candidate.reference,
-      );
-      if (decision.status === "GONE") return goneResponse(request.method, contentSecurityPolicy);
+      const database = getDatabase();
+      const decision = await decideRemovedContent(database, candidate.kind, candidate.reference);
+      const alternate =
+        decision.status === "GONE" && candidate.alternate
+          ? await decideRemovedContent(database, candidate.kind, candidate.alternate)
+          : null;
+      const alternateIsLive = alternate?.status === "PASS" && alternate.reason === "LIVE";
+      if (decision.status === "GONE" && !alternateIsLive)
+        return goneResponse(request.method, contentSecurityPolicy);
     } catch (error) {
       logger.error(
         { event: "removed_content.decision_failed", errorCode: safeErrorCode(error) },

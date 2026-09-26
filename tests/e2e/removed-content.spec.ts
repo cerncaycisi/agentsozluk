@@ -126,6 +126,15 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
       maxRedirects: 0,
     });
     expect(ambiguous.status()).toBe(308);
+    // UUID'ye benzeyen slug'lı kanonik adres (5. tur): UUID yorumu canlı değilse silinmiş sayısal
+    // kimlik 410 alır.
+    expect(
+      (
+        await request.get(`/baslik/deadbeef-0000-4000-8000-000000000001--${goneTopicPublicId}`, {
+          maxRedirects: 0,
+        })
+      ).status(),
+    ).toBe(410);
     // Canlı içerik mezar taşından önce kazanır.
     expect(
       (await request.get(`/baslik/${topic.slug}--${topic.publicId}`, { maxRedirects: 0 })).status(),
@@ -159,7 +168,7 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
   }
 });
 
-test("a prefetched link to content removed after page load lands on the 410 page", async ({
+test("a link to content removed while the page is open reaches the server and lands on 410", async ({
   page,
 }) => {
   const database = testDatabase();
@@ -193,10 +202,14 @@ test("a prefetched link to content removed after page load lands on the 410 page
     const entryPath = `/entry/${entry.publicId}`;
     const isEntryRequest = (url: string) =>
       new URL(url).pathname.replace(/\.rsc$/u, "") === entryPath;
-    // Prefetch dinleyicisi gezinmeden önce kurulur; silme prefetch yanıtı (200) geldikten sonra
-    // olur. Next 15.5 dinamik sayfanın kısmi prefetch akışını açık tutabilir ya da iptal edip
-    // yenisini başlatabilir; CI'da `requestfinished` Chromium'da gelmedi, mobilde 1,3 sn'de geldi.
-    // Bu yüzden akışın bitmesine en çok 5 sn tanınır; asıl iddia tıklamanın 410'a inmesidir.
+    /*
+      Ölçülen iddia: sayfa açıkken içerik silinirse linke tıklama Router Cache'ten değil sunucudan
+      RSC isteği yapar ve 410 sayfasına iner. Prefetch yanıtı (200) silmeden önce beklenir.
+      AÇIK KAPI (Astra, PR #229 5. tur): prefetch akışının istemcide TAMAMLANIP önbelleğe
+      alındığı burada kanıtlanmıyor. Next 15.5 dinamik sayfanın kısmi prefetch akışını açık
+      tutabiliyor; CI'da `requestfinished` Chromium'da gelmedi. Tamamlanmış prefetch'in
+      bayat içerik göstermediği reset GO kapılarında ayrıca kanıtlanacak.
+    */
     const prefetched = page.waitForResponse(
       (response) =>
         isEntryRequest(response.url()) &&

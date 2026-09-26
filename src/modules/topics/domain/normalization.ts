@@ -1,4 +1,8 @@
-import { nextRouteParamSegment, parseTopicRouteReference } from "@/lib/routing/public-urls";
+import {
+  hasLegacyIdPrefix,
+  nextRouteParamSegment,
+  parseTopicRouteReference,
+} from "@/lib/routing/public-urls";
 const whitespacePattern = /\s+/gu;
 const diacriticPattern = /[\u0300-\u036f]/gu;
 const nonAlphaNumericPattern = /[^a-z0-9]+/gu;
@@ -68,7 +72,9 @@ export function topicTitleAddressIsAmbiguous(title: string): boolean {
   // Next adresi değiştirirse (baştaki `_NEXTSEP_`, sondaki `.rsc`) sayfa ve middleware başlığın
   // kendisini değil başka bir segmenti görür (Astra, PR #229 3. tur).
   if (nextRouteParamSegment(segment) !== segment || /\.rsc$/iu.test(segment)) return true;
-  return parseTopicRouteReference(segment) !== null;
+  if (parseTopicRouteReference(segment) !== null) return true;
+  // Kanonik adres `slug--id`; UUID'ye benzeyen slug o adresi iki kimliğe okunur kılar (5. tur).
+  return hasLegacyIdPrefix(createTopicSlug(title));
 }
 
 export const TOPIC_TITLE_AMBIGUOUS_MESSAGE =

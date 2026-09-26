@@ -9315,3 +9315,11 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** middleware'de `next-router-prefetch` görünmez; prefetch ayrımı yalnız
   matcher `missing` ile yapılır. Sayfanın gördüğü segment ham URL değil, çözülüp yeniden
   kodlanmış hâlidir.
+- PR #229 Astra 2.–5. turlar: `_NEXTSEP_` (Next çöz → sil → kodla), başlık kuralının
+  rename/ajan yollarına taşınması, eşleşmemiş surrogate, `.rsc` adaptör silmesi ve UUID
+  öneki + `--sayı` iki yorumlu segment (canlı UUID 308, UUID'ye benzeyen kanonik slug 410)
+  kapatıldı. CI `e43ae61`/`d969884` tarayıcı işi, tamamlanan prefetch beklemesi Chromium'da
+  hiç gelmediği için zaman aşımına düştü (kod regresyonu değil); `b6f1b24` 7/7 yeşil.
+  Tamamlanmış prefetch'in Router Cache kanıtı tasarımda açık GO kapısı olarak yazıldı.
+- **Tekrarlama:** Next 15.5 dinamik sayfa kısmi prefetch akışında `response.finished()`
+  ya da `requestfinished` beklemek CI'da asılı kalır; E2E'yi buna bağlama.
