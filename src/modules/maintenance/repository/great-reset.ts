@@ -9,6 +9,18 @@ import {
 } from "../domain/great-reset";
 import { localResetTarget, type LocalResetIdentity } from "../domain/great-reset-local-guard";
 import {
+  assertNamespaceInput,
+  consumeIntent,
+  copyTombstones,
+  insertCommitMarker,
+  namespaceBlockers,
+  namespaceConstraintPairs,
+  namespacePostconditionsHold,
+  namespaceSequenceNames,
+  openNewNamespace,
+  type NamespaceResetInput,
+} from "./great-reset-namespace";
+import {
   archivePendingOutboxEvents,
   assertExpectedOutboxArchive,
   outboxArchivesAreValid,
@@ -23,7 +35,7 @@ type Request = (
       databaseName: string;
       planSha256: string;
     }
-) & { archiveOutbox?: true };
+) & { archiveOutbox?: true; namespace?: NamespaceResetInput };
 type Fingerprint = { rows: number; sha256: string };
 type Table = { model: string; table: string; cleared: boolean };
 type Tx = Prisma.TransactionClient;
@@ -39,6 +51,7 @@ function implementationDigest(): string {
   return digest([
     readFileSync(new URL(import.meta.url), "utf8"),
     readFileSync(new URL("./outbox-reset-archive.ts", import.meta.url), "utf8"),
+    readFileSync(new URL("./great-reset-namespace.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../../outbox/repository/pending.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset-local-guard.ts", import.meta.url), "utf8"),
@@ -218,7 +231,17 @@ async function identity(tx: Tx, databaseName: string, expected: LocalResetIdenti
   return actual;
 }
 
-async function inspectSchema(tx: Tx, list: Table[]) {
+/*
+  Namespace modunda eski/yeni public ID kısıtları şema özetinin dışında tutulur: reset onları
+  bilerek değiştirir ve `namespacePostconditionsHold` birebir tanımlarını ayrıca doğrular.
+*/
+async function inspectSchema(
+  tx: Tx,
+  list: Table[],
+  excludedConstraints: readonly { table: string; name: string }[] = [],
+) {
+  const excludedTables = excludedConstraints.map((row) => row.table);
+  const excludedNames = excludedConstraints.map((row) => row.name);
   const actual = await tx.$queryRaw<{ name: string; kind: string }[]>`
     SELECT c.relname AS name, c.relkind::text AS kind FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -240,7 +263,9 @@ async function inspectSchema(tx: Tx, list: Table[]) {
       'columns', (SELECT jsonb_agg(to_jsonb(c) ORDER BY table_name, ordinal_position)
         FROM information_schema.columns c WHERE table_schema = 'public'),
       'constraints', (SELECT jsonb_agg(pg_get_constraintdef(oid) ORDER BY conrelid, conname)
-        FROM pg_constraint WHERE connamespace = 'public'::regnamespace),
+        FROM pg_constraint k WHERE connamespace = 'public'::regnamespace
+          AND NOT EXISTS (SELECT 1 FROM unnest(${excludedTables}::text[], ${excludedNames}::text[])
+            AS x(t, n) WHERE k.conrelid = x.t::regclass AND k.conname = x.n)),
       'triggers', (SELECT jsonb_agg(jsonb_build_array(pg_get_triggerdef(t.oid),
         t.tgenabled, pg_get_functiondef(t.tgfoid)) ORDER BY t.tgrelid, t.tgname)
         FROM pg_trigger t WHERE NOT t.tgisinternal AND
@@ -256,7 +281,11 @@ async function inspectSchema(tx: Tx, list: Table[]) {
   return digest({ structure, migration });
 }
 
-async function blockers(tx: Tx, archiveOutbox = false): Promise<string[]> {
+/**
+ * `afterNamespace`: namespace açıldıktan sonra public ID sequence kapısı ve tek reset sınırı
+ * bilerek değişmiştir; onların yerine `namespacePostconditionsHold` doğrular.
+ */
+async function blockers(tx: Tx, archiveOutbox = false, afterNamespace = false): Promise<string[]> {
   const result: string[] = [];
   const settings = await tx.agentGlobalSettings.findMany({
     select: {
@@ -335,6 +364,7 @@ async function blockers(tx: Tx, archiveOutbox = false): Promise<string[]> {
         AS "disabledTriggers"`;
   if (session?.role !== "origin" || session.disabledTriggers !== 0)
     result.push("TRIGGER_STATE_UNSAFE");
+  if (afterNamespace) return result;
   if ((await unsafePublicIdSequences(tx)).length) result.push("PUBLIC_ID_SEQUENCE_UNSAFE");
   /*
     Tek reset sınırı (üretim tasarımı v18 madde 5): commit işareti, trafik açılış olayı ya da
@@ -470,6 +500,26 @@ async function privilegeBlockers(tx: Tx, list: Table[]): Promise<string[]> {
   return result;
 }
 
+/*
+  Niyet tablosunun tek izinli farkı bu işlem kimliğinin `consumedAt` alanıdır. Özet o alan
+  çıkarılarak alınır; tüketilmiş satır sayısının tam bir artması ayrıca doğrulanır.
+*/
+async function intentsWithoutConsumption(tx: Tx) {
+  const [result] = await tx.$queryRaw<{ rows: number; consumed: number; sha256: string }[]>`
+    SELECT count(*)::int AS rows, count(*) FILTER (WHERE "consumedAt" IS NOT NULL)::int AS consumed,
+      encode(sha256(convert_to(coalesce(string_agg((to_jsonb(t) - 'consumedAt')::text,
+        E'\n' ORDER BY "operationId"), ''), 'UTF8')), 'hex') AS sha256
+    FROM public.great_reset_intents t`;
+  if (!result) throw new Error("GREAT_RESET_FINGERPRINT_FAILED");
+  return result;
+}
+
+const namespaceRecordTables = new Set([
+  "great_reset_intents",
+  "great_reset_commits",
+  "great_reset_tombstones",
+]);
+
 /** Üretim aracı değildir. Hedef kapısı bu repository girişinde de zorunludur. */
 export async function runLocalGreatReset(value: string | undefined, request: Request) {
   const target = localResetTarget(value, hostname());
@@ -478,6 +528,9 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     (request.databaseName !== target.databaseName || !/^[a-f0-9]{64}$/u.test(request.planSha256))
   )
     throw new Error("GREAT_RESET_CONFIRMATION_MISMATCH");
+  const namespace = request.namespace;
+  if (namespace) assertNamespaceInput(namespace);
+  const excludedConstraints = namespace ? namespaceConstraintPairs : [];
   const list = tables();
   const archiveOutbox = request.archiveOutbox === true;
   const outboxPolicy = archiveOutbox
@@ -512,13 +565,17 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
             )} IN ACCESS EXCLUSIVE MODE NOWAIT`,
           );
         }
-        const schemaSha256 = await inspectSchema(tx, list);
+        const schemaSha256 = await inspectSchema(tx, list, excludedConstraints);
         const before = await snapshot(tx, list);
         const pendingOutbox = await pendingOutboxSnapshot(tx);
         const archivesBefore = await outboxArchiveSummary(tx);
-        const blockedBy = await blockers(tx, archiveOutbox);
+        const blockedBy = [
+          ...(await blockers(tx, archiveOutbox)),
+          ...(namespace ? await namespaceBlockers(tx, namespace) : []),
+        ];
         const planSha256 = digest({
-          version: 2,
+          version: namespace ? 3 : 2,
+          ...(namespace ? { namespace } : {}),
           outboxPolicy,
           pendingOutbox,
           ...archivesBefore,
@@ -554,16 +611,26 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
           outboxPolicy,
           pendingOutbox,
           ...archivesBefore,
+          ...(namespace
+            ? {
+                namespacePolicy: "TOMBSTONE_THEN_RESTART_2147483648",
+                operationId: namespace.operationId,
+              }
+            : {}),
         };
         if (request.mode === "DRY_RUN") return report;
         if (blockedBy.length) throw new Error("GREAT_RESET_PRECONDITIONS_FAILED");
         if (planSha256 !== request.planSha256) throw new Error("GREAT_RESET_STALE_PLAN");
 
-        const resetId = randomUUID();
+        const resetId = namespace?.operationId ?? randomUUID();
+        const intentsBefore = namespace ? await intentsWithoutConsumption(tx) : null;
+        if (namespace) await consumeIntent(tx, namespace);
         const outboxArchiveId = archiveOutbox
           ? await archivePendingOutboxEvents(tx, resetId, planSha256, pendingOutbox)
           : null;
 
+        // Mezar taşı kopyası silmeden ÖNCE, aynı transaction'da (tasarım v19 madde 4).
+        const tombstones = namespace ? await copyTombstones(tx, namespace.operationId) : null;
         // Ayrıcalıklı yerel operasyon: DELETE trigger'ları çalışmaz. Tanımları değişmez.
         // Tek komutta FK kapanışı zorunlu; bilinmeyen bağımlılık varsa RESTRICT reddeder.
         await tx.$executeRaw(
@@ -571,6 +638,10 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
             list.filter((row) => row.cleared).map(({ table }) => tableSql(table)),
           )} CONTINUE IDENTITY RESTRICT`,
         );
+        if (namespace && tombstones) {
+          await openNewNamespace(tx);
+          await insertCommitMarker(tx, { ...namespace, planSha256, ...tombstones });
+        }
         const expired = await tx.idempotencyRecord.updateMany({ data: { expiresAt: new Date(0) } });
         const audit = await tx.auditLog.create({
           data: {
@@ -588,6 +659,15 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
               archivesBefore,
               policy: "TRUNCATE_ONLY_CONTINUE_IDENTITY_RESTRICT",
               scope: "LOCAL_SYNTHETIC_ONLY",
+              ...(namespace && tombstones
+                ? {
+                    operationId: namespace.operationId,
+                    releaseSha: namespace.releaseSha,
+                    topicTombstones: tombstones.topics,
+                    entryTombstones: tombstones.entries,
+                    namespacePolicy: "TOMBSTONE_THEN_RESTART_2147483648",
+                  }
+                : {}),
             },
           },
         });
@@ -595,6 +675,8 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         if (outboxArchiveId)
           await assertExpectedOutboxArchive(tx, outboxArchiveId, planSha256, pendingOutbox);
         for (const { table, cleared } of list) {
+          // Reset kayıtları izinli farktır; aşağıda ayrıca ve birebir doğrulanır.
+          if (namespace && namespaceRecordTables.has(table)) continue;
           if (
             cleared
               ? after.tables[table]?.rows !== 0
@@ -603,13 +685,37 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
             throw new Error("GREAT_RESET_POSTCONDITION_FAILED");
           }
         }
+        /*
+          İki public ID sequence'inde yalnız `max` ile `lastValue`/`isCalled` değişebilir; sahiplik,
+          başlangıç, alt sınır, artış, önbellek, döngü ve kalıcılık birebir korunur (Astra, PR #230
+          P2). Beklenen yeni değerleri `namespacePostconditionsHold` ayrıca doğrular.
+        */
+        const unchangedSequences = (value: typeof before.sequences) =>
+          value.map(({ name, value: state }) => {
+            if (!namespace || !namespaceSequenceNames.includes(name)) return { name, value: state };
+            const parsed = JSON.parse(state) as { definition: string };
+            const definition = JSON.parse(parsed.definition) as Record<string, unknown>;
+            delete definition.max;
+            return { name, value: JSON.stringify(definition) };
+          });
         if (
-          digest(before.sequences) !== digest(after.sequences) ||
-          (await inspectSchema(tx, list)) !== schemaSha256 ||
+          digest(unchangedSequences(before.sequences)) !==
+            digest(unchangedSequences(after.sequences)) ||
+          (await inspectSchema(tx, list, excludedConstraints)) !== schemaSha256 ||
           (await tx.idempotencyRecord.count({ where: { expiresAt: { not: new Date(0) } } })) ||
-          (await blockers(tx)).length
+          (await blockers(tx, false, Boolean(namespace))).length
         )
           throw new Error("GREAT_RESET_POSTCONDITION_FAILED");
+        if (namespace && tombstones && intentsBefore) {
+          const intentsAfter = await intentsWithoutConsumption(tx);
+          if (
+            intentsAfter.rows !== intentsBefore.rows ||
+            intentsAfter.sha256 !== intentsBefore.sha256 ||
+            intentsAfter.consumed !== intentsBefore.consumed + 1 ||
+            !(await namespacePostconditionsHold(tx, { ...namespace, planSha256, ...tombstones }))
+          )
+            throw new Error("GREAT_RESET_POSTCONDITION_FAILED");
+        }
         return {
           ...report,
           resetId,
@@ -617,6 +723,9 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
           archivedOutboxRows: outboxArchiveId ? pendingOutbox.rows : 0,
           ...(await outboxArchiveSummary(tx)),
           expiredIdempotencyRows: expired.count,
+          ...(tombstones
+            ? { topicTombstones: tombstones.topics, entryTombstones: tombstones.entries }
+            : {}),
           verified: true,
         };
       },
