@@ -1,4 +1,5 @@
 import type { ContentOrigin, Prisma } from "@prisma/client";
+import { type NumericPublicIds, withNumericPublicIds } from "@/lib/db/public-id";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
@@ -43,7 +44,9 @@ export const entryDetailSelect = {
   _count: { select: { revisions: true, bookmarks: true } },
 } satisfies Prisma.EntrySelect;
 
-export type EntryDetailRecord = Prisma.EntryGetPayload<{ select: typeof entryDetailSelect }>;
+export type EntryDetailRecord = NumericPublicIds<
+  Prisma.EntryGetPayload<{ select: typeof entryDetailSelect }>
+>;
 
 export async function lockEntryState(
   transaction: Prisma.TransactionClient,
@@ -64,39 +67,49 @@ export function createEntryRecord(
     createdAt: Date;
   },
 ) {
-  return transaction.entry.create({
-    data: {
-      topicId: input.topicId,
-      authorId: input.authorId,
-      body: input.body,
-      normalizedBody: normalizeEntrySearchText(input.body),
-      origin: input.origin,
-      createdAt: input.createdAt,
-    },
-    select: entryDetailSelect,
-  });
+  return transaction.entry
+    .create({
+      data: {
+        topicId: input.topicId,
+        authorId: input.authorId,
+        body: input.body,
+        normalizedBody: normalizeEntrySearchText(input.body),
+        origin: input.origin,
+        createdAt: input.createdAt,
+      },
+      select: entryDetailSelect,
+    })
+    .then(withNumericPublicIds);
 }
 
 export function findEntryById(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entry.findUnique({ where: { id: entryId }, select: entryDetailSelect });
+  return transaction.entry
+    .findUnique({ where: { id: entryId }, select: entryDetailSelect })
+    .then(withNumericPublicIds);
 }
 
 export function findEntryByPublicId(transaction: Prisma.TransactionClient, publicId: number) {
-  return transaction.entry.findUnique({ where: { publicId }, select: entryDetailSelect });
+  return transaction.entry
+    .findUnique({ where: { publicId }, select: entryDetailSelect })
+    .then(withNumericPublicIds);
 }
 
 export function findPublicEntryById(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entry.findFirst({
-    where: { id: entryId, ...publiclyVisibleEntryWhere },
-    select: entryDetailSelect,
-  });
+  return transaction.entry
+    .findFirst({
+      where: { id: entryId, ...publiclyVisibleEntryWhere },
+      select: entryDetailSelect,
+    })
+    .then(withNumericPublicIds);
 }
 
 export function findPublicEntryByPublicId(transaction: Prisma.TransactionClient, publicId: number) {
-  return transaction.entry.findFirst({
-    where: { publicId, ...publiclyVisibleEntryWhere },
-    select: entryDetailSelect,
-  });
+  return transaction.entry
+    .findFirst({
+      where: { publicId, ...publiclyVisibleEntryWhere },
+      select: entryDetailSelect,
+    })
+    .then(withNumericPublicIds);
 }
 
 export async function updateEntryRecord(
@@ -240,13 +253,15 @@ export function listTopicEntries(
     ...(input.query ? { normalizedBody: { contains: input.query, mode: "insensitive" } } : {}),
   };
   return Promise.all([
-    transaction.entry.findMany({
-      where,
-      select: entryDetailSelect,
-      orderBy,
-      skip: input.skip,
-      take: input.take,
-    }),
+    transaction.entry
+      .findMany({
+        where,
+        select: entryDetailSelect,
+        orderBy,
+        skip: input.skip,
+        take: input.take,
+      })
+      .then(withNumericPublicIds),
     transaction.entry.count({ where }),
   ]);
 }
@@ -322,5 +337,5 @@ export async function findVisibleEntryReferences(
         })
       : [],
   ]);
-  return { topics, entries, users };
+  return withNumericPublicIds({ topics, entries, users });
 }

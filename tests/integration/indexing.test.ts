@@ -95,7 +95,7 @@ describe("indexing policy with PostgreSQL", () => {
         getSyndicationEntries(integrationDatabase, { now }),
       ]);
       expect(sitemap.find((item) => item.id === entry.id)?.updatedAt).toEqual(dates.get(entry.id));
-      expect(feed.find((item) => item.publicId === entry.publicId)?.updatedAt).toEqual(
+      expect(feed.find((item) => item.publicId === Number(entry.publicId))?.updatedAt).toEqual(
         dates.get(entry.id),
       );
       const atom = buildAtomFeed("https://example.test", siteSyndicationFeed(feed, now));

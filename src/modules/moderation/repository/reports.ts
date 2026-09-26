@@ -8,6 +8,7 @@ import type {
 } from "@prisma/client";
 import { lockUserStateForMutation } from "@/modules/auth/repository/users";
 import { GAMMAZ_REASONS } from "@/modules/moderation/domain/gammaz";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 export function findReportTarget(
   transaction: Prisma.TransactionClient,
@@ -70,10 +71,12 @@ export function findReportEvidenceEntryByPublicId(
   transaction: Prisma.TransactionClient,
   publicId: number,
 ) {
-  return transaction.entry.findUnique({
-    where: { publicId },
-    select: { id: true, publicId: true, topicId: true, status: true },
-  });
+  return transaction.entry
+    .findUnique({
+      where: { publicId },
+      select: { id: true, publicId: true, topicId: true, status: true },
+    })
+    .then(withNumericPublicIds);
 }
 
 export async function decideReportRecord(
@@ -165,22 +168,24 @@ export function listReports(
       take: input.take,
     }),
     transaction.report.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }
 
 export function findReportDetail(transaction: Prisma.TransactionClient, reportId: string) {
-  return transaction.report.findUnique({
-    where: { id: reportId },
-    include: {
-      reporter: { select: { id: true, username: true, displayName: true } },
-      handledBy: { select: { id: true, username: true, displayName: true } },
-      decision: {
-        include: {
-          moderator: { select: { id: true, username: true, displayName: true } },
+  return transaction.report
+    .findUnique({
+      where: { id: reportId },
+      include: {
+        reporter: { select: { id: true, username: true, displayName: true } },
+        handledBy: { select: { id: true, username: true, displayName: true } },
+        decision: {
+          include: {
+            moderator: { select: { id: true, username: true, displayName: true } },
+          },
         },
       },
-    },
-  });
+    })
+    .then(withNumericPublicIds);
 }
 
 export function listRelatedReports(

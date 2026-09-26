@@ -1,6 +1,7 @@
 import type { AgentSourceLocaleFocus, AgentSourceStatus, Prisma } from "@prisma/client";
 import { appendAgentLifeEventRecord } from "@/modules/agents/repository/life-ledger";
 import { assertSafeLifeLedgerValue } from "@/modules/agents/domain/life-ledger-safety";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 export function findAgentAdminPrincipal(transaction: Prisma.TransactionClient, actorId: string) {
   return transaction.user.findUnique({
@@ -364,181 +365,197 @@ export async function countAgentDailyActivityRecords(
 
 export function listAgentDashboardRecords(transaction: Prisma.TransactionClient) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  return transaction.agentProfile.findMany({
-    orderBy: [{ lifecycleStatus: "asc" }, { createdAt: "asc" }],
-    select: {
-      id: true,
-      lifecycleStatus: true,
-      createdAt: true,
-      user: { select: { username: true, displayName: true, bio: true } },
-      runtimeState: {
-        include: {
-          currentRun: {
-            select: { id: true, runType: true, runStatus: true, startedAt: true, createdAt: true },
+  return transaction.agentProfile
+    .findMany({
+      orderBy: [{ lifecycleStatus: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        lifecycleStatus: true,
+        createdAt: true,
+        user: { select: { username: true, displayName: true, bio: true } },
+        runtimeState: {
+          include: {
+            currentRun: {
+              select: {
+                id: true,
+                runType: true,
+                runStatus: true,
+                startedAt: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
+        currentPersonaVersion: { select: { version: true, createdAt: true } },
+        credentials: {
+          where: { revokedAt: null },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 1,
+          select: { id: true, runtimeEnrollmentCipher: true },
+        },
+        _count: { select: { sources: true, runs: true } },
+        runs: {
+          where: { createdAt: { gte: since } },
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          select: {
+            id: true,
+            runType: true,
+            runStatus: true,
+            startedAt: true,
+            finishedAt: true,
+            createdAt: true,
+            usageMetadata: true,
+            performanceMetrics: true,
+          },
+        },
+        contentRecords: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            entryId: true,
+            createdAt: true,
+            entry: { select: { publicId: true } },
           },
         },
       },
-      currentPersonaVersion: { select: { version: true, createdAt: true } },
-      credentials: {
-        where: { revokedAt: null },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: 1,
-        select: { id: true, runtimeEnrollmentCipher: true },
-      },
-      _count: { select: { sources: true, runs: true } },
-      runs: {
-        where: { createdAt: { gte: since } },
-        orderBy: { createdAt: "desc" },
-        take: 100,
-        select: {
-          id: true,
-          runType: true,
-          runStatus: true,
-          startedAt: true,
-          finishedAt: true,
-          createdAt: true,
-          usageMetadata: true,
-          performanceMetrics: true,
-        },
-      },
-      contentRecords: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: {
-          entryId: true,
-          createdAt: true,
-          entry: { select: { publicId: true } },
-        },
-      },
-    },
-  });
+    })
+    .then(withNumericPublicIds);
 }
 
 export function findAgentDetailRecord(
   transaction: Prisma.TransactionClient,
   agentProfileId: string,
 ) {
-  return transaction.agentProfile.findUnique({
-    where: { id: agentProfileId },
-    select: {
-      id: true,
-      lifecycleStatus: true,
-      activeTimeProfile: true,
-      personaEvolutionEnabled: true,
-      sourceEvolutionEnabled: true,
-      scheduledTimeoutSeconds: true,
-      manualTimeoutSeconds: true,
-      createdAt: true,
-      updatedAt: true,
-      retiredAt: true,
-      user: {
-        select: {
-          username: true,
-          displayName: true,
-          bio: true,
-          kind: true,
-          role: true,
-          status: true,
-          loginDisabled: true,
-        },
-      },
-      runtimeState: {
-        include: {
-          currentRun: {
-            select: { id: true, runType: true, runStatus: true, startedAt: true, createdAt: true },
+  return transaction.agentProfile
+    .findUnique({
+      where: { id: agentProfileId },
+      select: {
+        id: true,
+        lifecycleStatus: true,
+        activeTimeProfile: true,
+        personaEvolutionEnabled: true,
+        sourceEvolutionEnabled: true,
+        scheduledTimeoutSeconds: true,
+        manualTimeoutSeconds: true,
+        createdAt: true,
+        updatedAt: true,
+        retiredAt: true,
+        user: {
+          select: {
+            username: true,
+            displayName: true,
+            bio: true,
+            kind: true,
+            role: true,
+            status: true,
+            loginDisabled: true,
           },
         },
-      },
-      currentPersonaVersion: true,
-      personaVersions: {
-        orderBy: { version: "desc" },
-        take: 100,
-        select: {
-          id: true,
-          version: true,
-          changeOrigin: true,
-          changeSummary: true,
-          validationReport: true,
-          createdAt: true,
-          createdById: true,
-        },
-      },
-      sources: { orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }], take: 100 },
-      runs: {
-        orderBy: { createdAt: "desc" },
-        take: 50,
-        select: {
-          id: true,
-          runType: true,
-          runStatus: true,
-          attempts: true,
-          createdAt: true,
-          errorCode: true,
-          errorSummary: true,
-          safeRunSummary: true,
-          actions: {
-            orderBy: { sequence: "asc" },
-            select: {
-              id: true,
-              actionType: true,
-              actionStatus: true,
-              rejectionCode: true,
-              rejectionReason: true,
+        runtimeState: {
+          include: {
+            currentRun: {
+              select: {
+                id: true,
+                runType: true,
+                runStatus: true,
+                startedAt: true,
+                createdAt: true,
+              },
             },
           },
         },
-      },
-      actions: {
-        orderBy: { createdAt: "desc" },
-        take: 200,
-        select: {
-          id: true,
-          actionType: true,
-          actionStatus: true,
-          targetType: true,
-          targetId: true,
-          createdAt: true,
+        currentPersonaVersion: true,
+        personaVersions: {
+          orderBy: { version: "desc" },
+          take: 100,
+          select: {
+            id: true,
+            version: true,
+            changeOrigin: true,
+            changeSummary: true,
+            validationReport: true,
+            createdAt: true,
+            createdById: true,
+          },
+        },
+        sources: { orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }], take: 100 },
+        runs: {
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          select: {
+            id: true,
+            runType: true,
+            runStatus: true,
+            attempts: true,
+            createdAt: true,
+            errorCode: true,
+            errorSummary: true,
+            safeRunSummary: true,
+            actions: {
+              orderBy: { sequence: "asc" },
+              select: {
+                id: true,
+                actionType: true,
+                actionStatus: true,
+                rejectionCode: true,
+                rejectionReason: true,
+              },
+            },
+          },
+        },
+        actions: {
+          orderBy: { createdAt: "desc" },
+          take: 200,
+          select: {
+            id: true,
+            actionType: true,
+            actionStatus: true,
+            targetType: true,
+            targetId: true,
+            createdAt: true,
+          },
+        },
+        beliefs: {
+          orderBy: { lastUpdatedAt: "desc" },
+          take: 20,
+          select: {
+            id: true,
+            topicKey: true,
+            statement: true,
+            confidence: true,
+            status: true,
+            version: true,
+            lastUpdatedAt: true,
+          },
+        },
+        relationships: {
+          orderBy: { updatedAt: "desc" },
+          take: 20,
+          select: {
+            id: true,
+            familiarity: true,
+            trust: true,
+            interest: true,
+            disagreement: true,
+            summary: true,
+            lastInteractionAt: true,
+            targetUser: { select: { username: true, displayName: true } },
+          },
+        },
+        _count: {
+          select: {
+            memoryEpisodes: true,
+            beliefs: true,
+            relationships: true,
+            actions: true,
+            contentRecords: true,
+            credentials: true,
+          },
         },
       },
-      beliefs: {
-        orderBy: { lastUpdatedAt: "desc" },
-        take: 20,
-        select: {
-          id: true,
-          topicKey: true,
-          statement: true,
-          confidence: true,
-          status: true,
-          version: true,
-          lastUpdatedAt: true,
-        },
-      },
-      relationships: {
-        orderBy: { updatedAt: "desc" },
-        take: 20,
-        select: {
-          id: true,
-          familiarity: true,
-          trust: true,
-          interest: true,
-          disagreement: true,
-          summary: true,
-          lastInteractionAt: true,
-          targetUser: { select: { username: true, displayName: true } },
-        },
-      },
-      _count: {
-        select: {
-          memoryEpisodes: true,
-          beliefs: true,
-          relationships: true,
-          actions: true,
-          contentRecords: true,
-          credentials: true,
-        },
-      },
-    },
-  });
+    })
+    .then(withNumericPublicIds);
 }
 
 export function listAgentEvolutionRunsRecord(

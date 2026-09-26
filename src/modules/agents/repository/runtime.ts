@@ -34,6 +34,7 @@ import {
   publiclyVisibleEntrySql,
   publiclyVisibleEntryWhere,
 } from "@/modules/entries/repository/public-visibility";
+import { publicIdToNumber } from "@/lib/db/public-id";
 
 export function findRuntimeCredentialByHash(client: DatabaseExecutor, tokenHash: string) {
   return client.agentCredential.findUnique({
@@ -2558,7 +2559,7 @@ async function listRuntimePerceptionLinkedTopics(
   const topicIdByEntryPublicId = new Map<number, string>();
   for (const entry of entriesByPublicId) {
     topicsById.set(entry.topic.id, entry.topic);
-    topicIdByEntryPublicId.set(entry.publicId, entry.topic.id);
+    topicIdByEntryPublicId.set(publicIdToNumber(entry.publicId), entry.topic.id);
   }
 
   const discoveries = new Map<

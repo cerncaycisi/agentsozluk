@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { AgentContentBulkActionInput } from "@/modules/moderation/validation/schemas";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 export interface AgentContentListInput {
   agentProfileId?: string;
@@ -132,14 +133,14 @@ export async function listAgentContentRecords(
     reportsByEntry.set(report.targetId, current);
   }
   const lockByTopic = new Map(locks.map((lock) => [lock.topicId, lock]));
-  return [
+  return withNumericPublicIds([
     records.map((record) => ({
       ...record,
       reports: reportsByEntry.get(record.entry.id) ?? [],
       topicWriteLock: lockByTopic.get(record.entry.topic.id) ?? null,
     })),
     totalItems,
-  ] as const;
+  ] as const);
 }
 
 export async function upsertAgentTopicWriteLock(

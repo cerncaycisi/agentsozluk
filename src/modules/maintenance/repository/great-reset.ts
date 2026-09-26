@@ -341,21 +341,38 @@ async function blockers(tx: Tx, archiveOutbox = false): Promise<string[]> {
   BAŞTAN (yedekten ve önizlemeden önce) bozulmuşsa hiçbir şey söylemez. Mevcut satırların
   adreslerinin yeniden kullanılmaması için public ID sequence'leri
   +1 artışlı, döngüsüz, kalıcı, önbelleksiz, doğru sütuna bağlı olmalı ve SONRAKİ değer mevcut
-  en büyük kimliğin üstünde ve INTEGER sınırının altında kalmalı (en az bir sonraki atamaya
-  daha yer bırakmalı). Önceden silinmiş ID'lerin 410 sınırı üretim profilinde ayrıca
-  doğrulanacaktır. `nextval()` çağrılmaz; sonraki değer tanım ve durumdan hesaplanır.
+  en büyük kimliğin üstünde ve eski aralığın sınırının altında kalmalı (en az bir sonraki
+  atamaya daha yer bırakmalı). `nextval()` çağrılmaz; sonraki değer tanım ve durumdan hesaplanır.
+
+  Üst namespace kilidi (üretim tasarımı v18 madde 3, 26 Eylül 2026): sütun ve sequence BIGINT,
+  sequence `MAXVALUE = 2147483647` ve tabloda doğrulanmış `CHECK ("publicId" <= 2147483647)`
+  olmalı; mevcut en büyük kimlik de bu sınırı aşmamalı. Eski `INTEGER` durumu (migration
+  uygulanmamış kopya) fail-closed reddedilir. Üst aralığı açan RESTART ve kısıt değişimi yerel
+  çekirdekte yoktur; üretim reset profiline aittir.
 */
+const legacyPublicIdMax = 2147483647;
 const publicIdSequences = [
-  { sequence: "entries_public_id_seq", table: "entries", column: "publicId" },
-  { sequence: "topics_public_id_seq", table: "topics", column: "publicId" },
+  {
+    sequence: "entries_public_id_seq",
+    table: "entries",
+    column: "publicId",
+    check: "entries_public_id_legacy_range_check",
+  },
+  {
+    sequence: "topics_public_id_seq",
+    table: "topics",
+    column: "publicId",
+    check: "topics_public_id_legacy_range_check",
+  },
 ] as const;
 
 async function unsafePublicIdSequences(tx: Tx): Promise<string[]> {
   const unsafe: string[] = [];
-  for (const { sequence, table, column } of publicIdSequences) {
+  for (const { sequence, table, column, check } of publicIdSequences) {
     const [row] = await tx.$queryRaw<{ safe: boolean }[]>(Prisma.sql`
       SELECT (
-        s.data_type = 'integer'::regtype AND s.increment_by = 1
+        s.data_type = 'bigint'::regtype AND s.max_value = ${legacyPublicIdMax}
+        AND s.increment_by = 1
         AND s.cache_size = 1 AND NOT s.cycle AND c.relpersistence = 'p'
         AND pg_get_serial_sequence(${`public.${table}`}, ${column}) = ${`public.${sequence}`}
         AND (SELECT pg_get_expr(ad.adbin, ad.adrelid)
@@ -368,6 +385,16 @@ async function unsafePublicIdSequences(tx: Tx): Promise<string[]> {
         AND (CASE WHEN q.is_called THEN q.last_value::numeric + s.increment_by
                   ELSE q.last_value::numeric END)
           > coalesce((SELECT max(${Prisma.raw(`"${column}"`)}) FROM ${Prisma.raw(`public."${table}"`)}), 0)
+        AND coalesce((SELECT max(${Prisma.raw(`"${column}"`)}) FROM ${Prisma.raw(`public."${table}"`)}), 0)
+          <= ${legacyPublicIdMax}
+        AND (SELECT a.atttypid FROM pg_attribute a
+             WHERE a.attrelid = ${`public.${table}`}::regclass AND a.attname = ${column})
+          = 'bigint'::regtype
+        AND EXISTS (
+          SELECT 1 FROM pg_constraint k
+          WHERE k.conrelid = ${`public.${table}`}::regclass AND k.conname = ${check}
+            AND k.contype = 'c' AND k.convalidated
+            AND pg_get_constraintdef(k.oid) = ${`CHECK (("${column}" <= ${legacyPublicIdMax}))`})
       ) AS safe
       FROM pg_sequences s
       JOIN pg_class c ON c.relname = s.sequencename

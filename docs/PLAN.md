@@ -55,8 +55,11 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 2. **B5.3 ölçümü** — hassas konu kuralı son 30 günde kaç eylemi tetiklerdi; ölçmeden kural yok.
 3. **Great reset hazırlığı** — 25 Eylül: gerçek boyutlu prova yapıldı, araç üretim boyutuna
    uyarlandı ([prova](RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md): önizleme ~23 sn, uygulama
-   ~83 sn). Çekirdek kapılar PR #225 ile main'de; üretimde değil. Kalanlar: geniş public ID
-   namespace'i ve 410 uygulaması, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
+   ~83 sn). Çekirdek kapılar PR #225 ile main'de; üretimde değil. **26 Eylül:** geniş public ID
+   namespace'inin ilk paketi (BIGINT migration'ı, üst aralık kilidi, repository sınırında güvenli
+   `number` dönüşümü) taslak PR'da; migration ekleyici olmadığı için A5 yolundan geçmez, bakım
+   penceresi ve Gökhan'ın ayrı onayı gerekir, o yüzden main'e birleştirilmedi. Kalanlar:
+   410 uygulaması, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
    outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
    ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
