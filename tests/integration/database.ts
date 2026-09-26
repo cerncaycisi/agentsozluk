@@ -10,6 +10,7 @@ export async function resetIntegrationDatabase(): Promise<void> {
   // BAŞLIK tablosuna ulaşmaz, testler arası arşiv artığı kalırdı. Koruma açık niyet ister.
   await integrationDatabase.$transaction([
     integrationDatabase.$queryRaw`SELECT set_config('agentsozluk.allow_archive_truncate', 'on', true)`,
+    integrationDatabase.$queryRaw`SELECT set_config('agentsozluk.allow_great_reset_truncate', 'on', true)`,
     integrationDatabase.$executeRaw`
     TRUNCATE TABLE
       "agent_runtime_events",
@@ -19,6 +20,10 @@ export async function resetIntegrationDatabase(): Promise<void> {
       "agent_global_settings",
       "idempotency_records",
       "rate_limit_buckets",
+      "great_reset_exposure_events",
+      "great_reset_tombstones",
+      "great_reset_commits",
+      "great_reset_intents",
       "outbox_reset_archive_events",
       "outbox_reset_archives",
       "outbox_events",

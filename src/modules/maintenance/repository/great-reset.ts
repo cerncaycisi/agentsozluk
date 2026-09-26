@@ -28,6 +28,9 @@ type Fingerprint = { rows: number; sha256: string };
 type Table = { model: string; table: string; cleared: boolean };
 type Tx = Prisma.TransactionClient;
 
+/** Üretim restore audit eylemi; varlığı ikinci reseti kalıcı kapatır (tasarım v18 Aşama 4.6). */
+export const GREAT_RESET_PRODUCTION_RESTORE_ACTION = "GREAT_RESET_PRODUCTION_RESTORE";
+
 function digest(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
@@ -333,6 +336,17 @@ async function blockers(tx: Tx, archiveOutbox = false): Promise<string[]> {
   if (session?.role !== "origin" || session.disabledTriggers !== 0)
     result.push("TRIGGER_STATE_UNSAFE");
   if ((await unsafePublicIdSequences(tx)).length) result.push("PUBLIC_ID_SEQUENCE_UNSAFE");
+  /*
+    Tek reset sınırı (üretim tasarımı v18 madde 5): commit işareti, trafik açılış olayı ya da
+    üretim restore audit'i varsa ikinci reset bu tasarımla yapılamaz. RESTART WITH 2147483648
+    yalnız ilk reset içindir; ikinci reset ayrı namespace tasarımı ve Gökhan kararı ister.
+  */
+  const commits = await tx.greatResetCommit.count();
+  const exposures = await tx.greatResetExposureEvent.count();
+  const restores = await tx.auditLog.count({
+    where: { action: GREAT_RESET_PRODUCTION_RESTORE_ACTION },
+  });
+  if (commits !== 0 || exposures !== 0 || restores !== 0) result.push("RESET_ALREADY_COMMITTED");
   return result;
 }
 

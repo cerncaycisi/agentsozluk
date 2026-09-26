@@ -776,6 +776,61 @@ model OutboxResetArchiveEvent {
   @@map("outbox_reset_archive_events")
 }
 
+enum GreatResetContentKind {
+  TOPIC
+  ENTRY
+}
+
+// Great reset tek kullanımlık niyeti. Yalnız consumedAt ya da invalidatedAt bir kez dolar.
+model GreatResetIntent {
+  operationId   String    @id @db.Uuid
+  scope         String
+  releaseSha    String    @db.VarChar(40)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  expiresAt     DateTime  @db.Timestamptz(3)
+  consumedAt    DateTime? @db.Timestamptz(3)
+  invalidatedAt DateTime? @db.Timestamptz(3)
+
+  @@map("great_reset_intents")
+}
+
+// Reset commit işareti; append-only, tabloda en çok bir satır.
+model GreatResetCommit {
+  operationId     String                   @id @db.Uuid
+  releaseSha      String                   @db.VarChar(40)
+  planSha256      String                   @db.VarChar(64)
+  receiptSha256   String                   @db.VarChar(64)
+  topicTombstones Int
+  entryTombstones Int
+  committedAt     DateTime                 @default(now()) @db.Timestamptz(3)
+  exposureEvent   GreatResetExposureEvent?
+
+  @@map("great_reset_commits")
+}
+
+// Reset anında silinen içeriğin kimliği; yalnız bunlar 410 alır (Gökhan kararı, 26 Eylül).
+model GreatResetTombstone {
+  kind        GreatResetContentKind
+  contentId   String                @db.Uuid
+  publicId    BigInt
+  operationId String                @db.Uuid
+  createdAt   DateTime              @default(now()) @db.Timestamptz(3)
+
+  @@id([kind, contentId])
+  @@unique([kind, publicId])
+  @@map("great_reset_tombstones")
+}
+
+// Dış trafik açılışı; yazıldıktan sonra pre-reset yedeğe dönüş yasaktır.
+model GreatResetExposureEvent {
+  operationId String           @id @db.Uuid
+  eventType   String
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  commit      GreatResetCommit @relation(fields: [operationId], references: [operationId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("great_reset_exposure_events")
+}
+
 model RateLimitBucket {
   id          String   @id @default(uuid()) @db.Uuid
   keyHash     String
