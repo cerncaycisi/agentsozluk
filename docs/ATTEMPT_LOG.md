@@ -9436,3 +9436,60 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - GPT-6 Astra PR #232 3. tur exact `1d1e32732d464fbd269a69e6b0a4bf55735f8d9b` için **KOD GO**;
   yeni P1/P2/P3 yok. Varsayım: `PATH`'teki `docker` ikilisi ve operatör yürütme ortamı güvenilir
   (THREAT_MODEL altyapı operatörünü güvenilir sayar).
+
+## 2026-09-26 — tam içerik makbuzu, gerçek boyutlu dump/restore
+
+- Dal `feat/reset-receipt` (`feat/reset-production-cli` üstüne). `great-reset-receipt.ts`:
+  katalogdan bütün public tablolar (tam SHA-256), sequence, şema, güvenlik (sahip/ACL/varsayılan
+  yetki), DB ayarları; tek salt okunur RepeatableRead görüntü, sabit oturum ayarları.
+- Yerel PG16, 26 Eylül gece yedeğinin kopyası (migration'lar uygulanmış): 54 tablo, 3.109.336
+  satır. Makbuz 137 sn (kaynak), dump `-Fc` 152 sn / 1,1 GB, dump sonrası kaynak makbuzu 129 sn
+  ve birebir aynı, geri yükleme 181 sn, geri yüklenen makbuz 124 sn ve kaynakla birebir aynı
+  (beş bölüm eşit). Negatif: tek başlık değişikliği `content`/`topics`, tek `GRANT` `security`
+  olarak yakalandı. Prova DB'leri ve dump silindi; üretime bağlanılmadı.
+- Not: provada kaynak kopya `--no-owner` ile açıldı; üretimde sahiplik farkı ortam başına
+  manifestte ayrıca beklenir (tasarım Aşama 2).
+- Astra PR #234 1. tur `0f0479b`: **KOD DÜZELTİLMELİ** (1 P1, 7 P2, 1 P3). P1: `to_jsonb` satır
+  serileştirmesi SQL NULL ile JSON `null`'ı ve dizi alt indislerini ayırmıyordu. Düzeltme: kayıpsız
+  `t::text`; değer düzeyinde beklenen fark; roller/üyelik/genel rol ayarları, sütun ACL, RLS
+  politikası ve bayrakları, tam kolon tipi/identity/kalıcılık/view; desteklenmeyen nesnede ret;
+  `__proto__` güvenli sözlük; CLI sentetik kimliği doğrular; OID'den bağımsız sıralama.
+- Yeniden prova: makbuz 84–87 sn, dump 138 sn, restore 176 sn; kaynak ↔ dump sonrası ↔ restore
+  birebir. Negatif: SQL NULL → JSON `null` (`agent_runs`) içerik farkı, sütun `GRANT`'ı
+  `column:users.passwordHash`, başka şemada tablo `GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED`,
+  işaretsiz DB `GREAT_RESET_DATABASE_IDENTITY_MISMATCH`. İlk koşuda `defaclobjtype` `"char"` tipi
+  metin birleştirmesinde `42725` verdi; `::text` ile düzeltildi.
+- **Tekrarlama:** `pkill -f <kalıp>` bu kabuğun kendi komut satırıyla da eşleşip onu öldürür;
+  süreçleri alan bazlı (`ps -eo pid=,comm=,args=` + awk) seç.
+- Astra PR #234 2. tur `fd570da`: **KOD DÜZELTİLMELİ** (1 P1, 6 P2, 3 P3). P1: `t` adlı sütun
+  varsa `t::text` yalnız o sütunu verir. Düzeltme: `ROW(t.*)::text`; public dışı her kullanıcı
+  şeması, domain, bağımsız composite ret (geçici şema tam desenle); nitelikli collation ve DB ICU;
+  rol `VALID UNTIL`; bölüm özetleri ayrıntılardan doğrulanır; sütun ve enum mantıksal sırası;
+  değerler JSON (NULL ≠ "null"); policy rolleri sıralı; NaN için mantıksal eşitlik sözleşmesi.
+  Yeni PostgreSQL entegrasyon testi makbuz SQL'ini CI'da çalıştırır (bir tanımlayıcı hatasını
+  yerelde yakaladı).
+- Yeniden prova: kaynakta sütun boşluğu ve `BEFORE` enum değeriyle dump/restore birebir; `t`
+  sütunlu tabloda diğer sütun değişikliği yakalandı; domain ve `pgxtempx` şeması
+  `GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED`; makbuz 83–89 sn.
+- Astra PR #234 3. tur `f8c8091`: P1 ve önceki bulguların çoğu kapandı; 3 P2: şema bölümü eksik
+  makbuz eşit sayılabiliyordu, yalnız indekste kullanılan kullanıcı collation'ı ve kullanıcı
+  range tipi görülmüyordu. Düzeltme: sabit bölüm listesi ve biçim denetimi (iki yönde); kullanıcı
+  collation'ı, range/multirange ve dizi olmayan temel tip ret. İlk sürüm test DB'sinde `pg_trgm`'in
+  public'teki `gtrgm` tipini de reddetti (üretimde de aynı olurdu); extension üyesi tipler ve
+  collation'lar `pg_depend` ile dışarıda. Gerçek boyutlu prova yeniden geçti.
+- **Tekrarlama:** kapsam reddi eklerken extension üyesi nesneleri (`pg_depend.deptype = 'e'`) ayır.
+- Astra PR #234 4. tur `911d519`: eksik bölüm kapandı; 3 P2 (sonradan extension'a eklenen
+  collation, extension temel tipinin sahip/ACL'si, `CATEGORY = 'A'` ile dizi taklidi) + 1 P3
+  (collation sürümü runbook'ta yoktu). Düzeltme: şema bölümüne extension üye envanteri
+  (`pg_describe_object`), güvenlikte public'teki bütün tipler, dizi tipi gerçek `typarray`
+  ilişkisiyle; runbook'a collation sağlayıcı sürümü adımı. Entegrasyon: `gtrgm` ACL farkı
+  yakalandı. Kullanıcı temel tipi testi yazılamadı (C giriş/çıkış fonksiyonu gerekir); kod
+  koşulu gerçek ilişkiye bağlı. Gerçek boyutlu prova yeniden geçti.
+- Astra PR #234 5. tur `d3456a8`: önceki bulgular kapandı; 2 P2 (aggregate tanımı değişimi ve
+  `DISABLE RULE` makbuza yansımıyordu). Düzeltme: extension üyesi olmayan public aggregate ret;
+  kurallar `pg_rewrite`'tan `ev_enabled` dahil. Entegrasyon testi ikisini de yakaladı.
+- Astra PR #234 6. tur `c5dfd83`: aggregate ve kural P2'leri kapandı; yeni P2 kullanıcı operatörü.
+  Tür tür kapatmak yerine sınıf kapanışı: makbuzun özetlemediği bütün nesne türleri (public'te
+  operatör, opclass/opfamily, dönüşüm, metin arama, genişletilmiş istatistik; DB genelinde event
+  trigger, publication, FDW/sunucu, kullanıcı cast/transform/access method) extension üyesi
+  değilse ret. Entegrasyon testi operatörü reddetti.

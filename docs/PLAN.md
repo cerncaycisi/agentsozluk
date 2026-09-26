@@ -75,7 +75,9 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    Hepsi Astra'dan KOD GO aldı, CI yeşil, main'e birleşmedi.
    **Kalan sıra (Gökhan: "Astrayla birlikte karar verin", 26 Eylül; Astra ile ortak karar):**
    (1) tam içerik makbuzu ve gerçek boyutlu yerel dump/restore doğrulaması (içerik, sahiplik,
-   ACL, DB/rol ayarları, sequence, dump öncesi/sonrası eşitlik); (2) bakım planı taslağı ve
+   ACL, DB/rol ayarları, sequence, dump öncesi/sonrası eşitlik) — **26 Eylül: yazıldı, yedinci
+   yığınlı paket;** yerel provada 54 tablo / ~3,1 M satır, makbuz 124–137 sn, dump 152 sn,
+   geri yükleme 181 sn, kaynak ↔ geri yükleme birebir eşit; (2) bakım planı taslağı ve
    yerel prefetch Router Cache kanıtı (reset GO kapısı; üretim erişimi gerekmez); (3) Gökhan'ın
    exact erişim onayıyla timer envanteri ve üretim önkontrolü; (4) ölçülen digest/restore süresi
    ve disk/WAL ile bakım penceresi; (5) Ö4-2 sonucu (pencere en erken 28 Eylül 16:49 UTC),

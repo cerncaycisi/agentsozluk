@@ -1,0 +1,138 @@
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  compareReceipts,
+  computeReceipt,
+} from "../../src/modules/maintenance/repository/great-reset-receipt";
+import {
+  closeIntegrationDatabase,
+  integrationDatabase,
+  resetIntegrationDatabase,
+} from "./database";
+
+async function identity() {
+  const [row] = await integrationDatabase.$queryRaw<{ cluster: string; owner: string }[]>`
+    SELECT (SELECT system_identifier::text FROM pg_control_system()) AS cluster,
+      current_user AS owner`;
+  return { clusterId: row!.cluster, owner: row!.owner };
+}
+
+describe("great reset receipt against PostgreSQL", () => {
+  beforeEach(resetIntegrationDatabase);
+  afterAll(closeIntegrationDatabase);
+
+  it("is deterministic and separates SQL NULL from JSON null, even with a column named t", async () => {
+    const expected = await identity();
+    await integrationDatabase.$executeRaw`CREATE TABLE zz_receipt_probe (t int, doc jsonb, payload text)`;
+    try {
+      await integrationDatabase.$executeRaw`INSERT INTO zz_receipt_probe VALUES (7, NULL, 'A')`;
+      const first = await computeReceipt(integrationDatabase, expected);
+      const second = await computeReceipt(integrationDatabase, expected);
+      expect(compareReceipts(first, second).equal).toBe(true);
+      expect(Object.keys(first.tables)).toContain("topics");
+
+      await integrationDatabase.$executeRaw`UPDATE zz_receipt_probe SET doc = 'null'::jsonb`;
+      const jsonNull = await computeReceipt(integrationDatabase, expected);
+      expect(compareReceipts(first, jsonNull)).toMatchObject({
+        equal: false,
+        tables: ["zz_receipt_probe"],
+      });
+
+      // `t` sütunu aynı kalırken başka sütunun değişmesi de görünür (Astra, 2. tur P1).
+      await integrationDatabase.$executeRaw`UPDATE zz_receipt_probe SET doc = NULL, payload = 'B'`;
+      const payload = await computeReceipt(integrationDatabase, expected);
+      expect(compareReceipts(first, payload)).toMatchObject({
+        equal: false,
+        tables: ["zz_receipt_probe"],
+      });
+    } finally {
+      await integrationDatabase.$executeRaw`DROP TABLE IF EXISTS zz_receipt_probe`;
+    }
+  });
+
+  it("refuses to run against an unexpected cluster", async () => {
+    const expected = await identity();
+    await expect(
+      computeReceipt(integrationDatabase, { ...expected, clusterId: "0" }),
+    ).rejects.toThrow("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
+  });
+
+  it("refuses unsupported user types instead of silently skipping them", async () => {
+    const expected = await identity();
+    await computeReceipt(integrationDatabase, expected);
+    await integrationDatabase.$executeRaw`CREATE TYPE zz_receipt_range AS RANGE (subtype = int4)`;
+    try {
+      await expect(computeReceipt(integrationDatabase, expected)).rejects.toThrow(
+        "GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED",
+      );
+    } finally {
+      await integrationDatabase.$executeRaw`DROP TYPE IF EXISTS zz_receipt_range`;
+    }
+  });
+
+  it("sees a change in an extension member type's ACL", async () => {
+    const expected = await identity();
+    const [trgm] = await integrationDatabase.$queryRaw<{ count: number }[]>`
+      SELECT count(*)::int AS count FROM pg_type
+      WHERE typname = 'gtrgm' AND typnamespace = 'public'::regnamespace`;
+    if (trgm?.count !== 1) return;
+    const before = await computeReceipt(integrationDatabase, expected);
+    await integrationDatabase.$executeRawUnsafe("REVOKE USAGE ON TYPE gtrgm FROM PUBLIC");
+    try {
+      const after = await computeReceipt(integrationDatabase, expected);
+      expect(compareReceipts(before, after)).toMatchObject({
+        equal: false,
+        unexpected: [{ section: "security", key: "type:gtrgm" }],
+      });
+    } finally {
+      await integrationDatabase.$executeRawUnsafe("GRANT USAGE ON TYPE gtrgm TO PUBLIC");
+    }
+  });
+
+  it("refuses a user aggregate and sees a disabled rule", async () => {
+    const expected = await identity();
+    await integrationDatabase.$executeRawUnsafe(
+      "CREATE AGGREGATE zz_receipt_probe(integer) (SFUNC = pg_catalog.int4pl, STYPE = integer, INITCOND = '0')",
+    );
+    try {
+      await expect(computeReceipt(integrationDatabase, expected)).rejects.toThrow(
+        "GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED",
+      );
+    } finally {
+      await integrationDatabase.$executeRawUnsafe(
+        "DROP AGGREGATE IF EXISTS zz_receipt_probe(integer)",
+      );
+    }
+    await integrationDatabase.$executeRawUnsafe("CREATE TABLE zz_rule_probe (x int)");
+    try {
+      await integrationDatabase.$executeRawUnsafe(
+        "CREATE RULE zz_block_delete AS ON DELETE TO zz_rule_probe DO INSTEAD NOTHING",
+      );
+      const enabled = await computeReceipt(integrationDatabase, expected);
+      await integrationDatabase.$executeRawUnsafe(
+        "ALTER TABLE zz_rule_probe DISABLE RULE zz_block_delete",
+      );
+      const disabled = await computeReceipt(integrationDatabase, expected);
+      expect(compareReceipts(enabled, disabled)).toMatchObject({
+        equal: false,
+        sections: ["schema"],
+      });
+    } finally {
+      await integrationDatabase.$executeRawUnsafe("DROP TABLE IF EXISTS zz_rule_probe");
+    }
+  });
+
+  it("refuses a user operator (any unsummarised object class)", async () => {
+    const expected = await identity();
+    await integrationDatabase.$executeRawUnsafe(
+      "CREATE OPERATOR === (LEFTARG = integer, RIGHTARG = integer, FUNCTION = pg_catalog.int4eq)",
+    );
+    try {
+      await expect(computeReceipt(integrationDatabase, expected)).rejects.toThrow(
+        "GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED",
+      );
+    } finally {
+      await integrationDatabase.$executeRawUnsafe("DROP OPERATOR IF EXISTS === (integer, integer)");
+    }
+    await computeReceipt(integrationDatabase, expected);
+  });
+});

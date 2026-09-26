@@ -319,6 +319,12 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
 - **Kapı açılamıyor:** app/worker açılmaz. Önceden doğrulanmış container konsol
   süper kullanıcı yolu `postgres` DB'sinden kapıyı açar; sonuç ayrıca
   `pg_database.datallowconn` ile doğrulanır. Bu yol sınanmadan reset GO yok.
+- **Collation sağlayıcı sürümü (makbuz dışı ortam kontrolü, Astra PR #234):** tam içerik
+  makbuzu collation sürümünü içermez; normal dump/restore bu sürümü taşımaz. Geri yükleme
+  hedefinde `SELECT datcollversion, pg_database_collation_actual_version(oid) FROM pg_database
+WHERE datname = current_database()` ile kullanılan her collation için `collversion` ve
+  `pg_collation_actual_version(oid)` kaynaktakiyle karşılaştırılır; farklıysa (sıralama davranışı
+  değişebilir) restore kabul edilmez, operatör kararı beklenir.
 - **Yürütücü süreci öldü (SIGKILL, OOM, oturum kopması):** `finally` çalışmaz; kapı
   kapalı ve tek yürütücü advisory kilidi kontrol oturumuyla birlikte düşmüş olabilir.
   Otomatik tekrar yok. Önce `postgres` DB'sinden hedef backend'in ve kilitlerin bittiği
