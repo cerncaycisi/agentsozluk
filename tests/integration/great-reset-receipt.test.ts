@@ -55,4 +55,17 @@ describe("great reset receipt against PostgreSQL", () => {
       computeReceipt(integrationDatabase, { ...expected, clusterId: "0" }),
     ).rejects.toThrow("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
   });
+
+  it("refuses unsupported user types instead of silently skipping them", async () => {
+    const expected = await identity();
+    await computeReceipt(integrationDatabase, expected);
+    await integrationDatabase.$executeRaw`CREATE TYPE zz_receipt_range AS RANGE (subtype = int4)`;
+    try {
+      await expect(computeReceipt(integrationDatabase, expected)).rejects.toThrow(
+        "GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED",
+      );
+    } finally {
+      await integrationDatabase.$executeRaw`DROP TYPE IF EXISTS zz_receipt_range`;
+    }
+  });
 });

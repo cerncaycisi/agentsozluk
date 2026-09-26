@@ -26,7 +26,9 @@ import { Prisma, type PrismaClient } from "@prisma/client";
   farklar DEĞER düzeyinde (anahtar, beklenen, gerçek) yazılır (P2). DB adı ve kapıya bağlı
   `datallowconn` bilerek dışarıdadır. Desteklenmeyen nesne (başka şemada ilişki, large object,
   materialized/foreign table, kalıtım/partition, public dışında kullanıcı şeması, domain, bağımsız
-  composite tip) varsa makbuz hata verir, sessizce atlamaz (P2).
+  composite, range/multirange, temel tip, kullanıcı collation'ı) varsa makbuz hata verir, sessizce
+  atlamaz (P2). Collation sürümü (`collversion`/`datcollversion`) makbuza girmez: normal dump/restore
+  bunu taşımaz, hedefte yeniden hesaplanır; sağlayıcı sürüm uyumu runbook'ta ayrı ortam kontrolüdür.
   Satır içeriği, credential ya da SQL çıktıya taşınmaz.
 */
 
@@ -43,6 +45,15 @@ export type GreatResetReceipt = {
   tables: Record<string, TableDigest>;
   details: Record<DetailedSection, Record<string, string>>;
 };
+
+const receiptSections: readonly ReceiptSection[] = [
+  "content",
+  "sequences",
+  "schema",
+  "security",
+  "database",
+];
+const detailedSections: readonly DetailedSection[] = ["sequences", "security", "database"];
 
 /** Ortam başına önceden yazılmış, değer düzeyinde beklenen fark. */
 export type ExpectedDifference = {
@@ -115,10 +126,18 @@ async function assertSupportedScope(tx: Tx) {
       (SELECT count(*)::int FROM pg_class
         WHERE relnamespace = 'public'::regnamespace AND relkind IN ('m', 'f', 'p')) AS unsupported,
       (SELECT count(*)::int FROM pg_inherits) AS inheritance,
-      -- Domain ve bağımsız composite tanımları özetlenmez; varlıkları reddedilir.
+      -- Domain, bağımsız composite, range/multirange ve dizi olmayan temel tip tanımları ile
+      -- kullanıcı collation'ları özetlenmez; varlıkları reddedilir (Astra, PR #234 3. tur).
+      -- Extension üyesi tipler (ör. pg_trgm'in gtrgm'i) extension adı/sürümüyle şemada kayıtlı.
       (SELECT count(*)::int FROM pg_type t WHERE t.typnamespace = 'public'::regnamespace
-        AND (t.typtype = 'd' OR (t.typtype = 'c' AND EXISTS (SELECT 1 FROM pg_class c
-          WHERE c.oid = t.typrelid AND c.relkind = 'c')))) AS types`;
+        AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_type'::regclass
+          AND d.objid = t.oid AND d.deptype = 'e')
+        AND (t.typtype IN ('d', 'r', 'm') OR (t.typtype = 'b' AND t.typcategory <> 'A')
+          OR (t.typtype = 'c' AND EXISTS (SELECT 1 FROM pg_class c
+            WHERE c.oid = t.typrelid AND c.relkind = 'c'))))
+        + (SELECT count(*)::int FROM pg_collation c WHERE c.collnamespace = 'public'::regnamespace
+            AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_collation'::regclass
+              AND d.objid = c.oid AND d.deptype = 'e')) AS types`;
   if (
     !scope ||
     scope.otherSchemas !== 0 ||
@@ -384,13 +403,19 @@ export function compareReceipts(
   differences: ExpectedDifference[];
   unexpected: ExpectedDifference[];
 } {
-  const sections = (Object.keys(expected.sections) as ReceiptSection[]).filter(
-    (section) => expected.sections[section] !== actual.sections[section],
+  const sections = receiptSections.filter(
+    (section) => expected.sections?.[section] !== actual.sections?.[section],
   );
-  // Bölüm özetleri ayrıntılarından yeniden hesaplanır; tutarsız ya da açıklanamayan bölüm
-  // farkı olan makbuz eşit sayılmaz (Astra, 2. tur P2).
+  // Bölüm özetleri ayrıntılarından yeniden hesaplanır; tutarsız, eksik bölümlü ya da açıklanamayan
+  // bölüm farkı olan makbuz eşit sayılmaz (Astra, 2. ve 3. tur P2). Bölüm listesi sabittir.
+  const hex = /^[a-f0-9]{64}$/u;
   const consistent = (value: GreatResetReceipt) =>
     value.version === 2 &&
+    receiptSections.every((section) => hex.test(value.sections?.[section] ?? "")) &&
+    Object.keys(value.sections).length === receiptSections.length &&
+    detailedSections.every(
+      (section) => typeof value.details?.[section] === "object" && value.details[section] !== null,
+    ) &&
     value.sections.content === sha256(value.tables) &&
     value.sections.sequences === sha256(value.details.sequences) &&
     value.sections.security === sha256(value.details.security) &&

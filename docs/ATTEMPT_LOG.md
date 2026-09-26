@@ -9471,3 +9471,10 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - Yeniden prova: kaynakta sütun boşluğu ve `BEFORE` enum değeriyle dump/restore birebir; `t`
   sütunlu tabloda diğer sütun değişikliği yakalandı; domain ve `pgxtempx` şeması
   `GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED`; makbuz 83–89 sn.
+- Astra PR #234 3. tur `f8c8091`: P1 ve önceki bulguların çoğu kapandı; 3 P2: şema bölümü eksik
+  makbuz eşit sayılabiliyordu, yalnız indekste kullanılan kullanıcı collation'ı ve kullanıcı
+  range tipi görülmüyordu. Düzeltme: sabit bölüm listesi ve biçim denetimi (iki yönde); kullanıcı
+  collation'ı, range/multirange ve dizi olmayan temel tip ret. İlk sürüm test DB'sinde `pg_trgm`'in
+  public'teki `gtrgm` tipini de reddetti (üretimde de aynı olurdu); extension üyesi tipler ve
+  collation'lar `pg_depend` ile dışarıda. Gerçek boyutlu prova yeniden geçti.
+- **Tekrarlama:** kapsam reddi eklerken extension üyesi nesneleri (`pg_depend.deptype = 'e'`) ayır.

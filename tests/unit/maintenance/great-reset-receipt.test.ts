@@ -12,7 +12,7 @@ const postgresOwner = JSON.stringify('["r","postgres",null,false,false]');
 /** Bölüm özetleri, gerçek makbuz gibi ayrıntılardan hesaplanır. */
 function receipt(
   change: (value: GreatResetReceipt) => void = () => undefined,
-  schema = "s",
+  schema = sha("s"),
 ): GreatResetReceipt {
   const value: GreatResetReceipt = {
     version: 2,
@@ -85,7 +85,7 @@ describe("great reset receipt comparison", () => {
   });
 
   it("never accepts a schema difference", () => {
-    expect(compareReceipts(receipt(), receipt(undefined, "s2")).equal).toBe(false);
+    expect(compareReceipts(receipt(), receipt(undefined, sha("s2"))).equal).toBe(false);
   });
 
   it("rejects a section digest that does not match its own details", () => {
@@ -94,5 +94,15 @@ describe("great reset receipt comparison", () => {
     forged.sha256 = sha(forged.sections);
     expect(compareReceipts(receipt(), forged).equal).toBe(false);
     expect(compareReceipts(forged, forged).equal).toBe(false);
+  });
+
+  it("rejects a receipt with a missing section in either direction", () => {
+    const missing = receipt();
+    delete (missing.sections as Partial<GreatResetReceipt["sections"]>).schema;
+    missing.sha256 = sha(missing.sections);
+    const other = receipt(undefined, sha("s2"));
+    expect(compareReceipts(missing, other).equal).toBe(false);
+    expect(compareReceipts(other, missing).equal).toBe(false);
+    expect(compareReceipts(missing, missing).equal).toBe(false);
   });
 });
