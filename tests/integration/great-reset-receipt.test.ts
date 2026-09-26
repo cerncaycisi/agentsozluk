@@ -87,4 +87,37 @@ describe("great reset receipt against PostgreSQL", () => {
       await integrationDatabase.$executeRawUnsafe("GRANT USAGE ON TYPE gtrgm TO PUBLIC");
     }
   });
+
+  it("refuses a user aggregate and sees a disabled rule", async () => {
+    const expected = await identity();
+    await integrationDatabase.$executeRawUnsafe(
+      "CREATE AGGREGATE zz_receipt_probe(integer) (SFUNC = pg_catalog.int4pl, STYPE = integer, INITCOND = '0')",
+    );
+    try {
+      await expect(computeReceipt(integrationDatabase, expected)).rejects.toThrow(
+        "GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED",
+      );
+    } finally {
+      await integrationDatabase.$executeRawUnsafe(
+        "DROP AGGREGATE IF EXISTS zz_receipt_probe(integer)",
+      );
+    }
+    await integrationDatabase.$executeRawUnsafe("CREATE TABLE zz_rule_probe (x int)");
+    try {
+      await integrationDatabase.$executeRawUnsafe(
+        "CREATE RULE zz_block_delete AS ON DELETE TO zz_rule_probe DO INSTEAD NOTHING",
+      );
+      const enabled = await computeReceipt(integrationDatabase, expected);
+      await integrationDatabase.$executeRawUnsafe(
+        "ALTER TABLE zz_rule_probe DISABLE RULE zz_block_delete",
+      );
+      const disabled = await computeReceipt(integrationDatabase, expected);
+      expect(compareReceipts(enabled, disabled)).toMatchObject({
+        equal: false,
+        sections: ["schema"],
+      });
+    } finally {
+      await integrationDatabase.$executeRawUnsafe("DROP TABLE IF EXISTS zz_rule_probe");
+    }
+  });
 });

@@ -137,6 +137,10 @@ async function assertSupportedScope(tx: Tx) {
           AND NOT EXISTS (SELECT 1 FROM pg_type e WHERE e.typarray = t.oid))
           OR (t.typtype = 'c' AND EXISTS (SELECT 1 FROM pg_class c
             WHERE c.oid = t.typrelid AND c.relkind = 'c'))))
+        -- Aggregate tanımı (SFUNC, INITCOND…) özetlenmez; extension üyesi olmayanlar ret (5. tur P2).
+        + (SELECT count(*)::int FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
+            AND p.prokind = 'a' AND NOT EXISTS (SELECT 1 FROM pg_depend d
+              WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e'))
         + (SELECT count(*)::int FROM pg_collation c WHERE c.collnamespace = 'public'::regnamespace
             AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_collation'::regclass
               AND d.objid = c.oid AND d.deptype = 'e')) AS types`;
@@ -241,9 +245,12 @@ async function schemaSection(tx: Tx) {
           CASE WHEN p.prokind IN ('f', 'p', 'w') THEN pg_get_functiondef(p.oid) END)
         ORDER BY p.oid::regprocedure::text COLLATE "C")
         FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.prokind <> 'a'),
-      'rules', (SELECT jsonb_agg(jsonb_build_array(tablename, rulename, definition)
-        ORDER BY tablename COLLATE "C", rulename COLLATE "C")
-        FROM pg_rules WHERE schemaname = 'public'),
+      -- Kurallar pg_rewrite'tan, etkinlik durumu (ev_enabled) dahil; pg_rules bunu göstermez
+      -- (5. tur P2). View'ların _RETURN kuralları views altında ayrıca özetlenir.
+      'rules', (SELECT jsonb_agg(jsonb_build_array(c.relname, r.rulename, r.ev_enabled,
+          pg_get_ruledef(r.oid)) ORDER BY c.relname COLLATE "C", r.rulename COLLATE "C")
+        FROM pg_rewrite r JOIN pg_class c ON c.oid = r.ev_class
+        WHERE c.relnamespace = 'public'::regnamespace AND r.rulename <> '_RETURN'),
       'views', (SELECT jsonb_agg(jsonb_build_array(viewname, definition)
         ORDER BY viewname COLLATE "C") FROM pg_views WHERE schemaname = 'public'),
       -- Etiketlerin mantıksal sırası; kesirli enumsortorder restore sonrası korunmak zorunda değil.

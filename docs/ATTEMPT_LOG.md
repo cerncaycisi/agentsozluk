@@ -9485,3 +9485,6 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   ilişkisiyle; runbook'a collation sağlayıcı sürümü adımı. Entegrasyon: `gtrgm` ACL farkı
   yakalandı. Kullanıcı temel tipi testi yazılamadı (C giriş/çıkış fonksiyonu gerekir); kod
   koşulu gerçek ilişkiye bağlı. Gerçek boyutlu prova yeniden geçti.
+- Astra PR #234 5. tur `d3456a8`: önceki bulgular kapandı; 2 P2 (aggregate tanımı değişimi ve
+  `DISABLE RULE` makbuza yansımıyordu). Düzeltme: extension üyesi olmayan public aggregate ret;
+  kurallar `pg_rewrite`'tan `ev_enabled` dahil. Entegrasyon testi ikisini de yakaladı.
