@@ -183,7 +183,31 @@ async function assertSupportedScope(tx: Tx) {
         -- Eşlemeler parolalı katalog yerine herkese açık pg_user_mappings görünümünden sayılır.
         + (SELECT count(*)::int FROM pg_subscription
             WHERE subdbid = (SELECT oid FROM pg_database WHERE datname = current_database()))
-        + (SELECT count(*)::int FROM pg_user_mappings) AS types`;
+        + (SELECT count(*)::int FROM pg_user_mappings)
+        /*
+          Katalog envanteri kapanışı (Astra, PR #234 9. tur, 64 katalog): güvenlik etiketi (B3),
+          replication origin (B4), geçersiz/hazır olmayan indeks (B7), sistem şemalarında kullanıcı
+          nesnesi (B2; FirstNormalObjectId = 16384) ve izin listesi dışındaki extension (B6) ret.
+        */
+        + (SELECT count(*)::int FROM pg_seclabels)
+        + (SELECT count(*)::int FROM pg_replication_origin)
+        + (SELECT count(*)::int FROM pg_index i JOIN pg_class c ON c.oid = i.indrelid
+            WHERE c.relnamespace = 'public'::regnamespace
+              AND NOT (i.indisvalid AND i.indisready AND i.indislive))
+        + (SELECT count(*)::int FROM (
+            SELECT 'pg_class'::regclass AS catalog, oid FROM pg_class
+              WHERE relnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_proc'::regclass, oid FROM pg_proc
+              WHERE pronamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_type'::regclass, oid FROM pg_type
+              WHERE typnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384) o
+          WHERE NOT EXISTS (SELECT 1 FROM pg_depend d
+            WHERE d.classid = o.catalog AND d.objid = o.oid AND d.deptype = 'e'))
+        + (SELECT count(*)::int FROM pg_extension
+            WHERE extname NOT IN ('plpgsql', 'pg_trgm', 'pgcrypto', 'unaccent')) AS types`;
   if (
     !scope ||
     scope.otherSchemas !== 0 ||
@@ -251,9 +275,12 @@ async function schemaSection(tx: Tx) {
       -- Mantıksal sıra (yaşayan sütunlar arasında); düşürülmüş sütun boşlukları restore'da
       -- korunmak zorunda değildir. Collation nitelikli adı ve kurallarıyla (Astra, 2. tur P2).
       'columns', (SELECT jsonb_agg(jsonb_build_array(x.relname, x.position, x.attname, x.type,
-          x.attnotnull, x.attidentity, x.attgenerated, x."defaultExpression", x.collation)
+          x.attnotnull, x.attidentity, x.attgenerated, x."defaultExpression", x.collation,
+          x.attstorage, x.attcompression, x.attstattarget, x.attoptions)
         ORDER BY x.relname COLLATE "C", x.position)
         FROM (SELECT c.relname, a.attname, a.attnotnull, a.attidentity, a.attgenerated,
+            -- Kalıcı sütun ayarları (B8).
+            a.attstorage, a.attcompression, a.attstattarget, a.attoptions::text AS attoptions,
             row_number() OVER (PARTITION BY a.attrelid ORDER BY a.attnum) AS position,
             format_type(a.atttypid, a.atttypmod) AS type,
             pg_get_expr(ad.adbin, ad.adrelid) AS "defaultExpression",
@@ -266,16 +293,27 @@ async function schemaSection(tx: Tx) {
           LEFT JOIN pg_collation co ON co.oid = a.attcollation AND a.attcollation <> 0
           WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'v')
             AND a.attnum > 0 AND NOT a.attisdropped) x),
-      'tables', (SELECT jsonb_agg(jsonb_build_array(relname, relkind, relpersistence,
-          reloptions::text, relreplident) ORDER BY relname COLLATE "C")
-        FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind IN ('r', 'v')),
+      -- Yerleşim, access method, TOAST seçenekleri (B9).
+      'tables', (SELECT jsonb_agg(jsonb_build_array(c.relname, c.relkind, c.relpersistence,
+          c.reloptions::text, c.relreplident, am.amname, c.reloftype::regtype::text,
+          ts.spcname, toast.reloptions::text) ORDER BY c.relname COLLATE "C")
+        FROM pg_class c
+        LEFT JOIN pg_am am ON am.oid = c.relam
+        LEFT JOIN pg_tablespace ts ON ts.oid = c.reltablespace
+        LEFT JOIN pg_class toast ON toast.oid = c.reltoastrelid
+        WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'v')),
       'constraints', (SELECT jsonb_agg(jsonb_build_array(conrelid::regclass::text, conname,
           contype, convalidated, condeferrable, condeferred, pg_get_constraintdef(oid))
         ORDER BY conrelid::regclass::text COLLATE "C", conname COLLATE "C")
         FROM pg_constraint WHERE connamespace = 'public'::regnamespace),
-      'indexes', (SELECT jsonb_agg(jsonb_build_array(tablename, indexname, indexdef)
-        ORDER BY tablename COLLATE "C", indexname COLLATE "C")
-        FROM pg_indexes WHERE schemaname = 'public'),
+      -- İndeks tanımı yanında replica identity, cluster ve tablespace seçimi (B7, B9).
+      'indexes', (SELECT jsonb_agg(jsonb_build_array(t.relname, c.relname,
+          pg_get_indexdef(i.indexrelid), i.indisreplident, i.indisclustered, ts.spcname)
+        ORDER BY t.relname COLLATE "C", c.relname COLLATE "C")
+        FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+        JOIN pg_class t ON t.oid = i.indrelid
+        LEFT JOIN pg_tablespace ts ON ts.oid = c.reltablespace
+        WHERE t.relnamespace = 'public'::regnamespace),
       'triggers', (SELECT jsonb_agg(jsonb_build_array(t.tgrelid::regclass::text, t.tgname,
           pg_get_triggerdef(t.oid), t.tgenabled, pg_get_functiondef(t.tgfoid))
         ORDER BY t.tgrelid::regclass::text COLLATE "C", t.tgname COLLATE "C")
@@ -301,7 +339,16 @@ async function schemaSection(tx: Tx) {
           FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
           WHERE t.typnamespace = 'public'::regnamespace) x),
       'extensions', (SELECT jsonb_agg(jsonb_build_array(extname, extversion,
-          extnamespace::regnamespace::text) ORDER BY extname COLLATE "C") FROM pg_extension),
+          extnamespace::regnamespace::text, extrelocatable,
+          (SELECT array_agg(x::regclass::text ORDER BY x::regclass::text COLLATE "C")
+            FROM unnest(extconfig) AS x), extcondition::text) ORDER BY extname COLLATE "C")
+        FROM pg_extension),
+      -- DEPENDS ON EXTENSION bağları (B5).
+      'extensionDependencies', (SELECT jsonb_agg(jsonb_build_array(x.extname, x.member)
+        ORDER BY x.extname COLLATE "C", x.member COLLATE "C")
+        FROM (SELECT e.extname, pg_describe_object(d.classid, d.objid, d.objsubid) AS member
+          FROM pg_depend d JOIN pg_extension e ON e.oid = d.refobjid
+          WHERE d.refclassid = 'pg_extension'::regclass AND d.deptype = 'x') x),
       -- Extension üye envanteri: sonradan ALTER EXTENSION ADD ile eklenen nesne dump/restore'da
       -- kaybolursa ad/sürüm aynı kalsa da fark görünür (Astra, PR #234 4. tur P2).
       'extensionMembers', (SELECT jsonb_agg(jsonb_build_array(x.extname, x.member)
@@ -370,6 +417,31 @@ async function securitySection(tx: Tx) {
           rolvaliduntil::text)::text
         FROM pg_roles WHERE rolname NOT LIKE 'pg\\_%'
       UNION ALL
+      -- Sistem şemalarındaki varsayılan dışı (NULL olmayan) ACL'ler (B2): initdb'nin koyduğu
+      -- ACL'ler aynı sürüm kümelerinde eşittir; devredilmiş bir GRANT burada görünür.
+      SELECT 'systemRelation:' || n.nspname || '.' || c.relname, c.relacl::text
+        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname IN ('pg_catalog', 'information_schema') AND c.relacl IS NOT NULL
+      UNION ALL
+      SELECT 'systemColumn:' || n.nspname || '.' || c.relname || '.' || a.attname, a.attacl::text
+        FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname IN ('pg_catalog', 'information_schema') AND a.attacl IS NOT NULL
+      UNION ALL
+      SELECT 'systemFunction:' || p.oid::regprocedure::text, p.proacl::text
+        FROM pg_proc p
+        WHERE p.pronamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+          AND p.proacl IS NOT NULL
+      UNION ALL
+      SELECT 'systemType:' || t.oid::regtype::text, t.typacl::text
+        FROM pg_type t
+        WHERE t.typnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+          AND t.typacl IS NOT NULL
+      UNION ALL
+      SELECT 'systemNamespace:' || nspname, jsonb_build_array(pg_get_userbyid(nspowner),
+          nspacl::text)::text
+        FROM pg_namespace WHERE nspname IN ('pg_catalog', 'information_schema')
+      UNION ALL
       -- Küme genelindeki yetkiler (Astra, PR #234 8. tur): dil sahipliği/ACL'si, parametre
       -- yetkileri ve tablespace'ler; extension üyeliği ya da rol nitelikleri bunları kanıtlamaz.
       SELECT 'language:' || lanname, jsonb_build_array(pg_get_userbyid(lanowner), lanpltrusted,
@@ -396,7 +468,9 @@ async function databaseSection(tx: Tx) {
     Prisma.sql`
     SELECT key, value FROM (
       SELECT 'locale' AS key, jsonb_build_array(pg_encoding_to_char(d.encoding), d.datcollate,
-          d.datctype, d.datlocprovider, d.daticulocale, d.daticurules, d.datconnlimit)::text AS value
+          d.datctype, d.datlocprovider, d.daticulocale, d.daticurules, d.datconnlimit,
+          d.datistemplate, (SELECT spcname FROM pg_tablespace WHERE oid = d.dattablespace))::text
+          AS value
         FROM pg_database d WHERE d.datname = current_database()
       UNION ALL
       SELECT 'comment', shobj_description(d.oid, 'pg_database')

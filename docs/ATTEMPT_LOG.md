@@ -9499,3 +9499,11 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - Astra PR #234 8. tur `4abf1f9`: 2 P2 (dil sahibi/ACL ve `pg_parameter_acl` makbuz dışıydı).
   Düzeltme: güvenlik bölümüne dil, parametre yetkisi ve tablespace anahtarları; entegrasyon testi
   `REVOKE USAGE ON LANGUAGE plpgsql` ve `GRANT SET ON PARAMETER` farklarını yakaladı.
+- Astra PR #234 9. tur `03603ae`: 64 sistem kataloğunun sistematik eşlemesi; P1 yok, 9 P2 grubu.
+  Kod kapanışı: `datistemplate`/DB tablespace (B1/B9), sistem şemalarındaki NULL olmayan ACL'ler ve
+  bu şemalarda kullanıcı nesnesi reddi (B2), `pg_seclabels` ve `pg_replication_origin` reddi
+  (B3/B4), `DEPENDS ON EXTENSION` bağları (B5), indeks geçerlilik reddi + replica identity/cluster
+  (B7), sütun depolama/sıkıştırma/istatistik (B8), access method/tablespace/TOAST seçenekleri ve
+  `extconfig` (B9). Extension izin listesi migration'larla aynı: plpgsql, pg_trgm, pgcrypto,
+  unaccent (ilk sürüm pgcrypto'yu unutmuştu; test DB yakaladı). B6 (extension üyesi tanımlarının
+  sahiplikle değiştirilmesi) kalıntı risk önerisiyle Astra'ya soruldu.
