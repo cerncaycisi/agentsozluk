@@ -15,7 +15,12 @@ async function main(): Promise<void> {
   const database = new PrismaClient({ datasourceUrl: target.databaseUrl, log: [] });
   try {
     const started = Date.now();
-    const receipt = await computeReceipt(database);
+    // Taramadan önce aynı transaction'da küme kimliği, sahip, sürüm ve sentetik işaret (P2).
+    const receipt = await computeReceipt(database, {
+      clusterId: target.identity.clusterId,
+      owner: target.identity.owner,
+      marker: target.identity.marker,
+    });
     process.stdout.write(
       `${JSON.stringify({ database: target.databaseName, seconds: (Date.now() - started) / 1000, ...receipt })}\n`,
     );

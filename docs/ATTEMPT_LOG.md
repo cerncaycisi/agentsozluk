@@ -9449,3 +9449,15 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   olarak yakalandı. Prova DB'leri ve dump silindi; üretime bağlanılmadı.
 - Not: provada kaynak kopya `--no-owner` ile açıldı; üretimde sahiplik farkı ortam başına
   manifestte ayrıca beklenir (tasarım Aşama 2).
+- Astra PR #234 1. tur `0f0479b`: **KOD DÜZELTİLMELİ** (1 P1, 7 P2, 1 P3). P1: `to_jsonb` satır
+  serileştirmesi SQL NULL ile JSON `null`'ı ve dizi alt indislerini ayırmıyordu. Düzeltme: kayıpsız
+  `t::text`; değer düzeyinde beklenen fark; roller/üyelik/genel rol ayarları, sütun ACL, RLS
+  politikası ve bayrakları, tam kolon tipi/identity/kalıcılık/view; desteklenmeyen nesnede ret;
+  `__proto__` güvenli sözlük; CLI sentetik kimliği doğrular; OID'den bağımsız sıralama.
+- Yeniden prova: makbuz 84–87 sn, dump 138 sn, restore 176 sn; kaynak ↔ dump sonrası ↔ restore
+  birebir. Negatif: SQL NULL → JSON `null` (`agent_runs`) içerik farkı, sütun `GRANT`'ı
+  `column:users.passwordHash`, başka şemada tablo `GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED`,
+  işaretsiz DB `GREAT_RESET_DATABASE_IDENTITY_MISMATCH`. İlk koşuda `defaclobjtype` `"char"` tipi
+  metin birleştirmesinde `42725` verdi; `::text` ile düzeltildi.
+- **Tekrarlama:** `pkill -f <kalıp>` bu kabuğun kendi komut satırıyla da eşleşip onu öldürür;
+  süreçleri alan bazlı (`ps -eo pid=,comm=,args=` + awk) seç.
