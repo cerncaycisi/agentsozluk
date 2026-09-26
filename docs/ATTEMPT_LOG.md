@@ -9336,3 +9336,23 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   için **KOD GO**: kimlik P2'si ve yönlendirme P3'ü kapandı; Next 15.5.25 yardımcılarıyla
   40.704 URL kombinasyonunda sıfır kimlik ayrışması. Aynı SHA'da CI 7/7 yeşil. Tamamlanmış
   prefetch'in Router Cache kanıtı **P2 açık/ertelendi** (reset GO kapısı).
+
+## 2026-09-26 — reset namespace çekirdeği, gerçek boyutlu yerel prova
+
+- Dal `feat/reset-namespace-core` (`feat/gone-middleware` üstüne). Yeni
+  `great-reset-namespace.ts`; yerel çekirdek `--namespace <operationId> <releaseSha>
+<receiptSha256>` ile niyet tüketimi → outbox arşivi → mezar taşı kopyası → TRUNCATE →
+  kısıt değişimi + `ALTER SEQUENCE … MAXVALUE 9007199254740991 RESTART WITH 2147483648` →
+  commit işareti → son koşullar sırasını tek transaction'da koşar.
+- `agentic-server` PG16 kopyası, 26 Eylül 01:32Z yedeği, `prisma migrate deploy` (2 yeni
+  migration, 6 sn): niyet yokken önizleme `RESET_INTENT_INVALID`; niyetle önizleme 24 sn
+  temiz; uygulama 102 sn `verified: true`; mezar taşı 6.120 TOPIC + 19.314 ENTRY, tek commit,
+  tüketilmiş niyet, iki sequence `max 9007199254740991`, `last_value 2147483648 is_called f`,
+  iki yeni kısıt; ilk `nextval` (rollback) 2147483648; ikinci reset önizlemesi
+  `PUBLIC_ID_SEQUENCE_UNSAFE`, `RESET_ALREADY_COMMITTED`, `RESET_INTENT_INVALID`,
+  `RESET_TOMBSTONES_NOT_EMPTY` ile kapalı. Prova DB'si silindi; üretime bağlanılmadı.
+- Provada psql ile eski kimlikli açık INSERT denemesi kısıta varmadan `updatedAt NOT NULL`
+  hatasına takıldı (sonuçsuz); kanıt entegrasyon testine taşındı (kısıt adıyla red, ilk yeni
+  kimlik 2147483648, rollback'te eski kısıt ve `MAXVALUE 2147483647` geri gelir).
+- **Tekrarlama:** kısıt kanıtı için elle INSERT'te bütün NOT NULL alanları doldur; aksi
+  hâlde red nedeni kısıt değil.

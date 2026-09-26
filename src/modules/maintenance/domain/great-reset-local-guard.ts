@@ -62,11 +62,45 @@ export function localResetTarget(value: string | undefined, hostname: string) {
   return { databaseName: url.pathname.slice(1), databaseUrl: url.toString(), identity };
 }
 
-export function parseLocalResetArguments(args: readonly string[]) {
+/*
+  Namespace provası (üretim tasarımı v19): `--namespace <operationId> <releaseSha> <receiptSha256>`
+  bayrağı niyet tüketimi, mezar taşı, RESTART ve commit işaretini aynı transaction'da çalıştırır.
+  Biçim burada, anlam ve niyetin varlığı repository kapısında denetlenir.
+*/
+function takeNamespace(args: readonly string[]) {
+  const index = args.indexOf("--namespace");
+  if (index === -1) return { args, namespace: undefined };
+  const [operationId, releaseSha, receiptSha256] = args.slice(index + 1, index + 4);
+  if (
+    !operationId ||
+    !releaseSha ||
+    !receiptSha256 ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+      operationId,
+    ) ||
+    !/^[a-f0-9]{40}$/u.test(releaseSha) ||
+    !/^[a-f0-9]{64}$/u.test(receiptSha256) ||
+    args.indexOf("--namespace", index + 1) !== -1
+  )
+    throw new Error("GREAT_RESET_INVALID_ARGUMENTS");
+  return {
+    args: [...args.slice(0, index), ...args.slice(index + 4)],
+    namespace: { operationId, releaseSha, receiptSha256 },
+  };
+}
+
+export function parseLocalResetArguments(input: readonly string[]) {
+  const taken = takeNamespace(input);
+  let args = taken.args;
+  const namespaceOption = taken.namespace ? { namespace: taken.namespace } : {};
   const archiveOutbox = args.at(-1) === "--archive-outbox";
   if (archiveOutbox) args = args.slice(0, -1);
   if (!args.length || (args.length === 1 && args[0] === "--dry-run")) {
-    return { mode: "DRY_RUN" as const, ...(archiveOutbox ? { archiveOutbox: true as const } : {}) };
+    return {
+      mode: "DRY_RUN" as const,
+      ...(archiveOutbox ? { archiveOutbox: true as const } : {}),
+      ...namespaceOption,
+    };
   }
   if (
     args.length === 5 &&
@@ -80,6 +114,7 @@ export function parseLocalResetArguments(args: readonly string[]) {
       databaseName: args[2]!,
       planSha256: args[4]!,
       ...(archiveOutbox ? { archiveOutbox: true as const } : {}),
+      ...namespaceOption,
     };
   }
   throw new Error("GREAT_RESET_INVALID_ARGUMENTS");

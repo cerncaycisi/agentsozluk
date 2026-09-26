@@ -112,4 +112,32 @@ describe("yerel great reset sınırı", () => {
     ])
       expect(() => parseLocalResetArguments(args)).toThrow("GREAT_RESET_INVALID_ARGUMENTS");
   });
+
+  it("parses the namespace rehearsal triple in either mode and rejects malformed ones", () => {
+    const operationId = "3f2b8c1e-4a5d-4e6f-8a9b-0c1d2e3f4a5b";
+    const namespace = { operationId, releaseSha: "b".repeat(40), receiptSha256: "c".repeat(64) };
+    const flag = ["--namespace", operationId, "b".repeat(40), "c".repeat(64)];
+    expect(parseLocalResetArguments([...flag, "--archive-outbox"])).toEqual({
+      mode: "DRY_RUN",
+      archiveOutbox: true,
+      namespace,
+    });
+    expect(
+      parseLocalResetArguments([
+        "--execute",
+        "--database",
+        "agent_sozluk_reset_rehearsal_20260926000000_execution_test",
+        "--plan-sha256",
+        "a".repeat(64),
+        ...flag,
+      ]),
+    ).toMatchObject({ mode: "EXECUTE", namespace });
+    for (const args of [
+      ["--namespace", operationId, "b".repeat(40)],
+      ["--namespace", "not-a-uuid", "b".repeat(40), "c".repeat(64)],
+      ["--namespace", operationId, "B".repeat(40), "c".repeat(64)],
+      [...flag, ...flag],
+    ])
+      expect(() => parseLocalResetArguments(args)).toThrow("GREAT_RESET_INVALID_ARGUMENTS");
+  });
 });
