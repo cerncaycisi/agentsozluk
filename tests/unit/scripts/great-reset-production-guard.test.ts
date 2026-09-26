@@ -59,6 +59,10 @@ describe("production great reset target guard", () => {
       "DATABASE_URL=postgresql://agent_sozluk:x@db:5432/agent_sozluk?sslmode=disable\n",
       "DATABASE_URL=mysql://agent_sozluk:x@db:5432/agent_sozluk\n",
       "DATABASE_URL=not a url\n",
+      // Başka bir çok satırlı değerin içindeki satır atama değildir (Astra, PR #231 P2).
+      'NOTE="ilk satır\nDATABASE_URL=postgresql://agent_sozluk:x@db:5432/agent_sozluk\nson"\n',
+      "DATABASE_URL=postgresql://agent_sozluk%ZZ:x@db:5432/agent_sozluk\n",
+      "bu satır atama değil\nDATABASE_URL=postgresql://agent_sozluk:x@db:5432/agent_sozluk\n",
     ]) {
       let message = "";
       try {
@@ -68,5 +72,13 @@ describe("production great reset target guard", () => {
       }
       expect(message).toBe("GREAT_RESET_PRODUCTION_DATABASE_URL_INVALID");
     }
+  });
+
+  it("accepts a trailing comment and a CRLF file with a multi-line value elsewhere", () => {
+    const envFileContents =
+      'KEY="-----BEGIN-----\r\nabc\r\n-----END-----"\r\n' +
+      'DATABASE_URL="postgresql://agent_sozluk:p%40ss@db:5432/agent_sozluk" # yorum\r\n';
+    const target = productionResetTarget({ ...valid, envFileContents });
+    expect(new URL(target.controlUrl).password).toBe("p%40ss");
   });
 });

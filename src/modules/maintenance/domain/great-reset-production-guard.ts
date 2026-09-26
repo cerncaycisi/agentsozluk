@@ -1,3 +1,5 @@
+import { parse as parseDotenv } from "dotenv";
+
 /*
   Üretim reset hedef kimliği (üretim tasarımı v19, "Sabit üretim kimliği"). Saf fonksiyon:
   dosya okumaz, ağa bağlanmaz. Çağıran, host adını, `.env` içeriğini ve koştuğu release dizinini
@@ -24,17 +26,55 @@ export type ProductionResetTarget = {
   releaseSha: string;
 };
 
+/*
+  `.env` atamaları tırnak, çok satırlı tırnaklı değer ve satır sonu yorumu izlenerek sayılır:
+  başka bir değerin içinde geçen `DATABASE_URL=` satırı atama değildir (Astra, PR #231 P2).
+  Tam bir `DATABASE_URL` ataması şarttır; değer ayrıca `dotenv`'in çözümüyle birebir aynı
+  olmalıdır, ki uygulama ile guard aynı credential'ı görsün. Biçim dışı satır varsa dosya
+  bütünüyle reddedilir (fail-closed).
+*/
 function databaseUrlFromEnv(contents: string): string {
-  const values = contents
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("#"))
-    .filter((line) => /^(?:export\s+)?DATABASE_URL\s*=/u.test(line))
-    .map((line) => line.replace(/^(?:export\s+)?DATABASE_URL\s*=\s*/u, ""));
+  const lines = contents.split(/\r?\n/u);
+  const values: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!.trim();
+    if (!line || line.startsWith("#")) continue;
+    const assignment = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/u.exec(line);
+    if (!assignment) throw new Error("GREAT_RESET_PRODUCTION_DATABASE_URL_INVALID");
+    const key = assignment[1]!;
+    let rest = assignment[2]!;
+    let value: string;
+    const quote = rest[0];
+    if (quote === '"' || quote === "'" || quote === "`") {
+      let body = rest.slice(1);
+      let close = body.indexOf(quote);
+      while (close === -1) {
+        index += 1;
+        if (index >= lines.length) throw new Error("GREAT_RESET_PRODUCTION_DATABASE_URL_INVALID");
+        body += `\n${lines[index]!}`;
+        close = body.indexOf(quote);
+      }
+      value = body.slice(0, close);
+      rest = body.slice(close + 1).trim();
+      if (rest && !rest.startsWith("#"))
+        throw new Error("GREAT_RESET_PRODUCTION_DATABASE_URL_INVALID");
+    } else {
+      value = rest.replace(/\s+#.*$/u, "").trim();
+    }
+    if (key === "DATABASE_URL") values.push(value);
+  }
   if (values.length !== 1) throw new Error("GREAT_RESET_PRODUCTION_DATABASE_URL_INVALID");
-  const raw = values[0]!;
-  const quoted = /^(["'])(.*)\1$/u.exec(raw);
-  return quoted ? quoted[2]! : raw;
+  if (parseDotenv(contents).DATABASE_URL !== values[0])
+    throw new Error("GREAT_RESET_PRODUCTION_DATABASE_URL_INVALID");
+  return values[0]!;
+}
+
+function safeDecode(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
 }
 
 export function productionResetTarget(input: {
@@ -62,7 +102,7 @@ export function productionResetTarget(input: {
     url.protocol !== "postgresql:" ||
     !url.hostname ||
     !/^[0-9]+$/u.test(url.port || "5432") ||
-    decodeURIComponent(url.username) !== identity.owner ||
+    safeDecode(url.username) !== identity.owner ||
     url.pathname !== `/${identity.databaseName}` ||
     url.search ||
     url.hash

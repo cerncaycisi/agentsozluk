@@ -9,9 +9,11 @@ import {
 } from "../domain/great-reset";
 import { localResetTarget, type LocalResetIdentity } from "../domain/great-reset-local-guard";
 import {
+  acquireRunnerLock,
   closeConnectionGate,
   connectionGatePreflight,
   openConnectionGate,
+  releaseRunnerLock,
 } from "./great-reset-connection-gate";
 import {
   assertNamespaceInput,
@@ -359,6 +361,14 @@ async function blockers(tx: Tx, archiveOutbox = false, afterNamespace = false): 
     SELECT count(*)::int AS count FROM pg_stat_activity
     WHERE datname = current_database() AND pid <> pg_backend_pid()`;
   if (connections?.count !== 0) result.push("OTHER_DATABASE_CONNECTIONS");
+  // Başlamakta olan backend pg_stat_activity'de henüz görünmez ama hedef DB nesnesinde başlangıç
+  // kilidi tutar (Astra, PR #231 P1; post_auth_delay ile yerelde doğrulandı).
+  const [starting] = await tx.$queryRaw<{ count: number }[]>`
+    SELECT count(DISTINCT pid)::int AS count FROM pg_locks
+    WHERE locktype = 'object' AND classid = 'pg_database'::regclass
+      AND objid = (SELECT oid FROM pg_database WHERE datname = current_database())
+      AND pid <> pg_backend_pid()`;
+  if (starting?.count !== 0) result.push("STARTING_DATABASE_CONNECTIONS");
   const [prepared] = await tx.$queryRaw<{ count: number }[]>`
     SELECT count(*)::int AS count FROM pg_prepared_xacts WHERE database = current_database()`;
   if (prepared?.count !== 0) result.push("PREPARED_TRANSACTIONS_PRESENT");
@@ -550,8 +560,15 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     ? new PrismaClient({ datasourceUrl: controlDatabaseUrl(target.databaseUrl), log: [] })
     : null;
   let gateClosed = false;
+  let runnerLocked = false;
+  let pendingError: unknown = undefined;
   let outcome: "COMMITTED" | "FAILED" = "FAILED";
   try {
+    if (control && request.mode === "EXECUTE") {
+      // Tek yürütücü: kilit hedef transaction'dan ÖNCE alınır; alınamazsa kapıya dokunulmaz.
+      await acquireRunnerLock(control, target.databaseName);
+      runnerLocked = true;
+    }
     const result = await database.$transaction(
       async (tx) => {
         if (request.mode === "DRY_RUN") await tx.$executeRaw`SET TRANSACTION READ ONLY`;
@@ -764,6 +781,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     outcome = "COMMITTED";
     return result;
   } catch (error) {
+    pendingError = error;
     // Yalnız sabit güvenli neden kodları; SQL, hata mesajı veya satır içeriği çıkmaz.
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2010" && error.meta?.code === "42501")
@@ -776,21 +794,29 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     }
     throw error;
   } finally {
-    await database.$disconnect();
+    /*
+      Temizlik adımları birbirini engellemez (Astra, PR #231 P2): hedef bağlantısı kapanamasa da
+      kapı açılmaya çalışılır; kilit ve kontrol bağlantısı ayrı ayrı bırakılır. Açılış düşerse
+      commit durumunu ayıran güvenli kod fırlatılır, ilk hata `cause` olarak korunur.
+    */
+    await database.$disconnect().catch(() => undefined);
+    let gateError: string | null = null;
     if (control) {
-      try {
-        // Başarıda da hatada da kapı açılır; açılamazsa commit durumunu ayıran güvenli kod.
-        if (gateClosed) await openConnectionGate(control, target.databaseName);
-      } catch {
-        throw new Error(
-          outcome === "COMMITTED"
-            ? "GREAT_RESET_COMMITTED_GATE_NOT_REOPENED"
-            : "GREAT_RESET_FAILED_GATE_NOT_REOPENED",
-        );
-      } finally {
-        await control.$disconnect();
+      if (gateClosed) {
+        try {
+          await openConnectionGate(control, target.databaseName);
+        } catch {
+          gateError =
+            outcome === "COMMITTED"
+              ? "GREAT_RESET_COMMITTED_GATE_NOT_REOPENED"
+              : "GREAT_RESET_FAILED_GATE_NOT_REOPENED";
+        }
       }
+      if (runnerLocked)
+        await releaseRunnerLock(control, target.databaseName).catch(() => undefined);
+      await control.$disconnect().catch(() => undefined);
     }
+    if (gateError) throw new Error(gateError, { cause: pendingError });
   }
 }
 

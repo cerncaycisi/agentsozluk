@@ -9380,3 +9380,15 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   sonrasında `datallowconn = t`.
 - Üretim guard'ı saf fonksiyon (host, release dizini/`.release-sha`, tek `DATABASE_URL`,
   kodda sabit bağlantı sınırları, türetilmiş kontrol URL'si); üretimde hiçbir şey çalıştırılmadı.
+- Astra PR #231 1. tur `3d4ac60`: **KOD DÜZELTİLMELİ** (1 P1, 4 P2, 1 P3). P1: kapıdan önce
+  `CheckMyDatabase()`'i geçip `pgstat_bestart()`'a varmamış backend `pg_stat_activity`'de
+  görünmez; yerelde `post_auth_delay` ile doğrulandı (görünür 0, kapı kapandıktan sonra sorgu
+  çalıştı) ve o backend'in hedef DB nesnesinde `RowExclusiveLock` başlangıç kilidi tuttuğu
+  görüldü. Düzeltme: kapı ve COMMIT öncesi engel kontrolü `pg_locks` başlangıç kilidini de sayar;
+  hedefe özel tek yürütücü advisory kilidi; kontrol işlemleri süre sınırlı transaction'da;
+  temizlik adımları birbirini engellemez, ilk hata `cause`; `.env` atamaları tırnak/çok satır/
+  yorum izlenerek sayılır ve `dotenv` ile karşılaştırılır; kullanıcı adı çözümü güvenli.
+- Yeniden prova: görünmez başlayan backend `GREAT_RESET_GATE_OTHER_BACKEND`, kapı açık, niyet
+  tüketilmedi; eşzamanlı ikinci yürütücü `GREAT_RESET_ANOTHER_RUN_ACTIVE`; birinci 89 sn verified.
+- **Tekrarlama:** `pg_stat_activity` tek başına "tek backend" kanıtı değildir; başlangıç kilidini
+  (`pg_locks`, `classid = pg_database`) birlikte say.
