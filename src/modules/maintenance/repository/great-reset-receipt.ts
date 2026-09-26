@@ -203,9 +203,46 @@ async function assertSupportedScope(tx: Tx) {
                 AND oid >= 16384
             UNION ALL SELECT 'pg_type'::regclass, oid FROM pg_type
               WHERE typnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            -- Ad alanı taşıyan diğer kataloglar (Astra, 10. tur B2).
+            UNION ALL SELECT 'pg_operator'::regclass, oid FROM pg_operator
+              WHERE oprnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_opclass'::regclass, oid FROM pg_opclass
+              WHERE opcnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_opfamily'::regclass, oid FROM pg_opfamily
+              WHERE opfnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_conversion'::regclass, oid FROM pg_conversion
+              WHERE connamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_collation'::regclass, oid FROM pg_collation
+              WHERE collnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_ts_config'::regclass, oid FROM pg_ts_config
+              WHERE cfgnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_ts_dict'::regclass, oid FROM pg_ts_dict
+              WHERE dictnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_ts_parser'::regclass, oid FROM pg_ts_parser
+              WHERE prsnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_ts_template'::regclass, oid FROM pg_ts_template
+              WHERE tmplnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+                AND oid >= 16384
+            UNION ALL SELECT 'pg_statistic_ext'::regclass, oid FROM pg_statistic_ext
+              WHERE stxnamespace IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
                 AND oid >= 16384) o
           WHERE NOT EXISTS (SELECT 1 FROM pg_depend d
             WHERE d.classid = o.catalog AND d.objid = o.oid AND d.deptype = 'e'))
+        -- Extension üyesi yalnız tanımı özetlenen sekiz sınıftan olabilir (Astra, 10. tur B6).
+        + (SELECT count(*)::int FROM pg_depend d
+            WHERE d.refclassid = 'pg_extension'::regclass AND d.deptype = 'e'
+              AND d.classid NOT IN ('pg_type'::regclass, 'pg_proc'::regclass,
+                'pg_operator'::regclass, 'pg_opclass'::regclass, 'pg_opfamily'::regclass,
+                'pg_language'::regclass, 'pg_ts_dict'::regclass, 'pg_ts_template'::regclass))
         + (SELECT count(*)::int FROM pg_extension
             WHERE extname NOT IN ('plpgsql', 'pg_trgm', 'pgcrypto', 'unaccent')) AS types`;
   if (
@@ -308,7 +345,10 @@ async function schemaSection(tx: Tx) {
         FROM pg_constraint WHERE connamespace = 'public'::regnamespace),
       -- İndeks tanımı yanında replica identity, cluster ve tablespace seçimi (B7, B9).
       'indexes', (SELECT jsonb_agg(jsonb_build_array(t.relname, c.relname,
-          pg_get_indexdef(i.indexrelid), i.indisreplident, i.indisclustered, ts.spcname)
+          pg_get_indexdef(i.indexrelid), i.indisreplident, i.indisclustered, ts.spcname,
+          -- İndeks sütunlarının istatistik hedefi (10. tur B8).
+          (SELECT array_agg(a.attstattarget ORDER BY a.attnum) FROM pg_attribute a
+            WHERE a.attrelid = i.indexrelid))
         ORDER BY t.relname COLLATE "C", c.relname COLLATE "C")
         FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
         JOIN pg_class t ON t.oid = i.indrelid
@@ -340,9 +380,72 @@ async function schemaSection(tx: Tx) {
           WHERE t.typnamespace = 'public'::regnamespace) x),
       'extensions', (SELECT jsonb_agg(jsonb_build_array(extname, extversion,
           extnamespace::regnamespace::text, extrelocatable,
-          (SELECT array_agg(x::regclass::text ORDER BY x::regclass::text COLLATE "C")
-            FROM unnest(extconfig) AS x), extcondition::text) ORDER BY extname COLLATE "C")
+          -- Tablo–koşul çiftleri birlikte sıralanır (10. tur B9).
+          (SELECT jsonb_agg(jsonb_build_array(u.cfg::regclass::text, u.cond)
+            ORDER BY u.cfg::regclass::text COLLATE "C")
+            FROM unnest(extconfig, extcondition) AS u(cfg, cond))) ORDER BY extname COLLATE "C")
         FROM pg_extension),
+      /*
+        Extension üye TANIMLARI (Astra, 10. tur B6): değiştirilmiş üye dump'a taşınmaz, restore
+        standart tanımı kurar. OID içermeyen metinle (regproc/regtype/regoperator, sabit search_path)
+        özetlenir; kimlik pg_describe_object'tir.
+      */
+      'extensionMemberDefinitions', (SELECT jsonb_agg(jsonb_build_array(m.extname, m.member,
+          m.definition) ORDER BY m.extname COLLATE "C", m.member COLLATE "C")
+        FROM (
+          SELECT e.extname, pg_describe_object(d.classid, d.objid, 0) AS member,
+            CASE d.classid
+              WHEN 'pg_proc'::regclass THEN (SELECT jsonb_build_array(
+                  CASE WHEN p.prokind <> 'a' THEN pg_get_functiondef(p.oid) END,
+                  pg_get_userbyid(p.proowner), p.proacl::text)
+                FROM pg_proc p WHERE p.oid = d.objid)
+              WHEN 'pg_operator'::regclass THEN (SELECT jsonb_build_array(o.oid::regoperator::text,
+                  o.oprcode::regproc::text, o.oprrest::regproc::text, o.oprjoin::regproc::text,
+                  o.oprcom::regoperator::text, o.oprnegate::regoperator::text, o.oprcanmerge,
+                  o.oprcanhash, pg_get_userbyid(o.oprowner))
+                FROM pg_operator o WHERE o.oid = d.objid)
+              WHEN 'pg_opclass'::regclass THEN (SELECT jsonb_build_array(c.opcname, am.amname,
+                  c.opcintype::regtype::text, c.opcdefault, f.opfname,
+                  c.opckeytype::regtype::text, pg_get_userbyid(c.opcowner))
+                FROM pg_opclass c JOIN pg_am am ON am.oid = c.opcmethod
+                JOIN pg_opfamily f ON f.oid = c.opcfamily WHERE c.oid = d.objid)
+              WHEN 'pg_opfamily'::regclass THEN (SELECT jsonb_build_array(f.opfname, am.amname,
+                  pg_get_userbyid(f.opfowner),
+                  (SELECT jsonb_agg(jsonb_build_array(a.amopstrategy, a.amoplefttype::regtype::text,
+                      a.amoprighttype::regtype::text, a.amopopr::regoperator::text, a.amoppurpose,
+                      (SELECT opfname FROM pg_opfamily WHERE oid = a.amopsortfamily))
+                    ORDER BY a.amopstrategy, a.amoplefttype::regtype::text COLLATE "C",
+                      a.amoprighttype::regtype::text COLLATE "C")
+                    FROM pg_amop a WHERE a.amopfamily = f.oid),
+                  (SELECT jsonb_agg(jsonb_build_array(p.amprocnum, p.amproclefttype::regtype::text,
+                      p.amprocrighttype::regtype::text, p.amproc::regprocedure::text)
+                    ORDER BY p.amprocnum, p.amproclefttype::regtype::text COLLATE "C",
+                      p.amprocrighttype::regtype::text COLLATE "C")
+                    FROM pg_amproc p WHERE p.amprocfamily = f.oid))
+                FROM pg_opfamily f JOIN pg_am am ON am.oid = f.opfmethod WHERE f.oid = d.objid)
+              WHEN 'pg_type'::regclass THEN (SELECT jsonb_build_array(t.typname,
+                  t.typinput::regproc::text, t.typoutput::regproc::text,
+                  t.typreceive::regproc::text, t.typsend::regproc::text,
+                  t.typmodin::regproc::text, t.typmodout::regproc::text,
+                  t.typanalyze::regproc::text, t.typlen, t.typbyval, t.typalign, t.typstorage,
+                  t.typdefault, t.typcategory, t.typispreferred, t.typdelim,
+                  pg_get_userbyid(t.typowner), t.typacl::text)
+                FROM pg_type t WHERE t.oid = d.objid)
+              WHEN 'pg_language'::regclass THEN (SELECT jsonb_build_array(l.lanname,
+                  l.lanplcallfoid::regproc::text, l.laninline::regproc::text,
+                  l.lanvalidator::regproc::text, l.lanpltrusted, pg_get_userbyid(l.lanowner),
+                  l.lanacl::text)
+                FROM pg_language l WHERE l.oid = d.objid)
+              WHEN 'pg_ts_dict'::regclass THEN (SELECT jsonb_build_array(t.dictname,
+                  tm.tmplname, t.dictinitoption, pg_get_userbyid(t.dictowner))
+                FROM pg_ts_dict t JOIN pg_ts_template tm ON tm.oid = t.dicttemplate
+                WHERE t.oid = d.objid)
+              WHEN 'pg_ts_template'::regclass THEN (SELECT jsonb_build_array(t.tmplname,
+                  t.tmplinit::regproc::text, t.tmpllexize::regproc::text)
+                FROM pg_ts_template t WHERE t.oid = d.objid)
+            END AS definition
+          FROM pg_depend d JOIN pg_extension e ON e.oid = d.refobjid
+          WHERE d.refclassid = 'pg_extension'::regclass AND d.deptype = 'e') m),
       -- DEPENDS ON EXTENSION bağları (B5).
       'extensionDependencies', (SELECT jsonb_agg(jsonb_build_array(x.extname, x.member)
         ORDER BY x.extname COLLATE "C", x.member COLLATE "C")

@@ -9507,3 +9507,12 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   `extconfig` (B9). Extension izin listesi migration'larla aynı: plpgsql, pg_trgm, pgcrypto,
   unaccent (ilk sürüm pgcrypto'yu unutmuştu; test DB yakaladı). B6 (extension üyesi tanımlarının
   sahiplikle değiştirilmesi) kalıntı risk önerisiyle Astra'ya soruldu.
+- Astra PR #234 10. tur `67d1c8a`: B1/B3/B4/B5/B7 kapandı; B6 kalıntı risk önerime gerekçeyle
+  katılmadı (geçmişteki meşru üye özelleştirmesi dump'a taşınmaz, restore'da kaybolur). Düzeltme:
+  dört extension'ın sekiz üye sınıfının OID'siz tanım özeti (fonksiyon, operatör, opclass,
+  opfamily + amop/amproc, tip, dil, ts sözlük/şablon), başka üye sınıfında ret; sistem şemasında
+  kullanıcı nesnesi reddi bütün ad alanlı kataloglara (B2); indeks sütun istatistik hedefi (B8);
+  extconfig tablo–koşul çiftleri (B9). Entegrasyon testi `ALTER OPERATOR % ... RESTRICT` ve
+  indeks `SET STATISTICS` farklarını yakaladı; gerçek boyutlu prova yine birebir.
+- **Tekrarlama:** extension üye özgün değerini varsayma; testte önce oku, sonra geri yükle
+  (pg_trgm `%` için `matchingsel`, `contsel` değil).

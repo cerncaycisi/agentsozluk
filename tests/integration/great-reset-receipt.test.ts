@@ -156,4 +156,50 @@ describe("great reset receipt against PostgreSQL", () => {
       );
     }
   });
+
+  it("sees a customised extension member operator and an index column statistics target", async () => {
+    const expected = await identity();
+    const [trgm] = await integrationDatabase.$queryRaw<{ count: number; restrict: string }[]>`
+      SELECT count(*)::int AS count, max(oprrest::regproc::text) AS restrict FROM pg_operator
+      WHERE oprname = '%' AND oprleft = 'text'::regtype AND oprright = 'text'::regtype`;
+    const before = await computeReceipt(integrationDatabase, expected);
+    if (trgm?.count === 1) {
+      await integrationDatabase.$executeRawUnsafe(
+        "ALTER OPERATOR % (text, text) SET (RESTRICT = NONE)",
+      );
+      try {
+        const after = await computeReceipt(integrationDatabase, expected);
+        expect(compareReceipts(before, after)).toMatchObject({
+          equal: false,
+          sections: ["schema"],
+        });
+      } finally {
+        await integrationDatabase.$executeRawUnsafe(
+          `ALTER OPERATOR % (text, text) SET (RESTRICT = ${trgm.restrict})`,
+        );
+      }
+      const restored = await computeReceipt(integrationDatabase, expected);
+      expect(compareReceipts(before, restored).equal).toBe(true);
+    }
+    const [index] = await integrationDatabase.$queryRaw<{ name: string }[]>`
+      SELECT c.relname AS name FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+      JOIN pg_class t ON t.oid = i.indrelid
+      WHERE t.relnamespace = 'public'::regnamespace AND i.indexprs IS NOT NULL LIMIT 1`;
+    if (index) {
+      await integrationDatabase.$executeRawUnsafe(
+        `ALTER INDEX "${index.name}" ALTER COLUMN 1 SET STATISTICS 1000`,
+      );
+      try {
+        const after = await computeReceipt(integrationDatabase, expected);
+        expect(compareReceipts(before, after)).toMatchObject({
+          equal: false,
+          sections: ["schema"],
+        });
+      } finally {
+        await integrationDatabase.$executeRawUnsafe(
+          `ALTER INDEX "${index.name}" ALTER COLUMN 1 SET STATISTICS -1`,
+        );
+      }
+    }
+  });
 });
