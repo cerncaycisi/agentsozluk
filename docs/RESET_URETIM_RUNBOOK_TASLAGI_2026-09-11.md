@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v17 (26 Eylül 2026)
+# Great reset — üretim runbook taslağı v18 (26 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -24,6 +24,8 @@ geri dönüş özetini bozabilirdi. Opus 5.5 v14 exact `a8b52ca` için
 Opus 5.5 v15 exact `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok,
 6 P3). v16 restore penceresini ve normal app kabulünü netleştirir. v17 410'u
 yalnız bilinen silinmiş sayısal ID'ye daraltır ve üst namespace kilidini ekler.
+Astra v17 exact `e34fa5a` için **TASARIM DÜZELTİLMELİ** dedi (2 P2, 1 P3); v18
+reset sonrası alt sınır kısıtını ve aşağıdaki adım 3/5 eşlemesini ekler.
 
 ## Ön kabul kapıları
 
@@ -123,8 +125,8 @@ yalnız bilinen silinmiş sayısal ID'ye daraltır ve üst namespace kilidini ek
    kimlik, izinler, oturum/`pg_prepared_xacts`, RLS, trigger, INSERT yazıcıları,
    dört bayrak, lease/outbox, boş `great_reset_commits` ve
    `great_reset_exposure_events`, geri yükleme audit'i
-   yokluğu, `AS bigint`,
-   `2147483648 ≤ MAXVALUE ≤ 2^53−1`
+   yokluğu, `AS bigint`, `MAXVALUE = 2147483647`, iki tabloda doğrulanmış
+   `CHECK ("publicId" <= 2147483647)`, `max("publicId") ≤ 2147483647`
    ve yazıcı kapıları geçsin.
    Plan hash'i, makbuz özeti ve bitiş bütçesi kaydedilir. Niyet hâlâ
    `consumedAt=NULL`, `invalidatedAt=NULL` olmalıdır.
@@ -138,12 +140,18 @@ yalnız bilinen silinmiş sayısal ID'ye daraltır ve üst namespace kilidini ek
    kısa plan, korunan tabloların tam özeti, sequence ve koşuları yeniden ölç;
    exact plan hash'i eşleşsin. Niyet `UPDATE ... consumedAt ... RETURNING`
    ile **aynı işlemde**, `invalidatedAt IS NULL` şartıyla tek satır olarak
-   tüketilir. Pending outbox arşivi, silinecek topic/entry UUID'lerinin
-   korunan mezar taşına kopyası, sınıflandırılmış
-   tabloların `TRUNCATE ... CONTINUE IDENTITY RESTRICT` işlemi,
-   `ALTER SEQUENCE ... RESTART WITH 2147483648`, commit işareti,
+   tüketilir. Pending outbox arşivi, silinecek topic/entry
+   `(kind, uuid, publicId)` üçlülerinin korunan mezar taşına kopyası
+   (`UNIQUE(kind, uuid)`, `UNIQUE(kind, publicId)`, kaynak satırlarla birebir
+   eşleşme ve silinecek satır sayısıyla eşitlik), sınıflandırılmış
+   tabloların `TRUNCATE ... CONTINUE IDENTITY RESTRICT` işlemi, iki eski
+   `<= 2147483647` kısıtının kaldırılıp yerine doğrulanmış
+   `CHECK ("publicId" BETWEEN 2147483648 AND 9007199254740991)` eklenmesi,
+   `ALTER SEQUENCE ... MAXVALUE <üst sınır> RESTART WITH 2147483648`, commit işareti,
    idempotency süre bitimi ve audit aynı transaction'dadır. Son koşullar:
-   silinenler boş, UUID mezar taşları ve işaret beklenen sayıda, izin verilen
+   silinenler boş, `(kind, uuid, publicId)` mezar taşları ve işaret beklenen
+   sayıda, eski kısıtlar yok ve yeni alt sınır kısıtları doğrulanmış,
+   `2147483648 ≤ MAXVALUE ≤ 2^53−1`, izin verilen
    korunan tablo farkları dışında içerik aynı, arşiv üyeliği doğru, iki
    sequence satırında `last_value=2147483648 AND is_called=false`, başka
    backend ve hazırlanmış işlem yok. Reset işlemi `nextval`/deneme INSERT'i

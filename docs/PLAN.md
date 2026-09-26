@@ -971,7 +971,9 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v16 restore penceresinin
    `TRAFFIC_OPEN` geçişinde bittiğini ve normal app'in boş cache/TLS smoke
    kabulünü netleştirir. v17 aşağıdaki 26 Eylül 410 kararını ve Astra'nın üst
-   namespace kilidini işler.
+   namespace kilidini işler. Astra v17 exact `e34fa5a` için **TASARIM
+   DÜZELTİLMELİ** dedi (2 P2, 1 P3); v18 reset sonrası `publicId` alt sınır
+   kısıtını ve runbook adım eşlemesini ekler.
    Kod, migration,
    bütçe, kontrol yolu, gerçek boyutlu restore ve uygulama hakemliği açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te

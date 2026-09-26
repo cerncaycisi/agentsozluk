@@ -9215,3 +9215,11 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** mezar taşını tarihsel tam envanter sanma; yalnız reset anında
   var olan kayıtları kapsar. "410, 404'ten daha hızlı düşer" iddiasını ölçmeden
   gerekçe yapma.
+- GPT-6 Astra v17 exact `e34fa5a2a301a10a9f2e89f988166429ab50dbbc` için
+  **TASARIM DÜZELTİLMELİ** dedi (2 P2, 1 P3; P1 yok). P2: reset sonrası açık
+  değerli INSERT, alt sınır kısıtı olmadığı için eski ID'yi yeniden
+  kullanabiliyordu; P2: runbook önizlemesi hâlâ `MAXVALUE ≥ 2147483648`
+  istiyordu ve uygulama adımında MAXVALUE yükseltmesi yoktu; P3: runbook
+  mezar taşını yalnız UUID üzerinden anlatıyordu. v18 üçünü de karşılar.
+- **Tekrarlama:** üst sınır kısıtını kaldırırken alt sınır kısıtını aynı
+  transaction'da ekle; `DEFAULT nextval()` açık değeri sınırlamaz.

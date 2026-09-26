@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v17 (26 Eylül 2026)
+# Great reset — üretim profili tasarımı v18 (26 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -41,7 +41,11 @@ için de Opus 5.5 **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 uygulama
 sınırı kaydetti. v16 restore penceresini ve normal app kabulünü netleştirir.
 v17, Gökhan'ın 26 Eylül ürün kararıyla 410'u yalnız mezar taşında kayıtlı
 silinmiş sayısal ID'lere daraltır (bilinmeyen 404) ve Astra'nın bulduğu
-migration–reset arası üst namespace açığını DB kısıtıyla kapatır.
+migration–reset arası üst namespace açığını DB kısıtıyla kapatır. Astra v17
+exact `e34fa5a2a301a10a9f2e89f988166429ab50dbbc` için **TASARIM DÜZELTİLMELİ**
+dedi (2 P2, 1 P3): reset sonrası açık değerli INSERT eski ID'yi yeniden
+kullanabiliyordu ve runbook önizleme/uygulama adımları yeni sınırla
+çelişiyordu. v18 reset sonrasına alt sınır kısıtı ekler ve runbook'u eşler.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -90,7 +94,9 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    koşuluyla **değiştirir**. **Üst namespace kilidi (Astra, 26 Eylül):** aynı
    migration iki tabloya adlı ve doğrulanmış (`convalidated`)
    `CHECK ("publicId" <= 2147483647)` kısıtı ekler; sequence üst sınırı da
-   `2147483647` kalır. Böylece migration ile reset arasında `2147483648` ve
+   `2147483647` kalır; migration SQL'i `AS bigint` ile `MAXVALUE 2147483647`
+   değerini **aynı ifadede açıkça** yazar (yalnız `AS bigint` varsayılan üst
+   sınırı büyütebilir). Böylece migration ile reset arasında `2147483648` ve
    üstü ne sequence'ten ne açık değerli INSERT'ten üretilebilir; bu bir DB
    garantisidir, "eski değer üretimi devam eder" beklentisi değildir.
    Önizleme ve son uygulama iki kısıtın varlığını/doğrulanmışlığını, iki
@@ -107,17 +113,27 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    SQL fonksiyon ve trigger parametrelerini kapsar. `2147483648` ve `2^53` sınır
    testleri ile production build geçmeden migration kabul edilmez; reset
    öncesi `2147483648` INSERT'inin kısıtla reddedildiği de test edilir. Reset
-   işlemi, iki tablo temizlendikten sonra **aynı transaction** içinde iki
-   `CHECK` kısıtını kaldırır ve
+   işlemi, iki tablo temizlendikten sonra **aynı transaction** içinde iki eski
+   `CHECK` kısıtını kaldırır, yerine iki tabloya adlı ve doğrulanmış
+   `CHECK ("publicId" BETWEEN 2147483648 AND 9007199254740991)` ekler ve
    `ALTER SEQUENCE ... MAXVALUE <üst sınır> RESTART WITH 2147483648` uygular;
-   `setval()` kullanılmaz. Son koşul kısıtların yokluğunu, yeni `MAXVALUE`
-   aralığını ve iki sequence satırını **değer tüketmeden** okur:
+   `setval()` kullanılmaz. **Alt sınır kısıtı (Astra v17 P2):** `DEFAULT
+nextval()` açıkça verilen değeri sınırlamaz ve mevcut değişmezlik trigger'ı
+   yalnız UPDATE'i engeller; bu kısıt olmadan reset sonrası açık değerli
+   INSERT mezar taşındaki eski ID'yi yeni içeriğe bağlayabilirdi (canlı kayıt
+   mezar taşından önce kazanır). Tablolar TRUNCATE sonrası boş olduğundan
+   doğrulama ucuzdur. Son koşul eski kısıtların yokluğunu, yeni kısıtların
+   varlığını/doğrulanmışlığını, yeni `MAXVALUE` aralığını ve iki sequence
+   satırını **değer tüketmeden** okur:
    `last_value = 2147483648 AND is_called = false`. Reset transaction'ında
    `nextval()` ve deneme INSERT'i yasaktır. Açılış sonrasında ilk gerçek yeni
    içerik için `publicId ≥ 2147483648` aranır; tam eşitlik iddia edilmez.
    PostgreSQL 16'da `RESTART`, `MAXVALUE` değişimi ve `DROP CONSTRAINT`
-   transaction'a bağlıdır; bu davranış, rollback'te kısıtların geri gelmesi ve
-   kilit süresi yerel gerçek boyutlu provada ayrıca sınanacaktır. Ayrı,
+   transaction'a bağlıdır; bu davranış, rollback'te eski kısıtların geri
+   gelip yenilerin kaybolması, reset sonrası eski ID ile açık INSERT'in
+   reddi ve kilit süresi yerel gerçek boyutlu provada ayrıca sınanacaktır.
+   Restore kapısı pre-reset dump'ta eski kısıtı ve `MAXVALUE = 2147483647`
+   değerini makbuz eşitliğiyle bekler. Ayrı,
    korunan `great_reset_commits` satırı reset
    transaction'ında audit ve niyet tüketimiyle birlikte eklenir; rollback veya
    reset öncesinde satır yoktur. **Public sözleşme (Gökhan kararı, 26 Eylül
