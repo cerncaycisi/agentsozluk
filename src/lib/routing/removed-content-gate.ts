@@ -14,9 +14,13 @@ import { parseEntryRouteReference, parseTopicRouteReference } from "@/lib/routin
   Kapı ile sayfa farklı kimlik seçerse canlı adrese 410 ya da silinmiş adrese içerik düşebilirdi.
   Bozuk yüzde dizisi aday değildir; sayfa da onu geçersiz adres sayar.
 */
+const NEXT_PARAM_SEPARATOR = /^_NEXTSEP_/u;
+
 function pageSegment(raw: string): string | null {
   try {
-    return encodeURIComponent(decodeURIComponent(raw));
+    // Next 15.5.25 sırası: çöz (route-matcher) → baştaki `_NEXTSEP_`'i bir kez sil
+    // (stripParameterSeparators) → `getDynamicParam` içinde yeniden kodla (Astra, PR #229 2. tur).
+    return encodeURIComponent(decodeURIComponent(raw).replace(NEXT_PARAM_SEPARATOR, ""));
   } catch {
     return null;
   }

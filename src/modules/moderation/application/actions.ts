@@ -7,7 +7,12 @@ import { lockUserActorAndTargetTransition } from "@/modules/auth/repository/user
 import { isCanonicalSeedEntry } from "@/modules/entries/domain/entry";
 import { lockEntryState } from "@/modules/entries/repository/entries";
 import { lockTopicState, recalculateTopicCounter } from "@/modules/topics/repository/topics";
-import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import {
+  createTopicSlug,
+  normalizeTopicTitle,
+  TOPIC_TITLE_AMBIGUOUS_MESSAGE,
+  topicTitleAddressIsAmbiguous,
+} from "@/modules/topics/domain/normalization";
 import {
   assertCanActOnUser,
   requireModerationCapability,
@@ -362,6 +367,8 @@ export async function renameTopic(
 ) {
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
   const normalizedTitle = normalizeTopicTitle(title);
+  if (topicTitleAddressIsAmbiguous(title))
+    throw new AppError("VALIDATION_ERROR", 422, TOPIC_TITLE_AMBIGUOUS_MESSAGE);
   return inTransaction(client, async (transaction) => {
     const relation = await requireContentActionPermission(transaction, actor, {
       ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),

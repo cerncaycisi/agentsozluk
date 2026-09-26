@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { decideRemovedContent } from "../../src/modules/maintenance/application/removed-content";
+import { createTopicWithFirstEntry } from "../../src/modules/topics/application/topics";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -207,5 +208,26 @@ describe("great reset kayıtlarının PostgreSQL sınırı", () => {
     expect(
       await decideRemovedContent(integrationDatabase, "ENTRY", { contentId: randomUUID() }),
     ).toEqual({ status: "PASS", reason: "UNKNOWN" });
+  });
+
+  it("rejects an ambiguous title even on the service path that skips the HTTP schema", async () => {
+    const { topic } = await liveTopicAndEntry();
+    await expect(
+      createTopicWithFirstEntry(
+        integrationDatabase,
+        {
+          actorId: topic.createdById,
+          actorKind: "HUMAN",
+          actorRole: "USER",
+          requestId: randomUUID(),
+          origin: "API",
+        },
+        {
+          title: "hiç açılmadı--7",
+          entryBody: "Ajan yolu da aynı başlık kuralından geçmek zorunda olan yeterli metin.",
+        },
+      ),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
+    expect(await integrationDatabase.topic.count()).toBe(1);
   });
 });

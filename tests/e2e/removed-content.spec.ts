@@ -116,7 +116,8 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
       headers: { RSC: "1", "next-router-prefetch": "1" },
       maxRedirects: 0,
     });
-    expect(prefetch.status()).not.toBe(410);
+    // Normal akış (kısmi prefetch 200 ya da sayfanın 404'ü); 410/5xx yok, middleware CSP'si yok.
+    expect([200, 404]).toContain(prefetch.status());
     expect(prefetch.headers()["content-security-policy"]).toBeUndefined();
 
     // Canlı içerik mezar taşından önce kazanır.
@@ -137,14 +138,81 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
       data: "[]",
       maxRedirects: 0,
     });
-    expect(action.status()).not.toBe(410);
-    expect(action.status()).toBeLessThan(500);
+    // Next'in bilinmeyen action için sabit güvenli yanıtı; middleware 410 vermez.
+    expect(action.status()).toBe(404);
+    expect(action.headers()["x-nextjs-action-not-found"]).toBe("1");
 
     // Commit işareti kalkınca (restore sonrası durum) aynı adres normal akışın 404'üne döner.
     await clearResetRecords(database);
     expect((await request.get(`/entry/${goneEntryPublicId}`, { maxRedirects: 0 })).status()).toBe(
       404,
     );
+  } finally {
+    await clearResetRecords(database);
+    await database.$disconnect();
+  }
+});
+
+test("a prefetched link to content removed after page load lands on the 410 page", async ({
+  page,
+}) => {
+  const database = testDatabase();
+  try {
+    const author = await database.user.findFirstOrThrow({
+      where: { status: "ACTIVE", kind: "HUMAN" },
+    });
+    const suffix = randomUUID().slice(0, 8);
+    const topic = await database.topic.create({
+      data: {
+        title: `silinecek entry başlığı ${suffix}`,
+        normalizedTitle: `silinecek entry başlığı ${suffix}`,
+        slug: `silinecek-entry-basligi-${suffix}`,
+        createdById: author.id,
+      },
+    });
+    const entry = await database.entry.create({
+      data: {
+        topicId: topic.id,
+        authorId: author.id,
+        origin: "WEB",
+        body: "Sayfa açıkken reset tarafından silinecek entry metni.",
+        normalizedBody: "sayfa açıkken reset tarafından silinecek entry metni.",
+      },
+    });
+    await database.topic.update({
+      where: { id: topic.id },
+      data: { entryCount: 1, lastEntryAt: entry.createdAt },
+    });
+
+    await page.goto(`/baslik/${topic.slug}--${topic.publicId}`);
+    const link = page.getByRole("link", { name: /tarihli entry’ye git/u }).first();
+    await expect(link).toBeVisible();
+    await link.hover();
+
+    // Reset sayfa açıkken olur: entry silinir, kimliği mezar taşına yazılır.
+    const { operationId } = await database.greatResetCommit.create({
+      data: {
+        operationId: randomUUID(),
+        releaseSha: "f".repeat(40),
+        planSha256: "f".repeat(64),
+        receiptSha256: "f".repeat(64),
+        topicTombstones: 0,
+        entryTombstones: 1,
+      },
+    });
+    await database.greatResetTombstone.create({
+      data: { kind: "ENTRY", contentId: entry.id, publicId: entry.publicId, operationId },
+    });
+    await database.entry.delete({ where: { id: entry.id } });
+
+    const documentResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/entry/${entry.publicId}`) &&
+        response.request().resourceType() === "document",
+    );
+    await link.click();
+    expect((await documentResponse).status()).toBe(410);
+    await expect(page.getByRole("heading", { name: "Bu içerik kaldırıldı" })).toBeVisible();
   } finally {
     await clearResetRecords(database);
     await database.$disconnect();

@@ -106,4 +106,9 @@ describe("topic validation", () => {
     expect(parseProposedTopicTitle("gitar--0")).toBe("gitar--0");
     expect(parseProposedTopicTitle("a-b-c")).toBe("a-b-c");
   });
+
+  it("rejects a lone surrogate as a validation error instead of throwing", () => {
+    expect(() => parseProposedTopicTitle("baş\ud800lık")).not.toThrow();
+    expect(parseProposedTopicTitle("baş\ud800lık")).toBeNull();
+  });
 });

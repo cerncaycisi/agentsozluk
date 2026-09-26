@@ -59,6 +59,17 @@ describe("removed content gate candidates", () => {
     // UUID önekli ama kodlu `--` ile yeni namespace'e işaret eden adres: sayfa bunu canlı
     // sayısal kimlik olarak okur; kapı legacy UUID sanıp 410 vermemeli.
     expect(removedContentCandidate("GET", `/baslik/${uuid}%2D%2D2147483648`)).toBeNull();
+    // Next baştaki `_NEXTSEP_`'i çözdükten sonra bir kez siler; kapı da aynı kimliği seçer.
+    expect(removedContentCandidate("GET", "/entry/_NEXTSEP_7")).toEqual({
+      kind: "ENTRY",
+      reference: { publicId: 7 },
+    });
+    expect(removedContentCandidate("GET", "/entry/%5FNEXTSEP%5F7")).toEqual({
+      kind: "ENTRY",
+      reference: { publicId: 7 },
+    });
+    // Sayfa `--7` yalın başlığını görür (kimlik değil); kapı 410 adayı seçmemeli.
+    expect(removedContentCandidate("GET", "/baslik/_NEXTSEP_--7")).toBeNull();
     // Türkçe karakter kodlu kalır; kanonik sonek yine okunur.
     expect(removedContentCandidate("GET", "/baslik/%C3%A7ay--12")).toEqual({
       kind: "TOPIC",

@@ -1,3 +1,4 @@
+import { parseTopicRouteReference } from "@/lib/routing/public-urls";
 const whitespacePattern = /\s+/gu;
 const diacriticPattern = /[\u0300-\u036f]/gu;
 const nonAlphaNumericPattern = /[^a-z0-9]+/gu;
@@ -48,3 +49,23 @@ export function canonicalTopicPath(publicId: number, titleOrSlug: string): strin
   const slug = titleOrSlug.includes(" ") ? createTopicSlug(titleOrSlug) : titleOrSlug;
   return `/baslik/${slug}--${publicId}`;
 }
+
+/*
+  Açılmamış başlığın adresi başlığın kendisidir (`unopenedTopicUrl` = `encodeURIComponent`).
+  `--7` ile biten ya da UUID ile başlayan başlığın adresini rota ayrıştırıcısı başka bir başlığın
+  kimliği sanar: yazma formu yerine o başlığa yönlendirir, great reset sonrasında silinmiş
+  kimliğe 410 verebilir (üretim tasarımı v19 madde 4; Astra, PR #229). Kural ayrıştırıcının
+  kendisidir. Eşleşmemiş surrogate içeren metin kodlanamaz; o da adreslenemez sayılır.
+*/
+export function topicTitleAddressIsAmbiguous(title: string): boolean {
+  let segment: string;
+  try {
+    segment = encodeURIComponent(title);
+  } catch {
+    return true;
+  }
+  return parseTopicRouteReference(segment) !== null;
+}
+
+export const TOPIC_TITLE_AMBIGUOUS_MESSAGE =
+  "Başlık '--sayı' ile bitemez, bir kimlik biçimiyle başlayamaz ya da geçersiz karakter içeremez.";
