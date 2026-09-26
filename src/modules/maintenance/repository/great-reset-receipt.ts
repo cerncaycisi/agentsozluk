@@ -148,8 +148,8 @@ async function assertSupportedScope(tx: Tx) {
           Sınıf kapanışı (Astra, PR #234 6. tur): makbuzun özetlemediği HER nesne türü, extension
           üyesi değilse reddedilir. Tek tek tür eklemek yerine izin listesi: public'te operatör,
           operatör sınıfı/ailesi, dönüşüm, metin arama nesneleri, genişletilmiş istatistik;
-          veritabanı genelinde event trigger, publication, FDW/sunucu, kullanıcı cast'i,
-          transform ve access method.
+          veritabanı genelinde event trigger, publication, subscription, FDW/sunucu, kullanıcı
+          eşlemesi, kullanıcı cast'i, transform ve access method.
         */
         + (SELECT count(*)::int FROM (
             SELECT 'pg_operator'::regclass AS catalog, oid FROM pg_operator
@@ -178,7 +178,12 @@ async function assertSupportedScope(tx: Tx) {
             UNION ALL SELECT 'pg_transform'::regclass, oid FROM pg_transform
             UNION ALL SELECT 'pg_am'::regclass, oid FROM pg_am WHERE oid >= 16384
           ) o WHERE NOT EXISTS (SELECT 1 FROM pg_depend d
-            WHERE d.classid = o.catalog AND d.objid = o.oid AND d.deptype = 'e')) AS types`;
+            WHERE d.classid = o.catalog AND d.objid = o.oid AND d.deptype = 'e'))
+        -- Abonelik ve kullanıcı eşlemesi süper kullanıcısız oluşturulabilir (Astra, 7. tur P2).
+        -- Eşlemeler parolalı katalog yerine herkese açık pg_user_mappings görünümünden sayılır.
+        + (SELECT count(*)::int FROM pg_subscription
+            WHERE subdbid = (SELECT oid FROM pg_database WHERE datname = current_database()))
+        + (SELECT count(*)::int FROM pg_user_mappings) AS types`;
   if (
     !scope ||
     scope.otherSchemas !== 0 ||

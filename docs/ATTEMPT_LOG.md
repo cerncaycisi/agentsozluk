@@ -9493,3 +9493,6 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   operatör, opclass/opfamily, dönüşüm, metin arama, genişletilmiş istatistik; DB genelinde event
   trigger, publication, FDW/sunucu, kullanıcı cast/transform/access method) extension üyesi
   değilse ret. Entegrasyon testi operatörü reddetti.
+- Astra PR #234 7. tur `e786e0b`: 2 P2 (süper kullanıcısız subscription ve kullanıcı eşlemesi).
+  Düzeltme: bu DB'ye ait `pg_subscription` ve `pg_user_mappings` görünümü ret; sorguların süper
+  kullanıcı olmayan rolle çalıştığı yerelde doğrulandı. Gerçek boyutlu prova (7. tur kodu) geçti.
