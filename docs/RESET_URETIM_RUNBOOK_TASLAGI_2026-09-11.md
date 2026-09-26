@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v15 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v16 (25 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -21,7 +21,8 @@ exact `c0442c8` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3). v13 exact
 `483886a` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): iç kabul yazısı
 geri dönüş özetini bozabilirdi. Opus 5.5 v14 exact `a8b52ca` için
 **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve altı P3 kabul ayrıntısı).
-v15 bakım yanıtı sırasını ve read-only havuz kanıtını netleştirir.
+Opus 5.5 v15 exact `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok,
+6 P3). v16 restore penceresini ve normal app kabulünü netleştirir.
 
 ## Ön kabul kapıları
 
@@ -162,14 +163,19 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
    açıldığının kanıtı olmadan bakım bitmez. **Caddy bakım yanıtı açık kalır.**
    Aynı release/app'i yalnız iç kabul için mevcut DB credential'ıyla,
    bütün havuz oturumlarında kanıtlanmış `default_transaction_read_only=on`
-   modunda aç; dört yazma bayrağı kapalı, worker hold sürer.
+   modunda aç; ayar yalnız atılabilir runtime'ın connection-startup
+   parametresidir, kalıcı `.env` veya immutable release'e yazılmaz. Dört
+   yazma bayrağı kapalı, worker hold sürer.
    Salt okunur ayar app'in bütün bağlantılarına connection-startup parametresiyle
    gider; Prisma/sürücü ile gerçek standalone build'de havuz üst sınırı,
    `pg_stat_activity` sayısı ve her backend'de `SHOW default_transaction_read_only`
    sonucu karşılaştırılır. `ALTER ROLE`/`ALTER DATABASE` ayarıyla makbuz
    değiştirilmez. `SET ... READ WRITE` ve entrypoint migrate/seed/bootstrap
    yazıcıları taranır; açık kalırsa GO yok. İç kabul boyunca app/PostgreSQL
-   loglarında güvenli `SQLSTATE 25006` sayısı sıfır olmalıdır.
+   loglarında güvenli `SQLSTATE 25006` sayısı sıfır olmalıdır. Sayım uygulama
+   güvenli hata kodundan veya redakte PostgreSQL mesajından yapılır; DB log
+   ayarı ve makbuz değişmez, ham SQL/entry basılmaz. Sıfırdan büyükse app
+   kapatılır, bakım sürer ve restore ayrıca değerlendirilir.
    İç kabul cache'i atılabilir ayrı runtime'dadır; app kapatılınca dosya/ISR/data
    cache'i temizlenir ve container yeniden yaratılır. Rollback sonrası da
    bayat reset cache'iyle servis açılmaz.
@@ -190,10 +196,16 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
    `UNIQUE(operationId)` ile aynı satırı tekrar okuyan/yazan idempotent yol
    kullanılır. Dış kayıt `TRAFFIC_OPEN` olmuş ama DB yazısı düşmüşse yalnız
    bu DB adımı yeniden denenir, restore yoktur. İki kanıttan biri başarısızsa
-   bakım sürer. İki kanıt sonrası **yalnız geri dönüş penceresi kapanır;
-   Caddy bakım yanıtı sürer**. Normal DB bağlantılı app açılır, mevcut yetkili
-   smoke hesabıyla credential basılmadan yazan `__Host-` giriş smoke'u iç
-   Host'tan yapılır. Smoke'un oturum/audit kimlikleri kaydedilir; Gate 10
+   bakım sürer. Dış kayıt `TRAFFIC_OPEN`'a geçtiği anda **geri dönüş penceresi
+   kapanır**; DB olayının da doğrulanması sonraki aşama şartıdır ve Caddy
+   bakım yanıtı sürer. Normal DB bağlantılı app yeni container/boş kalıcı
+   cache ile açılır; bütün havuzda `SHOW default_transaction_read_only = off`
+   doğrulanır. GET/HEAD 410/404, sitemap ve anonim sayfalar normal app'te
+   tekrar ölçülür. Mevcut yetkili smoke hesabıyla credential basılmadan,
+   yerel standalone provada kanıtlanmış TLS'li loopback iç Host yolu ve gerçek
+   `APP_URL` Host/Origin/CSRF koşullarıyla yazan `__Host-` giriş smoke'u yapılır.
+   Dört bayrak kapalıyken giriş E2E'de çalışmalı; smoke `entries`/`topics`
+   yazmamalı ve sequence tüketmemelidir. Oturum/audit kimlikleri kaydedilir; Gate 10
    doğal kohortu smoke bittikten sonra başlar.
    Bu smoke başarısızsa eski dump restore edilmez, bakımda ileri düzeltme
    gerekir. Sonra Caddy bakım yanıtı kaldırılır. Dört bayrağı eski
@@ -212,9 +224,11 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
   App/worker/bayrak/timer'ları eski durumlarına döndür. Autovacuum veya `NOWAIT`
   hatası olsa da yeni denemede yeni `operationId`, Gökhan'ın yeni exact eylem
   onayı, yeni dump/restore/tam özet ve plan gerekir; otomatik tekrar yok.
-- **COMMIT sonrası kabul hatası:** yalnız Caddy bakım yanıtı kaldırılmadan,
-  yazma bayrakları ve worker açılmadan önce site bakımda kalır. Dış trafik
-  veya yeni içerik başladıysa reset dump'ı ve eski gecelik yedek dahil
+- **COMMIT sonrası kabul hatası:** restore yalnız dış kayıt
+  `COMMITTED_MAINTENANCE` iken, `TRAFFIC_OPEN` geçişinden önce ve Caddy
+  bakım yanıtı/yazma bayrakları/worker kapalıyken mümkündür.
+  `TRAFFIC_OPEN`, dış trafik veya yeni içerikten biri gerçekleştiyse reset
+  dump'ı ve eski gecelik yedek dahil
   pre-reset yedeğe dönüş **yasaktır**; ileri
   düzeltme/ayrı namespace planı gerekir. Bu dar pencerede Gökhan ayrı restore
   eylemini onaylarsa, doğrulanmış dump kişisel operatör sunucusundan production

@@ -28,7 +28,8 @@
   **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). v12 exact `c0442c8` için
   **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v13 exact `483886a` için
   **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). v14 exact `a8b52ca` için
-  **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve 6 P3); v15/runbook
+  **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve 6 P3). v15 exact
+  `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3); v16/runbook
   hâlâ taslaktır;
   kod, geniş ID geçişi, tam digest/bütçe, production kontrol/restore yolu ve
   uygulama hakemliği bekler.

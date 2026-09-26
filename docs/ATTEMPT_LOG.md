@@ -9183,3 +9183,19 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - **Tekrarlama:** `TRAFFIC_OPEN` dış kaydı, Caddy'nin dış trafiği açıldığı
   anlamına otomatik gelmez; normal app ve yazan smoke'u bakım yanıtı sürerken
   tamamla. Read-only kabulü yalnız tek Prisma bağlantısında kanıtlama.
+
+## 2026-09-25 — üretim reset tasarımı v15 hakemi
+
+- Claude Opus 5.5 (`claude-opus-5-5`) salt okunur hakem exact
+  `2a34d8e69b8ea6637ba09a142027edf642f230fb` v15 için
+  **TASARIM UYGUN** dedi; yeni P1/P2 yok, sıra çelişkisi kapandı, altı P3
+  uygulama ayrıntısı var. Hakem yalnız Read kullandı, üretime bağlanmadı;
+  PostgreSQL/Prisma davranışını deneyle doğrulamadığını bildirdi.
+- v16, restore penceresinin dış kayıt `TRAFFIC_OPEN` geçişinde bittiğini,
+  normal app'in yeni container/boş cache ile açılıp GET/HEAD yeniden kabul
+  edileceğini ve TLS'li iç Host yazan smoke'un Caddy açılmadan önce geçeceğini
+  yazar. Read-only parametresi yalnız geçici runtime'dadır; normal havuzun
+  `off` sonucu, güvenli `SQLSTATE 25006` sayımı ve dört bayrak kapalı giriş
+  E2E'si açık uygulama kapısıdır. Kod/üretim ölçümü yapılmadı.
+- **Tekrarlama:** bakım yanıtının hâlâ açık olması restore izni değildir;
+  `TRAFFIC_OPEN` dış durumuna geçildikten sonra eski dump'a dönme.

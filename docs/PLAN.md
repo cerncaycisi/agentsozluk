@@ -967,8 +967,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): geri dönüş penceresindeki
    iç kabul yazıları tam özet eşitliğini bozabilirdi. v14 exact `a8b52ca`
    için Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve altı
-   P3 kabul ayrıntısı). v15 bakım yanıtı sırasını ve salt okunur havuz/cache
-   kanıtını netleştirir.
+   P3 kabul ayrıntısı). v15 exact `2a34d8e` için de Opus 5.5
+   **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v16 restore penceresinin
+   `TRAFFIC_OPEN` geçişinde bittiğini ve normal app'in boş cache/TLS smoke
+   kabulünü netleştirir.
    Kod, migration,
    bütçe, kontrol yolu, gerçek boyutlu restore ve uygulama hakemliği açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
