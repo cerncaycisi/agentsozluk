@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v16 (25 Eylül 2026)
+# Great reset — üretim runbook taslağı v17 (26 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -22,7 +22,8 @@ exact `c0442c8` için **TASARIM UYGUN** dedi (P1/P2 yok, 6 P3). v13 exact
 geri dönüş özetini bozabilirdi. Opus 5.5 v14 exact `a8b52ca` için
 **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve altı P3 kabul ayrıntısı).
 Opus 5.5 v15 exact `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok,
-6 P3). v16 restore penceresini ve normal app kabulünü netleştirir.
+6 P3). v16 restore penceresini ve normal app kabulünü netleştirir. v17 410'u
+yalnız bilinen silinmiş sayısal ID'ye daraltır ve üst namespace kilidini ekler.
 
 ## Ön kabul kapıları
 
@@ -32,14 +33,17 @@ Opus 5.5 v15 exact `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok,
   `great_reset_intents`/`great_reset_commits`/UUID `great_reset_tombstones`/
   `great_reset_exposure_events`, 410,
   6.3-5 ve `__Host-` kabulü kod/test/CI ile geçer.
-  Yeni ID namespace'i `2147483648` başlar. Eski sayısal aralığın tamamına 410
-  verme ürün kararı Gökhan'a gösterilir; kabul edilmezse reset durur.
+  Yeni ID namespace'i `2147483648` başlar. Migration'dan resete kadar iki
+  tablodaki `CHECK ("publicId" <= 2147483647)` ve sequence `MAXVALUE =
+2147483647` üst aralığı DB düzeyinde kapatır; önizleme ve uygulama bunları
+  denetler, reset transaction'ı kaldırır. Gökhan kararı (26 Eylül): 410 yalnız
+  mezar taşında `(kind, publicId)` kayıtlı silinmiş ID'ye; bilinmeyen 404.
   `great_reset_commits`/`great_reset_exposure_events` doluysa veya reset geri
   yükleme audit'i varsa ikinci
   reset bu tasarımla yasaktır. Route
   commit işaretine ön koşul olarak bakar; işaret varsa canlı içerik kaydı
-  mezar taşından önce kazanır. İçerik yoksa eski
-  sayısal aralık veya UUID mezar taşı 410, bilinmeyen adres 404. Yalın
+  mezar taşından önce kazanır. İçerik yoksa sayısal veya UUID mezar taşı
+  kaydı 410, bilinmeyen adres 404. Yalın
   `/baslik/{kodlanmış başlık}` açılmamış başlık formudur; 410 kapsamına girmez.
   `--rakam` sonekinin mevcut parser'la çakışması ayrıca envanter/validasyon
   kapısıdır. Reset

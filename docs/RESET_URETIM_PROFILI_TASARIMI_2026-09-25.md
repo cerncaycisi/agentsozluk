@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v16 (25 Eylül 2026)
+# Great reset — üretim profili tasarımı v17 (26 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -39,6 +39,9 @@ yazıları tam özet eşitliğini bozabilirdi. v14 exact
 ayrıntısı kaldı. v15 exact `2a34d8e69b8ea6637ba09a142027edf642f230fb`
 için de Opus 5.5 **TASARIM UYGUN** dedi; P1/P2 yok, altı P3 uygulama
 sınırı kaydetti. v16 restore penceresini ve normal app kabulünü netleştirir.
+v17, Gökhan'ın 26 Eylül ürün kararıyla 410'u yalnız mezar taşında kayıtlı
+silinmiş sayısal ID'lere daraltır (bilinmeyen 404) ve Astra'nın bulduğu
+migration–reset arası üst namespace açığını DB kısıtıyla kapatır.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
 
@@ -82,8 +85,19 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    `INTEGER` olduğu için geçmişte atanmış her sayısal ID en fazla `2147483647` olabilir.
    Ayrı, önceden onaylı migration `entries`/`topics.publicId` ve sequence'leri
    `BIGINT` yapar; üretim profili, yerel çekirdekteki `data_type = integer`
-   koşulunu `AS bigint`, `2147483648 ≤ MAXVALUE ≤ Number.MAX_SAFE_INTEGER`,
-   `CACHE 1`, `NO CYCLE` koşuluyla **değiştirir**. Public API ve istemci alanları
+   koşulunu reset öncesinde `AS bigint`, `MAXVALUE = 2147483647`, `CACHE 1`,
+   `NO CYCLE`; reset sonrasında `2147483648 ≤ MAXVALUE ≤ Number.MAX_SAFE_INTEGER`
+   koşuluyla **değiştirir**. **Üst namespace kilidi (Astra, 26 Eylül):** aynı
+   migration iki tabloya adlı ve doğrulanmış (`convalidated`)
+   `CHECK ("publicId" <= 2147483647)` kısıtı ekler; sequence üst sınırı da
+   `2147483647` kalır. Böylece migration ile reset arasında `2147483648` ve
+   üstü ne sequence'ten ne açık değerli INSERT'ten üretilebilir; bu bir DB
+   garantisidir, "eski değer üretimi devam eder" beklentisi değildir.
+   Önizleme ve son uygulama iki kısıtın varlığını/doğrulanmışlığını, iki
+   sequence'in `MAXVALUE = 2147483647` olduğunu ve
+   `max("publicId") ≤ 2147483647` sonucunu denetler; biri eksikse reset
+   `PUBLIC_ID_SEQUENCE_UNSAFE` ile durur. Kısıt ve sequence tanımı şema
+   özetine girer. Public API ve istemci alanları
    `number` olarak kalır: Prisma `bigint` değerleri repository sınırında yalnız
    `Number.isSafeInteger` koşuluyla çevrilir, giriş de güvenle `bigint`e dönüşür.
    Sequence üst sınırı `Number.MAX_SAFE_INTEGER` değerini aşmaz. Envanter;
@@ -91,29 +105,43 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    tipleri, worker wire/Zod şemaları, feed/sitemap, gövde içi `#id` bağlantıları,
    prompt kataloğu, JSON çıktısı, ham SQL'deki `::int`/`int4` cast'leri,
    SQL fonksiyon ve trigger parametrelerini kapsar. `2147483648` ve `2^53` sınır
-   testleri ile production build geçmeden migration kabul edilmez. Migration
-   sonrası reset öncesinde eski değer üretimi devam eder. Reset işlemi, iki tablo
-   temizlendikten sonra **aynı transaction**
-   içinde `ALTER SEQUENCE ... RESTART WITH 2147483648` uygular; `setval()` kullanılmaz.
-   Son koşul iki sequence satırını **değer tüketmeden** okur:
+   testleri ile production build geçmeden migration kabul edilmez; reset
+   öncesi `2147483648` INSERT'inin kısıtla reddedildiği de test edilir. Reset
+   işlemi, iki tablo temizlendikten sonra **aynı transaction** içinde iki
+   `CHECK` kısıtını kaldırır ve
+   `ALTER SEQUENCE ... MAXVALUE <üst sınır> RESTART WITH 2147483648` uygular;
+   `setval()` kullanılmaz. Son koşul kısıtların yokluğunu, yeni `MAXVALUE`
+   aralığını ve iki sequence satırını **değer tüketmeden** okur:
    `last_value = 2147483648 AND is_called = false`. Reset transaction'ında
    `nextval()` ve deneme INSERT'i yasaktır. Açılış sonrasında ilk gerçek yeni
    içerik için `publicId ≥ 2147483648` aranır; tam eşitlik iddia edilmez.
-   PostgreSQL 16'da `RESTART`
-   transaction'a bağlıdır; bu davranış ve kilit süresi yerel gerçek boyutlu provada
-   ayrıca sınanacaktır. Ayrı, korunan `great_reset_commits` satırı reset
+   PostgreSQL 16'da `RESTART`, `MAXVALUE` değişimi ve `DROP CONSTRAINT`
+   transaction'a bağlıdır; bu davranış, rollback'te kısıtların geri gelmesi ve
+   kilit süresi yerel gerçek boyutlu provada ayrıca sınanacaktır. Ayrı,
+   korunan `great_reset_commits` satırı reset
    transaction'ında audit ve niyet tüketimiyle birlikte eklenir; rollback veya
-   reset öncesinde satır yoktur. Public sözleşme: canlı kayıt varsa normal yanıt;
-   yoksa yalnız commit işareti varsa eski sayısal namespace
-   (`≤2147483647`) 410; diğer bulunmayan sayılar 404. Böylece migration sonrası
-   reset öncesinde ve pre-reset yedekten restore sonrasında canlı eski içerik
-   200 kalır. Eski aralıkta hiç üretilmemiş ID'ye reset sonrası 410 verilebilir;
-   SEO/ürün kabulünde Gökhan'a açıkça gösterilir.
+   reset öncesinde satır yoktur. **Public sözleşme (Gökhan kararı, 26 Eylül
+   2026: "Yalnız bilinen silinmişe 410"):** canlı kayıt varsa normal yanıt;
+   yoksa ve commit işareti varsa yalnız `great_reset_tombstones` içinde
+   `(kind, publicId)` olarak kayıtlı sayısal ID 410; hiç kullanılmamış veya
+   bilinmeyen her sayı 404. Eski aralığın tamamına 410 verilmez. Böylece
+   migration sonrası reset öncesinde ve pre-reset yedekten restore sonrasında
+   canlı eski içerik 200 kalır. **Kapsam sınırı:** mezar taşı yalnız reset
+   anında veritabanında bulunan kayıtları kapsar. Resetten önce fiziksel
+   olarak silinmiş, eldeki yedeklerde de olmayan içerik saptanamaz ve 404
+   döner; sequence boşlukları geçmişte içerik bulunduğunu kanıtlamaz.
+   Tarihsel tam envanter iddia edilmez. `BIGINT` namespace'i bu durumda da
+   gereklidir: bilinmeyen eski ID'lerin yeni içeriğe yeniden atanmasını
+   engelleyen şey mezar taşı değil, yeni aralığın `2147483648`'den
+   başlamasıdır.
 4. Eski **UUID permalinkleri** için korunan `great_reset_tombstones` tablosu
    migration'la eklenir; cleared içerikle FK bağı taşımaz. Reset transaction'ı,
-   `topics` ve `entries` silinmeden önce `(kind, uuid)` anahtarlarını burada
-   toplar; UUID benzersizliği ve sayı doğrulanır. İşaret varken bile canlı
-   içerik UUID mezar taşından önce kazanır. Kanonik
+   `topics` ve `entries` silinmeden önce `(kind, uuid, publicId)` üçlülerini
+   burada toplar; `UNIQUE(kind, uuid)` ve `UNIQUE(kind, publicId)` ile
+   benzersizlik, silinecek satır sayısıyla eşitlik ve bütün `publicId`
+   değerlerinin `≤2147483647` olduğu doğrulanır. Sayısal 410 araması
+   `(kind, publicId)` indeksini kullanır. İşaret varken bile canlı
+   içerik mezar taşından önce kazanır. Kanonik
    `/baslik/{slug}--{publicId}` ve `/entry/{publicId}` sayısal namespace ile
    ayrılır. **Yalın `/baslik/{kodlanmış başlık}` bir silinmiş içerik
    permalink'i değildir:** mevcut uygulamada açılmamış başlık için noindex
@@ -126,8 +154,9 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    `--[0-9]+` ile biten başlık mevcut parser'da ID sanılır; migration öncesi
    mevcut veri taranır, yeni başlık doğrulamasında bu çakışma engellenir veya
    ayrı bir kaçış yolu kanıtlanır. Çakışma çözülmeden reset GO yok.
-   `BIGINT` geçişi veya bu ürün kararı kabul edilmezse **reset GO yok**; mevcut
-   sequence'den tarihsel en yüksek silinmiş ID'yi çıkardığımız iddia edilmez.
+   `BIGINT` geçişi ve üst namespace kilidi kabul edilmezse **reset GO yok**;
+   mevcut sequence'den tarihsel en yüksek silinmiş ID'yi çıkardığımız iddia
+   edilmez.
    HTTP 410 için birincil aday, Next.js 15.5.25'in **Node runtime middleware**
    yoludur (`src/middleware.ts`, `config.runtime = 'nodejs'`). Mevcut geniş
    matcher ve prefetch dışlaması korunur; yalnız `/baslik/:seg` ve `/entry/:seg`
@@ -141,7 +170,8 @@ ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni de
    `>2147483647` sayısal ID ve ayrıştırılamayan yol DB'ye dokunmadan `next()`
    alır; POST'un mevcut uygulama güvenli hata kodu test edilir. Adayda
    **önce commit işareti** okunur; yoksa `next()`. İşaret varsa canlı kayıt,
-   ardından mezar taşı aranır.
+   ardından mezar taşı aranır. Mezar taşında olmayan aday `next()` alır ve
+   mevcut sayfa akışının 404'ü döner; middleware 404 üretmez.
    İşaret sonucu yalnız uygulama süreci ömründe, başarılı okumadan sonra
    önbelleklenebilir; reset ve restore sırasında bütün app süreçleri kapatılır,
    işaret değişiminden sonra yeniden başlatılır; her yeni süreçte boş önbellek
@@ -474,7 +504,8 @@ AND invalidatedAt IS NULL AND expiresAt > now() AND releaseSha = ? RETURNING ...
 
 - Üretim profili ve migration'lar henüz yazılmadı. Büyük `BIGINT` dönüşümü ve
   `2147483648` namespace'i gerçek boyutlu yerel kopyada süre, disk, WAL, index,
-  ORM ve URL davranışıyla sınanmalı; ürün kararı ayrıca onaylanmalı.
+  ORM ve URL davranışıyla sınanmalı. 410 ürün kararı 26 Eylül'de verildi
+  (yalnız bilinen silinmiş ID); üst namespace kısıtı da aynı provada sınanır.
 - Yedek tam digest'i, kısa planın eşitliği, niyetin rollback/COMMIT sonucu, kapı,
   başka rol, autovacuum, özel INSERT yazıcısı ve RLS uçtan uca senaryoları yerel
   PostgreSQL 16'da doğrulanmalı. Yeni digest süresi ile temp/WAL/disk ve kesinti

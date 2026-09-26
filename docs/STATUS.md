@@ -29,7 +29,8 @@
   **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v13 exact `483886a` için
   **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3). v14 exact `a8b52ca` için
   **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve 6 P3). v15 exact
-  `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3); v16/runbook
+  `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v17, Gökhan'ın 26 Eylül
+  kararıyla 410'u yalnız mezar taşında kayıtlı silinmiş sayısal ID'ye daraltır (bilinmeyen 404) ve migration–reset arası üst namespace'i DB kısıtıyla kapatır; v17/runbook
   hâlâ taslaktır;
   kod, geniş ID geçişi, tam digest/bütçe, production kontrol/restore yolu ve
   uygulama hakemliği bekler.

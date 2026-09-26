@@ -9199,3 +9199,19 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   E2E'si açık uygulama kapısıdır. Kod/üretim ölçümü yapılmadı.
 - **Tekrarlama:** bakım yanıtının hâlâ açık olması restore izni değildir;
   `TRAFFIC_OPEN` dış durumuna geçildikten sonra eski dump'a dönme.
+
+## 2026-09-26 — 410 kapsamı ürün kararı ve üst namespace açığı
+
+- GPT-6 Astra salt okunur, `2a34d8e69b8ea6637ba09a142027edf642f230fb` ve çalışma
+  ağacındaki v16 farkları üzerinde 410 kapsamını inceledi. Önerisi: eski sayısal
+  aralığın tamamına 410 verme; reset anında silinen kayıtların `publicId` değerini
+  mezar taşına ekle, bilinen silinmiş ID 410, bilinmeyen 404. Ayrıca BIGINT
+  migration'ı ile reset arasında `2147483648` ve üstünün DB düzeyinde
+  engellenmediğini buldu (koşullu açık; gerçekleştiğine dair bulgu yok).
+- Gökhan kararı (26 Eylül): "Yalnız bilinen silinmişe 410". v17 bunu işler; üst
+  aralık migration'dan resete kadar `CHECK ("publicId" <= 2147483647)` ve sequence
+  `MAXVALUE = 2147483647` ile kapalıdır, reset transaction'ı ikisini kaldırır.
+  Kod/üretim ölçümü yapılmadı; üretime bağlanılmadı.
+- **Tekrarlama:** mezar taşını tarihsel tam envanter sanma; yalnız reset anında
+  var olan kayıtları kapsar. "410, 404'ten daha hızlı düşer" iddiasını ölçmeden
+  gerekçe yapma.

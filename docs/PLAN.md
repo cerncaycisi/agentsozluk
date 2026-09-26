@@ -970,19 +970,26 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    P3 kabul ayrıntısı). v15 exact `2a34d8e` için de Opus 5.5
    **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v16 restore penceresinin
    `TRAFFIC_OPEN` geçişinde bittiğini ve normal app'in boş cache/TLS smoke
-   kabulünü netleştirir.
+   kabulünü netleştirir. v17 aşağıdaki 26 Eylül 410 kararını ve Astra'nın üst
+   namespace kilidini işler.
    Kod, migration,
    bütçe, kontrol yolu, gerçek boyutlu restore ve uygulama hakemliği açık.
    **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
    silinen başlık/entry/yazar adresleri **410 Gone** döner. Gerekçe: içerik kalıcı olarak
    gitti; 410 bunu arama motoruna ve yapay zekâ tarayıcılarına açıkça söyler, eski
    adresler dizinden 404'e göre daha hızlı düşer, "geçici hata mı" belirsizliği kalmaz.
+   (Astra 26 Eylül: "daha hızlı düşer" iddiası repoda ölçülmedi; seçim gerekçesi
+   sayılmaz.)
    İlk güvenlik varsayımı eksik çıktı: `TRUNCATE … CONTINUE IDENTITY` mevcut sequence
    değerini korur, ancak geçmişte silinmiş ve o andaki en büyük değerden yüksek bir
    ID'nin yeniden kullanılmadığını tek başına kanıtlamaz. v4 tasarımında güvenli
    çözüm, eski `INTEGER` namespace'ini tamamen 410 alanı yapıp ayrı onaylı `BIGINT`
-   geçişiyle yeni ID'leri `2147483648` üstünden başlatmaktır. Bu, eski aralıkta hiç
-   üretilmemiş sayıya da 410 verebilir; ürün/SEO kabulü Gökhan'a açıkça gösterilmeli.
+   geçişiyle yeni ID'leri `2147483648` üstünden başlatmaktır. **26 Eylül Gökhan
+   kararı ("Yalnız bilinen silinmişe 410", Astra önerisi):** eski aralığın tamamına
+   410 verilmez; reset anında silinen kayıtların `(kind, uuid, publicId)` mezar taşı
+   tutulur, yalnız bunlara 410, bilinmeyen/hiç kullanılmamış ID'ye 404. Reset öncesi
+   fiziksel silinmiş içerik 404 kalır. `BIGINT` yeniden kullanımı önlemek için korunur;
+   migration–reset arasında üst aralık `CHECK` ve sequence `MAXVALUE` ile kapalıdır.
    Geçiş ve kabul olmadan reset GO yok. Sitemap eski adresleri içermez.
    **15:21 TSİ somut outbox engeli:** 191.768/191.768 satır işlenmemiş,
    mevcut mimaride consumer yok. Kendiliğinden drain beklenmeyecek; eski
