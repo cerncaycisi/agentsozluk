@@ -62,7 +62,8 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    (reset kayıt tabloları: niyet, commit işareti, `(kind, uuid, publicId)` mezar taşı, trafik
    olayı; `decideRemovedContent` kararı; `RESET_ALREADY_COMMITTED` kapısı) aynı pencereye bağlı
    yığınlı taslak PR'da. Üçüncü paket: Node runtime 410 middleware'i (yalnız GET/HEAD ve eski
-   namespace/UUID adayı; hata 503 `no-store`; prefetch dar matcher) ve production build E2E
+   namespace/UUID adayı; hata 503 `no-store`; prefetch middleware'e uğramaz, sayfa ile kapı aynı
+   segment/`.rsc` yorumunu kullanır) ve production build E2E
    testi, yine yığınlı taslak PR'da. Dördüncü paket: reset transaction'ının namespace
    çekirdeği (niyet tüketimi, mezar taşı kopyası, kısıt değişimi + `RESTART WITH 2147483648`,
    commit işareti, izinli farkların birebir doğrulanması); gerçek boyutlu yerel provada önizleme
@@ -71,9 +72,15 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    guard'ı saf fonksiyon olarak yazıldı. Altıncı paket: üretim CLI'si
    (`scripts/great-reset-production.ts`) ve profil tabanlı çekirdek; üretimde namespace ve kapı
    zorunlu, DB kimliği (sunucu adresi, sahip, sürüm, küme kimliği) bağlantıdan sonra doğrulanır.
-   Kalanlar: tam içerik makbuzu, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
-   outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
-   ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
+   Hepsi Astra'dan KOD GO aldı, CI yeşil, main'e birleşmedi.
+   **Kalan sıra (Gökhan: "Astrayla birlikte karar verin", 26 Eylül; Astra ile ortak karar):**
+   (1) tam içerik makbuzu ve gerçek boyutlu yerel dump/restore doğrulaması (içerik, sahiplik,
+   ACL, DB/rol ayarları, sequence, dump öncesi/sonrası eşitlik); (2) bakım planı taslağı ve
+   yerel prefetch Router Cache kanıtı (reset GO kapısı; üretim erişimi gerekmez); (3) Gökhan'ın
+   exact erişim onayıyla timer envanteri ve üretim önkontrolü; (4) ölçülen digest/restore süresi
+   ve disk/WAL ile bakım penceresi; (5) Ö4-2 sonucu (pencere en erken 28 Eylül 16:49 UTC),
+   kalan kabul kapıları, reset runbook hakemliği ve exact sürüm/eylem onayıyla reset kararı;
+   reset anında 6.3-5 ve `__Host-` çerez öneki.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
    cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
    serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma
