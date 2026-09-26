@@ -52,11 +52,16 @@ describe("public ID bigint boundary", () => {
     expect(converted.raw.toString("hex")).toBe("6162");
   });
 
-  it("refuses a non-plain object that still carries a bigint publicId", () => {
+  it("refuses class instances it cannot convert, including nested publicId fields", () => {
     class Row {
       publicId = 5n;
     }
+    class Wrapper {
+      topic = { publicId: 7n };
+    }
     expect(() => withNumericPublicIds({ row: new Row() })).toThrow(UnsafePublicIdError);
+    expect(() => withNumericPublicIds(new Wrapper())).toThrow(UnsafePublicIdError);
+    expect(() => withNumericPublicIds({ items: new Set([1]) })).toThrow(UnsafePublicIdError);
   });
 
   it("types a plain row with a toJSON method the same way it converts it", () => {

@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 /*
   `entries`/`topics.publicId` veritabanında BIGINT'tir (great reset üretim
@@ -56,11 +56,12 @@ function convert(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(convert);
   if (value === null || typeof value !== "object") return value;
   if (!isPlainObject(value)) {
-    // Tip bu nesneyi olduğu gibi bırakır; içinde bigint `publicId` varsa sessizce geçmek yerine dur.
-    if (typeof (value as { publicId?: unknown }).publicId === "bigint") {
-      throw new UnsafePublicIdError();
+    // Yalnız Prisma'nın gerçekten döndürdüğü opak değerler geçer. Başka bir sınıf örneği tipte
+    // eşlenirken çalışma anında dönüştürülemezdi; sessizce geçmek yerine dur (Astra, 3. tur P3).
+    if (value instanceof Date || value instanceof Uint8Array || Prisma.Decimal.isDecimal(value)) {
+      return value;
     }
-    return value;
+    throw new UnsafePublicIdError();
   }
   // `Object.fromEntries` anahtarları tanımlar; JSON'daki `__proto__` prototip setter'ını çalıştırmaz.
   return Object.fromEntries(
