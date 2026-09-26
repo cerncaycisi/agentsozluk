@@ -184,10 +184,23 @@ test("a prefetched link to content removed after page load lands on the 410 page
       data: { entryCount: 1, lastEntryAt: entry.createdAt },
     });
 
+    const entryPath = `/entry/${entry.publicId}`;
+    const isEntryRequest = (url: string) =>
+      new URL(url).pathname.replace(/\.rsc$/u, "") === entryPath;
+    // Prefetch dinleyicisi gezinmeden önce kurulur; silme ancak prefetch yanıtı tamamlanınca olur.
+    const prefetched = page.waitForResponse(
+      (response) =>
+        isEntryRequest(response.url()) &&
+        Boolean(response.request().headers()["next-router-prefetch"]),
+      { timeout: 15_000 },
+    );
     await page.goto(`/baslik/${topic.slug}--${topic.publicId}`);
     const link = page.getByRole("link", { name: /tarihli entry’ye git/u }).first();
     await expect(link).toBeVisible();
     await link.hover();
+    const prefetchResponse = await prefetched;
+    expect(prefetchResponse.status()).toBe(200);
+    await prefetchResponse.finished();
 
     // Reset sayfa açıkken olur: entry silinir, kimliği mezar taşına yazılır.
     const { operationId } = await database.greatResetCommit.create({
@@ -205,12 +218,20 @@ test("a prefetched link to content removed after page load lands on the 410 page
     });
     await database.entry.delete({ where: { id: entry.id } });
 
+    // Tıklama önce RSC navigasyonu yapar (prefetch değil): middleware 410 verir, yanıt RSC
+    // olmadığı için istemci tam sayfa gezinmesine düşer ve belge de 410 alır.
+    const navigationResponse = page.waitForResponse(
+      (response) =>
+        isEntryRequest(response.url()) &&
+        response.request().headers()["rsc"] === "1" &&
+        !response.request().headers()["next-router-prefetch"],
+    );
     const documentResponse = page.waitForResponse(
       (response) =>
-        response.url().endsWith(`/entry/${entry.publicId}`) &&
-        response.request().resourceType() === "document",
+        isEntryRequest(response.url()) && response.request().resourceType() === "document",
     );
     await link.click();
+    expect((await navigationResponse).status()).toBe(410);
     expect((await documentResponse).status()).toBe(410);
     await expect(page.getByRole("heading", { name: "Bu içerik kaldırıldı" })).toBeVisible();
   } finally {

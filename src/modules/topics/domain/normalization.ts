@@ -1,4 +1,4 @@
-import { parseTopicRouteReference } from "@/lib/routing/public-urls";
+import { nextRouteParamSegment, parseTopicRouteReference } from "@/lib/routing/public-urls";
 const whitespacePattern = /\s+/gu;
 const diacriticPattern = /[\u0300-\u036f]/gu;
 const nonAlphaNumericPattern = /[^a-z0-9]+/gu;
@@ -55,7 +55,8 @@ export function canonicalTopicPath(publicId: number, titleOrSlug: string): strin
   `--7` ile biten ya da UUID ile başlayan başlığın adresini rota ayrıştırıcısı başka bir başlığın
   kimliği sanar: yazma formu yerine o başlığa yönlendirir, great reset sonrasında silinmiş
   kimliğe 410 verebilir (üretim tasarımı v19 madde 4; Astra, PR #229). Kural ayrıştırıcının
-  kendisidir. Eşleşmemiş surrogate içeren metin kodlanamaz; o da adreslenemez sayılır.
+  kendisidir. Eşleşmemiş surrogate içeren metin kodlanamaz; o da adreslenemez sayılır. Next'in
+  adresi dönüştürdüğü başlıklar da reddedilir.
 */
 export function topicTitleAddressIsAmbiguous(title: string): boolean {
   let segment: string;
@@ -64,8 +65,11 @@ export function topicTitleAddressIsAmbiguous(title: string): boolean {
   } catch {
     return true;
   }
+  // Next adresi değiştirirse (baştaki `_NEXTSEP_`, sondaki `.rsc`) sayfa ve middleware başlığın
+  // kendisini değil başka bir segmenti görür (Astra, PR #229 3. tur).
+  if (nextRouteParamSegment(segment) !== segment || /\.rsc$/iu.test(segment)) return true;
   return parseTopicRouteReference(segment) !== null;
 }
 
 export const TOPIC_TITLE_AMBIGUOUS_MESSAGE =
-  "Başlık '--sayı' ile bitemez, bir kimlik biçimiyle başlayamaz ya da geçersiz karakter içeremez.";
+  "Başlık '--sayı' ya da '.rsc' ile bitemez, bir kimlik biçimiyle ya da '_NEXTSEP_' ile başlayamaz, geçersiz karakter içeremez.";

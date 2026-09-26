@@ -88,3 +88,19 @@ export function parseEntryRouteReference(segment: string): EntryRouteReference |
   }
   return UUID_PATTERN.test(segment) ? { kind: "legacy", id: segment.toLowerCase() } : null;
 }
+
+const NEXT_PARAM_SEPARATOR = /^_NEXTSEP_/u;
+
+/**
+ * Dinamik segmentin sayfaya `params` olarak ulaşan biçimi. Next.js 15.5.25 sırası: çöz
+ * (route-matcher) → baştaki `_NEXTSEP_`'i bir kez sil (stripParameterSeparators) →
+ * `getDynamicParam` içinde yeniden kodla. Bozuk yüzde dizisi için `null`. Middleware ile sayfanın
+ * aynı kimliği seçmesi buna bağlı (great reset 410 kapısı; Astra, PR #229).
+ */
+export function nextRouteParamSegment(raw: string): string | null {
+  try {
+    return encodeURIComponent(decodeURIComponent(raw).replace(NEXT_PARAM_SEPARATOR, ""));
+  } catch {
+    return null;
+  }
+}

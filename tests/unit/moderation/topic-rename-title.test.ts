@@ -18,4 +18,15 @@ describe("topic rename title address rule", () => {
     expect(topicTitleAddressIsAmbiguous("baş\ud800lık")).toBe(true);
     expect(topicTitleAddressIsAmbiguous("gitar -- 7")).toBe(false);
   });
+
+  it("rejects titles whose address Next itself would rewrite", () => {
+    expect(topicTitleAddressIsAmbiguous("_NEXTSEP_gitar")).toBe(true);
+    expect(topicTitleAddressIsAmbiguous("_NEXTSEP_3f2b8c1e-4a5d-4e6f-8a9b-0c1d2e3f4a5b")).toBe(
+      true,
+    );
+    expect(topicTitleAddressIsAmbiguous("gitar--7.rsc")).toBe(true);
+    expect(topicTitleAddressIsAmbiguous("notlar.rsc")).toBe(true);
+    expect(topicTitleAddressIsAmbiguous("rsc dosyaları")).toBe(false);
+    expect(topicTitleAddressIsAmbiguous("x _NEXTSEP_ y")).toBe(false);
+  });
 });

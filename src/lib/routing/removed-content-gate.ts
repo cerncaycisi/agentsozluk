@@ -1,4 +1,8 @@
-import { parseEntryRouteReference, parseTopicRouteReference } from "@/lib/routing/public-urls";
+import {
+  nextRouteParamSegment,
+  parseEntryRouteReference,
+  parseTopicRouteReference,
+} from "@/lib/routing/public-urls";
 
 /*
   Great reset sonrası eski adres kapısı (üretim tasarımı v18 madde 4; Gökhan kararı, 26 Eylül
@@ -13,18 +17,12 @@ import { parseEntryRouteReference, parseTopicRouteReference } from "@/lib/routin
   segmenti çözüp yeniden kodlar (Astra, PR #229: `%2D` → `-`, `%37` → `7`; `%C3%A7` kodlu kalır).
   Kapı ile sayfa farklı kimlik seçerse canlı adrese 410 ya da silinmiş adrese içerik düşebilirdi.
   Bozuk yüzde dizisi aday değildir; sayfa da onu geçersiz adres sayar.
-*/
-const NEXT_PARAM_SEPARATOR = /^_NEXTSEP_/u;
 
-function pageSegment(raw: string): string | null {
-  try {
-    // Next 15.5.25 sırası: çöz (route-matcher) → baştaki `_NEXTSEP_`'i bir kez sil
-    // (stripParameterSeparators) → `getDynamicParam` içinde yeniden kodla (Astra, PR #229 2. tur).
-    return encodeURIComponent(decodeURIComponent(raw).replace(NEXT_PARAM_SEPARATOR, ""));
-  } catch {
-    return null;
-  }
-}
+  Kabul edilen sınır (Astra, PR #229 3. tur): Next adaptörü URL sonundaki `.rsc`'yi middleware'den
+  önce siler, sayfa ise literal `/entry/7.rsc` isteğinde `7.rsc` görür. Middleware orijinal adresi
+  göremez; 7 mezar taşındaysa bu hiçbir içeriğe ait olmayan adres 404 yerine 410 alır. Canlı
+  içeriğe dokunmaz ve geçerli başlık adresi bu biçime düşemez (`topicTitleAddressIsAmbiguous`).
+*/
 
 const LEGACY_PUBLIC_ID_MAX = 2_147_483_647;
 const GATED_PATH = /^\/(baslik|entry)\/([^/]+)$/u;
@@ -45,7 +43,7 @@ export function removedContentCandidate(
   const match = GATED_PATH.exec(pathname);
   if (!match?.[1] || !match[2]) return null;
   const kind: RemovedContentKind = match[1] === "baslik" ? "TOPIC" : "ENTRY";
-  const segment = pageSegment(match[2]);
+  const segment = nextRouteParamSegment(match[2]);
   if (!segment) return null;
   const reference =
     kind === "TOPIC" ? parseTopicRouteReference(segment) : parseEntryRouteReference(segment);
