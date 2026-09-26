@@ -143,7 +143,42 @@ async function assertSupportedScope(tx: Tx) {
               WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e'))
         + (SELECT count(*)::int FROM pg_collation c WHERE c.collnamespace = 'public'::regnamespace
             AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_collation'::regclass
-              AND d.objid = c.oid AND d.deptype = 'e')) AS types`;
+              AND d.objid = c.oid AND d.deptype = 'e'))
+        /*
+          Sınıf kapanışı (Astra, PR #234 6. tur): makbuzun özetlemediği HER nesne türü, extension
+          üyesi değilse reddedilir. Tek tek tür eklemek yerine izin listesi: public'te operatör,
+          operatör sınıfı/ailesi, dönüşüm, metin arama nesneleri, genişletilmiş istatistik;
+          veritabanı genelinde event trigger, publication, FDW/sunucu, kullanıcı cast'i,
+          transform ve access method.
+        */
+        + (SELECT count(*)::int FROM (
+            SELECT 'pg_operator'::regclass AS catalog, oid FROM pg_operator
+              WHERE oprnamespace = 'public'::regnamespace
+            UNION ALL SELECT 'pg_opclass'::regclass, oid FROM pg_opclass
+              WHERE opcnamespace = 'public'::regnamespace
+            UNION ALL SELECT 'pg_opfamily'::regclass, oid FROM pg_opfamily
+              WHERE opfnamespace = 'public'::regnamespace
+            UNION ALL SELECT 'pg_conversion'::regclass, oid FROM pg_conversion
+              WHERE connamespace = 'public'::regnamespace
+            UNION ALL SELECT 'pg_ts_config'::regclass, oid FROM pg_ts_config
+              WHERE cfgnamespace = 'public'::regnamespace
+            UNION ALL SELECT 'pg_ts_dict'::regclass, oid FROM pg_ts_dict
+              WHERE dictnamespace = 'public'::regnamespace
+            UNION ALL SELECT 'pg_ts_parser'::regclass, oid FROM pg_ts_parser
+              WHERE prsnamespace = 'public'::regnamespace
+            UNION ALL SELECT 'pg_ts_template'::regclass, oid FROM pg_ts_template
+              WHERE tmplnamespace = 'public'::regnamespace
+            UNION ALL SELECT 'pg_statistic_ext'::regclass, oid FROM pg_statistic_ext
+              WHERE stxnamespace = 'public'::regnamespace
+            UNION ALL SELECT 'pg_event_trigger'::regclass, oid FROM pg_event_trigger
+            UNION ALL SELECT 'pg_publication'::regclass, oid FROM pg_publication
+            UNION ALL SELECT 'pg_foreign_data_wrapper'::regclass, oid FROM pg_foreign_data_wrapper
+            UNION ALL SELECT 'pg_foreign_server'::regclass, oid FROM pg_foreign_server
+            UNION ALL SELECT 'pg_cast'::regclass, oid FROM pg_cast WHERE oid >= 16384
+            UNION ALL SELECT 'pg_transform'::regclass, oid FROM pg_transform
+            UNION ALL SELECT 'pg_am'::regclass, oid FROM pg_am WHERE oid >= 16384
+          ) o WHERE NOT EXISTS (SELECT 1 FROM pg_depend d
+            WHERE d.classid = o.catalog AND d.objid = o.oid AND d.deptype = 'e')) AS types`;
   if (
     !scope ||
     scope.otherSchemas !== 0 ||

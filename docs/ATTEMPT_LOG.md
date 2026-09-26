@@ -9488,3 +9488,8 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - Astra PR #234 5. tur `d3456a8`: önceki bulgular kapandı; 2 P2 (aggregate tanımı değişimi ve
   `DISABLE RULE` makbuza yansımıyordu). Düzeltme: extension üyesi olmayan public aggregate ret;
   kurallar `pg_rewrite`'tan `ev_enabled` dahil. Entegrasyon testi ikisini de yakaladı.
+- Astra PR #234 6. tur `c5dfd83`: aggregate ve kural P2'leri kapandı; yeni P2 kullanıcı operatörü.
+  Tür tür kapatmak yerine sınıf kapanışı: makbuzun özetlemediği bütün nesne türleri (public'te
+  operatör, opclass/opfamily, dönüşüm, metin arama, genişletilmiş istatistik; DB genelinde event
+  trigger, publication, FDW/sunucu, kullanıcı cast/transform/access method) extension üyesi
+  değilse ret. Entegrasyon testi operatörü reddetti.

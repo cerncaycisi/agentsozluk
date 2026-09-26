@@ -120,4 +120,19 @@ describe("great reset receipt against PostgreSQL", () => {
       await integrationDatabase.$executeRawUnsafe("DROP TABLE IF EXISTS zz_rule_probe");
     }
   });
+
+  it("refuses a user operator (any unsummarised object class)", async () => {
+    const expected = await identity();
+    await integrationDatabase.$executeRawUnsafe(
+      "CREATE OPERATOR === (LEFTARG = integer, RIGHTARG = integer, FUNCTION = pg_catalog.int4eq)",
+    );
+    try {
+      await expect(computeReceipt(integrationDatabase, expected)).rejects.toThrow(
+        "GREAT_RESET_RECEIPT_SCOPE_UNSUPPORTED",
+      );
+    } finally {
+      await integrationDatabase.$executeRawUnsafe("DROP OPERATOR IF EXISTS === (integer, integer)");
+    }
+    await computeReceipt(integrationDatabase, expected);
+  });
 });
