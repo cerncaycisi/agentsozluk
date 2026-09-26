@@ -9436,3 +9436,16 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - GPT-6 Astra PR #232 3. tur exact `1d1e32732d464fbd269a69e6b0a4bf55735f8d9b` için **KOD GO**;
   yeni P1/P2/P3 yok. Varsayım: `PATH`'teki `docker` ikilisi ve operatör yürütme ortamı güvenilir
   (THREAT_MODEL altyapı operatörünü güvenilir sayar).
+
+## 2026-09-26 — tam içerik makbuzu, gerçek boyutlu dump/restore
+
+- Dal `feat/reset-receipt` (`feat/reset-production-cli` üstüne). `great-reset-receipt.ts`:
+  katalogdan bütün public tablolar (tam SHA-256), sequence, şema, güvenlik (sahip/ACL/varsayılan
+  yetki), DB ayarları; tek salt okunur RepeatableRead görüntü, sabit oturum ayarları.
+- Yerel PG16, 26 Eylül gece yedeğinin kopyası (migration'lar uygulanmış): 54 tablo, 3.109.336
+  satır. Makbuz 137 sn (kaynak), dump `-Fc` 152 sn / 1,1 GB, dump sonrası kaynak makbuzu 129 sn
+  ve birebir aynı, geri yükleme 181 sn, geri yüklenen makbuz 124 sn ve kaynakla birebir aynı
+  (beş bölüm eşit). Negatif: tek başlık değişikliği `content`/`topics`, tek `GRANT` `security`
+  olarak yakalandı. Prova DB'leri ve dump silindi; üretime bağlanılmadı.
+- Not: provada kaynak kopya `--no-owner` ile açıldı; üretimde sahiplik farkı ortam başına
+  manifestte ayrıca beklenir (tasarım Aşama 2).
