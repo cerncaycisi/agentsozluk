@@ -193,20 +193,20 @@ test("a prefetched link to content removed after page load lands on the 410 page
     const entryPath = `/entry/${entry.publicId}`;
     const isEntryRequest = (url: string) =>
       new URL(url).pathname.replace(/\.rsc$/u, "") === entryPath;
-    // Prefetch dinleyicisi gezinmeden önce kurulur; silme ancak prefetch yanıtı tamamlanınca olur.
-    const prefetched = page.waitForResponse(
-      (response) =>
-        isEntryRequest(response.url()) &&
-        Boolean(response.request().headers()["next-router-prefetch"]),
-      { timeout: 15_000 },
-    );
+    // Prefetch dinleyicisi gezinmeden önce kurulur; silme ancak bir prefetch isteği gerçekten
+    // TAMAMLANINCA olur. Next bir prefetch'i iptal edip yenisini başlatabilir; iptal edilen istek
+    // `requestfinished` üretmez, bu yüzden yanıt değil tamamlanan istek beklenir.
+    const prefetched = page.waitForEvent("requestfinished", {
+      predicate: (finished) =>
+        isEntryRequest(finished.url()) && Boolean(finished.headers()["next-router-prefetch"]),
+      timeout: 15_000,
+    });
     await page.goto(`/baslik/${topic.slug}--${topic.publicId}`);
     const link = page.getByRole("link", { name: /tarihli entry’ye git/u }).first();
     await expect(link).toBeVisible();
     await link.hover();
-    const prefetchResponse = await prefetched;
-    expect(prefetchResponse.status()).toBe(200);
-    await prefetchResponse.finished();
+    const prefetchResponse = await (await prefetched).response();
+    expect(prefetchResponse?.status()).toBe(200);
 
     // Reset sayfa açıkken olur: entry silinir, kimliği mezar taşına yazılır.
     const { operationId } = await database.greatResetCommit.create({
