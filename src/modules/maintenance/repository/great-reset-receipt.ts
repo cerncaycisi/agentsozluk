@@ -132,7 +132,9 @@ async function assertSupportedScope(tx: Tx) {
       (SELECT count(*)::int FROM pg_type t WHERE t.typnamespace = 'public'::regnamespace
         AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_type'::regclass
           AND d.objid = t.oid AND d.deptype = 'e')
-        AND (t.typtype IN ('d', 'r', 'm') OR (t.typtype = 'b' AND t.typcategory <> 'A')
+        -- Otomatik dizi tipi gerçek ilişkiyle tanınır; CATEGORY = 'A' seçilebilir (4. tur P2).
+        AND (t.typtype IN ('d', 'r', 'm') OR (t.typtype = 'b'
+          AND NOT EXISTS (SELECT 1 FROM pg_type e WHERE e.typarray = t.oid))
           OR (t.typtype = 'c' AND EXISTS (SELECT 1 FROM pg_class c
             WHERE c.oid = t.typrelid AND c.relkind = 'c'))))
         + (SELECT count(*)::int FROM pg_collation c WHERE c.collnamespace = 'public'::regnamespace
@@ -252,7 +254,14 @@ async function schemaSection(tx: Tx) {
           FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
           WHERE t.typnamespace = 'public'::regnamespace) x),
       'extensions', (SELECT jsonb_agg(jsonb_build_array(extname, extversion,
-          extnamespace::regnamespace::text) ORDER BY extname COLLATE "C") FROM pg_extension)
+          extnamespace::regnamespace::text) ORDER BY extname COLLATE "C") FROM pg_extension),
+      -- Extension üye envanteri: sonradan ALTER EXTENSION ADD ile eklenen nesne dump/restore'da
+      -- kaybolursa ad/sürüm aynı kalsa da fark görünür (Astra, PR #234 4. tur P2).
+      'extensionMembers', (SELECT jsonb_agg(jsonb_build_array(x.extname, x.member)
+        ORDER BY x.extname COLLATE "C", x.member COLLATE "C")
+        FROM (SELECT e.extname, pg_describe_object(d.classid, d.objid, d.objsubid) AS member
+          FROM pg_depend d JOIN pg_extension e ON e.oid = d.refobjid
+          WHERE d.refclassid = 'pg_extension'::regclass AND d.deptype = 'e') x)
     )::text AS description`;
   if (!row) throw new Error("GREAT_RESET_RECEIPT_FAILED");
   return row.description;
@@ -301,8 +310,9 @@ async function securitySection(tx: Tx) {
           jsonb_build_array(pg_get_userbyid(p.proowner), p.proacl::text)::text
         FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
       UNION ALL
+      -- Public'teki BÜTÜN tipler (extension üyesi temel tipler dahil): sahip ve ACL (4. tur P2).
       SELECT 'type:' || t.typname, jsonb_build_array(pg_get_userbyid(t.typowner), t.typacl::text)::text
-        FROM pg_type t WHERE t.typnamespace = 'public'::regnamespace AND t.typtype IN ('e', 'd', 'c')
+        FROM pg_type t WHERE t.typnamespace = 'public'::regnamespace
       UNION ALL
       SELECT 'database', jsonb_build_array(pg_get_userbyid(datdba), datacl::text)::text
         FROM pg_database WHERE datname = current_database()

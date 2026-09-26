@@ -9478,3 +9478,10 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   public'teki `gtrgm` tipini de reddetti (üretimde de aynı olurdu); extension üyesi tipler ve
   collation'lar `pg_depend` ile dışarıda. Gerçek boyutlu prova yeniden geçti.
 - **Tekrarlama:** kapsam reddi eklerken extension üyesi nesneleri (`pg_depend.deptype = 'e'`) ayır.
+- Astra PR #234 4. tur `911d519`: eksik bölüm kapandı; 3 P2 (sonradan extension'a eklenen
+  collation, extension temel tipinin sahip/ACL'si, `CATEGORY = 'A'` ile dizi taklidi) + 1 P3
+  (collation sürümü runbook'ta yoktu). Düzeltme: şema bölümüne extension üye envanteri
+  (`pg_describe_object`), güvenlikte public'teki bütün tipler, dizi tipi gerçek `typarray`
+  ilişkisiyle; runbook'a collation sağlayıcı sürümü adımı. Entegrasyon: `gtrgm` ACL farkı
+  yakalandı. Kullanıcı temel tipi testi yazılamadı (C giriş/çıkış fonksiyonu gerekir); kod
+  koşulu gerçek ilişkiye bağlı. Gerçek boyutlu prova yeniden geçti.

@@ -68,4 +68,23 @@ describe("great reset receipt against PostgreSQL", () => {
       await integrationDatabase.$executeRaw`DROP TYPE IF EXISTS zz_receipt_range`;
     }
   });
+
+  it("sees a change in an extension member type's ACL", async () => {
+    const expected = await identity();
+    const [trgm] = await integrationDatabase.$queryRaw<{ count: number }[]>`
+      SELECT count(*)::int AS count FROM pg_type
+      WHERE typname = 'gtrgm' AND typnamespace = 'public'::regnamespace`;
+    if (trgm?.count !== 1) return;
+    const before = await computeReceipt(integrationDatabase, expected);
+    await integrationDatabase.$executeRawUnsafe("REVOKE USAGE ON TYPE gtrgm FROM PUBLIC");
+    try {
+      const after = await computeReceipt(integrationDatabase, expected);
+      expect(compareReceipts(before, after)).toMatchObject({
+        equal: false,
+        unexpected: [{ section: "security", key: "type:gtrgm" }],
+      });
+    } finally {
+      await integrationDatabase.$executeRawUnsafe("GRANT USAGE ON TYPE gtrgm TO PUBLIC");
+    }
+  });
 });
