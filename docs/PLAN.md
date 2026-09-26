@@ -1692,7 +1692,7 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       yeniden oynatınca 935'i yine ret. 60'lık rastgele örnek elle okundu: neredeyse tamamı
       gerçek tekrar; kapının kesinliği yüksek. Denenen dar kurallar 935 retin hiçbirini
       değiştirmedi: üretimde bu hatanın görünür bir izi ölçülmedi.
-      **Denenen (PR #192, kapatıldı; dal `fix/a2-iliski-tersine` başvuru için duruyor):**
+      **Denenen (PR #192, kapatıldı; dal 26 Eylül'de silindi, uç commit başvuru için `archive/fix-a2-iliski-tersine` etiketinde):**
       `semanticRelationDiffers` — "X değil Y" takası ve aynı ad üzerinde yalın/belirtme hâli
       rol takası tekrar muafiyeti. Astra üç turda da **BİRLEŞTİRME** dedi; her yamadan sonra
       aynı hükmü yineleyen doğal Türkçe parafrazları "ters hüküm" sanıp serbest bırakan yeni
