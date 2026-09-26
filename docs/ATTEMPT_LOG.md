@@ -9332,3 +9332,7 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   sayfa ile kapı yine ayrışıyordu); P3 canlı `/entry/7.rsc` kanoniğe yönlenmiyordu.
   Düzeltme: ayrıştırıcı sondaki ardışık `.rsc`'lerin hepsini siler; entry ve revizyonlar
   sayfası kanonik olmayan sayısal segmenti 308'le yönlendirir.
+- GPT-6 Astra (`gpt-6-astra`) 8. tur exact `a7979fe5294869e411dd5245b95fcd4e8aea6f68`
+  için **KOD GO**: kimlik P2'si ve yönlendirme P3'ü kapandı; Next 15.5.25 yardımcılarıyla
+  40.704 URL kombinasyonunda sıfır kimlik ayrışması. Aynı SHA'da CI 7/7 yeşil. Tamamlanmış
+  prefetch'in Router Cache kanıtı **P2 açık/ertelendi** (reset GO kapısı).
