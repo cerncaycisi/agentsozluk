@@ -82,6 +82,11 @@ export const greatResetPreservedModels = [
   "outboxEvent",
   "outboxResetArchive",
   "outboxResetArchiveEvent",
+  // Reset'in kendi kayıtları: niyet, commit işareti, mezar taşı ve trafik olayı silinmez.
+  "greatResetIntent",
+  "greatResetCommit",
+  "greatResetTombstone",
+  "greatResetExposureEvent",
   "rateLimitBucket",
   "idempotencyRecord",
 ] as const;

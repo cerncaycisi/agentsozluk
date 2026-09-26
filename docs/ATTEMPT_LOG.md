@@ -9261,3 +9261,29 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - GPT-6 Astra 4. tur exact `98725c55cac490e6649efcd2644611bd0674be4d` için
   **KOD GO** dedi (56 çağrı noktası, yeni P1/P2/P3 yok). Aynı SHA'da CI 7/7 yeşil
   (`database`, `coverage`, `browser` dahil); yerel birim 1853/1853.
+
+## 2026-09-26 — great reset kayıt tabloları ve 410 kararı
+
+- Dal `feat/great-reset-records` (`feat/public-id-bigint` üstüne). Migration
+  `20260926120000_great_reset_records`: `great_reset_intents` (tek geçiş tetikleyicisi,
+  en çok 2 saatlik süre, tek sonuç CHECK), `great_reset_commits` (append-only, `((true))`
+  tekil indeksiyle en çok bir satır), `great_reset_tombstones` (`(kind, contentId)` PK,
+  `(kind, publicId)` tekil, `publicId` 1..2147483647), `great_reset_exposure_events`
+  (commit'e FK, yalnız `TRAFFIC_OPEN`). TRUNCATE yalnız
+  `agentsozluk.allow_great_reset_truncate=on` ile (test temizliği).
+- `decideRemovedContent`: yeni namespace DB'siz PASS; işaret yok PASS; canlı kayıt PASS;
+  yalnız mezar taşında kayıtlı kimlik GONE; bilinmeyen PASS (normal akış 404).
+- Yerel PG16 test veritabanında (`*_test`) yeni entegrasyon testi ve indeksleme/konu
+  paketleri 81/81 geçti. İlk koşuda test verisi `entries_body_length_check`'e takıldı
+  (fixture metni kısaydı), kod hatası değildi.
+- **Tekrarlama:** doğrudan Prisma ile entry fixture'ı kurarken gövde uzunluk kısıtını
+  karşıla; kısa metin kısıt hatası verir.
+- GPT-6 Astra, PR #228 exact `8ae8f7a0265517ca1a02874ede97f7e2cd19d46b` için
+  **KOD DÜZELTİLMELİ** dedi (1 P2): TRUNCATE istisnası yalnız GUC'ye bağlıydı, üretim
+  oturumunda açık kalırsa commit/trafik olayı silinebilirdi. Düzeltme: istisna ayrıca
+  `current_database()` adının test kuralına (`(^|[_-])test$`) uymasını ister. Yerel
+  probe: test dışı adlı DB'de GUC `on` iken `TRUNCATE great_reset_commits CASCADE`
+  reddedildi; `*_test` DB'de geçti.
+- GPT-6 Astra 2. tur exact `0a5f2ed149bebb73c73603a219bd3b1397c2f56a` için **KOD GO**
+  dedi; P2 kapandı, yeni P1/P2/P3 yok. DB yeniden adlandırma yetkili yönetici
+  müdahalesi sayıldı (üretim rolü `NOCREATEDB`; canlı yetki doğrulanmadı).
