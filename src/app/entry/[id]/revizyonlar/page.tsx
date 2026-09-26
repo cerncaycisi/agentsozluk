@@ -43,7 +43,7 @@ export default async function EntryRevisionsPage({
       reference.kind === "public"
         ? await getEntryByPublicId(getDatabase(), reference.publicId, viewer)
         : await getEntry(getDatabase(), reference.id, viewer);
-    if (reference.kind === "legacy") {
+    if (reference.kind === "legacy" || rawId !== String(reference.publicId)) {
       const canonical = `${entryPublicUrl(entry)}/revizyonlar`;
       permanentRedirect(page > 1 ? `${canonical}?page=${page}` : canonical);
     }

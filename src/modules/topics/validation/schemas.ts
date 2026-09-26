@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { entryBodySchema } from "@/modules/entries/validation/schemas";
-import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import {
+  normalizeTopicTitle,
+  TOPIC_TITLE_AMBIGUOUS_MESSAGE,
+  topicTitleAddressIsAmbiguous,
+} from "@/modules/topics/domain/normalization";
 
 /*
   Yön denetimleri: gömme, geçersiz kılma ve yalıtım işaretleri (U+202A-202E,
@@ -28,6 +32,9 @@ export const topicTitleSchema = z.string().transform((input, context) => {
     context.addIssue({ code: "custom", message: "Başlık en az 2 karakter olmalıdır." });
   if (length > 100)
     context.addIssue({ code: "custom", message: "Başlık en fazla 100 karakter olabilir." });
+  // Açılmamış adresi başka bir başlığın kimliği okunan başlık (bkz. domain kuralı).
+  if (topicTitleAddressIsAmbiguous(displayTitle))
+    context.addIssue({ code: "custom", message: TOPIC_TITLE_AMBIGUOUS_MESSAGE });
   return displayTitle;
 });
 

@@ -61,7 +61,9 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    penceresi ve Gökhan'ın ayrı onayı gerekir, o yüzden main'e birleştirilmedi. İkinci paket
    (reset kayıt tabloları: niyet, commit işareti, `(kind, uuid, publicId)` mezar taşı, trafik
    olayı; `decideRemovedContent` kararı; `RESET_ALREADY_COMMITTED` kapısı) aynı pencereye bağlı
-   yığınlı taslak PR'da. Kalanlar: 410 middleware'i, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
+   yığınlı taslak PR'da. Üçüncü paket: Node runtime 410 middleware'i (yalnız GET/HEAD ve eski
+   namespace/UUID adayı; hata 503 `no-store`; prefetch dar matcher) ve production build E2E
+   testi, yine yığınlı taslak PR'da. Kalanlar: üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
    outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
    ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek

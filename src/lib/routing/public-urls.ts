@@ -20,7 +20,18 @@ export type TopicRouteReference =
   | { kind: "public"; publicId: number; slug: string }
   | { kind: "legacy"; id: string };
 
-export function parseTopicRouteReference(segment: string): TopicRouteReference | null {
+/*
+  Next 15.5.25 adaptörü URL sonundaki `.rsc`'yi (`normalizeRscURL`) middleware'e vermeden siler;
+  sayfa ise literal `.rsc`'li istekte segmenti `.rsc`'siyle alır. Ayrıştırıcılar da sondaki
+  `.rsc`'yi siler: aynı istekte sayfa ve great reset 410 kapısı aynı kimliği seçer (Astra, PR #229
+  6. tur). Literal `.rsc` hiçbir kanonik adreste yoktur; böyle bir istek kanoniğe 308 alır.
+  Sondaki ardışık `.rsc` eklerinin HEPSİ silinir: adaptör birini önceden silmiş olsa da sonuç
+  aynı kalır (tekrar uygulamada değişmez; Astra, 7. tur `x.rsc.rsc`).
+*/
+const RSC_SUFFIX = /(?:\.rsc)+$/u;
+
+export function parseTopicRouteReference(rawSegment: string): TopicRouteReference | null {
+  const segment = rawSegment.replace(RSC_SUFFIX, "");
   const canonicalMatch = /^(.*)--([1-9]\d*)$/u.exec(segment);
   if (canonicalMatch?.[1] && canonicalMatch[2]) {
     const publicId = Number(canonicalMatch[2]);
@@ -81,10 +92,27 @@ export type EntryRouteReference =
   | { kind: "public"; publicId: number }
   | { kind: "legacy"; id: string };
 
-export function parseEntryRouteReference(segment: string): EntryRouteReference | null {
+export function parseEntryRouteReference(rawSegment: string): EntryRouteReference | null {
+  const segment = rawSegment.replace(RSC_SUFFIX, "");
   if (PUBLIC_ID_PATTERN.test(segment)) {
     const publicId = Number(segment);
     if (Number.isSafeInteger(publicId)) return { kind: "public", publicId };
   }
   return UUID_PATTERN.test(segment) ? { kind: "legacy", id: segment.toLowerCase() } : null;
+}
+
+const NEXT_PARAM_SEPARATOR = /^_NEXTSEP_/u;
+
+/**
+ * Dinamik segmentin sayfaya `params` olarak ulaşan biçimi. Next.js 15.5.25 sırası: çöz
+ * (route-matcher) → baştaki `_NEXTSEP_`'i bir kez sil (stripParameterSeparators) →
+ * `getDynamicParam` içinde yeniden kodla. Bozuk yüzde dizisi için `null`. Middleware ile sayfanın
+ * aynı kimliği seçmesi buna bağlı (great reset 410 kapısı; Astra, PR #229).
+ */
+export function nextRouteParamSegment(raw: string): string | null {
+  try {
+    return encodeURIComponent(decodeURIComponent(raw).replace(NEXT_PARAM_SEPARATOR, ""));
+  } catch {
+    return null;
+  }
 }

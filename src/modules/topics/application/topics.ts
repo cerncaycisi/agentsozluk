@@ -11,6 +11,8 @@ import {
   canonicalTopicPath,
   createTopicSlug,
   normalizeTopicTitle,
+  TOPIC_TITLE_AMBIGUOUS_MESSAGE,
+  topicTitleAddressIsAmbiguous,
 } from "@/modules/topics/domain/normalization";
 import { topicCanonicalSearchCandidates } from "@/modules/topics/domain/canonicalization";
 import {
@@ -236,6 +238,9 @@ export async function createTopicWithFirstEntry(
 ) {
   const normalizedTitle = normalizeTopicTitle(input.title);
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
+  // Şemayı atlayan yollar (ajan CREATE_TOPIC_WITH_ENTRY) da aynı kuraldan geçer.
+  if (topicTitleAddressIsAmbiguous(title))
+    throw new AppError("VALIDATION_ERROR", 422, TOPIC_TITLE_AMBIGUOUS_MESSAGE);
   const canonicalCandidates = topicCanonicalSearchCandidates(title);
   return inTransaction(client, async (transaction) => {
     await requireApprovedWriter(transaction, actor.actorId);

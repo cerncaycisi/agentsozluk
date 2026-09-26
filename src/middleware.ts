@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getDatabase } from "@/lib/db/client";
 import {
   PRODUCT_ANALYTICS_SURFACE_HEADER,
   SENSITIVE_LOCATION_HEADER,
@@ -6,14 +7,50 @@ import {
   classifyProductAnalyticsSurface,
   isSensitiveAnalyticsLocation,
 } from "@/lib/analytics/product-analytics";
+import { logger, safeErrorCode } from "@/lib/logging/logger";
+import {
+  goneResponse,
+  removedContentCandidate,
+  removedContentUnavailableResponse,
+} from "@/lib/routing/removed-content-gate";
 import { createContentSecurityPolicy } from "@/lib/security/content-security-policy";
+import { decideRemovedContent } from "@/modules/maintenance/application/removed-content";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const contentSecurityPolicy = createContentSecurityPolicy(
     nonce,
     process.env.NODE_ENV === "development",
   );
+
+  /*
+    Great reset 410 kapısı (tasarım v18 madde 4). Aday yalnız sözdiziminden seçilir; aday
+    olmayan istek veritabanına dokunmaz. Commit işareti yoksa, canlı kayıt varsa ya da kimlik
+    mezar taşında değilse normal akış sürer. Sorgu hatasında 410 uydurulmaz.
+
+    Prefetch istekleri eskisi gibi middleware'e hiç uğramaz (matcher `missing`). Next adaptörü
+    `next-router-prefetch` başlığını middleware'den önce sildiği için middleware prefetch'i ayırt
+    edemez; dar bir prefetch matcher'ı prefetch yanıtına CSP/analytics eklerdi (Astra, PR #229).
+    Silinmiş adrese tıklamak prefetch değil RSC navigasyonudur: 410 alır, yanıt RSC olmadığı
+    için istemci tam sayfa gezinmesine düşer ve 410 sayfası görünür.
+  */
+  const candidate = removedContentCandidate(request.method, request.nextUrl.pathname);
+  if (candidate) {
+    try {
+      const decision = await decideRemovedContent(
+        getDatabase(),
+        candidate.kind,
+        candidate.reference,
+      );
+      if (decision.status === "GONE") return goneResponse(request.method, contentSecurityPolicy);
+    } catch (error) {
+      logger.error(
+        { event: "removed_content.decision_failed", errorCode: safeErrorCode(error) },
+        "Removed content decision failed",
+      );
+      return removedContentUnavailableResponse(request.method, contentSecurityPolicy);
+    }
+  }
   const requestHeaders = new Headers(request.headers);
   const analyticsSurface = classifyProductAnalyticsSurface({
     pathname: request.nextUrl.pathname,
@@ -35,6 +72,8 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Veritabanı kararı için Node runtime (Next.js 15.5 kararlı); Edge'de Prisma çalışmaz.
+  runtime: "nodejs",
   matcher: [
     {
       source: "/((?!api/health|_next/static|_next/image|favicon.ico).*)",

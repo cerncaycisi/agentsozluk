@@ -9287,3 +9287,52 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - GPT-6 Astra 2. tur exact `0a5f2ed149bebb73c73603a219bd3b1397c2f56a` için **KOD GO**
   dedi; P2 kapandı, yeni P1/P2/P3 yok. DB yeniden adlandırma yetkili yönetici
   müdahalesi sayıldı (üretim rolü `NOCREATEDB`; canlı yetki doğrulanmadı).
+
+## 2026-09-26 — 410 middleware'i (Node runtime)
+
+- Dal `feat/gone-middleware` (`feat/great-reset-records` üstüne). `src/middleware.ts`
+  `runtime: "nodejs"`; mevcut geniş matcher ve prefetch dışlaması korunur, ek dar
+  `/baslik/:segment` ve `/entry/:segment` eşleşmesi prefetch'te de 410 kararını çalıştırır.
+  Aday yalnız sözdiziminden (`removedContentCandidate`): GET/HEAD, eski sayısal namespace ya
+  da legacy UUID; POST, yalın başlık formu, `>2147483647` ve kodlu varyant DB'ye dokunmaz.
+  Karar hatası 503 `no-store`, 410 statik HTML `no-store`/`noindex`/CSP.
+- Yerel birim 1867/1867. Gerçek HTTP kanıtı `tests/e2e/removed-content.spec.ts` (CI
+  `browser` işi production standalone build'de koşar).
+- **Tekrarlama:** `vi.fn().mockImplementation(async () => { throw })` vitest'te ayrıca hata
+  olarak raporlandı, middleware doğru 503 döndürse de; bu testte düz sahte fonksiyon kullan.
+- PR #229 ilk sürüm `59c8add` CI 7/7 yeşil: Node runtime middleware + Prisma production
+  standalone build'de gerçek HTTP 410 verdi (`browser` işi).
+- GPT-6 Astra aynı SHA için **KOD DÜZELTİLMELİ** (4 P2): (1) kapı ham segmenti, sayfa
+  Next'in çözüp yeniden kodladığı segmenti okuyordu (`/baslik/U%2D%2D2147483648` canlı
+  adrese 410); (2) Next 15.5.25 adaptörü `next-router-prefetch`'i middleware'den önce
+  siler, dar matcher prefetch'e CSP/analytics ekliyordu; (3) `--sayı` ile biten açılmamış
+  başlık adresi silinmiş kimliğe 410 alabiliyordu; (4) E2E prefetch/Server Action/işaret
+  temizliğini kanıtlamıyordu. Düzeltme: segment `encodeURIComponent(decodeURIComponent)`,
+  dar matcher kaldırıldı (prefetch middleware'e uğramaz; RSC navigasyonu 410 alır),
+  `topicTitleSchema` ayrıştırıcının kimlik okuyacağı başlığı reddeder, E2E genişletildi ve
+  işareti test DB'ye özgü istisnayla temizler. Yedek taraması: 6.120 başlık + 2 alias,
+  çakışma 0. Yerel birim 1867/1867, entegrasyon 76/76.
+- **Tekrarlama:** middleware'de `next-router-prefetch` görünmez; prefetch ayrımı yalnız
+  matcher `missing` ile yapılır. Sayfanın gördüğü segment ham URL değil, çözülüp yeniden
+  kodlanmış hâlidir.
+- PR #229 Astra 2.–5. turlar: `_NEXTSEP_` (Next çöz → sil → kodla), başlık kuralının
+  rename/ajan yollarına taşınması, eşleşmemiş surrogate, `.rsc` adaptör silmesi ve UUID
+  öneki + `--sayı` iki yorumlu segment (canlı UUID 308, UUID'ye benzeyen kanonik slug 410)
+  kapatıldı. CI `e43ae61`/`d969884` tarayıcı işi, tamamlanan prefetch beklemesi Chromium'da
+  hiç gelmediği için zaman aşımına düştü (kod regresyonu değil); `b6f1b24` 7/7 yeşil.
+  Tamamlanmış prefetch'in Router Cache kanıtı tasarımda açık GO kapısı olarak yazıldı.
+- **Tekrarlama:** Next 15.5 dinamik sayfa kısmi prefetch akışında `response.finished()`
+  ya da `requestfinished` beklemek CI'da asılı kalır; E2E'yi buna bağlama.
+- Astra 6. tur `c0c7054`: iki sorgulu UUID yorumu `.rsc` bilgisini geri getirmiyordu
+  (kaçan/yanlış 410 tablosu). Kök düzeltme: `parseTopicRouteReference` ve
+  `parseEntryRouteReference` sondaki `.rsc`'yi Next adaptörü gibi siler; sayfa ve kapı her
+  istekte aynı kimliği seçer; ikili sorgu ve UUID slug kuralı kaldırıldı. Prefetch Router
+  Cache kanıtı Astra kararıyla bu taslakta **P2 açık/ertelendi** (reset GO kapısı).
+- Astra 7. tur `7c0c2c8`: P2 çift `.rsc` (adaptör birini, ayrıştırıcı ikincisini silince
+  sayfa ile kapı yine ayrışıyordu); P3 canlı `/entry/7.rsc` kanoniğe yönlenmiyordu.
+  Düzeltme: ayrıştırıcı sondaki ardışık `.rsc`'lerin hepsini siler; entry ve revizyonlar
+  sayfası kanonik olmayan sayısal segmenti 308'le yönlendirir.
+- GPT-6 Astra (`gpt-6-astra`) 8. tur exact `a7979fe5294869e411dd5245b95fcd4e8aea6f68`
+  için **KOD GO**: kimlik P2'si ve yönlendirme P3'ü kapandı; Next 15.5.25 yardımcılarıyla
+  40.704 URL kombinasyonunda sıfır kimlik ayrışması. Aynı SHA'da CI 7/7 yeşil. Tamamlanmış
+  prefetch'in Router Cache kanıtı **P2 açık/ertelendi** (reset GO kapısı).

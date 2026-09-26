@@ -6,6 +6,10 @@ import {
   reasonsForTarget,
 } from "@/modules/moderation/domain/gammaz";
 import { entryBodySchema } from "@/modules/entries/validation/schemas";
+import {
+  TOPIC_TITLE_AMBIGUOUS_MESSAGE,
+  topicTitleAddressIsAmbiguous,
+} from "@/modules/topics/domain/normalization";
 
 export const reportTargetTypeSchema = z.enum(["TOPIC", "ENTRY", "USER"]);
 export const reportReasonSchema = z.enum(ALL_REPORT_REASONS);
@@ -110,7 +114,15 @@ export const reportDecisionSchema = z.object({
 });
 
 export const topicRenameSchema = z
-  .object({ ...moderationReasonFields, title: z.string().trim().min(2).max(120) })
+  .object({
+    ...moderationReasonFields,
+    title: z
+      .string()
+      .trim()
+      .min(2)
+      .max(120)
+      .refine((title) => !topicTitleAddressIsAmbiguous(title), TOPIC_TITLE_AMBIGUOUS_MESSAGE),
+  })
   .superRefine(requireCompleteAgentBehaviorFeedback);
 
 export const topicMergeSchema = z
