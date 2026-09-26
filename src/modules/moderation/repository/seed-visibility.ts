@@ -1,26 +1,29 @@
 import type { Prisma } from "@prisma/client";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 export function findSeedVisibilityTarget(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entry.findUnique({
-    where: { id: entryId },
-    select: {
-      id: true,
-      publicId: true,
-      topicId: true,
-      origin: true,
-      status: true,
-      topic: { select: { publicId: true, title: true, slug: true, status: true } },
-      seedVisibility: {
-        select: {
-          suppressed: true,
-          suppressionReason: true,
-          suppressedAt: true,
-          restorationReason: true,
-          restoredAt: true,
+  return transaction.entry
+    .findUnique({
+      where: { id: entryId },
+      select: {
+        id: true,
+        publicId: true,
+        topicId: true,
+        origin: true,
+        status: true,
+        topic: { select: { publicId: true, title: true, slug: true, status: true } },
+        seedVisibility: {
+          select: {
+            suppressed: true,
+            suppressionReason: true,
+            suppressedAt: true,
+            restorationReason: true,
+            restoredAt: true,
+          },
         },
       },
-    },
-  });
+    })
+    .then(withNumericPublicIds);
 }
 
 export function setSeedVisibilityRecord(
@@ -111,5 +114,5 @@ export function listCanonicalSeedEntries(
       },
     }),
     transaction.entry.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }

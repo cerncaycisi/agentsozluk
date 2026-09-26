@@ -4,6 +4,7 @@ import {
   publiclyVisibleEntryWhere,
 } from "@/modules/entries/repository/public-visibility";
 import { resolvePublicProfileUsername } from "@/modules/users/domain/public-identity";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 export function getIndexingSettingsRecord(transaction: Prisma.TransactionClient) {
   return transaction.agentGlobalSettings.findUniqueOrThrow({
@@ -17,13 +18,15 @@ export function getIndexingSettingsRecord(transaction: Prisma.TransactionClient)
 }
 
 export function getTopicIndexingRecord(transaction: Prisma.TransactionClient, topicId: string) {
-  return transaction.topic.findUnique({
-    where: { id: topicId },
-    select: {
-      status: true,
-      createdBy: { select: { kind: true } },
-    },
-  });
+  return transaction.topic
+    .findUnique({
+      where: { id: topicId },
+      select: {
+        status: true,
+        createdBy: { select: { kind: true } },
+      },
+    })
+    .then(withNumericPublicIds);
 }
 
 export function getEntryIndexingRecord(transaction: Prisma.TransactionClient, entryId: string) {
@@ -140,13 +143,15 @@ export function listIndexableTopics(
     return Promise.resolve(
       [] as Array<{ id: string; publicId: number; slug: string; updatedAt: Date }>,
     );
-  return transaction.topic.findMany({
-    where: sitemapWhere(settings, input.now),
-    select: { id: true, publicId: true, slug: true, updatedAt: true },
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-    skip: input.skip,
-    take: input.take,
-  });
+  return transaction.topic
+    .findMany({
+      where: sitemapWhere(settings, input.now),
+      select: { id: true, publicId: true, slug: true, updatedAt: true },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      skip: input.skip,
+      take: input.take,
+    })
+    .then(withNumericPublicIds);
 }
 
 export function countIndexableEntries(
@@ -165,13 +170,15 @@ export function listIndexableEntries(
 ) {
   if (settings.indexingMode === "NOINDEX_ALL_DYNAMIC")
     return Promise.resolve([] as Array<{ id: string; publicId: number; createdAt: Date }>);
-  return transaction.entry.findMany({
-    where: entrySitemapWhere(settings, input.now),
-    select: { id: true, publicId: true, createdAt: true },
-    orderBy: { publicId: "asc" },
-    skip: input.skip,
-    take: input.take,
-  });
+  return transaction.entry
+    .findMany({
+      where: entrySitemapWhere(settings, input.now),
+      select: { id: true, publicId: true, createdAt: true },
+      orderBy: { publicId: "asc" },
+      skip: input.skip,
+      take: input.take,
+    })
+    .then(withNumericPublicIds);
 }
 
 export function listSyndicationEntries(
@@ -196,24 +203,26 @@ export function listSyndicationEntries(
         author: { username: string; displayName: string };
       }>,
     );
-  return transaction.entry.findMany({
-    where: {
-      ...entrySitemapWhere(settings, input.now),
-      ...(input.topicId ? { topicId: input.topicId } : {}),
-      ...(input.authorId ? { authorId: input.authorId } : {}),
-    },
-    select: {
-      id: true,
-      publicId: true,
-      body: true,
-      createdAt: true,
-      updatedAt: true,
-      topic: { select: { publicId: true, title: true, slug: true } },
-      author: { select: { username: true, displayName: true } },
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: input.take,
-  });
+  return transaction.entry
+    .findMany({
+      where: {
+        ...entrySitemapWhere(settings, input.now),
+        ...(input.topicId ? { topicId: input.topicId } : {}),
+        ...(input.authorId ? { authorId: input.authorId } : {}),
+      },
+      select: {
+        id: true,
+        publicId: true,
+        body: true,
+        createdAt: true,
+        updatedAt: true,
+        topic: { select: { publicId: true, title: true, slug: true } },
+        author: { select: { username: true, displayName: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: input.take,
+    })
+    .then(withNumericPublicIds);
 }
 
 export async function getIndexingDashboardRecords(

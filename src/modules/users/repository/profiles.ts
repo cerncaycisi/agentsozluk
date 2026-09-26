@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 /**
  * Profil sekmelerinin etiketindeki sayı ile sekmenin listesi aynı filtreden
@@ -69,7 +70,7 @@ export function listPublicProfileEntries(
       take: input.take,
     }),
     transaction.entry.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }
 
 export function listPublicProfileTopics(
@@ -96,5 +97,5 @@ export function listPublicProfileTopics(
       take: input.take,
     }),
     transaction.topic.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 import { lockUserStateForMutation } from "@/modules/auth/repository/users";
 
 export async function findModerationActor(transaction: Prisma.TransactionClient, actorId: string) {
@@ -41,11 +42,13 @@ export async function setEntryStatus(
       ? { status: "HIDDEN", hiddenAt: new Date() }
       : { status: "ACTIVE", hiddenAt: null },
   });
-  return result.count === 1 ? transaction.entry.findUnique({ where: { id: entryId } }) : null;
+  return result.count === 1
+    ? withNumericPublicIds(await transaction.entry.findUnique({ where: { id: entryId } }))
+    : null;
 }
 
 export function findTopicForModeration(transaction: Prisma.TransactionClient, topicId: string) {
-  return transaction.topic.findUnique({ where: { id: topicId } });
+  return transaction.topic.findUnique({ where: { id: topicId } }).then(withNumericPublicIds);
 }
 
 export async function setTopicStatus(
@@ -57,7 +60,9 @@ export async function setTopicStatus(
     where: { id: topicId, status: hidden ? "ACTIVE" : "HIDDEN" },
     data: { status: hidden ? "HIDDEN" : "ACTIVE" },
   });
-  return result.count === 1 ? transaction.topic.findUnique({ where: { id: topicId } }) : null;
+  return result.count === 1
+    ? withNumericPublicIds(await transaction.topic.findUnique({ where: { id: topicId } }))
+    : null;
 }
 
 export async function lockModerationKey(
@@ -103,7 +108,9 @@ export async function renameTopicRecord(
     },
     update: {},
   });
-  return transaction.topic.update({ where: { id: topic.id }, data: identity });
+  return withNumericPublicIds(
+    await transaction.topic.update({ where: { id: topic.id }, data: identity }),
+  );
 }
 
 export async function mergeTopicRecords(
@@ -144,7 +151,7 @@ export async function mergeTopicRecords(
 }
 
 export function findEntryForMove(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entry.findUnique({ where: { id: entryId } });
+  return transaction.entry.findUnique({ where: { id: entryId } }).then(withNumericPublicIds);
 }
 
 export async function topicHasSeedEntries(
@@ -164,7 +171,9 @@ export async function moveEntryRecord(
     where: { id: entryId, topicId: sourceTopicId, origin: { not: "SEED" } },
     data: { topicId: targetTopicId },
   });
-  return result.count === 1 ? transaction.entry.findUnique({ where: { id: entryId } }) : null;
+  return result.count === 1
+    ? withNumericPublicIds(await transaction.entry.findUnique({ where: { id: entryId } }))
+    : null;
 }
 
 export function findModerationTargetUser(transaction: Prisma.TransactionClient, userId: string) {

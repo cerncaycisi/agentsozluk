@@ -9227,3 +9227,37 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   `4b8bace4c408aa3360b8e0e56a828a2b2a77ae5f` için **TASARIM UYGUN** dedi; üç
   bulgu kapandı, yeni P1/P2/P3 yok. Statik tasarım incelemesidir; migration,
   PostgreSQL rollback/restore provası ve HTTP/E2E kabulü açık.
+
+## 2026-09-26 — public ID BIGINT migration'ı, yerel gerçek boyut ölçümü
+
+- Dal `feat/public-id-bigint`. Migration `20260926090000_public_id_bigint_namespace`
+  26 Eylül 01:32Z gecelik yedeğinin yerel PG16 sentetik kopyasında (6.120 başlık,
+  19.314 entry) tek transaction'da **2.532 ms** sürdü. Sonuç: iki sütun `bigint`,
+  sequence'ler `bigint`/`MAXVALUE 2147483647`/`CACHE 1`/döngüsüz, iki CHECK
+  doğrulanmış, değişmezlik tetikleyicileri etkin. Negatif testler: `publicId`
+  UPDATE'i `publicId is immutable`, `nextval` sınırda `reached maximum value`,
+  iki tabloda `2147483648` açık INSERT'i CHECK ihlaliyle reddedildi.
+- Kök sınır: `BEFORE UPDATE OF "publicId"` tetikleyicileri sütun tip değişimini
+  engeller; migration onları kaldırıp aynı fonksiyonla yeniden kurar.
+- Migration `check-additive-migration.mjs` izin listesine uymaz (tip değişimi,
+  tetikleyici kaldırma). A5 migration'lı dağıtım yolu bunu reddeder; eski imaj
+  kapalıyken bakım penceresinde uygulanmalı. Üretime bağlanılmadı.
+- **Tekrarlama:** bu migration'ı main'e birleştirmek bekleyen migration yaratır ve
+  migration'sız dağıtım yolunu kilitler; bakım penceresi onayı olmadan birleştirme.
+- GPT-6 Astra, PR #227 exact `92c6bc0e064f38eda71b84dabedacbf4f205bd4f` için
+  **KOD DÜZELTİLMELİ** dedi (1 P2, 2 P3; P1 yok; uygulamaya sızan bigint yok).
+  P2: doğrudan Prisma ile kurulan entegrasyon verisi `bigint`, repository çıktısı
+  `number`; `[1]`/`[1n]` eşitliği düştü (CI `database`/`coverage` kırmızı) ve
+  `.not.toContain(1n)` sessizce geçerdi. P3: özel nesne tipi, JSON `__proto__`
+  anahtarı. Düzeltme: test beklentileri `Number(...)`, dönüştürücü opak tipler ve
+  `Object.fromEntries`; bigint `publicId` taşıyan düz olmayan nesne artık hata verir.
+- **Tekrarlama:** doğrudan Prisma fixture'ının `publicId`'sini repository çıktısıyla
+  karşılaştırırken önce `Number(...)`; negatif `not.toContain` beklentisi tip
+  uyuşmazlığında sessizce geçer.
+- Astra 2. tur `b5ccdce`: P2 ve `__proto__` P3 kapandı, opak tip P3 açık kaldı
+  (`toJSON` taşıyan düz nesne). 3. tur `64bd294`: o kapandı, iç içe `publicId`
+  taşıyan sınıf örneği P3'ü açıldı. Düzeltme: çalışma anında yalnız `Date`,
+  `Uint8Array`, `Prisma.Decimal` geçer; diğer sınıf örnekleri `PUBLIC_ID_UNSAFE`.
+- GPT-6 Astra 4. tur exact `98725c55cac490e6649efcd2644611bd0674be4d` için
+  **KOD GO** dedi (56 çağrı noktası, yeni P1/P2/P3 yok). Aynı SHA'da CI 7/7 yeşil
+  (`database`, `coverage`, `browser` dahil); yerel birim 1853/1853.

@@ -4,6 +4,7 @@ import {
   AGENT_CONTROL_PLANE_AUDIT_ENTITY_PREFIX,
 } from "@/modules/moderation/domain/audit-visibility";
 import { GAMMAZ_REASONS } from "@/modules/moderation/domain/gammaz";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 export async function moderationDashboardCounts(
   transaction: Prisma.TransactionClient,
@@ -82,7 +83,7 @@ export function listModerationTopics(
       take: input.take,
     }),
     transaction.topic.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }
 
 export function listAuditLogs(

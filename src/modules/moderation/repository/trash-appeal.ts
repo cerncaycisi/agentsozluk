@@ -1,5 +1,6 @@
 import type { EntryReviewOutcome, EntryTrashSource, Prisma } from "@prisma/client";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 const trashCaseListSelect = {
   id: true,
@@ -72,17 +73,19 @@ export function createEntryTrashCase(
     openedAt: Date;
   },
 ) {
-  return transaction.entryTrashCase.create({
-    data: {
-      entryId: input.entryId,
-      authorId: input.authorId,
-      topicId: input.topicId,
-      source: input.source,
-      ...(input.sourceActionId ? { sourceActionId: input.sourceActionId } : {}),
-      sourceReason: input.sourceReason,
-      openedAt: input.openedAt,
-    },
-  });
+  return transaction.entryTrashCase
+    .create({
+      data: {
+        entryId: input.entryId,
+        authorId: input.authorId,
+        topicId: input.topicId,
+        source: input.source,
+        ...(input.sourceActionId ? { sourceActionId: input.sourceActionId } : {}),
+        sourceReason: input.sourceReason,
+        openedAt: input.openedAt,
+      },
+    })
+    .then(withNumericPublicIds);
 }
 
 export function findEntryOwnerForReview(transaction: Prisma.TransactionClient, entryId: string) {
@@ -107,30 +110,32 @@ export function findAppealAppellant(transaction: Prisma.TransactionClient, appea
 }
 
 export function findOpenEntryTrashCase(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entryTrashCase.findFirst({
-    where: { entryId, closedAt: null },
-    orderBy: [{ openedAt: "desc" }, { id: "desc" }],
-    include: {
-      entry: {
-        select: {
-          id: true,
-          publicId: true,
-          authorId: true,
-          topicId: true,
-          body: true,
-          normalizedBody: true,
-          status: true,
-          origin: true,
+  return transaction.entryTrashCase
+    .findFirst({
+      where: { entryId, closedAt: null },
+      orderBy: [{ openedAt: "desc" }, { id: "desc" }],
+      include: {
+        entry: {
+          select: {
+            id: true,
+            publicId: true,
+            authorId: true,
+            topicId: true,
+            body: true,
+            normalizedBody: true,
+            status: true,
+            origin: true,
+          },
         },
+        topic: { select: { id: true, publicId: true, title: true, slug: true } },
+        revivalRequests: {
+          include: { decision: true },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        },
+        appeals: { include: { decision: true } },
       },
-      topic: { select: { id: true, publicId: true, title: true, slug: true } },
-      revivalRequests: {
-        include: { decision: true },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      },
-      appeals: { include: { decision: true } },
-    },
-  });
+    })
+    .then(withNumericPublicIds);
 }
 
 export function closeEntryTrashCase(
@@ -160,7 +165,7 @@ export function listEntryTrashCasesForAuthor(
       take,
     }),
     transaction.entryTrashCase.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }
 
 export function updateTrashEntryBody(
@@ -184,37 +189,41 @@ export function createEntryRevivalRequest(
     submittedBody: string;
   },
 ) {
-  return transaction.entryRevivalRequest.create({
-    data: input,
-    include: {
-      trashCase: { select: { sourceReason: true } },
-      entry: { select: { publicId: true } },
-    },
-  });
+  return transaction.entryRevivalRequest
+    .create({
+      data: input,
+      include: {
+        trashCase: { select: { sourceReason: true } },
+        entry: { select: { publicId: true } },
+      },
+    })
+    .then(withNumericPublicIds);
 }
 
 export function findEntryRevivalRequestForDecision(
   transaction: Prisma.TransactionClient,
   requestId: string,
 ) {
-  return transaction.entryRevivalRequest.findUnique({
-    where: { id: requestId },
-    include: {
-      decision: true,
-      requestedBy: { select: { id: true, username: true, displayName: true } },
-      trashCase: true,
-      entry: {
-        select: {
-          id: true,
-          publicId: true,
-          authorId: true,
-          topicId: true,
-          body: true,
-          status: true,
+  return transaction.entryRevivalRequest
+    .findUnique({
+      where: { id: requestId },
+      include: {
+        decision: true,
+        requestedBy: { select: { id: true, username: true, displayName: true } },
+        trashCase: true,
+        entry: {
+          select: {
+            id: true,
+            publicId: true,
+            authorId: true,
+            topicId: true,
+            body: true,
+            status: true,
+          },
         },
       },
-    },
-  });
+    })
+    .then(withNumericPublicIds);
 }
 
 export function createEntryRevivalDecision(
@@ -253,7 +262,7 @@ export function listOpenEntryRevivalRequests(
       take,
     }),
     transaction.entryRevivalRequest.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }
 
 export function createEntryAppeal(
@@ -271,37 +280,41 @@ export function createEntryAppeal(
     defense: string;
   },
 ) {
-  return transaction.entryAppeal.create({
-    data: input,
-    include: {
-      entry: { select: { publicId: true } },
-      topic: { select: { publicId: true, title: true, slug: true } },
-    },
-  });
+  return transaction.entryAppeal
+    .create({
+      data: input,
+      include: {
+        entry: { select: { publicId: true } },
+        topic: { select: { publicId: true, title: true, slug: true } },
+      },
+    })
+    .then(withNumericPublicIds);
 }
 
 export function findEntryAppealForDecision(
   transaction: Prisma.TransactionClient,
   appealId: string,
 ) {
-  return transaction.entryAppeal.findUnique({
-    where: { id: appealId },
-    include: {
-      decision: true,
-      appellant: { select: { id: true, username: true, displayName: true } },
-      trashCase: true,
-      entry: {
-        select: {
-          id: true,
-          publicId: true,
-          authorId: true,
-          topicId: true,
-          body: true,
-          status: true,
+  return transaction.entryAppeal
+    .findUnique({
+      where: { id: appealId },
+      include: {
+        decision: true,
+        appellant: { select: { id: true, username: true, displayName: true } },
+        trashCase: true,
+        entry: {
+          select: {
+            id: true,
+            publicId: true,
+            authorId: true,
+            topicId: true,
+            body: true,
+            status: true,
+          },
         },
       },
-    },
-  });
+    })
+    .then(withNumericPublicIds);
 }
 
 export function createEntryAppealDecision(
@@ -348,7 +361,7 @@ export function listOpenEntryAppeals(
       take,
     }),
     transaction.entryAppeal.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }
 
 export function restoreEntryFromTrash(transaction: Prisma.TransactionClient, entryId: string) {

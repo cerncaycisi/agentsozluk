@@ -3,6 +3,7 @@ import {
   publiclyVisibleEntrySql,
   publiclyVisibleEntryWhere,
 } from "@/modules/entries/repository/public-visibility";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 export interface TopicFeedRow {
   id: string;
@@ -68,7 +69,8 @@ export async function listScoredTopics(
   transaction: Prisma.TransactionClient,
   input: { windowStart: Date; now: Date; skip: number; take: number; activityOnly?: boolean },
 ): Promise<TopicFeedPage<TopicFeedRow>> {
-  const rows = await transaction.$queryRaw<ScoredTopicQueryRow[]>(Prisma.sql`
+  const rows = withNumericPublicIds(
+    await transaction.$queryRaw<ScoredTopicQueryRow[]>(Prisma.sql`
       WITH entry_activity AS (
         SELECT
           entry."topicId",
@@ -167,7 +169,8 @@ export async function listScoredTopics(
       ORDER BY paged."trendScore" DESC NULLS LAST,
         paged."lastEntryAt" DESC NULLS LAST,
         paged.id ASC NULLS LAST
-    `);
+    `),
+  );
   return {
     topics: rows.flatMap((row) => {
       if (
@@ -228,7 +231,8 @@ export async function listWindowedChronologicalTopics(
     input.mode === "recent"
       ? Prisma.sql`paged."windowLastEntryAt" DESC NULLS LAST, paged.id ASC NULLS LAST`
       : Prisma.sql`paged."createdAt" DESC NULLS LAST, paged.id ASC NULLS LAST`;
-  const rows = await transaction.$queryRaw<ChronologicalTopicQueryRow[]>(Prisma.sql`
+  const rows = withNumericPublicIds(
+    await transaction.$queryRaw<ChronologicalTopicQueryRow[]>(Prisma.sql`
     WITH entry_activity AS (
       SELECT
         entry."topicId",
@@ -293,7 +297,8 @@ export async function listWindowedChronologicalTopics(
     FROM totals
     LEFT JOIN paged ON true
     ORDER BY ${outerOrderBy}
-  `);
+  `),
+  );
   return {
     topics: rows.flatMap((row) => {
       if (
@@ -337,7 +342,8 @@ export async function listChronologicalTopics(
     input.mode === "recent"
       ? Prisma.sql`paged."lastEntryAt" DESC NULLS LAST, paged.id ASC NULLS LAST`
       : Prisma.sql`paged."createdAt" DESC NULLS LAST, paged.id ASC NULLS LAST`;
-  const rows = await transaction.$queryRaw<ChronologicalTopicQueryRow[]>(Prisma.sql`
+  const rows = withNumericPublicIds(
+    await transaction.$queryRaw<ChronologicalTopicQueryRow[]>(Prisma.sql`
     WITH visible_totals AS (
       SELECT
         entry."topicId",
@@ -384,7 +390,8 @@ export async function listChronologicalTopics(
     FROM totals
     LEFT JOIN paged ON true
     ORDER BY ${outerOrderBy}
-  `);
+  `),
+  );
   return {
     topics: rows.flatMap((row) => {
       if (
@@ -417,32 +424,34 @@ export function listDebeEntries(
   transaction: Prisma.TransactionClient,
   input: { start: Date; end: Date },
 ) {
-  return transaction.entry.findMany({
-    where: {
-      status: "ACTIVE",
-      score: { gt: 0 },
-      createdAt: { gte: input.start, lt: input.end },
-      topic: { status: "ACTIVE" },
-      ...publiclyVisibleEntryWhere,
-    },
-    select: {
-      id: true,
-      publicId: true,
-      body: true,
-      score: true,
-      status: true,
-      origin: true,
-      upvoteCount: true,
-      downvoteCount: true,
-      createdAt: true,
-      updatedAt: true,
-      topic: { select: { id: true, publicId: true, title: true, slug: true } },
-      author: { select: { id: true, username: true, displayName: true, status: true } },
-      _count: { select: { revisions: true, bookmarks: true } },
-    },
-    orderBy: [{ score: "desc" }, { upvoteCount: "desc" }, { createdAt: "asc" }, { id: "asc" }],
-    take: 50,
-  });
+  return transaction.entry
+    .findMany({
+      where: {
+        status: "ACTIVE",
+        score: { gt: 0 },
+        createdAt: { gte: input.start, lt: input.end },
+        topic: { status: "ACTIVE" },
+        ...publiclyVisibleEntryWhere,
+      },
+      select: {
+        id: true,
+        publicId: true,
+        body: true,
+        score: true,
+        status: true,
+        origin: true,
+        upvoteCount: true,
+        downvoteCount: true,
+        createdAt: true,
+        updatedAt: true,
+        topic: { select: { id: true, publicId: true, title: true, slug: true } },
+        author: { select: { id: true, username: true, displayName: true, status: true } },
+        _count: { select: { revisions: true, bookmarks: true } },
+      },
+      orderBy: [{ score: "desc" }, { upvoteCount: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+      take: 50,
+    })
+    .then(withNumericPublicIds);
 }
 
 export async function findRandomActiveTopic(
@@ -450,7 +459,7 @@ export async function findRandomActiveTopic(
   randomKey: number,
 ) {
   const select = { id: true, publicId: true, title: true, slug: true } as const;
-  return (
+  return withNumericPublicIds(
     (await transaction.topic.findFirst({
       where: {
         status: "ACTIVE",
@@ -460,14 +469,14 @@ export async function findRandomActiveTopic(
       select,
       orderBy: [{ randomKey: "asc" }, { id: "asc" }],
     })) ??
-    transaction.topic.findFirst({
-      where: {
-        status: "ACTIVE",
-        entries: { some: { status: "ACTIVE", ...publiclyVisibleEntryWhere } },
-      },
-      select,
-      orderBy: [{ randomKey: "asc" }, { id: "asc" }],
-    })
+      (await transaction.topic.findFirst({
+        where: {
+          status: "ACTIVE",
+          entries: { some: { status: "ACTIVE", ...publiclyVisibleEntryWhere } },
+        },
+        select,
+        orderBy: [{ randomKey: "asc" }, { id: "asc" }],
+      })),
   );
 }
 
@@ -502,7 +511,9 @@ export async function listTopEntryPerTopic(
   input: { topicIds: readonly string[] },
 ): Promise<TopTopicEntryRow[]> {
   if (input.topicIds.length === 0) return [];
-  return transaction.$queryRaw<TopTopicEntryRow[]>(Prisma.sql`
+  return transaction
+    .$queryRaw<TopTopicEntryRow[]>(
+      Prisma.sql`
     SELECT DISTINCT ON (entry."topicId")
       entry.id,
       entry."publicId",
@@ -530,5 +541,7 @@ export async function listTopEntryPerTopic(
       AND entry.status = 'ACTIVE'
       AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
     ORDER BY entry."topicId", entry.score DESC, entry."createdAt" DESC, entry.id ASC
-  `);
+  `,
+    )
+    .then(withNumericPublicIds);
 }

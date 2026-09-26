@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
+import { withNumericPublicIds } from "@/lib/db/public-id";
 
 export async function lockEntryVoteCounter(
   transaction: Prisma.TransactionClient,
@@ -248,7 +249,7 @@ export function listUserFollows(
       },
     }),
     transaction.userFollow.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }
 
 export function putBlockRecord(
@@ -362,7 +363,7 @@ export function listBookmarks(
       take,
     }),
     transaction.entryBookmark.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }
 
 export async function listFollows(
@@ -405,7 +406,7 @@ export async function listFollows(
     }),
     transaction.topicFollow.count({ where }),
   ]);
-  return [
+  return withNumericPublicIds([
     items.map(({ topic, ...item }) => ({
       ...item,
       topic: {
@@ -418,7 +419,7 @@ export async function listFollows(
       },
     })),
     totalItems,
-  ] as const;
+  ] as const);
 }
 
 export function listVotes(
@@ -459,7 +460,7 @@ export function listVotes(
       take,
     }),
     transaction.entryVote.count({ where }),
-  ]);
+  ]).then(withNumericPublicIds);
 }
 
 export function listBlocks(
