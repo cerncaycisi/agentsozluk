@@ -9328,3 +9328,7 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   `parseEntryRouteReference` sondaki `.rsc`'yi Next adaptörü gibi siler; sayfa ve kapı her
   istekte aynı kimliği seçer; ikili sorgu ve UUID slug kuralı kaldırıldı. Prefetch Router
   Cache kanıtı Astra kararıyla bu taslakta **P2 açık/ertelendi** (reset GO kapısı).
+- Astra 7. tur `7c0c2c8`: P2 çift `.rsc` (adaptör birini, ayrıştırıcı ikincisini silince
+  sayfa ile kapı yine ayrışıyordu); P3 canlı `/entry/7.rsc` kanoniğe yönlenmiyordu.
+  Düzeltme: ayrıştırıcı sondaki ardışık `.rsc`'lerin hepsini siler; entry ve revizyonlar
+  sayfası kanonik olmayan sayısal segmenti 308'le yönlendirir.

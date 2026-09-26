@@ -188,8 +188,10 @@ nextval()` açıkça verilen değeri sınırlamaz ve mevcut değişmezlik trigge
    (`encodeURIComponent(decodeURIComponent(ham))`, baştaki `_NEXTSEP_` silinerek)
    getirerek ayrıştırır. Next adaptörü URL sonundaki `.rsc`'yi middleware'den önce
    siler; rota ayrıştırıcıları da sondaki `.rsc`'yi siler, böylece sayfa ve kapı her
-   istekte aynı kimliği seçer (Astra, PR #229 6. tur). Literal `.rsc` adres canlı
-   içerikte kanoniğe 308, silinmiş içerikte 410 alır.
+   istekte aynı kimliği seçer (Astra, PR #229 6.–7. tur; sondaki ardışık `.rsc`
+   eklerinin hepsi silinir, tekrar uygulamada değişmez). Literal `.rsc` adres canlı
+   içerikte kanoniğe 308 (entry sayfası kanonik olmayan sayısal segmenti de
+   yönlendirir), silinmiş içerikte 410 alır.
    **Açık GO kapısı:** tamamlanmış bir prefetch'in reset sonrası Router Cache'ten bayat
    içerik göstermediği kanıtlanmadı; mevcut E2E yalnız tıklamanın sunucuya gidip 410
    aldığını ölçer (Next 15.5 kısmi prefetch akışı CI'da tamamlanmadı).

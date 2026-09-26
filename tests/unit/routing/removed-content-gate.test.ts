@@ -76,6 +76,15 @@ describe("removed content gate candidates", () => {
       kind: "TOPIC",
       reference: { publicId: 7 },
     });
+    // Adaptör bir `.rsc` silmiş olsa da (`.rsc.rsc` → `.rsc`) sayfanın gördüğü kimlik seçilir.
+    expect(removedContentCandidate("GET", `/baslik/${uuid}--7.rsc`)).toEqual({
+      kind: "TOPIC",
+      reference: { publicId: 7 },
+    });
+    expect(removedContentCandidate("GET", `/entry/7.rsc`)).toEqual({
+      kind: "ENTRY",
+      reference: { publicId: 7 },
+    });
     expect(removedContentCandidate("GET", `/baslik/${uuid}--7%2Ersc`)).toEqual({
       kind: "TOPIC",
       reference: { publicId: 7 },

@@ -127,6 +127,22 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
         await request.get(`/baslik/${topic.id}--${goneTopicPublicId}.rsc`, { maxRedirects: 0 })
       ).status(),
     ).toBe(410);
+    // Çift `.rsc` (adaptör birini, ayrıştırıcı kalanı siler) ve kodlu varyant aynı kimliği seçer.
+    expect(
+      (
+        await request.get(`/baslik/${topic.id}--${goneTopicPublicId}.rsc.rsc`, { maxRedirects: 0 })
+      ).status(),
+    ).toBe(410);
+    expect(
+      (
+        await request.get(`/baslik/${topic.id}--${goneTopicPublicId}%2Ersc.rsc`, {
+          maxRedirects: 0,
+        })
+      ).status(),
+    ).toBe(410);
+    // Canlı entry'nin kanonik olmayan `.rsc` adresi kanoniğe yönlenir (Astra, 7. tur P3).
+    const liveEntryRsc = await request.get(`/entry/${entry.publicId}.rsc`, { maxRedirects: 0 });
+    expect(liveEntryRsc.status()).toBe(308);
     // Canlı başlığın `.rsc`'li adresi kanoniğe yönlenir, 410 almaz.
     expect(
       (

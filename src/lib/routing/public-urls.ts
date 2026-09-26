@@ -25,8 +25,10 @@ export type TopicRouteReference =
   sayfa ise literal `.rsc`'li istekte segmenti `.rsc`'siyle alır. Ayrıştırıcılar da sondaki
   `.rsc`'yi siler: aynı istekte sayfa ve great reset 410 kapısı aynı kimliği seçer (Astra, PR #229
   6. tur). Literal `.rsc` hiçbir kanonik adreste yoktur; böyle bir istek kanoniğe 308 alır.
+  Sondaki ardışık `.rsc` eklerinin HEPSİ silinir: adaptör birini önceden silmiş olsa da sonuç
+  aynı kalır (tekrar uygulamada değişmez; Astra, 7. tur `x.rsc.rsc`).
 */
-const RSC_SUFFIX = /\.rsc$/u;
+const RSC_SUFFIX = /(?:\.rsc)+$/u;
 
 export function parseTopicRouteReference(rawSegment: string): TopicRouteReference | null {
   const segment = rawSegment.replace(RSC_SUFFIX, "");

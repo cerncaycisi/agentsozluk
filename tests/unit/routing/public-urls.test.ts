@@ -98,6 +98,11 @@ describe("public content URLs", () => {
       publicId: 7,
     });
     expect(parseEntryRouteReference("7.rsc")).toEqual({ kind: "public", publicId: 7 });
-    expect(parseEntryRouteReference("7.rsc.rsc")).toBeNull();
+    // Ardışık ekler de silinir; adaptörün önceden birini silmesi sonucu değiştirmez.
+    expect(parseEntryRouteReference("7.rsc.rsc")).toEqual({ kind: "public", publicId: 7 });
+    expect(
+      parseTopicRouteReference("3f2b8c1e-4a5d-4e6f-8a9b-0c1d2e3f4a5b--7.rsc.rsc"),
+    ).toMatchObject({ kind: "public", publicId: 7 });
+    expect(parseEntryRouteReference("7.RSC")).toBeNull();
   });
 });

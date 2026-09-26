@@ -134,7 +134,9 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
   }
   if ("canonicalTopic" in entry && entry.canonicalTopic)
     permanentRedirect(topicPublicUrl(entry.canonicalTopic));
-  if (reference.kind === "legacy") permanentRedirect(entryPublicUrl(entry));
+  // Legacy UUID ve kanonik olmayan sayısal segment (ör. `7.rsc`) kanoniğe yönlenir.
+  if (reference.kind === "legacy" || rawId !== String(reference.publicId))
+    permanentRedirect(entryPublicUrl(entry));
   const database = getDatabase();
   const [[votes, bookmarks], references, canGammaz, contentDates] = await Promise.all([
     session
