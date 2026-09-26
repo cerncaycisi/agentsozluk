@@ -104,3 +104,12 @@ export function nextRouteParamSegment(raw: string): string | null {
     return null;
   }
 }
+
+/**
+ * Segmentin ilk 36 karakteri legacy UUID mi. `parseTopicRouteReference` sayısal soneki önce dener,
+ * sonek eşleşmezse (ör. literal `.rsc` sonrası) aynı segmentten UUID seçer; ikisini birden taşıyan
+ * segmentte hangi kimliğin seçileceği Next'in `.rsc` silmesine bağlıdır.
+ */
+export function hasLegacyIdPrefix(segment: string): boolean {
+  return UUID_PATTERN.test(segment.slice(0, 36));
+}

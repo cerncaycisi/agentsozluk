@@ -1,4 +1,5 @@
 import {
+  hasLegacyIdPrefix,
   nextRouteParamSegment,
   parseEntryRouteReference,
   parseTopicRouteReference,
@@ -20,8 +21,9 @@ import {
 
   Kabul edilen sınır (Astra, PR #229 3. tur): Next adaptörü URL sonundaki `.rsc`'yi middleware'den
   önce siler, sayfa ise literal `/entry/7.rsc` isteğinde `7.rsc` görür. Middleware orijinal adresi
-  göremez; 7 mezar taşındaysa bu hiçbir içeriğe ait olmayan adres 404 yerine 410 alır. Canlı
-  içeriğe dokunmaz ve geçerli başlık adresi bu biçime düşemez (`topicTitleAddressIsAmbiguous`).
+  göremez; 7 mezar taşındaysa bu hiçbir içeriğe ait olmayan adres 404 yerine 410 alır. Sayfanın
+  `.rsc`'li segmentte başka bir canlı kimlik seçebildiği tek biçim (UUID öneki + `--sayı`) aşağıda
+  aday dışı bırakılır; geçerli başlık adresi de bu biçimlere düşemez (`topicTitleAddressIsAmbiguous`).
 */
 
 const LEGACY_PUBLIC_ID_MAX = 2_147_483_647;
@@ -49,6 +51,10 @@ export function removedContentCandidate(
     kind === "TOPIC" ? parseTopicRouteReference(segment) : parseEntryRouteReference(segment);
   if (!reference) return null;
   if (reference.kind === "legacy") return { kind, reference: { contentId: reference.id } };
+  // Hem UUID öneki hem `--sayı` soneki taşıyan başlık segmenti: middleware `.rsc` silinmiş adresi
+  // görür ve sayıyı seçer, sayfa literal `.rsc`'de UUID'yi seçer (Astra, PR #229 4. tur). Kanonik
+  // adres bu biçimde olmaz; karar sayfaya bırakılır, belirsizlik 404/308 yönünde çözülür.
+  if (kind === "TOPIC" && hasLegacyIdPrefix(segment)) return null;
   if (reference.publicId < 1 || reference.publicId > LEGACY_PUBLIC_ID_MAX) return null;
   return { kind, reference: { publicId: reference.publicId } };
 }

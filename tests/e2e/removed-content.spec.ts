@@ -120,6 +120,12 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
     expect([200, 404]).toContain(prefetch.status());
     expect(prefetch.headers()["content-security-policy"]).toBeUndefined();
 
+    // Canlı başlığın UUID'si + silinmiş sayısal sonek + literal `.rsc`: sayfa canlı UUID'yi seçip
+    // kanonik adrese yönlendirir; middleware silinmiş kimliğe 410 vermemeli (Astra, PR #229 4. tur).
+    const ambiguous = await request.get(`/baslik/${topic.id}--${goneTopicPublicId}.rsc`, {
+      maxRedirects: 0,
+    });
+    expect(ambiguous.status()).toBe(308);
     // Canlı içerik mezar taşından önce kazanır.
     expect(
       (await request.get(`/baslik/${topic.slug}--${topic.publicId}`, { maxRedirects: 0 })).status(),

@@ -70,6 +70,9 @@ describe("removed content gate candidates", () => {
     });
     // Sayfa `--7` yalın başlığını görür (kimlik değil); kapı 410 adayı seçmemeli.
     expect(removedContentCandidate("GET", "/baslik/_NEXTSEP_--7")).toBeNull();
+    // UUID öneki + `--sayı`: sayfa `.rsc`'li adreste UUID'yi seçer; kapı karar vermez.
+    expect(removedContentCandidate("GET", `/baslik/${uuid}--7`)).toBeNull();
+    expect(removedContentCandidate("GET", `/baslik/${uuid}%2D%2D7`)).toBeNull();
     // Türkçe karakter kodlu kalır; kanonik sonek yine okunur.
     expect(removedContentCandidate("GET", "/baslik/%C3%A7ay--12")).toEqual({
       kind: "TOPIC",
