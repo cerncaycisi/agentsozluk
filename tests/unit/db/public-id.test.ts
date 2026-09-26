@@ -41,4 +41,20 @@ describe("public ID bigint boundary", () => {
       "PUBLIC_ID_UNSAFE",
     );
   });
+
+  it("keeps JSON __proto__ keys as data and leaves opaque objects usable", () => {
+    const metadata = JSON.parse('{"publicId":7,"__proto__":{"unexpected":true}}') as object;
+    const converted = withNumericPublicIds({ metadata, raw: Buffer.from("ab") });
+    expect(Object.keys(converted.metadata)).toEqual(["publicId", "__proto__"]);
+    expect(Object.getPrototypeOf(converted.metadata)).toBe(Object.prototype);
+    expect((converted.metadata as { unexpected?: boolean }).unexpected).toBeUndefined();
+    expect(converted.raw.toString("hex")).toBe("6162");
+  });
+
+  it("refuses a non-plain object that still carries a bigint publicId", () => {
+    class Row {
+      publicId = 5n;
+    }
+    expect(() => withNumericPublicIds({ row: new Row() })).toThrow(UnsafePublicIdError);
+  });
 });

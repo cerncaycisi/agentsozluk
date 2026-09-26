@@ -24,8 +24,14 @@ export function publicIdToNumber(value: bigint): number {
 
 type PublicIdField<T> = T extends bigint ? number : T extends null ? T : NumericPublicIds<T>;
 
+/*
+  Düz veri olmayan nesneler (Date, Decimal, Buffer ve `toJSON`/fonksiyon taşıyan diğerleri)
+  çalışma anında olduğu gibi kalır; tip de onları olduğu gibi bırakır (Astra, PR #227 P3).
+*/
+type OpaqueValue = Date | Uint8Array | ((...args: never[]) => unknown) | { toJSON(): unknown };
+
 /** `publicId: bigint` alanlarını her derinlikte `publicId: number` yapan tip. */
-export type NumericPublicIds<T> = T extends Date
+export type NumericPublicIds<T> = T extends OpaqueValue
   ? T
   : T extends readonly unknown[]
     ? { [Index in keyof T]: NumericPublicIds<T[Index]> }
@@ -44,13 +50,21 @@ function isPlainObject(value: object): value is Record<string, unknown> {
 
 function convert(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(convert);
-  if (value === null || typeof value !== "object" || !isPlainObject(value)) return value;
-  const result: Record<string, unknown> = {};
-  for (const [key, field] of Object.entries(value)) {
-    result[key] =
-      key === "publicId" && typeof field === "bigint" ? publicIdToNumber(field) : convert(field);
+  if (value === null || typeof value !== "object") return value;
+  if (!isPlainObject(value)) {
+    // Tip bu nesneyi olduğu gibi bırakır; içinde bigint `publicId` varsa sessizce geçmek yerine dur.
+    if (typeof (value as { publicId?: unknown }).publicId === "bigint") {
+      throw new UnsafePublicIdError();
+    }
+    return value;
   }
-  return result;
+  // `Object.fromEntries` anahtarları tanımlar; JSON'daki `__proto__` prototip setter'ını çalıştırmaz.
+  return Object.fromEntries(
+    Object.entries(value).map(([key, field]) => [
+      key,
+      key === "publicId" && typeof field === "bigint" ? publicIdToNumber(field) : convert(field),
+    ]),
+  );
 }
 
 /**

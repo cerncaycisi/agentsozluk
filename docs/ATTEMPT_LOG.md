@@ -9244,3 +9244,13 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   kapalıyken bakım penceresinde uygulanmalı. Üretime bağlanılmadı.
 - **Tekrarlama:** bu migration'ı main'e birleştirmek bekleyen migration yaratır ve
   migration'sız dağıtım yolunu kilitler; bakım penceresi onayı olmadan birleştirme.
+- GPT-6 Astra, PR #227 exact `92c6bc0e064f38eda71b84dabedacbf4f205bd4f` için
+  **KOD DÜZELTİLMELİ** dedi (1 P2, 2 P3; P1 yok; uygulamaya sızan bigint yok).
+  P2: doğrudan Prisma ile kurulan entegrasyon verisi `bigint`, repository çıktısı
+  `number`; `[1]`/`[1n]` eşitliği düştü (CI `database`/`coverage` kırmızı) ve
+  `.not.toContain(1n)` sessizce geçerdi. P3: özel nesne tipi, JSON `__proto__`
+  anahtarı. Düzeltme: test beklentileri `Number(...)`, dönüştürücü opak tipler ve
+  `Object.fromEntries`; bigint `publicId` taşıyan düz olmayan nesne artık hata verir.
+- **Tekrarlama:** doğrudan Prisma fixture'ının `publicId`'sini repository çıktısıyla
+  karşılaştırırken önce `Number(...)`; negatif `not.toContain` beklentisi tip
+  uyuşmazlığında sessizce geçer.
