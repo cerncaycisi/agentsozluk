@@ -193,20 +193,23 @@ test("a prefetched link to content removed after page load lands on the 410 page
     const entryPath = `/entry/${entry.publicId}`;
     const isEntryRequest = (url: string) =>
       new URL(url).pathname.replace(/\.rsc$/u, "") === entryPath;
-    // Prefetch dinleyicisi gezinmeden önce kurulur; silme ancak bir prefetch isteği gerçekten
-    // TAMAMLANINCA olur. Next bir prefetch'i iptal edip yenisini başlatabilir; iptal edilen istek
-    // `requestfinished` üretmez, bu yüzden yanıt değil tamamlanan istek beklenir.
-    const prefetched = page.waitForEvent("requestfinished", {
-      predicate: (finished) =>
-        isEntryRequest(finished.url()) && Boolean(finished.headers()["next-router-prefetch"]),
-      timeout: 15_000,
-    });
+    // Prefetch dinleyicisi gezinmeden önce kurulur; silme prefetch yanıtı (200) geldikten sonra
+    // olur. Next 15.5 dinamik sayfanın kısmi prefetch akışını açık tutabilir ya da iptal edip
+    // yenisini başlatabilir; CI'da `requestfinished` Chromium'da gelmedi, mobilde 1,3 sn'de geldi.
+    // Bu yüzden akışın bitmesine en çok 5 sn tanınır; asıl iddia tıklamanın 410'a inmesidir.
+    const prefetched = page.waitForResponse(
+      (response) =>
+        isEntryRequest(response.url()) &&
+        Boolean(response.request().headers()["next-router-prefetch"]),
+      { timeout: 15_000 },
+    );
     await page.goto(`/baslik/${topic.slug}--${topic.publicId}`);
     const link = page.getByRole("link", { name: /tarihli entry’ye git/u }).first();
     await expect(link).toBeVisible();
     await link.hover();
-    const prefetchResponse = await (await prefetched).response();
-    expect(prefetchResponse?.status()).toBe(200);
+    const prefetchResponse = await prefetched;
+    expect(prefetchResponse.status()).toBe(200);
+    await Promise.race([prefetchResponse.finished().catch(() => null), page.waitForTimeout(5_000)]);
 
     // Reset sayfa açıkken olur: entry silinir, kimliği mezar taşına yazılır.
     const { operationId } = await database.greatResetCommit.create({
