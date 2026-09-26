@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { parse as parseDotenv } from "dotenv";
 
 /*
@@ -17,6 +18,13 @@ export const productionResetIdentity = {
   clusterId: "7663503447447879713",
   envFile: "/opt/agent-sozluk/app/.env",
   releasesRoot: "/opt/agent-sozluk/runtime/releases",
+  composeProject: "agent-sozluk",
+  composeService: "db",
+  dataVolume: "agent-sozluk_postgres_data",
+  dataPath: "/var/lib/postgresql/data",
+  // Önceki salt okunur gözlem; exact üretim önkontrolünde yeniden doğrulanır (farklıysa durur).
+  dataNetwork: "agent-sozluk_backend",
+  dockerSocket: "unix:///var/run/docker.sock",
 } as const;
 
 export type ProductionResetTarget = {
@@ -24,6 +32,17 @@ export type ProductionResetTarget = {
   databaseUrl: string;
   controlUrl: string;
   releaseSha: string;
+  /** Hedef ve kontrol bağlantısının gittiği tek doğrulanmış uç (Compose `db` container adresi). */
+  serverAddresses: string[];
+};
+
+export type ProductionGuardInput = {
+  hostname: string;
+  envFileContents: string;
+  releaseDirectory: string;
+  releaseShaFileContents: string;
+  /** Compose etiketleri, veri volume'u ve tek ağıyla doğrulanmış `db` container'ının adresi. */
+  databaseAddress: string;
 };
 
 /*
@@ -77,12 +96,7 @@ function safeDecode(value: string): string | null {
   }
 }
 
-export function productionResetTarget(input: {
-  hostname: string;
-  envFileContents: string;
-  releaseDirectory: string;
-  releaseShaFileContents: string;
-}): ProductionResetTarget {
+export function productionResetTarget(input: ProductionGuardInput): ProductionResetTarget {
   const identity = productionResetIdentity;
   if (input.hostname !== identity.hostname) throw new Error("GREAT_RESET_PRODUCTION_HOST_REQUIRED");
   const releaseSha = input.releaseShaFileContents.trim();
@@ -108,8 +122,17 @@ export function productionResetTarget(input: {
     url.hash
   )
     throw new Error("GREAT_RESET_PRODUCTION_DATABASE_URL_INVALID");
+  /*
+    `.env`'deki host Compose hizmet adıdır (`db`) ve üretim host'undan çözülmez (PRODUCTION_RUNBOOK).
+    Adres serbest parametre değildir: Compose kimliğiyle doğrulanmış container adresi kodda
+    yazılır; hedef ve kontrol bağlantısı aynı uca gider (Astra, PR #232 P1/P2). IPv6 köşeli
+    parantezle yazılır.
+  */
+  const address = input.databaseAddress;
+  if (!isIP(address)) throw new Error("GREAT_RESET_PRODUCTION_DATABASE_ADDRESS_INVALID");
   // Bağlantı sınırları kodda sabitlenir; operatör ayrı URL ya da parametre vermez.
   const target = new URL(url);
+  target.hostname = isIP(address) === 6 ? `[${address}]` : address;
   target.searchParams.set("connection_limit", "1");
   target.searchParams.set("connect_timeout", "5");
   const control = new URL(target);
@@ -119,5 +142,6 @@ export function productionResetTarget(input: {
     databaseUrl: target.toString(),
     controlUrl: control.toString(),
     releaseSha,
+    serverAddresses: [address],
   };
 }

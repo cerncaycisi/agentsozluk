@@ -68,8 +68,10 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    commit işareti, izinli farkların birebir doğrulanması); gerçek boyutlu yerel provada önizleme
    24 sn, uygulama 102 sn. Beşinci paket: bağlantı kapısı (`ALLOW_CONNECTIONS false`, yalnız
    pinlenmiş backend, her durumda yeniden açılış) gerçek boyutlu provada sınandı; üretim kimlik
-   guard'ı saf fonksiyon olarak yazıldı. Kalanlar: üretim CLI'si ve DB kimlik doğrulaması, tam
-   içerik makbuzu, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
+   guard'ı saf fonksiyon olarak yazıldı. Altıncı paket: üretim CLI'si
+   (`scripts/great-reset-production.ts`) ve profil tabanlı çekirdek; üretimde namespace ve kapı
+   zorunlu, DB kimliği (sunucu adresi, sahip, sürüm, küme kimliği) bağlantıdan sonra doğrulanır.
+   Kalanlar: tam içerik makbuzu, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
    outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
    ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek

@@ -9410,3 +9410,29 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - GPT-6 Astra PR #231 4. tur exact `d92532d16c40ccd2b32df3ee8e017e0447c6063b` için **KOD GO**:
   iki P2 kapalı; kapı–kilit arası autovacuum penceresi fail-closed. Tek P3 (garanti ifadesi
   geniş: TOAST/katalog/sequence ayrımı) sonraki commit'te yorum ve tasarımda daraltıldı.
+
+## 2026-09-26 — üretim reset CLI'si ve profil tabanlı çekirdek
+
+- Dal `feat/reset-production-cli` (`feat/reset-connection-gate` üstüne). Çekirdek
+  `runGreatReset(profil, istek)`; yerel ve üretim girişleri yalnız hedef, kimlik doğrulaması ve
+  audit etiketini kurar. `runProductionGreatReset` namespace, `--connection-gate` ve niyetin
+  release SHA'sı = çalışan release olmadan bağlantı açmaz. CLI host'u dosya okumadan önce
+  denetler, release dizinini `realpath` ile çözer; bu sunucuda `GREAT_RESET_PRODUCTION_HOST_REQUIRED`
+  ile durdu. Üretimde çalıştırılmadı.
+- Refaktör sonrası gerçek boyutlu yerel prova bütün kapı senaryolarıyla yeniden geçti (86 sn).
+- Astra PR #232 1. tur `bc0ef92`: **KOD DÜZELTİLMELİ** (1 P1, 2 P2, 1 P3). P1: kontrol
+  bağlantısının kimliği doğrulanmıyordu (DNS başka kümeye giderse kapı yanlış DB'yi değiştirirdi).
+  P2: `.env` host'u Compose adı `db`, üretim host'undan çözülmez (PRODUCTION_RUNBOOK); CLI
+  DB'ye ulaşamazdı. P2: repository girişi çağıranın hedefiyle guard'ı atlayabiliyordu. P3: IPv6.
+  Düzeltme: her kapı mutasyonundan önce aynı transaction'da kontrol kimliği (DB `postgres`,
+  kullanıcı, sunucu adresi, küme kimliği); üretim girişi ortamı kendisi okur, Compose etiketleriyle
+  tek `db` container'ı, veri volume'u ve tek ağı doğrulayıp adresi kodda yazar, hedef ve kontrol
+  aynı uca gider; DNS yok, IPv6 köşeli parantezle. Prova 83 sn verified.
+- Astra PR #232 2. tur `745ce92`: önceki dört bulgu kapalı; yeni P2: Docker komutu seçili
+  context/`DOCKER_HOST`'u devralıyordu; P3: ağ adı yalnız önekle doğrulanıyordu. Düzeltme:
+  `docker --host unix:///var/run/docker.sock`, `DOCKER_*` alt sürece verilmez; veri ağı
+  `agent-sozluk_backend` birebir (önceki salt okunur gözlem; exact üretim önkontrolünde yeniden
+  doğrulanacak, farklıysa bağlanmadan durur). Taklit testlerle kanıtlandı.
+- GPT-6 Astra PR #232 3. tur exact `1d1e32732d464fbd269a69e6b0a4bf55735f8d9b` için **KOD GO**;
+  yeni P1/P2/P3 yok. Varsayım: `PATH`'teki `docker` ikilisi ve operatör yürütme ortamı güvenilir
+  (THREAT_MODEL altyapı operatörünü güvenilir sayar).

@@ -13,6 +13,7 @@ const valid = {
     '# yorum\nNODE_ENV=production\nDATABASE_URL="postgresql://agent_sozluk:placeholder@db:5432/agent_sozluk"\n',
   releaseDirectory: `${productionResetIdentity.releasesRoot}/${sha}`,
   releaseShaFileContents: `${sha}\n`,
+  databaseAddress: "172.19.0.5",
 };
 
 describe("production great reset target guard", () => {
@@ -28,6 +29,20 @@ describe("production great reset target guard", () => {
     expect(control.pathname).toBe("/postgres");
     expect(control.host).toBe(database.host);
     expect(control.username).toBe("agent_sozluk");
+    // `.env`'deki Compose adı `db` değil, doğrulanmış container adresi kullanılır.
+    expect(database.hostname).toBe("172.19.0.5");
+    expect(control.hostname).toBe("172.19.0.5");
+    expect(target.serverAddresses).toEqual(["172.19.0.5"]);
+  });
+
+  it("writes an IPv6 container address in brackets and rejects non-addresses", () => {
+    const target = productionResetTarget({ ...valid, databaseAddress: "fd00::5" });
+    expect(new URL(target.databaseUrl).hostname).toBe("[fd00::5]");
+    expect(target.serverAddresses).toEqual(["fd00::5"]);
+    for (const databaseAddress of ["db", "", "172.19.0", "[fd00::5]"])
+      expect(() => productionResetTarget({ ...valid, databaseAddress })).toThrow(
+        "GREAT_RESET_PRODUCTION_DATABASE_ADDRESS_INVALID",
+      );
   });
 
   it("refuses any other host, including the local rehearsal hosts", () => {
