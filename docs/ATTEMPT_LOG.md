@@ -9401,3 +9401,9 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 - Yeniden prova: uygulama sürerken kontrol oturumu `pg_terminate_backend` ile öldürüldü; reset
   82 sn verified, kilit yeniden alındı, `datallowconn = t`. Görünmez başlayan backend ve ikinci
   yürütücü senaryoları yine doğru durdu.
+- Astra PR #231 3. tur `623dd4b`: **KOD DÜZELTİLMELİ** (2 P2): sahiplik kontrolü ile
+  `ALTER DATABASE` ayrı çağrılardı, oturum arada değişirse başka yürütücünün kapısı açılabilirdi;
+  autovacuum `datallowconn`'dan muaf olduğu için sayım sırası "tek backend"i tam kanıtlamıyordu.
+  Düzeltme: sahiplik/yeniden alma/`ALTER DATABASE`/doğrulama tek pinli interactive transaction'da;
+  autovacuum için kabul sözleşmesi tasarıma yazıldı (tek backend istemciler içindir; tablolar
+  `ACCESS EXCLUSIVE` iken autovacuum veriye dokunamaz). Prova senaryoları yeniden geçti.

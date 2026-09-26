@@ -20,9 +20,18 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 
   Süre sınırı (P2): her kontrol işlemi `statement_timeout`/`lock_timeout` sabitlenmiş kısa bir
   transaction'da koşar; `pg_database` satırı kilitliyse kapı işlemi süresiz beklemez.
+
+  Autovacuum kabul sözleşmesi (Astra, 3. tur P2): autovacuum işçisi `datallowconn` kapısından
+  muaftır ve her an başlayabilir; hiçbir sayım sırası onun başlangıcını tamamen dışlayamaz. "Tek
+  backend" garantisi İSTEMCİ backend'leri içindir. Autovacuum bir tabloya dokunmak için
+  `ShareUpdateExclusiveLock` ister; reset bütün tabloları `ACCESS EXCLUSIVE` ile tuttuğu sürece
+  (kilitler `NOWAIT` ile, kapıdan hemen sonra alınır) içerik tablolarına ve sequence'e dokunamaz.
+  Kapı kontrolünde GÖRÜLEN autovacuum yine ihtiyatla reset'i durdurur; görülmeden başlayan işçi
+  veri bütünlüğünü bozamaz.
 */
 
 type Control = Pick<PrismaClient, "$executeRaw" | "$queryRaw" | "$transaction">;
+type Session = Pick<PrismaClient, "$executeRaw" | "$queryRaw">;
 
 function databaseIdentifier(databaseName: string): Prisma.Sql {
   // Ad yalnız doğrulanmış hedef kimliğinden gelir; yine de tanımlayıcı karakterleri sınırlanır.
@@ -48,7 +57,7 @@ export async function releaseRunnerLock(control: Control, databaseName: string):
 }
 
 /** Kilit hâlâ bu oturumda mı; yeniden açılıştan önce kapının sahibi doğrulanır. */
-async function holdsRunnerLock(control: Control, databaseName: string): Promise<boolean> {
+async function holdsRunnerLock(control: Session, databaseName: string): Promise<boolean> {
   // bigint advisory anahtarı pg_locks'ta üst/alt 32 bit olarak (classid/objid, objsubid = 1) durur.
   const [lock] = await control.$queryRaw<{ held: boolean }[]>`
     WITH k AS (SELECT hashtextextended(${runnerLockKey(databaseName)}, 0) AS key)
@@ -62,17 +71,46 @@ async function holdsRunnerLock(control: Control, databaseName: string): Promise<
   return lock?.held === true;
 }
 
-function boundedGateStatements(databaseName: string, allow: boolean) {
-  return (control: Control) =>
-    control.$transaction([
-      control.$executeRaw`SET LOCAL statement_timeout = '10s'`,
-      control.$executeRaw`SET LOCAL lock_timeout = '5s'`,
-      control.$executeRaw(
-        Prisma.sql`ALTER DATABASE ${databaseIdentifier(databaseName)} WITH ALLOW_CONNECTIONS ${Prisma.raw(
-          allow ? "true" : "false",
-        )}`,
-      ),
-    ]);
+/*
+  Sahiplik denetimi, gerekirse kilidin yeniden alınması, `ALTER DATABASE` ve durum doğrulaması TEK
+  interactive transaction'da, dolayısıyla tek pinli oturumda koşar (Astra, PR #231 3. tur P2):
+  kontrol oturumu arada koparsa transaction hata verir, eski oturumdaki sahiplik sonucu yeni
+  oturumda kullanılamaz. Oturum advisory kilidi transaction bitince bırakılmaz.
+*/
+async function withOwnedGate<T>(
+  control: Control,
+  databaseName: string,
+  reacquire: boolean,
+  work: (session: Session) => Promise<T>,
+): Promise<T> {
+  return control.$transaction(
+    async (session) => {
+      await session.$executeRaw`SET LOCAL statement_timeout = '10s'`;
+      await session.$executeRaw`SET LOCAL lock_timeout = '5s'`;
+      if (!(await holdsRunnerLock(session, databaseName))) {
+        // Kopan oturumda kilit düşmüştür; yeniden alınabiliyorsa başka yürütücü yoktur.
+        const [lock] = reacquire
+          ? await session.$queryRaw<{ acquired: boolean }[]>`
+              SELECT pg_try_advisory_lock(hashtextextended(${runnerLockKey(databaseName)}, 0))
+                AS acquired`
+          : [];
+        if (lock?.acquired !== true) throw new Error("GREAT_RESET_RUNNER_LOCK_LOST");
+      }
+      return work(session);
+    },
+    { timeout: 30_000, maxWait: 5_000 },
+  );
+}
+
+async function setAllowConnections(session: Session, databaseName: string, allow: boolean) {
+  await session.$executeRaw(
+    Prisma.sql`ALTER DATABASE ${databaseIdentifier(databaseName)} WITH ALLOW_CONNECTIONS ${Prisma.raw(
+      allow ? "true" : "false",
+    )}`,
+  );
+  const [state] = await session.$queryRaw<{ allowed: boolean }[]>`
+    SELECT datallowconn AS allowed FROM pg_database WHERE datname = ${databaseName}`;
+  return state?.allowed;
 }
 
 /**
@@ -114,12 +152,10 @@ export async function closeConnectionGate(
   databaseName: string,
   pinnedPid: number,
 ): Promise<void> {
-  if (!(await holdsRunnerLock(control, databaseName)))
-    throw new Error("GREAT_RESET_RUNNER_LOCK_LOST");
-  await boundedGateStatements(databaseName, false)(control);
-  const [database] = await control.$queryRaw<{ allowed: boolean }[]>`
-    SELECT datallowconn AS allowed FROM pg_database WHERE datname = ${databaseName}`;
-  if (database?.allowed !== false) throw new Error("GREAT_RESET_GATE_NOT_CLOSED");
+  await withOwnedGate(control, databaseName, false, async (session) => {
+    if ((await setAllowConnections(session, databaseName, false)) !== false)
+      throw new Error("GREAT_RESET_GATE_NOT_CLOSED");
+  });
   const state = await otherTargetBackends(control, databaseName, pinnedPid);
   if (state.pinned !== 1) throw new Error("GREAT_RESET_GATE_PINNED_BACKEND_MISSING");
   if (state.others !== 0 || state.starting !== 0 || state.prepared !== 0)
@@ -129,17 +165,13 @@ export async function closeConnectionGate(
 export async function openConnectionGate(control: Control, databaseName: string): Promise<void> {
   /*
     Kapıyı yalnız kilidin sahibi açar; başka yürütücünün kapısına dokunulmaz (Astra, P2). Kontrol
-    oturumu gerçekten koptuysa kilit düşmüştür: yeniden alınabiliyorsa başka yürütücü yoktur ve
-    açılış güvenlidir; alınamıyorsa başka bir reset kapıyı tutuyordur, dokunulmaz.
+    oturumu koptuysa kilit düşmüştür: aynı transaction'da yeniden alınabiliyorsa başka yürütücü
+    yoktur ve açılış güvenlidir; alınamıyorsa başka bir reset kapıyı tutuyordur, dokunulmaz.
   */
-  if (!(await holdsRunnerLock(control, databaseName)))
-    await acquireRunnerLock(control, databaseName).catch(() => {
-      throw new Error("GREAT_RESET_RUNNER_LOCK_LOST");
-    });
-  await boundedGateStatements(databaseName, true)(control);
-  const [state] = await control.$queryRaw<{ allowed: boolean }[]>`
-    SELECT datallowconn AS allowed FROM pg_database WHERE datname = ${databaseName}`;
-  if (state?.allowed !== true) throw new Error("GREAT_RESET_GATE_NOT_REOPENED");
+  await withOwnedGate(control, databaseName, true, async (session) => {
+    if ((await setAllowConnections(session, databaseName, true)) !== true)
+      throw new Error("GREAT_RESET_GATE_NOT_REOPENED");
+  });
 }
 
 /** Önkontrol: kontrol bağlantısı gerçekten `postgres`'e bağlı ve hedef şu an bağlantı kabul ediyor. */
