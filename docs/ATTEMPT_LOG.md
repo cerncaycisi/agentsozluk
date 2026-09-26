@@ -9300,3 +9300,18 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   `browser` işi production standalone build'de koşar).
 - **Tekrarlama:** `vi.fn().mockImplementation(async () => { throw })` vitest'te ayrıca hata
   olarak raporlandı, middleware doğru 503 döndürse de; bu testte düz sahte fonksiyon kullan.
+- PR #229 ilk sürüm `59c8add` CI 7/7 yeşil: Node runtime middleware + Prisma production
+  standalone build'de gerçek HTTP 410 verdi (`browser` işi).
+- GPT-6 Astra aynı SHA için **KOD DÜZELTİLMELİ** (4 P2): (1) kapı ham segmenti, sayfa
+  Next'in çözüp yeniden kodladığı segmenti okuyordu (`/baslik/U%2D%2D2147483648` canlı
+  adrese 410); (2) Next 15.5.25 adaptörü `next-router-prefetch`'i middleware'den önce
+  siler, dar matcher prefetch'e CSP/analytics ekliyordu; (3) `--sayı` ile biten açılmamış
+  başlık adresi silinmiş kimliğe 410 alabiliyordu; (4) E2E prefetch/Server Action/işaret
+  temizliğini kanıtlamıyordu. Düzeltme: segment `encodeURIComponent(decodeURIComponent)`,
+  dar matcher kaldırıldı (prefetch middleware'e uğramaz; RSC navigasyonu 410 alır),
+  `topicTitleSchema` ayrıştırıcının kimlik okuyacağı başlığı reddeder, E2E genişletildi ve
+  işareti test DB'ye özgü istisnayla temizler. Yedek taraması: 6.120 başlık + 2 alias,
+  çakışma 0. Yerel birim 1867/1867, entegrasyon 76/76.
+- **Tekrarlama:** middleware'de `next-router-prefetch` görünmez; prefetch ayrımı yalnız
+  matcher `missing` ile yapılır. Sayfanın gördüğü segment ham URL değil, çözülüp yeniden
+  kodlanmış hâlidir.

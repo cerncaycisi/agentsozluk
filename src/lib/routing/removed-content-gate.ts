@@ -9,10 +9,19 @@ import { parseEntryRouteReference, parseTopicRouteReference } from "@/lib/routin
   POST (eski sekmenin Server Action'ı dahil), yalın `/baslik/{kodlanmış başlık}` yazma formu,
   yeni namespace (`> 2147483647`) ve ayrıştırılamayan yol aday değildir.
 
-  Segment ham (URL kodlu) hâliyle ayrıştırılır. Kanonik rakam ve UUID adresleri kodlu ve çözülmüş
-  biçimde aynıdır; yüzde kodlu bir varyant aday olmaz ve sayfanın normal akışına (404) düşer.
-  Belirsizlik yanlış 410 yönünde değil, 404 yönünde çözülür.
+  Segment, sayfanın `params` olarak gördüğü biçime getirilerek ayrıştırılır: Next.js 15.5 dinamik
+  segmenti çözüp yeniden kodlar (Astra, PR #229: `%2D` → `-`, `%37` → `7`; `%C3%A7` kodlu kalır).
+  Kapı ile sayfa farklı kimlik seçerse canlı adrese 410 ya da silinmiş adrese içerik düşebilirdi.
+  Bozuk yüzde dizisi aday değildir; sayfa da onu geçersiz adres sayar.
 */
+function pageSegment(raw: string): string | null {
+  try {
+    return encodeURIComponent(decodeURIComponent(raw));
+  } catch {
+    return null;
+  }
+}
+
 const LEGACY_PUBLIC_ID_MAX = 2_147_483_647;
 const GATED_PATH = /^\/(baslik|entry)\/([^/]+)$/u;
 
@@ -32,16 +41,14 @@ export function removedContentCandidate(
   const match = GATED_PATH.exec(pathname);
   if (!match?.[1] || !match[2]) return null;
   const kind: RemovedContentKind = match[1] === "baslik" ? "TOPIC" : "ENTRY";
+  const segment = pageSegment(match[2]);
+  if (!segment) return null;
   const reference =
-    kind === "TOPIC" ? parseTopicRouteReference(match[2]) : parseEntryRouteReference(match[2]);
+    kind === "TOPIC" ? parseTopicRouteReference(segment) : parseEntryRouteReference(segment);
   if (!reference) return null;
   if (reference.kind === "legacy") return { kind, reference: { contentId: reference.id } };
   if (reference.publicId < 1 || reference.publicId > LEGACY_PUBLIC_ID_MAX) return null;
   return { kind, reference: { publicId: reference.publicId } };
-}
-
-export function isPrefetchRequest(headers: Headers): boolean {
-  return headers.has("next-router-prefetch") || headers.get("purpose") === "prefetch";
 }
 
 const GONE_BODY = `<!doctype html>

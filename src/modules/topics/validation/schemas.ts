@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseTopicRouteReference, unopenedTopicUrl } from "@/lib/routing/public-urls";
 import { entryBodySchema } from "@/modules/entries/validation/schemas";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 
@@ -28,6 +29,18 @@ export const topicTitleSchema = z.string().transform((input, context) => {
     context.addIssue({ code: "custom", message: "Başlık en az 2 karakter olmalıdır." });
   if (length > 100)
     context.addIssue({ code: "custom", message: "Başlık en fazla 100 karakter olabilir." });
+  /*
+    Açılmamış başlığın adresi başlığın kendisidir (`unopenedTopicUrl`). `--7` ile biten ya da
+    UUID ile başlayan bir başlığın adresini rota ayrıştırıcısı başka bir başlığın kimliği sanar:
+    yazma formu yerine o başlığa yönlendirir, great reset sonrasında da silinmiş kimliğe 410
+    verebilir (üretim tasarımı v18 madde 4; Astra, PR #229). Kural ayrıştırıcının kendisidir.
+  */
+  const segment = unopenedTopicUrl(displayTitle).slice("/baslik/".length);
+  if (parseTopicRouteReference(segment) !== null)
+    context.addIssue({
+      code: "custom",
+      message: "Başlık '--sayı' ile bitemez ya da bir kimlik biçimiyle başlayamaz.",
+    });
   return displayTitle;
 });
 

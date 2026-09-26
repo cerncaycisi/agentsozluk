@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v18 (26 Eylül 2026)
+# Great reset — üretim profili tasarımı v19 (26 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -169,17 +169,23 @@ nextval()` açıkça verilen değeri sınırlamaz ve mevcut değişmezlik trigge
    var olan yazar profili 410 olmaz. Eski UUID (ilk 36 karakterden sonra
    sonek taşıyan legacy yol dahil), kanonik sayısal, Türkçe kodlanmış yalın
    başlık, 308 kanonikleştirme ve restore sonrası route testleri zorunludur.
-   `--[0-9]+` ile biten başlık mevcut parser'da ID sanılır; migration öncesi
-   mevcut veri taranır, yeni başlık doğrulamasında bu çakışma engellenir veya
-   ayrı bir kaçış yolu kanıtlanır. Çakışma çözülmeden reset GO yok.
+   `--[0-9]+` ile biten başlık mevcut parser'da ID sanılır. **v19:** 26 Eylül
+   01:32Z yedeğinde 6.120 başlık ve 2 alias ayrıştırıcıyla tarandı, çakışma 0.
+   `topicTitleSchema` artık kendi açılmamış adresi `parseTopicRouteReference`
+   tarafından kimlik okunacak başlığı reddeder (`--sayı` sonu, UUID öneki).
+   Reset öncesi tarama üretimde yeniden koşulur.
    `BIGINT` geçişi ve üst namespace kilidi kabul edilmezse **reset GO yok**;
    mevcut sequence'den tarihsel en yüksek silinmiş ID'yi çıkardığımız iddia
    edilmez.
    HTTP 410 için birincil aday, Next.js 15.5.25'in **Node runtime middleware**
    yoludur (`src/middleware.ts`, `config.runtime = 'nodejs'`). Mevcut geniş
-   matcher ve prefetch dışlaması korunur; yalnız `/baslik/:seg` ve `/entry/:seg`
-   için `missing` koşulu olmayan ikinci dar matcher eklenir. Prefetch'te yalnız
-   410 kararı çalışır; normal yanıttaki CSP/analytics davranışı değişmez.
+   matcher ve prefetch dışlaması korunur. **v19 düzeltmesi (Astra, PR #229):** dar
+   prefetch matcher'ı eklenmez. Next 15.5.25 adaptörü `next-router-prefetch`
+   başlığını middleware'den önce siler; middleware prefetch'i ayırt edemez ve dar
+   matcher prefetch yanıtına CSP/analytics eklerdi. Prefetch eskisi gibi
+   middleware'e uğramaz; silinmiş adrese tıklama RSC navigasyonudur, 410 alır ve
+   istemci tam sayfa gezinmesine düşer. Kapı segmenti sayfanın `params` biçimine
+   (`encodeURIComponent(decodeURIComponent(ham))`) getirerek ayrıştırır.
    Middleware Prisma'yı doğrudan kullanmaz; aynı application service ve aynı
    `parseTopicRouteReference`/`parseEntryRouteReference` ayrıştırıcılarıyla
    karar verir. **Önce metot ve URL sözdizimi** sınıflandırılır: yalnız

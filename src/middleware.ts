@@ -10,7 +10,6 @@ import {
 import { logger, safeErrorCode } from "@/lib/logging/logger";
 import {
   goneResponse,
-  isPrefetchRequest,
   removedContentCandidate,
   removedContentUnavailableResponse,
 } from "@/lib/routing/removed-content-gate";
@@ -28,6 +27,12 @@ export async function middleware(request: NextRequest) {
     Great reset 410 kapısı (tasarım v18 madde 4). Aday yalnız sözdiziminden seçilir; aday
     olmayan istek veritabanına dokunmaz. Commit işareti yoksa, canlı kayıt varsa ya da kimlik
     mezar taşında değilse normal akış sürer. Sorgu hatasında 410 uydurulmaz.
+
+    Prefetch istekleri eskisi gibi middleware'e hiç uğramaz (matcher `missing`). Next adaptörü
+    `next-router-prefetch` başlığını middleware'den önce sildiği için middleware prefetch'i ayırt
+    edemez; dar bir prefetch matcher'ı prefetch yanıtına CSP/analytics eklerdi (Astra, PR #229).
+    Silinmiş adrese tıklamak prefetch değil RSC navigasyonudur: 410 alır, yanıt RSC olmadığı
+    için istemci tam sayfa gezinmesine düşer ve 410 sayfası görünür.
   */
   const candidate = removedContentCandidate(request.method, request.nextUrl.pathname);
   if (candidate) {
@@ -46,9 +51,6 @@ export async function middleware(request: NextRequest) {
       return removedContentUnavailableResponse(request.method, contentSecurityPolicy);
     }
   }
-  // Prefetch'te yalnız 410 kararı çalışır; normal yanıtın CSP/analytics davranışı değişmez.
-  if (isPrefetchRequest(request.headers)) return NextResponse.next();
-
   const requestHeaders = new Headers(request.headers);
   const analyticsSurface = classifyProductAnalyticsSurface({
     pathname: request.nextUrl.pathname,
@@ -80,8 +82,5 @@ export const config = {
         { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
-    // İkinci, dar eşleşme: eski içerik adresleri prefetch'te de 410 kararından geçer.
-    { source: "/baslik/:segment" },
-    { source: "/entry/:segment" },
   ],
 };

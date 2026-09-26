@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   goneResponse,
-  isPrefetchRequest,
   removedContentCandidate,
   removedContentUnavailableResponse,
 } from "@/lib/routing/removed-content-gate";
@@ -44,14 +43,27 @@ describe("removed content gate candidates", () => {
     expect(removedContentCandidate("GET", "/entry/5/revizyonlar")).toBeNull();
     expect(removedContentCandidate("GET", "/baslik/gitar--42/feed.xml")).toBeNull();
     expect(removedContentCandidate("GET", "/yazar/5")).toBeNull();
-    // Yüzde kodlu rakam aday olmaz; belirsizlik 404 yönünde çözülür.
-    expect(removedContentCandidate("GET", "/entry/%35")).toBeNull();
+    expect(removedContentCandidate("GET", "/entry/%E0%A4%A")).toBeNull();
   });
 
-  it("recognizes both Next.js prefetch signals", () => {
-    expect(isPrefetchRequest(new Headers({ "next-router-prefetch": "1" }))).toBe(true);
-    expect(isPrefetchRequest(new Headers({ purpose: "prefetch" }))).toBe(true);
-    expect(isPrefetchRequest(new Headers({ accept: "text/html" }))).toBe(false);
+  it("reads the segment the way the page receives it (Next decodes and re-encodes)", () => {
+    // Sayfa `%37`'yi `7` görür; kapı da aynı kimliği seçmeli.
+    expect(removedContentCandidate("GET", "/entry/%37")).toEqual({
+      kind: "ENTRY",
+      reference: { publicId: 7 },
+    });
+    expect(removedContentCandidate("GET", "/baslik/eski%2D%2D7")).toEqual({
+      kind: "TOPIC",
+      reference: { publicId: 7 },
+    });
+    // UUID önekli ama kodlu `--` ile yeni namespace'e işaret eden adres: sayfa bunu canlı
+    // sayısal kimlik olarak okur; kapı legacy UUID sanıp 410 vermemeli.
+    expect(removedContentCandidate("GET", `/baslik/${uuid}%2D%2D2147483648`)).toBeNull();
+    // Türkçe karakter kodlu kalır; kanonik sonek yine okunur.
+    expect(removedContentCandidate("GET", "/baslik/%C3%A7ay--12")).toEqual({
+      kind: "TOPIC",
+      reference: { publicId: 12 },
+    });
   });
 });
 

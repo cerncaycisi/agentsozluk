@@ -6,9 +6,16 @@ import { requireTestDatabaseUrl } from "../../scripts/test-database-safety";
 /*
   Great reset 410 kapısının gerçek HTTP kanıtı (tasarım v18 madde 4): production standalone
   build'de Node runtime middleware'i, Prisma ve statik yanıt birlikte çalışır. Commit işareti
-  test veritabanında bir kez yazılır; canlı içerik her durumda mezar taşından önce kazandığı
-  için diğer E2E testlerinin sayfaları etkilenmez.
+  test sonunda test veritabanına özgü TRUNCATE istisnasıyla kaldırılır (Astra, PR #229): sonraki
+  testler reset olmamış veritabanını görür. İşaret kalkınca aynı adresin 404'e dönmesi, restore
+  sonrası davranışın (commit işareti yok → normal akış) HTTP kanıtıdır.
 */
+async function clearResetRecords(database: PrismaClient) {
+  await database.$transaction([
+    database.$queryRaw`SELECT set_config('agentsozluk.allow_great_reset_truncate', 'on', true)`,
+    database.$executeRaw`TRUNCATE TABLE "great_reset_exposure_events", "great_reset_tombstones", "great_reset_commits"`,
+  ]);
+}
 function testDatabase() {
   return new PrismaClient({
     datasourceUrl: requireTestDatabaseUrl(process.env.TEST_DATABASE_URL, "Removed content E2E"),
@@ -46,21 +53,16 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
       data: { entryCount: 1, lastEntryAt: entry.createdAt },
     });
 
-    const existing = await database.greatResetCommit.findFirst();
-    const operationId =
-      existing?.operationId ??
-      (
-        await database.greatResetCommit.create({
-          data: {
-            operationId: randomUUID(),
-            releaseSha: "e".repeat(40),
-            planSha256: "e".repeat(64),
-            receiptSha256: "e".repeat(64),
-            topicTombstones: 0,
-            entryTombstones: 0,
-          },
-        })
-      ).operationId;
+    const { operationId } = await database.greatResetCommit.create({
+      data: {
+        operationId: randomUUID(),
+        releaseSha: "e".repeat(40),
+        planSha256: "e".repeat(64),
+        receiptSha256: "e".repeat(64),
+        topicTombstones: 0,
+        entryTombstones: 0,
+      },
+    });
 
     const goneEntryPublicId = randomInt(1_000_000_000, 2_000_000_000);
     const goneTopicPublicId = goneEntryPublicId + 1;
@@ -91,11 +93,31 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
         await request.get(`/baslik/eski-baslik--${goneTopicPublicId}`, { maxRedirects: 0 })
       ).status(),
     ).toBe(410);
-    const prefetch = await request.get(`/entry/${goneEntryPublicId}`, {
-      headers: { "next-router-prefetch": "1" },
+    // Sayfanın gördüğü biçimle aynı kimlik: kodlu rakam ve kodlu `--` de 410.
+    expect(
+      (
+        await request.get(
+          `/entry/%3${String(goneEntryPublicId)[0]}${String(goneEntryPublicId).slice(1)}`,
+          { maxRedirects: 0 },
+        )
+      ).status(),
+    ).toBe(410);
+    expect(
+      (await request.get(`/baslik/eski%2D%2D${goneTopicPublicId}`, { maxRedirects: 0 })).status(),
+    ).toBe(410);
+    // Silinmiş adrese tıklamak RSC navigasyonudur: middleware'den geçer ve 410 alır.
+    const navigation = await request.get(`/entry/${goneEntryPublicId}`, {
+      headers: { RSC: "1" },
       maxRedirects: 0,
     });
-    expect(prefetch.status()).toBe(410);
+    expect(navigation.status()).toBe(410);
+    // Prefetch eskisi gibi middleware'e uğramaz: 410 yok, middleware CSP'si yok.
+    const prefetch = await request.get(`/entry/${goneEntryPublicId}`, {
+      headers: { RSC: "1", "next-router-prefetch": "1" },
+      maxRedirects: 0,
+    });
+    expect(prefetch.status()).not.toBe(410);
+    expect(prefetch.headers()["content-security-policy"]).toBeUndefined();
 
     // Canlı içerik mezar taşından önce kazanır.
     expect(
@@ -109,11 +131,22 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
       (await request.get(`/entry/${goneEntryPublicId + 7}`, { maxRedirects: 0 })).status(),
     ).toBe(404);
     expect((await request.get("/entry/2147483648", { maxRedirects: 0 })).status()).toBe(404);
-    // Yazma isteği kapıdan geçmez.
-    expect(
-      (await request.post(`/entry/${goneEntryPublicId}`, { maxRedirects: 0 })).status(),
-    ).not.toBe(410);
+    // Eski sekmenin Server Action POST'u kapıdan geçmez; mevcut güvenli yanıtı alır.
+    const action = await request.post(`/entry/${goneEntryPublicId}`, {
+      headers: { "Next-Action": "0".repeat(40), "Content-Type": "text/plain;charset=UTF-8" },
+      data: "[]",
+      maxRedirects: 0,
+    });
+    expect(action.status()).not.toBe(410);
+    expect(action.status()).toBeLessThan(500);
+
+    // Commit işareti kalkınca (restore sonrası durum) aynı adres normal akışın 404'üne döner.
+    await clearResetRecords(database);
+    expect((await request.get(`/entry/${goneEntryPublicId}`, { maxRedirects: 0 })).status()).toBe(
+      404,
+    );
   } finally {
+    await clearResetRecords(database);
     await database.$disconnect();
   }
 });

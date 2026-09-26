@@ -96,4 +96,14 @@ describe("topic validation", () => {
   it("still rejects a title that is only invisible characters", () => {
     expect(parseProposedTopicTitle("\u202e\u200b")).toBeNull();
   });
+
+  it("rejects titles whose own address the route parser would read as another topic's id", () => {
+    expect(parseProposedTopicTitle("hiç açılmadı--7")).toBeNull();
+    expect(parseProposedTopicTitle("gitar--42")).toBeNull();
+    expect(parseProposedTopicTitle("3f2b8c1e-4a5d-4e6f-8a9b-0c1d2e3f4a5b hakkında")).toBeNull();
+    // Kimlik biçimine uymayan tireler serbest.
+    expect(parseProposedTopicTitle("gitar -- 42")).toBe("gitar -- 42");
+    expect(parseProposedTopicTitle("gitar--0")).toBe("gitar--0");
+    expect(parseProposedTopicTitle("a-b-c")).toBe("a-b-c");
+  });
 });

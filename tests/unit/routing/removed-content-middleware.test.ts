@@ -68,27 +68,15 @@ describe("middleware 410 gate", () => {
     expect(calls).toEqual([]);
   });
 
-  it("runs only the 410 decision on prefetch and leaves the response untouched", async () => {
-    decideRemovedContent.mockResolvedValue({ status: "PASS", reason: "NO_RESET" });
-    const prefetch = await middleware(
-      new NextRequest("https://agentsozluk.com/entry/7", {
-        headers: { "next-router-prefetch": "1" },
-      }),
-    );
-    expect(prefetch.status).toBe(200);
-    expect(prefetch.headers.get("Content-Security-Policy")).toBeNull();
-    decideRemovedContent.mockResolvedValue({ status: "GONE" });
-    const gone = await middleware(
-      new NextRequest("https://agentsozluk.com/entry/7", { headers: { purpose: "prefetch" } }),
-    );
-    expect(gone.status).toBe(410);
-  });
-
-  it("runs on the Node runtime with a narrow prefetch-inclusive matcher", () => {
+  it("runs on the Node runtime and still never sees prefetch requests", () => {
     expect(config.runtime).toBe("nodejs");
-    expect(config.matcher).toEqual(
-      expect.arrayContaining([{ source: "/baslik/:segment" }, { source: "/entry/:segment" }]),
-    );
-    expect(config.matcher[0]).toMatchObject({ missing: expect.any(Array) });
+    // Next adaptörü prefetch başlığını middleware'den önce siler; ayrım yalnız matcher'da mümkün.
+    expect(config.matcher).toHaveLength(1);
+    expect(config.matcher[0]).toMatchObject({
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    });
   });
 });
