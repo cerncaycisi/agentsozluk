@@ -9323,3 +9323,8 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   Tamamlanmış prefetch'in Router Cache kanıtı tasarımda açık GO kapısı olarak yazıldı.
 - **Tekrarlama:** Next 15.5 dinamik sayfa kısmi prefetch akışında `response.finished()`
   ya da `requestfinished` beklemek CI'da asılı kalır; E2E'yi buna bağlama.
+- Astra 6. tur `c0c7054`: iki sorgulu UUID yorumu `.rsc` bilgisini geri getirmiyordu
+  (kaçan/yanlış 410 tablosu). Kök düzeltme: `parseTopicRouteReference` ve
+  `parseEntryRouteReference` sondaki `.rsc`'yi Next adaptörü gibi siler; sayfa ve kapı her
+  istekte aynı kimliği seçer; ikili sorgu ve UUID slug kuralı kaldırıldı. Prefetch Router
+  Cache kanıtı Astra kararıyla bu taslakta **P2 açık/ertelendi** (reset GO kapısı).

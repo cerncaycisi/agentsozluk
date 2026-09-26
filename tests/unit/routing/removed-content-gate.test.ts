@@ -70,16 +70,15 @@ describe("removed content gate candidates", () => {
     });
     // Sayfa `--7` yalın başlığını görür (kimlik değil); kapı 410 adayı seçmemeli.
     expect(removedContentCandidate("GET", "/baslik/_NEXTSEP_--7")).toBeNull();
-    // UUID öneki + `--sayı`: iki yorum da taşınır; UUID canlıysa middleware 410 vermez.
+    // UUID öneki + `--sayı`: sayfa ve kapı aynı sayısal kimliği seçer (sondaki `.rsc` iki
+    // tarafta da silinir).
     expect(removedContentCandidate("GET", `/baslik/${uuid}--7`)).toEqual({
       kind: "TOPIC",
       reference: { publicId: 7 },
-      alternate: { contentId: uuid },
     });
-    expect(removedContentCandidate("GET", `/baslik/${uuid.toUpperCase()}%2D%2D7`)).toEqual({
+    expect(removedContentCandidate("GET", `/baslik/${uuid}--7%2Ersc`)).toEqual({
       kind: "TOPIC",
       reference: { publicId: 7 },
-      alternate: { contentId: uuid },
     });
     // Türkçe karakter kodlu kalır; kanonik sonek yine okunur.
     expect(removedContentCandidate("GET", "/baslik/%C3%A7ay--12")).toEqual({

@@ -86,4 +86,18 @@ describe("public content URLs", () => {
     expect(parseEntryRouteReference("0")).toBeNull();
     expect(parseEntryRouteReference("entry-314")).toBeNull();
   });
+
+  it("drops a trailing .rsc like the Next adapter does before middleware", () => {
+    expect(parseTopicRouteReference("gitar--7.rsc")).toEqual({
+      kind: "public",
+      publicId: 7,
+      slug: "gitar",
+    });
+    expect(parseTopicRouteReference("3f2b8c1e-4a5d-4e6f-8a9b-0c1d2e3f4a5b--7.rsc")).toMatchObject({
+      kind: "public",
+      publicId: 7,
+    });
+    expect(parseEntryRouteReference("7.rsc")).toEqual({ kind: "public", publicId: 7 });
+    expect(parseEntryRouteReference("7.rsc.rsc")).toBeNull();
+  });
 });

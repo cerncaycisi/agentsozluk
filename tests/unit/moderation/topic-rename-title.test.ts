@@ -28,7 +28,5 @@ describe("topic rename title address rule", () => {
     expect(topicTitleAddressIsAmbiguous("notlar.rsc")).toBe(true);
     expect(topicTitleAddressIsAmbiguous("rsc dosyaları")).toBe(false);
     expect(topicTitleAddressIsAmbiguous("x _NEXTSEP_ y")).toBe(false);
-    // Slug'ı UUID'ye benzeyen başlık kanonik adresi iki kimliğe okunur kılar (Astra, 5. tur).
-    expect(topicTitleAddressIsAmbiguous("deadbeef 0000 4000 8000 000000000001")).toBe(true);
   });
 });

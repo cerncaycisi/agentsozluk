@@ -1,5 +1,4 @@
 import {
-  hasLegacyIdPrefix,
   nextRouteParamSegment,
   parseEntryRouteReference,
   parseTopicRouteReference,
@@ -19,11 +18,9 @@ import {
   Kapı ile sayfa farklı kimlik seçerse canlı adrese 410 ya da silinmiş adrese içerik düşebilirdi.
   Bozuk yüzde dizisi aday değildir; sayfa da onu geçersiz adres sayar.
 
-  Kabul edilen sınır (Astra, PR #229 3. tur): Next adaptörü URL sonundaki `.rsc`'yi middleware'den
-  önce siler, sayfa ise literal `/entry/7.rsc` isteğinde `7.rsc` görür. Middleware orijinal adresi
-  göremez; 7 mezar taşındaysa bu hiçbir içeriğe ait olmayan adres 404 yerine 410 alır. Sayfanın
-  `.rsc`'li segmentte başka bir kimlik seçebildiği tek biçim UUID öneki + `--sayı`dır: o adayda
-  UUID de `alternate` olarak taşınır ve canlıysa 410 verilmez (aşağı bkz.).
+  Next adaptörü URL sonundaki `.rsc`'yi middleware'den önce siler; sayfa literal `.rsc`'li
+  segmenti alır. Rota ayrıştırıcıları da sondaki `.rsc`'yi sildiği için ikisi aynı kimliği seçer
+  (Astra, PR #229 6. tur).
 */
 
 const LEGACY_PUBLIC_ID_MAX = 2_147_483_647;
@@ -35,8 +32,6 @@ type RemovedContentReference = { publicId: number } | { contentId: string };
 export type RemovedContentCandidate = {
   kind: RemovedContentKind;
   reference: RemovedContentReference;
-  /** Segmentin ikinci olası yorumu; birincil kimlik silinmiş olsa da bu canlıysa 410 verilmez. */
-  alternate?: RemovedContentReference;
 };
 
 export function removedContentCandidate(
@@ -54,21 +49,7 @@ export function removedContentCandidate(
   if (!reference) return null;
   if (reference.kind === "legacy") return { kind, reference: { contentId: reference.id } };
   if (reference.publicId < 1 || reference.publicId > LEGACY_PUBLIC_ID_MAX) return null;
-  /*
-    Hem UUID öneki hem `--sayı` soneki taşıyan başlık segmenti iki kimliğe okunabilir: `.rsc`'siz
-    istekte sayfa sayıyı, literal `.rsc`'de UUID'yi seçer; middleware `.rsc`'yi göremez (Astra,
-    PR #229 4. tur). Bu biçim kanonik adreste de olabilir (UUID'ye benzeyen başlık slug'ı; 5. tur).
-    Sayısal kimlik mezar taşındaysa UUID ayrıca sorulur; canlıysa 410 verilmez.
-  */
-  const alternate =
-    kind === "TOPIC" && hasLegacyIdPrefix(segment)
-      ? { contentId: segment.slice(0, 36).toLowerCase() }
-      : undefined;
-  return {
-    kind,
-    reference: { publicId: reference.publicId },
-    ...(alternate ? { alternate } : {}),
-  };
+  return { kind, reference: { publicId: reference.publicId } };
 }
 
 const GONE_BODY = `<!doctype html>

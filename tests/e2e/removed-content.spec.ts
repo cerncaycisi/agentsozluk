@@ -120,14 +120,20 @@ test("serves 410 only for tombstoned legacy permalinks and leaves everything els
     expect([200, 404]).toContain(prefetch.status());
     expect(prefetch.headers()["content-security-policy"]).toBeUndefined();
 
-    // Canlı başlığın UUID'si + silinmiş sayısal sonek + literal `.rsc`: sayfa canlı UUID'yi seçip
-    // kanonik adrese yönlendirir; middleware silinmiş kimliğe 410 vermemeli (Astra, PR #229 4. tur).
-    const ambiguous = await request.get(`/baslik/${topic.id}--${goneTopicPublicId}.rsc`, {
-      maxRedirects: 0,
-    });
-    expect(ambiguous.status()).toBe(308);
-    // UUID'ye benzeyen slug'lı kanonik adres (5. tur): UUID yorumu canlı değilse silinmiş sayısal
-    // kimlik 410 alır.
+    // Literal `.rsc`: adaptör middleware'den, ayrıştırıcı sayfadan siler; ikisi aynı kimliği
+    // seçer (Astra, PR #229 6. tur). Canlı UUID + silinmiş sayısal sonek → sayısal kimlik → 410.
+    expect(
+      (
+        await request.get(`/baslik/${topic.id}--${goneTopicPublicId}.rsc`, { maxRedirects: 0 })
+      ).status(),
+    ).toBe(410);
+    // Canlı başlığın `.rsc`'li adresi kanoniğe yönlenir, 410 almaz.
+    expect(
+      (
+        await request.get(`/baslik/${topic.slug}--${topic.publicId}.rsc`, { maxRedirects: 0 })
+      ).status(),
+    ).toBe(308);
+    // UUID'ye benzeyen slug'lı kanonik adres de sayısal kimliğe göre karar alır (5. tur).
     expect(
       (
         await request.get(`/baslik/deadbeef-0000-4000-8000-000000000001--${goneTopicPublicId}`, {
