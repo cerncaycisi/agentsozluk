@@ -49,7 +49,8 @@ function cluster(bootstrap: string, comment: string, collate = "en_US.utf8"): Pa
         "relation:users": v('["r", "agent_sozluk", null, false, false]'),
         [`role:${bootstrap}`]: v("[true, true, true, true, true, true, true, -1, null]"),
         "role:agent_sozluk": v("[false, true, false, false, false, false, false, -1, null]"),
-        [`membership:${JSON.stringify(["pg_read_all_stats", "pg_monitor", bootstrap])}`]:
+        // Gerçek makbuzdaki jsonb biçimi (", " ayırıcı).
+        [`membership:["pg_read_all_stats", "pg_monitor", "${bootstrap}"]`]:
           v("[false, true, true]"),
         "type:gtrgm": v(`["${bootstrap}", null]`),
         "extensionMember:type gtrgm": v(`["${bootstrap}", null]`),
