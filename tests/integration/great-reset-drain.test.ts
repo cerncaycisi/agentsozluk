@@ -2,7 +2,8 @@ import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { ActorContext } from "@/modules/auth/domain/actor";
-import { createAgent, createAgentSchema } from "@/modules/agents";
+import { AppError } from "@/lib/http/errors";
+import { cancelAgentRun, createAgent, createAgentSchema } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import {
   closeIntegrationDatabase,
@@ -48,7 +49,12 @@ function actor(id: string): ActorContext {
   };
 }
 
-function drain(command: "status" | "drain", adminId: string, timeoutSeconds = 10) {
+function drain(
+  command: "status" | "drain",
+  adminId: string,
+  timeoutSeconds = 10,
+  extraEnv: Record<string, string> = {},
+) {
   return spawnSync("node_modules/.bin/tsx", ["scripts/great-reset-drain.ts", command], {
     encoding: "utf8",
     timeout: 120_000,
@@ -58,6 +64,7 @@ function drain(command: "status" | "drain", adminId: string, timeoutSeconds = 10
       AGENT_FLOW_REASON: "great reset boşaltma testi",
       AGENT_DRAIN_TIMEOUT_SECONDS: String(timeoutSeconds),
       AGENT_DRAIN_POLL_SECONDS: "1",
+      ...extraEnv,
     },
   });
 }
@@ -123,6 +130,32 @@ describe("great reset boşaltması", () => {
       await run("SOURCE_REFRESH", "SOURCE_REFRESH"),
     ];
     const active = await run("NORMAL_WAKE", "SCHEDULED_CONTENT", true);
+
+    // Hedef guard'ı (Astra #243 P1): üretim host'u değilse yalnız test/loopback/_test hedefi;
+    // `_test` olmayan bir DB'ye hiçbir okuma/yazma yapılmadan ret.
+    const foreignUrl = new URL(process.env.DATABASE_URL!);
+    foreignUrl.pathname = "/postgres";
+    const foreign = drain("drain", admin.id, 10, { DATABASE_URL: foreignUrl.toString() });
+    expect(foreign.status).toBe(3);
+    expect(foreign.stderr).toContain("code=GREAT_RESET_OPERATOR_TARGET_INVALID");
+    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "QUEUED" } })).toBe(3);
+
+    // Yalnız sıradaki koşu (Astra #243 P2): kilit altında RUNNING ise iptal edilmez.
+    await expect(
+      cancelAgentRun(
+        integrationDatabase,
+        actor(admin.id),
+        active.id,
+        { reason: "great reset boşaltma testi" },
+        { requireQueued: true },
+      ),
+    ).rejects.toSatisfy(
+      (error: unknown) => error instanceof AppError && error.code === "AGENT_RUN_LEASE_INVALID",
+    );
+    expect(
+      (await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: active.id } }))
+        .runStatus,
+    ).toBe("RUNNING");
 
     // Bayraklar açıkken hiçbir koşuya dokunmaz.
     await setFlags(true);

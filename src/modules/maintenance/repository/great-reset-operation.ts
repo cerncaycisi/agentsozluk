@@ -256,3 +256,17 @@ export async function drainStatus(
   );
   return { ready: blockers.length === 0, blockers };
 }
+
+/** Hedef kimliği, ilk mutasyondan ÖNCE ve aynı istemciyle (operatör bayrak/boşaltma CLI'leri). */
+export async function assertOperationTarget(
+  database: PrismaClient,
+  identity: OperationIdentity,
+): Promise<void> {
+  await database.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+      await assertIdentity(tx, identity);
+    },
+    { timeout: 30_000, maxWait: 5_000 },
+  );
+}

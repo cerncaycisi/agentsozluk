@@ -7,6 +7,7 @@ import { AppError } from "@/lib/http/errors";
 import { agentRunCommandSchema, cancelAgentRun } from "@/modules/agents";
 import { drainBlockers, runtimePausedBlockers } from "@/modules/maintenance/repository/great-reset";
 import { resolveOperatorAdmin } from "./agent-operator";
+import { assertResetOperatorTarget } from "./great-reset-operator-target";
 import {
   prepareOperatorCliEnvironment,
   writeOperatorCliEnvironmentReport,
@@ -49,6 +50,7 @@ export function drainFailureCode(error: unknown): string {
   if (error instanceof AppError) return error.code;
   if (error instanceof z.ZodError) return "DRAIN_INPUT_INVALID";
   if (error instanceof Error && /^DRAIN_[A-Z_]+$/u.test(error.message)) return error.message;
+  if (error instanceof Error && /^GREAT_RESET_[A-Z_]+$/u.test(error.message)) return error.message;
   return "INTERNAL_ERROR";
 }
 
@@ -58,6 +60,8 @@ async function main(): Promise<void> {
   const environment = environmentSchema.parse(process.env);
   const database = getDatabase();
   try {
+    // Hedef kimliği ilk okumadan/mutasyondan önce, servislerin kullanacağı aynı istemciyle.
+    await assertResetOperatorTarget(database);
     const status = async () => {
       const [paused, drained, queued, active] = await database.$transaction(async (tx) => [
         await runtimePausedBlockers(tx),
@@ -94,8 +98,11 @@ async function main(): Promise<void> {
         orderBy: { id: "asc" },
       });
       for (const { id } of queued) {
+        // Süre sınırı iptaller arasında da geçerli (Astra #243 P2).
+        if (Date.now() >= deadline) throw new Error("DRAIN_TIMEOUT");
         try {
-          await cancelAgentRun(database, actor, id, reason);
+          // Yalnız kilit altında hâlâ sıradaysa: arada worker almışsa süren koşuya dokunulmaz.
+          await cancelAgentRun(database, actor, id, reason, { requireQueued: true });
           cancelled += 1;
         } catch (error) {
           // Arada durumu değişen koşu (worker aldı ya da bitti) sonraki turda yeniden değerlendirilir.
@@ -107,13 +114,14 @@ async function main(): Promise<void> {
         report(state, cancelled);
         throw new Error("DRAIN_FLAGS_REOPENED");
       }
-      if (state.blockers.length === 0) {
-        report(state, cancelled);
-        return;
-      }
+      // Süre sınırı başarıdan ÖNCE: sınır aşıldıktan sonra görülen hazır durum kabul edilmez.
       if (Date.now() >= deadline) {
         report(state, cancelled);
         throw new Error("DRAIN_TIMEOUT");
+      }
+      if (state.blockers.length === 0) {
+        report(state, cancelled);
+        return;
       }
       await sleep(environment.AGENT_DRAIN_POLL_SECONDS * 1000);
     }

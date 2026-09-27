@@ -17,6 +17,7 @@ import {
   prepareOperatorCliEnvironment,
   writeOperatorCliEnvironmentReport,
 } from "./operator-cli-environment";
+import { assertResetOperatorTarget } from "./great-reset-operator-target";
 
 /*
   Great reset yazma dondurması (tasarım v20, runbook "A5 reset modu" 1. ve 10. adım). Reset
@@ -70,6 +71,8 @@ async function main(): Promise<void> {
   const environment = environmentSchema.parse(process.env);
   const database = getDatabase();
   try {
+    // Hedef kimliği ilk mutasyondan önce (Astra #243 P1): restore kopyası ya da başka küme değil.
+    await assertResetOperatorTarget(database);
     const actor = {
       ...(await resolveOperatorAdmin(database, environment.AGENT_OPERATOR_ADMIN_ID)),
       requestId: randomUUID(),
@@ -135,8 +138,9 @@ async function main(): Promise<void> {
 
 main().catch((error: unknown) => {
   const code =
-    error instanceof Error && error.message === "WRITE_FREEZE_STATE_MISSING"
-      ? "WRITE_FREEZE_STATE_MISSING"
+    error instanceof Error &&
+    (error.message === "WRITE_FREEZE_STATE_MISSING" || /^GREAT_RESET_[A-Z_]+$/u.test(error.message))
+      ? error.message
       : operatorFailureCode(error);
   process.stderr.write(`WRITE_FREEZE_FAIL code=${code}\n`);
   process.exitCode = 1;

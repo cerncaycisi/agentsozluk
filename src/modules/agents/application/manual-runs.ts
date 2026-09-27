@@ -59,6 +59,11 @@ function isNonPublishingRun(runType: ManualAgentRunInput["runType"]): boolean {
 interface AgentRunCommandDependencies {
   /** Test seam for holding the serialized command after its authoritative re-read. */
   afterRunLocked?: () => Promise<void>;
+  /**
+   * Yalnız sıradaki koşu iptal edilir; kilit altındaki yeniden okumada RUNNING ise reddedilir
+   * (great reset boşaltması, Astra #243 P2: liste okunduktan sonra worker koşuyu almış olabilir).
+   */
+  requireQueued?: boolean;
 }
 
 async function appendCanonicalRunQueuedOutbox(
@@ -589,7 +594,10 @@ export function cancelAgentRun(
     await lockAgentSettings(transaction);
     const run = await findAgentRunForCommand(transaction, runId);
     if (!run) throw new AppError("AGENT_RUN_NOT_FOUND", 404, "Agent run bulunamadı.");
-    if (!["QUEUED", "RUNNING"].includes(run.runStatus))
+    if (
+      !["QUEUED", "RUNNING"].includes(run.runStatus) ||
+      (dependencies.requireQueued === true && run.runStatus !== "QUEUED")
+    )
       throw new AppError("AGENT_RUN_LEASE_INVALID", 409, "Bu run iptal edilebilir durumda değil.");
     await dependencies.afterRunLocked?.();
     const updated = await cancelAgentRunRecord(

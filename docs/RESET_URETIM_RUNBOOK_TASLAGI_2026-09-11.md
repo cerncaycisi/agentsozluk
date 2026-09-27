@@ -208,8 +208,31 @@ state=COMMITTED_MAINTENANCE` (makbuz SHA'sıyla). Sarmalayıcı yazar, `ack` ile
 9. Sarmalayıcı `TRAFFIC_OPEN` yazar (geri dönüş penceresi kapanır), `ack` ile döner →
    `reset-traffic` → operasyon CLI'si `traffic-open` → `reset-exposed`.
 10. `writers-may-run` → A5 kesimi: normal app, release smoke, Caddy, boot etiketi, hold kalkar,
-    worker; bayraklar eski değerlerine ayrı ayrı döner; timer ve `agent-sozluk.service` önceki
-    durumlarına döner; `cutover-done`. Ayar özeti yukarıdaki faza bağlı kuralla denetlenir.
+    worker; reset'in kendi bayrak kaydındaki değerler geri yazılır (boşaltma nedeniyle dördü de
+    kapalıdır, kapalı kalır); timer ve `agent-sozluk.service` önceki durumlarına döner;
+    `cutover-done`. Ayar özeti yukarıdaki faza bağlı kuralla denetlenir.
+
+**Boşaltma ve bayrakların bakım öncesi değerlerine dönüşü (27 Eylül; Astra "A+B", Gökhan: "elle
+bir şey açamam, halledin"):**
+
+- Sarmalayıcı, genel duraklatmadan ve uzak bakımdan önce, worker ve uygulama çalışırken dört
+  bayrağı ayrı bir boşaltma kaydıyla kapatır. Kayıt runtime dizininde,
+  `.great-reset-drain-flags-<operationId>.json` adıyla ve reset'in `reset-flags.json` kaydından
+  ayrı durur; dört bayrağın gerçek bakım öncesi değerlerini, toplum akışı dahil, tutar.
+- `great-reset-drain.ts drain`: hedef kimliği ilk mutasyondan önce doğrulanır (üretim adı, sahibi,
+  küme kimliği). Sıradaki bütün koşular türden bağımsız, kilit altında hâlâ sıradaysa panelle aynı
+  servisle iptal edilir. Süren koşuların bitmesi en çok 900 sn beklenir; süre sınırı başarıdan önce
+  denetlenir.
+- Uzak betik aynı ölçütü (`drain-check`) kesintiden önce ve dondurmadan sonra, yedekten önce
+  denetler (`RESET_DRAIN_REQUIRED`).
+- **Otomatik geri açılış yalnız kesin sonuçlarda:** (a) boşaltma durdu, bakım hiç başlamadı; (b)
+  uzak akış 0 ile bitti ve site açık (reset tamam, COMMIT öncesi vazgeçildi ya da geri dönüldü).
+  Sarmalayıcı `agent-write-freeze.ts restore` ile boşaltma kaydındaki değerleri, aynı hedef
+  guard'ı ve servislerle geri yazar (`RELEASE_RESET_FLAGS_RESTORED`). Belirsiz ya da yarım bakımda
+  geri açılış yapılmaz; site o durumda kapalıdır. Geri açılış düşerse aynı komut yeniden koşulur
+  (idempotent).
+- Astra'nın ilk kararı "otomatik açılma eklenmesin" idi; Gökhan elle açılış yapamayacağını
+  bildirdiği için otomatik açılış Gökhan kararıdır ve yukarıdaki iki kesin sonuçla sınırlıdır.
 
 **Kayıp `ack`:** sarmalayıcı dış kaydı kalıcılaştırıp uzak `ack` işlenmeden kesilirse uzak
 betik aynı durumu yeniden ister. Sarmalayıcı önce zinciri doğrular; operasyonun son kaydı aynı

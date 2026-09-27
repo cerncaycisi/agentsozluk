@@ -346,22 +346,77 @@ echo "ACK=[$reset_next_ack]"
     // Gerçek dış kayıt CLI'si her durumda birkaç kez başlar; varsayılan 5 sn sınırı dar.
   }, 30_000);
 
-  it("boşaltma uzak bakımdan önce, ayrı bayrak kaydıyla; geri dönüşte ve başlamış bakımda koşmaz", () => {
+  it("boşaltma genel duraklatmadan ve uzak bakımdan önce, ayrı bayrak kaydıyla; bayraklar kesin sonuçlarda otomatik döner", () => {
     const source = readFileSync("scripts/deploy-production-no-migration.sh", "utf8");
-    const start = source.indexOf(
+    const drain = source.indexOf(
       'if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then',
     );
-    expect(start).toBeGreaterThan(0);
-    const block = source.slice(start, source.indexOf("\nfi\n", start));
-    expect(start).toBeLessThan(source.lastIndexOf("  great_reset_run"));
-    expect(block).toContain("test -e /opt/agent-sozluk/runtime/.migration-operation");
+    const pause = source.indexOf('if test "$pause_society_flow" = 1; then\n  "$local_timeout" 180');
+    const run = source.lastIndexOf("  great_reset_run\n");
+    expect(drain).toBeGreaterThan(0);
+    // Kayıt dört bayrağın gerçek bakım öncesi değerlerini tutsun: duraklatmadan önce.
+    expect(drain).toBeLessThan(pause);
+    expect(pause).toBeLessThan(run);
+    const block = source.slice(drain, source.indexOf("\nfi\n", drain));
+    expect(block).toContain("reset_operator_ssh 1080 1");
     expect(block.indexOf("agent-write-freeze.ts freeze")).toBeLessThan(
       block.indexOf("great-reset-drain.ts drain"),
     );
-    // Reset'in kendi bayrak kaydı (reset-flags.json) değil: açılış bayrakları otomatik açmaz.
-    expect(block).toContain(".great-reset-drain-flags-$great_reset_operation.json");
+    // Boşaltma durursa bakım başlamaz, bayraklar bakım öncesi değerlerine döner.
+    expect(block.indexOf("code=RESET_DRAIN_FAILED")).toBeLessThan(
+      block.indexOf("reset_restore_society_flags"),
+    );
+    // Reset'in kendi bayrak kaydı değil.
+    expect(source).toContain(
+      'reset_drain_flags_file="/opt/agent-sozluk/runtime/.great-reset-drain-flags-$great_reset_operation.json"',
+    );
     expect(block).not.toContain("reset-flags.json");
-    expect(block).toContain("code=RESET_DRAIN_FAILED");
+    // Başarılı uzak akıştan sonra geri açılış; başlamış bakımda boşaltma atlanır.
+    expect(source.slice(run, run + 200)).toContain("reset_restore_society_flags");
+    // Atlama yalnız bu operasyonun dondurma tutucusu yerindeyken (işaret dizini tek başına yetmez).
+    expect(source).toContain("test -e /opt/agent-sozluk/runtime/.migration-hold &&");
+    expect(source).toContain("= 'reset:$great_reset_operation'; then");
+  });
+
+  it("bayrak geri açılışı uzakta kaydı geri yükler; kayıt yoksa dokunmaz; hata başarı sayılmaz", () => {
+    const run = (sshBody: string) => {
+      const script = `
+set -Eeuo pipefail
+great_reset_operation=${operationId}
+candidate_sha=${sha}
+expected_host=agent-sozluk-prod
+expected_ip=127.0.0.1
+ssh_options=()
+scope_check=':'
+lock_check=':'
+nolimit() { shift; "$@"; }
+local_timeout=nolimit
+reset_drain_flags_file="/opt/agent-sozluk/runtime/.great-reset-drain-flags-$great_reset_operation.json"
+${extract("reset_operator_ssh")}
+${extract("reset_restore_society_flags")}
+ssh() { printf '%s\\n' "\${@: -1}" >"$BODY_FILE"; ${sshBody}; }
+reset_restore_society_flags && echo RETURNED_OK
+`;
+      const root = mkdtempSync(path.join(tmpdir(), "reset-flags-"));
+      directories.push(root);
+      const body = path.join(root, "body.sh");
+      const result = spawnSync("bash", ["-c", script], {
+        encoding: "utf8",
+        env: { ...process.env, BODY_FILE: body },
+      });
+      return { ...result, body: readFileSync(body, "utf8") };
+    };
+    const ok = run("return 0");
+    expect(ok.stdout).toContain("RELEASE_RESET_FLAGS_RESTORED");
+    expect(ok.body).toContain(
+      `agent-write-freeze.ts restore '/opt/agent-sozluk/runtime/.great-reset-drain-flags-${operationId}.json'`,
+    );
+    expect(ok.body).toContain("RELEASE_RESET_FLAGS_RESTORE_SKIPPED no drain record");
+    // Geri açılış bakımın başlamış olmasına bakmaz (atlama yalnız boşaltmada).
+    expect(ok.body).toContain("test '0' = 1");
+    const failed = run("return 1");
+    expect(failed.stdout).not.toContain("RETURNED_OK");
+    expect(failed.stderr).toContain("code=RESET_FLAGS_RESTORE_FAILED");
   });
 
   it("geri dönüş bayrağı great reset modu ve ayrı exact onay olmadan başlamaz", () => {
