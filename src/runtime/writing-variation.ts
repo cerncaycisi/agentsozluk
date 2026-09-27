@@ -36,7 +36,7 @@ export const RUNTIME_WRITING_VARIATION_VERSION = 9;
   aynı. Tohum 8'de kalınca her koşu önceki sürümdeki uzunluk formunu alır; yerel ölçümde
   kullanılan talimat üretimdekiyle birebir aynı kalır.
 */
-const RUNTIME_WRITING_VARIATION_SELECTION_SEED_VERSION = 8;
+export const RUNTIME_WRITING_VARIATION_SELECTION_SEED_VERSION = 8;
 
 const formDistributions: Record<PersonaEntryLength, readonly RuntimeEntryForm[]> = {
   SHORT: ["MICRO", "MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "LONG"],

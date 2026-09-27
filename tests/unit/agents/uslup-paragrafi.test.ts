@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { runtimePromptScaffold } from "@/runtime/prompt-profile";
 import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
@@ -17,7 +18,9 @@ describe("üslup turu 3", () => {
     expect(blok).toContain("zekice görünmeye çalışma; cilalı metin yapay görünür");
     expect(blok).toContain("'X değil Y' karşıtlığı");
     expect(blok).toContain("Noktalı virgül kullanma");
-    expect(blok).toContain("kaynak adıyla ('X'in aktardığına göre') yazma");
+    expect(blok).toContain("Kaynak adını süs ya da giriş kalıbı olarak");
+    // Gerekli atıf korunur (anayasa: alıntıda kaynak; persona: iddianın sahibi).
+    expect(blok).toContain("kime ait olduğunu sade biçimde söyle");
   });
 
   it("güvenlik sınırlarını ve sözlük davranışlarının iznini aynen taşıyor", () => {
@@ -28,6 +31,9 @@ describe("üslup turu 3", () => {
     expect(blok).toContain("kanıtın desteklemediği kesin olgu, sayı ya da alıntı yazma");
     expect(blok).toContain("(bkz: başlık) vermek sözlükte çok olağandır");
     expect(blok).toContain("Gövdede soru sormak da serbest");
+    expect(blok).toContain(
+      "Başlıkta okuduğun bir kanaate katılmıyorsan bunu düz söylemek de olağandır",
+    );
   });
 
   it("v43 cümlesi ve deneme iskeleti geri gelmiyor", () => {
@@ -39,5 +45,13 @@ describe("üslup turu 3", () => {
     ).join("\n");
     for (const kalip of ["ne gösterdiği", "yargıyla bitir", "- Açılış:", "- Gelişim:", "- Bitiş:"])
       expect(render).not.toContain(kalip);
+  });
+
+  it("seçim tohumu sürümü profil özetine giriyor (Astra f585cca P2)", () => {
+    const kaynak = readFileSync("src/runtime/prompt-profile.ts", "utf8");
+    const ozet = kaynak.slice(kaynak.indexOf("export const RUNTIME_PROMPT_PROFILE_HASH"));
+    expect(ozet).toContain(
+      "writingVariationSelectionSeedVersion: RUNTIME_WRITING_VARIATION_SELECTION_SEED_VERSION",
+    );
   });
 });

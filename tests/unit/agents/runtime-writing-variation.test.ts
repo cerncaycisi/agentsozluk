@@ -70,10 +70,28 @@ describe("runtime writing variation", () => {
   });
 
   it("keeps the v8 selection so every run keeps its measured length form", () => {
-    // Render sürümü 9, seçim tohumu 8: yerel ölçümdeki talimatla birebir aynılık için.
-    expect(runtimeWritingVariation("00000000-0000-4000-8000-000000000456").form).toBe(
-      runtimeWritingVariation("00000000-0000-4000-8000-000000000456").form,
-    );
+    // Beklenen değerler `main`'deki sürüm 8 formülüyle (tohum v8) üretildi: render v9 olsa da
+    // her koşu ölçülen talimattaki uzunluk formunu almalı (Astra f585cca P3).
+    const v8: Array<[string, "SHORT" | "MEDIUM" | "LONG" | "MIXED", string]> = [
+      ["00000000-0000-4000-8000-000000000001", "SHORT", "MICRO"],
+      ["00000000-0000-4000-8000-000000000001", "MEDIUM", "SHORT"],
+      ["00000000-0000-4000-8000-000000000001", "LONG", "SHORT"],
+      ["00000000-0000-4000-8000-000000000001", "MIXED", "SHORT"],
+      ["00000000-0000-4000-8000-000000000456", "SHORT", "SHORT"],
+      ["00000000-0000-4000-8000-000000000456", "MEDIUM", "SHORT"],
+      ["00000000-0000-4000-8000-000000000456", "LONG", "MEDIUM"],
+      ["00000000-0000-4000-8000-000000000456", "MIXED", "SHORT"],
+      ["11111111-2222-4333-8444-555555555555", "SHORT", "LONG"],
+      ["11111111-2222-4333-8444-555555555555", "MEDIUM", "LONG"],
+      ["11111111-2222-4333-8444-555555555555", "LONG", "LONG"],
+      ["11111111-2222-4333-8444-555555555555", "MIXED", "LONG"],
+      ["abfa8108-7034-4765-a945-8fc614ca4584", "SHORT", "SHORT"],
+      ["abfa8108-7034-4765-a945-8fc614ca4584", "MEDIUM", "MEDIUM"],
+      ["abfa8108-7034-4765-a945-8fc614ca4584", "LONG", "MEDIUM"],
+      ["abfa8108-7034-4765-a945-8fc614ca4584", "MIXED", "MEDIUM"],
+    ];
+    for (const [runId, length, form] of v8)
+      expect(runtimeWritingVariation(runId, length).form, `${runId} ${length}`).toBe(form);
   });
 });
 

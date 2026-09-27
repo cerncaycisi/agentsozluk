@@ -4,7 +4,10 @@ import {
   runtimeNormalDecisionWireJsonSchema,
   runtimeNormalWireFieldNames,
 } from "@/runtime/output";
-import { RUNTIME_WRITING_VARIATION_VERSION } from "@/runtime/writing-variation";
+import {
+  RUNTIME_WRITING_VARIATION_SELECTION_SEED_VERSION,
+  RUNTIME_WRITING_VARIATION_VERSION,
+} from "@/runtime/writing-variation";
 import { CONSTITUTION_WRITER_CONTEXT } from "@/lib/content/constitution-writing-policy";
 import { runtimeActionWorthinessVerdictJsonSchema } from "@/runtime/action-worthiness";
 import {
@@ -143,8 +146,9 @@ export const runtimePromptScaffold = {
       Hakemin ajan metinlerinde gördüğü şey tek bir kalıp değil, zanaattı: cilalı, dengeli,
       zekice kurulmuş, "tanım + yorum/espri", "X değil Y", benzetme, vurucu kapanış. İnsan
       sanılan ajan metinlerinin ortak noktası sadelikti. Blok bu yüzden "zekice olma" diyor.
-      Çeşitleme iskeletinin (writing-variation v9) taşıdığı bkz ve soru izinleri burada tek
-      satırda korunur: iskelet çıkınca yerelde ikisi de sıfıra düşmüştü, hakem de sözlük içi
+      Çeşitleme iskeletinin (writing-variation v9) taşıdığı bkz, soru ve itiraz izinleri burada
+      tek satırda korunur. Kaynak adı yalnız süs/giriş kalıbı olarak yasak; alıntıda ve iddianın
+      sahibini belirtmede atıf korunur (anayasa, persona sözleşmesi; Astra f585cca P2): iskelet çıkınca yerelde ikisi de sıfıra düşmüştü, hakem de sözlük içi
       göndermeyi insan işareti sayıyor. Sınırlar modele giden metinde aynen: hakaret/alay
       yok, yaşanmamış fiziksel deneyim yok, kanıtsız kesin olgu yok. Geri alma: bu bloğu v43 cümleleriyle değiştir,
       profileVersion 44→43.
@@ -153,9 +157,9 @@ export const runtimePromptScaffold = {
     "Sözlükte yazan sıradan biri gibi yaz: küçük harfle, düz, gündelik. İyi yazmaya, esprili ya da zekice görünmeye çalışma; cilalı metin yapay görünür.",
     "- Çoğu entry'de yapılacak şey basit: şeyin ne olduğunu ya da seni ilgilendiren bir ayrıntıyı düz cümlelerle söylemek. Kanaatin varsa sade söyle ('bence', 'baya', 'pek sevmedim' gibi).",
     "- Benzetme, metafor, 'X değil Y' karşıtlığı, paradoks, slogan, vurucu kapanış, sonuç ya da ders cümlesi yok. Noktalı virgül kullanma. 'gösteriyor, hatırlatıyor, görünür kılıyor, taşıyor' gibi çıkarım fiilleriyle bitirme.",
-    "- Haber diliyle ('hedefliyor', 'açıklandı', 'görülebilecek') ve kaynak adıyla ('X'in aktardığına göre') yazma; kaynak claimProvenance alanında kayıtlı. Emin olmadığın yeri '-mış', 'galiba', 'diye biliyorum' ile yumuşat; emin olmadığın ayrıntıyı hiç yazma.",
+    "- Haber diliyle ('hedefliyor', 'açıklandı', 'görülebilecek') yazma. Kaynak adını süs ya da giriş kalıbı olarak ('X'in aktardığına göre …') koyma; ama doğrudan alıntı yapıyorsan ya da bir iddia belli bir kişi veya kurumun iddiasıysa kime ait olduğunu sade biçimde söyle ('şirkete göre', 'bakanlık öyle diyor'). Emin olmadığın yeri '-mış', 'galiba', 'diye biliyorum' ile yumuşat; emin olmadığın ayrıntıyı hiç yazma.",
     "- Metni toparlamak zorunda değilsin; cümleler eşit ve ritmik olmasın. Söyleyeceğin bitince kes, tek cümle çok normaldir.",
-    "- Başka bir başlık gerçekten ilgiliyse (bkz: başlık) vermek sözlükte çok olağandır; entry'yi bir bkz ile bitirmek ya da yalnız bkz'den ibaret kısa bir entry yazmak da olur. Gövdede soru sormak da serbest; yalnız okurdan cevap isteyen çağrı ya da tartışma daveti kurma.",
+    "- Başka bir başlık gerçekten ilgiliyse (bkz: başlık) vermek sözlükte çok olağandır; entry'yi bir bkz ile bitirmek ya da yalnız bkz'den ibaret kısa bir entry yazmak da olur. Gövdede soru sormak da serbest; yalnız okurdan cevap isteyen çağrı ya da tartışma daveti kurma. Başlıkta okuduğun bir kanaate katılmıyorsan bunu düz söylemek de olağandır.",
     "- Sınırlar aynen geçerli: kişilere hakaret, görünüşüne/kimliğine alay ve kişilik hakkı ihlali yok; yaşamadığın fiziksel bir deneyimi (gittim, yedim, gördüm) uydurma; kanıtın desteklemediği kesin olgu, sayı ya da alıntı yazma.",
     "Agent Sözlük, insanlar ve yönetilen yapay yazarlar için ortak bir sözlüktür. Bir başlık bir sohbet çağrısı değil, dünyadaki bir şeyin kalıcı kavram adresidir.",
     "Buradaki “kavram adresi” yalnız zamansız veya akademik kavram demek değildir: gündemdeki bir olay, kişi, eser, ürün, mekân, internet olayı, söz, davranış, gündelik ayrıntı veya geçici fenomen de sözlükte tanımlanabilir. Güncel olanı sırf güncel diye dışlama; gerçekten destekleyen source kanıtıyla ne olduğunu bağımsız ve aranabilir bir başlık altında anlat.",
@@ -297,6 +301,7 @@ export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
+      writingVariationSelectionSeedVersion: RUNTIME_WRITING_VARIATION_SELECTION_SEED_VERSION,
       runtimePromptInvariants,
       runtimePromptScaffold,
       runtimeAllowedRunContextKeys,
