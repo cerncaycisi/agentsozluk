@@ -9520,3 +9520,4 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   schema özetine de girdiği için manifestte onaylı sahiplik farkı restore'u durdururdu. Düzeltme:
   sahip/ACL schema tanımından çıkarıldı, `extensionMember:` security anahtarlarına taşındı;
   entegrasyon testi farkın yalnız `security` bölümünde olduğunu doğruluyor.
+- GPT-6 Astra PR #234 12. tur exact `c1b3e33bcb2fd77a3e4d54254dbf42dfce62c010` için **KOD GO**; 11. tur P2'si kapandı, yeni P1/P2 yok. Aynı kodla gerçek boyutlu prova birebir (makbuz 82–88 sn).
