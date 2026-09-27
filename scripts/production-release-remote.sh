@@ -41,6 +41,8 @@ reset_mode=0
 reset_operation_id=''
 reset_ack=''
 reset_rollback_requested=0
+reset_rollback_expected_dump=''
+reset_rollback_expected_receipt=''
 if [[ "$migration_mode" =~ ^reset:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}):(.+)$ ]]; then
   # Great reset modu (tasarım v20): A5 migration fazı + reset aşamaları, aynı dondurmada.
   reset_mode=1
@@ -50,9 +52,12 @@ if [[ "$migration_mode" =~ ^reset:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89a
     printf 'RELEASE_FAIL code=INVALID_MIGRATION_MODE\n' >&2
     exit 90
   }
-  if test "$reset_ack_argument" = rollback; then
-    # Ayrı onaylı geri dönüş isteği (sarmalayıcı dış kaydı denetledi).
+  if [[ "$reset_ack_argument" =~ ^rollback:([0-9a-f]{64}):([0-9a-f]{64})$ ]]; then
+    # Ayrı onaylı geri dönüş isteği. Sarmalayıcı dış kaydı denetledi; dış kayıttaki dump ve
+    # reset-sonrası makbuz SHA'ları, uzak dosyalarla mutasyondan önce eşlenir (Astra, PR #242 P1).
     reset_rollback_requested=1
+    reset_rollback_expected_dump="${BASH_REMATCH[1]}"
+    reset_rollback_expected_receipt="${BASH_REMATCH[2]}"
   elif test -n "$reset_ack_argument"; then
     [[ "$reset_ack_argument" =~ ^ack:(PREPARED|COMMITTED_MAINTENANCE|TRAFFIC_OPEN|ABORTED|ROLLED_BACK)$ ]] || {
       printf 'RELEASE_FAIL code=INVALID_RESET_ACK\n' >&2
@@ -836,6 +841,9 @@ if ((reset_mode == 1)); then
   bash -n "$app_root/scripts/production-reset-restore.sh"
   # shellcheck source=scripts/production-reset-restore.sh
   source "$app_root/scripts/production-reset-restore.sh"
+  # Kapılar kapalıyken kesilmiş bir geri dönüş, canonical'a bağlanan her denetimden önce yalnız
+  # kontrol DB'sinden toparlanır (Astra, PR #242 P2).
+  if ((reset_rollback_requested == 1)); then reset_rollback_recover_gates; fi
 fi
 if test ! -f "$state_dir/baseline-complete"; then
   capture_initial_state

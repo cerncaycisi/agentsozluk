@@ -22,6 +22,11 @@ import { localIndependentTarget, localResetTarget } from "./great-reset-local-gu
   great-reset-operation.ts receipt-compare-independent <üretim-scratch.json> <operatör.json>
   great-reset-operation.ts traffic-open <operationId>
   great-reset-operation.ts restore-eligibility <operationId> <reset-sonrası-makbuz.json>
+  great-reset-operation.ts commit-digest <operationId>
+  great-reset-operation.ts shadow-mark <op> <dumpSha> <commitSha> --database <gölge>
+  great-reset-operation.ts restore-verify <op> <dumpSha> <commitSha> [--database <gölge>]
+  great-reset-operation.ts receipt-compare-shadow <reset-öncesi.json> <gölge.json> <işaret.json>
+  great-reset-operation.ts rollback-pinned-verify <op> <dumpSha> <commitSha> <sonrası.json> <gölge.json> --database <gölge>
 
   Çıktıda credential, URL veya satır içeriği yoktur; makbuz dosyası yalnız özetleri taşır, 0600
   izinle ve üzerine yazmadan (O_EXCL) açılır.
@@ -142,10 +147,16 @@ async function main(argv: readonly string[]): Promise<string> {
     if (!result.equal) process.exitCode = 3;
     return JSON.stringify(result);
   }
-  if (command === "receipt-compare-shadow" && rest.length === 2) {
+  if (command === "receipt-compare-shadow" && rest.length === 3) {
     const { compareShadowWithPreReset } =
       await import("../src/modules/maintenance/repository/great-reset-receipt");
-    const result = compareShadowWithPreReset(readReceipt(rest[0]!), readReceipt(rest[1]!));
+    // Üçüncü dosya: `shadow-mark` çıktısı (işaret transaction'ında ölçülen tablo özetleri).
+    const marked = JSON.parse(readFileSync(rest[2]!, "utf8")) as { marked?: unknown };
+    const result = compareShadowWithPreReset(
+      readReceipt(rest[0]!),
+      readReceipt(rest[1]!),
+      marked.marked as Parameters<typeof compareShadowWithPreReset>[2],
+    );
     if (!result.equal) process.exitCode = 3;
     return JSON.stringify(result);
   }
@@ -169,7 +180,9 @@ async function main(argv: readonly string[]): Promise<string> {
   let args = rest;
   // Gölge/scratch hedefi yalnız makbuz ve geri dönüş gölgesi komutlarında.
   if (
-    ["receipt", "shadow-mark", "restore-verify"].includes(command ?? "") &&
+    ["receipt", "shadow-mark", "restore-verify", "rollback-pinned-verify"].includes(
+      command ?? "",
+    ) &&
     rest.length >= 2 &&
     rest[rest.length - 2] === "--database"
   ) {
@@ -184,8 +197,10 @@ async function main(argv: readonly string[]): Promise<string> {
     (command === "restore-eligibility" && args.length === 2) ||
     (command === "commit-digest" && args.length === 1) ||
     (command === "shadow-mark" && args.length === 3 && scratch !== undefined) ||
-    (command === "restore-verify" && args.length === 2);
+    (command === "restore-verify" && args.length === 3) ||
+    (command === "rollback-pinned-verify" && args.length === 5 && scratch !== undefined);
   if (!valid) fail("INVALID_ARGUMENTS");
+  if (command === "rollback-pinned-verify") return rollbackPinnedVerify(args, scratch!);
   const target = await resolveTarget(scratch, command === "receipt");
   const [{ PrismaClient }, operation, receipts, restore] = await Promise.all([
     import("@prisma/client"),
@@ -231,6 +246,7 @@ async function main(argv: readonly string[]): Promise<string> {
           target.identity,
           args[0]!,
           args[1]!,
+          args[2]!,
         );
         if (blockers.length) process.exitCode = 3;
         return JSON.stringify({ verified: blockers.length === 0, blockers });
@@ -252,6 +268,78 @@ async function main(argv: readonly string[]): Promise<string> {
     }
   } finally {
     await database.$disconnect();
+  }
+}
+
+/*
+  Kapı sonrası doğrulama: iki sabit bağlantı açılır, `PINNED canonical=<pid> shadow=<pid>` basılır;
+  yönetici kapıları kapatıp yalnız bu iki backend'in kaldığını doğruladıktan sonra stdin'e
+  `GATES_CLOSED` yazar (en çok 10 dk). Doğrulama aynı bağlantılarda yapılır.
+*/
+async function rollbackPinnedVerify(args: readonly string[], shadowName: string): Promise<string> {
+  const [operationId, dumpSha256, commitSha256, postPath, shadowPath] = args as [
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  const canonicalTarget = await resolveTarget(undefined);
+  const shadowTarget = await resolveTarget(shadowName);
+  const [{ PrismaClient }, restore] = await Promise.all([
+    import("@prisma/client"),
+    import("../src/modules/maintenance/repository/great-reset-restore"),
+  ]);
+  const pinnedUrl = (value: string) => {
+    const url = new URL(value);
+    url.searchParams.set("connection_limit", "1");
+    // Sabit bağlantı boşta kapanmasın (varsayılan 300 sn).
+    url.searchParams.set("max_idle_connection_lifetime", "7200");
+    return url.toString();
+  };
+  const canonical = new PrismaClient({
+    datasourceUrl: pinnedUrl(canonicalTarget.databaseUrl),
+    log: [],
+  });
+  const shadow = new PrismaClient({ datasourceUrl: pinnedUrl(shadowTarget.databaseUrl), log: [] });
+  try {
+    const blockers = await restore.pinnedRollbackVerify({
+      canonical,
+      shadow,
+      canonicalIdentity: canonicalTarget.identity,
+      shadowIdentity: shadowTarget.identity,
+      operationId,
+      dumpSha256,
+      commitSha256,
+      postResetReceipt: readReceipt(postPath),
+      shadowReceipt: readReceipt(shadowPath),
+      pinned: (pids) =>
+        process.stdout.write(`PINNED canonical=${pids.canonical} shadow=${pids.shadow}\n`),
+      waitForGates: () =>
+        new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error("GREAT_RESET_ROLLBACK_GATE_TIMEOUT")),
+            600_000,
+          );
+          let buffer = "";
+          process.stdin.setEncoding("utf8");
+          process.stdin.on("data", (chunk: string) => {
+            buffer += chunk;
+            if (!buffer.includes("\n")) return;
+            clearTimeout(timer);
+            if (buffer.split("\n")[0] === "GATES_CLOSED") resolve();
+            else reject(new Error("GREAT_RESET_ROLLBACK_GATE_SIGNAL_INVALID"));
+          });
+          process.stdin.on("end", () => {
+            clearTimeout(timer);
+            reject(new Error("GREAT_RESET_ROLLBACK_GATE_SIGNAL_INVALID"));
+          });
+        }),
+    });
+    if (blockers.length) process.exitCode = 3;
+    return JSON.stringify({ verified: blockers.length === 0, blockers });
+  } finally {
+    await Promise.all([canonical.$disconnect(), shadow.$disconnect()]);
   }
 }
 

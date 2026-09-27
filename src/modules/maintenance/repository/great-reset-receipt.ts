@@ -272,20 +272,23 @@ async function contentSection(tx: Tx) {
     WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'r'
     ORDER BY c.relname COLLATE "C"`;
   const entries: [string, TableDigest][] = [];
-  for (const { name } of tables) {
-    const [digest] = await tx.$queryRaw<TableDigest[]>(Prisma.sql`
-      WITH row_hashes AS MATERIALIZED (
-        SELECT encode(sha256(convert_to(ROW(t.*)::text, 'UTF8')), 'hex') AS row_hash
-        FROM ${tableIdentifier(name)} t
-      )
-      SELECT count(*)::int AS rows,
-        encode(sha256(convert_to(coalesce(string_agg(row_hash,
-          E'\\n' ORDER BY row_hash COLLATE "C"), ''), 'UTF8')), 'hex') AS sha256
-      FROM row_hashes`);
-    if (!digest) throw new Error("GREAT_RESET_RECEIPT_FAILED");
-    entries.push([name, digest]);
-  }
+  for (const { name } of tables) entries.push([name, await tableDigest(tx, name)]);
   return dictionary(entries);
+}
+
+/** Makbuzun tablo özeti; geri dönüş gölgesinin işaret transaction'ı da aynısını kullanır. */
+export async function tableDigest(tx: Tx, name: string): Promise<TableDigest> {
+  const [digest] = await tx.$queryRaw<TableDigest[]>(Prisma.sql`
+    WITH row_hashes AS MATERIALIZED (
+      SELECT encode(sha256(convert_to(ROW(t.*)::text, 'UTF8')), 'hex') AS row_hash
+      FROM ${tableIdentifier(name)} t
+    )
+    SELECT count(*)::int AS rows,
+      encode(sha256(convert_to(coalesce(string_agg(row_hash,
+        E'\\n' ORDER BY row_hash COLLATE "C"), ''), 'UTF8')), 'hex') AS sha256
+    FROM row_hashes`);
+  if (!digest) throw new Error("GREAT_RESET_RECEIPT_FAILED");
+  return digest;
 }
 
 async function sequencesSection(tx: Tx) {
@@ -1112,16 +1115,28 @@ export function compareLiveWithRestored(
   Canlı ↔ restore kuralına ek olarak içerik farkına YALNIZ bu iki tabloda izin verilir; iki
   değişikliğin kendisi `verifyRestored` ile birebir doğrulanır.
 */
-const shadowMarkedTables = ["audit_logs", "great_reset_intents"] as const;
+export const shadowMarkedTables = ["audit_logs", "great_reset_intents"] as const;
+export type ShadowMarkedDigests = Record<(typeof shadowMarkedTables)[number], TableDigest>;
 
 export function compareShadowWithPreReset(
   preReset: GreatResetReceipt,
   shadow: GreatResetReceipt,
+  marked: ShadowMarkedDigests,
 ): { equal: boolean; sections: ReceiptSection[]; tables: string[]; unexpected: string[] } {
   const result = compareLiveWithRestored(preReset, shadow);
-  const tables = result.tables.filter(
-    (table) => !(shadowMarkedTables as readonly string[]).includes(table),
-  );
+  // İşaretli iki tablo pre-reset'ten farklı olabilir, ama yalnız işaret transaction'ının içinde
+  // (dar delta kanıtıyla) ölçülen özete birebir eşit olarak (Astra, PR #242 P1): işaretten sonra
+  // bu tablolara yazılan hiçbir şey muaf değildir.
+  const tables = [
+    ...result.tables.filter((table) => !(shadowMarkedTables as readonly string[]).includes(table)),
+    ...shadowMarkedTables.filter(
+      (table) =>
+        !/^[0-9a-f]{64}$/u.test(marked?.[table]?.sha256 ?? "") ||
+        !Number.isInteger(marked[table].rows) ||
+        shadow.tables[table]?.rows !== marked[table].rows ||
+        shadow.tables[table]?.sha256 !== marked[table].sha256,
+    ),
+  ];
   const sections = result.sections.filter(
     (section) => !(section === "content" && tables.length === 0),
   );

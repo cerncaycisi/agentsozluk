@@ -853,16 +853,31 @@ reset_handle_await() {
 }
 
 # Geri dönüş ön koşulu: dış kayıtta operasyonun son durumu COMMITTED_MAINTENANCE ve restore
-# denetimi (dump SHA'sı + reset sonrası makbuz) geçer; TRAFFIC_OPEN ya da başka durumda durur.
+# denetimi (dump SHA'sı + reset sonrası makbuz) geçer; uzağa bu iki SHA gider ve uzak dosyalarla
+# mutasyondan önce eşlenir (Astra, PR #242 P1). Son kayıt zaten ROLLED_BACK ise (ACK kaybı; Astra,
+# PR #242 P2) yeni geri dönüş başlamaz: normal döngü uzaktaki `reset-rolled-back` aşamasını, aynı
+# kimlikli kaydın idempotent onayıyla tamamlar. Başka her durum durur.
 reset_assert_rollback_allowed() {
-  local record dump receipt
+  local record state dump receipt
   record="$(cd "$root" && ./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "$reset_ledger" \
     latest "$great_reset_operation")" || reset_fail RESET_ROLLBACK_LEDGER_MISSING
+  state="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).state ?? "")' "$record")"
   dump="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).dumpSha256 ?? "")' "$record")"
   receipt="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).postResetReceiptSha256 ?? "")' "$record")"
+  case "$state" in
+    ROLLED_BACK)
+      reset_next_ack=''
+      return 0
+      ;;
+    COMMITTED_MAINTENANCE) : ;;
+    *) reset_fail RESET_ROLLBACK_NOT_ALLOWED ;;
+  esac
+  [[ "$dump" =~ ^[0-9a-f]{64}$ && "$receipt" =~ ^[0-9a-f]{64}$ ]] ||
+    reset_fail RESET_ROLLBACK_NOT_ALLOWED
   (cd "$root" && ./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "$reset_ledger" \
     restore-check "$great_reset_operation" "$dump" "$receipt") >/dev/null ||
     reset_fail RESET_ROLLBACK_NOT_ALLOWED
+  reset_next_ack="rollback:$dump:$receipt"
 }
 
 great_reset_run() {
@@ -871,7 +886,6 @@ great_reset_run() {
   reset_next_ack=''
   if test "$great_reset_rollback" = 1; then
     reset_assert_rollback_allowed
-    reset_next_ack=rollback
   fi
   # Yerel dondurma düşerse timer yalnız uzak bakımın gerçekten başlamadığı (SAFE) doğrulanınca
   # eski durumuna döner; yeniden girişte bakım sürüyor olabilir (Astra, PR #240 3. tur P1).

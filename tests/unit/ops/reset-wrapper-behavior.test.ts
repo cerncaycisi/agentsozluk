@@ -293,6 +293,48 @@ reset_restore_operator_units
     expect(result.stderr).toContain("code=RESET_OPERATOR_TIMER_RESTORE_FAILED");
   });
 
+  // Gerçek dış kayıt CLI'si, geçici 0600 kayıtla.
+  function rollbackPrecondition(states: string[]) {
+    const root = mkdtempSync(path.join(tmpdir(), "reset-rollback-"));
+    directories.push(root);
+    const ledger = path.join(root, "ledger.jsonl");
+    const append = (state: string) =>
+      [
+        `./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "${ledger}" append ${state}`,
+        operationId,
+        sha,
+        "d".repeat(64),
+        state === "PREPARED" || state === "ABORTED" ? "-" : "e".repeat(64),
+        ">/dev/null",
+      ].join(" ");
+    const script = `
+set -Eeuo pipefail
+root="${process.cwd()}"
+reset_ledger="${ledger}"
+great_reset_operation=${operationId}
+${extract("reset_fail")}
+${extract("reset_assert_rollback_allowed")}
+${states.map(append).join("\n")}
+reset_next_ack=unset
+reset_assert_rollback_allowed
+echo "ACK=[$reset_next_ack]"
+`;
+    return spawnSync("bash", ["-c", script], { encoding: "utf8" });
+  }
+
+  it("geri dönüş: dış kayıt SHA'ları uzağa gider; ROLLED_BACK'te yalnız tamamlama, başka durumda durur", () => {
+    const committed = rollbackPrecondition(["PREPARED", "COMMITTED_MAINTENANCE"]);
+    expect(committed.stdout).toContain(`ACK=[rollback:${"d".repeat(64)}:${"e".repeat(64)}]`);
+    // ACK kaybı: kayıt ROLLED_BACK; yeni geri dönüş başlamaz, normal döngü tamamlar (Astra, PR #242 P2).
+    const rolled = rollbackPrecondition(["PREPARED", "COMMITTED_MAINTENANCE", "ROLLED_BACK"]);
+    expect(rolled.stdout).toContain("ACK=[]");
+    const traffic = rollbackPrecondition(["PREPARED", "COMMITTED_MAINTENANCE", "TRAFFIC_OPEN"]);
+    expect(traffic.stderr).toContain("code=RESET_ROLLBACK_NOT_ALLOWED");
+    const prepared = rollbackPrecondition(["PREPARED"]);
+    expect(prepared.stderr).toContain("code=RESET_ROLLBACK_NOT_ALLOWED");
+    // Gerçek dış kayıt CLI'si her durumda birkaç kez başlar; varsayılan 5 sn sınırı dar.
+  }, 30_000);
+
   it("geri dönüş bayrağı great reset modu ve ayrı exact onay olmadan başlamaz", () => {
     const withApproval = { ...approved, AGENT_SOZLUK_GREAT_RESET_APPROVED: operationId };
     expect(

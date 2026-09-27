@@ -2,6 +2,12 @@ import { createHash } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { GREAT_RESET_PRODUCTION_RESTORE_ACTION } from "./great-reset";
 import type { OperationIdentity } from "./great-reset-operation";
+import {
+  shadowMarkedTables,
+  tableDigest,
+  type GreatResetReceipt,
+  type ShadowMarkedDigests,
+} from "./great-reset-receipt";
 
 /*
   Great reset geri dönüş dalı (runbook "Hata ve geri dönüş dalları", COMMIT sonrası kabul hatası;
@@ -69,13 +75,46 @@ export async function commitDigest(
  * Gölgede commit satırı olmamalıdır (yedek reset öncesidir). Yeniden girişte aynı audit varsa
  * yeniden yazılmaz.
  */
+/*
+  İzinli dönüşümün kendisi kanıtlanır (Astra, PR #242 P1): aynı transaction'da önce/sonra
+  niyetlerin `invalidatedAt` dışındaki bütün alanları ve audit tablosunun yeni restore satırı
+  hariç tamamı birebir aynı olmalı; yalnız önceden açık olan niyetler değişmeli.
+*/
+async function intentsDigest(tx: Tx): Promise<string> {
+  const [row] = await tx.$queryRaw<{ digest: string }[]>`
+    SELECT encode(sha256(convert_to(coalesce(string_agg(
+      (to_jsonb(i) - 'invalidatedAt')::text, '|' ORDER BY i."operationId"), ''), 'UTF8')), 'hex')
+      AS digest FROM great_reset_intents i`;
+  return row!.digest;
+}
+
+async function auditDigest(tx: Tx, excludedId: string | null): Promise<string> {
+  const [row] = await tx.$queryRaw<{ digest: string }[]>`
+    SELECT encode(sha256(convert_to(coalesce(string_agg(to_jsonb(a)::text, '|' ORDER BY a.id), ''),
+      'UTF8')), 'hex') AS digest
+    FROM audit_logs a WHERE ${excludedId}::uuid IS NULL OR a.id <> ${excludedId}::uuid`;
+  return row!.digest;
+}
+
+// İşaretli iki tablonun, işaret transaction'ının sonundaki makbuz biçimli özeti.
+async function markedDigests(tx: Tx): Promise<ShadowMarkedDigests> {
+  const entries = [];
+  for (const table of shadowMarkedTables) entries.push([table, await tableDigest(tx, table)]);
+  return Object.fromEntries(entries) as ShadowMarkedDigests;
+}
+
 export async function markShadow(
   database: PrismaClient,
   identity: OperationIdentity,
   operationId: string,
   dumpSha256: string,
   canonicalCommitSha256: string,
-): Promise<{ invalidatedIntents: number; auditWritten: boolean }> {
+): Promise<{
+  invalidatedIntents: number;
+  auditWritten: boolean;
+  deltaVerified: true;
+  marked: ShadowMarkedDigests;
+}> {
   if (!uuid.test(operationId) || !sha64.test(dumpSha256) || !sha64.test(canonicalCommitSha256))
     fail("INVALID_ARGUMENTS");
   return database.$transaction(
@@ -86,9 +125,34 @@ export async function markShadow(
         SELECT (SELECT count(*)::int FROM great_reset_commits) AS commits,
           (SELECT count(*)::int FROM great_reset_exposure_events) AS exposures`;
       if (state?.commits !== 0 || state.exposures !== 0) fail("RESTORE_SHADOW_NOT_PRE_RESET");
+      const intentsBefore = await intentsDigest(tx);
+      const openBefore = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "operationId"::text AS id FROM great_reset_intents
+        WHERE "consumedAt" IS NULL AND "invalidatedAt" IS NULL ORDER BY 1`;
+      const openIds = openBefore.map((row) => row.id);
+      const othersDigest = async () => {
+        const [row] = await tx.$queryRaw<{ digest: string }[]>`
+          SELECT encode(sha256(convert_to(coalesce(string_agg(to_jsonb(i)::text, '|'
+            ORDER BY i."operationId"), ''), 'UTF8')), 'hex') AS digest
+          FROM great_reset_intents i WHERE NOT (i."operationId"::text = ANY (${openIds}))`;
+        return row!.digest;
+      };
+      const othersBefore = await othersDigest();
       const invalidated = await tx.$executeRaw`
         UPDATE great_reset_intents SET "invalidatedAt" = CURRENT_TIMESTAMP
         WHERE "consumedAt" IS NULL AND "invalidatedAt" IS NULL`;
+      const [stillOpen] = await tx.$queryRaw<{ count: number }[]>`
+        SELECT count(*)::int AS count FROM great_reset_intents
+        WHERE "operationId"::text = ANY (${openIds}) AND "invalidatedAt" IS NULL`;
+      // Yalnız önceden açık niyetler geçersizleşir; diğer satırlar (invalidatedAt dahil) ve bütün
+      // satırların diğer alanları birebir kalır.
+      if (
+        (await intentsDigest(tx)) !== intentsBefore ||
+        (await othersDigest()) !== othersBefore ||
+        invalidated !== openIds.length ||
+        stillOpen?.count !== 0
+      )
+        fail("RESTORE_SHADOW_DELTA_INVALID");
       const existing = await tx.auditLog.findMany({
         where: { action: GREAT_RESET_PRODUCTION_RESTORE_ACTION },
         select: { entityId: true, metadata: true },
@@ -103,9 +167,15 @@ export async function markShadow(
           metadata?.canonicalCommitSha256 !== canonicalCommitSha256
         )
           fail("RESTORE_AUDIT_CONFLICT");
-        return { invalidatedIntents: invalidated, auditWritten: false };
+        return {
+          invalidatedIntents: invalidated,
+          auditWritten: false,
+          deltaVerified: true as const,
+          marked: await markedDigests(tx),
+        };
       }
-      await tx.auditLog.create({
+      const auditBefore = await auditDigest(tx, null);
+      const created = await tx.auditLog.create({
         data: {
           action: GREAT_RESET_PRODUCTION_RESTORE_ACTION,
           entityType: "PRODUCTION_DATABASE",
@@ -113,8 +183,15 @@ export async function markShadow(
           requestId: operationId,
           metadata: { ...expected, scope: "PRODUCTION" },
         },
+        select: { id: true },
       });
-      return { invalidatedIntents: invalidated, auditWritten: true };
+      if ((await auditDigest(tx, created.id)) !== auditBefore) fail("RESTORE_SHADOW_DELTA_INVALID");
+      return {
+        invalidatedIntents: invalidated,
+        auditWritten: true,
+        deltaVerified: true as const,
+        marked: await markedDigests(tx),
+      };
     },
     { timeout: 60_000, maxWait: 5_000 },
   );
@@ -130,8 +207,10 @@ export async function verifyRestored(
   identity: OperationIdentity,
   operationId: string,
   dumpSha256: string,
+  canonicalCommitSha256: string,
 ): Promise<string[]> {
-  if (!uuid.test(operationId) || !sha64.test(dumpSha256)) fail("INVALID_ARGUMENTS");
+  if (!uuid.test(operationId) || !sha64.test(dumpSha256) || !sha64.test(canonicalCommitSha256))
+    fail("INVALID_ARGUMENTS");
   return database.$transaction(
     async (tx) => {
       await tx.$executeRaw`SET TRANSACTION READ ONLY`;
@@ -173,11 +252,78 @@ export async function verifyRestored(
       if (
         audits.length !== 1 ||
         audits[0]!.entityId !== operationId ||
-        metadata?.dumpSha256 !== dumpSha256
+        metadata?.dumpSha256 !== dumpSha256 ||
+        metadata?.canonicalCommitSha256 !== canonicalCommitSha256
       )
         result.push("RESTORE_AUDIT_MISMATCH");
       return result;
     },
     { isolationLevel: "RepeatableRead", timeout: 60_000, maxWait: 5_000 },
   );
+}
+
+/*
+  Kapı sonrası doğrulama (Astra, PR #242 P1; runbook "COMMIT sonrası kabul hatası"): canonical ve
+  gölgeye kapılar KAPANMADAN birer sabit bağlantı açılır ve süreç kimlikleri bildirilir. Yönetici
+  kapıları kapatıp iki DB'de yalnız bu iki backend'in kaldığını doğruladıktan sonra sinyal verir;
+  doğrulama AYNI bağlantılarda, yeni transaction'larda yapılır: canonical'da uygunluk (reset sonrası
+  makbuzla tam eşitlik dahil) ve commit özeti, gölgede işaret doğrulaması ve işaretli makbuzla tam
+  eşitlik. Sonunda süreç kimliklerinin değişmediği denetlenir (yeniden bağlanma yok).
+*/
+export async function pinnedRollbackVerify(options: {
+  canonical: PrismaClient;
+  shadow: PrismaClient;
+  canonicalIdentity: OperationIdentity;
+  shadowIdentity: OperationIdentity;
+  operationId: string;
+  dumpSha256: string;
+  commitSha256: string;
+  postResetReceipt: GreatResetReceipt;
+  shadowReceipt: GreatResetReceipt;
+  pinned: (pids: { canonical: number; shadow: number }) => void;
+  waitForGates: () => Promise<void>;
+}): Promise<string[]> {
+  const { computeReceipt, compareReceipts } = await import("./great-reset-receipt");
+  const { restoreEligibility } = await import("./great-reset-operation");
+  const pid = async (client: PrismaClient) => {
+    const [row] = await client.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+    return row!.pid;
+  };
+  const before = { canonical: await pid(options.canonical), shadow: await pid(options.shadow) };
+  options.pinned(before);
+  await options.waitForGates();
+  const blockers: string[] = [];
+  for (const item of await restoreEligibility(
+    options.canonical,
+    options.canonicalIdentity,
+    options.operationId,
+    options.postResetReceipt,
+  ))
+    blockers.push(`canonical:${item}`);
+  if (
+    (await commitDigest(options.canonical, options.canonicalIdentity, options.operationId)) !==
+    options.commitSha256
+  )
+    blockers.push("canonical:COMMIT_DIGEST_CHANGED");
+  for (const item of await verifyRestored(
+    options.shadow,
+    options.shadowIdentity,
+    options.operationId,
+    options.dumpSha256,
+    options.commitSha256,
+  ))
+    blockers.push(`shadow:${item}`);
+  if (
+    !compareReceipts(
+      options.shadowReceipt,
+      await computeReceipt(options.shadow, options.shadowIdentity),
+    ).equal
+  )
+    blockers.push("shadow:RECEIPT_CHANGED");
+  if (
+    (await pid(options.canonical)) !== before.canonical ||
+    (await pid(options.shadow)) !== before.shadow
+  )
+    blockers.push("PIN_LOST");
+  return blockers;
 }

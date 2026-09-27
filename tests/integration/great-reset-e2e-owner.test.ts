@@ -20,6 +20,7 @@ import {
 import {
   commitDigest,
   markShadow,
+  pinnedRollbackVerify,
   verifyRestored,
 } from "../../src/modules/maintenance/repository/great-reset-restore";
 
@@ -492,27 +493,134 @@ describe("great reset yürütücüsü, hedef DB sahibi rolle ve bağlantı kapı
       ).rejects.toThrow("GREAT_RESET_RESTORE_SHADOW_NOT_PRE_RESET");
       await canonical.$disconnect();
 
+      canonical = client(name);
+      const postReset = await computeReceipt(canonical, identity(name));
+      await canonical.$disconnect();
+
       const shadowClient = client(shadow);
       const dumpSha = "b".repeat(64);
-      expect(await verifyRestored(shadowClient, identity(shadow), operationId, dumpSha)).toEqual(
-        expect.arrayContaining(["OPEN_INTENT_PRESENT", "RESTORE_AUDIT_MISMATCH"]),
+      expect(
+        await verifyRestored(shadowClient, identity(shadow), operationId, dumpSha, commitSha),
+      ).toEqual(expect.arrayContaining(["OPEN_INTENT_PRESENT", "RESTORE_AUDIT_MISMATCH"]));
+      const marking = await markShadow(
+        shadowClient,
+        identity(shadow),
+        operationId,
+        dumpSha,
+        commitSha,
       );
-      expect(
-        await markShadow(shadowClient, identity(shadow), operationId, dumpSha, commitSha),
-      ).toEqual({ invalidatedIntents: 1, auditWritten: true });
+      expect(marking).toMatchObject({
+        invalidatedIntents: 1,
+        auditWritten: true,
+        deltaVerified: true,
+      });
       // İdempotent; farklı dump SHA'sıyla çelişki durur.
-      expect(
-        await markShadow(shadowClient, identity(shadow), operationId, dumpSha, commitSha),
-      ).toEqual({ invalidatedIntents: 0, auditWritten: false });
+      const again = await markShadow(
+        shadowClient,
+        identity(shadow),
+        operationId,
+        dumpSha,
+        commitSha,
+      );
+      expect(again).toMatchObject({
+        invalidatedIntents: 0,
+        auditWritten: false,
+        deltaVerified: true,
+      });
+      expect(again.marked).toEqual(marking.marked);
       await expect(
         markShadow(shadowClient, identity(shadow), operationId, "c".repeat(64), commitSha),
       ).rejects.toThrow("GREAT_RESET_RESTORE_AUDIT_CONFLICT");
-      expect(await verifyRestored(shadowClient, identity(shadow), operationId, dumpSha)).toEqual(
-        [],
-      );
+      expect(
+        await verifyRestored(shadowClient, identity(shadow), operationId, dumpSha, commitSha),
+      ).toEqual([]);
+      // Audit'teki canonical commit özeti de bağlayıcı.
+      expect(
+        await verifyRestored(shadowClient, identity(shadow), operationId, dumpSha, "f".repeat(64)),
+      ).toContain("RESTORE_AUDIT_MISMATCH");
       const shadowReceipt = await computeReceipt(shadowClient, identity(shadow));
-      expect(compareShadowWithPreReset(preReset, shadowReceipt).equal).toBe(true);
+      expect(compareShadowWithPreReset(preReset, shadowReceipt, marking.marked).equal).toBe(true);
+      // İşaretten sonra muaf tablolara yazılan her şey yakalanır: tarihsel audit kaybı ya da niyet
+      // alanı değişikliği (Astra, PR #242 P1 karşı örnekleri).
+      const tamperedIntent = structuredClone(shadowReceipt);
+      tamperedIntent.tables.great_reset_intents = { rows: 1, sha256: "0".repeat(64) };
+      expect(compareShadowWithPreReset(preReset, tamperedIntent, marking.marked)).toMatchObject({
+        equal: false,
+        tables: ["great_reset_intents"],
+      });
+      const tamperedAudit = structuredClone(shadowReceipt);
+      tamperedAudit.tables.audit_logs = {
+        rows: marking.marked.audit_logs.rows + 1,
+        sha256: marking.marked.audit_logs.sha256,
+      };
+      expect(compareShadowWithPreReset(preReset, tamperedAudit, marking.marked).equal).toBe(false);
       await shadowClient.$disconnect();
+
+      // Kapı sonrası doğrulama: sabit bağlantılar, gerçek kapılar, aynı bağlantıda yeni transaction.
+      const pinnedClient = (database: string) =>
+        new PrismaClient({
+          datasourceUrl: `${urlFor(ownerUrl, database)}?connection_limit=1&max_idle_connection_lifetime=7200`,
+          log: [],
+        });
+      const setGates = async (allow: boolean) => {
+        for (const database of [name, shadow])
+          await admin.$executeRawUnsafe(
+            `ALTER DATABASE "${database}" WITH ALLOW_CONNECTIONS ${allow ? "true" : "false"}`,
+          );
+      };
+      const runPinned = async (beforeGates?: () => Promise<void>) => {
+        const pinnedCanonical = pinnedClient(name);
+        const pinnedShadow = pinnedClient(shadow);
+        let pids = { canonical: 0, shadow: 0 };
+        try {
+          return await pinnedRollbackVerify({
+            canonical: pinnedCanonical,
+            shadow: pinnedShadow,
+            canonicalIdentity: identity(name),
+            shadowIdentity: identity(shadow),
+            operationId,
+            dumpSha256: dumpSha,
+            commitSha256: commitSha,
+            postResetReceipt: postReset,
+            shadowReceipt,
+            pinned: (value) => {
+              pids = value;
+            },
+            waitForGates: async () => {
+              if (beforeGates) await beforeGates();
+              await setGates(false);
+              const backends = await admin.$queryRawUnsafe<{ pid: number }[]>(
+                `SELECT pid FROM pg_stat_activity WHERE datname IN ('${name}', '${shadow}') ORDER BY pid`,
+              );
+              expect(backends.map((row) => row.pid)).toEqual(
+                [pids.canonical, pids.shadow].sort((a, b) => a - b),
+              );
+            },
+          });
+        } finally {
+          await Promise.all([pinnedCanonical.$disconnect(), pinnedShadow.$disconnect()]);
+          await setGates(true);
+        }
+      };
+      // Kapılardan hemen önce kısa bir bağlantı canonical'a yazıp çıkar: yakalanır.
+      const sneaky = async () => {
+        const writer = client(name);
+        await writer.rateLimitBucket.create({
+          data: {
+            keyHash: "rollback-race",
+            action: "search",
+            windowStart: new Date(),
+            count: 1,
+            expiresAt: new Date(Date.now() + 3_600_000),
+          },
+        });
+        await writer.$disconnect();
+      };
+      expect(await runPinned(sneaky)).toContain("canonical:RECEIPT_CHANGED");
+      const cleaner = client(name);
+      await cleaner.rateLimitBucket.deleteMany({ where: { keyHash: "rollback-race" } });
+      await cleaner.$disconnect();
+      expect(await runPinned()).toEqual([]);
 
       // Yönetici konsolunda tek transaction: canonical eski ada, gölge canonical ada.
       await admin.$transaction([
@@ -522,7 +630,9 @@ describe("great reset yürütücüsü, hedef DB sahibi rolle ve bağlantı kapı
       created.push(oldName);
       const renamed = client(name);
       try {
-        expect(await verifyRestored(renamed, identity(name), operationId, dumpSha)).toEqual([]);
+        expect(
+          await verifyRestored(renamed, identity(name), operationId, dumpSha, commitSha),
+        ).toEqual([]);
       } finally {
         await renamed.$disconnect();
       }

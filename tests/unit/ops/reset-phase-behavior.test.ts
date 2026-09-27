@@ -12,6 +12,7 @@ const migrationPhase = path.join(process.cwd(), "scripts/production-migration-ph
 const resetPhase = path.join(process.cwd(), "scripts/production-reset-phase.sh");
 const resetRestore = path.join(process.cwd(), "scripts/production-reset-restore.sh");
 const operationId = "11111111-2222-4333-8444-555555555555";
+const E_ = "e".repeat(64);
 const directories: string[] = [];
 
 afterEach(() => {
@@ -411,12 +412,19 @@ false
 `);
     expect(result.stdout).toContain("UNITS_RESTORED");
   });
-  it("geri dönüş: COMMITTED_MAINTENANCE onayı yoksa ya da TRAFFIC_OPEN onaylıysa başlamaz", () => {
+  it("geri dönüş: dış kayıt bağı yoksa, COMMITTED_MAINTENANCE onayı yoksa ya da TRAFFIC_OPEN onaylıysa başlamaz", () => {
+    const unbound = harness(`
+: >"$migration_marker/reset-ack-COMMITTED_MAINTENANCE"
+reset_rollback
+`);
+    expect(unbound.stderr).toContain("code=RESET_ROLLBACK_LEDGER_BINDING_MISSING");
     const missing = harness(`
+reset_rollback_expected_dump=${E_}; reset_rollback_expected_receipt=${E_}
 reset_rollback
 `);
     expect(missing.stderr).toContain("code=RESET_ROLLBACK_NOT_COMMITTED_MAINTENANCE");
     const opened = harness(`
+reset_rollback_expected_dump=${E_}; reset_rollback_expected_receipt=${E_}
 : >"$migration_marker/reset-ack-COMMITTED_MAINTENANCE"
 : >"$migration_marker/reset-ack-TRAFFIC_OPEN"
 reset_rollback
@@ -437,30 +445,99 @@ printf 'yedek' >"$state_dir/x.dump"
 sha=$(sha256sum "$state_dir/x.dump" | cut -d ' ' -f 1)
 printf '%s\\n' "$state_dir/x.dump" >"$migration_marker/reset-dump-path"
 printf '%s\\n' "$sha" >"$migration_marker/reset-dump-sha256"
-printf '{}' >"$state_dir/pre.json"; printf '{"sha256":"${"e".repeat(64)}"}' >"$state_dir/post.json"
+printf '{}' >"$state_dir/pre.json"; printf '{"sha256":"EEE"}' >"$state_dir/post.json"
 printf '%s\\n' "$state_dir/pre.json" >"$migration_marker/reset-pre-receipt-path"
 printf '%s\\n' "$state_dir/post.json" >"$migration_marker/reset-post-receipt-path"
-printf 'COMMITTED_MAINTENANCE|%s|${"e".repeat(64)}\\n' "$sha" >"$migration_marker/reset-request-COMMITTED_MAINTENANCE"
+printf 'COMMITTED_MAINTENANCE|%s|EEE\\n' "$sha" >"$migration_marker/reset-request-COMMITTED_MAINTENANCE"
+reset_rollback_expected_dump=$sha
+reset_rollback_expected_receipt=EEE
 assert_disk_budget() { :; }
+deadline_prefix() { deadline=(); }
 db_psql() { printf 'C.UTF-8\\n'; }
 `;
   }
 
-  it("geri dönüş: yer değiştirme önceki girişte olduysa reset/restore tekrarlanmaz, yalnız doğrulanır", () => {
-    const result = harness(`
+  // Tam akış için sahte bağımlılıklar: gölge yok (ilk giriş), CLI yanıtları, admin SQL'i stdin'den
+  // okunup günlüğe yazılır; kapı ve backend yanıtları testte seçilir.
+  function rollbackFlow(options: { backends: string; verified: boolean; closeFails?: boolean }) {
+    return `
 ${rollbackFixture()}
-printf 'agent_sozluk_restore_20260928_170000_012345\\n' >"$migration_marker/reset-rollback-shadow"
-printf 'agent_sozluk_reset_20260928_170000_11111111\\n' >"$migration_marker/reset-rollback-old"
-reset_database_exists() { test "$1" != agent_sozluk_restore_20260928_170000_012345; }
-admin_psql() { cat >/dev/null 2>&1; case "$*" in *"SELECT datallowconn FROM pg_database WHERE datname = 'agent_sozluk'"*) echo t ;; *) echo f ;; esac; }
-reset_cli() { printf 'cli %s\\n' "$*" >>"$log"; }
-reset_rollback && echo PHASE_$(current_phase)
-`);
-    expect(result.stdout).toContain("PHASE_reset-rolled-back");
+reset_database_exists() { test -f "$state_dir/renamed"; }
+reset_cli() {
+  printf 'cli %s\\n' "$*" >>"$log"
+  case "$2" in
+    restore-eligibility) printf '{"eligible":true}' ;;
+    commit-digest) printf '{"commitSha256":"CCC"}' ;;
+    shadow-mark) printf '{"deltaVerified":true}' ;;
+    *) printf '{}' ;;
+  esac
+}
+reset_cli_signalled() {
+  printf 'signalled %s\\n' "$*" >>"$log"
+  printf 'PINNED canonical=41 shadow=42\\n'
+  IFS= read -r signal
+  printf 'signal %s\\n' "$signal" >>"$log"
+  printf '{"verified":${options.verified},"blockers":[]}\\n'
+}
+admin_psql() {
+  local sql; sql="$(cat)"
+  printf 'admin %s :: %s\\n' "$*" "$sql" >>"$log"
+  case "$sql" in
+    *"ALLOW_CONNECTIONS false"*) ${options.closeFails === true ? "return 1" : ":"} ;;
+    *"string_agg"*) printf '%s\\n' '${options.backends}' ;;
+    *"pg_collation"*) printf 'collations\\n' ;;
+    *"ALLOW_CONNECTIONS true"*) : ;;
+    *"SELECT datallowconn"*) case "$*" in *name=agent_sozluk_reset_*) echo f ;; *) echo t ;; esac ;;
+    *"RENAME"*) echo RENAMED >>"$log"; : >"$state_dir/renamed" ;;
+    *) echo 0 ;;
+  esac
+}
+`
+      .replaceAll("EEE", E_)
+      .replaceAll("CCC", "c".repeat(64));
+  }
+
+  it("geri dönüş: dış kayıttaki SHA uzak dosyadan farklıysa hiçbir mutasyon başlamaz", () => {
+    const result = harness(
+      `
+${rollbackFlow({ backends: "41,42|0|0", verified: true })}
+reset_rollback_expected_dump=${"f".repeat(64)}
+reset_rollback
+`.replaceAll("EEE", E_),
+    );
+    expect(result.stderr).toContain("code=RESET_ROLLBACK_LEDGER_MISMATCH");
     const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
     expect(calls).not.toContain("createdb");
-    expect(calls).not.toContain("pg_restore");
-    expect(calls).toContain("restore-verify");
+    expect(calls).not.toContain("cli ");
+  });
+
+  it("geri dönüş: sabit bağlantılar, kapılar, yalnız sabit backend'ler ve kapı sonrası doğrulama; sonra yer değiştirme", () => {
+    const result = harness(
+      `
+${rollbackFlow({ backends: "41,42|0|0", verified: true })}
+reset_rollback && echo PHASE_$(current_phase)
+`.replaceAll("EEE", E_),
+    );
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("PHASE_reset-rolled-back");
+    const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
+    const order = [
+      "pg_restore",
+      "shadow-mark",
+      "signalled",
+      "ALLOW_CONNECTIONS false",
+      "signal GATES_CLOSED",
+      "RENAMED",
+      "ALLOW_CONNECTIONS true",
+    ];
+    let last = -1;
+    for (const marker of order) {
+      const index = calls.indexOf(marker, last + 1);
+      expect(index, marker).toBeGreaterThan(last);
+      last = index;
+    }
+    expect(calls).toContain(`restore-verify ${operationId}`);
+    expect(calls).toContain("c".repeat(64));
     expect(
       readFileSync(
         path.join(result.root, "runtime/.migration-operation/reset-request-ROLLED_BACK"),
@@ -469,21 +546,94 @@ reset_rollback && echo PHASE_$(current_phase)
     ).toContain(`|${"e".repeat(64)}`);
   });
 
-  it("geri dönüş: kapı ya da ad değişimi düşerse canonical kapısı yeniden açılır ve durulur", () => {
-    const result = harness(`
-${rollbackFixture()}
-reset_database_exists() { return 1; }
-reset_json_field() { case "$1" in eligible) echo true ;; commitSha256) echo ${"c".repeat(64)} ;; esac; }
-reset_cli() { printf 'cli %s\\n' "$*" >>"$log"; printf '{}'; }
-reset_rollback_close_gates() { echo GATES_FAILED >>"$log"; return 1; }
-reset_rollback_reopen_canonical() { echo REOPENED >>"$log"; }
-admin_psql() { cat >/dev/null 2>&1; echo 1; }
+  it("geri dönüş: kapı kapanmaz, beklenmeyen backend kalır ya da kapı sonrası doğrulama düşerse canonical açılır, yer değişmez", () => {
+    const cases: Array<[Parameters<typeof rollbackFlow>[0], string]> = [
+      [{ backends: "41,42|0|0", verified: true, closeFails: true }, "RESET_ROLLBACK_GATE_FAILED"],
+      [{ backends: "41,42,77|0|0", verified: true }, "RESET_ROLLBACK_UNEXPECTED_BACKEND"],
+      [{ backends: "41,42|1|0", verified: true }, "RESET_ROLLBACK_UNEXPECTED_BACKEND"],
+      [{ backends: "41,42|0|0", verified: false }, "RESET_ROLLBACK_GATED_VERIFY_FAILED"],
+    ];
+    for (const [options, code] of cases) {
+      const result = harness(
+        `
+${rollbackFlow(options)}
 reset_rollback
+`.replaceAll("EEE", E_),
+      );
+      expect(result.stderr).toContain(`code=${code}`);
+      const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
+      expect(calls).toContain("ALLOW_CONNECTIONS true");
+      expect(calls).not.toContain("RENAMED");
+    }
+  });
+
+  it("geri dönüş: kendi kalıcı bütçesi var; bakım bütçesi dolmuş olsa da başlar, kendi süresi dolunca durur", () => {
+    const result = harness(
+      `
+${rollbackFlow({ backends: "41,42|0|0", verified: true })}
+frozen_deadline=$(( $(date +%s) - 10 ))
+reset_rollback_budget
+first=$frozen_deadline
+test "$first" -gt "$(date +%s)" && echo FRESH
+reset_rollback_budget
+test "$first" = "$frozen_deadline" && echo SAME
+printf '%s\\n' "$(( $(date +%s) - 1 ))" >"$migration_marker/reset-rollback-deadline"
+reset_rollback
+`.replaceAll("EEE", E_),
+    );
+    expect(result.stdout).toContain("FRESH");
+    expect(result.stdout).toContain("SAME");
+    expect(result.status).toBe(98);
+    expect(result.stderr).toContain("code=RESET_ROLLBACK_BUDGET_EXHAUSTED");
+  });
+
+  it("geri dönüş: kapılar kapalı kalmışsa yeniden giriş yalnız kontrol DB'sinden açar", () => {
+    const result = harness(`
+printf 'agent_sozluk_restore_20260928_170000_012345\\n' >"$migration_marker/reset-rollback-shadow"
+printf 'agent_sozluk_reset_20260928_170000_11111111\\n' >"$migration_marker/reset-rollback-old"
+reset_database_exists() { return 0; }
+opened=0
+admin_psql() {
+  local sql; sql="$(cat)"
+  printf 'admin %s :: %s\\n' "$*" "$sql" >>"$log"
+  case "$sql" in
+    *"ALLOW_CONNECTIONS true"*) opened=1 ;;
+    *"SELECT datallowconn"*) if ((opened == 1)); then echo t; else echo f; fi ;;
+  esac
+}
+reset_rollback_recover_gates
 `);
-    expect(result.stderr).toContain("code=RESET_ROLLBACK_GATE_FAILED");
+    expect(result.stderr).toContain("RELEASE_RESET_ROLLBACK_GATE_RECOVERED");
     const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
-    expect(calls).toContain("GATES_FAILED");
-    expect(calls).toContain("REOPENED");
+    for (const line of calls.trim().split("\n")) expect(line).toMatch(/^admin postgres /u);
+    expect(calls).toContain("ALTER DATABASE agent_sozluk WITH ALLOW_CONNECTIONS true");
+  });
+
+  it("geri dönüş: yer değiştirme önceki girişte olduysa reset/restore tekrarlanmaz, yalnız doğrulanır", () => {
+    const result = harness(
+      `
+${rollbackFixture()}
+printf 'agent_sozluk_restore_20260928_170000_012345\\n' >"$migration_marker/reset-rollback-shadow"
+printf 'agent_sozluk_reset_20260928_170000_11111111\\n' >"$migration_marker/reset-rollback-old"
+printf '%s\\n' "${"c".repeat(64)}" >"$migration_marker/reset-rollback-commit"
+reset_database_exists() { test "$1" != agent_sozluk_restore_20260928_170000_012345; }
+admin_psql() { cat >/dev/null 2>&1; case "$*" in *name=agent_sozluk_reset_*) echo f ;; *) echo t ;; esac; }
+reset_cli() { printf 'cli %s\\n' "$*" >>"$log"; }
+reset_rollback && echo PHASE_$(current_phase)
+`.replaceAll("EEE", E_),
+    );
+    expect(result.stdout).toContain("PHASE_reset-rolled-back");
+    const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
+    expect(calls).not.toContain("createdb");
+    expect(calls).not.toContain("pg_restore");
+    expect(calls).toContain(`restore-verify ${operationId} `);
+    expect(calls).toContain("c".repeat(64));
+    expect(
+      readFileSync(
+        path.join(result.root, "runtime/.migration-operation/reset-request-ROLLED_BACK"),
+        "utf8",
+      ),
+    ).toContain(`|${"e".repeat(64)}`);
   });
 
   it("reset-rolled-back aşaması dış kayıtta ROLLED_BACK onayı olmadan açılmaz", () => {
@@ -507,8 +657,13 @@ reset_phase
         { encoding: "utf8" },
       );
     const list = "20260926090000_public_id_bigint_namespace,20260926120000_great_reset_records";
-    expect(run(`reset:${operationId}:${list}`, "0123456789abcdef", "rollback").status).toBe(91);
-    expect(run(`apply:${list}`, "0123456789abcdef", "rollback").stderr).toContain(
+    const token = `rollback:${"d".repeat(64)}:${"e".repeat(64)}`;
+    expect(run(`reset:${operationId}:${list}`, "0123456789abcdef", token).status).toBe(91);
+    // Dış kayıt SHA'ları olmadan geri dönüş isteği kabul edilmez (Astra, PR #242 P1).
+    expect(run(`reset:${operationId}:${list}`, "0123456789abcdef", "rollback").stderr).toContain(
+      "code=INVALID_RESET_ACK",
+    );
+    expect(run(`apply:${list}`, "0123456789abcdef", token).stderr).toContain(
       "code=INVALID_RESET_ACK",
     );
     expect(run(`reset:${operationId}:${list}`, "0123456789abcdef", "ack:ROLLED_BACK").status).toBe(

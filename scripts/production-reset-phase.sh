@@ -34,6 +34,13 @@ reset_cli() {
   (cd "$reset_release" && "${deadline[@]}" ./node_modules/.bin/tsx "$@" </dev/null)
 }
 
+# Aynı araç, stdin'i çağırana bağlı (geri dönüşte kapı sinyali için).
+reset_cli_signalled() {
+  local deadline
+  deadline_prefix
+  (cd "$reset_release" && "${deadline[@]}" ./node_modules/.bin/tsx "$@")
+}
+
 reset_json_field() {
   "$host_node" -e '
     const value = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
