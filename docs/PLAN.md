@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 25 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Altı kaynağın
+**Son güncelleme: 27 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Altı kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -35,9 +35,10 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ---
 
-## Şu an neredeyiz (25 Eylül 2026)
+## Şu an neredeyiz (27 Eylül 2026)
 
-**Üretim:** `b53408e` (Docker taban imajı digest kilidi). 24–25 Eylül'de canlıya çıkanlar: SEO P2
+**Üretim:** `9627cb7` (27 Eylül; kullanıcıya görünür değişiklik yok, yalnız yerel reset aracı ve
+belgeler). Önceki: `b2eac11` üslup turu 2 (v43, 25 Eylül). 24–25 Eylül'de canlıya çıkanlar: SEO P2
 (`18bb0d9`), entry sayfası tek okuma (`bb49b28`), taban imajı kilidi (`b53408e`); CI eylemleri
 SHA kilidi (#200, dağıtım gerekmez); gecelik sunucu dışı yedek (B9, kuruldu).
 
@@ -59,6 +60,13 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    namespace'i ve 410 uygulaması, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
    outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
    ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
+   **27 Eylül:** reset kodu yığınlı PR #227–#234'te (hepsi Astra KOD GO, main'e birleşmedi).
+   Gökhan onayıyla üretim salt okunur önkontrolü ve zamanlayıcı envanteri yapıldı; ortam
+   tasarımla uyumlu. [Bakım planı taslağı](RESET_BAKIM_PLANI_TASLAGI_2026-09-27.md) altı eksik
+   operasyon parçası buldu (Caddy bakım yanıtı, ekleyici olmayan migration için bakım dağıtım
+   yolu, imzalı reset nesli kaydı, salt okunur iç kabul modu, süper kullanıcı olmayan rolle
+   test, restore için `postgres` konsol yolu). Bunlar kapanmadan reset GO yok; sıradaki iş bu
+   eksikler, önerilen sıra belgede.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
    cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
    serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma
