@@ -59,6 +59,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Hiçbir mutasyondan önce: host ve yerel prova kümesinin exact kimliği (Astra, PR #240 P1).
+expected_cluster="$(cd "$root" && "$tsx" scripts/great-reset-operation.ts local-identity)" ||
+  fail LOCAL_IDENTITY_UNAVAILABLE
+expected_cluster="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).clusterId)' "$expected_cluster")"
+[[ "$expected_cluster" =~ ^[0-9]+$ ]] || fail LOCAL_IDENTITY_UNAVAILABLE
+test "$(psql_local -d postgres -At -c 'SELECT system_identifier FROM pg_control_system()')" = \
+  "$expected_cluster" || fail LOCAL_CLUSTER_MISMATCH
+
 # Üretimdeki uygulama rolü yerelde aynı bayraklarla bulunmalı (makbuz rol bayraklarını katı
 # karşılaştırır): LOGIN, süper kullanıcı/CREATEDB/CREATEROLE/replikasyon/RLS aşımı yok, parola yok.
 psql_local -d postgres -q -c \

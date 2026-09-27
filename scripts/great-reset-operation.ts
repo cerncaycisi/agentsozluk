@@ -128,6 +128,12 @@ async function main(argv: readonly string[]): Promise<string> {
       unexpected: result.unexpected.map((item) => `${item.section}:${item.key}`),
     });
   }
+  if (command === "local-identity" && rest.length === 0) {
+    // Yalnız operatör sunucusundaki yerel prova kimliği (host denetimli); üretime bağlanmaz.
+    const { localResetIdentityFor } = await import("./great-reset-local-guard");
+    const identity = localResetIdentityFor(hostname());
+    return JSON.stringify({ hostname: identity.hostname, clusterId: identity.clusterId });
+  }
   if (command === "receipt-compare-restored" && rest.length === 2) {
     const { compareLiveWithRestored } =
       await import("../src/modules/maintenance/repository/great-reset-receipt");

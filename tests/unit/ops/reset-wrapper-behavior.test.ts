@@ -162,4 +162,90 @@ echo "ACK=$reset_next_ack"
     expect(traffic.calls()).toContain(`ledger TRAFFIC_OPEN ${dumpSha} ${"c".repeat(64)}`);
     expect(traffic.stdout).toContain("ACK=ack:TRAFFIC_OPEN");
   });
+  function loopHarness(body: string) {
+    const root = mkdtempSync(path.join(tmpdir(), "reset-loop-"));
+    directories.push(root);
+    const script = `
+set -Eeuo pipefail
+${extract("report_unexpected_error")}
+trap report_unexpected_error ERR
+great_reset_operation=${operationId}
+candidate_sha=${sha}
+reset_work="${root}/work"
+mkdir -p "$reset_work"
+calls="${root}/calls.log"
+: >"$calls"
+ssh_options=()
+expected_ip=127.0.0.1
+${extract("reset_fail")}
+${extract("reset_freeze_operator_units")}
+${extract("great_reset_run")}
+remote_release_command() { printf '%s' "$1"; }
+reset_restore_operator_units() { echo RESTORED >>"$calls"; }
+${body}
+`;
+    const result = spawnSync("bash", ["-c", script], { encoding: "utf8" });
+    return { ...result, calls: () => readFileSync(path.join(root, "calls.log"), "utf8") };
+  }
+
+  it("75 ERR tuzağına düşmez: istek işlenir, ack ile yeniden çağrılır, sonunda timer döner", () => {
+    const result = loopHarness(`
+reset_freeze_operator_units() { echo FROZEN >>"$calls"; }
+reset_handle_await() { echo "HANDLED $1" >>"$calls"; reset_next_ack=ack:PREPARED; }
+ssh() {
+  # Boru hattında alt kabukta koşar: sayaç dosyada.
+  echo x >>"$reset_work/count"; count=$(wc -l <"$reset_work/count"); printf 'ssh %s\\n' "\${@: -1}" >>"$calls"
+  if test "$count" = 1; then printf 'RELEASE_MIGRATION_PHASE frozen\\r\\nRELEASE_RESET_AWAIT_LEDGER state=PREPARED operation=x\\r\\n'; return 75; fi
+  return 0
+}
+great_reset_run
+echo DONE >>"$calls"
+`);
+    expect(result.stderr).toBe("");
+    expect(result.status).toBe(0);
+    const calls = result.calls();
+    expect(calls).toContain("HANDLED RELEASE_RESET_AWAIT_LEDGER state=PREPARED operation=x");
+    expect(calls).toContain("ssh ack:PREPARED");
+    expect(calls).toContain("RESTORED");
+    expect(calls).toContain("DONE");
+  });
+
+  it("uzak dondurma başlamadan biten hatada timer döner; bakım sürüyorsa kapalı kalır", () => {
+    const early = loopHarness(`
+reset_freeze_operator_units() { :; }
+ssh() { printf 'RELEASE_FAIL code=X\\n'; return 1; }
+great_reset_run
+`);
+    expect(early.status).toBe(1);
+    expect(early.calls()).toContain("RESTORED");
+    const during = loopHarness(`
+reset_freeze_operator_units() { :; }
+ssh() { printf 'RELEASE_MIGRATION_PHASE frozen\\nRELEASE_FAIL code=X\\n'; return 1; }
+great_reset_run
+`);
+    expect(during.status).toBe(1);
+    expect(during.calls()).not.toContain("RESTORED");
+    expect(during.stderr).toContain("operator backup timer stays disabled");
+    const rewound = loopHarness(`
+reset_freeze_operator_units() { :; }
+ssh() { printf 'RELEASE_MIGRATION_PHASE frozen\\nRELEASE_MIGRATION_PHASE image-verified (rewound after reopen)\\n'; return 1; }
+great_reset_run
+`);
+    expect(rewound.calls()).toContain("RESTORED");
+  });
+
+  it("devre dışı ama hâlâ aktif timer dondurulmuş sayılmaz", () => {
+    const result = loopHarness(`
+systemctl() {
+  case "$*" in
+    "--user is-enabled agentsozluk-yedek.timer") echo disabled ;;
+    "--user is-active agentsozluk-yedek.timer") echo active ;;
+    "--user is-active agentsozluk-yedek.service") echo inactive ;;
+    *) return 0 ;;
+  esac
+}
+reset_freeze_operator_units
+`);
+    expect(result.stderr).toContain("code=RESET_OPERATOR_TIMER_STILL_ACTIVE");
+  });
 });

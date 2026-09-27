@@ -708,15 +708,21 @@ reset_freeze_operator_units() {
       "$(systemctl --user is-active agentsozluk-yedek.timer 2>/dev/null || true)" >"$states.next"
     mv -Tf "$states.next" "$states"
   fi
-  systemctl --user disable --now agentsozluk-yedek.timer >/dev/null 2>&1 || true
+  systemctl --user disable --now agentsozluk-yedek.timer >/dev/null 2>&1 ||
+    reset_fail RESET_OPERATOR_TIMER_DISABLE_FAILED
   for _ in $(seq 1 120); do
     state="$(systemctl --user is-active agentsozluk-yedek.service 2>/dev/null || true)"
     case "$state" in active | activating | deactivating | reloading) sleep 5 ;; *) break ;; esac
   done
-  test "$(systemctl --user is-enabled agentsozluk-yedek.timer 2>/dev/null || true)" != enabled ||
+  # Sıkı sonuç: timer devre dışı VE inaktif, yedek servisi inaktif (ya da başarısız bitmiş);
+  # belirsiz/başarısız sorgu kabul edilmez (Astra, PR #240 P1).
+  test "$(systemctl --user is-enabled agentsozluk-yedek.timer 2>/dev/null || true)" = disabled ||
     reset_fail RESET_OPERATOR_TIMER_STILL_ENABLED
+  test "$(systemctl --user is-active agentsozluk-yedek.timer 2>/dev/null || true)" = inactive ||
+    reset_fail RESET_OPERATOR_TIMER_STILL_ACTIVE
   case "$(systemctl --user is-active agentsozluk-yedek.service 2>/dev/null || true)" in
-    active | activating | deactivating | reloading) reset_fail RESET_OPERATOR_BACKUP_RUNNING ;;
+    inactive | failed) ;;
+    *) reset_fail RESET_OPERATOR_BACKUP_RUNNING ;;
   esac
 }
 
@@ -803,21 +809,40 @@ reset_handle_await() {
 }
 
 great_reset_run() {
-  local attempt=0 status line log
+  local attempt=0 status tee_status line log remote_frozen=0
+  local -a statuses
   reset_next_ack=''
   reset_freeze_operator_units
   while :; do
     attempt=$((attempt + 1))
     ((attempt <= 12)) || reset_fail RESET_TOO_MANY_ROUNDS
     log="$reset_work/remote-$(date -u +%Y%m%dT%H%M%SZ)-$attempt.log"
+    # Beklenen 75 dosya başındaki ERR tuzağına düşmesin (Astra, PR #240 P1): tuzak ve `-e` yalnız
+    # bu boru hattı için kapanır; SSH ve tee durumlarının ikisi de korunur.
+    trap - ERR
     set +e
     ssh -tt "${ssh_options[@]}" deploy@"$expected_ip" "$(remote_release_command "$reset_next_ack")" |
       tee "$log"
-    status="${PIPESTATUS[0]}"
+    statuses=("${PIPESTATUS[@]}")
     set -e
+    trap report_unexpected_error ERR
+    status="${statuses[0]}"
+    tee_status="${statuses[1]}"
     chmod 0600 "$log"
+    test "$tee_status" = 0 || reset_fail RESET_REMOTE_LOG_FAILED
+    if tr -d '\r' <"$log" | grep -q '^RELEASE_MIGRATION_PHASE frozen'; then remote_frozen=1; fi
     if test "$status" = 0; then break; fi
-    test "$status" = 75 || exit "$status"
+    if test "$status" != 75; then
+      # Uzak dondurma hiç başlamadıysa ya da A5 eski sürümü güvenle geri açıp fazı geri aldıysa
+      # operatör timer'ı eski durumuna döner; aksi hâlde bakım sürüyordur, kapalı kalır.
+      if ((remote_frozen == 0)) ||
+         tr -d '\r' <"$log" | grep -q 'rewound after reopen'; then
+        reset_restore_operator_units || true
+      else
+        printf 'RELEASE_WARN operator backup timer stays disabled while maintenance is unresolved\n' >&2
+      fi
+      exit "$status"
+    fi
     line="$(tr -d '\r' <"$log" | grep '^RELEASE_RESET_AWAIT_LEDGER ' | tail -n 1)"
     test -n "$line" || reset_fail RESET_AWAIT_MISSING
     reset_handle_await "$line"
