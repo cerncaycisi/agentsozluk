@@ -668,11 +668,12 @@ if test "$build_on_host" = 0; then
 fi
 
 # Great reset bayrakları (Astra ile ortak karar, 27 Eylül "A+B"; Gökhan, 27 Eylül: "elle bir şey
-# açamam, halledin"). Operatör araçları adayın kendi release'inden, panelle aynı uygulama
-# servisleri ve denetim kaydıyla; aktör bootstrap_admin (kimlik basılmaz). Boşaltma bayrak kaydı
-# reset'in kendi kaydından AYRIDIR: reset aşamaları bayrakları kapalı tutar; bakım öncesi değerler
-# yalnız sarmalayıcının kesin sonuçlarında bu kayıttan geri gelir.
-reset_drain_flags_file="/opt/agent-sozluk/runtime/.great-reset-drain-flags-$great_reset_operation.json"
+# açamam, halledin"). Ortak uzak gövdeler `great-reset-flags-remote.sh`'te; tek amaçlı geri açılış
+# komutu (`great-reset-restore-flags.sh`) aynı gövdeyi kullanır. Boşaltma bayrak kaydı reset'in
+# kendi kaydından AYRIDIR; bayraklar yalnız uzaktan alınan olumlu kanıtla geri yazılır.
+# shellcheck source=scripts/great-reset-flags-remote.sh
+source "$root/scripts/great-reset-flags-remote.sh"
+reset_flags_pending=0
 reset_operator_ssh() {
   local seconds="$1" skip_if_started="$2" body="$3"
   "$local_timeout" "$seconds" ssh "${ssh_options[@]}" deploy@"$expected_ip" \
@@ -688,49 +689,47 @@ reset_operator_ssh() {
        printf 'RELEASE_RESET_DRAIN_SKIPPED maintenance already started\\n'
        exit 0
      fi
-     release=/opt/agent-sozluk/runtime/releases/$candidate_sha
-     test -f \"\$release/scripts/great-reset-drain.ts\"
-     test \"\$(cat \"\$release/.release-sha\")\" = '$candidate_sha'
-     db_container=\"\$(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml ps -q db)\"
-     db_ip=\"\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \"\$db_container\")\"
-     test -n \"\$db_ip\"
-     admin_id=\"\$(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T db psql -X -U agent_sozluk -d agent_sozluk -At -v ON_ERROR_STOP=1 -c \"SELECT id FROM users WHERE kind = 'HUMAN' AND role = 'ADMIN' AND status = 'ACTIVE' AND username = 'bootstrap_admin'\" </dev/null)\"
-     [[ \"\$admin_id\" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\$ ]] || { printf 'RELEASE_WRAPPER_FAIL code=OPERATOR_ADMIN_UNRESOLVED\\n' >&2; exit 95; }
-     cd \"\$release\"
-     export AGENT_OPERATOR_ADMIN_ID=\"\$admin_id\" AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP=\"\$db_ip\"
+     $(reset_operator_remote_prelude "$candidate_sha")
      $body"
 }
 
-# Bakım öncesi değerlere dönüş: dört bayrak (toplum akışı dahil) boşaltmadan önceki hâline, aynı
-# servislerle. Yalnız kesin sonuçlarda çağrılır: bakım hiç başlamadan boşaltma durduysa ya da uzak
-# akış 0 ile bitip site açıldıysa (reset tamam, vazgeçildi ya da geri dönüldü). Belirsiz bakımda
-# çağrılmaz; site o durumda zaten kapalıdır. Kayıt yoksa (boşaltma hiç koşmadıysa) hiçbir şey
-# yapmaz. İdempotent.
+# Geri açılış: başarıyı yalnız uzaktan gelen RELEASE_RESET_FLAGS_RESTORED satırı kanıtlar
+# (kayıt yoksa atlama başarı sayılmaz ama hata da değildir). $1 = deneme sayısı.
 reset_restore_society_flags() {
-  reset_operator_ssh 240 0 \
-    "if test ! -e '$reset_drain_flags_file'; then printf 'RELEASE_RESET_FLAGS_RESTORE_SKIPPED no drain record\\n'; exit 0; fi
-     AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} açılış' \\
-       timeout --kill-after=10 180 ./node_modules/.bin/tsx scripts/agent-write-freeze.ts restore '$reset_drain_flags_file'" || {
-    printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_RESTORE_FAILED society flow stays paused; rerun the same command\n' >&2
-    return 1
-  }
-  printf 'RELEASE_RESET_FLAGS_RESTORED\n'
+  local attempts="$1" attempt output
+  for ((attempt = 1; attempt <= attempts; attempt++)); do
+    if output="$(reset_operator_ssh 240 0 "$(reset_flags_restore_body "$great_reset_operation")")"; then
+      printf '%s\n' "$output"
+      if grep -Eq '^RELEASE_RESET_FLAGS_(RESTORED$|RESTORE_SKIPPED )' <<<"$output"; then
+        return 0
+      fi
+    fi
+    if ((attempt < attempts)); then sleep 10; fi
+  done
+  printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_RESTORE_FAILED flags stay frozen\n' >&2
+  return 1
 }
 
 # Boşaltma: uzak bakım başlamadan ÖNCE ve genel duraklatmadan ÖNCE (kayıt dört bayrağın gerçek
-# bakım öncesi değerlerini tutsun), worker ve uygulama çalışırken. Dört bayrak ayrı kayıtla
-# kapanır; sıradaki bütün koşular iptal edilir; süren koşuların bitmesi en çok 900 sn beklenir.
-# Geçmezse bakım başlamaz ve bayraklar bakım öncesi değerlerine döner. Geri dönüşte ve başlamış
-# bakımda (yeniden giriş) atlanır: uzak taraf kendi salt okunur denetimini kesintiden önce ve
-# dondurmadan sonra yapar.
+# bakım öncesi değerlerini tutsun), worker ve uygulama çalışırken. Geçmezse bakım başlamaz;
+# bayraklar yalnız uzaktaki olumlu kanıtla (tutucu yok, bakım başlamamış) geri yazılır ve ancak
+# o zaman kilit bırakılır. Kanıt alınamazsa bayraklar kapalı, kilit yerinde kalır (Astra #243
+# 2. tur P1). Geri dönüşte ve başlamış bakımda (yeniden giriş) boşaltma atlanır.
 if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then
   if ! reset_operator_ssh 1080 1 \
     "AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
-       timeout --kill-after=10 120 ./node_modules/.bin/tsx scripts/agent-write-freeze.ts freeze '$reset_drain_flags_file'
+       timeout --kill-after=10 120 ./node_modules/.bin/tsx scripts/agent-write-freeze.ts freeze '$(reset_drain_flags_path "$great_reset_operation")'
      AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
        timeout --kill-after=10 960 ./node_modules/.bin/tsx scripts/great-reset-drain.ts drain"; then
-    printf 'RELEASE_WRAPPER_FAIL code=RESET_DRAIN_FAILED maintenance not started\n' >&2
-    reset_restore_society_flags || true
+    printf 'RELEASE_WRAPPER_FAIL code=RESET_DRAIN_FAILED\n' >&2
+    if reset_restore_society_flags 1; then
+      ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+        "set -euo pipefail
+         test \"\$(hostname)\" = '$expected_host' || exit 91
+         $scope_check
+         $lock_check
+         find '$lock_dir' -xdev -depth -delete"
+    fi
     exit 96
   fi
 fi
@@ -1009,8 +1008,10 @@ great_reset_run() {
 trap - EXIT INT TERM HUP
 if test -n "$great_reset_operation"; then
   great_reset_run
-  # Uzak akış 0 ile bitti, site açık: bayraklar bakım öncesi değerlerine (Gökhan: elle açılış yok).
-  reset_restore_society_flags
+  # Uzak akış 0 ile bitti, site açık: bayraklar bakım öncesi değerlerine (Gökhan: elle açılış yok),
+  # uzaktaki olumlu kanıtla. Düşerse temizlik ve kilit bırakma yine tamamlanır; tek amaçlı komut
+  # (`great-reset-restore-flags.sh`) aynı gövdeyle bitirir (Astra #243 2. tur P2).
+  reset_restore_society_flags 3 || reset_flags_pending=1
 else
   ssh -tt "${ssh_options[@]}" deploy@"$expected_ip" "$(remote_release_command)"
 fi
@@ -1045,3 +1046,8 @@ ssh "${ssh_options[@]}" deploy@"$expected_ip" \
    $scope_check
    $lock_check
    find '$lock_dir' -xdev -depth -delete"
+if test "$reset_flags_pending" = 1; then
+  printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_RESTORE_PENDING run scripts/great-reset-restore-flags.sh %s %s\n' \
+    "$great_reset_operation" "$candidate_sha" >&2
+  exit 97
+fi

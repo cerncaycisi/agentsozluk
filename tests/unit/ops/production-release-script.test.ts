@@ -228,10 +228,17 @@ describe("schema-neutral production release lane", () => {
       expect(wrapper.split("   $scope_check").length - 1).toBe(uzakKomutlar);
       expect(wrapper.indexOf("$scope_check", wrapper.indexOf("lock_dir=/opt"))).toBeLessThan(kilit);
       expect(wrapper).toContain("code=SESSION_SCOPE_UNVERIFIED");
-      // Bırakma yalnız dosyanın sonunda, uzak betik başarıyla döndükten sonra.
-      const birak = wrapper.indexOf("find '$lock_dir' -xdev -depth -delete");
-      expect(birak).toBeGreaterThan(wrapper.indexOf("exec '$remote_script'"));
-      expect(wrapper.indexOf("find '$lock_dir'", birak + 1)).toBe(-1);
+      // Bırakma dosyanın sonunda, uzak betik başarıyla döndükten sonra. Tek istisna: great reset
+      // boşaltması durdu, bakım hiç başlamadı ve bayraklar uzaktaki olumlu kanıtla geri yazıldı
+      // (Astra #243 2. tur); o dalın dışında başka bırakma yok.
+      const sonBirak = wrapper.lastIndexOf("find '$lock_dir' -xdev -depth -delete");
+      expect(sonBirak).toBeGreaterThan(wrapper.indexOf("exec '$remote_script'"));
+      const bosaltmaDali = wrapper.indexOf("    if reset_restore_society_flags 1; then");
+      const ilkBirak = wrapper.indexOf("find '$lock_dir' -xdev -depth -delete");
+      expect(ilkBirak).toBeGreaterThan(bosaltmaDali);
+      expect(ilkBirak).toBeLessThan(wrapper.indexOf("    exit 96", bosaltmaDali));
+      const birakmalar = wrapper.split("find '$lock_dir' -xdev -depth -delete").length - 1;
+      expect(birakmalar).toBe(2);
       expect(wrapper).toContain(
         "exec '$remote_script' '$candidate_sha' '$cleanup' '$migration_mode' '$op_id'",
       );

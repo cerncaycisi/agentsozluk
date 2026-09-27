@@ -225,12 +225,25 @@ bir şey açamam, halledin"):**
   denetlenir.
 - Uzak betik aynı ölçütü (`drain-check`) kesintiden önce ve dondurmadan sonra, yedekten önce
   denetler (`RESET_DRAIN_REQUIRED`).
-- **Otomatik geri açılış yalnız kesin sonuçlarda:** (a) boşaltma durdu, bakım hiç başlamadı; (b)
-  uzak akış 0 ile bitti ve site açık (reset tamam, COMMIT öncesi vazgeçildi ya da geri dönüldü).
-  Sarmalayıcı `agent-write-freeze.ts restore` ile boşaltma kaydındaki değerleri, aynı hedef
-  guard'ı ve servislerle geri yazar (`RELEASE_RESET_FLAGS_RESTORED`). Belirsiz ya da yarım bakımda
-  geri açılış yapılmaz; site o durumda kapalıdır. Geri açılış düşerse aynı komut yeniden koşulur
-  (idempotent).
+- **Otomatik geri açılış yalnız uzaktan alınan olumlu kanıtla:** üretimde dondurma tutucusu
+  (`.migration-hold`) yoksa ve bakım işareti yoksa ya da henüz dondurma öncesindeyse
+  (`none`/`planned`/`image-verified`). Kanıt alınamazsa (SSH hatası, okunamayan faz) bayraklar
+  kapalı kalır. İki çağrı noktası vardır:
+  - (a) Boşaltma durdu: bakım başlamadı. Geri açılış olumlu kanıtla geçerse kilit bırakılır; geçmezse
+    kilit ve kapalı bayraklar yerinde kalır.
+  - (b) Uzak akış 0 ile bitti, site açık (reset tamam, COMMIT öncesi vazgeçildi ya da geri
+    dönüldü): üç deneme yapılır. Düşerse temizlik ve kilit bırakma yine tamamlanır, sarmalayıcı
+    `RESET_FLAGS_RESTORE_PENDING` ile biter.
+- Başarıyı yalnız uzaktan gelen `RELEASE_RESET_FLAGS_RESTORED` satırı kanıtlar; kayıt yoksa
+  `RELEASE_RESET_FLAGS_RESTORE_SKIPPED` basılır, bu geri yükleme kanıtı değildir.
+- **Tek amaçlı tamamlama:** aynı hedef, kilit ve olumlu kanıt kurallarıyla yalnız bayrakları geri
+  yazar; bakıma, migration'a, siteye ya da worker'a dokunmaz; kendi kilidini her sonuçta bırakır.
+
+  ```sh
+  AGENT_SOZLUK_GREAT_RESET_APPROVED=<operationId> \
+    scripts/great-reset-restore-flags.sh <operationId> <aday-sha>
+  ```
+
 - Astra'nın ilk kararı "otomatik açılma eklenmesin" idi; Gökhan elle açılış yapamayacağını
   bildirdiği için otomatik açılış Gökhan kararıdır ve yukarıdaki iki kesin sonuçla sınırlıdır.
 

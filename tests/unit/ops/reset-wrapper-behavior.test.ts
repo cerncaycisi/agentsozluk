@@ -367,19 +367,25 @@ echo "ACK=[$reset_next_ack]"
       block.indexOf("reset_restore_society_flags"),
     );
     // Reset'in kendi bayrak kaydı değil.
-    expect(source).toContain(
-      'reset_drain_flags_file="/opt/agent-sozluk/runtime/.great-reset-drain-flags-$great_reset_operation.json"',
+    expect(block).toContain("freeze '$(reset_drain_flags_path \"$great_reset_operation\")'");
+    // Boşaltma durursa kilit yalnız olumlu kanıtlı geri açılıştan sonra bırakılır.
+    expect(block).toContain("if reset_restore_society_flags 1; then");
+    expect(block.indexOf("if reset_restore_society_flags 1; then")).toBeLessThan(
+      block.indexOf("find '$lock_dir' -xdev -depth -delete"),
     );
+    // Başarılı bakımdan sonra düşen geri açılış kilidi tutmaz; tek amaçlı komuta yönlendirir.
+    expect(source).toContain("reset_restore_society_flags 3 || reset_flags_pending=1");
+    expect(source.trimEnd().endsWith("exit 97\nfi")).toBe(true);
     expect(block).not.toContain("reset-flags.json");
     // Başarılı uzak akıştan sonra geri açılış; başlamış bakımda boşaltma atlanır.
-    expect(source.slice(run, run + 200)).toContain("reset_restore_society_flags");
+    expect(source.slice(run, run + 600)).toContain("reset_restore_society_flags 3");
     // Atlama yalnız bu operasyonun dondurma tutucusu yerindeyken (işaret dizini tek başına yetmez).
     expect(source).toContain("test -e /opt/agent-sozluk/runtime/.migration-hold &&");
     expect(source).toContain("= 'reset:$great_reset_operation'; then");
   });
 
-  it("bayrak geri açılışı uzakta kaydı geri yükler; kayıt yoksa dokunmaz; hata başarı sayılmaz", () => {
-    const run = (sshBody: string) => {
+  it("geri açılış başarısını yalnız uzaktaki RESTORED/SKIPPED satırı kanıtlar; denemeler sınırlı", () => {
+    const run = (sshBody: string, attempts = 3) => {
       const script = `
 set -Eeuo pipefail
 great_reset_operation=${operationId}
@@ -391,11 +397,13 @@ scope_check=':'
 lock_check=':'
 nolimit() { shift; "$@"; }
 local_timeout=nolimit
-reset_drain_flags_file="/opt/agent-sozluk/runtime/.great-reset-drain-flags-$great_reset_operation.json"
+sleep() { :; }
+source scripts/great-reset-flags-remote.sh
 ${extract("reset_operator_ssh")}
 ${extract("reset_restore_society_flags")}
-ssh() { printf '%s\\n' "\${@: -1}" >"$BODY_FILE"; ${sshBody}; }
-reset_restore_society_flags && echo RETURNED_OK
+ssh() { echo x >>"$BODY_FILE.count"; printf '%s\\n' "\${@: -1}" >"$BODY_FILE"; ${sshBody}; }
+reset_restore_society_flags ${attempts} && echo RETURNED_OK
+echo "CALLS=$(wc -l <"$BODY_FILE.count")"
 `;
       const root = mkdtempSync(path.join(tmpdir(), "reset-flags-"));
       directories.push(root);
@@ -406,17 +414,91 @@ reset_restore_society_flags && echo RETURNED_OK
       });
       return { ...result, body: readFileSync(body, "utf8") };
     };
-    const ok = run("return 0");
-    expect(ok.stdout).toContain("RELEASE_RESET_FLAGS_RESTORED");
+    const ok = run("printf 'RELEASE_RESET_FLAGS_RESTORED\\n'");
+    expect(ok.stdout).toContain("RETURNED_OK");
+    expect(ok.stdout).toContain("CALLS=1");
     expect(ok.body).toContain(
       `agent-write-freeze.ts restore '/opt/agent-sozluk/runtime/.great-reset-drain-flags-${operationId}.json'`,
     );
-    expect(ok.body).toContain("RELEASE_RESET_FLAGS_RESTORE_SKIPPED no drain record");
-    // Geri açılış bakımın başlamış olmasına bakmaz (atlama yalnız boşaltmada).
-    expect(ok.body).toContain("test '0' = 1");
-    const failed = run("return 1");
-    expect(failed.stdout).not.toContain("RETURNED_OK");
-    expect(failed.stderr).toContain("code=RESET_FLAGS_RESTORE_FAILED");
+    expect(ok.body).toContain("RELEASE_RESET_FLAGS_RESTORE_REFUSED reason=maintenance-hold");
+    // Başarılı çıkış ama kanıt satırı yok: başarı değil; üç deneme sonra hata.
+    const silent = run("return 0");
+    expect(silent.stdout).not.toContain("RETURNED_OK");
+    expect(silent.stdout).toContain("CALLS=3");
+    expect(silent.stderr).toContain("code=RESET_FLAGS_RESTORE_FAILED");
+    // SSH hatası (kanıt yok): açılmaz.
+    const unreachable = run("return 255", 1);
+    expect(unreachable.stdout).not.toContain("RETURNED_OK");
+    expect(unreachable.stdout).toContain("CALLS=1");
+  });
+
+  it("geri açılış gövdesi yalnız olumlu kanıtla yazar: tutucu yok, bakım yok ya da dondurma öncesi", () => {
+    const run = (setup: string) => {
+      const root = mkdtempSync(path.join(tmpdir(), "reset-flags-body-"));
+      directories.push(root);
+      const runtime = path.join(root, "runtime");
+      const script = `
+set -euo pipefail
+source scripts/great-reset-flags-remote.sh
+body="$(reset_flags_restore_body ${operationId})"
+body="\${body//\\/opt\\/agent-sozluk\\/runtime/${runtime}}"
+body="\${body//timeout --kill-after=10 180 .\\/node_modules\\/.bin\\/tsx/echo TSX}"
+mkdir -p "${runtime}"
+cd "${runtime}"
+${setup}
+bash -c "set -euo pipefail
+$body"
+`;
+      return spawnSync("bash", ["-c", script], { encoding: "utf8" });
+    };
+    const record = `: >.great-reset-drain-flags-${operationId}.json`;
+    const hold = run(`${record}; : >.migration-hold`);
+    expect(hold.status).toBe(97);
+    expect(hold.stdout).not.toContain("TSX");
+    for (const phase of ["frozen", "reset-maintenance", "writers-may-run", "cutover-done"]) {
+      const inProgress = run(
+        `${record}; mkdir .migration-operation; printf '${phase}\\n' >.migration-operation/phase`,
+      );
+      expect(inProgress.status, phase).toBe(97);
+      expect(inProgress.stderr).toContain("reason=maintenance-in-progress");
+      expect(inProgress.stdout).not.toContain("TSX");
+    }
+    const unreadable = run(`${record}; mkdir .migration-operation`);
+    expect(unreadable.status).toBe(97);
+    const early = run(
+      `${record}; mkdir .migration-operation; printf 'planned\\n' >.migration-operation/phase`,
+    );
+    expect(early.status).toBe(0);
+    expect(early.stdout).toContain("TSX");
+    expect(early.stdout).toContain("RELEASE_RESET_FLAGS_RESTORED");
+    const done = run(record);
+    expect(done.stdout).toContain("RELEASE_RESET_FLAGS_RESTORED");
+    const noRecord = run("");
+    expect(noRecord.status).toBe(0);
+    expect(noRecord.stdout).toContain("RELEASE_RESET_FLAGS_RESTORE_SKIPPED reason=no-drain-record");
+    expect(noRecord.stdout).not.toContain("TSX");
+  });
+
+  it("tek amaçlı geri açılış komutu sarmalayıcıyla aynı hedefi kullanır ve exact onay ister", () => {
+    const wrapper = readFileSync("scripts/deploy-production-no-migration.sh", "utf8");
+    const restore = readFileSync("scripts/great-reset-restore-flags.sh", "utf8");
+    for (const name of [
+      "expected_ip",
+      "expected_host",
+      "expected_fingerprint",
+      "known_hosts",
+      "identity",
+    ]) {
+      const pattern = new RegExp(`^${name}=(.+)$`, "mu");
+      expect(restore.match(pattern)?.[1], name).toBe(wrapper.match(pattern)?.[1]);
+    }
+    expect(restore).toContain('$(reset_flags_restore_body "$operation")');
+    const refused = spawnSync("bash", ["scripts/great-reset-restore-flags.sh", operationId, sha], {
+      encoding: "utf8",
+      env: { ...process.env, AGENT_SOZLUK_GREAT_RESET_APPROVED: "" },
+    });
+    expect(refused.status).toBe(90);
+    expect(refused.stderr).toContain("code=EXACT_RESET_APPROVAL_REQUIRED");
   });
 
   it("geri dönüş bayrağı great reset modu ve ayrı exact onay olmadan başlamaz", () => {
