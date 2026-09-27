@@ -13,7 +13,15 @@ import {
   recordTrafficOpen,
   restoreEligibility,
 } from "../../src/modules/maintenance/repository/great-reset-operation";
-import { computeReceipt } from "../../src/modules/maintenance/repository/great-reset-receipt";
+import {
+  compareShadowWithPreReset,
+  computeReceipt,
+} from "../../src/modules/maintenance/repository/great-reset-receipt";
+import {
+  commitDigest,
+  markShadow,
+  verifyRestored,
+} from "../../src/modules/maintenance/repository/great-reset-restore";
 
 /*
   Gerçek reset yürütücüsünün uçtan uca kanıtı (tasarım v20 madde 6, Astra PR #237 P2): hedef DB'nin
@@ -430,6 +438,96 @@ describe("great reset yürütücüsü, hedef DB sahibi rolle ve bağlantı kapı
     } finally {
       await database.$disconnect();
       rmSync(dir, { recursive: true, force: true });
+    }
+  }, 300_000);
+  it("geri dönüş: gölge işaretlenir, tek transaction'da yer değiştirir, yeni canonical doğrulanır", async () => {
+    const name = await scratchDatabase();
+    const shadow = `great_reset_e2e_${randomBytes(4).toString("hex")}_test`;
+    const oldName = `great_reset_e2e_${randomBytes(4).toString("hex")}_test`;
+    const client = (database: string) =>
+      new PrismaClient({
+        datasourceUrl: `${urlFor(ownerUrl, database)}?connection_limit=1`,
+        log: [],
+      });
+    let canonical = client(name);
+    try {
+      const [cluster] = await canonical.$queryRaw<{ id: string }[]>`
+        SELECT system_identifier::text AS id FROM pg_control_system()`;
+      const identity = (databaseName: string) => ({
+        databaseName,
+        owner,
+        clusterId: cluster!.id,
+      });
+      const operationId = randomUUID();
+      await createOperationIntent(canonical, identity(name), operationId, releaseSha);
+      const preReset = await computeReceipt(canonical, identity(name));
+      await canonical.$disconnect();
+      // Reset-anı yedeğinin yerine: niyet yazıldıktan sonraki birebir kopya (gölge).
+      await admin.$executeRawUnsafe(
+        `CREATE DATABASE "${shadow}" TEMPLATE "${name}" OWNER "${owner}"`,
+      );
+      created.push(shadow);
+      await admin.$executeRawUnsafe(`COMMENT ON DATABASE "${shadow}" IS '${marker}'`);
+
+      const namespace = { operationId, releaseSha, receiptSha256 };
+      const preview = await runIntegrationTestGreatReset(urlFor(ownerUrl, name), {
+        mode: "DRY_RUN",
+        archiveOutbox: true,
+        namespace,
+        connectionGate: true,
+      });
+      await runIntegrationTestGreatReset(urlFor(ownerUrl, name), {
+        mode: "EXECUTE",
+        databaseName: name,
+        planSha256: preview.planSha256,
+        archiveOutbox: true,
+        namespace,
+        connectionGate: true,
+      });
+      canonical = client(name);
+      const commitSha = await commitDigest(canonical, identity(name), operationId);
+      // Canonical'da commit var: gölge sanılıp işaretlenemez.
+      await expect(
+        markShadow(canonical, identity(name), operationId, "a".repeat(64), commitSha),
+      ).rejects.toThrow("GREAT_RESET_RESTORE_SHADOW_NOT_PRE_RESET");
+      await canonical.$disconnect();
+
+      const shadowClient = client(shadow);
+      const dumpSha = "b".repeat(64);
+      expect(await verifyRestored(shadowClient, identity(shadow), operationId, dumpSha)).toEqual(
+        expect.arrayContaining(["OPEN_INTENT_PRESENT", "RESTORE_AUDIT_MISMATCH"]),
+      );
+      expect(
+        await markShadow(shadowClient, identity(shadow), operationId, dumpSha, commitSha),
+      ).toEqual({ invalidatedIntents: 1, auditWritten: true });
+      // İdempotent; farklı dump SHA'sıyla çelişki durur.
+      expect(
+        await markShadow(shadowClient, identity(shadow), operationId, dumpSha, commitSha),
+      ).toEqual({ invalidatedIntents: 0, auditWritten: false });
+      await expect(
+        markShadow(shadowClient, identity(shadow), operationId, "c".repeat(64), commitSha),
+      ).rejects.toThrow("GREAT_RESET_RESTORE_AUDIT_CONFLICT");
+      expect(await verifyRestored(shadowClient, identity(shadow), operationId, dumpSha)).toEqual(
+        [],
+      );
+      const shadowReceipt = await computeReceipt(shadowClient, identity(shadow));
+      expect(compareShadowWithPreReset(preReset, shadowReceipt).equal).toBe(true);
+      await shadowClient.$disconnect();
+
+      // Yönetici konsolunda tek transaction: canonical eski ada, gölge canonical ada.
+      await admin.$transaction([
+        admin.$executeRawUnsafe(`ALTER DATABASE "${name}" RENAME TO "${oldName}"`),
+        admin.$executeRawUnsafe(`ALTER DATABASE "${shadow}" RENAME TO "${name}"`),
+      ]);
+      created.push(oldName);
+      const renamed = client(name);
+      try {
+        expect(await verifyRestored(renamed, identity(name), operationId, dumpSha)).toEqual([]);
+      } finally {
+        await renamed.$disconnect();
+      }
+    } finally {
+      await canonical.$disconnect().catch(() => undefined);
     }
   }, 300_000);
 });

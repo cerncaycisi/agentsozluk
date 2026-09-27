@@ -40,6 +40,7 @@ approved_migrations=''
 reset_mode=0
 reset_operation_id=''
 reset_ack=''
+reset_rollback_requested=0
 if [[ "$migration_mode" =~ ^reset:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}):(.+)$ ]]; then
   # Great reset modu (tasarım v20): A5 migration fazı + reset aşamaları, aynı dondurmada.
   reset_mode=1
@@ -49,8 +50,11 @@ if [[ "$migration_mode" =~ ^reset:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89a
     printf 'RELEASE_FAIL code=INVALID_MIGRATION_MODE\n' >&2
     exit 90
   }
-  if test -n "$reset_ack_argument"; then
-    [[ "$reset_ack_argument" =~ ^ack:(PREPARED|COMMITTED_MAINTENANCE|TRAFFIC_OPEN|ABORTED)$ ]] || {
+  if test "$reset_ack_argument" = rollback; then
+    # Ayrı onaylı geri dönüş isteği (sarmalayıcı dış kaydı denetledi).
+    reset_rollback_requested=1
+  elif test -n "$reset_ack_argument"; then
+    [[ "$reset_ack_argument" =~ ^ack:(PREPARED|COMMITTED_MAINTENANCE|TRAFFIC_OPEN|ABORTED|ROLLED_BACK)$ ]] || {
       printf 'RELEASE_FAIL code=INVALID_RESET_ACK\n' >&2
       exit 90
     }
@@ -829,6 +833,9 @@ if ((reset_mode == 1)); then
   source "$app_root/scripts/production-migration-phase.sh"
   # shellcheck source=scripts/production-reset-phase.sh
   source "$app_root/scripts/production-reset-phase.sh"
+  bash -n "$app_root/scripts/production-reset-restore.sh"
+  # shellcheck source=scripts/production-reset-restore.sh
+  source "$app_root/scripts/production-reset-restore.sh"
 fi
 if test ! -f "$state_dir/baseline-complete"; then
   capture_initial_state

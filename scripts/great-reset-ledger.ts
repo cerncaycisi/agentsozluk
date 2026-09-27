@@ -6,6 +6,7 @@ import {
   ledgerRestoreBlockers,
   ledgerStates,
   parseLedger,
+  serializeRecord,
   type LedgerState,
 } from "../src/modules/maintenance/domain/great-reset-ledger";
 import { replaceDurable, syncExisting } from "./great-reset-durable-file";
@@ -20,6 +21,7 @@ import { replaceDurable, syncExisting } from "./great-reset-durable-file";
   great-reset-ledger.ts --file <yol> show
   great-reset-ledger.ts --file <yol> append <state> <operationId> <releaseSha> <dumpSha256> <receiptSha256|->
   great-reset-ledger.ts --file <yol> restore-check <operationId> <dumpSha256> <receiptSha256>
+  great-reset-ledger.ts --file <yol> latest <operationId>
 */
 
 function fail(code: string): never {
@@ -119,6 +121,12 @@ function main(argv: readonly string[]): string {
         lastSha256: after.lastSha256,
       });
     });
+  }
+  if (command === "latest" && rest.length === 1) {
+    // Operasyonun son kaydı (geri dönüş öncesi sarmalayıcı denetimi için).
+    const record = parseLedger(readLedger(file)).latest.get(rest[0]!);
+    if (!record) fail("OPERATION_MISSING");
+    return serializeRecord(record);
   }
   if (command === "restore-check" && rest.length === 3) {
     const [operationId, dumpSha256, receipt] = rest as [string, string, string];

@@ -1105,3 +1105,33 @@ export function compareLiveWithRestored(
     unexpected,
   };
 }
+
+/*
+  Geri dönüş gölgesi (runbook "COMMIT sonrası kabul hatası"): gölge işaretlendikten sonra (geçerli
+  niyetlere yalnız `invalidatedAt`, tek restore audit'i) reset öncesi canlı makbuzla karşılaştırılır.
+  Canlı ↔ restore kuralına ek olarak içerik farkına YALNIZ bu iki tabloda izin verilir; iki
+  değişikliğin kendisi `verifyRestored` ile birebir doğrulanır.
+*/
+const shadowMarkedTables = ["audit_logs", "great_reset_intents"] as const;
+
+export function compareShadowWithPreReset(
+  preReset: GreatResetReceipt,
+  shadow: GreatResetReceipt,
+): { equal: boolean; sections: ReceiptSection[]; tables: string[]; unexpected: string[] } {
+  const result = compareLiveWithRestored(preReset, shadow);
+  const tables = result.tables.filter(
+    (table) => !(shadowMarkedTables as readonly string[]).includes(table),
+  );
+  const sections = result.sections.filter(
+    (section) => !(section === "content" && tables.length === 0),
+  );
+  const consistent =
+    compareReceipts(preReset, preReset).equal && compareReceipts(shadow, shadow).equal;
+  return {
+    equal:
+      consistent && sections.length === 0 && tables.length === 0 && result.unexpected.length === 0,
+    sections,
+    tables,
+    unexpected: result.unexpected,
+  };
+}

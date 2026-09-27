@@ -78,11 +78,14 @@ phase_rank() {
     reset-accepted) echo 17 ;;
     reset-traffic) echo 18 ;;
     reset-exposed) echo 19 ;;
-    reset-aborted) echo 20 ;;
-    writers-may-run) echo 21 ;;
-    traffic-open) echo 22 ;;
-    worker-allowed) echo 23 ;;
-    cutover-done) echo 24 ;;
+    # Geri dönüş (COMMIT sonrası, TRAFFIC_OPEN öncesi) ve COMMIT öncesi vazgeçme; ikisi de
+    # resetsiz açılışa gider.
+    reset-rolled-back) echo 20 ;;
+    reset-aborted) echo 21 ;;
+    writers-may-run) echo 22 ;;
+    traffic-open) echo 23 ;;
+    worker-allowed) echo 24 ;;
+    cutover-done) echo 25 ;;
     *) echo 0 ;;
   esac
 }

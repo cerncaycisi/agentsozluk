@@ -353,6 +353,20 @@ protectedDigest, clearedCounts)` olarak atomik yazılıp fsync edilir ve
 
 ## Hata ve geri dönüş dalları
 
+**Uygulama (27 Eylül, PR #242):** COMMIT sonrası geri dönüş, sarmalayıcıda
+`--great-reset <operationId> --great-reset-rollback` ve ayrı
+`AGENT_SOZLUK_GREAT_RESET_ROLLBACK_APPROVED=<operationId>` onayıyla çalışır. Sarmalayıcı önce dış
+kayıtta operasyonun son durumunun `COMMITTED_MAINTENANCE` olduğunu ve restore denetiminin (dump
+SHA'sı + reset sonrası makbuz) geçtiğini doğrular. Uzak betik (`production-reset-restore.sh`):
+uygunluk → gölgeye `--role=agent_sozluk --single-transaction` restore → canlı↔restore makbuz
+eşitliği → collation sürümü → gölge işareti (niyet geçersiz, canonical commit özetli restore
+audit'i) ve doğrulama → işaretli gölge makbuzu (yalnız `audit_logs` ve `great_reset_intents`
+içerik farkı) → son uygunluk → iki DB'nin kapısı ve sıfır backend → tek transaction'da yer
+değiştirme → yeni canonical'ın kapısı açılır, eski reset DB'si kapalı kalır → doğrulama →
+`ROLLED_BACK` isteği. Sarmalayıcı `ROLLED_BACK` yazar; site aday sürüm ve migration'la,
+resetsiz açılır. Yeniden giriş DB adlarından nerede kalındığını çıkarır; yer değiştirme
+tekrarlanmaz. Gerçek boyutlu üretim provası henüz yok.
+
 - **COMMIT öncesi hata:** transaction rollback; önce backend/kilit bitişini,
   sonra `ALLOW_CONNECTIONS true`yu doğrula. Niyet rollback ile tüketilmemiş
   olabilir; ayrı güvenli işlemde yalnız `invalidatedAt` yazarak geçersizleştir.

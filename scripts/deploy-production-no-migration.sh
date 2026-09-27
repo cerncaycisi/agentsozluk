@@ -19,6 +19,7 @@ pause_society_flow=0
 artifact_transport=server-fetch
 approved_migrations=''
 great_reset_operation=''
+great_reset_rollback=0
 
 usage() {
   printf '%s\n' \
@@ -85,6 +86,10 @@ while (($# > 0)); do
     --great-reset)
       great_reset_operation="${2:-}"
       shift 2
+      ;;
+    --great-reset-rollback)
+      great_reset_rollback=1
+      shift
       ;;
     --server-fetch)
       artifact_transport=server-fetch
@@ -176,8 +181,19 @@ if test -n "$great_reset_operation"; then
     exit 90
   }
   migration_mode="reset:$great_reset_operation:$approved_migrations"
+  # Geri dönüş (COMMIT sonrası, TRAFFIC_OPEN öncesi) ayrı, exact operasyon onayı ister.
+  if test "$great_reset_rollback" = 1; then
+    test "${AGENT_SOZLUK_GREAT_RESET_ROLLBACK_APPROVED:-}" = "$great_reset_operation" || {
+      printf 'RELEASE_WRAPPER_FAIL code=EXACT_ROLLBACK_APPROVAL_REQUIRED\n' >&2
+      exit 90
+    }
+  fi
 elif test -n "${AGENT_SOZLUK_GREAT_RESET_APPROVED:-}"; then
   printf 'RELEASE_WRAPPER_FAIL code=RESET_APPROVAL_WITHOUT_FLAG\n' >&2
+  exit 90
+fi
+if test "$great_reset_rollback" = 1 && test -z "$great_reset_operation"; then
+  printf 'RELEASE_WRAPPER_FAIL code=ROLLBACK_REQUIRES_GREAT_RESET\n' >&2
   exit 90
 fi
 if test "$build_on_host" = 1; then
@@ -210,6 +226,7 @@ bash -n "$root/scripts/install-release-artifact-remote.sh"
 bash -n "$root/scripts/install-release-artifact-from-github-remote.sh"
 bash -n "$root/scripts/production-migration-phase.sh"
 bash -n "$root/scripts/production-reset-phase.sh"
+bash -n "$root/scripts/production-reset-restore.sh"
 op_id="$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
 if test -n "$great_reset_operation"; then
   bash -n "$root/scripts/great-reset-operator-gate.sh"
@@ -825,7 +842,7 @@ reset_handle_await() {
         reset_fail RESET_OPERATOR_GATE_FAILED
       reset_ledger_append PREPARED "$dump_sha" -
       ;;
-    COMMITTED_MAINTENANCE | TRAFFIC_OPEN)
+    COMMITTED_MAINTENANCE | TRAFFIC_OPEN | ROLLED_BACK)
       [[ "$receipt_sha" =~ ^[0-9a-f]{64}$ ]] || reset_fail RESET_AWAIT_INVALID
       reset_ledger_append "$state" "$dump_sha" "$receipt_sha"
       ;;
@@ -835,10 +852,27 @@ reset_handle_await() {
   reset_next_ack="ack:$state"
 }
 
+# Geri dönüş ön koşulu: dış kayıtta operasyonun son durumu COMMITTED_MAINTENANCE ve restore
+# denetimi (dump SHA'sı + reset sonrası makbuz) geçer; TRAFFIC_OPEN ya da başka durumda durur.
+reset_assert_rollback_allowed() {
+  local record dump receipt
+  record="$(cd "$root" && ./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "$reset_ledger" \
+    latest "$great_reset_operation")" || reset_fail RESET_ROLLBACK_LEDGER_MISSING
+  dump="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).dumpSha256 ?? "")' "$record")"
+  receipt="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).postResetReceiptSha256 ?? "")' "$record")"
+  (cd "$root" && ./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "$reset_ledger" \
+    restore-check "$great_reset_operation" "$dump" "$receipt") >/dev/null ||
+    reset_fail RESET_ROLLBACK_NOT_ALLOWED
+}
+
 great_reset_run() {
   local attempt=0 status tee_status line log
   local -a statuses
   reset_next_ack=''
+  if test "$great_reset_rollback" = 1; then
+    reset_assert_rollback_allowed
+    reset_next_ack=rollback
+  fi
   # Yerel dondurma düşerse timer yalnız uzak bakımın gerçekten başlamadığı (SAFE) doğrulanınca
   # eski durumuna döner; yeniden girişte bakım sürüyor olabilir (Astra, PR #240 3. tur P1).
   if ! (reset_freeze_operator_units); then

@@ -169,6 +169,7 @@ echo "ACK=$reset_next_ack"
 set -Eeuo pipefail
 ${extract("report_unexpected_error")}
 trap report_unexpected_error ERR
+great_reset_rollback=0
 great_reset_operation=${operationId}
 candidate_sha=${sha}
 reset_work="${root}/work"
@@ -290,5 +291,23 @@ reset_restore_operator_units
     const result = spawnSync("bash", ["-c", script], { encoding: "utf8" });
     expect(result.stdout).not.toContain("RELEASE_RESET_OPERATOR_UNITS_RESTORED");
     expect(result.stderr).toContain("code=RESET_OPERATOR_TIMER_RESTORE_FAILED");
+  });
+
+  it("geri dönüş bayrağı great reset modu ve ayrı exact onay olmadan başlamaz", () => {
+    const withApproval = { ...approved, AGENT_SOZLUK_GREAT_RESET_APPROVED: operationId };
+    expect(
+      run(
+        withApproval,
+        "--apply-migrations",
+        migrations,
+        "--pause-society-flow",
+        "--great-reset",
+        operationId,
+        "--great-reset-rollback",
+      ).stderr,
+    ).toContain("code=EXACT_ROLLBACK_APPROVAL_REQUIRED");
+    expect(
+      run({ AGENT_SOZLUK_PRODUCTION_APPROVED_SHA: sha }, "--great-reset-rollback").stderr,
+    ).toContain("code=ROLLBACK_REQUIRES_GREAT_RESET");
   });
 });

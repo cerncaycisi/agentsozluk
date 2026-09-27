@@ -24,6 +24,7 @@ reset_unit_list=(
 # Vazgeçme zamanı: dondurmadan itibaren bu süre içinde reset başlamadıysa reset yapılmaz.
 reset_abort_seconds="${reset_abort_seconds:-2700}"
 reset_ledger_exit=75
+reset_rollback_requested="${reset_rollback_requested:-0}"
 
 reset_cli() {
   # Onaylı release'in kendi araçları; üretim guard'ı hedefi kendisi doğrular (host, release,
@@ -532,7 +533,8 @@ reset_finish_abort() {
   if ((reset_recovery_active == 1)) && (($(date +%s) >= frozen_deadline)); then
     migration_fail RESET_RECOVERY_BUDGET_EXHAUSTED 98
   fi
-  printf 'RELEASE_RESET_ABORTED site opens with candidate release and migrations, without reset\n'
+  printf 'RELEASE_RESET_ABORTED site opens with candidate release and migrations, without reset (%s)\n' \
+    "$(current_phase)"
   set_phase writers-may-run
   # A5 gibi: yazıcılar açılabilir, dondurma karşılaştırmaları bir daha koşmaz.
   frozen_deadline=0
@@ -625,6 +627,15 @@ reset_record_exposure() {
 }
 
 reset_phase() {
+  # Geri dönüş isteği (sarmalayıcı dış kaydın COMMITTED_MAINTENANCE olduğunu denetledi): yalnız
+  # COMMIT sonrası ve TRAFFIC_OPEN onayından önce.
+  if ((reset_rollback_requested == 1)); then
+    case "$(current_phase)" in
+      reset-receipted | reset-maintenance | reset-accepted) reset_rollback ;;
+      reset-rolled-back) : ;;
+      *) migration_fail RESET_ROLLBACK_PHASE_INVALID ;;
+    esac
+  fi
   case "$(current_phase)" in
     post-verified) reset_freeze_flags ;&
     reset-flags-frozen) reset_create_intent ;&
@@ -650,6 +661,11 @@ reset_phase() {
       ;&
     reset-traffic | reset-exposed) reset_record_exposure ;;
     reset-aborted) reset_complete_abort ;;
+    reset-rolled-back)
+      reset_recovery_budget
+      reset_ledger_gate ROLLED_BACK
+      reset_finish_abort
+      ;;
     reset-committing) migration_fail RESET_OUTCOME_AMBIGUOUS 98 ;;
     writers-may-run | traffic-open | worker-allowed | cutover-done) : ;;
     *) migration_fail RESET_PHASE_UNKNOWN ;;
