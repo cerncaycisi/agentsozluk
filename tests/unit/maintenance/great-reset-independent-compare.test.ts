@@ -274,4 +274,35 @@ describe("bağımsız restore karşılaştırması (politika i)", () => {
       expect(result.blocking, key).toContain(`database:${key}`);
     }
   });
+  it("Astra 6. tur: düz metin JSON sayılmaz; RLS rol listesi eşlemeden sonra sıralanır", () => {
+    const withComment = (base: Parts, comment: string) =>
+      variant(base, (p) => {
+        p.details.database.comment = comment;
+      });
+    // SQL NULL (JSON null) ile "null" metni eşit değil.
+    expect(
+      compareForIndependentRestore(
+        withComment(production(), "null"),
+        withComment(operator(), v("null")),
+      ).blocking,
+    ).toContain("database:comment");
+    // Tırnak karakterleri içeren işaret, tırnaksız işaretle eşit değil.
+    expect(
+      compareForIndependentRestore(
+        withComment(production(), v('"agentsozluk:great-reset:synthetic:v1"')),
+        withComment(operator(), v("agentsozluk:great-reset:synthetic:v1")),
+      ).blocking,
+    ).toContain("database:comment");
+    const policy = (roles: string[]) => (p: Parts) => {
+      p.details.security["policy:users.p"] = v(
+        `["r", true, [${roles.map((role) => JSON.stringify(role)).join(", ")}], null, null]`,
+      );
+    };
+    expect(
+      compareForIndependentRestore(
+        variant(production(), policy(["agent_sozluk", "postgres"])),
+        variant(operator(), policy(["agent", "agent_sozluk"])),
+      ).equal,
+    ).toBe(true);
+  });
 });

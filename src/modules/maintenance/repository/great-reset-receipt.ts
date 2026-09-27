@@ -861,14 +861,35 @@ function aclStructure(text: unknown, map: (name: string) => string): Structured 
   ]);
 }
 
-function decodeValue(value: string | undefined): unknown {
+/*
+  Makbuz SQL'inin jsonb dizisi ürettiği anahtar türleri; yalnız bunlarda metin ikinci kez JSON
+  olarak çözülür. Diğerleri (ACL metni, yorum, ayar dizisi, extension sahibi) düz metindir: SQL
+  NULL ile "null" metni ya da tırnaklı/tırnaksız yorum birbirine eşitlenmez (Astra, PR #239 6. tur).
+*/
+const jsonValueKinds = new Set([
+  "relation",
+  "type",
+  "function",
+  "extensionMember",
+  "namespace",
+  "systemNamespace",
+  "database",
+  "language",
+  "tablespace",
+  "policy",
+  "role",
+  "membership",
+  "locale",
+]);
+
+function decodeValue(value: string | undefined, kind: string): unknown {
   if (value === undefined) return undefined;
   const text = JSON.parse(value) as unknown;
-  if (typeof text !== "string") return text;
+  if (typeof text !== "string" || !jsonValueKinds.has(kind)) return text;
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    return text;
+    return { unparsedJson: text };
   }
 }
 
@@ -883,7 +904,7 @@ function structureValue(
   map: (name: string) => string,
 ): Structured {
   if (value === undefined) return undefined;
-  const decoded = decodeValue(value);
+  const decoded = decodeValue(value, kind);
   const owner = (item: unknown) => (typeof item === "string" ? map(item) : item);
   const array = Array.isArray(decoded) ? decoded : null;
   switch (kind) {
@@ -913,7 +934,12 @@ function structureValue(
         ? [
             array[0],
             array[1],
-            array[2] === null ? null : (array[2] as unknown[]).map(owner),
+            // SQL rolleri ada göre sıralar; eşlemeden sonra aynı sırayla yeniden sıralanır.
+            array[2] === null
+              ? null
+              : (array[2] as unknown[])
+                  .map(owner)
+                  .sort((a, b) => (String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0)),
             array[3],
             array[4],
           ]
@@ -965,7 +991,7 @@ function kindOf(key: string): string {
 }
 
 function localeFields(value: string | undefined): unknown[] | null {
-  const decoded = value === undefined ? null : decodeValue(value);
+  const decoded = value === undefined ? null : decodeValue(value, "locale");
   return Array.isArray(decoded) ? decoded : null;
 }
 
