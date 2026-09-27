@@ -4,6 +4,13 @@ import { PrismaClient } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
 import { GREAT_RESET_INTENT_SCOPE } from "../../src/modules/maintenance/repository/great-reset-namespace";
 import { runIntegrationTestGreatReset } from "../../src/modules/maintenance/repository/great-reset";
+import {
+  createIntent as createOperationIntent,
+  invalidateIntent,
+  recordTrafficOpen,
+  restoreEligibility,
+} from "../../src/modules/maintenance/repository/great-reset-operation";
+import { computeReceipt } from "../../src/modules/maintenance/repository/great-reset-receipt";
 
 /*
   Gerçek reset yürütücüsünün uçtan uca kanıtı (tasarım v20 madde 6, Astra PR #237 P2): hedef DB'nin
@@ -236,4 +243,96 @@ describe("great reset yürütücüsü, hedef DB sahibi rolle ve bağlantı kapı
       runIntegrationTestGreatReset(urlFor(ownerUrl, name), { mode: "DRY_RUN" }),
     ).rejects.toThrow("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
   }, 120_000);
+  it("operasyon adımları: niyet, reset sonrası makbuz, restore uygunluğu, trafik olayı", async () => {
+    const name = await scratchDatabase();
+    const database = new PrismaClient({
+      datasourceUrl: `${urlFor(ownerUrl, name)}?connection_limit=1`,
+      log: [],
+    });
+    try {
+      const [cluster] = await database.$queryRaw<{ id: string }[]>`
+        SELECT system_identifier::text AS id FROM pg_control_system()`;
+      const identity = { databaseName: name, owner, clusterId: cluster!.id };
+      // Yanlış kimlik (başka DB adı) hiçbir şey yazmaz.
+      await expect(
+        createOperationIntent(
+          database,
+          { ...identity, databaseName: "agent_sozluk" },
+          randomUUID(),
+          releaseSha,
+        ),
+      ).rejects.toThrow("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
+      // Açık niyet varken ikincisi yazılmaz; geçersizleştirilen niyet yenisini engellemez.
+      const first = randomUUID();
+      await createOperationIntent(database, identity, first, releaseSha);
+      await expect(
+        createOperationIntent(database, identity, randomUUID(), releaseSha),
+      ).rejects.toThrow("GREAT_RESET_INTENT_BLOCKED");
+      await invalidateIntent(database, identity, first);
+      await expect(invalidateIntent(database, identity, first)).rejects.toThrow(
+        "GREAT_RESET_INTENT_NOT_INVALIDATED",
+      );
+      const operationId = randomUUID();
+      await createOperationIntent(database, identity, operationId, releaseSha);
+      // Commit yokken trafik olayı yazılmaz.
+      await expect(recordTrafficOpen(database, identity, operationId)).rejects.toThrow(
+        "GREAT_RESET_TRAFFIC_OPEN_WITHOUT_COMMIT",
+      );
+      await database.$disconnect();
+
+      const namespace = { operationId, releaseSha, receiptSha256 };
+      const preview = await runIntegrationTestGreatReset(urlFor(ownerUrl, name), {
+        mode: "DRY_RUN",
+        archiveOutbox: true,
+        namespace,
+        connectionGate: true,
+      });
+      await runIntegrationTestGreatReset(urlFor(ownerUrl, name), {
+        mode: "EXECUTE",
+        databaseName: name,
+        planSha256: preview.planSha256,
+        archiveOutbox: true,
+        namespace,
+        connectionGate: true,
+      });
+
+      const postReset = await computeReceipt(database, identity);
+      expect(await restoreEligibility(database, identity, operationId, postReset)).toEqual([]);
+      // Başka operasyonun kimliğiyle uygunluk yok.
+      expect(await restoreEligibility(database, identity, randomUUID(), postReset)).toContain(
+        "COMMIT_MISMATCH",
+      );
+      // Reset sonrası herhangi bir korunan yazı (ör. oran sınırı kovası) restore'u reddeder.
+      await database.rateLimitBucket.create({
+        data: {
+          keyHash: "reset-e2e",
+          action: "search",
+          windowStart: new Date(),
+          count: 1,
+          expiresAt: new Date(Date.now() + 3_600_000),
+        },
+      });
+      expect(await restoreEligibility(database, identity, operationId, postReset)).toEqual([
+        "RECEIPT_CHANGED",
+      ]);
+      await database.rateLimitBucket.deleteMany({ where: { keyHash: "reset-e2e" } });
+      expect(await restoreEligibility(database, identity, operationId, postReset)).toEqual([]);
+
+      await recordTrafficOpen(database, identity, operationId);
+      // İdempotent yeniden deneme aynı satırı okur.
+      await recordTrafficOpen(database, identity, operationId);
+      const [events] = await database.$queryRaw<{ count: number }[]>`
+        SELECT count(*)::int AS count FROM great_reset_exposure_events`;
+      expect(events?.count).toBe(1);
+      expect(await restoreEligibility(database, identity, operationId, postReset)).toEqual(
+        expect.arrayContaining(["EXPOSURE_PRESENT", "RECEIPT_CHANGED"]),
+      );
+      // İkinci reset yasağı: commit/trafik olayı varken yeni niyet yazılmaz.
+      await expect(
+        createOperationIntent(database, identity, randomUUID(), releaseSha),
+      ).rejects.toThrow("GREAT_RESET_INTENT_BLOCKED");
+    } finally {
+      await database.$disconnect();
+    }
+  }, 300_000);
 });

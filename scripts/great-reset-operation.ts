@@ -1,0 +1,188 @@
+import { closeSync, constants, openSync, readFileSync, writeSync, fsyncSync } from "node:fs";
+import { hostname } from "node:os";
+import { isAbsolute } from "node:path";
+import type { GreatResetReceipt } from "../src/modules/maintenance/repository/great-reset-receipt";
+import { localResetTarget } from "./great-reset-local-guard";
+
+/*
+  Great reset operasyon adımları CLI'si (tasarım v20 madde 2–4). A5 reset modu bunu onaylı
+  `runtime/releases/<SHA>` içinden çağırır. Hedef çağırandan alınmaz:
+
+  - Üretim host'unda: host, fiziksel release, `.release-sha`, `.env`'deki tek `DATABASE_URL` ve
+    Compose `db` container kimliği üretim guard'ından geçer; DB `agent_sozluk`. Yalnız `receipt`
+    komutu `--database` ile A5'in aynı operasyonda açtığı scratch kopyayı hedefleyebilir.
+  - Kişisel operatör sunucusunda: yalnız yerel prova guard'ının izin verdiği sentetik DB.
+
+  great-reset-operation.ts intent-create <operationId> <releaseSha>
+  great-reset-operation.ts intent-invalidate <operationId>
+  great-reset-operation.ts receipt <çıktı.json> [--database <scratch>]
+  great-reset-operation.ts receipt-compare <beklenen.json> <gerçek.json>
+  great-reset-operation.ts traffic-open <operationId>
+  great-reset-operation.ts restore-eligibility <operationId> <reset-sonrası-makbuz.json>
+
+  Çıktıda credential, URL veya satır içeriği yoktur; makbuz dosyası yalnız özetleri taşır, 0600
+  izinle ve üzerine yazmadan (O_EXCL) açılır.
+*/
+
+const scratchPattern = /^agent_sozluk_a5_[0-9]{8}_[0-9]{6}_[0-9a-f]{6}$/u;
+
+type Target = {
+  databaseUrl: string;
+  releaseSha: string | null;
+  identity: { databaseName: string; owner: string; clusterId: string; marker?: string };
+};
+
+function fail(code: string): never {
+  throw new Error(`GREAT_RESET_${code}`);
+}
+
+async function resolveTarget(scratch: string | undefined): Promise<Target> {
+  const [{ productionResetIdentity, productionResetTarget }, { collectProductionEnvironment }] =
+    await Promise.all([
+      import("../src/modules/maintenance/domain/great-reset-production-guard"),
+      import("../src/modules/maintenance/repository/great-reset-production-environment"),
+    ]);
+  if (hostname() === productionResetIdentity.hostname) {
+    const target = productionResetTarget(await collectProductionEnvironment());
+    let databaseName = target.databaseName;
+    const url = new URL(target.databaseUrl);
+    if (scratch !== undefined) {
+      if (!scratchPattern.test(scratch)) fail("INVALID_TARGET");
+      databaseName = scratch;
+      url.pathname = `/${scratch}`;
+    }
+    return {
+      databaseUrl: url.toString(),
+      releaseSha: target.releaseSha,
+      identity: {
+        databaseName,
+        owner: productionResetIdentity.owner,
+        clusterId: productionResetIdentity.clusterId,
+      },
+    };
+  }
+  if (scratch !== undefined) fail("INVALID_TARGET");
+  const local = localResetTarget(process.env.AGENT_GREAT_RESET_DATABASE_URL, hostname());
+  return {
+    databaseUrl: local.databaseUrl,
+    releaseSha: null,
+    identity: {
+      databaseName: local.databaseName,
+      owner: local.identity.owner,
+      clusterId: local.identity.clusterId,
+      marker: local.identity.marker,
+    },
+  };
+}
+
+function writePrivateNew(path: string, content: string): void {
+  if (!isAbsolute(path)) fail("INVALID_ARGUMENTS");
+  const handle = openSync(
+    path,
+    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+    0o600,
+  );
+  try {
+    writeSync(handle, content);
+    fsyncSync(handle);
+  } finally {
+    closeSync(handle);
+  }
+}
+
+function readReceipt(path: string): GreatResetReceipt {
+  if (!isAbsolute(path)) fail("INVALID_ARGUMENTS");
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as GreatResetReceipt;
+  } catch {
+    fail("RECEIPT_UNREADABLE");
+  }
+}
+
+async function main(argv: readonly string[]): Promise<string> {
+  const [command, ...rest] = argv;
+  if (command === "receipt-compare" && rest.length === 2) {
+    const { compareReceipts } =
+      await import("../src/modules/maintenance/repository/great-reset-receipt");
+    const result = compareReceipts(readReceipt(rest[0]!), readReceipt(rest[1]!));
+    if (!result.equal) process.exitCode = 3;
+    return JSON.stringify({
+      equal: result.equal,
+      sections: result.sections,
+      tables: result.tables,
+      unexpected: result.unexpected.map((item) => `${item.section}:${item.key}`),
+    });
+  }
+  let scratch: string | undefined;
+  let args = rest;
+  if (command === "receipt" && rest.length === 3 && rest[1] === "--database") {
+    scratch = rest[2];
+    args = [rest[0]!];
+  }
+  const valid =
+    (command === "intent-create" && args.length === 2) ||
+    (command === "intent-invalidate" && args.length === 1) ||
+    (command === "receipt" && args.length === 1) ||
+    (command === "traffic-open" && args.length === 1) ||
+    (command === "restore-eligibility" && args.length === 2);
+  if (!valid) fail("INVALID_ARGUMENTS");
+  const target = await resolveTarget(scratch);
+  const [{ PrismaClient }, operation, receipts] = await Promise.all([
+    import("@prisma/client"),
+    import("../src/modules/maintenance/repository/great-reset-operation"),
+    import("../src/modules/maintenance/repository/great-reset-receipt"),
+  ]);
+  const database = new PrismaClient({ datasourceUrl: target.databaseUrl, log: [] });
+  try {
+    switch (command) {
+      case "intent-create": {
+        // Üretimde niyetin release'i bu CLI'nin koştuğu onaylı release olmalıdır.
+        if (target.releaseSha !== null && args[1] !== target.releaseSha) fail("INVALID_ARGUMENTS");
+        return JSON.stringify(
+          await operation.createIntent(database, target.identity, args[0]!, args[1]!),
+        );
+      }
+      case "intent-invalidate":
+        return JSON.stringify(
+          await operation.invalidateIntent(database, target.identity, args[0]!),
+        );
+      case "receipt": {
+        const started = Date.now();
+        const receipt = await receipts.computeReceipt(database, target.identity);
+        writePrivateNew(args[0]!, `${JSON.stringify(receipt)}\n`);
+        return JSON.stringify({
+          database: target.identity.databaseName,
+          sha256: receipt.sha256,
+          seconds: (Date.now() - started) / 1000,
+        });
+      }
+      case "traffic-open":
+        return JSON.stringify(
+          await operation.recordTrafficOpen(database, target.identity, args[0]!),
+        );
+      default: {
+        const blockers = await operation.restoreEligibility(
+          database,
+          target.identity,
+          args[0]!,
+          readReceipt(args[1]!),
+        );
+        if (blockers.length) process.exitCode = 3;
+        return JSON.stringify({ eligible: blockers.length === 0, blockers });
+      }
+    }
+  } finally {
+    await database.$disconnect();
+  }
+}
+
+void main(process.argv.slice(2))
+  .then((output) => process.stdout.write(`${output}\n`))
+  .catch((error: unknown) => {
+    const code =
+      error instanceof Error && /^GREAT_RESET_[A-Z_]+$/u.test(error.message)
+        ? error.message
+        : "GREAT_RESET_OPERATION_FAILED";
+    process.stderr.write(`${code}\n`);
+    process.exitCode = 1;
+  });
