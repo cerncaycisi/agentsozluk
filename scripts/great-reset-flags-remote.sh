@@ -28,41 +28,47 @@ reset_operator_remote_prelude() {
      export AGENT_OPERATOR_ADMIN_ID=\"\$admin_id\" AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP=\"\$db_ip\""
 }
 
-# Uzak bayrak yazıcısının süreç ömrü kilidi (Astra #243 3. tur P1): yazıcı bu dosya kilidini
-# `tsx` çocuğuyla birlikte (miras alınan tanımlayıcı) bitene dek tutar. Dağıtım kilidi yalnız bu
-# kilit alınabildiğinde bırakılır; yazıcı `timeout --kill-after=10 180` ile sınırlı olduğundan
-# 240 sn bekleme kesin sonuç verir. SSH kopması, uzak yazıcının bittiğinin kanıtı değildir.
+# Uzak bayrak/koşu mutatörlerinin süreç ömrü kilidi (Astra #243 3.-6. tur): dondurma, boşaltma ve
+# geri açılış bu dosya kilidini başlatıcısız Node süreciyle ömürleri boyunca tutar. Dağıtım kilidi
+# yalnız bu kilit alınabildiğinde bırakılır. En uzun mutatör boşaltmadır (`timeout --kill-after=10
+# 960`, en çok ~970 sn); bekleme sınırı 1000 sn. SSH kopması, uzak yazıcının bittiğinin kanıtı
+# değildir. Reset fazındaki bayrak adımı ve genel duraklatma bu kilidi kullanmaz; onlar uzak
+# betiğin ve dağıtım kilidinin kendi sahiplik kurallarıyla korunur.
 reset_flags_writer_lock=/opt/agent-sozluk/runtime/.great-reset-flags.lock
 
 # Dağıtım kilidini bırakan uzak komutlara, silmeden önce eklenir.
 reset_flags_writer_idle_guard() {
   printf '%s' "exec 9>'$reset_flags_writer_lock'
-     flock -w 240 9 || { printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_WRITER_ACTIVE lock kept\\n' >&2; exit 97; }"
+     flock -w 1000 9 || { printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_WRITER_ACTIVE lock kept\\n' >&2; exit 97; }"
 }
 
 # Bayrak/koşu mutatörlerinin ortak kritik bölümü (Astra #243 4.-5. tur P1): süreç kilidi alınır,
 # ardından kilit tutulurken dağıtım kilidi sahipliği yeniden denetlenir. Mutatörler (dondurma,
 # boşaltma, geri açılış) başlatıcısız tek Node süreci olarak koşar ve kilidi miras alarak ömürleri
-# boyunca tutar. $1 = dağıtım kilidi sahiplik denetimi.
+# boyunca tutar. $1 = dağıtım kilidi sahiplik denetimi; $2 = süreç kilidi için bekleme (sn,
+# varsayılan 0: meşgulse hemen reddet).
 reset_flags_writer_section() {
+  local wait="${2:-0}"
   test -n "$1" || return 1
+  [[ "$wait" =~ ^[0-9]+$ ]] || return 1
   printf '%s' "exec 9>'$reset_flags_writer_lock'
-     flock -n 9 || { printf 'RELEASE_RESET_FLAGS_WRITER_BUSY\\n' >&2; exit 97; }
+     flock -w $wait 9 || { printf 'RELEASE_RESET_FLAGS_WRITER_BUSY\\n' >&2; exit 97; }
      $1"
 }
 
 # Olumlu kanıtlı geri açılış gövdesi (prelude'dan SONRA). $1 = operasyon kimliği, $2 = dağıtım
-# kilidi sahiplik denetimi: süreç kilidi ALINDIKTAN SONRA, kilit tutulurken yeniden koşar; böylece
+# kilidi sahiplik denetimi, $3 = süreç kilidi bekleme süresi (sn; boşaltma hatasından sonra süren
+# boşaltmanın bitmesi beklenir, Astra #243 6. tur P2). Sahiplik denetimi süreç kilidi ALINDIKTAN SONRA, kilit tutulurken yeniden koşar; böylece
 # hazırlıkta gecikip dağıtım kilidi bırakıldıktan sonra uyanan eski komut yazamaz (Astra #243
 # 4. tur P1). Yazıcı `tsx` başlatıcısı olmadan tek Node süreci olarak (`node --import tsx`) koşar:
 # süreç kilidini asıl yazıcı tutar; başlatıcı ölse de kilitsiz yazıcı kalmaz.
 # Başarıyı yalnız uzak taraf bildirir: RELEASE_RESET_FLAGS_RESTORED. Kayıt yoksa
 # RELEASE_RESET_FLAGS_RESTORE_SKIPPED (geri yükleme kanıtı değildir).
 reset_flags_restore_body() {
-  local file owner_check="$2"
+  local file owner_check="$2" wait="${3:-0}"
   file="$(reset_drain_flags_path "$1")"
   test -n "$owner_check" || return 1
-  printf '%s' "$(reset_flags_writer_section "$owner_check")
+  printf '%s' "$(reset_flags_writer_section "$owner_check" "$wait")
      if test -e /opt/agent-sozluk/runtime/.migration-hold; then
        printf 'RELEASE_RESET_FLAGS_RESTORE_REFUSED reason=maintenance-hold\\n' >&2
        exit 97

@@ -697,11 +697,13 @@ reset_operator_ssh() {
 }
 
 # Geri açılış: başarıyı yalnız uzaktan gelen RELEASE_RESET_FLAGS_RESTORED satırı kanıtlar
-# (kayıt yoksa atlama başarı sayılmaz ama hata da değildir). $1 = deneme sayısı.
+# (kayıt yoksa atlama başarı sayılmaz ama hata da değildir). $1 = deneme sayısı, $2 = uzak süreç
+# kilidi için bekleme (sn).
 reset_restore_society_flags() {
-  local attempts="$1" attempt output
+  local attempts="$1" wait="${2:-0}" attempt output
   for ((attempt = 1; attempt <= attempts; attempt++)); do
-    if output="$(reset_operator_ssh 240 0 "$(reset_flags_restore_body "$great_reset_operation" "$lock_check")")"; then
+    if output="$(reset_operator_ssh $((wait + 240)) 0 \
+      "$(reset_flags_restore_body "$great_reset_operation" "$lock_check" "$wait")")"; then
       printf '%s\n' "$output"
       if grep -Eq '^RELEASE_RESET_FLAGS_(RESTORED$|RESTORE_SKIPPED )' <<<"$output"; then
         return 0
@@ -726,7 +728,9 @@ if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then
      AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
        timeout --kill-after=10 960 node --import tsx scripts/great-reset-drain.ts drain"; then
     printf 'RELEASE_WRAPPER_FAIL code=RESET_DRAIN_FAILED\n' >&2
-    if reset_restore_society_flags 1; then
+    # SSH kopmuş olabilir, uzak boşaltma sürüyor olabilir: bitmesi (en çok ~970 sn) aynı
+    # sahiplik altında beklenir, ardından olumlu kanıt yeniden sınanır (Astra #243 6. tur P2).
+    if reset_restore_society_flags 1 1000; then
       ssh "${ssh_options[@]}" deploy@"$expected_ip" \
         "set -euo pipefail
          test \"\$(hostname)\" = '$expected_host' || exit 91

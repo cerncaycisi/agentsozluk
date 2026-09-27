@@ -225,7 +225,7 @@ describe("schema-neutral production release lane", () => {
       const uzakKomutlar = wrapper.split('"set -euo pipefail').length - 1;
       // Great reset bayrak/koşu mutatörlerine (boşaltma ve geri açılış) argüman olarak verilen
       // sahiplik denetimi (süreç kilidi alındıktan sonra yeniden koşar) uzak komut sayılmaz.
-      const argumanOlarak = wrapper.split('"$lock_check")').length - 1;
+      const argumanOlarak = wrapper.split('"$lock_check"').length - 1;
       expect(argumanOlarak).toBe(2);
       expect(wrapper.split("$lock_check").length - 1 - argumanOlarak).toBe(uzakKomutlar - 1);
       // Kilidi alan dahil her uzak komut önce kayıtlı logind oturum scope'unu kanıtlar.
@@ -237,7 +237,7 @@ describe("schema-neutral production release lane", () => {
       // (Astra #243 2. tur); o dalın dışında başka bırakma yok.
       const sonBirak = wrapper.lastIndexOf("find '$lock_dir' -xdev -depth -delete");
       expect(sonBirak).toBeGreaterThan(wrapper.indexOf("exec '$remote_script'"));
-      const bosaltmaDali = wrapper.indexOf("    if reset_restore_society_flags 1; then");
+      const bosaltmaDali = wrapper.indexOf("    if reset_restore_society_flags 1 1000; then");
       const ilkBirak = wrapper.indexOf("find '$lock_dir' -xdev -depth -delete");
       expect(ilkBirak).toBeGreaterThan(bosaltmaDali);
       expect(ilkBirak).toBeLessThan(wrapper.indexOf("    exit 96", bosaltmaDali));

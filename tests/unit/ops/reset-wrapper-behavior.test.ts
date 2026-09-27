@@ -369,8 +369,8 @@ echo "ACK=[$reset_next_ack]"
     // Reset'in kendi bayrak kaydı değil.
     expect(block).toContain("freeze '$(reset_drain_flags_path \"$great_reset_operation\")'");
     // Boşaltma durursa kilit yalnız olumlu kanıtlı geri açılıştan sonra bırakılır.
-    expect(block).toContain("if reset_restore_society_flags 1; then");
-    expect(block.indexOf("if reset_restore_society_flags 1; then")).toBeLessThan(
+    expect(block).toContain("if reset_restore_society_flags 1 1000; then");
+    expect(block.indexOf("if reset_restore_society_flags 1 1000; then")).toBeLessThan(
       block.indexOf("find '$lock_dir' -xdev -depth -delete"),
     );
     // Başarılı bakımdan sonra düşen geri açılış kilidi tutmaz; tek amaçlı komuta yönlendirir.
@@ -495,7 +495,7 @@ for name in body guard; do
   value="\${value//\\/opt\\/agent-sozluk\\/runtime/${runtime}}"
   # Gerçek zincir: timeout -> node (başlatıcısız); yalnız betik zararsız bir yazıcı taklidi.
   value="\${value//node --import tsx scripts\\/agent-write-freeze.ts restore/node ${sleeper}}"
-  value="\${value//flock -w 240/flock -w 15}"
+  value="\${value//flock -w 1000/flock -w 15}"
   printf -v "$name" '%s' "$value"
 done
 mkdir -p "${runtime}"
@@ -564,7 +564,9 @@ cat late.out
     expect(result.stdout).not.toContain("RELEASE_RESET_FLAGS_RESTORED");
     const flagsRemote = readFileSync("scripts/great-reset-flags-remote.sh", "utf8");
     // Sahiplik denetimi süreç kilidi alındıktan SONRA.
-    expect(flagsRemote.indexOf('     $1"')).toBeGreaterThan(flagsRemote.indexOf("flock -n 9"));
+    expect(flagsRemote.indexOf('     $1"')).toBeGreaterThan(
+      flagsRemote.indexOf("flock -w $wait 9"),
+    );
     for (const file of [
       "scripts/deploy-production-no-migration.sh",
       "scripts/great-reset-restore-flags.sh",
@@ -625,17 +627,34 @@ exec 8>${root}/.great-reset-flags.lock
 flock -n 8
 if bash -c "set -euo pipefail
 $section
-echo MUTATED" 2>busy.err; then :; else echo "BUSY_EXIT=$?"; fi
+echo MUTATED" 2>${root}/busy.err; then :; else echo "BUSY_EXIT=$?"; fi
 exec 8>&-
 bash -c "set -euo pipefail
 $section
 echo MUTATED_OK"
+# Boşaltma hatasından sonra: süren yazıcının bitmesi beklenir, sonra aynı sahiplikle geçer.
+waiting="$(reset_flags_writer_section "$owner_check" 5)"
+waiting="\${waiting//\\/opt\\/agent-sozluk\\/runtime/${root}}"
+( exec 8>${root}/.great-reset-flags.lock; flock -n 8; sleep 2 ) &
+sleep 0.3
+start=$(date +%s%N)
+bash -c "set -euo pipefail
+$waiting
+echo WAITED_MUTATION"
+echo "WAIT_MS=$(( ($(date +%s%N) - start) / 1000000 ))"
+wait
 `;
     const result = spawnSync("bash", ["-c", script], { encoding: "utf8", cwd: process.cwd() });
     expect(result.stdout).toContain("OWNER_EXIT=97");
     expect(result.stdout).toContain("BUSY_EXIT=97");
     expect(result.stdout).not.toContain("MUTATED\n");
     expect(result.stdout).toContain("MUTATED_OK");
+    expect(result.stdout).toContain("WAITED_MUTATION");
+    expect(Number(/WAIT_MS=(\d+)/u.exec(result.stdout)?.[1])).toBeGreaterThanOrEqual(1000);
+    // Boşaltma hatası dalı süren boşaltmayı bekler (en çok ~970 sn).
+    expect(readFileSync("scripts/deploy-production-no-migration.sh", "utf8")).toContain(
+      "if reset_restore_society_flags 1 1000; then",
+    );
   });
 
   it("tek amaçlı geri açılış komutu sarmalayıcıyla aynı hedefi kullanır ve exact onay ister", () => {
@@ -651,7 +670,7 @@ echo MUTATED_OK"
       const pattern = new RegExp(`^${name}=(.+)$`, "mu");
       expect(restore.match(pattern)?.[1], name).toBe(wrapper.match(pattern)?.[1]);
     }
-    expect(restore).toContain('$(reset_flags_restore_body "$operation" "$lock_check")');
+    expect(restore).toContain('$(reset_flags_restore_body "$operation" "$lock_check" 1000)');
     const refused = spawnSync("bash", ["scripts/great-reset-restore-flags.sh", operationId, sha], {
       encoding: "utf8",
       env: { ...process.env, AGENT_SOZLUK_GREAT_RESET_APPROVED: "" },
