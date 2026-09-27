@@ -9569,3 +9569,24 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   - `GREAT_RESET_POSTCONDITION_FAILED` yeniden görülürse CI'ı körlemesine yeniden koşturma; önce
     düşen alt denetimi ayırt eden güvenli bir alt kod ekle ve kaydı buraya bağla.
   - Kapı kapalıyken çalışan kabuk kodunda coproc ya da tek yönlü FIFO açılışı kullanma.
+
+## 2026-09-27 — gerçek boyutlu geri dönüş provası (yerel)
+
+- Kaynak: 27 Eylül 01:39Z gecelik yedeğin yerel PG16 kopyası (3,8 GB, 2.913.096 satır),
+  migration'lar uygulanmış; süper kullanıcı olmayan sahip rol; üretime bağlanılmadı. Kod:
+  `feat/reset-rollback` `89e4c16` (TS katmanı; bash sarmalayıcı yerelde çalışmaz, üretim host ve
+  Compose kimliğine bağlı).
+- 1. ve 2. koşu: reset önizlemesi `RUNS_OR_LEASES_PRESENT`, `RUNTIME_STATE_ACTIVE` ile bloklandı
+  (yedekte 2 koşu ve 1 runtime state aktif). Kök neden: üretim akışında boşaltma adımı yok; A5
+  dondurması worker'ı durdurur, kuyruk ve runtime state kalır; `--pause-society-flow` yalnız
+  `runtimeEnabled`'ı kapatır. Pencerede bu, güvenli vazgeçme (ABORTED) ve resetsiz harcanan bakım
+  demektir. Tasarım kararı Astra ile ayrı kayda geçecek.
+- 3. koşu (yalnız prova kopyasında boşaltma taklidi: 2 koşu iptal, 1 runtime state boşta):
+  reset-öncesi makbuz 96 sn; reset-anı dump 162 sn / 1,09 GiB; önizleme 21 sn `[]`; kapılı
+  EXECUTE 69 sn; gölge restore (`--role`, tek transaction) 249 sn / 3,8 GB; canlı↔restore
+  makbuzu birebir (87 sn); işaret 10 sn (1 niyet geçersiz, dar delta); işaretli makbuz eşit
+  (87 sn); kapılar kapalıyken doğrulama 96 sn `[]`; yer değiştirme ve yeni canonical doğrulaması
+  `[]`; eski DB kapalı. **PROVA_OK.** Geri dönüş dalı ≈ 530 sn (bütçe 1800 sn). Disk tepe
+  noktası ≈ iki DB (2 × 3,8 GB) + dump (1,1 GB). Prova DB'leri ve dump silindi.
+- **Tekrarlama:** gerçek yedekle reset provasını boşaltmasız koşma; önce engel listesini yazdır.
+  Kendi komut satırını eşleyen `pgrep -f` bekleyicisi kullanma; PID ile bekle.
