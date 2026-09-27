@@ -46,40 +46,61 @@ psql_local() {
   "$pg_bin/psql" -X -h 127.0.0.1 -p 5432 -U "$local_user" -v ON_ERROR_STOP=1 "$@" </dev/null
 }
 
+# SQL betiği stdin'den (tek oturum).
+psql_script() {
+  "$pg_bin/psql" -X -h 127.0.0.1 -p 5432 -U "$local_user" -v ON_ERROR_STOP=1 "$@"
+}
+
 cleanup() {
   local status=$?
   trap - EXIT
   set +e
   if ((created == 1)); then
-    psql_local -d postgres -q -c "DROP DATABASE IF EXISTS \"$database\" WITH (FORCE)" >/dev/null ||
-      printf 'RESET_OPERATOR_GATE_WARN code=LOCAL_DATABASE_LEFT database=%s\n' "$database" >&2
+    psql_script -d postgres -q -v "expected=${expected_cluster:-x}" -v "database=$database" \
+      <<'SQL' >/dev/null || printf 'RESET_OPERATOR_GATE_WARN code=LOCAL_DATABASE_LEFT database=%s\n' "$database" >&2
+SELECT system_identifier::text = :'expected' AS cluster_ok FROM pg_control_system() \gset
+\if :cluster_ok
+SELECT format('DROP DATABASE IF EXISTS %I WITH (FORCE)', :'database') \gexec
+\else
+DO $$ BEGIN RAISE EXCEPTION 'RESET_OPERATOR_GATE_LOCAL_CLUSTER_MISMATCH'; END $$;
+\endif
+SQL
   fi
   find "$work" -xdev -depth -delete
   exit "$status"
 }
 trap cleanup EXIT
 
-# Hiçbir mutasyondan önce: host ve yerel prova kümesinin exact kimliği (Astra, PR #240 P1).
+# Yerel prova kümesinin exact kimliği; mutasyonlar kimliği doğrulayan AYNI oturumda yapılır
+# (Astra, PR #240 2. tur P1: ayrı bağlantılar arasında küme değişimi TOCTOU'su).
 expected_cluster="$(cd "$root" && "$tsx" scripts/great-reset-operation.ts local-identity)" ||
   fail LOCAL_IDENTITY_UNAVAILABLE
 expected_cluster="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).clusterId)' "$expected_cluster")"
 [[ "$expected_cluster" =~ ^[0-9]+$ ]] || fail LOCAL_IDENTITY_UNAVAILABLE
-test "$(psql_local -d postgres -At -c 'SELECT system_identifier FROM pg_control_system()')" = \
-  "$expected_cluster" || fail LOCAL_CLUSTER_MISMATCH
 
-# Üretimdeki uygulama rolü yerelde aynı bayraklarla bulunmalı (makbuz rol bayraklarını katı
-# karşılaştırır): LOGIN, süper kullanıcı/CREATEDB/CREATEROLE/replikasyon/RLS aşımı yok, parola yok.
-psql_local -d postgres -q -c \
-  "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agent_sozluk') THEN
-     CREATE ROLE agent_sozluk; END IF; END \$\$" \
-  -c "ALTER ROLE agent_sozluk LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
-      NOBYPASSRLS CONNECTION LIMIT -1 PASSWORD NULL" ||
-  fail LOCAL_ROLE_FAILED
-# Üretimdeki gibi DB sahibi `agent_sozluk`; makbuz da o rolle alınır (DB sahibi = kullanıcı).
-psql_local -d postgres -q -c "CREATE DATABASE \"$database\" OWNER agent_sozluk TEMPLATE template0 ENCODING 'UTF8'" ||
-  fail LOCAL_DATABASE_CREATE_FAILED
+# Tek oturum: kimlik → rol (üretim bayraklarıyla: LOGIN, süper kullanıcı/CREATEDB/CREATEROLE/
+# replikasyon/RLS aşımı yok, parola yok) → DB (sahibi agent_sozluk; makbuz DB sahibi = kullanıcı
+# ister) → sentetik işaret. Kimlik tutmazsa hiçbir komut çalışmaz.
+psql_script -d postgres -q -v "expected=$expected_cluster" -v "database=$database" \
+  -v "marker=$marker" <<'SQL' || fail LOCAL_PREPARE_FAILED
+SELECT system_identifier::text = :'expected' AS cluster_ok FROM pg_control_system() \gset
+\if :cluster_ok
+\else
+-- `\quit` çıkış kodu vermez: ON_ERROR_STOP ile sıfır dışı çıkış için hata fırlatılır.
+DO $$ BEGIN RAISE EXCEPTION 'RESET_OPERATOR_GATE_LOCAL_CLUSTER_MISMATCH'; END $$;
+\endif
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agent_sozluk') THEN
+    CREATE ROLE agent_sozluk;
+  END IF;
+END $$;
+ALTER ROLE agent_sozluk LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
+  NOBYPASSRLS CONNECTION LIMIT -1 PASSWORD NULL;
+SELECT format('CREATE DATABASE %I OWNER agent_sozluk TEMPLATE template0 ENCODING %L',
+  :'database', 'UTF8') \gexec
+SELECT format('COMMENT ON DATABASE %I IS %L', :'database', :'marker') \gexec
+SQL
 created=1
-psql_local -d postgres -q -c "COMMENT ON DATABASE \"$database\" IS '$marker'" || fail LOCAL_MARKER_FAILED
 # Üretim scratch'i gibi `agent_sozluk` rolü altında: extension'lar üretimdeki sahiple kurulur.
 "$pg_bin/pg_restore" -h 127.0.0.1 -p 5432 -U "$local_user" --role=agent_sozluk --exit-on-error \
   -d "$database" "$dump" </dev/null || fail LOCAL_RESTORE_FAILED

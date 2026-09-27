@@ -728,12 +728,39 @@ reset_freeze_operator_units() {
 
 reset_restore_operator_units() {
   local enabled active
-  IFS='|' read -r enabled active <"$reset_work/operator-units"
-  if test "$enabled" = enabled; then systemctl --user enable agentsozluk-yedek.timer >/dev/null; fi
-  if test "$active" = active; then systemctl --user start agentsozluk-yedek.timer; fi
+  IFS='|' read -r enabled active <"$reset_work/operator-units" ||
+    reset_fail RESET_OPERATOR_TIMER_STATE_MISSING
+  if test "$enabled" = enabled; then
+    systemctl --user enable agentsozluk-yedek.timer >/dev/null ||
+      reset_fail RESET_OPERATOR_TIMER_RESTORE_FAILED
+  fi
+  if test "$active" = active; then
+    systemctl --user start agentsozluk-yedek.timer || reset_fail RESET_OPERATOR_TIMER_RESTORE_FAILED
+  fi
+  # Son durum kaydedilen durumla birebir (Astra, PR #240 2. tur P2).
   test "$(systemctl --user is-enabled agentsozluk-yedek.timer 2>/dev/null || true)" = "$enabled" ||
     reset_fail RESET_OPERATOR_TIMER_RESTORE_FAILED
+  test "$(systemctl --user is-active agentsozluk-yedek.timer 2>/dev/null || true)" = "$active" ||
+    reset_fail RESET_OPERATOR_TIMER_RESTORE_FAILED
   printf 'RELEASE_RESET_OPERATOR_UNITS_RESTORED\n'
+}
+
+# Uzak bakımın gerçek durumu (salt okunur): işaret dizini, aşama ve bekletme dosyası. Çıktı:
+# SAFE (işaret yok ya da aşama dondurma öncesi ve bekletme yok) ya da UNRESOLVED.
+reset_remote_state() {
+  ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+    "set -euo pipefail
+     test \"\$(hostname)\" = '$expected_host' || exit 91
+     $scope_check
+     $lock_check
+     marker=/opt/agent-sozluk/runtime/.migration-operation
+     hold=/opt/agent-sozluk/runtime/.migration-hold
+     phase=none
+     if test -d \"\$marker\"; then phase=\"\$(cat \"\$marker/phase\" 2>/dev/null || echo unreadable)\"; fi
+     case \"\$phase\" in
+       none | planned | image-verified) if test -e \"\$hold\"; then echo UNRESOLVED; else echo SAFE; fi ;;
+       *) echo UNRESOLVED ;;
+     esac" </dev/null 2>/dev/null || printf 'UNRESOLVED\n'
 }
 
 # Üretimden tek dosyayı okur (yalnız beklenen kalıptaki yollar), yerel 0600 dosyaya yazar.
@@ -809,10 +836,16 @@ reset_handle_await() {
 }
 
 great_reset_run() {
-  local attempt=0 status tee_status line log remote_frozen=0
+  local attempt=0 status tee_status line log
   local -a statuses
   reset_next_ack=''
-  reset_freeze_operator_units
+  # Yerel dondurma düşerse uzak bakım hiç başlamamıştır: timer eski durumuna döner.
+  if ! (reset_freeze_operator_units); then
+    if test -f "$reset_work/operator-units" && ! (reset_restore_operator_units); then
+      printf 'RELEASE_WARN operator backup timer could not be restored; see runbook\n' >&2
+    fi
+    reset_fail RESET_OPERATOR_FREEZE_FAILED
+  fi
   while :; do
     attempt=$((attempt + 1))
     ((attempt <= 12)) || reset_fail RESET_TOO_MANY_ROUNDS
@@ -830,14 +863,15 @@ great_reset_run() {
     tee_status="${statuses[1]}"
     chmod 0600 "$log"
     test "$tee_status" = 0 || reset_fail RESET_REMOTE_LOG_FAILED
-    if tr -d '\r' <"$log" | grep -q '^RELEASE_MIGRATION_PHASE frozen'; then remote_frozen=1; fi
     if test "$status" = 0; then break; fi
     if test "$status" != 75; then
-      # Uzak dondurma hiç başlamadıysa ya da A5 eski sürümü güvenle geri açıp fazı geri aldıysa
-      # operatör timer'ı eski durumuna döner; aksi hâlde bakım sürüyordur, kapalı kalır.
-      if ((remote_frozen == 0)) ||
-         tr -d '\r' <"$log" | grep -q 'rewound after reopen'; then
-        reset_restore_operator_units || true
+      # Karar uzak tarafın GERÇEK durumundan (Astra, PR #240 2. tur P1): işaret yok ya da aşama
+      # dondurma öncesi ve bekletme yoksa operatör timer'ı eski durumuna döner; aksi hâlde bakım
+      # sürüyordur ya da belirsizdir, kapalı kalır.
+      if test "$(reset_remote_state)" = SAFE; then
+        if ! (reset_restore_operator_units); then
+          printf 'RELEASE_WARN operator backup timer could not be restored; see runbook\n' >&2
+        fi
       else
         printf 'RELEASE_WARN operator backup timer stays disabled while maintenance is unresolved\n' >&2
       fi

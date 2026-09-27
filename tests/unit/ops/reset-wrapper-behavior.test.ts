@@ -182,6 +182,7 @@ ${extract("reset_freeze_operator_units")}
 ${extract("great_reset_run")}
 remote_release_command() { printf '%s' "$1"; }
 reset_restore_operator_units() { echo RESTORED >>"$calls"; }
+reset_remote_state() { echo UNRESOLVED; }
 ${body}
 `;
     const result = spawnSync("bash", ["-c", script], { encoding: "utf8" });
@@ -210,28 +211,38 @@ echo DONE >>"$calls"
     expect(calls).toContain("DONE");
   });
 
-  it("uzak dondurma başlamadan biten hatada timer döner; bakım sürüyorsa kapalı kalır", () => {
-    const early = loopHarness(`
+  it("hata sonrası timer kararı uzak durumdan: SAFE ise döner, değilse kapalı kalır", () => {
+    const safe = loopHarness(`
 reset_freeze_operator_units() { :; }
+reset_remote_state() { echo SAFE; }
 ssh() { printf 'RELEASE_FAIL code=X\\n'; return 1; }
 great_reset_run
 `);
-    expect(early.status).toBe(1);
-    expect(early.calls()).toContain("RESTORED");
-    const during = loopHarness(`
+    expect(safe.status).toBe(1);
+    expect(safe.calls()).toContain("RESTORED");
+    // Günlükte 'frozen' satırı olmasa da (yeniden giriş) uzak durum UNRESOLVED ise açılmaz;
+    // sahte 'rewound after reopen' metni de karar vermez (Astra, PR #240 2. tur).
+    const unresolved = loopHarness(`
 reset_freeze_operator_units() { :; }
-ssh() { printf 'RELEASE_MIGRATION_PHASE frozen\\nRELEASE_FAIL code=X\\n'; return 1; }
+reset_remote_state() { echo UNRESOLVED; }
+ssh() { printf 'previous release NOT rewound after reopen failure\\n'; return 98; }
 great_reset_run
 `);
-    expect(during.status).toBe(1);
-    expect(during.calls()).not.toContain("RESTORED");
-    expect(during.stderr).toContain("operator backup timer stays disabled");
-    const rewound = loopHarness(`
-reset_freeze_operator_units() { :; }
-ssh() { printf 'RELEASE_MIGRATION_PHASE frozen\\nRELEASE_MIGRATION_PHASE image-verified (rewound after reopen)\\n'; return 1; }
+    expect(unresolved.status).toBe(98);
+    expect(unresolved.calls()).not.toContain("RESTORED");
+    expect(unresolved.stderr).toContain("operator backup timer stays disabled");
+  });
+
+  it("yerel dondurma düşerse uzak bakım başlamaz ve timer eski durumuna döner", () => {
+    const result = loopHarness(`
+: >"$reset_work/operator-units"
+reset_freeze_operator_units() { reset_fail RESET_OPERATOR_BACKUP_RUNNING; }
+ssh() { echo SSH_CALLED >>"$calls"; return 0; }
 great_reset_run
 `);
-    expect(rewound.calls()).toContain("RESTORED");
+    expect(result.stderr).toContain("code=RESET_OPERATOR_FREEZE_FAILED");
+    expect(result.calls()).toContain("RESTORED");
+    expect(result.calls()).not.toContain("SSH_CALLED");
   });
 
   it("devre dışı ama hâlâ aktif timer dondurulmuş sayılmaz", () => {
@@ -247,5 +258,28 @@ systemctl() {
 reset_freeze_operator_units
 `);
     expect(result.stderr).toContain("code=RESET_OPERATOR_TIMER_STILL_ACTIVE");
+  });
+  it("timer geri dönüşü başlatma başarısızsa başarı bildirmez", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "reset-restore-"));
+    directories.push(root);
+    const script = `
+set -Eeuo pipefail
+reset_work="${root}"
+printf 'enabled|active\\n' >"$reset_work/operator-units"
+${extract("reset_fail")}
+${extract("reset_restore_operator_units")}
+systemctl() {
+  case "$*" in
+    "--user start agentsozluk-yedek.timer") return 1 ;;
+    "--user is-enabled agentsozluk-yedek.timer") echo enabled ;;
+    "--user is-active agentsozluk-yedek.timer") echo inactive ;;
+    *) return 0 ;;
+  esac
+}
+reset_restore_operator_units
+`;
+    const result = spawnSync("bash", ["-c", script], { encoding: "utf8" });
+    expect(result.stdout).not.toContain("RELEASE_RESET_OPERATOR_UNITS_RESTORED");
+    expect(result.stderr).toContain("code=RESET_OPERATOR_TIMER_RESTORE_FAILED");
   });
 });
