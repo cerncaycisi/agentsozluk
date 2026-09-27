@@ -1,3 +1,4 @@
+import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   compareReceipts,
@@ -9,6 +10,25 @@ import {
   resetIntegrationDatabase,
 } from "./database";
 
+/*
+  Kasıtlı bozma adımları (dil/parametre yetkisi, extension üyesi operatör) nesne sahibi yönetici
+  rolü ister. Makbuzun kendisi her zaman test rolüyle (CI'da süper kullanıcı olmayan DB sahibi,
+  tasarım v20 madde 6) hesaplanır; yönetici yalnız fixture'ı kurar ve geri alır.
+*/
+const fixtureAdmin = (() => {
+  const base = process.env.TEST_ADMIN_DATABASE_URL;
+  if (!base) return integrationDatabase;
+  const url = new URL(base);
+  const target = new URL(
+    process.env.TEST_DATABASE_URL ??
+      "postgresql://postgres:postgres@localhost:5432/agent_sozluk_test",
+  );
+  url.pathname = target.pathname;
+  url.search = "";
+  url.searchParams.set("connection_limit", "2");
+  return new PrismaClient({ datasourceUrl: url.toString(), log: [] });
+})();
+
 async function identity() {
   const [row] = await integrationDatabase.$queryRaw<{ cluster: string; owner: string }[]>`
     SELECT (SELECT system_identifier::text FROM pg_control_system()) AS cluster,
@@ -18,7 +38,10 @@ async function identity() {
 
 describe("great reset receipt against PostgreSQL", () => {
   beforeEach(resetIntegrationDatabase);
-  afterAll(closeIntegrationDatabase);
+  afterAll(async () => {
+    if (fixtureAdmin !== integrationDatabase) await fixtureAdmin.$disconnect();
+    await closeIntegrationDatabase();
+  });
 
   it("is deterministic and separates SQL NULL from JSON null, even with a column named t", async () => {
     const expected = await identity();
@@ -76,7 +99,7 @@ describe("great reset receipt against PostgreSQL", () => {
       WHERE typname = 'gtrgm' AND typnamespace = 'public'::regnamespace`;
     if (trgm?.count !== 1) return;
     const before = await computeReceipt(integrationDatabase, expected);
-    await integrationDatabase.$executeRawUnsafe("REVOKE USAGE ON TYPE gtrgm FROM PUBLIC");
+    await fixtureAdmin.$executeRawUnsafe("REVOKE USAGE ON TYPE gtrgm FROM PUBLIC");
     try {
       const after = await computeReceipt(integrationDatabase, expected);
       const result = compareReceipts(before, after);
@@ -87,7 +110,7 @@ describe("great reset receipt against PostgreSQL", () => {
         expect.arrayContaining(["type:gtrgm", "extensionMember:type gtrgm"]),
       );
     } finally {
-      await integrationDatabase.$executeRawUnsafe("GRANT USAGE ON TYPE gtrgm TO PUBLIC");
+      await fixtureAdmin.$executeRawUnsafe("GRANT USAGE ON TYPE gtrgm TO PUBLIC");
     }
   });
 
@@ -142,8 +165,8 @@ describe("great reset receipt against PostgreSQL", () => {
   it("sees language usage and parameter privilege changes", async () => {
     const expected = await identity();
     const before = await computeReceipt(integrationDatabase, expected);
-    await integrationDatabase.$executeRawUnsafe("REVOKE USAGE ON LANGUAGE plpgsql FROM PUBLIC");
-    await integrationDatabase.$executeRawUnsafe(
+    await fixtureAdmin.$executeRawUnsafe("REVOKE USAGE ON LANGUAGE plpgsql FROM PUBLIC");
+    await fixtureAdmin.$executeRawUnsafe(
       "GRANT SET ON PARAMETER session_replication_role TO PUBLIC",
     );
     try {
@@ -153,8 +176,8 @@ describe("great reset receipt against PostgreSQL", () => {
         expect.arrayContaining(["language:plpgsql", "parameter:session_replication_role"]),
       );
     } finally {
-      await integrationDatabase.$executeRawUnsafe("GRANT USAGE ON LANGUAGE plpgsql TO PUBLIC");
-      await integrationDatabase.$executeRawUnsafe(
+      await fixtureAdmin.$executeRawUnsafe("GRANT USAGE ON LANGUAGE plpgsql TO PUBLIC");
+      await fixtureAdmin.$executeRawUnsafe(
         "REVOKE SET ON PARAMETER session_replication_role FROM PUBLIC",
       );
     }
@@ -167,9 +190,7 @@ describe("great reset receipt against PostgreSQL", () => {
       WHERE oprname = '%' AND oprleft = 'text'::regtype AND oprright = 'text'::regtype`;
     const before = await computeReceipt(integrationDatabase, expected);
     if (trgm?.count === 1) {
-      await integrationDatabase.$executeRawUnsafe(
-        "ALTER OPERATOR % (text, text) SET (RESTRICT = NONE)",
-      );
+      await fixtureAdmin.$executeRawUnsafe("ALTER OPERATOR % (text, text) SET (RESTRICT = NONE)");
       try {
         const after = await computeReceipt(integrationDatabase, expected);
         expect(compareReceipts(before, after)).toMatchObject({
@@ -177,7 +198,7 @@ describe("great reset receipt against PostgreSQL", () => {
           sections: ["schema"],
         });
       } finally {
-        await integrationDatabase.$executeRawUnsafe(
+        await fixtureAdmin.$executeRawUnsafe(
           `ALTER OPERATOR % (text, text) SET (RESTRICT = ${trgm.restrict})`,
         );
       }

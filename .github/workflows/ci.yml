@@ -176,6 +176,29 @@ jobs:
       - name: Integration tests
         run: pnpm test:integration
 
+      # Great reset tasarım v20 madde 6: üretimde reset, bağlantı kapısı ve makbuz süper
+      # kullanıcı olmayan DB sahibi `agent_sozluk` rolüyle koşar. Aynı rolü CREATEDB/CREATEROLE
+      # olmadan kurup migration'ı ve reset entegrasyon testlerini onunla koşarız. `postgres`
+      # yalnız fixture yöneticisidir (scratch DB, başka rolün backend'i, kasıtlı bozma).
+      - name: Great reset integration as non-superuser database owner
+        env:
+          PGPASSWORD: postgres
+          OWNER_DATABASE_URL: postgresql://agent_sozluk:agent_sozluk@127.0.0.1:5432/agent_sozluk_owner_test?schema=public&connection_limit=10
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE agent_sozluk LOGIN PASSWORD 'agent_sozluk' NOSUPERUSER NOCREATEDB NOCREATEROLE" \
+            -c "CREATE DATABASE agent_sozluk_owner_test OWNER agent_sozluk"
+          DATABASE_URL="$OWNER_DATABASE_URL" pnpm db:deploy
+          DATABASE_URL="$OWNER_DATABASE_URL" TEST_DATABASE_URL="$OWNER_DATABASE_URL" \
+            TEST_ADMIN_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/postgres" \
+            GREAT_RESET_REQUIRE_NON_SUPERUSER=1 \
+            pnpm exec vitest run \
+              tests/integration/great-reset-connection-gate.test.ts \
+              tests/integration/great-reset-namespace.test.ts \
+              tests/integration/great-reset-records.test.ts \
+              tests/integration/great-reset-receipt.test.ts \
+              tests/integration/outbox-reset-archive.test.ts
+
       - name: Agent life ledger acceptance
         run: pnpm agent:verify-life-ledger
 
