@@ -227,10 +227,9 @@ test("a link to content removed while the page is open reaches the server and la
     /*
       Ölçülen iddia: sayfa açıkken içerik silinirse linke tıklama Router Cache'ten değil sunucudan
       RSC isteği yapar ve 410 sayfasına iner. Prefetch yanıtı (200) silmeden önce beklenir.
-      AÇIK KAPI (Astra, PR #229 5. tur): prefetch akışının istemcide TAMAMLANIP önbelleğe
-      alındığı burada kanıtlanmıyor. Next 15.5 dinamik sayfanın kısmi prefetch akışını açık
-      tutabiliyor; CI'da `requestfinished` Chromium'da gelmedi. Tamamlanmış prefetch'in
-      bayat içerik göstermediği reset GO kapılarında ayrıca kanıtlanacak.
+      Tarayıcıdaki prefetch akışının bitişi CI'da gözlenemiyor (`requestfinished` Chromium'da
+      gelmedi; Astra, PR #229 5. tur); tamamlanmış yükün içeriği aşağıda aynı isteğin yeniden
+      oynatılmasıyla zorunlu ölçülür.
     */
     const prefetched = page.waitForResponse(
       (response) =>
@@ -245,15 +244,32 @@ test("a link to content removed while the page is open reaches the server and la
     const prefetchResponse = await prefetched;
     expect(prefetchResponse.status()).toBe(200);
     /*
-      Tamamlanmış ama hiç kullanılmamış prefetch'in ilk kullanımı (Astra, PR #241 P2): prefetch
-      yükü tamamlanırsa entry metnini İÇERMEMELİ; yani Router Cache'e bayat içerik koyamaz ve
-      ilk kullanımda sayfa içeriği sunucudan istenir. Yük tamamlanmazsa zaten kısmidir.
+      Tamamlanmış ama hiç kullanılmamış prefetch'in ilk kullanımı (Astra, PR #241 P2, 2. tur):
+      tarayıcının prefetch akışının bitişi CI'da gözlenemediği için, tarayıcının gönderdiği exact
+      prefetch isteği aynı başlıklar ve çerezlerle yeniden oynatılır ve TAM yanıt zorunlu okunur.
+      Tamamlanmış prefetch yükü entry metnini içermez (Next 15.5.25, PPR kapalı: yalnız router
+      durumu, `seedData: null`); dolayısıyla Router Cache'e bayat içerik koyamaz, ilk kullanımda
+      içerik sunucudan istenir. Pozitif kontrol: prefetch başlığı olmayan aynı RSC isteği metni
+      içerir, yani ölçüm içeriği görebilir.
     */
-    const prefetchBody = await Promise.race([
-      prefetchResponse.text().catch(() => null),
-      page.waitForTimeout(5_000).then(() => null),
-    ]);
-    if (prefetchBody !== null) expect(prefetchBody).not.toContain(entry.body);
+    const prefetchHeaders = Object.fromEntries(
+      Object.entries(await prefetchResponse.request().allHeaders()).filter(
+        ([name]) => !name.startsWith(":") && !["content-length", "host"].includes(name),
+      ),
+    );
+    expect(prefetchHeaders["next-router-prefetch"]).toBeTruthy();
+    const replayedPrefetch = await page.request.get(prefetchResponse.url(), {
+      headers: prefetchHeaders,
+    });
+    expect(replayedPrefetch.status()).toBe(200);
+    const prefetchBody = await replayedPrefetch.text();
+    expect(prefetchBody.length).toBeGreaterThan(0);
+    expect(prefetchBody).not.toContain(entry.body);
+    const { "next-router-prefetch": _prefetch, ...fullHeaders } = prefetchHeaders;
+    void _prefetch;
+    const fullPayload = await page.request.get(prefetchResponse.url(), { headers: fullHeaders });
+    expect(fullPayload.status()).toBe(200);
+    expect(await fullPayload.text()).toContain(entry.body);
 
     // Reset sayfa açıkken olur: entry silinir, kimliği mezar taşına yazılır.
     const { operationId } = await database.greatResetCommit.create({
