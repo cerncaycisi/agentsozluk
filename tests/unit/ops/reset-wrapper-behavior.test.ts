@@ -22,9 +22,15 @@ afterEach(() => {
 });
 
 function run(env: Record<string, string>, ...args: string[]) {
+  const environment = {
+    PATH: process.env.PATH ?? "",
+    HOME: tmpdir(),
+    NODE_ENV: "test",
+    ...env,
+  } as NodeJS.ProcessEnv;
   return spawnSync("bash", [wrapper, "--sha", sha, "--artifact-run", "1", "--execute", ...args], {
     encoding: "utf8",
-    env: { PATH: process.env.PATH ?? "", HOME: tmpdir(), ...env },
+    env: environment,
   });
 }
 
