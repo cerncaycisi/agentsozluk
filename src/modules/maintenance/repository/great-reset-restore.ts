@@ -109,22 +109,45 @@ export async function markShadow(
   operationId: string,
   dumpSha256: string,
   canonicalCommitSha256: string,
+  preResetDigests: ShadowMarkedDigests,
 ): Promise<{
   invalidatedIntents: number;
-  auditWritten: boolean;
+  auditWritten: true;
   deltaVerified: true;
   marked: ShadowMarkedDigests;
 }> {
   if (!uuid.test(operationId) || !sha64.test(dumpSha256) || !sha64.test(canonicalCommitSha256))
     fail("INVALID_ARGUMENTS");
+  for (const table of shadowMarkedTables) {
+    const digest = preResetDigests?.[table];
+    if (!digest || !Number.isInteger(digest.rows) || !sha64.test(digest.sha256))
+      fail("INVALID_ARGUMENTS");
+  }
   return database.$transaction(
     async (tx) => {
       await tx.$executeRaw`SET LOCAL lock_timeout = '5s'`;
+      // İki işaretli tablo, ölçümden dönüşüme kadar eşzamanlı yazılara kapalı; RepeatableRead
+      // anlık görüntüsü kilitten SONRA alınır (Astra, PR #242 2. tur P1).
+      await tx.$executeRaw`LOCK TABLE audit_logs, great_reset_intents IN SHARE ROW EXCLUSIVE MODE`;
       await assertIdentity(tx, identity);
       const [state] = await tx.$queryRaw<{ commits: number; exposures: number }[]>`
         SELECT (SELECT count(*)::int FROM great_reset_commits) AS commits,
           (SELECT count(*)::int FROM great_reset_exposure_events) AS exposures`;
       if (state?.commits !== 0 || state.exposures !== 0) fail("RESTORE_SHADOW_NOT_PRE_RESET");
+      // Başlangıç, reset öncesi makbuzun bu iki tablosuna birebir eşit olmalı: işaretten önce
+      // gölgeye yazılmış hiçbir satır güvenilen özete giremez.
+      const baseline = await markedDigests(tx);
+      const baselineMatches = shadowMarkedTables.every(
+        (table) =>
+          baseline[table].rows === preResetDigests[table].rows &&
+          baseline[table].sha256 === preResetDigests[table].sha256,
+      );
+      if (!baselineMatches) {
+        const marked = await tx.auditLog.count({
+          where: { action: GREAT_RESET_PRODUCTION_RESTORE_ACTION, entityId: operationId },
+        });
+        fail(marked > 0 ? "RESTORE_SHADOW_ALREADY_MARKED" : "RESTORE_SHADOW_BASELINE_MISMATCH");
+      }
       const intentsBefore = await intentsDigest(tx);
       const openBefore = await tx.$queryRaw<{ id: string }[]>`
         SELECT "operationId"::text AS id FROM great_reset_intents
@@ -153,27 +176,7 @@ export async function markShadow(
         stillOpen?.count !== 0
       )
         fail("RESTORE_SHADOW_DELTA_INVALID");
-      const existing = await tx.auditLog.findMany({
-        where: { action: GREAT_RESET_PRODUCTION_RESTORE_ACTION },
-        select: { entityId: true, metadata: true },
-      });
-      if (existing.length > 1) fail("RESTORE_AUDIT_CONFLICT");
       const expected = { operationId, dumpSha256, canonicalCommitSha256 };
-      if (existing.length === 1) {
-        const metadata = existing[0]!.metadata as Record<string, unknown> | null;
-        if (
-          existing[0]!.entityId !== operationId ||
-          metadata?.dumpSha256 !== dumpSha256 ||
-          metadata?.canonicalCommitSha256 !== canonicalCommitSha256
-        )
-          fail("RESTORE_AUDIT_CONFLICT");
-        return {
-          invalidatedIntents: invalidated,
-          auditWritten: false,
-          deltaVerified: true as const,
-          marked: await markedDigests(tx),
-        };
-      }
       const auditBefore = await auditDigest(tx, null);
       const created = await tx.auditLog.create({
         data: {
@@ -188,12 +191,12 @@ export async function markShadow(
       if ((await auditDigest(tx, created.id)) !== auditBefore) fail("RESTORE_SHADOW_DELTA_INVALID");
       return {
         invalidatedIntents: invalidated,
-        auditWritten: true,
+        auditWritten: true as const,
         deltaVerified: true as const,
         marked: await markedDigests(tx),
       };
     },
-    { timeout: 60_000, maxWait: 5_000 },
+    { isolationLevel: "RepeatableRead", timeout: 60_000, maxWait: 5_000 },
   );
 }
 
@@ -235,8 +238,9 @@ export async function verifyRestored(
             WHERE schemaname = 'public' AND sequencename = 'entries_public_id_seq') AS "entryMax",
           (SELECT max_value::text FROM pg_sequences
             WHERE schemaname = 'public' AND sequencename = 'topics_public_id_seq') AS "topicMax"`;
+      // Önceki bir operasyonun geri dönüş audit'i tarihsel kayıttır; yalnız bu operasyonunki sayılır.
       const audits = await tx.auditLog.findMany({
-        where: { action: GREAT_RESET_PRODUCTION_RESTORE_ACTION },
+        where: { action: GREAT_RESET_PRODUCTION_RESTORE_ACTION, entityId: operationId },
         select: { entityId: true, metadata: true },
       });
       const result: string[] = [];

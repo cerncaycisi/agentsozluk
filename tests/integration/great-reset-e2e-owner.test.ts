@@ -489,7 +489,10 @@ describe("great reset yürütücüsü, hedef DB sahibi rolle ve bağlantı kapı
       const commitSha = await commitDigest(canonical, identity(name), operationId);
       // Canonical'da commit var: gölge sanılıp işaretlenemez.
       await expect(
-        markShadow(canonical, identity(name), operationId, "a".repeat(64), commitSha),
+        markShadow(canonical, identity(name), operationId, "a".repeat(64), commitSha, {
+          audit_logs: preReset.tables.audit_logs!,
+          great_reset_intents: preReset.tables.great_reset_intents!,
+        }),
       ).rejects.toThrow("GREAT_RESET_RESTORE_SHADOW_NOT_PRE_RESET");
       await canonical.$disconnect();
 
@@ -502,35 +505,35 @@ describe("great reset yürütücüsü, hedef DB sahibi rolle ve bağlantı kapı
       expect(
         await verifyRestored(shadowClient, identity(shadow), operationId, dumpSha, commitSha),
       ).toEqual(expect.arrayContaining(["OPEN_INTENT_PRESENT", "RESTORE_AUDIT_MISMATCH"]));
+      const preDigests = {
+        audit_logs: preReset.tables.audit_logs!,
+        great_reset_intents: preReset.tables.great_reset_intents!,
+      };
+      // Başlangıç reset öncesi makbuza bağlı: işaretten önce gölgeye eklenmiş bir audit satırı
+      // (burada makbuzda bir satır eksik gösterilerek) işaretlemeyi durdurur (Astra, PR #242 2. tur).
+      await expect(
+        markShadow(shadowClient, identity(shadow), operationId, dumpSha, commitSha, {
+          ...preDigests,
+          audit_logs: { ...preDigests.audit_logs, rows: preDigests.audit_logs.rows - 1 },
+        }),
+      ).rejects.toThrow("GREAT_RESET_RESTORE_SHADOW_BASELINE_MISMATCH");
       const marking = await markShadow(
         shadowClient,
         identity(shadow),
         operationId,
         dumpSha,
         commitSha,
+        preDigests,
       );
       expect(marking).toMatchObject({
         invalidatedIntents: 1,
         auditWritten: true,
         deltaVerified: true,
       });
-      // İdempotent; farklı dump SHA'sıyla çelişki durur.
-      const again = await markShadow(
-        shadowClient,
-        identity(shadow),
-        operationId,
-        dumpSha,
-        commitSha,
-      );
-      expect(again).toMatchObject({
-        invalidatedIntents: 0,
-        auditWritten: false,
-        deltaVerified: true,
-      });
-      expect(again.marked).toEqual(marking.marked);
+      // Yeniden işaretleme yoktur: başlangıç artık reset öncesi değil.
       await expect(
-        markShadow(shadowClient, identity(shadow), operationId, "c".repeat(64), commitSha),
-      ).rejects.toThrow("GREAT_RESET_RESTORE_AUDIT_CONFLICT");
+        markShadow(shadowClient, identity(shadow), operationId, dumpSha, commitSha, preDigests),
+      ).rejects.toThrow("GREAT_RESET_RESTORE_SHADOW_ALREADY_MARKED");
       expect(
         await verifyRestored(shadowClient, identity(shadow), operationId, dumpSha, commitSha),
       ).toEqual([]);

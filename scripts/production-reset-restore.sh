@@ -58,19 +58,56 @@ SELECT format('ALTER DATABASE %I WITH ALLOW_CONNECTIONS %s', :'shadow', :'allow'
 SQL
 }
 
+# Dış kayıt bağı (Astra, PR #242 P1 ve 2. tur P2): operasyon kimliği ve sarmalayıcının dış
+# kayıttan getirdiği SHA'lar, uzak işaretler ve dosyalarla birebir eşleşmeli. Yalnız yerel dosya
+# okur; hiçbir mutasyondan ve kapı toparlamasından önce çalışır.
+reset_rollback_assert_binding() {
+  local dump dump_sha post post_sha
+  [[ "${reset_rollback_expected_dump:-}" =~ ^[0-9a-f]{64}$ &&
+     "${reset_rollback_expected_receipt:-}" =~ ^[0-9a-f]{64}$ ]] ||
+    migration_fail RESET_ROLLBACK_LEDGER_BINDING_MISSING
+  test -f "$migration_marker/identity" &&
+    test "$(cat "$migration_marker/identity")" = "$(migration_identity)" ||
+    migration_fail RESET_ROLLBACK_OPERATION_MISMATCH
+  test -f "$migration_marker/reset-request-COMMITTED_MAINTENANCE" ||
+    migration_fail RESET_ROLLBACK_NOT_COMMITTED_MAINTENANCE
+  dump="$(cat "$migration_marker/reset-dump-path")"
+  dump_sha="$(cat "$migration_marker/reset-dump-sha256")"
+  post="$(cat "$migration_marker/reset-post-receipt-path")"
+  post_sha="$(reset_json_field sha256 <"$post")"
+  test "$dump_sha" = "$reset_rollback_expected_dump" || migration_fail RESET_ROLLBACK_LEDGER_MISMATCH
+  test "$post_sha" = "$reset_rollback_expected_receipt" || migration_fail RESET_ROLLBACK_LEDGER_MISMATCH
+  test "$(cat "$migration_marker/reset-request-COMMITTED_MAINTENANCE")" = \
+    "COMMITTED_MAINTENANCE|$dump_sha|$post_sha" || migration_fail RESET_ROLLBACK_LEDGER_MISMATCH
+  if test -f "$migration_marker/reset-request-ROLLED_BACK"; then
+    test "$(cat "$migration_marker/reset-request-ROLLED_BACK")" = "ROLLED_BACK|$dump_sha|$post_sha" ||
+      migration_fail RESET_ROLLBACK_LEDGER_MISMATCH
+  fi
+  test "$(sha256sum "$dump" | cut -d ' ' -f 1)" = "$dump_sha" || migration_fail RESET_ROLLBACK_DUMP_CHANGED
+}
+
 # Yeniden girişte, canonical'a bağlanan hiçbir denetimden ÖNCE (Astra, PR #242 P2): kapılar kapalı
-# kalmış olabilir. Yalnız kontrol DB'sinden (`postgres`) okunur/yazılır. Yer değiştirme olduysa
-# (eski ad var, gölge adı yok) yeni canonical açılır; olmadıysa canonical açılır.
+# kalmış olabilir. Önce kimlik ve dış kayıt bağı; sonra yalnız kontrol DB'sinden (`postgres`), yalnız
+# kapı kapatılmadan önce kaydedilen iki OID'e dokunulur. Ad değişimi OID'i korur: `agent_sozluk`
+# adındaki DB hangisi olursa olsun kayıtlı OID'lerden biri olmalı.
 reset_rollback_recover_gates() {
-  test -f "$(reset_restore_marker shadow)" || return 0
+  local oids name oid
+  test -f "$(reset_restore_marker oids)" || return 0
+  reset_rollback_assert_binding
   reset_rollback_names
-  if reset_database_exists agent_sozluk && test "$(reset_database_allows agent_sozluk)" != t; then
-    reset_rollback_reopen_canonical || migration_fail RESET_ROLLBACK_GATE_RECOVERY_FAILED
+  oids="$(cat "$(reset_restore_marker oids)")"
+  [[ "$oids" =~ ^([0-9]+)\ ([0-9]+)$ ]] || migration_fail RESET_ROLLBACK_OID_UNREADABLE
+  for name in agent_sozluk "$reset_shadow"; do
+    reset_database_exists "$name" || continue
+    oid="$(reset_database_oid "$name")"
+    [[ " $oids " == *" $oid "* ]] || migration_fail RESET_ROLLBACK_GATE_RECOVERY_IDENTITY
+    test "$(reset_database_allows "$name")" = t && continue
+    admin_psql postgres -v "name=$name" <<'SQL' >/dev/null ||
+SELECT format('ALTER DATABASE %I WITH ALLOW_CONNECTIONS true', :'name') \gexec
+SQL
+      migration_fail RESET_ROLLBACK_GATE_RECOVERY_FAILED
     printf 'RELEASE_RESET_ROLLBACK_GATE_RECOVERED\n' >&2
-  fi
-  if reset_database_exists "$reset_shadow"; then
-    reset_rollback_set_shadow_gate true || migration_fail RESET_ROLLBACK_GATE_RECOVERY_FAILED
-  fi
+  done
 }
 
 # Ayrı, kalıcı geri dönüş bütçesi (Astra, PR #242 P1): kabulün tükettiği bakım bütçesinden
@@ -109,11 +146,7 @@ SQL
 reset_rollback() {
   local dump dump_sha pre post post_sha commit eligibility stamp shadow_before shadow_after
   reset_rollback_budget
-  # Dış kayıt bağı: sarmalayıcının dış kayıttan getirdiği SHA'lar uzak dosyalarla, hiçbir
-  # mutasyondan önce birebir eşleşmeli (Astra, PR #242 P1).
-  [[ "${reset_rollback_expected_dump:-}" =~ ^[0-9a-f]{64}$ &&
-     "${reset_rollback_expected_receipt:-}" =~ ^[0-9a-f]{64}$ ]] ||
-    migration_fail RESET_ROLLBACK_LEDGER_BINDING_MISSING
+  reset_rollback_assert_binding
   test -f "$migration_marker/reset-ack-COMMITTED_MAINTENANCE" ||
     migration_fail RESET_ROLLBACK_NOT_COMMITTED_MAINTENANCE
   test ! -f "$migration_marker/reset-ack-TRAFFIC_OPEN" || migration_fail RESET_ROLLBACK_AFTER_TRAFFIC_OPEN
@@ -121,12 +154,6 @@ reset_rollback() {
   dump_sha="$(cat "$migration_marker/reset-dump-sha256")"
   pre="$(cat "$migration_marker/reset-pre-receipt-path")"
   post="$(cat "$migration_marker/reset-post-receipt-path")"
-  post_sha="$(reset_json_field sha256 <"$post")"
-  test "$dump_sha" = "$reset_rollback_expected_dump" || migration_fail RESET_ROLLBACK_LEDGER_MISMATCH
-  test "$post_sha" = "$reset_rollback_expected_receipt" || migration_fail RESET_ROLLBACK_LEDGER_MISMATCH
-  test "$(cut -d '|' -f 2- "$migration_marker/reset-request-COMMITTED_MAINTENANCE")" = \
-    "$dump_sha|$post_sha" || migration_fail RESET_ROLLBACK_LEDGER_MISMATCH
-  test "$(sha256sum "$dump" | cut -d ' ' -f 1)" = "$dump_sha" || migration_fail RESET_ROLLBACK_DUMP_CHANGED
   reset_rollback_names
 
   # Yer değiştirme önceki girişte tamamlandıysa (eski ad var, gölge adı yok) yalnız doğrula.
@@ -178,7 +205,7 @@ SQL
   # birebir bağlanır (Astra, PR #242 P1).
   local marked="$migration_dir/reset-rollback-mark-$stamp.json"
   (umask 077 && reset_cli scripts/great-reset-operation.ts shadow-mark "$reset_operation_id" \
-    "$dump_sha" "$commit" --database "$reset_shadow" >"$marked") ||
+    "$dump_sha" "$commit" "$pre" --database "$reset_shadow" >"$marked") ||
     migration_fail RESET_ROLLBACK_MARK_FAILED
   test "$(reset_json_field deltaVerified <"$marked")" = true || migration_fail RESET_ROLLBACK_MARK_FAILED
   reset_cli scripts/great-reset-operation.ts restore-verify "$reset_operation_id" "$dump_sha" \
@@ -189,6 +216,8 @@ SQL
     "$marked" >/dev/null || migration_fail RESET_ROLLBACK_SHADOW_MISMATCH
 
   reset_rollback_gated_verify "$dump_sha" "$commit" "$post" "$shadow_after"
+  # Buradan sonra canonical adı yer değiştirebilir; acil açma yalnız açık hata dalında yapılır.
+  reset_rollback_gates_closed=0
 
   # Tek transaction: canonical eski ada, gölge canonical ada. Hata ikisini de geri alır.
   if ! admin_psql postgres -v "shadow=$reset_shadow" -v "old=$reset_old" <<'SQL' >/dev/null; then
@@ -204,31 +233,82 @@ SQL
   reset_rollback_finish "$dump_sha" "$commit"
 }
 
+# Kapılar kapandıktan sonra herhangi bir çıkışta (hata, timeout, bütçe) canonical kapısı bütçeden
+# bağımsız açılır (Astra, PR #242 2. tur P1). Yer değiştirmeye geçmeden hemen önce bayrak iner.
+reset_rollback_gates_closed=0
+reset_rollback_verify_pid=''
+
+reset_rollback_emergency_reopen() {
+  local -a limit=()
+  if type -P "${compose[0]}" >/dev/null 2>&1; then limit=(timeout -k 5 30); fi
+  "${limit[@]}" "${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'ALTER DATABASE agent_sozluk WITH ALLOW_CONNECTIONS true' </dev/null >/dev/null
+}
+
+reset_rollback_exit_hook() {
+  if test -n "$reset_rollback_verify_pid"; then
+    kill "$reset_rollback_verify_pid" 2>/dev/null || true
+  fi
+  if ((reset_rollback_gates_closed == 1)); then
+    reset_rollback_gates_closed=0
+    if reset_rollback_emergency_reopen; then
+      printf 'RELEASE_RESET_ROLLBACK_CANONICAL_REOPENED\n' >&2
+    else
+      printf 'RELEASE_WARN canonical gate could not be reopened; use container console\n' >&2
+    fi
+  fi
+}
+
+reset_rollback_gate_fail() {
+  reset_rollback_exit_hook
+  migration_fail "$1"
+}
+
+# Kapı kapatılmadan önce iki DB'nin OID'leri kaydedilir; yeniden girişteki kapı toparlaması
+# yalnız bu OID'lere dokunur (Astra, PR #242 2. tur P2). Ad değişimi OID'i korur.
+reset_database_oid() {
+  admin_psql postgres -v "name=$1" <<'SQL'
+SELECT oid FROM pg_database WHERE datname = :'name';
+SQL
+}
+
 # Sabit bağlantılar → kapılar → yalnız sabit backend'ler → aynı bağlantılarda doğrulama →
-# bağlantılar bırakılır → sıfır backend. Herhangi bir hata canonical kapısını geri açar ve durur.
+# bağlantılar bırakılır → sıfır backend. Protokol iki özel FIFO üzerinden, sabit tanımlayıcılarla
+# yürür; doğrulayıcının çıkış kodu denetlenir.
 reset_rollback_gated_verify() {
   local dump_sha="$1" commit="$2" post="$3" shadow_after="$4" line canonical_pid shadow_pid
-  local result pids expected verify_pid
-  coproc RESET_PIN {
-    reset_cli_signalled scripts/great-reset-operation.ts rollback-pinned-verify "$reset_operation_id" \
-      "$dump_sha" "$commit" "$post" "$shadow_after" --database "$reset_shadow" 2>&1
-  }
-  verify_pid="$RESET_PIN_PID"
-  if ! IFS= read -r -t 300 line <&"${RESET_PIN[0]}" ||
+  local result='' pids expected status channel to_cli from_cli
+  printf '%s %s\n' "$(reset_database_oid agent_sozluk)" "$(reset_database_oid "$reset_shadow")" \
+    >"$(reset_restore_marker oids).next"
+  mv -Tf "$(reset_restore_marker oids).next" "$(reset_restore_marker oids)"
+  [[ "$(cat "$(reset_restore_marker oids)")" =~ ^[0-9]+\ [0-9]+$ ]] ||
+    migration_fail RESET_ROLLBACK_OID_UNREADABLE
+  # Doğrulayıcı erken ölürse FIFO'ya yazmak SIGPIPE ile kabuğu öldürmesin; hata dalı çalışsın.
+  trap '' PIPE
+  channel="$(mktemp -d "$migration_dir/reset-rollback-channel.XXXXXX")"
+  mkfifo -m 0600 "$channel/to-cli" "$channel/from-cli"
+  reset_cli_signalled scripts/great-reset-operation.ts rollback-pinned-verify "$reset_operation_id" \
+    "$dump_sha" "$commit" "$post" "$shadow_after" --database "$reset_shadow" \
+    <"$channel/to-cli" >"$channel/from-cli" 2>&1 &
+  reset_rollback_verify_pid=$!
+  exec {to_cli}>"$channel/to-cli"
+  exec {from_cli}<"$channel/from-cli"
+  rm -rf "$channel"
+  if ! IFS= read -r -t 300 line <&"$from_cli" ||
      ! [[ "$line" =~ ^PINNED\ canonical=([0-9]+)\ shadow=([0-9]+)$ ]]; then
-    kill "$verify_pid" 2>/dev/null || true
-    migration_fail RESET_ROLLBACK_PIN_FAILED
+    exec {to_cli}>&- {from_cli}<&-
+    reset_rollback_gate_fail RESET_ROLLBACK_PIN_FAILED
   fi
   canonical_pid="${BASH_REMATCH[1]}"
   shadow_pid="${BASH_REMATCH[2]}"
-  admin_psql postgres -v "shadow=$reset_shadow" <<'SQL' >/dev/null || {
+  reset_rollback_gates_closed=1
+  if ! admin_psql postgres -v "shadow=$reset_shadow" <<'SQL' >/dev/null; then
 ALTER DATABASE agent_sozluk WITH ALLOW_CONNECTIONS false;
 SELECT format('ALTER DATABASE %I WITH ALLOW_CONNECTIONS false', :'shadow') \gexec
 SQL
-    kill "$verify_pid" 2>/dev/null || true
-    reset_rollback_reopen_canonical || true
-    migration_fail RESET_ROLLBACK_GATE_FAILED
-  }
+    exec {to_cli}>&- {from_cli}<&-
+    reset_rollback_gate_fail RESET_ROLLBACK_GATE_FAILED
+  fi
   pids="$(admin_psql postgres -v "shadow=$reset_shadow" <<'SQL'
 SELECT coalesce(string_agg(pid::text, ',' ORDER BY pid), '') || '|'
   || (SELECT count(*) FROM pg_prepared_xacts WHERE database IN ('agent_sozluk', :'shadow')) || '|'
@@ -239,30 +319,32 @@ SQL
 )" || pids=error
   expected="$(printf '%s\n' "$canonical_pid" "$shadow_pid" | sort -n | paste -sd ,)|0|0"
   if test "$pids" != "$expected"; then
-    kill "$verify_pid" 2>/dev/null || true
-    reset_rollback_reopen_canonical || true
-    migration_fail RESET_ROLLBACK_UNEXPECTED_BACKEND
+    exec {to_cli}>&- {from_cli}<&-
+    reset_rollback_gate_fail RESET_ROLLBACK_UNEXPECTED_BACKEND
   fi
-  if ! printf 'GATES_CLOSED\n' >&"${RESET_PIN[1]}"; then
-    kill "$verify_pid" 2>/dev/null || true
-    reset_rollback_reopen_canonical || true
-    migration_fail RESET_ROLLBACK_GATED_VERIFY_FAILED
+  if ! printf 'GATES_CLOSED\n' >&"$to_cli"; then
+    exec {to_cli}>&- {from_cli}<&-
+    reset_rollback_gate_fail RESET_ROLLBACK_GATED_VERIFY_FAILED
   fi
-  result=''
-  while IFS= read -r -t 900 line <&"${RESET_PIN[0]}"; do result="$line"; done
-  wait "$verify_pid" 2>/dev/null || true
-  if test "$(reset_json_field verified <<<"$result" 2>/dev/null || true)" != true; then
-    reset_rollback_reopen_canonical || true
-    migration_fail RESET_ROLLBACK_GATED_VERIFY_FAILED
+  # Sinyalden sonra yazma ucu kapanır: doğrulayıcının stdin'i EOF alır, süreç kendiliğinden biter.
+  exec {to_cli}>&-
+  while IFS= read -r -t 900 line <&"$from_cli"; do result="$line"; done
+  exec {from_cli}<&-
+  status=0
+  wait "$reset_rollback_verify_pid" || status=$?
+  reset_rollback_verify_pid=''
+  if ((status != 0)) ||
+     test "$(reset_json_field verified <<<"$result" 2>/dev/null || true)" != true; then
+    reset_rollback_gate_fail RESET_ROLLBACK_GATED_VERIFY_FAILED
   fi
-  test "$(admin_psql postgres -v "shadow=$reset_shadow" <<'SQL'
+  if test "$(admin_psql postgres -v "shadow=$reset_shadow" <<'SQL'
 SELECT (SELECT count(*) FROM (SELECT pg_stat_clear_snapshot()) AS cleared) - 1
      + (SELECT count(*) FROM pg_stat_activity WHERE datname IN ('agent_sozluk', :'shadow'));
 SQL
-)" = 0 || {
-    reset_rollback_reopen_canonical || true
-    migration_fail RESET_ROLLBACK_UNEXPECTED_BACKEND
-  }
+)" != 0; then
+    reset_rollback_gate_fail RESET_ROLLBACK_UNEXPECTED_BACKEND
+  fi
+  trap - PIPE
 }
 
 reset_rollback_finish() {

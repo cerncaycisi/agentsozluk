@@ -1255,6 +1255,8 @@ migration_exit_trap() {
   local status=$?
   trap - EXIT
   set +e
+  # Geri dönüşte kapılar kapalıyken çıkış: canonical kapısı bütçeden bağımsız açılır.
+  if declare -F reset_rollback_exit_hook >/dev/null; then reset_rollback_exit_hook; fi
   # Reset modu dış kayıt beklemesi (75) hata değildir: site kapalı, dondurma sürer.
   if ((reset_mode == 1 && status == 75)); then exit "$status"; fi
   if ((status != 0)); then

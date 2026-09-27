@@ -852,31 +852,32 @@ reset_handle_await() {
   reset_next_ack="ack:$state"
 }
 
-# Geri dönüş ön koşulu: dış kayıtta operasyonun son durumu COMMITTED_MAINTENANCE ve restore
-# denetimi (dump SHA'sı + reset sonrası makbuz) geçer; uzağa bu iki SHA gider ve uzak dosyalarla
-# mutasyondan önce eşlenir (Astra, PR #242 P1). Son kayıt zaten ROLLED_BACK ise (ACK kaybı; Astra,
-# PR #242 P2) yeni geri dönüş başlamaz: normal döngü uzaktaki `reset-rolled-back` aşamasını, aynı
-# kimlikli kaydın idempotent onayıyla tamamlar. Başka her durum durur.
+# Geri dönüş ön koşulu: dış kayıtta operasyonun son kaydı bu aday release'e ait ve
+# COMMITTED_MAINTENANCE (restore denetimi geçer) ya da zaten ROLLED_BACK (ACK kaybı; Astra, PR #242
+# P2). Her iki durumda uzağa `rollback:<dumpSha>:<makbuzSha>` gider; uzak taraf bunları kendi
+# dosyaları ve bekleyen/kalıcı isteklerle mutasyondan önce eşler (Astra, PR #242 2. tur P2).
+# ROLLED_BACK'te uzak taraf yeni geri dönüş başlatmaz, yalnız açılışı tamamlar. Başka her durum
+# durur.
 reset_assert_rollback_allowed() {
-  local record state dump receipt
+  local record state release dump receipt
   record="$(cd "$root" && ./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "$reset_ledger" \
     latest "$great_reset_operation")" || reset_fail RESET_ROLLBACK_LEDGER_MISSING
   state="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).state ?? "")' "$record")"
+  release="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).releaseSha ?? "")' "$record")"
   dump="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).dumpSha256 ?? "")' "$record")"
   receipt="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).postResetReceiptSha256 ?? "")' "$record")"
-  case "$state" in
-    ROLLED_BACK)
-      reset_next_ack=''
-      return 0
-      ;;
-    COMMITTED_MAINTENANCE) : ;;
-    *) reset_fail RESET_ROLLBACK_NOT_ALLOWED ;;
-  esac
+  test "$release" = "$candidate_sha" || reset_fail RESET_ROLLBACK_RELEASE_MISMATCH
   [[ "$dump" =~ ^[0-9a-f]{64}$ && "$receipt" =~ ^[0-9a-f]{64}$ ]] ||
     reset_fail RESET_ROLLBACK_NOT_ALLOWED
-  (cd "$root" && ./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "$reset_ledger" \
-    restore-check "$great_reset_operation" "$dump" "$receipt") >/dev/null ||
-    reset_fail RESET_ROLLBACK_NOT_ALLOWED
+  case "$state" in
+    ROLLED_BACK) : ;;
+    COMMITTED_MAINTENANCE)
+      (cd "$root" && ./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "$reset_ledger" \
+        restore-check "$great_reset_operation" "$dump" "$receipt") >/dev/null ||
+        reset_fail RESET_ROLLBACK_NOT_ALLOWED
+      ;;
+    *) reset_fail RESET_ROLLBACK_NOT_ALLOWED ;;
+  esac
   reset_next_ack="rollback:$dump:$receipt"
 }
 

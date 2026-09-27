@@ -23,7 +23,7 @@ import { localIndependentTarget, localResetTarget } from "./great-reset-local-gu
   great-reset-operation.ts traffic-open <operationId>
   great-reset-operation.ts restore-eligibility <operationId> <reset-sonrası-makbuz.json>
   great-reset-operation.ts commit-digest <operationId>
-  great-reset-operation.ts shadow-mark <op> <dumpSha> <commitSha> --database <gölge>
+  great-reset-operation.ts shadow-mark <op> <dumpSha> <commitSha> <reset-öncesi.json> --database <gölge>
   great-reset-operation.ts restore-verify <op> <dumpSha> <commitSha> [--database <gölge>]
   great-reset-operation.ts receipt-compare-shadow <reset-öncesi.json> <gölge.json> <işaret.json>
   great-reset-operation.ts rollback-pinned-verify <op> <dumpSha> <commitSha> <sonrası.json> <gölge.json> --database <gölge>
@@ -196,7 +196,7 @@ async function main(argv: readonly string[]): Promise<string> {
     (command === "traffic-open" && args.length === 1) ||
     (command === "restore-eligibility" && args.length === 2) ||
     (command === "commit-digest" && args.length === 1) ||
-    (command === "shadow-mark" && args.length === 3 && scratch !== undefined) ||
+    (command === "shadow-mark" && args.length === 4 && scratch !== undefined) ||
     (command === "restore-verify" && args.length === 3) ||
     (command === "rollback-pinned-verify" && args.length === 5 && scratch !== undefined);
   if (!valid) fail("INVALID_ARGUMENTS");
@@ -236,10 +236,16 @@ async function main(argv: readonly string[]): Promise<string> {
         return JSON.stringify({
           commitSha256: await restore.commitDigest(database, target.identity, args[0]!),
         });
-      case "shadow-mark":
+      case "shadow-mark": {
+        // Dördüncü argüman reset öncesi makbuz: işaretli iki tablonun başlangıç özeti ona bağlanır.
+        const pre = readReceipt(args[3]!);
         return JSON.stringify(
-          await restore.markShadow(database, target.identity, args[0]!, args[1]!, args[2]!),
+          await restore.markShadow(database, target.identity, args[0]!, args[1]!, args[2]!, {
+            audit_logs: pre.tables.audit_logs!,
+            great_reset_intents: pre.tables.great_reset_intents!,
+          }),
         );
+      }
       case "restore-verify": {
         const blockers = await restore.verifyRestored(
           database,
@@ -327,6 +333,10 @@ async function rollbackPinnedVerify(args: readonly string[], shadowName: string)
             buffer += chunk;
             if (!buffer.includes("\n")) return;
             clearTimeout(timer);
+            // Tek sinyal: stdin bırakılır ki süreç açık stdin yüzünden asılı kalmasın.
+            process.stdin.removeAllListeners("data");
+            process.stdin.removeAllListeners("end");
+            process.stdin.destroy();
             if (buffer.split("\n")[0] === "GATES_CLOSED") resolve();
             else reject(new Error("GREAT_RESET_ROLLBACK_GATE_SIGNAL_INVALID"));
           });
@@ -339,6 +349,7 @@ async function rollbackPinnedVerify(args: readonly string[], shadowName: string)
     if (blockers.length) process.exitCode = 3;
     return JSON.stringify({ verified: blockers.length === 0, blockers });
   } finally {
+    process.stdin.destroy();
     await Promise.all([canonical.$disconnect(), shadow.$disconnect()]);
   }
 }

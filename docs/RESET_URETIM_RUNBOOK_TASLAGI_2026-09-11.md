@@ -359,29 +359,36 @@ sarmalayıcıda `--great-reset <operationId> --great-reset-rollback` ve ayrı
 
 - **Dış kayıt bağı:** Sarmalayıcı, dış kayıtta operasyonun son durumunun `COMMITTED_MAINTENANCE`
   olduğunu ve restore denetiminin geçtiğini doğrular; uzağa `rollback:<dumpSha>:<makbuzSha>`
-  gönderir. Uzak betik bu iki SHA'yı kendi dump dosyası, dump SHA işareti, reset sonrası makbuz ve
-  `COMMITTED_MAINTENANCE` isteğiyle, hiçbir mutasyondan önce birebir eşler. Son kayıt zaten
-  `ROLLED_BACK` ise (ACK kaybı) yeni geri dönüş başlamaz; normal döngü aynı kimlikli kaydı
-  idempotent onaylayıp açılışı tamamlar. Başka her durum durur.
+  gönderir. Kaydın release'i aday SHA olmalıdır. Uzak betik operasyon kimliğini ve bu iki SHA'yı
+  kendi dump dosyası, dump SHA işareti, reset sonrası makbuz ve bekleyen/kalıcı
+  `COMMITTED_MAINTENANCE`/`ROLLED_BACK` istekleriyle, hiçbir mutasyondan ve kapı toparlamasından
+  önce birebir eşler. Son kayıt zaten `ROLLED_BACK` ise (ACK kaybı) aynı kimlik gider; uzak taraf
+  yeni geri dönüş başlatmaz, yalnız açılışı tamamlar. Başka her durum durur.
 - **Ayrı bütçe:** Geri dönüş, bakım bütçesinden bağımsız, kalıcı 30 dakikalık kendi son süresiyle
   başlar (`reset-rollback-deadline`); dolunca yeni adım başlamaz (çıkış 98).
 - **Akış:** uygunluk → gölgeye `--role=agent_sozluk --single-transaction` restore → canlı↔restore
   makbuz eşitliği → sütun/indekslerde kullanılan bütün collation'ların ve DB varsayılanının
-  sağlayıcı sürümü iki DB'de aynı → gölge işareti (yalnız önceden açık niyetler geçersizleşir,
-  diğer alanlar ve tarihsel audit'ler birebir kalır; bu dar delta aynı transaction'da kanıtlanır)
+  sağlayıcı sürümü iki DB'de aynı → gölge işareti: iki tablo kilitlenir, RepeatableRead
+  başlangıcı reset öncesi makbuzun bu iki tablosuna birebir eşit olmalıdır; yalnız önceden açık
+  niyetler geçersizleşir, diğer alanlar ve tarihsel audit'ler birebir kalır (dar delta aynı
+  transaction'da kanıtlanır; yeniden işaretleme yoktur)
   → canonical commit özetli doğrulama → işaretli gölge makbuzu: `audit_logs` ve
   `great_reset_intents` yalnız işaret transaction'ında ölçülen özete birebir eşitse kabul edilir.
 - **Kapı sonrası doğrulama:** CLI canonical ve gölgeye birer sabit bağlantı açar ve PID'lerini
-  bildirir. Admin iki DB'nin kapısını kapatır, iki DB'de yalnız bu iki PID'in kaldığını, hazırlanmış
+  iki özel FIFO üzerinden bildirir; iki DB'nin OID'i kaydedilir. Admin iki DB'nin kapısını kapatır, iki DB'de yalnız bu iki PID'in kaldığını, hazırlanmış
   işlem olmadığını ve kapıların kapalı olduğunu doğrular. CLI aynı bağlantılarda yeni transaction
   ile uygunluğu, commit özetini, gölge doğrulamasını ve iki makbuzu (canlı = reset sonrası, gölge =
   işaretli gölge) yeniden ölçer. Bağlantılar bırakılınca sıfır backend doğrulanır; ancak o zaman
-  tek transaction'da yer değiştirilir. Herhangi bir hata canonical kapısını geri açar ve durur.
+  tek transaction'da yer değiştirilir. Sinyalden sonra yazma ucu kapanır, doğrulayıcının çıkış
+  kodu denetlenir. Kapılar kapandıktan sonraki her çıkış (hata, doğrulayıcı ölümü, timeout,
+  bütçe) canonical kapısını bütçeden bağımsız açar ve durur.
 - **Sonuç:** Yeni canonical'ın kapısı açılır, eski reset DB'si kapalı kalır; doğrulama →
   `ROLLED_BACK` isteği. Sarmalayıcı `ROLLED_BACK` yazar; site aday sürüm ve migration'la, resetsiz
   açılır.
 - **Yeniden giriş:** Kapılar kapalıyken kesilmiş bir geri dönüş, canonical'a bağlanan her
-  denetimden önce yalnız kontrol DB'si (`postgres`) üzerinden kapıları DB adlarına göre açar. Yer
+  denetimden önce kimlik ve SHA bağını denetler; sonra yalnız kontrol DB'si (`postgres`) üzerinden,
+  yalnız kaydedilmiş OID'lere sahip `agent_sozluk` ve gölge adlarının kapısını açar; eski reset
+  DB'si kapalı kalır. Yer
   değiştirme olduysa yalnız doğrulanır; tekrarlanmaz.
 
 Gerçek boyutlu üretim provası henüz yok.

@@ -418,14 +418,20 @@ false
 reset_rollback
 `);
     expect(unbound.stderr).toContain("code=RESET_ROLLBACK_LEDGER_BINDING_MISSING");
+    const otherOperation = harness(`
+${rollbackFixture()}
+printf 'başka\\n' >"$migration_marker/identity"
+reset_rollback
+`);
+    expect(otherOperation.stderr).toContain("code=RESET_ROLLBACK_OPERATION_MISMATCH");
     const missing = harness(`
-reset_rollback_expected_dump=${E_}; reset_rollback_expected_receipt=${E_}
+${rollbackFixture()}
+rm "$migration_marker/reset-ack-COMMITTED_MAINTENANCE"
 reset_rollback
 `);
     expect(missing.stderr).toContain("code=RESET_ROLLBACK_NOT_COMMITTED_MAINTENANCE");
     const opened = harness(`
-reset_rollback_expected_dump=${E_}; reset_rollback_expected_receipt=${E_}
-: >"$migration_marker/reset-ack-COMMITTED_MAINTENANCE"
+${rollbackFixture()}
 : >"$migration_marker/reset-ack-TRAFFIC_OPEN"
 reset_rollback
 `);
@@ -451,10 +457,11 @@ printf '%s\\n' "$state_dir/post.json" >"$migration_marker/reset-post-receipt-pat
 printf 'COMMITTED_MAINTENANCE|%s|EEE\\n' "$sha" >"$migration_marker/reset-request-COMMITTED_MAINTENANCE"
 reset_rollback_expected_dump=$sha
 reset_rollback_expected_receipt=EEE
+migration_identity >"$migration_marker/identity"
 assert_disk_budget() { :; }
 deadline_prefix() { deadline=(); }
 db_psql() { printf 'C.UTF-8\\n'; }
-`;
+`.replaceAll("EEE", E_);
   }
 
   // Tam akış için sahte bağımlılıklar: gölge yok (ilk giriş), CLI yanıtları, admin SQL'i stdin'den
@@ -587,26 +594,71 @@ reset_rollback
     expect(result.stderr).toContain("code=RESET_ROLLBACK_BUDGET_EXHAUSTED");
   });
 
-  it("geri dönüş: kapılar kapalı kalmışsa yeniden giriş yalnız kontrol DB'sinden açar", () => {
-    const result = harness(`
+  function recoveryHarness(extra: string) {
+    return harness(`
+${rollbackFixture()}
 printf 'agent_sozluk_restore_20260928_170000_012345\\n' >"$migration_marker/reset-rollback-shadow"
 printf 'agent_sozluk_reset_20260928_170000_11111111\\n' >"$migration_marker/reset-rollback-old"
+printf '101 202\\n' >"$migration_marker/reset-rollback-oids"
 reset_database_exists() { return 0; }
-opened=0
+reset_database_oid() { case "$1" in agent_sozluk) echo "\${canonical_oid:-101}" ;; *) echo 202 ;; esac; }
 admin_psql() {
   local sql; sql="$(cat)"
   printf 'admin %s :: %s\\n' "$*" "$sql" >>"$log"
   case "$sql" in
-    *"ALLOW_CONNECTIONS true"*) opened=1 ;;
-    *"SELECT datallowconn"*) if ((opened == 1)); then echo t; else echo f; fi ;;
+    *"SELECT datallowconn"*) echo f ;;
   esac
 }
+${extra}
 reset_rollback_recover_gates
 `);
+  }
+
+  it("geri dönüş: kapılar kapalı kalmışsa yeniden giriş kimlik ve SHA bağından sonra yalnız kayıtlı OID'leri açar", () => {
+    const result = recoveryHarness("");
     expect(result.stderr).toContain("RELEASE_RESET_ROLLBACK_GATE_RECOVERED");
     const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
     for (const line of calls.trim().split("\n")) expect(line).toMatch(/^admin postgres /u);
-    expect(calls).toContain("ALTER DATABASE agent_sozluk WITH ALLOW_CONNECTIONS true");
+    expect(calls).toContain("name=agent_sozluk ");
+    expect(calls).toContain("ALLOW_CONNECTIONS true");
+    expect(calls).not.toContain("agent_sozluk_reset_20260928");
+    // Kayıtsız OID'e, başka operasyona ya da uyuşmayan SHA'ya kapı açılmaz.
+    for (const [extra, code] of [
+      ["canonical_oid=999", "RESET_ROLLBACK_GATE_RECOVERY_IDENTITY"],
+      [`printf 'başka\\n' >"$migration_marker/identity"`, "RESET_ROLLBACK_OPERATION_MISMATCH"],
+      [`reset_rollback_expected_receipt=${"f".repeat(64)}`, "RESET_ROLLBACK_LEDGER_MISMATCH"],
+    ] as const) {
+      const refused = recoveryHarness(extra);
+      expect(refused.stderr).toContain(`code=${code}`);
+      expect(readFileSync(path.join(refused.root, "calls.log"), "utf8")).not.toContain(
+        "ALLOW_CONNECTIONS true",
+      );
+    }
+  });
+
+  it("geri dönüş: doğrulayıcı kapılar kapandıktan sonra ölürse canonical bütçeden bağımsız açılır", () => {
+    const result = harness(`
+${rollbackFlow({ backends: "41,42|0|0", verified: true })}
+reset_cli_signalled() { printf 'PINNED canonical=41 shadow=42\\n'; exit 1; }
+reset_rollback
+`);
+    expect(result.stderr).toContain("code=RESET_ROLLBACK_GATED_VERIFY_FAILED");
+    const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
+    expect(calls).toMatch(/compose exec -T db psql .*ALLOW_CONNECTIONS true/u);
+    expect(calls).not.toContain("RENAMED");
+  });
+
+  it("geri dönüş tamamlama yolu da dış kayıt kimliğine bağlıdır", () => {
+    const result = harness(`
+${rollbackFixture()}
+printf 'reset-rolled-back\\n' >"$migration_marker/phase"
+printf 'ROLLED_BACK|%s|%s\\n' "$sha" "${"f".repeat(64)}" >"$migration_marker/reset-request-ROLLED_BACK"
+reset_rollback_requested=1
+reset_finish_abort() { echo OPENED; }
+reset_phase
+`);
+    expect(result.stderr).toContain("code=RESET_ROLLBACK_LEDGER_MISMATCH");
+    expect(result.stdout).not.toContain("OPENED");
   });
 
   it("geri dönüş: yer değiştirme önceki girişte olduysa reset/restore tekrarlanmaz, yalnız doğrulanır", () => {

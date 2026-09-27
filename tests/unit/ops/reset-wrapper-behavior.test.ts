@@ -294,7 +294,7 @@ reset_restore_operator_units
   });
 
   // Gerçek dış kayıt CLI'si, geçici 0600 kayıtla.
-  function rollbackPrecondition(states: string[]) {
+  function rollbackPrecondition(states: string[], candidate?: string) {
     const root = mkdtempSync(path.join(tmpdir(), "reset-rollback-"));
     directories.push(root);
     const ledger = path.join(root, "ledger.jsonl");
@@ -312,6 +312,7 @@ set -Eeuo pipefail
 root="${process.cwd()}"
 reset_ledger="${ledger}"
 great_reset_operation=${operationId}
+candidate_sha=\${candidate:-${sha}}
 ${extract("reset_fail")}
 ${extract("reset_assert_rollback_allowed")}
 ${states.map(append).join("\n")}
@@ -319,15 +320,25 @@ reset_next_ack=unset
 reset_assert_rollback_allowed
 echo "ACK=[$reset_next_ack]"
 `;
-    return spawnSync("bash", ["-c", script], { encoding: "utf8" });
+    return spawnSync("bash", ["-c", script], {
+      encoding: "utf8",
+      env: { ...process.env, ...(candidate ? { candidate } : {}) },
+    });
   }
 
   it("geri dönüş: dış kayıt SHA'ları uzağa gider; ROLLED_BACK'te yalnız tamamlama, başka durumda durur", () => {
     const committed = rollbackPrecondition(["PREPARED", "COMMITTED_MAINTENANCE"]);
     expect(committed.stdout).toContain(`ACK=[rollback:${"d".repeat(64)}:${"e".repeat(64)}]`);
-    // ACK kaybı: kayıt ROLLED_BACK; yeni geri dönüş başlamaz, normal döngü tamamlar (Astra, PR #242 P2).
+    // ACK kaybı: kayıt ROLLED_BACK; aynı kimlik uzağa gider, uzak taraf yalnız tamamlar (Astra,
+    // PR #242 P2 ve 2. tur).
     const rolled = rollbackPrecondition(["PREPARED", "COMMITTED_MAINTENANCE", "ROLLED_BACK"]);
-    expect(rolled.stdout).toContain("ACK=[]");
+    expect(rolled.stdout).toContain(`ACK=[rollback:${"d".repeat(64)}:${"e".repeat(64)}]`);
+    // Kayıt başka release'e aitse durur.
+    const otherRelease = rollbackPrecondition(
+      ["PREPARED", "COMMITTED_MAINTENANCE", "ROLLED_BACK"],
+      "b".repeat(40),
+    );
+    expect(otherRelease.stderr).toContain("code=RESET_ROLLBACK_RELEASE_MISMATCH");
     const traffic = rollbackPrecondition(["PREPARED", "COMMITTED_MAINTENANCE", "TRAFFIC_OPEN"]);
     expect(traffic.stderr).toContain("code=RESET_ROLLBACK_NOT_ALLOWED");
     const prepared = rollbackPrecondition(["PREPARED"]);

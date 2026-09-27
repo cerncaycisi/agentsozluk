@@ -639,7 +639,8 @@ reset_phase() {
   if ((reset_rollback_requested == 1)); then
     case "$(current_phase)" in
       reset-receipted | reset-maintenance | reset-accepted) reset_rollback ;;
-      reset-rolled-back) : ;;
+      # Tamamlama yolu da aynı dış kayıt kimliğine bağlıdır (Astra, PR #242 2. tur P2).
+      reset-rolled-back) reset_rollback_assert_binding ;;
       *) migration_fail RESET_ROLLBACK_PHASE_INVALID ;;
     esac
   fi
