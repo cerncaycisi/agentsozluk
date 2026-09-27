@@ -171,7 +171,10 @@ reset_rollback() {
   [[ "$commit" =~ ^[0-9a-f]{64}$ ]] || migration_fail RESET_ROLLBACK_COMMIT_UNREADABLE
   printf '%s\n' "$commit" >"$(reset_restore_marker commit)"
 
-  # Yarım kalmış gölge atılır, baştan kurulur (canonical'a dokunulmadı).
+  # Yarım kalmış gölge atılır, baştan kurulur (canonical'a dokunulmadı). Önceki denemenin OID
+  # kaydı da atılır: kapılar yeniden girişte zaten toparlandı ve yeni gölgenin OID'i farklıdır
+  # (Astra, PR #242 3. tur P2). Kayıt, kapılar kapanmadan hemen önce yeniden yazılır.
+  rm -f "$(reset_restore_marker oids)"
   if reset_database_exists "$reset_shadow"; then
     admin_psql postgres -v "shadow=$reset_shadow" <<'SQL' >/dev/null ||
 SELECT format('DROP DATABASE %I WITH (FORCE)', :'shadow') \gexec
@@ -216,8 +219,10 @@ SQL
     "$marked" >/dev/null || migration_fail RESET_ROLLBACK_SHADOW_MISMATCH
 
   reset_rollback_gated_verify "$dump_sha" "$commit" "$post" "$shadow_after"
-  # Buradan sonra canonical adı yer değiştirebilir; acil açma yalnız açık hata dalında yapılır.
-  reset_rollback_gates_closed=0
+  # Koruma, canonical kapısının açıldığı doğrulanana dek sürer (Astra, PR #242 3. tur P1): ad
+  # değişiminde ya da sonrasında (bütçe, timeout, hata) çıkılırsa `agent_sozluk` adındaki DB — ad
+  # değişiminden önce eski, sonra yeni canonical — yalnız kayıtlı OID'lerden biriyse açılır. Eski
+  # reset DB'si hiçbir durumda açılmaz.
 
   # Tek transaction: canonical eski ada, gölge canonical ada. Hata ikisini de geri alır.
   if ! admin_psql postgres -v "shadow=$reset_shadow" -v "old=$reset_old" <<'SQL' >/dev/null; then
@@ -226,9 +231,7 @@ SELECT format('ALTER DATABASE agent_sozluk RENAME TO %I', :'old') \gexec
 SELECT format('ALTER DATABASE %I RENAME TO agent_sozluk', :'shadow') \gexec
 COMMIT;
 SQL
-    reset_rollback_reopen_canonical ||
-      printf 'RELEASE_WARN canonical gate could not be reopened; use container console\n' >&2
-    migration_fail RESET_ROLLBACK_RENAME_FAILED
+    reset_rollback_gate_fail RESET_ROLLBACK_RENAME_FAILED
   fi
   reset_rollback_finish "$dump_sha" "$commit"
 }
@@ -239,10 +242,19 @@ reset_rollback_gates_closed=0
 reset_rollback_verify_pid=''
 
 reset_rollback_emergency_reopen() {
+  local oids
   local -a limit=()
+  oids="$(cat "$(reset_restore_marker oids)" 2>/dev/null || true)"
+  [[ "$oids" =~ ^([0-9]+)\ ([0-9]+)$ ]] || return 1
   if type -P "${compose[0]}" >/dev/null 2>&1; then limit=(timeout -k 5 30); fi
   "${limit[@]}" "${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 -U postgres -d postgres \
-    -c 'ALTER DATABASE agent_sozluk WITH ALLOW_CONNECTIONS true' </dev/null >/dev/null
+    -v "first=${BASH_REMATCH[1]}" -v "second=${BASH_REMATCH[2]}" >/dev/null <<'SQL'
+SELECT CASE WHEN oid IN (:'first'::oid, :'second'::oid)
+  THEN 'ALTER DATABASE agent_sozluk WITH ALLOW_CONNECTIONS true' END
+FROM pg_database WHERE datname = 'agent_sozluk' \gexec
+SELECT 1 / (SELECT count(*)::int FROM pg_database
+  WHERE datname = 'agent_sozluk' AND datallowconn AND oid IN (:'first'::oid, :'second'::oid));
+SQL
 }
 
 reset_rollback_exit_hook() {
@@ -356,6 +368,7 @@ reset_rollback_finish() {
   reset_database_exists "$reset_old" || migration_fail RESET_ROLLBACK_RENAME_UNVERIFIED
   reset_database_exists agent_sozluk || migration_fail RESET_ROLLBACK_RENAME_UNVERIFIED
   reset_rollback_reopen_canonical || migration_fail RESET_ROLLBACK_REOPEN_FAILED
+  reset_rollback_gates_closed=0
   # Eski reset DB'si kapalı kalır; kabul bitene dek kanıt olarak saklanır.
   test "$(reset_database_allows "$reset_old")" = f || migration_fail RESET_ROLLBACK_OLD_GATE_OPEN
   reset_cli scripts/great-reset-operation.ts restore-verify "$reset_operation_id" "$dump_sha" \

@@ -381,8 +381,10 @@ sarmalayıcıda `--great-reset <operationId> --great-reset-rollback` ve ayrı
   ile uygunluğu, commit özetini, gölge doğrulamasını ve iki makbuzu (canlı = reset sonrası, gölge =
   işaretli gölge) yeniden ölçer. Bağlantılar bırakılınca sıfır backend doğrulanır; ancak o zaman
   tek transaction'da yer değiştirilir. Sinyalden sonra yazma ucu kapanır, doğrulayıcının çıkış
-  kodu denetlenir. Kapılar kapandıktan sonraki her çıkış (hata, doğrulayıcı ölümü, timeout,
-  bütçe) canonical kapısını bütçeden bağımsız açar ve durur.
+  kodu denetlenir. Kapılar kapandıktan sonra, canonical kapısının açıldığı doğrulanana dek
+  (yer değiştirme sırası ve sonrası dahil) her çıkış (hata, doğrulayıcı ölümü, timeout, bütçe)
+  `agent_sozluk` adındaki DB'yi, yalnız kayıtlı OID'lerden biriyse, bütçeden bağımsız açar ve
+  durur; eski reset DB'si kapalı kalır. Gölge yeniden kurulurken önceki OID kaydı atılır.
 - **Sonuç:** Yeni canonical'ın kapısı açılır, eski reset DB'si kapalı kalır; doğrulama →
   `ROLLED_BACK` isteği. Sarmalayıcı `ROLLED_BACK` yazar; site aday sürüm ve migration'la, resetsiz
   açılır.

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -569,7 +569,7 @@ reset_rollback
       );
       expect(result.stderr).toContain(`code=${code}`);
       const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
-      expect(calls).toContain("ALLOW_CONNECTIONS true");
+      expect(calls).toMatch(/compose exec -T db psql .*-v first=0 -v second=0/u);
       expect(calls).not.toContain("RENAMED");
     }
   });
@@ -644,7 +644,7 @@ reset_rollback
 `);
     expect(result.stderr).toContain("code=RESET_ROLLBACK_GATED_VERIFY_FAILED");
     const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
-    expect(calls).toMatch(/compose exec -T db psql .*ALLOW_CONNECTIONS true/u);
+    expect(calls).toMatch(/compose exec -T db psql .*-v first=0 -v second=0/u);
     expect(calls).not.toContain("RENAMED");
   });
 
@@ -660,6 +660,39 @@ reset_rollback
     expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain(
       "ALLOW_CONNECTIONS false",
     );
+  });
+
+  it("geri dönüş: ad değişiminde bütçe dolarsa koruma sürer, canonical OID denetimli açılır", () => {
+    const result = harness(`
+${rollbackFlow({ backends: "41,42|0|0", verified: true })}
+eval "$(declare -f admin_psql | sed '1s/admin_psql/flow_admin_psql/')"
+admin_psql() {
+  local sql; sql="$(cat)"
+  case "$sql" in *RENAME*) migration_fail DOWNTIME_BUDGET_EXCEEDED ;; esac
+  flow_admin_psql "$@" <<<"$sql"
+}
+trap migration_exit_trap EXIT
+reset_rollback
+`);
+    expect(result.stderr).toContain("code=DOWNTIME_BUDGET_EXCEEDED");
+    const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
+    expect(calls).toMatch(/compose exec -T db psql .*-v first=0 -v second=0/u);
+  });
+
+  it("geri dönüş: gölge yeniden kurulurken önceki denemenin OID kaydı atılır", () => {
+    const result = harness(`
+${rollbackFlow({ backends: "41,42|0|0", verified: true })}
+printf '101 202\\n' >"$migration_marker/reset-rollback-oids"
+reset_database_exists() { true; }
+reset_rollback_names() { reset_shadow=agent_sozluk_restore_20260928_170000_012345; reset_old=agent_sozluk_reset_20260928_170000_11111111; }
+reset_database_exists() { test "$1" = agent_sozluk_restore_20260928_170000_012345; }
+assert_disk_budget() { migration_fail DISK_STOP; }
+reset_rollback
+`);
+    expect(result.stderr).toContain("code=DISK_STOP");
+    expect(
+      existsSync(path.join(result.root, "runtime/.migration-operation/reset-rollback-oids")),
+    ).toBe(false);
   });
 
   it("geri dönüş tamamlama yolu da dış kayıt kimliğine bağlıdır", () => {
