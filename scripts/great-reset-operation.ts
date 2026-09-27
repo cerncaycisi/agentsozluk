@@ -27,7 +27,8 @@ import { localIndependentTarget, localResetTarget } from "./great-reset-local-gu
   izinle ve üzerine yazmadan (O_EXCL) açılır.
 */
 
-const scratchPattern = /^agent_sozluk_a5_[0-9]{8}_[0-9]{6}_[0-9a-f]{6}$/u;
+// A5 scratch'i ve geri dönüş gölgesi (`agent_sozluk_restore_<tarih>_<saat>_<op6>`).
+const scratchPattern = /^agent_sozluk_(?:a5|restore)_[0-9]{8}_[0-9]{6}_[0-9a-f]{6}$/u;
 
 type Target = {
   databaseUrl: string;
@@ -141,6 +142,13 @@ async function main(argv: readonly string[]): Promise<string> {
     if (!result.equal) process.exitCode = 3;
     return JSON.stringify(result);
   }
+  if (command === "receipt-compare-shadow" && rest.length === 2) {
+    const { compareShadowWithPreReset } =
+      await import("../src/modules/maintenance/repository/great-reset-receipt");
+    const result = compareShadowWithPreReset(readReceipt(rest[0]!), readReceipt(rest[1]!));
+    if (!result.equal) process.exitCode = 3;
+    return JSON.stringify(result);
+  }
   if (command === "receipt-compare-independent" && (rest.length === 2 || rest.length === 4)) {
     const { compareForIndependentRestore } =
       await import("../src/modules/maintenance/repository/great-reset-receipt");
@@ -159,22 +167,31 @@ async function main(argv: readonly string[]): Promise<string> {
   }
   let scratch: string | undefined;
   let args = rest;
-  if (command === "receipt" && rest.length === 3 && rest[1] === "--database") {
-    scratch = rest[2];
-    args = [rest[0]!];
+  // Gölge/scratch hedefi yalnız makbuz ve geri dönüş gölgesi komutlarında.
+  if (
+    ["receipt", "shadow-mark", "restore-verify"].includes(command ?? "") &&
+    rest.length >= 2 &&
+    rest[rest.length - 2] === "--database"
+  ) {
+    scratch = rest[rest.length - 1];
+    args = rest.slice(0, -2);
   }
   const valid =
     (command === "intent-create" && args.length === 2) ||
     (command === "intent-invalidate" && args.length === 1) ||
     (command === "receipt" && args.length === 1) ||
     (command === "traffic-open" && args.length === 1) ||
-    (command === "restore-eligibility" && args.length === 2);
+    (command === "restore-eligibility" && args.length === 2) ||
+    (command === "commit-digest" && args.length === 1) ||
+    (command === "shadow-mark" && args.length === 3 && scratch !== undefined) ||
+    (command === "restore-verify" && args.length === 2);
   if (!valid) fail("INVALID_ARGUMENTS");
   const target = await resolveTarget(scratch, command === "receipt");
-  const [{ PrismaClient }, operation, receipts] = await Promise.all([
+  const [{ PrismaClient }, operation, receipts, restore] = await Promise.all([
     import("@prisma/client"),
     import("../src/modules/maintenance/repository/great-reset-operation"),
     import("../src/modules/maintenance/repository/great-reset-receipt"),
+    import("../src/modules/maintenance/repository/great-reset-restore"),
   ]);
   const database = new PrismaClient({ datasourceUrl: target.databaseUrl, log: [] });
   try {
@@ -199,6 +216,24 @@ async function main(argv: readonly string[]): Promise<string> {
           sha256: receipt.sha256,
           seconds: (Date.now() - started) / 1000,
         });
+      }
+      case "commit-digest":
+        return JSON.stringify({
+          commitSha256: await restore.commitDigest(database, target.identity, args[0]!),
+        });
+      case "shadow-mark":
+        return JSON.stringify(
+          await restore.markShadow(database, target.identity, args[0]!, args[1]!, args[2]!),
+        );
+      case "restore-verify": {
+        const blockers = await restore.verifyRestored(
+          database,
+          target.identity,
+          args[0]!,
+          args[1]!,
+        );
+        if (blockers.length) process.exitCode = 3;
+        return JSON.stringify({ verified: blockers.length === 0, blockers });
       }
       case "traffic-open":
         return JSON.stringify(
