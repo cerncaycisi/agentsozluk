@@ -18,6 +18,7 @@ keep_artifact=0
 pause_society_flow=0
 artifact_transport=server-fetch
 approved_migrations=''
+great_reset_operation=''
 
 usage() {
   printf '%s\n' \
@@ -80,6 +81,10 @@ while (($# > 0)); do
     --pause-society-flow)
       pause_society_flow=1
       shift
+      ;;
+    --great-reset)
+      great_reset_operation="${2:-}"
+      shift 2
       ;;
     --server-fetch)
       artifact_transport=server-fetch
@@ -150,6 +155,31 @@ elif test -n "${AGENT_SOZLUK_PRODUCTION_APPROVED_MIGRATIONS:-}"; then
   printf 'RELEASE_WRAPPER_FAIL code=MIGRATION_APPROVAL_WITHOUT_FLAG\n' >&2
   exit 90
 fi
+# Great reset modu (tasarım v20; runbook "v20 A5 reset modu"): SHA ve migration onayına ek
+# olarak exact operasyon kimliği için ayrı onay; yalnız sabit iki migration; akış duraklatması.
+great_reset_migrations=20260926090000_public_id_bigint_namespace,20260926120000_great_reset_records
+if test -n "$great_reset_operation"; then
+  [[ "$great_reset_operation" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] || {
+    printf 'RELEASE_WRAPPER_FAIL code=INVALID_GREAT_RESET_OPERATION\n' >&2
+    exit 90
+  }
+  test "${AGENT_SOZLUK_GREAT_RESET_APPROVED:-}" = "$great_reset_operation" || {
+    printf 'RELEASE_WRAPPER_FAIL code=EXACT_RESET_APPROVAL_REQUIRED\n' >&2
+    exit 90
+  }
+  test "$approved_migrations" = "$great_reset_migrations" || {
+    printf 'RELEASE_WRAPPER_FAIL code=RESET_MIGRATION_LIST_MISMATCH\n' >&2
+    exit 90
+  }
+  test "$pause_society_flow" = 1 || {
+    printf 'RELEASE_WRAPPER_FAIL code=RESET_REQUIRES_PAUSE\n' >&2
+    exit 90
+  }
+  migration_mode="reset:$great_reset_operation:$approved_migrations"
+elif test -n "${AGENT_SOZLUK_GREAT_RESET_APPROVED:-}"; then
+  printf 'RELEASE_WRAPPER_FAIL code=RESET_APPROVAL_WITHOUT_FLAG\n' >&2
+  exit 90
+fi
 if test "$build_on_host" = 1; then
   test -z "$artifact_run" || {
     printf 'RELEASE_WRAPPER_FAIL code=AMBIGUOUS_RELEASE_SOURCE\n' >&2
@@ -179,7 +209,26 @@ bash -n "$root/scripts/production-release-remote.sh"
 bash -n "$root/scripts/install-release-artifact-remote.sh"
 bash -n "$root/scripts/install-release-artifact-from-github-remote.sh"
 bash -n "$root/scripts/production-migration-phase.sh"
+bash -n "$root/scripts/production-reset-phase.sh"
 op_id="$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
+if test -n "$great_reset_operation"; then
+  bash -n "$root/scripts/great-reset-operator-gate.sh"
+  # Operatör araçları (zincirli dış kayıt, bağımsız restore kapısı) aday checkout'un
+  # bağımlılıklarıyla koşar: pencereden önce `pnpm install --frozen-lockfile` (runbook).
+  test -x "$root/node_modules/.bin/tsx" || {
+    printf 'RELEASE_WRAPPER_FAIL code=RESET_OPERATOR_DEPENDENCIES_MISSING\n' >&2
+    exit 90
+  }
+  reset_home="${AGENTSOZLUK_RESET_HOME:-$HOME/agentsozluk-reset}"
+  install -d -m 0700 "$reset_home"
+  test "$(stat -c '%a' "$reset_home")" = 700
+  reset_ledger="$reset_home/ledger.jsonl"
+  reset_work="$reset_home/$great_reset_operation"
+  install -d -m 0700 "$reset_work"
+  # Dış kayıt baştan tam doğrulanır; bozuk kayıtla pencere açılmaz.
+  (cd "$root" && ./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "$reset_ledger" show) \
+    >/dev/null
+fi
 [[ "$op_id" =~ ^[0-9a-f]{16}$ ]]
 lock_owner="$candidate_sha:$op_id"
 
@@ -632,15 +681,156 @@ if test "$pause_society_flow" = 1; then
        timeout --kill-after=10 120 ./node_modules/.bin/tsx scripts/agent-society-flow.ts pause"
 fi
 
-trap - EXIT INT TERM HUP
-ssh -tt "${ssh_options[@]}" deploy@"$expected_ip" \
-  "set -euo pipefail
+remote_release_command() {
+  printf '%s' "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
    $scope_check
    $lock_check
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
-   exec '$remote_script' '$candidate_sha' '$cleanup' '$migration_mode' '$op_id'"
+   exec '$remote_script' '$candidate_sha' '$cleanup' '$migration_mode' '$op_id' '${1:-}'"
+}
+
+# --- Great reset: operatör tarafı (runbook v20 A5 reset modu) -------------------------
+
+reset_fail() {
+  printf 'RELEASE_WRAPPER_FAIL code=%s\n' "$1" >&2
+  exit "${2:-97}"
+}
+
+# Operatörün gecelik yedeği (`Persistent=true`) pencerede üretime bağlanmasın: önceki durumu bir
+# kez kaydedilir, devre dışı bırakılır ve çalışan yedek servisinin bitmesi beklenir.
+reset_freeze_operator_units() {
+  local states="$reset_work/operator-units" state
+  if test ! -f "$states"; then
+    printf '%s|%s\n' \
+      "$(systemctl --user is-enabled agentsozluk-yedek.timer 2>/dev/null || true)" \
+      "$(systemctl --user is-active agentsozluk-yedek.timer 2>/dev/null || true)" >"$states.next"
+    mv -Tf "$states.next" "$states"
+  fi
+  systemctl --user disable --now agentsozluk-yedek.timer >/dev/null 2>&1 || true
+  for _ in $(seq 1 120); do
+    state="$(systemctl --user is-active agentsozluk-yedek.service 2>/dev/null || true)"
+    case "$state" in active | activating | deactivating | reloading) sleep 5 ;; *) break ;; esac
+  done
+  test "$(systemctl --user is-enabled agentsozluk-yedek.timer 2>/dev/null || true)" != enabled ||
+    reset_fail RESET_OPERATOR_TIMER_STILL_ENABLED
+  case "$(systemctl --user is-active agentsozluk-yedek.service 2>/dev/null || true)" in
+    active | activating | deactivating | reloading) reset_fail RESET_OPERATOR_BACKUP_RUNNING ;;
+  esac
+}
+
+reset_restore_operator_units() {
+  local enabled active
+  IFS='|' read -r enabled active <"$reset_work/operator-units"
+  if test "$enabled" = enabled; then systemctl --user enable agentsozluk-yedek.timer >/dev/null; fi
+  if test "$active" = active; then systemctl --user start agentsozluk-yedek.timer; fi
+  test "$(systemctl --user is-enabled agentsozluk-yedek.timer 2>/dev/null || true)" = "$enabled" ||
+    reset_fail RESET_OPERATOR_TIMER_RESTORE_FAILED
+  printf 'RELEASE_RESET_OPERATOR_UNITS_RESTORED\n'
+}
+
+# Üretimden tek dosyayı okur (yalnız beklenen kalıptaki yollar), yerel 0600 dosyaya yazar.
+reset_fetch() {
+  local remote="$1" local_file="$2"
+  (umask 077 && ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+    "set -euo pipefail
+     test \"\$(hostname)\" = '$expected_host' || exit 91
+     $scope_check
+     $lock_check
+     test -f '$remote' && test ! -L '$remote'
+     cat -- '$remote'" </dev/null >"$local_file.partial") || reset_fail RESET_FETCH_FAILED
+  mv -T "$local_file.partial" "$local_file"
+}
+
+reset_ledger_append() {
+  (cd "$root" && ./node_modules/.bin/tsx scripts/great-reset-ledger.ts --file "$reset_ledger" \
+    append "$1" "$great_reset_operation" "$candidate_sha" "$2" "$3") ||
+    reset_fail RESET_LEDGER_APPEND_FAILED
+}
+
+reset_field() {
+  sed -n "s/.* $1=\\([^ ]*\\).*/\\1/p" <<<"$2"
+}
+
+reset_handle_await() {
+  local line="$1" state operation dump_sha receipt_sha dump_path reference reference_sha
+  local local_dump local_reference
+  state="$(reset_field state "$line")"
+  operation="$(reset_field operation "$line")"
+  dump_sha="$(reset_field dump_sha256 "$line")"
+  receipt_sha="$(reset_field receipt_sha256 "$line")"
+  dump_path="$(reset_field dump_path "$line")"
+  reference="$(reset_field reference_path "$line")"
+  reference_sha="$(reset_field reference_sha256 "$line")"
+  test "$operation" = "$great_reset_operation" || reset_fail RESET_AWAIT_OPERATION_MISMATCH
+  [[ "$dump_sha" =~ ^[0-9a-f]{64}$ ]] || reset_fail RESET_AWAIT_INVALID
+  case "$state" in
+    PREPARED)
+      [[ "$dump_path" =~ ^/opt/agent-sozluk/backups/agent-sozluk-[0-9]{8}T[0-9]{6}Z-reset-[0-9a-f]{8}\.dump$ ]] ||
+        reset_fail RESET_AWAIT_INVALID
+      [[ "$reference" =~ ^/opt/agent-sozluk/runtime/\.release-op-[0-9a-f]{40}/migration/reset-scratch-receipt-[0-9]{8}T[0-9]{6}Z\.json$ ]] ||
+        reset_fail RESET_AWAIT_INVALID
+      [[ "$reference_sha" =~ ^[0-9a-f]{64}$ && "$receipt_sha" =~ ^[0-9a-f]{64}$ ]] ||
+        reset_fail RESET_AWAIT_INVALID
+      local_dump="$reset_work/${dump_path##*/}"
+      local_reference="$reset_work/${reference##*/}"
+      if test ! -f "$local_dump" ||
+         test "$(sha256sum "$local_dump" | cut -d ' ' -f 1)" != "$dump_sha"; then
+        rm -f "$local_dump"
+        reset_fetch "$dump_path" "$local_dump"
+      fi
+      test "$(sha256sum "$local_dump" | cut -d ' ' -f 1)" = "$dump_sha" ||
+        reset_fail RESET_DUMP_SHA_MISMATCH
+      rm -f "$local_reference"
+      reset_fetch "$reference" "$local_reference"
+      # Bağımsız restore kapısı: operatör kümesinde sahiplik/ACL dahil restore ve karşılaştırma.
+      bash "$root/scripts/great-reset-operator-gate.sh" "$great_reset_operation" "$local_dump" \
+        "$dump_sha" "$local_reference" "$reference_sha" | tee "$reset_work/operator-gate.log" ||
+        reset_fail RESET_OPERATOR_GATE_FAILED
+      grep -Eq '^RESET_OPERATOR_GATE_PASS( |$)' "$reset_work/operator-gate.log" ||
+        reset_fail RESET_OPERATOR_GATE_FAILED
+      reset_ledger_append PREPARED "$dump_sha" -
+      ;;
+    COMMITTED_MAINTENANCE | TRAFFIC_OPEN)
+      [[ "$receipt_sha" =~ ^[0-9a-f]{64}$ ]] || reset_fail RESET_AWAIT_INVALID
+      reset_ledger_append "$state" "$dump_sha" "$receipt_sha"
+      ;;
+    ABORTED) reset_ledger_append ABORTED "$dump_sha" - ;;
+    *) reset_fail RESET_AWAIT_INVALID ;;
+  esac
+  reset_next_ack="ack:$state"
+}
+
+great_reset_run() {
+  local attempt=0 status line log
+  reset_next_ack=''
+  reset_freeze_operator_units
+  while :; do
+    attempt=$((attempt + 1))
+    ((attempt <= 12)) || reset_fail RESET_TOO_MANY_ROUNDS
+    log="$reset_work/remote-$(date -u +%Y%m%dT%H%M%SZ)-$attempt.log"
+    set +e
+    ssh -tt "${ssh_options[@]}" deploy@"$expected_ip" "$(remote_release_command "$reset_next_ack")" |
+      tee "$log"
+    status="${PIPESTATUS[0]}"
+    set -e
+    chmod 0600 "$log"
+    if test "$status" = 0; then break; fi
+    test "$status" = 75 || exit "$status"
+    line="$(tr -d '\r' <"$log" | grep '^RELEASE_RESET_AWAIT_LEDGER ' | tail -n 1)"
+    test -n "$line" || reset_fail RESET_AWAIT_MISSING
+    reset_handle_await "$line"
+  done
+  reset_restore_operator_units
+}
+
+trap - EXIT INT TERM HUP
+if test -n "$great_reset_operation"; then
+  great_reset_run
+else
+  ssh -tt "${ssh_options[@]}" deploy@"$expected_ip" "$(remote_release_command)"
+fi
 
 if test "$build_on_host" = 0 && test "$artifact_transport" = server-fetch; then
   ssh "${ssh_options[@]}" deploy@"$expected_ip" \

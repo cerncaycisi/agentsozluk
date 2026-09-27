@@ -154,6 +154,19 @@ provası → üretimde migration → post-verify. Reset modunda farklar:
   kısıtı, iki etkin immutable trigger, dokuz etkin kayıt trigger'ı) ve scratch ile üretim
   tanımlarının eşitliği. `writers-may-run` yazılmaz, kesinti sayacı sıfırlanmaz.
 
+**Operatör ön koşulları (pencereden önce):**
+
+- Sarmalayıcı aday SHA için `main` üzerinde başarılı push CI ister. Bu yüzden reset yığını
+  pencereden hemen önce `main`'e birleşir. Birleştikten sonra reset bitene kadar normal
+  (migration'sız) dağıtım yapılamaz; birleşme, Gökhan'ın reset onayından sonra yapılır.
+- Deploy checkout'u (operatör sunucusu) exact aday SHA'da temizdir ve `pnpm install
+--frozen-lockfile` ile bağımlılıklar kuruludur; zincirli dış kayıt ve bağımsız restore kapısı
+  bununla koşar. Sarmalayıcı `node_modules/.bin/tsx` yoksa başlamaz.
+- Dış kayıt `~/agentsozluk-reset/ledger.jsonl` (dizin 0700) baştan doğrulanır; bozuksa pencere
+  açılmaz. Her operasyonun artefaktları `~/agentsozluk-reset/<operationId>/` altındadır.
+- Operatör sunucusundaki PostgreSQL 16 prova kümesinde bağımsız restore için yer vardır (DB
+  boyutu kadar). Kapı kendi DB'sini her durumda düşürür.
+
 Ardından reset aşamaları (aynı dondurma içinde):
 
 1. `reset-flags-frozen`: dört yazma bayrağının önceki değerleri ve `settingsVersion`
