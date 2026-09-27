@@ -75,16 +75,21 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    (`scripts/great-reset-production.ts`) ve profil tabanlı çekirdek; üretimde namespace ve kapı
    zorunlu, DB kimliği (sunucu adresi, sahip, sürüm, küme kimliği) bağlantıdan sonra doğrulanır.
    Hepsi Astra'dan KOD GO aldı, CI yeşil, main'e birleşmedi.
-   **Kalan sıra (Gökhan: "Astrayla birlikte karar verin", 26 Eylül; Astra ile ortak karar):**
-   (1) tam içerik makbuzu ve gerçek boyutlu yerel dump/restore doğrulaması (içerik, sahiplik,
-   ACL, DB/rol ayarları, sequence, dump öncesi/sonrası eşitlik) — **26 Eylül: yazıldı, yedinci
-   yığınlı paket;** yerel provada 54 tablo / ~3,1 M satır, makbuz 124–137 sn, dump 152 sn,
-   geri yükleme 181 sn, kaynak ↔ geri yükleme birebir eşit; (2) bakım planı taslağı ve
-   yerel prefetch Router Cache kanıtı (reset GO kapısı; üretim erişimi gerekmez); (3) Gökhan'ın
-   exact erişim onayıyla timer envanteri ve üretim önkontrolü; (4) ölçülen digest/restore süresi
-   ve disk/WAL ile bakım penceresi; (5) Ö4-2 sonucu (pencere en erken 28 Eylül 16:49 UTC),
-   kalan kabul kapıları, reset runbook hakemliği ve exact sürüm/eylem onayıyla reset kararı;
-   reset anında 6.3-5 ve `__Host-` çerez öneki.
+   **26 Eylül ortak kararından tamamlananlar:** tam içerik makbuzu ve gerçek boyutlu yerel
+   dump/restore doğrulaması (yedinci yığınlı paket; 54 tablo / ~3,1 M satır, makbuz 124–137 sn,
+   dump 152 sn, geri yükleme 181 sn, birebir eşit); bakım planı taslağı, üretim önkontrolü ve
+   zamanlayıcı envanteri (27 Eylül, Gökhan onayıyla;
+   [bakım planı](RESET_BAKIM_PLANI_TASLAGI_2026-09-27.md)).
+   **27 Eylül — tasarım v20 (Astra ile ortak karar):** A5 bakım yolu dar reset moduyla
+   kullanılır; Caddy bakımda kapalı; HMAC'siz zincirli dış kayıt; iki yedek noktası ve salt
+   okunur iç kabul korunur. **Kalan sıra:** (1) v20 ve süper kullanıcı olmayan sahip rolle
+   entegrasyon, uçtan uca kapılı reset dahil (PR #237); (2) A5'e dar reset modu (exact iki
+   migration, kapsamlı post-verify, timer/boot dondurması, reset fazları); (3) üretim operasyon
+   araçları (niyet, üretim kimlikli makbuz, reset-anı yedeği ve restore eşitliği, dış kayıt,
+   trafik olayı); (4) salt okunur iç kabul ve kontrollü açılış; (5) restore dalı ve bütün hata
+   geçişlerinin gerçek boyutlu provası, süre/disk bütçesi; (6) Router Cache E2E kanıtı; sonra
+   Ö4-2 sonucu (pencere en erken 28 Eylül 16:49 UTC), reset runbook hakemliği ve Gökhan'ın exact
+   sürüm/eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
    cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
    serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma

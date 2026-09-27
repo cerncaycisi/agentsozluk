@@ -611,6 +611,86 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
   );
 }
 
+/*
+  Entegrasyon testi profili (tasarım v20 madde 6, Astra PR #237 P2): gerçek yürütücüyü, bağlantı
+  kapısıyla, süper kullanıcı olmayan DB sahibi rolle uçtan uca sınamak için. Yalnız
+  `NODE_ENV=test`, loopback adresi, `great_reset_e2e_<8 hex>_test` adı ve fixture yöneticisinin
+  yazdığı DB yorum işaretiyle çalışır; üretim DB'si (`agent_sozluk`, işaretsiz) bu profile giremez.
+  CLI'lar bu girişi çağırmaz.
+*/
+const integrationTestMarker = "agentsozluk:great-reset:integration-test:v1";
+
+async function integrationTestIdentity(tx: Tx, databaseName: string, user: string) {
+  const [actual] = await tx.$queryRaw<
+    {
+      database: string;
+      owner: string;
+      user: string;
+      host: string | null;
+      version: number;
+      marker: string | null;
+    }[]
+  >`
+    SELECT current_database() AS database, pg_get_userbyid(d.datdba) AS owner,
+      current_user AS user, host(inet_server_addr()) AS host,
+      current_setting('server_version_num')::int AS version,
+      shobj_description(d.oid, 'pg_database') AS marker
+    FROM pg_database d WHERE datname = current_database()`;
+  if (
+    !actual ||
+    actual.database !== databaseName ||
+    actual.owner !== user ||
+    actual.user !== user ||
+    !["127.0.0.1", "::1"].includes(actual.host ?? "") ||
+    actual.version < 160000 ||
+    actual.version >= 170000 ||
+    actual.marker !== integrationTestMarker
+  )
+    throw new Error("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
+  return actual;
+}
+
+export async function runIntegrationTestGreatReset(value: string, request: Request) {
+  if (process.env.NODE_ENV !== "test") throw new Error("GREAT_RESET_INVALID_TARGET");
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("GREAT_RESET_INVALID_TARGET");
+  }
+  if (
+    url.protocol !== "postgresql:" ||
+    !["127.0.0.1", "localhost"].includes(url.hostname) ||
+    url.search ||
+    url.hash ||
+    !/^\/great_reset_e2e_[0-9a-f]{8}_test$/u.test(url.pathname)
+  )
+    throw new Error("GREAT_RESET_INVALID_TARGET");
+  url.searchParams.set("connection_limit", "1");
+  url.searchParams.set("connect_timeout", "5");
+  const databaseName = url.pathname.slice(1);
+  const user = decodeURIComponent(url.username);
+  const probe = new PrismaClient({ datasourceUrl: url.toString(), log: [] });
+  let clusterId: string;
+  try {
+    const [row] = await probe.$queryRaw<{ cluster: string }[]>`
+      SELECT system_identifier::text AS cluster FROM pg_control_system()`;
+    clusterId = row!.cluster;
+  } finally {
+    await probe.$disconnect();
+  }
+  return runGreatReset(
+    {
+      kind: "LOCAL",
+      databaseName,
+      databaseUrl: url.toString(),
+      verifyIdentity: (tx) => integrationTestIdentity(tx, databaseName, user),
+      controlIdentity: { clusterId, user, serverAddresses: ["127.0.0.1", "::1"] },
+    },
+    request,
+  );
+}
+
 /**
  * Üretim girişi. Hedef çağırandan ALINMAZ: host, fiziksel release, `.release-sha`, `.env` ve
  * Compose `db` container kimliği bu girişte okunur ve guard'dan geçer (Astra, PR #232 P2).

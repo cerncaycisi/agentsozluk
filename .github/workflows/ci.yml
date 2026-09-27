@@ -194,6 +194,7 @@ jobs:
             GREAT_RESET_REQUIRE_NON_SUPERUSER=1 \
             pnpm exec vitest run \
               tests/integration/great-reset-connection-gate.test.ts \
+              tests/integration/great-reset-e2e-owner.test.ts \
               tests/integration/great-reset-namespace.test.ts \
               tests/integration/great-reset-records.test.ts \
               tests/integration/great-reset-receipt.test.ts \

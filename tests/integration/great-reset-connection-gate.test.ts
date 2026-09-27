@@ -107,6 +107,9 @@ describe("great reset bağlantı kapısı, hedef DB sahibi rolle", () => {
       await openConnectionGate(control, identity, databaseName);
       await releaseRunnerLock(control, databaseName);
     }
+    // Sonraki senaryoya açık sahip bağlantısı taşınmaz (Astra, PR #237 P2).
+    await target.$disconnect();
+    await control.$disconnect();
     expect(await allowed()).toBe(true);
     expect(await canConnect(urlFor(ownerUrl, databaseName))).toBe(true);
   }, 120_000);
@@ -123,6 +126,14 @@ describe("great reset bağlantı kapısı, hedef DB sahibi rolle", () => {
           async (tx) => {
             const [backend] = await tx.$queryRaw<{ pid: number }[]>`
               SELECT pg_backend_pid() AS pid`;
+            // Pinli backend dışında tek backend var ve o da BAŞKA roldedir: kapı onu sahip rolün
+            // görünürlüğüyle yakalamalı (önceki testten kalan sahip bağlantısı yanlış güven verirdi).
+            const sessions = await admin.$queryRaw<{ pid: number; role: string }[]>`
+              SELECT pid, usename::text AS role FROM pg_stat_activity
+              WHERE datname = ${databaseName} AND pid <> ${backend!.pid}`;
+            expect(sessions).toHaveLength(1);
+            if (decodeURIComponent(adminUrl.username) !== identity.user)
+              expect(sessions[0]!.role).not.toBe(identity.user);
             await closeConnectionGate(control, identity, databaseName, backend!.pid);
           },
           { timeout: 60_000 },
@@ -131,6 +142,7 @@ describe("great reset bağlantı kapısı, hedef DB sahibi rolle", () => {
     } finally {
       await openConnectionGate(control, identity, databaseName);
       await releaseRunnerLock(control, databaseName);
+      await Promise.all([target.$disconnect(), other.$disconnect(), control.$disconnect()]);
     }
     expect(await allowed()).toBe(true);
   }, 120_000);

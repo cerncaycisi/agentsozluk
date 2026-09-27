@@ -89,49 +89,41 @@ sonraki 45. dakikaya kadar başlamadıysa reset yapılmaz. Kapı açılır, eski
 geri gelir ve pencere yeniden planlanır. Reset işleminden sonra geri dönüş, runbook'taki
 restore dallarıyla yapılır.
 
-## 3. GO'dan önce kapanması gereken eksikler
+## 3. Önkontrolde bulunan eksikler (tarihsel) ve v20 karşılıkları
 
-Runbook'un öngördüğü ama kodda veya sunucuda henüz olmayan parçalar. Her biri ayrı PR ve farklı
-model hakemliği ister.
+Aşağıdaki altı madde önkontrol anında yazıldı. Aynı gün Astra ile ortak kararla
+[tasarım v20](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md) ("v20 — A5 bakım yolunun yeniden
+kullanımı") bunları yeniden biçimlendirdi. **Güncel kapılar v20'dedir; iş sırası yalnız
+[PLAN.md](PLAN.md) içindedir.** Bu bölüm ayrı sıra değildir.
 
-1. **Caddy bakım yanıtı.** Üretim Caddyfile'ında bakım modu yok, yalnız `/api/v1/internal/*`
-   engeli var. Gereken:
-   - sabit, kısa `503` bakım sayfası (`Retry-After`, `no-store`);
-   - onu açıp kapatan, sınanmış yeniden yükleme adımı;
-   - iç kabulün bu sırada loopback'ten app'e ulaşma yolu.
-2. **Bakım dağıtım yolu.** Normal dağıtım betiği yalnız ekleyici (A5) migration'ı kabul
-   eder; BIGINT migration'ı ekleyici değil. Gereken: dondurma, dump ve worker/app kapalı
-   iken çalışan, exact migration listesini ayrıca onaylatan dağıtım yolu.
-3. **İmzalı reset nesli kaydı.** `PREPARED` → `COMMITTED_MAINTENANCE` → `TRAFFIC_OPEN`
-   geçişlerini yapan dış kayıt henüz yazılmadı. İstenenler:
-   - operatör sunucusunda 0600 anahtarla HMAC;
-   - yalnız ekleme;
-   - fsync ve rename.
-4. **Salt okunur iç kabul modu.** App'i bağlantı başlangıcında
-   `default_transaction_read_only=on` ile açan, geçici bir runtime ayarı henüz yok.
-5. **Süper kullanıcı olmayan rolle entegrasyon testi.** Bağlantı kapısı ve reset çekirdeği
-   yerel provada süper kullanıcıyla sınandı. Üretimdeki rol (DB sahibi, süper kullanıcı değil)
-   ile aynı testler koşulmalı. `ALTER DATABASE … ALLOW_CONNECTIONS` yetkisi ayrıca doğrulandı.
-6. **Restore dalı için DB yeniden adlandırma.** `ALTER DATABASE … RENAME` sahiplikle birlikte
-   `CREATEDB` ister; uygulama rolünde bu yetki yok. Üretimde restore/yeniden adlandırma ancak
-   container konsolundaki `postgres` rolüyle yapılabilir. Runbook bu yolu açıkça yazmalı ve
-   provada sınamalı.
+1. **Bakım yanıtı.** Önkontrolde `503` bakım sayfası önerilmişti. v20: Caddy durdurulur,
+   bağlantı reddi bakım davranışıdır; `503` sayfası ve Caddyfile değişikliği yoktur.
+2. **Bakım dağıtım yolu.** v20: A5 sarmalayıcısının dar reset modu; exact iki migration
+   SHA-256'ya bağlı, diğer migration'larda ekleyici denetçi aynen kalır.
+3. **Dış nesil kaydı.** Önkontrolde HMAC'li kayıt yazılmıştı. v20: HMAC yok; operatör
+   sunucusunda 0600, zincirli, yalnız eklenen kayıt ve restore öncesi makineyle çalışan
+   uygunluk denetimi.
+4. **Salt okunur iç kabul modu.** v20'de aynen korunur: bütün havuzda connection-startup
+   `default_transaction_read_only=on`, ardından tam özet karşılaştırması.
+5. **Süper kullanıcı olmayan rolle entegrasyon.** v20 madde 6; CI'da `agent_sozluk`
+   (NOSUPERUSER/NOCREATEDB) rolüyle koşar.
+6. **Restore dalı.** v20 madde 7: `postgres` konsol yolu, gölge restore ve tek transaction'da
+   iki rename, gerçek boyutta prova.
 
-**Router Cache kapısı** analizle kapandı, deneyle kanıtı aşağıdaki PR'a bağlı:
+**Router Cache kapısı açık kalır.** Analiz kapanış yönünde:
 
 - Entry, başlık ve ana sayfa `force-dynamic`; bu rotalarda `loading.tsx` yok.
 - Kodda `prefetch={true}` veya `router.prefetch` kullanılmıyor.
 - Next 15.5.25 varsayılanı `staleTimes.dynamic=0`.
 
-Bu yüzden önceden yüklenmiş bir link, tıklamada sayfa içeriğini her zaman sunucudan ister ve
-reset sonrası 410 alır. İleri/geri tuşuyla açılan, zaten görülmüş sayfa tarayıcı belleğinden
-gelebilir; bu yeni içerik göstermez, kabul edilen sınırdır. Deneysel E2E testi reset yığınına
-ayrı PR olarak eklenecek.
+Bu yüzden önceden yüklenmiş bir linkin tıklamada sayfa içeriğini sunucudan istemesi ve reset
+sonrası 410 alması beklenir. İleri/geri tuşuyla açılan, zaten görülmüş sayfa tarayıcı
+belleğinden gelebilir; bu yeni içerik göstermez. Ancak tasarımdaki GO kapısı deneysel kanıt
+ister; E2E testi eklenene kadar kapı **açıktır**.
 
 ## 4. Sonuç
 
 Üretim ortamı reset tasarımının varsayımlarıyla uyumlu: kimlik, rol yetkisi, sağlık kontrolü,
-disk ve WAL payı yeterli. Reset kodu (PR #227–#234) hazır. Ancak yukarıdaki altı operasyon
-parçası olmadan runbook uygulanamaz; bu nedenle reset Ö4-2 sonucundan (28 Eylül 16:49 UTC)
-hemen sonra yapılamaz. Önerilen sıra 1 → 2 → 4 → 3 → 5 → 6; sonra tam yerel prova ve Gökhan'ın
-exact onayı.
+disk ve WAL payı yeterli. Reset kodu (PR #227–#234) hazır. Operasyon parçaları v20'ye göre
+tamamlanmadan reset yapılamaz; bu nedenle reset Ö4-2 sonucundan (28 Eylül 16:49 UTC) hemen
+sonra yapılamaz. Sıra ve durum [PLAN.md](PLAN.md) içindedir.
