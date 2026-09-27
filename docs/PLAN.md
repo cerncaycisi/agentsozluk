@@ -90,6 +90,16 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    geçişlerinin gerçek boyutlu provası, süre/disk bütçesi; (6) Router Cache E2E kanıtı; sonra
    Ö4-2 sonucu (pencere en erken 28 Eylül 16:49 UTC), reset runbook hakemliği ve Gökhan'ın exact
    sürüm/eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
+
+   **27 Eylül akşam durumu:** (1)–(4) ve (6) kodda; #237–#243 Astra KOD GO, CI yeşil. (5) geri
+   dönüş dalı gerçek boyutlu yerel provada geçti (gece yedeği kopyası, üretime bağlanılmadan;
+   geri dönüş ≈ 530 sn, bütçe 1800 sn). Prova bir açık buldu: üretim akışında kuyruk boşaltması
+   yoktu; pencerede reset güvenli biçimde vazgeçerdi. Astra ile ortak kararla boşaltma eklendi
+   (#243): bakımdan önce bayraklar ayrı kayıtla kapanır, sıradaki koşular iptal edilir, süren
+   koşular beklenir; bayraklar yalnız uzaktaki olumlu kanıtla otomatik geri döner (Gökhan: "elle
+   bir şey açamam"). Geri dönüş sonrası ikinci reset kilidi korunur. **Kalan:** Ö4-2 sonucu,
+   bakım penceresi planı ve Gökhan'ın exact SHA/eylem onayı; yerel prova rolü ve test DB'lerinin
+   temizliği.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
    cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
    serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma
