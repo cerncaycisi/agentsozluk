@@ -9267,3 +9267,17 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
 
 - Arka planda `codex exec` çağrısına her zaman `< /dev/null` ver.
 - Dağıtımı geçici worktree'den değil, skill'in origin'i `.git` ile biten temiz checkout'undan koş.
+
+## 2026-09-27 — reset üretim salt okunur önkontrolü ve zamanlayıcı envanteri
+
+- Gökhan açık onayı: "hepsini yap onaylıyorum" (salt okunur üretim önkontrolü). Canlı
+  `9627cb7`. Yalnız `SELECT`, `systemctl show/list`, `docker inspect`, `du`, `df`; hiçbir şey
+  değişmedi. Ayrıntı ve tablo: [bakım planı taslağı](RESET_BAKIM_PLANI_TASLAGI_2026-09-27.md).
+- Güvenli hatalar: `pg_hba_file_rules` ve `pg_ls_waldir` uygulama rolüyle
+  `permission denied`; kök neden rolün süper kullanıcı olmaması (beklenen). Çözüm: aynı bilgi
+  container içinden salt okunur `du` ve filtrelenmiş `pg_hba.conf` okumasıyla alındı.
+- Yerel PostgreSQL 16.14'te süper kullanıcı olmayan DB sahibi `ALTER DATABASE … ALLOW_CONNECTIONS
+false/true` yapabildi; geçici rol ve DB silindi.
+- **Tekrarlama:** uygulama rolüyle süper kullanıcı görünümlerini sorgulama; container içi
+  dosya okumasını kullan. Reset provalarında süper kullanıcı ile sınanmış yolu üretim rolüyle
+  sınanmış sayma.

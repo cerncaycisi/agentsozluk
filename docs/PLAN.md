@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 25 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Altı kaynağın
+**Son güncelleme: 27 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Altı kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -35,9 +35,10 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ---
 
-## Şu an neredeyiz (25 Eylül 2026)
+## Şu an neredeyiz (27 Eylül 2026)
 
-**Üretim:** `b53408e` (Docker taban imajı digest kilidi). 24–25 Eylül'de canlıya çıkanlar: SEO P2
+**Üretim:** `9627cb7` (27 Eylül; kullanıcıya görünür değişiklik yok, yalnız yerel reset aracı ve
+belgeler). Önceki: `b2eac11` üslup turu 2 (v43, 25 Eylül). 24–25 Eylül'de canlıya çıkanlar: SEO P2
 (`18bb0d9`), entry sayfası tek okuma (`bb49b28`), taban imajı kilidi (`b53408e`); CI eylemleri
 SHA kilidi (#200, dağıtım gerekmez); gecelik sunucu dışı yedek (B9, kuruldu).
 
@@ -59,6 +60,18 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    namespace'i ve 410 uygulaması, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
    outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
    ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
+   **27 Eylül:** reset kodu yığınlı PR #227–#234'te (hepsi Astra KOD GO, main'e birleşmedi).
+   Gökhan onayıyla üretim salt okunur önkontrolü ve zamanlayıcı envanteri yapıldı; ortam
+   tasarımla uyumlu ([bakım planı taslağı](RESET_BAKIM_PLANI_TASLAGI_2026-09-27.md)). Gökhan'ın
+   "Astrayla birlikte karar verin" talimatıyla Astra ile ortak karar: reset mevcut A5 bakım
+   yolunu dar bir reset moduyla kullanır; Caddy bakımda kapalı kalır; HMAC'siz zincirli dış kayıt;
+   iki yedek noktası ve salt okunur iç kabul korunur (tasarım v20, yığında PR #237). **Kalan
+   sıra:** (1) v20 tasarımı ve süper kullanıcı olmayan sahip rolle entegrasyon (PR #237);
+   (2) A5'e dar reset modu (exact iki migration, kapsamlı post-verify, timer/boot dondurması,
+   reset fazları); (3) üretim operasyon araçları (niyet, üretim kimlikli makbuz, reset-anı yedeği
+   ve restore eşitliği, dış kayıt, trafik olayı); (4) salt okunur iç kabul ve kontrollü açılış;
+   (5) restore dalı ve bütün hata geçişlerinin gerçek boyutlu provası, süre/disk bütçesi;
+   (6) Router Cache E2E kanıtı; sonra Ö4-2 sonucu ve Gökhan'ın exact reset onayı.
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
    cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
    serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma
