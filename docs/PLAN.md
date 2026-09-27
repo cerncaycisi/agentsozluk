@@ -100,6 +100,7 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    bir şey açamam"). Geri dönüş sonrası ikinci reset kilidi korunur. **Kalan:** Ö4-2 sonucu,
    bakım penceresi planı ve Gökhan'ın exact SHA/eylem onayı; yerel prova rolü ve test DB'lerinin
    temizliği.
+
 4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
    cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
    serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma
