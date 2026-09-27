@@ -102,8 +102,17 @@ SELECT format('COMMENT ON DATABASE %I IS %L', :'database', :'marker') \gexec
 SQL
 created=1
 # Üretim scratch'i gibi `agent_sozluk` rolü altında: extension'lar üretimdeki sahiple kurulur.
-"$pg_bin/pg_restore" -h 127.0.0.1 -p 5432 -U "$local_user" --role=agent_sozluk --exit-on-error \
-  -d "$database" "$dump" </dev/null || fail LOCAL_RESTORE_FAILED
+# Restore da kimliği doğrulayan oturumda (Astra, PR #240 3. tur P2): arşiv SQL'e çevrilir ve hedef
+# DB'ye bağlı TEK psql oturumunda, önce küme kimliği denetlenerek, tek transaction'da uygulanır.
+{
+  printf '%s\n' \
+    "SELECT system_identifier::text = '$expected_cluster' AS cluster_ok FROM pg_control_system() \\gset" \
+    '\if :cluster_ok' '\else' \
+    "DO \$\$ BEGIN RAISE EXCEPTION 'RESET_OPERATOR_GATE_LOCAL_CLUSTER_MISMATCH'; END \$\$;" \
+    '\endif'
+  "$pg_bin/pg_restore" --role=agent_sozluk --single-transaction -f - "$dump" </dev/null ||
+    printf '%s\n' "DO \$\$ BEGIN RAISE EXCEPTION 'RESET_OPERATOR_GATE_ARCHIVE_UNREADABLE'; END \$\$;"
+} | psql_script -d "$database" -q >/dev/null || fail LOCAL_RESTORE_FAILED
 (cd "$root" && AGENT_GREAT_RESET_INDEPENDENT_DATABASE_URL="postgresql://agent_sozluk@127.0.0.1:5432/$database" \
   "$tsx" scripts/great-reset-operation.ts receipt "$work/independent.json" >/dev/null) ||
   fail LOCAL_RECEIPT_FAILED

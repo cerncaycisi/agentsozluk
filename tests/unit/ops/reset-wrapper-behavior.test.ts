@@ -233,16 +233,25 @@ great_reset_run
     expect(unresolved.stderr).toContain("operator backup timer stays disabled");
   });
 
-  it("yerel dondurma düşerse uzak bakım başlamaz ve timer eski durumuna döner", () => {
-    const result = loopHarness(`
+  it("yerel dondurma düşerse timer yalnız uzak durum SAFE ise döner", () => {
+    const safe = loopHarness(`
 : >"$reset_work/operator-units"
+reset_remote_state() { echo SAFE; }
 reset_freeze_operator_units() { reset_fail RESET_OPERATOR_BACKUP_RUNNING; }
 ssh() { echo SSH_CALLED >>"$calls"; return 0; }
 great_reset_run
 `);
-    expect(result.stderr).toContain("code=RESET_OPERATOR_FREEZE_FAILED");
-    expect(result.calls()).toContain("RESTORED");
-    expect(result.calls()).not.toContain("SSH_CALLED");
+    expect(safe.stderr).toContain("code=RESET_OPERATOR_FREEZE_FAILED");
+    expect(safe.calls()).toContain("RESTORED");
+    expect(safe.calls()).not.toContain("SSH_CALLED");
+    // Yeniden girişte bakım sürüyor olabilir: uzak durum SAFE değilse açılmaz.
+    const unresolved = loopHarness(`
+: >"$reset_work/operator-units"
+reset_freeze_operator_units() { reset_fail RESET_OPERATOR_BACKUP_RUNNING; }
+great_reset_run
+`);
+    expect(unresolved.calls()).not.toContain("RESTORED");
+    expect(unresolved.stderr).toContain("operator backup timer stays disabled");
   });
 
   it("devre dışı ama hâlâ aktif timer dondurulmuş sayılmaz", () => {

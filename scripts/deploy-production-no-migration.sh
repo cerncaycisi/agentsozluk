@@ -839,10 +839,15 @@ great_reset_run() {
   local attempt=0 status tee_status line log
   local -a statuses
   reset_next_ack=''
-  # Yerel dondurma düşerse uzak bakım hiç başlamamıştır: timer eski durumuna döner.
+  # Yerel dondurma düşerse timer yalnız uzak bakımın gerçekten başlamadığı (SAFE) doğrulanınca
+  # eski durumuna döner; yeniden girişte bakım sürüyor olabilir (Astra, PR #240 3. tur P1).
   if ! (reset_freeze_operator_units); then
-    if test -f "$reset_work/operator-units" && ! (reset_restore_operator_units); then
-      printf 'RELEASE_WARN operator backup timer could not be restored; see runbook\n' >&2
+    if test -f "$reset_work/operator-units" && test "$(reset_remote_state)" = SAFE; then
+      if ! (reset_restore_operator_units); then
+        printf 'RELEASE_WARN operator backup timer could not be restored; see runbook\n' >&2
+      fi
+    else
+      printf 'RELEASE_WARN operator backup timer stays disabled while maintenance is unresolved\n' >&2
     fi
     reset_fail RESET_OPERATOR_FREEZE_FAILED
   fi
