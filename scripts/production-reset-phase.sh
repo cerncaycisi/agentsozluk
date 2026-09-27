@@ -64,13 +64,17 @@ reset_freeze_units() {
   sudo systemctl disable agent-sozluk.service </dev/null >/dev/null 2>&1 || true
   # Çalışan bakım/alarm/yedek servisleri bitsin (en çok 5 dk).
   for _ in $(seq 1 60); do
-    if test "$(systemctl is-active agent-sozluk-maintenance.service agent-sozluk-alarm.service \
-      agent-sozluk-backup.service 2>/dev/null | grep -c '^active$' || true)" = 0; then
-      break
-    fi
+    if test "$(reset_running_services)" = 0; then break; fi
     sleep 5
   done
   reset_assert_units_frozen
+}
+
+# Oneshot servis çalışırken `activating` görünür (Astra, PR #239 P2): bitmiş sayılmaz.
+reset_running_services() {
+  { systemctl is-active agent-sozluk-maintenance.service agent-sozluk-alarm.service \
+    agent-sozluk-backup.service 2>/dev/null || true; } |
+    grep -c -E '^(active|activating|deactivating|reloading|refreshing)$' || true
 }
 
 reset_assert_units_frozen() {
@@ -83,9 +87,7 @@ reset_assert_units_frozen() {
   done
   test "$(systemctl is-enabled agent-sozluk.service 2>/dev/null || true)" != enabled ||
     migration_fail RESET_STACK_UNIT_STILL_ENABLED
-  test "$(systemctl is-active agent-sozluk-maintenance.service agent-sozluk-alarm.service \
-    agent-sozluk-backup.service 2>/dev/null | grep -c '^active$' || true)" = 0 ||
-    migration_fail RESET_SERVICE_STILL_RUNNING
+  test "$(reset_running_services)" = 0 || migration_fail RESET_SERVICE_STILL_RUNNING
 }
 
 reset_restore_units() {
@@ -112,17 +114,19 @@ reset_restore_units() {
 # Bayraklar ve servis metadatası dışında `agent_global_settings` birebir kalmalı.
 reset_settings_fingerprint() {
   "${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 -U agent_sozluk -d agent_sozluk \
-    -c 'SELECT (to_jsonb(s) - ARRAY[''runtimeEnabled'', ''schedulerEnabled'',
-          ''publicWriteEnabled'', ''publishEnabled'', ''settingsVersion'', ''updatedAt'',
-          ''updatedById''])::text
-        FROM agent_global_settings s ORDER BY id;' </dev/null | sha256sum | cut -d ' ' -f 1
+    <<'SQL' | sha256sum | cut -d ' ' -f 1
+SELECT (to_jsonb(s) - ARRAY['runtimeEnabled', 'schedulerEnabled', 'publicWriteEnabled',
+    'publishEnabled', 'settingsVersion', 'updatedAt', 'updatedById'])::text
+FROM agent_global_settings s ORDER BY id;
+SQL
 }
 
 reset_flags() {
-  "${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 -U agent_sozluk -d agent_sozluk \
-    -c 'SELECT "runtimeEnabled"::text || chr(124) || "schedulerEnabled"::text || chr(124) ||
-          "publicWriteEnabled"::text || chr(124) || "publishEnabled"::text
-        FROM agent_global_settings WHERE id = ''global'';' </dev/null
+  "${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 -U agent_sozluk -d agent_sozluk <<'SQL'
+SELECT "runtimeEnabled"::text || '|' || "schedulerEnabled"::text || '|' ||
+  "publicWriteEnabled"::text || '|' || "publishEnabled"::text
+FROM agent_global_settings WHERE id = 'global';
+SQL
 }
 
 # Reset modunda A5'in tam ayar özetinin yerine geçer; yaşam döngüsü özeti aynen denetlenir.
@@ -196,23 +200,62 @@ reset_write_freeze() {
 
 # --- Dış kayıt el sıkışması -----------------------------------------------------
 
-reset_await_ledger() {
-  local state="$1" dump="$2" receipt="$3"
-  printf '%s|%s|%s\n' "$state" "$dump" "$receipt" >"$migration_marker/reset-await.next"
-  mv -Tf "$migration_marker/reset-await.next" "$migration_marker/reset-await"
-  printf 'RELEASE_RESET_AWAIT_LEDGER state=%s operation=%s dump_sha256=%s receipt_sha256=%s dump_path=%s\n' \
-    "$state" "$reset_operation_id" "$dump" "$receipt" "$(cat "$migration_marker/reset-dump-path")"
+# Her dış kayıt isteği (durum, dump SHA, makbuz SHA) faz yazılmadan ÖNCE kalıcı dosyaya yazılır;
+# aynı istek yeniden yazılırsa değerler birebir aynı olmalıdır (Astra, PR #239 P1/P2).
+reset_request_ledger() {
+  local state="$1" dump="$2" receipt="$3" file
+  file="$migration_marker/reset-request-$state"
+  if test -f "$file"; then
+    test "$(cat "$file")" = "$state|$dump|$receipt" || migration_fail RESET_LEDGER_REQUEST_CONFLICT
+    return 0
+  fi
+  printf '%s|%s|%s\n' "$state" "$dump" "$receipt" >"$file.next"
+  mv -Tf "$file.next" "$file"
+}
+
+# Kapı: onay kalıcıysa geçer; bu çağrıda sarmalayıcı onay verdiyse kalıcılaştırıp geçer; yoksa
+# isteği (dosyadan) yeniden basar ve 75 ile çıkar. Kesinti hangi noktada olursa olsun yeniden
+# giriş aynı isteği üretir ya da kaydedilmiş onayı kullanır; onay atlanamaz.
+reset_ledger_gate() {
+  local state="$1" request
+  request="$migration_marker/reset-request-$state"
+  test -f "$request" || migration_fail RESET_LEDGER_REQUEST_MISSING
+  if test -f "$migration_marker/reset-ack-$state"; then return 0; fi
+  if test "$reset_ack" = "$state"; then
+    printf '%s\n' "$state" >"$migration_marker/reset-ack-$state.next"
+    mv -Tf "$migration_marker/reset-ack-$state.next" "$migration_marker/reset-ack-$state"
+    return 0
+  fi
+  IFS='|' read -r _ reset_await_dump reset_await_receipt <"$request"
+  printf 'RELEASE_RESET_AWAIT_LEDGER state=%s operation=%s dump_sha256=%s receipt_sha256=%s dump_path=%s receipt_path=%s\n' \
+    "$state" "$reset_operation_id" "$reset_await_dump" "$reset_await_receipt" \
+    "$(cat "$migration_marker/reset-dump-path" 2>/dev/null || printf '-')" \
+    "$(reset_await_receipt_path "$state")"
   exit "$reset_ledger_exit"
 }
 
-reset_take_ack() {
-  local state="$1" awaited
-  test -f "$migration_marker/reset-await" || migration_fail RESET_ACK_UNEXPECTED
-  awaited="$(cut -d '|' -f 1 "$migration_marker/reset-await")"
-  test "$awaited" = "$state" || migration_fail RESET_ACK_STATE_MISMATCH
-  test "$reset_ack" = "$state" || migration_fail RESET_ACK_MISSING
-  printf '%s\n' "$state" >"$migration_marker/reset-ack-$state"
-  rm -f "$migration_marker/reset-await"
+reset_await_receipt_path() {
+  case "$1" in
+    PREPARED) cat "$migration_marker/reset-pre-receipt-path" 2>/dev/null || printf -- '-' ;;
+    COMMITTED_MAINTENANCE | TRAFFIC_OPEN)
+      cat "$migration_marker/reset-post-receipt-path" 2>/dev/null || printf -- '-'
+      ;;
+    *) printf -- '-' ;;
+  esac
+}
+
+# Vazgeçme ve sonuç uzlaşısı, dolmuş kesinti bütçesiyle de çalışabilmeli: A5 tuzağı gibi ayrı,
+# sınırlı bir kurtarma bütçesi (10 dk) açılır (Astra, PR #239 P1).
+reset_recovery_budget() {
+  recovering=1
+  frozen_deadline=$(($(date +%s) + 600))
+}
+
+reset_frozen_at() {
+  local deadline_at
+  deadline_at="$(cat "$migration_marker/frozen-deadline")"
+  [[ "$deadline_at" =~ ^[0-9]+$ ]] || migration_fail DOWNTIME_DEADLINE_INVALID
+  printf '%s\n' "$((deadline_at - max_downtime_seconds))"
 }
 
 # --- Aşamalar -------------------------------------------------------------------
@@ -245,15 +288,49 @@ reset_restore_flags() {
   reset_assert_state
 }
 
+# Exact operasyonun niyet durumu DB'den: OPEN, CONSUMED, INVALIDATED, EXPIRED ya da MISSING.
+reset_intent_state() {
+  db_psql agent_sozluk -v "op=$reset_operation_id" -v "sha=$candidate_sha" <<'SQL'
+SELECT CASE
+  WHEN count(*) = 0 THEN 'MISSING'
+  WHEN bool_or("releaseSha" <> :'sha') THEN 'FOREIGN'
+  WHEN bool_or("consumedAt" IS NOT NULL) THEN 'CONSUMED'
+  WHEN bool_or("invalidatedAt" IS NOT NULL) THEN 'INVALIDATED'
+  WHEN bool_or("expiresAt" <= CURRENT_TIMESTAMP) THEN 'EXPIRED'
+  ELSE 'OPEN' END
+FROM great_reset_intents WHERE "operationId" = :'op'::uuid;
+SQL
+}
+
 reset_create_intent() {
-  local output
-  # Açık niyet varsa (yeniden giriş) yenisi yazılamaz; CLI bunu `INTENT_BLOCKED` ile reddeder.
-  if test ! -f "$migration_marker/reset-intent"; then
-    output="$(reset_cli scripts/great-reset-operation.ts intent-create \
-      "$reset_operation_id" "$candidate_sha")" || migration_fail RESET_INTENT_FAILED
-    printf '%s\n' "$output" >"$migration_marker/reset-intent"
-  fi
+  local state
+  state="$(reset_intent_state)" || migration_fail RESET_INTENT_STATE_UNAVAILABLE
+  # Önceki giriş DB'de COMMIT edip faz yazamadan kesildiyse aynı niyet kullanılır.
+  case "$state" in
+    OPEN) : ;;
+    MISSING)
+      reset_cli scripts/great-reset-operation.ts intent-create "$reset_operation_id" \
+        "$candidate_sha" >/dev/null || migration_fail RESET_INTENT_FAILED
+      test "$(reset_intent_state)" = OPEN || migration_fail RESET_INTENT_FAILED
+      ;;
+    *) migration_fail "RESET_INTENT_$state" ;;
+  esac
   set_phase reset-intent
+}
+
+reset_invalidate_intent() {
+  local state
+  state="$(reset_intent_state)" || migration_fail RESET_INTENT_STATE_UNAVAILABLE
+  case "$state" in
+    OPEN)
+      reset_cli scripts/great-reset-operation.ts intent-invalidate "$reset_operation_id" \
+        >/dev/null || migration_fail RESET_INTENT_INVALIDATE_FAILED
+      test "$(reset_intent_state)" = INVALIDATED || migration_fail RESET_INTENT_INVALIDATE_FAILED
+      ;;
+    # Zaten geçersiz, hiç yazılmamış ya da süresi dolmuş niyet tüketilemez.
+    INVALIDATED | MISSING | EXPIRED) : ;;
+    *) migration_fail "RESET_INTENT_$state" ;;
+  esac
 }
 
 reset_backup_and_verify() {
@@ -303,9 +380,8 @@ reset_backup_and_verify() {
   reset_cli scripts/great-reset-operation.ts receipt-compare "$pre_receipt" "$scratch_receipt" \
     >"$migration_dir/reset-restore-compare.json" || migration_fail RESET_RESTORE_RECEIPT_MISMATCH
   drop_scratch || migration_fail SCRATCH_DROP_FAILED
+  reset_request_ledger PREPARED "$dump_sha" "$(reset_json_field sha256 <"$pre_receipt")"
   set_phase reset-backup-verified
-  reset_await_ledger PREPARED "$dump_sha" \
-    "$(reset_json_field sha256 <"$pre_receipt")"
 }
 
 # Reset CLI'si hata verdiyse sonuç DB'den uzlaştırılır. Kapı kapalı kaldıysa yönetici konsolu
@@ -336,14 +412,14 @@ SQL
 }
 
 reset_commit() {
-  local frozen_at preview plan blocked pre_sha outcome status=0
-  assert_frozen
-  frozen_at="$(cat "$migration_marker/reset-frozen-at")"
-  if (($(date +%s) > frozen_at + reset_abort_seconds)); then
+  local preview plan blocked pre_sha outcome status=0
+  # Vazgeçme zamanı kesinti bütçesinden ÖNCE denetlenir; vazgeçme kurtarma bütçesiyle koşar.
+  if (($(date +%s) > $(reset_frozen_at) + reset_abort_seconds)); then
     printf 'RELEASE_RESET_ABORT reason=ABORT_DEADLINE_PASSED\n' >&2
     reset_begin_abort
     return 0
   fi
+  assert_frozen
   pre_sha="$(reset_json_field sha256 <"$(cat "$migration_marker/reset-pre-receipt-path")")"
   preview="$(reset_cli scripts/great-reset-production.ts --dry-run --archive-outbox \
     --namespace "$reset_operation_id" "$candidate_sha" "$pre_sha" --connection-gate)" || {
@@ -363,6 +439,8 @@ reset_commit() {
   reset_cli scripts/great-reset-production.ts --execute --database agent_sozluk \
     --plan-sha256 "$plan" --archive-outbox --namespace "$reset_operation_id" "$candidate_sha" \
     "$pre_sha" --connection-gate >"$migration_dir/reset-execute.json" || status=$?
+  # Uzlaşı dolmuş bütçeyle de konsola ulaşabilmeli.
+  if ((status != 0)); then reset_recovery_budget; fi
   outcome="$(reset_reconcile)"
   if ((status == 0)) && test "$outcome" = COMMITTED; then
     set_phase reset-committed
@@ -374,14 +452,25 @@ reset_commit() {
   fi
 }
 
+# COMMIT öncesi vazgeçme. Niyet geçersizleşir. Dış kayıtta PREPARED onaylıysa ABORTED isteği faz
+# yazılmadan önce kalıcılaşır ve onaylanmadan resetsiz açılış yapılmaz; PREPARED hiç yazılmadıysa
+# (yedek öncesi) dış kayıtta bu operasyon yoktur, doğrudan resetsiz açılışa geçilir.
 reset_begin_abort() {
-  # Niyet tüketilmediyse geçersizleştirilir. Dış kayıtta PREPARED varsa ABORTED beklenir; yoksa
-  # (yedek öncesi vazgeçme) doğrudan resetsiz açılışa geçilir.
-  reset_cli scripts/great-reset-operation.ts intent-invalidate "$reset_operation_id" \
-    >/dev/null || migration_fail RESET_INTENT_INVALIDATE_FAILED
-  set_phase reset-aborted
+  reset_recovery_budget
+  reset_invalidate_intent
   if test -f "$migration_marker/reset-ack-PREPARED"; then
-    reset_await_ledger ABORTED "$(cat "$migration_marker/reset-dump-sha256")" -
+    reset_request_ledger ABORTED "$(cat "$migration_marker/reset-dump-sha256")" -
+  fi
+  set_phase reset-aborted
+  reset_complete_abort
+}
+
+reset_complete_abort() {
+  reset_recovery_budget
+  if test -f "$migration_marker/reset-ack-PREPARED"; then
+    # Kesinti istek ile faz arasında olduysa istek burada tamamlanır.
+    reset_request_ledger ABORTED "$(cat "$migration_marker/reset-dump-sha256")" -
+    reset_ledger_gate ABORTED
   fi
   reset_finish_abort
 }
@@ -400,19 +489,30 @@ reset_post_receipt() {
   reset_cli scripts/great-reset-operation.ts receipt "$post" >/dev/null ||
     migration_fail RESET_POST_RECEIPT_FAILED
   printf '%s\n' "$post" >"$migration_marker/reset-post-receipt-path"
-  set_phase reset-receipted
-  reset_await_ledger COMMITTED_MAINTENANCE "$(cat "$migration_marker/reset-dump-sha256")" \
+  reset_request_ledger COMMITTED_MAINTENANCE "$(cat "$migration_marker/reset-dump-sha256")" \
     "$(reset_json_field sha256 <"$post")"
+  set_phase reset-receipted
+}
+
+reset_cleanup_containers() {
+  docker rm -f "a5-$op_id-readonly" "a5-$op_id-candidate" >/dev/null 2>&1 || true
 }
 
 # Aday imajdan atılabilir app: her havuz bağlantısında `default_transaction_read_only=on`; yalnız
 # GET kabulü; container silinir; ardından restore uygunluğu (makbuz eşitliği dahil) `[]` olmalı.
 reset_readonly_acceptance() {
-  local container="a5-$op_id-readonly" status=0 entry topic eligibility deadline
+  local container="a5-$op_id-readonly" status=0 entry topic unknown eligibility deadline
   entry="$(db_psql agent_sozluk -c "SELECT min(\"publicId\") FROM great_reset_tombstones WHERE kind = 'ENTRY'" </dev/null)"
   topic="$(db_psql agent_sozluk -c "SELECT min(\"publicId\") FROM great_reset_tombstones WHERE kind = 'TOPIC'" </dev/null)"
-  [[ "$entry" =~ ^[1-9][0-9]*$ && "$topic" =~ ^[1-9][0-9]*$ ]] || migration_fail RESET_TOMBSTONE_SAMPLE_MISSING
-  docker rm -f "$container" >/dev/null 2>&1 || true
+  # Bilinmeyen örnek: en büyük silinmiş entry kimliğinin bir fazlası; mezar taşında ve canlıda yok.
+  unknown="$(db_psql agent_sozluk <<'SQL'
+SELECT max("publicId") + 1 FROM great_reset_tombstones WHERE kind = 'ENTRY'
+HAVING NOT EXISTS (SELECT 1 FROM entries);
+SQL
+)"
+  [[ "$entry" =~ ^[1-9][0-9]*$ && "$topic" =~ ^[1-9][0-9]*$ && "$unknown" =~ ^[1-9][0-9]*$ ]] ||
+    migration_fail RESET_TOMBSTONE_SAMPLE_MISSING
+  reset_cleanup_containers
   env -u DATABASE_URL -u COMPOSE_PROJECT_NAME -u COMPOSE_FILE -u COMPOSE_PROFILES \
     APP_IMAGE="$candidate_image" "${compose[@]}" run -d --no-deps --pull never \
     --name "$container" --entrypoint /bin/sh app -c \
@@ -431,11 +531,12 @@ reset_readonly_acceptance() {
   done
   if ((status == 0)); then
     deadline_prefix
-    "${deadline[@]}" docker exec -e "ENTRY=$entry" -e "TOPIC=$topic" "$container" node -e '
+    "${deadline[@]}" docker exec -e "ENTRY=$entry" -e "TOPIC=$topic" -e "UNKNOWN=$unknown" \
+      "$container" node -e '
       const expected = [
         ["/api/health", 200], ["/api/ready", 200], ["/", 200], ["/sitemap.xml", 200],
         ["/entry/" + process.env.ENTRY, 410], ["/baslik/eski--" + process.env.TOPIC, 410],
-        ["/entry/2147483000", 404],
+        ["/entry/" + process.env.UNKNOWN, 404],
       ];
       (async () => {
         for (const [path, status] of expected) {
@@ -445,7 +546,7 @@ reset_readonly_acceptance() {
       })().catch(() => process.exit(1));
     ' </dev/null || status=1
   fi
-  docker rm -f "$container" >/dev/null 2>&1 || true
+  reset_cleanup_containers
   test -z "$(docker ps -aq --filter "name=^$container$")" || migration_fail RESET_READONLY_CONTAINER_LEFT
   ((status == 0)) || migration_fail RESET_READONLY_ACCEPTANCE_FAILED
   eligibility="$(reset_cli scripts/great-reset-operation.ts restore-eligibility \
@@ -453,9 +554,9 @@ reset_readonly_acceptance() {
     migration_fail RESET_ACCEPTANCE_WROTE_OR_DRIFTED
   test "$(reset_json_field eligible <<<"$eligibility")" = true ||
     migration_fail RESET_ACCEPTANCE_WROTE_OR_DRIFTED
-  set_phase reset-accepted
-  reset_await_ledger TRAFFIC_OPEN "$(cat "$migration_marker/reset-dump-sha256")" \
+  reset_request_ledger TRAFFIC_OPEN "$(cat "$migration_marker/reset-dump-sha256")" \
     "$(reset_json_field sha256 <"$(cat "$migration_marker/reset-post-receipt-path")")"
+  set_phase reset-accepted
 }
 
 reset_record_exposure() {
@@ -470,37 +571,30 @@ reset_record_exposure() {
 
 reset_phase() {
   case "$(current_phase)" in
-    post-verified)
-      date +%s >"$migration_marker/reset-frozen-at.next"
-      test -f "$migration_marker/reset-frozen-at" ||
-        mv -Tf "$migration_marker/reset-frozen-at.next" "$migration_marker/reset-frozen-at"
-      reset_freeze_flags
-      ;&
+    post-verified) reset_freeze_flags ;&
     reset-flags-frozen) reset_create_intent ;&
-    reset-intent) reset_backup_and_verify ;;
+    reset-intent) reset_backup_and_verify ;&
     reset-backup-verified)
-      reset_take_ack PREPARED
+      reset_ledger_gate PREPARED
       set_phase reset-prepared
       ;&
     reset-prepared)
       reset_commit
       if test "$(current_phase)" = reset-committed; then reset_post_receipt; fi
-      ;;
-    reset-committed) reset_post_receipt ;;
-    reset-receipted)
-      reset_take_ack COMMITTED_MAINTENANCE
+      if test "$(current_phase)" != reset-receipted; then return 0; fi
+      ;&
+    reset-committed | reset-receipted)
+      if test "$(current_phase)" = reset-committed; then reset_post_receipt; fi
+      reset_ledger_gate COMMITTED_MAINTENANCE
       set_phase reset-maintenance
       ;&
-    reset-maintenance) reset_readonly_acceptance ;;
+    reset-maintenance) reset_readonly_acceptance ;&
     reset-accepted)
-      reset_take_ack TRAFFIC_OPEN
+      reset_ledger_gate TRAFFIC_OPEN
       set_phase reset-traffic
       ;&
     reset-traffic | reset-exposed) reset_record_exposure ;;
-    reset-aborted)
-      if test -f "$migration_marker/reset-await"; then reset_take_ack ABORTED; fi
-      reset_finish_abort
-      ;;
+    reset-aborted) reset_complete_abort ;;
     reset-committing) migration_fail RESET_OUTCOME_AMBIGUOUS 98 ;;
     writers-may-run | traffic-open | worker-allowed | cutover-done) : ;;
     *) migration_fail RESET_PHASE_UNKNOWN ;;

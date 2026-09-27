@@ -820,6 +820,8 @@ cleanup_images() {
 }
 
 if ((reset_mode == 1)); then
+  # Sözleşmedeki üst sınır 90 dk; COMMIT'e en geç 45. dakikada başlanır (runbook v20).
+  max_downtime_seconds=5400
   bash -n "$app_root/scripts/production-migration-phase.sh"
   bash -n "$app_root/scripts/production-reset-phase.sh"
   # Reset yardımcıları (faza bağlı ayar özeti) temel durum denetiminden önce yüklenir.

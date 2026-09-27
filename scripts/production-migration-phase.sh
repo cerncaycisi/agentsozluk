@@ -281,8 +281,12 @@ preflight_migration() {
        AND (c.setting LIKE 'lock_timeout=%' OR c.setting LIKE 'statement_timeout=%');" \
     </dev/null)" = 0 || migration_fail DB_TIMEOUT_SETTING_PRESENT
 
-  assert_fk_targets
-  assert_existing_index_targets
+  # Bu iki denetim ekleyici denetçinin beklentisine göredir; reset modunun sabit iki
+  # migration'ı katalog iddiaları ve scratch–üretim eşitliğiyle doğrulanır (Astra, PR #239 P1).
+  if ((reset_mode == 0)); then
+    assert_fk_targets
+    assert_existing_index_targets
+  fi
   assert_disk_budget full
 }
 
@@ -613,6 +617,9 @@ backup_and_fingerprint() {
   printf '%s\n' "$pre_schema" >"$migration_dir/pre-schema"
   table_schema_hashes agent_sozluk "$migration_dir/pre-table-schemas"
   prisma_history agent_sozluk >"$migration_dir/pre-prisma-history"
+  if ((reset_mode == 1)); then
+    reset_table_definitions agent_sozluk >"$migration_dir/reset-pre-defs-production"
+  fi
 
   assert_disk_budget full
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -710,6 +717,9 @@ SQL
   # Şema: arşiv canlıyla birebir (yukarıda) ve restore --exit-on-error ile
   # bitti. Scratch'in kendi tablo şemaları migration provasının kıyas tabanıdır.
   table_schema_hashes "$scratch_database" "$migration_dir/scratch-pre-table-schemas"
+  if ((reset_mode == 1)); then
+    reset_table_definitions "$scratch_database" >"$migration_dir/reset-pre-defs-scratch"
+  fi
   set_phase backup-verified
 }
 
@@ -977,12 +987,57 @@ post_verify() {
   done <"$migration_dir/new-tables"
   if ((reset_mode == 1)); then
     reset_assert_catalog "$database"
-    { new_object_definitions "$database" && reset_object_definitions "$database"; } \
-      >"$migration_dir/definitions-$label" || migration_fail DEFINITIONS_UNAVAILABLE
+    # `f || x` bağlamı gövdede `set -e`'yi kapatır (Astra, PR #239 P2): ayrı çağrılar.
+    new_object_definitions "$database" >"$migration_dir/definitions-$label"
+    reset_object_definitions "$database" >>"$migration_dir/definitions-$label"
+    # İki tablonun indeks/kısıt/trigger tanımları migration öncesinden yalnız izinli
+    # dönüşümlerle farklı olmalı (bağımsız UNIQUE indeks kaybı dahil yakalanır).
+    reset_assert_table_definitions "$database" "$label"
   else
     assert_catalog_expectation "$database" "$label"
     new_object_definitions "$database" >"$migration_dir/definitions-$label"
   fi
+}
+
+# `entries` ve `topics`'in tam tanımı: sütunlar, kısıtlar, bütün indeksler (bağımsız UNIQUE
+# dahil) ve trigger'lar; sıralı.
+reset_table_definitions() {
+  db_psql "$1" <<'SQL' | LC_ALL=C sort
+SELECT 'column:' || c.relname || '|' || a.attname || '|' || format_type(a.atttypid, a.atttypmod)
+  || '|' || a.attnotnull || '|' || coalesce(pg_get_expr(ad.adbin, ad.adrelid), '-')
+FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+LEFT JOIN pg_attrdef ad ON ad.adrelid = a.attrelid AND ad.adnum = a.attnum
+WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics')
+  AND a.attnum > 0 AND NOT a.attisdropped;
+SELECT 'constraint:' || c.relname || '|' || con.conname || '|' || con.convalidated::text || '|'
+  || pg_get_constraintdef(con.oid)
+FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid
+WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics');
+SELECT 'index:' || tablename || '|' || indexname || '|' || indexdef
+FROM pg_indexes WHERE schemaname = 'public' AND tablename IN ('entries', 'topics');
+SELECT 'trigger:' || c.relname || '|' || t.tgname || '|' || t.tgenabled::text || '|'
+  || pg_get_triggerdef(t.oid)
+FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+WHERE NOT t.tgisinternal AND c.relnamespace = 'public'::regnamespace
+  AND c.relname IN ('entries', 'topics');
+SQL
+}
+
+# Migration öncesi tanımlara yalnız izinli dönüşümler uygulanır: iki `publicId` sütunu
+# `integer → bigint` ve iki doğrulanmış üst aralık kısıtı eklenir. Başka her fark (indeks
+# kaybı, trigger devre dışı, yeni sütun) durdurur.
+reset_assert_table_definitions() {
+  local database="$1" label="$2" pre="$migration_dir/reset-pre-defs-$2"
+  test -s "$pre" || migration_fail RESET_PRE_DEFINITIONS_MISSING
+  {
+    sed -E 's/^(column:(entries|topics)\|publicId\|)integer\|/\1bigint|/' "$pre"
+    printf '%s\n' \
+      'constraint:entries|entries_public_id_legacy_range_check|true|CHECK (("publicId" <= 2147483647))' \
+      'constraint:topics|topics_public_id_legacy_range_check|true|CHECK (("publicId" <= 2147483647))'
+  } | LC_ALL=C sort >"$migration_dir/reset-expected-defs-$label"
+  reset_table_definitions "$database" >"$migration_dir/reset-post-defs-$label"
+  cmp -s "$migration_dir/reset-expected-defs-$label" "$migration_dir/reset-post-defs-$label" ||
+    migration_fail RESET_TABLE_DEFINITIONS_CHANGED
 }
 
 reset_expected_sequences() {
@@ -1170,7 +1225,8 @@ migration_exit_trap() {
     # Kurtarma kendi 5 dakikalık bütçesiyle koşar; süre kontrolü burada exit etmez.
     recovering=1
     if ((frozen_deadline != 0)); then frozen_deadline=$(($(date +%s) + 300)); fi
-    docker rm -f "a5-$op_id-previous" >/dev/null 2>&1 || true
+    docker rm -f "a5-$op_id-previous" "a5-$op_id-candidate" "a5-$op_id-readonly" \
+      >/dev/null 2>&1 || true
     docker image rm "agent-sozluk:a5-previous-$op_id" >/dev/null 2>&1 || true
     if ((production_timeouts_set == 1)); then
       reset_database_timeouts agent_sozluk ||
@@ -1186,6 +1242,11 @@ migration_exit_trap() {
         # dondurmayı baştan kurar (Sol, 23 Eylül).
         if ((freeze_started == 1)) || test "$(current_phase)" != image-verified; then
           if reopen_previous_release; then
+            # Reset modu: devre dışı bırakılan timer'lar ve yığın birimi de önceki duruma döner.
+            if ((reset_mode == 1)) && test -f "$migration_marker/reset-units"; then
+              (reset_restore_units) ||
+                printf 'RELEASE_WARN reset units could not be restored; see runbook\n' >&2
+            fi
             printf 'image-verified\n' >"$migration_marker/phase.next" &&
               mv -Tf "$migration_marker/phase.next" "$migration_marker/phase" &&
               printf 'RELEASE_MIGRATION_PHASE image-verified (rewound after reopen)\n' >&2

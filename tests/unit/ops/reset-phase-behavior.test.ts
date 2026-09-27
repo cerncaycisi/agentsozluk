@@ -56,44 +56,43 @@ ${body}
 }
 
 describe("A5 reset modu aşamaları", () => {
-  it("dış kayıt beklemesi 75 ile çıkar ve A5 kurtarmasını (siteyi geri açma) tetiklemez", () => {
-    const result = harness(`
-printf 'post-verified\\n' >"$migration_marker/phase"
+  it("dış kayıt isteği 75 ile çıkar, A5 kurtarmasını tetiklemez; onaysız yeniden giriş isteği tekrarlar", () => {
+    const first = harness(`
 printf '/opt/x.dump\\n' >"$migration_marker/reset-dump-path"
+printf '/opt/pre.json\\n' >"$migration_marker/reset-pre-receipt-path"
 reopen_previous_release() { echo REOPENED; }
 trap migration_exit_trap EXIT
-reset_await_ledger PREPARED ${"b".repeat(64)} ${"c".repeat(64)}
+reset_request_ledger PREPARED ${"b".repeat(64)} ${"c".repeat(64)}
+reset_ledger_gate PREPARED
 `);
-    expect(result.status).toBe(75);
-    expect(result.stdout).toContain(
-      `RELEASE_RESET_AWAIT_LEDGER state=PREPARED operation=${operationId}`,
+    expect(first.status).toBe(75);
+    expect(first.stdout).toContain(
+      `RELEASE_RESET_AWAIT_LEDGER state=PREPARED operation=${operationId} dump_sha256=${"b".repeat(64)}`,
     );
-    expect(result.stdout).not.toContain("REOPENED");
-    expect(
-      readFileSync(path.join(result.root, "runtime/.migration-operation/reset-await"), "utf8"),
-    ).toBe(`PREPARED|${"b".repeat(64)}|${"c".repeat(64)}\n`);
+    expect(first.stdout).toContain("receipt_path=/opt/pre.json");
+    expect(first.stdout).not.toContain("REOPENED");
   });
 
-  it("onay yalnız beklenen durum için ve yalnız sarmalayıcı ack verdiyse kabul edilir", () => {
-    const wrongState = harness(`
-printf 'PREPARED|x|y\\n' >"$migration_marker/reset-await"
-reset_ack=TRAFFIC_OPEN
-reset_take_ack TRAFFIC_OPEN
-`);
-    expect(wrongState.status).toBe(97);
-    expect(wrongState.stderr).toContain("code=RESET_ACK_STATE_MISMATCH");
-    const missing = harness(`
-printf 'PREPARED|x|y\\n' >"$migration_marker/reset-await"
-reset_take_ack PREPARED
-`);
-    expect(missing.stderr).toContain("code=RESET_ACK_MISSING");
-    const accepted = harness(`
-printf 'PREPARED|x|y\\n' >"$migration_marker/reset-await"
+  it("onay kalıcılaşır; kesintiden sonra kaydedilmiş onay yeniden kullanılır, çelişen istek durur", () => {
+    const result = harness(`
+reset_request_ledger PREPARED x y
 reset_ack=PREPARED
-reset_take_ack PREPARED
-test ! -e "$migration_marker/reset-await" && echo ACCEPTED
+reset_ledger_gate PREPARED && echo FIRST
+reset_ack=""
+reset_ledger_gate PREPARED && echo REUSED
+reset_request_ledger PREPARED x y && echo SAME_REQUEST
+reset_request_ledger PREPARED x z
 `);
-    expect(accepted.stdout).toContain("ACCEPTED");
+    expect(result.stdout).toContain("FIRST");
+    expect(result.stdout).toContain("REUSED");
+    expect(result.stdout).toContain("SAME_REQUEST");
+    expect(result.stderr).toContain("code=RESET_LEDGER_REQUEST_CONFLICT");
+    const wrong = harness(`
+reset_request_ledger PREPARED x y
+reset_ack=TRAFFIC_OPEN
+reset_ledger_gate PREPARED
+`);
+    expect(wrong.status).toBe(75);
   });
 
   it("bayrak ara durumlarında kısmi değişim kabul edilir, katı durumlarda edilmez", () => {
@@ -119,12 +118,13 @@ reset_assert_state && echo OK
   it("önizleme engel bulursa niyet geçersizleşir, PREPARED yazıldıysa ABORTED beklenir", () => {
     const result = harness(`
 printf 'reset-prepared\\n' >"$migration_marker/phase"
-date +%s >"$migration_marker/reset-frozen-at"
+printf '%s\\n' "$(($(date +%s) + max_downtime_seconds))" >"$migration_marker/frozen-deadline"
 printf '${"d".repeat(64)}\\n' >"$migration_marker/reset-dump-sha256"
 printf '/opt/x.dump\\n' >"$migration_marker/reset-dump-path"
 printf 'PREPARED\\n' >"$migration_marker/reset-ack-PREPARED"
 printf '{"sha256":"${"e".repeat(64)}"}' >"$state_dir/pre.json"
 printf '%s\\n' "$state_dir/pre.json" >"$migration_marker/reset-pre-receipt-path"
+reset_invalidate_intent() { printf 'cli intent-invalidate %s\\n' "$reset_operation_id" >>"$log"; }
 reset_cli() {
   printf 'cli %s\\n' "$*" >>"$log"
   case "$2" in
@@ -138,6 +138,13 @@ reset_commit
     expect(result.status).toBe(75);
     expect(result.stderr).toContain("RELEASE_RESET_ABORT reason=PREVIEW_BLOCKED");
     expect(result.stdout).toContain("RELEASE_RESET_AWAIT_LEDGER state=ABORTED");
+    // İstek faz yazılmadan önce kalıcı.
+    expect(
+      readFileSync(
+        path.join(result.root, "runtime/.migration-operation/reset-request-ABORTED"),
+        "utf8",
+      ),
+    ).toBe(`ABORTED|${"d".repeat(64)}|-\n`);
     const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
     expect(calls).toContain(`intent-invalidate ${operationId}`);
     expect(calls).not.toContain("--execute");
@@ -149,10 +156,11 @@ reset_commit
   it("vazgeçme zamanı geçtiyse önizleme bile çalışmaz", () => {
     const result = harness(`
 printf 'reset-prepared\\n' >"$migration_marker/phase"
-printf '1\\n' >"$migration_marker/reset-frozen-at"
+printf '%s\\n' "$((1 + max_downtime_seconds))" >"$migration_marker/frozen-deadline"
 printf '${"d".repeat(64)}\\n' >"$migration_marker/reset-dump-sha256"
 printf '/opt/x.dump\\n' >"$migration_marker/reset-dump-path"
 printf 'PREPARED\\n' >"$migration_marker/reset-ack-PREPARED"
+reset_invalidate_intent() { printf 'cli intent-invalidate\\n' >>"$log"; }
 reset_cli() { printf 'cli %s\\n' "$*" >>"$log"; printf '{"invalidated":true}'; }
 reset_commit
 `);
@@ -164,7 +172,7 @@ reset_commit
   it("EXECUTE sonucu belirsizse durur; yeniden girişte reset tekrarlanmaz", () => {
     const ambiguous = harness(`
 printf 'reset-prepared\\n' >"$migration_marker/phase"
-date +%s >"$migration_marker/reset-frozen-at"
+printf '%s\\n' "$(($(date +%s) + max_downtime_seconds))" >"$migration_marker/frozen-deadline"
 printf '{"sha256":"${"e".repeat(64)}"}' >"$state_dir/pre.json"
 printf '%s\\n' "$state_dir/pre.json" >"$migration_marker/reset-pre-receipt-path"
 reset_cli() {
@@ -194,7 +202,7 @@ reset_phase
   it("EXECUTE COMMIT öncesi düştüyse (commit yok, niyet tüketilmedi) resetsiz açılışa geçer", () => {
     const result = harness(`
 printf 'reset-prepared\\n' >"$migration_marker/phase"
-date +%s >"$migration_marker/reset-frozen-at"
+printf '%s\\n' "$(($(date +%s) + max_downtime_seconds))" >"$migration_marker/frozen-deadline"
 printf '{"sha256":"${"e".repeat(64)}"}' >"$state_dir/pre.json"
 printf '%s\\n' "$state_dir/pre.json" >"$migration_marker/reset-pre-receipt-path"
 reset_cli() {
@@ -207,6 +215,7 @@ reset_cli() {
 }
 admin_psql() { printf 't\\n'; }
 db_psql() { printf '0\\n'; cat >/dev/null; }
+reset_invalidate_intent() { :; }
 reset_finish_abort() { echo FINISH_ABORT; }
 reset_commit
 `);
@@ -279,5 +288,62 @@ printf '%s\\n' 'entries|a' 'topics|b' 'users|c' | reset_filter_schema_lines
     expect(run(`reset:not-a-uuid:${list}`, "0123456789abcdef").stderr).toContain(
       "code=INVALID_MIGRATION_MODE",
     );
+  });
+  it("vazgeçme fazında ABORTED isteği kesintiyle atlanamaz", () => {
+    const result = harness(`
+printf 'reset-aborted\\n' >"$migration_marker/phase"
+printf 'PREPARED\\n' >"$migration_marker/reset-ack-PREPARED"
+printf '${"d".repeat(64)}\\n' >"$migration_marker/reset-dump-sha256"
+reset_finish_abort() { echo OPENED_WITHOUT_ABORTED_ACK; }
+reset_phase
+`);
+    // İstek dosyası yoktu (istek ile faz arasında kesinti): istek tamamlanır ve beklenir.
+    expect(result.status).toBe(75);
+    expect(result.stdout).toContain("RELEASE_RESET_AWAIT_LEDGER state=ABORTED");
+    expect(result.stdout).not.toContain("OPENED_WITHOUT_ABORTED_ACK");
+  });
+
+  it("niyet yeniden girişte DB'deki açık niyeti kullanır; tüketilmiş niyette durur", () => {
+    const reuse = harness(`
+reset_intent_state() { printf 'OPEN\\n'; }
+reset_cli() { printf 'cli %s\\n' "$*" >>"$log"; }
+reset_create_intent && echo PHASE_$(current_phase)
+`);
+    expect(reuse.stdout).toContain("PHASE_reset-intent");
+    expect(readFileSync(path.join(reuse.root, "calls.log"), "utf8")).not.toContain("intent-create");
+    const consumed = harness(`
+reset_intent_state() { printf 'CONSUMED\\n'; }
+reset_create_intent
+`);
+    expect(consumed.stderr).toContain("code=RESET_INTENT_CONSUMED");
+    const invalidated = harness(`
+reset_intent_state() { printf 'INVALIDATED\\n'; }
+reset_cli() { printf 'cli %s\\n' "$*" >>"$log"; }
+reset_invalidate_intent && echo OK
+`);
+    expect(invalidated.stdout).toContain("OK");
+    expect(readFileSync(path.join(invalidated.root, "calls.log"), "utf8")).not.toContain(
+      "intent-invalidate",
+    );
+  });
+
+  it("çalışmakta olan oneshot servis (activating) bitmiş sayılmaz", () => {
+    const result = harness(`
+systemctl() { printf 'inactive\\nactivating\\ninactive\\n'; }
+reset_running_services
+`);
+    expect(result.stdout.trim()).toBe("1");
+  });
+
+  it("ayar özeti ve bayrak sorguları geçerli SQL tırnaklarıyla gönderilir", () => {
+    const result = harness(`
+source "$app_root/scripts/production-reset-phase.sh"
+compose_stub() { cat >>"$log"; }
+reset_settings_fingerprint >/dev/null
+reset_flags >/dev/null
+`);
+    const sql = readFileSync(path.join(result.root, "calls.log"), "utf8");
+    expect(sql).toContain("ARRAY['runtimeEnabled', 'schedulerEnabled', 'publicWriteEnabled',");
+    expect(sql).toContain("WHERE id = 'global'");
   });
 });
