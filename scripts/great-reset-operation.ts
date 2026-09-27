@@ -114,10 +114,19 @@ async function main(argv: readonly string[]): Promise<string> {
     if (!result.equal) process.exitCode = 3;
     return JSON.stringify(result);
   }
-  if (command === "receipt-compare-independent" && rest.length === 2) {
+  if (command === "receipt-compare-independent" && (rest.length === 2 || rest.length === 4)) {
     const { compareForIndependentRestore } =
       await import("../src/modules/maintenance/repository/great-reset-receipt");
-    const result = compareForIndependentRestore(readReceipt(rest[0]!), readReceipt(rest[1]!));
+    // İsteğe bağlı: iki kümenin kurulum süper kullanıcısı adları (varsayılan postgres, agent).
+    const [productionBootstrap = "postgres", independentBootstrap = "agent"] = rest.slice(2);
+    if (
+      ![productionBootstrap, independentBootstrap].every((name) => /^[a-z_][a-z0-9_]*$/u.test(name))
+    )
+      fail("INVALID_ARGUMENTS");
+    const result = compareForIndependentRestore(readReceipt(rest[0]!), readReceipt(rest[1]!), {
+      production: productionBootstrap,
+      independent: independentBootstrap,
+    });
     if (!result.equal) process.exitCode = 3;
     return JSON.stringify(result);
   }

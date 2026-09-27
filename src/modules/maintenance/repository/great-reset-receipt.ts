@@ -745,49 +745,164 @@ export function compareReceipts(
 }
 
 /*
-  Bağımsız restore kapısı (runbook v20 A5 reset modu, 4. adım): reset-anı yedeği operatör
-  sunucusundaki ayrı bir PostgreSQL kümesine sahiplik/ACL dahil restore edilir ve üretim
-  makbuzuyla karşılaştırılır. İçerik, şema ve sequence bölümleri birebir eşit olmalıdır.
-  Güvenlik bölümünde veritabanı nesnelerinin sahiplik ve yetkileri (`relation:`, `column:`,
-  `policy:`, `namespace:`, `defaultAcl:`, `type:`, `function:`) birebir eşit olmalıdır. Küme
-  kimliğine bağlı anahtarlar (roller, üyelikler, kurulum süper kullanıcısının sahip olduğu sistem
-  nesneleri, dil/extension üyeleri, parametre ve tablespace yetkileri) ve veritabanı bölümü
-  (locale, yorum, ayarlar) ortam farkı sayılır ve raporlanır; restore uygunluğunda kullanılmaz.
+  Bağımsız restore kapısı (runbook v20 A5 reset modu, 4. adım; Astra PR #239 4. tur politika i):
+  reset-anı yedeği operatör sunucusundaki ayrı PostgreSQL kümesine `agent_sozluk` rolü altında
+  restore edilir ve ÜRETİM SCRATCH makbuzuyla (ikisi de restore) karşılaştırılır. Varsayılan
+  ret: bütün bölümler, tablolar ve anahtarlar birebir eşit olmalıdır. Tek yapısal eşleme, iki
+  kümenin kurulum süper kullanıcısı adıdır (üretimde `postgres`, operatörde yerel initdb
+  kullanıcısı): anahtardaki rol adı alanlarında ve değerdeki sahip/ACL rol alanlarında YALNIZ bu ad
+  birebir eşlenir; metin içinde genel değiştirme yapılmaz. Eşlemeden sonra da farklı ya da tek
+  tarafta bulunan anahtar engeller. Yalnız iki istisna raporlanır: `database:locale` içindeki
+  collation/ctype/sağlayıcı/ICU alanları (encoding, bağlantı sınırı, şablon bayrağı ve tablespace
+  katı) ve üretimde yorumsuz DB'nin operatörde exact sentetik prova işaretini taşıması.
 */
-const independentStrictSecurityPrefixes = [
-  "relation:",
-  "column:",
-  "policy:",
-  "namespace:",
-  "defaultAcl:",
-  "type:",
-  "function:",
-] as const;
+export type IndependentDifference = { key: string; expected: string | null; actual: string | null };
+
+const syntheticMarker = "agentsozluk:great-reset:synthetic:v1";
+
+function mapRole(name: string, from: string, to: string): string {
+  return name === from ? to : name;
+}
+
+/** `{grantee=privs/grantor,...}` ACL metninde yalnız rol alanlarını eşler. */
+function mapAcl(text: string, from: string, to: string): string | null {
+  if (!text.startsWith("{") || !text.endsWith("}")) return null;
+  const items = text.slice(1, -1);
+  if (items === "") return text;
+  const mapped: string[] = [];
+  for (const item of items.split(",")) {
+    const match = /^([^=]*)=([A-Za-z*]*)\/(.+)$/u.exec(item);
+    if (!match) return null;
+    mapped.push(`${mapRole(match[1]!, from, to)}=${match[2]}/${mapRole(match[3]!, from, to)}`);
+  }
+  return `{${mapped.join(",")}}`;
+}
+
+/** Değer (JSON kodlu metin) içindeki sahip/ACL rol alanlarını yapısal olarak eşler. */
+function mapValue(value: string, from: string, to: string): string {
+  let text: unknown;
+  try {
+    text = JSON.parse(value);
+  } catch {
+    return value;
+  }
+  if (typeof text !== "string") return value;
+  const acl = mapAcl(text, from, to);
+  if (acl !== null) return JSON.stringify(acl);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // Düz metin değer (ör. extension sahibi): yalnız tam rol adıysa eşlenir.
+    return JSON.stringify(mapRole(text, from, to));
+  }
+  if (!Array.isArray(parsed)) return value;
+  const mapped = parsed.map((item) =>
+    typeof item === "string" ? (mapAcl(item, from, to) ?? mapRole(item, from, to)) : item,
+  );
+  // PostgreSQL jsonb::text biçimi (", " ayırıcı) korunur.
+  return JSON.stringify(`[${mapped.map((item) => JSON.stringify(item)).join(", ")}]`);
+}
+
+/** Anahtardaki rol adı alanları: `role:<r>`, `membership:<r>><m>:<g>`, `setting:<db>:<r>`,
+ * `defaultAcl:<r>:...`. */
+function mapKey(key: string, from: string, to: string): string {
+  const [kind, ...rest] = key.split(":");
+  const body = rest.join(":");
+  if (kind === "role") return `role:${mapRole(body, from, to)}`;
+  if (kind === "membership") {
+    const match = /^(.+)>(.+):(.+)$/u.exec(body);
+    if (!match) return key;
+    return `membership:${mapRole(match[1]!, from, to)}>${mapRole(match[2]!, from, to)}:${mapRole(match[3]!, from, to)}`;
+  }
+  if (kind === "setting") {
+    const [scope, role] = [rest[0], rest.slice(1).join(":")];
+    return `setting:${scope}:${role === "*" ? "*" : mapRole(role, from, to)}`;
+  }
+  if (kind === "defaultAcl")
+    return `defaultAcl:${mapRole(rest[0] ?? "", from, to)}:${rest.slice(1).join(":")}`;
+  return key;
+}
+
+function localeFields(value: string | undefined): unknown[] | null {
+  if (value === undefined) return null;
+  try {
+    const parsed = JSON.parse(JSON.parse(value) as string) as unknown;
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 export function compareForIndependentRestore(
   production: GreatResetReceipt,
   independent: GreatResetReceipt,
-): { equal: boolean; blocking: string[]; environment: string[] } {
-  const result = compareReceipts(production, independent);
+  bootstrap: { production: string; independent: string } = {
+    production: "postgres",
+    independent: "agent",
+  },
+): { equal: boolean; blocking: string[]; environment: IndependentDifference[] } {
   const blocking: string[] = [];
-  // Kendisiyle karşılaştırma yalnız iç tutarlılığı (bölüm özetleri ↔ ayrıntılar) sınar.
+  const environment: IndependentDifference[] = [];
   if (!compareReceipts(production, production).equal)
     blocking.push("receipt:production-inconsistent");
   if (!compareReceipts(independent, independent).equal)
     blocking.push("receipt:independent-inconsistent");
   for (const section of ["content", "schema", "schemaNormalized", "sequences"] as const)
-    if (result.sections.includes(section)) blocking.push(`section:${section}`);
-  blocking.push(...result.tables.map((table) => `table:${table}`));
-  const environment: string[] = [];
-  for (const difference of result.differences) {
-    const key = `${difference.section}:${difference.key}`;
-    if (
-      difference.section === "sequences" ||
-      (difference.section === "security" &&
-        independentStrictSecurityPrefixes.some((prefix) => difference.key.startsWith(prefix)))
-    )
-      blocking.push(key);
-    else environment.push(key);
+    if (production.sections[section] !== independent.sections[section])
+      blocking.push(`section:${section}`);
+  const tables = new Set([...Object.keys(production.tables), ...Object.keys(independent.tables)]);
+  for (const table of [...tables].sort())
+    if (sha256(production.tables[table] ?? null) !== sha256(independent.tables[table] ?? null))
+      blocking.push(`table:${table}`);
+  for (const section of ["sequences", "security", "database"] as const) {
+    const expected = production.details[section] ?? {};
+    const actual: Record<string, string> = {};
+    for (const [key, value] of Object.entries(independent.details[section] ?? {}))
+      actual[mapKey(key, bootstrap.independent, bootstrap.production)] = mapValue(
+        value,
+        bootstrap.independent,
+        bootstrap.production,
+      );
+    const keys = new Set([...Object.keys(expected), ...Object.keys(actual)]);
+    for (const key of [...keys].sort()) {
+      const left = expected[key];
+      const right = actual[key];
+      if (left === right) continue;
+      if (
+        section === "database" &&
+        key === "comment" &&
+        left === "null" &&
+        right === JSON.stringify(syntheticMarker)
+      ) {
+        environment.push({
+          key: `${section}:${key}`,
+          expected: left ?? null,
+          actual: right ?? null,
+        });
+        continue;
+      }
+      if (section === "database" && key === "locale") {
+        const a = localeFields(left);
+        const b = localeFields(right);
+        // Katı alanlar: encoding (0), bağlantı sınırı (6), şablon (7), tablespace (8).
+        if (
+          a &&
+          b &&
+          a.length === 9 &&
+          b.length === 9 &&
+          [0, 6, 7, 8].every((i) => a[i] === b[i])
+        ) {
+          environment.push({
+            key: `${section}:${key}`,
+            expected: left ?? null,
+            actual: right ?? null,
+          });
+          continue;
+        }
+      }
+      blocking.push(`${section}:${key}`);
+    }
   }
   return { equal: blocking.length === 0, blocking: [...new Set(blocking)].sort(), environment };
 }

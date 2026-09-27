@@ -264,6 +264,7 @@ reset_recovery_budget() {
   # P2). Süre dolmadıysa kalan süre komutları sınırlar.
   if (($(date +%s) >= frozen_deadline)); then migration_fail RESET_RECOVERY_BUDGET_EXHAUSTED 98; fi
   recovering=1
+  reset_recovery_active=1
 }
 
 reset_frozen_at() {
@@ -392,10 +393,11 @@ reset_backup_and_verify() {
     -E UTF8 --lc-collate="$collate" --lc-ctype="$ctype" "$scratch" </dev/null ||
     migration_fail SCRATCH_CREATE_FAILED
   scratch_owned=1
-  # Yönetici rolüyle: sahiplik ve ACL'ler birebir geri gelir.
+  # Yönetici bağlantısı, `agent_sozluk` rolü altında: dump extension sahibini taşımaz, extension'lar
+  # üretimdeki gibi `agent_sozluk`'a ait kurulur; nesne sahiplik ve ACL'leri birebir geri gelir.
   deadline_prefix
   "${deadline[@]}" "${compose[@]}" exec -T db pg_restore --exit-on-error -U postgres \
-    -d "$scratch" <"$dump" || migration_fail RESET_RESTORE_FAILED
+    --role=agent_sozluk -d "$scratch" <"$dump" || migration_fail RESET_RESTORE_FAILED
   scratch_receipt="$migration_dir/reset-scratch-receipt-$stamp.json"
   reset_cli scripts/great-reset-operation.ts receipt "$scratch_receipt" --database "$scratch" \
     >/dev/null || migration_fail RESET_SCRATCH_RECEIPT_FAILED
@@ -526,6 +528,10 @@ reset_complete_abort() {
 
 reset_finish_abort() {
   reset_restore_flags
+  # Açılış fazına geçmeden son süre yeniden denetlenir.
+  if ((reset_recovery_active == 1)) && (($(date +%s) >= frozen_deadline)); then
+    migration_fail RESET_RECOVERY_BUDGET_EXHAUSTED 98
+  fi
   printf 'RELEASE_RESET_ABORTED site opens with candidate release and migrations, without reset\n'
   set_phase writers-may-run
   # A5 gibi: yazıcılar açılabilir, dondurma karşılaştırmaları bir daha koşmaz.

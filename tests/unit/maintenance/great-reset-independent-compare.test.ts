@@ -17,7 +17,10 @@ type Parts = {
   details: GreatResetReceipt["details"];
 };
 
-// Bölüm özetleri ayrıntılardan hesaplanır: makbuz iç tutarlıdır.
+// Bölüm özetleri ayrıntılardan hesaplanır: makbuz iç tutarlıdır. Değerler gerçek makbuzdaki gibi
+// JSON kodlu metindir.
+const v = (text: string) => JSON.stringify(text);
+
 function receipt(parts: Parts): GreatResetReceipt {
   const sections = {
     content: sha256(parts.tables),
@@ -36,97 +39,159 @@ function receipt(parts: Parts): GreatResetReceipt {
   };
 }
 
-const base: Parts = {
-  tables: { users: { rows: 3, sha256: "a".repeat(64) } },
-  schema: "b".repeat(64),
-  details: {
-    sequences: { entries_public_id_seq: "[2147483648,false]" },
-    security: {
-      "relation:users": '["r","agent_sozluk",null,false,false]',
-      "role:agent_sozluk": "[false,false]",
-      "extensionMember:type gtrgm": '["postgres",null]',
+function cluster(bootstrap: string, comment: string, collate = "en_US.utf8"): Parts {
+  return {
+    tables: { users: { rows: 3, sha256: "a".repeat(64) } },
+    schema: "b".repeat(64),
+    details: {
+      sequences: { entries_public_id_seq: v("[2147483648, false]") },
+      security: {
+        "relation:users": v('["r", "agent_sozluk", null, false, false]'),
+        [`role:${bootstrap}`]: v("[true, true, true, true, true, true, true, -1, null]"),
+        "role:agent_sozluk": v("[false, true, false, false, false, false, false, -1, null]"),
+        [`membership:pg_read_all_stats>pg_monitor:${bootstrap}`]: v("[false, true, true]"),
+        "type:gtrgm": v(`["${bootstrap}", null]`),
+        "extensionMember:type gtrgm": v(`["${bootstrap}", null]`),
+        "language:plpgsql": v(`["${bootstrap}", true, null]`),
+        "systemFunction:lo_import(text)": v(`{${bootstrap}=X/${bootstrap}}`),
+        "systemNamespace:pg_catalog": v(
+          `["${bootstrap}", "{${bootstrap}=UC/${bootstrap},=U/${bootstrap}}"]`,
+        ),
+      },
+      database: {
+        comment,
+        "extension:pg_trgm": v("agent_sozluk"),
+        "extension:plpgsql": v(bootstrap),
+        locale: v(`["UTF8", "${collate}", "${collate}", "c", null, null, -1, false, "pg_default"]`),
+      },
     },
-    database: { locale: '["UTF8","en_US.utf8"]', comment: "null" },
-  },
-};
+  };
+}
 
-function variant(change: (parts: Parts) => void): GreatResetReceipt {
+const production = () => cluster("postgres", "null");
+const operator = () => cluster("agent", v("agentsozluk:great-reset:synthetic:v1"), "C.UTF-8");
+
+function variant(base: Parts, change: (parts: Parts) => void): GreatResetReceipt {
   const copy = structuredClone(base);
   change(copy);
   return receipt(copy);
 }
 
-describe("bağımsız restore karşılaştırması", () => {
-  it("küme ve veritabanı ortam farklarını raporlar ama engellemez", () => {
-    const result = compareForIndependentRestore(
-      receipt(base),
-      variant((parts) => {
-        parts.details.security["role:agent"] = "[true,true]";
-        parts.details.security["extensionMember:type gtrgm"] = '["agent",null]';
-        parts.details.database.locale = '["UTF8","C.UTF-8"]';
-        parts.details.database.comment = '"agentsozluk:great-reset:synthetic:v1"';
-      }),
-    );
-    expect(result.equal).toBe(true);
+describe("bağımsız restore karşılaştırması (politika i)", () => {
+  it("yalnız kurulum süper kullanıcısı adı yapısal eşlenir; locale ve sentetik yorum raporlanır", () => {
+    const result = compareForIndependentRestore(receipt(production()), receipt(operator()));
     expect(result.blocking).toEqual([]);
-    expect(result.environment).toEqual(
-      expect.arrayContaining([
-        "security:role:agent",
-        "security:extensionMember:type gtrgm",
-        "database:locale",
-        "database:comment",
-      ]),
-    );
+    expect(result.equal).toBe(true);
+    expect(result.environment.map((item) => item.key)).toEqual([
+      "database:comment",
+      "database:locale",
+    ]);
+    expect(result.environment[1]).toMatchObject({
+      expected: expect.stringContaining("en_US.utf8"),
+    });
   });
 
-  it("nesne sahipliği/yetkisi, içerik, şema ve sequence farkı engeller", () => {
-    const owner = compareForIndependentRestore(
-      receipt(base),
-      variant((parts) => {
-        parts.details.security["relation:users"] = '["r","agent",null,false,false]';
-      }),
-    );
-    expect(owner.blocking).toEqual(["security:relation:users"]);
+  it("bilinmeyen, tek taraflı ya da yetki/ayar farkı engeller", () => {
+    const cases: [string, (parts: Parts) => void][] = [
+      [
+        "security:role:agent_sozluk",
+        (p) => {
+          p.details.security["role:agent_sozluk"] = v(
+            "[true, true, false, false, false, false, false, -1, null]",
+          );
+        },
+      ],
+      [
+        "security:role:agent_sozluk_np",
+        (p) => {
+          p.details.security["role:agent_sozluk_np"] = v(
+            "[false, true, false, false, true, false, false, -1, null]",
+          );
+        },
+      ],
+      [
+        "security:relation:users",
+        (p) => {
+          p.details.security["relation:users"] = v('["r", "agent", null, false, false]');
+        },
+      ],
+      [
+        "security:systemFunction:lo_import(text)",
+        (p) => {
+          p.details.security["systemFunction:lo_import(text)"] = v("{agent=X/agent,=X/agent}");
+        },
+      ],
+      [
+        "database:setting:db:*",
+        (p) => {
+          p.details.database["setting:db:*"] = v("{statement_timeout=0}");
+        },
+      ],
+      [
+        "database:extension:pg_trgm",
+        (p) => {
+          p.details.database["extension:pg_trgm"] = v("agent");
+        },
+      ],
+      [
+        "database:locale",
+        (p) => {
+          p.details.database.locale = v(
+            '["LATIN1", "C.UTF-8", "C.UTF-8", "c", null, null, -1, false, "pg_default"]',
+          );
+        },
+      ],
+      [
+        "database:comment",
+        (p) => {
+          p.details.database.comment = v("başka");
+        },
+      ],
+    ];
+    for (const [key, change] of cases) {
+      const result = compareForIndependentRestore(
+        receipt(production()),
+        variant(operator(), change),
+      );
+      expect(result.equal, key).toBe(false);
+      expect(result.blocking, key).toContain(key);
+    }
+  });
+
+  it("içerik, şema ve sequence farkı engeller; tutarsız makbuz reddedilir", () => {
     const content = compareForIndependentRestore(
-      receipt(base),
-      variant((parts) => {
-        parts.tables.users = { rows: 2, sha256: "c".repeat(64) };
+      receipt(production()),
+      variant(operator(), (p) => {
+        p.tables.users = { rows: 2, sha256: "c".repeat(64) };
       }),
     );
     expect(content.blocking).toEqual(["section:content", "table:users"]);
     const schema = compareForIndependentRestore(
-      receipt(base),
-      variant((parts) => {
-        parts.schema = "d".repeat(64);
+      receipt(production()),
+      variant(operator(), (p) => {
+        p.schemaNormalized = "d".repeat(64);
       }),
     );
-    expect(schema.blocking).toEqual(["section:schema", "section:schemaNormalized"]);
-    const sequence = compareForIndependentRestore(
-      receipt(base),
-      variant((parts) => {
-        parts.details.sequences.entries_public_id_seq = "[2147483649,true]";
-      }),
+    expect(schema.blocking).toEqual(["section:schemaNormalized"]);
+    const tampered = receipt(operator());
+    tampered.details.security["relation:users"] = v('["r", "x", null, false, false]');
+    expect(compareForIndependentRestore(receipt(production()), tampered).blocking).toContain(
+      "receipt:independent-inconsistent",
     );
-    expect(sequence.blocking).toEqual(["section:sequences", "sequences:entries_public_id_seq"]);
   });
 
-  it("iç tutarsız makbuzu reddeder", () => {
-    const tampered = receipt(base);
-    tampered.details.security["relation:users"] = '["r","agent",null,false,false]';
-    const result = compareForIndependentRestore(receipt(base), tampered);
-    expect(result.blocking).toContain("receipt:independent-inconsistent");
-  });
   it("canlı ↔ restore: ham şema farkı yalnız kanonik şema eşitse kabul edilir", () => {
-    const restored = variant((parts) => {
-      parts.schema = "e".repeat(64);
-      parts.schemaNormalized = "b".repeat(64);
+    const live = receipt(production());
+    const restored = variant(production(), (p) => {
+      p.schema = "e".repeat(64);
+      p.schemaNormalized = "b".repeat(64);
     });
-    expect(compareLiveWithRestored(receipt(base), restored).equal).toBe(true);
-    const lost = variant((parts) => {
-      parts.schema = "e".repeat(64);
-      parts.schemaNormalized = "f".repeat(64);
+    expect(compareLiveWithRestored(live, restored).equal).toBe(true);
+    const lost = variant(production(), (p) => {
+      p.schema = "e".repeat(64);
+      p.schemaNormalized = "f".repeat(64);
     });
-    expect(compareLiveWithRestored(receipt(base), lost)).toMatchObject({
+    expect(compareLiveWithRestored(live, lost)).toMatchObject({
       equal: false,
       sections: ["schemaNormalized"],
     });

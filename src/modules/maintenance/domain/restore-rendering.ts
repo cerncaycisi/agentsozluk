@@ -105,9 +105,9 @@ function flatten(op: "AND" | "OR", children: Node[]): Node {
   return { op, children: flat };
 }
 
-/** Atom içindeki parantezli alt ifadeler de kanonikleşir (ör. fonksiyon argümanlarında). */
+/** Atom olduğu gibi kalır (yalnız baş/son boşluk); tırnaklı içerik ve tanımlayıcılar birebir korunur. */
 function canonicalAtom(text: string): string {
-  return text.replace(/\s+/gu, " ").trim();
+  return text.trim();
 }
 
 function render(node: Node): string {
@@ -115,19 +115,47 @@ function render(node: Node): string {
   return `(${node.children.map(render).join(` ${node.op} `)})`;
 }
 
-/** Dizi dönüşümü: `(ARRAY[e1, e2])::t[]` → `ARRAY[(e1)::t, (e2)::t]`. */
+/** Tırnak dışında `(ARRAY[` başlangıçlarının konumları. */
+function arrayStarts(text: string): number[] {
+  const starts: number[] = [];
+  let quote: "'" | '"' | null = null;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]!;
+    if (quote) {
+      if (char === quote) {
+        if (text[index + 1] === quote) index += 1;
+        else quote = null;
+      }
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (text.startsWith("(ARRAY[", index)) starts.push(index);
+  }
+  return starts;
+}
+
+/*
+  Dizi dönüşümü yalnız ölçülen tek biçimde kanonikleşir (Astra, PR #239 4. tur P1): tek boyutlu,
+  her öğesi `'<sabit>'::character varying` olan dizinin `::text[]` dönüşümü
+  `(ARRAY['a'::character varying, …])::text[]` → `ARRAY[('a'::character varying)::text, …]`.
+  İç içe dizi, başka öğe/tip veya tırnak içindeki benzer metin değiştirilmez.
+*/
+const varcharLiteral = /^'(?:[^']|'')*'::character varying$/u;
+
 function canonicalArrayCasts(text: string): string {
-  const pattern = "(ARRAY[";
+  const starts = arrayStarts(text);
   let result = "";
   let cursor = 0;
-  for (;;) {
-    const start = text.indexOf(pattern, cursor);
-    if (start < 0) break;
-    // Kapanan `])` ve ardından `::tip[]`.
-    let depth = 0;
+  for (const start of starts) {
+    if (start < cursor) continue;
+    const bodyStart = start + "(ARRAY[".length;
     let quote: "'" | '"' | null = null;
     let close = -1;
-    for (let index = start + pattern.length; index < text.length; index += 1) {
+    let nested = false;
+    for (let index = bodyStart; index < text.length; index += 1) {
       const char = text[index]!;
       if (quote) {
         if (char === quote) {
@@ -137,53 +165,34 @@ function canonicalArrayCasts(text: string): string {
         continue;
       }
       if (char === "'" || char === '"') quote = char;
-      else if (char === "[" || char === "(") depth += 1;
-      else if (char === "]" || char === ")") {
-        if (depth === 0) {
-          close = index;
-          break;
-        }
-        depth -= 1;
+      else if (char === "[" || char === "(") nested = true;
+      else if (char === "]") {
+        close = index;
+        break;
       }
     }
-    const cast = close >= 0 ? /^\]\)::([a-z][a-z0-9_ ]*)\[\]/u.exec(text.slice(close)) : null;
-    if (!cast) {
-      result += text.slice(cursor, start + pattern.length);
-      cursor = start + pattern.length;
-      continue;
-    }
-    const body = text.slice(start + pattern.length, close);
+    if (close < 0 || nested || !text.startsWith("])::text[]", close)) continue;
     const elements: string[] = [];
     let from = 0;
-    scan(body, (index, depthAt) => {
-      if (depthAt === 0 && body[index] === ",") {
+    const body = text.slice(bodyStart, close);
+    scan(body, (index, depth) => {
+      if (depth === 0 && body[index] === ",") {
         elements.push(body.slice(from, index).trim());
         from = index + 1;
       }
     });
     elements.push(body.slice(from).trim());
-    const type = cast[1]!;
+    if (!elements.every((element) => varcharLiteral.test(element))) continue;
     result += text.slice(cursor, start);
-    result += `ARRAY[${elements.map((element) => `(${element})::${type}`).join(", ")}]`;
-    cursor = close + cast[0].length;
+    result += `ARRAY[${elements.map((element) => `(${element})::text`).join(", ")}]`;
+    cursor = close + "])::text[]".length;
   }
   return result + text.slice(cursor);
 }
 
-/** `ARRAY[((x))::t]` gibi öğe sarmalarında fazla parantezleri tekler. */
-function canonicalCastParentheses(text: string): string {
-  let previous = "";
-  let current = text;
-  while (previous !== current) {
-    previous = current;
-    current = current.replace(/\(\((('[^']*'(?:::[a-z ]+)?))\)\)::/gu, "($1)::");
-  }
-  return current;
-}
-
 /** Bir CHECK tanımını ya da indeks tanımının WHERE yüklemini kanonik biçime indirir. */
 export function canonicalRestoreRendering(definition: string): string {
-  const withArrays = canonicalCastParentheses(canonicalArrayCasts(definition));
+  const withArrays = canonicalArrayCasts(definition);
   if (withArrays.startsWith("CHECK ")) {
     const rest = withArrays.slice("CHECK ".length);
     const noInherit = rest.endsWith(" NO INHERIT") ? " NO INHERIT" : "";

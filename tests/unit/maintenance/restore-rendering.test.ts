@@ -46,4 +46,26 @@ describe("restore yazım farkı kanonikleştirmesi", () => {
       canonicalRestoreRendering(a.replace("x AND (y, z)", "x AND (y, w)")),
     );
   });
+  it("Astra karşı örnekleri: boşluk, tırnak içi ARRAY ve iç içe dizi eşitlenmez", () => {
+    expect(canonicalRestoreRendering("CHECK ((note <> 'a  b'::text))")).not.toBe(
+      canonicalRestoreRendering("CHECK ((note <> 'a b'::text))"),
+    );
+    expect(canonicalRestoreRendering('CHECK (("a  b" <> 1))')).not.toBe(
+      canonicalRestoreRendering('CHECK (("a b" <> 1))'),
+    );
+    expect(canonicalRestoreRendering("CHECK ((note <> '(ARRAY[1, 2])::text[]'::text))")).not.toBe(
+      canonicalRestoreRendering("CHECK ((note <> 'ARRAY[(1)::text, (2)::text]'::text))"),
+    );
+    expect(
+      canonicalRestoreRendering("CHECK ((x = ANY ((ARRAY[ARRAY[1, 2], ARRAY[3, 4]])::text[])))"),
+    ).not.toBe(
+      canonicalRestoreRendering(
+        "CHECK ((x = ANY (ARRAY[(ARRAY[1, 2])::text, (ARRAY[3, 4])::text])))",
+      ),
+    );
+    // Ölçülmemiş öğe tipi dönüştürülmez.
+    expect(canonicalRestoreRendering("CHECK ((x = ANY ((ARRAY[1, 2])::text[])))")).not.toBe(
+      canonicalRestoreRendering("CHECK ((x = ANY (ARRAY[(1)::text, (2)::text])))"),
+    );
+  });
 });

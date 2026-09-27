@@ -41,6 +41,7 @@ recovering=0
 migration_status=0
 # Great reset modu (tasarım v20): çağıran `reset_mode=1` ve `reset_operation_id` verir.
 reset_mode="${reset_mode:-0}"
+reset_recovery_active=0
 # Reset modunda yalnız bu iki migration, yalnız bu içerikle (SHA-256) uygulanabilir. Ekleyici
 # olmayan denetimin istisnası adlara değil içeriğe bağlıdır; diğer her migration'da ekleyici
 # denetçi aynen çalışır.
@@ -117,6 +118,11 @@ downtime_remaining() {
   if ((frozen_deadline == 0)); then printf '0\n'; return 0; fi
   remaining=$((frozen_deadline - $(date +%s)))
   if ((remaining <= 0)); then
+    # Reset kurtarmasının kendi kalıcı son süresi var: dolunca yeni komut başlamaz
+    # (Astra, PR #239 4. tur P2). A5 hata tuzağı kurtarması ayrı ve aynen kalır.
+    if ((recovering == 1 && reset_mode == 1 && reset_recovery_active == 1)); then
+      migration_fail RESET_RECOVERY_BUDGET_EXHAUSTED 98
+    fi
     # Kurtarmada durma yok: komut 1 sn içinde başarısız döner, tuzak sürer.
     if ((recovering == 1)); then printf '1\n'; return 0; fi
     migration_fail DOWNTIME_BUDGET_EXCEEDED
