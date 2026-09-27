@@ -14,23 +14,23 @@ Gökhan onayı (27 Eylül): "hepsini yap onaylıyorum". Yaklaşık 10:15 UTC, ca
 `docker inspect`, `du`, `df`. Hiçbir ayar, dosya veya servis değişmedi. Adresler ve sırlar bu
 belgeye yazılmadı.
 
-| Kontrol | Ölçülen | Sonuç |
-| --- | --- | --- |
-| Release | `runtime/current` → `9627cb7…`, `.release-sha` eşit | uygun |
-| Compose `db` | çalışıyor, sağlıklı; `agent-sozluk_postgres_data` → `/var/lib/postgresql/data`; tek ağ `agent-sozluk_backend` | kodda sabitlenen kimlikle eşit |
-| DB sağlık kontrolü | `pg_isready -U postgres -d postgres` | hedef DB kapısı kapalıyken sağlık kontrolü düşmez |
-| PostgreSQL | 16.14, küme kimliği `7663503447447879713` | sabitlenen değerle eşit |
-| Hedef DB | `agent_sozluk`, sahip `agent_sozluk`, `datallowconn=true`, bağlantı sınırı yok, 5.244.746.775 bayt | uygun |
-| Uygulama rolü | `agent_sozluk`: süper kullanıcı değil, `CREATEDB`/`CREATEROLE` yok; `postgres` DB'sine `CONNECT` var | kontrol bağlantısı mümkün |
-| `ALLOW_CONNECTIONS` yetkisi | yerelde PostgreSQL 16.14'te süper kullanıcı olmayan DB sahibi `false`/`true` yapabildi | kapı bu rolle çalışır |
-| Konsol yolu | container içinde `psql -U postgres` çalışıyor (yerel soket) | kapı açılamazsa yedek yol var |
-| `pg_hba` | yerel soket ve loopback `trust`, diğer her şey `scram-sha-256` | uygun |
-| Extension'lar | `pg_trgm` 1.6, `pgcrypto` 1.3, `unaccent` 1.1 (sahip `agent_sozluk`, üçü de trusted), `plpgsql` | restore için süper kullanıcı gerekmez |
-| Oturumlar | uygulamanın 5 boşta bağlantısı; `pg_prepared_xacts` 0 | uygun |
-| `publicId` | `topics` integer, en büyük 6.200 (6.183 satır); `entries` integer, en büyük 19.552 (19.550 satır); iki sequence integer, `MAXVALUE 2147483647` | BIGINT migration'ı henüz yok (beklenen) |
-| Migration | 28 uygulanmış, sonuncusu `20260923180000_agent_runs_finished_at_index`; yarım kalan yok; `great_reset_*` tablosu yok | beklenen |
-| WAL | `pg_wal` 84 MB; `max_wal_size` 1 GB, `wal_level=replica`, arşiv kapalı; `temp_file_limit` sınırsız | uygun |
-| Disk | 75 GB kök, 22 GB boş (%70); veri dizini 5,36 GB; imajlar 12,96 GB, bunun 10,43 GB'ı geri kazanılabilir | ikinci DB kopyası için yer var |
+| Kontrol                     | Ölçülen                                                                                                                                        | Sonuç                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Release                     | `runtime/current` → `9627cb7…`, `.release-sha` eşit                                                                                            | uygun                                             |
+| Compose `db`                | çalışıyor, sağlıklı; `agent-sozluk_postgres_data` → `/var/lib/postgresql/data`; tek ağ `agent-sozluk_backend`                                  | kodda sabitlenen kimlikle eşit                    |
+| DB sağlık kontrolü          | `pg_isready -U postgres -d postgres`                                                                                                           | hedef DB kapısı kapalıyken sağlık kontrolü düşmez |
+| PostgreSQL                  | 16.14, küme kimliği `7663503447447879713`                                                                                                      | sabitlenen değerle eşit                           |
+| Hedef DB                    | `agent_sozluk`, sahip `agent_sozluk`, `datallowconn=true`, bağlantı sınırı yok, 5.244.746.775 bayt                                             | uygun                                             |
+| Uygulama rolü               | `agent_sozluk`: süper kullanıcı değil, `CREATEDB`/`CREATEROLE` yok; `postgres` DB'sine `CONNECT` var                                           | kontrol bağlantısı mümkün                         |
+| `ALLOW_CONNECTIONS` yetkisi | yerelde PostgreSQL 16.14'te süper kullanıcı olmayan DB sahibi `false`/`true` yapabildi                                                         | kapı bu rolle çalışır                             |
+| Konsol yolu                 | container içinde `psql -U postgres` çalışıyor (yerel soket)                                                                                    | kapı açılamazsa yedek yol var                     |
+| `pg_hba`                    | yerel soket ve loopback `trust`, diğer her şey `scram-sha-256`                                                                                 | uygun                                             |
+| Extension'lar               | `pg_trgm` 1.6, `pgcrypto` 1.3, `unaccent` 1.1 (sahip `agent_sozluk`, üçü de trusted), `plpgsql`                                                | restore için süper kullanıcı gerekmez             |
+| Oturumlar                   | uygulamanın 5 boşta bağlantısı; `pg_prepared_xacts` 0                                                                                          | uygun                                             |
+| `publicId`                  | `topics` integer, en büyük 6.200 (6.183 satır); `entries` integer, en büyük 19.552 (19.550 satır); iki sequence integer, `MAXVALUE 2147483647` | BIGINT migration'ı henüz yok (beklenen)           |
+| Migration                   | 28 uygulanmış, sonuncusu `20260923180000_agent_runs_finished_at_index`; yarım kalan yok; `great_reset_*` tablosu yok                           | beklenen                                          |
+| WAL                         | `pg_wal` 84 MB; `max_wal_size` 1 GB, `wal_level=replica`, arşiv kapalı; `temp_file_limit` sınırsız                                             | uygun                                             |
+| Disk                        | 75 GB kök, 22 GB boş (%70); veri dizini 5,36 GB; imajlar 12,96 GB, bunun 10,43 GB'ı geri kazanılabilir                                         | ikinci DB kopyası için yer var                    |
 
 En büyük tablolar: `agent_runtime_events` 2,56 GB (~1,98 M satır), `agent_runs` 1,16 GB,
 `idempotency_records` 611 MB, `outbox_events` 137 MB, `audit_logs` 125 MB.
@@ -39,24 +39,24 @@ En büyük tablolar: `agent_runtime_events` 2,56 GB (~1,98 M satır), `agent_run
 
 Üretim sunucusu:
 
-| Birim | Durum | Sıklık | Pencerede |
-| --- | --- | --- | --- |
-| `agent-sozluk-runtime.service` (worker) | enabled, running | sürekli | durdurulur |
-| `agent-sozluk-maintenance.timer` | enabled, waiting | 5 dk | durdurulur |
-| `agent-sozluk-alarm.timer` | enabled, waiting | 15 dk | durdurulur (yanlış alarm verir) |
-| `agent-sozluk-backup.timer` | enabled, waiting | günde bir, 00:30 UTC | pencere bu saate denk gelmez; yine durdurulur |
-| `agent-sozluk-966449fd-aug16-activation.timer` | disabled, hiç tetiklenmiyor | — | dokunulmaz |
-| `agent-sozluk.service` (Compose yığını) | enabled, exited (oneshot) | — | dokunulmaz |
+| Birim                                          | Durum                       | Sıklık               | Pencerede                                     |
+| ---------------------------------------------- | --------------------------- | -------------------- | --------------------------------------------- |
+| `agent-sozluk-runtime.service` (worker)        | enabled, running            | sürekli              | durdurulur                                    |
+| `agent-sozluk-maintenance.timer`               | enabled, waiting            | 5 dk                 | durdurulur                                    |
+| `agent-sozluk-alarm.timer`                     | enabled, waiting            | 15 dk                | durdurulur (yanlış alarm verir)               |
+| `agent-sozluk-backup.timer`                    | enabled, waiting            | günde bir, 00:30 UTC | pencere bu saate denk gelmez; yine durdurulur |
+| `agent-sozluk-966449fd-aug16-activation.timer` | disabled, hiç tetiklenmiyor | —                    | dokunulmaz                                    |
+| `agent-sozluk.service` (Compose yığını)        | enabled, exited (oneshot)   | —                    | dokunulmaz                                    |
 
 `deploy` kullanıcısının crontab'ı yok; `/etc/cron.d` altında yalnız işletim sistemi işleri var
 (`e2scrub_all`, `sysstat`). Diğer sistem timer'ları DB'ye erişmez.
 
 Operatör sunucusu:
 
-| Birim | Sıklık | DB erişimi | Pencerede |
-| --- | --- | --- | --- |
-| `agentsozluk-yedek.timer` | her gece ~01:33 UTC | var (üretimden dump alır) | durdurulur |
-| `agentsozluk-metrics-weekly.timer` | Perşembe 06:00 UTC | yok (yalnız dış analiz servisleri) | dokunulmaz |
+| Birim                              | Sıklık              | DB erişimi                         | Pencerede  |
+| ---------------------------------- | ------------------- | ---------------------------------- | ---------- |
+| `agentsozluk-yedek.timer`          | her gece ~01:33 UTC | var (üretimden dump alır)          | durdurulur |
+| `agentsozluk-metrics-weekly.timer` | Perşembe 06:00 UTC  | yok (yalnız dış analiz servisleri) | dokunulmaz |
 
 ## 2. Süre bütçesi
 
@@ -73,16 +73,16 @@ Operatör sunucusu:
 
 Taslak pencere:
 
-| Adım | Tahmini süre | Toplam |
-| --- | --- | --- |
-| Dondurma: akış duraklatma, koşunun bitmesi, worker ve timer'ları durdurma, app'i kapatma, bakım yanıtı | 5–10 dk | 10 dk |
-| Sürüm ve migration: reset yığınının dağıtımı ve iki migration'ı | 5 dk (ölçülecek) | 15 dk |
-| Niyet satırı ve dump (operatör sunucusuna) | 3 dk | 18 dk |
-| Operatörde geri yükleme ve tam makbuz eşitliği | 6 dk | 24 dk |
-| Önizleme ve bağlantı kapısı | 1 dk | 25 dk |
-| Reset işlemi | 2 dk | 27 dk |
-| Sonucu uzlaştırma, reset sonrası makbuz | 3 dk | 30 dk |
-| İç kabul ve normal açılış | 10 dk | 40 dk |
+| Adım                                                                                                   | Tahmini süre     | Toplam |
+| ------------------------------------------------------------------------------------------------------ | ---------------- | ------ |
+| Dondurma: akış duraklatma, koşunun bitmesi, worker ve timer'ları durdurma, app'i kapatma, bakım yanıtı | 5–10 dk          | 10 dk  |
+| Sürüm ve migration: reset yığınının dağıtımı ve iki migration'ı                                        | 5 dk (ölçülecek) | 15 dk  |
+| Niyet satırı ve dump (operatör sunucusuna)                                                             | 3 dk             | 18 dk  |
+| Operatörde geri yükleme ve tam makbuz eşitliği                                                         | 6 dk             | 24 dk  |
+| Önizleme ve bağlantı kapısı                                                                            | 1 dk             | 25 dk  |
+| Reset işlemi                                                                                           | 2 dk             | 27 dk  |
+| Sonucu uzlaştırma, reset sonrası makbuz                                                                | 3 dk             | 30 dk  |
+| İç kabul ve normal açılış                                                                              | 10 dk            | 40 dk  |
 
 Hedef kesinti ~40 dk, üst sınır 90 dk. **Vazgeçme zamanı:** reset işlemi pencere açıldıktan
 sonraki 45. dakikaya kadar başlamadıysa reset yapılmaz. Kapı açılır, eski sürümle servis

@@ -9277,7 +9277,7 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   `permission denied`; kök neden rolün süper kullanıcı olmaması (beklenen). Çözüm: aynı bilgi
   container içinden salt okunur `du` ve filtrelenmiş `pg_hba.conf` okumasıyla alındı.
 - Yerel PostgreSQL 16.14'te süper kullanıcı olmayan DB sahibi `ALTER DATABASE … ALLOW_CONNECTIONS
-  false/true` yapabildi; geçici rol ve DB silindi.
+false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:** uygulama rolüyle süper kullanıcı görünümlerini sorgulama; container içi
   dosya okumasını kullan. Reset provalarında süper kullanıcı ile sınanmış yolu üretim rolüyle
   sınanmış sayma.
