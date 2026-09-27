@@ -100,3 +100,18 @@ export function replaceDurable(path: string, temporary: string, text: string): v
   fsyncDirectory(path);
   if (!readFileSync(path).equals(content)) fail("FILE_READBACK_MISMATCH");
 }
+
+/**
+ * Var olan dosyanın ve üst dizininin kalıcılığını yeniden sağlar (Astra, PR #238 3. tur P1): önceki
+ * bir çağrı rename sonrası dizin fsync'inde düştüyse içerik okunabilir ama kalıcı olmayabilir.
+ * Tekrar eden çağrı başarı dönmeden önce bunu çağırır; hata yine hata olarak çıkar.
+ */
+export function syncExisting(path: string): void {
+  const handle = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    fsyncSync(handle);
+  } finally {
+    closeSync(handle);
+  }
+  fsyncDirectory(path);
+}

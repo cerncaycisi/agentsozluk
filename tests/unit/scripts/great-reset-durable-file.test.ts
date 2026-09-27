@@ -9,7 +9,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
   ya da hiç yazamaz. Tam yazım döngüsü içeriği yine eksiksiz yazmalı; yazamıyorsa hedef dosya
   (dış kayıt) hiç değişmemeli, geçici dosya kalmamalı.
 */
-const mode = vi.hoisted(() => ({ value: "normal" as "normal" | "chunked" | "stalled" }));
+const mode = vi.hoisted(() => ({
+  value: "normal" as "normal" | "chunked" | "stalled" | "fsync-fails",
+}));
 
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof fs>("node:fs");
@@ -20,10 +22,14 @@ vi.mock("node:fs", async () => {
       const size = mode.value === "chunked" ? Math.min(3, length) : length;
       return actual.writeSync(handle, buffer, offset, size);
     },
+    fsyncSync: (handle: number) => {
+      if (mode.value === "fsync-fails") throw new Error("EIO");
+      return actual.fsyncSync(handle);
+    },
   };
 });
 
-const { replaceDurable, writeNewDurable } =
+const { replaceDurable, syncExisting, writeNewDurable } =
   await import("../../../scripts/great-reset-durable-file");
 
 const directories: string[] = [];
@@ -72,5 +78,14 @@ describe("great reset dayanıklı dosya yazımı", () => {
     writeFileSync(join(dir, "receipt.json"), "önceki\n", { mode: 0o600 });
     expect(() => writeNewDurable(join(dir, "receipt.json"), "yeni\n")).toThrow();
     expect(readFileSync(join(dir, "receipt.json"), "utf8")).toBe("önceki\n");
+  });
+  it("var olan kaydın kalıcılığını yeniden sağlar; fsync düşerse başarı dönmez", () => {
+    const dir = directory();
+    const ledger = join(dir, "ledger.jsonl");
+    writeFileSync(ledger, "kayıt\n", { mode: 0o600 });
+    expect(() => syncExisting(ledger)).not.toThrow();
+    mode.value = "fsync-fails";
+    expect(() => syncExisting(ledger)).toThrow("EIO");
+    expect(readFileSync(ledger, "utf8")).toBe("kayıt\n");
   });
 });

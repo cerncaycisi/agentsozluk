@@ -139,12 +139,14 @@ provası → üretimde migration → post-verify. Reset modunda farklar:
   (BIGINT şeması eski imajla geri uyumlu sayılmaz); yalnız health/ready.
 - **Ayar özeti faza bağlıdır.** A5 her girişte `agent_global_settings` satırının tam özetini
   başlangıçla karşılaştırır; reset modunda bayraklar ve uygulama servisinin metadatası
-  (`settingsVersion`, `updatedAt`, güncelleyen) bilerek değişir. Bu yüzden reset modunda özet,
-  bu alanlar **dışarıda bırakılarak** hesaplanır ve her girişte başlangıçla birebir eşit
-  olmalıdır; dört bayrak ise faza göre beklenen değerle ayrıca karşılaştırılır: `reset-flags-
-frozen`'dan önce başlangıç değerleri, sonra hepsi `false`, 10. adımda bayraklar dondurma
-  dosyasındaki değerlere döndükten sonra yeniden başlangıç değerleri. Resetsiz açılış
-  (`ABORTED`) da aynı kuralı kullanır. Yaşam döngüsü özeti değişmez (`agent_profiles` korunur).
+  (`settingsVersion`, `updatedAt`, güncelleyen) bilerek değişir. Bu yüzden reset modunda özet bu
+  alanlar **dışarıda bırakılarak** hesaplanır ve her girişte başlangıçla birebir eşit olmalıdır.
+  Dört bayrak, mutasyondan **önce** kalıcı yazılan geçiş durumuna göre denetlenir: durum yoksa
+  ve `restored`'da başlangıç değerleri; `frozen`'da hepsi `false`; ara durumlar `freezing` ve
+  `restoring`'de her bayrak ya başlangıç değerinde ya `false` olabilir (iki servis çağrısı
+  arasında kesinti). Yeniden giriş aynı idempotent komutu tekrarlayıp geçişi tamamlar, sonra katı
+  kurala döner. Resetsiz açılış (`ABORTED`) da aynı kuralı kullanır. Yaşam döngüsü özeti
+  değişmez (`agent_profiles` korunur).
 - **Post-verify**: önceki tabloların içerik özetleri birebir; şema özetinde yalnız `entries` ve
   `topics` değişebilir; sequence tanımında yalnız iki public ID sequence'inin `data_type`
   alanı `integer → bigint`; dört `great_reset_*` tablosu boş; ayrıca katalog iddiaları (iki

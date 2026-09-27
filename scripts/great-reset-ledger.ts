@@ -8,7 +8,7 @@ import {
   parseLedger,
   type LedgerState,
 } from "../src/modules/maintenance/domain/great-reset-ledger";
-import { replaceDurable } from "./great-reset-durable-file";
+import { replaceDurable, syncExisting } from "./great-reset-durable-file";
 
 /*
   Great reset dış nesil kaydının operatör sunucusu yazıcısı (tasarım v20 madde 4). Kayıt, üretim
@@ -100,13 +100,16 @@ function main(argv: readonly string[]): string {
         postResetReceiptSha256: receipt === "-" ? null : receipt,
       };
       const view = parseLedger(previous);
-      if (alreadyRecorded(view, next))
+      if (alreadyRecorded(view, next)) {
+        // Önceki yazım rename sonrası düşmüş olabilir: başarıdan önce kalıcılığı yeniden sağla.
+        syncExisting(file);
         return JSON.stringify({
           appended: false,
           alreadyRecorded: state,
           seq: view.records.length,
           lastSha256: view.lastSha256,
         });
+      }
       const updated = appendRecord(previous, next, new Date());
       durableReplace(file, updated, previous);
       const after = parseLedger(updated);
