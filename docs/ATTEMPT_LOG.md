@@ -9239,3 +9239,31 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   worktree kaldırıldı. Açık PR dalları ve `main` korunur.
 - **Tekrarlama:** "main'de olmayan commit" squash geçmişi olabilir; silmeden önce dal ucunu PR'ın
   birleştirme commit'iyle değişen dosyalarda karşılaştır.
+
+## 2026-09-27 — `9627cb7`: yerel reset aracı ve belgeler canlıda (onay muafiyeti penceresi, Astra DAĞIT)
+
+- Gökhan açıkça: "Dağıtım iznini 12 saat uzat" (pencere 27 Eylül 19:20 UTC'ye kadar). Aday main
+  `9627cb7fb6dbbc315520519af7f97e40c339a997`; `b2eac11`'den bu yana `prisma` ağacı aynı, kod farkı
+  yalnız yerel great reset aracı (`great-reset-local-guard.ts`, `great-reset.ts`,
+  `outbox-reset-archive.ts`), gerisi belge. Push CI `36262213926` ve Release Candidate Bundle
+  `36303355983` başarılı.
+- GPT-6 Astra (`gpt-6-astra`, salt okunur) **DAĞIT**: prisma ağaç hash'i iki sürümde aynı; değişen
+  modüller yalnız `scripts/great-reset-local.ts` üzerinden yükleniyor, Next/worker çalışma zamanı
+  bağlantısı yok.
+- Dağıtım: `--pause-society-flow`, pause 284→285, drenaj 12 deneme (bir koşu bitti),
+  `RELEASE_COMPLETE PASS` ~08:42 UTC, imaj `sha256:d62de606…`, runtime yeniden kullanıldı, smoke
+  health/ready/search 200. Kabul: status 285 `runtimeEnabled=false` → worker `active/running`
+  (08:42:20), NRestarts 0, B7 IP ayarları etkin → resume 285→286 → yeni worker altında
+  `STOCHASTIC_TICK` 08:56–09:00 `SUCCEEDED`, hash öneki `892552db9fb6` (v43 korunuyor). İlk iki koşu
+  `PARTIAL` (önceki 24 saatte 26/350); izlenir. Disk %70.
+- Ö4-2 penceresi etkilenmedi: prompt profili değişmedi, pencere 28 Eylül 16:48:54 UTC'de kapanır.
+- Başarısız denemeler (üretime dokunmadan): (1) `codex exec` arka planda stdin açıkken "Reading
+  additional input from stdin" diye bekledi, iki tur zaman aşımıyla boşa gitti; (2) `git worktree`
+  içindeki origin adresi `.git` sonekisiz olduğu için sarmalayıcı 174. satırda
+  `RELEASE_WRAPPER_FAIL code=UNEXPECTED` ile ilk yerel kontrolde durdu; skill'in temiz
+  checkout'undan yeniden koşuldu.
+
+**Tekrarlama:**
+
+- Arka planda `codex exec` çağrısına her zaman `< /dev/null` ver.
+- Dağıtımı geçici worktree'den değil, skill'in origin'i `.git` ile biten temiz checkout'undan koş.
