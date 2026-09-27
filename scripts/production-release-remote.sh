@@ -15,6 +15,8 @@ cleanup_requested="${2:-no-cleanup}"
 migration_mode="${3:-}"
 # Sarmalayıcının kilit sahipliği için ürettiği operasyon kimliği.
 op_id="${4:-}"
+# Yalnız reset modunda: dış kayda yazılmış geçişin onayı (`ack:<DURUM>`), ilk çağrıda boş.
+reset_ack_argument="${5:-}"
 app_root=/opt/agent-sozluk/app
 runtime_root=/opt/agent-sozluk/runtime
 compose_file="$runtime_root/compose.production.yaml"
@@ -35,13 +37,36 @@ runtime_unit_target=/etc/systemd/system/agent-sozluk-runtime.service
   exit 90
 }
 approved_migrations=''
-if test "$migration_mode" != no-migration; then
+reset_mode=0
+reset_operation_id=''
+reset_ack=''
+if [[ "$migration_mode" =~ ^reset:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}):(.+)$ ]]; then
+  # Great reset modu (tasarım v20): A5 migration fazı + reset aşamaları, aynı dondurmada.
+  reset_mode=1
+  reset_operation_id="${BASH_REMATCH[1]}"
+  approved_migrations="${BASH_REMATCH[2]}"
+  [[ "$approved_migrations" =~ ^([0-9]{14}_[a-z0-9_]+)(,[0-9]{14}_[a-z0-9_]+)*$ ]] || {
+    printf 'RELEASE_FAIL code=INVALID_MIGRATION_MODE\n' >&2
+    exit 90
+  }
+  if test -n "$reset_ack_argument"; then
+    [[ "$reset_ack_argument" =~ ^ack:(PREPARED|COMMITTED_MAINTENANCE|TRAFFIC_OPEN|ABORTED)$ ]] || {
+      printf 'RELEASE_FAIL code=INVALID_RESET_ACK\n' >&2
+      exit 90
+    }
+    reset_ack="${reset_ack_argument#ack:}"
+  fi
+elif test "$migration_mode" != no-migration; then
   [[ "$migration_mode" =~ ^apply:([0-9]{14}_[a-z0-9_]+)(,[0-9]{14}_[a-z0-9_]+)*$ ]] || {
     printf 'RELEASE_FAIL code=INVALID_MIGRATION_MODE\n' >&2
     exit 90
   }
   approved_migrations="${migration_mode#apply:}"
 fi
+test "$reset_mode" = 1 || test -z "$reset_ack_argument" || {
+  printf 'RELEASE_FAIL code=INVALID_RESET_ACK\n' >&2
+  exit 90
+}
 [[ "$op_id" =~ ^[0-9a-f]{16}$ ]] || {
   printf 'RELEASE_FAIL code=INVALID_OPERATION_ID\n' >&2
   exit 90
@@ -230,6 +255,11 @@ assert_runtime_unit() {
 }
 
 assert_state_fingerprints() {
+  # Reset modunda bayraklar bilerek değişir: faza bağlı özet (runbook v20 A5 reset modu).
+  if ((reset_mode == 1)); then
+    reset_assert_state
+    return
+  fi
   test "$(settings_fingerprint)" = "$(cat "$state_dir/settings-hash")"
   test "$(lifecycle_fingerprint)" = "$(cat "$state_dir/lifecycle-hash")"
 }
@@ -789,8 +819,19 @@ cleanup_images() {
     "$container_hash_after"
 }
 
+if ((reset_mode == 1)); then
+  bash -n "$app_root/scripts/production-migration-phase.sh"
+  bash -n "$app_root/scripts/production-reset-phase.sh"
+  # Reset yardımcıları (faza bağlı ayar özeti) temel durum denetiminden önce yüklenir.
+  # shellcheck source=scripts/production-migration-phase.sh
+  source "$app_root/scripts/production-migration-phase.sh"
+  # shellcheck source=scripts/production-reset-phase.sh
+  source "$app_root/scripts/production-reset-phase.sh"
+fi
 if test ! -f "$state_dir/baseline-complete"; then
   capture_initial_state
+  # Reset modunun taban ayar özeti ve bayrakları da ilk girişte, bayraklara dokunulmadan alınır.
+  if ((reset_mode == 1)); then reset_assert_state; fi
 else
   assert_state_fingerprints
 fi
@@ -798,14 +839,26 @@ assert_migration_mode
 build_candidate_image
 build_runtime_release
 if test "$migration_mode" != no-migration; then
-  bash -n "$app_root/scripts/production-migration-phase.sh"
-  # shellcheck source=scripts/production-migration-phase.sh
-  source "$app_root/scripts/production-migration-phase.sh"
+  if ((reset_mode == 0)); then
+    bash -n "$app_root/scripts/production-migration-phase.sh"
+    # shellcheck source=scripts/production-migration-phase.sh
+    source "$app_root/scripts/production-migration-phase.sh"
+  fi
   migration_phase
+  if ((reset_mode == 1)); then
+    trap migration_exit_trap EXIT
+    reset_phase
+    trap - EXIT
+  fi
 fi
 cutover
 verify_release
 publish_boot_tag
+if ((reset_mode == 1)); then
+  # Timer'lar ve Compose yığını birimi ancak kesim ve doğrulama bittikten sonra önceki
+  # durumlarına döner (runbook v20 A5 reset modu, 10. adım).
+  reset_restore_units
+fi
 if test "$migration_mode" != no-migration; then
   set_phase cutover-done
   find "$runtime_root/.migration-operation" -xdev -depth -delete

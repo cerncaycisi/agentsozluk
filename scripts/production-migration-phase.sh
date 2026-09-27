@@ -39,6 +39,15 @@ frozen_deadline=0
 # (Astra, 23 Eylül).
 recovering=0
 migration_status=0
+# Great reset modu (tasarım v20): çağıran `reset_mode=1` ve `reset_operation_id` verir.
+reset_mode="${reset_mode:-0}"
+# Reset modunda yalnız bu iki migration, yalnız bu içerikle (SHA-256) uygulanabilir. Ekleyici
+# olmayan denetimin istisnası adlara değil içeriğe bağlıdır; diğer her migration'da ekleyici
+# denetçi aynen çalışır.
+reset_pinned_migrations=(
+  '20260926090000_public_id_bigint_namespace|1255dc4b84737886d67951e4019f6487cd897270a613fd774413fb7f26574bd9'
+  '20260926120000_great_reset_records|d0ab5157f79b3c0fa63d6442edbe3402988209d676789f51e6d857ac12c56fe2'
+)
 
 migration_fail() {
   printf 'RELEASE_FAIL code=%s\n' "$1" >&2
@@ -55,10 +64,24 @@ phase_rank() {
     migrating) echo 6 ;;
     migrated) echo 7 ;;
     post-verified) echo 8 ;;
-    writers-may-run) echo 9 ;;
-    traffic-open) echo 10 ;;
-    worker-allowed) echo 11 ;;
-    cutover-done) echo 12 ;;
+    # Reset aşamaları (yalnız reset modunda yazılır); `reset-aborted` her reset aşamasından
+    # ileridedir ki COMMIT öncesi vazgeçme geriye yazım gerektirmesin.
+    reset-flags-frozen) echo 9 ;;
+    reset-intent) echo 10 ;;
+    reset-backup-verified) echo 11 ;;
+    reset-prepared) echo 12 ;;
+    reset-committing) echo 13 ;;
+    reset-committed) echo 14 ;;
+    reset-receipted) echo 15 ;;
+    reset-maintenance) echo 16 ;;
+    reset-accepted) echo 17 ;;
+    reset-traffic) echo 18 ;;
+    reset-exposed) echo 19 ;;
+    reset-aborted) echo 20 ;;
+    writers-may-run) echo 21 ;;
+    traffic-open) echo 22 ;;
+    worker-allowed) echo 23 ;;
+    cutover-done) echo 24 ;;
     *) echo 0 ;;
   esac
 }
@@ -82,7 +105,9 @@ set_phase() {
 }
 
 migration_identity() {
-  printf '%s|%s\n' "$candidate_sha" "$(printf '%s\n' "$approved_migrations" | sha256sum | cut -d ' ' -f 1)"
+  printf '%s|%s|%s\n' "$candidate_sha" \
+    "$(printf '%s\n' "$approved_migrations" | sha256sum | cut -d ' ' -f 1)" \
+    "$(if ((reset_mode == 1)); then printf 'reset:%s' "$reset_operation_id"; else printf 'a5'; fi)"
 }
 
 # Kesinti süresi dolmuşsa durur; dolmamışsa kalan saniyeyi basar. Dondurma
@@ -173,8 +198,12 @@ plan_migrations() {
   # dosyada açılan tablo diğerinde "mevcut" sayılmasın.
   while IFS= read -r name; do cat "$(migration_file "$name")"; printf '\n'; done \
     <"$pending" >"$migration_dir/pending.sql"
-  "$host_node" "$app_root/scripts/check-additive-migration.mjs" "$migration_dir/pending.sql" \
-    >"$migration_dir/expectation.json" || migration_fail MIGRATION_NOT_ADDITIVE
+  if ((reset_mode == 1)); then
+    reset_plan_pinned_migrations
+  else
+    "$host_node" "$app_root/scripts/check-additive-migration.mjs" "$migration_dir/pending.sql" \
+      >"$migration_dir/expectation.json" || migration_fail MIGRATION_NOT_ADDITIVE
+  fi
   # Mevcut tabloya eklenen indekslerin adları: şema özetinde yalnız bunların
   # `CREATE INDEX` satırı hariç tutulur (başka her şey birebir kalmalı).
   "$host_node" -e '
@@ -187,6 +216,23 @@ plan_migrations() {
   migration_identity >"$migration_marker/identity"
   printf '%s\n' "$state_dir" >"$migration_marker/state-dir"
   set_phase planned
+}
+
+# Reset modu: bekleyen küme tam olarak iki sabit migration, içerikleri sabit SHA-256. Post-verify
+# beklentisi ekleyici denetçiden değil, reset katalog iddialarından gelir (yeni tablolar listesi).
+reset_plan_pinned_migrations() {
+  local entry name sha expected=''
+  for entry in "${reset_pinned_migrations[@]}"; do
+    name="${entry%%|*}"
+    sha="${entry#*|}"
+    expected+="$name"$'\n'
+    test "$(sha256sum <"$(migration_file "$name")" | cut -d ' ' -f 1)" = "$sha" ||
+      migration_fail RESET_MIGRATION_CONTENT_MISMATCH
+  done
+  test "$(cat "$migration_dir/pending")"$'\n' = "$expected" ||
+    migration_fail RESET_MIGRATION_SET_MISMATCH
+  printf '%s\n' '{"tables":{"great_reset_commits":{},"great_reset_exposure_events":{},"great_reset_intents":{},"great_reset_tombstones":{}},"types":{"GreatResetContentKind":{}},"existingTableIndexes":{}}' \
+    >"$migration_dir/expectation.json"
 }
 
 # --- 2. İmaj --------------------------------------------------------------------
@@ -347,6 +393,8 @@ freeze_writes() {
   install_runtime_unit
   : >"$migration_hold"
   cat /proc/sys/kernel/random/boot_id >"$migration_marker/boot-id"
+  # Reset modu: timer'lar ve Compose yığını birimi reboot'ta başlamasın (runbook v20 A5 reset).
+  if ((reset_mode == 1)); then reset_freeze_units; fi
   # Buradan sonra bir hata, aşama henüz `frozen` olmasa da siteyi geri açmalı.
   freeze_started=1
   frozen_deadline=$(($(date +%s) + max_downtime_seconds))
@@ -364,6 +412,7 @@ assert_frozen() {
   test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = inactive ||
     migration_fail FREEZE_WORKER_RUNNING
   test -e "$migration_hold" || migration_fail FREEZE_HOLD_MISSING
+  if ((reset_mode == 1)); then reset_assert_units_frozen; fi
   test "$(admin_psql agent_sozluk -c \
     "SELECT count(*) FROM pg_stat_activity
      WHERE datname = current_database() AND pid <> pg_backend_pid()
@@ -872,7 +921,9 @@ post_verify() {
     >"$migration_dir/post-$label-tables"
   cmp -s "$migration_dir/pre-tables" "$migration_dir/post-$label-tables" ||
     migration_fail POST_TABLE_CONTENT_CHANGED
-  cmp -s <(grep -E '^(seq|seqdef|owned):' "$migration_dir/pre-fingerprint") \
+  # Reset modunda tek izinli sequence farkı: iki public ID sequence'inin `data_type` alanı
+  # `integer → bigint` (MAXVALUE ve durum aynı). Beklenen satırlar öncekinden türetilir.
+  cmp -s <(grep -E '^(seq|seqdef|owned):' "$migration_dir/pre-fingerprint" | reset_expected_sequences) \
     <(grep -E '^(seq|seqdef|owned):' "$migration_dir/post-$label-fingerprint") ||
     migration_fail POST_SEQUENCE_CHANGED
   table_schema_hashes "$database" "$migration_dir/post-$label-table-schemas"
@@ -880,7 +931,10 @@ post_verify() {
   awk -F '|' 'NR == FNR {want[$1] = 1; next} ($1 in want)' \
     "$schema_baseline" "$migration_dir/post-$label-table-schemas" \
     >"$migration_dir/post-$label-preexisting-schemas"
-  cmp -s "$schema_baseline" "$migration_dir/post-$label-preexisting-schemas" ||
+  # Reset modunda yalnız `entries` ve `topics` şeması değişebilir; tanımları katalog
+  # iddialarıyla ve scratch–üretim eşitliğiyle ayrıca doğrulanır.
+  cmp -s <(reset_filter_schema_lines <"$schema_baseline") \
+    <(reset_filter_schema_lines <"$migration_dir/post-$label-preexisting-schemas") ||
     migration_fail POST_TABLE_SCHEMA_CHANGED
 
   prisma_history "$database" >"$migration_dir/post-$label-prisma-history"
@@ -921,8 +975,86 @@ post_verify() {
     test "$(grep -c "^table:$name|0|0|0$" "$migration_dir/post-$label-fingerprint")" = 1 ||
       migration_fail POST_NEW_TABLE_NOT_EMPTY
   done <"$migration_dir/new-tables"
-  assert_catalog_expectation "$database" "$label"
-  new_object_definitions "$database" >"$migration_dir/definitions-$label"
+  if ((reset_mode == 1)); then
+    reset_assert_catalog "$database"
+    { new_object_definitions "$database" && reset_object_definitions "$database"; } \
+      >"$migration_dir/definitions-$label" || migration_fail DEFINITIONS_UNAVAILABLE
+  else
+    assert_catalog_expectation "$database" "$label"
+    new_object_definitions "$database" >"$migration_dir/definitions-$label"
+  fi
+}
+
+reset_expected_sequences() {
+  if ((reset_mode == 1)); then
+    sed -E 's/^(seqdef:(entries|topics)_public_id_seq)\|integer\|/\1|bigint|/'
+  else
+    cat
+  fi
+}
+
+reset_filter_schema_lines() {
+  if ((reset_mode == 1)); then
+    grep -v -E '^(entries|topics)\|' || test $? = 1
+  else
+    cat
+  fi
+}
+
+# Reset migration'larının katalog iddiaları; hepsi tek satırda `t` dönmeli.
+reset_assert_catalog() {
+  test "$(db_psql "$1" <<'SQL'
+SELECT
+  (SELECT format_type(atttypid, atttypmod) FROM pg_attribute
+    WHERE attrelid = 'public.topics'::regclass AND attname = 'publicId') = 'bigint'
+  AND (SELECT format_type(atttypid, atttypmod) FROM pg_attribute
+    WHERE attrelid = 'public.entries'::regclass AND attname = 'publicId') = 'bigint'
+  AND (SELECT count(*) FROM pg_sequences WHERE schemaname = 'public'
+    AND sequencename IN ('topics_public_id_seq', 'entries_public_id_seq')
+    AND data_type = 'bigint'::regtype AND max_value = 2147483647 AND NOT cycle
+    AND increment_by = 1 AND cache_size = 1) = 2
+  AND (SELECT count(*) FROM pg_constraint WHERE contype = 'c' AND convalidated
+    AND conname IN ('topics_public_id_legacy_range_check', 'entries_public_id_legacy_range_check')
+    AND pg_get_constraintdef(oid) = 'CHECK (("publicId" <= 2147483647))') = 2
+  AND (SELECT count(*) FROM pg_trigger WHERE NOT tgisinternal AND tgenabled = 'O'
+    AND tgname IN ('topics_public_id_immutable', 'entries_public_id_immutable')) = 2
+  AND (SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+    WHERE NOT t.tgisinternal AND t.tgenabled = 'O' AND c.relnamespace = 'public'::regnamespace
+      AND c.relname IN ('great_reset_intents', 'great_reset_commits', 'great_reset_tombstones',
+        'great_reset_exposure_events')) = 9
+  AND (SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace
+    AND proname IN ('reject_great_reset_record_mutation', 'protect_great_reset_record_truncate',
+      'protect_great_reset_intent_update')) = 3;
+SQL
+)" = t || migration_fail RESET_CATALOG_ASSERTION_FAILED
+}
+
+# Scratch ile üretimin reset nesneleri birebir: iki tablonun sütun/kısıt/trigger tanımları ve
+# kayıt fonksiyonlarının gövdeleri.
+reset_object_definitions() {
+  db_psql "$1" <<'SQL'
+SELECT 'column:' || c.relname || '|' || a.attname || '|' || format_type(a.atttypid, a.atttypmod)
+  || '|' || a.attnotnull || '|' || coalesce(pg_get_expr(ad.adbin, ad.adrelid), '-')
+FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+LEFT JOIN pg_attrdef ad ON ad.adrelid = a.attrelid AND ad.adnum = a.attnum
+WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics')
+  AND a.attnum > 0 AND NOT a.attisdropped
+ORDER BY 1;
+SELECT 'constraint:' || c.relname || '|' || con.conname || '|' || pg_get_constraintdef(con.oid)
+FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid
+WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics')
+ORDER BY 1;
+SELECT 'trigger:' || c.relname || '|' || t.tgname || '|' || t.tgenabled::text || '|' || pg_get_triggerdef(t.oid)
+FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+WHERE NOT t.tgisinternal AND c.relnamespace = 'public'::regnamespace
+  AND (c.relname IN ('entries', 'topics') OR c.relname LIKE 'great\_reset\_%')
+ORDER BY 1;
+SELECT 'function:' || p.proname || '|' || md5(pg_get_functiondef(p.oid))
+FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
+  AND p.proname IN ('reject_great_reset_record_mutation', 'protect_great_reset_record_truncate',
+    'protect_great_reset_intent_update', 'prevent_public_id_update')
+ORDER BY 1;
+SQL
 }
 
 # --- 8. Prova -----------------------------------------------------------------
@@ -964,12 +1096,37 @@ rehearse_previous_image() {
   ((status == 0)) || migration_fail PREVIOUS_IMAGE_REHEARSAL_FAILED
 }
 
+# Aday imaj migration uygulanmış scratch'e karşı açılır; yalnız health/ready (scratch atılır).
+rehearse_candidate_image() {
+  local container="a5-$op_id-candidate" status=1 deadline
+  docker rm -f "$container" >/dev/null 2>&1 || true
+  env -u DATABASE_URL -u COMPOSE_PROJECT_NAME -u COMPOSE_FILE -u COMPOSE_PROFILES \
+    APP_IMAGE="$candidate_image" "${compose[@]}" run -d --no-deps --pull never \
+    --name "$container" -e "A5_TARGET_DATABASE=$scratch_database" \
+    --entrypoint /bin/sh app -c \
+    'export DATABASE_URL="$(node -e "const u = new URL(process.env.DATABASE_URL); u.pathname = \"/\" + process.env.A5_TARGET_DATABASE; process.stdout.write(u.href)")" && exec node server.js' \
+    </dev/null >/dev/null
+  for _ in $(seq 1 60); do
+    deadline_prefix
+    if "${deadline[@]}" docker exec "$container" node -e \
+      "Promise.all(['health','ready'].map(p=>fetch('http://127.0.0.1:3000/api/'+p).then(r=>{if(!r.ok)throw new Error(p)}))).catch(()=>process.exit(1))" \
+      </dev/null >/dev/null 2>&1; then
+      status=0
+      break
+    fi
+    sleep 2
+  done
+  docker rm -f "$container" >/dev/null 2>&1 || true
+  ((status == 0)) || migration_fail CANDIDATE_IMAGE_REHEARSAL_FAILED
+}
+
 rehearse_on_scratch() {
   prisma_history agent_sozluk >"$migration_dir/prod-history-before-rehearsal"
   run_migration "$scratch_database"
   ((migration_status == 0)) || migration_fail SCRATCH_MIGRATION_FAILED
   post_verify "$scratch_database" scratch "$migration_dir/scratch-pre-table-schemas"
-  rehearse_previous_image
+  # Reset modunda BIGINT şeması eski imajla geri uyumlu sayılmaz: aday imaj açılır.
+  if ((reset_mode == 1)); then rehearse_candidate_image; else rehearse_previous_image; fi
   # Prova üretime dokunmadı: prod geçmişi aynı, yeni tablolar prod'da yok.
   cmp -s "$migration_dir/prod-history-before-rehearsal" <(prisma_history agent_sozluk) ||
     migration_fail REHEARSAL_TOUCHED_PRODUCTION
@@ -993,6 +1150,8 @@ verify_production_after_migration() {
   cmp -s "$migration_dir/definitions-scratch" "$migration_dir/definitions-production" ||
     migration_fail DEFINITIONS_DIFFER_FROM_REHEARSAL
   set_phase post-verified
+  # Reset modunda dondurma sürer: reset aşamaları aynı pencerede koşar (runbook v20).
+  if ((reset_mode == 1)); then return 0; fi
   # Bu noktadan sonra yeni app ve maintenance timer'ı yazabilir; dondurma
   # karşılaştırmaları bir daha koşmaz (Astra, 23 Eylül).
   set_phase writers-may-run
@@ -1005,6 +1164,8 @@ migration_exit_trap() {
   local status=$?
   trap - EXIT
   set +e
+  # Reset modu dış kayıt beklemesi (75) hata değildir: site kapalı, dondurma sürer.
+  if ((reset_mode == 1 && status == 75)); then exit "$status"; fi
   if ((status != 0)); then
     # Kurtarma kendi 5 dakikalık bütçesiyle koşar; süre kontrolü burada exit etmez.
     recovering=1
@@ -1033,7 +1194,7 @@ migration_exit_trap() {
           fi
         fi
         ;;
-      migrating | migrated | post-verified)
+      migrating | migrated | post-verified | reset-*)
         printf 'RELEASE_MIGRATION_MANUAL phase=%s site stays down; see runbook\n' \
           "$(current_phase)" >&2
         ;;
@@ -1056,6 +1217,7 @@ migration_phase() {
   fi
   if test -f "$migration_marker/frozen-deadline" && phase_reached frozen &&
      ! phase_reached writers-may-run; then
+    # Reset modunda dondurma reset aşamaları boyunca da sürer (aşama sıralaması bunu kapsar).
     frozen_deadline="$(cat "$migration_marker/frozen-deadline")"
     [[ "$frozen_deadline" =~ ^[0-9]+$ ]] || migration_fail DOWNTIME_DEADLINE_INVALID
     freeze_started=1
@@ -1080,7 +1242,13 @@ migration_phase() {
       assert_frozen
       migrate_production
       ;&
-    migrated | post-verified) verify_production_after_migration ;;
+    migrated) verify_production_after_migration ;;
+    post-verified)
+      # A5'te `post-verified` yeniden girişi doğrulamayı tekrarlar; reset modunda doğrulama
+      # tamamdır, reset aşamalarına geçilir (çağıran `reset_phase`).
+      if ((reset_mode == 1)); then :; else verify_production_after_migration; fi
+      ;;
+    reset-*) : ;;
     migrating) migration_fail MIGRATION_STATE_AMBIGUOUS 98 ;;
     writers-may-run | traffic-open | worker-allowed | cutover-done) : ;;
     *) migration_fail MIGRATION_PHASE_UNKNOWN ;;

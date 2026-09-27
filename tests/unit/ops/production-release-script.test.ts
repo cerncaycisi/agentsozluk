@@ -288,7 +288,8 @@ describe("schema-neutral production release lane", () => {
       const tuzak = phase.slice(phase.indexOf("migration_exit_trap() {"));
       expect(tuzak).toContain("frozen | backup-verified | rehearsed)");
       expect(tuzak).toContain("reopen_previous_release");
-      expect(tuzak).toContain("migrating | migrated | post-verified)");
+      // Reset aşamaları da (runbook v20) migration sonrası elle karara kalır.
+      expect(tuzak).toContain("migrating | migrated | post-verified | reset-*)");
       // Aşama yalnız ileri gider.
       expect(phase).toContain(
         'if (($(phase_rank "$next") <= $(phase_rank "$(current_phase)"))); then return 0; fi',
