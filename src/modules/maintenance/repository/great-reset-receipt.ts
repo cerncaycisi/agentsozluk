@@ -731,3 +731,76 @@ export function compareReceipts(
     unexpected,
   };
 }
+
+/*
+  Bağımsız restore kapısı (runbook v20 A5 reset modu, 4. adım): reset-anı yedeği operatör
+  sunucusundaki ayrı bir PostgreSQL kümesine sahiplik/ACL dahil restore edilir ve üretim
+  makbuzuyla karşılaştırılır. İçerik, şema ve sequence bölümleri birebir eşit olmalıdır.
+  Güvenlik bölümünde veritabanı nesnelerinin sahiplik ve yetkileri (`relation:`, `column:`,
+  `policy:`, `namespace:`, `defaultAcl:`, `type:`, `function:`) birebir eşit olmalıdır. Küme
+  kimliğine bağlı anahtarlar (roller, üyelikler, kurulum süper kullanıcısının sahip olduğu sistem
+  nesneleri, dil/extension üyeleri, parametre ve tablespace yetkileri) ve veritabanı bölümü
+  (locale, yorum, ayarlar) ortam farkı sayılır ve raporlanır; restore uygunluğunda kullanılmaz.
+*/
+const independentStrictSecurityPrefixes = [
+  "relation:",
+  "column:",
+  "policy:",
+  "namespace:",
+  "defaultAcl:",
+  "type:",
+  "function:",
+] as const;
+
+export function compareForIndependentRestore(
+  production: GreatResetReceipt,
+  independent: GreatResetReceipt,
+): { equal: boolean; blocking: string[]; environment: string[] } {
+  const result = compareReceipts(production, independent);
+  const blocking: string[] = [];
+  // Kendisiyle karşılaştırma yalnız iç tutarlılığı (bölüm özetleri ↔ ayrıntılar) sınar.
+  if (!compareReceipts(production, production).equal)
+    blocking.push("receipt:production-inconsistent");
+  if (!compareReceipts(independent, independent).equal)
+    blocking.push("receipt:independent-inconsistent");
+  for (const section of ["content", "schema", "sequences"] as const)
+    if (result.sections.includes(section)) blocking.push(`section:${section}`);
+  blocking.push(...result.tables.map((table) => `table:${table}`));
+  const environment: string[] = [];
+  for (const difference of result.differences) {
+    const key = `${difference.section}:${difference.key}`;
+    if (
+      difference.section === "sequences" ||
+      (difference.section === "security" &&
+        independentStrictSecurityPrefixes.some((prefix) => difference.key.startsWith(prefix)))
+    )
+      blocking.push(key);
+    else environment.push(key);
+  }
+  return { equal: blocking.length === 0, blocking: [...new Set(blocking)].sort(), environment };
+}
+
+/*
+  Canlı DB ↔ restore edilmiş kopya karşılaştırması (A5 dersi, 23 Eylül; reset kapısında 27 Eylül
+  yeniden ölçüldü): PostgreSQL restore'da CHECK ve indeks ifadelerini anlamca aynı ama yazımca farklı
+  üretir (iç içe AND düzleşir, dizi dönüşümleri yeniden yazılır). Bu yüzden şema bölümü canlı ile
+  kopya arasında karşılaştırılamaz; şema, arşivin şema betiğinin canlı şema dökümüyle birebir
+  eşitliğiyle ayrıca doğrulanır. Diğer bütün bölümler ve ayrıntılar birebir eşit olmalıdır.
+  İki restore edilmiş kopya arasında (üretim scratch'i ↔ operatör) şema bölümü kararlıdır.
+*/
+export function compareLiveWithRestored(
+  live: GreatResetReceipt,
+  restored: GreatResetReceipt,
+): { equal: boolean; sections: ReceiptSection[]; tables: string[]; unexpected: string[] } {
+  const result = compareReceipts(live, restored);
+  const consistent = compareReceipts(live, live).equal && compareReceipts(restored, restored).equal;
+  const sections = result.sections.filter((section) => section !== "schema");
+  const unexpected = result.differences.map((item) => `${item.section}:${item.key}`);
+  return {
+    equal:
+      consistent && sections.length === 0 && result.tables.length === 0 && unexpected.length === 0,
+    sections,
+    tables: result.tables,
+    unexpected,
+  };
+}

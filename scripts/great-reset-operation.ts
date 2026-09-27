@@ -18,6 +18,8 @@ import { localResetTarget } from "./great-reset-local-guard";
   great-reset-operation.ts intent-invalidate <operationId>
   great-reset-operation.ts receipt <çıktı.json> [--database <scratch>]
   great-reset-operation.ts receipt-compare <beklenen.json> <gerçek.json>
+  great-reset-operation.ts receipt-compare-restored <canlı.json> <restore.json>
+  great-reset-operation.ts receipt-compare-independent <üretim-scratch.json> <operatör.json>
   great-reset-operation.ts traffic-open <operationId>
   great-reset-operation.ts restore-eligibility <operationId> <reset-sonrası-makbuz.json>
 
@@ -104,6 +106,20 @@ async function main(argv: readonly string[]): Promise<string> {
       tables: result.tables,
       unexpected: result.unexpected.map((item) => `${item.section}:${item.key}`),
     });
+  }
+  if (command === "receipt-compare-restored" && rest.length === 2) {
+    const { compareLiveWithRestored } =
+      await import("../src/modules/maintenance/repository/great-reset-receipt");
+    const result = compareLiveWithRestored(readReceipt(rest[0]!), readReceipt(rest[1]!));
+    if (!result.equal) process.exitCode = 3;
+    return JSON.stringify(result);
+  }
+  if (command === "receipt-compare-independent" && rest.length === 2) {
+    const { compareForIndependentRestore } =
+      await import("../src/modules/maintenance/repository/great-reset-receipt");
+    const result = compareForIndependentRestore(readReceipt(rest[0]!), readReceipt(rest[1]!));
+    if (!result.equal) process.exitCode = 3;
+    return JSON.stringify(result);
   }
   let scratch: string | undefined;
   let args = rest;

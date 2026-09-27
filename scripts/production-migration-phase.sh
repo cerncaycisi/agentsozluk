@@ -1003,23 +1003,43 @@ post_verify() {
 # dahil) ve trigger'lar; sıralı.
 reset_table_definitions() {
   db_psql "$1" <<'SQL' | LC_ALL=C sort
+SELECT 'table:' || c.relname || '|' || c.relkind::text || '|' || c.relpersistence::text || '|'
+  || coalesce(c.reloptions::text, '-') || '|' || c.relrowsecurity::text || '|'
+  || c.relforcerowsecurity::text || '|' || c.relreplident::text || '|' || coalesce(am.amname, '-')
+  || '|' || coalesce(c.reltablespace::text, '0')
+FROM pg_class c LEFT JOIN pg_am am ON am.oid = c.relam
+WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics');
 SELECT 'column:' || c.relname || '|' || a.attname || '|' || format_type(a.atttypid, a.atttypmod)
   || '|' || a.attnotnull || '|' || coalesce(pg_get_expr(ad.adbin, ad.adrelid), '-')
+  || '|' || coalesce(co.collname, '-') || '|' || a.attstorage::text || '|'
+  || coalesce(nullif(a.attcompression::text, ''), '-') || '|' || coalesce(a.attstattarget::text, '-')
+  || '|' || coalesce(a.attoptions::text, '-') || '|' || coalesce(nullif(a.attidentity::text, ''), '-')
+  || '|' || coalesce(nullif(a.attgenerated::text, ''), '-') || '|' || a.attnum::text
 FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
 LEFT JOIN pg_attrdef ad ON ad.adrelid = a.attrelid AND ad.adnum = a.attnum
+LEFT JOIN pg_collation co ON co.oid = a.attcollation AND a.attcollation <> 0
 WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics')
   AND a.attnum > 0 AND NOT a.attisdropped;
 SELECT 'constraint:' || c.relname || '|' || con.conname || '|' || con.convalidated::text || '|'
-  || pg_get_constraintdef(con.oid)
+  || con.condeferrable::text || '|' || con.condeferred::text || '|' || pg_get_constraintdef(con.oid)
 FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid
 WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics');
-SELECT 'index:' || tablename || '|' || indexname || '|' || indexdef
-FROM pg_indexes WHERE schemaname = 'public' AND tablename IN ('entries', 'topics');
+SELECT 'index:' || i.tablename || '|' || i.indexname || '|' || i.indexdef || '|'
+  || x.indisvalid::text || '|' || x.indisready::text || '|' || x.indisreplident::text
+FROM pg_indexes i JOIN pg_class ic ON ic.relname = i.indexname
+  AND ic.relnamespace = 'public'::regnamespace
+JOIN pg_index x ON x.indexrelid = ic.oid
+WHERE i.schemaname = 'public' AND i.tablename IN ('entries', 'topics');
 SELECT 'trigger:' || c.relname || '|' || t.tgname || '|' || t.tgenabled::text || '|'
   || pg_get_triggerdef(t.oid)
 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
 WHERE NOT t.tgisinternal AND c.relnamespace = 'public'::regnamespace
   AND c.relname IN ('entries', 'topics');
+SELECT 'policy:' || tablename || '|' || policyname || '|' || cmd || '|' || permissive || '|'
+  || coalesce(qual, '-') || '|' || coalesce(with_check, '-') || '|' || roles::text
+FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('entries', 'topics');
+SELECT 'rule:' || tablename || '|' || rulename || '|' || definition
+FROM pg_rules WHERE schemaname = 'public' AND tablename IN ('entries', 'topics');
 SQL
 }
 
@@ -1032,8 +1052,8 @@ reset_assert_table_definitions() {
   {
     sed -E 's/^(column:(entries|topics)\|publicId\|)integer\|/\1bigint|/' "$pre"
     printf '%s\n' \
-      'constraint:entries|entries_public_id_legacy_range_check|true|CHECK (("publicId" <= 2147483647))' \
-      'constraint:topics|topics_public_id_legacy_range_check|true|CHECK (("publicId" <= 2147483647))'
+      'constraint:entries|entries_public_id_legacy_range_check|true|false|false|CHECK (("publicId" <= 2147483647))' \
+      'constraint:topics|topics_public_id_legacy_range_check|true|false|false|CHECK (("publicId" <= 2147483647))'
   } | LC_ALL=C sort >"$migration_dir/reset-expected-defs-$label"
   reset_table_definitions "$database" >"$migration_dir/reset-post-defs-$label"
   cmp -s "$migration_dir/reset-expected-defs-$label" "$migration_dir/reset-post-defs-$label" ||
@@ -1242,11 +1262,6 @@ migration_exit_trap() {
         # dondurmayı baştan kurar (Sol, 23 Eylül).
         if ((freeze_started == 1)) || test "$(current_phase)" != image-verified; then
           if reopen_previous_release; then
-            # Reset modu: devre dışı bırakılan timer'lar ve yığın birimi de önceki duruma döner.
-            if ((reset_mode == 1)) && test -f "$migration_marker/reset-units"; then
-              (reset_restore_units) ||
-                printf 'RELEASE_WARN reset units could not be restored; see runbook\n' >&2
-            fi
             printf 'image-verified\n' >"$migration_marker/phase.next" &&
               mv -Tf "$migration_marker/phase.next" "$migration_marker/phase" &&
               printf 'RELEASE_MIGRATION_PHASE image-verified (rewound after reopen)\n' >&2
@@ -1260,6 +1275,13 @@ migration_exit_trap() {
           "$(current_phase)" >&2
         ;;
     esac
+    # Reset modu: prod şeması değişmeden önceki her hatada (dondurma yarıda kalmış olsa da)
+    # devre dışı bırakılan timer'lar ve yığın birimi önceki durumuna döner (Astra, PR #239 P2).
+    if ((reset_mode == 1)) && test -f "$migration_marker/reset-units" &&
+       ! phase_reached migrating; then
+      (reset_restore_units) ||
+        printf 'RELEASE_WARN reset units could not be restored; see runbook\n' >&2
+    fi
   fi
   exit "$status"
 }

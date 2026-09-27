@@ -227,16 +227,20 @@ reset_ledger_gate() {
     return 0
   fi
   IFS='|' read -r _ reset_await_dump reset_await_receipt <"$request"
-  printf 'RELEASE_RESET_AWAIT_LEDGER state=%s operation=%s dump_sha256=%s receipt_sha256=%s dump_path=%s receipt_path=%s\n' \
+  local reference reference_sha='-'
+  reference="$(reset_await_receipt_path "$state")"
+  if test "$reference" != -; then reference_sha="$(reset_json_field sha256 <"$reference")"; fi
+  printf 'RELEASE_RESET_AWAIT_LEDGER state=%s operation=%s dump_sha256=%s receipt_sha256=%s dump_path=%s reference_path=%s reference_sha256=%s\n' \
     "$state" "$reset_operation_id" "$reset_await_dump" "$reset_await_receipt" \
     "$(cat "$migration_marker/reset-dump-path" 2>/dev/null || printf '-')" \
-    "$(reset_await_receipt_path "$state")"
+    "$reference" "$reference_sha"
   exit "$reset_ledger_exit"
 }
 
 reset_await_receipt_path() {
   case "$1" in
-    PREPARED) cat "$migration_marker/reset-pre-receipt-path" 2>/dev/null || printf -- '-' ;;
+    # Operatör kapısı restore edilmiş scratch makbuzuyla karşılaştırır (ikisi de restore).
+    PREPARED) cat "$migration_marker/reset-scratch-receipt-path" 2>/dev/null || printf -- '-' ;;
     COMMITTED_MAINTENANCE | TRAFFIC_OPEN)
       cat "$migration_marker/reset-post-receipt-path" 2>/dev/null || printf -- '-'
       ;;
@@ -247,8 +251,16 @@ reset_await_receipt_path() {
 # Vazgeçme ve sonuç uzlaşısı, dolmuş kesinti bütçesiyle de çalışabilmeli: A5 tuzağı gibi ayrı,
 # sınırlı bir kurtarma bütçesi (10 dk) açılır (Astra, PR #239 P1).
 reset_recovery_budget() {
+  local file="$migration_marker/reset-recovery-deadline"
+  # Tek, kalıcı son süre (Astra, PR #239 2. tur P2): ilk açılışta yazılır; sonraki çağrılar ve
+  # yeniden girişler aynı süreyi kullanır. Süre dolunca komutlar 1 sn sınırla düşer ve durulur.
+  if test ! -f "$file"; then
+    printf '%s\n' "$(($(date +%s) + 600))" >"$file.next"
+    mv -Tf "$file.next" "$file"
+  fi
   recovering=1
-  frozen_deadline=$(($(date +%s) + 600))
+  frozen_deadline="$(cat "$file")"
+  [[ "$frozen_deadline" =~ ^[0-9]+$ ]] || migration_fail RESET_RECOVERY_DEADLINE_INVALID
 }
 
 reset_frozen_at() {
@@ -335,6 +347,13 @@ reset_invalidate_intent() {
 
 reset_backup_and_verify() {
   local stamp dump partial dump_sha scratch pre_receipt scratch_receipt deadline collate ctype
+  # İstek kalıcılaşmış ama faz yazılamadan kesildiyse doğrulanmış eski yedek ve makbuzlar
+  # kullanılır; yeniden dump aynı SHA'yı garanti etmez (Astra, PR #239 2. tur P2).
+  if test -f "$migration_marker/reset-request-PREPARED"; then
+    reset_assert_prepared_artifacts
+    set_phase reset-backup-verified
+    return 0
+  fi
   assert_frozen
   assert_disk_budget full
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -377,11 +396,31 @@ reset_backup_and_verify() {
   scratch_receipt="$migration_dir/reset-scratch-receipt-$stamp.json"
   reset_cli scripts/great-reset-operation.ts receipt "$scratch_receipt" --database "$scratch" \
     >/dev/null || migration_fail RESET_SCRATCH_RECEIPT_FAILED
-  reset_cli scripts/great-reset-operation.ts receipt-compare "$pre_receipt" "$scratch_receipt" \
-    >"$migration_dir/reset-restore-compare.json" || migration_fail RESET_RESTORE_RECEIPT_MISMATCH
+  # Canlı ↔ restore: şema dışındaki bütün makbuz bölümleri birebir; şema, arşivin şema betiği ile
+  # canlı şema dökümünün birebir eşitliğiyle (A5 yöntemi; restore ifadeleri yeniden yazar).
+  reset_cli scripts/great-reset-operation.ts receipt-compare-restored "$pre_receipt" \
+    "$scratch_receipt" >"$migration_dir/reset-restore-compare.json" ||
+    migration_fail RESET_RESTORE_RECEIPT_MISMATCH
+  test "$(archive_schema_hash "$dump")" = "$(schema_hash agent_sozluk)" ||
+    migration_fail RESET_BACKUP_SCHEMA_MISMATCH
+  printf '%s\n' "$scratch_receipt" >"$migration_marker/reset-scratch-receipt-path"
   drop_scratch || migration_fail SCRATCH_DROP_FAILED
   reset_request_ledger PREPARED "$dump_sha" "$(reset_json_field sha256 <"$pre_receipt")"
   set_phase reset-backup-verified
+}
+
+reset_assert_prepared_artifacts() {
+  local dump dump_sha pre scratch
+  dump="$(cat "$migration_marker/reset-dump-path")"
+  dump_sha="$(cat "$migration_marker/reset-dump-sha256")"
+  pre="$(cat "$migration_marker/reset-pre-receipt-path")"
+  scratch="$(cat "$migration_marker/reset-scratch-receipt-path")"
+  test -f "$dump" && test -f "$pre" && test -f "$scratch" || migration_fail RESET_PREPARED_ARTIFACT_MISSING
+  test "$(sha256sum "$dump" | cut -d ' ' -f 1)" = "$dump_sha" ||
+    migration_fail RESET_PREPARED_ARTIFACT_CHANGED
+  test "$(cat "$migration_marker/reset-request-PREPARED")" = \
+    "PREPARED|$dump_sha|$(reset_json_field sha256 <"$pre")" ||
+    migration_fail RESET_PREPARED_ARTIFACT_CHANGED
 }
 
 # Reset CLI'si hata verdiyse sonuç DB'den uzlaştırılır. Kapı kapalı kaldıysa yönetici konsolu
@@ -431,6 +470,13 @@ reset_commit() {
   plan="$(reset_json_field planSha256 <<<"$preview")"
   if test "$blocked" != '[]' || ! [[ "$plan" =~ ^[0-9a-f]{64}$ ]]; then
     printf 'RELEASE_RESET_ABORT reason=PREVIEW_BLOCKED\n' >&2
+    reset_begin_abort
+    return 0
+  fi
+  # Önizleme vazgeçme sınırını aşmış olabilir: geri döndürülemez adımdan hemen önce yeniden
+  # denetlenir (Astra, PR #239 2. tur P1).
+  if (($(date +%s) > $(reset_frozen_at) + reset_abort_seconds)); then
+    printf 'RELEASE_RESET_ABORT reason=ABORT_DEADLINE_PASSED_AFTER_PREVIEW\n' >&2
     reset_begin_abort
     return 0
   fi

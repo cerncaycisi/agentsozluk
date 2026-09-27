@@ -59,7 +59,8 @@ describe("A5 reset modu aşamaları", () => {
   it("dış kayıt isteği 75 ile çıkar, A5 kurtarmasını tetiklemez; onaysız yeniden giriş isteği tekrarlar", () => {
     const first = harness(`
 printf '/opt/x.dump\\n' >"$migration_marker/reset-dump-path"
-printf '/opt/pre.json\\n' >"$migration_marker/reset-pre-receipt-path"
+printf '{"sha256":"${"e".repeat(64)}"}' >"$state_dir/scratch.json"
+printf '%s\\n' "$state_dir/scratch.json" >"$migration_marker/reset-scratch-receipt-path"
 reopen_previous_release() { echo REOPENED; }
 trap migration_exit_trap EXIT
 reset_request_ledger PREPARED ${"b".repeat(64)} ${"c".repeat(64)}
@@ -69,7 +70,7 @@ reset_ledger_gate PREPARED
     expect(first.stdout).toContain(
       `RELEASE_RESET_AWAIT_LEDGER state=PREPARED operation=${operationId} dump_sha256=${"b".repeat(64)}`,
     );
-    expect(first.stdout).toContain("receipt_path=/opt/pre.json");
+    expect(first.stdout).toContain(`reference_sha256=${"e".repeat(64)}`);
     expect(first.stdout).not.toContain("REOPENED");
   });
 
@@ -345,5 +346,67 @@ reset_flags >/dev/null
     const sql = readFileSync(path.join(result.root, "calls.log"), "utf8");
     expect(sql).toContain("ARRAY['runtimeEnabled', 'schedulerEnabled', 'publicWriteEnabled',");
     expect(sql).toContain("WHERE id = 'global'");
+  });
+  it("önizleme vazgeçme sınırını aşarsa EXECUTE başlamaz", () => {
+    const result = harness(`
+printf 'reset-prepared\\n' >"$migration_marker/phase"
+printf '%s\\n' "$(($(date +%s) + max_downtime_seconds - reset_abort_seconds + 1))" >"$migration_marker/frozen-deadline"
+printf '{"sha256":"${"e".repeat(64)}"}' >"$state_dir/pre.json"
+printf '%s\\n' "$state_dir/pre.json" >"$migration_marker/reset-pre-receipt-path"
+reset_invalidate_intent() { :; }
+reset_finish_abort() { echo FINISH_ABORT; }
+reset_cli() {
+  printf 'cli %s\\n' "$*" >>"$log"
+  case "$2" in
+    --dry-run) sleep 2; printf '{"planSha256":"${"f".repeat(64)}","blockedBy":[]}' ;;
+  esac
+}
+reset_commit
+`);
+    expect(result.stderr).toContain("reason=ABORT_DEADLINE_PASSED_AFTER_PREVIEW");
+    expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain("--execute");
+  });
+
+  it("PREPARED isteği kalıcıysa yeniden girişte yeni yedek alınmaz, eski yedek doğrulanır", () => {
+    const result = harness(`
+printf 'yedek' >"$state_dir/x.dump"
+sha=$(sha256sum "$state_dir/x.dump" | cut -d ' ' -f 1)
+printf '{"sha256":"${"e".repeat(64)}"}' >"$state_dir/pre.json"
+printf '{}' >"$state_dir/scratch.json"
+printf '%s\\n' "$state_dir/x.dump" >"$migration_marker/reset-dump-path"
+printf '%s\\n' "$sha" >"$migration_marker/reset-dump-sha256"
+printf '%s\\n' "$state_dir/pre.json" >"$migration_marker/reset-pre-receipt-path"
+printf '%s\\n' "$state_dir/scratch.json" >"$migration_marker/reset-scratch-receipt-path"
+reset_request_ledger PREPARED "$sha" ${"e".repeat(64)}
+reset_backup_and_verify && echo PHASE_$(current_phase)
+printf 'değişti' >"$state_dir/x.dump"
+reset_backup_and_verify
+`);
+    expect(result.stdout).toContain("PHASE_reset-backup-verified");
+    expect(result.stderr).toContain("code=RESET_PREPARED_ARTIFACT_CHANGED");
+    expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain("pg_dump");
+  });
+
+  it("kurtarma bütçesi tek ve kalıcı bir son süredir", () => {
+    const result = harness(`
+reset_recovery_budget
+first=$frozen_deadline
+sleep 1
+reset_recovery_budget
+test "$first" = "$frozen_deadline" && echo SAME
+`);
+    expect(result.stdout).toContain("SAME");
+  });
+
+  it("dondurma yarıda kalan erken hatada birimler önceki durumuna döner", () => {
+    const result = harness(`
+printf 'image-verified\\n' >"$migration_marker/phase"
+printf 'agent-sozluk-alarm.timer|enabled|active\\n' >"$migration_marker/reset-units"
+reset_restore_units() { echo UNITS_RESTORED; }
+reopen_previous_release() { echo REOPENED; }
+trap migration_exit_trap EXIT
+false
+`);
+    expect(result.stdout).toContain("UNITS_RESTORED");
   });
 });
