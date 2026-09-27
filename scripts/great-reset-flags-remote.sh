@@ -40,6 +40,17 @@ reset_flags_writer_idle_guard() {
      flock -w 240 9 || { printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_WRITER_ACTIVE lock kept\\n' >&2; exit 97; }"
 }
 
+# Bayrak/koşu mutatörlerinin ortak kritik bölümü (Astra #243 4.-5. tur P1): süreç kilidi alınır,
+# ardından kilit tutulurken dağıtım kilidi sahipliği yeniden denetlenir. Mutatörler (dondurma,
+# boşaltma, geri açılış) başlatıcısız tek Node süreci olarak koşar ve kilidi miras alarak ömürleri
+# boyunca tutar. $1 = dağıtım kilidi sahiplik denetimi.
+reset_flags_writer_section() {
+  test -n "$1" || return 1
+  printf '%s' "exec 9>'$reset_flags_writer_lock'
+     flock -n 9 || { printf 'RELEASE_RESET_FLAGS_WRITER_BUSY\\n' >&2; exit 97; }
+     $1"
+}
+
 # Olumlu kanıtlı geri açılış gövdesi (prelude'dan SONRA). $1 = operasyon kimliği, $2 = dağıtım
 # kilidi sahiplik denetimi: süreç kilidi ALINDIKTAN SONRA, kilit tutulurken yeniden koşar; böylece
 # hazırlıkta gecikip dağıtım kilidi bırakıldıktan sonra uyanan eski komut yazamaz (Astra #243
@@ -51,9 +62,7 @@ reset_flags_restore_body() {
   local file owner_check="$2"
   file="$(reset_drain_flags_path "$1")"
   test -n "$owner_check" || return 1
-  printf '%s' "exec 9>'$reset_flags_writer_lock'
-     flock -n 9 || { printf 'RELEASE_RESET_FLAGS_RESTORE_REFUSED reason=writer-active\\n' >&2; exit 97; }
-     $owner_check
+  printf '%s' "$(reset_flags_writer_section "$owner_check")
      if test -e /opt/agent-sozluk/runtime/.migration-hold; then
        printf 'RELEASE_RESET_FLAGS_RESTORE_REFUSED reason=maintenance-hold\\n' >&2
        exit 97

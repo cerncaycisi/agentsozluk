@@ -720,10 +720,11 @@ reset_restore_society_flags() {
 # 2. tur P1). Geri dönüşte ve başlamış bakımda (yeniden giriş) boşaltma atlanır.
 if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then
   if ! reset_operator_ssh 1080 1 \
-    "AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
-       timeout --kill-after=10 120 ./node_modules/.bin/tsx scripts/agent-write-freeze.ts freeze '$(reset_drain_flags_path "$great_reset_operation")'
+    "$(reset_flags_writer_section "$lock_check")
      AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
-       timeout --kill-after=10 960 ./node_modules/.bin/tsx scripts/great-reset-drain.ts drain"; then
+       timeout --kill-after=10 120 node --import tsx scripts/agent-write-freeze.ts freeze '$(reset_drain_flags_path "$great_reset_operation")'
+     AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
+       timeout --kill-after=10 960 node --import tsx scripts/great-reset-drain.ts drain"; then
     printf 'RELEASE_WRAPPER_FAIL code=RESET_DRAIN_FAILED\n' >&2
     if reset_restore_society_flags 1; then
       ssh "${ssh_options[@]}" deploy@"$expected_ip" \

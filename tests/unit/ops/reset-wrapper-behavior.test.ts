@@ -510,7 +510,7 @@ for pid in $(pgrep -x timeout); do
 done
 if bash -c "set -euo pipefail
 $body" >second.out 2>&1; then echo SECOND_RAN; fi
-grep -q 'reason=writer-active' second.out && echo SECOND_REFUSED
+grep -q 'RELEASE_RESET_FLAGS_WRITER_BUSY' second.out && echo SECOND_REFUSED
 start=$(date +%s%N)
 bash -c "set -euo pipefail
 $guard
@@ -564,9 +564,7 @@ cat late.out
     expect(result.stdout).not.toContain("RELEASE_RESET_FLAGS_RESTORED");
     const flagsRemote = readFileSync("scripts/great-reset-flags-remote.sh", "utf8");
     // Sahiplik denetimi süreç kilidi alındıktan SONRA.
-    expect(flagsRemote.indexOf("     $owner_check\n")).toBeGreaterThan(
-      flagsRemote.indexOf("flock -n 9"),
-    );
+    expect(flagsRemote.indexOf('     $1"')).toBeGreaterThan(flagsRemote.indexOf("flock -n 9"));
     for (const file of [
       "scripts/deploy-production-no-migration.sh",
       "scripts/great-reset-restore-flags.sh",
@@ -582,6 +580,62 @@ cat late.out
     expect(readFileSync("scripts/great-reset-restore-flags.sh", "utf8")).toContain(
       "     $(reset_flags_writer_idle_guard)\n     find '$lock_dir' -xdev -depth -delete",
     );
+  });
+
+  it("boşaltma ve dondurma da ortak kritik bölümde: süreç kilidi, sonra sahiplik; başlatıcısız Node", () => {
+    const source = readFileSync("scripts/deploy-production-no-migration.sh", "utf8");
+    const drain = source.indexOf(
+      'if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then',
+    );
+    const block = source.slice(drain, source.indexOf("\nfi\n", drain));
+    const section = block.indexOf('"$(reset_flags_writer_section "$lock_check")');
+    expect(section).toBeGreaterThan(0);
+    expect(section).toBeLessThan(block.indexOf("agent-write-freeze.ts freeze"));
+    expect(section).toBeLessThan(block.indexOf("great-reset-drain.ts drain"));
+    expect(block).toContain(
+      "timeout --kill-after=10 120 node --import tsx scripts/agent-write-freeze.ts freeze",
+    );
+    expect(block).toContain(
+      "timeout --kill-after=10 960 node --import tsx scripts/great-reset-drain.ts drain",
+    );
+    // Bayrak/koşu mutatörlerinin hiçbiri tsx başlatıcısıyla koşmaz.
+    for (const file of [
+      "scripts/deploy-production-no-migration.sh",
+      "scripts/great-reset-flags-remote.sh",
+      "scripts/great-reset-restore-flags.sh",
+    ]) {
+      const text = readFileSync(file, "utf8");
+      expect(text).not.toMatch(/\.bin\/tsx scripts\/(agent-write-freeze|great-reset-drain)\.ts/u);
+    }
+    // Bölümün kendisi: meşgulse ve sahiplik değiştiyse mutasyona geçmez.
+    const root = mkdtempSync(path.join(tmpdir(), "reset-flags-section-"));
+    directories.push(root);
+    const script = `
+set -euo pipefail
+source scripts/great-reset-flags-remote.sh
+owner_check="test \\"\\$(cat ${root}/owner 2>/dev/null)\\" = 'eski' || exit 97"
+section="$(reset_flags_writer_section "$owner_check")"
+section="\${section//\\/opt\\/agent-sozluk\\/runtime/${root}}"
+printf 'yeni\\n' >${root}/owner
+if bash -c "set -euo pipefail
+$section
+echo MUTATED"; then :; else echo "OWNER_EXIT=$?"; fi
+printf 'eski\\n' >${root}/owner
+exec 8>${root}/.great-reset-flags.lock
+flock -n 8
+if bash -c "set -euo pipefail
+$section
+echo MUTATED" 2>busy.err; then :; else echo "BUSY_EXIT=$?"; fi
+exec 8>&-
+bash -c "set -euo pipefail
+$section
+echo MUTATED_OK"
+`;
+    const result = spawnSync("bash", ["-c", script], { encoding: "utf8", cwd: process.cwd() });
+    expect(result.stdout).toContain("OWNER_EXIT=97");
+    expect(result.stdout).toContain("BUSY_EXIT=97");
+    expect(result.stdout).not.toContain("MUTATED\n");
+    expect(result.stdout).toContain("MUTATED_OK");
   });
 
   it("tek amaçlı geri açılış komutu sarmalayıcıyla aynı hedefi kullanır ve exact onay ister", () => {
