@@ -40,14 +40,20 @@ reset_flags_writer_idle_guard() {
      flock -w 240 9 || { printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_WRITER_ACTIVE lock kept\\n' >&2; exit 97; }"
 }
 
-# Olumlu kanıtlı geri açılış gövdesi (prelude'dan SONRA). $1 = operasyon kimliği.
+# Olumlu kanıtlı geri açılış gövdesi (prelude'dan SONRA). $1 = operasyon kimliği, $2 = dağıtım
+# kilidi sahiplik denetimi: süreç kilidi ALINDIKTAN SONRA, kilit tutulurken yeniden koşar; böylece
+# hazırlıkta gecikip dağıtım kilidi bırakıldıktan sonra uyanan eski komut yazamaz (Astra #243
+# 4. tur P1). Yazıcı `tsx` başlatıcısı olmadan tek Node süreci olarak (`node --import tsx`) koşar:
+# süreç kilidini asıl yazıcı tutar; başlatıcı ölse de kilitsiz yazıcı kalmaz.
 # Başarıyı yalnız uzak taraf bildirir: RELEASE_RESET_FLAGS_RESTORED. Kayıt yoksa
 # RELEASE_RESET_FLAGS_RESTORE_SKIPPED (geri yükleme kanıtı değildir).
 reset_flags_restore_body() {
-  local file
+  local file owner_check="$2"
   file="$(reset_drain_flags_path "$1")"
+  test -n "$owner_check" || return 1
   printf '%s' "exec 9>'$reset_flags_writer_lock'
      flock -n 9 || { printf 'RELEASE_RESET_FLAGS_RESTORE_REFUSED reason=writer-active\\n' >&2; exit 97; }
+     $owner_check
      if test -e /opt/agent-sozluk/runtime/.migration-hold; then
        printf 'RELEASE_RESET_FLAGS_RESTORE_REFUSED reason=maintenance-hold\\n' >&2
        exit 97
@@ -66,6 +72,6 @@ reset_flags_restore_body() {
        exit 0
      fi
      AGENT_FLOW_REASON='great reset ${1:0:8} açılış' \\
-       timeout --kill-after=10 180 ./node_modules/.bin/tsx scripts/agent-write-freeze.ts restore '$file'
+       timeout --kill-after=10 180 node --import tsx scripts/agent-write-freeze.ts restore '$file'
      printf 'RELEASE_RESET_FLAGS_RESTORED\\n'"
 }

@@ -701,7 +701,7 @@ reset_operator_ssh() {
 reset_restore_society_flags() {
   local attempts="$1" attempt output
   for ((attempt = 1; attempt <= attempts; attempt++)); do
-    if output="$(reset_operator_ssh 240 0 "$(reset_flags_restore_body "$great_reset_operation")")"; then
+    if output="$(reset_operator_ssh 240 0 "$(reset_flags_restore_body "$great_reset_operation" "$lock_check")")"; then
       printf '%s\n' "$output"
       if grep -Eq '^RELEASE_RESET_FLAGS_(RESTORED$|RESTORE_SKIPPED )' <<<"$output"; then
         return 0

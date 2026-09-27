@@ -103,7 +103,7 @@ output="$(
      $scope_check
      $lock_check
      $(reset_operator_remote_prelude "$candidate_sha")
-     $(reset_flags_restore_body "$operation")"
+     $(reset_flags_restore_body "$operation" "$lock_check")"
 )" || status=$?
 printf '%s\n' "$output"
 # Kendi kilidimiz yalnız uzak yazıcının bittiği (süreç kilidi alınabildi) kanıtlanınca bırakılır;

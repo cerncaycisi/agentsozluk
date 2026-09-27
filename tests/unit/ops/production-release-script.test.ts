@@ -223,7 +223,11 @@ describe("schema-neutral production release lane", () => {
       expect(kilit).toBeLessThan(checkout);
       // Kilidi alan komut dışındaki her uzak komut sahipliği sınar.
       const uzakKomutlar = wrapper.split('"set -euo pipefail').length - 1;
-      expect(wrapper.split("$lock_check").length - 1).toBe(uzakKomutlar - 1);
+      // Great reset bayrak yazıcısına argüman olarak verilen sahiplik denetimi (süreç kilidi
+      // alındıktan sonra yeniden koşar) uzak komut sayılmaz.
+      const argumanOlarak = wrapper.split('"$lock_check")').length - 1;
+      expect(argumanOlarak).toBe(1);
+      expect(wrapper.split("$lock_check").length - 1 - argumanOlarak).toBe(uzakKomutlar - 1);
       // Kilidi alan dahil her uzak komut önce kayıtlı logind oturum scope'unu kanıtlar.
       expect(wrapper.split("   $scope_check").length - 1).toBe(uzakKomutlar);
       expect(wrapper.indexOf("$scope_check", wrapper.indexOf("lock_dir=/opt"))).toBeLessThan(kilit);

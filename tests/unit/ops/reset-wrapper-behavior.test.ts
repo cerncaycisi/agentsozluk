@@ -440,9 +440,9 @@ echo "CALLS=$(wc -l <"$BODY_FILE.count")"
       const script = `
 set -euo pipefail
 source scripts/great-reset-flags-remote.sh
-body="$(reset_flags_restore_body ${operationId})"
+body="$(reset_flags_restore_body ${operationId} ':')"
 body="\${body//\\/opt\\/agent-sozluk\\/runtime/${runtime}}"
-body="\${body//timeout --kill-after=10 180 .\\/node_modules\\/.bin\\/tsx/echo TSX}"
+body="\${body//timeout --kill-after=10 180 node --import tsx/echo TSX}"
 mkdir -p "${runtime}"
 cd "${runtime}"
 ${setup}
@@ -479,50 +479,102 @@ $body"
     expect(noRecord.stdout).not.toContain("TSX");
   });
 
-  it("uzak yazıcı süreç kilidini çocuğuyla tutar; ebeveyn ölse de dağıtım kilidi yazıcı bitene dek bırakılmaz", () => {
+  it("süreç kilidini gerçek yazıcı (tek Node süreci) tutar; başlatıcı öldürülse de bekçi yazıcı bitene dek bekler", () => {
     const root = mkdtempSync(path.join(tmpdir(), "reset-flags-lock-"));
     directories.push(root);
     const runtime = path.join(root, "runtime");
+    const sleeper = path.join(root, "writer.mjs");
     const script = `
 set -euo pipefail
+printf 'setTimeout(() => console.log("TSX"), 3000);\\n' >"${sleeper}"
 source scripts/great-reset-flags-remote.sh
-body="$(reset_flags_restore_body ${operationId})"
+body="$(reset_flags_restore_body ${operationId} ':')"
 guard="$(reset_flags_writer_idle_guard)"
 for name in body guard; do
   value="\${!name}"
   value="\${value//\\/opt\\/agent-sozluk\\/runtime/${runtime}}"
-  value="\${value//timeout --kill-after=10 180 .\\/node_modules\\/.bin\\/tsx/sleep 3; echo TSX}"
-  value="\${value//flock -w 240/flock -w 10}"
+  # Gerçek zincir: timeout -> node (başlatıcısız); yalnız betik zararsız bir yazıcı taklidi.
+  value="\${value//node --import tsx scripts\\/agent-write-freeze.ts restore/node ${sleeper}}"
+  value="\${value//flock -w 240/flock -w 15}"
   printf -v "$name" '%s' "$value"
 done
 mkdir -p "${runtime}"
 cd "${runtime}"
 : >.great-reset-drain-flags-${operationId}.json
-# SSH kopması taklidi: yazıcının kabuğu öldürülür, çocuğu (miras alınan kilit tanımlayıcısıyla) sürer.
 bash -c "set -euo pipefail
 $body" >writer.out 2>&1 &
-writer=$!
 sleep 1
-pkill -P "$writer" -x bash 2>/dev/null || true
-kill "$writer" 2>/dev/null || true
-# İkinci yazıcı reddedilir.
+# Başlatıcı kaybı: timeout SIGKILL ile ölür; Node yazıcı sürer ve kilidi tutar.
+for pid in $(pgrep -x timeout); do
+  if tr '\\0' ' ' </proc/$pid/cmdline | grep -q "^timeout --kill-after=10 180 node ${sleeper}"; then kill -KILL "$pid"; echo LAUNCHER_KILLED; fi
+done
 if bash -c "set -euo pipefail
 $body" >second.out 2>&1; then echo SECOND_RAN; fi
 grep -q 'reason=writer-active' second.out && echo SECOND_REFUSED
-start=$(date +%s)
+start=$(date +%s%N)
 bash -c "set -euo pipefail
 $guard
 echo GUARD_PASSED"
-echo "WAITED=$(( $(date +%s) - start ))"
+pgrep -f "^node ${sleeper}" >/dev/null && echo WRITER_STILL_RUNNING || true
+echo "WAITED_MS=$(( ($(date +%s%N) - start) / 1000000 ))"
 `;
     const result = spawnSync("bash", ["-c", script], { encoding: "utf8", timeout: 60_000 });
+    expect(result.stdout).toContain("LAUNCHER_KILLED");
     expect(result.stdout).toContain("SECOND_REFUSED");
     expect(result.stdout).not.toContain("SECOND_RAN");
     expect(result.stdout).toContain("GUARD_PASSED");
-    // Bekçi, ebeveyni öldürülmüş yazıcının çocuğu bitene dek bekledi (sleep 3, 1 sn sonra öldürme).
-    expect(Number(/WAITED=(\d+)/u.exec(result.stdout)?.[1])).toBeGreaterThanOrEqual(1);
+    // Bekçi geçtiğinde yazıcı bitmiş olmalı.
+    expect(result.stdout).not.toContain("WRITER_STILL_RUNNING");
+    expect(Number(/WAITED_MS=(\d+)/u.exec(result.stdout)?.[1])).toBeGreaterThanOrEqual(1000);
+  });
+
+  it("dağıtım kilidi bırakıldıktan sonra uyanan gecikmiş yazıcı, süreç kilidini alsa da yazmaz", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "reset-flags-late-"));
+    directories.push(root);
+    const runtime = path.join(root, "runtime");
+    const script = `
+set -euo pipefail
+source scripts/great-reset-flags-remote.sh
+owner_check="test \\"\\$(cat ${runtime}/.release-lock/owner 2>/dev/null)\\" = 'eski-sahip' || exit 97"
+body="$(reset_flags_restore_body ${operationId} "$owner_check")"
+guard="$(reset_flags_writer_idle_guard)"
+for name in body guard; do
+  value="\${!name}"
+  value="\${value//\\/opt\\/agent-sozluk\\/runtime/${runtime}}"
+  value="\${value//timeout --kill-after=10 180 node --import tsx/echo TSX}"
+  printf -v "$name" '%s' "$value"
+done
+mkdir -p "${runtime}/.release-lock"
+cd "${runtime}"
+: >.great-reset-drain-flags-${operationId}.json
+printf 'eski-sahip\\n' >.release-lock/owner
+# Bekçi süreç kilidini alır ve dağıtım kilidini bırakır; yeni dağıtım kilidi alır.
+bash -c "set -euo pipefail
+$guard
+rm -rf ${runtime}/.release-lock"
+mkdir .release-lock; printf 'yeni-sahip\\n' >.release-lock/owner
+# Hazırlıkta gecikmiş eski yazıcı şimdi uyanır.
+if bash -c "set -euo pipefail
+$body" >late.out 2>&1; then echo LATE_OK; else echo "LATE_EXIT=$?"; fi
+cat late.out
+`;
+    const result = spawnSync("bash", ["-c", script], { encoding: "utf8", timeout: 60_000 });
+    expect(result.stdout).toContain("LATE_EXIT=97");
+    expect(result.stdout).not.toContain("TSX");
+    expect(result.stdout).not.toContain("RELEASE_RESET_FLAGS_RESTORED");
+    const flagsRemote = readFileSync("scripts/great-reset-flags-remote.sh", "utf8");
+    // Sahiplik denetimi süreç kilidi alındıktan SONRA.
+    expect(flagsRemote.indexOf("     $owner_check\n")).toBeGreaterThan(
+      flagsRemote.indexOf("flock -n 9"),
+    );
+    for (const file of [
+      "scripts/deploy-production-no-migration.sh",
+      "scripts/great-reset-restore-flags.sh",
+    ])
+      expect(readFileSync(file, "utf8")).toMatch(
+        /reset_flags_restore_body "\$[a-z_]+" "\$lock_check"/u,
+      );
     const source = readFileSync("scripts/deploy-production-no-migration.sh", "utf8");
-    // Dağıtım kilidini bırakan great reset yolları bekçiyi silmeden önce çalıştırır.
     expect(source).toContain("   $reset_release_guard\n   find '$lock_dir' -xdev -depth -delete");
     expect(source).toContain(
       "         $(reset_flags_writer_idle_guard)\n         find '$lock_dir' -xdev -depth -delete",
@@ -545,7 +597,7 @@ echo "WAITED=$(( $(date +%s) - start ))"
       const pattern = new RegExp(`^${name}=(.+)$`, "mu");
       expect(restore.match(pattern)?.[1], name).toBe(wrapper.match(pattern)?.[1]);
     }
-    expect(restore).toContain('$(reset_flags_restore_body "$operation")');
+    expect(restore).toContain('$(reset_flags_restore_body "$operation" "$lock_check")');
     const refused = spawnSync("bash", ["scripts/great-reset-restore-flags.sh", operationId, sha], {
       encoding: "utf8",
       env: { ...process.env, AGENT_SOZLUK_GREAT_RESET_APPROVED: "" },
