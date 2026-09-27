@@ -1,6 +1,7 @@
 import { closeSync, constants, lstatSync, openSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import {
+  alreadyRecorded,
   appendRecord,
   ledgerRestoreBlockers,
   ledgerStates,
@@ -90,24 +91,29 @@ function main(argv: readonly string[]): string {
     if (!ledgerStates.includes(state as LedgerState)) fail("STATE_INVALID");
     return withLock(file, () => {
       const previous = readLedger(file);
-      const updated = appendRecord(
-        previous,
-        {
-          state: state as LedgerState,
-          operationId,
-          releaseSha,
-          dumpSha256,
-          dumpClass: "RESET_MOMENT",
-          postResetReceiptSha256: receipt === "-" ? null : receipt,
-        },
-        new Date(),
-      );
+      const next = {
+        state: state as LedgerState,
+        operationId,
+        releaseSha,
+        dumpSha256,
+        dumpClass: "RESET_MOMENT" as const,
+        postResetReceiptSha256: receipt === "-" ? null : receipt,
+      };
+      const view = parseLedger(previous);
+      if (alreadyRecorded(view, next))
+        return JSON.stringify({
+          appended: false,
+          alreadyRecorded: state,
+          seq: view.records.length,
+          lastSha256: view.lastSha256,
+        });
+      const updated = appendRecord(previous, next, new Date());
       durableReplace(file, updated, previous);
-      const view = parseLedger(updated);
+      const after = parseLedger(updated);
       return JSON.stringify({
         appended: state,
-        seq: view.records.length,
-        lastSha256: view.lastSha256,
+        seq: after.records.length,
+        lastSha256: after.lastSha256,
       });
     });
   }

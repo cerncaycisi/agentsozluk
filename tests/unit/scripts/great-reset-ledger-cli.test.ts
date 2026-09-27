@@ -1,5 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -60,6 +68,23 @@ describe("great reset dış kayıt yazıcısı", () => {
     expect(
       run(file, "append", "ROLLED_BACK", operationId, releaseSha, dumpSha256, receipt).stderr,
     ).toBe("GREAT_RESET_LEDGER_TRANSITION_FORBIDDEN");
+    // Kayıp ack: aynı geçişin tekrarı yeniden yazmaz, başarı döner (Astra, PR #238 2. tur P2).
+    const before = readFileSync(file);
+    const repeated = run(
+      file,
+      "append",
+      "TRAFFIC_OPEN",
+      operationId,
+      releaseSha,
+      dumpSha256,
+      receipt,
+    );
+    expect(repeated.status).toBe(0);
+    expect(JSON.parse(repeated.stdout)).toMatchObject({
+      appended: false,
+      alreadyRecorded: "TRAFFIC_OPEN",
+    });
+    expect(readFileSync(file).equals(before)).toBe(true);
   }, 120_000);
 
   it("başkasının okuyabildiği dosyayı/dizini, göreli yolu ve kalmış kilidi reddeder", () => {

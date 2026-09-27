@@ -131,9 +131,20 @@ provası → üretimde migration → post-verify. Reset modunda farklar:
 - **Dondurma** worker'a ek olarak `agent-sozluk-maintenance.timer`, `agent-sozluk-alarm.timer`,
   `agent-sozluk-backup.timer` ve `agent-sozluk.service`'i durdurur ve **devre dışı bırakır**;
   önceki `enabled/active` durumları işarete yazılır. Böylece reboot sonrası ne site ne timer
-  kendiliğinden açılır. Operatör sunucusundaki gecelik yedek timer'ını sarmalayıcı durdurur.
+  kendiliğinden açılır. Operatör sunucusundaki gecelik yedek timer'ını (`Persistent=true`)
+  sarmalayıcı önceki durumunu kaydederek durdurur ve **devre dışı bırakır**; çalışan yedek
+  servisi bitene kadar bekler. Operatör sunucusu reboot olsa da kaçırılmış tetik çalışmaz.
+  Kontrollü açılışın sonunda önceki durumuna döner.
 - **Scratch provası** önceki imaj yerine aday imajı migration uygulanmış scratch'e karşı açar
   (BIGINT şeması eski imajla geri uyumlu sayılmaz); yalnız health/ready.
+- **Ayar özeti faza bağlıdır.** A5 her girişte `agent_global_settings` satırının tam özetini
+  başlangıçla karşılaştırır; reset modunda bayraklar ve uygulama servisinin metadatası
+  (`settingsVersion`, `updatedAt`, güncelleyen) bilerek değişir. Bu yüzden reset modunda özet,
+  bu alanlar **dışarıda bırakılarak** hesaplanır ve her girişte başlangıçla birebir eşit
+  olmalıdır; dört bayrak ise faza göre beklenen değerle ayrıca karşılaştırılır: `reset-flags-
+frozen`'dan önce başlangıç değerleri, sonra hepsi `false`, 10. adımda bayraklar dondurma
+  dosyasındaki değerlere döndükten sonra yeniden başlangıç değerleri. Resetsiz açılış
+  (`ABORTED`) da aynı kuralı kullanır. Yaşam döngüsü özeti değişmez (`agent_profiles` korunur).
 - **Post-verify**: önceki tabloların içerik özetleri birebir; şema özetinde yalnız `entries` ve
   `topics` değişebilir; sequence tanımında yalnız iki public ID sequence'inin `data_type`
   alanı `integer → bigint`; dört `great_reset_*` tablosu boş; ayrıca katalog iddiaları (iki
@@ -150,8 +161,14 @@ Ardından reset aşamaları (aynı dondurma içinde):
    makbuzu; yedek yönetici rolüyle yeni scratch'e restore; scratch makbuzu üretimle **izinli
    farksız** eşit; scratch düşürülür. Uzak betik `RELEASE_RESET_AWAIT_LEDGER state=PREPARED`
    ile 75 çıkar.
-4. Sarmalayıcı yedeği operatör sunucusuna çeker, SHA-256'yı doğrular, dış kayda `PREPARED`
-   yazar ve `ack:PREPARED` ile uzak betiği yeniden çağırır → `reset-prepared`.
+4. Sarmalayıcı yedeği operatör sunucusuna çeker ve SHA-256'yı doğrular. **Bağımsız restore
+   kapısı:** yedek operatör sunucusundaki PostgreSQL 16 prova kümesinde yeni bir DB'ye
+   sahiplik/ACL dahil restore edilir; tam makbuz üretim makbuzuyla karşılaştırılır. İzinli fark
+   yalnız önceden ölçülüp kayda geçirilmiş, değer düzeyinde ortam farklarıdır (küme kimliği,
+   locale/collation sağlayıcısı gibi; bir gecelik yedeğin aynı yolla restore edilmesiyle pencere
+   öncesinde ölçülür ve dosyaya yazılır). İçerik ve şema farkına izin yoktur. Geçerse dış kayda
+   `PREPARED` yazılır ve `ack:PREPARED` ile uzak betik yeniden çağrılır → `reset-prepared`;
+   operatör prova DB'si düşürülür, yedek dosyası saklanır.
 5. Vazgeçme zamanı (dondurmadan itibaren 45 dk) geçtiyse ya da önizleme engel bulursa
    `reset-aborted`: niyet geçersizleştirilir, `ABORTED` beklenir; sonra site **aday sürüm ve
    migration ile, resetsiz** normal A5 kesimiyle açılır.
@@ -170,7 +187,13 @@ state=COMMITTED_MAINTENANCE` (makbuz SHA'sıyla). Sarmalayıcı yazar, `ack` ile
    `reset-traffic` → operasyon CLI'si `traffic-open` → `reset-exposed`.
 10. `writers-may-run` → A5 kesimi: normal app, release smoke, Caddy, boot etiketi, hold kalkar,
     worker; bayraklar eski değerlerine ayrı ayrı döner; timer ve `agent-sozluk.service` önceki
-    durumlarına döner; `cutover-done`.
+    durumlarına döner; `cutover-done`. Ayar özeti yukarıdaki faza bağlı kuralla denetlenir.
+
+**Kayıp `ack`:** sarmalayıcı dış kaydı kalıcılaştırıp uzak `ack` işlenmeden kesilirse uzak
+betik aynı durumu yeniden ister. Sarmalayıcı önce zinciri doğrular; operasyonun son kaydı aynı
+durumda ve exact aynı release/dump/makbuz alanlarıyla zaten varsa yeniden yazmadan `ack`
+gönderir; alanlar çelişirse durur. Bu kural `PREPARED`, `COMMITTED_MAINTENANCE`, `TRAFFIC_OPEN`
+ve `ABORTED` için aynıdır.
 
 Hata kuralı: `post-verified` öncesi A5 kuralları aynen. `reset-*` aşamalarında her hata site
 kapalı kalarak durur; yalnız 5. madde (COMMIT öncesi) otomatik resetsiz açılış yapar. COMMIT

@@ -182,6 +182,26 @@ export function appendRecord(content: string, next: LedgerAppend, now: Date): st
 }
 
 /**
+ * Kayıp `ack` uzlaşması (Astra, PR #238 2. tur P2): sarmalayıcı kaydı kalıcılaştırıp uzak `ack`
+ * işlenmeden kesilirse aynı durum yeniden istenir. Operasyonun son kaydı aynı durumda ve exact
+ * aynı kimlik alanlarıyla (release, dump, dump sınıfı, makbuz) zaten varsa `true` döner ve yeniden
+ * yazılmaz. Aynı durum farklı alanlarla kayıtlıysa çelişkidir, durulur. Diğer her durumda `false`
+ * (normal geçiş kuralları uygulanır).
+ */
+export function alreadyRecorded(view: LedgerView, next: LedgerAppend): boolean {
+  const latest = view.latest.get(next.operationId);
+  if (!latest || latest.state !== next.state) return false;
+  if (
+    latest.releaseSha !== next.releaseSha ||
+    latest.dumpSha256 !== next.dumpSha256 ||
+    latest.dumpClass !== next.dumpClass ||
+    latest.postResetReceiptSha256 !== next.postResetReceiptSha256
+  )
+    fail("RECORDED_STATE_CONFLICT");
+  return true;
+}
+
+/**
  * Restore kapısının dış kayıt koşulu: operasyonun son durumu COMMITTED_MAINTENANCE olmalı ve
  * dump SHA'sı ile reset sonrası makbuz özeti kayıtla birebir tutmalıdır. TRAFFIC_OPEN veya başka
  * her durum restore'u reddeder. DB tarafı koşullar ayrıca denetlenir.

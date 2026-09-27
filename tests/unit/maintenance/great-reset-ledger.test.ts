@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  alreadyRecorded,
   appendRecord,
   ledgerRestoreBlockers,
   parseLedger,
@@ -138,5 +139,14 @@ describe("great reset dış nesil kaydı", () => {
     expect(ledgerRestoreBlockers(prepared, operationId, dumpSha256, receipt)).toContain(
       "LEDGER_STATE_PREPARED",
     );
+  });
+  it("kayıp ack: aynı durum aynı alanlarla kayıtlıysa yeniden yazılmaz, çelişki durur", () => {
+    const view = parseLedger(chain(step("PREPARED"), step("COMMITTED_MAINTENANCE")));
+    expect(alreadyRecorded(view, step("COMMITTED_MAINTENANCE"))).toBe(true);
+    expect(alreadyRecorded(view, step("TRAFFIC_OPEN"))).toBe(false);
+    expect(() =>
+      alreadyRecorded(view, { ...step("COMMITTED_MAINTENANCE"), dumpSha256: "e".repeat(64) }),
+    ).toThrow("GREAT_RESET_LEDGER_RECORDED_STATE_CONFLICT");
+    expect(alreadyRecorded(view, step("PREPARED", other))).toBe(false);
   });
 });
