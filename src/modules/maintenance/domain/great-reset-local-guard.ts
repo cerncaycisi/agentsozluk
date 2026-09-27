@@ -63,6 +63,40 @@ export function localResetTarget(value: string | undefined, hostname: string) {
 }
 
 /*
+  Bağımsız restore kapısı hedefi (runbook v20 A5 reset modu, 4. adım): reset-anı yedeği operatör
+  kümesinde üretimdeki gibi `agent_sozluk`'a ait bir DB'ye restore edilir ve makbuzu o rolle alınır
+  (makbuz DB sahibi = bağlanan kullanıcı ister; `security:database` üretimle birebir olmalı). Yalnız
+  `…_independent_test` adı, yalnız `agent_sozluk` kullanıcısı; aynı küme kimliği ve sentetik işaret
+  makbuz tarafında denetlenir. Bu hedef yalnız makbuz içindir; reset/niyet komutları açmaz.
+*/
+export function localIndependentTarget(value: string | undefined, hostname: string) {
+  const identity = localResetIdentityFor(hostname);
+  let url: URL;
+  try {
+    url = new URL(value ?? "");
+  } catch {
+    throw new Error("GREAT_RESET_INVALID_TARGET");
+  }
+  if (
+    url.protocol !== "postgresql:" ||
+    url.hostname !== "127.0.0.1" ||
+    url.port !== "5432" ||
+    url.search ||
+    url.hash ||
+    url.username !== "agent_sozluk" ||
+    !/^\/agent_sozluk_reset_rehearsal_[0-9]{14}_independent_test$/u.test(url.pathname)
+  )
+    throw new Error("GREAT_RESET_LOCAL_SYNTHETIC_TARGET_REQUIRED");
+  url.searchParams.set("connection_limit", "1");
+  url.searchParams.set("connect_timeout", "5");
+  return {
+    databaseName: url.pathname.slice(1),
+    databaseUrl: url.toString(),
+    identity: { ...identity, owner: "agent_sozluk" as const },
+  };
+}
+
+/*
   Namespace provası (üretim tasarımı v19): `--namespace <operationId> <releaseSha> <receiptSha256>`
   bayrağı niyet tüketimi, mezar taşı, RESTART ve commit işaretini aynı transaction'da çalıştırır.
   Biçim burada, anlam ve niyetin varlığı repository kapısında denetlenir.

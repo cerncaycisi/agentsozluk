@@ -3,7 +3,7 @@ import { hostname } from "node:os";
 import { isAbsolute } from "node:path";
 import type { GreatResetReceipt } from "../src/modules/maintenance/repository/great-reset-receipt";
 import { writeNewDurable } from "./great-reset-durable-file";
-import { localResetTarget } from "./great-reset-local-guard";
+import { localIndependentTarget, localResetTarget } from "./great-reset-local-guard";
 
 /*
   Great reset operasyon adımları CLI'si (tasarım v20 madde 2–4). A5 reset modu bunu onaylı
@@ -39,7 +39,10 @@ function fail(code: string): never {
   throw new Error(`GREAT_RESET_${code}`);
 }
 
-async function resolveTarget(scratch: string | undefined): Promise<Target> {
+async function resolveTarget(
+  scratch: string | undefined,
+  independentOnly = false,
+): Promise<Target> {
   const [{ productionResetIdentity, productionResetTarget }, { collectProductionEnvironment }] =
     await Promise.all([
       import("../src/modules/maintenance/domain/great-reset-production-guard"),
@@ -65,6 +68,24 @@ async function resolveTarget(scratch: string | undefined): Promise<Target> {
     };
   }
   if (scratch !== undefined) fail("INVALID_TARGET");
+  // Bağımsız restore kapısı: yalnız makbuz komutu, `agent_sozluk`'a ait `…_independent_test` DB.
+  if (process.env.AGENT_GREAT_RESET_INDEPENDENT_DATABASE_URL !== undefined) {
+    if (independentOnly !== true) fail("INVALID_TARGET");
+    const independent = localIndependentTarget(
+      process.env.AGENT_GREAT_RESET_INDEPENDENT_DATABASE_URL,
+      hostname(),
+    );
+    return {
+      databaseUrl: independent.databaseUrl,
+      releaseSha: null,
+      identity: {
+        databaseName: independent.databaseName,
+        owner: independent.identity.owner,
+        clusterId: independent.identity.clusterId,
+        marker: independent.identity.marker,
+      },
+    };
+  }
   const local = localResetTarget(process.env.AGENT_GREAT_RESET_DATABASE_URL, hostname());
   return {
     databaseUrl: local.databaseUrl,
@@ -143,7 +164,7 @@ async function main(argv: readonly string[]): Promise<string> {
     (command === "traffic-open" && args.length === 1) ||
     (command === "restore-eligibility" && args.length === 2);
   if (!valid) fail("INVALID_ARGUMENTS");
-  const target = await resolveTarget(scratch);
+  const target = await resolveTarget(scratch, command === "receipt");
   const [{ PrismaClient }, operation, receipts] = await Promise.all([
     import("@prisma/client"),
     import("../src/modules/maintenance/repository/great-reset-operation"),

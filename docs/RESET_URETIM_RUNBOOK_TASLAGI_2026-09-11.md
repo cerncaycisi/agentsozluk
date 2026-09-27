@@ -166,6 +166,13 @@ provası → üretimde migration → post-verify. Reset modunda farklar:
   açılmaz. Her operasyonun artefaktları `~/agentsozluk-reset/<operationId>/` altındadır.
 - Operatör sunucusundaki PostgreSQL 16 prova kümesinde bağımsız restore için yer vardır (DB
   boyutu kadar). Kapı kendi DB'sini her durumda düşürür.
+- Operatör kümesi üretimle karşılaştırılabilir olmalıdır (bağımsız karşılaştırma varsayılan
+  ret, politika i): kümede yalnız kurulum süper kullanıcısı ve `agent_sozluk` rolü bulunur (test
+  rolleri kaldırılır); `agent_sozluk` üretimdeki bayraklarla (LOGIN, süper kullanıcı/CREATEDB/
+  CREATEROLE/replikasyon/RLS aşımı yok, parolasız) kapı tarafından ayarlanır; `pg_hba` yalnız
+  loopback'te `…_independent_test` adlı DB'ler için `agent_sozluk`'a izin verir. Kapı DB'yi
+  `agent_sozluk` sahipliğinde açar, yedeği `--role=agent_sozluk` altında restore eder ve makbuzu
+  o rolle alır; üretim scratch makbuzuyla karşılaştırır.
 
 Ardından reset aşamaları (aynı dondurma içinde):
 

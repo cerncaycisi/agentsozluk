@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  localIndependentTarget,
   localResetIdentities,
   localResetIdentity,
   localResetIdentityFor,
@@ -160,5 +161,31 @@ describe("yerel great reset sınırı", () => {
     expect(() => parseLocalResetArguments(["--connection-gate", "--connection-gate"])).toThrow(
       "GREAT_RESET_INVALID_ARGUMENTS",
     );
+  });
+});
+
+describe("bağımsız restore kapısı yerel hedefi", () => {
+  it("yalnız agent_sozluk kullanıcısı ve …_independent_test adıyla açılır", () => {
+    const ok = localIndependentTarget(
+      "postgresql://agent_sozluk@127.0.0.1:5432/agent_sozluk_reset_rehearsal_20260927140000_independent_test",
+      "agentic-server",
+    );
+    expect(ok.identity.owner).toBe("agent_sozluk");
+    expect(ok.databaseUrl).toContain("connection_limit=1");
+    for (const value of [
+      "postgresql://agent@127.0.0.1:5432/agent_sozluk_reset_rehearsal_20260927140000_independent_test",
+      "postgresql://agent_sozluk@127.0.0.1:5432/agent_sozluk_reset_rehearsal_20260927140000_restored_test",
+      "postgresql://agent_sozluk@127.0.0.1:5432/agent_sozluk",
+      "postgresql://agent_sozluk@10.0.0.1:5432/agent_sozluk_reset_rehearsal_20260927140000_independent_test",
+    ])
+      expect(() => localIndependentTarget(value, "agentic-server")).toThrow(
+        "GREAT_RESET_LOCAL_SYNTHETIC_TARGET_REQUIRED",
+      );
+    expect(() =>
+      localIndependentTarget(
+        "postgresql://agent_sozluk@127.0.0.1:5432/agent_sozluk_reset_rehearsal_20260927140000_independent_test",
+        "agent-sozluk-prod",
+      ),
+    ).toThrow("GREAT_RESET_LOCAL_HOST_REQUIRED");
   });
 });

@@ -36,7 +36,7 @@ test "$(node -e 'process.stdout.write(JSON.parse(require("node:fs").readFileSync
 pg_bin="${AGENTSOZLUK_LOCAL_PG_BIN:-/home/agent/pg16/root/usr/lib/postgresql/16/bin}"
 export LD_LIBRARY_PATH="${AGENTSOZLUK_LOCAL_PG_LIB:-/home/agent/pg16/root/usr/lib/x86_64-linux-gnu}"
 local_user=agent
-database="agent_sozluk_reset_rehearsal_$(date -u +%Y%m%d%H%M%S)_restored_test"
+database="agent_sozluk_reset_rehearsal_$(date -u +%Y%m%d%H%M%S)_independent_test"
 marker='agentsozluk:great-reset:synthetic:v1'
 work="$(mktemp -d "${TMPDIR:-/tmp}/great-reset-operator-gate.XXXXXXXX")"
 chmod 0700 "$work"
@@ -59,22 +59,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Üretimdeki nesne sahibi rol yerelde de bulunmalı (giriş yetkisi olmadan); restore sahipliği korur.
+# Üretimdeki uygulama rolü yerelde aynı bayraklarla bulunmalı (makbuz rol bayraklarını katı
+# karşılaştırır): LOGIN, süper kullanıcı/CREATEDB/CREATEROLE/replikasyon/RLS aşımı yok, parola yok.
 psql_local -d postgres -q -c \
   "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agent_sozluk') THEN
-     CREATE ROLE agent_sozluk NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE; END IF; END \$\$" ||
+     CREATE ROLE agent_sozluk; END IF; END \$\$" \
+  -c "ALTER ROLE agent_sozluk LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
+      NOBYPASSRLS CONNECTION LIMIT -1 PASSWORD NULL" ||
   fail LOCAL_ROLE_FAILED
-psql_local -d postgres -q -c "CREATE DATABASE \"$database\" OWNER \"$local_user\" TEMPLATE template0 ENCODING 'UTF8'" ||
+# Üretimdeki gibi DB sahibi `agent_sozluk`; makbuz da o rolle alınır (DB sahibi = kullanıcı).
+psql_local -d postgres -q -c "CREATE DATABASE \"$database\" OWNER agent_sozluk TEMPLATE template0 ENCODING 'UTF8'" ||
   fail LOCAL_DATABASE_CREATE_FAILED
 created=1
 psql_local -d postgres -q -c "COMMENT ON DATABASE \"$database\" IS '$marker'" || fail LOCAL_MARKER_FAILED
-"$pg_bin/pg_restore" -h 127.0.0.1 -p 5432 -U "$local_user" --exit-on-error -d "$database" "$dump" \
-  </dev/null || fail LOCAL_RESTORE_FAILED
-(cd "$root" && AGENT_GREAT_RESET_DATABASE_URL="postgresql://$local_user@127.0.0.1:5432/$database" \
+# Üretim scratch'i gibi `agent_sozluk` rolü altında: extension'lar üretimdeki sahiple kurulur.
+"$pg_bin/pg_restore" -h 127.0.0.1 -p 5432 -U "$local_user" --role=agent_sozluk --exit-on-error \
+  -d "$database" "$dump" </dev/null || fail LOCAL_RESTORE_FAILED
+(cd "$root" && AGENT_GREAT_RESET_INDEPENDENT_DATABASE_URL="postgresql://agent_sozluk@127.0.0.1:5432/$database" \
   "$tsx" scripts/great-reset-operation.ts receipt "$work/independent.json" >/dev/null) ||
   fail LOCAL_RECEIPT_FAILED
+# İki kümenin kurulum süper kullanıcısı: üretimde `postgres`, burada yerel initdb kullanıcısı.
+production_bootstrap="${AGENTSOZLUK_PRODUCTION_BOOTSTRAP:-postgres}"
 (cd "$root" && "$tsx" scripts/great-reset-operation.ts receipt-compare-independent "$receipt" \
-  "$work/independent.json") >"$work/compare.json" || {
+  "$work/independent.json" "$production_bootstrap" "$local_user") >"$work/compare.json" || {
   cat "$work/compare.json" >&2
   fail INDEPENDENT_RESTORE_MISMATCH
 }
