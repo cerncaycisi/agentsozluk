@@ -993,7 +993,14 @@ export function compareForIndependentRestore(
     if (sha256(production.tables[table] ?? null) !== sha256(independent.tables[table] ?? null))
       blocking.push(`table:${table}`);
   for (const section of ["sequences", "security", "database"] as const) {
-    const expected = production.details[section] ?? {};
+    // İki tarafın anahtarları aynı serileştiriciden geçer (üretimde eşleme yok): jsonb biçimli
+    // anahtarlar yeniden kurulurken biçim farkı yanlış ret üretmez.
+    const expected: Record<string, string> = {};
+    for (const [key, value] of Object.entries(production.details[section] ?? {})) {
+      const normalized = mapKey(key, identity);
+      if (normalized in expected) blocking.push(`${section}:key-collision:${normalized}`);
+      expected[normalized] = value;
+    }
     const actual = new Map<string, string>();
     for (const [key, value] of Object.entries(independent.details[section] ?? {})) {
       const mapped = mapKey(key, toProduction);
