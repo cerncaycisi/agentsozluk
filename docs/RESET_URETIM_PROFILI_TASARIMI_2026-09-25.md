@@ -1,4 +1,4 @@
-# Great reset — üretim profili tasarımı v19 (26 Eylül 2026)
+# Great reset — üretim profili tasarımı v20 (27 Eylül 2026)
 
 **Durum: düzeltilmiş tasarım; uygulama, üretim erişimi ve reset onayı yok.** Gökhan'ın
 24 Eylül kararı, prova edilmiş reset çekirdeğine ayrı ve sıkı kilitli üretim profili
@@ -50,6 +50,95 @@ Astra v18 exact `4b8bace4c408aa3360b8e0e56a828a2b2a77ae5f` için **TASARIM
 UYGUN** dedi; üç bulgu kapandı, yeni P1/P2/P3 yok.
 Yeni digest süresi, geniş public ID geçişi, geri yükleme
 ve üretim kontrol yolu henüz kabul edilmediği için bu belge uygulama izni değildir.
+
+## v20 — A5 bakım yolunun yeniden kullanımı (27 Eylül 2026)
+
+Gökhan'ın talimatı ("Astrayla birlikte karar verin") üzerine GPT-6 Astra ile ortak karar.
+Girdiler: [bakım planı taslağı](RESET_BAKIM_PLANI_TASLAGI_2026-09-27.md) ve aynı gün yapılan
+salt okunur üretim önkontrolü. Astra exact `0a0df96d24c1c7b5d3fa89ff8ac31f7477a23b8a`
+üzerinde "A5 yeniden kullanılacak; HMAC sadeleşebilir, fakat iki yedek noktası, denetlenen
+restore kapısı ve salt okunur iç kabul korunacak" dedi. Bu bölüm aşağıdaki metinle
+çelişirse **bu bölüm geçerlidir**.
+
+1. **Bakım yanıtı = Caddy kapalı.** A5 gibi Caddy ve app container'ı durdurulur; dış
+   istemci bağlantı reddi alır. `503`/`Retry-After` bakım sayfası sözleşmesi kaldırıldı.
+   Metindeki "Caddy bakım yanıtı sürer" ifadesi "Caddy durdurulmuş kalır", "kaldırılır"
+   ise "Caddy başlatılır" anlamındadır. `handle_errors` tabanlı sayfa seçilmedi: iç kabulde
+   app açılınca proxy hata vermez ve dış trafik app'e ulaşır. App yalnız iç ağ ve loopback
+   üzerinden erişilebilir olmalıdır; bu, pencere başında doğrulanır. `__Host-` giriş smoke'u
+   dış trafiği açmayan TLS'li iç yoldan yapılır; yol yerel standalone provada kanıtlanır.
+2. **A5 sarmalayıcısında ayrı, dar reset modu.**
+   - İstisna yalnız iki exact migration içindir: `20260926090000_public_id_bigint_namespace`
+     ve `20260926120000_great_reset_records`. İstisna adlara değil, onaylı SHA'daki SQL
+     dosyalarının SHA-256'sına bağlıdır. Diğer migration'lar için ekleyici denetçi aynen kalır.
+   - Post-verify şunları kapsar:
+     - iki sütunun tipi;
+     - iki sequence'in tipi, sınırı, durumu ve `DEFAULT`/`OWNED BY` bağları;
+     - üst namespace `CHECK`'leri;
+     - yeniden kurulan immutable trigger'lar;
+     - yeni kayıt tabloları ile onların fonksiyon ve trigger korumaları.
+   - Reset modunda `post-verified → writers-may-run` geçişi ve dondurma süresinin sıfırlanması
+     yoktur. Migration, niyet, reset-anı yedeği, reset, makbuz ve iç kabul aynı dondurma
+     içinde sürer.
+   - Açılış sırası: dış kayıtta kalıcı `TRAFFIC_OPEN` → DB exposure olayı → normal app ve
+     giriş smoke'u → en son Caddy. A5'in "önce Caddy, sonra `traffic-open`" sırası reset
+     modunda kullanılmaz.
+   - Kaldığı yerden devam, reset fazını asla tekrarlamaz. Belirsiz COMMIT önce uzlaştırılır.
+   - Dondurma bütün DB/app erişimli zamanlayıcıları kapsar: üretimde bakım, alarm ve yedek
+     timer'ları, operatör sunucusunda gecelik yedek. Reboot sonrasında app, Caddy ve bu
+     timer'ların kapalı kaldığı ayrıca kanıtlanır. `agent-sozluk.service` Compose yığını da
+     buna dahildir.
+   - Kesinti bütçesi reset modunda ayrı parametredir: taslak üst sınır 90 dakika, vazgeçme 45. dakika. A5'in 45 dakikalık genel sınırı bu modda geçerli değildir. Sayılar Gökhan'ın
+     reset onay metninde açıkça yer alır.
+3. **İki ayrı yedek noktası.**
+   - (a) A5'in migration öncesi yedeği. Yalnız migration geri dönüşü içindir; reset
+     başladıktan sonra restore için yasaktır.
+   - (b) Reset-anı yedeği. Migration sonrası, geçerli niyet satırı yazıldıktan sonra alınır;
+     sahiplik ve ACL dahil. A5'in `--no-owner --no-privileges` biçimi burada kullanılmaz.
+     Operatör sunucusundaki restore'da tam makbuz eşitliği şarttır. Dar geri dönüş
+     penceresinde kabul edilen tek yedek budur. Eski gecelik yedekler de nesil politikasına
+     tabidir ve reddedilir.
+4. **Dış kayıt: HMAC yok, denetim var.** Kötü niyetli operatör tehdit modeli dışındadır;
+   HMAC anahtar yönetimi kaldırıldı. Korunanlar:
+   - Operatör sunucusunda, DB ve yedek dizini dışında, 0600 erişimli bir dosya.
+   - Artan sıra numarası ve önceki kaydın SHA-256'sını taşıyan, yalnız eklenen zincir.
+   - Geçici dosya fsync → aynı dizinde rename → dizin fsync → geri okuma sırası.
+   - Durumlar: `PREPARED → COMMITTED_MAINTENANCE → TRAFFIC_OPEN | ROLLED_BACK`, ayrıca
+     `ABORTED`. Son durumlar yeniden açılmaz.
+   - Kayıtta exact `operationId`, release, dump SHA-256 ve içerikten belirlenen yedek nesli.
+
+   Metindeki "imzalı kayıt" bu zincirli kayıt anlamındadır. Restore komutları elle
+   yürüyebilir. Ancak önce **makineyle çalışan uygunluk denetimi** geçmelidir: aynı commit,
+   exposure/restore audit yokluğu, yeni namespace içeriği yokluğu, tüketilmemiş sequence'ler
+   ve tam makbuz eşitliği. Eksik, bozuk veya çelişkili kanıtta bakım sürer.
+
+5. **Salt okunur iç kabul korunur.** Bütün havuz bağlantılarında connection-startup
+   `default_transaction_read_only=on` kalır. App kapatıldıktan sonra tam özet de
+   karşılaştırılır; iki kanıt birlikte gereklidir. A5'in genel release smoke'u bu pencerede
+   çalıştırılmaz. Somut neden: anonim `GET /api/v1/search` oran sınırı için
+   `rate_limit_buckets` tablosuna yazar. Yazan smoke yalnız dış `TRAFFIC_OPEN` ve DB exposure
+   kaydından sonra çalışır. Karşılaştırma korunan tabloları, temizlenen 29 tablonun
+   boşluğunu, sequence durumlarını ve audit/niyeti kapsar.
+6. **Süper kullanıcı olmayan DB sahibiyle entegrasyon zorunlu.** Kapsam:
+   - migration, önizleme, tam makbuz;
+   - reset COMMIT/rollback, başka rol bağlantısı, kapının yeniden açılışı ve hata yolları.
+
+   Role süper kullanıcı veya `CREATEDB` verilmez. Yönetici rolü yalnız fixture ve gölge DB
+   işlerinde ayrı kullanılır. Üretim önkontrolü bu rolün `postgres` DB'sine `CONNECT`
+   yetkisini ve `pg_control_system()` çağrısını doğruladı. Yerel PostgreSQL 16.14'te de süper
+   kullanıcı olmayan sahip `ALLOW_CONNECTIONS` değiştirebildi.
+
+7. **Restore dalı.** Üretimdeki yönetici yolu container içi `psql -U postgres` (yerel soket)
+   konsoludur; uygulama rolünde `CREATEDB` olmadığı için rename bu yoldan yapılır. Şu dal
+   gerçek boyutta birlikte prova edilmeden reset GO yok:
+   - gölge restore, tam makbuz/ACL/ayar doğrulaması;
+   - niyet invalidasyonu ve restore audit'i;
+   - iki DB'nin bağlantı kapıları ve son doğrulama;
+   - tek transaction'da iki rename;
+   - yeniden açılış ve `ROLLED_BACK` uzlaşısı.
+
+   Prova ayrıca şu hata durumlarını kapsar: yanlış/eski yedek, eski kayıt tekrarı, COMMIT
+   belirsizliği, süreç ölümü, reboot ve rename hatası.
 
 ## Sabit üretim kimliği
 

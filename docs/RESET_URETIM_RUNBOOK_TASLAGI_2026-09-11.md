@@ -1,4 +1,4 @@
-# Great reset — üretim runbook taslağı v18 (26 Eylül 2026)
+# Great reset — üretim runbook taslağı v20 (27 Eylül 2026)
 
 **Yürütme yetkisi değildir.** Tek aktif iş sırası [PLAN.md](PLAN.md) Sıra 5'tir.
 Bu dosya, [üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
@@ -26,6 +26,17 @@ Opus 5.5 v15 exact `2a34d8e` için de **TASARIM UYGUN** dedi (P1/P2 yok,
 yalnız bilinen silinmiş sayısal ID'ye daraltır ve üst namespace kilidini ekler.
 Astra v17 exact `e34fa5a` için **TASARIM DÜZELTİLMELİ** dedi (2 P2, 1 P3); v18
 reset sonrası alt sınır kısıtını ve aşağıdaki adım 3/5 eşlemesini ekler.
+
+**v20 (27 Eylül 2026):** [Üretim profili tasarımı](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md)
+"v20 — A5 bakım yolunun yeniden kullanımı" bölümü bu runbook'la çelişirse geçerlidir. Özetle:
+
+- Bakım yanıtı yerine Caddy kapalı kalır; bu belgedeki "Caddy bakım yanıtı" ifadeleri bu
+  anlamdadır.
+- Reset, A5 sarmalayıcısının dar reset modunda yürür.
+- İki yedek noktası vardır: A5 migration öncesi yedeği ve reset-anı yedeği.
+- Dış kayıt HMAC'siz, zincirli ve yalnız eklemelidir; restore öncesi makineyle çalışan
+  uygunluk denetimi şarttır.
+- Salt okunur iç kabul korunur; A5 genel smoke'u bu pencerede çalışmaz.
 
 ## Ön kabul kapıları
 
@@ -75,8 +86,8 @@ reset sonrası alt sınır kısıtını ve aşağıdaki adım 3/5 eşlemesini ek
   adları, önceki `enabled/active` durumları ve çalışan PID'leriyle envantere
   girer. Bilinenler: production bakım timer'ı, canlılık/lease alarmı;
   operatör sunucusu gecelik yedeği. Envanter başka işler bulabilir.
-- Operatör sunucusunda üretim DB'si ve yedek dizini dışındaki 0600 anahtarla
-  HMAC imzalı reset nesli/backup envanteri hazırlanır. Yedek nesli dosya
+- Operatör sunucusunda üretim DB'si ve yedek dizini dışındaki 0600 erişimli
+  zincirli (HMAC'siz, v20) reset nesli/backup envanteri hazırlanır. Yedek nesli dosya
   adından değil operatör prova DB'sinde doğrulanan commit tablosu/satırı/operationId
   ve public ID tipinden çıkarılır; migration öncesi şema reddedilir. İmzayı
   yalnız operatör sunucusundaki restore kapısı doğrular; anahtar oradan
