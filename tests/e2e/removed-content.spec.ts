@@ -244,7 +244,16 @@ test("a link to content removed while the page is open reaches the server and la
     await link.hover();
     const prefetchResponse = await prefetched;
     expect(prefetchResponse.status()).toBe(200);
-    await Promise.race([prefetchResponse.finished().catch(() => null), page.waitForTimeout(5_000)]);
+    /*
+      Tamamlanmış ama hiç kullanılmamış prefetch'in ilk kullanımı (Astra, PR #241 P2): prefetch
+      yükü tamamlanırsa entry metnini İÇERMEMELİ; yani Router Cache'e bayat içerik koyamaz ve
+      ilk kullanımda sayfa içeriği sunucudan istenir. Yük tamamlanmazsa zaten kısmidir.
+    */
+    const prefetchBody = await Promise.race([
+      prefetchResponse.text().catch(() => null),
+      page.waitForTimeout(5_000).then(() => null),
+    ]);
+    if (prefetchBody !== null) expect(prefetchBody).not.toContain(entry.body);
 
     // Reset sayfa açıkken olur: entry silinir, kimliği mezar taşına yazılır.
     const { operationId } = await database.greatResetCommit.create({
@@ -328,12 +337,19 @@ test("a fully loaded and cached entry page is not reused after the reset: a new 
     await page.goto(`/baslik/${topic.slug}--${topic.publicId}`);
     const link = page.getByRole("link", { name: /tarihli entry’ye git/u }).first();
     await expect(link).toBeVisible();
-    // Tam istemci gezinmesi: entry sayfası yüklenir ve metin görünür.
+    // Tam istemci gezinmesi: entry sayfası yüklenir ve metin görünür. Belge yeniden yüklenmez
+    // (pencere işareti korunur); gezinme ve geri dönüş Router Cache üzerinden olur.
+    await page.evaluate(() => {
+      (window as unknown as { __resetMarker?: number }).__resetMarker = 1;
+    });
     await link.click();
     await page.waitForURL((url) => url.pathname === entryPath);
     await expect(page.getByText(body)).toBeVisible();
     await page.goBack();
     await page.waitForURL((url) => url.pathname.startsWith("/baslik/"));
+    expect(
+      await page.evaluate(() => (window as unknown as { __resetMarker?: number }).__resetMarker),
+    ).toBe(1);
 
     const { operationId } = await database.greatResetCommit.create({
       data: {
