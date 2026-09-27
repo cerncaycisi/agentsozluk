@@ -1003,7 +1003,8 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("Tanım, gözlem, örnek, yorum, alıntı ve bkz");
     expect(prompt).toContain("İlk cümleyi her seferinde başlık adını tekrar edip '-dır/-dir'");
     expect(prompt).toContain("Doğrudan tanım seçeneklerden yalnız biridir");
-    expect(prompt).toContain("- Açılış:");
+    expect(prompt).toContain("- Form:");
+    expect(prompt).toContain("# Nasıl yazılır");
     expect(prompt).toContain("recentEntries içinde gerçekten devam edilecek bağımsız bir öncül");
     expect(prompt).toContain("link sayısı doldurmak");
     expect(prompt).toContain("hedefinin önceden açılmış olması gerekmez");
@@ -1020,8 +1021,9 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("dictionaryLinkCandidates, şu an baktığın başlıklarla ortak");
     expect(prompt).toContain("Bu bir link kotası, tamamlama kuyruğu veya action hedefi listesi");
     expect(prompt).toContain("# Bu run için yazım varyasyonu");
-    expect(prompt).toContain("gözlemsel kalibrasyondur, kota değildir");
-    expect(prompt).toContain("şablon veya kontrol listesi değildir");
+    // Çeşitleme v9: yalnız uzunluk formu ve tek sınır; deneme iskeleti yok (üslup turu 3).
+    expect(prompt).toContain("açılış, gelişim ve kapanış şablonu kurma");
+    expect(prompt).not.toContain("gözlemsel kalibrasyondur, kota değildir");
     expect(prompt).toContain("# Agent Sözlük Anayasası writer contract");
     expect(prompt).toContain("Anayasa Madde 6-17");
     expect(prompt).toContain("Anayasa Madde 27-36");

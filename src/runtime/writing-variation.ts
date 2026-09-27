@@ -30,7 +30,13 @@ export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
 
   Liste boyları korunuyor: madde eklenmedi, yerinde değiştirildi.
 */
-export const RUNTIME_WRITING_VARIATION_VERSION = 8;
+export const RUNTIME_WRITING_VARIATION_VERSION = 9;
+/*
+  Seçim tohumu render sürümünden ayrı: sürüm 9 yalnız render'ı değiştirdi (iskelet çıktı), seçim
+  aynı. Tohum 8'de kalınca her koşu önceki sürümdeki uzunluk formunu alır; yerel ölçümde
+  kullanılan talimat üretimdekiyle birebir aynı kalır.
+*/
+const RUNTIME_WRITING_VARIATION_SELECTION_SEED_VERSION = 8;
 
 const formDistributions: Record<PersonaEntryLength, readonly RuntimeEntryForm[]> = {
   SHORT: ["MICRO", "MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "LONG"],
@@ -150,7 +156,9 @@ export function runtimeWritingVariation(
   personaEntryLength: PersonaEntryLength = "MIXED",
 ): RuntimeWritingVariation {
   const digest = createHash("sha256")
-    .update(`agent-sozluk-writing-variation:v${RUNTIME_WRITING_VARIATION_VERSION}:${runId}`)
+    .update(
+      `agent-sozluk-writing-variation:v${RUNTIME_WRITING_VARIATION_SELECTION_SEED_VERSION}:${runId}`,
+    )
     .digest();
   return {
     form: select(formDistributions[personaEntryLength], digest[4]!),
@@ -163,34 +171,22 @@ export function runtimeWritingVariation(
   };
 }
 
+/*
+  Sürüm 9 (28 Eylül 2026, docs/USLUP_LAB_2026-09-27.md): yalnız uzunluk formu kalır. Açılış,
+  sözlük işlevi, ton, paragraf ritmi, gelişim ve bitiş eğilimleri modele bir deneme iskeleti
+  kuruyordu ("örneğin başlık için ne gösterdiği yönünde ilerle", "tek cümlelik kişisel bir
+  yargıyla bitir"); kör okumada hakemin yakaladığı "tanım + çıkarım/yargı" kalıbının kaynağı bu
+  maddelerdi. Yerel yeniden oynatmada iskeletin çıkarılması üslup bloğuyla birlikte ölçüldü.
+  Seçim işlevi (`runtimeWritingVariation`) deterministik kalır; uzunluk dağılımı değişmedi.
+*/
 export function renderRuntimeWritingVariation(
   runId: string,
   personaEntryLength: PersonaEntryLength = "MIXED",
 ): string {
   const variation = runtimeWritingVariation(runId, personaEntryLength);
-  const expandedDimensions =
-    variation.form === "MICRO" || variation.form === "SHORT"
-      ? [`- Sözlük işlevi: ${variation.entryFunction}`, `- Ton: ${variation.register}`]
-      : variation.form === "MEDIUM"
-        ? [
-            `- Sözlük işlevi: ${variation.entryFunction}`,
-            `- Ton: ${variation.register}`,
-            `- Paragraf ritmi: ${variation.paragraphShape}`,
-          ]
-        : [
-            `- Sözlük işlevi: ${variation.entryFunction}`,
-            `- Ton: ${variation.register}`,
-            `- Paragraf ritmi: ${variation.paragraphShape}`,
-            `- Gelişim: ${variation.development}`,
-            `- Bitiş: ${variation.ending}`,
-          ];
   return [
     "# Bu run için yazım varyasyonu",
-    "Yalnız public entry yazmayı seçersen aşağıdaki eğilimleri gevşek biçimde kullan:",
     `- Form: ${formInstructions[variation.form]}`,
-    `- Açılış: ${variation.opening}`,
-    ...expandedDimensions,
-    "Kısa/orta/uzun dağılımı gözlemsel kalibrasyondur, kota değildir. Bunlar doldurulacak bir şablon veya kontrol listesi değildir; konuya uymayan maddeyi zorlama. Her entry tek başına okunabilir bir sözlük işlevi taşısın. Personanın tanınabilir kelime seçimi, mizahı, kanıt eşiği ve tavrı sabit kalsın. Yakın tarihli kendi entry'lerinin işlevini, açılışını ve paragraf şeklini mekanik biçimde tekrarlama. Bu yönergeleri entry içinde anma.",
-    "Yukarıdaki eğilimler için ortak sınırlar: bağlantıyı yalnız gerçekten açıklayıcı bir ilişki varsa kur, soruyu okurdan cevap isteyen çağrıya çevirme, öznel yargıyı genel gerçek gibi sunma, espriyi tanımın yerine koyma, uydurma offline deneyim anlatma, akademik özet tonuna ve münazara iskeletine çıkma. Bu sınırlar seçilen eğilimi iptal etmez; eğilimi uygula, sınırın içinde kal.",
+    "Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma.",
   ].join("\n");
 }
