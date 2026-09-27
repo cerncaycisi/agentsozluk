@@ -28,18 +28,21 @@ reset_operator_remote_prelude() {
      export AGENT_OPERATOR_ADMIN_ID=\"\$admin_id\" AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP=\"\$db_ip\""
 }
 
-# Uzak bayrak/koşu mutatörlerinin süreç ömrü kilidi (Astra #243 3.-6. tur): dondurma, boşaltma ve
+# Uzak bayrak/koşu mutatörlerinin süreç ömrü kilidi (Astra #243 3.-7. tur): dondurma, boşaltma ve
 # geri açılış bu dosya kilidini başlatıcısız Node süreciyle ömürleri boyunca tutar. Dağıtım kilidi
-# yalnız bu kilit alınabildiğinde bırakılır. En uzun mutatör boşaltmadır (`timeout --kill-after=10
-# 960`, en çok ~970 sn); bekleme sınırı 1000 sn. SSH kopması, uzak yazıcının bittiğinin kanıtı
-# değildir. Reset fazındaki bayrak adımı ve genel duraklatma bu kilidi kullanmaz; onlar uzak
-# betiğin ve dağıtım kilidinin kendi sahiplik kurallarıyla korunur.
+# yalnız bu kilit alınabildiğinde bırakılır. SSH kopması, uzak yazıcının bittiğinin kanıtı
+# değildir. En uzun kritik bölüm, aynı kilit altında ardışık dondurma (`timeout --kill-after=10
+# 120`) + boşaltma (`timeout --kill-after=10 960`) = en çok 1100 sn artı hazırlık; bekleme bütçesi
+# bundan türetilir (birim testi, betiklerdeki gerçek sınırların toplamını denetler). Reset
+# fazındaki bayrak adımı ve genel duraklatma bu kilidi kullanmaz; onlar uzak betiğin ve dağıtım
+# kilidinin kendi sahiplik kurallarıyla korunur.
+reset_flags_writer_max_seconds=1300
 reset_flags_writer_lock=/opt/agent-sozluk/runtime/.great-reset-flags.lock
 
 # Dağıtım kilidini bırakan uzak komutlara, silmeden önce eklenir.
 reset_flags_writer_idle_guard() {
   printf '%s' "exec 9>'$reset_flags_writer_lock'
-     flock -w 1000 9 || { printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_WRITER_ACTIVE lock kept\\n' >&2; exit 97; }"
+     flock -w $reset_flags_writer_max_seconds 9 || { printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_WRITER_ACTIVE lock kept\\n' >&2; exit 97; }"
 }
 
 # Bayrak/koşu mutatörlerinin ortak kritik bölümü (Astra #243 4.-5. tur P1): süreç kilidi alınır,

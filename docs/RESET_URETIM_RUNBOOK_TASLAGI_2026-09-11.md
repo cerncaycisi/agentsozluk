@@ -238,8 +238,9 @@ bir şey açamam, halledin"):**
   `RELEASE_RESET_FLAGS_RESTORE_SKIPPED` basılır, bu geri yükleme kanıtı değildir.
 - Uzak bayrak yazıcısı süreç ömrü boyunca bir dosya kilidi tutar (çocuk süreç dahil). Dağıtım
   kilidi, great reset koşularında ancak bu kilit alınabildiğinde bırakılır; SSH kopması yazıcının
-  bittiğinin kanıtı sayılmaz. En uzun mutatör boşaltmadır (en çok ~970 sn); bekleme sınırı
-  1000 sn'dir. Boşaltma hatasından sonraki geri açılış, süren boşaltmanın bitmesini bekler.
+  bittiğinin kanıtı sayılmaz. En uzun kritik bölüm aynı kilit altında ardışık dondurma ve
+  boşaltmadır (en çok 1100 sn artı hazırlık); bekleme bütçesi 1300 sn'dir. Boşaltma hatasından
+  sonraki geri açılış, süren bölümün bitmesini bekler.
   Reset fazındaki bayrak adımı ve genel duraklatma bu kilidi kullanmaz.
 - **Tek amaçlı tamamlama:** aynı hedef, kilit ve olumlu kanıt kurallarıyla yalnız bayrakları geri
   yazar; bakıma, migration'a, siteye ya da worker'a dokunmaz; kendi kilidini her sonuçta bırakır.

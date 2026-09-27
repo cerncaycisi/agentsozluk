@@ -721,16 +721,16 @@ reset_restore_society_flags() {
 # o zaman kilit bırakılır. Kanıt alınamazsa bayraklar kapalı, kilit yerinde kalır (Astra #243
 # 2. tur P1). Geri dönüşte ve başlamış bakımda (yeniden giriş) boşaltma atlanır.
 if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then
-  if ! reset_operator_ssh 1080 1 \
+  if ! reset_operator_ssh "$reset_flags_writer_max_seconds" 1 \
     "$(reset_flags_writer_section "$lock_check")
      AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
        timeout --kill-after=10 120 node --import tsx scripts/agent-write-freeze.ts freeze '$(reset_drain_flags_path "$great_reset_operation")'
      AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
        timeout --kill-after=10 960 node --import tsx scripts/great-reset-drain.ts drain"; then
     printf 'RELEASE_WRAPPER_FAIL code=RESET_DRAIN_FAILED\n' >&2
-    # SSH kopmuş olabilir, uzak boşaltma sürüyor olabilir: bitmesi (en çok ~970 sn) aynı
-    # sahiplik altında beklenir, ardından olumlu kanıt yeniden sınanır (Astra #243 6. tur P2).
-    if reset_restore_society_flags 1 1000; then
+    # SSH kopmuş olabilir, uzak dondurma+boşaltma sürüyor olabilir: bitmesi aynı sahiplik altında
+    # kritik bölüm bütçesi kadar beklenir, ardından olumlu kanıt yeniden sınanır (Astra #243 6.-7. tur).
+    if reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"; then
       ssh "${ssh_options[@]}" deploy@"$expected_ip" \
         "set -euo pipefail
          test \"\$(hostname)\" = '$expected_host' || exit 91

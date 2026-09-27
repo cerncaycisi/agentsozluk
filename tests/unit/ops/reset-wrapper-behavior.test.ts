@@ -358,7 +358,7 @@ echo "ACK=[$reset_next_ack]"
     expect(drain).toBeLessThan(pause);
     expect(pause).toBeLessThan(run);
     const block = source.slice(drain, source.indexOf("\nfi\n", drain));
-    expect(block).toContain("reset_operator_ssh 1080 1");
+    expect(block).toContain('reset_operator_ssh "$reset_flags_writer_max_seconds" 1');
     expect(block.indexOf("agent-write-freeze.ts freeze")).toBeLessThan(
       block.indexOf("great-reset-drain.ts drain"),
     );
@@ -369,10 +369,12 @@ echo "ACK=[$reset_next_ack]"
     // Reset'in kendi bayrak kaydı değil.
     expect(block).toContain("freeze '$(reset_drain_flags_path \"$great_reset_operation\")'");
     // Boşaltma durursa kilit yalnız olumlu kanıtlı geri açılıştan sonra bırakılır.
-    expect(block).toContain("if reset_restore_society_flags 1 1000; then");
-    expect(block.indexOf("if reset_restore_society_flags 1 1000; then")).toBeLessThan(
-      block.indexOf("find '$lock_dir' -xdev -depth -delete"),
+    expect(block).toContain(
+      'if reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"; then',
     );
+    expect(
+      block.indexOf('if reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"; then'),
+    ).toBeLessThan(block.indexOf("find '$lock_dir' -xdev -depth -delete"));
     // Başarılı bakımdan sonra düşen geri açılış kilidi tutmaz; tek amaçlı komuta yönlendirir.
     expect(source).toContain("reset_restore_society_flags 3 || reset_flags_pending=1");
     expect(source.trimEnd().endsWith("exit 97\nfi")).toBe(true);
@@ -495,7 +497,7 @@ for name in body guard; do
   value="\${value//\\/opt\\/agent-sozluk\\/runtime/${runtime}}"
   # Gerçek zincir: timeout -> node (başlatıcısız); yalnız betik zararsız bir yazıcı taklidi.
   value="\${value//node --import tsx scripts\\/agent-write-freeze.ts restore/node ${sleeper}}"
-  value="\${value//flock -w 1000/flock -w 15}"
+  value="\${value//flock -w \$reset_flags_writer_max_seconds/flock -w 15}"
   printf -v "$name" '%s' "$value"
 done
 mkdir -p "${runtime}"
@@ -653,8 +655,41 @@ wait
     expect(Number(/WAIT_MS=(\d+)/u.exec(result.stdout)?.[1])).toBeGreaterThanOrEqual(1000);
     // Boşaltma hatası dalı süren boşaltmayı bekler (en çok ~970 sn).
     expect(readFileSync("scripts/deploy-production-no-migration.sh", "utf8")).toContain(
-      "if reset_restore_society_flags 1 1000; then",
+      'if reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"; then',
     );
+  });
+
+  it("süreç kilidi bekleme bütçesi, aynı kilit altındaki ardışık mutatörlerin gerçek sınırlarının toplamını karşılar", () => {
+    const wrapper = readFileSync("scripts/deploy-production-no-migration.sh", "utf8");
+    const flagsRemote = readFileSync("scripts/great-reset-flags-remote.sh", "utf8");
+    const restoreCommand = readFileSync("scripts/great-reset-restore-flags.sh", "utf8");
+    const budget = Number(/^reset_flags_writer_max_seconds=(\d+)$/mu.exec(flagsRemote)?.[1]);
+    const drain = wrapper.indexOf(
+      'if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then',
+    );
+    const block = wrapper.slice(drain, wrapper.indexOf("\nfi\n", drain));
+    // Kritik bölümdeki her mutatörün `timeout --kill-after=K N` sınırı: N + K.
+    const limits = [...block.matchAll(/timeout --kill-after=(\d+) (\d+) node --import tsx/gu)].map(
+      (match) => Number(match[1]) + Number(match[2]),
+    );
+    expect(limits).toEqual([130, 970]);
+    const criticalSection = limits.reduce((sum, value) => sum + value, 0);
+    // Hazırlık ve süreç kurulumu için en az 120 sn pay.
+    expect(budget).toBeGreaterThanOrEqual(criticalSection + 120);
+    // Geri açılış tek mutatörü de bütçenin altında.
+    const restore =
+      /timeout --kill-after=(\d+) (\d+) node --import tsx scripts\/agent-write-freeze\.ts restore/u.exec(
+        flagsRemote,
+      );
+    expect(Number(restore?.[1]) + Number(restore?.[2])).toBeLessThan(budget);
+    // Bekleyen her yol aynı bütçeyi kullanır; yerel SSH sınırları uzak beklemeden büyük.
+    expect(flagsRemote).toContain("flock -w $reset_flags_writer_max_seconds 9");
+    expect(block).toContain('reset_operator_ssh "$reset_flags_writer_max_seconds" 1');
+    expect(block).toContain('reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"');
+    expect(wrapper).toContain("reset_operator_ssh $((wait + 240)) 0");
+    expect(restoreCommand).toContain("$((reset_flags_writer_max_seconds + 240)) ssh");
+    expect(restoreCommand).toContain("$((reset_flags_writer_max_seconds + 120)) ssh");
+    expect(wrapper).not.toMatch(/reset_restore_society_flags 1 \d/u);
   });
 
   it("tek amaçlı geri açılış komutu sarmalayıcıyla aynı hedefi kullanır ve exact onay ister", () => {
@@ -670,7 +705,9 @@ wait
       const pattern = new RegExp(`^${name}=(.+)$`, "mu");
       expect(restore.match(pattern)?.[1], name).toBe(wrapper.match(pattern)?.[1]);
     }
-    expect(restore).toContain('$(reset_flags_restore_body "$operation" "$lock_check" 1000)');
+    expect(restore).toContain(
+      '$(reset_flags_restore_body "$operation" "$lock_check" "$reset_flags_writer_max_seconds")',
+    );
     const refused = spawnSync("bash", ["scripts/great-reset-restore-flags.sh", operationId, sha], {
       encoding: "utf8",
       env: { ...process.env, AGENT_SOZLUK_GREAT_RESET_APPROVED: "" },

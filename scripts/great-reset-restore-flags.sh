@@ -85,7 +85,7 @@ source "$root/scripts/great-reset-flags-remote.sh"
    chmod 0600 '$lock_dir/owner'"
 
 release_lock() {
-  "$local_timeout" 1100 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+  "$local_timeout" $((reset_flags_writer_max_seconds + 120)) ssh "${ssh_options[@]}" deploy@"$expected_ip" \
     "set -euo pipefail
      test \"\$(hostname)\" = '$expected_host' || exit 91
      $scope_check
@@ -97,17 +97,17 @@ release_lock() {
 
 status=0
 output="$(
-  "$local_timeout" 1240 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+  "$local_timeout" $((reset_flags_writer_max_seconds + 240)) ssh "${ssh_options[@]}" deploy@"$expected_ip" \
     "set -euo pipefail
      test \"\$(hostname)\" = '$expected_host' || exit 91
      $scope_check
      $lock_check
      $(reset_operator_remote_prelude "$candidate_sha")
-     $(reset_flags_restore_body "$operation" "$lock_check" 1000)"
+     $(reset_flags_restore_body "$operation" "$lock_check" "$reset_flags_writer_max_seconds")"
 )" || status=$?
 printf '%s\n' "$output"
 # Kendi kilidimiz yalnız uzak yazıcının bittiği (süreç kilidi alınabildi) kanıtlanınca bırakılır;
-# SSH sonucu belirsiz olsa da mutatörler en çok ~970 sn yaşar (Astra #243 3.-6. tur).
+# SSH sonucu belirsiz olsa da kritik bölüm bütçeyle sınırlıdır (Astra #243 3.-7. tur).
 release_lock
 if ((status != 0)) || ! grep -Eq '^RELEASE_RESET_FLAGS_(RESTORED$|RESTORE_SKIPPED )' <<<"$output"; then
   printf 'RESET_FLAGS_FAIL code=RESET_FLAGS_RESTORE_FAILED flags stay frozen\n' >&2
