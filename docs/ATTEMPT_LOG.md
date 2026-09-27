@@ -9551,3 +9551,21 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   - Restore'u `--role=agent_sozluk` olmadan yapma; extension sahibi değişir.
   - `set -E` + ERR tuzağı olan betikte beklenen sıfır dışı çıkışları tuzağı kapatarak al.
   - Arka plan codex/ssh çağrısına her zaman `< /dev/null` ver.
+
+## 2026-09-27 — geri dönüş (#242) Astra 4 turu ve #241 tek seferlik CI hatası
+
+- #242 geri dönüş akışı Astra ile 4 turda kapandı; son exact SHA `5a0d561` KOD GO, CI 7/7.
+  #240 `a7a2c86` KOD GO; #241 `3818f70` KOD GO (tasarım), CI yeniden koşuda 7/7.
+- #241 `3818f70` ilk CI koşusunda `database` işi düştü:
+  `tests/integration/great-reset-e2e-owner.test.ts` "önizleme → kapılı EXECUTE → COMMIT"
+  `GREAT_RESET_POSTCONDITION_FAILED`. Değişiklik yalnız E2E dosyasındaydı; aynı kod önceki
+  koşuda (`956145e`) ve yeniden koşuda geçti; yerelde de tekrarlanmadı. Kök neden bilinmiyor: hata
+  kodu hangi alt denetimin (tablo özeti, sequence, şema, idempotency, engeller) düştüğünü söylemiyor.
+- Kanal dersi: arka plandaki doğrulayıcıyla FIFO eşleşmesi (`exec {fd}>fifo`) okuyucu ölürse
+  sonsuza dek bekleyebilir; coproc dizisi süreç bitince kaybolur ve `set -u` altında hata dalını
+  atlar. Çözüm: giriş FIFO'su okuma-yazma kipinde (`<>`) ve çocuğa miras bırakılmadan, çıkış düz
+  dosya.
+- **Tekrarlama:**
+  - `GREAT_RESET_POSTCONDITION_FAILED` yeniden görülürse CI'ı körlemesine yeniden koşturma; önce
+    düşen alt denetimi ayırt eden güvenli bir alt kod ekle ve kaydı buraya bağla.
+  - Kapı kapalıyken çalışan kabuk kodunda coproc ya da tek yönlü FIFO açılışı kullanma.
