@@ -9576,12 +9576,12 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   migration'lar uygulanmış; süper kullanıcı olmayan sahip rol; üretime bağlanılmadı. Kod:
   `feat/reset-rollback` `89e4c16` (TS katmanı; bash sarmalayıcı yerelde çalışmaz, üretim host ve
   Compose kimliğine bağlı).
-- 1. ve 2. koşu: reset önizlemesi `RUNS_OR_LEASES_PRESENT`, `RUNTIME_STATE_ACTIVE` ile bloklandı
+- Birinci ve ikinci koşu: reset önizlemesi `RUNS_OR_LEASES_PRESENT`, `RUNTIME_STATE_ACTIVE` ile bloklandı
   (yedekte 2 koşu ve 1 runtime state aktif). Kök neden: üretim akışında boşaltma adımı yok; A5
   dondurması worker'ı durdurur, kuyruk ve runtime state kalır; `--pause-society-flow` yalnız
   `runtimeEnabled`'ı kapatır. Pencerede bu, güvenli vazgeçme (ABORTED) ve resetsiz harcanan bakım
   demektir. Tasarım kararı Astra ile ayrı kayda geçecek.
-- 3. koşu (yalnız prova kopyasında boşaltma taklidi: 2 koşu iptal, 1 runtime state boşta):
+- Üçüncü koşu (yalnız prova kopyasında boşaltma taklidi: 2 koşu iptal, 1 runtime state boşta):
   reset-öncesi makbuz 96 sn; reset-anı dump 162 sn / 1,09 GiB; önizleme 21 sn `[]`; kapılı
   EXECUTE 69 sn; gölge restore (`--role`, tek transaction) 249 sn / 3,8 GB; canlı↔restore
   makbuzu birebir (87 sn); işaret 10 sn (1 niyet geçersiz, dar delta); işaretli makbuz eşit
