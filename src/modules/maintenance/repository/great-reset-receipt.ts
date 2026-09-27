@@ -388,7 +388,9 @@ async function schemaSection(tx: Tx) {
       /*
         Extension üye TANIMLARI (Astra, 10. tur B6): değiştirilmiş üye dump'a taşınmaz, restore
         standart tanımı kurar. OID içermeyen metinle (regproc/regtype/regoperator, sabit search_path)
-        özetlenir; kimlik pg_describe_object'tir.
+        özetlenir; kimlik pg_describe_object'tir. Sahip ve ACL burada DEĞİL, değer düzeyinde
+        karşılaştırılan security bölümündedir (extensionMember:…), ki manifestte onaylı sahiplik
+        farkı izin alabilsin (Astra, 11. tur P2).
       */
       'extensionMemberDefinitions', (SELECT jsonb_agg(jsonb_build_array(m.extname, m.member,
           m.definition) ORDER BY m.extname COLLATE "C", m.member COLLATE "C")
@@ -396,21 +398,19 @@ async function schemaSection(tx: Tx) {
           SELECT e.extname, pg_describe_object(d.classid, d.objid, 0) AS member,
             CASE d.classid
               WHEN 'pg_proc'::regclass THEN (SELECT jsonb_build_array(
-                  CASE WHEN p.prokind <> 'a' THEN pg_get_functiondef(p.oid) END,
-                  pg_get_userbyid(p.proowner), p.proacl::text)
+                  CASE WHEN p.prokind <> 'a' THEN pg_get_functiondef(p.oid) END)
                 FROM pg_proc p WHERE p.oid = d.objid)
               WHEN 'pg_operator'::regclass THEN (SELECT jsonb_build_array(o.oid::regoperator::text,
                   o.oprcode::regproc::text, o.oprrest::regproc::text, o.oprjoin::regproc::text,
                   o.oprcom::regoperator::text, o.oprnegate::regoperator::text, o.oprcanmerge,
-                  o.oprcanhash, pg_get_userbyid(o.oprowner))
+                  o.oprcanhash)
                 FROM pg_operator o WHERE o.oid = d.objid)
               WHEN 'pg_opclass'::regclass THEN (SELECT jsonb_build_array(c.opcname, am.amname,
                   c.opcintype::regtype::text, c.opcdefault, f.opfname,
-                  c.opckeytype::regtype::text, pg_get_userbyid(c.opcowner))
+                  c.opckeytype::regtype::text)
                 FROM pg_opclass c JOIN pg_am am ON am.oid = c.opcmethod
                 JOIN pg_opfamily f ON f.oid = c.opcfamily WHERE c.oid = d.objid)
               WHEN 'pg_opfamily'::regclass THEN (SELECT jsonb_build_array(f.opfname, am.amname,
-                  pg_get_userbyid(f.opfowner),
                   (SELECT jsonb_agg(jsonb_build_array(a.amopstrategy, a.amoplefttype::regtype::text,
                       a.amoprighttype::regtype::text, a.amopopr::regoperator::text, a.amoppurpose,
                       (SELECT opfname FROM pg_opfamily WHERE oid = a.amopsortfamily))
@@ -428,16 +428,14 @@ async function schemaSection(tx: Tx) {
                   t.typreceive::regproc::text, t.typsend::regproc::text,
                   t.typmodin::regproc::text, t.typmodout::regproc::text,
                   t.typanalyze::regproc::text, t.typlen, t.typbyval, t.typalign, t.typstorage,
-                  t.typdefault, t.typcategory, t.typispreferred, t.typdelim,
-                  pg_get_userbyid(t.typowner), t.typacl::text)
+                  t.typdefault, t.typcategory, t.typispreferred, t.typdelim)
                 FROM pg_type t WHERE t.oid = d.objid)
               WHEN 'pg_language'::regclass THEN (SELECT jsonb_build_array(l.lanname,
                   l.lanplcallfoid::regproc::text, l.laninline::regproc::text,
-                  l.lanvalidator::regproc::text, l.lanpltrusted, pg_get_userbyid(l.lanowner),
-                  l.lanacl::text)
+                  l.lanvalidator::regproc::text, l.lanpltrusted)
                 FROM pg_language l WHERE l.oid = d.objid)
               WHEN 'pg_ts_dict'::regclass THEN (SELECT jsonb_build_array(t.dictname,
-                  tm.tmplname, t.dictinitoption, pg_get_userbyid(t.dictowner))
+                  tm.tmplname, t.dictinitoption)
                 FROM pg_ts_dict t JOIN pg_ts_template tm ON tm.oid = t.dicttemplate
                 WHERE t.oid = d.objid)
               WHEN 'pg_ts_template'::regclass THEN (SELECT jsonb_build_array(t.tmplname,
@@ -544,6 +542,28 @@ async function securitySection(tx: Tx) {
       SELECT 'systemNamespace:' || nspname, jsonb_build_array(pg_get_userbyid(nspowner),
           nspacl::text)::text
         FROM pg_namespace WHERE nspname IN ('pg_catalog', 'information_schema')
+      UNION ALL
+      -- Extension üyelerinin sahibi ve ACL'si (11. tur): tanımları schema bölümünde.
+      SELECT 'extensionMember:' || pg_describe_object(d.classid, d.objid, 0),
+          CASE d.classid
+            WHEN 'pg_proc'::regclass THEN (SELECT jsonb_build_array(pg_get_userbyid(proowner),
+              proacl::text)::text FROM pg_proc WHERE oid = d.objid)
+            WHEN 'pg_operator'::regclass THEN (SELECT jsonb_build_array(pg_get_userbyid(oprowner))::text
+              FROM pg_operator WHERE oid = d.objid)
+            WHEN 'pg_opclass'::regclass THEN (SELECT jsonb_build_array(pg_get_userbyid(opcowner))::text
+              FROM pg_opclass WHERE oid = d.objid)
+            WHEN 'pg_opfamily'::regclass THEN (SELECT jsonb_build_array(pg_get_userbyid(opfowner))::text
+              FROM pg_opfamily WHERE oid = d.objid)
+            WHEN 'pg_type'::regclass THEN (SELECT jsonb_build_array(pg_get_userbyid(typowner),
+              typacl::text)::text FROM pg_type WHERE oid = d.objid)
+            WHEN 'pg_language'::regclass THEN (SELECT jsonb_build_array(pg_get_userbyid(lanowner),
+              lanacl::text)::text FROM pg_language WHERE oid = d.objid)
+            WHEN 'pg_ts_dict'::regclass THEN (SELECT jsonb_build_array(pg_get_userbyid(dictowner))::text
+              FROM pg_ts_dict WHERE oid = d.objid)
+            WHEN 'pg_ts_template'::regclass THEN '[]'
+          END
+        FROM pg_depend d
+        WHERE d.refclassid = 'pg_extension'::regclass AND d.deptype = 'e'
       UNION ALL
       -- Küme genelindeki yetkiler (Astra, PR #234 8. tur): dil sahipliği/ACL'si, parametre
       -- yetkileri ve tablespace'ler; extension üyeliği ya da rol nitelikleri bunları kanıtlamaz.

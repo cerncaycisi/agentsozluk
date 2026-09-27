@@ -79,10 +79,13 @@ describe("great reset receipt against PostgreSQL", () => {
     await integrationDatabase.$executeRawUnsafe("REVOKE USAGE ON TYPE gtrgm FROM PUBLIC");
     try {
       const after = await computeReceipt(integrationDatabase, expected);
-      expect(compareReceipts(before, after)).toMatchObject({
-        equal: false,
-        unexpected: [{ section: "security", key: "type:gtrgm" }],
-      });
+      const result = compareReceipts(before, after);
+      expect(result.equal).toBe(false);
+      // Hem public tip anahtarı hem extension üyesi anahtarı; ikisi de değer düzeyinde security.
+      expect(result.sections).toEqual(["security"]);
+      expect(result.unexpected.map((item) => item.key)).toEqual(
+        expect.arrayContaining(["type:gtrgm", "extensionMember:type gtrgm"]),
+      );
     } finally {
       await integrationDatabase.$executeRawUnsafe("GRANT USAGE ON TYPE gtrgm TO PUBLIC");
     }

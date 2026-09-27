@@ -9516,3 +9516,7 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   indeks `SET STATISTICS` farklarını yakaladı; gerçek boyutlu prova yine birebir.
 - **Tekrarlama:** extension üye özgün değerini varsayma; testte önce oku, sonra geri yükle
   (pg_trgm `%` için `matchingsel`, `contsel` değil).
+- Astra PR #234 11. tur `f88e3ce`: B2/B8/B9 ve B6 tanım kaybı kapandı; yeni P2: üye sahip/ACL'si
+  schema özetine de girdiği için manifestte onaylı sahiplik farkı restore'u durdururdu. Düzeltme:
+  sahip/ACL schema tanımından çıkarıldı, `extensionMember:` security anahtarlarına taşındı;
+  entegrasyon testi farkın yalnız `security` bölümünde olduğunu doğruluyor.
