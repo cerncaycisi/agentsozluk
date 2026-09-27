@@ -28,13 +28,27 @@ reset_operator_remote_prelude() {
      export AGENT_OPERATOR_ADMIN_ID=\"\$admin_id\" AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP=\"\$db_ip\""
 }
 
+# Uzak bayrak yazıcısının süreç ömrü kilidi (Astra #243 3. tur P1): yazıcı bu dosya kilidini
+# `tsx` çocuğuyla birlikte (miras alınan tanımlayıcı) bitene dek tutar. Dağıtım kilidi yalnız bu
+# kilit alınabildiğinde bırakılır; yazıcı `timeout --kill-after=10 180` ile sınırlı olduğundan
+# 240 sn bekleme kesin sonuç verir. SSH kopması, uzak yazıcının bittiğinin kanıtı değildir.
+reset_flags_writer_lock=/opt/agent-sozluk/runtime/.great-reset-flags.lock
+
+# Dağıtım kilidini bırakan uzak komutlara, silmeden önce eklenir.
+reset_flags_writer_idle_guard() {
+  printf '%s' "exec 9>'$reset_flags_writer_lock'
+     flock -w 240 9 || { printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_WRITER_ACTIVE lock kept\\n' >&2; exit 97; }"
+}
+
 # Olumlu kanıtlı geri açılış gövdesi (prelude'dan SONRA). $1 = operasyon kimliği.
 # Başarıyı yalnız uzak taraf bildirir: RELEASE_RESET_FLAGS_RESTORED. Kayıt yoksa
 # RELEASE_RESET_FLAGS_RESTORE_SKIPPED (geri yükleme kanıtı değildir).
 reset_flags_restore_body() {
   local file
   file="$(reset_drain_flags_path "$1")"
-  printf '%s' "if test -e /opt/agent-sozluk/runtime/.migration-hold; then
+  printf '%s' "exec 9>'$reset_flags_writer_lock'
+     flock -n 9 || { printf 'RELEASE_RESET_FLAGS_RESTORE_REFUSED reason=writer-active\\n' >&2; exit 97; }
+     if test -e /opt/agent-sozluk/runtime/.migration-hold; then
        printf 'RELEASE_RESET_FLAGS_RESTORE_REFUSED reason=maintenance-hold\\n' >&2
        exit 97
      fi

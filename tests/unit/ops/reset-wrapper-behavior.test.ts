@@ -479,6 +479,59 @@ $body"
     expect(noRecord.stdout).not.toContain("TSX");
   });
 
+  it("uzak yazıcı süreç kilidini çocuğuyla tutar; ebeveyn ölse de dağıtım kilidi yazıcı bitene dek bırakılmaz", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "reset-flags-lock-"));
+    directories.push(root);
+    const runtime = path.join(root, "runtime");
+    const script = `
+set -euo pipefail
+source scripts/great-reset-flags-remote.sh
+body="$(reset_flags_restore_body ${operationId})"
+guard="$(reset_flags_writer_idle_guard)"
+for name in body guard; do
+  value="\${!name}"
+  value="\${value//\\/opt\\/agent-sozluk\\/runtime/${runtime}}"
+  value="\${value//timeout --kill-after=10 180 .\\/node_modules\\/.bin\\/tsx/sleep 3; echo TSX}"
+  value="\${value//flock -w 240/flock -w 10}"
+  printf -v "$name" '%s' "$value"
+done
+mkdir -p "${runtime}"
+cd "${runtime}"
+: >.great-reset-drain-flags-${operationId}.json
+# SSH kopması taklidi: yazıcının kabuğu öldürülür, çocuğu (miras alınan kilit tanımlayıcısıyla) sürer.
+bash -c "set -euo pipefail
+$body" >writer.out 2>&1 &
+writer=$!
+sleep 1
+pkill -P "$writer" -x bash 2>/dev/null || true
+kill "$writer" 2>/dev/null || true
+# İkinci yazıcı reddedilir.
+if bash -c "set -euo pipefail
+$body" >second.out 2>&1; then echo SECOND_RAN; fi
+grep -q 'reason=writer-active' second.out && echo SECOND_REFUSED
+start=$(date +%s)
+bash -c "set -euo pipefail
+$guard
+echo GUARD_PASSED"
+echo "WAITED=$(( $(date +%s) - start ))"
+`;
+    const result = spawnSync("bash", ["-c", script], { encoding: "utf8", timeout: 60_000 });
+    expect(result.stdout).toContain("SECOND_REFUSED");
+    expect(result.stdout).not.toContain("SECOND_RAN");
+    expect(result.stdout).toContain("GUARD_PASSED");
+    // Bekçi, ebeveyni öldürülmüş yazıcının çocuğu bitene dek bekledi (sleep 3, 1 sn sonra öldürme).
+    expect(Number(/WAITED=(\d+)/u.exec(result.stdout)?.[1])).toBeGreaterThanOrEqual(1);
+    const source = readFileSync("scripts/deploy-production-no-migration.sh", "utf8");
+    // Dağıtım kilidini bırakan great reset yolları bekçiyi silmeden önce çalıştırır.
+    expect(source).toContain("   $reset_release_guard\n   find '$lock_dir' -xdev -depth -delete");
+    expect(source).toContain(
+      "         $(reset_flags_writer_idle_guard)\n         find '$lock_dir' -xdev -depth -delete",
+    );
+    expect(readFileSync("scripts/great-reset-restore-flags.sh", "utf8")).toContain(
+      "     $(reset_flags_writer_idle_guard)\n     find '$lock_dir' -xdev -depth -delete",
+    );
+  });
+
   it("tek amaçlı geri açılış komutu sarmalayıcıyla aynı hedefi kullanır ve exact onay ister", () => {
     const wrapper = readFileSync("scripts/deploy-production-no-migration.sh", "utf8");
     const restore = readFileSync("scripts/great-reset-restore-flags.sh", "utf8");

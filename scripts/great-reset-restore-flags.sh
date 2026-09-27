@@ -85,13 +85,14 @@ source "$root/scripts/great-reset-flags-remote.sh"
    chmod 0600 '$lock_dir/owner'"
 
 release_lock() {
-  "$local_timeout" 60 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+  "$local_timeout" 300 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
     "set -euo pipefail
      test \"\$(hostname)\" = '$expected_host' || exit 91
      $scope_check
      $lock_check
+     $(reset_flags_writer_idle_guard)
      find '$lock_dir' -xdev -depth -delete" ||
-    printf 'RESET_FLAGS_WARN release lock owned by %s could not be removed\n' "$lock_owner" >&2
+    printf 'RESET_FLAGS_WARN release lock owned by %s kept; writer may still run\n' "$lock_owner" >&2
 }
 
 status=0
@@ -105,7 +106,8 @@ output="$(
      $(reset_flags_restore_body "$operation")"
 )" || status=$?
 printf '%s\n' "$output"
-# Bayrak geri yazımı kilidin tek işidir; sonuç ne olursa olsun kendi kilidimiz bırakılır.
+# Kendi kilidimiz yalnız uzak yazıcının bittiği (süreç kilidi alınabildi) kanıtlanınca bırakılır;
+# SSH sonucu belirsiz olsa da yazıcı en çok ~190 sn yaşar (Astra #243 3. tur P1).
 release_lock
 if ((status != 0)) || ! grep -Eq '^RELEASE_RESET_FLAGS_(RESTORED$|RESTORE_SKIPPED )' <<<"$output"; then
   printf 'RESET_FLAGS_FAIL code=RESET_FLAGS_RESTORE_FAILED flags stay frozen\n' >&2

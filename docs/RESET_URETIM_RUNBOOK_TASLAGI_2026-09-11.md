@@ -236,6 +236,9 @@ bir şey açamam, halledin"):**
     `RESET_FLAGS_RESTORE_PENDING` ile biter.
 - Başarıyı yalnız uzaktan gelen `RELEASE_RESET_FLAGS_RESTORED` satırı kanıtlar; kayıt yoksa
   `RELEASE_RESET_FLAGS_RESTORE_SKIPPED` basılır, bu geri yükleme kanıtı değildir.
+- Uzak bayrak yazıcısı süreç ömrü boyunca bir dosya kilidi tutar (çocuk süreç dahil). Dağıtım
+  kilidi, great reset koşularında ancak bu kilit alınabildiğinde bırakılır; SSH kopması yazıcının
+  bittiğinin kanıtı sayılmaz. Yazıcı en çok yaklaşık 190 sn yaşar, bekleme sınırı 240 sn'dir.
 - **Tek amaçlı tamamlama:** aynı hedef, kilit ve olumlu kanıt kurallarıyla yalnız bayrakları geri
   yazar; bakıma, migration'a, siteye ya da worker'a dokunmaz; kendi kilidini her sonuçta bırakır.
 

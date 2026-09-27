@@ -674,6 +674,9 @@ fi
 # shellcheck source=scripts/great-reset-flags-remote.sh
 source "$root/scripts/great-reset-flags-remote.sh"
 reset_flags_pending=0
+# Great reset koşusunda dağıtım kilidi, uzak bayrak yazıcısı bitmeden bırakılmaz.
+reset_release_guard=''
+if test -n "$great_reset_operation"; then reset_release_guard="$(reset_flags_writer_idle_guard)"; fi
 reset_operator_ssh() {
   local seconds="$1" skip_if_started="$2" body="$3"
   "$local_timeout" "$seconds" ssh "${ssh_options[@]}" deploy@"$expected_ip" \
@@ -728,6 +731,7 @@ if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then
          test \"\$(hostname)\" = '$expected_host' || exit 91
          $scope_check
          $lock_check
+         $(reset_flags_writer_idle_guard)
          find '$lock_dir' -xdev -depth -delete"
     fi
     exit 96
@@ -1045,6 +1049,7 @@ ssh "${ssh_options[@]}" deploy@"$expected_ip" \
    test \"\$(hostname)\" = '$expected_host' || exit 91
    $scope_check
    $lock_check
+   $reset_release_guard
    find '$lock_dir' -xdev -depth -delete"
 if test "$reset_flags_pending" = 1; then
   printf 'RELEASE_WRAPPER_FAIL code=RESET_FLAGS_RESTORE_PENDING run scripts/great-reset-restore-flags.sh %s %s\n' \
