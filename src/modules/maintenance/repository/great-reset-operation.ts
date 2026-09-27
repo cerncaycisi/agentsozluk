@@ -34,11 +34,19 @@ function fail(code: string): never {
 
 async function assertIdentity(tx: Tx, expected: OperationIdentity): Promise<void> {
   const [actual] = await tx.$queryRaw<
-    { database: string; owner: string; user: string; cluster: string; version: number }[]
+    {
+      database: string;
+      owner: string;
+      user: string;
+      cluster: string;
+      version: number;
+      marker: string | null;
+    }[]
   >`
     SELECT current_database() AS database, pg_get_userbyid(d.datdba) AS owner,
       current_user AS user, current_setting('server_version_num')::int AS version,
-      (SELECT system_identifier::text FROM pg_control_system()) AS cluster
+      (SELECT system_identifier::text FROM pg_control_system()) AS cluster,
+      shobj_description(d.oid, 'pg_database') AS marker
     FROM pg_database d WHERE d.datname = current_database()`;
   if (
     !actual ||
@@ -47,7 +55,9 @@ async function assertIdentity(tx: Tx, expected: OperationIdentity): Promise<void
     actual.user !== expected.owner ||
     actual.cluster !== expected.clusterId ||
     actual.version < 160000 ||
-    actual.version >= 170000
+    actual.version >= 170000 ||
+    // Yerel prova hedefinde sentetik işaret yazmalardan önce de şarttır (Astra, PR #238 P2).
+    (expected.marker !== undefined && actual.marker !== expected.marker)
   )
     fail("DATABASE_IDENTITY_MISMATCH");
 }

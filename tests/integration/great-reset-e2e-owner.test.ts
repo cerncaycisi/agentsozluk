@@ -262,6 +262,15 @@ describe("great reset yürütücüsü, hedef DB sahibi rolle ve bağlantı kapı
           releaseSha,
         ),
       ).rejects.toThrow("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
+      // Yerel hedef işareti verildiyse yazmadan önce denetlenir (Astra, PR #238 P2).
+      await expect(
+        createOperationIntent(
+          database,
+          { ...identity, marker: "agentsozluk:great-reset:synthetic:v1" },
+          randomUUID(),
+          releaseSha,
+        ),
+      ).rejects.toThrow("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
       // Açık niyet varken ikincisi yazılmaz; geçersizleştirilen niyet yenisini engellemez.
       const first = randomUUID();
       await createOperationIntent(database, identity, first, releaseSha);

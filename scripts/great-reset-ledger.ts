@@ -1,14 +1,4 @@
-import {
-  closeSync,
-  constants,
-  fsyncSync,
-  lstatSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  unlinkSync,
-  writeSync,
-} from "node:fs";
+import { closeSync, constants, lstatSync, openSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import {
   appendRecord,
@@ -17,6 +7,7 @@ import {
   parseLedger,
   type LedgerState,
 } from "../src/modules/maintenance/domain/great-reset-ledger";
+import { replaceDurable } from "./great-reset-durable-file";
 
 /*
   Great reset dış nesil kaydının operatör sunucusu yazıcısı (tasarım v20 madde 4). Kayıt, üretim
@@ -52,35 +43,8 @@ function readLedger(file: string): string {
 }
 
 function durableReplace(file: string, content: string, previous: string): void {
-  const directory = dirname(file);
-  const temporary = join(directory, `.great-reset-ledger.${process.pid}.tmp`);
-  const handle = openSync(
-    temporary,
-    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
-    0o600,
-  );
-  try {
-    try {
-      writeSync(handle, content);
-      fsyncSync(handle);
-    } finally {
-      closeSync(handle);
-    }
-    renameSync(temporary, file);
-  } catch (error) {
-    try {
-      unlinkSync(temporary);
-    } catch {
-      // Geçici dosya zaten yoksa (rename sonrası hata) yapılacak bir şey yok.
-    }
-    throw error;
-  }
-  const directoryHandle = openSync(directory, constants.O_RDONLY);
-  try {
-    fsyncSync(directoryHandle);
-  } finally {
-    closeSync(directoryHandle);
-  }
+  // Tam yazım, geçici dosya doğrulaması ve rename sonrası geri okuma (Astra, PR #238 P1).
+  replaceDurable(file, join(dirname(file), `.great-reset-ledger.${process.pid}.tmp`), content);
   const reread = readFileSync(file, "utf8");
   if (reread !== content || !reread.startsWith(previous)) fail("READBACK_MISMATCH");
   parseLedger(reread);

@@ -1,7 +1,8 @@
-import { closeSync, constants, openSync, readFileSync, writeSync, fsyncSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { isAbsolute } from "node:path";
 import type { GreatResetReceipt } from "../src/modules/maintenance/repository/great-reset-receipt";
+import { writeNewDurable } from "./great-reset-durable-file";
 import { localResetTarget } from "./great-reset-local-guard";
 
 /*
@@ -77,17 +78,8 @@ async function resolveTarget(scratch: string | undefined): Promise<Target> {
 
 function writePrivateNew(path: string, content: string): void {
   if (!isAbsolute(path)) fail("INVALID_ARGUMENTS");
-  const handle = openSync(
-    path,
-    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
-    0o600,
-  );
-  try {
-    writeSync(handle, content);
-    fsyncSync(handle);
-  } finally {
-    closeSync(handle);
-  }
+  // Tam yazım, fsync, geri okuma ve dizin fsync; doğrulanamayan dosya silinir (Astra, PR #238 P2).
+  writeNewDurable(path, content);
 }
 
 function readReceipt(path: string): GreatResetReceipt {

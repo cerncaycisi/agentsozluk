@@ -117,6 +117,67 @@ reset sonrası alt sınır kısıtını ve aşağıdaki adım 3/5 eşlemesini ek
   önceki timer durumları ve geri dönüş kararı bulunur. Secret veya ham entry
   gövdesi makbuza yazılmaz.
 
+## v20 A5 reset modu — aşama makinesi
+
+Bu bölüm tasarım v20 madde 2'nin uygulama sözleşmesidir; aşağıdaki "Uygulama sırası" ile
+çelişirse bu bölüm geçerlidir. Sarmalayıcı `--great-reset <operationId>` ile, exact onaylı SHA,
+exact iki migration ve Gökhan'ın ayrı reset onay değişkeniyle (kalıcı yazılmaz) çağrılır. Uzak
+betik A5 aşama dosyasını (`.migration-operation/phase`) kullanır; aşama yalnız ileri gider.
+
+A5'ten değişmeden gelenler: plan (exact iki migration, SHA-256 sabit) → imaj doğrulaması →
+ön kontrol → dondurma → migration öncesi yedek (a) ve scratch restore → scratch'te migration
+provası → üretimde migration → post-verify. Reset modunda farklar:
+
+- **Dondurma** worker'a ek olarak `agent-sozluk-maintenance.timer`, `agent-sozluk-alarm.timer`,
+  `agent-sozluk-backup.timer` ve `agent-sozluk.service`'i durdurur ve **devre dışı bırakır**;
+  önceki `enabled/active` durumları işarete yazılır. Böylece reboot sonrası ne site ne timer
+  kendiliğinden açılır. Operatör sunucusundaki gecelik yedek timer'ını sarmalayıcı durdurur.
+- **Scratch provası** önceki imaj yerine aday imajı migration uygulanmış scratch'e karşı açar
+  (BIGINT şeması eski imajla geri uyumlu sayılmaz); yalnız health/ready.
+- **Post-verify**: önceki tabloların içerik özetleri birebir; şema özetinde yalnız `entries` ve
+  `topics` değişebilir; sequence tanımında yalnız iki public ID sequence'inin `data_type`
+  alanı `integer → bigint`; dört `great_reset_*` tablosu boş; ayrıca katalog iddiaları (iki
+  sütun `bigint`, iki sequence `bigint`/`MAXVALUE 2147483647`, iki doğrulanmış üst aralık
+  kısıtı, iki etkin immutable trigger, dokuz etkin kayıt trigger'ı) ve scratch ile üretim
+  tanımlarının eşitliği. `writers-may-run` yazılmaz, kesinti sayacı sıfırlanmaz.
+
+Ardından reset aşamaları (aynı dondurma içinde):
+
+1. `reset-flags-frozen`: dört yazma bayrağının önceki değerleri ve `settingsVersion`
+   işarete yazılır; hepsi uygulama servisiyle (denetim kaydıyla) kapatılır.
+2. `reset-intent`: operasyon CLI'si `intent-create <operationId> <SHA>` (en çok 2 saat).
+3. `reset-backup-verified`: reset-anı yedeği (b) sahiplik/ACL dahil `pg_dump -Fc`; üretim
+   makbuzu; yedek yönetici rolüyle yeni scratch'e restore; scratch makbuzu üretimle **izinli
+   farksız** eşit; scratch düşürülür. Uzak betik `RELEASE_RESET_AWAIT_LEDGER state=PREPARED`
+   ile 75 çıkar.
+4. Sarmalayıcı yedeği operatör sunucusuna çeker, SHA-256'yı doğrular, dış kayda `PREPARED`
+   yazar ve `ack:PREPARED` ile uzak betiği yeniden çağırır → `reset-prepared`.
+5. Vazgeçme zamanı (dondurmadan itibaren 45 dk) geçtiyse ya da önizleme engel bulursa
+   `reset-aborted`: niyet geçersizleştirilir, `ABORTED` beklenir; sonra site **aday sürüm ve
+   migration ile, resetsiz** normal A5 kesimiyle açılır.
+6. `reset-committing` → üretim reset CLI'si önizleme (plan SHA) ve bağlantı kapılı EXECUTE.
+   COMMIT öncesi hata → 5. madde. Sonuç belirsizse aşama `reset-committing`'de kalır; yeniden
+   girişte reset **tekrarlanmaz**, betik `RESET_OUTCOME_AMBIGUOUS` ile durur, site kapalı kalır,
+   karar Gökhan'ındır.
+7. `reset-committed` → reset sonrası makbuz; `reset-receipted` → `AWAIT_LEDGER
+state=COMMITTED_MAINTENANCE` (makbuz SHA'sıyla). Sarmalayıcı yazar, `ack` ile döner →
+   `reset-maintenance`.
+8. `reset-accepted`: aday imajdan atılabilir, iç ağda, bütün havuz bağlantılarında
+   `default_transaction_read_only=on` olan app; yalnız GET/HEAD kabul (health/ready, ana sayfa,
+   sitemap, eski entry/başlık 410, bilinmeyen 404). Container silinir; restore uygunluk
+   denetimi `[]` olmalı (makbuz eşitliği dahil). → `AWAIT_LEDGER state=TRAFFIC_OPEN`.
+9. Sarmalayıcı `TRAFFIC_OPEN` yazar (geri dönüş penceresi kapanır), `ack` ile döner →
+   `reset-traffic` → operasyon CLI'si `traffic-open` → `reset-exposed`.
+10. `writers-may-run` → A5 kesimi: normal app, release smoke, Caddy, boot etiketi, hold kalkar,
+    worker; bayraklar eski değerlerine ayrı ayrı döner; timer ve `agent-sozluk.service` önceki
+    durumlarına döner; `cutover-done`.
+
+Hata kuralı: `post-verified` öncesi A5 kuralları aynen. `reset-*` aşamalarında her hata site
+kapalı kalarak durur; yalnız 5. madde (COMMIT öncesi) otomatik resetsiz açılış yapar. COMMIT
+sonrası (7–9) geri dönüş ancak dış kayıt `COMMITTED_MAINTENANCE` iken, restore uygunluk
+denetimi ve dış kayıt denetimi geçerse, ayrı Gökhan onayıyla "Hata ve geri dönüş dalları"
+bölümündeki gölge restore yoluyla yapılır.
+
 ## Uygulama sırası
 
 1. **Dondur.** Dört global ayarın önceki değerini ve settingsVersion'ı kaydet.
