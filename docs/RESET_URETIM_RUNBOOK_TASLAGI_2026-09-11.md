@@ -375,7 +375,8 @@ sarmalayıcıda `--great-reset <operationId> --great-reset-rollback` ve ayrı
   → canonical commit özetli doğrulama → işaretli gölge makbuzu: `audit_logs` ve
   `great_reset_intents` yalnız işaret transaction'ında ölçülen özete birebir eşitse kabul edilir.
 - **Kapı sonrası doğrulama:** CLI canonical ve gölgeye birer sabit bağlantı açar ve PID'lerini
-  iki özel FIFO üzerinden bildirir; iki DB'nin OID'i kaydedilir. Admin iki DB'nin kapısını kapatır, iki DB'de yalnız bu iki PID'in kaldığını, hazırlanmış
+  özel bir çıkış dosyasına yazar (giriş, bu kabukta okuma-yazma kipinde açılan özel FIFO; açılış
+  bloklanmaz); iki DB'nin OID'i kaydedilir. Admin iki DB'nin kapısını kapatır, iki DB'de yalnız bu iki PID'in kaldığını, hazırlanmış
   işlem olmadığını ve kapıların kapalı olduğunu doğrular. CLI aynı bağlantılarda yeni transaction
   ile uygunluğu, commit özetini, gölge doğrulamasını ve iki makbuzu (canlı = reset sonrası, gölge =
   işaretli gölge) yeniden ölçer. Bağlantılar bırakılınca sıfır backend doğrulanır; ancak o zaman

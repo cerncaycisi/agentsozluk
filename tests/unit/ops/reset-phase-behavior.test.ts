@@ -648,6 +648,20 @@ reset_rollback
     expect(calls).not.toContain("RENAMED");
   });
 
+  it("geri dönüş: doğrulayıcı PINNED'dan önce ölürse kanal bloklanmaz, kapı kapanmaz", () => {
+    const started = Date.now();
+    const result = harness(`
+${rollbackFlow({ backends: "41,42|0|0", verified: true })}
+reset_cli_signalled() { echo "uyarı" >&2; exit 1; }
+reset_rollback
+`);
+    expect(Date.now() - started).toBeLessThan(20_000);
+    expect(result.stderr).toContain("code=RESET_ROLLBACK_PIN_FAILED");
+    expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain(
+      "ALLOW_CONNECTIONS false",
+    );
+  });
+
   it("geri dönüş tamamlama yolu da dış kayıt kimliğine bağlıdır", () => {
     const result = harness(`
 ${rollbackFixture()}

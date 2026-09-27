@@ -273,30 +273,36 @@ SQL
 }
 
 # Sabit bağlantılar → kapılar → yalnız sabit backend'ler → aynı bağlantılarda doğrulama →
-# bağlantılar bırakılır → sıfır backend. Protokol iki özel FIFO üzerinden, sabit tanımlayıcılarla
-# yürür; doğrulayıcının çıkış kodu denetlenir.
+# bağlantılar bırakılır → sıfır backend. Doğrulayıcının çıkış kodu denetlenir.
 reset_rollback_gated_verify() {
   local dump_sha="$1" commit="$2" post="$3" shadow_after="$4" line canonical_pid shadow_pid
-  local result='' pids expected status channel to_cli from_cli
+  local result='' pids expected status=0 channel to_cli waited
   printf '%s %s\n' "$(reset_database_oid agent_sozluk)" "$(reset_database_oid "$reset_shadow")" \
     >"$(reset_restore_marker oids).next"
   mv -Tf "$(reset_restore_marker oids).next" "$(reset_restore_marker oids)"
   [[ "$(cat "$(reset_restore_marker oids)")" =~ ^[0-9]+\ [0-9]+$ ]] ||
     migration_fail RESET_ROLLBACK_OID_UNREADABLE
-  # Doğrulayıcı erken ölürse FIFO'ya yazmak SIGPIPE ile kabuğu öldürmesin; hata dalı çalışsın.
-  trap '' PIPE
+  # Kanal: giriş özel bir FIFO, bu kabukta okuma-yazma kipinde açılır (açılış hiçbir sırada
+  # bloklanmaz; doğrulayıcı ölse de yazma SIGPIPE üretmez). Çıkış özel bir düz dosya; PINNED
+  # satırı süreç yaşarken yoklanır, sonuç süreç bittikten sonra okunur.
   channel="$(mktemp -d "$migration_dir/reset-rollback-channel.XXXXXX")"
-  mkfifo -m 0600 "$channel/to-cli" "$channel/from-cli"
+  mkfifo -m 0600 "$channel/to-cli"
+  exec {to_cli}<>"$channel/to-cli"
+  (umask 077 && : >"$channel/out" && : >"$channel/err")
   reset_cli_signalled scripts/great-reset-operation.ts rollback-pinned-verify "$reset_operation_id" \
     "$dump_sha" "$commit" "$post" "$shadow_after" --database "$reset_shadow" \
-    <"$channel/to-cli" >"$channel/from-cli" 2>&1 &
+    <"$channel/to-cli" >"$channel/out" 2>"$channel/err" {to_cli}>&- &
   reset_rollback_verify_pid=$!
-  exec {to_cli}>"$channel/to-cli"
-  exec {from_cli}<"$channel/from-cli"
-  rm -rf "$channel"
-  if ! IFS= read -r -t 300 line <&"$from_cli" ||
-     ! [[ "$line" =~ ^PINNED\ canonical=([0-9]+)\ shadow=([0-9]+)$ ]]; then
-    exec {to_cli}>&- {from_cli}<&-
+  line=''
+  for ((waited = 0; waited < 1500; waited++)); do
+    line="$(grep -m 1 '^PINNED ' "$channel/out" || true)"
+    if [[ "$line" == PINNED\ * ]] || ! kill -0 "$reset_rollback_verify_pid" 2>/dev/null; then break; fi
+    sleep 0.2
+  done
+  line="$(grep -m 1 '^PINNED ' "$channel/out" || true)"
+  if ! [[ "$line" =~ ^PINNED\ canonical=([0-9]+)\ shadow=([0-9]+)$ ]]; then
+    exec {to_cli}>&-
+    rm -rf "$channel"
     reset_rollback_gate_fail RESET_ROLLBACK_PIN_FAILED
   fi
   canonical_pid="${BASH_REMATCH[1]}"
@@ -306,7 +312,8 @@ reset_rollback_gated_verify() {
 ALTER DATABASE agent_sozluk WITH ALLOW_CONNECTIONS false;
 SELECT format('ALTER DATABASE %I WITH ALLOW_CONNECTIONS false', :'shadow') \gexec
 SQL
-    exec {to_cli}>&- {from_cli}<&-
+    exec {to_cli}>&-
+    rm -rf "$channel"
     reset_rollback_gate_fail RESET_ROLLBACK_GATE_FAILED
   fi
   pids="$(admin_psql postgres -v "shadow=$reset_shadow" <<'SQL'
@@ -319,20 +326,17 @@ SQL
 )" || pids=error
   expected="$(printf '%s\n' "$canonical_pid" "$shadow_pid" | sort -n | paste -sd ,)|0|0"
   if test "$pids" != "$expected"; then
-    exec {to_cli}>&- {from_cli}<&-
+    exec {to_cli}>&-
+    rm -rf "$channel"
     reset_rollback_gate_fail RESET_ROLLBACK_UNEXPECTED_BACKEND
   fi
-  if ! printf 'GATES_CLOSED\n' >&"$to_cli"; then
-    exec {to_cli}>&- {from_cli}<&-
-    reset_rollback_gate_fail RESET_ROLLBACK_GATED_VERIFY_FAILED
-  fi
-  # Sinyalden sonra yazma ucu kapanır: doğrulayıcının stdin'i EOF alır, süreç kendiliğinden biter.
+  # Sinyal; ardından tek yazma ucu kapanır: doğrulayıcının stdin'i EOF alır.
+  printf 'GATES_CLOSED\n' >&"$to_cli" || status=1
   exec {to_cli}>&-
-  while IFS= read -r -t 900 line <&"$from_cli"; do result="$line"; done
-  exec {from_cli}<&-
-  status=0
-  wait "$reset_rollback_verify_pid" || status=$?
+  wait "$reset_rollback_verify_pid" || status=$((status + $?))
   reset_rollback_verify_pid=''
+  result="$(grep '^{' "$channel/out" | tail -n 1 || true)"
+  rm -rf "$channel"
   if ((status != 0)) ||
      test "$(reset_json_field verified <<<"$result" 2>/dev/null || true)" != true; then
     reset_rollback_gate_fail RESET_ROLLBACK_GATED_VERIFY_FAILED
@@ -344,7 +348,6 @@ SQL
 )" != 0; then
     reset_rollback_gate_fail RESET_ROLLBACK_UNEXPECTED_BACKEND
   fi
-  trap - PIPE
 }
 
 reset_rollback_finish() {
