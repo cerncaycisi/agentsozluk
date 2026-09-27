@@ -283,3 +283,87 @@ test("a link to content removed while the page is open reaches the server and la
     await database.$disconnect();
   }
 });
+
+test("a fully loaded and cached entry page is not reused after the reset: a new click lands on 410", async ({
+  page,
+}) => {
+  /*
+    Router Cache GO kapısı (tasarım v19/v20, PLAN 6. madde): kısmi prefetch akışının tamamlanması
+    CI'da gözlenemediği için daha güçlü durum ölçülür. Entry sayfası önce gerçek istemci
+    gezinmesiyle TAMAMEN yüklenir (RSC yükü bitmiş, metin görünür) ve geri dönülür; Router Cache
+    bu segmentin tam verisini tutar. Reset sonrası aynı linke yeni tıklama bu veriyi yeniden
+    kullanmamalı (`force-dynamic`, `staleTimes.dynamic = 0`): sunucuya gider, 410 alır, eski metin
+    görünmez. Tam yüklenmiş veri bile kullanılmıyorsa kısmi prefetch de kullanılmaz.
+  */
+  const database = testDatabase();
+  try {
+    const author = await database.user.findFirstOrThrow({
+      where: { status: "ACTIVE", kind: "HUMAN" },
+    });
+    const suffix = randomUUID().slice(0, 8);
+    const body = `Önbellekte tam yüklü kalacak eski entry metni ${suffix}.`;
+    const topic = await database.topic.create({
+      data: {
+        title: `önbellek başlığı ${suffix}`,
+        normalizedTitle: `önbellek başlığı ${suffix}`,
+        slug: `onbellek-basligi-${suffix}`,
+        createdById: author.id,
+      },
+    });
+    const entry = await database.entry.create({
+      data: {
+        topicId: topic.id,
+        authorId: author.id,
+        origin: "WEB",
+        body,
+        normalizedBody: body.toLocaleLowerCase("tr-TR"),
+      },
+    });
+    await database.topic.update({
+      where: { id: topic.id },
+      data: { entryCount: 1, lastEntryAt: entry.createdAt },
+    });
+    const entryPath = `/entry/${entry.publicId}`;
+
+    await page.goto(`/baslik/${topic.slug}--${topic.publicId}`);
+    const link = page.getByRole("link", { name: /tarihli entry’ye git/u }).first();
+    await expect(link).toBeVisible();
+    // Tam istemci gezinmesi: entry sayfası yüklenir ve metin görünür.
+    await link.click();
+    await page.waitForURL((url) => url.pathname === entryPath);
+    await expect(page.getByText(body)).toBeVisible();
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname.startsWith("/baslik/"));
+
+    const { operationId } = await database.greatResetCommit.create({
+      data: {
+        operationId: randomUUID(),
+        releaseSha: "e".repeat(40),
+        planSha256: "e".repeat(64),
+        receiptSha256: "e".repeat(64),
+        topicTombstones: 0,
+        entryTombstones: 1,
+      },
+    });
+    await database.greatResetTombstone.create({
+      data: { kind: "ENTRY", contentId: entry.id, publicId: entry.publicId, operationId },
+    });
+    await database.entry.delete({ where: { id: entry.id } });
+
+    const documentResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === entryPath &&
+        response.request().resourceType() === "document",
+    );
+    await page
+      .getByRole("link", { name: /tarihli entry’ye git/u })
+      .first()
+      .click();
+    expect((await documentResponse).status()).toBe(410);
+    await expect(page.getByRole("heading", { name: "Bu içerik kaldırıldı" })).toBeVisible();
+    await expect(page.getByText(body)).toHaveCount(0);
+  } finally {
+    await clearResetRecords(database);
+    await database.$disconnect();
+  }
+});
