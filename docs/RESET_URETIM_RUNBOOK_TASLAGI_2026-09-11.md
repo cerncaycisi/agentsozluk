@@ -62,8 +62,14 @@ reset sonrası alt sınır kısıtını ve aşağıdaki adım 3/5 eşlemesini ek
   kapısıdır. Reset
   öncesi ve pre-reset restore sonrası var olan içerik normal yanıt verir.
   Node middleware uygulaması mevcut geniş matcher/prefetch dışlamasını korur;
-  permalinkler için ikinci, prefetch'i kapsayan matcher ve gerçek 410 yanıtında
-  `Cache-Control: no-store`, CSP, `X-Robots-Tag: noindex` aranır. Standalone
+  prefetch'i kapsayan ikinci matcher **eklenmez** (tasarım v19: Next 15.5.25 adaptörü
+  `next-router-prefetch` başlığını middleware'den önce siler, dar matcher prefetch
+  yanıtına CSP/analytics eklerdi). Prefetch middleware'e uğramaz; silinmiş adrese
+  tıklama RSC navigasyonudur ve 410 alır. Router Cache kapısı: entry/başlık/ana sayfa
+  `force-dynamic`, bu rotalarda `loading.tsx` yok, `prefetch={true}` veya
+  `router.prefetch` yok ve `staleTimes.dynamic=0`; önceden yüklenmiş link sayfa
+  içeriğini tıklamada sunucudan ister. Deneysel E2E kanıtı ayrıca eklenir. Gerçek 410
+  yanıtında `Cache-Control: no-store`, CSP, `X-Robots-Tag: noindex` aranır. Standalone
   build/E2E, yalnız `GET`/`HEAD` eski ID/UUID adaylarında 410,
   POST/yalın başlık/yeni ID'de DB sorgusuz `next()`, DB hata yolunda
   `503 no-store`, RSC/Server Action geçişi,

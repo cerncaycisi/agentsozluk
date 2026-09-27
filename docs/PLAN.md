@@ -57,8 +57,10 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    uyarlandı ([prova](RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md): önizleme ~23 sn, uygulama
    ~83 sn). Çekirdek kapılar PR #225 ile main'de; üretimde değil. **26 Eylül:** geniş public ID
    namespace'inin ilk paketi (BIGINT migration'ı, üst aralık kilidi, repository sınırında güvenli
-   `number` dönüşümü) taslak PR'da; migration ekleyici olmadığı için A5 yolundan geçmez, bakım
-   penceresi ve Gökhan'ın ayrı onayı gerekir, o yüzden main'e birleştirilmedi. İkinci paket
+   `number` dönüşümü) taslak PR'da; migration ekleyici olmadığı için normal A5 yolundan geçmez
+   (genel ekleyici denetçi aynen kalır). **27 Eylül (tasarım v20):** yalnız bu iki exact migration
+   için A5 sarmalayıcısının dar reset modu kullanılacak; bakım penceresi ve Gökhan'ın ayrı onayı
+   gerekir, o yüzden main'e birleştirilmedi. İkinci paket
    (reset kayıt tabloları: niyet, commit işareti, `(kind, uuid, publicId)` mezar taşı, trafik
    olayı; `decideRemovedContent` kararı; `RESET_ALREADY_COMMITTED` kapısı) aynı pencereye bağlı
    yığınlı taslak PR'da. Üçüncü paket: Node runtime 410 middleware'i (yalnız GET/HEAD ve eski
