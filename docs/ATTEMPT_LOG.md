@@ -9521,3 +9521,33 @@ running − queued ≤ 0` iken `QUEUE_NOT_EMPTY` ile yeni `STOCHASTIC_TICK` açm
   sahip/ACL schema tanımından çıkarıldı, `extensionMember:` security anahtarlarına taşındı;
   entegrasyon testi farkın yalnız `security` bölümünde olduğunu doğruluyor.
 - GPT-6 Astra PR #234 12. tur exact `c1b3e33bcb2fd77a3e4d54254dbf42dfce62c010` için **KOD GO**; 11. tur P2'si kapandı, yeni P1/P2 yok. Aynı kodla gerçek boyutlu prova birebir (makbuz 82–88 sn).
+
+## 2026-09-27 — reset operasyon katmanı (PR #237–#242), yerel kanıtlar ve dersler
+
+- Tasarım v20 (Astra ile ortak karar): A5 bakım yolu dar reset moduyla; Caddy kapalı; HMAC'siz
+  zincirli dış kayıt; iki yedek noktası; salt okunur iç kabul. #237 (v20 + süper kullanıcı
+  olmayan sahip rolle entegrasyon, CI 7/7) ve #238 (operasyon araçları) Astra KOD GO.
+- Yerel gerçek ölçümler (üretime dokunulmadı):
+  - Migration'la kurulmuş DB ile onun pg_dump/pg_restore kopyasının makbuz şema özeti farklı:
+    PostgreSQL CHECK ifadelerinde iç içe AND'leri düzleştiriyor, indeks WHERE'lerinde
+    `(ARRAY[...])::text[]`'i öğe başına yazıyor (A5'in 23 Eylül dersiyle aynı). Çözüm: yalnız bu
+    iki yazımı kanonikleştiren `schemaNormalized` makbuz bölümü; ham şema yalnız canlı↔restore'da
+    dışlanır.
+  - Dump extension sahibini taşımaz: restore hangi rolle yapılırsa extension o role ait olur.
+    Üretim scratch'i ve operatör restore'u `--role=agent_sozluk` ile yapılmalı; aksi hâlde canlı
+    ↔ scratch eşit çıkmaz.
+  - Makbuz DB sahibi = bağlanan kullanıcı ister; operatör kapısı için `agent_sozluk`'a ait
+    `…_independent_test` hedefi eklendi.
+  - Gerçek prova (migration'lar agent_sozluk rolüyle): canlı ↔ `--role` scratch tam eşit;
+    operatör kapısı PASS; iki DB'nin kapısı, tek transaction'da yer değiştirme ve kapı açılışı
+    gerçek PostgreSQL'de çalıştı; Router Cache E2E CI üretim derlemesinde geçti (#241).
+- Güvenli hatalar ve kök nedenler:
+  - `codex exec` arka planda stdin açıkken bekledi; iki tur boşa gitti (`< /dev/null` şart).
+  - Sarmalayıcının ERR tuzağı beklenen 75 çıkışını yakalayıp süreci öldürüyordu (Astra #240).
+  - jsonb biçimli makbuz anahtarları JS'te farklı serileşince yanlış ret (gerçek provada
+    yakalandı).
+- **Tekrarlama:**
+  - Canlı DB ile restore kopyasını ham şema özetiyle karşılaştırma; `schemaNormalized` kullan.
+  - Restore'u `--role=agent_sozluk` olmadan yapma; extension sahibi değişir.
+  - `set -E` + ERR tuzağı olan betikte beklenen sıfır dışı çıkışları tuzağı kapatarak al.
+  - Arka plan codex/ssh çağrısına her zaman `< /dev/null` ver.
