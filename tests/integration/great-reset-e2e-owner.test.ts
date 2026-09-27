@@ -1,4 +1,7 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import { chmodSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
@@ -342,6 +345,91 @@ describe("great reset yürütücüsü, hedef DB sahibi rolle ve bağlantı kapı
       ).rejects.toThrow("GREAT_RESET_INTENT_BLOCKED");
     } finally {
       await database.$disconnect();
+    }
+  }, 300_000);
+
+  it("yazma dondurması dört bayrağı servisle kapatır ve kaydedilen değerlere döndürür", async () => {
+    const name = await scratchDatabase();
+    const database = new PrismaClient({ datasourceUrl: urlFor(ownerUrl, name), log: [] });
+    const dir = mkdtempSync(join(tmpdir(), "write-freeze-"));
+    chmodSync(dir, 0o700);
+    try {
+      const adminUser = await database.user.create({
+        data: {
+          email: "freeze-admin@example.test",
+          emailNormalized: "freeze-admin@example.test",
+          username: "freezeadmin",
+          usernameNormalized: "freezeadmin",
+          displayName: "Freeze Admin",
+          passwordHash: "test-hash",
+          termsVersion: "test",
+          termsAcceptedAt: new Date(),
+          role: "ADMIN",
+        },
+      });
+      // Başlangıç: yayın açık, diğerleri kapalı (scratch tohumu dördünü kapatır).
+      await database.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { publishEnabled: true, schedulerEnabled: true },
+      });
+      const auditsBefore = await database.auditLog.count();
+      const run = (command: string) =>
+        spawnSync(
+          "node_modules/.bin/tsx",
+          ["scripts/agent-write-freeze.ts", command, join(dir, "freeze.json")],
+          {
+            encoding: "utf8",
+            timeout: 120_000,
+            env: {
+              ...process.env,
+              DATABASE_URL: urlFor(ownerUrl, name),
+              AGENT_OPERATOR_ADMIN_ID: adminUser.id,
+              AGENT_FLOW_REASON: `great reset e2e ${command}`,
+            },
+          },
+        );
+      const frozen = run("freeze");
+      expect(frozen.stderr).not.toContain("WRITE_FREEZE_FAIL");
+      expect(frozen.status).toBe(0);
+      const flags = () =>
+        database.agentGlobalSettings.findUniqueOrThrow({
+          where: { id: "global" },
+          select: {
+            runtimeEnabled: true,
+            schedulerEnabled: true,
+            publicWriteEnabled: true,
+            publishEnabled: true,
+          },
+        });
+      expect(await flags()).toEqual({
+        runtimeEnabled: false,
+        schedulerEnabled: false,
+        publicWriteEnabled: false,
+        publishEnabled: false,
+      });
+      expect(JSON.parse(readFileSync(join(dir, "freeze.json"), "utf8"))).toMatchObject({
+        publishEnabled: true,
+        schedulerEnabled: true,
+        runtimeEnabled: false,
+        publicWriteEnabled: false,
+      });
+      // Yeniden giriş kaydedilen önceki değerlerin üzerine yazmaz.
+      expect(run("freeze").status).toBe(0);
+      expect(JSON.parse(readFileSync(join(dir, "freeze.json"), "utf8"))).toMatchObject({
+        publishEnabled: true,
+      });
+      expect(run("restore").status).toBe(0);
+      expect(await flags()).toEqual({
+        runtimeEnabled: false,
+        schedulerEnabled: true,
+        publicWriteEnabled: false,
+        publishEnabled: true,
+      });
+      // Değişiklikler denetim kaydı bıraktı (doğrudan SQL değil, uygulama servisi).
+      expect(await database.auditLog.count()).toBeGreaterThan(auditsBefore);
+    } finally {
+      await database.$disconnect();
+      rmSync(dir, { recursive: true, force: true });
     }
   }, 300_000);
 });
