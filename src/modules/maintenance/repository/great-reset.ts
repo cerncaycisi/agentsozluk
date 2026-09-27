@@ -348,7 +348,8 @@ async function inspectSchema(
  * `afterNamespace`: namespace açıldıktan sonra public ID sequence kapısı ve tek reset sınırı
  * bilerek değişmiştir; onların yerine `namespacePostconditionsHold` doğrular.
  */
-async function blockers(tx: Tx, archiveOutbox = false, afterNamespace = false): Promise<string[]> {
+/** Dört global bayrağın kapalı olduğu (reset önkoşulu ve boşaltma denetimi aynı sorgu). */
+export async function runtimePausedBlockers(tx: Tx): Promise<string[]> {
   const result: string[] = [];
   const settings = await tx.agentGlobalSettings.findMany({
     select: {
@@ -369,6 +370,16 @@ async function blockers(tx: Tx, archiveOutbox = false, afterNamespace = false): 
   ) {
     result.push("RUNTIME_NOT_PAUSED");
   }
+  return result;
+}
+
+/**
+ * Boşaltma ölçütü (Astra, reset boşaltma kararı 27 Eylül): sıradaki/süren/iptal istenmiş koşu ya da
+ * herhangi bir kira alanı dolu koşu ve boşta olmayan runtime state. Reset önkoşulu ile bakım öncesi
+ * ve dondurma sonrası boşaltma denetimi AYNI sorguyu kullanır.
+ */
+export async function drainBlockers(tx: Tx): Promise<string[]> {
+  const result: string[] = [];
   if (
     await tx.agentRun.count({
       where: {
@@ -397,6 +408,13 @@ async function blockers(tx: Tx, archiveOutbox = false, afterNamespace = false): 
     })
   )
     result.push("RUNTIME_STATE_ACTIVE");
+  return result;
+}
+
+async function blockers(tx: Tx, archiveOutbox = false, afterNamespace = false): Promise<string[]> {
+  const result: string[] = [];
+  result.push(...(await runtimePausedBlockers(tx)));
+  result.push(...(await drainBlockers(tx)));
   if (
     !archiveOutbox &&
     (await tx.outboxEvent.count({ where: { processedAt: null, resetArchive: null } }))

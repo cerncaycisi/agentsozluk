@@ -698,6 +698,42 @@ if test "$pause_society_flow" = 1; then
        timeout --kill-after=10 120 ./node_modules/.bin/tsx scripts/agent-society-flow.ts pause"
 fi
 
+# Great reset boşaltması (Astra ile ortak karar, 27 Eylül "A+B"): uzak bakım başlamadan ÖNCE,
+# worker ve uygulama çalışırken. Dört bayrak, reset'in kendi kaydından AYRI bir boşaltma kaydıyla
+# kapatılır (reset açılışı bayrakları otomatik açmaz); sıradaki bütün koşular iptal edilir, süren
+# koşuların bitmesi en çok 900 sn beklenir. Geçmezse bakım başlamaz, bayraklar kapalı kalır, açılış
+# elle. Bakım zaten başladıysa (yeniden giriş) atlanır: uzak taraf kendi salt okunur denetimini
+# kesintiden önce ve dondurmadan sonra yapar.
+if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then
+  "$local_timeout" 1080 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+    "set -euo pipefail
+     test \"\$(hostname)\" = '$expected_host' || exit 91
+     $scope_check
+     $lock_check
+     if test -e /opt/agent-sozluk/runtime/.migration-operation; then
+       printf 'RELEASE_RESET_DRAIN_SKIPPED maintenance already started\\n'
+       exit 0
+     fi
+     release=/opt/agent-sozluk/runtime/releases/$candidate_sha
+     test -f \"\$release/scripts/great-reset-drain.ts\"
+     test \"\$(cat \"\$release/.release-sha\")\" = '$candidate_sha'
+     db_container=\"\$(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml ps -q db)\"
+     db_ip=\"\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \"\$db_container\")\"
+     test -n \"\$db_ip\"
+     admin_id=\"\$(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T db psql -X -U agent_sozluk -d agent_sozluk -At -v ON_ERROR_STOP=1 -c \"SELECT id FROM users WHERE kind = 'HUMAN' AND role = 'ADMIN' AND status = 'ACTIVE' AND username = 'bootstrap_admin'\" </dev/null)\"
+     [[ \"\$admin_id\" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\$ ]] || { printf 'RELEASE_WRAPPER_FAIL code=OPERATOR_ADMIN_UNRESOLVED\\n' >&2; exit 95; }
+     cd \"\$release\"
+     export AGENT_OPERATOR_ADMIN_ID=\"\$admin_id\" AGENT_OPERATOR_ENV_FILE=/opt/agent-sozluk/app/.env AGENT_DB_IP=\"\$db_ip\"
+     AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
+       timeout --kill-after=10 120 ./node_modules/.bin/tsx scripts/agent-write-freeze.ts freeze \\
+       /opt/agent-sozluk/runtime/.great-reset-drain-flags-$great_reset_operation.json
+     AGENT_FLOW_REASON='great reset ${great_reset_operation:0:8} boşaltma' \\
+       timeout --kill-after=10 960 ./node_modules/.bin/tsx scripts/great-reset-drain.ts drain" || {
+    printf 'RELEASE_WRAPPER_FAIL code=RESET_DRAIN_FAILED flags stay frozen; see runbook\n' >&2
+    exit 96
+  }
+fi
+
 remote_release_command() {
   printf '%s' "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91

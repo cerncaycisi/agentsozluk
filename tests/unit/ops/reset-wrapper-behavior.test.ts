@@ -346,6 +346,24 @@ echo "ACK=[$reset_next_ack]"
     // Gerçek dış kayıt CLI'si her durumda birkaç kez başlar; varsayılan 5 sn sınırı dar.
   }, 30_000);
 
+  it("boşaltma uzak bakımdan önce, ayrı bayrak kaydıyla; geri dönüşte ve başlamış bakımda koşmaz", () => {
+    const source = readFileSync("scripts/deploy-production-no-migration.sh", "utf8");
+    const start = source.indexOf(
+      'if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then',
+    );
+    expect(start).toBeGreaterThan(0);
+    const block = source.slice(start, source.indexOf("\nfi\n", start));
+    expect(start).toBeLessThan(source.lastIndexOf("  great_reset_run"));
+    expect(block).toContain("test -e /opt/agent-sozluk/runtime/.migration-operation");
+    expect(block.indexOf("agent-write-freeze.ts freeze")).toBeLessThan(
+      block.indexOf("great-reset-drain.ts drain"),
+    );
+    // Reset'in kendi bayrak kaydı (reset-flags.json) değil: açılış bayrakları otomatik açmaz.
+    expect(block).toContain(".great-reset-drain-flags-$great_reset_operation.json");
+    expect(block).not.toContain("reset-flags.json");
+    expect(block).toContain("code=RESET_DRAIN_FAILED");
+  });
+
   it("geri dönüş bayrağı great reset modu ve ayrı exact onay olmadan başlamaz", () => {
     const withApproval = { ...approved, AGENT_SOZLUK_GREAT_RESET_APPROVED: operationId };
     expect(

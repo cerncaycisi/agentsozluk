@@ -20,6 +20,7 @@ import { localIndependentTarget, localResetTarget } from "./great-reset-local-gu
   great-reset-operation.ts receipt-compare <beklenen.json> <gerçek.json>
   great-reset-operation.ts receipt-compare-restored <canlı.json> <restore.json>
   great-reset-operation.ts receipt-compare-independent <üretim-scratch.json> <operatör.json>
+  great-reset-operation.ts drain-check
   great-reset-operation.ts traffic-open <operationId>
   great-reset-operation.ts restore-eligibility <operationId> <reset-sonrası-makbuz.json>
   great-reset-operation.ts commit-digest <operationId>
@@ -195,6 +196,7 @@ async function main(argv: readonly string[]): Promise<string> {
     (command === "receipt" && args.length === 1) ||
     (command === "traffic-open" && args.length === 1) ||
     (command === "restore-eligibility" && args.length === 2) ||
+    (command === "drain-check" && args.length === 0) ||
     (command === "commit-digest" && args.length === 1) ||
     (command === "shadow-mark" && args.length === 4 && scratch !== undefined) ||
     (command === "restore-verify" && args.length === 3) ||
@@ -217,6 +219,11 @@ async function main(argv: readonly string[]): Promise<string> {
         return JSON.stringify(
           await operation.createIntent(database, target.identity, args[0]!, args[1]!),
         );
+      }
+      case "drain-check": {
+        const status = await operation.drainStatus(database, target.identity);
+        if (!status.ready) process.exitCode = 3;
+        return JSON.stringify(status);
       }
       case "intent-invalidate":
         return JSON.stringify(

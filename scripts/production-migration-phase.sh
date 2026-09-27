@@ -1329,12 +1329,17 @@ migration_phase() {
     planned) verify_migration_image ;&
     image-verified)
       preflight_migration
+      # Reset modu: boşaltma kesinti başlamadan doğrulanır (Astra, boşaltma kararı "B").
+      if ((reset_mode == 1)); then reset_drain_check; fi
       freeze_writes
       ;&
     frozen | backup-verified)
       # Scratch yalnız aynı koşuda sahiplenilebilir; yeniden girişte yedek ve
       # restore baştan yapılır (dondurma sürüyorsa).
       assert_frozen
+      # Dondurmadan sonra, pahalı yedek/migration adımlarından önce aynı denetim yeniden: bayraklar
+      # kapalıyken elle kuyruğa ekleme yarışı burada yakalanır.
+      if ((reset_mode == 1)); then reset_drain_check; fi
       backup_and_fingerprint
       restore_and_verify
       rehearse_on_scratch

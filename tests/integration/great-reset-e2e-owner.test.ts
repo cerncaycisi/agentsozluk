@@ -9,6 +9,7 @@ import { GREAT_RESET_INTENT_SCOPE } from "../../src/modules/maintenance/reposito
 import { runIntegrationTestGreatReset } from "../../src/modules/maintenance/repository/great-reset";
 import {
   createIntent as createOperationIntent,
+  drainStatus,
   invalidateIntent,
   recordTrafficOpen,
   restoreEligibility,
@@ -460,6 +461,9 @@ describe("great reset yürütücüsü, hedef DB sahibi rolle ve bağlantı kapı
         clusterId: cluster!.id,
       });
       const operationId = randomUUID();
+      // Boşaltma denetimi reset önkoşuluyla aynı sorgular: dört bayrak kapalı, koşu/kira yok.
+      expect(await drainStatus(canonical, identity(name))).toEqual({ ready: true, blockers: [] });
+      await expect(drainStatus(canonical, identity("baska_db"))).rejects.toThrow();
       await createOperationIntent(canonical, identity(name), operationId, releaseSha);
       const preReset = await computeReceipt(canonical, identity(name));
       await canonical.$disconnect();

@@ -1,5 +1,9 @@
 import type { PrismaClient } from "@prisma/client";
-import { GREAT_RESET_PRODUCTION_RESTORE_ACTION } from "./great-reset";
+import {
+  drainBlockers,
+  GREAT_RESET_PRODUCTION_RESTORE_ACTION,
+  runtimePausedBlockers,
+} from "./great-reset";
 import { GREAT_RESET_INTENT_SCOPE } from "./great-reset-namespace";
 import {
   compareReceipts,
@@ -231,4 +235,24 @@ export async function restoreEligibility(
   const current = await computeReceipt(database, identity);
   if (!compareReceipts(postResetReceipt, current).equal) blockers.push("RECEIPT_CHANGED");
   return blockers;
+}
+
+/**
+ * Boşaltma denetimi (Astra, reset boşaltma kararı): dört bayrak kapalı ve reset önkoşuluyla AYNI
+ * koşu/kira/runtime state sorguları boş. Salt okunur, kimlik doğrulanmış tek transaction. Uzak
+ * betik bunu kesinti başlamadan önce ve dondurmadan hemen sonra çağırır.
+ */
+export async function drainStatus(
+  database: PrismaClient,
+  identity: OperationIdentity,
+): Promise<{ ready: boolean; blockers: string[] }> {
+  const blockers = await database.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+      await assertIdentity(tx, identity);
+      return [...(await runtimePausedBlockers(tx)), ...(await drainBlockers(tx))];
+    },
+    { isolationLevel: "RepeatableRead", timeout: 30_000, maxWait: 5_000 },
+  );
+  return { ready: blockers.length === 0, blockers };
 }

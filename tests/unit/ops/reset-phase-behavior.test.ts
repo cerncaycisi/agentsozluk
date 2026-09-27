@@ -695,6 +695,48 @@ reset_rollback
     ).toBe(false);
   });
 
+  it("boşaltma denetimi hazır değilse ya da okunamazsa bakım başlamaz", () => {
+    for (const [output, code] of [
+      ['{"ready":false,"blockers":["RUNS_OR_LEASES_PRESENT"]}', "RESET_DRAIN_REQUIRED"],
+      ["bozuk", "RESET_DRAIN_REQUIRED"],
+    ] as const) {
+      const result = harness(`
+reset_cli() { printf '%s' '${output}'; return 3; }
+printf 'image-verified\\n' >"$migration_marker/phase"
+freeze_writes() { echo FROZE; }
+preflight_migration() { :; }
+reset_drain_check
+echo AFTER
+`);
+      expect(result.stderr).toContain(`code=${code}`);
+      expect(result.stdout).not.toContain("AFTER");
+    }
+    const ready = harness(`
+reset_cli() { printf '{"ready":true,"blockers":[]}'; }
+reset_drain_check && echo READY
+`);
+    expect(ready.stdout).toContain("READY");
+  });
+
+  it("reset modunda boşaltma kesintiden önce ve dondurmadan sonra, yedekten önce denetlenir", () => {
+    const source = readFileSync("scripts/production-migration-phase.sh", "utf8");
+    const phase = source.slice(source.indexOf("    image-verified)"));
+    const order = [
+      "preflight_migration",
+      "reset_drain_check",
+      "freeze_writes",
+      "assert_frozen",
+      "reset_drain_check",
+      "backup_and_fingerprint",
+    ];
+    let last = -1;
+    for (const marker of order) {
+      const index = phase.indexOf(marker, last + 1);
+      expect(index, marker).toBeGreaterThan(last);
+      last = index;
+    }
+  });
+
   it("geri dönüş tamamlama yolu da dış kayıt kimliğine bağlıdır", () => {
     const result = harness(`
 ${rollbackFixture()}

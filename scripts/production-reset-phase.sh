@@ -206,6 +206,18 @@ reset_write_freeze() {
       "$migration_marker/reset-flags.json" </dev/null) || migration_fail RESET_WRITE_FREEZE_FAILED
 }
 
+# Boşaltma denetimi: dört bayrak kapalı ve reset önkoşuluyla AYNI koşu/kira/runtime state sorguları
+# boş (salt okunur, kimlik doğrulanmış). Sarmalayıcının boşaltma adımı geçmediyse bakım başlamaz.
+reset_drain_check() {
+  local status
+  status="$(reset_cli scripts/great-reset-operation.ts drain-check)" || true
+  if test "$(reset_json_field ready <<<"$status" 2>/dev/null || true)" != true; then
+    printf 'RELEASE_RESET_DRAIN blockers=%s\n' \
+      "$(reset_json_field blockers <<<"$status" 2>/dev/null || printf 'unreadable')" >&2
+    migration_fail RESET_DRAIN_REQUIRED
+  fi
+}
+
 # --- Dış kayıt el sıkışması -----------------------------------------------------
 
 # Her dış kayıt isteği (durum, dump SHA, makbuz SHA) faz yazılmadan ÖNCE kalıcı dosyaya yazılır;
