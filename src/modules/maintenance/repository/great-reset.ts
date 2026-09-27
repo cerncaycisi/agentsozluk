@@ -614,13 +614,18 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
 /*
   Entegrasyon testi profili (tasarım v20 madde 6, Astra PR #237 P2): gerçek yürütücüyü, bağlantı
   kapısıyla, süper kullanıcı olmayan DB sahibi rolle uçtan uca sınamak için. Yalnız
-  `NODE_ENV=test`, loopback adresi, `great_reset_e2e_<8 hex>_test` adı ve fixture yöneticisinin
+  `NODE_ENV=test`, loopback istemci adresi, `great_reset_e2e_<8 hex>_test` adı ve fixture yöneticisinin
   yazdığı DB yorum işaretiyle çalışır; üretim DB'si (`agent_sozluk`, işaretsiz) bu profile giremez.
   CLI'lar bu girişi çağırmaz.
 */
 const integrationTestMarker = "agentsozluk:great-reset:integration-test:v1";
 
-async function integrationTestIdentity(tx: Tx, databaseName: string, user: string) {
+async function integrationTestIdentity(
+  tx: Tx,
+  databaseName: string,
+  user: string,
+  serverAddress: string,
+) {
   const [actual] = await tx.$queryRaw<
     {
       database: string;
@@ -641,7 +646,7 @@ async function integrationTestIdentity(tx: Tx, databaseName: string, user: strin
     actual.database !== databaseName ||
     actual.owner !== user ||
     actual.user !== user ||
-    !["127.0.0.1", "::1"].includes(actual.host ?? "") ||
+    actual.host !== serverAddress ||
     actual.version < 160000 ||
     actual.version >= 170000 ||
     actual.marker !== integrationTestMarker
@@ -670,12 +675,21 @@ export async function runIntegrationTestGreatReset(value: string, request: Reque
   url.searchParams.set("connect_timeout", "5");
   const databaseName = url.pathname.slice(1);
   const user = decodeURIComponent(url.username);
+  /*
+    İstemci yalnız loopback'e bağlanır; sunucunun gördüğü adres ise ortama göre değişir (CI'da
+    Docker servis container'ının ağ adresi; Astra, PR #237 2. tur P2). Adres ve küme kimliği bir
+    kez ölçülür, hedef ve kontrol bağlantısı her adımda bu aynı değerlere bağlanır.
+  */
   const probe = new PrismaClient({ datasourceUrl: url.toString(), log: [] });
   let clusterId: string;
+  let serverAddress: string;
   try {
-    const [row] = await probe.$queryRaw<{ cluster: string }[]>`
-      SELECT system_identifier::text AS cluster FROM pg_control_system()`;
-    clusterId = row!.cluster;
+    const [row] = await probe.$queryRaw<{ cluster: string; host: string | null }[]>`
+      SELECT system_identifier::text AS cluster, host(inet_server_addr()) AS host
+      FROM pg_control_system()`;
+    if (!row?.host) throw new Error("GREAT_RESET_DATABASE_IDENTITY_MISMATCH");
+    clusterId = row.cluster;
+    serverAddress = row.host;
   } finally {
     await probe.$disconnect();
   }
@@ -684,8 +698,8 @@ export async function runIntegrationTestGreatReset(value: string, request: Reque
       kind: "LOCAL",
       databaseName,
       databaseUrl: url.toString(),
-      verifyIdentity: (tx) => integrationTestIdentity(tx, databaseName, user),
-      controlIdentity: { clusterId, user, serverAddresses: ["127.0.0.1", "::1"] },
+      verifyIdentity: (tx) => integrationTestIdentity(tx, databaseName, user, serverAddress),
+      controlIdentity: { clusterId, user, serverAddresses: [serverAddress] },
     },
     request,
   );
