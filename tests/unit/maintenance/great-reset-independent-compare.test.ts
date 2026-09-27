@@ -49,7 +49,8 @@ function cluster(bootstrap: string, comment: string, collate = "en_US.utf8"): Pa
         "relation:users": v('["r", "agent_sozluk", null, false, false]'),
         [`role:${bootstrap}`]: v("[true, true, true, true, true, true, true, -1, null]"),
         "role:agent_sozluk": v("[false, true, false, false, false, false, false, -1, null]"),
-        [`membership:pg_read_all_stats>pg_monitor:${bootstrap}`]: v("[false, true, true]"),
+        [`membership:${JSON.stringify(["pg_read_all_stats", "pg_monitor", bootstrap])}`]:
+          v("[false, true, true]"),
         "type:gtrgm": v(`["${bootstrap}", null]`),
         "extensionMember:type gtrgm": v(`["${bootstrap}", null]`),
         "language:plpgsql": v(`["${bootstrap}", true, null]`),
@@ -195,5 +196,81 @@ describe("bağımsız restore karşılaştırması (politika i)", () => {
       equal: false,
       sections: ["schemaNormalized"],
     });
+  });
+  it("Astra 5. tur karşı örnekleri", () => {
+    // RLS koşulundaki metin eşlenmez: farklı koşul engeller; rol listesi alanı eşlenir.
+    const policy = (roles: string[], qual: string) =>
+      v(JSON.stringify(["r", true, roles, qual, null]).replace(/,/g, ", "));
+    const withPolicy = (bootstrap: string, qual: string, roles: string[]) => (p: Parts) => {
+      p.details.security["policy:users.p"] = policy(roles, qual);
+      void bootstrap;
+    };
+    const prod = variant(production(), withPolicy("postgres", "postgres", ["postgres", "a"]));
+    expect(
+      compareForIndependentRestore(
+        prod,
+        variant(operator(), withPolicy("agent", "agent", ["agent", "a"])),
+      ).blocking,
+    ).toEqual(["security:policy:users.p"]);
+    expect(
+      compareForIndependentRestore(
+        prod,
+        variant(operator(), withPolicy("agent", "postgres", ["agent", "a"])),
+      ).equal,
+    ).toBe(true);
+    // İç içe JSON'un yeniden yazımı aynı politikayı farklılaştırmaz.
+    const nested = (p: Parts) => {
+      p.details.security["policy:users.q"] = v('["r", true, ["a", "b"], null, null]');
+    };
+    expect(
+      compareForIndependentRestore(variant(production(), nested), variant(operator(), nested))
+        .equal,
+    ).toBe(true);
+    // Eşleme sonrası çakışma engeller (ek süper kullanıcı gizlenemez).
+    const collision = compareForIndependentRestore(
+      receipt(production()),
+      variant(operator(), (p) => {
+        p.details.security["role:postgres"] = v(
+          "[true, true, true, true, true, true, true, -1, null]",
+        );
+      }),
+    );
+    expect(collision.blocking).toContain("security:key-collision:role:postgres");
+    // Tırnaklı rol adı içeren ACL yapısal ayrıştırılır.
+    const quoted = (bootstrap: string) => (p: Parts) => {
+      p.details.security["systemFunction:f()"] = v(`{"\\"a=b\\"=r/${bootstrap}"}`);
+    };
+    expect(
+      compareForIndependentRestore(
+        variant(production(), quoted("postgres")),
+        variant(operator(), quoted("agent")),
+      ).equal,
+    ).toBe(true);
+    // Ayraç içeren rol adlı üyelik anahtarı belirsiz değil.
+    const member = (bootstrap: string) => (p: Parts) => {
+      p.details.security[`membership:${JSON.stringify([bootstrap, "x>y", bootstrap])}`] =
+        v("[false, true, true]");
+    };
+    expect(
+      compareForIndependentRestore(
+        variant(production(), member("postgres")),
+        variant(operator(), member("agent")),
+      ).equal,
+    ).toBe(true);
+    // Yorum ve ayar değerindeki rol adı metni eşlenmez.
+    for (const [key, left, right] of [
+      ["comment", v("postgres"), v("agent")],
+      ['setting:["db","*"]', v("{app.path=X/postgres}"), v("{app.path=X/agent}")],
+    ] as const) {
+      const result = compareForIndependentRestore(
+        variant(production(), (p) => {
+          p.details.database[key] = left;
+        }),
+        variant(operator(), (p) => {
+          p.details.database[key] = right;
+        }),
+      );
+      expect(result.blocking, key).toContain(`database:${key}`);
+    }
   });
 });

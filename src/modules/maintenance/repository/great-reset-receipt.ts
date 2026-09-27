@@ -506,8 +506,10 @@ async function securitySection(tx: Tx) {
       SELECT 'namespace:public', jsonb_build_array(pg_get_userbyid(nspowner), nspacl::text)::text
         FROM pg_namespace WHERE nspname = 'public'
       UNION ALL
-      SELECT 'defaultAcl:' || pg_get_userbyid(defaclrole) || ':'
-          || coalesce(defaclnamespace::regnamespace::text, '*') || ':' || defaclobjtype::text,
+      -- Rol adı taşıyan anahtarlar kaçışlı JSON dizisidir; ayraç içeren adlar belirsizlik yaratmaz
+      -- (Astra, PR #239 5. tur P2).
+      SELECT 'defaultAcl:' || jsonb_build_array(pg_get_userbyid(defaclrole),
+          coalesce(defaclnamespace::regnamespace::text, '*'), defaclobjtype::text)::text,
           defaclacl::text
         FROM pg_default_acl
       UNION ALL
@@ -587,8 +589,8 @@ async function securitySection(tx: Tx) {
           spcoptions::text)::text
         FROM pg_tablespace
       UNION ALL
-      SELECT 'membership:' || pg_get_userbyid(roleid) || '>' || pg_get_userbyid(member)
-          || ':' || pg_get_userbyid(grantor),
+      SELECT 'membership:' || jsonb_build_array(pg_get_userbyid(roleid), pg_get_userbyid(member),
+          pg_get_userbyid(grantor))::text,
           jsonb_build_array(admin_option, inherit_option, set_option)::text
         FROM pg_auth_members
     ) items ORDER BY key COLLATE "C"`,
@@ -610,8 +612,8 @@ async function databaseSection(tx: Tx) {
         FROM pg_database d WHERE d.datname = current_database()
       UNION ALL
       -- Bu DB'ye ve (setdatabase = 0) bütün DB'lere uygulanan rol ayarları.
-      SELECT 'setting:' || CASE WHEN s.setdatabase = 0 THEN '*' ELSE 'db' END || ':'
-          || CASE WHEN s.setrole = 0 THEN '*' ELSE pg_get_userbyid(s.setrole) END,
+      SELECT 'setting:' || jsonb_build_array(CASE WHEN s.setdatabase = 0 THEN '*' ELSE 'db' END,
+          CASE WHEN s.setrole = 0 THEN '*' ELSE pg_get_userbyid(s.setrole) END)::text,
           (SELECT array_agg(x ORDER BY x) FROM unnest(s.setconfig) AS x)::text
         FROM pg_db_role_setting s
         WHERE s.setdatabase IN (0, (SELECT oid FROM pg_database WHERE datname = current_database()))
@@ -760,78 +762,211 @@ export type IndependentDifference = { key: string; expected: string | null; actu
 
 const syntheticMarker = "agentsozluk:great-reset:synthetic:v1";
 
+/** PostgreSQL dizi metnini (`{a,"b,c"}`) öğelerine ayırır; tırnak ve ters bölü kaçışlarını çözer. */
+function parsePgArray(text: string): string[] | null {
+  if (!text.startsWith("{") || !text.endsWith("}")) return null;
+  const body = text.slice(1, -1);
+  if (body === "") return [];
+  const items: string[] = [];
+  let index = 0;
+  while (index <= body.length) {
+    let item = "";
+    if (body[index] === '"') {
+      index += 1;
+      for (;;) {
+        if (index >= body.length) return null;
+        const char = body[index]!;
+        if (char === "\\") {
+          item += body[index + 1] ?? "";
+          index += 2;
+        } else if (char === '"') {
+          index += 1;
+          break;
+        } else {
+          item += char;
+          index += 1;
+        }
+      }
+      if (index < body.length && body[index] !== ",") return null;
+    } else {
+      const comma = body.indexOf(",", index);
+      item = body.slice(index, comma < 0 ? body.length : comma);
+      if (item.includes('"') || item.includes("{")) return null;
+      index = comma < 0 ? body.length : comma;
+    }
+    items.push(item);
+    if (index >= body.length) break;
+    index += 1;
+  }
+  return items;
+}
+
+/** Tek ACL öğesi `grantee=privs/grantor`; rol adları çift tırnaklı olabilir (`""` kaçışı). */
+function parseAclItem(item: string): [string, string, string] | null {
+  let index = 0;
+  const identifier = (): string | null => {
+    if (item[index] !== '"') {
+      const start = index;
+      while (index < item.length && item[index] !== "=" && item[index] !== "/") index += 1;
+      return item.slice(start, index);
+    }
+    index += 1;
+    let name = "";
+    for (;;) {
+      if (index >= item.length) return null;
+      if (item[index] === '"') {
+        if (item[index + 1] === '"') {
+          name += '"';
+          index += 2;
+          continue;
+        }
+        index += 1;
+        return name;
+      }
+      name += item[index]!;
+      index += 1;
+    }
+  };
+  const grantee = identifier();
+  if (grantee === null || item[index] !== "=") return null;
+  index += 1;
+  const slash = item.indexOf("/", index);
+  if (slash < 0) return null;
+  const privileges = item.slice(index, slash);
+  if (!/^[A-Za-z*]*$/u.test(privileges)) return null;
+  index = slash + 1;
+  const grantor = identifier();
+  if (grantor === null || index !== item.length) return null;
+  return [grantee, privileges, grantor];
+}
+
+type Structured = unknown;
+
 function mapRole(name: string, from: string, to: string): string {
   return name === from ? to : name;
 }
 
-/** `{grantee=privs/grantor,...}` ACL metninde yalnız rol alanlarını eşler. */
-function mapAcl(text: string, from: string, to: string): string | null {
-  if (!text.startsWith("{") || !text.endsWith("}")) return null;
-  const items = text.slice(1, -1);
-  if (items === "") return text;
-  const mapped: string[] = [];
-  for (const item of items.split(",")) {
-    const match = /^([^=]*)=([A-Za-z*]*)\/(.+)$/u.exec(item);
-    if (!match) return null;
-    mapped.push(`${mapRole(match[1]!, from, to)}=${match[2]}/${mapRole(match[3]!, from, to)}`);
-  }
-  return `{${mapped.join(",")}}`;
+/** ACL metni yapıya çevrilir; bağımsız tarafta yalnız grantee/grantor rol alanları eşlenir. */
+function aclStructure(text: unknown, map: (name: string) => string): Structured {
+  if (text === null) return null;
+  if (typeof text !== "string") return { unparsed: text };
+  const items = parsePgArray(text);
+  if (!items) return { unparsed: text };
+  const parsed = items.map(parseAclItem);
+  if (parsed.some((item) => item === null)) return { unparsed: text };
+  return (parsed as [string, string, string][]).map(([grantee, privileges, grantor]) => [
+    grantee === "" ? "" : map(grantee),
+    privileges,
+    map(grantor),
+  ]);
 }
 
-/** Değer (JSON kodlu metin) içindeki sahip/ACL rol alanlarını yapısal olarak eşler. */
-function mapValue(value: string, from: string, to: string): string {
-  let text: unknown;
+function decodeValue(value: string | undefined): unknown {
+  if (value === undefined) return undefined;
+  const text = JSON.parse(value) as unknown;
+  if (typeof text !== "string") return text;
   try {
-    text = JSON.parse(value);
+    return JSON.parse(text) as unknown;
   } catch {
-    return value;
+    return text;
   }
-  if (typeof text !== "string") return value;
-  const acl = mapAcl(text, from, to);
-  if (acl !== null) return JSON.stringify(acl);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    // Düz metin değer (ör. extension sahibi): yalnız tam rol adıysa eşlenir.
-    return JSON.stringify(mapRole(text, from, to));
-  }
-  if (!Array.isArray(parsed)) return value;
-  const mapped = parsed.map((item) =>
-    typeof item === "string" ? (mapAcl(item, from, to) ?? mapRole(item, from, to)) : item,
-  );
-  // PostgreSQL jsonb::text biçimi (", " ayırıcı) korunur.
-  return JSON.stringify(`[${mapped.map((item) => JSON.stringify(item)).join(", ")}]`);
 }
 
-/** Anahtardaki rol adı alanları: `role:<r>`, `membership:<r>><m>:<g>`, `setting:<db>:<r>`,
- * `defaultAcl:<r>:...`. */
-function mapKey(key: string, from: string, to: string): string {
-  const [kind, ...rest] = key.split(":");
-  const body = rest.join(":");
-  if (kind === "role") return `role:${mapRole(body, from, to)}`;
-  if (kind === "membership") {
-    const match = /^(.+)>(.+):(.+)$/u.exec(body);
-    if (!match) return key;
-    return `membership:${mapRole(match[1]!, from, to)}>${mapRole(match[2]!, from, to)}:${mapRole(match[3]!, from, to)}`;
+/*
+  Anahtar türüne göre rol taşıyan alanlar (makbuz SQL'indeki sıra). Eşleme yalnız bu alanlarda
+  ve yalnız tam kurulum kullanıcısı adında yapılır; koşul metni, yorum, ayar değeri ve bilinmeyen
+  anahtarlar eşlenmez (Astra, PR #239 5. tur P1).
+*/
+function structureValue(
+  kind: string,
+  value: string | undefined,
+  map: (name: string) => string,
+): Structured {
+  if (value === undefined) return undefined;
+  const decoded = decodeValue(value);
+  const owner = (item: unknown) => (typeof item === "string" ? map(item) : item);
+  const array = Array.isArray(decoded) ? decoded : null;
+  switch (kind) {
+    case "relation":
+      return array && array.length === 5
+        ? [array[0], owner(array[1]), aclStructure(array[2], map), array[3], array[4]]
+        : { unparsed: decoded };
+    case "type":
+    case "function":
+    case "extensionMember":
+    case "namespace":
+    case "systemNamespace":
+    case "database":
+      return array && array.length === 2
+        ? [owner(array[0]), aclStructure(array[1], map)]
+        : { unparsed: decoded };
+    case "language":
+      return array && array.length === 3
+        ? [owner(array[0]), array[1], aclStructure(array[2], map)]
+        : { unparsed: decoded };
+    case "tablespace":
+      return array && array.length === 3
+        ? [owner(array[0]), aclStructure(array[1], map), array[2]]
+        : { unparsed: decoded };
+    case "policy":
+      return array && array.length === 5 && (Array.isArray(array[2]) || array[2] === null)
+        ? [
+            array[0],
+            array[1],
+            array[2] === null ? null : (array[2] as unknown[]).map(owner),
+            array[3],
+            array[4],
+          ]
+        : { unparsed: decoded };
+    case "column":
+    case "systemRelation":
+    case "systemColumn":
+    case "systemFunction":
+    case "systemType":
+    case "parameter":
+    case "defaultAcl":
+      return aclStructure(decoded, map);
+    case "extension":
+      return owner(decoded);
+    default:
+      return decoded;
   }
-  if (kind === "setting") {
-    const [scope, role] = [rest[0], rest.slice(1).join(":")];
-    return `setting:${scope}:${role === "*" ? "*" : mapRole(role, from, to)}`;
+}
+
+/** Anahtardaki rol alanları: `role:<ad>`; `membership:`, `setting:`, `defaultAcl:` JSON dizisi. */
+function mapKey(key: string, map: (name: string) => string): string {
+  const colon = key.indexOf(":");
+  if (colon < 0) return key;
+  const kind = key.slice(0, colon);
+  const body = key.slice(colon + 1);
+  if (kind === "role") return `role:${map(body)}`;
+  if (kind === "membership" || kind === "setting" || kind === "defaultAcl") {
+    let parts: unknown;
+    try {
+      parts = JSON.parse(body);
+    } catch {
+      return key;
+    }
+    if (!Array.isArray(parts) || !parts.every((part) => typeof part === "string")) return key;
+    const mapped =
+      kind === "membership"
+        ? (parts as string[]).map(map)
+        : kind === "setting"
+          ? [parts[0], parts[1] === "*" ? "*" : map(parts[1] as string)]
+          : [map(parts[0] as string), ...(parts as string[]).slice(1)];
+    return `${kind}:${JSON.stringify(mapped)}`;
   }
-  if (kind === "defaultAcl")
-    return `defaultAcl:${mapRole(rest[0] ?? "", from, to)}:${rest.slice(1).join(":")}`;
   return key;
 }
 
+function kindOf(key: string): string {
+  const colon = key.indexOf(":");
+  return colon < 0 ? key : key.slice(0, colon);
+}
+
 function localeFields(value: string | undefined): unknown[] | null {
-  if (value === undefined) return null;
-  try {
-    const parsed = JSON.parse(JSON.parse(value) as string) as unknown;
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
+  const decoded = value === undefined ? null : decodeValue(value);
+  return Array.isArray(decoded) ? decoded : null;
 }
 
 export function compareForIndependentRestore(
@@ -844,6 +979,8 @@ export function compareForIndependentRestore(
 ): { equal: boolean; blocking: string[]; environment: IndependentDifference[] } {
   const blocking: string[] = [];
   const environment: IndependentDifference[] = [];
+  const identity = (name: string) => name;
+  const toProduction = (name: string) => mapRole(name, bootstrap.independent, bootstrap.production);
   if (!compareReceipts(production, production).equal)
     blocking.push("receipt:production-inconsistent");
   if (!compareReceipts(independent, independent).equal)
@@ -857,29 +994,32 @@ export function compareForIndependentRestore(
       blocking.push(`table:${table}`);
   for (const section of ["sequences", "security", "database"] as const) {
     const expected = production.details[section] ?? {};
-    const actual: Record<string, string> = {};
-    for (const [key, value] of Object.entries(independent.details[section] ?? {}))
-      actual[mapKey(key, bootstrap.independent, bootstrap.production)] = mapValue(
-        value,
-        bootstrap.independent,
-        bootstrap.production,
-      );
-    const keys = new Set([...Object.keys(expected), ...Object.keys(actual)]);
+    const actual = new Map<string, string>();
+    for (const [key, value] of Object.entries(independent.details[section] ?? {})) {
+      const mapped = mapKey(key, toProduction);
+      // Eşleme sonrası çakışma: ek rol/süper kullanıcı gizlenemez (Astra, PR #239 5. tur P1).
+      if (actual.has(mapped)) blocking.push(`${section}:key-collision:${mapped}`);
+      actual.set(mapped, value);
+    }
+    const keys = new Set([...Object.keys(expected), ...actual.keys()]);
     for (const key of [...keys].sort()) {
       const left = expected[key];
-      const right = actual[key];
-      if (left === right) continue;
+      const right = actual.get(key);
+      const kind = kindOf(key);
+      if (
+        left !== undefined &&
+        right !== undefined &&
+        JSON.stringify(structureValue(kind, left, identity)) ===
+          JSON.stringify(structureValue(kind, right, toProduction))
+      )
+        continue;
       if (
         section === "database" &&
         key === "comment" &&
         left === "null" &&
         right === JSON.stringify(syntheticMarker)
       ) {
-        environment.push({
-          key: `${section}:${key}`,
-          expected: left ?? null,
-          actual: right ?? null,
-        });
+        environment.push({ key: `${section}:${key}`, expected: left, actual: right });
         continue;
       }
       if (section === "database" && key === "locale") {
