@@ -258,9 +258,12 @@ reset_recovery_budget() {
     printf '%s\n' "$(($(date +%s) + 600))" >"$file.next"
     mv -Tf "$file.next" "$file"
   fi
-  recovering=1
   frozen_deadline="$(cat "$file")"
   [[ "$frozen_deadline" =~ ^[0-9]+$ ]] || migration_fail RESET_RECOVERY_DEADLINE_INVALID
+  # Son süre dolduysa yeni kurtarma adımı başlamaz; site kapalı, karar elle (Astra, PR #239 3. tur
+  # P2). Süre dolmadıysa kalan süre komutları sınırlar.
+  if (($(date +%s) >= frozen_deadline)); then migration_fail RESET_RECOVERY_BUDGET_EXHAUSTED 98; fi
+  recovering=1
 }
 
 reset_frozen_at() {

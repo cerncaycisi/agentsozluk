@@ -15,9 +15,16 @@ function receipt(
   schema = sha("s"),
 ): GreatResetReceipt {
   const value: GreatResetReceipt = {
-    version: 2,
+    version: 3,
     sha256: "",
-    sections: { content: "", sequences: "", schema, security: "", database: "" },
+    sections: {
+      content: "",
+      sequences: "",
+      schema,
+      schemaNormalized: schema,
+      security: "",
+      database: "",
+    },
     tables: { topics: { rows: 2, sha256: "t" }, entries: { rows: 3, sha256: "e" } },
     details: {
       sequences: { topics_public_id_seq: '"q1"' },

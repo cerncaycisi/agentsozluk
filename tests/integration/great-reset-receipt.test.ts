@@ -140,7 +140,7 @@ describe("great reset receipt against PostgreSQL", () => {
       const disabled = await computeReceipt(integrationDatabase, expected);
       expect(compareReceipts(enabled, disabled)).toMatchObject({
         equal: false,
-        sections: ["schema"],
+        sections: ["schema", "schemaNormalized"],
       });
     } finally {
       await integrationDatabase.$executeRawUnsafe("DROP TABLE IF EXISTS zz_rule_probe");
@@ -195,7 +195,7 @@ describe("great reset receipt against PostgreSQL", () => {
         const after = await computeReceipt(integrationDatabase, expected);
         expect(compareReceipts(before, after)).toMatchObject({
           equal: false,
-          sections: ["schema"],
+          sections: ["schema", "schemaNormalized"],
         });
       } finally {
         await fixtureAdmin.$executeRawUnsafe(
@@ -217,7 +217,7 @@ describe("great reset receipt against PostgreSQL", () => {
         const after = await computeReceipt(integrationDatabase, expected);
         expect(compareReceipts(before, after)).toMatchObject({
           equal: false,
-          sections: ["schema"],
+          sections: ["schema", "schemaNormalized"],
         });
       } finally {
         await integrationDatabase.$executeRawUnsafe(

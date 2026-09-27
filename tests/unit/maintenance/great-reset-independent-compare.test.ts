@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   compareForIndependentRestore,
+  compareLiveWithRestored,
   type GreatResetReceipt,
 } from "../../../src/modules/maintenance/repository/great-reset-receipt";
 
@@ -12,6 +13,7 @@ function sha256(value: unknown): string {
 type Parts = {
   tables: GreatResetReceipt["tables"];
   schema: string;
+  schemaNormalized?: string;
   details: GreatResetReceipt["details"];
 };
 
@@ -21,11 +23,12 @@ function receipt(parts: Parts): GreatResetReceipt {
     content: sha256(parts.tables),
     sequences: sha256(parts.details.sequences),
     schema: parts.schema,
+    schemaNormalized: parts.schemaNormalized ?? parts.schema,
     security: sha256(parts.details.security),
     database: sha256(parts.details.database),
   };
   return {
-    version: 2,
+    version: 3,
     sha256: sha256(sections),
     sections,
     tables: parts.tables,
@@ -97,7 +100,7 @@ describe("bağımsız restore karşılaştırması", () => {
         parts.schema = "d".repeat(64);
       }),
     );
-    expect(schema.blocking).toEqual(["section:schema"]);
+    expect(schema.blocking).toEqual(["section:schema", "section:schemaNormalized"]);
     const sequence = compareForIndependentRestore(
       receipt(base),
       variant((parts) => {
@@ -112,5 +115,20 @@ describe("bağımsız restore karşılaştırması", () => {
     tampered.details.security["relation:users"] = '["r","agent",null,false,false]';
     const result = compareForIndependentRestore(receipt(base), tampered);
     expect(result.blocking).toContain("receipt:independent-inconsistent");
+  });
+  it("canlı ↔ restore: ham şema farkı yalnız kanonik şema eşitse kabul edilir", () => {
+    const restored = variant((parts) => {
+      parts.schema = "e".repeat(64);
+      parts.schemaNormalized = "b".repeat(64);
+    });
+    expect(compareLiveWithRestored(receipt(base), restored).equal).toBe(true);
+    const lost = variant((parts) => {
+      parts.schema = "e".repeat(64);
+      parts.schemaNormalized = "f".repeat(64);
+    });
+    expect(compareLiveWithRestored(receipt(base), lost)).toMatchObject({
+      equal: false,
+      sections: ["schemaNormalized"],
+    });
   });
 });

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { canonicalSchemaDescription } from "../domain/restore-rendering";
 import { Prisma, type PrismaClient } from "@prisma/client";
 
 /*
@@ -35,11 +36,17 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 type Tx = Prisma.TransactionClient;
 
 export type TableDigest = { rows: number; sha256: string };
-export type ReceiptSection = "content" | "sequences" | "schema" | "security" | "database";
+export type ReceiptSection =
+  | "content"
+  | "sequences"
+  | "schema"
+  | "schemaNormalized"
+  | "security"
+  | "database";
 export type DetailedSection = "sequences" | "security" | "database";
 
 export type GreatResetReceipt = {
-  version: 2;
+  version: 3;
   sha256: string;
   sections: Record<ReceiptSection, string>;
   tables: Record<string, TableDigest>;
@@ -50,6 +57,9 @@ const receiptSections: readonly ReceiptSection[] = [
   "content",
   "sequences",
   "schema",
+  // Restore yazım farkları kanonikleştirilmiş şema (restore-rendering). Canlı ↔ restore
+  // karşılaştırmasında ham şemanın yerine geçer; diğer bütün şema bilgisi birebir kalır.
+  "schemaNormalized",
   "security",
   "database",
 ];
@@ -640,14 +650,16 @@ export async function computeReceipt(
         security: await securitySection(tx),
         database: await databaseSection(tx),
       };
+      const description = await schemaSection(tx);
       const sections: Record<ReceiptSection, string> = {
         content: sha256(tables),
         sequences: sha256(details.sequences),
-        schema: sha256(await schemaSection(tx)),
+        schema: sha256(description),
+        schemaNormalized: sha256(canonicalSchemaDescription(JSON.parse(description))),
         security: sha256(details.security),
         database: sha256(details.database),
       };
-      return { version: 2 as const, sha256: sha256(sections), sections, tables, details };
+      return { version: 3 as const, sha256: sha256(sections), sections, tables, details };
     },
     { isolationLevel: "RepeatableRead", timeout: 1_800_000, maxWait: 5_000 },
   );
@@ -676,7 +688,7 @@ export function compareReceipts(
   // bölüm farkı olan makbuz eşit sayılmaz (Astra, 2. ve 3. tur P2). Bölüm listesi sabittir.
   const hex = /^[a-f0-9]{64}$/u;
   const consistent = (value: GreatResetReceipt) =>
-    value.version === 2 &&
+    value.version === 3 &&
     receiptSections.every((section) => hex.test(value.sections?.[section] ?? "")) &&
     Object.keys(value.sections).length === receiptSections.length &&
     detailedSections.every(
@@ -763,7 +775,7 @@ export function compareForIndependentRestore(
     blocking.push("receipt:production-inconsistent");
   if (!compareReceipts(independent, independent).equal)
     blocking.push("receipt:independent-inconsistent");
-  for (const section of ["content", "schema", "sequences"] as const)
+  for (const section of ["content", "schema", "schemaNormalized", "sequences"] as const)
     if (result.sections.includes(section)) blocking.push(`section:${section}`);
   blocking.push(...result.tables.map((table) => `table:${table}`));
   const environment: string[] = [];
@@ -783,9 +795,10 @@ export function compareForIndependentRestore(
 /*
   Canlı DB ↔ restore edilmiş kopya karşılaştırması (A5 dersi, 23 Eylül; reset kapısında 27 Eylül
   yeniden ölçüldü): PostgreSQL restore'da CHECK ve indeks ifadelerini anlamca aynı ama yazımca farklı
-  üretir (iç içe AND düzleşir, dizi dönüşümleri yeniden yazılır). Bu yüzden şema bölümü canlı ile
-  kopya arasında karşılaştırılamaz; şema, arşivin şema betiğinin canlı şema dökümüyle birebir
-  eşitliğiyle ayrıca doğrulanır. Diğer bütün bölümler ve ayrıntılar birebir eşit olmalıdır.
+  üretir (iç içe AND düzleşir, dizi dönüşümleri yeniden yazılır). Bu yüzden yalnız HAM şema özeti
+  karşılaştırılmaz; bu iki bilinen yazım farkını kanonikleştiren `schemaNormalized` bölümü (extension
+  üye tanımları dahil bütün diğer şema bilgisiyle) birebir eşit olmalıdır (Astra, PR #239 3. tur
+  P1). Arşiv şema betiği = canlı şema dökümü (A5 yöntemi) ek kanıttır.
   İki restore edilmiş kopya arasında (üretim scratch'i ↔ operatör) şema bölümü kararlıdır.
 */
 export function compareLiveWithRestored(

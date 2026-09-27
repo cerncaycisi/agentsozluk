@@ -1006,8 +1006,9 @@ reset_table_definitions() {
 SELECT 'table:' || c.relname || '|' || c.relkind::text || '|' || c.relpersistence::text || '|'
   || coalesce(c.reloptions::text, '-') || '|' || c.relrowsecurity::text || '|'
   || c.relforcerowsecurity::text || '|' || c.relreplident::text || '|' || coalesce(am.amname, '-')
-  || '|' || coalesce(c.reltablespace::text, '0')
+  || '|' || coalesce(c.reltablespace::text, '0') || '|' || coalesce(t.reloptions::text, '-')
 FROM pg_class c LEFT JOIN pg_am am ON am.oid = c.relam
+LEFT JOIN pg_class t ON t.oid = c.reltoastrelid
 WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics');
 SELECT 'column:' || c.relname || '|' || a.attname || '|' || format_type(a.atttypid, a.atttypmod)
   || '|' || a.attnotnull || '|' || coalesce(pg_get_expr(ad.adbin, ad.adrelid), '-')
@@ -1025,7 +1026,11 @@ SELECT 'constraint:' || c.relname || '|' || con.conname || '|' || con.convalidat
 FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid
 WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics');
 SELECT 'index:' || i.tablename || '|' || i.indexname || '|' || i.indexdef || '|'
-  || x.indisvalid::text || '|' || x.indisready::text || '|' || x.indisreplident::text
+  || x.indisvalid::text || '|' || x.indisready::text || '|' || x.indisreplident::text || '|'
+  || x.indisclustered::text || '|' || coalesce(ic.reltablespace::text, '0') || '|'
+  || coalesce(ic.reloptions::text, '-') || '|'
+  || coalesce((SELECT string_agg(coalesce(a.attstattarget::text, '-'), ',' ORDER BY a.attnum)
+       FROM pg_attribute a WHERE a.attrelid = ic.oid AND a.attnum > 0), '-')
 FROM pg_indexes i JOIN pg_class ic ON ic.relname = i.indexname
   AND ic.relnamespace = 'public'::regnamespace
 JOIN pg_index x ON x.indexrelid = ic.oid
@@ -1038,8 +1043,10 @@ WHERE NOT t.tgisinternal AND c.relnamespace = 'public'::regnamespace
 SELECT 'policy:' || tablename || '|' || policyname || '|' || cmd || '|' || permissive || '|'
   || coalesce(qual, '-') || '|' || coalesce(with_check, '-') || '|' || roles::text
 FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('entries', 'topics');
-SELECT 'rule:' || tablename || '|' || rulename || '|' || definition
-FROM pg_rules WHERE schemaname = 'public' AND tablename IN ('entries', 'topics');
+SELECT 'rule:' || c.relname || '|' || r.rulename || '|' || r.ev_enabled::text || '|'
+  || pg_get_ruledef(r.oid)
+FROM pg_rewrite r JOIN pg_class c ON c.oid = r.ev_class
+WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('entries', 'topics');
 SQL
 }
 
