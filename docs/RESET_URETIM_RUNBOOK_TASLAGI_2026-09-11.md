@@ -229,8 +229,9 @@ bir şey açamam, halledin"):**
   (`.migration-hold`) yoksa ve bakım işareti yoksa ya da henüz dondurma öncesindeyse
   (`none`/`planned`/`image-verified`). Kanıt alınamazsa (SSH hatası, okunamayan faz) bayraklar
   kapalı kalır. İki çağrı noktası vardır:
-  - (a) Boşaltma durdu: bakım başlamadı. Geri açılış olumlu kanıtla geçerse kilit bırakılır; geçmezse
-    kilit ve kapalı bayraklar yerinde kalır.
+  - (a) Boşaltma durdu: bakım başlamadı. Süren dondurma/boşaltmanın bitmesi aynı sahiplik altında
+    beklenir; geri açılış ve dağıtım kilidinin bırakılması aynı süreç kilidi altında, tek uzak
+    komutta yapılır. Kanıt ya da bırakma olmazsa kilit ve kapalı bayraklar yerinde kalır.
   - (b) Uzak akış 0 ile bitti, site açık (reset tamam, COMMIT öncesi vazgeçildi ya da geri
     dönüldü): üç deneme yapılır. Düşerse temizlik ve kilit bırakma yine tamamlanır, sarmalayıcı
     `RESET_FLAGS_RESTORE_PENDING` ile biter.

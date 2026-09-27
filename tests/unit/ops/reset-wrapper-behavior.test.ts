@@ -368,13 +368,12 @@ echo "ACK=[$reset_next_ack]"
     );
     // Reset'in kendi bayrak kaydı değil.
     expect(block).toContain("freeze '$(reset_drain_flags_path \"$great_reset_operation\")'");
-    // Boşaltma durursa kilit yalnız olumlu kanıtlı geri açılıştan sonra bırakılır.
+    // Boşaltma durursa kilit, olumlu kanıtlı geri açılışla AYNI süreç kilidi altında, tek komutta
+    // bırakılır (Astra #243 8. tur P2); ayrı bir bırakma SSH'ı yok.
     expect(block).toContain(
-      'if reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"; then',
+      'reset_restore_society_flags 1 "$reset_flags_writer_max_seconds" "$lock_dir" || true',
     );
-    expect(
-      block.indexOf('if reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"; then'),
-    ).toBeLessThan(block.indexOf("find '$lock_dir' -xdev -depth -delete"));
+    expect(block).not.toContain("find '$lock_dir'");
     // Başarılı bakımdan sonra düşen geri açılış kilidi tutmaz; tek amaçlı komuta yönlendirir.
     expect(source).toContain("reset_restore_society_flags 3 || reset_flags_pending=1");
     expect(source.trimEnd().endsWith("exit 97\nfi")).toBe(true);
@@ -578,9 +577,6 @@ cat late.out
       );
     const source = readFileSync("scripts/deploy-production-no-migration.sh", "utf8");
     expect(source).toContain("   $reset_release_guard\n   find '$lock_dir' -xdev -depth -delete");
-    expect(source).toContain(
-      "         $(reset_flags_writer_idle_guard)\n         find '$lock_dir' -xdev -depth -delete",
-    );
     expect(readFileSync("scripts/great-reset-restore-flags.sh", "utf8")).toContain(
       "     $(reset_flags_writer_idle_guard)\n     find '$lock_dir' -xdev -depth -delete",
     );
@@ -655,7 +651,7 @@ wait
     expect(Number(/WAIT_MS=(\d+)/u.exec(result.stdout)?.[1])).toBeGreaterThanOrEqual(1000);
     // Boşaltma hatası dalı süren boşaltmayı bekler (en çok ~970 sn).
     expect(readFileSync("scripts/deploy-production-no-migration.sh", "utf8")).toContain(
-      'if reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"; then',
+      'reset_restore_society_flags 1 "$reset_flags_writer_max_seconds" "$lock_dir"',
     );
   });
 
@@ -681,7 +677,17 @@ wait
       /timeout --kill-after=(\d+) (\d+) node --import tsx scripts\/agent-write-freeze\.ts restore/u.exec(
         flagsRemote,
       );
-    expect(Number(restore?.[1]) + Number(restore?.[2])).toBeLessThan(budget);
+    const restoreLimit = Number(restore?.[1]) + Number(restore?.[2]);
+    expect(restoreLimit).toBeLessThan(budget);
+    // Normal geri açılışta (bekleme 0) yerel SSH sınırı `wait + 240`: uzak yazıcı sınırı artı en az
+    // 30 sn hazırlık payı bunun altında kalmalı (Astra #243 8. tur P3).
+    const localRestore = Number(/reset_operator_ssh \$\(\(wait \+ (\d+)\)\) 0/u.exec(wrapper)?.[1]);
+    expect(restoreLimit + 30).toBeLessThanOrEqual(localRestore);
+    // Kilit bırakma SSH'ları da yerel olarak sınırlı.
+    expect(wrapper).toContain(
+      'release_limit=("$local_timeout" $((reset_flags_writer_max_seconds + 120)))',
+    );
+    expect(wrapper).toContain('${release_limit[@]+"${release_limit[@]}"} ssh');
     // Bekleyen her yol aynı bütçeyi kullanır; yerel SSH sınırları uzak beklemeden büyük.
     expect(flagsRemote).toContain("flock -w $reset_flags_writer_max_seconds 9");
     expect(block).toContain('reset_operator_ssh "$reset_flags_writer_max_seconds" 1');
@@ -690,6 +696,56 @@ wait
     expect(restoreCommand).toContain("$((reset_flags_writer_max_seconds + 240)) ssh");
     expect(restoreCommand).toContain("$((reset_flags_writer_max_seconds + 120)) ssh");
     expect(wrapper).not.toMatch(/reset_restore_society_flags 1 \d/u);
+  });
+
+  it("geri açılış ve kilit bırakma aynı süreç kilidi altında: gecikmiş dondurma araya giremez", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "reset-flags-release-"));
+    directories.push(root);
+    const runtime = path.join(root, "runtime");
+    const script = `
+set -euo pipefail
+source scripts/great-reset-flags-remote.sh
+owner_check="test \\"\\$(cat /opt/agent-sozluk/runtime/.release-lock/owner 2>/dev/null)\\" = 'sahip' || exit 97"
+body="$(reset_flags_restore_body ${operationId} "$owner_check" 0 /opt/agent-sozluk/runtime/.release-lock)"
+stale="$(reset_flags_writer_section "$owner_check" 10)"
+for name in body stale; do
+  value="\${!name}"
+  value="\${value//\\/opt\\/agent-sozluk\\/runtime/${runtime}}"
+  value="\${value//timeout --kill-after=10 180 node --import tsx/sleep 1; echo TSX #}"
+  printf -v "$name" '%s' "$value"
+done
+mkdir -p "${runtime}/.release-lock"
+cd "${runtime}"
+printf 'sahip\\n' >.release-lock/owner
+: >.great-reset-drain-flags-${operationId}.json
+bash -c "set -euo pipefail
+$body" >restore.out 2>&1 &
+restore=$!
+sleep 0.3
+# Gecikmiş eski dondurma şimdi uyanır: kilidi ancak geri açılış+bırakma bittikten sonra alır.
+if bash -c "set -euo pipefail
+$stale
+echo STALE_MUTATED"; then :; else echo "STALE_EXIT=$?"; fi
+wait "$restore"
+cat restore.out
+test -e .release-lock && echo LOCK_PRESENT || echo LOCK_GONE
+`;
+    const result = spawnSync("bash", ["-c", script], { encoding: "utf8", timeout: 60_000 });
+    expect(result.stdout).toContain("RELEASE_RESET_FLAGS_RESTORED");
+    expect(result.stdout).toContain("RELEASE_RESET_LOCK_RELEASED");
+    expect(result.stdout).toContain("LOCK_GONE");
+    expect(result.stdout).toContain("STALE_EXIT=97");
+    expect(result.stdout).not.toContain("STALE_MUTATED");
+    // Yalnız dağıtım kilidi dizini bırakılabilir.
+    const guard = spawnSync(
+      "bash",
+      [
+        "-c",
+        `source scripts/great-reset-flags-remote.sh; reset_flags_restore_body ${operationId} ':' 0 /tmp/baska || echo REFUSED`,
+      ],
+      { encoding: "utf8" },
+    );
+    expect(guard.stdout).toContain("REFUSED");
   });
 
   it("tek amaçlı geri açılış komutu sarmalayıcıyla aynı hedefi kullanır ve exact onay ister", () => {

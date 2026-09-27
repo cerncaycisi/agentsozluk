@@ -68,9 +68,18 @@ reset_flags_writer_section() {
 # Başarıyı yalnız uzak taraf bildirir: RELEASE_RESET_FLAGS_RESTORED. Kayıt yoksa
 # RELEASE_RESET_FLAGS_RESTORE_SKIPPED (geri yükleme kanıtı değildir).
 reset_flags_restore_body() {
-  local file owner_check="$2" wait="${3:-0}"
+  local file owner_check="$2" wait="${3:-0}" release_dir="${4:-}" release=''
   file="$(reset_drain_flags_path "$1")"
   test -n "$owner_check" || return 1
+  # İsteğe bağlı: dağıtım kilidi, geri açılışla AYNI süreç kilidi altında bırakılır; araya gecikmiş
+  # eski bir mutatör giremez, kilidi ancak dağıtım kilidi silindikten sonra alır ve sahiplik
+  # denetiminde durur (Astra #243 8. tur P2).
+  if test -n "$release_dir"; then
+    [[ "$release_dir" =~ ^/opt/agent-sozluk/runtime/\.release-lock$ ]] || return 1
+    release="
+     find '$release_dir' -xdev -depth -delete
+     printf 'RELEASE_RESET_LOCK_RELEASED\\n'"
+  fi
   printf '%s' "$(reset_flags_writer_section "$owner_check" "$wait")
      if test -e /opt/agent-sozluk/runtime/.migration-hold; then
        printf 'RELEASE_RESET_FLAGS_RESTORE_REFUSED reason=maintenance-hold\\n' >&2
@@ -87,9 +96,9 @@ reset_flags_restore_body() {
      fi
      if test ! -e '$file'; then
        printf 'RELEASE_RESET_FLAGS_RESTORE_SKIPPED reason=no-drain-record\\n'
-       exit 0
-     fi
-     AGENT_FLOW_REASON='great reset ${1:0:8} açılış' \\
-       timeout --kill-after=10 180 node --import tsx scripts/agent-write-freeze.ts restore '$file'
-     printf 'RELEASE_RESET_FLAGS_RESTORED\\n'"
+     else
+       AGENT_FLOW_REASON='great reset ${1:0:8} açılış' \\
+         timeout --kill-after=10 180 node --import tsx scripts/agent-write-freeze.ts restore '$file'
+       printf 'RELEASE_RESET_FLAGS_RESTORED\\n'
+     fi$release"
 }

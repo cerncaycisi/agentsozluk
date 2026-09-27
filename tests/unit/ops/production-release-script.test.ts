@@ -237,14 +237,17 @@ describe("schema-neutral production release lane", () => {
       // (Astra #243 2. tur); o dalın dışında başka bırakma yok.
       const sonBirak = wrapper.lastIndexOf("find '$lock_dir' -xdev -depth -delete");
       expect(sonBirak).toBeGreaterThan(wrapper.indexOf("exec '$remote_script'"));
-      const bosaltmaDali = wrapper.indexOf(
-        '    if reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"; then',
-      );
-      const ilkBirak = wrapper.indexOf("find '$lock_dir' -xdev -depth -delete");
-      expect(ilkBirak).toBeGreaterThan(bosaltmaDali);
-      expect(ilkBirak).toBeLessThan(wrapper.indexOf("    exit 96", bosaltmaDali));
       const birakmalar = wrapper.split("find '$lock_dir' -xdev -depth -delete").length - 1;
-      expect(birakmalar).toBe(2);
+      expect(birakmalar).toBe(1);
+      // Tek istisna: great reset boşaltması durdu, bakım başlamadı; kilit, bayrakların olumlu
+      // kanıtla geri yazıldığı AYNI uzak komutta ve süreç kilidi altında bırakılır (Astra #243
+      // 6.-8. tur). Bırakılabilecek tek dizin dağıtım kilidi dizinidir.
+      const bosaltmaDali = wrapper.indexOf(
+        'reset_restore_society_flags 1 "$reset_flags_writer_max_seconds" "$lock_dir" || true',
+      );
+      expect(bosaltmaDali).toBeGreaterThan(0);
+      expect(bosaltmaDali).toBeLessThan(wrapper.indexOf("    exit 96", bosaltmaDali));
+      expect(wrapper).toContain("lock_dir=/opt/agent-sozluk/runtime/.release-lock");
       expect(wrapper).toContain(
         "exec '$remote_script' '$candidate_sha' '$cleanup' '$migration_mode' '$op_id'",
       );

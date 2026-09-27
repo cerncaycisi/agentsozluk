@@ -698,14 +698,15 @@ reset_operator_ssh() {
 
 # Geri açılış: başarıyı yalnız uzaktan gelen RELEASE_RESET_FLAGS_RESTORED satırı kanıtlar
 # (kayıt yoksa atlama başarı sayılmaz ama hata da değildir). $1 = deneme sayısı, $2 = uzak süreç
-# kilidi için bekleme (sn).
+# kilidi için bekleme (sn), $3 = verilirse dağıtım kilidi aynı süreç kilidi altında bırakılır.
 reset_restore_society_flags() {
-  local attempts="$1" wait="${2:-0}" attempt output
+  local attempts="$1" wait="${2:-0}" release_dir="${3:-}" attempt output
   for ((attempt = 1; attempt <= attempts; attempt++)); do
     if output="$(reset_operator_ssh $((wait + 240)) 0 \
-      "$(reset_flags_restore_body "$great_reset_operation" "$lock_check" "$wait")")"; then
+      "$(reset_flags_restore_body "$great_reset_operation" "$lock_check" "$wait" "$release_dir")")"; then
       printf '%s\n' "$output"
-      if grep -Eq '^RELEASE_RESET_FLAGS_(RESTORED$|RESTORE_SKIPPED )' <<<"$output"; then
+      if grep -Eq '^RELEASE_RESET_FLAGS_(RESTORED$|RESTORE_SKIPPED )' <<<"$output" &&
+         { test -z "$release_dir" || grep -Eq '^RELEASE_RESET_LOCK_RELEASED$' <<<"$output"; }; then
         return 0
       fi
     fi
@@ -730,15 +731,9 @@ if test -n "$great_reset_operation" && test "$great_reset_rollback" = 0; then
     printf 'RELEASE_WRAPPER_FAIL code=RESET_DRAIN_FAILED\n' >&2
     # SSH kopmuş olabilir, uzak dondurma+boşaltma sürüyor olabilir: bitmesi aynı sahiplik altında
     # kritik bölüm bütçesi kadar beklenir, ardından olumlu kanıt yeniden sınanır (Astra #243 6.-7. tur).
-    if reset_restore_society_flags 1 "$reset_flags_writer_max_seconds"; then
-      ssh "${ssh_options[@]}" deploy@"$expected_ip" \
-        "set -euo pipefail
-         test \"\$(hostname)\" = '$expected_host' || exit 91
-         $scope_check
-         $lock_check
-         $(reset_flags_writer_idle_guard)
-         find '$lock_dir' -xdev -depth -delete"
-    fi
+    # Geri açılış ve dağıtım kilidinin bırakılması aynı süreç kilidi altında, tek komutta (Astra
+    # #243 8. tur P2); kanıt ya da bırakma olmazsa bayraklar kapalı, kilit yerinde kalır.
+    reset_restore_society_flags 1 "$reset_flags_writer_max_seconds" "$lock_dir" || true
     exit 96
   fi
 fi
@@ -1048,8 +1043,13 @@ if test "$build_on_host" = 0 &&
 fi
 
 # Yalnız uzak betik `RELEASE_COMPLETE PASS` ile 0 döndüyse buraya gelinir
-# (`set -e`); kilit yalnız bu yolda ve sahibi bizsek bırakılır.
-ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+# (`set -e`); kilit yalnız bu yolda ve sahibi bizsek bırakılır. Great reset koşusunda bekçi en çok
+# bütçe kadar bekler; yerel SSH de bütçe + 120 ile sınırlıdır (Astra #243 8. tur P2).
+release_limit=()
+if test -n "$great_reset_operation"; then
+  release_limit=("$local_timeout" $((reset_flags_writer_max_seconds + 120)))
+fi
+${release_limit[@]+"${release_limit[@]}"} ssh "${ssh_options[@]}" deploy@"$expected_ip" \
   "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
    $scope_check
