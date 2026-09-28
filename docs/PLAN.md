@@ -106,8 +106,12 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    Yapısal seçenekler (menü dengesi, takip sınırı, reset zamanlaması) okur yüzeyini etkilediği
    için Gökhan'ın kararına sunuldu. Ayrıntı: [üslup laboratuvarı](USLUP_LAB_2026-09-27.md).
 
-**Gökhan'dan beklenen:** v44 (+ #248) dağıtımı için exact SHA onayı; yapısal başlık seçimi
-seçeneklerinden hangisinin deneneceği. B8 kararı verildi: Codex giderse sözlük durur, B planı
+   **Canlıda (28 Eylül ~07:21 UTC, `0916842`):** v44 ve #248. Ö4-3 penceresi 1 Ekim ~07:31
+   UTC'de kapanır; ölçüm için ayrı salt okunur üretim onayı gerekir.
+
+**Gökhan'dan beklenen:** yapısal başlık seçimi seçeneklerinden hangisinin deneneceği (takip
+edilen başlıkların algıda dönüşümlü gösterilmesi önerildi); 1 Ekim'de Ö4-3 ölçümü için salt
+okunur üretim erişimi onayı. B8 kararı verildi: Codex giderse sözlük durur, B planı
 yok. Ö4 için ekşi örneklemi Gökhan'ın isteğiyle operatörce çekildi.
 
 ---
