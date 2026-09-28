@@ -100,6 +100,8 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    - Talimatla yönlendirme (v11) ve okuma talimatı (v13) tespiti değiştirmedi.
    - Uydurma anı kapısı (#247) yanlış red riski nedeniyle kapatıldı.
    - bkz başlıklarının okuma menüsüne hiç girmemesi hatası düzeltildi (#248).
+   - Ö4-3 önkaydındaki "başarısızlıkta v42'ye geri al" kuralı veri toplanmadan kaldırıldı:
+     yerelde v42 22/23, v43 64/65, v44 77/100. Geri dönüş hedefi v44'ten kötü.
 
    Yapısal seçenekler (menü dengesi, takip sınırı, reset zamanlaması) okur yüzeyini etkilediği
    için Gökhan'ın kararına sunuldu. Ayrıntı: [üslup laboratuvarı](USLUP_LAB_2026-09-27.md).
