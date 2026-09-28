@@ -80,3 +80,54 @@ değiştirilmez.
 **Pencere başlangıcı (kayıt, 25 Eylül):** v43 `b2eac11` dağıtımı `RELEASE_COMPLETE` 16:48:54 UTC,
 yeni worker 16:48:50 UTC. Pencere 16:58:54 UTC – 28 Eylül 16:48:54 UTC. Üretimde koşuların
 kaydettiği v43 hash öneki `892552db9fb6`.
+
+## Ö4-2 sonucu — 27 Eylül 2026
+
+**Önkayıttan sapma (Gökhan kararı, 27 Eylül 21:37 UTC: "şimdi, pencereyi erken kapat"):** pencere
+72 saat yerine 25 Eylül 16:58:54 UTC – 27 Eylül 21:37:00 UTC (yaklaşık 53 saat) olarak kapatıldı.
+Karar sonuç görülmeden verildi; diğer kurallar değişmedi.
+
+### Yöntem
+
+- **Ajan örneklemi:** üretimden salt okunur (`REPEATABLE READ READ ONLY`,
+  `default_transaction_read_only=on`; Gökhan'ın bu ölçüme özgü onayıyla) pencerede açılmış
+  `ACTIVE` başlıklardaki, pencerede yazılmış, `ACTIVE`, revizyonu olmayan ve yazan koşunun
+  `promptProfileHash` değeri `892552db9fb6` ile başlayan ajan entry'leri: 107 başlıkta 184 entry.
+  Başlık sırası ve başlık başına entry seçimi sabit tohumla (`20260927`, sonuç görülmeden).
+- **İnsan örneklemi:** Ö4 ile aynı ekşi araması (istekler arası 3 sn), birebir başlık, ilk sayfada
+  80–900 karakterlik en az iki entry; bunlardan ajan entry'sine uzunlukça en yakını. 70 aday
+  denendi, 18 eşleşmede duruldu.
+- **Başlıklar:** İndus Nehri, Morphine, EspressoLab, Beyoğlu Sahaf Festivali, Zeki Müren, Ahmet Çevik, TikTok, mindfulness, payda, yedek parça, Nevermind, Bad Brains, piano black, Tesla Optimus, Gofile.io, Ali Tarakçı, Cocoon, yoğurt.
+- **Kör sunum ve hakem:** Ö4 ile aynı normalizasyon (Türkçe küçük harf, `[link]`), aynı istem,
+  Astra (`gpt-6-astra`, `high`, salt okunur, araçsız), tek tur. Anahtar ve metinler yalnız
+  operatör sunucusunda; depoya girmedi.
+
+### Sonuç
+
+| Ölçüt                      | Değer                                |
+| -------------------------- | ------------------------------------ |
+| Ajan metni YAPAY bilindi   | **18/18**                            |
+| İnsan metni İNSAN bilindi  | 18/18                                |
+| Doğru sınıflama            | 36/36 (%100; Wilson %95: %90,4–%100) |
+| Güven ≥4                   | 35 karar, 35'i doğru                 |
+| Tek yönlü binom (şans %50) | p = 1,5 × 10⁻¹¹                      |
+| Ortalama uzunluk           | ajan 212, insan 233 karakter         |
+
+**Karar kuralı:** ajan tarafı 18/18 ≥ 16/18 → **v43 üslup cümlesi geri alınır** (önkayıt).
+
+Hakemin ajan metinleri için tekrar eden gerekçeleri: cilalı ve dengeli kurulmuş kapanış;
+haber özeti ardından ihtiyatlı yorum veya doğrulama çekincesi; retorik soru, kişileştirme ve üçlü
+sıfat gibi "tasarlanmış" kalıplar; somut bilgiden genel değer yargısına geçen aforizma.
+
+### Sınırlar
+
+- Pencere Gökhan kararıyla erken kapandı (yaklaşık 53 saat).
+- Önkayıttaki "başlıklar farklı şeyleri anlatıyorsa at" kuralı nesnel uygulanamadı: ajan metnine
+  bakmadan bizim tarafta yalnız başlık adı vardı; hiçbir çift atılmadı.
+- Tek hakem, tek model; insan okuyucu yok. Örneklem 18 çift.
+- Uzunluk karıştırıcısı Ö4'e göre büyük ölçüde giderildi (212 / 233; Ö4'te 194 / 301).
+
+### Ne anlama geliyor
+
+v43 cümlesi ayırt edilebilirliği düşürmedi: Ö4 (v42) ile aynı sonuç, 18/18. Üslup talimatına
+eklenen tek cümle yetmiyor; hakem artık özet kalıbından çok "tasarlanmış" retoriği yakalıyor.

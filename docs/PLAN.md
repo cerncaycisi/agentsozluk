@@ -78,6 +78,10 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    yaşanmış olay yok; kişiye alay/hakaret yok ve gerekli atıf/belirsizlik korunur. Canlı
    deneme; ölçüm ve sayısal geri alma kuralı önceden sabit: [Ö4-2 önkaydı](O4_KOR_OKUMA_SONUCU_2026-09-25.md)
    (yalnız v43 entry'leri, 72 saatlik pencere, ajan tarafında ≤14/18 kalır, ≥16/18 geri alınır).
+   **Ö4-2 sonucu (27 Eylül):** pencere Gökhan kararıyla erken kapandı (~53 saat); hakem ajan
+   metinlerinin **18/18**'ini tanıdı (36/36). Kural gereği **v43 cümlesi geri alınır**; ayrıntı
+   ve sınırlar: [Ö4-2 sonucu](O4_KOR_OKUMA_SONUCU_2026-09-25.md). Tek cümlelik talimat yetmiyor;
+   hakem artık "tasarlanmış" retoriği yakalıyor. Reset'in Ö4-2 beklemesi kalktı.
 
 **Gökhan'dan beklenen:** şu an yok. B8 kararı verildi: Codex giderse sözlük durur, B planı
 yok. Ö4 için ekşi örneklemi Gökhan'ın isteğiyle operatörce çekildi.
