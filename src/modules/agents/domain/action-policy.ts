@@ -665,13 +665,74 @@ const offlineFirstPersonPatterns = [
   unicodeWordRegExp(wordBounded("bedenim|boyum|kilom|yaşadığım şehir|memleketim")),
 ] as const;
 
+/*
+  Anlatılmış yaşantı (28 Eylül 2026, docs/USLUP_LAB_2026-09-27.md). Yukarıdaki liste kimlik ve
+  biyografi beyanını yakalıyor; yaşanmış bir anı anlatımını yakalamıyordu: deneyim uydurmaya
+  bilerek izin verilen yerel teşhis koşusunda 28 entry'nin hiçbiri yakalanmadı ("dün pazardan
+  aldım" da geçiyordu). Üç işaret ekleniyor; yerel kopyadaki 19.288 ajan entry'sinde ve 92 v44
+  çıktısında yanlış red sıfır, uydurma koşusunda 11/28:
+  - sahiplik ekli sosyal/mekânsal sözcükler ("arkadaşım", "evimde") ve yaşam dönemi zarfları
+    ("çocukken", "bir keresinde"),
+  - birinci tekil hikâye kipi ("-mıştım", "-yordum"),
+  - aynı cümlede bir zaman işareti ("geçen kış", "dün") ile birinci tekil geçmiş fiil ya da
+    zamir.
+  Ajanın kendi dijital deneyimi ("okudum", "yazdım") kaydedilmiş deneyimdir, işaretlenmez.
+  Varsayımsal "-dığımda" biçimi ("geri istediğimde") bilerek dışarıda: örnek cümlelerde yanlış
+  red üretiyordu.
+*/
+const livedExperiencePattern = unicodeWordRegExp(
+  wordBounded(
+    "arkadaşım|arkadaşımın|arkadaşımla|komşum|komşumun|patronum|hocam|sevgilim|kuzenim|dayım|teyzem|halam|amcam|evimde|evime|evimin|odamda|odama|mahallemde|mahallemin|sokağımda|işyerimde|okulumda|sınıfımda|çocukken|gençken|küçükken|öğrenciyken|askerdeyken|bir keresinde",
+  ),
+);
+const firstPersonNarrativeTense = new RegExp(
+  `${wordStart}\\p{L}{2,}(?:mıştım|miştim|muştum|müştüm|ıyordum|iyordum|uyordum|üyordum)${wordEnd}`,
+  "gu",
+);
+// Birinci tekil geçmiş fiil yan cümlenin sonunda gelir (noktalama, metin sonu, bağlaç öncesi);
+// "-tim/-dım" ile biten isimler ("denetim eksik", "eğitim ve") böylece ve açık listeyle dışarıda.
+const firstPersonPastVerb = new RegExp(
+  `${wordStart}(\\p{L}{2,}(?:dım|dim|dum|düm|tım|tim|tum|tüm|mıştım|miştim|muştum|müştüm|yordum))(?=\\s*(?:[.,;:!?…]|$)|\\s+(?:ve|ama|sonra|ki)${wordEnd})`,
+  "gu",
+);
+const pastTenseLookalikeNoun = unicodeWordRegExp(
+  `^(?:eğitim|öğretim|üretim|denetim|gözetim|yönetim|iletim|tüketim|dağıtım|anlatım|yapım|tutum|adım|yardım|kadim|iklim|teslim|bilim|izdüşüm|tanım|akım|alım|satım|katılım|bildirim|tedarik)$`,
+);
+const narrativeTimeMarker = unicodeWordRegExp(
+  wordBounded(
+    "geçen (?:hafta|ay|kış|yaz|bahar|sonbahar|gün|sene|yıl|pazar|cumartesi)|geçenlerde|dün|evvelsi gün|bu sabah|bir ara",
+  ),
+);
+const firstPersonPronoun = unicodeWordRegExp(wordBounded("ben|beni|bana|benim|bende|benden"));
+const recordedDigitalExperience = unicodeWordRegExp(
+  `^(?:okudum|okumuştum|okuyordum|yazdım|yazmıştım|yazıyordum)$`,
+);
+
+function narratesLivedExperience(normalized: string): boolean {
+  if (livedExperiencePattern.test(normalized)) return true;
+  const physical = (word: string) => !recordedDigitalExperience.test(word);
+  if ((normalized.match(firstPersonNarrativeTense) ?? []).some(physical)) return true;
+  return normalized
+    .split(/(?<=[.!?…])\s+|\n+/u)
+    .some(
+      (sentence) =>
+        narrativeTimeMarker.test(sentence) &&
+        ([...sentence.matchAll(firstPersonPastVerb)].some(
+          ([, word]) => physical(word!) && !pastTenseLookalikeNoun.test(word!),
+        ) ||
+          firstPersonPronoun.test(sentence)),
+    );
+}
+
 function withoutQuotedDiscussion(value: string): string {
   return value.replaceAll(/["“][^"”\n]*["”]/gu, " ").replaceAll(/‘[^’\n]*’/gu, " ");
 }
 
 export function hasUnrecordedOfflineFirstPersonClaim(body: string): boolean {
-  return normalizedGroundingTextVariants(withoutQuotedDiscussion(body)).some((normalized) =>
-    offlineFirstPersonPatterns.some((pattern) => pattern.test(normalized)),
+  return normalizedGroundingTextVariants(withoutQuotedDiscussion(body)).some(
+    (normalized) =>
+      offlineFirstPersonPatterns.some((pattern) => pattern.test(normalized)) ||
+      narratesLivedExperience(normalized),
   );
 }
 
