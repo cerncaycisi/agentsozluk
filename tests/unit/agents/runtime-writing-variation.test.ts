@@ -69,6 +69,24 @@ describe("runtime writing variation", () => {
     ]);
   });
 
+  it("renders the exact instruction of the selected form for all four forms", () => {
+    const expected = {
+      MICRO: "Mikro form eğilimi: çoğu zaman 1-10 kelimelik",
+      SHORT: "Kısa form eğilimi: çoğu zaman 11-30 kelime",
+      MEDIUM: "Orta form eğilimi: çoğu zaman 31-100 kelime",
+      LONG: "Uzun form erişilebilir: konu gerçekten taşıyorsa 100 kelimeyi aşabilirsin",
+    } as const;
+    const seen = new Set<string>();
+    for (let index = 0; index < 256 && seen.size < 4; index += 1) {
+      const runId = `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
+      const { form } = runtimeWritingVariation(runId, "MIXED");
+      const line = renderRuntimeWritingVariation(runId, "MIXED").split("\n")[1]!;
+      expect(line.startsWith(`- Form: ${expected[form]}`), `${runId} ${form}`).toBe(true);
+      seen.add(form);
+    }
+    expect(seen.size).toBe(4);
+  });
+
   it("keeps the v8 selection so every run keeps its measured length form", () => {
     // Beklenen değerler `main`'deki sürüm 8 formülüyle (tohum v8) üretildi: render v9 olsa da
     // her koşu ölçülen talimattaki uzunluk formunu almalı (Astra f585cca P3).

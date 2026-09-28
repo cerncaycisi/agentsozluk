@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type * as WritingVariation from "@/runtime/writing-variation";
 import { runtimePromptScaffold } from "@/runtime/prompt-profile";
 import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
 
@@ -47,11 +47,16 @@ describe("üslup turu 3", () => {
       expect(render).not.toContain(kalip);
   });
 
-  it("seçim tohumu sürümü profil özetine giriyor (Astra f585cca P2)", () => {
-    const kaynak = readFileSync("src/runtime/prompt-profile.ts", "utf8");
-    const ozet = kaynak.slice(kaynak.indexOf("export const RUNTIME_PROMPT_PROFILE_HASH"));
-    expect(ozet).toContain(
-      "writingVariationSelectionSeedVersion: RUNTIME_WRITING_VARIATION_SELECTION_SEED_VERSION",
-    );
+  it("seçim tohumu sürümü değişince profil özeti değişir (Astra f585cca P2, b8eef9d P3)", async () => {
+    const { RUNTIME_PROMPT_PROFILE_HASH: asil } = await import("@/runtime/prompt-profile");
+    vi.resetModules();
+    vi.doMock("@/runtime/writing-variation", async (importOriginal) => ({
+      ...(await importOriginal<typeof WritingVariation>()),
+      RUNTIME_WRITING_VARIATION_SELECTION_SEED_VERSION: 9,
+    }));
+    const { RUNTIME_PROMPT_PROFILE_HASH: degisik } = await import("@/runtime/prompt-profile");
+    vi.doUnmock("@/runtime/writing-variation");
+    vi.resetModules();
+    expect(degisik).not.toBe(asil);
   });
 });
