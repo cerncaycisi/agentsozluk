@@ -6349,6 +6349,85 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toEqual([{ title: "Elma" }, { title: "Field Care Node" }]);
   });
 
+  it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {
+    /*
+      Madde 32 başlık onarımı sunucuda da kabul edilmeli (Astra 55e8273 P2): eskiden sunucu
+      yalnız gövde değişikliğine izin veriyordu ve başlığı düzelten aday
+      AGENT_DUPLICATE_REPAIR_INVALID ile düşüyordu.
+    */
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "title-repair-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    const provenance = {
+      evidenceType: "MODEL_KNOWLEDGE" as const,
+      evidenceIds: [runId],
+      shortRationale: "Stabil ve düşük riskli genel kavram bilgisi exact run'a bağlıdır.",
+    };
+    const body = "Kuşların toplu ölümüne yol açan koşullar ve bölgedeki gözlemler.";
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Tekil vakayı adlandıran başlık kalıcı kavram adresi değildir.",
+            input: { title: "Tahtakale'de leylek ölümleri", body },
+            provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
+    });
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 2,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Onarım katkıyı kalıcı yer adına taşıyor.",
+            repairOfSequence: 1,
+            input: { title: "Tahtakale", body },
+            provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 2 }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED", rejectionCode: null });
+    expect(
+      await integrationDatabase.topic.findMany({
+        where: { title: { in: ["Tahtakale", "Tahtakale'de leylek ölümleri"] } },
+        select: { title: true },
+      }),
+    ).toEqual([{ title: "Tahtakale" }]);
+  });
+
   it("rejects ambiguous CREATE_ENTRY targets and uses one canonical topic for policy and write", async () => {
     const fixture = await createFixture();
     const [lockedTopic, otherTopic] = await Promise.all([
