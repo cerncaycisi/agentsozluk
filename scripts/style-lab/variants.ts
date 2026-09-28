@@ -1,12 +1,20 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { RuntimeContext } from "@/runtime/control-plane-client";
+import type { PrismaClient } from "@prisma/client";
+import { buildRuntimePrompt } from "@/runtime/worker";
+import { interleavedMenu, linkedFixedMenu, simulateBrowse } from "./browse";
 import { callCodex, validatorIssues, type LabEntry } from "./lib";
 
 export type Variant = {
   prompt: (prompt: string, context: RuntimeContext) => string;
   call?: { effort?: string; model?: string };
   post?: (entries: LabEntry[], context: RuntimeContext) => Promise<LabEntry[]>;
+  // Karar talimatından önce bağlamı değiştirir (ör. okuma aşaması benzetimi).
+  context?: (
+    context: RuntimeContext,
+    db: PrismaClient,
+  ) => Promise<{ context: RuntimeContext; meta?: unknown }>;
 };
 
 // v43'ün iki üslup cümlesinin yerine konacak kayıt (register) rehberi.
@@ -94,6 +102,99 @@ export const registerBlock7 = registerBlock6
         : line,
   )
   .join("\n");
+
+// v8 (teşhis/öneri): persona metnindeki yapısal tercih listesi de bir iskelet. Persona
+// talimatı sürümle DB'de saklandığı için bu, persona sürümü dağıtımı gerektirir.
+function stripPersonaStructure(prompt: string): string {
+  const lines = prompt.split("\n");
+  const start = lines.findIndex((line) =>
+    line.startsWith("Aşağıdaki yapısal tercihler sabit bir sıra"),
+  );
+  const end = lines.indexOf("Kaçınılacak yazım kalıpları:", start);
+  if (start < 0 || end < 0) return prompt;
+  lines.splice(start, end - start);
+  return lines.join("\n");
+}
+
+// v9: v7'de hâlâ yakalananların ortak izi öğretici ton ("X de Y'nin parçası") ve kişisel iz
+// yokluğu (hakem gerekçeleri, 28 Eylül). Kişisel iz yalnız kanaat ya da gerçekten okunan şeyle
+// (kaydedilmiş dijital deneyim; doğrulayıcı buna izin veriyor).
+export const registerBlock9 = registerBlock7
+  .split("\n")
+  .flatMap((line) =>
+    line.startsWith("- Metni toparlamak zorunda değilsin")
+      ? [
+          line,
+          "- Okura bir şey öğretmeye, ders vermeye çalışma. 'X de Y'nin parçası', 'X'i yalnız Y ile ölçmek yetmez', 'asıl sorun şu' gibi açıklayıcı, politika notu gibi cümleler kurma.",
+          "- Entry'de senden bir iz olsun: ne düşündüğünü ('bence', 'hoşuma gitmedi', 'saçma buldum') ya da gerçekten okuduğun bir şeyi ('okuduğum haberde…', 'burada okuduğum kadarıyla') söyleyebilirsin; yaşamadığın fiziksel deneyimi uydurma.",
+        ]
+      : [line],
+  )
+  .join("\n");
+
+// v10: v7 + uzunluk dağılımı kısa formlara kaydırılmış (tek metinli okumada ~110 karakter altı
+// metinler çoğunlukla insan sanıldı, 28 Eylül). Aynı seçim baytı, yeni dağılım.
+const shortFormDistribution = [
+  "MICRO",
+  "MICRO",
+  "MICRO",
+  "SHORT",
+  "SHORT",
+  "SHORT",
+  "SHORT",
+  "MEDIUM",
+] as const;
+const labFormInstructions = {
+  MICRO:
+    "Mikro form eğilimi: çoğu zaman 1-10 kelimelik tek doğal cümle veya tek başına işlev taşıyan kısa bir bkz yeterlidir.",
+  SHORT: "Kısa form eğilimi: çoğu zaman 11-30 kelime ve bir ila üç doğal cümle yeterlidir.",
+  MEDIUM:
+    "Orta form eğilimi: çoğu zaman 31-100 kelime içinde yalnız gereken ayrıntıyı taşı; tek paragraf da iki dengesiz paragraf da normaldir.",
+} as const;
+function shortenForm(prompt: string, runId: string): string {
+  const byte = createHash("sha256")
+    .update(`agent-sozluk-writing-variation:v8:${runId}`)
+    .digest()[4]!;
+  const form = shortFormDistribution[byte % shortFormDistribution.length]!;
+  const lines = prompt.split("\n");
+  const i = lines.findIndex((line) => line.startsWith("- Form: "));
+  if (i < 0) throw new Error("form satırı bulunamadı");
+  lines[i] = `- Form: ${labFormInstructions[form]}`;
+  return lines.join("\n");
+}
+
+// v11: v7 + başlık seçimi. Tutma seti 2'de trending/takip edilen kavram başlıklarına yazılan 21
+// entry'nin 21'i yakalandı; talimat gündemi "çoğu zaman daha iyisidir" diye öne çıkarıyordu.
+function steerTopicChoice(prompt: string): string {
+  const swaps: [string, string][] = [
+    [
+      "başlık seçerken haber kaynağı kadar meşru bir giriş noktasıdır ve çoğu zaman daha iyisidir, çünkü orada zaten bir konuşma var.",
+      "başlık seçerken haber kaynağı kadar meşru bir giriş noktasıdır.",
+    ],
+    [
+      "Kurulmuşsa aynısını tekrarlama; ya gerçekten eksik kalan bir yön, örnek veya karşı görüş getir ya da başka bir başlık seç.",
+      "Kurulmuşsa aynısını tekrarlama. Bir başlıkta zaten çok sayıda entry aynı genel kavramı açıklıyor, tanımlıyor ya da ne yapılması gerektiğini söylüyorsa oraya bir açıklama daha ekleme; ancak belirli ve somut bir şey (bir olay, bir yer, bir ürün, bir haber, bir kişi) ya da düz bir itiraz getirebiliyorsan yaz, yoksa başka bir başlık seç.",
+    ],
+    [
+      "trendingTopics, newTopics ve followedTopics de en az onun kadar meşrudur ve çoğu zaman daha iyisidir, çünkü sözlükte zaten süren bir konuşmaya bağlanırlar.",
+      "trendingTopics, newTopics ve followedTopics de en az onun kadar meşrudur.",
+    ],
+  ];
+  let out = prompt;
+  for (const [from, to] of swaps) {
+    if (!out.includes(from)) throw new Error(`v11 metni bulunamadı: ${from.slice(0, 40)}`);
+    out = out.replace(from, to);
+  }
+  return out;
+}
+
+const browseSteer =
+  "Menüde birçok yazarın aynı genel kavramı açıkladığı ya da ne yapılması gerektiğini söylediği kalabalık başlıklar varsa, orada söylenmemiş somut bir şey (bir olay, bir yer, bir ürün, bir haber, bir kişi) ya da düz bir itiraz getiremeyeceksen onları seçme; belirli bir şey hakkındaki ya da yeni açılmış başlıklara da bak.";
+function steerBrowse(prompt: string): string {
+  const anchor = "Bu seçim sonrasını bağlar:";
+  if (!prompt.includes(anchor)) throw new Error("okuma talimatı bulunamadı");
+  return prompt.replace(anchor, `${browseSteer}\n${anchor}`);
+}
 
 function replaceStyleSentencesWith(prompt: string, block: string): string {
   const lines = prompt.split("\n");
@@ -278,6 +379,65 @@ export const variants: Record<string, Variant> = {
   },
   v7: {
     prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
+  },
+  v8: {
+    prompt: (prompt) =>
+      stripPersonaStructure(
+        replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
+      ),
+  },
+  v9: {
+    prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock9),
+  },
+  v11: {
+    prompt: (prompt) =>
+      steerTopicChoice(replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7)),
+  },
+  // YALNIZ TEŞHİS: gündem ve takip edilen başlıklar algıdan çıkarılırsa başlık seçimi ve tespit
+  // ne olur? Gökhan'ın "yazarlar gündeme baksın" kararı nedeniyle üretime aday DEĞİL.
+  diag_no_trending: {
+    prompt: (_prompt, context) =>
+      replaceStyleSentencesWith(
+        stripVariationScaffold(
+          buildRuntimePrompt({
+            ...context,
+            perception: { ...context.perception, trendingTopics: [], followedTopics: [] },
+          }),
+        ),
+        registerBlock7,
+      ),
+  },
+  // Okuma aşaması üretimdeki talimatla benzetilir, karar v11 (= v45).
+  v11_browse: {
+    context: (context, db) => simulateBrowse(db, context),
+    prompt: (prompt) =>
+      steerTopicChoice(replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7)),
+  },
+  // v13: v11_browse + okuma talimatına kalabalık kavram başlığı cümlesi.
+  v13: {
+    context: (context, db) => simulateBrowse(db, context, steerBrowse),
+    prompt: (prompt) =>
+      steerTopicChoice(replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7)),
+  },
+  // v44 + okuma benzetimi (üretim eşdeğeri) ve v14: aynı, menü karışık ve takip ≤ 6.
+  v7_browse: {
+    context: (context, db) => simulateBrowse(db, context),
+    prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
+  },
+  v14: {
+    context: (context, db) => simulateBrowse(db, context, undefined, interleavedMenu),
+    prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
+  },
+  v15: {
+    context: (context, db) => simulateBrowse(db, context, undefined, linkedFixedMenu),
+    prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
+  },
+  v10: {
+    prompt: (prompt, context) =>
+      shortenForm(
+        replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
+        context.run.id,
+      ),
   },
   v5_writer2: {
     prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock5),

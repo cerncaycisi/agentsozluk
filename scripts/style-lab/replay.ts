@@ -26,7 +26,9 @@ async function main() {
   const worker = async () => {
     for (let runId = queue.shift(); runId; runId = queue.shift()) {
       try {
-        const context = await loadContext(db, runId);
+        const loaded = await loadContext(db, runId);
+        const shaped = variant.context ? await variant.context(loaded, db) : { context: loaded };
+        const context = shaped.context;
         const prompt = variant.prompt(buildRuntimePrompt(context), context);
         const { output, ms } = await callCodex(
           prompt,
@@ -42,7 +44,7 @@ async function main() {
         if (variant.post) entries = await variant.post(entries, context);
         await appendFile(
           outPath!,
-          `${JSON.stringify({ runId, variant: variantName, ms, parsed: parsed.success, actionTypes, parseIssues, entries, output })}\n`,
+          `${JSON.stringify({ runId, variant: variantName, ms, parsed: parsed.success, actionTypes, parseIssues, entries, output, meta: shaped.meta })}\n`,
         );
         process.stdout.write(`${runId} ${ms}ms entry=${entries.length}\n`);
       } catch (error) {
