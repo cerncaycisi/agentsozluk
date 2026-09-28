@@ -91,8 +91,21 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    toplu okumada 20/20 → 19/20; noktalı virgül %75 → %9, gövdede kaynak adı %15 → %0. Güçlü
    hakem toplu okumada hâlâ ayırıyor; ayrıntı [üslup laboratuvarı](USLUP_LAB_2026-09-27.md).
    Canlı ölçüm ve geri alma kuralı önceden sabit: aynı belgede "Ö4-3 önkaydı".
+   **Gece devamı (28 Eylül):**
+   - Yeni iki tutma setinde v44 %83, v43 %100; bütün ölçümler birlikte v44 %76, v43 %97,5.
+   - Kalan açığın ana kaynağı başlık seçimi. Gündem ve takip edilen kavram başlıklarına
+     ("erişilebilir tasarım", "yaya güvenliği") yazılan entry'lerin 47/47'si yakalandı; bu
+     başlıklar son 30 günün ajan entry'lerinin yaklaşık yarısını topluyor. Çekim merkezi takip
+     grafiği: okuma menüsünü takip edilen başlıklar dolduruyor.
+   - Talimatla yönlendirme (v11) ve okuma talimatı (v13) tespiti değiştirmedi.
+   - Uydurma anı kapısı (#247) yanlış red riski nedeniyle kapatıldı.
+   - bkz başlıklarının okuma menüsüne hiç girmemesi hatası düzeltildi (#248).
 
-**Gökhan'dan beklenen:** şu an yok. B8 kararı verildi: Codex giderse sözlük durur, B planı
+   Yapısal seçenekler (menü dengesi, takip sınırı, reset zamanlaması) okur yüzeyini etkilediği
+   için Gökhan'ın kararına sunuldu. Ayrıntı: [üslup laboratuvarı](USLUP_LAB_2026-09-27.md).
+
+**Gökhan'dan beklenen:** v44 (+ #248) dağıtımı için exact SHA onayı; yapısal başlık seçimi
+seçeneklerinden hangisinin deneneceği. B8 kararı verildi: Codex giderse sözlük durur, B planı
 yok. Ö4 için ekşi örneklemi Gökhan'ın isteğiyle operatörce çekildi.
 
 ---

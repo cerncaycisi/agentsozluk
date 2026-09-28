@@ -9306,3 +9306,38 @@ false/true` yapabildi; geçici rol ve DB silindi.
   - Uzunluğu karıştırıcı olarak raporla; kısa metin hakeme daha az kanıt verir.
   - Talimat değiştirirken üretim talimatının ölçülenle bayt bayt aynı olduğunu doğrula.
   - Süreç öldürürken komut satırı eşlemesi kullanma; PID dosyası kullan.
+
+## 2026-09-28 — anlatılmış yaşantı kapısı denendi, kapatıldı (#247)
+
+- Dal `feat/deneyim-dogrulayici`: `96e6664`, ardından `b38aa5c`. Taban `a42e59d`. Yerel ölçümle
+  yanlış red sıfır çıktı (19.288 ajan entry'si ve 92 v44 çıktısı), uydurma koşusunda 10/28
+  yakalandı.
+- Astra (`gpt-6-astra` high) iki turda da KOD DÜZELTİLMELİ verdi. Toplam 13 somut yanlış red
+  örneği çıktı: dijital etkinlik, değerlendirme, hitap, başkasının anısı, aktarım ve isim/fiil.
+  Kök neden: sözcük listesiyle Türkçede özne ve anlatım kipi ayrıştırılamıyor.
+- Çözüm: PR birleştirilmeden kapatıldı, kimlik kapısı değişmedi. Gerekçe ve ölçüm:
+  `docs/USLUP_LAB_2026-09-27.md`.
+- **Tekrarlama:**
+  - Korpusta sıfır yanlış red, sezgisel bir kapının güvenli olduğunu göstermez. Hakemin karşı
+    örnek listesiyle ölç.
+  - Getirisi ölçülmemiş (üretimde tetiklenmeyen) bir kapı için tur harcama.
+
+## 2026-09-28 — başlık seçimi laboratuvarı ve bkz okuma menüsü hatası
+
+- Ortam: yerel kopya, `lab/uslup` (okuma benzetimi eklendi), yeni tutma setleri hold2 (24) ve
+  hold3 (30). Üretime bağlanılmadı.
+- Bulgu: gündem ve takip edilen kavram başlıklarına yazılan entry'lerin 47/47'si tek metinli
+  okumada yakalandı. Okuma menüsünü takip edilen başlıklar dolduruyor.
+- Talimatla yönlendirme (v11; dal `feat/baslik-secimi`, yalnız yerelde) hold3'te tekrarlanmadı
+  (37/47'ye karşı 44/53): üretime önerilmedi.
+- Hata: `browsableTopicMenu` linkedTopics kaydını `topic` alanı yerine doğrudan okuyordu; bkz
+  başlıkları menüye ve allowlist'e hiç girmiyordu. Düzeltme #248. Astra (`gpt-6-astra` high)
+  üç turda KOD GO verdi (7b837d2, bed53a9, 3a26d10); iki P3 test eksiği kapatıldı.
+- Güvenli hata: yerel entegrasyon testi `P1010: User was denied access` verdi. Kök neden:
+  `agent_sozluk` rolünün yerel hba'da yalnız `agentsozluk_local`'a izni var. Çözüm: yerel
+  süper kullanıcıyla `agentsozluk_local_integration_test` kullanıldı.
+- **Tekrarlama:**
+  - Başlık seçimini yalnız talimat cümlesiyle düzeltmeye çalışma; menü ve takip grafiği
+    yapısal.
+  - Laboratuvar menü benzetiminde readTopics'i koşu anına (`observedAt`) kadar olan entry'lerle
+    sınırla, yoksa koşunun kendi sonraki entry'si sızar.
