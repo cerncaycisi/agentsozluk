@@ -56,7 +56,21 @@ export function browsableTopicMenu(perception: unknown): BrowsableTopic[] {
   for (const record of recordArray(source.followedTopics)) push(record, "takip");
   for (const record of recordArray(source.trendingTopics)) push(record, "gündem");
   for (const record of recordArray(source.newTopics)) push(record, "yeni");
-  for (const record of recordArray(source.linkedTopics)) push(record, "bkz");
+  /*
+    linkedTopics kaydı başlığı `topic` altında taşır ({ topic: { id, title }, thin, ... }).
+    Eskiden kayıt doğrudan okunuyordu, `id` bulunamadığı için bkz başlıkları menüye hiç
+    girmiyordu. Talimat thin=true bkz başlığına yazmayı teşvik ettiği hâlde okunamayan başlığa
+    yazılamıyordu (yerel ölçüm, 28 Eylül 2026: 24 koşunun menüsünde 0 bkz).
+  */
+  for (const record of recordArray(source.linkedTopics)) {
+    const topic = record.topic;
+    push(
+      topic && typeof topic === "object" && !Array.isArray(topic)
+        ? (topic as Record<string, unknown>)
+        : record,
+      "bkz",
+    );
+  }
   return out.slice(0, browseMenuLimit);
 }
 
