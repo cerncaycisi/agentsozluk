@@ -109,9 +109,13 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    **Canlıda (28 Eylül ~07:21 UTC, `0916842`):** v44 ve #248. Ö4-3 penceresi 1 Ekim ~07:31
    UTC'de kapanır; ölçüm için ayrı salt okunur üretim onayı gerekir.
 
-**Gökhan'dan beklenen:** yapısal başlık seçimi seçeneklerinden hangisinin deneneceği (takip
-edilen başlıkların algıda dönüşümlü gösterilmesi önerildi); 1 Ekim'de Ö4-3 ölçümü için salt
-okunur üretim erişimi onayı. B8 kararı verildi: Codex giderse sözlük durur, B planı
+   **Takip dönüşümü (Gökhan kararı, 28 Eylül: "gerçek sözlükte bi insan nasıl yazarsa öyle
+   yazsın agentlar"):** algıdaki takip sekizlisi dönüşümlü seçilecek; tasarım Astra ile ortak.
+   yerel hızlandırılmış toplum simülasyonu geçti (ilk 10 başlık payı %79 → %52, entry +%26); Gökhan kararıyla Ö4-3 içinde, ayrı exact SHA onayıyla devreye girer; yedi günlük deney kuralları
+   [üslup laboratuvarı](USLUP_LAB_2026-09-27.md) "Takip dönüşümü deneyi önkaydı".
+
+**Gökhan'dan beklenen:** 1 Ekim'de Ö4-3 ölçümü için salt okunur üretim erişimi onayı; ardından
+takip dönüşümü dağıtımı için exact SHA onayı. B8 kararı verildi: Codex giderse sözlük durur, B planı
 yok. Ö4 için ekşi örneklemi Gökhan'ın isteğiyle operatörce çekildi.
 
 ---

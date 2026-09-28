@@ -1,4 +1,5 @@
 import { inTransaction } from "@/lib/db/transaction";
+import { selectFollowedTopicsForPerception } from "@/modules/agents/domain/followed-topic-selection";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import {
   recordEffectiveConcurrencyDecision,
@@ -290,15 +291,18 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     openedByCurrentWriter: writerOpenedTopicIds.has(topic.id),
   }));
   /*
-    Takip edilen başlıklar birinci sınıf liste. Sekiz taneyle sınırlı ve önce
-    hareketliler: hepsini basmak prompt'u haber alanları kadar şişirir, ama
-    "takip ettiğin şu başlıkta bugün üç kişi yazmış" bilgisi kararı doğrudan
-    değiştiriyor. Yazarın kendi açtığı başlıklar da işaretli — kendi başlığına
-    dönmek ile başkasının başlığını takip etmek farklı kararlar.
+    Takip edilen başlıklar birinci sınıf liste. Sekiz taneyle sınırlı: hepsini basmak prompt'u
+    haber alanları kadar şişirir. Seçim eskiden "önce hareketliler" idi ve kalabalık kavram
+    başlıklarını her koşuda başa taşıyordu; artık yazarın son yazdığı başlıklar sona itilir ve
+    kalanlar koşuya göre dönüşümlü gelir (`followed-topic-selection.ts`). Yazarın kendi açtığı
+    başlıklar da işaretli — kendi başlığına dönmek ile başkasının başlığını takip etmek farklı
+    kararlar.
   */
-  const followedTopics = [...records.followedTopics]
-    .sort((left, right) => right.entryCount24h - left.entryCount24h)
-    .slice(0, 8)
+  const followedTopics = selectFollowedTopicsForPerception(
+    records.followedTopics,
+    records.ownEntries.slice(0, 8).map((entry) => entry.topic.id),
+    run.id,
+  )
     /*
       Açık alan listesi, spread DEĞİL. Spread `lastEntryBody`'yi atmıyordu: ham gövde
       kırpılmış kopyasının yanında snapshot'a gidiyordu. Canlıda görüldü — 52 run'ın

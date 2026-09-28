@@ -3951,6 +3951,55 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(JSON.stringify(stored.perceptionSummary)).toContain("TANIM_ENTRYSI");
   });
 
+  it("freezes a rotated followed-topic eight that pushes the writer's recent topics back", async () => {
+    /*
+      Takip dönüşümü (Astra 8b84f08 P3): seçim algı kurulurken yapılır, en fazla sekiz başlık
+      alır, yazarın son yazdığı başlığı sona iter ve sonraki context çağrısında yeniden
+      hesaplanmaz.
+    */
+    const fixture = await createFixture();
+    const workerId = "followed-rotation-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const agentUserId = fixture.created.agent.user.id;
+    const followed: string[] = [];
+    for (let index = 0; index < 10; index += 1) {
+      const created = await createTopicWithFirstEntry(
+        integrationDatabase,
+        adminActor(fixture.admin.id),
+        { title: `takip dönüşümü başlığı ${index}`, entryBody: `TAKIP_TANIM_${index}: tanım.` },
+      );
+      followed.push(created.topic.id);
+      await integrationDatabase.topicFollow.create({
+        data: { userId: agentUserId, topicId: created.topic.id },
+      });
+    }
+    const recentTopicId = followed[0]!;
+    await createEntry(integrationDatabase, writePrincipal.actor, recentTopicId, {
+      body: "TAKIP_SON_YAZI: yazarın bu başlığa en son yazdığı entry.",
+    });
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const first = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    const firstIds = (first.perception.followedTopics as { id: string }[]).map(({ id }) => id);
+    expect(firstIds).toHaveLength(8);
+    expect(firstIds).not.toContain(recentTopicId);
+    expect(firstIds.every((id) => followed.includes(id))).toBe(true);
+
+    // Seçilmiş bir başlığın takibi kalkıyor: yeniden hesaplama listeyi kesin değiştirirdi.
+    await integrationDatabase.topicFollow.delete({
+      where: { topicId_userId: { topicId: firstIds[0]!, userId: agentUserId } },
+    });
+    const second = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    expect((second.perception.followedTopics as { id: string }[]).map(({ id }) => id)).toEqual(
+      firstIds,
+    );
+  });
+
   it("reads a topic that the frozen snapshot shows only as a bkz link", async () => {
     /*
       linkedTopics kaydı başlığı `topic` altında taşır. Menü kaydı doğrudan okuduğunda yalnız
