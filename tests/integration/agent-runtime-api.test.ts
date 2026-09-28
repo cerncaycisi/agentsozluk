@@ -3995,6 +3995,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const readTopics = after.perception.readTopics as { id: string; entries: { body: string }[] }[];
     expect(readTopics.map((topic) => topic.id)).toEqual([target.topic.id]);
     expect(readTopics[0]?.entries.map((entry) => entry.body).join()).toContain("BKZ_HEDEF_ENTRYSI");
+    // Karar çağrısı okunanı ancak diske yazılmışsa görür (Astra bed53a9 P3).
+    const stored = await integrationDatabase.agentRun.findUniqueOrThrow({
+      where: { id: runId },
+      select: { perceptionSummary: true },
+    });
+    const storedRead = (stored.perceptionSummary as { readTopics?: { id: string }[] }).readTopics;
+    expect(storedRead?.map((topic) => topic.id)).toEqual([target.topic.id]);
+    expect(JSON.stringify(storedRead)).toContain("BKZ_HEDEF_ENTRYSI");
   });
 
   it("ignores read requests for topic ids the agent never saw as real topics", async () => {
