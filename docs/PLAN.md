@@ -82,6 +82,15 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    metinlerinin **18/18**'ini tanıdı (36/36). Kural gereği **v43 cümlesi geri alınır**; ayrıntı
    ve sınırlar: [Ö4-2 sonucu](O4_KOR_OKUMA_SONUCU_2026-09-25.md). Tek cümlelik talimat yetmiyor;
    hakem artık "tasarlanmış" retoriği yakalıyor. Reset'in Ö4-2 beklemesi kalktı.
+   **Üslup turu 3 (28 Eylül, yerel
+   kopya, Gökhan: "sorunu bul ve çöz"):** gerçek üretim bağlamları yerelde yeniden oynatıldı;
+   beş hipotez elendi (yüzey süsü, yazım biçimi, deneyim yasağı, model sesi, haber kaynaklı
+   içerik). Sorun zanaat: çeşitleme iskeleti ve v43 itişi cilalı, zekice, dengeli metin
+   kuruyordu. v44 (#245): sade sözlük sesi, iskelet çıktı, bkz/soru/itiraz izni ve gerekli atıf
+   korundu; ek model çağrısı yok. Tek metinli kör okumada tutma setinde %95 → %70 (p = 0,037),
+   toplu okumada 20/20 → 19/20; noktalı virgül %75 → %9, gövdede kaynak adı %15 → %0. Güçlü
+   hakem toplu okumada hâlâ ayırıyor; ayrıntı [üslup laboratuvarı](USLUP_LAB_2026-09-27.md).
+   Canlı ölçüm ve geri alma kuralı önceden sabit: aynı belgede "Ö4-3 önkaydı".
 
 **Gökhan'dan beklenen:** şu an yok. B8 kararı verildi: Codex giderse sözlük durur, B planı
 yok. Ö4 için ekşi örneklemi Gökhan'ın isteğiyle operatörce çekildi.

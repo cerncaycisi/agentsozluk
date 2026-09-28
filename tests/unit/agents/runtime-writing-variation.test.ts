@@ -59,29 +59,57 @@ describe("runtime writing variation", () => {
       ).toEqual(new Set(["MICRO", "SHORT", "MEDIUM", "LONG"]));
   });
 
-  it("frames the selected dimensions as loose tendencies while preserving persona voice", () => {
+  it("renders only the length form and one shared boundary (v9)", () => {
     const prompt = renderRuntimeWritingVariation("00000000-0000-4000-8000-000000000456");
 
-    expect(prompt).toContain("# Bu run için yazım varyasyonu");
-    expect(prompt).toContain("- Form:");
-    expect(prompt).toContain("- Açılış:");
-    expect(prompt).toContain("- Sözlük işlevi:");
-    expect(prompt).toContain("gözlemsel kalibrasyondur, kota değildir");
-    expect(prompt).toContain("şablon veya kontrol listesi değildir");
-    expect(prompt).toContain("tek başına okunabilir bir sözlük işlevi");
-    expect(prompt).toContain("Personanın tanınabilir kelime seçimi");
-    expect(prompt).toContain("Bu yönergeleri entry içinde anma");
-    expect(
-      Array.from({ length: 128 }, (_, index) =>
-        renderRuntimeWritingVariation(
-          `00000000-0000-4000-8000-${index.toString().padStart(12, "0")}`,
-        ),
-      ).join("\n"),
-    ).toMatch(/gizli \[\[başlık\]\]|görünür \(bkz: başlık\)/u);
-    expect(prompt).toMatch(
-      /başlığı yeniden söylemeden|somut ve ayırt edici|gündelik ve tek başına|kişisel görüş|çekince veya istisna|ayırt edici fark|kısa bir soruyla|kısa bir iddia|kanaate itirazla/u,
-    );
-    expect(prompt).not.toContain("Görüş → gerekçe");
+    expect(prompt.split("\n")).toEqual([
+      "# Bu run için yazım varyasyonu",
+      expect.stringMatching(/^- Form: /u),
+      "Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma.",
+    ]);
+  });
+
+  it("renders the exact instruction of the selected form for all four forms", () => {
+    const expected = {
+      MICRO: "Mikro form eğilimi: çoğu zaman 1-10 kelimelik",
+      SHORT: "Kısa form eğilimi: çoğu zaman 11-30 kelime",
+      MEDIUM: "Orta form eğilimi: çoğu zaman 31-100 kelime",
+      LONG: "Uzun form erişilebilir: konu gerçekten taşıyorsa 100 kelimeyi aşabilirsin",
+    } as const;
+    const seen = new Set<string>();
+    for (let index = 0; index < 256 && seen.size < 4; index += 1) {
+      const runId = `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
+      const { form } = runtimeWritingVariation(runId, "MIXED");
+      const line = renderRuntimeWritingVariation(runId, "MIXED").split("\n")[1]!;
+      expect(line.startsWith(`- Form: ${expected[form]}`), `${runId} ${form}`).toBe(true);
+      seen.add(form);
+    }
+    expect(seen.size).toBe(4);
+  });
+
+  it("keeps the v8 selection so every run keeps its measured length form", () => {
+    // Beklenen değerler `main`'deki sürüm 8 formülüyle (tohum v8) üretildi: render v9 olsa da
+    // her koşu ölçülen talimattaki uzunluk formunu almalı (Astra f585cca P3).
+    const v8: Array<[string, "SHORT" | "MEDIUM" | "LONG" | "MIXED", string]> = [
+      ["00000000-0000-4000-8000-000000000001", "SHORT", "MICRO"],
+      ["00000000-0000-4000-8000-000000000001", "MEDIUM", "SHORT"],
+      ["00000000-0000-4000-8000-000000000001", "LONG", "SHORT"],
+      ["00000000-0000-4000-8000-000000000001", "MIXED", "SHORT"],
+      ["00000000-0000-4000-8000-000000000456", "SHORT", "SHORT"],
+      ["00000000-0000-4000-8000-000000000456", "MEDIUM", "SHORT"],
+      ["00000000-0000-4000-8000-000000000456", "LONG", "MEDIUM"],
+      ["00000000-0000-4000-8000-000000000456", "MIXED", "SHORT"],
+      ["11111111-2222-4333-8444-555555555555", "SHORT", "LONG"],
+      ["11111111-2222-4333-8444-555555555555", "MEDIUM", "LONG"],
+      ["11111111-2222-4333-8444-555555555555", "LONG", "LONG"],
+      ["11111111-2222-4333-8444-555555555555", "MIXED", "LONG"],
+      ["abfa8108-7034-4765-a945-8fc614ca4584", "SHORT", "SHORT"],
+      ["abfa8108-7034-4765-a945-8fc614ca4584", "MEDIUM", "MEDIUM"],
+      ["abfa8108-7034-4765-a945-8fc614ca4584", "LONG", "MEDIUM"],
+      ["abfa8108-7034-4765-a945-8fc614ca4584", "MIXED", "MEDIUM"],
+    ];
+    for (const [runId, length, form] of v8)
+      expect(runtimeWritingVariation(runId, length).form, `${runId} ${length}`).toBe(form);
   });
 });
 
@@ -120,46 +148,18 @@ describe("soru izni", () => {
 });
 
 /*
-  27 Ağustos'ta ölçüldü: talimatın "izin ver, aynı cümlede yasakla" biçimi izin
-  verdiği davranışı susturuyordu. `(bkz: başlık)` üretimde on gün boyunca sıfırdı
-  (833 entry) ve üç ayrı kontrol kolunda 0/15 çıktı; çekince cümlesi kaldırılınca
-  aynı modelde 4-5/5'e çıktı. Soru için de aynı yönde: 2/5 → 5/5.
-
-  Bu test o dersi sabitliyor. Yasaklar silinmedi, iznin YANINDAN alınıp tek ortak
-  satıra taşındı; kip cümleleri düz emir kipi olmalı.
+  27 Ağustos dersi ("izin ver, aynı cümlede yasakla" biçimi davranışı susturur) üslup turu 3'te
+  de geçerli: bkz ve soru izni artık prompt-profile.ts üslup bloğunda, çekincesiz tek satır
+  (tests/unit/agents/uslup-paragrafi.test.ts). Çeşitleme render'ı yalnız uzunluk formu taşır.
 */
 describe("kip cümleleri izni kendi içinde geri almamalı", () => {
-  const bastirucuKaliplar = [
-    "sırf link üretmek için ekleme",
-    "okurdan cevap isteme",
-    "retorik numaraya çevirme",
-    "espriyi tanımın yerine koyma",
-    "genel gerçek gibi sunma",
-    "akademik özet tonuna çıkma",
-    "münazaraya dönüştürme",
-    "uydurma offline deneyim anlatma",
-  ];
-
-  it("keeps the mode sentences free of the caveats that suppressed the behaviour", () => {
-    // Her koşu için tek render; on farklı runId bütün kip listelerini yeterince tarar.
+  it("renders no mode sentence that could carry a suppressing caveat", () => {
     const renders = Array.from({ length: 40 }, (_, index) =>
       renderRuntimeWritingVariation(`kip-taramasi-${index}`, "MIXED"),
     );
     const kipSatirlari = renders
       .flatMap((render) => render.split("\n"))
       .filter((line) => line.startsWith("- "));
-    expect(kipSatirlari.length).toBeGreaterThan(40);
-    for (const kalip of bastirucuKaliplar)
-      expect(kipSatirlari.some((line) => line.includes(kalip))).toBe(false);
-  });
-
-  it("still states every removed limit once, as a shared boundary", () => {
-    const render = renderRuntimeWritingVariation("ortak-sinir", "MIXED");
-    // Sınırlar kaybolmadı: iznin yanından alındı, ortak satıra taşındı.
-    expect(render).toContain("Yukarıdaki eğilimler için ortak sınırlar");
-    for (const konu of ["okurdan cevap isteyen çağrıya çevirme", "espriyi tanımın yerine koyma"])
-      expect(render).toContain(konu);
-    // En kritik cümle: sınır, eğilimi iptal etmemeli.
-    expect(render).toContain("Bu sınırlar seçilen eğilimi iptal etmez");
+    expect(kipSatirlari.every((line) => line.startsWith("- Form: "))).toBe(true);
   });
 });

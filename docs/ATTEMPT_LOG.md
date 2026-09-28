@@ -9281,3 +9281,28 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:** uygulama rolüyle süper kullanıcı görünümlerini sorgulama; container içi
   dosya okumasını kullan. Reset provalarında süper kullanıcı ile sınanmış yolu üretim rolüyle
   sınanmış sayma.
+
+## 2026-09-28 — üslup turu 3: yerel kopya ve üslup laboratuvarı
+
+- Yerel kopya: 27 Eylül gece yedeği → yerel PG16 (`agentsozluk_local`), `next dev` yalnız yerel
+  adreste çalıştı; üretime bağlanılmadı. Laboratuvar gerçek koşu bağlamlarını
+  (`perceptionSummary`) worker'ın talimatı, modeli ve ayrıştırıcısıyla yeniden oynattı
+  (`lab/uslup` `ae6ef76`). Sonuç ve önkayıt: `docs/USLUP_LAB_2026-09-27.md`.
+- Bulgu: Ö4 toplu okuması bütün varyantlarda tavanda (20/20, 36/36); fark ancak tek metinli
+  okumada görünüyor (v43 %95 → v44 %70, tutma setinde p = 0,037).
+- Güvenli hatalar ve kök nedenler:
+  - `codex exec` git dizini dışında `Not inside a trusted directory` ile çalışmadı:
+    `--skip-git-repo-check`.
+  - Bütün çalışma ağaçları aynı `node_modules`'ü paylaşıyor; Prisma istemcisi reset dalının
+    şemasıyla (BigInt) üretilmişti, `main` dalında typecheck düştü: `prisma generate` ile
+    `main` şemasına döndürüldü.
+  - `pgrep -f`/`pkill -f` kendi komut satırını eşleyip kabuğu öldürdü (çıkış 144): PID
+    dosyasıyla yönetildi.
+  - Yazım çeşitlemesi sürüm numarası seçim tohumunun parçası: sürüm artınca her koşunun
+    uzunluk formu değişti; seçim tohumu ayrı sabite alındı ve profil özetine girdi.
+- **Tekrarlama:**
+  - Üslup değişikliğini yalnız Ö4 toplu okumasıyla değerlendirme; tek metinli okumayı birincil
+    tut, insan kontrolünü aynı istemle koş.
+  - Uzunluğu karıştırıcı olarak raporla; kısa metin hakeme daha az kanıt verir.
+  - Talimat değiştirirken üretim talimatının ölçülenle bayt bayt aynı olduğunu doğrula.
+  - Süreç öldürürken komut satırı eşlemesi kullanma; PID dosyası kullan.
