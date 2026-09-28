@@ -25,6 +25,8 @@ import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth
 import {
   duplicateRepairCandidateIsSafe,
   isRepairableContentRejectionCode,
+  isTitleRepairableContentRejectionCode,
+  titleRepairCandidateIsSafe,
 } from "@/modules/agents/domain/action-policy";
 import {
   appendRuntimeActions,
@@ -1998,7 +2000,8 @@ export function recordRuntimeActions(
         marker(origin.validationResult) !== null ||
         existingActions.some(({ validationResult }) => marker(validationResult) !== null) ||
         candidate.sequence <= Math.max(0, ...existingActions.map(({ sequence }) => sequence)) ||
-        !duplicateRepairCandidateIsSafe(
+        !repairCandidateIsSafe(
+          origin.rejectionCode,
           {
             sequence: origin.sequence,
             actionType: origin.actionType,
@@ -2566,4 +2569,23 @@ export function failRuntimeRun(
     );
     return { runId, runStatus: outcome, finishedAt: now };
   });
+}
+
+/*
+  Onarım adayının denetimi özgün reddin koduna göre seçilir. Başlık reddi (Madde 32) onarımı
+  başlığı değiştirir; gövde denetimi bunu her zaman reddederdi. Worker başlık üretemezse aynı
+  başlıkla gövde onarımına düşer, bu yüzden başlık redlerinde gövde denetimi de kabul edilir.
+  Eskiden yalnız gövde denetimi vardı; onarım şeması API'de düştüğü için fark görünmüyordu
+  (Astra, 55e8273 P2).
+*/
+function repairCandidateIsSafe(
+  rejectionCode: string | null,
+  original: Parameters<typeof duplicateRepairCandidateIsSafe>[0],
+  candidate: Parameters<typeof duplicateRepairCandidateIsSafe>[1],
+): boolean {
+  if (duplicateRepairCandidateIsSafe(original, candidate)) return true;
+  return (
+    isTitleRepairableContentRejectionCode(rejectionCode) &&
+    titleRepairCandidateIsSafe(original, candidate)
+  );
 }

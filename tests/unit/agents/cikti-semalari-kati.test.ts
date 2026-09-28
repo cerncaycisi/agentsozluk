@@ -21,15 +21,20 @@ function missingRequired(schema: unknown, path = "$"): string[] {
     for (const [key, nested] of Object.entries(properties))
       issues.push(...missingRequired(nested, `${path}.${key}`));
   }
-  for (const key of ["items", "anyOf", "oneOf", "allOf", "$defs", "definitions"]) {
+  if (record.items && typeof record.items === "object")
+    issues.push(...missingRequired(record.items, `${path}.items`));
+  for (const key of ["anyOf", "oneOf", "allOf"]) {
     const nested = record[key];
     if (Array.isArray(nested))
       nested.forEach((item, index) =>
         issues.push(...missingRequired(item, `${path}.${key}[${index}]`)),
       );
-    else if (nested && typeof nested === "object")
+  }
+  for (const key of ["$defs", "definitions"]) {
+    const nested = record[key];
+    if (nested && typeof nested === "object")
       for (const [name, item] of Object.entries(nested as Record<string, unknown>))
-        issues.push(...missingRequired(key === "items" ? nested : item, `${path}.${key}.${name}`));
+        issues.push(...missingRequired(item, `${path}.${key}.${name}`));
   }
   return [...new Set(issues)];
 }
