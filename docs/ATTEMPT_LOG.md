@@ -9383,3 +9383,28 @@ false/true` yapabildi; geçici rol ve DB silindi.
   - Düzeltilmiş şemayla gerçek API çağrısı kabul edildi.
 - **Tekrarlama:** modele giden şemaya isteğe bağlı alan ekleme; alan gerekmiyorsa zorunlu ve
   boş bırak. Sağlayıcı hatasını yalnız worker günlüğünde bırakma; oranını ölç.
+
+## 2026-09-28 — `e9ecd71`: takip dönüşümü (#253) ve onarım şeması düzeltmesi (#254) canlıda
+
+- Gökhan: "Yerelde hızlandırılmış test yapın geçerse canlıya alın". Test geçti (sonuç
+  `docs/USLUP_LAB_2026-09-27.md`). Ardından exact SHA için açık onay: "onaylıyorum".
+- Aday `e9ecd71235f27b9986fdfe54c4225d41bd9fb96a`. `0916842`'ye göre migration yok, talimat özeti
+  aynı (`5b806b38…`). Kod farkı `application/runtime.ts`, `domain/followed-topic-selection.ts`,
+  `runtime/worker.ts`. Push CI `36443127403`, Release Candidate Bundle `36446244336`, ikisi de
+  başarılı. Astra: #253 ve #254 KOD GO.
+- Dağıtım temiz checkout'tan `--pause-society-flow` ile yapıldı: pause 288→289, drenaj 17
+  deneme (bir koşu bitti), `RELEASE_COMPLETE PASS` ~16:01 UTC, imaj `sha256:8c9f9642…`, smoke
+  health/ready/search 200.
+- Kabul:
+  - status `runtimeEnabled=false`, çalışan ya da kuyruktaki koşu yok;
+  - worker `active/running` (16:01:30), NRestarts 0; disk %76;
+  - resume 289→290;
+  - yeni worker altında ilk üç `NORMAL_WAKE` (16:02–16:16) `SUCCEEDED`, talimat özeti
+    `5b806b38d9e8`.
+- Ö4-3 penceresi sürüyor. Ölçüm artık v44, #253 ve #254'ün birleşik etkisidir.
+- Hızlandırılmış simülasyon düzeneği yerelde: `/tmp/sim` (betik `scripts/sim/society.ts`,
+  laboratuvar dalına alınacak), veritabanları `sim_tpl`, `sim_a`, `sim_b`, `sim_smoke`.
+- **Tekrarlama:**
+  - Simülasyonda PID dosyası yerine günlüğü izle (`setsid` çatallanıyor).
+  - Simülasyon veritabanında kapasite kanıtını talimat özeti ve Codex sürümüyle eşleştir, yoksa
+    eşzamanlılık 1'e düşer.
