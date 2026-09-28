@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { PrismaClient } from "@prisma/client";
+import { type Prisma, PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
@@ -3949,6 +3949,52 @@ describe("internal agent runtime API with PostgreSQL", () => {
       select: { perceptionSummary: true },
     });
     expect(JSON.stringify(stored.perceptionSummary)).toContain("TANIM_ENTRYSI");
+  });
+
+  it("reads a topic that the frozen snapshot shows only as a bkz link", async () => {
+    /*
+      linkedTopics kaydı başlığı `topic` altında taşır. Menü kaydı doğrudan okuduğunda yalnız
+      bkz olarak görünen başlık allowlist'e hiç girmiyor, okunamıyor, dolayısıyla yazılamıyordu.
+      Hedefi yalnız linkedTopics'te bırakmak için dondurulmuş görüntü elle düzenleniyor.
+    */
+    const fixture = await createFixture();
+    const workerId = "browse-linked-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const target = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "yalnız bkz ile görünen başlık", entryBody: "BKZ_HEDEF_ENTRYSI: tanım." },
+    );
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const frozen = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    const perception = { ...(frozen.perception as Record<string, unknown>) };
+    for (const key of ["followedTopics", "trendingTopics", "newTopics"]) perception[key] = [];
+    perception.linkedTopics = [
+      {
+        topic: { id: target.topic.id, title: target.topic.title },
+        activeEntryCount: 1,
+        thin: true,
+        referenceKinds: ["TOPIC"],
+        discoveredFromEntryIds: [],
+        recentEntries: [],
+      },
+    ];
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: { perceptionSummary: perception as Prisma.InputJsonValue },
+    });
+
+    const after = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      target.topic.id,
+    ]);
+    const readTopics = after.perception.readTopics as { id: string; entries: { body: string }[] }[];
+    expect(readTopics.map((topic) => topic.id)).toEqual([target.topic.id]);
+    expect(readTopics[0]?.entries.map((entry) => entry.body).join()).toContain("BKZ_HEDEF_ENTRYSI");
   });
 
   it("ignores read requests for topic ids the agent never saw as real topics", async () => {
