@@ -9364,3 +9364,22 @@ false/true` yapabildi; geçici rol ve DB silindi.
   sütunun adı `runStatus`. Çözüm: düzeltilmiş salt okunur sorgu.
 - **Tekrarlama:** kabul sorgusunda `agent_runs."runStatus"` kullan; döngüyle yoklarken sorgu
   hatasını yutma.
+
+## 2026-09-28 — içerik onarımı canlıda hiç çalışmıyordu (onarım şeması)
+
+- Belirti: yerel hızlandırılmış toplum simülasyonunda iki koşunun ikisinde de onarım çağrısı
+  `CONTENT_REPAIR_PROVIDER_FAILED` verdi ve koşular `PARTIAL` bitti.
+- Güvenli hata (API): `invalid_json_schema` — "'required' is required to be supplied and to
+  be an array including every key in properties. Missing 'title'."
+- Kök neden: #64 (27 Ağustos) onarım çıktı şemasına isteğe bağlı `title` ekledi. OpenAI katı
+  yapılandırılmış çıktısı isteğe bağlı alanı kabul etmiyor; her onarım çağrısı 400 ile düşüyor.
+  Yerel kopyadaki üretim verisinde 19 Temmuz'dan beri tek bir onarım adayı (`validationResult`
+  içinde `repairOfSequence`) yok. 15–27 Eylül arasında onarılabilir kodla reddedilen yüzlerce
+  aksiyon onarılmadan kaldı.
+- Çözüm:
+  - Modele giden onarım şemasında `title` zorunlu, gövde onarımında boş string. Okuma şeması
+    hoşgörülü kaldı.
+  - Yeni test modele giden bütün çıktı şemalarını aynı kuralla tarıyor.
+  - Düzeltilmiş şemayla gerçek API çağrısı kabul edildi.
+- **Tekrarlama:** modele giden şemaya isteğe bağlı alan ekleme; alan gerekmiyorsa zorunlu ve
+  boş bırak. Sağlayıcı hatasını yalnız worker günlüğünde bırakma; oranını ölç.
