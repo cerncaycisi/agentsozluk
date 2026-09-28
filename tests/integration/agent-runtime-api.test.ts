@@ -3990,13 +3990,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(firstIds).not.toContain(recentTopicId);
     expect(firstIds.every((id) => followed.includes(id))).toBe(true);
 
-    const extra = await createTopicWithFirstEntry(
-      integrationDatabase,
-      adminActor(fixture.admin.id),
-      { title: "takip dönüşümü sonradan", entryBody: "TAKIP_SONRADAN: tanım." },
-    );
-    await integrationDatabase.topicFollow.create({
-      data: { userId: agentUserId, topicId: extra.topic.id },
+    // Seçilmiş bir başlığın takibi kalkıyor: yeniden hesaplama listeyi kesin değiştirirdi.
+    await integrationDatabase.topicFollow.delete({
+      where: { topicId_userId: { topicId: firstIds[0]!, userId: agentUserId } },
     });
     const second = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
     expect((second.perception.followedTopics as { id: string }[]).map(({ id }) => id)).toEqual(
