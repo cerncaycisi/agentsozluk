@@ -432,6 +432,16 @@ export const variants: Record<string, Variant> = {
     context: (context, db) => simulateBrowse(db, context, undefined, linkedFixedMenu),
     prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
   },
+  // v42: v43'ün eklediği tek cümle çıkarılmış hâl (Ö4-3 önkaydındaki geri dönüş hedefi).
+  v42: {
+    prompt: (prompt) => {
+      const lines = prompt.split("\n");
+      const index = lines.findIndex((line) => line.startsWith("Haber ya da kaynak özeti yazma"));
+      if (index < 0) throw new Error("v43 cümlesi bulunamadı");
+      lines.splice(index, 1);
+      return lines.join("\n");
+    },
+  },
   v10: {
     prompt: (prompt, context) =>
       shortenForm(
