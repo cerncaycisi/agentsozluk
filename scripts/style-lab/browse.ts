@@ -9,6 +9,7 @@ import type { RuntimeContext } from "@/runtime/control-plane-client";
 import { buildBrowsePrompt, runtimeBrowseWireJsonSchema } from "@/runtime/worker";
 import { browsableTopicMenu, type BrowsableTopic } from "@/modules/agents/domain/runtime-browse";
 import { callCodex } from "./lib";
+import { selectFollowedTopicsForPerception } from "./followed-topic-selection";
 
 export type BrowseMeta = { menu: { title: string; hint: string }[]; chosen: string[] };
 
@@ -121,4 +122,57 @@ export function linkedFixedMenu(perception: unknown): BrowsableTopic[] {
       )
     : [];
   return browsableTopicMenu({ ...source, linkedTopics: linked });
+}
+
+/*
+  v16: algıdaki takip sekizlisi koşu anındaki (observedAt) takip listesinden #253 seçicisiyle
+  yeniden kurulur. Dondurulmuş algı yalnız "en hareketli 8"i taşıdığı için liste DB'den okunur.
+*/
+export async function rotateFollowedTopics(
+  db: PrismaClient,
+  context: RuntimeContext,
+): Promise<RuntimeContext> {
+  const perception = context.perception as Record<string, unknown>;
+  const observedAt = new Date(String(perception.observedAt));
+  const since = new Date(observedAt.getTime() - 24 * 60 * 60 * 1000);
+  const run = await db.agentRun.findUniqueOrThrow({
+    where: { id: context.run.id },
+    select: { agentProfile: { select: { userId: true } } },
+  });
+  const userId = run.agentProfile.userId;
+  const follows = await db.topicFollow.findMany({
+    where: { userId, createdAt: { lt: observedAt }, topic: { status: "ACTIVE" } },
+    select: { topic: { select: { id: true, title: true } } },
+  });
+  const own = await db.entry.findMany({
+    where: { authorId: userId, status: "ACTIVE", createdAt: { lt: observedAt } },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+    select: { topicId: true },
+  });
+  const chosen = selectFollowedTopicsForPerception(
+    follows.map(({ topic }) => topic),
+    own.map(({ topicId }) => topicId),
+    context.run.id,
+  );
+  const followedTopics = [];
+  for (const topic of chosen) {
+    const recent = await db.entry.findMany({
+      where: { topicId: topic.id, status: "ACTIVE", createdAt: { lt: observedAt } },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: { body: true },
+    });
+    const entryCount24h = await db.entry.count({
+      where: { topicId: topic.id, status: "ACTIVE", createdAt: { gte: since, lt: observedAt } },
+    });
+    followedTopics.push({
+      id: topic.id,
+      title: topic.title,
+      entryCount24h,
+      lastEntry: recent[0]?.body.slice(0, 260) ?? null,
+      recentEntries: recent.map(({ body }) => body.slice(0, 260)),
+    });
+  }
+  return { ...context, perception: { ...perception, followedTopics } } as RuntimeContext;
 }

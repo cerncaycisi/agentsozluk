@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import type { RuntimeContext } from "@/runtime/control-plane-client";
 import type { PrismaClient } from "@prisma/client";
 import { buildRuntimePrompt } from "@/runtime/worker";
-import { interleavedMenu, linkedFixedMenu, simulateBrowse } from "./browse";
+import { interleavedMenu, linkedFixedMenu, rotateFollowedTopics, simulateBrowse } from "./browse";
 import { callCodex, validatorIssues, type LabEntry } from "./lib";
 
 export type Variant = {
@@ -450,6 +450,11 @@ export const variants: Record<string, Variant> = {
   v7_medium: {
     prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
     call: { effort: "medium" },
+  },
+  // v16: v7_browse + #253 takip dönüşümü (takip sekizlisi koşu anındaki listeden yeniden seçilir).
+  v16: {
+    context: async (context, db) => simulateBrowse(db, await rotateFollowedTopics(db, context)),
+    prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
   },
   v10: {
     prompt: (prompt, context) =>
