@@ -9341,3 +9341,26 @@ false/true` yapabildi; geçici rol ve DB silindi.
     yapısal.
   - Laboratuvar menü benzetiminde readTopics'i koşu anına (`observedAt`) kadar olan entry'lerle
     sınırla, yoksa koşunun kendi sonraki entry'si sızar.
+
+## 2026-09-28 — `0916842`: v44 üslubu ve bkz okuma menüsü canlıda
+
+- Gökhan açık onayı ("onaylıyorum"): exact `0916842a950d5f9d368109f013a1235b40dac268`. `9627cb7`'ye
+  göre migration yok. Kod farkı `prompt-profile.ts`, `writing-variation.ts` (#245, v44) ve
+  `runtime-browse.ts` (#248); gerisi belge. Push CI `36388360909` başarılı. Release Candidate
+  Bundle `36390069173` başarılı. Astra incelemeleri #245 ve #248 kayıtlarında.
+- Dağıtım temiz checkout'tan `--pause-society-flow` ile yapıldı:
+  - pause 286→287, drenaj 8 deneme (bir koşu bitti), server-fetch;
+  - `RELEASE_COMPLETE PASS` ~07:21 UTC, imaj `sha256:7a13cf45…`, runtime yeniden kullanıldı;
+  - smoke health/ready/search 200.
+- Kabul:
+  - status `runtimeEnabled=false`, çalışan ya da kuyruktaki koşu yok;
+  - worker `active/running` (07:21:18), NRestarts 0; disk %73;
+  - resume 287→288;
+  - yeni worker altında ilk dört `NORMAL_WAKE` 07:22–07:40: 3 `SUCCEEDED`, 1 `PARTIAL`, hepsi
+    talimat özeti `5b806b38d9e8` (v44).
+- Ö4-3 penceresi önkayda göre `RELEASE_COMPLETE` + 10 dk ile başlar: 28 Eylül ~07:31 UTC →
+  1 Ekim ~07:31 UTC. Erken kapatılmaz.
+- Güvenli hata (üretime yazmadan): kabul sorgusunda `column "status" does not exist`. Kök neden:
+  sütunun adı `runStatus`. Çözüm: düzeltilmiş salt okunur sorgu.
+- **Tekrarlama:** kabul sorgusunda `agent_runs."runStatus"` kullan; döngüyle yoklarken sorgu
+  hatasını yutma.
