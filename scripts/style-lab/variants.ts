@@ -442,6 +442,15 @@ export const variants: Record<string, Variant> = {
       return lines.join("\n");
     },
   },
+  // v7 aynı talimat, daha düşük akıl yürütme düzeyi (üretim `max`).
+  v7_low: {
+    prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
+    call: { effort: "low" },
+  },
+  v7_medium: {
+    prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
+    call: { effort: "medium" },
+  },
   v10: {
     prompt: (prompt, context) =>
       shortenForm(
