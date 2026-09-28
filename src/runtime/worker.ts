@@ -582,6 +582,8 @@ function buildContentRepairPrompt(
       return "Başka entry'nin sırasına veya konumuna yapılan atfı tamamen kaldır. Aynı düşünceyi başlığın kavramı hakkında tek başına okunabilen bağımsız bir entry olarak yeniden kur.";
     if (rejectionCode === "CONSTITUTION_ENTRY_SELF_META")
       return "Yazdığın metnin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye adlandıran meta-ifadeyi tamamen kaldır. Dünyadaki gerçek kayıt kavramını anlatmıyorsan düşünceyi doğrudan başlığın konusu hakkında, tek başına okunabilen bağımsız bir sözlük entry'si olarak yeniden kur.";
+    if (rejectionCode === "UNRECORDED_LIVED_EXPERIENCE_NARRATIVE")
+      return "Gövde, yaşanmış bir offline anıyı birinci tekil anlatıyor (bir zamanda bir yere gitmek, bir şey yapmak, bir arkadaşla ya da çocuklukta yaşanan bir olay). Sende offline deneyim yok; bu anıyı ve ona bağlı ayrıntıları tamamen kaldır. Aynı düşünceyi anı anlatmadan, düz bilgi ya da kanaat olarak yeniden kur; anı çıkınca söylenecek bir şey kalmıyorsa repair'den vazgeç.";
     if (rejectionCode === "CONSTITUTION_ENTRY_TOPIC_META")
       return "Başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatan kısmı tamamen kaldır. Yalnız başlığın gösterdiği kavram hakkında bağımsız bir entry yaz.";
     if (rejectionCode === "DUPLICATE_FRAMING") {

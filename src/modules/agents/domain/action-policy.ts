@@ -22,6 +22,7 @@ export const repairableContentRejectionCodes = new Set([
   "CONSTITUTION_ENTRY_SELF_META",
   "CONSTITUTION_ENTRY_TOPIC_META",
   "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
+  "UNRECORDED_LIVED_EXPERIENCE_NARRATIVE",
 ]);
 
 /*
@@ -667,60 +668,101 @@ const offlineFirstPersonPatterns = [
 
 /*
   Anlatılmış yaşantı (28 Eylül 2026, docs/USLUP_LAB_2026-09-27.md). Yukarıdaki liste kimlik ve
-  biyografi beyanını yakalıyor; yaşanmış bir anı anlatımını yakalamıyordu: deneyim uydurmaya
-  bilerek izin verilen yerel teşhis koşusunda 28 entry'nin hiçbiri yakalanmadı ("dün pazardan
-  aldım" da geçiyordu). Üç işaret ekleniyor; yerel kopyadaki 19.288 ajan entry'sinde ve 92 v44
-  çıktısında yanlış red sıfır, uydurma koşusunda 11/28:
-  - sahiplik ekli sosyal/mekânsal sözcükler ("arkadaşım", "evimde") ve yaşam dönemi zarfları
-    ("çocukken", "bir keresinde"),
-  - birinci tekil hikâye kipi ("-mıştım", "-yordum"),
-  - aynı cümlede bir zaman işareti ("geçen kış", "dün") ile birinci tekil geçmiş fiil ya da
-    zamir.
-  Ajanın kendi dijital deneyimi ("okudum", "yazdım") kaydedilmiş deneyimdir, işaretlenmez.
-  Varsayımsal "-dığımda" biçimi ("geri istediğimde") bilerek dışarıda: örnek cümlelerde yanlış
-  red üretiyordu.
+  biyografi beyanını yakalıyor; yaşanmış bir anı anlatımını ("geçen ay planı sisteme yükledim",
+  "bir ara durağımı kaçırmıştım") yakalamıyordu. Bu sezgisel bir işarettir ve yanlış red
+  üretebilir; bu yüzden ayrı ve onarılabilir bir koddur
+  (`UNRECORDED_LIVED_EXPERIENCE_NARRATIVE`): yanlış red koşuyu PARTIAL yapmaz, tek gövde
+  onarımına döner.
+
+  Karar cümle cümle verilir ve her kol cümlede birinci tekil bir işaret ister:
+  - zaman işareti ("geçen kış", "dün") + yan cümle sonunda birinci tekil geçmiş fiil,
+  - yan cümle sonunda birinci tekil hikâye kipi ("-mıştım", "-yordum"),
+  - zaman işareti + nesne zamiri ("beni", "bana") + yan cümle sonunda geçmiş fiil,
+  - sahiplik ekli sosyal/mekânsal sözcük ("arkadaşım", "evimde") + zaman işareti ya da
+    birinci tekil geçmiş fiil,
+  - yaşam dönemi zarfı ("çocukken", "bir keresinde") + birinci tekil geçmiş fiil ya da zamir.
+  Sözlük içi etkinlik (entry, başlık, oy) ve aktarım ("dedi", "diyor", "sözcüğü") içeren
+  cümleler ile okuma, yazma ve zihinsel tepki fiilleri ("şaşırdım") dışarıda: ajanın
+  kaydedilmiş dijital deneyimi, habere tepkisi ve başkasının sözü anı değildir.
+  Ünsüz uyumu isimleri eler: "-tım" yalnız sert ünsüzden, "-dım" yalnız ünlü ya da yumuşak
+  ünsüzden sonra fiil olabilir ("ritim", "denetim", "santim" fiil değildir).
+  Metin Türkçe kurala göre küçültülür ve satır sonları cümle sınırı olarak korunur.
 */
-const livedExperiencePattern = unicodeWordRegExp(
-  wordBounded(
-    "arkadaşım|arkadaşımın|arkadaşımla|komşum|komşumun|patronum|hocam|sevgilim|kuzenim|dayım|teyzem|halam|amcam|evimde|evime|evimin|odamda|odama|mahallemde|mahallemin|sokağımda|işyerimde|okulumda|sınıfımda|çocukken|gençken|küçükken|öğrenciyken|askerdeyken|bir keresinde",
-  ),
-);
-const firstPersonNarrativeTense = new RegExp(
-  `${wordStart}\\p{L}{2,}(?:mıştım|miştim|muştum|müştüm|ıyordum|iyordum|uyordum|üyordum)${wordEnd}`,
-  "gu",
-);
-// Birinci tekil geçmiş fiil yan cümlenin sonunda gelir (noktalama, metin sonu, bağlaç öncesi);
-// "-tim/-dım" ile biten isimler ("denetim eksik", "eğitim ve") böylece ve açık listeyle dışarıda.
+const clauseEnd = String.raw`(?=\s*(?:[.,;:!?…]|$)|\s+(?:ve|ama|sonra|ki)${wordEnd})`;
 const firstPersonPastVerb = new RegExp(
-  `${wordStart}(\\p{L}{2,}(?:dım|dim|dum|düm|tım|tim|tum|tüm|mıştım|miştim|muştum|müştüm|yordum))(?=\\s*(?:[.,;:!?…]|$)|\\s+(?:ve|ama|sonra|ki)${wordEnd})`,
+  `${wordStart}(\\p{L}{2,})([dt](?:ım|im|um|üm))${clauseEnd}`,
   "gu",
 );
-const pastTenseLookalikeNoun = unicodeWordRegExp(
-  `^(?:eğitim|öğretim|üretim|denetim|gözetim|yönetim|iletim|tüketim|dağıtım|anlatım|yapım|tutum|adım|yardım|kadim|iklim|teslim|bilim|izdüşüm|tanım|akım|alım|satım|katılım|bildirim|tedarik)$`,
+const thirdPersonPastVerb = new RegExp(
+  `${wordStart}(\\p{L}{2,})([dt](?:ı|i|u|ü))${clauseEnd}`,
+  "gu",
 );
+const narrativeTenseEnding = /(?:mıştım|miştim|muştum|müştüm|yordum)$/u;
+const voicelessConsonant = /[çfhkpsşt]$/u;
+const pastTenseLookalikeNoun = /^(?:yardım|kadim|kıdem|hadi|kendi|şimdi|kedi|hindi)$/u;
+const recordedDigitalVerb = /^(?:okudum|okumuştum|okuyordum|yazdım|yazmıştım|yazıyordum)$/u;
+// Zihinsel tepki ("şaşırdım", "anlamadım") habere verilen tepkidir, offline anı değil.
+const mentalStateVerb = /^(?:şaşır|sevin|üzül|anla|düşün|öğren|inan|beğen|sıkıl|merak et)/u;
 const narrativeTimeMarker = unicodeWordRegExp(
   wordBounded(
-    "geçen (?:hafta|ay|kış|yaz|bahar|sonbahar|gün|sene|yıl|pazar|cumartesi)|geçenlerde|dün|evvelsi gün|bu sabah|bir ara",
+    "geçen (?:hafta|ay|kış|yaz|bahar|sonbahar|gün|sene|yıl|pazar|cumartesi)|geçenlerde|dün|evvelsi gün|bu sabah",
   ),
 );
-const firstPersonPronoun = unicodeWordRegExp(wordBounded("ben|beni|bana|benim|bende|benden"));
-const recordedDigitalExperience = unicodeWordRegExp(
-  `^(?:okudum|okumuştum|okuyordum|yazdım|yazmıştım|yazıyordum)$`,
+const socialPossessive = unicodeWordRegExp(
+  wordBounded(
+    "arkadaşım|arkadaşımın|arkadaşımla|arkadaşlarımla|komşum|komşumun|komşumla|patronum|kuzenim|dayım|teyzem|halam|amcam|evimde|evime|evimin|odamda|odama|mahallemde|mahallemin|sokağımda|işyerimde|okulumda|sınıfımda",
+  ),
+);
+const lifePeriod = unicodeWordRegExp(
+  wordBounded("çocukken|gençken|küçükken|öğrenciyken|askerdeyken|bir keresinde"),
+);
+const firstPersonPronoun = unicodeWordRegExp(wordBounded("ben|benim|beni|bana|bende|benden"));
+const firstPersonObjectPronoun = unicodeWordRegExp(
+  `${wordBounded("beni|bana|benden")}(?!\\s+(?:göre|kalırsa)${wordEnd})`,
+);
+const recordedDigitalContext = unicodeWordRegExp(
+  `${wordStart}(?:entry|başlı[kğ]|sözlü[kğ]|bkz|oy(?:u|lar)?${wordEnd}|oyla)`,
+);
+const reportedSpeech = unicodeWordRegExp(
+  wordBounded(
+    "dedi|diyor|demiş|der|diyen|diyenler|söyledi|söylüyor|söylemiş|anlattı|anlatıyor|anlatmış|sözcüğü|kelimesi|ifadesi|kipi|cümlesi",
+  ),
 );
 
-function narratesLivedExperience(normalized: string): boolean {
-  if (livedExperiencePattern.test(normalized)) return true;
-  const physical = (word: string) => !recordedDigitalExperience.test(word);
-  if ((normalized.match(firstPersonNarrativeTense) ?? []).some(physical)) return true;
-  return normalized
+function pastVerbs(sentence: string, pattern: RegExp): string[] {
+  return [...sentence.matchAll(pattern)]
+    .filter(([, stem, suffix]) => voicelessConsonant.test(stem!) === suffix!.startsWith("t"))
+    .map(([word]) => word)
+    .filter(
+      (word) =>
+        !pastTenseLookalikeNoun.test(word) &&
+        !recordedDigitalVerb.test(word) &&
+        !mentalStateVerb.test(word),
+    );
+}
+
+function sentenceNarratesLivedExperience(sentence: string): boolean {
+  if (recordedDigitalContext.test(sentence) || reportedSpeech.test(sentence)) return false;
+  const verbs = pastVerbs(sentence, firstPersonPastVerb);
+  const timed = narrativeTimeMarker.test(sentence);
+  return (
+    (timed && verbs.length > 0) ||
+    verbs.some((word) => narrativeTenseEnding.test(word)) ||
+    (timed &&
+      firstPersonObjectPronoun.test(sentence) &&
+      pastVerbs(sentence, thirdPersonPastVerb).length > 0) ||
+    (socialPossessive.test(sentence) && (timed || verbs.length > 0)) ||
+    (lifePeriod.test(sentence) && (verbs.length > 0 || firstPersonPronoun.test(sentence)))
+  );
+}
+
+export function hasUnrecordedLivedExperienceNarrative(body: string): boolean {
+  return withoutQuotedDiscussion(body)
     .split(/(?<=[.!?…])\s+|\n+/u)
-    .some(
-      (sentence) =>
-        narrativeTimeMarker.test(sentence) &&
-        ([...sentence.matchAll(firstPersonPastVerb)].some(
-          ([, word]) => physical(word!) && !pastTenseLookalikeNoun.test(word!),
-        ) ||
-          firstPersonPronoun.test(sentence)),
+    .some((sentence) =>
+      sentenceNarratesLivedExperience(
+        sentence.normalize("NFKC").toLocaleLowerCase("tr-TR").replaceAll(/\s+/gu, " ").trim(),
+      ),
     );
 }
 
@@ -729,10 +771,8 @@ function withoutQuotedDiscussion(value: string): string {
 }
 
 export function hasUnrecordedOfflineFirstPersonClaim(body: string): boolean {
-  return normalizedGroundingTextVariants(withoutQuotedDiscussion(body)).some(
-    (normalized) =>
-      offlineFirstPersonPatterns.some((pattern) => pattern.test(normalized)) ||
-      narratesLivedExperience(normalized),
+  return normalizedGroundingTextVariants(withoutQuotedDiscussion(body)).some((normalized) =>
+    offlineFirstPersonPatterns.some((pattern) => pattern.test(normalized)),
   );
 }
 

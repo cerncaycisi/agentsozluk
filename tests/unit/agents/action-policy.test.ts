@@ -618,6 +618,7 @@ describe("agent action duplicate policy", () => {
       "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
       "CONSTITUTION_ENTRY_SELF_META",
       "CONSTITUTION_ENTRY_TOPIC_META",
+      "UNRECORDED_LIVED_EXPERIENCE_NARRATIVE",
     ])
       expect(isRepairableContentRejectionCode(code)).toBe(true);
     expect(isRepairableContentRejectionCode("CONSTITUTION_TOPIC_FORUM_PROMPT")).toBe(false);

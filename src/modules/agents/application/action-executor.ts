@@ -52,6 +52,7 @@ import {
 } from "@/modules/agents/domain/provenance";
 import {
   containsDirectQuoteClaim,
+  hasUnrecordedLivedExperienceNarrative,
   hasUnrecordedOfflineFirstPersonClaim,
   repeatedEntryFraming,
   repeatedEntryFramingReason,
@@ -1151,6 +1152,11 @@ export async function executeRuntimeAction(
             code: "UNRECORDED_OFFLINE_FIRST_PERSON_CLAIM",
             reason:
               "Kaydedilmiş dijital deneyime dayanmayan offline birinci tekil iddia yayınlanamaz.",
+          });
+        if (candidateBody && hasUnrecordedLivedExperienceNarrative(candidateBody))
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "UNRECORDED_LIVED_EXPERIENCE_NARRATIVE",
+            reason: "Entry yaşanmış bir offline anıyı birinci tekil anlatıyor.",
           });
         const sourceBacked = ["TRUSTED_SOURCE", "PROBATION_SOURCE", "MULTIPLE_SOURCES"].includes(
           parsed.data.provenance.evidenceType,
