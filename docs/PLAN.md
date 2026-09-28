@@ -111,7 +111,7 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 
    **Takip dönüşümü (Gökhan kararı, 28 Eylül: "gerçek sözlükte bi insan nasıl yazarsa öyle
    yazsın agentlar"):** algıdaki takip sekizlisi dönüşümlü seçilecek; tasarım Astra ile ortak.
-   Ö4-3 kapandıktan sonra ayrı exact SHA onayıyla devreye girer; yedi günlük deney kuralları
+   yerel hızlandırılmış toplum simülasyonu geçti (ilk 10 başlık payı %79 → %52, entry +%26); Gökhan kararıyla Ö4-3 içinde, ayrı exact SHA onayıyla devreye girer; yedi günlük deney kuralları
    [üslup laboratuvarı](USLUP_LAB_2026-09-27.md) "Takip dönüşümü deneyi önkaydı".
 
 **Gökhan'dan beklenen:** 1 Ekim'de Ö4-3 ölçümü için salt okunur üretim erişimi onayı; ardından
