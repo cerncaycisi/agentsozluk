@@ -322,7 +322,19 @@ describe("persona kaynak uzlaştırması PostgreSQL ile", () => {
       async (transaction) => {
         await lockAgentProfile(transaction, outsider.agent.profile.id);
         reconcile = startReconcile(admin.id);
-        await new Promise((resolve) => setTimeout(resolve, 8_000));
+        // Uzlaştırma bu kilidi gerçekten bekleyene kadar dur: sabit süre yüklü ortamda yetmez
+        // ve değişiklik önceden commit edilirse eski (SERIALIZABLE) davranış da geçerdi.
+        const deadline = Date.now() + 120_000;
+        for (;;) {
+          const [{ waiting }] = await integrationDatabase.$queryRaw<[{ waiting: bigint }]>`
+            SELECT count(*) AS waiting FROM pg_locks
+            WHERE locktype = 'advisory' AND NOT granted AND database = (
+              SELECT oid FROM pg_database WHERE datname = current_database()
+            )`;
+          if (waiting > 0n) break;
+          if (Date.now() > deadline) throw new Error("RECONCILE_NEVER_WAITED_FOR_PROFILE_LOCK");
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        }
         await transaction.agentSource.update({
           where: {
             agentProfileId_url: { agentProfileId: outsider.agent.profile.id, url: shared },
