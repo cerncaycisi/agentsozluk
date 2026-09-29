@@ -2720,6 +2720,71 @@ export async function getRuntimeReadTopics(
   });
 }
 
+/*
+  Haber kapsamı (28 Eylül 2026). Canlıda tekrar redlerinin 34'ünden 33'ü, ajanın haberden yeni
+  başlık açmaya çalışıp o haberin başlığının zaten açılmış ve aynı şeyin zaten yazılmış olduğu
+  durumdu: ajan başlığın varlığını ancak kapıya çarpınca öğreniyordu. Bir kaynak öğesinden son
+  14 günde açılan ya da o öğeye dayanarak yazılan başlık, başarılı içerik aksiyonunun
+  `provenance.evidenceIds` alanından bulunur. Kimlik taşınmaz, yalnız başlık adı, görünür entry
+  sayısı ve iki kısa önizleme: kanıt kataloğu ve yazma kapıları değişmez.
+*/
+export async function getRuntimeSourceItemCoverage(
+  transaction: Prisma.TransactionClient,
+  input: { itemIds: readonly string[]; now: Date; blockedUserIds: readonly string[] },
+) {
+  const itemIds = [...new Set(input.itemIds)];
+  const coverage = new Map<
+    string,
+    { title: string; entryCount: number; recentEntryBodies: string[] }
+  >();
+  if (itemIds.length === 0) return coverage;
+  const actions = await transaction.agentAction.findMany({
+    where: {
+      actionStatus: "SUCCEEDED",
+      actionType: { in: ["CREATE_TOPIC_WITH_ENTRY", "CREATE_ENTRY"] },
+      createdAt: { gte: new Date(input.now.getTime() - 14 * 24 * 60 * 60 * 1000) },
+      OR: itemIds.map((id) => ({ provenance: { path: ["evidenceIds"], array_contains: [id] } })),
+    },
+    orderBy: { createdAt: "asc" },
+    select: { provenance: true, result: true },
+  });
+  const topicByItem = new Map<string, string>();
+  for (const action of actions) {
+    const topicId = (action.result as Record<string, unknown> | null)?.topicId;
+    const evidenceIds = (action.provenance as Record<string, unknown> | null)?.evidenceIds;
+    if (typeof topicId !== "string" || !Array.isArray(evidenceIds)) continue;
+    for (const id of evidenceIds)
+      if (typeof id === "string" && itemIds.includes(id) && !topicByItem.has(id))
+        topicByItem.set(id, topicId);
+  }
+  if (topicByItem.size === 0) return coverage;
+  const visible = {
+    status: "ACTIVE" as const,
+    ...publiclyVisibleEntryWhere,
+    ...(input.blockedUserIds.length > 0 ? { authorId: { notIn: [...input.blockedUserIds] } } : {}),
+  };
+  const topics = await transaction.topic.findMany({
+    where: { id: { in: [...new Set(topicByItem.values())] }, status: "ACTIVE" },
+    select: {
+      id: true,
+      title: true,
+      _count: { select: { entries: { where: visible } } },
+      entries: { where: visible, orderBy: { createdAt: "desc" }, take: 2, select: { body: true } },
+    },
+  });
+  const byId = new Map(topics.map((topic) => [topic.id, topic]));
+  for (const [itemId, topicId] of topicByItem) {
+    const topic = byId.get(topicId);
+    if (!topic || topic._count.entries === 0) continue;
+    coverage.set(itemId, {
+      title: topic.title,
+      entryCount: topic._count.entries,
+      recentEntryBodies: topic.entries.map(({ body }) => body),
+    });
+  }
+  return coverage;
+}
+
 export async function getRuntimePerceptionRecords(
   transaction: Prisma.TransactionClient,
   input: {
@@ -3152,6 +3217,11 @@ export async function getRuntimePerceptionRecords(
     relationships,
     behaviorFeedbackEvents,
     sources,
+    sourceItemCoverage: await getRuntimeSourceItemCoverage(transaction, {
+      itemIds: sources.flatMap((source) => source.items.map((item) => item.id)),
+      now: input.now,
+      blockedUserIds,
+    }),
     sourceCandidates,
     state,
     recentTopicCounts,

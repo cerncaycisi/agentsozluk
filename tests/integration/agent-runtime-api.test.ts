@@ -3891,6 +3891,81 @@ describe("internal agent runtime API with PostgreSQL", () => {
     entry'yi geçen başlıklarda düşmesi, ajanın kendi entry'sinin kendisininmiş
     gibi işaretlenmemesi ve perception'ın diske yeniden yazılmaması.
   */
+  it("shows the topic already opened from a news item next to that item in perception", async () => {
+    /*
+      Haber kapsamı: tekrar redlerinin çoğu, ajanın zaten açılmış bir haber başlığını yeniden
+      açmaya çalışmasıydı. Kapsanan öğe başlık adı, entry sayısı ve önizlemeyle gelir; kimlik
+      taşımaz. Kapsanmayan öğe boş liste taşır.
+    */
+    const fixture = await createFixture(2);
+    const source = await integrationDatabase.agentSource.findFirstOrThrow({
+      where: { agentProfileId: fixture.created.agent.profile.id, adminBlocked: false },
+    });
+    const item = (suffix: string) =>
+      integrationDatabase.agentSourceItem.create({
+        data: {
+          sourceId: source.id,
+          canonicalUrl: `https://${source.normalizedDomain}/haber-kapsami-${suffix}`,
+          title: `Haber kapsamı öğesi ${suffix}`,
+          fetchedAt: new Date(),
+          contentHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+          safeText: "Haber kapsamı entegrasyon öğesi.",
+          topics: ["haber"],
+        },
+      });
+    const covered = await item("kapsanan");
+    const uncovered = await item("kapsanmayan");
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "haber kapsamı başlığı",
+        entryBody: "KAPSAM_ENTRYSI: bu haberden daha önce açılmış başlığın ilk entry'si.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const workerId = "source-coverage-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const otherRunId = fixture.runs.map(({ id }) => id).find((id) => id !== runId)!;
+    await integrationDatabase.agentAction.create({
+      data: {
+        runId: otherRunId,
+        agentProfileId: fixture.created.agent.profile.id,
+        sequence: 1,
+        actionType: "CREATE_TOPIC_WITH_ENTRY",
+        actionStatus: "SUCCEEDED",
+        input: { title: "haber kapsamı başlığı", body: "önceki koşunun entry'si" },
+        provenance: {
+          evidenceType: "TRUSTED_SOURCE",
+          evidenceIds: [covered.id],
+          shortRationale: "Önceki koşu bu haberden başlık açtı.",
+        },
+        result: { topicId: topic.topic.id, entryId: topic.entry.id, topicResolution: "CREATED" },
+      },
+    });
+    const context = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    const items = context.perception.sourceItems as {
+      itemId: string;
+      existingTopics: { title: string; entryCount: number; recentEntries: string[] }[];
+    }[];
+    const coveredItem = items.find(({ itemId }) => itemId === covered.id);
+    const uncoveredItem = items.find(({ itemId }) => itemId === uncovered.id);
+    expect(coveredItem?.existingTopics).toEqual([
+      {
+        title: "haber kapsamı başlığı",
+        entryCount: 1,
+        recentEntries: [expect.stringContaining("KAPSAM_ENTRYSI") as unknown as string],
+      },
+    ]);
+    expect(uncoveredItem?.existingTopics).toEqual([]);
+    expect(JSON.stringify(coveredItem)).not.toContain(topic.topic.id);
+  });
+
   it("fills the frozen perception with the entries the agent asked to read", async () => {
     const fixture = await createFixture();
     const workerId = "browse-read-worker";

@@ -245,6 +245,24 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
         summary: item.summary ? truncateUntrustedText(item.summary, 500) : null,
         publishedAt: item.publishedAt?.toISOString() ?? null,
         fetchedAt: item.fetchedAt.toISOString(),
+        /*
+          Bu haberden sözlükte zaten açılmış başlık (varsa): ajan aynı haberi ikinci kez
+          açmaya kalkmadan orada ne yazıldığını görür (`getRuntimeSourceItemCoverage`).
+        */
+        existingTopics: (() => {
+          const covered = records.sourceItemCoverage.get(item.id);
+          return covered
+            ? [
+                {
+                  title: truncateUntrustedText(covered.title, 300),
+                  entryCount: covered.entryCount,
+                  recentEntries: covered.recentEntryBodies.map((body) =>
+                    truncateUntrustedText(body, 200),
+                  ),
+                },
+              ]
+            : [];
+        })(),
       })),
     ),
     10,
