@@ -113,6 +113,41 @@ describe("çeşitlendirilmiş kaynak planı", () => {
     expect(second.get(target.username)!.length).toBeGreaterThanOrEqual(10);
   });
 
+  it("plan dışı sahipleri sınıra sayar", () => {
+    const target = imported[0]!;
+    const external = new Map(pool.map(({ url }) => [url, 5]));
+    const free = pool.slice(-12);
+    for (const { url } of free) external.delete(url);
+    const plan = planDiverseSourceAssignment(
+      [{ username: target.username, persona: target }],
+      pool,
+      {
+        externalHolders: external,
+      },
+    );
+    const freeUrls = new Set(free.map(({ url }) => url));
+    for (const { url } of plan.get(target.username)!) expect(freeUrls.has(url)).toBe(true);
+  });
+
+  it("ajan için engelli sabit kaynakları saymaz ve kanonik profili alt sınıra tamamlar", () => {
+    const canonical = pack.personas[0]!;
+    const blocked = new Set(canonical.sources.slice(0, 3).map(({ url }) => url));
+    const plan = planDiverseSourceAssignment(
+      [
+        {
+          username: canonical.username,
+          persona: canonical,
+          fixedSources: canonical.sources,
+          excludedUrls: blocked,
+        },
+      ],
+      pool,
+    );
+    const chosen = plan.get(canonical.username)!;
+    for (const source of canonical.sources) expect(chosen).toContainEqual(source);
+    expect(chosen.filter(({ url }) => !blocked.has(url)).length).toBeGreaterThanOrEqual(10);
+  });
+
   it("yakınlık yalnız ilgi alanlarından gelir: oyun meraklısına oyun kaynağı düşer", () => {
     const gamer = persona("oyuncu", [
       ["video oyunları", 0.4],

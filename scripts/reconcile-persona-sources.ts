@@ -68,6 +68,57 @@ function stableJson(value: unknown): string {
   );
 }
 
+const sourceStateSelect = {
+  id: true,
+  agentProfileId: true,
+  url: true,
+  status: true,
+  adminBlocked: true,
+  adminPinned: true,
+  addedByOrigin: true,
+  topics: true,
+} as const;
+
+function sourceIsActive(row: { status: string; adminBlocked: boolean }): boolean {
+  return !row.adminBlocked && !["REJECTED", "BLOCKED"].includes(row.status);
+}
+
+function sourceStateFingerprint(
+  rows: readonly {
+    id: string;
+    url: string;
+    status: string;
+    adminBlocked: boolean;
+    adminPinned: boolean;
+    addedByOrigin: string;
+  }[],
+): string {
+  return rows
+    .map((row) =>
+      [row.id, row.url, row.status, row.adminBlocked, row.adminPinned, row.addedByOrigin].join(
+        "\u0000",
+      ),
+    )
+    .join("\n");
+}
+
+// Çalışma zamanı sayımıyla aynı: engelsiz, REJECTED/BLOCKED olmayan satırlar; (profil, url) tekil.
+async function runtimeHolderCounts(
+  database: ReturnType<typeof getDatabase>,
+  profileFilter?: { notIn: string[] },
+): Promise<Map<string, number>> {
+  const groups = await database.agentSource.groupBy({
+    by: ["url"],
+    where: {
+      adminBlocked: false,
+      status: { notIn: ["REJECTED", "BLOCKED"] },
+      ...(profileFilter ? { agentProfileId: profileFilter } : {}),
+    },
+    _count: { _all: true },
+  });
+  return new Map(groups.map((group) => [group.url, group._count._all]));
+}
+
 async function main(): Promise<void> {
   const environment = environmentSchema.parse(process.env);
   const canonicalPack = seedPersonaPackSchema.parse(originalPersonaPack);
@@ -131,21 +182,34 @@ async function main(): Promise<void> {
     const plannedVersions = new Map(
       targets.map(({ profile }) => [profile.id, profile.currentPersonaVersion?.version ?? null]),
     );
+    /*
+      Plan, hedef profillerin kaynak satırlarının bu anlık görüntüsüyle hesaplanır. Her profil
+      işleminde aynı satırlar kilit altında yeniden okunur; değişmişse (ör. arada yönetici bir
+      kaynağı engellediyse) bayat plan uygulanmaz, betik durur (Astra 93a6c17 P2).
+    */
+    const targetIds = targets.map(({ profile }) => profile.id);
+    const planRows = await database.agentSource.findMany({
+      where: { agentProfileId: { in: targetIds } },
+      orderBy: { id: "asc" },
+      select: sourceStateSelect,
+    });
+    const planFingerprints = new Map<string, string>();
+    for (const profileId of targetIds)
+      planFingerprints.set(
+        profileId,
+        sourceStateFingerprint(planRows.filter((row) => row.agentProfileId === profileId)),
+      );
     // Ajanın engelli kaynakları (yönetici ya da önceki uzlaştırma) plana o ajan için girmez:
     // engel kaldırılmaz, başka kaynak seçilir (Astra 2ff4b2a P2).
-    const blockedRows = await database.agentSource.findMany({
-      where: {
-        agentProfileId: { in: targets.map(({ profile }) => profile.id) },
-        OR: [{ adminBlocked: true }, { status: { in: ["REJECTED", "BLOCKED"] } }],
-      },
-      select: { agentProfileId: true, url: true },
-    });
     const blockedByProfile = new Map<string, Set<string>>();
-    for (const { agentProfileId, url } of blockedRows)
+    for (const { agentProfileId, url } of planRows.filter((row) => !sourceIsActive(row)))
       blockedByProfile.set(
         agentProfileId,
         new Set([...(blockedByProfile.get(agentProfileId) ?? []), url]),
       );
+    // Hedef dışı profillerin (ör. PAUSED/RETIRED ithal) aktif kaynakları çalışma zamanı sınırına
+    // sayılır; plan da onları sayar (Astra 93a6c17 P2).
+    const externalHolders = await runtimeHolderCounts(database, { notIn: targetIds });
     const sourcePlan = planDiverseSourceAssignment(
       targets.map(({ profile, canonical }) => {
         if (!profile.currentPersonaVersion)
@@ -158,7 +222,7 @@ async function main(): Promise<void> {
         };
       }),
       verifiedPool,
-      { holderLimit: runtimeSourceHolderLimit },
+      { holderLimit: runtimeSourceHolderLimit, externalHolders },
     );
     /*
       Paket dışı kökenli kaynaklar (ajanın kendi eklediği AGENT, operatör dolgusu vb.) da beş ajan
@@ -167,9 +231,13 @@ async function main(): Promise<void> {
       (geçmiş korunur, silinmez). Paket kökenli plan dışı kayıtları aşağıdaki döngü zaten engeller.
     */
     const plannedHolders = new Map<string, Set<string>>();
-    for (const [username, sources] of sourcePlan)
-      for (const { url } of sources)
-        plannedHolders.set(url, new Set([...(plannedHolders.get(url) ?? []), username]));
+    for (const { profile } of targets)
+      for (const { url } of sourcePlan.get(profile.user.username) ?? [])
+        if (!blockedByProfile.get(profile.id)?.has(url))
+          plannedHolders.set(
+            url,
+            new Set([...(plannedHolders.get(url) ?? []), profile.user.username]),
+          );
     const personaByProfile = new Map(
       targets.map(({ profile }) => [
         profile.id,
@@ -179,16 +247,11 @@ async function main(): Promise<void> {
         },
       ]),
     );
-    const outsideHeld = await database.agentSource.findMany({
-      where: {
-        agentProfileId: { in: targets.map(({ profile }) => profile.id) },
-        addedByOrigin: { notIn: ["INITIAL_PERSONA", "ADMIN_BASELINE_REFRESH"] },
-        adminBlocked: false,
-        status: { notIn: ["REJECTED", "BLOCKED"] },
-      },
-      orderBy: { id: "asc" },
-      select: { id: true, agentProfileId: true, url: true, topics: true },
-    });
+    const outsideHeld = planRows.filter(
+      (row) =>
+        sourceIsActive(row) &&
+        !["INITIAL_PERSONA", "ADMIN_BASELINE_REFRESH"].includes(row.addedByOrigin),
+    );
     const excessSourceIds = new Set<string>();
     const heldByUrl = new Map<string, typeof outsideHeld>();
     for (const row of outsideHeld) heldByUrl.set(row.url, [...(heldByUrl.get(row.url) ?? []), row]);
@@ -213,7 +276,10 @@ async function main(): Promise<void> {
           (left, right) =>
             right.affinity - left.affinity || left.row.id.localeCompare(right.row.id),
         );
-      const allowed = Math.max(0, runtimeSourceHolderLimit - planned.size);
+      const allowed = Math.max(
+        0,
+        runtimeSourceHolderLimit - planned.size - (externalHolders.get(url) ?? 0),
+      );
       for (const { row } of extra.slice(allowed)) excessSourceIds.add(row.id);
     }
     let personaVersionsCreated = 0;
@@ -259,11 +325,25 @@ async function main(): Promise<void> {
         );
         if (currentProfile.currentPersonaVersion.version !== plannedVersions.get(profile.id))
           throw new Error(`SOURCE_RECONCILE_PERSONA_CHANGED username=${profile.user.username}`);
-        const sources = canonical?.sources ?? sourcePlan.get(profile.user.username);
+        const currentRows = await transaction.agentSource.findMany({
+          where: { agentProfileId: profile.id },
+          orderBy: { id: "asc" },
+          select: sourceStateSelect,
+        });
+        if (sourceStateFingerprint(currentRows) !== planFingerprints.get(profile.id))
+          throw new Error(`SOURCE_RECONCILE_SOURCES_CHANGED username=${profile.user.username}`);
+        const sources = sourcePlan.get(profile.user.username);
         if (!sources)
           throw new Error(`SOURCE_RECONCILE_PLAN_MISSING username=${profile.user.username}`);
-        const targetSourceTopicMappings =
-          canonical?.sourceTopicMappings ?? sourceTopicMappings(sources);
+        // Kanonik paket korunur; ajan için engelli paket kaynakları yüzünden alt sınırın altına
+        // düşülüyorsa plan paketi doğrulanmış havuzdan tamamlar.
+        const canonicalUrls = new Set(canonical?.sources.map(({ url }) => url) ?? []);
+        const targetSourceTopicMappings = canonical
+          ? {
+              ...canonical.sourceTopicMappings,
+              ...sourceTopicMappings(sources.filter(({ url }) => !canonicalUrls.has(url))),
+            }
+          : sourceTopicMappings(sources);
         // jsonb anahtar sırasını değiştirir; düz JSON.stringify aynı içeriği farklı sayıp her
         // çalıştırmada gereksiz persona sürümü oluşturuyordu. Anahtar sırasından bağımsız karşılaştır.
         const personaNeedsUpdate =
@@ -404,6 +484,36 @@ async function main(): Promise<void> {
       sourcesBlocked += result.blocked;
     }
 
+    /*
+      Son denetim çalışma zamanıyla aynı sayımı kullanır (tüm profiller, engelsiz aktif satırlar).
+      Sınırı aşmasına izin verilen tek durum kanonik paketlerin kendisidir: bir kaynağın sahip
+      sayısı, onu engelsiz tutan kanonik paket sayısını ve sınırı birlikte aşamaz.
+    */
+    const finalHolders = await runtimeHolderCounts(database);
+    const canonicalFixedHolders = new Map<string, number>();
+    for (const { profile, canonical } of targets)
+      for (const { url } of canonical?.sources ?? [])
+        if (!blockedByProfile.get(profile.id)?.has(url))
+          canonicalFixedHolders.set(url, (canonicalFixedHolders.get(url) ?? 0) + 1);
+    const holderLimitExceptions = [...finalHolders]
+      .filter(([, count]) => count > runtimeSourceHolderLimit)
+      .map(([url, count]) => ({
+        url,
+        holders: count,
+        canonicalPacks: canonicalFixedHolders.get(url) ?? 0,
+      }))
+      .sort((left, right) => left.url.localeCompare(right.url));
+    const holderLimitViolations = holderLimitExceptions.filter(
+      ({ holders, canonicalPacks }) => holders > canonicalPacks,
+    );
+    if (holderLimitViolations.length > 0) {
+      process.stdout.write(
+        `${JSON.stringify({ status: "SOURCE_RECONCILE_HOLDER_LIMIT_VIOLATED", holderLimitViolations })}\n`,
+      );
+      process.exitCode = 1;
+      return;
+    }
+
     process.stdout.write(
       `${JSON.stringify({
         status: "SOURCE_RECONCILE_SUCCEEDED",
@@ -417,6 +527,7 @@ async function main(): Promise<void> {
         sourcesCreated,
         sourcesUpdated,
         sourcesBlocked,
+        holderLimitExceptions,
       })}\n`,
     );
   } finally {

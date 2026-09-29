@@ -91,8 +91,10 @@ export function sourceTopicMappings(sources: PersonaSource[]): SeedPersona["sour
   herkese aynı kaynakları veriyordu (arkitera 35 ajanın 33'ünde). Burada:
   - yakınlık yalnız personanın ilgi alanlarından (ağırlıklı, kelime kökü eşleşmesiyle) gelir;
   - ajanlar sırayla birer kaynak seçer, bir kaynak en fazla `holderLimit` ajana gider;
-  - sabit kaynaklı (kanonik paket) personalar sınıra sayılır ama değişmez;
-  - sınır yüzünden alt sınıra ulaşılamazsa en az ajanda olan kaynaklarla tamamlanır.
+  - sabit kaynaklı (kanonik paket) personaların paketi değişmez, sınıra sayılır;
+  - plan dışı sahipler (ör. etkin olmayan profiller) `externalHolders` ile sınıra sayılır;
+  - her ajan, kendisi için engelli kaynaklar sayılmadan, alt sınıra sınırı aşmadan tamamlanır;
+    kapasite yetmezse hata verilir.
 */
 export interface DiverseSourceTarget {
   username: string;
@@ -127,18 +129,24 @@ export function sourceInterestAffinity(persona: SeedPersona, source: PersonaSour
 export function planDiverseSourceAssignment(
   targets: readonly DiverseSourceTarget[],
   pool: readonly PersonaSource[],
-  options: { holderLimit?: number; perAgent?: number; minimum?: number } = {},
+  options: {
+    holderLimit?: number;
+    perAgent?: number;
+    minimum?: number;
+    externalHolders?: ReadonlyMap<string, number>;
+  } = {},
 ): Map<string, PersonaSource[]> {
   const holderLimit = options.holderLimit ?? 5;
   const perAgent = options.perAgent ?? 12;
   const minimum = options.minimum ?? 10;
-  const holders = new Map<string, number>();
+  const holders = new Map<string, number>(options.externalHolders ?? []);
   const hold = (url: string) => holders.set(url, (holders.get(url) ?? 0) + 1);
   const plan = new Map<string, PersonaSource[]>();
   for (const target of targets)
     if (target.fixedSources) {
       plan.set(target.username, [...target.fixedSources]);
-      for (const { url } of target.fixedSources) hold(url);
+      // Ajan için engelli sabit kaynak ne kontenjan ne de sahiplik sayılır (Astra 93a6c17 P2).
+      for (const { url } of target.fixedSources) if (!target.excludedUrls?.has(url)) hold(url);
     }
   const open = [...targets]
     .filter((target) => !target.fixedSources)
@@ -183,9 +191,12 @@ export function planDiverseSourceAssignment(
         hold(best.source.url);
       }
     }
-  for (const target of open) {
+  for (const target of [...targets].sort((left, right) =>
+    left.username.localeCompare(right.username),
+  )) {
     const chosen = plan.get(target.username)!;
-    while (chosen.length < minimum) {
+    const usable = () => chosen.filter(({ url }) => !target.excludedUrls?.has(url)).length;
+    while (usable() < minimum) {
       const taken = new Set(chosen.map(({ url }) => url));
       // Alt sınıra tamamlama da sınırı gözetir; kapasite yetmezse hata verir (Astra 2ff4b2a P2).
       const fallback = pool
@@ -204,7 +215,7 @@ export function planDiverseSourceAssignment(
         )[0];
       if (!fallback)
         throw new Error(
-          `SOURCE_ASSIGNMENT_CAPACITY_EXCEEDED username=${target.username} assigned=${chosen.length} required=${minimum} holderLimit=${holderLimit}`,
+          `SOURCE_ASSIGNMENT_CAPACITY_EXCEEDED username=${target.username} assigned=${usable()} required=${minimum} holderLimit=${holderLimit}`,
         );
       chosen.push(fallback);
       hold(fallback.url);
