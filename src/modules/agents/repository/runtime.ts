@@ -2721,128 +2721,49 @@ export async function getRuntimeReadTopics(
 }
 
 /*
-  Haber kapsamı (28 Eylül 2026). Canlıda tekrar redlerinin 34'ünden 33'ü, ajanın haberden yeni
-  başlık açmaya çalışıp o haberin başlığının zaten açılmış ve aynı şeyin zaten yazılmış olduğu
-  durumdu: ajan başlığın varlığını ancak kapıya çarpınca öğreniyordu.
-
-  Haber kimliği katı tutulur (Astra 6c46c81, d85a659, c602369):
-  - Kaynaklar ajan başına ayrı kayıt; aynı haber her ajanda farklı kimlikli öğedir. Bu yüzden
-    eşleşme öğe kimliğiyle değil haberin kendisiyle kurulur.
-  - Haber = aynı `contentHash` VE aynı URL VE aynı başlık. Genel başlıklar ("Son dakika") ve
-    başlıksız ortak RSS özetleri böylece ayrışır.
-  - Öğe kaydı RSS yenilemesinde başlığını/URL'sini güncelleyebilir; `contentHash` ise kaydın
-    benzersiz anahtarıdır, değişmez. Geçmiş aksiyonun dayandığı haberin URL ve başlığı öğenin
-    bugünkü hâlinden değil, aksiyonu üreten koşunun dondurulmuş algısından okunur.
-  - Başlık dilden bağımsız katlanır ("NASA MISSION" = "nasa mission").
-  - Maliyet sınırlı: en yeni 40 aday öğe, özetle eşleşen en fazla 200 eşdeğer (son 14 gün),
-    en fazla 50 aday aksiyon.
-  Aday başlıklar oluşturulma sırasıyla tutulur ve görünürlük süzgecinden SONRA ilk görünür olan
-  seçilir. Kimlik taşınmaz, yalnız başlık adı, görünür entry sayısı ve iki kısa önizleme: kanıt
-  kataloğu ve yazma kapıları değişmez.
+  Haberden açılmış son başlıklar (29 Eylül 2026). Canlıda tekrar redlerinin 34'ünden 33'ü,
+  ajanın haberden yeni başlık açmaya çalışıp o haberin başlığının zaten açılmış ve aynı şeyin
+  zaten yazılmış olduğu durumdu. Haber öğelerini geçmiş aksiyonlarla eşleştirmek kırılgandı
+  (kaynaklar ajan başına ayrı kayıt, RSS kaydı yenilenebiliyor; Astra dört turda yeni karşı
+  örnek buldu). Onun yerine son 48 saatte kaynak dayanaklı olarak AÇILMIŞ görünür başlıklar
+  doğrudan `newTopics` listesine eklenir: ajan aynı haberi gördüğünde başlığı ve son entry'yi
+  de görür. Eşleştirme yok; yalnız zaten herkese açık başlıklar.
 */
-export async function getRuntimeSourceItemCoverage(
+export async function getRuntimeRecentSourceTopics(
   transaction: Prisma.TransactionClient,
-  input: { itemIds: readonly string[]; now: Date; blockedUserIds: readonly string[] },
+  input: { now: Date; blockedUserIds: readonly string[]; limit: number },
 ) {
-  const coverage = new Map<
-    string,
-    { title: string; entryCount: number; recentEntryBodies: string[] }
-  >();
-  const itemIds = [...new Set(input.itemIds)];
-  if (itemIds.length === 0) return coverage;
-  const since = new Date(input.now.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const fold = (value: string) =>
-    value
-      .normalize("NFKC")
-      .replaceAll("İ", "i")
-      .replaceAll("I", "i")
-      .toLowerCase()
-      .replaceAll("ı", "i")
-      .replaceAll(/\s+/gu, " ")
-      .trim();
-  const newsKey = (item: { contentHash: string; canonicalUrl: string; title: string }) =>
-    `${item.contentHash}|${item.canonicalUrl}|${fold(item.title).slice(0, 200)}`;
-  const presented = await transaction.agentSourceItem.findMany({
-    where: { id: { in: itemIds } },
-    orderBy: [{ fetchedAt: "desc" }, { id: "asc" }],
-    take: 40,
-    select: { id: true, canonicalUrl: true, contentHash: true, title: true },
-  });
-  const presentedByKey = new Map<string, string[]>();
-  for (const item of presented) {
-    if (fold(item.title).length === 0) continue;
-    const key = newsKey(item);
-    presentedByKey.set(key, [...(presentedByKey.get(key) ?? []), item.id]);
-  }
-  if (presentedByKey.size === 0) return coverage;
-  const equivalents = await transaction.agentSourceItem.findMany({
-    where: {
-      contentHash: { in: [...new Set(presented.map(({ contentHash }) => contentHash))] },
-      fetchedAt: { gte: since },
-    },
-    orderBy: [{ fetchedAt: "desc" }, { id: "asc" }],
-    take: 200,
-    select: { id: true, contentHash: true },
-  });
-  const hashByEquivalent = new Map(equivalents.map(({ id, contentHash }) => [id, contentHash]));
-  if (hashByEquivalent.size === 0) return coverage;
   const actions = await transaction.agentAction.findMany({
     where: {
+      actionType: "CREATE_TOPIC_WITH_ENTRY",
       actionStatus: "SUCCEEDED",
-      actionType: { in: ["CREATE_TOPIC_WITH_ENTRY", "CREATE_ENTRY"] },
-      createdAt: { gte: since },
-      OR: [...hashByEquivalent.keys()].map((id) => ({
-        provenance: { path: ["evidenceIds"], array_contains: [id] },
+      createdAt: { gte: new Date(input.now.getTime() - 48 * 60 * 60 * 1000) },
+      OR: ["TRUSTED_SOURCE", "PROBATION_SOURCE", "MULTIPLE_SOURCES"].map((evidenceType) => ({
+        provenance: { path: ["evidenceType"], equals: evidenceType },
       })),
     },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    take: 50,
-    select: { runId: true, provenance: true, result: true },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 200,
+    select: { result: true },
   });
-  if (actions.length === 0) return coverage;
-  const runs = await transaction.agentRun.findMany({
-    where: { id: { in: [...new Set(actions.map(({ runId }) => runId))] } },
-    select: { id: true, perceptionSummary: true },
-  });
-  // Aksiyon anında ajana gösterilen haberin URL ve başlığı (dondurulmuş algı).
-  const shownAt = new Map<string, Map<string, { canonicalUrl: string; title: string }>>();
-  for (const run of runs) {
-    const items = (run.perceptionSummary as Record<string, unknown> | null)?.sourceItems;
-    const byItem = new Map<string, { canonicalUrl: string; title: string }>();
-    if (Array.isArray(items))
-      for (const item of items as Record<string, unknown>[])
-        if (
-          typeof item?.itemId === "string" &&
-          typeof item.canonicalUrl === "string" &&
-          typeof item.title === "string"
-        )
-          byItem.set(item.itemId, { canonicalUrl: item.canonicalUrl, title: item.title });
-    shownAt.set(run.id, byItem);
+  const topicIds: string[] = [];
+  for (const { result } of actions) {
+    const record = result as Record<string, unknown> | null;
+    if (
+      record?.topicResolution === "CREATED" &&
+      typeof record.topicId === "string" &&
+      !topicIds.includes(record.topicId)
+    )
+      topicIds.push(record.topicId);
   }
-  const candidates = new Map<string, string[]>();
-  for (const action of actions) {
-    const topicId = (action.result as Record<string, unknown> | null)?.topicId;
-    const evidenceIds = (action.provenance as Record<string, unknown> | null)?.evidenceIds;
-    if (typeof topicId !== "string" || !Array.isArray(evidenceIds)) continue;
-    for (const evidenceId of evidenceIds) {
-      if (typeof evidenceId !== "string") continue;
-      const contentHash = hashByEquivalent.get(evidenceId);
-      const shown = shownAt.get(action.runId)?.get(evidenceId);
-      if (!contentHash || !shown) continue;
-      for (const itemId of presentedByKey.get(newsKey({ contentHash, ...shown })) ?? []) {
-        const list = candidates.get(itemId) ?? [];
-        if (!list.includes(topicId)) candidates.set(itemId, [...list, topicId]);
-      }
-    }
-  }
-  if (candidates.size === 0) return coverage;
+  if (topicIds.length === 0) return [];
   const visible = {
     status: "ACTIVE" as const,
     ...publiclyVisibleEntryWhere,
     ...(input.blockedUserIds.length > 0 ? { authorId: { notIn: [...input.blockedUserIds] } } : {}),
   };
   const topics = await transaction.topic.findMany({
-    where: { id: { in: [...new Set([...candidates.values()].flat())] }, status: "ACTIVE" },
+    where: { id: { in: topicIds }, status: "ACTIVE" },
     select: {
       id: true,
       title: true,
@@ -2850,24 +2771,24 @@ export async function getRuntimeSourceItemCoverage(
       entries: {
         where: visible,
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: 2,
+        take: 1,
         select: { body: true },
       },
     },
   });
-  const byId = new Map(
-    topics.filter((topic) => topic._count.entries > 0).map((topic) => [topic.id, topic]),
-  );
-  for (const [itemId, topicIds] of candidates) {
-    const topic = topicIds.map((id) => byId.get(id)).find(Boolean);
-    if (topic)
-      coverage.set(itemId, {
-        title: topic.title,
-        entryCount: topic._count.entries,
-        recentEntryBodies: topic.entries.map(({ body }) => body),
-      });
-  }
-  return coverage;
+  const byId = new Map(topics.map((topic) => [topic.id, topic]));
+  return topicIds
+    .map((id) => byId.get(id))
+    .filter((topic): topic is NonNullable<typeof topic> =>
+      Boolean(topic && topic._count.entries > 0),
+    )
+    .slice(0, input.limit)
+    .map((topic) => ({
+      id: topic.id,
+      title: topic.title,
+      entryCount: topic._count.entries,
+      lastEntryBody: topic.entries[0]?.body ?? null,
+    }));
 }
 
 export async function getRuntimePerceptionRecords(
@@ -3277,6 +3198,11 @@ export async function getRuntimePerceptionRecords(
       title: topic.title,
       entryCount: topic.entryCount,
     })),
+    recentSourceTopics: await getRuntimeRecentSourceTopics(transaction, {
+      now: input.now,
+      blockedUserIds,
+      limit: 12,
+    }),
     trendingTopics: trendingFeed.topics.map((topic) => ({
       ...topic,
       topEntryBody: trendingTopEntryByTopic.get(topic.id) ?? null,
@@ -3302,11 +3228,6 @@ export async function getRuntimePerceptionRecords(
     relationships,
     behaviorFeedbackEvents,
     sources,
-    sourceItemCoverage: await getRuntimeSourceItemCoverage(transaction, {
-      itemIds: sources.flatMap((source) => source.items.map((item) => item.id)),
-      now: input.now,
-      blockedUserIds,
-    }),
     sourceCandidates,
     state,
     recentTopicCounts,

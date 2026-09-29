@@ -245,24 +245,6 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
         summary: item.summary ? truncateUntrustedText(item.summary, 500) : null,
         publishedAt: item.publishedAt?.toISOString() ?? null,
         fetchedAt: item.fetchedAt.toISOString(),
-        /*
-          Bu haberden sözlükte zaten açılmış başlık (varsa): ajan aynı haberi ikinci kez
-          açmaya kalkmadan orada ne yazıldığını görür (`getRuntimeSourceItemCoverage`).
-        */
-        existingTopics: (() => {
-          const covered = records.sourceItemCoverage.get(item.id);
-          return covered
-            ? [
-                {
-                  title: truncateUntrustedText(covered.title, 300),
-                  entryCount: covered.entryCount,
-                  recentEntries: covered.recentEntryBodies.map((body) =>
-                    truncateUntrustedText(body, 200),
-                  ),
-                },
-              ]
-            : [];
-        })(),
       })),
     ),
     10,
@@ -345,7 +327,31 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     az entry'li, çoğu zaman tanımı bile eksik olanları. "Nereye yazayım" sorusunun
     iki ucu.
   */
-  const newTopics = records.newTopics.filter(({ id }) => !writerOpenedTopicIds.has(id)).slice(0, 4);
+  const feedNewTopics = records.newTopics
+    .filter(({ id }) => !writerOpenedTopicIds.has(id))
+    .slice(0, 4);
+  /*
+    Son 48 saatte haberden açılmış başlıklar da burada, son entry önizlemesiyle
+    (`getRuntimeRecentSourceTopics`): ajan aynı haberden ikinci kez başlık açmaya kalkmadan
+    başlığın var olduğunu ve orada ne yazıldığını görür.
+  */
+  const newsTopic = (topic: (typeof records.recentSourceTopics)[number]) => ({
+    id: topic.id,
+    title: topic.title,
+    entryCount: topic.entryCount,
+    openedFromNews: true,
+    lastEntry: topic.lastEntryBody ? truncateUntrustedText(topic.lastEntryBody, 200) : null,
+  });
+  const recentNewsById = new Map(records.recentSourceTopics.map((topic) => [topic.id, topic]));
+  const newTopics = [
+    ...feedNewTopics.map((topic) => {
+      const news = recentNewsById.get(topic.id);
+      return news ? newsTopic(news) : topic;
+    }),
+    ...records.recentSourceTopics
+      .filter(({ id }) => !feedNewTopics.some((topic) => topic.id === id))
+      .map(newsTopic),
+  ];
   /*
     Takip edilen yazarların son işi. `relationships` kimi takip ettiğini ve ne kadar
     güvendiğini söylüyordu ama ne yazdığını değil; o bilgi yalnız 24 entry'lik genel
@@ -372,7 +378,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       linkedTopicEntries: 2,
       sourceItems: 10,
       trendingTopics: 8,
-      newTopics: 4,
+      newTopics: 16,
       followedTopics: 8,
       followedWriterEntries: 6,
       topicExploration: 8,

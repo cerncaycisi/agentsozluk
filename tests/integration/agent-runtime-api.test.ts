@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { type Prisma, PrismaClient } from "@prisma/client";
-import { getRuntimeSourceItemCoverage } from "@/modules/agents/repository/runtime";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
@@ -3892,116 +3891,19 @@ describe("internal agent runtime API with PostgreSQL", () => {
     entry'yi geçen başlıklarda düşmesi, ajanın kendi entry'sinin kendisininmiş
     gibi işaretlenmemesi ve perception'ın diske yeniden yazılmaması.
   */
-  it("shows the topic another agent already opened from the same news next to that item", async () => {
+  it("lists topics recently opened from news in newTopics with their latest entry", async () => {
     /*
-      Haber kapsamı: tekrar redlerinin çoğu, ajanın zaten açılmış bir haber başlığını yeniden
-      açmaya çalışmasıydı. Kaynaklar ajan başına ayrı kayıt olduğu için aynı haber her ajanda
-      farklı kimlikli öğedir; eşleşme URL ve içerik özetiyle kurulur (Astra 6c46c81 P2). Aynı
-      haberden açılan ilk başlık gizlenmişse görünür ikinci başlık seçilir. Kimlik taşınmaz;
-      kapsanmayan öğe boş liste taşır.
+      Tekrar redlerinin çoğu, ajanın başka bir ajanın haberden zaten açtığı başlığı yeniden
+      açmaya çalışmasıydı. Son 48 saatte kaynak dayanaklı açılmış görünür başlıklar newTopics'te
+      son entry önizlemesiyle görünür. Gizli, eski ve kaynaksız açılmış başlıklar görünmez.
     */
-    const fixture = await createFixture(2);
+    const fixture = await createFixture();
     const admin = await createAdmin();
     const other = await createAgent(
       integrationDatabase,
       adminActor(admin.id),
       createAgentSchema.parse({ persona: originalPersonaPack.personas[1] }),
     );
-    const ownSource = await integrationDatabase.agentSource.findFirstOrThrow({
-      where: { agentProfileId: fixture.created.agent.profile.id, adminBlocked: false },
-    });
-    const otherUrl = `https://haber-kapsami-${randomUUID()}.example.org/feed.xml`;
-    const otherSource = await integrationDatabase.agentSource.create({
-      data: {
-        agentProfileId: other.agent.profile.id,
-        url: otherUrl,
-        normalizedDomain: new URL(otherUrl).hostname,
-        sourceType: "RSS",
-        status: "TRUSTED",
-        topics: ["haber"],
-        trustScore: 0.5,
-        interestScore: 0.5,
-        noveltyScore: 0.5,
-        usefulnessScore: 0.5,
-        addedByOrigin: "INITIAL_PERSONA",
-      },
-    });
-    // Kaynak başına en yeni üç öğe algıya girer: olumsuz vakalar ikinci bir kaynakta.
-    const secondUrl = `https://haber-kapsami-ikinci-${randomUUID()}.example.org/feed.xml`;
-    const ownSecondSource = await integrationDatabase.agentSource.create({
-      data: {
-        agentProfileId: fixture.created.agent.profile.id,
-        url: secondUrl,
-        normalizedDomain: new URL(secondUrl).hostname,
-        sourceType: "RSS",
-        status: "TRUSTED",
-        topics: ["haber"],
-        trustScore: 0.5,
-        interestScore: 0.5,
-        noveltyScore: 0.5,
-        usefulnessScore: 0.5,
-        addedByOrigin: "INITIAL_PERSONA",
-      },
-    });
-    const newsUrl = `https://${ownSource.normalizedDomain}/haber-kapsami-${randomUUID()}`;
-    const newsHash = randomUUID().replaceAll("-", "").padEnd(64, "0");
-    const item = (
-      sourceId: string,
-      canonicalUrl: string,
-      contentHash: string,
-      title = "Haber kapsamı öğesi",
-    ) =>
-      integrationDatabase.agentSourceItem.create({
-        data: {
-          sourceId,
-          canonicalUrl,
-          title,
-          fetchedAt: new Date(),
-          contentHash,
-          safeText: "Haber kapsamı entegrasyon öğesi.",
-          topics: ["haber"],
-        },
-      });
-    const covered = await item(ownSource.id, newsUrl, newsHash);
-    const othersCopy = await item(otherSource.id, newsUrl, newsHash);
-    const uncovered = await item(
-      ownSource.id,
-      `${newsUrl}-baska`,
-      randomUUID().replaceAll("-", "").padEnd(64, "1"),
-    );
-    // Aynı (genel) URL'de yayımlanmış farklı başlıklı başka haber: eşleşmemeli (Astra d85a659 P2).
-    const sameUrlOtherNews = await item(
-      ownSecondSource.id,
-      newsUrl,
-      randomUUID().replaceAll("-", "").padEnd(64, "2"),
-      "Bambaşka bir haber",
-    );
-    const hidden = await createTopicWithFirstEntry(
-      integrationDatabase,
-      adminActor(fixture.admin.id),
-      { title: "gizlenen haber başlığı", entryBody: "GIZLI_ENTRY: bu başlık gizlenecek." },
-    );
-    await integrationDatabase.topic.update({
-      where: { id: hidden.topic.id },
-      data: { status: "HIDDEN" },
-    });
-    const visibleTopic = await createTopicWithFirstEntry(
-      integrationDatabase,
-      adminActor(fixture.admin.id),
-      {
-        title: "haber kapsamı başlığı",
-        entryBody: "KAPSAM_ENTRYSI: bu haberden daha önce açılmış başlığın ilk entry'si.",
-      },
-    );
-    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
-    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
-    const workerId = "source-coverage-worker";
-    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
-      workerId,
-      leaseSeconds: 60,
-    });
-    const runId = leased.run!.id;
-    // Aksiyonlar gerçekten diğer ajanın koşusundan (Astra d85a659 P3).
     const otherPersona = await integrationDatabase.agentPersonaVersion.findFirstOrThrow({
       where: { agentProfileId: other.agent.profile.id },
     });
@@ -4013,123 +3915,82 @@ describe("internal agent runtime API with PostgreSQL", () => {
         queuePriority: "MANUAL_SINGLE",
         runStatus: "SUCCEEDED",
         trigger: "MANUAL",
-        idempotencyKey: `haber-kapsami-${randomUUID()}`,
+        idempotencyKey: `haber-basliklari-${randomUUID()}`,
         timeoutSeconds: 600,
         desiredEntryMin: 0,
         desiredEntryMax: 1,
         finishedAt: new Date(),
-        // Aksiyon anında ajana gösterilen haber: kimlik bunun URL ve başlığından okunur.
-        perceptionSummary: {
-          sourceItems: [
-            { itemId: othersCopy.id, canonicalUrl: newsUrl, title: "HABER KAPSAMI ÖĞESİ" },
-          ],
-        },
       },
     });
-    for (const [sequence, created] of [hidden, visibleTopic].entries())
+    const opened = async (
+      title: string,
+      sequence: number,
+      evidenceType: "TRUSTED_SOURCE" | "MODEL_KNOWLEDGE",
+      hoursAgo = 1,
+    ) => {
+      const created = await createTopicWithFirstEntry(
+        integrationDatabase,
+        adminActor(fixture.admin.id),
+        { title, entryBody: `HABER_ENTRYSI ${title}: başlığın ilk entry'si.` },
+      );
       await integrationDatabase.agentAction.create({
         data: {
           runId: otherRun.id,
           agentProfileId: other.agent.profile.id,
-          sequence: sequence + 1,
+          sequence,
           actionType: "CREATE_TOPIC_WITH_ENTRY",
           actionStatus: "SUCCEEDED",
-          input: { title: created.topic.title, body: "önceki koşunun entry'si" },
+          input: { title, body: "önceki koşunun entry'si" },
           provenance: {
-            evidenceType: "TRUSTED_SOURCE",
-            evidenceIds: [othersCopy.id],
-            shortRationale: "Başka ajanın kaynağındaki aynı haber.",
+            evidenceType,
+            evidenceIds: [randomUUID()],
+            shortRationale: "Önceki koşu haberden başlık açtı.",
           },
           result: {
             topicId: created.topic.id,
             entryId: created.entry.id,
             topicResolution: "CREATED",
           },
-          createdAt: new Date(Date.now() - (2 - sequence) * 60_000),
+          createdAt: new Date(Date.now() - hoursAgo * 60 * 60 * 1000),
         },
       });
-    /*
-      RSS yenilemesi aynı kaydın başlığını değiştirebilir (özet aynı kalır). Diğer ajanın kaydı
-      artık başka bir haberi gösteriyor; bu kayda dayanan eski aksiyon, yeni haberi taşıyan
-      öğeye bağlanmamalı (Astra c602369 P2).
-    */
-    const renamedNews = await item(
-      ownSecondSource.id,
-      `${newsUrl}-yenilenen`,
-      randomUUID().replaceAll("-", "").padEnd(64, "3"),
-      "Yenilenmiş başka haber",
+      return created;
+    };
+    const fresh = await opened(`haberden açılan başlık ${randomUUID()}`, 1, "TRUSTED_SOURCE");
+    const hidden = await opened(`gizlenen haber başlığı ${randomUUID()}`, 2, "TRUSTED_SOURCE");
+    await integrationDatabase.topic.update({
+      where: { id: hidden.topic.id },
+      data: { status: "HIDDEN" },
+    });
+    const old = await opened(`eski haber başlığı ${randomUUID()}`, 3, "TRUSTED_SOURCE", 72);
+    const knowledge = await opened(`kaynaksız başlık ${randomUUID()}`, 4, "MODEL_KNOWLEDGE");
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const workerId = "recent-news-topics-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      leased.run!.id,
+      workerId,
     );
-    const renamedCopy = await item(
-      otherSource.id,
-      `${newsUrl}-yenilenen`,
-      renamedNews.contentHash,
-      "Yenilenmeden önceki haber",
-    );
-    await integrationDatabase.agentAction.create({
-      data: {
-        runId: otherRun.id,
-        agentProfileId: other.agent.profile.id,
-        sequence: 3,
-        actionType: "CREATE_TOPIC_WITH_ENTRY",
-        actionStatus: "SUCCEEDED",
-        input: { title: visibleTopic.topic.title, body: "önceki koşunun entry'si" },
-        provenance: {
-          evidenceType: "TRUSTED_SOURCE",
-          evidenceIds: [renamedCopy.id],
-          shortRationale: "Yenilenmeden önceki haber.",
-        },
-        result: {
-          topicId: visibleTopic.topic.id,
-          entryId: visibleTopic.entry.id,
-          topicResolution: "EXISTING",
-        },
-      },
-    });
-    await integrationDatabase.agentRun.update({
-      where: { id: otherRun.id },
-      data: {
-        perceptionSummary: {
-          sourceItems: [
-            { itemId: othersCopy.id, canonicalUrl: newsUrl, title: "HABER KAPSAMI ÖĞESİ" },
-            {
-              itemId: renamedCopy.id,
-              canonicalUrl: `${newsUrl}-yenilenen`,
-              title: "Yenilenmeden önceki haber",
-            },
-          ],
-        },
-      },
-    });
-    await integrationDatabase.agentSourceItem.update({
-      where: { id: renamedCopy.id },
-      data: { title: "Yenilenmiş başka haber" },
-    });
-    const context = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
-    const items = context.perception.sourceItems as {
-      itemId: string;
-      existingTopics: { title: string; entryCount: number; recentEntries: string[] }[];
+    const newTopics = context.perception.newTopics as {
+      id: string;
+      title: string;
+      openedFromNews?: boolean;
+      lastEntry?: string | null;
     }[];
-    const coveredItem = items.find(({ itemId }) => itemId === covered.id);
-    const uncoveredItem = items.find(({ itemId }) => itemId === uncovered.id);
-    expect(coveredItem?.existingTopics).toEqual([
-      {
-        title: "haber kapsamı başlığı",
-        entryCount: 1,
-        recentEntries: [expect.stringContaining("KAPSAM_ENTRYSI") as unknown as string],
-      },
-    ]);
-    expect(uncoveredItem?.existingTopics).toEqual([]);
-    // Olumsuz vakalar doğrudan kapsam fonksiyonuyla (ikinci kaynak algıya seçilmeyebilir).
-    const direct = await integrationDatabase.$transaction((transaction) =>
-      getRuntimeSourceItemCoverage(transaction, {
-        itemIds: [covered.id, sameUrlOtherNews.id, renamedNews.id],
-        now: new Date(),
-        blockedUserIds: [],
-      }),
-    );
-    expect([...direct.keys()]).toEqual([covered.id]);
-    expect(JSON.stringify(items)).not.toContain(visibleTopic.topic.id);
-    expect(JSON.stringify(items)).not.toContain("GIZLI_ENTRY");
+    expect(newTopics.find(({ id }) => id === fresh.topic.id)).toMatchObject({
+      title: fresh.topic.title,
+      openedFromNews: true,
+      lastEntry: expect.stringContaining("HABER_ENTRYSI") as unknown as string,
+    });
+    const newsIds = newTopics.filter(({ openedFromNews }) => openedFromNews).map(({ id }) => id);
+    for (const excluded of [hidden, old, knowledge])
+      expect(newsIds).not.toContain(excluded.topic.id);
   });
 
   it("fills the frozen perception with the entries the agent asked to read", async () => {

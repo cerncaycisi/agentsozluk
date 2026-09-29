@@ -19,6 +19,7 @@ function transactionMock() {
     agentBelief: { findMany: vi.fn().mockResolvedValue([]) },
     agentRelationship: { findMany: vi.fn().mockResolvedValue([]) },
     agentRuntimeEvent: { findMany: vi.fn().mockResolvedValue([]) },
+    agentAction: { findMany: vi.fn().mockResolvedValue([]) },
     agentSource: {
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
