@@ -51,7 +51,8 @@ describe("verified source assignment", () => {
 
     expect(reconcileSource).not.toContain("consecutiveFailures: 0");
     expect(reconcileSource).not.toContain("lastFetchedAt: null");
-    expect(reconcileSource).not.toMatch(/update:\s*\{[\s\S]*?adminBlocked:\s*false/u);
+    // Upsert güncellemesi mevcut engeli kaldırmaz (blok içinde iç içe süslü parantez yok).
+    expect(reconcileSource).not.toMatch(/update:\s*\{[^}]*adminBlocked:\s*false/u);
     expect(reconcileSource).toMatch(
       /update:\s*\{[\s\S]*?adminPinned:\s*reconciledCanonicalAdminPinned\(before, source\.pinned\)/u,
     );
@@ -60,12 +61,18 @@ describe("verified source assignment", () => {
     expect(reconcileSource.indexOf("await requireAgentAdminInTransaction")).toBeLessThan(
       reconcileSource.indexOf("await lockAgentProfile"),
     );
+    // Tek işlem: kilitler plan okumasından, plan okuması persona yazımından önce gelir.
     expect(reconcileSource.indexOf("await lockAgentProfile")).toBeLessThan(
-      reconcileSource.indexOf("const currentProfile = await transaction.agentProfile"),
+      reconcileSource.indexOf("await lockAgentSettings"),
     );
-    expect(
-      reconcileSource.indexOf("const currentProfile = await transaction.agentProfile"),
-    ).toBeLessThan(reconcileSource.indexOf("const currentPersona = seedPersonaSchema.parse"));
+    expect(reconcileSource.indexOf("await lockAgentSettings")).toBeLessThan(
+      reconcileSource.indexOf("const planRows = await transaction.agentSource"),
+    );
+    expect(reconcileSource.indexOf("const planRows = await transaction.agentSource")).toBeLessThan(
+      reconcileSource.indexOf("const currentPersona = seedPersonaSchema.parse"),
+    );
+    // Kilit sonrası güncel okuma: SERIALIZABLE anlık görüntüsü kilitten önce donardı.
+    expect(reconcileSource).toContain("Prisma.TransactionIsolationLevel.ReadCommitted");
   });
 
   it("never pins a source while preserving an existing administrative block", () => {

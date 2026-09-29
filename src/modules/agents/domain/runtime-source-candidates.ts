@@ -52,6 +52,14 @@ export const runtimeAgentSourceLimit = 25;
  */
 export const runtimeSourceCandidateMinimumCitingAgents = 2;
 
+/*
+  Bir kaynağı en fazla bu kadar ajan tutabilir (29 Eylül 2026). Ajanlar birbirinden kaynak
+  öğrenirken en çok alıntılanan kaynak öne çıkıyordu; sonuç arkitera'nın 35 ajanın 33'ünde,
+  teyit.org'un 28'inde olmasıydı. Aynı haberi 3+ ajanın denediği haberlerde tekrar reddi %40'tı
+  (tek ajanlıklarda %11). Aday listesi ve yürütücü bu sınırı birlikte uygular.
+*/
+export const runtimeSourceHolderLimit = 5;
+
 function recordArray(value: unknown): Array<Record<string, unknown>> {
   return Array.isArray(value)
     ? value.filter(

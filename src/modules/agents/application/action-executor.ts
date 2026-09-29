@@ -13,10 +13,12 @@ import {
 import { runtimeSourceProposalEnabled } from "@/modules/agents/domain/runtime-source-proposal";
 import {
   runtimeAgentSourceLimit,
+  runtimeSourceHolderLimit,
   runtimePresentedSourceCandidateIds,
 } from "@/modules/agents/domain/runtime-source-candidates";
 import {
   countRuntimeAgentSources,
+  countRuntimeSourceHolders,
   findRuntimeSourceCandidate,
   getRuntimeRunProducedTargetIds,
 } from "@/modules/agents/repository/runtime";
@@ -745,6 +747,13 @@ async function performAction(
           runtimeAgentSourceLimit
       )
         throw new AppError("VALIDATION_ERROR", 400, "Ajanın kaynak listesi dolu.");
+      // Aynı kaynağın herkese yayılmasını sunucu tarafında da durdur (`runtimeSourceHolderLimit`).
+      if (
+        resolved &&
+        (await countRuntimeSourceHolders(transaction, sourceUrl.toString())) >=
+          runtimeSourceHolderLimit
+      )
+        throw new AppError("VALIDATION_ERROR", 400, "Bu kaynak zaten yeterince ajanda.");
       const source = await proposeRuntimeSource(transaction, {
         agentProfileId: principal.agentProfileId,
         url: sourceUrl.toString(),
