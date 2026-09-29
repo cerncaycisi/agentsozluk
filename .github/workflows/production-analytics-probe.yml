@@ -1,0 +1,43 @@
+name: Production analytics probe
+
+# Yalnız elle ve yalnız main'den tetiklenir. `production-consent-smoke`'un tersine
+# Google/Hotjar isteklerini engellemez: "Kabul et" sonrası GA4'e `collect` isteği
+# gerçekten gidiyor mu ölçer ve tek bir gerçek GA4 oturumu oluşturur. Hesap açmaz,
+# giriş yapmaz, form göndermez; aynı köke yalnız GET/HEAD. Her tetikleme üretim
+# sitesine erişimdir ve Gökhan'ın o erişim için verdiği açık onayı ister.
+on:
+  workflow_dispatch:
+    inputs:
+      approved_sha:
+        description: "Tetiklenen main HEAD'in 40 karakterlik SHA'sı"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-analytics-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require main and matching SHA
+        env:
+          APPROVED_SHA: ${{ inputs.approved_sha }}
+          REF: ${{ github.ref }}
+          RUN_SHA: ${{ github.sha }}
+        run: |
+          [[ "$REF" == refs/heads/main ]] || { echo "yalnız main'den"; exit 1; }
+          [[ "$APPROVED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "SHA biçimi"; exit 1; }
+          [[ "$APPROVED_SHA" == "$RUN_SHA" ]] || { echo "SHA main HEAD ile aynı değil"; exit 1; }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-project
+      - name: Install Playwright Chrome
+        run: pnpm exec playwright install --with-deps chrome
+      - name: Production analytics probe
+        run: pnpm exec playwright test --config playwright.production-analytics-probe.config.ts
