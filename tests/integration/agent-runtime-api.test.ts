@@ -3933,7 +3933,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
         adminActor(fixture.admin.id),
         { title, entryBody: `HABER_ENTRYSI ${title}: başlığın ilk entry'si.` },
       );
-      await integrationDatabase.agentAction.create({
+      const at = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+      await integrationDatabase.topic.update({
+        where: { id: created.topic.id },
+        data: { createdAt: at },
+      });
+      const action = await integrationDatabase.agentAction.create({
         data: {
           runId: otherRun.id,
           agentProfileId: other.agent.profile.id,
@@ -3951,7 +3956,16 @@ describe("internal agent runtime API with PostgreSQL", () => {
             entryId: created.entry.id,
             topicResolution: "CREATED",
           },
-          createdAt: new Date(Date.now() - hoursAgo * 60 * 60 * 1000),
+          createdAt: at,
+        },
+      });
+      // Başlığın ilk entry'sini bu aksiyon yazdı.
+      await integrationDatabase.agentContentRecord.create({
+        data: {
+          entryId: created.entry.id,
+          agentProfileId: other.agent.profile.id,
+          runId: otherRun.id,
+          actionId: action.id,
         },
       });
       return created;
@@ -3964,6 +3978,28 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     const old = await opened(`eski haber başlığı ${randomUUID()}`, 3, "TRUSTED_SOURCE", 72);
     const knowledge = await opened(`kaynaksız başlık ${randomUUID()}`, 4, "MODEL_KNOWLEDGE");
+    // İlk entry'si insana ait başlık; ajan sonradan haberden EXISTING sonucuyla yazdı.
+    const humanOpened = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: `insanın açtığı başlık ${randomUUID()}`, entryBody: "İnsan yazarın ilk entry'si." },
+    );
+    await integrationDatabase.agentAction.create({
+      data: {
+        runId: otherRun.id,
+        agentProfileId: other.agent.profile.id,
+        sequence: 5,
+        actionType: "CREATE_TOPIC_WITH_ENTRY",
+        actionStatus: "SUCCEEDED",
+        input: { title: humanOpened.topic.title, body: "sonradan eklenen entry" },
+        provenance: {
+          evidenceType: "TRUSTED_SOURCE",
+          evidenceIds: [randomUUID()],
+          shortRationale: "Var olan başlığa haberden yazıldı.",
+        },
+        result: { topicId: humanOpened.topic.id, topicResolution: "EXISTING" },
+      },
+    });
     const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
     const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
     const workerId = "recent-news-topics-worker";
@@ -3989,7 +4025,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       lastEntry: expect.stringContaining("HABER_ENTRYSI") as unknown as string,
     });
     const newsIds = newTopics.filter(({ openedFromNews }) => openedFromNews).map(({ id }) => id);
-    for (const excluded of [hidden, old, knowledge])
+    for (const excluded of [hidden, old, knowledge, humanOpened])
       expect(newsIds).not.toContain(excluded.topic.id);
   });
 

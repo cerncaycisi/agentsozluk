@@ -2725,70 +2725,81 @@ export async function getRuntimeReadTopics(
   ajanın haberden yeni başlık açmaya çalışıp o haberin başlığının zaten açılmış ve aynı şeyin
   zaten yazılmış olduğu durumdu. Haber öğelerini geçmiş aksiyonlarla eşleştirmek kırılgandı
   (kaynaklar ajan başına ayrı kayıt, RSS kaydı yenilenebiliyor; Astra dört turda yeni karşı
-  örnek buldu). Onun yerine son 48 saatte kaynak dayanaklı olarak AÇILMIŞ görünür başlıklar
-  doğrudan `newTopics` listesine eklenir: ajan aynı haberi gördüğünde başlığı ve son entry'yi
-  de görür. Eşleştirme yok; yalnız zaten herkese açık başlıklar.
+  örnek buldu). Onun yerine son 48 saatte açılmış ve İLK entry'si kaynak dayanaklı bir ajan
+  aksiyonuyla yazılmış görünür başlıklar `newTopics` listesine son entry önizlemesiyle eklenir.
+
+  Sorgu dizinli yollardan gider (Astra 6c35e52 P2): başlıklar (status, createdAt), ilk entry'nin
+  içerik kaydı (entryId tekil), aksiyon (birincil anahtar). JSON taraması yok; "EXISTING"
+  sonuçlu aksiyonlar ilk entry'yi yazmadıkları için doğal olarak dışarıda kalır.
 */
 export async function getRuntimeRecentSourceTopics(
   transaction: Prisma.TransactionClient,
   input: { now: Date; blockedUserIds: readonly string[]; limit: number },
 ) {
-  const actions = await transaction.agentAction.findMany({
-    where: {
-      actionType: "CREATE_TOPIC_WITH_ENTRY",
-      actionStatus: "SUCCEEDED",
-      createdAt: { gte: new Date(input.now.getTime() - 48 * 60 * 60 * 1000) },
-      OR: ["TRUSTED_SOURCE", "PROBATION_SOURCE", "MULTIPLE_SOURCES"].map((evidenceType) => ({
-        provenance: { path: ["evidenceType"], equals: evidenceType },
-      })),
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 200,
-    select: { result: true },
-  });
-  const topicIds: string[] = [];
-  for (const { result } of actions) {
-    const record = result as Record<string, unknown> | null;
-    if (
-      record?.topicResolution === "CREATED" &&
-      typeof record.topicId === "string" &&
-      !topicIds.includes(record.topicId)
-    )
-      topicIds.push(record.topicId);
-  }
-  if (topicIds.length === 0) return [];
   const visible = {
     status: "ACTIVE" as const,
     ...publiclyVisibleEntryWhere,
     ...(input.blockedUserIds.length > 0 ? { authorId: { notIn: [...input.blockedUserIds] } } : {}),
   };
   const topics = await transaction.topic.findMany({
-    where: { id: { in: topicIds }, status: "ACTIVE" },
+    where: {
+      status: "ACTIVE",
+      createdAt: { gte: new Date(input.now.getTime() - 48 * 60 * 60 * 1000) },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 150,
     select: {
       id: true,
       title: true,
       _count: { select: { entries: { where: visible } } },
-      entries: {
-        where: visible,
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: 1,
-        select: { body: true },
-      },
+      entries: { orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 1, select: { id: true } },
     },
   });
-  const byId = new Map(topics.map((topic) => [topic.id, topic]));
-  return topicIds
-    .map((id) => byId.get(id))
-    .filter((topic): topic is NonNullable<typeof topic> =>
-      Boolean(topic && topic._count.entries > 0),
+  const firstEntryIds = topics.flatMap((topic) => topic.entries.map(({ id }) => id));
+  if (firstEntryIds.length === 0) return [];
+  const records = await transaction.agentContentRecord.findMany({
+    where: { entryId: { in: firstEntryIds } },
+    select: { entryId: true, actionId: true },
+  });
+  const actions = await transaction.agentAction.findMany({
+    where: {
+      id: { in: records.map(({ actionId }) => actionId) },
+      actionType: "CREATE_TOPIC_WITH_ENTRY",
+      actionStatus: "SUCCEEDED",
+    },
+    select: { id: true, provenance: true },
+  });
+  const sourceTypes = new Set(["TRUSTED_SOURCE", "PROBATION_SOURCE", "MULTIPLE_SOURCES"]);
+  const sourceActionIds = new Set(
+    actions
+      .filter(({ provenance }) =>
+        sourceTypes.has(String((provenance as Record<string, unknown> | null)?.evidenceType)),
+      )
+      .map(({ id }) => id),
+  );
+  const sourceFirstEntries = new Set(
+    records.filter(({ actionId }) => sourceActionIds.has(actionId)).map(({ entryId }) => entryId),
+  );
+  const chosen = topics
+    .filter(
+      (topic) =>
+        topic._count.entries > 0 && topic.entries.some(({ id }) => sourceFirstEntries.has(id)),
     )
-    .slice(0, input.limit)
-    .map((topic) => ({
-      id: topic.id,
-      title: topic.title,
-      entryCount: topic._count.entries,
-      lastEntryBody: topic.entries[0]?.body ?? null,
-    }));
+    .slice(0, input.limit);
+  if (chosen.length === 0) return [];
+  const latest = await transaction.entry.findMany({
+    where: { topicId: { in: chosen.map(({ id }) => id) }, ...visible },
+    orderBy: [{ topicId: "asc" }, { createdAt: "desc" }, { id: "desc" }],
+    distinct: ["topicId"],
+    select: { topicId: true, body: true },
+  });
+  const latestBody = new Map(latest.map(({ topicId, body }) => [topicId, body]));
+  return chosen.map((topic) => ({
+    id: topic.id,
+    title: topic.title,
+    entryCount: topic._count.entries,
+    lastEntryBody: latestBody.get(topic.id) ?? null,
+  }));
 }
 
 export async function getRuntimePerceptionRecords(
@@ -3198,11 +3209,14 @@ export async function getRuntimePerceptionRecords(
       title: topic.title,
       entryCount: topic.entryCount,
     })),
-    recentSourceTopics: await getRuntimeRecentSourceTopics(transaction, {
-      now: input.now,
-      blockedUserIds,
-      limit: 12,
-    }),
+    // Yalnız yazma koşularında (gündemle aynı kapsam); bakım ve yansımada gereksiz.
+    recentSourceTopics: input.includeTrendingTopics
+      ? await getRuntimeRecentSourceTopics(transaction, {
+          now: input.now,
+          blockedUserIds,
+          limit: 12,
+        })
+      : [],
     trendingTopics: trendingFeed.topics.map((topic) => ({
       ...topic,
       topEntryBody: trendingTopEntryByTopic.get(topic.id) ?? null,

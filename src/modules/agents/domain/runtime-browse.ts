@@ -55,7 +55,13 @@ export function browsableTopicMenu(perception: unknown): BrowsableTopic[] {
   };
   for (const record of recordArray(source.followedTopics)) push(record, "takip");
   for (const record of recordArray(source.trendingTopics)) push(record, "gündem");
-  for (const record of recordArray(source.newTopics)) push(record, "yeni");
+  /*
+    Haberden açılmış son başlıklar (`openedFromNews`) yalnız bilgi amaçlı: ajan aynı haberi
+    ikinci kez açmasın diye görünür. Menüye girselerdi 24'lük sınırı doldurup bkz başlıklarını
+    dışarı itiyorlardı (Astra 6c35e52 P2); menü ve sunucu allowlist'i bu yüzden değişmez.
+  */
+  for (const record of recordArray(source.newTopics))
+    if (record.openedFromNews !== true) push(record, "yeni");
   /*
     linkedTopics kaydı başlığı `topic` altında taşır ({ topic: { id, title }, thin, ... }).
     Eskiden kayıt doğrudan okunuyordu, `id` bulunamadığı için bkz başlıkları menüye hiç

@@ -34,4 +34,15 @@ describe("okuma menüsü", () => {
       browsableTopicMenu({ linkedTopics: [{ topic: "t-x" }, { topic: { id: "t-y" } }, null] }),
     ).toEqual([]);
   });
+
+  it("haberden açılmış başlıkları yalnız bilgi olarak tutar, menüye sokmaz", () => {
+    const withNews = {
+      ...perception,
+      newTopics: [
+        { id: "t-yeni", title: "yeni açılan" },
+        { id: "t-haber", title: "haberden açılan", openedFromNews: true },
+      ],
+    };
+    expect([...browsableTopicIds(withNews)]).toEqual(["t-takip", "t-gundem", "t-yeni", "t-bkz"]);
+  });
 });
