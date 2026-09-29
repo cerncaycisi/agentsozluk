@@ -176,12 +176,16 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
     if (olcumHostuMu(url.hostname))
       istekler.push(`${istek.method()} ${url.hostname}${url.pathname}`);
   });
-  // Kabulden SONRA başlayan collect istekleri başlangıç anında işaretlenir (Astra b818e1e P3).
-  let kabulEdildi = false;
-  const kabulSonrasiIstekler = new WeakSet<object>();
-  page.on("request", (istek) => {
-    if (kabulEdildi && collectMi(new URL(istek.url()))) kabulSonrasiIstekler.add(istek);
-  });
+  /*
+    Kabul anı gerçek tıklamanın kendisidir (Astra 6ba18b3 P3): düğmedeki yakalama
+    dinleyicisi tarayıcı saatini (epoch ms) tahmin edilemez adlı bir kapanışta tutar.
+    Her ölçüm isteğinin başlangıç zamanı (`timing().startTime`, aynı saat) bu anla
+    karşılaştırılır. Kabulden önce başlayan ölçüm isteği onay kapısının bozuk olduğu
+    anlamına gelir ve testi düşürür.
+  */
+  let kabulAni: number | null = null;
+  const baslangic = (istek: Request) => istek.timing().startTime;
+  const kabulOncesiOlcum: string[] = [];
   const collectKaydet = (istek: Request, durum: CollectKaydi["durum"]) => {
     const url = new URL(istek.url());
     if (!collectMi(url)) return;
@@ -191,22 +195,43 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
       durum,
       tid: olcumKimligi(url.searchParams.get("tid") ?? govdedekiKimlik(istek.postData())),
       en: url.searchParams.has("en") ? olayAdi(url.searchParams.get("en")) : null,
-      kabulSonrasi: kabulSonrasiIstekler.has(istek),
+      kabulSonrasi: kabulAni !== null && baslangic(istek) >= kabulAni,
     });
   };
   page.on("requestfinished", async (istek) => {
     const yanit = await istek.response();
+    const url = new URL(istek.url());
+    if (olcumHostuMu(url.hostname) && (kabulAni === null || baslangic(istek) < kabulAni))
+      kabulOncesiOlcum.push(`${url.hostname}${url.pathname}`);
     collectKaydet(istek, yanit?.status() ?? "YANIT_YOK");
   });
   page.on("requestfailed", (istek) => {
+    const url = new URL(istek.url());
+    if (olcumHostuMu(url.hostname) && kabulAni === null)
+      kabulOncesiOlcum.push(`${url.hostname}${url.pathname}`);
     collectKaydet(istek, "FAILED");
   });
 
   await page.goto("/");
   const serit = page.getByRole("region", { name: "Çerez tercihi" });
   await expect(serit).toBeVisible();
-  kabulEdildi = true;
+  const okuyucu = `__kabul_${Math.random().toString(36).slice(2)}`;
+  await page.evaluate((ad) => {
+    let an: number | null = null;
+    const dugme = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === "Kabul et",
+    );
+    dugme?.addEventListener("click", () => (an ??= performance.timeOrigin + performance.now()), {
+      capture: true,
+    });
+    Object.defineProperty(window, ad, { value: () => an });
+  }, okuyucu);
   await serit.getByRole("button", { name: "Kabul et" }).click();
+  kabulAni = await page.evaluate(
+    (ad) => (window as unknown as Record<string, () => number | null>)[ad]?.() ?? null,
+    okuyucu,
+  );
+  expect(kabulAni, "kabul tıklaması yakalanmalı").not.toBeNull();
 
   const basarili = () =>
     collectler.filter(
@@ -244,11 +269,13 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
   const tani = {
     ilkBelge: { ...ilkBelge, dataLayerOlaylari: ilkBelge.dataLayerOlaylari.map(olayAdi) },
     istekler,
+    kabulOncesiOlcum,
     collectler,
     engellenen,
     cspIhlalleri,
     konsolSayilari,
   };
   process.stdout.write(`GA4_SONDA ${JSON.stringify(tani, null, 1)}\n`);
+  expect(kabulOncesiOlcum, "kabulden önce ölçüm isteği olmamalı").toEqual([]);
   expect(basarili().length, `${GA4_KIMLIGI} için 2xx collect olmalı`).toBeGreaterThan(0);
 });
