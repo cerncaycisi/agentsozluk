@@ -1,7 +1,7 @@
 name: Production analytics probe
 
 # Yalnız elle ve yalnız main'den tetiklenir. `production-consent-smoke`'un tersine
-# Google/Hotjar isteklerini engellemez: "Kabul et" sonrası GA4'e `collect` isteği
+# Google/Hotjar isteklerini engellemez ve yakalamaz: "Kabul et" sonrası GA4'e `collect` isteği
 # gerçekten gidiyor mu ölçer ve tek bir gerçek GA4 oturumu oluşturur. Hesap açmaz,
 # giriş yapmaz, form göndermez; aynı köke yalnız GET/HEAD. Her tetikleme üretim
 # sitesine erişimdir ve Gökhan'ın o erişim için verdiği açık onayı ister.

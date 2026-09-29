@@ -7,9 +7,9 @@ import { expect, test, type Request } from "@playwright/test";
   gelmiyorsa hangi halkada koptuğu aşağıdaki tanıdan okunur.
 
   Kapsam: yalnız herkese açık ana sayfa ve bir başlık listesi; hesap açmaz, giriş
-  yapmaz, form göndermez. Aynı köke yalnız GET/HEAD geçer. Yalnız CSP'deki ölçüm
-  kökenlerine GET/HEAD/POST geçer (gerçek bir GA4 oturumu oluşur); başka her istek
-  engellenir ve yalnız kökeni + yolu kaydedilir.
+  yapmaz, form göndermez; gerçek bir GA4 oturumu oluşur. İstek yakalanmaz (gözlem
+  kipi, aşağıda): ölçüm dışı üçüncü taraf ya da aynı köke GET/HEAD dışı istek
+  gözlenirse yalnız kökeni + yolu kaydedilir ve test düşer.
 
   Tanı günlüğü yalnız izinli alanları taşır: host, yol, HTTP durumu, ölçüm kimliği,
   olay adı, CSP yönergesi ve engellenen kökeni, konsol mesaj SAYILARI, çerez ADLARI.
@@ -35,6 +35,7 @@ interface CollectKaydi {
   host: string;
   yontem: string;
   durum: number | "FAILED" | "YANIT_YOK";
+  hata: string | null;
   tid: string | null;
   en: string | null;
   kabulSonrasi: boolean;
@@ -137,25 +138,24 @@ test.use({ serviceWorkers: "block" });
 
 test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, page }) => {
   const istekler: string[] = [];
-  const engellenen: string[] = [];
+  const beklenmeyen: string[] = [];
   const cspIhlalleri: string[] = [];
   const konsolSayilari: Record<string, number> = {};
 
-  await context.route("**/*", async (route) => {
-    const istek = route.request();
+  /*
+    Gözlem kipi (29 Eylül, ilk koşu `36635691698`): istek YAKALANMAZ. İlk koşuda
+    `context.route` açıkken üç collect POST'u da ağ seviyesinde düştü; Chromium
+    keepalive/beacon isteklerini DevTools yakalaması altında düşürebildiği için bu
+    sondanın kendi yan etkisi olabilir. Artık tarayıcı gerçek bir ziyaretçi gibi davranır;
+    hangi kökenlere gidilebileceğini sitenin kendi CSP'si belirler. Test yalnız GET
+    gezinmesi ve tek bir "Kabul et" tıklaması yapar; ölçüm dışı üçüncü taraf ve aynı köke
+    GET/HEAD dışı istek gözlenirse tanıya yazılır ve test düşer.
+  */
+  page.on("request", (istek) => {
     const url = new URL(istek.url());
-    const yontem = istek.method();
-    const ayniKok = url.origin === SITE && ["GET", "HEAD"].includes(yontem);
-    const olcum =
-      url.protocol === "https:" &&
-      olcumHostuMu(url.hostname) &&
-      ["GET", "HEAD", "POST"].includes(yontem);
-    if (ayniKok || olcum) {
-      await route.continue();
-      return;
-    }
-    engellenen.push(`${yontem} ${url.origin}${url.pathname}`);
-    await route.abort("blockedbyclient");
+    const ayniKokGuvenli = url.origin === SITE && ["GET", "HEAD"].includes(istek.method());
+    if (!ayniKokGuvenli && !olcumHostuMu(url.hostname) && url.protocol.startsWith("http"))
+      beklenmeyen.push(`${istek.method()} ${url.origin}${url.pathname}`);
   });
   // CSP ihlalleri belge dışında (test sürecinde) birikir: gezinmede kaybolmaz.
   await context.exposeFunction("__cspKaydet", (yonerge: unknown, engellenenAdres: unknown) => {
@@ -192,12 +192,20 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
   */
   const gorulmeAni = new WeakMap<Request, number>();
   page.on("request", (istek) => gorulmeAni.set(istek, Date.now()));
-  const hamOlaylar: { istek: Request; durum: CollectKaydi["durum"] }[] = [];
+  const hamOlaylar: { istek: Request; durum: CollectKaydi["durum"]; hata: string | null }[] = [];
   page.on("requestfinished", async (istek) => {
     const yanit = await istek.response();
-    hamOlaylar.push({ istek, durum: yanit?.status() ?? "YANIT_YOK" });
+    hamOlaylar.push({ istek, durum: yanit?.status() ?? "YANIT_YOK", hata: null });
   });
-  page.on("requestfailed", (istek) => hamOlaylar.push({ istek, durum: "FAILED" }));
+  // Hata metni yalnız `net::ERR_…` biçimindeyse yazılır (sabit Chromium sözlüğü).
+  page.on("requestfailed", (istek) => {
+    const metin = istek.failure()?.errorText ?? "";
+    hamOlaylar.push({
+      istek,
+      durum: "FAILED",
+      hata: /^net::ERR_[A-Z_]{1,60}$/u.test(metin) ? metin : "diger-hata",
+    });
+  });
   const baslangic = (istek: Request) => {
     const zaman = istek.timing().startTime;
     return zaman > 0 ? zaman : (gorulmeAni.get(istek) ?? Number.POSITIVE_INFINITY);
@@ -205,7 +213,7 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
   const siniflandir = () => {
     const collectler: CollectKaydi[] = [];
     const kabulOncesiOlcum: string[] = [];
-    for (const { istek, durum } of hamOlaylar) {
+    for (const { istek, durum, hata } of hamOlaylar) {
       const url = new URL(istek.url());
       if (!olcumHostuMu(url.hostname)) continue;
       const sonra = kabulAni !== null && baslangic(istek) >= kabulAni;
@@ -215,6 +223,7 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
         host: url.hostname,
         yontem: istek.method(),
         durum,
+        hata,
         tid: olcumKimligi(url.searchParams.get("tid") ?? govdedekiKimlik(istek.postData())),
         en: url.searchParams.has("en") ? olayAdi(url.searchParams.get("en")) : null,
         kabulSonrasi: sonra,
@@ -283,11 +292,12 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
     istekler,
     kabulOncesiOlcum,
     collectler,
-    engellenen,
+    beklenmeyen,
     cspIhlalleri,
     konsolSayilari,
   };
   process.stdout.write(`GA4_SONDA ${JSON.stringify(tani, null, 1)}\n`);
+  expect(beklenmeyen, "ölçüm dışı üçüncü taraf ya da yazma isteği olmamalı").toEqual([]);
   expect(kabulOncesiOlcum, "kabulden önce ölçüm isteği olmamalı").toEqual([]);
   expect(basarili().length, `${GA4_KIMLIGI} için 2xx collect olmalı`).toBeGreaterThan(0);
 });
