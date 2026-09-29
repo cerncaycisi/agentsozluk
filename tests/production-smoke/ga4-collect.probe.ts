@@ -7,92 +7,149 @@ import { expect, test } from "@playwright/test";
   gelmiyorsa hangi halkada koptuğu aşağıdaki tanıdan okunur.
 
   Kapsam: yalnız herkese açık ana sayfa ve bir başlık listesi; hesap açmaz, giriş
-  yapmaz, form göndermez. Aynı köke yalnız GET/HEAD geçer. Google ve Hotjar
-  istekleri GEÇER (gerçek bir GA4 oturumu oluşur); başka üçüncü taraf engellenir.
+  yapmaz, form göndermez. Aynı köke yalnız GET/HEAD geçer. Yalnız CSP'deki ölçüm
+  kökenlerine GET/HEAD/POST geçer (gerçek bir GA4 oturumu oluşur); başka her istek
+  engellenir ve yalnız kökeni + yolu kaydedilir.
+
+  Tanı günlüğü yalnız izinli alanları taşır: host, yol, HTTP durumu, ölçüm kimliği,
+  olay adı, CSP yönergesi ve engellenen kökeni, konsol mesaj SAYILARI, çerez ADLARI.
+  Ham konsol metni, sorgu değeri, çerez değeri yazılmaz.
 */
 
 const SITE = "https://agentsozluk.com";
-const OLCUM =
-  /(^|\.)(googletagmanager\.com|google-analytics\.com|analytics\.google\.com|doubleclick\.net|google\.com|hotjar\.com|hotjar\.io)$/u;
+const GA4_KIMLIGI = "G-TRGGP03ZLV";
+const OLCUM_HOSTLARI = new Set([
+  "www.googletagmanager.com",
+  "www.google-analytics.com",
+  "region1.google-analytics.com",
+  "analytics.google.com",
+  "stats.g.doubleclick.net",
+]);
+const olcumHostuMu = (host: string) =>
+  OLCUM_HOSTLARI.has(host) || host.endsWith(".hotjar.com") || host.endsWith(".hotjar.io");
+const collectMi = (url: URL) =>
+  /(^|\.)google-analytics\.com$|^analytics\.google\.com$/u.test(url.hostname) &&
+  url.pathname.endsWith("/g/collect");
+
+interface CollectKaydi {
+  host: string;
+  yontem: string;
+  durum: number | "FAILED";
+  tid: string | null;
+  en: string | null;
+}
+
+/** Tanıya yalnız kökeni girer: `inline`, `eval` gibi anahtar sözcükler olduğu gibi kalır. */
+function kokenSadelestir(deger: string): string {
+  try {
+    return new URL(deger).origin;
+  } catch {
+    return deger.slice(0, 24);
+  }
+}
 
 test.use({ serviceWorkers: "block" });
 
-test("kabul sonrası GA4 collect isteği gider", async ({ context, page }) => {
+test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, page }) => {
   const istekler: string[] = [];
+  const collectler: CollectKaydi[] = [];
   const engellenen: string[] = [];
-  const konsol: string[] = [];
+  const cspIhlalleri: string[] = [];
+  const konsolSayilari: Record<string, number> = {};
 
   await context.route("**/*", async (route) => {
     const istek = route.request();
     const url = new URL(istek.url());
-    const ayniKok = url.origin === SITE && ["GET", "HEAD"].includes(istek.method());
-    if (ayniKok || OLCUM.test(url.hostname)) {
+    const yontem = istek.method();
+    const ayniKok = url.origin === SITE && ["GET", "HEAD"].includes(yontem);
+    const olcum =
+      url.protocol === "https:" &&
+      olcumHostuMu(url.hostname) &&
+      ["GET", "HEAD", "POST"].includes(yontem);
+    if (ayniKok || olcum) {
       await route.continue();
       return;
     }
-    engellenen.push(`${istek.method()} ${url.origin}${url.pathname}`);
+    engellenen.push(`${yontem} ${url.origin}${url.pathname}`);
     await route.abort("blockedbyclient");
+  });
+  // CSP ihlalleri belge dışında (test sürecinde) birikir: gezinmede kaybolmaz.
+  await context.exposeFunction("__cspKaydet", (yonerge: string, engellenenAdres: string) => {
+    cspIhlalleri.push(`${yonerge} ${kokenSadelestir(engellenenAdres || "inline")}`);
   });
   await context.addInitScript(() => {
     document.addEventListener("securitypolicyviolation", (olay) => {
-      const w = window as unknown as { __csp?: string[] };
-      (w.__csp ??= []).push(`${olay.violatedDirective} ${olay.blockedURI || "inline"}`);
+      const w = window as unknown as { __cspKaydet?: (a: string, b: string) => void };
+      w.__cspKaydet?.(olay.violatedDirective, olay.blockedURI);
     });
   });
   page.on("console", (mesaj) => {
-    if (["error", "warning"].includes(mesaj.type()))
-      konsol.push(`${mesaj.type()}: ${mesaj.text().slice(0, 200)}`);
+    konsolSayilari[mesaj.type()] = (konsolSayilari[mesaj.type()] ?? 0) + 1;
   });
-  page.on("response", (yanit) => {
-    const url = new URL(yanit.url());
-    if (!OLCUM.test(url.hostname)) return;
-    // Sorgu değerleri yazılmaz; yalnız olay adı (en) ve ölçüm kimliği (tid) tanıya girer.
-    const en = url.searchParams.get("en");
-    const tid = url.searchParams.get("tid") ?? url.searchParams.get("id");
-    istekler.push(
-      `${yanit.request().method()} ${yanit.status()} ${url.hostname}${url.pathname}` +
-        `${tid ? ` id=${tid}` : ""}${en ? ` en=${en}` : ""}`,
-    );
+  page.on("request", (istek) => {
+    const url = new URL(istek.url());
+    if (olcumHostuMu(url.hostname))
+      istekler.push(`${istek.method()} ${url.hostname}${url.pathname}`);
+  });
+  const collectKaydet = (url: URL, yontem: string, durum: number | "FAILED") => {
+    if (!collectMi(url)) return;
+    collectler.push({
+      host: url.hostname,
+      yontem,
+      durum,
+      tid: url.searchParams.get("tid"),
+      en: url.searchParams.get("en"),
+    });
+  };
+  page.on("requestfinished", async (istek) => {
+    const yanit = await istek.response();
+    collectKaydet(new URL(istek.url()), istek.method(), yanit?.status() ?? "FAILED");
   });
   page.on("requestfailed", (istek) => {
-    const url = new URL(istek.url());
-    if (OLCUM.test(url.hostname))
-      istekler.push(`FAILED ${istek.failure()?.errorText} ${url.hostname}${url.pathname}`);
+    collectKaydet(new URL(istek.url()), istek.method(), "FAILED");
   });
 
   await page.goto("/");
   const serit = page.getByRole("region", { name: "Çerez tercihi" });
   await expect(serit).toBeVisible();
+  const kabulAni = collectler.length;
   await serit.getByRole("button", { name: "Kabul et" }).click();
 
-  const collect = () => istekler.filter((satir) => /\/g\/collect/u.test(satir));
+  const basarili = () =>
+    collectler
+      .slice(kabulAni)
+      .filter(
+        (kayit) =>
+          kayit.tid === GA4_KIMLIGI &&
+          typeof kayit.durum === "number" &&
+          kayit.durum >= 200 &&
+          kayit.durum < 300,
+      );
   await expect
-    .poll(collect, { timeout: 30_000 })
-    .not.toHaveLength(0)
+    .poll(() => basarili().length, { timeout: 30_000 })
+    .toBeGreaterThan(0)
     .catch(() => undefined);
+
+  const ilkBelge = await page.evaluate(() => ({
+    gtmEtiketi: Boolean(document.getElementById("google-tag-manager")),
+    hotjarEtiketi: Boolean(document.getElementById("hotjar-tracking")),
+    gtmJs: [...document.scripts].some((s) => s.src.includes("/gtm.js")),
+    gtagJs: [...document.scripts].some((s) => s.src.includes("/gtag/js")),
+    dataLayerOlaylari: (
+      (window as unknown as { dataLayer?: Record<string, unknown>[] }).dataLayer ?? []
+    )
+      .map((e) => (typeof e.event === "string" ? e.event.slice(0, 40) : "?"))
+      .slice(0, 20),
+    cerezAdlari: document.cookie
+      .split(";")
+      .map((c) => c.trim().split("=")[0])
+      .filter(Boolean),
+  }));
   // Onaylı ikinci sayfa görüntülemesi (tam yükleme).
   await page.goto("/basliklar").catch(() => undefined);
   await page.waitForTimeout(8_000);
 
-  const durum = await page.evaluate(() => {
-    const w = window as unknown as {
-      __csp?: string[];
-      dataLayer?: Record<string, unknown>[];
-      google_tag_manager?: Record<string, unknown>;
-    };
-    return {
-      gtmEtiketi: Boolean(document.getElementById("google-tag-manager")),
-      hotjarEtiketi: Boolean(document.getElementById("hotjar-tracking")),
-      gtmJs: [...document.scripts].some((s) => s.src.includes("gtm.js")),
-      gtagJs: [...document.scripts].some((s) => s.src.includes("gtag/js")),
-      dataLayerOlaylari: (w.dataLayer ?? []).map((e) => String(e.event ?? "?")).slice(0, 20),
-      gtmNesnesi: Object.keys(w.google_tag_manager ?? {}),
-      cspIhlalleri: w.__csp ?? [],
-      cerezler: document.cookie.split(";").map((c) => c.trim().split("=")[0]),
-    };
-  });
-  const tani = { durum, istekler, engellenen, konsol };
-  // Tanı Actions günlüğüne yazılır; değer içermez (yalnız host/yol, olay adı, kimlik).
+  const tani = { ilkBelge, istekler, collectler, engellenen, cspIhlalleri, konsolSayilari };
   process.stdout.write(`GA4_SONDA ${JSON.stringify(tani, null, 1)}\n`);
-  expect(collect(), "GA4 collect isteği gitmeli").not.toHaveLength(0);
+  expect(basarili().length, `${GA4_KIMLIGI} için 2xx collect olmalı`).toBeGreaterThan(0);
 });
