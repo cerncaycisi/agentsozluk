@@ -242,11 +242,17 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
   const cdp = await context.newCDPSession(page);
   await cdp.send("Network.enable");
   const cdpKayit = new Map<string, Record<string, unknown>>();
+  // Başarı ölçütü için iç alanlar (günlüğe yazılmaz): istek zamanı (epoch ms) ve kimlik.
+  const cdpIc = new Map<string, { zaman: number; tid: string | null }>();
   const sabit = (deger: unknown) =>
     typeof deger === "string" && /^[A-Za-z_:-]{1,60}$/u.test(deger) ? deger : undefined;
   cdp.on("Network.requestWillBeSent", (olay) => {
     const url = new URL(olay.request.url);
     if (!collectMi(url)) return;
+    cdpIc.set(olay.requestId, {
+      zaman: typeof olay.wallTime === "number" ? olay.wallTime * 1000 : Number.NaN,
+      tid: url.searchParams.get("tid") ?? govdedekiKimlik(olay.request.postData ?? null),
+    });
     cdpKayit.set(olay.requestId, {
       tur: sabit(olay.type),
       yontem: sabit(olay.request.method),
@@ -292,15 +298,24 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
   );
   expect(kabulAni, "kabul tıklaması yakalanmalı").not.toBeNull();
 
+  /*
+    Başarı ölçütü ağ katmanındaki yanıttır (üçüncü koşu `36638396742`): GA4 collect
+    keepalive/no-cors fetch'tir; Google 204 döner, Chromium ardından gövde okumasını
+    iptal eder ve sayfaya `net::ERR_ABORTED` raporlar. Bu yüzden Playwright'ın
+    requestfinished/requestfailed olayı ölçüt olamaz; CDP `responseReceived` durumu esastır.
+  */
   const basarili = () =>
-    siniflandir().collectler.filter(
-      (kayit) =>
-        kayit.kabulSonrasi &&
-        kayit.tid === GA4_KIMLIGI &&
-        typeof kayit.durum === "number" &&
-        kayit.durum >= 200 &&
-        kayit.durum < 300,
-    );
+    [...cdpIc.entries()].filter(([kimlik, { zaman, tid }]) => {
+      const durum = cdpKayit.get(kimlik)?.durum;
+      return (
+        kabulAni !== null &&
+        zaman >= kabulAni &&
+        tid === GA4_KIMLIGI &&
+        typeof durum === "number" &&
+        durum >= 200 &&
+        durum < 300
+      );
+    });
   await expect
     .poll(() => basarili().length, { timeout: 30_000 })
     .toBeGreaterThan(0)
