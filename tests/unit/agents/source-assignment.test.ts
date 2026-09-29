@@ -71,7 +71,8 @@ describe("verified source assignment", () => {
     expect(reconcileSource.indexOf("const planRows = await transaction.agentSource")).toBeLessThan(
       reconcileSource.indexOf("const currentPersona = seedPersonaSchema.parse"),
     );
-    expect(reconcileSource).toContain("Prisma.TransactionIsolationLevel.Serializable");
+    // Kilit sonrası güncel okuma: SERIALIZABLE anlık görüntüsü kilitten önce donardı.
+    expect(reconcileSource).toContain("Prisma.TransactionIsolationLevel.ReadCommitted");
   });
 
   it("never pins a source while preserving an existing administrative block", () => {

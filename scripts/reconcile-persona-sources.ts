@@ -131,13 +131,23 @@ async function main(): Promise<void> {
     const summary = await database.$transaction(
       async (transaction) => {
         await requireAgentAdminInTransaction(transaction, actor);
-        // Kilit sırası yönetici yollarıyla aynı: önce profiller (kimlik sırasıyla), sonra ayarlar.
-        for (const { id } of await transaction.agentProfile.findMany({
-          select: { id: true },
-          orderBy: { id: "asc" },
-        }))
-          await lockAgentProfile(transaction, id);
+        /*
+          Kilit sırası yönetici yollarıyla aynı: önce profiller (kimlik sırasıyla), sonra ayarlar.
+          İşlem READ COMMITTED'dır: her okuma kilitlerden sonra güncel commit'leri görür, kilitler
+          işlem sonuna kadar tutulduğundan kaynak yönetimi arada yazamaz. Profil oluşturma
+          (`createAgent`) ayar kilidini alır; kilitten önce oluşmuş, kilitlenmemiş profil varsa
+          durulur (Astra 023a74e P2).
+        */
+        const lockedProfileIds = (
+          await transaction.agentProfile.findMany({ select: { id: true }, orderBy: { id: "asc" } })
+        ).map(({ id }) => id);
+        for (const id of lockedProfileIds) await lockAgentProfile(transaction, id);
         await lockAgentSettings(transaction);
+        const unlockedProfiles = await transaction.agentProfile.count({
+          where: { id: { notIn: lockedProfileIds } },
+        });
+        if (unlockedProfiles > 0)
+          throw new Error(`SOURCE_RECONCILE_PROFILES_CHANGED unlocked=${unlockedProfiles}`);
         const [settings, openRunCount, profiles] = await Promise.all([
           transaction.agentGlobalSettings.findUniqueOrThrow({
             where: { id: "global" },
@@ -265,7 +275,8 @@ async function main(): Promise<void> {
               ? row.topics.filter((topic): topic is string => typeof topic === "string")
               : [],
           });
-        const excessSourceIds = new Set<string>();
+        // Engellenecek plan dışı kayıt → neden (URL başına sahip sınırı ya da ajan başına stok sınırı).
+        const excessSourceIds = new Map<string, "HOLDER_LIMIT" | "AGENT_STOCK_LIMIT">();
         const heldByUrl = new Map<string, typeof outsideHeld>();
         for (const row of outsideHeld)
           heldByUrl.set(row.url, [...(heldByUrl.get(row.url) ?? []), row]);
@@ -282,7 +293,7 @@ async function main(): Promise<void> {
             0,
             runtimeSourceHolderLimit - planned.size - (externalHolders.get(url) ?? 0),
           );
-          for (const { row } of extra.slice(allowed)) excessSourceIds.add(row.id);
+          for (const { row } of extra.slice(allowed)) excessSourceIds.set(row.id, "HOLDER_LIMIT");
         }
         /*
       Ajan başına canlı kaynak stoku (`runtimeAgentSourceLimit`) da korunur: plan dışı kalan
@@ -308,7 +319,7 @@ async function main(): Promise<void> {
                 right.affinity - left.affinity || left.row.id.localeCompare(right.row.id),
             );
           for (const { row } of kept.slice(Math.max(0, runtimeAgentSourceLimit - planned.size)))
-            excessSourceIds.add(row.id);
+            excessSourceIds.set(row.id, "AGENT_STOCK_LIMIT");
         }
         let personaVersionsCreated = 0;
         let sourcesCreated = 0;
@@ -427,22 +438,29 @@ async function main(): Promise<void> {
               });
             }
 
+            let blockedHolderLimit = 0;
+            let blockedStockLimit = 0;
             for (const source of existing) {
-              if (!excessSourceIds.has(source.id) || source.adminBlocked) continue;
+              const excessReason = excessSourceIds.get(source.id);
+              if (!excessReason || source.adminBlocked) continue;
               const stored = await transaction.agentSource.update({
                 where: { id: source.id },
                 data: { status: "BLOCKED", adminBlocked: true, adminPinned: false },
               });
               blocked += 1;
+              if (excessReason === "HOLDER_LIMIT") blockedHolderLimit += 1;
+              else blockedStockLimit += 1;
               await appendRuntimeEvent(transaction, {
                 agentProfileId: profile.id,
                 eventType: "SOURCE_STATE_CHANGED",
                 subject: { type: "SOURCE", id: stored.id },
                 safeMessage:
-                  "Kaynak çeşitliliği: kaynak beş ajan sınırını aşıyordu; paket dışı kayıt geçmişi korunarak engellendi.",
+                  excessReason === "HOLDER_LIMIT"
+                    ? "Kaynak çeşitliliği: kaynak beş ajan sınırını aşıyordu; paket dışı kayıt geçmişi korunarak engellendi."
+                    : "Kaynak çeşitliliği: ajanın canlı kaynak stoku sınırı aşılıyordu; paket dışı kayıt geçmişi korunarak engellendi.",
                 before: sourceSnapshot(source),
                 after: sourceSnapshot(stored),
-                metadata: { origin: "SOURCE_DIVERSITY" },
+                metadata: { origin: "SOURCE_DIVERSITY", reason: excessReason },
               });
             }
 
@@ -462,6 +480,8 @@ async function main(): Promise<void> {
                 created,
                 updated,
                 blocked,
+                blockedHolderLimit,
+                blockedStockLimit,
                 targetCount: sources.length,
               },
             });
@@ -536,7 +556,7 @@ async function main(): Promise<void> {
         };
       },
       {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
         maxWait: 30_000,
         timeout: 900_000,
       },

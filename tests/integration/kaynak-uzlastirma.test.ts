@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { ActorContext } from "@/modules/auth/domain/actor";
@@ -10,6 +10,7 @@ import {
 import { everydayWriterPersonas } from "@/modules/agents/personas/everyday-writer-personas";
 import { organicWriterPersonas } from "@/modules/agents/personas/organic-writer-personas";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { lockAgentProfile } from "@/modules/agents/repository/control-plane";
 import { requireTestDatabaseUrl } from "../../scripts/test-database-safety";
 import {
   closeIntegrationDatabase,
@@ -71,6 +72,30 @@ function runReconcile(adminId: string): { status: number; output: Record<string,
   const line = result.stdout.trim().split("\n").at(-1) ?? "{}";
   expect(line.startsWith("{"), result.stderr).toBe(true);
   return { status: result.status ?? -1, output: JSON.parse(line) as Record<string, unknown> };
+}
+
+function reconcileEnvironment(adminId: string): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    DATABASE_URL: databaseUrl,
+    AGENT_OPERATOR_ADMIN_ID: adminId,
+    AGENT_SOURCE_RECONCILE_CONFIRMATION: "RECONCILE_VERIFIED_PERSONA_SOURCES",
+  };
+}
+
+function startReconcile(adminId: string): Promise<{ status: number; stdout: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(
+      process.execPath,
+      ["--import", "tsx", "scripts/reconcile-persona-sources.ts"],
+      {
+        env: reconcileEnvironment(adminId),
+      },
+    );
+    let stdout = "";
+    child.stdout.on("data", (chunk: Buffer) => (stdout += chunk.toString("utf8")));
+    child.on("close", (code) => resolve({ status: code ?? -1, stdout }));
+  });
 }
 
 // Çalışma zamanı sayımıyla aynı: engelsiz, REJECTED/BLOCKED olmayan satırlar, tüm profiller.
@@ -203,6 +228,14 @@ describe("persona kaynak uzlaştırması PostgreSQL ile", () => {
       expect(count).toBeGreaterThanOrEqual(10);
       expect(count).toBeLessThanOrEqual(runtimeAgentSourceLimit);
     }
+    // Stok kırpması nedeniyle engellenenler ayrı kayıtlı: sahip sınırı nedeniyle değil.
+    const hoarderAudit = await integrationDatabase.auditLog.findFirstOrThrow({
+      where: { action: "agent.sources.reconciled", entityId: hoarder },
+    });
+    expect(hoarderAudit.metadata).toMatchObject({ blockedStockLimit: expect.any(Number) });
+    expect(
+      (hoarderAudit.metadata as { blockedStockLimit: number }).blockedStockLimit,
+    ).toBeGreaterThan(0);
     const stillBlocked = await integrationDatabase.agentSource.findMany({
       where: { agentProfileId: canonicalProfileId, url: { in: blockedCanonical } },
       select: { adminBlocked: true, status: true },
@@ -261,5 +294,50 @@ describe("persona kaynak uzlaştırması PostgreSQL ile", () => {
       holderLimitViolations: [{ url: shared, holders: 7, canonicalPacks: 6 }],
     });
     expect(await snapshot()).toEqual(before);
+  }, 600_000);
+
+  it("profil kilidini beklerken commit edilen yönetici değişikliğini görür ve geri alır", async () => {
+    const admin = await createAdmin();
+    for (const persona of originalPersonaPack.personas)
+      await createWriter(admin.id, persona, "PAUSED");
+    for (const persona of organicWriterPersonas.slice(0, 4))
+      await createWriter(admin.id, persona, "ACTIVE");
+    const shared = "https://turkiye.un.org/tr/stories/rss.xml";
+    const outsider = await createWriter(admin.id, everydayWriterPersonas[0], "PAUSED");
+    await addOutsideSource(outsider.agent.profile.id, shared, "OPERATOR_MANIFOLD_BACKFILL");
+    await integrationDatabase.agentSource.update({
+      where: { agentProfileId_url: { agentProfileId: outsider.agent.profile.id, url: shared } },
+      data: { status: "BLOCKED", adminBlocked: true },
+    });
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { runtimeEnabled: false },
+    });
+    const personaVersionsBefore = await integrationDatabase.agentPersonaVersion.count();
+
+    // Yönetici hedef dışı profilin kilidini tutarken uzlaştırma başlar; engel kaldırılıp commit
+    // edildikten sonra kilidi alan uzlaştırma güncel durumu görmeli: 7 sahip, geri alma.
+    let reconcile: Promise<{ status: number; stdout: string }> | undefined;
+    await integrationDatabase.$transaction(
+      async (transaction) => {
+        await lockAgentProfile(transaction, outsider.agent.profile.id);
+        reconcile = startReconcile(admin.id);
+        await new Promise((resolve) => setTimeout(resolve, 8_000));
+        await transaction.agentSource.update({
+          where: {
+            agentProfileId_url: { agentProfileId: outsider.agent.profile.id, url: shared },
+          },
+          data: { status: "SEED", adminBlocked: false },
+        });
+      },
+      { timeout: 60_000 },
+    );
+    const result = await reconcile!;
+    expect(result.status).toBe(1);
+    expect(JSON.parse(result.stdout.trim().split("\n").at(-1)!)).toMatchObject({
+      status: "SOURCE_RECONCILE_LIMIT_VIOLATED_ROLLED_BACK",
+      holderLimitViolations: [{ url: shared, holders: 7, canonicalPacks: 6 }],
+    });
+    expect(await integrationDatabase.agentPersonaVersion.count()).toBe(personaVersionsBefore);
   }, 600_000);
 });
