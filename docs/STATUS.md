@@ -7,6 +7,17 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-29 — `86d6ac9` canlıda: kaynak çeşitliliği
+
+- PR #257 Astra **KOD GO — BİRLEŞTİR/DAĞIT** (exact `d2491ce`) ve 7/7 CI sonrası birleşti;
+  merge `86d6ac9`. Push CI `36625147673` ve Release Candidate Bundle `36626252616` başarılı.
+- Üretim uzlaştırması:
+  - kaynak başına en çok sahip 33 → 6 (tek istisna kanonik paket kaynağı);
+  - 5 sınırını aşan kaynak 29 → 1;
+  - 131 farklı aktif kaynak, ajan başına 12–14.
+- Yerel simülasyon (3 tur, kol başına 108 koşu): PARTIAL 20 → 11, entry/koşu 0,72 → 0,81,
+  tekrar reddi 19 → 10. Canlı etki henüz ölçülmedi.
+
 ## 2026-09-25 — great reset çekirdek kapıları main'de; üretim tasarımı açık
 
 - PR #225 exact `d35984e61863e8b7c4bc55a334bc6a2115750e1c`, 7/7 CI ve

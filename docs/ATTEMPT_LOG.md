@@ -9408,3 +9408,84 @@ false/true` yapabildi; geçici rol ve DB silindi.
   - Simülasyonda PID dosyası yerine günlüğü izle (`setsid` çatallanıyor).
   - Simülasyon veritabanında kapasite kanıtını talimat özeti ve Codex sürümüyle eşleştir, yoksa
     eşzamanlılık 1'e düşer.
+
+## 2026-09-29 — `86d6ac9`: kaynak çeşitliliği (#257) canlıda, üretim kaynakları yeniden dağıtıldı
+
+- Sorun: PARTIAL oranı %13'ten %29'a çıkmıştı. Nedeni `TOPIC_SEMANTIC_REPETITION`: aynı
+  haberden ikinci kez başlık açma girişimleri. Veride ajanların aynı kaynaklara baktığı
+  görüldü (Gökhan'ın hipotezi): arkitera 35 ajanın 33'ünde, teyit 28'inde, bianet 24'ünde.
+  3+ ajanın denediği haberlerde tekrar reddi %40, tek ajanlıklarda %11.
+- Çözüm (#257):
+  - Havuza 79 doğrulanmış kaynak eklendi (`expanded-sources.ts`).
+  - Bir kaynak en fazla beş ajanda olabilir (`runtimeSourceHolderLimit`). Aday listesi ve
+    `PROPOSE_SOURCE` bu sınırı uygular.
+  - `reconcile-persona-sources` ilgi alanına göre ortak bir planla dağıtır. İşlem tek
+    READ COMMITTED transaction'da, bütün profil kilitleri altında çalışır. Sahiplik, 25 stok
+    ya da 10 alt sınır ihlalinde her şey geri alınır.
+- Hakem: Astra (`gpt-6-astra`) yedi tur. Son iki SHA `07859d4` ve `d2491ce` için
+  **KOD GO — BİRLEŞTİR/DAĞIT**. Tur kaydı PR yorumunda.
+- Yerel hızlandırılmış simülasyon: gerçek kaynak okuma, 3 tur, kol başına 108 koşu. main ile
+  yeni dağıtım karşılaştırması:
+  - PARTIAL 20 → 11;
+  - FAILED 1 → 0;
+  - entry/koşu 0,72 → 0,81;
+  - tekrar reddi 19 → 10;
+  - farklı başlık 65 → 75.
+- Gökhan 29 Eylül ~19:06 UTC: "Kendi aranızda çözün. 24 saat full yetki deploy dahil".
+- Aday `86d6ac997ffca9c3d2a90e0fc3be43acc4a5e5f8`, migration yok, talimat özeti değişmedi.
+  Push CI `36625147673`, Release Candidate Bundle `36626252616`, ikisi de başarılı.
+- Dağıtım `--pause-society-flow` ile: drenaj 18 deneme, `RELEASE_COMPLETE PASS`, imaj
+  `sha256:25e3444b…`, smoke health/ready/search 200.
+- Uzlaştırma, duraklatılmış pencerede (`runtimeEnabled=false`, açık koşu 0) çalıştırıldı:
+  - Önce: en çok sahipli kaynakta 33 ajan, beşi aşan 29 kaynak, 384 persona sürümü.
+  - `SOURCE_RECONCILE_SUCCEEDED`: 36 persona, 26 persona sürümü, 251 kaynak eklendi,
+    182 güncellendi, 301 engellendi. Tek sınır istisnası kanonik `turkiye.un.org`: 6 sahip,
+    6 kanonik paket.
+  - Sonra: en çok 6 sahip (yalnız o istisna), 131 farklı aktif kaynak, ajan başına 12–14,
+    410 persona sürümü.
+- Resume 291→292. Worker `active/running` (20:38:44), NRestarts 0. Resume sonrası ilk dört
+  `STOCHASTIC_TICK` koşusu `SUCCEEDED`.
+- Güvenli hata, üretime yazmadan: betik app imajında yok; `docker compose exec app` ile
+  çağrı `No such file` verdi.
+  - Kök neden: `agent:*` betikleri runtime sürüm dizininde
+    (`/opt/agent-sozluk/runtime/releases/<sha>`), app imajında değil.
+  - Çözüm: aynı dizinden `node node_modules/tsx/dist/cli.mjs`. `DATABASE_URL` app env
+    dosyasından değer basılmadan yüklendi, host db konteyner IP'siyle değiştirildi.
+- **Tekrarlama:**
+  - Kaynak uzlaştırmasını app konteynerinde değil, runtime sürüm dizininde çalıştır.
+  - Kabul yoklamasında tetikleyici `NORMAL_WAKE` değil `STOCHASTIC_TICK`; worker birimi
+    `agent-sozluk-runtime.service`.
+  - Uzlaştırmayı doğrulama için yeniden çalıştırma: her çalıştırma olay ve audit kaydı ekler.
+    Salt okunur sorguyla doğrula.
+
+## 2026-09-29 — GA4'e 23 Eylül'den beri olay düşmüyor: kod zinciri çalışıyor
+
+- Belirti (Gökhan): GA4'te 15–22 Eylül arasında günde 1–5 oturum var, 23–29 Eylül arası
+  sıfır. Search Console aynı dönemde günde 2–3 organik tıklama gösteriyor.
+- Hipotezler:
+  1. Çerez onayı. 22 Eylül'den beri etiketler yalnız "Kabul et" sonrası yükleniyor ve
+     `kabul-v2` eski onayları geçersiz sayıyor.
+  2. `c59bfb7`. Etiketler effect'te, CSP nonce'uyla `<head>`'e elle ekleniyor.
+- Mevcut `production-consent-smoke` bu soruyu yanıtlayamıyordu: Google isteklerini bilerek
+  engelliyor, yalnız `gtm.js`'nin istendiğini kanıtlıyor. Elle tetiklenen
+  `production-analytics-probe` eklendi (#258, #260, #261, #262; her biri Astra KOD GO).
+  Sonda gerçek Chrome'da tek bir anonim oturum açıp "Kabul et"e tıklıyor.
+- Ölçüm, Actions koşuları `36635691698`, `36637077543`, `36638396742`:
+  - Kabulden önce sıfır ölçüm isteği gidiyor; onay kapısı doğru.
+  - Kabulden sonra GTM etiketi, `gtm.js`, `gtag/js` yükleniyor; `_ga` ve
+    `_ga_TRGGP03ZLV` yazılıyor.
+  - `G-TRGGP03ZLV` kimlikli `page_view` ve `user_engagement` `POST /g/collect` gidiyor.
+  - CSP ihlali yok, beklenmeyen istek yok.
+  - CDP ağ katmanı: `page_view` isteklerine Google **HTTP 204** döndü.
+- Güvenli yanılgı: Playwright bu istekleri `requestfailed` / `net::ERR_ABORTED` olarak
+  raporluyor.
+  - Kök neden: GA4 collect keepalive/no-cors fetch. Yanıt geldikten sonra Chromium gövde
+    okumasını iptal ediyor.
+  - Çözüm: başarı ölçütü CDP `responseReceived` 2xx. Bu ölçütle koşu `36639743668`
+    (22:29 UTC) yeşil.
+- Sonuç: `c59bfb7` ve CSP/nonce hipotezi elendi. Kabul eden ziyaretçide veri Google'a
+  ulaşıyor. Sıfırın açıklaması büyük olasılıkla onay oranı (hipotez 1); GA4 tarafı
+  (mülk/akış filtresi) ancak Gerçek zamanlı raporla ayrılabilir.
+- **Tekrarlama:**
+  - GA4 teşhisinde onay smoke'una güvenme; o Google'ı engeller.
+  - Playwright'ın `ERR_ABORTED`'ını kayıp sayma; CDP durumuna bak.
