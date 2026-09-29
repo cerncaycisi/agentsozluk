@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { type Prisma, PrismaClient } from "@prisma/client";
+import { getRuntimeSourceItemCoverage } from "@/modules/agents/repository/runtime";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
@@ -3925,6 +3926,23 @@ describe("internal agent runtime API with PostgreSQL", () => {
         addedByOrigin: "INITIAL_PERSONA",
       },
     });
+    // Kaynak başına en yeni üç öğe algıya girer: olumsuz vakalar ikinci bir kaynakta.
+    const secondUrl = `https://haber-kapsami-ikinci-${randomUUID()}.example.org/feed.xml`;
+    const ownSecondSource = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        url: secondUrl,
+        normalizedDomain: new URL(secondUrl).hostname,
+        sourceType: "RSS",
+        status: "TRUSTED",
+        topics: ["haber"],
+        trustScore: 0.5,
+        interestScore: 0.5,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INITIAL_PERSONA",
+      },
+    });
     const newsUrl = `https://${ownSource.normalizedDomain}/haber-kapsami-${randomUUID()}`;
     const newsHash = randomUUID().replaceAll("-", "").padEnd(64, "0");
     const item = (
@@ -3953,7 +3971,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     );
     // Aynı (genel) URL'de yayımlanmış farklı başlıklı başka haber: eşleşmemeli (Astra d85a659 P2).
     const sameUrlOtherNews = await item(
-      ownSource.id,
+      ownSecondSource.id,
       newsUrl,
       randomUUID().replaceAll("-", "").padEnd(64, "2"),
       "Bambaşka bir haber",
@@ -4000,6 +4018,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
         desiredEntryMin: 0,
         desiredEntryMax: 1,
         finishedAt: new Date(),
+        // Aksiyon anında ajana gösterilen haber: kimlik bunun URL ve başlığından okunur.
+        perceptionSummary: {
+          sourceItems: [
+            { itemId: othersCopy.id, canonicalUrl: newsUrl, title: "HABER KAPSAMI ÖĞESİ" },
+          ],
+        },
       },
     });
     for (const [sequence, created] of [hidden, visibleTopic].entries())
@@ -4024,6 +4048,62 @@ describe("internal agent runtime API with PostgreSQL", () => {
           createdAt: new Date(Date.now() - (2 - sequence) * 60_000),
         },
       });
+    /*
+      RSS yenilemesi aynı kaydın başlığını değiştirebilir (özet aynı kalır). Diğer ajanın kaydı
+      artık başka bir haberi gösteriyor; bu kayda dayanan eski aksiyon, yeni haberi taşıyan
+      öğeye bağlanmamalı (Astra c602369 P2).
+    */
+    const renamedNews = await item(
+      ownSecondSource.id,
+      `${newsUrl}-yenilenen`,
+      randomUUID().replaceAll("-", "").padEnd(64, "3"),
+      "Yenilenmiş başka haber",
+    );
+    const renamedCopy = await item(
+      otherSource.id,
+      `${newsUrl}-yenilenen`,
+      renamedNews.contentHash,
+      "Yenilenmeden önceki haber",
+    );
+    await integrationDatabase.agentAction.create({
+      data: {
+        runId: otherRun.id,
+        agentProfileId: other.agent.profile.id,
+        sequence: 3,
+        actionType: "CREATE_TOPIC_WITH_ENTRY",
+        actionStatus: "SUCCEEDED",
+        input: { title: visibleTopic.topic.title, body: "önceki koşunun entry'si" },
+        provenance: {
+          evidenceType: "TRUSTED_SOURCE",
+          evidenceIds: [renamedCopy.id],
+          shortRationale: "Yenilenmeden önceki haber.",
+        },
+        result: {
+          topicId: visibleTopic.topic.id,
+          entryId: visibleTopic.entry.id,
+          topicResolution: "EXISTING",
+        },
+      },
+    });
+    await integrationDatabase.agentRun.update({
+      where: { id: otherRun.id },
+      data: {
+        perceptionSummary: {
+          sourceItems: [
+            { itemId: othersCopy.id, canonicalUrl: newsUrl, title: "HABER KAPSAMI ÖĞESİ" },
+            {
+              itemId: renamedCopy.id,
+              canonicalUrl: `${newsUrl}-yenilenen`,
+              title: "Yenilenmeden önceki haber",
+            },
+          ],
+        },
+      },
+    });
+    await integrationDatabase.agentSourceItem.update({
+      where: { id: renamedCopy.id },
+      data: { title: "Yenilenmiş başka haber" },
+    });
     const context = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
     const items = context.perception.sourceItems as {
       itemId: string;
@@ -4039,7 +4119,15 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     ]);
     expect(uncoveredItem?.existingTopics).toEqual([]);
-    expect(items.find(({ itemId }) => itemId === sameUrlOtherNews.id)?.existingTopics).toEqual([]);
+    // Olumsuz vakalar doğrudan kapsam fonksiyonuyla (ikinci kaynak algıya seçilmeyebilir).
+    const direct = await integrationDatabase.$transaction((transaction) =>
+      getRuntimeSourceItemCoverage(transaction, {
+        itemIds: [covered.id, sameUrlOtherNews.id, renamedNews.id],
+        now: new Date(),
+        blockedUserIds: [],
+      }),
+    );
+    expect([...direct.keys()]).toEqual([covered.id]);
     expect(JSON.stringify(items)).not.toContain(visibleTopic.topic.id);
     expect(JSON.stringify(items)).not.toContain("GIZLI_ENTRY");
   });

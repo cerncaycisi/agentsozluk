@@ -2725,17 +2725,20 @@ export async function getRuntimeReadTopics(
   başlık açmaya çalışıp o haberin başlığının zaten açılmış ve aynı şeyin zaten yazılmış olduğu
   durumdu: ajan başlığın varlığını ancak kapıya çarpınca öğreniyordu.
 
-  Kaynaklar ajan başına ayrı kayıt; aynı haber her ajanda farklı kimlikli bir öğedir. Eşleşme
-  haberin kendisiyle kurulur: aynı başlık VE (aynı `canonicalUrl` ya da aynı `contentHash`).
-  Başlık şartı, genel ya da sürekli güncellenen bir URL'de yayımlanan farklı haberleri ve RSS'te
-  başlığı içermeyen ortak özetleri ayırır (Astra 6c46c81 ve d85a659 P2). Önce gösterilen
-  öğelerin eşdeğerleri veritabanında daraltılır, sonra yalnız onlara dayanan son 14 günün
-  başarılı içerik aksiyonları aranır; maliyet gösterilen öğe sayısıyla sınırlıdır. Aday
-  başlıklar oluşturulma sırasıyla tutulur ve görünürlük süzgecinden SONRA ilk görünür olan
-  seçilir.
-
-  Kimlik taşınmaz, yalnız başlık adı, görünür entry sayısı ve iki kısa önizleme: kanıt kataloğu
-  ve yazma kapıları değişmez.
+  Haber kimliği katı tutulur (Astra 6c46c81, d85a659, c602369):
+  - Kaynaklar ajan başına ayrı kayıt; aynı haber her ajanda farklı kimlikli öğedir. Bu yüzden
+    eşleşme öğe kimliğiyle değil haberin kendisiyle kurulur.
+  - Haber = aynı `contentHash` VE aynı URL VE aynı başlık. Genel başlıklar ("Son dakika") ve
+    başlıksız ortak RSS özetleri böylece ayrışır.
+  - Öğe kaydı RSS yenilemesinde başlığını/URL'sini güncelleyebilir; `contentHash` ise kaydın
+    benzersiz anahtarıdır, değişmez. Geçmiş aksiyonun dayandığı haberin URL ve başlığı öğenin
+    bugünkü hâlinden değil, aksiyonu üreten koşunun dondurulmuş algısından okunur.
+  - Başlık dilden bağımsız katlanır ("NASA MISSION" = "nasa mission").
+  - Maliyet sınırlı: en yeni 40 aday öğe, özetle eşleşen en fazla 200 eşdeğer (son 14 gün),
+    en fazla 50 aday aksiyon.
+  Aday başlıklar oluşturulma sırasıyla tutulur ve görünürlük süzgecinden SONRA ilk görünür olan
+  seçilir. Kimlik taşınmaz, yalnız başlık adı, görünür entry sayısı ve iki kısa önizleme: kanıt
+  kataloğu ve yazma kapıları değişmez.
 */
 export async function getRuntimeSourceItemCoverage(
   transaction: Prisma.TransactionClient,
@@ -2747,62 +2750,90 @@ export async function getRuntimeSourceItemCoverage(
   >();
   const itemIds = [...new Set(input.itemIds)];
   if (itemIds.length === 0) return coverage;
-  const newsTitle = (title: string) =>
-    title.normalize("NFKC").toLocaleLowerCase("tr-TR").replaceAll(/\s+/gu, " ").trim();
-  const newsKeys = (item: { canonicalUrl: string; contentHash: string; title: string }) => {
-    const title = newsTitle(item.title);
-    return title.length === 0
-      ? []
-      : [`url:${item.canonicalUrl}|${title}`, `hash:${item.contentHash}|${title}`];
-  };
+  const since = new Date(input.now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const fold = (value: string) =>
+    value
+      .normalize("NFKC")
+      .replaceAll("İ", "i")
+      .replaceAll("I", "i")
+      .toLowerCase()
+      .replaceAll("ı", "i")
+      .replaceAll(/\s+/gu, " ")
+      .trim();
+  const newsKey = (item: { contentHash: string; canonicalUrl: string; title: string }) =>
+    `${item.contentHash}|${item.canonicalUrl}|${fold(item.title).slice(0, 200)}`;
   const presented = await transaction.agentSourceItem.findMany({
     where: { id: { in: itemIds } },
+    orderBy: [{ fetchedAt: "desc" }, { id: "asc" }],
+    take: 40,
     select: { id: true, canonicalUrl: true, contentHash: true, title: true },
   });
   const presentedByKey = new Map<string, string[]>();
-  for (const item of presented)
-    for (const key of newsKeys(item))
-      presentedByKey.set(key, [...(presentedByKey.get(key) ?? []), item.id]);
+  for (const item of presented) {
+    if (fold(item.title).length === 0) continue;
+    const key = newsKey(item);
+    presentedByKey.set(key, [...(presentedByKey.get(key) ?? []), item.id]);
+  }
   if (presentedByKey.size === 0) return coverage;
   const equivalents = await transaction.agentSourceItem.findMany({
     where: {
-      OR: [
-        { canonicalUrl: { in: [...new Set(presented.map(({ canonicalUrl }) => canonicalUrl))] } },
-        { contentHash: { in: [...new Set(presented.map(({ contentHash }) => contentHash))] } },
-      ],
+      contentHash: { in: [...new Set(presented.map(({ contentHash }) => contentHash))] },
+      fetchedAt: { gte: since },
     },
-    select: { id: true, canonicalUrl: true, contentHash: true, title: true },
+    orderBy: [{ fetchedAt: "desc" }, { id: "asc" }],
+    take: 200,
+    select: { id: true, contentHash: true },
   });
-  const presentedByEquivalent = new Map<string, string[]>();
-  for (const item of equivalents) {
-    const matches = [...new Set(newsKeys(item).flatMap((key) => presentedByKey.get(key) ?? []))];
-    if (matches.length > 0) presentedByEquivalent.set(item.id, matches);
-  }
-  if (presentedByEquivalent.size === 0) return coverage;
+  const hashByEquivalent = new Map(equivalents.map(({ id, contentHash }) => [id, contentHash]));
+  if (hashByEquivalent.size === 0) return coverage;
   const actions = await transaction.agentAction.findMany({
     where: {
       actionStatus: "SUCCEEDED",
       actionType: { in: ["CREATE_TOPIC_WITH_ENTRY", "CREATE_ENTRY"] },
-      createdAt: { gte: new Date(input.now.getTime() - 14 * 24 * 60 * 60 * 1000) },
-      OR: [...presentedByEquivalent.keys()].map((id) => ({
+      createdAt: { gte: since },
+      OR: [...hashByEquivalent.keys()].map((id) => ({
         provenance: { path: ["evidenceIds"], array_contains: [id] },
       })),
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: { provenance: true, result: true },
+    take: 50,
+    select: { runId: true, provenance: true, result: true },
   });
+  if (actions.length === 0) return coverage;
+  const runs = await transaction.agentRun.findMany({
+    where: { id: { in: [...new Set(actions.map(({ runId }) => runId))] } },
+    select: { id: true, perceptionSummary: true },
+  });
+  // Aksiyon anında ajana gösterilen haberin URL ve başlığı (dondurulmuş algı).
+  const shownAt = new Map<string, Map<string, { canonicalUrl: string; title: string }>>();
+  for (const run of runs) {
+    const items = (run.perceptionSummary as Record<string, unknown> | null)?.sourceItems;
+    const byItem = new Map<string, { canonicalUrl: string; title: string }>();
+    if (Array.isArray(items))
+      for (const item of items as Record<string, unknown>[])
+        if (
+          typeof item?.itemId === "string" &&
+          typeof item.canonicalUrl === "string" &&
+          typeof item.title === "string"
+        )
+          byItem.set(item.itemId, { canonicalUrl: item.canonicalUrl, title: item.title });
+    shownAt.set(run.id, byItem);
+  }
   const candidates = new Map<string, string[]>();
   for (const action of actions) {
     const topicId = (action.result as Record<string, unknown> | null)?.topicId;
     const evidenceIds = (action.provenance as Record<string, unknown> | null)?.evidenceIds;
     if (typeof topicId !== "string" || !Array.isArray(evidenceIds)) continue;
-    for (const evidenceId of evidenceIds)
-      for (const itemId of typeof evidenceId === "string"
-        ? (presentedByEquivalent.get(evidenceId) ?? [])
-        : []) {
+    for (const evidenceId of evidenceIds) {
+      if (typeof evidenceId !== "string") continue;
+      const contentHash = hashByEquivalent.get(evidenceId);
+      const shown = shownAt.get(action.runId)?.get(evidenceId);
+      if (!contentHash || !shown) continue;
+      for (const itemId of presentedByKey.get(newsKey({ contentHash, ...shown })) ?? []) {
         const list = candidates.get(itemId) ?? [];
         if (!list.includes(topicId)) candidates.set(itemId, [...list, topicId]);
       }
+    }
   }
   if (candidates.size === 0) return coverage;
   const visible = {
