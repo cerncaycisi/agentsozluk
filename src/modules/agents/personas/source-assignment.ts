@@ -97,7 +97,14 @@ export function sourceTopicMappings(sources: PersonaSource[]): SeedPersona["sour
 export interface DiverseSourceTarget {
   username: string;
   persona: SeedPersona;
+  /**
+   * Kanonik paket kaynakları: değişmez ve sınıra sayılır. İnsanca seçilmiş paket istisnadır;
+   * sabit kaynakların kendisi sınırı aşabilir (ör. iki paket aynı kaynağı içeriyorsa), sınır
+   * yalnız planın yaptığı atamalar için sözleşmedir.
+   */
   fixedSources?: PersonaSource[];
+  /** Bu ajan için seçilemeyecek URL'ler (ör. yönetici ya da önceki uzlaştırma engeli). */
+  excludedUrls?: ReadonlySet<string>;
 }
 
 function topicStems(value: string): string[] {
@@ -162,7 +169,12 @@ export function planDiverseSourceAssignment(
       const taken = new Set(chosen.map(({ url }) => url));
       let best: { source: PersonaSource; score: ReturnType<typeof rank> } | null = null;
       for (const source of pool) {
-        if (taken.has(source.url) || (holders.get(source.url) ?? 0) >= holderLimit) continue;
+        if (
+          taken.has(source.url) ||
+          target.excludedUrls?.has(source.url) ||
+          (holders.get(source.url) ?? 0) >= holderLimit
+        )
+          continue;
         const score = rank(target, source);
         if (!best || better(score, best.score)) best = { source, score };
       }
@@ -175,8 +187,14 @@ export function planDiverseSourceAssignment(
     const chosen = plan.get(target.username)!;
     while (chosen.length < minimum) {
       const taken = new Set(chosen.map(({ url }) => url));
+      // Alt sınıra tamamlama da sınırı gözetir; kapasite yetmezse hata verir (Astra 2ff4b2a P2).
       const fallback = pool
-        .filter(({ url }) => !taken.has(url))
+        .filter(
+          ({ url }) =>
+            !taken.has(url) &&
+            !target.excludedUrls?.has(url) &&
+            (holders.get(url) ?? 0) < holderLimit,
+        )
         .sort(
           (left, right) =>
             (holders.get(left.url) ?? 0) - (holders.get(right.url) ?? 0) ||
@@ -186,7 +204,7 @@ export function planDiverseSourceAssignment(
         )[0];
       if (!fallback)
         throw new Error(
-          `SOURCE_ASSIGNMENT_POOL_TOO_SMALL username=${target.username} assigned=${chosen.length} required=${minimum}`,
+          `SOURCE_ASSIGNMENT_CAPACITY_EXCEEDED username=${target.username} assigned=${chosen.length} required=${minimum} holderLimit=${holderLimit}`,
         );
       chosen.push(fallback);
       hold(fallback.url);

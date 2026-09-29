@@ -83,13 +83,34 @@ describe("çeşitlendirilmiş kaynak planı", () => {
       );
   });
 
-  it("havuz sınır yüzünden yetmezse alt sınırı en az tutulan kaynaklarla tamamlar", () => {
+  it("kapasite sınır içinde yetmezse sınırı delmek yerine hata verir", () => {
     const small = pool.slice(0, 12);
-    const plan = planDiverseSourceAssignment(
-      imported.slice(0, 8).map((p) => ({ username: p.username, persona: p })),
-      small,
+    expect(() =>
+      planDiverseSourceAssignment(
+        imported.slice(0, 8).map((p) => ({ username: p.username, persona: p })),
+        small,
+      ),
+    ).toThrow(/SOURCE_ASSIGNMENT_CAPACITY_EXCEEDED/u);
+  });
+
+  it("ajanın engelli kaynağını o ajan için seçmez", () => {
+    const target = imported[0]!;
+    const first = planDiverseSourceAssignment(
+      [{ username: target.username, persona: target }],
+      pool,
     );
-    for (const sources of plan.values()) expect(sources.length).toBeGreaterThanOrEqual(10);
+    const blocked = new Set(
+      first
+        .get(target.username)!
+        .slice(0, 3)
+        .map(({ url }) => url),
+    );
+    const second = planDiverseSourceAssignment(
+      [{ username: target.username, persona: target, excludedUrls: blocked }],
+      pool,
+    );
+    for (const { url } of second.get(target.username)!) expect(blocked.has(url)).toBe(false);
+    expect(second.get(target.username)!.length).toBeGreaterThanOrEqual(10);
   });
 
   it("yakınlık yalnız ilgi alanlarından gelir: oyun meraklısına oyun kaynağı düşer", () => {

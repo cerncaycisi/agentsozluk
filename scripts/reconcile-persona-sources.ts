@@ -6,8 +6,10 @@ import { sha256 } from "@/lib/security/crypto";
 import { requireAgentAdminInTransaction, updateAgent } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { expandedVerifiedSources } from "@/modules/agents/personas/expanded-sources";
+import { runtimeSourceHolderLimit } from "@/modules/agents/domain/runtime-source-candidates";
 import {
   planDiverseSourceAssignment,
+  sourceInterestAffinity,
   reconciledCanonicalAdminPinned,
   sourceTopicMappings,
   uniqueVerifiedSourcePool,
@@ -52,6 +54,18 @@ function sourceSnapshot(source: {
     adminBlocked: source.adminBlocked,
     consecutiveFailures: source.consecutiveFailures,
   };
+}
+
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, nested: unknown) =>
+    nested && typeof nested === "object" && !Array.isArray(nested)
+      ? Object.fromEntries(
+          Object.entries(nested as Record<string, unknown>).sort(([left], [right]) =>
+            left.localeCompare(right),
+          ),
+        )
+      : nested,
+  );
 }
 
 async function main(): Promise<void> {
@@ -117,6 +131,21 @@ async function main(): Promise<void> {
     const plannedVersions = new Map(
       targets.map(({ profile }) => [profile.id, profile.currentPersonaVersion?.version ?? null]),
     );
+    // Ajanın engelli kaynakları (yönetici ya da önceki uzlaştırma) plana o ajan için girmez:
+    // engel kaldırılmaz, başka kaynak seçilir (Astra 2ff4b2a P2).
+    const blockedRows = await database.agentSource.findMany({
+      where: {
+        agentProfileId: { in: targets.map(({ profile }) => profile.id) },
+        OR: [{ adminBlocked: true }, { status: { in: ["REJECTED", "BLOCKED"] } }],
+      },
+      select: { agentProfileId: true, url: true },
+    });
+    const blockedByProfile = new Map<string, Set<string>>();
+    for (const { agentProfileId, url } of blockedRows)
+      blockedByProfile.set(
+        agentProfileId,
+        new Set([...(blockedByProfile.get(agentProfileId) ?? []), url]),
+      );
     const sourcePlan = planDiverseSourceAssignment(
       targets.map(({ profile, canonical }) => {
         if (!profile.currentPersonaVersion)
@@ -125,10 +154,68 @@ async function main(): Promise<void> {
           username: profile.user.username,
           persona: seedPersonaSchema.parse(profile.currentPersonaVersion.persona),
           ...(canonical ? { fixedSources: canonical.sources } : {}),
+          excludedUrls: blockedByProfile.get(profile.id) ?? new Set<string>(),
         };
       }),
       verifiedPool,
+      { holderLimit: runtimeSourceHolderLimit },
     );
+    /*
+      Paket dışı kökenli kaynaklar (ajanın kendi eklediği AGENT, operatör dolgusu vb.) da beş ajan
+      sınırına tabi: arkitera'yı tutan 22 ajanın 17'si onu kendisi öğrenmişti. Plan önceliklidir;
+      sınırı aşan kaynakta plan dışı kayıtlardan personasıyla en az ilgili olanlar engellenir
+      (geçmiş korunur, silinmez). Paket kökenli plan dışı kayıtları aşağıdaki döngü zaten engeller.
+    */
+    const plannedHolders = new Map<string, Set<string>>();
+    for (const [username, sources] of sourcePlan)
+      for (const { url } of sources)
+        plannedHolders.set(url, new Set([...(plannedHolders.get(url) ?? []), username]));
+    const personaByProfile = new Map(
+      targets.map(({ profile }) => [
+        profile.id,
+        {
+          username: profile.user.username,
+          persona: seedPersonaSchema.parse(profile.currentPersonaVersion!.persona),
+        },
+      ]),
+    );
+    const outsideHeld = await database.agentSource.findMany({
+      where: {
+        agentProfileId: { in: targets.map(({ profile }) => profile.id) },
+        addedByOrigin: { notIn: ["INITIAL_PERSONA", "ADMIN_BASELINE_REFRESH"] },
+        adminBlocked: false,
+        status: { notIn: ["REJECTED", "BLOCKED"] },
+      },
+      orderBy: { id: "asc" },
+      select: { id: true, agentProfileId: true, url: true, topics: true },
+    });
+    const excessSourceIds = new Set<string>();
+    const heldByUrl = new Map<string, typeof outsideHeld>();
+    for (const row of outsideHeld) heldByUrl.set(row.url, [...(heldByUrl.get(row.url) ?? []), row]);
+    for (const [url, rows] of heldByUrl) {
+      const planned = plannedHolders.get(url) ?? new Set<string>();
+      const extra = rows
+        .filter((row) => !planned.has(personaByProfile.get(row.agentProfileId)!.username))
+        .map((row) => ({
+          row,
+          affinity: sourceInterestAffinity(personaByProfile.get(row.agentProfileId)!.persona, {
+            url,
+            sourceType: "RSS",
+            status: "SEED",
+            weight: 0.5,
+            pinned: false,
+            topics: Array.isArray(row.topics)
+              ? row.topics.filter((topic): topic is string => typeof topic === "string")
+              : [],
+          }),
+        }))
+        .sort(
+          (left, right) =>
+            right.affinity - left.affinity || left.row.id.localeCompare(right.row.id),
+        );
+      const allowed = Math.max(0, runtimeSourceHolderLimit - planned.size);
+      for (const { row } of extra.slice(allowed)) excessSourceIds.add(row.id);
+    }
     let personaVersionsCreated = 0;
     let sourcesCreated = 0;
     let sourcesUpdated = 0;
@@ -177,10 +264,11 @@ async function main(): Promise<void> {
           throw new Error(`SOURCE_RECONCILE_PLAN_MISSING username=${profile.user.username}`);
         const targetSourceTopicMappings =
           canonical?.sourceTopicMappings ?? sourceTopicMappings(sources);
+        // jsonb anahtar sırasını değiştirir; düz JSON.stringify aynı içeriği farklı sayıp her
+        // çalıştırmada gereksiz persona sürümü oluşturuyordu. Anahtar sırasından bağımsız karşılaştır.
         const personaNeedsUpdate =
-          JSON.stringify(currentPersona.sources) !== JSON.stringify(sources) ||
-          JSON.stringify(currentPersona.sourceTopicMappings) !==
-            JSON.stringify(targetSourceTopicMappings);
+          stableJson(currentPersona.sources) !== stableJson(sources) ||
+          stableJson(currentPersona.sourceTopicMappings) !== stableJson(targetSourceTopicMappings);
         if (personaNeedsUpdate)
           await updateAgent(transaction, { ...actor, requestId: randomUUID() }, profile.id, {
             expectedPersonaVersion: currentProfile.currentPersonaVersion.version,
@@ -267,6 +355,25 @@ async function main(): Promise<void> {
             before: sourceSnapshot(source),
             after: sourceSnapshot(stored),
             metadata: { origin: "ADMIN_BASELINE_REFRESH" },
+          });
+        }
+
+        for (const source of existing) {
+          if (!excessSourceIds.has(source.id) || source.adminBlocked) continue;
+          const stored = await transaction.agentSource.update({
+            where: { id: source.id },
+            data: { status: "BLOCKED", adminBlocked: true, adminPinned: false },
+          });
+          blocked += 1;
+          await appendRuntimeEvent(transaction, {
+            agentProfileId: profile.id,
+            eventType: "SOURCE_STATE_CHANGED",
+            subject: { type: "SOURCE", id: stored.id },
+            safeMessage:
+              "Kaynak çeşitliliği: kaynak beş ajan sınırını aşıyordu; paket dışı kayıt geçmişi korunarak engellendi.",
+            before: sourceSnapshot(source),
+            after: sourceSnapshot(stored),
+            metadata: { origin: "SOURCE_DIVERSITY" },
           });
         }
 
