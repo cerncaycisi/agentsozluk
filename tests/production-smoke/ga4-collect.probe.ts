@@ -137,7 +137,6 @@ test.use({ serviceWorkers: "block" });
 
 test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, page }) => {
   const istekler: string[] = [];
-  const collectler: CollectKaydi[] = [];
   const engellenen: string[] = [];
   const cspIhlalleri: string[] = [];
   const konsolSayilari: Record<string, number> = {};
@@ -184,33 +183,45 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
     anlamına gelir ve testi düşürür.
   */
   let kabulAni: number | null = null;
-  const baslangic = (istek: Request) => istek.timing().startTime;
-  const kabulOncesiOlcum: string[] = [];
-  const collectKaydet = (istek: Request, durum: CollectKaydi["durum"]) => {
-    const url = new URL(istek.url());
-    if (!collectMi(url)) return;
-    collectler.push({
-      host: url.hostname,
-      yontem: istek.method(),
-      durum,
-      tid: olcumKimligi(url.searchParams.get("tid") ?? govdedekiKimlik(istek.postData())),
-      en: url.searchParams.has("en") ? olayAdi(url.searchParams.get("en")) : null,
-      kabulSonrasi: kabulAni !== null && baslangic(istek) >= kabulAni,
-    });
-  };
+  /*
+    Olaylar ham biriktirilir, sınıflandırma kabul anı kesinleştikten SONRA yapılır
+    (Astra 35a5dde): aktarım yarışı sınıfı değiştiremez. Başlangıç zamanı yanıtlı
+    isteklerde `timing().startTime` (epoch ms); yanıtsız başarısız istekte 0 kalabildiği
+    için o durumda Node'un `request` olayını gördüğü an (aynı makine saati, başlangıçtan
+    sonra) kullanılır.
+  */
+  const gorulmeAni = new WeakMap<Request, number>();
+  page.on("request", (istek) => gorulmeAni.set(istek, Date.now()));
+  const hamOlaylar: { istek: Request; durum: CollectKaydi["durum"] }[] = [];
   page.on("requestfinished", async (istek) => {
     const yanit = await istek.response();
-    const url = new URL(istek.url());
-    if (olcumHostuMu(url.hostname) && (kabulAni === null || baslangic(istek) < kabulAni))
-      kabulOncesiOlcum.push(`${url.hostname}${url.pathname}`);
-    collectKaydet(istek, yanit?.status() ?? "YANIT_YOK");
+    hamOlaylar.push({ istek, durum: yanit?.status() ?? "YANIT_YOK" });
   });
-  page.on("requestfailed", (istek) => {
-    const url = new URL(istek.url());
-    if (olcumHostuMu(url.hostname) && kabulAni === null)
-      kabulOncesiOlcum.push(`${url.hostname}${url.pathname}`);
-    collectKaydet(istek, "FAILED");
-  });
+  page.on("requestfailed", (istek) => hamOlaylar.push({ istek, durum: "FAILED" }));
+  const baslangic = (istek: Request) => {
+    const zaman = istek.timing().startTime;
+    return zaman > 0 ? zaman : (gorulmeAni.get(istek) ?? Number.POSITIVE_INFINITY);
+  };
+  const siniflandir = () => {
+    const collectler: CollectKaydi[] = [];
+    const kabulOncesiOlcum: string[] = [];
+    for (const { istek, durum } of hamOlaylar) {
+      const url = new URL(istek.url());
+      if (!olcumHostuMu(url.hostname)) continue;
+      const sonra = kabulAni !== null && baslangic(istek) >= kabulAni;
+      if (!sonra) kabulOncesiOlcum.push(`${url.hostname}${url.pathname}`);
+      if (!collectMi(url)) continue;
+      collectler.push({
+        host: url.hostname,
+        yontem: istek.method(),
+        durum,
+        tid: olcumKimligi(url.searchParams.get("tid") ?? govdedekiKimlik(istek.postData())),
+        en: url.searchParams.has("en") ? olayAdi(url.searchParams.get("en")) : null,
+        kabulSonrasi: sonra,
+      });
+    }
+    return { collectler, kabulOncesiOlcum };
+  };
 
   await page.goto("/");
   const serit = page.getByRole("region", { name: "Çerez tercihi" });
@@ -234,7 +245,7 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
   expect(kabulAni, "kabul tıklaması yakalanmalı").not.toBeNull();
 
   const basarili = () =>
-    collectler.filter(
+    siniflandir().collectler.filter(
       (kayit) =>
         kayit.kabulSonrasi &&
         kayit.tid === GA4_KIMLIGI &&
@@ -266,6 +277,7 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
   await page.goto("/basliklar").catch(() => undefined);
   await page.waitForTimeout(8_000);
 
+  const { collectler, kabulOncesiOlcum } = siniflandir();
   const tani = {
     ilkBelge: { ...ilkBelge, dataLayerOlaylari: ilkBelge.dataLayerOlaylari.map(olayAdi) },
     istekler,
