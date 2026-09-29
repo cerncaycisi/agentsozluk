@@ -5,8 +5,9 @@ import { getDatabase } from "@/lib/db/client";
 import { sha256 } from "@/lib/security/crypto";
 import { requireAgentAdminInTransaction, updateAgent } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { expandedVerifiedSources } from "@/modules/agents/personas/expanded-sources";
 import {
-  assignVerifiedSources,
+  planDiverseSourceAssignment,
   reconciledCanonicalAdminPinned,
   sourceTopicMappings,
   uniqueVerifiedSourcePool,
@@ -63,7 +64,10 @@ async function main(): Promise<void> {
     const canonicalByUsername = new Map(
       canonicalPack.personas.map((persona) => [persona.username, persona]),
     );
-    const verifiedPool = uniqueVerifiedSourcePool(canonicalPack.personas);
+    // Paket havuzu + genişletilmiş doğrulanmış havuz (29 Eylül 2026, `expanded-sources.ts`).
+    const verifiedPool = [...uniqueVerifiedSourcePool(canonicalPack.personas)];
+    for (const source of expandedVerifiedSources)
+      if (!verifiedPool.some(({ url }) => url === source.url)) verifiedPool.push(source);
     const [settings, openRunCount, profiles] = await Promise.all([
       database.agentGlobalSettings.findUniqueOrThrow({
         where: { id: "global" },
@@ -79,6 +83,7 @@ async function main(): Promise<void> {
         select: {
           id: true,
           user: { select: { username: true } },
+          currentPersonaVersion: { select: { persona: true, version: true } },
         },
       }),
     ]);
@@ -104,6 +109,26 @@ async function main(): Promise<void> {
         };
       })
       .sort((left, right) => left.profile.user.username.localeCompare(right.profile.user.username));
+    /*
+      Kaynaklar ortak bir planla dağıtılır (`planDiverseSourceAssignment`): bir kaynak en fazla
+      beş ajana gider; kanonik paket personaları kendi kaynaklarını korur ama sınıra sayılır.
+      Plan aşağıdaki persona sürümleriyle hesaplanır; işlem sırasında sürüm değişmişse durulur.
+    */
+    const plannedVersions = new Map(
+      targets.map(({ profile }) => [profile.id, profile.currentPersonaVersion?.version ?? null]),
+    );
+    const sourcePlan = planDiverseSourceAssignment(
+      targets.map(({ profile, canonical }) => {
+        if (!profile.currentPersonaVersion)
+          throw new Error(`SOURCE_RECONCILE_PERSONA_MISSING username=${profile.user.username}`);
+        return {
+          username: profile.user.username,
+          persona: seedPersonaSchema.parse(profile.currentPersonaVersion.persona),
+          ...(canonical ? { fixedSources: canonical.sources } : {}),
+        };
+      }),
+      verifiedPool,
+    );
     let personaVersionsCreated = 0;
     let sourcesCreated = 0;
     let sourcesUpdated = 0;
@@ -145,7 +170,11 @@ async function main(): Promise<void> {
         const currentPersona = seedPersonaSchema.parse(
           currentProfile.currentPersonaVersion.persona,
         );
-        const sources = canonical?.sources ?? assignVerifiedSources(currentPersona, verifiedPool);
+        if (currentProfile.currentPersonaVersion.version !== plannedVersions.get(profile.id))
+          throw new Error(`SOURCE_RECONCILE_PERSONA_CHANGED username=${profile.user.username}`);
+        const sources = canonical?.sources ?? sourcePlan.get(profile.user.username);
+        if (!sources)
+          throw new Error(`SOURCE_RECONCILE_PLAN_MISSING username=${profile.user.username}`);
         const targetSourceTopicMappings =
           canonical?.sourceTopicMappings ?? sourceTopicMappings(sources);
         const personaNeedsUpdate =

@@ -4407,6 +4407,158 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(adopted?.discoveredFrom).toBe(`AGENT_CANDIDATE:${sharedSource.id}`);
   });
 
+  /*
+    Kaynak çeşitliliği (29 Eylül 2026): ajanlar birbirinden en çok alıntılanan kaynağı öğrenince
+    arkitera 35 ajanın 33'üne yayılmıştı. Bir kaynak en fazla beş ajanda olur; aday listesi ve
+    yürütücü bunu birlikte uygular.
+  */
+  async function sharedSourceScenario(initialHolders: number) {
+    const fixture = await createFixture();
+    const admin = await createAdmin();
+    const others = await Promise.all(
+      [1, 2, 3, 4, 5].map(async (index) => {
+        const created = await createAgent(
+          integrationDatabase,
+          adminActor(admin.id),
+          createAgentSchema.parse({ persona: originalPersonaPack.personas[index] }),
+        );
+        return created.agent;
+      }),
+    );
+    const sharedUrl = `https://yaygin-kaynak-${randomUUID()}.example.org/feed.xml`;
+    const hold = (agentProfileId: string) =>
+      integrationDatabase.agentSource.create({
+        data: {
+          agentProfileId,
+          url: sharedUrl,
+          normalizedDomain: new URL(sharedUrl).hostname,
+          sourceType: "RSS",
+          status: "TRUSTED",
+          topics: ["kent"],
+          trustScore: 0.5,
+          interestScore: 0.5,
+          noveltyScore: 0.5,
+          usefulnessScore: 0.5,
+          addedByOrigin: "INITIAL_PERSONA",
+        },
+      });
+    const sharedSource = await hold(others[0]!.profile.id);
+    for (const other of others.slice(1, initialHolders)) await hold(other.profile.id);
+    const sharedItem = await integrationDatabase.agentSourceItem.create({
+      data: {
+        sourceId: sharedSource.id,
+        canonicalUrl: `${sharedUrl}#1`,
+        title: "Yaygın kaynak dosyası",
+        fetchedAt: new Date(),
+        contentHash: randomUUID().replaceAll("-", ""),
+        safeText: "Yaygın kaynağın öğesi.",
+        topics: ["kent"],
+      },
+    });
+    for (const other of others.slice(0, 2)) {
+      const citingRun = await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: other.profile.id,
+          runType: "NORMAL_WAKE",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "INTEGRATION_TEST",
+          requestedById: admin.id,
+          personaVersionId: other.personaVersion.id,
+          idempotencyKey: randomUUID(),
+          timeoutSeconds: 600,
+          desiredEntryMin: 1,
+          desiredEntryMax: 1,
+        },
+      });
+      await integrationDatabase.agentAction.create({
+        data: {
+          runId: citingRun.id,
+          agentProfileId: other.profile.id,
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          actionStatus: "SUCCEEDED",
+          input: {},
+          provenance: {
+            evidenceType: "TRUSTED_SOURCE",
+            evidenceIds: [sharedItem.id],
+            shortRationale: "Kaynak öğesine dayanan entry.",
+          },
+        },
+      });
+    }
+    const workerId = `source-holder-${randomUUID()}`;
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      workerId,
+    );
+    const candidates = (context.perception as { sourceCandidates?: Array<Record<string, unknown>> })
+      .sourceCandidates;
+    return {
+      fixture,
+      others,
+      sharedUrl,
+      sharedSource,
+      hold,
+      workerId,
+      writePrincipal,
+      runId,
+      candidates,
+    };
+  }
+
+  it("does not present a source candidate already held by five agents", async () => {
+    const { sharedSource, candidates } = await sharedSourceScenario(5);
+    expect(candidates?.some((row) => row.candidateId === sharedSource.id) ?? false).toBe(false);
+  });
+
+  it("rejects adopting a presented candidate that reached five holders meanwhile", async () => {
+    const scenario = await sharedSourceScenario(4);
+    const { fixture, others, sharedUrl, sharedSource, hold, workerId, writePrincipal, runId } =
+      scenario;
+    expect(scenario.candidates?.some((row) => row.candidateId === sharedSource.id)).toBe(true);
+    await hold(others[4]!.profile.id);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "PROPOSE_SOURCE",
+            safeReason: "Sunulan kaynak adayı kendi listeme ekleniyor.",
+            input: { candidateId: sharedSource.id },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Aday bu koşuda sunuldu.",
+            },
+          },
+        ],
+      }),
+    );
+    const executed = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 1,
+    });
+    expect(executed.actionStatus).not.toBe("SUCCEEDED");
+    expect(
+      await integrationDatabase.agentSource.findFirst({
+        where: { agentProfileId: fixture.created.agent.profile.id, url: sharedUrl },
+      }),
+    ).toBeNull();
+  });
+
   it("stops presenting source candidates once the agent's list is full", async () => {
     /*
       Edinmenin kotası yoktu: `proposeRuntimeSource` hiçbir sayım yapmıyor,

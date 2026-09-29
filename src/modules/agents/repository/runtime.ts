@@ -18,6 +18,7 @@ import {
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import {
   runtimeAgentSourceLimit,
+  runtimeSourceHolderLimit,
   runtimeSourceCandidateLimit,
   runtimeSourceCandidateMinimumCitingAgents,
   runtimeSourceCandidateWindowDays,
@@ -1952,6 +1953,19 @@ export async function findRuntimeSourceCandidate(
  * yok; onları saymak ajanı geçmişte engellenmiş bir kaynak yüzünden
  * cezalandırırdı.
  */
+/** Kaynağı engellenmemiş biçimde tutan farklı ajan sayısı (`runtimeSourceHolderLimit`). */
+export async function countRuntimeSourceHolders(
+  transaction: Prisma.TransactionClient,
+  url: string,
+): Promise<number> {
+  const holders = await transaction.agentSource.findMany({
+    where: { url, adminBlocked: false, status: { notIn: ["REJECTED", "BLOCKED"] } },
+    distinct: ["agentProfileId"],
+    select: { agentProfileId: true },
+  });
+  return holders.length;
+}
+
 export async function countRuntimeAgentSources(
   transaction: Prisma.TransactionClient,
   agentProfileId: string,
@@ -2043,6 +2057,12 @@ async function listRuntimeSourceCandidates(
         WHERE mine."agentProfileId" = ${input.agentProfileId}::uuid
           AND mine."url" = source."url"
       )
+      AND (
+        SELECT count(DISTINCT held."agentProfileId") FROM "agent_sources" AS held
+        WHERE held."url" = source."url"
+          AND held."adminBlocked" = false
+          AND held."status" NOT IN ('REJECTED', 'BLOCKED')
+      ) < ${runtimeSourceHolderLimit}
     GROUP BY source."url", source."normalizedDomain"
     HAVING count(DISTINCT cited."agentProfileId") >= ${runtimeSourceCandidateMinimumCitingAgents}
     ORDER BY count(DISTINCT cited."agentProfileId") DESC, count(*) DESC, source."url" ASC

@@ -1,3 +1,5 @@
+import { expandedTurkishLanguageSourceUrls } from "@/modules/agents/personas/expanded-sources";
+
 export const sourceLocaleFocusValues = [
   "GLOBAL",
   "TURKISH_LANGUAGE",
@@ -50,6 +52,9 @@ const turkishLanguageSourceUrls = new Set([
   "https://www.trthaber.com/sondakika.rss",
   "https://yesilgazete.org/feed/",
 ]);
+
+// Genişletilmiş havuzun Türkçe kaynakları (`expanded-sources.ts`, 29 Eylül 2026).
+for (const url of expandedTurkishLanguageSourceUrls) turkishLanguageSourceUrls.add(url);
 
 const turkeyFocusedSourceUrls = new Set(["https://www.newslabturkey.org/feed/"]);
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import {
+  expandedTurkishLanguageSourceUrls,
+  expandedVerifiedSources,
+} from "@/modules/agents/personas/expanded-sources";
 import { uniqueVerifiedSourcePool } from "@/modules/agents/personas/source-assignment";
 import {
   isTurkishOrTurkeyFocused,
@@ -10,18 +14,20 @@ import {
 } from "@/modules/agents/personas/source-locale-metadata";
 import { seedPersonaPackSchema } from "@/modules/agents/personas/schema";
 
-const canonicalUrls = new Set(
-  uniqueVerifiedSourcePool(seedPersonaPackSchema.parse(originalPersonaPack).personas).map(
-    ({ url }) => url,
-  ),
-);
+const packUrls = uniqueVerifiedSourcePool(
+  seedPersonaPackSchema.parse(originalPersonaPack).personas,
+).map(({ url }) => url);
+// Paket havuzu + genişletilmiş doğrulanmış havuz (29 Eylül 2026).
+const canonicalUrls = new Set([...packUrls, ...expandedVerifiedSources.map(({ url }) => url)]);
 
 describe("reviewed source locale metadata", () => {
   it("keeps the reviewed Turkish or Türkiye-focused floor explicit", () => {
     const reviewed = reviewedTurkishOrTurkeyFocusedSourceUrls();
 
-    expect(reviewed).toHaveLength(43);
-    expect(new Set(reviewed).size).toBe(43);
+    // 43 paket kaynağı + genişletilmiş havuzun Türkçe kaynakları (29 Eylül 2026).
+    expect(new Set(reviewed).size).toBe(reviewed.length);
+    expect(reviewed.length).toBeGreaterThan(43);
+    for (const url of expandedTurkishLanguageSourceUrls) expect(reviewed).toContain(url);
     expect(reviewed).toEqual([...reviewed].sort());
     expect(reviewed.every((url) => canonicalUrls.has(url))).toBe(true);
     expect(reviewed.every((url) => isTurkishOrTurkeyFocused(reviewedSourceLocaleFocus(url)))).toBe(
