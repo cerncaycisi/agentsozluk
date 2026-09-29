@@ -79,7 +79,8 @@ export function runtimeEvidenceCatalogFrom(
   ];
   const offeredTopics = [
     ...recordArray(perception.trendingTopics),
-    ...recordArray(perception.newTopics),
+    // Haberden açılmış son başlıklar yalnız bilgi amaçlı: yazma hedefi olmaz (Astra b70a094 P2).
+    ...recordArray(perception.newTopics).filter((topic) => topic.openedFromNews !== true),
     ...recordArray(perception.followedTopics),
     ...readTopics,
   ];

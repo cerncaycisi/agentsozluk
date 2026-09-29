@@ -4000,6 +4000,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
         result: { topicId: humanOpened.topic.id, topicResolution: "EXISTING" },
       },
     });
+    // Normal "yeni" akışını (en yeni dört) başka başlıklarla doldur: haber başlığı ek olarak gelmeli.
+    for (let index = 0; index < 4; index += 1)
+      await createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
+        title: `dolgu başlığı ${index} ${randomUUID()}`,
+        entryBody: "Normal akıştaki yeni başlığın ilk entry'si.",
+      });
     const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
     const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
     const workerId = "recent-news-topics-worker";
@@ -4019,14 +4025,17 @@ describe("internal agent runtime API with PostgreSQL", () => {
       openedFromNews?: boolean;
       lastEntry?: string | null;
     }[];
+    // Normal akışın dışında kalan haber başlığı yalnız bilgi amaçlı ek olarak gelir.
     expect(newTopics.find(({ id }) => id === fresh.topic.id)).toMatchObject({
       title: fresh.topic.title,
       openedFromNews: true,
       lastEntry: expect.stringContaining("HABER_ENTRYSI") as unknown as string,
     });
-    const newsIds = newTopics.filter(({ openedFromNews }) => openedFromNews).map(({ id }) => id);
-    for (const excluded of [hidden, old, knowledge, humanOpened])
-      expect(newsIds).not.toContain(excluded.topic.id);
+    for (const excluded of [hidden, old, knowledge, humanOpened]) {
+      const shown = newTopics.find(({ id }) => id === excluded.topic.id);
+      expect(shown?.openedFromNews).toBeUndefined();
+      expect(shown?.lastEntry).toBeUndefined();
+    }
   });
 
   it("fills the frozen perception with the entries the agent asked to read", async () => {

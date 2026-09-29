@@ -77,4 +77,21 @@ describe("runtime typed evidence catalog", () => {
     expect(catalog.TRUSTED_SOURCE).toEqual([]);
     expect(catalog.AGENT_MEMORY).toEqual([]);
   });
+
+  it("keeps news-opened topics shown only for information out of the writable catalog", () => {
+    const runId = randomUUID();
+    const feedTopic = randomUUID();
+    const newsTopic = randomUUID();
+    const catalog = runtimeEvidenceCatalogFrom(
+      {
+        newTopics: [
+          { id: feedTopic, title: "yeni açılan" },
+          { id: newsTopic, title: "haberden açılan", openedFromNews: true },
+        ],
+      },
+      runId,
+    );
+    expect(catalog.PLATFORM_EVENT).toContain(feedTopic);
+    expect(catalog.PLATFORM_EVENT).not.toContain(newsTopic);
+  });
 });

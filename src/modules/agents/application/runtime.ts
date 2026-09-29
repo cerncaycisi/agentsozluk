@@ -335,22 +335,28 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     (`getRuntimeRecentSourceTopics`): ajan aynı haberden ikinci kez başlık açmaya kalkmadan
     başlığın var olduğunu ve orada ne yazıldığını görür.
   */
-  const newsTopic = (topic: (typeof records.recentSourceTopics)[number]) => ({
-    id: topic.id,
-    title: topic.title,
-    entryCount: topic.entryCount,
-    openedFromNews: true,
-    lastEntry: topic.lastEntryBody ? truncateUntrustedText(topic.lastEntryBody, 200) : null,
-  });
+  const newsPreview = (topic: (typeof records.recentSourceTopics)[number]) =>
+    topic.lastEntryBody ? truncateUntrustedText(topic.lastEntryBody, 200) : null;
   const recentNewsById = new Map(records.recentSourceTopics.map((topic) => [topic.id, topic]));
   const newTopics = [
+    /*
+      Normal akıştaki başlık okunabilir kalır (Astra b70a094 P2); haberden açılmışsa yalnız
+      son entry önizlemesi eklenir.
+    */
     ...feedNewTopics.map((topic) => {
       const news = recentNewsById.get(topic.id);
-      return news ? newsTopic(news) : topic;
+      return news ? { ...topic, lastEntry: newsPreview(news) } : topic;
     }),
+    // Yalnız bilgi amaçlı ekler: menüye, allowlist'e ve kanıt kataloğuna girmez.
     ...records.recentSourceTopics
       .filter(({ id }) => !feedNewTopics.some((topic) => topic.id === id))
-      .map(newsTopic),
+      .map((topic) => ({
+        id: topic.id,
+        title: topic.title,
+        entryCount: topic.entryCount,
+        openedFromNews: true,
+        lastEntry: newsPreview(topic),
+      })),
   ];
   /*
     Takip edilen yazarların son işi. `relationships` kimi takip ettiğini ve ne kadar

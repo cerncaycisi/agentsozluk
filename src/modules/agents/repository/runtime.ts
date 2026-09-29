@@ -2741,51 +2741,79 @@ export async function getRuntimeRecentSourceTopics(
     ...publiclyVisibleEntryWhere,
     ...(input.blockedUserIds.length > 0 ? { authorId: { notIn: [...input.blockedUserIds] } } : {}),
   };
-  const topics = await transaction.topic.findMany({
-    where: {
-      status: "ACTIVE",
-      createdAt: { gte: new Date(input.now.getTime() - 48 * 60 * 60 * 1000) },
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 150,
-    select: {
-      id: true,
-      title: true,
-      _count: { select: { entries: { where: visible } } },
-      entries: { orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 1, select: { id: true } },
-    },
-  });
-  const firstEntryIds = topics.flatMap((topic) => topic.entries.map(({ id }) => id));
-  if (firstEntryIds.length === 0) return [];
-  const records = await transaction.agentContentRecord.findMany({
-    where: { entryId: { in: firstEntryIds } },
-    select: { entryId: true, actionId: true },
-  });
-  const actions = await transaction.agentAction.findMany({
-    where: {
-      id: { in: records.map(({ actionId }) => actionId) },
-      actionType: "CREATE_TOPIC_WITH_ENTRY",
-      actionStatus: "SUCCEEDED",
-    },
-    select: { id: true, provenance: true },
-  });
   const sourceTypes = new Set(["TRUSTED_SOURCE", "PROBATION_SOURCE", "MULTIPLE_SOURCES"]);
-  const sourceActionIds = new Set(
-    actions
-      .filter(({ provenance }) =>
-        sourceTypes.has(String((provenance as Record<string, unknown> | null)?.evidenceType)),
+  const since = new Date(input.now.getTime() - 48 * 60 * 60 * 1000);
+  const chosen: Array<{ id: string; title: string; entryCount: number }> = [];
+  /*
+    Sayfalı tarama (Astra b70a094 P2): uygun başlık sayısı sınıra ulaşana ya da 48 saatlik
+    pencere bitene kadar; maliyet için en fazla dört sayfa × 150 başlık.
+  */
+  let cursor: { createdAt: Date; id: string } | null = null;
+  for (let page = 0; page < 4 && chosen.length < input.limit; page += 1) {
+    const topics: Array<{
+      id: string;
+      title: string;
+      createdAt: Date;
+      _count: { entries: number };
+      entries: Array<{ id: string }>;
+    }> = await transaction.topic.findMany({
+      where: {
+        status: "ACTIVE",
+        createdAt: { gte: since },
+        ...(cursor
+          ? {
+              OR: [
+                { createdAt: { lt: cursor.createdAt } },
+                { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 150,
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        _count: { select: { entries: { where: visible } } },
+        entries: { orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 1, select: { id: true } },
+      },
+    });
+    if (topics.length === 0) break;
+    const last = topics[topics.length - 1]!;
+    cursor = { createdAt: last.createdAt, id: last.id };
+    const firstEntryIds = topics.flatMap((topic) => topic.entries.map(({ id }) => id));
+    const records = await transaction.agentContentRecord.findMany({
+      where: { entryId: { in: firstEntryIds } },
+      select: { entryId: true, actionId: true },
+    });
+    const actions = await transaction.agentAction.findMany({
+      where: {
+        id: { in: records.map(({ actionId }) => actionId) },
+        actionType: "CREATE_TOPIC_WITH_ENTRY",
+        actionStatus: "SUCCEEDED",
+      },
+      select: { id: true, provenance: true },
+    });
+    const sourceActionIds = new Set(
+      actions
+        .filter(({ provenance }) =>
+          sourceTypes.has(String((provenance as Record<string, unknown> | null)?.evidenceType)),
+        )
+        .map(({ id }) => id),
+    );
+    const sourceFirstEntries = new Set(
+      records.filter(({ actionId }) => sourceActionIds.has(actionId)).map(({ entryId }) => entryId),
+    );
+    for (const topic of topics)
+      if (
+        chosen.length < input.limit &&
+        topic._count.entries > 0 &&
+        topic.entries.some(({ id }) => sourceFirstEntries.has(id))
       )
-      .map(({ id }) => id),
-  );
-  const sourceFirstEntries = new Set(
-    records.filter(({ actionId }) => sourceActionIds.has(actionId)).map(({ entryId }) => entryId),
-  );
-  const chosen = topics
-    .filter(
-      (topic) =>
-        topic._count.entries > 0 && topic.entries.some(({ id }) => sourceFirstEntries.has(id)),
-    )
-    .slice(0, input.limit);
+        chosen.push({ id: topic.id, title: topic.title, entryCount: topic._count.entries });
+    if (topics.length < 150) break;
+  }
   if (chosen.length === 0) return [];
   const latest = await transaction.entry.findMany({
     where: { topicId: { in: chosen.map(({ id }) => id) }, ...visible },
@@ -2794,12 +2822,7 @@ export async function getRuntimeRecentSourceTopics(
     select: { topicId: true, body: true },
   });
   const latestBody = new Map(latest.map(({ topicId, body }) => [topicId, body]));
-  return chosen.map((topic) => ({
-    id: topic.id,
-    title: topic.title,
-    entryCount: topic._count.entries,
-    lastEntryBody: latestBody.get(topic.id) ?? null,
-  }));
+  return chosen.map((topic) => ({ ...topic, lastEntryBody: latestBody.get(topic.id) ?? null }));
 }
 
 export async function getRuntimePerceptionRecords(
