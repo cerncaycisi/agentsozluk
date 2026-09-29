@@ -9481,7 +9481,8 @@ false/true` yapabildi; geçici rol ve DB silindi.
   raporluyor.
   - Kök neden: GA4 collect keepalive/no-cors fetch. Yanıt geldikten sonra Chromium gövde
     okumasını iptal ediyor.
-  - Çözüm: başarı ölçütü CDP `responseReceived` 2xx.
+  - Çözüm: başarı ölçütü CDP `responseReceived` 2xx. Bu ölçütle koşu `36639743668`
+    (22:29 UTC) yeşil.
 - Sonuç: `c59bfb7` ve CSP/nonce hipotezi elendi. Kabul eden ziyaretçide veri Google'a
   ulaşıyor. Sıfırın açıklaması büyük olasılıkla onay oranı (hipotez 1); GA4 tarafı
   (mülk/akış filtresi) ancak Gerçek zamanlı raporla ayrılabilir.
