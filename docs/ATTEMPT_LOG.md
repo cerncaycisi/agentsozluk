@@ -9457,3 +9457,34 @@ false/true` yapabildi; geçici rol ve DB silindi.
     `agent-sozluk-runtime.service`.
   - Uzlaştırmayı doğrulama için yeniden çalıştırma: her çalıştırma olay ve audit kaydı ekler.
     Salt okunur sorguyla doğrula.
+
+## 2026-09-29 — GA4'e 23 Eylül'den beri olay düşmüyor: kod zinciri çalışıyor
+
+- Belirti (Gökhan): GA4'te 15–22 Eylül arasında günde 1–5 oturum var, 23–29 Eylül arası
+  sıfır. Search Console aynı dönemde günde 2–3 organik tıklama gösteriyor.
+- Hipotezler:
+  1. Çerez onayı. 22 Eylül'den beri etiketler yalnız "Kabul et" sonrası yükleniyor ve
+     `kabul-v2` eski onayları geçersiz sayıyor.
+  2. `c59bfb7`. Etiketler effect'te, CSP nonce'uyla `<head>`'e elle ekleniyor.
+- Mevcut `production-consent-smoke` bu soruyu yanıtlayamıyordu: Google isteklerini bilerek
+  engelliyor, yalnız `gtm.js`'nin istendiğini kanıtlıyor. Elle tetiklenen
+  `production-analytics-probe` eklendi (#258, #260, #261, #262; her biri Astra KOD GO).
+  Sonda gerçek Chrome'da tek bir anonim oturum açıp "Kabul et"e tıklıyor.
+- Ölçüm, Actions koşuları `36635691698`, `36637077543`, `36638396742`:
+  - Kabulden önce sıfır ölçüm isteği gidiyor; onay kapısı doğru.
+  - Kabulden sonra GTM etiketi, `gtm.js`, `gtag/js` yükleniyor; `_ga` ve
+    `_ga_TRGGP03ZLV` yazılıyor.
+  - `G-TRGGP03ZLV` kimlikli `page_view` ve `user_engagement` `POST /g/collect` gidiyor.
+  - CSP ihlali yok, beklenmeyen istek yok.
+  - CDP ağ katmanı: `page_view` isteklerine Google **HTTP 204** döndü.
+- Güvenli yanılgı: Playwright bu istekleri `requestfailed` / `net::ERR_ABORTED` olarak
+  raporluyor.
+  - Kök neden: GA4 collect keepalive/no-cors fetch. Yanıt geldikten sonra Chromium gövde
+    okumasını iptal ediyor.
+  - Çözüm: başarı ölçütü CDP `responseReceived` 2xx.
+- Sonuç: `c59bfb7` ve CSP/nonce hipotezi elendi. Kabul eden ziyaretçide veri Google'a
+  ulaşıyor. Sıfırın açıklaması büyük olasılıkla onay oranı (hipotez 1); GA4 tarafı
+  (mülk/akış filtresi) ancak Gerçek zamanlı raporla ayrılabilir.
+- **Tekrarlama:**
+  - GA4 teşhisinde onay smoke'una güvenme; o Google'ı engeller.
+  - Playwright'ın `ERR_ABORTED`'ını kayıp sayma; CDP durumuna bak.
