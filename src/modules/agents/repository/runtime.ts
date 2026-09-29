@@ -2723,64 +2723,105 @@ export async function getRuntimeReadTopics(
 /*
   Haber kapsamı (28 Eylül 2026). Canlıda tekrar redlerinin 34'ünden 33'ü, ajanın haberden yeni
   başlık açmaya çalışıp o haberin başlığının zaten açılmış ve aynı şeyin zaten yazılmış olduğu
-  durumdu: ajan başlığın varlığını ancak kapıya çarpınca öğreniyordu. Bir kaynak öğesinden son
-  14 günde açılan ya da o öğeye dayanarak yazılan başlık, başarılı içerik aksiyonunun
-  `provenance.evidenceIds` alanından bulunur. Kimlik taşınmaz, yalnız başlık adı, görünür entry
-  sayısı ve iki kısa önizleme: kanıt kataloğu ve yazma kapıları değişmez.
+  durumdu: ajan başlığın varlığını ancak kapıya çarpınca öğreniyordu.
+
+  Kaynaklar ajan başına ayrı kayıt; aynı haber her ajanda farklı kimlikli bir öğedir. Bu yüzden
+  eşleşme öğe kimliğiyle değil haberin kendisiyle kurulur: gösterilen öğe ile son 14 günde
+  başarılı bir kaynak dayanaklı içerik aksiyonunun dayandığı öğe aynı `canonicalUrl` ya da aynı
+  `contentHash` değerini taşıyorsa o aksiyonun başlığı bu haberin başlığıdır (Astra 6c46c81
+  P2). Aday başlıklar oluşturulma sırasıyla tutulur ve görünürlük süzgecinden SONRA ilk görünür
+  olan seçilir; gizlenmiş ilk başlık geçerli ikinciyi kaybettirmez.
+
+  Kimlik taşınmaz, yalnız başlık adı, görünür entry sayısı ve iki kısa önizleme: kanıt kataloğu
+  ve yazma kapıları değişmez.
 */
 export async function getRuntimeSourceItemCoverage(
   transaction: Prisma.TransactionClient,
   input: { itemIds: readonly string[]; now: Date; blockedUserIds: readonly string[] },
 ) {
-  const itemIds = [...new Set(input.itemIds)];
   const coverage = new Map<
     string,
     { title: string; entryCount: number; recentEntryBodies: string[] }
   >();
+  const itemIds = [...new Set(input.itemIds)];
   if (itemIds.length === 0) return coverage;
+  const newsKeys = (item: { canonicalUrl: string; contentHash: string }) => [
+    `url:${item.canonicalUrl}`,
+    `hash:${item.contentHash}`,
+  ];
+  const presented = await transaction.agentSourceItem.findMany({
+    where: { id: { in: itemIds } },
+    select: { id: true, canonicalUrl: true, contentHash: true },
+  });
+  const presentedByKey = new Map<string, string[]>();
+  for (const item of presented)
+    for (const key of newsKeys(item))
+      presentedByKey.set(key, [...(presentedByKey.get(key) ?? []), item.id]);
   const actions = await transaction.agentAction.findMany({
     where: {
       actionStatus: "SUCCEEDED",
       actionType: { in: ["CREATE_TOPIC_WITH_ENTRY", "CREATE_ENTRY"] },
       createdAt: { gte: new Date(input.now.getTime() - 14 * 24 * 60 * 60 * 1000) },
-      OR: itemIds.map((id) => ({ provenance: { path: ["evidenceIds"], array_contains: [id] } })),
+      OR: ["TRUSTED_SOURCE", "PROBATION_SOURCE", "MULTIPLE_SOURCES"].map((evidenceType) => ({
+        provenance: { path: ["evidenceType"], equals: evidenceType },
+      })),
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { provenance: true, result: true },
   });
-  const topicByItem = new Map<string, string>();
+  const evidenceOf = (value: unknown): string[] => {
+    const ids = (value as Record<string, unknown> | null)?.evidenceIds;
+    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [];
+  };
+  const evidenceItems = await transaction.agentSourceItem.findMany({
+    where: {
+      id: { in: [...new Set(actions.flatMap(({ provenance }) => evidenceOf(provenance)))] },
+    },
+    select: { id: true, canonicalUrl: true, contentHash: true },
+  });
+  const evidenceKeys = new Map(evidenceItems.map((item) => [item.id, newsKeys(item)]));
+  const candidates = new Map<string, string[]>();
   for (const action of actions) {
     const topicId = (action.result as Record<string, unknown> | null)?.topicId;
-    const evidenceIds = (action.provenance as Record<string, unknown> | null)?.evidenceIds;
-    if (typeof topicId !== "string" || !Array.isArray(evidenceIds)) continue;
-    for (const id of evidenceIds)
-      if (typeof id === "string" && itemIds.includes(id) && !topicByItem.has(id))
-        topicByItem.set(id, topicId);
+    if (typeof topicId !== "string") continue;
+    for (const evidenceId of evidenceOf(action.provenance))
+      for (const key of evidenceKeys.get(evidenceId) ?? [])
+        for (const itemId of presentedByKey.get(key) ?? []) {
+          const list = candidates.get(itemId) ?? [];
+          if (!list.includes(topicId)) candidates.set(itemId, [...list, topicId]);
+        }
   }
-  if (topicByItem.size === 0) return coverage;
+  if (candidates.size === 0) return coverage;
   const visible = {
     status: "ACTIVE" as const,
     ...publiclyVisibleEntryWhere,
     ...(input.blockedUserIds.length > 0 ? { authorId: { notIn: [...input.blockedUserIds] } } : {}),
   };
   const topics = await transaction.topic.findMany({
-    where: { id: { in: [...new Set(topicByItem.values())] }, status: "ACTIVE" },
+    where: { id: { in: [...new Set([...candidates.values()].flat())] }, status: "ACTIVE" },
     select: {
       id: true,
       title: true,
       _count: { select: { entries: { where: visible } } },
-      entries: { where: visible, orderBy: { createdAt: "desc" }, take: 2, select: { body: true } },
+      entries: {
+        where: visible,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 2,
+        select: { body: true },
+      },
     },
   });
-  const byId = new Map(topics.map((topic) => [topic.id, topic]));
-  for (const [itemId, topicId] of topicByItem) {
-    const topic = byId.get(topicId);
-    if (!topic || topic._count.entries === 0) continue;
-    coverage.set(itemId, {
-      title: topic.title,
-      entryCount: topic._count.entries,
-      recentEntryBodies: topic.entries.map(({ body }) => body),
-    });
+  const byId = new Map(
+    topics.filter((topic) => topic._count.entries > 0).map((topic) => [topic.id, topic]),
+  );
+  for (const [itemId, topicIds] of candidates) {
+    const topic = topicIds.map((id) => byId.get(id)).find(Boolean);
+    if (topic)
+      coverage.set(itemId, {
+        title: topic.title,
+        entryCount: topic._count.entries,
+        recentEntryBodies: topic.entries.map(({ body }) => body),
+      });
   }
   return coverage;
 }

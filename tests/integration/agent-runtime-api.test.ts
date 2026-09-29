@@ -3891,31 +3891,71 @@ describe("internal agent runtime API with PostgreSQL", () => {
     entry'yi geçen başlıklarda düşmesi, ajanın kendi entry'sinin kendisininmiş
     gibi işaretlenmemesi ve perception'ın diske yeniden yazılmaması.
   */
-  it("shows the topic already opened from a news item next to that item in perception", async () => {
+  it("shows the topic another agent already opened from the same news next to that item", async () => {
     /*
       Haber kapsamı: tekrar redlerinin çoğu, ajanın zaten açılmış bir haber başlığını yeniden
-      açmaya çalışmasıydı. Kapsanan öğe başlık adı, entry sayısı ve önizlemeyle gelir; kimlik
-      taşımaz. Kapsanmayan öğe boş liste taşır.
+      açmaya çalışmasıydı. Kaynaklar ajan başına ayrı kayıt olduğu için aynı haber her ajanda
+      farklı kimlikli öğedir; eşleşme URL ve içerik özetiyle kurulur (Astra 6c46c81 P2). Aynı
+      haberden açılan ilk başlık gizlenmişse görünür ikinci başlık seçilir. Kimlik taşınmaz;
+      kapsanmayan öğe boş liste taşır.
     */
     const fixture = await createFixture(2);
-    const source = await integrationDatabase.agentSource.findFirstOrThrow({
+    const admin = await createAdmin();
+    const other = await createAgent(
+      integrationDatabase,
+      adminActor(admin.id),
+      createAgentSchema.parse({ persona: originalPersonaPack.personas[1] }),
+    );
+    const ownSource = await integrationDatabase.agentSource.findFirstOrThrow({
       where: { agentProfileId: fixture.created.agent.profile.id, adminBlocked: false },
     });
-    const item = (suffix: string) =>
+    const otherUrl = `https://haber-kapsami-${randomUUID()}.example.org/feed.xml`;
+    const otherSource = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: other.agent.profile.id,
+        url: otherUrl,
+        normalizedDomain: new URL(otherUrl).hostname,
+        sourceType: "RSS",
+        status: "TRUSTED",
+        topics: ["haber"],
+        trustScore: 0.5,
+        interestScore: 0.5,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INITIAL_PERSONA",
+      },
+    });
+    const newsUrl = `https://${ownSource.normalizedDomain}/haber-kapsami-${randomUUID()}`;
+    const newsHash = randomUUID().replaceAll("-", "").padEnd(64, "0");
+    const item = (sourceId: string, canonicalUrl: string, contentHash: string) =>
       integrationDatabase.agentSourceItem.create({
         data: {
-          sourceId: source.id,
-          canonicalUrl: `https://${source.normalizedDomain}/haber-kapsami-${suffix}`,
-          title: `Haber kapsamı öğesi ${suffix}`,
+          sourceId,
+          canonicalUrl,
+          title: "Haber kapsamı öğesi",
           fetchedAt: new Date(),
-          contentHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+          contentHash,
           safeText: "Haber kapsamı entegrasyon öğesi.",
           topics: ["haber"],
         },
       });
-    const covered = await item("kapsanan");
-    const uncovered = await item("kapsanmayan");
-    const topic = await createTopicWithFirstEntry(
+    const covered = await item(ownSource.id, newsUrl, newsHash);
+    const othersCopy = await item(otherSource.id, newsUrl, newsHash);
+    const uncovered = await item(
+      ownSource.id,
+      `${newsUrl}-baska`,
+      randomUUID().replaceAll("-", "").padEnd(64, "1"),
+    );
+    const hidden = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "gizlenen haber başlığı", entryBody: "GIZLI_ENTRY: bu başlık gizlenecek." },
+    );
+    await integrationDatabase.topic.update({
+      where: { id: hidden.topic.id },
+      data: { status: "HIDDEN" },
+    });
+    const visibleTopic = await createTopicWithFirstEntry(
       integrationDatabase,
       adminActor(fixture.admin.id),
       {
@@ -3932,22 +3972,28 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     const runId = leased.run!.id;
     const otherRunId = fixture.runs.map(({ id }) => id).find((id) => id !== runId)!;
-    await integrationDatabase.agentAction.create({
-      data: {
-        runId: otherRunId,
-        agentProfileId: fixture.created.agent.profile.id,
-        sequence: 1,
-        actionType: "CREATE_TOPIC_WITH_ENTRY",
-        actionStatus: "SUCCEEDED",
-        input: { title: "haber kapsamı başlığı", body: "önceki koşunun entry'si" },
-        provenance: {
-          evidenceType: "TRUSTED_SOURCE",
-          evidenceIds: [covered.id],
-          shortRationale: "Önceki koşu bu haberden başlık açtı.",
+    for (const [sequence, created] of [hidden, visibleTopic].entries())
+      await integrationDatabase.agentAction.create({
+        data: {
+          runId: otherRunId,
+          agentProfileId: fixture.created.agent.profile.id,
+          sequence: sequence + 1,
+          actionType: "CREATE_TOPIC_WITH_ENTRY",
+          actionStatus: "SUCCEEDED",
+          input: { title: created.topic.title, body: "önceki koşunun entry'si" },
+          provenance: {
+            evidenceType: "TRUSTED_SOURCE",
+            evidenceIds: [othersCopy.id],
+            shortRationale: "Başka ajanın kaynağındaki aynı haber.",
+          },
+          result: {
+            topicId: created.topic.id,
+            entryId: created.entry.id,
+            topicResolution: "CREATED",
+          },
+          createdAt: new Date(Date.now() - (2 - sequence) * 60_000),
         },
-        result: { topicId: topic.topic.id, entryId: topic.entry.id, topicResolution: "CREATED" },
-      },
-    });
+      });
     const context = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
     const items = context.perception.sourceItems as {
       itemId: string;
@@ -3963,7 +4009,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     ]);
     expect(uncoveredItem?.existingTopics).toEqual([]);
-    expect(JSON.stringify(coveredItem)).not.toContain(topic.topic.id);
+    expect(JSON.stringify(items)).not.toContain(visibleTopic.topic.id);
+    expect(JSON.stringify(items)).not.toContain("GIZLI_ENTRY");
   });
 
   it("fills the frozen perception with the entries the agent asked to read", async () => {
