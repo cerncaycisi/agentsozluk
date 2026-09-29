@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { type Prisma, PrismaClient } from "@prisma/client";
+import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
@@ -4036,6 +4037,93 @@ describe("internal agent runtime API with PostgreSQL", () => {
       expect(shown?.openedFromNews).toBeUndefined();
       expect(shown?.lastEntry).toBeUndefined();
     }
+  });
+
+  it("keeps a news-opened topic that is also in the normal new feed readable, with a preview", async () => {
+    /*
+      Normal "yeni" akışındaki başlık haberden açılmış olsa da okunabilir kalır: bayrak almaz,
+      yalnız son entry önizlemesi eklenir (Astra b70a094 P2, 4074e97 P3).
+    */
+    const fixture = await createFixture();
+    const admin = await createAdmin();
+    const other = await createAgent(
+      integrationDatabase,
+      adminActor(admin.id),
+      createAgentSchema.parse({ persona: originalPersonaPack.personas[1] }),
+    );
+    const otherPersona = await integrationDatabase.agentPersonaVersion.findFirstOrThrow({
+      where: { agentProfileId: other.agent.profile.id },
+    });
+    const otherRun = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: other.agent.profile.id,
+        personaVersionId: otherPersona.id,
+        runType: "NORMAL_WAKE",
+        queuePriority: "MANUAL_SINGLE",
+        runStatus: "SUCCEEDED",
+        trigger: "MANUAL",
+        idempotencyKey: `haber-akis-${randomUUID()}`,
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 1,
+        finishedAt: new Date(),
+      },
+    });
+    const created = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `akıştaki haber başlığı ${randomUUID()}`,
+        entryBody: "AKIS_HABER_ENTRYSI: ilk entry.",
+      },
+    );
+    const action = await integrationDatabase.agentAction.create({
+      data: {
+        runId: otherRun.id,
+        agentProfileId: other.agent.profile.id,
+        sequence: 1,
+        actionType: "CREATE_TOPIC_WITH_ENTRY",
+        actionStatus: "SUCCEEDED",
+        input: { title: created.topic.title, body: "önceki koşunun entry'si" },
+        provenance: {
+          evidenceType: "TRUSTED_SOURCE",
+          evidenceIds: [randomUUID()],
+          shortRationale: "Önceki koşu haberden başlık açtı.",
+        },
+        result: {
+          topicId: created.topic.id,
+          entryId: created.entry.id,
+          topicResolution: "CREATED",
+        },
+      },
+    });
+    await integrationDatabase.agentContentRecord.create({
+      data: {
+        entryId: created.entry.id,
+        agentProfileId: other.agent.profile.id,
+        runId: otherRun.id,
+        actionId: action.id,
+      },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const workerId = "news-feed-readable-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      leased.run!.id,
+      workerId,
+    );
+    const shown = (
+      context.perception.newTopics as { id: string; openedFromNews?: boolean; lastEntry?: string }[]
+    ).find(({ id }) => id === created.topic.id);
+    expect(shown?.openedFromNews).toBeUndefined();
+    expect(shown?.lastEntry).toContain("AKIS_HABER_ENTRYSI");
+    expect([...browsableTopicIds(context.perception)]).toContain(created.topic.id);
   });
 
   it("fills the frozen perception with the entries the agent asked to read", async () => {

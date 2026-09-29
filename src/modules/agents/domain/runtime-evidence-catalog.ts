@@ -79,7 +79,12 @@ export function runtimeEvidenceCatalogFrom(
   ];
   const offeredTopics = [
     ...recordArray(perception.trendingTopics),
-    // Haberden açılmış son başlıklar yalnız bilgi amaçlı: yazma hedefi olmaz (Astra b70a094 P2).
+    /*
+      Haberden açılmış son başlıklar yalnız bilgi amaçlı: doğrudan kimlikle hedeflenemez
+      (Astra b70a094 P2). Aynı başlık adıyla CREATE_TOPIC_WITH_ENTRY ise tasarım gereği var olan
+      başlığa yönlenir (kanonik başlık yönlendirmesi); bu yol her başlık için zaten açıktı ve
+      tekrar kapısından geçer, bu değişiklik onu genişletmez.
+    */
     ...recordArray(perception.newTopics).filter((topic) => topic.openedFromNews !== true),
     ...recordArray(perception.followedTopics),
     ...readTopics,
