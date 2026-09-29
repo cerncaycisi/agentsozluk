@@ -324,7 +324,7 @@ describe("persona kaynak uzlaştırması PostgreSQL ile", () => {
         reconcile = startReconcile(admin.id);
         // Uzlaştırma bu kilidi gerçekten bekleyene kadar dur: sabit süre yüklü ortamda yetmez
         // ve değişiklik önceden commit edilirse eski (SERIALIZABLE) davranış da geçerdi.
-        const deadline = Date.now() + 120_000;
+        const deadline = Date.now() + 60_000;
         for (;;) {
           const [{ waiting }] = await integrationDatabase.$queryRaw<[{ waiting: bigint }]>`
             SELECT count(*) AS waiting FROM pg_locks
@@ -342,7 +342,7 @@ describe("persona kaynak uzlaştırması PostgreSQL ile", () => {
           data: { status: "SEED", adminBlocked: false },
         });
       },
-      { timeout: 60_000 },
+      { timeout: 180_000 },
     );
     const result = await reconcile!;
     expect(result.status).toBe(1);

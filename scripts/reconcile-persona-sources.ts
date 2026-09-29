@@ -197,7 +197,7 @@ async function main(): Promise<void> {
         /*
       Kaynaklar ortak bir planla dağıtılır (`planDiverseSourceAssignment`): bir kaynak en fazla
       beş ajana gider; kanonik paket personaları kendi kaynaklarını korur ama sınıra sayılır.
-      Plan, uygulama ve son denetim tek SERIALIZABLE işlemde, bütün profil kilitleri altında
+      Plan, uygulama ve son denetim tek READ COMMITTED işlemde, bütün profil kilitleri altında
       okunan durumla yapılır: bayat plan uygulanamaz, son denetim başarısızsa hiçbir değişiklik
       kalıcılaşmaz (Astra 93a6c17 ve 60d50e1 P2).
     */
