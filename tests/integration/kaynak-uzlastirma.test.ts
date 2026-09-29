@@ -3,7 +3,10 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { createAgent, createAgentSchema } from "@/modules/agents";
-import { runtimeSourceHolderLimit } from "@/modules/agents/domain/runtime-source-candidates";
+import {
+  runtimeAgentSourceLimit,
+  runtimeSourceHolderLimit,
+} from "@/modules/agents/domain/runtime-source-candidates";
 import { everydayWriterPersonas } from "@/modules/agents/personas/everyday-writer-personas";
 import { organicWriterPersonas } from "@/modules/agents/personas/organic-writer-personas";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
@@ -86,26 +89,57 @@ async function activeSourceCount(agentProfileId: string): Promise<number> {
   });
 }
 
+// createAgent yalnız DRAFT/PAUSED açar; ithal yazarlar kurulumda doğrudan etkinleştirilir.
+async function createWriter(
+  adminId: string,
+  persona: unknown,
+  lifecycleStatus: "ACTIVE" | "PAUSED",
+) {
+  const created = await createAgent(
+    integrationDatabase,
+    actor(adminId),
+    createAgentSchema.parse({ persona, lifecycleStatus: "PAUSED" }),
+  );
+  if (lifecycleStatus === "ACTIVE")
+    await integrationDatabase.agentProfile.update({
+      where: { id: created.agent.profile.id },
+      data: { lifecycleStatus: "ACTIVE" },
+    });
+  return created;
+}
+
+async function addOutsideSource(
+  agentProfileId: string,
+  url: string,
+  addedByOrigin: "AGENT" | "OPERATOR_MANIFOLD_BACKFILL" = "AGENT",
+) {
+  await integrationDatabase.agentSource.upsert({
+    where: { agentProfileId_url: { agentProfileId, url } },
+    update: { addedByOrigin, adminBlocked: false, status: "SEED" },
+    create: {
+      agentProfileId,
+      url,
+      normalizedDomain: new URL(url).hostname,
+      sourceType: "RSS",
+      status: "SEED",
+      topics: ["gündem"],
+      trustScore: 0.5,
+      interestScore: 0.5,
+      noveltyScore: 0.5,
+      usefulnessScore: 0.5,
+      addedByOrigin,
+    },
+  });
+}
+
 beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("persona kaynak uzlaştırması PostgreSQL ile", () => {
   it("beş ajan sınırını çalışma zamanı sayımıyla sağlar, engelleri korur ve idempotenttir", async () => {
     const admin = await createAdmin();
-    // createAgent yalnız DRAFT/PAUSED açar; ithal yazarlar kurulumda doğrudan etkinleştirilir.
-    const create = async (persona: unknown, lifecycleStatus: "ACTIVE" | "PAUSED") => {
-      const created = await createAgent(
-        integrationDatabase,
-        actor(admin.id),
-        createAgentSchema.parse({ persona, lifecycleStatus: "PAUSED" }),
-      );
-      if (lifecycleStatus === "ACTIVE")
-        await integrationDatabase.agentProfile.update({
-          where: { id: created.agent.profile.id },
-          data: { lifecycleStatus: "ACTIVE" },
-        });
-      return created;
-    };
+    const create = (persona: unknown, lifecycleStatus: "ACTIVE" | "PAUSED") =>
+      createWriter(admin.id, persona, lifecycleStatus);
     const canonical = [];
     for (const persona of originalPersonaPack.personas)
       canonical.push(await create(persona, "PAUSED"));
@@ -125,25 +159,11 @@ describe("persona kaynak uzlaştırması PostgreSQL ile", () => {
     // Yedi ithal ajan aynı kaynağı kendisi öğrenmiş (AGENT kökenli): sınır beşte kesilmeli.
     const learnedUrl = "https://www.arkitera.com/feed/";
     for (const agent of imported.slice(0, 7))
-      await integrationDatabase.agentSource.upsert({
-        where: {
-          agentProfileId_url: { agentProfileId: agent.agent.profile.id, url: learnedUrl },
-        },
-        update: { addedByOrigin: "AGENT", adminBlocked: false, status: "SEED" },
-        create: {
-          agentProfileId: agent.agent.profile.id,
-          url: learnedUrl,
-          normalizedDomain: "www.arkitera.com",
-          sourceType: "RSS",
-          status: "SEED",
-          topics: ["mimarlık"],
-          trustScore: 0.5,
-          interestScore: 0.5,
-          noveltyScore: 0.5,
-          usefulnessScore: 0.5,
-          addedByOrigin: "AGENT",
-        },
-      });
+      await addOutsideSource(agent.agent.profile.id, learnedUrl);
+    // Bir ajan 25 farklı kaynağı kendisi eklemiş: plan ile birlikte stok sınırı (25) korunmalı.
+    const hoarder = imported[12]!.agent.profile.id;
+    for (let index = 0; index < 25; index += 1)
+      await addOutsideSource(hoarder, `https://kaynak-${index}.example.org/feed`);
 
     // Kanonik ajanın üç paket kaynağı yönetici engelli: engel korunmalı, ajan alt sınırda kalmalı.
     const canonicalProfileId = canonical[0]!.agent.profile.id;
@@ -178,8 +198,11 @@ describe("persona kaynak uzlaştırması PostgreSQL ile", () => {
       Math.max(runtimeSourceHolderLimit, canonicalPacks.get(pausedUrl) ?? 0),
     );
 
-    for (const agent of [...canonical, ...imported])
-      expect(await activeSourceCount(agent.agent.profile.id)).toBeGreaterThanOrEqual(10);
+    for (const agent of [...canonical, ...imported]) {
+      const count = await activeSourceCount(agent.agent.profile.id);
+      expect(count).toBeGreaterThanOrEqual(10);
+      expect(count).toBeLessThanOrEqual(runtimeAgentSourceLimit);
+    }
     const stillBlocked = await integrationDatabase.agentSource.findMany({
       where: { agentProfileId: canonicalProfileId, url: { in: blockedCanonical } },
       select: { adminBlocked: true, status: true },
@@ -201,5 +224,42 @@ describe("persona kaynak uzlaştırması PostgreSQL ile", () => {
       sourcesCreated: 0,
       sourcesBlocked: 0,
     });
+  }, 600_000);
+
+  it("giderilemeyecek sahiplik aşımında hiçbir değişikliği kalıcılaştırmaz", async () => {
+    const admin = await createAdmin();
+    for (const persona of originalPersonaPack.personas)
+      await createWriter(admin.id, persona, "PAUSED");
+    for (const persona of organicWriterPersonas.slice(0, 4))
+      await createWriter(admin.id, persona, "ACTIVE");
+    // Altı kanonik pakette sabit olan kaynağı hedef dışı bir profil de tutuyor: 7 > 6.
+    const shared = "https://turkiye.un.org/tr/stories/rss.xml";
+    expect(
+      originalPersonaPack.personas.filter(({ sources }) =>
+        sources.some(({ url }) => url === shared),
+      ).length,
+    ).toBe(6);
+    const outsider = await createWriter(admin.id, everydayWriterPersonas[0], "PAUSED");
+    await addOutsideSource(outsider.agent.profile.id, shared, "OPERATOR_MANIFOLD_BACKFILL");
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { runtimeEnabled: false },
+    });
+    const snapshot = async () => ({
+      sources: await integrationDatabase.agentSource.findMany({
+        orderBy: { id: "asc" },
+        select: { id: true, status: true, adminBlocked: true, adminPinned: true },
+      }),
+      personaVersions: await integrationDatabase.agentPersonaVersion.count(),
+    });
+    const before = await snapshot();
+
+    const run = runReconcile(admin.id);
+    expect(run.status).toBe(1);
+    expect(run.output).toMatchObject({
+      status: "SOURCE_RECONCILE_LIMIT_VIOLATED_ROLLED_BACK",
+      holderLimitViolations: [{ url: shared, holders: 7, canonicalPacks: 6 }],
+    });
+    expect(await snapshot()).toEqual(before);
   }, 600_000);
 });

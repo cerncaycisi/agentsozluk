@@ -133,12 +133,14 @@ export function planDiverseSourceAssignment(
     holderLimit?: number;
     perAgent?: number;
     minimum?: number;
+    maxSources?: number;
     externalHolders?: ReadonlyMap<string, number>;
   } = {},
 ): Map<string, PersonaSource[]> {
   const holderLimit = options.holderLimit ?? 5;
   const perAgent = options.perAgent ?? 12;
   const minimum = options.minimum ?? 10;
+  const maxSources = options.maxSources ?? 20;
   const holders = new Map<string, number>(options.externalHolders ?? []);
   const hold = (url: string) => holders.set(url, (holders.get(url) ?? 0) + 1);
   const plan = new Map<string, PersonaSource[]>();
@@ -213,6 +215,10 @@ export function planDiverseSourceAssignment(
               deterministicTieBreak(target.username, right.url),
             ),
         )[0];
+      if (chosen.length >= maxSources)
+        throw new Error(
+          `SOURCE_ASSIGNMENT_PERSONA_SOURCE_LIMIT username=${target.username} assigned=${usable()} required=${minimum} maxSources=${maxSources}`,
+        );
       if (!fallback)
         throw new Error(
           `SOURCE_ASSIGNMENT_CAPACITY_EXCEEDED username=${target.username} assigned=${usable()} required=${minimum} holderLimit=${holderLimit}`,

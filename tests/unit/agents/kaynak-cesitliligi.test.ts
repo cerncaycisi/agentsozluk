@@ -148,6 +148,24 @@ describe("çeşitlendirilmiş kaynak planı", () => {
     expect(chosen.filter(({ url }) => !blocked.has(url)).length).toBeGreaterThanOrEqual(10);
   });
 
+  it("kanonik tamamlama persona kaynak sınırını aşacaksa hata verir", () => {
+    const canonical = pack.personas[0]!;
+    const blocked = new Set(canonical.sources.slice(0, 11).map(({ url }) => url));
+    expect(() =>
+      planDiverseSourceAssignment(
+        [
+          {
+            username: canonical.username,
+            persona: canonical,
+            fixedSources: canonical.sources,
+            excludedUrls: blocked,
+          },
+        ],
+        pool,
+      ),
+    ).toThrow(/SOURCE_ASSIGNMENT_PERSONA_SOURCE_LIMIT/u);
+  });
+
   it("yakınlık yalnız ilgi alanlarından gelir: oyun meraklısına oyun kaynağı düşer", () => {
     const gamer = persona("oyuncu", [
       ["video oyunları", 0.4],
