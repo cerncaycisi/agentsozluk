@@ -34,18 +34,62 @@ const collectMi = (url: URL) =>
 interface CollectKaydi {
   host: string;
   yontem: string;
-  durum: number | "FAILED";
+  durum: number | "FAILED" | "YANIT_YOK";
   tid: string | null;
   en: string | null;
 }
 
-/** Tanıya yalnız kökeni girer: `inline`, `eval` gibi anahtar sözcükler olduğu gibi kalır. */
-function kokenSadelestir(deger: string): string {
-  try {
-    return new URL(deger).origin;
-  } catch {
-    return deger.slice(0, 24);
+/*
+  CSP köprüsü sayfadaki her betiğe açıktır (Astra c87fd73): girdi güvenilmez
+  sayılır. Yönerge sabit bir listeden, adres yalnız ayrıştırılmış http(s) kökeni
+  ya da sabit anahtar sözcük olarak kaydedilir; başka her şey sabit etikettir.
+*/
+const CSP_YONERGELERI = new Set([
+  "default-src",
+  "script-src",
+  "script-src-elem",
+  "script-src-attr",
+  "style-src",
+  "style-src-elem",
+  "style-src-attr",
+  "img-src",
+  "font-src",
+  "connect-src",
+  "frame-src",
+  "child-src",
+  "worker-src",
+  "media-src",
+  "manifest-src",
+  "object-src",
+  "base-uri",
+  "form-action",
+  "frame-ancestors",
+]);
+const CSP_ANAHTARLARI = new Set([
+  "inline",
+  "eval",
+  "data",
+  "blob",
+  "wasm-eval",
+  "trusted-types-sink",
+]);
+
+function cspKaydiSadelestir(yonerge: unknown, adres: unknown): string {
+  const temizYonerge =
+    typeof yonerge === "string" && CSP_YONERGELERI.has(yonerge) ? yonerge : "diger-yonerge";
+  let temizAdres = "gecersiz-adres";
+  if (typeof adres === "string" && adres.length <= 2048) {
+    if (adres === "" || CSP_ANAHTARLARI.has(adres)) temizAdres = adres || "inline";
+    else {
+      try {
+        const url = new URL(adres);
+        if (url.protocol === "https:" || url.protocol === "http:") temizAdres = url.origin;
+      } catch {
+        // sabit etiket kalır
+      }
+    }
   }
+  return `${temizYonerge} ${temizAdres}`;
 }
 
 test.use({ serviceWorkers: "block" });
@@ -74,8 +118,8 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
     await route.abort("blockedbyclient");
   });
   // CSP ihlalleri belge dışında (test sürecinde) birikir: gezinmede kaybolmaz.
-  await context.exposeFunction("__cspKaydet", (yonerge: string, engellenenAdres: string) => {
-    cspIhlalleri.push(`${yonerge} ${kokenSadelestir(engellenenAdres || "inline")}`);
+  await context.exposeFunction("__cspKaydet", (yonerge: unknown, engellenenAdres: unknown) => {
+    if (cspIhlalleri.length < 50) cspIhlalleri.push(cspKaydiSadelestir(yonerge, engellenenAdres));
   });
   await context.addInitScript(() => {
     document.addEventListener("securitypolicyviolation", (olay) => {
@@ -91,22 +135,30 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
     if (olcumHostuMu(url.hostname))
       istekler.push(`${istek.method()} ${url.hostname}${url.pathname}`);
   });
-  const collectKaydet = (url: URL, yontem: string, durum: number | "FAILED") => {
+  const collectKaydet = (
+    url: URL,
+    yontem: string,
+    govde: string | null,
+    durum: CollectKaydi["durum"],
+  ) => {
     if (!collectMi(url)) return;
-    collectler.push({
-      host: url.hostname,
-      yontem,
-      durum,
-      tid: url.searchParams.get("tid"),
-      en: url.searchParams.get("en"),
-    });
+    // tid sorguda ya da (toplu gönderimde) gövdede olabilir; gövdeden yalnız bizim kimliğin
+    // varlığı okunur, başka değer alınmaz.
+    const tid =
+      url.searchParams.get("tid") ?? (govde?.includes(`tid=${GA4_KIMLIGI}`) ? GA4_KIMLIGI : null);
+    collectler.push({ host: url.hostname, yontem, durum, tid, en: url.searchParams.get("en") });
   };
   page.on("requestfinished", async (istek) => {
     const yanit = await istek.response();
-    collectKaydet(new URL(istek.url()), istek.method(), yanit?.status() ?? "FAILED");
+    collectKaydet(
+      new URL(istek.url()),
+      istek.method(),
+      istek.postData(),
+      yanit?.status() ?? "YANIT_YOK",
+    );
   });
   page.on("requestfailed", (istek) => {
-    collectKaydet(new URL(istek.url()), istek.method(), "FAILED");
+    collectKaydet(new URL(istek.url()), istek.method(), istek.postData(), "FAILED");
   });
 
   await page.goto("/");
