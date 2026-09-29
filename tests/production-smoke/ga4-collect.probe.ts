@@ -232,6 +232,45 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
     return { collectler, kabulOncesiOlcum };
   };
 
+  /*
+    CDP tanısı (ikinci koşu `36637077543`): yakalama kapalıyken de collect'ler
+    `net::ERR_ABORTED`. Bu, gerçek iptal ile Chromium'un keepalive/beacon isteklerini
+    sayfaya "iptal" diye raporlaması arasında ayrım yapmaz. Ağ katmanından yalnız sabit
+    sözlüklü alanlar alınır: istek türü, keepalive, HTTP durumu, iptal bayrağı,
+    engelleme nedeni ve CORS hata kodu.
+  */
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Network.enable");
+  const cdpKayit = new Map<string, Record<string, unknown>>();
+  const sabit = (deger: unknown) =>
+    typeof deger === "string" && /^[A-Za-z_:-]{1,60}$/u.test(deger) ? deger : undefined;
+  cdp.on("Network.requestWillBeSent", (olay) => {
+    const url = new URL(olay.request.url);
+    if (!collectMi(url)) return;
+    cdpKayit.set(olay.requestId, {
+      tur: sabit(olay.type),
+      yontem: sabit(olay.request.method),
+      en: url.searchParams.has("en") ? olayAdi(url.searchParams.get("en")) : null,
+      baslatan: sabit(olay.initiator?.type),
+    });
+  });
+  cdp.on("Network.responseReceived", (olay) => {
+    const kayit = cdpKayit.get(olay.requestId);
+    if (kayit) kayit.durum = typeof olay.response.status === "number" ? olay.response.status : null;
+  });
+  cdp.on("Network.loadingFinished", (olay) => {
+    const kayit = cdpKayit.get(olay.requestId);
+    if (kayit) kayit.bitti = true;
+  });
+  cdp.on("Network.loadingFailed", (olay) => {
+    const kayit = cdpKayit.get(olay.requestId);
+    if (!kayit) return;
+    kayit.hata = sabit(olay.errorText) ?? "diger-hata";
+    kayit.iptal = olay.canceled === true;
+    kayit.engel = sabit(olay.blockedReason) ?? null;
+    kayit.cors = sabit(olay.corsErrorStatus?.corsError) ?? null;
+  });
+
   await page.goto("/");
   const serit = page.getByRole("region", { name: "Çerez tercihi" });
   await expect(serit).toBeVisible();
@@ -292,6 +331,7 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
     istekler,
     kabulOncesiOlcum,
     collectler,
+    cdpCollect: [...cdpKayit.values()],
     beklenmeyen,
     cspIhlalleri,
     konsolSayilari,
