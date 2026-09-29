@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Request } from "@playwright/test";
 
 /*
   GA4 ölçüm sondası (29 Eylül 2026). GA4'e 23 Eylül'den beri olay düşmüyor.
@@ -37,6 +37,7 @@ interface CollectKaydi {
   durum: number | "FAILED" | "YANIT_YOK";
   tid: string | null;
   en: string | null;
+  kabulSonrasi: boolean;
 }
 
 /*
@@ -92,6 +93,46 @@ function cspKaydiSadelestir(yonerge: unknown, adres: unknown): string {
   return `${temizYonerge} ${temizAdres}`;
 }
 
+/*
+  Sayfa kaynaklı değerler (dataLayer olayları, collect parametreleri) de güvenilmez
+  sayılır (Astra b818e1e): yalnız bilinen adlar ve biçimi doğrulanmış ölçüm kimliği
+  günlüğe girer; gerisi sabit etikettir.
+*/
+const BILINEN_OLAYLAR = new Set([
+  "gtm.js",
+  "gtm.init",
+  "gtm.init_consent",
+  "gtm.dom",
+  "gtm.load",
+  "gtm.historyChange",
+  "gtm.historyChange-v2",
+  "gtm.scrollDepth",
+  "gtm.click",
+  "gtm.linkClick",
+  "gtm.timer",
+  "gtm.visibility",
+  "page_view",
+  "user_engagement",
+  "scroll",
+  "first_visit",
+  "session_start",
+  "click",
+]);
+const olayAdi = (deger: unknown) =>
+  typeof deger === "string" && BILINEN_OLAYLAR.has(deger) ? deger : "diger-olay";
+const olcumKimligi = (deger: string | null) =>
+  deger === null ? null : /^G-[A-Z0-9]{4,12}$/u.test(deger) ? deger : "gecersiz-kimlik";
+
+/** Toplu gönderim gövdesi satır başına bir parametre kümesidir; `tid` tam eşitlikle okunur. */
+function govdedekiKimlik(govde: string | null): string | null {
+  if (!govde) return null;
+  for (const satir of govde.split(/\r?\n/u)) {
+    const tid = new URLSearchParams(satir).get("tid");
+    if (tid) return tid;
+  }
+  return null;
+}
+
 test.use({ serviceWorkers: "block" });
 
 test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, page }) => {
@@ -135,48 +176,47 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
     if (olcumHostuMu(url.hostname))
       istekler.push(`${istek.method()} ${url.hostname}${url.pathname}`);
   });
-  const collectKaydet = (
-    url: URL,
-    yontem: string,
-    govde: string | null,
-    durum: CollectKaydi["durum"],
-  ) => {
+  // Kabulden SONRA başlayan collect istekleri başlangıç anında işaretlenir (Astra b818e1e P3).
+  let kabulEdildi = false;
+  const kabulSonrasiIstekler = new WeakSet<object>();
+  page.on("request", (istek) => {
+    if (kabulEdildi && collectMi(new URL(istek.url()))) kabulSonrasiIstekler.add(istek);
+  });
+  const collectKaydet = (istek: Request, durum: CollectKaydi["durum"]) => {
+    const url = new URL(istek.url());
     if (!collectMi(url)) return;
-    // tid sorguda ya da (toplu gönderimde) gövdede olabilir; gövdeden yalnız bizim kimliğin
-    // varlığı okunur, başka değer alınmaz.
-    const tid =
-      url.searchParams.get("tid") ?? (govde?.includes(`tid=${GA4_KIMLIGI}`) ? GA4_KIMLIGI : null);
-    collectler.push({ host: url.hostname, yontem, durum, tid, en: url.searchParams.get("en") });
+    collectler.push({
+      host: url.hostname,
+      yontem: istek.method(),
+      durum,
+      tid: olcumKimligi(url.searchParams.get("tid") ?? govdedekiKimlik(istek.postData())),
+      en: url.searchParams.has("en") ? olayAdi(url.searchParams.get("en")) : null,
+      kabulSonrasi: kabulSonrasiIstekler.has(istek),
+    });
   };
   page.on("requestfinished", async (istek) => {
     const yanit = await istek.response();
-    collectKaydet(
-      new URL(istek.url()),
-      istek.method(),
-      istek.postData(),
-      yanit?.status() ?? "YANIT_YOK",
-    );
+    collectKaydet(istek, yanit?.status() ?? "YANIT_YOK");
   });
   page.on("requestfailed", (istek) => {
-    collectKaydet(new URL(istek.url()), istek.method(), istek.postData(), "FAILED");
+    collectKaydet(istek, "FAILED");
   });
 
   await page.goto("/");
   const serit = page.getByRole("region", { name: "Çerez tercihi" });
   await expect(serit).toBeVisible();
-  const kabulAni = collectler.length;
+  kabulEdildi = true;
   await serit.getByRole("button", { name: "Kabul et" }).click();
 
   const basarili = () =>
-    collectler
-      .slice(kabulAni)
-      .filter(
-        (kayit) =>
-          kayit.tid === GA4_KIMLIGI &&
-          typeof kayit.durum === "number" &&
-          kayit.durum >= 200 &&
-          kayit.durum < 300,
-      );
+    collectler.filter(
+      (kayit) =>
+        kayit.kabulSonrasi &&
+        kayit.tid === GA4_KIMLIGI &&
+        typeof kayit.durum === "number" &&
+        kayit.durum >= 200 &&
+        kayit.durum < 300,
+    );
   await expect
     .poll(() => basarili().length, { timeout: 30_000 })
     .toBeGreaterThan(0)
@@ -190,7 +230,7 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
     dataLayerOlaylari: (
       (window as unknown as { dataLayer?: Record<string, unknown>[] }).dataLayer ?? []
     )
-      .map((e) => (typeof e.event === "string" ? e.event.slice(0, 40) : "?"))
+      .map((e) => e.event)
       .slice(0, 20),
     cerezAdlari: document.cookie
       .split(";")
@@ -201,7 +241,14 @@ test("kabul sonrası GA4 collect isteği başarıyla gider", async ({ context, p
   await page.goto("/basliklar").catch(() => undefined);
   await page.waitForTimeout(8_000);
 
-  const tani = { ilkBelge, istekler, collectler, engellenen, cspIhlalleri, konsolSayilari };
+  const tani = {
+    ilkBelge: { ...ilkBelge, dataLayerOlaylari: ilkBelge.dataLayerOlaylari.map(olayAdi) },
+    istekler,
+    collectler,
+    engellenen,
+    cspIhlalleri,
+    konsolSayilari,
+  };
   process.stdout.write(`GA4_SONDA ${JSON.stringify(tani, null, 1)}\n`);
   expect(basarili().length, `${GA4_KIMLIGI} için 2xx collect olmalı`).toBeGreaterThan(0);
 });
