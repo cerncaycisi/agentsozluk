@@ -3927,12 +3927,17 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     const newsUrl = `https://${ownSource.normalizedDomain}/haber-kapsami-${randomUUID()}`;
     const newsHash = randomUUID().replaceAll("-", "").padEnd(64, "0");
-    const item = (sourceId: string, canonicalUrl: string, contentHash: string) =>
+    const item = (
+      sourceId: string,
+      canonicalUrl: string,
+      contentHash: string,
+      title = "Haber kapsamı öğesi",
+    ) =>
       integrationDatabase.agentSourceItem.create({
         data: {
           sourceId,
           canonicalUrl,
-          title: "Haber kapsamı öğesi",
+          title,
           fetchedAt: new Date(),
           contentHash,
           safeText: "Haber kapsamı entegrasyon öğesi.",
@@ -3945,6 +3950,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ownSource.id,
       `${newsUrl}-baska`,
       randomUUID().replaceAll("-", "").padEnd(64, "1"),
+    );
+    // Aynı (genel) URL'de yayımlanmış farklı başlıklı başka haber: eşleşmemeli (Astra d85a659 P2).
+    const sameUrlOtherNews = await item(
+      ownSource.id,
+      newsUrl,
+      randomUUID().replaceAll("-", "").padEnd(64, "2"),
+      "Bambaşka bir haber",
     );
     const hidden = await createTopicWithFirstEntry(
       integrationDatabase,
@@ -3971,12 +3983,30 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
-    const otherRunId = fixture.runs.map(({ id }) => id).find((id) => id !== runId)!;
+    // Aksiyonlar gerçekten diğer ajanın koşusundan (Astra d85a659 P3).
+    const otherPersona = await integrationDatabase.agentPersonaVersion.findFirstOrThrow({
+      where: { agentProfileId: other.agent.profile.id },
+    });
+    const otherRun = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: other.agent.profile.id,
+        personaVersionId: otherPersona.id,
+        runType: "NORMAL_WAKE",
+        queuePriority: "MANUAL_SINGLE",
+        runStatus: "SUCCEEDED",
+        trigger: "MANUAL",
+        idempotencyKey: `haber-kapsami-${randomUUID()}`,
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 1,
+        finishedAt: new Date(),
+      },
+    });
     for (const [sequence, created] of [hidden, visibleTopic].entries())
       await integrationDatabase.agentAction.create({
         data: {
-          runId: otherRunId,
-          agentProfileId: fixture.created.agent.profile.id,
+          runId: otherRun.id,
+          agentProfileId: other.agent.profile.id,
           sequence: sequence + 1,
           actionType: "CREATE_TOPIC_WITH_ENTRY",
           actionStatus: "SUCCEEDED",
@@ -4009,6 +4039,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     ]);
     expect(uncoveredItem?.existingTopics).toEqual([]);
+    expect(items.find(({ itemId }) => itemId === sameUrlOtherNews.id)?.existingTopics).toEqual([]);
     expect(JSON.stringify(items)).not.toContain(visibleTopic.topic.id);
     expect(JSON.stringify(items)).not.toContain("GIZLI_ENTRY");
   });

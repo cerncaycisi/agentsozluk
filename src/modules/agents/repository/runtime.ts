@@ -2725,12 +2725,14 @@ export async function getRuntimeReadTopics(
   başlık açmaya çalışıp o haberin başlığının zaten açılmış ve aynı şeyin zaten yazılmış olduğu
   durumdu: ajan başlığın varlığını ancak kapıya çarpınca öğreniyordu.
 
-  Kaynaklar ajan başına ayrı kayıt; aynı haber her ajanda farklı kimlikli bir öğedir. Bu yüzden
-  eşleşme öğe kimliğiyle değil haberin kendisiyle kurulur: gösterilen öğe ile son 14 günde
-  başarılı bir kaynak dayanaklı içerik aksiyonunun dayandığı öğe aynı `canonicalUrl` ya da aynı
-  `contentHash` değerini taşıyorsa o aksiyonun başlığı bu haberin başlığıdır (Astra 6c46c81
-  P2). Aday başlıklar oluşturulma sırasıyla tutulur ve görünürlük süzgecinden SONRA ilk görünür
-  olan seçilir; gizlenmiş ilk başlık geçerli ikinciyi kaybettirmez.
+  Kaynaklar ajan başına ayrı kayıt; aynı haber her ajanda farklı kimlikli bir öğedir. Eşleşme
+  haberin kendisiyle kurulur: aynı başlık VE (aynı `canonicalUrl` ya da aynı `contentHash`).
+  Başlık şartı, genel ya da sürekli güncellenen bir URL'de yayımlanan farklı haberleri ve RSS'te
+  başlığı içermeyen ortak özetleri ayırır (Astra 6c46c81 ve d85a659 P2). Önce gösterilen
+  öğelerin eşdeğerleri veritabanında daraltılır, sonra yalnız onlara dayanan son 14 günün
+  başarılı içerik aksiyonları aranır; maliyet gösterilen öğe sayısıyla sınırlıdır. Aday
+  başlıklar oluşturulma sırasıyla tutulur ve görünürlük süzgecinden SONRA ilk görünür olan
+  seçilir.
 
   Kimlik taşınmaz, yalnız başlık adı, görünür entry sayısı ve iki kısa önizleme: kanıt kataloğu
   ve yazma kapıları değişmez.
@@ -2745,51 +2747,62 @@ export async function getRuntimeSourceItemCoverage(
   >();
   const itemIds = [...new Set(input.itemIds)];
   if (itemIds.length === 0) return coverage;
-  const newsKeys = (item: { canonicalUrl: string; contentHash: string }) => [
-    `url:${item.canonicalUrl}`,
-    `hash:${item.contentHash}`,
-  ];
+  const newsTitle = (title: string) =>
+    title.normalize("NFKC").toLocaleLowerCase("tr-TR").replaceAll(/\s+/gu, " ").trim();
+  const newsKeys = (item: { canonicalUrl: string; contentHash: string; title: string }) => {
+    const title = newsTitle(item.title);
+    return title.length === 0
+      ? []
+      : [`url:${item.canonicalUrl}|${title}`, `hash:${item.contentHash}|${title}`];
+  };
   const presented = await transaction.agentSourceItem.findMany({
     where: { id: { in: itemIds } },
-    select: { id: true, canonicalUrl: true, contentHash: true },
+    select: { id: true, canonicalUrl: true, contentHash: true, title: true },
   });
   const presentedByKey = new Map<string, string[]>();
   for (const item of presented)
     for (const key of newsKeys(item))
       presentedByKey.set(key, [...(presentedByKey.get(key) ?? []), item.id]);
+  if (presentedByKey.size === 0) return coverage;
+  const equivalents = await transaction.agentSourceItem.findMany({
+    where: {
+      OR: [
+        { canonicalUrl: { in: [...new Set(presented.map(({ canonicalUrl }) => canonicalUrl))] } },
+        { contentHash: { in: [...new Set(presented.map(({ contentHash }) => contentHash))] } },
+      ],
+    },
+    select: { id: true, canonicalUrl: true, contentHash: true, title: true },
+  });
+  const presentedByEquivalent = new Map<string, string[]>();
+  for (const item of equivalents) {
+    const matches = [...new Set(newsKeys(item).flatMap((key) => presentedByKey.get(key) ?? []))];
+    if (matches.length > 0) presentedByEquivalent.set(item.id, matches);
+  }
+  if (presentedByEquivalent.size === 0) return coverage;
   const actions = await transaction.agentAction.findMany({
     where: {
       actionStatus: "SUCCEEDED",
       actionType: { in: ["CREATE_TOPIC_WITH_ENTRY", "CREATE_ENTRY"] },
       createdAt: { gte: new Date(input.now.getTime() - 14 * 24 * 60 * 60 * 1000) },
-      OR: ["TRUSTED_SOURCE", "PROBATION_SOURCE", "MULTIPLE_SOURCES"].map((evidenceType) => ({
-        provenance: { path: ["evidenceType"], equals: evidenceType },
+      OR: [...presentedByEquivalent.keys()].map((id) => ({
+        provenance: { path: ["evidenceIds"], array_contains: [id] },
       })),
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { provenance: true, result: true },
   });
-  const evidenceOf = (value: unknown): string[] => {
-    const ids = (value as Record<string, unknown> | null)?.evidenceIds;
-    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [];
-  };
-  const evidenceItems = await transaction.agentSourceItem.findMany({
-    where: {
-      id: { in: [...new Set(actions.flatMap(({ provenance }) => evidenceOf(provenance)))] },
-    },
-    select: { id: true, canonicalUrl: true, contentHash: true },
-  });
-  const evidenceKeys = new Map(evidenceItems.map((item) => [item.id, newsKeys(item)]));
   const candidates = new Map<string, string[]>();
   for (const action of actions) {
     const topicId = (action.result as Record<string, unknown> | null)?.topicId;
-    if (typeof topicId !== "string") continue;
-    for (const evidenceId of evidenceOf(action.provenance))
-      for (const key of evidenceKeys.get(evidenceId) ?? [])
-        for (const itemId of presentedByKey.get(key) ?? []) {
-          const list = candidates.get(itemId) ?? [];
-          if (!list.includes(topicId)) candidates.set(itemId, [...list, topicId]);
-        }
+    const evidenceIds = (action.provenance as Record<string, unknown> | null)?.evidenceIds;
+    if (typeof topicId !== "string" || !Array.isArray(evidenceIds)) continue;
+    for (const evidenceId of evidenceIds)
+      for (const itemId of typeof evidenceId === "string"
+        ? (presentedByEquivalent.get(evidenceId) ?? [])
+        : []) {
+        const list = candidates.get(itemId) ?? [];
+        if (!list.includes(topicId)) candidates.set(itemId, [...list, topicId]);
+      }
   }
   if (candidates.size === 0) return coverage;
   const visible = {
