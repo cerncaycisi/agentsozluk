@@ -140,12 +140,19 @@ async function main(): Promise<void> {
   const database = getDatabase();
   const admin = await resolveOperatorAdmin(database, environment.AGENT_OPERATOR_ADMIN_ID);
   /*
-    Oturum ömrü (Astra 60f4797 P1/P2): önceki kesintilerden kalmış operatör oturumları
-    temizlenir; yenisi 10 dakikalıktır ve kimlik doğrulama onu uzatmaz. SIGINT/SIGTERM'de
+    Oturum ömrü (Astra 60f4797 P1/P2): önceki kesintilerden kalmış, süresi dolmuş operatör
+    oturumları temizlenir; yenisi 10 dakikalıktır ve kimlik doğrulama onu uzatmaz. SIGINT/SIGTERM'de
     ve her çıkışta iptal edilir; iptal edilemezse bile kendiliğinden kısa sürede düşer.
   */
+  // Yalnız süresi dolmuş kalıntılar: eşzamanlı çalışan komutun etkin oturumu kapatılmaz
+  // (Astra ff3f9c4 P3); etkin kalıntı en geç 10 dakikada kendiliğinden düşer.
   await database.session.updateMany({
-    where: { userId: admin.actorId, userAgent: operatorSessionUserAgent, revokedAt: null },
+    where: {
+      userId: admin.actorId,
+      userAgent: operatorSessionUserAgent,
+      revokedAt: null,
+      expiresAt: { lte: new Date() },
+    },
     data: { revokedAt: new Date() },
   });
   const session = await database.$transaction(async (transaction) => {
