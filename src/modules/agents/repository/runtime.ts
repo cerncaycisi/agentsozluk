@@ -1533,7 +1533,8 @@ export async function lockRuntimeReflectionStateTargets(
         id: { in: sourceIds },
         agentProfileId: input.agentProfileId,
         adminBlocked: false,
-        status: { notIn: ["REJECTED", "BLOCKED"] },
+        // Onay bekleyen, uykudaki, reddedilmiş ve engelli kaynağın güveni değişmez.
+        status: { notIn: [...runtimeUncountedSourceStatuses] },
       },
       select: { id: true, trustScore: true },
     }),

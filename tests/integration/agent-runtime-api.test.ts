@@ -5007,6 +5007,51 @@ describe("internal agent runtime API with PostgreSQL", () => {
       expect(approved.status).toBe("SEED");
     });
 
+    it("durum değişmişse kararı uygulamaz; yönetici kaynağı kuyruğa geri alamaz", async () => {
+      const fixture = await createFixture();
+      const agentProfileId = fixture.created.agent.profile.id;
+      await suggest(fixture, ["https://yaris.example/feed"]);
+      const pending = await integrationDatabase.agentSource.findFirstOrThrow({
+        where: { agentProfileId, normalizedDomain: "yaris.example" },
+      });
+      const admin = adminActor(fixture.admin.id);
+      await updateAgentSourceAdmin(
+        integrationDatabase,
+        admin,
+        pending.id,
+        agentSourceAdminUpdateSchema.parse({
+          status: "REJECTED",
+          reason: "Panelden reddedildi; ilgi alanı dışında kalıyor.",
+        }),
+      );
+      await expect(
+        updateAgentSourceAdmin(
+          integrationDatabase,
+          admin,
+          pending.id,
+          agentSourceAdminUpdateSchema.parse({
+            status: "SEED",
+            expectedStatus: "DISCOVERED",
+            reason: "Operatör komutuyla onaylanıyor (bayat karar).",
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      await expect(
+        updateAgentSourceAdmin(
+          integrationDatabase,
+          admin,
+          pending.id,
+          agentSourceAdminUpdateSchema.parse({
+            status: "DISCOVERED",
+            reason: "Reddedilen öneriyi yeniden kuyruğa alma denemesi.",
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: pending.id } }),
+      ).toMatchObject({ status: "REJECTED" });
+    });
+
     it("aynı adresi ikinci kez ve ajan başına ikiden fazla bekleyen öneriyi kabul etmez", async () => {
       const fixture = await createFixture();
       const agentProfileId = fixture.created.agent.profile.id;

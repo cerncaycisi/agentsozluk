@@ -93,6 +93,7 @@ async function main(): Promise<void> {
       sourceId,
       agentSourceAdminUpdateSchema.parse({
         status: command === "approve" ? "SEED" : "REJECTED",
+        expectedStatus: "DISCOVERED",
         reason,
       }),
     );

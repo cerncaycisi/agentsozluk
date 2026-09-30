@@ -262,6 +262,8 @@ export const agentSourceAdminUpdateSchema = z
     interestScore: z.number().min(0).max(1).optional(),
     noveltyScore: z.number().min(0).max(1).optional(),
     usefulnessScore: z.number().min(0).max(1).optional(),
+    /** Kilit altında beklenen güncel durum; farklıysa güncelleme reddedilir (yarış koruması). */
+    expectedStatus: z.enum(agentSourceStatuses).optional(),
     reason: operatorReasonSchema,
   })
   .strict()
