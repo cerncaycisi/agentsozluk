@@ -229,3 +229,40 @@ export function planDiverseSourceAssignment(
   }
   return plan;
 }
+
+/*
+  Ölü kaynak yerine yedek seçimi (30 Eylül 2026). Ajanın hiçbir durumda tutmadığı,
+  sağlıksız işaretlenmemiş ve beş ajan sınırının altındaki havuz kaynaklarından
+  personanın ilgi alanına en yakın olanı; eşitlikte daha az tutulan, sonra kararlı
+  rastgele. Uygun kaynak yoksa null: ajan bir kaynak eksik kalır, sınır delinmez.
+*/
+export function pickReplacementSource(input: {
+  username: string;
+  persona: SeedPersona;
+  pool: readonly PersonaSource[];
+  heldUrls: ReadonlySet<string>;
+  unhealthyUrls: ReadonlySet<string>;
+  holders: ReadonlyMap<string, number>;
+  holderLimit: number;
+}): PersonaSource | null {
+  let best: { source: PersonaSource; affinity: number; held: number; tie: string } | null = null;
+  for (const source of input.pool) {
+    if (input.heldUrls.has(source.url) || input.unhealthyUrls.has(source.url)) continue;
+    const held = input.holders.get(source.url) ?? 0;
+    if (held >= input.holderLimit) continue;
+    const candidate = {
+      source,
+      affinity: sourceInterestAffinity(input.persona, source),
+      held,
+      tie: deterministicTieBreak(input.username, source.url),
+    };
+    if (
+      !best ||
+      candidate.affinity > best.affinity ||
+      (candidate.affinity === best.affinity &&
+        (candidate.held < best.held || (candidate.held === best.held && candidate.tie < best.tie)))
+    )
+      best = candidate;
+  }
+  return best?.source ?? null;
+}

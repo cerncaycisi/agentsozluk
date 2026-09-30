@@ -21,6 +21,19 @@ export async function lockAgentSettings(transaction: Prisma.TransactionClient): 
   await transaction.$executeRaw`SELECT pg_advisory_xact_lock(92024002)`;
 }
 
+/**
+ * Kaynak kapasitesi kilidi (stok 25, sahip 5). Canlı kaynak ekleyen ya da geri açan her
+ * yol sayım ile yazma arasında bunu alır; her yolda SON alınan kilittir (ardından yalnız
+ * yaşam kaydı kilidi gelir). Ayar kilidi yerine ayrı kilit: yönetici yolu kaynak
+ * kilidinden sonra ayar kilidi alınca reflection yoluyla (ayar → kaynak) döngü
+ * kurulabiliyordu (Astra cfb1985 P2).
+ */
+export async function lockAgentSourceCapacity(
+  transaction: Prisma.TransactionClient,
+): Promise<void> {
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(92024003)`;
+}
+
 export async function lockAgentSource(
   transaction: Prisma.TransactionClient,
   sourceId: string,

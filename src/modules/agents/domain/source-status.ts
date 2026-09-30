@@ -17,6 +17,14 @@ const probationEntrySourceStatuses = ["SEED", "DISCOVERED"] as const;
 const resultRecordableSourceStatuses = [...presentableSourceStatuses, "DORMANT"] as const;
 
 /**
+ * Canlı SAYILMAYAN durumlar: bu satırlar çekilmez ve sunulmaz. Ajan başına stok
+ * (`runtimeAgentSourceLimit`) ve kaynak başına sahip (`runtimeSourceHolderLimit`)
+ * sayımları, aday sorgusu ve uzlaştırma aynı listeyi kullanır. DORMANT (ölü kaynak,
+ * 30 Eylül 2026) eklenmeden önce ölü kaynaklar kota ve sınır işgal ediyordu.
+ */
+export const runtimeUncountedSourceStatuses = ["DORMANT", "REJECTED", "BLOCKED"] as const;
+
+/**
  * Runtime source status policy. Keep status membership here so perception,
  * fetch-result handling, provenance and reporting cannot silently drift apart.
  */

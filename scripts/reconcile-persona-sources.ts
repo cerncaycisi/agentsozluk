@@ -6,7 +6,7 @@ import { getDatabase } from "@/lib/db/client";
 import { sha256 } from "@/lib/security/crypto";
 import { requireAgentAdminInTransaction, updateAgent } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
-import { expandedVerifiedSources } from "@/modules/agents/personas/expanded-sources";
+import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
 import {
   runtimeAgentSourceLimit,
   runtimeSourceHolderLimit,
@@ -16,9 +16,9 @@ import {
   sourceInterestAffinity,
   reconciledCanonicalAdminPinned,
   sourceTopicMappings,
-  uniqueVerifiedSourcePool,
 } from "@/modules/agents/personas/source-assignment";
 import { seedPersonaPackSchema, seedPersonaSchema } from "@/modules/agents/personas/schema";
+import { runtimeUncountedSourceStatuses } from "@/modules/agents/domain/source-status";
 import {
   reconciledSourceLocaleFocus,
   reviewedSourceLocaleFocus,
@@ -84,10 +84,12 @@ const sourceStateSelect = {
 } as const;
 
 function sourceIsActive(row: { status: string; adminBlocked: boolean }): boolean {
-  return !row.adminBlocked && !["REJECTED", "BLOCKED"].includes(row.status);
+  return (
+    !row.adminBlocked && !(runtimeUncountedSourceStatuses as readonly string[]).includes(row.status)
+  );
 }
 
-// Çalışma zamanı sayımıyla aynı: engelsiz, REJECTED/BLOCKED olmayan satırlar; (profil, url) tekil.
+// Çalışma zamanı sayımıyla aynı: engelsiz, `runtimeUncountedSourceStatuses` dışı satırlar; (profil, url) tekil.
 async function runtimeHolderCounts(
   transaction: Prisma.TransactionClient,
   profileFilter?: { notIn: string[] },
@@ -96,7 +98,7 @@ async function runtimeHolderCounts(
     by: ["url"],
     where: {
       adminBlocked: false,
-      status: { notIn: ["REJECTED", "BLOCKED"] },
+      status: { notIn: [...runtimeUncountedSourceStatuses] },
       ...(profileFilter ? { agentProfileId: profileFilter } : {}),
     },
     _count: { _all: true },
@@ -125,9 +127,7 @@ async function main(): Promise<void> {
       canonicalPack.personas.map((persona) => [persona.username, persona]),
     );
     // Paket havuzu + genişletilmiş doğrulanmış havuz (29 Eylül 2026, `expanded-sources.ts`).
-    const verifiedPool = [...uniqueVerifiedSourcePool(canonicalPack.personas)];
-    for (const source of expandedVerifiedSources)
-      if (!verifiedPool.some(({ url }) => url === source.url)) verifiedPool.push(source);
+    const verifiedPool = verifiedSourcePool();
     const summary = await database.$transaction(
       async (transaction) => {
         await requireAgentAdminInTransaction(transaction, actor);
@@ -526,7 +526,7 @@ async function main(): Promise<void> {
           where: {
             agentProfileId: { in: targetIds },
             adminBlocked: false,
-            status: { notIn: ["REJECTED", "BLOCKED"] },
+            status: { notIn: [...runtimeUncountedSourceStatuses] },
           },
           _count: { _all: true },
         });

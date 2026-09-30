@@ -24,7 +24,11 @@ import {
 } from "@/modules/agents/repository/runtime";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
-import { appendRuntimeEvent, lockAgentSettings } from "@/modules/agents/repository/control-plane";
+import {
+  appendRuntimeEvent,
+  lockAgentSettings,
+  lockAgentSourceCapacity,
+} from "@/modules/agents/repository/control-plane";
 import { findRuntimeActionLifeProposal } from "@/modules/agents/repository/life-ledger";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import {
@@ -741,6 +745,7 @@ async function performAction(
         bedeli sürekli. Kontrol burada, çünkü asıl kapı sunucu tarafı olmalı —
         perception'da aday gizlemek yalnız boşuna teklif etmemek için.
       */
+      if (resolved) await lockAgentSourceCapacity(transaction);
       if (
         resolved &&
         (await countRuntimeAgentSources(transaction, principal.agentProfileId)) >=

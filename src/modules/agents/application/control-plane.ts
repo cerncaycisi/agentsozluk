@@ -1,3 +1,12 @@
+import { runtimeUncountedSourceStatuses } from "@/modules/agents/domain/source-status";
+import {
+  runtimeAgentSourceLimit,
+  runtimeSourceHolderLimit,
+} from "@/modules/agents/domain/runtime-source-candidates";
+import {
+  countRuntimeAgentSources,
+  countRuntimeSourceHolders,
+} from "@/modules/agents/repository/runtime";
 import { randomUUID } from "node:crypto";
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, InputJsonValue, TransactionClient } from "@/lib/db/types";
@@ -60,6 +69,7 @@ import {
   lockAgentProfile,
   lockAgentSource,
   lockAgentSettings,
+  lockAgentSourceCapacity,
   rotateAgentCredentialRecords,
   updateAgentLifecycle,
   updateAgentProfileRecords,
@@ -220,6 +230,26 @@ export function updateAgentSourceAdmin(
         422,
         "Pinned source dormant, rejected veya blocked durumuna alınamaz.",
       );
+    /*
+      Uykudaki/engelli kaynağı canlıya döndürmek stok ve sahip sınırlarını aşmamalı
+      (Astra 888f869 P2): yedeği eklenmiş kaynak geri açılınca stok 26 olabiliyordu.
+      Sayım `PROPOSE_SOURCE` ve ölü kaynak değişimiyle aynı kapasite kilidi altında.
+    */
+    const uncounted = (value: string, blocked: boolean) =>
+      blocked || (runtimeUncountedSourceStatuses as readonly string[]).includes(value);
+    if (uncounted(current.status, current.adminBlocked) && !uncounted(status, adminBlocked)) {
+      await lockAgentSourceCapacity(transaction);
+      const [stock, holders] = await Promise.all([
+        countRuntimeAgentSources(transaction, current.agentProfileId),
+        countRuntimeSourceHolders(transaction, current.url),
+      ]);
+      if (stock >= runtimeAgentSourceLimit || holders >= runtimeSourceHolderLimit)
+        throw new AppError(
+          "VALIDATION_ERROR",
+          422,
+          "Kaynak geri açılamaz: ajanın canlı kaynak kotası ya da kaynağın ajan sınırı dolu.",
+        );
+    }
     const updated = await updateAgentSourceAdminRecord(transaction, sourceId, {
       ...(input.localeFocus !== undefined ? { localeFocus: input.localeFocus } : {}),
       ...(input.adminPinned !== undefined ? { adminPinned } : {}),
@@ -495,6 +525,13 @@ export async function createAgent(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
+    /*
+      Oluşturma persona paketinin kaynaklarını ekler; kapasite kilidine katılır ki yönetici
+      geri açmasının sahip denetimi bu eklemeyle yarışmasın (Astra 7eab55e P2). Oluşturma
+      sınırı kendisi uygulamaz: yeni ajan PAUSED/DRAFT açılır, dağıtımı uzlaştırma yapar ve
+      kanonik paketlerin kendisi sınırı aşabilir (belgelenmiş istisna).
+    */
+    await lockAgentSourceCapacity(transaction);
     if (
       isReservedPublicProfileSlug(input.persona.username) ||
       (await findAgentIdentityConflict(transaction, input.persona.username))

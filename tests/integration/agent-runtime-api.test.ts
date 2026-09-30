@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
 import { type Prisma, PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -8518,6 +8519,354 @@ describe("internal agent runtime API with PostgreSQL", () => {
       "RELATIONSHIP_CHANGED",
     ]);
     expect(mutationLife.every(({ afterState }) => afterState !== null)).toBe(true);
+  });
+
+  describe("ölü kaynak değişimi", () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    async function failingSourceScenario(overrides: {
+      consecutiveFailures: number;
+      lastUsefulDaysAgo: number;
+      adminPinned?: boolean;
+      failedResults?: number;
+      sourceEvolutionEnabled?: boolean;
+      errorCode?: string;
+    }) {
+      const fixture = await createFixture();
+      const agentProfileId = fixture.created.agent.profile.id;
+      if (overrides.sourceEvolutionEnabled === false)
+        await integrationDatabase.agentProfile.update({
+          where: { id: agentProfileId },
+          data: { sourceEvolutionEnabled: false },
+        });
+      const domain = "olu-kaynak.integration.test";
+      const source = await integrationDatabase.agentSource.create({
+        data: {
+          agentProfileId,
+          url: `https://${domain}/feed`,
+          normalizedDomain: domain,
+          sourceType: "RSS",
+          status: "PROBATION",
+          topics: ["gündem"],
+          trustScore: 0.5,
+          interestScore: 0.5,
+          noveltyScore: 0.5,
+          usefulnessScore: 0.5,
+          consecutiveFailures: overrides.consecutiveFailures,
+          lastUsefulAt: new Date(Date.now() - overrides.lastUsefulDaysAgo * DAY),
+          createdAt: new Date(Date.now() - 60 * DAY),
+          adminPinned: overrides.adminPinned ?? false,
+          addedByOrigin: "INTEGRATION_TEST",
+        },
+      });
+      const heldBefore = new Set(
+        (
+          await integrationDatabase.agentSource.findMany({
+            where: { agentProfileId },
+            select: { url: true },
+          })
+        ).map(({ url }) => url),
+      );
+      const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+      const writePrincipal = await runtimePrincipal(fixture.credential);
+      const workerId = "dormancy-worker";
+      const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+        workerId,
+        leaseSeconds: 60,
+      });
+      const runId = leased.run!.id;
+      for (let attempt = 0; attempt < (overrides.failedResults ?? 1); attempt += 1) {
+        const attemptId = randomUUID();
+        await recordRuntimeSourceAttempt(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          runtimeSourceAttemptSchema.parse({ workerId, attemptId, sourceId: source.id }),
+        );
+        await recordRuntimeSourceResult(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          runtimeSourceResultSchema.parse({
+            workerId,
+            attemptId,
+            sourceId: source.id,
+            items: [],
+            errorCode: overrides.errorCode ?? "SOURCE_HTTP_503",
+          }),
+        );
+      }
+      return { fixture, agentProfileId, source, heldBefore, runId };
+    }
+
+    it("uzun süredir okunamayan kaynağı uykuya alır ve havuzdan yedek koyar", async () => {
+      const { agentProfileId, source, heldBefore, runId } = await failingSourceScenario({
+        consecutiveFailures: 0,
+        lastUsefulDaysAgo: 10,
+        failedResults: 6,
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: source.id } }),
+      ).toMatchObject({ status: "DORMANT", consecutiveFailures: 6, adminBlocked: false });
+      const replacement = await integrationDatabase.agentSource.findFirstOrThrow({
+        where: { agentProfileId, addedByOrigin: "SOURCE_REPLACEMENT" },
+      });
+      expect(replacement).toMatchObject({
+        status: "SEED",
+        discoveredFrom: `replacement:${source.id}`,
+      });
+      expect(heldBefore.has(replacement.url)).toBe(false);
+      expect(verifiedSourcePool().some(({ url }) => url === replacement.url)).toBe(true);
+      expect(
+        await integrationDatabase.outboxEvent.findMany({
+          where: {
+            eventType: "agent.source.changed",
+            aggregateId: { in: [source.id, replacement.id] },
+          },
+          select: { aggregateId: true, payload: true },
+        }),
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            aggregateId: source.id,
+            payload: expect.objectContaining({
+              reasonCode: "SOURCE_DORMANT",
+              dormancyReason: "FETCH_FAILING",
+            }),
+          }),
+          expect.objectContaining({
+            aggregateId: replacement.id,
+            payload: expect.objectContaining({
+              reasonCode: "SOURCE_REPLACED",
+              replacedSourceId: source.id,
+            }),
+          }),
+        ]),
+      );
+      expect(
+        await integrationDatabase.agentRuntimeEvent.count({
+          where: {
+            agentProfileId,
+            runId,
+            eventType: "SOURCE_STATE_CHANGED",
+            metadata: { path: ["origin"], equals: "SOURCE_REPLACEMENT" },
+          },
+        }),
+      ).toBe(1);
+    });
+
+    it("aynı alan adının sayacı yüksek ama kaynağın kendi geçmişi temizse dokunmaz", async () => {
+      const { agentProfileId, source } = await failingSourceScenario({
+        consecutiveFailures: 5,
+        lastUsefulDaysAgo: 30,
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: source.id } }),
+      ).toMatchObject({ status: "PROBATION", consecutiveFailures: 6 });
+      expect(
+        await integrationDatabase.agentSource.count({
+          where: { agentProfileId, addedByOrigin: "SOURCE_REPLACEMENT" },
+        }),
+      ).toBe(0);
+    });
+
+    it("aynı alan adındaki başka kaynağın başarısı ölü kaynağın emekliliğini engellemez", async () => {
+      const fixture = await createFixture();
+      const agentProfileId = fixture.created.agent.profile.id;
+      const domain = "karisik-alan.integration.test";
+      const make = (path: string, lastUsefulDaysAgo: number) =>
+        integrationDatabase.agentSource.create({
+          data: {
+            agentProfileId,
+            url: `https://${domain}/${path}`,
+            normalizedDomain: domain,
+            sourceType: "RSS",
+            status: "PROBATION",
+            topics: ["gündem"],
+            trustScore: 0.5,
+            interestScore: 0.5,
+            noveltyScore: 0.5,
+            usefulnessScore: 0.5,
+            lastUsefulAt: new Date(Date.now() - lastUsefulDaysAgo * DAY),
+            createdAt: new Date(Date.now() - 60 * DAY),
+            addedByOrigin: "INTEGRATION_TEST",
+          },
+        });
+      const dead = await make("olu", 10);
+      const alive = await make("canli", 0);
+      const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+      const writePrincipal = await runtimePrincipal(fixture.credential);
+      const workerId = "mixed-domain-worker";
+      const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+        workerId,
+        leaseSeconds: 60,
+      });
+      const runId = leased.run!.id;
+      const read = async (sourceId: string, ok: boolean, index: number) => {
+        const attemptId = randomUUID();
+        await recordRuntimeSourceAttempt(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          runtimeSourceAttemptSchema.parse({ workerId, attemptId, sourceId }),
+        );
+        await recordRuntimeSourceResult(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          runtimeSourceResultSchema.parse({
+            workerId,
+            attemptId,
+            sourceId,
+            items: ok
+              ? [
+                  {
+                    canonicalUrl: `https://${domain}/haber-${index}`,
+                    title: `Haber ${index}`,
+                    contentHash: String(index % 10).repeat(64),
+                    safeText: `Güvenli metin ${index}.`,
+                  },
+                ]
+              : [],
+            ...(ok ? {} : { errorCode: "SOURCE_HTTP_503" }),
+          }),
+        );
+      };
+      for (let index = 0; index < 6; index += 1) {
+        await read(dead.id, false, index);
+        if (index < 5) await read(alive.id, true, index);
+      }
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: dead.id } }),
+      ).toMatchObject({ status: "DORMANT" });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: alive.id } }),
+      ).toMatchObject({ status: expect.not.stringMatching(/^DORMANT$/u) });
+    });
+
+    it("stok doluyken uykudaki kaynağı yönetici geri açamaz", async () => {
+      const { fixture, agentProfileId, source } = await failingSourceScenario({
+        consecutiveFailures: 0,
+        lastUsefulDaysAgo: 10,
+        failedResults: 6,
+      });
+      const live = await integrationDatabase.agentSource.count({
+        where: {
+          agentProfileId,
+          adminBlocked: false,
+          status: { notIn: ["DORMANT", "REJECTED", "BLOCKED"] },
+        },
+      });
+      for (let index = live; index < 25; index += 1)
+        await integrationDatabase.agentSource.create({
+          data: {
+            agentProfileId,
+            url: `https://stok-${index}.integration.test/feed`,
+            normalizedDomain: `stok-${index}.integration.test`,
+            sourceType: "RSS",
+            status: "PROBATION",
+            topics: ["gündem"],
+            trustScore: 0.5,
+            interestScore: 0.5,
+            noveltyScore: 0.5,
+            usefulnessScore: 0.5,
+            addedByOrigin: "INTEGRATION_TEST",
+          },
+        });
+      await expect(
+        updateAgentSourceAdmin(
+          integrationDatabase,
+          adminActor(fixture.admin.id),
+          source.id,
+          agentSourceAdminUpdateSchema.parse({
+            status: "PROBATION",
+            reason: "Yönetici uykudaki kaynağı yeniden denemek istiyor.",
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: source.id } }),
+      ).toMatchObject({ status: "DORMANT" });
+    });
+
+    it("yeni başlamış kesintide kaynağa dokunmaz", async () => {
+      const { agentProfileId, source } = await failingSourceScenario({
+        consecutiveFailures: 5,
+        lastUsefulDaysAgo: 1,
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: source.id } }),
+      ).toMatchObject({ status: "PROBATION", consecutiveFailures: 6 });
+      expect(
+        await integrationDatabase.agentSource.count({
+          where: { agentProfileId, addedByOrigin: "SOURCE_REPLACEMENT" },
+        }),
+      ).toBe(0);
+    });
+
+    it("uygun öğe vermeyen besleme okuma hatası sayılmaz", async () => {
+      const recent = await failingSourceScenario({
+        consecutiveFailures: 0,
+        lastUsefulDaysAgo: 10,
+        failedResults: 6,
+        errorCode: "SOURCE_NO_USEFUL_ITEMS",
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({
+          where: { id: recent.source.id },
+        }),
+      ).toMatchObject({ status: "PROBATION" });
+    });
+
+    it("21 gündür uygun öğe vermeyen besleme boş besleme olarak uykuya alınır", async () => {
+      const stale = await failingSourceScenario({
+        consecutiveFailures: 0,
+        lastUsefulDaysAgo: 22,
+        errorCode: "SOURCE_NO_USEFUL_ITEMS",
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: stale.source.id } }),
+      ).toMatchObject({ status: "DORMANT" });
+      expect(
+        await integrationDatabase.outboxEvent.findFirstOrThrow({
+          where: { eventType: "agent.source.changed", aggregateId: stale.source.id },
+          orderBy: { createdAt: "desc" },
+          select: { payload: true },
+        }),
+      ).toMatchObject({ payload: expect.objectContaining({ dormancyReason: "EMPTY_FEED" }) });
+    });
+
+    it("ajanın kaynak evrimi kapalıyken envanteri değiştirmez", async () => {
+      const { agentProfileId, source } = await failingSourceScenario({
+        consecutiveFailures: 0,
+        lastUsefulDaysAgo: 10,
+        failedResults: 6,
+        sourceEvolutionEnabled: false,
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: source.id } }),
+      ).toMatchObject({ status: "PROBATION" });
+      expect(
+        await integrationDatabase.agentSource.count({
+          where: { agentProfileId, addedByOrigin: "SOURCE_REPLACEMENT" },
+        }),
+      ).toBe(0);
+    });
+
+    it("yöneticinin sabitlediği kaynağı uykuya almaz", async () => {
+      const { agentProfileId, source } = await failingSourceScenario({
+        consecutiveFailures: 5,
+        lastUsefulDaysAgo: 30,
+        adminPinned: true,
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: source.id } }),
+      ).toMatchObject({ status: "PROBATION" });
+      expect(
+        await integrationDatabase.agentSource.count({
+          where: { agentProfileId, addedByOrigin: "SOURCE_REPLACEMENT" },
+        }),
+      ).toBe(0);
+    });
   });
 
   it("emits one safe source-changed event per same-domain source after a failed fetch", async () => {
