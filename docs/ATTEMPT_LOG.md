@@ -9561,3 +9561,38 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:** talimat değişikliğinin "eşzamanlılığı 1'e düşürür" bedelini söylemeden önce
   üretimdeki güncel kapasite kaydını kontrol et. Kapasite ölçümüne başlamadan önce
   kalıcılaştırma yolunu (panel yüklemesi, yönetici oturumu) hazırla.
+
+## 2026-09-30 — `99ff578`: operatör yönetici komutu (#267) canlıda; kapasite yenilendi, iki hat
+
+- Gökhan: "Operator komutu please. Her şey için komutun olsun." ve "Astra 6 ile hemfikir
+  olduğun sürece full deploy yetkin var bu hafta boyunca."
+- #267 `scripts/operator-admin.ts`: panelin yönetici ve moderasyon rotalarını süreç içinde,
+  gerçek bir yönetici oturumuyla çağırır. Özellikleri:
+  - Oturum 10 dakikalık ve kimlik doğrulamada uzatılmaz; her durumda iptal edilir.
+  - Mutasyon tam `METOD yol` onayı ister.
+  - Idempotency anahtarı işleyiciden önce bildirilir.
+  - Çıktı maskelenir; canlı akış reddedilir; loglar stderr'e gider.
+  - Astra dört tur, son `aa78588` **KOD GO — BİRLEŞTİR/DAĞIT**.
+- Dağıtım:
+  - Aday `99ff5780d9c94ddc55ffc7ebf4182c0b7b902e22`, migration yok.
+  - Push CI `36777449142`, Release Candidate Bundle `36778602467`.
+  - `RELEASE_COMPLETE PASS`, imaj `sha256:ea2c6937…`.
+  - Operatör komutu üretimde `GET /api/v1/admin/agent-settings` ile 200 verdi.
+- Kapasite ölçümü (toplum duraklatılmışken, açık koşu 0, başka Codex süreci yok):
+  - Damga `20260930T213604Z`. Soğuk 21:36–21:58, ılık 21:58–22:17, çift 22:17–22:20 UTC.
+  - Soğuk: 10 koşu, hata 0, p50/p75/p95 128/172/193 sn, RSS 244 MB.
+  - Ilık: 10 koşu, hata 0, p50/p75/p95 97/134/173 sn, RSS 245 MB.
+  - Çift: 2/2 başarılı, çift RSS 442 MB. OOM ve swap yok, health/ready kararlı, `HEALTHY`.
+  - Hepsi `codex-cli 0.144.6`, talimat özeti `4c14898dc61a` (v45).
+  - Altı dosya `agent-runtime:agent-runtime 600`, `runtime/work` altında saklanıyor.
+- Kalıcılaştırma operatör komutuyla (`POST .../capability-package`) yapıldı: 200.
+  - Kayıtlar: soğuk `f1951f06…`, ılık `1f9e0d03…`, çift `576bf4dd…`.
+  - `dualConcurrencySupported=true`. Kapasite `HEALTHY`, etkin eşzamanlılık 2 (ayar zaten 2).
+- Resume 297→298. İlk iki koşu aynı anda başladı (22:22:48, 22:22:49) ve ikisi de `SUCCEEDED`
+  (22:26). NRestarts 0, kullanılabilir bellek ~2,7 GB.
+- Önceki durum: kapasite kaydı 17 Ağustos'tan, 31 Ağustos'tan beri bayattı; üretim bir aydır
+  tek hatla çalışıyordu.
+- **Tekrarlama:**
+  - Uzak betiği `ssh ... "cat > f && ... &"` ile gönderme: zincir arka plana gidince `cat`
+    girdiyi almaz (0 baytlık betik). Önce ayrı bir `ssh "cat > f" < yerel`, sonra `setsid`.
+  - Kapasite kanıtı bayatlamadan (14 gün) ölçümü operatör komutuyla yenile.

@@ -7,6 +7,13 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-30 — `99ff578` canlıda: operatör komutu; kapasite `HEALTHY`, iki hat
+
+- #265 (kaynak önerisi, `53be0ee`) ve #267 (operatör yönetici komutu) Astra KOD GO sonrası canlıda.
+- Kapasite ölçüldü ve operatör komutuyla kaydedildi: soğuk/ılık/çift hata 0, `HEALTHY`,
+  çift süreç 2/2. Etkin eşzamanlılık 2; ilk iki eşzamanlı koşu `SUCCEEDED`.
+- Ö4-3: 19/24, v44 kalır (`USLUP_LAB` belgesi).
+
 ## 2026-09-30 — `fc68593` canlıda: ölü kaynak değişimi ve çeşitlilik ölçümü
 
 - PR #263: Astra yedi tur, son **KOD GO — BİRLEŞTİR/DAĞIT**; 7/7 CI; merge `fc68593`.
