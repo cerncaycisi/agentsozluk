@@ -9530,3 +9530,34 @@ false/true` yapabildi; geçici rol ve DB silindi.
   kanıtı yenilenmeli) ve onaylayacak kişi gerekir; Gökhan'ın kararına sunuldu.
 - **Tekrarlama:** alan adı backoff sayacını kaynak sağlığı kanıtı olarak kullanma; worker'ın
   `SOURCE_NO_USEFUL_ITEMS` ve `SOURCE_CANCELLED` kodları okuma hatası değildir.
+
+## 2026-09-30 — `53be0ee`: ajan kaynak önerisi (#265) canlıda; Ö4-3 kapandı; kapasite ertelendi
+
+- Gökhan: "istiyorum. sen de onaylayabil" (kaynak önerisi, onaylayanlar Gökhan ve operatör
+  olarak Claude). Dağıtım onayı "onaylıyorum". Ardından: "Şimdi ölçüp yapalım" (Ö4-3 penceresini
+  şimdi kapat, dağıt).
+- #265:
+  - Model `SUGGEST_SOURCE` ile https adresi ve gerekçe verir.
+  - Sunucu adresi DISCOVERED (onay bekliyor) olarak kaydeder; okunmaz, sunulmaz, sayılmaz.
+  - Onay SEED, ret REJECTED. Onay panelden ya da `agent:source-proposals` komutuyla verilir;
+    `expectedStatus` karar yarışına karşı korur.
+  - Talimat v45.
+  - Astra dört tur, son `935630c` **KOD GO — BİRLEŞTİR/DAĞIT**.
+- Ö4-3 önce dondurularak alındı (kesim 18:35 UTC); sonuç `USLUP_LAB` belgesinde: 19/24, v44 kalır.
+- Dağıtım:
+  - Aday `53be0ee0aa7412fcc09625b9aa6cee40145294c7`, migration yok.
+  - Push CI `36712012606`, Release Candidate Bundle `36759261863`.
+  - `--pause-society-flow`: drenaj 7, `RELEASE_COMPLETE PASS`, imaj `sha256:18ce54e6…`,
+    smoke 200.
+  - Resume 295→296, worker 18:43:52 UTC.
+  - İlk iki koşu (18:45, 18:50) talimat özeti `4c14898dc61a` (v45) ile `PARTIAL`; ikisi de
+    bilinen tekrar redleri (`TOPIC_SEMANTIC_REPETITION`, `DUPLICATE_FRAMING`), özellikle ilgisiz.
+- Kapasite ölçümü yapılmadı (Gökhan onay vermişti). Kök neden: ölçüm dosyalarının
+  kalıcılaştırılması runbook'ta yalnız oturum açmış yönetici panelinden yapılıyor. Çerez ve
+  CSRF'nin kabuğa taşınması yasak; operatör komutu yok. Ölçüp kaydedememek için toplumu
+  ~1,5 saat durdurmak anlamsızdı.
+- Bulgu: üretimdeki son kapasite kaydı 17 Ağustos, 31 Ağustos'tan beri bayat ve eski talimat
+  özetine ait. Üretim bir aydır tek hatla çalışıyor; talimat değişikliği bunu kötüleştirmedi.
+- **Tekrarlama:** talimat değişikliğinin "eşzamanlılığı 1'e düşürür" bedelini söylemeden önce
+  üretimdeki güncel kapasite kaydını kontrol et. Kapasite ölçümüne başlamadan önce
+  kalıcılaştırma yolunu (panel yüklemesi, yönetici oturumu) hazırla.
