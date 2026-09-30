@@ -67,6 +67,10 @@ import {
   findRuntimeSourceForWrite,
   storeRuntimeSourceResult,
   type ExpiredRuntimeRunCandidate,
+  createRuntimeReplacementSource,
+  findRuntimeSourceDormancyState,
+  loadRuntimeSourceReplacementContext,
+  markRuntimeSourceDormant,
 } from "@/modules/agents/repository/runtime";
 import {
   planRuntimeMaintenance,
@@ -99,6 +103,17 @@ import {
   istanbulWeekWindow,
 } from "@/modules/agents/domain/source-evolution";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
+import { pickReplacementSource } from "@/modules/agents/personas/source-assignment";
+import {
+  runtimeAgentSourceLimit,
+  runtimeSourceHolderLimit,
+} from "@/modules/agents/domain/runtime-source-candidates";
+import { reviewedSourceLocaleFocus } from "@/modules/agents/personas/source-locale-metadata";
+import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
+import {
+  sourceDormancyPolicy,
+  sourceDormancyVerdict,
+} from "@/modules/agents/domain/source-dormancy";
 import {
   buildTopicChoiceSignals,
   selectDiverseSourceItems,
@@ -2144,6 +2159,129 @@ export function recordRuntimeMemories(
   });
 }
 
+/*
+  Ölü kaynak değişimi (30 Eylül 2026). Ajanlar kaynağı yalnız birbirinden öğrendiği için
+  ölen kaynağın yerine kendiliğinden yenisi gelmiyor, havuz küçülüyordu. Karar
+  `sourceDormancyVerdict`'te; burada kaynak DORMANT yapılır ve aynı işlemde (ayar kilidi
+  tutulurken; sahip sayımı `PROPOSE_SOURCE` ile aynı kilit altında) doğrulanmış havuzdan
+  bir yedek eklenir. Uygun yedek yoksa ya da ajan stok sınırındaysa yalnız DORMANT olur.
+*/
+async function retireDeadRuntimeSource(
+  transaction: TransactionClient,
+  principal: RuntimePrincipal,
+  runId: string,
+  input: { sourceId: string; fetchFailed: boolean; itemCount: number; now: Date },
+) {
+  const state = await findRuntimeSourceDormancyState(transaction, {
+    agentProfileId: principal.agentProfileId,
+    sourceId: input.sourceId,
+  });
+  if (!state) return;
+  const reason = sourceDormancyVerdict({
+    status: state.status,
+    adminPinned: state.adminPinned,
+    adminBlocked: state.adminBlocked,
+    consecutiveFailures: state.consecutiveFailures,
+    lastUsefulAt: state.lastUsefulAt,
+    createdAt: state.createdAt,
+    fetchFailed: input.fetchFailed,
+    itemCount: input.itemCount,
+    now: input.now,
+  });
+  if (!reason) return;
+  const change = await markRuntimeSourceDormant(transaction, state.id);
+  await appendOutboxEvent(transaction, {
+    eventType: "agent.source.changed",
+    aggregateType: "AgentSource",
+    aggregateId: state.id,
+    actorId: principal.actor.actorId,
+    actorKind: principal.actor.actorKind,
+    requestId: principal.actor.requestId,
+    payload: {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      sourceId: state.id,
+      normalizedDomain: change.normalizedDomain,
+      reasonCode: "SOURCE_DORMANT",
+      dormancyReason: reason,
+      before: runtimeSourceStatePayload(change.before),
+      after: runtimeSourceStatePayload(change.after),
+    },
+  });
+  await appendRuntimeEvent(transaction, {
+    agentProfileId: principal.agentProfileId,
+    runId,
+    eventType: "SOURCE_STATE_CHANGED",
+    subject: { type: "SOURCE", id: state.id },
+    safeMessage:
+      reason === "FETCH_FAILING"
+        ? "Kaynak uzun süredir okunamıyor; geçmişi korunarak uykuya alındı."
+        : "Kaynak uzun süredir öğe vermiyor; geçmişi korunarak uykuya alındı.",
+    before: runtimeSourceStatePayload(change.before),
+    after: runtimeSourceStatePayload(change.after),
+    metadata: { origin: "SOURCE_DORMANCY", reason, normalizedDomain: change.normalizedDomain },
+    occurredAt: input.now,
+  });
+
+  const context = await loadRuntimeSourceReplacementContext(transaction, {
+    agentProfileId: principal.agentProfileId,
+    unhealthyFailureThreshold: sourceDormancyPolicy.failureThreshold,
+  });
+  const persona = seedPersonaSchema.safeParse(context.persona);
+  if (!persona.success || context.activeCount >= runtimeAgentSourceLimit) return;
+  const replacement = pickReplacementSource({
+    username: context.username,
+    persona: persona.data,
+    pool: verifiedSourcePool(),
+    heldUrls: context.heldUrls,
+    unhealthyUrls: context.unhealthyUrls,
+    holders: context.holders,
+    holderLimit: runtimeSourceHolderLimit,
+  });
+  if (!replacement) return;
+  const created = await createRuntimeReplacementSource(transaction, {
+    agentProfileId: principal.agentProfileId,
+    url: replacement.url,
+    normalizedDomain: new URL(replacement.url).hostname.toLowerCase(),
+    sourceType: replacement.sourceType,
+    topics: replacement.topics,
+    localeFocus: reviewedSourceLocaleFocus(replacement.url),
+    interestScore: replacement.weight,
+    replacedSourceId: state.id,
+  });
+  await appendOutboxEvent(transaction, {
+    eventType: "agent.source.changed",
+    aggregateType: "AgentSource",
+    aggregateId: created.id,
+    actorId: principal.actor.actorId,
+    actorKind: principal.actor.actorKind,
+    requestId: principal.actor.requestId,
+    payload: {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      sourceId: created.id,
+      normalizedDomain: created.normalizedDomain,
+      reasonCode: "SOURCE_REPLACED",
+      replacedSourceId: state.id,
+      after: { status: created.status },
+    },
+  });
+  await appendRuntimeEvent(transaction, {
+    agentProfileId: principal.agentProfileId,
+    runId,
+    eventType: "SOURCE_STATE_CHANGED",
+    subject: { type: "SOURCE", id: created.id },
+    safeMessage: "Uykuya alınan kaynağın yerine doğrulanmış havuzdan yeni kaynak eklendi.",
+    after: { status: created.status },
+    metadata: {
+      origin: "SOURCE_REPLACEMENT",
+      replacedSourceId: state.id,
+      normalizedDomain: created.normalizedDomain,
+    },
+    occurredAt: input.now,
+  });
+}
+
 export function recordRuntimeSourceResult(
   client: DatabaseExecutor,
   principal: RuntimePrincipal,
@@ -2253,6 +2391,12 @@ export function recordRuntimeSourceResult(
         occurredAt: now,
       });
     }
+    await retireDeadRuntimeSource(transaction, principal, runId, {
+      sourceId: source.id,
+      fetchFailed: Boolean(input.errorCode),
+      itemCount: input.items.length,
+      now,
+    });
     await appendRuntimeEvent(transaction, {
       agentProfileId: principal.agentProfileId,
       runId,

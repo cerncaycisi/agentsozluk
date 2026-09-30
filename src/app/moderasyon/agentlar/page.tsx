@@ -14,7 +14,7 @@ import { PaginationLinks } from "@/components/ui/pagination-links";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { pageFrom } from "@/lib/http/pagination";
-import { getGlobalSettings, listAgentDashboard } from "@/modules/agents";
+import { getGlobalSettings, getSourceDiversity, listAgentDashboard } from "@/modules/agents";
 import { societyFlowEnabled } from "@/modules/agents/domain/runtime-controls";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 
@@ -86,9 +86,10 @@ export default async function AgentDashboardPage({
   const params = await searchParams;
   const database = getDatabase();
   const actor = actorFromSession(session, randomUUID(), "WEB");
-  const [allAgents, settings] = await Promise.all([
+  const [allAgents, settings, diversity] = await Promise.all([
     listAgentDashboard(database, actor),
     getGlobalSettings(database, actor),
+    getSourceDiversity(database, actor),
   ]);
   const societyRunning = societyFlowEnabled(settings);
   const activeAgents = allAgents.filter(({ lifecycleStatus }) => lifecycleStatus === "ACTIVE");
@@ -196,6 +197,46 @@ export default async function AgentDashboardPage({
               ))}
             </ul>
           </div>
+        ) : null}
+      </section>
+      {/*
+        Kaynak çeşitliliği (30 Eylül 2026): ajanlar kaynağı yalnız birbirinden öğreniyor;
+        aşınma burada görünür. Eşikler `sourceDiversityThresholds`'ta.
+      */}
+      <section
+        className={`surface-card mb-6 border-l-4 p-6 ${diversity.warnings.length > 0 ? "border-l-warning" : "border-l-success"}`}
+        role="status"
+      >
+        <h2 className="title-section">
+          Kaynak çeşitliliği: {diversity.warnings.length > 0 ? "UYARI" : "SAĞLIKLI"}
+        </h2>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
+          <Metric label="Farklı kaynak" value={String(diversity.distinctUrls)} />
+          <Metric label="Ortalama ortak kaynak" value={percentage(diversity.meanPairOverlap)} />
+          <Metric label="En çok sahip" value={String(diversity.maxHolders)} />
+          <Metric label="Uykudaki kaynak" value={String(diversity.dormantSources)} />
+          <Metric label="7 günde yenilenen" value={String(diversity.replacementsLast7Days)} />
+        </dl>
+        {diversity.warnings.length > 0 ? (
+          <ul className="mt-4 list-disc space-y-1 pl-5 text-sm">
+            {diversity.warnings.includes("PAIR_OVERLAP_HIGH") ? (
+              <li>Ajan çiftlerinin ortak kaynak oranı yükseldi; kaynaklar yeniden benzeşiyor.</li>
+            ) : null}
+            {diversity.warnings.includes("DISTINCT_URLS_LOW") ? (
+              <li>Canlı farklı kaynak sayısı 100&apos;ün altına indi; havuz küçülüyor.</li>
+            ) : null}
+            {diversity.warnings.includes("HOLDER_LIMIT_EXCEEDED") ? (
+              <li>
+                İzinli sahip sayısını aşan kaynak:{" "}
+                {diversity.overLimitUrls
+                  .map(({ url, holders }) => `${new URL(url).hostname} (${holders})`)
+                  .join(", ")}
+              </li>
+            ) : null}
+            {diversity.warnings.includes("AGENT_BELOW_MINIMUM") ? (
+              <li>{diversity.agentsBelowMinimum} ajanın canlı kaynağı 10&apos;un altında.</li>
+            ) : null}
+          </ul>
         ) : null}
       </section>
       <form className="surface-card mb-6 grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-5">

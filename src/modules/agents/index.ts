@@ -12,6 +12,7 @@ export * from "@/modules/agents/application/memory-lifecycle";
 export * from "@/modules/agents/application/production-rollout";
 export * from "@/modules/agents/application/life-ledger";
 export * from "@/modules/agents/application/decision-batch";
+export * from "@/modules/agents/application/source-diversity";
 export * from "@/modules/agents/domain/authorization";
 export * from "@/modules/agents/domain/action-policy";
 export * from "@/modules/agents/domain/capacity";

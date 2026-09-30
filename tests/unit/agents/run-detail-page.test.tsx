@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getAgentRunDetail: vi.fn(),
   getGlobalSettings: vi.fn(),
   getDatabase: vi.fn(),
+  getSourceDiversity: vi.fn(),
   listAgentDashboard: vi.fn(),
   notFound: vi.fn(() => {
     throw Object.assign(new Error("not found"), { digest: "NEXT_HTTP_ERROR_FALLBACK;404" });
@@ -52,6 +53,7 @@ vi.mock("@/modules/agents", () => ({
   getAgentDetail: mocks.getAgentDetail,
   getAgentRunDetail: mocks.getAgentRunDetail,
   getGlobalSettings: mocks.getGlobalSettings,
+  getSourceDiversity: mocks.getSourceDiversity,
   listAgentDashboard: mocks.listAgentDashboard,
 }));
 vi.mock("@/modules/auth/domain/actor", () => ({ actorFromSession: mocks.actorFromSession }));
@@ -143,6 +145,18 @@ const run = {
 
 describe("agent run detail admin page", () => {
   beforeEach(() => {
+    mocks.getSourceDiversity.mockResolvedValue({
+      agentCount: 1,
+      distinctUrls: 131,
+      maxHolders: 6,
+      meanPairOverlap: 0.05,
+      overLimitUrls: [],
+      agentsBelowMinimum: 0,
+      topUrls: [],
+      warnings: [],
+      dormantSources: 0,
+      replacementsLast7Days: 0,
+    });
     vi.clearAllMocks();
     mocks.requireAgentAdminPage.mockResolvedValue(session);
     mocks.getDatabase.mockReturnValue({});

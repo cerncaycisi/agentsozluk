@@ -115,6 +115,7 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
    [üslup laboratuvarı](USLUP_LAB_2026-09-27.md) "Takip dönüşümü deneyi önkaydı".
 
 **Kaynak çeşitliliği (29 Eylül, canlıda `86d6ac9`, #257):**
+
 - Neden: PARTIAL oranı %13'ten %29'a çıkmıştı; neden aynı haberden tekrar başlık açma
   girişimleriydi. Kök neden ajanların aynı kaynaklara bakması: arkitera 35 ajanın 33'ündeydi.
 - Yapılan: 79 doğrulanmış yeni kaynak eklendi, bir kaynak en fazla beş ajanda olabiliyor.

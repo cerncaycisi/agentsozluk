@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   actorFromSession: vi.fn(),
   getDatabase: vi.fn(),
   getGlobalSettings: vi.fn(),
+  getSourceDiversity: vi.fn(),
   listAgentDashboard: vi.fn(),
   requireAgentAdminPage: vi.fn(),
 }));
@@ -26,6 +27,7 @@ vi.mock("@/lib/auth/server-session", () => ({
 vi.mock("@/lib/db/client", () => ({ getDatabase: mocks.getDatabase }));
 vi.mock("@/modules/agents", () => ({
   getGlobalSettings: mocks.getGlobalSettings,
+  getSourceDiversity: mocks.getSourceDiversity,
   listAgentDashboard: mocks.listAgentDashboard,
 }));
 vi.mock("@/modules/auth/domain/actor", () => ({ actorFromSession: mocks.actorFromSession }));
@@ -93,6 +95,18 @@ describe("agent dashboard daily counters", () => {
       codexConcurrency: 1,
     });
     mocks.listAgentDashboard.mockResolvedValue([dashboardAgent()]);
+    mocks.getSourceDiversity.mockResolvedValue({
+      agentCount: 1,
+      distinctUrls: 131,
+      maxHolders: 6,
+      meanPairOverlap: 0.05,
+      overLimitUrls: [],
+      agentsBelowMinimum: 0,
+      topUrls: [],
+      warnings: [],
+      dormantSources: 0,
+      replacementsLast7Days: 0,
+    });
   });
 
   it("shows the day-window counts under the 'bugünkü' labels, not the lifetime totals", async () => {

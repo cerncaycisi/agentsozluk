@@ -14,6 +14,7 @@ import {
   runtimeSourceStatusesForEvidenceType,
   runtimeSourceEvidenceTypeForStatus,
   isRuntimeProbationEntrySourceStatus,
+  runtimeUncountedSourceStatuses,
 } from "@/modules/agents/domain/source-status";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import {
@@ -1949,7 +1950,7 @@ export async function findRuntimeSourceCandidate(
 /**
  * Ajanın CANLI kaynak sayısı — kota bu sayıya bakıyor.
  *
- * `REJECTED`/`BLOCKED` sayılmıyor: ikisi de artık çekilmiyor, yani maliyeti
+ * `runtimeUncountedSourceStatuses` (DORMANT/REJECTED/BLOCKED) sayılmıyor: artık çekilmiyor, yani maliyeti
  * yok; onları saymak ajanı geçmişte engellenmiş bir kaynak yüzünden
  * cezalandırırdı.
  */
@@ -1959,7 +1960,7 @@ export async function countRuntimeSourceHolders(
   url: string,
 ): Promise<number> {
   const holders = await transaction.agentSource.findMany({
-    where: { url, adminBlocked: false, status: { notIn: ["REJECTED", "BLOCKED"] } },
+    where: { url, adminBlocked: false, status: { notIn: [...runtimeUncountedSourceStatuses] } },
     distinct: ["agentProfileId"],
     select: { agentProfileId: true },
   });
@@ -1974,7 +1975,7 @@ export async function countRuntimeAgentSources(
     where: {
       agentProfileId,
       adminBlocked: false,
-      status: { notIn: ["REJECTED", "BLOCKED"] },
+      status: { notIn: [...runtimeUncountedSourceStatuses] },
     },
   });
 }
@@ -2061,8 +2062,12 @@ async function listRuntimeSourceCandidates(
         SELECT count(DISTINCT held."agentProfileId") FROM "agent_sources" AS held
         WHERE held."url" = source."url"
           AND held."adminBlocked" = false
-          AND held."status" NOT IN ('REJECTED', 'BLOCKED')
+          AND held."status"::text NOT IN (${Prisma.join([...runtimeUncountedSourceStatuses])})
       ) < ${runtimeSourceHolderLimit}
+      AND NOT EXISTS (
+        SELECT 1 FROM "agent_sources" AS dormant
+        WHERE dormant."url" = source."url" AND dormant."status" = 'DORMANT'
+      )
     GROUP BY source."url", source."normalizedDomain"
     HAVING count(DISTINCT cited."agentProfileId") >= ${runtimeSourceCandidateMinimumCitingAgents}
     ORDER BY count(DISTINCT cited."agentProfileId") DESC, count(*) DESC, source."url" ASC
@@ -3336,4 +3341,144 @@ export async function finishRuntimeRunRecord(
       data: { status: slotStatus },
     }),
   ]);
+}
+
+/*
+  Ölü kaynak değişimi (30 Eylül 2026). Çağıran işlem ayar kilidini tutar; sahip sayımı
+  ile ekleme `PROPOSE_SOURCE` ve uzlaştırmayla aynı kilit altında yapılır.
+*/
+export async function findRuntimeSourceDormancyState(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; sourceId: string },
+) {
+  return transaction.agentSource.findFirst({
+    where: { id: input.sourceId, agentProfileId: input.agentProfileId },
+    select: {
+      ...runtimeSourceStateSelect,
+      url: true,
+      adminPinned: true,
+      adminBlocked: true,
+      createdAt: true,
+    },
+  });
+}
+
+export async function markRuntimeSourceDormant(
+  transaction: Prisma.TransactionClient,
+  sourceId: string,
+): Promise<RuntimeSourceStateChange> {
+  const before = await transaction.agentSource.findUniqueOrThrow({
+    where: { id: sourceId },
+    select: runtimeSourceStateSelect,
+  });
+  const after = await transaction.agentSource.update({
+    where: { id: sourceId },
+    data: { status: "DORMANT" },
+    select: runtimeSourceStateSelect,
+  });
+  return {
+    sourceId,
+    normalizedDomain: before.normalizedDomain,
+    before: sourceStateSnapshot(before),
+    after: sourceStateSnapshot(after),
+  };
+}
+
+export async function loadRuntimeSourceReplacementContext(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; unhealthyFailureThreshold: number },
+) {
+  const [profile, held, activeCount, unhealthy, holderGroups] = await Promise.all([
+    transaction.agentProfile.findUniqueOrThrow({
+      where: { id: input.agentProfileId },
+      select: {
+        user: { select: { username: true } },
+        currentPersonaVersion: { select: { persona: true } },
+      },
+    }),
+    transaction.agentSource.findMany({
+      where: { agentProfileId: input.agentProfileId },
+      select: { url: true },
+    }),
+    countRuntimeAgentSources(transaction, input.agentProfileId),
+    transaction.agentSource.findMany({
+      where: {
+        OR: [
+          { status: "DORMANT" },
+          { consecutiveFailures: { gte: input.unhealthyFailureThreshold } },
+        ],
+      },
+      distinct: ["url"],
+      select: { url: true },
+    }),
+    transaction.agentSource.groupBy({
+      by: ["url"],
+      where: { adminBlocked: false, status: { notIn: [...runtimeUncountedSourceStatuses] } },
+      _count: { _all: true },
+    }),
+  ]);
+  return {
+    username: profile.user.username,
+    persona: profile.currentPersonaVersion?.persona ?? null,
+    heldUrls: new Set(held.map(({ url }) => url)),
+    activeCount,
+    unhealthyUrls: new Set(unhealthy.map(({ url }) => url)),
+    holders: new Map(holderGroups.map((group) => [group.url, group._count._all])),
+  };
+}
+
+export async function createRuntimeReplacementSource(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    url: string;
+    normalizedDomain: string;
+    sourceType: "RSS" | "ATOM" | "HTML";
+    topics: string[];
+    localeFocus: NonNullable<Prisma.AgentSourceCreateInput["localeFocus"]>;
+    interestScore: number;
+    replacedSourceId: string;
+  },
+) {
+  return transaction.agentSource.create({
+    data: {
+      agentProfileId: input.agentProfileId,
+      url: input.url,
+      normalizedDomain: input.normalizedDomain,
+      sourceType: input.sourceType,
+      status: "SEED",
+      topics: input.topics,
+      localeFocus: input.localeFocus,
+      trustScore: 0.5,
+      interestScore: input.interestScore,
+      noveltyScore: 0.5,
+      usefulnessScore: 0.5,
+      discoveredFrom: `replacement:${input.replacedSourceId}`,
+      addedByOrigin: "SOURCE_REPLACEMENT",
+    },
+    select: { id: true, url: true, normalizedDomain: true, status: true },
+  });
+}
+
+/** Çeşitlilik ölçümü için ACTIVE ajanların canlı sayılan kaynak satırları. */
+export async function listActiveAgentSourceRows(transaction: Prisma.TransactionClient) {
+  return transaction.agentSource.findMany({
+    where: {
+      adminBlocked: false,
+      status: { notIn: [...runtimeUncountedSourceStatuses] },
+      agentProfile: { lifecycleStatus: "ACTIVE" },
+    },
+    select: { agentProfileId: true, url: true },
+  });
+}
+
+/** Son pencerede uykuya alınan ve yerine konan kaynak sayıları. */
+export async function countSourceTurnover(transaction: Prisma.TransactionClient, since: Date) {
+  const [dormant, replacements] = await Promise.all([
+    transaction.agentSource.count({ where: { status: "DORMANT" } }),
+    transaction.agentSource.count({
+      where: { addedByOrigin: "SOURCE_REPLACEMENT", createdAt: { gte: since } },
+    }),
+  ]);
+  return { dormant, replacements };
 }
