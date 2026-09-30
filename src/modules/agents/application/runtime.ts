@@ -2173,14 +2173,23 @@ async function retireDeadRuntimeSource(
   transaction: TransactionClient,
   principal: RuntimePrincipal,
   runId: string,
-  input: { sourceId: string; fetchFailed: boolean; itemCount: number; now: Date },
+  input: {
+    sourceId: string;
+    fetchFailed: boolean;
+    itemCount: number;
+    now: Date;
+    globalSourceEvolutionEnabled: boolean;
+  },
 ) {
   const state = await findRuntimeSourceDormancyState(transaction, {
     agentProfileId: principal.agentProfileId,
     sourceId: input.sourceId,
   });
+  // Kaynak evrimi global ya da ajan düzeyinde kapalıysa envanter değişmez (Astra 93ff206 P2).
   if (
+    !input.globalSourceEvolutionEnabled ||
     !state ||
+    !state.agentProfile.sourceEvolutionEnabled ||
     state.adminPinned ||
     state.adminBlocked ||
     !isRuntimePresentableSourceStatus(state.status)
@@ -2428,6 +2437,7 @@ export function recordRuntimeSourceResult(
       fetchFailed: Boolean(input.errorCode),
       itemCount: input.items.length,
       now,
+      globalSourceEvolutionEnabled: settings.sourceEvolutionEnabled,
     });
     await appendRuntimeEvent(transaction, {
       agentProfileId: principal.agentProfileId,

@@ -8528,9 +8528,15 @@ describe("internal agent runtime API with PostgreSQL", () => {
       lastUsefulDaysAgo: number;
       adminPinned?: boolean;
       failedResults?: number;
+      sourceEvolutionEnabled?: boolean;
     }) {
       const fixture = await createFixture();
       const agentProfileId = fixture.created.agent.profile.id;
+      if (overrides.sourceEvolutionEnabled === false)
+        await integrationDatabase.agentProfile.update({
+          where: { id: agentProfileId },
+          data: { sourceEvolutionEnabled: false },
+        });
       const domain = "olu-kaynak.integration.test";
       const source = await integrationDatabase.agentSource.create({
         data: {
@@ -8789,6 +8795,23 @@ describe("internal agent runtime API with PostgreSQL", () => {
       expect(
         await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: source.id } }),
       ).toMatchObject({ status: "PROBATION", consecutiveFailures: 6 });
+      expect(
+        await integrationDatabase.agentSource.count({
+          where: { agentProfileId, addedByOrigin: "SOURCE_REPLACEMENT" },
+        }),
+      ).toBe(0);
+    });
+
+    it("ajanın kaynak evrimi kapalıyken envanteri değiştirmez", async () => {
+      const { agentProfileId, source } = await failingSourceScenario({
+        consecutiveFailures: 0,
+        lastUsefulDaysAgo: 10,
+        failedResults: 6,
+        sourceEvolutionEnabled: false,
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: source.id } }),
+      ).toMatchObject({ status: "PROBATION" });
       expect(
         await integrationDatabase.agentSource.count({
           where: { agentProfileId, addedByOrigin: "SOURCE_REPLACEMENT" },

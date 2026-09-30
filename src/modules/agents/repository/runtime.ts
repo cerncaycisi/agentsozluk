@@ -3369,6 +3369,7 @@ export async function findRuntimeSourceDormancyState(
       adminPinned: true,
       adminBlocked: true,
       createdAt: true,
+      agentProfile: { select: { sourceEvolutionEnabled: true } },
     },
   });
 }
