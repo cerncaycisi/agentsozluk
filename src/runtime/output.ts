@@ -184,6 +184,21 @@ const wireProposeSourceActionSchema = z
     ...wireActionCommon,
   })
   .strict();
+/*
+  Ajanın kendi kaynak önerisi (30 Eylül 2026). Adres OKUNMAZ: sunucu güvenlik
+  denetiminden geçirip onay kuyruğuna (DISCOVERED) koyar; yönetici onaylarsa ajanın
+  listesine girer. Sunucu tarafında `PROPOSE_SOURCE` + `url` olarak işlenir.
+*/
+const wireSuggestSourceActionSchema = z
+  .object({
+    type: z.literal("SUGGEST_SOURCE"),
+    url: z
+      .string()
+      .regex(/^https:\/\/[^\s]{4,290}$/u)
+      .max(300),
+    ...wireActionCommon,
+  })
+  .strict();
 const wireUpdateBeliefActionSchema = z
   .object({
     type: z.literal("UPDATE_BELIEF"),
@@ -222,6 +237,7 @@ const runtimeNormalWireActionSchema = z.union([
   targetOnlyWireAction("BOOKMARK_ENTRY"),
   targetOnlyWireAction("REMOVE_BOOKMARK"),
   wireProposeSourceActionSchema,
+  wireSuggestSourceActionSchema,
   wireUpdateBeliefActionSchema,
   wireUpdateRelationshipActionSchema,
 ]);
@@ -635,6 +651,9 @@ function adaptWireAction(action: RuntimeNormalDecisionWire["actions"][number], s
     case "PROPOSE_SOURCE":
       input = compactRecord({ candidateId: flat.candidateId });
       break;
+    case "SUGGEST_SOURCE":
+      input = compactRecord({ url: flat.url });
+      break;
     case "UPDATE_BELIEF":
       input = compactRecord({
         topicKey: flat.topicKey,
@@ -659,7 +678,8 @@ function adaptWireAction(action: RuntimeNormalDecisionWire["actions"][number], s
   return {
     ...compactRecord({
       sequence,
-      actionType: action.type,
+      // Model tarafındaki SUGGEST_SOURCE sunucuda PROPOSE_SOURCE + url'dir.
+      actionType: action.type === "SUGGEST_SOURCE" ? "PROPOSE_SOURCE" : action.type,
       desire: action.desire,
       expectedOutcome: action.expectedOutcome,
       safeReason: action.safeReason,

@@ -3556,3 +3556,62 @@ export async function countSourceTurnover(transaction: Prisma.TransactionClient,
   ]);
   return { dormant, replacements };
 }
+
+/** Onay bekleyen ajan önerileri (DISCOVERED + öneri kökeni): ajanın ve toplam. */
+export async function countPendingSourceSuggestions(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; origin: string },
+) {
+  const [agent, total] = await Promise.all([
+    transaction.agentSource.count({
+      where: {
+        agentProfileId: input.agentProfileId,
+        status: "DISCOVERED",
+        addedByOrigin: input.origin,
+      },
+    }),
+    transaction.agentSource.count({ where: { status: "DISCOVERED", addedByOrigin: input.origin } }),
+  ]);
+  return { agent, total };
+}
+
+/**
+ * Onay bekleyen öneri satırı. Ajan bu adresi herhangi bir durumda zaten tutuyorsa (önceden
+ * reddedilmiş dahil) null döner: aynı öneri tekrar kuyruğa girmez.
+ */
+export async function createPendingSourceSuggestion(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    url: string;
+    normalizedDomain: string;
+    sourceType: "RSS" | "HTML";
+    reason: string;
+    origin: string;
+  },
+) {
+  const lockKey = `agent-source-url:${input.agentProfileId}:${input.url}`;
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+  const existing = await transaction.agentSource.findUnique({
+    where: { agentProfileId_url: { agentProfileId: input.agentProfileId, url: input.url } },
+    select: { id: true },
+  });
+  if (existing) return null;
+  return transaction.agentSource.create({
+    data: {
+      agentProfileId: input.agentProfileId,
+      url: input.url,
+      normalizedDomain: input.normalizedDomain,
+      sourceType: input.sourceType,
+      status: "DISCOVERED",
+      topics: [],
+      trustScore: 0.25,
+      interestScore: 0.5,
+      noveltyScore: 0.5,
+      usefulnessScore: 0.5,
+      discoveredFrom: `Ajan önerisi: ${input.reason}`.slice(0, 600),
+      addedByOrigin: input.origin,
+    },
+    select: { id: true, status: true, sourceType: true, normalizedDomain: true },
+  });
+}

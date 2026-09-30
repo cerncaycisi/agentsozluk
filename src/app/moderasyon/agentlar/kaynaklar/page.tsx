@@ -59,7 +59,7 @@ export default async function AgentSourcesPage({
   const adminBlocked = bool(params.adminBlocked);
   const status = params.status as AgentSourceStatusValue | undefined;
   const localeFocus = params.localeFocus as AgentSourceLocaleFocusValue | undefined;
-  const [[sources, totalItems], agents] = await Promise.all([
+  const [[sources, totalItems], agents, [, pendingSuggestions]] = await Promise.all([
     listAgentSources(getDatabase(), actor, {
       ...(params.agentProfileId
         ? { agentProfileId: parseUuid(params.agentProfileId, "agentProfileId") }
@@ -73,6 +73,8 @@ export default async function AgentSourcesPage({
       take: pageSize,
     }),
     listAgentDashboard(getDatabase(), actor),
+    // Onay bekleyen ajan kaynak önerileri (DISCOVERED): yalnız sayı.
+    listAgentSources(getDatabase(), actor, { status: "DISCOVERED", skip: 0, take: 1 }),
   ]);
   const query = new URLSearchParams(
     Object.entries(params).filter(
@@ -84,6 +86,18 @@ export default async function AgentSourcesPage({
       title="Agent kaynakları"
       description="Source durumunu, pin/block kararını ve haftalık sınırlı skor değişimlerini yönetin."
     >
+      {pendingSuggestions > 0 ? (
+        <section className="surface-card mb-6 border-l-4 border-l-warning p-6" role="status">
+          <h2 className="title-section">Onay bekleyen kaynak önerisi: {pendingSuggestions}</h2>
+          <p className="mt-1 text-sm text-muted">
+            Ajanların önerdiği yayınlar onaylanana kadar okunmaz. Onay için durumu SEED, ret için
+            REJECTED yapın.{" "}
+            <a href="?status=DISCOVERED" className="font-medium text-primary underline">
+              Önerileri göster
+            </a>
+          </p>
+        </section>
+      ) : null}
       <form className="surface-card mb-6 grid gap-3 p-6 sm:grid-cols-3">
         <label className="text-sm font-medium">
           Agent

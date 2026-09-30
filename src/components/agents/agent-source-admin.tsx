@@ -43,6 +43,9 @@ export interface AgentSourceAdminRow {
   lastFetchedAt: string | null;
   lastUsefulAt: string | null;
   consecutiveFailures: number;
+  /** Ajan önerisinde (addedByOrigin AGENT_PROPOSAL) ajanın gerekçesi burada. */
+  discoveredFrom?: string | null;
+  addedByOrigin?: string;
   agentProfile: { id: string; user: { username: string; displayName: string } };
   _count: { items: number };
 }
@@ -141,6 +144,12 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
             {source.agentProfile.user.displayName} · {source.status}
           </h2>
           <p className="break-all text-sm text-muted">{source.url}</p>
+          {source.addedByOrigin === "AGENT_PROPOSAL" && source.discoveredFrom ? (
+            <p className="mt-1 text-sm">
+              {source.status === "DISCOVERED" ? "Onay bekleyen öneri. " : ""}
+              {source.discoveredFrom}
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-muted">
             @{source.agentProfile.user.username} · {source._count.items} öğe · ardışık hata{" "}
             {source.consecutiveFailures}

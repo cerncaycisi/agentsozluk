@@ -4929,62 +4929,119 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
   });
 
-  it("refuses a model-supplied source URL while the proposal gate is closed", async () => {
-    /*
-      Zincirin en riskli halkası: model SERBEST bir URL üretiyor, sunucu
-      kaydediyor ve sonraki koşuda o adrese gerçek GET atılıyor. Güvenlik planı
-      bunun için `candidate_id` modelini şart koşuyordu ama önkoşul hiç
-      uygulanmamıştı — ölçüm: `sourceEvolutionEnabled` global olarak ve 36
-      ajanın hepsinde açıktı, yani yol açıktı. 0 kullanım bir kontrol değil.
-    */
-    delete process.env.AGENT_SOURCE_PROPOSAL;
-    const fixture = await createFixture();
-    const workerId = "source-gate-worker";
-    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
-    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
-    const writePrincipal = await runtimePrincipal(fixture.credential);
-    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
-      workerId,
-      leaseSeconds: 60,
-    });
-    const runId = leased.run!.id;
-    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
-    await recordRuntimeActions(
-      integrationDatabase,
-      writePrincipal,
-      runId,
-      runtimeActionsSchema.parse({
+  describe("ajan kaynak önerisi", () => {
+    async function suggest(fixture: Awaited<ReturnType<typeof createFixture>>, urls: string[]) {
+      const workerId = "source-suggestion-worker";
+      const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+      const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+      const writePrincipal = await runtimePrincipal(fixture.credential);
+      const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
         workerId,
-        actions: [
-          {
-            sequence: 1,
+        leaseSeconds: 60,
+      });
+      const runId = leased.run!.id;
+      await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+      await recordRuntimeActions(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeActionsSchema.parse({
+          workerId,
+          actions: urls.map((url, index) => ({
+            sequence: index + 1,
             actionType: "PROPOSE_SOURCE",
-            safeReason: "Serbest URL kaynak önerisi denemesi.",
-            input: {
-              url: "https://model-uydurdu.example/feed.xml",
-              sourceType: "RSS",
-              topics: ["teknoloji"],
-            },
-            provenance: {
-              evidenceType: "PLATFORM_EVENT",
-              evidenceIds: [runId],
-              shortRationale: "Model bilgisine dayanan kaynak önerisi.",
-            },
-          },
-        ],
-      }),
-    );
-    await expect(
-      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
-    ).resolves.toMatchObject({
-      actionStatus: "REJECTED",
-      rejectionCode: "SOURCE_PROPOSAL_DISABLED",
+            safeReason: "İlgi alanımdaki yayınları düzenli izleyen güvenilir bir dergi.",
+            input: { url },
+          })),
+        }),
+      );
+      const results = [];
+      for (let index = 0; index < urls.length; index += 1)
+        results.push(
+          await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+            workerId,
+            sequence: index + 1,
+          }),
+        );
+      return { results, runId, writePrincipal, workerId };
+    }
+
+    it("öneriyi okumadan onay kuyruğuna alır; onaylanınca canlı olur", async () => {
+      const fixture = await createFixture();
+      const agentProfileId = fixture.created.agent.profile.id;
+      const { results, runId, writePrincipal, workerId } = await suggest(fixture, [
+        "https://oneri-dergisi.example/feed.xml",
+      ]);
+      expect(results[0]).toMatchObject({ actionStatus: "SUCCEEDED" });
+      const pending = await integrationDatabase.agentSource.findFirstOrThrow({
+        where: { agentProfileId, normalizedDomain: "oneri-dergisi.example" },
+      });
+      expect(pending).toMatchObject({
+        status: "DISCOVERED",
+        addedByOrigin: "AGENT_PROPOSAL",
+        sourceType: "RSS",
+      });
+      expect(pending.discoveredFrom).toContain("güvenilir bir dergi");
+      // Onaylanmamış öneri okunamaz.
+      await expect(
+        recordRuntimeSourceAttempt(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          runtimeSourceAttemptSchema.parse({
+            workerId,
+            attemptId: randomUUID(),
+            sourceId: pending.id,
+          }),
+        ),
+      ).rejects.toBeTruthy();
+      const approved = await updateAgentSourceAdmin(
+        integrationDatabase,
+        adminActor(fixture.admin.id),
+        pending.id,
+        agentSourceAdminUpdateSchema.parse({
+          status: "SEED",
+          reason: "Adres güvenli okuyucuyla doğrulandı ve ajanın ilgi alanına uyuyor.",
+        }),
+      );
+      expect(approved.status).toBe("SEED");
     });
-    expect(
-      await integrationDatabase.agentSource.count({
-        where: { normalizedDomain: "model-uydurdu.example" },
-      }),
-    ).toBe(0);
+
+    it("aynı adresi ikinci kez ve ajan başına ikiden fazla bekleyen öneriyi kabul etmez", async () => {
+      const fixture = await createFixture();
+      const agentProfileId = fixture.created.agent.profile.id;
+      const { results } = await suggest(fixture, [
+        "https://bir.example/feed",
+        "https://bir.example/feed",
+        "https://iki.example/rss",
+        "https://uc.example/atom.xml",
+      ]);
+      expect(results.map(({ actionStatus }) => actionStatus)).toEqual([
+        "SUCCEEDED",
+        "REJECTED",
+        "SUCCEEDED",
+        "REJECTED",
+      ]);
+      expect(
+        await integrationDatabase.agentSource.count({
+          where: { agentProfileId, status: "DISCOVERED" },
+        }),
+      ).toBe(2);
+    });
+
+    it("https olmayan ve güvensiz adresi reddeder", async () => {
+      const fixture = await createFixture();
+      const { results } = await suggest(fixture, [
+        "http://duz-metin.example/feed",
+        "https://127.0.0.1/feed",
+      ]);
+      expect(results.map(({ actionStatus }) => actionStatus)).toEqual(["REJECTED", "REJECTED"]);
+      expect(
+        await integrationDatabase.agentSource.count({
+          where: { agentProfileId: fixture.created.agent.profile.id, status: "DISCOVERED" },
+        }),
+      ).toBe(0);
+    });
   });
 
   it("records a successful later-wake action on a resolved dictionary link", async () => {
@@ -8177,12 +8234,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
   );
 
   it("persists source, belief and relationship evolution only with visible provenance", async () => {
-    /*
-      `PROPOSE_SOURCE` artık kendi anahtarında ve varsayılan kapalı (serbest URL
-      riski; `domain/runtime-source-proposal.ts`). Bu test kaynak önerisinin
-      provenance yolunu sınıyor, anahtarı değil — o yüzden açıkça açılıyor.
-    */
-    process.env.AGENT_SOURCE_PROPOSAL = "1";
     const fixture = await createFixture();
     const visible = await createTopicWithFirstEntry(
       integrationDatabase,
@@ -8269,7 +8320,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
       sequence: 1,
     });
     expect(sourceAction).toMatchObject({ actionStatus: "SUCCEEDED" });
-    delete process.env.AGENT_SOURCE_PROPOSAL;
     await expect(
       executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
         workerId: "evolution-worker",
@@ -8303,10 +8353,19 @@ describe("internal agent runtime API with PostgreSQL", () => {
         runId,
         actionId: sourceAction.id,
         sourceId: proposedSource.id,
-        status: "PROBATION",
+        status: "DISCOVERED",
         origin: "AGENT",
         normalizedDomain: "example.com",
       },
+    });
+    /*
+      Ajan önerisi onaya gider (30 Eylül 2026); okunabilmesi için yönetici onayı gerekir.
+      Aşağıdaki evrim ve replay denetimleri onaylanmış bir deneme kaynağında sürer; onay
+      akışının kendisi "ajan kaynak önerisi" testlerinde sınanıyor.
+    */
+    await integrationDatabase.agentSource.update({
+      where: { id: proposedSource.id },
+      data: { status: "PROBATION" },
     });
     expect(JSON.stringify(sourceChangedOutbox)).not.toContain("https://example.com/feed.xml");
     expect(JSON.stringify(sourceChangedOutbox)).not.toContain(leased.run!.leaseToken);
@@ -10253,13 +10312,30 @@ describe("internal agent runtime API with PostgreSQL", () => {
         url: "https://discovered.source-reserve.test/feed",
         normalizedDomain: "discovered.source-reserve.test",
         sourceType: "RSS",
-        status: "DISCOVERED",
+        // Keşif yuvası artık PROBATION'a (30 Eylül 2026): DISCOVERED onay bekleyen öneridir.
+        status: "PROBATION",
+        probationStartedAt: new Date(),
         topics: ["reserve"],
         trustScore: 0.2,
         interestScore: 0.9,
         noveltyScore: 0.9,
         usefulnessScore: 0.5,
         addedByOrigin: "INTEGRATION_TEST",
+      },
+    });
+    const pendingSuggestion = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        url: "https://pending.source-reserve.test/feed",
+        normalizedDomain: "pending.source-reserve.test",
+        sourceType: "RSS",
+        status: "DISCOVERED",
+        topics: ["reserve"],
+        trustScore: 1,
+        interestScore: 1,
+        noveltyScore: 1,
+        usefulnessScore: 1,
+        addedByOrigin: "AGENT_PROPOSAL",
       },
     });
     const blocked = await integrationDatabase.agentSource.create({
@@ -10300,6 +10376,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(targets.length).toBeLessThanOrEqual(8);
     expect(targets.some(({ sourceId }) => sourceId === discovered.id)).toBe(true);
     expect(targets.some(({ sourceId }) => sourceId === blocked.id)).toBe(false);
+    // Onay bekleyen öneri hiçbir zaman okuma hedefi olmaz.
+    expect(targets.some(({ sourceId }) => sourceId === pendingSuggestion.id)).toBe(false);
     expect(targets.some(({ sourceId }) => sourceId === trustedSources.at(-1)!.id)).toBe(true);
     expect(targets.some(({ sourceId }) => sourceId === trustedSources[0]!.id)).toBe(false);
     expect(
@@ -10312,7 +10390,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         workerId,
         attemptId,
         sourceId: discovered.id,
-        items: Array.from({ length: index === 0 ? 3 : 1 }, (_, itemIndex) => ({
+        items: Array.from({ length: index === 0 ? 1 : 3 }, (_, itemIndex) => ({
           canonicalUrl: `https://discovered.source-reserve.test/item-${index}-${itemIndex}`,
           title: `Discovery item ${index}-${itemIndex}`,
           contentHash: `${index + 1}${itemIndex}`.padEnd(64, String(index + 1)),

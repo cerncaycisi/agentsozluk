@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { runtimeSourceStatusContract } from "@/modules/agents/domain/source-status";
+import {
+  runtimeSourceStatusContract,
+  runtimeUncountedSourceStatuses,
+} from "@/modules/agents/domain/source-status";
 
 const root = process.cwd();
 const schema = readFileSync(path.join(root, "prisma/schema.prisma"), "utf8");
@@ -64,21 +67,17 @@ describe("Milestone 2 agent database contract", () => {
   });
 
   it("keeps one canonical runtime source-status contract and bounds probation promotion", () => {
-    expect(runtimeSourceStatusContract.presentable).toEqual([
-      "SEED",
-      "DISCOVERED",
-      "PROBATION",
-      "TRUSTED",
-    ]);
+    // DISCOVERED = onay bekleyen ajan önerisi (30 Eylül 2026): sunulmaz, okunmaz, sayılmaz.
+    expect(runtimeSourceStatusContract.presentable).toEqual(["SEED", "PROBATION", "TRUSTED"]);
     expect(runtimeSourceStatusContract.citable).toEqual(["PROBATION", "TRUSTED"]);
-    expect(runtimeSourceStatusContract.discovery).toEqual(["DISCOVERED", "PROBATION"]);
+    expect(runtimeSourceStatusContract.discovery).toEqual(["PROBATION"]);
     expect(runtimeSourceStatusContract.resultRecordable).toEqual([
       "SEED",
-      "DISCOVERED",
       "PROBATION",
       "TRUSTED",
       "DORMANT",
     ]);
+    expect(runtimeUncountedSourceStatuses).toContain("DISCOVERED");
     expect(schema).toContain("probationStartedAt");
     expect(sourceProbationMigration).toContain('ADD COLUMN "probationStartedAt" TIMESTAMPTZ(3)');
     expect(sourceProbationMigration).toMatch(

@@ -167,7 +167,39 @@ describe("runtime structured output wire contract", () => {
         ],
       }).success,
     ).toBe(false);
-    expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema)).not.toContain('"url"');
+    // Adres yalnız ayrı SUGGEST_SOURCE eyleminde (30 Eylül 2026): onaya gider, okunmaz.
+    const schemaText = JSON.stringify(runtimeNormalDecisionWireJsonSchema);
+    // Bir kez özellik adı, bir kez zorunlu alanlar listesi.
+    expect(schemaText.match(/"url"/gu)?.length).toBe(2);
+    expect(schemaText).toContain('"SUGGEST_SOURCE"');
+  });
+
+  it("SUGGEST_SOURCE yalnız https adresi kabul eder ve sunucuda PROPOSE_SOURCE + url olur", () => {
+    const suggest = {
+      type: "SUGGEST_SOURCE" as const,
+      desire: 0.4,
+      expectedOutcome: "Öneri onaya gidecek.",
+      selectedOptionSeq: 3,
+      safeReason: "İlgi alanımdaki mimarlık yayınlarını takip eden bir dergi.",
+      claimProvenance: [],
+    };
+    const parse = (url: string) =>
+      runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        actions: [{ ...suggest, url }],
+      });
+    expect(parse("https://example.org/feed.xml").success).toBe(true);
+    expect(parse("http://example.org/feed.xml").success).toBe(false);
+    expect(parse("https://example.org/a b").success).toBe(false);
+    const adapted = adaptRuntimeNormalDecisionWire({
+      ...canonical,
+      actions: [{ ...suggest, url: "https://example.org/feed.xml" }],
+    });
+    expect(adapted.actions[0]).toMatchObject({
+      actionType: "PROPOSE_SOURCE",
+      input: { url: "https://example.org/feed.xml" },
+    });
+    expect(adapted.actions[0]?.provenance).toBeUndefined();
   });
 
   it("advertises the exact canonical top-level fields with strict Zod/JSON-schema parity", () => {
