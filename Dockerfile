@@ -62,6 +62,9 @@ COPY --chown=nextjs:nodejs scripts/society-baseline-report.ts ./scripts/society-
 COPY --chown=nextjs:nodejs scripts/experiment-memory-report.ts ./scripts/experiment-memory-report.ts
 COPY --chown=nextjs:nodejs scripts/society-report-helpers.ts ./scripts/society-report-helpers.ts
 COPY --chown=nextjs:nodejs scripts/cleanup-rate-limits.ts ./scripts/cleanup-rate-limits.ts
+COPY --chown=nextjs:nodejs scripts/operator-admin.ts ./scripts/operator-admin.ts
+COPY --chown=nextjs:nodejs scripts/agent-operator.ts ./scripts/agent-operator.ts
+COPY --chown=nextjs:nodejs scripts/operator-cli-stderr-logs.ts ./scripts/operator-cli-stderr-logs.ts
 COPY --chown=nextjs:nodejs --chmod=755 scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
