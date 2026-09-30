@@ -3,7 +3,11 @@ import { getEnvironment } from "@/config/env";
 import { AppError } from "@/lib/http/errors";
 import { createOpaqueToken, hmacIdentifier, hmacToken, sha256 } from "@/lib/security/crypto";
 import { isValidCsrfToken } from "@/lib/security/csrf";
-import { createSessionSecrets, sessionUpdate } from "@/modules/auth/domain/session";
+import {
+  createSessionSecrets,
+  operatorSessionUserAgent,
+  sessionUpdate,
+} from "@/modules/auth/domain/session";
 import {
   createSessionRecord,
   findSessionCsrfState,
@@ -80,7 +84,7 @@ export async function authenticateSession(
       getEnvironment().SESSION_TTL_DAYS,
     );
     const update =
-      options.extendExpiration === false
+      options.extendExpiration === false || session.userAgent === operatorSessionUserAgent
         ? { ...(proposedUpdate.lastUsedAt ? { lastUsedAt: proposedUpdate.lastUsedAt } : {}) }
         : proposedUpdate;
     if (Object.keys(update).length > 0) await touchSession(transaction, session.id, update);

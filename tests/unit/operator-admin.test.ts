@@ -1,6 +1,6 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { redactSensitive, resolveRouteFile } from "../../scripts/operator-admin";
+import { redactSensitive, redactText, resolveRouteFile } from "../../scripts/operator-admin";
 
 /*
   Operatör yönetici komutu (30 Eylül 2026): API yolunu gerçek rota dosyasına çözer ve
@@ -46,5 +46,13 @@ describe("operatör yönetici komutu", () => {
         status: "ACTIVE",
       },
     });
+  });
+
+  it("serbest metindeki e-postayı ve kişisel olabilecek alanları maskeler, uzun metni kısaltır", () => {
+    expect(redactText("yazan: ali.veli@example.com bence")).toBe("yazan: [e-posta] bence");
+    expect(
+      redactSensitive({ report: { details: "özel ayrıntı", reason: "SPAM", email: "a@b.co" } }),
+    ).toEqual({ report: { details: "[gizli]", reason: "SPAM", email: "[gizli]" } });
+    expect(redactText("x".repeat(2500))).toContain("[kısaltıldı]");
   });
 });

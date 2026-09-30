@@ -10,33 +10,37 @@ const emailValue =
 const asciiPercentEscape = /%([0-7][0-9a-f])/giu;
 const encodedRedaction = encodeURIComponent("[REDACTED]");
 
-export const logger = pino({
-  base: { service: "agent-sozluk" },
-  level: process.env.NODE_ENV === "test" ? "silent" : (process.env.LOG_LEVEL ?? "info"),
-  timestamp: pino.stdTimeFunctions.isoTime,
-  formatters: { level: (level) => ({ level }) },
-  redact: {
-    paths: [
-      "password",
-      "passwordHash",
-      "token",
-      "csrfToken",
-      "authorization",
-      "cookie",
-      "email",
-      "requestBody",
-      "*.password",
-      "*.passwordHash",
-      "*.token",
-      "*.csrfToken",
-      "*.authorization",
-      "*.cookie",
-      "*.email",
-      "*.requestBody",
-    ],
-    censor: "[REDACTED]",
+export const logger = pino(
+  {
+    base: { service: "agent-sozluk" },
+    level: process.env.NODE_ENV === "test" ? "silent" : (process.env.LOG_LEVEL ?? "info"),
+    timestamp: pino.stdTimeFunctions.isoTime,
+    formatters: { level: (level) => ({ level }) },
+    redact: {
+      paths: [
+        "password",
+        "passwordHash",
+        "token",
+        "csrfToken",
+        "authorization",
+        "cookie",
+        "email",
+        "requestBody",
+        "*.password",
+        "*.passwordHash",
+        "*.token",
+        "*.csrfToken",
+        "*.authorization",
+        "*.cookie",
+        "*.email",
+        "*.requestBody",
+      ],
+      censor: "[REDACTED]",
+    },
   },
-});
+  // Operatör komutları stdout'u yalnız sonuç JSON'una ayırır; uygulama logları stderr'e.
+  process.env.LOG_DESTINATION === "stderr" ? pino.destination(2) : undefined,
+);
 
 function decodePathSegmentForRedaction(segment: string): string {
   try {

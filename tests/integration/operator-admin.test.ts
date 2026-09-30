@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { requireTestDatabaseUrl } from "../../scripts/test-database-safety";
+import { authenticateSession, issueSession } from "@/modules/auth/application/sessions";
+import { operatorSessionUserAgent } from "@/modules/auth/domain/session";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -49,11 +51,16 @@ function operator(adminId: string, args: string[], extra: Record<string, string>
       },
     },
   );
-  const line = result.stdout.trim().split("\n").at(-1) ?? "";
+  const lines = result.stdout.trim().split("\n").filter(Boolean);
+  // stdout yalnız sonuç JSON satırıdır; uygulama logları stderr'e gider.
+  expect(lines.length).toBeLessThanOrEqual(1);
+  const line = lines.at(-1) ?? "";
   return {
     status: result.status ?? -1,
     stderr: result.stderr,
-    output: line.startsWith("{") ? (JSON.parse(line) as { status: number; body: unknown }) : null,
+    output: line.startsWith("{")
+      ? (JSON.parse(line) as { status: number; body: unknown; idempotencyKey?: string })
+      : null,
   };
 }
 
@@ -103,15 +110,32 @@ describe("operatör yönetici komutu", () => {
       }),
     ).toBeGreaterThan(0);
 
-    // Her çağrı kendi oturumunu açar ve iptal eder; açık oturum kalmaz.
+    // Aynı idempotency anahtarıyla yeniden deneme mutasyonu tekrarlamaz.
+    const versionAfter = (
+      await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } })
+    ).settingsVersion;
+    const retried = operator(admin.id, patch, {
+      AGENT_ADMIN_CONFIRMATION: "PATCH /api/v1/admin/agent-settings",
+      AGENT_ADMIN_IDEMPOTENCY_KEY: applied.output!.idempotencyKey!,
+    });
+    expect(retried.output?.status).toBe(200);
+    expect(
+      (await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }))
+        .settingsVersion,
+    ).toBe(versionAfter);
+
+    // Her çağrı kendi oturumunu açar ve iptal eder; açık oturum kalmaz, ömür kısa kalır.
     const sessions = await integrationDatabase.session.findMany({
       where: { userId: admin.id },
-      select: { revokedAt: true, userAgent: true },
+      select: { revokedAt: true, userAgent: true, createdAt: true, expiresAt: true },
     });
     expect(sessions.length).toBeGreaterThanOrEqual(2);
     for (const session of sessions) {
       expect(session.userAgent).toBe("operator-admin-cli");
       expect(session.revokedAt).not.toBeNull();
+      expect(session.expiresAt.getTime() - session.createdAt.getTime()).toBeLessThanOrEqual(
+        11 * 60 * 1000,
+      );
     }
   }, 300_000);
 
@@ -126,4 +150,31 @@ describe("operatör yönetici komutu", () => {
     }
     expect(await integrationDatabase.session.count({ where: { userId: admin.id } })).toBe(0);
   }, 300_000);
+
+  it("operatör oturumu doğrulamada uzatılmaz; normal oturum uzatılır", async () => {
+    const admin = await createAdmin();
+    const soon = new Date(Date.now() + 5 * 60 * 1000);
+    const issue = async (userAgent: string) => {
+      const issued = await integrationDatabase.$transaction((transaction) =>
+        issueSession(transaction, admin.id, { userAgent, ip: null }),
+      );
+      await integrationDatabase.session.update({
+        where: { id: issued.id },
+        data: { expiresAt: soon },
+      });
+      return issued;
+    };
+    const operatorSession = await issue(operatorSessionUserAgent);
+    const browserSession = await issue("Mozilla/5.0");
+    const authenticatedOperator = await authenticateSession(
+      integrationDatabase,
+      operatorSession.token,
+    );
+    const authenticatedBrowser = await authenticateSession(
+      integrationDatabase,
+      browserSession.token,
+    );
+    expect(authenticatedOperator?.expiresAt.getTime()).toBe(soon.getTime());
+    expect(authenticatedBrowser?.expiresAt.getTime()).toBeGreaterThan(soon.getTime());
+  });
 });

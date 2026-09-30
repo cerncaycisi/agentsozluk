@@ -33,3 +33,12 @@ export function sessionUpdate(
     update.expiresAt = addDays(now, ttlDays);
   return update;
 }
+
+/**
+ * Operatör yönetici komutunun açtığı oturum (30 Eylül 2026). Kısa ömürlüdür ve kimlik
+ * doğrulamada ASLA uzatılmaz: süreç kesilip iptal edilemese bile en geç birkaç dakika
+ * içinde geçersizleşir. Aynı kullanıcı ajanını taklit eden bir tarayıcı yalnız kendi
+ * oturumunu kısaltmış olur.
+ */
+export const operatorSessionUserAgent = "operator-admin-cli";
+export const operatorSessionLifetimeMs = 10 * 60 * 1000;

@@ -1,3 +1,4 @@
+import "./operator-cli-stderr-logs";
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { existsSync, readdirSync } from "node:fs";
@@ -9,6 +10,7 @@ import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/config/app";
 import { getEnvironment } from "@/config/env";
 import { getDatabase } from "@/lib/db/client";
 import { issueSession } from "@/modules/auth/application/sessions";
+import { operatorSessionLifetimeMs, operatorSessionUserAgent } from "@/modules/auth/domain/session";
 import { revokeSession } from "@/modules/auth/repository/sessions";
 import { resolveOperatorAdmin } from "./agent-operator";
 
@@ -36,7 +38,10 @@ import { resolveOperatorAdmin } from "./agent-operator";
   - GET dışındaki her istek tam `METOD yol` metnini AGENT_ADMIN_CONFIRMATION'da ister
     (yanlış kopyala-yapıştırla mutasyonu önler). Komutun olması üretim yetkisi değildir.
   - Aktör `resolveOperatorAdmin` (AGENT_OPERATOR_ADMIN_ID ya da tek aktif HUMAN ADMIN).
-  - Çıktıda kimlik bilgisi, token, parola, çerez ya da sır taşıyan alanlar maskelenir.
+  - Çıktıda kimlik bilgisi, iletişim ve serbest bildirim metni alanları ile metindeki e-postalar
+    maskelenir; stdout yalnız sonuç JSON satırıdır (uygulama logları stderr'e).
+  - GET dışı isteklerde kullanılan idempotency anahtarı çıktıya yazılır; yeniden denemede
+    AGENT_ADMIN_IDEMPOTENCY_KEY ile aynısı verilirse mutasyon tekrarlanmaz.
 */
 const allowedPrefixes = ["/api/v1/admin/", "/api/v1/moderation/"] as const;
 const methodSchema = z.enum(["GET", "POST", "PATCH", "PUT", "DELETE"]);
@@ -44,12 +49,30 @@ const environmentSchema = z
   .object({
     AGENT_OPERATOR_ADMIN_ID: z.string().uuid().optional(),
     AGENT_ADMIN_CONFIRMATION: z.string().optional(),
+    /** Yeniden denemede aynı anahtar verilirse rota aynı mutasyonu ikinci kez yapmaz. */
+    AGENT_ADMIN_IDEMPOTENCY_KEY: z.string().uuid().optional(),
   })
   .passthrough();
 
-const sensitiveKey = /credential|token|secret|password|cookie|csrf/iu;
+/*
+  Çıktı politikası (Astra 60f4797 P2): kimlik bilgisi/iletişim alanları adıyla, serbest
+  metindeki e-posta adresleri değeriyle maskelenir; bildirim ayrıntısı gibi kişisel
+  olabilecek serbest metin alanları (`details`, `message`, `note`) hiç basılmaz. Uzun
+  metinler kısaltılır.
+*/
+const sensitiveKey =
+  /credential|token|secret|password|cookie|csrf|authorization|email|phone|ipHash|ipAddress|details|message|note/iu;
+const emailValue =
+  /[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+/giu;
+const maxTextLength = 2000;
+
+export function redactText(value: string): string {
+  const masked = value.replace(emailValue, "[e-posta]");
+  return masked.length > maxTextLength ? `${masked.slice(0, maxTextLength)}…[kısaltıldı]` : masked;
+}
 
 export function redactSensitive(value: unknown): unknown {
+  if (typeof value === "string") return redactText(value);
   if (Array.isArray(value)) return value.map(redactSensitive);
   if (value && typeof value === "object")
     return Object.fromEntries(
@@ -114,9 +137,35 @@ async function main(): Promise<void> {
 
   const database = getDatabase();
   const admin = await resolveOperatorAdmin(database, environment.AGENT_OPERATOR_ADMIN_ID);
-  const session = await database.$transaction((transaction) =>
-    issueSession(transaction, admin.actorId, { userAgent: "operator-admin-cli", ip: null }),
-  );
+  /*
+    Oturum ömrü (Astra 60f4797 P1/P2): önceki kesintilerden kalmış operatör oturumları
+    temizlenir; yenisi 10 dakikalıktır ve kimlik doğrulama onu uzatmaz. SIGINT/SIGTERM'de
+    ve her çıkışta iptal edilir; iptal edilemezse bile kendiliğinden kısa sürede düşer.
+  */
+  await database.session.updateMany({
+    where: { userId: admin.actorId, userAgent: operatorSessionUserAgent, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  const session = await database.$transaction(async (transaction) => {
+    const issued = await issueSession(transaction, admin.actorId, {
+      userAgent: operatorSessionUserAgent,
+      ip: null,
+    });
+    const expiresAt = new Date(Date.now() + operatorSessionLifetimeMs);
+    await transaction.session.update({ where: { id: issued.id }, data: { expiresAt } });
+    return { ...issued, expiresAt };
+  });
+  let revoked = false;
+  const revoke = async () => {
+    if (revoked) return;
+    revoked = true;
+    await database.$transaction((transaction) => revokeSession(transaction, session.id));
+  };
+  for (const signal of ["SIGINT", "SIGTERM"] as const)
+    process.once(signal, () => {
+      void revoke().finally(() => process.exit(130));
+    });
+  const idempotencyKey = environment.AGENT_ADMIN_IDEMPOTENCY_KEY ?? randomUUID();
   try {
     const appUrl = new URL(getEnvironment().APP_URL);
     const request = new NextRequest(new URL(`${apiPath}${query ? `?${query}` : ""}`, appUrl), {
@@ -126,7 +175,7 @@ async function main(): Promise<void> {
         "x-csrf-token": session.csrfToken,
         origin: appUrl.origin,
         host: appUrl.host,
-        "idempotency-key": randomUUID(),
+        "idempotency-key": idempotencyKey,
         ...(body !== undefined ? { "content-type": "application/json" } : {}),
       },
       ...(body !== undefined ? { body } : {}),
@@ -145,11 +194,15 @@ async function main(): Promise<void> {
       // JSON olmayan yanıt metin olarak kalır.
     }
     process.stdout.write(
-      `${JSON.stringify({ status: response.status, body: redactSensitive(parsed) })}\n`,
+      `${JSON.stringify({
+        status: response.status,
+        ...(method === "GET" ? {} : { idempotencyKey }),
+        body: redactSensitive(parsed),
+      })}\n`,
     );
     if (!response.ok) process.exitCode = 1;
   } finally {
-    await database.$transaction((transaction) => revokeSession(transaction, session.id));
+    await revoke();
     await database.$disconnect();
   }
 }
