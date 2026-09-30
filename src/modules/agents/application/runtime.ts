@@ -116,6 +116,8 @@ import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-po
 import {
   sourceDormancyPolicy,
   sourceDormancyVerdict,
+  sourceResultKind,
+  type SourceResultKind,
 } from "@/modules/agents/domain/source-dormancy";
 import {
   buildTopicChoiceSignals,
@@ -2175,8 +2177,7 @@ async function retireDeadRuntimeSource(
   runId: string,
   input: {
     sourceId: string;
-    fetchFailed: boolean;
-    itemCount: number;
+    resultKind: SourceResultKind;
     now: Date;
     globalSourceEvolutionEnabled: boolean;
   },
@@ -2187,6 +2188,8 @@ async function retireDeadRuntimeSource(
   });
   // Kaynak evrimi global ya da ajan düzeyinde kapalıysa envanter değişmez (Astra 93ff206 P2).
   if (
+    input.resultKind === "NEUTRAL" ||
+    input.resultKind === "SUCCESS" ||
     !input.globalSourceEvolutionEnabled ||
     !state ||
     !state.agentProfile.sourceEvolutionEnabled ||
@@ -2204,7 +2207,7 @@ async function retireDeadRuntimeSource(
     input.now.getTime() - (state.lastUsefulAt ?? state.createdAt).getTime() >=
     sourceDormancyPolicy.failingWindowDays * 24 * 60 * 60 * 1000;
   const priorConsecutiveSourceFailures =
-    input.fetchFailed && quietLongEnough
+    input.resultKind === "FAILED" && quietLongEnough
       ? await countPriorConsecutiveSourceFailures(transaction, {
           agentProfileId: principal.agentProfileId,
           sourceId: state.id,
@@ -2221,8 +2224,8 @@ async function retireDeadRuntimeSource(
     adminBlocked: state.adminBlocked,
     lastUsefulAt: state.lastUsefulAt,
     createdAt: state.createdAt,
-    fetchFailed: input.fetchFailed,
-    itemCount: input.itemCount,
+    fetchFailed: input.resultKind === "FAILED",
+    itemCount: 0,
     now: input.now,
   });
   if (!reason) return;
@@ -2434,8 +2437,7 @@ export function recordRuntimeSourceResult(
     }
     await retireDeadRuntimeSource(transaction, principal, runId, {
       sourceId: source.id,
-      fetchFailed: Boolean(input.errorCode),
-      itemCount: input.items.length,
+      resultKind: sourceResultKind({ errorCode: input.errorCode, itemCount: input.items.length }),
       now,
       globalSourceEvolutionEnabled: settings.sourceEvolutionEnabled,
     });

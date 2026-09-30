@@ -8529,6 +8529,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       adminPinned?: boolean;
       failedResults?: number;
       sourceEvolutionEnabled?: boolean;
+      errorCode?: string;
     }) {
       const fixture = await createFixture();
       const agentProfileId = fixture.created.agent.profile.id;
@@ -8590,7 +8591,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
             attemptId,
             sourceId: source.id,
             items: [],
-            errorCode: "SOURCE_HTTP_503",
+            errorCode: overrides.errorCode ?? "SOURCE_HTTP_503",
           }),
         );
       }
@@ -8800,6 +8801,38 @@ describe("internal agent runtime API with PostgreSQL", () => {
           where: { agentProfileId, addedByOrigin: "SOURCE_REPLACEMENT" },
         }),
       ).toBe(0);
+    });
+
+    it("uygun öğe vermeyen besleme okuma hatası sayılmaz", async () => {
+      const recent = await failingSourceScenario({
+        consecutiveFailures: 0,
+        lastUsefulDaysAgo: 10,
+        failedResults: 6,
+        errorCode: "SOURCE_NO_USEFUL_ITEMS",
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({
+          where: { id: recent.source.id },
+        }),
+      ).toMatchObject({ status: "PROBATION" });
+    });
+
+    it("21 gündür uygun öğe vermeyen besleme boş besleme olarak uykuya alınır", async () => {
+      const stale = await failingSourceScenario({
+        consecutiveFailures: 0,
+        lastUsefulDaysAgo: 22,
+        errorCode: "SOURCE_NO_USEFUL_ITEMS",
+      });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: stale.source.id } }),
+      ).toMatchObject({ status: "DORMANT" });
+      expect(
+        await integrationDatabase.outboxEvent.findFirstOrThrow({
+          where: { eventType: "agent.source.changed", aggregateId: stale.source.id },
+          orderBy: { createdAt: "desc" },
+          select: { payload: true },
+        }),
+      ).toMatchObject({ payload: expect.objectContaining({ dormancyReason: "EMPTY_FEED" }) });
     });
 
     it("ajanın kaynak evrimi kapalıyken envanteri değiştirmez", async () => {

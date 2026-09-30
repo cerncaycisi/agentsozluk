@@ -17,7 +17,7 @@ import {
   runtimeUncountedSourceStatuses,
 } from "@/modules/agents/domain/source-status";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
-import { sourceDormancyPolicy } from "@/modules/agents/domain/source-dormancy";
+import { sourceDormancyPolicy, sourceResultKind } from "@/modules/agents/domain/source-dormancy";
 import {
   runtimeAgentSourceLimit,
   runtimeSourceHolderLimit,
@@ -3407,11 +3407,15 @@ export async function countPriorConsecutiveSourceFailures(
   });
   let failures = 0;
   for (const { afterState } of results) {
-    const errorCode =
+    const record =
       afterState && typeof afterState === "object" && !Array.isArray(afterState)
-        ? (afterState as Record<string, unknown>).errorCode
-        : null;
-    if (typeof errorCode !== "string" || errorCode.length === 0) break;
+        ? (afterState as Record<string, unknown>)
+        : {};
+    const kind = sourceResultKind({
+      errorCode: typeof record.errorCode === "string" ? record.errorCode : null,
+      itemCount: typeof record.itemCount === "number" ? record.itemCount : 0,
+    });
+    if (kind !== "FAILED") break;
     failures += 1;
   }
   return failures;

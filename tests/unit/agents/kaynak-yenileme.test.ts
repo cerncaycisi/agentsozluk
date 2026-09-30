@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sourceDormancyVerdict } from "@/modules/agents/domain/source-dormancy";
+import { sourceDormancyVerdict, sourceResultKind } from "@/modules/agents/domain/source-dormancy";
 import { summarizeSourceDiversity } from "@/modules/agents/domain/source-diversity";
 import { runtimeUncountedSourceStatuses } from "@/modules/agents/domain/source-status";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
@@ -71,6 +71,14 @@ describe("ölü kaynak kararı", () => {
     expect(sourceDormancyVerdict({ ...base, adminBlocked: true })).toBeNull();
     for (const status of ["DORMANT", "REJECTED", "BLOCKED"])
       expect(sourceDormancyVerdict({ ...base, status })).toBeNull();
+  });
+
+  it("uygun öğe yok ve iptal okuma hatası sayılmaz", () => {
+    expect(sourceResultKind({ errorCode: "SOURCE_NO_USEFUL_ITEMS", itemCount: 0 })).toBe("EMPTY");
+    expect(sourceResultKind({ errorCode: "SOURCE_CANCELLED", itemCount: 0 })).toBe("NEUTRAL");
+    expect(sourceResultKind({ errorCode: "SOURCE_TIMEOUT", itemCount: 0 })).toBe("FAILED");
+    expect(sourceResultKind({ errorCode: null, itemCount: 0 })).toBe("EMPTY");
+    expect(sourceResultKind({ errorCode: null, itemCount: 2 })).toBe("SUCCESS");
   });
 
   it("uykudaki kaynak canlı sayılmaz", () => {

@@ -54,3 +54,21 @@ export function sourceDormancyVerdict(input: {
     ? "EMPTY_FEED"
     : null;
 }
+
+/*
+  Okuma sonucunun sınıfı (Astra 7487234 P2). Worker başarıyla okunan ama ajana uygun öğe
+  vermeyen beslemeyi `SOURCE_NO_USEFUL_ITEMS` hata koduyla, koşu süresi dolduğu için
+  yarıda kesilen okumayı `SOURCE_CANCELLED` ile bildiriyor. İlki boş besleme (21 günlük
+  kural), ikincisi kaynağın kusuru değil (nötr); ikisi de okuma hatası sayılmaz.
+*/
+export type SourceResultKind = "SUCCESS" | "EMPTY" | "FAILED" | "NEUTRAL";
+
+export function sourceResultKind(input: {
+  errorCode: string | null | undefined;
+  itemCount: number;
+}): SourceResultKind {
+  if (!input.errorCode) return input.itemCount > 0 ? "SUCCESS" : "EMPTY";
+  if (input.errorCode === "SOURCE_NO_USEFUL_ITEMS") return "EMPTY";
+  if (input.errorCode === "SOURCE_CANCELLED") return "NEUTRAL";
+  return "FAILED";
+}
