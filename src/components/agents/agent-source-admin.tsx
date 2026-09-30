@@ -87,7 +87,9 @@ export function AgentSourceAdmin({ rows }: { rows: AgentSourceAdminRow[] }) {
   return (
     <div className="space-y-4">
       {rows.map((source) => (
-        <SourceCard key={source.id} source={source} />
+        // Durum değişince kart yeniden kurulur: bayat taslak (ör. reddedilmiş öneriye
+        // hazırlanmış onay) yeni durumla gönderilemez (Astra 1125341 P2).
+        <SourceCard key={`${source.id}:${source.status}`} source={source} />
       ))}
       {rows.length === 0 ? (
         <p className="surface-card p-6 text-muted">Filtrede source yok.</p>
@@ -99,6 +101,8 @@ export function AgentSourceAdmin({ rows }: { rows: AgentSourceAdminRow[] }) {
 function SourceCard({ source }: { source: AgentSourceAdminRow }) {
   const router = useAppRouter();
   const [status, setStatus] = useState(source.status);
+  // Taslağın başladığı durum; gönderimde beklenen durum budur, sonraki prop değil.
+  const [draftBaseStatus] = useState(source.status);
   const [localeFocus, setLocaleFocus] = useState(source.localeFocus);
   const [adminPinned, setAdminPinned] = useState(source.adminPinned);
   const [adminBlocked, setAdminBlocked] = useState(source.adminBlocked);
@@ -121,7 +125,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
         method: "PATCH",
         // Ekranda görülen durum beklenir: arada başka bir karar (ör. öneri reddi) verildiyse
         // sunucu bayat kararı uygulamaz (Astra ace376c P2).
-        body: { ...body, expectedStatus: source.status, reason },
+        body: { ...body, expectedStatus: draftBaseStatus, reason },
         csrf: true,
         idempotency: true,
       });
