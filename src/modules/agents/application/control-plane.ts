@@ -203,6 +203,20 @@ export function updateAgentSourceAdmin(
     await lockAgentSource(transaction, sourceId);
     const current = await findAgentSourceForAdmin(transaction, sourceId);
     if (!current) throw new AppError("AGENT_SOURCE_NOT_FOUND", 404, "Agent source bulunamadı.");
+    // Karar yarışı: operatör komutu önerinin hâlâ onay beklediğini kilit altında şart koşar.
+    if (input.expectedStatus !== undefined && current.status !== input.expectedStatus)
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Kaynağın durumu bu arada değişti; karar uygulanmadı.",
+      );
+    // Onay kuyruğuna (DISCOVERED) yalnız ajan önerisi girer; yönetici kaynak geri koyamaz.
+    if (input.status === "DISCOVERED" && current.status !== "DISCOVERED")
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Kaynak onay kuyruğuna yönetici tarafından alınamaz.",
+      );
     const week = istanbulWeekWindow(now);
     const recentAudits = await listAgentSourceScoreAudits(transaction, sourceId, week);
     const scoreChanges: Partial<Record<(typeof sourceScoreFields)[number], SourceScoreChange>> = {};

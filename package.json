@@ -24,6 +24,7 @@
     "agent:verify-personas": "tsx scripts/verify-personas.ts",
     "agent:audit-sources": "tsx scripts/audit-persona-sources.ts",
     "agent:reconcile-sources": "tsx scripts/reconcile-persona-sources.ts",
+    "agent:source-proposals": "tsx scripts/agent-source-proposals.ts",
     "agent:reconcile-public-bios": "tsx scripts/reconcile-public-agent-bios.ts",
     "agent:reconcile-persona-weight-locks": "tsx scripts/reconcile-persona-weight-locks.ts",
     "benchmark:dictionary-flow": "tsx scripts/benchmark-dictionary-flow.ts",

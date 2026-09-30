@@ -10,7 +10,10 @@ import {
   runtimeEvidenceCatalogFrom,
   runtimePresentedUserIds,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
-import { runtimeSourceProposalEnabled } from "@/modules/agents/domain/runtime-source-proposal";
+import {
+  agentSourceProposalOrigin,
+  runtimeSourceSuggestionLimits,
+} from "@/modules/agents/domain/runtime-source-proposal";
 import {
   runtimeAgentSourceLimit,
   runtimeSourceHolderLimit,
@@ -19,6 +22,8 @@ import {
 import {
   countRuntimeAgentSources,
   countRuntimeSourceHolders,
+  countPendingSourceSuggestions,
+  createPendingSourceSuggestion,
   findRuntimeSourceCandidate,
   getRuntimeRunProducedTargetIds,
 } from "@/modules/agents/repository/runtime";
@@ -482,6 +487,7 @@ export function buildRuntimeSourceChangedOutboxEvent(input: {
 }
 
 function staticPolicyRejection(input: {
+  sourceSuggestion?: boolean;
   actionType: string;
   runType: string;
   runtimeEnabled: boolean;
@@ -533,7 +539,8 @@ function staticPolicyRejection(input: {
     !input.followingAllowed
   )
     return { code: "FOLLOWING_DISABLED", reason: "Bu run için takip işlemleri kapalıdır." };
-  if (provenanceIsRequired(input.actionType) && !input.hasProvenance)
+  // Kaynak önerisi (adres) onaya gider, okunmaz; kanıt göstermek zorunda değildir.
+  if (provenanceIsRequired(input.actionType) && !input.hasProvenance && !input.sourceSuggestion)
     return {
       code: "PROVENANCE_REQUIRED",
       reason: "İçerik action'ı denetlenebilir provenance taşımak zorundadır.",
@@ -606,6 +613,53 @@ async function rejectAction(
     rejectionCode: rejection.code,
   });
   return result;
+}
+
+/*
+  Ajan kaynak önerisi: adres güvenlik denetiminden geçer ve DISCOVERED (onay bekliyor)
+  olarak kaydedilir; okunmaz, sunulmaz, sayılmaz. Onay/ret yöneticinin
+  (`updateAgentSourceAdmin`). Bekleyen öneri sınırları ajan ve toplam düzeyinde; aynı
+  kilit altında sayılır.
+*/
+async function suggestRuntimeSourceForApproval(
+  transaction: TransactionClient,
+  principal: RuntimePrincipal,
+  action: ParsedRuntimeAction,
+) {
+  const sourceUrl = parseSafeSourceUrl(requiredString(action.input.url, "url"));
+  if (sourceUrl.protocol !== "https:")
+    throw new AppError("VALIDATION_ERROR", 400, "Kaynak önerisi https adresi olmalıdır.");
+  await lockAgentSourceCapacity(transaction);
+  const pending = await countPendingSourceSuggestions(transaction, {
+    agentProfileId: principal.agentProfileId,
+    origin: agentSourceProposalOrigin,
+  });
+  if (pending.agent >= runtimeSourceSuggestionLimits.pendingPerAgent)
+    throw new AppError("VALIDATION_ERROR", 400, "Onay bekleyen önerin zaten var.");
+  if (pending.total >= runtimeSourceSuggestionLimits.pendingTotal)
+    throw new AppError("VALIDATION_ERROR", 400, "Kaynak önerisi kuyruğu dolu.");
+  const suggestion = await createPendingSourceSuggestion(transaction, {
+    agentProfileId: principal.agentProfileId,
+    url: sourceUrl.toString(),
+    normalizedDomain: sourceUrl.hostname.toLowerCase(),
+    sourceType: /(rss|atom|feed|\.xml)/iu.test(sourceUrl.pathname + sourceUrl.search)
+      ? "RSS"
+      : "HTML",
+    reason: action.safeReason,
+    origin: agentSourceProposalOrigin,
+  });
+  if (!suggestion)
+    throw new AppError("VALIDATION_ERROR", 400, "Bu kaynak zaten listende ya da önerilmiş.");
+  return {
+    result: { sourceId: suggestion.id, status: suggestion.status, pendingApproval: true },
+    changedSource: suggestion,
+    lifeChange: {
+      eventType: "SOURCE_STATE_CHANGED" as const,
+      subject: { type: "SOURCE", id: suggestion.id },
+      summary: "Ajanın kaynak önerisi onay kuyruğuna alındı; onaylanana kadar okunmaz.",
+      after: { status: suggestion.status, sourceType: suggestion.sourceType },
+    },
+  };
 }
 
 async function performAction(
@@ -723,51 +777,44 @@ async function performAction(
         - `candidateId`: başka ajanların işine yaramış, bu koşuda ajana
           sunulmuş bir aday. Adres veritabanından çözülüyor, model onu hiç
           görmüyor ve yazamıyor.
-        - `url`: eski serbest yol. Model artık bunu üretemiyor (wire
-          şemasından kaldırıldı) ve `SOURCE_PROPOSAL_DISABLED` kapısının
-          arkasında; kod yalnız bayrak açılırsa buraya ulaşır.
+        - `url`: ajanın kendi önerisi. Okunmaz; DISCOVERED (onay bekliyor)
+          olarak kaydedilir, yönetici onayına gider
+          (`suggestRuntimeSourceForApproval`, `runtime-source-proposal.ts`).
 
         `parseSafeSourceUrl` iki yolda da çalışıyor: aday veritabanından
         gelse bile aynı güvenlik kontrolünden geçmeli (kayıt eskiyse ya da
         politika sertleştiyse orada yakalanır).
       */
-      const resolved =
-        input.candidateId === undefined
-          ? null
-          : await findRuntimeSourceCandidate(transaction, input.candidateId);
-      if (input.candidateId !== undefined && !resolved)
+      if (input.candidateId === undefined)
+        return suggestRuntimeSourceForApproval(transaction, principal, action);
+      const resolved = await findRuntimeSourceCandidate(transaction, input.candidateId);
+      if (!resolved)
         throw new AppError("VALIDATION_ERROR", 400, "Kaynak adayı artık geçerli değil.");
-      const sourceUrl = parseSafeSourceUrl(
-        resolved ? resolved.url : requiredString(input.url, "url"),
-      );
+      const sourceUrl = parseSafeSourceUrl(resolved.url);
       /*
         Kota: her canlı kaynak günlük yenilemede çekiliyor, yani birikimin
         bedeli sürekli. Kontrol burada, çünkü asıl kapı sunucu tarafı olmalı —
         perception'da aday gizlemek yalnız boşuna teklif etmemek için.
       */
-      if (resolved) await lockAgentSourceCapacity(transaction);
+      await lockAgentSourceCapacity(transaction);
       if (
-        resolved &&
         (await countRuntimeAgentSources(transaction, principal.agentProfileId)) >=
-          runtimeAgentSourceLimit
+        runtimeAgentSourceLimit
       )
         throw new AppError("VALIDATION_ERROR", 400, "Ajanın kaynak listesi dolu.");
       // Aynı kaynağın herkese yayılmasını sunucu tarafında da durdur (`runtimeSourceHolderLimit`).
       if (
-        resolved &&
         (await countRuntimeSourceHolders(transaction, sourceUrl.toString())) >=
-          runtimeSourceHolderLimit
+        runtimeSourceHolderLimit
       )
         throw new AppError("VALIDATION_ERROR", 400, "Bu kaynak zaten yeterince ajanda.");
       const source = await proposeRuntimeSource(transaction, {
         agentProfileId: principal.agentProfileId,
         url: sourceUrl.toString(),
         normalizedDomain: sourceUrl.hostname.toLowerCase(),
-        sourceType: resolved ? resolved.sourceType : (input.sourceType ?? "HTML"),
-        topics: resolved ? resolved.topics : (input.topics ?? ["genel"]),
-        discoveredFrom: resolved
-          ? `AGENT_CANDIDATE:${resolved.id}`
-          : requiredString(action.provenance?.shortRationale, "provenance.shortRationale"),
+        sourceType: resolved.sourceType,
+        topics: resolved.topics,
+        discoveredFrom: `AGENT_CANDIDATE:${resolved.id}`,
       });
       return {
         result: { sourceId: source.id, status: source.status },
@@ -1002,6 +1049,10 @@ export async function executeRuntimeAction(
         votingAllowed: actionRecord.run.allowVoting && settings.votingEnabled,
         followingAllowed: actionRecord.run.allowFollowing && settings.userFollowingEnabled,
         hasProvenance: Boolean(parsed.data.provenance),
+        sourceSuggestion:
+          parsed.data.actionType === "PROPOSE_SOURCE" &&
+          parsed.data.input.candidateId === undefined &&
+          parsed.data.input.url !== undefined,
       });
       if (staticRejection)
         return rejectAction(transaction, principal, actionRecord, staticRejection);
@@ -1012,21 +1063,6 @@ export async function executeRuntimeAction(
         return rejectAction(transaction, principal, actionRecord, {
           code: "SOURCE_EVOLUTION_DISABLED",
           reason: "Source evolution bu agent veya global ayarlarda kapalıdır.",
-        });
-      /*
-        Serbest URL yolu ayrı anahtarda ve varsayılan KAPALI. `candidate_id`
-        modeli geldi, ama bu kapı KAPALI KALIYOR: serbest URL'in kendisi
-        artık gereksiz, çünkü ajanın kaynak edinmesi için meşru bir yol var.
-        Gerekçe `domain/runtime-source-proposal.ts` yorumunda.
-      */
-      if (
-        parsed.data.actionType === "PROPOSE_SOURCE" &&
-        parsed.data.input.candidateId === undefined &&
-        !runtimeSourceProposalEnabled()
-      )
-        return rejectAction(transaction, principal, actionRecord, {
-          code: "SOURCE_PROPOSAL_DISABLED",
-          reason: "Serbest URL kaynak önerisi kapalı; kaynak yalnız sunulan adaydan edinilir.",
         });
       /*
         Aday snapshot'a bağlı. Bu kontrol olmadan hatalı ya da ele geçirilmiş

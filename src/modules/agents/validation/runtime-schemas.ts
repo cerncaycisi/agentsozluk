@@ -123,10 +123,9 @@ export const runtimeActionInputSchema = z
       .optional(),
     value: z.union([z.literal(-1), z.literal(1)]).optional(),
     /*
-      `candidateId` PROPOSE_SOURCE'un tek meşru girdisi: sunucunun bu koşuda
-      sunduğu bir kaynak adayının kimliği. `url` şemada duruyor ama artık
-      model tarafından üretilemiyor (wire şemasından kaldırıldı) ve executor
-      tarafında `SOURCE_PROPOSAL_DISABLED` kapısının arkasında.
+      `candidateId` ya da `url` (tam biri): sunulan aday ya da ajanın kendi önerisi.
+      Öneri okunmaz; DISCOVERED (onay bekliyor) olarak kaydedilir (30 Eylül 2026,
+      `domain/runtime-source-proposal.ts`). Model `url`'i SUGGEST_SOURCE eylemiyle verir.
     */
     candidateId: z.string().uuid().optional(),
     url: z.string().url().max(2048).optional(),

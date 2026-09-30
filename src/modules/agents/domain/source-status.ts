@@ -10,10 +10,15 @@ export const agentSourceStatuses = [
 
 export type AgentSourceStatusValue = (typeof agentSourceStatuses)[number];
 
-const presentableSourceStatuses = ["SEED", "DISCOVERED", "PROBATION", "TRUSTED"] as const;
+/*
+  DISCOVERED = ajanın önerdiği, onay bekleyen kaynak (30 Eylül 2026). Okunmaz, sunulmaz,
+  sayılmaz; yönetici onayıyla SEED olur, reddiyle REJECTED. Önceden sunulabilir sayılıyordu
+  ama hiçbir yol bu durumu üretmiyordu (üretimde 0 satır).
+*/
+const presentableSourceStatuses = ["SEED", "PROBATION", "TRUSTED"] as const;
 const citableSourceStatuses = ["PROBATION", "TRUSTED"] as const;
-const discoverySourceStatuses = ["DISCOVERED", "PROBATION"] as const;
-const probationEntrySourceStatuses = ["SEED", "DISCOVERED"] as const;
+const discoverySourceStatuses = ["PROBATION"] as const;
+const probationEntrySourceStatuses = ["SEED"] as const;
 const resultRecordableSourceStatuses = [...presentableSourceStatuses, "DORMANT"] as const;
 
 /**
@@ -22,7 +27,12 @@ const resultRecordableSourceStatuses = [...presentableSourceStatuses, "DORMANT"]
  * sayımları, aday sorgusu ve uzlaştırma aynı listeyi kullanır. DORMANT (ölü kaynak,
  * 30 Eylül 2026) eklenmeden önce ölü kaynaklar kota ve sınır işgal ediyordu.
  */
-export const runtimeUncountedSourceStatuses = ["DORMANT", "REJECTED", "BLOCKED"] as const;
+export const runtimeUncountedSourceStatuses = [
+  "DISCOVERED",
+  "DORMANT",
+  "REJECTED",
+  "BLOCKED",
+] as const;
 
 /**
  * Runtime source status policy. Keep status membership here so perception,

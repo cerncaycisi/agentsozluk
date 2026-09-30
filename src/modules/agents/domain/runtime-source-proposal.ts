@@ -1,31 +1,23 @@
-/**
- * `PROPOSE_SOURCE` ayrı bir anahtarın arkasında.
- *
- * Bu action zincirin en riskli halkası: model SERBEST BİR URL üretiyor, sunucu
- * onu kaydediyor ve sonraki koşuda o adrese gerçek bir GET atılıyor. Güvenlik
- * planı bunun için `candidate_id` modelini şart koşuyor — model keyfi URL
- * üretemesin, sunucu önceden doğrulanmış bir adayı çözsün — ve "kaynak
- * özellikleri bu yapılmadan yeniden açılmamalı" diyordu.
- *
- * Ölçüldü (2 Eylül 2026, üretim): önkoşul HİÇ uygulanmamış.
- * `sourceEvolutionEnabled` global olarak ve 36 ajanın hepsinde `true`; yani yol
- * açıktı. Bugüne dek 0 `PROPOSE_SOURCE` üretilmiş olması bir kontrol değil,
- * modelin o eylemi seçmemiş olması.
- *
- * `sourceEvolutionEnabled`'ı kapatmak yanlış cevap olurdu: aynı bayrak günlük
- * kaynak yenilemeyi (`DAILY_SOURCE_REFRESH`) ve reflection'daki kaynak güven
- * güncellemelerini de kapatıyor. İkisi de değerli ve serbest-URL riski
- * taşımıyor. Bu yüzden riskli yol kendi anahtarına alındı.
- *
- * Varsayılan KAPALI. Ölçülen maliyet sıfır: bugüne dek hiç kullanılmamış.
- *
- * GÜNCELLEME (2 Eylül 2026): `candidate_id` modeli geldi ama bu bayrak
- * KALDIRILMADI, kapalı bırakıldı. Sebep: aday modeli serbest URL'i gereksiz
- * kılıyor, yerine geçmiyor. Ajanın kaynak edinmesi için meşru bir yol artık
- * var (`sourceCandidates` → `PROPOSE_SOURCE` + `candidateId`), o yüzden
- * serbest URL'i açmanın hiçbir kazancı kalmadı — yalnız riski var. Bayrak,
- * ileride gerçekten gerekirse diye duruyor.
- */
-export function runtimeSourceProposalEnabled(): boolean {
-  return process.env.AGENT_SOURCE_PROPOSAL === "1";
-}
+/*
+  Ajan kaynak önerisi (30 Eylül 2026, Gökhan kararı: "istiyorum. sen de onaylayabil").
+
+  Ajanlar kaynağı yalnız birbirinden öğreniyordu; sistem kapalıydı. Okunan haberlerdeki
+  bağlantılardan keşif ölçüldü ve sinyal vermedi (%2, 8 alan adı). Ajan artık ilgi alanına
+  uyan bir yayının adresini önerebilir; ama öneri ASLA doğrudan okunmaz:
+
+  - sunucu adresi `parseSafeSourceUrl` ile denetler ve DISCOVERED (onay bekliyor)
+    olarak kaydeder; DISCOVERED okunmaz, sunulmaz, hiçbir sayıma girmez;
+  - yönetici (Gökhan ya da operatör olarak Claude) güvenli okuyucuyla doğrulayıp onaylar
+    (SEED) ya da reddeder (REJECTED); onay stok/sahip sınırlarını kapasite kilidi
+    altında denetler;
+  - bekleyen öneri sınırları kuyruğun şişmesini önler.
+
+  2 Eylül'deki eski serbest URL yolu adresi doğrudan PROBATION yapıyordu (okunur ve
+  kaynak gösterilebilir); o yol kaldırıldı.
+*/
+export const runtimeSourceSuggestionLimits = {
+  pendingPerAgent: 2,
+  pendingTotal: 40,
+} as const;
+
+export const agentSourceProposalOrigin = "AGENT_PROPOSAL";

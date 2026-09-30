@@ -43,6 +43,9 @@ export interface AgentSourceAdminRow {
   lastFetchedAt: string | null;
   lastUsefulAt: string | null;
   consecutiveFailures: number;
+  /** Ajan önerisinde (addedByOrigin AGENT_PROPOSAL) ajanın gerekçesi burada. */
+  discoveredFrom?: string | null;
+  addedByOrigin?: string;
   agentProfile: { id: string; user: { username: string; displayName: string } };
   _count: { items: number };
 }
@@ -84,7 +87,9 @@ export function AgentSourceAdmin({ rows }: { rows: AgentSourceAdminRow[] }) {
   return (
     <div className="space-y-4">
       {rows.map((source) => (
-        <SourceCard key={source.id} source={source} />
+        // Durum değişince kart yeniden kurulur: bayat taslak (ör. reddedilmiş öneriye
+        // hazırlanmış onay) yeni durumla gönderilemez (Astra 1125341 P2).
+        <SourceCard key={`${source.id}:${source.status}`} source={source} />
       ))}
       {rows.length === 0 ? (
         <p className="surface-card p-6 text-muted">Filtrede source yok.</p>
@@ -96,6 +101,8 @@ export function AgentSourceAdmin({ rows }: { rows: AgentSourceAdminRow[] }) {
 function SourceCard({ source }: { source: AgentSourceAdminRow }) {
   const router = useAppRouter();
   const [status, setStatus] = useState(source.status);
+  // Taslağın başladığı durum; gönderimde beklenen durum budur, sonraki prop değil.
+  const [draftBaseStatus] = useState(source.status);
   const [localeFocus, setLocaleFocus] = useState(source.localeFocus);
   const [adminPinned, setAdminPinned] = useState(source.adminPinned);
   const [adminBlocked, setAdminBlocked] = useState(source.adminBlocked);
@@ -116,7 +123,9 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
     try {
       await apiRequest(`/api/v1/admin/agent-sources/${source.id}`, {
         method: "PATCH",
-        body: { ...body, reason },
+        // Ekranda görülen durum beklenir: arada başka bir karar (ör. öneri reddi) verildiyse
+        // sunucu bayat kararı uygulamaz (Astra ace376c P2).
+        body: { ...body, expectedStatus: draftBaseStatus, reason },
         csrf: true,
         idempotency: true,
       });
@@ -141,6 +150,12 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
             {source.agentProfile.user.displayName} · {source.status}
           </h2>
           <p className="break-all text-sm text-muted">{source.url}</p>
+          {source.addedByOrigin === "AGENT_PROPOSAL" && source.discoveredFrom ? (
+            <p className="mt-1 text-sm">
+              {source.status === "DISCOVERED" ? "Onay bekleyen öneri. " : ""}
+              {source.discoveredFrom}
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-muted">
             @{source.agentProfile.user.username} · {source._count.items} öğe · ardışık hata{" "}
             {source.consecutiveFailures}
