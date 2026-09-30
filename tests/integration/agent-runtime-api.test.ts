@@ -8662,6 +8662,80 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ).toBe(0);
     });
 
+    it("aynı alan adındaki başka kaynağın başarısı ölü kaynağın emekliliğini engellemez", async () => {
+      const fixture = await createFixture();
+      const agentProfileId = fixture.created.agent.profile.id;
+      const domain = "karisik-alan.integration.test";
+      const make = (path: string, lastUsefulDaysAgo: number) =>
+        integrationDatabase.agentSource.create({
+          data: {
+            agentProfileId,
+            url: `https://${domain}/${path}`,
+            normalizedDomain: domain,
+            sourceType: "RSS",
+            status: "PROBATION",
+            topics: ["gündem"],
+            trustScore: 0.5,
+            interestScore: 0.5,
+            noveltyScore: 0.5,
+            usefulnessScore: 0.5,
+            lastUsefulAt: new Date(Date.now() - lastUsefulDaysAgo * DAY),
+            createdAt: new Date(Date.now() - 60 * DAY),
+            addedByOrigin: "INTEGRATION_TEST",
+          },
+        });
+      const dead = await make("olu", 10);
+      const alive = await make("canli", 0);
+      const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+      const writePrincipal = await runtimePrincipal(fixture.credential);
+      const workerId = "mixed-domain-worker";
+      const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+        workerId,
+        leaseSeconds: 60,
+      });
+      const runId = leased.run!.id;
+      const read = async (sourceId: string, ok: boolean, index: number) => {
+        const attemptId = randomUUID();
+        await recordRuntimeSourceAttempt(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          runtimeSourceAttemptSchema.parse({ workerId, attemptId, sourceId }),
+        );
+        await recordRuntimeSourceResult(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          runtimeSourceResultSchema.parse({
+            workerId,
+            attemptId,
+            sourceId,
+            items: ok
+              ? [
+                  {
+                    canonicalUrl: `https://${domain}/haber-${index}`,
+                    title: `Haber ${index}`,
+                    contentHash: String(index % 10).repeat(64),
+                    safeText: `Güvenli metin ${index}.`,
+                  },
+                ]
+              : [],
+            ...(ok ? {} : { errorCode: "SOURCE_HTTP_503" }),
+          }),
+        );
+      };
+      for (let index = 0; index < 6; index += 1) {
+        await read(dead.id, false, index);
+        if (index < 5) await read(alive.id, true, index);
+      }
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: dead.id } }),
+      ).toMatchObject({ status: "DORMANT" });
+      expect(
+        await integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: alive.id } }),
+      ).toMatchObject({ status: expect.not.stringMatching(/^DORMANT$/u) });
+    });
+
     it("stok doluyken uykudaki kaynağı yönetici geri açamaz", async () => {
       const { fixture, agentProfileId, source } = await failingSourceScenario({
         consecutiveFailures: 0,

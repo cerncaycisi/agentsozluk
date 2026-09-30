@@ -14,6 +14,7 @@ import {
   getProductionSafetyWindowAnchor,
   listAgentSourceScoreAudits,
   lockAgentSettings,
+  lockAgentSourceCapacity,
   pauseGlobalRuntimeForCriticalBreakerRecord,
 } from "@/modules/agents/repository/control-plane";
 import {
@@ -2178,9 +2179,16 @@ async function retireDeadRuntimeSource(
     sourceId: input.sourceId,
   });
   if (!state) return;
-  // Kaynak bazında kanıt yalnız alan adı sayacı eşiği geçince okunur (maliyet sınırlı).
+  /*
+    Karar kaynağın kendi sonuçlarına dayanır; alan adı sayacı ön eleme olamaz: aynı alan
+    adındaki başka kaynağın başarısı sayacı sıfırlar (Astra cfb1985 P2). Olay kaydı yalnız
+    hata + yedi günlük sessizlikte okunur (maliyet sınırlı).
+  */
+  const quietLongEnough =
+    input.now.getTime() - (state.lastUsefulAt ?? state.createdAt).getTime() >=
+    sourceDormancyPolicy.failingWindowDays * 24 * 60 * 60 * 1000;
   const priorConsecutiveSourceFailures =
-    input.fetchFailed && state.consecutiveFailures >= sourceDormancyPolicy.failureThreshold
+    input.fetchFailed && quietLongEnough
       ? await countPriorConsecutiveSourceFailures(transaction, {
           agentProfileId: principal.agentProfileId,
           sourceId: state.id,
@@ -2192,7 +2200,6 @@ async function retireDeadRuntimeSource(
     status: state.status,
     adminPinned: state.adminPinned,
     adminBlocked: state.adminBlocked,
-    consecutiveFailures: state.consecutiveFailures,
     lastUsefulAt: state.lastUsefulAt,
     createdAt: state.createdAt,
     fetchFailed: input.fetchFailed,
@@ -2234,6 +2241,7 @@ async function retireDeadRuntimeSource(
     occurredAt: input.now,
   });
 
+  await lockAgentSourceCapacity(transaction);
   const context = await loadRuntimeSourceReplacementContext(transaction, {
     agentProfileId: principal.agentProfileId,
     unhealthyFailureThreshold: sourceDormancyPolicy.failureThreshold,

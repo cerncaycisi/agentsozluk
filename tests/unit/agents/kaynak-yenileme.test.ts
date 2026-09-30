@@ -17,7 +17,6 @@ const base = {
   status: "PROBATION",
   adminPinned: false,
   adminBlocked: false,
-  consecutiveFailures: 6,
   priorConsecutiveSourceFailures: 5,
   lastUsefulAt: new Date(now.getTime() - 8 * DAY),
   createdAt: new Date(now.getTime() - 60 * DAY),
@@ -29,13 +28,12 @@ const base = {
 describe("ölü kaynak kararı", () => {
   it("art arda hata ve bir haftalık sessizlik birlikte gerekir", () => {
     expect(sourceDormancyVerdict(base)).toBe("FETCH_FAILING");
-    expect(sourceDormancyVerdict({ ...base, consecutiveFailures: 5 })).toBeNull();
     expect(
       sourceDormancyVerdict({ ...base, lastUsefulAt: new Date(now.getTime() - 2 * DAY) }),
     ).toBeNull();
   });
 
-  it("alan adı sayacı yetmez: kaynağın kendi son sonuçları da hata olmalı", () => {
+  it("karar kaynağın kendi son sonuçlarına dayanır", () => {
     expect(sourceDormancyVerdict({ ...base, priorConsecutiveSourceFailures: 0 })).toBeNull();
     expect(sourceDormancyVerdict({ ...base, priorConsecutiveSourceFailures: 4 })).toBeNull();
   });
@@ -52,7 +50,7 @@ describe("ölü kaynak kararı", () => {
   });
 
   it("21 gündür boş dönen besleme uykuya alınır, öğe dönen alınmaz", () => {
-    const empty = { ...base, fetchFailed: false, consecutiveFailures: 0 };
+    const empty = { ...base, fetchFailed: false, priorConsecutiveSourceFailures: 0 };
     expect(
       sourceDormancyVerdict({ ...empty, lastUsefulAt: new Date(now.getTime() - 22 * DAY) }),
     ).toBe("EMPTY_FEED");

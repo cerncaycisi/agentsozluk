@@ -69,6 +69,7 @@ import {
   lockAgentProfile,
   lockAgentSource,
   lockAgentSettings,
+  lockAgentSourceCapacity,
   rotateAgentCredentialRecords,
   updateAgentLifecycle,
   updateAgentProfileRecords,
@@ -232,12 +233,12 @@ export function updateAgentSourceAdmin(
     /*
       Uykudaki/engelli kaynağı canlıya döndürmek stok ve sahip sınırlarını aşmamalı
       (Astra 888f869 P2): yedeği eklenmiş kaynak geri açılınca stok 26 olabiliyordu.
-      Sayım `PROPOSE_SOURCE` ve ölü kaynak değişimiyle aynı ayar kilidi altında.
+      Sayım `PROPOSE_SOURCE` ve ölü kaynak değişimiyle aynı kapasite kilidi altında.
     */
     const uncounted = (value: string, blocked: boolean) =>
       blocked || (runtimeUncountedSourceStatuses as readonly string[]).includes(value);
     if (uncounted(current.status, current.adminBlocked) && !uncounted(status, adminBlocked)) {
-      await lockAgentSettings(transaction);
+      await lockAgentSourceCapacity(transaction);
       const [stock, holders] = await Promise.all([
         countRuntimeAgentSources(transaction, current.agentProfileId),
         countRuntimeSourceHolders(transaction, current.url),

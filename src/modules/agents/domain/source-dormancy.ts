@@ -8,9 +8,9 @@ import { isRuntimePresentableSourceStatus } from "./source-status";
 
   - FETCH_FAILING: KAYNAĞIN KENDİ son `failureThreshold` okuma sonucu (bu dahil) hata
     VE son işe yarar okuma (öğe dönen) en az `failingWindowDays` gün önce (hiç yoksa
-    kaynağın eklenişi). Alan adı düzeyindeki backoff sayacı tek başına yetmez: aynı alan
-    adındaki başka kaynağın hataları bu kaynağı öldürmemeli (Astra 888f869 P2). İkinci
-    koşul, birkaç saatlik geçici kesintinin kaynağı öldürmesini önler.
+    kaynağın eklenişi). Alan adı düzeyindeki backoff sayacı kullanılmaz: aynı alan adındaki
+    başka kaynağın hataları bu kaynağı öldürmemeli, başarısı da ölümünü engellememeli
+    (Astra 888f869, cfb1985). İkinci koşul, geçici kesintinin kaynağı öldürmesini önler.
   - EMPTY_FEED: okuma başarılı ama öğe dönmüyor ve son işe yarar okuma en az
     `emptyWindowDays` gün önce.
 
@@ -32,7 +32,6 @@ export function sourceDormancyVerdict(input: {
   status: string;
   adminPinned: boolean;
   adminBlocked: boolean;
-  consecutiveFailures: number;
   /** Bu kaynağın bu sonuçtan ÖNCEKİ en son sonuçlarından art arda kaç tanesi hata. */
   priorConsecutiveSourceFailures: number;
   lastUsefulAt: Date | null;
@@ -45,8 +44,7 @@ export function sourceDormancyVerdict(input: {
     return null;
   const quietSinceMs = input.now.getTime() - (input.lastUsefulAt ?? input.createdAt).getTime();
   if (input.fetchFailed)
-    return input.consecutiveFailures >= sourceDormancyPolicy.failureThreshold &&
-      input.priorConsecutiveSourceFailures + 1 >= sourceDormancyPolicy.failureThreshold &&
+    return input.priorConsecutiveSourceFailures + 1 >= sourceDormancyPolicy.failureThreshold &&
       quietSinceMs >= sourceDormancyPolicy.failingWindowDays * DAY_MS
       ? "FETCH_FAILING"
       : null;
