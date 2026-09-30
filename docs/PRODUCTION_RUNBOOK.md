@@ -2059,6 +2059,25 @@ console.log("safeDiagnostics", JSON.stringify(safeDiagnostics));
 NODE
 ```
 
+**Operatör yolu (30 Eylül 2026):** aynı paket, panel yerine operatör yönetici komutuyla da
+kaydedilebilir. Komut panelin rotasını aynı denetimlerle çağırır (aşağıda "Operatör yönetici
+komutu"). Dosyalar izinleri değiştirilmeden `agent-runtime` olarak okunup tek JSON nesnesine
+birleştirilir ve app konteynerine standart girdiden verilir:
+
+```bash
+m2_compose=(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml)
+sudo -u agent-runtime /usr/bin/node -e '
+  const fs = require("node:fs");
+  const [cold, warm, dual] = process.argv.slice(1).map((f) => JSON.parse(fs.readFileSync(f, "utf8")));
+  process.stdout.write(JSON.stringify({ cold, warm, dual }));
+' "$m2_capacity_cold" "$m2_capacity_warm" "$m2_capacity_dual" |
+  "${m2_compose[@]}" exec -T \
+    -e AGENT_OPERATOR_ADMIN_ID="$admin_id" \
+    -e AGENT_ADMIN_CONFIRMATION='POST /api/v1/admin/agent-runtime/capability-package' \
+    app node node_modules/tsx/dist/cli.mjs scripts/operator-admin.ts \
+    POST /api/v1/admin/agent-runtime/capability-package -
+```
+
 Using an authenticated active HUMAN ADMIN session, open `/moderasyon/agent-kapasite` and select
 the cold, warm and dual files together in the **Kapasite ölçüm paketi** control. Their standard
 filenames identify each measurement; alternatively upload one JSON object with `cold`, `warm` and
@@ -2084,6 +2103,35 @@ diagnostics summary beside those aggregates; diagnostics never receive a capabil
 enter the UI/API/database. After persistence is proved, either retain the six mode-0600 JSON files
 under the approved evidence-retention policy or obtain explicit approval to remove only those exact
 paths.
+
+## Operatör yönetici komutu
+
+Gökhan kararı (30 Eylül 2026): "Her şey için komutun olsun." Panelde yapılabilen her yönetici
+ve moderasyon işlemi `scripts/operator-admin.ts` ile kabuktan da yapılabilir. Komut rotayı
+kopyalamaz; panelin çağırdığı rota işleyicisini süreç içinde, gerçek bir yönetici oturumuyla
+çağırır. Oturum, CSRF, köken, idempotency, hız sınırı, yetki ve denetim kaydı paneldekiyle
+aynıdır. Oturum yalnız o çağrı için açılır ve her durumda iptal edilir. Next.js gerektirdiği
+için app konteynerinde çalışır:
+
+```bash
+m2_compose=(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml)
+# okuma
+"${m2_compose[@]}" exec -T -e AGENT_OPERATOR_ADMIN_ID="$admin_id" app \
+  node node_modules/tsx/dist/cli.mjs scripts/operator-admin.ts GET /api/v1/admin/agent-settings </dev/null
+# mutasyon: tam "METOD yol" onayı şart
+"${m2_compose[@]}" exec -T -e AGENT_OPERATOR_ADMIN_ID="$admin_id" \
+  -e AGENT_ADMIN_CONFIRMATION='PATCH /api/v1/admin/agent-settings' app \
+  node node_modules/tsx/dist/cli.mjs scripts/operator-admin.ts PATCH /api/v1/admin/agent-settings \
+  '{"expectedSettingsVersion":<sürüm>,"codexConcurrency":2,"changeReason":"<gerekçe>"}' </dev/null
+```
+
+- Yalnız `/api/v1/admin/` ve `/api/v1/moderation/` yolları; `..` ve izin dışı yollar
+  oturum açılmadan reddedilir.
+- GET dışındaki istek tam `METOD yol` metnini `AGENT_ADMIN_CONFIRMATION`'da ister.
+- Çıktı `{status, body}` JSON satırıdır; kimlik bilgisi, token, parola, çerez ve CSRF alanları
+  maskelenir.
+- Komutun varlığı üretim yetkisi değildir. Her üretim mutasyonu Gökhan'ın onayını ya da geçerli
+  dağıtım yetkisini ister; aktör `bootstrap_admin`, kimlik basılmaz.
 
 ## Gecelik sunucu dışı yedek (B9)
 
