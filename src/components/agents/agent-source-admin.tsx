@@ -119,7 +119,9 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
     try {
       await apiRequest(`/api/v1/admin/agent-sources/${source.id}`, {
         method: "PATCH",
-        body: { ...body, reason },
+        // Ekranda görülen durum beklenir: arada başka bir karar (ör. öneri reddi) verildiyse
+        // sunucu bayat kararı uygulamaz (Astra ace376c P2).
+        body: { ...body, expectedStatus: source.status, reason },
         csrf: true,
         idempotency: true,
       });
