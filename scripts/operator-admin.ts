@@ -40,7 +40,9 @@ import { resolveOperatorAdmin } from "./agent-operator";
   - Aktör `resolveOperatorAdmin` (AGENT_OPERATOR_ADMIN_ID ya da tek aktif HUMAN ADMIN).
   - Çıktıda kimlik bilgisi, iletişim ve serbest bildirim metni alanları ile metindeki e-postalar
     maskelenir; stdout yalnız sonuç JSON satırıdır (uygulama logları stderr'e).
-  - GET dışı isteklerde kullanılan idempotency anahtarı çıktıya yazılır; yeniden denemede
+  - Canlı akış (SSE) rotaları desteklenmez; olaylar `?poll=1` ile okunur.
+  - GET dışı isteklerde idempotency anahtarı işleyiciden önce stderr'e ve sonuçta çıktıya
+    yazılır; yeniden denemede
     AGENT_ADMIN_IDEMPOTENCY_KEY ile aynısı verilirse mutasyon tekrarlanmaz.
 */
 const allowedPrefixes = ["/api/v1/admin/", "/api/v1/moderation/"] as const;
@@ -166,6 +168,9 @@ async function main(): Promise<void> {
       void revoke().finally(() => process.exit(130));
     });
   const idempotencyKey = environment.AGENT_ADMIN_IDEMPOTENCY_KEY ?? randomUUID();
+  // Anahtar işleyiciden ÖNCE bildirilir: süreç sonuç yazılmadan kesilirse yeniden deneme
+  // aynı anahtarla yapılabilir (Astra 58b0ac2 P2).
+  if (method !== "GET") process.stderr.write(`OPERATOR_ADMIN_IDEMPOTENCY_KEY=${idempotencyKey}\n`);
   try {
     const appUrl = new URL(getEnvironment().APP_URL);
     const request = new NextRequest(new URL(`${apiPath}${query ? `?${query}` : ""}`, appUrl), {
@@ -186,6 +191,11 @@ async function main(): Promise<void> {
         context: { params: Promise<Record<string, string>> },
       ) => Promise<Response>
     )(request, { params: Promise.resolve(route.params) })) as Response;
+    // Canlı akış (SSE) bitmez; komut takılı kalmasın (Astra 58b0ac2 P3): `poll=1` kullanılmalı.
+    if (response.headers.get("content-type")?.includes("text/event-stream")) {
+      await response.body?.cancel();
+      throw new Error("OPERATOR_ADMIN_STREAM_NOT_SUPPORTED");
+    }
     const text = await response.text();
     let parsed: unknown = text;
     try {

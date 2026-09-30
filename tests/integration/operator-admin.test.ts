@@ -99,6 +99,10 @@ describe("operatör yönetici komutu", () => {
     });
     expect(applied.output, JSON.stringify(applied.output)).toMatchObject({ status: 200 });
     expect(applied.status).toBe(0);
+    // Anahtar işleyiciden önce stderr'e yazılır; çıktıdaki ile aynıdır.
+    expect(applied.stderr).toContain(
+      `OPERATOR_ADMIN_IDEMPOTENCY_KEY=${applied.output!.idempotencyKey!}`,
+    );
     expect(applied.output?.status).toBe(200);
     expect(
       (await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }))
@@ -177,4 +181,16 @@ describe("operatör yönetici komutu", () => {
     expect(authenticatedOperator?.expiresAt.getTime()).toBe(soon.getTime());
     expect(authenticatedBrowser?.expiresAt.getTime()).toBeGreaterThan(soon.getTime());
   });
+
+  it("canlı olay akışını reddeder ve takılı kalmaz", async () => {
+    const admin = await createAdmin();
+    const stream = operator(admin.id, ["GET", "/api/v1/admin/agent-runtime/events"]);
+    expect(stream.status).toBe(1);
+    expect(stream.stderr).toContain("OPERATOR_ADMIN_STREAM_NOT_SUPPORTED");
+    const poll = operator(admin.id, ["GET", "/api/v1/admin/agent-runtime/events?poll=1"]);
+    expect(poll.output?.status).toBe(200);
+    expect(
+      await integrationDatabase.session.count({ where: { userId: admin.id, revokedAt: null } }),
+    ).toBe(0);
+  }, 300_000);
 });
