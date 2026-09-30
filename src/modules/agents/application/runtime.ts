@@ -2266,7 +2266,6 @@ async function retireDeadRuntimeSource(
   await lockAgentSourceCapacity(transaction);
   const context = await loadRuntimeSourceReplacementContext(transaction, {
     agentProfileId: principal.agentProfileId,
-    unhealthyFailureThreshold: sourceDormancyPolicy.failureThreshold,
     usefulSince: new Date(
       input.now.getTime() - sourceDormancyPolicy.healthyUsefulWindowDays * 24 * 60 * 60 * 1000,
     ),

@@ -3444,7 +3444,7 @@ export async function markRuntimeSourceDormant(
 
 export async function loadRuntimeSourceReplacementContext(
   transaction: Prisma.TransactionClient,
-  input: { agentProfileId: string; unhealthyFailureThreshold: number; usefulSince: Date },
+  input: { agentProfileId: string; usefulSince: Date },
 ) {
   const [profile, held, activeCount, unhealthy, recentlyUseful, holderGroups] = await Promise.all([
     transaction.agentProfile.findUniqueOrThrow({
@@ -3460,12 +3460,7 @@ export async function loadRuntimeSourceReplacementContext(
     }),
     countRuntimeAgentSources(transaction, input.agentProfileId),
     transaction.agentSource.findMany({
-      where: {
-        OR: [
-          { status: "DORMANT" },
-          { consecutiveFailures: { gte: input.unhealthyFailureThreshold } },
-        ],
-      },
+      where: { status: "DORMANT" },
       distinct: ["url"],
       select: { url: true },
     }),
@@ -3480,8 +3475,11 @@ export async function loadRuntimeSourceReplacementContext(
       _count: { _all: true },
     }),
   ]);
-  // Sağlıksız: bir satırı uykuda/hatalı VE son pencerede hiçbir ajanda işe yaramamış
-  // (Astra 888f869 P2: tek satır, başka ajanlarda çalışan URL'yi süresiz dışlamasın).
+  /*
+    Sağlıksız: bir satırı uykuda VE son pencerede hiçbir ajanda işe yaramamış. Uykuya alma
+    yalnız kaynağın kendi kanıtıyla yapılır; alan adı backoff sayacı burada da kullanılmaz
+    (Astra 888f869, ae5e5f5): başka kaynağın hatası ya da boş sonuçlar URL'yi elemez.
+  */
   const useful = new Set(recentlyUseful.map(({ url }) => url));
   return {
     username: profile.user.username,
