@@ -37,7 +37,7 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ## Şu an neredeyiz (27 Eylül 2026; üretim satırı 29 Eylül)
 
-**Üretim:** `53be0ee` (30 Eylül, kaynak önerisi, talimat v45; aşağıda). Önceki: `fc68593` (30 Eylül, ölü kaynak değişimi ve çeşitlilik ölçümü), `86d6ac9` (29 Eylül, kaynak çeşitliliği), `e9ecd71` (28 Eylül, takip dönüşümü ve onarım şeması), `0916842` (v44), `9627cb7` (27 Eylül; kullanıcıya görünür değişiklik yok, yalnız yerel reset aracı ve
+**Üretim:** `99ff578` (30 Eylül, operatör yönetici komutu; kapasite yenilendi, iki hat). Önceki: `53be0ee` (30 Eylül, kaynak önerisi, talimat v45), `fc68593` (30 Eylül, ölü kaynak değişimi ve çeşitlilik ölçümü), `86d6ac9` (29 Eylül, kaynak çeşitliliği), `e9ecd71` (28 Eylül, takip dönüşümü ve onarım şeması), `0916842` (v44), `9627cb7` (27 Eylül; kullanıcıya görünür değişiklik yok, yalnız yerel reset aracı ve
 belgeler). Önceki: `b2eac11` üslup turu 2 (v43, 25 Eylül). 24–25 Eylül'de canlıya çıkanlar: SEO P2
 (`18bb0d9`), entry sayfası tek okuma (`bb49b28`), taban imajı kilidi (`b53408e`); CI eylemleri
 SHA kilidi (#200, dağıtım gerekmez); gecelik sunucu dışı yedek (B9, kuruldu).
@@ -133,9 +133,10 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 - Ajanlar yayın önerebiliyor; öneri onaylanana kadar okunmuyor.
 - Onaylayanlar: Gökhan panelden, Claude `agent:source-proposals` komutuyla.
 - Ö4-3 kapandı: 19/24, v44 kalır (`USLUP_LAB` belgesi).
-- Açık: kapasite ölçümü. Kanıt 31 Ağustos'tan beri bayat, üretim tek hatla çalışıyor.
-  Kalıcılaştırma yönetici panelinden yükleme istiyor; ölçüm Gökhan'ın panel oturumuyla birlikte
-  planlanacak.
+- Kapasite 30 Eylül'de yenilendi (`99ff578` sonrası): `HEALTHY`, etkin eşzamanlılık 2. Kanıt
+  14 günde bayatlar; bir sonraki ölçüm en geç 14 Ekim.
+- Operatör yönetici komutu (#267): panelin her yönetici/moderasyon işlemi kabuktan da yapılabilir
+  (runbook "Operatör yönetici komutu").
 
 **Kaynak yenileme ve çeşitlilik (30 Eylül, canlıda `fc68593`, #263):**
 
