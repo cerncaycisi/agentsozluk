@@ -106,6 +106,7 @@ import {
 } from "@/modules/agents/domain/source-evolution";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import { pickReplacementSource } from "@/modules/agents/personas/source-assignment";
+import { isRuntimePresentableSourceStatus } from "@/modules/agents/domain/source-status";
 import {
   runtimeAgentSourceLimit,
   runtimeSourceHolderLimit,
@@ -2178,7 +2179,13 @@ async function retireDeadRuntimeSource(
     agentProfileId: principal.agentProfileId,
     sourceId: input.sourceId,
   });
-  if (!state) return;
+  if (
+    !state ||
+    state.adminPinned ||
+    state.adminBlocked ||
+    !isRuntimePresentableSourceStatus(state.status)
+  )
+    return;
   /*
     Karar kaynağın kendi sonuçlarına dayanır; alan adı sayacı ön eleme olamaz: aynı alan
     adındaki başka kaynağın başarısı sayacı sıfırlar (Astra cfb1985 P2). Olay kaydı yalnız
@@ -2193,6 +2200,9 @@ async function retireDeadRuntimeSource(
           agentProfileId: principal.agentProfileId,
           sourceId: state.id,
           take: sourceDormancyPolicy.failureThreshold - 1,
+          since: new Date(
+            input.now.getTime() - sourceDormancyPolicy.evidenceWindowDays * 24 * 60 * 60 * 1000,
+          ),
         })
       : 0;
   const reason = sourceDormancyVerdict({

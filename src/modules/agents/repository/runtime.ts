@@ -3379,11 +3379,24 @@ export async function findRuntimeSourceDormancyState(
  */
 export async function countPriorConsecutiveSourceFailures(
   transaction: Prisma.TransactionClient,
-  input: { agentProfileId: string; sourceId: string; take: number },
+  input: { agentProfileId: string; sourceId: string; take: number; since: Date },
 ): Promise<number> {
+  /*
+    Tarama sınırı (Astra 7eab55e P2): `subject.id` için indeks yok. Önce `createdAt`
+    indeksiyle pencerenin ilk olay kimliği bulunur; ajanın olayları `(agentProfileId, id)`
+    indeksiyle yalnız bu aralıkta geriye taranır. Pencerede yeterli sonuç yoksa kanıt
+    eksik sayılır (kaynak uykuya alınmaz).
+  */
+  const windowStart = await transaction.agentRuntimeEvent.findFirst({
+    where: { createdAt: { gte: input.since } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (!windowStart) return 0;
   const results = await transaction.agentRuntimeEvent.findMany({
     where: {
       agentProfileId: input.agentProfileId,
+      id: { gte: windowStart.id },
       eventType: "SOURCE_FETCH_RESULT",
       subject: { path: ["id"], equals: input.sourceId },
     },

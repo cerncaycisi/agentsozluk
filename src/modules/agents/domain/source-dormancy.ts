@@ -20,6 +20,8 @@ export const sourceDormancyPolicy = {
   failureThreshold: 6,
   failingWindowDays: 7,
   emptyWindowDays: 21,
+  /** Kaynak sonuç kanıtı (olay kaydı) en fazla bu kadar geriye taranır. */
+  evidenceWindowDays: 30,
   /** Son bu kadar gün içinde herhangi bir ajanda işe yarayan URL sağlıklı sayılır. */
   healthyUsefulWindowDays: 7,
 } as const;

@@ -525,6 +525,13 @@ export async function createAgent(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
+    /*
+      Oluşturma persona paketinin kaynaklarını ekler; kapasite kilidine katılır ki yönetici
+      geri açmasının sahip denetimi bu eklemeyle yarışmasın (Astra 7eab55e P2). Oluşturma
+      sınırı kendisi uygulamaz: yeni ajan PAUSED/DRAFT açılır, dağıtımı uzlaştırma yapar ve
+      kanonik paketlerin kendisi sınırı aşabilir (belgelenmiş istisna).
+    */
+    await lockAgentSourceCapacity(transaction);
     if (
       isReservedPublicProfileSlug(input.persona.username) ||
       (await findAgentIdentityConflict(transaction, input.persona.username))
