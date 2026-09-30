@@ -26,12 +26,12 @@ export function getSourceDiversity(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    const [rows, turnover] = await Promise.all([
+    const [active, turnover] = await Promise.all([
       listActiveAgentSourceRows(transaction),
       countSourceTurnover(transaction, new Date(now.getTime() - TURNOVER_WINDOW_MS)),
     ]);
     return {
-      ...summarizeSourceDiversity(rows, {
+      ...summarizeSourceDiversity(active, {
         holderLimit: runtimeSourceHolderLimit,
         allowedHolders: (url) => canonicalPackHolders.get(url) ?? 0,
       }),

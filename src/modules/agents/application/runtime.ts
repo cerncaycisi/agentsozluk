@@ -67,6 +67,7 @@ import {
   findRuntimeSourceForWrite,
   storeRuntimeSourceResult,
   type ExpiredRuntimeRunCandidate,
+  countPriorConsecutiveSourceFailures,
   createRuntimeReplacementSource,
   findRuntimeSourceDormancyState,
   loadRuntimeSourceReplacementContext,
@@ -2177,7 +2178,17 @@ async function retireDeadRuntimeSource(
     sourceId: input.sourceId,
   });
   if (!state) return;
+  // Kaynak bazında kanıt yalnız alan adı sayacı eşiği geçince okunur (maliyet sınırlı).
+  const priorConsecutiveSourceFailures =
+    input.fetchFailed && state.consecutiveFailures >= sourceDormancyPolicy.failureThreshold
+      ? await countPriorConsecutiveSourceFailures(transaction, {
+          agentProfileId: principal.agentProfileId,
+          sourceId: state.id,
+          take: sourceDormancyPolicy.failureThreshold - 1,
+        })
+      : 0;
   const reason = sourceDormancyVerdict({
+    priorConsecutiveSourceFailures,
     status: state.status,
     adminPinned: state.adminPinned,
     adminBlocked: state.adminBlocked,
@@ -2226,6 +2237,9 @@ async function retireDeadRuntimeSource(
   const context = await loadRuntimeSourceReplacementContext(transaction, {
     agentProfileId: principal.agentProfileId,
     unhealthyFailureThreshold: sourceDormancyPolicy.failureThreshold,
+    usefulSince: new Date(
+      input.now.getTime() - sourceDormancyPolicy.healthyUsefulWindowDays * 24 * 60 * 60 * 1000,
+    ),
   });
   const persona = seedPersonaSchema.safeParse(context.persona);
   if (!persona.success || context.activeCount >= runtimeAgentSourceLimit) return;

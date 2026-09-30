@@ -17,6 +17,7 @@ import {
   runtimeUncountedSourceStatuses,
 } from "@/modules/agents/domain/source-status";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
+import { sourceDormancyPolicy } from "@/modules/agents/domain/source-dormancy";
 import {
   runtimeAgentSourceLimit,
   runtimeSourceHolderLimit,
@@ -2064,9 +2065,18 @@ async function listRuntimeSourceCandidates(
           AND held."adminBlocked" = false
           AND held."status"::text NOT IN (${Prisma.join([...runtimeUncountedSourceStatuses])})
       ) < ${runtimeSourceHolderLimit}
-      AND NOT EXISTS (
-        SELECT 1 FROM "agent_sources" AS dormant
-        WHERE dormant."url" = source."url" AND dormant."status" = 'DORMANT'
+      AND (
+        NOT EXISTS (
+          SELECT 1 FROM "agent_sources" AS dormant
+          WHERE dormant."url" = source."url" AND dormant."status" = 'DORMANT'
+        )
+        OR EXISTS (
+          SELECT 1 FROM "agent_sources" AS alive
+          WHERE alive."url" = source."url" AND alive."lastUsefulAt" > ${new Date(
+            input.now.getTime() -
+              sourceDormancyPolicy.healthyUsefulWindowDays * 24 * 60 * 60 * 1000,
+          )}
+        )
       )
     GROUP BY source."url", source."normalizedDomain"
     HAVING count(DISTINCT cited."agentProfileId") >= ${runtimeSourceCandidateMinimumCitingAgents}
@@ -3363,6 +3373,36 @@ export async function findRuntimeSourceDormancyState(
   });
 }
 
+/**
+ * Kaynağın kendi son okuma sonuçlarından (bu sonuçtan önce) art arda kaç tanesi hata.
+ * Yalnız alan adı sayacı eşiği geçince çağrılır; `take` kadar olaya bakar.
+ */
+export async function countPriorConsecutiveSourceFailures(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; sourceId: string; take: number },
+): Promise<number> {
+  const results = await transaction.agentRuntimeEvent.findMany({
+    where: {
+      agentProfileId: input.agentProfileId,
+      eventType: "SOURCE_FETCH_RESULT",
+      subject: { path: ["id"], equals: input.sourceId },
+    },
+    orderBy: { id: "desc" },
+    take: input.take,
+    select: { afterState: true },
+  });
+  let failures = 0;
+  for (const { afterState } of results) {
+    const errorCode =
+      afterState && typeof afterState === "object" && !Array.isArray(afterState)
+        ? (afterState as Record<string, unknown>).errorCode
+        : null;
+    if (typeof errorCode !== "string" || errorCode.length === 0) break;
+    failures += 1;
+  }
+  return failures;
+}
+
 export async function markRuntimeSourceDormant(
   transaction: Prisma.TransactionClient,
   sourceId: string,
@@ -3386,9 +3426,9 @@ export async function markRuntimeSourceDormant(
 
 export async function loadRuntimeSourceReplacementContext(
   transaction: Prisma.TransactionClient,
-  input: { agentProfileId: string; unhealthyFailureThreshold: number },
+  input: { agentProfileId: string; unhealthyFailureThreshold: number; usefulSince: Date },
 ) {
-  const [profile, held, activeCount, unhealthy, holderGroups] = await Promise.all([
+  const [profile, held, activeCount, unhealthy, recentlyUseful, holderGroups] = await Promise.all([
     transaction.agentProfile.findUniqueOrThrow({
       where: { id: input.agentProfileId },
       select: {
@@ -3411,18 +3451,26 @@ export async function loadRuntimeSourceReplacementContext(
       distinct: ["url"],
       select: { url: true },
     }),
+    transaction.agentSource.findMany({
+      where: { lastUsefulAt: { gte: input.usefulSince } },
+      distinct: ["url"],
+      select: { url: true },
+    }),
     transaction.agentSource.groupBy({
       by: ["url"],
       where: { adminBlocked: false, status: { notIn: [...runtimeUncountedSourceStatuses] } },
       _count: { _all: true },
     }),
   ]);
+  // Sağlıksız: bir satırı uykuda/hatalı VE son pencerede hiçbir ajanda işe yaramamış
+  // (Astra 888f869 P2: tek satır, başka ajanlarda çalışan URL'yi süresiz dışlamasın).
+  const useful = new Set(recentlyUseful.map(({ url }) => url));
   return {
     username: profile.user.username,
     persona: profile.currentPersonaVersion?.persona ?? null,
     heldUrls: new Set(held.map(({ url }) => url)),
     activeCount,
-    unhealthyUrls: new Set(unhealthy.map(({ url }) => url)),
+    unhealthyUrls: new Set(unhealthy.map(({ url }) => url).filter((url) => !useful.has(url))),
     holders: new Map(holderGroups.map((group) => [group.url, group._count._all])),
   };
 }
@@ -3460,16 +3508,26 @@ export async function createRuntimeReplacementSource(
   });
 }
 
-/** Çeşitlilik ölçümü için ACTIVE ajanların canlı sayılan kaynak satırları. */
+/**
+ * Çeşitlilik ölçümü için ACTIVE ajanlar ve canlı sayılan kaynak satırları. Ajanlar
+ * ayrıca döner: kaynağı tükenen ajan ölçümden kaybolmasın (Astra 888f869 P2).
+ */
 export async function listActiveAgentSourceRows(transaction: Prisma.TransactionClient) {
-  return transaction.agentSource.findMany({
-    where: {
-      adminBlocked: false,
-      status: { notIn: [...runtimeUncountedSourceStatuses] },
-      agentProfile: { lifecycleStatus: "ACTIVE" },
-    },
-    select: { agentProfileId: true, url: true },
-  });
+  const [agents, rows] = await Promise.all([
+    transaction.agentProfile.findMany({
+      where: { lifecycleStatus: "ACTIVE" },
+      select: { id: true },
+    }),
+    transaction.agentSource.findMany({
+      where: {
+        adminBlocked: false,
+        status: { notIn: [...runtimeUncountedSourceStatuses] },
+        agentProfile: { lifecycleStatus: "ACTIVE" },
+      },
+      select: { agentProfileId: true, url: true },
+    }),
+  ]);
+  return { agentProfileIds: agents.map(({ id }) => id), rows };
 }
 
 /** Son pencerede uykuya alınan ve yerine konan kaynak sayıları. */

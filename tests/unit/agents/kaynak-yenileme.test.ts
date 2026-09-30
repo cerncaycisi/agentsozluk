@@ -18,6 +18,7 @@ const base = {
   adminPinned: false,
   adminBlocked: false,
   consecutiveFailures: 6,
+  priorConsecutiveSourceFailures: 5,
   lastUsefulAt: new Date(now.getTime() - 8 * DAY),
   createdAt: new Date(now.getTime() - 60 * DAY),
   fetchFailed: true,
@@ -32,6 +33,11 @@ describe("ölü kaynak kararı", () => {
     expect(
       sourceDormancyVerdict({ ...base, lastUsefulAt: new Date(now.getTime() - 2 * DAY) }),
     ).toBeNull();
+  });
+
+  it("alan adı sayacı yetmez: kaynağın kendi son sonuçları da hata olmalı", () => {
+    expect(sourceDormancyVerdict({ ...base, priorConsecutiveSourceFailures: 0 })).toBeNull();
+    expect(sourceDormancyVerdict({ ...base, priorConsecutiveSourceFailures: 4 })).toBeNull();
   });
 
   it("hiç işe yaramamış kaynakta sessizlik eklenişten sayılır", () => {
@@ -102,8 +108,10 @@ describe("yedek kaynak seçimi", () => {
 });
 
 describe("çeşitlilik özeti", () => {
-  const rows = (sets: string[][]) =>
-    sets.flatMap((urls, index) => urls.map((url) => ({ agentProfileId: `a${index}`, url })));
+  const rows = (sets: string[][]) => ({
+    agentProfileIds: sets.map((_, index) => `a${index}`),
+    rows: sets.flatMap((urls, index) => urls.map((url) => ({ agentProfileId: `a${index}`, url }))),
+  });
 
   it("ortak kaynak oranını, sınır aşımını ve kanonik izni hesaplar", () => {
     const summary = summarizeSourceDiversity(
@@ -125,6 +133,19 @@ describe("çeşitlilik özeti", () => {
         allowedHolders: () => 0,
       }).overLimitUrls,
     ).toEqual([{ url: "u1", holders: 2, allowed: 1 }]);
+  });
+
+  it("kaynağı tükenen aktif ajan ölçümden kaybolmaz", () => {
+    const sets = Array.from({ length: 12 }, (_, agent) =>
+      Array.from({ length: 12 }, (_, index) => `u${agent * 12 + index}`),
+    );
+    const summary = summarizeSourceDiversity(
+      { ...rows(sets), agentProfileIds: [...rows(sets).agentProfileIds, "bos"] },
+      { holderLimit: 5, allowedHolders: () => 0 },
+    );
+    expect(summary.agentCount).toBe(13);
+    expect(summary.agentsBelowMinimum).toBe(1);
+    expect(summary.warnings).toContain("AGENT_BELOW_MINIMUM");
   });
 
   it("dağınık kaynaklarda uyarı vermez", () => {

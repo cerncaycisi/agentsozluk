@@ -6,9 +6,11 @@ import { isRuntimePresentableSourceStatus } from "./source-status";
   İki durumda kaynak DORMANT olur (sunulmaz, okunmaz; geçmişi korunur) ve yerine
   doğrulanmış havuzdan yedek konur:
 
-  - FETCH_FAILING: alan adı art arda en az `failureThreshold` kez okunamadı VE son
-    işe yarar okuma (öğe dönen) en az `failingWindowDays` gün önce (hiç yoksa kaynağın
-    eklenişi). İkinci koşul, birkaç saatlik geçici kesintinin kaynağı öldürmesini önler.
+  - FETCH_FAILING: KAYNAĞIN KENDİ son `failureThreshold` okuma sonucu (bu dahil) hata
+    VE son işe yarar okuma (öğe dönen) en az `failingWindowDays` gün önce (hiç yoksa
+    kaynağın eklenişi). Alan adı düzeyindeki backoff sayacı tek başına yetmez: aynı alan
+    adındaki başka kaynağın hataları bu kaynağı öldürmemeli (Astra 888f869 P2). İkinci
+    koşul, birkaç saatlik geçici kesintinin kaynağı öldürmesini önler.
   - EMPTY_FEED: okuma başarılı ama öğe dönmüyor ve son işe yarar okuma en az
     `emptyWindowDays` gün önce.
 
@@ -18,6 +20,8 @@ export const sourceDormancyPolicy = {
   failureThreshold: 6,
   failingWindowDays: 7,
   emptyWindowDays: 21,
+  /** Son bu kadar gün içinde herhangi bir ajanda işe yarayan URL sağlıklı sayılır. */
+  healthyUsefulWindowDays: 7,
 } as const;
 
 export type SourceDormancyReason = "FETCH_FAILING" | "EMPTY_FEED";
@@ -29,6 +33,8 @@ export function sourceDormancyVerdict(input: {
   adminPinned: boolean;
   adminBlocked: boolean;
   consecutiveFailures: number;
+  /** Bu kaynağın bu sonuçtan ÖNCEKİ en son sonuçlarından art arda kaç tanesi hata. */
+  priorConsecutiveSourceFailures: number;
   lastUsefulAt: Date | null;
   createdAt: Date;
   fetchFailed: boolean;
@@ -40,6 +46,7 @@ export function sourceDormancyVerdict(input: {
   const quietSinceMs = input.now.getTime() - (input.lastUsefulAt ?? input.createdAt).getTime();
   if (input.fetchFailed)
     return input.consecutiveFailures >= sourceDormancyPolicy.failureThreshold &&
+      input.priorConsecutiveSourceFailures + 1 >= sourceDormancyPolicy.failureThreshold &&
       quietSinceMs >= sourceDormancyPolicy.failingWindowDays * DAY_MS
       ? "FETCH_FAILING"
       : null;

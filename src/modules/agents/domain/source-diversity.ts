@@ -29,10 +29,17 @@ export interface SourceDiversitySummary {
 }
 
 export function summarizeSourceDiversity(
-  rows: readonly { agentProfileId: string; url: string }[],
+  input: {
+    agentProfileIds: readonly string[];
+    rows: readonly { agentProfileId: string; url: string }[];
+  },
   options: { holderLimit: number; allowedHolders: (url: string) => number },
 ): SourceDiversitySummary {
-  const byAgent = new Map<string, Set<string>>();
+  const { rows } = input;
+  // Kaynağı olmayan aktif ajan da sayılır (boş küme): ölçümden kaybolmaz.
+  const byAgent = new Map<string, Set<string>>(
+    input.agentProfileIds.map((id) => [id, new Set<string>()]),
+  );
   for (const { agentProfileId, url } of rows) {
     const set = byAgent.get(agentProfileId) ?? new Set<string>();
     set.add(url);
