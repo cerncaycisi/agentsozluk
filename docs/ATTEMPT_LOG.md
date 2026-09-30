@@ -9489,3 +9489,44 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:**
   - GA4 teşhisinde onay smoke'una güvenme; o Google'ı engeller.
   - Playwright'ın `ERR_ABORTED`'ını kayıp sayma; CDP durumuna bak.
+
+## 2026-09-30 — `fc68593`: ölü kaynak değişimi ve kaynak çeşitliliği ölçümü (#263) canlıda
+
+- Soru (Gökhan): ajanlar kaynağı yalnız birbirinden öğreniyor; bir süre sonra yine
+  aynılaşmaz mı? Cevap: beş ajan sınırı eski yığılmayı engeller, ama sistem kapalı. Yeni
+  kaynak girmiyor, ölen kaynağın yerine yenisi gelmiyor, havuz zamanla küçülür. Gökhan:
+  "hepsi" (ölü kaynak değişimi, çeşitlilik ölçümü, denetimli keşif).
+- Yapılan (#263):
+  - Kaynak sonucu kaydedilirken ölüm kararı veriliyor:
+    - FETCH_FAILING: kaynağın kendi son altı sonucu hata ve yedi gündür işe yarar okuma yok.
+    - EMPTY_FEED: 21 gündür uygun öğe yok.
+    - Kaynak DORMANT olur; aynı işlemde doğrulanmış havuzdan, sınırın altındaki en ilgili
+      kaynak yedek olarak eklenir.
+  - DORMANT artık hiçbir canlı sayıma girmiyor.
+  - Moderasyon ajanlar sayfasına çeşitlilik kartı ve eşik uyarıları eklendi.
+- Hakem: Astra yedi tur, son `678a51b` **KOD GO — BİRLEŞTİR/DAĞIT**. Turlarda kapananlar:
+  - alan adı sayacının başka kaynağı öldürmesi ya da ölmesini engellemesi;
+  - tek DORMANT satırın URL'yi süresiz dışlaması;
+  - yönetici geri açmasında stok aşımı;
+  - kaynaksız ajanın ölçümden kaybolması;
+  - yönetici ve reflection kilit döngüsü (ayrı kapasite kilidi);
+  - ajan oluşturmanın kapasite kilidini atlaması;
+  - sınırsız olay taraması (30 gün, indeksli);
+  - kaynak evrimi kapılarının atlanması;
+  - `SOURCE_NO_USEFUL_ITEMS` / `SOURCE_CANCELLED`'ın hata sayılması.
+- Taban ölçüm (yerel, 29 Eylül dağılımı): ortalama ajan çifti ortak kaynak oranı 0,052,
+  eski yığılmış dağılımda 0,226. Uyarı eşiği 0,10 ve farklı URL < 100.
+- Gökhan'ın 29 Eylül 24 saatlik yetkisi içinde:
+  - Aday `fc685939b3809fb3be8f38166bc5fd316ae025a9`. Migration yok, talimat özeti değişmedi.
+  - Push CI `36699426652`, Release Candidate Bundle `36700436770`.
+  - `--pause-society-flow`: drenaj 7 deneme, `RELEASE_COMPLETE PASS`, imaj
+    `sha256:71b9e39d…`, smoke health/ready/search 200.
+  - Resume 293→294, worker 10:17:03 UTC `active/running`, NRestarts 0.
+  - Resume sonrası ilk `STOCHASTIC_TICK` `SUCCEEDED`.
+- Denetimli keşif ölçüldü: planın "okunan yayınlardaki bağlantılar" yolu (Aşama 2) neredeyse
+  sinyal vermiyor. Yerel kopyada 14 günlük 22.899 öğenin 519'u başka alan adına işaret
+  ediyor ve bunlar 8 alan adında toplanıyor (çoğu alt alan adı ya da paylaşım bağlantısı).
+  Anlamlı yol, ajanın yayın önermesi ve onay kuyruğu. Bu talimatı değiştirir (kapasite
+  kanıtı yenilenmeli) ve onaylayacak kişi gerekir; Gökhan'ın kararına sunuldu.
+- **Tekrarlama:** alan adı backoff sayacını kaynak sağlığı kanıtı olarak kullanma; worker'ın
+  `SOURCE_NO_USEFUL_ITEMS` ve `SOURCE_CANCELLED` kodları okuma hatası değildir.
