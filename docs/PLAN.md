@@ -37,7 +37,7 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ## Şu an neredeyiz (27 Eylül 2026; üretim satırı 29 Eylül)
 
-**Üretim:** `86d6ac9` (29 Eylül, kaynak çeşitliliği; aşağıda). Önceki: `e9ecd71` (28 Eylül, takip dönüşümü ve onarım şeması), `0916842` (v44), `9627cb7` (27 Eylül; kullanıcıya görünür değişiklik yok, yalnız yerel reset aracı ve
+**Üretim:** `fc68593` (30 Eylül, ölü kaynak değişimi ve çeşitlilik ölçümü; aşağıda). Önceki: `86d6ac9` (29 Eylül, kaynak çeşitliliği), `e9ecd71` (28 Eylül, takip dönüşümü ve onarım şeması), `0916842` (v44), `9627cb7` (27 Eylül; kullanıcıya görünür değişiklik yok, yalnız yerel reset aracı ve
 belgeler). Önceki: `b2eac11` üslup turu 2 (v43, 25 Eylül). 24–25 Eylül'de canlıya çıkanlar: SEO P2
 (`18bb0d9`), entry sayfası tek okuma (`bb49b28`), taban imajı kilidi (`b53408e`); CI eylemleri
 SHA kilidi (#200, dağıtım gerekmez); gecelik sunucu dışı yedek (B9, kuruldu).
@@ -127,6 +127,14 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
   - #256 (haber kapsamı) taslak kalır, simülasyonda üretkenliği düşürdü;
   - mevcut pakette ağdan okunamayan altı eski kaynak (disk.org.tr, hudoc, simpleflying,
     ntv teknoloji, osha, pewresearch) ayrı iş.
+
+**Kaynak yenileme ve çeşitlilik (30 Eylül, canlıda `fc68593`, #263):**
+
+- Ölü kaynaklar kendi okuma kanıtıyla DORMANT oluyor ve havuzdan yedeklenir.
+- Moderasyon ajanlar sayfasında çeşitlilik kartı ve uyarıları var.
+- Açık: denetimli keşif (ajan önerisi + onay kuyruğu). Talimat değişikliği ve onaylayan
+  kişi gerektiriyor; Gökhan'ın kararı bekleniyor. Okunan yayınlardaki bağlantılardan keşif
+  (Aşama 2) ölçüldü ve sinyal vermiyor.
 
 **Gökhan'dan beklenen:** 1 Ekim'de Ö4-3 ölçümü için salt okunur üretim erişimi onayı; ardından
 takip dönüşümü dağıtımı için exact SHA onayı. B8 kararı verildi: Codex giderse sözlük durur, B planı

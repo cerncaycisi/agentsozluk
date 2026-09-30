@@ -7,6 +7,14 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-30 — `fc68593` canlıda: ölü kaynak değişimi ve çeşitlilik ölçümü
+
+- PR #263: Astra yedi tur, son **KOD GO — BİRLEŞTİR/DAĞIT**; 7/7 CI; merge `fc68593`.
+  Push CI `36699426652`, Release Candidate Bundle `36700436770`.
+- Yerel: 1881 birim testi; 4 entegrasyon dosyasında 144 test, dokuz ölü kaynak senaryosu dahil.
+- Üretim: `RELEASE_COMPLETE PASS`, smoke 200, resume sonrası ilk koşu `SUCCEEDED`.
+  Uykuya alma ve yedekleme canlıda henüz gözlenmedi.
+
 ## 2026-09-29 — `86d6ac9` canlıda: kaynak çeşitliliği
 
 - PR #257 Astra **KOD GO — BİRLEŞTİR/DAĞIT** (exact `d2491ce`) ve 7/7 CI sonrası birleşti;
