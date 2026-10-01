@@ -134,7 +134,12 @@ kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. 
 - Onaylayanlar: Gökhan panelden, Claude `agent:source-proposals` komutuyla.
 - Ö4-3 kapandı: 19/24, v44 kalır (`USLUP_LAB` belgesi).
 - Kapasite 30 Eylül'de yenilendi (`99ff578` sonrası): `HEALTHY`, etkin eşzamanlılık 2. Kanıt
-  14 günde bayatlar; bir sonraki ölçüm en geç 14 Ekim.
+  14 günde bayatlar; bir sonraki ölçüm en geç 14 Ekim. Kapasite yönetimi Claude'da (Gökhan,
+  1 Ekim): ölçüm ve kayıt operatör komutuyla yapılır.
+- 1 Ekim temizliği: üretim diski %86 → %57; operatör sunucusu `/tmp` ve repo toparlandı.
+  Açık PR'lar: reset yığını, #269/#270 incelemeleri (plana işlenecek), bağımlılık
+  güncellemeleri #187/#211 (ayrı test ve dağıtım işi).
+- GA4: kod zinciri çalışıyor, Gökhan doğruladı. Veri gelmemesinin sebebi onay oranı.
 - Operatör yönetici komutu (#267): panelin her yönetici/moderasyon işlemi kabuktan da yapılabilir
   (runbook "Operatör yönetici komutu").
 
