@@ -9596,3 +9596,53 @@ false/true` yapabildi; geçici rol ve DB silindi.
   - Uzak betiği `ssh ... "cat > f && ... &"` ile gönderme: zincir arka plana gidince `cat`
     girdiyi almaz (0 baytlık betik). Önce ayrı bir `ssh "cat > f" < yerel`, sonra `setsid`.
   - Kapasite kanıtı bayatlamadan (14 gün) ölçümü operatör komutuyla yenile.
+
+## 2026-10-01 — üretim diski, operatör sunucusu /tmp ve repo temizliği
+
+- Gökhan: "üretim diskini temizle", "/tmp lazım olmayan her şey sil", "repoyu bi tertemiz hale
+  getir".
+- **Üretim diski** (runbook "Production disk and Docker image retention"):
+  - Önce: kök %86, 10.560.696 KiB boş.
+  - Korunanlar:
+    - çalışan imaj `99ff578` (`sha256:ea2c6937…`) ve önceki geri dönüş imajı `53be0ee`
+      (`sha256:18ce54e6…`);
+    - postgres ve caddy imajları;
+    - `runtime/current` (`99ff578`) ve önceki runtime sürümü (`53be0ee`);
+    - üç volume.
+  - Kesin izin listesiyle silinenler:
+    - 11 eski uygulama imajı ve runtime dizini: `f2f57f3`, `7aae0d2`, `18bb0d9`, `bb49b28`,
+      `b53408e`, `b2eac11`, `9627cb7`, `0916842`, `e9ecd71`, `86d6ac9`, `fc68593`;
+    - Ağustos'tan kalan `luna-max-20260803` runtime dizini;
+    - `docker builder prune --filter until=24h`.
+  - Sonra: kök %57, 32.915.104 KiB boş (~22 GB).
+  - Etkin imaj kimlikleri, `runtime/current`, volume listesi ve worker durumu aynı (NRestarts 0);
+    `ready` 200.
+- **Operatör sunucusu /tmp:**
+  - 1,1 GB → 127 MB; 2001 kalem silindi.
+  - Silinenler: birleşmiş işlerin 12 çalışma ağacı, simülasyon çıktıları, hakem ve dağıtım
+    günlükleri, Chromium geçici dizinleri, temiz ve uzakta duran Gilde çalışma ağaçları (Gilde
+    reposunda `worktree prune`).
+  - Korunanlar:
+    - açık dosyalar, `claude-1001`, `agent-sozluk-known_hosts` (dağıtım betiğinin kullandığı
+      bağlantı), kilit/soket dosyaları, systemd özel dizinleri;
+    - kaydedilmemiş değişiklik içeren üç Gilde ağacı;
+    - `debian` kullanıcısına ait üç dosya (yetki yok).
+  - Üslup laboratuvarı ağacı `~/style-lab/repo`'ya taşındı. Bekleyen laboratuvar değişiklikleri
+    ve simülasyon yardımcıları `lab/uslup`'a commit edildi (`ffdfb6e`).
+- **Repo:**
+  - #256 (haber kapsamı), #120 (DECISION daraltma, NO-GO) ve #117 (7 Eylül plan güncellemesi)
+    kapatıldı.
+  - Bunlar ile kapalı #247 ve yerel başlık seçimi denemesi `archive/` etiketlerinde saklı:
+    `haber-kapsami`, `decision-prompt-dedup`, `plan-7eylul`, `deneyim-dogrulayici`,
+    `baslik-secimi-v45`.
+  - 27 uzak dal silindi (23 birleşmiş + 4 arşivlenmiş). Yerelde yalnız `main` ve `lab/uslup`.
+  - Açık kalanlar:
+    - reset yığını (#227–#243, Gökhan kararı bekliyor);
+    - iki inceleme PR'ı (#269, #270; plana işlenecek);
+    - bağımlılık güncellemeleri (#187, #211).
+- **GA4:** Gökhan doğruladı ("ga4 fine"). Kod zinciri çalışıyor; veri gelmemesinin sebebi onay
+  oranı.
+- **Tekrarlama:**
+  - Operatör sunucusunda `/tmp` ayrı bir aygıt (tmpfs): `git worktree move` çalışmaz,
+    temizlik diske değil belleğe yer açar.
+  - `/tmp/agent-sozluk-known_hosts` dağıtım betiğinin bağlantısıdır, silinmez.
