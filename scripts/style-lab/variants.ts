@@ -456,6 +456,31 @@ export const variants: Record<string, Variant> = {
     context: async (context, db) => simulateBrowse(db, await rotateFollowedTopics(db, context)),
     prompt: (prompt) => replaceStyleSentencesWith(stripVariationScaffold(prompt), registerBlock7),
   },
+  // Model karşılaştırması: aynı v7 (= v44) talimatı, farklı model.
+  m_gpt6luna: {
+    prompt: (p) => replaceStyleSentencesWith(stripVariationScaffold(p), registerBlock7),
+    call: { model: "gpt-6-luna", effort: "max" },
+  },
+  m_gpt6sol: {
+    prompt: (p) => replaceStyleSentencesWith(stripVariationScaffold(p), registerBlock7),
+    call: { model: "gpt-6-sol", effort: "max" },
+  },
+  m_gpt6astra: {
+    prompt: (p) => replaceStyleSentencesWith(stripVariationScaffold(p), registerBlock7),
+    call: { model: "gpt-6-astra", effort: "max" },
+  },
+  m_gpt56sol: {
+    prompt: (p) => replaceStyleSentencesWith(stripVariationScaffold(p), registerBlock7),
+    call: { model: "gpt-5.6-sol", effort: "max" },
+  },
+  m_opus: {
+    prompt: (p) => replaceStyleSentencesWith(stripVariationScaffold(p), registerBlock7),
+    call: { model: "claude-opus-5-5", effort: "high" },
+  },
+  m_sonnet: {
+    prompt: (p) => replaceStyleSentencesWith(stripVariationScaffold(p), registerBlock7),
+    call: { model: "claude-sonnet-5", effort: "high" },
+  },
   v10: {
     prompt: (prompt, context) =>
       shortenForm(

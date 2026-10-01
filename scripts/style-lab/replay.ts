@@ -7,7 +7,7 @@ import { appendFile, readFile } from "node:fs/promises";
 import { PrismaClient } from "@prisma/client";
 import { buildRuntimePrompt, runtimeOutputJsonSchema } from "@/runtime/worker";
 import { parseRuntimeDecisionOutput } from "@/runtime/output";
-import { callCodex, extractEntries, loadContext } from "./lib";
+import { callModel, extractEntries, loadContext } from "./lib";
 import { variants } from "./variants";
 
 async function main() {
@@ -30,7 +30,7 @@ async function main() {
         const shaped = variant.context ? await variant.context(loaded, db) : { context: loaded };
         const context = shaped.context;
         const prompt = variant.prompt(buildRuntimePrompt(context), context);
-        const { output, ms } = await callCodex(
+        const { output, ms } = await callModel(
           prompt,
           runtimeOutputJsonSchema(context),
           variant.call,

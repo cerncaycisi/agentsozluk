@@ -4,7 +4,8 @@ def q(db, sql):
     out=subprocess.run(PSQL+["-d",db,"-c",sql],capture_output=True,text=True,env={"LD_LIBRARY_PATH":"/home/agent/pg16/root/usr/lib/x86_64-linux-gnu"}).stdout
     return [l.split("\t") for l in out.splitlines() if l]
 hubs=set(l.strip() for l in open('/home/agent/style-lab/hubs.txt') if l.strip())
-SINCE="2026-09-28 12:00+00"
+import os
+SINCE=os.environ.get("SIM_SINCE","2026-09-28 12:00+00")
 for db in sys.argv[1:]:
     runs=q(db,f"""select "runStatus", count(*) from agent_runs where trigger='ADMIN_BULK' and "startedAt" >= '{SINCE}' and coalesce("errorCode",'')<>'SIM_RESTART' group by 1""")
     ent=q(db,f"""select u.username, lower(t.title) from entries e join agent_content_records c on c."entryId"=e.id join agent_runs r on r.id=c."runId" join topics t on t.id=e."topicId" join users u on u.id=e."authorId" where r.trigger='ADMIN_BULK' and r."startedAt" >= '{SINCE}'""")

@@ -22,6 +22,7 @@ import {
 import { RuntimeControlPlaneHttpClient } from "@/runtime/control-plane-client";
 import type { RuntimeProvider } from "@/runtime/provider";
 import { AgentRuntimeWorker } from "@/runtime/worker";
+import { SafeSourceReader } from "@/runtime/source-reader";
 import {
   AGENT_RUNTIME_CODEX_MODEL,
   AGENT_RUNTIME_CODEX_REASONING_EFFORT,
@@ -39,10 +40,7 @@ import * as events from "@/app/api/v1/internal/agent-runtime/runs/[runId]/events
 import * as complete from "@/app/api/v1/internal/agent-runtime/runs/[runId]/complete/route";
 import * as fail from "@/app/api/v1/internal/agent-runtime/runs/[runId]/fail/route";
 
-type Handler = (
-  request: NextRequest,
-  context: { params: Promise<{ runId: string }> },
-) => Promise<Response>;
+type Handler = (request: NextRequest, context: { params: Promise<{ runId: string }> }) => Promise<Response>;
 const runRoutes: [RegExp, Record<string, unknown>][] = [
   [/^\/runs\/([^/]+)\/context$/u, context],
   [/^\/runs\/([^/]+)\/actions\/execute$/u, execute],
@@ -69,8 +67,7 @@ const inProcessFetch: typeof fetch = async (input, init) => {
   for (const [pattern, module] of runRoutes) {
     const match = pattern.exec(sub);
     const handler = match ? pick(module) : undefined;
-    if (match && handler)
-      return handler(request, { params: Promise.resolve({ runId: match[1]! }) });
+    if (match && handler) return handler(request, { params: Promise.resolve({ runId: match[1]! }) });
   }
   return new Response(JSON.stringify({ error: { code: "SIM_ROUTE_MISSING" } }), { status: 404 });
 };
@@ -90,36 +87,18 @@ const provider: RuntimeProvider = {
     const outputPath = path.join(dir, "output.json");
     await writeFile(schemaPath, JSON.stringify(request.outputSchema));
     const args = [
-      "--ask-for-approval",
-      "never",
-      "--model",
-      AGENT_RUNTIME_CODEX_MODEL,
-      "-c",
-      `model_reasoning_effort="${AGENT_RUNTIME_CODEX_REASONING_EFFORT}"`,
-      "-c",
-      "features.shell_tool=false",
-      "exec",
-      "--ephemeral",
-      "--ignore-user-config",
-      "--ignore-rules",
-      "--skip-git-repo-check",
-      "--sandbox",
-      "read-only",
-      "--output-schema",
-      schemaPath,
-      "--output-last-message",
-      outputPath,
-      "-",
+      "--ask-for-approval", "never", "--model", AGENT_RUNTIME_CODEX_MODEL,
+      "-c", `model_reasoning_effort="${AGENT_RUNTIME_CODEX_REASONING_EFFORT}"`,
+      "-c", "features.shell_tool=false", "exec", "--ephemeral", "--ignore-user-config",
+      "--ignore-rules", "--skip-git-repo-check", "--sandbox", "read-only",
+      "--output-schema", schemaPath, "--output-last-message", outputPath, "-",
     ];
     const started = Date.now();
     try {
       await new Promise<void>((resolve, reject) => {
         const child = spawn("codex", args, { cwd: dir, stdio: ["pipe", "ignore", "pipe"] });
         let stderr = "";
-        child.stderr.on(
-          "data",
-          (chunk: Buffer) => (stderr = (stderr + chunk.toString()).slice(-2000)),
-        );
+        child.stderr.on("data", (chunk: Buffer) => (stderr = (stderr + chunk.toString()).slice(-2000)));
         const timer = setTimeout(() => child.kill("SIGKILL"), request.timeoutMs);
         const abort = () => child.kill("SIGKILL");
         request.signal?.addEventListener("abort", abort, { once: true });
@@ -128,10 +107,7 @@ const provider: RuntimeProvider = {
           request.signal?.removeEventListener("abort", abort);
           if (code === 0) resolve();
           else {
-            void appendFile(
-              "/tmp/sim/provider-errors.log",
-              `${new Date().toISOString()} ${request.runId} çıkış=${code}\n${stderr.slice(-1500)}\n---\n`,
-            );
+            void appendFile("/tmp/sim/provider-errors.log", `${new Date().toISOString()} ${request.runId} çıkış=${code}\n${stderr.slice(-1500)}\n---\n`);
             reject(new Error(`codex çıkış ${code}`));
           }
         });
@@ -156,19 +132,14 @@ async function main() {
   const rounds = Number(roundsArg ?? 1);
   const concurrency = Number(concurrencyArg ?? 3);
   await mkdir(outDir!, { recursive: true });
-  const log = (line: string) =>
-    appendFile(path.join(outDir!, "sim.log"), `${new Date().toISOString()} ${line}\n`);
+  const log = (line: string) => appendFile(path.join(outDir!, "sim.log"), `${new Date().toISOString()} ${line}\n`);
   const db = new PrismaClient({ log: [] });
   const admin = await db.user.findFirstOrThrow({
     where: { kind: "HUMAN", role: "ADMIN", status: "ACTIVE", username: "bootstrap_admin" },
     select: { id: true },
   });
   const actor: ActorContext = {
-    actorId: admin.id,
-    actorKind: "HUMAN",
-    actorRole: "ADMIN",
-    requestId: randomUUID(),
-    origin: "API",
+    actorId: admin.id, actorKind: "HUMAN", actorRole: "ADMIN", requestId: randomUUID(), origin: "API",
   };
   const agents = await db.agentProfile.findMany({
     where: { lifecycleStatus: "ACTIVE" },
@@ -182,44 +153,34 @@ async function main() {
   else {
     await db.agentRun.updateMany({
       where: { runStatus: { in: ["QUEUED", "RUNNING"] } },
-      data: {
-        runStatus: "CANCELLED",
-        leaseOwner: null,
-        leaseExpiresAt: null,
-        leaseToken: null,
-        finishedAt: new Date(),
-      },
+      data: { runStatus: "CANCELLED", leaseOwner: null, leaseExpiresAt: null, leaseToken: null, finishedAt: new Date() },
     });
     await db.agentGlobalSettings.update({
       where: { id: "global" },
-      data: { sourceReadingEnabled: false, schedulerEnabled: false },
+      data: { sourceReadingEnabled: process.env.SIM_SOURCE_READING === "1", schedulerEnabled: false },
     });
     credentials = [];
     for (const agent of agents) {
-      const rotated = await rotateAgentCredential(
-        db,
-        { ...actor, requestId: randomUUID() },
-        agent.id,
-        runtimeCredentialRotationSchema.parse({ reason: "Yerel simülasyon kimlik bilgisi." }),
-      );
+      const rotated = await rotateAgentCredential(db, { ...actor, requestId: randomUUID() }, agent.id,
+        runtimeCredentialRotationSchema.parse({ reason: "Yerel simülasyon kimlik bilgisi." }));
       credentials.push(rotated.credential);
     }
     await writeFile(credPath, JSON.stringify(credentials), { mode: 0o600 });
     await log(`kurulum ajan=${agents.length}`);
   }
   const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000/", inProcessFetch);
-  const workers = Array.from(
-    { length: concurrency },
-    (_, index) =>
-      new AgentRuntimeWorker({
-        workerId: `sim-worker-${index}`,
-        credentials,
-        controlPlane: client,
-        provider,
-        processingLanes: 1,
-        pollIntervalMs: 3000,
-        onSafeEvent: (event) => void log(`${event.level} ${event.code} ${event.runId ?? ""}`),
-      }),
+  const workers = Array.from({ length: concurrency }, (_, index) =>
+    new AgentRuntimeWorker({
+      workerId: `sim-worker-${index}`,
+      credentials,
+      controlPlane: client,
+      provider,
+      processingLanes: 1,
+      pollIntervalMs: 3000,
+      // Gerçek haber çekme (yalnız SIM_SOURCE_READING=1): üretimdeki güvenli okuyucu.
+      ...(process.env.SIM_SOURCE_READING === "1" ? { sourceReader: new SafeSourceReader() } : {}),
+      onSafeEvent: (event) => void log(`${event.level} ${event.code} ${event.runId ?? ""}`),
+    }),
   );
   // Üretimde worker roster senkronunu kendisi yazar; simülasyonda kimlikler zaten süreçte.
   const syncRoster = async () => {
@@ -234,24 +195,17 @@ async function main() {
       syncedAt: new Date(),
       processingLanes: 2,
     };
-    await db.agentRuntimeCredentialSync.upsert({
-      where: { id: "global" },
-      create: { id: "global", ...data },
-      update: data,
-    });
+    await db.agentRuntimeCredentialSync.upsert({ where: { id: "global" }, create: { id: "global", ...data }, update: data });
   };
   const pendingRuns = () =>
-    db.agentRun.count({
-      where: { runStatus: { in: ["QUEUED", "RUNNING"] }, trigger: "ADMIN_BULK" },
-    });
+    db.agentRun.count({ where: { runStatus: { in: ["QUEUED", "RUNNING"] }, trigger: "ADMIN_BULK" } });
   for (let round = 1; round <= rounds; round += 1) {
     await syncRoster();
-    if (round === 1 && (await pendingRuns()) > 0)
-      await log("önceki tur sürüyor, önce o bitirilecek");
+    if (round === 1 && (await pendingRuns()) > 0) await log("önceki tur sürüyor, önce o bitirilecek");
     else {
       const bulk = bulkAgentRunSchema.parse({
         agentIds: agents.map(({ id }) => id),
-        run: { runType: "NORMAL_WAKE", allowSourceReading: false },
+        run: { runType: "NORMAL_WAKE", allowSourceReading: process.env.SIM_SOURCE_READING === "1" },
         confirmation: "RUN_SELECTED_AGENTS",
       });
       await createBulkAgentRuns(db, { ...actor, requestId: randomUUID() }, bulk);

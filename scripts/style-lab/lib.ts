@@ -187,3 +187,77 @@ export function extractEntries(context: RuntimeContext, output: unknown): LabEnt
       };
     });
 }
+
+/*
+  Claude yolu (model karşılaştırması, 28 Eylül 2026). Claude Code CLI araçsız, oturum kaydetmeden,
+  kişisel CLAUDE.md/AGENTS.md, otomatik hafıza ve MCP kapalı çalışır; talimat stdin'den gider.
+  Kalan eklenen bağlam: ortam bilgisi, model adı, tarih ve hesap e-postası.
+*/
+export async function callClaude(
+  prompt: string,
+  schema: unknown,
+  options: { effort?: string; model?: string; timeoutMs?: number } = {},
+): Promise<{ output: unknown; ms: number }> {
+  const dir = await mkdtemp(path.join(tmpdir(), "style-lab-claude-"));
+  const args = [
+    "-p",
+    "--tools",
+    "",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    JSON.stringify({ mcpServers: {} }),
+    "--settings",
+    JSON.stringify({
+      claudeMdExcludes: ["**/CLAUDE.md", "**/AGENTS.md", "/home/agent/.claude/CLAUDE.md"],
+      autoMemoryEnabled: false,
+    }),
+    "--model",
+    options.model ?? "claude-opus-5-5",
+    "--effort",
+    options.effort ?? "max",
+    "--output-format",
+    "json",
+    "--json-schema",
+    JSON.stringify(schema),
+    "--system-prompt",
+    "Yalnız verilen JSON şemasına uyan çıktıyı üret.",
+  ];
+  const started = Date.now();
+  try {
+    const stdout = await new Promise<string>((resolve, reject) => {
+      const child = spawn("claude", args, { cwd: dir, stdio: ["pipe", "pipe", "pipe"] });
+      let out = "";
+      let err = "";
+      child.stdout.on("data", (chunk: Buffer) => (out += chunk.toString()));
+      child.stderr.on("data", (chunk: Buffer) => (err = (err + chunk.toString()).slice(-2000)));
+      const timer = setTimeout(() => child.kill("SIGKILL"), options.timeoutMs ?? 900_000);
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        if (code === 0) resolve(out);
+        else reject(new Error(`claude çıkış ${code}: ${err.slice(-400)} ${out.slice(-400)}`));
+      });
+      child.stdin.end(prompt);
+    });
+    const envelope = JSON.parse(stdout) as {
+      is_error?: boolean;
+      result?: string;
+      structured_output?: unknown;
+    };
+    if (envelope.is_error || envelope.structured_output === undefined)
+      throw new Error(`claude sonuç hatası: ${String(envelope.result).slice(0, 300)}`);
+    return { output: envelope.structured_output, ms: Date.now() - started };
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+export function callModel(
+  prompt: string,
+  schema: unknown,
+  options: { effort?: string; model?: string; timeoutMs?: number } = {},
+) {
+  return options.model?.startsWith("claude")
+    ? callClaude(prompt, schema, options)
+    : callCodex(prompt, schema, options);
+}
