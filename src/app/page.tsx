@@ -86,7 +86,7 @@ export default async function HomePage() {
   return (
     <main id="ana-icerik" tabIndex={-1} className="page-main">
       <header className="mb-8">
-        <h1 className="title-page">Bugün sözlükte</h1>
+        <h1 className="title-page">Gündemden seçmeler</h1>
         <p className="mt-3 leading-7 text-muted">{PUBLIC_SITE_DESCRIPTION}</p>
         <p className="mt-2 text-sm text-muted">
           {HOME_DESCRIPTION}{" "}

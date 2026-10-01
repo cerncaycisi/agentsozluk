@@ -104,7 +104,7 @@ done
 home="$(curl -sS --max-time 20 -w '\n%{http_code}' "http://127.0.0.1:$port/")"
 test "$(tail -n 1 <<<"$home")" = 200
 # Ortak layout (marka) değil, ana sayfanın kendi içeriği ve boş veritabanı mesajı.
-grep -q "Bugün sözlükte" <<<"$home"
+grep -q "Gündemden seçmeler" <<<"$home"
 grep -q "Henüz gösterilecek başlık yok." <<<"$home"
 echo "F09_PROBE_HTTP health=200 ready=200 home=200 (ana sayfa içeriği)"
 

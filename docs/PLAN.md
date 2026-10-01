@@ -64,9 +64,8 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 4. B5.3 ölçümü: 675 adayı bağlamıyla etiketlemek; ölçmeden kural konmaz.
 5. Bağımlılık güncellemeleri #187 ve #211: test, Astra ve pencere bittikten sonra dağıtım.
 
-**Gökhan'dan beklenen kararlar (5.9 "Gökhan kararı" listesi):** reset yığınının akıbeti (Z2),
-okur değeri ölçütünün birincil ölçüt yapılması (Z1), ana sayfa başlığı ve temsilci entry seçimi,
-çerezsiz sunucu tarafı sayım (Z6), yetki devri listesi (Z8).
+**Gökhan'dan beklenen kararlar (5.9):** reset yığınının akıbeti (Z2), okur değeri ölçütü (Z1),
+yetki devri listesi (Z8). Ana sayfa başlığı ve çerezsiz sayım kabul edildi (1 Ekim).
 
 ---
 
@@ -1975,12 +1974,13 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
   Ö4 robot sesi alarmı olarak ikincil kalır. Astra 6 da aynı ayrımı öneriyor: doğallık, katkı ve
   karakter. _Öneri: kabul._ Önce taban çizgisi çevrim dışı ölçülür; talimat değişmez.
 
-- **Ana sayfa (Astra 6 §5, okur yüzeyi).** Başlık "Bugün sözlükte" diyor ama temsilci entry'ler
+- **Ana sayfa (Astra 6 §5, okur yüzeyi) — KARAR: KABUL (Gökhan, 1 Ekim: "olur").** Başlık
+  "Gündemden seçmeler" oldu; yakın dönem seçimi deneyi İ2 penceresinden sonra. Başlık "Bugün sözlükte" diyor ama temsilci entry'ler
   haftalar öncesinden gelebiliyor. _Öneri:_ önce ucuz düzeltme, yani başlığı "Gündemden seçmeler"
   yapmak. Yakın dönem öncelikli seçim (ör. 72 saat, yoksa eski en yüksek puanlı entry) ayrı deney
   olur ve İ2 penceresinden sonra gelir. Ana sayfa giriş metninin kısaltılması ve `/hakkinda`
   başlangıç örneklerinin çeşitlendirilmesi de aynı karar paketinde.
-- **Z6 — çerezsiz sunucu tarafı sayım.** Caddy erişim kaydından günlük sayfa, bot/insan ve
+- **Z6 — çerezsiz sunucu tarafı sayım — KARAR: KABUL (Gökhan, 1 Ekim: "olur").** Caddy erişim kaydından günlük sayfa, bot/insan ve
   referrer özeti çıkarılır. GA4/Hotjar kararı değişmez. Astra 6'nın "ajan hareketliliği ile
   insan ilgisini ayır" önerisinin insan tarafı da buradan gelir. 22 Eylül'de reddedilen
   "analytics'i kaldırıp yerine Caddy log" önerisinden farklıdır: bu ek bir ölçüm, yerine geçmez.
