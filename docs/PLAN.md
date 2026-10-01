@@ -58,14 +58,14 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 
 1. Alarm raporuna kota beklemesini, etkin hat sayısını ve kapasite kanıtının yaşını eklemek
    (5.9 İ6). Ajan davranışına dokunmadığı için ölçüm penceresi sürerken yapılabilir.
-2. Ret oranını sağlık metriği yapmak (5.9 İ5) ve canlı tekrarlardan çevrim dışı bir
-   değerlendirme seti çıkarmak (5.9 İ3).
+2. Ret oranını sağlık metriği yapmak (5.9 İ5), canlı tekrarlardan çevrim dışı bir
+   değerlendirme seti çıkarmak (5.9 İ3) ve okur değeri taban ölçümü (5.9 Z1).
 3. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
 4. B5.3 ölçümü: 675 adayı bağlamıyla etiketlemek; ölçmeden kural konmaz.
 5. Bağımlılık güncellemeleri #187 ve #211: test, Astra ve pencere bittikten sonra dağıtım.
 
-**Gökhan'dan beklenen kararlar (5.9):** reset yığınının akıbeti (Z2), okur değeri ölçütü (Z1),
-yetki devri listesi (Z8). Ana sayfa başlığı ve çerezsiz sayım kabul edildi (1 Ekim).
+**1 Ekim kararları (5.9):** reset 5 Ekim sonucuna bağlandı; okur değeri ölçütü denenecek; ana
+sayfa başlığı ve çerezsiz sayım kabul; yetki listesi yazılmadı.
 
 ---
 
@@ -1957,14 +1957,15 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
 
 **Gökhan kararı gerekenler** (yürütücünün önerisiyle)
 
-- **Z2 — reset yığınının akıbeti.** Yığın 14 dal ve ~14 bin satır; main'in 88 commit gerisinde ve
+- **Z2 — reset yığınının akıbeti — KARAR: 5 EKİM SONUCUNA BAĞLI (Gökhan, 1 Ekim: "ok").** Yığın 14 dal ve ~14 bin satır; main'in 88 commit gerisinde ve
   27 Eylül'den beri dokunulmadı. Fable "birleştir ve tarihle" diyor. Astra 6'ya göre reset,
   mekanizma düzelmeden yapılırsa aynı yoğunlaşmayı yeniden üretir. _Öneri:_ 5 Ekim sonucu ve İ5
   ret oranı görülene kadar yığına dokunulmasın; o tarihte iki seçenekten biri seçilsin. (a)
   Önkoşul ölçütü yazılı bir tarihle birleştir: ilk 10 payı düştü, ret oranı en fazla %20 ve iki
   hafta stabil. (b) Dalları `archive/reset-*` etiketine al, Sıra 5'i askıya al, retention'ı
   (Z12) ayrıca aç. Yeniden rebase ve hakem turu bu karardan sonra yapılır.
-- **Z1 — okur değeri ölçütü.** Öneri: birincil ölçüt "insan mı yazdı" değil, "okura bir şey
+- **Z1 — okur değeri ölçütü — KARAR: KABUL, DENENECEK (Gökhan, 1 Ekim: "ok bi de öyle
+  deneyelim").** İlk adım çevrim dışı taban ölçümü; talimat değişmez. Öneri: birincil ölçüt "insan mı yazdı" değil, "okura bir şey
   kattı mı" olsun. Bileşenleri:
   - kaynağa bağlı somut ayrıntı;
   - başlık içi özgünlük;
@@ -1985,7 +1986,8 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
   insan ilgisini ayır" önerisinin insan tarafı da buradan gelir. 22 Eylül'de reddedilen
   "analytics'i kaldırıp yerine Caddy log" önerisinden farklıdır: bu ek bir ölçüm, yerine geçmez.
   _Öneri: kabul_, ama yalnız toplu ve kişisel veri içermeyen sayaç olarak.
-- **Z8 — yetki devri listesi ve haftalık karar paketi.** `AGENTS.md`'ye iki liste yazılır:
+- **Z8 — yetki devri listesi — KAPANDI, YAZILMADI (Gökhan, 1 Ekim: "bilmem").** Mevcut
+  kurallar migration, reset ve dağıtım için zaten onay istiyor. `AGENTS.md`'ye iki liste yazılır:
   "onaysız yapılabilir" ve "her zaman Gökhan". Yetki kapsamını değiştirdiği için yalnız Gökhan
   yazdırabilir. _Öneri:_ "her zaman Gökhan" listesi şimdi yazılsın: migration, reset, anayasa,
   okur yüzeyi, analytics, kaynak havuzu politikası. "Onaysız" listesi yalnız Gökhan'ın açıkça
