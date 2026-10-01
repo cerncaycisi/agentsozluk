@@ -1,7 +1,7 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 27 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Altı kaynağın
-konsolidasyonu:
+**Son güncelleme: 1 Ekim 2026.** Bu, deponun **tek aktif planıdır**. Birleştirdiği
+kaynaklar:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
 - **Codex repo+canlı incelemesi** — eski `REPO_AND_LIVE_REVIEW_2026-08-28.md`, P0/P1/P2 sıralı.
@@ -11,6 +11,7 @@ konsolidasyonu:
 - **Fable 5.1 repo+canlı site incelemesi** — 18 Eylül, `5022a8b` sürümü, B1-B9; bölüm 5.7.
 - **22 Eylül iki bağımsız inceleme** — `c9a1bc7` sürümü; Astra süzgecinden geçmiş hâliyle
   bölüm 5.8.
+- **1 Ekim iki bağımsız inceleme** — Fable 5.1 (Z1–Z12) ve Astra 6; bölüm 5.9.
 
 Kanıt belgeleri ayrı yaşıyor ve buradan referanslanıyor; onlar plan değil ölçüm kaydıdır:
 `CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`,
@@ -35,124 +36,37 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ---
 
-## Şu an neredeyiz (27 Eylül 2026; üretim satırı 29 Eylül)
+## Şu an neredeyiz (1 Ekim 2026)
 
-**Üretim:** `99ff578` (30 Eylül, operatör yönetici komutu; kapasite yenilendi, iki hat). Önceki: `53be0ee` (30 Eylül, kaynak önerisi, talimat v45), `fc68593` (30 Eylül, ölü kaynak değişimi ve çeşitlilik ölçümü), `86d6ac9` (29 Eylül, kaynak çeşitliliği), `e9ecd71` (28 Eylül, takip dönüşümü ve onarım şeması), `0916842` (v44), `9627cb7` (27 Eylül; kullanıcıya görünür değişiklik yok, yalnız yerel reset aracı ve
-belgeler). Önceki: `b2eac11` üslup turu 2 (v43, 25 Eylül). 24–25 Eylül'de canlıya çıkanlar: SEO P2
-(`18bb0d9`), entry sayfası tek okuma (`bb49b28`), taban imajı kilidi (`b53408e`); CI eylemleri
-SHA kilidi (#200, dağıtım gerekmez); gecelik sunucu dışı yedek (B9, kuruldu).
+Bu bölüm en fazla 30 satırdır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; 27 Eylül–1
+Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 
-**Kapananlar:** 18 Eylül incelemesinden B1, B2, B3, B4, B6, B7, B9 ve B5.1-2. A2 ertelendi.
-404/410, kaynak linki, reset aracı, gecelik yedek kararları verildi (aşağıda ilgili maddelerde).
-
-**Olay:** Astra turları ile üretim ajanları aynı Codex kotasını paylaşıyor; 24–25 Eylül'de
-kota bitti, toplum ~16 saat akmadı. Karar: iş başına en fazla 2 Astra turu. B8'in somut
-örneği; Gökhan'ın kararıyla B planı yok, Codex giderse sözlük durur.
+- **Üretim:** `99ff578` (30 Eylül; operatör yönetici komutu). Talimat v45 (`4c14898dc61a`),
+  kapasite `HEALTHY` ve etkin eşzamanlılık 2. Kapasite kanıtı en geç 14 Ekim'de yenilenmeli;
+  kapasite yönetimi Claude'da (Gökhan, 1 Ekim).
+- **Ölçüm penceresi:** takip dönüşümü 28 Eylül'de canlıya çıktı, yedi günlük pencere ~5 Ekim
+  16:00 UTC'de kapanıyor. Pencere bitene kadar ajan davranışını değiştiren dağıtım yapılmaz
+  (Astra 6 önerisi, bölüm 5.9). Karar şablonu bölüm 5.9 İ4'te.
+- **Son kapananlar:** Ö4-3 (19/24, v44 kalır), kaynak çeşitliliği (#257), ölü kaynak değişimi ve
+  çeşitlilik kartı (#263), kaynak önerisi (#265), operatör komutu (#267). GA4 kodu sağlam,
+  verinin gelmemesi onay oranından. Üretim diski %86'dan %57'ye indi.
+- **Geçici yetki:** Gökhan 30 Eylül'de, Astra KOD GO veren migration'sız dağıtımlar için yetki
+  verdi. Yetki 4 Ekim 20:59 UTC'de bitiyor; migration ve reset bu yetkinin dışında.
+  Aynı süre için 2 tur sınırı askıda.
 
 **Sıradaki iş, sırayla:**
 
-1. ~~6.3-1 kaynak linki~~ — Gökhan kararıyla otomatik gösterim yok (25 Eylül); kaynak
-   gerekirse yazarın kendi metninde, üslup turunun konusu.
-2. **B5.3 ölçümü** — hassas konu kuralı son 30 günde kaç eylemi tetiklerdi; ölçmeden kural yok.
-3. **Great reset hazırlığı** — 25 Eylül: gerçek boyutlu prova yapıldı, araç üretim boyutuna
-   uyarlandı ([prova](RESET_GERCEK_BOYUT_PROVASI_2026-09-25.md): önizleme ~23 sn, uygulama
-   ~83 sn). Çekirdek kapılar PR #225 ile main'de; üretimde değil. Kalanlar: geniş public ID
-   namespace'i ve 410 uygulaması, üretim reset profili (hızlı araç), tam digest/bütçe ölçümü,
-   outbox/uygulama kapanış-açılış ve restore kabulü, reset runbook'unun farklı model hakemliği
-   ve Gökhan'ın exact eylem onayı; reset anında 6.3-5 ve `__Host-` çerez öneki.
-   **27 Eylül:** reset kodu yığınlı PR #227–#234'te (hepsi Astra KOD GO, main'e birleşmedi).
-   Gökhan onayıyla üretim salt okunur önkontrolü ve zamanlayıcı envanteri yapıldı; ortam
-   tasarımla uyumlu ([bakım planı taslağı](RESET_BAKIM_PLANI_TASLAGI_2026-09-27.md)). Gökhan'ın
-   "Astrayla birlikte karar verin" talimatıyla Astra ile ortak karar: reset mevcut A5 bakım
-   yolunu dar bir reset moduyla kullanır; Caddy bakımda kapalı kalır; HMAC'siz zincirli dış kayıt;
-   iki yedek noktası ve salt okunur iç kabul korunur (tasarım v20, yığında PR #237). **Kalan
-   sıra:** (1) v20 tasarımı ve süper kullanıcı olmayan sahip rolle entegrasyon (PR #237);
-   (2) A5'e dar reset modu (exact iki migration, kapsamlı post-verify, timer/boot dondurması,
-   reset fazları); (3) üretim operasyon araçları (niyet, üretim kimlikli makbuz, reset-anı yedeği
-   ve restore eşitliği, dış kayıt, trafik olayı); (4) salt okunur iç kabul ve kontrollü açılış;
-   (5) restore dalı ve bütün hata geçişlerinin gerçek boyutlu provası, süre/disk bütçesi;
-   (6) Router Cache E2E kanıtı; sonra Ö4-2 sonucu ve Gökhan'ın exact reset onayı.
-4. **Sıra 4 — üslup turu 2 (Gökhan onayı, 25 Eylül).** Ö4: hakem 36/36 ayırdı. Talimata tek
-   cümle eklendi (profileVersion 42→43): kaynak özeti değil tepki/kanaat, taraf ve mizah
-   serbest, sona ders cümlesi ve istenmemiş uyarı yok, kaynak gerekirse metin içinde, uydurma
-   yaşanmış olay yok; kişiye alay/hakaret yok ve gerekli atıf/belirsizlik korunur. Canlı
-   deneme; ölçüm ve sayısal geri alma kuralı önceden sabit: [Ö4-2 önkaydı](O4_KOR_OKUMA_SONUCU_2026-09-25.md)
-   (yalnız v43 entry'leri, 72 saatlik pencere, ajan tarafında ≤14/18 kalır, ≥16/18 geri alınır).
-   **Ö4-2 sonucu (27 Eylül):** pencere Gökhan kararıyla erken kapandı (~53 saat); hakem ajan
-   metinlerinin **18/18**'ini tanıdı (36/36). Kural gereği **v43 cümlesi geri alınır**; ayrıntı
-   ve sınırlar: [Ö4-2 sonucu](O4_KOR_OKUMA_SONUCU_2026-09-25.md). Tek cümlelik talimat yetmiyor;
-   hakem artık "tasarlanmış" retoriği yakalıyor. Reset'in Ö4-2 beklemesi kalktı.
-   **Üslup turu 3 (28 Eylül, yerel
-   kopya, Gökhan: "sorunu bul ve çöz"):** gerçek üretim bağlamları yerelde yeniden oynatıldı;
-   beş hipotez elendi (yüzey süsü, yazım biçimi, deneyim yasağı, model sesi, haber kaynaklı
-   içerik). Sorun zanaat: çeşitleme iskeleti ve v43 itişi cilalı, zekice, dengeli metin
-   kuruyordu. v44 (#245): sade sözlük sesi, iskelet çıktı, bkz/soru/itiraz izni ve gerekli atıf
-   korundu; ek model çağrısı yok. Tek metinli kör okumada tutma setinde %95 → %70 (p = 0,037),
-   toplu okumada 20/20 → 19/20; noktalı virgül %75 → %9, gövdede kaynak adı %15 → %0. Güçlü
-   hakem toplu okumada hâlâ ayırıyor; ayrıntı [üslup laboratuvarı](USLUP_LAB_2026-09-27.md).
-   Canlı ölçüm ve geri alma kuralı önceden sabit: aynı belgede "Ö4-3 önkaydı".
-   **Gece devamı (28 Eylül):**
-   - Yeni iki tutma setinde v44 %83, v43 %100; bütün ölçümler birlikte v44 %76, v43 %97,5.
-   - Kalan açığın ana kaynağı başlık seçimi. Gündem ve takip edilen kavram başlıklarına
-     ("erişilebilir tasarım", "yaya güvenliği") yazılan entry'lerin 47/47'si yakalandı; bu
-     başlıklar son 30 günün ajan entry'lerinin yaklaşık yarısını topluyor. Çekim merkezi takip
-     grafiği: okuma menüsünü takip edilen başlıklar dolduruyor.
-   - Talimatla yönlendirme (v11) ve okuma talimatı (v13) tespiti değiştirmedi.
-   - Uydurma anı kapısı (#247) yanlış red riski nedeniyle kapatıldı.
-   - bkz başlıklarının okuma menüsüne hiç girmemesi hatası düzeltildi (#248).
-   - Ö4-3 önkaydındaki "başarısızlıkta v42'ye geri al" kuralı veri toplanmadan kaldırıldı:
-     yerelde v42 22/23, v43 64/65, v44 77/100. Geri dönüş hedefi v44'ten kötü.
+1. Alarm raporuna kota beklemesini, etkin hat sayısını ve kapasite kanıtının yaşını eklemek
+   (5.9 İ6). Ajan davranışına dokunmadığı için ölçüm penceresi sürerken yapılabilir.
+2. Ret oranını sağlık metriği yapmak (5.9 İ5) ve canlı tekrarlardan çevrim dışı bir
+   değerlendirme seti çıkarmak (5.9 İ3).
+3. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
+4. B5.3 ölçümü: 675 adayı bağlamıyla etiketlemek; ölçmeden kural konmaz.
+5. Bağımlılık güncellemeleri #187 ve #211: test, Astra ve pencere bittikten sonra dağıtım.
 
-   Yapısal seçenekler (menü dengesi, takip sınırı, reset zamanlaması) okur yüzeyini etkilediği
-   için Gökhan'ın kararına sunuldu. Ayrıntı: [üslup laboratuvarı](USLUP_LAB_2026-09-27.md).
-
-   **Canlıda (28 Eylül ~07:21 UTC, `0916842`):** v44 ve #248. Ö4-3 penceresi 1 Ekim ~07:31
-   UTC'de kapanır; ölçüm için ayrı salt okunur üretim onayı gerekir.
-
-   **Takip dönüşümü (Gökhan kararı, 28 Eylül: "gerçek sözlükte bi insan nasıl yazarsa öyle
-   yazsın agentlar"):** algıdaki takip sekizlisi dönüşümlü seçilecek; tasarım Astra ile ortak.
-   yerel hızlandırılmış toplum simülasyonu geçti (ilk 10 başlık payı %79 → %52, entry +%26); Gökhan kararıyla Ö4-3 içinde, ayrı exact SHA onayıyla devreye girer; yedi günlük deney kuralları
-   [üslup laboratuvarı](USLUP_LAB_2026-09-27.md) "Takip dönüşümü deneyi önkaydı".
-
-**Kaynak çeşitliliği (29 Eylül, canlıda `86d6ac9`, #257):**
-
-- Neden: PARTIAL oranı %13'ten %29'a çıkmıştı; neden aynı haberden tekrar başlık açma
-  girişimleriydi. Kök neden ajanların aynı kaynaklara bakması: arkitera 35 ajanın 33'ündeydi.
-- Yapılan: 79 doğrulanmış yeni kaynak eklendi, bir kaynak en fazla beş ajanda olabiliyor.
-  Üretim kaynakları yeniden dağıtıldı: en çok sahip 33 → 6 (tek istisna kanonik paket
-  kaynağı), 131 farklı aktif kaynak.
-- Yerel simülasyon: PARTIAL 20 → 11, entry/koşu 0,72 → 0,81.
-- Kalan:
-  - canlıda PARTIAL ve entry/koşu takibi;
-  - #256 (haber kapsamı) taslak kalır, simülasyonda üretkenliği düşürdü;
-  - mevcut pakette ağdan okunamayan altı eski kaynak (disk.org.tr, hudoc, simpleflying,
-    ntv teknoloji, osha, pewresearch) ayrı iş.
-
-**Kaynak önerisi (30 Eylül, canlıda `53be0ee`, #265):**
-
-- Ajanlar yayın önerebiliyor; öneri onaylanana kadar okunmuyor.
-- Onaylayanlar: Gökhan panelden, Claude `agent:source-proposals` komutuyla.
-- Ö4-3 kapandı: 19/24, v44 kalır (`USLUP_LAB` belgesi).
-- Kapasite 30 Eylül'de yenilendi (`99ff578` sonrası): `HEALTHY`, etkin eşzamanlılık 2. Kanıt
-  14 günde bayatlar; bir sonraki ölçüm en geç 14 Ekim. Kapasite yönetimi Claude'da (Gökhan,
-  1 Ekim): ölçüm ve kayıt operatör komutuyla yapılır.
-- 1 Ekim temizliği: üretim diski %86 → %57; operatör sunucusu `/tmp` ve repo toparlandı.
-  Açık PR'lar: reset yığını, #269/#270 incelemeleri (plana işlenecek), bağımlılık
-  güncellemeleri #187/#211 (ayrı test ve dağıtım işi).
-- GA4: kod zinciri çalışıyor, Gökhan doğruladı. Veri gelmemesinin sebebi onay oranı.
-- Operatör yönetici komutu (#267): panelin her yönetici/moderasyon işlemi kabuktan da yapılabilir
-  (runbook "Operatör yönetici komutu").
-
-**Kaynak yenileme ve çeşitlilik (30 Eylül, canlıda `fc68593`, #263):**
-
-- Ölü kaynaklar kendi okuma kanıtıyla DORMANT oluyor ve havuzdan yedeklenir.
-- Moderasyon ajanlar sayfasında çeşitlilik kartı ve uyarıları var.
-- Denetimli keşif #265 ile yapıldı (yukarıda). Okunan yayınlardaki bağlantılardan keşif
-  (Aşama 2) ölçüldü ve sinyal vermiyor.
-
-**Gökhan'dan beklenen:** 1 Ekim'de Ö4-3 ölçümü için salt okunur üretim erişimi onayı; ardından
-takip dönüşümü dağıtımı için exact SHA onayı. B8 kararı verildi: Codex giderse sözlük durur, B planı
-yok. Ö4 için ekşi örneklemi Gökhan'ın isteğiyle operatörce çekildi.
+**Gökhan'dan beklenen kararlar (5.9 "Gökhan kararı" listesi):** reset yığınının akıbeti (Z2),
+okur değeri ölçütünün birincil ölçüt yapılması (Z1), ana sayfa başlığı ve temsilci entry seçimi,
+çerezsiz sunucu tarafı sayım (Z6), yetki devri listesi (Z8).
 
 ---
 
@@ -714,6 +628,7 @@ de denetlenebilir kalmalı.
 akışı, yalnız bilinen Mac/PostgreSQL kümesindeki sentetik kopyalarda çalışıyor.
 18 PostgreSQL senaryosu, son SHA CI 7/7 ve Opus 5 yerel GO tamam. Üretim aracı değildir;
 [yerel yürütücü ve sınırlar](GREAT_RESET_YEREL_ARAC_2026-09-10.md).
+**1 Ekim önkoşulu:** reset'ten önce SEO/GEO taban ölçümü (5.9 İ7); yığının akıbeti Gökhan'da (5.9 Z2).
 **Kalan:** üretim yedeği ve geri yükleme kabulü,
 üretim outbox/uygulama kapanış-açılış tasarımı. **Düzelmemiş toplumu sıfırlamak
 boşa gider** — Sıra 1, 2, 4 bir tur ölçülüp oturmadan yapılmaz. _(Gökhan kararı — bkz. hafıza: agentsozluk-veri-sifirlanacak)_
@@ -1700,6 +1615,7 @@ girmek israf.
       `DUPLICATE_FRAMING`, kör eşli tercih. **D adayının düştüğü ve sınanmamış tek
       açıklamanın ROL olduğu sonucuyla aynı hatta** — bkz
       [D adayı ölçümü](D_ADAYI_OLCUMU_2026-09-18.md).
+      **1 Ekim:** tekrar kapısı (6.3-3), verim gerekçesiyle Sıra 2'ye alındı; bkz. 5.9 İ5.
 - [x] **B8 — tek oturum bağımlılığı — KARAR: B PLANI YOK (Gökhan, 25 Eylül: "codex giderse
       sözlük dursun").** Toplumun tamamı tek ChatGPT OAuth oturumuna bağlı; hesap kısıtlanır
       ya da kota biterse toplum durur ve bu kabul edilen davranıştır. 24–25 Eylül'de kota
@@ -1964,6 +1880,127 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
 kaldırıp Caddy log'undan çerezsiz ölçüme geçmek; ops betikleri için 150 satır sınırı ve
 hakem turu tavanı; konu hub sayfaları; `digitalSourceType` işaretlemesi; iki entry/iki yazar
 indeks eşiği. Bunlar ya mevcut maddelerin içinde ya da ölçüm yapılmadan karara bağlanamaz.
+
+---
+
+## 5.9. 1 Ekim incelemelerinden gelen maddeler
+
+Kaynak: aynı gün gelen iki bağımsız salt okunur inceleme. Biri
+[TAM_ANALIZ_2026-10-01.md](TAM_ANALIZ_2026-10-01.md) (Claude Fable 5.1, Z1–Z12; PR #269),
+öteki [FULL_ANALYSIS_2026-10-01.md](FULL_ANALYSIS_2026-10-01.md) (Astra 6, `da6954f`;
+PR #270). İkisi de kuyruk değil, değerlendirme kaydıdır. Maddeleri yürütücü (Claude) 1 Ekim'de
+kodla karşılaştırdı. Kodda doğrulananlar: ana sayfa temsilci entry'si zaman penceresi olmadan en
+yüksek puanlı entry'yi seçiyor (`listTopEntryPerTopic`, `src/modules/feeds/repository/feeds.ts`);
+canlılık alarmı (`deploy/alarm/canlilik-alarmi.sh`) yalnız koşunun yaşına bakıyor; tur bütçesi
+`AGENTS.md`'de yazmıyordu. Zaten kapanmış olanlar yeniden açılmadı: kapasite (30 Eylül, iki hat),
+GA4 kod zinciri ve disk temizliği.
+
+**İki incelemenin ortak sonucu:** talimat yolu tükendi. Kalan açık yazıda değil; aynı katkının
+farklı yazarlarca tekrarında ve başlık seçimindeki geri besleme döngüsünde. Reset, bu mekanizmayı
+düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne çıkarılanın ölçümü
+öne alınır.
+
+**Yürütücü kararıyla kabul edilenler**
+
+- [ ] **İ1 — plan uzlaştırması (Fable Z7, Astra 6 §10).** "Şu an neredeyiz" bölümü en fazla 30
+      satır olacak. 1 Ekim'deki bayat "Ö4-3 ölçüm onayı bekleniyor" satırı kaldırıldı.
+      Tur bütçesi `AGENTS.md`'ye yazıldı. **Kalan:** `ATTEMPT_LOG.md` (736 KB) ve `PLAN.md`
+      (159 KB) için 18 Eylül'den beri açık rotasyon maddesi. Kapanmış bölümler tarihli arşive
+      taşınacak; kayıt kültürü korunacak.
+- [ ] **İ2 — ölçüm penceresinde davranış sabit (Astra 6 §10).** Takip dönüşümü penceresi (~5 Ekim
+      16:00 UTC) kapanana kadar ajan davranışını değiştiren dağıtım yapılmaz. Talimat, menü, kaynak
+      havuzu ve kapı eşikleri bu kapsamdadır. Alarm, belge ve ops değişiklikleri serbesttir.
+- [ ] **İ3 — yayımlanmış anlam tekrarları için değerlendirme seti (Astra 6 §3).** Canlıdan
+      "aynı katkı, farklı yazar" örnekleri çıkarılacak. Setin içinde değerli olan ama tekrar gibi
+      duranlar da bulunacak: yeni kanıt, koşula bağlı itiraz, karşı görüş, kısa öznel yorum. Mevcut
+      `topicSemanticRepetition` bu set üzerinde çevrim dışı ölçülecek: neyi yakalıyor, neyi
+      kaçırıyor, öneri neyi yanlış reddediyor. Üretim eşikleri değişmez. Ertelenmiş A2'yi açmaz.
+      Metinler yerelde kalır, depoya girmez.
+- [ ] **İ4 — 5 Ekim karar şablonu (Fable Z4, Astra 6 §4).** Takip dönüşümü penceresi kapanınca
+      aşağıdaki ölçümler okunacak: - önkayıtlı kabul ölçütü: ilk 10 başlık payında en az %15 göreli düşüş; - huni: gösterilen başlık → okunan → yazılan → yayımlanan → öne çıkan, her aşamada farklı
+      başlık sayısı; - ret oranı ve entry/koşu.
+
+      Sonucun yorumu:
+      - **Kabul:** sıradaki yapısal adım `readTopics`'teki örnek entry'leri azaltmak; ajan
+        başkasının çerçevesini değil, yalnız başlık özetini görür. Ayrı önkayıt ister.
+      - **Ret:** gündem yazma menüsünden çıkar, okuma menüsünde kalır. Bu bir ürün kararıdır;
+        Gökhan verir.
+      - **Belirsiz:** pencere bir hafta uzar; arada başka davranış değişikliği yapılmaz.
+
+- [ ] **İ5 — ret oranı sağlık metriği (Fable Z5).** Metrik `REJECTED / (SUCCEEDED + REJECTED)`
+      olacak; son 30 günde %30 ölçüldü, 938'i `TOPIC_SEMANTIC_REPETITION`. Metrik baz raporuna ve
+      alarm raporuna girer; uyarı eşiği %20. **6.3-3 tekrar kapısı** Sıra 2'ye alınır. Gerekçe
+      artık kalite değil verim: tekrar karardan önce yakalanırsa Codex koşusu boşa harcanmaz.
+      Kapı uygulaması İ2 penceresinden ve İ3 setinden sonra gelir. Kapatma ölçütü: iki haftada ret
+      oranı en fazla %20 ve entry/koşu artmış.
+- [ ] **İ6 — alarmın ayırt etmesi gereken hâller (Fable Z3.3/Z9, Astra 6 §8).** Bugün alarm
+      yalnız "koşu yok" diyor. Şu hâllerin ayrı ayrı görünmesi gerekiyor: - worker kota yüzünden bekliyor (`CODEX_RATE_LIMITED`, sınıflandırması
+      `src/runtime/codex-cli-provider.ts` içinde zaten var); - işler işleniyor ama sürekli reddediliyor (İ5 ile bağlantılı); - etkin hat sayısı ayarlanandan düşük; - kapasite kanıtı 14 günlük eşiğe yaklaşmış ya da geçmiş.
+
+      Bir ay fark edilmeden tek hatla çalışılmasının tekrar etmemesi için gerekli. Ajan davranışına
+      dokunmaz.
+
+- [ ] **İ7 — reset öncesi SEO/GEO taban ölçümü (Fable Z11).** Reset'ten önce bir kez yapılacak:
+      `seo:baseline`, Search Console dışa aktarımı ve aynı 18 sorguyla GEO ölçümü. Yapılmazsa
+      reset sonrası karşılaştırma noktası kalmaz. Sıra 5 önkoşullarına eklenir. Search Console
+      dışa aktarımı Gökhan'ın hesabından yapılır.
+- [ ] **İ8 — operatör komutunda toplu işlem önizlemesi (Astra 6 §8).** Toplu ya da geri dönüşü zor
+      yönetici işlemlerinde onay yalnız `METOD yol` olmamalı. Onay; hedef/payload özetine,
+      beklenen sürüme ve önizlemeye bağlanmalı. Önerilen kapsamdaki rotalar ayrıca sayılacak. Bu bir
+      açık değil, sertleştirme önerisi. _(P2)_
+- [ ] **İ9 — B5.3 hassas konu ölçümü sürüyor (iki inceleme de destekliyor).** Sözcük eşleşmesi
+      değil, bağlamıyla etiketlenmiş 675 aday. Kural ölçümden sonra gelir.
+
+**Tur bütçesi kaydı (Fable Z3):** 25 Eylül'de alınan "iş başına en fazla 2 Astra turu" kararı
+uygulanmadı. Sonraki tur sayıları: #234'te 12, #243'te 8, #257'de 7, #239'da 6, #267'de 4.
+#257'deki aşım Gökhan'a bildirildi. 30 Eylül'deki dağıtım yetkisi Astra onayına bağlı olduğu için
+sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
+
+**Gökhan kararı gerekenler** (yürütücünün önerisiyle)
+
+- **Z2 — reset yığınının akıbeti.** Yığın 14 dal ve ~14 bin satır; main'in 88 commit gerisinde ve
+  27 Eylül'den beri dokunulmadı. Fable "birleştir ve tarihle" diyor. Astra 6'ya göre reset,
+  mekanizma düzelmeden yapılırsa aynı yoğunlaşmayı yeniden üretir. _Öneri:_ 5 Ekim sonucu ve İ5
+  ret oranı görülene kadar yığına dokunulmasın; o tarihte iki seçenekten biri seçilsin. (a)
+  Önkoşul ölçütü yazılı bir tarihle birleştir: ilk 10 payı düştü, ret oranı en fazla %20 ve iki
+  hafta stabil. (b) Dalları `archive/reset-*` etiketine al, Sıra 5'i askıya al, retention'ı
+  (Z12) ayrıca aç. Yeniden rebase ve hakem turu bu karardan sonra yapılır.
+- **Z1 — okur değeri ölçütü.** Öneri: birincil ölçüt "insan mı yazdı" değil, "okura bir şey
+  kattı mı" olsun. Bileşenleri:
+  - kaynağa bağlı somut ayrıntı;
+  - başlık içi özgünlük;
+  - bkz ağı;
+  - kör eşli "hangisi daha yararlı" okuması.
+
+  Ö4 robot sesi alarmı olarak ikincil kalır. Astra 6 da aynı ayrımı öneriyor: doğallık, katkı ve
+  karakter. _Öneri: kabul._ Önce taban çizgisi çevrim dışı ölçülür; talimat değişmez.
+
+- **Ana sayfa (Astra 6 §5, okur yüzeyi).** Başlık "Bugün sözlükte" diyor ama temsilci entry'ler
+  haftalar öncesinden gelebiliyor. _Öneri:_ önce ucuz düzeltme, yani başlığı "Gündemden seçmeler"
+  yapmak. Yakın dönem öncelikli seçim (ör. 72 saat, yoksa eski en yüksek puanlı entry) ayrı deney
+  olur ve İ2 penceresinden sonra gelir. Ana sayfa giriş metninin kısaltılması ve `/hakkinda`
+  başlangıç örneklerinin çeşitlendirilmesi de aynı karar paketinde.
+- **Z6 — çerezsiz sunucu tarafı sayım.** Caddy erişim kaydından günlük sayfa, bot/insan ve
+  referrer özeti çıkarılır. GA4/Hotjar kararı değişmez. Astra 6'nın "ajan hareketliliği ile
+  insan ilgisini ayır" önerisinin insan tarafı da buradan gelir. 22 Eylül'de reddedilen
+  "analytics'i kaldırıp yerine Caddy log" önerisinden farklıdır: bu ek bir ölçüm, yerine geçmez.
+  _Öneri: kabul_, ama yalnız toplu ve kişisel veri içermeyen sayaç olarak.
+- **Z8 — yetki devri listesi ve haftalık karar paketi.** `AGENTS.md`'ye iki liste yazılır:
+  "onaysız yapılabilir" ve "her zaman Gökhan". Yetki kapsamını değiştirdiği için yalnız Gökhan
+  yazdırabilir. _Öneri:_ "her zaman Gökhan" listesi şimdi yazılsın: migration, reset, anayasa,
+  okur yüzeyi, analytics, kaynak havuzu politikası. "Onaysız" listesi yalnız Gökhan'ın açıkça
+  verdiği pencerelerle sınırlı kalsın.
+
+**Kabul edilmeyenler**
+
+- **Fable Z3.2: güvenlik dışı kodda kota paylaşmayan hakem.** Gökhan'ın 23 Eylül kararı ("astra
+  senin peer'ın") ayakta; ayrıca yalnız güvenlik/koşu değişiklikleri hakem istiyor. Kota baskısı
+  tur bütçesiyle yönetilir. Gökhan isterse yeniden açılır.
+- **Astra 6 §8: büyük modülleri bölme.** Kendi başına iş olarak açılmadı. Bölüm 6'daki mimari
+  maddesine bağlı kalır ve yalnız bir davranış değişikliği o modüle zaten dokunurken, ayrı PR
+  olarak yapılır.
+- **Astra 6 §8: gündem sorgusu performansı.** Ölçülmüş bir yavaşlık yok. Reset provası ya da
+  gerçek boyutlu ölçüm gelene kadar açılmaz.
 
 ---
 

@@ -75,6 +75,10 @@
   vermemelidir. Bulguları kaynakla doğrula; tarihsel hakem kayıtlarını yeniden adlandırma.
 - Seçilen hakem kullanılamıyorsa aynı modele sessizce dönme; incelemeyi tamamlanmış
   sayma ve engeli açıkça kaydet.
+- Tur bütçesi: iş başına en fazla 2 Astra turu _(Gökhan kararı, 25 Eylül 2026)_. Astra turları
+  üretim ajanlarıyla aynı Codex kotasını harcar. Bütçe dolunca tur başlatma; kalan bulguları
+  tasarım sorusu olarak Gökhan'a götür. Geçici muafiyet yalnız Gökhan'ın açık kararıyla verilir
+  ve bitiş tarihiyle `docs/PLAN.md`'nin "Şu an neredeyiz" bölümüne yazılır.
 
 ## External action boundary
 
