@@ -28,21 +28,26 @@ const SAGLAM = "SAGLIK 0 12 3 40 2 2 2 EVIDENCE_FRESH 900000";
 let dizin: string;
 
 function calistir(ozet: string, simdi = 1_800_000_000, ekOrtam: Record<string, string> = {}) {
-  const sonuc = spawnSync("bash", [BETIK, "--yalniz-saglik"], {
-    encoding: "utf8",
-    timeout: 30_000,
-    env: {
-      NODE_ENV: "test",
-      PATH: `${path.join(dizin, "bin")}:/usr/bin:/bin`,
-      ALARM_NTFY_KONU: "test-konu",
-      ALARM_NTFY_SUNUCU: "https://ntfy.example",
-      ALARM_DURUM_DOSYASI: path.join(dizin, "durum", "durum"),
-      ALARM_SIMDI: String(simdi),
-      SAHTE_DIZIN: dizin,
-      SAHTE_SAGLIK: ozet,
-      ...ekOrtam,
+  const disSure = ekOrtam.DIS_SURE;
+  const sonuc = spawnSync(
+    disSure ? "timeout" : "bash",
+    [...(disSure ? [disSure, "bash"] : []), BETIK, "--yalniz-saglik"],
+    {
+      encoding: "utf8",
+      timeout: 30_000,
+      env: {
+        NODE_ENV: "test",
+        PATH: `${path.join(dizin, "bin")}:/usr/bin:/bin`,
+        ALARM_NTFY_KONU: "test-konu",
+        ALARM_NTFY_SUNUCU: "https://ntfy.example",
+        ALARM_DURUM_DOSYASI: path.join(dizin, "durum", "durum"),
+        ALARM_SIMDI: String(simdi),
+        SAHTE_DIZIN: dizin,
+        SAHTE_SAGLIK: ozet,
+        ...ekOrtam,
+      },
     },
-  });
+  );
   const oku = (ad: string) =>
     existsSync(path.join(dizin, ad)) ? readFileSync(path.join(dizin, ad), "utf8") : "";
   const bildirimler = oku("curl.log").split("\n---\n").filter(Boolean);
@@ -73,6 +78,7 @@ exit 0
   writeFileSync(
     path.join(bin, "curl"),
     `#!/usr/bin/env bash
+[[ -n "$SAHTE_CURL_UYU" ]] && sleep "$SAHTE_CURL_UYU"
 [[ -n "$SAHTE_CURL_HATA" ]] && exit 22
 { printf '%s\\n' "$@"; printf -- '---\\n'; } >> "$SAHTE_DIZIN/curl.log"
 `,
@@ -97,7 +103,7 @@ describe("sağlık özeti", () => {
     expect(sonuc.bildirimler[0]).toContain("Title: Agent Sözlük sağlık: codex");
     expect(sonuc.bildirimler[0]).toContain("Priority: high");
     expect(sonuc.bildirimler[0]).toContain("5 koşu Codex hatasıyla bitti");
-    expect(sonuc.durum).toMatch(/^codex \d+ 1 -$/);
+    expect(sonuc.durum).toMatch(/^codex \d+ 1 - -$/);
   });
 
   it("başarılı koşu varken Codex hataları tek başına alarm değildir", () => {
@@ -163,7 +169,7 @@ describe("sağlık özeti", () => {
   it("gönderim başarısızsa teslim edilmedi diye yazar; sonraki koşu yeniden dener", () => {
     const t = 1_800_000_000;
     const ozet = "SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000";
-    expect(calistir(ozet, t, { SAHTE_CURL_HATA: "1" }).durum).toBe(`codex ${t} 0 codex`);
+    expect(calistir(ozet, t, { SAHTE_CURL_HATA: "1" }).durum).toBe(`codex ${t} 0 codex -`);
     expect(calistir(ozet, t + 900).bildirimler).toHaveLength(1);
   });
 
@@ -199,7 +205,7 @@ describe("sağlık özeti", () => {
     ]) {
       const sonuc = calistir(ozet, t + 900);
       expect(sonuc.bildirimler).toEqual([]);
-      expect(sonuc.durum).toBe(`hat ${t} 1 -`);
+      expect(sonuc.durum).toBe(`hat ${t} 1 - -`);
       expect(sonuc.stderr).toContain("eşzamanlılık kararı");
     }
   });
@@ -218,14 +224,14 @@ describe("sağlık özeti", () => {
     expect(sonra.bildirimler).toHaveLength(1);
     expect(sonra.bildirimler[0]).toContain("sağlık: düzeldi");
     expect(sonra.bildirimler[0]).toContain("Önceki sorun (codex)");
-    expect(sonra.durum).toBe(`temiz ${t + 900} 1 -`);
+    expect(sonra.durum).toBe(`temiz ${t + 900} 1 - -`);
   });
 
   it("gönderilemeyen düzelme bildirimi yeniden denenir", () => {
     const t = 1_800_000_000;
     calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t);
     expect(calistir(SAGLAM, t + 900, { SAHTE_CURL_HATA: "1" }).durum).toBe(
-      `temiz ${t + 900} 0 codex`,
+      `temiz ${t + 900} 0 - codex`,
     );
     const tekrar = calistir(SAGLAM, t + 1800);
     expect(tekrar.bildirimler[0]).toContain("Önceki sorun (codex)");
@@ -246,5 +252,43 @@ describe("sağlık özeti", () => {
       writeFileSync(path.join(dizin, "durum", "durum-saglik"), `${satir}\n`);
       expect(calistir(SAGLAM).bildirimler).toEqual([]);
     }
+  });
+
+  it("gönderim sırasında süre aşımıyla öldürülse de sorun kaybolmaz (Astra, 2 Ekim)", () => {
+    const t = 1_800_000_000;
+    const kesik = calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t, {
+      SAHTE_CURL_UYU: "5",
+      DIS_SURE: "1",
+    });
+    expect(kesik.bildirimler).toEqual([]);
+    expect(kesik.durum).toBe(`codex ${t} 0 codex -`);
+    const sonra = calistir(SAGLAM, t + 900);
+    expect(sonra.bildirimler[0]).toContain("sağlık: düzeldi");
+    expect(sonra.bildirimler[0]).toContain("Bunlar daha önce bildirilememişti: codex.");
+  });
+
+  it("bildirilemeyen düzelme, bildirilemeyen sorun diye anlatılmaz (Astra, 2 Ekim)", () => {
+    const t = 1_800_000_000;
+    calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t);
+    calistir(SAGLAM, t + 900, { SAHTE_CURL_HATA: "1" });
+    const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200", t + 1800);
+    expect(sonuc.bildirimler[0]).toContain("sağlık: kapasite");
+    expect(sonuc.bildirimler[0]).toContain("Arada düzelen (düzelme bildirilememişti): codex.");
+    expect(sonuc.bildirimler[0]).not.toContain("bildirilemeyen: codex");
+    expect(sonuc.durum).toBe(`kapasite ${t + 1800} 1 - -`);
+  });
+
+  it("aynı sorunun önceki başarısız denemesi arada diye tekrar yazılmaz", () => {
+    const t = 1_800_000_000;
+    calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t, { SAHTE_CURL_HATA: "1" });
+    const sonuc = calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t + 900);
+    expect(sonuc.bildirimler).toHaveLength(1);
+    expect(sonuc.bildirimler[0]).not.toContain("Arada");
+  });
+
+  it("eski dört alanlı durum satırı okunur", () => {
+    mkdirSync(path.join(dizin, "durum"), { recursive: true });
+    writeFileSync(path.join(dizin, "durum", "durum-saglik"), "codex 1799999100 1 -\n");
+    expect(calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000").bildirimler).toEqual([]);
   });
 });
