@@ -583,7 +583,8 @@ SAGLIK_KUME="${SAGLIK_AD}(,${SAGLIK_AD}){0,3}"
 # `bildirilen − şimdi`, arada kaçanlar `gorulen − bildirilen − şimdi`.
 # Başarısız ya da yarıda kalan gönderim `bildirilen`i değiştirmez; bu yüzden
 # kısmi düzelme, başarısız hatırlatma ve kesilen gönderim hiçbir şey
-# kaybettirmez (Astra, 2 Ekim, üç tur). Bozuk satır `temiz 0 -` sayılır.
+# kaybettirmez (Astra, 2 Ekim, üç tur). Bozuk satır `temiz 0 -` sayılır; dalın
+# birleşmeden önceki ara biçimleri üretimde hiç kurulmadığı için dönüştürülmez.
 saglik_durum_oku() { # $1 şimdi
   local bildirilen an gorulen
   read -r bildirilen an gorulen 2>/dev/null <"$SAGLIK_DURUM" || true
@@ -697,7 +698,7 @@ saglik_kontrol() {
     baslik="Agent Sözlük sağlık: düzeldi"; oncelik=default
     govde="Önceki sorun ($(kume_birlestir "$duzelen" "$arada")) artık görünmüyor."
     [[ "$arada" != - ]] && govde="${govde}
-Bunlar arada görülmüş ama bildirilememişti: ${arada}."
+Arada görülen, bildirimi doğrulanamayan: ${arada}."
   else
     baslik="Agent Sözlük sağlık: ${hal}"; oncelik=default
     [[ "$hal" == ret ]] && oncelik=low
@@ -706,10 +707,12 @@ Bunlar arada görülmüş ama bildirilememişti: ${arada}."
     [[ "$duzelen" != - ]] && govde="${govde}
 Düzelen: ${duzelen}."
     [[ "$arada" != - ]] && govde="${govde}
-Arada görülüp bildirilemeyen: ${arada}."
+Arada görülen, bildirimi doğrulanamayan: ${arada}."
   fi
   if bildir "$baslik" "$oncelik" warning "${govde}
 $(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
+    # Yazılamazsa sonraki mesaj bu sorunu "bildirimi doğrulanamayan" diye anar;
+    # gönderildiğini kanıtlayan kayıt olmadan daha fazlası söylenemez.
     atomik_yaz "$SAGLIK_DURUM" "$hal $simdi -" || true
   else
     hata_yaz "sağlık bildirimi gönderilemedi"

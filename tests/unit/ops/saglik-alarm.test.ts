@@ -241,7 +241,7 @@ describe("sağlık özeti", () => {
     calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t, { SAHTE_CURL_HATA: "1" });
     const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200", t + 900);
     expect(sonuc.bildirimler[0]).toContain("sağlık: kapasite");
-    expect(sonuc.bildirimler[0]).toContain("Arada görülüp bildirilemeyen: codex.");
+    expect(sonuc.bildirimler[0]).toContain("Arada görülen, bildirimi doğrulanamayan: codex.");
   });
 
   it("tanınmayan ad içeren durum satırı temiz sayılır (Astra, 2 Ekim)", () => {
@@ -262,7 +262,7 @@ describe("sağlık özeti", () => {
     expect(kesik.durum).toBe(`temiz 0 codex`);
     const sonra = calistir(SAGLAM, t + 900);
     expect(sonra.bildirimler[0]).toContain("sağlık: düzeldi");
-    expect(sonra.bildirimler[0]).toContain("Bunlar arada görülmüş ama bildirilememişti: codex.");
+    expect(sonra.bildirimler[0]).toContain("Arada görülen, bildirimi doğrulanamayan: codex.");
   });
 
   it("bildirilemeyen düzelme, bildirilemeyen sorun diye anlatılmaz (Astra, 2 Ekim)", () => {
@@ -272,7 +272,7 @@ describe("sağlık özeti", () => {
     const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200", t + 1800);
     expect(sonuc.bildirimler[0]).toContain("sağlık: kapasite");
     expect(sonuc.bildirimler[0]).toContain("Düzelen: codex.");
-    expect(sonuc.bildirimler[0]).not.toContain("bildirilemeyen: codex");
+    expect(sonuc.bildirimler[0]).not.toContain("doğrulanamayan: codex");
     expect(sonuc.durum).toBe(`kapasite ${t + 1800} -`);
   });
 
@@ -296,7 +296,7 @@ describe("sağlık özeti", () => {
     calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200", t + 900, { SAHTE_CURL_HATA: "1" });
     const sonuc = calistir(SAGLAM, t + 1800);
     expect(sonuc.bildirimler[0]).toContain("Önceki sorun (codex,kapasite) artık görünmüyor.");
-    expect(sonuc.bildirimler[0]).not.toContain("bildirilememişti");
+    expect(sonuc.bildirimler[0]).not.toContain("doğrulanamayan");
   });
 
   it("başarısız hatırlatma, ilk bildirimi bildirilmemiş saymaz (Astra, 3. tur)", () => {
@@ -307,6 +307,6 @@ describe("sağlık özeti", () => {
     });
     const sonuc = calistir(SAGLAM, t + 7 * 3600);
     expect(sonuc.bildirimler[0]).toContain("Önceki sorun (codex) artık görünmüyor.");
-    expect(sonuc.bildirimler[0]).not.toContain("bildirilememişti");
+    expect(sonuc.bildirimler[0]).not.toContain("doğrulanamayan");
   });
 });
