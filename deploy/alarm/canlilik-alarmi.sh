@@ -574,29 +574,25 @@ PSQL
 SAGLIK_AD='(codex|hat|kapasite|ret)'
 SAGLIK_KUME="${SAGLIK_AD}(,${SAGLIK_AD}){0,3}"
 
-# Durum satırı: `hal an teslim bekleyen duzelme`.
-#  hal      son ölçülen sorun kümesi (ya da temiz)
-#  an       hal için son başarılı bildirimin (ya da ilk görülüşün) anı
-#  teslim   1 = hal bildirildi; 0 = bildirilmedi ya da gönderim yarıda kaldı,
-#           sonraki koşu yeniden dener
-#  bekleyen hiç bildirilemeden görülmüş sorunlar (ya da -)
-#  duzelme  bildirilmiş ama düzeldiği bildirilememiş sorunlar (ya da -)
-# Durum gönderimden ÖNCE "teslim edilmedi" olarak yazılır, başarıdan sonra
-# temizlenir: gönderim sırasında süre aşımıyla öldürülse bile hiçbir sorun ya
-# da düzelme kaybolmaz (Astra, 2 Ekim, iki tur).
-# Bozuk ya da tanınmayan satır `temiz 0 1 - -` sayılır; eksik son alan `-`.
+# Durum satırı: `bildirilen an gorulen`.
+#  bildirilen son BAŞARIYLA gönderilen bildirimin sorun kümesi (ya da temiz):
+#             Gökhan'ın bildiği son durum
+#  an         o gönderimin anı (hatırlatma aralığı buradan sayılır)
+#  gorulen    son başarılı gönderimden beri ölçülen bütün sorunlar (ya da -)
+# Mesaj, ölçülen küme ile `bildirilen` arasındaki farktan kurulur: düzelenler
+# `bildirilen − şimdi`, arada kaçanlar `gorulen − bildirilen − şimdi`.
+# Başarısız ya da yarıda kalan gönderim `bildirilen`i değiştirmez; bu yüzden
+# kısmi düzelme, başarısız hatırlatma ve kesilen gönderim hiçbir şey
+# kaybettirmez (Astra, 2 Ekim, üç tur). Bozuk satır `temiz 0 -` sayılır.
 saglik_durum_oku() { # $1 şimdi
-  local hal an teslim bekleyen duzelme
-  read -r hal an teslim bekleyen duzelme 2>/dev/null <"$SAGLIK_DURUM" || true
-  duzelme="${duzelme:--}"
-  if [[ ! "${hal:-}" =~ ^(temiz|${SAGLIK_KUME})$ ]] \
+  local bildirilen an gorulen
+  read -r bildirilen an gorulen 2>/dev/null <"$SAGLIK_DURUM" || true
+  if [[ ! "${bildirilen:-}" =~ ^(temiz|${SAGLIK_KUME})$ ]] \
      || [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > $1 )) \
-     || [[ ! "${teslim:-}" =~ ^[01]$ ]] \
-     || [[ ! "${bekleyen:-}" =~ ^(-|${SAGLIK_KUME})$ ]] \
-     || [[ ! "$duzelme" =~ ^(-|${SAGLIK_KUME})$ ]]; then
-    hal=temiz; an=0; teslim=1; bekleyen=-; duzelme=-
+     || [[ ! "${gorulen:-}" =~ ^(-|${SAGLIK_KUME})$ ]]; then
+    bildirilen=temiz; an=0; gorulen=-
   fi
-  echo "$hal $an $teslim $bekleyen $duzelme"
+  echo "$bildirilen $an $gorulen"
 }
 
 kume_birlestir() { # virgüllü kümeleri (ya da -) birleştirir; sabit sırayla, tekrarsız
@@ -615,7 +611,7 @@ kume_fark() { # $1 kümesinden $2 kümesindekileri çıkarır
 }
 
 saglik_kontrol() {
-  local cikti simdi onceki_hal onceki_an teslim bekleyen duzelme etiket codex_hata basarili ret basari
+  local cikti simdi bildirilen onceki_an gorulen etiket codex_hata basarili ret basari
   local ayar etkin karar_ayar neden kalan sorunlar=() satirlar=() hal tekrar_sn yuzde gerek
   local hat_bilinmiyor=0
   cikti="$(saglik_sorgu | grep -E '^SAGLIK ' | head -1)"
@@ -663,11 +659,11 @@ saglik_kontrol() {
   fi
 
   simdi="${ALARM_SIMDI:-$(date +%s)}"
-  read -r onceki_hal onceki_an teslim bekleyen duzelme <<<"$(saglik_durum_oku "$simdi")"
+  read -r bildirilen onceki_an gorulen <<<"$(saglik_durum_oku "$simdi")"
   # Bilinmeyen hat ölçümü önceki hat alarmını kapatmaz.
   if (( hat_bilinmiyor )); then
     hata_yaz "sağlık özeti: eşzamanlılık kararı okunamadı ya da ayarla uyuşmuyor"
-    if [[ ",$onceki_hal," == *,hat,* ]]; then
+    if [[ ",$(kume_birlestir "$bildirilen" "$gorulen")," == *,hat,* ]]; then
       sorunlar+=(hat)
       satirlar+=("Hat: önceki ölçümde düşüktü; şu an doğrulanamıyor.")
     fi
@@ -676,49 +672,49 @@ saglik_kontrol() {
   # Yalnız ret oranı yüksekse günde bir hatırlatma yeter; diğerleri 6 saatte bir.
   if [[ "$hal" == ret ]]; then tekrar_sn=86400; else tekrar_sn="$SESSIZLIK_SN"; fi
 
-  gerek=0
-  if [[ "$hal" != "$onceki_hal" || "$teslim" == 0 ]]; then gerek=1
-  elif [[ "$hal" != temiz ]] && (( simdi - onceki_an > tekrar_sn )); then gerek=1; fi
-  # İlk koşu (durum yok) ve temiz: söylenecek bir şey yok.
-  if [[ "$hal" == temiz && "$onceki_hal" == temiz && "$bekleyen" == - && "$duzelme" == - ]]; then
-    gerek=0
-  fi
-  if (( ! gerek )); then return 0; fi
-
-  # Gönderim yarıda kalırsa geçerli olacak durum ÖNCE yazılır.
-  local yeni_bekleyen yeni_duzelme yeni_an="$simdi"
-  yeni_bekleyen="$(kume_birlestir "$bekleyen" "$( [[ "$hal" != temiz ]] && echo "$hal" || echo - )")"
-  yeni_duzelme="$duzelme"
-  if [[ "$hal" == temiz && "$onceki_hal" != temiz && "$teslim" == 1 ]]; then
-    yeni_duzelme="$(kume_birlestir "$duzelme" "$onceki_hal")"
-  fi
-  [[ "$hal" == "$onceki_hal" ]] && yeni_an="$onceki_an"
-  atomik_yaz "$SAGLIK_DURUM" "$hal $yeni_an 0 $yeni_bekleyen $yeni_duzelme" || true
-
+  local yeni_gorulen
+  # Yalnız Gökhan'ın henüz bilmediği sorunlar `gorulen`e girer.
+  yeni_gorulen="$(kume_birlestir "$gorulen" "$(kume_fark "$hal" "$bildirilen")")"
   local baslik oncelik govde arada duzelen
-  arada="$(kume_fark "$bekleyen" "$hal")"
-  duzelen="$(kume_fark "$duzelme" "$hal")"
+  duzelen="$(kume_fark "$bildirilen" "$hal")"
+  arada="$(kume_fark "$(kume_fark "$yeni_gorulen" "$bildirilen")" "$hal")"
+  gerek=0
+  # Bildirilmeden geçip giden sorun da bir kez söylenir.
+  if [[ "$hal" != "$bildirilen" || "$arada" != - ]]; then gerek=1
+  elif [[ "$hal" != temiz ]] && (( simdi - onceki_an > tekrar_sn )); then gerek=1; fi
+  if (( ! gerek )); then
+    if [[ "$yeni_gorulen" != "$gorulen" ]]; then
+      atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" || true
+    fi
+    return 0
+  fi
+
+  # Gönderim yarıda kalırsa görülenler kaybolmasın: önce kaydet.
+  local on_yazim=0
+  atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" && on_yazim=1
+
   if [[ "$hal" == temiz ]]; then
     baslik="Agent Sözlük sağlık: düzeldi"; oncelik=default
-    govde="Önceki sorun ($(kume_birlestir "$bekleyen" "$duzelme" \
-      "$( [[ "$onceki_hal" != temiz ]] && echo "$onceki_hal" || echo - )")) artık görünmüyor."
+    govde="Önceki sorun ($(kume_birlestir "$duzelen" "$arada")) artık görünmüyor."
     [[ "$arada" != - ]] && govde="${govde}
-Bunlar daha önce bildirilememişti: ${arada}."
+Bunlar arada görülmüş ama bildirilememişti: ${arada}."
   else
     baslik="Agent Sözlük sağlık: ${hal}"; oncelik=default
     [[ "$hal" == ret ]] && oncelik=low
     [[ ",$hal," == *,codex,* || ",$hal," == *,hat,* ]] && oncelik=high
     govde="$(printf '%s\n' "${satirlar[@]}")"
+    [[ "$duzelen" != - ]] && govde="${govde}
+Düzelen: ${duzelen}."
     [[ "$arada" != - ]] && govde="${govde}
 Arada görülüp bildirilemeyen: ${arada}."
-    [[ "$duzelen" != - ]] && govde="${govde}
-Arada düzelen (düzelme bildirilememişti): ${duzelen}."
   fi
   if bildir "$baslik" "$oncelik" warning "${govde}
 $(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
-    atomik_yaz "$SAGLIK_DURUM" "$hal $simdi 1 - -" || true
+    atomik_yaz "$SAGLIK_DURUM" "$hal $simdi -" || true
   else
     hata_yaz "sağlık bildirimi gönderilemedi"
+    # Ön kayıt başarısızsa bir kez daha dene; `bildirilen` değişmez.
+    (( on_yazim )) || atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" || true
   fi
   return 0
 }

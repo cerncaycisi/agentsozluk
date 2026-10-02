@@ -103,7 +103,7 @@ describe("sağlık özeti", () => {
     expect(sonuc.bildirimler[0]).toContain("Title: Agent Sözlük sağlık: codex");
     expect(sonuc.bildirimler[0]).toContain("Priority: high");
     expect(sonuc.bildirimler[0]).toContain("5 koşu Codex hatasıyla bitti");
-    expect(sonuc.durum).toMatch(/^codex \d+ 1 - -$/);
+    expect(sonuc.durum).toMatch(/^codex \d+ -$/);
   });
 
   it("başarılı koşu varken Codex hataları tek başına alarm değildir", () => {
@@ -169,7 +169,7 @@ describe("sağlık özeti", () => {
   it("gönderim başarısızsa teslim edilmedi diye yazar; sonraki koşu yeniden dener", () => {
     const t = 1_800_000_000;
     const ozet = "SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000";
-    expect(calistir(ozet, t, { SAHTE_CURL_HATA: "1" }).durum).toBe(`codex ${t} 0 codex -`);
+    expect(calistir(ozet, t, { SAHTE_CURL_HATA: "1" }).durum).toBe(`temiz 0 codex`);
     expect(calistir(ozet, t + 900).bildirimler).toHaveLength(1);
   });
 
@@ -184,7 +184,7 @@ describe("sağlık özeti", () => {
 
   it("bozuk durum dosyası temiz sayılır", () => {
     mkdirSync(path.join(dizin, "durum"), { recursive: true });
-    writeFileSync(path.join(dizin, "durum", "durum-saglik"), "codex 99999999999999 1 -\n");
+    writeFileSync(path.join(dizin, "durum", "durum-saglik"), "codex 99999999999999 -\n");
     expect(calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000").bildirimler).toHaveLength(1);
   });
 
@@ -205,7 +205,7 @@ describe("sağlık özeti", () => {
     ]) {
       const sonuc = calistir(ozet, t + 900);
       expect(sonuc.bildirimler).toEqual([]);
-      expect(sonuc.durum).toBe(`hat ${t} 1 - -`);
+      expect(sonuc.durum).toBe(`hat ${t} -`);
       expect(sonuc.stderr).toContain("eşzamanlılık kararı");
     }
   });
@@ -224,15 +224,13 @@ describe("sağlık özeti", () => {
     expect(sonra.bildirimler).toHaveLength(1);
     expect(sonra.bildirimler[0]).toContain("sağlık: düzeldi");
     expect(sonra.bildirimler[0]).toContain("Önceki sorun (codex)");
-    expect(sonra.durum).toBe(`temiz ${t + 900} 1 - -`);
+    expect(sonra.durum).toBe(`temiz ${t + 900} -`);
   });
 
   it("gönderilemeyen düzelme bildirimi yeniden denenir", () => {
     const t = 1_800_000_000;
     calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t);
-    expect(calistir(SAGLAM, t + 900, { SAHTE_CURL_HATA: "1" }).durum).toBe(
-      `temiz ${t + 900} 0 - codex`,
-    );
+    expect(calistir(SAGLAM, t + 900, { SAHTE_CURL_HATA: "1" }).durum).toBe(`codex ${t} -`);
     const tekrar = calistir(SAGLAM, t + 1800);
     expect(tekrar.bildirimler[0]).toContain("Önceki sorun (codex)");
     expect(calistir(SAGLAM, t + 2700).bildirimler).toEqual([]);
@@ -248,7 +246,7 @@ describe("sağlık özeti", () => {
 
   it("tanınmayan ad içeren durum satırı temiz sayılır (Astra, 2 Ekim)", () => {
     mkdirSync(path.join(dizin, "durum"), { recursive: true });
-    for (const satir of ["bogus 1799999100 1 -", "codex,bogus 1799999100 1 -", "codex 1 2 -"]) {
+    for (const satir of ["bogus 1799999100 -", "codex,bogus 1799999100 -", "codex 1799999100 1"]) {
       writeFileSync(path.join(dizin, "durum", "durum-saglik"), `${satir}\n`);
       expect(calistir(SAGLAM).bildirimler).toEqual([]);
     }
@@ -261,10 +259,10 @@ describe("sağlık özeti", () => {
       DIS_SURE: "1",
     });
     expect(kesik.bildirimler).toEqual([]);
-    expect(kesik.durum).toBe(`codex ${t} 0 codex -`);
+    expect(kesik.durum).toBe(`temiz 0 codex`);
     const sonra = calistir(SAGLAM, t + 900);
     expect(sonra.bildirimler[0]).toContain("sağlık: düzeldi");
-    expect(sonra.bildirimler[0]).toContain("Bunlar daha önce bildirilememişti: codex.");
+    expect(sonra.bildirimler[0]).toContain("Bunlar arada görülmüş ama bildirilememişti: codex.");
   });
 
   it("bildirilemeyen düzelme, bildirilemeyen sorun diye anlatılmaz (Astra, 2 Ekim)", () => {
@@ -273,9 +271,9 @@ describe("sağlık özeti", () => {
     calistir(SAGLAM, t + 900, { SAHTE_CURL_HATA: "1" });
     const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200", t + 1800);
     expect(sonuc.bildirimler[0]).toContain("sağlık: kapasite");
-    expect(sonuc.bildirimler[0]).toContain("Arada düzelen (düzelme bildirilememişti): codex.");
+    expect(sonuc.bildirimler[0]).toContain("Düzelen: codex.");
     expect(sonuc.bildirimler[0]).not.toContain("bildirilemeyen: codex");
-    expect(sonuc.durum).toBe(`kapasite ${t + 1800} 1 - -`);
+    expect(sonuc.durum).toBe(`kapasite ${t + 1800} -`);
   });
 
   it("aynı sorunun önceki başarısız denemesi arada diye tekrar yazılmaz", () => {
@@ -286,9 +284,29 @@ describe("sağlık özeti", () => {
     expect(sonuc.bildirimler[0]).not.toContain("Arada");
   });
 
-  it("eski dört alanlı durum satırı okunur", () => {
+  it("eski biçimli durum satırı güvenle sıfırlanır", () => {
     mkdirSync(path.join(dizin, "durum"), { recursive: true });
     writeFileSync(path.join(dizin, "durum", "durum-saglik"), "codex 1799999100 1 -\n");
-    expect(calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000").bildirimler).toEqual([]);
+    expect(calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000").bildirimler).toHaveLength(1);
+  });
+
+  it("kısmi düzelmenin bildirimi gönderilemezse kaybolmaz (Astra, 3. tur)", () => {
+    const t = 1_800_000_000;
+    calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 7200", t);
+    calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200", t + 900, { SAHTE_CURL_HATA: "1" });
+    const sonuc = calistir(SAGLAM, t + 1800);
+    expect(sonuc.bildirimler[0]).toContain("Önceki sorun (codex,kapasite) artık görünmüyor.");
+    expect(sonuc.bildirimler[0]).not.toContain("bildirilememişti");
+  });
+
+  it("başarısız hatırlatma, ilk bildirimi bildirilmemiş saymaz (Astra, 3. tur)", () => {
+    const t = 1_800_000_000;
+    calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t);
+    calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t + 6 * 3600 + 1, {
+      SAHTE_CURL_HATA: "1",
+    });
+    const sonuc = calistir(SAGLAM, t + 7 * 3600);
+    expect(sonuc.bildirimler[0]).toContain("Önceki sorun (codex) artık görünmüyor.");
+    expect(sonuc.bildirimler[0]).not.toContain("bildirilememişti");
   });
 });
