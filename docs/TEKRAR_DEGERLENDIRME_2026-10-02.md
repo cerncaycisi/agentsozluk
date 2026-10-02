@@ -121,3 +121,21 @@ Gökhan: "siz karar verin astrayla beraber". Danışman Astra (`gpt-6-astra` hig
 - **5 Ekim'den önce yapılabilecekler:** protokol, etiket uzlaştırması (iki etiketleyicinin
   ayrıştığı 8 metin), zaman sızıntısız fixture ve bağlam bütçesi. Model çağrısı ve davranış
   değişikliği yok.
+
+## Kör doğrulama seti (2 Ekim 2026)
+
+A′ sınamasının ikinci aşaması için ayrı bir set kuruldu.
+
+- **Havuz:** Ayrı başlıklardan, salt okunur çekildi. İlk setle ve ret bağlamıyla hiç ortak
+  başlığı olmayan 134 başlık var; bunlarda 8–28 gün önce yayımlanmış 687 aday.
+- **Örneklem:** Başlık başına en fazla üç aday, toplam 300; 131 başlıktan.
+- **Etiketleme:** Opus ve Fable aynı yönergeyle, kör ve birbirinden habersiz etiketledi. Tam
+  uyum 267/300, kappa **0,82**.
+- **Uzlaşılan etiketler:** TEKRAR 156, KISMI 56, YENI 55.
+  - Bu dönemin yoğun başlıklarında tekrar payı %58. İlk setteki son hafta ölçümü %35'ti.
+  - Başlıklar ve dönem farklı olduğu için bu fark iyileşme diye okunmamalı.
+- **Set:** uzlaşılan etiketlerden sabit tohumla 55 YENI, 30 TEKRAR ve 30 KISMI. 60 YENI
+  hedeflenmişti; havuzda uzlaşılan YENI 55'te kaldı. "0 yanlış susturma" sonucunun tek taraflı
+  %95 üst sınırı yaklaşık %5,3 olur.
+- **Saklama:** Set repo dışında tutulur ve A′ ayarı için kullanılmaz. İlk aşamada (ucuz eleme)
+  ilk setin iki etiketleyicinin uyuştuğu 112 metni kullanılır; ayrışan 8 metin dışarıda kalır.
