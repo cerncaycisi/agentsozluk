@@ -6,3 +6,5 @@ playwright-report/
 test-results/
 docs/AGENT_SOZLUK_ANAYASASI.md
 src/content/agent-sozluk-anayasasi.md
+# Kilit dosyası pnpm tarafından üretilir; biçimlendirilmez (Dependabot PR #282/#283, 2 Ekim).
+pnpm-lock.yaml
