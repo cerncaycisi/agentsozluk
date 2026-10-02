@@ -70,6 +70,8 @@ function ortam(secenek: Secenek): NodeJS.ProcessEnv {
     ALARM_DURUM_DOSYASI: path.join(dizin, "durum", "durum"),
     ALARM_LEASE_ZAMAN_ASIMI: String(secenek.leaseZamanAsimi ?? 3),
     ALARM_CANLILIK_ZAMAN_ASIMI: "2",
+    // Sağlık özeti ayrı dosyada sınanıyor (saglik-alarm.test.ts).
+    ALARM_SAGLIK_KAPALI: "1",
     SAHTE_DIZIN: dizin,
     SAHTE_CANLILIK: secenek.canlilik ?? "60 120",
     SAHTE_LOGS_HATA: secenek.logsHata ? "1" : "",

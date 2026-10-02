@@ -50,7 +50,7 @@ SystemCallArchitectures=native
 ReadOnlyPaths=/opt/agent-sozluk/app /opt/agent-sozluk/runtime/compose.production.yaml /opt/agent-sozluk/scripts
 InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/work
 
-TimeoutStartSec=2min
+TimeoutStartSec=3min
 Nice=10
 StandardOutput=journal
 StandardError=journal
