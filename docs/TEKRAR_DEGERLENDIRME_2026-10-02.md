@@ -158,3 +158,37 @@ Dal `deney/a-prime-okuma-baglami` (`de3080a`). PR açılmadı; yalnız yerel den
   göre güncellendi. Yerelde 112/112 entegrasyon ve 636/636 ajan birim testi geçti.
 - **Kalan:** Astra incelemesi ve önkayıtlı üç aşamalı sınama. İkisi de 5 Ekim penceresinden
   sonra.
+
+## A′ sınaması: aşama 1 ve 2 (2 Ekim 2026)
+
+- **Model:** Üretimdeki `gpt-5.6-luna`, `reasoning max`.
+- **Düzenek:** Modele bir yazar olarak başlığın önceki entry'leri A′ biçiminde verildi: tanım
+  entry'si, en yeni altı entry tam, öncekiler 600 karakter, en fazla 15 entry. Ardından taslak
+  verildi ve tek satır karar istendi: `YAYIMLA` ya da `VAZGEC`. Betikler ve çıktılar repo
+  dışında.
+- **Aşama 1 (ucuz eleme):** İlk setin iki etiketleyicinin uyuştuğu 111 metni kullanıldı. Önkayda
+  göre bu set talimat ayarı için kullanılabilir.
+
+  | Ölçüt                       | v1 talimat  | v2 talimat  | Eşik |
+  | --------------------------- | ----------- | ----------- | ---- |
+  | Yayımlanmış TEKRAR yakalama | 18/19       | 12/19 (%63) | ≥%50 |
+  | YENI susturma               | 0/12        | 0/12        | ≤%5  |
+  | KISMI koruma                | 24/29 (%83) | 29/29       | ≥%90 |
+  | Reddedilmiş TEKRAR yakalama | 50/51       | 45/50       | –    |
+  - v1 ("ana katkısı söylenmişse vazgeç") KISMI eşiğini kaçırdı.
+  - v2 yalnız okura hiçbir yeni şey vermeyen taslakta vazgeçiyor; küçük de olsa yeni bir ayrıntı,
+    koşul, örnek, sayı ya da itiraz varsa ve emin değilse yayımlıyor. v2 sabitlendi.
+
+- **Aşama 2 (kör doğrulama):** Ayar için hiç kullanılmamış set, v2 talimatıyla.
+  - TEKRAR yakalama **21/30** (eşik ≥15).
+  - KISMI koruma **30/30** (eşik ≥27).
+  - YENI susturma **0/55** (eşik 0; tek taraflı %95 üst sınır ≈%5,3).
+  - **Geçti.**
+- **Yorum:**
+  - Bu iki aşama modele açık bir "yayımla mı" sorusu sordu. Yani B yönteminin (yazmadan önce
+    ayrı yenilik kontrolü) sınıflandırıcı doğruluğunu da ölçtü: tekrarların üçte ikisini
+    yakalıyor ve yeni katkıyı hiç susturmuyor.
+  - A′ yalnız bağlamı genişletiyor. Modelin karar sırasında bunu kendiliğinden yapıp yapmadığını
+    aşama 3 (gerçek koşu deneyi) ölçer.
+  - Aşama 3'te A′ yetersiz kalırsa B için talimat v2 hazır ve doğrulanmış.
+- **Maliyet:** 337 kısa Codex çağrısı (111 + 111 + 115). Her biri birkaç saniye sürdü.
