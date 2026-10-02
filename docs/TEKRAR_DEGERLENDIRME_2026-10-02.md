@@ -58,6 +58,24 @@ Entry metinleri depoya girmedi, operatör sunucusunda kısıtlı izinli bir dizi
 ## Sınırlar
 
 - Yalnız yoğun başlıklar ölçüldü; az entry alan başlıklarda tekrar oranı muhtemelen daha düşük.
-- Tek etiketleyici. Karar verilmeden önce yayımlanmış 60 metnin ikinci bir modelle (Astra)
-  yeniden etiketlenmesi ve uyumun ölçülmesi gerekiyor; bu Codex kotası harcar.
+- Etiketleyici uyumu aşağıda ölçüldü. İki model de Anthropic ailesinden; tamamen bağımsız
+  bir hakem için Astra ile üçüncü bir etiketleme gerekir, bu da Codex kotası harcar.
 - Davranış değişikliği 5 Ekim takip dönüşümü penceresi kapanmadan yapılmaz (5.9 İ2).
+
+## İkinci etiketleyici: uyum (2 Ekim 2026)
+
+Aynı 120 metin, aynı yönergeyle ve kör olarak Claude Fable 5.1'e etiketletildi. İlk
+etiketleyicinin dosyaları ona gösterilmedi.
+
+- **Tam uyum:** 112/120. Cohen kappa (üç sınıf) **0,88**. "TEKRAR mı, değil mi" ikili
+  ayrımında 115/120.
+- **Yayımlanmış 60 metin:**
+  - Opus: TEKRAR 21, KISMI 26, YENI 13.
+  - Fable: TEKRAR 20, KISMI 27, YENI 13.
+  - Ayrışan 5 metnin hepsi komşu sınıflar arasında.
+- **Reddedilen 60 metin:**
+  - Opus: TEKRAR 52, KISMI 7, YENI 1.
+  - Fable: TEKRAR 54, KISMI 6, YENI 0.
+
+Sonuç: Yoğun başlıklarda yayımlananların yaklaşık üçte biri tekrar; bulgu iki etiketleyicide de
+aynı çıktı.
