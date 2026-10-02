@@ -538,6 +538,13 @@ saglik_sorgu() {
 BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL statement_timeout='15s';
 -- saglik-ozeti
+-- Son karar uygulamadaki gibi `id DESC` ile seçilir (zaman damgası geri
+-- gidebilir; Astra, 2 Ekim). Karar olayları seyrek: önce tür indeksinden
+-- hepsi alınır, sonra sıralanır; 2 M satırlık tabloda geriye tarama olmaz.
+WITH karar AS MATERIALIZED (
+  SELECT id, metadata FROM agent_runtime_events
+  WHERE "eventType" = 'runtime.concurrency.decision_changed'
+)
 SELECT 'SAGLIK'
   || ' ' || (SELECT count(*) FROM agent_runs
              WHERE "finishedAt" > now() - interval '60 minutes'
@@ -553,10 +560,9 @@ SELECT 'SAGLIK'
   || ' ' || coalesce((SELECT "codexConcurrency"::text FROM agent_global_settings
                       WHERE id = 'global'), 'yok')
   || ' ' || coalesce((SELECT coalesce(metadata->>'effectiveConcurrency', 'yok') || ' '
+                             || coalesce(metadata->>'configuredConcurrency', 'yok') || ' '
                              || coalesce(metadata->>'reason', 'yok')
-                      FROM agent_runtime_events
-                      WHERE "eventType" = 'runtime.concurrency.decision_changed'
-                      ORDER BY "occurredAt" DESC, id DESC LIMIT 1), 'yok yok')
+                      FROM karar ORDER BY id DESC LIMIT 1), 'yok yok yok')
   || ' ' || coalesce((SELECT round(extract(epoch FROM "staleAt" - now()))::bigint::text
                       FROM agent_runtime_capabilities
                       ORDER BY "measuredAt" DESC, id DESC LIMIT 1), 'yok');
@@ -564,15 +570,47 @@ COMMIT;
 PSQL
 }
 
+# Sorun kümesi: `temiz` ya da bilinen adların virgüllü dizisi.
+SAGLIK_AD='(codex|hat|kapasite|ret)'
+SAGLIK_KUME="${SAGLIK_AD}(,${SAGLIK_AD}){0,3}"
+
+# Durum satırı: `hal an teslim bekleyen`.
+#  hal      son ölçülen sorun kümesi (ya da temiz)
+#  an       hal için son başarılı bildirimin (ya da ilk görülüşün) anı
+#  teslim   1 = hal bildirildi; 0 = bildirilemedi, sonraki koşu yeniden dener
+#  bekleyen bildirilemeden geçmiş sorunlar (ya da -); düzelse bile sonraki
+#           başarılı bildirime "arada görülen" olarak eklenir (Astra, 2 Ekim)
+# Bozuk ya da tanınmayan satır `temiz 0 1 -` sayılır.
+saglik_durum_oku() { # $1 şimdi
+  local hal an teslim bekleyen
+  read -r hal an teslim bekleyen 2>/dev/null <"$SAGLIK_DURUM" || true
+  if [[ ! "${hal:-}" =~ ^(temiz|${SAGLIK_KUME})$ ]] \
+     || [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > $1 )) \
+     || [[ ! "${teslim:-}" =~ ^[01]$ ]] \
+     || [[ ! "${bekleyen:-}" =~ ^(-|${SAGLIK_KUME})$ ]]; then
+    hal=temiz; an=0; teslim=1; bekleyen=-
+  fi
+  echo "$hal $an $teslim $bekleyen"
+}
+
+kume_birlestir() { # virgüllü kümeleri (ya da -) birleştirir; sabit sırayla, tekrarsız
+  local ad hepsi cikti=()
+  hepsi=",$(IFS=,; echo "$*"),"
+  for ad in codex hat kapasite ret; do [[ "$hepsi" == *",$ad,"* ]] && cikti+=("$ad"); done
+  if (( ${#cikti[@]} == 0 )); then echo -; else (IFS=,; echo "${cikti[*]}"); fi
+}
+
 saglik_kontrol() {
-  local cikti simdi onceki_hal onceki_an etiket codex_hata basarili ret basari ayar etkin neden
-  local kalan sorunlar=() satirlar=() hal tekrar_sn oran
+  local cikti simdi onceki_hal onceki_an teslim bekleyen etiket codex_hata basarili ret basari
+  local ayar etkin karar_ayar neden kalan sorunlar=() satirlar=() hal tekrar_sn yuzde gerek
+  local hat_bilinmiyor=0
   cikti="$(saglik_sorgu | grep -E '^SAGLIK ' | head -1)"
   if [[ -z "$cikti" ]]; then hata_yaz "sağlık özeti okunamadı"; return 0; fi
-  read -r etiket codex_hata basarili ret basari ayar etkin neden kalan <<<"$cikti"
+  read -r etiket codex_hata basarili ret basari ayar etkin karar_ayar neden kalan <<<"$cikti"
   local sayi='^(0|[1-9][0-9]{0,11})$' isaretli='^-?(0|[1-9][0-9]{0,11})$'
   if [[ ! "$codex_hata" =~ $sayi || ! "$basarili" =~ $sayi || ! "$ret" =~ $sayi \
-        || ! "$basari" =~ $sayi || ! "$neden" =~ ^[A-Za-z_]{1,40}$ ]]; then
+        || ! "$basari" =~ $sayi || ! "$neden" =~ ^[A-Za-z_]{1,40}$ \
+        || ! "$kalan" =~ ^(yok|-?(0|[1-9][0-9]{0,11}))$ ]]; then
     hata_yaz "sağlık özeti biçimi tanınmadı"; return 0
   fi
 
@@ -580,53 +618,84 @@ saglik_kontrol() {
     sorunlar+=(codex)
     satirlar+=("Codex: son 60 dk ${codex_hata} koşu Codex hatasıyla bitti, başarılı koşu yok. Kota bitmiş ya da sağlayıcı arızalı olabilir.")
   fi
-  if [[ "$ayar" =~ $sayi && "$etkin" =~ $sayi ]] && (( etkin < ayar )); then
-    sorunlar+=(hat)
-    satirlar+=("Hat: etkin eşzamanlılık ${etkin}, ayar ${ayar} (neden ${neden}).")
+  # Hat: ayar 1 ise düşüş olamaz. Aksi hâlde yalnız mevcut ayarla yazılmış bir
+  # karar kanıttır; karar yoksa ya da başka ayarla yazılmışsa durum bilinmiyor.
+  if [[ "$ayar" =~ $sayi ]] && (( ayar <= 1 )); then
+    :
+  elif [[ "$ayar" =~ $sayi && "$etkin" =~ $sayi && "$karar_ayar" == "$ayar" ]]; then
+    if (( etkin < ayar )); then
+      sorunlar+=(hat)
+      satirlar+=("Hat: etkin eşzamanlılık ${etkin}, ayar ${ayar} (neden ${neden}).")
+    fi
+  else
+    hat_bilinmiyor=1
   fi
   if [[ "$kalan" == yok ]]; then
     sorunlar+=(kapasite)
     satirlar+=("Kapasite: ölçüm kaydı yok.")
-  elif [[ "$kalan" =~ $isaretli ]]; then
-    if (( kalan <= 0 )); then
-      sorunlar+=(kapasite)
-      satirlar+=("Kapasite: kanıt $(( -kalan / 86400 )) gündür bayat; yeniden ölç.")
-    elif (( kalan <= SAGLIK_KAPASITE_UYARI_SN )); then
-      sorunlar+=(kapasite)
-      satirlar+=("Kapasite: kanıt $(( kalan / 3600 )) saat içinde bayatlıyor; yeniden ölç.")
-    fi
+  elif (( kalan <= 0 )); then
+    sorunlar+=(kapasite)
+    satirlar+=("Kapasite: kanıt $(( -kalan / 86400 )) gündür bayat; yeniden ölç.")
+  elif (( kalan <= SAGLIK_KAPASITE_UYARI_SN )); then
+    sorunlar+=(kapasite)
+    satirlar+=("Kapasite: kanıt $(( kalan / 3600 )) saat içinde bayatlıyor; yeniden ölç.")
   fi
-  if (( ret + basari >= SAGLIK_RET_ASGARI )); then
-    oran=$(( ret * 100 / (ret + basari) ))
-    if (( oran > SAGLIK_RET_ORANI_YUZDE )); then
-      sorunlar+=(ret)
-      satirlar+=("Ret: son 24 sa entry eylemlerinin %${oran}'i reddedildi (${ret}/$(( ret + basari )), eşik %${SAGLIK_RET_ORANI_YUZDE}).")
-    fi
+  # Eşik tamsayı bölmesiyle değil çarpımla karşılaştırılır: %20,8 > %20 (Astra, 2 Ekim).
+  if (( ret + basari >= SAGLIK_RET_ASGARI )) \
+     && (( ret * 100 > SAGLIK_RET_ORANI_YUZDE * (ret + basari) )); then
+    yuzde=$(( (ret * 100 + (ret + basari) / 2) / (ret + basari) ))
+    sorunlar+=(ret)
+    satirlar+=("Ret: son 24 sa entry eylemlerinin yaklaşık %${yuzde}'i reddedildi (${ret}/$(( ret + basari )), eşik %${SAGLIK_RET_ORANI_YUZDE}).")
   fi
 
   simdi="${ALARM_SIMDI:-$(date +%s)}"
-  read -r onceki_hal onceki_an <<<"$(durum_oku "$SAGLIK_DURUM" '[a-z,]{1,60}' "$simdi")"
-  if (( ${#sorunlar[@]} == 0 )); then hal=temiz; else hal="$(IFS=,; echo "${sorunlar[*]}")"; fi
+  read -r onceki_hal onceki_an teslim bekleyen <<<"$(saglik_durum_oku "$simdi")"
+  # Bilinmeyen hat ölçümü önceki hat alarmını kapatmaz.
+  if (( hat_bilinmiyor )); then
+    hata_yaz "sağlık özeti: eşzamanlılık kararı okunamadı ya da ayarla uyuşmuyor"
+    if [[ ",$onceki_hal," == *,hat,* ]]; then
+      sorunlar+=(hat)
+      satirlar+=("Hat: önceki ölçümde düşüktü; şu an doğrulanamıyor.")
+    fi
+  fi
+  if (( ${#sorunlar[@]} == 0 )); then hal=temiz; else hal="$(kume_birlestir "${sorunlar[@]}")"; fi
   # Yalnız ret oranı yüksekse günde bir hatırlatma yeter; diğerleri 6 saatte bir.
   if [[ "$hal" == ret ]]; then tekrar_sn=86400; else tekrar_sn="$SESSIZLIK_SN"; fi
 
+  gerek=0
+  if [[ "$hal" != "$onceki_hal" || "$teslim" == 0 ]]; then gerek=1
+  elif [[ "$hal" != temiz ]] && (( simdi - onceki_an > tekrar_sn )); then gerek=1; fi
+  # İlk koşu (durum yok) ve temiz: söylenecek bir şey yok.
+  if [[ "$hal" == temiz && "$onceki_hal" == temiz && "$bekleyen" == - ]]; then gerek=0; fi
+  if (( ! gerek )); then return 0; fi
+
+  local arada="" baslik oncelik govde
+  local gecmis
+  gecmis="$(kume_birlestir "$bekleyen" "$( [[ "$onceki_hal" != temiz ]] && echo "$onceki_hal" || echo - )")"
   if [[ "$hal" == temiz ]]; then
-    if [[ "$onceki_hal" != temiz ]]; then
-      bildir "Agent Sözlük sağlık: düzeldi" default white_check_mark \
-        "Önceki sorun (${onceki_hal}) artık görünmüyor. $(date -u '+%Y-%m-%d %H:%M UTC')" 10 \
-        || return 0
-    fi
-    atomik_yaz "$SAGLIK_DURUM" "temiz $simdi" || true
-    return 0
-  fi
-  if [[ "$hal" != "$onceki_hal" ]] || (( simdi - onceki_an > tekrar_sn )); then
-    local oncelik=default
+    baslik="Agent Sözlük sağlık: düzeldi"; oncelik=default
+    govde="Önceki sorun (${gecmis}) artık görünmüyor."
+  else
+    baslik="Agent Sözlük sağlık: ${hal}"; oncelik=default
     [[ "$hal" == ret ]] && oncelik=low
     [[ ",$hal," == *,codex,* || ",$hal," == *,hat,* ]] && oncelik=high
-    bildir "Agent Sözlük sağlık: ${hal}" "$oncelik" warning \
-      "$(printf '%s\n' "${satirlar[@]}")
-$(date -u '+%Y-%m-%d %H:%M UTC')" 10 \
-      && atomik_yaz "$SAGLIK_DURUM" "$hal $simdi"
+    govde="$(printf '%s\n' "${satirlar[@]}")"
+    if [[ "$bekleyen" != - ]]; then arada="Arada görülüp bildirilemeyen: ${bekleyen}."; fi
+    [[ -n "$arada" ]] && govde="${govde}
+${arada}"
+  fi
+  if bildir "$baslik" "$oncelik" warning "${govde}
+$(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
+    atomik_yaz "$SAGLIK_DURUM" "$hal $simdi 1 -" || true
+  else
+    hata_yaz "sağlık bildirimi gönderilemedi"
+    local yeni_bekleyen yeni_an="$simdi"
+    # Gönderilemeyen düzelme bildirimi de kaybolmasın: önceki sorun bekleyene girer.
+    yeni_bekleyen="$(kume_birlestir "$bekleyen" \
+      "$( [[ "$hal" != temiz ]] && echo "$hal" || echo - )" \
+      "$( [[ "$hal" == temiz && "$onceki_hal" != temiz ]] && echo "$onceki_hal" || echo - )")"
+    [[ "$hal" == "$onceki_hal" ]] && yeni_an="$onceki_an"
+    atomik_yaz "$SAGLIK_DURUM" "$hal $yeni_an 0 $yeni_bekleyen" || true
   fi
   return 0
 }
