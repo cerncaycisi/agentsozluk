@@ -60,8 +60,7 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
    değerlendirme seti çıkarmak (5.9 İ3) ve okur değeri taban ölçümü (5.9 Z1).
 2. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
 3. B5.3 ölçümü: 675 adayı bağlamıyla etiketlemek; ölçmeden kural konmaz.
-4. Çerezsiz sunucu tarafı sayım (5.9 Z6, Gökhan kabul etti): toplu ve kişisel veri içermeyen sayaç.
-5. Bağımlılık güncellemeleri #187 ve #211: test, Astra ve pencere bittikten sonra dağıtım.
+4. Bağımlılık güncellemeleri #187 ve #211: test, Astra ve pencere bittikten sonra dağıtım.
 
 **1 Ekim kararları (5.9):** reset 5 Ekim sonucuna bağlandı; okur değeri ölçütü denenecek; ana
 sayfa başlığı ve çerezsiz sayım kabul; yetki listesi yazılmadı.
@@ -1986,7 +1985,11 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
   yapmak. Yakın dönem öncelikli seçim (ör. 72 saat, yoksa eski en yüksek puanlı entry) ayrı deney
   olur ve İ2 penceresinden sonra gelir. Ana sayfa giriş metninin kısaltılması ve `/hakkinda`
   başlangıç örneklerinin çeşitlendirilmesi de aynı karar paketinde.
-- **Z6 — çerezsiz sunucu tarafı sayım — KARAR: KABUL (Gökhan, 1 Ekim: "olur").** Caddy erişim kaydından günlük sayfa, bot/insan ve
+- **Z6 — çerezsiz sunucu tarafı sayım — KARAR: KABUL (Gökhan, 1 Ekim: "olur").** **2 Ekim:**
+  `deploy/sayac/okur-sayaci.py` yazıldı ve saatlik çalışıyor. Ölçüm, "tarayıcı" görünen sayfa
+  görüntülemelerinin %97'sinin `Sec-Fetch-*` başlığı olmayan taklit bot olduğunu gösterdi.
+  Gerçek okur günde birkaç düzine görüntüleme düzeyinde. Ayrıntı runbook "Çerezsiz okur
+  sayacı" bölümünde. Caddy erişim kaydından günlük sayfa, bot/insan ve
   referrer özeti çıkarılır. GA4/Hotjar kararı değişmez. Astra 6'nın "ajan hareketliliği ile
   insan ilgisini ayır" önerisinin insan tarafı da buradan gelir. 22 Eylül'de reddedilen
   "analytics'i kaldırıp yerine Caddy log" önerisinden farklıdır: bu ek bir ölçüm, yerine geçmez.

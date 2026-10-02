@@ -1,0 +1,51 @@
+[Unit]
+Description=Agent Sozluk cookieless reader counter (aggregates Caddy access log)
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/agent-sozluk/app
+RuntimeDirectory=agent-sozluk-sayac
+RuntimeDirectoryMode=0700
+StateDirectory=agent-sozluk-sayac
+StateDirectoryMode=0750
+Environment=DOCKER_CONFIG=/run/agent-sozluk-sayac
+Environment=SAYAC_DIZINI=/var/lib/agent-sozluk-sayac
+# Betik alarm gibi `app` checkout'undan değil, kurulu kopyadan koşar; kurulan
+# kopya `deploy/sayac/okur-sayaci.py` ile BİREBİR aynı olmalı.
+ExecStart=/usr/bin/python3 /opt/agent-sozluk/scripts/okur-sayaci.py topla
+
+UMask=0027
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+# Yalnız docker soketi; dışarıya ağ yok.
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+SystemCallArchitectures=native
+ReadOnlyPaths=/opt/agent-sozluk/app /opt/agent-sozluk/runtime/compose.production.yaml /opt/agent-sozluk/scripts
+InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/work
+
+TimeoutStartSec=3min
+Nice=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agent-sozluk-sayac

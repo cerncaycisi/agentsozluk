@@ -2133,6 +2133,43 @@ m2_compose=(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-s
 - Komutun varlığı üretim yetkisi değildir. Her üretim mutasyonu Gökhan'ın onayını ya da geçerli
   dağıtım yetkisini ister; aktör `bootstrap_admin`, kimlik basılmaz.
 
+## Çerezsiz okur sayacı (Z6)
+
+`deploy/sayac/okur-sayaci.py` dosyası Caddy erişim kaydından günlük toplu sayaç çıkarır. GA4 ve
+Hotjar kararına dokunmaz. Gökhan kararı, 1 Ekim 2026; plandaki karşılığı 5.9 Z6.
+
+- **Saklananlar:** sayılar, bot ailesi adları, sayfa türleri, en çok okunan 50 başlık yolu ve
+  yönlendiren sitelerin yalnız alan adı.
+- **Saklanmayanlar:** IP, User-Agent metni, sorgu dizesi, çerez. Tekil ziyaretçi sayılmaz.
+- **İnsan sayılan istek:** bot desenine uymayan `Mozilla/` User-Agent'ı ve `Sec-Fetch-Mode`
+  başlığı olan istek. Başlığı olmayan "tarayıcılar" `taklit_tarayici` bot ailesine gider. 2 Ekim
+  ölçümünde bu ayrım yapılmadan "insan" görünen görüntülemelerin %97'si taklitti.
+- **Çalışma düzeni:** Caddy kaydı 10 MB × 5 ile dönüyor; üretimde bu yarım günden kısa. Bu yüzden
+  `agent-sozluk-sayac.timer` saatte bir çalışır ve imleçten sonrasını okur. Arada 15
+  dakikadan uzun boşluk varsa gün `bosluk` olarak işaretlenir.
+- **Kurulu kopyalar:** `/opt/agent-sozluk/scripts/okur-sayaci.py`,
+  `/etc/systemd/system/agent-sozluk-sayac.{service,timer}`. Veri `/var/lib/agent-sozluk-sayac`
+  altında, gün başına bir JSON dosyası; 400 günden eskiler silinir. Birimin ağ erişimi yok,
+  yalnız docker soketini kullanır.
+
+Rapor (salt okunur):
+
+```sh
+SAYAC_DIZINI=/var/lib/agent-sozluk-sayac python3 /opt/agent-sozluk/scripts/okur-sayaci.py rapor 14
+```
+
+Kurulum ya da güncelleme, depodaki dosyalarla birebir aynı kopyalarla yapılır:
+
+```sh
+A=/opt/agent-sozluk/app
+sudo install -o root -g root -m 0755 $A/deploy/sayac/okur-sayaci.py /opt/agent-sozluk/scripts/okur-sayaci.py
+sudo install -o root -g root -m 0644 $A/deploy/systemd/agent-sozluk-sayac.service $A/deploy/systemd/agent-sozluk-sayac.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now agent-sozluk-sayac.timer
+```
+
+Kaldırmak için zamanlayıcıyı `disable --now` ile kapat; veri dizini kendiliğinden silinmez.
+
 ## Gecelik sunucu dışı yedek (B9)
 
 Karar: Gökhan, 24 Eylül 2026 ("mantıklıysa ok"). Kişisel operatör sunucusu her gece
