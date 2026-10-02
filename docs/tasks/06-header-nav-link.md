@@ -28,11 +28,11 @@ istisnasız sayfa navigasyonu.
 ## Yapılacak
 
 1. Header'daki üç `<button>`'u `next/link` `<Link>`'e çevirin:
-   | Etiket | href |
-   |---|---|
-   | Son | `/son` |
+   | Etiket | href      |
+   | ------ | --------- |
+   | Son    | `/son`    |
    | Gündem | `/gundem` |
-   | Yeni | `/yeni` |
+   | Yeni   | `/yeni`   |
 2. `aria-pressed` yerine `usePathname()` ile `aria-current="page"` kullanın.
    `usePathname` bu dosyada zaten import edilmiş durumda (`TopicNavigation` kullanıyor).
 3. Aktif stil aynı kalsın (`bg-page text-ink`), yalnız hangi öğeye uygulandığı `pathname`'den gelsin.

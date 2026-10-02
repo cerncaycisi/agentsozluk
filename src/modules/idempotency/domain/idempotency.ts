@@ -3,12 +3,7 @@ import { createHash } from "node:crypto";
 export const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 
 export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);

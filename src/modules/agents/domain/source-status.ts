@@ -76,8 +76,7 @@ const sourceEvidenceTypeByStatus = {
 } as const;
 
 export type RuntimeSourceEvidenceType =
-  | (typeof sourceEvidenceTypeByStatus)[keyof typeof sourceEvidenceTypeByStatus]
-  | "MULTIPLE_SOURCES";
+  (typeof sourceEvidenceTypeByStatus)[keyof typeof sourceEvidenceTypeByStatus] | "MULTIPLE_SOURCES";
 
 const sourceStatusesByEvidenceType = {
   PROBATION_SOURCE: ["PROBATION"],

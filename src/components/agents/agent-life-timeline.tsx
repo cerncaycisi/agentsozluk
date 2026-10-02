@@ -5,12 +5,7 @@ import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 
 export type AgentLifeSubject =
-  | string
-  | number
-  | boolean
-  | Record<string, unknown>
-  | unknown[]
-  | null;
+  string | number | boolean | Record<string, unknown> | unknown[] | null;
 
 export interface AgentLifeEventView {
   id: string;

@@ -4,13 +4,7 @@ import { useState } from "react";
 import type { SeedPersona } from "@/modules/agents/personas/schema";
 
 type PersonaTab =
-  | "IDENTITY"
-  | "VALUES"
-  | "TEMPERAMENT"
-  | "WRITING"
-  | "CONFLICT"
-  | "SOURCES"
-  | "ADVANCED";
+  "IDENTITY" | "VALUES" | "TEMPERAMENT" | "WRITING" | "CONFLICT" | "SOURCES" | "ADVANCED";
 
 const tabs: Array<{ id: PersonaTab; label: string }> = [
   { id: "IDENTITY", label: "Kimlik" },

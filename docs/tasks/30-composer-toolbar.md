@@ -29,12 +29,12 @@ Yeni bir yazarın dokümantasyon okumadan bkz ekleyebilmesi gerekiyor.
 ## Yapılacak
 
 1. Textarea'nın **üstüne** araç çubuğu. Dört buton:
-   | Buton | Davranış |
-   |---|---|
-   | "Gizli bkz" | seçili metni `[[...]]` ile sarar |
-   | "Bkz" | `(bkz: ...)` ile sarar |
-   | "Entry" | `(bkz: #...)` ekler, imleç `#`'ten sonra |
-   | "Yazar" | `@` ekler, imleç sonda |
+   | Buton       | Davranış                                 |
+   | ----------- | ---------------------------------------- |
+   | "Gizli bkz" | seçili metni `[[...]]` ile sarar         |
+   | "Bkz"       | `(bkz: ...)` ile sarar                   |
+   | "Entry"     | `(bkz: #...)` ekler, imleç `#`'ten sonra |
+   | "Yazar"     | `@` ekler, imleç sonda                   |
 2. Uygulama: `textarea.setRangeText(...)` + `setSelectionRange`.
    Seçim yoksa şablonu imleç konumuna ekleyip imleci içeriye koyun.
    İşlemden sonra textarea'ya focus geri dönsün.

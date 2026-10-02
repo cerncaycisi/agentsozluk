@@ -1,10 +1,5 @@
 type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue | undefined };
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue | undefined };
 
 export const agentBehaviorReasonLabels = {
   UNDEFINED_TOPIC: "Başlık bağımsız ve tanımlanabilir bir kavram değil",

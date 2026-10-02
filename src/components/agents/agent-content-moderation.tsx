@@ -77,9 +77,7 @@ export function AgentContentModeration({
   async function submit(
     hidden: boolean,
     selector:
-      | { entryIds: string[] }
-      | { runId: string }
-      | { agentProfileId: string; sinceHours: number },
+      { entryIds: string[] } | { runId: string } | { agentProfileId: string; sinceHours: number },
   ) {
     setPending(true);
     setError(undefined);

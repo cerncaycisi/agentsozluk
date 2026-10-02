@@ -909,13 +909,7 @@ export function updateRuntimeActionStatus(
   actionId: string,
   data: {
     actionStatus:
-      | "VALIDATING"
-      | "ACCEPTED"
-      | "REJECTED"
-      | "EXECUTING"
-      | "SUCCEEDED"
-      | "FAILED"
-      | "SKIPPED";
+      "VALIDATING" | "ACCEPTED" | "REJECTED" | "EXECUTING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
     validationResult?: Prisma.InputJsonValue;
     result?: Prisma.InputJsonValue;
     rejectionCode?: string | null;

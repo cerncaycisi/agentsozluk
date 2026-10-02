@@ -784,8 +784,7 @@ export function adaptRuntimeNormalDecisionWire(wire: RuntimeNormalDecisionWire):
 }
 
 export type RuntimeDecisionParseResult =
-  | { success: true; data: RuntimeDecision }
-  | { success: false; error: z.ZodError };
+  { success: true; data: RuntimeDecision } | { success: false; error: z.ZodError };
 
 export function parseRuntimeDecisionOutput(
   output: unknown,

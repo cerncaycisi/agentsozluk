@@ -12,10 +12,7 @@ export const sourceDiversityThresholds = {
 } as const;
 
 export type SourceDiversityWarning =
-  | "PAIR_OVERLAP_HIGH"
-  | "DISTINCT_URLS_LOW"
-  | "HOLDER_LIMIT_EXCEEDED"
-  | "AGENT_BELOW_MINIMUM";
+  "PAIR_OVERLAP_HIGH" | "DISTINCT_URLS_LOW" | "HOLDER_LIMIT_EXCEEDED" | "AGENT_BELOW_MINIMUM";
 
 export interface SourceDiversitySummary {
   agentCount: number;

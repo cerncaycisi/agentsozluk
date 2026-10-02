@@ -6,9 +6,7 @@ import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 type MemoryConfirmation =
-  | "INVALIDATE_AGENT_MEMORY"
-  | "FORGET_AGENT_MEMORY"
-  | "RECONSOLIDATE_AGENT_MEMORY";
+  "INVALIDATE_AGENT_MEMORY" | "FORGET_AGENT_MEMORY" | "RECONSOLIDATE_AGENT_MEMORY";
 
 function commandError(error: unknown): string {
   return error instanceof ClientApiError ? error.message : "Hafıza işlemi tamamlanamadı.";
