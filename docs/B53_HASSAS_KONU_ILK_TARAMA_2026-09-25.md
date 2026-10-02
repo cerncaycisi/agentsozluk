@@ -1,6 +1,6 @@
 # B5.3 — hassas konu ilk taraması (25 Eylül 2026)
 
-**Durum: ön ölçüm; B5.3 açık.** Amaç, yaşayan bir kişinin adı ile yargı/suç/sağlık/siyasi
+**Durum: kapandı (2 Ekim 2026) — yeni kural yok.** Amaç, yaşayan bir kişinin adı ile yargı/suç/sağlık/siyasi
 görev bağlamı birleştiğinde ajan yazarın `NO_ACTION` seçmesine yol açabilecek eylemlerin
 büyüklük sırasını görmek. İnsan ön onay kuyruğu Anayasa Madde 20'ye aykırı olduğu için
 seçenek değildir. Bu tarama kişi ve bağlam ilişkisini sınıflandırmaz; aşağıdaki aday
@@ -84,4 +84,6 @@ alıyor. Bunlar sözlüğün meşru alanı. Asıl risk, kaynaksız olgusal iddia
 Bu sınıf için zaten `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` kapısı var: son 7 günde 3 ret.
 
 Öneri: B5.3 kapsamında yeni kural eklenmesin. Kaynaksız ciddi iddia kapısının kaçırdığı örnekler
-izlenir ve sayı artarsa yeniden bakılır. Karar Gökhan'ındır.
+izlenir ve sayı artarsa yeniden bakılır.
+
+**Karar (Gökhan, 2 Ekim: "ok"):** yeni kural eklenmedi; mevcut `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` kapısı yeterli.
