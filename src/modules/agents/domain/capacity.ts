@@ -25,10 +25,7 @@ export interface RuntimeFingerprint {
 }
 
 export type CapacityWarning =
-  | "BENCHMARK_MISSING"
-  | "BENCHMARK_STALE"
-  | "CAPACITY_AT_RISK"
-  | "OVERLOADED";
+  "BENCHMARK_MISSING" | "BENCHMARK_STALE" | "CAPACITY_AT_RISK" | "OVERLOADED";
 
 export function estimateRuntimeCompletion(input: {
   now: Date;

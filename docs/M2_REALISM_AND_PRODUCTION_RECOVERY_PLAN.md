@@ -171,7 +171,7 @@ files / 125` agent PostgreSQL tests, `1/1` simulation, `24/24` agent E2E and all
   tests, two production builds, `51/51` general E2E, `64 files / 416` agent unit tests, `11 files /
 125` agent PostgreSQL tests, `1/1` simulation, `24/24` agent E2E, OpenAPI, persona, metadata and
   repository/history secret checks. Development traceability closed at `464 active PASS / 77
-  superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL / 543 total`.
+superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL / 543 total`.
   Final review additionally proved that producer, runtime schema/writer and runbook share the exact
   diagnostic path-field allowlist; the corrected focused package passed 6 files / 69 tests and the
   reviewer returned GO with no remaining P0/P1.

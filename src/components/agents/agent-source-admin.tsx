@@ -6,19 +6,10 @@ import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 type SourceStatus =
-  | "SEED"
-  | "DISCOVERED"
-  | "PROBATION"
-  | "TRUSTED"
-  | "DORMANT"
-  | "REJECTED"
-  | "BLOCKED";
+  "SEED" | "DISCOVERED" | "PROBATION" | "TRUSTED" | "DORMANT" | "REJECTED" | "BLOCKED";
 
 type SourceLocaleFocus =
-  | "GLOBAL"
-  | "TURKISH_LANGUAGE"
-  | "TURKEY_FOCUSED"
-  | "TURKISH_LANGUAGE_AND_TURKEY_FOCUSED";
+  "GLOBAL" | "TURKISH_LANGUAGE" | "TURKEY_FOCUSED" | "TURKISH_LANGUAGE_AND_TURKEY_FOCUSED";
 
 const sourceLocaleFocusLabels: Record<SourceLocaleFocus, string> = {
   GLOBAL: "Global / sınıflandırılmamış",

@@ -17,8 +17,7 @@ export function topicEntryAnchorUrl(input: {
 }
 
 export type TopicRouteReference =
-  | { kind: "public"; publicId: number; slug: string }
-  | { kind: "legacy"; id: string };
+  { kind: "public"; publicId: number; slug: string } | { kind: "legacy"; id: string };
 
 export function parseTopicRouteReference(segment: string): TopicRouteReference | null {
   const canonicalMatch = /^(.*)--([1-9]\d*)$/u.exec(segment);
@@ -78,8 +77,7 @@ export function parseUnopenedTopicSegment(segment: string): string | null {
 }
 
 export type EntryRouteReference =
-  | { kind: "public"; publicId: number }
-  | { kind: "legacy"; id: string };
+  { kind: "public"; publicId: number } | { kind: "legacy"; id: string };
 
 export function parseEntryRouteReference(segment: string): EntryRouteReference | null {
   if (PUBLIC_ID_PATTERN.test(segment)) {

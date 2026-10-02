@@ -39,10 +39,7 @@ const RUN_HEARTBEAT_FRESH_MS = 120_000;
  * - `NEVER_REPORTED`: roster kaydı hiç oluşmamış.
  */
 export type WorkerPresence =
-  | "ONLINE"
-  | "ROSTER_STALE_LEASE_ACTIVE"
-  | "ROSTER_STALE_NO_LEASE"
-  | "NEVER_REPORTED";
+  "ONLINE" | "ROSTER_STALE_LEASE_ACTIVE" | "ROSTER_STALE_NO_LEASE" | "NEVER_REPORTED";
 
 export function deriveWorkerPresence(input: {
   rosterSyncedAt: Date | null;

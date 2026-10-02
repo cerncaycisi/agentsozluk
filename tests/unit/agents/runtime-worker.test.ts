@@ -3715,8 +3715,7 @@ describe("long-lived agent runtime worker", () => {
     // Karar çağrısı gerçekten yapıldı: gezinme bütçeyi yutmadı.
     expect(vi.mocked(provider.invoke)).toHaveBeenCalledTimes(2);
     const usage = vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata as
-      | { browseExperiment?: { outcome?: string; attempted?: boolean } }
-      | undefined;
+      { browseExperiment?: { outcome?: string; attempted?: boolean } } | undefined;
     expect(usage?.browseExperiment?.outcome).toBe("TIMEOUT");
     expect(usage?.browseExperiment?.attempted).toBe(true);
   });
@@ -3809,8 +3808,7 @@ describe("long-lived agent runtime worker", () => {
       await worker.runOnce();
       const usage = (vi.mocked(plane.complete).mock.calls[0]?.[4] ??
         vi.mocked(plane.fail).mock.calls[0]?.[4]) as
-        | { usageMetadata?: { codexIntervals?: Array<{ phase?: string }> } }
-        | undefined;
+        { usageMetadata?: { codexIntervals?: Array<{ phase?: string }> } } | undefined;
       return (usage?.usageMetadata?.codexIntervals ?? []).some(
         ({ phase }) => phase === "CONTENT_REPAIR",
       );
@@ -3859,8 +3857,7 @@ describe("long-lived agent runtime worker", () => {
 
     await expect(worker.runOnce()).resolves.toBe(1);
     const usage = vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata as
-      | { decisionRepair?: { reason?: string; schemaIssuePaths?: string[] } }
-      | undefined;
+      { decisionRepair?: { reason?: string; schemaIssuePaths?: string[] } } | undefined;
     expect(usage?.decisionRepair?.reason).toBe("SCHEMA");
     /*
       "SCHEMA" tek başına hedef göstermiyor: hangi alanın takıldığı da lazım.
@@ -3910,8 +3907,7 @@ describe("long-lived agent runtime worker", () => {
     await expect(worker.runOnce()).resolves.toBe(1);
     expect(vi.mocked(provider.invoke)).toHaveBeenCalledTimes(1);
     const usage = vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata as
-      | { browseExperiment?: { outcome?: string; attempted?: boolean } }
-      | undefined;
+      { browseExperiment?: { outcome?: string; attempted?: boolean } } | undefined;
     expect(usage?.browseExperiment?.outcome).toBe("NO_BUDGET");
     expect(usage?.browseExperiment?.attempted).toBe(false);
   });
@@ -3943,8 +3939,7 @@ describe("long-lived agent runtime worker", () => {
     expect(vi.mocked(provider.invoke)).toHaveBeenCalledTimes(1);
     expect(plane.context).toHaveBeenCalledTimes(1);
     const usage = vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata as
-      | { browseExperiment?: { arm?: string; outcome?: string } }
-      | undefined;
+      { browseExperiment?: { arm?: string; outcome?: string } } | undefined;
     expect(usage?.browseExperiment?.arm).toBe("CONTROL");
     expect(usage?.browseExperiment?.outcome).toBe("CONTROL");
   });

@@ -31,14 +31,15 @@ Bu görev **yalnız veri katmanı** — UI değişikliği görev 16'da.
    nesnesine ekleyin, ikinci bir sorgu açmayın.
 2. Etkilenecek select'ler — **beş modülde altı yer**, `src/modules/users/**` dahil
    (kolayca gözden kaçıyor):
-   | Dosya | Ne besliyor |
-   |---|---|
-   | `entries/repository/entries.ts` → `entryDetailSelect` | `getEntry`, `getEntryByPublicId`, `getTopicEntries` |
-   | `feeds/repository/feeds.ts` → `listDebeEntries` | `getDebe` |
-   | `interactions/repository/interactions.ts` → `listUserFollows` | `/takip/yazarlar` |
-   | `interactions/repository/interactions.ts` → `listBookmarks` | `getBookmarks` |
-   | `interactions/repository/interactions.ts` → `listVotes` | `getVotes` |
-   | **`users/repository/profiles.ts`** | `/yazar/[username]` |
+
+   | Dosya                                                         | Ne besliyor                                         |
+   | ------------------------------------------------------------- | --------------------------------------------------- |
+   | `entries/repository/entries.ts` → `entryDetailSelect`         | `getEntry`, `getEntryByPublicId`, `getTopicEntries` |
+   | `feeds/repository/feeds.ts` → `listDebeEntries`               | `getDebe`                                           |
+   | `interactions/repository/interactions.ts` → `listUserFollows` | `/takip/yazarlar`                                   |
+   | `interactions/repository/interactions.ts` → `listBookmarks`   | `getBookmarks`                                      |
+   | `interactions/repository/interactions.ts` → `listVotes`       | `getVotes`                                          |
+   | **`users/repository/profiles.ts`**                            | `/yazar/[username]`                                 |
 
    Doğrulama:
 
