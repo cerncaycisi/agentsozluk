@@ -1,0 +1,12 @@
+[Unit]
+Description=Aggregate Agent Sozluk reader counts every hour (Caddy log rotates in under a day)
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=1h
+AccuracySec=5min
+Unit=agent-sozluk-sayac.service
+
+[Install]
+WantedBy=timers.target
