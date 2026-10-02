@@ -298,7 +298,13 @@ assert_release() {
     find "$release" -xdev \( -type f -o -type d \) -perm /022 -print -quit
   )"
   test -L "$release/node_modules/tsx"
-  test -L "$release/node_modules/.pnpm/tsx@4.23.1/node_modules/esbuild"
+  # tsx sürümü sabit yazılmaz (#282 4.23.1 → 4.23.15 paketlemeyi kırıyordu): kurulu tsx
+  # paketinin .pnpm dizinini çöz, esbuild bağlantısı onun yanında olmalı.
+  test -L "$(dirname "$(readlink -f "$release/node_modules/tsx")")/esbuild"
+  case "$(readlink -f "$release/node_modules/tsx")" in
+    "$(readlink -f "$release/node_modules")"/.pnpm/tsx@*/node_modules/tsx) ;;
+    *) false ;;
+  esac
 }
 
 capture_initial_state() {
