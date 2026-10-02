@@ -33,6 +33,8 @@ onlyBuiltDependencies:
 #              görülmedi" düzeyindedir, "kırılamaz" değil. Prisma yükseltmesi
 #              geldiğinde bu satır KALDIRILMALI.
 #   sharp    : libheif zafiyetleri (>=0.35.4)
+#   fast-uri : host karışıklığı (GHSA-v2hh-gcrm-f6hx, -7p8r-x3mc-p8w7 …; >=3.1.6).
+#              `@hookform/resolvers` 5.9 → `ajv` zinciri (#282, 2 Ekim 2026).
 overrides:
   postcss: 8.5.28
   nanoid: 3.3.19
@@ -40,3 +42,4 @@ overrides:
   baseline-browser-mapping: 2.11.25
   deepmerge-ts: 8.0.0
   sharp: 0.35.4
+  fast-uri: 3.1.8
