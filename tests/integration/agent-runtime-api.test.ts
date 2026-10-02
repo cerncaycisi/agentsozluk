@@ -3906,10 +3906,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
         entryBody: "TANIM_ENTRYSI: başlığın ne olduğunu söyleyen ilk entry.",
       },
     );
-    // Tanım + yedi entry: `take: 6` tek başına tanımı düşürürdü.
-    for (let index = 0; index < 7; index += 1)
+    // Tanım + on yedi entry: `take: 15` tek başına tanımı düşürürdü (A′, 2 Ekim).
+    // 4. entry uzun: yeni pencerenin eski kısmında önizlemeye (600) kırpılmalı.
+    for (let index = 0; index < 17; index += 1)
       await createEntry(integrationDatabase, adminActor(fixture.admin.id), target.topic.id, {
-        body: `SONRAKI_ENTRY_${index}: başlıkta süren konuşmanın bir halkası.`,
+        body:
+          index === 4
+            ? `UZUN_ESKI_ENTRY: ${"başlıkta süren konuşmanın uzun bir halkası. ".repeat(30)}`
+            : `SONRAKI_ENTRY_${index}: başlıkta süren konuşmanın bir halkası.`,
       });
     const ownEntry = await createEntry(integrationDatabase, writePrincipal.actor, target.topic.id, {
       body: "KENDI_ENTRYM: ajanın bu başlıkta daha önce yazdığı hüküm.",
@@ -3940,6 +3944,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const bodies = readTopic.entries.map((entry) => entry.body);
     expect(bodies[0]).toContain("TANIM_ENTRYSI");
     expect(bodies.at(-1)).toContain("KENDI_ENTRYM");
+    // Tanım + son 15 (17 sonraki + kendi entry'si = 18; en eski üçü pencere dışında).
+    expect(bodies).toHaveLength(16);
+    expect(bodies.some((body) => body.includes("SONRAKI_ENTRY_2:"))).toBe(false);
+    expect(bodies.some((body) => body.includes("SONRAKI_ENTRY_3:"))).toBe(true);
+    const longOld = bodies.find((body) => body.startsWith("UZUN_ESKI_ENTRY"));
+    expect(longOld?.length).toBe(600);
+    expect(longOld?.endsWith("…")).toBe(true);
     expect(readTopic.entries.filter((entry) => entry.mine).map((entry) => entry.id)).toEqual([
       ownEntry.id,
     ]);

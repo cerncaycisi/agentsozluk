@@ -2677,11 +2677,17 @@ async function listRuntimePerceptionLinkedTopics(
   sunucu onların gerçek entry'lerini getirir.
 
   Sınırlar burada, çağıranda değil: en fazla üç başlık, başlık başına en fazla
-  altı entry. Ajan daha fazlasını isteyemez.
+  on beş entry (artı başlığın tanım entry'si). Ajan daha fazlasını isteyemez.
+
+  A′ (2 Ekim 2026, Astra ile karar; docs/TEKRAR_DEGERLENDIRME_2026-10-02.md): altı
+  entry'lik pencere, tekrar kapısının denetlediği geçmişten (son 100) çok darmış.
+  Yayımlanmış tekrarların yaklaşık yarısında tekrar edilen entry ajanın gördüğü
+  pencerede değildi. Pencere 15'e çıktı; toplam metin bütçesi entry başına kırpmayla
+  korunuyor (application/runtime.ts `runtimeReadTopicEntryCharLimit`).
 */
 // runtimeReadTopicLimit tek kaynağı validation/runtime-schemas.ts; ayrışmayı önlemek için oradan.
 export { runtimeReadTopicLimit };
-export const runtimeReadTopicEntryLimit = 6;
+export const runtimeReadTopicEntryLimit = 15;
 
 export async function getRuntimeReadTopics(
   transaction: Prisma.TransactionClient,
