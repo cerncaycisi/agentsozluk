@@ -1913,6 +1913,11 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
       `topicSemanticRepetition` bu set üzerinde çevrim dışı ölçülecek: neyi yakalıyor, neyi
       kaçırıyor, öneri neyi yanlış reddediyor. Üretim eşikleri değişmez. Ertelenmiş A2'yi açmaz.
       Metinler yerelde kalır, depoya girmez.
+      **2 Ekim, ilk ölçüm:** [TEKRAR_DEGERLENDIRME_2026-10-02.md](TEKRAR_DEGERLENDIRME_2026-10-02.md).
+      Yoğun başlıklarda yayımlananların %35'i tekrar, %43'ü kısmi tekrar. Reddedilenlerin 60'ta
+      1'i yeni katkı, yani kapılar yanlış reddetmiyor. Sözcük düzeyinde ölçü tekrarı yeni katkıdan
+      ayıramıyor; çözüm yazma kararından önce olmalı. Seçenekler belgede; 5 Ekim'den sonra
+      çevrim dışı ölçülüp seçilecek.
 - [ ] **İ4 — 5 Ekim karar şablonu (Fable Z4, Astra 6 §4).** Takip dönüşümü penceresi kapanınca
       aşağıdaki ölçümler okunacak: - önkayıtlı kabul ölçütü: ilk 10 başlık payında en az %15 göreli düşüş; - huni: gösterilen başlık → okunan → yazılan → yayımlanan → öne çıkan, her aşamada farklı
       başlık sayısı; - ret oranı ve entry/koşu.
