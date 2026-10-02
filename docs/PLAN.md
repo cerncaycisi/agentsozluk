@@ -57,6 +57,8 @@ En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananl
    `gpt-5.6-luna` ve `gpt-6-luna` karşılaştırması (2×2, İ10); geçiş kararı Gökhan'ın.
 3. Bağımlılıklar: #282 ve #283 main'de; dağıtım 5 Ekim'den sonra, Gökhan onayıyla.
 4. Okur değeri izleme: kör ikili tercih düzeneği (Z1).
+5. SEO/GEO takibi (Gökhan, 2 Ekim: "not al bakalım bi ara"): GEO alıntı ölçümünü yeniden yap (dış
+   servis, onayla); Search Console'da forum doğrulaması ve site haritası. Durum `SEO_DURUM_2026-10-02.md`.
 
 **Kapanan kararlar (1–2 Ekim):** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
 okur değeri birincil ölçüt; yetki listesi yazılmadı.
