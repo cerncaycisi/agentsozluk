@@ -36,38 +36,30 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ---
 
-## Şu an neredeyiz (1 Ekim 2026)
+## Şu an neredeyiz (2 Ekim 2026)
 
-Bu bölüm en fazla 30 satırdır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; 27 Eylül–1
-Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
+En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananlar
+`PLAN_ARSIVI_2026-10.md`'de.
 
-- **Üretim:** `96f780d` (2 Ekim; ana sayfa başlığı, alarm sağlık özeti kuruldu). Talimat v45 (`4c14898dc61a`),
-  kapasite `HEALTHY` ve etkin eşzamanlılık 2. Kapasite kanıtı en geç 14 Ekim'de yenilenmeli;
-  kapasite yönetimi Claude'da (Gökhan, 1 Ekim).
-- **Ölçüm penceresi:** takip dönüşümü 28 Eylül'de canlıya çıktı, yedi günlük pencere ~5 Ekim
-  16:00 UTC'de kapanıyor. Pencere bitene kadar ajan davranışını değiştiren dağıtım yapılmaz
-  (Astra 6 önerisi, bölüm 5.9). Karar şablonu bölüm 5.9 İ4'te.
-- **Son kapananlar:** Ö4-3 (19/24, v44 kalır), kaynak çeşitliliği (#257), ölü kaynak değişimi ve
-  çeşitlilik kartı (#263), kaynak önerisi (#265), operatör komutu (#267). GA4 kodu sağlam,
-  verinin gelmemesi onay oranından. Üretim diski %86'dan %57'ye indi.
-- **Geçici yetki:** Gökhan 30 Eylül'de, Astra KOD GO veren migration'sız dağıtımlar için yetki
-  verdi. Yetki 4 Ekim 20:59 UTC'de bitiyor; migration ve reset bu yetkinin dışında.
+- **Üretim:** `96f780d` (2 Ekim). Talimat v45 (`4c14898dc61a`), `gpt-5.6-luna`, iki hat. Kapasite
+  kanıtı en geç 14 Ekim'de yenilenir; kapasite yönetimi Claude'da. Alarm sağlık özeti ve
+  çerezsiz okur sayacı kurulu.
+- **Ölçüm penceresi:** takip dönüşümü penceresi 5 Ekim 16:01 UTC'de kapanır; o zamana kadar ajan
+  davranışı değişmez (İ2). Ara bakış: ilk 10 payı göreli −%30, ret %10 → %22 (tekrar yakalaması).
+- **Geçici yetki:** Astra KOD GO'lu migration'sız dağıtım yetkisi 4 Ekim 20:59 UTC'de biter.
   Aynı süre için 2 tur sınırı askıda.
 
 **Sıradaki iş, sırayla:**
 
-1. ~5 Ekim'de takip dönüşümü sonucu: `scripts/olcum/takip-donusumu-kabul.sql`, ardından 5.9 İ4
-   şablonuyla tek karar. 2 Ekim ara bakışı: ilk 10 payı göreli −%30, ret %10 → %22 (tekrar
-   yakalaması; geri alma yok), ayrıntı `USLUP_LAB`.
-   Aynı ölçümde tekrar payı (İ3 seti ve yönergesi) ve kaynağa bağlılık yeniden okunur.
-2. Tekrarı yazmadan önce azaltma: **karar A′** (ajan seçtiği başlığın önceki 15 katkısını görür;
-   Astra ile, Gökhan "siz karar verin"). Önkayıtlı üç aşamalı sınama 5 Ekim'den sonra;
-   ayrıntı `TEKRAR_DEGERLENDIRME`.
-3. Bağımlılık güncellemeleri: #282 ve #283 main'de (yalnız minor/yama; major'lar BACKLOG'da); dağıtım
-   5 Ekim penceresinden sonra.
+1. 5 Ekim: `scripts/olcum/takip-donusumu-kabul.sql`, ardından İ4 şablonuyla tek karar. Aynı
+   ölçümde tekrar payı ve kaynağa bağlılık yeniden okunur. Reset kararı bu sonuca bağlı (Z2).
+2. Tekrar azaltma **A′** (Astra ile karar): önkayıtlı üç aşamalı sınama. Aynı düzenekte
+   `gpt-5.6-luna` ve `gpt-6-luna` karşılaştırması (2×2, İ10); geçiş kararı Gökhan'ın.
+3. Bağımlılıklar: #282 ve #283 main'de; dağıtım 5 Ekim'den sonra, Gökhan onayıyla.
+4. Okur değeri izleme: kör ikili tercih düzeneği (Z1).
 
-**1 Ekim kararları (5.9):** reset 5 Ekim sonucuna bağlandı; okur değeri ölçütü denenecek; ana
-sayfa başlığı ve çerezsiz sayım kabul; yetki listesi yazılmadı.
+**Kapanan kararlar (1–2 Ekim):** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
+okur değeri birincil ölçüt; yetki listesi yazılmadı.
 
 ---
 
@@ -1072,6 +1064,18 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
       açık değil, sertleştirme önerisi. _(P2)_
 - [ ] **İ9 — B5.3 hassas konu ölçümü sürüyor (iki inceleme de destekliyor).** Sözcük eşleşmesi
       değil, bağlamıyla etiketlenmiş 675 aday. Kural ölçümden sonra gelir.
+
+- [ ] **İ10 — `gpt-6-luna`'ya geçiş değerlendirmesi (Gökhan, 2 Ekim: "gpt 6 lunaya mı
+      geçsek?", plan için "ok").** - **Bugün:** üretimde `codex-cli 0.144.6` ve `gpt-5.6-luna`, `reasoning max`
+      (`src/runtime/codex-cli-provider.ts:31`). Operatör sunucusunda Codex `0.156.0` var ve
+      `gpt-6-luna` bu hesapta kullanılabiliyor: 2 Ekim'de tek satırlık bir denemeye cevap verdi.
+      Aynı denemede token kullanımı 5.6'nın yaklaşık 2,5 katıydı (5.240'a karşı 2.091). Kota
+      üretimle ortak. - **Zamanlama:** 5 Ekim penceresinden sonra (İ2); model değişimi davranış değişikliğidir. - **Sınama:** A′ sınamasıyla aynı düzenekte 2×2 (model × bağlam). Ölçülecekler: tekrar
+      payı, okura katkı (ikili tercih), koşu başına kabul edilen entry, koşu süresi, koşu başına
+      token ve kota. Tek değişiklik ilkesi: sonuçlar ayrı ayrı okunur, geçişte iki değişiklik
+      aynı anda canlıya alınmaz. - **Geçerse:** üretimdeki Codex'in güncellenmesi gerekip gerekmediği denetlenir; kapasite
+      yeniden ölçülür (hız ve bellek değişir), dağıtım normal kapılardan geçer. **Geçiş kararı
+      Gökhan'ın.**
 
 **Tur bütçesi kaydı (Fable Z3):** 25 Eylül'de alınan "iş başına en fazla 2 Astra turu" kararı
 uygulanmadı. Sonraki tur sayıları: #234'te 12, #243'te 8, #257'de 7, #239'da 6, #267'de 4.
