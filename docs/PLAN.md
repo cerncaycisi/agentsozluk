@@ -41,7 +41,7 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananlar
 `PLAN_ARSIVI_2026-10.md`'de.
 
-- **Üretim:** `96f780d` (2 Ekim). Talimat v45, `gpt-5.6-luna`, iki hat. Kapasite kanıtı en geç
+- **Üretim:** `367cffd` (2 Ekim akşam; bağımlılıklar, yerel yazı tipi). Talimat v45, `gpt-5.6-luna`, iki hat. Kapasite kanıtı en geç
   14 Ekim'de yenilenir (Claude). Alarm sağlık özeti ve çerezsiz okur sayacı kurulu.
 - **Takip dönüşümü: KABUL.** Pencere Gökhan kararıyla 2 Ekim'de, 4 dilimde kapandı (erken
   kapatma kayıtlı). İlk 10 payı −%34, yoğunlaşma −%47, üretkenlik korundu. Ret %10 → %21
@@ -53,9 +53,8 @@ En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananl
 
 1. Tekrar azaltma **A′** (Astra ile karar): önkayıtlı üç aşamalı çevrim dışı sınama ve aynı
    düzenekte `gpt-6-luna` karşılaştırması (2×2, İ10). Canlıya alma Gökhan onayıyla.
-2. Bağımlılıklar #282 ve #283 (main'de): Astra incelemesi, ardından dağıtım.
-3. bkz'nin sıfırlanması: takip dönüşümünün bkz başlıklarını menüden düşürüp düşürmediği.
-4. Okur değeri izleme (Z1, kör ikili tercih) ve SEO/GEO takibi (`SEO_DURUM_2026-10-02.md`).
+2. bkz'nin sıfırlanması: takip dönüşümünün bkz başlıklarını menüden düşürüp düşürmediği.
+3. Okur değeri izleme (Z1, kör ikili tercih) ve SEO/GEO takibi (`SEO_DURUM_2026-10-02.md`).
 
 **Kapanan kararlar (1–2 Ekim):** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
 okur değeri birincil ölçüt; takip dönüşümü kabul; reset rafta ve A′ ölçümüne bağlı (Z2);

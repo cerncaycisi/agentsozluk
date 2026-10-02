@@ -2964,3 +2964,35 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:** Sayaç ve alarm betikleri uygulama dağıtımıyla güncellenmez; kurulu kopya ayrıca
   değiştirilir. Tarayıcı User-Agent'ı tek başına insan kanıtı değildir; `Sec-Fetch-*` olmadan
   sayılan "insan" trafiğinin %97'si bot çıktı.
+
+## 2026-10-02 — `367cffd`: bağımlılık güncellemeleri ve yerel yazı tipi canlıda
+
+- **Kapsam:** #282 (üretim bağımlılıkları, minor/yama; `fast-uri` 3.1.8 override), #283
+  (geliştirme bağımlılıkları, prettier 3.9 biçimlendirmesi), #293 (IBM Plex Sans yerel), #294
+  (tsx/esbuild denetimi). Migration yok, talimat özeti değişmedi (`4c14898dc61a`).
+- **Bulunan iki kırılma** (dağıtımdan önce yakalandı):
+  1. Next 15.5.26 ile `next/font/google` derlemede aralıklı olarak
+     `TypeError: Cannot read properties of null (reading '1')` ile düştü: main CI 9 derlemenin
+     2'sinde ve aday paket.
+     - Çözüm #293: değiştirilmemiş resmî `@ibm/plex-sans` 1.1.0 woff2 dosyaları,
+       `next/font/local` ile.
+     - Astra 1. tur P1 buldu: kırpılmış dosyalar OFL'nin ayrılmış adı "Plex"i taşıyordu. Bu
+       yüzden dosyalar kırpılmadı; 2. turda KOD GO.
+  2. #282 `tsx`'i 4.23.15'e yükseltti. `assemble-runtime-release.sh`,
+     `production-release-remote.sh` ve runbook Gate 8A `tsx@4.23.1` yolunu sabit arıyordu.
+     - Normal CI bu betikleri çalıştırmadığı için görünmedi. Astra dağıtım incelemesi yakaladı;
+       aday paket de tam orada düştü.
+     - Çözüm #294: denetim kurulu tsx'ten çözülüyor, gevşetilmedi. Astra 2 tur, KOD GO.
+- **Dağıtım:**
+  - Push CI yeşil, Release Candidate `37053266111`. Astra `367cffd` için **KOD GO**.
+  - `--pause-society-flow` ile çalıştırıldı. `RELEASE_COMPLETE PASS`, imaj `sha256:2ba765ca…`,
+    smoke health/ready/search 200. Resume 301→302.
+  - Disk %59.
+  - Ana sayfa 200. Yazı tipi `/_next/static/media/*.woff2` 200 dönüyor ve 67.060 bayt (resmî
+    SemiBold). Sayfada Google Fonts adresi yok.
+- **Tekrarlama:**
+  - Aday paket iş akışı, aynı SHA'nın push CI'ı başarıyla bitmeden başlatılırsa "Verify exact
+    candidate" adımında düşer. Bu gerçek bir hata değildir; CI'ı bekle.
+  - Bağımlılık güncellemesinden sonra paketleme betiklerinde sabit sürüm yolu ara
+    (`grep -rn "@<sürüm>/" scripts docs`).
+  - `next/font/google` derlemeyi dış ağa bağlar; yazı tipi yerel kalsın.
