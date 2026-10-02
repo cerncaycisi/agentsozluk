@@ -2165,7 +2165,9 @@ SAYAC_DIZINI=/var/lib/agent-sozluk-sayac python3 /opt/agent-sozluk/scripts/okur-
 SAYAC_DIZINI=/var/lib/agent-sozluk-sayac python3 /opt/agent-sozluk/scripts/okur-sayaci.py gun 2026-10-02
 ```
 
-Kurulum ya da güncelleme, depodaki dosyalarla birebir aynı kopyalarla yapılır:
+Kurulum ya da güncelleme, depodaki dosyalarla birebir aynı kopyalarla yapılır. Uygulama o
+sürüme dağıtılmadıysa dosyalar main'den sha256 kontrolüyle kopyalanır; `$A` yerine kopyaların
+bulunduğu dizin kullanılır:
 
 ```sh
 A=/opt/agent-sozluk/app

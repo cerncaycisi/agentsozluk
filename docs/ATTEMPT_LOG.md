@@ -9712,3 +9712,41 @@ false/true` yapabildi; geçici rol ve DB silindi.
   - Kapasite kanıtı ~12,6 gün daha geçerli.
 - **Tekrarlama:** Alarm betiği uygulama dağıtımıyla güncellenmez. Değiştiğinde ayrıca kurulmalı;
   `RELEASE_WARN installed alarm script differs` bunun işaretidir.
+
+## 2026-10-02 — çerezsiz okur sayacı (#277) üretimde
+
+- Gökhan, 2 Ekim: "olur", ardından "her türlü onayın var 12 saat boyunca" (08:42–20:42 UTC).
+- **Salt okunur keşif:**
+  - Caddy `2-alpine` (v2.11.4), json-file günlük sürücüsü (10 MB × 5). Üretimde bu yaklaşık
+    11,5 saatlik kayıt demek.
+  - `Cookie` başlığı kayıtta `REDACTED` olarak tutuluyor.
+  - Sunucuda `python3` 3.12 var.
+- **Bulgu:** "Tarayıcı" görünen sayfa görüntülemelerinin çoğu bot. 12 saatte 698
+  görüntülemenin 675'inde `Sec-Fetch-Mode` başlığı yoktu; çoğunda Google yönlendireni vardı.
+  Gerçek okur günde birkaç düzine görüntüleme düzeyinde. Bu, GA4 ve Search Console'un
+  gösterdiğiyle uyumlu.
+- **Astra (`gpt-6-astra`), dört tur:**
+  - 1. tur (`0c7236f`): 3 P1 (açılmamış başlık yolu, bozuk Referer, IP yönlendiren) ve 7 P2.
+  - 2. tur (`3b9e6a7`): 2 P1 (sayısal açılmamış yol, alternatif IPv4) ve 2 P2.
+  - 3. tur (`020be4c`): 2 P2 ve 1 P3.
+  - 4. tur (`1244a6c`): **KOD GO**.
+  1. turdan sonra betik SQLite üzerine yeniden yazıldı; sayaçlar ve imleç tek işlemde
+     saklanıyor.
+
+- **Kurulum:**
+  - Kaynak main `840031c`. Üç dosya sha256 kontrolüyle kopyalandı: betik `e7cc2441…`, birim
+    `04953437…`, zamanlayıcı `1ad9a56a…`.
+  - Uygulama yeniden dağıtılmadı; `/opt/agent-sozluk/app` hâlâ `96f780d`.
+  - Kurulan yerler: `/opt/agent-sozluk/scripts/okur-sayaci.py` ve
+    `/etc/systemd/system/agent-sozluk-sayac.{service,timer}`.
+  - `daemon-reload`, ardından `enable --now`.
+  - İlk elle koşu ve zamanlayıcının hemen ardından gelen koşusu `success`; journal boş, çift
+    sayım yok.
+- **İlk rapor:**
+  - 1 Ekim (kısmi, 21:02'den itibaren): insan 20, bot 5.639.
+  - 2 Ekim 09:41'e kadar: insan 4, bot 4.885.
+  - Bot aileleri: diğer 1.618, SEO 1.013, Google 827, yapay zekâ 701, taklit tarayıcı 562,
+    sosyal 162.
+- **Tekrarlama:** Sayaç ve alarm betikleri uygulama dağıtımıyla güncellenmez; kurulu kopya ayrıca
+  değiştirilir. Tarayıcı User-Agent'ı tek başına insan kanıtı değildir; `Sec-Fetch-*` olmadan
+  sayılan "insan" trafiğinin %97'si bot çıktı.

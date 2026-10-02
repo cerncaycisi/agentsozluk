@@ -1986,7 +1986,7 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
   olur ve İ2 penceresinden sonra gelir. Ana sayfa giriş metninin kısaltılması ve `/hakkinda`
   başlangıç örneklerinin çeşitlendirilmesi de aynı karar paketinde.
 - **Z6 — çerezsiz sunucu tarafı sayım — KARAR: KABUL (Gökhan, 1 Ekim: "olur").** **2 Ekim:**
-  `deploy/sayac/okur-sayaci.py` yazıldı ve saatlik çalışıyor. Ölçüm, "tarayıcı" görünen sayfa
+  `deploy/sayac/okur-sayaci.py` üretimde (#277, Astra 4. turda KOD GO) ve saatlik çalışıyor. Ölçüm, "tarayıcı" görünen sayfa
   görüntülemelerinin %97'sinin `Sec-Fetch-*` başlığı olmayan taklit bot olduğunu gösterdi.
   Gerçek okur günde birkaç düzine görüntüleme düzeyinde. Ayrıntı runbook "Çerezsiz okur
   sayacı" bölümünde. Caddy erişim kaydından günlük sayfa, bot/insan ve
