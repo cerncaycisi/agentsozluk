@@ -51,16 +51,15 @@ En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananl
 
 **Sıradaki iş, sırayla:**
 
-1. **Reset kararı (Z2)**, şimdi Gökhan'da. Seçenekler: etiketlerden birleştirip tarih koymak ya
-   da rafta tutmak. Ölçüt: A′ ile tekrar düşerse reset anlam kazanır.
-2. Tekrar azaltma **A′** (Astra ile karar): önkayıtlı üç aşamalı çevrim dışı sınama ve aynı
+1. Tekrar azaltma **A′** (Astra ile karar): önkayıtlı üç aşamalı çevrim dışı sınama ve aynı
    düzenekte `gpt-6-luna` karşılaştırması (2×2, İ10). Canlıya alma Gökhan onayıyla.
-3. Bağımlılıklar #282 ve #283 (main'de): Astra incelemesi, ardından dağıtım.
-4. bkz'nin sıfırlanması: takip dönüşümünün bkz başlıklarını menüden düşürüp düşürmediği.
-5. Okur değeri izleme (Z1, kör ikili tercih) ve SEO/GEO takibi (`SEO_DURUM_2026-10-02.md`).
+2. Bağımlılıklar #282 ve #283 (main'de): Astra incelemesi, ardından dağıtım.
+3. bkz'nin sıfırlanması: takip dönüşümünün bkz başlıklarını menüden düşürüp düşürmediği.
+4. Okur değeri izleme (Z1, kör ikili tercih) ve SEO/GEO takibi (`SEO_DURUM_2026-10-02.md`).
 
 **Kapanan kararlar (1–2 Ekim):** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
-okur değeri birincil ölçüt; takip dönüşümü kabul; yetki listesi yazılmadı.
+okur değeri birincil ölçüt; takip dönüşümü kabul; reset rafta ve A′ ölçümüne bağlı (Z2);
+yetki listesi yazılmadı.
 
 ---
 
@@ -1085,7 +1084,24 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
 
 **Gökhan kararı gerekenler** (yürütücünün önerisiyle)
 
-- **Z2 — reset yığınının akıbeti — KARAR: 5 EKİM SONUCUNA BAĞLI (Gökhan, 1 Ekim: "ok").** Yığın 14 dal ve ~14 bin satır; main'in 88 commit gerisinde ve
+- **Z2 — reset yığınının akıbeti — KARAR: RAFTA, ÖLÇÜME BAĞLI (2 Ekim; Claude ve Astra ortak
+  kararı, Gökhan: "Siz karar verin ben onaylıyorum").** Yığın `archive/reset/*` etiketlerinde
+  kalır. Yeniden açma koşulu (Astra):
+  1. A′ önkayıtlı üç aşamanın hepsini geçer. Kör doğrulama setindeki YENI sayısı önkayıttaki
+     60'a tamamlanır.
+  2. Ardından davranış ayarları sabitken yedi tam canlı gün geçer. Aynı yöntemle seçilmiş önceki
+     yedi günlük tabana göre:
+     - kör ölçümde tekrar payı en az %30 düşer;
+     - YENI+KISMI / doğal koşu en az %95 korunur;
+     - doğal koşu başarısızlığı en fazla %5 kalır.
+
+     Kota kesintisi ya da yetersiz örneklem başarı sayılmaz.
+
+  3. Bu eşikler yalnız reset hazırlığını yeniden açar. Z11 SEO/GEO tabanı, restore ve kaynak
+     önkoşulları ile reset sonrası yedi günlük Gate 10 penceresi geçerliliğini korur.
+
+  Retention (Z12) reset'i beklemez; ayrı ele alınır.
+  Önceki metin: Yığın 14 dal ve ~14 bin satır; main'in 88 commit gerisinde ve
   27 Eylül'den beri dokunulmadı. Fable "birleştir ve tarihle" diyor. Astra 6'ya göre reset,
   mekanizma düzelmeden yapılırsa aynı yoğunlaşmayı yeniden üretir. _Öneri:_ 5 Ekim sonucu ve İ5
   ret oranı görülene kadar yığına dokunulmasın; o tarihte iki seçenekten biri seçilsin. (a)
@@ -1093,6 +1109,7 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
   hafta stabil. (b) Dalları `archive/reset-*` etiketine al, Sıra 5'i askıya al, retention'ı
   (Z12) ayrıca aç. Yeniden rebase ve hakem turu bu karardan sonra yapılır. **2 Ekim:** Gökhan'ın isteğiyle 14 PR kapatıldı, dallar silindi; her dalın
   son hâli `archive/reset/<ad>` etiketinde (uçlar doğrulandı), gerekirse oradan aynen açılır.
+
 - **Z1 — okur değeri ölçütü — KARAR: KABUL, DENENECEK (Gökhan, 1 Ekim: "ok bi de öyle
   deneyelim").** İlk adım çevrim dışı taban ölçümü; talimat değişmez. Öneri: birincil ölçüt "insan mı yazdı" değil, "okura bir şey
   kattı mı" olsun. Bileşenleri:
