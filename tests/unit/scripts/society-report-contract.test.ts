@@ -59,6 +59,7 @@ describe("society observation report contracts", () => {
     }
     for (const section of [
       "ACTION MATRIX",
+      "NATURAL ENTRY REJECTION RATE",
       "NATURAL EPISODE OUTCOMES",
       "NATURAL PARTIAL SAFE REASONS",
       "LIFECYCLE WINDOW COHORT",

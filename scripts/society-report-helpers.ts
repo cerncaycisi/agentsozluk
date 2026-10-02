@@ -496,3 +496,49 @@ export function renderTable(
     ...rows.map(render),
   ].join("\n");
 }
+
+/**
+ * Entry eylemlerinin ret oranı (PLAN 5.9 İ5, 2 Ekim 2026). Her ret tam bir Codex
+ * koşusudur: karar üretildi, sunucu reddetti. Oran `REJECTED / (SUCCEEDED +
+ * REJECTED)`; başarısız ya da yarıda kalan eylemler paydada yok. Eşik ve asgari
+ * örneklem canlılık alarmındaki sağlık özetiyle aynıdır
+ * (`deploy/alarm/canlilik-alarmi.sh`): eşik tamsayı bölmesiyle değil çarpımla
+ * karşılaştırılır.
+ */
+export const ENTRY_REJECTION_THRESHOLD_PERCENT = 20;
+export const ENTRY_REJECTION_MIN_SAMPLE = 20;
+const ENTRY_ACTION_TYPES = new Set(["CREATE_ENTRY", "CREATE_TOPIC_WITH_ENTRY"]);
+
+export interface EntryRejectionSummary {
+  succeeded: number;
+  rejected: number;
+  exceedsThreshold: boolean;
+  enoughSample: boolean;
+  codes: [string, number][];
+}
+
+export function summarizeEntryRejections(
+  actions: readonly { actionType: string; actionStatus: string; rejectionCode: string | null }[],
+): EntryRejectionSummary {
+  let succeeded = 0;
+  let rejected = 0;
+  const codes = new Map<string, number>();
+  for (const action of actions) {
+    if (!ENTRY_ACTION_TYPES.has(action.actionType)) continue;
+    if (action.actionStatus === "SUCCEEDED") succeeded += 1;
+    if (action.actionStatus === "REJECTED") {
+      rejected += 1;
+      const code = action.rejectionCode ?? "-";
+      codes.set(code, (codes.get(code) ?? 0) + 1);
+    }
+  }
+  const total = succeeded + rejected;
+  const enoughSample = total >= ENTRY_REJECTION_MIN_SAMPLE;
+  return {
+    succeeded,
+    rejected,
+    enoughSample,
+    exceedsThreshold: enoughSample && rejected * 100 > ENTRY_REJECTION_THRESHOLD_PERCENT * total,
+    codes: [...codes.entries()].sort(([a, x], [b, y]) => y - x || a.localeCompare(b)),
+  };
+}

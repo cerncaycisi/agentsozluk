@@ -16,6 +16,7 @@ import {
   ratio,
   selectRunCohortActions,
   summarizeFreshSourceCoverage,
+  summarizeEntryRejections,
 } from "../../../scripts/society-report-helpers";
 
 describe("society report window parsing", () => {
@@ -383,5 +384,57 @@ describe("society reflection reason helpers", () => {
     expect(parseReflectionStatus(null)).toBe("UNKNOWN");
     expect(parseReflectionStatus({ reflectionStatus: "raw private reason" })).toBe("UNKNOWN");
     expect(parseReflectionStatus(["NO_DELTA"])).toBe("UNKNOWN");
+  });
+});
+
+describe("summarizeEntryRejections", () => {
+  const eylem = (
+    actionType: string,
+    actionStatus: string,
+    rejectionCode: string | null = null,
+  ) => ({
+    actionType,
+    actionStatus,
+    rejectionCode,
+  });
+
+  it("yalnız entry eylemlerini sayar; başarısız ve oy eylemleri paydada yok", () => {
+    const sonuc = summarizeEntryRejections([
+      eylem("CREATE_ENTRY", "SUCCEEDED"),
+      eylem("CREATE_TOPIC_WITH_ENTRY", "SUCCEEDED"),
+      eylem("CREATE_ENTRY", "REJECTED", "TOPIC_SEMANTIC_REPETITION"),
+      eylem("CREATE_ENTRY", "FAILED"),
+      eylem("VOTE_UP", "REJECTED", "X"),
+    ]);
+    expect(sonuc).toMatchObject({ succeeded: 2, rejected: 1, enoughSample: false });
+    expect(sonuc.exceedsThreshold).toBe(false);
+    expect(sonuc.codes).toEqual([["TOPIC_SEMANTIC_REPETITION", 1]]);
+  });
+
+  it("eşiği çarpımla karşılaştırır: %20,8 aşar, tam %20 aşmaz", () => {
+    const uret = (ret: number, basari: number) =>
+      summarizeEntryRejections([
+        ...Array.from({ length: ret }, () => eylem("CREATE_ENTRY", "REJECTED", "A")),
+        ...Array.from({ length: basari }, () => eylem("CREATE_ENTRY", "SUCCEEDED")),
+      ]);
+    expect(uret(5, 19).exceedsThreshold).toBe(true);
+    expect(uret(4, 16).exceedsThreshold).toBe(false);
+    expect(uret(19, 0)).toMatchObject({ enoughSample: false, exceedsThreshold: false });
+  });
+
+  it("ret kodlarını çoktan aza, eşitlikte ada göre sıralar", () => {
+    const sonuc = summarizeEntryRejections([
+      eylem("CREATE_ENTRY", "REJECTED", "B"),
+      eylem("CREATE_ENTRY", "REJECTED", "A"),
+      eylem("CREATE_ENTRY", "REJECTED", "C"),
+      eylem("CREATE_ENTRY", "REJECTED", "C"),
+      eylem("CREATE_ENTRY", "REJECTED", null),
+    ]);
+    expect(sonuc.codes).toEqual([
+      ["C", 2],
+      ["-", 1],
+      ["A", 1],
+      ["B", 1],
+    ]);
   });
 });
