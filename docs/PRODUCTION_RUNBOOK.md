@@ -1766,7 +1766,10 @@ NODE
   [[ "$(sudo cat "$m2_runtime_publish/.release-app-image-id")" == "$m2_candidate_image_id" ]]
   [[ "$(sudo cat "$m2_runtime_publish/.release-node-abi")" == "$m2_runtime_abi" ]]
   [[ -L "$m2_runtime_publish/node_modules/tsx" ]]
-  [[ -L "$m2_runtime_publish/node_modules/.pnpm/tsx@4.23.1/node_modules/esbuild" ]]
+  # tsx sürümü sabit yazılmaz (2 Ekim 2026; #282 tsx 4.23.15): kurulu tsx'in .pnpm dizini çözülür.
+  m2_tsx_real="$(readlink -f "$m2_runtime_publish/node_modules/tsx")"
+  [[ "$m2_tsx_real" == "$(readlink -f "$m2_runtime_publish/node_modules")"/.pnpm/tsx@*/node_modules/tsx ]]
+  [[ -L "$(dirname "$m2_tsx_real")/esbuild" ]]
   sudo -u agent-runtime /usr/bin/node - "$m2_runtime_publish/node_modules" <<'NODE'
 const { createRequire } = require("node:module");
 const [modulesPath] = process.argv.slice(2);
