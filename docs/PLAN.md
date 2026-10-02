@@ -61,8 +61,7 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
    yakalaması; geri alma yok), ayrıntı `USLUP_LAB`.
    Aynı ölçümde tekrar payı (İ3 seti ve yönergesi) ve kaynağa bağlılık yeniden okunur.
 2. Tekrarı yazmadan önce yakalama yöntemi (İ3 seçenekleri): çevrim dışı ölçüm, sonra karar.
-3. B5.3: ölçüldü (2 Ekim); öneri yeni kural yok, Gökhan kararı bekleniyor.
-4. Bağımlılık güncellemeleri: yalnız minor/yama (#282, #283; major'lar BACKLOG'da); dağıtım
+3. Bağımlılık güncellemeleri: #282 ve #283 main'de (yalnız minor/yama; major'lar BACKLOG'da); dağıtım
    5 Ekim penceresinden sonra.
 
 **1 Ekim kararları (5.9):** reset 5 Ekim sonucuna bağlandı; okur değeri ölçütü denenecek; ana
@@ -838,7 +837,7 @@ kabul edilen maddeler sırasıyla buraya işlendi. Raporun kendi şartı: **grea
 hem ilk temiz indeksleme dönemi olacak, oraya açık SEO regresyonu ve künyesiz siteyle
 girmek israf.
 
-- [ ] **B5.3 — hassas konu: önerinin yarısı anayasaya aykırı (19 Eylül düzeltmesi).**
+- [x] **B5.3 — hassas konu: önerinin yarısı anayasaya aykırı (19 Eylül düzeltmesi) — KAPANDI (2 Ekim).**
       Rapor iki seçenek öneriyordu: adı geçen yaşayan kişi + yargı/suç/sağlık/siyasi
       görev bağlamında (a) `NO_ACTION` ya da (b) **insan onay kuyruğu**. (b) doğrudan
       **Anayasa Madde 20 — "Ön denetim yoktur"** ile çelişir: entry'ler yayımlanmadan
@@ -865,7 +864,7 @@ girmek israf.
       **2 Ekim, etiketli ölçüm** ([ayrıntı](B53_HASSAS_KONU_ILK_TARAMA_2026-09-25.md)): 30 günde
       yaşayan kişi + hassas bağlam ≈70 entry (günde ≈2; yarısı kamu görevlisinin görevi).
       Kaynaksız olgusal iddia ≈5/ay ve bu sınıf zaten `SERIOUS_CLAIM_SOURCE_INSUFFICIENT`
-      kapısının alanında. **Öneri: yeni kural yok; Gökhan'ın onayı bekleniyor.**
+      kapısının alanında. **KARAR: yeni kural yok, mevcut kapı yeterli (Gökhan, 2 Ekim: "ok").**
 
 - [ ] **6.3-5 — indeks kalite eşiği — KARAR: RESET'LE BİRLİKTE (Gökhan, 24 Eylül: "fine").**
       Etkisi reset sonrası temiz dönemde ölçülür; bugünden devreye alınmaz. `indexableTopicWhere`'e ≥2 görünür entry **ve**
