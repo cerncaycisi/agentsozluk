@@ -36,32 +36,31 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ---
 
-## Şu an neredeyiz (2 Ekim 2026)
+## Şu an neredeyiz (2 Ekim 2026, akşam)
 
 En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananlar
 `PLAN_ARSIVI_2026-10.md`'de.
 
-- **Üretim:** `96f780d` (2 Ekim). Talimat v45 (`4c14898dc61a`), `gpt-5.6-luna`, iki hat. Kapasite
-  kanıtı en geç 14 Ekim'de yenilenir; kapasite yönetimi Claude'da. Alarm sağlık özeti ve
-  çerezsiz okur sayacı kurulu.
-- **Ölçüm penceresi:** takip dönüşümü penceresi 5 Ekim 16:01 UTC'de kapanır; o zamana kadar ajan
-  davranışı değişmez (İ2). Ara bakış: ilk 10 payı göreli −%30, ret %10 → %22 (tekrar yakalaması).
+- **Üretim:** `96f780d` (2 Ekim). Talimat v45, `gpt-5.6-luna`, iki hat. Kapasite kanıtı en geç
+  14 Ekim'de yenilenir (Claude). Alarm sağlık özeti ve çerezsiz okur sayacı kurulu.
+- **Takip dönüşümü: KABUL.** Pencere Gökhan kararıyla 2 Ekim'de, 4 dilimde kapandı (erken
+  kapatma kayıtlı). İlk 10 payı −%34, yoğunlaşma −%47, üretkenlik korundu. Ret %10 → %21
+  (tekrar yakalaması). Ayrıntı `USLUP_LAB`. Davranış penceresi (İ2) bitti.
 - **Geçici yetki:** Astra KOD GO'lu migration'sız dağıtım yetkisi 4 Ekim 20:59 UTC'de biter.
   Aynı süre için 2 tur sınırı askıda.
 
 **Sıradaki iş, sırayla:**
 
-1. 5 Ekim: `scripts/olcum/takip-donusumu-kabul.sql`, ardından İ4 şablonuyla tek karar. Aynı
-   ölçümde tekrar payı ve kaynağa bağlılık yeniden okunur. Reset kararı bu sonuca bağlı (Z2).
-2. Tekrar azaltma **A′** (Astra ile karar): önkayıtlı üç aşamalı sınama. Aynı düzenekte
-   `gpt-5.6-luna` ve `gpt-6-luna` karşılaştırması (2×2, İ10); geçiş kararı Gökhan'ın.
-3. Bağımlılıklar: #282 ve #283 main'de; dağıtım 5 Ekim'den sonra, Gökhan onayıyla.
-4. Okur değeri izleme: kör ikili tercih düzeneği (Z1).
-5. SEO/GEO takibi (Gökhan, 2 Ekim: "not al bakalım bi ara"): GEO alıntı ölçümünü yeniden yap (dış
-   servis, onayla); Search Console'da forum doğrulaması ve site haritası. Durum `SEO_DURUM_2026-10-02.md`.
+1. **Reset kararı (Z2)**, şimdi Gökhan'da. Seçenekler: etiketlerden birleştirip tarih koymak ya
+   da rafta tutmak. Ölçüt: A′ ile tekrar düşerse reset anlam kazanır.
+2. Tekrar azaltma **A′** (Astra ile karar): önkayıtlı üç aşamalı çevrim dışı sınama ve aynı
+   düzenekte `gpt-6-luna` karşılaştırması (2×2, İ10). Canlıya alma Gökhan onayıyla.
+3. Bağımlılıklar #282 ve #283 (main'de): Astra incelemesi, ardından dağıtım.
+4. bkz'nin sıfırlanması: takip dönüşümünün bkz başlıklarını menüden düşürüp düşürmediği.
+5. Okur değeri izleme (Z1, kör ikili tercih) ve SEO/GEO takibi (`SEO_DURUM_2026-10-02.md`).
 
 **Kapanan kararlar (1–2 Ekim):** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
-okur değeri birincil ölçüt; yetki listesi yazılmadı.
+okur değeri birincil ölçüt; takip dönüşümü kabul; yetki listesi yazılmadı.
 
 ---
 
@@ -1008,7 +1007,7 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
       [PLAN_ARSIVI_2026-10.md](PLAN_ARSIVI_2026-10.md) dosyasına, Temmuz–Ağustos deneme kayıtları
       [ATTEMPT_LOG_ARSIVI_2026-07-08.md](ATTEMPT_LOG_ARSIVI_2026-07-08.md) dosyasına taşındı
       (satır kaybı 0, doğrulandı). `PLAN.md` 160 → 87 KB, `ATTEMPT_LOG.md` 736 → 204 KB.
-- [ ] **İ2 — ölçüm penceresinde davranış sabit (Astra 6 §10).** Takip dönüşümü penceresi (~5 Ekim
+- [x] **İ2 — ölçüm penceresinde davranış sabit (Astra 6 §10) — 2 Ekim'de kapandı (Gökhan kararıyla erken).** Takip dönüşümü penceresi (~5 Ekim
       16:00 UTC) kapanana kadar ajan davranışını değiştiren dağıtım yapılmaz. Talimat, menü, kaynak
       havuzu ve kapı eşikleri bu kapsamdadır. Alarm, belge ve ops değişiklikleri serbesttir.
 - [ ] **İ3 — yayımlanmış anlam tekrarları için değerlendirme seti (Astra 6 §3).** Canlıdan
@@ -1022,7 +1021,7 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
       1'i yeni katkı, yani kapılar yanlış reddetmiyor. Sözcük düzeyinde ölçü tekrarı yeni katkıdan
       ayıramıyor; çözüm yazma kararından önce olmalı. Seçenekler belgede; 5 Ekim'den sonra
       çevrim dışı ölçülüp seçilecek.
-- [ ] **İ4 — 5 Ekim karar şablonu (Fable Z4, Astra 6 §4).** Takip dönüşümü penceresi kapanınca
+- [x] **İ4 — 5 Ekim karar şablonu (Fable Z4, Astra 6 §4) — SONUÇ: KABUL (2 Ekim; `USLUP_LAB`).** Takip dönüşümü penceresi kapanınca
       aşağıdaki ölçümler okunacak: - önkayıtlı kabul ölçütü: ilk 10 başlık payında en az %15 göreli düşüş; - huni: gösterilen başlık → okunan → yazılan → yayımlanan → öne çıkan, her aşamada farklı
       başlık sayısı; - ret oranı ve entry/koşu.
 
