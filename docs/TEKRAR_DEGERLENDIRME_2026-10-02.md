@@ -139,3 +139,22 @@ A′ sınamasının ikinci aşaması için ayrı bir set kuruldu.
   %95 üst sınırı yaklaşık %5,3 olur.
 - **Saklama:** Set repo dışında tutulur ve A′ ayarı için kullanılmaz. İlk aşamada (ucuz eleme)
   ilk setin iki etiketleyicinin uyuştuğu 112 metni kullanılır; ayrışan 8 metin dışarıda kalır.
+
+## A′ kodu (2 Ekim 2026, dağıtılmadı)
+
+Dal `deney/a-prime-okuma-baglami` (`de3080a`). PR açılmadı; yalnız yerel deney içindir.
+
+- **Pencere:** `runtimeReadTopicEntryLimit` 6'dan 15'e çıktı. Başlığın tanım entry'si yine
+  başta duruyor.
+- **Kırpma:** Tanım entry'si ve en yeni altı entry eskisi gibi 2000 karaktere kadar tam
+  gösteriliyor. Aradaki eski entry'ler 600 karakterlik önizlemeyle geliyor.
+  - Eylül'de kırpma bilerek 600'den 2000'e çıkarılmıştı: kesilen uzun entry'ler tekrara yol
+    açıyordu. Bu yüzden genel kırpma düşürülmedi.
+- **Bütçe:** En kötü durumda okuma bağlamı yaklaşık %40 büyür (≈42 bin karakterden ≈58 bin
+  karaktere). Entry ortancası 184 karakter olduğu için tipik durumda fark küçük.
+- **Değişmeyenler:** Talimat metni ve özeti aynı; kapasite kanıtı bu yüzden geçersizleşmez.
+  Kanıt kataloğu ve anlık görüntü aynı yoldan kurulduğu için tutarlı kalır.
+- **Testler:** Entegrasyon testi 15'lik pencereye, tanımın korunmasına ve önizleme kırpmasına
+  göre güncellendi. Yerelde 112/112 entegrasyon ve 636/636 ajan birim testi geçti.
+- **Kalan:** Astra incelemesi ve önkayıtlı üç aşamalı sınama. İkisi de 5 Ekim penceresinden
+  sonra.
