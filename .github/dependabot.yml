@@ -21,6 +21,12 @@ updates:
         dependency-type: production
       development-dependencies:
         dependency-type: development
+    # Major atlamalar (Next 16, Prisma 7, dotenv 18 …) migration ister; gruplu PR'ı
+    # kırmızıya kilitleyip yama/minor güncellemelerini de bekletiyordu (#187, #211).
+    # Major geçişler BACKLOG'da ayrı iş olarak elle yapılır (2 Ekim 2026).
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Eylemler commit SHA'sına kilitli (24 Eylül); Dependabot SHA'yı ve aynı satırdaki
   # sürüm yorumunu günceller. Composite eylem dizini ayrıca listelenmeli: kök dizin

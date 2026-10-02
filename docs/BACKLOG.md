@@ -42,6 +42,18 @@ Son güncelleme: 2026-08-27
 
 ---
 
+## Bağımlılık major geçişleri (2 Ekim 2026)
+
+Dependabot npm için yalnız minor ve yama güncellemesi önerir. Aşağıdaki geçişler elle, ayrı PR
+olarak, kendi testleri ve dağıtım kapısıyla yapılır. Kapatılan gruplu PR'lar: #187 (üretim) ve
+#211 (geliştirme); ikisinin CI'ı da major atlamalar yüzünden kırmızıydı.
+
+- `next` 15 → 16 ve uyumlu `eslint-config-next`: App Router ve önbellek davranışı değişiklikleri.
+- `prisma` / `@prisma/client` 6 → 7: istemci üretimi ve yapılandırma değişikliği; migration
+  hattı (A5) ve gerçek boyutlu prova gerekir.
+- `dotenv` 17 → 18.
+- #211'deki geliştirme bağımlılıklarının major atlamaları.
+
 ## Akış 1 — UI / Tasarım
 
 Kaynak: DESIGN_PLAN_NEXT_2026-08-20 (arşivlendi → PLAN.md) (arşivlendi → PLAN.md)
