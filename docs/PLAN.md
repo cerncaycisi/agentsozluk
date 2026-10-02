@@ -1090,7 +1090,8 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
   ret oranı görülene kadar yığına dokunulmasın; o tarihte iki seçenekten biri seçilsin. (a)
   Önkoşul ölçütü yazılı bir tarihle birleştir: ilk 10 payı düştü, ret oranı en fazla %20 ve iki
   hafta stabil. (b) Dalları `archive/reset-*` etiketine al, Sıra 5'i askıya al, retention'ı
-  (Z12) ayrıca aç. Yeniden rebase ve hakem turu bu karardan sonra yapılır.
+  (Z12) ayrıca aç. Yeniden rebase ve hakem turu bu karardan sonra yapılır. **2 Ekim:** Gökhan'ın isteğiyle 14 PR kapatıldı, dallar silindi; her dalın
+  son hâli `archive/reset/<ad>` etiketinde (uçlar doğrulandı), gerekirse oradan aynen açılır.
 - **Z1 — okur değeri ölçütü — KARAR: KABUL, DENENECEK (Gökhan, 1 Ekim: "ok bi de öyle
   deneyelim").** İlk adım çevrim dışı taban ölçümü; talimat değişmez. Öneri: birincil ölçüt "insan mı yazdı" değil, "okura bir şey
   kattı mı" olsun. Bileşenleri:
