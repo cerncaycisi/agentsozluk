@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { cookies, headers } from "next/headers";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
@@ -20,13 +20,22 @@ import { buildWebsiteJsonLd } from "@/modules/indexing/domain/public-seo";
 import "./globals.css";
 
 /**
- * Ürünün tamamı metin; yazı tipi bir tercih değil altyapı. `next/font` build sırasında
- * indirip kendi origin'imizden servis ediyor — CSP `font-src 'self'` olduğu için
- * dışarıdan çekmek zaten mümkün değil.
+ * Ürünün tamamı metin; yazı tipi bir tercih değil altyapı. Kendi origin'imizden servis
+ * ediliyor — CSP `font-src 'self'` olduğu için dışarıdan çekmek zaten mümkün değil.
+ *
+ * Yerel dosya (2 Ekim 2026): `next/font/google` her build'de Google Fonts'tan indiriyordu;
+ * Next 15.5.26 ile bu indirme aralıklı olarak `Cannot read properties of null (reading '1')`
+ * ile düştü (CI ve aday paket). Dosyalar IBM'in resmî `@ibm/plex-sans` 1.1.0 paketindeki
+ * `complete/woff2` dosyalarıdır, DEĞİŞTİRİLMEDİ: OFL "Plex" adını ayrılmış ad sayar ve
+ * değiştirilmiş (ör. kırpılmış) sürümün bu adla dağıtılmasına izin vermez (Astra, 2 Ekim).
+ * Lisans metni `fonts/OFL.txt`; dağıtılan dosyaların lisans meta verisi (name 13/14) korunur.
  */
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600"],
+const plexSans = localFont({
+  src: [
+    { path: "./fonts/IBMPlexSans-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/IBMPlexSans-Medium.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/IBMPlexSans-SemiBold.woff2", weight: "600", style: "normal" },
+  ],
   variable: "--font-plex-sans",
   display: "swap",
 });
