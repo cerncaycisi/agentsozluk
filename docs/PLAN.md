@@ -56,7 +56,7 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 
 **Sıradaki iş, sırayla:**
 
-1. Ret oranını baz raporuna eklemek (5.9 İ5; alarmda var, son 24 sa %19), canlı tekrarlardan çevrim dışı bir
+1. Canlı tekrarlardan çevrim dışı bir
    değerlendirme seti çıkarmak (5.9 İ3) ve okur değeri taban ölçümü (5.9 Z1).
 2. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
 3. B5.3 ölçümü: 675 adayı bağlamıyla etiketlemek; ölçmeden kural konmaz.
@@ -1928,7 +1928,10 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
       olacak; son 30 günde %30 ölçüldü, 938'i `TOPIC_SEMANTIC_REPETITION`. Metrik baz raporuna ve
       alarm raporuna girer; uyarı eşiği %20. **6.3-3 tekrar kapısı** Sıra 2'ye alınır. Gerekçe
       artık kalite değil verim: tekrar karardan önce yakalanırsa Codex koşusu boşa harcanmaz.
-      Kapı uygulaması İ2 penceresinden ve İ3 setinden sonra gelir. Kapatma ölçütü: iki haftada ret
+      Kapı uygulaması İ2 penceresinden ve İ3 setinden sonra gelir. **2 Ekim:** oran `society-baseline-report`'ta
+      ("NATURAL ENTRY REJECTION RATE", kod dağılımıyla) ve alarmda. Yerel kopyada Eylül:
+      %29,0 (1.807/6.221); ilk dört kod `TOPIC_SEMANTIC_REPETITION` 672, `DUPLICATE_FRAMING`
+      573, `SOURCE_EXACT_NUMBER_UNSUPPORTED` 337, `DUPLICATE_SIMILARITY` 132. Kapatma ölçütü: iki haftada ret
       oranı en fazla %20 ve entry/koşu artmış.
 - [ ] **İ6 — alarmın ayırt etmesi gereken hâller (Fable Z3.3/Z9, Astra 6 §8).** Bugün alarm
       yalnız "koşu yok" diyor. Şu hâllerin ayrı ayrı görünmesi gerekiyor: - worker kota yüzünden bekliyor (`CODEX_RATE_LIMITED`, sınıflandırması

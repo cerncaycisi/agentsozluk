@@ -18,7 +18,9 @@ import {
   reflectionPurpose,
   renderTable,
   selectRunCohortActions,
+  summarizeEntryRejections,
   summarizeFreshSourceCoverage,
+  ENTRY_REJECTION_THRESHOLD_PERCENT,
   type ContentAttribution,
   type ReflectionStatus,
   type RunClass,
@@ -1071,6 +1073,34 @@ async function main(): Promise<void> {
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([key, count]) => [...key.split("|"), String(count)]),
       ),
+      "",
+      "NATURAL ENTRY REJECTION RATE",
+      ...(() => {
+        const summary = summarizeEntryRejections(
+          windowActions.filter(
+            (action) =>
+              classifyRunPair(action.run.trigger, action.run.runType) === "natural-public",
+          ),
+        );
+        return [
+          renderTable(
+            ["succeeded", "rejected", "rate", "threshold", "status"],
+            [
+              [
+                String(summary.succeeded),
+                String(summary.rejected),
+                formatRatio(summary.rejected, summary.succeeded + summary.rejected),
+                `${ENTRY_REJECTION_THRESHOLD_PERCENT}%`,
+                !summary.enoughSample ? "SMALL_SAMPLE" : summary.exceedsThreshold ? "ABOVE" : "OK",
+              ],
+            ],
+          ),
+          renderTable(
+            ["rejectionCode", "count"],
+            summary.codes.map(([code, count]) => [code, String(count)]),
+          ),
+        ];
+      })(),
       "",
       "NATURAL EPISODE OUTCOMES",
       renderTable(
