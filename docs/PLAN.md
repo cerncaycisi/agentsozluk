@@ -63,6 +63,8 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 2. Tekrarı yazmadan önce azaltma: **karar A′** (ajan seçtiği başlığın önceki 15 katkısını görür;
    Astra ile, Gökhan "siz karar verin"). Önkayıtlı üç aşamalı sınama 5 Ekim'den sonra;
    ayrıntı `TEKRAR_DEGERLENDIRME`.
+   Aynı düzenekte model karşılaştırması: `gpt-5.6-luna` ve `gpt-6-luna` × mevcut bağlam ve A′
+   (2×2; Gökhan "ok plana ekle", 2 Ekim). Geçiş kararı Gökhan'ın; ayrıntı 5.9 İ10.
 3. Bağımlılık güncellemeleri: #282 ve #283 main'de (yalnız minor/yama; major'lar BACKLOG'da); dağıtım
    5 Ekim penceresinden sonra.
 
@@ -1072,6 +1074,18 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
       açık değil, sertleştirme önerisi. _(P2)_
 - [ ] **İ9 — B5.3 hassas konu ölçümü sürüyor (iki inceleme de destekliyor).** Sözcük eşleşmesi
       değil, bağlamıyla etiketlenmiş 675 aday. Kural ölçümden sonra gelir.
+
+- [ ] **İ10 — `gpt-6-luna`'ya geçiş değerlendirmesi (Gökhan, 2 Ekim: "gpt 6 lunaya mı
+      geçsek?", plan için "ok").** - **Bugün:** üretimde `codex-cli 0.144.6` ve `gpt-5.6-luna`, `reasoning max`
+      (`src/runtime/codex-cli-provider.ts:31`). Operatör sunucusunda Codex `0.156.0` var ve
+      `gpt-6-luna` bu hesapta kullanılabiliyor: 2 Ekim'de tek satırlık bir denemeye cevap verdi.
+      Aynı denemede token kullanımı 5.6'nın yaklaşık 2,5 katıydı (5.240'a karşı 2.091). Kota
+      üretimle ortak. - **Zamanlama:** 5 Ekim penceresinden sonra (İ2); model değişimi davranış değişikliğidir. - **Sınama:** A′ sınamasıyla aynı düzenekte 2×2 (model × bağlam). Ölçülecekler: tekrar
+      payı, okura katkı (ikili tercih), koşu başına kabul edilen entry, koşu süresi, koşu başına
+      token ve kota. Tek değişiklik ilkesi: sonuçlar ayrı ayrı okunur, geçişte iki değişiklik
+      aynı anda canlıya alınmaz. - **Geçerse:** üretimdeki Codex'in güncellenmesi gerekip gerekmediği denetlenir; kapasite
+      yeniden ölçülür (hız ve bellek değişir), dağıtım normal kapılardan geçer. **Geçiş kararı
+      Gökhan'ın.**
 
 **Tur bütçesi kaydı (Fable Z3):** 25 Eylül'de alınan "iş başına en fazla 2 Astra turu" kararı
 uygulanmadı. Sonraki tur sayıları: #234'te 12, #243'te 8, #257'de 7, #239'da 6, #267'de 4.
