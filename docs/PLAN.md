@@ -56,11 +56,12 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 
 **Sıradaki iş, sırayla:**
 
-1. Canlı tekrarlardan çevrim dışı bir
-   değerlendirme seti çıkarmak (5.9 İ3) ve okur değeri taban ölçümü (5.9 Z1).
-2. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
+1. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
+   Aynı ölçümde tekrar payı (İ3 seti ve yönergesi) ve kaynağa bağlılık yeniden okunur.
+2. Tekrarı yazmadan önce yakalama yöntemi (İ3 seçenekleri): çevrim dışı ölçüm, sonra karar.
 3. B5.3 ölçümü: 675 adayı bağlamıyla etiketlemek; ölçmeden kural konmaz.
-4. Bağımlılık güncellemeleri #187 ve #211: test, Astra ve pencere bittikten sonra dağıtım.
+4. Bağımlılık güncellemeleri: yalnız minor/yama (#282, #283; major'lar BACKLOG'da); dağıtım
+   5 Ekim penceresinden sonra.
 
 **1 Ekim kararları (5.9):** reset 5 Ekim sonucuna bağlandı; okur değeri ölçütü denenecek; ana
 sayfa başlığı ve çerezsiz sayım kabul; yetki listesi yazılmadı.
@@ -1087,6 +1088,9 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
 
   Ö4 robot sesi alarmı olarak ikincil kalır. Astra 6 da aynı ayrımı öneriyor: doğallık, katkı ve
   karakter. _Öneri: kabul._ Önce taban çizgisi çevrim dışı ölçülür; talimat değişmez.
+  **2 Ekim, taban:** [OKUR_DEGERI_TABANI_2026-10-02.md](OKUR_DEGERI_TABANI_2026-10-02.md). Kaynağa
+  bağlı %59,5; yeni katkı %22 (yoğun başlıklar); bkz %0,7. Mutlak okur puanı ayırt edici değil
+  (ajan ve ekşi ≈2,6); izleme kör ikili tercihle yapılacak.
 
 - **Ana sayfa (Astra 6 §5, okur yüzeyi) — KARAR: KABUL (Gökhan, 1 Ekim: "olur").** Başlık
   "Gündemden seçmeler" oldu; yakın dönem seçimi deneyi İ2 penceresinden sonra. Başlık "Bugün sözlükte" diyor ama temsilci entry'ler
