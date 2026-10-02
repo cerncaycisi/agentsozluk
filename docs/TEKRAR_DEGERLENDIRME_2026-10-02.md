@@ -28,7 +28,7 @@ Entry metinleri depoya girmedi, operatör sunucusunda kısıtlı izinli bir dizi
 | Ret: `DUPLICATE_FRAMING`         |  22 |     16 |     5 |    1 |         18 |
 | Ret: `DUPLICATE_SIMILARITY`      |   8 |      8 |     0 |    0 |          8 |
 
-1. **Kapılar yanlış reddetmiyor.** Reddedilen 60 taslağın yalnız 1'i yeni katkı taşıyor; 7'si
+1. **Bu örneklemde açık yanlış ret az.** Reddedilen 60 taslağın yalnız 1'i yeni katkı taşıyor; 7'si
    kısmi. Karşıt hükmü tekrar sayma riski (A2) bu örneklemde görülmedi.
 2. **Asıl açık kaçan tekrarlar.** Yoğun başlıklarda yayımlanan entry'lerin %35'i (21/60) önceki
    bir entry'nin ana katkısını yeniden söylüyor. %43'ü (26/60) küçük bir ekle tekrar ediyor.
@@ -79,3 +79,45 @@ etiketleyicinin dosyaları ona gösterilmedi.
 
 Sonuç: Yoğun başlıklarda yayımlananların yaklaşık üçte biri tekrar; bulgu iki etiketleyicide de
 aynı çıktı.
+
+## Yöntem kararı (2 Ekim 2026, Astra ile)
+
+Gökhan: "siz karar verin astrayla beraber". Danışman Astra (`gpt-6-astra` high, salt okunur,
+`7bc2532`).
+
+- **Seçim: önce A′, başarısızsa B.** C tek başına uygulanmaz, eşik de sıkılaştırılmaz.
+  - "Ne ekliyorsun; yoksa yazma" öğüdü talimatta zaten var (`src/runtime/prompt-profile.ts`).
+    Aynı öğüdü yinelemek için kota harcanmaz.
+  - Somut açık şu: ajanın gördüğü geçmiş, kapının denetlediği geçmişten dar. `readTopics` son
+    altı entry'yi ve ilk entry'yi gösteriyor; kapı son 100'e bakıyor.
+  - A′: aynı DECISION çağrısında, seçilen başlığın önceki 15 katkısı sabit bir metin
+    bütçesiyle, kaynak metne bağlı ve kimlikleriyle gösterilir. Ek model çağrısı yok; mevcut
+    kapılar korunur.
+- **Görünürlük ölçümü** (model çağrısı yok): iki etiketleyicinin de TEKRAR dediği 19 yayımlanmış
+  entry'de, tekrar edilen önceki entry yazma anında ajanın görebileceği pencerede (son 6 + ilk)
+  miydi?
+  - 8'inde hiç görünmüyordu;
+  - 6'sında kısmen görünüyordu;
+  - 5'inde tamamen görünüyordu.
+
+  Yani tekrarların yaklaşık yarısı ajanın görmediği geçmişten geliyor; A′ en çok bunları
+  azaltabilir. Görünür olanı yineleyen tekrarlar (5/19) A′ ile çözülmez. Pencere yaklaşık
+  hesaplandı: ajanın o başlığı gerçekten okuduğu ve seçimin tam kuralı doğrulanmadı.
+
+- **Önceden sabitlenen sınama** (5 Ekim penceresinden sonra; Astra önerisi):
+  1. Ucuz eleme. Mevcut 120 metin ve adaydan önceki geçmiş kullanılır.
+     - Yayımlanmış TEKRAR'ların en az %50'si yakalanmalı.
+     - YENI susturma en fazla %5, KISMI koruma en az %90 olmalı.
+  2. Kör doğrulama. Ayrı başlıklardan 60 YENI, 30 TEKRAR ve 30 KISMI; ayar için kullanılmaz.
+     - TEKRAR en az 15/30 yakalanmalı, KISMI en az 27/30 korunmalı, YENI'de 0/60 yanlış susturma.
+  3. Gerçek koşu deneyi: 24 ayrık bağlam × (mevcut / A′) × 2 tekrar. Aynı persona, kaynak,
+     zaman ve başlangıç veritabanı.
+     - Kapıdan geçen TEKRAR/koşu en az %30 azalmalı.
+     - Kabul edilen YENI+KISMI/koşu en az %95 korunmalı; token maliyeti bu katkılar için artmamalı.
+
+  Bütçe yaklaşık 336 temel Codex çağrısı, onarımlarla üst sınır ~528. Bir aşama başarısızsa
+  durulur. Ret oranı tek başına başarı sayılmaz.
+
+- **5 Ekim'den önce yapılabilecekler:** protokol, etiket uzlaştırması (iki etiketleyicinin
+  ayrıştığı 8 metin), zaman sızıntısız fixture ve bağlam bütçesi. Model çağrısı ve davranış
+  değişikliği yok.

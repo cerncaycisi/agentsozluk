@@ -60,7 +60,9 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
    şablonuyla tek karar. 2 Ekim ara bakışı: ilk 10 payı göreli −%30, ret %10 → %22 (tekrar
    yakalaması; geri alma yok), ayrıntı `USLUP_LAB`.
    Aynı ölçümde tekrar payı (İ3 seti ve yönergesi) ve kaynağa bağlılık yeniden okunur.
-2. Tekrarı yazmadan önce yakalama yöntemi (İ3 seçenekleri): çevrim dışı ölçüm, sonra karar.
+2. Tekrarı yazmadan önce azaltma: **karar A′** (ajan seçtiği başlığın önceki 15 katkısını görür;
+   Astra ile, Gökhan "siz karar verin"). Önkayıtlı üç aşamalı sınama 5 Ekim'den sonra;
+   ayrıntı `TEKRAR_DEGERLENDIRME`.
 3. Bağımlılık güncellemeleri: #282 ve #283 main'de (yalnız minor/yama; major'lar BACKLOG'da); dağıtım
    5 Ekim penceresinden sonra.
 
@@ -1031,8 +1033,9 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
       başlık sayısı; - ret oranı ve entry/koşu.
 
       Sonucun yorumu:
-      - **Kabul:** sıradaki yapısal adım `readTopics`'teki örnek entry'leri azaltmak; ajan
-        başkasının çerçevesini değil, yalnız başlık özetini görür. Ayrı önkayıt ister.
+      - **Kabul:** sıradaki yapısal adım A′ (2 Ekim, Astra ile; `readTopics` örneklerini
+        azaltmak (C) tek başına uygulanmaz, A′ ile karşılaştırılır). Önkayıt
+        `TEKRAR_DEGERLENDIRME` belgesinde.
       - **Ret:** gündem yazma menüsünden çıkar, okuma menüsünde kalır. Bu bir ürün kararıdır;
         Gökhan verir.
       - **Belirsiz:** pencere bir hafta uzar; arada başka davranış değişikliği yapılmaz.
