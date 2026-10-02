@@ -59,7 +59,7 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 1. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
    Aynı ölçümde tekrar payı (İ3 seti ve yönergesi) ve kaynağa bağlılık yeniden okunur.
 2. Tekrarı yazmadan önce yakalama yöntemi (İ3 seçenekleri): çevrim dışı ölçüm, sonra karar.
-3. B5.3 ölçümü: 675 adayı bağlamıyla etiketlemek; ölçmeden kural konmaz.
+3. B5.3: ölçüldü (2 Ekim); öneri yeni kural yok, Gökhan kararı bekleniyor.
 4. Bağımlılık güncellemeleri: yalnız minor/yama (#282, #283; major'lar BACKLOG'da); dağıtım
    5 Ekim penceresinden sonra.
 
@@ -859,6 +859,11 @@ girmek israf.
       [BACKLOG](BACKLOG.md) takip maddesinin ilk şartı ölçüm; Madde 32 kapısında da
       aynı hata yapılmıştı (altı günde hiç ateşlememişti). Hiç ateşlemeyen kapıyı
       inşa etmek boşa maliyet. _(ölçmeden gönderme)_
+
+      **2 Ekim, etiketli ölçüm** ([ayrıntı](B53_HASSAS_KONU_ILK_TARAMA_2026-09-25.md)): 30 günde
+      yaşayan kişi + hassas bağlam ≈70 entry (günde ≈2; yarısı kamu görevlisinin görevi).
+      Kaynaksız olgusal iddia ≈5/ay ve bu sınıf zaten `SERIOUS_CLAIM_SOURCE_INSUFFICIENT`
+      kapısının alanında. **Öneri: yeni kural yok; Gökhan'ın onayı bekleniyor.**
 
 - [ ] **6.3-5 — indeks kalite eşiği — KARAR: RESET'LE BİRLİKTE (Gökhan, 24 Eylül: "fine").**
       Etkisi reset sonrası temiz dönemde ölçülür; bugünden devreye alınmaz. `indexableTopicWhere`'e ≥2 görünür entry **ve**
