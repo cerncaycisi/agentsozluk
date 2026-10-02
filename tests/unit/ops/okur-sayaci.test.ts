@@ -120,6 +120,8 @@ for a in "$@"; do [[ "$onceki" == "--since" ]] && since="$a"; onceki="$a"; done
 echo "$since" >> "$SAHTE_DIZIN/since.log"
 [[ -n "\${SAHTE_HATA:-}" ]] && exit 1
 [[ -n "\${SAHTE_SESSIZ:-}" ]] && exec sleep "$SAHTE_SESSIZ"
+# stdout'u devralan torun süreç bırakıp çık.
+[[ -n "\${SAHTE_TORUN:-}" ]] && { sleep "$SAHTE_TORUN" & exit 0; }
 cat "$SAHTE_DIZIN/kayit.log"
 `,
   );
@@ -385,5 +387,44 @@ describe("çerezsiz okur sayacı", () => {
     expect(sonuc.status).toBe(1);
     expect(sonuc.stderr).toContain("kayıt okunamadı");
     expect(Date.now() - bas).toBeLessThan(10_000);
+  });
+
+  it("stdout'u tutan torun süreç de süre sınırında kesilir (Astra, 3. tur)", () => {
+    const bas = Date.now();
+    const sonuc = calistir(null, T0, "topla", { SAHTE_TORUN: "20", SAYAC_OKUMA_SINIRI_SN: "1" });
+    expect(sonuc.status).toBe(1);
+    expect(sonuc.stderr).toContain("kayıt okunamadı");
+    expect(Date.now() - bas).toBeLessThan(10_000);
+  });
+
+  it("gece yarısı örtüşmesinde sayılan önceki gün de kısmi işaretlenir (Astra, 3. tur)", () => {
+    const simdi = Date.UTC(2026, 9, 2, 0, 0, 30) / 1000;
+    const onceki = Date.UTC(2026, 8, 30, 23, 59, 45) / 1000;
+    calistir([satir({ ts: onceki }), satir({ ts: simdi - 10 })], simdi);
+    expect(gun("2026-09-30").kismi).toBe(1);
+    expect(gun("2026-09-30").sayac.sayfa?.insan).toBe(1);
+  });
+
+  it("eski şemalı veritabanı veriyi koruyarak yükseltilir (Astra, 3. tur)", () => {
+    mkdirSync(path.join(dizin, "veri"), { recursive: true });
+    const kur = spawnSync(
+      "python3",
+      [
+        "-c",
+        `import sqlite3,sys
+db=sqlite3.connect(sys.argv[1])
+db.executescript("""CREATE TABLE durum (anahtar TEXT PRIMARY KEY, deger TEXT NOT NULL);
+CREATE TABLE sayac (gun TEXT NOT NULL, alan TEXT NOT NULL, anahtar TEXT NOT NULL, adet INTEGER NOT NULL, PRIMARY KEY (gun, alan, anahtar));
+CREATE TABLE gun (gun TEXT PRIMARY KEY, ilk REAL, son REAL, bosluk INTEGER NOT NULL DEFAULT 0);
+INSERT INTO sayac VALUES ('2026-10-02','sayfa','insan',5);""")
+db.commit()`,
+        path.join(dizin, "veri", "sayac.db"),
+      ],
+      { encoding: "utf8" },
+    );
+    expect(kur.status).toBe(0);
+    expect(calistir(null, T0, "rapor 1").status).toBe(0);
+    expect(gun().sayac.sayfa?.insan).toBe(5);
+    expect(gun().kismi).toBe(0);
   });
 });

@@ -37,6 +37,7 @@ import ipaddress
 import json
 import os
 import re
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -247,6 +248,10 @@ def baglan() -> sqlite3.Connection:
     os.makedirs(DIZIN, exist_ok=True)
     db = sqlite3.connect(os.path.join(DIZIN, "sayac.db"), timeout=30, isolation_level=None)
     db.executescript(SEMA)
+    # Şema yükseltmesi: sonradan eklenen sütunlar veriyi koruyarak eklenir.
+    sutunlar = {r[1] for r in db.execute("PRAGMA table_info(gun)")}
+    if "kismi" not in sutunlar:
+        db.execute("ALTER TABLE gun ADD COLUMN kismi INTEGER NOT NULL DEFAULT 0")
     return db
 
 
@@ -280,13 +285,21 @@ def kayitlari_isle(bas: float, imlec: float | None, simdi: float, top: Toplayici
         [*COMPOSE, "logs", "--no-log-prefix", "--no-color", "--since", since, "caddy"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
+        start_new_session=True,  # zaman aşımında bütün grup kesilir
         text=True,
         encoding="utf-8",
         errors="replace",
     )
     # Bekçi satır gelmesinden bağımsızdır: sessiz kalan alt süreç de kesilir
     # (Astra, 2 Ekim).
-    bekci = threading.Timer(OKUMA_SINIRI_SN, surec.kill)
+    def grubu_kes() -> None:
+        # stdout'u devralmış torun süreçler de kesilsin (Astra, 3. tur).
+        try:
+            os.killpg(surec.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+    bekci = threading.Timer(OKUMA_SINIRI_SN, grubu_kes)
     bekci.daemon = True
     bekci.start()
     ilk = son = None
@@ -317,8 +330,8 @@ def kayitlari_isle(bas: float, imlec: float | None, simdi: float, top: Toplayici
     finally:
         bekci.cancel()
         if surec.poll() is None:
-            surec.kill()
-            surec.wait()
+            grubu_kes()
+            surec.wait(timeout=30)
     top.ilk_ts = ilk
     return son
 
@@ -350,7 +363,10 @@ def topla() -> int:
     # pencerenin başladığı gün (ve ilk kayda kadar olanlar) kısmi sayılır.
     kismi_gunler: list[str] = []
     if imlec is None:
-        kismi_gunler = gunler_arasi(gun_adi(bas + ORTUSME_SN), gun_adi(top.ilk_ts or simdi))
+        # Örtüşme penceresinde gece yarısından önceki kayıt da sayılmış olabilir
+        # (Astra, 3. tur): aralık sayılan en erken günden başlar.
+        uclar = sorted([bas, top.ilk_ts if top.ilk_ts is not None else simdi])
+        kismi_gunler = gunler_arasi(gun_adi(uclar[0]), gun_adi(uclar[1]))
     ilk = top.ilk_ts
     onceki_kimlik = durum_al(db, "caddy")
     if imlec is not None:
