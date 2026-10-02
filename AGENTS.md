@@ -113,7 +113,8 @@ Milestone 2 verification is `pnpm verify:m2`. Keep the M1 regression gate inside
 ## Attempt ledger
 
 - Read `docs/ATTEMPT_LOG.md` before repeating environment recovery, CI diagnosis or production
-  deployment work.
+  deployment work. Older entries (July–August 2026) live in
+  `docs/ATTEMPT_LOG_ARSIVI_2026-07-08.md`; closed plan items live in `docs/PLAN_ARSIVI_2026-10.md`.
 - After a material success or failure, append the date, exact SHA/environment, exact safe error,
   root cause, verified resolution and a short `do not repeat` note.
 - Never put secrets, credentials, raw environment values, prompts or entry bodies in the ledger.
