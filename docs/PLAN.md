@@ -1938,7 +1938,7 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
 
       Bir ay fark edilmeden tek hatla çalışılmasının tekrar etmemesi için gerekli. Ajan davranışına
       dokunmaz.
-      **2 Ekim, yerelde:** `deploy/alarm/canlilik-alarmi.sh` içinde ayrı alt süreçte koşan bir
+      **2 Ekim, main'de (#274, `a8c830c`; Astra 5. turda KOD GO), üretimde değil:** `deploy/alarm/canlilik-alarmi.sh` içinde ayrı alt süreçte koşan bir
       sağlık özeti eklendi. Dört hâl adıyla bildiriliyor: `codex`, `hat`, `kapasite`, `ret`.
       Tek başına `ret` günde bir kez ve düşük öncelikle gider; ötekiler 6 saatte bir tekrarlanır.
       Sorgu salt okunur; gerçek boyutlu kopyada 78 ms sürdü. Birimin süre sınırı 3 dakikaya
