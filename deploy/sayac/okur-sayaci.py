@@ -40,6 +40,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlsplit
@@ -58,7 +59,7 @@ ILK_PENCERE_SN = 24 * 3600  # imleç yokken geriye bakılan süre
 ORTUSME_SN = 60  # --since saniye hassasiyetli; imleçten bu kadar geriden oku
 BOSLUK_SN = 15 * 60
 SAKLAMA_GUN = 400
-OKUMA_SINIRI_SN = 150
+OKUMA_SINIRI_SN = float(os.environ.get("SAYAC_OKUMA_SINIRI_SN") or 150)
 
 BOT_AILELERI = [
     ("google", r"googlebot|google-inspectiontool|storebot-google|googleother|google-extended|adsbot-google|mediapartners-google|apis-google"),
@@ -83,10 +84,18 @@ SAYFA_TURLERI = [
     ("hakkinda", re.compile(r"^/(hakkinda|iletisim|gizlilik|kurallar|kosullar|anayasa)(/|$)")),
     ("hesap", re.compile(r"^/(giris|kayit|ayarlar|sifre|cikis|mesaj|bildirim|favoriler|moderasyon)(/|$)")),
 ]
-# Yayımlanmış başlık: `/baslik/<slug>--<publicId>`. Yalnız sayı saklanır; slug
-# açılmamış başlıkta serbest metin (e-posta, arama) olabilir (Astra, 2 Ekim).
-BASLIK_KIMLIGI = re.compile(r"^/baslik/[^/]*--([1-9][0-9]{0,15})/?$")
-ALAN_ADI = re.compile(r"^(?=.{1,100}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$")
+# Yayımlanmış başlık: `/baslik/<slug>--<publicId>`. Ayrıştırma uygulamadakiyle
+# (`parseTopicRouteReference`) birebir: boş olmayan slug, `[1-9]\d*` ve
+# `Number.isSafeInteger`. Uygulama bu biçimde yalnız VAR OLAN başlığa 200 verir
+# (yanlış slug 308, olmayan kimlik 404); öteki her yol açılmamış başlık metnidir
+# ve serbest metin (e-posta, telefon) taşıyabilir: tek kategoriye iner.
+BASLIK_KIMLIGI = re.compile(r"^/baslik/(.+)--([1-9][0-9]*)$")
+GUVENLI_TAMSAYI = 2**53 - 1
+# Alan adı: son etiket harfle başlayan bir TLD olmalı. Sayısal ya da onaltılık
+# son etiket (`127.1`, `0x7f.0.0.1`, `192.168.001.001`) IP yazımıdır (Astra, 2 Ekim).
+ALAN_ADI = re.compile(
+    r"^(?=.{1,100}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$"
+)
 
 SEMA = """
 CREATE TABLE IF NOT EXISTS durum (anahtar TEXT PRIMARY KEY, deger TEXT NOT NULL);
@@ -95,7 +104,8 @@ CREATE TABLE IF NOT EXISTS sayac (
   PRIMARY KEY (gun, alan, anahtar)
 );
 CREATE TABLE IF NOT EXISTS gun (
-  gun TEXT PRIMARY KEY, ilk REAL, son REAL, bosluk INTEGER NOT NULL DEFAULT 0
+  gun TEXT PRIMARY KEY, ilk REAL, son REAL, bosluk INTEGER NOT NULL DEFAULT 0,
+  kismi INTEGER NOT NULL DEFAULT 0
 );
 """
 
@@ -140,6 +150,9 @@ def yonlendiren_sinifi(ref: str) -> str:
         return "(ip)"
     except ValueError:
         pass
+    # inet_aton yazımları: 1–4 parça, her biri ondalık, sekizlik ya da 0x onaltılık.
+    if re.fullmatch(r"(?:0x[0-9a-f]*|[0-9]+)(?:\.(?:0x[0-9a-f]*|[0-9]+)){0,3}\.?", alan):
+        return "(ip)"
     if alan == SITE or alan.endswith("." + SITE):
         return "(site ici)"
     if not ALAN_ADI.match(alan):
@@ -221,11 +234,12 @@ class Toplayici:
             return
         self.artir(gun, "sayfa", "insan")
         self.artir(gun, "insan_sayfa_turu", sayfa_turu(yol))
-        kimlik = BASLIK_KIMLIGI.match(yol)
-        if kimlik:
-            self.artir(gun, "insan_baslik", kimlik.group(1))
-        elif yol.startswith("/baslik/"):
-            self.artir(gun, "insan_baslik", "(acilmamis)")
+        if yol.startswith("/baslik/"):
+            kimlik = BASLIK_KIMLIGI.match(yol)
+            if kimlik and int(kimlik.group(2)) <= GUVENLI_TAMSAYI:
+                self.artir(gun, "insan_baslik", kimlik.group(2))
+            else:
+                self.artir(gun, "insan_baslik", "(acilmamis)")
         self.artir(gun, "yonlendiren", yonlendiren_sinifi(" ".join(basliklar(h, "Referer"))))
 
 
@@ -270,13 +284,15 @@ def kayitlari_isle(bas: float, imlec: float | None, simdi: float, top: Toplayici
         encoding="utf-8",
         errors="replace",
     )
-    bitis = time.monotonic() + OKUMA_SINIRI_SN
+    # Bekçi satır gelmesinden bağımsızdır: sessiz kalan alt süreç de kesilir
+    # (Astra, 2 Ekim).
+    bekci = threading.Timer(OKUMA_SINIRI_SN, surec.kill)
+    bekci.daemon = True
+    bekci.start()
     ilk = son = None
     assert surec.stdout is not None
     try:
         for ham in surec.stdout:
-            if time.monotonic() > bitis:
-                raise TimeoutError
             try:
                 satir = json.loads(ham)
             except ValueError:
@@ -293,9 +309,13 @@ def kayitlari_isle(bas: float, imlec: float | None, simdi: float, top: Toplayici
                 top.artir(gun_adi(ts), "istek", "islenemeyen")
             ilk = ts if ilk is None else min(ilk, ts)
             son = ts if son is None else max(son, ts)
-        if surec.wait(timeout=30) != 0:
+        kod = surec.wait(timeout=30)
+        if not bekci.is_alive():
+            raise TimeoutError
+        if kod != 0:
             raise RuntimeError
     finally:
+        bekci.cancel()
         if surec.poll() is None:
             surec.kill()
             surec.wait()
@@ -326,6 +346,11 @@ def topla() -> int:
         return 1
 
     bosluk_gunleri: list[str] = []
+    # İmleçsiz ilk koşu: kaydın elde kalan kısmı günün başını kapsamayabilir;
+    # pencerenin başladığı gün (ve ilk kayda kadar olanlar) kısmi sayılır.
+    kismi_gunler: list[str] = []
+    if imlec is None:
+        kismi_gunler = gunler_arasi(gun_adi(bas + ORTUSME_SN), gun_adi(top.ilk_ts or simdi))
     ilk = top.ilk_ts
     onceki_kimlik = durum_al(db, "caddy")
     if imlec is not None:
@@ -350,6 +375,11 @@ def topla() -> int:
                 " ilk = min(coalesce(ilk, excluded.ilk), excluded.ilk),"
                 " son = max(coalesce(son, excluded.son), excluded.son)",
                 (gun, a, b),
+            )
+        for gun in kismi_gunler:
+            db.execute(
+                "INSERT INTO gun (gun, kismi) VALUES (?, 1) ON CONFLICT (gun) DO UPDATE SET kismi = 1",
+                (gun,),
             )
         for gun in bosluk_gunleri:
             db.execute(
@@ -383,7 +413,7 @@ def rapor(gun_sayisi: int) -> int:
     print("gün        insan  bot   bot payı  başlık  ana  arama  dış yönl.  not")
     for i in range(gun_sayisi - 1, -1, -1):
         ad = (bugun - timedelta(days=i)).isoformat()
-        bilgi = db.execute("SELECT ilk, bosluk FROM gun WHERE gun = ?", (ad,)).fetchone()
+        bilgi = db.execute("SELECT kismi, bosluk FROM gun WHERE gun = ?", (ad,)).fetchone()
         sayfa = al(ad, "sayfa")
         if not bilgi and not sayfa:
             print(f"{ad}  (veri yok)")
@@ -395,7 +425,7 @@ def rapor(gun_sayisi: int) -> int:
         notlar = []
         if bilgi and bilgi[1]:
             notlar.append("boşluk")
-        if bilgi and bilgi[0] and datetime.fromtimestamp(bilgi[0], timezone.utc).hour > 0:
+        if bilgi and bilgi[0]:
             notlar.append("kısmi")
         print(
             f"{ad}  {insan:5d}  {bot:5d}  {pay:>8}  {turler.get('baslik', 0):6d}  "
@@ -421,8 +451,8 @@ def gun_dok(ad: str) -> int:
         "SELECT alan, anahtar, adet FROM sayac WHERE gun = ? ORDER BY alan, anahtar", (ad,)
     ):
         cikti["sayac"].setdefault(alan, {})[anahtar] = adet
-    bilgi = db.execute("SELECT ilk, son, bosluk FROM gun WHERE gun = ?", (ad,)).fetchone()
-    cikti["ilk"], cikti["son"], cikti["bosluk"] = bilgi if bilgi else (None, None, 0)
+    bilgi = db.execute("SELECT ilk, son, bosluk, kismi FROM gun WHERE gun = ?", (ad,)).fetchone()
+    cikti["ilk"], cikti["son"], cikti["bosluk"], cikti["kismi"] = bilgi if bilgi else (None, None, 0, 0)
     print(json.dumps(cikti, ensure_ascii=False, sort_keys=True))
     return 0
 

@@ -96,6 +96,7 @@ function gun(ad = "2026-10-02") {
   return JSON.parse(sonuc.stdout) as {
     sayac: Record<string, Record<string, number>>;
     bosluk: number;
+    kismi: number;
     ilk: number | null;
   };
 }
@@ -118,6 +119,7 @@ since=""; onceki=""
 for a in "$@"; do [[ "$onceki" == "--since" ]] && since="$a"; onceki="$a"; done
 echo "$since" >> "$SAHTE_DIZIN/since.log"
 [[ -n "\${SAHTE_HATA:-}" ]] && exit 1
+[[ -n "\${SAHTE_SESSIZ:-}" ]] && exec sleep "$SAHTE_SESSIZ"
 cat "$SAHTE_DIZIN/kayit.log"
 `,
   );
@@ -342,5 +344,46 @@ describe("çerezsiz okur sayacı", () => {
     expect(sonuc.status).toBe(0);
     expect(sonuc.stdout).toMatch(/2026-10-02 +1 +1 +%50/);
     expect(sonuc.stdout).toContain("(publicId): 5 1");
+  });
+
+  it("uygulamanın başlık kimliği sayılmayan sayısal yolları kimlik diye saklamaz (Astra, 2. tur)", () => {
+    calistir(
+      [
+        satir({ ts: T0 - 30, uri: "/baslik/--5551234567" }),
+        satir({ ts: T0 - 20, uri: "/baslik/kart--9999888877776666" }),
+        satir({ ts: T0 - 10, uri: "/baslik/a--b--12" }),
+      ],
+      T0,
+    );
+    const ham = readFileSync(path.join(dizin, "veri", "sayac.db")).toString("latin1");
+    for (const yasak of ["5551234567", "9999888877776666"]) expect(ham).not.toContain(yasak);
+    expect(gun().sayac.insan_baslik).toEqual({ "(acilmamis)": 2, "12": 1 });
+  });
+
+  it("alternatif IPv4 yazımlı yönlendiren alan adı sayılmaz (Astra, 2. tur)", () => {
+    calistir(
+      ["http://192.168.001.001/p", "http://127.1/", "http://0x7f.0.0.1/", "http://2130706433/"].map(
+        (referer, i) => satir({ ts: T0 - 40 + i, referer }),
+      ),
+      T0,
+    );
+    expect(gun().sayac.yonlendiren).toEqual({ "(ip)": 4 });
+  });
+
+  it("imleçsiz ilk koşunun başladığı gün kısmi işaretlenir, sonraki koşu bunu bozmaz", () => {
+    const yarim = Date.UTC(2026, 9, 2, 0, 45) / 1000;
+    calistir([satir({ ts: yarim - 900 })], yarim);
+    expect(gun().kismi).toBe(1);
+    calistir([satir({ ts: yarim + 100 })], yarim + 3600);
+    expect(gun().kismi).toBe(1);
+    expect(calistir(null, yarim + 3600, "rapor 1").stdout).toContain("kısmi");
+  });
+
+  it("sessiz kalan docker süreci süre sınırında kesilir (Astra, 2. tur)", () => {
+    const bas = Date.now();
+    const sonuc = calistir(null, T0, "topla", { SAHTE_SESSIZ: "20", SAYAC_OKUMA_SINIRI_SN: "1" });
+    expect(sonuc.status).toBe(1);
+    expect(sonuc.stderr).toContain("kayıt okunamadı");
+    expect(Date.now() - bas).toBeLessThan(10_000);
   });
 });
