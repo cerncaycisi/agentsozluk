@@ -9646,3 +9646,41 @@ false/true` yapabildi; geçici rol ve DB silindi.
   - Operatör sunucusunda `/tmp` ayrı bir aygıt (tmpfs): `git worktree move` çalışmaz,
     temizlik diske değil belleğe yer açar.
   - `/tmp/agent-sozluk-known_hosts` dağıtım betiğinin bağlantısıdır, silinmez.
+
+## 2026-10-02 — `a8c830c`: alarm sağlık özeti (#274) main'de, üretime kurulmadı
+
+- **Ne:** Canlılık alarmına salt okunur bir sağlık özeti eklendi; ayrı alt süreçte koşuyor ve
+  sonucu canlılığın çıkış kodunu etkilemiyor. Dört hâl var:
+  - `codex`: 60 dakikada en az 3 Codex hatası var, başarılı koşu yok.
+  - `hat`: etkin eşzamanlılık ayarın altında.
+  - `kapasite`: kanıt bayat ya da 3 gün içinde bayatlayacak.
+  - `ret`: son 24 saatte entry eylemlerinin %20'sinden fazlası reddedilmiş.
+
+  Birimin süre sınırı 2 dakikadan 3 dakikaya çıktı. Plandaki karşılığı 5.9 İ6.
+
+- **Neden:** Codex kotası bitince koşular yine başlıyor, çünkü `startedAt` Codex çağrısından
+  önce yazılıyor. Bu yüzden canlılık alarmı susuyordu. Aynı nedenle bir ay tek hatla çalışıldığı
+  da görülmedi.
+- **Sorgu:** Gerçek boyutlu yerel kopyada 78 ms. Son eşzamanlılık kararı uygulamadaki gibi
+  `id DESC` ile seçiliyor; karar olayları önce tür filtresiyle `MATERIALIZED` olarak alınıyor.
+- **Hakem:** Astra (`gpt-6-astra`), beş tur.
+  - 1. tur (`4bd06cc`): 4 P2 ve 1 P3.
+  - 2. tur (`41135a4`): 1 P2 ve 1 P3.
+  - 3. tur (`79468ad`): 2 P2 ve 1 P3.
+  - 4. tur (`705c0d3`): 1 P2 ve 1 P3.
+  - 5. tur (`b241835`): **KOD GO**.
+
+  Bulgular düzeldikçe bildirim durum makinesi her turda biraz daha karmaşıklaştı. 4. turdan
+  önce yapı sadeleştirildi: durum artık yalnız "son başarıyla bildirilen" ve "o zamandan beri
+  görülen" kümelerini tutuyor; mesaj bu ikisinin farkından kuruluyor. 4. turun P2'si
+  reddedildi: eski durum biçimleri yalnız bu dalda vardı ve üretime hiç kurulmamıştı. Astra bu
+  gerekçeyi çürütemedi.
+
+- **Tur bütçesi:** İş başına 2 tur sınırı aşıldı (5 tur). Sınır 4 Ekim 20:59 UTC'ye kadar
+  askıda (Gökhan, 30 Eylül).
+- **Kalan:** Üretime kurulum ayrı onay gerektiren bir mutasyon:
+  - betik `/opt/agent-sozluk/scripts/canlilik-alarmi.sh` altına, `.onceki` yedeğiyle;
+  - birim `/etc/systemd/system/agent-sozluk-alarm.service` altına;
+  - ardından `daemon-reload`.
+- **Tekrarlama:** Bildirim teslimini izleyen durum makinelerinde yama yapma; önce yalın bir
+  model kur (son başarılı teslim ve arada görülenler). Üç turluk yama döngüsü bu yüzden uzadı.
