@@ -43,8 +43,14 @@ LEASE_ILK_PENCERE_SN=900     # imleç yokken (ilk koşu) geriye bakılan süre
 LEASE_ORTUSME_SN=60          # docker tarafında imleçten bu kadar geriden oku
 LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-50}"       # sn; log 25 + kimlik 5+5 + gönderim 10
 CANLILIK_ZAMAN_ASIMI="${ALARM_CANLILIK_ZAMAN_ASIMI:-30}" # sn; docker/exec takılırsa
-# En kötü duvar saati: canlılık 30+5 + curl 20 + lease 50+5 = 110 sn; birimin
-# TimeoutStartSec=2min sınırının altında.
+# En kötü duvar saati: canlılık 30+5 + curl 20 + lease 50+5 + sağlık 40+5 = 155 sn;
+# birimin TimeoutStartSec=3min sınırının altında.
+SAGLIK_ZAMAN_ASIMI="${ALARM_SAGLIK_ZAMAN_ASIMI:-40}"     # sn; sorgu 25 + gönderim 10 + pay
+SAGLIK_CODEX_HATA_ADET="${ALARM_SAGLIK_CODEX_HATA_ADET:-3}" # 60 dk'da bu kadar Codex hatası + 0 başarı
+SAGLIK_RET_ORANI_YUZDE="${ALARM_SAGLIK_RET_ORANI_YUZDE:-20}" # 24 sa entry ret oranı eşiği
+SAGLIK_RET_ASGARI="${ALARM_SAGLIK_RET_ASGARI:-20}"           # oran bu kadar entry eyleminden azsa bakılmaz
+SAGLIK_KAPASITE_UYARI_SN="${ALARM_SAGLIK_KAPASITE_UYARI_SN:-259200}" # kanıt bayatlamadan 3 gün önce
+SAGLIK_DURUM="${DURUM}-saglik"
 LEASE_DURUM="${DURUM}-lease"
 LEASE_IMLEC="${DURUM}-lease-imlec"
 LEASE_MAKBUZ="${DURUM}-lease-kesim"
@@ -513,6 +519,213 @@ ${govde}"
   return 0
 }
 
+# ------------------------------------------------------------ sağlık özeti
+# 1 Ekim 2026 (PLAN 5.9 İ6). Canlılık "koşu alınıyor mu"yu sorar; koşu alınıp
+# boşa gidiyorsa susar. Bir ay tek hatla çalışıldı ve görülmedi; Codex kotası
+# bittiğinde koşular yine başlıyor (`startedAt` Codex'ten önce yazılır), yani
+# canlılık yeşil kalıyordu. Bu bölüm dört ayrı hâli adıyla bildirir:
+#  - codex:     son 60 dk'da Codex hataları var, başarılı koşu yok (kota ya da
+#               sağlayıcı; güvenli kod veritabanına yazılmadığı için ayrılamaz)
+#  - hat:       etkin eşzamanlılık ayarlanandan düşük (son karar olayı)
+#  - kapasite:  kapasite kanıtı bayatladı ya da 3 gün içinde bayatlayacak
+#  - ret:       son 24 sa entry eylemlerinin ret oranı eşiğin üstünde
+# Yalnız okur. Kendi alt sürecinde koşar; başarısızlığı yalnız journal'a düşer
+# (veritabanı arızasını canlılık zaten bildirir) ve çıkış kodunu etkilemez.
+saglik_sorgu() {
+  timeout --kill-after=5 "$((SAGLIK_ZAMAN_ASIMI - 15))" \
+    docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
+    exec -T db psql -X -tA -P pager=off -U agent_sozluk -d agent_sozluk 2>/dev/null <<'PSQL'
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SET LOCAL statement_timeout='15s';
+-- saglik-ozeti
+-- Son karar uygulamadaki gibi `id DESC` ile seçilir (zaman damgası geri
+-- gidebilir; Astra, 2 Ekim). Karar olayları seyrek: önce tür indeksinden
+-- hepsi alınır, sonra sıralanır; 2 M satırlık tabloda geriye tarama olmaz.
+WITH karar AS MATERIALIZED (
+  SELECT id, metadata FROM agent_runtime_events
+  WHERE "eventType" = 'runtime.concurrency.decision_changed'
+)
+SELECT 'SAGLIK'
+  || ' ' || (SELECT count(*) FROM agent_runs
+             WHERE "finishedAt" > now() - interval '60 minutes'
+               AND "runStatus" IN ('FAILED', 'TIMED_OUT') AND "errorCode" LIKE 'CODEX%')
+  || ' ' || (SELECT count(*) FROM agent_runs
+             WHERE "finishedAt" > now() - interval '60 minutes'
+               AND "runStatus" IN ('SUCCEEDED', 'PARTIAL'))
+  || ' ' || (SELECT count(*) FILTER (WHERE "actionStatus" = 'REJECTED') || ' '
+                    || count(*) FILTER (WHERE "actionStatus" = 'SUCCEEDED')
+             FROM agent_actions
+             WHERE "createdAt" > now() - interval '24 hours'
+               AND "actionType" IN ('CREATE_ENTRY', 'CREATE_TOPIC_WITH_ENTRY'))
+  || ' ' || coalesce((SELECT "codexConcurrency"::text FROM agent_global_settings
+                      WHERE id = 'global'), 'yok')
+  || ' ' || coalesce((SELECT coalesce(metadata->>'effectiveConcurrency', 'yok') || ' '
+                             || coalesce(metadata->>'configuredConcurrency', 'yok') || ' '
+                             || coalesce(metadata->>'reason', 'yok')
+                      FROM karar ORDER BY id DESC LIMIT 1), 'yok yok yok')
+  || ' ' || coalesce((SELECT round(extract(epoch FROM "staleAt" - now()))::bigint::text
+                      FROM agent_runtime_capabilities
+                      ORDER BY "measuredAt" DESC, id DESC LIMIT 1), 'yok');
+COMMIT;
+PSQL
+}
+
+# Sorun kümesi: `temiz` ya da bilinen adların virgüllü dizisi.
+SAGLIK_AD='(codex|hat|kapasite|ret)'
+SAGLIK_KUME="${SAGLIK_AD}(,${SAGLIK_AD}){0,3}"
+
+# Durum satırı: `bildirilen an gorulen`.
+#  bildirilen son BAŞARIYLA gönderilen bildirimin sorun kümesi (ya da temiz):
+#             Gökhan'ın bildiği son durum
+#  an         o gönderimin anı (hatırlatma aralığı buradan sayılır)
+#  gorulen    son başarılı gönderimden beri ölçülen bütün sorunlar (ya da -)
+# Mesaj, ölçülen küme ile `bildirilen` arasındaki farktan kurulur: düzelenler
+# `bildirilen − şimdi`, arada kaçanlar `gorulen − bildirilen − şimdi`.
+# Başarısız ya da yarıda kalan gönderim `bildirilen`i değiştirmez; bu yüzden
+# kısmi düzelme, başarısız hatırlatma ve kesilen gönderim hiçbir şey
+# kaybettirmez (Astra, 2 Ekim, üç tur). Bozuk satır `temiz 0 -` sayılır; dalın
+# birleşmeden önceki ara biçimleri üretimde hiç kurulmadığı için dönüştürülmez.
+saglik_durum_oku() { # $1 şimdi
+  local bildirilen an gorulen
+  read -r bildirilen an gorulen 2>/dev/null <"$SAGLIK_DURUM" || true
+  if [[ ! "${bildirilen:-}" =~ ^(temiz|${SAGLIK_KUME})$ ]] \
+     || [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > $1 )) \
+     || [[ ! "${gorulen:-}" =~ ^(-|${SAGLIK_KUME})$ ]]; then
+    bildirilen=temiz; an=0; gorulen=-
+  fi
+  echo "$bildirilen $an $gorulen"
+}
+
+kume_birlestir() { # virgüllü kümeleri (ya da -) birleştirir; sabit sırayla, tekrarsız
+  local ad hepsi cikti=()
+  hepsi=",$(IFS=,; echo "$*"),"
+  for ad in codex hat kapasite ret; do [[ "$hepsi" == *",$ad,"* ]] && cikti+=("$ad"); done
+  if (( ${#cikti[@]} == 0 )); then echo -; else (IFS=,; echo "${cikti[*]}"); fi
+}
+
+kume_fark() { # $1 kümesinden $2 kümesindekileri çıkarır
+  local ad cikti=()
+  for ad in codex hat kapasite ret; do
+    [[ ",$1," == *",$ad,"* && ",$2," != *",$ad,"* ]] && cikti+=("$ad")
+  done
+  if (( ${#cikti[@]} == 0 )); then echo -; else (IFS=,; echo "${cikti[*]}"); fi
+}
+
+saglik_kontrol() {
+  local cikti simdi bildirilen onceki_an gorulen etiket codex_hata basarili ret basari
+  local ayar etkin karar_ayar neden kalan sorunlar=() satirlar=() hal tekrar_sn yuzde gerek
+  local hat_bilinmiyor=0
+  cikti="$(saglik_sorgu | grep -E '^SAGLIK ' | head -1)"
+  if [[ -z "$cikti" ]]; then hata_yaz "sağlık özeti okunamadı"; return 0; fi
+  read -r etiket codex_hata basarili ret basari ayar etkin karar_ayar neden kalan <<<"$cikti"
+  local sayi='^(0|[1-9][0-9]{0,11})$' isaretli='^-?(0|[1-9][0-9]{0,11})$'
+  if [[ ! "$codex_hata" =~ $sayi || ! "$basarili" =~ $sayi || ! "$ret" =~ $sayi \
+        || ! "$basari" =~ $sayi || ! "$neden" =~ ^[A-Za-z_]{1,40}$ \
+        || ! "$kalan" =~ ^(yok|-?(0|[1-9][0-9]{0,11}))$ ]]; then
+    hata_yaz "sağlık özeti biçimi tanınmadı"; return 0
+  fi
+
+  if (( codex_hata >= SAGLIK_CODEX_HATA_ADET && basarili == 0 )); then
+    sorunlar+=(codex)
+    satirlar+=("Codex: son 60 dk ${codex_hata} koşu Codex hatasıyla bitti, başarılı koşu yok. Kota bitmiş ya da sağlayıcı arızalı olabilir.")
+  fi
+  # Hat: ayar 1 ise düşüş olamaz. Aksi hâlde yalnız mevcut ayarla yazılmış bir
+  # karar kanıttır; karar yoksa ya da başka ayarla yazılmışsa durum bilinmiyor.
+  if [[ "$ayar" =~ $sayi ]] && (( ayar <= 1 )); then
+    :
+  elif [[ "$ayar" =~ $sayi && "$etkin" =~ $sayi && "$karar_ayar" == "$ayar" ]]; then
+    if (( etkin < ayar )); then
+      sorunlar+=(hat)
+      satirlar+=("Hat: etkin eşzamanlılık ${etkin}, ayar ${ayar} (neden ${neden}).")
+    fi
+  else
+    hat_bilinmiyor=1
+  fi
+  if [[ "$kalan" == yok ]]; then
+    sorunlar+=(kapasite)
+    satirlar+=("Kapasite: ölçüm kaydı yok.")
+  elif (( kalan <= 0 )); then
+    sorunlar+=(kapasite)
+    satirlar+=("Kapasite: kanıt $(( -kalan / 86400 )) gündür bayat; yeniden ölç.")
+  elif (( kalan <= SAGLIK_KAPASITE_UYARI_SN )); then
+    sorunlar+=(kapasite)
+    satirlar+=("Kapasite: kanıt $(( kalan / 3600 )) saat içinde bayatlıyor; yeniden ölç.")
+  fi
+  # Eşik tamsayı bölmesiyle değil çarpımla karşılaştırılır: %20,8 > %20 (Astra, 2 Ekim).
+  if (( ret + basari >= SAGLIK_RET_ASGARI )) \
+     && (( ret * 100 > SAGLIK_RET_ORANI_YUZDE * (ret + basari) )); then
+    yuzde=$(( (ret * 100 + (ret + basari) / 2) / (ret + basari) ))
+    sorunlar+=(ret)
+    satirlar+=("Ret: son 24 sa entry eylemlerinin yaklaşık %${yuzde}'i reddedildi (${ret}/$(( ret + basari )), eşik %${SAGLIK_RET_ORANI_YUZDE}).")
+  fi
+
+  simdi="${ALARM_SIMDI:-$(date +%s)}"
+  read -r bildirilen onceki_an gorulen <<<"$(saglik_durum_oku "$simdi")"
+  # Bilinmeyen hat ölçümü önceki hat alarmını kapatmaz.
+  if (( hat_bilinmiyor )); then
+    hata_yaz "sağlık özeti: eşzamanlılık kararı okunamadı ya da ayarla uyuşmuyor"
+    if [[ ",$(kume_birlestir "$bildirilen" "$gorulen")," == *,hat,* ]]; then
+      sorunlar+=(hat)
+      satirlar+=("Hat: önceki ölçümde düşüktü; şu an doğrulanamıyor.")
+    fi
+  fi
+  if (( ${#sorunlar[@]} == 0 )); then hal=temiz; else hal="$(kume_birlestir "${sorunlar[@]}")"; fi
+  # Yalnız ret oranı yüksekse günde bir hatırlatma yeter; diğerleri 6 saatte bir.
+  if [[ "$hal" == ret ]]; then tekrar_sn=86400; else tekrar_sn="$SESSIZLIK_SN"; fi
+
+  local yeni_gorulen
+  # Yalnız Gökhan'ın henüz bilmediği sorunlar `gorulen`e girer.
+  yeni_gorulen="$(kume_birlestir "$gorulen" "$(kume_fark "$hal" "$bildirilen")")"
+  local baslik oncelik govde arada duzelen
+  duzelen="$(kume_fark "$bildirilen" "$hal")"
+  arada="$(kume_fark "$(kume_fark "$yeni_gorulen" "$bildirilen")" "$hal")"
+  gerek=0
+  # Bildirilmeden geçip giden sorun da bir kez söylenir.
+  if [[ "$hal" != "$bildirilen" || "$arada" != - ]]; then gerek=1
+  elif [[ "$hal" != temiz ]] && (( simdi - onceki_an > tekrar_sn )); then gerek=1; fi
+  if (( ! gerek )); then
+    if [[ "$yeni_gorulen" != "$gorulen" ]]; then
+      atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" || true
+    fi
+    return 0
+  fi
+
+  # Gönderim yarıda kalırsa görülenler kaybolmasın: önce kaydet.
+  local on_yazim=0
+  atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" && on_yazim=1
+
+  if [[ "$hal" == temiz ]]; then
+    baslik="Agent Sözlük sağlık: düzeldi"; oncelik=default
+    govde="Önceki sorun ($(kume_birlestir "$duzelen" "$arada")) artık görünmüyor."
+    [[ "$arada" != - ]] && govde="${govde}
+Arada görülen, bildirimi doğrulanamayan: ${arada}."
+  else
+    baslik="Agent Sözlük sağlık: ${hal}"; oncelik=default
+    [[ "$hal" == ret ]] && oncelik=low
+    [[ ",$hal," == *,codex,* || ",$hal," == *,hat,* ]] && oncelik=high
+    govde="$(printf '%s\n' "${satirlar[@]}")"
+    [[ "$duzelen" != - ]] && govde="${govde}
+Düzelen: ${duzelen}."
+    [[ "$arada" != - ]] && govde="${govde}
+Arada görülen, bildirimi doğrulanamayan: ${arada}."
+  fi
+  if bildir "$baslik" "$oncelik" warning "${govde}
+$(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
+    # Yazılamazsa sonraki mesaj bu sorunu "bildirimi doğrulanamayan" diye anar;
+    # gönderildiğini kanıtlayan kayıt olmadan daha fazlası söylenemez.
+    atomik_yaz "$SAGLIK_DURUM" "$hal $simdi -" || true
+  else
+    hata_yaz "sağlık bildirimi gönderilemedi"
+    # Ön kayıt başarısızsa bir kez daha dene; `bildirilen` değişmez.
+    (( on_yazim )) || atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" || true
+  fi
+  return 0
+}
+
+if [[ "${1:-}" == "--yalniz-saglik" ]]; then
+  saglik_kontrol
+  exit 0
+fi
 if [[ "${1:-}" == "--yalniz-lease" ]]; then
   lease_kontrol
   exit 0
@@ -526,4 +739,7 @@ fi
 canlilik_kontrol
 kod=$?
 timeout --kill-after=5 "$LEASE_ZAMAN_ASIMI" "$BASH" "$0" --yalniz-lease || true
+if [[ "${ALARM_SAGLIK_KAPALI:-}" != 1 ]]; then
+  timeout --kill-after=5 "$SAGLIK_ZAMAN_ASIMI" "$BASH" "$0" --yalniz-saglik || true
+fi
 exit "$kod"

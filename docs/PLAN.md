@@ -1938,6 +1938,13 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
 
       Bir ay fark edilmeden tek hatla çalışılmasının tekrar etmemesi için gerekli. Ajan davranışına
       dokunmaz.
+      **2 Ekim, yerelde:** `deploy/alarm/canlilik-alarmi.sh` içinde ayrı alt süreçte koşan bir
+      sağlık özeti eklendi. Dört hâl adıyla bildiriliyor: `codex`, `hat`, `kapasite`, `ret`.
+      Tek başına `ret` günde bir kez ve düşük öncelikle gider; ötekiler 6 saatte bir tekrarlanır.
+      Sorgu salt okunur; gerçek boyutlu kopyada 78 ms sürdü. Birimin süre sınırı 3 dakikaya
+      çıktı. Kota hatası veritabanına ayrı kodla yazılmadığı için `codex` hâli kotayı sağlayıcı
+      arızasından ayıramıyor. Üretime kurulum ayrı onay gerektiren bir işlem: betik
+      `/opt/agent-sozluk/scripts` altına, birim `/etc/systemd/system` altına kurulacak.
 
 - [ ] **İ7 — reset öncesi SEO/GEO taban ölçümü (Fable Z11).** Reset'ten önce bir kez yapılacak:
       `seo:baseline`, Search Console dışa aktarımı ve aynı 18 sorguyla GEO ölçümü. Yapılmazsa
