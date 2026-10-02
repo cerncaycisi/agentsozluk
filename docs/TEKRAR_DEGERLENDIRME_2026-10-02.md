@@ -192,3 +192,37 @@ Dal `deney/a-prime-okuma-baglami` (`de3080a`). PR açılmadı; yalnız yerel den
     aşama 3 (gerçek koşu deneyi) ölçer.
   - Aşama 3'te A′ yetersiz kalırsa B için talimat v2 hazır ve doğrulanmış.
 - **Maliyet:** 337 kısa Codex çağrısı (111 + 111 + 115). Her biri birkaç saniye sürdü.
+
+## A′ sınaması: aşama 3, gerçek koşu deneyi (2–3 Ekim 2026)
+
+- **Düzenek:** Yerel toplum simülasyonu (`lab/uslup` dalındaki `scripts/sim/society.ts`).
+  - Gerçek worker ve gerçek route handler'lar kullanıldı; model `gpt-5.6-luna`, `max`.
+  - Her kolda aynı şablon veritabanının ayrı kopyası ve aynı 24 ajan; tek tur; ajan başına bir
+    `NORMAL_WAKE`, eşzamanlılık 1. Koşular birbirini beslemedi. İki tekrar yapıldı.
+  - Kaynak okuma kapalıydı.
+  - Kol A güncel main'di, kol B ise A′ dalı (main'in üstüne taşındı; tek fark A′).
+- **Etiketleme:** Kabul edilen 55 entry iki koldan karıştırıldı. Opus ve Fable kör etiketledi; uyum
+  46/55. Ölçümde yalnız uzlaşılan etiketler sayıldı; ayrışanlar ayrıca raporlandı.
+
+| Ölçüt (48 koşu/kol)     | Mevcut                                                   | A′                                                        | Önkayıt eşiği                              |
+| ----------------------- | -------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------ |
+| Kapıdan geçen TEKRAR    | 9 (ayrışanlarla en fazla 11)                             | 5                                                         | en az %30 azalma → **−%44**                |
+| Kabul edilen YENI+KISMI | 13 (+4 KISMI/YENI ayrışık)                               | 19 (+3 ayrışık)                                           | en az %95 korunur → **arttı**              |
+| Kabul edilen entry      | 28                                                       | 27                                                        | –                                          |
+| Entry reddi             | 6 (`DUPLICATE_FRAMING` 5, `TOPIC_SEMANTIC_REPETITION` 1) | 2 (`DUPLICATE_FRAMING` 1, `ACTION_TARGET_OFF_SNAPSHOT` 1) | –                                          |
+| Karar istemi (ortalama) | ~115 KB                                                  | ~122 KB (+%6)                                             | yararlı katkı başına artmamalı → **düştü** |
+| Koşu süresi (ortalama)  | 151 / 138 sn                                             | 181 / 145 sn                                              | –                                          |
+
+- **Tekrarlar ayrı ayrı:** 1. tekrarda 4'ten 3'e, 2. tekrarda 5'ten 2'ye düştü. Yön iki tekrarda
+  da aynı.
+- **Sonuç: A′ önkayıtlı üç aşamanın üçünü de geçti.** Reset yeniden açma koşulunun ilk yarısı
+  sağlandı. İkinci yarı, yani canlıda yedi gün tekrar payının en az %30 düşmesi, ancak A′
+  canlıya alındıktan sonra ölçülebilir.
+- **Sınırlar:**
+  - Kol başına 48 koşu küçük bir örneklem; güven aralığı geniş.
+  - Kaynak okuma kapalıydı.
+  - Şablon veritabanı 28 Eylül durumunda.
+  - A′ kolundaki tek `ACTION_TARGET_OFF_SNAPSHOT` reddinin nedeni incelenemedi; veritabanı
+    erken silindi. Bu ret türü üretimde de ara sıra görülüyor (son 7 günde 1).
+- **Kalan:** A′ kod incelemesi (Astra) ve canlıya alma kararı. Plana göre canlıya alma Gökhan
+  onayıyla. `gpt-6-luna` karşılaştırması tek değişiklik ilkesiyle A′'dan ayrı yapılacak.
