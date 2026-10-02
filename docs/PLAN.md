@@ -41,7 +41,7 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 Bu bölüm en fazla 30 satırdır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; 27 Eylül–1
 Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 
-- **Üretim:** `99ff578` (30 Eylül; operatör yönetici komutu). Talimat v45 (`4c14898dc61a`),
+- **Üretim:** `96f780d` (2 Ekim; ana sayfa başlığı, alarm sağlık özeti kuruldu). Talimat v45 (`4c14898dc61a`),
   kapasite `HEALTHY` ve etkin eşzamanlılık 2. Kapasite kanıtı en geç 14 Ekim'de yenilenmeli;
   kapasite yönetimi Claude'da (Gökhan, 1 Ekim).
 - **Ölçüm penceresi:** takip dönüşümü 28 Eylül'de canlıya çıktı, yedi günlük pencere ~5 Ekim
@@ -56,12 +56,11 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 
 **Sıradaki iş, sırayla:**
 
-1. Alarm raporuna kota beklemesini, etkin hat sayısını ve kapasite kanıtının yaşını eklemek
-   (5.9 İ6). Ajan davranışına dokunmadığı için ölçüm penceresi sürerken yapılabilir.
-2. Ret oranını sağlık metriği yapmak (5.9 İ5), canlı tekrarlardan çevrim dışı bir
+1. Ret oranını baz raporuna eklemek (5.9 İ5; alarmda var, son 24 sa %19), canlı tekrarlardan çevrim dışı bir
    değerlendirme seti çıkarmak (5.9 İ3) ve okur değeri taban ölçümü (5.9 Z1).
-3. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
-4. B5.3 ölçümü: 675 adayı bağlamıyla etiketlemek; ölçmeden kural konmaz.
+2. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
+3. B5.3 ölçümü: 675 adayı bağlamıyla etiketlemek; ölçmeden kural konmaz.
+4. Çerezsiz sunucu tarafı sayım (5.9 Z6, Gökhan kabul etti): toplu ve kişisel veri içermeyen sayaç.
 5. Bağımlılık güncellemeleri #187 ve #211: test, Astra ve pencere bittikten sonra dağıtım.
 
 **1 Ekim kararları (5.9):** reset 5 Ekim sonucuna bağlandı; okur değeri ölçütü denenecek; ana
@@ -1938,13 +1937,12 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
 
       Bir ay fark edilmeden tek hatla çalışılmasının tekrar etmemesi için gerekli. Ajan davranışına
       dokunmaz.
-      **2 Ekim, main'de (#274, `a8c830c`; Astra 5. turda KOD GO), üretimde değil:** `deploy/alarm/canlilik-alarmi.sh` içinde ayrı alt süreçte koşan bir
+      **2 Ekim, canlıda (#274; `96f780d` ile kuruldu, Astra 5. turda KOD GO):** `deploy/alarm/canlilik-alarmi.sh` içinde ayrı alt süreçte koşan bir
       sağlık özeti eklendi. Dört hâl adıyla bildiriliyor: `codex`, `hat`, `kapasite`, `ret`.
       Tek başına `ret` günde bir kez ve düşük öncelikle gider; ötekiler 6 saatte bir tekrarlanır.
       Sorgu salt okunur; gerçek boyutlu kopyada 78 ms sürdü. Birimin süre sınırı 3 dakikaya
       çıktı. Kota hatası veritabanına ayrı kodla yazılmadığı için `codex` hâli kotayı sağlayıcı
-      arızasından ayıramıyor. Üretime kurulum ayrı onay gerektiren bir işlem: betik
-      `/opt/agent-sozluk/scripts` altına, birim `/etc/systemd/system` altına kurulacak.
+      arızasından ayıramıyor. Gökhan'ın 2 Ekim onayıyla kuruldu; ilk koşu temiz.
 
 - [ ] **İ7 — reset öncesi SEO/GEO taban ölçümü (Fable Z11).** Reset'ten önce bir kez yapılacak:
       `seo:baseline`, Search Console dışa aktarımı ve aynı 18 sorguyla GEO ölçümü. Yapılmazsa

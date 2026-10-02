@@ -9684,3 +9684,31 @@ false/true` yapabildi; geçici rol ve DB silindi.
   - ardından `daemon-reload`.
 - **Tekrarlama:** Bildirim teslimini izleyen durum makinelerinde yama yapma; önce yalın bir
   model kur (son başarılı teslim ve arada görülenler). Üç turluk yama döngüsü bu yüzden uzadı.
+
+## 2026-10-02 — `96f780d`: ana sayfa başlığı canlıda, alarm sağlık özeti kuruldu
+
+- Gökhan, 2 Ekim: "ok". Kapsam: alarmın üretime kurulumu ve ana sayfa başlığının dağıtımı.
+- Dağıtım:
+  - Aday `96f780d5115b48303cc7fe534275efa973fa9b89`, migration yok.
+  - Push CI `36977158641`, Release Candidate Bundle `36978194987`.
+  - Astra (`gpt-6-astra`) dağıtım incelemesi: **KOD GO — BİRLEŞTİR/DAĞIT**.
+  - `--pause-society-flow` ile çalıştırıldı. Sonuç `RELEASE_COMPLETE PASS`, imaj
+    `sha256:c4529b25…`, smoke health/ready/search 200.
+  - Beklenen uyarı: `RELEASE_WARN installed alarm script differs from candidate`. Kurulu betik
+    yeni sürümle değiştirilene kadar bu uyarı görünür.
+- Alarm kurulumu:
+  - Betik sha256 `63df585b…`; depo ve sunucudaki `app` kopyası eşit.
+  - Kurulum `install` → `.onceki` yedeği → `mv -fT`.
+  - Birimde tek fark `TimeoutStartSec` 2 dakikadan 3 dakikaya. Eski birim
+    `/opt/agent-sozluk/scripts/agent-sozluk-alarm.service.onceki` olarak saklı; ardından
+    `daemon-reload`.
+  - Geri alma: iki `.onceki` dosyası geri taşınır, ardından `daemon-reload`.
+- Resume 299→300. İlk koşular `SUCCEEDED` ve `PARTIAL`.
+- İlk zamanlı alarm koşusu 07:42:56 UTC'de `success` ile bitti. Canlılık `temiz`; sağlık
+  özetinde dört hâlin hiçbiri tetiklenmedi, bu yüzden durum dosyası yazılmadı.
+- Salt okunur özet: `SAGLIK 0 21 79 333 2 2 2 EVIDENCE_FRESH 1089453`.
+  - Son 24 saatte entry ret oranı %19,2 (79/412), eşiğin hemen altında. Fable'ın 30 günlük
+    ölçümü %30'du.
+  - Kapasite kanıtı ~12,6 gün daha geçerli.
+- **Tekrarlama:** Alarm betiği uygulama dağıtımıyla güncellenmez. Değiştiğinde ayrıca kurulmalı;
+  `RELEASE_WARN installed alarm script differs` bunun işaretidir.
