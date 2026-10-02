@@ -1,14 +1,5 @@
 import { spawnSync } from "node:child_process";
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -16,13 +7,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 /*
   Çerezsiz okur sayacı (2 Ekim 2026, PLAN 5.9 Z6). Betik gerçekten çalıştırılır;
   `docker` PATH'teki sahteyle değiştirilir. Sahte docker yalnız doğru compose
-  dosyası ve `logs ... caddy` çağrısına `SAHTE_KAYIT` dosyasını döndürür ve
-  `--since` değerini kaydeder.
+  dosyasıyla `ps -a -q caddy` (SAHTE_KIMLIK) ve `logs ... caddy` (kayit.log)
+  çağrılarına cevap verir ve `--since` değerini kaydeder. Sayaçlar SQLite'ta;
+  test `gun` komutunun JSON çıktısını okur.
 */
 
 const BETIK = path.resolve("deploy/sayac/okur-sayaci.py");
 const COMPOSE = "/opt/agent-sozluk/runtime/compose.production.yaml";
 const T0 = Date.UTC(2026, 9, 2, 10, 0, 0) / 1000; // 2 Ekim 10:00 UTC
+const KIMLIK = "aaaaaaaaaaaa1111";
 
 const CHROME =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36";
@@ -38,22 +31,25 @@ interface Istek {
   status?: number;
   method?: string;
   host?: string;
-  ct?: string;
+  ct?: string | null;
   referer?: string;
   rsc?: boolean;
   ip?: string;
-  secFetch?: boolean; // varsayılan: User-Agent Mozilla ise var
+  tarayici?: boolean; // Sec-Fetch-Mode/Dest; varsayılan: UA Mozilla ise var
+  dest?: string;
+  purpose?: string;
 }
 
 function satir(i: Istek): string {
-  const headers: Record<string, string[]> = {
-    "User-Agent": [i.ua ?? CHROME],
-    Cookie: ["REDACTED"],
-  };
-  if (i.referer) headers.Referer = [i.referer];
+  const ua = i.ua ?? CHROME;
+  const headers: Record<string, string[]> = { "User-Agent": [ua], Cookie: ["REDACTED"] };
+  if (i.referer !== undefined) headers.Referer = [i.referer];
   if (i.rsc) headers.Rsc = ["1"];
-  if (i.secFetch ?? (i.ua ?? CHROME).startsWith("Mozilla/"))
+  if (i.tarayici ?? ua.startsWith("Mozilla/")) {
     headers["Sec-Fetch-Mode"] = ["navigate"];
+    headers["Sec-Fetch-Dest"] = [i.dest ?? "document"];
+  }
+  if (i.purpose) headers["Sec-Purpose"] = [i.purpose];
   return JSON.stringify({
     level: "info",
     ts: i.ts,
@@ -68,17 +64,17 @@ function satir(i: Istek): string {
       headers,
     },
     status: i.status ?? 200,
-    resp_headers: { "Content-Type": [i.ct ?? "text/html; charset=utf-8"] },
+    resp_headers: i.ct === null ? {} : { "Content-Type": [i.ct ?? "text/html; charset=utf-8"] },
   });
 }
 
 function calistir(
-  satirlar: string[],
+  satirlar: string[] | null,
   simdi: number,
   komut = "topla",
   ek: Record<string, string> = {},
 ) {
-  writeFileSync(path.join(dizin, "kayit.log"), satirlar.join("\n") + "\n");
+  if (satirlar) writeFileSync(path.join(dizin, "kayit.log"), satirlar.join("\n") + "\n");
   return spawnSync("python3", [BETIK, ...komut.split(" ")], {
     encoding: "utf8",
     timeout: 30_000,
@@ -88,23 +84,36 @@ function calistir(
       SAYAC_DIZINI: path.join(dizin, "veri"),
       SAYAC_SIMDI: String(simdi),
       SAHTE_DIZIN: dizin,
+      SAHTE_KIMLIK: KIMLIK,
       ...ek,
     },
   });
 }
 
-function gun(ad: string) {
-  return JSON.parse(readFileSync(path.join(dizin, "veri", `${ad}.json`), "utf8"));
+function gun(ad = "2026-10-02") {
+  const sonuc = calistir(null, T0, `gun ${ad}`);
+  expect(sonuc.status).toBe(0);
+  return JSON.parse(sonuc.stdout) as {
+    sayac: Record<string, Record<string, number>>;
+    bosluk: number;
+    ilk: number | null;
+  };
 }
 
 beforeEach(() => {
   dizin = mkdtempSync(path.join(tmpdir(), "okur-sayaci-"));
   mkdirSync(path.join(dizin, "bin"));
+  writeFileSync(path.join(dizin, "kayit.log"), "");
   writeFileSync(
     path.join(dizin, "bin", "docker"),
     `#!/usr/bin/env bash
 tum=" $* "
-[[ "$tum" == *" -f ${COMPOSE} "* && "$tum" == *" logs "* && "$*" == *" caddy" ]] || exit 97
+[[ "$tum" == *" -f ${COMPOSE} "* && "$*" == *" caddy" ]] || exit 97
+if [[ "$tum" == *" ps -a -q "* ]]; then
+  [[ -n "\${SAHTE_PS_HATA:-}" ]] && exit 1
+  echo "$SAHTE_KIMLIK"; exit 0
+fi
+[[ "$tum" == *" logs "* ]] || exit 98
 since=""; onceki=""
 for a in "$@"; do [[ "$onceki" == "--since" ]] && since="$a"; onceki="$a"; done
 echo "$since" >> "$SAHTE_DIZIN/since.log"
@@ -122,14 +131,18 @@ describe("çerezsiz okur sayacı", () => {
     const sonuc = calistir(
       [
         satir({ ts: T0 - 300, uri: "/" }),
-        satir({ ts: T0 - 290, uri: "/baslik/yaya-guvenligi", referer: "https://www.google.com/" }),
+        satir({
+          ts: T0 - 290,
+          uri: "/baslik/yaya-guvenligi--6526",
+          referer: "https://www.google.com/",
+        }),
         satir({
           ts: T0 - 280,
-          uri: "/baslik/yaya-guvenligi?page=2",
+          uri: "/baslik/yaya-guvenligi--6526?page=2",
           referer: "https://agentsozluk.com/",
         }),
         satir({ ts: T0 - 270, uri: "/ara?q=gizli+arama+terimi" }),
-        satir({ ts: T0 - 260, uri: "/baslik/yaya-guvenligi", ua: GOOGLEBOT }),
+        satir({ ts: T0 - 260, uri: "/baslik/yaya-guvenligi--6526", ua: GOOGLEBOT }),
         satir({ ts: T0 - 250, uri: "/entry/12", ua: GPTBOT }),
         satir({ ts: T0 - 240, uri: "/sitemap.xml", ua: GOOGLEBOT, ct: "application/xml" }),
         satir({ ts: T0 - 230, uri: "/baslik/x?_rsc=abc", rsc: true }),
@@ -143,117 +156,131 @@ describe("çerezsiz okur sayacı", () => {
       T0,
     );
     expect(sonuc.status).toBe(0);
-    const g = gun("2026-10-02");
+    const g = gun().sayac;
     expect(g.sayfa).toEqual({ insan: 4, bot: 3 });
     expect(g.bot_ailesi).toEqual({ google: 1, yapay_zeka: 1, arac: 1 });
     expect(g.insan_sayfa_turu).toEqual({ ana_sayfa: 1, baslik: 2, arama: 1 });
-    expect(g.insan_baslik).toEqual({ "/baslik/yaya-guvenligi": 2 });
+    expect(g.insan_baslik).toEqual({ "6526": 2 });
     expect(g.yonlendiren).toEqual({ "www.google.com": 1, "(site ici)": 1, "(yok)": 2 });
-    expect(g.rsc_gezinme).toEqual({ insan: 1, bot: 0 });
-    expect(g.istek.toplam).toBe(13);
-    expect(g.istek["4xx"]).toBe(1);
-    expect(g.istek.baska_alan).toBe(1);
-    expect(g.api_dis).toBe(1);
+    expect(g.rsc_gezinme).toEqual({ insan: 1 });
+    expect(g.istek).toMatchObject({ toplam: 13, "2xx": 12, "4xx": 1, baska_alan: 1, api_dis: 1 });
   });
 
-  it("diske IP, User-Agent, sorgu dizesi ya da çerez yazmaz", () => {
+  it("diske IP, User-Agent, sorgu dizesi, çerez ya da ham başlık yolu yazmaz", () => {
     calistir(
       [
         satir({ ts: T0 - 100, uri: "/ara?q=gizli+arama+terimi", ip: "198.51.100.23" }),
-        satir({ ts: T0 - 90, uri: "/baslik/a?q=baska", referer: "https://ornek.example/yol?ad=x" }),
+        satir({ ts: T0 - 95, uri: "/baslik/ali%40example.com" }), // açılmamış başlık
+        satir({
+          ts: T0 - 90,
+          uri: "/baslik/a--7?q=baska",
+          referer: "https://ornek.example/yol?ad=x",
+        }),
+        satir({ ts: T0 - 85, uri: "/", referer: "http://198.51.100.23/ozel" }),
+        satir({ ts: T0 - 84, uri: "/", referer: "http://[2001:db8::7]/ozel" }),
+        satir({ ts: T0 - 83, uri: "/", referer: "https://[GIZLI_ISARET]/" }),
+        satir({ ts: T0 - 82, uri: "/", referer: "https://kullanici@kotu_ad!.example/" }),
       ],
       T0,
     );
-    const ham = readdirSync(path.join(dizin, "veri"))
-      .map((ad) => readFileSync(path.join(dizin, "veri", ad), "utf8"))
-      .join("\n");
+    const ham = readFileSync(path.join(dizin, "veri", "sayac.db")).toString("latin1");
+    const dok = JSON.stringify(gun());
     for (const yasak of [
       "198.51.100.23",
       "203.0.113.7",
+      "2001:db8",
       "gizli",
+      "GIZLI_ISARET",
       "Chrome",
       "REDACTED",
       "?q=",
       "ad=x",
       "/yol",
+      "example.com",
+      "ali",
+      "kullanici",
     ]) {
       expect(ham).not.toContain(yasak);
+      expect(dok).not.toContain(yasak);
     }
-    expect(ham).toContain("ornek.example");
+    const g = gun().sayac;
+    expect(g.insan_baslik).toEqual({ "(acilmamis)": 1, "7": 1 });
+    expect(g.yonlendiren).toMatchObject({ "ornek.example": 1, "(ip)": 2, "(gecersiz)": 2 });
+  });
+
+  it("bozuk yönlendiren koşuyu durdurmaz ve journal'a girdi yazılmaz", () => {
+    const sonuc = calistir([satir({ ts: T0 - 10, referer: "http://[::1" })], T0);
+    expect(sonuc.status).toBe(0);
+    expect(sonuc.stderr).toBe("");
+    expect(gun().sayac.yonlendiren).toEqual({ "(gecersiz)": 1 });
   });
 
   it("imleçten sonrasını okur; aynı satır iki kez sayılmaz", () => {
-    const kayit = [satir({ ts: T0 - 100, uri: "/" }), satir({ ts: T0 - 50, uri: "/" })];
+    const kayit = [satir({ ts: T0 - 100 }), satir({ ts: T0 - 50 })];
     calistir(kayit, T0);
-    calistir([...kayit, satir({ ts: T0 + 100, uri: "/" })], T0 + 3600);
-    expect(gun("2026-10-02").sayfa.insan).toBe(3);
+    calistir([...kayit, satir({ ts: T0 + 100 })], T0 + 3600);
+    expect(gun().sayac.sayfa?.insan).toBe(3);
     const since = readFileSync(path.join(dizin, "since.log"), "utf8").trim().split("\n");
-    expect(since[1]).toBe("2026-10-02T09:58:10Z"); // imleç (T0-50) − 60 sn
+    expect(since[1]).toBe("2026-10-02T09:58:10Z"); // imleç (T0−50) − 60 sn
+  });
+
+  it("kesirli zaman damgası yuvarlanmaz; tekrar okunan satır sayılmaz (Astra, 2 Ekim)", () => {
+    const kayit = [satir({ ts: 1790935190.1234562 })];
+    calistir(kayit, T0);
+    calistir(kayit, T0 + 3600);
+    expect(gun().sayac.sayfa?.insan).toBe(1);
   });
 
   it("henüz gelmemiş zaman damgalı satırı bu koşuda saymaz", () => {
-    calistir([satir({ ts: T0 - 10 }), satir({ ts: T0 + 10 })], T0);
-    expect(gun("2026-10-02").sayfa.insan).toBe(1);
-    calistir([satir({ ts: T0 - 10 }), satir({ ts: T0 + 10 })], T0 + 60);
-    expect(gun("2026-10-02").sayfa.insan).toBe(2);
+    const kayit = [satir({ ts: T0 - 10 }), satir({ ts: T0 + 10 })];
+    calistir(kayit, T0);
+    expect(gun().sayac.sayfa?.insan).toBe(1);
+    calistir(kayit, T0 + 60);
+    expect(gun().sayac.sayfa?.insan).toBe(2);
   });
 
   it("gece yarısını aşan kaydı iki güne böler", () => {
     const gece = Date.UTC(2026, 9, 3, 0, 0, 0) / 1000;
     calistir([satir({ ts: gece - 5 }), satir({ ts: gece + 5 })], gece + 60);
-    expect(gun("2026-10-02").sayfa.insan).toBe(1);
-    expect(gun("2026-10-03").sayfa.insan).toBe(1);
+    expect(gun("2026-10-02").sayac.sayfa?.insan).toBe(1);
+    expect(gun("2026-10-03").sayac.sayfa?.insan).toBe(1);
   });
 
-  it("imleçten sonra 15 dakikadan uzun boşluk varsa günü işaretler", () => {
+  it("uzun boşlukta aradaki bütün günleri işaretler (Astra, 2 Ekim)", () => {
     calistir([satir({ ts: T0 - 10 })], T0);
-    calistir([satir({ ts: T0 + 3000 })], T0 + 3600);
-    expect(gun("2026-10-02").kapsam.bosluk).toBe(true);
+    const sonra = T0 + 2 * 86400;
+    calistir([satir({ ts: sonra - 10 })], sonra);
+    for (const ad of ["2026-10-02", "2026-10-03", "2026-10-04"]) expect(gun(ad).bosluk).toBe(1);
   });
 
-  it("docker okunamazsa 1 döner, imleç ve günler değişmez", () => {
+  it("Caddy konteyneri değiştiyse kısa aralıkta da boşluk işaretler", () => {
     calistir([satir({ ts: T0 - 10 })], T0);
-    const imlec = readFileSync(path.join(dizin, "veri", "imlec"), "utf8");
-    const sonuc = calistir([satir({ ts: T0 + 10 })], T0 + 60, "topla", { SAHTE_HATA: "1" });
-    expect(sonuc.status).toBe(1);
-    expect(sonuc.stderr).toContain("kayıt okunamadı");
-    expect(readFileSync(path.join(dizin, "veri", "imlec"), "utf8")).toBe(imlec);
-    expect(gun("2026-10-02").sayfa.insan).toBe(1);
+    calistir([satir({ ts: T0 + 300 })], T0 + 3600, "topla", { SAHTE_KIMLIK: "bbbbbbbbbbbb2222" });
+    expect(gun().bosluk).toBe(1);
   });
 
-  it("en çok okunan başlıkları sınırlar, kalanı (diger) altında toplar", () => {
-    const satirlar = Array.from({ length: 60 }, (_, i) =>
-      satir({ ts: T0 - 100 + i, uri: `/baslik/b${String(i).padStart(2, "0")}` }),
+  it("kısa ve kesintisiz aralıkta boşluk işaretlemez", () => {
+    calistir([satir({ ts: T0 - 10 })], T0);
+    calistir([satir({ ts: T0 + 300 })], T0 + 3600);
+    expect(gun().bosluk).toBe(0);
+  });
+
+  it("insan için yalnız belge gezinmesini sayar: prefetch ve gömülü istek sayılmaz", () => {
+    calistir(
+      [
+        satir({ ts: T0 - 40, purpose: "prefetch" }),
+        satir({ ts: T0 - 30, dest: "iframe" }),
+        satir({ ts: T0 - 20, dest: "empty" }),
+        satir({ ts: T0 - 10 }),
+      ],
+      T0,
     );
-    calistir(satirlar, T0);
-    const b = gun("2026-10-02").insan_baslik;
-    expect(Object.keys(b)).toHaveLength(51);
-    expect(b["(diger)"]).toBe(10);
+    expect(gun().sayac.sayfa).toEqual({ insan: 1 });
   });
 
-  it("bozuk gün dosyası ve imleç güvenle sıfırlanır", () => {
-    mkdirSync(path.join(dizin, "veri"), { recursive: true });
-    writeFileSync(path.join(dizin, "veri", "2026-10-02.json"), "{bozuk");
-    writeFileSync(path.join(dizin, "veri", "imlec"), "abc");
-    const sonuc = calistir([satir({ ts: T0 - 10 })], T0);
-    expect(sonuc.status).toBe(0);
-    expect(gun("2026-10-02").sayfa.insan).toBe(1);
-  });
-
-  it("400 günden eski gün dosyalarını siler", () => {
-    mkdirSync(path.join(dizin, "veri"), { recursive: true });
-    writeFileSync(path.join(dizin, "veri", "2025-08-01.json"), "{}");
-    writeFileSync(path.join(dizin, "veri", "2025-09-15.json"), "{}");
-    calistir([satir({ ts: T0 - 10 })], T0);
-    expect(existsSync(path.join(dizin, "veri", "2025-08-01.json"))).toBe(false);
-    expect(existsSync(path.join(dizin, "veri", "2025-09-15.json"))).toBe(true);
-  });
-
-  it("rapor günlük özeti yazar", () => {
-    calistir([satir({ ts: T0 - 10, uri: "/baslik/a" }), satir({ ts: T0 - 5, ua: GOOGLEBOT })], T0);
-    const sonuc = calistir([], T0, "rapor 1");
-    expect(sonuc.status).toBe(0);
-    expect(sonuc.stdout).toMatch(/2026-10-02 +1 +1 +%50/);
+  it("Content-Type içermeyen 304 belge gezinmesini sayar (Astra, 2 Ekim)", () => {
+    calistir([satir({ ts: T0 - 10, status: 304, ct: null })], T0);
+    expect(gun().sayac.sayfa).toEqual({ insan: 1 });
   });
 
   it("Sec-Fetch başlığı olmayan tarayıcı taklidini bot sayar", () => {
@@ -261,17 +288,59 @@ describe("çerezsiz okur sayacı", () => {
       [
         satir({
           ts: T0 - 20,
-          uri: "/baslik/a",
+          uri: "/baslik/a--1",
           referer: "https://www.google.com/",
-          secFetch: false,
+          tarayici: false,
         }),
-        satir({ ts: T0 - 10, uri: "/baslik/a", referer: "https://www.google.com/" }),
+        satir({ ts: T0 - 10, uri: "/baslik/a--1", referer: "https://www.google.com/" }),
       ],
       T0,
     );
-    const g = gun("2026-10-02");
+    const g = gun().sayac;
     expect(g.sayfa).toEqual({ insan: 1, bot: 1 });
     expect(g.bot_ailesi).toEqual({ taklit_tarayici: 1 });
     expect(g.yonlendiren).toEqual({ "www.google.com": 1 });
+  });
+
+  it("docker okunamazsa 1 döner, imleç ve sayaçlar değişmez", () => {
+    calistir([satir({ ts: T0 - 10 })], T0);
+    for (const ek of [{ SAHTE_HATA: "1" }, { SAHTE_PS_HATA: "1" }]) {
+      const sonuc = calistir([satir({ ts: T0 + 10 })], T0 + 60, "topla", ek);
+      expect(sonuc.status).toBe(1);
+      expect(sonuc.stderr).toMatch(/okur-sayaci: (kayıt okunamadı|caddy konteyneri bulunamadı)/);
+    }
+    expect(gun().sayac.sayfa?.insan).toBe(1);
+    calistir([satir({ ts: T0 + 10 })], T0 + 60);
+    expect(gun().sayac.sayfa?.insan).toBe(2);
+  });
+
+  it("günlük sayımı kırpmaz: saatler arasında biriken başlık kaybolmaz (Astra, 2 Ekim)", () => {
+    const ilk = Array.from({ length: 60 }, (_, i) =>
+      satir({ ts: T0 - 200 + i, uri: `/baslik/b--${i + 1}` }),
+    );
+    calistir(ilk, T0);
+    calistir([satir({ ts: T0 + 10, uri: "/baslik/b--60" })], T0 + 3600);
+    const b = gun().sayac.insan_baslik ?? {};
+    expect(Object.keys(b)).toHaveLength(60);
+    expect(b["60"]).toBe(2);
+  });
+
+  it("400 günden eski günleri siler", () => {
+    const eski = Date.UTC(2025, 7, 1, 12) / 1000;
+    calistir([satir({ ts: eski })], eski + 60);
+    calistir([satir({ ts: T0 - 10 })], T0);
+    expect(gun("2025-08-01").sayac).toEqual({});
+    expect(gun().sayac.sayfa?.insan).toBe(1);
+  });
+
+  it("rapor verilen ana göre günlük özeti yazar", () => {
+    calistir(
+      [satir({ ts: T0 - 10, uri: "/baslik/a--5" }), satir({ ts: T0 - 5, ua: GOOGLEBOT })],
+      T0,
+    );
+    const sonuc = calistir(null, T0, "rapor 1");
+    expect(sonuc.status).toBe(0);
+    expect(sonuc.stdout).toMatch(/2026-10-02 +1 +1 +%50/);
+    expect(sonuc.stdout).toContain("(publicId): 5 1");
   });
 });
