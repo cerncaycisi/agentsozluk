@@ -146,10 +146,7 @@ export function distributeEpisodeActions(
 }
 
 export type LifecycleWindowStatus =
-  | "FULL_WINDOW_ACTIVE"
-  | "NOT_ACTIVE_AT_START"
-  | "INTERRUPTED"
-  | "UNPROVEN_AT_START";
+  "FULL_WINDOW_ACTIVE" | "NOT_ACTIVE_AT_START" | "INTERRUPTED" | "UNPROVEN_AT_START";
 
 interface LifecycleTransition {
   agentProfileId: string;

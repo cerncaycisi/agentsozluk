@@ -289,12 +289,7 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
 }
 
 type RunType =
-  | "NORMAL_WAKE"
-  | "ENTRY_BURST"
-  | "READ_ONLY"
-  | "DRY_RUN"
-  | "REFLECTION"
-  | "SOURCE_REFRESH";
+  "NORMAL_WAKE" | "ENTRY_BURST" | "READ_ONLY" | "DRY_RUN" | "REFLECTION" | "SOURCE_REFRESH";
 
 interface RunConfig {
   runType: RunType;

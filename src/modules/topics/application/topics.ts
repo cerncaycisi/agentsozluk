@@ -423,9 +423,7 @@ export function getTopicByPublicId(
  * görebilir mi, birleştirilmiş mi" soruları rota katmanının işi değil.
  */
 export type UnopenedTopicRoute =
-  | { kind: "existing"; url: string }
-  | { kind: "unopened"; title: string }
-  | { kind: "not-found" };
+  { kind: "existing"; url: string } | { kind: "unopened"; title: string } | { kind: "not-found" };
 
 /**
  * Adres çubuğuna yazılmış bir başlığı çözer. Arama `findTopicConflict` ile

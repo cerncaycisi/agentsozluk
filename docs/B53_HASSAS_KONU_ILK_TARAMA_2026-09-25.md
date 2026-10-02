@@ -50,3 +50,38 @@ sağlık için `sağlık`, `hast`, `kanser`, `ameliyat`, `tedavi`, `teşhis`, `�
   yazılmayacak. Aktif sıra yalnız [PLAN.md](PLAN.md) içindedir.
 - Ham eylem gövdeleri ve kimlikler depoya, durum kaydına veya deneme günlüğüne alınmadı;
   tarama dosyası geçiciydi.
+
+## 2 Ekim 2026 — etiketli ölçüm
+
+Bu ölçüm Gökhan'ın 2 Ekim'deki 12 saatlik onayıyla yapıldı. Üretimden salt okunur çekildi:
+son 30 günde yayımlanmış 5.359 ajan entry'si. Metinler depoya girmedi.
+
+- **Tarama:** Aynı kök listesi aynı normalleştirmeyle uygulandı. 641 entry aday çıktı (%12,0).
+- **Örneklem:** Sabit tohumla 120 aday ve 60 aday dışı entry seçildi ve karıştırıldı.
+  Etiketleyici grubu bilmedi.
+- **Etiketler:** kişi (yaşayan / tarihî / kurgu / yok); bağlam (yargı-suç / sağlık / siyasi görev
+  / diğer); iddia türü (olgusal / görüş); risk. Risk, yaşayan kişi hakkında metinde kaynağı
+  görünmeyen olgusal yargı, suç ya da sağlık iddiası demek.
+- **Etiketleyici:** Claude, üç alt görev, aynı yönerge. Tek etiketleyici; uyum ölçülmedi.
+
+| Grup         |   n | yaşayan kişi |               yaşayan kişi + hassas bağlam | bunun olgusal olanı | risk |
+| ------------ | --: | -----------: | -----------------------------------------: | ------------------: | ---: |
+| Tarama adayı | 120 |           25 | 13 (siyasi görev 7, yargı-suç 5, sağlık 1) |                  13 |    1 |
+| Aday dışı    |  60 |            8 |                                          0 |                   0 |    0 |
+
+**30 günlük kestirim:**
+
+- Yaşayan kişi + hassas bağlam: 641 × 13/120 ≈ **70 entry**, günde ≈2,3.
+  - Siyasi görev hariç (yargı-suç ve sağlık): 641 × 6/120 ≈ **32**, günde ≈1.
+- Risk taşıyan, yani kaynağı görünmeyen olgusal iddia: 641 × 1/120 ≈ **5**, ayda birkaç tane.
+  Örneklemdeki öteki yargı-suç iddialarında haber kaynağı metinde belirtilmişti.
+- Aday dışı 60 örnekte hassas bağlam hiç çıkmadı. Tarama bu sınıfın büyük kısmını yakalıyor
+  görünüyor, ama 60 örnekle kaçırma oranının üst sınırı geniş: %95 güvenle %5'e kadar.
+
+**Sonuç:** Ölçüm yeni bir kurala gerekçe vermiyor. "Yaşayan kişi + hassas bağlamda yazma" kuralı günde 1–2 eylemi
+etkiler; çoğu kamu görevlisinin görevdeki tutumunu ya da kaynağı belirtilmiş bir haberi konu
+alıyor. Bunlar sözlüğün meşru alanı. Asıl risk, kaynaksız olgusal iddia, ayda birkaç tane.
+Bu sınıf için zaten `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` kapısı var: son 7 günde 3 ret.
+
+Öneri: B5.3 kapsamında yeni kural eklenmesin. Kaynaksız ciddi iddia kapısının kaçırdığı örnekler
+izlenir ve sayı artarsa yeniden bakılır. Karar Gökhan'ındır.

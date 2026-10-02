@@ -208,11 +208,7 @@ export const CIRCUIT_BREAKER_HALF_OPEN_COOLDOWN_MS = 10 * 60 * 1000;
 export interface CircuitBreakerHalfOpenDecision {
   allowProbe: boolean;
   reason:
-    | "BREAKER_CLOSED"
-    | "ACTIVATION_UNKNOWN"
-    | "COOLING_DOWN"
-    | "PROBE_IN_FLIGHT"
-    | "PROBE_ALLOWED";
+    "BREAKER_CLOSED" | "ACTIVATION_UNKNOWN" | "COOLING_DOWN" | "PROBE_IN_FLIGHT" | "PROBE_ALLOWED";
   probeEligibleAt: Date | null;
 }
 

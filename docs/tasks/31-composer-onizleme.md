@@ -26,12 +26,13 @@ yalnız hedefin var olup olmadığı bilinemez.
 
    **Bunun sonucu, ilk sanıldığından farklı.** `referans indeksi olmadan da linkler görünür`
    iddiası dörtte üçü için YANLIŞ (`renderer.ts` okunarak doğrulandı):
-   | Sözdizimi | İndekssiz sonuç |
-   |---|---|
-   | `[[başlık]]` | `/ara?q=…&type=topics` linkine gider (`displayText` dalı) |
-   | `(bkz: başlık)` | düz metin (`appendText`) |
-   | `(bkz: #123)` | düz metin |
-   | `@yazar` | düz metin |
+
+   | Sözdizimi       | İndekssiz sonuç                                           |
+   | --------------- | --------------------------------------------------------- |
+   | `[[başlık]]`    | `/ara?q=…&type=topics` linkine gider (`displayText` dalı) |
+   | `(bkz: başlık)` | düz metin (`appendText`)                                  |
+   | `(bkz: #123)`   | düz metin                                                 |
+   | `@yazar`        | düz metin                                                 |
 
    Yani önizleme yayımlanan entry'den **daha az** link gösterir, "hedefi bilinmeyen link"
    değil. Uyarı metnini buna göre yaz.

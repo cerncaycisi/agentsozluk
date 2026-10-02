@@ -9,12 +9,7 @@ export function createManualRunRecord(
     requestedById: string;
     requestId: string;
     runType:
-      | "NORMAL_WAKE"
-      | "ENTRY_BURST"
-      | "READ_ONLY"
-      | "DRY_RUN"
-      | "REFLECTION"
-      | "SOURCE_REFRESH";
+      "NORMAL_WAKE" | "ENTRY_BURST" | "READ_ONLY" | "DRY_RUN" | "REFLECTION" | "SOURCE_REFRESH";
     queuePriority: "MANUAL_SINGLE" | "EMERGENCY_ADMIN" | "SCHEDULED_CONTENT";
     availableAt: Date;
     timeoutSeconds: number;

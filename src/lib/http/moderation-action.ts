@@ -17,8 +17,7 @@ import {
 } from "@/modules/rate-limit/application/rate-limit";
 
 type ModerationAuthorization<T> =
-  | ModerationAuthorizationOptions
-  | ((input: T) => ModerationAuthorizationOptions);
+  ModerationAuthorizationOptions | ((input: T) => ModerationAuthorizationOptions);
 
 export function runModerationAction<T>(
   request: NextRequest,
