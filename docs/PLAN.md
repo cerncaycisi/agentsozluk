@@ -56,7 +56,9 @@ Ekim arasındaki uzun sürüm git geçmişinde (`fda546a`).
 
 **Sıradaki iş, sırayla:**
 
-1. ~5 Ekim'de takip dönüşümü sonucu: salt okunur ölçüm, ardından 5.9 İ4 şablonuyla tek karar.
+1. ~5 Ekim'de takip dönüşümü sonucu: `scripts/olcum/takip-donusumu-kabul.sql`, ardından 5.9 İ4
+   şablonuyla tek karar. 2 Ekim ara bakışı: ilk 10 payı göreli −%30, ret %10 → %22 (tekrar
+   yakalaması; geri alma yok), ayrıntı `USLUP_LAB`.
    Aynı ölçümde tekrar payı (İ3 seti ve yönergesi) ve kaynağa bağlılık yeniden okunur.
 2. Tekrarı yazmadan önce yakalama yöntemi (İ3 seçenekleri): çevrim dışı ölçüm, sonra karar.
 3. B5.3: ölçüldü (2 Ekim); öneri yeni kural yok, Gökhan kararı bekleniyor.
