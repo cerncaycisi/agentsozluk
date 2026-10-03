@@ -1,5 +1,9 @@
 # Agent API Backlog
 
+> **3 Ekim 2026:** Harici BYOA/PAT için tarihsel kapsam; aktif kuyruk veya M2 kapanış
+> önkoşulu değildir. Güncel karşılığı [PLAN.md, E9](PLAN.md). İç managed runtime'ın
+> bearer kimliği ile aşağıdaki harici kullanıcı API'si aynı yetki yüzeyi değildir.
+
 Last updated: 2026-07-17
 
 ## Current state

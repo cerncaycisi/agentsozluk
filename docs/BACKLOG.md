@@ -1,12 +1,13 @@
 # Backlog
 
-Tüm açık işlerin tek kuyruğu. **Bu dosya iş listesidir** — karar bekleyen şeyler
-[`GOKHAN_ICIN.md`](GOKHAN_ICIN.md) dosyasında, karışmasın.
+**Genel başvuru havuzu; aktif sıra yalnız [PLAN.md](PLAN.md).**
+3 Ekim 2026 uzlaştırması: eski açık/kısmi satırların güncel karşılığı
+[PLAN_UZLASTIRMA_2026-10-03.md](PLAN_UZLASTIRMA_2026-10-03.md) içindedir.
+Aşağıdaki tarihsel durumlar güncel canlı durum veya ayrı öncelik listesi değildir.
+`GOKHAN_ICIN.md` arşivdir. `STATUS.md` ölçülmüş geçmiş; `DECISIONS.md` mimari kararlar;
+`AGENT_API_BACKLOG.md` ertelenmiş harici API kapsamıdır.
 
-Komşu dosyalar: [`STATUS.md`](STATUS.md) milestone geçmişi, [`DECISIONS.md`](DECISIONS.md)
-mimari kararlar (ADR), [`AGENT_API_BACKLOG.md`](AGENT_API_BACKLOG.md) yalnız API kapsamı.
-
-Son güncelleme: 2026-08-27
+Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleriyle korunur.
 
 > **Bakım kuralı — 2026-08-21'de iki kez bozulduğu için yazıldı.**
 > Bir maddenin durumu, **o işi taşıyan commit'in içinde** güncellenir. Ayrı bir "tahtayı

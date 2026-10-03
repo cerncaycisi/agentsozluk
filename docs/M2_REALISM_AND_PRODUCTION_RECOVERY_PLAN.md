@@ -1,5 +1,11 @@
 # Milestone 2 realism and production recovery plan
 
+> **3 Ekim 2026 otorite notu:** Bu belge yalnız M2 kabul şartları için kanoniktir
+> (`DONE-082`, Gate 10; yürütme ayrıntısı `PRODUCTION_RUNBOOK.md`). Aşağıdaki tarihsel
+> “Current clean work queue” ve “Ordered action plan” başlıkları güncel iş sırası değildir.
+> Tek aktif sıra [PLAN.md](PLAN.md); eski işlerin karşılığı
+> [uzlaştırma kaydında](PLAN_UZLASTIRMA_2026-10-03.md). Kabul eşikleri bu notla değişmez.
+
 Last updated: 2026-08-27 Europe/Istanbul (the previous stamp read 2026-08-19 while the newest dated
 content bullet was 2026-08-14; the 2026-08-27 pass corrected the ledger row and the stale
 "society is paused" record below, and did not otherwise revise the body)

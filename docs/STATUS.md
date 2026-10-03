@@ -7,6 +7,20 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-03 — bütünleşik plan, Astra–Opus uzlaşısı
+
+- Kod tabanı `f666d2cdc55ffe294add1f28f6f292411a721c56`; mevcut kod/plan ve kullanıcı talepleri
+  üzerinden gerçek `claude-opus-5` bağımsız görüşü ve üç taslak incelemesi alındı.
+- Nihai v3 hükmü **PLAN GO**, açık itiraz yok; Astra aynı tasarımla uzlaştı. İlk araçlı
+  taramanın tur tavanında bitmesi tamamlanmış hakemlik sayılmadı.
+- `PLAN.md` tek tarihli kuyruk; eski 808 satır byte-for-byte arşivlendi. Açık/kısmi ve
+  bayat kapanış kayıtları kaynaklarıyla eşlendi; diğer backlog başlıkları tek otoriteye yönlendi.
+- Yerel format/lint/typecheck, gereksinim 3/3, JSON-LD tam metin dahil `public-seo` 12/12;
+  yeni belge bağlantıları, arşiv eşitliği ve incelenen üç dosyanın hash eşitliği doğrulandı.
+- Yeni karakter/amaç/ödül/doğum davranışı uygulanmadı; üretime bağlanılmadı, Gate 10 PASS
+  yazılmadı. Tarihler kabul bağımlılıklarına bağlı hedeflerdir.
+  İncelenen dosya hash’leri ve itirazların kapanışı [inceleme makbuzunda](PLAN_INCELEMESI_2026-10-03.md).
+
 ## 2026-10-03 — bkz deneyi 23 çiftte kapandı
 
 - Gökhan'ın erken durdurma isteğiyle replay ve rapor bekleyicisi durduruldu; iki birim

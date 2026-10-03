@@ -3131,3 +3131,34 @@ false/true` yapabildi; geçici rol ve DB silindi.
   `bkz-degerlendirme/ara/`, `bkz-devam/stop-receipt.json`; ham içerik depoya alınmadı.
 - **Tekrarlama:** bu deneyi otomatik sürdürme; 23/40'ı 40/40 diye raporlama ve iki olumlu
   örneği kanıtlanmış üretim faydası sayma. Boş hedefi değersiz/bozuk sayma.
+
+## 2026-10-03 — bütünleşik plan ve gerçek Opus uzlaşısı
+
+- **Ortam/SHA:** yerel kişisel sunucu; taban `f666d2cdc55ffe294add1f28f6f292411a721c56`.
+  Yalnız belge değişikliği; üretim/public endpoint erişimi, yeni simülasyon ve dağıtım yok.
+- **Güvenli hata:** ilk salt okunur araçlı Opus çağrısı `error_max_turns`,
+  `Reached maximum number of turns (36)`; CLI 37 tur, izin reddi 0. Kök neden geniş depo
+  taramasının araç tur tavanına ulaşması; nihai görüş üretmedi. Kod regresyonu veya erişim
+  arızası sayılmadı. Çözüm: aynı tabanın 29 dosyalık tam/numaralı kaynak paketini yerelde
+  hazırlayıp araçsız salt okunur incelemeye vermek; bağımsız görüş başarıyla alındı.
+- **Hakem zinciri:** gerçek `claude-opus-5`; ilk görüş ve v1/v2/v3 her biri araçsız bir tur,
+  `is_error=false`, izin reddi 0; kullanım kaydında yardımcı `claude-haiku-4-5-20251001` var.
+  Sıralı çalıştı; başka kullanıcı işleri durdurulmadı. V1 yedi P1, v2 önceki yediyi kapatıp
+  iki yeni pencere/takvim bulgusu; v3 **PLAN GO**, açık itiraz yok. Astra aynı planla uzlaştı.
+- **Doğrulanmış çözüm:** P0 kör taban; rollout/CAS önkoşulu; nötr `NOT_EVALUATED`;
+  önkayıt eşikleri; kaynaklı eski iş eşlemesi; gerçek üretim kapıları; P7 güncel ön uygunluk;
+  paylaşılan kota pilotlarının sabit pencere dışında kalması. Kullanıcı zaten yetki verdiği
+  rutin tasarıma yeni izin ritüeli ekleme önerileri gerekçeyle reddedildi, Opus geri çekti.
+- **Belge bütünlüğü:** eski PLAN 808 satır byte-identical arşiv, SHA-256
+  `1d62a1537b8fcd2007905b65148b203dc7bb68d198ec3cbb2fbf5f1d4411ef97`.
+  Nihai incelenen üç dosyanın özetleri `PLAN_INCELEMESI_2026-10-03.md` içinde. Git atalık
+  kontrolleri, yeni belge bağlantıları ve arşiv eşitliği geçti; F07 ayrıca güncel kodla doğrulandı.
+- **Kontroller:** Node 22/pnpm 10; format/lint/typecheck, gereksinim 3/3 ve `public-seo`
+  12/12 geçti. İlk biçim kontrolünde henüz tamamlanmamış inceleme belgesi uyarısı vardı;
+  belge tamamlanıp biçimlendirilerek kontrol tekrarlandı. Uygulama/şema/test kodu değişmedi.
+- **Sınır:** PLAN GO ürün etkisi, mevcut üretim sağlığı veya Gate 10 kabulü değildir.
+  İlk 6–13 Ekim pencere hedefi güncel uygunluğa bağlı; veri yetersizse BELİRSİZ.
+  Yerel inceleme çıktıları `~/style-lab/butunlesik-plan-20261003/`; ham istem/entry depoda yok.
+- **Tekrarlama:** araç tavanında kalan incelemeyi tamam sayma; eski Eylül ölçümünü güncel
+  sayma; kod mesafesini davranış farklılığına, öz-beyanı ödüle, az oyu cezaya çevirme.
+  Sabit pencereye aynı kotadaki model deneyini sokma; tek aktif sıra PLAN’da kalmalı.
