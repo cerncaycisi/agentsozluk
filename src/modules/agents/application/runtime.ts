@@ -128,6 +128,7 @@ import {
 import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behavior-feedback";
 import {
   actionFeedbackLimit,
+  actionFeedbackKey,
   projectActionFeedback,
 } from "@/modules/agents/domain/action-feedback";
 import {
@@ -391,7 +392,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
-    actionFeedback: projectActionFeedback(records.actionFeedbackRecords, now),
+    [actionFeedbackKey]: projectActionFeedback(records.actionFeedbackRecords, now),
     recentEntries: selectedEntries,
     trendingTopics,
     newTopics,
@@ -503,13 +504,13 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       sayılabilecek writerOpenedTopics/sourceItems kuyruğundan önce atmak da
       yanlış olurdu — onlar zaten fazlalık, bu ise tümden kayboluyor.
     */ else if (snapshot.sourceCandidates.length > 0) snapshot.sourceCandidates.pop();
+    else if (snapshot.actionFeedback.length > 0) snapshot.actionFeedback.pop();
     else if (snapshot.writerOpenedTopics.length > 0) snapshot.writerOpenedTopics.pop();
     else if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
     else if (snapshot.linkedTopics.length > 0) snapshot.linkedTopics.pop();
     else if (snapshot.recentEntries.length > 8) snapshot.recentEntries.pop();
     else if (snapshot.dictionaryLinkCandidates.length > 0) snapshot.dictionaryLinkCandidates.pop();
     else if (snapshot.memories.length > 4) snapshot.memories.pop();
-    else if (snapshot.actionFeedback.length > 0) snapshot.actionFeedback.pop();
     else
       throw new AppError("INTERNAL_ERROR", 500, "Perception snapshot güvenli boyuta indirilemedi.");
   }
@@ -1759,6 +1760,7 @@ export function getRuntimeRunContext(
         */
         includeTrendingTopics:
           publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
+        includeActionFeedback: run.runType === "NORMAL_WAKE",
       });
       const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now);
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);

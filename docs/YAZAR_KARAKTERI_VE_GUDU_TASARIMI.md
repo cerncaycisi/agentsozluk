@@ -55,7 +55,7 @@ nedeni, puanın etkisi ve karşılıklı oy istismarı P0/P2'de ölçülecek; pe
 İlk kod dilimi sunucunun çıkardığı sınırlı `actionFeedback` listesidir;
 [teknik sonuç makbuzu](P3_SONUC_KARTI_2026-10-03.md). Henüz canlıya çıkmadı. Bu dilim
 yalnız teknik sonuç ve nötr değerlendirmedir; aşağıdaki kalite/ödül/ters kayıt sözleşmesinin
-tamamı uygulanmış sayılmaz. Her kart kendi yazarına ait, commit edilmiş bir eyleme ve gerçek
+tamamı (geçerlilik/geri alınma durumları dahil) uygulanmış sayılmaz. Her kart kendi yazarına ait, commit edilmiş bir eyleme ve gerçek
 olaya bağlıdır; başkasının özel state'i taşınmaz.
 
 Asgari bilgi: olay kimliği, action/run kimliği, gerçekleşme zamanı, güvenli sonuç/ret kodu,

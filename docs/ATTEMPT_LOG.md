@@ -3264,3 +3264,25 @@ false/true` yapabildi; geçici rol ve DB silindi.
   Teknik işlem sonucunun semantik başarı sayılmaması kaynak ve regresyonla korundu.
 - Tekrarlama: API’nin algıya eklediği her UUID’nin kanıt etkisini ayrıca izle; yalnız prompt’a
   nötr etiketi yazmak, geniş UUID doğrulayıcısını sınırlandırmaz.
+
+## 2026-10-03 — P3 ilk hakem/CI bulguları ve indeks
+
+- İncelenen exact SHA `78d09dd273453dfc9561879a1715566390dc723a`; gerçek
+  `claude-opus-5`, araçsız, izin reddi 0, yardımcı Haiku kaydı var. KOD DÜZELTİLMELİ.
+- Kaynak ve CI `37152869759`: koşulsuz sorgu üç source-fetch-limit testindeki mock’ta
+  `TypeError: Cannot read properties of undefined (reading 'findMany')` verdi. Behavior/coverage
+  aynı nedenle kırmızı; DB/browser/container/quality geçti. Tüketici NORMAL_WAKE bayrağı
+  eklendi, kapalı yolda sorgu açılmaz; eski testler tekrar geçti.
+- NO_ACTION dışlandı; CONTEXT_PRESENTED event’inde yeni kimliklerin kanıt olmadığı test
+  edildi; terminal durumlar domain’de doğrulanıyor. TTL değişmeyen createdAt’a bağlandı.
+- Yeni indeks migration’ı yalnız yerel `agentsozluk_local_integration_test` üzerinde
+  uygulandı: `agent_actions_feedback_idx (agentProfileId, createdAt DESC, id DESC)`.
+  pg_indexes ve zorlanmış indeks-uygunluk EXPLAIN doğrulandı; üretim gecikmesi iddia edilmedi.
+- Yeni bakım testi önce var olmayan MAINTENANCE runType ile `PrismaClientValidationError`
+  verdi. Gerçek REFLECTION/NIGHTLY_MEMORY_CONSOLIDATION yolu kullanıldı; dört odaklı PG16
+  ve 15 ilgili birim testi geçti. Fixture hatası; enum genişletilmedi.
+- Tekrarlama: UUID dışlamak tek başına reflection isteminden teknik sonuçları kaldırmaz;
+  tüketici koşuyu sınırla. İndeks eklenen paketi schema-neutral deploy diye dağıtma.
+
+- P3 hakem düzeltmesinin tam yerel tekrarı: 119/119 runtime API PG16, 124/124 ilgili birim;
+  format/lint/typecheck geçti. İlk CI arızasındaki source-fetch-limit testleri bu kapsama dahil.

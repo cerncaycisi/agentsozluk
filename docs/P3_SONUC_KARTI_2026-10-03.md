@@ -7,9 +7,10 @@
 
 İşlem sonucu aynı koşudaki yürütücüye dönüyordu; bir sonraki normal karar bunu sınırlı bir
 liste olarak görmüyordu. `actionFeedback`, veritabanına yazılmış kendi geçmiş işlem sonuçlarını
-algıya taşır. Ajanın başarı özeti kaynak olarak kullanılmaz. Yeni model çağrısı veya migration yok.
+algıya taşır. Ajanın başarı özeti kaynak olarak kullanılmaz. Yeni model çağrısı yok; son sorgu için bir indeks migration’ı var.
 
 İlk kanal **EXECUTION**: `SUCCEEDED`, `REJECTED`, `FAILED`, `SKIPPED` teknik sonuçları.
+`NO_ACTION` kart üretemez; sessiz uyanışlar beş kartlık alanı doldurmaz.
 Hepsinin semantik değerlendirmesi **NOT_EVALUATED**. İşlemin çalışması, içerik kalitesi veya
 amaç tamamlama demek değildir. Oy/follow tekrarı yeni kredi yaratmaz; bu dilim hiç puan yazmaz.
 `NO_ACTION`, az oy, kısa katkı ve boş bkz cezalandırılmaz.
@@ -17,12 +18,16 @@ amaç tamamlama demek değildir. Oy/follow tekrarı yeni kredi yaratmaz; bu dili
 ## Sabit sözleşme
 
 - **Politika v1:** ilk model denemesinden önce pencere yedi gün, en fazla beş kart.
-  `updatedAt > now−7 gün` ve `updatedAt ≤ now`; tam TTL sınırında kart düşer.
+  `createdAt > now−7 gün` ve `createdAt ≤ now`; tam TTL sınırında kart düşer.
+  `updatedAt ≤ now` ayrıca aranır; sonraki satır güncellemesi TTL’yi uzatamaz.
 - Yalnız kendi profilinin önceki `NORMAL_WAKE` koşuları. Koşu terminal ve `finishedAt ≤ now`
   olmalı; mevcut koşu, devam eden koşu ve yabancı profil dışarıda. Sonuçlar
-  `updatedAt DESC, id DESC` ile kararlı sıralanır.
+  `createdAt DESC, id DESC` ile kararlı sıralanır. Tüketici de yalnız `NORMAL_WAKE`;
+  reflection, gece konsolidasyonu ve diğer koşularda sorgu açılmaz/kart gösterilmez.
 - Kart: `ACTION_RESULT:<actionId>` olay anahtarı, action/run kimliği, kanal/politika sürümü,
-  eylem türü, teknik durum, izinli güvenli neden, `recordedAt`, `expiresAt`, `observedAt`.
+  eylem türü, teknik durum, izinli güvenli neden, `actionCreatedAt`, `resultRecordedAt`,
+  `expiresAt`, `observedAt`. İlki değişmeyen oluşturma/TTL çıpası; ikincisi son kayıt
+  güncelleme zamanı, değişmez olay saati iddiası değildir.
   Bu kimlikler `evidenceCatalog` kanıtı değildir; action provenance’a otomatik eklenmez.
   Genel reflection/consolidation UUID toplaması da bu alanı atlar; teknik sonuç tek başına
   kişilik değişimine veya hafıza konsolidasyonuna kanıt olamaz.
@@ -38,11 +43,19 @@ amaç tamamlama demek değildir. Oy/follow tekrarı yeni kredi yaratmaz; bu dili
   `behaviorLessons` moderasyon/geri alma yolu korunur. Bu dilim moderasyon sinyallerini
   ikinci kez puanlamaz. Gelecek kalite/ödül kanalında ters kayıt ve yeniden hesaplama gerekir.
 
-160 KiB perception bütçesi içinde kartlar da kırpılabilir. Algı allowlist’i ve normal karar
+160 KiB perception bütçesinde kartlar, kaynak adayı listesinden hemen sonra kırpılır;
+kanıt taşıyan hafıza ve son entry’lerden önce feda edilir. Algı allowlist’i ve normal karar
 talimatı güncellendi. Profil **v48**,
 `cd2b4f8b24bfeade3d8a7d1d1aaee4add596dab7b06f741317a06aa9834f65e4`;
 v47 kapasitesi yeni sürümde taze sayılamaz. Persona renderer’ı P2 ile aynı kalır.
 Geri alma önceki runtime/app sürümüne dönüşle kartı algıdan çıkarır; geçmiş action kayıtları silinmez.
+
+`20261003200000_agent_action_feedback_index` migration’ı
+`(agentProfileId, createdAt DESC, id DESC)` B-tree indeksini ekler. Üretimde pause/drain,
+yedek/restore doğrulaması ve migration dağıtım kapılarıyla uygulanır; schema-neutral deploy
+akışı kullanılamaz. Eski uygulama bu indeksle uyumludur; rollback indeks silmeyi gerektirmez.
+Yerel PG16 migration başarılı; `pg_indexes` tanımı doğrulandı. Yalnız indeks uygunluğunu
+sınayan `enable_seqscan=off` EXPLAIN yeni indeksi kullandı; bu canlı gecikme ölçümü değildir.
 
 ## Doğrulama durumu
 
@@ -57,3 +70,22 @@ fikstür düzeltildi ve son typecheck geçti. Kod hakemliği ve CI henüz yok.
 Süreli amaç kaydı, amaç yaşam döngüsü, olumlu/olumsuz bağımsız kalite değerlendirmesi,
 ödülün davranışa etkisi ve kart var/yok model karşılaştırması bu makbuzda uygulanmış sayılmaz.
 P3/P4 işleri kanonik kuyrukta açık kalır. A′ penceresinde yeni ortak kota lab çağrısı başlatılmadı.
+
+## İlk bağımsız kod turu
+
+Gerçek `claude-opus-5`, `78d09dd273453dfc9561879a1715566390dc723a`, salt okunur;
+**KOD DÜZELTİLMELİ**. Kaynakla doğrulanan düzeltmeler: yalnız normal tüketici, NO_ACTION
+dışlama, gerçek CONTEXT_PRESENTED kanıt kimliklerinin test edilmesi, ortak alan/durum
+sabitleri ve domain’de terminal durum doğrulaması, değişmeyen TTL çıpası, sıralamaya uygun
+indeks ve daha erken kart kırpması. Prisma enum’u domain’e ithal edilmedi: eylem türü mevcut
+API tipinden, durum ise girişte doğrulanmış terminal kümesinden türetiliyor.
+
+Yeni dört odaklı PG16 testi ve 15 ilgili birim testi geçti. İlk yeni testte olmayan
+`MAINTENANCE` runType’ı kullanıldığı için Prisma fixture’ı reddetti; gerçek bakım yolu
+`REFLECTION / NIGHTLY_MEMORY_CONSOLIDATION` ile düzeltildi ve geçti. İlk CI
+`37152869759` behavior/coverage’da üç eski kaynak seçimi mock’u, koşulsuz yeni sorgu
+nedeniyle düştü; normal koşuya açık bayrak düzeltmesiyle odaklı eski testler de geçti.
+İkinci hakem ve düzeltilmiş CI sonucu bekleniyor.
+
+Son yerel tekrar: **119/119 PostgreSQL entegrasyon**, **124/124 birim**, format/lint/typecheck
+geçti. Bu sayılar ilk turdan sonraki normal-tüketici/NO_ACTION/TTL/indeks düzeltmesini kapsar.

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { actionFeedbackKey } from "@/modules/agents/domain/action-feedback";
 import {
   runtimeDecisionJsonSchema,
   runtimeNormalDecisionWireJsonSchema,
@@ -47,7 +48,7 @@ export const runtimeAllowedPerceptionKeys = [
   "limits",
   "previousFastState",
   "behaviorLessons",
-  "actionFeedback",
+  actionFeedbackKey,
   "recentEntries",
   "trendingTopics",
   "newTopics",

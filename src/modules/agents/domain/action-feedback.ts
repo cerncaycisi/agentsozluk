@@ -1,7 +1,11 @@
+import type { RuntimeActionsInput } from "@/modules/agents/validation/runtime-schemas";
+
 // P3 ilk sonuç kanalı: yalnız commit edilmiş teknik sonuç. Kalite/ödül değildir.
+export const actionFeedbackKey = "actionFeedback";
 export const actionFeedbackLimit = 5;
 export const actionFeedbackWindowMs = 7 * 24 * 60 * 60 * 1000;
 export const actionFeedbackPolicyVersion = 1;
+export const actionFeedbackStatuses = ["SUCCEEDED", "REJECTED", "FAILED", "SKIPPED"] as const;
 
 const knownRejectionReasons = {
   DUPLICATE_SIMILARITY: "SIMILARITY_REVIEW_REQUIRED",
@@ -12,30 +16,41 @@ const knownRejectionReasons = {
 interface ActionFeedbackRecord {
   id: string;
   runId: string;
-  actionType: string;
-  actionStatus: string;
+  actionType: RuntimeActionsInput["actions"][number]["actionType"];
+  actionStatus: unknown;
   rejectionCode: string | null;
+  createdAt: Date;
   updatedAt: Date;
 }
 
 export function projectActionFeedback(records: readonly ActionFeedbackRecord[], now: Date) {
-  return records.slice(0, actionFeedbackLimit).map((record) => ({
-    eventKey: `ACTION_RESULT:${record.id}`,
-    actionId: record.id,
-    runId: record.runId,
-    channel: "EXECUTION" as const,
-    policyVersion: actionFeedbackPolicyVersion,
-    actionType: record.actionType,
-    executionStatus: record.actionStatus,
-    reason:
-      record.actionStatus === "REJECTED" &&
-      record.rejectionCode !== null &&
-      Object.hasOwn(knownRejectionReasons, record.rejectionCode)
-        ? knownRejectionReasons[record.rejectionCode as keyof typeof knownRejectionReasons]
-        : null,
-    semanticAssessment: "NOT_EVALUATED" as const,
-    recordedAt: record.updatedAt.toISOString(),
-    expiresAt: new Date(record.updatedAt.getTime() + actionFeedbackWindowMs).toISOString(),
-    observedAt: now.toISOString(),
-  }));
+  return records
+    .flatMap((record) => {
+      // Prisma where filtresi dönüş tipini daraltmaz; domain sınırı da kapalı kalsın.
+      const status = actionFeedbackStatuses.find((value) => value === record.actionStatus);
+      if (!status || record.actionType === "NO_ACTION") return [];
+      return [
+        {
+          eventKey: `ACTION_RESULT:${record.id}`,
+          actionId: record.id,
+          runId: record.runId,
+          channel: "EXECUTION" as const,
+          policyVersion: actionFeedbackPolicyVersion,
+          actionType: record.actionType,
+          executionStatus: status,
+          reason:
+            status === "REJECTED" &&
+            record.rejectionCode !== null &&
+            Object.hasOwn(knownRejectionReasons, record.rejectionCode)
+              ? knownRejectionReasons[record.rejectionCode as keyof typeof knownRejectionReasons]
+              : null,
+          semanticAssessment: "NOT_EVALUATED" as const,
+          actionCreatedAt: record.createdAt.toISOString(),
+          resultRecordedAt: record.updatedAt.toISOString(),
+          expiresAt: new Date(record.createdAt.getTime() + actionFeedbackWindowMs).toISOString(),
+          observedAt: now.toISOString(),
+        },
+      ];
+    })
+    .slice(0, actionFeedbackLimit);
 }

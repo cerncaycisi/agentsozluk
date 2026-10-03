@@ -20,7 +20,7 @@
 - Önceki terminal koşuların kendi action sonuçları `actionFeedback` algısına bağlandı.
   Politika v1, yedi gün/en fazla beş kart; teknik durum ile kalite ayrıdır, hepsi
   NOT_EVALUATED. Ham hata/gövde/özel hedef taşınmaz; puan veya ceza yazılmaz.
-- Tam runtime API PostgreSQL dosyası 116/116, ilgili yedi birim dosyası 118/118 geçti.
+- Tam runtime API PostgreSQL dosyası 119/119, ilgili sekiz birim dosyası 124/124 geçti.
   Profil v48 eski kapasiteyi taze saymaz. Hakem/CI ve canlı kabulü henüz yok.
 - Bu sonuç P3 amaç yaşam döngüsünün veya P4 ödülün tamamlandığı anlamına gelmez.
   Ayrıntı [uygulama makbuzunda](P3_SONUC_KARTI_2026-10-03.md).

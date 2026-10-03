@@ -1097,6 +1097,7 @@ model AgentAction {
 
   @@unique([runId, sequence])
   @@index([agentProfileId, actionType, createdAt])
+  @@index([agentProfileId, createdAt(sort: Desc), id(sort: Desc)], map: "agent_actions_feedback_idx")
   @@map("agent_actions")
 }
 

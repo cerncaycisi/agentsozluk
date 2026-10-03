@@ -2,6 +2,7 @@ import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schem
 import {
   actionFeedbackLimit,
   actionFeedbackWindowMs,
+  actionFeedbackStatuses,
 } from "@/modules/agents/domain/action-feedback";
 import { Prisma, type AgentRunType } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
@@ -2792,6 +2793,7 @@ export async function getRuntimePerceptionRecords(
     includeWriterOpenedTopics?: boolean;
     includeDictionaryLinkCandidates?: boolean;
     includeTrendingTopics?: boolean;
+    includeActionFeedback?: boolean;
     sourceFetchLimit: number;
   },
 ) {
@@ -3058,33 +3060,38 @@ export async function getRuntimePerceptionRecords(
       ORDER BY latest."id" DESC
       LIMIT 5
     `,
-    transaction.agentAction.findMany({
-      where: {
-        agentProfileId: input.agentProfileId,
-        runId: { not: input.runId },
-        actionStatus: { in: ["SUCCEEDED", "REJECTED", "FAILED", "SKIPPED"] },
-        updatedAt: {
-          gt: new Date(input.now.getTime() - actionFeedbackWindowMs),
-          lte: input.now,
-        },
-        run: {
-          agentProfileId: input.agentProfileId,
-          runType: "NORMAL_WAKE",
-          runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIMED_OUT"] },
-          finishedAt: { lte: input.now },
-        },
-      },
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      take: actionFeedbackLimit,
-      select: {
-        id: true,
-        runId: true,
-        actionType: true,
-        actionStatus: true,
-        rejectionCode: true,
-        updatedAt: true,
-      },
-    }),
+    input.includeActionFeedback
+      ? transaction.agentAction.findMany({
+          where: {
+            agentProfileId: input.agentProfileId,
+            runId: { not: input.runId },
+            actionType: { not: "NO_ACTION" },
+            actionStatus: { in: [...actionFeedbackStatuses] },
+            createdAt: {
+              gt: new Date(input.now.getTime() - actionFeedbackWindowMs),
+              lte: input.now,
+            },
+            updatedAt: { lte: input.now },
+            run: {
+              agentProfileId: input.agentProfileId,
+              runType: "NORMAL_WAKE",
+              runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIMED_OUT"] },
+              finishedAt: { lte: input.now },
+            },
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: actionFeedbackLimit,
+          select: {
+            id: true,
+            runId: true,
+            actionType: true,
+            actionStatus: true,
+            rejectionCode: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        })
+      : Promise.resolve([]),
     input.includeSources
       ? listRuntimePerceptionSources(transaction, {
           agentProfileId: input.agentProfileId,

@@ -5,13 +5,35 @@ const now = new Date("2026-10-03T12:00:00Z");
 const result = {
   id: "action-one",
   runId: "run-one",
-  actionType: "NO_ACTION",
+  actionType: "CREATE_ENTRY" as const,
   actionStatus: "SUCCEEDED",
   rejectionCode: null,
-  updatedAt: new Date("2026-10-03T11:00:00Z"),
+  createdAt: new Date("2026-10-03T11:00:00Z"),
+  updatedAt: new Date("2026-10-03T11:01:00Z"),
 };
 
 describe("execution feedback is not a quality judgment", () => {
+  it("does not turn nonterminal states or silence into feedback cards", () => {
+    expect(
+      projectActionFeedback(
+        [
+          { ...result, actionStatus: "EXECUTING" },
+          { ...result, actionStatus: "UNKNOWN_FUTURE_STATUS" },
+          { ...result, actionType: "NO_ACTION", actionStatus: "SKIPPED" },
+        ],
+        now,
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not renew expiry when an old action row is updated", () => {
+    const first = projectActionFeedback([result], now)[0]!;
+    const updated = projectActionFeedback([{ ...result, updatedAt: now }], now)[0]!;
+    expect(updated.expiresAt).toBe(first.expiresAt);
+    expect(updated.actionCreatedAt).toBe(first.actionCreatedAt);
+    expect(updated.resultRecordedAt).not.toBe(first.resultRecordedAt);
+  });
+
   it.each(["SUCCEEDED", "REJECTED", "FAILED", "SKIPPED"])(
     "keeps %s neutral and excludes raw operational data",
     (actionStatus) => {
@@ -33,7 +55,8 @@ describe("execution feedback is not a quality judgment", () => {
     const first = projectActionFeedback([result], now)[0]!;
     const later = projectActionFeedback([result], new Date(now.getTime() + 60_000))[0]!;
     expect(later.eventKey).toBe(first.eventKey);
-    expect(later.recordedAt).toBe(first.recordedAt);
+    expect(later.actionCreatedAt).toBe(first.actionCreatedAt);
+    expect(later.resultRecordedAt).toBe(first.resultRecordedAt);
     expect(later.expiresAt).toBe("2026-10-10T11:00:00.000Z");
     expect(later.observedAt).not.toBe(first.observedAt);
     expect(Object.keys(later)).not.toEqual(expect.arrayContaining(["reward", "score"]));
