@@ -3223,3 +3223,17 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - 36 mevcut snapshot yeniden doğrulandı: şema/ontology/drift 0, yeni maksimum 12.397 karakter.
 - Tekrarlama: shell sözdizimi geçişini gerçek konteyner davranışı sayma; boş nüfusu başarı
   zannetme; anlam yönü tanımlanmayan sayıyı karakter talimatına dönüştürme.
+
+## 2026-10-03 — P2 ikinci kod turu, mekanik koşullar
+
+- Exact SHA `e14d8aa64b04db33e476f8ac30feda418fc3b89b`, gerçek `claude-opus-5`, salt
+  okunur/araçsız; izin reddi 0, is_error=false. Önceki teknik bulgular kaynakla kapandı.
+- Karar KOD DÜZELTİLMELİ; hakem dört mekanik koşuldan sonra üçüncü tur gerekmediğini
+  belirtti. Ortak BROWSE/AW snapshot etkisi belgelendi, renderer/profile hash pin testi
+  eklendi, yanlış v46 test adı v47 yapıldı, NO_ACTION/uydurma sınırları doğrudan sınandı.
+  Yetki maddesine süreli istisna bağlantısı eklendi. Koşulsuz KOD GO diye yazılmadı.
+- 100 ilgili birim testi, lint/typecheck geçti. Önceki 135 birim/11 PG16 kapsamının kalan
+  kodu değişmedi. Son exact sürüm için CI yeniden çalışacaktır. Yeni model pilotu yok: açık
+  A′ penceresi boyunca aynı Codex kotasında lab başlatmama kuralı korunuyor.
+- Tekrarlama: genel AW eşiği değişmedi diye AW girdisi aynı sanma; ortak snapshot üç
+  fazın maliyetini etkiler. P2 kısa pilotu ve teknik kapasite kanıtı ayrı kapılardır.

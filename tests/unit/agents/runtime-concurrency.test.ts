@@ -69,7 +69,8 @@ describe("effective runtime concurrency", () => {
     expect(result.staleReasons).toEqual([]);
   });
 
-  it("requires fresh capacity evidence after the v46 persona-choice rollout", async () => {
+  it("requires fresh capacity evidence after the v47 persona-choice rollout", async () => {
+    // v46 kapasite kaydı yeni v47 isteminde taze sayılamaz.
     const previousProfile = "7fca9a111e846f3af085b576a6e0ba8de5a232bc7f4dae95d9f592b3f2a939d9";
     const result = await resolve({ ...fresh, promptProfileHash: previousProfile });
     expect(result.concurrency).toBe(1);

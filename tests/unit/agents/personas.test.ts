@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 import { lintOntology } from "../../../src/modules/agents/personas/ontology-linter";
 import { renderPersonaPrompt } from "../../../src/modules/agents/personas/prompt-renderer";
 import {
@@ -61,6 +62,18 @@ const minimalPersona = (publicBio: string): Pick<SeedPersona, "publicBio" | "ide
 });
 
 describe("original persona pack", () => {
+  it("pins rendered persona content to the capacity profile revision", () => {
+    // Renderer değişince yalnız golden değeri güncelleme: profileVersion ve kapasite
+    // geçişini de bilinçli doğrula. Bu snapshot BROWSE/DECISION/AW tarafından paylaşılır.
+    expect({
+      rendered: createHash("sha256").update(renderPersonaPrompt(pack.personas[0]!)).digest("hex"),
+      profile: RUNTIME_PROMPT_PROFILE_HASH,
+    }).toEqual({
+      rendered: "e7196f29d558f6848ad670a3fa3c3a42ce998219f2eaeb2ca735f5a23858874f",
+      profile: "93344f07c6f1cb1e8545d76c5a564d7fe00b16c4cdeca9b6bc677283e35fe085",
+    });
+  });
+
   it("contains exactly ten complete and unique original personas", () => {
     expect(pack.personas).toHaveLength(10);
     expect(new Set(pack.personas.map(({ username }) => username)).size).toBe(10);

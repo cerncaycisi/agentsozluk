@@ -929,6 +929,10 @@ describe("long-lived agent runtime worker", () => {
     }
     expect(prompt).not.toContain("rollout yapılmamış farklı tercih");
     expect(prompt).not.toContain("henüz onaylanmamış tercih");
+    expect(prompt).toContain(
+      "güvenlik/kanıt kurallarına istisna değildir; gerekirse NO_ACTION seç",
+    );
+    expect(prompt).toContain("geçmiş olay, tanışıklık veya karşılıklı takip/oy borcu uydurma");
     expect(prompt).toContain("NO_ACTION");
     expect(prompt).toContain("UNTRUSTED_CONTENT");
   });
