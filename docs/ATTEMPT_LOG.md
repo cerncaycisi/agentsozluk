@@ -3102,3 +3102,32 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:** salt bkz sayısını veya bağlam yokluğunu kalite kanıtı sayma. Açılmamış hedef
   ve tek başına bkz anlamlı olabilir; ukte ayrı açık istektir. Deney sürerken ikinci replay
   veya paralel model incelemesi başlatma.
+
+## 2026-10-03 — bkz erken durdurma ve Opus kararı
+
+- **Ortam/SHA:** yerel sunucu; main `98ae79364383fabdd05676db3a0c79506cf07c0b`,
+  replay `1bc24956a8236d5f04e9c32388df3be33d24caa6`. Üretime erişilmedi.
+- **Tetikleyici:** Gökhan denemenin yeterli olduğunu söyleyip Astra ve Opus'tan karar istedi.
+  16:26 UTC'de yalnız `agentsozluk-bkz-20261003.service` ve
+  `agentsozluk-bkz-rapor-20261003.service` durduruldu; ikisi de `inactive` doğrulandı.
+  Tamamlanmış 23 çift korundu; 40 hedefi tamamlandı olarak işaretlenmedi.
+- **Ölçüm:** ilk üç çift ayrı pilot. Devam kohortu 20 çift: kontrol 17 taslak/0 bkz,
+  aday 19 taslak/2 bkz. Toplam 41 taslağın 14'ünde önceki başlık bağlamı var. Kimlik ve
+  yanıt anahtarı eşitliği geçti; saf doğrulayıcı ve ayrıştırma hatası yok.
+- **Hakem:** gerçek `claude-opus-5`, bir tur, araç yok, MCP kapalı, izin reddi 0;
+  kullanım kaydında ayrıca `claude-haiku-4-5-20251001` var. İncelenen malzeme yukarıdaki
+  replay SHA'sının 23 çiftlik yerel çıktısı; varyant anahtarı verilmedi. Sonuç:
+  adayı üretim için kabul etme, ek koşu yapma; iki bkz de anlamlı.
+- **Kaynakla doğrulama:** Astra iki göndermenin bağlamını okudu; biri gösterilen önceki
+  metinlere göre yeni katkı, diğeri kısmi katkı. İşaretçi eklemek kendi başına okur değeri
+  olabilir; yeni fikir üretmemesi bkz aleyhine kanıt sayılmadı. Hakemin “40 çiftte de
+  ayrışmazdı”, genel örneklem gereksinimi ve kotasız etkinin üst sınırı yorumları
+  doğrulanmış bulgu sayılmadı. Gözlenen süre farkı nedensel maliyet artışı diye sunulmadı.
+  Hakemin ek kullanıcı onayı önerisi uygulanmadı: kullanıcı karar vermeyi zaten istedi.
+- **Karar:** mevcut kanıtla `v46bkz` üretim adayı kabul edilmedi; v46 kalır, deney kapandı.
+  Etkisizlik kanıtı veya gruplar arası tekrar oranı iddia edilmedi. AW/yayın kapıları
+  çalışmadı; açılmamış hedef/tek başına bkz geçerliliği ve ukte ihtiyacı korundu.
+- **Güvenli hata:** yok; durma kullanıcı kararıdır. Yerel kanıtlar `bkz-opus-karar.json`,
+  `bkz-degerlendirme/ara/`, `bkz-devam/stop-receipt.json`; ham içerik depoya alınmadı.
+- **Tekrarlama:** bu deneyi otomatik sürdürme; 23/40'ı 40/40 diye raporlama ve iki olumlu
+  örneği kanıtlanmış üretim faydası sayma. Boş hedefi değersiz/bozuk sayma.

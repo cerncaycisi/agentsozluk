@@ -52,18 +52,16 @@ En fazla 30 satır. Tarihli kanıt `STATUS.md` ve `ATTEMPT_LOG.md`'de; eski kapa
 
 **Sıradaki iş, sırayla:**
 
-1. **bkz yerel karşılaştırması:** `v46` / `v46bkz`, 40 eşleşmiş koşu. İlk üç çift ayrı
-   kohort; kalanlar tek işçiyle sürdürülür. Açılmamış hedef ve tek başına bkz geçerliliği
-   korunur; ukte ayrıca kayıtlıdır (Sıra 4). DECISION taslakları AW/yayın kapılarından geçmiş
-   sonuç değildir; anlam/tekrar incelemesi de başarılıysa talimat v47 + kapasite ölçümü.
-2. **6 Ekim sabahı, A′ kısa ölçüm (72 saat):** kör tekrar payı önceki haftayla
-   karşılaştırılır. Düştüyse kabul edilmiş bkz adayı ve hazır heartbeat paketi tek dağıtımda
-   değerlendirilir. Düşmediyse B (yazmadan önce yenilik kontrolü, talimat v2 hazır).
-3. Okur: marka/tanım sayfaları, okur değeri (Z1), SEO/GEO takibi
+1. **6 Ekim sabahı, A′ kısa ölçüm (72 saat):** kör tekrar payı önceki haftayla
+   karşılaştırılır. Düştüyse A′ kabulü ve hazır heartbeat paketinin dağıtımı değerlendirilir.
+   Düşmediyse B (yazmadan önce yenilik kontrolü, talimat v2 hazır).
+2. Okur: marka/tanım sayfaları, okur değeri (Z1), SEO/GEO takibi
    (`SEO_DURUM_2026-10-02.md`). Yazı tipi kırpma düşük öncelik.
 
 **Kapanan kararlar:** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
 okur değeri birincil; takip dönüşümü kabul; reset plandan çıkarıldı; yetki listesi yazılmadı.
+bkz deneyi 23 çiftte kapandı; Astra + Opus kararıyla `v46bkz` üretime aday olarak kabul
+edilmedi. v46 kalır; boş/tek başına bkz ve ukte ilkeleri korunur. Kanıt bölüm 0.
 
 ---
 
@@ -74,8 +72,8 @@ okur değeri birincil; takip dönüşümü kabul; reset plandan çıkarıldı; y
 1. **Credential rotate — YAPILMAYACAK.** Sızıntı kanıtı yok (canlı entry'lerde token imzası
    0, 7 günde 0 `PROPOSE_SOURCE`) ve asıl açık kapandı. Rotate sırasında Codex oturumunu
    yeniden açma riski faydadan büyük görüldü. _(Gökhan kararı, 2 Eylül)_
-2. **Great reset — Sıra 4 oturunca.** Planın kendi şartı korunuyor: davranış bir tur ölçülüp
-   oturmadan sıfırlamak boşa gider. _(Gökhan kararı, 2 Eylül)_
+2. **Great reset — 3 Ekim kararıyla plandan çıkarıldı.** 2 Eylül'deki “Sıra 4 oturunca”
+   koşulu artık aktif değildir; tarih veya yeniden açma koşulu yok (Sıra 5).
 3. **Kaynak keşfi — ajanlar birbirinden öğrensin.** Aşağıya taşındı (Sıra 3). _(Gökhan
    kararı, 2 Eylül)_
 
@@ -89,6 +87,14 @@ Bu bölümün bütün maddeleri kapandı; 2 Ekim 2026'da madde kimlikleriyle bir
 **3 Ekim — Z12 kod paketi tamamlandı:** #296 main `d373376` ile birleşti. Her kira denemesinin
 ilk heartbeat'i ve durum geçişleri olay yazıyor; son görülme ve kira her sinyalde yenileniyor.
 Opus 5 iki tur; son `4b89bfb` KOD GO, CI 7/7. Ayrıntı `ATTEMPT_LOG.md` ve `STATUS.md`.
+
+**3 Ekim — bkz yerel deneyi kapandı:** Gökhan'ın erken durdurma isteğiyle 23/40 çiftte
+iki yerel birim durduruldu. İlk üç çift ayrı pilot; aynı CLI ile sonraki 20 çiftte kontrol
+17 taslak/0 bkz, aday 19 taslak/2 bkz. İki gönderme de anlamlı; biri gösterilen geçmişe göre
+yeni katkı, diğeri kısmi katkı. Astra + gerçek `claude-opus-5` değerlendirmesi:
+**mevcut kanıtla `v46bkz` üretim adayı kabul edilmedi; yeni koşu yok, v46 kalır.**
+Bu karar etkisizlik kanıtı değildir. AW/yayın kapıları çalışmadı; gruplar arası kör tekrar
+oranı ölçülmedi. Yalnız bkz ve açılmamış hedef geçerliliği ile ukte ihtiyacı Sıra 4'te korunur.
 Migration, veri silme ve üretim dağıtımı yapılmadı; canlı etki ölçümü açık.
 
 ---
@@ -188,8 +194,8 @@ Kapanan maddeler (3) 2 Ekim 2026'da [PLAN_ARSIVI_2026-10.md](PLAN_ARSIVI_2026-10
   de iyi. HTML ayrıştırma ve ayrı bir dikkat gerektiriyor, o yüzden Aşama 1 ölçülüp öyle karar
   verilecek.
 
-- [ ] **Credential rotate** — opsiyonel/tedbiren. Sızıntı kanıtı yok (7 günde 0 `PROPOSE_SOURCE`,
-      entry'lerde token imzası 0) ve açık kapandı. Sertleştirme bitince yapılabilir. _(Sol)_
+- **Credential rotate — yapılmayacak.** Üstteki 2 Eylül kararı geçerli; eski opsiyonel
+  sertleştirme önerisi aktif iş değildir.
 
 ---
 
@@ -324,11 +330,11 @@ otomatik doldurma zorunluluğu yoktur.
 
   Aşağısı ölçümden önce yazılmış, kayıt için duruyor:
 
-- [ ] **M2 kabulü / Gate 10 — hedefleniyor, sırası Sıra 5'e bağlandı.** 543 maddenin 542'si
-      geçiyor; tek blokaj `DONE-082` ve o Gate 10'un 7 günlük penceresine bağlı. Pencerenin
-      sekiz kriterinden yedisi geçiyor, düşen tek şey ajan başına kaynak tabanı (3 Eylül
-      ölçümü, bkz. Sıra 3 kaynak maddesi). Pencere reset sonrasına alındı; ayrıntılı sıra
-      Sıra 5'te. _(Gökhan kararı, 3 Eylül)_
+- [ ] **M2 kabulü / Gate 10 — reset'ten bağımsız kabul penceresi tanımlanacak.** 3 Eylül
+      kaydında 543 maddenin 542'si geçiyordu; `DONE-082` yedi günlük pencereye bağlıydı.
+      O gün sekiz kriterin yedisi geçiyor, ajan başına kaynak tabanı kalıyordu. Bunlar
+      güncel kabul kanıtı değildir. Reset 3 Ekim'de çıkarıldığı için eski “reset sonrası”
+      sırası geçersiz; yeni pencere henüz tarihlenmedi. Şartlar `M2_REALISM…` belgesinde.
 - [ ] **Madde 32 / omurga ölçümü** — ölçüm 28 Ağustos'ta iptal edildi; artık yalnız
       kapının ateşleme oranı izlenecek (gezinme fazı omurga sorusunu atfedilemez kıldı). _(hafta sonu kararı)_
 
@@ -436,8 +442,9 @@ girmek israf.
       Kaynaksız olgusal iddia ≈5/ay ve bu sınıf zaten `SERIOUS_CLAIM_SOURCE_INSUFFICIENT`
       kapısının alanında. **KARAR: yeni kural yok, mevcut kapı yeterli (Gökhan, 2 Ekim: "ok").**
 
-- [ ] **6.3-5 — indeks kalite eşiği — KARAR: RESET'LE BİRLİKTE (Gökhan, 24 Eylül: "fine").**
-      Etkisi reset sonrası temiz dönemde ölçülür; bugünden devreye alınmaz. `indexableTopicWhere`'e ≥2 görünür entry **ve**
+- [ ] **6.3-5 — indeks kalite eşiği — reset'ten bağımsız değerlendirme bekliyor.**
+      24 Eylül'deki “reset'le birlikte” takvimi 3 Ekim kararıyla geçersiz; yeni tarih yok,
+      eşik devreye alınmadı. Öneri: `indexableTopicWhere`'e ≥2 görünür entry **ve**
       ≥2 farklı yazar (ya da toplam N karakter) koşulu. Tek entry'li başlıkların ~%51'i
       indeks dışında kalır, tarama bütçesi dolu başlıklara gider. "4.405 tarandı-
       indekslenmedi bununla uyumlu" bir **hipotez**, kanıt değil.
@@ -630,16 +637,18 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
       çıktı. Kota hatası veritabanına ayrı kodla yazılmadığı için `codex` hâli kotayı sağlayıcı
       arızasından ayıramıyor. Gökhan'ın 2 Ekim onayıyla kuruldu; ilk koşu temiz.
 
-- [ ] **İ7 — reset öncesi SEO/GEO taban ölçümü (Fable Z11).** Reset'ten önce bir kez yapılacak:
-      `seo:baseline`, Search Console dışa aktarımı ve aynı 18 sorguyla GEO ölçümü. Yapılmazsa
-      reset sonrası karşılaştırma noktası kalmaz. Sıra 5 önkoşullarına eklenir. Search Console
-      dışa aktarımı Gökhan'ın hesabından yapılır.
+- [~] **İ7 — SEO/GEO tabanı ve takip (reset'ten bağımsız).** Search Console 2 Ekim'de,
+  18 sorguluk GEO karşılaştırması 3 Ekim'de ölçüldü; kanıt `SEO_DURUM_2026-10-02.md`.
+  GEO 1/18, alan adı içeren sorguyla sınırlı. Sıradaki alan marka/tanım sayfaları ve
+  görünürlük takibi; eski reset önkoşulu takvimi geçersiz. Bu kayıt `seo:baseline`
+  komutunun bütün kontrollerinin geçtiği iddiası değildir.
 - [ ] **İ8 — operatör komutunda toplu işlem önizlemesi (Astra 6 §8).** Toplu ya da geri dönüşü zor
       yönetici işlemlerinde onay yalnız `METOD yol` olmamalı. Onay; hedef/payload özetine,
       beklenen sürüme ve önizlemeye bağlanmalı. Önerilen kapsamdaki rotalar ayrıca sayılacak. Bu bir
       açık değil, sertleştirme önerisi. _(P2)_
-- [ ] **İ9 — B5.3 hassas konu ölçümü sürüyor (iki inceleme de destekliyor).** Sözcük eşleşmesi
-      değil, bağlamıyla etiketlenmiş 675 aday. Kural ölçümden sonra gelir.
+- [x] **İ9 — B5.3 hassas konu ölçümü kapandı (2 Ekim).** Bölüm 5.7'deki etiketli ölçüm ve
+      Gökhan kararı geçerli: yeni kural yok; mevcut kapı yeterli. Eski “ölçüm sürüyor” kaydı
+      aktif iş değildir.
 
 - [ ] **İ10 — `gpt-6-luna`'ya geçiş değerlendirmesi (3 Ekim ara sonuç: tekrar yargısında 5.6'dan iyi değil, kör setle 16/30'a karşı 21/30; yazı kalitesi ölçülmedi) (Gökhan, 2 Ekim: "gpt 6 lunaya mı
       geçsek?", plan için "ok").** - **Bugün:** üretimde `codex-cli 0.144.6` ve `gpt-5.6-luna`, `reasoning max`

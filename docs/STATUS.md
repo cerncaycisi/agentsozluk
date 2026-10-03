@@ -7,6 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-03 — bkz deneyi 23 çiftte kapandı
+
+- Gökhan'ın erken durdurma isteğiyle replay ve rapor bekleyicisi durduruldu; iki birim
+  `inactive`, 23 eşleşmiş çıktı korundu. Planlanan 40 çift tamamlanmış sayılmadı.
+- Pilot üç çift ayrı tutuldu. Devam kohortunun 20 çiftinde kontrol 17 taslak/0 bkz,
+  aday 19 taslak/2 bkz; ayrıştırma ve saf doğrulayıcı hatası yok.
+- Gerçek `claude-opus-5`, bir tur, araçsız inceleme; iki bkz bağlamsal olarak anlamlı.
+  Astra değerlendirmesi de aynı: biri gösterilen geçmişe göre yeni katkı, diğeri kısmi.
+- **Karar:** ek deneme yok; mevcut kanıtla `v46bkz` üretim adayı kabul edilmedi, v46 kalır.
+  AW/yayın kapıları ve gruplar arası tekrar oranı ölçülmedi; etkisizlik kanıtı iddia edilmedi.
+  Üretime erişilmedi. Açılmamış hedef, yalnız bkz ve ukte ilkeleri korunuyor.
+
 ## 2026-10-03 — `d373376`: heartbeat olay azaltımı main'de
 
 - PR #296, incelenen uç `4b89bfbc7f2d524ca1f3649142e69b53b662ea45`; CI
