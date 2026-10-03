@@ -41,8 +41,8 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananlar
 `PLAN_ARSIVI_2026-10.md`'de.
 
-- **Üretim:** `367cffd` (2 Ekim akşam; bağımlılıklar, yerel yazı tipi). Talimat v45, `gpt-5.6-luna`, iki hat. Kapasite kanıtı en geç
-  14 Ekim'de yenilenir (Claude). Alarm sağlık özeti ve çerezsiz okur sayacı kurulu.
+- **Üretim:** `9bf3653` (3 Ekim; A′, talimat v46 `7fca9a…`), `gpt-5.6-luna`, iki hat. Kapasite
+  3 Ekim'de yenilendi, en geç 17 Ekim'de yeniden ölçülür (Claude). Alarm sağlık özeti ve çerezsiz okur sayacı kurulu.
 - **Takip dönüşümü: KABUL.** Pencere Gökhan kararıyla 2 Ekim'de, 4 dilimde kapandı (erken
   kapatma kayıtlı). İlk 10 payı −%34, yoğunlaşma −%47, üretkenlik korundu. Ret %10 → %21
   (tekrar yakalaması). Ayrıntı `USLUP_LAB`. Davranış penceresi (İ2) bitti.
@@ -51,8 +51,8 @@ En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananl
 
 **Sıradaki iş, sırayla:**
 
-1. Tekrar azaltma **A′** (Astra ile karar): önkayıtlı üç aşamalı çevrim dışı sınama ve aynı
-   düzenekte `gpt-6-luna` karşılaştırması (2×2, İ10). Canlıya alma Gökhan onayıyla.
+1. **A′ canlıda (3 Ekim).** Yedi tam gün canlı ölçüm (reset yeniden açma koşulu, Z2): kör ölçümde
+   tekrar payı en az %30 düşmeli. Ardından `gpt-6-luna` karşılaştırması (İ10), tek değişiklik ilkesiyle.
 2. bkz'nin sıfırlanması: takip dönüşümünün bkz başlıklarını menüden düşürüp düşürmediği.
 3. Okur değeri izleme (Z1, kör ikili tercih) ve SEO/GEO takibi (`SEO_DURUM_2026-10-02.md`).
 

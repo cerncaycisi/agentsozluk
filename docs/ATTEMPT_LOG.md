@@ -2996,3 +2996,34 @@ false/true` yapabildi; geçici rol ve DB silindi.
   - Bağımlılık güncellemesinden sonra paketleme betiklerinde sabit sürüm yolu ara
     (`grep -rn "@<sürüm>/" scripts docs`).
   - `next/font/google` derlemeyi dış ağa bağlar; yazı tipi yerel kalsın.
+
+## 2026-10-03 — `9bf3653`: A′ (okuma bağlamı 15 entry, talimat v46) canlıda; kapasite yenilendi
+
+- **Onay:** Gökhan, 3 Ekim 07:35 UTC: "Ben her şeye onay verdim size. 48 saat". Astra `e8d504e`
+  için KOD GO verdi; `9bf3653` birleştirme commit'inin ağacı birebir aynı.
+- **A′:** Okunan başlıkta pencere 6'dan 15 entry'ye çıktı. Tanım entry'si kimliğiyle başa
+  sabitlendi; tanım ve en yeni altı entry tam, eskiler 600 karakter önizleme. Talimat okuma
+  cümlesi buna göre güncellendi; profileVersion 46, özet `7fca9a111e84…`.
+- **Önkayıtlı sınama:** üç aşamanın üçü de geçti (`TEKRAR_DEGERLENDIRME_2026-10-02.md`).
+- **Astra:**
+  - 1. tur: P2, eşit zaman damgasında tanımın 600'e kırpılması; P3, talimatın önizlemeyi
+       anlatmaması.
+  - 2. tur: KOD GO.
+- **Dağıtım:** Release Candidate `37108822653`, `--pause-society-flow` ile;
+  `RELEASE_COMPLETE PASS`, imaj `sha256:12d2a6b2…`.
+- **Kapasite:** talimat özeti değiştiği için eski kanıt bayatladı; akış duraklatılmışken yeniden
+  ölçüldü.
+  - Damga `20261003T082507Z`; açık koşu ve kira 0, başka Codex süreci yok.
+  - Soğuk (08:25–08:49): 10 koşu, hata 0, p50/p75/p95 131,6/194,5/272,2 sn, RSS 249 MB.
+  - Ilık (08:49–09:13): 10 koşu, hata 0, p50/p75/p95 113,7/138,3/281,9 sn, RSS 248 MB.
+  - Çift (09:13–09:16): çift RSS 473 MB, `dualConcurrencySupported=true`.
+  - Hepsi `HEALTHY`, `codex-cli 0.144.6`.
+  - Kalıcılaştırma operatör komutuyla yapıldı (`POST .../capability-package`, 200). Kayıtlar:
+    soğuk `cc2cb230…`, ılık `0df4de50…`, çift `5021b2a4…`.
+  - `concurrencyDowngraded=false`; kanıt 17 Ekim 09:17 UTC'de bayatlar.
+- **Resume:** 303→304, 3 Ekim ~09:20 UTC. Akış toplam yaklaşık 70 dakika duraklatılmış kaldı.
+- **Tekrarlama:**
+  - Talimat değişikliği kapasite kanıtını hemen geçersiz kılar ve üretim tek hatta düşer. Talimat
+    değişen her dağıtımı aynı duraklamada kapasite ölçümüyle birlikte planla.
+  - Tanı dosyalarını `sudo stat` ile ayrı ayrı adlarıyla denetle; joker ifade, okunamayan dizinde
+    deploy kullanıcısı tarafından genişletilemez.
