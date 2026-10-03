@@ -1,3 +1,7 @@
+import {
+  runtimeReadTopicEntryLimit,
+  truncateUntrustedText,
+} from "@/modules/agents/domain/perception";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -217,6 +221,10 @@ describe("independent purpose assessment with PostgreSQL", () => {
       version: 2,
     });
     expect(await db.agentRewardAssessment.count()).toBe(2);
+    const audit = await db.auditLog.findFirstOrThrow({
+      where: { action: "agent.reward.assessed", entityId: shadow.assessmentId },
+    });
+    expect(audit.metadata).toMatchObject({ independentReviewConfirmed: true });
   });
   it("requires current human administrator in the application layer", async () => {
     const f = await fixture();
@@ -454,6 +462,19 @@ describe("independent purpose assessment with PostgreSQL", () => {
       },
     });
     const packet = await f.issue();
+    // Tarihsel yinelenen action satırı yeni TTL/köken seçtirmez: en eski gerçek action sabittir.
+    await db.agentAction.create({
+      data: {
+        runId: f.run.id,
+        agentProfileId: f.profile.id,
+        sequence: 2,
+        actionType: "UPDATE_BELIEF",
+        actionStatus: "SUCCEEDED",
+        input: {},
+        result: { beliefId: belief.id },
+        createdAt: now,
+      },
+    });
     await db.agentBelief.create({
       data: {
         ...base,
@@ -470,6 +491,13 @@ describe("independent purpose assessment with PostgreSQL", () => {
     const shadowPacket = await f.issue();
     await f.mode("FULFILL_SLOT", "SHADOW");
     await expect(f.submit(shadowPacket)).rejects.toMatchObject({ code: "AGENT_REWARD_CONFLICT" });
+    await changeRewardMode(db, f.adminActor, {
+      mode: "SHADOW",
+      expectedMode: "FULFILL_SLOT",
+      reason: "Gölge moda tekrar dön.",
+    });
+    await expect(f.submit(shadowPacket)).rejects.toMatchObject({ code: "AGENT_REWARD_CONFLICT" });
+    await f.mode("FULFILL_SLOT", "SHADOW");
     const granted = await f.submit(await f.issue());
     await changeRewardMode(db, f.adminActor, {
       mode: "OFF",
@@ -485,5 +513,58 @@ describe("independent purpose assessment with PostgreSQL", () => {
         now,
       ),
     ).toMatchObject({ reversed: true });
+  });
+  it("keeps the shared long preview boundary and rejects changes to visible evidence", async () => {
+    const f = await fixture();
+    await f.mode("SHADOW");
+    const longBody = "  uzun   kanıt\n".repeat(150);
+    await db.entry.update({ where: { id: f.entry.id }, data: { body: longBody } });
+    const others = [];
+    for (let i = 0; i < 7; i++)
+      others.push(
+        await db.entry.create({
+          data: {
+            topicId: f.topic.id,
+            authorId: f.admin.id,
+            body: `Başka katkı ${i}.`,
+            normalizedBody: `katki ${i}`,
+            origin: "WEB",
+          },
+        }),
+      );
+    const ordered = [others[0]!, { ...f.entry, body: longBody }, ...others.slice(1)];
+    const entries = ordered.map((entry, index) => ({
+      id: entry.id,
+      body: truncateUntrustedText(entry.body, runtimeReadTopicEntryLimit(index, ordered.length)),
+    }));
+    expect(entries[1]!.body).toHaveLength(600);
+    await db.agentRun.update({
+      where: { id: f.run.id },
+      data: { perceptionSummary: { readTopics: [{ id: f.topic.id, entries }] } },
+    });
+    const packet = await f.issue();
+    const shown = packet.packet.observation.entries as Array<{ body: string }>;
+    expect(shown.some((entry) => entry.body === entries[1]!.body)).toBe(true);
+    expect(JSON.stringify(packet.packet)).not.toContain(longBody);
+    await db.entry.update({
+      where: { id: f.entry.id },
+      data: { body: `Yeni görünür kanıt. ${longBody}` },
+    });
+    await expect(f.submit(packet)).rejects.toMatchObject({ code: "AGENT_REWARD_CONFLICT" });
+  });
+  it("does not bump settings version for a repeated mode and retains the mode reason", async () => {
+    const f = await fixture();
+    await f.mode("SHADOW");
+    const before = await db.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } });
+    await changeRewardMode(db, f.adminActor, {
+      mode: "SHADOW",
+      expectedMode: "SHADOW",
+      reason: "Aynı modda kal.",
+    });
+    const after = await db.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } });
+    expect(after.settingsVersion).toBe(before.settingsVersion);
+    const audits = await db.auditLog.findMany({ where: { action: "agent.reward.mode_changed" } });
+    expect(audits).toHaveLength(1);
+    expect(audits[0]!.metadata).toMatchObject({ reason: "Yerel kontrollü test." });
   });
 });

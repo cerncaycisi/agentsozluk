@@ -36,13 +36,13 @@ export const revokeFulfilledPurpose = (tx: TransactionClient, id: string, now: D
     where: { id, status: "FULFILLED" },
     data: { status: "REVIEW_REVOKED", version: { increment: 1 }, updatedAt: now },
   });
+export const getRewardConfiguration = async (tx: TransactionClient) =>
+  (await tx.agentGlobalSettings.findUnique({
+    where: { id: "global" },
+    select: { rewardMode: true, settingsVersion: true },
+  })) ?? { rewardMode: "OFF" as const, settingsVersion: 0 };
 export const getRewardMode = async (tx: TransactionClient) =>
-  (
-    await tx.agentGlobalSettings.findUnique({
-      where: { id: "global" },
-      select: { rewardMode: true },
-    })
-  )?.rewardMode ?? "OFF";
+  (await getRewardConfiguration(tx)).rewardMode;
 export const setRewardMode = (
   tx: TransactionClient,
   mode: "OFF" | "SHADOW" | "FULFILL_SLOT",
@@ -110,8 +110,9 @@ export const findAssessmentBaseline = (
   topicKey: string,
   version: number,
 ) =>
-  tx.agentBelief.findFirst({
-    where: { agentProfileId, topicKey, version },
+  // @@unique([agentProfileId, topicKey, version]) başlangıç sürümünü tekilleştirir.
+  tx.agentBelief.findUnique({
+    where: { agentProfileId_topicKey_version: { agentProfileId, topicKey, version } },
     select: { statement: true, evidenceSummary: true },
   });
 export const findBeliefOriginAction = (
@@ -127,6 +128,8 @@ export const findBeliefOriginAction = (
       result: { path: ["beliefId"], equals: beliefId },
       run: { runType: "NORMAL_WAKE", runStatus: { in: ["SUCCEEDED", "PARTIAL"] } },
     },
+    // Normal yürütmede bir belief sürümünü tek action üretir; tarihsel çoğullukta en eski köken.
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { id: true, createdAt: true },
   });
 export const findAssessmentEntries = (tx: TransactionClient, ids: string[]) =>

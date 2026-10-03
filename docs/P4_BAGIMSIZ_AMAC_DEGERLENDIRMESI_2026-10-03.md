@@ -66,3 +66,37 @@ yanıt deposunda null tutulur. Paket modu da hash'e bağlıdır; gölge paketle 
 ödül verilemez. İnceleme gerekçesi özel kayıttadır; standart audit yalnız sınırlı kimlik,
 hash ve kararı taşır. Okunan metin normalleştirilmiş 600/2000 karakterlik gerçek A′
 önizlemesiyle karşılaştırılır; hakeme yalnız o okunan metin verilir.
+
+## İlk kod hakemi: bulguların uzlaştırılması
+
+Gerçek `claude-opus-5`, exact `fbd51b1ca1b1f2befb84488da2139bcea99393aa`:
+DÜZELTİLMELİ. Araçsız kaynak incelemesi; testleri yeniden üretmedi.
+
+1. Reset/DELETE iddiası kaynakla çürütüldü: `maintenance/repository/great-reset.ts:529`
+   tek `TRUNCATE ... CONTINUE IDENTITY RESTRICT` çalıştırır, `deleteMany` değil. Aynı yerde
+   DELETE trigger'larının çalışmadığı açıklanır. Immutable trigger kaldırılmadı; tablo
+   sınıflandırması doğru kaldı. Mevcut test temizliği de kayıt varken TRUNCATE kullanır.
+2. Amaç reddinde modelin işlem özeti korunur ve 2000 karakter sınırı içinde sunucunun
+   Türkçe ret cümlesi eklenir; ayrı `shortRationale` güvenli makine kodunu korur. Yeni
+   serverNote alanı gereksiz yere çıktı şemasına eklenmedi.
+3. `independentReviewConfirmed=true` artık değerlendirme UUID'sine bağlı değişmez audit'te;
+   mod değişiminin güvenli gerekçesi mod audit'inde saklanır. Hakem model adı tek başına
+   bağımsızlık kanıtı değildir; operatör sınırı açık kalır.
+4. Belief başlangıcı mevcut `@@unique([agentProfileId, topicKey, version])` ile tektir;
+   sorgu bu composite `findUnique` anahtarını kullanır. Gerçek origin action savunma amaçlı
+   `createdAt ASC, id ASC` ile seçilir; tarihsel ikinci kayıt paket/TTL'yi değiştirmez.
+5. A′ okuma sınırı perception domain'inde tek helper'dır; runtime yazıcısı ve inceleme
+   aynı index/count kuralını kullanır. Uzun, çok boşluklu sekiz-entry bağlamında eski entry
+   gerçekten 600 karakter olarak sınanır. Başka başlığa taşınmış entry ayrıca reddedilir.
+6. Audit UUID yeni/uydurma değildir: control-plane'in mevcut aggregate kimliğidir; ortak
+   domain sabitine taşındı. `settingsVersion` artışı diğer ayar yazıcısını eski sürümle
+   sessizce ezmemek için korunur; eski sürüm açık 409 verir. Aynı mod isteği artık sürümü
+   artırmaz. Bu iki davranış ayrı testlerle doğrulanır.
+
+API belgelerindeki dört eksik yol tamamlandı: OpenAPI doğrulaması 143 işlemle, ilgili
+belge/şema testleri 21/21 geçti. İlk CI'ın database/browser/container kapıları geçti;
+quality/behavior hataları belge kapsamındaydı. İkinci exact sürüm CI ve hakem sonucu beklenir.
+
+Ek koruma: paket `settingsVersion`'a da bağlıdır. Mod değiştirilip eski moda dönülmesi
+eski nonce'u yeniden kullanılabilir yapmaz; SHADOW → FULFILL_SLOT → SHADOW testi bunu sınar.
+İlk hakem düzeltmelerinden sonra 12 ödül + 8 amaç = 20/20 PG16, 35 ilgili birim testi geçti.

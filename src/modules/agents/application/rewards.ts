@@ -1,4 +1,8 @@
-import { truncateUntrustedText } from "@/modules/agents/domain/perception";
+import {
+  truncateUntrustedText,
+  runtimeReadTopicEntryLimit,
+} from "@/modules/agents/domain/perception";
+import { globalAgentSettingsAggregateId } from "@/modules/agents/domain/settings-identity";
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient, InputJsonObject } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
@@ -92,11 +96,14 @@ async function buildPurposeAssessment(
     if (
       entries.some(
         (entry) =>
-          ![600, 2000].some(
-            (limit) =>
-              truncateUntrustedText(entry.body, limit) ===
-              shownEntries.find((shown) => shown.id === entry.id)?.body,
-          ),
+          entry.topicId !== purpose.targetId ||
+          truncateUntrustedText(
+            entry.body,
+            runtimeReadTopicEntryLimit(
+              shownEntries.findIndex((shown) => shown.id === entry.id),
+              shownEntries.length,
+            ),
+          ) !== shownEntries.find((shown) => shown.id === entry.id)?.body,
       )
     )
       reject("Okunan kanıtın metni değişti.");
@@ -162,9 +169,11 @@ async function buildPurposeAssessment(
     sourceAt.getTime() + rewardLifetimeMs <= now.getTime()
   )
     reject("Dayanak olay yedi günlük değerlendirme aralığı dışında.");
+  const configuration = await records.getRewardConfiguration(tx);
   const packet = {
+    settingsVersion: configuration.settingsVersion,
     policyVersion: rewardPolicyVersion,
-    mode: await records.getRewardMode(tx),
+    mode: configuration.rewardMode,
     channel: "INTRINSIC",
     kind: purpose.kind,
     question: purpose.question,
@@ -319,6 +328,7 @@ export function submitPurposeAssessment(
         applied,
         disposition,
         packageHash: built.packageHash,
+        independentReviewConfirmed: input.independentReviewConfirmed,
         policyVersion: rewardPolicyVersion,
       },
     });
@@ -370,14 +380,20 @@ export function changeRewardMode(
     await lockAgentSettings(tx);
     const previous = await records.getRewardMode(tx);
     if (previous !== input.expectedMode) reject("Ödül modu değişti; güncel modu yeniden oku.");
+    if (previous === input.mode) return { mode: previous };
     await records.setRewardMode(tx, input.mode, actor.actorId);
     await appendAuditLog(tx, {
       actorId: actor.actorId,
       action: "agent.reward.mode_changed",
       entityType: "AgentGlobalSettings",
-      entityId: "00000000-0000-4000-8000-000000000001",
+      entityId: globalAgentSettingsAggregateId,
       requestId: actor.requestId,
-      metadata: { previous, mode: input.mode, policyVersion: rewardPolicyVersion },
+      metadata: {
+        previous,
+        mode: input.mode,
+        reason: input.reason,
+        policyVersion: rewardPolicyVersion,
+      },
     });
     return { mode: input.mode };
   });

@@ -3406,3 +3406,18 @@ false/true` yapabildi; geçici rol ve DB silindi.
   etkisine dönüşmesi engellendi, gerçek servis testi geçti. İlgili 10 birim testi geçti.
 - Tekrarlama: mevcut audit aggregate UUID sözleşmesini okumadan yeni singleton ID üretme;
   test fixture DB kısıtı hatasını ürün regresyonu veya guard gevşetme gerekçesi sayma.
+
+- P4a exact `fbd51b1ca1b1f2befb84488da2139bcea99393aa`, CI `37160687223`: quality yeni dört
+  yolun OpenAPI'de eksik olmasıyla; behavior aynı dört yolun API.md kapsam testiyle kaldı
+  (1965 birim testi geçti, 2 belge kapsam testi kaldı). OpenAPI ve API.md yolları, request
+  şemaları, idempotency/CSRF sözleşmesi ve doğrulayıcı eşlemesi eklendi. OpenAPI 143 runtime
+  operation ile geçti. Tekrarlama: yeni HTTP yolu eklenince iki API belgesini ve OpenAPI
+  eşleme kapısını aynı dilimde güncelle; yalnız route/application testini yeterli sayma.
+
+- P4 ilk Opus 5 kod turu `fbd51b1`: DÜZELTİLMELİ. Reset DELETE varsayımı gerçek repository
+  TRUNCATE kaynağıyla, audit kimliği ise eski control-plane aggregate sabitiyle çürütüldü;
+  güvenlik kısıtları kaldırılmadı. Ret cümlesi model özetine eklendi; beyan/mod gerekçesi
+  audit'e yazıldı; origin deterministik, baseline unique sorgulu ve önizleme limiti ortak oldu.
+  Aynı mod isteğinin settingsVersion artırması kaldırıldı. İkinci inceleme için hazırlanıyor.
+- Tekrarlama: hakeme yalnız yeni diff değil, dayandığı eski reset/Prisma unique/audit kaynağını
+  da ver; varsayımsal bulguyu doğrulanmış hata diye kabul etme veya otomatik kod değişikliğine çevirme.
