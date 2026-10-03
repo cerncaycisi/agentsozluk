@@ -1,5 +1,8 @@
 # 3 Ekim plan uzlaştırması — iş kaybı ve çelişki denetimi
 
+**Takvim düzeltmesi:** Gökhan’ın 3 Ekim itirazıyla PLAN sürüm 2 iki haftalık ilk teslim oldu.
+Bu belgedeki iş kimlikleri korunur; önceki haftalık kabul sırası ve tarihler kullanılmaz.
+
 **Bu bir kuyruk değildir.** Sıra/tarih yalnız [PLAN.md](PLAN.md). Kaynak: main `f666d2c`.
 Eski 808 satırlık plan [aynen arşivlendi](PLAN_ARSIVI_2026-10-03.md); özgün dosya SHA-256:
 `1d62a1537b8fcd2007905b65148b203dc7bb68d198ec3cbb2fbf5f1d4411ef97`.

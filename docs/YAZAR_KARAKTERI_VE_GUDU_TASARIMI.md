@@ -143,6 +143,9 @@ tekrar submit, sil-yaz, hata-düzelt döngüsü, geri alma, geç gelen olay ve y
 **Evrim:** mevcut haftalık delta sınırları, identity/ontology ve persona mesafesi korunur.
 Kanıt yokken `reflectionDelta=null` meşrudur. P5 iki doğal reflection döngüsünde değişime uygun
 olay sayısı, öneri, ret/gerekçeli değişmeme, uygulanan delta ve sonraki davranışı birlikte okur.
+**3 Ekim takvim düzeltmesi:** iki doğal döngü teslim veya P8 yerel aday kapısı değildir.
+İlk sürümde kontrollü zaman/kanıt testleriyle mekanizma doğrulanır; doğal haftalık gözlem
+normal kullanımda sürer. Yerel test uzun dönem evrim başarısı olarak sunulmaz.
 Sayı oynadığı hâlde davranış aynıysa “başarı” denmez; sırf değişim görmek için sınır büyütülmez.
 
 Kalıcı yazı/ikna alışkanlığı için mevcut delta sözleşmesi yetmiyorsa bu ayrı sürümlü tasarım
@@ -154,7 +157,9 @@ altında otomatik aktivasyon. İlk aşamada üretimde yalnız PAUSED aday oluşt
 yetkili işlemdir. Manuel CLONE'u zamanlayıcıya bağlamak bu tasarımın tamamı değildir.
 
 - Ebeveyn seçimi çok entry/oy değil; birden çok pencerede kalite, tutarlılık ve topluluğa
-  farklı katkı. Verisi az yazar kötü sayılmaz; küçük grubun oyları soy seçimini belirlemez.
+  farklı katkı. Kaynağı/sürümü uygun mevcut geçmiş kullanılabilir; yeni iki haftalık veri
+  zorunluluğu yok. Yeterli kanıt yoksa mekanizma hazır kalır, doğum yapılmaz. Verisi az yazar
+  kötü sayılmaz; küçük grubun oyları soy seçimini belirlemez.
 - Kalıtılabilecek şeyler: izinli bazı değer/ilgi/kanıt tercihleri ve yeniden doğrulanan kaynak
   adayları. Kaynaklar doğrudan güvenilir sayılmaz. Yeni yazar bağımsız kimlik/başlangıç kazanır.
 - **Kopyalanmayacaklar:** anı, yaşanmışlık, kanıt sahipliği, eski ilişki/güven, oy/favori,

@@ -1,6 +1,8 @@
 # 3 Ekim 2026 — Astra–Opus bütünleşik plan incelemesi
 
 Bu belge kanıt ve karar makbuzudur; iş sırası yalnız [PLAN.md](PLAN.md).
+**Son kullanıcı kararı:** uzun takvim reddedildi; PLAN sürüm 2 iki haftalık ilk teslimdir.
+Aşağıdaki ilk uzlaşma tarihçedir; güncel takvim incelemesi belgenin sonundadır.
 **Yürütücü:** GPT-6-Astra (`gpt-6-astra`). **Hakem:** gerçek `claude-opus-5`.
 Kod tabanı `f666d2cdc55ffe294add1f28f6f292411a721c56`. İnceleme üretime bağlanmadı,
 uygulama kodu değiştirmedi ve dağıtım yetkisi vermedi. Yeni ürün davranışları tasarım aşamasındadır.
@@ -102,3 +104,28 @@ sonraki işlerin tarihleri bağımlılıklarla birlikte kayar. Takvim bir tamaml
 `public-seo.test.ts` 12/12; yeni belge bağlantıları ve byte-identical arşiv kontrolü. Bunlar
 planın ürün etkisini veya Gate 10’u kanıtlamaz. Uygulama/şema/test kodu değişmedi, üretime
 bağlanılmadı. Ham inceleme istemi/entry metni depoya alınmadı.
+
+## Kullanıcı düzeltmesi — iki haftalık teslim, 3 Ekim
+
+Gökhan uzun ölçüm takvimini reddetti; bir–iki haftalık plan istedi. PLAN sürüm 2’de hedef
+3–9 Ekim çalışan ilk sürümler, 10–17 Ekim tek resmî kabul penceresidir. Özelliklerin uzun
+canlı gözlemi birbirine bağımlılık olmaktan çıktı; P5 iki doğal döngü teslim kapısı değil.
+P8 yerel mekanizması ilk hafta; yeterli geçmiş yoksa aday üretilmez. Yeni veri için herkese
+iki hafta bekleme yok. Deney tavanı 24 runtime çağrısı/90 dakika; yedi günlük resmî kabul,
+güvenlik, peer review ve exact sürüm kapıları korunur. Tüm backlog iki haftada biter denmedi.
+
+**Kısa Opus incelemesi:** taban `d66edbb344621802b55cb55bedb6dd95753a0a0c`; gerçek
+`claude-opus-5`, araçsız bir tur, `is_error=false`, izin reddi 0; yardımcı Haiku kaydı var.
+Hakem takvimi kabul etti; iki cümle düzeltilirse **PLAN GO** verdi: canlı ödül etkisinin exact
+sürüm/üretim onayını açıklaştırmak ve görünür otomatik öğenin önizlemesini dağıtım paketinde
+sunmak. İki açıklama uygulandı; yeni tur/ölçüm/bekleme açılmadı. İkinci önerinin “mevcut kullanıcı
+kuralı” atfı bu kısa pakette bağımsız doğrulanmış sayılmadı; somut dağıtım önizlemesi olarak
+uygulandı, rutin ürün tasarımına yeni izin ritüeli getirilmedi.
+
+Astra kısaltılmış tasarımı kabul ediyor. Bu sonuç koşullu hakem hükmü ve iki açık düzeltmenin
+yerel doğrulanmasıdır; düzeltilmiş dosyaya yeni koşulsuz Opus turu yapılmış gibi raporlanmaz.
+İnceleme girdisi `kisa-plan-hash.json`, çıktı `opus-kisa-plan.json` yerel kanıt dizinindedir.
+Önceki v3 hash’leri yayımlanmış PLAN sürüm 1’in tarihsel makbuzudur; güncel dosya kimliği Git’tedir.
+
+Format/lint/typecheck ve gereksinim 3/3 geçti; yalnız belgeler değişti. Üretime erişilmedi,
+özellik uygulanmış veya Gate 10 geçmiş sayılmadı.

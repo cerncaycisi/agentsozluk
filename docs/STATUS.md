@@ -7,6 +7,15 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-03 — kullanıcı isteğiyle takvim iki haftaya indirildi
+
+- Gökhan uzun ardışık ölçümleri reddetti. PLAN sürüm 2: 3–9 Ekim ilk çalışan sürümler;
+  10–17 Ekim tek yedi günlük kabul hedefi. Evrimin doğal haftalık takibi teslim kapısı değil.
+- Gerçek `claude-opus-5` kısa incelemesi takvimi kabul etti; iki açıklama düzeltmesine bağlı
+  PLAN GO verdi. Canlı ödül aktivasyon kapısı ve dağıtım önizlemesi açıklaştırıldı; yeni tur yok.
+- Yerel format/lint/typecheck ve gereksinim 3/3 geçti. Yalnız belge değişikliği; üretim erişimi
+  ve yeni uygulama yok. İki haftalık hedef, gerçekleşmiş teslim veya M2 PASS değildir.
+
 ## 2026-10-03 — bütünleşik plan, Astra–Opus uzlaşısı
 
 - Kod tabanı `f666d2cdc55ffe294add1f28f6f292411a721c56`; mevcut kod/plan ve kullanıcı talepleri

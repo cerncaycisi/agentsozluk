@@ -3162,3 +3162,22 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:** araç tavanında kalan incelemeyi tamam sayma; eski Eylül ölçümünü güncel
   sayma; kod mesafesini davranış farklılığına, öz-beyanı ödüle, az oyu cezaya çevirme.
   Sabit pencereye aynı kotadaki model deneyini sokma; tek aktif sıra PLAN’da kalmalı.
+
+## 2026-10-03 — uzun ölçüm takviminin kullanıcı isteğiyle kaldırılması
+
+- **Ortam/SHA:** yerel kişisel sunucu; `d66edbb344621802b55cb55bedb6dd95753a0a0c`.
+  Gökhan bir–iki hafta istedi; uzun takvim kabul edilmiş kullanıcı tercihi sayılmadı.
+- **Kök neden:** her özelliğin uzun canlı gözlemi sonraki geliştirmeye bağımlılık yapılmış,
+  erken M2 dondurması da kod işini bekletmişti. **Çözüm:** ilk hafta küçük çalışan sürümler,
+  ardından tek yedi günlük resmî pencere; evrim doğal gözlemi teslim sonrası normal kullanımda.
+  P8 yerel aday mekanizması erken; kanıt/kapasite/aktivasyon kapıları ayrı ve korunuyor.
+- **Hakem:** gerçek `claude-opus-5`, bir tur, araç yok, izin reddi 0, `is_error=false`;
+  yardımcı Haiku kaydı var. Takvim kabul; iki açıklama düzeltmesine bağlı PLAN GO. İki cümle
+  uygulandı: canlı ödül etkisinde exact sürüm/onay ve görünür öğenin dağıtım önizlemesi.
+  Yeni tur çalıştırılmadı; koşulsuz yeniden hakemlik iddia edilmedi. Kaynaksız mevcut-kural
+  atfı doğrulanmış sayılmadı, yeni izin kuyruğu oluşturulmadı.
+- **Doğrulama:** format/lint/typecheck, gereksinim 3/3, yerel belge bağlantıları ve yalnız belge
+  değişikliği. Güvenli hata yok. Üretim erişimi/dağıtım/özellik uygulaması yok.
+- **Tekrarlama:** her değişiklik için haftalarca bekleme icat etme. Takvim baskısıyla resmî
+  yedi günü kısaltma veya küçük örneği uzun dönem başarı sayma. Yeni işleri bekleten uzun
+  değerlendirmeyi ve otomatik deney uzatmasını geri getirme.
