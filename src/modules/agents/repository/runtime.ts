@@ -2717,7 +2717,7 @@ export async function getRuntimeReadTopics(
       */
       entries: {
         ...visibleEntry,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: runtimeReadTopicEntryLimit,
       },
     },
@@ -2729,17 +2729,21 @@ export async function getRuntimeReadTopics(
       transaction.entry.findFirst({
         ...visibleEntry,
         where: { ...visibleEntry.where, topicId: topic.id },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       }),
     ),
   );
   return topics.map((topic, index) => {
-    const known = new Set(topic.entries.map((entry) => entry.id));
     const firstEntry = firstEntries[index];
-    // Okuma sırası kronolojik: okur da başlığı tanımdan bugüne doğru okur.
+    /*
+      Okuma sırası kronolojik: okur da başlığı tanımdan bugüne doğru okur. Tanım
+      entry'si kimliğiyle başa sabitlenir ve kalanlardan çıkarılır: eşit zaman
+      damgasında sıralama tek başına onu ilk sıraya koymayı garanti etmez ve
+      uygulama katmanı ilk sırayı tam gövdeyle gösterir (Astra, A′ 1. tur).
+    */
     const ordered = [
-      ...(firstEntry && !known.has(firstEntry.id) ? [firstEntry] : []),
-      ...[...topic.entries].reverse(),
+      ...(firstEntry ? [firstEntry] : []),
+      ...[...topic.entries].reverse().filter((entry) => entry.id !== firstEntry?.id),
     ];
     return {
       id: topic.id,
