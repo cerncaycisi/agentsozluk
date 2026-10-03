@@ -3181,3 +3181,28 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:** her değişiklik için haftalarca bekleme icat etme. Takvim baskısıyla resmî
   yedi günü kısaltma veya küçük örneği uzun dönem başarı sayma. Yeni işleri bekleten uzun
   değerlendirmeyi ve otomatik deney uzatmasını geri getirme.
+
+## 2026-10-03 — süreli yetki, P0 kısa kesit ve P2 bağlantı testleri
+
+- **Yetki/ortam:** Gökhan iki hafta deploy/durdurma dahil tam çalışma yetkisi verdi.
+  Kayıt 3 Ekim 19:50 UTC–17 Ekim 19:50 UTC, yalnız Agent Sözlük planı; tekrar onay yerine
+  exact sürüm/CI/hakem/backup/rollback kapıları ve işlem makbuzu korunur. AGENTS/PLAN uzlaştırıldı.
+  Kod tabanı `a4676c781f22a1ac7e32fdd9927ff52d045fd684`, dal `feat/author-character-context`.
+- **P0 salt okunur erişim:** host/repo/Compose/pin/DNS doğrulandı; 20:00:19 UTC, checkout
+  `9bf3653ff152d4a704c1774ccd6782e0a3322f29`. READ ONLY/15s sorgu; 36 profil/129 entry,
+  33 yazarda ≥2 örnek. V46 doğal koşu matrisi 197 SUCCEEDED/57 PARTIAL/2 RUNNING.
+  Çalışan imaj kimliği veya Gate 10 kabulü iddia edilmedi; yazma/restart/pause yok.
+- **Kör taban:** seed 20261003, altı çift, kimlik/başlık gizli; Opus 5 tek araçsız okuma,
+  izin reddi 0, is_error=false; yardımcı Haiku kaydı var. 3 doğru/2 yanlış/1 belirsiz;
+  konu etkisi ayrışmadı, kısa metin veya kişisel anı yokluğu hata sayılmadı.
+- **P2 neden/çözüm:** mevcut ikna, dikkat, sıkılma, mizah/çatışma ve ilişki tercihleri
+  renderer’da eksik. Normal snapshot aktarımı eklendi; ham persona ve genel üslup değişmedi.
+  Önce düşen worker regresyonu düzeltmeden sonra geçti; 135 birim + 11 PG16 rollout testi.
+  V47 eski kapasite kanıtını reddediyor. Canlı rollout yapılmadı.
+- **Yerel araç hatası:** doğrudan pg16 psql `libpq.so.5: cannot open shared object file` verdi.
+  Kök neden çıkarılmış yerel PG16 paketinin library yolu; ilgili komuta
+  `LD_LIBRARY_PATH=/home/agent/pg16/root/usr/lib/x86_64-linux-gnu` verilince test DB kimliği
+  doğrulandı ve testler geçti. Üretim/fixture regresyonu değil; sunucu yeniden başlatılmadı.
+- **Tekrarlama:** eski P0 verisini güncel diye kullanma; persona kaynak dosyasını değiştirip
+  canlı snapshot değişti sanma; yeni istemi eski kapasiteyle iki hatta başlatma. Ham metinler,
+  persona snapshot’ları ve kör anahtar yalnız özel yerel dizinde; ledger’a alınmadı.

@@ -7,6 +7,17 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-03 — P0 kısa denetim; P2 yerel alan bağlantısı
+
+- Kullanıcının iki haftalık üretim yetkisi kapsamında salt okunur kesit: 36 profil, 129 entry;
+  33 yazarda en az iki örnek. Checkout `9bf3653`; v46 terminal doğal koşular 197 SUCCEEDED,
+  57 PARTIAL; iki RUNNING. Bu kısa kesit A′ veya M2 kabulü değildir.
+- Altı kör yazar çifti, gerçek Opus 5: 3 doğru, 2 yanlış, 1 belirsiz. Konu etkisi ayrışmadı;
+  bütün yazarlar aynı denmedi. P0 sınırlarıyla kapandı, ayrıntı [makbuzda](P0_P2_KARAKTER_2026-10-03.md).
+- P2 eksik persona tercihlerini snapshot istemine taşır; 135 ilgili birim + 11 yerel PG16
+  rollout testi geçti. V47 hash’i eski kapasiteyi geçersiz kılar. Henüz kod hakem/CI/canlı
+  kabulü yok; davranış faydası ölçülmedi.
+
 ## 2026-10-03 — kullanıcı isteğiyle takvim iki haftaya indirildi
 
 - Gökhan uzun ardışık ölçümleri reddetti. PLAN sürüm 2: 3–9 Ekim ilk çalışan sürümler;

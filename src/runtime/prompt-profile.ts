@@ -305,7 +305,9 @@ export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
       // 45 (30 Eylül 2026): SUGGEST_SOURCE cümlesi; üslup bloğu v44 ile aynı.
       // 46 (3 Ekim 2026): A′ — readTopics son on beş entry (tanım + en yeni altı tam,
       // eskiler önizleme); okuma cümlesi buna göre.
-      profileVersion: 46,
+      // 47 (3 Ekim 2026): persona karar/ikna/ilişki tercihleri normal snapshot'a taşındı.
+      // Renderer değişimi de kapasite kanıtını geçersiz kılar; canlıya ayrıca rollout gerekir.
+      profileVersion: 47,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
