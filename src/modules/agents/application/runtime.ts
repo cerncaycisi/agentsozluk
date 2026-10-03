@@ -1,3 +1,4 @@
+import { purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import {
   applyRuntimePurposeChanges,
   runtimePurposeContext,
@@ -1765,11 +1766,13 @@ export function getRuntimeRunContext(
         // Donmuş liste yalnız daralır; TTL/görünürlük yeniden kontrolü yeni hedef eklemez.
         perception = {
           ...perception,
-          purposes: filterIds(perception.purposes, activeIds).map((item) => {
-            const current = purposes.purposes.find((candidate) => candidate.id === item.id);
-            // Gizlenen hedef metni geri gösterilmez; kimlik ve bırakma hakkı korunur.
-            return current?.targetAvailable === false ? current : item;
-          }),
+          [purposePerceptionKey]: filterIds(perception[purposePerceptionKey], activeIds).map(
+            (item) => {
+              const current = purposes.purposes.find((candidate) => candidate.id === item.id);
+              // Gizlenen hedef metni geri gösterilmez; kimlik ve bırakma hakkı korunur.
+              return current?.targetAvailable === false ? current : item;
+            },
+          ),
           purposeTopics: filterIds(perception.purposeTopics, visibleIds),
         };
         await storeRuntimePerceptionSummary(transaction, runId, perception);
@@ -2668,7 +2671,13 @@ export function completeRuntimeRun(
             rejectedActionCount: Math.min(10_000, input.safeRunSummary.rejectedActionCount + 1),
             shortRationale: `REJECTED_PERSONA_DELTA:${reflection.reasonCode}`,
           }
-        : input.safeRunSummary;
+        : purposes.status === "REJECTED"
+          ? {
+              ...input.safeRunSummary,
+              operationSummary: "Run tamamlandı; amaç önerisi sunucu doğrulamasında reddedildi.",
+              shortRationale: `REJECTED_PURPOSE:${purposes.reasonCode}`,
+            }
+          : input.safeRunSummary;
     await finishRuntimeRunRecord(transaction, {
       runId,
       agentProfileId: principal.agentProfileId,

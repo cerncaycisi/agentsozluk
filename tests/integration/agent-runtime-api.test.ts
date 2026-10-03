@@ -11299,12 +11299,21 @@ describe("persistent runtime purposes with PostgreSQL", () => {
         { workerId: third.workerId, sequence: 1 },
       );
       expect(execution).toMatchObject({ actionStatus: "SUCCEEDED" });
-      await third.complete([
+      await third.complete([]);
+      const fourth = await next(fixture);
+      await getRuntimeRunContext(
+        integrationDatabase,
+        fourth.principal,
+        fourth.runId,
+        fourth.workerId,
+        [topicId],
+      );
+      await fourth.complete([
         {
           operation: "CLAIM_COMPLETION",
           purposeId: purpose.id,
           expectedVersion: 2,
-          note: "Yeni kanıtla kanaatimi yeniden değerlendirdim.",
+          note: "Sonraki uyanışta yeniden görünen kanıtla amacı gözden geçirdim.",
         },
       ]);
       expect(
@@ -11315,4 +11324,24 @@ describe("persistent runtime purposes with PostgreSQL", () => {
       );
     },
   );
+  it("rejects an oversized legacy topic key before any purpose write and keeps a useful terminal reason", async () => {
+    const { topics, wake } = await prepare();
+    await integrationDatabase.topic.update({
+      where: { id: topics[1]!.topic.id },
+      data: { title: "ü".repeat(201) },
+    });
+    const completed = await wake.complete([
+      create(topics[0]!.topic.id),
+      create(topics[1]!.topic.id),
+    ]);
+    expect(completed).toMatchObject({
+      runStatus: "PARTIAL",
+      purposes: { status: "REJECTED", reasonCode: "PURPOSE_TARGET_KEY_TOO_LONG" },
+    });
+    expect(await integrationDatabase.agentPurpose.count()).toBe(0);
+    const run = await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: wake.runId } });
+    expect(run.safeRunSummary).toMatchObject({
+      shortRationale: "REJECTED_PURPOSE:PURPOSE_TARGET_KEY_TOO_LONG",
+    });
+  });
 });

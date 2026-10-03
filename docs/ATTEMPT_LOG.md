@@ -3356,3 +3356,19 @@ false/true` yapabildi; geçici rol ve DB silindi.
   doğrulandı. Üretim dağıtımı yok; P6'nın ukte ve tanıtım işleri açık.
 - Tekrarlama: GraphQL geçici 503 iken doğrulanamayan revision birleştirme; aynı GitHub
   REST verisiyle exact head, yedi sonuç ve inceleme durumu taze doğrulanabilir.
+
+## 2026-10-03 — P3b ilk Opus turu ve uzun DB başlığı sınırı
+
+- Opus 5 exact `98a92d2f4bb2c97038ea80939cf20508919f9424`: DÜZELTİLMELİ; araç/izin reddi 0.
+  İnceleme sürümünün tam runtime PG16 dosyası 126/126 geçti; önceki ayrık makbuz tamamlandı.
+- Uzun eski DB başlığı amaç VARCHAR(200) sınırını aşabiliyordu. Yazma öncesi karakter
+  sınırı ve güvenli ret eklendi; 201 karakterli başlıkla bütün batch'in sıfır yazım/PARTIAL
+  kalması ve koşu özetindeki neden gerçek PG16 ile geçti. DB hatalarını catch edip abort
+  olmuş transaction'ı sürdürme önerisi uygulanmadı; altyapı hatası gizlenmez.
+- Yaşam defteri yalnız admin page/API/application yolundan okunuyor; public yüzeye yeni
+  olay eklenmedi. Kaynaklar P3b makbuzunda. Claim'in sonraki koşuda yeniden görünen kanıtla
+  çalıştığı iki gerçek belief testiyle doğrulandı. Son amaç paketi 8/8 odaklı PG16 geçti.
+- Yeni v49 hash `a6f873f913fbaebc253fc6346ba1c3c2bd8603915391a46fc1fb56ad4754dca5`;
+  istem slot/batch sırasını açıklar. Anahtar/limit ortaklaştırıldı; üçüncü taraf çağrı yok.
+- Tekrarlama: API uzunluk kuralını tarihsel DB satırının garantisi sanma; kontrollü öneri
+  reddi ile transaction/altyapı hatasını aynı başarı yoluna koyma.

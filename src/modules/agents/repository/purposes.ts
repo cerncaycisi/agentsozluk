@@ -1,4 +1,6 @@
-import type { Prisma } from "@prisma/client";
+import { AppError } from "@/lib/http/errors";
+import { activePurposeLimit } from "@/modules/agents/domain/purpose";
+import { Prisma } from "@prisma/client";
 import type { TransactionClient } from "@/lib/db/types";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
@@ -8,7 +10,7 @@ export function listActivePurposeRecords(transaction: TransactionClient, agentPr
   return transaction.agentPurpose.findMany({
     where: { agentProfileId, status: "ACTIVE" },
     orderBy: { activeSlot: "asc" },
-    take: 2,
+    take: activePurposeLimit,
   });
 }
 
@@ -21,7 +23,7 @@ export function findPurposeTopicRecords(transaction: TransactionClient, ids: rea
       entries: { some: { status: "ACTIVE", ...publiclyVisibleEntryWhere } },
     },
     select: { id: true, title: true },
-    take: 2,
+    take: activePurposeLimit,
   });
 }
 
@@ -44,11 +46,14 @@ export function latestPurposeBeliefRecord(
   });
 }
 
-export function createPurposeRecord(
-  transaction: TransactionClient,
-  data: Prisma.AgentPurposeUncheckedCreateInput,
-) {
-  return transaction.agentPurpose.create({ data });
+export function createPurposeRecord(transaction: TransactionClient, record: PurposeRecord) {
+  return transaction.agentPurpose.create({
+    data: {
+      ...record,
+      baseline: record.baseline === null ? Prisma.JsonNull : record.baseline,
+      claimEvidence: record.claimEvidence === null ? Prisma.DbNull : record.claimEvidence,
+    },
+  });
 }
 
 export async function updatePurposeRecord(
@@ -65,7 +70,8 @@ export async function updatePurposeRecord(
     },
     data: { ...data, version: { increment: 1 } },
   });
-  if (changed.count !== 1) throw new Error("PURPOSE_CAS_CONFLICT");
+  if (changed.count !== 1)
+    throw new AppError("AGENT_PURPOSE_VERSION_CONFLICT", 409, "Amaç sürümü eşzamanlı değişti.");
   return transaction.agentPurpose.findUniqueOrThrow({ where: { id: record.id } });
 }
 

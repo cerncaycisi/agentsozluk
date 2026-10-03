@@ -19,6 +19,7 @@ import {
   purposeCompletionCriteria,
   purposeLifetimeMs,
   purposePolicyVersion,
+  purposePerceptionKey,
 } from "@/modules/agents/domain/purpose";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { runtimeProvenanceSchema } from "@/modules/agents/validation/runtime-schemas";
@@ -103,7 +104,7 @@ export async function runtimePurposeContext(
   );
   const visibleTopics = new Set(topics.map((item) => item.id));
   return {
-    purposes: active.map((item) => {
+    [purposePerceptionKey]: active.map((item) => {
       const targetAvailable = item.targetType === "BELIEF" || visibleTopics.has(item.targetId);
       return {
         id: item.id,
@@ -207,7 +208,7 @@ export async function applyRuntimePurposeChanges(
   const active = await expireRuntimePurposes(transaction, run, now);
   const planned = new Map(active.map((record) => [record.id, record]));
   const perception = object(run.perceptionSummary);
-  const shown = rows(perception.purposes);
+  const shown = rows(perception[purposePerceptionKey]);
   const seenCommands = new Set<string>();
   // Bütün batch önce doğrulanır. Hatalı ikinci komut, ilkini kısmen yazamaz.
   const writes: Array<() => Promise<void>> = [];
@@ -238,6 +239,8 @@ export async function applyRuntimePurposeChanges(
         topicKey = topic.title;
         targetKey = topic.id;
       }
+      // Geçmiş/import edilmiş DB başlığı API'nin güncel uzunluk kuralını aşabilir.
+      if ([...topicKey].length > 200) return reject("PURPOSE_TARGET_KEY_TOO_LONG");
       const activeKey = purposeActiveKey(change.kind, change.targetType, targetKey);
       if ([...planned.values()].some((record) => record.activeKey === activeKey))
         return reject("PURPOSE_ALREADY_ACTIVE");
@@ -281,9 +284,7 @@ export async function applyRuntimePurposeChanges(
       };
       planned.set(data.id, data);
       writes.push(async () => {
-        const { claimEvidence, ...createData } = data;
-        void claimEvidence;
-        const record = await createPurposeRecord(transaction, createData);
+        const record = await createPurposeRecord(transaction, data);
         await recordChange(transaction, run, record, now);
       });
     } else {

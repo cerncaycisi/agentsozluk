@@ -13,9 +13,6 @@ export const purposeCompletionCriteria = {
   EXPLORE_CONTRIBUTION: "TOPIC_READ_AND_REVIEW_RECORDED",
 } as const satisfies Record<PurposeKind, string>;
 
-export const purposeStatuses = ["ACTIVE", "FULFILLED", "ABANDONED", "EXPIRED"] as const;
-export const purposeClaimStatuses = ["NOT_CLAIMED", "CLAIMED", "EVIDENCE_MET"] as const;
-
 export function purposeActiveKey(
   kind: PurposeKind,
   targetType: "TOPIC" | "BELIEF",

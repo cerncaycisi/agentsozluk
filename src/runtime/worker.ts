@@ -1,3 +1,4 @@
+import { purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import { projectActionWorthinessPerception } from "@/modules/agents/domain/runtime-action-worthiness-context";
 import {
   RuntimeProviderCancelledError,
@@ -218,7 +219,10 @@ export function buildBrowsePrompt(
     */
     runtimePromptInvariants[1],
     runtimePromptScaffold.untrustedOpening,
-    serializeUntrustedContext({ topics, purposes: context.perception.purposes ?? [] }),
+    serializeUntrustedContext({
+      topics,
+      [purposePerceptionKey]: context.perception[purposePerceptionKey] ?? [],
+    }),
     runtimePromptScaffold.untrustedClosing,
   ].join("\n");
 }

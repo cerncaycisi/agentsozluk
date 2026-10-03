@@ -61,7 +61,7 @@ uyumlu app/worker çiftine yapılır, amaç kayıtları silinmez. Açık A′ pe
 ve yeni runtime model deneyi yapılmadı.
 
 İstem profili v49:
-`db48e5be5bf063e33830efcd498cd3776b7aec280ae4d624a91c3f21d15879a1`.
+`a6f873f913fbaebc253fc6346ba1c3c2bd8603915391a46fc1fb56ad4754dca5`.
 Persona renderer P2 ile aynıdır; genel karar/okuma bağlamı ve çıktı sözleşmesi değiştiği
 için eski kapasite hash'i geçerli değildir. P3b henüz hakem/CI/canlı kabulü almış sayılmaz.
 
@@ -73,3 +73,34 @@ ve `oneOf` anahtarları elendi; sunucu Zod doğrulaması korunur.
 Son yerel makbuz: **119/119 birim**, **7/7 yeni PG16 amaç senaryosu**, format/lint/typecheck
 geçti. Önceki tam PG dosyasında mevcut 119 test geçmişti; yeni altı ledger alan hatası
 düzeltildi. Bu iki koşu tek bir 126/126 koşu olarak sunulmaz.
+
+## İlk hakem turu ve kapanış kanıtı
+
+Gerçek `claude-opus-5`, `98a92d2f4bb2c97038ea80939cf20508919f9424`: DÜZELTİLMELİ;
+araç/üretim erişimi yok, izin reddi 0. İlk sürümün son tam PG16 koşusu **126/126** geçti.
+Hakemden sonraki sekiz amaç senaryosu ayrıca **8/8** geçti.
+
+- D1: Topic.title DB'de serbest String; güncel API 100 karaktere kapatsa bile geçmiş/import
+  başlığı daha uzun olabilir. Amaç yazmadan önce 200 karakter sınırı doğrulanır, aşarsa
+  bütün öneri batch'i `PURPOSE_TARGET_KEY_TOO_LONG` ile nötr reddedilir. Gerçek 201 karakterli
+  DB başlığı testi `PARTIAL`, sıfır amaç yazımı ve açıklayıcı koşu özetini doğrular. Başlık
+  kırpılmaz, amaç kimliği bozulmaz. Beklenmeyen altyapı/DB hataları yutulmaz: PostgreSQL'in
+  abort olmuş transaction'ında çıplak catch ile tamamlamaya devam etmek güvenli değildir.
+  Bunlar geçersiz önerinin kontrollü reddiyle aynı şey değildir. Savunma CAS hatası AppError'dır.
+- D2: `PURPOSE_CHANGED` public okur/yazar profiline eklenmiyor. Tek timeline tüketicisi
+  `src/app/moderasyon/agentlar/[id]/hayat/page.tsx:19` içinde `requireAgentAdminPage` ile
+  korunur. API `/api/v1/admin/agents/[agentId]/life`; application
+  `life-ledger.ts:328` içinde `requireAgentAdminInTransaction` tekrar doğrular. Mevcut gerçek
+  PG16 testi moderatörü dahi FORBIDDEN ile reddeder. Yönetici timeline'ındaki teknik enum
+  ve Türkçe safeMessage mevcut gösterim sözleşmesidir, yeni public otomatik öğe değildir.
+- Claim aynı koşuyla sınırlı değildir: sonraki uyanışta kanıt yeniden gösterilirse kabul
+  edilir. İki gerçek UPDATE_BELIEF testi artık sonraki koşuda yeniden okuma/claim yapar.
+  Eski kanıt claim context'inde yoksa bilinçli olarak `CLAIMED` kalır; geçmiş snapshot'a
+  dönüp güncel görünürlük kapısı atlanmaz.
+- İstem slotun claim ile açılmadığını ve aynı batch'te önce ABANDON, sonra CREATE sırasını
+  söyler. Amaç reddi koşu özetine güvenli neden yazar. Ortak anahtar/limit sabitleri bağlandı,
+  kullanılmayan durum listeleri çıkarıldı; JSON-null dönüşümü repository sınırına taşındı.
+- TTL tembeldir: normal uyanış olmadan DB'de süresi dolmuş ACTIVE kayıt bulunabilir;
+  gelecekteki aktif amaç raporu `status=ACTIVE AND expiresAt>now` kullanmalıdır. Modele
+  eski ACTIVE gösterilmez. Amaç başlıkları 24'lük menüye önden girerek en fazla iki son
+  adayı dışarıda bırakabilir; bu bilinçli dikkat tercihi pilotta izlenecektir.

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
-import { purposeKinds } from "@/modules/agents/domain/purpose";
+import { purposeKinds, activePurposeLimit } from "@/modules/agents/domain/purpose";
 
 const purposeText = z
   .string()
@@ -50,5 +50,7 @@ export const runtimePurposeChangeSchema = z.union([
 ]);
 
 // Model FULFILLED, ödül puanı, TTL veya kendi tamamlanma ölçütünü yazamaz.
-export const runtimePurposeChangesSchema = z.array(runtimePurposeChangeSchema).max(2);
+export const runtimePurposeChangesSchema = z
+  .array(runtimePurposeChangeSchema)
+  .max(activePurposeLimit);
 export type RuntimePurposeChange = z.infer<typeof runtimePurposeChangeSchema>;
