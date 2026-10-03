@@ -3300,3 +3300,16 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Tekrarlama: mevcut SKIPPED kaynak yolunu doğrulamadan AW sonucu sanma; teknik başarı
   semantik başarı değildir. Sorgu mevcut settings transaction kilidi altında çalışır,
   Promise.all kullanımı üretimde eşzamanlı sorgu/gecikme garantisi değildir.
+
+## 2026-10-03 — P6 hakem GO ve CI önizleme beklentisi
+
+- Opus 5, `4f63d2f29dbb79ca26fa4f7b661b161ddc530c28`, ikinci araçsız tur KOD GO;
+  önceki üç bulgu kaynakla kapandı. F1 örneğinin tabanda da entry ayrıştığı doğrulandı;
+  F2 tek karakterli başlık rota reddi sınırlaması makbuza yazıldı.
+- CI `37155872197` behavior/coverage: `AssertionError: expected <a …(2)></a> to be null`,
+  `composer-preview.test.tsx:162`. Kök neden eski görünür bkz önizleme beklentisi;
+  yeni sözleşmenin exact href’iyle güncellendi. Veritabanı/browser/container/quality geçti.
+- GitHub GraphQL bir salt okunur kontrol sorgusunda HTTP 503 döndürdü; REST check-runs
+  sonraki denemede cevap verdi. Kod regresyonu sayılmadı, kırmızı sürüm birleştirilmedi.
+- Tekrarlama: ortak renderer davranışı değişince composer önizleme testini de çalıştır;
+  odaklı route testinin geçmesi bütün okur tüketicilerinin kanıtı değildir.
