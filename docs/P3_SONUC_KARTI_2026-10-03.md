@@ -57,7 +57,7 @@ akışı kullanılamaz. Eski uygulama bu indeksle uyumludur; rollback indeks sil
 Yerel PG16 migration başarılı; `pg_indexes` tanımı doğrulandı. Yalnız indeks uygunluğunu
 sınayan `enable_seqscan=off` EXPLAIN yeni indeksi kullandı; bu canlı gecikme ölçümü değildir.
 
-## Doğrulama durumu
+## İlk yerel doğrulama (birleştirme öncesi)
 
 İlk odaklı PostgreSQL testi geçti: beş kart sınırı, sahiplik, geçmiş/gelecek zaman,
 mevcut/devam eden koşu dışlaması, özel alanların taşınmaması ve donmuş tekrar okuma.
@@ -89,3 +89,15 @@ nedeniyle düştü; normal koşuya açık bayrak düzeltmesiyle odaklı eski tes
 
 Son yerel tekrar: **119/119 PostgreSQL entegrasyon**, **124/124 birim**, format/lint/typecheck
 geçti. Bu sayılar ilk turdan sonraki normal-tüketici/NO_ACTION/TTL/indeks düzeltmesini kapsar.
+
+## Ana dal makbuzu
+
+PR #298, exact head `a129e861c9e8348521163a8897fa59d329d8c485`, CI `37154182013` 7/7;
+squash main `cac7e7c6beafa2198351b209a639a590356a5958`. Uzak main ve ağaç eşitliği doğrulandı.
+Gerçek Opus 5 ikinci tur KOD GO verdi. Koşullu SKIPPED sorusu kaynakla kapandı:
+`action-executor.ts` içindeki NO_ACTION tek SKIPPED yazarı; bu eylem karttan dışlanıyor.
+SKIPPED sözleşmede güvenli teknik durum olarak tanımlı, v1 canlı kaynağında erişilir olduğu
+iddia edilmiyor. Aynı batch zamanındaki UUID sırası kararlıdır, gerçek yürütme sırası değildir.
+Mevcut transaction/settings kilidi sorgu maliyetinin üretim ölçümünü hâlâ gerektirir.
+Canlı rollout, yeni kapasite kanıtı ve amaç yaşam döngüsü açık; önceki yerel aşama notları
+o aşamaya aittir.

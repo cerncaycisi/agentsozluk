@@ -1,7 +1,7 @@
 import { linkifyit, type Match } from "linkify-it";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { publicProfileUrl } from "@/modules/indexing/domain/public-seo";
-import { unopenedTopicUrl } from "@/lib/routing/public-urls";
+import { parseUnopenedTopicSegment, unopenedTopicUrl } from "@/lib/routing/public-urls";
 
 export type EntryToken =
   | { type: "text"; text: string }
@@ -34,7 +34,7 @@ type ReferenceMatch = RegExpExecArray & {
 };
 
 type ParsedReference =
-  | { type: "topic"; normalizedTitle: string; displayText?: string }
+  | { type: "topic"; normalizedTitle: string; targetTitle: string; displayText?: string }
   | { type: "entry"; publicId: number }
   | { type: "user"; username: string };
 
@@ -46,6 +46,7 @@ function parseReference(match: ReferenceMatch): ParsedReference | null {
     return {
       type: "topic",
       normalizedTitle: normalizeTopicTitle(bracketTopic),
+      targetTitle: bracketTopic.trim(),
       displayText: bracketTopic.trim(),
     };
   if (username) return { type: "user", username: username.toLowerCase() };
@@ -55,7 +56,12 @@ function parseReference(match: ReferenceMatch): ParsedReference | null {
     const publicId = Number(entryMatch[1]);
     return Number.isSafeInteger(publicId) ? { type: "entry", publicId } : null;
   }
-  return { type: "topic", normalizedTitle: normalizeTopicTitle(traditionalTarget) };
+  if (/^#[+-]?\d/u.test(traditionalTarget)) return null;
+  return {
+    type: "topic",
+    normalizedTitle: normalizeTopicTitle(traditionalTarget),
+    targetTitle: traditionalTarget,
+  };
 }
 
 export function collectEntryReferenceCandidates(
@@ -123,13 +129,21 @@ export function tokenizeEntryBody(body: string, references: ReferenceIndex = {})
         if (href) tokens.push({ type: "topic", text: parsed.displayText ?? reference[0], href });
         // Karşılığı olmayan bir bkz aramaya değil başlığın kendi adresine gider:
         // açılmamış başlık artık gerçek bir sayfa ve orada ilk entry yazılabiliyor.
-        else if (parsed.displayText)
-          tokens.push({
-            type: "topic",
-            text: parsed.displayText,
-            href: unopenedTopicUrl(parsed.displayText),
-          });
-        else appendText(tokens, reference[0]);
+        else {
+          let title: string | null = null;
+          try {
+            title = parseUnopenedTopicSegment(encodeURIComponent(parsed.targetTitle));
+          } catch {
+            // Bozuk UTF-16 metni URL kodlayıcısının render akışını kesmemeli.
+          }
+          if (title)
+            tokens.push({
+              type: "topic",
+              text: parsed.displayText ?? reference[0],
+              href: unopenedTopicUrl(title),
+            });
+          else appendText(tokens, reference[0]);
+        }
       } else if (parsed?.type === "entry") {
         const href = references.entries?.get(parsed.publicId);
         if (href) tokens.push({ type: "entry", text: reference[0], href });

@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-03 — P3 teknik sonuç kartı ana dalda
+
+- PR #298 exact head `a129e861c9e8348521163a8897fa59d329d8c485`, CI `37154182013` 7/7.
+  Gerçek `claude-opus-5` ikinci salt okunur tur: KOD GO; izin reddi 0. Hakemin SKIPPED
+  kaynak sorusu doğrulandı: tek yazan NO_ACTION yürütücüsü; sorgu/domain bu eylemi dışlıyor.
+- Fresh head/check/review/mergeability kontrolünden sonra squash main
+  `cac7e7c6beafa2198351b209a639a590356a5958`. Uzak main ve exact head ağaç eşitliği
+  doğrulandı, birleşen dal silindi. Üretim dağıtımı veya yeni model denemesi yapılmadı.
+- P3 bütünü açık: kalıcı amaç ve bağımsız semantik değerlendirme henüz uygulanmadı.
+
 ## 2026-10-03 — P2 kodu ana dalda, canlı pilot açık
 
 - PR #297 exact head `329b20f6288ee55107e9ae1dd9c40b1297fa9e3b`, CI
@@ -15,7 +25,7 @@
 - Squash main `505392392eea725977a854b3acdcfabd0881261a`; uzak main ve exact head ile
   ağaç eşitliği doğrulandı, birleşen dal silindi. Üretim dağıtımı/pilot/benchmark yapılmadı.
 
-## 2026-10-03 — P3 teknik sonuç kartı, yerel uygulama
+## 2026-10-03 — P3 teknik sonuç kartı, ilk yerel uygulama (birleştirme öncesi)
 
 - Önceki terminal koşuların kendi action sonuçları `actionFeedback` algısına bağlandı.
   Politika v1, yedi gün/en fazla beş kart; teknik durum ile kalite ayrıdır, hepsi

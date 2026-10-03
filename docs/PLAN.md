@@ -27,8 +27,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   yeni koşu yok. Boş hedefli/yalnız bkz ve ayrı ukte ihtiyacı korunuyor.
 - **Yeni ana iş:** P0 kısa denetim tamam; P2 karakter bağlantısı #297 ile `5053923` ana dalında,
   exact head CI 7/7 ve hakem koşulları tamam. Kısa pilot/canlı rollout açık. P3 teknik sonuç
-  kartı yerelde 119 entegrasyon/124 birim testini geçti; amaç
-  yaşam döngüsü sıradaki kod dilimi. [P3 makbuzu](P3_SONUC_KARTI_2026-10-03.md). P4 ödül açık.
+  kartı #298 ile `cac7e7c` ana dalında; Opus KOD GO, CI 7/7, yerelde 119 entegrasyon/124 birim
+  testi geçti. Amaç yaşam döngüsü sıradaki kod dilimi. [P3 makbuzu](P3_SONUC_KARTI_2026-10-03.md). P4 ödül açık.
   P5 kontrollü evrim doğrulaması ve P8 yerel doğum adayı aynı ilk sürümde hazırlanır.
   P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
   boşluklarda, P7 yedi günlük kabul özellik paketinden sonra yürür.

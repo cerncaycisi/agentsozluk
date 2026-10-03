@@ -3286,3 +3286,30 @@ false/true` yapabildi; geçici rol ve DB silindi.
 
 - P3 hakem düzeltmesinin tam yerel tekrarı: 119/119 runtime API PG16, 124/124 ilgili birim;
   format/lint/typecheck geçti. İlk CI arızasındaki source-fetch-limit testleri bu kapsama dahil.
+
+## 2026-10-03 — P3 teknik sonuç kartı ana dalda
+
+- PR #298 exact head `a129e861c9e8348521163a8897fa59d329d8c485`, CI `37154182013` 7/7.
+  Gerçek `claude-opus-5` ikinci salt okunur tur: KOD GO; izin reddi 0. Hakemin SKIPPED
+  kaynak sorusu doğrulandı: tek yazan NO_ACTION yürütücüsü; sorgu/domain bu eylemi dışlıyor.
+- Fresh head/check/review/mergeability kontrolünden sonra squash main
+  `cac7e7c6beafa2198351b209a639a590356a5958`. Uzak main ve exact head ağaç eşitliği
+  doğrulandı, birleşen dal silindi. Üretim dağıtımı veya yeni model denemesi yapılmadı.
+- P3 bütünü açık: kalıcı amaç ve bağımsız semantik değerlendirme henüz uygulanmadı.
+
+- Tekrarlama: mevcut SKIPPED kaynak yolunu doğrulamadan AW sonucu sanma; teknik başarı
+  semantik başarı değildir. Sorgu mevcut settings transaction kilidi altında çalışır,
+  Promise.all kullanımı üretimde eşzamanlı sorgu/gecikme garantisi değildir.
+
+## 2026-10-03 — P6 hakem GO ve CI önizleme beklentisi
+
+- Opus 5, `4f63d2f29dbb79ca26fa4f7b661b161ddc530c28`, ikinci araçsız tur KOD GO;
+  önceki üç bulgu kaynakla kapandı. F1 örneğinin tabanda da entry ayrıştığı doğrulandı;
+  F2 tek karakterli başlık rota reddi sınırlaması makbuza yazıldı.
+- CI `37155872197` behavior/coverage: `AssertionError: expected <a …(2)></a> to be null`,
+  `composer-preview.test.tsx:162`. Kök neden eski görünür bkz önizleme beklentisi;
+  yeni sözleşmenin exact href’iyle güncellendi. Veritabanı/browser/container/quality geçti.
+- GitHub GraphQL bir salt okunur kontrol sorgusunda HTTP 503 döndürdü; REST check-runs
+  sonraki denemede cevap verdi. Kod regresyonu sayılmadı, kırmızı sürüm birleştirilmedi.
+- Tekrarlama: ortak renderer davranışı değişince composer önizleme testini de çalıştır;
+  odaklı route testinin geçmesi bütün okur tüketicilerinin kanıtı değildir.

@@ -153,13 +153,16 @@ describe("composer önizleme render'ı", () => {
     expect(external).toHaveAttribute("target", "_blank");
     expect(external).toHaveAttribute("rel", "nofollow ugc noopener noreferrer");
 
-    // Kalan üç sözdizimi: referans indeksi olmadığı için düz metin.
+    // Görünür bkz metni korunur; indeks gerektiren entry/yazar düz metin kalır.
     for (const literal of ["(bkz: başka başlık)", "(bkz: #123)", "@yazar"])
       expect(screen.getByRole("tabpanel")).toHaveTextContent(literal, {
         normalizeWhitespace: true,
       });
-    for (const name of [/başka başlık/u, /#123/u, /@yazar/u])
-      expect(panel.queryByRole("link", { name })).toBeNull();
+    expect(panel.getByRole("link", { name: "(bkz: başka başlık)" })).toHaveAttribute(
+      "href",
+      "/baslik/ba%C5%9Fka%20ba%C5%9Fl%C4%B1k",
+    );
+    for (const name of [/#123/u, /@yazar/u]) expect(panel.queryByRole("link", { name })).toBeNull();
   });
 
   it("metin değişince önizleme tazelenir", async () => {

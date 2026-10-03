@@ -8,6 +8,8 @@ import { GET as getReady } from "@/app/api/ready/route";
 import { GET as getSessionResponse } from "@/app/api/v1/auth/session/route";
 import { PUT as putVoteResponse } from "@/app/api/v1/entries/[entryId]/vote/route";
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/config/app";
+import { tokenizeEntryBody } from "@/modules/entries/domain/renderer";
+import { parseUnopenedTopicSegment } from "@/lib/routing/public-urls";
 import { sha256 } from "@/lib/security/crypto";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
@@ -66,6 +68,7 @@ import {
   resolveCanonicalTopicProposal,
 } from "@/modules/topics";
 import { getEntryTopicPage } from "@/modules/entries/application/entries";
+import { resolveUnopenedTopicRoute } from "@/modules/topics/application/topics";
 import { searchAll } from "@/modules/search/application/search";
 import { buildSearchQuery } from "@/modules/search/repository/search";
 import {
@@ -2538,6 +2541,24 @@ describe("search, feeds and profiles with PostgreSQL", () => {
     );
     expect(references.entries?.has(hidden.entry.publicId)).toBe(false);
     expect(references.users).toEqual(new Set([mentioned.username, suspended.username]));
+    // Renderer → kodlanmış segment → rota ayrıştırıcısı → gerçek DB görünürlüğü.
+    // Boş indeks, hedef sonradan açıldığında/alias olduğunda eski href'i de sınar.
+    for (const [title, expected] of [
+      ["Gizli Referans Başlığı", { kind: "not-found" }],
+      ["Görünür Eski Ad", { kind: "existing", url: visible.topic.url }],
+      ["Henüz Açılmamış Başlık", { kind: "unopened", title: "Henüz Açılmamış Başlık" }],
+    ] as const) {
+      for (const body of [`(bkz: ${title})`, `[[${title}]]`]) {
+        const token = tokenizeEntryBody(body)[0]!;
+        expect(token.type).toBe("topic");
+        if (token.type !== "topic") throw new Error("Expected topic reference");
+        const parsedTitle = parseUnopenedTopicSegment(token.href.slice("/baslik/".length));
+        expect(parsedTitle).toBe(title);
+        await expect(
+          resolveUnopenedTopicRoute(integrationDatabase, parsedTitle!, null),
+        ).resolves.toEqual(expected);
+      }
+    }
   });
 
   /*
