@@ -2674,7 +2674,6 @@ export function completeRuntimeRun(
         : purposes.status === "REJECTED"
           ? {
               ...input.safeRunSummary,
-              operationSummary: "Run tamamlandı; amaç önerisi sunucu doğrulamasında reddedildi.",
               shortRationale: `REJECTED_PURPOSE:${purposes.reasonCode}`,
             }
           : input.safeRunSummary;

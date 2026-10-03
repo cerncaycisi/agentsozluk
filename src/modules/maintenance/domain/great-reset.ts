@@ -19,6 +19,10 @@
 
 /** Sıfırlanacak tablolar — silme SIRASIYLA (yapraktan köke). */
 export const greatResetClearedModels = [
+  // Amaç değerlendirme türevleri; değişmez kayıtlar yalnız yetkili yerel reset kümesinde.
+  "agentRewardReversal",
+  "agentRewardAssessment",
+  "agentAssessmentPacket",
   // Ajan koşu geçmişi ve türevleri
   "agentContentRecord",
   "agentRuntimeEvent",

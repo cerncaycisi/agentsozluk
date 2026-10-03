@@ -1,5 +1,7 @@
 export const purposePolicyVersion = 1;
 export const activePurposeLimit = 2;
+export const purposeCommandLimit = 2;
+export const purposeTopicKeyMaxLength = 200;
 export const purposeLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 export const purposePerceptionKey = "purposes";
 

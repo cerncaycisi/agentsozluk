@@ -3384,3 +3384,25 @@ false/true` yapabildi; geçici rol ve DB silindi.
   `AGENT_PURPOSE_VERSION_CONFLICT` eklendi ve typecheck tekrar geçti.
 - Tekrarlama: yeni Prisma modelinde reset sınıflandırmasının tamlık kapısını yerelde çalıştır;
   yeni tabloyu sırf testi geçirmek için rastgele korunan/temizlenen listeye koyma.
+
+## 2026-10-03 — P3b #300 kapandı, P4 yerel hazırlık
+
+- P3b Opus 5 ikinci tur exact `e50465d05e1d52a9a059a6876a0675a45c89b064`: KOD GO.
+  CI `37158795400` 7/7. Fresh head/base/checks/reviews/mergeability ardından squash main
+  `c2f5db7254735bf0fb845aa26ee70bf4b522c80e`; uzak main/ağaç eşitliği doğrulandı, dal silindi.
+- P4 yeni migration `20261003233000_agent_reward_assessments` yalnız yerel PG16 test DB'ye
+  uygulandı. Diff iki Prisma şeması arasında alındı; tarihsel özel SQL drop gürültüsü yok.
+  İlk typecheck sayısal zaman/Date karşılaştırması ve JSON observation tipini yakaladı;
+  `now.getTime()` ve data-access InputJsonObject sınırıyla düzeltiliyor. Üretim erişimi yok.
+- Tekrarlama: source-event TTL'yi inceleme zamanı üzerinden uzatma; gölge kararı üretim ödülü
+  sayma; yanlış semantik kararın geri alınmasını üçüncü etkin amaç açmak için kullanma.
+
+- P4 ilk PG fixture'ları kullanıcı loginDisabled, run persona/quota ve entry origin
+  zorunluluklarını taşımıyordu; fixture mevcut DB sözleşmesine düzeltildi. Ödül modu
+  audit'inde `global` UUID değildir; mevcut `00000000-0000-4000-8000-000000000001` aggregate
+  kimliği kullanıldı. Gizli entry fixture'ı hiddenAt ile birlikte değiştirildi. Hiçbir
+  DB constraint gevşetilmedi. Son gerçek PG16 koşusu 10 yeni ödül + 8 amaç = 18/18 geçti.
+- Paket modu hash'e eklendi: SHADOW incelemesinin mod değişince sessizce FULFILL_SLOT
+  etkisine dönüşmesi engellendi, gerçek servis testi geçti. İlgili 10 birim testi geçti.
+- Tekrarlama: mevcut audit aggregate UUID sözleşmesini okumadan yeni singleton ID üretme;
+  test fixture DB kısıtı hatasını ürün regresyonu veya guard gevşetme gerekçesi sayma.

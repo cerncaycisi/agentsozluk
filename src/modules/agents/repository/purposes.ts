@@ -23,7 +23,7 @@ export function findPurposeTopicRecords(transaction: TransactionClient, ids: rea
       entries: { some: { status: "ACTIVE", ...publiclyVisibleEntryWhere } },
     },
     select: { id: true, title: true },
-    take: activePurposeLimit,
+    take: ids.length,
   });
 }
 

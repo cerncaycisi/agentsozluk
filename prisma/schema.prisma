@@ -268,6 +268,9 @@ enum IndexingMode {
 }
 
 model User {
+  assessmentPackets             AgentAssessmentPacket[]    @relation("AssessmentPacketCreator")
+  rewardAssessments             AgentRewardAssessment[]    @relation("RewardAssessmentCreator")
+  rewardReversals               AgentRewardReversal[]      @relation("RewardReversalCreator")
   id                            String                     @id @default(uuid()) @db.Uuid
   kind                          UserKind                   @default(HUMAN)
   role                          UserRole                   @default(USER)
@@ -814,6 +817,7 @@ enum AgentPurposeKind {
 }
 
 enum AgentPurposeStatus {
+  REVIEW_REVOKED
   ACTIVE
   FULFILLED
   ABANDONED
@@ -827,6 +831,8 @@ enum AgentPurposeClaimStatus {
 }
 
 model AgentPurpose {
+  assessmentPackets   AgentAssessmentPacket[]
+  rewardAssessments   AgentRewardAssessment[]
   id                  String                  @id @default(uuid()) @db.Uuid
   agentProfileId      String                  @db.Uuid
   creationRunId       String                  @db.Uuid
@@ -861,34 +867,105 @@ model AgentPurpose {
   @@map("agent_purposes")
 }
 
+enum AgentRewardMode {
+  OFF
+  SHADOW
+  FULFILL_SLOT
+}
+
+model AgentAssessmentPacket {
+  id             String                 @id @default(uuid()) @db.Uuid
+  agentProfileId String                 @db.Uuid
+  purposeId      String                 @db.Uuid
+  createdById    String                 @db.Uuid
+  nonceHash      String                 @db.VarChar(64)
+  packageHash    String                 @db.VarChar(64)
+  expiresAt      DateTime               @db.Timestamptz(3)
+  consumedAt     DateTime?              @db.Timestamptz(3)
+  createdAt      DateTime               @default(now()) @db.Timestamptz(3)
+  agentProfile   AgentProfile           @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  purpose        AgentPurpose           @relation(fields: [purposeId], references: [id], onDelete: Restrict)
+  createdBy      User                   @relation("AssessmentPacketCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  assessment     AgentRewardAssessment?
+
+  @@index([agentProfileId, expiresAt])
+  @@map("agent_assessment_packets")
+}
+
+model AgentRewardAssessment {
+  id                  String                @id @default(uuid()) @db.Uuid
+  packetId            String                @unique @db.Uuid
+  agentProfileId      String                @db.Uuid
+  purposeId           String                @db.Uuid
+  createdById         String                @db.Uuid
+  mode                AgentRewardMode
+  verdict             String                @db.VarChar(32)
+  reviewerModel       String                @db.VarChar(100)
+  reason              String                @db.VarChar(500)
+  packageHash         String                @db.VarChar(64)
+  sourceActKey        String                @db.VarChar(100)
+  sourceContentHash   String                @db.VarChar(64)
+  sourceAt            DateTime              @db.Timestamptz(3)
+  expiresAt           DateTime              @db.Timestamptz(3)
+  creditedSourceKey   String?               @db.VarChar(100)
+  creditedContentHash String?               @db.VarChar(64)
+  applied             Boolean               @default(false)
+  evidenceSnapshot    Json
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  packet              AgentAssessmentPacket @relation(fields: [packetId], references: [id], onDelete: Restrict)
+  agentProfile        AgentProfile          @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  purpose             AgentPurpose          @relation(fields: [purposeId], references: [id], onDelete: Restrict)
+  createdBy           User                  @relation("RewardAssessmentCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  reversal            AgentRewardReversal?
+
+  @@unique([agentProfileId, creditedSourceKey])
+  @@unique([agentProfileId, creditedContentHash])
+  @@index([agentProfileId, applied, createdAt])
+  @@map("agent_reward_assessments")
+}
+
+model AgentRewardReversal {
+  id           String                @id @default(uuid()) @db.Uuid
+  assessmentId String                @unique @db.Uuid
+  createdById  String                @db.Uuid
+  reason       String                @db.VarChar(500)
+  createdAt    DateTime              @default(now()) @db.Timestamptz(3)
+  assessment   AgentRewardAssessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  createdBy    User                  @relation("RewardReversalCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@map("agent_reward_reversals")
+}
+
 model AgentProfile {
+  assessmentPackets       AgentAssessmentPacket[]
+  rewardAssessments       AgentRewardAssessment[]
   purposes                AgentPurpose[]
-  id                      String                @id @default(uuid()) @db.Uuid
-  userId                  String                @unique @db.Uuid
-  lifecycleStatus         AgentLifecycleStatus  @default(PAUSED)
-  currentPersonaVersionId String?               @unique @db.Uuid
-  useGlobalEntryQuota     Boolean               @default(true)
+  id                      String                  @id @default(uuid()) @db.Uuid
+  userId                  String                  @unique @db.Uuid
+  lifecycleStatus         AgentLifecycleStatus    @default(PAUSED)
+  currentPersonaVersionId String?                 @unique @db.Uuid
+  useGlobalEntryQuota     Boolean                 @default(true)
   dailyEntryMin           Int?
   dailyEntryMax           Int?
-  dailyTopicMin           Int                   @default(0)
-  dailyTopicMax           Int                   @default(2)
-  dailyVoteMin            Int                   @default(0)
-  dailyVoteMax            Int                   @default(10)
+  dailyTopicMin           Int                     @default(0)
+  dailyTopicMax           Int                     @default(2)
+  dailyVoteMin            Int                     @default(0)
+  dailyVoteMax            Int                     @default(10)
   activeTimeProfile       Json
-  personaEvolutionEnabled Boolean               @default(true)
-  sourceEvolutionEnabled  Boolean               @default(true)
-  scheduledTimeoutSeconds Int                   @default(360)
-  manualTimeoutSeconds    Int                   @default(600)
-  createdById             String                @db.Uuid
-  updatedById             String                @db.Uuid
-  createdAt               DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
-  retiredAt               DateTime?             @db.Timestamptz(3)
-  user                    User                  @relation("AgentAccount", fields: [userId], references: [id], onDelete: Restrict)
-  currentPersonaVersion   AgentPersonaVersion?  @relation("CurrentPersonaVersion", fields: [currentPersonaVersionId], references: [id], onDelete: Restrict)
-  createdBy               User                  @relation("AgentProfileCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy               User                  @relation("AgentProfileUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
-  personaVersions         AgentPersonaVersion[] @relation("AgentPersonaVersions")
+  personaEvolutionEnabled Boolean                 @default(true)
+  sourceEvolutionEnabled  Boolean                 @default(true)
+  scheduledTimeoutSeconds Int                     @default(360)
+  manualTimeoutSeconds    Int                     @default(600)
+  createdById             String                  @db.Uuid
+  updatedById             String                  @db.Uuid
+  createdAt               DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime                @updatedAt @db.Timestamptz(3)
+  retiredAt               DateTime?               @db.Timestamptz(3)
+  user                    User                    @relation("AgentAccount", fields: [userId], references: [id], onDelete: Restrict)
+  currentPersonaVersion   AgentPersonaVersion?    @relation("CurrentPersonaVersion", fields: [currentPersonaVersionId], references: [id], onDelete: Restrict)
+  createdBy               User                    @relation("AgentProfileCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy               User                    @relation("AgentProfileUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+  personaVersions         AgentPersonaVersion[]   @relation("AgentPersonaVersions")
   runtimeState            AgentRuntimeState?
   dailyPlans              AgentDailyPlan[]
   scheduleSlots           AgentScheduleSlot[]
@@ -960,6 +1037,7 @@ model AgentRuntimeState {
 }
 
 model AgentGlobalSettings {
+  rewardMode                   AgentRewardMode           @default(OFF)
   id                           String                    @id @default("global")
   settingsVersion              Int                       @default(1)
   runtimeEnabled               Boolean                   @default(true)

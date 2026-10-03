@@ -20,6 +20,7 @@ import {
   purposeLifetimeMs,
   purposePolicyVersion,
   purposePerceptionKey,
+  purposeTopicKeyMaxLength,
 } from "@/modules/agents/domain/purpose";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { runtimeProvenanceSchema } from "@/modules/agents/validation/runtime-schemas";
@@ -240,7 +241,8 @@ export async function applyRuntimePurposeChanges(
         targetKey = topic.id;
       }
       // Geçmiş/import edilmiş DB başlığı API'nin güncel uzunluk kuralını aşabilir.
-      if ([...topicKey].length > 200) return reject("PURPOSE_TARGET_KEY_TOO_LONG");
+      if ([...topicKey].length > purposeTopicKeyMaxLength)
+        return reject("PURPOSE_TARGET_KEY_TOO_LONG");
       const activeKey = purposeActiveKey(change.kind, change.targetType, targetKey);
       if ([...planned.values()].some((record) => record.activeKey === activeKey))
         return reject("PURPOSE_ALREADY_ACTIVE");
