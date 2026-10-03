@@ -78,6 +78,13 @@ describe("effective runtime concurrency", () => {
     expect(result.staleReasons).toContain("PROMPT_PROFILE");
   });
 
+  it("invalidates v47 capacity when execution feedback enters perception", async () => {
+    const previousProfile = "93344f07c6f1cb1e8545d76c5a564d7fe00b16c4cdeca9b6bc677283e35fe085";
+    const result = await resolve({ ...fresh, promptProfileHash: previousProfile });
+    expect(result.concurrency).toBe(1);
+    expect(result.staleReasons).toContain("PROMPT_PROFILE");
+  });
+
   /*
     Astra hakem turu (14 Eylül), P1: önceki aday burada "kayıt yoksa ayarı koru" diye
     2 döndürüyordu. O dönüş, değişikliğin birleştirmeyi amaçladığı predicate'i baypas

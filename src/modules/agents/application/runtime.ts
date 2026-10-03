@@ -127,6 +127,11 @@ import {
 } from "@/modules/agents/domain/perception";
 import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behavior-feedback";
 import {
+  actionFeedbackLimit,
+  actionFeedbackKey,
+  projectActionFeedback,
+} from "@/modules/agents/domain/action-feedback";
+import {
   runtimeFastStateSchema,
   type RuntimeActionsInput,
   type RuntimeCompleteInput,
@@ -383,9 +388,11 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       followedWriterEntries: 6,
       topicExploration: 8,
       behaviorLessons: 5,
+      actionFeedback: actionFeedbackLimit,
     },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
+    [actionFeedbackKey]: projectActionFeedback(records.actionFeedbackRecords, now),
     recentEntries: selectedEntries,
     trendingTopics,
     newTopics,
@@ -497,6 +504,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       sayılabilecek writerOpenedTopics/sourceItems kuyruğundan önce atmak da
       yanlış olurdu — onlar zaten fazlalık, bu ise tümden kayboluyor.
     */ else if (snapshot.sourceCandidates.length > 0) snapshot.sourceCandidates.pop();
+    else if (snapshot.actionFeedback.length > 0) snapshot.actionFeedback.pop();
     else if (snapshot.writerOpenedTopics.length > 0) snapshot.writerOpenedTopics.pop();
     else if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
     else if (snapshot.linkedTopics.length > 0) snapshot.linkedTopics.pop();
@@ -1752,6 +1760,7 @@ export function getRuntimeRunContext(
         */
         includeTrendingTopics:
           publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
+        includeActionFeedback: run.runType === "NORMAL_WAKE",
       });
       const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now);
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);
