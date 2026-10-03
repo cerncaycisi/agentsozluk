@@ -66,6 +66,7 @@ import {
   resolveCanonicalTopicProposal,
 } from "@/modules/topics";
 import { getEntryTopicPage } from "@/modules/entries/application/entries";
+import { resolveUnopenedTopicRoute } from "@/modules/topics/application/topics";
 import { searchAll } from "@/modules/search/application/search";
 import { buildSearchQuery } from "@/modules/search/repository/search";
 import {
@@ -2538,6 +2539,17 @@ describe("search, feeds and profiles with PostgreSQL", () => {
     );
     expect(references.entries?.has(hidden.entry.publicId)).toBe(false);
     expect(references.users).toEqual(new Set([mentioned.username, suspended.username]));
+    // Çözülemeyen görünür/gizli bkz aynı adres yoluna gider; bu yol gizlenmiş
+    // başlığı açığa çıkarmaz veya alias için ikinci bir başlık oluşturmaz.
+    await expect(
+      resolveUnopenedTopicRoute(integrationDatabase, "Gizli Referans Başlığı", null),
+    ).resolves.toEqual({ kind: "not-found" });
+    await expect(
+      resolveUnopenedTopicRoute(integrationDatabase, "Görünür Eski Ad", null),
+    ).resolves.toEqual({ kind: "existing", url: visible.topic.url });
+    await expect(
+      resolveUnopenedTopicRoute(integrationDatabase, "Henüz Açılmamış Başlık", null),
+    ).resolves.toEqual({ kind: "unopened", title: "Henüz Açılmamış Başlık" });
   });
 
   /*

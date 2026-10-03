@@ -54,7 +54,7 @@ describe("safe entry renderer", () => {
     expect(html).not.toContain("[[");
   });
 
-  it("supports traditional topic and entry bkz syntax only for resolved public targets", () => {
+  it("links unresolved topic bkz to its address while unresolved entry ids stay plain text", () => {
     const tokens = tokenizeEntryBody(
       "(bkz: Açık Kaynak) (bkz: #123) (bkz: gizli başlık) (bkz: #999)",
       {
@@ -66,8 +66,36 @@ describe("safe entry renderer", () => {
       { type: "topic", text: "(bkz: Açık Kaynak)", href: "/baslik/acik-kaynak--7" },
       { type: "text", text: " " },
       { type: "entry", text: "(bkz: #123)", href: "/entry/123" },
-      { type: "text", text: " (bkz: gizli başlık) (bkz: #999)" },
+      { type: "text", text: " " },
+      {
+        type: "topic",
+        text: "(bkz: gizli başlık)",
+        href: "/baslik/gizli%20ba%C5%9Fl%C4%B1k",
+      },
+      { type: "text", text: " (bkz: #999)" },
     ]);
+  });
+
+  it("gives standalone visible and hidden bkz the same unopened address", () => {
+    expect(tokenizeEntryBody("(bkz: Açılmamış Başlık)")).toEqual([
+      {
+        type: "topic",
+        text: "(bkz: Açılmamış Başlık)",
+        href: "/baslik/A%C3%A7%C4%B1lmam%C4%B1%C5%9F%20Ba%C5%9Fl%C4%B1k",
+      },
+    ]);
+    const hidden = tokenizeEntryBody("[[Açılmamış Başlık]]")[0]!;
+    expect(hidden).toEqual({
+      type: "topic",
+      text: "Açılmamış Başlık",
+      href: "/baslik/A%C3%A7%C4%B1lmam%C4%B1%C5%9F%20Ba%C5%9Fl%C4%B1k",
+    });
+  });
+
+  it("keeps unsafe-looking bkz text escaped and uses only an encoded local path", () => {
+    const html = renderToStaticMarkup(<EntryBody body={'(bkz: <script src="evil">)'} />);
+    expect(html).toContain('href="/baslik/%3Cscript%20src%3D%22evil%22%3E"');
+    expect(html).not.toContain("<script");
   });
 
   it("collects normalized candidates for one batched visibility lookup", () => {
