@@ -1067,7 +1067,7 @@ düzeltmenin yerine geçmez (Astra 6). Yeni özellik yerine üretilenin ve öne 
 - [ ] **İ9 — B5.3 hassas konu ölçümü sürüyor (iki inceleme de destekliyor).** Sözcük eşleşmesi
       değil, bağlamıyla etiketlenmiş 675 aday. Kural ölçümden sonra gelir.
 
-- [ ] **İ10 — `gpt-6-luna`'ya geçiş değerlendirmesi (Gökhan, 2 Ekim: "gpt 6 lunaya mı
+- [ ] **İ10 — `gpt-6-luna`'ya geçiş değerlendirmesi (3 Ekim ara sonuç: tekrar yargısında 5.6'dan iyi değil, kör setle 16/30'a karşı 21/30; yazı kalitesi ölçülmedi) (Gökhan, 2 Ekim: "gpt 6 lunaya mı
       geçsek?", plan için "ok").** - **Bugün:** üretimde `codex-cli 0.144.6` ve `gpt-5.6-luna`, `reasoning max`
       (`src/runtime/codex-cli-provider.ts:31`). Operatör sunucusunda Codex `0.156.0` var ve
       `gpt-6-luna` bu hesapta kullanılabiliyor: 2 Ekim'de tek satırlık bir denemeye cevap verdi.

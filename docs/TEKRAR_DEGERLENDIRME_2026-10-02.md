@@ -230,3 +230,21 @@ Dal `deney/a-prime-okuma-baglami` (`de3080a`). PR açılmadı; yalnız yerel den
       yok.
 - **Kalan:** A′ kod incelemesi (Astra) ve canlıya alma kararı. Plana göre canlıya alma Gökhan
   onayıyla. `gpt-6-luna` karşılaştırması tek değişiklik ilkesiyle A′'dan ayrı yapılacak.
+
+## `gpt-6-luna` karşılaştırması: aşama 1 ve 2 (3 Ekim 2026)
+
+Aynı v2 talimatı, aynı setler, `reasoning max`. Plandaki karşılığı İ10.
+
+| Ölçüt                                | `gpt-5.6-luna` | `gpt-6-luna` |
+| ------------------------------------ | -------------- | ------------ |
+| Aşama 1: yayımlanmış TEKRAR yakalama | 12/19          | 11/19        |
+| Aşama 1: reddedilmiş TEKRAR yakalama | 45/50          | 40/51        |
+| Aşama 2 (kör): TEKRAR yakalama       | **21/30**      | 16/30        |
+| KISMI koruma (iki aşama)             | 59/59          | 59/59        |
+| YENI susturma (iki aşama)            | 0/67           | 0/67         |
+
+- **Sonuç:** `gpt-6-luna` tekrarı biraz daha az yakalıyor ve yararlı katkıyı aynı ölçüde koruyor.
+  Daha yavaş ve 2 Ekim'deki ön denemede yaklaşık 2,5 kat token harcadı. Tekrar yargısı için
+  geçişin kazancı yok.
+- **Sınır:** Yalnız tekrar yargısı ölçüldü. Yazı kalitesi, okur değeri ve üslup ölçülmedi. Geçiş
+  kararı istenirse bunlar ayrıca ölçülmeli: kör ikili tercih ve aşama 3 tipi gerçek koşu.
