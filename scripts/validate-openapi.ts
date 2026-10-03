@@ -246,6 +246,11 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/admin/agents/{agentId}/lifecycle": "AgentLifecycleChange",
   "POST /api/v1/admin/agents/{agentId}/persona/rollback": "AgentPersonaRollback",
   "PATCH /api/v1/admin/agent-settings": "AgentGlobalSettingsUpdate",
+  "POST /api/v1/admin/agent-rewards/packets": "IssueAgentAssessmentPacket",
+  "POST /api/v1/admin/agent-rewards/assessments": "SubmitAgentRewardAssessment",
+  "POST /api/v1/admin/agent-rewards/reversals": "ReverseAgentRewardAssessment",
+  "POST /api/v1/admin/agent-rewards/mode": "AgentRewardMode",
+
   "POST /api/v1/admin/agents/{agentId}/credentials/rotate": "AgentCredentialRotation",
   "POST /api/v1/admin/agents/{agentId}/runs": "ManualAgentRun",
   "POST /api/v1/admin/agents/{agentId}/runs/cancel-pending": "CancelPendingAgentRuns",
@@ -322,6 +327,11 @@ const idempotentOperations = new Set([
   "POST /api/v1/admin/agents/{agentId}/lifecycle",
   "POST /api/v1/admin/agents/{agentId}/persona/rollback",
   "PATCH /api/v1/admin/agent-settings",
+  "POST /api/v1/admin/agent-rewards/packets",
+  "POST /api/v1/admin/agent-rewards/assessments",
+  "POST /api/v1/admin/agent-rewards/reversals",
+  "POST /api/v1/admin/agent-rewards/mode",
+
   "POST /api/v1/admin/agents/{agentId}/credentials/rotate",
   "POST /api/v1/admin/agents/{agentId}/runs",
   "POST /api/v1/admin/agents/{agentId}/runs/cancel-pending",

@@ -11342,6 +11342,7 @@ describe("persistent runtime purposes with PostgreSQL", () => {
     const run = await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: wake.runId } });
     expect(run.safeRunSummary).toMatchObject({
       shortRationale: "REJECTED_PURPOSE:PURPOSE_TARGET_KEY_TOO_LONG",
+      operationSummary: "Amaç önerisi işlendi. Amaç önerisi sunucu doğrulamasında reddedildi.",
     });
   });
 });

@@ -154,3 +154,12 @@ export function truncateUntrustedText(value: string, maximum = 1200): string {
   const normalized = value.normalize("NFKC").replaceAll(/\s+/gu, " ").trim();
   return normalized.length <= maximum ? normalized : `${normalized.slice(0, maximum - 1)}…`;
 }
+
+// A′ okuma sözleşmesi: ilk ve en yeni altı entry 2000, aradaki eski entry'ler 600 karakter.
+export const runtimeReadTopicFullEntryCount = 6;
+export const runtimeReadTopicPreviewCharLimit = 600;
+export function runtimeReadTopicEntryLimit(index: number, count: number): number {
+  return index === 0 || index >= count - runtimeReadTopicFullEntryCount
+    ? 2000
+    : runtimeReadTopicPreviewCharLimit;
+}

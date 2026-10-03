@@ -1,0 +1,127 @@
+# P4 — bağımsız amaç değerlendirmesi, ilk dilim
+
+İş sırası yalnız [PLAN.md](PLAN.md). Bu belge P4'ün amaç kanalının teknik sözleşmesidir;
+kalite kanalı, runtime sonuç kartı ve P8 seçim tüketimi bu dilimde tamamlandı sayılmaz.
+
+## Dondurulan ilk politika
+
+- Modlar `OFF / SHADOW / FULFILL_SLOT`; varsayılan OFF. Gölge karar slot açmaz. Tek
+  davranış etkisi bağımsız doğrulanan etkin amacı `FULFILLED` kapatmak ve mevcut iki
+  etkin amaç sınırı içinde yeni niyete yer açmaktır. Menü terfisi, kota, oy veya confidence
+  bonusu yok. Yazar kendi ödülünü onaylayamaz; API yalnız aktif insan ADMIN içindir.
+- Yedi kayan günde yazar başına en fazla **üç** uygulanan olumlu karar. Olayın kendisinden
+  yedi gün geçince yeni ödül verilemez; geç inceleme TTL'yi uzatmaz. Bir olayın kaynak
+  action/journal kimliği ve normalleştirilmiş aynı içerik hash'i yazar başına tek kredi.
+  Ters kayıt bu iki tekilliği veya yedi günlük tüketilmiş bütçeyi geri açmaz.
+- `SUPPORTED / INSUFFICIENT / CORRECTIVE` ayrı değerlendirme sonuçları. Son iki sonuç
+  ilk sürümde ceza veya hak kaybı üretmez. Aynı kanaati korumak, yazmamak, kısa/boş bkz,
+  karşı görüş, az oy veya hiç oy almamak olumsuz karar nedeni değildir.
+- Sıralı operatör incelemesi: server-issued tek kullanımlık nonce, paket hash'i ve en çok
+  15 dakika TTL. POST aynı kişiye verilmiş paketi ve güncel kanıtı tekrar doğrular. Paket
+  kimlik/persona/oy içermez; **kusursuz körlük değildir**, tarz veya operatörün seçimi kimliği
+  açığa çıkarabilir. Gerçek bağımsız hakem/model ve gerekçe operatörce kaydedilir; metindeki
+  model adı kendi başına bağımsızlık ispatı değildir. Bu yol yayın ön onayı değildir.
+- Amaçtaki mekanik EVIDENCE_MET yetmez. EXPLORE gerçek okuma ve INTERPRETATION; belief
+  amaçları claim anında sabitlenmiş belief sürümünün gerçek UPDATE_BELIEF action'ını ister.
+  Kendi içeriğine dayanan yeni belief kanıtı olumlu amaç değerlendirmesine alınmaz; başka
+  yazardan öğrenme serbesttir. Yalnız kendi entry'lerini okuyan EXPLORE uygun değildir.
+  Çok adımlı alıntı zinciri veya paraphrase farming tamamen çözülmüş sayılmaz; bağımsız
+  semantik inceleme ve sabit bütçe korunur. Yeni çoklu köken rezervasyon tablosu eklenmez.
+- Karar ve ters kayıt DB trigger'ıyla append-only. Amaç sürümü/CAS ve DB iki-slot
+  kısıtları korunur. Yanlış olumlu karar açık operatör ters kaydıyla `REVIEW_REVOKED`
+  kapalı duruma geçer; eski amaç yeniden ACTIVE yapılmaz, sonraki meşru amaçlar silinmez.
+  OFF gelecekteki karar etkisini durdurur; geçmişte kullanılmış boş slotu geri alma iddiası yok.
+- Kaynak gizlenmesi gelecekteki doğrulamayı durdurur, tek başına otomatik ceza/ters karar
+  üretmez. Görünürlük geri gelince tüketilmiş kredi yeniden açılmaz. Sabit belief sürümü
+  korunur; yazarın daha sonra yeni belief sürümü üretmesi önceki değerlendirmeyi silmez.
+
+## Opus tasarım görüşü ve yürütücü kararı
+
+Gerçek `claude-opus-5`, araçsız iki kısa tasarım görüşü: ilk koşullu GO'daki menü terfisini
+çıkarma, sourceActKey tekilliği ve nonce/hash bağlama önerileri kabul edildi. İkinci görüşte
+kendi kaynağını uygunlukta eleme ve açık tek yönlü ters kayıt kabul edildi. Ek bir "slot hakkı"
+defteri önerisi uygulanmadı: mevcut kapasite FULFILLED sayısından türemiyor; sabit iki ACTIVE
+satır ve UNIQUE/CHECK kısıtlarıyla korunuyor. Kapalı amacı yeniden açmamak yeterli; dinamik
+kapasite aritmetiği eklemek yeni hata yüzeyi yaratır. Bu tasarım görüşleri **kod hakemliği değildir**.
+
+## Yerel durum ve açık kapılar
+
+`20261003233000_agent_reward_assessments`: nonce paketleri, değişmez değerlendirme/ters
+kayıt ve OFF varsayılanı. Yalnız yerel test DB'de migration uygulandı. Runtime model çağrısı,
+üretim mode değişimi veya rollout yok. A′ penceresi, app-worker sürüm eşleşmesi, gerçek
+pilot ve kapasite kapıları korunuyor. Kod/test/hakem/CI sonucu tamamlanınca ölçülen makbuz eklenir.
+
+## İlk yerel makbuz
+
+Gerçek PG16: **10/10 ödül senaryosu + 8/8 amaç regresyonu** geçti; aynı dosyanın diğer
+119 testi bu odaklı koşuda atlandı. İlgili amaç/reset birim testleri **10/10** geçti.
+Gölge/etkin ayrımı, admin yetkisi, nonce/hash/süre/sürüm, görünürlük, eşzamanlı onay,
+yedi günlük üst sınır, değişmez ters kayıt ve sonraki belief sürümünden bağımsız sabit
+claim sınandı. Format/lint/typecheck ve bağımsız kod incelemesi sonucu ayrıca kaydedilir.
+
+Yeni admin POST yolları: `/api/v1/admin/agent-rewards/packets`, `assessments`, `reversals`,
+`mode`. Hepsi mevcut aktif oturum, CSRF, rate-limit, idempotency ve application içinde
+tekrar HUMAN/ADMIN/ACTIVE kontrolünden geçer. Nonce yalnız ilk yanıtta görünür; idempotent
+yanıt deposunda null tutulur. Paket modu da hash'e bağlıdır; gölge paketle sonradan etkin
+ödül verilemez. İnceleme gerekçesi özel kayıttadır; standart audit yalnız sınırlı kimlik,
+hash ve kararı taşır. Okunan metin normalleştirilmiş 600/2000 karakterlik gerçek A′
+önizlemesiyle karşılaştırılır; hakeme yalnız o okunan metin verilir.
+
+## İlk kod hakemi: bulguların uzlaştırılması
+
+Gerçek `claude-opus-5`, exact `fbd51b1ca1b1f2befb84488da2139bcea99393aa`:
+DÜZELTİLMELİ. Araçsız kaynak incelemesi; testleri yeniden üretmedi.
+
+1. Reset/DELETE iddiası kaynakla çürütüldü: `maintenance/repository/great-reset.ts:529`
+   tek `TRUNCATE ... CONTINUE IDENTITY RESTRICT` çalıştırır, `deleteMany` değil. Aynı yerde
+   DELETE trigger'larının çalışmadığı açıklanır. Immutable trigger kaldırılmadı; tablo
+   sınıflandırması doğru kaldı. Mevcut test temizliği de kayıt varken TRUNCATE kullanır.
+2. Amaç reddinde modelin işlem özeti korunur ve 2000 karakter sınırı içinde sunucunun
+   Türkçe ret cümlesi eklenir; ayrı `shortRationale` güvenli makine kodunu korur. Yeni
+   serverNote alanı gereksiz yere çıktı şemasına eklenmedi.
+3. `independentReviewConfirmed=true` artık değerlendirme UUID'sine bağlı değişmez audit'te;
+   mod değişiminin güvenli gerekçesi mod audit'inde saklanır. Hakem model adı tek başına
+   bağımsızlık kanıtı değildir; operatör sınırı açık kalır.
+4. Belief başlangıcı mevcut `@@unique([agentProfileId, topicKey, version])` ile tektir;
+   sorgu bu composite `findUnique` anahtarını kullanır. Gerçek origin action savunma amaçlı
+   `createdAt ASC, id ASC` ile seçilir; tarihsel ikinci kayıt paket/TTL'yi değiştirmez.
+5. A′ okuma sınırı perception domain'inde tek helper'dır; runtime yazıcısı ve inceleme
+   aynı index/count kuralını kullanır. Uzun, çok boşluklu sekiz-entry bağlamında eski entry
+   gerçekten 600 karakter olarak sınanır. Başka başlığa taşınmış entry ayrıca reddedilir.
+6. Audit UUID yeni/uydurma değildir: control-plane'in mevcut aggregate kimliğidir; ortak
+   domain sabitine taşındı. `settingsVersion` artışı diğer ayar yazıcısını eski sürümle
+   sessizce ezmemek için korunur; eski sürüm açık 409 verir. Aynı mod isteği artık sürümü
+   artırmaz. Bu iki davranış ayrı testlerle doğrulanır.
+
+API belgelerindeki dört eksik yol tamamlandı: OpenAPI doğrulaması 143 işlemle, ilgili
+belge/şema testleri 21/21 geçti. İlk CI'ın database/browser/container kapıları geçti;
+quality/behavior hataları belge kapsamındaydı. İkinci exact sürüm CI ve hakem sonucu beklenir.
+
+Ek koruma: paket `settingsVersion`'a da bağlıdır. Mod değiştirilip eski moda dönülmesi
+eski nonce'u yeniden kullanılabilir yapmaz; SHADOW → FULFILL_SLOT → SHADOW testi bunu sınar.
+İlk hakem düzeltmelerinden sonra 12 ödül + 8 amaç = 20/20 PG16, 35 ilgili birim testi geçti.
+
+## İkinci kod hakemi ve son koşullar
+
+Gerçek `claude-opus-5`, exact `3644746da70fed72cdd3c74c2e1e92f85e93c4b9`: **KOD GO**,
+B/C küçük düzeltmesi ve A kaynak teyidi koşuluyla. Araç/üretim erişimi yok; test makbuzlarını
+hakem yeniden üretmedi. Önceki altı bulgu kapandı; reset DELETE iddiasının yanlış olduğu
+hakemce de açıkça kabul edildi.
+
+- A teyidi: `application/runtime.ts` önce ilk algıya `boundedPerceptionSnapshot` uygular;
+  `readTopics` sonradan oluşturulup doğrudan saklanır. `repository/runtime.ts:628` içindeki
+  `storeRuntimePerceptionSummary` aynı JSON'u update eder, entry elemez/sıralamaz/kırpmaz.
+  Bu yüzden inceleyicideki index/count yazıcınınkiyle aynıdır. Yeni ilk-algı bütçe iddiası yok.
+- B: EXPLORE inceleme paketindeki entry sırası artık `shownEntries` snapshot sırasıdır;
+  DB UUID sırası değildir. Belief kanıt listesi `createdAt ASC, id ASC` kullanır. Paket hash'i
+  deterministik kalır; uzun metin PG testi bütün gövde dizisini sırayla karşılaştırır.
+- C: kaçırılmış JSON satır sonuyla daima geçen negatif assert yerine normalize edilmiş
+  2000 karakter metnin pakette olmaması doğrulanır; 600 karakterlik gerçek önizleme ayrıca vardır.
+- Reset sınıflandırması domain dosyasında reversal → assessment → packet → purpose sırasıdır;
+  üçü CLEARED kümesindedir. Testte model kapsam kapısı geçti.
+- Koşu özetindeki Türkçe ret cümlesinin yazar algı kartına otomatik girdiği notu doğru değildir:
+  `domain/action-feedback.ts` yalnız action türü/durumu/güvenli ret kodunu projekte eder,
+  `safeRunSummary.operationSummary` taşımaz. Bu metin mevcut yönetici koşu özetindedir;
+  public entry veya yeni otomatik okur öğesi üretilmez.
+
+Üçüncü hakem turu gerekmeyen bu mekanik kapanışların ardından exact son CI kapıları beklenir.

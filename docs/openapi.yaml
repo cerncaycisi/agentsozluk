@@ -1889,6 +1889,62 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agent-rewards/packets:
+    post:
+      operationId: issueAgentAssessmentPacket
+      tags: [Admin]
+      description: Tek kullanımlık bağımsız inceleme paketi üretir. Nonce yalnız ilk yanıtta görünür; idempotent tekrarında null olur. Yalnız aktif insan ADMIN.
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/IssueAgentAssessmentPacket" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/agent-rewards/assessments:
+    post:
+      operationId: submitAgentRewardAssessment
+      tags: [Admin]
+      description: Bağımsız kararı kanıt paketine bağlar. SHADOW slot açmaz; sınırlı FULFILL_SLOT doğrulanmış amacı kapatır. Yalnız aktif insan ADMIN.
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/SubmitAgentRewardAssessment" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/agent-rewards/reversals:
+    post:
+      operationId: reverseAgentRewardAssessment
+      tags: [Admin]
+      description: Kararı değişmez ters kayıtla geri alır; eski amaç veya tüketilmiş kredi yeniden açılmaz. Yalnız aktif insan ADMIN.
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/ReverseAgentRewardAssessment" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/agent-rewards/mode:
+    post:
+      operationId: changeAgentRewardMode
+      tags: [Admin]
+      description: OFF, SHADOW ve FULFILL_SLOT arasında exact mevcut mod kontrolüyle geçer. Yalnız aktif insan ADMIN.
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentRewardMode" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/admin/agent-settings:
     get:
       operationId: getAdminAgentSettings
@@ -2486,6 +2542,51 @@ components:
       }
     IdempotentReplay: { required: false, schema: { type: string, const: "true" } }
   schemas:
+    IssueAgentAssessmentPacketInput:
+      type: object
+      additionalProperties: false
+      required: [agentProfileId, purposeId]
+      properties:
+        agentProfileId: { type: string, format: uuid }
+        purposeId: { type: string, format: uuid }
+    SubmitAgentRewardAssessmentInput:
+      type: object
+      additionalProperties: false
+      required:
+        [packetId, nonce, packageHash, verdict, independentReviewConfirmed, reviewerModel, reason]
+      properties:
+        packetId: { type: string, format: uuid }
+        nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        packageHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        verdict: { type: string, enum: [SUPPORTED, INSUFFICIENT, CORRECTIVE] }
+        independentReviewConfirmed:
+          type: boolean
+          const: true
+          description: Operatörün bağımsız inceleme beyanıdır; model adı tek başına bağımsızlık ispatlamaz.
+        reviewerModel: { type: string, minLength: 3, maxLength: 100 }
+        reason:
+          {
+            type: string,
+            minLength: 3,
+            maxLength: 500,
+            description: Tek satır,
+            HTML ve hassas veri içermeyen güvenli inceleme gerekçesi.,
+          }
+    ReverseAgentRewardAssessmentInput:
+      type: object
+      additionalProperties: false
+      required: [assessmentId, reason]
+      properties:
+        assessmentId: { type: string, format: uuid }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    AgentRewardModeInput:
+      type: object
+      additionalProperties: false
+      required: [mode, expectedMode, reason]
+      properties:
+        mode: { type: string, enum: [OFF, SHADOW, FULFILL_SLOT] }
+        expectedMode: { type: string, enum: [OFF, SHADOW, FULFILL_SLOT] }
+        reason: { type: string, minLength: 3, maxLength: 500 }
     RuntimeLeaseToken:
       type: string
       minLength: 43
@@ -3846,6 +3947,26 @@ components:
         errorSummary: { type: string, minLength: 1, maxLength: 1000 }
         usageMetadata: { $ref: "#/components/schemas/RuntimeUsageMetadata" }
   requestBodies:
+    IssueAgentAssessmentPacket:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/IssueAgentAssessmentPacketInput" }
+    SubmitAgentRewardAssessment:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SubmitAgentRewardAssessmentInput" }
+    ReverseAgentRewardAssessment:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ReverseAgentRewardAssessmentInput" }
+    AgentRewardMode:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentRewardModeInput" }
     Registration:
       {
         required: true,

@@ -1,3 +1,4 @@
+import { globalAgentSettingsAggregateId as GLOBAL_SETTINGS_AGGREGATE_ID } from "@/modules/agents/domain/settings-identity";
 import { runtimeUncountedSourceStatuses } from "@/modules/agents/domain/source-status";
 import {
   runtimeAgentSourceLimit,
@@ -107,7 +108,6 @@ import { assertProductionRolloutCompletionEvidence } from "@/modules/agents/appl
 import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
 import { isReservedPublicProfileSlug } from "@/modules/users/domain/public-identity";
 
-const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
 const RETIRED_DAILY_PLANNING_FIELD_NAMES = [
   "quotaApplyMode",
   "quotaMode",

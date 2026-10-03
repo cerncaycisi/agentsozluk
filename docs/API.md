@@ -649,3 +649,26 @@ pnpm openapi:validate
 
 OpenAPI değişikliği; route, Zod input schema, response mapping ve test değişikliğiyle birlikte
 yapılmalıdır.
+
+## Bağımsız amaç değerlendirmesi
+
+| Method | Path                                      | Yetki              | Sonuç                                             |
+| ------ | ----------------------------------------- | ------------------ | ------------------------------------------------- |
+| POST   | `/api/v1/admin/agent-rewards/packets`     | HUMAN ADMIN + CSRF | 15 dakikalık tek kullanımlık kanıt paketi         |
+| POST   | `/api/v1/admin/agent-rewards/assessments` | HUMAN ADMIN + CSRF | Gölge veya sınırlı amaç değerlendirmesi           |
+| POST   | `/api/v1/admin/agent-rewards/reversals`   | HUMAN ADMIN + CSRF | Değişmez, tekrar güvenli ters karar               |
+| POST   | `/api/v1/admin/agent-rewards/mode`        | HUMAN ADMIN + CSRF | Exact mevcut modla OFF/SHADOW/FULFILL_SLOT geçişi |
+
+Tümü `Idempotency-Key` kullanır; uygulama yetkiyi DB'de tekrar doğrular. Yazarın runtime
+credential'ı bu yolları kullanamaz. Paket isteği `agentProfileId/purposeId`; değerlendirme
+`packetId/nonce/packageHash/verdict/reviewerModel/reason/independentReviewConfirmed=true`
+gerektirir. Nonce ilk yanıtta görünür, saklanan idempotent yanıtta null'dır. Paket süresi
+biterse, amaç sürümü/kanıt/mod değişirse veya nonce tüketilirse `409 AGENT_REWARD_CONFLICT`;
+yeni paket gerekir. Nonce/kanıt gövdeleri loglara veya public çıktıya kopyalanmaz.
+
+`SUPPORTED` teknik işlem başarısı değildir, operatör aracılı bağımsız semantik karardır.
+Model adı tek başına bağımsızlık ispatlamaz. Varsayılan OFF; SHADOW amaç slotu açmaz.
+FULFILL_SLOT en çok yedi günde üç uygun amacı kapatır; aynı olay veya aynı metin iki kez
+kredi üretmez. `INSUFFICIENT/CORRECTIVE` ceza üretmez. Ters karar yeni etkin amaç açmaz,
+tüketilmiş hakkı geri vermez; OFF iken de ters kayıt yapılabilir. Ayrıntı ve dağıtım sınırı
+[P4 sözleşmesinde](P4_BAGIMSIZ_AMAC_DEGERLENDIRMESI_2026-10-03.md).

@@ -129,6 +129,7 @@ import {
   selectDiverseSourceItems,
   selectPerceptionEntries,
   truncateUntrustedText,
+  runtimeReadTopicEntryLimit,
 } from "@/modules/agents/domain/perception";
 import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behavior-feedback";
 import {
@@ -212,9 +213,10 @@ async function appendAutomaticRunQueuedOutbox(
   });
 }
 
-// A′: okunan başlıkta tam gösterilen en yeni entry sayısı ve eski entry önizleme sınırı.
-export const runtimeReadTopicFullEntryCount = 6;
-export const runtimeReadTopicPreviewCharLimit = 600;
+export {
+  runtimeReadTopicFullEntryCount,
+  runtimeReadTopicPreviewCharLimit,
+} from "@/modules/agents/domain/perception";
 
 /* Perception anlık görüntüsünün üst sınırı. Ayrıntı için kırpma döngüsündeki nota bak. */
 export const runtimePerceptionMaximumBytes = 160 * 1024;
@@ -1881,9 +1883,7 @@ export function getRuntimeRunContext(
             */
             body: truncateUntrustedText(
               entry.body,
-              index === 0 || index >= topic.entries.length - runtimeReadTopicFullEntryCount
-                ? 2000
-                : runtimeReadTopicPreviewCharLimit,
+              runtimeReadTopicEntryLimit(index, topic.entries.length),
             ),
             createdAt: entry.createdAt.toISOString(),
           })),
@@ -2674,7 +2674,7 @@ export function completeRuntimeRun(
         : purposes.status === "REJECTED"
           ? {
               ...input.safeRunSummary,
-              operationSummary: "Run tamamlandı; amaç önerisi sunucu doğrulamasında reddedildi.",
+              operationSummary: `${truncateUntrustedText(input.safeRunSummary.operationSummary, 1900)} Amaç önerisi sunucu doğrulamasında reddedildi.`,
               shortRationale: `REJECTED_PURPOSE:${purposes.reasonCode}`,
             }
           : input.safeRunSummary;

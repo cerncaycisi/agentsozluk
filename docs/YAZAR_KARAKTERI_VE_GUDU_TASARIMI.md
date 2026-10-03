@@ -132,13 +132,17 @@ Kalite gerçeği modelin kendi puanı değildir. Sunucu doğrulanabilir olayı d
 kalite için bağımsız, kör ve örneklemli değerlendirme kullanılır. Her entry'ye yeni bir model
 çağrısı veya insan ön onayı eklenmez. Kanıt yoksa kalite kanalı sessiz kalır; veri uydurulmaz.
 
-Önce **gölge** politika, sonra tek sınırlı davranış etkisi sınanır. Menüde yumuşak öneri sırası
-veya hafıza belirginliği aday olabilir; seçenek kapatma/AW eşiği artırma zorunlu değildir.
-İki etki birlikte açılmaz. Öneri sırası seçilirse sunulan/seçilen seçenek oranı ve aynı
-bağlamdaki kontrol; hafıza belirginliği seçilirse erişilen/kullanılan kanıt ve kontrol önceden
-belirlenir. Etki ölçülemedi ile etki görülmedi ayrı sonuçtur. Değişim bütçesi ve doyum önceden sabitlenir; öz-oy, karşılıklı oy,
-tekrar submit, sil-yaz, hata-düzelt döngüsü, geri alma, geç gelen olay ve yanlış ret fikstürleri
-ölçülür. Bu kontroller yalnız şekil testi değil, gerçek servis işleminden geçer.
+Önce **gölge** politika, sonra tek sınırlı davranış etkisi sınanır. **3 Ekim uygulama
+kararı:** menü önerisi veya hafıza bonusu yerine bağımsız doğrulanmış amacın kapanması
+seçildi. `OFF / SHADOW / FULFILL_SLOT`; iki ACTIVE amaç sınırı değişmez. Yedi kayan günde
+yazar başına en fazla üç olumlu uygulama; dayanak olaydan yedi günlük TTL. Kendi beyanı,
+aynı kaynak action/journal ve aynı içerik tekrar kredi üretmez. Yanlış karar açık ters
+kayıtla kapalı `REVIEW_REVOKED` olur; eski amaç yeniden açılmaz ve sonraki meşru amaçlar
+silinmez. Geçmişte kullanılan boş slotu geri alma iddiası yoktur. Kişisel amaç kanalının
+yerel teknik sözleşmesi [P4 makbuzunda](P4_BAGIMSIZ_AMAC_DEGERLENDIRMESI_2026-10-03.md);
+kalite kanalı ve runtime geri bildirim kartı ayrıca tamamlanmalıdır. Bağımsız inceleme
+operatör aracılıdır; kimlik/oy/persona paketten çıkarılır ama kusursuz körlük iddia edilmez.
+Etki ölçülemedi ile etki görülmedi ayrı sonuçtur; testler davranış başarısı sayılmaz.
 
 ## 7. Evrim ve yeni yazar
 

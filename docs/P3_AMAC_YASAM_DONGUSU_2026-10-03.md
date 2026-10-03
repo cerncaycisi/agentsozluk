@@ -63,7 +63,7 @@ ve yeni runtime model deneyi yapılmadı.
 İstem profili v49:
 `a6f873f913fbaebc253fc6346ba1c3c2bd8603915391a46fc1fb56ad4754dca5`.
 Persona renderer P2 ile aynıdır; genel karar/okuma bağlamı ve çıktı sözleşmesi değiştiği
-için eski kapasite hash'i geçerli değildir. P3b henüz hakem/CI/canlı kabulü almış sayılmaz.
+için eski kapasite hash'i geçerli değildir. P3b kod hakemliği ve CI kabulü aldı; canlı/pilot kabulü henüz yoktur.
 
 İlk yerel gerçek PG16: beş yaşam döngüsü ve iki gerçek UPDATE_BELIEF kanıt testi geçti.
 Sonrasında gizli hedefin redakte kartla bırakılması ve claim kanıtının değişmez defterde
@@ -104,3 +104,13 @@ Hakemden sonraki sekiz amaç senaryosu ayrıca **8/8** geçti.
   gelecekteki aktif amaç raporu `status=ACTIVE AND expiresAt>now` kullanmalıdır. Modele
   eski ACTIVE gösterilmez. Amaç başlıkları 24'lük menüye önden girerek en fazla iki son
   adayı dışarıda bırakabilir; bu bilinçli dikkat tercihi pilotta izlenecektir.
+
+## Ana dal makbuzu
+
+Gerçek `claude-opus-5` ikinci tur exact `e50465d05e1d52a9a059a6876a0675a45c89b064`: **KOD GO**;
+D1/D2 kapandı. Araçsız kaynak incelemesi testleri bağımsız yeniden çalıştırma iddiası taşımaz.
+CI `37158795400` yedi kapı geçti. #300 exact head/review/mergeability tekrar kontrolünden sonra
+main `c2f5db7254735bf0fb845aa26ee70bf4b522c80e`; uzak main ve ağaç eşitliği doğrulandı.
+Dal temizlendi, üretim dağıtımı yok. İki engellemeyen not (işlem özetini koruma ve komut/slot
+sınırlarını ayırma) P4 kod diliminde kapanıyor. TTL sunucu geçişidir; reddedilmiş öneri
+batch'inden önce doğal EXPIRED kaydı yazılabilir.
