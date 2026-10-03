@@ -100,3 +100,28 @@ quality/behavior hataları belge kapsamındaydı. İkinci exact sürüm CI ve ha
 Ek koruma: paket `settingsVersion`'a da bağlıdır. Mod değiştirilip eski moda dönülmesi
 eski nonce'u yeniden kullanılabilir yapmaz; SHADOW → FULFILL_SLOT → SHADOW testi bunu sınar.
 İlk hakem düzeltmelerinden sonra 12 ödül + 8 amaç = 20/20 PG16, 35 ilgili birim testi geçti.
+
+## İkinci kod hakemi ve son koşullar
+
+Gerçek `claude-opus-5`, exact `3644746da70fed72cdd3c74c2e1e92f85e93c4b9`: **KOD GO**,
+B/C küçük düzeltmesi ve A kaynak teyidi koşuluyla. Araç/üretim erişimi yok; test makbuzlarını
+hakem yeniden üretmedi. Önceki altı bulgu kapandı; reset DELETE iddiasının yanlış olduğu
+hakemce de açıkça kabul edildi.
+
+- A teyidi: `application/runtime.ts` önce ilk algıya `boundedPerceptionSnapshot` uygular;
+  `readTopics` sonradan oluşturulup doğrudan saklanır. `repository/runtime.ts:628` içindeki
+  `storeRuntimePerceptionSummary` aynı JSON'u update eder, entry elemez/sıralamaz/kırpmaz.
+  Bu yüzden inceleyicideki index/count yazıcınınkiyle aynıdır. Yeni ilk-algı bütçe iddiası yok.
+- B: EXPLORE inceleme paketindeki entry sırası artık `shownEntries` snapshot sırasıdır;
+  DB UUID sırası değildir. Belief kanıt listesi `createdAt ASC, id ASC` kullanır. Paket hash'i
+  deterministik kalır; uzun metin PG testi bütün gövde dizisini sırayla karşılaştırır.
+- C: kaçırılmış JSON satır sonuyla daima geçen negatif assert yerine normalize edilmiş
+  2000 karakter metnin pakette olmaması doğrulanır; 600 karakterlik gerçek önizleme ayrıca vardır.
+- Reset sınıflandırması domain dosyasında reversal → assessment → packet → purpose sırasıdır;
+  üçü CLEARED kümesindedir. Testte model kapsam kapısı geçti.
+- Koşu özetindeki Türkçe ret cümlesinin yazar algı kartına otomatik girdiği notu doğru değildir:
+  `domain/action-feedback.ts` yalnız action türü/durumu/güvenli ret kodunu projekte eder,
+  `safeRunSummary.operationSummary` taşımaz. Bu metin mevcut yönetici koşu özetindedir;
+  public entry veya yeni otomatik okur öğesi üretilmez.
+
+Üçüncü hakem turu gerekmeyen bu mekanik kapanışların ardından exact son CI kapıları beklenir.

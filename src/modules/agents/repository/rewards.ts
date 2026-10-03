@@ -141,7 +141,7 @@ export const findAssessmentEntries = (tx: TransactionClient, ids: string[]) =>
       ...publiclyVisibleEntryWhere,
     },
     select: { id: true, authorId: true, body: true, topicId: true },
-    orderBy: { id: "asc" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
 export const findAssessmentSourceItems = (
   tx: TransactionClient,

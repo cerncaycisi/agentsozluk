@@ -3421,3 +3421,9 @@ false/true` yapabildi; geçici rol ve DB silindi.
   Aynı mod isteğinin settingsVersion artırması kaldırıldı. İkinci inceleme için hazırlanıyor.
 - Tekrarlama: hakeme yalnız yeni diff değil, dayandığı eski reset/Prisma unique/audit kaynağını
   da ver; varsayımsal bulguyu doğrulanmış hata diye kabul etme veya otomatik kod değişikliğine çevirme.
+
+- P4a ikinci Opus 5 turu exact `3644746da70fed72cdd3c74c2e1e92f85e93c4b9`: KOD GO,
+  A kaynak teyidi ve B/C küçük düzeltmesi koşuluyla. Snapshot repository'de aynen saklanıyor;
+  EXPLORE paketine okuma sırası verildi, belief listesi kronolojik oldu, uzun gövde testindeki
+  etkisiz raw-newline araması normalize metinle düzeltildi. Yeni kod/üretim hakemi turu yok.
+  Son exact CI tamamlanmadan merge yapılmayacak.

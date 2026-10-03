@@ -114,9 +114,9 @@ async function buildPurposeAssessment(
     sourceContentHash = contentHash(event.safeMessage);
     observation = {
       interpretation: event.safeMessage,
-      entries: independent.map(({ id }) => ({
-        body: String(shownEntries.find((shown) => shown.id === id)!.body),
-      })),
+      entries: shownEntries
+        .filter((shown) => independent.some((entry) => entry.id === shown.id))
+        .map((shown) => ({ body: String(shown.body) })),
     };
   } else {
     if (typeof proof.beliefId !== "string" || typeof proof.beliefVersion !== "number")

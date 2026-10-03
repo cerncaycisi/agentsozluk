@@ -544,8 +544,8 @@ describe("independent purpose assessment with PostgreSQL", () => {
     });
     const packet = await f.issue();
     const shown = packet.packet.observation.entries as Array<{ body: string }>;
-    expect(shown.some((entry) => entry.body === entries[1]!.body)).toBe(true);
-    expect(JSON.stringify(packet.packet)).not.toContain(longBody);
+    expect(shown).toEqual(entries.map(({ body }) => ({ body })));
+    expect(JSON.stringify(packet.packet)).not.toContain(truncateUntrustedText(longBody, 2000));
     await db.entry.update({
       where: { id: f.entry.id },
       data: { body: `Yeni görünür kanıt. ${longBody}` },
