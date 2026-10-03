@@ -224,5 +224,9 @@ Dal `deney/a-prime-okuma-baglami` (`de3080a`). PR açılmadı; yalnız yerel den
   - Şablon veritabanı 28 Eylül durumunda.
   - A′ kolundaki tek `ACTION_TARGET_OFF_SNAPSHOT` reddinin nedeni incelenemedi; veritabanı
     erken silindi. Bu ret türü üretimde de ara sıra görülüyor (son 7 günde 1).
+    - **3 Ekim, kapandı:** Üretimde son 30 günde 15 kez görülmüş, günde 0,5'ten az. Hepsinde
+      hedef kimlik anlık görüntüde gerçekten yok; model kimliği uyduruyor ya da eski bir kimliği
+      kullanıyor ve kapı doğru reddediyor. Bu dağılım A′'dan önce de aynıydı; A′ ile ilişkisi
+      yok.
 - **Kalan:** A′ kod incelemesi (Astra) ve canlıya alma kararı. Plana göre canlıya alma Gökhan
   onayıyla. `gpt-6-luna` karşılaştırması tek değişiklik ilkesiyle A′'dan ayrı yapılacak.
