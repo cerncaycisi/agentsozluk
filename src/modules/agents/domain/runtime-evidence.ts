@@ -44,7 +44,13 @@ export function deriveRuntimePerceptionEvidence(
 ): RuntimePerceptionEvidence {
   const ids = new Set<string>();
   const sourceItemIds = new Set<string>();
-  collectEvidence(perception, ids, sourceItemIds);
+  // Teknik işlem kartı kalite/öğrenme kanıtı değildir. Yalnız algıya UUID eklemek
+  // reflection/consolidation kanıt kümesini sessizce genişletmemeli.
+  const evidencePerception =
+    perception && typeof perception === "object" && !Array.isArray(perception)
+      ? Object.fromEntries(Object.entries(perception).filter(([key]) => key !== "actionFeedback"))
+      : perception;
+  collectEvidence(evidencePerception, ids, sourceItemIds);
   for (const id of additionalIds) if (uuidPattern.test(id)) ids.add(id);
   return {
     ids: [...ids],

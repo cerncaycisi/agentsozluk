@@ -1,4 +1,8 @@
 import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
+import {
+  actionFeedbackLimit,
+  actionFeedbackWindowMs,
+} from "@/modules/agents/domain/action-feedback";
 import { Prisma, type AgentRunType } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
 import { createOpaqueToken } from "@/lib/security/crypto";
@@ -2819,6 +2823,7 @@ export async function getRuntimePerceptionRecords(
     followedWriterEntries,
     relationships,
     behaviorFeedbackEvents,
+    actionFeedbackRecords,
     sources,
     sourceCandidates,
     state,
@@ -3053,6 +3058,33 @@ export async function getRuntimePerceptionRecords(
       ORDER BY latest."id" DESC
       LIMIT 5
     `,
+    transaction.agentAction.findMany({
+      where: {
+        agentProfileId: input.agentProfileId,
+        runId: { not: input.runId },
+        actionStatus: { in: ["SUCCEEDED", "REJECTED", "FAILED", "SKIPPED"] },
+        updatedAt: {
+          gt: new Date(input.now.getTime() - actionFeedbackWindowMs),
+          lte: input.now,
+        },
+        run: {
+          agentProfileId: input.agentProfileId,
+          runType: "NORMAL_WAKE",
+          runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIMED_OUT"] },
+          finishedAt: { lte: input.now },
+        },
+      },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: actionFeedbackLimit,
+      select: {
+        id: true,
+        runId: true,
+        actionType: true,
+        actionStatus: true,
+        rejectionCode: true,
+        updatedAt: true,
+      },
+    }),
     input.includeSources
       ? listRuntimePerceptionSources(transaction, {
           agentProfileId: input.agentProfileId,
@@ -3208,6 +3240,7 @@ export async function getRuntimePerceptionRecords(
     beliefs,
     relationships,
     behaviorFeedbackEvents,
+    actionFeedbackRecords,
     sources,
     sourceCandidates,
     state,

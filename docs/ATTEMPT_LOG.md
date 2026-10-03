@@ -3237,3 +3237,30 @@ false/true` yapabildi; geçici rol ve DB silindi.
   A′ penceresi boyunca aynı Codex kotasında lab başlatmama kuralı korunuyor.
 - Tekrarlama: genel AW eşiği değişmedi diye AW girdisi aynı sanma; ortak snapshot üç
   fazın maliyetini etkiler. P2 kısa pilotu ve teknik kapasite kanıtı ayrı kapılardır.
+
+## 2026-10-03 — P3 teknik sonuç algısı, ilk yerel doğrulama
+
+- Taban `329b20f6288ee55107e9ae1dd9c40b1297fa9e3b`, dal `feat/author-outcome-context`.
+  Yeni `actionFeedback` yalnız kendi geçmiş terminal action kayıtlarından; TTL yedi gün,
+  en çok beş, güvenli üç ret kodu, NOT_EVALUATED. Yeni model çağrısı veya üretim erişimi yok.
+- Yerel PostgreSQL 16 `agentsozluk_local_integration_test`: odaklı regresyon ve ardından
+  tam runtime API dosyası 116/116; beş birim dosyası 111/111 geçti. Sahiplik/zaman/pencere,
+  ham alan dışlama ve aynı koşudaki donmuş tekrar okuma doğrulandı.
+- İlk typecheck `TS2322` verdi: yeni test fikstüründe zorunlu `desiredEntryMin/Max` yoktu.
+  İki alan açıkça eklendi; bu uygulama regresyonu veya ortam arızası değildi.
+- Tekrarlama: teknik SUCCEEDED/NO_ACTION sonucunu kalite veya ödül sayma; yalnız kart
+  göstermek amaç/ödül yaşam döngüsünün tamamlandığı iddiasına dönüşmesin.
+
+## 2026-10-03 — P2 #297 birleştirmesi ve P3 kanıt ayrımı
+
+- #297 exact head `329b20f6288ee55107e9ae1dd9c40b1297fa9e3b`; CI `37151986252` 7/7.
+  Opus ikinci tur koşulları kaynak/testle tamamlandı. Fresh head/check/review/mergeability
+  kontrolü sonrası squash main `505392392eea725977a854b3acdcfabd0881261a`. Uzak main ve
+  head/main ağaç eşitliği doğrulandı, dal silindi. Üretim dağıtımı yok.
+- P3 kaynak kontrolü genel UUID toplayıcının yeni teknik action/run kimliklerini reflection
+  kanıtına çevireceğini gösterdi. `actionFeedback` bu toplama dışında bırakıldı; typed action
+  kataloğuna da girmiyor. Profil v48 yeni hash ile güncellendi.
+- Son yerel tekrar: gerçek PG16 runtime API 116/116; yedi birim dosyası 118/118.
+  Teknik işlem sonucunun semantik başarı sayılmaması kaynak ve regresyonla korundu.
+- Tekrarlama: API’nin algıya eklediği her UUID’nin kanıt etkisini ayrıca izle; yalnız prompt’a
+  nötr etiketi yazmak, geniş UUID doğrulayıcısını sınırlandırmaz.
