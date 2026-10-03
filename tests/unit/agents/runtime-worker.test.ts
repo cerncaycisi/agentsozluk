@@ -20,6 +20,7 @@ import {
 import {
   AgentRuntimeWorker,
   buildActionWorthinessPrompt,
+  buildBrowsePrompt,
   buildRuntimePrompt,
   DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS,
   runtimeContentRepairWireJsonSchema,
@@ -179,6 +180,7 @@ function canonicalNormalOutput(
     };
     actions?: Record<string, unknown>[];
     memoryCandidates?: Record<string, unknown>[];
+    purposeChanges?: Record<string, unknown>[];
   } = {},
 ) {
   const rawActions = options.actions ?? [];
@@ -217,6 +219,7 @@ function canonicalNormalOutput(
     relationshipDeltas: [],
     sourceProposals: [],
     memoryCandidates: options.memoryCandidates ?? [],
+    purposeChanges: options.purposeChanges ?? [],
   };
 }
 
@@ -1302,6 +1305,22 @@ describe("long-lived agent runtime worker", () => {
   it("leases, validates structured output, executes actions and completes through the API", async () => {
     const runId = randomUUID();
     const plane = controlPlane(runId);
+    const purposeChanges = [
+      {
+        operation: "REVIEW",
+        purposeId: randomUUID(),
+        expectedVersion: 1,
+        note: "Bu niyet hâlâ anlamlı; bugün yayın gerekmiyor.",
+      },
+    ];
+    const context = fixtureContext(runId);
+    context.perception.purposes = [
+      { id: purposeChanges[0]!.purposeId, version: 1, question: "Kavramı anlamak" },
+    ];
+    plane.context = vi.fn().mockResolvedValue(context);
+    expect(buildBrowsePrompt(context, [])).toContain("Kavramı anlamak");
+    expect(buildBrowsePrompt(context, [])).toContain("bu okuma entry yayımlamayı gerektirmez");
+    expect(buildRuntimePrompt(context)).toContain("Kavramı anlamak");
     const provider: RuntimeProvider = {
       inspect: vi
         .fn()
@@ -1319,6 +1338,7 @@ describe("long-lived agent runtime worker", () => {
           loadAverage1m: 0.5,
         },
         output: canonicalNormalOutput("Akış güvenli biçimde değerlendirildi.", {
+          purposeChanges,
           state: {
             curiosity: 0.4,
             confidence: 0.6,
@@ -1375,6 +1395,7 @@ describe("long-lived agent runtime worker", () => {
       LEASE_TOKEN,
       expect.objectContaining({
         outcome: "SUCCEEDED",
+        purposeChanges,
         state: {
           curiosity: 0.4,
           confidence: 0.6,

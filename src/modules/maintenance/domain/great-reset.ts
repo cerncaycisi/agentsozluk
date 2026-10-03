@@ -24,6 +24,8 @@ export const greatResetClearedModels = [
   "agentRuntimeEvent",
   "agentAction",
   "agentRunEvent",
+  // Amaç da iç durumdur; creation/claim run FK kayıtlarından önce temizlenir.
+  "agentPurpose",
   "agentRun",
   "agentScheduleSlot",
   "agentDailyPlan",

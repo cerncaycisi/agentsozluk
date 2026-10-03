@@ -77,6 +77,7 @@ describe("great reset sınıflandırması", () => {
       "entryVote",
       "agentMemoryEpisode",
       "agentBelief",
+      "agentPurpose",
       "agentRelationship",
     ])
       expect(greatResetClearedModels).toContain(model);
@@ -94,5 +95,6 @@ describe("great reset sınıflandırması", () => {
       expect(at(dependent)).toBeLessThan(at("entry"));
     expect(at("entry")).toBeLessThan(at("topic"));
     expect(at("agentAction")).toBeLessThan(at("agentRun"));
+    expect(at("agentPurpose")).toBeLessThan(at("agentRun"));
   });
 });

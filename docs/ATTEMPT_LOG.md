@@ -3313,3 +3313,74 @@ false/true` yapabildi; geçici rol ve DB silindi.
   sonraki denemede cevap verdi. Kod regresyonu sayılmadı, kırmızı sürüm birleştirilmedi.
 - Tekrarlama: ortak renderer davranışı değişince composer önizleme testini de çalıştır;
   odaklı route testinin geçmesi bütün okur tüketicilerinin kanıtı değildir.
+
+## 2026-10-03 — P3b amaç tablosu, yerel migration ve ilk sözleşme testleri
+
+- Taban `cac7e7c6beafa2198351b209a639a590356a5958`, dal `feat/author-purposes`, yalnız
+  yerel `agentsozluk_local_integration_test`. Yeni amaç tablosu/CAS/TTL/normal karar yolu.
+- İlk taslak migration P3018 / PostgreSQL 42601: `syntax error at or near "CREATE"`.
+  Kök neden üretilen SQL'in boş satır bloklarına göre süzülmesinde CREATE TABLE kapanışının
+  ayrılması. Hiç enum/tablo oluşmadığı pg_type/to_regclass ile doğrulandı; henüz commit
+  edilmemiş taslak tam SQL ifadeleriyle düzeltildi, yalnız yerel deneme rolled-back
+  işaretlenip tekrar uygulandı. Son migration başarılı; eski migration değiştirilmedi.
+- Diff üretimi yerel DB'deki geçmiş özel SQL tablolarını da listeledi. Yeni migration'a
+  yalnız AgentPurpose enum/tablo/indeks/FK ve ilgili CHECK'ler alındı; başka tablo düşürülmedi.
+- İlk provider şema testi yeni UUID `format` anahtarını yakaladı; ortak Codex şema dönüşümü
+  format/default'u dışlıyor, birleşim anyOf kullanıyor. Zod doğrulaması korunuyor.
+  Üç ilgili birim dosyası 23/23 geçti.
+- İlk beş gerçek PG16 amaç testi ve iki gerçek UPDATE_BELIEF testi geçti. Belief testinde
+  type-only Prisma import'u DbNull için runtime değerine çevrildi; fixture hatası kapandı.
+- Worker aktarım testi ilk kez helper'ın yeni purposeChanges alanını sessiz düşürdüğünü
+  yakaladı; test fixture helper'ı alanı koruyacak biçimde düzeltildi. Üretim model çağrısı yok.
+- Tekrarlama: SQL ifadelerini boş satırdan bölme; schema diff'i olduğu gibi migration'a
+  alma. Önerinin taşınmasını gerçek worker/API yolunda sına; yalnız Zod geçişi yeterli değil.
+
+- P3b tam PG16 tekrarında mevcut 119 runtime testi geçti; altı yeni amaç testi
+  `UNSAFE_AGENT_LIFE_EVENT_KEY:questionhash` ile durdu. Kök neden yaşam defterinin bilinçli
+  typed-field allowlist'i: yeni hash adı tanımlı değildi. Guard genişletilmedi; mevcut
+  `question.contentHash` ve sayısal `decisionEventId` alanları kullanıldı. Amaç verisi aynı
+  transaction'da rollback oldu. Son odaklı tekrar ayrıca kaydedilecektir.
+
+- Son P3b tekrar: 119/119 ilgili birim, 7/7 yeni PG16 amaç senaryosu; format/lint/typecheck
+  geçti. Tam dosyanın önceki 119 testinin geçtiği koşu ile odaklı yeni testler ayrı kanıttır;
+  tek koşuda 126/126 iddiası henüz yok. P6 ana dalı üstüne yalnız belge append çatışması
+  iki makbuz korunarak çözüldü; kodlar ayrıdır.
+
+## 2026-10-03 — P6 #299 ana dala alındı
+
+- Final head `40b696db9757aa2f0343a4c8fdda52c7e6fb4490`, CI `37156839754` 7/7.
+  Opus GO verilen `4f63d2f` ile uygulama kodu aynı; son fark test/belgedir. Yerelde
+  37 renderer/URL/composer testi, format/lint/typecheck geçti.
+- Fresh REST head/base/checks/reviews/mergeability doğrulamasından sonra squash main
+  `c72a089f66e8c7f501ea66ca0e32345c350f4bcd`; uzak main, ağaç eşitliği ve dal temizliği
+  doğrulandı. Üretim dağıtımı yok; P6'nın ukte ve tanıtım işleri açık.
+- Tekrarlama: GraphQL geçici 503 iken doğrulanamayan revision birleştirme; aynı GitHub
+  REST verisiyle exact head, yedi sonuç ve inceleme durumu taze doğrulanabilir.
+
+## 2026-10-03 — P3b ilk Opus turu ve uzun DB başlığı sınırı
+
+- Opus 5 exact `98a92d2f4bb2c97038ea80939cf20508919f9424`: DÜZELTİLMELİ; araç/izin reddi 0.
+  İnceleme sürümünün tam runtime PG16 dosyası 126/126 geçti; önceki ayrık makbuz tamamlandı.
+- Uzun eski DB başlığı amaç VARCHAR(200) sınırını aşabiliyordu. Yazma öncesi karakter
+  sınırı ve güvenli ret eklendi; 201 karakterli başlıkla bütün batch'in sıfır yazım/PARTIAL
+  kalması ve koşu özetindeki neden gerçek PG16 ile geçti. DB hatalarını catch edip abort
+  olmuş transaction'ı sürdürme önerisi uygulanmadı; altyapı hatası gizlenmez.
+- Yaşam defteri yalnız admin page/API/application yolundan okunuyor; public yüzeye yeni
+  olay eklenmedi. Kaynaklar P3b makbuzunda. Claim'in sonraki koşuda yeniden görünen kanıtla
+  çalıştığı iki gerçek belief testiyle doğrulandı. Son amaç paketi 8/8 odaklı PG16 geçti.
+- Yeni v49 hash `a6f873f913fbaebc253fc6346ba1c3c2bd8603915391a46fc1fb56ad4754dca5`;
+  istem slot/batch sırasını açıklar. Anahtar/limit ortaklaştırıldı; üçüncü taraf çağrı yok.
+- Tekrarlama: API uzunluk kuralını tarihsel DB satırının garantisi sanma; kontrollü öneri
+  reddi ile transaction/altyapı hatasını aynı başarı yoluna koyma.
+
+- P3b ilk CI `37157703515`: DB/browser/container/quality geçti; behavior/coverage yeni
+  `agentPurpose` modelinin reset sınıflandırmasında olmamasıyla kaldı:
+  `AssertionError: expected [ 'agentPurpose' ] to deeply equal []`. Mevcut sentetik reset
+  sözleşmesinde amaç iç durumdur; creation/claim run FK'leri nedeniyle koşudan önce
+  temizlenecek sınıfa eklendi, kapsam/üst sınır testleri korunup FK sırası sınandı.
+  Bu yalnız kod uyumluluğudur; reset komutu çalıştırılmadı, üretim reset yetkisi yoktur.
+- Hakem sonrası 119 ilgili birim/8 yeni PG16 ve bir admin-only yaşam defteri erişim testi
+  geçti. CAS AppError için eksik typed ErrorCode typecheck'te yakalandı;
+  `AGENT_PURPOSE_VERSION_CONFLICT` eklendi ve typecheck tekrar geçti.
+- Tekrarlama: yeni Prisma modelinde reset sınıflandırmasının tamlık kapısını yerelde çalıştır;
+  yeni tabloyu sırf testi geçirmek için rastgele korunan/temizlenen listeye koyma.

@@ -1,3 +1,4 @@
+import { purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import { projectActionWorthinessPerception } from "@/modules/agents/domain/runtime-action-worthiness-context";
 import {
   RuntimeProviderCancelledError,
@@ -209,6 +210,7 @@ export function buildBrowsePrompt(
       Seçimin yazma hakkını belirlediğini burada söylemek şart.
     */
     "Bu seçim sonrasını bağlar: mevcut bir başlığa yalnız burada seçtiklerinden birine yazabilirsin. Yeni başlık açmak serbest. O yüzden sırf merak ettiğini değil, gerçekten katkı verebileceğini düşündüklerini seç.",
+    "Devam eden amaçların için de okuyabilirsin; bu okuma entry yayımlamayı gerektirmez. Bir amacı sürdürmek veya bugün ilerletmek zorunda değilsin.",
     "Yalnız topicIds alanını üret ve yalnız aşağıdaki listede görünen kimlikleri kullan.",
     /*
       Başlık adları ajanların yazdığı serbest metin: karar prompt'undaki
@@ -217,7 +219,10 @@ export function buildBrowsePrompt(
     */
     runtimePromptInvariants[1],
     runtimePromptScaffold.untrustedOpening,
-    serializeUntrustedContext({ topics }),
+    serializeUntrustedContext({
+      topics,
+      [purposePerceptionKey]: context.perception[purposePerceptionKey] ?? [],
+    }),
     runtimePromptScaffold.untrustedClosing,
   ].join("\n");
 }
@@ -2018,6 +2023,8 @@ export class AgentRuntimeWorker {
             : {}),
           state: decision.state,
           reflectionDelta: personaReflectionRun ? decision.reflectionDelta : null,
+          purposeChanges:
+            context.run.runType === "NORMAL_WAKE" ? (decision.purposeChanges ?? []) : [],
         },
         deadline.requestOptions(),
       );

@@ -1,3 +1,4 @@
+import { purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import { actionFeedbackKey } from "@/modules/agents/domain/action-feedback";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f-]{27}$/iu;
@@ -50,7 +51,11 @@ export function deriveRuntimePerceptionEvidence(
   // reflection/consolidation kanıt kümesini sessizce genişletmemeli.
   const evidencePerception =
     perception && typeof perception === "object" && !Array.isArray(perception)
-      ? Object.fromEntries(Object.entries(perception).filter(([key]) => key !== actionFeedbackKey))
+      ? Object.fromEntries(
+          Object.entries(perception).filter(
+            ([key]) => key !== actionFeedbackKey && key !== purposePerceptionKey,
+          ),
+        )
       : perception;
   collectEvidence(evidencePerception, ids, sourceItemIds);
   for (const id of additionalIds) if (uuidPattern.test(id)) ids.add(id);

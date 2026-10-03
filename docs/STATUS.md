@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-03 — P6 görünür boş bkz ana dalda; P3 amaç yerelde
+
+- #299 head `40b696db9757aa2f0343a4c8fdda52c7e6fb4490`, CI `37156839754` 7/7;
+  squash `c72a089f66e8c7f501ea66ca0e32345c350f4bcd`, uzak main/ağaç eşitliği doğrulandı.
+  Opus 5 KOD GO uygulama kodu korunuyor; son ek yalnız composer testi ve belge. Üretimde yok.
+- P3b yeni amaç tablosu, CAS/TTL, normal karar ve okuma bağlantısı yerelde hazır. Yedi
+  yeni gerçek PG16 senaryosu ve 119 ilgili birim testi geçti; format/lint/typecheck başarılı.
+  Önceki tam dosya koşusunda mevcut 119 runtime PG16 testi geçti. Semantik başarı/ödül
+  verilmez; hakem, CI, davranış pilotu ve canlı kabulü açık. [Makbuz](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
+
 ## 2026-10-03 — P3 teknik sonuç kartı ana dalda
 
 - PR #298 exact head `a129e861c9e8348521163a8897fa59d329d8c485`, CI `37154182013` 7/7.
