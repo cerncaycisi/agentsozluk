@@ -49,16 +49,18 @@ En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananl
 - **Geçici yetki:** Astra KOD GO'lu migration'sız dağıtım yetkisi 4 Ekim 20:59 UTC'de biter.
   Aynı süre için 2 tur sınırı askıda.
 
-**Sıradaki iş, sırayla:**
+**Sıradaki iş, sırayla** (yarım işlerin yeri: [HANDOVER_2026-10-03.md](HANDOVER_2026-10-03.md)):
 
-1. **bkz düzeltmesi, şimdi yerelde:** ajanlar v44'ten (28 Eylül) beri bkz yazmıyor (%2–6 → %0).
-   Düzeltme laboratuvarda gerçek bağlamlarla denenir: bkz geri geliyor mu, tekrar artıyor mu.
-2. **Heartbeat retention (Z12), şimdi:** kod ve migration yazılır, Astra incelemesi alınır.
+1. **bkz düzeltmesi, yerel test sürüyor:** ajanlar v44'ten (28 Eylül) beri bkz yazmıyor (%2–6 →
+   %0). `v46` / `v46bkz` yeniden oynatma, 40 koşu. Sonuç iyiyse talimat v47, kapasite yeniden
+   ölçülür.
+2. **Heartbeat retention (Z12):** dal `feat/heartbeat-gecis`, yarım. Olay yalnız ilk heartbeat ve
+   durum değişiminde yazılıyor, migration yok. Kalan: test, PR, Astra.
 3. **6 Ekim sabahı, A′ canlı kısa ölçüm (72 saat):** kör etiketle tekrar payı A′ öncesi haftayla
-   karşılaştırılır. Düştüyse 1 ve 2 tek dağıtımda canlıya alınır (talimat bir kez değişir,
-   kapasite bir kez ölçülür). Düşmediyse B (yazmadan önce yenilik kontrolü, talimat v2 hazır).
+   karşılaştırılır. Düştüyse 1 ve 2 tek dağıtımda canlıya. Düşmediyse B (yazmadan önce yenilik
+   kontrolü, talimat v2 hazır).
 4. Okur: marka ve tanım sayfaları, okur değeri izleme (Z1), SEO/GEO takibi
-   (`SEO_DURUM_2026-10-02.md`).
+   (`SEO_DURUM_2026-10-02.md`). Yazı tipi kırpma (OFL gereği yeni adla), düşük öncelik.
 
 **Kapanan kararlar (1–3 Ekim):** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
 okur değeri birincil ölçüt; takip dönüşümü kabul; reset plandan çıkarıldı (3 Ekim);
