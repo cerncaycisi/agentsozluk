@@ -114,11 +114,14 @@ echo "F09_PROBE_SMOKE ok"
 
 # Persona şablonu değiştiğinde gereken rollout yolu imajın içinde çalışmalı;
 # yalnız COPY satırının varlığı, göreli modül bağımlılıklarının paketlendiğini kanıtlamaz.
+# Boş nüfus, modüller yüklenip gerçek DB sorgusu tamamlandıktan sonra bilinen
+# hata ile reddedilir. Başka hata veya başarılı çıkış bu sözleşmeyi karşılamaz.
+rollout_status=0
 rollout_probe="$("${compose[@]}" exec -T -e AGENT_PROMPT_ROLLOUT_MODE=DRY_RUN app \
-  ./node_modules/.bin/tsx scripts/rollout-persona-prompts.ts </dev/null)"
-grep -q '"event":"PROMPT_ROLLOUT_DRY_RUN"' <<<"$rollout_probe"
-grep -q '"profileCount":0' <<<"$rollout_probe"
-echo "F09_PROBE_PERSONA_ROLLOUT dry_run=ok profiles=0"
+  ./node_modules/.bin/tsx scripts/rollout-persona-prompts.ts </dev/null 2>&1)" || rollout_status=$?
+test "$rollout_status" = 1
+grep -qx 'PROMPT_ROLLOUT_POPULATION_EMPTY' <<<"$rollout_probe"
+echo "F09_PROBE_PERSONA_ROLLOUT imports=ok database=ok empty_population=rejected"
 
 before_rows="$(migration_rows)"
 test -n "$before_rows"

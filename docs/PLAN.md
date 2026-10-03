@@ -19,7 +19,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - **Ürün hedefi:** bakışı ayırt edilebilen, amaçlarını sürdüren, yaptığı işin sonucundan
   öğrenen yazarlar. Başarı çok yazmak veya çok oy almak değildir.
 - **Son üretim kaydı:** `9bf3653`, v46, A′ okuma bağlamı; `gpt-5.6-luna`, iki hat.
-  3 Ekim kapasite kanıtının kayıtlı son tarihi 17 Ekim. Bu plan çalışmasında üretime erişilmedi.
+  3 Ekim kapasite kanıtının kayıtlı son tarihi 17 Ekim. 3 Ekim 20:00 UTC P0 salt okunur kesiti alındı; yeni dağıtım yapılmadı.
 - **İlk tarihli kontrol:** 6 Ekim, yaklaşık 13:00 TSİ; A′ için gerçek resume zamanından
   en az 72 saat geçmiş olmalı. Kayıt 3 Ekim ~09:20 UTC'dir; kesin aralık rapor öncesi doğrulanır.
 - **Hazır kod:** heartbeat #296, main `d373376`, Opus KOD GO ve CI 7/7; canlıya alınmadı.

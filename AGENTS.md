@@ -45,23 +45,6 @@
 - Runtime is a hosting-agnostic modular monolith and makes no third-party requests.
 - Do not add LLM, agent worker, API keys, chat, notifications, uploads or analytics in M1.
 
-## Süreli çalışma ve üretim yetkisi — 3–17 Ekim 2026
-
-Gökhan’ın 3 Ekim sohbet talimatı: “Ok çalışmaya başlayın. Bi durum olmadıkça durmayin? 2 hafta full yetki, deploy durdurma her şey dahil”.
-Kayıt başlangıcı 3 Ekim 2026 19:50 UTC, bitiş 17 Ekim 2026 19:50 UTC. Bu süre içinde
-`docs/PLAN.md` kapsamındaki Agent Sözlük geliştirme, üretim okuma, release artifact,
-dağıtım/migration, pause/drain/resume, benchmark, smoke, yedek/restore ve gerekli yeniden
-başlatma yetkisi verilmiştir. Aşağıdaki her erişimde/dağıtımda yeniden kullanıcı onayı isteme
-kuralına bu süre ve kapsam için istisnadır; yürütücü doğrulanmış exact SHA ve eylem kapsamını
-makbuza yazar, yeniden izin istemeden ilerler. Süre dolunca olağan onay kuralı geri gelir.
-
-Exact sürüm/CI, farklı model hakemliği, host pin, yedek/geri alma, disk ve veri bütünlüğü
-kapıları korunur. Approval ortam değişkeni yalnız ilgili komuta verilir, kalıcı yazılmaz.
-Başka proje/servis, diğer kullanıcı işleri, kaldırılmış reset veya credential kopyalama bu
-yetkiye dahil değildir. Beklenmeyen veri kaybı riski, çelişkili üretim kimliği veya teknik
-kapı hatasında durup somut durumu bildir; kapıyı atlama. Yeni izin süresi ayrı sohbet talimatı
-olmadan uzatılamaz. Tur bütçesi ve tek ağır iş kuralı değişmedi.
-
 ## Security boundaries
 
 - Never connect to the production server or its public endpoints without Gokhan's explicit approval
@@ -73,6 +56,25 @@ olmadan uzatılamaz. Tur bütçesi ve tek ağır iş kuralı değişmedi.
 - Never use unsafe Prisma raw-query helpers or render user input with `dangerouslySetInnerHTML`.
 - Audit and moderation logs are immutable through application code.
 - No secrets in Git; `.env.example` contains placeholders only.
+
+### Süreli çalışma ve üretim yetkisi — 3–17 Ekim 2026
+
+Gökhan’ın 3 Ekim sohbet talimatı: “Ok çalışmaya başlayın. Bi durum olmadıkça durmayin? 2 hafta full yetki, deploy durdurma her şey dahil”.
+Bu istisna 17 Ekim 2026 19:50 UTC’de kendiliğinden geçersiz olur; sonrasında bu bölüm
+silinmelidir. Kayıt başlangıcı 3 Ekim 2026 19:50 UTC. Kapsam, `a4676c781f22a1ac7e32fdd9927ff52d045fd684`
+sürümündeki `docs/PLAN.md` iki haftalık teslimidir; güncel dosya iş sırasını tutar, yetkiyi
+genişletmez. Bu kapsamda Agent Sözlük geliştirme, üretim okuma, release artifact,
+dağıtım/migration, pause/drain/resume, benchmark, smoke, yedek/restore ve gerekli yeniden
+başlatma yetkisi verilmiştir. Yukarıdaki her erişimde/dağıtımda yeniden kullanıcı onayı isteme
+kuralına bu süre ve kapsam için istisnadır; yürütücü doğrulanmış exact SHA ve eylem kapsamını
+makbuza yazar, yeniden izin istemeden ilerler. Süre dolunca olağan onay kuralı geri gelir.
+
+Exact sürüm/CI, farklı model hakemliği, host pin, yedek/geri alma, disk ve veri bütünlüğü
+kapıları korunur. Approval ortam değişkeni yalnız ilgili komuta verilir, kalıcı yazılmaz.
+Başka proje/servis, diğer kullanıcı işleri, kaldırılmış reset veya credential kopyalama bu
+yetkiye dahil değildir. Beklenmeyen veri kaybı riski, çelişkili üretim kimliği veya teknik
+kapı hatasında durup somut durumu bildir; kapıyı atlama. Yeni izin süresi ayrı sohbet talimatı
+olmadan uzatılamaz. Tur bütçesi ve tek ağır iş kuralı değişmedi.
 
 ## Bağımsız hakem seçimi
 

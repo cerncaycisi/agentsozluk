@@ -3206,3 +3206,20 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:** eski P0 verisini güncel diye kullanma; persona kaynak dosyasını değiştirip
   canlı snapshot değişti sanma; yeni istemi eski kapasiteyle iki hatta başlatma. Ham metinler,
   persona snapshot’ları ve kör anahtar yalnız özel yerel dizinde; ledger’a alınmadı.
+
+## 2026-10-03 — P2 ilk Opus turunun doğrulanan bulguları
+
+- Exact inceleme SHA `a036cf13e144344d7b480ffb5609a2d88c7c4432`; gerçek `claude-opus-5`,
+  araçsız/salt okunur, izin reddi 0, yardımcı Haiku kaydı var. KOD DÜZELTİLMELİ.
+- Container probu sıfır profilde başarı bekliyordu; CLI gerçekte
+  `PROMPT_ROLLOUT_POPULATION_EMPTY` ile çıkış 1 verir. Beklenti bu kesin hata/çıkışa düzeltildi;
+  import/DB hataları kabul edilmez. İlk CI run `37150583788` container adımında aynı
+  hatayı doğruladı; diğer beş iş geçti, validate container nedeniyle başarısız. Düzeltilmiş
+  sürümün CI sonucu henüz bekleniyor.
+- `conflict.threshold` yönü mevcut şema/editörde belirtilmiyor; belirsiz sayısal talimat
+  renderer’dan çıkarıldı. Diğer çatışma tercihleri ve persona verisi korunur.
+- `dotenv` dependencies altında doğrulandı; ek bağımlılık gerekmiyor. İlk güven/ilgi
+  değerlerini başka runtime kodu tüketmiyor. Yetki kapsamı planın kabul edilmiş SHA’sına pinlendi.
+- 36 mevcut snapshot yeniden doğrulandı: şema/ontology/drift 0, yeni maksimum 12.397 karakter.
+- Tekrarlama: shell sözdizimi geçişini gerçek konteyner davranışı sayma; boş nüfusu başarı
+  zannetme; anlam yönü tanımlanmayan sayıyı karakter talimatına dönüştürme.

@@ -56,7 +56,6 @@ export function renderPersonaPrompt(persona: SeedPersona): string {
     `Mizahın yöneldiği konular: ${persona.humor.preferredTargets.join("; ")}.`,
     `Mizah konusu yapmadıkların: ${persona.humor.neverTargets.join("; ")}.`,
     persona.conflict.responseMode,
-    `Tartışmaya girme eşiği (0: düşük, 1: yüksek): ${persona.conflict.threshold.toFixed(2)}.`,
     `Gerilimi düşürme işaretleri: ${persona.conflict.deescalationSignals.join("; ")}.`,
     "",
     "# Relationship preferences",
