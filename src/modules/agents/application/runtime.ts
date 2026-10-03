@@ -202,6 +202,10 @@ async function appendAutomaticRunQueuedOutbox(
   });
 }
 
+// A′: okunan başlıkta tam gösterilen en yeni entry sayısı ve eski entry önizleme sınırı.
+export const runtimeReadTopicFullEntryCount = 6;
+export const runtimeReadTopicPreviewCharLimit = 600;
+
 /* Perception anlık görüntüsünün üst sınırı. Ayrıntı için kırpma döngüsündeki nota bak. */
 export const runtimePerceptionMaximumBytes = 160 * 1024;
 type PerceptionRecords = Awaited<ReturnType<typeof getRuntimePerceptionRecords>>;
@@ -1796,7 +1800,7 @@ export function getRuntimeRunContext(
           id: topic.id,
           title: topic.title,
           entryCount: topic.entryCount,
-          entries: topic.entries.map((entry) => ({
+          entries: topic.entries.map((entry, index) => ({
             id: entry.id,
             username: entry.authorUsername,
             /*
@@ -1822,7 +1826,19 @@ export function getRuntimeRunContext(
               mümkün; bu yüzden prompt cümlesi de "tam metin" iddiasından
               vazgeçip gerçeği söylüyor.
             */
-            body: truncateUntrustedText(entry.body, 2000),
+            /*
+              A′ (2 Ekim 2026): pencere 15 entry'ye çıktı. Tanım entry'si (ilk sıra)
+              ve en yeni altı entry eskisi gibi tam (2000) gösterilir; aradaki eski
+              entry'ler kısa önizlemeyle (600) gelir. Ajan söylenmiş katkıyı görür,
+              bağlam bütçesi en kötü durumda ~%40 büyür, tipik durumda (p95 741
+              karakter) neredeyse hiç kesilmez.
+            */
+            body: truncateUntrustedText(
+              entry.body,
+              index === 0 || index >= topic.entries.length - runtimeReadTopicFullEntryCount
+                ? 2000
+                : runtimeReadTopicPreviewCharLimit,
+            ),
             createdAt: entry.createdAt.toISOString(),
           })),
         })),

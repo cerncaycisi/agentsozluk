@@ -3892,6 +3892,60 @@ describe("internal agent runtime API with PostgreSQL", () => {
     entry'yi geçen başlıklarda düşmesi, ajanın kendi entry'sinin kendisininmiş
     gibi işaretlenmemesi ve perception'ın diske yeniden yazılmaması.
   */
+  it("pins the definition entry first and in full even with tied timestamps (A′)", async () => {
+    const fixture = await createFixture();
+    const workerId = "browse-read-tie-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const longDefinition = `TANIM_UZUN: ${"başlığın ne olduğunu anlatan uzun tanım. ".repeat(25)}`;
+    const target = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "eşit zamanlı tanım başlığı", entryBody: longDefinition },
+    );
+    const others = [];
+    for (let index = 0; index < 8; index += 1)
+      others.push(
+        await createEntry(integrationDatabase, adminActor(fixture.admin.id), target.topic.id, {
+          body: `ESIT_${index}: başlıkta süren konuşmanın bir halkası.`,
+        }),
+      );
+    // Tanım ile ilk sonraki entry aynı ana sahip: sıralama tek başına tanımı başa koymaz.
+    const definition = await integrationDatabase.entry.findFirstOrThrow({
+      where: { topicId: target.topic.id },
+      orderBy: { createdAt: "asc" },
+    });
+    await integrationDatabase.entry.update({
+      where: { id: others[0]!.id },
+      data: { createdAt: definition.createdAt, body: `ESIT_UZUN: ${longDefinition}` },
+    });
+    // Gerçek eşitlikte "tanım" kimliğe göre belirlenir; beklenen, deponun kullandığı sıra.
+    const pinned = await integrationDatabase.entry.findFirstOrThrow({
+      where: { topicId: target.topic.id },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const after = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      leased.run!.id,
+      workerId,
+      [target.topic.id],
+    );
+    const entries = (
+      after.perception.readTopics as { entries: { id: string; body: string }[] }[] | undefined
+    )?.[0]?.entries;
+    if (!entries) throw new Error("TEST_READ_TOPIC_MISSING");
+    expect(entries[0]?.id).toBe(pinned.id);
+    expect(entries[0]?.body.length).toBeGreaterThan(600);
+    expect(entries[0]?.body.endsWith("…")).toBe(false);
+    expect(entries.filter((entry) => entry.id === pinned.id)).toHaveLength(1);
+    expect(entries).toHaveLength(9);
+  });
+
   it("fills the frozen perception with the entries the agent asked to read", async () => {
     const fixture = await createFixture();
     const workerId = "browse-read-worker";
@@ -3906,10 +3960,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
         entryBody: "TANIM_ENTRYSI: başlığın ne olduğunu söyleyen ilk entry.",
       },
     );
-    // Tanım + yedi entry: `take: 6` tek başına tanımı düşürürdü.
-    for (let index = 0; index < 7; index += 1)
+    // Tanım + on yedi entry: `take: 15` tek başına tanımı düşürürdü (A′, 2 Ekim).
+    // 4. entry uzun: yeni pencerenin eski kısmında önizlemeye (600) kırpılmalı.
+    for (let index = 0; index < 17; index += 1)
       await createEntry(integrationDatabase, adminActor(fixture.admin.id), target.topic.id, {
-        body: `SONRAKI_ENTRY_${index}: başlıkta süren konuşmanın bir halkası.`,
+        body:
+          index === 4
+            ? `UZUN_ESKI_ENTRY: ${"başlıkta süren konuşmanın uzun bir halkası. ".repeat(30)}`
+            : `SONRAKI_ENTRY_${index}: başlıkta süren konuşmanın bir halkası.`,
       });
     const ownEntry = await createEntry(integrationDatabase, writePrincipal.actor, target.topic.id, {
       body: "KENDI_ENTRYM: ajanın bu başlıkta daha önce yazdığı hüküm.",
@@ -3940,6 +3998,15 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const bodies = readTopic.entries.map((entry) => entry.body);
     expect(bodies[0]).toContain("TANIM_ENTRYSI");
     expect(bodies.at(-1)).toContain("KENDI_ENTRYM");
+    // Tanım + son 15 (17 sonraki + kendi entry'si = 18; en eski üçü pencere dışında).
+    expect(bodies).toHaveLength(16);
+    expect(bodies.some((body) => body.includes("SONRAKI_ENTRY_2:"))).toBe(false);
+    expect(bodies.some((body) => body.includes("SONRAKI_ENTRY_3:"))).toBe(true);
+    const longOld = bodies.find((body) => body.startsWith("UZUN_ESKI_ENTRY"));
+    expect(longOld?.length).toBe(600);
+    expect(longOld?.endsWith("…")).toBe(true);
+    // Tanım uzun olsa da tam (2000) gösterilir; yalnız aradaki eskiler önizlemedir.
+    expect(readTopic.entries[0]?.body.endsWith("…")).toBe(false);
     expect(readTopic.entries.filter((entry) => entry.mine).map((entry) => entry.id)).toEqual([
       ownEntry.id,
     ]);

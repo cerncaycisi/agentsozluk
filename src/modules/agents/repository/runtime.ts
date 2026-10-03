@@ -2677,11 +2677,17 @@ async function listRuntimePerceptionLinkedTopics(
   sunucu onların gerçek entry'lerini getirir.
 
   Sınırlar burada, çağıranda değil: en fazla üç başlık, başlık başına en fazla
-  altı entry. Ajan daha fazlasını isteyemez.
+  on beş entry (artı başlığın tanım entry'si). Ajan daha fazlasını isteyemez.
+
+  A′ (2 Ekim 2026, Astra ile karar; docs/TEKRAR_DEGERLENDIRME_2026-10-02.md): altı
+  entry'lik pencere, tekrar kapısının denetlediği geçmişten (son 100) çok darmış.
+  Yayımlanmış tekrarların yaklaşık yarısında tekrar edilen entry ajanın gördüğü
+  pencerede değildi. Pencere 15'e çıktı; toplam metin bütçesi entry başına kırpmayla
+  korunuyor (application/runtime.ts `runtimeReadTopicEntryCharLimit`).
 */
 // runtimeReadTopicLimit tek kaynağı validation/runtime-schemas.ts; ayrışmayı önlemek için oradan.
 export { runtimeReadTopicLimit };
-export const runtimeReadTopicEntryLimit = 6;
+export const runtimeReadTopicEntryLimit = 15;
 
 export async function getRuntimeReadTopics(
   transaction: Prisma.TransactionClient,
@@ -2711,7 +2717,7 @@ export async function getRuntimeReadTopics(
       */
       entries: {
         ...visibleEntry,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: runtimeReadTopicEntryLimit,
       },
     },
@@ -2723,17 +2729,21 @@ export async function getRuntimeReadTopics(
       transaction.entry.findFirst({
         ...visibleEntry,
         where: { ...visibleEntry.where, topicId: topic.id },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       }),
     ),
   );
   return topics.map((topic, index) => {
-    const known = new Set(topic.entries.map((entry) => entry.id));
     const firstEntry = firstEntries[index];
-    // Okuma sırası kronolojik: okur da başlığı tanımdan bugüne doğru okur.
+    /*
+      Okuma sırası kronolojik: okur da başlığı tanımdan bugüne doğru okur. Tanım
+      entry'si kimliğiyle başa sabitlenir ve kalanlardan çıkarılır: eşit zaman
+      damgasında sıralama tek başına onu ilk sıraya koymayı garanti etmez ve
+      uygulama katmanı ilk sırayı tam gövdeyle gösterir (Astra, A′ 1. tur).
+    */
     const ordered = [
-      ...(firstEntry && !known.has(firstEntry.id) ? [firstEntry] : []),
-      ...[...topic.entries].reverse(),
+      ...(firstEntry ? [firstEntry] : []),
+      ...[...topic.entries].reverse().filter((entry) => entry.id !== firstEntry?.id),
     ];
     return {
       id: topic.id,
