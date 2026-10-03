@@ -22,6 +22,7 @@ import {
   executeRuntimeAction as executeRuntimeActionApplication,
   failRuntimeRun,
   getAgentDetail,
+  getRuntimeCapacity,
   getRuntimeRunContext as getRuntimeRunContextApplication,
   gracefullyStopActiveAgentRuns,
   gracefulStopAgentRunsSchema,
@@ -3625,11 +3626,61 @@ describe("internal agent runtime API with PostgreSQL", () => {
       "THINKING",
       "CANCELLING",
     ]);
-    const run = await integrationDatabase.agentRun.findUniqueOrThrow({
-      where: { id: runId },
-      select: { heartbeatAt: true },
+  });
+
+  it("records the reclaimed attempt's first heartbeat as a new capacity boundary", async () => {
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const first = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId: "worker-hb-old",
+      leaseSeconds: 60,
     });
-    expect(run.heartbeatAt).not.toBeNull();
+    const runId = first.run!.id;
+    const beat = (workerId: string, runtimeStatus: "STARTING" | "THINKING") =>
+      heartbeatRuntimeRun(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeHeartbeatSchema.parse({ runId, workerId, runtimeStatus }),
+      );
+    await beat("worker-hb-old", "THINKING");
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: { leaseExpiresAt: new Date(Date.now() - 1_000) },
+    });
+    const reclaimed = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId: "worker-hb-new",
+      leaseSeconds: 60,
+    });
+    expect(reclaimed.run).toMatchObject({ id: runId, attempts: 2 });
+    await beat("worker-hb-new", "STARTING");
+    await beat("worker-hb-new", "STARTING");
+    const startingCapacity = await getRuntimeCapacity(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+    );
+    expect(startingCapacity.operational.executionSlots[0]).toMatchObject({ phase: "STARTING" });
+
+    // Kaynak/gezinti olmayan koşu doğrudan THINKING'e geçebilir; yeni STARTING sınırı şart.
+    await beat("worker-hb-new", "THINKING");
+    const events = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: { runId, eventType: "agent.heartbeat" },
+      orderBy: { id: "asc" },
+      select: { metadata: true, createdAt: true },
+    });
+    expect(
+      events.map((event) => (event.metadata as { runtimeStatus: string }).runtimeStatus),
+    ).toEqual(["THINKING", "STARTING", "THINKING"]);
+    const now = new Date(events[2]!.createdAt.getTime() + 2 * 60_000);
+    const capacity = await getRuntimeCapacity(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      now,
+    );
+    expect(capacity.operational.utilization15m).toBeCloseTo(2 / 15, 8);
+    expect(capacity.operational.utilization1h).toBeCloseTo(2 / 60, 8);
+    expect(capacity.operational.utilization2h).toBeCloseTo(2 / 120, 8);
   });
 
   it("keeps context credential-free, enforces lease ownership, and completes with measured counts", async () => {
