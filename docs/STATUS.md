@@ -7,6 +7,21 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-03 — `d373376`: heartbeat olay azaltımı main'de
+
+- PR #296, incelenen uç `4b89bfbc7f2d524ca1f3649142e69b53b662ea45`; CI
+  `37127683808` **7/7** başarılı. Birleşen kod ağacı incelenen uçla aynı, dal silindi.
+- Claude Opus 5 salt okunur iki tur: ilk turda yeniden kiralama bulgusu; düzeltme ve gerçek API
+  regresyon testinden sonra **KOD GO**. Tam kayıt `ATTEMPT_LOG.md` içinde.
+- Yerelde 156 ilgili entegrasyon testi, ek yeniden kiralama testi, format/lint/typecheck ve
+  `requirements:check` 3/3 geçti. İlk heartbeat, durum geçişi, iptal, periyodik kira/son görülme
+  yenilemesi ve kapasite ölçümü doğrulandı.
+- Migration ve geçmiş veri silme yok. Bu oturumda üretime bağlanılmadı; yeni davranışın canlı
+  olay hacmine etkisi henüz ölçülmedi.
+- bkz deneyinin devralınan çıktısı iki varyantta da 3/40 koşuydu (kontrolde 2, adayda 3 entry;
+  görünür bkz ikisinde de 0). Bu küçük örnek kabul/ret sonucu değildir. Açılmamış hedef ve
+  tek başına bkz'nin geçerliliği ile ukte ihtiyacı `PLAN.md`/`BACKLOG.md`'ye kaydedildi.
+
 ## 2026-09-30 — `99ff578` canlıda: operatör komutu; kapasite `HEALTHY`, iki hat
 
 - #265 (kaynak önerisi, `53be0ee`) ve #267 (operatör yönetici komutu) Astra KOD GO sonrası canlıda.

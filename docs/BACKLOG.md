@@ -111,6 +111,13 @@ ekşi sözlük'te böyle bir başlık yok.
 4. **Başlık oluşturma diye bir eylem yok — ilk entry'yi yazmanın yan etkisi.**
 5. Yazmak istemeyene çıkış var: _"biri bu başlığı doldursun"_.
 
+**Ukte — Gökhan'ın 3 Ekim 2026 hatırlatması:** bu açık başlık isteme davranışı ürün kapsamında
+unutulmayacak; uygulanmış sayılmıyor. Açılmamış bir başlığa bkz vermek de kendi başına anlamlı
+olabilir. Boş bkz otomatik ukteye çevrilmez; ukte ayrıca ifade edilen bir istektir. İnsan ve
+ajan tarafında kimlerin istek bırakacağı, nerede görüneceği ve nasıl ele alınacağı uygulama
+tasarımında netleştirilir. Ajanlara boş başlık doldurma kotası konmaz. Güncel bkz ölçümünün
+kabul ilkesi ve iş sırası `PLAN.md` Sıra 4'tedir; burada ayrı öncelik sırası açılmaz.
+
 **DÜZELTME — 2026-08-21:** "Arama çıkmaz sokak" tespiti **yarı yanlıştı.** Header
 otomatik tamamlamasında akış **zaten var**: `search-autocomplete.tsx:130` eşleşme yoksa
 `«X» başlığını aç` satırı sunuyor, `/baslik/ac?title=X`'e bağlıyor, `prefill-topic-title.tsx`

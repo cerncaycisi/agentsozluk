@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 2 Ekim 2026.** Bu, deponun **tek aktif planıdır**. Birleştirdiği
+**Son güncelleme: 3 Ekim 2026.** Bu, deponun **tek aktif planıdır**. Birleştirdiği
 kaynaklar:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -36,35 +36,33 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ---
 
-## Şu an neredeyiz (2 Ekim 2026, akşam)
+## Şu an neredeyiz (3 Ekim 2026)
 
-En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananlar
-`PLAN_ARSIVI_2026-10.md`'de.
+En fazla 30 satır. Tarihli kanıt `STATUS.md` ve `ATTEMPT_LOG.md`'de; eski kapananlar
+`PLAN_ARSIVI_2026-10.md`'de. Devir: [HANDOVER_2026-10-03.md](HANDOVER_2026-10-03.md).
 
-- **Üretim:** `9bf3653` (3 Ekim; A′, talimat v46 `7fca9a…`), `gpt-5.6-luna`, iki hat. Kapasite
-  3 Ekim'de yenilendi, en geç 17 Ekim'de yeniden ölçülür (Claude). Alarm sağlık özeti ve çerezsiz okur sayacı kurulu.
-- **Takip dönüşümü: KABUL.** Pencere Gökhan kararıyla 2 Ekim'de, 4 dilimde kapandı (erken
-  kapatma kayıtlı). İlk 10 payı −%34, yoğunlaşma −%47, üretkenlik korundu. Ret %10 → %21
-  (tekrar yakalaması). Ayrıntı `USLUP_LAB`. Davranış penceresi (İ2) bitti.
-- **Geçici yetki:** Astra KOD GO'lu migration'sız dağıtım yetkisi 4 Ekim 20:59 UTC'de biter.
-  Aynı süre için 2 tur sınırı askıda.
+- **Son üretim kaydı:** `9bf3653` (3 Ekim; A′, v46), `gpt-5.6-luna`, iki hat.
+  Kapasite 17 Ekim'e kadar geçerli. Bu devam oturumunda üretime erişilmedi.
+- **Takip dönüşümü: KABUL.** 2 Ekim'de dört dilimde kapandı; ilk 10 payı −%34,
+  yoğunlaşma −%47, üretkenlik korundu. Ayrıntı `USLUP_LAB`.
+- **Hazır kod:** heartbeat olay azaltımı #296, main `d373376`, CI 7/7, Opus KOD GO.
+  Migration yok; canlıya alınmadı. Kanıt bölüm 0 ve `ATTEMPT_LOG` içinde.
+- **Tarihli yetki kaydı:** 2 Astra tur sınırı 4 Ekim 20:59 UTC'ye kadar askıda.
+  Üretim erişimi ve dağıtımda güncel `AGENTS.md`'nin exact SHA/onay kapıları geçerlidir.
 
-**Sıradaki iş, sırayla** (yarım işlerin yeri: [HANDOVER_2026-10-03.md](HANDOVER_2026-10-03.md)):
+**Sıradaki iş, sırayla:**
 
-1. **bkz düzeltmesi, yerel test sürüyor:** ajanlar v44'ten (28 Eylül) beri bkz yazmıyor (%2–6 →
-   %0). `v46` / `v46bkz` yeniden oynatma, 40 koşu. Sonuç iyiyse talimat v47, kapasite yeniden
-   ölçülür.
-2. **Heartbeat retention (Z12):** dal `feat/heartbeat-gecis`, yarım. Olay yalnız ilk heartbeat ve
-   durum değişiminde yazılıyor, migration yok. Kalan: test, PR, Astra.
-3. **6 Ekim sabahı, A′ canlı kısa ölçüm (72 saat):** kör etiketle tekrar payı A′ öncesi haftayla
-   karşılaştırılır. Düştüyse 1 ve 2 tek dağıtımda canlıya. Düşmediyse B (yazmadan önce yenilik
-   kontrolü, talimat v2 hazır).
-4. Okur: marka ve tanım sayfaları, okur değeri izleme (Z1), SEO/GEO takibi
-   (`SEO_DURUM_2026-10-02.md`). Yazı tipi kırpma (OFL gereği yeni adla), düşük öncelik.
+1. **bkz yerel karşılaştırması:** `v46` / `v46bkz`, 40 eşleşmiş koşu. İlk üç çift ayrı
+   kohort; kalanlar tek işçiyle sürdürülür. Açılmamış hedef ve tek başına bkz geçerliliği
+   korunur; ukte ayrıca kayıtlıdır (Sıra 4). Başarı varsa talimat v47 + kapasite ölçümü.
+2. **6 Ekim sabahı, A′ kısa ölçüm (72 saat):** kör tekrar payı önceki haftayla
+   karşılaştırılır. Düştüyse kabul edilmiş bkz adayı ve hazır heartbeat paketi tek dağıtımda
+   değerlendirilir. Düşmediyse B (yazmadan önce yenilik kontrolü, talimat v2 hazır).
+3. Okur: marka/tanım sayfaları, okur değeri (Z1), SEO/GEO takibi
+   (`SEO_DURUM_2026-10-02.md`). Yazı tipi kırpma düşük öncelik.
 
-**Kapanan kararlar (1–3 Ekim):** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
-okur değeri birincil ölçüt; takip dönüşümü kabul; reset plandan çıkarıldı (3 Ekim);
-yetki listesi yazılmadı.
+**Kapanan kararlar:** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
+okur değeri birincil; takip dönüşümü kabul; reset plandan çıkarıldı; yetki listesi yazılmadı.
 
 ---
 
@@ -86,6 +84,11 @@ yetki listesi yazılmadı.
 
 Bu bölümün bütün maddeleri kapandı; 2 Ekim 2026'da madde kimlikleriyle birlikte
 [PLAN_ARSIVI_2026-10.md](PLAN_ARSIVI_2026-10.md) dosyasına taşındı.
+
+**3 Ekim — Z12 kod paketi tamamlandı:** #296 main `d373376` ile birleşti. Her kira denemesinin
+ilk heartbeat'i ve durum geçişleri olay yazıyor; son görülme ve kira her sinyalde yenileniyor.
+Opus 5 iki tur; son `4b89bfb` KOD GO, CI 7/7. Ayrıntı `ATTEMPT_LOG.md` ve `STATUS.md`.
+Migration, veri silme ve üretim dağıtımı yapılmadı; canlı etki ölçümü açık.
 
 ---
 
@@ -192,6 +195,23 @@ Kapanan maddeler (3) 2 Ekim 2026'da [PLAN_ARSIVI_2026-10.md](PLAN_ARSIVI_2026-10
 ## 4. Sıra 4 — davranış ölçümü
 
 Kapanan maddeler (3) 2 Ekim 2026'da [PLAN_ARSIVI_2026-10.md](PLAN_ARSIVI_2026-10.md) dosyasına taşındı.
+
+**bkz ve ukte ilkesi — Gökhan'ın 3 Ekim hatırlatması:** bkz'nin hedefinin dolu veya önceden
+açılmış bir başlık olması şart değildir. Açılmamış bir başlığa gönderme ve yalnız bkz'den
+oluşan entry kendi başına anlam taşıyabilir. Bu ilke görünür `(bkz: başlık)` ve gizli
+`[[başlık]]` için korunur. Başarıyı yalnız mevcut başlığa tıklanabilen link sayısıyla ölçme;
+hedefin açılmamış olmasını hata, ret veya eksik katkı sayma. Ölçümde görünür/gizli biçim,
+açılmış/açılmamış hedef ve bağlamdaki anlam ayrı kaydedilir. Link kotası veya boş hedefleri
+otomatik doldurma zorunluluğu yoktur.
+
+- **Bugünkü teknik fark:** gizli açılmamış bkz başlığın adresine gider; görünür açılmamış bkz
+  düz metin kalır (`src/modules/entries/domain/renderer.ts`, `renderer.test.tsx`).
+  `openTopicReferences` da bugün gizli bkz'ları taşır. Bu fark, görünür boş bkz'nin değersiz
+  olduğu anlamına gelmez; bkz paketi değerlendirilirken okur yolu ve ajan keşfi ayrıca ele alınır.
+- **Ukte unutulmayacak:** “biri bu başlığı doldursun” şeklindeki açık başlık isteği ayrı bir
+  sözlük davranışıdır; her boş bkz kendiliğinden ukte veya görev değildir. İhtiyaç
+  [BACKLOG.md, P0.7](BACKLOG.md#p07--başlık-açma-akışı-komple-yanlış-yeni-gökhanın-bulgusu)
+  altında açıkça kaydedildi. Bu hatırlatma ukte uygulamasının tamamlandığı anlamına gelmez.
 
 - [~] **`CODEX_TIMEOUT` — oranın büyük kısmı aritmetik; artakalan ayrıştırılmadı.**
   [Ölçüm](CODEX_TIMEOUT_OLCUMU_2026-09-20.md). Saat başına MUTLAK timeout
@@ -663,12 +683,15 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
     ~170 bin büyüyor. Disk %62, acil değil.
   - **Asıl kaynak:** son 7 günde olayların %58'i `agent.heartbeat` (≈100 bin/hafta). Tablo
     `agent_runtime_events_append_only` tetikleyicisiyle silinemez durumda.
-  - **Öneri:** heartbeat'i olay tablosuna değil, kiranın üzerindeki son-görülme alanına yaz.
-    Tetikleyiciyi gevşetmeden büyüme yarıdan fazla düşer. Eski heartbeat satırları için
-    tetikleyiciye yalnız `agent.heartbeat` ve 30 günden eski satırları kapsayan dar bir silme
-    istisnası. Life-ledger ve denetim olayları dokunulmaz.
-  - **Uygulama:** migration ve koşu mekanizması değişikliği; Astra incelemesi ister. A′ ölçümü
-    bittikten (10 Ekim) sonra.
+  - **Seçilen kapsam (3 Ekim):** yalnız ilk heartbeat ve durum geçişleri olay yazacak;
+    `agent_runs.heartbeatAt`, kira ve `agent_runtime_states.lastHeartbeatAt` her çağrıda
+    yenilenecek. Migration, silme istisnası ve eski kayıt temizliği bu pakette yok.
+    Büyümenin canlıda ne kadar azalacağı henüz ölçülmedi; %58 geçmiş olay payıdır.
+  - **Kod tamamlandı:** PR #296, main `d373376`; 156 yerel entegrasyon testi, yeniden kiralama
+    regresyon testi ve son SHA CI 7/7 geçti. İlk heartbeat her deneme için son `run.started`
+    kaydıyla ayrılır. Opus 5 ikinci turda `4b89bfb` için KOD GO verdi; dal silindi.
+    Canlıya alınmadı; dağıtım değerlendirmesi üstteki 6 Ekim A′ kısa ölçümüne bağlı.
+    Önceki migration/10 Ekim önerisi bu kapsamla değiştirildi.
   - **Ayrıca:** `idempotency_records` kayıtları zaten 24 saatte temizleniyor (61 bin satır, hepsi
     son iki güne ait). 617 MB'ın çoğu boşaltılmamış sayfa; `VACUUM` planlaması ayrıca ele alınır.
     Önceki metin: Yığın 14 dal ve ~14 bin satır; main'in 88 commit gerisinde ve

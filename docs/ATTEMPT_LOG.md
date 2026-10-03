@@ -3027,3 +3027,57 @@ false/true` yapabildi; geçici rol ve DB silindi.
     değişen her dağıtımı aynı duraklamada kapasite ölçümüyle birlikte planla.
   - Tanı dosyalarını `sudo stat` ile ayrı ayrı adlarıyla denetle; joker ifade, okunamayan dizinde
     deploy kullanıcısı tarafından genişletilemez.
+
+## 2026-10-03 — `7ed5eda`: heartbeat geçişleri ve yerel deney devri
+
+- **Ortam:** operatör sunucusu, yerel PostgreSQL 16; yalnız
+  `agentsozluk_local_integration_test` üzerinde entegrasyon testleri. Üretime erişilmedi.
+- **Devralınan durum:** `e38987b03ea89e38f69a0856649ff59f2a2261b9` WIP dalı.
+  bkz çıktıları iki varyantta da 3/40 koşudaydı; çalışan replay veya PostgreSQL süreci yoktu.
+  Önceki logun son checkpoint'i 13:11 UTC; süreçlerin neden durduğu doğrulanmadı.
+  Yerel PG16, mevcut veri diziniyle `pg_ctl start` üzerinden açıldı; test bağlantısı doğrulandı.
+- **Kod bulgusu:** lease alma işlemi `heartbeatAt` alanını zaten dolduruyor. İlk heartbeat'i
+  `heartbeatAt === null` ile saptayan WIP, ilk durum `STARTING` ise olayı kaydetmiyordu.
+  Odaklı test `AssertionError` verdi: beklenen `STARTING` ilk olayda yoktu.
+- **Çözüm:** durum değişmediyse koşunun heartbeat olayının varlığı sorgulanır; ilk olay yoksa
+  kaydedilir. Mevcut agent/run kilitleri ve işlem sınırı korunur. Migration ve veri silme yok.
+- **Doğrulama:** runtime-api 114, control-plane 31, life-ledger 7 ve onboarding 4:
+  toplam 156 entegrasyon testi geçti. Son eklerle iki odaklı test ayrıca geçti:
+  ilk `STARTING`, tekrarda kira/son görülme yenilenmesi, faza geri dönüş, `CANCELLING`, yalnız
+  geçiş olaylarıyla kapasite süresi ve ekrandaki güncel faz. Format, lint, typecheck ve
+  `requirements:check` 3/3 geçti. Kod SHA:
+  `7ed5edafa3fe326b5c5d0d4592fbe271032cabe8`, PR #296.
+- **Tekrarlama:** lease'in yazdığı `heartbeatAt` değerini ilk heartbeat kanıtı sayma.
+  Devir notundaki “çalışıyor” ifadesine güvenmeden süreç ve çıktı sayısını kontrol et;
+  replay ile ağır yerel testleri aynı anda çalıştırma.
+- **Bağımsız hakem, 1. tur:** gerçek model `claude-opus-5` (`modelUsage` içinde ayrıca
+  `claude-haiku-4-5-20251001`); 43 tur, izin reddi 0, yalnız Read/Grep/Glob, MCP kapalı.
+  İncelenen SHA `7ed5edafa3fe326b5c5d0d4592fbe271032cabe8`, sonuç **KOD DÜZELTİLMELİ**.
+  B1: aynı `runId` yeniden kiralandığında ilk `STARTING` olayı bastırılıyor; doğrudan
+  `THINKING`'e geçişte eski denemenin süresi kapasiteye taşınıyor ve ekranda eski faz kalıyor.
+  Gerçek lease/heartbeat API'sini kullanan yeni test, beklenen `STARTING` yerine `THINKING`
+  dönerek bulguyu doğruladı. Çözüm: son `run.started`/`agent.heartbeat` kaydını `id DESC`
+  ile okuyup her denemenin ilk heartbeat'ini ayırmak. Düzeltmeden sonra odaklı iki test geçti.
+  B2 düşük öncelikli notu yorumla açıklandı: geçiş olayındaki `lastHeartbeatAt` tam heartbeat
+  geçmişi değildir; güncel değer run/state alanlarındadır. Hash zinciri etkilenmiyor.
+- **2. tur ve birleştirme:** gerçek `claude-opus-5`, 28 tur, izin reddi 0; aynı salt okunur
+  araç sınırı. İncelenen `4b89bfbc7f2d524ca1f3649142e69b53b662ea45` için **KOD GO**.
+  Worker'ın her denemeye `STARTING` ile başlaması mevcut kapasite hesabının sözleşmesi;
+  alternatif worker/faz ortasından devam bu incelemenin doğruladığı yol değil.
+  Son SHA CI `37127683808` 7/7 başarılı; PR #296 hemen önce tekrar okunan aynı uç ve temiz
+  merge durumu ile squash birleşti: `d37337678cf31e1510780a7fb90559a9fdeda3d2`.
+  Birleşen `src`/`tests` ağacı adayla aynı ve uzak main exact SHA eşitliği doğrulandı; dal silindi.
+- **Araç uyumluluğu:** `gh pr edit` eski `projectCards` GraphQL alanında
+  `Projects (classic) is being deprecated` hatası verdi. Gövde REST `PATCH` ve JSON dosyasıyla
+  güncellendi. Tekrarlama: bu CLI ile aynı GraphQL düzenleme çağrısını yineleme.
+- **bkz devamı, 14:11 UTC:** `agentsozluk-bkz-20261003.service` kullanıcı birimi başladı;
+  `active/running`, `RUN 4/40 v46bkz`, yaklaşık 244 MB bellek doğrulandı. Başlatıcı
+  `/home/agent/style-lab/bkz-devam.py`, tek işçi ve dosya kilidi; varyant sırası çiftler arasında
+  dönüşümlü. JSONL hatası, yinelenen/beklenmeyen koşu veya manifestten değişen betik/CLI
+  varsa durur. `MemoryHigh=800M`, `MemoryMax=1200M`, `Nice=10`; mevcut işler durdurulmadı.
+  CLI `0.160.0`, model `gpt-5.6-luna`, effort `max`; eski üç çift ayrı kohort.
+  Kırk bağlamın tümünde okunan başlık ve bağlantı adayı var; tarihler 20–26 Eylül.
+  Özet `bkz-devam/summary.json`, kaynak/kohort künyesi `bkz-devam/manifest.json` içinde.
+  Gökhan'ın hatırlatmasıyla görünür/gizli ve tek başına bkz ayrı sayılır; açılmamış hedef
+  geçersiz sayılmaz. Ukte ayrı açık istek olarak plana/backlog'a işlendi. Deney sonucu ve
+  tekrar değerlendirmesi henüz tamamlanmadı.
