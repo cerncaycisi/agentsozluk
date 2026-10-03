@@ -423,6 +423,109 @@ beforeEach(async () => {
 afterAll(closeIntegrationDatabase);
 
 describe("internal agent runtime API with PostgreSQL", () => {
+  it("shows only bounded own terminal execution outcomes and freezes the observation", async () => {
+    const fixture = await createFixture(3);
+    const profileId = fixture.created.agent.profile.id;
+    const now = new Date();
+    const previousRun = fixture.runs[1]!;
+    await integrationDatabase.agentRun.update({
+      where: { id: previousRun.id },
+      data: { runStatus: "PARTIAL", finishedAt: new Date(now.getTime() - 1_000) },
+    });
+    const other = await createAgent(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      createAgentSchema.parse({ persona: originalPersonaPack.personas[1] }),
+    );
+    const foreignRun = await integrationDatabase.agentRun.create({
+      data: {
+        idempotencyKey: randomUUID(),
+        agentProfileId: other.agent.profile.id,
+        personaVersionId: other.agent.personaVersion.id,
+        desiredEntryMin: 1,
+        desiredEntryMax: 1,
+        runType: "NORMAL_WAKE",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "INTEGRATION_TEST",
+        timeoutSeconds: 600,
+        runStatus: "SUCCEEDED",
+        finishedAt: new Date(now.getTime() - 1_000),
+      },
+    });
+    const validIds = Array.from({ length: 7 }, () => randomUUID());
+    const hiddenIds = Array.from({ length: 5 }, () => randomUUID());
+    await integrationDatabase.agentAction.createMany({
+      data: [
+        ...validIds.map((id, index) => ({
+          id,
+          agentProfileId: profileId,
+          runId: previousRun.id,
+          sequence: index + 1,
+          actionType: "NO_ACTION" as const,
+          actionStatus: index === 0 ? ("REJECTED" as const) : ("SUCCEEDED" as const),
+          rejectionCode: index === 0 ? "DUPLICATE_SIMILARITY" : "PRIVATE_CODE",
+          rejectionReason: "PRIVATE_REASON",
+          input: { body: "PRIVATE_INPUT" },
+          result: { detail: "PRIVATE_RESULT" },
+          updatedAt: new Date(now.getTime() - 2_000 - index * 1_000),
+        })),
+        ...hiddenIds.map((id, index) => ({
+          id,
+          agentProfileId: index === 0 ? other.agent.profile.id : profileId,
+          runId:
+            index === 0
+              ? foreignRun.id
+              : index === 1
+                ? fixture.runs[0]!.id
+                : index === 2
+                  ? fixture.runs[2]!.id
+                  : previousRun.id,
+          sequence: index + 20,
+          actionType: "NO_ACTION" as const,
+          actionStatus: "SUCCEEDED" as const,
+          input: {},
+          updatedAt: new Date(
+            now.getTime() + (index === 3 ? -8 * 86_400_000 : index === 4 ? 86_400_000 : -500),
+          ),
+        })),
+      ],
+    });
+    const workerId = "action-feedback-reader";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    expect(leased.run!.id).toBe(fixture.runs[0]!.id);
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      leased.run!.id,
+      workerId,
+    );
+    const cards = context.perception.actionFeedback as Array<Record<string, unknown>>;
+    expect(cards.map(({ actionId }) => actionId)).toEqual(validIds.slice(0, 5));
+    expect(cards.every(({ semanticAssessment }) => semanticAssessment === "NOT_EVALUATED")).toBe(
+      true,
+    );
+    expect(cards[0]).toMatchObject({
+      reason: "SIMILARITY_REVIEW_REQUIRED",
+      executionStatus: "REJECTED",
+    });
+    expect(JSON.stringify(cards)).not.toMatch(/PRIVATE_|rejectionReason|targetId|body/u);
+    for (const id of hiddenIds) expect(JSON.stringify(cards)).not.toContain(id);
+
+    // Aynı koşu ikinci okumada yeni ödül/olay üretmez: donmuş algı aynen döner.
+    const again = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      leased.run!.id,
+      workerId,
+    );
+    expect(again.perception.actionFeedback).toEqual(cards);
+  });
+
   it("authenticates only the hashed scoped credential and rejects browser sessions", async () => {
     const fixture = await createFixture();
     const principal = await runtimePrincipal(fixture.credential);

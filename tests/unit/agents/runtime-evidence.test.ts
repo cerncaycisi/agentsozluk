@@ -24,4 +24,15 @@ describe("runtime perception evidence contract", () => {
   it("does not admit malformed additional IDs", () => {
     expect(deriveRuntimePerceptionEvidence({}, ["not-a-uuid"]).ids).toEqual([]);
   });
+
+  it("does not turn technical outcome identifiers into reflection or memory evidence", () => {
+    const actionId = randomUUID();
+    const previousRunId = randomUUID();
+    const currentRunId = randomUUID();
+    expect(
+      deriveRuntimePerceptionEvidence({ actionFeedback: [{ actionId, runId: previousRunId }] }, [
+        currentRunId,
+      ]),
+    ).toEqual({ ids: [currentRunId], sourceItemIds: [] });
+  });
 });

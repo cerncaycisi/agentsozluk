@@ -7,6 +7,24 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-03 — P2 kodu ana dalda, canlı pilot açık
+
+- PR #297 exact head `329b20f6288ee55107e9ae1dd9c40b1297fa9e3b`, CI
+  `37151986252` yedi kontrolün tamamı geçti. Opus’un ikinci turdaki mekanik koşulları
+  uygulandı; koşulsuz hakem GO iddia edilmedi. Başlık/alan testleri dahil yerel kontroller geçti.
+- Squash main `505392392eea725977a854b3acdcfabd0881261a`; uzak main ve exact head ile
+  ağaç eşitliği doğrulandı, birleşen dal silindi. Üretim dağıtımı/pilot/benchmark yapılmadı.
+
+## 2026-10-03 — P3 teknik sonuç kartı, yerel uygulama
+
+- Önceki terminal koşuların kendi action sonuçları `actionFeedback` algısına bağlandı.
+  Politika v1, yedi gün/en fazla beş kart; teknik durum ile kalite ayrıdır, hepsi
+  NOT_EVALUATED. Ham hata/gövde/özel hedef taşınmaz; puan veya ceza yazılmaz.
+- Tam runtime API PostgreSQL dosyası 116/116, ilgili yedi birim dosyası 118/118 geçti.
+  Profil v48 eski kapasiteyi taze saymaz. Hakem/CI ve canlı kabulü henüz yok.
+- Bu sonuç P3 amaç yaşam döngüsünün veya P4 ödülün tamamlandığı anlamına gelmez.
+  Ayrıntı [uygulama makbuzunda](P3_SONUC_KARTI_2026-10-03.md).
+
 ## 2026-10-03 — P0 kısa denetim; P2 yerel alan bağlantısı
 
 - Kullanıcının iki haftalık üretim yetkisi kapsamında salt okunur kesit: 36 profil, 129 entry;

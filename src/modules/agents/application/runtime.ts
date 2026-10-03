@@ -127,6 +127,10 @@ import {
 } from "@/modules/agents/domain/perception";
 import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behavior-feedback";
 import {
+  actionFeedbackLimit,
+  projectActionFeedback,
+} from "@/modules/agents/domain/action-feedback";
+import {
   runtimeFastStateSchema,
   type RuntimeActionsInput,
   type RuntimeCompleteInput,
@@ -383,9 +387,11 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       followedWriterEntries: 6,
       topicExploration: 8,
       behaviorLessons: 5,
+      actionFeedback: actionFeedbackLimit,
     },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
+    actionFeedback: projectActionFeedback(records.actionFeedbackRecords, now),
     recentEntries: selectedEntries,
     trendingTopics,
     newTopics,
@@ -503,6 +509,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     else if (snapshot.recentEntries.length > 8) snapshot.recentEntries.pop();
     else if (snapshot.dictionaryLinkCandidates.length > 0) snapshot.dictionaryLinkCandidates.pop();
     else if (snapshot.memories.length > 4) snapshot.memories.pop();
+    else if (snapshot.actionFeedback.length > 0) snapshot.actionFeedback.pop();
     else
       throw new AppError("INTERNAL_ERROR", 500, "Perception snapshot güvenli boyuta indirilemedi.");
   }
