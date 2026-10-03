@@ -53,7 +53,10 @@ En fazla 30 satır. Tarihli anlatı `STATUS.md` ve `ATTEMPT_LOG.md`'de; kapananl
 
 1. **A′ canlıda (3 Ekim).** Yedi tam gün canlı ölçüm (reset yeniden açma koşulu, Z2): kör ölçümde
    tekrar payı en az %30 düşmeli. Ardından `gpt-6-luna` karşılaştırması (İ10), tek değişiklik ilkesiyle.
-2. bkz'nin sıfırlanması: takip dönüşümünün bkz başlıklarını menüden düşürüp düşürmediği.
+2. **bkz sıfır (teşhis 3 Ekim):** ajanlar 28 Eylül'deki v44 talimatından beri bkz yazmıyor. Günde
+   %2–6'dan %0'a düştü; ~1.300 entry'de 0, bkz içeren taslak 1. Takip dönüşümüyle ilgisi yok.
+   v44'ün "sade yaz" bloğu bkz iznini tek satıra indirdi ve canlıda etkisiz kaldı. Düzeltme talimat
+   değişikliği: A′ ölçümü bitince (10 Ekim) yerelde denenecek.
 3. Okur değeri izleme (Z1, kör ikili tercih) ve SEO/GEO takibi (`SEO_DURUM_2026-10-02.md`).
 
 **Kapanan kararlar (1–2 Ekim):** ana sayfa başlığı ve çerezsiz sayım kabul; B5.3 yeni kural yok;
