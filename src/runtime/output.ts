@@ -1,3 +1,4 @@
+import { runtimePurposeChangesSchema } from "@/modules/agents/validation/purpose-schemas";
 import { z } from "zod";
 import {
   runtimeActionSchema,
@@ -37,6 +38,7 @@ export const runtimeNormalWireFieldNames = [
   "relationshipDeltas",
   "sourceProposals",
   "memoryCandidates",
+  "purposeChanges",
 ] as const;
 
 const wireDisplayText = (maximum: number) =>
@@ -286,6 +288,7 @@ export const runtimeNormalDecisionWireSchema = z
     relationshipDeltas: z.array(wireRelationshipDeltaSchema).max(20),
     sourceProposals: z.array(wireSourceProposalSchema).max(10),
     memoryCandidates: z.array(wireObservationSchema).max(50),
+    purposeChanges: runtimePurposeChangesSchema.default([]),
   })
   .strict()
   .superRefine((decision, context) => {
@@ -364,6 +367,8 @@ function codexCompatibleJsonSchema(value: unknown): unknown {
       .filter(
         ([key, nested]) =>
           key !== "$schema" &&
+          key !== "default" &&
+          key !== "format" &&
           key !== "const" &&
           key !== "uniqueItems" &&
           !(key === "pattern" && typeof nested === "string" && /\(\?(?:[=!]|<[=!])/u.test(nested)),
@@ -439,6 +444,7 @@ const runtimeDecisionActionSchema = runtimeActionSchema
 
 export const runtimeDecisionSchema = z
   .object({
+    purposeChanges: runtimePurposeChangesSchema.optional(),
     state: runtimeFastStateSchema,
     observations: z.array(observationSchema).max(100),
     decisionJournal: z.array(runtimeDecisionJournalItemSchema).max(100).default([]),
@@ -733,6 +739,7 @@ function adaptedRuntimeDecision(wire: RuntimeNormalDecisionWire): unknown {
       ),
     },
     observations,
+    purposeChanges: wire.purposeChanges,
     decisionJournal: wire.decisionJournal,
     actions: wire.actions.map((action, index) => adaptWireAction(action, index + 1)),
     beliefDeltas: wire.beliefDeltas.map((delta) => ({

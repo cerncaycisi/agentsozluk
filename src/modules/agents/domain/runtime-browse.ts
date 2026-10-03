@@ -53,6 +53,8 @@ export function browsableTopicMenu(perception: unknown): BrowsableTopic[] {
     seen.add(id);
     out.push({ id, title, hint });
   };
+  for (const record of recordArray(source.purposeTopics).slice(0, 2))
+    push(record, "devam eden amaç");
   for (const record of recordArray(source.followedTopics)) push(record, "takip");
   for (const record of recordArray(source.trendingTopics)) push(record, "gündem");
   for (const record of recordArray(source.newTopics)) push(record, "yeni");

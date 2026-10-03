@@ -1,6 +1,9 @@
+import type { RuntimePurposeChange } from "@/modules/agents/validation/purpose-schemas";
+import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
+import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import { randomUUID } from "node:crypto";
 import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
-import { type Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
@@ -10850,4 +10853,466 @@ describe("internal agent runtime API with PostgreSQL", () => {
       integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: discovered.id } }),
     ).resolves.toMatchObject({ status: "TRUSTED" });
   });
+});
+
+describe("persistent runtime purposes with PostgreSQL", () => {
+  async function start(fixture: Awaited<ReturnType<typeof createFixture>>) {
+    const principal = await runtimePrincipal(fixture.credential);
+    const workerId = `purpose-${randomUUID()}`;
+    const leased = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const context = await getRuntimeRunContext(integrationDatabase, principal, runId, workerId);
+    const complete = (purposeChanges: RuntimePurposeChange[]) =>
+      completeRuntimeRun(
+        integrationDatabase,
+        principal,
+        runId,
+        runtimeCompleteSchema.parse({
+          workerId,
+          outcome: "SUCCEEDED",
+          state: completedRuntimeFastState,
+          safeRunSummary: {
+            operationSummary: "Amaç önerisi işlendi.",
+            observedItemIds: [],
+            proposedActionCount: 0,
+            completedActionCount: 0,
+            rejectedActionCount: 0,
+            shortRationale: "Amaç politikası doğrulaması.",
+          },
+          usageMetadata: { durationMs: 1, provider: "codex-cli" },
+          performanceMetrics: {},
+          purposeChanges,
+        }),
+      );
+    return { principal, workerId, runId, context, complete };
+  }
+  async function prepare() {
+    const fixture = await createFixture();
+    const topics = [];
+    for (const title of ["amaç için kavram", "amaç için karşı görüş", "amaç için katkı"])
+      topics.push(
+        await createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
+          title,
+          entryBody: "İlk görünür insan katkısı, inceleme için dayanak.",
+        }),
+      );
+    return {
+      fixture,
+      topics,
+      wake: await start(fixture),
+      profileId: fixture.created.agent.profile.id,
+    };
+  }
+  async function next(fixture: Awaited<ReturnType<typeof createFixture>>) {
+    await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        runType: "NORMAL_WAKE",
+        queuePriority: "MANUAL_SINGLE",
+        trigger: "PURPOSE_TEST",
+        requestedById: fixture.admin.id,
+        personaVersionId: fixture.created.agent.personaVersion.id,
+        idempotencyKey: randomUUID(),
+        availableAt: new Date(Date.now() - 1000),
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+      },
+    });
+    return start(fixture);
+  }
+  const create = (topicId: string): RuntimePurposeChange => ({
+    operation: "CREATE",
+    kind: "EXPLORE_CONTRIBUTION",
+    targetType: "TOPIC",
+    targetId: topicId,
+    question: "Burada gerçekten eksik kalan bir görüş var mı?",
+  });
+
+  it("carries two purposes across wakes, rejects a third, abandons neutrally and fences replay", async () => {
+    const { fixture, topics, wake, profileId } = await prepare();
+    expect(
+      (await wake.complete([create(topics[0]!.topic.id), create(topics[1]!.topic.id)])).purposes,
+    ).toEqual({ status: "APPLIED", changedCount: 2 });
+    await expect(wake.complete([create(topics[2]!.topic.id)])).rejects.toMatchObject({
+      code: "AGENT_RUN_LEASE_INVALID",
+    });
+    const second = await next(fixture);
+    const rows = await integrationDatabase.agentPurpose.findMany({
+      where: { agentProfileId: profileId },
+      orderBy: { activeSlot: "asc" },
+    });
+    expect(second.context.perception.purposes).toHaveLength(2);
+    for (const row of rows) {
+      expect(browsableTopicIds(second.context.perception).has(row.targetId)).toBe(true);
+      const event = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+        where: { runId: second.runId, eventType: "CONTEXT_PRESENTED" },
+        orderBy: { id: "desc" },
+      });
+      expect(event.evidenceIds).not.toContain(row.id);
+    }
+    expect((await second.complete([create(topics[2]!.topic.id)])).purposes).toMatchObject({
+      status: "REJECTED",
+      reasonCode: "PURPOSE_ACTIVE_LIMIT",
+    });
+    const third = await next(fixture);
+    expect(
+      (
+        await third.complete([
+          {
+            operation: "ABANDON",
+            purposeId: rows[0]!.id,
+            expectedVersion: 1,
+            note: "Yeterli boşluk görmedim; bu niyeti bırakıyorum.",
+          },
+          create(topics[2]!.topic.id),
+        ])
+      ).purposes,
+    ).toMatchObject({ status: "APPLIED", changedCount: 2 });
+    expect(
+      await integrationDatabase.agentPurpose.count({
+        where: { agentProfileId: profileId, status: "ACTIVE" },
+      }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.agentPurpose.findUniqueOrThrow({ where: { id: rows[0]!.id } }),
+    ).toMatchObject({
+      status: "ABANDONED",
+      activeSlot: null,
+      activeKey: null,
+      claimStatus: "NOT_CLAIMED",
+    });
+    expect(await integrationDatabase.agentPurpose.count({ where: { status: "FULFILLED" } })).toBe(
+      0,
+    );
+  });
+
+  it("rejects an unpresented target atomically without accepting the first command", async () => {
+    const { topics, wake } = await prepare();
+    const result = await wake.complete([create(topics[0]!.topic.id), create(randomUUID())]);
+    expect(result.runStatus).toBe("PARTIAL");
+    expect(result.purposes).toMatchObject({
+      status: "REJECTED",
+      reasonCode: "PURPOSE_TARGET_NOT_PRESENTED",
+    });
+    expect(await integrationDatabase.agentPurpose.count()).toBe(0);
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { eventType: "PURPOSE_CHANGED" },
+      }),
+    ).toBe(0);
+  });
+
+  it("expires a purpose during repeated frozen-context reads exactly once", async () => {
+    const { fixture, topics, wake } = await prepare();
+    await wake.complete([create(topics[0]!.topic.id)]);
+    const second = await next(fixture);
+    const purpose = await integrationDatabase.agentPurpose.findFirstOrThrow();
+    expect(second.context.perception.purposes).toHaveLength(1);
+    await integrationDatabase.agentPurpose.update({
+      where: { id: purpose.id },
+      data: {
+        createdAt: new Date(Date.now() - 8 * 86400000),
+        expiresAt: new Date(Date.now() - 1),
+      },
+    });
+    const expiredContext = await getRuntimeRunContext(
+      integrationDatabase,
+      second.principal,
+      second.runId,
+      second.workerId,
+    );
+    expect(expiredContext.perception.purposes).toEqual([]);
+    expect(expiredContext.contextHash).not.toBe(second.context.contextHash);
+    await getRuntimeRunContext(
+      integrationDatabase,
+      second.principal,
+      second.runId,
+      second.workerId,
+    );
+    expect(
+      await integrationDatabase.agentPurpose.findUniqueOrThrow({ where: { id: purpose.id } }),
+    ).toMatchObject({ status: "EXPIRED", version: 2, activeSlot: null });
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { eventType: "PURPOSE_CHANGED" },
+      }),
+    ).toBe(2);
+  });
+
+  it("keeps a completion claim neutral until real read and topic review prerequisites exist", async () => {
+    const { fixture, topics, wake, profileId } = await prepare();
+    const topicId = topics[0]!.topic.id;
+    await wake.complete([create(topicId)]);
+    const purpose = await integrationDatabase.agentPurpose.findFirstOrThrow();
+    const second = await next(fixture);
+    await second.complete([
+      {
+        operation: "CLAIM_COMPLETION",
+        purposeId: purpose.id,
+        expectedVersion: 1,
+        note: "Katkı alanını anladığımı düşünüyorum.",
+      },
+    ]);
+    expect(
+      await integrationDatabase.agentPurpose.findUniqueOrThrow({ where: { id: purpose.id } }),
+    ).toMatchObject({ status: "ACTIVE", claimStatus: "CLAIMED", version: 2 });
+    const third = await next(fixture);
+    await getRuntimeRunContext(integrationDatabase, third.principal, third.runId, third.workerId, [
+      topicId,
+    ]);
+    await integrationDatabase.$transaction((tx) =>
+      appendRuntimeEvent(tx, {
+        agentProfileId: profileId,
+        runId: third.runId,
+        eventType: "DECISION_STEP_RECORDED",
+        subject: { kind: "INTERPRETATION", label: "Katkı ihtiyacı" },
+        evidenceIds: [topicId],
+        safeMessage: "Başlıkta yeni bir katkı alanı görmedim, yazmamayı seçtim.",
+        metadata: { origin: "RUNTIME_DECISION_JOURNAL" },
+      }),
+    );
+    await third.complete([
+      {
+        operation: "CLAIM_COMPLETION",
+        purposeId: purpose.id,
+        expectedVersion: 2,
+        note: "Okudum, yeni katkı gerektiğini düşünmüyorum.",
+      },
+    ]);
+    expect(
+      await integrationDatabase.agentPurpose.findUniqueOrThrow({ where: { id: purpose.id } }),
+    ).toMatchObject({ status: "ACTIVE", claimStatus: "EVIDENCE_MET", version: 3 });
+    expect(await integrationDatabase.agentAction.count()).toBe(0);
+    expect(await integrationDatabase.agentPurpose.count({ where: { status: "FULFILLED" } })).toBe(
+      0,
+    );
+  });
+
+  it("rejects stale versions and hidden targets, and enforces two slots in PostgreSQL", async () => {
+    const { fixture, topics, wake, profileId } = await prepare();
+    await wake.complete([create(topics[0]!.topic.id)]);
+    const purpose = await integrationDatabase.agentPurpose.findFirstOrThrow();
+    const second = await next(fixture);
+    await integrationDatabase.agentPurpose.update({
+      where: { id: purpose.id },
+      data: { version: 2 },
+    });
+    const conflict = await second.complete([
+      {
+        operation: "REVIEW",
+        purposeId: purpose.id,
+        expectedVersion: 1,
+        note: "Eski sürümle yazmaya çalışıyorum.",
+      },
+    ]);
+    expect(conflict.purposes).toMatchObject({
+      status: "REJECTED",
+      reasonCode: "PURPOSE_VERSION_CONFLICT",
+    });
+    await integrationDatabase.topic.update({
+      where: { id: topics[0]!.topic.id },
+      data: { status: "HIDDEN" },
+    });
+    const third = await next(fixture);
+    expect(third.context.perception.purposes).toEqual([
+      expect.objectContaining({
+        id: purpose.id,
+        targetId: null,
+        targetAvailable: false,
+        topicKey: null,
+        lastReviewNote: null,
+      }),
+    ]);
+    expect(JSON.stringify(third.context.perception.purposes)).not.toContain(purpose.question);
+    expect(third.context.perception.purposeTopics).toEqual([]);
+    await expect(
+      integrationDatabase.agentPurpose.update({
+        where: { id: purpose.id },
+        data: { activeSlot: 3 },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      integrationDatabase.agentPurpose.update({
+        where: { id: purpose.id },
+        data: { activeSlot: null },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      integrationDatabase.agentPurpose.create({
+        data: {
+          ...purpose,
+          baseline: purpose.baseline as Prisma.InputJsonValue,
+          claimEvidence: Prisma.DbNull,
+          id: randomUUID(),
+          agentProfileId: profileId,
+          activeKey: "other",
+          activeSlot: 1,
+        },
+      }),
+    ).rejects.toMatchObject({ code: "P2002" });
+    expect(await integrationDatabase.agentPurpose.count()).toBe(1);
+    expect(
+      (
+        await third.complete([
+          {
+            operation: "ABANDON",
+            purposeId: purpose.id,
+            expectedVersion: 2,
+            note: "Erişilemeyen hedefi nötr biçimde bırakıyorum.",
+          },
+        ])
+      ).purposes,
+    ).toMatchObject({ status: "APPLIED" });
+  });
+  it.each(["TEST_BELIEF", "UNDERSTAND_CONCEPT"] as const)(
+    "checks new committed evidence for %s without turning it into semantic success",
+    async (kind) => {
+      const { fixture, topics, wake, profileId } = await prepare();
+      const topicId = topics[0]!.topic.id;
+      const topicKey = topics[0]!.topic.title;
+      const oldStatement = "Bu kavramın sınırları bağlama bağlıdır.";
+      const baseline = await integrationDatabase.agentBelief.create({
+        data: {
+          agentProfileId: profileId,
+          topicKey,
+          statement: oldStatement,
+          confidence: 0.6,
+          evidenceSummary: "İlk görünür insan katkısı.",
+          evidenceProvenance: {
+            evidenceType: "USER_ENTRY",
+            evidenceIds: [topics[0]!.entry.id],
+            shortRationale: "İlk katkı.",
+          },
+          firstFormedAt: new Date(Date.now() - 60000),
+          lastUpdatedAt: new Date(Date.now() - 60000),
+          version: 1,
+          status: "ACTIVE",
+        },
+      });
+      // Henüz karar verilmemiş fixture'a ilk belief'i ekleyip gerçek context'i yeniden kur.
+      await integrationDatabase.agentRun.update({
+        where: { id: wake.runId },
+        data: { perceptionSummary: Prisma.DbNull },
+      });
+      await getRuntimeRunContext(integrationDatabase, wake.principal, wake.runId, wake.workerId);
+      await wake.complete([
+        {
+          operation: "CREATE",
+          kind,
+          targetType: kind === "TEST_BELIEF" ? "BELIEF" : "TOPIC",
+          targetId: kind === "TEST_BELIEF" ? baseline.id : topicId,
+          question: "Mevcut kanaatin sınırlarını yeni kanıtla incelemek istiyorum.",
+        },
+      ]);
+      const purpose = await integrationDatabase.agentPurpose.findFirstOrThrow();
+      const second = await next(fixture);
+      // Yalnız sürüm artışı başarı önkoşulu değildir; eski kanıtı tekrarlıyoruz.
+      await recordRuntimeActions(
+        integrationDatabase,
+        second.principal,
+        second.runId,
+        runtimeActionsSchema.parse({
+          workerId: second.workerId,
+          actions: [
+            {
+              sequence: 1,
+              actionType: "UPDATE_BELIEF",
+              safeReason: "Görünür eski kanıtı yeniden değerlendirme.",
+              input: {
+                topicKey,
+                statement: oldStatement,
+                confidence: 0.6,
+                summary: "Eski kanıtı tekrar inceledim.",
+              },
+              provenance: {
+                evidenceType: "USER_ENTRY",
+                evidenceIds: [topics[0]!.entry.id],
+                shortRationale: "Görünür eski entry.",
+              },
+            },
+          ],
+        }),
+      );
+      await executeRuntimeAction(integrationDatabase, second.principal, second.runId, {
+        workerId: second.workerId,
+        sequence: 1,
+      });
+      await second.complete([
+        {
+          operation: "CLAIM_COMPLETION",
+          purposeId: purpose.id,
+          expectedVersion: 1,
+          note: "Yeniden düşündüm.",
+        },
+      ]);
+      expect(
+        await integrationDatabase.agentPurpose.findUniqueOrThrow({ where: { id: purpose.id } }),
+      ).toMatchObject({ claimStatus: "CLAIMED" });
+      const entry = await createEntry(integrationDatabase, adminActor(fixture.admin.id), topicId, {
+        body: "Karşı örnekte aynı kavram farklı koşullarda başka sonuç veriyor; sınırı burada görmek gerekir.",
+      });
+      const third = await next(fixture);
+      await getRuntimeRunContext(
+        integrationDatabase,
+        third.principal,
+        third.runId,
+        third.workerId,
+        [topicId],
+      );
+      await recordRuntimeActions(
+        integrationDatabase,
+        third.principal,
+        third.runId,
+        runtimeActionsSchema.parse({
+          workerId: third.workerId,
+          actions: [
+            {
+              sequence: 1,
+              actionType: "UPDATE_BELIEF",
+              safeReason: "Yeni görünür karşı örnekle kanaati sınama.",
+              input: {
+                topicKey,
+                statement:
+                  kind === "TEST_BELIEF"
+                    ? oldStatement
+                    : "Bu kavramın sınırını belirleyen unsur örnekteki özel koşuldur.",
+                confidence: 0.6,
+                summary: "Yeni karşı örnekle kanaat yeniden değerlendirildi.",
+              },
+              provenance: {
+                evidenceType: "USER_ENTRY",
+                evidenceIds: [entry.id],
+                shortRationale: "Yeni insan katkısı.",
+              },
+            },
+          ],
+        }),
+      );
+      const execution = await executeRuntimeAction(
+        integrationDatabase,
+        third.principal,
+        third.runId,
+        { workerId: third.workerId, sequence: 1 },
+      );
+      expect(execution).toMatchObject({ actionStatus: "SUCCEEDED" });
+      await third.complete([
+        {
+          operation: "CLAIM_COMPLETION",
+          purposeId: purpose.id,
+          expectedVersion: 2,
+          note: "Yeni kanıtla kanaatimi yeniden değerlendirdim.",
+        },
+      ]);
+      expect(
+        await integrationDatabase.agentPurpose.findUniqueOrThrow({ where: { id: purpose.id } }),
+      ).toMatchObject({ status: "ACTIVE", claimStatus: "EVIDENCE_MET", version: 3 });
+      expect(await integrationDatabase.agentPurpose.count({ where: { status: "FULFILLED" } })).toBe(
+        0,
+      );
+    },
+  );
 });

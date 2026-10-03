@@ -1,3 +1,7 @@
+import {
+  applyRuntimePurposeChanges,
+  runtimePurposeContext,
+} from "@/modules/agents/application/purposes";
 import { inTransaction } from "@/lib/db/transaction";
 import { selectFollowedTopicsForPerception } from "@/modules/agents/domain/followed-topic-selection";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
@@ -237,7 +241,12 @@ function perceptionPreviousFastState(perceptionSummary: unknown) {
   return parsed.success ? parsed.data : null;
 }
 
-function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, now: Date) {
+function boundedPerceptionSnapshot(
+  run: OwnedRun,
+  records: PerceptionRecords,
+  now: Date,
+  purposeContext: Awaited<ReturnType<typeof runtimePurposeContext>>,
+) {
   const persona = seedPersonaSchema.parse(run.personaVersion.persona);
   const followedTopicIdSet = new Set(records.followedTopicIds);
   const followedUsers = new Set(records.followedUserIds);
@@ -483,6 +492,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       ajan "kaç kişinin işine yaramış" bilgisine bakarak seçsin.
     */
     sourceCandidates: records.sourceCandidates,
+    ...purposeContext,
   };
   /*
     Kırpma yalnız güvenlik ağı. Canlı ölçüm (21 Ağu, son 6 saat, 117 run): perception
@@ -1734,6 +1744,10 @@ export function getRuntimeRunContext(
       publicWriteEnabled: settings.publicWriteEnabled,
       runtimeOperatingMode: settings.runtimeOperatingMode,
     });
+    const purposes =
+      run.runType === "NORMAL_WAKE"
+        ? await runtimePurposeContext(transaction, run, now)
+        : { purposes: [], purposeTopics: [] };
     let perception: Record<string, unknown>;
     if (
       run.perceptionSummary &&
@@ -1741,6 +1755,25 @@ export function getRuntimeRunContext(
       !Array.isArray(run.perceptionSummary)
     ) {
       perception = run.perceptionSummary as Record<string, unknown>;
+      if (run.runType === "NORMAL_WAKE") {
+        const activeIds = new Set(purposes.purposes.map((item) => item.id));
+        const visibleIds = new Set(purposes.purposeTopics.map((item) => item.id));
+        const filterIds = (value: unknown, ids: Set<string>) =>
+          Array.isArray(value)
+            ? value.filter((item) => item && typeof item === "object" && ids.has(item.id))
+            : [];
+        // Donmuş liste yalnız daralır; TTL/görünürlük yeniden kontrolü yeni hedef eklemez.
+        perception = {
+          ...perception,
+          purposes: filterIds(perception.purposes, activeIds).map((item) => {
+            const current = purposes.purposes.find((candidate) => candidate.id === item.id);
+            // Gizlenen hedef metni geri gösterilmez; kimlik ve bırakma hakkı korunur.
+            return current?.targetAvailable === false ? current : item;
+          }),
+          purposeTopics: filterIds(perception.purposeTopics, visibleIds),
+        };
+        await storeRuntimePerceptionSummary(transaction, runId, perception);
+      }
     } else {
       const perceptionRecords = await getRuntimePerceptionRecords(transaction, {
         agentProfileId: principal.agentProfileId,
@@ -1762,7 +1795,7 @@ export function getRuntimeRunContext(
           publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
         includeActionFeedback: run.runType === "NORMAL_WAKE",
       });
-      const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now);
+      const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now, purposes);
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);
       perception = builtPerception;
     }
@@ -2618,6 +2651,13 @@ export function completeRuntimeRun(
       };
       finalOutcome = "PARTIAL";
     }
+    const purposes = await applyRuntimePurposeChanges(
+      transaction,
+      run,
+      input.purposeChanges ?? [],
+      now,
+    );
+    if (purposes.status === "REJECTED") finalOutcome = "PARTIAL";
     const measuredMetrics = await getMeasuredRuntimeRunMetrics(transaction, runId);
     const safeRunSummary =
       reflection.status === "REJECTED_PERSONA_DELTA"
@@ -2687,6 +2727,8 @@ export function completeRuntimeRun(
       metadata: {
         phase: finalOutcome,
         reflectionStatus: reflection.status,
+        purposeStatus: purposes.status,
+        purposeReason: purposes.status === "REJECTED" ? purposes.reasonCode : null,
         errorCode: input.errorCode ?? null,
       },
       occurredAt: now,
@@ -2703,8 +2745,9 @@ export function completeRuntimeRun(
       outcome: finalOutcome,
       requestedOutcome: input.outcome,
       reflection,
+      purposes,
     });
-    return { runId, runStatus: finalOutcome, finishedAt: now, reflection };
+    return { runId, runStatus: finalOutcome, finishedAt: now, reflection, purposes };
   });
 }
 

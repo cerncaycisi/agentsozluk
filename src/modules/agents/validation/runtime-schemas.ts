@@ -1,3 +1,4 @@
+import { runtimePurposeChangesSchema } from "@/modules/agents/validation/purpose-schemas";
 import { z } from "zod";
 import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
 import { weeklyPersonaEvolutionDeltaSchema } from "@/modules/agents/domain/persona-evolution";
@@ -564,6 +565,7 @@ export const runtimeCompleteSchema = z
     performanceMetrics: performanceMetricsSchema,
     state: runtimeFastStateSchema,
     reflectionDelta: weeklyPersonaEvolutionDeltaSchema.nullable().default(null),
+    purposeChanges: runtimePurposeChangesSchema.optional(),
   })
   .strict()
   .refine((value) => Boolean(value.errorCode) === Boolean(value.errorSummary), {

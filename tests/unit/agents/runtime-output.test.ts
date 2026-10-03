@@ -37,6 +37,7 @@ describe("runtime structured output wire contract", () => {
   const topicId = "00000000-0000-4000-8000-000000000001";
   const evidenceId = "00000000-0000-4000-8000-000000000002";
   const canonical = {
+    purposeChanges: [],
     safeSummary: "Görünür topic kanıtı güvenli bir entry adayını destekliyor.",
     state: {
       curiosity: 0.6,

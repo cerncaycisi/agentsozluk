@@ -807,7 +807,62 @@ model IdempotencyRecord {
   @@map("idempotency_records")
 }
 
+enum AgentPurposeKind {
+  UNDERSTAND_CONCEPT
+  TEST_BELIEF
+  EXPLORE_CONTRIBUTION
+}
+
+enum AgentPurposeStatus {
+  ACTIVE
+  FULFILLED
+  ABANDONED
+  EXPIRED
+}
+
+enum AgentPurposeClaimStatus {
+  NOT_CLAIMED
+  CLAIMED
+  EVIDENCE_MET
+}
+
+model AgentPurpose {
+  id                  String                  @id @default(uuid()) @db.Uuid
+  agentProfileId      String                  @db.Uuid
+  creationRunId       String                  @db.Uuid
+  kind                AgentPurposeKind
+  targetType          String                  @db.VarChar(16)
+  targetId            String                  @db.Uuid
+  question            String                  @db.VarChar(500)
+  topicKey            String                  @db.VarChar(200)
+  completionCriterion String                  @db.VarChar(64)
+  policyVersion       Int                     @default(1)
+  baseline            Json
+  status              AgentPurposeStatus      @default(ACTIVE)
+  claimStatus         AgentPurposeClaimStatus @default(NOT_CLAIMED)
+  version             Int                     @default(1)
+  activeSlot          Int?
+  activeKey           String?                 @db.VarChar(300)
+  lastReviewNote      String?                 @db.VarChar(500)
+  lastReviewedAt      DateTime?               @db.Timestamptz(3)
+  claimRunId          String?                 @db.Uuid
+  claimedAt           DateTime?               @db.Timestamptz(3)
+  claimEvidence       Json?
+  createdAt           DateTime                @default(now()) @db.Timestamptz(3)
+  expiresAt           DateTime                @db.Timestamptz(3)
+  updatedAt           DateTime                @updatedAt @db.Timestamptz(3)
+  agentProfile        AgentProfile            @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  creationRun         AgentRun                @relation("PurposeCreationRun", fields: [creationRunId], references: [id], onDelete: Restrict)
+  claimRun            AgentRun?               @relation("PurposeClaimRun", fields: [claimRunId], references: [id], onDelete: Restrict)
+
+  @@unique([agentProfileId, activeSlot])
+  @@unique([agentProfileId, activeKey])
+  @@index([agentProfileId, status, expiresAt])
+  @@map("agent_purposes")
+}
+
 model AgentProfile {
+  purposes                AgentPurpose[]
   id                      String                @id @default(uuid()) @db.Uuid
   userId                  String                @unique @db.Uuid
   lifecycleStatus         AgentLifecycleStatus  @default(PAUSED)
@@ -997,6 +1052,8 @@ model AgentScheduleSlot {
 }
 
 model AgentRun {
+  createdPurposes       AgentPurpose[]       @relation("PurposeCreationRun")
+  claimedPurposes       AgentPurpose[]       @relation("PurposeClaimRun")
   id                    String               @id @default(uuid()) @db.Uuid
   agentProfileId        String               @db.Uuid
   runType               AgentRunType

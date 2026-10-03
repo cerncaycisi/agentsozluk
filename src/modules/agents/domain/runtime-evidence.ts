@@ -50,7 +50,11 @@ export function deriveRuntimePerceptionEvidence(
   // reflection/consolidation kanıt kümesini sessizce genişletmemeli.
   const evidencePerception =
     perception && typeof perception === "object" && !Array.isArray(perception)
-      ? Object.fromEntries(Object.entries(perception).filter(([key]) => key !== actionFeedbackKey))
+      ? Object.fromEntries(
+          Object.entries(perception).filter(
+            ([key]) => key !== actionFeedbackKey && key !== "purposes",
+          ),
+        )
       : perception;
   collectEvidence(evidencePerception, ids, sourceItemIds);
   for (const id of additionalIds) if (uuidPattern.test(id)) ids.add(id);
