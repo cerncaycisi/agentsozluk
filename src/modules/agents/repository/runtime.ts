@@ -659,6 +659,10 @@ export async function heartbeatRuntimeRunRecord(
     where: { agentProfileId: input.agentProfileId },
     select: { runtimeStatus: true, lastHeartbeatAt: true },
   });
+  const previousRun = await transaction.agentRun.findUniqueOrThrow({
+    where: { id: input.runId },
+    select: { heartbeatAt: true },
+  });
   await Promise.all([
     transaction.agentRun.update({
       where: { id: input.runId },
@@ -682,6 +686,14 @@ export async function heartbeatRuntimeRunRecord(
       lastHeartbeatAt: previous.lastHeartbeatAt?.toISOString() ?? null,
     },
     after: { runtimeStatus: input.runtimeStatus, lastHeartbeatAt: input.now.toISOString() },
+    /*
+      Olay yalnız koşunun ilk heartbeat'inde ve durum değişiminde yazılır (Z12, 3 Ekim 2026).
+      Kapasite hesabı (aşama başlangıcı) ve güncel aşama yalnız geçişlere bakar; aynı durumdaki
+      tekrar heartbeat'ler olay tablosunun yarısından fazlasını oluşturuyordu ve silinemez.
+      Son görülme zamanı `agent_runs.heartbeatAt` ve `agent_runtime_states.lastHeartbeatAt`
+      alanlarında her heartbeat'te güncellenmeye devam eder.
+    */
+    recordEvent: previousRun.heartbeatAt === null || previous.runtimeStatus !== input.runtimeStatus,
   };
 }
 

@@ -3557,6 +3557,42 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(0);
   });
 
+  it("records a heartbeat event only for the first heartbeat and status changes (Z12)", async () => {
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId: "worker-hb",
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const beat = (runtimeStatus: "READING" | "THINKING") =>
+      heartbeatRuntimeRun(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeHeartbeatSchema.parse({ runId, workerId: "worker-hb", runtimeStatus }),
+      );
+    await beat("READING");
+    await beat("READING");
+    await beat("READING");
+    await beat("THINKING");
+    await beat("THINKING");
+    const events = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: { runId, eventType: "agent.heartbeat" },
+      orderBy: { id: "asc" },
+      select: { metadata: true },
+    });
+    expect(
+      events.map((event) => (event.metadata as { runtimeStatus: string }).runtimeStatus),
+    ).toEqual(["READING", "THINKING"]);
+    const run = await integrationDatabase.agentRun.findUniqueOrThrow({
+      where: { id: runId },
+      select: { heartbeatAt: true },
+    });
+    expect(run.heartbeatAt).not.toBeNull();
+  });
+
   it("keeps context credential-free, enforces lease ownership, and completes with measured counts", async () => {
     const fixture = await createFixture();
     await updateGlobalSettings(integrationDatabase, adminActor(fixture.admin.id), {
