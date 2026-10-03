@@ -659,6 +659,22 @@ export async function heartbeatRuntimeRunRecord(
     where: { agentProfileId: input.agentProfileId },
     select: { runtimeStatus: true, lastHeartbeatAt: true },
   });
+  /*
+    Lease de heartbeatAt'ı doldurur. Her denemenin ilk heartbeat'ini son run.started
+    sınırıyla ayırırız; önceki denemenin heartbeat'i yeni STARTING olayını bastıramaz.
+    Aynı durumun tekrarları olay yazmaz; son görülme ve kira yine her çağrıda yenilenir.
+    Olaydaki lastHeartbeatAt yalnız o geçişin öncesi/sonrasıdır; ara sinyallerin geçmişi
+    olaylardan yeniden kurulamaz. Güncel değer run/state alanlarından okunur.
+  */
+  const recordEvent =
+    previous.runtimeStatus !== input.runtimeStatus ||
+    (
+      await transaction.agentRuntimeEvent.findFirst({
+        where: { runId: input.runId, eventType: { in: ["run.started", "agent.heartbeat"] } },
+        orderBy: { id: "desc" },
+        select: { eventType: true },
+      })
+    )?.eventType !== "agent.heartbeat";
   await Promise.all([
     transaction.agentRun.update({
       where: { id: input.runId },
@@ -682,6 +698,7 @@ export async function heartbeatRuntimeRunRecord(
       lastHeartbeatAt: previous.lastHeartbeatAt?.toISOString() ?? null,
     },
     after: { runtimeStatus: input.runtimeStatus, lastHeartbeatAt: input.now.toISOString() },
+    recordEvent,
   };
 }
 

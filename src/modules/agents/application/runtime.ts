@@ -1683,16 +1683,17 @@ export function heartbeatRuntimeRun(
       now,
       runtimeStatus,
     });
-    await appendRuntimeEvent(transaction, {
-      agentProfileId: principal.agentProfileId,
-      runId,
-      eventType: "agent.heartbeat",
-      safeMessage: "Agent runtime heartbeat kaydetti.",
-      before: heartbeatChange.before,
-      after: heartbeatChange.after,
-      metadata: { runtimeStatus, cancelRequested },
-      occurredAt: now,
-    });
+    if (heartbeatChange.recordEvent)
+      await appendRuntimeEvent(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        eventType: "agent.heartbeat",
+        safeMessage: "Agent runtime heartbeat kaydetti.",
+        before: heartbeatChange.before,
+        after: heartbeatChange.after,
+        metadata: { runtimeStatus, cancelRequested },
+        occurredAt: now,
+      });
     return { runId, leaseExpiresAt, cancelRequested };
   });
 }
