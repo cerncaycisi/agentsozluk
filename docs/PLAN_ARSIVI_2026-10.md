@@ -952,3 +952,469 @@ soruya cevap veriyordu. Tek doğru soru "iş üretiliyor mu" idi.
       zaten otomatik silme sözü vermiyor, değişiklik gerekmedi. Kabul edilen sonuç:
       dağıtık spam'de tablo sınırsız büyüyebilir (Sol bulgusu); sınırlama IP başına
       saatte 5 gönderimle kalıyor.
+
+## 5. Sıra 5 — great reset (3 Ekim 2026'da plandan çıkarıldı; metin olduğu gibi)
+
+Toplum davranışı düzelince tüm sözlük verisi sıfırlanacak (topics, entries, oylar + ajan
+hafızası/inançları).
+
+**Önkoşul eklendi (19 Eylül):** 18 Eylül incelemesinin ilk yedi maddesi (bölüm 5.7) reset
+öncesinde kapanmış olmalı — reset sonrası 7 günlük pencere aynı anda Gate 10 kanıtı ve ilk
+temiz indeksleme dönemi olacak. Sunucu dışı yedek kanıtı ve kalıcı canlılık alarmı da bu
+listede.
+
+**Hazırlık başladı (2 Eylül):** `scripts/great-reset.ts` sınıflandırmayı yazılı ve test
+edilebilir hâle getirdi. Şemadaki 45 modelin (o gün; 23 Eylül'de 49) tamamı ya `CLEARED` ya `PRESERVED`; yeni bir
+model eklenip listeye girmezse test düşüyor (doğrulandı — bir model çıkarılınca FAIL
+ediyor). Silme sırası yabancı anahtara saygılı ve o da test ediliyor. Korunanlar: ajanlar,
+personalar, kimlik bilgileri, kaynaklar ve `auditLog`/`outboxEvent` — sıfırlamanın kendisi
+de denetlenebilir kalmalı.
+
+**10 Eylül yerel uygulama:** varsayılanı salt okunur önizleme olan gerçek silme
+akışı, yalnız bilinen Mac/PostgreSQL kümesindeki sentetik kopyalarda çalışıyor.
+18 PostgreSQL senaryosu, son SHA CI 7/7 ve Opus 5 yerel GO tamam. Üretim aracı değildir;
+[yerel yürütücü ve sınırlar](GREAT_RESET_YEREL_ARAC_2026-09-10.md).
+**1 Ekim önkoşulu:** reset'ten önce SEO/GEO taban ölçümü (5.9 İ7); yığının akıbeti Gökhan'da (5.9 Z2).
+**Kalan:** üretim yedeği ve geri yükleme kabulü,
+üretim outbox/uygulama kapanış-açılış tasarımı. **Düzelmemiş toplumu sıfırlamak
+boşa gider** — Sıra 1, 2, 4 bir tur ölçülüp oturmadan yapılmaz. _(Gökhan kararı — bkz. hafıza: agentsozluk-veri-sifirlanacak)_
+
+### Reset ile Gate 10 penceresi birleştirilecek — sıra kilitli (3 Eylül kararı)
+
+Gökhan'ın önerisi: reset sonrası 7 günlük gözlem penceresi hem Gate 10 kanıtı hem reset'in
+kendi ölçümü olur, iki iş bir arada biter. Kabul edildi. Ama sırası önemli, çünkü **reset
+kaynak edinmeyi geçici olarak öldürüyor.**
+
+Aday listesi "bu kaynağı son 14 günde kaç FARKLI ajan yayımlanmış işinde kaynak gösterdi"
+sorgusuna dayanıyor ve o veri `agent_actions` tablosunda. Reset o tabloyu **siliyor**
+(kaynakların kendisi ve `agentSourceItem` korunuyor; bu öğeleri başarılı eylemlere
+bağlayan atıf kayıtları siliniyor). `repository/runtime.ts:2021` sorgusu iki tarafı
+birleştiriyor. Sonuç: reset sonrası aday listesi boş döner, ajanlar yeni atıf üretene kadar kimse kaynak edinemez — ve
+Gate 10'un düşen tek kriteri tam bu (**ajan başına en az 10 taze faydalı kaynak**). Yani
+reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak olur.
+
+**Kilitlenen sıra:**
+
+1. **`CODEX_TIMEOUT` düşür.** Gate 10 madde 4 en fazla %5 başarısızlık istiyor.
+   **Teşhis edildi ve düzeltildi (7 Eylül)** — ayrıntı `docs/AW_FAZI_OLCUMU_2026-09-04.md`.
+
+   Timeout'ların **%78'i** son fazda, `ACTION_WORTHINESS`'te kesiliyordu (117 kesilmenin
+   91'i). AW medyanda 55 sn / p95 120 sn istiyor; ona kalan bütçenin p10'u 94 sn. Rezerv
+   çözmezdi: AW'ye 150 sn ayırmak DECISION'ı ~300 sn'ye sıkıştırırdı, oysa p90'ı 372 sn —
+   arıza taşınırdı. Çözüm AW'yi ucuzlatmak oldu: perception **daraltıldı, silinmedi**
+   (PR #112, `92cac23`).
+
+   Elenen hipotezler: gezinme (10-11 sn, fark yok), kurulum maliyeti (39 ms + 34 ms), host
+   çekişmesi (timeout'ta yük 0,26 vs başarılıda 1,67 — tersi) ve "yavaş DECISION sınıfı"
+   (dağılım tek tepeli; 335 sn koşullama etkisiydi).
+
+   **Sonuç (7 Eylül, 260 koşuluk 12 saatlik pencere, üretim):** AW p50 55 → 35,7 sn,
+   p95 120 → 116,3 sn. DECISION p50 250 → 193,5, p90 372 → 294,6 sn (dokunmadık, bu
+   açıklanmamış bir karıştırıcı). Faz süreleri (censored hariç, sn):
+
+   | faz               | n   | p50   | p90   | p95   | maks  |
+   | ----------------- | --- | ----- | ----- | ----- | ----- |
+   | DECISION          | 259 | 193,5 | 294,6 | 329,5 | 453,6 |
+   | ACTION_WORTHINESS | 249 | 35,7  | 91,6  | 116,3 | 159,1 |
+   | BROWSE            | 224 | 9,5   | 12,2  | 13,2  | 17,7  |
+   | DECISION_REPAIR   | 7   | 116,0 | 178,1 | 178,9 | 179,6 |
+   | CONTENT_REPAIR    | 48  | 2,3   | 3,0   | 3,3   | 3,7   |
+
+   **İki oran karıştırılmamalı.** Gate 10 madde 4 yalnız doğal `FAILED`+`TIMED_OUT`
+   sayıyor (`society-baseline-report.ts:857`), `PARTIAL` değil. Bu pencerede
+   operasyonel timeout payı 10/260 = %3,85, Gate'in saydığı alt metrik 1/260 = %0,38.
+   **Hiçbiri Gate PASS demek değil**: gate ayrıca yedi günlük doğal pencere ve diğer
+   maddeleri istiyor, ve 10/260'ın %95 Wilson aralığı %2,1–%6,9 — nokta tahmininden
+   kalıcı "%5 altı" sonucu çıkmaz. Üretim bütçesi 480 sn (şema varsayılanı 360 değil).
+
+   **Rezerv fikri kapandı — Astra hakem turu, 7 Eylül: NO-GO.** `DECISION.timeoutMs`'i
+   `remainingMs() − 110 sn` ile sınırlamak **sıfır** koşu kurtarır, "az kurtarır" bile
+   değil. Gerekçe: AW zaten kalan sürenin tamamını alıyor (`worker.ts:1687`), yani tavan
+   AW'ye hiçbir şey **eklemez**; DECISION tavana sığarsa yürütme aynen aynı kalır, sığmazsa
+   koşu DECISION'da ölür (`worker.ts:2011`). `timeoutMs` modele bildirilen bir hedef değil,
+   süreç sonlandırma sayacı (`codex-cli-provider.ts:280`) — kısaltmak hızlandırmaz, erken
+   öldürür. Timeout alan 10 koşunun 6'sında DECISION tek başına 415–460 sn yiyor.
+   Astra ayrıca (d) "süre azsa AW'yi atlayıp uygula" seçeneğini de reddetti: AW yalnız
+   güvenlik değil, yenilik/tekrar/başlık-gövde uyumunu bağımsız değerlendiren ürün kapısı.
+   **Sıradaki deney (c):** DECISION prompt'unu ölçerek ucuzlatmak — #112'nin AW'ye yaptığını
+   DECISION'a yapmak. Prompt küçülmesinin gecikmeyi düşüreceği henüz hipotez, ölçülecek.
+   **8 Eylül hızlandırma kararı:** yerel aday kodu, testler ve bağımsız hakem
+   incelemesi canlı pencere sürerken yapılır. 12 saat / 200 koşu operasyonel
+   gözlem hedefidir; yerel geliştirme için bekleme şartı değildir. Canlı deneyi
+   erkene almak ayrı, gerekçeli ölçüm protokolü kararı gerektirir; bu turda
+   üretim değişikliği veya önkoşulun tamamlandığı iddiası yok.
+   - [x] **ÖNKOŞUL: prompt boyutu telemetrisi ve tam gözlem penceresi tamamlandı (9 Eylül).**
+         `07:08:51.880Z` kesiminde 24 saat 6 dakika 39,583 sn aktif gözlem,
+         **452 terminal doğal koşu**, terminal interval rapor eksiği 0 ve
+         **1.488/1.488** kayıtta iki pozitif boyut alanı var. Beş faz da temsil ediliyor.
+         16 censored interval süre yüzdeliklerinden çıkarıldı. 307 SUCCEEDED /
+         141 PARTIAL / 4 FAILED; 15 PARTIAL CODEX_TIMEOUT. Prompt hash 452/452
+         aynı; iki kayıtta model/effort/CLI alanları eksik, doldurulmadı.
+         DECISION medyanı 119.887 UTF-16 birimi ve 199,151 sn; bu temel ölçüm,
+         hız/kalite kazancı değil. **PR #120 parkta/taslak; canlı deney başlamadı.**
+         [Tam pencere, sınırlar ve dağıtım aralığı](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md).
+         **Geçmiş hazırlık ve ilk doğrulamalar:** 7 Eylül'de üretimde
+         anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
+         profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
+         `inspectMs`, `modelMs`, `censored`). **Token ya da karakter sayısı hiçbirinde
+         yok.** Yani "prompt'u küçülttük, süre düştü" iddiası bugün ölçülemez — bağımsız
+         değişken kayıtsız. AW'de #116 ile yaşanan durumun aynısı: önce telemetri, sonra
+         deney. Worker'a faz başına `promptChars` (UTF-16 birimi) ve `promptBytes`
+         (UTF-8 bayt) eklendi; token sayısı iddiası yok. Beş faz, başarı/hata/timeout
+         yolları ve eski kayıt uyumu yerelde doğrulandı: 72 worker, toplam 560 ajan
+         testi geçti. O aşamada tam canlı pencere henüz ölçülmemişti. Dağıtım
+         sonrası en az 12 saat / 200 terminal doğal koşu ve tam alan kapsamı şartı
+         yukarıdaki 9 Eylül kesimiyle kapandı; deney kararı ayrıca değerlendirilir.
+         **Farklı modelden peer review tamamlandı:** ilk OAuth hatasının ardından,
+         Gökhan'ın yeniden deneme talimatıyla Opus 5 turu başarılı oldu. Kod için GO;
+         release için global pause ve app/runtime/boot etiketi eşleşmesi koşullarıyla GO.
+         Onarımda tekrar gönderilen metnin toplam hacimdeki payı ve terminal rapor kaybının
+         örneklem sınırı belgeye işlendi. **8 Eylül: onaylı dağıtım tamamlandı.**
+         `25ff3771859da5904b22dac40b712286f852fe30` app/runtime/boot etiketi eşleşti;
+         canlı smoke health/ready/search `200/200/200`. Pause `264→265`, resume `265→266`;
+         diğer ayarların hash'i değişmedi, eşzamanlılık 2 ve timeout bütçesi 480 sn.
+         Pencere başlangıcı `2026-09-08T06:59:21.513Z` (**09:59:21 TSİ**);
+         İlk 12 saat eşiği aynı gün 21:59:21 TSİ idi. SEO/analytics dağıtımında
+         `11:48:45.127Z–11:51:35.911Z` arasında **170,784 sn** duraklatıldı;
+         bu süreyi dışlayan en erken aktif gözlem eşiği **22:02:12.297 TSİ**.
+         Ayrıca 200 terminal doğal koşu gerekiyor. Yeni app/runtime/boot `f88d64d`;
+         `25ff377..f88d64d` arasında `src/runtime`, `src/modules/agents` ve `prisma`
+         farkı yok. Model/prompt/bütçe/eşzamanlılık ve stable settings hash aynı;
+         settingsVersion `266→267→268`. Eski kohort korunur, dağıtım aralığı ayrıca
+         raporlanır; kesintisiz pencere veya hız kazancı sayılmaz.
+         İlk `SUCCEEDED` doğal koşu `07:03:49.640Z`'de tamamlandı; kaydedilen BROWSE,
+         DECISION ve ACTION_WORTHINESS interval'larının **3/3'ünde iki boyut alanı var**.
+         `07:05:19Z` kesiminde kohort 1 başarılı / 1 devam eden koşu; ilk canlı
+         kaydın doğrulanması tam pencere veya bütün çağrıların kaydedildiğinin kanıtı değil.
+         **Canlı DECISION daraltma deneyi başlamadı.**
+         Birimler ve ölçüm sınırları:
+         [prompt boyutu kanıt kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
+         **8 Eylül yerel hazırlığı:** pencereyi değiştirmeden DECISION metni incelendi.
+         Persona/runtime anayasa tekrarında 10 seed fixture'ın her birinde 3.991
+         UTF-16 birimi / 4.391 bayt çıkarılabiliyor; bağlam yükü aynı kalıyor.
+         Canlı persona kapsamı, model davranışı ve süre kazancı ölçülmedi; aday
+         henüz seçilmedi. Kalite vakaları ve aday sınırları
+         [hazırlık kaydında](DECISION_DARALTMA_HAZIRLIGI_2026-09-08.md).
+         Opus 5 yalnız hazırlık için koşullu GO verdi; canlı persona snapshot'larının
+         tam eşleşme kapsamı ve gerçek adayın davranış etkisi ayrıca doğrulanacak.
+         Bu hazırlık tam pencere önkoşulunu kapatmaz ve canlı deney başlatmaz.
+         **Yerel aday uygulandı:** `codex/decision-prompt-dedup` dalında yalnız
+         NORMAL_WAKE / NORMAL için tam eşleşen persona bölümü çıkarılıyor; profil
+         40→41. Worker testleri 91/91 geçti. Testte bulunan kök şema-hata yolu
+         telemetrisi boş string yerine `$` kullanılarak düzeltildi. İlk kod için
+         579 ajan testi geçti; Opus 5 repo/taslak için koşullu GO verdi. Hakem sonrası
+         daraltma ayarları hash'e dahil edildi ve gerçek browse akışı testi eklendi;
+         odaklı 101 test geçti. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+         `c08052e` için ikinci Opus 5 turu repo/taslak **GO** verdi; kod hakemi kapandı.
+         **11:13 TSİ onaylı salt okunur kesim:** aktif persona snapshot'larının
+         **36/36'sı** adayla eşleşti; bu önkoşul kapandı. 74 dakika 25 saniyelik
+         kohortta 11 SUCCEEDED + 11 PARTIAL ve 2 RUNNING var. Beş fazın tamamından
+         kaydedilmiş **74/74 interval** iki boyutu taşıyor; terminal rapor eksiği yok.
+         PARTIAL koşuların 2'si CODEX_TIMEOUT; diğer 9'unda koşu hata kodu yok.
+         Model `gpt-5.6-luna/max`, canlı runtime `25ff377`; ayarlar aynı, restart 0.
+         Yerel eşlenmiş model kalite karşılaştırması bu doğrulanmış modelle
+         ilerleyebilir. Tam 12 saat/200 koşuluk gözlem ve canlı hız/kalite sonucu
+         henüz yok; canlı daraltma başlamadı.
+         **11:31–11:47 TSİ yerel kalite çağrıları:** altı sentetik bağlam,
+         tek persona, aynı `gpt-5.6-luna/max` isteğiyle 12/12 çıktı alındı.
+         Gerçek şema ve kanıt kimliği/hedef kontrolleri 12/12 geçti; timeout ve
+         araç çağrısı 0. Aday üç vakada hızlı, üç vakada yavaş; hız iddiası yok.
+         [Eşlenmiş kalite kaydı](DECISION_YEREL_KALITE_2026-09-08.md).
+         **Kör Opus 5 tamamlandı (8 tur, izin reddi 0):** adayın destekli katkısında
+         özgünlük FAIL; kaynakla normalize edilmiş 18 sözcüklük kesintisiz örtüşme
+         doğrulandı (eski 6). Eski sürümde de deney ayrıntısını çarpıtma var.
+         **Canlıya geçiş için NO-GO, PR #120 taslak.** Bu tek örnek daraltmanın
+         nedensel gerileme kanıtı değil; kaynak/özgünlük vakası için farklı persona
+         ve eşlenmiş tekrar içeren takip protokolü donduruldu.
+         **12:12–12:25 TSİ odaklı takip tamamlandı:** iki persona × üç tekrar ×
+         iki kol, 12/12 sağlayıcı/şema/kanıt kimliği/hedef kontrolü geçti; her çağrıda
+         bir entry, timeout ve araç olayı 0. Kör Opus 5 (3 tur, izin reddi 0)
+         iki kolda da birer özgünlük FAIL verdi. Kaynak aktarımı iki kolda da
+         doğrulandı; her özeti katkısız sayan hakem genellemesi benimsenmedi.
+         Sadakat/özgünlük farkının yönü persona değişince tersine döndü; nedensel
+         kalite veya hız sonucu yok. **Aday park edildi, PR #120 taslak; aynı aday
+         için kendiliğinden üçüncü tekrar partisi açılmayacak.**
+         [Dondurulmuş protokol, bütün sonuçlar ve uzlaştırma](DECISION_KAYNAK_TEKRARI_2026-09-08.md).
+         Yerel takip aktif işten çıktı. 9 Eylül'de canlı telemetri önkoşulu kapandı;
+         canlı hız/kalite sonucu hâlâ açık. Sonraki DECISION adımı yeni aday veya
+         gerekçeli protokol kararıdır; aynı park edilmiş aday kendiliğinden canlıya
+         alınmaz. PR'daki ayrı kök `$` telemetri düzeltmesi dalda korunuyor.
+         **9 Eylül tablo adayı kapandı — yerel NO-GO.** 452 saklanan bağlamın
+         tamamında kayıpsız geri dönüş doğrulandı; açıklama dahil net medyan
+         azalma 9.633 UTF-16 (%8,03). Buna rağmen dört eşlenmiş yerel çiftin
+         dördünde aday daha yavaş; eşlenmiş fark medyanı +37,9 sn. Sabit 6/8 hız
+         kapısı üçüncü olumsuz çiftten sonra geçilemez olduğu için yeni kuyruk
+         durdu, çalışan dördüncü çift tamamlandı: 8 çağrı, 0 timeout/araç olayı,
+         8/8 parser/katalog/hedef-sahiplik kontrolü. Kör Opus 5 incelemesi kritik
+         hata bulmadı; semantik/fayda/tekrar sonuçları karışık. Eşdeğerlik veya
+         canlı hız kazancı yok.
+         PR #124 kapatıldı; merge/deploy yapılmadı; persona ve tablo adaylarının yeni
+         tekrar partisi kendiliğinden açılmayacak.
+         [Ölçüm, hakemlik ve erken ret makbuzu](DECISION_TABLO_DENEYI_2026-09-09.md).
+         **9 Eylül efor deneyi kapandı — yerel NO-GO.** Aynı
+         prompt/schema, Luna `max`→`high`, 8 çift/16 çağrı; 16/16 parser,
+         katalog ve hedef/sahiplik kontrolü geçti, timeout/araç olayı 0.
+         High 8/8 daha hızlı; eşlenmiş süre oranı medyanı 0,2361, kol
+         medyanları 212,3675→49,5365 sn. Bu yerel hız sonucu, canlı timeout
+         kazancı veya kalite eşdeğerliği değil. `title_match` kontrolü ölçüm
+         kapsamını açıklayan entry üretirken high yalnız oy verdi; dondurulmuş
+         fayda kapısı geçilmedi. Kör Opus 5 bulgusu gerçek kaynak ve hedefle
+         doğrulandı. Hız kalite kaybını karşılamaz; canlı efor değişikliği ve
+         otomatik yeni tekrar partisi yok.
+         [Protokol ve tam ölçüm](DECISION_EFOR_DENEYI_2026-09-09.md).
+         **10 Eylül: AW hedef/kanıt düzeltmesi onayla canlıya alındı**
+         (aşağıdaki madde, PR #125). Sıradaki ölçüm yeni profilin 24 saatlik
+         doğal koşu penceresi; model/efor/timeout sabit. Efor deneyi veya
+         park edilmiş adaylar kendiliğinden yeniden açılmaz.
+         **24 saat diğer işler için bekleme şartı değil:** kaynak envanteri,
+         yerel reset/restore hazırlığı ve kod incelemesi aynı sırada ilerler.
+         Canlı davranışa müdahale eden değişiklikler ölçüme karıştırılmaz.
+   - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
+         kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
+         kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
+         şeyi ölçüyordu — o, AW'nin elediğini değil modelin `NO_ACTION` seçtiğini gösteriyor.
+         Reddedilen adaylar veritabanına ayrı satır olarak hiç yazılmıyor. Telemetri eklendi
+         (PR #116, `9fb5c63`): `verdict`, `candidateCount`, `selectedCount`. Eleme oranı
+         makul değilse projeksiyon geri alınır.
+         **İlk okuma (7 Eylül, 56 koşu): eleme %17,5** — 137 aday, 113 seçim, 0 tam-ret
+         verdict'i. Bu yalnız eleme yapıldığını gösterir; semantik körleşmeyi
+         dışlamaz. Önceki “kapı körelmemiş” hükmü bu ölçümden çıkarılamaz.
+         **9 Eylül: somut hedef/kanıt kaybı bulundu.** Yalnız readTopics veya
+         linkedTopics içinde görülen oy hedefi, hedef yazarın metni ve başka
+         hedefteki USER_ENTRY kanıtı AW bağlamından düşüyordu. Dört minimal
+         örnekte hedef metni 0/4→4/4. PR #125 ayrı çalışma ağacında düzeltildi;
+         son kod `0835f28`, 99/99 odaklı test ve dört gerçek Luna/max AW
+         kontrolü 4/4 (iki REJECT, iki ACCEPT). Son kaynakta model kontrol
+         prompt'ları 4/4 byte eşit; DECISION/BROWSE 16/16 byte eşit.
+         Tekilleştirme ve bozuk parent metadata koruması Opus bulgularıyla
+         eklendi. Opus son N1 kod koşulunu kapattı; ölçüm koşulu yürütücünün
+         exact `dbac058`→`0835f28` karşılaştırmasında 32/32 byte eşitlikle
+         ayrıştırıldı. **PR #125 repo teslimi tamamlandı:** son head `07d9f5f`,
+         exact CI `34370069884` 7/7; main merge `72fb819`, iki içerik ağacı
+         birebir aynı. Tam SHA'lar ölçüm makbuzunda.
+         **10 Eylül 11:14 TSİ: `7ebb887` canlıya alındı.** Exact main CI 7/7,
+         bundle `34372292826`; pinned sunucu kimliği, app/runtime/boot,
+         health/ready/search 200 geçti. T3 pause/resume `270→271→272`,
+         519,909 sn; diğer ayarlar, 36 persona, Luna/max ve 480 sn korundu.
+         **11:23 TSİ ilk doğal koşu SUCCEEDED:** yeni profilde üç fazın
+         3/3 boyut kaydı, AW ACT / 1 aday / 1 seçim; teknik kabul tamamlandı.
+         **Yeni gözlem: 10 Eylül 11:19:22,400 → 11 Eylül 11:19:22,400 TSİ.**
+         Eski profilin 496 terminal koşusu ve 1.603/1.603 boyut kaydı ayrı
+         donduruldu: 9 timeout, AW 1.271 aday / 979 seçim (%22,97 eleme).
+         Bu eski sonuç yeni düzeltmenin etkisi değildir. Yeni profilde
+         boyut/süre/timeout ve AW kararları birlikte okunacak;
+         semantik kalite kapısı açık. Kod/yerel deney yeniden açılmayacak.
+         [Hata, hakemlik, kapsam ve model makbuzu](AW_HEDEF_BAGLAMI_2026-09-09.md).
+         [Canlı dağıtım ve ayrı profil pencereleri](AW_CANLI_KABUL_2026-09-10.md).
+         **12:36 TSİ ara okuma:** 24 terminal (21 SUCCEEDED / 3 PARTIAL),
+         1 timeout; 74/74 pozitif boyut. AW 70 aday / 46 seçim. Henüz
+         77 dakika veri; kazanç, gerileme veya semantik kalite hükmü yok.
+         [Ara ölçüm ve sınırlar](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
+         **15:21 TSİ güncellemesi:** 87 terminal (69 SUCCEEDED / 14 PARTIAL /
+         4 FAILED), 2 timeout; boyutlar 272/272. AW 203 aday / 158 seçim.
+         Dört hata: iki DECISION çağrısı, bir provenance doğrulaması, bir AW
+         çağrısı. Alt provider nedenleri ve nedensellik açık; worker çalışıyor,
+         ayarlar sabit. İki erken hatada model/efor/CLI metadata'sı eksik;
+         bunların dört interval'ı ayrı tutuldu. Henüz 4 saat veri; etki/kalite
+         kabulü verilmedi. [Son ara kontrol](CANLI_ARA_KONTROL_2026-09-10.md).
+         **12 Eylül: 24 saatlik tam pencere OKUNDU** (Gökhan telefonundan Termius
+         SSH deploy oturumu; kanıt
+         [AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md](AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md)).
+         Pencere `08:19:22.400Z→08:19:22.400Z`, yeni profil 327c35e6, hepsi
+         Luna/max. 474 terminal (346 SUCCEEDED / 121 PARTIAL / 9 FAILED / 0
+         TIMED_OUT). Operasyonel timeout **%2,53** (12/474); Gate 10 madde 4
+         metriği (doğal FAILED+TIMED_OUT) **%1,90** (9/474), %5 altı — ama
+         Wilson %95 ~%1,0–3,6 ve gate ayrıca 7 günlük doğal pencere + diğer
+         maddeleri ister, tek başına PASS değil. Interval bütünlüğü tam
+         (1547/1547 pozitif boyut, 0 eksik, 13 censored). **AW eleme %21,66**
+         (1205 aday / 944 seçim; 449 ACT / 6 NO_ACTION) — körelmemiş; semantik
+         kalite kapısı ayrı (körlenmiş, hakem Astra). Faz p50: AW 28,6 /
+         DECISION 196,9 / BROWSE 9,6 sn. Timeout'ların 10/12'si AW'de.
+         **AW düzeltmesi (#112+#125) tam pencerede sağlıklı; teknik kabul
+         tamam, semantik kalite ve 7 günlük pencere açık.**
+
+2. **Kaynak tabanını kapat — KAPANDI (13 Eylül).** Üç ajan da artık **10 taze
+   faydalı** kaynakta; taban **36/36**. Detay ve tarihçe aşağıda; bu adım
+   reset kilitli sırasında tamamlandı.
+   **10 Eylül kesiminde** üç ajan (`aksamustu`,
+   `cikissagda`, `mevsimdisi`) 9'ar taze kaynakta; hedef en az 10. Ortak açık
+   `manifold.press` erişim/tazelik sorunu. Üçüne aday sunuluyor, kaynak evrimi
+   açık; doğal edinme sürüyor. Kaynak ekleme/URL değişimi bu tur yapılmadı.
+   Eski listeden birazuzakta (11) ve yedekparca (10) çıktı; mevcut ölçütle
+   33/36 geçiyor. Kaynak tarafındaki düzeltme ve ardından yeniden sayım açık;
+   atıf verisi silinmeden tamamlanmalı.
+   **15:21 TSİ yeniden sayım:** aynı üç açık ve 33/36; doğal edinme henüz
+   tabanı kapatmadı. Bu tur kaynak yazımı yapılmadı.
+   **12 Eylül üretim izi — blokaj tek ölü kaynakta netleşti** (kanıt
+   [AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md](AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md)).
+   Üç profil de **10 kayıtlı TRUSTED** kaynak taşıyor ama her birinde
+   **`manifold.press` ölü** (ardışık hata 20/17/32, son faydalı 2 Eyl / 20 Ağu /
+   21 Ağu), o yüzden taze faydalı **9**. Diğer 9 kaynağın hepsi 11 Eylül'de taze.
+   Doğal edinme çalışmış — havuz büyümüş, üç profile eski listede olmayan canlı
+   kaynaklar gelmiş — ama tek ölü kaynak her profili 9'da tutuyor. Blokaj geçici
+   değil (2–3 hafta ölü, üyelik duvarı / `SOURCE_AUTH_REQUIRED`).
+   **Remedy (üretim mutasyonu, Gökhan onayı + kendi ölçümü gerekir):** üç
+   profilde ölü `manifold.press`'i engelle/kaldır ki aday mekanizması havuzdan
+   canlı bir 10. kaynağı backfill etsin; ya da doğrudan canlı Türkçe yayınla
+   değiştir.
+   **12 Eylül — uygulandı** (Gökhan onayı, telefonundan `scripts/kaynak-duzelt.sh`
+   execute). Önizleme gerçek kısıtı yakaladı: manifold `adminPinned=true`,
+   engellenemiyor (`CHECK(NOT(pinned AND blocked))`); gereksiz de: yalnız yeni
+   kaynak eklemek yeter. Üç profile de `www.log.com.tr` (başka profilde taze/canlı
+   Türkçe kaynak) PROBATION olarak eklendi (`OPERATOR_MANIFOLD_BACKFILL`, 3 satır);
+   manifold'a dokunulmadı. Geri alma: `addedByOrigin` etiketiyle sil.
+   **13 Eylül 08:59 TSİ yeniden sayım — KAPANDI:** üç profil de **taze faydalı 10**
+   (kayıtlı 11). Eklenen `log.com.tr` gece çekildi (lastUsefulAt 13 Eyl
+   01:49–02:24 UTC), `PROBATION`→`TRUSTED` yükseldi, ardışık hata 0. Taban 36/36;
+   reset kilitli sırasının 2. adımı tamam. Ölü manifold hâlâ kayıtlı (pinned) ama
+   taze sayımını etkilemiyor; ayrı unpin editoryal karar olarak açık kalabilir.
+   Kanıt: [AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md](AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md).
+3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
+
+   **10 Eylül yerel restore provası tamam:** PostgreSQL 16.14, sentetik seed
+   ve ajan fixture'ı; 47 tablo / 369 satır / 3 sequence eşit. Beş DELETE
+   koruması beklendiği gibi engelledi, son özet aynı; scratch DB'ler temizlendi.
+   **Yerel yürütücü de uygulandı:** 29 tablo tek transaction içinde temizleniyor;
+   17 korunan tabloda içerik doğrulaması var. İdempotency satırları silinmeden
+   süreleri bitiriliyor, yeni audit ekleniyor. Bekleyen outbox/koşu/lease veya
+   başka bağlantı varsa işlem duruyor; hata sonrası tüm değişiklikler geri alınıyor.
+   18 gerçek PostgreSQL senaryosu geçti; bağımsız Opus 5 kapanışı yerel kod
+   için GO verdi. Repo teslimi tamam: PR #126, exact CI 7/7, merge `9b3fc6b`. [Uygulama makbuzu](GREAT_RESET_YEREL_ARAC_2026-09-10.md).
+   **Kalan:** üretimde bekleyen olaylar için kayıpsız tüketim/arşiv kararı,
+   app/worker kapanışı ve cache/public görünümün yeniden açılış kabulü,
+   gerçek üretim yedeği/restore. Yerel başarı üretim reset izni değildir.
+   **11 Eylül: üretim runbook taslağı yazıldı** —
+   [RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md](RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md).
+   **Yürütücü kararı (Gökhan, 24 Eylül: "hızlı araç"):** test edilmiş yerel reset aracı
+   pinned üretim profiliyle; elle SQL yok. Yedek yeri: kişisel T3 sunucusu (B9).
+   **Reset'e bağlanan iki iş (Gökhan, 24 Eylül: "kalanlar fine"):** tek entry'li başlıkların
+   indeks eşiği (6.3-5) ve oturum çerezinin `__Host-` önekine geçmesi reset'le aynı anda.
+   **25 Eylül çekirdek teslimi:** PR #225, incelenen exact `d35984e` ve 7/7 CI sonrası
+   `890b467` olarak main'e birleşti. Opus 5.5 salt okunur kod hakemi `KOD GO` verdi:
+   diğer backend/hazırlanmış işlem, trigger/RLS ve public ID sequence `DEFAULT` kapıları
+   yerel çekirdekte; üretim profili veya dağıtım yok. Hakemin kalan P3 sınırları
+   [üretim tasarımına](RESET_URETIM_PROFILI_TASARIMI_2026-09-25.md) taşındı.
+   **Üretim profili tasarımı:** Opus 5.5 v3 `146a319` için 6 P2, 3 P3;
+   v4 `3a7d689` için 4 P2, 6 P3; v5 `4a5dc87` için 1 P2, 7 P3 ile
+   `TASARIM DÜZELTİLMELİ` dedi. v6 exact `eeb1b54` için Opus 5.5
+   **TASARIM UYGUN** dedi (P1/P2 yok; 8 P3 uygulama sınırı). v7 exact
+   `19a6c85` için de Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; 7 P3).
+   v8 exact `ace70f6` için de Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok;
+   6 P3). v9 exact `6ca052f` için bir P2 ve dört P3 ile
+   **TASARIM DÜZELTİLMELİ** dedi: dış trafik açılmadan önce imzalı yedek
+   neslinin durum geçişi tanımsızdı. v10 exact `719e191` için Opus 5.5
+   **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v11 eski imzalı kaydın tekrarını
+   korunan DB trafik olayıyla engellemeyi hedefledi; Opus 5.5 v11 exact
+   `6c032ee` için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): rollback
+   sonrası eski imzalı kayıt yine kullanılabiliyordu. v12 exact `c0442c8`
+   için Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v13 sequence'in
+   doğrudan olumlu kontrolünü, kapı sonrası PID/snapshot kontrolünü ve gerçek
+   tablo sahibi sınırını kabul kapısına ekledi. Opus 5.5 v13 exact `483886a`
+   için **TASARIM DÜZELTİLMELİ** dedi (1 P2, 6 P3): geri dönüş penceresindeki
+   iç kabul yazıları tam özet eşitliğini bozabilirdi. v14 exact `a8b52ca`
+   için Opus 5.5 **TASARIM UYGUN** dedi (P1/P2 yok; sıra çelişkisi ve altı
+   P3 kabul ayrıntısı). v15 exact `2a34d8e` için de Opus 5.5
+   **TASARIM UYGUN** dedi (P1/P2 yok; 6 P3). v16 restore penceresinin
+   `TRAFFIC_OPEN` geçişinde bittiğini ve normal app'in boş cache/TLS smoke
+   kabulünü netleştirir. v17 aşağıdaki 26 Eylül 410 kararını ve Astra'nın üst
+   namespace kilidini işler. Astra v17 exact `e34fa5a` için **TASARIM
+   DÜZELTİLMELİ** dedi (2 P2, 1 P3); v18 reset sonrası `publicId` alt sınır
+   kısıtını ve runbook adım eşlemesini ekler; Astra v18 exact `4b8bace` için
+   **TASARIM UYGUN** dedi (P1/P2/P3 yok).
+   Kod, migration,
+   bütçe, kontrol yolu, gerçek boyutlu restore ve uygulama hakemliği açık.
+   **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
+   silinen başlık/entry/yazar adresleri **410 Gone** döner. Gerekçe: içerik kalıcı olarak
+   gitti; 410 bunu arama motoruna ve yapay zekâ tarayıcılarına açıkça söyler, eski
+   adresler dizinden 404'e göre daha hızlı düşer, "geçici hata mı" belirsizliği kalmaz.
+   (Astra 26 Eylül: "daha hızlı düşer" iddiası repoda ölçülmedi; seçim gerekçesi
+   sayılmaz.)
+   İlk güvenlik varsayımı eksik çıktı: `TRUNCATE … CONTINUE IDENTITY` mevcut sequence
+   değerini korur, ancak geçmişte silinmiş ve o andaki en büyük değerden yüksek bir
+   ID'nin yeniden kullanılmadığını tek başına kanıtlamaz. v4 tasarımında güvenli
+   çözüm, eski `INTEGER` namespace'ini tamamen 410 alanı yapıp ayrı onaylı `BIGINT`
+   geçişiyle yeni ID'leri `2147483648` üstünden başlatmaktır. **26 Eylül Gökhan
+   kararı ("Yalnız bilinen silinmişe 410", Astra önerisi):** eski aralığın tamamına
+   410 verilmez; reset anında silinen kayıtların `(kind, uuid, publicId)` mezar taşı
+   tutulur, yalnız bunlara 410, bilinmeyen/hiç kullanılmamış ID'ye 404. Reset öncesi
+   fiziksel silinmiş içerik 404 kalır. `BIGINT` yeniden kullanımı önlemek için korunur;
+   migration–reset arasında üst aralık `CHECK` ve sequence `MAXVALUE` ile kapalıdır.
+   Geçiş ve kabul olmadan reset GO yok. Sitemap eski adresleri içermez.
+   **15:21 TSİ somut outbox engeli:** 191.768/191.768 satır işlenmemiş,
+   mevcut mimaride consumer yok. Kendiliğinden drain beklenmeyecek; eski
+   olayları ve işlenmemiş durumunu kayıpsız koruyan, reset öncesi kümeyi
+   gelecekteki tüketimden ayıran tasarım hazırlanmalı. OUTBOX_PENDING
+   koruması ve üretim kapısı açık; processedAt ile sahte tüketim yapılmaz.
+   [Doğrudan prova kanıtı](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
+
+   **10 Eylül — outbox arşivi, iki hakem turunda üç gerçek güvenlik açığı kapatıldı:**
+   PR #127; uzak head `22701725546aa8e945e80f23dc4e965725bda476`, bu tam head için
+   CI `34500131757` **7/7 SUCCESS** (quality, browser, database, container, behavior,
+   coverage, validate). Önceki aday `a068744` ve CI `34485420687` tarihsel kayıttır.
+   Hakem bu turda **Astra** (yürütücü Claude olduğu için — bkz. hakem seçimi).
+   Beş tur: **NO-GO, NO-GO, KOŞULLU, KOŞULLU, GO** — son karar yalnız bu yerel paket için.
+   İlk iki turun bulguları **aynı hata sınıfıydı**:
+   koruma, çağıranın kendi snapshot'ında arşivin görünmesine bağlıydı. Üçü de
+   gerçek PostgreSQL deneyiyle **yeniden üretildi**, sonra düzeltildi:
+   1. Arşivden önce snapshot almış `REPEATABLE READ` yazıcısı arşivlenmiş olayın
+      `processedAt` alanını **hatasız değiştirdi**. `FOR UPDATE` kilidi çözmedi
+      (yeni satır sürümü doğurmuyor). Çözüm: arşivleme, üyelikten önce içeriği
+      değiştirmeyen bir yazmayla satır sürümünü tazeliyor; yazıcı artık 40001 alıyor.
+   2. Düz `INSERT`, `eventCount=1` diyen arşive ikinci üyeyi ekledi (manifest tutarsız).
+   3. Aynı snapshot açığı `TRUNCATE`'te kalmıştı: eski snapshot'lı oturum üyelikleri
+      **hatasız sildi** — başlık kalır, olaylar yeniden tüketici adayı olur.
+
+   (2) ve (3) için koruma artık satır görünürlüğüne değil **açık niyet kapısına**
+   (`SET LOCAL` GUC) bakıyor; kapı boolean değil **hedef `archiveId`** taşır ve yalnız
+   üyelik INSERT'i boyunca açıktır. Eski "tablolar boşsa TRUNCATE serbest" istisnası
+   kaldırıldı. **Sınırlar:** GUC'yi herhangi bir oturum ayarlayabilir — bu koruma
+   kazara/yarışan yazıcıya karşıdır, kararlı SQL operatörüne karşı değil; paketin ilan
+   ettiği tehdit modeli zaten budur. Ayrıca `SET LOCAL` **savepoint'ten bağımsız
+   değildir**: ayardan önceki bir savepoint'e rollback kapıyı geri alır — meşru yol
+   düşer, kapı açık kalmaz.
+
+   Ayrıca prova teşhisi düzeltildi (kapalı `stdin` yüzünden görüntü tam gerektiği anda
+   kayboluyordu) ve teşhis dalı artık **kendi senaryosuyla sınanıyor**. Eski snapshot
+   TRUNCATE senaryosu ilk yazımda arşivden SONRA snapshot alıyordu, yani kaçağı hiç
+   sınamıyordu (Astra bulgusu); düzeltildi ve **negatif kontrolle ayırt ediciliği
+   kanıtlandı** — eski guard'da üyelikler siliniyor, yenisinde 55000 ile reddediliyor.
+   Maliyet: 192.001 olayda **preview + execute toplamı** (yalnız execute değil)
+   tazeleme öncesi **13,4-15,4 sn (n=2)**, sonrası **19,2-34,6 sn (n=4)** —
+   **varyans yüksek, tek sayı maliyet diye sunulamaz**; yön net, büyüklük kesin değil.
+   CLI bütçesi 90 sn; ayrıca transaction 60 sn ve her SQL 20 sn sınırları geçerli.
+
+   Güncel ölçümler: `probe-09` **36/36 PASS** (probe-07/08 de 36/36), eşzamanlılık
+   provası **3/3 PASS**, entegrasyon paketinin tamamı **22 dosya / 269 test PASS**,
+   unit 1452/1452, format/lint/typecheck PASS. İki regresyon testi de **negatif
+   kontrolle** ayırt edici bulundu: düzeltme geri alınınca düşüyorlar.
+   **Açık kalan:** probe-01/02/03 FAIL'lerinin kök nedeni **kanıtlanmadı ve yeniden
+   üretilemedi**; GO gerekçesi sayılmıyor. 30 sn prova bütçesi istemciyi öldürür ama
+   sunucudaki sorgunun bitişini garanti etmez (`statement_timeout` konmuş değil).
+   Önceki yeşil CI bu düzeltmeleri kapsamıyor. Üretime bağlanılmadı; migration/reset
+   yapılmadı. AW penceresi ve kaynak kapıları aynı sırada açık.
+   [Uygulama ve hakem uzlaştırması](RESET_OUTBOX_ARSIVI_2026-09-10.md).
+
+   4 Eylül incelemesi provaya girmesi gereken maddeleri somutladı — bunlar bende yoktu:
+
+   | konu                                  | neden                                                                                                                            |
+   | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+   | Worker ve devam eden lease'ler        | Silme sırasında yeni içerik üretimi veya eski koşunun sonucunu yazması engellenmeli                                              |
+   | Korunan `idempotencyRecord`           | Eski yanıt, artık SİLİNMİŞ entry/topic'i "başarılı" diye geri döndürebilir; TTL ya da kapsamlı geçersizleştirme kararı gerekiyor |
+   | Korunan outbox/audit                  | Eski olayların yeni boş içeriğe karşı yeniden işlenmesi ve denetim izinin anlamı netleşmeli                                      |
+   | Immutable kurallar ve foreign key'ler | Normal silmeyi engelleyen kurallar reset için açık ve denetlenebilir tasarım istiyor                                             |
+   | Kaynak edinme adayları                | Kaynaklar kalsa da `agent_actions` silinince aday sorgusunun dayanağı geçici olarak kayboluyor                                   |
+   | Sayaçlar, cache, indeks yüzeyleri     | Sıfırlanan veriyle eski public görünüm karışmamalı                                                                               |
+   | Gerçek restore                        | Yedeğin ALINMASI değil, tutarlı GERİ YÜKLENEBİLMESİ ispatlanmalı                                                                 |
+
+   `idempotencyRecord` maddesi gözlenmiş bir hata değil; koruma listesi ile 24 saatlik yanıt
+   saklama davranışından çıkan, uygulama öncesi tasarım gereği.
+
+4. **Reset.**
+5. **7 günlük pencere** → Gate 10 kanıtı + reset ölçümü birlikte.
+
+Reddedilen alternatif: reset'i öne alıp aday listesine "atıf verisi yoksa kaç ajanda var
+sayısına bak" geri düşme kuralı yazmak. Yapılabilir ama ölçüme dayanmayan bir sıralama
+üretir — 3 Eylül'de tam bundan kaçınıldığı için (güven skorları kıpırdamadığı halde onlara
+göre sıralamak) burada da kaçınıldı.
+
+---
