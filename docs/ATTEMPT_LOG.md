@@ -3372,3 +3372,15 @@ false/true` yapabildi; geçici rol ve DB silindi.
   istem slot/batch sırasını açıklar. Anahtar/limit ortaklaştırıldı; üçüncü taraf çağrı yok.
 - Tekrarlama: API uzunluk kuralını tarihsel DB satırının garantisi sanma; kontrollü öneri
   reddi ile transaction/altyapı hatasını aynı başarı yoluna koyma.
+
+- P3b ilk CI `37157703515`: DB/browser/container/quality geçti; behavior/coverage yeni
+  `agentPurpose` modelinin reset sınıflandırmasında olmamasıyla kaldı:
+  `AssertionError: expected [ 'agentPurpose' ] to deeply equal []`. Mevcut sentetik reset
+  sözleşmesinde amaç iç durumdur; creation/claim run FK'leri nedeniyle koşudan önce
+  temizlenecek sınıfa eklendi, kapsam/üst sınır testleri korunup FK sırası sınandı.
+  Bu yalnız kod uyumluluğudur; reset komutu çalıştırılmadı, üretim reset yetkisi yoktur.
+- Hakem sonrası 119 ilgili birim/8 yeni PG16 ve bir admin-only yaşam defteri erişim testi
+  geçti. CAS AppError için eksik typed ErrorCode typecheck'te yakalandı;
+  `AGENT_PURPOSE_VERSION_CONFLICT` eklendi ve typecheck tekrar geçti.
+- Tekrarlama: yeni Prisma modelinde reset sınıflandırmasının tamlık kapısını yerelde çalıştır;
+  yeni tabloyu sırf testi geçirmek için rastgele korunan/temizlenen listeye koyma.
