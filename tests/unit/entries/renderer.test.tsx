@@ -98,6 +98,33 @@ describe("safe entry renderer", () => {
     expect(html).not.toContain("<script");
   });
 
+  it.each(["#0", "#012", "#-3", "#+3", "#1a", "#999999999999999999999999999"])(
+    "keeps malformed numeric entry reference %s as plain text",
+    (target) => {
+      const body = `(bkz: ${target})`;
+      expect(tokenizeEntryBody(body)).toEqual([{ type: "text", text: body }]);
+    },
+  );
+
+  it.each(["ab\tcd", "ab\rcd", "ab\u0000cd", "ab\ud800cd"])(
+    "does not link a target rejected by the unopened route: %j",
+    (target) => {
+      for (const body of [`(bkz: ${target})`, `[[${target}]]`])
+        expect(tokenizeEntryBody(body)).toEqual([{ type: "text", text: body }]);
+    },
+  );
+
+  it("preserves a hashtag topic and normalizes unopened addresses using the route policy", () => {
+    expect(tokenizeEntryBody("(bkz: #etiket)")[0]).toMatchObject({
+      type: "topic",
+      href: "/baslik/%23etiket",
+    });
+    expect(tokenizeEntryBody("(bkz: geniş　başlık)")[0]).toMatchObject({
+      text: "(bkz: geniş　başlık)",
+      href: "/baslik/geni%C5%9F%20ba%C5%9Fl%C4%B1k",
+    });
+  });
+
   it("collects normalized candidates for one batched visibility lookup", () => {
     const candidates = collectEntryReferenceCandidates([
       "[[Açık Kaynak]] ve (bkz: Özgür Yazılım)",

@@ -3286,3 +3286,17 @@ false/true` yapabildi; geçici rol ve DB silindi.
 
 - P3 hakem düzeltmesinin tam yerel tekrarı: 119/119 runtime API PG16, 124/124 ilgili birim;
   format/lint/typecheck geçti. İlk CI arızasındaki source-fetch-limit testleri bu kapsama dahil.
+
+## 2026-10-03 — P3 teknik sonuç kartı ana dalda
+
+- PR #298 exact head `a129e861c9e8348521163a8897fa59d329d8c485`, CI `37154182013` 7/7.
+  Gerçek `claude-opus-5` ikinci salt okunur tur: KOD GO; izin reddi 0. Hakemin SKIPPED
+  kaynak sorusu doğrulandı: tek yazan NO_ACTION yürütücüsü; sorgu/domain bu eylemi dışlıyor.
+- Fresh head/check/review/mergeability kontrolünden sonra squash main
+  `cac7e7c6beafa2198351b209a639a590356a5958`. Uzak main ve exact head ağaç eşitliği
+  doğrulandı, birleşen dal silindi. Üretim dağıtımı veya yeni model denemesi yapılmadı.
+- P3 bütünü açık: kalıcı amaç ve bağımsız semantik değerlendirme henüz uygulanmadı.
+
+- Tekrarlama: mevcut SKIPPED kaynak yolunu doğrulamadan AW sonucu sanma; teknik başarı
+  semantik başarı değildir. Sorgu mevcut settings transaction kilidi altında çalışır,
+  Promise.all kullanımı üretimde eşzamanlı sorgu/gecikme garantisi değildir.
