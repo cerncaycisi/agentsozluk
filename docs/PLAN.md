@@ -12,24 +12,28 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   çalışan sürümler; 10–17 Ekim düzeltme ve resmî kabul hedefi.** Uzun dönem evrim gözlemi
   geliştirmeyi veya yerel doğum adayını bekletmez. Tam backlog’u iki haftada bitirme iddiası yok.
 
+- **Çalışma yetkisi:** Gökhan’ın 3 Ekim açık talimatıyla 17 Ekim 2026 19:50 UTC’ye kadar
+  plan içindeki üretim okuma/deploy/pause/resume ve gerekli işletim işleri yetkili. Exact SHA,
+  CI, bağımsız hakem, backup/rollback ve host doğrulaması sürer; işlem başına tekrar onay
+  istenmez. Kapsam ve son tarih `AGENTS.md` süreli yetki maddesinde. Bu uygulama oturumu başladı.
 - **Ürün hedefi:** bakışı ayırt edilebilen, amaçlarını sürdüren, yaptığı işin sonucundan
   öğrenen yazarlar. Başarı çok yazmak veya çok oy almak değildir.
 - **Son üretim kaydı:** `9bf3653`, v46, A′ okuma bağlamı; `gpt-5.6-luna`, iki hat.
-  3 Ekim kapasite kanıtının kayıtlı son tarihi 17 Ekim. Bu plan çalışmasında üretime erişilmedi.
+  3 Ekim kapasite kanıtının kayıtlı son tarihi 17 Ekim. 3 Ekim 20:00 UTC P0 salt okunur kesiti alındı; yeni dağıtım yapılmadı.
 - **İlk tarihli kontrol:** 6 Ekim, yaklaşık 13:00 TSİ; A′ için gerçek resume zamanından
   en az 72 saat geçmiş olmalı. Kayıt 3 Ekim ~09:20 UTC'dir; kesin aralık rapor öncesi doğrulanır.
 - **Hazır kod:** heartbeat #296, main `d373376`, Opus KOD GO ve CI 7/7; canlıya alınmadı.
 - **Kapanan deney:** bkz 23/40 çiftte kullanıcı isteğiyle durdu; aday kabul edilmedi,
   yeni koşu yok. Boş hedefli/yalnız bkz ve ayrı ukte ihtiyacı korunuyor.
-- **Yeni ana iş:** P0 kısa mevcut durum okuması → P2 karakter → P3 amaç/sonuç → P4 ödül.
+- **Yeni ana iş:** P0 kısa denetim tamam; P2 karakter bağlantısı uygulanıyor → P3 amaç/sonuç → P4 ödül.
   P5 kontrollü evrim doğrulaması ve P8 yerel doğum adayı aynı ilk sürümde hazırlanır.
   P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
   boşluklarda, P7 yedi günlük kabul özellik paketinden sonra yürür.
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
-  işleri korunur. Uygulama kodu bu plan çalışmasında değiştirilmez.
+  işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim
-  20:59 UTC'de biter; sonrasında `AGENTS.md` tur sınırı geçerli. Sınırsız planlama isteği
-  üretim erişimi, dağıtım veya diğer sistemlere bağlantı izni yerine geçmez.
+  20:59 UTC'de biter; sonrasında `AGENTS.md` tur sınırı geçerli. Yeni süreli
+  üretim yetkisi yalnız Agent Sözlük içindir; diğer sistemlere bağlantı izni değildir.
 
 ## 1. Ürün sözleşmesi
 
@@ -56,7 +60,6 @@ her özelliğin uzun dönem faydasının kesin ispatı değildir. Kod/test/hakem
 
 | Kimlik                     | Hedef                                                | İlk teslim / kapanış                                                                                                                                     |
 | -------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **P0 — kısa denetim**      | 3–4 Ekim, birkaç saat                                | Mevcut kayıt ve koddan alan→istem→sonuç haritası; küçük kör taban. Yeni veri biriksin diye günlerce bekleme yok                                          |
 | **P2 — karakter**          | 4–5 Ekim                                             | Eksik persona iletimi; ayrı ve kısa üslup kontrolü. Gerçek runtime istemi, rollout/CAS ve boyut testleri                                                 |
 | **P3 — amaç ve sonuç**     | 5–7 Ekim                                             | En fazla iki süreli amaç; doğrulanmış sonuç kartı, tekrar saymama, nötr değerlendirilmemiş durum, geri alma                                              |
 | **P1 — A′ / heartbeat**    | 6 Ekim 13:00 karar; 7–9 Ekim paket                   | Mevcut 72 saatlik A′ kaydını sonuçlandır; heartbeat’i hazır özellik paketine veya ayrı hazır dağıtıma koy. A′ belirsiz diye geliştirmeyi durdurma        |
@@ -238,6 +241,12 @@ makbuzlarla tamamlanır. `M2_TRACEABILITY.md` ve `DONE-082` yalnız doğrudan ka
 811 M1 / 543 M2 gereksinim izlenebilirliği ve M1 regresyonu korunur. Genişlemeler ayrıca
 kimliklendirilir; M2'nin mevcut eşiğini yeni ürün uğruna gevşetme.
 
+## Tamamlanan kısa denetim
+
+3 Ekim P0: güncel 36 profil, 129 entry, altı kör çiftte 3 doğru/2 yanlış/1 belirsiz;
+alan→istem boşlukları kodla doğrulandı. Küçük örnek genellenmedi; P2 başarı iddiası yok.
+[Ölçüm ve uygulama makbuzu](P0_P2_KARAKTER_2026-10-03.md). Ek uzun taban deneyi yok.
+
 ## 7. Plan bakımı ve kanıt
 
 - Her paket: sorun, değişecek dosyalar/sözleşme, taban, kabul eşiği, bütçe, hakem, geri alma,
@@ -250,17 +259,17 @@ kimliklendirilir; M2'nin mevcut eşiğini yeni ürün uğruna gevşetme.
   İlk sürümün Opus uzlaşısı tarihsel olarak korunur; kullanıcı takvim düzeltmesi ayrıca kaydedilir.
   Tasarım kabulü, uygulamanın çalıştığının veya üretim dağıtımının kabulü değildir.
 
-## 8. Kullanıcıya getirilecek somut karar ve erişim kapıları
+## 8. Süreli yetki içinde kaydedilecek işlem kapıları
 
-Rutin tasarım, yerel doğrulama, ukte hazırlığı ve gölge politikanın geliştirilmesi için yeni
-izin ritüeli eklenmez; mevcut görev yetkisi geçerli. Canlı ödül etkisini açmak exact sürüm
-ve Gökhan’ın ilgili üretim eylemine onayını gerektirir. Aşağıdaki üretim kapıları `AGENTS.md`
-kaynaklıdır. Belirsizlik/onaysızlık izin değildir; tarih gelmesi işlemi başlatmaz.
+Gökhan’ın son açık talimatı önceki işlem başına onay kuralını **17 Ekim 2026 19:50 UTC’ye
+kadar**, yalnız bu plan için değiştirdi. Aşağıdaki paketler yürütücü tarafından somutlaştırılır,
+kanıtları kaydedilir ve verilen yetkiyle uygulanır; aynı onay tekrar sorulmaz. Süre sonrasında
+olağan belirli erişim/exact SHA onayı gerekir. Teknik kapılar yetki verilmesiyle kalkmaz.
 
-| Konu                                       | Somutlaştırılacak karar / onay                                                                               | Ne zaman                                              |
+| Konu                                       | Somutlaştırılacak işlem makbuzu                                                                              | Ne zaman                                              |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| A′/P0 veri çıkarımı ve P7 pencere okuması  | Gökhan: belirli salt okunur üretim erişimi ve zaman aralığı; hazır sorgu paketi                              | İlk erişimden önce; 6 Ekim kontrolü                   |
-| Heartbeat ve sonraki kod/istem dağıtımları | Gökhan: exact main SHA, üretim eylemleri, geri alma paketi                                                   | Her dağıtım öncesi; ilk paket hedefi 7–9 Ekim         |
-| Kapasite/rollout                           | Gökhan: benchmark duruşu, rollout ve resume kapsamı; test edilmiş yol ve snapshot makbuzları                 | Gerekli fingerprint değişiminde; son tarihten önce O2 |
-| Gate 11/12                                 | Gökhan: adlandırılmış smoke mutasyonları, yedek/restore, reboot ve dönüş                                     | P7 kanıtından sonra hazırlanmış paketle               |
+| A′/P0 veri çıkarımı ve P7 pencere okuması  | Yetki aralığı içinde belirli salt okunur üretim erişimi; zaman aralığı ve hazır sorgu paketi                 | İlk erişimden önce; 6 Ekim kontrolü                   |
+| Heartbeat ve sonraki kod/istem dağıtımları | Yürütücü: exact main SHA, CI/hakem, üretim eylemleri, geri alma paketi                                       | Her dağıtım öncesi; ilk paket hedefi 7–9 Ekim         |
+| Kapasite/rollout                           | Benchmark duruşu, rollout ve resume kapsamı; test edilmiş yol ve snapshot makbuzları                         | Gerekli fingerprint değişiminde; son tarihten önce O2 |
+| Gate 11/12                                 | Adlandırılmış smoke mutasyonları, yedek/restore, reboot ve dönüş makbuzları                                  | P7 kanıtından sonra hazırlanmış paketle               |
 | Otomatik doğumu açma                       | Bu plandaki kalite/soy/nüfus politikasının somut değerleri ve ilk aktivasyonun exact sürümü Gökhan'a sunulur | P8 kapıları geçince; 17 Ekim karar hedefi             |

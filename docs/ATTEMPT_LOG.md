@@ -3181,3 +3181,59 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - **Tekrarlama:** her değişiklik için haftalarca bekleme icat etme. Takvim baskısıyla resmî
   yedi günü kısaltma veya küçük örneği uzun dönem başarı sayma. Yeni işleri bekleten uzun
   değerlendirmeyi ve otomatik deney uzatmasını geri getirme.
+
+## 2026-10-03 — süreli yetki, P0 kısa kesit ve P2 bağlantı testleri
+
+- **Yetki/ortam:** Gökhan iki hafta deploy/durdurma dahil tam çalışma yetkisi verdi.
+  Kayıt 3 Ekim 19:50 UTC–17 Ekim 19:50 UTC, yalnız Agent Sözlük planı; tekrar onay yerine
+  exact sürüm/CI/hakem/backup/rollback kapıları ve işlem makbuzu korunur. AGENTS/PLAN uzlaştırıldı.
+  Kod tabanı `a4676c781f22a1ac7e32fdd9927ff52d045fd684`, dal `feat/author-character-context`.
+- **P0 salt okunur erişim:** host/repo/Compose/pin/DNS doğrulandı; 20:00:19 UTC, checkout
+  `9bf3653ff152d4a704c1774ccd6782e0a3322f29`. READ ONLY/15s sorgu; 36 profil/129 entry,
+  33 yazarda ≥2 örnek. V46 doğal koşu matrisi 197 SUCCEEDED/57 PARTIAL/2 RUNNING.
+  Çalışan imaj kimliği veya Gate 10 kabulü iddia edilmedi; yazma/restart/pause yok.
+- **Kör taban:** seed 20261003, altı çift, kimlik/başlık gizli; Opus 5 tek araçsız okuma,
+  izin reddi 0, is_error=false; yardımcı Haiku kaydı var. 3 doğru/2 yanlış/1 belirsiz;
+  konu etkisi ayrışmadı, kısa metin veya kişisel anı yokluğu hata sayılmadı.
+- **P2 neden/çözüm:** mevcut ikna, dikkat, sıkılma, mizah/çatışma ve ilişki tercihleri
+  renderer’da eksik. Normal snapshot aktarımı eklendi; ham persona ve genel üslup değişmedi.
+  Önce düşen worker regresyonu düzeltmeden sonra geçti; 135 birim + 11 PG16 rollout testi.
+  V47 eski kapasite kanıtını reddediyor. Canlı rollout yapılmadı.
+- **Yerel araç hatası:** doğrudan pg16 psql `libpq.so.5: cannot open shared object file` verdi.
+  Kök neden çıkarılmış yerel PG16 paketinin library yolu; ilgili komuta
+  `LD_LIBRARY_PATH=/home/agent/pg16/root/usr/lib/x86_64-linux-gnu` verilince test DB kimliği
+  doğrulandı ve testler geçti. Üretim/fixture regresyonu değil; sunucu yeniden başlatılmadı.
+- **Tekrarlama:** eski P0 verisini güncel diye kullanma; persona kaynak dosyasını değiştirip
+  canlı snapshot değişti sanma; yeni istemi eski kapasiteyle iki hatta başlatma. Ham metinler,
+  persona snapshot’ları ve kör anahtar yalnız özel yerel dizinde; ledger’a alınmadı.
+
+## 2026-10-03 — P2 ilk Opus turunun doğrulanan bulguları
+
+- Exact inceleme SHA `a036cf13e144344d7b480ffb5609a2d88c7c4432`; gerçek `claude-opus-5`,
+  araçsız/salt okunur, izin reddi 0, yardımcı Haiku kaydı var. KOD DÜZELTİLMELİ.
+- Container probu sıfır profilde başarı bekliyordu; CLI gerçekte
+  `PROMPT_ROLLOUT_POPULATION_EMPTY` ile çıkış 1 verir. Beklenti bu kesin hata/çıkışa düzeltildi;
+  import/DB hataları kabul edilmez. İlk CI run `37150583788` container adımında aynı
+  hatayı doğruladı; diğer beş iş geçti, validate container nedeniyle başarısız. Düzeltilmiş
+  sürümün CI sonucu henüz bekleniyor.
+- `conflict.threshold` yönü mevcut şema/editörde belirtilmiyor; belirsiz sayısal talimat
+  renderer’dan çıkarıldı. Diğer çatışma tercihleri ve persona verisi korunur.
+- `dotenv` dependencies altında doğrulandı; ek bağımlılık gerekmiyor. İlk güven/ilgi
+  değerlerini başka runtime kodu tüketmiyor. Yetki kapsamı planın kabul edilmiş SHA’sına pinlendi.
+- 36 mevcut snapshot yeniden doğrulandı: şema/ontology/drift 0, yeni maksimum 12.397 karakter.
+- Tekrarlama: shell sözdizimi geçişini gerçek konteyner davranışı sayma; boş nüfusu başarı
+  zannetme; anlam yönü tanımlanmayan sayıyı karakter talimatına dönüştürme.
+
+## 2026-10-03 — P2 ikinci kod turu, mekanik koşullar
+
+- Exact SHA `e14d8aa64b04db33e476f8ac30feda418fc3b89b`, gerçek `claude-opus-5`, salt
+  okunur/araçsız; izin reddi 0, is_error=false. Önceki teknik bulgular kaynakla kapandı.
+- Karar KOD DÜZELTİLMELİ; hakem dört mekanik koşuldan sonra üçüncü tur gerekmediğini
+  belirtti. Ortak BROWSE/AW snapshot etkisi belgelendi, renderer/profile hash pin testi
+  eklendi, yanlış v46 test adı v47 yapıldı, NO_ACTION/uydurma sınırları doğrudan sınandı.
+  Yetki maddesine süreli istisna bağlantısı eklendi. Koşulsuz KOD GO diye yazılmadı.
+- 100 ilgili birim testi, lint/typecheck geçti. Önceki 135 birim/11 PG16 kapsamının kalan
+  kodu değişmedi. Son exact sürüm için CI yeniden çalışacaktır. Yeni model pilotu yok: açık
+  A′ penceresi boyunca aynı Codex kotasında lab başlatmama kuralı korunuyor.
+- Tekrarlama: genel AW eşiği değişmedi diye AW girdisi aynı sanma; ortak snapshot üç
+  fazın maliyetini etkiler. P2 kısa pilotu ve teknik kapasite kanıtı ayrı kapılardır.

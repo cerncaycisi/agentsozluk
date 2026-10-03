@@ -39,6 +39,8 @@ import {
   runtimeDecisionReserveMs,
 } from "@/modules/agents/domain/runtime-browse-experiment";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { renderPersonaPrompt } from "@/modules/agents/personas/prompt-renderer";
+import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 
 function usageWithIntervals(
   codexIntervals: { startedAt: string; finishedAt: string; durationMs: number }[],
@@ -896,6 +898,43 @@ describe("long-lived agent runtime worker", () => {
       level: "error",
       code: "RUNTIME_CREDENTIAL_REJECTED",
     });
+  });
+
+  it("keeps decision preferences in the approved persona snapshot used by a normal wake", () => {
+    const persona = seedPersonaSchema.parse(originalPersonaPack.personas[0]);
+    persona.persuasionConditions = ["ölçümün yeniden kurulabilmesi", "bağımsız karşı örnek"];
+    persona.boredomConditions = ["aynı örneğin tekrar edilmesi", "sonuçsuz teknik yarış"];
+    persona.valuedContent = ["işleyişi görünür kılan örnek", "hesabı denetlenebilir karşılaştırma"];
+    const context = fixtureContext(randomUUID());
+    context.persona.renderedPrompt = renderPersonaPrompt(persona);
+    context.persona.document = {
+      ...persona,
+      persuasionConditions: ["rollout yapılmamış farklı tercih", "henüz onaylanmamış tercih"],
+    };
+    const prompt = buildRuntimePrompt(context);
+    for (const value of [
+      ...persona.persuasionConditions,
+      ...persona.boredomConditions,
+      ...persona.valuedContent,
+      ...persona.epistemicApproach.persuasionSignals,
+      ...persona.indifferentTopics,
+      ...persona.dislikedBehaviors,
+      ...persona.relationshipTendencies.trustGains,
+      ...persona.relationshipTendencies.trustLosses,
+      ...persona.humor.preferredTargets,
+      ...persona.humor.neverTargets,
+      ...persona.conflict.deescalationSignals,
+    ]) {
+      expect(prompt).toContain(value);
+    }
+    expect(prompt).not.toContain("rollout yapılmamış farklı tercih");
+    expect(prompt).not.toContain("henüz onaylanmamış tercih");
+    expect(prompt).toContain(
+      "güvenlik/kanıt kurallarına istisna değildir; gerekirse NO_ACTION seç",
+    );
+    expect(prompt).toContain("geçmiş olay, tanışıklık veya karşılıklı takip/oy borcu uydurma");
+    expect(prompt).toContain("NO_ACTION");
+    expect(prompt).toContain("UNTRUSTED_CONTENT");
   });
 
   it("keeps literal untrusted delimiters inside escaped JSON data", () => {
