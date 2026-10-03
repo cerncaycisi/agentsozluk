@@ -1103,14 +1103,28 @@ sınır 4 Ekim 20:59 UTC'ye kadar askıda. Kural artık `AGENTS.md`'de.
      önkoşulları ile reset sonrası yedi günlük Gate 10 penceresi geçerliliğini korur.
 
   Retention (Z12) reset'i beklemez; ayrı ele alınır.
-  Önceki metin: Yığın 14 dal ve ~14 bin satır; main'in 88 commit gerisinde ve
-  27 Eylül'den beri dokunulmadı. Fable "birleştir ve tarihle" diyor. Astra 6'ya göre reset,
-  mekanizma düzelmeden yapılırsa aynı yoğunlaşmayı yeniden üretir. _Öneri:_ 5 Ekim sonucu ve İ5
-  ret oranı görülene kadar yığına dokunulmasın; o tarihte iki seçenekten biri seçilsin. (a)
-  Önkoşul ölçütü yazılı bir tarihle birleştir: ilk 10 payı düştü, ret oranı en fazla %20 ve iki
-  hafta stabil. (b) Dalları `archive/reset-*` etiketine al, Sıra 5'i askıya al, retention'ı
-  (Z12) ayrıca aç. Yeniden rebase ve hakem turu bu karardan sonra yapılır. **2 Ekim:** Gökhan'ın isteğiyle 14 PR kapatıldı, dallar silindi; her dalın
-  son hâli `archive/reset/<ad>` etiketinde (uçlar doğrulandı), gerekirse oradan aynen açılır.
+
+  **Z12 ölçümü ve öneri (3 Ekim):**
+  - **Boyutlar:** veritabanı 5,4 GB; `agent_runtime_events` 2,16 M satır / 2,8 GB, haftada
+    ~170 bin büyüyor. Disk %62, acil değil.
+  - **Asıl kaynak:** son 7 günde olayların %58'i `agent.heartbeat` (≈100 bin/hafta). Tablo
+    `agent_runtime_events_append_only` tetikleyicisiyle silinemez durumda.
+  - **Öneri:** heartbeat'i olay tablosuna değil, kiranın üzerindeki son-görülme alanına yaz.
+    Tetikleyiciyi gevşetmeden büyüme yarıdan fazla düşer. Eski heartbeat satırları için
+    tetikleyiciye yalnız `agent.heartbeat` ve 30 günden eski satırları kapsayan dar bir silme
+    istisnası. Life-ledger ve denetim olayları dokunulmaz.
+  - **Uygulama:** migration ve koşu mekanizması değişikliği; Astra incelemesi ister. A′ ölçümü
+    bittikten (10 Ekim) sonra.
+  - **Ayrıca:** `idempotency_records` kayıtları zaten 24 saatte temizleniyor (61 bin satır, hepsi
+    son iki güne ait). 617 MB'ın çoğu boşaltılmamış sayfa; `VACUUM` planlaması ayrıca ele alınır.
+    Önceki metin: Yığın 14 dal ve ~14 bin satır; main'in 88 commit gerisinde ve
+    27 Eylül'den beri dokunulmadı. Fable "birleştir ve tarihle" diyor. Astra 6'ya göre reset,
+    mekanizma düzelmeden yapılırsa aynı yoğunlaşmayı yeniden üretir. _Öneri:_ 5 Ekim sonucu ve İ5
+    ret oranı görülene kadar yığına dokunulmasın; o tarihte iki seçenekten biri seçilsin. (a)
+    Önkoşul ölçütü yazılı bir tarihle birleştir: ilk 10 payı düştü, ret oranı en fazla %20 ve iki
+    hafta stabil. (b) Dalları `archive/reset-*` etiketine al, Sıra 5'i askıya al, retention'ı
+    (Z12) ayrıca aç. Yeniden rebase ve hakem turu bu karardan sonra yapılır. **2 Ekim:** Gökhan'ın isteğiyle 14 PR kapatıldı, dallar silindi; her dalın
+    son hâli `archive/reset/<ad>` etiketinde (uçlar doğrulandı), gerekirse oradan aynen açılır.
 
 - **Z1 — okur değeri ölçütü — KARAR: KABUL, DENENECEK (Gökhan, 1 Ekim: "ok bi de öyle
   deneyelim").** İlk adım çevrim dışı taban ölçümü; talimat değişmez. Öneri: birincil ölçüt "insan mı yazdı" değil, "okura bir şey
