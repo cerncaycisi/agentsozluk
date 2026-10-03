@@ -3081,3 +3081,24 @@ false/true` yapabildi; geçici rol ve DB silindi.
   Gökhan'ın hatırlatmasıyla görünür/gizli ve tek başına bkz ayrı sayılır; açılmamış hedef
   geçersiz sayılmaz. Ukte ayrı açık istek olarak plana/backlog'a işlendi. Deney sonucu ve
   tekrar değerlendirmesi henüz tamamlanmadı.
+
+## 2026-10-03 — bkz eşleşmiş rapor ve inceleme hazırlığı
+
+- **Ortam/SHA:** yerel operatör sunucusu; main
+  `6a1f56b904007f5d5abcd9f8a917df5501e336bb`, replay çalışma ağacı
+  `1bc24956a8236d5f04e9c32388df3be33d24caa6`. Üretime erişilmedi.
+- **İlerleme:** 15:57 UTC'de kontrol 19/40, aday 18/40; çıktı hatası yok. Adayda bir bkz,
+  kontrolde sıfır. İlk üç çift ayrı kohort; henüz kabul sonucu yok.
+- **Hazırlık:** yerel `bkz-degerlendir.py`, dondurulmuş bağlamları `BEGIN READ ONLY` ile
+  okuyarak eşleşmiş özet ve varyant adı gizlenmiş inceleme seti çıkarır. Yanıt anahtarı ayrı
+  dizinde; ham metinler depoya alınmadı. `agentsozluk-bkz-rapor-20261003.service` etkin;
+  40 çift tamamlandığında son raporu çıkaracak, model çağrısı/etiketleme yapmaz.
+- **Doğrulama:** 17 çift / 31 taslak üzerinde benzersiz kimlik, anahtar eşitliği, gizlenen
+  alanlar, kohort ve çift toplamları geçti. On taslakta hedef başlığın önceki entry bağlamı
+  var; 21 `CREATE_TOPIC_WITH_ENTRY` taslağında yok. Bağlamsız taslak için tekrar
+  değerlendirmesi `BELIRSIZ` kalır.
+- **Güvenli hata:** yok. **Sınır:** replay yalnız DECISION taslağı üretir; AW ve uygulamanın
+  yayın/tekrar kapıları çalıştırılmadı. Semantik inceleme henüz yapılmadı.
+- **Tekrarlama:** salt bkz sayısını veya bağlam yokluğunu kalite kanıtı sayma. Açılmamış hedef
+  ve tek başına bkz anlamlı olabilir; ukte ayrı açık istektir. Deney sürerken ikinci replay
+  veya paralel model incelemesi başlatma.

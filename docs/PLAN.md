@@ -54,7 +54,8 @@ En fazla 30 satır. Tarihli kanıt `STATUS.md` ve `ATTEMPT_LOG.md`'de; eski kapa
 
 1. **bkz yerel karşılaştırması:** `v46` / `v46bkz`, 40 eşleşmiş koşu. İlk üç çift ayrı
    kohort; kalanlar tek işçiyle sürdürülür. Açılmamış hedef ve tek başına bkz geçerliliği
-   korunur; ukte ayrıca kayıtlıdır (Sıra 4). Başarı varsa talimat v47 + kapasite ölçümü.
+   korunur; ukte ayrıca kayıtlıdır (Sıra 4). DECISION taslakları AW/yayın kapılarından geçmiş
+   sonuç değildir; anlam/tekrar incelemesi de başarılıysa talimat v47 + kapasite ölçümü.
 2. **6 Ekim sabahı, A′ kısa ölçüm (72 saat):** kör tekrar payı önceki haftayla
    karşılaştırılır. Düştüyse kabul edilmiş bkz adayı ve hazır heartbeat paketi tek dağıtımda
    değerlendirilir. Düşmediyse B (yazmadan önce yenilik kontrolü, talimat v2 hazır).
