@@ -1951,6 +1951,7 @@ describe("agent control plane with PostgreSQL", () => {
     const now = new Date("2026-07-18T12:00:00.000Z");
     const runStartedAt = new Date(now.getTime() - 10 * 60_000);
     const codexStartedAt = new Date(now.getTime() - 2 * 60_000);
+    const lastHeartbeatAt = new Date(now.getTime() - 10_000);
     const run = await integrationDatabase.agentRun.create({
       data: {
         agentProfileId: created.agent.profile.id,
@@ -1966,33 +1967,43 @@ describe("agent control plane with PostgreSQL", () => {
         startedAt: runStartedAt,
         leaseOwner: "capacity-metric-worker",
         leaseExpiresAt: new Date(now.getTime() + 60_000),
-        heartbeatAt: codexStartedAt,
+        heartbeatAt: lastHeartbeatAt,
       },
     });
     await integrationDatabase.agentRuntimeState.update({
       where: { agentProfileId: created.agent.profile.id },
       data: {
         currentRunId: run.id,
-        runtimeStatus: "THINKING",
+        runtimeStatus: "VALIDATING",
         lastRunAt: runStartedAt,
-        lastHeartbeatAt: codexStartedAt,
+        lastHeartbeatAt,
       },
     });
-    await integrationDatabase.agentRuntimeEvent.create({
-      data: {
+    // Yalnız geçiş olayları var; periyodik heartbeat güncellemeleri olay yazmaz.
+    await integrationDatabase.agentRuntimeEvent.createMany({
+      data: [
+        { runtimeStatus: "THINKING", createdAt: new Date(now.getTime() - 9 * 60_000) },
+        { runtimeStatus: "READING", createdAt: new Date(now.getTime() - 5 * 60_000) },
+        { runtimeStatus: "THINKING", createdAt: codexStartedAt },
+        { runtimeStatus: "VALIDATING", createdAt: new Date(now.getTime() - 60_000) },
+      ].map(({ runtimeStatus, createdAt }) => ({
         agentProfileId: created.agent.profile.id,
         runId: run.id,
         eventType: "agent.heartbeat",
         safeMessage: "Active Codex utilization fixture.",
-        metadata: { runtimeStatus: "THINKING", cancelRequested: false },
-        createdAt: codexStartedAt,
-      },
+        metadata: { runtimeStatus, cancelRequested: false },
+        createdAt,
+      })),
     });
 
     const capacity = await getRuntimeCapacity(integrationDatabase, actor(admin.id), now);
     expect(capacity.operational.utilization15m).toBeCloseTo(2 / 15, 5);
     expect(capacity.operational.utilization1h).toBeCloseTo(2 / 60, 5);
     expect(capacity.operational.utilization2h).toBeCloseTo(2 / 120, 5);
+    expect(capacity.operational.executionSlots[0]).toMatchObject({
+      phase: "VALIDATING",
+      heartbeatAgeMs: 10_000,
+    });
   });
 
   it("administers source evolution with pin, block, approval and weekly score limits", async () => {

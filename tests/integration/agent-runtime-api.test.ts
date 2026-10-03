@@ -3566,18 +3566,49 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
-    const beat = (runtimeStatus: "READING" | "THINKING") =>
+    const beat = (runtimeStatus: "STARTING" | "READING" | "THINKING" | "VALIDATING") =>
       heartbeatRuntimeRun(
         integrationDatabase,
         writePrincipal,
         runId,
         runtimeHeartbeatSchema.parse({ runId, workerId: "worker-hb", runtimeStatus }),
       );
+    await beat("STARTING");
+    await beat("STARTING");
     await beat("READING");
     await beat("READING");
     await beat("READING");
+    const oldHeartbeatAt = new Date(Date.now() - 30_000);
+    const oldLeaseExpiresAt = new Date(Date.now() + 10_000);
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: { heartbeatAt: oldHeartbeatAt, leaseExpiresAt: oldLeaseExpiresAt },
+    });
+    await integrationDatabase.agentRuntimeState.update({
+      where: { agentProfileId: fixture.created.agent.profile.id },
+      data: { lastHeartbeatAt: oldHeartbeatAt },
+    });
+    const unchangedBeat = await beat("READING");
+    const refreshedRun = await integrationDatabase.agentRun.findUniqueOrThrow({
+      where: { id: runId },
+    });
+    const refreshedState = await integrationDatabase.agentRuntimeState.findUniqueOrThrow({
+      where: { agentProfileId: fixture.created.agent.profile.id },
+    });
+    expect(refreshedRun.heartbeatAt!.getTime()).toBeGreaterThan(oldHeartbeatAt.getTime());
+    expect(refreshedState.lastHeartbeatAt).toEqual(refreshedRun.heartbeatAt);
+    expect(unchangedBeat.leaseExpiresAt.getTime()).toBeGreaterThan(oldLeaseExpiresAt.getTime());
+    expect(refreshedRun.leaseExpiresAt).toEqual(unchangedBeat.leaseExpiresAt);
     await beat("THINKING");
     await beat("THINKING");
+    await beat("VALIDATING");
+    await beat("READING");
+    await beat("THINKING");
+    await cancelAgentRun(integrationDatabase, adminActor(fixture.admin.id), runId, {
+      reason: "Heartbeat cancellation transition fixture.",
+    });
+    await expect(beat("THINKING")).resolves.toMatchObject({ cancelRequested: true });
+    await expect(beat("THINKING")).resolves.toMatchObject({ cancelRequested: true });
     const events = await integrationDatabase.agentRuntimeEvent.findMany({
       where: { runId, eventType: "agent.heartbeat" },
       orderBy: { id: "asc" },
@@ -3585,7 +3616,15 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     expect(
       events.map((event) => (event.metadata as { runtimeStatus: string }).runtimeStatus),
-    ).toEqual(["READING", "THINKING"]);
+    ).toEqual([
+      "STARTING",
+      "READING",
+      "THINKING",
+      "VALIDATING",
+      "READING",
+      "THINKING",
+      "CANCELLING",
+    ]);
     const run = await integrationDatabase.agentRun.findUniqueOrThrow({
       where: { id: runId },
       select: { heartbeatAt: true },

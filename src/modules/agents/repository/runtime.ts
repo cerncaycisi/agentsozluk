@@ -659,10 +659,13 @@ export async function heartbeatRuntimeRunRecord(
     where: { agentProfileId: input.agentProfileId },
     select: { runtimeStatus: true, lastHeartbeatAt: true },
   });
-  const previousRun = await transaction.agentRun.findUniqueOrThrow({
-    where: { id: input.runId },
-    select: { heartbeatAt: true },
-  });
+  // Lease de heartbeatAt'ı doldurur; ilk heartbeat ancak olay kaydından ayrılır.
+  const recordEvent =
+    previous.runtimeStatus !== input.runtimeStatus ||
+    (await transaction.agentRuntimeEvent.findFirst({
+      where: { runId: input.runId, eventType: "agent.heartbeat" },
+      select: { id: true },
+    })) === null;
   await Promise.all([
     transaction.agentRun.update({
       where: { id: input.runId },
@@ -693,7 +696,7 @@ export async function heartbeatRuntimeRunRecord(
       Son görülme zamanı `agent_runs.heartbeatAt` ve `agent_runtime_states.lastHeartbeatAt`
       alanlarında her heartbeat'te güncellenmeye devam eder.
     */
-    recordEvent: previousRun.heartbeatAt === null || previous.runtimeStatus !== input.runtimeStatus,
+    recordEvent,
   };
 }
 
