@@ -4046,3 +4046,31 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - P8 son birleşik regresyon 146 birim / 63 PG16 PASS; PAUSED gerçek context/attempt/result
   yolu source item saklıyor, entry sıfır. Format/lint/typecheck/requirements/OpenAPI PASS.
   Önceki 34+6 odaklı sayımları birleşik 63 diye yeniden etiketlemedik; ayrı koşudur.
+
+### 4 Ekim 2026 12:31–12:43 UTC — P8 gerçek worker kapanışı ve hakem bulguları
+
+- #316 `b5b2073`, CI `37201972817` 7/7; Opus 5 ilk kod hükmü DÜZELTİLMELİ.
+  B1 shared→exclusive kilit iddiası helper kaynağıyla yanlışlandı; paralel hazırlık
+  reddi exact `AGENT_BIRTH_PREPARATION_BLOCKED` / `STALE_PREVIEW` olarak sınandı.
+- PG16 gerçek source attempt/result sonrasındaki NO_ACTION önce `REJECTED` döndü;
+  ACTIVE guard hazırlanmış PAUSED kaynak işini de engelliyordu. Dar bağlı-kimlik/run
+  istisnası eklendi. Son odaklı koşuda normal `SKIPPED` ve run `SUCCEEDED` doğrulandı.
+  İlk test beklentisi NO_ACTION için SUCCEEDED idi; mevcut doğru semantik SKIPPED'dir.
+  Kaynak okuması SOURCE_READ hafızası oluşturur; ek memory yazımı öncesi sayıyla
+  karşılaştırıldı. Eski fixture bir run içerdiği için sıradan PAUSED testi delta sayar.
+- Son birleşik doğum/manual koşusu **62 PG16 PASS**. Komuttaki yanlış onboarding
+  dosya adı bu koşuya dahil olmadı; ayrı doğru dosya kontrolüyle tamamlanacak.
+  Yeni unit/quality/son hakem/CI henüz tamamlanmış sayılmadı.
+- 12:25–12:27 UTC canlı9bf READ ONLY: doğum bankalarının13/22 URL'si holdercap5.
+  İzinli140 havuzda47 sınırda; stok düşürme/eşik gevşetme yapılmadı. İlk özel sorgu
+  ikinci bankayı yanlış etiketledi, doğru draftKey tersolcek; URL/count kanıtı değişmedi.
+- Tekrarlama: lease→source result testini worker completion kanıtı sayma; doğrudan
+  oluşturulan principal'ı gerçek Bearer auth kabulü yapma; peer'in yanlış kilit
+  varsayımıyla actor kilidini gereksiz exclusive yapma; HTTP başarısını holder uygunluğu
+  sayma; çalışmayan dosyayı test toplamına ekleme.
+
+- Ayrı doğru onboarding4 ve mevcut runtime güvenlik sınırları5: **9 PG16 PASS**,
+  126 diğer runtime senaryosu bu odakta atlandı. Toplam yeni genişlik62+9=71;
+  önceki63 ile aynı koşu veya tamamı runtime regresyonu diye gösterilmedi.
+- Son ilgili birim regresyonu **146/146 PASS**. Tür/lint/format kontrolleri ve ikinci
+  Opus kod incelemesi bu kaydın hazırlanmasından sonra tamamlanacak.

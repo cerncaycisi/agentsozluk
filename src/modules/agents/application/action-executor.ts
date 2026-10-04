@@ -28,6 +28,8 @@ import {
   getRuntimeRunProducedTargetIds,
 } from "@/modules/agents/repository/runtime";
 import { AppError } from "@/lib/http/errors";
+import { birthSourcePreparationTrigger } from "@/modules/agents/domain/birth-preparation";
+import { findManagedBirthForChild } from "@/modules/agents/repository/birth-preparation";
 import { appendAuditLog } from "@/modules/audit";
 import {
   appendRuntimeEvent,
@@ -488,6 +490,7 @@ export function buildRuntimeSourceChangedOutboxEvent(input: {
 
 function staticPolicyRejection(input: {
   sourceSuggestion?: boolean;
+  preparedSourceNoAction?: boolean;
   actionType: string;
   runType: string;
   runtimeEnabled: boolean;
@@ -500,7 +503,7 @@ function staticPolicyRejection(input: {
   followingAllowed: boolean;
   hasProvenance: boolean;
 }): Rejection | null {
-  if (input.agentLifecycleStatus !== "ACTIVE")
+  if (input.agentLifecycleStatus !== "ACTIVE" && !input.preparedSourceNoAction)
     return {
       code: "AGENT_LIFECYCLE_NOT_ACTIVE",
       reason: "ACTIVE olmayan agent yeni runtime action çalıştıramaz.",
@@ -1037,7 +1040,22 @@ export async function executeRuntimeAction(
           });
       }
       const settings = await getRuntimeGlobalSettings(transaction);
+      // Yalnız zaten kiralanmış kaynak işinin etkisiz kapanışı. Süre/OFF yeni lease'i
+      // durdurur; devam eden işin NO_ACTION sonucunu teknik ret haline getirmez.
+      const preparedSourceNoAction =
+        parsed.data.actionType === "NO_ACTION" &&
+        actionRecord.agentProfile.lifecycleStatus === "PAUSED" &&
+        actionRecord.run.runType === "SOURCE_REFRESH" &&
+        actionRecord.run.trigger === birthSourcePreparationTrigger &&
+        actionRecord.run.requestedById !== null &&
+        actionRecord.run.allowSourceReading &&
+        !actionRecord.run.allowTopicCreation &&
+        !actionRecord.run.allowVoting &&
+        !actionRecord.run.allowFollowing &&
+        (await findManagedBirthForChild(transaction, principal.agentProfileId))?.status ===
+          "PREPARED";
       const staticRejection = staticPolicyRejection({
+        preparedSourceNoAction,
         actionType: parsed.data.actionType,
         runType: actionRecord.run.runType,
         runtimeEnabled: settings.runtimeEnabled,

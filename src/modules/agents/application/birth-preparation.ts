@@ -25,7 +25,7 @@ import {
 import { lockPersonaUniverse } from "@/modules/agents/repository/persona-lock";
 import {
   countRuntimeAgentSources,
-  countRuntimeSourceHolders,
+  countRuntimeSourceHoldersForUrls,
 } from "@/modules/agents/repository/runtime";
 import { createAgentSchema } from "@/modules/agents/validation/schemas";
 import { appendAuditLog } from "@/modules/audit";
@@ -100,6 +100,7 @@ export async function prepareBirthCandidate(
     const creation = createAgentSchema.parse({
       persona: candidate.persona,
       lifecycleStatus: "PAUSED",
+      creation: { method: "CUSTOM" },
     });
     const created = await createAgent(tx, actor, creation);
     if (!created.runtimeEnrollmentManaged) throw blocked("MANAGED_ENROLLMENT_REQUIRED");
@@ -107,9 +108,12 @@ export async function prepareBirthCandidate(
     // createAgent kanonik paketler için kapasite istisnası taşır; doğum yolunda istisna yoktur.
     if ((await countRuntimeAgentSources(tx, childProfileId)) > runtimeAgentSourceLimit)
       throw blocked("SOURCE_STOCK_LIMIT");
-    for (const source of creation.persona.sources)
-      if ((await countRuntimeSourceHolders(tx, source.url)) > runtimeSourceHolderLimit)
-        throw blocked("SOURCE_HOLDER_LIMIT");
+    const sourceHolders = await countRuntimeSourceHoldersForUrls(
+      tx,
+      creation.persona.sources.map((source) => source.url),
+    );
+    if ([...sourceHolders.values()].some((count) => count > runtimeSourceHolderLimit))
+      throw blocked("SOURCE_HOLDER_LIMIT");
 
     const preparationExpiresAt = new Date(now.getTime() + birthPreparationLifetimeMs);
     const preparationEvidence = {

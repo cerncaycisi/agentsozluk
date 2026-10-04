@@ -7,6 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 12:45 UTC — P8 kaynak işinin gerçek kapanışı
+
+- #316 ilk `b5b2073` CI7/7; Opus 5 DÜZELTİLMELİ. Bearer kimlik doğrulamasıyla
+  worker yolu, PAUSED kaynak işinin NO_ACTION adımında hatalı ret buldu. Dar istisna
+  sonrası action SKIPPED ve run SUCCEEDED; profil PAUSED. Yayın/oy/takip/öneri/inanç
+  reddi, reflection/ek hafıza yazma reddi ve sıradan PAUSED regresyonları geçti.
+- Son **62 doğum/manual + 9 onboarding/runtime PG16 PASS**; 126 diğer runtime
+  senaryosu atlandı. Son kod hakemi/CI açık; eski ilk63 koşusunun yerine geçirilmedi.
+- 12:25–12:27 salt okunur canlı kapasite: banka22 URL'sinin13'ü holdercap5; izinli140
+  havuzda47 sınırda. Hazırlık bu bankayla haklı reddedilir; banka onarımı açık. Canlı
+  profil/ayar/kaynak değişmedi; kaynak sınırı gevşetilmedi.
+
 ## 2026-10-04 12:21 UTC — P8 hesap/kaynak hazırlığı yerelde
 
 - `f9faf6c` tabanında yeni PAUSED hesap hazırlığı ve yalnız explicit SOURCE_REFRESH

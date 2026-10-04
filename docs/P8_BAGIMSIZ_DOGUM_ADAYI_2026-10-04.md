@@ -406,3 +406,30 @@ Son birleşik regresyon **146 birim / 63 PG16 PASS**: 40 doğum, 19 manual run, 
 PAUSED kaynak yolunda context→attempt→result gerçek servisleri bir source item sakladı;
 yeni entry yok. Format/lint/typecheck/requirements/OpenAPI (153 operation) PASS. Bu yeni
 ölçüm önceki 34+6 odaklı koşulardan ayrıdır; gerçek provider/fetch veya canlı kabul değildir.
+
+4 Ekim kod incelemesi ve uçtan uca düzeltme:
+
+- İlk exact `b5b2073` CI `37201972817` 7/7 PASS; gerçek Opus 5 DÜZELTİLMELİ.
+  Hakemin kullanıcı kilidini exclusive sandığı B1 kaynakla yanlışlandı: yardımcı shared
+  alıyor. Paralel hazırlık testinde kaybeden artık exact `STALE_PREVIEW`; rastgele
+  deadlock reddi başarı sayılmıyor. Enum sırası DB ile eşlendi, kuruluş açıkça CUSTOM,
+  kaynak sahipleri tek toplu sorguda sayılıyor. Uygulanmış migration değişmedi.
+- Gerçek enrollment çözme → Bearer auth → lease → context → kaynak attempt/result →
+  action → complete zinciri bir hata buldu: PAUSED yazarın zorunlu `NO_ACTION` adımı
+  ACTIVE kontrolünden reddediliyordu. Dar PREPARED kaynak işi istisnasıyla normal
+  `SKIPPED` abstention ve koşu `SUCCEEDED` oluyor; profil PAUSED kalıyor. Devam eden
+  işin etkisiz kapanışı TTL/OFF sonrasında da mümkündür; yeni lease kapıları değişmez.
+- Kaynak okuma kapalı istek 422 döner. Yayın/oy/takip/kaynak önerisi/inanç değişikliği
+  `AGENT_LIFECYCLE_NOT_ACTIVE`, reflection delta ve ek memory consolidation
+  `VALIDATION_ERROR` ile reddedilir. Kaynak okumasının normal SOURCE_READ hafızası
+  vardır; test ek hafızanın oluşmadığını başlangıç sayısına göre doğrular.
+- Sıradan PAUSED ve ACTIVATED olup PAUSED'a alınmış profil `NOT_ACTIVE` kalır.
+  Son doğum/manual birleşik PG16 koşusu **62/62 PASS** (43+19); son hakem/CI açık.
+- 12:25–12:27 UTC pinli salt okunur kaynak kapasitesi: iki bankadaki22 URL'nin13'ü
+  sahip sınırı5'te (ayniyerde9/12, tersolcek4/10). Bunlar hazırlıkta haklı olarak
+  reddedilecektir; statik banka onarımı açık. İzinli140 kaynak havuzunun47'si sınırda.
+  Önceki HTTP okunabilirliği kapasite uygunluğu değildi. Holder silme veya eşiği
+  yükseltme yapılmadı; özel ilk sorgudaki ikinci banka etiketi yerel raporda düzeltildi.
+
+Ayrı onboarding ve mevcut action/rollout/lifecycle korumaları: **9 PG16 PASS**;
+126 diğer runtime testi bu odakta atlandı. Yeni doğrulama toplamı62+9=71PG16'dır.

@@ -151,6 +151,12 @@ export function createManualAgentRun(
     ) {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Yalnız ACTIVE agent kuyruğa alınabilir.");
     }
+    if (sourcePreparation && !input.allowSourceReading)
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Doğum kaynak hazırlığında kaynak okuma açık olmalıdır.",
+      );
     await assertManagedRuntimeCredentialReady(transaction, agentProfileId, now);
     const nonPublishing = isNonPublishingRun(input.runType);
     const timeoutSeconds =
@@ -173,7 +179,7 @@ export function createManualAgentRun(
       allowTopicCreation: !nonPublishing && input.allowTopicCreation,
       allowVoting: !nonPublishing && input.allowVoting,
       allowFollowing: !nonPublishing && input.allowFollowing,
-      allowSourceReading: sourcePreparation || input.allowSourceReading,
+      allowSourceReading: input.allowSourceReading,
       provocationOverride: input.provocationOverride,
       ...(input.adminInstruction ? { adminInstruction: input.adminInstruction } : {}),
       ...(sourcePreparation ? { trigger: birthSourcePreparationTrigger } : {}),

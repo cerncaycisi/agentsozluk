@@ -963,12 +963,12 @@ enum AgentBirthMode {
 }
 
 enum AgentBirthCandidateStatus {
-  PREPARED
-  ACTIVATED
   PROPOSED
   EXPIRED
   WITHDRAWN
   REJECTED
+  PREPARED
+  ACTIVATED
 }
 
 model AgentBirthCandidate {

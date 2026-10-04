@@ -12,7 +12,15 @@ import {
   getRuntimeRunContext,
   recordRuntimeSourceAttempt,
   recordRuntimeSourceResult,
+  recordRuntimeActions,
+  recordRuntimeMemories,
+  completeRuntimeRun,
 } from "@/modules/agents/application/runtime";
+import { executeRuntimeAction } from "@/modules/agents/application/action-executor";
+import {
+  runtimeActionsSchema,
+  runtimeCompleteSchema,
+} from "@/modules/agents/validation/runtime-schemas";
 import {
   getRuntimeCredentialRoster,
   acknowledgeRuntimeCredentialRoster,
@@ -35,7 +43,11 @@ import {
   reverseAuthorAssessment,
   changeRewardMode,
 } from "@/modules/agents/application/rewards";
-import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
+import {
+  authenticateRuntimeRequest,
+  type RuntimePrincipal,
+} from "@/modules/agents/application/runtime-auth";
+import { unsealRuntimeCredential } from "@/modules/agents/domain/runtime-credential-enrollment";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { agentPersonaTemplates } from "@/modules/agents/personas/templates";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
@@ -638,7 +650,7 @@ async function preparationFixture(method = "TEMPLATE") {
       occurredAt: createdAt,
     },
   });
-  const { publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   vi.stubEnv(
     "AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64",
     publicKey.export({ format: "der", type: "spki" }).toString("base64"),
@@ -654,6 +666,7 @@ async function preparationFixture(method = "TEMPLATE") {
     ...f,
     candidate,
     input,
+    privateKeyPem: privateKey.export({ format: "pem", type: "pkcs8" }),
     prepare: (at = now) => prepareBirthCandidate(db, f.actor, input, at),
   };
 }
@@ -743,7 +756,12 @@ describe("birth account preparation with PostgreSQL", () => {
     const f = await preparationFixture();
     const results = await Promise.allSettled([f.prepare(), f.prepare()]);
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
-    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toMatchObject([
+      {
+        status: "rejected",
+        reason: { code: "AGENT_BIRTH_PREPARATION_BLOCKED", details: { reason: "STALE_PREVIEW" } },
+      },
+    ]);
     expect(await db.agentProfile.count()).toBe(2);
     expect(await db.agentCredential.count()).toBe(2);
     expect(await db.auditLog.count({ where: { action: "agent.birth.prepared" } })).toBe(1);
@@ -895,128 +913,284 @@ describe("prepared writer HTTP and source collection boundaries", () => {
       vi.useRealTimers();
     }
   });
-  it("queues and leases only explicit SOURCE_REFRESH while PAUSED, without automatic reflection or public runs", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(now);
-    const f = await preparationFixture();
-    const prepared = await f.prepare();
-    const child = await db.agentProfile.findUniqueOrThrow({
-      where: { id: prepared.childProfileId },
-      include: { credentials: true },
-    });
-    const principal: RuntimePrincipal = {
-      ...f.principal,
-      agentProfileId: child.id,
-      credentialId: child.credentials[0]!.id,
-      lifecycleStatus: "PAUSED",
-      actor: { ...f.principal.actor, actorId: child.userId },
-    };
-    const roster = await getRuntimeCredentialRoster(db, principal, "birth-source-worker", now);
-    await acknowledgeRuntimeCredentialRoster(
-      db,
-      principal,
-      {
-        workerId: "birth-source-worker",
-        desiredFingerprint: roster.desiredFingerprint,
-        loadedCredentialIds: roster.entries.map((entry) => entry.credentialId),
-      },
-      now,
-    );
-    for (const runType of [
-      "NORMAL_WAKE",
-      "ENTRY_BURST",
-      "REFLECTION",
-      "DRY_RUN",
-      "READ_ONLY",
-    ] as const)
-      await expect(
-        createManualAgentRun(db, f.actor, child.id, manualAgentRunSchema.parse({ runType }), now),
-      ).rejects.toMatchObject({ code: "AGENT_LIFECYCLE_INVALID" });
-    const sourceRun = await createManualAgentRun(
-      db,
-      f.actor,
-      child.id,
-      manualAgentRunSchema.parse({ runType: "SOURCE_REFRESH", allowSourceReading: false }),
-      now,
-    );
-    expect(sourceRun).toMatchObject({
-      runType: "SOURCE_REFRESH",
-      trigger: "ADMIN_BIRTH_SOURCE",
-      allowTopicCreation: false,
-      allowVoting: false,
-      allowFollowing: false,
-      allowSourceReading: true,
-    });
-    // Veritabanına kontrollü yanlış iş eklenir: lease seçim kapısı bunu atlamalıdır.
-    const publicRun = await db.agentRun.create({
-      data: {
+  it.each(["SUCCESS", "ATTACK"])(
+    "authenticates and completes PAUSED SOURCE_REFRESH with %s boundaries",
+    async (scenario) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(now);
+      const f = await preparationFixture();
+      const prepared = await f.prepare();
+      const child = await db.agentProfile.findUniqueOrThrow({
+        where: { id: prepared.childProfileId },
+        include: { credentials: true },
+      });
+      const credential = child.credentials[0]!;
+      const raw = unsealRuntimeCredential(credential.runtimeEnrollmentCipher!, {
         agentProfileId: child.id,
-        personaVersionId: child.currentPersonaVersionId!,
-        runType: "NORMAL_WAKE",
-        trigger: "ADMIN_MANUAL",
-        runStatus: "QUEUED",
-        queuePriority: "EMERGENCY_ADMIN",
-        idempotencyKey: randomUUID(),
-        timeoutSeconds: 600,
-        desiredEntryMin: 0,
-        desiredEntryMax: 1,
-        availableAt: now,
-      },
-    });
-    await db.agentGlobalSettings.update({
-      where: { id: "global" },
-      data: { runtimeEnabled: true, schedulerEnabled: true },
-    });
-    const lease = await leaseRuntimeRun(
-      db,
-      principal,
-      { workerId: "birth-source-worker", leaseSeconds: 60 },
-      { now, checkReadiness: async () => {} },
-    );
-    expect(lease.run).toMatchObject({ id: sourceRun.id, runType: "SOURCE_REFRESH" });
-    expect(await db.agentRun.findUnique({ where: { id: publicRun.id } })).toMatchObject({
-      runStatus: "QUEUED",
-    });
-    expect(
-      await db.agentRun.count({ where: { agentProfileId: child.id, runType: "REFLECTION" } }),
-    ).toBe(0);
-    expect(await db.agentProfile.findUnique({ where: { id: child.id } })).toMatchObject({
-      lifecycleStatus: "PAUSED",
-    });
-    const context = await getRuntimeRunContext(
-      db,
-      principal,
-      sourceRun.id,
-      "birth-source-worker",
-      lease.run!.leaseToken,
-    );
-    expect(context.run.runType).toBe("SOURCE_REFRESH");
-    const source = await db.agentSource.findFirstOrThrow({ where: { agentProfileId: child.id } });
-    const attempt = {
-      workerId: "birth-source-worker",
-      leaseToken: lease.run!.leaseToken,
-      sourceId: source.id,
-      attemptId: randomUUID(),
-    };
-    await recordRuntimeSourceAttempt(db, principal, sourceRun.id, attempt);
-    const safeText = "Kaynak hazırlığının PostgreSQL veri yolunu doğrulayan kontrollü metin.";
-    await recordRuntimeSourceResult(db, principal, sourceRun.id, {
-      ...attempt,
-      items: [
+        credentialId: credential.id,
+        privateKeyPem: f.privateKeyPem,
+      });
+      const principal = await authenticateRuntimeRequest(db, {
+        authorization: `Bearer ${raw}`,
+        hasBrowserSession: false,
+        requiredScope: "runtime:write",
+        requestId: randomUUID(),
+      });
+      expect(principal).toMatchObject({ agentProfileId: child.id, lifecycleStatus: "PAUSED" });
+      const roster = await getRuntimeCredentialRoster(db, principal, "birth-source-worker", now);
+      await acknowledgeRuntimeCredentialRoster(
+        db,
+        principal,
         {
-          canonicalUrl: new URL("/p8-test-item", source.url).href,
-          title: "Kontrollü kaynak öğesi",
-          contentHash: sha256(safeText),
-          safeText,
+          workerId: "birth-source-worker",
+          desiredFingerprint: roster.desiredFingerprint,
+          loadedCredentialIds: roster.entries.map((entry) => entry.credentialId),
         },
-      ],
-    });
-    expect(await db.agentSourceItem.count({ where: { sourceId: source.id, fetchedAt: now } })).toBe(
-      1,
-    );
-    expect(await db.entry.count({ where: { authorId: child.userId } })).toBe(0);
-  });
-  it.each(["OFF", "EXPIRED", "GLOBAL_PAUSED", "SUSPENDED"])(
+        now,
+      );
+      for (const runType of [
+        "NORMAL_WAKE",
+        "ENTRY_BURST",
+        "REFLECTION",
+        "DRY_RUN",
+        "READ_ONLY",
+      ] as const)
+        await expect(
+          createManualAgentRun(db, f.actor, child.id, manualAgentRunSchema.parse({ runType }), now),
+        ).rejects.toMatchObject({ code: "AGENT_LIFECYCLE_INVALID" });
+      await expect(
+        createManualAgentRun(
+          db,
+          f.actor,
+          child.id,
+          manualAgentRunSchema.parse({ runType: "SOURCE_REFRESH", allowSourceReading: false }),
+          now,
+        ),
+      ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
+      const sourceRun = await createManualAgentRun(
+        db,
+        f.actor,
+        child.id,
+        manualAgentRunSchema.parse({ runType: "SOURCE_REFRESH", allowSourceReading: true }),
+        now,
+      );
+      expect(sourceRun).toMatchObject({
+        runType: "SOURCE_REFRESH",
+        trigger: "ADMIN_BIRTH_SOURCE",
+        allowTopicCreation: false,
+        allowVoting: false,
+        allowFollowing: false,
+        allowSourceReading: true,
+      });
+      // Veritabanına kontrollü yanlış iş eklenir: lease seçim kapısı bunu atlamalıdır.
+      const publicRun = await db.agentRun.create({
+        data: {
+          agentProfileId: child.id,
+          personaVersionId: child.currentPersonaVersionId!,
+          runType: "NORMAL_WAKE",
+          trigger: "ADMIN_MANUAL",
+          runStatus: "QUEUED",
+          queuePriority: "EMERGENCY_ADMIN",
+          idempotencyKey: randomUUID(),
+          timeoutSeconds: 600,
+          desiredEntryMin: 0,
+          desiredEntryMax: 1,
+          availableAt: now,
+        },
+      });
+      await db.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { runtimeEnabled: true, schedulerEnabled: true },
+      });
+      const lease = await leaseRuntimeRun(
+        db,
+        principal,
+        { workerId: "birth-source-worker", leaseSeconds: 60 },
+        { now, checkReadiness: async () => {} },
+      );
+      expect(lease.run).toMatchObject({ id: sourceRun.id, runType: "SOURCE_REFRESH" });
+      expect(await db.agentRun.findUnique({ where: { id: publicRun.id } })).toMatchObject({
+        runStatus: "QUEUED",
+      });
+      expect(
+        await db.agentRun.count({ where: { agentProfileId: child.id, runType: "REFLECTION" } }),
+      ).toBe(0);
+      expect(await db.agentProfile.findUnique({ where: { id: child.id } })).toMatchObject({
+        lifecycleStatus: "PAUSED",
+      });
+      const context = await getRuntimeRunContext(
+        db,
+        principal,
+        sourceRun.id,
+        "birth-source-worker",
+        lease.run!.leaseToken,
+      );
+      expect(context.run.runType).toBe("SOURCE_REFRESH");
+      const source = await db.agentSource.findFirstOrThrow({ where: { agentProfileId: child.id } });
+      const attempt = {
+        workerId: "birth-source-worker",
+        leaseToken: lease.run!.leaseToken,
+        sourceId: source.id,
+        attemptId: randomUUID(),
+      };
+      await recordRuntimeSourceAttempt(db, principal, sourceRun.id, attempt);
+      const safeText = "Kaynak hazırlığının PostgreSQL veri yolunu doğrulayan kontrollü metin.";
+      await recordRuntimeSourceResult(db, principal, sourceRun.id, {
+        ...attempt,
+        items: [
+          {
+            canonicalUrl: new URL("/p8-test-item", source.url).href,
+            title: "Kontrollü kaynak öğesi",
+            contentHash: sha256(safeText),
+            safeText,
+          },
+        ],
+      });
+      expect(
+        await db.agentSourceItem.count({ where: { sourceId: source.id, fetchedAt: now } }),
+      ).toBe(1);
+      expect(await db.entry.count({ where: { authorId: child.userId } })).toBe(0);
+      const owned = { workerId: "birth-source-worker", leaseToken: lease.run!.leaseToken };
+      const completion = runtimeCompleteSchema.parse({
+        ...owned,
+        outcome: "SUCCEEDED",
+        state: { curiosity: 0.5, confidence: 0.6, topicFatigue: {} },
+        safeRunSummary: {
+          operationSummary: "Kontrollü kaynak hazırlığı tamamlandı.",
+          observedItemIds: [],
+          proposedActionCount: 1,
+          completedActionCount: 1,
+          rejectedActionCount: 0,
+          shortRationale: "Yalnız kaynak okundu.",
+        },
+        usageMetadata: { durationMs: 1, provider: "codex-cli" },
+        performanceMetrics: {},
+      });
+      if (scenario === "ATTACK") {
+        const memoriesBefore = await db.agentMemoryEpisode.count({
+          where: { agentProfileId: child.id },
+        });
+        await expect(
+          recordRuntimeMemories(db, principal, sourceRun.id, {
+            ...owned,
+            memories: [
+              {
+                sourceMemoryIds: [randomUUID()],
+                summary: "Yetkisiz bellek denemesi.",
+                salience: 0.5,
+              },
+            ],
+          }),
+        ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+        await expect(
+          completeRuntimeRun(
+            db,
+            principal,
+            sourceRun.id,
+            runtimeCompleteSchema.parse({
+              ...completion,
+              reflectionDelta: {
+                safeSummary: "Yetkisiz karakter değişikliği denemesi.",
+                evidenceIds: [sourceRun.id],
+                interestDeltas: [],
+                sourceTrustDeltas: [],
+                relationshipTrustDeltas: [],
+                beliefConfidenceDeltas: [],
+                temperamentDeltas: [{ key: "warmth", delta: 0.01 }],
+                coreValueDeltas: [],
+              },
+            }),
+          ),
+        ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+        const attempts = [
+          {
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            input: { title: "deneme başlığı", body: "Yetkisiz yayın denemesi." },
+          },
+          { actionType: "VOTE_UP", input: { entryId: randomUUID() } },
+          { actionType: "FOLLOW_USER", input: { userId: f.writer.id } },
+          {
+            actionType: "PROPOSE_SOURCE",
+            input: { url: "https://example.com/feed", sourceType: "RSS", topics: ["kültür"] },
+          },
+          {
+            actionType: "UPDATE_BELIEF",
+            input: { topicKey: "deneme", statement: "Yetkisiz inanç değişimi.", confidence: 0.5 },
+          },
+        ];
+        await recordRuntimeActions(
+          db,
+          principal,
+          sourceRun.id,
+          runtimeActionsSchema.parse({
+            ...owned,
+            actions: attempts.map((action, index) => ({
+              ...action,
+              sequence: index + 1,
+              safeReason: "Kontrollü yetki sınırı denemesi.",
+            })),
+          }),
+          now,
+        );
+        for (let sequence = 1; sequence <= attempts.length; sequence++) {
+          expect(
+            await executeRuntimeAction(
+              db,
+              principal,
+              sourceRun.id,
+              { ...owned, sequence },
+              { checkReadiness: async () => {}, requireLifeLedger: false },
+            ),
+          ).toMatchObject({
+            actionStatus: "REJECTED",
+            rejectionCode: "AGENT_LIFECYCLE_NOT_ACTIVE",
+          });
+        }
+        expect(await db.entry.count({ where: { authorId: child.userId } })).toBe(0);
+        expect(await db.agentPersonaVersion.count({ where: { agentProfileId: child.id } })).toBe(1);
+        expect(await db.agentMemoryEpisode.count({ where: { agentProfileId: child.id } })).toBe(
+          memoriesBefore,
+        );
+      } else {
+        await recordRuntimeActions(
+          db,
+          principal,
+          sourceRun.id,
+          runtimeActionsSchema.parse({
+            ...owned,
+            actions: [
+              {
+                sequence: 1,
+                actionType: "NO_ACTION",
+                safeReason: "Kaynak yenileme tamamlandı.",
+                input: {},
+              },
+            ],
+          }),
+          now,
+        );
+        expect(
+          await executeRuntimeAction(
+            db,
+            principal,
+            sourceRun.id,
+            { ...owned, sequence: 1 },
+            { checkReadiness: async () => {}, requireLifeLedger: false },
+          ),
+        ).toMatchObject({ actionStatus: "SKIPPED" });
+        await completeRuntimeRun(db, principal, sourceRun.id, completion);
+        expect(await db.agentRun.findUnique({ where: { id: sourceRun.id } })).toMatchObject({
+          runStatus: "SUCCEEDED",
+          leaseOwner: null,
+          leaseToken: null,
+        });
+        expect(await db.agentProfile.findUnique({ where: { id: child.id } })).toMatchObject({
+          lifecycleStatus: "PAUSED",
+        });
+      }
+    },
+  );
+  it.each(["OFF", "EXPIRED", "GLOBAL_PAUSED", "SUSPENDED", "ACTIVATED"])(
     "cannot lease preparation with %s",
     async (block) => {
       const f = await preparationFixture();
@@ -1036,6 +1210,11 @@ describe("prepared writer HTTP and source collection boundaries", () => {
         where: { id: "global" },
         data: { runtimeEnabled: block !== "GLOBAL_PAUSED" },
       });
+      if (block === "ACTIVATED")
+        await db.agentBirthCandidate.update({
+          where: { id: prepared.candidateId },
+          data: { status: "ACTIVATED", version: { increment: 1 }, activatedAt: now },
+        });
       if (block === "OFF") await f.mode("OFF");
       if (block === "SUSPENDED")
         await db.agentProfile.update({
@@ -1055,4 +1234,25 @@ describe("prepared writer HTTP and source collection boundaries", () => {
       expect(result.reason).toBe(block === "GLOBAL_PAUSED" ? "PAUSED" : "NOT_ACTIVE");
     },
   );
+  it("does not lease an ordinary PAUSED author without a birth record", async () => {
+    const f = await fixture();
+    await db.agentProfile.update({
+      where: { id: f.profile.id },
+      data: { lifecycleStatus: "PAUSED" },
+    });
+    await db.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { runtimeEnabled: true },
+    });
+    const runsBefore = await db.agentRun.count({ where: { agentProfileId: f.profile.id } });
+    expect(
+      await leaseRuntimeRun(
+        db,
+        { ...f.principal, lifecycleStatus: "PAUSED" },
+        { workerId: "ordinary-paused", leaseSeconds: 60 },
+        { now, checkReadiness: async () => {} },
+      ),
+    ).toMatchObject({ run: null, reason: "NOT_ACTIVE" });
+    expect(await db.agentRun.count({ where: { agentProfileId: f.profile.id } })).toBe(runsBefore);
+  });
 });

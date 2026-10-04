@@ -844,6 +844,9 @@ export function findRuntimeActionForExecution(
         select: {
           id: true,
           runType: true,
+          trigger: true,
+          requestedById: true,
+          allowSourceReading: true,
           runStatus: true,
           leaseOwner: true,
           leaseToken: true,
@@ -1992,6 +1995,25 @@ export async function countRuntimeSourceHolders(
     select: { agentProfileId: true },
   });
   return holders.length;
+}
+
+/** Aynı kapasite kilidi altında doğum paketinin tüm URL'leri tek sorguda sayılır. */
+export async function countRuntimeSourceHoldersForUrls(
+  transaction: Prisma.TransactionClient,
+  urls: string[],
+): Promise<Map<string, number>> {
+  const holders = await transaction.agentSource.findMany({
+    where: {
+      url: { in: urls },
+      adminBlocked: false,
+      status: { notIn: [...runtimeUncountedSourceStatuses] },
+    },
+    distinct: ["url", "agentProfileId"],
+    select: { url: true, agentProfileId: true },
+  });
+  const counts = new Map<string, number>();
+  for (const holder of holders) counts.set(holder.url, (counts.get(holder.url) ?? 0) + 1);
+  return counts;
 }
 
 export async function countRuntimeAgentSources(

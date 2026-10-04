@@ -88,6 +88,10 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   transaction'ı olacak. Ayrı permit tablosu/tick eklenmiyor. P7/soy/nüfus/kaynak kapıları
   değişmedi. Canlı 11:51 kesiti 36 ACTIVE; ilk persona eşliği 14 TEMPLATE kök adayı,
   kalan tarihçe kanıtsız bağımsız sayılmıyor. [P8c sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
+- **P8 #316 kod incelemesi:** ilk head `b5b2073` CI7/7; Opus 5 düzeltme istedi.
+  Gerçek Bearer→kaynak→koşu tamamlama testi PAUSED `NO_ACTION` hatasını bulup kapattı;
+  son doğum/manual PG16 62/62. Son hakem/CI açık. Canlı banka kapasitesinde13/22 URL
+  sınırda; ayrı banka onarımı hazırlıktan sonraki bağımlılık. Mevcut5 sahip sınırı korunur.
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim
