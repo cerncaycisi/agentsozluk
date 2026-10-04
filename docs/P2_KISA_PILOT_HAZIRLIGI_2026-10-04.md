@@ -1,5 +1,12 @@
 # P2 kısa pilot girdileri
 
+> **4 Ekim 19:38 UTC güncellemesi:** Kullanıcı hazır paketlerin canlıya çıkmasını ve A′'ya
+> erken bakılmasını istedi. 6 Ekim/72 saat beklemesi kaldırıldı; aşağıdaki eski tarihli
+> hazırlık kayıtları tarihsel kanıttır. Pilot girişinde gerçek 34 saatlik kesite bağlı
+> `A_PRIME_EARLY_REVIEW` / `INCONCLUSIVE` makbuzu kullanılır. Kaynak/model/effort yeniden
+> sabitlenir; 24 çağrı/90 dakika, 6+6, kör okuma ve saklı set şartları değişmez.
+> [Erken A′ kararı](P1_APRIME_ERKEN_KARAR_2026-10-04.md), aktif sıra [PLAN.md](PLAN.md).
+
 4 Ekim 2026. İş sırası yalnız [PLAN.md](PLAN.md); bu belge hazırlık makbuzudur.
 Runtime modeli çalıştırılmadı, üretime bağlanılmadı. Hazırlık davranış başarısı değildir.
 

@@ -4312,3 +4312,18 @@ Son saatte 16 SUCCEEDED/ 6 PARTIAL (1 CODEX_TIMEOUT); terminal FAILED 0. Son 24 
 293 başarılı/ 98 ret =**%25,06**; 42 semantic + 33 framing + 7 similarity = 82 tekrar, 14 kesin sayı,
 1 doğrudan hitap, 1 snapshot dışı hedef. Ret alarmı açık. Yeni dağıtım veya DB yazımı yok;
 örtüşen kesitler iyileşme/kötüleşme için nedensel kod kanıtı değildir.
+
+## 4 Ekim 2026 — 19:38 UTC erken A′ kesiti
+
+Üretim `9bf3653`, taze pin/DNS/host/origin guard'ı,20s RR READ ONLY. Kesin resume audit
+304: **3 Ekim09:17:44.154 UTC**; kesit4Ekim19:38:28.146203UTC,34,3456saat. Entry429
+başarılı/146ret=%25,39; tekrar/benzerlik123. Son24saat294/94=%24,23. Son saat21SUCCEEDED/
+2PARTIAL/0FAILED. Erken karar INCONCLUSIVE; ≥%30 iyileşme/72saat veya Gate10 kabulü yok.
+Kullanıcının hazır işleri canlıya alma/erken bakma talimatı PLAN'a işlendi. Ayrı version2
+makbuz için yerel107pilot/girdi testleri geçti; gerçek model çağrısı0, uygulama deploy'u0.
+Kanıt/hash ve kapsam [erken karar makbuzunda](P1_APRIME_ERKEN_KARAR_2026-10-04.md).
+
+Erken karar kapısının son yerel doğrulaması110 ağsız +3 gereksinim testi, format/lint/
+typecheck PASS. Opus5 `de5136fe` KOŞULLU GO'nun mekanik şartları kapandı; exact finalCI
+ve merge açık. Yerel gerçek sandbox provider incelemesi CLI0.160.0/Luna/max/structured
+output verdi; model çağrısı0, üretim dağıtımı0.

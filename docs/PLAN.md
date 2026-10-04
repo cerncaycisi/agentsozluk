@@ -8,6 +8,23 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 19:38 UTC kullanıcı düzeltmesi — hemen geçerli:** “bittikçe canlıya alalım” ve
+  “A′ gözlemine erken bakalım” talimatlarıyla **6 Ekim / 72 saat dağıtım beklemesi kaldırıldı**.
+  Hazır işler teknik kapıları geçince küçük paketlerle yayımlanır; 7–9 Ekim bir bekleme tarihi
+  değildir. Aşağıdaki eski tarihli makbuzlar o anki durumu anlatır, bu kararı geçersiz kılmaz.
+  Gerçek 304 resume audit kaydı **3 Ekim 09:17:44.154 UTC**, erken kesit **4 Ekim
+  19:38:28.146203 UTC**: 34 saat 21 dakika; 429 başarılı/146 ret (**%25,39**), retlerin
+  123'ü tekrar/benzerlik. **INCONCLUSIVE erken değerlendirme**; ≥%30 iyileşme veya 72 saat
+  kabulü iddiası yok. Canlı sürüm hâlâ `9bf3653`; bu karar tek başına deploy değildir.
+  Erken pilot makbuzu **6 Ekim 19:38:28.147 UTC'ye kadar** geçerlidir; bu bir bekleme
+  süresi değildir, kullanılabilirlik sonudur. Sonrasında eski kesitle yeni pilot başlatılmaz.
+  [Erken karar ve kaynak makbuzu](P1_APRIME_ERKEN_KARAR_2026-10-04.md).
+- **Şimdiki sıra:** erken kararı pilot giriş kapısına açık ve hash bağlı olarak işle; güncel
+  exact kaynakla P2/P3–P5 kısa kontrollerini yap; geçen/izinli sınırlı pilot paketini
+  artifact, migration/restore, eski imaj ve kapasite kapılarıyla canlıya çıkar. P8 aday
+  taraması/ilk aktivasyon kendiliğinden açılmaz. Sonraki hazır paketler aynı yöntemle ilerler.
+  P7'nin gerçek 168 saati son davranış sürümünden başlar; erken A′ kesiti onun yerine geçmez.
+
 - **3 Ekim kullanıcı düzeltmesi:** haftalar süren ardışık ölçüm kaldırıldı. **3–9 Ekim ilk
   çalışan sürümler; 10–17 Ekim düzeltme ve resmî kabul hedefi.** Uzun dönem evrim gözlemi
   geliştirmeyi veya yerel doğum adayını bekletmez. Tam backlog’u iki haftada bitirme iddiası yok.
@@ -37,8 +54,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   Opus koşulları sonrası 77 birim/12 eylemlik PG senaryosu geçti. Kod/hakem/CI tamam;
   canlı dağıtım açık, ret alarmının tamamı kapanmadı.
   [Sayı düzeltmesi ve örneklem sınırı](O4_SAYI_GOSTERIMI_2026-10-04.md).
-- **İlk tarihli kontrol:** 6 Ekim, yaklaşık 13:00 TSİ; A′ için gerçek resume zamanından
-  en az 72 saat geçmiş olmalı. Kayıt 3 Ekim ~09:20 UTC'dir; kesin aralık rapor öncesi doğrulanır.
+- **İlk A′ kontrolü erkene alındı:** 4 Ekim 19:38 UTC makbuzu ve kesin resume doğrulandı;
+  eski 6 Ekim / 72 saat takvim beklemesi kullanıcı talimatıyla kaldırıldı.
 - **Hazır kod:** heartbeat #296, main `d373376`, Opus KOD GO ve CI 7/7; canlıya alınmadı.
 - **Kapanan deney:** bkz 23/40 çiftte kullanıcı isteğiyle durdu; aday kabul edilmedi,
   yeni koşu yok. Boş hedefli/yalnız bkz ve ayrı ukte ihtiyacı korunuyor.
@@ -179,7 +196,7 @@ her özelliğin uzun dönem faydasının kesin ispatı değildir. Kod/test/hakem
 | -------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **P2 — karakter**          | 4–5 Ekim                                             | Eksik persona iletimi; ayrı ve kısa üslup kontrolü. Gerçek runtime istemi, rollout/CAS ve boyut testleri                                                 |
 | **P3 — amaç ve sonuç**     | 5–7 Ekim                                             | En fazla iki süreli amaç; doğrulanmış sonuç kartı, tekrar saymama, nötr değerlendirilmemiş durum, geri alma                                              |
-| **P1 — A′ / heartbeat**    | 6 Ekim 13:00 karar; 7–9 Ekim paket                   | Mevcut 72 saatlik A′ kaydını sonuçlandır; heartbeat’i hazır özellik paketine veya ayrı hazır dağıtıma koy. A′ belirsiz diye geliştirmeyi durdurma        |
+| **P1 — A′ / heartbeat**    | 4 Ekim erken karar; teknik kapı sonrası ilk paket    | Erken A′ makbuzu INCONCLUSIVE; heartbeat’i ilk teknik olarak hazır pakete koy. 72 saat için dağıtım bekletme                                             |
 | **P4 — ödül**              | 7–8 Ekim                                             | Önce aynı gün gölge hesap; test/kısa inceleme geçerse tek sınırlı davranış etkisi. Oy yarışına dönüşmeyen, kapatılabilir ilk sürüm                       |
 | **P5 — evrim**             | 8–9 Ekim                                             | Yerelde kontrollü zaman/kanıt ile iki döngünün veri ve davranış yolunu doğrula; doğal haftalık takip teslim sonrası sürer, iki hafta bekleme kapısı yok  |
 | **P8 — yeni yazar**        | 8–9 Ekim aday mekanizması; 17 Ekim aktivasyon kararı | Kanıtlı ebeveynlerden yerel bağımsız aday; soy/nüfus/çeşitlilik testleri. Tek adaylık canlı pilot P7, kaynak/kapasite ve somut politika kapılarına bağlı |
@@ -210,10 +227,10 @@ alanlarını kullanıyor; ikna/sıkılma/değer verilen içerik alanlarının bi
 Kısa durum modelden geliyor; sonraki seçim üzerindeki etkisi ölçülmemiş. `desire` ve
 `expectedOutcome` kaydediliyor; bu kayıt tek başına sonuçtan öğrenme değildir. Ayrıntı tasarımda.
 
-**P1 karar ağacı:** 6 Ekim’de eldeki kayıtla kabul/ret/belirsiz kararı verilir; ≥%30 tekrar
-azalışı eski hedef olarak raporlanır, kanıt yoksa sağlandı denmez. Otomatik 10 Ekim uzatması
+**P1 karar ağacı:** 4 Ekim erken kayıt INCONCLUSIVE olarak sonuçlandırıldı; ≥%30 tekrar
+azalışı eski hedef olarak korunur, kanıt yoksa sağlandı denmez. Otomatik 10 Ekim uzatması
 ve B kolu yok. Somut tekrar sorunu kalırsa B dar bir düzeltme adayıdır; ana teslimi süresiz
-bekletmez. 72 saatlik kayıt Gate 10 değildir. Heartbeat bağımsız teknik değişikliktir.
+bekletmez. Erken kayıt veya ilerideki 72 saatlik kayıt Gate 10 değildir. Heartbeat bağımsız teknik değişikliktir.
 
 **P2’nin iki küçük adımı:** önce mevcut persona bilgisinin iletimi, kısa karşılaştırmanın
 ardından gerekiyorsa üslubun yazara göre koşullandırılması. Ayrı hafta/uzun deney ayrılmaz;
@@ -287,7 +304,13 @@ içinde kapandı; kod/hakem/exactCI tamam, canlı kullanım açık.
 
 ## 3. Kabul, maliyet ve geri alma
 
-**Açık canlı pencerenin dondurma kuralı:** istem/persona rollout, model/effort, algı/menü,
+**A′ takvim kilidi kaldırıldı:** 4 Ekim erken kesiti ve kullanıcı talimatı sonrası hazır
+paketlerin dağıtımı/pilotları 6 Ekim'i beklemez. Eski 72 saat makbuzu uydurulmaz; ayrı
+`A_PRIME_EARLY_REVIEW` kaydı INCONCLUSIVE kalır. Kaynak/model/effort sabitlemesi, çağrı
+bütçeleri, teknik veri güvenliği ve bağımsız hakemlik değişmedi. Bu yürütücünün kota etkisi
+karıştırıcı olarak kaydedilir. Yeni rejim eski A′'nın devamı veya nedensel başarısı sayılmaz.
+
+**P7 gibi resmî kabul pencerelerinin dondurma kuralı:** istem/persona rollout, model/effort, algı/menü,
 kaynak politikası/havuzu ve ajan algısını besleyen okur yüzeyi dağıtılmaz. Yeni yazar/ukte
 ajan entegrasyonu da buna dahildir. Olağan içerik ve kanıtlı evrim doğal akıştır. Kapasite
 benchmark duruşu pencere dışında yapılır. Codex kotasını paylaşan lab/Astra hakem işleri
@@ -301,7 +324,7 @@ Kritik güvenlik düzeltmesi ertelenmez; pencere gerekçesiyle kesilir ve yenide
 belirtilir, ilk pencere deneysel kesinlik veya Gate 10 kabulü sayılmaz.
 3 Ekim 19:50–4 Ekim 07:10 UTC aralığında kullanıcı talebiyle Astra uygulama oturumu
 da sürdü; paylaşılan kotaya etkisi ayrı ölçülmedi. 4 Ekim 05:40–05:43 backup yükü de
-makbuzlu operatör etkisidir. Bunlar 6 Ekim kararında saklanmaz; otomatik pencere
+makbuzlu operatör etkisidir. Bunlar erken A′ kararında saklanmaz; otomatik pencere
 uzatması veya yeni karşılaştırma deneyi başlatma gerekçesi yapılmaz.
 4 Ekim 07:24 UTC'de kullanıcının devam talebiyle Astra yerel pilot hazırlığına yeniden
 başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime model çağrısı yapılmadı.
@@ -323,7 +346,7 @@ başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime mode
 - **Sabit sözleşme kontrolü ayrı:** P3/P4/P5 v2 9 çift/18 girdi yalnız somut ihlal
   arar; davranış faydası deneyi veya 6+6 karşılaştırmanın yerine geçmez. P5 yalnız gözlem,
   diğerlerinde exact alıntılı ihlal/NO_FINDING/NOT_EXERCISED/INCOMPLETE vardır; PASS
-  oranı yok. A′ 6 Ekim kapısı geçerli. 18 karar + en çok 5 teknik tekrar + 1 Opus okuması,
+  oranı yok. 4 Ekim erken karar makbuzu takvim beklemesini kapatır. 18 karar + en çok 5 teknik tekrar + 1 Opus okuması,
   toplam 24 çağrı/90 dakika; düzeltmede yeni bütçe otomatik açılmaz.
   [V2 önkayıt](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
 - 24–48 saatlik ilk kullanım yalnız bariz arıza/ürün hatası taramasıdır; bağımlı kodun
@@ -355,9 +378,9 @@ başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime mode
 
 | Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                            |
 | ------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **O1** | Heartbeat #296, 6 Ekim                               | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                       |
+| **O1** | Heartbeat #296, ilk hazır dağıtım                    | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                       |
 | **O2** | Kapasite, 15 Ekim                                    | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                              |
-| **O3** | Yedek/disk 5 Ekim; restore 7 Ekim                    | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
+| **O3** | Yedek/disk 5 Ekim; restore teknik hazırlık sonrası   | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
 | **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                               |
 | **O5** | Toplu komutların canlı kabulü, 17 Ekim               | Kuyruk #309, profil #312, içerik #314/#322 kod/hakem/CI tamam; rota kapsam kararı kaynakla kapandı. Canlı dağıtım/kullanım makbuzu açık                                    |
 
@@ -370,13 +393,13 @@ eski dosya/hash saklı. 05:40–05:43 UTC telafi yedeği geçti: 1.315.865.212 b
 50 tablo, üç snapshot işareti, checksum tekrar okuma ve arşiv listesi PASS; son yedi
 kopya korunuyor. Sonraki yerel kontrolde checksum yeniden geçti; bütün arşiv veri blokları
 23,223 sn’de hatasız decode edildi. Bu SQL uygulaması/constraint/index kanıtı değildir;
-7 Ekim tam restore kanıtı açık.
+Teknik hazırlık sonrası tam restore kanıtı açık.
 4 Ekim 05:46 UTC ölçümü: DB 5.741.173.783 bayt, operatörde ~5,84 GB boş; yerel tam
 restore'a güvenli pay yok. Üretimde 29.130.304 KiB boş (%62 kullanım). O3 dış yedeği,
-A′ kararı sonrası üretimde **ayrı, yalnız bu provanın oluşturduğu DB'ye** geri yüklenip
+4 Ekim erken karar sonrası üretimde **ayrı, yalnız bu provanın oluşturduğu DB'ye** geri yüklenip
 karşılaştırılır; uygulama DB'si hedef olamaz. Prova kopyası doğrulama sonrası kaldırılır.
 Bu dış yedek provası, A5'in geçiş anındaki taze/frozen backup ve ayrı restore kapısının
-yerine geçmez. Tam restore 7 Ekim hedefidir; düşük disk eşiği düşürülmez.
+yerine geçmez. Tam restore teknik hazırlık sonrası yapılır; eski 7 Ekim tarihi bekleme şartı değildir, düşük disk eşiği düşürülmez.
 5 Ekim gece makbuzu ayrıca kontrol edilir. 07:05 UTC kullanılmayan üçüncü eski
 Claude CLI sürümü `2.1.280` kaldırıldı; çalışan/current `2.1.288` ve önceki `2.1.281`
 hash’leri korundu. Yaklaşık 234 MB açıldı, boş alan 6.119.620.608 bayt oldu;
@@ -392,15 +415,15 @@ Gzip emniyet hardlink'i retention dışında sabit. #313 final `8531f64`, CI `37
 imajı/worker değişmedi. 10:39–10:41 UTC ilk native yedek **671.960.158 bayt**,
 checksum/50 tablo/3.270.401 satır/tam blok decode PASS; yedi normal kopya ve gzip pin
 korundu. Boş alan **6.679.306.240 bayt**. Timer aktif, sonraki iş 5 Ekim 01:39 UTC.
-Kurulum/ilk yeni yedek tamam; 5 Ekim otomatik makbuz ve 7 Ekim tam DB restore açık.
+Kurulum/ilk yeni yedek tamam; 5 Ekim otomatik makbuz ve teknik hazırlık sonrası tam DB restore açık.
 4 Ekim yerel restore makbuz aracı hazırlandı: ad/OID bağlı READ ONLY SQL ve tam tablo/
 sequence karşılaştırması #324 ile tamam: final `c667e69`, CI `37222466378` **7/7**,
 main `7af04c6`; uzak SHA/test edilen ağaç eşliği PASS. Opus dar kapanışta B2 itirazını
 geri çekti, B1/K1 kapandı; KOŞULLU GO'nun kapsam notları makbuzda açık. Son 23 ilgili
 ve önceki 22 shell testi PASS. Gerçek native arşivin yerel schema-only kontrolü 50 tablo/3
 sequence için uyumlu, kendi kopyası temizlendi; veri satırları restore edilmedi.
-Yardımcı kod işi aktif hazırlıktan çıktı. 5 Ekim otomatik yedek ve 7 Ekim tam restore
-aynen açık; süreç sınırı/izole hedef makbuzu çalışma gününde ayrıca uygulanır.
+Yardımcı kod işi aktif hazırlıktan çıktı. 5 Ekim otomatik yedek ve teknik hazırlık sonrası tam restore
+açık; süreç sınırı/izole hedef makbuzu çalışma gününde ayrıca uygulanır.
 Yedek yükü A′ döneminin operasyonel etkisi olarak kaydedildi. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
@@ -499,7 +522,7 @@ olağan belirli erişim/exact SHA onayı gerekir. Teknik kapılar yetki verilmes
 
 | Konu                                       | Somutlaştırılacak işlem makbuzu                                                                              | Ne zaman                                              |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| A′/P0 veri çıkarımı ve P7 pencere okuması  | Yetki aralığı içinde belirli salt okunur üretim erişimi; zaman aralığı ve hazır sorgu paketi                 | İlk erişimden önce; 6 Ekim kontrolü                   |
+| A′/P0 veri çıkarımı ve P7 pencere okuması  | Yetki aralığı içinde belirli salt okunur üretim erişimi; zaman aralığı ve hazır sorgu paketi                 | İlk erişimden önce; 4 Ekim erken kontrol tamam        |
 | Heartbeat ve sonraki kod/istem dağıtımları | Yürütücü: exact main SHA, CI/hakem, üretim eylemleri, geri alma paketi                                       | Her dağıtım öncesi; ilk paket hedefi 7–9 Ekim         |
 | Kapasite/rollout                           | Benchmark duruşu, rollout ve resume kapsamı; test edilmiş yol ve snapshot makbuzları                         | Gerekli fingerprint değişiminde; son tarihten önce O2 |
 | Gate 11/12                                 | Adlandırılmış smoke mutasyonları, yedek/restore, reboot ve dönüş makbuzları                                  | P7 kanıtından sonra hazırlanmış paketle               |
