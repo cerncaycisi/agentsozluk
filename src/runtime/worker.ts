@@ -114,6 +114,7 @@ export const MAX_RUNTIME_PROCESSING_LANES = 2;
 export const DEFAULT_STOCHASTIC_TICK_MINIMUM_MS = MINIMUM_STOCHASTIC_TICK_DELAY_MS;
 export const DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS = MAXIMUM_STOCHASTIC_TICK_DELAY_MS;
 export const STOCHASTIC_BUSY_RETRY_MS = 60_000;
+export const BIRTH_SCAN_FAILURE_RETRY_MS = 60 * 60_000;
 
 export function randomStochasticTickDelay(
   random: () => number = Math.random,
@@ -1099,6 +1100,7 @@ export class AgentRuntimeWorker {
   readonly #processingLanes: number;
   #runOnceInFlight: Promise<number> | null = null;
   #stochasticTickNotBefore = 0;
+  #birthScanNotBefore = 0;
 
   constructor(options: RuntimeWorkerOptions) {
     if (options.credentials.length === 0)
@@ -1146,6 +1148,22 @@ export class AgentRuntimeWorker {
             ));
       if (result.createdRuns > 0)
         this.#options.onSafeEvent?.({ level: "info", code: "STOCHASTIC_TICK_QUEUED" });
+      if (result.birthScanDue && now.getTime() >= this.#birthScanNotBefore) {
+        try {
+          if (!scheduling.controlPlane.tickBirthCandidates)
+            throw new Error("BIRTH_SCAN_UNAVAILABLE");
+          const birth = await scheduling.controlPlane.tickBirthCandidates(
+            credential,
+            this.#options.workerId,
+          );
+          this.#options.onSafeEvent?.({ level: "info", code: `BIRTH_SCAN_${birth.outcome}` });
+        } catch {
+          // Kalıcı hata her society tick’inde ek çağrı/gecikme yaratmasın.
+          this.#birthScanNotBefore = now.getTime() + BIRTH_SCAN_FAILURE_RETRY_MS;
+          // Normal uyanış kuyruğu zaten oluştu; aday hatası kendi güvenli olayıdır.
+          this.#options.onSafeEvent?.({ level: "error", code: "BIRTH_SCAN_FAILED" });
+        }
+      }
     } catch {
       this.#stochasticTickNotBefore = now.getTime() + STOCHASTIC_BUSY_RETRY_MS;
       this.#options.onSafeEvent?.({ level: "error", code: "STOCHASTIC_TICK_FAILED" });

@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — P8a ana dalda; P8b yerel aday yolu
+
+- #304 exact `c009599`, gerçek Opus 5 KOD GO, CI `37168983479` 7/7; main
+  `1f0534db2e4448caf06bcadcda80780ebdb68c57`, uzak SHA/ağaç eşitliği doğrulandı.
+- P8b migration yalnız yerel test DB'de. Birleşik PG16 40/40, ilk ilgili birim 83/83 geçti;
+  aday oluşturma/yarış/geri alma/TTL/yetki/HTTP taze replay ve reset sonrası kanıt kaybı sınandı.
+- Yeni hesap/entry/run oluşmadığı doğrulandı. Üretim erişimi/dağıtım yok, A′/v46 değişmedi.
+  P8b bağımsız kod hakemi/CI ve gerçek doğum aktivasyonu açık.
+  [P8 makbuzu](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
+
 ## 2026-10-04 — P5 ana dalda; P8 politika/taslak yerel kanıtı
 
 - #303 exact `d2ac2d1`, CI `37167331459` 7/7; Opus küçük koşulları uygulandı.
@@ -3780,3 +3790,13 @@ W3.3 sonrasına, link kotası veya reciprocal spam eklenmeden sıraya alındı.
 #300 head `e50465d`, main `c2f5db7`: Opus 5 ikinci tur KOD GO, CI `37158795400` 7/7.
 Uzak SHA ve ağaç eşitliği doğrulandı. 126/126 ilk tam PG16 koşusuna ek olarak hakem düzeltmeleri
 sonrası 8/8 amaç, 119 birim, 7 reset ve 1 admin erişim testi geçti. Üretim değişmedi.
+
+### 4 Ekim — P8b koşullu hakem kapanışı, yerel kanıt
+
+- Opus 5 exact `ab7489d16048eb05480a0311365f8968f5f5a0d9` KOŞULLU GO. B1/B2/B4
+  worker hata beklemesi, toplu silme koruması ve API sözleşmesi düzeltildi.
+- Yerel son 40 PG16 (20 aday/20 ödül) ve ayrı 2 stochastic PG16 + 60 birim geçti.
+  Bunlar önceki 19/84 ve 40 birleşik koşularından ayrı ölçümlerdir.
+- İlk CI quality OpenAPI eşlemesinde, database/coverage HTTP fixture Origin farkında kaldı.
+  OpenAPI 147 işlemle ve odaklı PG16 CI Origin ayarıyla geçti; taze tam CI henüz açık.
+- Canlı dağıtım, doğal doğum veya 41 gerçek yazarlı süre benchmark’ı yapılmadı.

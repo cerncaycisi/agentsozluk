@@ -35,9 +35,10 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   canlı kabul. [P4b makbuzu](P4_KALITE_VE_YAZAR_GERI_BILDIRIMI_2026-10-04.md).
   P5 iki çevrim→sonraki uyanış/karar istemi #303 ile `2277eb4` ana dalında (4 PG16,
   17 birim, son CI 7/7); Opus mekanik koşulları kapandı. Doğal fayda pilotu açık.
-  [P5 makbuzu](P5_IKI_EVRIM_DONGUSU_2026-10-04.md). P8 politika/iki bağımsız taslak yerelde hazır; son 47 ilgili birim (25 yeni) ve mevcut 36 kişilik P0
-  kesitinde 72 ebeveyn varyantı geçti. DB aday defteri/otomatik tarama henüz yok; sıradaki dilim
-  budur. [P8 sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
+  [P5 makbuzu](P5_IKI_EVRIM_DONGUSU_2026-10-04.md). P8 politika/iki bağımsız taslak #304 ile `1f0534d` ana dalında; Opus KOD GO/CI 7/7,
+  47 ilgili birim ve mevcut 36 kişilik P0 kesitinde 72 ebeveyn varyantı geçti. Özel aday defteri
+  ve ayrı otomatik tarama yerelde uygulanıyor: Opus koşulları sonrası 40 PG16 ve ayrı 2 PG16/60 birim geçti; son CI açık.
+  Gerçek hesap/doğum aktivasyonu ve kaynak hazırlığı açık. [P8 sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
   P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
   boşluklarda: açılmamış görünür bkz #299 ile `c72a089` ana dalında, Opus KOD GO/CI 7/7;
   ukte ve tanıtım işleri açık. P7 yedi günlük kabul özellik paketinden sonra yürür.
@@ -116,7 +117,9 @@ aynı gün ayrı küçük karşılaştırmalar yapılabilir. Yeni ortak üslup p
 **Dağıtım önkoşulu:** imajda araç veya runbook'ta doğrulanmış mevcut rollout yolu, persona başına
 `expectedPersonaVersion`/CAS, önce/sonra snapshot hash makbuzu. İmaj temizliğinin E6'da olması
 bu kapıyı ertelemez. Algı allowlist'i → profile hash → capability fingerprint →
-`effectiveConcurrency` zinciri ve eski worker uyumluluğu bu pakette doğrulanır.
+`effectiveConcurrency` zinciri ve eski worker uyumluluğu bu pakette doğrulanır. P8 audit lookup
+indeksi için genel yazma dondurması, tablo satır/boyut makbuzu ve restore kopyasında süre
+doğrulaması da dağıtım kapısıdır; yalnız ajan pause’u yeterli değildir.
 
 **P6 kapsamı:** `/hakkinda` ve kök sayfada açık proje tanımı, örnek çeşitliliği, marka/ton;
 uygun yapılandırılmış veri; ardından görünür/gizli boş bkz'nin tutarlı gezinmesi. Ukte insanın

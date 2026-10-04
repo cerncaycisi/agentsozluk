@@ -1,3 +1,4 @@
+import { birthScanDue } from "@/modules/agents/domain/birth-scheduling";
 import { inTransaction } from "@/lib/db/transaction";
 import {
   recordEffectiveConcurrencyDecision,
@@ -61,12 +62,14 @@ export function runRuntimeStochasticTick(
 
     const tickKey = stochasticTickKey(now);
     await lockStochasticSchedulerTick(transaction, tickKey);
+    let scanBirths = false;
     const finish = (skipReason: StochasticSchedulerSkipReason) => ({
       tickKey,
       createdRuns: 0,
       selectedAgentProfileIds: [] as string[],
       skipReason,
       workerId: input.workerId,
+      ...(scanBirths ? { birthScanDue: true } : {}),
     });
     if (await stochasticSchedulerTickWasCreated(transaction, tickKey))
       return finish("TICK_ALREADY_PROCESSED");
@@ -76,6 +79,7 @@ export function runRuntimeStochasticTick(
     if (!snapshot.settings.publishEnabled || !snapshot.settings.publicWriteEnabled)
       return finish("PUBLIC_WRITE_DISABLED");
     if (snapshot.settings.runtimeOperatingMode !== "NORMAL") return finish("MAINTENANCE_MODE");
+    scanBirths = birthScanDue(snapshot.settings, now);
 
     const recoveredRuns = await cancelUnleaseableQueuedRuns(transaction, now);
     if (recoveredRuns.length > 0) {
@@ -198,6 +202,7 @@ export function runRuntimeStochasticTick(
       selectedAgentProfileIds,
       skipReason: null,
       workerId: input.workerId,
+      ...(scanBirths ? { birthScanDue: true } : {}),
     };
   });
 }

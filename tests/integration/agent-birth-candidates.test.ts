@@ -1,0 +1,594 @@
+import * as birthEvidence from "@/modules/agents/application/birth-evidence";
+import * as birthRecords from "@/modules/agents/repository/birth-candidates";
+import { runRuntimeStochasticTick } from "@/modules/agents/application/stochastic-scheduler";
+import { NextRequest } from "next/server";
+import { POST as inspectRoute } from "@/app/api/v1/admin/agent-births/inspect/route";
+import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
+import { getEnvironment } from "@/config/env";
+import { createOpaqueToken } from "@/lib/security/crypto";
+import { randomUUID } from "node:crypto";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  runRuntimeBirthTick,
+  changeBirthMode,
+  inspectBirthCandidate,
+  rejectBirthCandidate,
+} from "@/modules/agents/application/birth-candidates";
+import {
+  issueAuthorAssessmentPacket,
+  submitAuthorAssessment,
+  reverseAuthorAssessment,
+  changeRewardMode,
+} from "@/modules/agents/application/rewards";
+import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
+import type { ActorContext } from "@/modules/auth/domain/actor";
+import { agentPersonaTemplates } from "@/modules/agents/personas/templates";
+import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
+import { sha256 } from "@/lib/security/crypto";
+import {
+  closeIntegrationDatabase,
+  integrationDatabase as db,
+  resetIntegrationDatabase,
+} from "./database";
+
+// Kontrollü tarihi kayıtlar; doğal haftalar veya canlı kalite değerlendirmesi değildir.
+const now = new Date("2026-10-04T20:59:00.000Z");
+async function fixture() {
+  const persona = agentPersonaTemplates[0]!;
+  const user = async (username: string, kind: "HUMAN" | "AGENT", role: "ADMIN" | "USER") =>
+    db.user.create({
+      data: {
+        username,
+        usernameNormalized: username,
+        displayName: username,
+        email: `${username}@integration.test`,
+        emailNormalized: `${username}@integration.test`,
+        passwordHash: "not-used",
+        kind,
+        role,
+        loginDisabled: kind === "AGENT",
+        status: "ACTIVE",
+        termsVersion: "1",
+        termsAcceptedAt: now,
+      },
+    });
+  const admin = await user("birth_admin", "HUMAN", "ADMIN");
+  const writer = await user(persona.username, "AGENT", "USER");
+  const actor: ActorContext = {
+    actorId: admin.id,
+    actorKind: "HUMAN",
+    actorRole: "ADMIN",
+    origin: "API",
+    requestId: randomUUID(),
+  };
+  const profile = await db.agentProfile.create({
+    data: {
+      userId: writer.id,
+      lifecycleStatus: "ACTIVE",
+      activeTimeProfile: {},
+      createdById: admin.id,
+      updatedById: admin.id,
+    },
+  });
+  const validated = validatePersonaCandidate(persona, [], "Yerel doğum politikası testi.");
+  const version = await db.agentPersonaVersion.create({
+    data: {
+      agentProfileId: profile.id,
+      version: 1,
+      persona,
+      renderedPrompt: validated.renderedPrompt,
+      changeOrigin: "INITIAL",
+      changeSummary: "Yerel doğum testi",
+      createdById: admin.id,
+      validationReport: validated.report,
+    },
+  });
+  await db.agentProfile.update({
+    where: { id: profile.id },
+    data: { currentPersonaVersionId: version.id },
+  });
+  const credential = await db.agentCredential.create({
+    data: {
+      agentProfileId: profile.id,
+      tokenHash: sha256(randomUUID()),
+      prefix: "test",
+      scopes: ["runtime:plan"],
+    },
+  });
+  const principal: RuntimePrincipal = {
+    credentialId: credential.id,
+    agentProfileId: profile.id,
+    lifecycleStatus: "ACTIVE",
+    actor: {
+      actorId: writer.id,
+      actorKind: "AGENT",
+      actorRole: "USER",
+      origin: "AGENT",
+      requestId: randomUUID(),
+    },
+  };
+  const run = await db.agentRun.create({
+    data: {
+      agentProfileId: profile.id,
+      personaVersionId: version.id,
+      runType: "NORMAL_WAKE",
+      runStatus: "SUCCEEDED",
+      queuePriority: "MANUAL_SINGLE",
+      trigger: "TEST",
+      idempotencyKey: randomUUID(),
+      timeoutSeconds: 600,
+      desiredEntryMin: 0,
+      desiredEntryMax: 1,
+    },
+  });
+  await changeRewardMode(db, actor, {
+    mode: "SHADOW",
+    expectedMode: "OFF",
+    reason: "Yerel bağımsız kalite kanıtı.",
+  });
+  const entries: Array<{ entryId: string; assessmentId: string; sourceAt: Date }> = [];
+  const assess = async (
+    entryId: string,
+    at: Date,
+    verdict: "SUPPORTED" | "INSUFFICIENT" = "SUPPORTED",
+  ) => {
+    const packet = await issueAuthorAssessmentPacket(
+      db,
+      actor,
+      { agentProfileId: profile.id, entryId },
+      at,
+    );
+    return submitAuthorAssessment(
+      db,
+      actor,
+      {
+        packetId: packet.packetId,
+        nonce: packet.nonce,
+        packageHash: packet.packageHash,
+        verdict,
+        independentReviewConfirmed: true,
+        reviewerModel: "independent-test-reviewer",
+        reason: "Kontrollü yerel kalite kanıtı.",
+      },
+      at,
+    );
+  };
+  for (const [i, time] of [
+    "2026-09-27T12:00:00Z",
+    "2026-09-30T12:00:00Z",
+    "2026-10-03T12:00:00Z",
+  ].entries()) {
+    const sourceAt = new Date(time);
+    const topic = await db.topic.create({
+      data: {
+        title: `Doğum kanıtı ${i}`,
+        normalizedTitle: `dogum kaniti ${i}`,
+        slug: `dogum-kaniti-${i}`,
+        createdById: writer.id,
+      },
+    });
+    const body = `Kontrollü bağımsız katkı ${i}; farklı bir gözlemi temellendirir.`;
+    const entry = await db.entry.create({
+      data: {
+        topicId: topic.id,
+        authorId: writer.id,
+        body,
+        normalizedBody: body,
+        origin: "AGENT",
+        createdAt: sourceAt,
+        updatedAt: sourceAt,
+      },
+    });
+    const action = await db.agentAction.create({
+      data: {
+        runId: run.id,
+        agentProfileId: profile.id,
+        sequence: i + 1,
+        actionType: "CREATE_ENTRY",
+        actionStatus: "SUCCEEDED",
+        input: {},
+        result: { entryId: entry.id },
+        createdAt: sourceAt,
+      },
+    });
+    await db.agentContentRecord.create({
+      data: { entryId: entry.id, agentProfileId: profile.id, runId: run.id, actionId: action.id },
+    });
+    const assessment = await assess(entry.id, new Date(sourceAt.getTime() + 60000));
+    expect(assessment.applied).toBe(false);
+    entries.push({ entryId: entry.id, assessmentId: assessment.assessmentId, sourceAt });
+  }
+  const mode = async (value: "OFF" | "CANDIDATES", at = now) => {
+    const settings = await db.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } });
+    return changeBirthMode(
+      db,
+      actor,
+      { mode: value, expectedSettingsVersion: settings.settingsVersion },
+      at,
+    );
+  };
+  const tick = (at = now) => runRuntimeBirthTick(db, principal, { workerId: "birth-worker" }, at);
+  const create = async () => {
+    await mode("CANDIDATES");
+    const result = await tick();
+    expect(result).toMatchObject({ outcome: "PROPOSED" });
+    if (!("candidateId" in result) || !result.candidateId)
+      throw new Error("EXPECTED_BIRTH_CANDIDATE");
+    return db.agentBirthCandidate.findUniqueOrThrow({ where: { id: result.candidateId } });
+  };
+  return {
+    admin,
+    actor,
+    writer,
+    profile,
+    version,
+    credential,
+    principal,
+    entries,
+    assess,
+    mode,
+    tick,
+    create,
+    user,
+  };
+}
+
+beforeEach(resetIntegrationDatabase);
+afterAll(closeIntegrationDatabase);
+describe("private birth candidates with PostgreSQL", () => {
+  it("defaults off; one private candidate creates no account, source, entry, run or credential", async () => {
+    const f = await fixture();
+    expect(await f.tick()).toEqual({ outcome: "OFF", candidateId: null });
+    const counts = async () =>
+      Promise.all([
+        db.user.count(),
+        db.agentProfile.count(),
+        db.agentCredential.count(),
+        db.entry.count(),
+        db.agentRun.count(),
+        db.agentSource.count(),
+      ]);
+    const before = await counts();
+    expect(await inspectBirthCandidate(db, f.actor, {}, now)).toBeNull();
+    const candidate = await f.create();
+    expect(await inspectBirthCandidate(db, f.actor, {}, now)).toMatchObject({
+      id: candidate.id,
+      status: "PROPOSED",
+    });
+    expect(candidate).toMatchObject({
+      parentProfileId: f.profile.id,
+      parentPersonaVersionId: f.version.id,
+      policyVersion: 1,
+      status: "PROPOSED",
+      version: 1,
+    });
+    expect(candidate.expiresAt.getTime() - candidate.createdAt.getTime()).toBe(7 * 86400000);
+    expect(await counts()).toEqual(before);
+    expect(await f.tick()).toEqual({ outcome: "NOT_DUE", candidateId: null });
+    expect(await db.agentBirthCandidate.count()).toBe(1);
+    expect(await db.auditLog.count({ where: { action: "agent.birth.proposed" } })).toBe(1);
+    expect(await db.agentRewardAssessment.count({ where: { applied: true } })).toBe(0);
+  });
+  it("serializes concurrent scans without duplicate candidates or duplicate seven-day credit", async () => {
+    const f = await fixture();
+    await f.mode("CANDIDATES");
+    const preselection = vi.spyOn(birthEvidence, "currentBirthParentEvidence");
+    try {
+      const results = await Promise.all([f.tick(), f.tick()]);
+      expect(
+        results.filter((result) => "outcome" in result && result.outcome === "PROPOSED"),
+      ).toHaveLength(1);
+      // Tek ön seçim + kilitli son doğrulama; ikinci worker geçmişi yeniden taramaz.
+      expect(preselection).toHaveBeenCalledTimes(2);
+    } finally {
+      preselection.mockRestore();
+    }
+    expect(await db.agentBirthCandidate.count()).toBe(1);
+    expect(await db.agentGlobalSettings.findUnique({ where: { id: "global" } })).toMatchObject({
+      lastBirthCandidateAt: now,
+      lastBirthScanAt: now,
+    });
+  });
+  it("bounds daily evidence work and records an overflowing parent pool", async () => {
+    const f = await fixture();
+    await f.mode("CANDIDATES");
+    // 41 kimlikli kontrollü havuz; gerçek transaction/audit, maliyet sınırı için sahte kanıt okuyucu.
+    const pool = vi
+      .spyOn(birthRecords, "listBirthParentIds")
+      .mockResolvedValue(Array.from({ length: 41 }, () => ({ id: randomUUID() })));
+    const evidence = vi.spyOn(birthEvidence, "currentBirthParentEvidence").mockResolvedValue(null);
+    try {
+      expect(await f.tick()).toEqual({ outcome: "NO_ELIGIBLE_PARENT", candidateId: null });
+      expect(evidence).toHaveBeenCalledTimes(8);
+      const audit = await db.auditLog.findFirstOrThrow({ where: { action: "agent.birth.scan" } });
+      expect(audit.metadata).toMatchObject({ parentPoolTruncated: true, parentPoolLimit: 40 });
+      expect(await f.tick()).toEqual({ outcome: "NOT_DUE", candidateId: null });
+      expect(evidence).toHaveBeenCalledTimes(8);
+    } finally {
+      evidence.mockRestore();
+      pool.mockRestore();
+    }
+  });
+  it("protects immutable snapshots and never reopens a closed candidate", async () => {
+    const f = await fixture();
+    const candidate = await f.create();
+    await expect(
+      db.agentBirthCandidate.update({ where: { id: candidate.id }, data: { persona: {} } }),
+    ).rejects.toThrow(/AGENT_BIRTH_CANDIDATE_IMMUTABLE/u);
+    await expect(db.agentBirthCandidate.delete({ where: { id: candidate.id } })).rejects.toThrow(
+      /AGENT_BIRTH_CANDIDATE_IMMUTABLE/u,
+    );
+    await expect(db.$executeRaw`TRUNCATE "agent_birth_candidates"`).rejects.toThrow(
+      /AGENT_BIRTH_CANDIDATE_IMMUTABLE/u,
+    );
+    expect(await db.agentBirthCandidate.count()).toBe(1);
+    await rejectBirthCandidate(db, f.actor, { candidateId: candidate.id, expectedVersion: 1 }, now);
+    await expect(
+      db.agentBirthCandidate.update({
+        where: { id: candidate.id },
+        data: { status: "PROPOSED", version: 3, closedAt: null, closureReason: null },
+      }),
+    ).rejects.toThrow(/AGENT_BIRTH_CANDIDATE_IMMUTABLE/u);
+  });
+  it("withdraws on reversal and preserves the snapshot instead of replacing its evidence", async () => {
+    const f = await fixture();
+    const candidate = await f.create();
+    await reverseAuthorAssessment(
+      db,
+      f.actor,
+      {
+        assessmentId: f.entries[0]!.assessmentId,
+        reason: "Bağımsız karar yerel testte geri alındı.",
+      },
+      now,
+    );
+    const inspected = await inspectBirthCandidate(db, f.actor, { candidateId: candidate.id }, now);
+    expect(inspected).toMatchObject({
+      status: "WITHDRAWN",
+      closureReason: "EVIDENCE_WITHDRAWN",
+      version: 2,
+      snapshotHash: candidate.snapshotHash,
+      evidence: candidate.evidence,
+    });
+  });
+  it.each(["body", "hidden"] as const)(
+    "withdraws when a publication becomes %s-invalid",
+    async (change) => {
+      const f = await fixture();
+      const candidate = await f.create();
+      await db.entry.update({
+        where: { id: f.entries[0]!.entryId },
+        data:
+          change === "body"
+            ? { body: "Sonradan değişmiş farklı yazı." }
+            : { status: "HIDDEN", hiddenAt: now },
+      });
+      expect(
+        await inspectBirthCandidate(db, f.actor, { candidateId: candidate.id }, now),
+      ).toMatchObject({ status: "WITHDRAWN", closureReason: "EVIDENCE_WITHDRAWN" });
+    },
+  );
+  it("does not refund the rolling window across Sunday/Monday or OFF/ON changes", async () => {
+    const f = await fixture();
+    await f.create();
+    const monday = new Date("2026-10-04T21:01:00Z");
+    await f.mode("OFF", monday);
+    await f.mode("CANDIDATES", monday);
+    expect(await f.tick(monday)).toEqual({ outcome: "SEVEN_DAY_LIMIT", candidateId: null });
+    expect(await db.agentBirthCandidate.count()).toBe(1);
+    expect(await db.agentGlobalSettings.findUnique({ where: { id: "global" } })).toMatchObject({
+      lastBirthCandidateAt: now,
+      lastBirthScanAt: monday,
+    });
+  });
+  it("consumes only the daily attempt for an insufficient parent and never falls back to older approval", async () => {
+    const f = await fixture();
+    await f.assess(f.entries[2]!.entryId, now, "INSUFFICIENT");
+    await f.mode("CANDIDATES");
+    expect(await f.tick()).toEqual({ outcome: "NO_ELIGIBLE_PARENT", candidateId: null });
+    expect(await db.agentGlobalSettings.findUnique({ where: { id: "global" } })).toMatchObject({
+      lastBirthCandidateAt: null,
+      lastBirthScanAt: now,
+    });
+    expect(await f.tick()).toEqual({ outcome: "NOT_DUE", candidateId: null });
+  });
+  it("does not fall back behind a future-dated QUALITY decision in the actual repository", async () => {
+    const f = await fixture();
+    await f.assess(f.entries[2]!.entryId, new Date(now.getTime() + 86400000), "INSUFFICIENT");
+    await f.mode("CANDIDATES");
+    expect(await f.tick()).toEqual({ outcome: "NO_ELIGIBLE_PARENT", candidateId: null });
+    expect(await db.agentBirthCandidate.count()).toBe(0);
+  });
+  it.each(["scope", "account", "profile"])(
+    "rechecks the runtime %s before any candidate write",
+    async (change) => {
+      const f = await fixture();
+      await f.mode("CANDIDATES");
+      if (change === "scope")
+        await db.agentCredential.update({
+          where: { id: f.credential.id },
+          data: { scopes: ["runtime:read"] },
+        });
+      if (change === "account")
+        await db.user.update({ where: { id: f.writer.id }, data: { status: "SUSPENDED" } });
+      if (change === "profile")
+        await db.agentProfile.update({
+          where: { id: f.profile.id },
+          data: { lifecycleStatus: "SUSPENDED" },
+        });
+      await expect(f.tick()).rejects.toMatchObject({
+        code: change === "account" ? "AUTH_REQUIRED" : "FORBIDDEN",
+      });
+      expect(await db.agentBirthCandidate.count()).toBe(0);
+      expect(await db.agentGlobalSettings.findUnique({ where: { id: "global" } })).toMatchObject({
+        lastBirthScanAt: null,
+        lastBirthCandidateAt: null,
+      });
+    },
+  );
+  it("refuses to reuse names already held by accounts, without inventing another draft", async () => {
+    const f = await fixture();
+    await f.user("ayniyerde", "HUMAN", "USER");
+    await f.user("tersolcek", "HUMAN", "USER");
+    await f.mode("CANDIDATES");
+    expect(await f.tick()).toEqual({ outcome: "NO_DRAFT_AVAILABLE", candidateId: null });
+    expect(await db.agentBirthCandidate.count()).toBe(0);
+  });
+  it("refreshes inspection on idempotent HTTP replay and rechecks the admin session", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(now);
+    try {
+      const f = await fixture();
+      const candidate = await f.create();
+      const sessionToken = createOpaqueToken();
+      const csrfToken = createOpaqueToken();
+      const key = randomUUID();
+      await db.session.create({
+        data: {
+          userId: f.admin.id,
+          tokenHash: sha256(sessionToken),
+          csrfTokenHash: sha256(csrfToken),
+          expiresAt: new Date(now.getTime() + 3600000),
+        },
+      });
+      const origin = new URL(getEnvironment().APP_URL).origin;
+      const request = () =>
+        new NextRequest(`${origin}/api/v1/admin/agent-births/inspect`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin,
+            "x-csrf-token": csrfToken,
+            "idempotency-key": key,
+            cookie: `${SESSION_COOKIE_NAME}=${sessionToken}; ${CSRF_COOKIE_NAME}=${csrfToken}`,
+          },
+          body: JSON.stringify({ candidateId: candidate.id }),
+        });
+      const crossOrigin = request();
+      crossOrigin.headers.set("origin", "https://untrusted.invalid");
+      expect((await inspectRoute(crossOrigin)).status).toBe(403);
+      const first = await inspectRoute(request());
+      expect(first.status).toBe(200);
+      expect((await first.json()).data.status).toBe("PROPOSED");
+      await reverseAuthorAssessment(
+        db,
+        f.actor,
+        { assessmentId: f.entries[0]!.assessmentId, reason: "HTTP tekrarından önce geri alındı." },
+        now,
+      );
+      const replay = await inspectRoute(request());
+      expect(replay.status).toBe(200);
+      expect(replay.headers.get("Idempotent-Replay")).toBe("true");
+      expect((await replay.json()).data.status).toBe("WITHDRAWN");
+      await db.user.update({ where: { id: f.admin.id }, data: { status: "SUSPENDED" } });
+      const rejected = await inspectRoute(request());
+      expect(rejected.status).toBe(403);
+      expect(await rejected.json()).not.toHaveProperty("data");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("signals a separate birth scan even while the normal wake queue is busy", async () => {
+    const f = await fixture();
+    await db.agentRun.create({
+      data: {
+        agentProfileId: f.profile.id,
+        personaVersionId: f.version.id,
+        runType: "NORMAL_WAKE",
+        runStatus: "QUEUED",
+        queuePriority: "MANUAL_SINGLE",
+        trigger: "TEST",
+        idempotencyKey: randomUUID(),
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 1,
+      },
+    });
+    const off = await runRuntimeStochasticTick(db, f.principal, { workerId: "birth-worker" }, now);
+    expect(off).not.toHaveProperty("birthScanDue");
+    await f.mode("CANDIDATES");
+    expect(
+      await runRuntimeStochasticTick(db, f.principal, { workerId: "birth-worker" }, now),
+    ).toMatchObject({ createdRuns: 0, skipReason: "QUEUE_NOT_EMPTY", birthScanDue: true });
+    expect(await db.agentBirthCandidate.count()).toBe(0);
+    expect(await f.tick()).toMatchObject({ outcome: "PROPOSED" });
+    expect(
+      await runRuntimeStochasticTick(db, f.principal, { workerId: "birth-worker" }, now),
+    ).not.toHaveProperty("birthScanDue");
+    expect(await db.agentRun.count({ where: { runStatus: "QUEUED" } })).toBe(1);
+  });
+  it("preserves candidate policy history while cleared assessment evidence withdraws a pending candidate", async () => {
+    const f = await fixture();
+    const candidate = await f.create();
+    // Yalnız bu yerel fixture'ın türev kanıt tabloları; great-reset komutu çalıştırılmaz.
+    await db.$executeRaw`TRUNCATE TABLE "agent_reward_reversals", "agent_reward_assessments", "agent_assessment_packets" RESTRICT`;
+    expect(await db.agentBirthCandidate.count()).toBe(1);
+    expect(
+      await inspectBirthCandidate(db, f.actor, { candidateId: candidate.id }, now),
+    ).toMatchObject({
+      status: "WITHDRAWN",
+      closureReason: "EVIDENCE_WITHDRAWN",
+      evidence: candidate.evidence,
+    });
+  });
+  it("accepts an enrolled paused scheduler while requiring a different ACTIVE parent", async () => {
+    const f = await fixture();
+    await f.mode("CANDIDATES");
+    const planner = await f.user("paused_planner", "AGENT", "USER");
+    const profile = await db.agentProfile.create({
+      data: {
+        userId: planner.id,
+        lifecycleStatus: "PAUSED",
+        activeTimeProfile: {},
+        createdById: f.admin.id,
+        updatedById: f.admin.id,
+      },
+    });
+    const credential = await db.agentCredential.create({
+      data: {
+        agentProfileId: profile.id,
+        tokenHash: sha256(randomUUID()),
+        prefix: "test",
+        scopes: ["runtime:plan"],
+      },
+    });
+    const principal: RuntimePrincipal = {
+      credentialId: credential.id,
+      agentProfileId: profile.id,
+      lifecycleStatus: "PAUSED",
+      actor: {
+        actorId: planner.id,
+        actorKind: "AGENT",
+        actorRole: "USER",
+        origin: "AGENT",
+        requestId: randomUUID(),
+      },
+    };
+    expect(
+      await runRuntimeBirthTick(db, principal, { workerId: "paused-planner-worker" }, now),
+    ).toMatchObject({ outcome: "PROPOSED" });
+    expect(await db.agentBirthCandidate.findFirst()).toMatchObject({
+      parentProfileId: f.profile.id,
+    });
+  });
+  it("expires a private candidate after seven actual days", async () => {
+    const f = await fixture();
+    const candidate = await f.create();
+    expect(
+      await inspectBirthCandidate(db, f.actor, { candidateId: candidate.id }, candidate.expiresAt),
+    ).toMatchObject({ status: "EXPIRED", closureReason: "EXPIRED", evidence: candidate.evidence });
+  });
+  it("rechecks runtime credential and administrator authority plus exact settings version", async () => {
+    const f = await fixture();
+    await f.mode("CANDIDATES");
+    await db.agentCredential.update({ where: { id: f.credential.id }, data: { revokedAt: now } });
+    await expect(f.tick()).rejects.toMatchObject({ code: "AUTH_REQUIRED" });
+    await expect(
+      changeBirthMode(db, f.principal.actor, { mode: "OFF", expectedSettingsVersion: 1 }, now),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      changeBirthMode(db, f.actor, { mode: "OFF", expectedSettingsVersion: 1 }, now),
+    ).rejects.toMatchObject({ code: "AGENT_BIRTH_CONFLICT" });
+    expect(await db.agentBirthCandidate.count()).toBe(0);
+  });
+});

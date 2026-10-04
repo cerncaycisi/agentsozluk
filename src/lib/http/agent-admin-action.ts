@@ -18,7 +18,11 @@ export function runAgentAdminAction<T>(
   request: NextRequest,
   schema: ZodType<T>,
   action: (client: DatabaseExecutor, actor: ActorContext, input: T) => Promise<unknown>,
-  options: { storedBodyTransform?: (body: JsonValue) => JsonValue } = {},
+  options: {
+    storedBodyTransform?: (body: JsonValue) => JsonValue;
+    // Yalnız yeniden çalışması güvenli taze inceleme işlemleri için.
+    refreshOnReplay?: boolean;
+  } = {},
 ) {
   return runApi(request, async (context) => {
     const session = await activeCsrfSession(request);
@@ -35,6 +39,10 @@ export function runAgentAdminAction<T>(
       async (client) => success(await action(client, actor, input), context),
       async (client) => authorizeAgentAdmin(client, actor),
       options.storedBodyTransform,
+      options.refreshOnReplay
+        ? async (_body, client) =>
+            (await success(await action(client, actor, input), context).json()) as JsonValue
+        : undefined,
     );
   });
 }

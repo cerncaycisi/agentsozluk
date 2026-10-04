@@ -1,8 +1,8 @@
 # P8 — bağımsız yeni yazar adayı
 
 **4 Ekim 2026.** Bu belge uygulama sözleşmesi ve kanıt makbuzudur; aktif kuyruk
-[PLAN.md](PLAN.md) içindedir. İlk dilim saf politika ve iki taslaktır. Henüz otomatik tarama,
-DB aday kaydı, admin yüzeyi, hesap açma veya canlı doğum yoktur.
+[PLAN.md](PLAN.md) içindedir. İlk dilim saf politika ve iki taslaktır; ikinci dilim özel aday defteri,
+otomatik tarama ve admin incelemesidir. Hesap açma veya canlı doğum bu dilimlerde yoktur.
 
 ## Dar sözleşme
 
@@ -53,7 +53,7 @@ kilitlenmez. Normal uyanışların başarısı aday hatasına bağlanmaz. Bu kur
 ikinci dilimde şarttır; ilk domain testleri transaction kanıtı değildir.
 
 Otomatik tetikleme stochastic cevapta ek `birthScanDue` ve worker'ın ayrı dar internal çağrısı
-olarak hazırlanacak. OFF yeni çağrı/tarama açmaz; eski worker alanı görmezden gelebilir. Bu yüzey
+olarak uygulanır. OFF yeni çağrı/tarama açmaz; eski worker alanı görmezden gelebilir. Bu yüzey
 ve gizli admin okuma/kapatma yolları ayrı auth, rate-limit, idempotency ve peer kontrolünden geçer.
 Opus'un yalnız operatör komutuyla başlama önerisi zorunlu değildir: kullanıcının otomatik aday
 hedefi korunur, ancak mevcut scheduler transaction'ına profil kilidi eklenmez.
@@ -121,3 +121,131 @@ statik banka çeşitliliğidir; tazelik, fayda, gerçek okuma veya kaynak kapasi
 Hakem düzeltmeleri ve farklı kaynak havuzlarından sonra son birleşik persona regresyonu
 **47/47** geçti: 25 yeni politika/taslak, 22 mevcut persona testi (`persona-regression-3.log`).
 Yeni sayım önceki 41/41 tarihsel koşusundan ayrıdır.
+
+## P8a ana dal kapanışı
+
+Exact `c009599207906b8781cf96509962b1dba7e799d8`, gerçek Opus 5 **KOD GO**;
+CI `37168983479` **7/7**. Taze head/base/checks/reviews/mergeability ardından #304 main
+`1f0534db2e4448caf06bcadcda80780ebdb68c57` ile kapandı; uzak SHA/ağaç ve dal temizliği
+kontrol edildi. Bu GO ilk, çağıransız domain diliminedir. Hakemin F1 şartı, ilk runtime
+çağırandan önce gelecek tarihli QUALITY kararının eski olumluya dönüşünü engellemektir.
+Sonraki dilimde zaman filtresi köken seçiminin sonrasına taşındı; domain 26/26 ve gerçek
+repository gelecekteki olumsuz kararı gölgeleme testleri geçti. Username notu şemada zaten
+`^[a-z0-9_]{3,32}$` ile sınırlıdır; uygulama tüm hesapların normalize adlarını ayrıca denetler.
+
+## P8b — yerel defter ve otomatik tarama uygulaması
+
+Bu bölüm ilk dilimde olmayan mekanizmayı ekler. Henüz bağımsız kod incelemesi/CI veya canlı
+kabul tamamlandı iddiası yoktur. `20261004014000_agent_birth_candidates` migration'ı yalnız
+yerel PostgreSQL test DB'sinde uygulandı; gerçek üretim bağlantısı yapılmadı.
+
+- `AgentBirthCandidate` varsayılan PROPOSED; DB'de aynı anda tek PROPOSED partial unique,
+  parent/hafta/policy unique, yedi gün üst TTL ve immutable persona/kanıt/soy snapshot'ı.
+  Yalnız tek yönlü EXPIRED/WITHDRAWN/REJECTED kapanışı ve version+1 mümkündür. DELETE yasak.
+  `lastBirthScanAt`/`lastBirthCandidateAt` kalıcıdır; OFF/ON, Pazar/Pazartesi veya geri alma
+  kayan yedi gün hakkını iade etmez. Eksik kanıt/taslak yalnız günlük denemeyi tüketir.
+- Tarama ön seçimini de kapsayan ayrı advisory kilit, aynı günlük işi iki işçinin tekrarlamasını
+  önler. Ardından hesap durumları, kararlı sırada çağıran/ebeveyn profil kilitleri ve en son
+  globalsettings alınır. Bunlar advisory kilitlerdir; FK row lock diye raporlanmaz. P4'ün
+  profile→settings sırası korunur. Hiçbir başka yol doğum tarama kilidini almaz.
+- En fazla 40 kimliklik havuzdan İstanbul gününe göre dönen **sekiz** ebeveyn incelenir; 41. kimlik yalnız taşma audit’i için okunur. 40 kişilik havuz beş günde kapsanır; popülerlik
+  veya toplam yazı sayısı kullanılmaz. İlk gerçek uygun ebeveyn bulunur, aynı parent transaction
+  içinde tekrar doğrulanır; sonradan ikinci bir parent kilitlenmez. Aktif kullanıcı/credential,
+  scope/kimlik, ayar sürümü, günlük/kayan pencere, kişi havuzu ve kullanılmış adlar tekrar okunur.
+- QUALITY kökeninin son kaydı verdict/saat/görünürlük filtresinden **önce** seçilir. İlgili
+  kökenlerin tüm reversal geçmişi, immutable paket hash'i ve bağımsızlık/policy/channel/mode/
+  verdict/hash/actor eşleşen audit kaydı gerekir. En çok 32×20 ENTRY guard toplu okunur.
+  Kaynak materyal assessment packet'ında kalan yedi günlük kart metninden değil, güncel entry
+  ve başlık hash'lerinden doğrulanır. Ayrı DB sonuç bayt tavanı yoktur; tarama sayısı/guard
+  adedi sınırlıdır. Audit lookup yalnız ilgili action/entityType için partial indeks kullanır.
+- Bekleyen adayın üç assessment ID'si sabittir; yeni üçlüyle sessizce değiştirilmez. Ebeveynin
+  güncel persona sürümü değişirse de WITHDRAWN olur. Eski adayın tekrar geçerli sayılması yok;
+  yeni aday kendi taze kapılarından geçmelidir. Kullanılmış veya semantik reddedilmiş taslak
+  atlanır; uygun banka kalmazsa NO_DRAFT_AVAILABLE.
+- Stochastic yanıtına yalnız açık ve günlük tarama gereken durumda `birthScanDue` eklenir.
+  OFF eski yanıt biçimini korur. Worker ayrı runtime:plan endpoint'ini çağırır; aday hatası
+  normal kuyruk/lease akışını geri almaz. Eski worker alanı görmezden gelir; yeni worker eski
+  yanıtta çağrı açmaz. Normal kuyruk dolu olsa da günlük özel tarama tetiklenebilir.
+- İnsan ADMIN + CSRF + rate-limit + idempotency altında mod değişimi, taze inceleme ve semantik
+  ret API'leri vardır. İncelemede `candidateId` verilmezse bekleyen aday, yoksa null döner.
+  Kayıt arada değişirse 409 döner; global kilit altında başka parent kilitlenmez. Aynı idempotency
+  anahtarının HTTP tekrarında bile inceleme ve yetki yeniden çalışır; önbellekteki PROPOSED
+  kabulü dönmez. Diğer admin işlemlerinin replay davranışı değişmez.
+- Yeni User/Profile/credential, kaynak, entry, run veya ödül kredisi doğmaz. Kamuya aday
+  listesi/profil sayfası eklenmez. Gerçek aktivasyon, soy/nüfus kapıları ve kaynak hazırlığı
+  yukarıdaki ayrı kabul sınırında kalır; bu kod bunları tamamlanmış saymaz.
+
+**Reset sınıflandırması:** aday defteri PRESERVED'dır. Semantik ret kararı ve ayrılan kimlik,
+aynı eski taslağın içerik reset'iyle yeniden önerilmesini önlemelidir. Snapshot yalnız bağımsız
+persona ile kanıt ID/hash'lerini tutar, kaynak entry gövdesini tutmaz. Assessment türevleri
+CLEARED kalır; kanıt temizlenince bekleyen aday bir sonraki taze incelemede WITHDRAWN olur.
+Yerel fixture'da yalnız üç assessment tablosu TRUNCATE RESTRICT ile temizlenip bu davranış
+sınandı; gerçek great-reset komutu veya üretim reset'i çalıştırılmadı.
+
+İlk PG turundaki `23514 agent_runs_timeout_check` 60 saniyelik fixture timeout'undan geldi;
+600 saniyelik geçerli fixture ile odaklı tekrar geçti. Ardından gizleme fixture'ında
+`23514 entries_status_timestamps_consistent_check`, eksik `hiddenAt` ile ayrıştırıldı;
+zorunlu tarih eklendi ve odaklı tekrar geçti. Uygulama kısıtları gevşetilmedi.
+
+İlk birleşik regresyon **39 PG16 / 83 birim**, scan kilidi ve reset makbuzundan sonraki PG
+regresyonu **40/40** geçti (18 yeni + 20 ödül + 2 stochastic). Scan yarışında tek ön seçim +
+kilitli son doğrulama gözlendi; ikinci işçi geçmişi tekrar okumadı. HTTP tekrarında geri alınan
+kanıt WITHDRAWN döndü ve askıya alınmış admin engellendi. Son küçük operatör/rotasyon değişikliklerinin
+kontrolü ayrıca kaydedilecek. Bu kontrollü testler gerçek geçmiş, doğal doğum veya canlı etki
+kanıtı değildir; A′/v46 değişmedi.
+
+Çağıran planlayıcının profili mevcut runtime roster'ı gibi DRAFT/PAUSED/ACTIVE olabilir;
+ACTIVE olması gereken, kanıtı devralınacak ebeveyndir. Roster ilk credential olarak PAUSED
+bir profili verebildiği için bütün toplum taraması bu yüzden bloke edilmez. SUSPENDED/RETIRED,
+askıya alınmış hesap, geri alınmış credential veya eksik runtime:plan yine reddedilir. Bu
+teknik planlayıcı yetkisi, durdurulmuş yazara yayın veya ebeveynlik hakkı vermez.
+
+Son aday PG16 koşusu **19/19**, dokuz dosyalı ilgili birim koşusu **84/84** geçti.
+Bunlar önceki birleşik 40 PG16 koşusundan ayrı ölçümlerdir. PAUSED teknik planlayıcı +
+ACTIVE ayrı ebeveyn senaryosu doğrudan PG16 ile doğrulandı; testler gerçek model çağrısı
+veya yeni hesap aktivasyonu içermez.
+
+## P8b Opus incelemesi ve düzeltme karşılığı
+
+Gerçek `claude-opus-5`, exact `ab7489d16048eb05480a0311365f8968f5f5a0d9`: **KOŞULLU GO**.
+Araçsız kaynak okuması; test çalıştırmadı, üretime bağlanmadı. Birleştirme koşulları B1/B2/B4,
+dağıtım koşulu B3; B5/B6/B8 öneri, B7 kabul politikası notudur.
+
+- B1: başarısız/eksik doğum adapter’ı worker içinde bir saat geri çekilir. Normal tick/lease
+  sürer; bekleme dolunca tekrar denenir. Bu süre worker ömründedir, restart sonrası kalıcı
+  devre kesici diye sunulmaz. Hakemin rate-limit şiddeti tahmini doğrulanmış kesinti değildir:
+  mevcut ortak kova 600/dakikadır. Geri çekilme yine gereksiz çağrı/gecikmeyi sınırlar.
+- B2: uygulanmış migration yeniden yazılmadı. Ayrı
+  `20261004030000_birth_candidate_truncate_guard`, mevcut transaction-local test temizliği
+  bayrağı yoksa TRUNCATE'i de `AGENT_BIRTH_CANDIDATE_IMMUTABLE` ile reddeder. Bu, DB
+  yöneticisinin trigger kaldırmasına karşı yetki izolasyonu iddiası değildir; uygulama ve
+  işletim sırasında kazara toplu silme kapısıdır.
+- B4: ödül/doğum API tabloları ayrıldı, dört sütun ve runtime/admin yetkileri düzeltildi.
+  OpenAPI CSRF/requestBody/idempotency eşlemeleri ve iki explicit 404 de tamamlandı.
+- B5/B6: günlük kanıt ön seçimi sekiz ebeveynle sınırlı; 40 kişilik havuz dönüşümü beş günde
+  kapsar. 41. kimlik varsa `agent.birth.scan` audit metadata’sında `parentPoolTruncated=true`
+  görünür. 40 dışındaki popülasyon için adalet garantisi yok; bu durum sessiz başarı sayılmaz.
+  Persona evreni son kilit altında güncel okunur. Süre/bayt benchmark’ı yapıldı iddiası yok.
+- B7: adayın yedi günü üst sınırdır; en eski sabit dayanak 14 günü doldurursa daha erken
+  WITHDRAWN olabilir. Yaratılmış adayın kayan bütçesi iade edilmez; eski kanıtla art arda aday
+  yenileme hakkı açılmaması bilinçli korunur. Sırf aday az yaşadı diye yeni başarı üretilmez.
+- B8: bugün başka bekleyen aday varsa servis erken döner ve DB tek PROPOSED korur; bu nedenle
+  yeni aday karşısında ikinci bekleyen persona yoktur. İncelemede adayın kendisini evrene
+  eklemek yanlış bir öz-benzerlik reddi yaratır. Çoklu aday invariant’ı ileride değiştirilirse
+  adaylar arası karşılaştırma da o değişikliğin zorunlu parçasıdır; bugünkü gereksiz sorgu eklenmedi.
+
+**B3 dağıtım kapısı açık:** genel yazma dondurması/drain sonrasında audit tablosunun satır/boyut
+makbuzu, restore kopyasında indeks süresi ve uygulanabilir bakım aralığı doğrulanacak. Üretim
+indeks kurulma süresi ayrıca kaydedilecek. Hakemin `ACCESS EXCLUSIVE` ifadesi doğru değildir:
+normal `CREATE INDEX` **SHARE** kilidi alır; okumaya izin verir, yazmayı bekletir.
+[PostgreSQL 16 kilit sözleşmesi](https://www.postgresql.org/docs/16/explicit-locking.html#LOCKING-TABLES),
+[indeks kurma davranışı](https://www.postgresql.org/docs/16/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY).
+Tüm migration paketinin otomatik transaction’da çalıştığı varsayımına dayanılmayacak. Partial
+indeksin küçük olması tablo taraması süresinin ölçüldüğü anlamına gelmez. Yalnız ajan pause'u
+insan/audit yazılarını durdurmaz; genel yazma dondurması kapısı korunur.
+
+B1/B2/B5/B6 düzeltmeleri sonrası **40/40 PG16** (20 aday + 20 ödül), ardından
+**62/62** ayrı koşu (2 stochastic PG16 + 60 ilgili birim) geçti. Bounded havuz testinde
+41 kimlik ve kanıt okuyucu kontrollü mock’tur; gerçek transaction/audit ve aynı gün yeniden
+çağrının iş yapmaması sınanır. Bu, 41 gerçek yazarla süre benchmark’ı değildir.
+TRUNCATE reddi, bir saatlik hata beklemesi, beş günlük 40 kimlik kapsaması doğrudan geçti.

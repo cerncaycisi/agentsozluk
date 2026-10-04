@@ -3522,3 +3522,53 @@ false/true` yapabildi; geçici rol ve DB silindi.
   P8a commit'ine DB/otomasyon kodu karıştırılmadı. Migration henüz yerelde de uygulanmadı.
 - Tekrarlama: iki ödül kanalını ebeveyn adaylığına aynı pencereyle sokma; statik kaynak
   ayrılığını aktif okuma/tazelik sayma; geçmiş 41 koşusunu güncel 47 koşusuyla karıştırma.
+
+## 2026-10-04 — P8a #304 kapanışı; P8b yerel defter ve tarama
+
+- P8a final `c009599207906b8781cf96509962b1dba7e799d8`, gerçek Opus 5 KOD GO,
+  CI `37168983479` 7/7. Taze merge kapısından sonra main
+  `1f0534db2e4448caf06bcadcda80780ebdb68c57`; uzak SHA/ağaç eşitliği ve dal silme doğrulandı.
+  P8b kirli ağaç aynı ağaçlı main tabanına korundu. İlk çağıran öncesi F1 gelecek-karar
+  gölgelemesi P8b'de kapandı; 26 domain testi ve gerçek repository vakası geçti.
+- P8b bu main tabanında, yalnız `agentsozluk_local_integration_test` PG16. Migration
+  `20261004014000_agent_birth_candidates` uygulandı ve Prisma client üretildi. Üretim erişimi yok.
+- İlk yeni fixture: `23514 agent_runs_timeout_check`; 60 yerine mevcut geçerli 600 saniye
+  timeout kullanıldı, odaklı 1/1 geçti. Sonraki `23514 entries_status_timestamps_consistent_check`
+  yalnız HIDDEN fixture'ının eksik hiddenAt alanıydı; alan eklenip odaklı 1/1 geçti.
+  Kısıtlar/migration'lar gevşetilmedi; bunlar ürün regresyonu diye sınıflandırılmadı.
+- Yerel ilk 16/16 yeni PG, ardından 39/39 birleşik PG ve 83/83 ilgili birim geçti. Ayrı
+  scan advisory kilidi eklenince yarışta yalnız tek ön seçim+son doğrulama çağrısı kaldı;
+  odaklı yarış geçti. Aday PRESERVED/assessment CLEARED ayrımıyla birleşik PG 40/40.
+- İnceleme HTTP idempotent tekrarında önbellek kabulü yerine taze kanıt/yetki kontrolü çalışır;
+  geri alınan karar WITHDRAWN, askıya alınmış admin 403 oldu. Kamu hesabı/entry/run oluşmadığı
+  doğrudan sayımla doğrulandı. Kaynak tazeliği/soy aktivasyonu/üretim kabulü iddiası yok.
+- Tekrarlama: semantik ret defterini içerik reset'iyle silip aynı taslağı yeniden açma;
+  yalnız aday INSERT'ünü tekilleştirip pahalı ön taramayı yarışa bırakma; POST inceleme
+  tekrarında geçmiş PROPOSED yanıtını güncel kanıt gibi döndürme.
+
+- P8b son 19/19 aday PG16 ve dokuz dosyada 84/84 birim geçti. Runtime roster
+  DRAFT/PAUSED/ACTIVE planlayıcı credential verebildiğinden çağırana gereksiz ACTIVE şartı
+  kaldırıldı; ebeveyn ACTIVE şartı korundu ve ayrı PAUSED planlayıcı senaryosu geçti.
+  Tekrarlama: teknik scheduler kimliğinin profil durumunu seçilen ebeveynin kabulüyle karıştırma.
+
+- P8b exact `ab7489d16048eb05480a0311365f8968f5f5a0d9`, CI `37171957519` quality:
+  `POST /api/v1/admin/agent-births/mode security must be exactly [sessionCookie, csrfHeader]`.
+  Runtime CSRF uygulanıyordu; yeni OpenAPI yollarında yalnız sessionCookie override’ı ve
+  doğrulayıcı kayıtları eksikti. Üç admin yolunda ortak CSRF sözleşmesi ve dört yolun
+  requestBody/idempotency/internal-runtime eşlemeleri düzeltildi; tam `openapi:validate` 147 işlem için geçti. Tekrarlama: yalnız OpenAPI birim fixture’larını tam `openapi:validate` yerine sayma.
+
+- Aynı CI database koşusunda 386/387 geçti; tek hata HTTP inceleme fixture’ında
+  `expected 403 to be 200`. Fixture localhost Origin kullanırken CI APP_URL 127.0.0.1 idi;
+  gerçek origin kontrolü doğru reddetti. İstek origin’i doğrulanmış APP_URL’den türetildi ve
+  ayrıca yanlış origin için 403 kontrolü eklendi. Güvenlik kontrolü veya CI ortamı gevşetilmedi;
+  CI APP_URL ile odaklı PG16 tekrar 1/1 geçti: doğru origin 200, yanlış origin 403;
+  idempotent reversal WITHDRAWN ve askıya alınmış admin 403 korundu.
+
+- P8b gerçek Opus 5 exact `ab7489d16048eb05480a0311365f8968f5f5a0d9`: KOŞULLU GO;
+  birleştirme koşulları B1/B2/B4 uygulandı. Worker hatası bir saat bekler; ayrı
+  `20261004030000_birth_candidate_truncate_guard` yerelde uygulandı; API tabloları ayrıldı.
+  B5/B6 için günlük sekiz ön seçim, beş günde 40 kimlik kapsaması ve taşma audit’i eklendi.
+  Son 40/40 PG16, ayrı 62/62 (2 PG16 + 60 birim) geçti. TRUNCATE koruması ve zamanlı
+  geri çekilme doğrudan doğrulandı. B3 audit indeksinin üretim süre/boyut kapısı açık.
+- Tekrarlama: uygulanmış migration’ı yerel olduğu için yeniden yazma; CREATE INDEX’in
+  SHARE kilidini ACCESS EXCLUSIVE diye kaydetme; istemci testi adresini localhost’a sabitleme.

@@ -950,7 +950,45 @@ model AgentRewardReversal {
   @@map("agent_reward_reversals")
 }
 
+enum AgentBirthMode {
+  OFF
+  CANDIDATES
+}
+
+enum AgentBirthCandidateStatus {
+  PROPOSED
+  EXPIRED
+  WITHDRAWN
+  REJECTED
+}
+
+model AgentBirthCandidate {
+  id                     String                    @id @default(uuid()) @db.Uuid
+  parentProfileId        String                    @db.Uuid
+  parentPersonaVersionId String                    @db.Uuid
+  draftKey               String                    @db.VarChar(32)
+  draftVersion           Int
+  policyVersion          Int
+  weekStart              DateTime                  @db.Timestamptz(3)
+  persona                Json
+  evidence               Json
+  snapshotHash           String                    @db.VarChar(64)
+  status                 AgentBirthCandidateStatus @default(PROPOSED)
+  version                Int                       @default(1)
+  createdAt              DateTime                  @default(now()) @db.Timestamptz(3)
+  expiresAt              DateTime                  @db.Timestamptz(3)
+  closedAt               DateTime?                 @db.Timestamptz(3)
+  closureReason          String?                   @db.VarChar(100)
+  parentProfile          AgentProfile              @relation(fields: [parentProfileId], references: [id], onDelete: Restrict)
+  parentPersonaVersion   AgentPersonaVersion       @relation(fields: [parentPersonaVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([parentProfileId, weekStart, policyVersion], map: "agent_birth_candidates_parent_week_policy_key")
+  @@index([status, createdAt])
+  @@map("agent_birth_candidates")
+}
+
 model AgentProfile {
+  birthCandidates         AgentBirthCandidate[]
   assessmentPackets       AgentAssessmentPacket[]
   rewardAssessments       AgentRewardAssessment[]
   purposes                AgentPurpose[]
@@ -998,6 +1036,7 @@ model AgentProfile {
 }
 
 model AgentPersonaVersion {
+  birthCandidates   AgentBirthCandidate[]
   id                String                @id @default(uuid()) @db.Uuid
   agentProfileId    String                @db.Uuid
   version           Int
@@ -1051,6 +1090,9 @@ model AgentRuntimeState {
 }
 
 model AgentGlobalSettings {
+  birthMode                    AgentBirthMode            @default(OFF)
+  lastBirthScanAt              DateTime?                 @db.Timestamptz(3)
+  lastBirthCandidateAt         DateTime?                 @db.Timestamptz(3)
   rewardMode                   AgentRewardMode           @default(OFF)
   id                           String                    @id @default("global")
   settingsVersion              Int                       @default(1)

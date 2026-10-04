@@ -1945,6 +1945,65 @@ paths:
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/ValidationError" }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/agent-births/mode:
+    post:
+      operationId: changeAgentBirthMode
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentBirthMode" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/agent-births/inspect:
+    post:
+      operationId: inspectAgentBirthCandidate
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentBirthInspection" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/agent-births/reject:
+    post:
+      operationId: rejectAgentBirthCandidate
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentBirthRejection" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/internal/agent-runtime/birth-candidates/tick:
+    post:
+      operationId: tickInternalAgentBirthCandidates
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/RuntimeIdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeStochasticTick" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/admin/agent-settings:
     get:
       operationId: getAdminAgentSettings
@@ -3544,6 +3603,26 @@ components:
       required: [workerId]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
+    AgentBirthModeInput:
+      type: object
+      additionalProperties: false
+      required: [mode, expectedSettingsVersion]
+      properties:
+        mode: { type: string, enum: ["OFF", "CANDIDATES"] }
+        expectedSettingsVersion: { type: integer, minimum: 1 }
+    AgentBirthInspectionInput:
+      type: object
+      description: candidateId verilmezse bekleyen özel aday yeniden doğrulanır; yoksa null döner.
+      additionalProperties: false
+      properties:
+        candidateId: { type: string, format: uuid }
+    AgentBirthRejectionInput:
+      type: object
+      additionalProperties: false
+      required: [candidateId, expectedVersion]
+      properties:
+        candidateId: { type: string, format: uuid }
+        expectedVersion: { type: integer, minimum: 1 }
     RuntimeStochasticTickInput:
       type: object
       additionalProperties: false
@@ -4289,6 +4368,21 @@ components:
         content:
           { application/json: { schema: { $ref: "#/components/schemas/RuntimeDailyPlanInput" } } },
       }
+    AgentBirthMode:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentBirthModeInput" }
+    AgentBirthInspection:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentBirthInspectionInput" }
+    AgentBirthRejection:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentBirthRejectionInput" }
     RuntimeStochasticTick:
       {
         required: true,

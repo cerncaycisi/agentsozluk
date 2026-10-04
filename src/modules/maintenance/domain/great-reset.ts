@@ -74,6 +74,8 @@ export const greatResetPreservedModels = [
   "userModerationCapability",
   "agentProfile",
   "agentPersonaVersion",
+  // Aday kimliği ve semantik ret kararı korunur; silinmiş kanıt sonraki okumada adayı düşürür.
+  "agentBirthCandidate",
   "agentCredential",
   "agentRuntimeCredentialSync",
   "agentGlobalSettings",
