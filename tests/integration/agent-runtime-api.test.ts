@@ -5737,7 +5737,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const initial = seedPersonaSchema.parse(f.created.agent.personaVersion.persona);
     const reflections: string[] = [];
     const cycleEvidence: string[] = [];
-    const promptVersions: string[] = [];
     const createRun = async (type: "NORMAL_WAKE" | "REFLECTION", personaVersionId: string) =>
       integrationDatabase.agentRun.create({
         data: {
@@ -5851,13 +5850,18 @@ describe("internal agent runtime API with PostgreSQL", () => {
       });
       expect(version.previousVersionId).toBe(personaId);
       personaId = version.id;
+      const currentProfile = await integrationDatabase.agentProfile.findUniqueOrThrow({
+        where: { id: profileId },
+      });
+      expect(currentProfile.currentPersonaVersionId).toBe(personaId);
       const evolved = seedPersonaSchema.parse(version.persona);
       expect(evolved.temperament.warmth).toBeCloseTo(
         initial.temperament.warmth + 0.01 * (cycle + 1),
+        6,
       );
       expect(evolved.identity).toEqual(initial.identity);
       expect(evolved.username).toBe(initial.username);
-      const next = await createRun("NORMAL_WAKE", personaId);
+      const next = await createRun("NORMAL_WAKE", currentProfile.currentPersonaVersionId!);
       const nextWorker = `two-cycle-normal-${cycle}`;
       expect(
         (
@@ -5884,13 +5888,11 @@ describe("internal agent runtime API with PostgreSQL", () => {
       const prompt = buildRuntimePrompt(context);
       expect(prompt).toContain(JSON.stringify(evolved.temperament));
       expect(prompt).toContain(`"personaVersion":${cycle + 2}`);
-      promptVersions.push(prompt);
       expect(await finish(next.id, nextWorker)).toMatchObject({
         runStatus: "SUCCEEDED",
         reflection: { status: "NO_DELTA" },
       });
     }
-    expect(promptVersions[0]).not.toBe(promptVersions[1]);
     expect(
       await integrationDatabase.agentPersonaVersion.count({ where: { agentProfileId: profileId } }),
     ).toBe(3);
@@ -5906,11 +5908,17 @@ describe("internal agent runtime API with PostgreSQL", () => {
       orderBy: { agentSequence: "asc" },
     });
     expect(ledger).toHaveLength(4);
-    expect(
-      ledger.every((event) =>
-        event.evidenceIds.includes(cycleEvidence[reflections.indexOf(event.runId!)]!),
-      ),
-    ).toBe(true);
+    for (const event of ledger)
+      expect(event.evidenceIds).toEqual([cycleEvidence[reflections.indexOf(event.runId!)]!]);
+    const sourceAudit = await integrationDatabase.auditLog.findFirstOrThrow({
+      where: { action: "agent.source.updated", entityId: learned.id },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(sourceAudit.metadata).toMatchObject({
+      weeklyScoreBudget: {
+        fields: { trustScore: { usedBefore: 0.02, requested: 0.02, usedAfter: 0.04 } },
+      },
+    });
     expect([...new Set(ledger.map((event) => event.runId))]).toEqual(reflections);
   });
 

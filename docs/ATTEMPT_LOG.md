@@ -3484,3 +3484,13 @@ false/true` yapabildi; geçici rol ve DB silindi.
   Yeni indeks migration'ı mevcut pause/drain ve genel yazma dondurması kapısında uygulanacak.
 - Tekrarlama: koşulsuz kod GO'yu canlı davranış veya performans kabulü sayma; mevcut reset
   kaynak sınıflandırmasını gerçek üretim reset uygulamasıyla karıştırma.
+
+- P5 Opus 5 exact `675ef85fdc31e33b2267867c3cfa80e423e8069a`: A1/A2/A3 küçük koşulları
+  sonrası KOD GO. Sıra kanıtı eşit çekim durumuna daraltıldı; güncel profil sürüm işaretçisi
+  doğrudan assert edildi, warmth hassasiyeti altı ondalık oldu. Zayıf bütün-prompt farkı
+  kaldırıldı; ledger kanıtı exact eşitlik oldu. Son PG regresyonu 4/4 geçti; ilk CI
+  `37166324538` 7/7. Uygulama kodu veya bütçe kuralı değişmedi.
+- Genel persona bütçesi net toplamdır; kaynakta ayrıca mutlak audit bütçesi vardır.
+  Hakemin +0,02/-0,02 için sıfır tüketim çıkarımı source yolunda doğru değildi: PG testi
+  source audit usedAfter=0,04 değerini doğruladı. Tekrarlama: domain net bütçesini ek
+  application kaynak kapısını okumadan bütün evrim mekanizmasının tek sınırı sayma.
