@@ -7,6 +7,33 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 4 Ekim 2026 — O5 kesinti düzeltmesi exact kapanışı ve sağlık
+
+- #322 final `0d1c8458f7cdb9cc386f1ed480a276d4fe6986b0`, exact CI `37211890454` **7/7 PASS**.
+  Squash main `0245eb4192218c7bec2ec8bd0d76cb27e699de01`; fresh head/base/check/review/CLEAN ve uzak main/test edilen
+  ağaç eşliği doğrulandı. İki gerçek Opus 5 görüşü KOŞULLU GO; kaynak, güvenli guard
+  teşhisi, paralel PG16 testi ve belge koşulları kapandı. Son exact tam CI, odaklı
+  koşudaki 127 atlanan runtime senaryosunun yerine gereken geniş doğrulamayı geçti.
+  Koşullu görüş final SHA için yeni koşulsuz hakemlik sayılmadı. Canlı dağıtım yok.
+- Yerel son 12 PG16 / önceki 10 birim-UI PASS; 100 sentetik açık hedef çağrı toplamı
+  2.480 ms, mevcut dış 5 s transaction'ında başarı. Üretim veya 500 hedef kapasite kanıtı
+  değil. #321 main push CI `37211254692` de 7/7 PASS.
+- 15:09:17 UTC taze ED25519/DNS/hostname/origin/exact 9bf guard'lı READ ONLY sağlık:
+  son saat 16 SUCCEEDED / 5 PARTIAL / 1 FAILED (`CODEX_DECISION_PROVENANCE_INVALID`);
+  son 24 saat 304 başarılı / 92 ret (**%23,23**). 76 tekrar/benzerlik, 15 kesin sayı, 1 doğrudan
+  hitap. Ret alarmı açık; kayan pencere ve dağıtım yokluğu nedeniyle kod etkisi iddiası
+  yok. Tek saatlik hata sayısı 24 saat teknik hata oranı değildir. Üretim değiştirilmedi.
+- Yerel operatör ön kontrolü başlangıçta `PREFLIGHT_FAIL ORIGIN_MISMATCH`: aktif repo
+  origin'i aynı deponun `.git` soneksiz URL'siydi. Kanonik `.git` URL'sine normalizasyon
+  sonrası `0f073cc` üzerinde OPERATOR_PREFLIGHT_OK/GITHUB_REPO_WRITE_ACCESS_OK.
+  Araç/key mode/host pin/shell syntax/onaysız exact-wrapper reddi geçti; üretime bağlanmadı.
+  Eski `/home/agent/projects/agentsozluk` kopyası değiştirilmedi. Skill'in sabit eski
+  yolu yerine yalnız bu görevdeki script kopyasında aktif repo yolu kullanıldı.
+- Tekrarlama: uygulama kodu regresyonunu ile operatör origin biçimini karıştırma; güvenlik karşılaştırmasını
+  gevşetme. Kesilen bulk isteğini kısmi commit ile başarılı sayma; commit sonrası yanıt
+  kaybını rollback sayma. Sıradaki tarihli işler PLAN'da: 5 Ekim otomatik yedek, 6 Ekim A′,
+  7 Ekim restore/7–9 Ekim dağıtım hazırlığı, gerçek 168 saat P7 sonrası aktivasyon kararı.
+
 ## 2026-10-04 — aktivasyon kod teslimi ve O5 kesinti düzeltmesi
 
 - #321 final `0bf60db6f89b780d93012e634c0bcd6157d32172`, exact CI `37210442983`
@@ -4099,3 +4126,7 @@ son çağrı toplamı **2.480 ms**; mevcut dış5s tavanında başarı, TX aktif
 kullanım henüz açık. Koşullu hakem görüşü koşulsuz GO olarak yeniden adlandırılmadı.
 Tekrarlama: sentetik100ölçümünü doğrusal500performans kanıtı sayma; guard teşhisinde
 kimlik/içerik/ham hata loglama.
+
+Exact CI veritabanı logu ayrıca okundu: ana entegrasyon koşusunda **34 dosya / 490 test**
+PASS; `agent-runtime-api.test.ts` içindeki **139 senaryonun tamamı**, atlama olmadan geçti.
+Ardından çalışan dar life-ledger koşularındaki atlamalar bu ana koşunun yerine geçirilmedi.

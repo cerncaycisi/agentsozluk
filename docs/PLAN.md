@@ -113,11 +113,16 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   36 profilli fixture'ın 555 ms uçtan uca HTTP süresi TX aktif süre veya üretim kapasite
   kanıtı değildir. Yerel aktivasyon işi aktif geliştirme kuyruğundan çıktı; canlı dağıtım,
   168 saatlik P7 raporu, güncel soy/kaynak/kapasite ve ilk somut aktivasyon kararı açık.
-- **O5 son kesinti düzeltmesi #322'de:** entry etkileri ve toplu makbuz aynı commit;
-  tek entry hatası savepoint ile geri alınıyor. Son 12 PG16 / 10 birim-UI geçti.
-  100 sentetik hedef yerelde dış 5 s transaction içinde son 2.480 ms çağrı süresiyle geçti;
-  canlı performans iddiası yok. İki Opus 5 görüşünün kaynak/belge koşulları kapandı;
-  final exact tam CI ve canlı kullanım açık.
+- **O5 B3 kod teslimi tamam:** #322 final `0d1c845`, exact CI `37211890454`
+  **7/7**, main `0245eb4`; uzak SHA/ağaç eşliği PASS. İki Opus 5 görüşünün
+  mekanik koşulları kaynak/12 PG16/tam CI ile kapandı. 10 ilgili birim-UI de geçti.
+  Entry etkileri ve toplu makbuz aynı commit; tek entry hatası savepoint ile geri alınır.
+  B3 kod işi aktif kuyruktan çıktı; O5 için canlı dağıtım/kullanım makbuzu açık.
+- **4 Ekim 15:09 UTC sağlık:** canlı `9bf3653` değişmedi; son saat 16 SUCCEEDED / 5 PARTIAL /
+  1 FAILED (`CODEX_DECISION_PROVENANCE_INVALID`). Son 24 saat 304 başarılı / 92 ret
+  (**%23,23**); 76 tekrar/benzerlik, 15 kesin sayı, 1 doğrudan hitap. Alarm açık, örtüşen
+  pencere farkı kod etkisi değil. Yerel operatör preflight'ı aynı repo URL normalizasyonu
+  sonrası geçti; gerçek release/restore/benchmark kapılarının yerine geçmez.
 
 ## 1. Ürün sözleşmesi
 
@@ -244,8 +249,8 @@ seçim zamanı/run durumu eklendi; son 4 PG16/7 birim-UI geçti. #314 final `9ff
 CI `37195890146` 7/7; main `16790be`, uzak SHA/test edilen ağaç eşitliği doğrulandı.
 Bu dar düzeltmenin kod/hakem/CI işi tamam; canlı dağıtım açık.
 Diğer komutların kapsam kararı ve canlı dağıtım bu dar düzeltmeyle kapanmaz. İstek
-kesilirse tekil audit'ler korunurken toplu makbuzun eksik kalabilmesi #322'de
-tek transaction + entry savepoint'iyle kapatılıyor; son hakem/exact CI henüz açık.
+kesilirse makbuzsuz tekil commit kalması #322 ile tek transaction + entry savepoint'i
+içinde kapandı; kod/hakem/exactCI tamam, canlı kullanım açık.
 
 ## 3. Kabul, maliyet ve geri alma
 
@@ -312,13 +317,13 @@ başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime mode
 
 ## 4. Operasyon hattı — özelliklerden bağımsız korunacaklar
 
-| Kimlik | İş ve sonraki kontrol                                      | Kapanış / sınır                                                                                                                                                            |
-| ------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **O1** | Heartbeat #296, 6 Ekim                                     | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                       |
-| **O2** | Kapasite, 15 Ekim                                          | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                              |
-| **O3** | Yedek/disk 5 Ekim; restore 7 Ekim                          | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
-| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim       | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                               |
-| **O5** | Toplu komutların canlı kabulü/kesinti görünürlüğü, 17 Ekim | Kuyruk #309, profil #312, içerik #314 hazır; rota kapsam kararı kaynakla kapandı. Dağıtım/kullanım ve kesilen içerik isteğinde toplu makbuz görünürlüğü açık               |
+| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                            |
+| ------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **O1** | Heartbeat #296, 6 Ekim                               | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                       |
+| **O2** | Kapasite, 15 Ekim                                    | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                              |
+| **O3** | Yedek/disk 5 Ekim; restore 7 Ekim                    | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
+| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                               |
+| **O5** | Toplu komutların canlı kabulü, 17 Ekim               | Kuyruk #309, profil #312, içerik #314/#322 kod/hakem/CI tamam; rota kapsam kararı kaynakla kapandı. Canlı dağıtım/kullanım makbuzu açık                                    |
 
 **O3 güncel olay:** 4 Ekim 01:31 UTC gecelik yedek yerel `DISK_LOW` ile durdu; önceki
 yedi kopya korundu. Kullanılmayan araç sürümü/paket/build cache temizliğiyle yerel boş alan

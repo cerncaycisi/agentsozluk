@@ -375,3 +375,14 @@ son çağrı toplamı **2.480 ms**; mevcut dış5s tavanında başarı, TX aktif
 kullanım henüz açık. Koşullu hakem görüşü koşulsuz GO olarak yeniden adlandırılmadı.
 Tekrarlama: sentetik100ölçümünü doğrusal500performans kanıtı sayma; guard teşhisinde
 kimlik/içerik/ham hata loglama.
+
+### Exact kod kapanışı
+
+#322 final `0d1c8458f7cdb9cc386f1ed480a276d4fe6986b0`, CI `37211890454` 7/7 PASS; main `0245eb4192218c7bec2ec8bd0d76cb27e699de01`.
+Fresh head/base/check/review/CLEAN ve uzak SHA/ağaç eşliği doğrulandı. Opus 5 koşulları
+yukarıdaki kaynak/test/belgeyle kapandı; exact tam CI geçti. B3 kod işi tamam; O5'in
+canlı dağıtım/kullanım makbuzu açık. Son 12 yerel PG/10 birim-UI ile CI kanıtları ayrı kayıttır.
+
+Exact CI veritabanı logu ayrıca okundu: ana entegrasyon koşusunda **34 dosya / 490 test**
+PASS; `agent-runtime-api.test.ts` içindeki **139 senaryonun tamamı**, atlama olmadan geçti.
+Ardından çalışan dar life-ledger koşularındaki atlamalar bu ana koşunun yerine geçirilmedi.
