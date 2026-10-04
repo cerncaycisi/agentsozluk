@@ -30,7 +30,9 @@ function executable(file: string, body: string) {
 }
 
 /** Sahte ssh (üretim komutunu taklit eder), sahte pg_restore ve sahte ping ile sandbox. */
-function sandbox(options: { meta?: string; restoreExit?: number; sshExit?: number } = {}) {
+function sandbox(
+  options: { meta?: string; restoreExit?: number; sshExit?: number; notify?: string } = {},
+) {
   const root = mkdtempSync(path.join(tmpdir(), "yedek-"));
   roots.push(root);
   const bin = path.join(root, "bin");
@@ -57,6 +59,7 @@ function sandbox(options: { meta?: string; restoreExit?: number; sshExit?: numbe
         AGENTSOZLUK_KNOWN_HOSTS: path.join(root, "known_hosts"),
         AGENTSOZLUK_PG_RESTORE: path.join(bin, "pg_restore"),
         AGENTSOZLUK_BACKUP_MIN_FREE_BYTES: "1",
+        ...(options.notify === undefined ? {} : { AGENTSOZLUK_BACKUP_NOTIFY: options.notify }),
       },
     });
   return { root, backups, run };
@@ -144,6 +147,62 @@ describe("gecelik sunucu dışı yedek", () => {
     // Yeni (saat geri alındığı için "en eski" görünen) yedek silinmedi; en eski gelecek kopya gitti.
     expect(dumps.some((name) => !name.startsWith("agent-sozluk-2099"))).toBe(true);
     expect(dumps).not.toContain("agent-sozluk-20990101T010000Z.dump");
+  });
+
+  it.each([
+    ["komut hatası", "exit 1", "DUMP_SIZE_UNREADABLE"],
+    ["geçersiz çıktı", "echo belirsiz", "DUMP_SIZE_INVALID"],
+  ])("stat %s: başarı yazmadan durur ve önceki yedeği korur", (_label, body, code) => {
+    const { root, backups, run } = sandbox();
+    mkdirSync(backups, { recursive: true });
+    const previous = "agent-sozluk-20260901T010000Z.dump";
+    writeFileSync(path.join(backups, previous), "onceki");
+    executable(path.join(root, "bin", "stat"), body);
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`YEDEK_FAIL code=${code}`);
+    expect(result.stdout).not.toContain("YEDEK_OK");
+    expect(readdirSync(backups).filter((name) => name !== ".lock")).toEqual([previous]);
+    expect(readFileSync(path.join(root, "pings"), "utf8")).toContain(code);
+  });
+
+  it("sort kısmi çıktıdan sonra düşerse eski yedekleri silmez ve yeni doğrulanmış yedeği tutar", () => {
+    const { root, backups, run } = sandbox();
+    mkdirSync(backups, { recursive: true });
+    const previous = Array.from(
+      { length: 8 },
+      (_, index) => `agent-sozluk-202609${String(index + 1).padStart(2, "0")}T010000Z.dump`,
+    );
+    for (const name of previous) writeFileSync(path.join(backups, name), "onceki");
+    executable(path.join(root, "bin", "sort"), "cat; exit 1");
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("YEDEK_FAIL code=ROTATION_SORT");
+    expect(result.stdout).not.toContain("YEDEK_OK");
+    const dumps = readdirSync(backups).filter((name) => name.endsWith(".dump"));
+    expect(dumps).toHaveLength(9);
+    for (const name of previous) expect(dumps).toContain(name);
+    const newest = dumps.find((name) => !previous.includes(name))!;
+    expect(existsSync(path.join(backups, `${newest}.sha256`))).toBe(true);
+    expect(existsSync(path.join(backups, newest.replace(/\.dump$/u, ".meta")))).toBe(true);
+    expect(readFileSync(path.join(root, "pings"), "utf8")).toContain("ROTATION_SORT");
+  });
+
+  it("tek seferlik sessiz işletimde dış bildirim çalıştırmadan hata verir", () => {
+    const { root, run } = sandbox({ sshExit: 255, notify: "0" });
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("YEDEK_FAIL code=SSH_OR_DUMP");
+    expect(existsSync(path.join(root, "pings"))).toBe(false);
+  });
+
+  it("belirsiz bildirim ayarını indirmeden önce reddeder", () => {
+    const { root, run } = sandbox({ notify: "maybe" });
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("YEDEK_FAIL code=NOTIFY_INVALID");
+    expect(existsSync(path.join(root, "ssh-args"))).toBe(false);
+    expect(existsSync(path.join(root, "pings"))).toBe(false);
   });
 
   it("ERR yakalayıcısı alt kabuklara geçmez (çifte FAIL/OK yok)", () => {

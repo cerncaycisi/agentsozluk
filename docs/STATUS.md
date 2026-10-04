@@ -3820,3 +3820,16 @@ P6 takip: Opus 5 iki turda KOŞULLU GO verdi (`3b7fa8f`, `d5320c9`); kanonik giz
 tekilleştirme, slug, kamu sürümü ve geri çekme kilidi koşulları kaynakla doğrulanıp kapatıldı.
 Son 20 PG16 + 16 birim/RSC **36/36**, önceki düzeltme 67/67. Başlık ön doldurma artık
 geçerli hedefi kırpmaz. Son CI/birleştirme ve canlı dağıtım bu yerel sonuca dahil değildir.
+
+## 4 Ekim 2026 — P6 #306 kod teslimi, O3 yerel yedek olayı
+
+P6 final `c217262db9e50026cc26988b045674f898e5916f`, CI `37176800118` **7/7**; main
+`717e5e4d16bb916337592fd206af1b55bd98c777` ve uzak main/ağaç eşitliği doğrulandı.
+Opus 5 iki koşullu turun kaynak/test koşulları kapandı. Ukte kodu ana dalda; üretim yok.
+
+4 Ekim 01:31 UTC gecelik dış yedek `DISK_LOW` nedeniyle alınamadı; yedi eski dump yerinde.
+Yerel kullanılmayan cache temizliği sonrası boş alan ~5,6 GiB/%86. Veritabanları, yedekler,
+konuşma geçmişi ve mevcut/önceki araç sürümleri korundu. Yerel CHECKPOINT/WAL denemesi
+alan kazandırmadı ve ayar 4096 MB/eski kaynağa döndü; kazanç cache temizliğindendir.
+Yedek betiği sort/stat hata yolları ve isteğe bağlı sessiz manual çalışma 19 shell testiyle
+doğrulandı; exact hakem/CI, kurulum ve telafi yedeği bu kayda dahil değildir.
