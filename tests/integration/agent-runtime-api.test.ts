@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logging/logger";
 import { withAgentContentItemSavepoint } from "@/modules/moderation/repository/agent-content";
 import { POST as bulkHideRoute } from "@/app/api/v1/admin/agent-content/bulk-hide/route";
 import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
@@ -18,7 +19,7 @@ import { randomUUID } from "node:crypto";
 import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
@@ -10532,6 +10533,62 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(
       await integrationDatabase.user.findUniqueOrThrow({ where: { id: admin.id } }),
     ).toMatchObject({ displayName: "Sonraki işlem" });
+  });
+
+  it("rejects concurrent bulk savepoint use and logs only its safe invariant code", async () => {
+    const admin = await createAdmin();
+    const errorLog = vi.spyOn(logger, "error").mockImplementation(() => undefined);
+    try {
+      await integrationDatabase.$transaction(async (transaction) => {
+        let entered!: () => void;
+        let release!: () => void;
+        const enteredPromise = new Promise<void>((resolve) => {
+          entered = resolve;
+        });
+        const releasePromise = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        const first = withAgentContentItemSavepoint(transaction, async () => {
+          await transaction.user.update({
+            where: { id: admin.id },
+            data: { displayName: "İlk işlem" },
+          });
+          entered();
+          await releasePromise;
+        });
+        await enteredPromise;
+        try {
+          for (let i = 0; i < 2; i += 1) {
+            await expect(
+              withAgentContentItemSavepoint(transaction, async () => {
+                throw new Error("UNREACHABLE_CONCURRENT_WORK");
+              }),
+            ).rejects.toThrow("AGENT_CONTENT_SAVEPOINT_REENTRY");
+          }
+        } finally {
+          release();
+          await first;
+        }
+        await withAgentContentItemSavepoint(transaction, () =>
+          transaction.user.update({ where: { id: admin.id }, data: { displayName: "Son işlem" } }),
+        );
+      });
+      expect(errorLog.mock.calls).toEqual([
+        [
+          { code: "AGENT_CONTENT_SAVEPOINT_REENTRY" },
+          "Toplu içerik savepoint yeniden giriş ihlali.",
+        ],
+        [
+          { code: "AGENT_CONTENT_SAVEPOINT_REENTRY" },
+          "Toplu içerik savepoint yeniden giriş ihlali.",
+        ],
+      ]);
+      expect(
+        await integrationDatabase.user.findUniqueOrThrow({ where: { id: admin.id } }),
+      ).toMatchObject({ displayName: "Son işlem" });
+    } finally {
+      errorLog.mockRestore();
+    }
   });
 
   it.each([false, true])(

@@ -4227,3 +4227,40 @@ Bu açık etiketle B1 makbuz koşulu kapandı; kaynak kodu değişmedi. Kullanı
 `_count`, dar trigger tipi ve ek baseline-stale sınır testi önerileri bloklayıcı
 olmadı; bu tur kapsamı büyütülmedi. Final exact CI/merge ve canlı kapılar açık.
 Tekrarlama: uçtan uca yerel süreyi TX telemetrisi veya üretim kapasitesi sayma.
+
+## 2026-10-04 — #321 exact kapanış; O5 B3 uygulaması
+
+- #321 final `0bf60db6f89b780d93012e634c0bcd6157d32172`, CI `37210442983`
+  7/7 PASS. Main `0f073cc459168a05b7fd1e8fb969f976235d4ca4`; fresh
+  head/base/check/review/CLEAN ve uzak SHA/ağaç eşliği PASS. `dbe80e6` ara CI
+  yeni doküman push'u nedeniyle iptal edildi; regresyon veya PASS sayılmadı.
+  Gerçek Opus 5 ikinci görüşün B1 ölçüm etiketi koşulu kapandı. Üretim değişmedi.
+- O5 B3 taban `88c7f56`, ilk head `607351838d7b3f6a9c54093bee1342de792a8090`.
+  Anahtarsız ayrı entry commit'leri ve son ayrı toplu makbuz kök nedendi. Tek batch
+  transaction + entry savepoint'iyle yerel 10 PG16/10 birim-UI PASS. Güvenli test
+  hata kodları `TEST_BULK_RECEIPT_FAILED`, `TEST_BULK_HTTP_FAILED`,
+  `TEST_BULK_ITEM_FAILED`; owned trigger'lar finally ile kaldırıldı.
+- Opus 5 KOŞULLU GO: guard/bütçe/yetki anlatımı/tam CI koşulları. Guard ve açıklama
+  sonrası `3d41f0b` yerel 11 PG16 PASS. İç içe çağrı güvenli ret/rollback ve sonraki
+  öğe başarı; 100 sentetik açık hedefin dış 5 s transaction'ında başarı, çağrı2.314ms.
+  TX aktif telemetrisi veya canlı500hedef kanıtı değildir. Format/lint/typecheck PASS.
+- Temiz main `0f073cc` üstüne rebase sonrası `0c2d25b`; O5 ürün/test dosyaları
+  `3d41f0b` ile bayt eşliği doğrulandı. Scoped force-with-lease eski607head'e bağlı.
+  İkinci Opus/tam CI ve canlı kullanım açık. Tekrarlama: PARTIAL öğe hatasını SQL
+  rollback olmadan yutma; anahtarsız eski N×15 s bütçesini yeni toplam15 s ile karıştırma.
+
+### 4 Ekim — O5 B3 ikinci görüşün mekanik koşulları
+
+Gerçek Opus 5 `0c2d25b` **KOŞULLU GO**. Gösterdiği iki özet cümlesi de batch boyunca
+shared yetki kilidiyle düzeltildi; guard'ın TransactionClient nesne kimliği bağımlılığı
+ve mevcut tek çağrı yolu belgelendi. REENTRY sabit güvenli error koduyla loglanır;
+kişisel veri/exception gövdesi yok. Gerçek PG16 paralel giriş ve log payload testi geçti.
+100 hedeften 500 için kesin başarısızlık çıkarımı kabul edilmedi; API süre garantisi
+vermez ve timeout sonrası pencere/≤100 açık hedefle daraltmayı açıklar.
+
+Son **12 PG16 PASS**, diğer127 senaryo odaklı koşuda atlandı. 100 sentetik hedefin
+son çağrı toplamı **2.480 ms**; mevcut dış5s tavanında başarı, TX aktif süre veya
+üretim kapasitesi kanıtı değil. Önceki10 birim-UI PASS. Tam exact CI/merge ve canlı
+kullanım henüz açık. Koşullu hakem görüşü koşulsuz GO olarak yeniden adlandırılmadı.
+Tekrarlama: sentetik100ölçümünü doğrusal500performans kanıtı sayma; guard teşhisinde
+kimlik/içerik/ham hata loglama.

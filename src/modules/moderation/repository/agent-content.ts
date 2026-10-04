@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { logger } from "@/lib/logging/logger";
 import { agentContentBulkTargetLimit } from "@/modules/moderation/domain/agent-content-limits";
 import type { AgentContentBulkActionInput } from "@/modules/moderation/validation/schemas";
 
@@ -223,8 +224,13 @@ export async function withAgentContentItemSavepoint<T>(
   transaction: Prisma.TransactionClient,
   work: () => Promise<T>,
 ): Promise<T> {
-  if (activeAgentContentSavepoints.has(transaction))
+  if (activeAgentContentSavepoints.has(transaction)) {
+    logger.error(
+      { code: "AGENT_CONTENT_SAVEPOINT_REENTRY" },
+      "Toplu içerik savepoint yeniden giriş ihlali.",
+    );
     throw new Error("AGENT_CONTENT_SAVEPOINT_REENTRY");
+  }
   activeAgentContentSavepoints.add(transaction);
   try {
     await transaction.$executeRaw`SAVEPOINT agent_content_bulk_item`;

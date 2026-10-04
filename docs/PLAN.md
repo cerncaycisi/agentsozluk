@@ -56,7 +56,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   47 ilgili birim ve mevcut 36 kişilik P0 kesitinde 72 ebeveyn varyantı geçti. Özel aday defteri
   ve ayrı otomatik tarama #305 ile `1e265f4` ana dalında: Opus 5 KOD GO, son CI 7/7;
   40 PG16 ve ayrı 2 PG16/60 birim geçti.
-  Gerçek hesap/doğum aktivasyonu ve kaynak hazırlığı açık. [P8 sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
+  Hesap hazırlığı/kaynak bankası/aktivasyon kodu #316/#317/#321 ile tamam; canlı uygulama açık. [P8 sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
   P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
   boşluklarda: açılmamış görünür bkz #299 ile `c72a089` ana dalında, Opus KOD GO/CI 7/7;
   tanıtım/kök açıklaması mevcut kodda doğrulandı; yeniden yazılmıyor. İnsan ukte bırakma/
@@ -83,7 +83,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   girdisi v2 hazır (okuyucu dahil toplam ≤24 model çağrısı/90 dakika); çağrı yok. [P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
 - **4 Ekim P8 hesap hazırlığı:** yerel PREPARED/PAUSED hesap, dar kaynak yenileme ve
   generic ACTIVE bypass reddi #316 ile ana dalında. Final `f262a8c`, CI `37203877096`
-  7/7, main `462642d`; exact ağaç eşliği doğrulandı. V2 migration profili #320 ile tamam; aktivasyon ve canlı dağıtım açık.
+  7/7, main `462642d`; exact ağaç eşliği doğrulandı. V2 migration profili #320 ve aktivasyon kodu #321 ile tamam; canlı uygulama açık.
   İlk pilot tek hazırlanmış kimlik; aday taraması otomatik, ilk aktivasyon yönetici
   transaction'ı olacak. Ayrı permit tablosu/tick eklenmiyor. P7/soy/nüfus/kaynak kapıları
   değişmedi. Canlı 11:51 kesiti 36 ACTIVE; ilk persona eşliği 14 TEMPLATE kök adayı,
@@ -106,9 +106,18 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   main `88c7f56`, uzak SHA ve test edilen ağaç eşliği doğrulandı. Gerçek Opus 5
   KOD GO, 113 birim / 21 PG16 geçti. Dokuz migration için v2 kodu tamam;
   üretim applied set, gerçek restore ve eski imaj smoke kapıları açık.
-- **P8 aktivasyon uygulaması başladı:** tek admin transaction'ında güncel kalite,
-  soy/geçmiş, aday dışı kaynak tabanı, 168 saatlik kabul raporu bağlantısı ve runtime
-  hazır olma kontrolleri. Yerel kod kabulü henüz yok; canlı hesap etkinleştirilmedi.
+- **P8 aktivasyon kodu tamam:** #321 final `0bf60db`, exact CI `37210442983`
+  **7/7**, main `0f073cc`; uzak SHA ve test edilen ağaç eşliği doğrulandı. Opus 5
+  ikinci görüş `dbe80e6` KOŞULLU GO; tek ölçüm etiketleme koşulu kapandı. 68 ilgili
+  birim ve 18 odaklı PG16; son dört HTTP/sınır/atomiklik senaryosu da geçti (örtüşür).
+  36 profilli fixture'ın 555 ms uçtan uca HTTP süresi TX aktif süre veya üretim kapasite
+  kanıtı değildir. Yerel aktivasyon işi aktif geliştirme kuyruğundan çıktı; canlı dağıtım,
+  168 saatlik P7 raporu, güncel soy/kaynak/kapasite ve ilk somut aktivasyon kararı açık.
+- **O5 son kesinti düzeltmesi #322'de:** entry etkileri ve toplu makbuz aynı commit;
+  tek entry hatası savepoint ile geri alınıyor. Son 12 PG16 / 10 birim-UI geçti.
+  100 sentetik hedef yerelde dış 5 s transaction içinde son 2.480 ms çağrı süresiyle geçti;
+  canlı performans iddiası yok. İki Opus 5 görüşünün kaynak/belge koşulları kapandı;
+  final exact tam CI ve canlı kullanım açık.
 
 ## 1. Ürün sözleşmesi
 
@@ -235,8 +244,8 @@ seçim zamanı/run durumu eklendi; son 4 PG16/7 birim-UI geçti. #314 final `9ff
 CI `37195890146` 7/7; main `16790be`, uzak SHA/test edilen ağaç eşitliği doğrulandı.
 Bu dar düzeltmenin kod/hakem/CI işi tamam; canlı dağıtım açık.
 Diğer komutların kapsam kararı ve canlı dağıtım bu dar düzeltmeyle kapanmaz. İstek
-kesilirse tekil audit'ler korunurken toplu makbuzun eksik kalabilmesi O5 kalan
-görünürlük/uzlaştırma sınırıdır; yeni atomiklik iddiası yok.
+kesilirse tekil audit'ler korunurken toplu makbuzun eksik kalabilmesi #322'de
+tek transaction + entry savepoint'iyle kapatılıyor; son hakem/exact CI henüz açık.
 
 ## 3. Kabul, maliyet ve geri alma
 

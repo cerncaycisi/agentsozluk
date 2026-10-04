@@ -256,11 +256,11 @@ Canlıya dağıtılmadı. B3 görünürlük sınırı ve diğer toplu komut kaps
 `842e67a` kaynak envanteri; yeni üretim kullanımı veya ayrı yeni test koşusu değildir.
 Agent yönetimindeki toplu rota grupları aşağıdaki şekilde ayrıldı:
 
-| Grup                                                              | Kapsam kararı ve mevcut kanıt                                                                                                                                         |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agent-runs/bulk/preview`, `agent-runs/bulk`                      | Yeni iş/maliyet üretir; #309 signed preview ve durum/süre/CAS kapısı gerekli ve hazır.                                                                                |
-| Global ve `[agentId]` `runs/cancel-pending`, `runs/graceful-stop` | Acil risk azaltır; yeni preview şartı eklenmez. Fresh admin ardından profile→run/lease kilidi ve güncel uygunluk tekrar okuması; sonuç/audit/outbox aynı transaction. |
-| `agent-content/bulk-hide`, `agent-content/bulk-restore`           | #314 sınır/NO_MATCH/seçim bağlamı ve her entry'de taze yetki. İşlem başındaki seçimin sınırı UI'da görünür; sonradan gelen entry dahil değildir.                      |
+| Grup                                                              | Kapsam kararı ve mevcut kanıt                                                                                                                                                                                  |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent-runs/bulk/preview`, `agent-runs/bulk`                      | Yeni iş/maliyet üretir; #309 signed preview ve durum/süre/CAS kapısı gerekli ve hazır.                                                                                                                         |
+| Global ve `[agentId]` `runs/cancel-pending`, `runs/graceful-stop` | Acil risk azaltır; yeni preview şartı eklenmez. Fresh admin ardından profile→run/lease kilidi ve güncel uygunluk tekrar okuması; sonuç/audit/outbox aynı transaction.                                          |
+| `agent-content/bulk-hide`, `agent-content/bulk-restore`           | #314 sınır/NO_MATCH/seçim bağlamı; entry başına principal okuması. #322'de shared yetki kilidi bütün batch boyunca tutulur. İşlem başındaki seçimin sınırı UI'da görünür; sonradan gelen entry dahil değildir. |
 
 `repository/manual-runs.ts:listBulkRunCommandCandidates` hedef listesini `take` ile
 kesmiyor; yalnız son audit ID dizisi sınırlı ve `omittedRunIdCount` açık. Global UI iki
@@ -288,8 +288,8 @@ Diğer entry'ler PARTIAL ile tamamlanabilir. Son toplu makbuz yazılamaz veya tr
 sona ermeden bağlantı kesilirse tüm etkiler geri alınır. Commit edilmiş ama yanıtı
 ulaşmamış istek geri alınmış sayılmaz; mevcut idempotency tekrar sözleşmesi geçerlidir.
 
-Mevcut 500 eşleşme/100 açık hedef sınırı, NO_MATCH, seçim zamanı ve her entry'de taze
-yetki/provenance/topic-entry kilidi korunur. Genel transaction tavanı doğrudan 15 s,
+Mevcut 500 eşleşme/100 açık hedef sınırı, NO_MATCH, seçim zamanı, entry başına principal okuması/provenance/topic-entry kilidi korunur.
+Shared admin kilidi batch boyunca tutulur; rol/statü iptali batch bitişini bekler. Genel transaction tavanı doğrudan 15 s,
 idempotent HTTP'de 5 s; bu paket artırmaz. Tam 500 hedefin her yükte süresine sığdığı
 iddiası yok; timeout güvenli biçimde bütün batch'i reddeder, küçük seçimle denenebilir.
 Migration, yeni kuyruk veya arka planda devam mekanizması eklenmedi.
@@ -337,3 +337,41 @@ dış Prisma transaction'ında başarılı oldu; çağrı toplamı **2.314 ms**.
 ve yerel DB kullanır; TX aktif süre telemetrisi, üretim büyüklüğü veya 500 hedef performans
 kanıtı değildir. Tavanlar değiştirilmedi. API belgesi anahtarsız N×15 s → toplam15 s
 ve batch boyunca yetki kilidi farkını açıkça kaydeder.
+
+### İkinci Opus görüşü ve kalan koşullar
+
+Gerçek `claude-opus-5`, exact `0c2d25b08a190eb745c105687943197ca4020cb3`:
+**KOŞULLU GO**. Yetki serileşmesi açıklaması artık yalnız dipnotta değil, gösterdiği
+kapsam tablosu ve sözleşme satırlarında da düzeltildi. Yardımcının guard'ı aynı
+`TransactionClient` **nesne kimliğine** bağlıdır; uygulama mevcut nesneyi doğrudan
+aktarır. Farklı proxy nesneleri veya yardımcı dışı keyfi SQL için koruma iddiası yoktur;
+mevcut kaynakta bu adı kullanan başka SQL/çağrı yolu bulunmadı. Böyle bir genişleme bu
+sözleşmeye uyarlanmalıdır. Girdiyle seçilebilen bir savepoint adı/API yolu açılmadı.
+
+REENTRY ihlali yalnız sabit güvenli kod ve sabit açıklama ile error log'una yazılır;
+kimlik, içerik veya exception gövdesi loglanmaz. Kullanıcıya mevcut güvenli item hata
+biçimi korunur; yeni genel alarm/telemetri sistemi eklenmedi. Paralel kullanım ve log
+payload'ı ayrı gerçek PG16 testine alındı; ilk işlem sürerken sonraki iki giriş reddedilir,
+ilk ve son sıralı işlemler tamamlanır.
+
+100 yerel hedefin süresini beşle çarparak “500 kesin tamamlanamaz” demek ölçüm değildir;
+hakemin bu kesinlik iddiası kabul edilmedi. API, büyük seçimde timeout mümkün olduğunu,
+aynı büyük seçimi sürekli tekrarlamak yerine daha dar pencere veya ≤100 açık hedefe
+geçileceğini açıklar. 500 için performans kabulü yazılmadı. Kalan mekanik kapı final
+exact tam CI'dır; koşullu görüş yeni koşulsuz GO olarak yeniden adlandırılmaz.
+
+### 4 Ekim — O5 B3 ikinci görüşün mekanik koşulları
+
+Gerçek Opus 5 `0c2d25b` **KOŞULLU GO**. Gösterdiği iki özet cümlesi de batch boyunca
+shared yetki kilidiyle düzeltildi; guard'ın TransactionClient nesne kimliği bağımlılığı
+ve mevcut tek çağrı yolu belgelendi. REENTRY sabit güvenli error koduyla loglanır;
+kişisel veri/exception gövdesi yok. Gerçek PG16 paralel giriş ve log payload testi geçti.
+100 hedeften 500 için kesin başarısızlık çıkarımı kabul edilmedi; API süre garantisi
+vermez ve timeout sonrası pencere/≤100 açık hedefle daraltmayı açıklar.
+
+Son **12 PG16 PASS**, diğer127 senaryo odaklı koşuda atlandı. 100 sentetik hedefin
+son çağrı toplamı **2.480 ms**; mevcut dış5s tavanında başarı, TX aktif süre veya
+üretim kapasitesi kanıtı değil. Önceki10 birim-UI PASS. Tam exact CI/merge ve canlı
+kullanım henüz açık. Koşullu hakem görüşü koşulsuz GO olarak yeniden adlandırılmadı.
+Tekrarlama: sentetik100ölçümünü doğrusal500performans kanıtı sayma; guard teşhisinde
+kimlik/içerik/ham hata loglama.

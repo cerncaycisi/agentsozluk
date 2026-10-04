@@ -590,7 +590,9 @@ istekler arası otomatik devam veya daha uzun transaction süresi eklenmedi. Ana
 çağrıda önceki entry başına 15 saniyelik bütçe kalktı; artık tüm batch için 15 saniye
 geçerlidir. Anahtarlı HTTP yolu zaten tüm batch için 5 saniyeydi. Anahtarsız commit
 sonrası tekrar, gizlenmiş entry'leri `ENTRY_NOT_EDITABLE` ile FAILED/PARTIAL gösterebilir;
-ilk sonucun replay'i değildir.
+ilk sonucun replay'i değildir. Büyük run/window seçimi transaction süresine sığmazsa
+aynı büyük seçimi tekrarlamak ilerleme garantisi vermez; daha dar zaman penceresi veya
+≤100 açık `entryIds` ile bölünür. 500 hedef için süre garantisi verilmez.
 
 ### Runtime kontrolü ve ölçüm
 
