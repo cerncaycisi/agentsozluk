@@ -2238,6 +2238,15 @@ bu yük tek-çalışma kilidi (`/tmp/agentsozluk-yedek.lock`, ikinci bağlantı 
 oturumlarını `pg_terminate_backend` ile kapatan bekçi) sınırlıdır. Tablo verisi aynı anlık
 görüntüdendir; sequence değerleri PostgreSQL gereği anlık görüntüye bağlı değildir.
 
+**4 Ekim O3 sertleştirme — kurulum kanıtı henüz açık:** reviewed source komutunda
+legacy `/tmp/agentsozluk-yedek.lock` yerine deploy UID'sine bağlı private0700
+`/tmp/agentsozluk-yedek-UID/lock` 0600/tek-link/append ve fd-inode guard vardır.
+Eski ve yeni flock aynı kurulum oturumunda tutulmadan atomik geçiş yapılmaz;
+backup backend0 ve pinli app/image/worker değişmezliği önce/sonra kaydedilir.
+Kaynak snapshot ve metadata search_path katalogla sabitlenir; dump +restore
+lc_monetary=C istemci ayarı kullanır. Anahtar/timer ve eski dış arşivler korunur.
+Kurulum makbuzu gelmeden eski canlı komut değiştirilmiş sayılmaz.
+
 Parçalar (`deploy/backup/`):
 
 - `uretim-yedek-komutu.sh` — üretimde zorunlu komut. Yalnız okur, dosya yazmaz, istemcinin

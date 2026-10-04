@@ -4863,3 +4863,32 @@ Bilinmeyen stderr fail closed ret doğru guard'dır: üretim dış arşivin temi
 bir ret veri bozulması diye ilan edilmez; ham özel kanıt korunur.
 Kurulum eski legacy flock/backup backend0 ve exact pinned app/worker değişmezliği
 kanıtı gerektirir; henüz kurulmadı. Gerçek dış restore ve exact CI açık.
+
+## O3 son dar hakem kapanışı ve kapasite başlangıcı — 4 Ekim 23:16 UTC
+
+Gerçek `claude-opus-5`, sunulan exact
+`8084fc7bbc9421af3e1f782e9851e4364b371f2a` dosya metinleri için **KOŞULLU GO**;
+82,918 saniye, 5.078 çıktı/3.865 düşünme tokenı; yardımcı Haiku 25 çıktı tokenı.
+Hakem araçsızdır: git ağacını kendisi açmadı. Operatör packet `git show` ve temiz
+exact checkout ile bağlandı; bağımsız Git/SHA sorgusu yaptığı iddia edilmez.
+Yeni bloklayan ürün riski bulmadı; source holder/metadata `pg_catalog` pin'i doğru.
+Koşulu target shadow provasının eksikliğiydi. Yalnız sentetik target DB'ye de
+`search_path=public,pg_catalog` eklendi; restore edilmiş gölge fonksiyon unqualified
+0, catalog fonksiyon nonzero. Actual source/target gölge altında strict comparison,
+özel de_DE/C para render ve native restore **2/2 PG16 PASS** (23:15:55). Runtime
+kodu reviewed `8084fc7` ile aynı; yalnız test/ölçüm belgesi kapanır. Son exact CI
+normal zorunlu kapıdır; koşulsuz GO veya üretim restore kabulü denmez.
+
+Eski dış native arşiv yerel TOC/schema-only ön kontrolü: 671.960.158 bayt, PG16.14/
+zstd/CUSTOM, 50 public tablo adı kendi metadata'sıyla eşit; 3.270.401 satır/3 sequence.
+Materialized/foreign/BLOB/large object TOC kaydı yok. Metadata hash
+`554e9ffe76ef9c0405222dad56bd17516aea11c0ba0b206d5561955cac7b718c`, schema-only
+hash `5065da0e582422c6889fa5aab5a1b8e92390d0e7497a7fe955a78af5a5e7efba`.
+Bu arşiv tam restore/veri eşliği değildir; gerçek izole restore açık.
+
+23:08:28 UTC pinli canlı `d829dd0`, pause/ayar305/openRuns0/leases0 ve diğer Codex
+süreci yok kapılarıyla existing reviewed CLI **cold10→warm10→dual2** kapasite
+başladı. Worker app/image/PID korunur; output/diagnostics create-exclusive 0600.
+O3 CI beklerken bağımsız ilerler; üretimde tek ağır iş, restore başlamadı. Paket
+strict runbook diagnostics doğrulaması ve admin rota kaydı ayrıca gereklidir;
+başlatma kapasite PASS değildir. P7/T0 henüz yok, final M2 BLOCKED aynı.

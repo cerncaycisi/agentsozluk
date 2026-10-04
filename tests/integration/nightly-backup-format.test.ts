@@ -83,6 +83,7 @@ it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri 
       "CREATE FUNCTION public.hashtextextended(text,bigint) RETURNS bigint LANGUAGE sql IMMUTABLE AS 'SELECT 0::bigint'",
     );
     sql("postgres", `ALTER DATABASE "${source}" SET search_path = public,pg_catalog`);
+    sql("postgres", `ALTER DATABASE "${target}" SET search_path = public,pg_catalog`);
     expect(sql(source, "SELECT hashtextextended('sentetik',0)")).toBe("0");
     expect(sql(source, "SELECT pg_catalog.hashtextextended('sentetik',0)")).not.toBe("0");
     // Aynı guard'lar; yalnız sabit lock dizini/host/Compose taşıması owned fixture'dadır.
@@ -161,6 +162,8 @@ exec "$command_name" "\${args[@]}"`,
         env: { ...process.env, PGOPTIONS: "-c lc_monetary=C" },
       },
     );
+    expect(sql(target, "SELECT hashtextextended('sentetik',0)")).toBe("0");
+    expect(sql(target, "SELECT pg_catalog.hashtextextended('sentetik',0)")).not.toBe("0");
     const verificationSql = readFileSync("scripts/backup-restore/verify.sql", "utf8");
     const verify = (expectedOid = owned.get(target)!, expectedName = target) =>
       execFileSync(
