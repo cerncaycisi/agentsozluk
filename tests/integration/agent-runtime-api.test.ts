@@ -1,3 +1,5 @@
+import { seedPersonaSchema } from "@/modules/agents/personas/schema";
+import { buildRuntimePrompt } from "@/runtime/worker";
 import {
   issueAuthorAssessmentPacket,
   submitAuthorAssessment,
@@ -5683,6 +5685,233 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { runId, eventType: "MEMORY_CONSOLIDATION" },
       }),
     ).toBe(1);
+  });
+
+  it("carries two bounded reflection cycles into later source choice and the real decision prompt", async () => {
+    const f = await createFixture();
+    await updateGlobalSettings(integrationDatabase, adminActor(f.admin.id), {
+      schedulerEnabled: false,
+    });
+    const profileId = f.created.agent.profile.id;
+    const selected = await integrationDatabase.agentSource.findMany({
+      where: { agentProfileId: profileId },
+      orderBy: { id: "asc" },
+      take: 2,
+    });
+    const learned = selected[0]!;
+    const alternative = selected[1]!;
+    await integrationDatabase.agentSource.updateMany({
+      where: { agentProfileId: profileId },
+      data: { adminBlocked: true, adminPinned: false },
+    });
+    for (const [source, trustScore] of [
+      [learned, 0.5],
+      [alternative, 0.51],
+    ] as const)
+      await integrationDatabase.agentSource.update({
+        where: { id: source.id },
+        data: {
+          status: "TRUSTED",
+          adminBlocked: false,
+          adminPinned: false,
+          trustScore,
+          lastFetchedAt: null,
+          consecutiveFailures: 0,
+        },
+      });
+    let item = await integrationDatabase.agentSourceItem.create({
+      data: {
+        sourceId: learned.id,
+        canonicalUrl: `https://${learned.normalizedDomain}/two-cycle-evidence`,
+        title: "Kontrollü evrim kanıtı",
+        fetchedAt: new Date(),
+        contentHash: "e".repeat(64),
+        safeText: "Kaynağın kapsam sınırı yeniden değerlendirmeye açık bir örnek sunuyor.",
+        topics: ["evrim"],
+      },
+    });
+    const leasePrincipal = await runtimePrincipal(f.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(f.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(f.credential);
+    let personaId = f.created.agent.personaVersion.id;
+    const initial = seedPersonaSchema.parse(f.created.agent.personaVersion.persona);
+    const reflections: string[] = [];
+    const cycleEvidence: string[] = [];
+    const promptVersions: string[] = [];
+    const createRun = async (type: "NORMAL_WAKE" | "REFLECTION", personaVersionId: string) =>
+      integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: profileId,
+          personaVersionId,
+          runType: type,
+          queuePriority: "MANUAL_SINGLE",
+          trigger: type === "REFLECTION" ? "WEEKLY_PERSONA_REFLECTION" : "INTEGRATION_TEST",
+          idempotencyKey: randomUUID(),
+          availableAt: new Date(Date.now() - 1000),
+          timeoutSeconds: 600,
+          desiredEntryMin: 0,
+          desiredEntryMax: 0,
+          allowSourceReading: true,
+          allowTopicCreation: false,
+          allowVoting: false,
+          allowFollowing: false,
+        },
+      });
+    const finish = (runId: string, workerId: string, reflectionDelta: unknown = null) =>
+      completeRuntimeRun(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeCompleteSchema.parse({
+          workerId,
+          outcome: "SUCCEEDED",
+          state: completedRuntimeFastState,
+          reflectionDelta,
+          safeRunSummary: {
+            operationSummary: "Kontrollü kanıtla sınırlı değerlendirme; yayın zorunlu değil.",
+            observedItemIds: [item.id],
+            proposedActionCount: 0,
+            completedActionCount: 0,
+            rejectedActionCount: 0,
+            shortRationale:
+              "Yayın için bağımsız yeni katkı yok; mevcut kanıtı yeniden değerlendirdim.",
+          },
+          usageMetadata: { durationMs: 100, provider: "codex-cli" },
+          performanceMetrics: {},
+        }),
+      );
+    // Gerçek zamanlı iki küçük çevrim; doğal iki hafta veya model tercih başarısı iddiası yok.
+    for (let cycle = 0; cycle < 2; cycle++) {
+      if (cycle === 1)
+        item = await integrationDatabase.agentSourceItem.create({
+          data: {
+            sourceId: learned.id,
+            canonicalUrl: `https://${learned.normalizedDomain}/two-cycle-counter-evidence`,
+            title: "İkinci çevrimin kapsam sınırı",
+            fetchedAt: new Date(),
+            contentHash: "f".repeat(64),
+            safeText: "İlk örneğin farklı bir bağlama genellenemediği kontrollü karşı örnek.",
+            topics: ["evrim"],
+          },
+        });
+      cycleEvidence.push(item.id);
+      const run =
+        cycle === 0
+          ? await integrationDatabase.agentRun.update({
+              where: { id: f.runs[0]!.id },
+              data: {
+                runType: "REFLECTION",
+                trigger: "WEEKLY_PERSONA_REFLECTION",
+                desiredEntryMin: 0,
+                desiredEntryMax: 0,
+                allowSourceReading: true,
+              },
+            })
+          : await createRun("REFLECTION", personaId);
+      const workerId = `two-cycle-reflection-${cycle}`;
+      expect(
+        (await leaseRuntimeRun(integrationDatabase, leasePrincipal, { workerId, leaseSeconds: 60 }))
+          .run?.id,
+      ).toBe(run.id);
+      const before = await getRuntimeRunContext(
+        integrationDatabase,
+        readPrincipal,
+        run.id,
+        workerId,
+      );
+      const order = (before.perception.sourceFetchTargets as Array<{ sourceId: string }>).map(
+        (row) => row.sourceId,
+      );
+      expect(order).toEqual(
+        cycle === 0 ? [alternative.id, learned.id] : [learned.id, alternative.id],
+      );
+      expect(before.perception.sourceItems).toEqual(
+        expect.arrayContaining([expect.objectContaining({ itemId: item.id })]),
+      );
+      const result = await finish(run.id, workerId, {
+        safeSummary:
+          cycle === 0
+            ? "Görünür kanıt kaynak güvenini sınırlı artırmayı destekliyor."
+            : "Aynı kanıtın kapsam sınırı güven artışını geri değerlendirmeyi gerektiriyor.",
+        evidenceIds: [item.id],
+        interestDeltas: [],
+        sourceTrustDeltas: [{ sourceId: learned.id, delta: cycle === 0 ? 0.02 : -0.02 }],
+        relationshipTrustDeltas: [],
+        beliefConfidenceDeltas: [],
+        temperamentDeltas: [{ key: "warmth", delta: 0.01 }],
+        coreValueDeltas: [],
+      });
+      expect(result).toMatchObject({
+        runStatus: "SUCCEEDED",
+        reflection: { status: "APPLIED", version: cycle + 2 },
+      });
+      reflections.push(run.id);
+      const version = await integrationDatabase.agentPersonaVersion.findFirstOrThrow({
+        where: { agentProfileId: profileId, version: cycle + 2 },
+      });
+      expect(version.previousVersionId).toBe(personaId);
+      personaId = version.id;
+      const evolved = seedPersonaSchema.parse(version.persona);
+      expect(evolved.temperament.warmth).toBeCloseTo(
+        initial.temperament.warmth + 0.01 * (cycle + 1),
+      );
+      expect(evolved.identity).toEqual(initial.identity);
+      expect(evolved.username).toBe(initial.username);
+      const next = await createRun("NORMAL_WAKE", personaId);
+      const nextWorker = `two-cycle-normal-${cycle}`;
+      expect(
+        (
+          await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+            workerId: nextWorker,
+            leaseSeconds: 60,
+          })
+        ).run?.id,
+      ).toBe(next.id);
+      const context = await getRuntimeRunContext(
+        integrationDatabase,
+        readPrincipal,
+        next.id,
+        nextWorker,
+      );
+      expect(context.persona.version).toBe(cycle + 2);
+      expect(context.persona.renderedPrompt).toBe(version.renderedPrompt);
+      const nextOrder = (context.perception.sourceFetchTargets as Array<{ sourceId: string }>).map(
+        (row) => row.sourceId,
+      );
+      expect(nextOrder).toEqual(
+        cycle === 0 ? [learned.id, alternative.id] : [alternative.id, learned.id],
+      );
+      const prompt = buildRuntimePrompt(context);
+      expect(prompt).toContain(JSON.stringify(evolved.temperament));
+      expect(prompt).toContain(`"personaVersion":${cycle + 2}`);
+      promptVersions.push(prompt);
+      expect(await finish(next.id, nextWorker)).toMatchObject({
+        runStatus: "SUCCEEDED",
+        reflection: { status: "NO_DELTA" },
+      });
+    }
+    expect(promptVersions[0]).not.toBe(promptVersions[1]);
+    expect(
+      await integrationDatabase.agentPersonaVersion.count({ where: { agentProfileId: profileId } }),
+    ).toBe(3);
+    expect(
+      await integrationDatabase.agentAction.count({ where: { agentProfileId: profileId } }),
+    ).toBe(0);
+    const ledger = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: {
+        agentProfileId: profileId,
+        runId: { in: reflections },
+        eventType: { in: ["SOURCE_STATE_CHANGED", "PERSONA_CHANGED"] },
+      },
+      orderBy: { agentSequence: "asc" },
+    });
+    expect(ledger).toHaveLength(4);
+    expect(
+      ledger.every((event) =>
+        event.evidenceIds.includes(cycleEvidence[reflections.indexOf(event.runId!)]!),
+      ),
+    ).toBe(true);
+    expect([...new Set(ledger.map((event) => event.runId))]).toEqual(reflections);
   });
 
   it("atomically applies weekly persona and source, relationship, belief deltas with a cumulative budget", async () => {

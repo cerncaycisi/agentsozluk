@@ -3456,3 +3456,31 @@ false/true` yapabildi; geçici rol ve DB silindi.
   `/home/agent/pg16/root/usr/lib/postgresql/16/bin/psql` ve komuta özel
   `LD_LIBRARY_PATH=/home/agent/pg16/root/usr/lib/x86_64-linux-gnu` ile geçti. Tekrarlama:
   PG yardımcı aracını yeniden keşfetmek yerine mevcut 3202–3204 ortam kaydını uygula.
+
+## 2026-10-04 — P5 iki kontrollü çevrim
+
+- Taban `a571e555b4350c1d9f14417188a3486477c2942f`, yerel çalışma ağacı/PG16 test DB.
+  İlk yeni fixture `23514 agent_sources_block_check`: pinned+blocked birlikte seçilmişti.
+  İzolasyonda pin kapatıldı; uygulama/constraint değiştirilmedi. Son yeni vaka 1/1,
+  bütçe ve kanıt retleriyle odaklı regresyon 4/4; ilgili evolution birim paketi 17/17 geçti.
+- İki ayrı kaynak öğesi→iki sınırlı reflection→v2/v3→iki sonraki normal uyanış. Kaynak sırası
+  önce değişti sonra geri döndü; gerçek karar istemi yeni temperamenti taşıdı. Dört yaşam
+  olayı doğru kanıta bağlı, public action sayısı sıfır. Model çağrısı veya doğal hafta yok.
+- Tekrarlama: sürüm artışını tek başına davranış başarısı sayma; test metadata'sındaki
+  provider literal'ını gerçek çıkarım makbuzu sayma. Birim takvim testi ve gerçek PG veri yolu
+  farklı kanıtlardır; DB/app saatlerini ayrıştıran taklit zamandan doğal hafta üretme.
+
+## 2026-10-04 — P4b #302 ana dalda
+
+- Opus 5 ikinci dar inceleme exact `a571e555b4350c1d9f14417188a3486477c2942f`: KOD GO,
+  izin reddi yok. Format/lint/typecheck ve CI `37165563834` 7/7. İlk sayım itirazı hakemce
+  geri çekildi; toplu guard, rezerv olay adı ve indeks kapanışları kabul edildi.
+- Taze exact head/base/checks/reviews/mergeability kontrolünden sonra squash main
+  `db286952d58b3a4e76579ae00fbf79ee46e7a68f`; uzak SHA/ağaç eşitliği ve dal temizliği
+  doğrulandı. P5 kirli ağacı aynı ağaçlı main tabanına taşınırken diff/status aynılığı
+  kontrol edildi; hiçbir iş kaybolmadı. Üretim erişimi/dağıtım yok.
+- Hakem maliyet notu: 12×20=240 toplam ENTRY/SOURCE_ITEM kontrolü, her tür için ayrı 240
+  değil. Sorgu sonucunun ayrıca bayt tavanı yok; 160 KiB algı sınırı DB okuma sınırı değildir.
+  Yeni indeks migration'ı mevcut pause/drain ve genel yazma dondurması kapısında uygulanacak.
+- Tekrarlama: koşulsuz kod GO'yu canlı davranış veya performans kabulü sayma; mevcut reset
+  kaynak sınıflandırmasını gerçek üretim reset uygulamasıyla karıştırma.

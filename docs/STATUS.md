@@ -7,6 +7,15 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — P4b ana dalda, P5 iki çevrim yerelde geçti
+
+- #302 head `a571e555b4350c1d9f14417188a3486477c2942f`, Opus 5 KOD GO;
+  CI `37165563834` 7/7, main `db286952d58b3a4e76579ae00fbf79ee46e7a68f`.
+  Uzak SHA/ağaç eşitliği ve dal temizliği doğrulandı. Üretim/v46/A′ değişmedi.
+- P5 gerçek PG16 iki çevrim ve sonraki normal bağlamlar geçti; ilgili regresyon 4/4,
+  evolution birim paketi 17/17. Kaynak seçme sırası ve gerçek karar istemi güncellendi;
+  doğal model tercihi veya iki doğal hafta sonucu değildir. [Makbuz](P5_IKI_EVRIM_DONGUSU_2026-10-04.md).
+
 ## 2026-10-04 — P4 amaç kanalı ana dalda; kalite ve özel geri bildirim yerelde
 
 - #301 head `665263f222cd21b0b8513ebf197474342b24c1a9`, CI `37162033767` 7/7;
