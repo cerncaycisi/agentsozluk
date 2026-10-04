@@ -141,7 +141,9 @@ Sabit `october-2026-v1` profili yerelde hazırlandı; ilk 93, son odaklı 36 tes
 PG16 restore/geçiş ve sapma reddi geçti. Opus 5 koşullu kabul verdi; genel FK istisnası
 profile daraltıldı, üretim boyutu salt okunur ölçüldü ve ukte kaynak koşulları kaynak/testle kapandı.
 Son düzeltmelerde 70/70, makbuz etiketinden sonra 6 PG16 ve 8 CI sözleşmesi testi geçti;
-format/lint/typecheck/requirements PASS. Exact CI açık, üretime uygulanmadı.
+format/lint/typecheck/requirements PASS. #308 final `1580273`, exact CI `37182105221`
+7/7 ve gerçek imaj runner (36 migration, ana DB geçmişi aynı) geçti; main `9ead5a0`.
+Üretime uygulanmadı; gerçek restore/süre/önceki imaj kapısı dağıtımda korunur.
 [Geçiş belirtimi](P1_EKIM_MIGRATION_PROFILI_2026-10-04.md).
 
 **P6 kapsamı:** `/hakkinda` ve kök sayfada açık proje tanımı, örnek çeşitliliği, marka/ton;
@@ -152,6 +154,14 @@ seçimi ajanların gördüğü akışı da etkileyebileceği için ayrı davran�
 Okura görünür yeni otomatik öğenin somut önizlemesi dağıtım paketinde Gökhan’a gösterilir;
 yerel hazırlık için ayrı izin kuyruğu açılmaz. Search Console/GEO rutin aylık takip işi olarak
 kalır; teslim takvimini uzatmaz. Üçüncü taraf tanıtım/post yok.
+
+**O5 ilk alt paket:** toplu koşu önizlemesi artık istemci ekranına güvenmek yerine
+hedef/payload/persona-profil/ayar sürümüne bağlanıyor. 10 dakika, aynı admin, tek kullanım;
+ağ tekrarında aynı idempotency sonucu. İlk 26, son 45 ve iki ayrı gerçek kilit testi geçti.
+Opus 5 koşullu kabul verdi; shared kilit varsayımı kaynak/yarış testiyle çürütüldü,
+100 hedefte ilk yerel süre 227/621 ms. İlk exact CI 7/7; son dar koşul kapanışı/CI
+açık, üretimde değil. Global iptal/durdurma gibi diğer toplu
+komutlar bu ilk alt pakette tamamlandı sayılmaz. [O5 belirtimi](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
 
 ## 3. Kabul, maliyet ve geri alma
 
@@ -210,7 +220,7 @@ belirtilir, ilk pencere deneysel kesinlik veya Gate 10 kabulü sayılmaz.
 | ------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **O1** | Heartbeat #296, 6 Ekim                               | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                       |
 | **O2** | Kapasite, 15 Ekim                                    | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                              |
-| **O3** | Yedek/restore ve disk, 7 Ekim                        | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
+| **O3** | Yedek/disk 5 Ekim; restore 7 Ekim                    | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
 | **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                               |
 | **O5** | Operatör toplu işlem önizlemesi, 17 Ekim durum       | Hedef/payload/sürüm ve geri alma özeti; yetki, CAS, idempotency korunur                                                                                                    |
 
@@ -227,7 +237,11 @@ restore'a güvenli pay yok. Üretimde 29.130.304 KiB boş (%62 kullanım). O3 d�
 A′ kararı sonrası üretimde **ayrı, yalnız bu provanın oluşturduğu DB'ye** geri yüklenip
 karşılaştırılır; uygulama DB'si hedef olamaz. Prova kopyası doğrulama sonrası kaldırılır.
 Bu dış yedek provası, A5'in geçiş anındaki taze/frozen backup ve ayrı restore kapısının
-yerine geçmez. Tarih 7 Ekim hedefidir; düşük disk eşiği düşürülmez. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+yerine geçmez. Tam restore 7 Ekim hedefidir; düşük disk eşiği düşürülmez.
+5 Ekim gece makbuzu ayrıca kontrol edilir: mevcut 5.838.831.616 bayt ile 5 GiB
+ön eşiği arasında yaklaşık 470 MB pay var. 28 Eylül–4 Ekim dump boyutu
+1.182.167.798 → 1.315.865.212 bayt büyüdü; yedi kopyalı retention kapasite ihtiyacını
+ortadan kaldırmaz. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
 Her build/deploy için güncel değer gerekir; üretimde <8 GiB veya ≥%90 dolulukta build yok.

@@ -531,6 +531,15 @@ describe("runtime onboarding and orphan queue recovery with PostgreSQL", () => {
       ),
     ).resolves.toMatchObject({ runCount: 3 });
 
+    const readyPreview = await previewBulkAgentRun(
+      integrationDatabase,
+      actor,
+      bulkAgentRunPreviewSchema.parse({
+        agentIds: agents.map(({ agent }) => agent.profile.id),
+        run: { runType: "NORMAL_WAKE", priority: "NORMAL" },
+      }),
+      now,
+    );
     const queued = await createBulkAgentRuns(
       integrationDatabase,
       { ...actor, requestId: randomUUID() },
@@ -538,6 +547,7 @@ describe("runtime onboarding and orphan queue recovery with PostgreSQL", () => {
         agentIds: agents.map(({ agent }) => agent.profile.id),
         run: { runType: "NORMAL_WAKE", priority: "NORMAL" },
         confirmation: "RUN_SELECTED_AGENTS",
+        previewToken: readyPreview.previewToken,
       }),
       now,
     );

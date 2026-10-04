@@ -1,3 +1,10 @@
+import { getEnvironment } from "@/config/env";
+import { canonicalRequestHash } from "@/modules/idempotency/domain/idempotency";
+import {
+  bulkPreviewRunKey,
+  issueBulkRunPreview,
+  verifyBulkRunPreview,
+} from "@/modules/agents/domain/bulk-run-preview";
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
@@ -29,6 +36,7 @@ import {
   findAgentRunForCommand,
   getAgentRunDetailRecord,
   getBulkRunPreviewMetrics,
+  findBulkPreviewRun,
   listAgentProfileIdsForBulkRunCommand,
   listBulkRunAgents,
   listBulkRunCommandCandidates,
@@ -211,6 +219,34 @@ function bulkSelection(input: BulkAgentRunPreviewInput | BulkAgentRunInput): str
   return input.allActive ? undefined : input.agentIds;
 }
 
+function bulkPreviewStateHash(
+  input: BulkAgentRunPreviewInput,
+  agents: Awaited<ReturnType<typeof listBulkRunAgents>>,
+  settingsVersion: number,
+): string {
+  return canonicalRequestHash({
+    policy: 1,
+    promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+    allActive: input.allActive,
+    selection: input.agentIds ? [...input.agentIds].sort() : null,
+    run: { ...input.run, availableAt: input.run.availableAt?.toISOString() ?? null },
+    settingsVersion,
+    agents: agents.map((agent) => ({
+      id: agent.id,
+      personaVersionId: agent.currentPersonaVersionId,
+      profileUpdatedAt: agent.updatedAt.toISOString(),
+      manualTimeoutSeconds: agent.manualTimeoutSeconds,
+      username: agent.user.username,
+      displayName: agent.user.displayName,
+    })),
+  });
+}
+
+function assertBulkSize(count: number): void {
+  if (count > 100)
+    throw new AppError("BULK_PREVIEW_LIMIT", 409, "Tek işlemde en çok 100 yazar seçebilirsiniz.");
+}
+
 export function previewBulkAgentRun(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -230,6 +266,9 @@ export function previewBulkAgentRun(
         404,
         "Seçili ACTIVE agent listesi eksik veya geçersiz.",
       );
+    assertBulkSize(agents.length);
+    if (!agents.length)
+      throw new AppError("BULK_PREVIEW_EMPTY", 409, "Kuyruğa alınabilecek yazar yok.");
     for (const agent of agents)
       await assertManagedRuntimeCredentialReady(transaction, agent.id, now);
     const runCount = agents.length;
@@ -282,7 +321,35 @@ export function previewBulkAgentRun(
             activeRunStartedAts: operational.activeRunStartedAts,
           })
       : null;
+    const nonPublishing = isNonPublishingRun(input.run.runType);
     return {
+      ...issueBulkRunPreview(
+        getEnvironment().APP_SECRET,
+        actor.actorId,
+        bulkPreviewStateHash(input, agents, metrics.settings.settingsVersion),
+        now,
+      ),
+      settingsVersion: metrics.settings.settingsVersion,
+      targets: agents.map((agent) => ({
+        id: agent.id,
+        username: agent.user.username,
+        displayName: agent.user.displayName,
+        personaVersion: agent.currentPersonaVersion!.version,
+        profileUpdatedAt: agent.updatedAt,
+      })),
+      operation: {
+        runType: input.run.runType,
+        priority: input.run.priority,
+        availableAt: input.run.availableAt ?? null,
+        allowTopicCreation: !nonPublishing && input.run.allowTopicCreation,
+        allowVoting: !nonPublishing && input.run.allowVoting,
+        allowFollowing: !nonPublishing && input.run.allowFollowing,
+        allowSourceReading: input.run.allowSourceReading,
+        provocationOverride: input.run.provocationOverride,
+        hasAdminInstruction: Boolean(input.run.adminInstruction),
+      },
+      rollbackSummary:
+        "Bekleyen çalışma iptal edilebilir. Başlayan çalışma güvenli adımda durdurulur; yayımlanan içerik ve tamamlanmış eylemler otomatik geri alınmaz.",
       runCount,
       existingQueueLength: metrics.queueLength,
       eligibleQueueLength: operational.eligibleQueuedRunCount,
@@ -320,9 +387,12 @@ export function createBulkAgentRuns(
   now = new Date(),
   dependencies: BulkAgentRunCreateDependencies = {},
 ) {
+  const startedAt = Date.now();
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
+    verifyBulkRunPreview(getEnvironment().APP_SECRET, actor.actorId, input.previewToken, now);
     const initialAgents = await listBulkRunAgents(transaction, bulkSelection(input));
+    assertBulkSize(initialAgents.length);
     if (!input.allActive && initialAgents.length !== input.agentIds?.length)
       throw new AppError(
         "AGENT_NOT_FOUND",
@@ -334,14 +404,37 @@ export function createBulkAgentRuns(
     await lockAgentSettings(transaction);
     await dependencies.afterProfilesLocked?.();
     const [agents, settings] = await Promise.all([
-      listBulkRunAgents(transaction, profileIds),
+      listBulkRunAgents(transaction, input.allActive ? undefined : profileIds),
       getGlobalSettingsRecord(transaction),
     ]);
-    if (agents.length !== initialAgents.length)
+    if (
+      agents.length !== initialAgents.length ||
+      agents.some((agent, index) => agent.id !== profileIds[index])
+    )
       throw new AppError(
         "AGENT_LIFECYCLE_INVALID",
         409,
         "Bulk run sırasında ACTIVE agent veya current persona state değişti; yeniden önizleyin.",
+      );
+    const receipt = verifyBulkRunPreview(
+      getEnvironment().APP_SECRET,
+      actor.actorId,
+      input.previewToken,
+      new Date(now.getTime() + Date.now() - startedAt),
+    );
+    if (receipt.stateHash !== bulkPreviewStateHash(input, agents, settings.settingsVersion))
+      throw new AppError(
+        "BULK_PREVIEW_CHANGED",
+        409,
+        "Yazarlar, sürümler, ayarlar veya işlem değişti; yeniden önizleyin.",
+      );
+    if (!agents.length)
+      throw new AppError("BULK_PREVIEW_EMPTY", 409, "Kuyruğa alınabilecek yazar yok.");
+    if (await findBulkPreviewRun(transaction, bulkPreviewRunKey(receipt.id, agents[0]!.id)))
+      throw new AppError(
+        "BULK_PREVIEW_USED",
+        409,
+        "Bu önizlemeyle işlem zaten başlatılmış; çalışma listesini kontrol edin.",
       );
     for (const agent of agents)
       await assertManagedRuntimeCredentialReady(transaction, agent.id, now);
@@ -360,7 +453,7 @@ export function createBulkAgentRuns(
           personaVersionId: agent.currentPersonaVersionId!,
           requestedById: actor.actorId,
           requestId: actor.requestId,
-          idempotencySuffix: agent.id,
+          idempotencyKey: bulkPreviewRunKey(receipt.id, agent.id),
           trigger: "ADMIN_BULK",
           runType: input.run.runType,
           queuePriority:
@@ -391,6 +484,9 @@ export function createBulkAgentRuns(
         reason: `Bulk ${input.run.runType} runs queued by human administrator.`,
         runCount: runs.length,
         allActive: input.allActive,
+        previewId: receipt.id,
+        previewStateHash: receipt.stateHash,
+        settingsVersion: settings.settingsVersion,
         runType: input.run.runType,
         queuePriority: input.run.priority === "EMERGENCY" ? "EMERGENCY_ADMIN" : "SCHEDULED_CONTENT",
       },

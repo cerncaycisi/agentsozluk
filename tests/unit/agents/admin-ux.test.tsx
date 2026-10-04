@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { ClientApiError } from "@/lib/http/client";
+
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +10,7 @@ import {
   AgentLifecycleForm,
   AgentPersonaEditForm,
   AgentQuickRunActions,
+  BulkAgentRunForm,
   GlobalAgentSettingsForm,
   PersonaRollbackForm,
   RuntimeControlForm,
@@ -111,6 +114,70 @@ describe("agent admin UX contracts", () => {
     );
     expect(mocks.apiRequest.mock.calls[0]?.[1]?.body.run).not.toHaveProperty("entryTarget");
     expect(mocks.apiRequest.mock.calls[1]?.[1]?.body).not.toHaveProperty("entryTarget");
+  });
+
+  it("shows exact bulk targets and rollback limits, then submits the bound receipt", async () => {
+    const bound = {
+      ...preview,
+      previewId: "receipt-id",
+      previewToken: "signed-receipt",
+      previewExpiresAt: "2026-10-04T12:10:00Z",
+      settingsVersion: 4,
+      targets: [
+        { id: agentId, username: "katmanizci", displayName: "Katman İzci", personaVersion: 7 },
+      ],
+      operation: {
+        runType: "NORMAL_WAKE",
+        priority: "NORMAL",
+        availableAt: null,
+        allowTopicCreation: true,
+        allowVoting: true,
+        allowFollowing: true,
+        allowSourceReading: true,
+        provocationOverride: false,
+        hasAdminInstruction: false,
+      },
+      rollbackSummary: "Yayımlanan içerik otomatik geri alınmaz.",
+    };
+    mocks.apiRequest.mockResolvedValueOnce(bound).mockResolvedValueOnce({ count: 1 });
+    const user = userEvent.setup();
+    render(<BulkAgentRunForm agents={[]} />);
+    await user.click(screen.getByRole("button", { name: "Kapasite önizle" }));
+    expect(await screen.findByText(/@katmanizci · persona v7/u)).toBeVisible();
+    expect(screen.getByText(/Yayımlanan içerik otomatik geri alınmaz/u)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Açık onayla ve kuyruğa al" }));
+    await waitFor(() =>
+      expect(mocks.apiRequest).toHaveBeenLastCalledWith(
+        "/api/v1/admin/agent-runs/bulk",
+        expect.objectContaining({
+          body: expect.objectContaining({ previewToken: "signed-receipt" }),
+          idempotency: "bulk-run:receipt-id",
+        }),
+      ),
+    );
+  });
+
+  it("requires a fresh preview after a server-side version conflict", async () => {
+    const stale = Object.assign(new ClientApiError("Yeniden önizleyin.", "BULK_PREVIEW_CHANGED"), {
+      code: "BULK_PREVIEW_CHANGED",
+    });
+    const bound = {
+      ...preview,
+      previewId: "receipt-id",
+      previewToken: "signed-receipt",
+      previewExpiresAt: "2026-10-04T12:10:00Z",
+      settingsVersion: 4,
+      targets: [],
+      operation: { runType: "DRY_RUN", priority: "NORMAL", availableAt: null },
+      rollbackSummary: "Bekleyen çalışma iptal edilebilir.",
+    };
+    mocks.apiRequest.mockResolvedValueOnce(bound).mockRejectedValueOnce(stale);
+    const user = userEvent.setup();
+    render(<BulkAgentRunForm agents={[]} />);
+    await user.click(screen.getByRole("button", { name: "Kapasite önizle" }));
+    await user.click(await screen.findByRole("button", { name: "Açık onayla ve kuyruğa al" }));
+    expect(await screen.findByRole("button", { name: "Kapasite önizle" })).toBeVisible();
+    expect(screen.queryByLabelText("Toplu işlem önizlemesi")).not.toBeInTheDocument();
   });
 
   it("keeps full JSON out of the default edit surface and sends structured persona/profile fields", async () => {
