@@ -4269,3 +4269,12 @@ Seçilen native dump checksum'ı tekrar geçti; yerel schema-only kopyası 50 ta
 sequence için uyumlu ve OID/sahip eşliğiyle temizlendi. Veri satırları yüklenmedi.
 Yardımcı kod teslimi tamam; 5 Ekim otomatik yedek ve A′ sonrası 7 Ekim gerçek restore
 kapıları açık. Gzip pin korunuyor. Yeni uygulama dağıtımı veya üretim mutasyonu yok.
+
+## 4 Ekim 2026 — P2 iki aşamalı çalıştırıcı hazırlığı
+
+Yerel P2 çalıştırıcısında39, ortak P3/P4/P5 regresyonunda43 ağsız test geçti. Gerçek özel
+P0/eski hazırlık24girdi için gerçek renderer/normal şema/yazar eşliği uyum kontrolü geçti;
+bu salt yerel testte A′/saat sentetiktir, model/provider/DB çağrısı yoktur. 24runtime ve
+iki okuyucu aynı90dakika, tam çift eşiği, hash bağlı operatör kaynak kontrolü, kesinti ve
+süre bütçesi test edildi. Bağımsız Opus incelemesi ve exact CI açık. Gerçek pilot0,
+canlı9bf değişmedi. Ana dal e83bf04 teslim kaydı CI37223578656 tamamı PASS.

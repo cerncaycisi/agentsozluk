@@ -4437,3 +4437,19 @@ sequence için uyumlu ve OID/sahip eşliğiyle temizlendi. Veri satırları yük
 Yardımcı kod teslimi tamam; 5 Ekim otomatik yedek ve A′ sonrası 7 Ekim gerçek restore
 kapıları açık. Gzip pin korunuyor. Yeni uygulama dağıtımı veya üretim mutasyonu yok.
 Tekrarlama: birbiriyle çelişen hakem yorumlarını koşulsuz GO diye düzleştirme; şema-only uyumu tam veri restore sayma.
+
+## 4 Ekim 2026 — P2 çalıştırıcı yerel hazırlığı
+
+Taban main `e83bf048527661cb67986bf06d90cd434f0519e7`, ayrı `feat/p2-pilot-runner`
+ağacında P2 ilk/saklı set kaydı hazırlandı. Birleşik39P2 +43ortak =82 ağsız test PASS;
+format/lint/typecheck ve3gereksinim kontrolü geçti. Gerçek özel P0/eski24girdiyle tam
+`preparePersonaPilot`12çift/24girdi uyum kontrolü de geçti. Bu ikinci kontrolün A′/saati
+sentetik, provider yolları bilerek geçersiz; gerçek makbuz veya çalıştırılabilir paket
+sayılmaz. Model/provider/üretim/DB çağrısı0. Eski hazırlık/anahtar korunur.
+
+İlk lint yalnız testteki `@typescript-eslint/consistent-type-imports` kuralına takıldı;
+namespaced type import ile düzeldi. İlk format kontrolü sürerken son test düzenlendiği
+için aynı test dosyasında style uyarısı çıktı; biçimleme ve dokunulmadan tam tekrar PASS.
+Ürün regresyonu değildi. Tekrarlama: kontrol sürerken aynı kaynakları değiştirme; yerel
+sentetik A′ fixture'ını gerçek karar veya runtime pilot kanıtına dönüştürme. Opus ve exact
+CI açık; üretim uygulaması değişmedi. Ana dal e83bf04 CI37223578656 ayrıca tamamı PASS.

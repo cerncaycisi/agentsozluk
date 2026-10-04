@@ -49,6 +49,13 @@ bütçesi en az 12 olmalı; daha azsa yeni çağrı açılmaz ve sonuç BELİRS�
 ayrıca her çağrı öncesi kontrol edilir; eldeki süre 12 çağrının bitmesini garanti etmez. Mevcut pilot betikleri sınırsız
 retry veya paralel model çağrısıyla yeniden kullanılmaz.
 
+4 Ekim uygulama uzlaştırması: PLAN'daki “bir toplu kör okuma” ifadesi set başınadır.
+İlk altı çift kör okunmadan saklı set açılmaz; saklı set açılırsa aynı model, önceki
+okumayı taşımayan ikinci oturumda onu okur. **En çok 24 runtime + 2 okuyucu invoke**,
+ikisi ve operatörün kaynak kontrolü **aynı 90 dakikada**; yeni süre/tekrar hakkı yok.
+P3/P4/P5'in okuyucu dahil toplam24 kuralı bundan farklıdır ve değişmez. Bu açıklama
+hiçbir P2 çıktısı üretilmeden yapıldı; kod incelemesinde ayrıca Opus'a sunulur.
+
 Tek kör okuyucu `claude-opus-5` olacaktır: araç/MCP kapalı, oturum geçmişi taşınmayan
 çağrıya yalnız hazırlanmış okuma paketi stdin üzerinden verilir; dosya/dizin yolu verilmez.
 Okuyucuya yalnız kimlikleri çıkarılmış çıktı, ortak bağlam ve isimsiz persona
@@ -328,3 +335,75 @@ ile süreç başlangıcına pay bırakıldı; davranış değişmedi. K2 detache
 kuralı yukarıya eklendi. K3–K5'in bloklamayan OS erişim, toplam süre, auth ve terminal
 lafızları da açıklandı. Koşullu görüş final SHA için yeni koşulsuz hakemlik sayılmaz.
 Son exact CI takip ediliyor. Gerçek pilot çağrısı 0, üretim değişikliği yok.
+
+## 4 Ekim — P2 iki aşamalı çalıştırıcı hazırlığı
+
+`scripts/run-persona-pilot.ts` yalnız normal DECISION üretir. Ürün/yayın/DB/control-plane
+kurmaz. P3/P4/P5'ten ortak özel dosya, A′ tarih makbuzu ve Opus transport parçalarını
+kullanır; onların 24 toplam invoke kuralı değişmedi. P2 için 24 runtime + en çok iki
+Opus okuması aynı 90 dakika içindedir. **Otomatik teknik retry yoktur**: 24 ilk kol zaten
+tüm runtime payını kullanır. Teknik hata özel kayıtta kalır; eksik çiftle eşik küçültülmez.
+Bu kod hazırlığı canlı model/effort eşliği veya gerçek pilot sonucu değildir.
+
+- Sabit özel kayıt `~/style-lab/p2-pilot-hazirlik-20261004/execution/`. Yeni kimlik,
+  başka çıktı dizini veya reset argümanı yok. wx kilit ve fsync/atomik kayıt her çağrıdan
+  önce yazılır. Yarım rezervasyon, kaynak/config sapması, auth ve bilinmeyen hata terminal
+  kapanır. Kilit kendiliğinden temizlenmez. Yeniden çalıştırma geçerli çıktıyı tekrar üretmez.
+- İlk aşama 12 kol → ilk kör okuma → kaynak doğrulaması. Eşik 4 yeni / en fazla 1 eski /
+  sıfır doğrulanmış yeni ihlal. Sonra ayrı `--execute`, kalan çağrı ve süre kapısıyla
+  saklı 12 kolu açar. Saklı set aynı modelin geçmişsiz ikinci okumasını ve ayrı kaynak
+  kontrolünü ister. İnceleme komutu kendi başına sonraki model aşamasını başlatmaz.
+- İlk aşama kararları sırasında iki okuma/kaynak kontrolü için toplam30 dakika ayrılır;
+  saklı set için15 dakika. Karar başına en çok6 dakika, okuyucu başına12 dakika; kalan
+  çağrı dilimi en az60 saniye. Bu pay tamamlanma garantisi değildir. Saklı sete girişte
+  en az16 dakika ve12 runtime hakkı gerekir. Okuyucu, modelsiz denetimler, manuel kontrol,
+  süreç temizliği ve yeniden başlatma ilk rezervasyonla başlayan aynı saate dahildir.
+  Geç tamamlanma başarıya çevrilmez; tavan dolunca INCOMPLETE kaydı kalır.
+- Her aşamanın 0600 `*-packet.json` dosyasında yalnız altı case, isimsiz tercih kartı,
+  yazar nesnesi çıkarılmış ortak bağlam ve A/B çıktıları bulunur. Yeni/eski anahtarı,
+  kullanıcı adı alanı, renderer metni, faz adı ve dosya yolu okuyucuya verilmez.
+  Serbest metindeki kendiliğinden kimlik/slogan sızıntısı körlük sınırıdır. Ortak okuyucunun
+  araçsız CLI/aynı UID sınırı yukarıda açıklanır; OS gizliliği iddiası yoktur.
+- Okuyucu JSON'u altı benzersiz vaka, kazanan, gerekçe, alıntılar ve ayrı ihlaller içerir.
+  A/B/TIE için iki koldan kanıt gerekir; eksik kol INSUFFICIENT. Alıntılar çıktının gerçek
+  string alanlarında bulunmalıdır. Geçersiz rapor özel kanıtta korunur, yeniden okuyucu
+  hakkı açmaz. Bu mekanik alıntı eşliği gerekçenin doğruluğunu kanıtlamaz.
+- Operatörün 0600 incelemesi `version:1`, `readerOutputHash`, `packetHash`,
+  `sourceVerified:true`, `readerDisagreement:string|null` ve aynı `cases` şeklini taşır.
+  `cases` içindeki her öğe `caseId`, `winnerSlot`, `evidence:[{slot,quote,reason}]`,
+  `violations:[{slot,quote,reason,rule}]`, `reason` içerir. Farklı bir hüküm/alıntı kaydedilirse
+  somut anlaşmazlık gerekçesi şarttır; gerekiyorsa ikinci bağımsız hakem PLAN sınırındadır,
+  çalıştırıcı kendiliğinden ek hakem başlatmaz. Operatör kaynak ve anlam denetimini gerçekten
+  yapmadan `sourceVerified` yazmaz. Çıktı/packet/okuyucu hash'leri kontrol edilir; kol anahtarını
+  kod uygular. Geçmiş inceleme sonradan değiştirilirse kayıt kapanır. İki eşik geçse bile
+  sonuç `BOTH_THRESHOLDS_MET_NOT_BEHAVIOR_PASS`; otomatik yayın/dağıtım veya P7 kabulü yoktur.
+
+P2 config, ortak config'e ayrıca `baselineFile`, `keyFile`, `keySha256` ekler. Manifest
+v2, exact kaynak/profil/builder hash'i, sabit P0 hash'i, `PERSONA_DECISION_PILOT`, Luna/max,
+24runtime/2okuyucu/90dakika ve12çifti bağlar. Tam normal context şeması ve gerçek
+`buildRuntimePrompt` byte eşliği, baseline persona belgesi/sürümü, eski kaydedilmiş/yeni
+gerçek renderer, çiftin yalnız renderer farkı, her sette6yazar/3bağlam/3-3kol ve aynı
+başlıktaki iki yazarın ortak run ayarı kontrol edilir. Seçim seed'i ve yazarların bağlamda
+entry yazarı olmaması sabit hazırlayıcının sorumluluğudur; çalıştırıcı seçim algoritmasını
+ikinci kez uygulamaz. Eski v1 paketi çalıştırılmaz; A′ sonrasında temiz detached kaynakta
+aynı seçim kuralıyla ayrı v2 üretilir, eski hazırlık ve ayrı anahtar korunur.
+
+```sh
+# A′ öncesi reddedilir; model çağırmayan ön kontrol.
+corepack pnpm exec tsx scripts/run-persona-pilot.ts /absolute/private/config.json
+# İlk aşama; kaynak kontrolü sonrası aynı komut saklı aşamayı başlatır.
+corepack pnpm exec tsx scripts/run-persona-pilot.ts /absolute/private/config.json --execute
+# Kaynak kontrolü de ilk rezervasyondan itibaren90 dakika içinde tamamlanmalı.
+corepack pnpm exec tsx scripts/run-persona-pilot.ts /absolute/private/config.json --review development /absolute/private/development-review.json
+corepack pnpm exec tsx scripts/run-persona-pilot.ts /absolute/private/config.json --review holdout /absolute/private/holdout-review.json
+```
+
+İlk yerel kanıt: **39 P2 + 43 ortak çalıştırıcı =82 ağsız test PASS**. Normal girdi testlerinde üretim metni kullanılmaz; yalnız sentetik baseline
+hash'i uyarlanır ve bu uyarlama kaldırıldığında gerçek P0 sabitlemesinin reddi ayrıca
+sınanır. Diğer hash/renderer/şema/A′ kapıları gerçektir. Gerçek pilot çağrısı0; bağımsız
+Opus kod/yöntem incelemesi ve exact CI açık.
+
+Gerçek özel P0 dosyası ve eski24girdiyle ayrı yerel uyum kontrolü12çift/24girdi geçti.
+Bu testte tarih/A′ makbuzu sentetiktir, provider yolları bilerek geçersizdir; yalnız
+`preparePersonaPilot` çağrıldı. `input-compatibility-only` makbuzu gerçek A′ kararı,
+çalıştırılabilir v2 manifesti veya model doğrulaması değildir. Eski dosyalar değiştirilmedi.
