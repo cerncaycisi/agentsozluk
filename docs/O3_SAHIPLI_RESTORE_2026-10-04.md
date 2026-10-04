@@ -93,3 +93,38 @@ marker `o3:<OP32>` dahil kimlik üçlüsü kanıtlanmadan DB korunur. Bir kaynak
 başka hedef bu işlemde silinmez. Kimlik eksikse normal cleanup başarı gibi
 kaydedilmez; belirsiz artık ve disk etkisi makbuza girer, manuel uzlaştırma kapısı
 açık kalır. Son hakem paketine gerçek `verify.sql` ve test DB koruması da eklenir.
+
+## İkinci hakem koşulları ve son yerel kapanış
+
+Gerçek Opus5 exact `ecf7bf0a20efb75ffa2ae1f884315dc669f02e3a` KOŞULLU GO;
+271,563 saniye, CLI yardımcı Haiku14 tokenı ayrıca kayıtlı. Tekrarlanabilir satır
+metni için yalnız restore SQL'i değiştirmek yetmez: `DateStyle=ISO, MDY`,
+`IntervalStyle=iso_8601`, `bytea_output=hex`, `lc_monetary=C` **hem kaynak metadata
+READ ONLY oturumunda hem restore READ ONLY oturumunda SET LOCAL** ile sabitlendi.
+DB/rol GUC'una kalıcı yazım yok; helper ortamın PGDATESTYLE değerini kaldırır.
+
+Metadata satır formatı/üç eski marker ve strict parser korunur; önerilen dört
+current_setting satırı doğrudan eklenmedi, çünkü eski yedi backup bu yeni satırları
+içermez. Eski metadata yeniden yazılmaz veya yeni ayarla yakalandı denmez. Eski
+yedeğin gerçek kıyas sonucu ayrıca zorunlu, uyumsuzlukta kapı kapalı kalır.
+Sonraki kaynak yedek betiğinin exact inceleme/CI ve atomik kurulum makbuzu gerekir;
+yerel kaynak düzeltmesini üretimde kurulmuş sayma.
+
+Faz testleri üretim timeout'unu değiştirmeden hafif fixture için 15s ortak bütçe
+kullanır. Kimlik değişimi filesystem dosyasına değil gerçek verify backend'inin
+`pg_stat_activity.wait_event=PgSleep` kanıtına bağlanır; final `phase=verify` de
+sınanır. 7/7 helper PG16 tekrar PASS; ayrı gerçek kaynak-producer/native-restore
+senaryosu iki owned DB'de farklı DateStyle/IntervalStyle/bytea ayarları ve
+`date/timestamptz/interval/bytea/money` verileriyle geçti: odaklı **2/2 PASS**.
+İlk birleşik koşuda helper7 PASS/producer fixture1 FAIL; `binary` rezerv kelimesi
+ve genişletilen INSERT kolon listesinin iki yazım hatası düzeltildi. Ürün guard'ı
+ve eşik gevşetilmedi. AggregateError özgün cause'u korur; isolated runner test
+exit'ini artık kabuk exit'ine taşır. Bütün sentetik kümeler sonrasında kapatıldı.
+43 gece-yedek/receipt birim-shell testi PASS; son format/kod incelemesi/exact CI açık.
+
+Kıyas public tablo ad/kardinalite/satır metni toplamsal hash'i ve sequence güvenliği
+ile sınırlıdır. Kriptografik içerik özeti veya view/function/extension/constraint/
+index kataloglarının bağımsız eşliği iddiası yok; pg_restore bütün arşivi hata
+çıkışıyla uygular. Partition ebeveyn/çocuk toplamları iki tarafta da aynı yöntemle
+hesaplanabilir, rows benzersiz fiziksel satır sayısı vaadi değildir. A5'in daha
+ayrıntılı frozen katalog/şema/index kapıları bu O3 helper ile değiştirilmez.

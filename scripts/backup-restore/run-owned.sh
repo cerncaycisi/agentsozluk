@@ -44,7 +44,7 @@ bounded() {
   # GNU ve BusyBox ortak biçimi; timeout DB konteynerinde, istemciyle aynı PID alanında.
   timeout -s KILL "$seconds" "$@"
 }
-unset PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS PGAPPNAME
+unset PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS PGAPPNAME PGDATESTYLE
 export PGUSER="$owner" PGCONNECT_TIMEOUT=5
 control_app="o3-control-$op"
 work_app="o3-$op"

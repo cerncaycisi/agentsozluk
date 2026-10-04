@@ -1379,6 +1379,35 @@ other than the resolved current and immediately previous release. It compares vo
 post-cutover container-image hashes plus disk before/after evidence. It never invokes Docker
 system/volume prune and never removes database data or the current/previous runtime releases.
 
+### Migration öncesi aday Prisma şeması pause sorgusuna uymuyorsa
+
+4 Ekim 2026 exact `d829dd0` denemesi: inert image/runtime kuruldu ancak candidate
+`agent-society-flow.ts pause` tam GlobalSettings okumasında **P2022 birthMode**
+ile düştü. Dört yeni sütun henüz migration ile eklenmediği için yeni generated
+Prisma bu eski DB'yi okuyamaz. `SOCIETY_FLOW_FAIL INTERNAL_ERROR` cutover değildir;
+kilit korunur. Candidate komutunu zaten-paused durumda tekrar çalıştırmak da ilk
+tam okuma yüzünden bu hatayı çözmez. Raw SQL ile ayar yazma veya migration'ı pause
+yerine öne çekme yok.
+
+Bu somut migration-öncesi durumda mevcut **canlı immutable release**'in
+`agent-society-flow.ts` audited pause yolu kullanılabilir: taze host pin, hostname,
+origin, staged checkout exact SHA ve canlı app/tag/runtime eski exact SHA üçlüsü
+birebir doğrulanır. Eski scriptin `setGlobalRuntimeEnabledIfChanged` çağırdığı,
+aktif HUMAN ADMIN aktörü, settings kilidi ve idempotent short circuit korunur.
+Operatör yeni aday +eski pause SHA'sını, gerçek yetki kapsamını ve kaynak/hakem
+makbuzunu kaydeder; bu bölüm kendi başına erişim yetkisi vermez. Yalnız runtimeEnabled
+kapanır; diğer kontrollerin hash'i before/after aynıdır, ayar sürümü ölçülür.
+
+Running/cancel-requested/aktif lease sıfır olmadan baseline/migration yok. Drenaj
+20 dakika bounded, iptal veya zorla geçiş yok; belirsiz pause sonucunda önce status
+okunur, otomatik retry yapılmaz. Failed exact lock ancak yukarıdaki tüm "Elle
+kilit temizliği" koşulları aynı cleanup oturumunda tekrar sınanınca yalnız owner
+file +boş directory olarak kaldırılır. Baseline, migration-op veya artifact receipt
+silinmez. Sonra aynı exact SHA, yeşil CI, henüz geçerli aynı artifact ve exact
+migration list/profile ile wrapper **manual-prepaused** çalışır; yeniden candidate
+pause flag'i verilmez. Wrapper'ın pause/drain ve bütün A5 backup/restore/old-image/
+veri/şema/timeout kapıları aynen korunur. Resume kabul/benchmark sonrasındadır.
+
 ### Ekim release ayar özeti yeniden giriş önkoşulu
 
 `settings-profile` makbuzu baseline tamamlanmadan önce yazılır. Yeni exact SHA'ya

@@ -73,6 +73,10 @@ timeout --kill-after=30 600 "${compose[@]}" exec -T "${pg_env[@]}" db \
   psql -XAtq -F '|' -v ON_ERROR_STOP=1 -U agent_sozluk -d agent_sozluk >&2 <<SQL
 BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET TRANSACTION SNAPSHOT '$snapshot';
+SET LOCAL DateStyle = 'ISO, MDY';
+SET LOCAL IntervalStyle = 'iso_8601';
+SET LOCAL bytea_output = 'hex';
+SET LOCAL lc_monetary = 'C';
 SELECT 'server_version|' || current_setting('server_version');
 SELECT 'table|' || c.relname || '|' || (xpath('/row/n/text()', x))[1]::text || '|' || (xpath('/row/h/text()', x))[1]::text
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace

@@ -115,10 +115,11 @@ it("O3 doğrulama da restore ile aynı süre bütçesindedir", async () => {
     f.dump(stage);
     // Operatörün hash'le seçtiği SQL gecikmesi: ayrı tam bütçe açılamaz.
     writeFileSync(`${stage.dir}/verify.sql`, "SELECT pg_sleep(30);\n");
-    const result = await f.run(stage, 3);
+    const result = await f.run(stage, 15);
     f.remember(stage);
     expect(result.code).not.toBe(0);
     expect(result.stderr).toContain("O3_VERIFY_CLIENT_FAILED");
+    expect(readFileSync(`${stage.dir}/run/status`, "utf8")).toContain("phase=verify");
     expect(readFileSync(`${stage.dir}/run/cleanup.stdout`, "utf8")).toContain(
       "O3_OWNED_SESSIONS_GONE",
     );
@@ -147,8 +148,15 @@ it("O3 temizlikte değişen hedef kimliğine dokunmaz ve belirsizliği ayrı exi
     const stage = f.stage();
     f.dump(stage);
     writeFileSync(`${stage.dir}/verify.sql`, "SELECT pg_sleep(30);\n");
-    const running = f.run(stage, 4);
-    await f.until(() => existsSync(`${stage.dir}/run/verify.stdout`));
+    const running = f.run(stage, 15);
+    await f.until(
+      () =>
+        f.sql(
+          "postgres",
+          `SELECT count(*) FROM pg_stat_activity WHERE datname='${stage.target}' AND application_name='o3-${stage.op}' AND wait_event='PgSleep'`,
+        ) === "1",
+      12_000,
+    );
     f.remember(stage);
     const preserved = f.sleeper(stage.target, `o3-${stage.op}`);
     await f.until(() => f.active(stage.target, `o3-${stage.op}`) === "2");
@@ -278,8 +286,8 @@ function makeFixture() {
       "postgres",
       `SELECT count(*) FROM pg_stat_activity WHERE datname='${db}' AND application_name='${app}'`,
     );
-  const until = async (condition: () => boolean) => {
-    const end = Date.now() + 2500;
+  const until = async (condition: () => boolean, timeoutMs = 2500) => {
+    const end = Date.now() + timeoutMs;
     while (!condition()) {
       if (Date.now() >= end) throw new Error("O3_TEST_START_TIMEOUT");
       await new Promise((resolve) => setTimeout(resolve, 30));

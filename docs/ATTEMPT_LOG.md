@@ -4710,3 +4710,70 @@ P7/168 saat henüz yok, PASS'a çevrilmedi. Yanlış komut adı
 package.json'dan okunarak çalıştırılır. Bu çağrılar O3 ürün regresyonu değildir.
 Tekrarlama: development doğrulamasını final kabul kapısıyla karıştırma; komut
 adını bellekten türetme.
+
+### 4 Ekim 22:04–22:13 UTC — exact d829 inert kurulum ve pause hatası
+
+Exact `d829dd06eb4aa68154f521667302e6744b67399e` main CI `37237038884`
+7/7 PASS, release artifact `37237966991` SUCCESS. Üretim imajı inert kuruldu:
+`sha256:94fbb41387378a2ccad677bab62fee1d1d17e5366ce55e208c494f15033c2e43`,
+GNU runtime ABI127 hazır. Wrapper exact remote checkout'u d829'a bağladı;
+`SOCIETY_FLOW_FAIL code=INTERNAL_ERROR`, wrapper line632/status1 ile durdu.
+A5, frozen backup/restore, migration ve cutover başlamadı. Artifact kurulumunu
+canlı release başarısı sayma.
+
+Taze pinli salt okunur yeniden üretim: candidate tam global query **P2022,
+column birthMode**; dört yeni OFF/NULL sütun henüz migration ile eklenmediği için
+candidate Prisma şeması eski DB'yle uyumsuz. `setGlobalRuntimeEnabledIfChanged`
+tam settings okur; idempotent pause olsa bile ilk okuma düşer. Ayar sürümü304,
+runtimeEnabledtrue: transaction commit yok. App image/tag/runtime/worker exact
+`9bf3653ff152d4a704c1774ccd6782e0a3322f29`; uygulama çalışıyor. 28 applied,
+checksum sapması/unfinished/hold/migration-op/A5 konteyner veya backend yok.
+Failed lock exact owner kaydı özel makbuzda korundu; baseline-complete yok.
+
+Eski canlı immutable release `agent-society-flow.ts status` SUCCESS. Runbook
+lock temizliği READ ONLY: tek kayıtlı deploy scope, başka deploy süreç0,
+`/etc/pam.d/sudo` +tüm include dosyalarında pam_systemd yok; diğer kapılar geçti.
+Hiçbir kilit kaldırılmadı/pause/retry yapılmadı; mevcut şemaya uygun audited
+pre-pause +exact failed lock cleanup +aynı SHA/artifact/manual-paused A5 devamı
+farklı model işletim hakeminde. Teknik kapı atlamak veya raw SQL ayar yazmak yok.
+İlk teşhis SQL'inde kabuk quote hatası yalnız `column runtimeenabled does not
+exist` verdi; Python subprocess stdin ile düzeltilip aynı READ ONLY sorgu geçti.
+Tekrarlama: yeni Prisma şemasıyla eski DB'ye pre-migration tam-model query yapma;
+artifact READY'yi cutover diye yazma; başarısız kilidi sahip/scope/DB kanıtsız silme.
+
+O3 ikinci gerçek Opus5 exact `ecf7bf0a20efb75ffa2ae1f884315dc669f02e3a`
+KOŞULLU GO, 271,563 saniye; modelUsage ayrıca 14-token Haiku yardımcı çağrısı.
+Serialization GUC/faz süre testleri için ek koşullar açık. Varsayımsal format
+satırlarını parser'a eklemek eski native metadata'yı kırabilir; kaynakla birlikte
+uzlaştırılır. 7/7 yerel test kanıtı korunur; exactCI koşuyor, helper deploy edilmedi.
+
+### 4 Ekim 22:24 UTC — P2022 sonrası audited pause ve exact A5 devamı
+
+İşletim hakemi Opus5/medium gerçek KOŞULLU, 46,105s; Haiku17 yardımcı tokenı.
+İlk high çağrı360s timeout, tamamlanmış review sayılmadı. Hakem ikinci kaynakta
+`setSocietyFlowEnabled` yolunu okudu; seçilen immutable CLI gerçekte idempotent
+`setGlobalRuntimeEnabledIfChanged` kullanır, kaynakla teyit edildi. Koşullu karar
+GO diye yeniden adlandırılmaz. running=0/drain şartı mevcut bounded proof'a bağlandı.
+
+Taze aynı-scope/pin/oldapp-tag-runtime9bf/actor/role guard altında eski canlı CLI
+pause **304→305**, false; diğer ayarların hash'i aynı. Queued/running/cancel-requested/
+aktif lease **0/0/0/0**. Aynı oturumda bütün PAM/scope/A5/backend/history/kimlik
+kapıları tekrar geçti; yalnız exact failed owner dosyası +boş lock dizini kaldırıldı.
+Hiçbir baseline/migration-op/image/runtime silinmedi. Aynı d829/artifact37237966991
+manual-prepaused wrapper yeniden başladı; disk27,665,956,864 bayt, eski app/runtime
+9bf sabit. planned/image-verified/drain0/frozen geçti; taze frozen dump
+**1.332.482.331 bayt**, SHA256
+`e606e590a09f936d259c074c014f66cfb98ad2bf3ff09895d19db004c48da0c0`.
+Restore/şema/sequence/old-image/migration/cutover sonucu hâlâ açık; frozen sırasında
+başka DB bağlantısı açılmadı. Script bayrağının kaldırılması doğrulanmış manual
+pause önkoşuluna bağlıdır, pause veya teknik güvenlik kapısı atlamak değildir.
+
+O3 son yerel kapanış: dört output GUC source+restore SET LOCAL; metadata formatı
+korunur. 7 helper PG16 ve odaklı2 producer/native-restore PASS, 43unit/shellPASS.
+İlk yeni fixture rezerv `binary` ve INSERT kolon sayısı hatalarıydı; hedefli düzeltme
+sonrası typed GUC sapması senaryosu geçti. Test wrapper exit taşınması/cause korunması
+kanıtı ayrıca kayıtta. Yeni source backup betiği henüz üretimde kurulu değil;
+son farklı model incelemesi/exactCI/full dış backup restore açık.
+Tekrarlama: candidate Prisma'yla eski şemada tam query'yi retry etme; hakemin yanlış
+seçilen fonksiyonuna dayalı idempotence iddiasını source olmadan benimseme; backup
+meta formatını strict parser/eskikopya uyumu olmadan genişletme.

@@ -7,6 +7,10 @@ SET LOCAL lock_timeout = '5s';
 SET LOCAL idle_in_transaction_session_timeout = '30s';
 SET LOCAL timezone = 'UTC';
 SET LOCAL extra_float_digits = 3;
+SET LOCAL DateStyle = 'ISO, MDY';
+SET LOCAL IntervalStyle = 'iso_8601';
+SET LOCAL bytea_output = 'hex';
+SET LOCAL lc_monetary = 'C';
 SET LOCAL search_path = pg_catalog;
 SELECT current_database() = :'restore_database'
   AND current_database() <> 'agent_sozluk'

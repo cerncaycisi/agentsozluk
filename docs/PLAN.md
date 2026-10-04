@@ -8,6 +8,25 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 22:30 UTC:** P2022 kaynakla ayrıldı; eski canlı immutable CLI audited
+  pause304→305, diğer kontroller hash'i aynı, tüm open/lease0. Fresh aynı-scope
+  koşullarıyla yalnız failed exact lock temizlendi. Aynı d829/artifact manual-prepaused
+  A5 planned/image-verified/frozen ve 1.332.482.331-byte tam yedek geçti; restore,
+  eski imaj, migration/cutover hâlâ açık. Frozen'da ek DB bağlantısı yok.
+  O3 source+restore output GUC/faz koşulları yerelde 7PG+2PG/43unit-shell ile kapandı;
+  son farklı model incelemesi/exactCI/atomik backup-script kurulum/full restore açık.
+
+- **4 Ekim 22:13 UTC — canlı geçiş kurtarması:** exact `d829dd0` CI7/7 ve
+  artifact `37237966991` başarılı; inert image/runtime kuruldu. Candidate pause
+  migration öncesi tam settings sorgusunda `P2022 birthMode` ile düştü; transaction
+  commit yok, ayar304/runtime açık. App/image/runtime/worker `9bf3653` aynı; applied28,
+  yarım/A5/hold yok, failed release kilidi korunuyor. Eski canlı immutable release
+  status geçti. Mevcut audited pause yolu/lock cleanup kanıtı bağımsız işletim
+  incelemesinde; A5/restore/migration/cutover açık, hiçbir kapı atlanmadı.
+- **O3 ikinci Opus:** exact `ecf7bf0`, KOŞULLU GO; ek serialization GUC ve kısa
+  test bütçesi/faz senkronizasyonu koşulları kaynakla uzlaştırılacak. 7/7 yerel
+  kanıt tarihsel olarak korunur; helper üretimde uygulanmadı/main'e birleşmedi.
+
 - **4 Ekim 22:02 UTC:** #328 O3 ilk Opus KOŞULLU GO; argüman/link ve cleanup
   kimlik sapması kapanışlarıyla 7/7 isolated PG16 PASS. Son hakem/exact CI ve
   üretim dış backup restore açık. İlk application exact `d829dd0` main CI7/7;

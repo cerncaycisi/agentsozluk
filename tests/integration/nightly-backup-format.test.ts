@@ -45,15 +45,25 @@ it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri 
       source,
       `CREATE TABLE probe (
       id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-      payload jsonb NOT NULL, amount numeric(12,3) NOT NULL, happened timestamptz NOT NULL
+      payload jsonb NOT NULL, amount numeric(12,3) NOT NULL, happened timestamptz NOT NULL,
+      calendar date NOT NULL, elapsed interval NOT NULL, bytes_value bytea NOT NULL, price money NOT NULL
     );
-    INSERT INTO probe(payload, amount, happened)
+    INSERT INTO probe(payload, amount, happened, calendar, elapsed, bytes_value, price)
     SELECT jsonb_build_object('event','LEASE_HEARTBEAT','state','RUNNING',
       'run',md5(g::text),'note',repeat('sentetik Türkçe kayıt ',12)),
-      g/7.0,'2026-10-04 00:00:00+00'::timestamptz+g*interval '1 second'
+      g/7.0,'2026-10-04 00:00:00+00'::timestamptz+g*interval '1 second',
+      date '2026-10-04'+(g%28),g*interval '2 minutes',decode(lpad(to_hex(g),8,'0'),'hex'),g::numeric::money
     FROM generate_series(1,1000) g;
     CREATE TABLE empty_probe (id bigserial PRIMARY KEY, note text);`,
     );
+    // İki owned DB'de farklı render GUC'ları: actual producer +verify açık oturum
+    // ayarları olmadan aynı typed verinin satır hash'i eşit olmaz. Global rol değişmez.
+    sql("postgres", `ALTER DATABASE "${source}" SET DateStyle = 'German, DMY'`);
+    sql("postgres", `ALTER DATABASE "${source}" SET IntervalStyle = 'sql_standard'`);
+    sql("postgres", `ALTER DATABASE "${source}" SET bytea_output = 'escape'`);
+    sql("postgres", `ALTER DATABASE "${target}" SET DateStyle = 'SQL, DMY'`);
+    sql("postgres", `ALTER DATABASE "${target}" SET IntervalStyle = 'postgres_verbose'`);
+    sql("postgres", `ALTER DATABASE "${target}" SET bytea_output = 'escape'`);
     // Üretim betiği değişmeden yürür; yalnız host ve Compose taşıması yereldir.
     executable("hostname", "echo agent-sozluk-prod");
     executable(
@@ -209,7 +219,9 @@ exec "$command_name" "\${args[@]}"`,
     }
   }
   if (errors.length)
-    throw new AggregateError(errors, "Backup fixture doğrulaması/temizliği başarısız");
+    throw new AggregateError(errors, "Backup fixture doğrulaması/temizliği başarısız", {
+      cause: errors[0],
+    });
 }, 90_000);
 
 // Timeout yalnız kabuğu değil, bu testin ayrı süreç grubunu da kapatır.
