@@ -236,6 +236,8 @@ function bulkPreviewStateHash(
       personaVersionId: agent.currentPersonaVersionId,
       profileUpdatedAt: agent.updatedAt.toISOString(),
       manualTimeoutSeconds: agent.manualTimeoutSeconds,
+      username: agent.user.username,
+      displayName: agent.user.displayName,
     })),
   });
 }
@@ -265,6 +267,8 @@ export function previewBulkAgentRun(
         "Seçili ACTIVE agent listesi eksik veya geçersiz.",
       );
     assertBulkSize(agents.length);
+    if (!agents.length)
+      throw new AppError("BULK_PREVIEW_EMPTY", 409, "Kuyruğa alınabilecek yazar yok.");
     for (const agent of agents)
       await assertManagedRuntimeCredentialReady(transaction, agent.id, now);
     const runCount = agents.length;
@@ -383,9 +387,9 @@ export function createBulkAgentRuns(
   now = new Date(),
   dependencies: BulkAgentRunCreateDependencies = {},
 ) {
+  const startedAt = Date.now();
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    const startedAt = Date.now();
     verifyBulkRunPreview(getEnvironment().APP_SECRET, actor.actorId, input.previewToken, now);
     const initialAgents = await listBulkRunAgents(transaction, bulkSelection(input));
     assertBulkSize(initialAgents.length);

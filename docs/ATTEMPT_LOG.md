@@ -3714,3 +3714,11 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Tarih alanı için mevcut `canonicalRequestHash` açığı bulundu: parse edilmiş Date boş nesneye dönüşüyordu. ISO serileştirme eklendi; aynı idempotency anahtarıyla farklı availableAt artık conflict verir. Önceki 24 saatlik Date içeren eski hash için sessiz yeniden yürütme yerine conflict oluşabilir; bu geçiş sınırı belgelendi.
 - İlk erken typecheck yeni hata kodları union'a henüz eklenmediği için yedi TS2345 verdi; kaynak düzeltildi, son kalite ayrı kaydedilecek. Hakem veya canlı başarı iddiası yok.
 - Tekrarlama: istemcinin önizlemeyi gizlemesini sunucu CAS'ı sayma; yeni request id ile aynı onayı yeniden tüketme; zaman alanını hash içinde boş nesneye indirgeme.
+
+### 4 Ekim 2026 — O5 Opus koşulları ve 100 hedef provası
+
+- Gerçek `claude-opus-5`, exact `05b110bbdedb692deafe40fc069d0aa1b38ac695`: ilk 274 sn yanıt yalnız inceleme niyeti, rapor/GO değil. İkinci araç/MCP kapalı 210 sn çağrı KOŞULLU GO. İlk exact CI `37183082219` 7/7, gerçek M2-E2E-013 UI formu dahil.
+- P2-1 varsayımı kaynakla çürütüldü: kullanıcı durum kilidi shared; aynı adminin iptali gerçek PG16'daki bekleyen önizlemeyi beklemeden bitti. Yetki kilidi gevşetilmedi. P2-2 için 100 hedefli managed-roster yerel prova 227 ms preview / 621 ms queue; 15 sn transaction tavanı değişmedi. 101. hedef reddedildi. Bu canlı performans garantisi değil.
+- 100 hedef fixture'ının ilk koşusu yanlış `ADMIN_CREATE` enumuyla bir testte kaldı (17 PASS); schema'daki `INITIAL` kullanıldı, 18/18 geçti. Bu test hazırlığı hatasıdır; ürün regresyonu veya performans hatası sayılmadı.
+- TTL ilk admin kilidini de sayacak şekilde düzeltildi; görüntülenen kullanıcı adları bağlandı; boş preview erken reddedildi. Tekil yolun mevcut kapıları ve trigger'ın enum değil String olması kaynakla doğrulandı. Date hash'in 24 saatlik eski kayıt conflict sınırı dağıtım notuna işlendi. Son kalite/CI ayrı kaydedilir.
+- Tekrarlama: shared kilidi exclusive sanıp yetki seri denetimini kaldırma; 100 hedefli yerel fixture süresini üretim kapasite kanıtı sayma; ilk niyet yanıtını peer onayı kabul etme.

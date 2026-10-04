@@ -121,7 +121,7 @@ Düşük önem notlarının kaynakla kapanışı:
 **Ek imaj kanıtı:** mevcut CI container boot probe zaten bütün migration'ları boş
 PG16'ya uygular. Buna, imaj içindeki gerçek `run-migration.mjs` ile ayrı boş DB'ye
 uygulama ve ana probe DB geçmişinin değişmemesi kontrolü eklendi; son CI sonucu
-henüz açık. Eski şemadan geçiş yerel PG16 restore testinde, önceki imaj boot/smoke'u
+aşağıda PASS olarak kaydedildi. Eski şemadan geçiş yerel PG16 restore testinde, önceki imaj boot/smoke'u
 ise A5 üretim provasında ayrıca kalır. Bu sınırlar birbirinin yerine yazılmaz.
 
 Son hakem düzeltmeleri sonrası **70/70** geçti: 6 profil PG16, 7 mevcut A5 PG16,

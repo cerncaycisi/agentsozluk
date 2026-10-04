@@ -1,3 +1,4 @@
+import { lockUserStateForTransition } from "@/modules/auth/repository/users";
 import { NextRequest } from "next/server";
 import { POST as previewRoute } from "@/app/api/v1/admin/agent-runs/bulk/preview/route";
 import { POST as bulkRoute } from "@/app/api/v1/admin/agent-runs/bulk/route";
@@ -5,7 +6,8 @@ import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
 import { getEnvironment } from "@/config/env";
 import { createOpaqueToken, sha256 } from "@/lib/security/crypto";
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import * as manualRecords from "@/modules/agents/repository/manual-runs";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
   bulkAgentRunPreviewSchema,
@@ -240,7 +242,7 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
     ).resolves.toMatchObject({ metadata: { queuePriority: "EMERGENCY_ADMIN" } });
   });
 
-  it.each(["payload", "date", "settings", "profile", "persona", "roster"] as const)(
+  it.each(["payload", "date", "settings", "profile", "persona", "roster", "displayName"] as const)(
     "rejects a changed %s after preview without creating any work",
     async (change) => {
       const admin = await createAdmin();
@@ -281,6 +283,11 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
           }),
         );
       if (change === "roster") await createActiveAgent(admin.id, 1);
+      if (change === "displayName")
+        await integrationDatabase.user.update({
+          where: { id: created.agent.user.id },
+          data: { displayName: "Changed display name" },
+        });
       await expect(
         createBulkAgentRuns(integrationDatabase, actor(admin.id), input),
       ).rejects.toMatchObject({ code: "BULK_PREVIEW_CHANGED", status: 409 });
@@ -411,6 +418,11 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
     const submitted = await bulkRoute(request(path, payload, submitKey));
     expect(submitted.status).toBe(200);
     const created = (await submitted.json()).data;
+    const withoutKey = request(path, payload, randomUUID());
+    withoutKey.headers.delete("idempotency-key");
+    const duplicate = await bulkRoute(withoutKey);
+    expect(duplicate.status).toBe(409);
+    expect((await duplicate.json()).error.code).toBe("BULK_PREVIEW_USED");
     const changedDate = {
       ...payload,
       run: { ...payload.run, availableAt: "2026-10-11T12:00:00.000Z" },
@@ -427,6 +439,240 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
       data: { status: "SUSPENDED" },
     });
     expect((await bulkRoute(request(path, payload, submitKey))).status).toBe(403);
+  });
+
+  it("does not block same-admin cancellation while readonly preview holds the shared user-state lock", async () => {
+    const admin = await createAdmin();
+    const created = await createActiveAgent(admin.id, 0);
+    const queued = await createManualAgentRun(
+      integrationDatabase,
+      actor(admin.id),
+      created.agent.profile.id,
+      manualAgentRunSchema.parse({ runType: "NORMAL_WAKE" }),
+    );
+    let enter!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      enter = resolve;
+    });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const original = manualRecords.getBulkRunPreviewMetrics;
+    const spy = vi
+      .spyOn(manualRecords, "getBulkRunPreviewMetrics")
+      .mockImplementation(async (transaction) => {
+        enter();
+        await held;
+        return original(transaction);
+      });
+    const preview = previewBulkAgentRun(
+      integrationDatabase,
+      actor(admin.id),
+      bulkAgentRunPreviewSchema.parse({ allActive: true, run: { runType: "DRY_RUN" } }),
+    );
+    try {
+      await entered;
+      const cancelled = await Promise.race([
+        cancelAgentRun(integrationDatabase, actor(admin.id), queued.run.id, {
+          reason: "Same-admin cancellation must not wait behind a readonly preview.",
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("PREVIEW_BLOCKED_CANCEL")), 2000),
+        ),
+      ]);
+      expect(cancelled.runStatus).toBe("CANCELLED");
+    } finally {
+      release();
+      spy.mockRestore();
+      await preview;
+    }
+  });
+
+  it("counts waiting on the initial admin-state lock against preview expiry", async () => {
+    const admin = await createAdmin();
+    await createActiveAgent(admin.id, 0);
+    const issuedAt = new Date();
+    const selection = bulkAgentRunPreviewSchema.parse({
+      allActive: true,
+      run: { runType: "DRY_RUN" },
+    });
+    const preview = await previewBulkAgentRun(
+      integrationDatabase,
+      actor(admin.id),
+      selection,
+      issuedAt,
+    );
+    let enter!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      enter = resolve;
+    });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const blocker = integrationDatabase.$transaction(async (transaction) => {
+      await lockUserStateForTransition(transaction, admin.id);
+      enter();
+      await held;
+    });
+    try {
+      await entered;
+      const create = createBulkAgentRuns(
+        integrationDatabase,
+        actor(admin.id),
+        bulkAgentRunSchema.parse({
+          ...selection,
+          confirmation: "RUN_ALL_ACTIVE_AGENTS",
+          previewToken: preview.previewToken,
+        }),
+        new Date(issuedAt.getTime() + 599_950),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      release();
+      await blocker;
+      await expect(create).rejects.toMatchObject({ code: "BULK_PREVIEW_EXPIRED", status: 409 });
+      expect(await integrationDatabase.agentRun.count({ where: { trigger: "ADMIN_BULK" } })).toBe(
+        0,
+      );
+    } finally {
+      release();
+      await blocker;
+    }
+  });
+
+  it("measures 100 targets under the unchanged transaction deadline and rejects a 101st target", async () => {
+    const admin = await createAdmin();
+    const first = await createActiveAgent(admin.id, 0);
+    const ids = Array.from({ length: 99 }, () => ({
+      userId: randomUUID(),
+      profileId: randomUUID(),
+      versionId: randomUUID(),
+      credentialId: randomUUID(),
+    }));
+    await integrationDatabase.user.createMany({
+      data: ids.map(({ userId }, index) => ({
+        id: userId,
+        kind: "AGENT",
+        role: "USER",
+        status: "ACTIVE",
+        loginDisabled: true,
+        email: `${userId}@integration.test`,
+        emailNormalized: `${userId}@integration.test`,
+        username: `bulk_fixture_${index}`,
+        usernameNormalized: `bulk_fixture_${index}`,
+        displayName: `Bulk fixture ${index}`,
+        passwordHash: "not-used",
+        termsVersion: "1",
+        termsAcceptedAt: new Date(),
+      })),
+    });
+    await integrationDatabase.agentProfile.createMany({
+      data: ids.map(({ userId, profileId }) => ({
+        id: profileId,
+        userId,
+        lifecycleStatus: "ACTIVE",
+        createdById: admin.id,
+        updatedById: admin.id,
+        activeTimeProfile: {
+          "07:00-10:00": 0.15,
+          "10:00-14:00": 0.3,
+          "14:00-19:00": 0.35,
+          "19:00-23:00": 0.17,
+          "23:00-07:00": 0.03,
+        },
+      })),
+    });
+    await integrationDatabase.agentPersonaVersion.createMany({
+      data: ids.map(({ profileId, versionId }) => ({
+        id: versionId,
+        agentProfileId: profileId,
+        version: 1,
+        persona: originalPersonaPack.personas[0]!,
+        renderedPrompt: "Controlled queue-size fixture, never executed.",
+        changeOrigin: "INITIAL",
+        changeSummary: "Controlled performance fixture.",
+        validationReport: {},
+        createdById: admin.id,
+      })),
+    });
+    for (const { profileId, versionId } of ids)
+      await integrationDatabase.agentProfile.update({
+        where: { id: profileId },
+        data: { currentPersonaVersionId: versionId },
+      });
+    await integrationDatabase.agentCredential.createMany({
+      data: ids.map(({ profileId, credentialId }) => ({
+        id: credentialId,
+        agentProfileId: profileId,
+        tokenHash: sha256(credentialId),
+        prefix: "bulk-fixture",
+        scopes: ["runtime:lease"],
+        runtimeEnrollmentCipher: "controlled-readiness-fixture",
+      })),
+    });
+    const firstCredential = await integrationDatabase.agentCredential.findFirstOrThrow({
+      where: {
+        agentProfileId: first.agent.profile.id,
+        revokedAt: null,
+      },
+    });
+    await integrationDatabase.agentRuntimeCredentialSync.create({
+      data: {
+        id: "global",
+        workerId: "bulk-fixture-worker",
+        desiredFingerprint: "a".repeat(64),
+        loadedCredentialIds: [firstCredential.id, ...ids.map(({ credentialId }) => credentialId)],
+        syncedAt: new Date(),
+      },
+    });
+    const selection = bulkAgentRunPreviewSchema.parse({
+      allActive: true,
+      run: { runType: "DRY_RUN" },
+    });
+    const started = performance.now();
+    const preview = await previewBulkAgentRun(integrationDatabase, actor(admin.id), selection);
+    const previewMs = Math.round(performance.now() - started);
+    const queuedAt = performance.now();
+    const result = await createBulkAgentRuns(
+      integrationDatabase,
+      actor(admin.id),
+      bulkAgentRunSchema.parse({
+        ...selection,
+        confirmation: "RUN_ALL_ACTIVE_AGENTS",
+        previewToken: preview.previewToken,
+      }),
+    );
+    const queueMs = Math.round(performance.now() - queuedAt);
+    expect(result.count).toBe(100);
+    expect(previewMs).toBeLessThan(15_000);
+    expect(queueMs).toBeLessThan(15_000);
+    process.stdout.write(`O5_BULK_100_MEASUREMENT ${JSON.stringify({ previewMs, queueMs })}\n`);
+    // Reuse the already-validated creation path for the overflow record; it may stay PAUSED
+    // because the managed roster is intentionally pinned to the original 100 fixtures.
+    const extra = await createAgent(
+      integrationDatabase,
+      actor(admin.id),
+      createAgentSchema.parse({ persona: originalPersonaPack.personas[1] }),
+    );
+    await integrationDatabase.agentProfile.update({
+      where: { id: extra.agent.profile.id },
+      data: { lifecycleStatus: "ACTIVE" },
+    });
+    await expect(
+      previewBulkAgentRun(integrationDatabase, actor(admin.id), selection),
+    ).rejects.toMatchObject({ code: "BULK_PREVIEW_LIMIT", status: 409 });
+  }, 60_000);
+
+  it("refuses an empty preview before showing any confirmation", async () => {
+    const admin = await createAdmin();
+    await expect(
+      previewBulkAgentRun(
+        integrationDatabase,
+        actor(admin.id),
+        bulkAgentRunPreviewSchema.parse({ allActive: true, run: { runType: "DRY_RUN" } }),
+      ),
+    ).rejects.toMatchObject({ code: "BULK_PREVIEW_EMPTY", status: 409 });
   });
 
   it("cancels queued/running work and retries terminal work with immutable lineage", async () => {
