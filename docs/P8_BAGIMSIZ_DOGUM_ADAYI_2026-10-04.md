@@ -264,3 +264,32 @@ sonucu ise sonraki society tick’inde tekrar denenebilir; ayar yarışı için 
 bekleme iddiası yok. Başka pending ID dalı scan kilidi altında savunmadır. E2E/seed dosyalarında
 TRUNCATE yok; entegrasyon/simulation ortak açık-niyet fixture’ını kullanır. Son CI browser,
 database ve coverage bu guard ile geçti. B3 canlı indeks boyutu/süresi kapısı açık kalır.
+
+## Kaynak hazırlığı — 4 Ekim 08:48–08:51 UTC
+
+`21be9cbecf723bf84a36f1cf77621ff49fc5a5a1` üzerindeki iki sabit taslağın 20 URL'si,
+operatörde mevcut `SafeSourceReader` ile seri okundu. DB/üretim bağlantısı ve model çağrısı
+sıfır. İlk banka hash'i
+`42ebd0116ea7aa50234cd5b7565d14445c4e345a2420c2fcf4dd1fcc238a7dd9`.
+
+- `ayniyerde`: 9/10 URL okunabildi; Arkitera ilk ve tek odaklı tekrarda
+  `SOURCE_TIMEOUT` verdi. Bu iki istek, kaynağın kalıcı olarak öldüğü hükmü değildir.
+- `tersolcek`: 10/10 URL okunabildi. Mevcut relevance seçicisi iki taslak için
+  45 ve 67 öğe seçti; keşif payı içerdiğinden bu sayılar bağımsız fayda değerlendirmesi değildir.
+- Mevcut izinli havuzdaki Aeon, Fayn ve Sanatatak ayrı kontrolde 20/15/10 öğeyle okunabildi.
+  `ayniyerde`nin gündelik hayat/ilişki çizgisine uygun Fayn ve Aeon son iki kaynak olarak
+  eklendi. Havuz 12 oldu; Arkitera silinmedi. Son iki ağırlık 0,56/0,53, tümü SEED ve
+  pinned=false; ebeveynden kaynak aktarımı yok. İki taslağın havuzları ayrık kalır.
+
+`draftVersion=1` korunur: karakter/kimlik değişmedi; yalnız kaynak yedeği ekleyerek aynı
+karakterin önceki semantik REJECTED kararını aşmak istenmiyor. Önceden saklanmış aday
+snapshot'ı/hash'i güncellenmez; yeni adayın tam persona hash'i kendi kaynak listesini içerir.
+Bu hazırlık gerçek aday hesabı, etkin kaynak ataması, kapasite/holder kapısı veya Gate 10
+kanıtı değildir. Aktivasyondan hemen önce taze kendi kaynak makbuzu ve nüfus/soy/kapasite
+kapıları tekrar gerekir. Kamuya aday veya yeni yazar açılmadı.
+
+Son yerel politika/persona regresyonu **38/38** geçti. İlk turda eski toplam 20 URL
+beklentisi, yeni 22 tekil URL karşısında başarısızdı; yalnız beklenen sabit envanter sayısı
+22'ye güncellendi. İki taslağın birbirine ve mevcut template bankasına mesafe kapıları,
+ebeveyn aktarım sınırı ve bağımsız kaynak koşulları aynı testte korundu. Bu küçük havuz
+ilavesinin bağımsız incelemesi ve exact CI makbuzu ayrıca kaydedilir.

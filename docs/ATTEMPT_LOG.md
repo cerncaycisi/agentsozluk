@@ -3777,3 +3777,35 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Tekrarlama: eksik kanonik başlık çözümünü yanlış ret sanma; Jaccard'ı pg_trgm kanıtı
   sayma; yüksek ret oranı için eşikleri gevşetme; boş hakem yanıtını GO sayma; fixture
   kaynak görünürlüğü hatasını sayı ayrıştırıcı regresyonu diye kaydetme.
+
+### 4 Ekim 2026 — O3 arşiv blokları ve P8 kaynak hazırlığı
+
+- Operatör, `21be9cb` kod tabanı; üretime bağlantı/deploy yok. Telafi dump checksum PASS;
+  PG16 bütün veri bloklarını `/dev/null` SQL çıktısıyla 23,223 sn'de okudu, exit 0/stderr boş.
+  50 tekil tablo ve 3.278.376 satırlık snapshot metadata biçimi doğrulandı. Bu tam restore değil.
+- İlk ölçüm kabuğunda `/usr/bin/time` yoktu (exit 127); pg_restore başlamamıştı. Ek paket
+  kurulmadan Python monotonic süre ölçümüyle gerçek pg_restore yeniden çalıştı ve geçti.
+- P8 statik banka 20 URL seri okuma: 19 READABLE, Arkitera `SOURCE_TIMEOUT`; tek odaklı
+  tekrarda aynı kod. Üç izinli yedek URL okunabildi; Fayn/Aeon ilk taslağa eklendi.
+  Semantik ret sürümü, mevcut aday snapshot'ı, kaynak eşikleri ve canlı politika değiştirilmedi.
+- Tekrarlama: arşiv decode'u restore kabulü sayma; iki timeout'tan kalıcı kaynak ölümü çıkarma;
+  operatör kaynak erişimini adayın sahip olduğu taze kaynak veya P7/Gate 10 kanıtı yapma.
+
+### 4 Ekim 2026 — O4 #310 ana dalda
+
+- Final `21be9cbecf723bf84a36f1cf77621ff49fc5a5a1`, exact CI `37189898438` 7/7;
+  main `b4d69d63d65aeffa449df344da3b8b01174bb78e`. Fresh head/base/review ve
+  CLEAN/MERGEABLE kontrolünden sonra squash; uzak SHA ve ağaç eşitliği doğrulandı.
+- Son yerel 77 birim, dört öğenin perception'da bulunduğunu doğrulayan PG16/12 eylem ve
+  format/lint/typecheck/requirements geçti. Sonraki P8 kaynak eklemesi ayrı daldadır.
+- Eski gh sürümünde `pr edit` GraphQL Projects classic alanında hata verdi; gövde aynı
+  içerikle REST PATCH üzerinden güncellendi. `baseRefOid` desteklenmediğinden base SHA
+  REST pull kaydından alındı. Bu hatalar kod/CI regresyonu değildir.
+- Tekrarlama: ilk head'in yeşil sonucuyla son düzeltmeyi birleştirme; deploy yapılmadığı
+  halde canlı ret alarmını kapatma veya örneklemden yanlış-ret nüfus oranı çıkarma.
+
+### 4 Ekim 2026 — P8 kaynak ilavesi yerel doğrulaması
+
+- P8 kaynak ilavesinin ilk birim turu 25 PASS/1 FAIL: sabit URL sayısı 20, gerçek 22 idi.
+  Sayı beklentisi yeni envantere uyarlandı; ayrışma/kanıt eşikleri değişmedi. İlgili son
+  politika/persona koşusu 38/38 PASS. Bu hata runtime veya kaynak okuyucu regresyonu değildi.

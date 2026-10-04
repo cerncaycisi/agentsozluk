@@ -171,7 +171,7 @@ describe("independent birth drafts", () => {
   it("passes unchanged separation gates against the complete template bank and each other", () => {
     expect(
       new Set(birthDraftBank.flatMap(({ persona }) => persona.sources.map(({ url }) => url))).size,
-    ).toBe(20);
+    ).toBe(22);
     const universe: unknown[] = [...agentPersonaTemplates];
     for (const draft of birthDraftBank) {
       const result = validatePersonaCandidate(
