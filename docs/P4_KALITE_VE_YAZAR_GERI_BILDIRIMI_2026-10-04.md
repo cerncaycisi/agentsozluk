@@ -130,3 +130,33 @@ alanını toplamaz; kendi koşusunun seçilmiş algısı ve mevcut kaynak/hafız
 Bu nedenle authorFeedback'a yeni NORMAL_WAKE dışı aktarım yolu açılmadı.
 
 Son kod sürümünün format/lint/typecheck, ikinci dar hakem ve exact CI sonucu ayrıca kaydedilir.
+
+## İkinci kod hakemi
+
+Gerçek `claude-opus-5`, exact `a571e555b4350c1d9f14417188a3486477c2942f`: **KOD GO**.
+Araçsız, salt okunur; izin reddi yok. İlk test sayımı itirazını geri çekti; B1–B4 kapandı,
+toplu görünürlük sorgusunun eşdeğerliği doğrulandı. Hakem testleri kendi çalıştırmadı.
+Bu SHA öncesinde format/lint/typecheck geçti; exact CI sonucu ayrıca kaydedilir.
+
+İki kayıt sınırı: toplu dayanak sayısı **iki türün toplamında en fazla 240** (12×20),
+başlık hedefi en fazla 12'dir; 240 entry artı 240 source değildir. Sorgu sonucuna ayrı bir
+bayt tavanı eklenmedi; tam güncel gövdeler hash için okunur. Paket 64 KiB, son algı 160 KiB
+sınırları DB okumasının bellek tavanı değildir. Canlı ilk kullanımda maliyet izlenir.
+Yeni indeks olay yazımlarını bloklayabilir; migration runtime pause/drain ve genel yazma
+dondurması altında uygulanmalıdır. Hakemin ACCESS EXCLUSIVE ifadesi operasyon sözleşmesi
+olarak benimsenmedi; gereken güvence eşzamanlı yazı olmamasıdır.
+
+Reset kaynak teyidi: `greatResetClearedModels` ilk üç satırda reversal/assessment/packet'i
+CLEARED sayar, sonra entry gelir; korunan sınıfta değillerdir. Repository `:529` aynı
+TRUNCATE komutuna tüm CLEARED tabloları koyar. Yedi reset birim testi sınıflandırmayı geçti.
+Kalite satırı bulunan testler arasında integration helper'ın ayrı TRUNCATE CASCADE yolu
+geçti; gerçek great-reset komutunun QUALITY satırıyla ayrıca yürütüldüğü iddia edilmez.
+Yeni fiziksel FK dışarıda kalmıyor; üretim reset işlemi yapılmadı ve bu planda yoktur.
+
+## Ana dal makbuzu
+
+#302 exact head `a571e555b4350c1d9f14417188a3486477c2942f`, CI `37165563834` **7/7**.
+Taze head/base/checks/reviews/mergeability kontrolünden sonra squash main
+`db286952d58b3a4e76579ae00fbf79ee46e7a68f`; uzak SHA ve exact head ile ağaç eşitliği
+teyit edildi, birleşen dal silindi. P4 teknik kod paketi ana dalda; kısa gölge/pilot ve canlı
+kabul açıktır. Üretim mode/prompt/worker değişikliği veya migration uygulanmadı.
