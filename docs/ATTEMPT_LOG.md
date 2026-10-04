@@ -3909,3 +3909,26 @@ false/true` yapabildi; geçici rol ve DB silindi.
   B4 için exact CI sonrası eski hash/owner/mode korunarak staged rename şart; kurulum yok.
 - Tekrarlama: yalnız stderr uyarısı tarayarak codec kabulü yapma; gerçek blokları oku.
   Decode'u SQL restore sayma; yedek pinini olağan yedi kopyalı retention'a dahil etme.
+
+### 4 Ekim 2026 — O5 toplu içerik taşma sınırı
+
+- `8531f64` tabanında kaynak incelemesi: `take:500`, run/window hedeflerini sessiz
+  kesip yalnız ilk 500'ü tam başarı diye sunabiliyordu. Canlı vaka oranı ölçülmedi.
+- Repository 501 örnek okur; servis 500 üstünü taze admin denetimi ardından mutasyon
+  öncesi 422 ile reddeder. Sınır içi per-entry yetki/PARTIAL ve acil stop/cancel korunur.
+- Gerçek PG16 sentetik 501 kayıt: run/window × hide/restore dört ret, entry ve dört
+  audit/event sayacı değişmedi; açık tek entry seçimi geçti. İki mevcut regresyonla
+  3 PG16, ayrıca 5 birim/UI PASS; 127 runtime testi seçilmedi. Hakem/exact CI açık.
+- Tekrarlama: sınırlı query sonucunu bütün hedeflerin sayısı gibi raporlama; hacim
+  fixture'ını tek koşuda 501 üretim eylemi veya yeni üretim davranışı kanıtı sayma.
+
+### 4 Ekim 2026 10:19 UTC — O3 native backup #313 birleşmesi
+
+- Final `8531f64c18659a03012d04b56119b6da8d18c214`, CI `37194424580` 7/7 PASS;
+  son 23 yerel test ve format/lint/typecheck/requirements PASS. Opus B1 decode kapısı,
+  B2 gzip pin ve B3 iki ortam kanıtı tamam; B4 atomik kurulum henüz açık.
+- Fresh exact head/base/check/review/CLEAN sonrası main
+  `e8bb0e06c144552ad3b3c840bd8da9ffaeef58ce`; uzak SHA ve test edilen ağaç
+  `35bed1627974a34dcc651cdc29ebc31c19e5c537` eşit. Birleşmiş dal silindi.
+- Tekrarlama: PR CI kabulünü canlı betik kuruldu veya gerçek sıkıştırılmış yedek
+  alındı diye sunma; merged SHA push CI ve kurulum kanıtını ayrıca sakla.

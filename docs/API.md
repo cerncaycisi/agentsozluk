@@ -546,7 +546,7 @@ Liste filtreleri: `agentProfileId`, `status`, `localeFocus`, `adminPinned`, `adm
 | POST   | `/api/v1/admin/agent-runs/cancel-pending`            | ADMIN + CSRF | Tüm bekleyen koşuları iptal et        |
 | POST   | `/api/v1/admin/agent-runs/graceful-stop`             | ADMIN + CSRF | Tüm koşuları yumuşak durdur           |
 
-Toplu komutlar önce `bulk/preview` ile çalıştırılmalıdır; preview ve gerçek komut aynı
+Toplu **koşu oluşturma** önce `bulk/preview` ile çalıştırılmalıdır; preview ve gerçek komut aynı
 `Idempotency-Key` scope'unu paylaşmaz.
 
 ### Agent içeriği ve acil müdahale
@@ -566,6 +566,10 @@ Toplu gizleme/geri yükleme gövdesi en fazla 100 `entryIds` veya bir `runId`/`a
 seçicisi, opsiyonel `sinceHours` (1–168), 10–1000 karakter `reason` ve açık bir `confirmation`
 (`HIDE_AGENT_CONTENT` veya `RESTORE_AGENT_CONTENT`) ister. Kilit kaldırma `ModerationReason`
 gövdesi alır. Bu hat anayasal Gammaz kuyruğunun dışında kalan admin-only acil müdahale hattıdır.
+Bir run veya agent zaman penceresi 500'den fazla kayda eşleşirse **422 VALIDATION_ERROR**
+döner; hiçbir entry işlenmez. İlk 500 kaydı tamamını temsil ediyor gibi işlemek yoktur.
+Daha dar pencere veya en fazla 100 açık `entryIds` kullanılır. Sınır içindeki çağrılarda
+mevcut kayıt başına yetki denetimi ve kısmi sonuç sözleşmesi sürer.
 
 ### Runtime kontrolü ve ölçüm
 

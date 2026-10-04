@@ -9944,6 +9944,114 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toMatchObject({ runStatus: "QUEUED", attempts: 0 });
   });
 
+  it("rejects oversized bulk moderation before changing any matching entry", async () => {
+    const fixture = await createFixture();
+    const generated = await createRuntimeAgentEntries(fixture, [
+      "Toplu seçim sınırını denetleyen doğrulanmış agent entry içeriği.",
+    ]);
+    const profileId = fixture.created.agent.profile.id;
+    const first = generated.content[0]!;
+    // Yalnız hacim fixture'ı: gerçek worker'ın tek koşuda 501 eylem üretebildiği iddiası yok.
+    const extra = Array.from({ length: 500 }, (_, index) => ({
+      entryId: randomUUID(),
+      actionId: randomUUID(),
+      sequence: index + 1000,
+    }));
+    await integrationDatabase.entry.createMany({
+      data: extra.map(({ entryId }, index) => ({
+        id: entryId,
+        topicId: generated.topics[0]!.topic.id,
+        authorId: fixture.created.agent.user.id,
+        body: `Sentetik hacim kaydı ${index}`,
+        normalizedBody: `sentetik hacim kaydı ${index}`,
+        origin: "AGENT" as const,
+      })),
+    });
+    await integrationDatabase.agentAction.createMany({
+      data: extra.map(({ actionId, entryId, sequence }) => ({
+        id: actionId,
+        runId: generated.runId,
+        agentProfileId: profileId,
+        sequence,
+        actionType: "CREATE_ENTRY" as const,
+        actionStatus: "SUCCEEDED" as const,
+        targetType: "ENTRY",
+        targetId: entryId,
+        input: {},
+      })),
+    });
+    await integrationDatabase.agentContentRecord.createMany({
+      data: extra.map(({ entryId, actionId }) => ({
+        entryId,
+        actionId,
+        runId: generated.runId,
+        agentProfileId: profileId,
+      })),
+    });
+    const before = {
+      audits: await integrationDatabase.auditLog.count(),
+      moderation: await integrationDatabase.moderationAction.count(),
+      outbox: await integrationDatabase.outboxEvent.count(),
+      events: await integrationDatabase.agentRuntimeEvent.count(),
+    };
+    for (const selector of [
+      { runId: generated.runId },
+      { agentProfileId: profileId, sinceHours: 24 },
+    ]) {
+      for (const hidden of [true, false]) {
+        await expect(
+          bulkSetAgentContentVisibility(integrationDatabase, adminActor(fixture.admin.id), hidden, {
+            ...selector,
+            reason: "Sınır aşılınca hiçbir kayıt sessizce değiştirilmemelidir.",
+            confirmation: hidden ? "HIDE_AGENT_CONTENT" : "RESTORE_AGENT_CONTENT",
+            ...(hidden
+              ? {
+                  behaviorReasonCode: "REPETITIVE" as const,
+                  editorNote: "Aynı çekirdek katkıyı yeni bir değer eklemeden tekrarlama.",
+                }
+              : {}),
+          }),
+        ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
+      }
+    }
+    expect(
+      await integrationDatabase.entry.count({
+        where: {
+          agentContent: { agentProfileId: profileId },
+          status: "ACTIVE",
+        },
+      }),
+    ).toBe(501);
+    expect({
+      audits: await integrationDatabase.auditLog.count(),
+      moderation: await integrationDatabase.moderationAction.count(),
+      outbox: await integrationDatabase.outboxEvent.count(),
+      events: await integrationDatabase.agentRuntimeEvent.count(),
+    }).toEqual(before);
+    // Büyük havuzdan açıkça tek entry seçmek çalışmaya devam eder.
+    const narrowed = await bulkSetAgentContentVisibility(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      true,
+      {
+        entryIds: [first.entryId],
+        reason: "Hedef daraltıldığında yalnız seçili kayıt işlenir.",
+        confirmation: "HIDE_AGENT_CONTENT",
+        behaviorReasonCode: "REPETITIVE",
+        editorNote: "Aynı çekirdek katkıyı yeni bir değer eklemeden tekrarlama.",
+      },
+    );
+    expect(narrowed).toMatchObject({ status: "SUCCEEDED", selectedCount: 1, failed: [] });
+    expect(
+      await integrationDatabase.entry.count({
+        where: {
+          agentContent: { agentProfileId: profileId },
+          status: "HIDDEN",
+        },
+      }),
+    ).toBe(1);
+  });
+
   it("bulk hides and restores only provenance-backed agent entries while preserving counters", async () => {
     const fixture = await createFixture();
     const generated = await createRuntimeAgentEntries(fixture, [

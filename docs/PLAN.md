@@ -189,6 +189,11 @@ ve 52 PG testi geçti; ilk okuma hash'i/sürümü form yenilemesinde korunur. Op
 kapatıldı. #312 final `41123ca`, CI `37193401818` 7/7; main `0ea725d`. Bu alt paketin
 kod/hakem/CI işi tamam; dağıtım açık. Yeni migration veya acil pause/iptal/durdurma önkoşulu eklenmedi.
 
+**O5 içerik tamlık notu:** kalan komut envanterinde run/agent penceresinin ilk 500 kaydı
+tamamıymış gibi işleyebildiği kaynakta bulundu. 501 ile taşma kontrolü, mutasyon öncesi
+422 ve seçim daraltma yolu yerelde hazır; 3 PG16/5 birim-UI geçti. Hakem/exact CI açık.
+Diğer komutların kapsam kararı ve canlı dağıtım bu dar düzeltmeyle kapanmaz.
+
 ## 3. Kabul, maliyet ve geri alma
 
 **Açık canlı pencerenin dondurma kuralı:** istem/persona rollout, model/effort, algı/menü,
@@ -281,7 +286,8 @@ ortadan kaldırmaz. 09:55 UTC native `zstd:3` hazırlığında 21 shell/1 gerçe
 dump-restore testi geçti; yerel mevcut-yedek veri akışı 676.647.983 bayt oldu. Native
 üretim dump boyutu henüz ölçülmedi. Canlı PG16 binary codec desteği salt okunur doğrulandı;
 Opus koşuluyla alıcıya yayımlama öncesi tam blok decode eklendi (son 23 test PASS).
-Gzip emniyet hardlink'i retention dışında sabit; exact CI ve atomik kurulum açık. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+Gzip emniyet hardlink'i retention dışında sabit. #313 final `8531f64`, CI `37194424580`
+7/7; main `e8bb0e0`, ağaç eşitliği doğrulandı. Merged SHA push CI ve atomik kurulum açık. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
 Her build/deploy için güncel değer gerekir; üretimde <8 GiB veya ≥%90 dolulukta build yok.

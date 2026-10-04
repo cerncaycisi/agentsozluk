@@ -181,3 +181,30 @@ Final `41123ca2db590ed41e5205ac18351e6e6dad254b`, CI `37193401818` **7/7 PASS**;
 head/base/check/review/CLEAN sonrası SHA bağlı squash; uzak SHA ve test edilen ağaç
 eşitliği doğrulandı, dal silindi. Profil-only kod/hakem/CI alt paketi tamam;
 üretim dağıtımı ve diğer toplu komutların kapsam kararı açık.
+
+## Toplu içerikte sessiz hedef kesilmesi — 4 Ekim 10:16 UTC
+
+Kalan toplu komut envanterinde `resolveAgentContentRecords` kaynağı en çok 500 kayıt
+alıyordu. Run veya agent zaman penceresi daha fazla kayda eşleşirse servis ilk 500'ü
+`SUCCEEDED / 500 seçili` diye raporlayabiliyordu; kalan hedefler görünmüyordu. Bu,
+önizleme önerisinden bağımsız somut tamlık hatasıdır. Üretimde gerçekleştiği ölçülmedi.
+
+Repository artık yalnız taşmayı ayırmak için 501 kayıt okur. Yönetici yetkisi yeniden
+denetlenen seçim transaction'ı 500 üstünde **VALIDATION_ERROR / 422** verir; kayıt başına
+mutasyon döngüsü ve son toplu audit/outbox başlamaz. Zaman aralığı daraltılabilir veya
+zaten en fazla 100 olan açık `entryIds` seçilebilir. Run/window seçimi hâlâ istek başında
+çözülür; yeni signed preview veya tam atomiklik iddiası yok. Sınır içinde her entry'nin
+mevcut yetki/provenance/görünürlük kontrolü ve PARTIAL sonucu korunur. Migration yok.
+
+Gerçek PG16'da 501 kayıtlık **sentetik hacim fixture'ı**, run ve 24 saat penceresi ×
+gizle/geri aç olmak üzere dört denemede 422 aldı. 501 entry ACTIVE kaldı; audit,
+moderation action, outbox ve runtime event sayıları değişmedi. Aynı büyük havuzdan
+tek açık entry seçimi başarılı oldu ve yalnız o entry gizlendi. Fixture tek koşuda
+501 gerçek runtime eylemi üretilebildiğini iddia etmez. Önceki provenance/counter
+korumalı hide/restore ve PARTIAL restore regresyonuyla son **3 PG16 testi PASS**;
+mevcut **5 birim/arayüz testi PASS**. Diğer 127 runtime testi bu odaklı koşuda çalışmadı.
+
+API/OpenAPI ve arayüz sınırı açıklar. API'deki “toplu komutlar preview” ifadesi kapsamına
+uygun biçimde “toplu koşu oluşturma” olarak netleştirildi; acil iptal/durdurmaya yeni
+kapı eklenmedi. Kod hakemi/exact CI ve canlı dağıtım henüz bu alt paket için açık.
+O5'in diğer rota kapsam/önizleme kararı bu tek düzeltmeyle tamamlandı sayılmaz.

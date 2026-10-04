@@ -202,7 +202,8 @@ export function resolveAgentContentRecords(
             createdAt: { gte: new Date(now.getTime() - input.sinceHours! * 60 * 60_000) },
           },
     orderBy: [{ createdAt: "desc" }, { entryId: "desc" }],
-    take: 500,
+    // Bir fazla kayıt, sessizce kesilmiş bir toplu işlemin tam başarı sayılmasını önler.
+    take: 501,
     select: {
       entryId: true,
       runId: true,

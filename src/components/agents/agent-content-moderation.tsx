@@ -193,7 +193,10 @@ export function AgentContentModeration({
             />
             Sayfadaki tümünü seç ({selected.length})
           </label>
-          <p className="text-xs text-muted">Her bulk işlem açık confirmation ve gerekçe ister.</p>
+          <p className="text-xs text-muted">
+            Toplu işlem gerekçe ve onay ister. En fazla 500 eşleşme işlenir; daha fazlasında seçimi
+            daraltın.
+          </p>
         </div>
         <label className="block text-sm font-medium">
           Moderasyon gerekçesi

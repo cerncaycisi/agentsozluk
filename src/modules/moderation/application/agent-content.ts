@@ -161,7 +161,14 @@ export async function bulkSetAgentContentVisibility(
     throw new AppError("VALIDATION_ERROR", 422, "Bulk işlem için açık confirmation gereklidir.");
   const records = await inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    return resolveAgentContentRecords(transaction, input, new Date());
+    const selected = await resolveAgentContentRecords(transaction, input, new Date());
+    if (selected.length > 500)
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Seçim 500 entry sınırını aşıyor. Zaman aralığını daraltın veya entry'leri tek tek seçin.",
+      );
+    return selected;
   });
   const byEntryId = new Map(records.map((record) => [record.entryId, record]));
   const targetIds = input.entryIds ?? records.map(({ entryId }) => entryId);

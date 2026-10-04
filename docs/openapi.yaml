@@ -3619,6 +3619,7 @@ components:
           { type: string, enum: [SEED, DISCOVERED, PROBATION, TRUSTED, DORMANT, REJECTED, BLOCKED] }
         reason: { type: string, minLength: 10, maxLength: 1000 }
     AgentContentBulkActionInput:
+      description: Run veya agent penceresi 500 kaydı aşarsa hiçbir entry işlenmeden 422 döner; seçim daraltılmalıdır.
       type: object
       additionalProperties: false
       required: [reason, confirmation]
