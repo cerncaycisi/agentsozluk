@@ -7,6 +7,21 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 12:21 UTC — P8 hesap/kaynak hazırlığı yerelde
+
+- `f9faf6c` tabanında yeni PAUSED hesap hazırlığı ve yalnız explicit SOURCE_REFRESH
+  kuyruk/lease yolu: **146 birim / 63 PG16 PASS** (40 doğum, 19 manual run, 4 onboarding).
+  Kaynak testi gerçek context/attempt/result yolunda bir source item yazdı, entry yazmadı.
+  Paralel hazırlık tek hesap; kaynak sınırı veya enrollment eksikliği bütün yeni kimliği
+  rollback etti. HTTP replay/CSRF/askıya alınmış admin, immutable hazırlık ve ACTIVE bypass
+  reddi doğrudan sınandı. Kontroller sentetik fixture'dır; canlı fetch/model/aktivasyon yok.
+- Format/lint/typecheck/requirements/OpenAPI PASS; 153 runtime operation eşleşti.
+  Kod hakemi/exact CI açık. Dokuzuncu migration yalnız yerel test DB'sinde; v1 geçiş
+  profili değişmedi, v2 superset/restore ve gerçek eski imaj kapıları açık.
+- 11:51–11:52 pinli `9bf3653` kesiti: 36 ACTIVE; ilk persona/köken metodu eşliğinde
+  14 TEMPLATE profil dar kök politikasına aday. Son dört gözlenen aktivasyon bunlarda;
+  eksiksiz tarihçe veya ilk doğum izni iddiası yok. Üretim değiştirilmedi.
+
 ## 2026-10-04 10:58 UTC — aktif amaç istemi düzeltmesi yerelde
 
 - `81baa48` tabanında kısa pilot hazırlığı aktif amacın `kind` alanında worker'ın

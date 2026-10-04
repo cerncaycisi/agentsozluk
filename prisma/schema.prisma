@@ -963,6 +963,8 @@ enum AgentBirthMode {
 }
 
 enum AgentBirthCandidateStatus {
+  PREPARED
+  ACTIVATED
   PROPOSED
   EXPIRED
   WITHDRAWN
@@ -986,16 +988,27 @@ model AgentBirthCandidate {
   expiresAt              DateTime                  @db.Timestamptz(3)
   closedAt               DateTime?                 @db.Timestamptz(3)
   closureReason          String?                   @db.VarChar(100)
-  parentProfile          AgentProfile              @relation(fields: [parentProfileId], references: [id], onDelete: Restrict)
+  childProfileId         String?                   @unique @db.Uuid
+  rootProfileId          String?                   @db.Uuid
+  preparedAt             DateTime?                 @db.Timestamptz(3)
+  preparationExpiresAt   DateTime?                 @db.Timestamptz(3)
+  preparationEvidence    Json?
+  activatedAt            DateTime?                 @db.Timestamptz(3)
+  childProfile           AgentProfile?             @relation("BirthChild", fields: [childProfileId], references: [id], onDelete: Restrict)
+  rootProfile            AgentProfile?             @relation("BirthRoot", fields: [rootProfileId], references: [id], onDelete: Restrict)
+  parentProfile          AgentProfile              @relation("BirthParent", fields: [parentProfileId], references: [id], onDelete: Restrict)
   parentPersonaVersion   AgentPersonaVersion       @relation(fields: [parentPersonaVersionId], references: [id], onDelete: Restrict)
 
   @@unique([parentProfileId, weekStart, policyVersion], map: "agent_birth_candidates_parent_week_policy_key")
   @@index([status, createdAt])
+  @@index([rootProfileId])
   @@map("agent_birth_candidates")
 }
 
 model AgentProfile {
-  birthCandidates         AgentBirthCandidate[]
+  birthCandidates         AgentBirthCandidate[]   @relation("BirthParent")
+  preparedBirth           AgentBirthCandidate?    @relation("BirthChild")
+  descendantBirths        AgentBirthCandidate[]   @relation("BirthRoot")
   assessmentPackets       AgentAssessmentPacket[]
   rewardAssessments       AgentRewardAssessment[]
   purposes                AgentPurpose[]

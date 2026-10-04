@@ -17,3 +17,12 @@ export const rejectBirthCandidateSchema = z
     expectedVersion: z.number().int().positive(),
   })
   .strict();
+
+export const prepareBirthCandidateSchema = z
+  .object({
+    candidateId: z.string().uuid(),
+    expectedVersion: z.number().int().positive(),
+    expectedSnapshotHash: z.string().regex(/^[a-f0-9]{64}$/u),
+    expectedSettingsVersion: z.number().int().positive(),
+  })
+  .strict();

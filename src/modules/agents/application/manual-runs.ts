@@ -1,4 +1,9 @@
 import { getEnvironment } from "@/config/env";
+import {
+  birthPreparationIsOpen,
+  birthSourcePreparationTrigger,
+} from "@/modules/agents/domain/birth-preparation";
+import { findManagedBirthForChild } from "@/modules/agents/repository/birth-preparation";
 import { canonicalRequestHash } from "@/modules/idempotency/domain/idempotency";
 import {
   bulkPreviewRunKey,
@@ -135,7 +140,15 @@ export function createManualAgentRun(
       getGlobalSettingsRecord(transaction),
     ]);
     if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
-    if (agent.lifecycleStatus !== "ACTIVE" || !agent.currentPersonaVersion) {
+    const sourcePreparation =
+      agent.lifecycleStatus === "PAUSED" &&
+      input.runType === "SOURCE_REFRESH" &&
+      settings.birthMode === "CANDIDATES" &&
+      birthPreparationIsOpen(await findManagedBirthForChild(transaction, agentProfileId), now);
+    if (
+      (agent.lifecycleStatus !== "ACTIVE" && !sourcePreparation) ||
+      !agent.currentPersonaVersion
+    ) {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Yalnız ACTIVE agent kuyruğa alınabilir.");
     }
     await assertManagedRuntimeCredentialReady(transaction, agentProfileId, now);
@@ -160,9 +173,10 @@ export function createManualAgentRun(
       allowTopicCreation: !nonPublishing && input.allowTopicCreation,
       allowVoting: !nonPublishing && input.allowVoting,
       allowFollowing: !nonPublishing && input.allowFollowing,
-      allowSourceReading: input.allowSourceReading,
+      allowSourceReading: sourcePreparation || input.allowSourceReading,
       provocationOverride: input.provocationOverride,
       ...(input.adminInstruction ? { adminInstruction: input.adminInstruction } : {}),
+      ...(sourcePreparation ? { trigger: birthSourcePreparationTrigger } : {}),
     });
     const metadata = {
       agentProfileId,

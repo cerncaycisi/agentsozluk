@@ -1,4 +1,5 @@
 import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
+import { birthSourcePreparationTrigger } from "@/modules/agents/domain/birth-preparation";
 import {
   actionFeedbackLimit,
   actionFeedbackWindowMs,
@@ -99,6 +100,7 @@ export async function getRuntimeGlobalSettings(transaction: Prisma.TransactionCl
     where: { id: "global" },
     select: {
       runtimeEnabled: true,
+      birthMode: true,
       publishEnabled: true,
       publicWriteEnabled: true,
       runtimeOperatingMode: true,
@@ -453,6 +455,7 @@ export async function claimNextRuntimeRun(
     writeRunsPaused: boolean;
     contentSlowdownMinutes: number;
     runtimeOperatingMode?: RuntimeOperatingMode;
+    birthSourcePreparationOnly?: boolean;
     now: Date;
   },
 ) {
@@ -461,6 +464,12 @@ export async function claimNextRuntimeRun(
     SELECT candidate."id", candidate."startedAt"
     FROM "agent_runs" AS candidate
     WHERE candidate."agentProfileId" = ${input.agentProfileId}::uuid
+      AND (NOT ${input.birthSourcePreparationOnly ?? false} OR (
+        candidate."runType" = 'SOURCE_REFRESH' AND candidate."trigger" = ${birthSourcePreparationTrigger}
+        AND candidate."requestedById" IS NOT NULL
+        AND candidate."allowSourceReading" AND NOT candidate."allowTopicCreation"
+        AND NOT candidate."allowVoting" AND NOT candidate."allowFollowing"
+      ))
       AND candidate."availableAt" <= ${input.now}
       AND candidate."attempts" <= ${input.maxRetryCount}
       AND (

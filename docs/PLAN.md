@@ -81,6 +81,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   `37197366332` ve final `842e67a` CI `37198112214` 7/7; #315 main `d24add7`.
   Kod/hakem/CI işi tamam, canlı dağıtım açık. P3/P4/P5 için 18 çevrimdışı sözleşme
   girdisi v2 hazır (okuyucu dahil toplam ≤24 model çağrısı/90 dakika); çağrı yok. [P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
+- **4 Ekim P8 hesap hazırlığı:** yerel PREPARED/PAUSED hesap, dar kaynak yenileme ve
+  generic ACTIVE bypass reddi uygulanıyor. İlk 58 birim/34 PG16; ayrı HTTP/kaynak lease
+  kontrolü 6 PG16 geçti. Son kod hakemi/CI, v2 migration profili ve aktivasyon açık.
+  İlk pilot tek hazırlanmış kimlik; aday taraması otomatik, ilk aktivasyon yönetici
+  transaction'ı olacak. Ayrı permit tablosu/tick eklenmiyor. P7/soy/nüfus/kaynak kapıları
+  değişmedi. Canlı 11:51 kesiti 36 ACTIVE; ilk persona eşliği 14 TEMPLATE kök adayı,
+  kalan tarihçe kanıtsız bağımsız sayılmıyor. [P8c sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim

@@ -26,6 +26,7 @@ import { globalAgentSettingsAggregateId } from "@/modules/agents/domain/settings
 import { birthDraftBank } from "@/modules/agents/personas/birth-drafts";
 import { lockAgentProfile, lockAgentSettings } from "@/modules/agents/repository/control-plane";
 import * as records from "@/modules/agents/repository/birth-candidates";
+import { findManagedBirth } from "@/modules/agents/repository/birth-preparation";
 import { canonicalLifeEventJson } from "@/modules/agents/repository/life-ledger";
 import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
@@ -83,7 +84,7 @@ async function universe(tx: TransactionClient) {
   );
 }
 
-async function pendingInvalidReason(
+export async function pendingBirthInvalidReason(
   tx: TransactionClient,
   candidate: Candidate,
   now: Date,
@@ -218,8 +219,10 @@ async function runLockedRuntimeBirthTick(
       });
       return outcome(code, candidateId);
     };
+    const managedBirth = await findManagedBirth(tx);
+    if (managedBirth) return finish("FIRST_PILOT_ALREADY_PREPARED", managedBirth.id);
     if (currentPending) {
-      const invalid = await pendingInvalidReason(tx, currentPending, now);
+      const invalid = await pendingBirthInvalidReason(tx, currentPending, now);
       if (invalid) {
         await close(
           tx,
@@ -344,7 +347,7 @@ export async function inspectBirthCandidate(
     await requireAgentAdminInTransaction(tx, actor);
     const first = input.candidateId
       ? await records.findBirthCandidate(tx, input.candidateId)
-      : await records.findPendingBirth(tx);
+      : ((await records.findPendingBirth(tx)) ?? (await findManagedBirth(tx)));
     if (!first) {
       if (input.candidateId)
         throw new AppError("AGENT_BIRTH_NOT_FOUND", 404, "Doğum adayı bulunamadı.");
@@ -352,14 +355,20 @@ export async function inspectBirthCandidate(
     }
     await lockAgentProfile(tx, first.parentProfileId);
     await lockAgentSettings(tx);
-    if (!input.candidateId && (await records.findPendingBirth(tx))?.id !== first.id)
+    if (
+      !input.candidateId &&
+      first.status === "PROPOSED" &&
+      (await records.findPendingBirth(tx))?.id !== first.id
+    )
       throw conflict();
     const candidate = await records.findBirthCandidate(tx, first.id);
     if (!candidate) throw conflict();
     if (candidate.status === "PROPOSED") {
       const settings = await records.getBirthSettings(tx);
       const invalid =
-        settings.birthMode === "OFF" ? "MODE_OFF" : await pendingInvalidReason(tx, candidate, now);
+        settings.birthMode === "OFF"
+          ? "MODE_OFF"
+          : await pendingBirthInvalidReason(tx, candidate, now);
       if (invalid)
         await close(
           tx,

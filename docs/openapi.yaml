@@ -2071,6 +2071,21 @@ paths:
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/ValidationError" }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/agent-births/prepare:
+    post:
+      operationId: prepareAgentBirthCandidate
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentBirthPreparation" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/internal/agent-runtime/birth-candidates/tick:
     post:
       operationId: tickInternalAgentBirthCandidates
@@ -3760,7 +3775,7 @@ components:
         expectedSettingsVersion: { type: integer, minimum: 1 }
     AgentBirthInspectionInput:
       type: object
-      description: candidateId verilmezse bekleyen özel aday yeniden doğrulanır; yoksa null döner.
+      description: candidateId verilmezse bekleyen aday, yoksa ilk pilotun hazırlanmış kaydı döner; ikisi de yoksa null. Yalnız PROPOSED güncel aday kapılarından yeniden geçer.
       additionalProperties: false
       properties:
         candidateId: { type: string, format: uuid }
@@ -3771,6 +3786,15 @@ components:
       properties:
         candidateId: { type: string, format: uuid }
         expectedVersion: { type: integer, minimum: 1 }
+    AgentBirthPreparationInput:
+      type: object
+      additionalProperties: false
+      required: [candidateId, expectedVersion, expectedSnapshotHash, expectedSettingsVersion]
+      properties:
+        candidateId: { type: string, format: uuid }
+        expectedVersion: { type: integer, minimum: 1 }
+        expectedSnapshotHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        expectedSettingsVersion: { type: integer, minimum: 1 }
     RuntimeStochasticTickInput:
       type: object
       additionalProperties: false
@@ -4546,6 +4570,11 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/AgentBirthRejectionInput" }
+    AgentBirthPreparation:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentBirthPreparationInput" }
     RuntimeStochasticTick:
       {
         required: true,

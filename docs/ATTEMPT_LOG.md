@@ -4021,3 +4021,28 @@ false/true` yapabildi; geçici rol ve DB silindi.
   sayısıyla görünür. Kapsam kararı tamam, canlı kullanım ve kesinti makbuzu B3 açık.
 - Tekrarlama: NO_FINDING'i PASS/iyileşme oranı yapma; saklı setsiz sözleşme kontrolünü
   davranış faydası deneyine çevirme; Opus'un kaynak dışı varsayımını otomatik kabul etme.
+
+### 4 Ekim 2026 11:51–12:13 UTC — P8 köken ve PAUSED hazırlık yolu
+
+- Taban `f9faf6c474d7e6fbe036177f85de1c352ea36ccb`, push CI `37199380356` 7/7.
+  Pinli READ ONLY `9bf3653`: 36 ACTIVE; kuruluş 10 CUSTOM/6 IMPORT/20 TEMPLATE.
+  İlk persona 36/36, güncel şablonla exact eşlik 14 TEMPLATE. Son dört gözlenen
+  ilk aktivasyon bu grupta; tarihçenin tamlığı bu sorguyla ispatlanmadı.
+- İlk yeniden görüş çağrısı gerçek Opus 5 olmasına rağmen araçsız ortamda XML shell
+  isteği döndürdü; çalışma/inceleme sayılmadı. Açık metin sistem bağlamıyla ikinci
+  çağrı gerçek Opus 5 DÜZELTİLMELİ verdi. Ortak kaynak kilidi ve audit immutable
+  trigger'ı kaynakla doğrulandı; öznel n=10/7 gün sürekli fetch çıkarımları kullanılmadı.
+- `20261004120000_birth_preparation` yalnız test PG16'ya uygulandı (37 migration).
+  İlk typecheck kaynak fixture'ında zorunlu status/score/origin alanlarını eksik buldu;
+  fixture tamamlandı, üretim kısıtı değiştirilmedi. 58 birim/34 PG16 PASS.
+- Mevcut manual SOURCE_REFRESH'in PAUSED'a zaten izin verdiği varsayımı yanlış çıktı:
+  hem kuyruk hem lease ACTIVE kontrolü taşıyor. Yalnız yönetilen PREPARED çocuk için
+  explicit SOURCE_REFRESH/trigger/kamu-bayrakları filtresi eklendi; otomatik maintenance
+  ve critical-breaker DRY_RUN yok. Ayrı 6 HTTP/kaynak lease PG16 PASS, 34 test atlandı.
+- Tekrarlama: generic nonPublishing listesini PAUSED lease kanıtı sayma; şablon eşliğini
+  tek başına bağımsız köken sayma; araç isteği çıktısını peer review sayma; yerel hesap
+  hazırlığını P7/aktivasyon veya canlı kaynak başarısı diye yazma. V2 geçiş profili açık.
+
+- P8 son birleşik regresyon 146 birim / 63 PG16 PASS; PAUSED gerçek context/attempt/result
+  yolu source item saklıyor, entry sıfır. Format/lint/typecheck/requirements/OpenAPI PASS.
+  Önceki 34+6 odaklı sayımları birleşik 63 diye yeniden etiketlemedik; ayrı koşudur.
