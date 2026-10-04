@@ -10,6 +10,8 @@ describe("O3 kapalı makbuz karşılaştırması", () => {
   it("sequence anlık değer eşliği yerine sonraki değerin güvenliğini kullanır", () => {
     expect(compareBackupRestore(metadata, restored)).toEqual({
       result: "O3_DATA_MATCH",
+      scope: "public",
+      serverVersion: "16.14",
       tables: 1,
       rows: "1",
       sequences: 1,
@@ -30,6 +32,11 @@ describe("O3 kapalı makbuz karşılaştırması", () => {
   });
   it("kaynak metadata işaretleri eksikse durur", () => {
     expect(() => compareBackupRestore(metadata.replace("DUMP_DONE\n", ""), restored)).toThrow(
+      "O3_RECEIPT_INVALID",
+    );
+  });
+  it("ham metadata uyarılarını ayıklayıp sessiz başarı vermez", () => {
+    expect(() => compareBackupRestore(`WARN[0000] warning\n${metadata}`, restored)).toThrow(
       "O3_RECEIPT_INVALID",
     );
   });

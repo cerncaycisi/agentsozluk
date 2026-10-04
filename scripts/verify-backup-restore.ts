@@ -1,14 +1,21 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { compareBackupRestore } from "./backup-restore/receipt";
 
 try {
   const [metadata, restored, ...extra] = process.argv.slice(2);
   if (!metadata || !restored || extra.length) throw new Error("O3_ARGUMENTS_INVALID");
-  const result = compareBackupRestore(
-    readFileSync(metadata, "utf8"),
-    readFileSync(restored, "utf8"),
+  const sourceBytes = readFileSync(metadata);
+  const restoredBytes = readFileSync(restored);
+  const result = compareBackupRestore(sourceBytes.toString("utf8"), restoredBytes.toString("utf8"));
+  const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+  process.stdout.write(
+    `${JSON.stringify({
+      ...result,
+      metadataSha256: sha256(sourceBytes),
+      restoredSha256: sha256(restoredBytes),
+    })}\n`,
   );
-  process.stdout.write(`${JSON.stringify(result)}\n`);
 } catch (error) {
   const code =
     error instanceof Error && /^O3_[A-Z_]+$/u.test(error.message)

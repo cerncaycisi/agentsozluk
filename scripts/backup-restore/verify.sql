@@ -7,6 +7,7 @@ SET LOCAL lock_timeout = '5s';
 SET LOCAL idle_in_transaction_session_timeout = '30s';
 SET LOCAL timezone = 'UTC';
 SET LOCAL extra_float_digits = 3;
+SET LOCAL search_path = pg_catalog;
 SELECT current_database() = :'restore_database'
   AND current_database() <> 'agent_sozluk'
   AND (SELECT oid::text FROM pg_database WHERE datname = current_database()) = :'restore_oid'
@@ -16,6 +17,21 @@ SELECT current_database() = :'restore_database'
 DO $$ BEGIN RAISE EXCEPTION 'O3_TARGET_MISMATCH'; END $$;
 \endif
 DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+      AND a.attnum > 0 AND NOT a.attisdropped AND a.attname = 't') THEN
+    RAISE EXCEPTION 'O3_AMBIGUOUS_ROW_ALIAS';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname NOT IN ('public', 'pg_catalog', 'information_schema')
+      AND n.nspname !~ '^pg_(toast|temp)'
+      AND c.relkind IN ('r', 'p', 'm', 'f', 'S')) THEN
+    RAISE EXCEPTION 'O3_UNVERIFIED_SCHEMA';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_largeobject_metadata) THEN
+    RAISE EXCEPTION 'O3_UNSUPPORTED_LARGE_OBJECT';
+  END IF;
   IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND c.relkind IN ('f', 'm')) THEN
     RAISE EXCEPTION 'O3_UNSUPPORTED_RELATION';
@@ -62,5 +78,5 @@ JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = d.refobjsubid AND NOT a
 WHERE d.classid = 'pg_class'::regclass AND d.refclassid = 'pg_class'::regclass
   AND d.deptype IN ('a', 'i') AND sn.nspname = 'public'
 ORDER BY s.relname \gexec
-COMMIT;
 SELECT 'RESTORE_DONE';
+COMMIT;

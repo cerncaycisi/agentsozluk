@@ -11,6 +11,8 @@ export function compareBackupRestore(metadata: string, restored: string) {
     throw new Error("O3_SEQUENCE_UNSAFE");
   return {
     result: "O3_DATA_MATCH" as const,
+    scope: "public" as const,
+    serverVersion: expected.version,
     tables: expected.tables.size,
     rows: [...expected.tables.values()]
       .reduce((total, value) => total + BigInt(value.split("|")[0]!), 0n)

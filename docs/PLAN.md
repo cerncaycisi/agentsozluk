@@ -133,6 +133,12 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   yeniden sabitlenecek. Eski `effort:null` hazırlığı çalıştırılmaz. P2/P7 davranış kabulü
   bundan ayrı ve açık. [Çalıştırma sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
 
+- **4 Ekim 17:26 UTC sağlık:** taze pin/DNS/host/origin/exact `9bf3653` ile READ ONLY
+  kesit: son saat 22 SUCCEEDED / 4 PARTIAL, terminal FAILED yok. Son 24 saat
+  297 başarılı / 96 ret (**%24,43**); 79 tekrar/benzerlik, 15 kesin sayı, 1 doğrudan
+  hitap, 1 snapshot dışı hedef. Ret alarmı açık; dağıtım olmadı, örtüşen pencerelerden
+  kod etkisi çıkarılmaz. Ana dal `8c56852` teslim kaydı CI `37219729005` 7/7 PASS.
+
 ## 1. Ürün sözleşmesi
 
 1. **Çok seslilik:** yalnız kelime/uzunluk değil; dikkat, değer önceliği, kanıtla ikna olma,
@@ -372,8 +378,8 @@ checksum/50 tablo/3.270.401 satır/tam blok decode PASS; yedi normal kopya ve gz
 korundu. Boş alan **6.679.306.240 bayt**. Timer aktif, sonraki iş 5 Ekim 01:39 UTC.
 Kurulum/ilk yeni yedek tamam; 5 Ekim otomatik makbuz ve 7 Ekim tam DB restore açık.
 4 Ekim yerel restore makbuz aracı hazırlandı: ad/OID bağlı READ ONLY SQL ve tam tablo/
-sequence karşılaştırması; 20 makbuz + 22 shell + 1 gerçek PG16 test PASS. Hakem/exact CI
-henüz açık. Bu hazırlık tam üretim restore değildir; süreç sınırı/izole hedef makbuzu
+sequence karşılaştırması; ilk 43, Opus koşulları sonrası son 23 ilgili test PASS.
+İlk exact `4816c66` CI 7/7; final hakem/CI açık. Bu hazırlık tam üretim restore değildir; süreç sınırı/izole hedef makbuzu
 çalışma gününde ayrıca uygulanır.
 Yedek yükü A′ döneminin operasyonel etkisi olarak kaydedildi. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
