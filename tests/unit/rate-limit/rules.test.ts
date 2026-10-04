@@ -11,6 +11,8 @@ describe("milestone rate-limit rules", () => {
   it("keeps every locked RATE-003 through RATE-010 boundary explicit", () => {
     expect(RATE_LIMIT_RULES).toStrictEqual({
       topicCreate: { action: "topic.create", limit: 5, windowMs: 3_600_000 },
+      ukteCreate: { action: "ukte.create", limit: 5, windowMs: 3_600_000 },
+      ukteWithdraw: { action: "ukte.withdraw", limit: 30, windowMs: 60_000 },
       entryCreate: { action: "entry.create", limit: 30, windowMs: 3_600_000 },
       entryCreateInterval: {
         action: "entry.create.minimum-interval",

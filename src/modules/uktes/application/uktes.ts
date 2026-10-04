@@ -4,9 +4,8 @@ import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { lockUserStateForMutation } from "@/modules/auth/repository/users";
-import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
-import { topicCanonicalSearchCandidates } from "@/modules/topics/domain/canonicalization";
 import { lockTopicTitles } from "@/modules/topics/repository/topics";
+import { ukteTarget } from "@/modules/uktes/domain/target";
 import * as records from "@/modules/uktes/repository/uktes";
 import { ukteCreateSchema, ukteVisibilitySchema } from "@/modules/uktes/validation/schemas";
 
@@ -62,20 +61,16 @@ export function createUkte(
   now = new Date(),
 ) {
   const { title } = ukteCreateSchema.parse(rawInput);
-  const normalizedTitle = normalizeTopicTitle(title);
-  const targetKeys = topicCanonicalSearchCandidates(title).map(
-    (candidate) => candidate.normalizedQuery,
-  );
-  const slug = createTopicSlug(title);
+  const { normalizedTitle, targetKeys, slug } = ukteTarget(title);
   return inTransaction(db, async (tx) => {
     await requireUkteActor(tx, actor, "WRITE");
     await lockTopicTitles(tx, targetKeys);
     if (
       (await records.ukteTargetUnavailable(tx, targetKeys, slug)) ||
-      (await records.findHiddenUkte(tx, normalizedTitle))
+      (await records.findHiddenUkte(tx, targetKeys))
     )
       throw unavailable();
-    const existing = await records.findOpenUkte(tx, normalizedTitle);
+    const existing = await records.findOpenUkte(tx, targetKeys);
     if (existing) return { id: existing.id, created: false };
     const result = await records.createUkteRecord(tx, {
       title,
@@ -138,7 +133,7 @@ export function setUkteVisibility(
       throw conflict();
     if (
       !input.hidden &&
-      ((await records.findOpenUkte(tx, row.normalizedTitle)) ||
+      ((await records.findOpenUkte(tx, row.targetKeys)) ||
         (await records.ukteTargetUnavailable(tx, row.targetKeys, row.slug)))
     )
       throw unavailable();
@@ -156,12 +151,12 @@ export function setUkteVisibility(
     return { id, status: input.hidden ? "HIDDEN" : "OPEN", version: row.version + 1 };
   });
 }
-function page(rows: records.UkteListRecord[], viewerId?: string) {
+function page(rows: records.UkteListRecord[], viewerId?: string, admin = false) {
   const items = rows.slice(0, records.uktePageSize).map((row) => ({
     id: row.id,
     title: row.title,
     status: row.status,
-    version: row.version,
+    ...(admin ? { version: row.version } : {}),
     createdAt: row.createdAt.toISOString(),
     canWithdraw: row.requestedById === viewerId && row.status === "OPEN",
     // Açılmamış başlık adı slug--id/UUID/ac gibi rota biçimleriyle çakışsa da doğru başlık ön doldurulur.
@@ -184,5 +179,6 @@ export const listAdminUktes = (
     return page(
       await records.listUkteRecords(tx, { before: input.before, adminStatus: input.status }),
       actor.actorId,
+      true,
     );
   });

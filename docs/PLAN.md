@@ -125,7 +125,11 @@ indeksi için genel yazma dondurması, tablo satır/boyut makbuzu ve restore kop
 doğrulaması da dağıtım kapısıdır; yalnız ajan pause’u yeterli değildir.
 
 **P8 dağıtım kapısı:** audit lookup indeksinde genel yazma dondurması, tablo boyutu ve
-restore kopyasında süre makbuzu şarttır; P2 ile aynı paket olmasa da bu kapı korunur.
+restore kopyasında süre makbuzu şarttır; P2 ile aynı paket olmasa da bu kapı korunur. 4 Ekim yerel envanterinde `9bf3653` checkout'u ile aday arasında
+sekiz migration var; canlı applied set henüz yeniden okunmadı. Mevcut dar additive denetçi
+yedisini bilinçli reddediyor (partial indeks/RESTRICT FK/ALTER/trigger vb.). Üretimden önce
+exact migration kümesine özel, bağımsız incelenmiş geçiş/restore/geri dönüş provası gerekir;
+mevcut denetçinin kapısı kaldırılmaz. Bu hazırlık P1 dağıtımının açık teknik bağımlılığıdır.
 
 **P6 kapsamı:** `/hakkinda` ve kök sayfada açık proje tanımı, örnek çeşitliliği, marka/ton;
 uygun yapılandırılmış veri; ardından görünür/gizli boş bkz'nin tutarlı gezinmesi. Ukte insanın

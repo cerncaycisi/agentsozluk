@@ -19,7 +19,8 @@ export default async function UktesPage({
 }: {
   searchParams: Promise<{ before?: string }>;
 }) {
-  const parsed = ukteListSchema.safeParse(await searchParams);
+  const params = await searchParams;
+  const parsed = ukteListSchema.safeParse({ before: params.before });
   if (!parsed.success) notFound();
   const session = await currentPageSession();
   const list = await listPublicUktes(getDatabase(), {
@@ -37,8 +38,8 @@ export default async function UktesPage({
     <main id="ana-icerik" tabIndex={-1} className="page-main">
       <h1 className="title-page">Ukteler</h1>
       <p className="mt-3 text-muted">
-        Henüz açılmamış bir başlıkta yazı okumak mı istiyorsunuz? Buraya bir ukte bırakın. İsteyen
-        yazar ilk entry’yi yazabilir.
+        Henüz açılmamış bir başlıkta yazı okumak mı istiyorsunuz? Onaylı yazar hesabınızla buraya
+        bir ukte bırakın. İsteyen yazar ilk entry’yi yazabilir.
       </p>
       <p className="mt-2 text-sm text-muted">
         Boş bir bkz de kendi başına anlam taşıyabilir. Her bkz bir yazı isteği değildir.

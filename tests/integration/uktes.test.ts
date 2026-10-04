@@ -115,7 +115,60 @@ describe("explicit human ukte requests with PostgreSQL", () => {
     expect(list.items).toHaveLength(1);
     expect(list.items[0]).not.toHaveProperty("requestedById");
     expect(list.items[0]).not.toHaveProperty("targetKeys");
+    expect(list.items[0]).not.toHaveProperty("version");
     expect(list.items[0]!.canWithdraw).toBe(false);
+  });
+  it("deduplicates canonical requests and blocks hidden variants in both directions", async () => {
+    const f = await fixture();
+    const requests = await Promise.all([
+      createUkte(db, f.ownerActor, { title: "gece mavisi hakkında" }),
+      createUkte(db, f.actor(f.other.id), { title: "gece mavisi nedir" }),
+    ]);
+    expect(new Set(requests.map((row) => row.id)).size).toBe(1);
+    await setUkteVisibility(db, f.adminActor, requests[0]!.id, {
+      hidden: true,
+      expectedVersion: 1,
+      reason: "Somut inceleme için gizlendi.",
+    });
+    for (const title of ["gece mavisi", "gece mavisi?", "gece mavisi hakkında"])
+      await expect(createUkte(db, f.actor(f.other.id), { title })).rejects.toMatchObject({
+        code: "UKTE_UNAVAILABLE",
+      });
+    const plain = await createUkte(db, f.ownerActor, { title: "güneş saati" });
+    await setUkteVisibility(db, f.adminActor, plain.id, {
+      hidden: true,
+      expectedVersion: 1,
+      reason: "Ayrı inceleme için gizlendi.",
+    });
+    await expect(
+      createUkte(db, f.actor(f.other.id), { title: "güneş saati nedir" }),
+    ).rejects.toMatchObject({ code: "UKTE_UNAVAILABLE" });
+    expect((await listPublicUktes(db, {})).items).toEqual([]);
+  });
+  it("does not match unrelated non-Latin titles through the fallback slug", async () => {
+    const f = await fixture();
+    await f.topic("東京");
+    const row = await createUkte(db, f.ownerActor, { title: "京都" });
+    expect(await db.ukteRequest.findUnique({ where: { id: row.id } })).toMatchObject({ slug: "" });
+    const list = await listPublicUktes(db, {});
+    expect(list.items.map((item) => item.title)).toEqual(["京都"]);
+    await expect(createUkte(db, f.ownerActor, { title: "東京" })).rejects.toMatchObject({
+      code: "UKTE_UNAVAILABLE",
+    });
+    await f.topic("başlık");
+    await expect(createUkte(db, f.ownerActor, { title: "baslik" })).rejects.toMatchObject({
+      code: "UKTE_UNAVAILABLE",
+    });
+  });
+  it("carries reserved route-like titles through the dedicated composer query", async () => {
+    const f = await fixture();
+    const titles = ["ac", randomUUID(), "başlık--123"];
+    for (const title of titles) await createUkte(db, f.ownerActor, { title });
+    for (const item of (await listPublicUktes(db, {})).items) {
+      const url = new URL(item.writeUrl, "http://localhost");
+      expect(url.pathname).toBe("/baslik/ac");
+      expect(url.searchParams.get("title")).toBe(item.title);
+    }
   });
   it.each(["approval", "suspension", "agent"])(
     "rejects %s using current database authority even with a forged HUMAN actor",
@@ -221,6 +274,8 @@ describe("explicit human ukte requests with PostgreSQL", () => {
       expectedVersion: 2,
     });
     expect((await listPublicUktes(db, {})).items).toHaveLength(1);
+    expect((await listPublicUktes(db, {})).items[0]).not.toHaveProperty("version");
+    expect((await listAdminUktes(db, f.adminActor, { status: "OPEN" })).items[0]?.version).toBe(3);
     expect(
       await db.auditLog.count({ where: { action: { in: ["ukte.hidden", "ukte.restored"] } } }),
     ).toBe(2);

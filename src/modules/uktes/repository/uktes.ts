@@ -9,10 +9,13 @@ export const findUkteActor = (tx: TransactionClient, id: string) =>
   });
 export const findUkte = (tx: DatabaseExecutor, id: string) =>
   tx.ukteRequest.findUnique({ where: { id } });
-export const findOpenUkte = (tx: TransactionClient, normalizedTitle: string) =>
-  tx.ukteRequest.findFirst({ where: { normalizedTitle, status: "OPEN" } });
-export const findHiddenUkte = (tx: TransactionClient, normalizedTitle: string) =>
-  tx.ukteRequest.findFirst({ where: { normalizedTitle, status: "HIDDEN" }, select: { id: true } });
+export const findOpenUkte = (tx: TransactionClient, targetKeys: string[]) =>
+  tx.ukteRequest.findFirst({ where: { targetKeys: { hasSome: targetKeys }, status: "OPEN" } });
+export const findHiddenUkte = (tx: TransactionClient, targetKeys: string[]) =>
+  tx.ukteRequest.findFirst({
+    where: { targetKeys: { hasSome: targetKeys }, status: "HIDDEN" },
+    select: { id: true },
+  });
 export const createUkteRecord = (
   tx: TransactionClient,
   input: {

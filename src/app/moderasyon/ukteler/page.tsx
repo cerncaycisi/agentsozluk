@@ -20,7 +20,8 @@ export default async function UkteModerationPage({
   searchParams: Promise<{ before?: string; status?: string }>;
 }) {
   const session = await requireAgentAdminPage();
-  const parsed = ukteAdminListSchema.safeParse(await searchParams);
+  const params = await searchParams;
+  const parsed = ukteAdminListSchema.safeParse({ before: params.before, status: params.status });
   if (!parsed.success) notFound();
   const list = await listAdminUktes(
     getDatabase(),

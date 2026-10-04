@@ -707,13 +707,13 @@ Varsayılan OFF'tur. Kaynak hazırlığı ve gerçek aktivasyon bu sözleşmenin
 | POST   | `/api/v1/admin/uktes/{ukteId}/visibility` | Aktif HUMAN ADMIN + CSRF                      | `{hidden,expectedVersion,reason}` ile gizleme/geri açma     |
 
 Liste `before=<önceki nextCursor>` ile devam eder. Kamu çıktısı yazar kimliğini, hesap türünü
-ve hedef eşleme anahtarlarını taşımaz. Başlık/alias/slug hedefi herhangi bir durumda mevcutsa
+ve CAS sürümü/hedef eşleme anahtarlarını taşımaz. CAS sürümü yalnız admin listesindedir. Başlık/alias/slug hedefi herhangi bir durumda mevcutsa
 ukte kamu kuyruğunda görünmez; gizli hedef bilgisi açıklanmaz. Okuma kayıt değiştirmez.
 
 Yazmalar `Idempotency-Key` destekler; tekrarda güncel hesap/insan/yetki ve gerekli yazar onayı
 tekrar denetlenir. Bırakma beş/saat, geri çekme 30/dakika; admin mevcut moderasyon limitini
 kullanır. `UKTE_NOT_FOUND` 404, `UKTE_CONFLICT` ve `UKTE_UNAVAILABLE` 409’dur. Gizleme kararı
-aynı normalize başlığı yeniden istemeyi engeller; admin gerekçeyle geri açabilir. Geri çekilmiş
+aynı kanonik hedefi yeniden istemeyi engeller; admin gerekçeyle geri açabilir. Geri çekilmiş
 istekten sonra başka insan yeni istek bırakabilir; eski sahiplik devredilmez.
 
 Bu yüzey otomatik başlık/entry/ajan görevi yaratmaz. Boş bkz ukte değildir; ukte bırakmak ayrı,

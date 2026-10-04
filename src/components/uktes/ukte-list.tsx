@@ -12,7 +12,7 @@ export function UkteList({
     id: string;
     title: string;
     status: string;
-    version: number;
+    version?: number | undefined;
     createdAt: string;
     canWithdraw: boolean;
     writeUrl: string;

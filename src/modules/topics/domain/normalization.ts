@@ -28,7 +28,7 @@ export function normalizeTopicTitle(input: string): string {
     .toLocaleLowerCase("tr-TR");
 }
 
-export function createTopicSlug(input: string): string {
+export function createTopicSlug(input: string, fallback = "baslik"): string {
   const slug = input
     .normalize("NFKD")
     .replaceAll("ı", "i")
@@ -41,7 +41,7 @@ export function createTopicSlug(input: string): string {
     .slice(0, 80)
     .replaceAll(/-$/gu, "");
 
-  return slug || "baslik";
+  return slug || fallback;
 }
 
 export function canonicalTopicPath(publicId: number, titleOrSlug: string): string {

@@ -3611,3 +3611,10 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Doğrulanmış çözüm: Debian bağımlılıklarını ayrı kullanıcı cache köküne açıp `LD_LIBRARY_PATH` ve yalnız bu koşuya özel `FONTCONFIG_FILE` ile çalıştırmak. Sistem kurulumu/değişikliği yok.
 - Sonuç: gerçek tarayıcı oluşturma/mükerrer/geri çekme/admin gizle-geri aç akışı PASS; masaüstü/mobil görseller incelendi, page error yok. Özel kanıt dizini `p6-ukte-20261004`, son log `preview-check-4.log`. Kendi geçici Next dev süreci kapatıldı.
 - Tekrarlama: eksik paylaşımlı kütüphane/fontu uygulama hatası sayma; mevcut kullanıcı cache ortamını kullan, çalışan kullanıcı süreçlerine dokunma.
+
+### 4 Ekim 2026 — P6 #306 ilk CI ve Opus düzeltmeleri
+
+- Exact `3b7fa8f0882ceeda22beb0ed1039b57bb17c2151`, CI `37175446882`: behavior 2020 PASS/3 FAIL. Güvenli hatalar: module inventory assertion, `ENOENT .../uktes/domain`, rate-limit exact map assertion. Yeni modülün domain/public katmanı ve envanter güncellemesi eksikti; gerçek saf domain + public exports eklendi, yeni iki limit beklentisi açıkça yazıldı.
+- Gerçek `claude-opus-5` KOŞULLU GO: kanonik ukteyle gizleme aşımı ve Latin dışı fallback slug eşleşmesi kaynakla doğrulandı. Eşleme/tekilleştirme kanonik anahtarlara taşındı; boş eşleme slug'ı desteklendi. Public DTO CAS sürümü kaldırıldı; bilinmeyen sayfa query alanları yok sayıldı.
+- Hakemin `/baslik/ac?title` şüphesi eksik kaynak kaynaklıydı: gerçek rota parametreyi okuyor, mevcut prefill testleri var. Reserved rota adlarında önerdiği alternatif daha az güvenli; mevcut açık query yolu korundu.
+- Tekrarlama: yeni modül eklerken mimari envanter/domain/public katmanı ve rate-limit exact sözleşmesini ilgili testlere dahil et. Eksik kaynak şüphesini kaynak göstererek çöz, çalışır yolu körlemesine değiştirme. Yeni exact kontrol sonuçları ayrı makbuzlanır.

@@ -13,7 +13,7 @@ export function UkteActions({
   admin = false,
 }: {
   id: string;
-  version: number;
+  version?: number | undefined;
   status: string;
   canWithdraw: boolean;
   admin?: boolean;
