@@ -3809,3 +3809,15 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - P8 kaynak ilavesinin ilk birim turu 25 PASS/1 FAIL: sabit URL sayısı 20, gerçek 22 idi.
   Sayı beklentisi yeni envantere uyarlandı; ayrışma/kanıt eşikleri değişmedi. İlgili son
   politika/persona koşusu 38/38 PASS. Bu hata runtime veya kaynak okuyucu regresyonu değildi.
+
+### 4 Ekim 2026 — P8 kaynak hakemi ve koşullar
+
+- Gerçek Opus 5, `58bacff5c6ff9621300545ee0280943cf7697a69`: KOŞULLU GO.
+  Kaynak eklemesinin eski semantik ret veya saklı snapshot kapısını bozmadığını doğruladı.
+- 09:05:28 UTC pin/DNS/host/repo/Compose sonrası READ ONLY: checkout `9bf3653`, aday
+  tablosu yok; eski kaynaklı PROPOSED aday bu kesitte olamaz. Yazma/deploy yok.
+- Donmuş 36 kişilik P0'da önce/sonra validator raporları birebir aynı. İlk taslak min RMS
+  0,2277 / max metin 0,0478; ikinci 0,2184 / 0,0502. Kaynaklar mesafe metninin dışında.
+  12/10 ve 22 tekil URL birlikte test edilir; zod 3–20 sınırı aynı.
+- Tekrarlama: kaynak eklemesi için draftVersion artırıp aynı karakterin semantik ret
+  kararını aşma; eski persona kesitini bugünkü canlı evren diye sunma. Son CI açık.

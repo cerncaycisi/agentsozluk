@@ -12,7 +12,11 @@
 - 4 Ekim telafi dump checksum yeniden PASS. PG16 bütün veri bloklarını 23,223 sn’de
   decode etti; exit 0, stderr boş. Metadata 50 tablo/3.278.376 satır. Tam restore değil.
 - İki sabit doğum taslağı 20 URL okumasında 19 READABLE; Arkitera odaklı tekrarda da
-  SOURCE_TIMEOUT. Üç izinli yedek URL okunabildi. DB/üretim bağlantısı/model çağrısı yok.
+  SOURCE_TIMEOUT. Üç izinli yedek URL okunabildi; ilk taslağa Fayn/Aeon eklendi.
+  #311 ilk 38 test geçti; Opus 5 koşulları kapandı. İlk kaynak okumasında DB/üretim
+  bağlantısı/model çağrısı yok; 09:05 UTC ayrı READ ONLY şema sorgusunda aday tablosunun
+  henüz bulunmadığı doğrulandı. Donmuş 36 kişilik validator raporları önce/sonra aynı.
+  Son exact CI/birleşme açık.
   [O3](O3_YEDEK_2026-10-04.md) ve [P8](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
 
 ## 2026-10-04 — O4 sayı gösterimi düzeltmesi

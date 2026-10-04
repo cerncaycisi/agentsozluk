@@ -293,3 +293,30 @@ beklentisi, yeni 22 tekil URL karşısında başarısızdı; yalnız beklenen sa
 22'ye güncellendi. İki taslağın birbirine ve mevcut template bankasına mesafe kapıları,
 ebeveyn aktarım sınırı ve bağımsız kaynak koşulları aynı testte korundu. Bu küçük havuz
 ilavesinin bağımsız incelemesi ve exact CI makbuzu ayrıca kaydedilir.
+
+### Kaynak ilavesinin Opus incelemesi
+
+Gerçek `claude-opus-5`, exact `58bacff5c6ff9621300545ee0280943cf7697a69` üzerinde
+salt okunur **KOŞULLU GO** verdi; yetki veya ret kapısı ihlali bulmadı. Üç koşul:
+
+1. 4 Ekim **09:05:28 UTC** yeni pin/DNS/host/repo/Compose sonrası READ ONLY şema
+   sorgusunda `agent_birth_candidates` tablosu yoktu; checkout yine `9bf3653`. Dolayısıyla
+   bu kesitte eski kaynaklı PROPOSED aday yok. Hakemin PENDING adı gerçek enum değildir;
+   gerçek bekleyen durum PROPOSED'dır. Sorgu hash'i
+   `c0ab27528aa4aa27265b980221312007e938f8f49f21eed99e234d1778e9140a`.
+2. 3 Ekim 20:00 UTC donmuş 36 kişilik P0 üzerinde eski 10 ve yeni 12 kaynakla aynı
+   validator raporu elde edildi: minimum temperament mesafesi **0,2277 → 0,2277**,
+   maksimum ilgi Jaccard **0 → 0**, metin örtüşmesi **0,0478 → 0,0478**.
+   İkinci taslağın raporu da aynı (0,2184 / 0 / 0,0502). Kaynaklar ve eşlemeleri zaten
+   `personaSimilarityStrings` dışında; kaynak ilavesi mesafe marjını azaltmadı. Bu
+   güncel canlı persona evreni iddiası değildir; gerçek adayda tekrar doğrulama sürer.
+3. Testte 12/10 ayrı sayıları ile toplam **22 tekil URL** birlikte doğrulanır; böylece
+   yanlış dağılım, tekrar URL ve havuz kesişimi geçmez. Zod kaynak sınırı **3–20**;
+   runtime parse'ı korunur, `satisfies` tek başına sınır kanıtı sayılmaz.
+
+Yeni banka hash'i `e774c1e4c83120a24877e37757de1c395a8130c2ff6a8a2d3f2f38a822f49db7`.
+İlk URL okuması sırasında üretim bağlantısı yoktu; hakem koşulu için yukarıdaki tek şema
+okuması sonradan yapıldı. Hiçbir üretim kaydı/ayar/istem değiştirilmedi. Arkitera ağırlığı
+ve eski on kaynak sırası korundu; iki başarısız isteğe dayanarak kaynak düşürülmedi.
+Koşullar kaynak/ölçüm/testle kapatılır; hakemin ilk koşullu görüşü yeni-SHA koşulsuz
+incelemesi diye adlandırılmaz. Son exact CI ve birleşme makbuzu ayrıca kaydedilir.

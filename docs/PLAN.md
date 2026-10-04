@@ -68,7 +68,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   yerel hazırlıkları durdurmaz. [Hazırlık ve sınırlar](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
 - **4 Ekim kaynak hazırlığı:** iki doğum taslağının 20 URL’sinden 19’u okundu;
   Arkitera iki kez zaman aşımına uğradı. Mevcut izinli havuzda üç yedek adres okundu;
-  ilk taslağa Fayn/Aeon eklenmesi yerelde hazırlanıyor. Gerçek aday kaynak hazırlığı
+  ilk taslağa Fayn/Aeon #311’de eklendi (38 test; Opus koşulları kaynak/ölçümle kapandı).
+  Son CI/birleşme ve gerçek aday kaynak hazırlığı
   ve aktivasyon kapıları açık. [P8 makbuzu](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
