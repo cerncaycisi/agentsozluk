@@ -196,3 +196,60 @@ alınmadı, özel ID'nin kanıt kataloğuna eklenmesi reddedildi. Önceki v1 man
 İlk hazırlıkta bulunan aktif amaç `kind` hatası gerçek PG16 RED→GREEN ile kapandı
 ([P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md)); #315 kod teslimi ile bu yöntem
 makbuzu birbirinden ayrıdır. İş sırası yalnız PLAN'dadır.
+
+## 4 Ekim — P3/P4/P5 kalıcı çalıştırıcı
+
+`scripts/run-contract-pilot.ts`, normal `CodexCliProvider` üzerinden yalnız karar çıktısı
+alır. DB/control-plane/action executor kurmaz. P2'nin ilk/saklı set çalıştırıcısı değildir.
+29 ağsız testte 18 karar + bir okuyucu, beş teknik tekrar, özel hata kanıtı, süre,
+yeniden başlatma, kaynak/config değişimi, yarım rezervasyon ve gerçek yerel sahte süreç
+sonlandırması doğrulandı. Gerçek pilot çağrısı **0**; hakem/CI kapanışı ayrıca kaydedilecek.
+
+- Sabit kayıt `~/style-lab/p345-kisa-pilot-20261004/execution/` altındadır. CLI'da yeni
+  çalışma kimliği, başka çıktı dizini veya reset seçeneği yoktur. `run.lock` otomatik
+  temizlenmez; kilit ya da RESERVED kaydı varsa çalışan süreç/handle doğrulanmadan devam
+  edilmez. Çökme öncesi rezervasyon harcanmış kalır, otomatik tekrar yapılmaz.
+- Her çağrıdan önce rezervasyon fsync + atomik rename ile yazılır. 18 ilk karar + en çok
+  5 teknik tekrar + bir okuyucu = **24 mantıksal CLI çağrısı**. İç sağlayıcı HTTP denemeleri
+  veya Claude CLI'nin yardımcı Haiku istekleri için 24 ağ isteği garantisi değildir.
+  Okuyucunun gözlenen model adları özel sonuçta tutulur; ana model exact `claude-opus-5`.
+- İlk rezervasyondan itibaren 90 dakika; okuyucu ve yeniden başlatma aynı saate dahildir.
+  Her sağlayıcıya kalan süreden fazla verilmez. Sonlandırma için en çok 5 saniye ek süreç
+  temizliği olabilir; geç çıktı tamamlama başarısı sayılmaz. Geçerli çıktı beğenilmediği
+  için tekrarlanmaz. İlk bozuk wire çıktısı da 0600 özel kanıtta tutulur.
+- Kaynak SHA, temiz ürün ağacı, manifest/girdi/şema hash'leri, Luna `max`, Codex CLI ve
+  okuyucu CLI sürümü sabittir. Başlamış kayıtta sapma/fatal hata çalışmayı kapatır;
+  eski ayara dönmek bütçeyi yeniden açmaz. Prompt/entry/ham hata stdout veya repo'ya yazılmaz.
+- Okuyucuya persona, sistem istemi, A/B anahtarı, config ve dosya yolları verilmez;
+  görünür bağlam ve çıktılar verilir. `username`/`displayName`/`publicBio` anahtarları
+  çıkarılır. Metnin kimliği ima etmediği veya kusursuz körlük iddiası yoktur.
+  `--safe-mode`, araçsız/boş MCP ve geçmişsiz CLI kullanılır. Rapor insan tarafından
+  exact alıntı ve bağlamla değerlendirilir; transport başarısı davranış PASS değildir.
+
+### 6 Ekim operatör girdisi
+
+Mevcut v2 dosyaları eski kaynak SHA'sı ve `effort: null` ile **hazırlık kanıtıdır**;
+bu çalıştırıcı bunları olduğu gibi çalıştırmaz. A′ kararından sonra güncel temiz commit,
+normal şema, `effort: max`, gerçek CLI sürümleri ve mevcut seçim kurallarıyla ayrı özel
+klasörde yeniden hazırlanır; eski dosyalar/anahtarlar değiştirilmez. Bu işlem yeni bir
+çağrı bütçesi açmaz. Model çağrısı başlamadan önce manifest ve config hash'leri kaydedilir.
+
+Özel 0600 config alanları `manifestDirectory`, `manifestSha256`, `sourceSha`,
+`model: "gpt-5.6-luna"`, `reasoningEffort: "max"`, `providerVersion`,
+`aPrimeReceiptFile`, `aPrimeReceiptSha256`, `codex: { executable, sandboxExecutable,
+credentialFile }`, `readerExecutable`, `readerVersion`'dır. Bütün yollar mutlak/normalize.
+Codex çalışma ve HOME dizinleri sabit execution dizininin özel altlarıdır; mevcut runtime
+çalışma dizinine temizlik uygulanmaz, credential kopyalanmaz.
+
+A′ makbuzu `version: 1`, `kind: "A_PRIME_DECISION"`, exact `productionSha`, UTC ISO
+`resumedAt`, `windowEndedAt`, `concludedAt`, `decision: "ACCEPT" | "REJECT" |
+"INCONCLUSIVE"` taşır. Gerçek üretim kanıtını operatör doğrular; çalıştırıcı en az72saat,
+karar/zaman sırası ve hash'i denetler, sunucu metriklerini yeniden hesaplamaz. İlk tarih
+6 Ekim10:00UTC, son yetki sınırı17 Ekim19:50UTC. Sıfır çağrıda tarih reddi bütçe yaratmaz.
+
+```sh
+# Ön kontrol: model çağırmaz. Config gerçek özel dosyanın mutlak yoludur.
+corepack pnpm exec tsx scripts/run-contract-pilot.ts /absolute/private/config.json
+# Aynı config ve tek sabit bütçeyle çalıştırma; A′ kapısından önce reddedilir.
+corepack pnpm exec tsx scripts/run-contract-pilot.ts /absolute/private/config.json --execute
+```

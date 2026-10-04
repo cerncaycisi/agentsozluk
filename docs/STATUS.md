@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 4 Ekim 2026 — P3/P4/P5 çalıştırıcı hazırlığı
+
+`c303936` tabanındaki yerel geliştirmede 29 ağsız test PASS; normal wire, kalıcı rezervasyon,
+18+5+1 çağrı tavanı, ortak90dakika, fatal sapma, eski kilit/yarım rezervasyon ve okuyucunun
+kendi süreç grubunu sonlandırması doğrulandı. Tip kontrolü geçti. Gerçek runtime/pilot
+çağrısı0, üretim değişikliği yok. Hakem ve exact CI henüz açık. Ana dal `c303936` push
+CI `37213095956` 7/7 PASS. Detay/operatör sözleşmesi P2 hazırlık belgesinde.
+Tekrarlama: eski SHA/effort:null manifestini doğrudan çalıştırma; geçerli ama beğenilmeyen
+çıktıya retry açma; çağrı rezervasyonunu veya saati resetleyerek kayıp kanıtı silme.
+
 ## 4 Ekim 2026 — O5 kesinti düzeltmesi exact kapanışı ve sağlık
 
 - #322 final `0d1c8458f7cdb9cc386f1ed480a276d4fe6986b0`, exact CI `37211890454` **7/7 PASS**.

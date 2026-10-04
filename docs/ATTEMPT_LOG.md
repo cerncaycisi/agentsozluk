@@ -4295,3 +4295,13 @@ kimlik/içerik/ham hata loglama.
 Exact CI veritabanı logu ayrıca okundu: ana entegrasyon koşusunda **34 dosya / 490 test**
 PASS; `agent-runtime-api.test.ts` içindeki **139 senaryonun tamamı**, atlama olmadan geçti.
 Ardından çalışan dar life-ledger koşularındaki atlamalar bu ana koşunun yerine geçirilmedi.
+
+## 4 Ekim 2026 — P3/P4/P5 çalıştırıcı hazırlığı
+
+`c303936` tabanındaki yerel geliştirmede 29 ağsız test PASS; normal wire, kalıcı rezervasyon,
+18+5+1 çağrı tavanı, ortak90dakika, fatal sapma, eski kilit/yarım rezervasyon ve okuyucunun
+kendi süreç grubunu sonlandırması doğrulandı. Tip kontrolü geçti. Gerçek runtime/pilot
+çağrısı0, üretim değişikliği yok. Hakem ve exact CI henüz açık. Ana dal `c303936` push
+CI `37213095956` 7/7 PASS. Detay/operatör sözleşmesi P2 hazırlık belgesinde.
+Tekrarlama: eski SHA/effort:null manifestini doğrudan çalıştırma; geçerli ama beğenilmeyen
+çıktıya retry açma; çağrı rezervasyonunu veya saati resetleyerek kayıp kanıtı silme.
