@@ -1,36 +1,48 @@
-import { buildEverydayPersona } from "@/modules/agents/personas/everyday-writer-personas";
+import {
+  buildEverydayPersona,
+  type EverydayPersonaInput,
+} from "@/modules/agents/personas/everyday-writer-personas";
+import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
 import type { SeedPersona } from "@/modules/agents/personas/schema";
 
 // Aday bankasıdır; seed/template listesine eklenmez ve hesap açmaz.
 const continuitySources = [
-  "https://manifold.press/rss",
-  "https://www.arkitera.com/feed/",
-  "https://www.agos.com.tr/rss",
-  "https://vesaire.press/feed/",
-  "https://fikirturu.com/feed/",
-  "https://www.sosyalbilimler.org/feed/",
-  "https://bantmag.com/feed/",
-  "https://argonotlar.com/feed/",
-  "https://bilimakademisi.org/feed/",
-  "https://acikbilim.com/feed/",
-  "https://fayn.press/feed/",
-  "https://aeon.co/feed.rss",
+  "https://www.edebiyathaber.net/feed/",
+  "https://lithub.com/feed/",
+  "https://www.smithsonianmag.com/rss/history/",
+  "https://www.designboom.com/feed/",
+  "https://www.dezeen.com/feed/",
+  "https://www.ifixit.com/News/rss",
+  "https://www.mindful.org/feed/",
+  "https://www.beyazperde.com/rss/haberler.xml",
+  "https://www.rayhaber.com/feed/",
+  "https://www.tdk.gov.tr/feed/",
+  "https://www.bonappetit.com/feed/rss",
+  "https://www.atlasobscura.com/feeds/latest",
 ];
 const scrutinySources = [
-  "https://teyit.org/feed",
-  "https://www.sivilsayfalar.org/feed/",
+  "https://www.eff.org/rss/updates.xml",
+  "https://www.ekoiq.com/feed/",
   "https://ifade.org.tr/engelliweb/feed/",
-  "https://www.w3.org/blog/feed/",
-  "https://blog.mozilla.org/en/feed/",
-  "https://www.newslabturkey.org/feed/",
-  "https://journo.com.tr/feed",
-  "https://sarkac.org/feed/",
-  "https://evrimagaci.org/rss.xml",
-  "https://bianet.org/bianet.rss",
+  "https://www.niemanlab.org/feed/",
+  "https://www.poynter.org/feed/",
+  "https://www.which.co.uk/news/feed",
+  "https://www.nature.com/nature.rss",
+  "https://www.quantamagazine.org/feed/",
+  "https://www.egitimsen.org.tr/feed/",
+  "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+  "https://skybrary.aero/rss.xml",
+  "https://www.medikalakademi.com.tr/feed/",
 ];
 
+// Yalnız doğum bankası genişletilmiş doğrulanmış havuzu seçer. Mevcut template'lerin
+// varsayılan kaynak eşlemesi ve köken sınıflandırmasında kullanılan hash'leri değişmez.
+const birthSourcePool = new Map(verifiedSourcePool().map((source) => [source.url, source]));
+const buildBirthDraft = (input: EverydayPersonaInput) =>
+  buildEverydayPersona(input, birthSourcePool);
+
 const drafts = [
-  buildEverydayPersona({
+  buildBirthDraft({
     username: "ayniyerde",
     displayName: "aynı yerde",
     publicBio: "Her tekrar israf değildir; bazı şeyler ikinci dönüşte açılır.",
@@ -121,7 +133,7 @@ const drafts = [
     },
     sourceUrls: continuitySources,
   }),
-  buildEverydayPersona({
+  buildBirthDraft({
     username: "tersolcek",
     displayName: "ters ölçek",
     publicBio: "Cetvel düzgün olabilir; neyi ölçtüğümüz hâlâ tartışılır.",
@@ -237,6 +249,7 @@ const drafts = [
 
 export const birthDraftBank = drafts.map((persona) => ({
   draftKey: persona.username,
+  // Kaynak kapasitesi onarımı yeni semantik kimlik değildir; REJECTED v1 yeniden açılmaz.
   draftVersion: 1,
   persona: {
     ...persona,

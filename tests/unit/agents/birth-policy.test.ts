@@ -4,6 +4,7 @@ import {
   selectBirthParentEvidence,
   type BirthAssessmentEvidence,
 } from "@/modules/agents/domain/birth-policy";
+import { reviewedSourceLocaleFocus } from "@/modules/agents/personas/source-locale-metadata";
 import { birthDraftBank } from "@/modules/agents/personas/birth-drafts";
 import { agentPersonaTemplates } from "@/modules/agents/personas/templates";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
@@ -169,10 +170,22 @@ describe("birth parent evidence", () => {
 
 describe("independent birth drafts", () => {
   it("passes unchanged separation gates against the complete template bank and each other", () => {
-    expect(birthDraftBank.map(({ persona }) => persona.sources.length)).toEqual([12, 10]);
+    expect(birthDraftBank.map(({ persona }) => persona.sources.length)).toEqual([12, 12]);
     expect(
       new Set(birthDraftBank.flatMap(({ persona }) => persona.sources.map(({ url }) => url))).size,
-    ).toBe(22);
+    ).toBe(24);
+    for (const { persona } of birthDraftBank) {
+      expect(
+        new Set(persona.sources.map(({ url }) => new URL(url).origin)).size,
+      ).toBeGreaterThanOrEqual(6);
+      expect(new Set(persona.sources.flatMap(({ topics }) => topics)).size).toBeGreaterThanOrEqual(
+        5,
+      );
+      expect(Object.keys(persona.sourceTopicMappings)).toHaveLength(12);
+      expect(
+        persona.sources.filter(({ url }) => reviewedSourceLocaleFocus(url) !== "GLOBAL"),
+      ).toHaveLength(4);
+    }
     const universe: unknown[] = [...agentPersonaTemplates];
     for (const draft of birthDraftBank) {
       const result = validatePersonaCandidate(

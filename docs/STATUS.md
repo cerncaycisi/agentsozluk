@@ -7,6 +7,20 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 13:10 UTC — #316 hazırlık teslimi; #317 kaynak bankası
+
+- #316 final `f262a8cade87c34e1958ffc9fb81abaf2c932f70`, CI `37203877096` 7/7;
+  main `462642d5ba7bd6e66da12e2f2b027438c89172a9`. Fresh head/check/review/mergeability,
+  uzak SHA ve test edilen ağaç eşliği PASS. Opus5 koşulları kaynak/kapanış9PG ile kapandı.
+  `4ed82c2` ara CI son push nedeniyle iptal edildi; PASS sayılmadı. Üretim değişmedi.
+- #317 ilk `9c634fb`:36birim/20PG16 ve format/lint/typecheck PASS. 30 template ve
+  iki adayın kaynak dışındaki persona hash'leri aynı. Opus5 KOŞULLU GO; kanıt
+  etiketleri/dil karışımı/kalan kapasite açık belgelendi. Son birleşik36birim/43PG16
+  PASS; hakem koşulları kapandı, finalCI açık.
+- 13:09:08 pinli READ ONLY9bf: doğum adayları tablosu yok; eskiREJECTEDv1 satırı yok.
+  Seçilen24 URL holdercap altında. İlk24+iki alternatif gerçek okuyucudan geçti;
+  final24/24 ilgili öğe verdi. Canlı kaynak/hafıza/hesap yazımı yapılmadı.
+
 ## 2026-10-04 12:45 UTC — P8 kaynak işinin gerçek kapanışı
 
 - #316 ilk `b5b2073` CI7/7; Opus 5 DÜZELTİLMELİ. Bearer kimlik doğrulamasıyla
