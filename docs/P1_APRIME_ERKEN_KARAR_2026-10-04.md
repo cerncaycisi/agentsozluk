@@ -57,3 +57,39 @@ Karar tarihi kesitten önce/gelecekte olamaz. Kaynak SHA, özel dosya/hash, son 
 Makbuz eski dondurulmuş girdileri çalıştırılabilir yapmaz: güncel temiz exact kaynak,
 model/effort/CLI ve renderer hash'leri yeniden sabitlenmelidir. Bu dosya deploy başarısı,
 davranış PASS veya tam restore makbuzu değildir.
+
+## Opus koşulları ve dar kapanış
+
+Gerçek `claude-opus-5`, `de5136fe7a4b5004935fc260b27fae4cb72cb2b7` için **KOŞULLU GO**,
+132 saniye; araçsız verilen exact kaynak üzerindedir. B1 için alt tarih sayısal UTC
+milisaniyesine yukarı yuvarlandı, ayrıştırılan bütün zamanlar finite denetlenir. Kilitli
+Node22'de gerçek tarih parse hatası ölçülmedi; savunma ve NaN karşı örneği eklendi.
+
+B2: erken makbuz yalnız **6 Ekim19:38:28.147UTC'ye kadar**,48saat geçerlidir; kodda
+`PILOT_A_PRIME_RECEIPT_STALE`. Bu bekleme koşulu değil, mevcut erken kesitin son kullanım
+sınırıdır. Güncel sürüm/kapsam denetimi ve tek çalışmanın kalıcı bütçesi ayrıca korunur.
+
+B3'ün iki v1 yolu önceki testlerde zaten vardı (6Ekim09:59ret ve71:59:59pencere ret).
+5Ekim tarihi ayrıca eklendi; eski assertion'lar korunur. B4 için tamper testleri artık
+`ZodError` ister, hash hatasıyla yeşil kalamaz. B5 üst özel dizin denetimi eklendi.
+B6 test sayısı107'nin içinde yeni13vardı;120iddiası yok. İlk toplam56ortak+51P2=107.
+P2 ortak kapı çağrısı `scripts/persona-pilot/input.ts` içindeki `preparePersonaPilot`'un
+ilk config işleminden hemen sonradır; model veya manifest hazırlığından önce çağrılır.
+
+Bu mekanik koşulların son test/CI makbuzu teslimde eklenir. Hakem görüşü üretim veya
+model çalıştırma yetkisi değildir; kullanıcı yetkisi ayrı ve süreli kalır.
+
+### Son yerel doğrulama
+
+**59 ortak +51 P2 =110 ağsız test**, ayrıca3 gereksinim testi; format/lint/typecheck PASS.
+V1 tarih/72 saat retleri, V2 tam18 girdili olumlu yol,48 saat sonu, NaN parse, hash ve
+literal sapmaları geçti. Bunlar yeni model/pilot sonuçları değildir. Opus'un koşulları
+kaynak/testle kapandı; yeni koşulsuz hakem görüşü diye yeniden adlandırılmaz. Exact CI açık.
+
+Operatörde `bubblewrap` yoktu. Debian'ın imzalı paket metadata'sıyla eşleşen
+`0.12.0-1~deb13u1` yalnız kullanıcı dizinine açıldı; sistem kurulumu, sudo veya servis/
+güvenlik ayarı değişmedi. Gerçek provider `inspect()` kendi namespace'inde
+`codex-cli 0.160.0`, `gpt-5.6-luna`, `max`, structured output desteğini doğruladı.
+Auth kopyalanmadı, model çağrısı0. Bu auth/kota veya üretim kapasite kanıtı değildir;
+canlıdaki kayıtlı CLI0.144.6 ile aynı sürüm olduğu iddia edilmez. Pilot içinde tek exact
+CLI sabitlenecek, iki karşılaştırma kolu aynı çalıştırıcıyı kullanacak.

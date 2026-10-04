@@ -2,6 +2,7 @@ import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ZodError } from "zod";
 import { atomicPrivateJson, hash, readPrivate } from "../../../scripts/contract-pilot/files";
 import {
   assertPilotWindow,
@@ -503,7 +504,7 @@ describe("pilot girdisi, A′ ve sabit kaynak kapıları", () => {
     const f = manifestFixture();
     expect(preparePilot(f.configBytes(), source, time).inputs).toHaveLength(18);
   });
-  it.each([time - 120_000, Date.parse("2026-10-17T19:50:00Z")])(
+  it.each([time - 120_000, Date.parse("2026-10-05T00:00:00Z"), Date.parse("2026-10-17T19:50:00Z")])(
     "izinli tarih dışını reddeder (%s)",
     (date) => {
       const f = manifestFixture();
@@ -709,7 +710,7 @@ describe("4 Ekim yetkili erken A′ kesiti", () => {
     const receipt = early();
     receipt[field] = field === "decision" ? "ACCEPT" : "changed";
     const f = config(receipt);
-    expect(() => preparePilot(f.bytes, source, now)).toThrow();
+    expect(() => preparePilot(f.bytes, source, now)).toThrow(ZodError);
   });
   it.each(["2026-10-04T19:38:00Z", "2026-10-04T19:41:00Z"])(
     "kesitten önce veya gelecekteki kararı reddeder: %s",
@@ -725,6 +726,24 @@ describe("4 Ekim yetkili erken A′ kesiti", () => {
       expect(() => preparePilot(f.bytes, source, time)).toThrow("PILOT_DATE_GATE_CLOSED");
     },
   );
+  it("erken makbuz 48 saat sonra pilot girişini açamaz", () => {
+    const f = config(early());
+    expect(() => preparePilot(f.bytes, source, Date.UTC(2026, 9, 6, 19, 38, 28, 147))).toThrow(
+      "PILOT_A_PRIME_RECEIPT_STALE",
+    );
+  });
+  it("ISO biçimli kararın parser sonucu finite değilse fail closed kalır", () => {
+    const f = config(early());
+    const parse = Date.parse;
+    const spy = vi
+      .spyOn(Date, "parse")
+      .mockImplementation((value) => (value === early().concludedAt ? NaN : parse(value)));
+    try {
+      expect(() => preparePilot(f.bytes, source, now)).toThrow("PILOT_A_PRIME_WINDOW_INVALID");
+    } finally {
+      spy.mockRestore();
+    }
+  });
   it("makbuz sonradan değişirse hash bağı kapanır", () => {
     const f = config(early());
     atomicPrivateJson(f.prepared.config.aPrimeReceiptFile, { ...early(), decision: "ACCEPT" });

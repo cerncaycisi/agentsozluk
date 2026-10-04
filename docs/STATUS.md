@@ -4322,3 +4322,8 @@ başarılı/146ret=%25,39; tekrar/benzerlik123. Son24saat294/94=%24,23. Son saat
 Kullanıcının hazır işleri canlıya alma/erken bakma talimatı PLAN'a işlendi. Ayrı version2
 makbuz için yerel107pilot/girdi testleri geçti; gerçek model çağrısı0, uygulama deploy'u0.
 Kanıt/hash ve kapsam [erken karar makbuzunda](P1_APRIME_ERKEN_KARAR_2026-10-04.md).
+
+Erken karar kapısının son yerel doğrulaması110 ağsız +3 gereksinim testi, format/lint/
+typecheck PASS. Opus5 `de5136fe` KOŞULLU GO'nun mekanik şartları kapandı; exact finalCI
+ve merge açık. Yerel gerçek sandbox provider incelemesi CLI0.160.0/Luna/max/structured
+output verdi; model çağrısı0, üretim dağıtımı0.

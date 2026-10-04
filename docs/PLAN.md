@@ -16,6 +16,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   19:38:28.146203 UTC**: 34 saat 21 dakika; 429 başarılı/146 ret (**%25,39**), retlerin
   123'ü tekrar/benzerlik. **INCONCLUSIVE erken değerlendirme**; ≥%30 iyileşme veya 72 saat
   kabulü iddiası yok. Canlı sürüm hâlâ `9bf3653`; bu karar tek başına deploy değildir.
+  Erken pilot makbuzu **6 Ekim 19:38:28.147 UTC'ye kadar** geçerlidir; bu bir bekleme
+  süresi değildir, kullanılabilirlik sonudur. Sonrasında eski kesitle yeni pilot başlatılmaz.
   [Erken karar ve kaynak makbuzu](P1_APRIME_ERKEN_KARAR_2026-10-04.md).
 - **Şimdiki sıra:** erken kararı pilot giriş kapısına açık ve hash bağlı olarak işle; güncel
   exact kaynakla P2/P3–P5 kısa kontrollerini yap; geçen/izinli sınırlı pilot paketini

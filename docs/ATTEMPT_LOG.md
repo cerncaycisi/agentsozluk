@@ -4535,3 +4535,20 @@ almadı; kullanıcı dağıtım yönlendirmesiyle taslak korunup önce pilot tak
 Bu testler gerçek büyük yedek restore'u değildir; gzip pin korunur.
 
 Yerel format/lint/typecheck ve 3 gereksinim testi de PASS. Opus/CI öncesi kod kontrolü tamam.
+
+## 4 Ekim 2026 — erken A′ kapısı, Opus ve yerel sandbox
+
+Opus5 exact `de5136fe7a4b5004935fc260b27fae4cb72cb2b7` için KOŞULLU GO;132s,
+actual modelUsage yalnız claude-opus-5. Finite tarih kontrolü,48 saat makbuz ömrü,
+eski v1 regresyon kanıtı koşulları kapandı. Son110 ağsız +3 gereksinim testi ve
+format/lint/typecheck PASS. İlk107 toplamı yeni13 testi zaten içeriyordu;120test
+iddiası yok. P2 aynı giriş işlevini kullanır. Gerçek pilot0, exact finalCI/merge açık.
+
+Yerel `bubblewrap` yokluğu apt metadata ile doğrulandı. Root kurulumu gerekmiyor:
+Debian trixie `0.12.0-1~deb13u1` kullanıcı dizinine açıldı. PaketSHA256
+`70aca4fa8daeacb677ec00e8063eb586f08ae3d94b1f11e684370b5524c43431`, binarySHA256
+`573236e5328ac2ebb08f59ae3a9805b4f8d12bdef14be8af4450d5463294985f`.
+Gerçek unshare-user/pid/ipc/uts probe ve provider inspect PASS; CLI0.160.0/Luna/max/
+structured output doğrulandı. Sudo, sistem ayarı veya kullanıcı görevleri değiştirilmedi.
+Auth kopyası/model çağrısı yok. Tekrarlama: kullanıcı-dizini araçla çözülen eksik paket
+için global namespace kısıtını kaldırma; version/help kontrolünü auth/kapasite kanıtı sayma.

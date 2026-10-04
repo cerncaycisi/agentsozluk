@@ -158,6 +158,11 @@ export function preparePilot(configBytes: string, sourceSha: string, now: number
 
 // 4 Ekim kullanıcı talimatı: biten paketleri 72 saat dolmasını bekletmeden yayımla.
 // Bu tek erken kesit başarı/72 saat kabulü değildir. Kanıt hash'i ve cohort sabittir.
+// Mikro saniyeli DB kesitini bir sonraki tam milisaniyeye yukarı yuvarla.
+const EARLY_WINDOW_END = Date.UTC(2026, 9, 4, 19, 38, 28, 147);
+const EARLY_REVIEW_EXPIRES = EARLY_WINDOW_END + 48 * 3_600_000;
+const COMPLETE_WINDOW_START = Date.UTC(2026, 9, 6, 10);
+const COHORT_START = Date.UTC(2026, 9, 3);
 const earlyReviewSchema = z
   .object({
     version: z.literal(2),
@@ -185,33 +190,29 @@ const completedReviewSchema = z
 
 export function assertPilotWindow(config: PilotConfig, sourceSha: string, now: number): void {
   if (sourceSha !== config.sourceSha) throw new Error("PILOT_SOURCE_CHANGED");
-  if (
-    !Number.isFinite(now) ||
-    now < Date.parse("2026-10-04T19:38:28.146203Z") ||
-    now >= AUTHORITY_END
-  )
+  if (!Number.isFinite(now) || now < EARLY_WINDOW_END || now >= AUTHORITY_END)
     throw new Error("PILOT_DATE_GATE_CLOSED");
+  privateDirectory(path.dirname(config.aPrimeReceiptFile));
   const receiptBytes = readPrivate(config.aPrimeReceiptFile);
   if (hash(receiptBytes) !== config.aPrimeReceiptSha256) throw new Error("PILOT_RECEIPT_CHANGED");
   const receipt = z
     .discriminatedUnion("kind", [completedReviewSchema, earlyReviewSchema])
     .parse(JSON.parse(receiptBytes));
-  if (receipt.kind === "A_PRIME_DECISION" && now < Date.parse("2026-10-06T10:00:00Z"))
+  if (receipt.kind === "A_PRIME_DECISION" && now < COMPLETE_WINDOW_START)
     throw new Error("PILOT_DATE_GATE_CLOSED");
-  if (
-    receipt.productionSha !== config.aPrimeProductionSha ||
-    Date.parse(receipt.resumedAt) < Date.parse("2026-10-03T00:00:00Z")
-  )
-    throw new Error("PILOT_A_PRIME_COHORT_CHANGED");
-  if (
-    Date.parse(receipt.concludedAt) < Date.parse(receipt.windowEndedAt) ||
-    Date.parse(receipt.concludedAt) > now
-  )
+  const resumedAt = Date.parse(receipt.resumedAt);
+  const endedAt =
+    receipt.kind === "A_PRIME_EARLY_REVIEW" ? EARLY_WINDOW_END : Date.parse(receipt.windowEndedAt);
+  const concludedAt = Date.parse(receipt.concludedAt);
+  if (![resumedAt, endedAt, concludedAt].every(Number.isFinite))
     throw new Error("PILOT_A_PRIME_WINDOW_INVALID");
-  if (receipt.kind === "A_PRIME_DECISION") {
-    if (Date.parse(receipt.windowEndedAt) - Date.parse(receipt.resumedAt) < 72 * 3_600_000)
-      throw new Error("PILOT_A_PRIME_WINDOW_INVALID");
-  }
+  if (receipt.productionSha !== config.aPrimeProductionSha || resumedAt < COHORT_START)
+    throw new Error("PILOT_A_PRIME_COHORT_CHANGED");
+  if (concludedAt < endedAt || concludedAt > now) throw new Error("PILOT_A_PRIME_WINDOW_INVALID");
+  if (receipt.kind === "A_PRIME_DECISION" && endedAt - resumedAt < 72 * 3_600_000)
+    throw new Error("PILOT_A_PRIME_WINDOW_INVALID");
+  if (receipt.kind === "A_PRIME_EARLY_REVIEW" && now >= EARLY_REVIEW_EXPIRES)
+    throw new Error("PILOT_A_PRIME_RECEIPT_STALE");
   // Erken kesit yalnız takvim beklemesini kapatır. Kaynak, çağrı/süre, kör değerlendirme,
   // saklı set, dağıtım ve P7 kabul kapıları üst katmanlarda aynı kalır.
 }
