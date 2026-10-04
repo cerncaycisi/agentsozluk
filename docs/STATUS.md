@@ -7,6 +7,19 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — aktivasyon kod teslimi ve O5 kesinti düzeltmesi
+
+- #321 final `0bf60db6f89b780d93012e634c0bcd6157d32172`, exact CI `37210442983`
+  **7/7 PASS**; squash main `0f073cc459168a05b7fd1e8fb969f976235d4ca4`.
+  Fresh head/base/check/review/CLEAN ve uzak SHA/test edilen ağaç eşliği doğrulandı.
+  İkinci gerçek Opus 5 `dbe80e6` KOŞULLU GO; tek B1 makbuz koşulu final belgede
+  kapandı. 555 ms uçtan uca yerel HTTP, TX aktif süresi ölçülmedi. Üretim değişmedi.
+- #322 ilk `6073518`: 10 PG16/10 birim-UI ve format/lint/typecheck PASS.
+  Opus 5 KOŞULLU GO; yeniden giriş guard'ı, batch yetki kilidi/süre daralması belgesi
+  eklendi. Son 11 PG16 PASS: 100 sentetik açık hedef varsayılan dış 5 s transaction'da
+  başarı; çağrı toplamı 2.314 ms. Üretim kapasitesi/500 hedef kabulü sayılmadı.
+  Rebase sonrası `0c2d25b`, ikinci hakem ve final exact CI açık; canlı kullanım açık.
+
 ## 2026-10-04 13:29 UTC — kaynak bankası teslimi ve v2 geçiş provası
 
 - #317 final `9945807eadd7bd5ed4e44a1f548cc72ae0561860`, CI `37205037707` 7/7;
@@ -4070,3 +4083,19 @@ Bu açık etiketle B1 makbuz koşulu kapandı; kaynak kodu değişmedi. Kullanı
 `_count`, dar trigger tipi ve ek baseline-stale sınır testi önerileri bloklayıcı
 olmadı; bu tur kapsamı büyütülmedi. Final exact CI/merge ve canlı kapılar açık.
 Tekrarlama: uçtan uca yerel süreyi TX telemetrisi veya üretim kapasitesi sayma.
+
+### 4 Ekim — O5 B3 ikinci görüşün mekanik koşulları
+
+Gerçek Opus 5 `0c2d25b` **KOŞULLU GO**. Gösterdiği iki özet cümlesi de batch boyunca
+shared yetki kilidiyle düzeltildi; guard'ın TransactionClient nesne kimliği bağımlılığı
+ve mevcut tek çağrı yolu belgelendi. REENTRY sabit güvenli error koduyla loglanır;
+kişisel veri/exception gövdesi yok. Gerçek PG16 paralel giriş ve log payload testi geçti.
+100 hedeften 500 için kesin başarısızlık çıkarımı kabul edilmedi; API süre garantisi
+vermez ve timeout sonrası pencere/≤100 açık hedefle daraltmayı açıklar.
+
+Son **12 PG16 PASS**, diğer127 senaryo odaklı koşuda atlandı. 100 sentetik hedefin
+son çağrı toplamı **2.480 ms**; mevcut dış5s tavanında başarı, TX aktif süre veya
+üretim kapasitesi kanıtı değil. Önceki10 birim-UI PASS. Tam exact CI/merge ve canlı
+kullanım henüz açık. Koşullu hakem görüşü koşulsuz GO olarak yeniden adlandırılmadı.
+Tekrarlama: sentetik100ölçümünü doğrusal500performans kanıtı sayma; guard teşhisinde
+kimlik/içerik/ham hata loglama.

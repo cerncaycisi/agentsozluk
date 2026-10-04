@@ -256,11 +256,11 @@ Canlıya dağıtılmadı. B3 görünürlük sınırı ve diğer toplu komut kaps
 `842e67a` kaynak envanteri; yeni üretim kullanımı veya ayrı yeni test koşusu değildir.
 Agent yönetimindeki toplu rota grupları aşağıdaki şekilde ayrıldı:
 
-| Grup                                                              | Kapsam kararı ve mevcut kanıt                                                                                                                                         |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agent-runs/bulk/preview`, `agent-runs/bulk`                      | Yeni iş/maliyet üretir; #309 signed preview ve durum/süre/CAS kapısı gerekli ve hazır.                                                                                |
-| Global ve `[agentId]` `runs/cancel-pending`, `runs/graceful-stop` | Acil risk azaltır; yeni preview şartı eklenmez. Fresh admin ardından profile→run/lease kilidi ve güncel uygunluk tekrar okuması; sonuç/audit/outbox aynı transaction. |
-| `agent-content/bulk-hide`, `agent-content/bulk-restore`           | #314 sınır/NO_MATCH/seçim bağlamı ve her entry'de taze yetki. İşlem başındaki seçimin sınırı UI'da görünür; sonradan gelen entry dahil değildir.                      |
+| Grup                                                              | Kapsam kararı ve mevcut kanıt                                                                                                                                                                                  |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent-runs/bulk/preview`, `agent-runs/bulk`                      | Yeni iş/maliyet üretir; #309 signed preview ve durum/süre/CAS kapısı gerekli ve hazır.                                                                                                                         |
+| Global ve `[agentId]` `runs/cancel-pending`, `runs/graceful-stop` | Acil risk azaltır; yeni preview şartı eklenmez. Fresh admin ardından profile→run/lease kilidi ve güncel uygunluk tekrar okuması; sonuç/audit/outbox aynı transaction.                                          |
+| `agent-content/bulk-hide`, `agent-content/bulk-restore`           | #314 sınır/NO_MATCH/seçim bağlamı; entry başına principal okuması. #322'de shared yetki kilidi bütün batch boyunca tutulur. İşlem başındaki seçimin sınırı UI'da görünür; sonradan gelen entry dahil değildir. |
 
 `repository/manual-runs.ts:listBulkRunCommandCandidates` hedef listesini `take` ile
 kesmiyor; yalnız son audit ID dizisi sınırlı ve `omittedRunIdCount` açık. Global UI iki
@@ -273,3 +273,105 @@ Kapsam/envanter kararı tamam. **O5 kapanmadı:** canlı dağıtım/kullanım ma
 #314 B3 (istek kesilince tekil kayıtlar varken toplu makbuzun eksik kalması) görünürlük/
 uzlaştırma sınırı açık. Genel ayar CAS ve #312 profil CAS, yeni iş önizlemesinin yerine
 geçmez; ayrıca acil durdurmaya ek kapı haline getirilmez.
+
+## Toplu içerik makbuzu ile etkilerin atomik kaydı — 4 Ekim
+
+B3 kaynağı doğrulandı: idempotency anahtarsız çağrıda her entry ayrı transaction'da,
+toplu makbuz ise en sonda yazılıyordu. İstek son makbuzdan önce kesilirse tekil etkiler
+kalabiliyordu. İdempotent HTTP yolu zaten tek dış transaction kullanıyordu; fakat
+entry yazıldıktan sonraki yakalanan AppError o entry'nin etkisini geri almıyordu.
+
+Yerel düzeltmede seçim, entry etkileri ve toplu moderation/audit/outbox/runtime makbuzu
+tek transaction'dadır. Entry başına sabit adlı, sıralı savepoint; AppError veya SQL
+hatasında o entry'nin tüm yazılarını geri alır ve PostgreSQL aborted durumunu temizler.
+Diğer entry'ler PARTIAL ile tamamlanabilir. Son toplu makbuz yazılamaz veya transaction
+sona ermeden bağlantı kesilirse tüm etkiler geri alınır. Commit edilmiş ama yanıtı
+ulaşmamış istek geri alınmış sayılmaz; mevcut idempotency tekrar sözleşmesi geçerlidir.
+
+Mevcut 500 eşleşme/100 açık hedef sınırı, NO_MATCH, seçim zamanı, entry başına principal okuması/provenance/topic-entry kilidi korunur.
+Shared admin kilidi batch boyunca tutulur; rol/statü iptali batch bitişini bekler. Genel transaction tavanı doğrudan 15 s,
+idempotent HTTP'de 5 s; bu paket artırmaz. Tam 500 hedefin her yükte süresine sığdığı
+iddiası yok; timeout güvenli biçimde bütün batch'i reddeder, küçük seçimle denenebilir.
+Migration, yeni kuyruk veya arka planda devam mekanizması eklenmedi.
+
+İlk **7 PG16 testi PASS**: son runtime makbuzunda enjekte edilmiş SQL hatası hem doğrudan
+hem dış transaction'da entry/counter/moderation/audit/outbox/geri bildirim/trash etkilerini
+geri aldı. Yazı sonrası AppError FAILED kaydını doğru bıraktı; üç entry'nin ortasındaki
+SQL hatası yalnız o entry'yi geri aldı, sonraki entry işlendi ve iki başarı/tek hata PARTIAL
+makbuzu yazıldı. Mevcut NO_MATCH, hide/restore ve provenance PARTIAL regresyonları geçti.
+Hakem/exact CI ve canlı kullanım henüz açık; bu yerel kanıt üretim kesintisi provası değildir.
+
+Son odaklı koşu **10 PG16 PASS** (önceki yedi dahil): 501 taşma reddi yeniden geçti.
+Gerçek HTTP hem anahtarsız hem idempotency anahtarlı çağrıda toplu makbuz SQL hatasıyla
+500 verdi ve entry ACTIVE kaldı. Hata kaldırıldıktan sonra aynı istek 200 döndü;
+anahtarlı tekrar ikinci gizleme veya ikinci toplu audit üretmedi. Üretim bağlantısı yok.
+
+### O5 B3 bağımsız hakem ve koşulların uzlaştırılması
+
+Gerçek `claude-opus-5`, exact `607351838d7b3f6a9c54093bee1342de792a8090`:
+**KOŞULLU GO**. Çekirdek transaction/savepoint düzeltmesini doğru buldu. Koşullar:
+
+- Aynı transaction'da yardımcıya yeniden giriş veya paralel çağrı açıkça reddedilir;
+  süreç içi WeakSet her başarı/hata çıkışında temizlenir. İç içe giriş kendi callback'ini
+  çalıştırmadan hata verir. Genel SQL veya değişken savepoint adı eklenmedi.
+- **Yetki serileşmesi:** her entry'de principal tekrar okunur ama admin shared kullanıcı
+  kilidi batch'in sonuna kadar tutulur. Exclusive rol/statü iptali bekler. Bu iptalin
+  entry aralarında uygulanacağı anlamına gelmez; anahtarsız yolda önceki entry arası
+  pencere kalktı, anahtarlı dış transaction yolunda zaten bu sınır vardı. Eski “taze
+  yetki” ifadeleri iptali batch ortasında geçirebilme garantisi değildir.
+- **Süre daralması açık:** anahtarsız yolun entry başına 15 s bütçesi artık tüm batch
+  için 15 s'dir. Anahtarlı yol zaten toplam 5 s idi. Timeout'ta makbuzsuz kısmi commit
+  yerine bütün işlem geri alınır. 500 sayısal sınır her yükte başarılı 500 yazı vaadi değil.
+- Anahtarsız commit sonrası tekrar gizlenmiş entry için ENTRY_NOT_EDITABLE verebilir;
+  ilk yanıtı replay etmez. API belirtimi bu ayrımı ve anahtarlı tekrar yolunu açıklar.
+- Hata kodlarının PARTIAL gövdesinde görünmesi mevcut sözleşmedir; bu düzeltme yeni
+  altyapı alarmı/telemetri vaadi değildir. Hakemin bu görünürlük notu yeni blok sayılmadı.
+
+Exact tam CI henüz bekleniyor; filtreli testin atladığı runtime senaryoları tam CI
+sonucu olmadan geçti sayılmaz. Yerel ek guard/hacim kanıtı aşağıda ayrı kaydedilir.
+
+Son ek doğrulama **11 PG16 PASS** (önceki on dahil). İç içe yardımcının callback'i
+çalışmadı, dış öğedeki değişiklik geri alındı ve aynı transaction'daki sonraki öğe commit
+edildi. Aynı 501 kayıtlık sentetik havuzdan 100 açık hedefin gizlenmesi varsayılan **5 s**
+dış Prisma transaction'ında başarılı oldu; çağrı toplamı **2.314 ms**. Fixture tek başlık
+ve yerel DB kullanır; TX aktif süre telemetrisi, üretim büyüklüğü veya 500 hedef performans
+kanıtı değildir. Tavanlar değiştirilmedi. API belgesi anahtarsız N×15 s → toplam15 s
+ve batch boyunca yetki kilidi farkını açıkça kaydeder.
+
+### İkinci Opus görüşü ve kalan koşullar
+
+Gerçek `claude-opus-5`, exact `0c2d25b08a190eb745c105687943197ca4020cb3`:
+**KOŞULLU GO**. Yetki serileşmesi açıklaması artık yalnız dipnotta değil, gösterdiği
+kapsam tablosu ve sözleşme satırlarında da düzeltildi. Yardımcının guard'ı aynı
+`TransactionClient` **nesne kimliğine** bağlıdır; uygulama mevcut nesneyi doğrudan
+aktarır. Farklı proxy nesneleri veya yardımcı dışı keyfi SQL için koruma iddiası yoktur;
+mevcut kaynakta bu adı kullanan başka SQL/çağrı yolu bulunmadı. Böyle bir genişleme bu
+sözleşmeye uyarlanmalıdır. Girdiyle seçilebilen bir savepoint adı/API yolu açılmadı.
+
+REENTRY ihlali yalnız sabit güvenli kod ve sabit açıklama ile error log'una yazılır;
+kimlik, içerik veya exception gövdesi loglanmaz. Kullanıcıya mevcut güvenli item hata
+biçimi korunur; yeni genel alarm/telemetri sistemi eklenmedi. Paralel kullanım ve log
+payload'ı ayrı gerçek PG16 testine alındı; ilk işlem sürerken sonraki iki giriş reddedilir,
+ilk ve son sıralı işlemler tamamlanır.
+
+100 yerel hedefin süresini beşle çarparak “500 kesin tamamlanamaz” demek ölçüm değildir;
+hakemin bu kesinlik iddiası kabul edilmedi. API, büyük seçimde timeout mümkün olduğunu,
+aynı büyük seçimi sürekli tekrarlamak yerine daha dar pencere veya ≤100 açık hedefe
+geçileceğini açıklar. 500 için performans kabulü yazılmadı. Kalan mekanik kapı final
+exact tam CI'dır; koşullu görüş yeni koşulsuz GO olarak yeniden adlandırılmaz.
+
+### 4 Ekim — O5 B3 ikinci görüşün mekanik koşulları
+
+Gerçek Opus 5 `0c2d25b` **KOŞULLU GO**. Gösterdiği iki özet cümlesi de batch boyunca
+shared yetki kilidiyle düzeltildi; guard'ın TransactionClient nesne kimliği bağımlılığı
+ve mevcut tek çağrı yolu belgelendi. REENTRY sabit güvenli error koduyla loglanır;
+kişisel veri/exception gövdesi yok. Gerçek PG16 paralel giriş ve log payload testi geçti.
+100 hedeften 500 için kesin başarısızlık çıkarımı kabul edilmedi; API süre garantisi
+vermez ve timeout sonrası pencere/≤100 açık hedefle daraltmayı açıklar.
+
+Son **12 PG16 PASS**, diğer127 senaryo odaklı koşuda atlandı. 100 sentetik hedefin
+son çağrı toplamı **2.480 ms**; mevcut dış5s tavanında başarı, TX aktif süre veya
+üretim kapasitesi kanıtı değil. Önceki10 birim-UI PASS. Tam exact CI/merge ve canlı
+kullanım henüz açık. Koşullu hakem görüşü koşulsuz GO olarak yeniden adlandırılmadı.
+Tekrarlama: sentetik100ölçümünü doğrusal500performans kanıtı sayma; guard teşhisinde
+kimlik/içerik/ham hata loglama.

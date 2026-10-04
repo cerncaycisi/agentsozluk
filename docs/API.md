@@ -569,13 +569,30 @@ gövdesi alır. Bu hat anayasal Gammaz kuyruğunun dışında kalan admin-only a
 Bir run veya agent zaman penceresi 500'den fazla kayda eşleşirse **422 VALIDATION_ERROR**
 döner; hiçbir entry işlenmez. İlk 500 kaydı tamamını temsil ediyor gibi işlemek yoktur.
 Daha dar pencere veya en fazla 100 açık `entryIds` kullanılır. Sınır içindeki çağrılarda
-mevcut kayıt başına yetki denetimi ve kısmi sonuç sözleşmesi sürer.
+kayıt başına yetki okuması ve kısmi sonuç sözleşmesi sürer. Adminin shared kullanıcı
+kilidi bütün batch boyunca tutulur; rol/statü iptali bu sınırlı transaction'ın bitişini
+bekler. Önceden anahtarsız çağrıda iki entry arasına girebilen iptal artık batch sonrasında
+uygulanır; idempotent dış transaction yolunda bu seri sıra zaten vardı.
 Run/window seçimi boşsa `NO_MATCH`, sıfır seçili ve boş sonuç dizileri döner; içerik veya
 toplu moderasyon makbuzu yazılmaz. HTTP idempotency/rate-limit kaydı bu içerik-no-op
 sözleşmesinin dışındadır. Sonuç ve toplu makbuz `selection.resolvedAt` (ISO çözümleme
 bitiş zamanı) ile `selection.runStatus` (tek run seçiminde okunan durum, diğerinde/null
 veya eşleşme yokken `null`) taşır. Bu MVCC snapshot ID'si/gelecekteki içerik garantisi
 değildir; sonradan üretilen içerikler için yeni seçim gerekir.
+Başarılı entry etkileri ve toplu sonuç makbuzu aynı transaction'da commit edilir;
+HTTP idempotency anahtarı bulunmasa da bu sınır korunur. Tek entry'de hata olursa
+savepoint o entry'nin sayaç/audit/geri bildirim dahil bütün yan etkilerini geri alır;
+diğer entry'ler `PARTIAL` sonucuyla tamamlanabilir. Kesinti, transaction timeout'u
+veya toplu makbuz yazım hatası commit öncesindeyse bütün toplu işlem geri alınır.
+Commit sonrası yanıt bağlantısının kopması, işlemin geri alındığı anlamına gelmez;
+aynı idempotency anahtarıyla tekrar mevcut sonucu döndürür. Yeni kalıcı iş kuyruğu,
+istekler arası otomatik devam veya daha uzun transaction süresi eklenmedi. Anahtarsız
+çağrıda önceki entry başına 15 saniyelik bütçe kalktı; artık tüm batch için 15 saniye
+geçerlidir. Anahtarlı HTTP yolu zaten tüm batch için 5 saniyeydi. Anahtarsız commit
+sonrası tekrar, gizlenmiş entry'leri `ENTRY_NOT_EDITABLE` ile FAILED/PARTIAL gösterebilir;
+ilk sonucun replay'i değildir. Büyük run/window seçimi transaction süresine sığmazsa
+aynı büyük seçimi tekrarlamak ilerleme garantisi vermez; daha dar zaman penceresi veya
+≤100 açık `entryIds` ile bölünür. 500 hedef için süre garantisi verilmez.
 
 ### Runtime kontrolü ve ölçüm
 

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { logger } from "@/lib/logging/logger";
 import { agentContentBulkTargetLimit } from "@/modules/moderation/domain/agent-content-limits";
 import type { AgentContentBulkActionInput } from "@/modules/moderation/validation/schemas";
 
@@ -213,4 +214,38 @@ export function resolveAgentContentRecords(
       run: { select: { runStatus: true } },
     },
   });
+}
+
+// Aynı transaction'da yardımcı yalnız sıralı kullanılabilir; iç içe/paralel giriş reddedilir.
+const activeAgentContentSavepoints = new WeakSet<Prisma.TransactionClient>();
+
+/** Sıralı bulk döngüsünde tek entry'nin yazılarını, hata halinde tamamıyla geri alır. */
+export async function withAgentContentItemSavepoint<T>(
+  transaction: Prisma.TransactionClient,
+  work: () => Promise<T>,
+): Promise<T> {
+  if (activeAgentContentSavepoints.has(transaction)) {
+    logger.error(
+      { code: "AGENT_CONTENT_SAVEPOINT_REENTRY" },
+      "Toplu içerik savepoint yeniden giriş ihlali.",
+    );
+    throw new Error("AGENT_CONTENT_SAVEPOINT_REENTRY");
+  }
+  activeAgentContentSavepoints.add(transaction);
+  try {
+    await transaction.$executeRaw`SAVEPOINT agent_content_bulk_item`;
+    try {
+      const result = await work();
+      await transaction.$executeRaw`RELEASE SAVEPOINT agent_content_bulk_item`;
+      return result;
+    } catch (error) {
+      // SQL hatasının transaction'ı aborted bırakmasını da temizler. Bağlantı/timeout
+      // yüzünden rollback yapılamazsa üst transaction toplu makbuzla birlikte geri alınır.
+      await transaction.$executeRaw`ROLLBACK TO SAVEPOINT agent_content_bulk_item`;
+      await transaction.$executeRaw`RELEASE SAVEPOINT agent_content_bulk_item`;
+      throw error;
+    }
+  } finally {
+    activeAgentContentSavepoints.delete(transaction);
+  }
 }
