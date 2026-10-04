@@ -7,6 +7,15 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — P1 migration profili ana dalda
+
+- #308 final `1580273cc5ef54f3d47a581c4d09751c4a50c755`, CI `37182105221` 7/7;
+  main `9ead5a0746e3af7e94622670c76efc28254fd362`, uzak SHA/ağaç eşitliği doğrulandı.
+- Gerçek imaj içi yürütücü ayrı DB'de 36 migration uyguladı, ana probe DB geçmişi
+  değişmedi. Opus koşulları kaynak/testle kapandı; canlı uygulama hâlâ `9bf3653`.
+- O5 toplu koşu bağlama ilk 26 / son 45 test ve ayrı iki kilit senaryosunda geçti;
+  bağımsız hakem/CI henüz açık. Mevcut iki özel profile stash'i korunuyor.
+
 ## 2026-10-04 — ret alarmı ve migration hazırlık doğrulaması
 
 - 06:09 UTC pinli salt okunur canlı kesit: son bir saatte 17 SUCCEEDED / 6 PARTIAL;

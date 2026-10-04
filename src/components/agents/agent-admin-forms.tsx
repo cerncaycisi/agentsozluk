@@ -316,6 +316,26 @@ interface RunPreview {
   provocationOverride: boolean;
 }
 
+interface BulkRunPreview extends RunPreview {
+  previewId: string;
+  previewToken: string;
+  previewExpiresAt: string;
+  settingsVersion: number;
+  targets: Array<{ id: string; username: string; displayName: string; personaVersion: number }>;
+  operation: {
+    runType: string;
+    priority: string;
+    availableAt: string | null;
+    allowTopicCreation: boolean;
+    allowVoting: boolean;
+    allowFollowing: boolean;
+    allowSourceReading: boolean;
+    provocationOverride: boolean;
+    hasAdminInstruction: boolean;
+  };
+  rollbackSummary: string;
+}
+
 const initialRunConfig: RunConfig = {
   runType: "NORMAL_WAKE",
   allowTopicCreation: true,
@@ -643,7 +663,7 @@ export function BulkAgentRunForm({
   const [allActive, setAllActive] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
   const [config, setConfig] = useState<RunConfig>(initialRunConfig);
-  const [preview, setPreview] = useState<RunPreview>();
+  const [preview, setPreview] = useState<BulkRunPreview>();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
   const invalidate = () => {
@@ -661,7 +681,7 @@ export function BulkAgentRunForm({
         try {
           if (!preview) {
             setPreview(
-              await apiRequest<RunPreview>("/api/v1/admin/agent-runs/bulk/preview", {
+              await apiRequest<BulkRunPreview>("/api/v1/admin/agent-runs/bulk/preview", {
                 method: "POST",
                 body: { ...selection, run: runRequest(config) },
                 csrf: true,
@@ -674,16 +694,25 @@ export function BulkAgentRunForm({
               body: {
                 ...selection,
                 run: runRequest(config),
+                previewToken: preview.previewToken,
                 confirmation: allActive ? "RUN_ALL_ACTIVE_AGENTS" : "RUN_SELECTED_AGENTS",
               },
               csrf: true,
-              idempotency: true,
+              idempotency: `bulk-run:${preview.previewId}`,
             });
             setPreview(undefined);
             setMessage(successMessage(`${result.count} run kuyruğa alındı.`));
             router.refresh();
           }
         } catch (submitError) {
+          if (
+            submitError instanceof ClientApiError &&
+            (submitError.code.startsWith("BULK_PREVIEW_") ||
+              ["AGENT_NOT_FOUND", "AGENT_LIFECYCLE_INVALID", "AGENT_RUNTIME_NOT_READY"].includes(
+                submitError.code,
+              ))
+          )
+            setPreview(undefined);
           setMessage(errorMessage(submitError));
         } finally {
           setPending(false);
@@ -696,47 +725,91 @@ export function BulkAgentRunForm({
           Önizleme ve ikinci açık onay olmadan kuyruk değişmez.
         </p>
       </div>
-      <label className="flex items-center gap-2 text-sm font-medium">
-        <input
-          type="checkbox"
-          checked={allActive}
-          onChange={(event) => {
-            setAllActive(event.target.checked);
+      <fieldset disabled={pending} className="space-y-4">
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={allActive}
+            onChange={(event) => {
+              setAllActive(event.target.checked);
+              invalidate();
+            }}
+          />
+          Tüm aktif agent’lar
+        </label>
+        {!allActive ? (
+          <fieldset className="grid max-h-52 gap-2 overflow-auto rounded-lg border p-3 sm:grid-cols-2">
+            <legend className="px-2 text-sm font-medium">Agent seçimi</legend>
+            {agents.map((agent) => (
+              <label key={agent.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(agent.id)}
+                  onChange={(event) => {
+                    setSelected((current) =>
+                      event.target.checked
+                        ? [...current, agent.id]
+                        : current.filter((id) => id !== agent.id),
+                    );
+                    invalidate();
+                  }}
+                />
+                {agent.user.displayName} · @{agent.user.username}
+              </label>
+            ))}
+          </fieldset>
+        ) : null}
+        <RunConfigFields
+          config={config}
+          update={(patch) => {
+            setConfig((current) => ({ ...current, ...patch }));
             invalidate();
           }}
         />
-        Tüm aktif agent’lar
-      </label>
-      {!allActive ? (
-        <fieldset className="grid max-h-52 gap-2 overflow-auto rounded-lg border p-3 sm:grid-cols-2">
-          <legend className="px-2 text-sm font-medium">Agent seçimi</legend>
-          {agents.map((agent) => (
-            <label key={agent.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={selected.includes(agent.id)}
-                onChange={(event) => {
-                  setSelected((current) =>
-                    event.target.checked
-                      ? [...current, agent.id]
-                      : current.filter((id) => id !== agent.id),
-                  );
-                  invalidate();
-                }}
-              />
-              {agent.user.displayName} · @{agent.user.username}
-            </label>
-          ))}
-        </fieldset>
+      </fieldset>
+      {preview ? (
+        <div className="space-y-3" aria-label="Toplu işlem önizlemesi">
+          <PreviewCard preview={preview} />
+          <div className="rounded-lg border p-4 text-sm">
+            <p>
+              {preview.operation.runType} ·{" "}
+              {preview.operation.priority === "EMERGENCY" ? "Acil" : "Normal"} öncelik · ayar sürümü{" "}
+              {preview.settingsVersion}
+            </p>
+            <p>
+              Başlangıç:{" "}
+              {preview.operation.availableAt
+                ? new Date(preview.operation.availableAt).toLocaleString("tr-TR")
+                : "Kuyruğa alındığında"}
+            </p>
+            <p>
+              Başlık: {preview.operation.allowTopicCreation ? "açık" : "kapalı"} · oy:{" "}
+              {preview.operation.allowVoting ? "açık" : "kapalı"} · takip:{" "}
+              {preview.operation.allowFollowing ? "açık" : "kapalı"} · kaynak okuma:{" "}
+              {preview.operation.allowSourceReading ? "açık" : "kapalı"}
+            </p>
+            <p>
+              Provokasyon istisnası: {preview.operation.provocationOverride ? "açık" : "kapalı"} ·
+              yönetici yönlendirmesi: {preview.operation.hasAdminInstruction ? "var" : "yok"}
+            </p>
+            <ul
+              className="my-3 max-h-48 list-disc overflow-auto pl-5"
+              aria-label="İşlemdeki yazarlar"
+            >
+              {preview.targets.map((target) => (
+                <li key={target.id}>
+                  {target.displayName} · @{target.username} · persona v{target.personaVersion}
+                </li>
+              ))}
+            </ul>
+            <p>
+              Önizleme {new Date(preview.previewExpiresAt).toLocaleTimeString("tr-TR")} saatine
+              kadar geçerli. Yazar veya ayar değişirse yeniden önizleme gerekir.
+            </p>
+            <p className="mt-2">Geri alma: {preview.rollbackSummary}</p>
+          </div>
+        </div>
       ) : null}
-      <RunConfigFields
-        config={config}
-        update={(patch) => {
-          setConfig((current) => ({ ...current, ...patch }));
-          invalidate();
-        }}
-      />
-      {preview ? <PreviewCard preview={preview} /> : null}
       {message ? <p className="text-sm">{message}</p> : null}
       <button
         disabled={pending || (!allActive && selected.length === 0)}

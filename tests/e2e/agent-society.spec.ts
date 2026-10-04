@@ -334,24 +334,31 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
 
   test("M2-E2E-013 bulk run and capacity preview", async ({ page }) => {
     await login(page);
-    const selection = {
-      agentIds: [agentProfileId],
-      run: { runType: "DRY_RUN", priority: "NORMAL" },
-    };
-    const preview = await browserApi<{ runCount: number; concurrency: number }>(
-      page,
-      "POST",
-      "/api/v1/admin/agent-runs/bulk/preview",
-      selection,
+    await page.goto("/moderasyon/agentlar");
+    const form = page.locator("form").filter({
+      has: page.getByRole("heading", { name: "Toplu şimdi çalıştır", exact: true }),
+    });
+    await form.getByLabel("Tüm aktif agent’lar").uncheck();
+    await form.getByRole("checkbox", { name: new RegExp(`@${agentUsername}`, "u") }).check();
+    await form.getByLabel("Run türü").selectOption("DRY_RUN");
+    await form.getByRole("button", { name: "Kapasite önizle" }).click();
+    const preview = form.getByLabel("Toplu işlem önizlemesi");
+    await expect(preview).toContainText("1 çalışma eklenecek");
+    await expect(preview).toContainText(`@${agentUsername}`);
+    await expect(preview).toContainText("persona v");
+    await expect(preview).toContainText(
+      "yayımlanan içerik ve tamamlanmış eylemler otomatik geri alınmaz",
     );
-    expect(preview).toMatchObject({ runCount: 1, concurrency: 1 });
-    const queued = await browserApi<{ count: number }>(
-      page,
-      "POST",
-      "/api/v1/admin/agent-runs/bulk",
-      { ...selection, confirmation: "RUN_SELECTED_AGENTS" },
+    const queuedResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/v1/admin/agent-runs/bulk") &&
+        response.request().method() === "POST",
     );
-    expect(queued.count).toBe(1);
+    await form.getByRole("button", { name: "Açık onayla ve kuyruğa al" }).click();
+    const queued = await queuedResponse;
+    expect(queued.status()).toBe(200);
+    expect((await queued.json()).data.count).toBe(1);
+    await expect(form.getByText("1 run kuyruğa alındı.", { exact: true })).toBeVisible();
   });
 
   test("M2-E2E-014 pause and resume", async ({ page }) => {

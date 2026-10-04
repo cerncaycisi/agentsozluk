@@ -3489,7 +3489,7 @@ components:
     BulkAgentRunInput:
       type: object
       additionalProperties: false
-      required: [run, confirmation]
+      required: [run, confirmation, previewToken]
       properties:
         allActive: { type: boolean, default: false }
         agentIds:
@@ -3502,6 +3502,10 @@ components:
           }
         run: { $ref: "#/components/schemas/ManualAgentRunInput" }
         confirmation: { type: string, enum: [RUN_ALL_ACTIVE_AGENTS, RUN_SELECTED_AGENTS] }
+        previewToken:
+          type: string
+          maxLength: 256
+          description: Aynı yöneticinin en fazla 10 dakika önce aldığı, hedef/payload/sürüm bağlı tek kullanımlık önizleme makbuzu.
       oneOf:
         - required: [agentIds]
           properties:

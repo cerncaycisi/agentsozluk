@@ -19,6 +19,8 @@ import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
   authenticateRuntimeRequest,
   bulkAgentRunSchema,
+  bulkAgentRunPreviewSchema,
+  previewBulkAgentRun,
   cancelAllPendingWriteAgentRuns,
   cancelAgentRun,
   cancelPendingAgentRunsSchema,
@@ -2639,7 +2641,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       where: { id: fixture.runs[0]!.id },
       data: { runStatus: "CANCELLED", cancelRequestedAt: new Date(), finishedAt: new Date() },
     });
-    const bulkInput = bulkAgentRunSchema.parse({
+    const bulkSelection = {
       allActive: true,
       run: {
         runType: "NORMAL_WAKE",
@@ -2650,7 +2652,16 @@ describe("internal agent runtime API with PostgreSQL", () => {
         provocationOverride: false,
         priority: "NORMAL",
       },
+    };
+    const bulkPreview = await previewBulkAgentRun(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      bulkAgentRunPreviewSchema.parse(bulkSelection),
+    );
+    const bulkInput = bulkAgentRunSchema.parse({
+      ...bulkSelection,
       confirmation: "RUN_ALL_ACTIVE_AGENTS",
+      previewToken: bulkPreview.previewToken,
     });
     let enterCreation!: () => void;
     const creationEntered = new Promise<void>((resolve) => {
@@ -2721,7 +2732,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       where: { id: fixture.runs[0]!.id },
       data: { runStatus: "CANCELLED", cancelRequestedAt: new Date(), finishedAt: new Date() },
     });
-    const bulkInput = bulkAgentRunSchema.parse({
+    const bulkSelection = {
       allActive: false,
       agentIds: [agentProfileId],
       run: {
@@ -2733,7 +2744,16 @@ describe("internal agent runtime API with PostgreSQL", () => {
         provocationOverride: false,
         priority: "NORMAL",
       },
+    };
+    const bulkPreview = await previewBulkAgentRun(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      bulkAgentRunPreviewSchema.parse(bulkSelection),
+    );
+    const bulkInput = bulkAgentRunSchema.parse({
+      ...bulkSelection,
       confirmation: "RUN_SELECTED_AGENTS",
+      previewToken: bulkPreview.previewToken,
     });
     let enterPause!: () => void;
     const pauseEntered = new Promise<void>((resolve) => {

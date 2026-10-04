@@ -14,6 +14,17 @@ describe("canonical request hashing", () => {
     expect(canonicalRequestHash({ value: 1 })).not.toBe(canonicalRequestHash({ value: -1 }));
   });
 
+  it("preserves parsed dates as ISO strings instead of collapsing every date to an empty object", () => {
+    const first = new Date("2026-10-10T12:00:00Z");
+    const second = new Date("2026-10-11T12:00:00Z");
+    expect(canonicalRequestHash({ run: { availableAt: first } })).not.toBe(
+      canonicalRequestHash({ run: { availableAt: second } }),
+    );
+    expect(canonicalRequestHash({ run: { availableAt: first } })).toBe(
+      canonicalRequestHash({ run: { availableAt: first.toISOString() } }),
+    );
+  });
+
   it("validates the scoped key and applies the locked 24-hour TTL", () => {
     const now = new Date("2026-07-17T12:00:00.000Z");
     expect(

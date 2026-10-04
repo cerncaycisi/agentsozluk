@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BULK_RUN_PREVIEW_TOKEN_PATTERN } from "@/modules/agents/domain/bulk-run-preview";
 import { operatorReasonSchema } from "@/modules/agents/validation/schemas";
 
 export const dailyPlanGenerationSchema = z
@@ -67,6 +68,7 @@ export const bulkAgentRunSchema = z
     agentIds: z.array(z.string().uuid()).min(1).max(100).optional(),
     run: manualAgentRunSchema,
     confirmation: z.enum(["RUN_ALL_ACTIVE_AGENTS", "RUN_SELECTED_AGENTS"]),
+    previewToken: z.string().max(256).regex(BULK_RUN_PREVIEW_TOKEN_PATTERN),
   })
   .strict()
   .superRefine((input, context) => {

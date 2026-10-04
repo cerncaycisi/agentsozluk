@@ -129,5 +129,7 @@ Son hakem düzeltmeleri sonrası **70/70** geçti: 6 profil PG16, 7 mevcut A5 PG
 Genel FK kapısının korunması ve prototype hedef reddi doğrudan sınandı. Preflight ve
 frozen boyut makbuzları ayrı etiketli dosyalarda tutulur; birbirinin üzerine yazılmaz.
 Makbuz dosyası etiketinden sonra 6/6 PG16 ve 8/8 CI sözleşmesi testi de geçti.
-`format:check`, `lint`, `typecheck`, `requirements:check` PASS. Exact CI ve gerçek
-imaj probu sonucu ayrıca kaydedilecektir.
+`format:check`, `lint`, `typecheck`, `requirements:check` PASS. Exact CI `37182105221` **7/7 PASS**, final `1580273cc5ef54f3d47a581c4d09751c4a50c755`.
+Gerçek container runner probu `applied=36 main_history=unchanged` verdi. #308 main
+`9ead5a0746e3af7e94622670c76efc28254fd362` olarak birleşti; uzak SHA ve squash ağaç
+eşitliği doğrulandı. Üretim restore/önceki imaj/cutover kapıları açık.

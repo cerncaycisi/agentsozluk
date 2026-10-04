@@ -3701,3 +3701,16 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Ekrandaki 03:34 kesiti dakika sınırıyla yeniden bakıldığında 97 ret/268 başarılı/1 PROPOSED; ekrandaki 97/366 ile bir eylem farkı kesin saniye verilmemesinden ayrı tutulur. Anlık durum geçmiş alarma eşit sayılmaz.
 - İş üretimi sürüyor; ret alarmı çözülmüş veya yanlış pozitif ilan edilmedi. Yüksek tekrar payı P1 mevcut kayıt değerlendirmesine eklendi. Canlı eşik/ayar/istem/pause/deploy değiştirilmedi, bildirim gönderilmedi.
 - Tekrarlama: ret yüzdesini servis kesintisi ya da her ret için haklılık kanıtı sayma; yeni özellikler henüz dağıtılmadığı halde canlı sonucu onlara bağlama.
+
+### 4 Ekim 2026 — P1 #308 ana dal ve gerçek imaj yürütücüsü
+
+- Final `1580273cc5ef54f3d47a581c4d09751c4a50c755`, CI `37182105221` 7/7. Container job `111376575614`: 06:20:42–44 UTC ayrı test DB'sinde `A5_MIGRATION_TARGET` ve `F09_PROBE_MIGRATION_RUNNER applied=36 main_history=unchanged` doğrulandı.
+- Fresh exact head/base/review/CLEAN ardından squash main `9ead5a0746e3af7e94622670c76efc28254fd362`; uzak SHA ve kaynak ağacı eşitliği geçti. Birleşmiş dal silindi, T3 PR bağı kuruldu. O5 çalışma ağacı korunarak devam edildi.
+- Tekrarlama: gerçek container boş-DB probunu eski üretim snapshot restore/önceki imaj boot makbuzu sayma. Canlı deploy yok, A′/v46 değişmedi.
+
+### 4 Ekim 2026 — O5 toplu önizleme bağlama ilk doğrulama
+
+- `1580273` tabanındaki yerel çalışma: ilk 26, ardından 45 test ve ayrı iki gerçek PG16 kilit testi PASS. Payload/tarih, ayar, profil/persona, allActive kadro sapması reddedildi; eşzamanlı çift gönderim tek koşu oluşturdu. HTTP taze preview replay / aynı submit sonucu / sonradan askıya alınan admin / cross-origin reddi doğrudan sınandı.
+- Tarih alanı için mevcut `canonicalRequestHash` açığı bulundu: parse edilmiş Date boş nesneye dönüşüyordu. ISO serileştirme eklendi; aynı idempotency anahtarıyla farklı availableAt artık conflict verir. Önceki 24 saatlik Date içeren eski hash için sessiz yeniden yürütme yerine conflict oluşabilir; bu geçiş sınırı belgelendi.
+- İlk erken typecheck yeni hata kodları union'a henüz eklenmediği için yedi TS2345 verdi; kaynak düzeltildi, son kalite ayrı kaydedilecek. Hakem veya canlı başarı iddiası yok.
+- Tekrarlama: istemcinin önizlemeyi gizlemesini sunucu CAS'ı sayma; yeni request id ile aynı onayı yeniden tüketme; zaman alanını hash içinde boş nesneye indirgeme.

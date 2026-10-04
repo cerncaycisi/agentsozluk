@@ -1,3 +1,9 @@
+import { NextRequest } from "next/server";
+import { POST as previewRoute } from "@/app/api/v1/admin/agent-runs/bulk/preview/route";
+import { POST as bulkRoute } from "@/app/api/v1/admin/agent-runs/bulk/route";
+import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
+import { getEnvironment } from "@/config/env";
+import { createOpaqueToken, sha256 } from "@/lib/security/crypto";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { ActorContext } from "@/modules/auth/domain/actor";
@@ -16,6 +22,8 @@ import {
   manualAgentRunSchema,
   previewBulkAgentRun,
   retryAgentRun,
+  updateAgent,
+  updateAgentSchema,
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import {
@@ -187,6 +195,7 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
         allActive: true,
         run,
         confirmation: "RUN_ALL_ACTIVE_AGENTS",
+        previewToken: preview.previewToken,
       }),
     );
     expect(queued.count).toBe(2);
@@ -200,6 +209,15 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
     ).toBe(true);
 
     const emergencyActor = actor(admin.id);
+    const emergencySelection = bulkAgentRunPreviewSchema.parse({
+      agentIds: [agents[0]!.agent.profile.id],
+      run: { ...run, priority: "EMERGENCY" },
+    });
+    const emergencyPreview = await previewBulkAgentRun(
+      integrationDatabase,
+      emergencyActor,
+      emergencySelection,
+    );
     const emergency = await createBulkAgentRuns(
       integrationDatabase,
       emergencyActor,
@@ -208,6 +226,7 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
         agentIds: [agents[0]!.agent.profile.id],
         run: { ...run, priority: "EMERGENCY" },
         confirmation: "RUN_SELECTED_AGENTS",
+        previewToken: emergencyPreview.previewToken,
       }),
     );
     expect(emergency.runs[0]).toMatchObject({
@@ -219,6 +238,195 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
         where: { action: "agent.run.bulk_queued", requestId: emergencyActor.requestId },
       }),
     ).resolves.toMatchObject({ metadata: { queuePriority: "EMERGENCY_ADMIN" } });
+  });
+
+  it.each(["payload", "date", "settings", "profile", "persona", "roster"] as const)(
+    "rejects a changed %s after preview without creating any work",
+    async (change) => {
+      const admin = await createAdmin();
+      const created = await createActiveAgent(admin.id, 0);
+      const selection = bulkAgentRunPreviewSchema.parse({
+        allActive: true,
+        run: { runType: "NORMAL_WAKE", availableAt: "2026-10-10T12:00:00.000Z" },
+      });
+      const preview = await previewBulkAgentRun(integrationDatabase, actor(admin.id), selection);
+      const input = bulkAgentRunSchema.parse({
+        ...selection,
+        previewToken: preview.previewToken,
+        confirmation: "RUN_ALL_ACTIVE_AGENTS",
+      });
+      if (change === "payload") input.run.allowVoting = false;
+      if (change === "date") input.run.availableAt = new Date("2026-10-11T12:00:00.000Z");
+      if (change === "settings")
+        await integrationDatabase.agentGlobalSettings.update({
+          where: { id: "global" },
+          data: { settingsVersion: { increment: 1 } },
+        });
+      if (change === "profile")
+        await updateAgent(
+          integrationDatabase,
+          actor(admin.id),
+          created.agent.profile.id,
+          updateAgentSchema.parse({ manualTimeoutSeconds: 720 }),
+        );
+      if (change === "persona")
+        await updateAgent(
+          integrationDatabase,
+          actor(admin.id),
+          created.agent.profile.id,
+          updateAgentSchema.parse({
+            persona: originalPersonaPack.personas[0],
+            expectedPersonaVersion: 1,
+            changeSummary: "Preview must bind the exact current persona version.",
+          }),
+        );
+      if (change === "roster") await createActiveAgent(admin.id, 1);
+      await expect(
+        createBulkAgentRuns(integrationDatabase, actor(admin.id), input),
+      ).rejects.toMatchObject({ code: "BULK_PREVIEW_CHANGED", status: 409 });
+      expect(await integrationDatabase.agentRun.count({ where: { trigger: "ADMIN_BULK" } })).toBe(
+        0,
+      );
+      expect(
+        await integrationDatabase.auditLog.count({ where: { action: "agent.run.bulk_queued" } }),
+      ).toBe(0);
+    },
+  );
+
+  it("consumes one preview once even with a new request id, keeping audit free of its token", async () => {
+    const admin = await createAdmin();
+    await createActiveAgent(admin.id, 0);
+    const selection = bulkAgentRunPreviewSchema.parse({
+      allActive: true,
+      run: { runType: "DRY_RUN" },
+    });
+    const preview = await previewBulkAgentRun(integrationDatabase, actor(admin.id), selection);
+    const input = bulkAgentRunSchema.parse({
+      ...selection,
+      previewToken: preview.previewToken,
+      confirmation: "RUN_ALL_ACTIVE_AGENTS",
+    });
+    const outcomes = await Promise.allSettled([
+      createBulkAgentRuns(integrationDatabase, actor(admin.id), input),
+      createBulkAgentRuns(integrationDatabase, actor(admin.id), input),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+    expect(outcomes.find((outcome) => outcome.status === "rejected")).toMatchObject({
+      reason: { code: "BULK_PREVIEW_USED", status: 409 },
+    });
+    expect(await integrationDatabase.agentRun.count({ where: { trigger: "ADMIN_BULK" } })).toBe(1);
+    const audit = await integrationDatabase.auditLog.findFirstOrThrow({
+      where: { action: "agent.run.bulk_queued" },
+    });
+    expect(audit.metadata).toMatchObject({ previewId: preview.previewId });
+    expect(JSON.stringify(audit)).not.toContain(preview.previewToken);
+  });
+
+  it("rejects another admin's receipt and an expired receipt with no queued runs", async () => {
+    const admin = await createAdmin();
+    const otherAdmin = await createAdmin();
+    await createActiveAgent(admin.id, 0);
+    const now = new Date();
+    const selection = bulkAgentRunPreviewSchema.parse({
+      allActive: true,
+      run: { runType: "DRY_RUN" },
+    });
+    const preview = await previewBulkAgentRun(integrationDatabase, actor(admin.id), selection, now);
+    const input = bulkAgentRunSchema.parse({
+      ...selection,
+      previewToken: preview.previewToken,
+      confirmation: "RUN_ALL_ACTIVE_AGENTS",
+    });
+    await expect(
+      createBulkAgentRuns(integrationDatabase, actor(otherAdmin.id), input, now),
+    ).rejects.toMatchObject({ code: "BULK_PREVIEW_INVALID" });
+    await expect(
+      createBulkAgentRuns(
+        integrationDatabase,
+        actor(admin.id),
+        input,
+        new Date(now.getTime() + 600_000),
+      ),
+    ).rejects.toMatchObject({ code: "BULK_PREVIEW_EXPIRED" });
+    expect(await integrationDatabase.agentRun.count({ where: { trigger: "ADMIN_BULK" } })).toBe(0);
+  });
+
+  it("refreshes preview on HTTP replay, preserves submission replay and rechecks authorization", async () => {
+    const admin = await createAdmin();
+    await createActiveAgent(admin.id, 0);
+    const sessionToken = createOpaqueToken();
+    const csrfToken = createOpaqueToken();
+    await integrationDatabase.session.create({
+      data: {
+        userId: admin.id,
+        tokenHash: sha256(sessionToken),
+        csrfTokenHash: sha256(csrfToken),
+        expiresAt: new Date(Date.now() + 3_600_000),
+      },
+    });
+    const origin = new URL(getEnvironment().APP_URL).origin;
+    const request = (path: string, body: unknown, key: string) =>
+      new NextRequest(`${origin}${path}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin,
+          "x-csrf-token": csrfToken,
+          "idempotency-key": key,
+          cookie: `${SESSION_COOKIE_NAME}=${sessionToken}; ${CSRF_COOKIE_NAME}=${csrfToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+    const path = "/api/v1/admin/agent-runs/bulk";
+    const previewKey = randomUUID();
+    const selection = {
+      allActive: true,
+      run: { runType: "DRY_RUN", availableAt: "2026-10-10T12:00:00.000Z" },
+    };
+    const first = await previewRoute(request(`${path}/preview`, selection, previewKey));
+    expect(first.status).toBe(200);
+    const firstPreview = (await first.json()).data;
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { settingsVersion: { increment: 1 } },
+    });
+    const refreshed = await previewRoute(request(`${path}/preview`, selection, previewKey));
+    expect(refreshed.headers.get("Idempotent-Replay")).toBe("true");
+    const preview = (await refreshed.json()).data;
+    expect(preview.settingsVersion).toBe(firstPreview.settingsVersion + 1);
+    expect(preview.previewToken).not.toBe(firstPreview.previewToken);
+    const stored = await integrationDatabase.idempotencyRecord.findFirstOrThrow({
+      where: { key: previewKey },
+    });
+    expect(JSON.stringify(stored.responseBody)).not.toContain(firstPreview.previewToken);
+    const payload = {
+      ...selection,
+      previewToken: preview.previewToken,
+      confirmation: "RUN_ALL_ACTIVE_AGENTS",
+    };
+    const submitKey = randomUUID();
+    const crossOrigin = request(path, payload, submitKey);
+    crossOrigin.headers.set("origin", "https://untrusted.invalid");
+    expect((await bulkRoute(crossOrigin)).status).toBe(403);
+    const submitted = await bulkRoute(request(path, payload, submitKey));
+    expect(submitted.status).toBe(200);
+    const created = (await submitted.json()).data;
+    const changedDate = {
+      ...payload,
+      run: { ...payload.run, availableAt: "2026-10-11T12:00:00.000Z" },
+    };
+    const conflict = await bulkRoute(request(path, changedDate, submitKey));
+    expect(conflict.status).toBe(409);
+    expect((await conflict.json()).error.code).toBe("IDEMPOTENCY_CONFLICT");
+    const replayed = await bulkRoute(request(path, payload, submitKey));
+    expect(replayed.headers.get("Idempotent-Replay")).toBe("true");
+    expect((await replayed.json()).data.runs[0].id).toBe(created.runs[0].id);
+    expect(await integrationDatabase.agentRun.count({ where: { trigger: "ADMIN_BULK" } })).toBe(1);
+    await integrationDatabase.user.update({
+      where: { id: admin.id },
+      data: { status: "SUSPENDED" },
+    });
+    expect((await bulkRoute(request(path, payload, submitKey))).status).toBe(403);
   });
 
   it("cancels queued/running work and retries terminal work with immutable lineage", async () => {

@@ -22,6 +22,7 @@ export function createManualRunRecord(
     provocationOverride: boolean;
     adminInstruction?: string;
     idempotencySuffix?: string;
+    idempotencyKey?: string;
     trigger?: string;
     parentRunId?: string;
   },
@@ -35,7 +36,9 @@ export function createManualRunRecord(
       trigger: input.trigger ?? "ADMIN_MANUAL",
       requestedById: input.requestedById,
       personaVersionId: input.personaVersionId,
-      idempotencyKey: `manual:${input.requestId}${input.idempotencySuffix ? `:${input.idempotencySuffix}` : ""}`,
+      idempotencyKey:
+        input.idempotencyKey ??
+        `manual:${input.requestId}${input.idempotencySuffix ? `:${input.idempotencySuffix}` : ""}`,
       parentRunId: input.parentRunId ?? null,
       availableAt: input.availableAt,
       timeoutSeconds: input.timeoutSeconds,
@@ -64,9 +67,17 @@ export function listBulkRunAgents(transaction: Prisma.TransactionClient, agentId
       id: true,
       currentPersonaVersionId: true,
       manualTimeoutSeconds: true,
+      updatedAt: true,
+      user: { select: { username: true, displayName: true } },
+      currentPersonaVersion: { select: { version: true } },
     },
     orderBy: { id: "asc" },
+    take: 101,
   });
+}
+
+export function findBulkPreviewRun(transaction: Prisma.TransactionClient, idempotencyKey: string) {
+  return transaction.agentRun.findUnique({ where: { idempotencyKey }, select: { id: true } });
 }
 
 export async function getBulkRunPreviewMetrics(transaction: Prisma.TransactionClient) {
