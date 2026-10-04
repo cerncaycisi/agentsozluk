@@ -4,6 +4,7 @@ import {
   selectBirthParentEvidence,
   type BirthAssessmentEvidence,
 } from "@/modules/agents/domain/birth-policy";
+import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
 import { birthDraftBank } from "@/modules/agents/personas/birth-drafts";
 import { agentPersonaTemplates } from "@/modules/agents/personas/templates";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
@@ -169,10 +170,25 @@ describe("birth parent evidence", () => {
 
 describe("independent birth drafts", () => {
   it("passes unchanged separation gates against the complete template bank and each other", () => {
-    expect(birthDraftBank.map(({ persona }) => persona.sources.length)).toEqual([12, 10]);
+    expect(birthDraftBank.map(({ persona }) => persona.sources.length)).toEqual([12, 12]);
     expect(
       new Set(birthDraftBank.flatMap(({ persona }) => persona.sources.map(({ url }) => url))).size,
-    ).toBe(22);
+    ).toBe(24);
+    const verified = new Map(verifiedSourcePool().map((source) => [source.url, source]));
+    for (const { persona } of birthDraftBank) {
+      expect(
+        new Set(persona.sources.map(({ url }) => new URL(url).origin)).size,
+      ).toBeGreaterThanOrEqual(6);
+      expect(new Set(persona.sources.flatMap(({ topics }) => topics)).size).toBeGreaterThanOrEqual(
+        5,
+      );
+      for (const source of persona.sources) {
+        const registered = verified.get(source.url);
+        expect(registered).toBeDefined();
+        expect(source.sourceType).toBe(registered!.sourceType);
+        expect(source.topics).toEqual(registered!.topics);
+      }
+    }
     const universe: unknown[] = [...agentPersonaTemplates];
     for (const draft of birthDraftBank) {
       const result = validatePersonaCandidate(

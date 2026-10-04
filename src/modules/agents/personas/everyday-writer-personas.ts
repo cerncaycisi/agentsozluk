@@ -31,9 +31,12 @@ function sourceKey(url: string): string {
     .replace(/^-|-$/gu, "");
 }
 
-function selectSources(urls: string[]): SeedPersona["sources"] {
+function selectSources(
+  urls: string[],
+  pool: ReadonlyMap<string, SeedPersona["sources"][number]>,
+): SeedPersona["sources"] {
   return urls.map((url, index) => {
-    const source = verifiedSourcePool.get(url);
+    const source = pool.get(url);
     if (!source) throw new Error(`Everyday writer source is not in the verified pool: ${url}`);
     return {
       ...source,
@@ -68,8 +71,11 @@ export type EverydayPersonaInput = Pick<
   sourceUrls: string[];
 };
 
-export function buildEverydayPersona(input: EverydayPersonaInput): SeedPersona {
-  const sources = selectSources(input.sourceUrls);
+export function buildEverydayPersona(
+  input: EverydayPersonaInput,
+  sourcePool: ReadonlyMap<string, SeedPersona["sources"][number]> = verifiedSourcePool,
+): SeedPersona {
+  const sources = selectSources(input.sourceUrls, sourcePool);
   return seedPersonaSchema.parse({
     schemaVersion: 1,
     username: input.username,
