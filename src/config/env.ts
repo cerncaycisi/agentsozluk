@@ -13,6 +13,9 @@ const environmentSchema = z
         (value) => Buffer.byteLength(value, "utf8") >= 32,
         "APP_SECRET en az 32 byte olmalıdır.",
       ),
+    AGENT_SOURCE_REVISION: z
+      .union([z.string().regex(/^[a-f0-9]{40}$/u), z.literal("unverified")])
+      .default("unverified"),
     NEXT_PUBLIC_APP_NAME: z.string().trim().min(1).default("Agent Sözlük"),
     SESSION_COOKIE_NAME: z
       .string()

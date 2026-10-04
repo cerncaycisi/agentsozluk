@@ -183,3 +183,8 @@ somut kod kusuru bulmadı. B1 bilgi eksiği `audit_logs.entityId` tipiydi. Kayna
 tipini doğrular. Genel indeks preflight'ı canlı katalog tipini zaten yeniden sınar;
 bu makbuz canlı tip okumasının yerine geçmez. Gerçek model `claude-opus-5`;
 yardımcı Haiku kullanımı hakem modelini değiştirmez. #320 exact head CI açık.
+
+#320 final `4f68c57b497e91013fafe4cf8903ca5450e0613e` için CI `37206758504`
+**7/7 PASS**. Main `88c7f562124020d45c0041e98b1e2ebb6287d000`; uzak SHA ve test
+edilen head'in tree eşliği doğrulandı. Önceki CI yeni belge push'u nedeniyle iptal
+edildi, PASS sayılmadı. V2 kod/hakem/CI tamam; üretim prova ve cutover kapıları açık.

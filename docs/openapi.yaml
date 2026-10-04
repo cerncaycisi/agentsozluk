@@ -2086,6 +2086,21 @@ paths:
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/ValidationError" }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/agent-births/activate:
+    post:
+      operationId: activateAgentBirthCandidate
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentBirthActivation" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/internal/agent-runtime/birth-candidates/tick:
     post:
       operationId: tickInternalAgentBirthCandidates
@@ -3795,6 +3810,67 @@ components:
         expectedVersion: { type: integer, minimum: 1 }
         expectedSnapshotHash: { type: string, pattern: "^[a-f0-9]{64}$" }
         expectedSettingsVersion: { type: integer, minimum: 1 }
+    AgentBirthActivationInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          candidateId,
+          expectedVersion,
+          expectedSnapshotHash,
+          expectedSettingsVersion,
+          acceptanceReport,
+          acceptanceReportHash,
+        ]
+      properties:
+        candidateId: { type: string, format: uuid }
+        expectedVersion: { type: integer, minimum: 1 }
+        expectedSnapshotHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        expectedSettingsVersion: { type: integer, minimum: 1 }
+        acceptanceReportHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        acceptanceReport: { $ref: "#/components/schemas/BirthAcceptanceReport" }
+    BirthAcceptanceReport:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          schemaVersion,
+          verdict,
+          deploymentSha,
+          baselineCapabilityId,
+          configurationHash,
+          promptProfileHash,
+          windowFrom,
+          windowTo,
+          cohortProfileIds,
+          societyReportArtifactHash,
+          independentReviewArtifactHash,
+          m2AcceptanceConfirmed,
+          independentReviewConfirmed,
+          unchangedDeploymentConfirmed,
+          unchangedConfigurationConfirmed,
+        ]
+      properties:
+        schemaVersion: { type: integer, enum: [1] }
+        verdict: { type: string, enum: [PASS] }
+        deploymentSha: { type: string, pattern: "^[a-f0-9]{40}$" }
+        baselineCapabilityId: { type: string, format: uuid }
+        configurationHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        promptProfileHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        windowFrom: { type: string, format: date-time }
+        windowTo: { type: string, format: date-time }
+        cohortProfileIds:
+          type: array
+          minItems: 3
+          maxItems: 40
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        societyReportArtifactHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        independentReviewArtifactHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        m2AcceptanceConfirmed: { type: boolean, enum: [true] }
+        independentReviewConfirmed: { type: boolean, enum: [true] }
+        unchangedDeploymentConfirmed: { type: boolean, enum: [true] }
+        unchangedConfigurationConfirmed: { type: boolean, enum: [true] }
     RuntimeStochasticTickInput:
       type: object
       additionalProperties: false
@@ -4575,6 +4651,11 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/AgentBirthPreparationInput" }
+    AgentBirthActivation:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentBirthActivationInput" }
     RuntimeStochasticTick:
       {
         required: true,

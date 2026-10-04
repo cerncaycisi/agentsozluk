@@ -1,3 +1,10 @@
+import * as environment from "@/config/env";
+import { activateBirthCandidate } from "@/modules/agents/application/birth-activation";
+import { POST as activateRoute } from "@/app/api/v1/admin/agent-births/activate/route";
+import { birthAcceptanceConfigurationHash } from "@/modules/agents/domain/birth-activation";
+import { canonicalRequestHash } from "@/modules/idempotency/domain/idempotency";
+import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
+import type { ActivateBirthCandidateInput } from "@/modules/agents/validation/birth-schemas";
 import * as birthEvidence from "@/modules/agents/application/birth-evidence";
 import * as birthRecords from "@/modules/agents/repository/birth-candidates";
 import { runRuntimeStochasticTick } from "@/modules/agents/application/stochastic-scheduler";
@@ -60,7 +67,7 @@ import {
 
 // Kontrollü tarihi kayıtlar; doğal haftalar veya canlı kalite değerlendirmesi değildir.
 const now = new Date("2026-10-04T20:59:00.000Z");
-async function fixture() {
+async function fixture(profileCreatedAt?: Date) {
   const persona = agentPersonaTemplates[0]!;
   const user = async (username: string, kind: "HUMAN" | "AGENT", role: "ADMIN" | "USER") =>
     db.user.create({
@@ -92,6 +99,7 @@ async function fixture() {
     data: {
       userId: writer.id,
       lifecycleStatus: "ACTIVE",
+      ...(profileCreatedAt ? { createdAt: profileCreatedAt } : {}),
       activeTimeProfile: {},
       createdById: admin.id,
       updatedById: admin.id,
@@ -105,6 +113,7 @@ async function fixture() {
       persona,
       renderedPrompt: validated.renderedPrompt,
       changeOrigin: "INITIAL",
+      ...(profileCreatedAt ? { createdAt: profileCreatedAt } : {}),
       changeSummary: "Yerel doğum testi",
       createdById: admin.id,
       validationReport: validated.report,
@@ -624,8 +633,8 @@ describe("private birth candidates with PostgreSQL", () => {
   });
 });
 
-async function preparationFixture(method = "TEMPLATE") {
-  const f = await fixture();
+async function preparationFixture(method = "TEMPLATE", activationHistory = false) {
+  const f = await fixture(activationHistory ? new Date("2026-09-01T12:00:00Z") : undefined);
   const candidate = await f.create();
   // Kontrollü köken geçmişi; üretim bağımsızlığı veya tarihsel backfill iddiası değildir.
   const createdAt = f.profile.createdAt;
@@ -645,11 +654,38 @@ async function preparationFixture(method = "TEMPLATE") {
       agentProfileId: f.profile.id,
       eventType: "LIFE_GENESIS_SNAPSHOT",
       safeMessage: "Yerel köken fixture'ı",
+      ...(activationHistory ? { afterState: { profile: { lifecycleStatus: "PAUSED" } } } : {}),
       metadata: { origin: "AGENT_CREATION", method, boundary: true },
       createdAt,
       occurredAt: createdAt,
     },
   });
+  if (activationHistory) {
+    const activatedAt = new Date("2026-09-02T12:00:00Z");
+    await db.auditLog.create({
+      data: {
+        actorId: f.admin.id,
+        requestId: randomUUID(),
+        action: "agent.resumed",
+        entityType: "AgentProfile",
+        entityId: f.profile.id,
+        metadata: { from: "PAUSED", to: "ACTIVE" },
+        createdAt: activatedAt,
+      },
+    });
+    await db.agentRuntimeEvent.create({
+      data: {
+        agentProfileId: f.profile.id,
+        eventType: "agent.status.changed",
+        safeMessage: "Kontrollü ilk aktivasyon",
+        beforeState: { lifecycleStatus: "PAUSED" },
+        afterState: { lifecycleStatus: "ACTIVE" },
+        metadata: { from: "PAUSED", to: "ACTIVE" },
+        occurredAt: activatedAt,
+        createdAt: activatedAt,
+      },
+    });
+  }
   const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   vi.stubEnv(
     "AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64",
@@ -1277,5 +1313,532 @@ describe("prepared writer HTTP and source collection boundaries", () => {
       ),
     ).toMatchObject({ run: null, reason: "NOT_ACTIVE" });
     expect(await db.agentRun.count({ where: { agentProfileId: f.profile.id } })).toBe(runsBefore);
+  });
+});
+
+async function activationFixture(extraProfiles = 0) {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(now);
+  vi.spyOn(environment, "getEnvironment").mockReturnValue({
+    ...environment.getEnvironment(),
+    AGENT_SOURCE_REVISION: "a".repeat(40),
+  });
+  const f = await preparationFixture("TEMPLATE", true);
+  const prepared = await f.prepare();
+  const cohort = [{ id: f.profile.id, versionId: f.version.id }];
+  for (const i of Array.from({ length: 2 + extraProfiles }, (_, index) => index + 1)) {
+    const original = agentPersonaTemplates[i % agentPersonaTemplates.length]!;
+    const persona = i <= 2 ? original : { ...original, username: `birth_load_${i}` };
+    const method = i <= 2 ? "TEMPLATE" : "CUSTOM";
+    const user = await f.user(persona.username, "AGENT", "USER");
+    const createdAt =
+      i <= 2
+        ? new Date(`2026-09-0${i + 3}T12:00:00Z`)
+        : new Date(new Date("2026-07-01T00:00:00Z").getTime() + i * 60000);
+    const profile = await db.agentProfile.create({
+      data: {
+        userId: user.id,
+        lifecycleStatus: "ACTIVE",
+        activeTimeProfile: {},
+        createdById: f.admin.id,
+        updatedById: f.admin.id,
+        createdAt,
+      },
+    });
+    const validated = validatePersonaCandidate(persona, [], "Kontrollü bağımsız soy fixture'ı.");
+    const version = await db.agentPersonaVersion.create({
+      data: {
+        agentProfileId: profile.id,
+        version: 1,
+        persona,
+        renderedPrompt: validated.renderedPrompt,
+        changeOrigin: "INITIAL",
+        changeSummary: "Kontrollü başlangıç",
+        validationReport: validated.report,
+        createdById: f.admin.id,
+        createdAt,
+      },
+    });
+    await db.agentProfile.update({
+      where: { id: profile.id },
+      data: { currentPersonaVersionId: version.id },
+    });
+    await db.auditLog.create({
+      data: {
+        actorId: f.admin.id,
+        requestId: randomUUID(),
+        action: "agent.created",
+        entityType: "AgentProfile",
+        entityId: profile.id,
+        metadata: { method, lifecycleStatus: "ACTIVE" },
+        createdAt,
+      },
+    });
+    await db.agentRuntimeEvent.create({
+      data: {
+        agentProfileId: profile.id,
+        eventType: "LIFE_GENESIS_SNAPSHOT",
+        safeMessage: "Kontrollü bağımsız soy",
+        metadata: { origin: "AGENT_CREATION", method },
+        afterState: { profile: { lifecycleStatus: "ACTIVE" } },
+        occurredAt: createdAt,
+        createdAt,
+      },
+    });
+    cohort.push({ id: profile.id, versionId: version.id });
+  }
+  for (const profile of cohort)
+    await db.agentRun.create({
+      data: {
+        agentProfileId: profile.id,
+        personaVersionId: profile.versionId,
+        runType: "NORMAL_WAKE",
+        runStatus: "SUCCEEDED",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "STOCHASTIC_TICK",
+        idempotencyKey: randomUUID(),
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        createdAt: new Date(now.getTime() - 86400000),
+        finishedAt: new Date(now.getTime() - 86340000),
+      },
+    });
+  for (let i = 0; i < 50; i++)
+    await db.agentSource.create({
+      data: {
+        agentProfileId: cohort[i % 3]!.id,
+        url: `https://birth-fixture-${i}.test/rss`,
+        normalizedDomain: `birth-fixture-${i}.test`,
+        sourceType: "RSS",
+        topics: [`category-${i % 5}`],
+        localeFocus: i < 20 ? "TURKISH_LANGUAGE" : "GLOBAL",
+        status: "SEED",
+        trustScore: 0.5,
+        interestScore: 0.5,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INITIAL_PERSONA",
+      },
+    });
+  const sources = await db.agentSource.findMany();
+  for (const source of sources)
+    await db.agentSourceItem.create({
+      data: {
+        sourceId: source.id,
+        canonicalUrl: source.url + "/item",
+        title: "Kontrollü yararlı içerik",
+        safeText: "Yalnız yerel fixture içeriği.",
+        topics: source.topics!,
+        contentHash: sha256(source.id),
+        fetchedAt: new Date(now.getTime() - 3600000),
+      },
+    });
+  const credentials = await db.agentCredential.findMany({ select: { id: true } });
+  await db.agentRuntimeCredentialSync.create({
+    data: {
+      id: "global",
+      workerId: "birth-activation-worker",
+      desiredFingerprint: "f".repeat(64),
+      loadedCredentialIds: credentials.map((row) => row.id),
+      syncedAt: now,
+    },
+  });
+  const baselineCapability = await db.agentRuntimeCapability.create({
+    data: {
+      codexVersion: "codex 1.0.0",
+      promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+      benchmarkRunCount: 10,
+      p50DurationMs: 1000,
+      p75DurationMs: 2000,
+      p95DurationMs: 3000,
+      maxDurationMs: 4000,
+      singleProcessPeakRssMb: 100,
+      dualConcurrencySupported: false,
+      appLatencyImpact: {},
+      databaseLatencyImpact: {},
+      availableMemoryMb: 2000,
+      capacityStatus: "HEALTHY",
+      measuredAt: new Date(now.getTime() - 8 * 86400000),
+      staleAt: new Date(now.getTime() + 86400000),
+    },
+  });
+  const currentCapability = await db.agentRuntimeCapability.create({
+    data: {
+      ...baselineCapability,
+      id: randomUUID(),
+      appLatencyImpact: {},
+      databaseLatencyImpact: {},
+      measuredAt: new Date(now.getTime() - 3600000),
+    },
+  });
+  await db.agentRuntimeEvent.create({
+    data: {
+      eventType: "agent.capacity.measured",
+      safeMessage: "Kontrollü kapasite fixture'ı",
+      metadata: { codexVersion: "codex 1.0.0", promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH },
+      occurredAt: now,
+      createdAt: now,
+    },
+  });
+  const settings = await db.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } });
+  const acceptanceReport: ActivateBirthCandidateInput["acceptanceReport"] = {
+    schemaVersion: 1,
+    verdict: "PASS",
+    deploymentSha: "a".repeat(40),
+    baselineCapabilityId: baselineCapability.id,
+    configurationHash: birthAcceptanceConfigurationHash(settings),
+    promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+    windowFrom: new Date(now.getTime() - 7 * 86400000).toISOString(),
+    windowTo: now.toISOString(),
+    cohortProfileIds: cohort.map((row) => row.id),
+    societyReportArtifactHash: "b".repeat(64),
+    independentReviewArtifactHash: "c".repeat(64),
+    m2AcceptanceConfirmed: true,
+    independentReviewConfirmed: true,
+    unchangedDeploymentConfirmed: true,
+    unchangedConfigurationConfirmed: true,
+  };
+  const input: ActivateBirthCandidateInput = {
+    candidateId: prepared.candidateId,
+    expectedVersion: prepared.candidateVersion,
+    expectedSnapshotHash: f.candidate.snapshotHash,
+    expectedSettingsVersion: settings.settingsVersion,
+    acceptanceReport,
+    acceptanceReportHash: canonicalRequestHash(acceptanceReport),
+  };
+  return {
+    ...f,
+    prepared,
+    cohort,
+    currentCapability,
+    input,
+    activate: (value = input, at = now) => activateBirthCandidate(db, f.actor, value, at),
+  };
+}
+
+describe("birth activation with fresh PostgreSQL evidence", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("atomically activates one prepared writer with separate operator and database receipts", async () => {
+    const f = await activationFixture();
+    const result = await f.activate();
+    expect(f.currentCapability.id).not.toBe(f.input.acceptanceReport.baselineCapabilityId);
+    expect(result).toMatchObject({
+      status: "ACTIVATED",
+      childProfileId: f.prepared.childProfileId,
+      candidateVersion: f.prepared.candidateVersion + 1,
+    });
+    expect(
+      await db.agentProfile.findUnique({ where: { id: f.prepared.childProfileId } }),
+    ).toMatchObject({ lifecycleStatus: "ACTIVE" });
+    const audit = await db.auditLog.findFirstOrThrow({
+      where: { action: "agent.birth.activated" },
+    });
+    expect(audit.metadata).toMatchObject({
+      capabilityId: f.currentCapability.id,
+      acceptance: { kind: "OPERATOR_VERIFIED_REPORT", reportHash: f.input.acceptanceReportHash },
+      population: { nonRetiredProfiles: 4, livingRootMembers: 2, managedChildren: 1 },
+    });
+    expect(JSON.stringify(audit.metadata)).not.toMatch(
+      /runtimeEnrollmentCipher|tokenHash|rawCredential/,
+    );
+    await expect(f.activate()).rejects.toMatchObject({ details: { reason: "STALE_PREVIEW" } });
+    expect(await db.auditLog.count({ where: { action: "agent.birth.activated" } })).toBe(1);
+  });
+  it("serializes competing activation commands into exactly one transition", async () => {
+    const f = await activationFixture();
+    const results = await Promise.allSettled([f.activate(), f.activate()]);
+    expect(results.filter((row) => row.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((row) => row.status === "rejected")).toMatchObject([
+      { reason: { details: { reason: "STALE_PREVIEW" } } },
+    ]);
+    expect(await db.auditLog.count({ where: { action: "agent.birth.activated" } })).toBe(1);
+  });
+  it.each([
+    "mode",
+    "pause",
+    "source",
+    "quality",
+    "report",
+    "roster",
+    "capacity",
+    "benchmark",
+    "history",
+    "child-account",
+  ])("leaves PREPARED/PAUSED intact when %s evidence fails", async (kind) => {
+    const f = await activationFixture();
+    if (kind === "mode")
+      await db.agentGlobalSettings.update({ where: { id: "global" }, data: { birthMode: "OFF" } });
+    if (kind === "pause")
+      await db.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { runtimeEnabled: false },
+      });
+    if (kind === "source")
+      await db.agentSource.updateMany({
+        where: { agentProfileId: f.prepared.childProfileId },
+        data: { adminBlocked: true },
+      });
+    if (kind === "quality")
+      await reverseAuthorAssessment(
+        db,
+        f.actor,
+        {
+          assessmentId: f.entries[0]!.assessmentId,
+          reason: "Aktivasyon öncesi bağımsız kanıt geri alındı.",
+        },
+        now,
+      );
+    if (kind === "report") f.input.acceptanceReportHash = "f".repeat(64);
+    if (kind === "roster")
+      await db.agentRuntimeCredentialSync.update({
+        where: { id: "global" },
+        data: { loadedCredentialIds: [] },
+      });
+    if (kind === "capacity") {
+      const baseline = await db.agentRuntimeCapability.findUniqueOrThrow({
+        where: { id: f.input.acceptanceReport.baselineCapabilityId },
+      });
+      await db.agentRuntimeCapability.create({
+        data: {
+          ...baseline,
+          appLatencyImpact: {},
+          databaseLatencyImpact: {},
+          id: randomUUID(),
+          capacityStatus: "OVERLOADED",
+          measuredAt: new Date(now.getTime() - 1000),
+        },
+      });
+    }
+    if (kind === "benchmark")
+      await db.agentRuntimeCapability.update({
+        where: { id: f.input.acceptanceReport.baselineCapabilityId },
+        data: { measuredAt: now },
+      });
+    if (kind === "history")
+      await db.agentProfile.update({
+        where: { id: f.cohort[1]!.id },
+        data: { lifecycleStatus: "PAUSED" },
+      });
+    if (kind === "child-account") {
+      const child = await db.agentProfile.findUniqueOrThrow({
+        where: { id: f.prepared.childProfileId },
+      });
+      await db.user.update({ where: { id: child.userId }, data: { status: "SUSPENDED" } });
+    }
+    const reasons: Record<string, string> = {
+      mode: "MODE_OFF",
+      pause: "RUNTIME_PAUSED",
+      source: "CHILD_SOURCE_FLOOR",
+      quality: "CURRENT_PARENT_QUALITY_REQUIRED",
+      report: "ACCEPTANCE_REPORT_HASH_MISMATCH",
+      capacity: "CAPACITY_NOT_READY",
+      benchmark: "ACCEPTANCE_BENCHMARK_MISMATCH",
+      history: "ACTIVATION_HISTORY_UNKNOWN",
+      "child-account": "CHILD_NOT_READY",
+    };
+    await expect(f.activate()).rejects.toMatchObject(
+      kind === "roster"
+        ? { code: "AGENT_RUNTIME_NOT_READY" }
+        : { code: "AGENT_BIRTH_ACTIVATION_BLOCKED", details: { reason: reasons[kind] } },
+    );
+    expect(
+      await db.agentBirthCandidate.findUnique({ where: { id: f.prepared.candidateId } }),
+    ).toMatchObject({ status: "PREPARED", activatedAt: null });
+    expect(
+      await db.agentProfile.findUnique({ where: { id: f.prepared.childProfileId } }),
+    ).toMatchObject({ lifecycleStatus: "PAUSED" });
+    expect(await db.auditLog.count({ where: { action: "agent.birth.activated" } })).toBe(0);
+  });
+  it("does not count successful manual runs as natural cohort evidence", async () => {
+    const f = await activationFixture();
+    await db.agentRun.updateMany({
+      where: { agentProfileId: f.cohort[1]!.id, trigger: "STOCHASTIC_TICK" },
+      data: { trigger: "ADMIN_MANUAL" },
+    });
+    await expect(f.activate()).rejects.toMatchObject({
+      details: { reason: "ACCEPTANCE_RUN_EVIDENCE_MISSING" },
+    });
+  });
+  it.each([-1, 0])("uses the half-open cohort window at end offset %i ms", async (offset) => {
+    const f = await activationFixture();
+    const windowTo = new Date(now.getTime() - 86400000);
+    f.input.acceptanceReport.windowFrom = new Date(windowTo.getTime() - 7 * 86400000).toISOString();
+    f.input.acceptanceReport.windowTo = windowTo.toISOString();
+    f.input.acceptanceReportHash = canonicalRequestHash(f.input.acceptanceReport);
+    await db.agentRun.updateMany({
+      where: { trigger: "STOCHASTIC_TICK" },
+      data: {
+        createdAt: new Date(now.getTime() - 2 * 86400000),
+        finishedAt: new Date(now.getTime() - 2 * 86400000 + 60000),
+      },
+    });
+    const profileId = f.cohort[1]!.id;
+    for (const [from, to, at] of [
+      ["ACTIVE", "PAUSED", new Date(windowTo.getTime() + offset)],
+      ["PAUSED", "ACTIVE", new Date(windowTo.getTime() + 3600000)],
+    ] as const) {
+      await db.auditLog.create({
+        data: {
+          actorId: f.admin.id,
+          requestId: randomUUID(),
+          action: to === "ACTIVE" ? "agent.resumed" : "agent.paused",
+          entityType: "AgentProfile",
+          entityId: profileId,
+          metadata: { from, to },
+          createdAt: at,
+        },
+      });
+      await db.agentRuntimeEvent.create({
+        data: {
+          agentProfileId: profileId,
+          eventType: "agent.status.changed",
+          safeMessage: "Yerel pencere sınırı",
+          beforeState: { lifecycleStatus: from },
+          afterState: { lifecycleStatus: to },
+          metadata: { from, to },
+          createdAt: at,
+          occurredAt: at,
+        },
+      });
+    }
+    if (offset < 0)
+      await expect(f.activate()).rejects.toMatchObject({
+        details: { reason: "ACCEPTANCE_COHORT_NOT_CONTINUOUS" },
+      });
+    else expect(await f.activate()).toMatchObject({ status: "ACTIVATED" });
+  });
+  it("does not hide an older unactivated CLONE outside the last-four window", async () => {
+    const f = await activationFixture();
+    const user = await f.user("older_clone", "AGENT", "USER");
+    const createdAt = new Date("2026-09-01T10:00:00Z");
+    const clone = await db.agentProfile.create({
+      data: {
+        userId: user.id,
+        lifecycleStatus: "PAUSED",
+        activeTimeProfile: {},
+        createdById: f.admin.id,
+        updatedById: f.admin.id,
+        createdAt,
+      },
+    });
+    await db.auditLog.create({
+      data: {
+        actorId: f.admin.id,
+        requestId: randomUUID(),
+        action: "agent.created",
+        entityType: "AgentProfile",
+        entityId: clone.id,
+        metadata: { method: "CLONE", lifecycleStatus: "PAUSED" },
+        createdAt,
+      },
+    });
+    await db.agentRuntimeEvent.create({
+      data: {
+        agentProfileId: clone.id,
+        eventType: "LIFE_GENESIS_SNAPSHOT",
+        safeMessage: "Yerel bilinmeyen klon kökeni",
+        metadata: { origin: "AGENT_CREATION", method: "CLONE" },
+        afterState: { profile: { lifecycleStatus: "PAUSED" } },
+        occurredAt: createdAt,
+        createdAt,
+      },
+    });
+    await expect(f.activate()).rejects.toMatchObject({
+      details: { reason: "LEGACY_CLONE_LINEAGE_UNKNOWN" },
+    });
+    expect(
+      await db.agentBirthCandidate.findUnique({ where: { id: f.prepared.candidateId } }),
+    ).toMatchObject({ status: "PREPARED" });
+  });
+  it("rolls back ACTIVATED if a later lifecycle write fails", async () => {
+    const f = await activationFixture();
+    // Yalnız bu transaction'ın yerel tablosunda test fault'u; üretim trigger'ı değiştirilmez.
+    await db.$executeRaw`CREATE FUNCTION test_birth_activation_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."lifecycleStatus" = 'ACTIVE' AND OLD."lifecycleStatus" = 'PAUSED' THEN RAISE EXCEPTION 'TEST_ACTIVATION_WRITE_FAILED'; END IF; RETURN NEW; END $$`;
+    await db.$executeRaw`CREATE TRIGGER test_birth_activation_fail BEFORE UPDATE ON agent_profiles FOR EACH ROW EXECUTE FUNCTION test_birth_activation_fail()`;
+    try {
+      await expect(f.activate()).rejects.toThrow("TEST_ACTIVATION_WRITE_FAILED");
+    } finally {
+      await db.$executeRaw`DROP TRIGGER test_birth_activation_fail ON agent_profiles`;
+      await db.$executeRaw`DROP FUNCTION test_birth_activation_fail()`;
+    }
+    expect(
+      await db.agentBirthCandidate.findUnique({ where: { id: f.prepared.candidateId } }),
+    ).toMatchObject({ status: "PREPARED", activatedAt: null });
+    expect(
+      await db.agentProfile.findUnique({ where: { id: f.prepared.childProfileId } }),
+    ).toMatchObject({ lifecycleStatus: "PAUSED" });
+    expect(await db.auditLog.count({ where: { action: "agent.birth.activated" } })).toBe(0);
+  });
+  it("activates a 36-profile fixture through the unchanged idempotent HTTP transaction", async () => {
+    const f = await activationFixture(32);
+    const token = createOpaqueToken(),
+      csrf = createOpaqueToken();
+    await db.session.create({
+      data: {
+        userId: f.admin.id,
+        tokenHash: sha256(token),
+        csrfTokenHash: sha256(csrf),
+        expiresAt: new Date(now.getTime() + 3600000),
+      },
+    });
+    const origin = new URL(getEnvironment().APP_URL).origin;
+    const request = new NextRequest(`${origin}/api/v1/admin/agent-births/activate`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin,
+        "x-csrf-token": csrf,
+        "idempotency-key": randomUUID(),
+        cookie: `${SESSION_COOKIE_NAME}=${token}; ${CSRF_COOKIE_NAME}=${csrf}`,
+      },
+      body: JSON.stringify(f.input),
+    });
+    const start = performance.now();
+    const response = await activateRoute(request);
+    process.stdout.write(
+      `P8_ACTIVATION_HTTP_MEASUREMENT ${JSON.stringify({ profiles: 36, elapsedMs: Math.round(performance.now() - start) })}\n`,
+    );
+    expect(response.status).toBe(200);
+    expect(await db.agentProfile.count()).toBe(36);
+    expect(await db.auditLog.count({ where: { action: "agent.birth.activated" } })).toBe(1);
+  });
+  it("keeps activation behind admin/CSRF and replays without another write", async () => {
+    const f = await activationFixture();
+    const token = createOpaqueToken(),
+      csrf = createOpaqueToken(),
+      key = randomUUID();
+    await db.session.create({
+      data: {
+        userId: f.admin.id,
+        tokenHash: sha256(token),
+        csrfTokenHash: sha256(csrf),
+        expiresAt: new Date(now.getTime() + 3600000),
+      },
+    });
+    const origin = new URL(getEnvironment().APP_URL).origin;
+    const request = () =>
+      new NextRequest(`${origin}/api/v1/admin/agent-births/activate`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin,
+          "x-csrf-token": csrf,
+          "idempotency-key": key,
+          cookie: `${SESSION_COOKIE_NAME}=${token}; ${CSRF_COOKIE_NAME}=${csrf}`,
+        },
+        body: JSON.stringify(f.input),
+      });
+    const invalid = request();
+    invalid.headers.delete("x-csrf-token");
+    expect((await activateRoute(invalid)).status).toBe(403);
+    const first = await activateRoute(request());
+    expect(first.status).toBe(200);
+    const replay = await activateRoute(request());
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get("Idempotent-Replay")).toBe("true");
+    expect(await db.auditLog.count({ where: { action: "agent.birth.activated" } })).toBe(1);
+    await db.user.update({ where: { id: f.admin.id }, data: { status: "SUSPENDED" } });
+    expect((await activateRoute(request())).status).toBe(403);
   });
 });

@@ -450,3 +450,108 @@ SQL, trigger kapatma, silme veya otomatik emeklilik yok. Gelecekteki aktivasyon
 ACTIVATED+ACTIVE+audit'i **tek transaction** içinde yazmak zorundadır.
 Kaynak lease'i mevcut küresel critical-breaker auto-pause kontrolüne de tabidir;
 PAUSED hazırlık global sağlık korumasını aşmaz.
+
+## P8d — ilk aktivasyon işlemi (yerel uygulama, inceleme açık)
+
+`/api/v1/admin/agent-births/activate`, HUMAN ADMIN, CSRF ve idempotency altında
+hazırlanmış tek çocuğu etkinleştirir. Aday version/hash ve settingsVersion yeniden
+okunur. Kullanıcı kilitleri → sıralı ebeveyn/çocuk profil kilitleri → global ayar →
+kaynak kapasitesi → persona evreni sırası korunur. PREPARED→ACTIVATED, PAUSED→ACTIVE,
+normal lifecycle olayları ve `agent.birth.activated` audit'i aynı transaction'dadır;
+sonraki yazma hatası önceki geçişleri de geri alır. Yeni migration gerekmez.
+
+- Eski yedi günlük teklif süresi yeniden uygulanmaz; hazırlanmış kimliğin ayrı
+  14 günlük süresi bağlayıcıdır. Aday politika sürümü, preparation snapshot'ı ve
+  kökün katalog/kuruluş/genesis/ilk persona kanıtları yeniden karşılaştırılır.
+- Ebeveynin güncel QUALITY üçlüsü seçilir. Hazırlıktan beri değişmiş persona eski
+  sürüme geri sarılmaz. Çocuğun güncel ayrışması, kendisi hariç bütün persona evrenine
+  karşı sınanır. Soy/nüfus hesabında PAUSED çocuk zaten sayılır; tekrar +1 eklenmez.
+- İlk aktivasyon yalnız min(timestamp) değildir. Bütün profil kuruluşları ve durum
+  zincirleri audit/genesis/olay eşliğiyle doğrulanır. Eksik/çelişen geçmiş veya son-dört
+  sınırında belirsiz zaman sırası reddedilir. Bilinmeyen köken kök sayılmaz. Son üç
+  kanıtlı ekleme + yeni çocuk en az iki köke dayanmalı; aynı soy son yedi günde yeni
+  üye almamış olmalıdır. Eski CLONE kuruluş audit'i kaynak ebeveyni saklamadığından,
+  yaşayan herhangi bir böyle klon varsa soy nüfusu tahmin edilmez ve
+  `LEGACY_CLONE_LINEAGE_UNKNOWN` ile durulur; son-dört dışında kalması muafiyet değildir.
+  4 Ekim canlı envanterinde CLONE yoktu; bu geçmiş kesit gelecek aktivasyonun yerine
+  geçmez. İlk pilotun tek hazırlanmış kimlik sınırı değişmez.
+- Kaynak hesabı eski toplum raporuyla aynı saf işlevi kullanır. Çocuğun son yedi günde
+  yararlı öğesi olan kaynakları 10 URL / 6 origin / 5 kategoriye ulaşmalıdır. Çocuk
+  dışındaki mevcut havuz ayrıca 50 URL / 30 origin / 20 TR tabanını sağlamalıdır.
+  Eski raporun kohort dışını da içeren havuz tanımı değiştirilmez. Kaynak stok/sahip
+  sınırları yeniden sınanır; SEED adresi tek başına okuma kanıtı değildir.
+- Global pause, NORMAL modu, rollout, managed enrollment/roster, güncel HEALTHY
+  benchmark, gerçek worker/prompt parmak izi ve aktif kritik/kapasite kesicisi kontrol
+  edilir. Bunların hiçbiri adayın veya modelin beyanından alınmaz.
+
+Kabul girdisi, `BirthAcceptanceReport` adlı yapılandırılmış **operatör makbuzudur**.
+Makbuzun canonical JSON SHA256'sı `acceptanceReportHash` ile eşleşmelidir; rapordaki
+uygulama SHA'sı imaja `SOURCE_REVISION` build arg'ından yazılan `AGENT_SOURCE_REVISION`,
+konfigürasyon hash'i mevcut global ayarlar ve prompt hash'i sunucu sabiti ile karşılaştırılır.
+Yerelde veya doğrulanmamış imajda `unverified` aktivasyonu reddeder. Global ayar hash'i
+scan saatleri ve düzenleme sayacını dışlar; davranış ayarlarını içerir. Ham ortam değerleri,
+credential veya istemler makbuza konmaz.
+
+Pencere gerçek en az 168 saattir; gelecekte bitemez ve bitişi aktivasyondan en çok
+24 saat önce olmalıdır. Son sınır yeni bir gözlem haftası değildir: eski kabulün
+süresiz kullanılmasını engeller. Kohort mevcut ACTIVE profillerle birebir eşleşir;
+DB, kohortun pencerede ACTIVE kaldığını ve her üyede doğal koşu kaydı bulunduğunu
+ayrıca doğrular. Makbuzdaki `baselineCapabilityId`, aynı prompt profiliyle yapılmış,
+HEALTHY ve en az on koşuluk gerçek DB benchmark kaydına bağlanır; pencere bu
+ölçümden önce başlayamaz ve ölçüm başlangıçta taze olmalıdır. Aktivasyonda ayrıca
+güncel kapasite kaydı sınanır. Bunlar bütün M2 metriklerinin otomatik hesaplandığı
+iddiası değildir.
+
+Toplum raporu ve bağımsız inceleme dosyalarının hash'leri ile PASS kararı, pencere
+boyunca deploy/config değişmediği beyanı **operatöre aittir**. HTTP servisi bu haricî
+makbuz dosyalarını indirmez veya onların ölçümünü yeniden üretmez. Audit'te
+`OPERATOR_VERIFIED_REPORT`, `operatorAsserted`, `dbVerified` ve `serverVerified`
+alanları bu sınırı açık tutar. Dosya hash'inin rapor metnini sunucuya kanıtladığı,
+tek operatörün iki ayrı insan onayı olduğu veya sahte tarihli testlerin gerçek P7'yi
+geçirdiği söylenmez. Üretimde operatör gerçek rapor/inceleme dosyalarını eşleştirerek
+bu girdiyi oluşturmalıdır.
+
+İlk 37 yeni birim, mevcut rapor/ortam kontrolleriyle toplam67 birim ve 13 PG16
+aktivasyon senaryosu geçti. Atomic geçiş, çift istekte tek kazanan, admin/CSRF/replay,
+kalite/kaynak/roster/kapasite/hesap/geçmiş reddi ve lifecycle yazma hatasında bütün
+transaction'ın geri alınması sınandı. Exact ret nedeni kontrolleri güçlendiriliyor;
+geniş regresyon, bağımsız Opus ve CI açık. Canlı aktivasyon yapılmadı.
+
+Son doğrulama: 75 birleşik PG16 (hazırlık/aktivasyon/manual), ardından benchmark
+bağlantısı, klon geçmişi ve exact ret nedenleriyle **15/15 odaklı PG16**, ayrıca
+**67/67 birim** geçti. Birbirini içeren koşular toplanmadı. Format/lint/typecheck,
+requirements ve **154 API işlemi** OpenAPI kontrolü PASS. Fixture'daki Prisma JSON
+okuma/yazma tipi farkı açık JSON nesneleriyle düzeltildi; runtime kapısı gevşetilmedi.
+Farklı model hakemi ve exact CI hâlâ açık.
+
+İlk gerçek Opus 5 `8ae122f` için DÜZELTİLMELİ verdi. A2'nin istediği kapsayıcı bitiş
+mevcut toplum raporunun `[from, to)` sözleşmesine aykırıydı:18PG koşusunda `to-1ms`
+kesintisi reddedildi, tam `to` kesintisi pencere dışında kaldı. A8 tam satır ayar
+okuması kaynak kesitiyle kapatılmak üzere hakeme geri sunuluyor. Ayrı eski/yeni
+benchmark kayıtları ve başarılı manual koşunun doğal kanıt sayılmaması ayrıca geçti.
+Son görüş henüz yok; ilk red yeniden GO diye etiketlenmedi.
+
+Transaction süreleri değiştirilmedi: Idempotency-Key içeren HTTP yolu mevcut dış
+transaction'ın varsayılan **5 saniye** sınırını kullanır; doğrudan servis çağrısı
+`inTransaction` ile **15 saniye** kullanır. İç transaction yardımcıları dış sınırı
+büyütmez. 200 tarihsel profil/10.000 olay tavanı süre garantisi değildir; gerçek
+üretim boyutunun dağıtım öncesi doğrulanması ayrıca gerekir.
+
+Son 36 profilli yerel HTTP fixture'ı **555 ms** içinde geçti; mevcut 5s idempotency
+transaction sınırı artırılmadı. Ayrı dört PG testi atomic geçişi, `to-1ms` reddini,
+tam `to` sınırını ve36 profil yolunu geçti. Önceki18PG ile üç test örtüşür; koşular
+bağımsız toplam diye sayılmaz. Son68 birim PASS. Bu küçük fixture üretim veri
+boyutunun performans kanıtı değildir. İkinci Opus görüşü bekleniyor.
+
+### 4 Ekim 2026 — aktivasyon ikinci bağımsız incelemesi
+
+Gerçek `claude-opus-5`, exact `dbe80e62c15e15b60b495829c764b3fb063937a9`:
+**KOŞULLU GO**; önceki A2/A8 blokları kaynak ve karşı örnekle geri çekildi, yeni
+bloklayıcı bulunmadı. Tek koşul B1 ölçüm iddiasını daraltmaktı: 36 profilli yerel
+fixture'da **555 ms uçtan uca HTTP süresi** ölçüldü; **TX aktif süresi ölçülmedi**.
+Bu sayı üretim kapasitesi, veri büyüklüğü veya 5 saniyelik transaction tavanına
+kalan payın kanıtı değildir. Mevcut HTTP 5 s / doğrudan 15 s sınırları değişmedi.
+Bu açık etiketle B1 makbuz koşulu kapandı; kaynak kodu değişmedi. Kullanılmayan
+`_count`, dar trigger tipi ve ek baseline-stale sınır testi önerileri bloklayıcı
+olmadı; bu tur kapsamı büyütülmedi. Final exact CI/merge ve canlı kapılar açık.
+Tekrarlama: uçtan uca yerel süreyi TX telemetrisi veya üretim kapasitesi sayma.
