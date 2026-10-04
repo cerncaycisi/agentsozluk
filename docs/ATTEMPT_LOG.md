@@ -4360,3 +4360,14 @@ final kod/scripts ağacı incelenen SHA ile aynı. Yeni koşulsuz hakem görüş
 Çalıştırıcı kod hazırlığı tamam; A′ sonrası girdilerin güncel exact sürümde sabitlenmesi,
 gerçek sözleşme kontrolü ve P2/P7 davranış kabulü açık. Pilot çağrısı 0, üretim dağıtımı yok.
 Tekrarlama: geçerli taşıma/JSON sonucunu davranış kabulü sayma; eski manifesti çalıştırma.
+
+## 4 Ekim 2026 — O3 restore doğrulaması yerel hazırlık
+
+`8c56852` tabanında readonly SQL ve dosya makbuzu karşılaştırması hazırlandı.
+**20 makbuz + 22 mevcut shell + 1 gerçek PG16 = 43 test PASS**. Gerçek göndericinin
+native zstd arşivi iki sentetik tabloya (1.000 satır + boş tablo) geri yüklendi; tam sayı/
+içerik özeti eşliği geçti. Yanlış hedef OID, aynı sayıda bozuk içerik, eksik satır, geri
+kalmış/çevrimli/tükenmiş ve sahipsiz sequence reddedildi. Kontrol sequence'i ilerletmedi.
+Yalnız testin oluşturduğu ad/OID bağlı iki küçük DB temizlendi; üretime bağlanılmadı.
+Hakem/exact CI ve gerçek büyük restore açık.
+Tekrarlama: yalnız arşiv decode veya veri kıyasını tam restore/temizlik kapanışı sayma.

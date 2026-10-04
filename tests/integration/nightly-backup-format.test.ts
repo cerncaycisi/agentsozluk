@@ -1,9 +1,10 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, it } from "vitest";
+import { compareBackupRestore } from "../../scripts/backup-restore/receipt";
 import { requireTestDatabaseUrl } from "../../scripts/test-database-safety";
 
 it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri yükler", () => {
@@ -49,7 +50,8 @@ it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri 
     SELECT jsonb_build_object('event','LEASE_HEARTBEAT','state','RUNNING',
       'run',md5(g::text),'note',repeat('sentetik Türkçe kayıt ',12)),
       g/7.0,'2026-10-04 00:00:00+00'::timestamptz+g*interval '1 second'
-    FROM generate_series(1,1000) g;`,
+    FROM generate_series(1,1000) g;
+    CREATE TABLE empty_probe (id bigserial PRIMARY KEY, note text);`,
     );
     // Üretim betiği değişmeden yürür; yalnız host ve Compose taşıması yereldir.
     executable("hostname", "echo agent-sozluk-prod");
@@ -99,14 +101,65 @@ exec "$command_name" "\${args[@]}"`,
       ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
       { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
     );
-    const restored = sql(
-      target,
-      `SET timezone='UTC'; SET extra_float_digits=3;
-      SELECT 'table|probe|'||count(*)::text||'|'||sum(hashtextextended(t::text,0))::text FROM probe t;`,
+    const verificationSql = readFileSync("scripts/backup-restore/verify.sql", "utf8");
+    const verify = (expectedOid = owned.get(target)!) =>
+      execFileSync(
+        "psql",
+        [
+          "-XAtq",
+          "-d",
+          url(target),
+          "-v",
+          `restore_database=${target}`,
+          "-v",
+          `restore_oid=${expectedOid}`,
+        ],
+        {
+          input: verificationSql,
+          encoding: "utf8",
+          stdio: ["pipe", "pipe", "pipe"],
+          timeout: 15_000,
+        },
+      );
+    const beforeSequence = sql(target, "SELECT last_value || '|' || is_called FROM probe_id_seq");
+    expect(compareBackupRestore(metadata, verify())).toEqual({
+      result: "O3_DATA_MATCH",
+      tables: 2,
+      rows: "1000",
+      sequences: 2,
+    });
+    expect(sql(target, "SELECT last_value || '|' || is_called FROM probe_id_seq")).toBe(
+      beforeSequence,
     );
-    expect(restored).toMatch(/^table\|probe\|1000\|/u);
-    expect(metadata.split("\n")).toContain(restored);
-    expect(sql(target, "SELECT nextval('probe_id_seq')>(SELECT max(id) FROM probe)")).toBe("t");
+    expect(() => verify("0")).toThrow();
+    expect(sql(target, "SELECT last_value || '|' || is_called FROM probe_id_seq")).toBe(
+      beforeSequence,
+    );
+
+    // Aynı satır sayısıyla içerik bozulması gizlenemez.
+    sql(target, "UPDATE probe SET payload = '{}' WHERE id = 1");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_TABLE_MISMATCH");
+    sql(target, "DELETE FROM probe WHERE id = 1");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_TABLE_MISMATCH");
+
+    // Test yalnız kendi küçük kopyasını yeniden yükler; gerçek operatör bunu otomatik yapmaz.
+    sql(target, "DROP TABLE probe, empty_probe");
+    execFileSync(
+      "pg_restore",
+      ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
+      { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
+    );
+    sql(target, "SELECT setval('probe_id_seq', 1, false)");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_SEQUENCE_UNSAFE");
+    sql(target, "SELECT setval('probe_id_seq', 1000, true)");
+    expect(compareBackupRestore(metadata, verify()).sequences).toBe(2);
+    sql(target, "ALTER SEQUENCE probe_id_seq CYCLE");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_SEQUENCE_UNSAFE");
+    sql(target, "ALTER SEQUENCE probe_id_seq NO CYCLE");
+    sql(target, "CREATE SEQUENCE stray");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_SEQUENCE_UNSAFE");
+    sql(target, "DROP SEQUENCE stray; ALTER SEQUENCE probe_id_seq MAXVALUE 1000");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_SEQUENCE_UNSAFE");
   } finally {
     for (const [name, expectedOid] of owned) {
       expect(oid(name)).toBe(expectedOid);

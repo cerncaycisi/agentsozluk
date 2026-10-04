@@ -371,6 +371,10 @@ imajı/worker değişmedi. 10:39–10:41 UTC ilk native yedek **671.960.158 bayt
 checksum/50 tablo/3.270.401 satır/tam blok decode PASS; yedi normal kopya ve gzip pin
 korundu. Boş alan **6.679.306.240 bayt**. Timer aktif, sonraki iş 5 Ekim 01:39 UTC.
 Kurulum/ilk yeni yedek tamam; 5 Ekim otomatik makbuz ve 7 Ekim tam DB restore açık.
+4 Ekim yerel restore makbuz aracı hazırlandı: ad/OID bağlı READ ONLY SQL ve tam tablo/
+sequence karşılaştırması; 20 makbuz + 22 shell + 1 gerçek PG16 test PASS. Hakem/exact CI
+henüz açık. Bu hazırlık tam üretim restore değildir; süreç sınırı/izole hedef makbuzu
+çalışma gününde ayrıca uygulanır.
 Yedek yükü A′ döneminin operasyonel etkisi olarak kaydedildi. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
