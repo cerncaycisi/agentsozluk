@@ -675,6 +675,94 @@ describe("agent control plane with PostgreSQL", () => {
     ).toBe(3);
   });
 
+  it("rejects a stale profile form without reverting the winner or creating a persona version", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const profileId = created.agent.profile.id;
+    const before = await getAgentDetail(integrationDatabase, actor(admin.id), profileId);
+    const expectedProfileStateHash = before.profileStateHash;
+    const winner = await updateAgent(
+      integrationDatabase,
+      actor(admin.id),
+      profileId,
+      updateAgentSchema.parse({ expectedProfileStateHash, manualTimeoutSeconds: 720 }),
+    );
+    expect(winner.profileStateHash).not.toBe(expectedProfileStateHash);
+    const auditCount = await integrationDatabase.auditLog.count({ where: { entityId: profileId } });
+    await expect(
+      updateAgent(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        updateAgentSchema.parse({
+          expectedProfileStateHash,
+          manualTimeoutSeconds: 600,
+          sourceEvolutionEnabled: !before.sourceEvolutionEnabled,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_PROFILE_STATE_CONFLICT", status: 409 });
+    await expect(
+      updateAgent(integrationDatabase, actor(admin.id), profileId, { manualTimeoutSeconds: 840 }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
+    await expect(
+      updateAgent(integrationDatabase, actor(admin.id), profileId, { expectedProfileStateHash }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
+    const after = await getAgentDetail(integrationDatabase, actor(admin.id), profileId);
+    expect(after.manualTimeoutSeconds).toBe(720);
+    expect(after.sourceEvolutionEnabled).toBe(before.sourceEvolutionEnabled);
+    expect(after.currentPersonaVersion?.version).toBe(before.currentPersonaVersion?.version);
+    expect(await integrationDatabase.auditLog.count({ where: { entityId: profileId } })).toBe(
+      auditCount,
+    );
+    await expect(
+      updateAgent(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        updateAgentSchema.parse({
+          expectedProfileStateHash: after.profileStateHash,
+          sourceEvolutionEnabled: !before.sourceEvolutionEnabled,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      manualTimeoutSeconds: 720,
+      sourceEvolutionEnabled: !before.sourceEvolutionEnabled,
+    });
+  });
+
+  it("serializes two profile updates from the same read state and accepts only one", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const profileId = created.agent.profile.id;
+    const { profileStateHash } = await getAgentDetail(
+      integrationDatabase,
+      actor(admin.id),
+      profileId,
+    );
+    const results = await Promise.allSettled(
+      [720, 840].map((manualTimeoutSeconds) =>
+        updateAgent(
+          integrationDatabase,
+          actor(admin.id),
+          profileId,
+          updateAgentSchema.parse({
+            expectedProfileStateHash: profileStateHash,
+            manualTimeoutSeconds,
+          }),
+        ),
+      ),
+    );
+    expect(results.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+    const failure = results.find((result) => result.status === "rejected");
+    expect(failure?.status === "rejected" ? failure.reason : null).toMatchObject({
+      code: "AGENT_PROFILE_STATE_CONFLICT",
+      status: 409,
+    });
+    expect(
+      await integrationDatabase.agentPersonaVersion.count({ where: { agentProfileId: profileId } }),
+    ).toBe(1);
+  });
+
   it("rejects a stale persona edit instead of silently overwriting the concurrent one", async () => {
     const admin = await createPrincipal();
     const created = await createFirstAgent(admin.id);

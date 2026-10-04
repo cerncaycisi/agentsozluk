@@ -69,7 +69,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - **4 Ekim kaynak hazırlığı:** iki doğum taslağının 20 URL’sinden 19’u okundu;
   Arkitera iki kez zaman aşımına uğradı. Mevcut izinli havuzda üç yedek adres okundu;
   ilk taslağa Fayn/Aeon #311’de eklendi (38 test; Opus koşulları kaynak/ölçümle kapandı).
-  Son CI/birleşme ve gerçek aday kaynak hazırlığı
+  Final `c53f8c3`, CI `37191249963` 7/7; main `8aeeb0a`. Gerçek aday kaynak hazırlığı
   ve aktivasyon kapıları açık. [P8 makbuzu](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
@@ -182,6 +182,11 @@ kaynak/testle kapandı; shared kilit varsayımı çürütüldü. Son yerel 100 h
 kod/hakem/CI işi aktif kuyruktan çıktı; dağıtım açık. Global iptal/durdurma gibi diğer
 toplu komutlar bu ilk alt pakette tamamlandı sayılmaz.
 [O5 belirtimi](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
+
+**O5 profil-only CAS notu:** kaynakta doğrulandı; persona sürümü değişmeden çalışma
+ayarlarının kaybolabildiği yol dar durum hash'iyle yerelde kapatıldı. Son 47 birim/arayüz/sözleşme
+ve 52 PG testi geçti; ilk okuma hash'i/sürümü form yenilemesinde korunur. Kod hakemi/exact
+CI açık. Yeni migration veya acil pause/iptal/durdurma önkoşulu eklenmedi.
 
 ## 3. Kabul, maliyet ve geri alma
 

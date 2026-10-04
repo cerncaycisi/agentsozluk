@@ -556,6 +556,7 @@ export function assertAgentMutationSchemaContracts(document: OpenApiDocument): v
       "dailyVote",
       "displayName",
       "expectedPersonaVersion",
+      "expectedProfileStateHash",
       "manualTimeoutSeconds",
       "persona",
       "personaEvolutionEnabled",
@@ -576,10 +577,17 @@ export function assertAgentMutationSchemaContracts(document: OpenApiDocument): v
     }
   }
   const identityFields = ["persona", "displayName", "publicBio"];
+  const profileSettingFields = [
+    "activeTimeProfile",
+    "personaEvolutionEnabled",
+    "sourceEvolutionEnabled",
+    "scheduledTimeoutSeconds",
+    "manualTimeoutSeconds",
+  ];
   const dependencies = updateSchema.dependentRequired ?? {};
   assertExactNames(
     Object.keys(dependencies),
-    identityFields,
+    [...identityFields, ...profileSettingFields],
     "AgentUpdateInput dependentRequired fields",
   );
   for (const field of identityFields) {
@@ -591,6 +599,31 @@ export function assertAgentMutationSchemaContracts(document: OpenApiDocument): v
       `AgentUpdateInput ${field} dependencies`,
     );
   }
+  for (const field of profileSettingFields)
+    assertExactNames(
+      dependencies[field] ?? [],
+      ["expectedProfileStateHash"],
+      `AgentUpdateInput ${field} dependencies`,
+    );
+  const profileHash = inlineSchema(
+    updateSchema.properties?.expectedProfileStateHash,
+    "AgentUpdateInput.expectedProfileStateHash",
+  );
+  if (profileHash.type !== "string" || profileHash.pattern !== "^[0-9a-f]{64}$")
+    throw new Error("AgentUpdateInput.expectedProfileStateHash must be a canonical SHA-256");
+  const mutationFields = (updateSchema.anyOf ?? []).map((candidate) => {
+    const branch = inlineSchema(candidate, "AgentUpdateInput mutation branch");
+    if (branch.required?.length !== 1)
+      throw new Error("AgentUpdateInput mutation branch must require one writable field");
+    return branch.required[0]!;
+  });
+  assertExactNames(
+    mutationFields,
+    Object.keys(updateSchema.properties ?? {}).filter(
+      (field) => field !== "expectedPersonaVersion" && field !== "expectedProfileStateHash",
+    ),
+    "AgentUpdateInput writable fields",
+  );
   inlineSchema(updateSchema.properties?.changeSummary, "AgentUpdateInput.changeSummary");
 
   const globalSchema = componentSchema(document, "AgentGlobalSettingsUpdateInput");

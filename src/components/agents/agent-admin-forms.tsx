@@ -1540,12 +1540,14 @@ export function AgentPersonaEditForm({
   agentId,
   persona: rawPersona,
   personaVersion,
+  profileStateHash,
   profile,
 }: {
   agentId: string;
   // Form açıldığında okunan persona sürümü. PATCH ile geri gönderilir; araya giren bir
   // düzenleme olduysa sunucu 409 döner ve bayat form içeriği sessizce yazılmaz.
   personaVersion: number;
+  profileStateHash: string;
   persona: unknown;
   profile: {
     activeTimeProfile: unknown;
@@ -1556,7 +1558,11 @@ export function AgentPersonaEditForm({
   };
 }) {
   const router = useAppRouter();
-  const initialPersona = seedPersonaSchema.parse(rawPersona);
+  const [initialPersona] = useState(() => seedPersonaSchema.parse(rawPersona));
+  // Yenilenen sunucu prop'ları, kullanıcının açık formunu yeni duruma onay vermiş
+  // sayamaz. Taslak ve iki karşılaştırma değeri aynı ilk okumaya bağlı kalır.
+  const [readPersonaVersion] = useState(personaVersion);
+  const [readProfileStateHash] = useState(profileStateHash);
   const [persona, setPersona] = useState<SeedPersona>(initialPersona);
   const [document, setDocument] = useState(serializePersona(initialPersona, "JSON"));
   const [documentDirty, setDocumentDirty] = useState(false);
@@ -1597,7 +1603,8 @@ export function AgentPersonaEditForm({
           await apiRequest(`/api/v1/admin/agents/${agentId}`, {
             method: "PATCH",
             body: {
-              expectedPersonaVersion: personaVersion,
+              expectedPersonaVersion: readPersonaVersion,
+              expectedProfileStateHash: readProfileStateHash,
               ...profilePayload(settings),
               ...(effectivePersonaChanged
                 ? { persona: effectivePersona, changeSummary: changeSummary.trim() }

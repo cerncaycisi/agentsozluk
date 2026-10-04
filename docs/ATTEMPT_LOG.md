@@ -3821,3 +3821,31 @@ false/true` yapabildi; geçici rol ve DB silindi.
   12/10 ve 22 tekil URL birlikte test edilir; zod 3–20 sınırı aynı.
 - Tekrarlama: kaynak eklemesi için draftVersion artırıp aynı karakterin semantik ret
   kararını aşma; eski persona kesitini bugünkü canlı evren diye sunma. Son CI açık.
+
+### 4 Ekim 2026 — O5 profil-only durum koruması
+
+- `c53f8c3` tabanındaki ayrı çalışma dalı; üretim bağlantısı/yazması yok. Kaynakta
+  persona sürümü değişmeyen iki çalışma ayarı PATCH'inin kayıp güncelleme koruması olmadığı
+  doğrulandı. Beş alan için yönetici detayındaki profil durum hash'i zorunlu hale getirildi.
+- İlk birim turunda 29 PASS/1 FAIL: eski yalnız-süre payload'ı artık gereken hash'i
+  içermiyordu. Fixture'a aynı okumanın hash'i verildi; zorunluluk testi ayrıca korundu.
+  Son 30 birim/arayüz + 52 PG16 PASS; gerçek iki eşzamanlı yazımdan biri 409 verdi.
+- Formun yeni prop alınca eski taslağa taze hash/sürüm iliştirmesi de engellendi; aynı
+  ilk okuma korunur. Persona-only operasyon scriptleri ve acil stop/pause yolu değişmedi.
+- Tekrarlama: kilitlemeyi eski formun iyimser sürüm koruması sayma; yalnız ayar değişimi
+  için sahte persona sürümü üretme; durum hash'ini yetki imzası veya monoton sürüm diye sunma.
+
+### 4 Ekim 2026 — P8 kaynak hazırlığı #311 ana dalda
+
+- Final `c53f8c3b5cb5e71b237f9cc11e8b5a0a754daf62`, exact CI `37191249963` 7/7;
+  main `8aeeb0a15849073454e12ad3777de7f6eb49b420`. Fresh head/base/review ve
+  CLEAN/MERGEABLE sonrası squash; uzak SHA ve son PR ağacı eşitliği doğrulandı.
+- Opus 5 koşulları kapandı; son 38 test ve dört yerel kalite kapısı PASS. Başka daldaki
+  yeni O5 profil ayarı çalışması bu PR'ın test/CI sonucuna dahil edilmedi.
+- Tekrarlama: güncel CI yerine iptal edilmiş ilk head koşusunu gösterme; kaynak hazırlığı
+  kodunu canlı persona rollout veya gerçek adayın Gate 10 kabulü sayma.
+
+- O5 kalite kontrolü önce `TS2345` ile yeni hata kodunun ErrorCode union kaydını,
+  ardından `AgentUpdateInput properties mismatch` ile OpenAPI denetçisinin eski alan
+  listesini yakaladı. Kod kaydı, beş bağımlı alan ve token-only nesne reddi aynı sözleşmeye
+  getirildi; denetim gevşetilmedi. Son 47/47 birim/arayüz/sözleşme, 152 OpenAPI işlem PASS.

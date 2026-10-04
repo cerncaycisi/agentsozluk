@@ -9,6 +9,8 @@ import {
   countRuntimeSourceHolders,
 } from "@/modules/agents/repository/runtime";
 import { randomUUID } from "node:crypto";
+import { canonicalRequestHash } from "@/modules/idempotency/domain/idempotency";
+import { agentProfileSettingFields } from "@/modules/agents/validation/schemas";
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, InputJsonValue, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
@@ -697,6 +699,18 @@ function agentProfileAuditSnapshot(profile: {
   };
 }
 
+function agentProfileStateHash(
+  profile: Parameters<typeof agentProfileAuditSnapshot>[0] & { id: string },
+) {
+  // Durum karşılaştırmasıdır, yetki veya monoton sürüm değildir. Runtime'ın
+  // sık değişen sayaçları dışarıda; yönetici ayarları ve persona/lifecycle içeride.
+  return canonicalRequestHash({
+    version: 1,
+    agentProfileId: profile.id,
+    state: agentProfileAuditSnapshot(profile),
+  });
+}
+
 export async function listAgentDashboard(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -877,6 +891,7 @@ export async function getAgentDetail(
     ) as Record<ReflectionStatus, number>;
     return {
       ...agent,
+      profileStateHash: agentProfileStateHash(agent),
       todayWindow,
       today: dailyActivityLookup(dailyActivity)(agentProfileId),
       evolution: {
@@ -908,6 +923,12 @@ export async function updateAgent(
     if (current.lifecycleStatus === "RETIRED") {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Emekli agent düzenlenemez.");
     }
+    if (
+      !Object.keys(input).some(
+        (key) => key !== "expectedPersonaVersion" && key !== "expectedProfileStateHash",
+      )
+    )
+      throw new AppError("VALIDATION_ERROR", 422, "En az bir düzenlenecek alan gönderin.");
     /*
       Kayıp güncelleme koruması. `lockAgentProfile` yalnız iki transaction'ı sıraya sokar;
       bayat okuma ile gelen ikinci yazar kilidi düzgün alsa bile araya giren düzenlemeyi
@@ -938,6 +959,28 @@ export async function updateAgent(
       );
     }
     // Zod ile aynı zorunluluk; şemayı atlayan doğrudan çağrılar (scripts) da token vermelidir.
+    if (
+      agentProfileSettingFields.some((field) => input[field] !== undefined) &&
+      (typeof input.expectedProfileStateHash !== "string" ||
+        !/^[0-9a-f]{64}$/u.test(input.expectedProfileStateHash))
+    ) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Çalışma ayarı değişikliği için okunan profil durumu zorunludur.",
+        { expectedProfileStateHash: ["Güncel profil detayındaki durum özeti gönderilmelidir."] },
+      );
+    }
+    if (
+      input.expectedProfileStateHash !== undefined &&
+      input.expectedProfileStateHash !== agentProfileStateHash(current)
+    ) {
+      throw new AppError(
+        "AGENT_PROFILE_STATE_CONFLICT",
+        409,
+        "Agent ayarları başka bir işlem tarafından değiştirildi; güncel durumu yükleyin.",
+      );
+    }
     if (input.persona && input.expectedPersonaVersion === undefined) {
       throw new AppError(
         "VALIDATION_ERROR",
@@ -1056,12 +1099,16 @@ export async function updateAgent(
       after: afterProfile,
       metadata: {
         changedFields: Object.keys(input).filter(
-          (key) => key !== "persona" && key !== "changeSummary" && key !== "expectedPersonaVersion",
+          (key) =>
+            key !== "persona" &&
+            key !== "changeSummary" &&
+            key !== "expectedPersonaVersion" &&
+            key !== "expectedProfileStateHash",
         ),
         ...(personaVersion ? { personaVersion: personaVersion.version } : {}),
       },
     });
-    return updatedAgent;
+    return { ...updatedAgent, profileStateHash: agentProfileStateHash(updatedAgent) };
   });
 }
 

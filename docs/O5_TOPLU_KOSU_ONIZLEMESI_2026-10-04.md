@@ -97,3 +97,43 @@ Final `113f3aa8ab3d29be130f448988597520032c1ac7`, CI `37184176713` **7/7 PASS**;
 head/base, review durumu ve CLEAN doğrulandı; uzak SHA/ağaç eşitliği geçti, dal silindi.
 Son 50 test/kalite kapıları PASS; 100 hedefin son tekrarında 193 ms preview / 548 ms
 queue ölçüldü. E2E final exact CI'da da geçti. Üretim dağıtımı henüz yapılmadı.
+
+## Profil çalışma ayarlarının kayıp güncelleme koruması — 4 Ekim
+
+O5'in profil-only CAS notu kaynakta doğrulandı: iki açık form aynı persona sürümündeyken
+ilk kaydın çalışma ayarını ikinci form sessizce geri yazabiliyordu. Profil kilidi işlemleri
+sıralıyor, fakat ilk okunan ayar durumunu karşılaştırmıyordu. Persona sürümünü sırf ayar
+kaydetmek için artırmak karakter evrimi değildir; bu yola gidilmedi.
+
+Yönetici detay yanıtı `profileStateHash` taşır. Hash sürümü 1; profil ID'si ve mevcut audit
+snapshot'ındaki kimlik/persona sürümü, lifecycle ve beş çalışma ayarı kanonik SHA-256 ile
+bağlanır. Runtime sayaçları dahil değildir. Bu yetki/önizleme imzası veya monoton sürüm
+numarası değildir; mevcut değerlerin eşitliği önkoşuludur. A→B→A geçmişini ayrı bir sürüm
+olarak ayırt ettiği iddia edilmez.
+
+`activeTimeProfile`, `personaEvolutionEnabled`, `sourceEvolutionEnabled`,
+`scheduledTimeoutSeconds` veya `manualTimeoutSeconds` yazan PATCH ve doğrudan servis
+çağrısında `expectedProfileStateHash` zorunludur. Mevcut taze admin ve profile → settings
+kilitleri altında karşılaştırılır; değişmiş durum **AGENT_PROFILE_STATE_CONFLICT / 409**,
+eksik/bozuk zorunlu hash **422** verir. Hash tek başına düzenleme sayılmaz ve audit'in
+changedFields listesine yazılmaz. Yalnız persona yazan mevcut operasyon betikleri kendi
+`expectedPersonaVersion` kontrolünü kullanmayı sürdürür. Migration yok.
+
+Açık tarayıcı formu persona, persona sürümü, çalışma ayarları ve durum hash'ini aynı ilk
+okumaya sabitler. Yeni sunucu prop'ları kullanıcının eski taslağını yeni duruma onay vermiş
+saymaz. Başka yazar sayfasında form yeniden kurulur. Eski HTTP istemcileri çalışma ayarı
+PATCH'inden önce detay GET'indeki hash'i almalıdır; eski payload 422 ile durur. Bu API
+uyumluluk notu dağıtımda korunur; acil pause/iptal/durdurma yollarına yeni kapı eklenmedi.
+
+İlk yerel regresyon **30 birim/arayüz ve 52 PostgreSQL testi PASS**: aynı eski durumdan iki
+gerçek yarışan ayar güncellemesinin yalnız biri kabul edildi, bayat form kazananın ayarını
+ve audit sayısını değiştirmedi, taze tekrar geçti, ayar değişikliği persona sürümü üretmedi.
+Rerender edilen arayüz aynı eski hash/sürümü gönderdi ve kullanıcının 720 saniyelik taslağını
+korudu. Toplu koşu önizlemesinin profil değişikliğini reddetmesi de mevcut PG testinde sürdü.
+Kod hakemi/exact CI ve canlı dağıtım henüz bu alt paket için tamamlanmış sayılmaz.
+
+API/OpenAPI koşulları eşitlendi: beş alanın her biri profil hash'ini gerektirir; yalnız
+karşılaştırma token'ı içeren nesne düzenleme sayılmaz. Yeni 409 kodu ErrorCode listesine
+alındı. Güncellenen sözleşme denetçisi ve olumsuz sapma testleriyle son birim/arayüz/sözleşme
+koşusu **47/47**; OpenAPI **152 işlem** hizalamasında PASS. Önceki 52 PG16 sonucu aynı
+runtime kodu içindir; bu son ilaveler tip/sözleşme denetimidir.

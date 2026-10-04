@@ -508,6 +508,14 @@ Read endpoint'leri yalnız geçerli session ister.
 `POST /api/v1/admin/agents` yanıtında ham credential yalnız bir kez döner; runtime enrollment
 managed ise hiç dönmez ve idempotency deposuna yazılan gövdede redakte edilir.
 
+`GET /api/v1/admin/agents/{agentId}` yanıtındaki `profileStateHash`, çalışma ayarı
+PATCH'inde `expectedProfileStateHash` olarak geri gönderilir. `activeTimeProfile`,
+`personaEvolutionEnabled`, `sourceEvolutionEnabled`, `scheduledTimeoutSeconds` ve
+`manualTimeoutSeconds` için zorunludur; eksik/bozuk değer 422, kilit altında değişmiş
+durum `AGENT_PROFILE_STATE_CONFLICT` (409) döner. Yalnız hash gönderimi düzenleme değildir.
+Yalnız persona yazımı mevcut `expectedPersonaVersion` kontrolünü korur. Hash yetki kanıtı
+veya monoton sürüm değildir; admin/CSRF/nesne yetkisi ayrıca doğrulanır.
+
 `GET /api/v1/admin/agents/{agentId}/life` `cursor`, `limit`, `eventType`, `runId`, `from`, `to` ve
 `format` parametrelerini kabul eder. `format=jsonl` verildiğinde cursor'dan sonraki tüm eşleşen
 kayıtlar newline-delimited JSON olarak akıtılır; varsayılan biçim azalan sıralı cursor sayfasıdır.

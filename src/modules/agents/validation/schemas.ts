@@ -131,9 +131,21 @@ export const createAgentSchema = profileOptionsSchema.extend({
   değişir. Kalıcı ayar alanlarından biri değildir; bu yüzden aşağıdaki "en az bir alan
   gönderin" sayımına dahil edilmez.
 */
+export const agentProfileSettingFields = [
+  "activeTimeProfile",
+  "personaEvolutionEnabled",
+  "sourceEvolutionEnabled",
+  "scheduledTimeoutSeconds",
+  "manualTimeoutSeconds",
+] as const;
+
 export const updateAgentSchema = z
   .object({
     expectedPersonaVersion: z.number().int().positive().optional(),
+    expectedProfileStateHash: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/u)
+      .optional(),
     displayName: displayNameSchema.optional(),
     publicBio: z.string().trim().min(20).max(500).optional(),
     persona: seedPersonaSchema.optional(),
@@ -160,7 +172,19 @@ export const updateAgentSchema = z
     message: "Persona değişikliği için okunan persona sürümü zorunludur.",
   })
   .refine(
-    (input) => Object.keys(input).filter((key) => key !== "expectedPersonaVersion").length > 0,
+    (input) =>
+      !agentProfileSettingFields.some((field) => input[field] !== undefined) ||
+      input.expectedProfileStateHash !== undefined,
+    {
+      path: ["expectedProfileStateHash"],
+      message: "Çalışma ayarı değişikliği için okunan profil durumu zorunludur.",
+    },
+  )
+  .refine(
+    (input) =>
+      Object.keys(input).some(
+        (key) => key !== "expectedPersonaVersion" && key !== "expectedProfileStateHash",
+      ),
     { message: "En az bir alan gönderin." },
   );
 

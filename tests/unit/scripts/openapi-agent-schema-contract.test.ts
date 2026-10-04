@@ -91,6 +91,32 @@ describe("OpenAPI agent mutation schema contracts", () => {
     );
   });
 
+  it.each([
+    "activeTimeProfile",
+    "personaEvolutionEnabled",
+    "sourceEvolutionEnabled",
+    "scheduledTimeoutSeconds",
+    "manualTimeoutSeconds",
+  ])("rejects removal of the %s profile-state precondition", (field) => {
+    const drifted = cloneDocument();
+    const updateSchema = drifted.components?.schemas?.AgentUpdateInput;
+    if (!updateSchema?.dependentRequired) throw new Error("Missing dependentRequired fixture");
+    updateSchema.dependentRequired[field] = [];
+    expect(() => assertAgentMutationSchemaContracts(drifted)).toThrow(
+      new RegExp(`AgentUpdateInput ${field} dependencies mismatch`, "u"),
+    );
+  });
+
+  it("rejects treating only a read-state token as an edit", () => {
+    const drifted = cloneDocument();
+    const updateSchema = drifted.components?.schemas?.AgentUpdateInput;
+    if (!updateSchema?.anyOf) throw new Error("Missing mutation branches fixture");
+    updateSchema.anyOf.push({ required: ["expectedProfileStateHash"] });
+    expect(() => assertAgentMutationSchemaContracts(drifted)).toThrow(
+      /AgentUpdateInput writable fields mismatch/u,
+    );
+  });
+
   it("requires update quota fields to remain explicit retired tombstones", () => {
     const drifted = cloneDocument();
     const updateSchema = drifted.components?.schemas?.AgentUpdateInput;

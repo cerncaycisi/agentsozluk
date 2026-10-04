@@ -162,7 +162,12 @@ describe("agent control-plane domain", () => {
         changeSummary: "Agent görünen adı kontrollü olarak güncellendi.",
       }).success,
     ).toBe(true);
-    expect(updateAgentSchema.safeParse({ scheduledTimeoutSeconds: 300 }).success).toBe(true);
+    expect(
+      updateAgentSchema.safeParse({
+        scheduledTimeoutSeconds: 300,
+        expectedProfileStateHash: "a".repeat(64),
+      }).success,
+    ).toBe(true);
   });
 
   it("requires the read persona version as a compare-and-set token for persona rewrites", () => {
@@ -192,6 +197,25 @@ describe("agent control-plane domain", () => {
         expectedPersonaVersion: 3,
       }).success,
     ).toBe(true);
+  });
+
+  it.each([
+    { activeTimeProfile: defaultActiveTimeProfile },
+    { personaEvolutionEnabled: false },
+    { sourceEvolutionEnabled: false },
+    { scheduledTimeoutSeconds: 600 },
+    { manualTimeoutSeconds: 720 },
+  ])("requires a read profile state for a settings patch: %j", (patch) => {
+    expect(updateAgentSchema.safeParse(patch).success).toBe(false);
+    expect(
+      updateAgentSchema.safeParse({ ...patch, expectedProfileStateHash: "a".repeat(64) }).success,
+    ).toBe(true);
+    expect(
+      updateAgentSchema.safeParse({ ...patch, expectedProfileStateHash: "invalid" }).success,
+    ).toBe(false);
+    expect(updateAgentSchema.safeParse({ expectedProfileStateHash: "a".repeat(64) }).success).toBe(
+      false,
+    );
   });
 
   it("supplies the compare-and-set token at every operational updateAgent call site", () => {
