@@ -110,9 +110,10 @@ candidate_migration_snapshot() {
 settings_fingerprint() {
   # Exact Ekim profilleri dört ayarı OFF/NULL ile ekler. Eksik sütunları
   # aynı başlangıç değerleriyle tamamla; mevcut (eski/yeni) değerleri koru.
-  # Böylece yalnız onaylı şema eklemesi eşit kalır, ayar sapması yine görünür.
+  # Eksik sütun ve başlangıç değeri bu özette eşittir; varlık/tip katalogda sınanır.
   "${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 \
     -v "profile=$reviewed_migration_profile" -U agent_sozluk -d agent_sozluk <<'SQL' | hash_stream
+SET TimeZone = 'UTC';
 SELECT (CASE WHEN :'profile' IN ('october-2026-v1', 'october-2026-v2')
   THEN jsonb_build_object('rewardMode', 'OFF', 'birthMode', 'OFF',
     'lastBirthScanAt', NULL, 'lastBirthCandidateAt', NULL) || to_jsonb(s)

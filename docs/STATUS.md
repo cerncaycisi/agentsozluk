@@ -4379,3 +4379,51 @@ hakem ve final exact CI açık; üretim canlı9bf hâlâ değiştirilmedi.
 Tekrarlama: tek alt fonksiyon özetiyle bütün kapı fail-open ilan etme; ham JSON
 temsilinden SQL tipi çıkarma; mevcut hakem kararını kaynakla uzlaştırmadan GO
 diye yeniden adlandırma; pilotu yayın veya P7 kabulüne dönüştürme.
+
+### 4 Ekim 21:03 UTC — release UTC özeti ve ikinci hakem kaynak kontrolü
+
+İkinci salt okunur hakem gerçek `claude-opus-5`, exact
+`28b91d0f2eb4dc6a2a0a8a471445f2b43b734fba` için KOŞULLU GO verdi. Doğrulanmış
+TimeZone yanlış ret riski release SQL oturumunda UTC sabitlemeyle kapandı; DB/rol
+ayarına yazma yok. Gerçek PG16'da UTC/Tokyo ham `updatedAt` JSON'u farklı olduğu
+halde iki exact profilde ve migration'sız modda release özeti aynı: **2 yeni PG16
++19 release birim PASS**. Önceki 82 test ayrı makbuzdur; hepsi bu turda yeniden
+çalıştırılmış sayılmaz. Marker aralıkları yoksa test helper'ları açıkça düşer.
+
+Eski eksik profil makbuzunu doldurma/toplu silme yapılmaz; runbook önkoşulu yazıldı.
+`assert_migration_mode`'u capture önüne taşıma önerisi kaynakta migration'sız ilk
+koşuyu bozar; exact reviewed liste doğrulaması zaten dondurma öncesidir. Hakem
+koşulları kaynakla değerlendirildi; son UTC kodunun bağımsız görüşü/exact CI ve
+üretim restore/cutover hâlâ açık. `do not repeat`: eski state'i yeni SHA'ya taşıma;
+bir öneriyi çağırdığı fonksiyonun gerçek bağımlılığını okumadan uygulama.
+
+### 4 Ekim — #327 CI saat fixture'ı teşhisi
+
+Exact `28b91d0f2eb4dc6a2a0a8a471445f2b43b734fba`, CI `37234139545` FAIL:
+quality/behavior/browser/container PASS, database/coverage/validate FAIL.
+Database 483 PASS/14 FAIL; release/migration senaryoları geçti. Aynı doğum
+aktivasyonu fixture'ı veritabanı ve coverage işlerinde kaldı. Özel loglar kaynakla
+okundu; kör CI tekrarı veya eşik/timeout/üretim guard'ı gevşetme yapılmadı.
+
+Kök neden: fake Date `2026-10-04T20:59:00Z`, PostgreSQL DEFAULT now() ise gerçek
+saat. Yeni çocuk profile/audit/genesis kayıtları 21:07–21:08 oluşunca
+`ACTIVATION_HISTORY_UNKNOWN` doğru fail closed yanıtıdır; queued fixture'ın
+`availableAt` değeri de sabit now'ın ilerisine düşer. İlk yerel deneme yalnız
+`Database agent_sozluk_test does not exist` ortam hatasıydı; yeni ve yalnız bu işe
+ait `agent_sozluk_release327_test` DB'si oluşturulup 37 migration uygulanınca gerçek
+aktivasyon hatası 1/1 tekrarlandı. Mevcut test DB'leri/kullanıcı işleri korunur.
+
+Düzeltme yalnız testte: hazırlığın yeni profile/persona/audit/life-event INSERT
+`createdAt` alanları create query extension ile kontrollü saate bağlandı; mevcut
+alanlar üzerine yazılmaz. Queue `availableAt: now` alır. Hiçbir tarihsel immutable
+satır sonradan değiştirilmez, trigger devre dışı bırakılmaz; uygulama/DB guard'ları
+aynı. İlk dar aktivasyon 1/1 PASS; ara tam koşu 61 PASS/1 queue fixture FAIL.
+Prisma extension'ın tip uyumsuzluğu yalnız test transaction adaptöründe açıkça
+sınırlandı; uygulama DatabaseExecutor sözleşmesi değiştirilmedi. Son tam doğrulama
+ayrı kayda yazılır. `do not repeat`: fake JS saatini DB DEFAULT now()'ın da
+sabitlendiği kanıtı sayma; fixture saat farkını üretim regresyonu diye raporlama.
+
+Son tarihsel fixture doğrulaması **62/62 PG16 PASS**; standart 15s transaction
+bütçesi ve bütün auth/CSRF/yarış/geri alma/soy/kaynak/kapasite olumsuz beklentileri
+korundu. Typecheck PASS. Bu test kimlikleri/raporları yereldir, canlı doğum veya
+P7 kabulü değildir. Son UTC/fixture kaynağının hakem ve exact CI kapısı açıktır.

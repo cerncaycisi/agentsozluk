@@ -118,12 +118,13 @@ ${body}
     return result;
   }
 
-  function settingsFingerprint(database: string, selectedProfile = profileName) {
+  function settingsFingerprint(database: string, selectedProfile = profileName, timezone = "UTC") {
     const remote = readFileSync(path.join(repo, "scripts/production-release-remote.sh"), "utf8");
-    const definition = remote.slice(
-      remote.indexOf("settings_fingerprint() {"),
-      remote.indexOf("\nlifecycle_fingerprint() {"),
-    );
+    const start = remote.indexOf("settings_fingerprint() {");
+    const end = remote.indexOf("\nlifecycle_fingerprint() {");
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const definition = remote.slice(start, end);
     const result = spawnSync(
       "bash",
       [
@@ -147,7 +148,7 @@ compose=(compose_stub)
 ${definition}
 settings_fingerprint`,
       ],
-      { encoding: "utf8", timeout: 15_000 },
+      { encoding: "utf8", timeout: 15_000, env: { ...process.env, PGTZ: timezone } },
     );
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout.trim()).toMatch(/^[0-9a-f]{64}$/u);
@@ -233,6 +234,26 @@ reviewed_index_size_receipt ${afterName}`);
   });
 
   describe("exact Ekim paketi: gerçek PG16 restore ve geçiş", () => {
+    it("release özeti farklı oturum zaman dilimlerinde aynı kalır", () => {
+      for (const database of [beforeName, afterName]) {
+        const localTimestamp = (timezone: string) =>
+          execFileSync("psql", ["-XAtq", "-d", url(database)], {
+            input: "SELECT to_jsonb(s)->>'updatedAt' FROM agent_global_settings s;",
+            encoding: "utf8",
+            env: { ...process.env, PGTZ: timezone },
+          });
+        expect(localTimestamp("UTC")).not.toBe(localTimestamp("Asia/Tokyo"));
+        for (const selectedProfile of [profileName, ""]) {
+          expect(settingsFingerprint(database, selectedProfile, "Asia/Tokyo")).toBe(
+            settingsFingerprint(database, selectedProfile, "UTC"),
+          );
+        }
+      }
+      expect(settingsFingerprint(beforeName, profileName, "UTC")).toBe(
+        settingsFingerprint(afterName, profileName, "Asia/Tokyo"),
+      );
+    });
+
     it("release ayar özeti yalnız exact profilin OFF/NULL şema eklemesini eşit sayar", () => {
       expect(settingsFingerprint(afterName)).toBe(settingsFingerprint(beforeName));
       expect(settingsFingerprint(afterName, "")).not.toBe(settingsFingerprint(beforeName, ""));

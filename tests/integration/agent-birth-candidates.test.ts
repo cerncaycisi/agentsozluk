@@ -1,4 +1,5 @@
 import * as environment from "@/config/env";
+import type { TransactionClient } from "@/lib/db/types";
 import { activateBirthCandidate } from "@/modules/agents/application/birth-activation";
 import { POST as activateRoute } from "@/app/api/v1/admin/agent-births/activate/route";
 import { birthAcceptanceConfigurationHash } from "@/modules/agents/domain/birth-activation";
@@ -536,6 +537,7 @@ describe("private birth candidates with PostgreSQL", () => {
         personaVersionId: f.version.id,
         runType: "NORMAL_WAKE",
         runStatus: "QUEUED",
+        availableAt: now,
         queuePriority: "MANUAL_SINGLE",
         trigger: "TEST",
         idempotencyKey: randomUUID(),
@@ -1324,7 +1326,42 @@ async function activationFixture(extraProfiles = 0) {
     AGENT_SOURCE_REVISION: "a".repeat(40),
   });
   const f = await preparationFixture("TEMPLATE", true);
-  const prepared = await f.prepare();
+  // Fake Date PostgreSQL DEFAULT now()'ı dondurmaz. Yalnız bu tarihsel fixture'ın
+  // yeni kimlik/geçmiş INSERT'leri aynı kontrollü saate bağlıdır; guard'lar gerçektir.
+  const creationDatabase = db.$extends({
+    query: {
+      agentProfile: {
+        create({ args, query }) {
+          args.data.createdAt ??= now;
+          return query(args);
+        },
+      },
+      agentPersonaVersion: {
+        create({ args, query }) {
+          args.data.createdAt ??= now;
+          return query(args);
+        },
+      },
+      auditLog: {
+        create({ args, query }) {
+          args.data.createdAt ??= now;
+          return query(args);
+        },
+      },
+      agentRuntimeEvent: {
+        create({ args, query }) {
+          args.data.createdAt ??= now;
+          return query(args);
+        },
+      },
+    },
+  });
+  // Query extension yalnız INSERT verisini düzenler; Prisma'nın extension tipleri
+  // standart transaction delegate tipiyle yapısal olarak eşleşmez.
+  const prepared = await creationDatabase.$transaction(
+    (tx) => prepareBirthCandidate(tx as unknown as TransactionClient, f.actor, f.input, now),
+    { timeout: 15_000, maxWait: 5_000 },
+  );
   const cohort = [{ id: f.profile.id, versionId: f.version.id }];
   for (const i of Array.from({ length: 2 + extraProfiles }, (_, index) => index + 1)) {
     const original = agentPersonaTemplates[i % agentPersonaTemplates.length]!;

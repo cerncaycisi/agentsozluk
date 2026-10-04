@@ -8,6 +8,18 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim CI teşhisi:** #327 `28b91d0` CI `37234139545` kırmızı; 14 doğum
+  fixture hatası gerçek DB/fake Date ayrışmasından. Üretim kodu/guard değişmedi;
+  test INSERT saatleri ve queue availableAt kontrol altına alındı. Son yerel
+  doğum paketi 62/62 PASS; UTC hakemi ve yeni exact CI açık. Kırmızı SHA birleşmez.
+
+- **4 Ekim 21:03 UTC:** #327 ikinci Opus görüşü KOŞULLU GO; gerçek oturum zaman
+  dilimi yanlış ret riski UTC ile kapandı, yeni 2 PG16/19 release testi PASS.
+  Son UTC kod incelemesi/CI açık; sıradaki iş fix teslimi ve hemen artifact/A5/cutover.
+  P2/P3–P5 mevcut kısa kontroller tamamlandı; yeniden çağrı veya saklı set açılmıyor.
+  Pinli canlı kesitte 28 applied/0 yarım +tam 9 v2 pending, 29,7 GB boş alan,
+  kilit/hold yok. Canlı sürüm hâlâ `9bf3653`; bu makbuz deploy değildir.
+
 - **4 Ekim 20:51 UTC:** P3/P4/P5 gerçek kontrolü tamam: 18 geçerli karar, teknik hata/tekrar 0,
   bir Opus okuyucusuyla 19 çağrı/25 dakika 49,8 saniye. Kaynak kontrolünde somut sözleşme
   ihlali yok; davranış faydası veya PASS iddiası yok. Gerçek kısa kontrol işi aktif kuyruktan
@@ -40,8 +52,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   Erken pilot makbuzu **6 Ekim 19:38:28.147 UTC'ye kadar** geçerlidir; bu bir bekleme
   süresi değildir, kullanılabilirlik sonudur. Sonrasında eski kesitle yeni pilot başlatılmaz.
   [Erken karar ve kaynak makbuzu](P1_APRIME_ERKEN_KARAR_2026-10-04.md).
-- **Şimdiki sıra:** erken kararı pilot giriş kapısına açık ve hash bağlı olarak işle; güncel
-  exact kaynakla P2/P3–P5 kısa kontrollerini yap; geçen/izinli sınırlı pilot paketini
+- **Şimdiki sıra:** tamamlanan erken karar ve P2/P3–P5 kontrol makbuzlarıyla
+  izinli sınırlı pilot paketini
   artifact, migration/restore, eski imaj ve kapasite kapılarıyla canlıya çıkar. P8 aday
   taraması/ilk aktivasyon kendiliğinden açılmaz. Sonraki hazır paketler aynı yöntemle ilerler.
   P7'nin gerçek 168 saati son davranış sürümünden başlar; erken A′ kesiti onun yerine geçmez.

@@ -235,3 +235,39 @@ Tam `post_verify` başlangıç/son temiz eşliğinde dört yeni alan sapmasını
 `POST_TABLE_CONTENT_CHANGED` ile reddeder. Aynı hash'lerle profil değiştirme/eksik
 profil makbuzu `SETTINGS_PROFILE_CHANGED` ile reddedilir; doğru üç profil yolu geçer.
 B3 için mevcut type/default/eksik/yinelenmiş sütun testleri yeniden geçti.
+
+### İkinci görüş ve UTC kapanışı
+
+Gerçek `claude-opus-5`, exact `28b91d0f2eb4dc6a2a0a8a471445f2b43b734fba`
+için **KOŞULLU GO** verdi. Zaman dilimi bulgusu kaynakla doğrulandı: mevcut
+`updatedAt` timestamptz değeri farklı oturum TimeZone'larında farklı JSON metni
+üretir. Release özeti artık kendi salt okunur oturumunda `SET TimeZone = 'UTC'`
+uygular; DB/rol ayarını değiştirmez. Eksik sütun ile OFF/NULL başlangıcının bu
+özette eşit olduğu yorumda açık; sütun varlığı/tipi katalog kapısının işidir.
+
+Eski baseline makbuzu otomatik doldurulmaz; eski exact SHA operasyonu yeni SHA'ya
+aktarılmaz. 21:00 UTC pinli kesitte release kilidi, migration işareti/hold yok;
+app/runtime `9bf3653`, worker aktif. Eksik makbuzlu işlem varsa yayına devam edilmez,
+runbook'taki aynı eski SHA kurtarma yolu izlenir; eski `.release-op-*` dizinlerini
+toplu silme önerisi alınmadı. Önceki/aktif rollback kanıtı korunur.
+
+`assert_migration_mode` çağrısını capture'dan önce taşıma önerisi kaynakla reddedildi:
+işlev migration'sız modda capture'ın oluşturduğu iki baseline dosyasını karşılaştırır;
+reviewed modda işlem yapmaz. Exact profil/listenin gerçek kapısı `plan_migrations`
+içindedir ve dondurmadan önce çalışır. Çağrıyı taşımak doğru migration'sız ilk
+koşuyu bozar. Boş global ayar ve gelecekteki v3 önerileri mevcut kodun takip
+notlarıdır; bu diff için doğrulanmış veri kaybı/fail-open bulgusu değildir.
+
+21:00:27 UTC gerçek DB makbuzu: 28 uygulanmış/0 yarım, 9 bekleyen tam v2 checksum
+kümesi; DB 5.815.196.695 bayt, root boş 29.737.578.496 bayt/%62. Bu salt okunur
+hazırlık, frozen restore/indeks süresi veya eski imaj boot kanıtı değildir.
+
+UTC dar düzeltmesi sonrası iki yeni gerçek PG16 senaryosu ve 19 release birim testi
+PASS. Ham UTC/Tokyo JSON farkı fixture'da doğrulandı; aynı veri için gerçek release
+hash'i hem reviewed hem migration'sız modda eşit kaldı. Önceki 82 ölçümü ayrı
+koşudur. Son UTC kod hakemi/exact CI henüz açık.
+
+Son tarihsel fixture doğrulaması **62/62 PG16 PASS**; standart 15s transaction
+bütçesi ve bütün auth/CSRF/yarış/geri alma/soy/kaynak/kapasite olumsuz beklentileri
+korundu. Typecheck PASS. Bu test kimlikleri/raporları yereldir, canlı doğum veya
+P7 kabulü değildir. Son UTC/fixture kaynağının hakem ve exact CI kapısı açıktır.

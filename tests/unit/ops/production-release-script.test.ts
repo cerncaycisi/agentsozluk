@@ -40,10 +40,11 @@ function run(
 describe("schema-neutral production release lane", () => {
   it("aynı hash'lerle yeniden girişte farklı veya eksik settings profilini reddeder", () => {
     const directory = mkdtempSync(path.join(tmpdir(), "release-settings-profile-"));
-    const definition = remote.slice(
-      remote.indexOf("assert_state_fingerprints() {"),
-      remote.indexOf("\n# Başlangıç kaydı"),
-    );
+    const start = remote.indexOf("assert_state_fingerprints() {");
+    const end = remote.indexOf("\n# Başlangıç kaydı");
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const definition = remote.slice(start, end);
     const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
     const profiles = ["", "october-2026-v1", "october-2026-v2"];
     const invoke = (profile: string) =>
