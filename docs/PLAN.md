@@ -8,6 +8,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 23:08 UTC sıra daraltması:** O3 son search_path/locale/lock kaynağı
+  exact peer/CI aşamasında; uygulama/runtime d829 ve persona36 tamam, pause305.
+  O3 restore ile çakışmadan **bağımsız cold/warm/dual kapasite** mevcut canlı
+  reviewed CLI üzerinden şimdi yürür. Üretimde tek ağır iş: kapasite bitmeden
+  O3 restore başlamaz. Sonra dış restore/backup kurulum +sınırlı etki → resume/T0.
+  O3 ops değişikliği istem/model/capability profilini değiştirmez; uygulama yeniden
+  deploy edilmeyecek. P7 bu işler bitmeden başlamaz.
+
 - **4 Ekim 22:51 UTC güncel:** exact `d829dd0` canlı app/runtime/worker;
   CI7/7, artifact/A5 tam backup+restore/eski imaj/9 migration/cutover **PASS**.
   Health/ready/search200; 37 finished, yarım0; root25,3GB/%68. Persona CAS **36

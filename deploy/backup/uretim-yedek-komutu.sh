@@ -75,6 +75,7 @@ coproc HOLDER {
 holder_pid=$HOLDER_PID
 cat >&"${HOLDER[1]}" <<'SQL'
 BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SET LOCAL search_path = pg_catalog;
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
     JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -106,6 +107,7 @@ SET LOCAL DateStyle = 'ISO, MDY';
 SET LOCAL IntervalStyle = 'iso_8601';
 SET LOCAL bytea_output = 'hex';
 SET LOCAL lc_monetary = 'C';
+SET LOCAL search_path = pg_catalog;
 SELECT 'server_version|' || current_setting('server_version');
 SELECT 'table|' || c.relname || '|' || (xpath('/row/n/text()', x))[1]::text || '|' || (xpath('/row/h/text()', x))[1]::text
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace

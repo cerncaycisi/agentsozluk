@@ -4842,3 +4842,24 @@ mode olumsuz yolları geçti. Teste ait özel locale/kümeler kapalı; ortak PG 
 CLI `Address already in use` ön yoklaması TIME_WAIT bağlanmasıydı; private probe
 SO_REUSEADDR ile dinleyen sunucuya dokunmadan ayrıldı. Bu hata ürün regresyonu değildir.
 Yeni kaynak betiği üretimde kurulmadı; son hakem/exact CI ve gerçek dış restore açık.
+
+### O3 dördüncü hakem ve dar uzlaştırma — 4 Ekim 23:03 UTC
+
+Gerçek `claude-opus-5`, exact `d21b3e08ea51c3ec785c15a60389edb67905fbfd`
+KOŞULLU GO; 115,392 saniye, yardımcı Haiku ayrıca kayıtlı. Private lock/alias/
+locale önceki üç koşulu kapandı. Yeni source search_path önerisi uygulandı: holder
+ve metadata READ ONLY oturumunda `SET LOCAL search_path=pg_catalog`. Shadow hash
+fonksiyonu ve source public,pg_catalog sırası yalnız sentetik DB'ye eklenir;
+metadata'nın gerçek katalog fonksiyonunu kullandığı normal karşılaştırmayla sınanır.
+
+CI default C.UTF-8/C para render farkı değildir; actual de_DE.UTF-8 farklı render
+kanıtı özel LOCPATH operatör provasıdır, bağımsız hakemin kendisinin koştuğu test
+sayılmaz. Receipt yalnız public r/p tablo adı/satır adedi/noncrypto satır metni
+özeti +sequence ad kümesi/sonraki değer güvenliği; sequence exact değer veya
+index/FK/view/function/type/extension/schema katalog eşliği iddia edilmez. Full
+pg_restore --exit-on-error ayrıca gerekir. A5 kendi ayrı şema kapısını geçmiştir.
+Bilinmeyen stderr fail closed ret doğru guard'dır: üretim dış arşivin temiz exact
+üç marker makbuzu doğrulanır, uyarı/timeout filtreyle sessizce atlanmaz. Böyle
+bir ret veri bozulması diye ilan edilmez; ham özel kanıt korunur.
+Kurulum eski legacy flock/backup backend0 ve exact pinned app/worker değişmezliği
+kanıtı gerektirir; henüz kurulmadı. Gerçek dış restore ve exact CI açık.
