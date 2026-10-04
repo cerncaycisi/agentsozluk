@@ -3,7 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { atomicPrivateJson, hash, readPrivate } from "../../../scripts/contract-pilot/files";
-import { preparePilot, type PreparedPilot } from "../../../scripts/contract-pilot/input";
+import {
+  assertPilotWindow,
+  preparePilot,
+  type PreparedPilot,
+} from "../../../scripts/contract-pilot/input";
 import { runContractPilot, type PilotReader } from "../../../scripts/contract-pilot/run";
 import { opusReader } from "../../../scripts/contract-pilot/reader";
 import { parseRuntimeDecisionOutput, runtimeNormalDecisionWireJsonSchema } from "@/runtime/output";
@@ -660,5 +664,70 @@ describe("Opus okuyucu adaptörü (ağsız yerel sahte süreç)", () => {
       }
       expect(status).toMatch(/State:\s+[ZX]/u);
     });
+  });
+});
+
+describe("4 Ekim yetkili erken A′ kesiti", () => {
+  const now = Date.parse("2026-10-04T19:40:00Z");
+  const early = () => ({
+    version: 2,
+    kind: "A_PRIME_EARLY_REVIEW",
+    productionSha: "9bf3653ff152d4a704c1774ccd6782e0a3322f29",
+    resumedAt: "2026-10-03T09:17:44.154Z",
+    windowEndedAt: "2026-10-04T19:38:28.146203Z",
+    concludedAt: "2026-10-04T19:39:00Z",
+    decision: "INCONCLUSIVE",
+    reason: "USER_REQUESTED_INCREMENTAL_RELEASE",
+    evidenceSha256: "43b3244c35990bd10bf86aa7c9f3081cfe0624372b5b846d6651892311917341",
+  });
+  const config = (receipt: ReturnType<typeof early>) => {
+    const f = manifestFixture();
+    atomicPrivateJson(f.prepared.config.aPrimeReceiptFile, receipt);
+    return {
+      ...f,
+      bytes: JSON.stringify({
+        ...JSON.parse(f.configBytes()),
+        aPrimeProductionSha: early().productionSha,
+      }),
+    };
+  };
+  it("34 saatlik ölçülmüş kesitle 18 girdiyi 6 Ekim'i beklemeden hazırlar", () => {
+    const f = config(early());
+    const prepared = preparePilot(f.bytes, source, now);
+    expect(prepared.inputs).toHaveLength(18);
+    // P2 de aynı işlevi kullanır; ayrı tarih bypass'ı yok.
+    expect(() => assertPilotWindow(prepared.config, source, now)).not.toThrow();
+  });
+  it.each([
+    "decision",
+    "reason",
+    "evidenceSha256",
+    "productionSha",
+    "resumedAt",
+    "windowEndedAt",
+  ] as const)("yeniden hash'lense bile erken kanıtın %s alanındaki sapmayı reddeder", (field) => {
+    const receipt = early();
+    receipt[field] = field === "decision" ? "ACCEPT" : "changed";
+    const f = config(receipt);
+    expect(() => preparePilot(f.bytes, source, now)).toThrow();
+  });
+  it.each(["2026-10-04T19:38:00Z", "2026-10-04T19:41:00Z"])(
+    "kesitten önce veya gelecekteki kararı reddeder: %s",
+    (concludedAt) => {
+      const f = config({ ...early(), concludedAt });
+      expect(() => preparePilot(f.bytes, source, now)).toThrow("PILOT_A_PRIME_WINDOW_INVALID");
+    },
+  );
+  it.each([Date.parse("2026-10-04T19:38:28Z"), Date.parse("2026-10-17T19:50:00Z"), NaN])(
+    "erken karar bile yetki/tarih dışını açamaz: %s",
+    (time) => {
+      const f = config(early());
+      expect(() => preparePilot(f.bytes, source, time)).toThrow("PILOT_DATE_GATE_CLOSED");
+    },
+  );
+  it("makbuz sonradan değişirse hash bağı kapanır", () => {
+    const f = config(early());
+    atomicPrivateJson(f.prepared.config.aPrimeReceiptFile, { ...early(), decision: "ACCEPT" });
+    expect(() => preparePilot(f.bytes, source, now)).toThrow("PILOT_RECEIPT_CHANGED");
   });
 });

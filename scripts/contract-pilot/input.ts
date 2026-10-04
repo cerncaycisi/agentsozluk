@@ -156,33 +156,62 @@ export function preparePilot(configBytes: string, sourceSha: string, now: number
   return { config, fingerprint: hash(configBytes), inputs, criteria: JSON.parse(criteriaBytes) };
 }
 
+// 4 Ekim kullanıcı talimatı: biten paketleri 72 saat dolmasını bekletmeden yayımla.
+// Bu tek erken kesit başarı/72 saat kabulü değildir. Kanıt hash'i ve cohort sabittir.
+const earlyReviewSchema = z
+  .object({
+    version: z.literal(2),
+    kind: z.literal("A_PRIME_EARLY_REVIEW"),
+    productionSha: z.literal("9bf3653ff152d4a704c1774ccd6782e0a3322f29"),
+    resumedAt: z.literal("2026-10-03T09:17:44.154Z"),
+    windowEndedAt: z.literal("2026-10-04T19:38:28.146203Z"),
+    concludedAt: z.iso.datetime(),
+    decision: z.literal("INCONCLUSIVE"),
+    reason: z.literal("USER_REQUESTED_INCREMENTAL_RELEASE"),
+    evidenceSha256: z.literal("43b3244c35990bd10bf86aa7c9f3081cfe0624372b5b846d6651892311917341"),
+  })
+  .strict();
+const completedReviewSchema = z
+  .object({
+    version: z.literal(1),
+    kind: z.literal("A_PRIME_DECISION"),
+    productionSha: sha,
+    resumedAt: z.iso.datetime(),
+    windowEndedAt: z.iso.datetime(),
+    concludedAt: z.iso.datetime(),
+    decision: z.enum(["ACCEPT", "REJECT", "INCONCLUSIVE"]),
+  })
+  .strict();
+
 export function assertPilotWindow(config: PilotConfig, sourceSha: string, now: number): void {
   if (sourceSha !== config.sourceSha) throw new Error("PILOT_SOURCE_CHANGED");
-  if (now < Date.parse("2026-10-06T10:00:00Z") || now >= AUTHORITY_END)
+  if (
+    !Number.isFinite(now) ||
+    now < Date.parse("2026-10-04T19:38:28.146203Z") ||
+    now >= AUTHORITY_END
+  )
     throw new Error("PILOT_DATE_GATE_CLOSED");
   const receiptBytes = readPrivate(config.aPrimeReceiptFile);
   if (hash(receiptBytes) !== config.aPrimeReceiptSha256) throw new Error("PILOT_RECEIPT_CHANGED");
   const receipt = z
-    .object({
-      version: z.literal(1),
-      kind: z.literal("A_PRIME_DECISION"),
-      productionSha: sha,
-      resumedAt: z.iso.datetime(),
-      windowEndedAt: z.iso.datetime(),
-      concludedAt: z.iso.datetime(),
-      decision: z.enum(["ACCEPT", "REJECT", "INCONCLUSIVE"]),
-    })
+    .discriminatedUnion("kind", [completedReviewSchema, earlyReviewSchema])
     .parse(JSON.parse(receiptBytes));
+  if (receipt.kind === "A_PRIME_DECISION" && now < Date.parse("2026-10-06T10:00:00Z"))
+    throw new Error("PILOT_DATE_GATE_CLOSED");
   if (
     receipt.productionSha !== config.aPrimeProductionSha ||
     Date.parse(receipt.resumedAt) < Date.parse("2026-10-03T00:00:00Z")
   )
     throw new Error("PILOT_A_PRIME_COHORT_CHANGED");
   if (
-    Date.parse(receipt.windowEndedAt) - Date.parse(receipt.resumedAt) < 72 * 3_600_000 ||
     Date.parse(receipt.concludedAt) < Date.parse(receipt.windowEndedAt) ||
     Date.parse(receipt.concludedAt) > now
   )
     throw new Error("PILOT_A_PRIME_WINDOW_INVALID");
-  // A′ kararının içeriği operatör kanıtıdır; sunucu metrikleri burada yeniden hesaplanmaz.
+  if (receipt.kind === "A_PRIME_DECISION") {
+    if (Date.parse(receipt.windowEndedAt) - Date.parse(receipt.resumedAt) < 72 * 3_600_000)
+      throw new Error("PILOT_A_PRIME_WINDOW_INVALID");
+  }
+  // Erken kesit yalnız takvim beklemesini kapatır. Kaynak, çağrı/süre, kör değerlendirme,
+  // saklı set, dağıtım ve P7 kabul kapıları üst katmanlarda aynı kalır.
 }

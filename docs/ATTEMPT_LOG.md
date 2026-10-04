@@ -4512,3 +4512,26 @@ alanını desteklemedi (`Unknown JSON field: "baseRefOid"`); mutasyon başlamam�
 Base SHA, REST pull kaydından alınıp head/check/review/remote main tekrar taze doğrulandı;
 yalnız ardından exact SHA ile merge yapıldı. Tekrarlama: bu CLI'da desteklenmeyen
 `baseRefOid` alanını yeniden kullanma; REST `base.sha` denetimini atlama.
+
+## 4 Ekim 2026 — erken A′ kararı ve takvim kapısının uzlaştırılması
+
+Taban `50907827da89e73c4da10aae0863d2b3157e83ee`,main CI37228131503 **7/7 PASS**.
+Gökhan biten paketlerin canlıya alınmasını ve A′'ya erken bakılmasını istedi.19:38:28UTC
+pinli READ ONLY kesitte kesin304resume09:17:44.154UTC olarak doğrulandı; eski09:20yaklaşıktı.
+34,3456saatte429başarılı/146ret=%25,39,123tekrar; son24saat294/94=%24,23. Erken karar
+INCONCLUSIVE; üretim9bfdeğişmedi. Özel kanıt `aprime-erken-20261004-1940`, JSON hash
+`43b3244c35990bd10bf86aa7c9f3081cfe0624372b5b846d6651892311917341`.
+
+V1'in72saatini sahteleştirmek yerine ayrı, exactkesit/SHA/hash bağlı v2erken makbuz yolu
+hazırlandı.107ağsıztestPASS; aynı P2/P345 girişini kullanır. Yetki sonu/24çağrı/90dakika/
+saklıset/teknik dağıtım kapıları korunur. Opus ve exactCI henüz açık. Tekrarlama: eski
+6Ekim tarihini son kullanıcı talimatının önüne koyma; erken kesiti olumlu deney sayma.
+
+Bu sırada ayrı `wt-o3-bounded-restore` dalında konteyner içi restore süre sınırı taslağının
+4yerelPG16testi geçti. İlk yavaş CHECK fixture'ı dump'ta veri sonrası eklendiği için restore'u
+yavaşlatmadı; ürün timeout hatası değildi. Gerçek yavaş indeks fixture'ı ile5srestorekesme,
+aynıhedeffarklıapp ve ayniappfarklıDB oturumlarını koruma geçti. Kod henüz commit/hakem/CI
+almadı; kullanıcı dağıtım yönlendirmesiyle taslak korunup önce pilot takvim kapısına geçildi.
+Bu testler gerçek büyük yedek restore'u değildir; gzip pin korunur.
+
+Yerel format/lint/typecheck ve 3 gereksinim testi de PASS. Opus/CI öncesi kod kontrolü tamam.
