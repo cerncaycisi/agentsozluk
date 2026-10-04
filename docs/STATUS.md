@@ -7,6 +7,26 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — ret alarmı ve migration hazırlık doğrulaması
+
+- 06:09 UTC pinli salt okunur canlı kesit: son bir saatte 17 SUCCEEDED / 6 PARTIAL;
+  son 24 saat yazma eylemi 273 başarılı / 95 ret (%25,8). 76 tekrar/benzerlik,
+  16 desteklenmeyen kesin sayı, 3 pause. Ret doğruluğu henüz içerik bazında ölçülmedi.
+- Sabit migration profili gerçek Opus 5 koşullu incelemesindeki maddeler kaynak/testle
+  kapandı; son 70 test, ardından 6 PG16 ve 8 CI sözleşmesi testi PASS. Dört yerel
+  kalite kapısı PASS; exact CI ve üretim restore/geçişi açık. Canlı v46 değişmedi.
+
+## 2026-10-04 — O3 yedek betiği ana dalda ve operatörde
+
+- #307 final `ced672d260d926fdff80f051c73b5d475fa1dca3`, CI `37179813028` 7/7;
+  main `ef216d455be53eac07c303a1836524d861e5a472`, uzak SHA/ağaç eşitliği doğrulandı.
+- Gerçek Opus 5'in alarm koşulu kaynak/testle kapandı. 21 shell, 7 PG16 arama ve
+  ilgili gerçek masaüstü/mobil 4 E2E geçti; fixture düzeltmesinde ürün araması değişmedi.
+- 05:37 UTC yalnız operatör yedek betiği atomik güncellendi, geri dönüş kopyası saklı.
+  Telafi yedeği 05:40–05:43 UTC geçti: 1.315.865.212 bayt, 50 tablo, checksum/arşiv
+  listesi PASS, son yedi kopya korundu. Tam restore açık. Canlı checkout `9bf3653`.
+  [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+
 ## 2026-10-04 — P8a ana dalda; P8b yerel aday yolu
 
 - #304 exact `c009599`, gerçek Opus 5 KOD GO, CI `37168983479` 7/7; main

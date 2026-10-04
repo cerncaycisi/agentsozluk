@@ -1,0 +1,952 @@
+{
+  "column:agent_assessment_packets:agentProfileId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_assessment_packets:channel": {
+    "default": "'INTRINSIC'::\"AgentFeedbackChannel\"",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"AgentFeedbackChannel\""
+  },
+  "column:agent_assessment_packets:consumedAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_assessment_packets:createdAt": {
+    "default": "CURRENT_TIMESTAMP",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_assessment_packets:createdById": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_assessment_packets:entryId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "uuid"
+  },
+  "column:agent_assessment_packets:expiresAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_assessment_packets:id": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_assessment_packets:nonceHash": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(64)"
+  },
+  "column:agent_assessment_packets:packageHash": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(64)"
+  },
+  "column:agent_assessment_packets:purposeId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "uuid"
+  },
+  "column:agent_birth_candidates:closedAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_birth_candidates:closureReason": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "character varying(100)"
+  },
+  "column:agent_birth_candidates:createdAt": {
+    "default": "CURRENT_TIMESTAMP",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_birth_candidates:draftKey": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(32)"
+  },
+  "column:agent_birth_candidates:draftVersion": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "integer"
+  },
+  "column:agent_birth_candidates:evidence": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "jsonb"
+  },
+  "column:agent_birth_candidates:expiresAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_birth_candidates:id": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_birth_candidates:parentPersonaVersionId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_birth_candidates:parentProfileId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_birth_candidates:persona": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "jsonb"
+  },
+  "column:agent_birth_candidates:policyVersion": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "integer"
+  },
+  "column:agent_birth_candidates:snapshotHash": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(64)"
+  },
+  "column:agent_birth_candidates:status": {
+    "default": "'PROPOSED'::\"AgentBirthCandidateStatus\"",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"AgentBirthCandidateStatus\""
+  },
+  "column:agent_birth_candidates:version": {
+    "default": "1",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "integer"
+  },
+  "column:agent_birth_candidates:weekStart": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_global_settings:birthMode": {
+    "default": "'OFF'::\"AgentBirthMode\"",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"AgentBirthMode\""
+  },
+  "column:agent_global_settings:lastBirthCandidateAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_global_settings:lastBirthScanAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_global_settings:rewardMode": {
+    "default": "'OFF'::\"AgentRewardMode\"",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"AgentRewardMode\""
+  },
+  "column:agent_purposes:activeKey": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "character varying(300)"
+  },
+  "column:agent_purposes:activeSlot": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "integer"
+  },
+  "column:agent_purposes:agentProfileId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_purposes:baseline": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "jsonb"
+  },
+  "column:agent_purposes:claimEvidence": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "jsonb"
+  },
+  "column:agent_purposes:claimRunId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "uuid"
+  },
+  "column:agent_purposes:claimStatus": {
+    "default": "'NOT_CLAIMED'::\"AgentPurposeClaimStatus\"",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"AgentPurposeClaimStatus\""
+  },
+  "column:agent_purposes:claimedAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_purposes:completionCriterion": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(64)"
+  },
+  "column:agent_purposes:createdAt": {
+    "default": "CURRENT_TIMESTAMP",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_purposes:creationRunId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_purposes:expiresAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_purposes:id": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_purposes:kind": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"AgentPurposeKind\""
+  },
+  "column:agent_purposes:lastReviewNote": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "character varying(500)"
+  },
+  "column:agent_purposes:lastReviewedAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_purposes:policyVersion": {
+    "default": "1",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "integer"
+  },
+  "column:agent_purposes:question": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(500)"
+  },
+  "column:agent_purposes:status": {
+    "default": "'ACTIVE'::\"AgentPurposeStatus\"",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"AgentPurposeStatus\""
+  },
+  "column:agent_purposes:targetId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_purposes:targetType": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(16)"
+  },
+  "column:agent_purposes:topicKey": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(200)"
+  },
+  "column:agent_purposes:updatedAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_purposes:version": {
+    "default": "1",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "integer"
+  },
+  "column:agent_reward_assessments:agentProfileId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_reward_assessments:applied": {
+    "default": "false",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "boolean"
+  },
+  "column:agent_reward_assessments:channel": {
+    "default": "'INTRINSIC'::\"AgentFeedbackChannel\"",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"AgentFeedbackChannel\""
+  },
+  "column:agent_reward_assessments:createdAt": {
+    "default": "CURRENT_TIMESTAMP",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_reward_assessments:createdById": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_reward_assessments:creditedContentHash": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "character varying(64)"
+  },
+  "column:agent_reward_assessments:creditedSourceKey": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "character varying(100)"
+  },
+  "column:agent_reward_assessments:entryId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "uuid"
+  },
+  "column:agent_reward_assessments:evidenceSnapshot": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "jsonb"
+  },
+  "column:agent_reward_assessments:expiresAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_reward_assessments:id": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_reward_assessments:mode": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"AgentRewardMode\""
+  },
+  "column:agent_reward_assessments:packageHash": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(64)"
+  },
+  "column:agent_reward_assessments:packetId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_reward_assessments:purposeId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "uuid"
+  },
+  "column:agent_reward_assessments:reason": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(500)"
+  },
+  "column:agent_reward_assessments:reviewerModel": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(100)"
+  },
+  "column:agent_reward_assessments:sourceActKey": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(100)"
+  },
+  "column:agent_reward_assessments:sourceAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_reward_assessments:sourceContentHash": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(64)"
+  },
+  "column:agent_reward_assessments:verdict": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(32)"
+  },
+  "column:agent_reward_reversals:assessmentId": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_reward_reversals:createdAt": {
+    "default": "CURRENT_TIMESTAMP",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:agent_reward_reversals:createdById": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_reward_reversals:id": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:agent_reward_reversals:reason": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(500)"
+  },
+  "column:ukte_requests:closedAt": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": false,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:ukte_requests:createdAt": {
+    "default": "CURRENT_TIMESTAMP",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "timestamp(3) with time zone"
+  },
+  "column:ukte_requests:id": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:ukte_requests:normalizedTitle": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(400)"
+  },
+  "column:ukte_requests:requestedById": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "uuid"
+  },
+  "column:ukte_requests:slug": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(400)"
+  },
+  "column:ukte_requests:status": {
+    "default": "'OPEN'::\"UkteStatus\"",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "\"UkteStatus\""
+  },
+  "column:ukte_requests:targetKeys": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "text[]"
+  },
+  "column:ukte_requests:title": {
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "character varying(400)"
+  },
+  "column:ukte_requests:version": {
+    "default": "1",
+    "generated": "",
+    "identity": "",
+    "notNull": true,
+    "type": "integer"
+  },
+  "constraint:agent_assessment_packets:agent_assessment_packet_channel_target": {
+    "definition": "CHECK ((((channel = 'INTRINSIC'::\"AgentFeedbackChannel\") AND (\"purposeId\" IS NOT NULL) AND (\"entryId\" IS NULL)) OR ((channel = 'QUALITY'::\"AgentFeedbackChannel\") AND (\"entryId\" IS NOT NULL) AND (\"purposeId\" IS NULL))))",
+    "validated": true
+  },
+  "constraint:agent_assessment_packets:agent_assessment_packets_agentProfileId_fkey": {
+    "definition": "FOREIGN KEY (\"agentProfileId\") REFERENCES agent_profiles(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_assessment_packets:agent_assessment_packets_createdById_fkey": {
+    "definition": "FOREIGN KEY (\"createdById\") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_assessment_packets:agent_assessment_packets_entryId_fkey": {
+    "definition": "FOREIGN KEY (\"entryId\") REFERENCES entries(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_assessment_packets:agent_assessment_packets_pkey": {
+    "definition": "PRIMARY KEY (id)",
+    "validated": true
+  },
+  "constraint:agent_assessment_packets:agent_assessment_packets_purposeId_fkey": {
+    "definition": "FOREIGN KEY (\"purposeId\") REFERENCES agent_purposes(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_birth_candidates:agent_birth_candidates_parentPersonaVersionId_fkey": {
+    "definition": "FOREIGN KEY (\"parentPersonaVersionId\") REFERENCES agent_persona_versions(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_birth_candidates:agent_birth_candidates_parentProfileId_fkey": {
+    "definition": "FOREIGN KEY (\"parentProfileId\") REFERENCES agent_profiles(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_birth_candidates:agent_birth_candidates_pkey": {
+    "definition": "PRIMARY KEY (id)",
+    "validated": true
+  },
+  "constraint:agent_birth_candidates:agent_birth_candidates_shape_check": {
+    "definition": "CHECK (((\"draftVersion\" > 0) AND (\"policyVersion\" > 0) AND (version > 0) AND ((\"snapshotHash\")::text ~ '^[a-f0-9]{64}$'::text) AND (\"expiresAt\" > \"createdAt\") AND (\"expiresAt\" <= (\"createdAt\" + '7 days'::interval)) AND (jsonb_typeof(persona) = 'object'::text) AND (jsonb_typeof(evidence) = 'object'::text) AND (((status = 'PROPOSED'::\"AgentBirthCandidateStatus\") AND (\"closedAt\" IS NULL) AND (\"closureReason\" IS NULL)) OR ((status <> 'PROPOSED'::\"AgentBirthCandidateStatus\") AND (\"closedAt\" IS NOT NULL) AND (\"closedAt\" >= \"createdAt\") AND (\"closureReason\" IS NOT NULL)))))",
+    "validated": true
+  },
+  "constraint:agent_purposes:agent_purposes_active_key_check": {
+    "definition": "CHECK (((status = 'ACTIVE'::\"AgentPurposeStatus\") = (\"activeKey\" IS NOT NULL)))",
+    "validated": true
+  },
+  "constraint:agent_purposes:agent_purposes_active_slot_check": {
+    "definition": "CHECK ((((status = 'ACTIVE'::\"AgentPurposeStatus\") = (\"activeSlot\" IS NOT NULL)) AND ((\"activeSlot\" IS NULL) OR (\"activeSlot\" = ANY (ARRAY[1, 2])))))",
+    "validated": true
+  },
+  "constraint:agent_purposes:agent_purposes_agentProfileId_fkey": {
+    "definition": "FOREIGN KEY (\"agentProfileId\") REFERENCES agent_profiles(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_purposes:agent_purposes_claimRunId_fkey": {
+    "definition": "FOREIGN KEY (\"claimRunId\") REFERENCES agent_runs(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_purposes:agent_purposes_creationRunId_fkey": {
+    "definition": "FOREIGN KEY (\"creationRunId\") REFERENCES agent_runs(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_purposes:agent_purposes_lifetime_check": {
+    "definition": "CHECK ((\"expiresAt\" > \"createdAt\"))",
+    "validated": true
+  },
+  "constraint:agent_purposes:agent_purposes_pkey": {
+    "definition": "PRIMARY KEY (id)",
+    "validated": true
+  },
+  "constraint:agent_purposes:agent_purposes_target_check": {
+    "definition": "CHECK ((((kind = 'TEST_BELIEF'::\"AgentPurposeKind\") AND ((\"targetType\")::text = 'BELIEF'::text)) OR ((kind = ANY (ARRAY['UNDERSTAND_CONCEPT'::\"AgentPurposeKind\", 'EXPLORE_CONTRIBUTION'::\"AgentPurposeKind\"])) AND ((\"targetType\")::text = 'TOPIC'::text))))",
+    "validated": true
+  },
+  "constraint:agent_purposes:agent_purposes_version_check": {
+    "definition": "CHECK ((version >= 1))",
+    "validated": true
+  },
+  "constraint:agent_reward_assessments:agent_reward_assessment_channel_target": {
+    "definition": "CHECK ((((channel = 'INTRINSIC'::\"AgentFeedbackChannel\") AND (\"purposeId\" IS NOT NULL) AND (\"entryId\" IS NULL)) OR ((channel = 'QUALITY'::\"AgentFeedbackChannel\") AND (\"entryId\" IS NOT NULL) AND (\"purposeId\" IS NULL))))",
+    "validated": true
+  },
+  "constraint:agent_reward_assessments:agent_reward_assessments_agentProfileId_fkey": {
+    "definition": "FOREIGN KEY (\"agentProfileId\") REFERENCES agent_profiles(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_reward_assessments:agent_reward_assessments_createdById_fkey": {
+    "definition": "FOREIGN KEY (\"createdById\") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_reward_assessments:agent_reward_assessments_entryId_fkey": {
+    "definition": "FOREIGN KEY (\"entryId\") REFERENCES entries(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_reward_assessments:agent_reward_assessments_packetId_fkey": {
+    "definition": "FOREIGN KEY (\"packetId\") REFERENCES agent_assessment_packets(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_reward_assessments:agent_reward_assessments_pkey": {
+    "definition": "PRIMARY KEY (id)",
+    "validated": true
+  },
+  "constraint:agent_reward_assessments:agent_reward_assessments_purposeId_fkey": {
+    "definition": "FOREIGN KEY (\"purposeId\") REFERENCES agent_purposes(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_reward_assessments:agent_reward_credit_consistent": {
+    "definition": "CHECK (((applied = ((\"creditedSourceKey\" IS NOT NULL) AND (\"creditedContentHash\" IS NOT NULL))) AND (applied OR ((\"creditedSourceKey\" IS NULL) AND (\"creditedContentHash\" IS NULL))) AND ((NOT applied) OR ((mode = 'FULFILL_SLOT'::\"AgentRewardMode\") AND ((verdict)::text = 'SUPPORTED'::text))) AND (\"expiresAt\" > \"sourceAt\")))",
+    "validated": true
+  },
+  "constraint:agent_reward_reversals:agent_reward_reversals_assessmentId_fkey": {
+    "definition": "FOREIGN KEY (\"assessmentId\") REFERENCES agent_reward_assessments(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_reward_reversals:agent_reward_reversals_createdById_fkey": {
+    "definition": "FOREIGN KEY (\"createdById\") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:agent_reward_reversals:agent_reward_reversals_pkey": {
+    "definition": "PRIMARY KEY (id)",
+    "validated": true
+  },
+  "constraint:ukte_requests:ukte_requests_pkey": {
+    "definition": "PRIMARY KEY (id)",
+    "validated": true
+  },
+  "constraint:ukte_requests:ukte_requests_requestedById_fkey": {
+    "definition": "FOREIGN KEY (\"requestedById\") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+    "validated": true
+  },
+  "constraint:ukte_requests:ukte_requests_shape_check": {
+    "definition": "CHECK (((version > 0) AND ((length((\"normalizedTitle\")::text) >= 2) AND (length((\"normalizedTitle\")::text) <= 100)) AND ((cardinality(\"targetKeys\") >= 1) AND (cardinality(\"targetKeys\") <= 6)) AND ((\"normalizedTitle\")::text = ANY (\"targetKeys\")) AND (((status = 'OPEN'::\"UkteStatus\") AND (\"closedAt\" IS NULL)) OR ((status <> 'OPEN'::\"UkteStatus\") AND (\"closedAt\" IS NOT NULL) AND (\"closedAt\" >= \"createdAt\")))))",
+    "validated": true
+  },
+  "function:protect_agent_birth_candidate()": {
+    "definition": "CREATE OR REPLACE FUNCTION public.protect_agent_birth_candidate()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'AGENT_BIRTH_CANDIDATE_IMMUTABLE';\n  END IF;\n  IF (to_jsonb(NEW) - ARRAY['status', 'version', 'closedAt', 'closureReason']) IS DISTINCT FROM\n     (to_jsonb(OLD) - ARRAY['status', 'version', 'closedAt', 'closureReason'])\n     OR OLD.\"status\" <> 'PROPOSED' OR NEW.\"status\" = 'PROPOSED'\n     OR NEW.\"version\" <> OLD.\"version\" + 1 THEN\n    RAISE EXCEPTION 'AGENT_BIRTH_CANDIDATE_IMMUTABLE';\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  "function:protect_agent_birth_candidate_truncate()": {
+    "definition": "CREATE OR REPLACE FUNCTION public.protect_agent_birth_candidate_truncate()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  IF coalesce(current_setting('agentsozluk.allow_archive_truncate', true), '') <> 'on' THEN\n    RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'AGENT_BIRTH_CANDIDATE_IMMUTABLE';\n  END IF;\n  RETURN NULL;\nEND;\n$function$\n"
+  },
+  "function:reject_immutable_history_mutation()": {
+    "definition": "CREATE OR REPLACE FUNCTION public.reject_immutable_history_mutation()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;\nEND;\n$function$\n"
+  },
+  "index:agent_actions_feedback_idx": {
+    "definition": "CREATE INDEX agent_actions_feedback_idx ON public.agent_actions USING btree (\"agentProfileId\", \"createdAt\" DESC, id DESC)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_assessment_packets_agentProfileId_expiresAt_idx": {
+    "definition": "CREATE INDEX \"agent_assessment_packets_agentProfileId_expiresAt_idx\" ON public.agent_assessment_packets USING btree (\"agentProfileId\", \"expiresAt\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_assessment_packets_pkey": {
+    "definition": "CREATE UNIQUE INDEX agent_assessment_packets_pkey ON public.agent_assessment_packets USING btree (id)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_birth_candidates_one_proposed": {
+    "definition": "CREATE UNIQUE INDEX agent_birth_candidates_one_proposed ON public.agent_birth_candidates USING btree ((true)) WHERE (status = 'PROPOSED'::\"AgentBirthCandidateStatus\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_birth_candidates_parent_week_policy_key": {
+    "definition": "CREATE UNIQUE INDEX agent_birth_candidates_parent_week_policy_key ON public.agent_birth_candidates USING btree (\"parentProfileId\", \"weekStart\", \"policyVersion\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_birth_candidates_pkey": {
+    "definition": "CREATE UNIQUE INDEX agent_birth_candidates_pkey ON public.agent_birth_candidates USING btree (id)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_birth_candidates_status_createdAt_idx": {
+    "definition": "CREATE INDEX \"agent_birth_candidates_status_createdAt_idx\" ON public.agent_birth_candidates USING btree (status, \"createdAt\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_purposes_agentProfileId_activeKey_key": {
+    "definition": "CREATE UNIQUE INDEX \"agent_purposes_agentProfileId_activeKey_key\" ON public.agent_purposes USING btree (\"agentProfileId\", \"activeKey\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_purposes_agentProfileId_activeSlot_key": {
+    "definition": "CREATE UNIQUE INDEX \"agent_purposes_agentProfileId_activeSlot_key\" ON public.agent_purposes USING btree (\"agentProfileId\", \"activeSlot\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_purposes_agentProfileId_status_expiresAt_idx": {
+    "definition": "CREATE INDEX \"agent_purposes_agentProfileId_status_expiresAt_idx\" ON public.agent_purposes USING btree (\"agentProfileId\", status, \"expiresAt\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_purposes_pkey": {
+    "definition": "CREATE UNIQUE INDEX agent_purposes_pkey ON public.agent_purposes USING btree (id)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_reward_assessments_agentProfileId_applied_createdAt_idx": {
+    "definition": "CREATE INDEX \"agent_reward_assessments_agentProfileId_applied_createdAt_idx\" ON public.agent_reward_assessments USING btree (\"agentProfileId\", applied, \"createdAt\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_reward_assessments_agentProfileId_createdAt_idx": {
+    "definition": "CREATE INDEX \"agent_reward_assessments_agentProfileId_createdAt_idx\" ON public.agent_reward_assessments USING btree (\"agentProfileId\", \"createdAt\" DESC)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_reward_assessments_agentProfileId_creditedContentHash_key": {
+    "definition": "CREATE UNIQUE INDEX \"agent_reward_assessments_agentProfileId_creditedContentHash_key\" ON public.agent_reward_assessments USING btree (\"agentProfileId\", \"creditedContentHash\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_reward_assessments_agentProfileId_creditedSourceKey_key": {
+    "definition": "CREATE UNIQUE INDEX \"agent_reward_assessments_agentProfileId_creditedSourceKey_key\" ON public.agent_reward_assessments USING btree (\"agentProfileId\", \"creditedSourceKey\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_reward_assessments_packetId_key": {
+    "definition": "CREATE UNIQUE INDEX \"agent_reward_assessments_packetId_key\" ON public.agent_reward_assessments USING btree (\"packetId\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_reward_assessments_pkey": {
+    "definition": "CREATE UNIQUE INDEX agent_reward_assessments_pkey ON public.agent_reward_assessments USING btree (id)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_reward_reversals_assessmentId_key": {
+    "definition": "CREATE UNIQUE INDEX \"agent_reward_reversals_assessmentId_key\" ON public.agent_reward_reversals USING btree (\"assessmentId\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_reward_reversals_pkey": {
+    "definition": "CREATE UNIQUE INDEX agent_reward_reversals_pkey ON public.agent_reward_reversals USING btree (id)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:agent_runtime_events_feedback_presented_idx": {
+    "definition": "CREATE INDEX agent_runtime_events_feedback_presented_idx ON public.agent_runtime_events USING btree (\"agentProfileId\", \"eventType\", \"occurredAt\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:audit_reward_assessment_lookup": {
+    "definition": "CREATE INDEX audit_reward_assessment_lookup ON public.audit_logs USING btree (\"entityId\") WHERE ((action = 'agent.reward.assessed'::text) AND (\"entityType\" = 'AgentRewardAssessment'::text))",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:ukte_requests_normalizedTitle_status_idx": {
+    "definition": "CREATE INDEX \"ukte_requests_normalizedTitle_status_idx\" ON public.ukte_requests USING btree (\"normalizedTitle\", status)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:ukte_requests_one_open_title": {
+    "definition": "CREATE UNIQUE INDEX ukte_requests_one_open_title ON public.ukte_requests USING btree (\"normalizedTitle\") WHERE (status = 'OPEN'::\"UkteStatus\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:ukte_requests_pkey": {
+    "definition": "CREATE UNIQUE INDEX ukte_requests_pkey ON public.ukte_requests USING btree (id)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:ukte_requests_requestedById_idx": {
+    "definition": "CREATE INDEX \"ukte_requests_requestedById_idx\" ON public.ukte_requests USING btree (\"requestedById\")",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "index:ukte_requests_status_createdAt_id_idx": {
+    "definition": "CREATE INDEX \"ukte_requests_status_createdAt_id_idx\" ON public.ukte_requests USING btree (status, \"createdAt\", id)",
+    "live": true,
+    "ready": true,
+    "valid": true
+  },
+  "trigger:agent_birth_candidates:agent_birth_candidates_immutable": {
+    "definition": "CREATE TRIGGER agent_birth_candidates_immutable BEFORE DELETE OR UPDATE ON public.agent_birth_candidates FOR EACH ROW EXECUTE FUNCTION protect_agent_birth_candidate()",
+    "enabled": "O"
+  },
+  "trigger:agent_birth_candidates:agent_birth_candidates_no_truncate": {
+    "definition": "CREATE TRIGGER agent_birth_candidates_no_truncate BEFORE TRUNCATE ON public.agent_birth_candidates FOR EACH STATEMENT EXECUTE FUNCTION protect_agent_birth_candidate_truncate()",
+    "enabled": "O"
+  },
+  "trigger:agent_reward_assessments:agent_reward_assessments_immutable": {
+    "definition": "CREATE TRIGGER agent_reward_assessments_immutable BEFORE DELETE OR UPDATE ON public.agent_reward_assessments FOR EACH ROW EXECUTE FUNCTION reject_immutable_history_mutation()",
+    "enabled": "O"
+  },
+  "trigger:agent_reward_reversals:agent_reward_reversals_immutable": {
+    "definition": "CREATE TRIGGER agent_reward_reversals_immutable BEFORE DELETE OR UPDATE ON public.agent_reward_reversals FOR EACH ROW EXECUTE FUNCTION reject_immutable_history_mutation()",
+    "enabled": "O"
+  }
+}

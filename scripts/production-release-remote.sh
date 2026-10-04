@@ -11,7 +11,7 @@ trap report_unexpected_error ERR
 
 candidate_sha="${1:-}"
 cleanup_requested="${2:-no-cleanup}"
-# `no-migration` ya da `apply:<ad1,ad2>` (A5; Gökhan'ın exact onay listesi).
+# `no-migration`, `apply:<liste>` veya `reviewed:october-2026-v1:<liste>`.
 migration_mode="${3:-}"
 # Sarmalayıcının kilit sahipliği için ürettiği operasyon kimliği.
 op_id="${4:-}"
@@ -35,12 +35,17 @@ runtime_unit_target=/etc/systemd/system/agent-sozluk-runtime.service
   exit 90
 }
 approved_migrations=''
+reviewed_migration_profile=''
 if test "$migration_mode" != no-migration; then
-  [[ "$migration_mode" =~ ^apply:([0-9]{14}_[a-z0-9_]+)(,[0-9]{14}_[a-z0-9_]+)*$ ]] || {
+  if [[ "$migration_mode" =~ ^reviewed:october-2026-v1:([0-9]{14}_[a-z0-9_]+)(,[0-9]{14}_[a-z0-9_]+)*$ ]]; then
+    reviewed_migration_profile=october-2026-v1
+    approved_migrations="${migration_mode#reviewed:october-2026-v1:}"
+  elif [[ "$migration_mode" =~ ^apply:([0-9]{14}_[a-z0-9_]+)(,[0-9]{14}_[a-z0-9_]+)*$ ]]; then
+    approved_migrations="${migration_mode#apply:}"
+  else
     printf 'RELEASE_FAIL code=INVALID_MIGRATION_MODE\n' >&2
     exit 90
-  }
-  approved_migrations="${migration_mode#apply:}"
+  fi
 fi
 [[ "$op_id" =~ ^[0-9a-f]{16}$ ]] || {
   printf 'RELEASE_FAIL code=INVALID_OPERATION_ID\n' >&2
