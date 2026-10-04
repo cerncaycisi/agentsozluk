@@ -50,6 +50,8 @@ export const RATE_LIMIT_RULES = {
   searchAuthenticated: { action: "search.authenticated", limit: 60, windowMs: MINUTE },
   searchVisitor: { action: "search.visitor", limit: 30, windowMs: MINUTE },
   moderationCommand: { action: "moderation.command", limit: 120, windowMs: 10 * MINUTE },
+  ukteCreate: { action: "ukte.create", limit: 5, windowMs: 60 * MINUTE },
+  ukteWithdraw: { action: "ukte.withdraw", limit: 30, windowMs: MINUTE },
   agentRuntimeInternal: { action: "agent-runtime.internal", limit: 600, windowMs: MINUTE },
   /*
     Giriş iki kovadan geçer (18 Eylül incelemesi B3 / F10). Tek başına

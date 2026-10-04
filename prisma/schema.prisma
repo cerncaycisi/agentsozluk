@@ -24,6 +24,12 @@ enum UserStatus {
   DEACTIVATED
 }
 
+enum UkteStatus {
+  OPEN
+  WITHDRAWN
+  HIDDEN
+}
+
 enum TopicStatus {
   ACTIVE
   HIDDEN
@@ -268,6 +274,7 @@ enum IndexingMode {
 }
 
 model User {
+  ukteRequests                  UkteRequest[]
   assessmentPackets             AgentAssessmentPacket[]    @relation("AssessmentPacketCreator")
   rewardAssessments             AgentRewardAssessment[]    @relation("RewardAssessmentCreator")
   rewardReversals               AgentRewardReversal[]      @relation("RewardReversalCreator")
@@ -1562,4 +1569,23 @@ model AgentTopicWriteLock {
 
   @@index([expiresAt])
   @@map("agent_topic_write_locks")
+}
+
+model UkteRequest {
+  id              String     @id @default(uuid()) @db.Uuid
+  title           String     @db.VarChar(400)
+  normalizedTitle String     @db.VarChar(400)
+  targetKeys      String[]
+  slug            String     @db.VarChar(400)
+  requestedById   String     @db.Uuid
+  status          UkteStatus @default(OPEN)
+  version         Int        @default(1)
+  createdAt       DateTime   @default(now()) @db.Timestamptz(3)
+  closedAt        DateTime?  @db.Timestamptz(3)
+  requestedBy     User       @relation(fields: [requestedById], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt, id])
+  @@index([normalizedTitle, status])
+  @@index([requestedById])
+  @@map("ukte_requests")
 }

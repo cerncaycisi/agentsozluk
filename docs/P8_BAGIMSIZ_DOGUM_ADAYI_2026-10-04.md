@@ -249,3 +249,18 @@ B1/B2/B5/B6 düzeltmeleri sonrası **40/40 PG16** (20 aday + 20 ödül), ardınd
 41 kimlik ve kanıt okuyucu kontrollü mock’tur; gerçek transaction/audit ve aynı gün yeniden
 çağrının iş yapmaması sınanır. Bu, 41 gerçek yazarla süre benchmark’ı değildir.
 TRUNCATE reddi, bir saatlik hata beklemesi, beş günlük 40 kimlik kapsaması doğrudan geçti.
+
+## P8b ana dal kapanışı
+
+Opus 5 exact `ba14054078f73f3adf682854e3f992dc21f252b4` **KOD GO**;
+CI `37173025197` **7/7**. Taze head/base/checks/reviews/mergeability ardından #305 main
+`1e265f4ab3ee7e700c80d4d5c7ca0907a982051f` ile kapandı; uzak SHA/ağaç ve dal temizliği
+kontrol edildi. Yerel uygulanmış eski P8b stash’i exact kimlikle temizlendi. Üretim erişimi yok.
+
+Hakemin bloklamayan B1′ notu kaynakla ayrıştırıldı: `agent-runtime-action.ts` rollout guard
+sonucunu HTTP 409’a, `RuntimeControlPlaneHttpClient.#request` bunu exception’a çevirir;
+worker bir saat bekler. Bu yol başarı yanıtı değildir. `SETTINGS_CHANGED` gerçek başarı
+sonucu ise sonraki society tick’inde tekrar denenebilir; ayar yarışı için ayrıca kalıcı
+bekleme iddiası yok. Başka pending ID dalı scan kilidi altında savunmadır. E2E/seed dosyalarında
+TRUNCATE yok; entegrasyon/simulation ortak açık-niyet fixture’ını kullanır. Son CI browser,
+database ve coverage bu guard ile geçti. B3 canlı indeks boyutu/süresi kapısı açık kalır.
