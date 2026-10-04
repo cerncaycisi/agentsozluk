@@ -191,8 +191,11 @@ kod/hakem/CI işi tamam; dağıtım açık. Yeni migration veya acil pause/iptal
 
 **O5 içerik tamlık notu:** kalan komut envanterinde run/agent penceresinin ilk 500 kaydı
 tamamıymış gibi işleyebildiği kaynakta bulundu. 501 ile taşma kontrolü, mutasyon öncesi
-422 ve seçim daraltma yolu yerelde hazır; 3 PG16/5 birim-UI geçti. Hakem/exact CI açık.
-Diğer komutların kapsam kararı ve canlı dağıtım bu dar düzeltmeyle kapanmaz.
+422 ve seçim daraltma yolu hazır. Opus koşuluyla boş seçim NO_MATCH ve sonuç/makbuzda
+seçim zamanı/run durumu eklendi; son 4 PG16/7 birim-UI geçti. Final exact CI açık.
+Diğer komutların kapsam kararı ve canlı dağıtım bu dar düzeltmeyle kapanmaz. İstek
+kesilirse tekil audit'ler korunurken toplu makbuzun eksik kalabilmesi O5 kalan
+görünürlük/uzlaştırma sınırıdır; yeni atomiklik iddiası yok.
 
 ## 3. Kabul, maliyet ve geri alma
 
@@ -287,7 +290,8 @@ dump-restore testi geçti; yerel mevcut-yedek veri akışı 676.647.983 bayt old
 üretim dump boyutu henüz ölçülmedi. Canlı PG16 binary codec desteği salt okunur doğrulandı;
 Opus koşuluyla alıcıya yayımlama öncesi tam blok decode eklendi (son 23 test PASS).
 Gzip emniyet hardlink'i retention dışında sabit. #313 final `8531f64`, CI `37194424580`
-7/7; main `e8bb0e0`, ağaç eşitliği doğrulandı. Merged SHA push CI ve atomik kurulum açık. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+7/7; main `e8bb0e0`, ağaç eşitliği ve push CI `37194998932` 7/7 doğrulandı.
+Atomik kurulum ve yeni gerçek yedek açık. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
 Her build/deploy için güncel değer gerekir; üretimde <8 GiB veya ≥%90 dolulukta build yok.

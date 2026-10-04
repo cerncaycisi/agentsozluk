@@ -9944,6 +9944,44 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toMatchObject({ runStatus: "QUEUED", attempts: 0 });
   });
 
+  it("reports NO_MATCH without moderation receipts for empty run or window selections", async () => {
+    const fixture = await createFixture();
+    const before = {
+      audits: await integrationDatabase.auditLog.count(),
+      moderation: await integrationDatabase.moderationAction.count(),
+      outbox: await integrationDatabase.outboxEvent.count(),
+      events: await integrationDatabase.agentRuntimeEvent.count(),
+    };
+    for (const selector of [
+      { runId: fixture.runs[0]!.id },
+      { agentProfileId: fixture.created.agent.profile.id, sinceHours: 1 },
+    ]) {
+      const result = await bulkSetAgentContentVisibility(
+        integrationDatabase,
+        adminActor(fixture.admin.id),
+        false,
+        {
+          ...selector,
+          reason: "Boş seçim gerçekte bir işlem yapıldığını söylememelidir.",
+          confirmation: "RESTORE_AGENT_CONTENT",
+        },
+      );
+      expect(result).toMatchObject({
+        status: "NO_MATCH",
+        selectedCount: 0,
+        succeeded: [],
+        failed: [],
+        selection: { resolvedAt: expect.any(String), runStatus: null },
+      });
+    }
+    expect({
+      audits: await integrationDatabase.auditLog.count(),
+      moderation: await integrationDatabase.moderationAction.count(),
+      outbox: await integrationDatabase.outboxEvent.count(),
+      events: await integrationDatabase.agentRuntimeEvent.count(),
+    }).toEqual(before);
+  });
+
   it("rejects oversized bulk moderation before changing any matching entry", async () => {
     const fixture = await createFixture();
     const generated = await createRuntimeAgentEntries(fixture, [
@@ -10071,6 +10109,16 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     );
     expect(hidden).toMatchObject({ status: "SUCCEEDED", selectedCount: 2, failed: [] });
+    expect(hidden.selection).toMatchObject({
+      resolvedAt: expect.any(String),
+      runStatus: "RUNNING",
+    });
+    const bulkAudit = await integrationDatabase.auditLog.findFirstOrThrow({
+      where: { action: "agent.content.bulk_hidden" },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(bulkAudit.metadata).toMatchObject({ selection: hidden.selection });
+
     expect(
       await integrationDatabase.entry.count({
         where: { id: { in: generated.content.map(({ entryId }) => entryId) }, status: "HIDDEN" },

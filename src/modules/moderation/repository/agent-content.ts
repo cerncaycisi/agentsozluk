@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { agentContentBulkTargetLimit } from "@/modules/moderation/domain/agent-content-limits";
 import type { AgentContentBulkActionInput } from "@/modules/moderation/validation/schemas";
 
 export interface AgentContentListInput {
@@ -203,12 +204,13 @@ export function resolveAgentContentRecords(
           },
     orderBy: [{ createdAt: "desc" }, { entryId: "desc" }],
     // Bir fazla kayıt, sessizce kesilmiş bir toplu işlemin tam başarı sayılmasını önler.
-    take: 501,
+    take: agentContentBulkTargetLimit + 1,
     select: {
       entryId: true,
       runId: true,
       agentProfileId: true,
       entry: { select: { status: true, topicId: true } },
+      run: { select: { runStatus: true } },
     },
   });
 }

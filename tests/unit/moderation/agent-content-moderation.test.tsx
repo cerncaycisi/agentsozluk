@@ -1,18 +1,29 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import type * as HttpClient from "@/lib/http/client";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AgentContentModeration,
   type AgentContentModerationRow,
 } from "@/components/agents/agent-content-moderation";
 
+const mocks = vi.hoisted(() => ({ apiRequest: vi.fn(), info: vi.fn(), success: vi.fn() }));
+vi.mock("@/lib/http/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof HttpClient>()),
+  apiRequest: mocks.apiRequest,
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
+  toast: { success: mocks.success, info: mocks.info, warning: vi.fn(), error: vi.fn() },
 }));
 
-afterEach(cleanup);
+beforeEach(() => vi.clearAllMocks());
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 function row(overrides: Partial<AgentContentModerationRow["run"]> = {}) {
   return {
@@ -50,6 +61,44 @@ function row(overrides: Partial<AgentContentModerationRow["run"]> = {}) {
 }
 
 describe("agent content override badges", () => {
+  it.each(["NO_MATCH", "SUCCEEDED"])(
+    "shows truthful scope for a %s bulk result",
+    async (status) => {
+      mocks.apiRequest.mockResolvedValue({
+        status,
+        selectedCount: status === "NO_MATCH" ? 0 : 1,
+        succeeded: status === "NO_MATCH" ? [] : [{ entryId: "entry-1" }],
+        failed: [],
+        selection: { resolvedAt: "2026-10-04T10:00:00.000Z", runStatus: "RUNNING" },
+      });
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      const user = userEvent.setup();
+      render(<AgentContentModeration rows={[row({ runStatus: "RUNNING" })]} />);
+      const reason = "Seçim sonucunun kapsamı kullanıcıya açık gösterilmelidir.";
+      await user.type(screen.getByLabelText("Moderasyon gerekçesi"), reason);
+      await user.selectOptions(screen.getByLabelText("Davranış sebebi"), "REPETITIVE");
+      await user.type(
+        screen.getByLabelText("Agent’ın özümseyeceği kısa ders"),
+        "Katkıyı tekrarlama.",
+      );
+      await user.click(screen.getByRole("button", { name: "Bu run’ın tüm entry’lerini gizle" }));
+      await waitFor(() => expect(mocks.apiRequest).toHaveBeenCalled());
+      if (status === "NO_MATCH") {
+        expect(
+          await screen.findByText("Seçime uyan agent içeriği bulunamadı; işlem yapılmadı."),
+        ).toBeVisible();
+        expect(screen.getByLabelText("Moderasyon gerekçesi")).toHaveValue(reason);
+        expect(screen.queryByText(/0\/0 başarılı/u)).not.toBeInTheDocument();
+        expect(mocks.success).not.toHaveBeenCalled();
+      } else {
+        expect(
+          await screen.findByText(/Sonradan üretilen içerikler dahil değildir/u),
+        ).toBeVisible();
+        expect(screen.getByText(/Seçim sırasında koşu devam ediyordu/u)).toBeVisible();
+      }
+    },
+  );
+
   it("shows only the still-supported provocation override", () => {
     render(
       <AgentContentModeration

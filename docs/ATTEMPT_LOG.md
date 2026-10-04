@@ -3932,3 +3932,20 @@ false/true` yapabildi; geçici rol ve DB silindi.
   `35bed1627974a34dcc651cdc29ebc31c19e5c537` eşit. Birleşmiş dal silindi.
 - Tekrarlama: PR CI kabulünü canlı betik kuruldu veya gerçek sıkıştırılmış yedek
   alındı diye sunma; merged SHA push CI ve kurulum kanıtını ayrıca sakla.
+
+### 4 Ekim 2026 — O5 içerik tamlığı Opus koşulları
+
+- Gerçek `claude-opus-5`, exact `d5a75e64af913abe7a697037ba7c27cf1a2793f3`
+  KOŞULLU GO. B1 boş seçim NO_MATCH/no content receipt; B2 çözümleme zamanı ve tek-run
+  durumu response/immutable audit'te; UI sonradan üretileni kapsamadığını açıklar.
+- B4 ortak 500 domain sabiti; B3 istek kesintisinde eksik toplu makbuz olasılığı mevcut
+  O5 kalan sınırında korundu. Her entry'de adminOnly/target lock yeniden denetimi ve
+  HTTP activeCsrfSession/idempotency kaynakta doğrulandı; güvenlik kapısı değiştirilmedi.
+- Son 4 PG16/7 birim-UI PASS; NO_MATCH makbuz yazmaz, büyük seçimi reddetme sürer,
+  sonuç selection metadata'sı audit'le eşleşir. Diğer 127 runtime testi odakta yok.
+- Tekrarlama: çözümleme bitiş zamanını DB snapshot ID'si veya tüm işin atomiklik kanıtı
+  sayma; koşullu hakem için yeni SHA'ya koşulsuz GO atfetme.
+
+- Son kalite kontrolünde yeni UI mock tipinin `import()` annotation'ı
+  `@typescript-eslint/consistent-type-imports` nedeniyle reddedildi; type-only namespace
+  importuna çevrildi. Runtime/mock davranışı değiştirilmedi, lint kuralı gevşetilmedi.

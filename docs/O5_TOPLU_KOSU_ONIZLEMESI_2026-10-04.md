@@ -208,3 +208,36 @@ API/OpenAPI ve arayüz sınırı açıklar. API'deki “toplu komutlar preview�
 uygun biçimde “toplu koşu oluşturma” olarak netleştirildi; acil iptal/durdurmaya yeni
 kapı eklenmedi. Kod hakemi/exact CI ve canlı dağıtım henüz bu alt paket için açık.
 O5'in diğer rota kapsam/önizleme kararı bu tek düzeltmeyle tamamlandı sayılmaz.
+
+### İçerik tamlığı Opus koşulları — 4 Ekim 10:30 UTC
+
+Gerçek `claude-opus-5`, exact `d5a75e64af913abe7a697037ba7c27cf1a2793f3` için
+**KOŞULLU GO** verdi; 500/501 çekirdek sınırını doğru buldu. İlk odaklı 3 PG koşusu
+zaten 501 hacim testini içeriyordu; bu kanıt yalnız CI'ya bırakılmış değildi.
+
+- B1: boş run/window seçimi artık `NO_MATCH`, sıfır hedef ve boş diziler döndürür;
+  içerik/toplu audit/moderation/outbox/event yazmaz. Açık fakat provenance'sız entry ID
+  hâlâ FAILED/PARTIAL sözleşmesine tabidir. UI başarı bildirimi üretmez, “işlem yapılmadı”
+  der ve daraltılabilecek gerekçeyi korur. HTTP idempotency/rate-limit kendi sözleşmesidir.
+- B2: sonuç ve toplu makbuz `selection.resolvedAt` ve tek-run için okunan `runStatus`
+  taşır. Zaman, uygulamanın hedef çözümlemesini bitirdiği andır; MVCC snapshot kimliği
+  veya tam atomiklik değildir. Birden fazla run seçimi/eşleşmesizlikte durum `null`.
+  UI sonradan üretilen içeriklerin dahil olmadığını ve okunan run RUNNING ise sürdüğünü
+  söyler; acil müdahale terminal run şartıyla engellenmez.
+- B3 mevcut sınır: istek ortada kesilirse daha önce yazılmış tekil moderasyon/audit
+  kayıtları kalır; toplu sonuç makbuzu henüz oluşmamış olabilir. Yeni kod bu maruziyeti
+  artırmaz veya tüm işi atomik ilan etmez. O5 kalan kapsam kararında bu görünürlük/
+  uzlaştırma ihtiyacı saklanır; bu dar düzeltmenin kapanması bütün O5'i kapatmaz.
+- B4: 500 tavanı application/repository/UI'ın ortak domain sabitine alındı.
+- Taze yetki kanıtı: `setAgentEntryVisibility`, `setEntryVisibilityWithAuthorization`
+  üzerinden her entry'de mevcut aktörü `adminOnly` olarak yeniden doğrular, topic/entry
+  kilidi altında hedefi tekrar okur. HTTP iki rota da `runAgentAdminAction` ile
+  `activeCsrfSession`, schema, moderation rate-limit ve idempotency yetki callback'ini
+  kullanır. Bu sınırlar değiştirilmedi; hakemin görmediği kaynak burada doğrulandı.
+
+Son **4 PG16 PASS**: boş seçimin makbuz yazmaması, 501 sınırı, normal hide/restore
+sayaçları ve provenance'sız hedefin PARTIAL sonucu. Normal sonucun seçim bağlamı
+immutable audit metadata'sıyla eşleşti. Diğer 127 test odaklı koşuda çalışmadı.
+Son **7 birim/UI PASS**: NO_MATCH başarı göstermiyor, gerekçe korunuyor, RUNNING
+sonucunda seçimin zamanı/sınırı görünüyor. İlk CI ve final exact CI ayrı kaydedilecektir.
+Koşullu hakem sonucu yeni SHA için koşulsuz inceleme olarak yeniden adlandırılmaz.

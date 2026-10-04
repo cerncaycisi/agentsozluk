@@ -1,6 +1,7 @@
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
+import { agentContentBulkTargetLimit } from "@/modules/moderation/domain/agent-content-limits";
 import { appendAuditLog } from "@/modules/audit";
 import { requireAgentAdminInTransaction } from "@/modules/agents";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
@@ -159,17 +160,26 @@ export async function bulkSetAgentContentVisibility(
   const expected = hidden ? "HIDE_AGENT_CONTENT" : "RESTORE_AGENT_CONTENT";
   if (input.confirmation !== expected)
     throw new AppError("VALIDATION_ERROR", 422, "Bulk işlem için açık confirmation gereklidir.");
-  const records = await inTransaction(client, async (transaction) => {
+  const { records, selection } = await inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     const selected = await resolveAgentContentRecords(transaction, input, new Date());
-    if (selected.length > 500)
+    if (selected.length > agentContentBulkTargetLimit)
       throw new AppError(
         "VALIDATION_ERROR",
         422,
-        "Seçim 500 entry sınırını aşıyor. Zaman aralığını daraltın veya entry'leri tek tek seçin.",
+        `Seçim ${agentContentBulkTargetLimit} entry sınırını aşıyor. Zaman aralığını daraltın veya entry'leri tek tek seçin.`,
       );
-    return selected;
+    return {
+      records: selected,
+      selection: {
+        // Uygulama tarafındaki çözümleme bitiş zamanı; MVCC snapshot kimliği değildir.
+        resolvedAt: new Date().toISOString(),
+        runStatus: input.runId ? (selected[0]?.run.runStatus ?? null) : null,
+      },
+    };
   });
+  if (records.length === 0 && !input.entryIds)
+    return { status: "NO_MATCH", selectedCount: 0, succeeded: [], failed: [], selection };
   const byEntryId = new Map(records.map((record) => [record.entryId, record]));
   const targetIds = input.entryIds ?? records.map(({ entryId }) => entryId);
   const aggregateId = input.runId ?? input.agentProfileId ?? targetIds[0]!;
@@ -209,6 +219,7 @@ export async function bulkSetAgentContentVisibility(
     await requireAgentAdminInTransaction(transaction, actor);
     const metadata = {
       actorKind: actor.actorKind,
+      selection,
       before: { hidden: !hidden, selectedCount: targetIds.length },
       after: {
         hidden,
@@ -259,5 +270,5 @@ export async function bulkSetAgentContentVisibility(
       metadata,
     });
   });
-  return { status, selectedCount: targetIds.length, succeeded, failed };
+  return { status, selectedCount: targetIds.length, succeeded, failed, selection };
 }

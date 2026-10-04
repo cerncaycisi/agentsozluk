@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { agentContentBulkTargetLimit } from "@/modules/moderation/domain/agent-content-limits";
 import { entryPublicUrl } from "@/lib/routing/public-urls";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -70,6 +71,7 @@ export function AgentContentModeration({
     selectedCount: number;
     succeeded: unknown[];
     failed: Array<{ entryId: string; code: string; message: string }>;
+    selection?: { resolvedAt: string; runStatus: string | null };
   }>();
   const allSelected = rows.length > 0 && rows.every(({ entry }) => selected.includes(entry.id));
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -99,6 +101,12 @@ export function AgentContentModeration({
         },
       );
       setResult(outcome);
+      if (outcome.status === "NO_MATCH") {
+        const message = "Seçime uyan agent içeriği bulunamadı; işlem yapılmadı.";
+        setNotice(message);
+        toast.info(message);
+        return;
+      }
       if ("entryIds" in selector) setSelected([]);
       setReason("");
       if (hidden) {
@@ -194,8 +202,8 @@ export function AgentContentModeration({
             Sayfadaki tümünü seç ({selected.length})
           </label>
           <p className="text-xs text-muted">
-            Toplu işlem gerekçe ve onay ister. En fazla 500 eşleşme işlenir; daha fazlasında seçimi
-            daraltın.
+            Toplu işlem gerekçe ve onay ister. En fazla {agentContentBulkTargetLimit} eşleşme
+            işlenir; daha fazlasında seçimi daraltın.
           </p>
         </div>
         <label className="block text-sm font-medium">
@@ -259,10 +267,19 @@ export function AgentContentModeration({
             {error}
           </p>
         ) : null}
-        {result ? (
+        {result && result.status !== "NO_MATCH" ? (
           <p className="rounded-lg border p-3 text-sm" role="status">
             {result.status}: {result.succeeded.length}/{result.selectedCount} başarılı
             {result.failed.length ? ` · ${result.failed.length} başarısız` : ""}
+          </p>
+        ) : null}
+        {result?.selection && result.status !== "NO_MATCH" ? (
+          <p className="text-sm text-muted">
+            Sonuç, {new Date(result.selection.resolvedAt).toLocaleString("tr-TR")} tarihinde seçilen
+            kayıtları kapsar. Sonradan üretilen içerikler dahil değildir.
+            {result.selection.runStatus === "RUNNING"
+              ? " Seçim sırasında koşu devam ediyordu."
+              : ""}
           </p>
         ) : null}
         {notice ? (

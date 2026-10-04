@@ -570,6 +570,12 @@ Bir run veya agent zaman penceresi 500'den fazla kayda eşleşirse **422 VALIDAT
 döner; hiçbir entry işlenmez. İlk 500 kaydı tamamını temsil ediyor gibi işlemek yoktur.
 Daha dar pencere veya en fazla 100 açık `entryIds` kullanılır. Sınır içindeki çağrılarda
 mevcut kayıt başına yetki denetimi ve kısmi sonuç sözleşmesi sürer.
+Run/window seçimi boşsa `NO_MATCH`, sıfır seçili ve boş sonuç dizileri döner; içerik veya
+toplu moderasyon makbuzu yazılmaz. HTTP idempotency/rate-limit kaydı bu içerik-no-op
+sözleşmesinin dışındadır. Sonuç ve toplu makbuz `selection.resolvedAt` (ISO çözümleme
+bitiş zamanı) ile `selection.runStatus` (tek run seçiminde okunan durum, diğerinde/null
+veya eşleşme yokken `null`) taşır. Bu MVCC snapshot ID'si/gelecekteki içerik garantisi
+değildir; sonradan üretilen içerikler için yeni seçim gerekir.
 
 ### Runtime kontrolü ve ölçüm
 
