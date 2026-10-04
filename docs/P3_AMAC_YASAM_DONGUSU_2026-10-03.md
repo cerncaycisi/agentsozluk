@@ -114,3 +114,24 @@ main `c2f5db7254735bf0fb845aa26ee70bf4b522c80e`; uzak main ve ağaç eşitliği 
 Dal temizlendi, üretim dağıtımı yok. İki engellemeyen not (işlem özetini koruma ve komut/slot
 sınırlarını ayırma) P4 kod diliminde kapanıyor. TTL sunucu geçişidir; reddedilmiş öneri
 batch'inden önce doğal EXPIRED kaydı yazılabilir.
+
+## 4 Ekim — aktif amaçtan karar istemine geçiş hatası
+
+Kısa pilotun gerçek `buildRuntimePrompt` hazırlığı, `81baa486d995e1d1fca6988b32602062619eafb3`
+tabanında `RUNTIME_CONTEXT_FORBIDDEN_METADATA:perception.purposes[0].kind` verdi.
+Amaç perception kaydı `kind` taşırken worker bunu hesap ontolojisi etiketiyle aynı
+sayıyordu. Önceki servis testleri bağlamı okuyordu; worker fixture'ındaki amaçta `kind`
+yoktu. Yeni gerçek PG16 assertion'ı aynı amaç oluşturma→sonraki uyanış→istem yolunda
+**düzeltme öncesi düştü**. Ortam veya model hatası değil; henüz canlıya çıkmamış P3 yoludur.
+
+Worker yalnız doğrudan `perception.purposes` dizisinin nesnelerinde, exact `kind`
+anahtarında, mevcut üç `purposeKinds` enum değerine izin verir. İzin alt nesne/dizilere,
+yan alanlara veya başka perception konumlarına taşınmaz. `AGENT`, bilinmeyen tür,
+nesne türü, `model`, iç içe `kind`, dizi olmayan amaç ve farklı yazımlı anahtar reddedilir.
+Mevcut topicFatigue istisnası, hesap ontolojisi yasağı ve perception allowlist aynı kalır.
+Wire alan adı/DB/migration değişmez; v50 istem metni ve alan kümesi aynı sözleşmedir.
+
+Son **91 birim PASS** (worker 88, amaç 3), **9 gerçek PG16 amaç senaryosu PASS**;
+122 diğer runtime senaryosu bu odaklı PG koşusunda çalışmadı. Gerçek iki aktif amaç
+kaydı artık normal karar istemine taşınır. Runtime model çağrısı/üretim yazımı yok.
+Bağımsız Opus ve exact CI sonucu ayrıca kaydedilecektir. Kısa pilot henüz çalışmadı.

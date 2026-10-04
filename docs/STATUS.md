@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 10:58 UTC — aktif amaç istemi düzeltmesi yerelde
+
+- `81baa48` tabanında kısa pilot hazırlığı aktif amacın `kind` alanında worker'ın
+  `RUNTIME_CONTEXT_FORBIDDEN_METADATA` hatasını buldu. Gerçek PG16 üretici→istem
+  assertion'ı düzeltmeden önce aynı nedenle düştü; fixture/ortam nedeni ayrıldı.
+- Exact amaç dizisi/üç enum değerine dar istisna sonrası **91 birim / 9 PG16 PASS**.
+  Hesap/model metadata reddi korunuyor; 122 diğer runtime testi odaklı koşuda atlandı.
+  Henüz model pilotu, hakem/exact CI veya canlı dağıtım kabulü yok.
+- [P3 kanıtı](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
+
 ## 2026-10-04 10:37–10:49 UTC — yedek kurulumu ve sağlık kesiti
 
 - #313 main `e8bb0e0` exact push CI 7/7 sonrasında iki yedek betiği kilit/staged rename

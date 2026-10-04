@@ -11425,6 +11425,9 @@ describe("persistent runtime purposes with PostgreSQL", () => {
       orderBy: { activeSlot: "asc" },
     });
     expect(second.context.perception.purposes).toHaveLength(2);
+    const purposePrompt = buildRuntimePrompt(second.context);
+    expect(purposePrompt).toContain('"kind":"EXPLORE_CONTRIBUTION"');
+    for (const row of rows) expect(purposePrompt).toContain(row.id);
     for (const row of rows) {
       expect(browsableTopicIds(second.context.perception).has(row.targetId)).toBe(true);
       const event = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({

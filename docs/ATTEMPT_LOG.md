@@ -3972,3 +3972,16 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Tekrarlama: yerel origin son ek farkını production host uyuşmazlığı sayma; decode'u
   SQL restore sayma; gzip pinini ilk native tam restore öncesi silme; kayan sağlık
   penceresindeki farkı henüz dağıtılmamış koda bağlama. Koşullu hakemi yeniden adlandırma.
+
+### 4 Ekim 2026 10:57–10:58 UTC — P3 gerçek amaç/worker sınırı
+
+- Taban `81baa486d995e1d1fca6988b32602062619eafb3`; çevrimdışı kısa pilot hazırlığı
+  `RUNTIME_CONTEXT_FORBIDDEN_METADATA:perception.purposes[0].kind` verdi. Gerçek
+  PG16 amaç→ikinci uyanış→`buildRuntimePrompt` assertion'ı önce aynı hatayla düştü.
+  Önceki worker fixture'ı `kind` içermiyordu; DB kaydı içeriyor. Kod regresyonu doğrulandı.
+- İzin yalnız doğrudan amaç dizisi kaydı/exact anahtar/üç domain enum değeriyle sınırlı;
+  hesap türü/yan alan/iç içe/farklı yol reddi test edildi. Son 91 birim ve 9 PG16 PASS,
+  diğer 122 runtime senaryosu bu odaklı koşuda çalışmadı. Hakem/exact CI açık.
+- Tekrarlama: servis bağlamı testiyle gerçek worker istemi sınırını doğrulanmış sayma;
+  `kind` yasağını genel kaldırma; sentetik pilot girdisini gerçek üretim amacı veya
+  model başarısı diye kaydetme. Pilot hazırlığı bu somut hata kapanınca devam eder.

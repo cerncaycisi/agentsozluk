@@ -74,6 +74,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   ilk taslağa Fayn/Aeon #311’de eklendi (38 test; Opus koşulları kaynak/ölçümle kapandı).
   Final `c53f8c3`, CI `37191249963` 7/7; main `8aeeb0a`. Gerçek aday kaynak hazırlığı
   ve aktivasyon kapıları açık. [P8 makbuzu](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
+- **4 Ekim kısa pilotta bulunan P3 engeli:** aktif amaçtaki `kind`, worker’ın teknik
+  metadata yasağına takılıyordu. Gerçek PG16 amaç→sonraki istem yolu önce aynı hatayla
+  düştü; dar yol/enum istisnası sonrası 9 PG16 ve 91 birim geçti. Hesap/model metadata
+  kapısı korunuyor. Bu düzeltmenin bağımsız hakem/CI kapanışı pilot girdilerinden önce gelir;
+  canlıya çıkmış hata iddiası yok. [P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim

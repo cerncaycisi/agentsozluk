@@ -1266,6 +1266,35 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("otomatik tamamlama kuyruğu");
   });
 
+  it.each(["UNDERSTAND_CONCEPT", "TEST_BELIEF", "EXPLORE_CONTRIBUTION"])(
+    "renders semantic purpose kind %s without allowing account metadata",
+    (kind) => {
+      const context = fixtureContext(randomUUID());
+      context.perception.purposes = [{ id: randomUUID(), kind, question: "Kavramı anlamak" }];
+      expect(buildRuntimePrompt(context)).toContain(`"kind":"${kind}"`);
+    },
+  );
+
+  it.each([
+    { purposes: [{ kind: "AGENT" }] },
+    { purposes: [{ kind: "UNKNOWN_PURPOSE" }] },
+    { purposes: [{ kind: { provider: "must-not-pass" } }] },
+    { purposes: [{ kind: "TEST_BELIEF", model: "must-not-pass" }] },
+    { purposes: [{ kind: "TEST_BELIEF", nested: { kind: "TEST_BELIEF" } }] },
+    { purposes: { kind: "TEST_BELIEF" } },
+    { purposes: [[{ kind: "TEST_BELIEF" }]] },
+    { purposes: [{ Kind: "TEST_BELIEF" }] },
+    { recentEntries: [{ kind: "TEST_BELIEF" }] },
+  ])(
+    "keeps the purpose-kind exception confined to exact semantic values and path: %j",
+    (perception) => {
+      const context = fixtureContext(randomUUID());
+      expect(() => buildRuntimePrompt({ ...context, perception })).toThrow(
+        "RUNTIME_CONTEXT_FORBIDDEN_METADATA:",
+      );
+    },
+  );
+
   it("fails closed when forbidden ontology metadata is nested inside perception", () => {
     const context = fixtureContext(randomUUID());
     expect(() =>
