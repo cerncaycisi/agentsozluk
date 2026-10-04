@@ -1,3 +1,4 @@
+import { assessmentVisibilityChecksSchema } from "@/modules/agents/validation/reward-schemas";
 import {
   truncateUntrustedText,
   runtimeReadTopicEntryLimit,
@@ -298,17 +299,21 @@ async function buildAssessment(
   target: { purposeId?: string | null; entryId?: string | null },
   now: Date,
 ) {
-  if (target.purposeId && !target.entryId)
-    return {
-      ...(await buildPurposeAssessment(tx, profileId, target.purposeId, now)),
-      channel: "INTRINSIC" as const,
-    };
-  if (target.entryId && !target.purposeId)
-    return {
-      ...(await buildQualityAssessment(tx, profileId, target.entryId, now)),
-      channel: "QUALITY" as const,
-    };
-  reject("Değerlendirme hedefi tek ve kanalla uyumlu olmalıdır.");
+  const built =
+    target.purposeId && !target.entryId
+      ? {
+          ...(await buildPurposeAssessment(tx, profileId, target.purposeId, now)),
+          channel: "INTRINSIC" as const,
+        }
+      : target.entryId && !target.purposeId
+        ? {
+            ...(await buildQualityAssessment(tx, profileId, target.entryId, now)),
+            channel: "QUALITY" as const,
+          }
+        : reject("Değerlendirme hedefi tek ve kanalla uyumlu olmalıdır.");
+  if (!assessmentVisibilityChecksSchema.safeParse(built.visibilityChecks).success)
+    reject("Kanıt paketi görünürlük sınırını aşıyor.");
+  return built;
 }
 
 export function issueAuthorAssessmentPacket(

@@ -876,7 +876,33 @@ describe("independent purpose assessment with PostgreSQL", () => {
         state: "SUPPORTED",
       }),
     ]);
+    await db.agentSourceItem.update({ where: { id: item.id }, data: { expiresAt: now } });
+    expect(await feedback(f.profile.id)).toEqual([]);
+    await db.agentSourceItem.update({ where: { id: item.id }, data: { expiresAt: null } });
     await db.agentSource.update({ where: { id: source.id }, data: { adminBlocked: true } });
     expect(await feedback(f.profile.id)).toEqual([]);
+  });
+  it("drops hidden purpose topics and legacy snapshots without falling back to older praise", async () => {
+    const f = await fixture();
+    await f.mode("FULFILL_SLOT");
+    const decision = await f.submit(await f.issue(), "INSUFFICIENT");
+    expect(await feedback(f.profile.id)).toHaveLength(1);
+    await db.topic.update({ where: { id: f.topic.id }, data: { status: "HIDDEN" } });
+    expect(await feedback(f.profile.id)).toEqual([]);
+    await db.topic.update({ where: { id: f.topic.id }, data: { status: "ACTIVE" } });
+    const packet = await f.issue();
+    const previous = await db.agentRewardAssessment.findUniqueOrThrow({
+      where: { id: decision.assessmentId },
+    });
+    await db.agentRewardAssessment.create({
+      data: {
+        ...previous,
+        id: randomUUID(),
+        packetId: packet.packetId,
+        evidenceSnapshot: { observation: "Pre-P4b stored packet without visibility checks." },
+        createdAt: new Date(now.getTime() + 1),
+      },
+    });
+    expect(await feedback(f.profile.id, new Date(now.getTime() + 2))).toEqual([]);
   });
 });

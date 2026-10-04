@@ -1484,6 +1484,7 @@ model AgentRuntimeEvent {
   @@index([createdAt])
   @@index([agentProfileId, id])
   @@index([agentProfileId, occurredAt, id], map: "agent_runtime_events_agent_occurred_id_idx")
+  @@index([agentProfileId, eventType, occurredAt], map: "agent_runtime_events_feedback_presented_idx")
   @@index([runId, id], map: "agent_runtime_events_run_id_idx")
   @@index([actionId], map: "agent_runtime_events_action_id_idx")
   @@index([eventType, occurredAt, id], map: "agent_runtime_events_type_occurred_id_idx")

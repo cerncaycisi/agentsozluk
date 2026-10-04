@@ -49,6 +49,48 @@ export async function runtimeAuthorFeedback(
     now,
     frozenIds,
   );
+  // Görünürlük okumaları kart başına değil, en çok 12 aday için tek toplu küme.
+  const checksById = new Map(
+    assessments.flatMap((assessment) => {
+      if (assessment.reversal) return [];
+      const parsed = assessmentVisibilityChecksSchema.safeParse(
+        object(assessment.evidenceSnapshot).visibilityChecks,
+      );
+      return parsed.success ? [[assessment.id, parsed.data] as const] : [];
+    }),
+  );
+  const allChecks = [...checksById.values()].flat();
+  const entryIds = [
+    ...new Set(allChecks.filter((check) => check.kind === "ENTRY").map((check) => check.id)),
+  ];
+  const sourceIds = [
+    ...new Set(allChecks.filter((check) => check.kind === "SOURCE_ITEM").map((check) => check.id)),
+  ];
+  const topicIds = [
+    ...new Set(
+      assessments.flatMap((assessment) =>
+        !assessment.reversal && assessment.purpose?.targetType === "TOPIC"
+          ? [assessment.purpose.targetId]
+          : [],
+      ),
+    ),
+  ];
+  const [entries, sources, topics] = await Promise.all([
+    entryIds.length ? records.findAssessmentEntries(tx, entryIds) : [],
+    sourceIds.length ? records.findAssessmentSourceItems(tx, agentProfileId, sourceIds, now) : [],
+    topicIds.length ? findPurposeTopicRecords(tx, topicIds) : [],
+  ]);
+  const visibleTopics = new Set(topics.map((topic) => topic.id));
+  const current = new Map([
+    ...entries.map((entry) => [`ENTRY:${entry.id}`, assessmentEntryVisibilityHash(entry)] as const),
+    ...sources.map(
+      (source) =>
+        [
+          `SOURCE_ITEM:${source.id}`,
+          assessmentContentHash(`${source.title}\n${source.safeText}\n${source.canonicalUrl}`),
+        ] as const,
+    ),
+  ]);
   const seenOrigins = new Set<string>();
   const cards: AuthorFeedbackCard[] = [];
   for (const assessment of assessments) {
@@ -87,38 +129,16 @@ export async function runtimeAuthorFeedback(
         question: null,
       });
     } else {
-      const checks = assessmentVisibilityChecksSchema.safeParse(
-        object(assessment.evidenceSnapshot).visibilityChecks,
-      );
       // Eski snapshot'ta görünürlük dayanağı yoksa yeni runtime kartı uydurma.
-      if (!checks.success) continue;
-      const entryIds = checks.data
-        .filter((check) => check.kind === "ENTRY")
-        .map((check) => check.id);
-      const sourceIds = checks.data
-        .filter((check) => check.kind === "SOURCE_ITEM")
-        .map((check) => check.id);
-      const entries = await records.findAssessmentEntries(tx, entryIds);
-      const sources = await records.findAssessmentSourceItems(tx, agentProfileId, sourceIds, now);
-      const current = new Map([
-        ...entries.map(
-          (entry) => [`ENTRY:${entry.id}`, assessmentEntryVisibilityHash(entry)] as const,
-        ),
-        ...sources.map(
-          (source) =>
-            [
-              `SOURCE_ITEM:${source.id}`,
-              assessmentContentHash(`${source.title}\n${source.safeText}\n${source.canonicalUrl}`),
-            ] as const,
-        ),
-      ]);
+      const checks = checksById.get(assessment.id);
       if (
-        checks.data.some((check) => current.get(`${check.kind}:${check.id}`) !== check.contentHash)
+        !checks ||
+        checks.some((check) => current.get(`${check.kind}:${check.id}`) !== check.contentHash)
       )
         continue;
       if (
         assessment.purpose?.targetType === "TOPIC" &&
-        (await findPurposeTopicRecords(tx, [assessment.purpose.targetId])).length !== 1
+        !visibleTopics.has(assessment.purpose.targetId)
       )
         continue;
       cards.push({

@@ -3444,3 +3444,15 @@ false/true` yapabildi; geçici rol ve DB silindi.
   ihtiyacı bulundu; yazı/önceki bağlam hash'leri birlikte saklanıyor. Son ödül dosyası 19/19 geçti; eski nonce ve gizli önceki bağlam regresyonu kapandı.
 - Tekrarlama: değerlendirme gerekçesini yalnız hedef entry görünürlüğüyle yeterli sayma;
   paketteki diğer kanıtları da yeniden doğrula. Yerel kontrollü test doğal fayda kanıtı değildir.
+
+- P4b Opus 5 ilk tur exact `eed8090e509aeb1c12a62b0146b81d2c7f976173`: DÜZELTİLMELİ.
+  B1 yanlış test sayımı çalışma kaydıyla çürütüldü: sekiz eski amaç + yeni gerçek API vakası
+  dokuzdur. İlk CI `37164593850` 7/7. Fiziksel entry silme yolu yok; soft delete/RESTRICT
+  sözleşmesi teyit edildi. Kaynak doğrulama, olay sahipliği ve sorgu maliyeti daraltıldı.
+- Yeni indeks migration'ı yalnız yerel PG16'da. Son birleşik 20 ödül + 9 amaç = 29/29,
+  ilgili 147 birim testi geçti. 100.000 sentetik geçici olayda indeksli sorgu 187 aday
+  filtreledi, execution 0,852 ms; rollback tamam. Üretim performans makbuzu değildir.
+- Yerel psql önce PATH dışında, sonra `libpq.so.5` bulunamadı. Daha önce kaydedilmiş
+  `/home/agent/pg16/root/usr/lib/postgresql/16/bin/psql` ve komuta özel
+  `LD_LIBRARY_PATH=/home/agent/pg16/root/usr/lib/x86_64-linux-gnu` ile geçti. Tekrarlama:
+  PG yardımcı aracını yeniden keşfetmek yerine mevcut 3202–3204 ortam kaydını uygula.

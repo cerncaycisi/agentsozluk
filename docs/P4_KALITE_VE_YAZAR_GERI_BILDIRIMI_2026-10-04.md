@@ -79,3 +79,54 @@ belief/eylem otomatik geri alınmaz. Bu tasarım görüşü kod hakemliği deği
   kaydı üretildikten sonra uyumlu rollback hedefi sayılmaz. Gerçek hedef deploy makbuzunda sabitlenir.
 - Kod hakemi, exact CI, davranış pilotu ve canlı kabul henüz tamamlanmadı. Bu testler
   yazarın doğal davranışının iyileştiğini veya iki haftalık ürün kabulünü kanıtlamaz.
+
+## İlk kod hakemi ve kaynakla uzlaştırma
+
+Gerçek `claude-opus-5`, exact `eed8090e509aeb1c12a62b0146b81d2c7f976173`:
+**DÜZELTİLMELİ**, güvenlik açığı bulmadığını ayrıca belirtti. Araçsız kaynak incelemesi;
+izin reddi yok, testleri bağımsız çalıştırmadı. Bu exact sürümün CI `37164593850` 7/7 geçti.
+
+1. **B1 test sayısı itirazı yanlış:** P3'te sekiz amaç vakası vardı; ek uçtan uca vaka ile
+   dokuz oldu. `p4b-pg-2.log:13` gerçek amaç→karar→uyanış→ters kayıt testinin geçtiğini
+   gösterir; toplam 18+9=27, atlanan 119 diğer runtime testidir. İlk makbuz korunur; test
+   hiç çalışmamış gibi yazılmaz. Son değişiklikler ardından tek koşuda **20 ödül + 9 amaç =
+   29/29 PG16**, diğer 119 atlandı. İlgili dokuz birim dosyası **147/147** geçti.
+2. **B2 fiziksel silme:** uygulama `entries/repository/entries.ts:145` ile status=DELETED
+   soft delete yapar; src/scripts içinde entry/user hard-delete yolu yok. Kalite referansı
+   olan entry'nin fiziksel silinmesi RESTRICT ile engellenir; yeni kalıcı FK açık karardır.
+   Mevcut AgentContentRecord da kökeni korur. Reset kontrollü TRUNCATE'tir; burada çalıştırılmadı.
+3. **B3 sınır:** gerçek okuma limiti repository/runtime.ts'te 15, ayrı ilk entry ile en çok
+   16'dır; bugün 20 aşımı yoktur. Yine de ortak visibility şeması yazma tarafında da kontrol
+   edilir; gelecekte farklı okuyucu kullanılırsa sessizce gösterilemeyen kredi üretilmez.
+4. **B4 indeks/olay sahipliği:** eski profil/zaman ve tür/zaman indekslerine ek olarak
+   `20261004003500_agent_feedback_presented_index` birleşik profil/tür/zaman indeksini ekler.
+   Yalnız yerel test DB'ye uygulandı. 100.000 satırlı, 36 profil/20 günlük **sentetik geçici**
+   tabloda eşdeğer sorgu Bitmap Index Scan kullandı; 187 aday, eşleşme yok, 0,852 ms execution.
+   İşlem rollback oldu. Bu üretim ölçeği veya tüm runtime transaction süresi ölçümü değildir.
+5. Worker metadata şeması baştan beri `feedbackAssessmentIds` kabul etmiyordu; sahte sunum
+   kanıtı yazılamazdı. Ek olarak `CONTEXT_PRESENTED` adı worker generic event yolunda rezerve
+   edildi. Adın farklı harf/boşluk biçimleri ve metadata sahteciliği birim testiyle reddedilir.
+6. **B5:** görünür entry/kaynak/başlık okumaları 12 aday için tek toplu küme oldu; boş ID
+   kümelerinde sorgu yok. Reversal sunum kanıtı profil/tür/zaman indeksli, en fazla 12 adayla
+   sınırlı ayrı existence sorgusudur. Sınırsız sorgu veya sıfır maliyet iddiası yoktur.
+7. **B6:** gizlenen amaç hedefi, legacy snapshot'ta guard yokluğu/eskisine geri düşmeme,
+   kaynak TTL ve ters kartın yeni olumlu sunum kanıtı yazmaması ek testlerle geçti. Son kart
+   sunumundaki `feedbackAssessmentIds=[]` gerçek runtime API testinde doğrulanır.
+8. **B7–B9:** geri alınan amaç REVIEW_REVOKED kapalı kalır; kart amacı yeniden kurduracak
+   hedef metnini taşımaz. Yeni niyet ajanın ayrı kararıdır. Bağımsızlık beyanı assessment
+   UUID'sine bağlı immutable audit'tedir; audit retention temizliği yok, reset sınıfı da
+   audit'i korur. Aynı normalize metin iki kanalda ikinci kredi vermez; muhafazakâr seçimdir.
+9. **B10:** kullanılmayan entry join kaldırıldı; aynı milisaniyedeki önceki katkı sırası
+   mevcut başlık sırasıyla (`createdAt, id ASC`) tutarlı oldu. Şema biçim gürültüsü için
+   bağımsız tarihsel yeniden düzenleme yapılmadı.
+
+Eksik kaynak yanıtları: `publiclyVisibleEntryWhere` seed overlay'idir; ACTIVE entry/topic
+koşulları çağıran sorgudadır. Worker DECISION `buildRuntimePrompt` algıyı UNTRUSTED sınırında
+serileştirir. Prompt hash girdisi invariants/allowlist'i içerir. Purpose update sahiplik,
+ACTIVE ve exact version ile CAS yapıp sürümü artırır. `runAgentAdminAction`'ın
+`storedBodyTransform` parametresi **yanıta** uygulanır (`http/idempotency.ts`); nonce tekrar
+yanıt deposunda saklanmaz. Reflection/consolidation önceki run'ların ham perceptionSummary
+alanını toplamaz; kendi koşusunun seçilmiş algısı ve mevcut kaynak/hafıza kayıtlarını okur.
+Bu nedenle authorFeedback'a yeni NORMAL_WAKE dışı aktarım yolu açılmadı.
+
+Son kod sürümünün format/lint/typecheck, ikinci dar hakem ve exact CI sonucu ayrıca kaydedilir.

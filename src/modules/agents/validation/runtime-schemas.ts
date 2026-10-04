@@ -86,6 +86,9 @@ const runtimeWorkerEventTypeSchema = z
   .trim()
   .min(1)
   .max(100)
+  .refine((value) => value.toUpperCase() !== "CONTEXT_PRESENTED", {
+    message: "Bağlam sunumu yalnız control plane tarafından kaydedilebilir.",
+  })
   .refine((value) => !value.toLowerCase().startsWith("runtime.production."), {
     message: "Worker event type production control-plane namespace kullanamaz.",
   });

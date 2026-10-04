@@ -211,7 +211,7 @@ export const findQualityPriorEntries = (
     where: {
       id: { not: entryId },
       topicId,
-      createdAt: { lte: before },
+      OR: [{ createdAt: { lt: before } }, { createdAt: before, id: { lt: entryId } }],
       status: "ACTIVE",
       ...publiclyVisibleEntryWhere,
     },
@@ -244,7 +244,6 @@ export const findAuthorFeedbackAssessments = (
     include: {
       reversal: true,
       purpose: { select: { id: true, question: true, targetType: true, targetId: true } },
-      entry: { select: { id: true } },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: ids ? Math.min(ids.length, authorFeedbackLimit) : authorFeedbackScanLimit,

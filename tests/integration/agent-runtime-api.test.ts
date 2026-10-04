@@ -11433,6 +11433,11 @@ describe("persistent runtime purposes with PostgreSQL", () => {
       }),
     ]);
     expect(refreshed.contextHash).not.toBe(following.context.contextHash);
+    const retractionPresentation = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: { runId: following.runId, eventType: "CONTEXT_PRESENTED" },
+      orderBy: { id: "desc" },
+    });
+    expect(retractionPresentation.metadata).toMatchObject({ feedbackAssessmentIds: [] });
     await following.complete([]);
     const afterReversal = await next(fixture);
     expect(afterReversal.context.perception.authorFeedback).toEqual([
