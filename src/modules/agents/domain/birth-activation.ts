@@ -44,6 +44,10 @@ export function evaluateBirthSourceCoverage(
   return {
     failures,
     window,
+    invalidTopicPayloads: {
+      child: child.invalidTopicPayloads,
+      established: established.invalidTopicPayloads,
+    },
     child: coverage,
     established: {
       sources: established.poolSources,

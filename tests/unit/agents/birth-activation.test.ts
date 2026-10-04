@@ -101,6 +101,16 @@ describe("birth activation source proof", () => {
   });
 });
 describe("proven first activation and bounded lineage", () => {
+  it("does not reinterpret ties wholly before the recent activation boundary", () => {
+    const input = lineage();
+    input.profiles.push(
+      { profileId: "older-a", rootProfileId: "older-a", history: history("older-a", 25) },
+      { profileId: "older-b", rootProfileId: "older-b", history: history("older-b", 25) },
+    );
+    input.nonRetiredProfiles = 6;
+    expect(evaluateBirthLineageActivation(input).failures).toEqual([]);
+  });
+
   it("counts a prepared child once in population and permits independent recent roots", () =>
     expect(evaluateBirthLineageActivation(lineage()).failures).toEqual([]));
   it.each(["missing-history", "broken-chain", "future", "ambiguous-time", "current-mismatch"])(
@@ -149,7 +159,9 @@ describe("proven first activation and bounded lineage", () => {
     if (kind === "unknown-root") input.profiles[1]!.rootProfileId = null as unknown as string;
     if (kind === "cooldown") input.profiles[0]!.history.createdAt = date(7);
     if (kind === "diversity") for (const row of input.profiles) row.rootProfileId = "root";
-    expect(evaluateBirthLineageActivation(input).failures).toContain(reason);
+    expect(evaluateBirthLineageActivation(input).failures).toEqual(
+      kind === "history" ? [reason, "ACTIVATION_ORDER_UNKNOWN"] : [reason],
+    );
   });
 });
 const acceptance = () => {

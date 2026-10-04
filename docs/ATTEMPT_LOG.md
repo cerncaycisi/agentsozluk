@@ -4189,3 +4189,28 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Tekrarlama: report envelope hash'ini haricî rapor dosyasının sunucu doğrulaması
   diye sunma; benchmark'tan önce başlayan pencereyi gerçek P7 sayma; eski klon
   son-dört dışında diye soy nüfusundan çıkarma. Opus ve exact CI açık.
+
+### 4 Ekim 2026 — aktivasyon ilk Opus incelemesi
+
+- #321 `8ae122ff89a3de4466d68f97be21db21c6884a8d`, gerçek `claude-opus-5`
+  DÜZELTİLMELİ verdi. Ham görüş/model kaydı korundu; koşulsuz kabul sayılmadı.
+- A2 kapanış anını dahil etmeyi önerdi. Mevcut toplum raporu bütün pencereleri
+  `[from, to)` tanımlar (`society-baseline-report.ts:98`); tam `to` anındaki pause
+  pencere dışındadır. PG16 karşı örneğinde `to-1ms` ret, tam `to` sonrası yeniden
+  ACTIVE durumunda geçiş PASS. Yarı açık sözleşme sessizce değiştirilmedi.
+- A8 eksik kesitti: `repository/control-plane.ts:getGlobalSettingsRecord`, doğrudan
+  `getStoredGlobalSettingsRecord` üzerinden `findUniqueOrThrow` ile tam satır döndürür;
+  kısmi select yok. Yeni görüşe tam kaynak ekleniyor, otomatik kusur varsayılmadı.
+- Ayrı baseline/current capability kayıtları, manuel başarılı koşunun doğal kanıt
+  sayılmaması, üst pencere sınırı ve exact reason kontrolleriyle18PG16 PASS.
+  Bozuk kaynak topics sayısı güvenli hata ayrıntısına eklendi; sorgu tavanı ve mevcut transaction sınırları
+  yorumlandı. Birim exact-set ilk denemesinde eksik geçmişin sıra kanıtını da düşürdüğü
+  görüldü; iki beklenen ret açıkça yazıldı, denetim gevşetilmedi. Son birim koşusu açık.
+- Tekrarlama: hakem önerisini kaynak sözleşmesiyle karşılaştırmadan uygulama;
+  tam `to` anını içeride sayarak eski raporlarla farklı pencere hesabı kurma.
+
+- Son68 birim PASS. Ayrı baseline/current kayıtları ve pencere sınırı18PG PASS;
+  ardından gerçek36 profil HTTP yoluyla4PG PASS (üçü önceki koşuyla örtüşür).
+  `P8_ACTIVATION_HTTP_MEASUREMENT`: profiles36, elapsedMs555. Idempotent dış HTTP
+  transaction5s, direct service15s; hiçbir timeout yükseltilmedi. Kaynak yorumundaki
+  yalnız15s ifadesi bu iki yolu ayıracak şekilde düzeltildi.

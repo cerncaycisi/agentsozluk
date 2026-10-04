@@ -48,6 +48,8 @@ export async function loadBirthActivationHistories(
   tx: TransactionClient,
   independentHashes: ReadonlySet<string>,
 ) {
+  // Yaşayan 40 sınırından ayrı tarihçe tavanı; eski/retired profiller de incelenir.
+  // Mevcut sınırlar korunur: idempotent HTTP transaction'ı 5s, doğrudan servis 15s.
   const profiles = await tx.agentProfile.findMany({
     select: { id: true, createdAt: true, lifecycleStatus: true },
     orderBy: { id: "asc" },

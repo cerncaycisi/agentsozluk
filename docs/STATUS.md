@@ -4052,3 +4052,8 @@ farklı model incelemesi ve CI henüz tamamlanmadı.
 4 Ekim 14:15 UTC aktivasyon doğrulaması: 75 birleşik PG16 sonrası son 15 odaklı
 aktivasyon PG ve 67 birim PASS. Format/lint/typecheck/requirements/OpenAPI154 PASS.
 Kabul/benchmark ve bilinmeyen eski klon kapıları sınandı; Opus ve exact CI açık.
+
+4 Ekim aktivasyon ilk Opus görüşü `8ae122f` için DÜZELTİLMELİ. Yarı açık pencere
+sözleşmesi kaynak ve PG karşı örneğiyle korundu; tam ayar satırı kesiti tamamlandı.
+Son68 birim,18PG ve ayrı4PG geçti (örtüşen koşular toplanmaz). 36 profilli yerel
+HTTP fixture'ı555ms; üretim performansı iddiası yok. İkinci görüş ve finalCI açık.

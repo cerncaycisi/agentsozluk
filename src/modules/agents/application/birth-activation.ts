@@ -64,14 +64,14 @@ import { canonicalRequestHash } from "@/modules/idempotency/domain/idempotency";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
 const independentTemplateHashes = new Set(agentPersonaTemplates.map(canonicalRequestHash));
-const blocked = (reason: string) =>
+const blocked = (reason: string, evidence?: Record<string, unknown>) =>
   new AppError(
     "AGENT_BIRTH_ACTIVATION_BLOCKED",
     409,
     "Doğum aktivasyonu koşulları sağlanmıyor.",
     undefined,
     undefined,
-    { reason },
+    { reason, ...evidence },
   );
 
 export async function activateBirthCandidate(
@@ -203,6 +203,7 @@ export async function activateBirthCandidate(
     });
     if (reportFailure) throw blocked(reportFailure);
     const from = new Date(report.windowFrom);
+    // Toplum raporuyla aynı yarı açık aralık: [from, to). Tam to anındaki pause pencere dışında.
     const to = new Date(report.windowTo);
     const baselineCapability = await records.findBirthAcceptanceCapability(
       tx,
@@ -239,7 +240,13 @@ export async function activateBirthCandidate(
     const sourceRows = await records.loadBirthActivationSources(tx, now);
     if (sourceRows.truncated) throw blocked("SOURCE_INVENTORY_TRUNCATED");
     const sourceCoverage = evaluateBirthSourceCoverage(sourceRows.sources, child.id, now);
-    if (sourceCoverage.failures[0]) throw blocked(sourceCoverage.failures[0]);
+    if (sourceCoverage.failures[0])
+      throw blocked(
+        sourceCoverage.failures[0],
+        sourceCoverage.failures[0] === "SOURCE_METADATA_INVALID"
+          ? { invalidTopicPayloads: sourceCoverage.invalidTopicPayloads }
+          : undefined,
+      );
     if ((await countRuntimeAgentSources(tx, child.id)) > runtimeAgentSourceLimit)
       throw blocked("SOURCE_STOCK_LIMIT");
     const holders = await countRuntimeSourceHoldersForUrls(

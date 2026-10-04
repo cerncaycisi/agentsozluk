@@ -523,3 +523,22 @@ bağlantısı, klon geçmişi ve exact ret nedenleriyle **15/15 odaklı PG16**, 
 requirements ve **154 API işlemi** OpenAPI kontrolü PASS. Fixture'daki Prisma JSON
 okuma/yazma tipi farkı açık JSON nesneleriyle düzeltildi; runtime kapısı gevşetilmedi.
 Farklı model hakemi ve exact CI hâlâ açık.
+
+İlk gerçek Opus 5 `8ae122f` için DÜZELTİLMELİ verdi. A2'nin istediği kapsayıcı bitiş
+mevcut toplum raporunun `[from, to)` sözleşmesine aykırıydı:18PG koşusunda `to-1ms`
+kesintisi reddedildi, tam `to` kesintisi pencere dışında kaldı. A8 tam satır ayar
+okuması kaynak kesitiyle kapatılmak üzere hakeme geri sunuluyor. Ayrı eski/yeni
+benchmark kayıtları ve başarılı manual koşunun doğal kanıt sayılmaması ayrıca geçti.
+Son görüş henüz yok; ilk red yeniden GO diye etiketlenmedi.
+
+Transaction süreleri değiştirilmedi: Idempotency-Key içeren HTTP yolu mevcut dış
+transaction'ın varsayılan **5 saniye** sınırını kullanır; doğrudan servis çağrısı
+`inTransaction` ile **15 saniye** kullanır. İç transaction yardımcıları dış sınırı
+büyütmez. 200 tarihsel profil/10.000 olay tavanı süre garantisi değildir; gerçek
+üretim boyutunun dağıtım öncesi doğrulanması ayrıca gerekir.
+
+Son 36 profilli yerel HTTP fixture'ı **555 ms** içinde geçti; mevcut 5s idempotency
+transaction sınırı artırılmadı. Ayrı dört PG testi atomic geçişi, `to-1ms` reddini,
+tam `to` sınırını ve36 profil yolunu geçti. Önceki18PG ile üç test örtüşür; koşular
+bağımsız toplam diye sayılmaz. Son68 birim PASS. Bu küçük fixture üretim veri
+boyutunun performans kanıtı değildir. İkinci Opus görüşü bekleniyor.
