@@ -8,6 +8,12 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 21:19 UTC:** son kod `ee1cd48`, gerçek Opus 5 KOŞULLU GO; somut yeni
+  kod düzeltmesi yok. Şartlar mevcut tam exact CI ve wrapper'ın uzak exact checkout
+  kapılarıdır. 62 doğum PG16 ve UTC 2 PG16/19 release PASS; tüm yerel zorunlu
+  kontroller PASS. Şimdi belge kapanışı → yeni exact CI → merge/artifact/A5/cutover.
+  Üretim geçişi, persona rollout, kapasite ve canlı sınırlı etki/P7 hâlâ açık.
+
 - **4 Ekim CI teşhisi:** #327 `28b91d0` CI `37234139545` kırmızı; 14 doğum
   fixture hatası gerçek DB/fake Date ayrışmasından. Üretim kodu/guard değişmedi;
   test INSERT saatleri ve queue availableAt kontrol altına alındı. Son yerel

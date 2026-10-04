@@ -4652,3 +4652,20 @@ Son tarihsel fixture doğrulaması **62/62 PG16 PASS**; standart 15s transaction
 bütçesi ve bütün auth/CSRF/yarış/geri alma/soy/kaynak/kapasite olumsuz beklentileri
 korundu. Typecheck PASS. Bu test kimlikleri/raporları yereldir, canlı doğum veya
 P7 kabulü değildir. Son UTC/fixture kaynağının hakem ve exact CI kapısı açıktır.
+
+### Son bağımsız kod kapanışı — 4 Ekim 21:19 UTC
+
+Gerçek `claude-opus-5`, exact `ee1cd480a4bf76b32fcca9870d4b67b8b67feeec`
+için **KOŞULLU GO** verdi (121,816 saniye; araç/test/üretim erişimi yok). UTC,
+gerçek eski/yeni değerlerin özet içinde korunması ve ayrı katalog kapısı doğrulandı.
+Capture öncesine çağrı taşıma önerisini bağımsız kaynak kontrolüyle geri çekti.
+Koşulsuz KOD GO diye yazılmıyor; önceki görüşler aynen korunuyor.
+
+İki operasyon koşulu mevcut release kapılarıyla izlenir: son exact kaynak için tam
+CI database/coverage dahil 7/7 yeşil olmadan merge/artifact yok; uzak betik
+çalışmadan wrapper fetch/checkout ile HEAD'i exact aday SHA'ya bağlar ve tekrar
+sınar (`deploy-production-no-migration.sh` fetch/checkout +son SSH guard'ı).
+21:00'da eski canlı SHA okunması arıza değildir, cutover öncesi tabandır. Bu
+koşullar salt okunur kesitle tamamlanmış sayılmaz; gerçek CI/dağıtım sonucu ayrıca
+kaydedilecek. Bu kapanıştan sonraki belge makbuzunda kod/test ağacının reviewed
+SHA ile aynı kaldığı doğrulanır; reviewed SHA yeni belge SHA'sına yeniden adlandırılmaz.
