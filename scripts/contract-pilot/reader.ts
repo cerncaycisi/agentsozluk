@@ -1,5 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import os from "node:os";
+import { performance } from "node:perf_hooks";
 import { z } from "zod";
 import { privateDirectory } from "./files";
 import type { PilotReader } from "./run";
@@ -17,20 +19,55 @@ export function opusReader(
   directory: string,
   expectedVersion: string,
 ): PilotReader {
+  // Var olan kişisel HOME OAuth kimliği; endpoint/proxy/API key/Node injection env yok.
+  const env: NodeJS.ProcessEnv = {
+    NODE_ENV: "production",
+    HOME: os.homedir(),
+    PATH: "/usr/local/bin:/usr/bin:/bin",
+    LANG: "C.UTF-8",
+    LC_ALL: "C.UTF-8",
+    NO_COLOR: "1",
+  };
+  const inspect = async (timeoutMs = 5_000) => {
+    privateDirectory(directory);
+    const version = await promisify(execFile)(executable, ["--version"], {
+      cwd: directory,
+      env,
+      timeout: timeoutMs,
+      maxBuffer: 1_000_000,
+      encoding: "utf8",
+    });
+    if (version.stdout.trim() !== expectedVersion) throw new Error("PILOT_READER_VERSION_CHANGED");
+    const help = await promisify(execFile)(executable, ["--help"], {
+      cwd: directory,
+      env,
+      timeout: timeoutMs,
+      maxBuffer: 1_000_000,
+      encoding: "utf8",
+    });
+    for (const flag of [
+      "--model",
+      "--effort",
+      "--safe-mode",
+      "--tools",
+      "--strict-mcp-config",
+      "--mcp-config",
+      "--disable-slash-commands",
+      "--setting-sources",
+      "--no-session-persistence",
+      "--system-prompt",
+      "--output-format",
+    ])
+      if (!help.stdout.includes(flag)) throw new Error("PILOT_READER_ARGUMENT_UNSUPPORTED");
+  };
   return {
+    inspect,
     async invoke(packet, timeoutMs) {
       privateDirectory(directory);
       if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("PILOT_READER_TIMEOUT");
-      const startedAt = Date.now();
-      const version = await promisify(execFile)(executable, ["--version"], {
-        cwd: directory,
-        timeout: Math.min(timeoutMs, 5_000),
-        maxBuffer: 4096,
-        encoding: "utf8",
-      });
-      if (version.stdout.trim() !== expectedVersion)
-        throw new Error("PILOT_READER_VERSION_CHANGED");
-      const remainingMs = timeoutMs - (Date.now() - startedAt);
+      const startedAt = performance.now();
+      await inspect(Math.min(timeoutMs / 2, 5_000));
+      const remainingMs = timeoutMs - (performance.now() - startedAt);
       if (remainingMs <= 0) throw new Error("PILOT_READER_TIMEOUT");
       const raw = await new Promise<string>((resolve, reject) => {
         const child = spawn(
@@ -56,7 +93,7 @@ export function opusReader(
             "--output-format",
             "json",
           ],
-          { cwd: directory, detached: true, stdio: ["pipe", "pipe", "pipe"] },
+          { cwd: directory, env, detached: true, stdio: ["pipe", "pipe", "pipe"] },
         );
         const chunks: Buffer[] = [];
         let bytes = 0;
@@ -95,6 +132,8 @@ export function opusReader(
           reject(new Error("PILOT_READER_SPAWN_FAILED"));
         });
         child.once("close", (code) => {
+          // Lider çıkmış olsa da yalnız bu çağrının grubundaki torunları bırakma.
+          signal("SIGKILL");
           cleanup();
           if (failed || code !== 0) reject(new Error("PILOT_READER_INCOMPLETE"));
           else resolve(Buffer.concat(chunks).toString("utf8"));

@@ -4305,3 +4305,23 @@ kendi süreç grubunu sonlandırması doğrulandı. Tip kontrolü geçti. Gerçe
 CI `37213095956` 7/7 PASS. Detay/operatör sözleşmesi P2 hazırlık belgesinde.
 Tekrarlama: eski SHA/effort:null manifestini doğrudan çalıştırma; geçerli ama beğenilmeyen
 çıktıya retry açma; çağrı rezervasyonunu veya saati resetleyerek kayıp kanıtı silme.
+
+## 4 Ekim 2026 — pilot çalıştırıcısı Opus bulgularının kapanışı
+
+İlk exact `ce5a3c95643c298f80332a37bf08605eed9e9a38` CI `37215033914` 7/7 PASS;
+gerçek Opus 5 aynı SHA için DÜZELTİLMELİ dedi. Okuyucuya süre kalmaması, miras alınan
+ortam, geç okuyucu ön kontrolü ve güvenli hata teşhisi kaynakla doğrulandı. Son 15 dakika
+okuyucu/kaynak kontrolüne ayrıldı; dar ortam, ayrı geçici dizin, ilk modelden önce CLI
+kontrolü, full prompt/context byte eşliği ve kapalı okuyucu alanları eklendi. Büyük saat
+sapması kapanır, küçük düzeltme süre kredisi vermez; yetki sonuna 90 dakika kalmadan başlanmaz.
+
+Yerel son **43 pilot + 13 runtime istemcisi + 3 gereksinim = 59 test PASS**. İlk sürümün
+gerçek CLI ön kontrolü `PILOT_DATE_GATE_CLOSED` ile model/credential erişiminden önce durdu.
+Mevcut 18 özel v2 girdinin 18/18 normal prompt byte eşliği ve okuyucu şekli doğrulandı; bu
+eski source/effort hazırlığının yeniden-freeze yerine geçmesi değildir. Gerçek pilot 0;
+üretim değişmedi. İkinci exact hakem ve son CI henüz açık.
+
+Tekrarlama: tarihsel tek 352 saniyeyi güncel gecikme dağılımı sayıp sabit örnekleri azaltma
+veya 90 dakikayı uzatma; bu öneri alınmadı. Tanımsız INTERNAL_ERROR'a kör retry verme.
+Dosya hash'inin zaten bağladığı prompt/context'e ikinci hash eklemek yerine renderer
+byte eşliğini sınamak gerekir. Okuyucu raporu transport başarı makbuzuyla davranış PASS olmaz.

@@ -18,6 +18,16 @@ import {
 } from "../../src/runtime/provider";
 import { atomicPrivateJson, hash, privateDirectory, readPrivate } from "./files";
 import type { PreparedPilot } from "./input";
+import {
+  AUTHORITY_END,
+  PILOT_DURATION_MS,
+  READER_RESERVE_MS,
+  MANUAL_REVIEW_RESERVE_MS,
+  MIN_CALL_MS,
+  DECISION_TIMEOUT_MS,
+  monotonicWallClock,
+  safePilotCode,
+} from "./policy";
 
 const attemptSchema = z
   .object({
@@ -54,7 +64,11 @@ const stateSchema = z
 type State = z.infer<typeof stateSchema>;
 type Attempt = z.infer<typeof attemptSchema>;
 export interface PilotReader {
-  invoke(packet: string, timeoutMs: number): Promise<{ model: "claude-opus-5"; report: string }>;
+  inspect(): Promise<void>;
+  invoke(
+    packet: string,
+    timeoutMs: number,
+  ): Promise<{ model: string; report: string; observedModels: string[]; version: string }>;
 }
 const retryableCodes = new Set([
   "CODEX_TIMEOUT",
@@ -91,7 +105,7 @@ export async function runContractPilot(options: {
   reader: PilotReader;
   now?: () => number;
 }) {
-  const now = options.now ?? Date.now;
+  const now = options.now ?? monotonicWallClock();
   mkdirSync(options.directory, { recursive: true, mode: 0o700 });
   privateDirectory(options.directory);
   const lock = path.join(options.directory, "run.lock");
@@ -152,37 +166,46 @@ export async function runContractPilot(options: {
     const save = () => atomicPrivateJson(file, journal);
     const remaining = () => {
       const observed = now();
-      if (observed < journal.lastObservedAt) throw new Error("PILOT_CLOCK_ROLLBACK");
-      journal.lastObservedAt = observed;
+      if (observed < journal.lastObservedAt - 2_000) throw new Error("PILOT_CLOCK_ROLLBACK");
+      journal.lastObservedAt = Math.max(journal.lastObservedAt, observed);
       return journal.startedAt === null
-        ? 90 * 60_000
-        : Math.max(0, journal.startedAt + 90 * 60_000 - observed);
+        ? PILOT_DURATION_MS
+        : Math.max(0, journal.startedAt + PILOT_DURATION_MS - journal.lastObservedAt);
     };
     const reserve = (kind: Attempt["kind"], label: string) => {
       if (options.prepare().fingerprint !== journal.fingerprint)
         throw new Error("PILOT_FROZEN_CONFIG_CHANGED");
-      const available = remaining();
-      if (available <= 0 || journal.attempts.length >= 24) return null;
+      if (journal.startedAt === null && now() + PILOT_DURATION_MS > AUTHORITY_END)
+        throw new Error("PILOT_START_WINDOW_TOO_SHORT");
+      const available =
+        remaining() - (kind === "DECISION" ? READER_RESERVE_MS : MANUAL_REVIEW_RESERVE_MS);
+      if (available < MIN_CALL_MS || journal.attempts.length >= 24) return null;
       if (
         kind === "DECISION" &&
         journal.attempts.filter((item) => item.kind === "DECISION").length >= 23
       )
         return null;
       if (kind === "READER" && journal.attempts.some((item) => item.kind === "READER")) return null;
-      journal.startedAt ??= now();
+      journal.startedAt ??= journal.lastObservedAt;
       const attempt: Attempt = {
         index: journal.attempts.length + 1,
         kind,
         label,
         status: "RESERVED",
-        reservedAt: now(),
+        reservedAt: journal.lastObservedAt,
       };
       journal.attempts.push(attempt);
       save();
-      return { attempt, timeoutMs: Math.min(360_000, available) };
+      return {
+        attempt,
+        timeoutMs: Math.min(
+          kind === "DECISION" ? DECISION_TIMEOUT_MS : READER_RESERVE_MS - MANUAL_REVIEW_RESERVE_MS,
+          available,
+        ),
+      };
     };
     const finish = (attempt: Attempt, output: unknown, safeCode?: string) => {
-      attempt.finishedAt = now();
+      attempt.finishedAt = Math.max(now(), attempt.reservedAt, journal.lastObservedAt);
       if (safeCode) {
         attempt.status = "FAILED";
         attempt.safeCode = safeCode;
@@ -199,10 +222,10 @@ export async function runContractPilot(options: {
       }
       save();
     };
-    save();
     if (options.prepare().fingerprint !== journal.fingerprint)
       throw new Error("PILOT_FROZEN_CONFIG_CHANGED");
     if (!journal.attempts.some((item) => item.kind === "READER") && remaining() > 0) {
+      await options.reader.inspect();
       const inspected = await options.provider.inspect();
       if (
         !inspected.supportsStructuredOutput ||
@@ -224,6 +247,8 @@ export async function runContractPilot(options: {
           const reservation = reserve("DECISION", input.label);
           if (!reservation) break;
           let result;
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), reservation.timeoutMs);
           try {
             result = await options.provider.invoke({
               runId: input.runId,
@@ -231,12 +256,15 @@ export async function runContractPilot(options: {
               outputSchema: input.schema,
               timeoutMs: reservation.timeoutMs,
               debugRetentionHours: 0,
+              signal: controller.signal,
             });
           } catch (error) {
-            const code = safeFailure(error);
+            const code = controller.signal.aborted ? "CODEX_TIMEOUT" : safeFailure(error);
             finish(reservation.attempt, null, code);
             if (!retryableCodes.has(code)) throw new Error(code);
             continue;
+          } finally {
+            clearTimeout(timeout);
           }
           if (
             result.version !== prepared.config.providerVersion ||
@@ -285,10 +313,13 @@ export async function runContractPilot(options: {
         });
         try {
           const report = await options.reader.invoke(packet, reservation.timeoutMs);
-          if (report.model !== "claude-opus-5") throw new Error("PILOT_READER_MODEL_CHANGED");
+          if (report.model !== "claude-opus-5" || !report.observedModels.includes("claude-opus-5"))
+            throw new Error("PILOT_READER_MODEL_CHANGED");
+          if (report.version !== prepared.config.readerVersion)
+            throw new Error("PILOT_READER_VERSION_CHANGED");
           finish(reservation.attempt, report);
-        } catch {
-          finish(reservation.attempt, null, "PILOT_READER_INCOMPLETE");
+        } catch (error) {
+          finish(reservation.attempt, null, safePilotCode(error, "PILOT_READER_INCOMPLETE"));
         }
       }
     }
@@ -312,20 +343,30 @@ export async function runContractPilot(options: {
       validDecisions: valid,
       readerComplete,
       calls: journal.attempts.length,
-      elapsedMs: journal.startedAt === null ? 0 : now() - journal.startedAt,
+      elapsedMs: journal.startedAt === null ? 0 : journal.lastObservedAt - journal.startedAt,
+      manualReviewDeadlineAt:
+        journal.startedAt === null
+          ? null
+          : new Date(journal.startedAt + PILOT_DURATION_MS).toISOString(),
+      manualReviewRemainingMs:
+        journal.startedAt === null
+          ? 0
+          : Math.max(0, journal.startedAt + PILOT_DURATION_MS - journal.lastObservedAt),
     };
   } catch (error) {
     // Değişen kaynak/config veya fatal hata çalışma kaydını kapatır; geri almak bütçeyi açmaz.
     if (state && (existsSync(file) || state.attempts.length > 0) && !state.terminalReason) {
-      state.terminalReason =
-        error instanceof Error && /^PILOT_[A-Z0-9_]+$/u.test(error.message)
-          ? error.message
-          : "PILOT_FATAL_ERROR";
+      state.terminalReason = safePilotCode(error, "PILOT_FATAL_ERROR");
       atomicPrivateJson(file, state);
     }
     throw error;
   } finally {
     closeSync(descriptor);
-    unlinkSync(lock);
+    try {
+      unlinkSync(lock);
+    } catch (error) {
+      if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+        throw error;
+    }
   }
 }

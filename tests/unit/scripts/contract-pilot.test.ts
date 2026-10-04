@@ -7,6 +7,8 @@ import { preparePilot, type PreparedPilot } from "../../../scripts/contract-pilo
 import { runContractPilot, type PilotReader } from "../../../scripts/contract-pilot/run";
 import { opusReader } from "../../../scripts/contract-pilot/reader";
 import { parseRuntimeDecisionOutput, runtimeNormalDecisionWireJsonSchema } from "@/runtime/output";
+import { buildRuntimePrompt } from "@/runtime/worker";
+import type { RuntimeContext } from "@/runtime/control-plane-client";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 import {
   RuntimeProviderExecutionError,
@@ -21,6 +23,7 @@ const temporary = () => {
   return dir;
 };
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const dir of directories.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 const time = Date.parse("2026-10-06T10:01:00Z");
@@ -78,6 +81,7 @@ function fixture() {
       providerVersion: version,
       aPrimeReceiptFile: path.join(directory, "receipt.json"),
       aPrimeReceiptSha256: "c".repeat(64),
+      aPrimeProductionSha: source,
       codex: {
         executable: "/fake/codex",
         sandboxExecutable: "/fake/bwrap",
@@ -114,9 +118,12 @@ function fixture() {
     invoke: vi.fn<RuntimeProvider["invoke"]>(async () => result),
   };
   const reader = {
+    inspect: vi.fn(async () => {}),
     invoke: vi.fn<PilotReader["invoke"]>(async () => ({
       model: "claude-opus-5" as const,
       report: "NOT_EXERCISED",
+      observedModels: ["claude-opus-5"],
+      version: "test-reader",
     })),
   };
   let clock = time;
@@ -210,26 +217,32 @@ describe("P3/P4/P5 kalıcı pilot bütçesi (sahte sağlayıcı)", () => {
       return f.result;
     });
     expect(await runContractPilot(f.options)).toMatchObject({
-      calls: 18,
-      readerComplete: false,
+      calls: 16,
+      validDecisions: 15,
+      readerComplete: true,
       status: "INCOMPLETE",
     });
     f.advance(60_000);
-    expect(await runContractPilot(f.options)).toMatchObject({ calls: 18, readerComplete: false });
-    expect(f.reader.invoke).not.toHaveBeenCalled();
+    expect(await runContractPilot(f.options)).toMatchObject({ calls: 16, readerComplete: true });
+    expect(f.reader.invoke).toHaveBeenCalledTimes(1);
   });
 
   it("okuyucuya yalnız kalan süreyi verir ve geç sonucu başarı saymaz", async () => {
     const f = fixture();
     let count = 0;
     f.provider.invoke.mockImplementation(async () => {
-      if (++count === 18) f.advance(89 * 60_000);
+      if (++count === 18) f.advance(78 * 60_000);
       return f.result;
     });
     f.reader.invoke.mockImplementation(async (_packet, timeout) => {
-      expect(timeout).toBe(60_000);
-      f.advance(61_000);
-      return { model: "claude-opus-5", report: "NO_FINDING" };
+      expect(timeout).toBe(9 * 60_000);
+      f.advance(13 * 60_000);
+      return {
+        model: "claude-opus-5",
+        report: "NO_FINDING",
+        observedModels: ["claude-opus-5"],
+        version: "test-reader",
+      };
     });
     expect(await runContractPilot(f.options)).toMatchObject({ status: "INCOMPLETE", calls: 19 });
   });
@@ -253,18 +266,74 @@ describe("P3/P4/P5 kalıcı pilot bütçesi (sahte sağlayıcı)", () => {
           f.options.prepare = () => {
             throw new Error("PILOT_SOURCE_CHANGED");
           };
-        if (kind === "clock") f.advance(-1);
+        if (kind === "clock") f.advance(-3_000);
         return kind === "provider" ? { ...f.result, version: "changed" } : f.result;
       });
       await expect(runContractPilot(f.options)).rejects.toThrow();
       expect(f.journal().terminalReason).toMatch(/^PILOT_/u);
       f.prepared.fingerprint = "d".repeat(64);
       f.options.prepare = () => f.prepared;
-      f.advance(2);
+      f.advance(3_001);
       await expect(runContractPilot(f.options)).rejects.toThrow();
       expect(f.provider.invoke).toHaveBeenCalledTimes(1);
     },
   );
+
+  it("küçük saat düzeltmesini süre kredisi vermeden kenetler", async () => {
+    const f = fixture();
+    f.provider.invoke.mockImplementationOnce(async () => {
+      f.advance(-1);
+      return f.result;
+    });
+    expect(await runContractPilot(f.options)).toMatchObject({ calls: 19, readerComplete: true });
+    const state = f.journal();
+    expect(state.startedAt).toBe(time);
+    expect(state.lastObservedAt).toBe(time);
+    expect(
+      state.attempts.every(
+        (a: { reservedAt: number; finishedAt: number }) =>
+          a.reservedAt >= time && a.finishedAt >= a.reservedAt,
+      ),
+    ).toBe(true);
+  });
+
+  it("dakikadan kısa karar dilimini yakmaz; okuyucuya ayrılan zamanı korur", async () => {
+    const f = fixture();
+    f.provider.invoke.mockImplementationOnce(async () => {
+      f.advance(74.5 * 60_000);
+      return f.result;
+    });
+    expect(await runContractPilot(f.options)).toMatchObject({
+      calls: 2,
+      validDecisions: 1,
+      readerComplete: true,
+    });
+    expect(f.reader.invoke.mock.calls[0]![1]).toBe(12 * 60_000);
+  });
+
+  it("yetki bitimine 90 dakikadan az kalmışsa ilk model çağrısını açmaz", async () => {
+    const f = fixture();
+    f.options.now = () => Date.parse("2026-10-17T19:49:00Z");
+    await expect(runContractPilot(f.options)).rejects.toThrow("PILOT_START_WINDOW_TOO_SHORT");
+    expect(f.provider.invoke).not.toHaveBeenCalled();
+    expect(() => f.journal()).toThrow();
+  });
+
+  it("okuyucu ön kontrolü başarısızken karar çağrısı/bütçe yaratmaz; yerel hazırlık düzeltilebilir", async () => {
+    const f = fixture();
+    f.reader.inspect.mockRejectedValueOnce(new Error("PILOT_READER_ARGUMENT_UNSUPPORTED"));
+    await expect(runContractPilot(f.options)).rejects.toThrow("PILOT_READER_ARGUMENT_UNSUPPORTED");
+    expect(f.provider.invoke).not.toHaveBeenCalled();
+    expect(() => f.journal()).toThrow();
+    expect(await runContractPilot(f.options)).toMatchObject({ calls: 19 });
+  });
+
+  it("okuyucunun güvenli hatasını düzleştirmez", async () => {
+    const f = fixture();
+    f.reader.invoke.mockRejectedValue(new Error("PILOT_READER_VERSION_CHANGED"));
+    await runContractPilot(f.options);
+    expect(f.journal().attempts.at(-1).safeCode).toBe("PILOT_READER_VERSION_CHANGED");
+  });
 
   it("fatal auth hatası teknik tekrar hakkıyla yeniden denenmez", async () => {
     const f = fixture();
@@ -334,17 +403,58 @@ function manifestFixture() {
       feature: inputs[0]!.feature,
       labels: inputs.map((input) => {
         const file = `${input.label}.json`;
+        const context: RuntimeContext = {
+          run: {
+            id: input.runId,
+            runType: "NORMAL_WAKE",
+            trigger: "STOCHASTIC_TICK",
+            timeoutSeconds: 1200,
+            desiredEntryMin: 0,
+            desiredEntryMax: 1,
+            allowTopicCreation: false,
+            allowVoting: false,
+            allowFollowing: false,
+            allowSourceReading: false,
+            publishEnabled: true,
+            publicWriteEnabled: true,
+            runtimeOperatingMode: "NORMAL",
+            sourceFetchLimit: 1,
+            debugRetentionHours: 0,
+            adminInstruction: null,
+            cancelRequested: false,
+          },
+          agent: { username: "fixture-agent", displayName: "Fixture", publicBio: null },
+          persona: {
+            version: 1,
+            renderedPrompt: "Sentetik test personası.",
+            behavior: { topicCreationTendency: 0.1, votingTendency: 0.1, followingTendency: 0.1 },
+            writing: { entryLength: "SHORT" },
+          },
+          perception: {
+            observedAt: "2026-10-04T10:00:00Z",
+            recentEntries: [
+              {
+                id: "00000000-0000-4000-8000-000000000002",
+                body: "Görünür metin.",
+                createdAt: "2026-10-04T09:00:00Z",
+                topic: { id: "00000000-0000-4000-8000-000000000003", title: "test konusu" },
+                author: { id: "00000000-0000-4000-8000-000000000004", username: "fixture-other" },
+              },
+            ],
+          },
+        };
+        const prompt = buildRuntimePrompt(context);
         atomicPrivateJson(path.join(f.directory, file), {
           label: input.label,
-          prompt: input.prompt,
+          prompt,
           schema: input.schema,
-          context: { run: { id: input.runId }, perception: input.perception },
+          context,
         });
         return {
           label: input.label,
           file,
           fileSha256: hash(readPrivate(path.join(f.directory, file))),
-          promptSha256: hash(input.prompt),
+          promptSha256: hash(prompt),
         };
       }),
     };
@@ -404,6 +514,47 @@ describe("pilot girdisi, A′ ve sabit kaynak kapıları", () => {
       "PILOT_A_PRIME_WINDOW_INVALID",
     );
   });
+  it.each(["production", "old-window"])("A′ cohort sapmasını reddeder: %s", (kind) => {
+    const f = manifestFixture();
+    if (kind === "production") f.receipt.productionSha = "e".repeat(40);
+    else {
+      f.receipt.resumedAt = "2026-09-24T09:20:00Z";
+      f.receipt.windowEndedAt = "2026-09-27T09:20:00Z";
+    }
+    atomicPrivateJson(f.prepared.config.aPrimeReceiptFile, f.receipt);
+    expect(() => preparePilot(f.configBytes(), source, time)).toThrow(
+      "PILOT_A_PRIME_COHORT_CHANGED",
+    );
+  });
+
+  it.each(["binding", "unknown-root", "unknown-author"])(
+    "hash'ler yenilense de bağlam sapmasını reddeder: %s",
+    (kind) => {
+      const f = manifestFixture();
+      const slot = f.manifest.cases[0]!.labels[0]!;
+      const file = path.join(f.directory, slot.file);
+      const input = JSON.parse(readPrivate(file));
+      if (kind === "binding") input.context.perception.recentEntries[0].body = "Başka bir bağlam.";
+      if (kind === "unknown-root") input.context.perception.privateIdentity = "hidden";
+      if (kind === "unknown-author")
+        input.context.perception.recentEntries[0].author.handle = "hidden";
+      if (kind !== "binding") input.prompt = buildRuntimePrompt(input.context);
+      slot.promptSha256 = hash(input.prompt);
+      atomicPrivateJson(file, input);
+      slot.fileSha256 = hash(readPrivate(file));
+      expect(() => preparePilot(f.configBytes(), source, time)).toThrow();
+    },
+  );
+
+  it("okuyucu bağlamını izinli alanlardan kurar; yazar nesnesini çıkarır", () => {
+    const f = manifestFixture();
+    const prepared = preparePilot(f.configBytes(), source, time);
+    const text = JSON.stringify(prepared.inputs[0]!.perception);
+    expect(text).not.toContain("fixture-other");
+    expect(text).not.toContain('"author"');
+    expect(text).toContain("Görünür metin.");
+  });
+
   it.each(["effort", "budget", "path", "source", "input", "schema", "duplicate", "privacy"])(
     "%s sapmasını model çağrısından önce reddeder",
     (kind) => {
@@ -434,7 +585,7 @@ describe("Opus okuyucu adaptörü (ağsız yerel sahte süreç)", () => {
     const executable = path.join(directory, "fake-reader");
     writeFileSync(
       executable,
-      `#!${process.execPath}\nif (process.argv[2] === '--version') { process.stdout.write('test-reader'); process.exit(0); }\n${body}`,
+      `#!${process.execPath}\nif (process.argv[2] === '--version') { process.stdout.write('test-reader'); process.exit(0); }\nif (process.argv[2] === '--help') { process.stdout.write('--model --effort --safe-mode --tools --strict-mcp-config --mcp-config --disable-slash-commands --setting-sources --no-session-persistence --system-prompt --output-format'); process.exit(0); }\n${body}`,
       { mode: 0o700 },
     );
     return { directory, reader: opusReader(executable, directory, "test-reader") };
@@ -455,6 +606,31 @@ describe("Opus okuyucu adaptörü (ağsız yerel sahte süreç)", () => {
     expect(args).not.toContain("private-packet");
     expect(readFileSync(path.join(f.directory, "input.txt"), "utf8")).toBe("private-packet");
   });
+  it("endpoint/proxy/Node/Claude ortam sızıntılarını devralmaz", async () => {
+    for (const key of [
+      "ANTHROPIC_BASE_URL",
+      "ANTHROPIC_API_KEY",
+      "HTTPS_PROXY",
+      "NODE_OPTIONS",
+      "CLAUDE_AGENT_SDK_VERSION",
+    ])
+      vi.stubEnv(key, "injected-value");
+    const f =
+      fakeReader(`const fs=require('node:fs'); process.stdin.resume(); process.stdin.on('end',()=>{
+      fs.writeFileSync('env.json',JSON.stringify(process.env)); process.stdout.write(JSON.stringify({is_error:false,result:'NO_FINDING',modelUsage:{'claude-opus-5':{}}})); });`);
+    await f.reader.invoke("packet", 5_000);
+    expect(readFileSync(path.join(f.directory, "env.json"), "utf8")).not.toContain(
+      "injected-value",
+    );
+  });
+
+  it("desteklenmeyen okuyucu argümanını model çalıştırmadan yakalar", async () => {
+    const f = fakeReader("throw new Error('must not run model');");
+    const file = path.join(f.directory, "fake-reader");
+    writeFileSync(file, readFileSync(file, "utf8").replace("--safe-mode", "--unsupported"));
+    await expect(f.reader.inspect()).rejects.toThrow("PILOT_READER_ARGUMENT_UNSUPPORTED");
+  });
+
   it("başka modelden raporu reddeder", async () => {
     const f = fakeReader(
       `process.stdin.resume(); process.stdin.on('end',()=>process.stdout.write(JSON.stringify({is_error:false,result:'GO',modelUsage:{'claude-opus-5.5':{}}})));`,
@@ -463,6 +639,26 @@ describe("Opus okuyucu adaptörü (ağsız yerel sahte süreç)", () => {
   });
   it("zaman aşımında yalnız kendi sürecini kapatıp sonucunu bekler", async () => {
     const f = fakeReader("process.stdin.resume(); setInterval(()=>{},1000);");
-    await expect(f.reader.invoke("packet", 100)).rejects.toThrow("PILOT_READER_INCOMPLETE");
+    await expect(f.reader.invoke("packet", 300)).rejects.toThrow("PILOT_READER_INCOMPLETE");
+  });
+
+  it("lider çıkınca kendi grubundaki torun süreci de bırakmaz", async () => {
+    const f = fakeReader(`const fs=require('node:fs'); const cp=require('node:child_process');
+      const child=cp.spawn(process.execPath,['-e','setTimeout(()=>process.exit(0),6000); setInterval(()=>{},1000)'],{stdio:'ignore'});
+      fs.writeFileSync('descendant.pid',String(child.pid)); process.stdin.resume();
+      process.stdin.on('end',()=>process.stdout.write(JSON.stringify({is_error:false,result:'NO_FINDING',modelUsage:{'claude-opus-5':{}}}),()=>process.exit(0)));`);
+    await f.reader.invoke("packet", 5_000);
+    const pid = Number(readFileSync(path.join(f.directory, "descendant.pid"), "utf8"));
+    await vi.waitFor(() => {
+      let status: string;
+      try {
+        status = readFileSync(`/proc/${pid}/status`, "utf8");
+      } catch (error) {
+        if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+          return;
+        throw error;
+      }
+      expect(status).toMatch(/State:\s+[ZX]/u);
+    });
   });
 });

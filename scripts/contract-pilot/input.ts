@@ -3,7 +3,11 @@ import path from "node:path";
 import { z } from "zod";
 import { runtimeNormalDecisionWireJsonSchema } from "../../src/runtime/output";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "../../src/runtime/prompt-profile";
+import { contextResponseSchema } from "../../src/runtime/control-plane-client";
+import { buildRuntimePrompt } from "../../src/runtime/worker";
 import { hash, privateDirectory, readPrivate } from "./files";
+import { AUTHORITY_END } from "./policy";
+import { readerPerception } from "./reader-context";
 
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/u);
 const sha = z.string().regex(/^[a-f0-9]{40}$/u);
@@ -21,6 +25,7 @@ export const pilotConfigSchema = z
     providerVersion: z.string().min(1).max(100),
     aPrimeReceiptFile: absolutePath,
     aPrimeReceiptSha256: sha256,
+    aPrimeProductionSha: sha,
     codex: z
       .object({
         executable: absolutePath,
@@ -87,7 +92,7 @@ export interface PreparedPilot {
 export function preparePilot(configBytes: string, sourceSha: string, now: number): PreparedPilot {
   const config = pilotConfigSchema.parse(JSON.parse(configBytes));
   if (sourceSha !== config.sourceSha) throw new Error("PILOT_SOURCE_CHANGED");
-  if (now < Date.parse("2026-10-06T10:00:00Z") || now >= Date.parse("2026-10-17T19:50:00Z"))
+  if (now < Date.parse("2026-10-06T10:00:00Z") || now >= AUTHORITY_END)
     throw new Error("PILOT_DATE_GATE_CLOSED");
   const receiptBytes = readPrivate(config.aPrimeReceiptFile);
   if (hash(receiptBytes) !== config.aPrimeReceiptSha256) throw new Error("PILOT_RECEIPT_CHANGED");
@@ -102,6 +107,11 @@ export function preparePilot(configBytes: string, sourceSha: string, now: number
       decision: z.enum(["ACCEPT", "REJECT", "INCONCLUSIVE"]),
     })
     .parse(JSON.parse(receiptBytes));
+  if (
+    receipt.productionSha !== config.aPrimeProductionSha ||
+    Date.parse(receipt.resumedAt) < Date.parse("2026-10-03T00:00:00Z")
+  )
+    throw new Error("PILOT_A_PRIME_COHORT_CHANGED");
   if (
     Date.parse(receipt.windowEndedAt) - Date.parse(receipt.resumedAt) < 72 * 3_600_000 ||
     Date.parse(receipt.concludedAt) < Date.parse(receipt.windowEndedAt) ||
@@ -143,22 +153,24 @@ export function preparePilot(configBytes: string, sourceSha: string, now: number
           label,
           prompt: z.string().min(1),
           schema: z.record(z.string(), z.unknown()),
-          context: z.object({
-            run: z.object({ id: z.uuid() }),
-            perception: z.record(z.string(), z.unknown()),
-          }),
+          context: contextResponseSchema,
         })
         .parse(JSON.parse(bytes));
       if (input.label !== slot.label || hash(input.prompt) !== slot.promptSha256)
         throw new Error("PILOT_INPUT_CHANGED");
       assert.deepEqual(input.schema, runtimeNormalDecisionWireJsonSchema, "PILOT_SCHEMA_CHANGED");
+      if (
+        input.context.run.runType !== "NORMAL_WAKE" ||
+        buildRuntimePrompt(input.context) !== input.prompt
+      )
+        throw new Error("PILOT_PROMPT_CONTEXT_MISMATCH");
       inputs.push({
         label: input.label,
         feature: item.feature,
         runId: input.context.run.id,
         prompt: input.prompt,
         schema: input.schema,
-        perception: input.context.perception,
+        perception: readerPerception(input.context.perception),
       });
     }
   }

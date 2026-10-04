@@ -125,8 +125,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   sonrası geçti; gerçek release/restore/benchmark kapılarının yerine geçmez.
 
 - **4 Ekim pilot çalıştırıcısı:** P3/P4/P5 için kalıcı 24 mantıksal çağrı/90 dakika
-  bütçesi ve araçsız Opus okuyucusu hazırlandı; 29 ağsız test PASS. Gerçek pilot çağrısı0.
-  Hakem/CI kapanışı sürüyor; A′ sonrası güncel source/model/effort/CLI girdileri
+  bütçesi ve araçsız Opus okuyucusu hazırlandı; ilk 29 / son 43 ağsız test PASS. Gerçek pilot çağrısı 0.
+  İlk Opus bulgularıyla15 dakika okuyucu payı ve dar ortam eklendi; son hakem/CI
+  kapanışı sürüyor. A′ sonrası güncel source/model/effort/CLI girdileri
   yeniden sabitlenecek. Eski `effort:null` hazırlığı çalıştırılmaz. P2/P7 davranış kabulü
   bundan ayrı ve açık. [Çalıştırma sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
 

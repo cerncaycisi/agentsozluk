@@ -166,10 +166,10 @@ modelin kanıt kullanma teşebbüsü bulgu olabilir. Özel ID'yi sırf test içi
 5 teknik tekrar ve **1 Opus sonuç okuması**. Kod/tasarım hazırlık hakemleri bu sonuç
 okuması değildir; onların kayıtları ayrıdır. İlk senaryo çağrısıyla saat başlar;
 inceleme ve tekrarlar süreye dahil, saat sıfırlanmaz. Model/effort ve exact kaynak ilk
-senaryo öncesi sabitlenir; hedef `gpt-5.6-luna`, effort henüz boş.
+senaryo öncesi sabitlenir; hedef `gpt-5.6-luna`/`max`. Eski hazırlık manifestindeki boş effort, çalıştırılabilir bir sürüm sabitlemesi değildir.
 
-Teknik tekrar yalnız provider timeout/geçici çalıştırma hatası, structured output yokluğu
-veya wire şema hatası içindir; ilk hata ve her denemenin çağrı maliyeti saklanır. Geçerli
+Teknik tekrar yalnız `CODEX_TIMEOUT`, `CODEX_RATE_LIMITED`, `CODEX_UPSTREAM_UNAVAILABLE`,
+`CODEX_PROCESS_SIGNALLED`, `CODEX_OUTPUT_INVALID`, `PILOT_WIRE_INVALID` içindir; ilk hata ve her denemenin çağrı maliyeti saklanır. Geçerli
 çıktı beğenilmedi diye tekrar üretilmez. Kod/istem/girdi değişirse çalışma kapanır;
 **yeni bütçe kendiliğinden açılmaz**. Süre/çağrı tavanında çift veya okuyucu eksikse eksik
 raporlanır, uzatılmaz. Opus'un “düzeltmeden sonra ayrı bütçe” önerisi PLAN'ın otomatik
@@ -201,7 +201,7 @@ makbuzu birbirinden ayrıdır. İş sırası yalnız PLAN'dadır.
 
 `scripts/run-contract-pilot.ts`, normal `CodexCliProvider` üzerinden yalnız karar çıktısı
 alır. DB/control-plane/action executor kurmaz. P2'nin ilk/saklı set çalıştırıcısı değildir.
-29 ağsız testte 18 karar + bir okuyucu, beş teknik tekrar, özel hata kanıtı, süre,
+İlk 29, hakem düzeltmesinde son 43 ağsız testte 18 karar + bir okuyucu, beş teknik tekrar, özel hata kanıtı, süre,
 yeniden başlatma, kaynak/config değişimi, yarım rezervasyon ve gerçek yerel sahte süreç
 sonlandırması doğrulandı. Gerçek pilot çağrısı **0**; hakem/CI kapanışı ayrıca kaydedilecek.
 
@@ -210,20 +210,42 @@ sonlandırması doğrulandı. Gerçek pilot çağrısı **0**; hakem/CI kapanı�
   temizlenmez; kilit ya da RESERVED kaydı varsa çalışan süreç/handle doğrulanmadan devam
   edilmez. Çökme öncesi rezervasyon harcanmış kalır, otomatik tekrar yapılmaz.
 - Her çağrıdan önce rezervasyon fsync + atomik rename ile yazılır. 18 ilk karar + en çok
-  5 teknik tekrar + bir okuyucu = **24 mantıksal CLI çağrısı**. İç sağlayıcı HTTP denemeleri
+  5 teknik tekrar + bir okuyucu = **24 mantıksal sağlayıcı çağrısı (`invoke`)**. `--version`/`--help` gibi
+  modelsiz CLI denetimleri bu sayı değildir. İç sağlayıcı HTTP denemeleri
   veya Claude CLI'nin yardımcı Haiku istekleri için 24 ağ isteği garantisi değildir.
   Okuyucunun gözlenen model adları özel sonuçta tutulur; ana model exact `claude-opus-5`.
 - İlk rezervasyondan itibaren 90 dakika; okuyucu ve yeniden başlatma aynı saate dahildir.
-  Her sağlayıcıya kalan süreden fazla verilmez. Sonlandırma için en çok 5 saniye ek süreç
+  Son 15 dakika okuyucu/kaynak kontrolüne ayrılır: okuyucu en çok 12 dakika, kaynak
+  kontrolü için 3 dakika pay. Karar başına tavan 6 dakika; bir dakikadan kısa karar veya
+  okuyucu dilimi açılmaz. Karar sayısı 18'e ulaşmayabilir; önceden sabitlenen vakalar
+  azaltılmaz, eksik vakayla tek okuyucu raporu INCOMPLETE kalır. 75 dakikada 18 karar
+  için gereken ortalama yaklaşık 250 saniyedir; bu bir ölçülmüş gecikme veya tamamlanma
+  garantisi değildir. Her sağlayıcıya kalan süreden fazla verilmez. Sonlandırma için en çok 5 saniye ek süreç
   temizliği olabilir; geç çıktı tamamlama başarısı sayılmaz. Geçerli çıktı beğenilmediği
-  için tekrarlanmaz. İlk bozuk wire çıktısı da 0600 özel kanıtta tutulur.
+  için tekrarlanmaz. Sağlayıcının döndürdüğü ilk bozuk wire JSON'u da 0600 özel kanıtta
+  tutulur; JSON ayrıştırma/CLI hatasında yalnız güvenli kod elde edilebilir.
+  Dönüşte `manualReviewDeadlineAt` ve kalan süre verilir. İnsan alıntı/bağlam kontrolü de
+  aynı son tarihte bitmelidir; geç kontrol tamamlanmış pilot veya davranış PASS sayılmaz.
 - Kaynak SHA, temiz ürün ağacı, manifest/girdi/şema hash'leri, Luna `max`, Codex CLI ve
   okuyucu CLI sürümü sabittir. Başlamış kayıtta sapma/fatal hata çalışmayı kapatır;
-  eski ayara dönmek bütçeyi yeniden açmaz. Prompt/entry/ham hata stdout veya repo'ya yazılmaz.
+  eski ayara dönmek bütçeyi yeniden açmaz. Sıfır çağrılı yerel ön kontrol hatası bütçe
+  yaratmaz; modelsiz hazırlık düzeltilebilir. `CODEX_EXEC_FAILED` ve sınıflandırılmamış
+  `AppError` kör tekrar edilmez; güvenli teşhisle çalışma kapanır. Çalışan süreçte monotonik
+  saat desteği, yeniden okumada en çok2 saniyelik küçük geri düzeltmeyi süre kredisi
+  vermeden kenetleme vardır; büyük sapma kapanır. Prompt/entry/ham hata stdout veya repo'ya yazılmaz.
 - Okuyucuya persona, sistem istemi, A/B anahtarı, config ve dosya yolları verilmez;
-  görünür bağlam ve çıktılar verilir. `username`/`displayName`/`publicBio` anahtarları
-  çıkarılır. Metnin kimliği ima etmediği veya kusursuz körlük iddiası yoktur.
-  `--safe-mode`, araçsız/boş MCP ve geçmişsiz CLI kullanılır. Rapor insan tarafından
+  görünür bağlam ve çıktılar verilir. Girdi tam runtime context şemasıyla okunur;
+  gerçek `buildRuntimePrompt(context)` kayıtlı prompt ile byte eşit değilse reddedilir.
+  Okuyucu bağlamı bu dokuz çiftin kapalı alan listesinden kurulur, bilinmeyen kök/iç alan
+  reddedilir; recentEntries yazar nesnesi tamamen çıkarılır. A/B etiketi görünürdür,
+  hangi kolun hangi koşul olduğu anahtarı verilmez; P5 için de kör fayda iddiası yoktur. Metnin kimliği ima etmediği veya kusursuz körlük iddiası yoktur.
+  `--safe-mode`, araçsız/boş MCP ve geçmişsiz CLI kullanılır. Okuyucu çalışma dizini
+  execution ağacının dışında, bu çağrının boş 0700 geçici dizinidir. Ortam yalnız kişisel
+  HOME, sabit PATH, locale ve NODE_ENV/NO_COLOR alanlarıdır; endpoint/proxy/Node injection
+  değişkenleri devralınmaz. Var olan kişisel HOME OAuth kimliği kullanılır, credential
+  kopyalanmaz. Bu ağ endpoint'inin kriptografik tasdiki veya OS sandbox iddiası değildir.
+  Okuyucu sürüm/argüman denetimi ilk modelden önce yapılır; kendi süreç grubundaki torunlar
+  da temizlenir. Exact güvenli okuyucu hatası, version ve observedModels kayıtta korunur. Rapor insan tarafından
   exact alıntı ve bağlamla değerlendirilir; transport başarısı davranış PASS değildir.
 
 ### 6 Ekim operatör girdisi
@@ -236,16 +258,20 @@ klasörde yeniden hazırlanır; eski dosyalar/anahtarlar değiştirilmez. Bu iş
 
 Özel 0600 config alanları `manifestDirectory`, `manifestSha256`, `sourceSha`,
 `model: "gpt-5.6-luna"`, `reasoningEffort: "max"`, `providerVersion`,
-`aPrimeReceiptFile`, `aPrimeReceiptSha256`, `codex: { executable, sandboxExecutable,
+`aPrimeReceiptFile`, `aPrimeReceiptSha256`, `aPrimeProductionSha`, `codex: { executable, sandboxExecutable,
 credentialFile }`, `readerExecutable`, `readerVersion`'dır. Bütün yollar mutlak/normalize.
 Codex çalışma ve HOME dizinleri sabit execution dizininin özel altlarıdır; mevcut runtime
 çalışma dizinine temizlik uygulanmaz, credential kopyalanmaz.
 
 A′ makbuzu `version: 1`, `kind: "A_PRIME_DECISION"`, exact `productionSha`, UTC ISO
 `resumedAt`, `windowEndedAt`, `concludedAt`, `decision: "ACCEPT" | "REJECT" |
-"INCONCLUSIVE"` taşır. Gerçek üretim kanıtını operatör doğrular; çalıştırıcı en az72saat,
-karar/zaman sırası ve hash'i denetler, sunucu metriklerini yeniden hesaplamaz. İlk tarih
-6 Ekim10:00UTC, son yetki sınırı17 Ekim19:50UTC. Sıfır çağrıda tarih reddi bütçe yaratmaz.
+"INCONCLUSIVE"` taşır. Gerçek üretim kanıtını operatör doğrular; çalıştırıcı en az 72 saat,
+karar/zaman sırası ve hash'i denetler, productionSha'yı config'deki aPrimeProductionSha'ya
+bağlar ve 3 Ekim öncesi eski pencereyi reddeder; sunucu metriklerini yeniden hesaplamaz.
+Ürün kaynak SHA'sı üretimde gözlenmiş A′ SHA'sıyla aynı olmak zorunda değildir.
+A′ burada bir kez verilen tarihsel karardır; yeni canlı sağlık makbuzunun yerine geçmez. İlk tarih
+6 Ekim 10:00 UTC, son yetki sınırı 17 Ekim 19:50 UTC. İlk modelden önce tam90 dakikalık yetki
+payının kalması şarttır; dolayısıyla son başlangıç 18:20 UTC. Sıfır çağrıda tarih reddi bütçe yaratmaz.
 
 ```sh
 # Ön kontrol: model çağırmaz. Config gerçek özel dosyanın mutlak yoludur.
@@ -253,3 +279,31 @@ corepack pnpm exec tsx scripts/run-contract-pilot.ts /absolute/private/config.js
 # Aynı config ve tek sabit bütçeyle çalıştırma; A′ kapısından önce reddedilir.
 corepack pnpm exec tsx scripts/run-contract-pilot.ts /absolute/private/config.json --execute
 ```
+
+### İlk Opus incelemesinin uzlaştırması
+
+Gerçek `claude-opus-5`, exact `ce5a3c95643c298f80332a37bf08605eed9e9a38` için
+**DÜZELTİLMELİ** dedi. İlk exact CI `37215033914` 7/7 PASS; bu, hakem bulgularını
+kapatmış sayılmadı. Rapor özel çalışma kaydında tutuluyor.
+
+- M1/M3/M4: 15 dakika okuyucu/kaynak payı, asgari60 saniye çağrı dilimi ve tam yetki
+  penceresi şartı eklendi. M2'deki tek tarihsel352 saniyeyi güncel dağılım sayma ve buna
+  dayanarak örnek azaltma/bütçe uzatma önerisi alınmadı. Eksik tamamlanma kabul edilen
+  sonuçtur; 18 sabit girdi ve 24/90 üst sınır korunur, yeni bütçe açılmaz.
+- P1: üretim cohort SHA'sı config'e bağlandı, eski pencere reddi eklendi. Üretim SHA'sını
+  yeni ürün sourceSha'sıyla eşitleme veya rastgele tazelik günü ekleme yapılmadı.
+- P2: ek bağ hash'i mevcut dosya hash'inin zaten bağladığı iki alanı tekrar bağlayacaktı;
+  bunun yerine normal runtime renderer ile tam byte eşliği sınandı. Mevcut 18 özel v2
+  girdide 18/18 prompt eşliği ve yeni okuyucu şekli yerelde doğrulandı; model çağrısı 0.
+- P3/P4: kapalı okuyucu bağlamı ve yazar nesnesinin çıkarılması; A/B etiketinin görünürlüğü
+  ve fayda/kusursuz körlük iddiası olmadığı açık. R1/R2/R3: asgari ortam, ayrı boş dizin,
+  ilk karardan önce reader sürüm/argüman ön kontrolü. R4/R5: typed metadata ve güvenli
+  hata kodu korunur. Hakemin ilk sürüm typecheck'inin düşmesi gerektiği çıkarımı actual
+  exact CI ve yerel tsc ile çürütüldü; arayüz yine açık hale getirildi.
+- D1/D2: tekrar kodları sayıldı; kaynağı tanımlanmamış INTERNAL_ERROR'a kör retry verilmedi.
+  D3/D4/D5: saat kenetleme/monotonik destek, güvenli auth kodu ve ENOENT cleanup düzeltildi.
+  D6: finishedAt alt sınırı ve lider çıktıktan sonra kendi süreç grubu temizliği eklendi.
+  Git PATH'ten çözülür: kişisel operatör ortamı güven sınırıdır. Daha kısıtlı umask için
+  izin genişletilmez. Testte sahte saat/süreç kullanımı gerçek gecikme kanıtı değildir.
+
+İkinci exact hakem/son CI kapanışı açık. Gerçek pilot çağrısı 0, üretim değişikliği yok.
