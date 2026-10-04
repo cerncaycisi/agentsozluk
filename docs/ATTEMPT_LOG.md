@@ -4325,3 +4325,26 @@ Tekrarlama: tarihsel tek 352 saniyeyi güncel gecikme dağılımı sayıp sabit 
 veya 90 dakikayı uzatma; bu öneri alınmadı. Tanımsız INTERNAL_ERROR'a kör retry verme.
 Dosya hash'inin zaten bağladığı prompt/context'e ikinci hash eklemek yerine renderer
 byte eşliğini sınamak gerekir. Okuyucu raporu transport başarı makbuzuyla davranış PASS olmaz.
+
+## 4 Ekim 2026 — pilot ikinci hakem ve canlı migration envanteri
+
+Gerçek Opus 5 exact `02631a02dab22ec767411a0267ff22216a586713` için **KOŞULLU GO (dar)**;
+actual modelUsage yalnız claude-opus-5. Dar ortamla gerçek kod okuması başarılı. Aynı CI
+`37217437084` **7/7 PASS**. Koşullar: timeout testinde 300 ms → 3000 ms süreç payı ve pilotta
+exact detached checkout'a 90 dakika dokunmama. İkisi kapandı; bloklamayan OS erişim/auth/
+kurulum süresi/terminal notları belirtimde açık. Final CI/merge henüz açık; yeni koşulsuz
+GO veya davranış kabulü iddiası yok. Gerçek pilot 0; üretim dağıtımı yok.
+
+16:43:37 UTC taze ED25519/DNS/hostname/origin/exact 9bf guard'lı RR READ ONLY envanter:
+**28 uygulanmış migration; yarım kayıt 0, checksum sapması 0**. Adayın 37 SQL'i eksi 28 applied,
+reviewed october-2026-v2'nin **9 SQL'iyle ad/checksum olarak tam eşit**. PG 16.14, 50 public tablo,
+DB 5.801.974.807 bayt. Üretim yazımı 0. Bu anlık kanıt release anında tekrarlanır;
+restore/indeks süresi/eski imaj smoke kapıları açık. Özel makbuz migration-inventory-20261004-1644.
+
+O3 yerel hazırlığı: ilk native arşivin 671.960.158 bayt/0600, metadata 50 tablo/3.270.401 satır/
+3 sequence/üç işaret kaydı okundu. Metadata SHA-256 554e9ffe76ef9c0405222dad56bd17516aea11c0ba0b206d5561955cac7b718c.
+Arşiv checksum'ı önceki doğrulamaya referanstır; bu adımda büyük arşiv yeniden hashlenmedi
+ve restore yapılmadı. Sequence metadata'sı MVCC snapshot değildir; geri yüklemede ayrıca
+sıradaki değerin güvenliği sınanır. Gzip emniyet kopyası tam native restore'a kadar korunur.
+Tekrarlama: checkout'tan pending set varsayma; 0 model ön kontrolünü auth başarısı sayma;
+bütçe dışı model yoklaması yapma; okuyucu koşullu GO'sunu deploy onayı olarak sunma.

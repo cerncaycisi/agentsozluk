@@ -203,12 +203,14 @@ makbuzu birbirinden ayrıdır. İş sırası yalnız PLAN'dadır.
 alır. DB/control-plane/action executor kurmaz. P2'nin ilk/saklı set çalıştırıcısı değildir.
 İlk 29, hakem düzeltmesinde son 43 ağsız testte 18 karar + bir okuyucu, beş teknik tekrar, özel hata kanıtı, süre,
 yeniden başlatma, kaynak/config değişimi, yarım rezervasyon ve gerçek yerel sahte süreç
-sonlandırması doğrulandı. Gerçek pilot çağrısı **0**; hakem/CI kapanışı ayrıca kaydedilecek.
+sonlandırması doğrulandı. Gerçek pilot çağrısı **0**; ikinci Opus dar koşulları aşağıda kapatıldı, final CI takip ediliyor.
 
 - Sabit kayıt `~/style-lab/p345-kisa-pilot-20261004/execution/` altındadır. CLI'da yeni
   çalışma kimliği, başka çıktı dizini veya reset seçeneği yoktur. `run.lock` otomatik
   temizlenmez; kilit ya da RESERVED kaydı varsa çalışan süreç/handle doğrulanmadan devam
-  edilmez. Çökme öncesi rezervasyon harcanmış kalır, otomatik tekrar yapılmaz.
+  edilmez. Çökme öncesi rezervasyon harcanmış kalır; `PILOT_UNFINISHED_ATTEMPT` kaydı
+  terminal kapatır, aynı çalışma hiçbir durumda otomatik sürdürülemez. Süreç/handle
+  doğrulaması yalnız hâlâ çalışan işlemin güvenli sonlandırılması içindir; bütçe açmaz.
 - Her çağrıdan önce rezervasyon fsync + atomik rename ile yazılır. 18 ilk karar + en çok
   5 teknik tekrar + bir okuyucu = **24 mantıksal sağlayıcı çağrısı (`invoke`)**. `--version`/`--help` gibi
   modelsiz CLI denetimleri bu sayı değildir. İç sağlayıcı HTTP denemeleri
@@ -216,7 +218,7 @@ sonlandırması doğrulandı. Gerçek pilot çağrısı **0**; hakem/CI kapanı�
   Okuyucunun gözlenen model adları özel sonuçta tutulur; ana model exact `claude-opus-5`.
 - İlk rezervasyondan itibaren 90 dakika; okuyucu ve yeniden başlatma aynı saate dahildir.
   Son 15 dakika okuyucu/kaynak kontrolüne ayrılır: okuyucu en çok 12 dakika, kaynak
-  kontrolü için 3 dakika pay. Karar başına tavan 6 dakika; bir dakikadan kısa karar veya
+  kontrolü için 3 dakika pay. Karar başına tavan 6 dakika (**kurulum, üç CLI denetimi, model ve temizlik toplamı**); bir dakikadan kısa karar veya
   okuyucu dilimi açılmaz. Karar sayısı 18'e ulaşmayabilir; önceden sabitlenen vakalar
   azaltılmaz, eksik vakayla tek okuyucu raporu INCOMPLETE kalır. 75 dakikada 18 karar
   için gereken ortalama yaklaşık 250 saniyedir; bu bir ölçülmüş gecikme veya tamamlanma
@@ -243,7 +245,10 @@ sonlandırması doğrulandı. Gerçek pilot çağrısı **0**; hakem/CI kapanı�
   execution ağacının dışında, bu çağrının boş 0700 geçici dizinidir. Ortam yalnız kişisel
   HOME, sabit PATH, locale ve NODE_ENV/NO_COLOR alanlarıdır; endpoint/proxy/Node injection
   değişkenleri devralınmaz. Var olan kişisel HOME OAuth kimliği kullanılır, credential
-  kopyalanmaz. Bu ağ endpoint'inin kriptografik tasdiki veya OS sandbox iddiası değildir.
+  kopyalanmaz. Bu ağ endpoint'inin kriptografik tasdiki veya OS sandbox iddiası değildir. Okuyucu
+  süreci aynı UID ile kişisel HOME'u ve execution ağacını OS düzeyinde okuyabilir;
+  modele verilen yetki sınırı pinli CLI'nin boş `--tools` semantiğidir. Mevcut CLI help'i
+  boş dizgenin araçları kapattığını söyler; sürüm/semantik sapması varsa pilot başlatılmaz.
   Okuyucu sürüm/argüman denetimi ilk modelden önce yapılır; kendi süreç grubundaki torunlar
   da temizlenir. Exact güvenli okuyucu hatası, version ve observedModels kayıtta korunur. Rapor insan tarafından
   exact alıntı ve bağlamla değerlendirilir; transport başarısı davranış PASS değildir.
@@ -255,6 +260,10 @@ bu çalıştırıcı bunları olduğu gibi çalıştırmaz. A′ kararından son
 normal şema, `effort: max`, gerçek CLI sürümleri ve mevcut seçim kurallarıyla ayrı özel
 klasörde yeniden hazırlanır; eski dosyalar/anahtarlar değiştirilmez. Bu işlem yeni bir
 çağrı bütçesi açmaz. Model çağrısı başlamadan önce manifest ve config hash'leri kaydedilir.
+**Pilot ayrı, exact SHA'da detached checkout'tan çalışır; 90 dakika boyunca o checkout'a
+commit/rebase veya editör/test/lint/coverage yazımı yapılmaz.** `src/` veya `scripts/`
+altındaki takipsiz tek dosya bile kaydı kalıcı kapatır. Gerekli diğer belge çalışmaları
+başka checkout'ta yapılır; bu kirlilik kapısı gevşetilmez.
 
 Özel 0600 config alanları `manifestDirectory`, `manifestSha256`, `sourceSha`,
 `model: "gpt-5.6-luna"`, `reasoningEffort: "max"`, `providerVersion`,
@@ -271,7 +280,11 @@ bağlar ve 3 Ekim öncesi eski pencereyi reddeder; sunucu metriklerini yeniden h
 Ürün kaynak SHA'sı üretimde gözlenmiş A′ SHA'sıyla aynı olmak zorunda değildir.
 A′ burada bir kez verilen tarihsel karardır; yeni canlı sağlık makbuzunun yerine geçmez. İlk tarih
 6 Ekim 10:00 UTC, son yetki sınırı 17 Ekim 19:50 UTC. İlk modelden önce tam90 dakikalık yetki
-payının kalması şarttır; dolayısıyla son başlangıç 18:20 UTC. Sıfır çağrıda tarih reddi bütçe yaratmaz.
+payının kalması şarttır; dolayısıyla son başlangıç 18:20 UTC. Bu son sınırda süre biterken tarih kapısı terminal kapanış
+verebilir; özet basılmasa da özel state/çıktı kanıtları kalır. Sıfır çağrıda tarih reddi
+bütçe yaratmaz. Ön kontrol auth geçerliliğini kanıtlamaz; execute öncesi varsa yalnız
+modelsiz oturum durumuyla kontrol edilir. Bütçe dışı model yoklaması yapılmaz. İlk gerçek
+çağrı AUTH_REQUIRED ile düşerse slot harcanmış kalır ve otomatik tekrar açılmaz.
 
 ```sh
 # Ön kontrol: model çağırmaz. Config gerçek özel dosyanın mutlak yoludur.
@@ -306,4 +319,10 @@ kapatmış sayılmadı. Rapor özel çalışma kaydında tutuluyor.
   Git PATH'ten çözülür: kişisel operatör ortamı güven sınırıdır. Daha kısıtlı umask için
   izin genişletilmez. Testte sahte saat/süreç kullanımı gerçek gecikme kanıtı değildir.
 
-İkinci exact hakem/son CI kapanışı açık. Gerçek pilot çağrısı 0, üretim değişikliği yok.
+İkinci gerçek `claude-opus-5`, exact `02631a02dab22ec767411a0267ff22216a586713` için
+**KOŞULLU GO (dar)** verdi; actual modelUsage yalnız `claude-opus-5`, dar ortamla gerçek
+kod okuması geçti. Aynı exact CI `37217437084` **7/7 PASS**. K1 timeout testi 300 ms → 3000 ms
+ile süreç başlangıcına pay bırakıldı; davranış değişmedi. K2 detached/dokunulmaz checkout
+kuralı yukarıya eklendi. K3–K5'in bloklamayan OS erişim, toplam süre, auth ve terminal
+lafızları da açıklandı. Koşullu görüş final SHA için yeni koşulsuz hakemlik sayılmaz.
+Son exact CI takip ediliyor. Gerçek pilot çağrısı 0, üretim değişikliği yok.

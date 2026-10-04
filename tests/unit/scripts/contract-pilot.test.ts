@@ -639,7 +639,7 @@ describe("Opus okuyucu adaptörü (ağsız yerel sahte süreç)", () => {
   });
   it("zaman aşımında yalnız kendi sürecini kapatıp sonucunu bekler", async () => {
     const f = fakeReader("process.stdin.resume(); setInterval(()=>{},1000);");
-    await expect(f.reader.invoke("packet", 300)).rejects.toThrow("PILOT_READER_INCOMPLETE");
+    await expect(f.reader.invoke("packet", 3_000)).rejects.toThrow("PILOT_READER_INCOMPLETE");
   });
 
   it("lider çıkınca kendi grubundaki torun süreci de bırakmaz", async () => {
