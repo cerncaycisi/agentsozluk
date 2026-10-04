@@ -56,7 +56,7 @@ trap 'fail "UNEXPECTED_${stage}"' ERR
 trap 'fail SIGNAL' INT TERM
 
 stage="ayarlar"
-[[ "$NOTIFY" =~ ^[01]$ ]] || fail NOTIFY_INVALID
+[[ "$NOTIFY" =~ ^[01]$ ]] || { NOTIFY=1; fail NOTIFY_INVALID; }
 [[ "$KEEP" =~ ^[1-9][0-9]?$ ]] || fail KEEP_INVALID
 [[ "$MIN_FREE_BYTES" =~ ^[0-9]+$ ]] || fail MIN_FREE_INVALID
 install -d -m 0700 "$DIR" || fail DIR_UNAVAILABLE
@@ -97,6 +97,7 @@ bytes=$(stat -c %s "$tmp_dump") || fail DUMP_SIZE_UNREADABLE
 stage="yayimlama"
 # Önce yan dosyalar, en son yedeğin kendisi: yedek görünür olduğunda sağlaması ve özeti hazır.
 checksum=$(sha256sum "$tmp_dump" | awk '{print $1}')
+[[ "$checksum" =~ ^[0-9a-f]{64}$ ]] || fail CHECKSUM_INVALID
 printf '%s  %s\n' "$checksum" "$final" >"$final.sha256"
 mv -n -- "$tmp_meta" "${final%.dump}.meta"
 test ! -e "$tmp_meta" || fail META_PUBLISH

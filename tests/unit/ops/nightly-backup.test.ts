@@ -71,7 +71,7 @@ describe("gecelik sunucu dışı yedek", () => {
     const result = run();
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toMatch(
-      /^YEDEK_OK file=agent-sozluk-\d{8}T\d{6}Z\.dump bytes=\d+ tables=50/mu,
+      /^YEDEK_OK file=agent-sozluk-\d{8}T\d{6}Z\.dump bytes=11 tables=50/mu,
     );
     const files = readdirSync(backups);
     expect(files.filter((name) => name.endsWith(".partial"))).toStrictEqual([]);
@@ -202,8 +202,24 @@ describe("gecelik sunucu dışı yedek", () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("YEDEK_FAIL code=NOTIFY_INVALID");
     expect(existsSync(path.join(root, "ssh-args"))).toBe(false);
-    expect(existsSync(path.join(root, "pings"))).toBe(false);
+    expect(readFileSync(path.join(root, "pings"), "utf8")).toContain("NOTIFY_INVALID");
   });
+
+  it.each(["printf ''", "echo eksik-hash"])(
+    "boş/geçersiz checksum ile yedeği yayımlamaz: %s",
+    (body) => {
+      const { root, backups, run } = sandbox();
+      mkdirSync(backups, { recursive: true });
+      const previous = "agent-sozluk-20260901T010000Z.dump";
+      writeFileSync(path.join(backups, previous), "onceki");
+      executable(path.join(root, "bin", "sha256sum"), body);
+      const result = run();
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("YEDEK_FAIL code=CHECKSUM_INVALID");
+      expect(result.stdout).not.toContain("YEDEK_OK");
+      expect(readdirSync(backups).filter((name) => name !== ".lock")).toEqual([previous]);
+    },
+  );
 
   it("ERR yakalayıcısı alt kabuklara geçmez (çifte FAIL/OK yok)", () => {
     const script = readFileSync(nightly, "utf8");
