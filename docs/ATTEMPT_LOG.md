@@ -3659,3 +3659,45 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - İlk 93/93 (mevcut A5 restore/zaman aşımı ve genel denetçi dahil), son odaklı 36/36 (5 PG16 + 13 profil + 18 release testi) geçti. Eski ayar/constraint sapması, kapatılmış immutable trigger, yanlış başlangıç modu ve dar VARCHAR(100) dışına çıkma reddedildi. Yalnız bu testin oluşturduğu iki DB, bağlı test oturumları kapatılarak silindi.
 - Makbuz `P1_EKIM_MIGRATION_PROFILI_2026-10-04.md`. Bu küçük fixture üretim indeks süresi, eski Docker imajının açılışı veya canlı geçiş kanıtı değildir. Opus ve exact CI açık.
 - Tekrarlama: partial indeks/trigger için genel SQL parser kapısını kaldırma; restore sonrası eski şema ile yeni ek sütunları kontrolsüz normalize etme; migration'ın tümünü tek atomik işlem sayma.
+
+### 4 Ekim 2026 — O3 #307 birleşme ve betik kurulumu
+
+- Final `ced672d260d926fdff80f051c73b5d475fa1dca3`, CI `37179813028` 7/7; fresh head/base/review/CLEAN doğrulandı. Main `ef216d455be53eac07c303a1836524d861e5a472`, uzak SHA ve squash ağaç eşitliği geçti; birleşmiş dal silindi.
+- 04:53:47 UTC salt okunur üretim kimliği ve zorunlu yedek komutu SHA-256 `3ebff83d9f2f3a496e592d8d0f89dbe693b13657f67f42672d32c3e1992cc302` doğrulandı; checkout `9bf3653`, root:root/755. Üretim betiği/uygulama değiştirilmedi.
+- 05:37:04 UTC kabul edilmiş operatör betiği yedek kilidi altında atomik kuruldu. Önceki dosya/hash ve yeni hash O3 belgesinde/özel install-receipt.json'da saklı. Kendi kapanmış E2E cache temizliği 79.765.504 bayt geri kazandırdı; boş alan 5.983.952.896 bayt.
+- Tekrarlama: yerel betik kurulmasını telafi yedeği veya tam restore sayma; bağımsız model işi ile ağır backup/restore'u aynı küçük operatör sunucusunda üst üste bindirme.
+
+### 4 Ekim 2026 — P1 Opus ilk çağrı süre sınırı
+
+- Kod `b57729dcc22611288501da432ccc9b1c21e62342`; #307 sonrası yalnız parent rebase ile `ad2a58563490ef222e374f194c841069e954dd2f`, ağaç eşitliği doğrulandı. Araçsız `claude-opus-5` çağrısı 600 saniye sınırında exit 124 verdi; JSON ve stderr 0 bayt. Gerçek model kullanım makbuzu/inceleme sonucu yok, GO sayılmadı. Sağlayıcı/kota veya kod hatası olduğu kanıtlanmadı.
+- Tekrarlama: boş çıktı/süre aşımını bağımsız kabul sayma. Aynı kodun daha dar kaynak paketi ve CLI'nin belgeli medium effort seçeneği hazırlanıyor; model değiştirilmedi. Ağır işlem çakışmaması için ikinci çağrı telafi yedeğinden sonra başlayacak.
+
+### 4 Ekim 2026 — O3 telafi yedeği tamamlandı
+
+- Kurulu main `ef216d455be53eac07c303a1836524d861e5a472` betiği; 05:40:05–05:43:04 UTC, exit 0. Manual deploy-key adaptöründe her bağlantıda ED25519/DNS/hostname/repo/Compose ve değişmeyen yedek komutu hash guard'ı geçti. Gece kısıtlı anahtar yolu değiştirilmedi. NOTIFY=0, dış mesaj yok.
+- `YEDEK_OK file=agent-sozluk-20261004T054005Z.dump bytes=1315865212 tables=50 kept=7`. Üç snapshot işareti, checksum tekrar okuma ve `pg_restore --list` PASS; stderr boş. Yalnız 27 Eylül en eski kopya/yan dosyaları retention ile kaldırıldı, kalan altı önceki dump boyutu aynı.
+- Yerel boş alan 5.988.462.592 → 5.838.831.616 bayt; 5 GiB ön eşiği değiştirilmedi. Eski yerel servis failed durumu reset-failed ile temizlendi; Result=success/inactive/dead, timer active, sonraki çalışma 5 Ekim 01:39:32 UTC.
+- Tam restore yapılmadı; 7 Ekim O3 adımı açık. A′ değerlendirmesinde bu üç dakikayı operatör backup yükü olarak kaydet. Üretim imajı/istem/ayar/pause/resume değişmedi.
+- Tekrarlama: pg_restore liste kontrolünü veri blokları geri yüklenmiş gibi anlatma; manual guard adaptörünü zamanlayıcı anahtarının değiştiği biçiminde kaydetme.
+
+### 4 Ekim 2026 — restore/migration disk bütçesi salt okunur doğrulandı
+
+- 05:46:54 UTC host/ED25519/DNS/repo/Compose guard ardından BEGIN READ ONLY, 15 sn statement timeout. Üretim root boş 29.130.304 KiB, %62 kullanım; DB 5.741.173.783 bayt. Event/action/audit toplam ilişki boyutları özel `production-disk-budget.json` makbuzunda; gövde/credential okunmadı.
+- Operatörün ~5,84 GB boş alanı tam restore/WAL için pay bırakmıyor. Yerel PostgreSQL/başka DB veya yedekler silinmedi; PLAN'daki O3 yerel restore adımı A′ kararı sonrası üretim host'unda yalnız prova DB'sine izole restore olarak düzeltildi. Uygulama DB'si hedef değil; henüz restore yapılmadı.
+- Tekrarlama: dump sıkıştırılmış boyutunu restore disk ihtiyacı sanma; bu dış-yedek provası ile A5'in frozen anındaki taze yedek/restore'unu tek kanıt sayma. Her gerçek geçiş öncesi disk yeniden ölçülür.
+
+### 4 Ekim 2026 — P1 Opus koşullu kabul ve dar düzeltme
+
+- Gerçek `claude-opus-5`, medium effort, exact `ad2a58563490ef222e374f194c841069e954dd2f`: KOŞULLU GO, 361 sn. İlk timeout turu kabul sayılmadı. Hakem kodu okudu, test çalıştırmadı.
+- Genel yola taşan yeni-tablo FK istisnası exact profile bağlandı; `Object.hasOwn` ile prototype adı atlanmaz. Üretim boyutu makbuzu hakemin açık alternatifiydi; 05:46 kesiti kayda bağlandı, ayrıca preflight'ta satır/boyut makbuzu eklendi. Rastgele performans eşiği eklenmedi; scratch prova kapısı korunur.
+- Uktenin slug'ı public anahtar değil (UUID + title query), boş slug iki bağımsız başlıkta geçerlidir. targetKeys strict başlıktan server'da türetilir; istemci array/slug yazamaz. Ayrı bounds kanıtı eklendi. Pipefail ve yeniden giriş karşılaştırması kaynakta doğrulandı; global tek PROPOSED eski kabul edilmiş P8 niyetidir.
+- CI boot probe'a gerçek imaj içi `run-migration.mjs` ve ayrı boş DB hedefi eklendi; ana probe geçmişi değişmemeli. Bu eski imaj rollback veya üretim restore provası yerine geçmez. Son 70/70, makbuz etiketinden sonra 6/6 PG16 ve 8/8 CI sözleşmesi testi geçti; format/lint/typecheck/requirements PASS. Exact CI açık.
+- Tekrarlama: kısa hakem paketinde gösterilmeyen satırı yok sayma; kaynak kanıtıyla kapanabilen eski tasarım kararını yeniden kullanıcı sorusuna çevirme; koşullu GO'yu koşulsuz GO diye adlandırma.
+
+### 4 Ekim 2026 — kullanıcı ret alarmı salt okunur doğrulandı
+
+- 06:09:03 UTC, pin/DNS/hostname/repo/Compose guard, checkout `9bf3653ff152d4a704c1774ccd6782e0a3322f29`; READ ONLY / 15 sn sorgu sınırı. Yalnız toplu durum/güvenli ret kodları okundu, gövde/istem yok. Makbuz özel `ret-alarmi-20261004/aggregate.json`.
+- Son koşu başlangıcı 06:07:52 UTC; son saatte 17 SUCCEEDED ve 6 PARTIAL (birinde CODEX_TIMEOUT). Son 24 saat girişimleri 273 SUCCEEDED / 95 REJECTED: TOPIC_SEMANTIC_REPETITION 42, DUPLICATE_FRAMING 27, DUPLICATE_SIMILARITY 7, SOURCE_EXACT_NUMBER_UNSUPPORTED 16, GLOBAL_RUNTIME_PAUSED 3. Oran %25,8; son üç saatte 44 başarılı/14 ret.
+- Ekrandaki 03:34 kesiti dakika sınırıyla yeniden bakıldığında 97 ret/268 başarılı/1 PROPOSED; ekrandaki 97/366 ile bir eylem farkı kesin saniye verilmemesinden ayrı tutulur. Anlık durum geçmiş alarma eşit sayılmaz.
+- İş üretimi sürüyor; ret alarmı çözülmüş veya yanlış pozitif ilan edilmedi. Yüksek tekrar payı P1 mevcut kayıt değerlendirmesine eklendi. Canlı eşik/ayar/istem/pause/deploy değiştirilmedi, bildirim gönderilmedi.
+- Tekrarlama: ret yüzdesini servis kesintisi ya da her ret için haklılık kanıtı sayma; yeni özellikler henüz dağıtılmadığı halde canlı sonucu onlara bağlama.

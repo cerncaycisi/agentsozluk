@@ -182,6 +182,26 @@ afterAll(() => {
 });
 
 describe("exact Ekim paketi: gerçek PG16 restore ve geçiş", () => {
+  it("yeni tablo FK istisnası genel kapıya veya JS prototype isimlerine taşmaz", () => {
+    pass("assert_fk_targets");
+    const generic = phase('reviewed_migration_profile=""; assert_fk_targets');
+    expect(generic.status).toBe(97);
+    expect(generic.stderr).toContain("FOREIGN_KEY_TARGET_UNSUPPORTED");
+    const file = path.join(root, "state/migration/expectation.json");
+    const original = readFileSync(file, "utf8");
+    try {
+      writeFileSync(
+        file,
+        JSON.stringify({ tables: { yeni: { foreignKeys: [{ referencedTable: "constructor" }] } } }),
+      );
+      const inherited = phase("assert_fk_targets");
+      expect(inherited.status).toBe(97);
+      expect(inherited.stderr).toContain("FOREIGN_KEY_TARGET_UNSUPPORTED");
+    } finally {
+      writeFileSync(file, original);
+    }
+  });
+
   it("varchar istisnası yalnız exact profil ve 100 karakterlik eventType için geçer", () => {
     pass("assert_existing_index_targets");
     const generic = phase('reviewed_migration_profile=""; assert_existing_index_targets');

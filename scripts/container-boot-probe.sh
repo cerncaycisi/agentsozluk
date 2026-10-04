@@ -126,6 +126,21 @@ echo "F09_PROBE_PERSONA_ROLLOUT imports=ok database=ok empty_population=rejected
 before_rows="$(migration_rows)"
 test -n "$before_rows"
 
+# A5'in gerçek imaj içi yürütücüsü ayrı boş DB'ye bütün migration'ları uygular.
+# Hedef URL yeniden bağlanıp current_database ile doğrulanır; ana probe DB'sinin
+# migration geçmişi aynen kalır. Eski şemadan restore/geçiş ayrı PG16 testindedir.
+db_query 'CREATE DATABASE agent_sozluk_migration_runner_probe;'
+"${compose[@]}" run --rm --no-deps --pull never \
+  -e A5_TARGET_DATABASE=agent_sozluk_migration_runner_probe \
+  --entrypoint node app scripts/run-migration.mjs </dev/null
+runner_applied="$("${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 -U postgres \
+  -d agent_sozluk_migration_runner_probe -c \
+  'SELECT count(*) FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL;' </dev/null)"
+test "$runner_applied" = "$expected"
+test "$(migration_rows)" = "$before_rows"
+db_query 'DROP DATABASE agent_sozluk_migration_runner_probe WITH (FORCE);'
+printf 'F09_PROBE_MIGRATION_RUNNER applied=%s main_history=unchanged\n' "$runner_applied"
+
 # Düzgün kapanma: Next 15 standalone `server.js` SIGTERM'de sunucuyu ve bekleyen
 # istekleri kapatıp `process.exit(0)` çağırır; `init: true` bu sonucu taşır. Yalnız 0
 # kabul: 143 işleyicinin atlandığını, 137 SIGKILL'i gösterir (Astra, #179 2. tur).

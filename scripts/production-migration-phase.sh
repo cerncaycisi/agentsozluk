@@ -4,7 +4,7 @@
 # docs/PRODUCTION_RUNBOOK.md "Migration'lı sürüm").
 #
 # Bu dosya tek başına çalışmaz: `production-release-remote.sh` onu yalnız
-# `apply:<liste>` modunda, aynı SHA'nın checkout'undan `source` eder ve şu
+# `apply:<liste>` veya açık reviewed profil modunda aynı SHA'dan `source` eder; şu
 # değişkenleri hazır verir: compose, state_dir, app_root, runtime_root,
 # candidate_sha, candidate_image, op_id, approved_migrations.
 #
@@ -254,6 +254,8 @@ preflight_migration() {
       </dev/null)" = 0 || migration_fail REVIEWED_COLUMNS_ALREADY_PRESENT
     test "$(db_psql agent_sozluk -c 'SHOW block_size;' </dev/null)" = 8192 ||
       migration_fail REVIEWED_INDEX_BLOCK_SIZE_UNSUPPORTED
+    # Dondurmadan önce görünür makbuz; frozen aşamada yeniden alınır.
+    reviewed_index_size_receipt agent_sozluk preflight
   fi
   assert_disk_budget full
 }
@@ -303,12 +305,14 @@ assert_fk_targets() {
   local target checked=0 expected
   "$host_node" -e '
     const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+    const reviewed = process.argv[2] === "october-2026-v1";
     const targets = new Set();
     for (const table of Object.values(value.tables))
       for (const fk of table.foreignKeys)
-        if (!(fk.referencedTable in value.tables)) targets.add(fk.referencedTable);
+        if (!reviewed || !Object.hasOwn(value.tables, fk.referencedTable))
+          targets.add(fk.referencedTable);
     for (const target of [...targets].sort()) process.stdout.write(target + "\n");
-  ' "$migration_dir/expectation.json" >"$migration_dir/fk-targets" ||
+  ' "$migration_dir/expectation.json" "$reviewed_migration_profile" >"$migration_dir/fk-targets" ||
     migration_fail EXPECTATION_UNREADABLE
   # `grep -c .` satır sonu olmayan son satırı da sayar (`wc -l` saymaz).
   expected="$(grep -c . "$migration_dir/fk-targets" || true)"
@@ -999,15 +1003,15 @@ verify_reviewed_profile_post() {
 }
 
 reviewed_index_size_receipt() {
-  local database="$1"
-  db_psql "$database" -F '|' >"$migration_dir/index-tables-$database" <<'SQL'
+  local database="$1" label="${2:-before-migrate}"
+  db_psql "$database" -F '|' >"$migration_dir/index-tables-$database-$label" <<'SQL'
 SELECT 'agent_actions', count(*), pg_total_relation_size('public.agent_actions') FROM agent_actions
 UNION ALL
 SELECT 'agent_runtime_events', count(*), pg_total_relation_size('public.agent_runtime_events') FROM agent_runtime_events
 UNION ALL
 SELECT 'audit_logs', count(*), pg_total_relation_size('public.audit_logs') FROM audit_logs;
 SQL
-  test "$(wc -l <"$migration_dir/index-tables-$database")" = 3 ||
+  test "$(wc -l <"$migration_dir/index-tables-$database-$label")" = 3 ||
     migration_fail REVIEWED_INDEX_SIZE_RECEIPT_MISSING
 }
 

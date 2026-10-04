@@ -20,6 +20,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   öğrenen yazarlar. Başarı çok yazmak veya çok oy almak değildir.
 - **Son üretim kaydı:** `9bf3653`, v46, A′ okuma bağlamı; `gpt-5.6-luna`, iki hat.
   3 Ekim kapasite kanıtının kayıtlı son tarihi 17 Ekim. 3 Ekim 20:00 UTC P0 salt okunur kesiti alındı; yeni dağıtım yapılmadı.
+- **4 Ekim 06:09 UTC sağlık kesiti:** worker çalışıyor (son saatte 17 SUCCEEDED, 6 PARTIAL;
+  bunlardan biri CODEX_TIMEOUT). Son 24 saatte 273 başarılı / 95 ret (%25,8); retlerin 76’sı
+  tekrar/benzerlik, 16’sı desteklenmeyen kesin sayı, 3’ü pause. Ret alarmı açık ürün sinyalidir;
+  otomatik yanlış-pozitif veya kesinti sayılmaz. P1 mevcut kayıt incelemesi bunları ayırır;
+  sırf oranı düşürmek için eşik/istem değiştirilmez. O3 telafi yedeği 05:43 UTC tamamlandı.
 - **İlk tarihli kontrol:** 6 Ekim, yaklaşık 13:00 TSİ; A′ için gerçek resume zamanından
   en az 72 saat geçmiş olmalı. Kayıt 3 Ekim ~09:20 UTC'dir; kesin aralık rapor öncesi doğrulanır.
 - **Hazır kod:** heartbeat #296, main `d373376`, Opus KOD GO ve CI 7/7; canlıya alınmadı.
@@ -132,8 +137,11 @@ sekiz migration var; canlı applied set henüz yeniden okunmadı. Mevcut dar add
 yedisini bilinçli reddediyor (partial indeks/RESTRICT FK/ALTER/trigger vb.). Üretimden önce
 exact migration kümesine özel, bağımsız incelenmiş geçiş/restore/geri dönüş provası gerekir;
 mevcut denetçinin kapısı kaldırılmaz. Bu hazırlık P1 dağıtımının açık teknik bağımlılığıdır.
-Sabit `october-2026-v1` profili yerelde hazırlandı; ilk 93 testte gerçek PG16 restore/
-geçiş ve sapma reddi geçti. Son kontroller, Opus ve CI açık; üretime uygulanmadı.
+Sabit `october-2026-v1` profili yerelde hazırlandı; ilk 93, son odaklı 36 testte
+PG16 restore/geçiş ve sapma reddi geçti. Opus 5 koşullu kabul verdi; genel FK istisnası
+profile daraltıldı, üretim boyutu salt okunur ölçüldü ve ukte kaynak koşulları kaynak/testle kapandı.
+Son düzeltmelerde 70/70, makbuz etiketinden sonra 6 PG16 ve 8 CI sözleşmesi testi geçti;
+format/lint/typecheck/requirements PASS. Exact CI açık, üretime uygulanmadı.
 [Geçiş belirtimi](P1_EKIM_MIGRATION_PROFILI_2026-10-04.md).
 
 **P6 kapsamı:** `/hakkinda` ve kök sayfada açık proje tanımı, örnek çeşitliliği, marka/ton;
@@ -198,19 +206,28 @@ belirtilir, ilk pencere deneysel kesinlik veya Gate 10 kabulü sayılmaz.
 
 ## 4. Operasyon hattı — özelliklerden bağımsız korunacaklar
 
-| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                     |
-| ------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **O1** | Heartbeat #296, 6 Ekim                               | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                |
-| **O2** | Kapasite, 15 Ekim                                    | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                       |
-| **O3** | Yedek/restore ve disk, 7 Ekim                        | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention, yerel restore; `sort`/`stat` hata boşlukları. Aynı sağlayıcı artık riski kayıtlı |
-| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                        |
-| **O5** | Operatör toplu işlem önizlemesi, 17 Ekim durum       | Hedef/payload/sürüm ve geri alma özeti; yetki, CAS, idempotency korunur                                                                                             |
+| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                            |
+| ------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **O1** | Heartbeat #296, 6 Ekim                               | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                       |
+| **O2** | Kapasite, 15 Ekim                                    | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                              |
+| **O3** | Yedek/restore ve disk, 7 Ekim                        | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
+| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                               |
+| **O5** | Operatör toplu işlem önizlemesi, 17 Ekim durum       | Hedef/payload/sürüm ve geri alma özeti; yetki, CAS, idempotency korunur                                                                                                    |
 
 **O3 güncel olay:** 4 Ekim 01:31 UTC gecelik yedek yerel `DISK_LOW` ile durdu; önceki
 yedi kopya korundu. Kullanılmayan araç sürümü/paket/build cache temizliğiyle yerel boş alan
-~4,2 → 5,6 GiB (%89 → %86) oldu. `sort/stat` hata yutma düzeltmesi 19 yerel testi ve
-kalite kapılarını geçti; bağımsız hakem/CI, kurulum ve telafi yedeği henüz tamamlanmadı.
-7 Ekim restore/taze yedek kanıtı kapanmış sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+~4,2 → 5,6 GiB (%89 → %86) oldu. `sort/stat`/checksum ve alarm düzeltmesi #307 ile
+`ef216d4` ana dalında; Opus koşulu kapandı, son exact CI 7/7. 21 shell, 7 arama PG16
+ve ilgili gerçek masaüstü/mobil 4 E2E geçti. Kabul edilmiş yerel betik atomik kuruldu;
+eski dosya/hash saklı. 05:40–05:43 UTC telafi yedeği geçti: 1.315.865.212 bayt,
+50 tablo, üç snapshot işareti, checksum tekrar okuma ve arşiv listesi PASS; son yedi
+kopya korunuyor. 7 Ekim tam restore kanıtı açık; arşiv listesi tam restore değildir.
+4 Ekim 05:46 UTC ölçümü: DB 5.741.173.783 bayt, operatörde ~5,84 GB boş; yerel tam
+restore'a güvenli pay yok. Üretimde 29.130.304 KiB boş (%62 kullanım). O3 dış yedeği,
+A′ kararı sonrası üretimde **ayrı, yalnız bu provanın oluşturduğu DB'ye** geri yüklenip
+karşılaştırılır; uygulama DB'si hedef olamaz. Prova kopyası doğrulama sonrası kaldırılır.
+Bu dış yedek provası, A5'in geçiş anındaki taze/frozen backup ve ayrı restore kapısının
+yerine geçmez. Tarih 7 Ekim hedefidir; düşük disk eşiği düşürülmez. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
 Her build/deploy için güncel değer gerekir; üretimde <8 GiB veya ≥%90 dolulukta build yok.

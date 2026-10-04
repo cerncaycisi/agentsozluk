@@ -11,7 +11,7 @@ trap report_unexpected_error ERR
 
 candidate_sha="${1:-}"
 cleanup_requested="${2:-no-cleanup}"
-# `no-migration` ya da `apply:<ad1,ad2>` (A5; Gökhan'ın exact onay listesi).
+# `no-migration`, `apply:<liste>` veya `reviewed:october-2026-v1:<liste>`.
 migration_mode="${3:-}"
 # Sarmalayıcının kilit sahipliği için ürettiği operasyon kimliği.
 op_id="${4:-}"
