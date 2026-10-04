@@ -4144,3 +4144,15 @@ false/true` yapabildi; geçici rol ve DB silindi.
   alındı ve kaldırıldı; diğer worktree veya kullanıcı işi değiştirilmedi.
 - #317 final9945807 CI37205037707 7/7 sonrası maincdc4d5d; fresh merge/uzakSHA/ağaç
   eşliği doğrulandı. #316 main push CI37204636460 da7/7. İki PR T3'e bağlı ve merged.
+
+### 4 Ekim 2026 — v2 migration profili bağımsız incelemesi
+
+- #320 head `1d1de66230eb334a5416d585adb9aff95d7ebea7`; gerçek `claude-opus-5`
+  salt okunur kaynak incelemesinde KOD GO verdi. Test çalıştırdığı veya üretime
+  yetki verdiği iddia edilmedi. İncelenen sürüm ve ham görüş özel makbuzda korundu.
+- B1 eksik bağlamdı: `audit_logs.entityId` tipi, schema:738 ve başlangıç SQL:211'de
+  UUID. Kod düzeltmesi gerekmedi; üretim indeks preflight'ı gerçek tipi ayrıca kontrol
+  eder. Eski imaj smoke ve gerçek boyutta restore hâlâ dağıtım kapılarıdır.
+- 113 birim / 21 PG16, format/lint/typecheck/requirements PASS; exact CI açık.
+- Tekrarlama: yardımcı Haiku çağrısını hakem kimliği sayma; KOD GO'yu canlı kabul
+  veya uygulanmış migration kanıtı diye raporlama.

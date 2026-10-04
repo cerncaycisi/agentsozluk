@@ -175,5 +175,11 @@ boş/küçük fixture ölçümü üretim büyüklüğünde süre veya eski9bf Do
 45dakika bütçe ve5/300s DB zaman aşımı kapıları aynen sürer. Üretime uygulanmadı.
 Son regresyon **113birim/21PG16 PASS**: iki profil için12restore/geçiş, mevcut A5
 için7SQL ve2gerçek zaman aşımı. V1 makbuz baytları, tam v2 superset, ilk/son SQL
-checksum sapması ve yeni CHECK tanımı sapması ayrıca sınandı. Farklı model hakemi
-ve exactCI açık.
+checksum sapması ve yeni CHECK tanımı sapması ayrıca sınandı.
+
+Gerçek Opus 5, `1d1de66230eb334a5416d585adb9aff95d7ebea7` için **KOD GO** verdi;
+somut kod kusuru bulmadı. B1 bilgi eksiği `audit_logs.entityId` tipiydi. Kaynakta
+`prisma/schema.prisma:738` ve immutable başlangıç migration'ı `:211`, **UUID**
+tipini doğrular. Genel indeks preflight'ı canlı katalog tipini zaten yeniden sınar;
+bu makbuz canlı tip okumasının yerine geçmez. Gerçek model `claude-opus-5`;
+yardımcı Haiku kullanımı hakem modelini değiştirmez. #320 exact head CI açık.
