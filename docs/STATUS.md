@@ -4285,3 +4285,9 @@ P2'de Opus dışı gözlenen model reddedilir. Aynı run ID ile dört ardışık
 sınıfı/sahte subprocess çağrısında ayrı çıktılar ve geçici dizin temizliği doğrulandı.
 Sentetik64 dakika senaryosu yalnız süre aritmetiği karşı örneği, gerçek latency değildir.
 İkinci Opus ve final CI açık; gerçek pilot/üretim değişikliği0.
+
+P2 ikinci Opus (`d98f2ab`) DÜZELTİLMELİ görüşü sonrası son **101 ağsız test PASS**
+(51 P2/43 ortak/7 provider). Bilinen form hatası aynı saat/çağrı sayısıyla düzeltilebilir;
+ilk evre42 dakika pay korur; okuyucu reddini operatör tek başına olumluya çeviremez.
+Ham packet/stdin bayt eşliği ve her hazırlık kontrolünün aynı saate dahil oluşu sınandı.
+Son bağımsız kapanış/final CI açık; gerçek pilot0 ve üretim değişikliği0.

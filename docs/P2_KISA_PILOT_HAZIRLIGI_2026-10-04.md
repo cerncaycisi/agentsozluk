@@ -353,8 +353,9 @@ Bu kod hazırlığı canlı model/effort eşliği veya gerçek pilot sonucu değ
   sıfır doğrulanmış yeni ihlal. Sonra ayrı `--execute`, kalan çağrı ve süre kapısıyla
   saklı 12 kolu açar. Saklı set aynı modelin geçmişsiz ikinci okumasını ve ayrı kaynak
   kontrolünü ister. İnceleme komutu kendi başına sonraki model aşamasını başlatmaz.
-- İlk aşama kararları sırasında iki okuma/kaynak kontrolü için toplam 30 dakika ayrılır;
-  saklı set için 15 dakika. Karar başına en çok 6 dakika, okuyucu başına 12 dakika; kalan
+- İlk aşama kararları sırasında iki okuma/kaynak kontrolü için 30 dakika ve saklı setin
+  12 asgari çağrı dilimi için 12 dakika: **toplam 42 dakika** ayrılır. Saklı set için
+  15 dakika okuma/kontrol payı korunur. Karar başına en çok 6 dakika, okuyucu başına 12 dakika; kalan
   çağrı dilimi en az 60 saniye. Bu pay tamamlanma garantisi değildir. Saklı sete girişte
   en az27 dakika ve 12 runtime hakkı gerekir. Okuyucu, modelsiz denetimler, manuel kontrol,
   süreç temizliği ve yeniden başlatma ilk rezervasyonla başlayan aynı saate dahildir.
@@ -449,3 +450,44 @@ Görüşü koşulsuz GO diye yeniden adlandırmıyoruz.
 Son birleşik **46 P2 + 43 ortak =89** ağsız test ve ayrı **7 provider** testi PASS.
 Son iki aşama fixture'ında okuyucu-operatör farkı, süre dışı saklı okuma ve ek model reddi
 sınandı. İkinci bağımsız görüş/final CI açık; gerçek pilot çağrısı 0.
+
+### İkinci Opus incelemesinin uzlaştırması
+
+Gerçek `claude-opus-5`, exact `d98f2ab94355eed953ee0706ca11eb29d4e23dd5` için
+**DÜZELTİLMELİ** dedi; actual modelUsage yalnız `claude-opus-5`. İlk exact `5e76296`
+CI `37225298842` 7/7 PASS; bu sonuç ikinci görüşün bulgularını kapatmaz.
+
+1. **Form hatası ile koşu belirsizliği ayrıldı.** Yalnız yeni operatör formunun bilinen
+   şekil/alıntı/case/bağ hataları terminal değildir. Hata kodu döner, aynı state'te geçen
+   süre kaydedilir; düzeltme aynı 90 dakikada kabul edilebilir. Model/okuyucu çağrısı ve
+   başlangıç zamanı değişmez. Tekrar kaydedilen inceleme reddedilir; önceki makbuz yeniden
+   yazılmaz. Tarih/süre, kaynak/hash, özel dosya IO veya geçmiş inceleme bozulması terminal
+   kalır. Evidence dizisinin yalnız sırası değiştiğinde sahte anlaşmazlık üretilmez.
+2. **İlk evre rezervi 42 dakika:** iki okuma/kontrol için30 + saklı12 asgari dilim.
+   Bu, 27 dakika saklı giriş kapısının ihtiyaç duyduğu payı ilk evrede de korur. Gerçek
+   çağrı sürelerinin tamamlanmayı garanti etmediği ve yavaş/eksik koşunun INCOMPLETE kaldığı
+   açık. Örnek sayısı, tek saat ve24runtime/2okuyucu üst sınırı değişmedi.
+3. **Dosya/hash kontrol zamanı** ilk rezervasyondan sonraki aynı duvar saatinden düşer;
+   model çağrı sayısı değildir. Her `prepare()`e süre ekleyen sahte saat testi bunu doğrular.
+   Bilinmeyen IO/yarım rezervasyonun terminal olması bilinçli; otomatik ortam kurtarması
+   belirsiz bir model çağrısını tekrar açamaz. Salt form düzeltmesi bu sınıfa sokulmaz.
+4. **Tek taraflı yükseltme yok.** `gateEligible`, hem kör okuyucu hem kaynak doğrulamasının
+   eşiği geçmesini ister. Okuyucu eşiği geçmezken operatör bütün kazananları değiştirse bile
+   `READER_DISAGREEMENT` çıkar, saklı set açılmaz/iki-set sonucu geçer sayılmaz. Altı vakanın
+   yukarı çevrilmesi negatif testte12runtime çağrısında kaldı. İki hüküm ve değişen case
+   listesi korunur. Somut anlaşmazlık için bağımsız içerik hakemi ancak PLAN ve kalan
+   bütçe içinde düşünülebilir; bu çalıştırıcı yeni çağrı veya ikinci bütçe açmaz.
+5. **Packet baytları:** okuyucuya hash bağlı 0600 packet dosyasının aynen okunan baytları
+   gönderilir; compact/pretty serileştirme farkı kaldırıldı. Opus dışı model ancak CLI
+   sonuç makbuzunda gözlenebilir; böyle bir çağrı harcanmış sayılır ve rapor reddedilir,
+   önceden garanti edildiği iddia edilmez. Provider modeli için kanıt `observedModels`;
+   adapter'ın sabit etiketine tek başına güvenilmez.
+
+Son **51 P2 +43 ortak +7 provider =101 ağsız test PASS**. Sıfır gerçek pilot çağrısı.
+Üçüncü inceleme yalnız bu kapanışların doğrulanmasıdır; önceki DÜZELTİLMELİ görüşler
+korunur. Final CI ve bağımsız kapanış açık; üretim uygulaması değişmedi.
+
+Süresinde kaydedilmiş nihai olumsuz/olumlu sonuç, 90 dakika sonrası tekrar okunduğunda
+korunur. Tamamlanmış faza yanlışlıkla yeni inceleme gönderilmesi `PILOT_PERSONA_PHASE_CLOSED`
+ile reddedilir; önceden doğrulanmış sonucu terminal süre hatasına çeviremez. Bu kontrol
+kaynak/hash bozulmasını veya yetki tarih sınırını gevşetmez; final sonuç tarihi kayıtlıdır.

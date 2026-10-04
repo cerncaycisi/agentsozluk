@@ -202,6 +202,10 @@ describe("P2 iki aşamalı kalıcı pilot (ağsız)", () => {
       status: "BOTH_THRESHOLDS_MET_NOT_BEHAVIOR_PASS",
       runtimeCalls: 24,
     });
+    await expect(runPersonaPilot({ ...f.options, review: f.review("holdout") })).rejects.toThrow(
+      "PILOT_PERSONA_PHASE_CLOSED",
+    );
+    expect(f.journal().terminalReason).toBeUndefined();
     const packet = f.reader.invoke.mock.calls[0]![0];
     for (const forbidden of [
       "newSlot",
@@ -221,6 +225,11 @@ describe("P2 iki aşamalı kalıcı pilot (ağsız)", () => {
     review.value.readerDisagreement = "Kaynak kontrolünde üstünlük doğrulanmadı.";
     for (const item of review.value.cases) item.winnerSlot = "TIE";
     await runPersonaPilot({ ...f.options, review });
+    expect(await runPersonaPilot(f.options)).toMatchObject({
+      status: "THRESHOLD_NOT_MET",
+      runtimeCalls: 12,
+    });
+    f.advance(91 * 60000);
     expect(await runPersonaPilot(f.options)).toMatchObject({
       status: "THRESHOLD_NOT_MET",
       runtimeCalls: 12,
@@ -283,15 +292,15 @@ describe("P2 iki aşamalı kalıcı pilot (ağsız)", () => {
     await expect(runPersonaPilot(f.options)).rejects.toThrow("PILOT_START_WINDOW_TOO_SHORT");
     expect(f.provider.invoke).not.toHaveBeenCalled();
   });
-  it("ilk aşama karar diliminde iki okuyucu payını korur", async () => {
+  it("ilk aşamada iki okuma ve saklı karar dilimleri için 42 dakika korur", async () => {
     const f = fixture();
-    f.provider.invoke.mockImplementation(async () => {
-      f.advance(5 * 60000);
+    f.provider.invoke.mockImplementation(async (request) => {
+      f.advance(Math.min(5 * 60000, request.timeoutMs));
       return f.result;
     });
     const result = await runPersonaPilot(f.options);
-    expect(result.runtimeCalls).toBe(12);
-    expect(result.manualReviewRemainingMs).toBe(30 * 60000);
+    expect(result.runtimeCalls).toBe(10);
+    expect(result.manualReviewRemainingMs).toBe(42 * 60000);
     expect(f.provider.invoke.mock.calls.every(([request]) => request.timeoutMs <= 6 * 60000)).toBe(
       true,
     );
@@ -409,6 +418,12 @@ describe("P2 iki aşamalı kalıcı pilot (ağsız)", () => {
       if (variant === "case") review.value.cases[0].caseId = "case-ffffffffffff";
       await expect(runPersonaPilot({ ...f.options, review })).rejects.toThrow(/PILOT_PERSONA_/u);
       expect(f.journal().reviews).toHaveLength(0);
+      expect(f.journal().terminalReason).toBeUndefined();
+      const startedAt = f.journal().startedAt;
+      f.advance(60000);
+      await runPersonaPilot({ ...f.options, review: f.review("development") });
+      expect(f.journal().startedAt).toBe(startedAt);
+      expect(f.journal().reviews).toHaveLength(1);
       expect(f.provider.invoke).toHaveBeenCalledTimes(12);
     }
   });
@@ -508,5 +523,83 @@ describe("P2 hakem bulgularının karşı örnekleri", () => {
     ).rejects.toThrow("synthetic IO unavailable");
     expect(f.journal().terminalReason).toBe("PILOT_FATAL_ERROR");
     await expect(runPersonaPilot(f.options)).rejects.toThrow("PILOT_FATAL_ERROR");
+  });
+});
+
+describe("P2 son inceleme düzeltmeleri", () => {
+  it("yalnız alıntı sırası değişince anlaşmazlık üretmez; aynı inceleme tekrar yazılmaz", async () => {
+    const f = fixture();
+    await runPersonaPilot(f.options);
+    const review = f.review("development");
+    for (const item of review.value.cases) item.evidence.reverse();
+    expect(await runPersonaPilot({ ...f.options, review })).toMatchObject({
+      development: { changedCaseIds: [], gateEligible: true },
+    });
+    await expect(runPersonaPilot({ ...f.options, review })).rejects.toThrow(
+      "PILOT_PERSONA_REVIEW_ALREADY_RECORDED",
+    );
+    expect(f.journal().terminalReason).toBeUndefined();
+    expect(f.journal().reviews).toHaveLength(1);
+  });
+  it("operatör altı vakayı yükseltse bile okuyucunun reddinden saklı sete geçmez", async () => {
+    const f = fixture(),
+      reader = f.reader.invoke.getMockImplementation()!;
+    f.reader.invoke.mockImplementationOnce(async (...args) => {
+      const result = await reader(...args),
+        report = JSON.parse(result.report);
+      for (const item of report.cases) item.winnerSlot = "TIE";
+      return { ...result, report: JSON.stringify(report) };
+    });
+    await runPersonaPilot(f.options);
+    const review = f.review("development");
+    review.value.readerDisagreement =
+      "Operatör farklı yorumladı; bağımsız uyuşmazlık devam ediyor.";
+    for (const item of review.value.cases)
+      item.winnerSlot = f.prepared.pairs.find((pair) => pair.caseId === item.caseId)!.newSlot;
+    await runPersonaPilot({ ...f.options, review });
+    const result = await runPersonaPilot(f.options);
+    expect(result).toMatchObject({
+      status: "READER_DISAGREEMENT",
+      runtimeCalls: 12,
+      development: {
+        status: "THRESHOLD_MET",
+        gateEligible: false,
+        readerAssessment: { status: "THRESHOLD_NOT_MET" },
+      },
+    });
+    expect(result.development?.changedCaseIds).toHaveLength(6);
+    expect(f.provider.invoke).toHaveBeenCalledTimes(12);
+  });
+  it("bozuk inceleme şekli düzeltilebilir fakat son tarih uzamaz", async () => {
+    const f = fixture();
+    await runPersonaPilot(f.options);
+    await expect(
+      runPersonaPilot({ ...f.options, review: { phase: "development", value: {} } }),
+    ).rejects.toThrow("PILOT_PERSONA_REVIEW_INVALID");
+    expect(f.journal().terminalReason).toBeUndefined();
+    f.advance(90 * 60000);
+    expect(await runPersonaPilot({ ...f.options, review: f.review("development") })).toMatchObject({
+      status: "INCOMPLETE",
+    });
+    expect(f.journal().reviews).toHaveLength(0);
+  });
+  it("okuyucuya gönderilen baytlar hash bağlı packet dosyasıyla aynıdır", async () => {
+    const f = fixture();
+    await runPersonaPilot(f.options);
+    expect(f.reader.invoke.mock.calls[0]![0]).toBe(
+      readPrivate(path.join(f.directory, "development-packet.json")),
+    );
+  });
+  it("her donmuş girdi denetiminin süresi aynı saatte sayılır", async () => {
+    const f = fixture();
+    const result = await runPersonaPilot({
+      ...f.options,
+      prepare: () => {
+        f.advance(1000);
+        return f.prepared;
+      },
+    });
+    expect(result.runtimeCalls).toBe(12);
+    expect(result.manualReviewRemainingMs).toBeLessThanOrEqual(90 * 60000 - 12000);
   });
 });

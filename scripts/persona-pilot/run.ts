@@ -83,6 +83,19 @@ function providerFailure(error: unknown) {
   return "PILOT_UNEXPECTED_PROVIDER_ERROR";
 }
 
+// Yalnız model çağırmayan operatör formu hataları düzeltilebilir. Kayıt/IO/kaynak
+// sapması ve tarih/süre hataları bu sınıfa girmez; eski incelemeler yeniden yazılmaz.
+class ReviewValidationError extends Error {}
+const operatorReviewErrors = new Set([
+  "PILOT_PERSONA_REVIEW_BINDING_CHANGED",
+  "PILOT_PERSONA_REVIEW_SET_INVALID",
+  "PILOT_PERSONA_QUOTE_NOT_FOUND",
+  "PILOT_PERSONA_COMPARISON_EVIDENCE_REQUIRED",
+  "PILOT_PERSONA_REVIEW_DISAGREEMENT_REQUIRED",
+  "PILOT_PERSONA_INCOMPLETE_PAIR",
+  "PILOT_PERSONA_READER_REQUIRED",
+]);
+
 /** Tek pilot kimliği, tek saat; normal karar üretir, yayın/DB/control-plane kurmaz.
  * Bilerek otomatik teknik retry yok: 24 ilk kolun tamamı bütçeyi kullanır. */
 export async function runPersonaPilot(options: {
@@ -224,7 +237,7 @@ export async function runPersonaPilot(options: {
     }
     if (
       journal.attempts.some((item) => item.phase === "holdout") &&
-      reviews.get("development")?.status !== "THRESHOLD_MET"
+      !reviews.get("development")?.gateEligible
     )
       throw new Error("PILOT_PERSONA_HOLDOUT_GATE_CLOSED");
     const summary = (status: string) => {
@@ -243,21 +256,46 @@ export async function runPersonaPilot(options: {
             : new Date(journal.startedAt + PILOT_DURATION_MS).toISOString(),
       };
     };
-    // Süresinde kapanmış iki incelemenin sonucu daha sonra okununca kaybolmaz.
-    if (!options.review && reviews.has("holdout"))
+    // Süresinde kapanmış olumlu/olumsuz sonucun sonradan okunması veya yanlış
+    // inceleme komutuyla yeniden sunulması kayıtlı sonucu geçersiz kılmaz.
+    const development = reviews.get("development"),
+      holdout = reviews.get("holdout");
+    const concluded =
+      holdout ?? (development && !development.gateEligible ? development : undefined);
+    if (concluded) {
+      if (options.review) throw new ReviewValidationError("PILOT_PERSONA_PHASE_CLOSED");
       return summary(
-        reviews.get("holdout")!.status === "THRESHOLD_MET"
+        concluded.gateEligible
           ? "BOTH_THRESHOLDS_MET_NOT_BEHAVIOR_PASS"
-          : reviews.get("holdout")!.status,
+          : concluded.status === "THRESHOLD_MET"
+            ? "READER_DISAGREEMENT"
+            : concluded.status,
       );
+    }
     if (remaining() <= 0) {
       journal.terminalReason = "PILOT_TIME_EXHAUSTED";
       return summary("INCOMPLETE");
     }
     if (options.review) {
-      if (reviews.has(options.review.phase))
-        throw new Error("PILOT_PERSONA_REVIEW_ALREADY_RECORDED");
-      const result = evaluateReview(options.review.phase, options.review.value);
+      let result: ReturnType<typeof evaluatePersonaReview>;
+      try {
+        if (reviews.has(options.review.phase))
+          throw new ReviewValidationError("PILOT_PERSONA_REVIEW_ALREADY_RECORDED");
+        result = evaluateReview(options.review.phase, options.review.value);
+      } catch (error) {
+        if (
+          error instanceof ReviewValidationError ||
+          error instanceof z.ZodError ||
+          (error instanceof Error && operatorReviewErrors.has(error.message))
+        ) {
+          if (remaining() <= 0) throw new Error("PILOT_TIME_EXHAUSTED");
+          save();
+          throw new ReviewValidationError(
+            error instanceof z.ZodError ? "PILOT_PERSONA_REVIEW_INVALID" : (error as Error).message,
+          );
+        }
+        throw error;
+      }
       assertFrozen();
       if (remaining() <= 0) throw new Error("PILOT_TIME_EXHAUSTED");
       const file = path.join(options.directory, `${options.review.phase}-review.json`);
@@ -273,8 +311,6 @@ export async function runPersonaPilot(options: {
       // İnceleme komutu kendiliğinden bir sonraki model aşamasını başlatmaz.
       return summary("REVIEW_RECORDED_NOT_BEHAVIOR_PASS");
     }
-    const development = reviews.get("development");
-    if (development && development.status !== "THRESHOLD_MET") return summary(development.status);
     const phase: PersonaPhase = development ? "holdout" : "development";
     const runtimeCalls = journal.attempts.filter((item) => item.kind === "DECISION").length;
     if (
@@ -307,10 +343,12 @@ export async function runPersonaPilot(options: {
       assertFrozen();
       if (journal.startedAt === null && now() + PILOT_DURATION_MS > AUTHORITY_END)
         throw new Error("PILOT_START_WINDOW_TOO_SHORT");
-      // İlk aşamada iki okuma + iki kaynak kontrolü için toplam 30 dakika korunur.
+      // İlk aşamada 2×15 dakika okuma/kontrol + 12×1 dakika saklı karar dilimi.
       const reserveMs =
         kind === "DECISION"
-          ? READER_RESERVE_MS * (phase === "development" ? 2 : 1)
+          ? phase === "development"
+            ? 2 * READER_RESERVE_MS + 12 * MIN_CALL_MS
+            : READER_RESERVE_MS
           : MANUAL_REVIEW_RESERVE_MS;
       const available = remaining() - reserveMs;
       if (
@@ -403,14 +441,12 @@ export async function runPersonaPilot(options: {
         "PILOT_PERSONA_READER_PACKET_CHANGED",
       );
     else atomicPrivateJson(packetFile, { cases: packet });
-    const reservation = reserve("READER", `${phase}-reader`, hash(readPrivate(packetFile)));
+    const packetBytes = readPrivate(packetFile);
+    const reservation = reserve("READER", `${phase}-reader`, hash(packetBytes));
     if (reservation) {
       let report: Awaited<ReturnType<PilotReader["invoke"]>> | null = null;
       try {
-        report = await options.reader.invoke(
-          JSON.stringify({ cases: packet }),
-          reservation.timeoutMs,
-        );
+        report = await options.reader.invoke(packetBytes, reservation.timeoutMs);
         if (
           report.model !== "claude-opus-5" ||
           report.observedModels.length !== 1 ||
@@ -434,7 +470,12 @@ export async function runPersonaPilot(options: {
       reservation?.attempt.status === "VALID_OUTPUT" ? "AWAITING_SOURCE_REVIEW" : "INCOMPLETE",
     );
   } catch (error) {
-    if (state && (existsSync(stateFile) || state.attempts.length) && !state.terminalReason) {
+    if (
+      !(error instanceof ReviewValidationError) &&
+      state &&
+      (existsSync(stateFile) || state.attempts.length) &&
+      !state.terminalReason
+    ) {
       state.terminalReason = safePilotCode(error, "PILOT_FATAL_ERROR");
       atomicPrivateJson(stateFile, state);
     }

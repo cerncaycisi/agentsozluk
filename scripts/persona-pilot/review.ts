@@ -79,8 +79,15 @@ export function evaluatePersonaReview(
     throw new Error("PILOT_PERSONA_REVIEW_BINDING_CHANGED");
   const report = validatePersonaReport(options.report, options.packet);
   const verified = validatePersonaReport({ cases: review.cases }, options.packet);
+  const normalizedCase = (item: (typeof report.cases)[number]) => ({
+    ...item,
+    evidence: [...item.evidence].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+    violations: [...item.violations].sort((a, b) =>
+      JSON.stringify(a).localeCompare(JSON.stringify(b)),
+    ),
+  });
   const normalized = (cases: typeof report.cases) =>
-    [...cases].sort((a, b) => a.caseId.localeCompare(b.caseId));
+    cases.map(normalizedCase).sort((a, b) => a.caseId.localeCompare(b.caseId));
   if (
     JSON.stringify(normalized(verified.cases)) !== JSON.stringify(normalized(report.cases)) &&
     !review.readerDisagreement
@@ -102,8 +109,11 @@ export function evaluatePersonaReview(
       }),
     );
   const reader = tally(report.cases);
+  const verifiedResult = tally(verified.cases);
   return {
-    ...tally(verified.cases),
+    ...verifiedResult,
+    // Operatör, kör okuyucunun elemesini tek başına olumluya çeviremez.
+    gateEligible: verifiedResult.status === "THRESHOLD_MET" && reader.status === "THRESHOLD_MET",
     // Ham okuyucu kanaati ayrı etiketli; kaynak doğrulaması yapılmış hüküm değildir.
     readerAssessment: {
       status: reader.status === "VERIFIED_NEW_VIOLATION" ? "REPORTED_NEW_VIOLATION" : reader.status,
@@ -115,8 +125,10 @@ export function evaluatePersonaReview(
     changedCaseIds: verified.cases
       .filter(
         (item) =>
-          JSON.stringify(item) !==
-          JSON.stringify(report.cases.find((source) => source.caseId === item.caseId)),
+          JSON.stringify(normalizedCase(item)) !==
+          JSON.stringify(
+            normalizedCase(report.cases.find((source) => source.caseId === item.caseId)!),
+          ),
       )
       .map((item) => item.caseId),
   };

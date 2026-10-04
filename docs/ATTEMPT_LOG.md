@@ -4469,3 +4469,15 @@ sentetik64 dakika iki-set koşusuyla çürütüldü; bu gerçek latency ölçüm
 `PILOT_DATE_GATE_CLOSED` verdi. İkinci inceleme/final CI açık, gerçek pilot0. Tekrarlama:
 zaman tavanını ölçülmüş süre sayma; okuyucu kanaatini doğrulanmış ihlal diye etiketleme;
 şekil/alıntı kontrolünü operatörün kaynak denetimi yerine koyma.
+
+## 4 Ekim 2026 — P2 form kurtarması ve ikinci hakem uzlaştırması
+
+Opus 5 exact `d98f2ab94355eed953ee0706ca11eb29d4e23dd5` DÜZELTİLMELİ. Form doğrulama
+hatasının belirsiz IO ile aynı terminal sınıfa konması somut kullanılabilirlik hatasıydı;
+bilinen salt form hatası ayrıldı. Yanlış alıntı/case/bağ düzeltmesi aynı saat/12 çağrıyla
+kabul edilir; geçmiş kayıt/IO/kaynak/tarih sapması terminal kalır. İlk evre rezervi42 dakika,
+tek taraflı pozitif override kapısı ve exact packet/stdin bayt eşliği eklendi. Son101 ağsız
+test PASS. İlk exact CI37225298842 7/7; ikinci/final CI ve bağımsız kapanış açık.
+Tekrarlama: model çağrısı belirsizliğiyle yalnız yerel form yazım hatasını bir tutma;
+operator öz beyanından kör okuyucunun reddini tek başına yükseltme; hash kontrolü süresini
+model invoke sayısıyla karıştırma. Gerçek pilot0, üretim erişimi/mutasyonu0.
