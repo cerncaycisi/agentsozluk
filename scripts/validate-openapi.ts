@@ -88,6 +88,7 @@ export interface OpenApiDocument {
 }
 
 const publicOperations = new Set([
+  "GET /api/v1/uktes",
   "GET /api/health",
   "GET /api/ready",
   "POST /api/v1/auth/register",
@@ -128,6 +129,8 @@ const internalRuntimeOperations = new Set([
 ]);
 
 const expectedQueryParameters: Record<string, string[]> = {
+  "GET /api/v1/uktes": ["before"],
+  "GET /api/v1/admin/uktes": ["before", "status"],
   "GET /api/v1/internal/agent-runtime/runs/{runId}/context": ["readTopicIds"],
   "GET /api/v1/me/bookmarks": ["page", "pageSize"],
   "GET /api/v1/me/follows": ["page", "pageSize"],
@@ -201,6 +204,9 @@ const expectedQueryParameters: Record<string, string[]> = {
 };
 
 const expectedRequestBodies: Record<string, string> = {
+  "POST /api/v1/uktes": "UkteCreate",
+  "POST /api/v1/uktes/{ukteId}/withdraw": "UkteWithdraw",
+  "POST /api/v1/admin/uktes/{ukteId}/visibility": "UkteVisibility",
   "POST /api/v1/auth/register": "Registration",
   "POST /api/v1/auth/login": "Login",
   "PATCH /api/v1/me": "ProfileUpdate",
@@ -297,6 +303,9 @@ const expectedRequestBodies: Record<string, string> = {
 };
 
 const idempotentOperations = new Set([
+  "POST /api/v1/uktes",
+  "POST /api/v1/uktes/{ukteId}/withdraw",
+  "POST /api/v1/admin/uktes/{ukteId}/visibility",
   "POST /api/v1/topics",
   "POST /api/v1/topics/{topicId}/entries",
   "POST /api/v1/reports",

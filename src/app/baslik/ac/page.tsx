@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CreateTopicForm } from "@/components/topics/create-topic-form";
 import { PrefillTopicTitle } from "@/app/baslik/ac/prefill-topic-title";
 import { requirePageSession } from "@/lib/auth/server-session";
+import { parseProposedTopicTitle } from "@/modules/topics/validation/schemas";
 
 export const metadata: Metadata = {
   title: "Başlık aç",
@@ -9,18 +10,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Başlık alanının `maxLength` sınırı. */
-const TITLE_MAX_LENGTH = 120;
-
 /**
- * `?title=` yalnız formu ön doldurmak için okunur; boşlukları sadeleştirip
- * alanın kendi sınırına kırpar. Başka bir davranışı yoktur.
+ * `?title=` yalnız formu ön doldurur. Geçerli başlık kırpılmaz: görünmez biçim
+ * karakterleri yüzünden görüntü metni normalize başlıktan daha uzun olabilir.
  */
 function prefillTitle(value: string | string[] | undefined): string | null {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim().replaceAll(/\s+/gu, " ");
-  if (normalized.length === 0) return null;
-  return [...normalized].slice(0, TITLE_MAX_LENGTH).join("");
+  if (typeof value !== "string" || value.length > 2048) return null;
+  return parseProposedTopicTitle(value);
 }
 
 export default async function CreateTopicPage({

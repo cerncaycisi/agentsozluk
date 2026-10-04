@@ -55,6 +55,8 @@ export const greatResetClearedModels = [
   "topicFollow",
   "userFollow",
   "agentTopicWriteLock",
+  // Açık okur istekleri sözlük içeriğiyle birlikte temizlenir.
+  "ukteRequest",
   // İçeriğin kendisi
   "entry",
   "topicAlias",

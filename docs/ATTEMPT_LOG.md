@@ -3572,3 +3572,56 @@ false/true` yapabildi; geçici rol ve DB silindi.
   geri çekilme doğrudan doğrulandı. B3 audit indeksinin üretim süre/boyut kapısı açık.
 - Tekrarlama: uygulanmış migration’ı yerel olduğu için yeniden yazma; CREATE INDEX’in
   SHARE kilidini ACCESS EXCLUSIVE diye kaydetme; istemci testi adresini localhost’a sabitleme.
+
+## 2026-10-04 — P8b #305 kapanışı, P6 ukte başlangıcı
+
+- Exact `ba14054078f73f3adf682854e3f992dc21f252b4`, gerçek Opus 5 KOD GO; CI
+  `37173025197` 7/7. Taze merge kapılarından sonra main
+  `1e265f4ab3ee7e700c80d4d5c7ca0907a982051f`; uzak SHA ve final head ağaç eşitliği doğrulandı.
+- B1′ rollout başarı yanıtı iddiası kaynakla elendi: HTTP 409 → istemci exception → worker
+  hata beklemesi. SETTINGS_CHANGED için sonraki tick’te yeniden deneme sınırlaması makbuza yazıldı.
+- P8b eski, uygulanmış stash `ec4d328f6b9644b92c30c47a2653bfbcf3631052` doğrulanıp silindi;
+  ilişkisiz P3b stash’i korundu. Üretim erişimi yapılmadı.
+- P6 bu main tabanında başladı. Hakkında/kök açıklaması zaten uygulanmış; ukte ayrı HUMAN isteği
+  olarak hazırlanıyor. Boş bkz yeni kayıt veya otomatik görev yaratmaz.
+- Tekrarlama: servis dönüşünü HTTP sarmalayıcıdan bağımsız başarı yanıtı sanma; yapılmış tanıtım
+  yüzeyini yalnız eski kuyrukta açık yazıyor diye baştan geliştirme.
+
+## 2026-10-04 — P6 ukte yerel doğrulama ve tarayıcı ortamı
+
+- Main `1e265f4ab3ee7e700c80d4d5c7ca0907a982051f` tabanı, yalnız yerel PG16 test DB.
+  `20261004033000_ukte_requests` uygulandı; ilk 16 PG16, 17 birim/sınıflandırma ve
+  OpenAPI 152 işlem geçti. İlk typecheck geçti; son dosyaların tam kontrolü henüz açık.
+- T3 preview status/open: `No preview automation host is available`. İki açık unavailable
+  sonucu ardından yerel Chromium fallback’i denendi. `libatk-1.0.so.0` yükleme hatası,
+  eksik 19 Debian kütüphanesi ayrı `/home/agent/.cache/ukte-browser-libs` içine açılarak giderildi;
+  `ldd` artık eksik bağımlılık göstermedi. Sistem paket kurulumu/üretim bağlantısı yok.
+- Sonraki `Target page, context or browser has been closed` debug log’da
+  `SkFontMgr_FontConfigInterface.cpp:163 Not implemented` ve SIGTRAP olarak ayrıştırıldı.
+  Görünen cgroup OOM sayacı 0; OOM veya ürün hatası varsayılmadı. Ayrı fontconfig/font
+  paketiyle odaklı tekrar sürüyor. İlk anonim screenshot/HTTP 200, tüm akış kanıtı sayılmadı.
+- Tekrarlama: T3 host açıkça kullanılamaz demeden başka tarayıcıya geçme; paylaşılan sistem
+  kurulumunu değiştirmek yerine yerel test bağımlılıklarını ayrı tut; tarayıcı SIGTRAP’ını
+  uygulama başarısızlığı diye sınıflandırma.
+
+### 4 Ekim 2026 — P6 yerel tarayıcı ortamı ve tam ukte akışı
+
+- Ortam: `1e265f4ab3ee7e700c80d4d5c7ca0907a982051f` tabanındaki ukte çalışma ağacı, Node 22, yalnız loopback ve `agentsozluk_local_integration_test` PG16. Üretime bağlantı yok.
+- T3 `preview_status`/`preview_open` automation host unavailable bildirdi. Fallback Chromium ilkinde `libatk-1.0.so.0`, sonrasında `SkFontMgr_FontConfigInterface.cpp:163 Not implemented` / SIGTRAP verdi; cgroup OOM sayacı sıfır. Bunlar ürün regresyonu değildir.
+- Doğrulanmış çözüm: Debian bağımlılıklarını ayrı kullanıcı cache köküne açıp `LD_LIBRARY_PATH` ve yalnız bu koşuya özel `FONTCONFIG_FILE` ile çalıştırmak. Sistem kurulumu/değişikliği yok.
+- Sonuç: gerçek tarayıcı oluşturma/mükerrer/geri çekme/admin gizle-geri aç akışı PASS; masaüstü/mobil görseller incelendi, page error yok. Özel kanıt dizini `p6-ukte-20261004`, son log `preview-check-4.log`. Kendi geçici Next dev süreci kapatıldı.
+- Tekrarlama: eksik paylaşımlı kütüphane/fontu uygulama hatası sayma; mevcut kullanıcı cache ortamını kullan, çalışan kullanıcı süreçlerine dokunma.
+
+### 4 Ekim 2026 — P6 #306 ilk CI ve Opus düzeltmeleri
+
+- Exact `3b7fa8f0882ceeda22beb0ed1039b57bb17c2151`, CI `37175446882`: behavior 2020 PASS/3 FAIL. Güvenli hatalar: module inventory assertion, `ENOENT .../uktes/domain`, rate-limit exact map assertion. Yeni modülün domain/public katmanı ve envanter güncellemesi eksikti; gerçek saf domain + public exports eklendi, yeni iki limit beklentisi açıkça yazıldı.
+- Gerçek `claude-opus-5` KOŞULLU GO: kanonik ukteyle gizleme aşımı ve Latin dışı fallback slug eşleşmesi kaynakla doğrulandı. Eşleme/tekilleştirme kanonik anahtarlara taşındı; boş eşleme slug'ı desteklendi. Public DTO CAS sürümü kaldırıldı; bilinmeyen sayfa query alanları yok sayıldı.
+- Hakemin `/baslik/ac?title` şüphesi eksik kaynak kaynaklıydı: gerçek rota parametreyi okuyor, mevcut prefill testleri var. Reserved rota adlarında önerdiği alternatif daha az güvenli; mevcut açık query yolu korundu.
+- Tekrarlama: yeni modül eklerken mimari envanter/domain/public katmanı ve rate-limit exact sözleşmesini ilgili testlere dahil et. Eksik kaynak şüphesini kaynak göstererek çöz, çalışır yolu körlemesine değiştirme. Yeni exact kontrol sonuçları ayrı makbuzlanır.
+
+### 4 Ekim 2026 — P6 ikinci hakem koşullarının yerel kapanışı
+
+- Gerçek `claude-opus-5`, `d5320c96dccc28522a0b1ec16a219f16bc1ce7db`: KOŞULLU GO. `withdraw` kilidi kanonik tekilleştirme kümesinden dardı; `targetKeys` ile eşitlendi. Gerçek PG16 bloklanma/farklı varyant oluşturma yarışı yeni açık isteği doğruladı. Boş slug'da iki ayrı OPEN kayıt da geçti; migration'da slug unique/non-empty kuralı yoktur.
+- Uzun geçerli görüntü başlığının `/baslik/ac?title` yolunda kırpılması RSC testiyle kapatıldı; 2048 girdi sınırı ve ortak normalizasyon kullanıldı. NFKC genişlemesi VARCHAR(400) sınırına tekrar bağlandı.
+- Son yerel sonuç 20 PG16 + 16 birim/RSC = 36/36. İlk turdaki eksik kaynak şüphesi rota dosyasıyla kapanmıştı; bu turda yeni izin kapısı veya uygulama eşiği gevşetilmedi. Son exact CI/birleştirme ayrı makbuzdur.
+- Tekrarlama: eşleme anahtarını genişletirken create, restore ve withdraw kilit kapsamını birlikte kontrol et; yalnız normalize uzunluğa bakıp görüntü metnini başka hedefe kırpma.

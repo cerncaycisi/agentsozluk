@@ -5,8 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrefillTopicTitle } from "@/app/baslik/ac/prefill-topic-title";
 import { CreateTopicForm } from "@/components/topics/create-topic-form";
+import CreateTopicPage from "@/app/baslik/ac/page";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+vi.mock("@/lib/auth/server-session", () => ({
+  requirePageSession: async () => ({ user: { status: "ACTIVE", writerApproved: true } }),
+}));
 
 function renderCreatePage(title: string | null) {
   return render(
@@ -64,5 +68,11 @@ describe("/baslik/ac?title= prefill", () => {
     await user.type(titleInput(), " yolları");
 
     expect(titleInput()).toHaveValue("bisiklet yolları");
+  });
+
+  it("preserves a valid ukte display title through the actual server page without truncating its target", async () => {
+    const title = `a${"\u200b".repeat(130)}b`;
+    render(await CreateTopicPage({ searchParams: Promise.resolve({ title }) }));
+    expect(titleInput()).toHaveValue(title);
   });
 });

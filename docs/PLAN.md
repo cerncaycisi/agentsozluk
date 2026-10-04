@@ -37,11 +37,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   17 birim, son CI 7/7); Opus mekanik koşulları kapandı. Doğal fayda pilotu açık.
   [P5 makbuzu](P5_IKI_EVRIM_DONGUSU_2026-10-04.md). P8 politika/iki bağımsız taslak #304 ile `1f0534d` ana dalında; Opus KOD GO/CI 7/7,
   47 ilgili birim ve mevcut 36 kişilik P0 kesitinde 72 ebeveyn varyantı geçti. Özel aday defteri
-  ve ayrı otomatik tarama yerelde uygulanıyor: Opus koşulları sonrası 40 PG16 ve ayrı 2 PG16/60 birim geçti; son CI açık.
+  ve ayrı otomatik tarama #305 ile `1e265f4` ana dalında: Opus 5 KOD GO, son CI 7/7;
+  40 PG16 ve ayrı 2 PG16/60 birim geçti.
   Gerçek hesap/doğum aktivasyonu ve kaynak hazırlığı açık. [P8 sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
   P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
   boşluklarda: açılmamış görünür bkz #299 ile `c72a089` ana dalında, Opus KOD GO/CI 7/7;
-  ukte ve tanıtım işleri açık. P7 yedi günlük kabul özellik paketinden sonra yürür.
+  tanıtım/kök açıklaması mevcut kodda doğrulandı; yeniden yazılmıyor. İnsan ukte bırakma/
+  geri çekme, admin gizleme/geri açma ve güvenli liste yerelde tamam: 125 ilgili test ve
+  gerçek masaüstü/mobil tarayıcı akışı geçti. Opus/exact CI kapıları sırada. P7 yedi günlük kabul özellik paketinden sonra yürür.
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim
@@ -120,6 +123,13 @@ bu kapıyı ertelemez. Algı allowlist'i → profile hash → capability fingerp
 `effectiveConcurrency` zinciri ve eski worker uyumluluğu bu pakette doğrulanır. P8 audit lookup
 indeksi için genel yazma dondurması, tablo satır/boyut makbuzu ve restore kopyasında süre
 doğrulaması da dağıtım kapısıdır; yalnız ajan pause’u yeterli değildir.
+
+**P8 dağıtım kapısı:** audit lookup indeksinde genel yazma dondurması, tablo boyutu ve
+restore kopyasında süre makbuzu şarttır; P2 ile aynı paket olmasa da bu kapı korunur. 4 Ekim yerel envanterinde `9bf3653` checkout'u ile aday arasında
+sekiz migration var; canlı applied set henüz yeniden okunmadı. Mevcut dar additive denetçi
+yedisini bilinçli reddediyor (partial indeks/RESTRICT FK/ALTER/trigger vb.). Üretimden önce
+exact migration kümesine özel, bağımsız incelenmiş geçiş/restore/geri dönüş provası gerekir;
+mevcut denetçinin kapısı kaldırılmaz. Bu hazırlık P1 dağıtımının açık teknik bağımlılığıdır.
 
 **P6 kapsamı:** `/hakkinda` ve kök sayfada açık proje tanımı, örnek çeşitliliği, marka/ton;
 uygun yapılandırılmış veri; ardından görünür/gizli boş bkz'nin tutarlı gezinmesi. Ukte insanın

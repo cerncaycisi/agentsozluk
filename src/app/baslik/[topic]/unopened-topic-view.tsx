@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UkteCreateForm } from "@/components/uktes/ukte-create-form";
 import { CreateTopicForm } from "@/components/topics/create-topic-form";
 import { TopicCanonicalSuggestions } from "@/components/topics/topic-canonical-suggestions";
 import { currentPageSession } from "@/lib/auth/server-session";
@@ -46,6 +47,11 @@ export async function UnopenedTopicView({ title }: { title: string }) {
           Askıya alınmış hesapla içerik oluşturamazsınız.
         </p>
       )}
+      {canWrite && session?.user.kind === "HUMAN" ? (
+        <div className="mt-6">
+          <UkteCreateForm fixedTitle={title} />
+        </div>
+      ) : null}
       {/* Composer varsa liste zaten formun içinde; iki kez göstermek yerine
           yalnız yazamayan ziyaretçiye gösteriliyor. Aramanın çıkmaz olmaması
           girişli kullanıcıya özel bir şey değil. */}

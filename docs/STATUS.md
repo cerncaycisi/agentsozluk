@@ -3800,3 +3800,23 @@ sonrası 8/8 amaç, 119 birim, 7 reset ve 1 admin erişim testi geçti. Üretim 
 - İlk CI quality OpenAPI eşlemesinde, database/coverage HTTP fixture Origin farkında kaldı.
   OpenAPI 147 işlemle ve odaklı PG16 CI Origin ayarıyla geçti; taze tam CI henüz açık.
 - Canlı dağıtım, doğal doğum veya 41 gerçek yazarlı süre benchmark’ı yapılmadı.
+
+### 4 Ekim — P8b #305 ana dal kapanışı
+
+Exact `ba14054078f73f3adf682854e3f992dc21f252b4`, Opus 5 KOD GO ve CI `37173025197`
+7/7; main `1e265f4ab3ee7e700c80d4d5c7ca0907a982051f`. Uzak SHA/ağaç eşitliği doğrulandı.
+Özel aday defteri/otomatik tarama kodu tamam; canlı aday, kaynak hazırlığı ve aktivasyon açık.
+`/hakkinda` ile kök tanıtımının mevcut uygulaması kaynakta doğrulandı; yeni çalışma ukte akışıdır.
+
+## 4 Ekim 2026 — P6 ukte yerel doğrulama
+
+`1e265f4` tabanında ayrı insan isteği, tekilleştirme, sahip geri çekmesi, HUMAN ADMIN
+gizleme/geri açma ve güvenli kamu listesi uygulandı. 92 PG16 + 33 birim **125/125**, tam
+format/lint/typecheck/gereksinimler ve OpenAPI 152 işlem geçti. Gerçek yerel tarayıcıda
+oluşturma/mükerrer/geri çekme/gizle-geri aç ve masaüstü/mobil görünüm PASS. Bu kayıt canlı
+dağıtım veya Opus/CI kabulü değildir; A′/v46 üretim davranışı değişmedi.
+
+P6 takip: Opus 5 iki turda KOŞULLU GO verdi (`3b7fa8f`, `d5320c9`); kanonik gizleme/
+tekilleştirme, slug, kamu sürümü ve geri çekme kilidi koşulları kaynakla doğrulanıp kapatıldı.
+Son 20 PG16 + 16 birim/RSC **36/36**, önceki düzeltme 67/67. Başlık ön doldurma artık
+geçerli hedefi kırpmaz. Son CI/birleştirme ve canlı dağıtım bu yerel sonuca dahil değildir.

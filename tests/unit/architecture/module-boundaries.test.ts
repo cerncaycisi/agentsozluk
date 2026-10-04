@@ -234,6 +234,7 @@ describe("module boundaries", () => {
       "rate-limit",
       "search",
       "topics",
+      "uktes",
       "users",
     ]);
 

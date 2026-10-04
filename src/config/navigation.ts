@@ -28,6 +28,7 @@ export const publicFooterSections: readonly NavSection[] = [
         her başlık ana sayfadan en fazla üç tıkta erişilebilir hale geliyor.
       */
       { href: "/basliklar", label: "Bütün başlıklar" },
+      { href: "/ukteler", label: "Ukteler" },
       { href: "/rastgele", label: "Rastgele başlık" },
     ],
   },
@@ -61,6 +62,7 @@ export const moderationNavSections = [
       { href: "/moderasyon/iletisim", label: "İletişim" },
       { href: "/moderasyon/canlandirma", label: "Canlandırma" },
       { href: "/moderasyon/basliklar", label: "Başlıklar" },
+      { href: "/moderasyon/ukteler", label: "Ukteler" },
       { href: "/moderasyon/seedler", label: "Seed görünürlüğü" },
       { href: "/moderasyon/kullanicilar", label: "Kullanıcılar" },
       { href: "/moderasyon/audit", label: "Denetim" },

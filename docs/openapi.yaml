@@ -347,6 +347,88 @@ paths:
           default: { $ref: "#/components/responses/Error" },
         }
 
+  /api/v1/uktes:
+    get:
+      operationId: listPublicUktes
+      tags: [Topics]
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/UkteBefore" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createUkte
+      tags: [Topics]
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody: { $ref: "#/components/requestBodies/UkteCreate" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/uktes/{ukteId}/withdraw:
+    post:
+      operationId: withdrawUkte
+      tags: [Topics]
+      parameters:
+        - { $ref: "#/components/parameters/UkteId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody: { $ref: "#/components/requestBodies/UkteWithdraw" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/uktes:
+    get:
+      operationId: listAdminUktes
+      tags: [Admin]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/UkteBefore" }
+        - { $ref: "#/components/parameters/UkteStatusFilter" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/uktes/{ukteId}/visibility:
+    post:
+      operationId: setUkteVisibility
+      tags: [Admin]
+      parameters:
+        - { $ref: "#/components/parameters/UkteId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody: { $ref: "#/components/requestBodies/UkteVisibility" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/topics:
     get:
       operationId: listTopics
@@ -2532,6 +2614,20 @@ components:
         schema: { type: string, format: date-time },
         description: Inclusive creation timestamp upper bound.,
       }
+    UkteBefore:
+      name: before
+      in: query
+      description: Önceki sayfanın son ukte kimliği.
+      schema: { type: string, format: uuid }
+    UkteId:
+      name: ukteId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    UkteStatusFilter:
+      name: status
+      in: query
+      schema: { type: string, enum: [OPEN, HIDDEN], default: OPEN }
     IdempotencyKey:
       {
         name: Idempotency-Key,
@@ -2891,6 +2987,26 @@ components:
       properties:
         currentPassword: { type: string, maxLength: 128 }
         usernameConfirmation: { type: string }
+    UkteCreateInput:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 400
+          description: Gösterim sadeleştirilir; normalize başlık 2–100 karakter olmalı, kontrol ve bozuk surrogate içeremez.
+    UkteWithdrawInput:
+      type: object
+      additionalProperties: false
+    UkteVisibilityInput:
+      type: object
+      additionalProperties: false
+      required: [hidden, expectedVersion, reason]
+      properties:
+        hidden: { type: boolean }
+        expectedVersion: { type: integer, minimum: 1 }
+        reason: { type: string, minLength: 5, maxLength: 500 }
     TopicCreateInput:
       type: object
       additionalProperties: false
@@ -4089,6 +4205,21 @@ components:
         content:
           { application/json: { schema: { $ref: "#/components/schemas/DeactivationInput" } } },
       }
+    UkteCreate:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/UkteCreateInput" }
+    UkteWithdraw:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/UkteWithdrawInput" }
+    UkteVisibility:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/UkteVisibilityInput" }
     TopicCreate:
       {
         required: true,
