@@ -33,9 +33,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   Kalite kanalı/özel `authorFeedback` #302 ile `db28695` ana dalında; Opus 5 KOD GO,
   CI 7/7, son 29 PG16 ve 147 ilgili birim testi geçti. P4'te kalan iş kısa gölge/pilot ve
   canlı kabul. [P4b makbuzu](P4_KALITE_VE_YAZAR_GERI_BILDIRIMI_2026-10-04.md).
-  P5 iki çevrim→sonraki uyanış/karar istemi yolu yerelde geçti (4 PG16, 17 birim);
-  kaynak sırası iki yönde değişti. Kod makbuzu/CI kapanıyor, doğal fayda pilotu açık.
-  [P5 makbuzu](P5_IKI_EVRIM_DONGUSU_2026-10-04.md). Sıradaki uygulama P8 yerel doğum adayıdır.
+  P5 iki çevrim→sonraki uyanış/karar istemi #303 ile `2277eb4` ana dalında (4 PG16,
+  17 birim, son CI 7/7); Opus mekanik koşulları kapandı. Doğal fayda pilotu açık.
+  [P5 makbuzu](P5_IKI_EVRIM_DONGUSU_2026-10-04.md). P8 politika/iki bağımsız taslak yerelde hazır; 19 birim ve mevcut 36 kişilik P0
+  kesitinde 72 ebeveyn varyantı geçti. DB aday defteri/otomatik tarama henüz yok; sıradaki dilim
+  budur. [P8 sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
   P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
   boşluklarda: açılmamış görünür bkz #299 ile `c72a089` ana dalında, Opus KOD GO/CI 7/7;
   ukte ve tanıtım işleri açık. P7 yedi günlük kabul özellik paketinden sonra yürür.

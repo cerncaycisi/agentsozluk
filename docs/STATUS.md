@@ -7,6 +7,15 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — P5 ana dalda; P8 politika/taslak yerel kanıtı
+
+- #303 exact `d2ac2d1`, CI `37167331459` 7/7; Opus küçük koşulları uygulandı.
+  Main `2277eb41055d19e4535f238ee75b0a1f6d2f7e3e`, uzak SHA/ağaç eşitliği doğrulandı.
+- P8 ilk 19 birim geçti. Önceden alınmış 36 kişilik P0 kesitinde iki taslağın 72 ebeveyn
+  varyantı ayrışma kapılarını geçti; otomatik aday, DB defteri veya canlı doğum yok.
+  [P8 makbuzu](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
+- Üretim erişimi/dağıtımı yok; v46/A′ değişmedi. P5 doğal etki pilotu açık.
+
 ## 2026-10-04 — P4b ana dalda, P5 iki çevrim yerelde geçti
 
 - #302 head `a571e555b4350c1d9f14417188a3486477c2942f`, Opus 5 KOD GO;
