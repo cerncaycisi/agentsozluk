@@ -276,7 +276,10 @@ Claude CLI sürümü `2.1.280` kaldırıldı; çalışan/current `2.1.288` ve ö
 hash’leri korundu. Yaklaşık 234 MB açıldı, boş alan 6.119.620.608 bayt oldu;
 5 GiB ön eşiğiyle aradaki pay yaklaşık 751 MB. 28 Eylül–4 Ekim dump boyutu
 1.182.167.798 → 1.315.865.212 bayt büyüdü; yedi kopyalı retention kapasite ihtiyacını
-ortadan kaldırmaz. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+ortadan kaldırmaz. 09:55 UTC native `zstd:3` hazırlığında 21 shell/1 gerçek PG16
+dump-restore testi geçti; yerel mevcut-yedek veri akışı 676.647.983 bayt oldu. Native
+üretim dump boyutu henüz ölçülmedi. Canlı PG16 binary codec desteği salt okunur doğrulandı;
+kurulum için Opus/exact CI açık. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
 Her build/deploy için güncel değer gerekir; üretimde <8 GiB veya ≥%90 dolulukta build yok.

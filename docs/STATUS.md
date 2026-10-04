@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — O3 native sıkıştırma yerel kanıtı
+
+- Mevcut 1.316 GB dump'ın yerel decode veri akışı zstd:3 ile 676.647.983 bayt;
+  37,92 sn, exit 0. Kaynak değişmedi. Bu native üretim dump boyutu veya restore kabulü değil.
+- 10.000 sentetik satır native zstd dump/restore sayı/özet/sequence PASS; değiştirilmiş
+  zorunlu yedek betiğinin 1.000 satırlık gerçek PG16 provası ve 21 shell testi PASS.
+- 09:55 UTC canlı `9bf3653` PG16.14 binary zstd desteği pinli salt okunur kontrol edildi;
+  DB/mutasyon yok. Kurulum, hakem, exact CI ve gerçek yeni yedek ölçümü henüz yok.
+  [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+
 ## 2026-10-04 — profil ayarı durum karşılaştırması yerelde
 
 - `c53f8c3` tabanındaki ayrı dalda O5 profil-only CAS boşluğu kapatıldı. Beş çalışma

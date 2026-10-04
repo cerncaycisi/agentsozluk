@@ -2202,7 +2202,9 @@ görüntüdendir; sequence değerleri PostgreSQL gereği anlık görüntüye ba�
 Parçalar (`deploy/backup/`):
 
 - `uretim-yedek-komutu.sh` — üretimde zorunlu komut. Yalnız okur, dosya yazmaz, istemcinin
-  istediği komutu kullanmaz.
+  istediği komutu kullanmaz. Native custom `zstd:3` adayı O3
+  [4 Ekim makbuzunda](O3_YEDEK_2026-10-04.md); kurulmadan önce exact CI/hakem ve
+  üretim/restore istemcisinin zstd desteği doğrulanır. Eski gzip dump'lar korunur.
 - `gecelik-yedek.sh` — operatör sunucusunda. İşaretler, ≥40 tablo satırı ve
   `pg_restore --list` geçmeden dosyayı kalıcı adına taşımaz; tek-çalışma kilidi, çalışma başına
   benzersiz geçici dosya, var olan kopyanın üzerine yazmama, her hata ve TERM için tek

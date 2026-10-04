@@ -3867,3 +3867,18 @@ false/true` yapabildi; geçici rol ve DB silindi.
   mevcut hassas-konum gezinme koruması `window.location.assign` seçiyordu, Next push
   mock'u çağrılmıyordu. Admin UI fixture URL'si gerçek `/moderasyon/agentlar` bağlamına
   sabitlendi; üretim gezinme koruması veya assertion kaldırılmadı.
+
+### 4 Ekim 2026 — O3 native zstd hazırlığı
+
+- `41123ca` tabanında yalnız yeni backup sıkıştırma seçeneği `--compress=zstd:3`;
+  snapshot/retention/5 GiB eşiği değişmedi. Yerel PG16.14 10.000 sentetik satır full
+  restore ve komutun kendisinin 1.000 satırlık metadata karşılaştırmalı provası geçti.
+  Son 21 shell + 1 gerçek PG16 test PASS. Prova DB'leri ad/OID doğrulanarak kaldırıldı.
+- Aynı telafi dump'ı korunarak yerel decode→zstd:3 akış sayımı 676.647.983 bayt/37,92 sn,
+  her iki süreç exit 0; çıktı diske kaydedilmedi. Native üretim dosya boyutu değildir.
+- 09:55:04 UTC host/DNS/repo/Compose pin sonrası DB'siz binary/kurulum okuması:
+  canlı `9bf3653`, PG16.14 `PG_WITH_ZSTD`; eski zorunlu script SHA-256
+  `3ebff83d9f2f3a496e592d8d0f89dbe693b13657f67f42672d32c3e1992cc302`, root:root:755.
+  Henüz kod/hakem/CI/kurulum kabulü yok; üretim uygulaması ve timer değişmedi.
+- Tekrarlama: birleştirilmiş SQL akışının sıkışma oranını native tablo-blok arşiviyle
+  eşit sayma; gzip yedekleri silerek veya alan eşiğini düşürerek kazanç yaratma.

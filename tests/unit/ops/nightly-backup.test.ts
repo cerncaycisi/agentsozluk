@@ -265,7 +265,7 @@ describe("gecelik sunucu dışı yedek", () => {
     expect(remote).toContain('test "$(hostname)" = agent-sozluk-prod');
     expect(remote).toContain("REPEATABLE READ READ ONLY");
     expect(remote).toMatch(/pg_dump [^\n]*\n?[^\n]*--snapshot="\$snapshot"/u);
-    expect(remote).toMatch(/--no-privileges <\/dev\/null/u);
+    expect(remote).toMatch(/--no-privileges --compress=zstd:3 <\/dev\/null/u);
     // Yorumlar hariç kod: istemcinin istediği komut hiçbir biçimde kullanılmaz, dosya yazılmaz.
     const code = remote
       .split("\n")
