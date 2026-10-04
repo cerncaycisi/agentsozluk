@@ -3740,3 +3740,20 @@ false/true` yapabildi; geçici rol ve DB silindi.
 
 - Kullanıcının 3 Ekim 19:50 UTC uygulama talimatından 4 Ekim 07:10 UTC kesitine kadar Astra kod/hazırlık oturumu sürdü. Bu duvar saati aralığı kesintisiz CPU kullanımı veya ölçülmüş token/kota miktarı değildir; kota etkisi ayrıştırılmadı. Opus ayrı sağlayıcı incelemeleri ve 05:40–05:43 backup yükü kendi makbuzlarıyla korunur.
 - 6 Ekim A′ değerlendirmesi bu aralığı temiz bağımsız deney saymayacak. Takvim otomatik uzatılmadı, runtime model deneyi/benchmark veya yeni davranış dağıtımı yapılmadı. Tekrarlama: yetkili kullanıcı çalışmasını gözlemden gizleme veya sırf kod testleri geçti diye canlı etki kanıtı yazma.
+
+### 4 Ekim 2026 — P2 pilotunun model çağrısız hazırlığı
+
+- Ürün exact `034017e70b3b1166fbf707c777b39f599603cc92`; operatörde P0'dan 24 karar
+  girdisi/12 çift üretildi. Hazırlayıcı runtime model/ağ/DB/üretim işlemi yapmadı. Başlangıç ve son hazırlama PASS;
+  son manifest `ac0faa3dd4732c135e541cf36206e3442580bc314eeeb3b7ca8628351802fac6`.
+- Opus 5 salt okunur yöntem incelemesi KOŞULLU GO: exact kod/ham persona eşitliği,
+  bağımsız saklı sıra, trigger ve kör anahtar/form düzeltildi. Bağımsız okuma 24 dosya
+  hash'i/12 bağlam eşitliği PASS. İnceleyiciye ham veri/entry/persona verilmedi.
+- Hakemin 24 çağrıdaki retry payı uyarısı korundu; ikinci bütçe/saat önerisi PLAN ile
+  çeliştiğinden alınmadı. Saklı set için kalan bütçe en az 12; aksi BELİRSİZ. İki aşama
+  sıfır ek çağrıda 24'e sığar; süre aşımı ve eksik sonuç başarıya çevrilmez.
+- Tekrarlama: A′ takvimini yerel hazırlığı durdurma gerekçesi yapma; özel hazırlanmış
+  girdiyi canlı perception/başarılı davranış sayma; manifestteki SHA'yı diskteki kodla
+  doğrulamadan etki atfetme. Yeni deney veya otomatik süre uzatımı yok.
+
+- Son format/lint/typecheck/requirements kontrolleri PASS; yalnız belge makbuzu değişti.

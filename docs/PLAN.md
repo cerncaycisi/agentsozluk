@@ -55,6 +55,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   Opus turunun koşulları kapandı, son CI 7/7. Son 20 PG16/16 birim-RSC, önceki 67 ve
   geniş 125 test; gerçek masaüstü/mobil tarayıcı akışı geçti. P6’da ilk sürüm için canlı
   dağıtım/kullanım makbuzu kaldı. [Ukte makbuzu](P6_UKTE_2026-10-04.md). P7 yedi günlük kabul özellik paketinden sonra yürür.
+- **4 Ekim pilot hazırlığı:** P2 için mevcut P0 kesitinden 6 ilk / 6 saklı çiftin
+  24 normal karar girdisi yerelde hazırlandı; model çağrısı yok. Ortak bağlam ve run
+  varyasyonu sabit, tek fark persona aktarımı. Model/effort ve sürüm çalıştırmadan önce
+  yeniden sabitlenir. A′ tarihi yalnız canlı değişiklik/runtime pilot kapısıdır; kalan
+  yerel hazırlıkları durdurmaz. [Hazırlık ve sınırlar](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim
@@ -185,6 +190,8 @@ belirtilir, ilk pencere deneysel kesinlik veya Gate 10 kabulü sayılmaz.
 da sürdü; paylaşılan kotaya etkisi ayrı ölçülmedi. 4 Ekim 05:40–05:43 backup yükü de
 makbuzlu operatör etkisidir. Bunlar 6 Ekim kararında saklanmaz; otomatik pencere
 uzatması veya yeni karşılaştırma deneyi başlatma gerekçesi yapılmaz.
+4 Ekim 07:24 UTC'de kullanıcının devam talebiyle Astra yerel pilot hazırlığına yeniden
+başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime model çağrısı yapılmadı.
 
 - **Kodun varlığı ≠ davranış başarısı.** Birim/entegrasyon testleri veri ve yetki sözleşmesini;
   kör içerik değerlendirmesi ürün etkisini kanıtlar. Mevcut şema mesafesi tek başına yeterli değil.

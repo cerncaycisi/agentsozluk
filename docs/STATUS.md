@@ -7,6 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — P2 kısa pilot girdileri hazır
+
+- Ürün `034017e70b3b1166fbf707c777b39f599603cc92`; son ana dal CI `37185068298`
+  success. P0 kesitinden 6 yazar / 6 başlık / 12 eşleşmiş çift için 24 gerçek normal karar
+  girdisi üretildi. Hazırlayıcı ağ/runtime model/DB işlemi yapmadı; canlı davranış kabulü yok.
+- Exact kaynak/profil/P0 hash kapıları, 36 ham/parse persona eşitliği, çiftlerde yalnız
+  renderer farkı ve ayrı saklı set sıra dengesi doğrulandı. Ayrı okuma 24 dosya hash'i ve
+  12 bağlam eşitliğini geçti. Kör form boş; operator anahtarı ayrı dizinde.
+- Gerçek Opus 5 koşullu yöntem incelemesi; mekanik bulgular kapandı. İkinci ayrı bütçe
+  önerisi kabul edilmedi: toplam 24 çağrı/90 dakika aynı; eksik çift BELİRSİZ.
+  [Girdi makbuzu ve inceleme sınırı](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
+
 ## 2026-10-04 — O5 toplu koşu önizlemesi ana dalda
 
 - #309 final `113f3aa8ab3d29be130f448988597520032c1ac7`, exact CI `37184176713`
