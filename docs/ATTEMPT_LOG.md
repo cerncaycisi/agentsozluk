@@ -4214,3 +4214,16 @@ false/true` yapabildi; geçici rol ve DB silindi.
   `P8_ACTIVATION_HTTP_MEASUREMENT`: profiles36, elapsedMs555. Idempotent dış HTTP
   transaction5s, direct service15s; hiçbir timeout yükseltilmedi. Kaynak yorumundaki
   yalnız15s ifadesi bu iki yolu ayıracak şekilde düzeltildi.
+
+### 4 Ekim 2026 — aktivasyon ikinci bağımsız incelemesi
+
+Gerçek `claude-opus-5`, exact `dbe80e62c15e15b60b495829c764b3fb063937a9`:
+**KOŞULLU GO**; önceki A2/A8 blokları kaynak ve karşı örnekle geri çekildi, yeni
+bloklayıcı bulunmadı. Tek koşul B1 ölçüm iddiasını daraltmaktı: 36 profilli yerel
+fixture'da **555 ms uçtan uca HTTP süresi** ölçüldü; **TX aktif süresi ölçülmedi**.
+Bu sayı üretim kapasitesi, veri büyüklüğü veya 5 saniyelik transaction tavanına
+kalan payın kanıtı değildir. Mevcut HTTP 5 s / doğrudan 15 s sınırları değişmedi.
+Bu açık etiketle B1 makbuz koşulu kapandı; kaynak kodu değişmedi. Kullanılmayan
+`_count`, dar trigger tipi ve ek baseline-stale sınır testi önerileri bloklayıcı
+olmadı; bu tur kapsamı büyütülmedi. Final exact CI/merge ve canlı kapılar açık.
+Tekrarlama: uçtan uca yerel süreyi TX telemetrisi veya üretim kapasitesi sayma.
