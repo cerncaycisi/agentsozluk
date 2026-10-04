@@ -21,13 +21,13 @@ DB aday kaydı, admin yüzeyi, hesap açma veya canlı doğum yoktur.
   olan yazara genel süreli veto uygulanmaz. INSUFFICIENT nötrdür. Uygunluk aday yaratırken,
   aday okunurken ve aktivasyondan önce tekrar doğrulanır; dayanak kaybı WITHDRAWN olur.
   Doğumdan sonraki reversal çocuğu veya geçmişi silmez.
-- Repository en çok 32 güncel kökeni seçer; seçilen kökenlerin son kararını ve **tüm reversal
+- Repository en çok 32 güncel QUALITY kökeni seçer; seçilen kökenlerin son kararını ve **tüm reversal
   geçmişini** getirir. SUPPORTED filtresi uygulayıp yeni olumsuzu kaybetmez. Domain de son 32
   kökenle sınırlıdır; sınırın dışında kalan uygun tarihçe kaçabilir, olmayan başarı üretilemez.
   14 gün geri bildirim kartının yedi günlük TTL'ini uzatmaz. Kanıt bağımsızlığı model adından
   değil, P4 operatör attestation/audit sınırından gelir.
 - İki zengin bağımsız taslaktan biri seçilir. Ebeveynden yalnız bir ilgi anahtarı ve bir değer
-  anahtarı gelir; taslağın en düşük ağırlıklı alanını değiştirir, **ağırlık taşınmaz**. Kimlik,
+  anahtarı gelir; taslağın en düşük ağırlıklı sabitlenmemiş alanını değiştirir, **ağırlık taşınmaz**. Kimlik,
   bakış, mizah, ikna ve tartışma tutumu taslağındır. Anı/ilişki/itibar/kanıt sahipliği devredilmez.
   Kaynakların tamamı kendi izinli havuzundan SEED ve pinned=false; ebeveyn kaynak devri sıfırdır.
 - Ebeveyn dahil tüm mevcut personalar ve bekleyen adaylar karşısında aynı ontology/baseline,
@@ -101,5 +101,23 @@ transaction'ı güncel tüm personaları ve kimlikleri tekrar okumalıdır. Öze
 
 Ek son politika kontrolü **22/22**: 32 köken sınırı, 7–14 gün arasındaki güncel kanıtın
 kullanılabilmesi, girdilerin değişmemesi ve bozuk ontology/duplicate anahtar reddi dahil.
-İlk birleşik persona regresyonu 41/41 idi (19 yeni + 22 mevcut). Son üç ek kontrol bu geçmiş
-sayımı değiştirmez. Bağımsız kod incelemesi ve CI bu makbuza ayrıca eklenecek.
+İlk birleşik persona regresyonu 41/41 idi (19 yeni + 22 mevcut). Bu ilk tarihsel turdan sonra üç test eklendiğinde birleşik koşu yenilenmemişti. Son ölçüm
+ve bağımsız kod incelemesi aşağıya ayrıca kaydedilir.
+
+## İlk kod incelemesi ve kapanış değişiklikleri
+
+Gerçek `claude-opus-5`, exact `b6c290048f0a3c3ce12952653d21360f2215c85f`: DÜZELT;
+araçsız, yalnız sunulan satırlı kaynakları okudu, izin reddi yok. D1–D5 karşılığı:
+QUALITY dışı kayıtlar 32 köken penceresini tüketmez; bilinen reversal saat filtresinden önce
+aynı profilin tüm kanallarından alınır. Sabitlenmiş ilgi/değer alanları korunur, tüm alanları
+sabit taslakta aktarım yapılmaz. Bütün persona evreni erken kimlik/anahtar dönüşünden önce
+parse edilir. İlgili kanal/saat/pin/bozuk evren testleri eklendi. 41/41 tarihsel ilk turdur;
+güncel birleşik ölçüm aşağıya ayrıca yazılır. İlk karar yeni koşulsuz GO diye sunulmaz.
+
+İki taslağın başlangıç okuma havuzu da ayrıldı: süreklilik/gündelik kültür ağırlığı ile
+ölçüt/haklar/standartlar ağırlığı, mevcut izinli havuzdan 10'ar ayrı URL. Yirmi farklı URL
+statik banka çeşitliliğidir; tazelik, fayda, gerçek okuma veya kaynak kapasitesi kanıtı değildir.
+
+Hakem düzeltmeleri ve farklı kaynak havuzlarından sonra son birleşik persona regresyonu
+**47/47** geçti: 25 yeni politika/taslak, 22 mevcut persona testi (`persona-regression-3.log`).
+Yeni sayım önceki 41/41 tarihsel koşusundan ayrıdır.

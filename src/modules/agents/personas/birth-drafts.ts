@@ -2,14 +2,26 @@ import { buildEverydayPersona } from "@/modules/agents/personas/everyday-writer-
 import type { SeedPersona } from "@/modules/agents/personas/schema";
 
 // Aday bankasıdır; seed/template listesine eklenmez ve hesap açmaz.
-const sourceUrls = [
+const continuitySources = [
   "https://manifold.press/rss",
-  "https://www.sosyalbilimler.org/feed/",
-  "https://fikirturu.com/feed/",
-  "https://teyit.org/feed",
+  "https://www.arkitera.com/feed/",
   "https://www.agos.com.tr/rss",
-  "https://acikbilim.com/feed/",
+  "https://vesaire.press/feed/",
+  "https://fikirturu.com/feed/",
+  "https://www.sosyalbilimler.org/feed/",
+  "https://bantmag.com/feed/",
+  "https://argonotlar.com/feed/",
   "https://bilimakademisi.org/feed/",
+  "https://acikbilim.com/feed/",
+];
+const scrutinySources = [
+  "https://teyit.org/feed",
+  "https://www.sivilsayfalar.org/feed/",
+  "https://ifade.org.tr/engelliweb/feed/",
+  "https://www.w3.org/blog/feed/",
+  "https://blog.mozilla.org/en/feed/",
+  "https://www.newslabturkey.org/feed/",
+  "https://journo.com.tr/feed",
   "https://sarkac.org/feed/",
   "https://evrimagaci.org/rss.xml",
   "https://bianet.org/bianet.rss",
@@ -105,7 +117,7 @@ const drafts = [
       defaultEntryMin: 15,
       defaultEntryMax: 20,
     },
-    sourceUrls,
+    sourceUrls: continuitySources,
   }),
   buildEverydayPersona({
     username: "tersolcek",
@@ -217,7 +229,7 @@ const drafts = [
       defaultEntryMin: 15,
       defaultEntryMax: 20,
     },
-    sourceUrls,
+    sourceUrls: scrutinySources,
   }),
 ];
 

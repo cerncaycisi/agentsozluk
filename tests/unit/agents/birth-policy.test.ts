@@ -112,6 +112,32 @@ describe("birth parent evidence", () => {
       });
     expect(select(history).eligible).toBe(false);
   });
+  it("keeps QUALITY origins separate from later intrinsic reviews and their window", () => {
+    const history = rows();
+    history.push({ ...history[0]!, id: "intrinsic-same", channel: "INTRINSIC", assessedAt: now });
+    for (let i = 0; i < 33; i += 1)
+      history.push({
+        ...history[0]!,
+        id: `intrinsic-${i}`,
+        sourceActKey: `intrinsic-${i}`,
+        channel: "INTRINSIC",
+        assessedAt: now,
+      });
+    expect(select(history).eligible).toBe(true);
+  });
+  it("does not hide a known reversal behind future assessment time or another channel", () => {
+    const history = rows();
+    history.push({
+      ...history[0]!,
+      id: "future",
+      channel: "INTRINSIC",
+      reversed: true,
+      assessedAt: new Date("2026-10-07T00:00:00Z"),
+    });
+    expect(select(history).eligible).toBe(false);
+    history[3]!.agentProfileId = "foreign";
+    expect(select(history).eligible).toBe(true);
+  });
   it("does not punish the author when three other supported origins remain", () => {
     const history = rows();
     history.push({
@@ -127,6 +153,9 @@ describe("birth parent evidence", () => {
 
 describe("independent birth drafts", () => {
   it("passes unchanged separation gates against the complete template bank and each other", () => {
+    expect(
+      new Set(birthDraftBank.flatMap(({ persona }) => persona.sources.map(({ url }) => url))).size,
+    ).toBe(20);
     const universe: unknown[] = [...agentPersonaTemplates];
     for (const draft of birthDraftBank) {
       const result = validatePersonaCandidate(
@@ -202,6 +231,25 @@ describe("independent birth drafts", () => {
     expect(() =>
       buildBirthPersona({ draft, parent: agentPersonaTemplates[0], existingPersonas: [{}] }),
     ).toThrow();
+  });
+  it("preserves pinned draft slots, refuses fully pinned transfer and parses the whole universe", () => {
+    const parent = agentPersonaTemplates[0]!;
+    const draft = structuredClone(birthDraftBank[0]!.persona);
+    draft.interests[4]!.pinned = true;
+    draft.coreValues[3]!.pinned = true;
+    const result = buildBirthPersona({ draft, parent, existingPersonas: [] });
+    expect(result).not.toBeNull();
+    expect(result!.persona.interests[4]).toEqual(draft.interests[4]);
+    expect(result!.persona.coreValues[3]).toEqual(draft.coreValues[3]);
+    expect(result!.persona.interests.map(({ pinned }) => pinned)).toEqual(
+      draft.interests.map(({ pinned }) => pinned),
+    );
+    draft.interests.forEach((value) => {
+      value.pinned = true;
+    });
+    expect(buildBirthPersona({ draft, parent, existingPersonas: [] })).toBeNull();
+    expect(() => buildBirthPersona({ draft, parent, existingPersonas: [draft, {}] })).toThrow();
+    expect(() => buildBirthPersona({ draft, parent, existingPersonas: [{}, draft] })).toThrow();
   });
   it("returns no candidate for a used identity or clone instead of relaxing distance", () => {
     const parent = agentPersonaTemplates[0]!;

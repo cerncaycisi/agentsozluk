@@ -47,12 +47,15 @@ export function selectBirthParentEvidence(input: {
   now: Date;
 }): BirthParentEvidenceResult {
   if (!input.active) return { eligible: false, reason: "PARENT_INACTIVE" };
-  const history = input.assessments
-    .filter((row) => row.agentProfileId === input.agentProfileId && row.assessedAt <= input.now)
+  const profileHistory = input.assessments.filter(
+    (row) => row.agentProfileId === input.agentProfileId,
+  );
+  const history = profileHistory
+    .filter((row) => row.channel === "QUALITY" && row.assessedAt <= input.now)
     .sort((a, b) => b.assessedAt.getTime() - a.assessedAt.getTime() || b.id.localeCompare(a.id));
   // Geri alınan köken yeniden etiketlenerek uygun hale gelemez; yeni yayın kanıtı gerekir.
   const revokedOrigins = new Set(
-    history.filter((row) => row.reversed).map((row) => row.sourceActKey),
+    profileHistory.filter((row) => row.reversed).map((row) => row.sourceActKey),
   );
   const seenOrigins = new Set<string>();
   const candidates: BirthAssessmentEvidence[] = [];
@@ -121,15 +124,14 @@ function inheritOneKey(
     .sort((a, b) => b.weight - a.weight || a.key.localeCompare(b.key, "tr"))[0];
   if (!donor) return null;
   // Taslağın en düşük ağırlıklı açık alanı değişir; ağırlık ebeveynden taşınmaz.
-  const slot = draft.reduce(
-    (best, value, index) => (value.weight < draft[best]!.weight ? index : best),
-    0,
-  );
+  const slots = draft.map((value, index) => ({ ...value, index })).filter((value) => !value.pinned);
+  const slot = slots.sort((a, b) => a.weight - b.weight || a.index - b.index)[0]?.index;
+  if (slot === undefined) return null;
   return {
     values: draft.map((value, index) => ({
       ...value,
       key: index === slot ? donor.key : value.key,
-      pinned: false,
+      pinned: index === slot ? false : value.pinned,
     })),
     inheritedKey: donor.key,
   };
@@ -142,6 +144,10 @@ export function buildBirthPersona(input: {
 }) {
   const draft = seedPersonaSchema.parse(input.draft);
   const parent = seedPersonaSchema.parse(input.parent);
+  // Bütün geçmiş parse edilir; erken kimlik/anahtar reddi bozuk veriyi gizleyemez.
+  const universe = [...input.existingPersonas, parent].map((value) =>
+    seedPersonaSchema.parse(value),
+  );
   const interests = inheritOneKey(draft.interests, parent.interests);
   const coreValues = inheritOneKey(draft.coreValues, parent.coreValues);
   if (!interests || !coreValues) return null;
@@ -152,9 +158,7 @@ export function buildBirthPersona(input: {
     sources: draft.sources.map((source) => ({ ...source, status: "SEED" as const, pinned: false })),
   };
   // Parent'ın bu listeye yanlışlıkla alınmaması ayrışma kapısını gevşetmesin.
-  const universe = [...input.existingPersonas, parent];
-  if (universe.some((value) => seedPersonaSchema.parse(value).username === candidate.username))
-    return null;
+  if (universe.some((value) => value.username === candidate.username)) return null;
   try {
     const validated = validatePersonaCandidate(
       candidate,

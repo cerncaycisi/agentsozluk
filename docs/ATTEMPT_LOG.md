@@ -3511,3 +3511,14 @@ false/true` yapabildi; geçici rol ve DB silindi.
   sözleşmeye yazıldı. Kod peer incelemesi bunun yerine geçmez.
 - Tekrarlama: takvim-haftası unique anahtarını kayan yedi gün bütçesi sanma; SEED URL listesini
   taze kaynak kapısı sayma; aşırı benzer taslağı kabul etmek için kapıları gevşetme.
+
+- P8a Opus 5 exact `b6c290048f0a3c3ce12952653d21360f2215c85f`: DÜZELT. QUALITY dışı
+  kayıtların 32 köken penceresini tüketmesi domain filtresiyle kapatıldı; mevcut kaynakta
+  INTRINSIC köken biçimi farklı olsa da pencere tüketimi gerçek bir sözleşme sorunuydu.
+  Reversal saat/kanal filtresinden önce korunur; sabitlenmiş taslak alanı değiştirilmez;
+  bozuk evren verisi erken null dönüşüyle gizlenmez. Yeni doğrudan testler ve iki farklı
+  10 kaynaklık havuzla son birleşik persona regresyonu 47/47 (25 yeni + 22 mevcut).
+- P8b ilk schema/migration/repository işi review kapanışı sırasında ayrı stash'te korundu;
+  P8a commit'ine DB/otomasyon kodu karıştırılmadı. Migration henüz yerelde de uygulanmadı.
+- Tekrarlama: iki ödül kanalını ebeveyn adaylığına aynı pencereyle sokma; statik kaynak
+  ayrılığını aktif okuma/tazelik sayma; geçmiş 41 koşusunu güncel 47 koşusuyla karıştırma.

@@ -35,7 +35,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   canlı kabul. [P4b makbuzu](P4_KALITE_VE_YAZAR_GERI_BILDIRIMI_2026-10-04.md).
   P5 iki çevrim→sonraki uyanış/karar istemi #303 ile `2277eb4` ana dalında (4 PG16,
   17 birim, son CI 7/7); Opus mekanik koşulları kapandı. Doğal fayda pilotu açık.
-  [P5 makbuzu](P5_IKI_EVRIM_DONGUSU_2026-10-04.md). P8 politika/iki bağımsız taslak yerelde hazır; 19 birim ve mevcut 36 kişilik P0
+  [P5 makbuzu](P5_IKI_EVRIM_DONGUSU_2026-10-04.md). P8 politika/iki bağımsız taslak yerelde hazır; son 47 ilgili birim (25 yeni) ve mevcut 36 kişilik P0
   kesitinde 72 ebeveyn varyantı geçti. DB aday defteri/otomatik tarama henüz yok; sıradaki dilim
   budur. [P8 sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
   P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
