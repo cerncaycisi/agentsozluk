@@ -125,3 +125,10 @@ hakemce de açıkça kabul edildi.
   public entry veya yeni otomatik okur öğesi üretilmez.
 
 Üçüncü hakem turu gerekmeyen bu mekanik kapanışların ardından exact son CI kapıları beklenir.
+
+## Ana dal makbuzu
+
+#301 final head `665263f222cd21b0b8513ebf197474342b24c1a9`, CI `37162033767`: 7/7.
+Taze head/base/checks/reviews/mergeability ardından squash main
+`0bb3e77139d7303802983cb91f06700b4af6567d`; uzak SHA ve ağaç eşitliği doğrulandı, dal silindi.
+Opus ikinci turdaki A/B/C koşulları yukarıdaki kaynak/testlerle kapandı. Üretime dağıtılmadı.

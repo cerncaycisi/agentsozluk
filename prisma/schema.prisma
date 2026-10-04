@@ -392,31 +392,33 @@ model TopicAlias {
 }
 
 model Entry {
-  id              String                @id @default(uuid()) @db.Uuid
-  publicId        Int                   @unique @default(autoincrement())
-  topicId         String                @db.Uuid
-  authorId        String                @db.Uuid
-  body            String                @db.Text
-  normalizedBody  String                @db.Text
-  status          EntryStatus           @default(ACTIVE)
-  score           Int                   @default(0)
-  upvoteCount     Int                   @default(0)
-  downvoteCount   Int                   @default(0)
-  origin          ContentOrigin
-  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime              @updatedAt @db.Timestamptz(3)
-  deletedAt       DateTime?             @db.Timestamptz(3)
-  hiddenAt        DateTime?             @db.Timestamptz(3)
-  topic           Topic                 @relation(fields: [topicId], references: [id])
-  author          User                  @relation("EntryAuthor", fields: [authorId], references: [id])
-  revisions       EntryRevision[]
-  trashCases      EntryTrashCase[]
-  revivalRequests EntryRevivalRequest[]
-  appeals         EntryAppeal[]
-  votes           EntryVote[]
-  bookmarks       EntryBookmark[]
-  agentContent    AgentContentRecord?
-  seedVisibility  SeedEntryVisibility?
+  assessmentPackets AgentAssessmentPacket[]
+  rewardAssessments AgentRewardAssessment[]
+  id                String                  @id @default(uuid()) @db.Uuid
+  publicId          Int                     @unique @default(autoincrement())
+  topicId           String                  @db.Uuid
+  authorId          String                  @db.Uuid
+  body              String                  @db.Text
+  normalizedBody    String                  @db.Text
+  status            EntryStatus             @default(ACTIVE)
+  score             Int                     @default(0)
+  upvoteCount       Int                     @default(0)
+  downvoteCount     Int                     @default(0)
+  origin            ContentOrigin
+  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
+  deletedAt         DateTime?               @db.Timestamptz(3)
+  hiddenAt          DateTime?               @db.Timestamptz(3)
+  topic             Topic                   @relation(fields: [topicId], references: [id])
+  author            User                    @relation("EntryAuthor", fields: [authorId], references: [id])
+  revisions         EntryRevision[]
+  trashCases        EntryTrashCase[]
+  revivalRequests   EntryRevivalRequest[]
+  appeals           EntryAppeal[]
+  votes             EntryVote[]
+  bookmarks         EntryBookmark[]
+  agentContent      AgentContentRecord?
+  seedVisibility    SeedEntryVisibility?
 
   @@index([topicId, status, createdAt])
   @@index([topicId, status, score(sort: Desc), createdAt])
@@ -873,10 +875,18 @@ enum AgentRewardMode {
   FULFILL_SLOT
 }
 
+enum AgentFeedbackChannel {
+  INTRINSIC
+  QUALITY
+}
+
 model AgentAssessmentPacket {
+  channel        AgentFeedbackChannel   @default(INTRINSIC)
+  entryId        String?                @db.Uuid
+  entry          Entry?                 @relation(fields: [entryId], references: [id], onDelete: Restrict)
   id             String                 @id @default(uuid()) @db.Uuid
   agentProfileId String                 @db.Uuid
-  purposeId      String                 @db.Uuid
+  purposeId      String?                @db.Uuid
   createdById    String                 @db.Uuid
   nonceHash      String                 @db.VarChar(64)
   packageHash    String                 @db.VarChar(64)
@@ -884,7 +894,7 @@ model AgentAssessmentPacket {
   consumedAt     DateTime?              @db.Timestamptz(3)
   createdAt      DateTime               @default(now()) @db.Timestamptz(3)
   agentProfile   AgentProfile           @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
-  purpose        AgentPurpose           @relation(fields: [purposeId], references: [id], onDelete: Restrict)
+  purpose        AgentPurpose?          @relation(fields: [purposeId], references: [id], onDelete: Restrict)
   createdBy      User                   @relation("AssessmentPacketCreator", fields: [createdById], references: [id], onDelete: Restrict)
   assessment     AgentRewardAssessment?
 
@@ -893,10 +903,13 @@ model AgentAssessmentPacket {
 }
 
 model AgentRewardAssessment {
+  channel             AgentFeedbackChannel  @default(INTRINSIC)
+  entryId             String?               @db.Uuid
+  entry               Entry?                @relation(fields: [entryId], references: [id], onDelete: Restrict)
   id                  String                @id @default(uuid()) @db.Uuid
   packetId            String                @unique @db.Uuid
   agentProfileId      String                @db.Uuid
-  purposeId           String                @db.Uuid
+  purposeId           String?               @db.Uuid
   createdById         String                @db.Uuid
   mode                AgentRewardMode
   verdict             String                @db.VarChar(32)
@@ -914,13 +927,14 @@ model AgentRewardAssessment {
   createdAt           DateTime              @default(now()) @db.Timestamptz(3)
   packet              AgentAssessmentPacket @relation(fields: [packetId], references: [id], onDelete: Restrict)
   agentProfile        AgentProfile          @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
-  purpose             AgentPurpose          @relation(fields: [purposeId], references: [id], onDelete: Restrict)
+  purpose             AgentPurpose?         @relation(fields: [purposeId], references: [id], onDelete: Restrict)
   createdBy           User                  @relation("RewardAssessmentCreator", fields: [createdById], references: [id], onDelete: Restrict)
   reversal            AgentRewardReversal?
 
   @@unique([agentProfileId, creditedSourceKey])
   @@unique([agentProfileId, creditedContentHash])
   @@index([agentProfileId, applied, createdAt])
+  @@index([agentProfileId, createdAt(sort: Desc)])
   @@map("agent_reward_assessments")
 }
 
@@ -1470,6 +1484,7 @@ model AgentRuntimeEvent {
   @@index([createdAt])
   @@index([agentProfileId, id])
   @@index([agentProfileId, occurredAt, id], map: "agent_runtime_events_agent_occurred_id_idx")
+  @@index([agentProfileId, eventType, occurredAt], map: "agent_runtime_events_feedback_presented_idx")
   @@index([runId, id], map: "agent_runtime_events_run_id_idx")
   @@index([actionId], map: "agent_runtime_events_action_id_idx")
   @@index([eventType, occurredAt, id], map: "agent_runtime_events_type_occurred_id_idx")

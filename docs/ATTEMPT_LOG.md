@@ -3427,3 +3427,32 @@ false/true` yapabildi; geçici rol ve DB silindi.
   EXPLORE paketine okuma sırası verildi, belief listesi kronolojik oldu, uzun gövde testindeki
   etkisiz raw-newline araması normalize metinle düzeltildi. Yeni kod/üretim hakemi turu yok.
   Son exact CI tamamlanmadan merge yapılmayacak.
+
+## 2026-10-04 — P4a #301 kapandı, P4b yerel doğrulama
+
+- Final head `665263f222cd21b0b8513ebf197474342b24c1a9`, CI `37162033767` 7/7. Taze
+  head/base/checks/reviews/mergeability kontrolüyle squash main
+  `0bb3e77139d7303802983cb91f06700b4af6567d`; uzak SHA/ağaç eşitliği, dal temizliği doğrulandı.
+- P4b bu tabanın çalışma ağacında: migration `20261003234500_agent_author_feedback` yalnız
+  yerel PG16 test DB'de. İlk typecheck testte union `observation` erişimini yakaladı;
+  hedef türü daraltıldı ve typecheck geçti. Son kaynak prefix/hash doğrulaması sonrası
+  18 ödül + 9 amaç = 27 PG16 geçti; yeni geri bildirimli gerçek uyanış/ters kayıt dahil.
+- 109 runtime/persona/evidence ve 28 reset/API/OpenAPI birim testi geçti; OpenAPI 143.
+  Ayrı test dosyası adları ilk komutta bulunmadı; Vitest dört mevcut dosyayı çalıştırdı,
+  reset/API kapsamı doğru yollarla ikinci 28-test koşusunda doğrulandı.
+- Kendi incelemesinde kalite kartının önceki bağlamını da görünürlük guard'ına bağlama
+  ihtiyacı bulundu; yazı/önceki bağlam hash'leri birlikte saklanıyor. Son ödül dosyası 19/19 geçti; eski nonce ve gizli önceki bağlam regresyonu kapandı.
+- Tekrarlama: değerlendirme gerekçesini yalnız hedef entry görünürlüğüyle yeterli sayma;
+  paketteki diğer kanıtları da yeniden doğrula. Yerel kontrollü test doğal fayda kanıtı değildir.
+
+- P4b Opus 5 ilk tur exact `eed8090e509aeb1c12a62b0146b81d2c7f976173`: DÜZELTİLMELİ.
+  B1 yanlış test sayımı çalışma kaydıyla çürütüldü: sekiz eski amaç + yeni gerçek API vakası
+  dokuzdur. İlk CI `37164593850` 7/7. Fiziksel entry silme yolu yok; soft delete/RESTRICT
+  sözleşmesi teyit edildi. Kaynak doğrulama, olay sahipliği ve sorgu maliyeti daraltıldı.
+- Yeni indeks migration'ı yalnız yerel PG16'da. Son birleşik 20 ödül + 9 amaç = 29/29,
+  ilgili 147 birim testi geçti. 100.000 sentetik geçici olayda indeksli sorgu 187 aday
+  filtreledi, execution 0,852 ms; rollback tamam. Üretim performans makbuzu değildir.
+- Yerel psql önce PATH dışında, sonra `libpq.so.5` bulunamadı. Daha önce kaydedilmiş
+  `/home/agent/pg16/root/usr/lib/postgresql/16/bin/psql` ve komuta özel
+  `LD_LIBRARY_PATH=/home/agent/pg16/root/usr/lib/x86_64-linux-gnu` ile geçti. Tekrarlama:
+  PG yardımcı aracını yeniden keşfetmek yerine mevcut 3202–3204 ortam kaydını uygula.

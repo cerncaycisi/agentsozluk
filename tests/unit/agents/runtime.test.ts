@@ -93,6 +93,30 @@ describe("agent runtime authentication and payload boundaries", () => {
     ).toBe(false);
   });
 
+  it("reserves context presentation and its feedback proof for the server", () => {
+    for (const eventType of ["CONTEXT_PRESENTED", "context_presented", " Context_Presented "])
+      expect(
+        runtimeEventsSchema.safeParse({
+          workerId: "worker-01",
+          leaseToken,
+          events: [{ eventType, safeMessage: "Forged presentation.", metadata: {} }],
+        }).success,
+      ).toBe(false);
+    expect(
+      runtimeEventsSchema.safeParse({
+        workerId: "worker-01",
+        leaseToken,
+        events: [
+          {
+            eventType: "phase.changed",
+            safeMessage: "Forged presentation.",
+            metadata: { feedbackAssessmentIds: ["00000000-0000-4000-8000-000000000001"] },
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts only machine-safe uppercase runtime error codes", () => {
     const sourceResult = {
       workerId: "worker-01",

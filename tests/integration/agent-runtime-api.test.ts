@@ -1,3 +1,9 @@
+import {
+  issueAuthorAssessmentPacket,
+  submitAuthorAssessment,
+  reverseAuthorAssessment,
+  changeRewardMode,
+} from "@/modules/agents/application/rewards";
 import type { RuntimePurposeChange } from "@/modules/agents/validation/purpose-schemas";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
@@ -11344,5 +11350,99 @@ describe("persistent runtime purposes with PostgreSQL", () => {
       shortRationale: "REJECTED_PURPOSE:PURPOSE_TARGET_KEY_TOO_LONG",
       operationSummary: "Amaç önerisi işlendi. Amaç önerisi sunucu doğrulamasında reddedildi.",
     });
+  });
+  it("carries independently fulfilled purpose feedback into the next real runtime context and retracts it without evidence credit", async () => {
+    const { fixture, topics, wake, profileId } = await prepare();
+    const topicId = topics[0]!.topic.id;
+    await wake.complete([create(topicId)]);
+    const purpose = await integrationDatabase.agentPurpose.findFirstOrThrow();
+    const claim = await next(fixture);
+    await getRuntimeRunContext(integrationDatabase, claim.principal, claim.runId, claim.workerId, [
+      topicId,
+    ]);
+    await integrationDatabase.$transaction((tx) =>
+      appendRuntimeEvent(tx, {
+        agentProfileId: profileId,
+        runId: claim.runId,
+        eventType: "DECISION_STEP_RECORDED",
+        subject: { kind: "INTERPRETATION" },
+        evidenceIds: [topicId],
+        safeMessage: "Konu zaten açıklanmış; yeni katkı eklememeyi seçtim.",
+        metadata: { origin: "RUNTIME_DECISION_JOURNAL" },
+      }),
+    );
+    await claim.complete([
+      {
+        operation: "CLAIM_COMPLETION",
+        purposeId: purpose.id,
+        expectedVersion: 1,
+        note: "Okuma katkı gerektirmediğini gösterdi.",
+      },
+    ]);
+    const actor = adminActor(fixture.admin.id);
+    await changeRewardMode(integrationDatabase, actor, {
+      mode: "FULFILL_SLOT",
+      expectedMode: "OFF",
+      reason: "Yerel uçtan uca doğrulama.",
+    });
+    const packet = await issueAuthorAssessmentPacket(integrationDatabase, actor, {
+      agentProfileId: profileId,
+      purposeId: purpose.id,
+    });
+    const decision = await submitAuthorAssessment(integrationDatabase, actor, {
+      packetId: packet.packetId,
+      nonce: packet.nonce,
+      packageHash: packet.packageHash,
+      verdict: "SUPPORTED",
+      reviewerModel: "independent-test-reviewer",
+      independentReviewConfirmed: true,
+      reason: "Verilen bağlamda yazmama tercihi niyeti tamamlıyor.",
+    });
+    const following = await next(fixture);
+    expect(following.context.perception.authorFeedback).toEqual([
+      expect.objectContaining({
+        id: decision.assessmentId,
+        channel: "INTRINSIC",
+        state: "SUPPORTED",
+        effect: "PURPOSE_FULFILLED",
+      }),
+    ]);
+    expect(following.context.perception.purposes).toEqual([]);
+    const presented = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: { runId: following.runId, eventType: "CONTEXT_PRESENTED" },
+      orderBy: { id: "desc" },
+    });
+    expect(presented.evidenceIds).not.toContain(decision.assessmentId);
+    expect(presented.metadata).toMatchObject({ feedbackAssessmentIds: [decision.assessmentId] });
+    await reverseAuthorAssessment(integrationDatabase, actor, {
+      assessmentId: decision.assessmentId,
+      reason: "İlk bağımsız değerlendirme geri alındı.",
+    });
+    const refreshed = await getRuntimeRunContext(
+      integrationDatabase,
+      following.principal,
+      following.runId,
+      following.workerId,
+    );
+    expect(refreshed.perception.authorFeedback).toEqual([
+      expect.objectContaining({
+        id: decision.assessmentId,
+        state: "REVERSED",
+        effect: "NONE",
+        purposeId: null,
+      }),
+    ]);
+    expect(refreshed.contextHash).not.toBe(following.context.contextHash);
+    const retractionPresentation = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: { runId: following.runId, eventType: "CONTEXT_PRESENTED" },
+      orderBy: { id: "desc" },
+    });
+    expect(retractionPresentation.metadata).toMatchObject({ feedbackAssessmentIds: [] });
+    await following.complete([]);
+    const afterReversal = await next(fixture);
+    expect(afterReversal.context.perception.authorFeedback).toEqual([
+      expect.objectContaining({ id: decision.assessmentId, state: "REVERSED" }),
+    ]);
+    expect(await integrationDatabase.agentAction.count()).toBe(0);
   });
 });
