@@ -264,3 +264,59 @@ sonucu ise sonraki society tick’inde tekrar denenebilir; ayar yarışı için 
 bekleme iddiası yok. Başka pending ID dalı scan kilidi altında savunmadır. E2E/seed dosyalarında
 TRUNCATE yok; entegrasyon/simulation ortak açık-niyet fixture’ını kullanır. Son CI browser,
 database ve coverage bu guard ile geçti. B3 canlı indeks boyutu/süresi kapısı açık kalır.
+
+## Kaynak hazırlığı — 4 Ekim 08:48–08:51 UTC
+
+`21be9cbecf723bf84a36f1cf77621ff49fc5a5a1` üzerindeki iki sabit taslağın 20 URL'si,
+operatörde mevcut `SafeSourceReader` ile seri okundu. DB/üretim bağlantısı ve model çağrısı
+sıfır. İlk banka hash'i
+`42ebd0116ea7aa50234cd5b7565d14445c4e345a2420c2fcf4dd1fcc238a7dd9`.
+
+- `ayniyerde`: 9/10 URL okunabildi; Arkitera ilk ve tek odaklı tekrarda
+  `SOURCE_TIMEOUT` verdi. Bu iki istek, kaynağın kalıcı olarak öldüğü hükmü değildir.
+- `tersolcek`: 10/10 URL okunabildi. Mevcut relevance seçicisi iki taslak için
+  45 ve 67 öğe seçti; keşif payı içerdiğinden bu sayılar bağımsız fayda değerlendirmesi değildir.
+- Mevcut izinli havuzdaki Aeon, Fayn ve Sanatatak ayrı kontrolde 20/15/10 öğeyle okunabildi.
+  `ayniyerde`nin gündelik hayat/ilişki çizgisine uygun Fayn ve Aeon son iki kaynak olarak
+  eklendi. Havuz 12 oldu; Arkitera silinmedi. Son iki ağırlık 0,56/0,53, tümü SEED ve
+  pinned=false; ebeveynden kaynak aktarımı yok. İki taslağın havuzları ayrık kalır.
+
+`draftVersion=1` korunur: karakter/kimlik değişmedi; yalnız kaynak yedeği ekleyerek aynı
+karakterin önceki semantik REJECTED kararını aşmak istenmiyor. Önceden saklanmış aday
+snapshot'ı/hash'i güncellenmez; yeni adayın tam persona hash'i kendi kaynak listesini içerir.
+Bu hazırlık gerçek aday hesabı, etkin kaynak ataması, kapasite/holder kapısı veya Gate 10
+kanıtı değildir. Aktivasyondan hemen önce taze kendi kaynak makbuzu ve nüfus/soy/kapasite
+kapıları tekrar gerekir. Kamuya aday veya yeni yazar açılmadı.
+
+Son yerel politika/persona regresyonu **38/38** geçti. İlk turda eski toplam 20 URL
+beklentisi, yeni 22 tekil URL karşısında başarısızdı; yalnız beklenen sabit envanter sayısı
+22'ye güncellendi. İki taslağın birbirine ve mevcut template bankasına mesafe kapıları,
+ebeveyn aktarım sınırı ve bağımsız kaynak koşulları aynı testte korundu. Bu küçük havuz
+ilavesinin bağımsız incelemesi ve exact CI makbuzu ayrıca kaydedilir.
+
+### Kaynak ilavesinin Opus incelemesi
+
+Gerçek `claude-opus-5`, exact `58bacff5c6ff9621300545ee0280943cf7697a69` üzerinde
+salt okunur **KOŞULLU GO** verdi; yetki veya ret kapısı ihlali bulmadı. Üç koşul:
+
+1. 4 Ekim **09:05:28 UTC** yeni pin/DNS/host/repo/Compose sonrası READ ONLY şema
+   sorgusunda `agent_birth_candidates` tablosu yoktu; checkout yine `9bf3653`. Dolayısıyla
+   bu kesitte eski kaynaklı PROPOSED aday yok. Hakemin PENDING adı gerçek enum değildir;
+   gerçek bekleyen durum PROPOSED'dır. Sorgu hash'i
+   `c0ab27528aa4aa27265b980221312007e938f8f49f21eed99e234d1778e9140a`.
+2. 3 Ekim 20:00 UTC donmuş 36 kişilik P0 üzerinde eski 10 ve yeni 12 kaynakla aynı
+   validator raporu elde edildi: minimum temperament mesafesi **0,2277 → 0,2277**,
+   maksimum ilgi Jaccard **0 → 0**, metin örtüşmesi **0,0478 → 0,0478**.
+   İkinci taslağın raporu da aynı (0,2184 / 0 / 0,0502). Kaynaklar ve eşlemeleri zaten
+   `personaSimilarityStrings` dışında; kaynak ilavesi mesafe marjını azaltmadı. Bu
+   güncel canlı persona evreni iddiası değildir; gerçek adayda tekrar doğrulama sürer.
+3. Testte 12/10 ayrı sayıları ile toplam **22 tekil URL** birlikte doğrulanır; böylece
+   yanlış dağılım, tekrar URL ve havuz kesişimi geçmez. Zod kaynak sınırı **3–20**;
+   runtime parse'ı korunur, `satisfies` tek başına sınır kanıtı sayılmaz.
+
+Yeni banka hash'i `e774c1e4c83120a24877e37757de1c395a8130c2ff6a8a2d3f2f38a822f49db7`.
+İlk URL okuması sırasında üretim bağlantısı yoktu; hakem koşulu için yukarıdaki tek şema
+okuması sonradan yapıldı. Hiçbir üretim kaydı/ayar/istem değiştirilmedi. Arkitera ağırlığı
+ve eski on kaynak sırası korundu; iki başarısız isteğe dayanarak kaynak düşürülmedi.
+Koşullar kaynak/ölçüm/testle kapatılır; hakemin ilk koşullu görüşü yeni-SHA koşulsuz
+incelemesi diye adlandırılmaz. Son exact CI ve birleşme makbuzu ayrıca kaydedilir.

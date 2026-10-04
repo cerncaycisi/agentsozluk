@@ -30,8 +30,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   iki kesit bağımsız deney veya iyileşme kanıtı sayılmaz.
 - **O4 somut ret düzeltmesi:** 4 Ekim 07:59–08:21 UTC salt okunur 20 vakada kaynak
   sayı gösterimi hatası bulundu. `$272.5M` / `272,5 milyon` eşleşmesi ve yanlış tamsayı
-  parçası kapatıldı; #310 ilk CI 7/7, Opus koşulları sonrası 77 birim/12 eylemlik PG
-  senaryosu geçti. Son sürüm CI ve canlı dağıtım açık; ret alarmının tamamı kapanmadı.
+  parçası kapatıldı; #310 final `21be9cb`, CI `37189898438` 7/7, main `b4d69d6`.
+  Opus koşulları sonrası 77 birim/12 eylemlik PG senaryosu geçti. Kod/hakem/CI tamam;
+  canlı dağıtım açık, ret alarmının tamamı kapanmadı.
   [Sayı düzeltmesi ve örneklem sınırı](O4_SAYI_GOSTERIMI_2026-10-04.md).
 - **İlk tarihli kontrol:** 6 Ekim, yaklaşık 13:00 TSİ; A′ için gerçek resume zamanından
   en az 72 saat geçmiş olmalı. Kayıt 3 Ekim ~09:20 UTC'dir; kesin aralık rapor öncesi doğrulanır.
@@ -65,6 +66,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   varyasyonu sabit, tek fark persona aktarımı. Model/effort ve sürüm çalıştırmadan önce
   yeniden sabitlenir. A′ tarihi yalnız canlı değişiklik/runtime pilot kapısıdır; kalan
   yerel hazırlıkları durdurmaz. [Hazırlık ve sınırlar](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
+- **4 Ekim kaynak hazırlığı:** iki doğum taslağının 20 URL’sinden 19’u okundu;
+  Arkitera iki kez zaman aşımına uğradı. Mevcut izinli havuzda üç yedek adres okundu;
+  ilk taslağa Fayn/Aeon #311’de eklendi (38 test; Opus koşulları kaynak/ölçümle kapandı).
+  Son CI/birleşme ve gerçek aday kaynak hazırlığı
+  ve aktivasyon kapıları açık. [P8 makbuzu](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim
@@ -251,7 +257,9 @@ yedi kopya korundu. Kullanılmayan araç sürümü/paket/build cache temizliğiy
 ve ilgili gerçek masaüstü/mobil 4 E2E geçti. Kabul edilmiş yerel betik atomik kuruldu;
 eski dosya/hash saklı. 05:40–05:43 UTC telafi yedeği geçti: 1.315.865.212 bayt,
 50 tablo, üç snapshot işareti, checksum tekrar okuma ve arşiv listesi PASS; son yedi
-kopya korunuyor. 7 Ekim tam restore kanıtı açık; arşiv listesi tam restore değildir.
+kopya korunuyor. Sonraki yerel kontrolde checksum yeniden geçti; bütün arşiv veri blokları
+23,223 sn’de hatasız decode edildi. Bu SQL uygulaması/constraint/index kanıtı değildir;
+7 Ekim tam restore kanıtı açık.
 4 Ekim 05:46 UTC ölçümü: DB 5.741.173.783 bayt, operatörde ~5,84 GB boş; yerel tam
 restore'a güvenli pay yok. Üretimde 29.130.304 KiB boş (%62 kullanım). O3 dış yedeği,
 A′ kararı sonrası üretimde **ayrı, yalnız bu provanın oluşturduğu DB'ye** geri yüklenip

@@ -169,9 +169,10 @@ describe("birth parent evidence", () => {
 
 describe("independent birth drafts", () => {
   it("passes unchanged separation gates against the complete template bank and each other", () => {
+    expect(birthDraftBank.map(({ persona }) => persona.sources.length)).toEqual([12, 10]);
     expect(
       new Set(birthDraftBank.flatMap(({ persona }) => persona.sources.map(({ url }) => url))).size,
-    ).toBe(20);
+    ).toBe(22);
     const universe: unknown[] = [...agentPersonaTemplates];
     for (const draft of birthDraftBank) {
       const result = validatePersonaCandidate(

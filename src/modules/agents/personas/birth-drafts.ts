@@ -13,6 +13,8 @@ const continuitySources = [
   "https://argonotlar.com/feed/",
   "https://bilimakademisi.org/feed/",
   "https://acikbilim.com/feed/",
+  "https://fayn.press/feed/",
+  "https://aeon.co/feed.rss",
 ];
 const scrutinySources = [
   "https://teyit.org/feed",

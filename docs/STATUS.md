@@ -7,6 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — yedek blokları ve doğum kaynakları
+
+- 4 Ekim telafi dump checksum yeniden PASS. PG16 bütün veri bloklarını 23,223 sn’de
+  decode etti; exit 0, stderr boş. Metadata 50 tablo/3.278.376 satır. Tam restore değil.
+- İki sabit doğum taslağı 20 URL okumasında 19 READABLE; Arkitera odaklı tekrarda da
+  SOURCE_TIMEOUT. Üç izinli yedek URL okunabildi; ilk taslağa Fayn/Aeon eklendi.
+  #311 ilk 38 test geçti; Opus 5 koşulları kapandı. İlk kaynak okumasında DB/üretim
+  bağlantısı/model çağrısı yok; 09:05 UTC ayrı READ ONLY şema sorgusunda aday tablosunun
+  henüz bulunmadığı doğrulandı. Donmuş 36 kişilik validator raporları önce/sonra aynı.
+  Son exact CI/birleşme açık.
+  [O3](O3_YEDEK_2026-10-04.md) ve [P8](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
+
 ## 2026-10-04 — O4 sayı gösterimi düzeltmesi
 
 - Üretim `9bf3653`, iki pinli READ ONLY kesitte 20 ret vakası ve 13 kanonik başlık
@@ -16,7 +28,9 @@
   İlk hakem çağrısı timeout/boş; ikinci gerçek Opus 5 KOŞULLU GO. Büyük harfli ölçek
   ve opaque yüzde koşulları düzeltildi; son 77 birim ve PG16 12 eylem sonucu geçti.
 - İlk dört-kaynak fixture'ı üç-kaynak tavanında PROVENANCE_INVALID verdi; kanıt aynı
-  kaynağın ikinci öğesine taşınınca geçti. Ürün kapısı değişmedi. Son head CI/dağıtım açık.
+  kaynağın ikinci öğesine taşınınca geçti. Ürün kapısı değişmedi. Final `21be9cbecf723bf84a36f1cf77621ff49fc5a5a1`,
+  CI `37189898438` 7/7; main `b4d69d63d65aeffa449df344da3b8b01174bb78e`. Fresh
+  head/base/review/CLEAN ve uzak SHA/ağaç eşitliği doğrulandı. Canlı dağıtım açık.
   [Ayrıntı](O4_SAYI_GOSTERIMI_2026-10-04.md).
 
 ## 2026-10-04 — P2 kısa pilot girdileri hazır

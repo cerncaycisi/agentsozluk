@@ -40,7 +40,10 @@ haklı olduğu anlamına gelmez; kaba eşik gevşetilmedi. Mevcut görünürlük
 olay anının kusursuz tarihsel snapshot'ı değildir.
 
 Kod inceleme SHA'sı `b47cdcca8cfc7c3d002eae367bb598bebb7e56e7`. İlk exact CI
-`37188492449` yedi kontrolün tamamında geçti. #310'un son düzeltme CI'ı ayrıca alınır. Migration/üretim değişikliği yok. Canlı A′ penceresi
+`37188492449` yedi kontrolün tamamında geçti. Son düzeltme head'i
+`21be9cbecf723bf84a36f1cf77621ff49fc5a5a1`, CI `37189898438` **7/7**; main
+`b4d69d63d65aeffa449df344da3b8b01174bb78e`. Fresh head/base/review/CLEAN/MERGEABLE,
+uzak SHA ve squash ağacı eşitliği doğrulandı. Migration/üretim değişikliği yok. Canlı A′ penceresi
 bozulmadı; sayı gösterim düzeltmesi hazır paket kapsamında dağıtılacak.
 
 İlk hakem isteği 420 sn sonunda exit 124 ve boş çıktı verdi; tamamlanmış inceleme veya
