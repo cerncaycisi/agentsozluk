@@ -184,6 +184,26 @@ describe("runtime control-plane HTTP contract", () => {
     });
   });
 
+  it("sends only the worker identity to the separate idempotent birth scan", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        jsonResponse({ data: { outcome: "NO_ELIGIBLE_PARENT", candidateId: null } }),
+      );
+    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
+    await expect(
+      client.tickBirthCandidates("planning-credential", "society-worker"),
+    ).resolves.toEqual({ outcome: "NO_ELIGIBLE_PARENT", candidateId: null });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe(
+      "http://127.0.0.1:3000/api/v1/internal/agent-runtime/birth-candidates/tick",
+    );
+    expect(init?.body).toBe(JSON.stringify({ workerId: "society-worker" }));
+    expect(init?.headers).toMatchObject({
+      authorization: "Bearer planning-credential",
+      "idempotency-key": expect.stringMatching(/^[0-9a-f-]{36}$/u),
+    });
+  });
   it("ticks the stochastic scheduler through one idempotent runtime write", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse({

@@ -70,6 +70,8 @@ export async function getStochasticSchedulerSnapshot(
         where: { id: "global" },
         select: {
           settingsVersion: true,
+          birthMode: true,
+          lastBirthScanAt: true,
           runtimeEnabled: true,
           schedulerEnabled: true,
           publishEnabled: true,

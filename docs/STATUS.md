@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — P8a ana dalda; P8b yerel aday yolu
+
+- #304 exact `c009599`, gerçek Opus 5 KOD GO, CI `37168983479` 7/7; main
+  `1f0534db2e4448caf06bcadcda80780ebdb68c57`, uzak SHA/ağaç eşitliği doğrulandı.
+- P8b migration yalnız yerel test DB'de. Birleşik PG16 40/40, ilk ilgili birim 83/83 geçti;
+  aday oluşturma/yarış/geri alma/TTL/yetki/HTTP taze replay ve reset sonrası kanıt kaybı sınandı.
+- Yeni hesap/entry/run oluşmadığı doğrulandı. Üretim erişimi/dağıtım yok, A′/v46 değişmedi.
+  P8b bağımsız kod hakemi/CI ve gerçek doğum aktivasyonu açık.
+  [P8 makbuzu](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
+
 ## 2026-10-04 — P5 ana dalda; P8 politika/taslak yerel kanıtı
 
 - #303 exact `d2ac2d1`, CI `37167331459` 7/7; Opus küçük koşulları uygulandı.

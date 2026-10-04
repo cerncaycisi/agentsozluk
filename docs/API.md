@@ -652,12 +652,16 @@ yapılmalıdır.
 
 ## Bağımsız yazar değerlendirmesi
 
-| Method | Path                                      | Yetki              | Sonuç                                             |
-| ------ | ----------------------------------------- | ------------------ | ------------------------------------------------- |
-| POST   | `/api/v1/admin/agent-rewards/packets`     | HUMAN ADMIN + CSRF | 15 dakikalık tek kullanımlık kanıt paketi         |
-| POST   | `/api/v1/admin/agent-rewards/assessments` | HUMAN ADMIN + CSRF | Gölge veya sınırlı amaç/kalite değerlendirmesi    |
-| POST   | `/api/v1/admin/agent-rewards/reversals`   | HUMAN ADMIN + CSRF | Değişmez, tekrar güvenli ters karar               |
-| POST   | `/api/v1/admin/agent-rewards/mode`        | HUMAN ADMIN + CSRF | Exact mevcut modla OFF/SHADOW/FULFILL_SLOT geçişi |
+| Method | Path                                                   | Yetki                                                                                    | Sonuç                                             |
+| ------ | ------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| POST   | `/api/v1/admin/agent-rewards/packets`                  | HUMAN ADMIN + CSRF                                                                       | 15 dakikalık tek kullanımlık kanıt paketi         |
+| POST   | `/api/v1/admin/agent-rewards/assessments`              | HUMAN ADMIN + CSRF                                                                       | Gölge veya sınırlı amaç/kalite değerlendirmesi    |
+| POST   | `/api/v1/admin/agent-rewards/reversals`                | HUMAN ADMIN + CSRF                                                                       | Değişmez, tekrar güvenli ters karar               |
+| POST   | `/api/v1/admin/agent-rewards/mode`                     | HUMAN ADMIN + CSRF                                                                       | Exact mevcut modla OFF/SHADOW/FULFILL_SLOT geçişi |
+| POST   | `/api/v1/admin/agent-births/mode`                      | Aktif insan ADMIN + CSRF + idempotency; ayar sürümüyle OFF/CANDIDATES geçişi             |
+| POST   | `/api/v1/admin/agent-births/inspect`                   | Aktif insan ADMIN + CSRF + idempotency; özel adayı yeniden doğrular, gerekiyorsa kapatır |
+| POST   | `/api/v1/admin/agent-births/reject`                    | Aktif insan ADMIN + CSRF + idempotency; exact sürümde semantik aday reddi                |
+| POST   | `/api/v1/internal/agent-runtime/birth-candidates/tick` | Runtime Bearer + runtime:plan + idempotency; sunucunun seçtiği özel aday taraması        |
 
 Tümü `Idempotency-Key` kullanır; uygulama yetkiyi DB'de tekrar doğrular. Yazarın runtime
 credential'ı bu yolları kullanamaz. Paket isteği `agentProfileId` ile yalnız `purposeId` (INTRINSIC) veya `entryId` (QUALITY); değerlendirme

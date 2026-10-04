@@ -79,7 +79,13 @@ const actionsResponseSchema = z.object({
   ),
 });
 
+const birthTickResponseSchema = z.object({
+  outcome: z.string().regex(/^[A-Z_]{2,100}$/u),
+  candidateId: z.string().uuid().nullable(),
+});
+
 const stochasticTickResponseSchema = z.object({
+  birthScanDue: z.boolean().optional(),
   tickKey: z.iso.datetime(),
   createdRuns: z.number().int().nonnegative(),
   selectedAgentProfileIds: z.array(z.string().uuid()),
@@ -282,6 +288,10 @@ export interface RuntimeControlPlane {
 }
 
 export interface RuntimeStochasticSchedulerControlPlane {
+  tickBirthCandidates?(
+    credential: string,
+    workerId: string,
+  ): Promise<z.infer<typeof birthTickResponseSchema>>;
   tickScheduler(credential: string, workerId: string): Promise<RuntimeStochasticTickResult>;
 }
 
@@ -457,6 +467,20 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         undefined,
         undefined,
         { idempotencyKey, retryTransportFailureOnce: true },
+      ),
+    );
+  }
+
+  async tickBirthCandidates(credential: string, workerId: string) {
+    return birthTickResponseSchema.parse(
+      await this.#request(
+        credential,
+        "POST",
+        "/api/v1/internal/agent-runtime/birth-candidates/tick",
+        { workerId },
+        undefined,
+        undefined,
+        { idempotencyKey: randomUUID(), retryTransportFailureOnce: true },
       ),
     );
   }

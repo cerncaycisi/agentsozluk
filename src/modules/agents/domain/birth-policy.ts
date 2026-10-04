@@ -51,7 +51,7 @@ export function selectBirthParentEvidence(input: {
     (row) => row.agentProfileId === input.agentProfileId,
   );
   const history = profileHistory
-    .filter((row) => row.channel === "QUALITY" && row.assessedAt <= input.now)
+    .filter((row) => row.channel === "QUALITY")
     .sort((a, b) => b.assessedAt.getTime() - a.assessedAt.getTime() || b.id.localeCompare(a.id));
   // Geri alınan köken yeniden etiketlenerek uygun hale gelemez; yeni yayın kanıtı gerekir.
   const revokedOrigins = new Set(
@@ -65,6 +65,7 @@ export function selectBirthParentEvidence(input: {
     seenOrigins.add(row.sourceActKey);
     if (
       row.channel !== "QUALITY" ||
+      row.assessedAt > input.now ||
       row.mode === "OFF" ||
       row.verdict !== "SUPPORTED" ||
       revokedOrigins.has(row.sourceActKey) ||

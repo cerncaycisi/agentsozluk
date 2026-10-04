@@ -1146,6 +1146,20 @@ export class AgentRuntimeWorker {
             ));
       if (result.createdRuns > 0)
         this.#options.onSafeEvent?.({ level: "info", code: "STOCHASTIC_TICK_QUEUED" });
+      if (result.birthScanDue) {
+        try {
+          if (!scheduling.controlPlane.tickBirthCandidates)
+            throw new Error("BIRTH_SCAN_UNAVAILABLE");
+          const birth = await scheduling.controlPlane.tickBirthCandidates(
+            credential,
+            this.#options.workerId,
+          );
+          this.#options.onSafeEvent?.({ level: "info", code: `BIRTH_SCAN_${birth.outcome}` });
+        } catch {
+          // Normal uyanış kuyruğu zaten oluştu; aday hatası kendi güvenli olayıdır.
+          this.#options.onSafeEvent?.({ level: "error", code: "BIRTH_SCAN_FAILED" });
+        }
+      }
     } catch {
       this.#stochasticTickNotBefore = now.getTime() + STOCHASTIC_BUSY_RETRY_MS;
       this.#options.onSafeEvent?.({ level: "error", code: "STOCHASTIC_TICK_FAILED" });

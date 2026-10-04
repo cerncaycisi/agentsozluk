@@ -138,6 +138,22 @@ describe("birth parent evidence", () => {
     history[3]!.agentProfileId = "foreign";
     expect(select(history).eligible).toBe(true);
   });
+  it("never falls back behind a future-dated quality verdict or visibility change", () => {
+    for (const patch of [
+      { verdict: "INSUFFICIENT" },
+      { currentlyVisibleAndUnchanged: false },
+      { verdict: "SUPPORTED" },
+    ]) {
+      const history = rows();
+      history.push({
+        ...history[0]!,
+        ...patch,
+        id: "future-quality",
+        assessedAt: new Date("2026-10-07T00:00:00Z"),
+      });
+      expect(select(history).eligible).toBe(false);
+    }
+  });
   it("does not punish the author when three other supported origins remain", () => {
     const history = rows();
     history.push({

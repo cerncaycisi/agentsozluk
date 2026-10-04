@@ -12,6 +12,7 @@ export async function resetIntegrationDatabase(): Promise<void> {
     integrationDatabase.$queryRaw`SELECT set_config('agentsozluk.allow_archive_truncate', 'on', true)`,
     integrationDatabase.$executeRaw`
     TRUNCATE TABLE
+      "agent_birth_candidates",
       "agent_runtime_events",
       "agent_runtime_credential_sync",
       "agent_capacity_snapshots",

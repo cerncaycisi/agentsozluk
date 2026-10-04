@@ -49,6 +49,66 @@ describe("stochastic society scheduling", () => {
     };
   }
 
+  it("calls the separate birth endpoint only when the scheduler marks it due", async () => {
+    const controlPlane = idleControlPlane();
+    const tickBirthCandidates = vi.fn().mockResolvedValue({
+      outcome: "PROPOSED",
+      candidateId: "00000000-0000-4000-8000-000000000999",
+    });
+    const scheduler: RuntimeStochasticSchedulerControlPlane = {
+      tickScheduler: vi.fn().mockResolvedValue(tickResult({ birthScanDue: true })),
+      tickBirthCandidates,
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "society-worker",
+      credentials: [credential],
+      controlPlane,
+      provider: unusedProvider,
+      stochasticScheduling: { controlPlane: scheduler },
+    });
+    await worker.runOnce();
+    expect(tickBirthCandidates).toHaveBeenCalledWith(credential, "society-worker");
+    expect(controlPlane.lease).toHaveBeenCalledTimes(1);
+    const legacy = new AgentRuntimeWorker({
+      workerId: "legacy-worker",
+      credentials: [credential],
+      controlPlane,
+      provider: unusedProvider,
+      stochasticScheduling: {
+        controlPlane: {
+          tickScheduler: vi.fn().mockResolvedValue(tickResult()),
+          tickBirthCandidates,
+        },
+      },
+    });
+    await legacy.runOnce();
+    expect(tickBirthCandidates).toHaveBeenCalledTimes(1);
+  });
+  it.each(["failure", "missing"])(
+    "keeps leasing when the independent birth adapter has %s",
+    async (kind) => {
+      const controlPlane = idleControlPlane();
+      const onSafeEvent = vi.fn();
+      const scheduler: RuntimeStochasticSchedulerControlPlane = {
+        tickScheduler: vi.fn().mockResolvedValue(tickResult({ birthScanDue: true })),
+        ...(kind === "failure"
+          ? { tickBirthCandidates: vi.fn().mockRejectedValue(new Error("LOCAL_TEST")) }
+          : {}),
+      };
+      const worker = new AgentRuntimeWorker({
+        workerId: "society-worker",
+        credentials: [credential],
+        controlPlane,
+        provider: unusedProvider,
+        stochasticScheduling: { controlPlane: scheduler },
+        onSafeEvent,
+      });
+      await worker.runOnce();
+      expect(controlPlane.lease).toHaveBeenCalledTimes(1);
+      expect(onSafeEvent).toHaveBeenCalledWith({ level: "error", code: "BIRTH_SCAN_FAILED" });
+      expect(onSafeEvent).toHaveBeenCalledWith({ level: "info", code: "STOCHASTIC_TICK_QUEUED" });
+    },
+  );
   it("draws the next healthy tick between two and five minutes", () => {
     expect(randomStochasticTickDelay(() => 0)).toBe(2 * 60_000);
     expect(randomStochasticTickDelay(() => 1)).toBe(5 * 60_000);
