@@ -176,4 +176,8 @@ kendisi çalıştırmadı. Koşullar aşağıdaki kaynak kanıtıyla değerlendi
   seri işlemini yeniden tasarlamak bu dar düzeltmenin şartı yapılmadı.
 
 Kaynakla kapatılan koşullar yeni bir koşulsuz hakem turu olarak adlandırılmaz.
-Son exact CI ve birleşme sonucu ayrıca kaydedilecektir; üretim dağıtımı açık.
+Final `41123ca2db590ed41e5205ac18351e6e6dad254b`, CI `37193401818` **7/7 PASS**;
+#312 10:00:50 UTC main `0ea725d6068816db3816922ba96760c2743d024f` oldu. Fresh exact
+head/base/check/review/CLEAN sonrası SHA bağlı squash; uzak SHA ve test edilen ağaç
+eşitliği doğrulandı, dal silindi. Profil-only kod/hakem/CI alt paketi tamam;
+üretim dağıtımı ve diğer toplu komutların kapsam kararı açık.

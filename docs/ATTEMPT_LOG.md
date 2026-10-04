@@ -3882,3 +3882,30 @@ false/true` yapabildi; geçici rol ve DB silindi.
   Henüz kod/hakem/CI/kurulum kabulü yok; üretim uygulaması ve timer değişmedi.
 - Tekrarlama: birleştirilmiş SQL akışının sıkışma oranını native tablo-blok arşiviyle
   eşit sayma; gzip yedekleri silerek veya alan eşiğini düşürerek kazanç yaratma.
+
+### 4 Ekim 2026 10:00 UTC — O5 profil ayarı #312 birleşmesi
+
+- Final `41123ca2db590ed41e5205ac18351e6e6dad254b`, CI `37193401818` 7/7 PASS;
+  Opus `1488353` koşulları kaynak/testle kapandı. Son 47 birim/UI/sözleşme ve 52 PG16,
+  format/lint/typecheck/requirements PASS. Native yedek çalışması bu CI'ya dahil değil.
+- Fresh exact head/base/check/review/CLEAN ardından SHA bağlı squash main
+  `0ea725d6068816db3816922ba96760c2743d024f`; uzak SHA ve test edilen ağaç
+  `a5f7fb48023145ece932a2362ed846751ef2fae7` eşit. Birleşmiş dal silindi.
+- Tekrarlama: profil-only CAS kod kabulünü canlıya dağıtılmış sayma; acil iptal/stop
+  kapıları değişmedi. Yedek dalı yeni main'e aynı ağaçla taşındı; kullanıcı işi korunuyor.
+
+### 4 Ekim 2026 — O3 Opus codec ve retention koşulları
+
+- Gerçek Opus 5 `5b7bc73943368c432b0cbe0f3b1224486ce64f3f` KOŞULLU GO. #312 sonrası
+  rebase `df14f04` aynı ağaç; hakem başka SHA'ya verilmiş gibi yeniden adlandırılmadı.
+- B1 resmi PG16 kaynak koduyla doğrulandı: TOC, blok decode değildir. Alıcıya 600+30sn
+  sınırlı tam decode eklendi; `ARCHIVE_DATA_UNREADABLE` yayım/retention öncesi durur.
+  Gerçek zstd kesik arşiv TOC PASS/decode FAIL, sağlam arşiv restore/hash/sequence PASS;
+  önceki kopya korunması dahil son 22 shell + 1 PG16 = 23 PASS.
+- B2 mevcut 4 Ekim gzip SHA tekrar PASS; backup kilidi altında retention dışı hardlink
+  ve metadata/checksum yan dosyaları saklandı. Aynı inode, bağımsız fiziksel kopya değil.
+  Pin ancak ilk native zstd tam DB restore kabulünden sonra kaldırılabilir.
+- B3 production binary desteği db konteynerinde, yerel decoder desteği ayrı ölçüldü.
+  B4 için exact CI sonrası eski hash/owner/mode korunarak staged rename şart; kurulum yok.
+- Tekrarlama: yalnız stderr uyarısı tarayarak codec kabulü yapma; gerçek blokları oku.
+  Decode'u SQL restore sayma; yedek pinini olağan yedi kopyalı retention'a dahil etme.

@@ -31,7 +31,13 @@ function executable(file: string, body: string) {
 
 /** Sahte ssh (üretim komutunu taklit eder), sahte pg_restore ve sahte ping ile sandbox. */
 function sandbox(
-  options: { meta?: string; restoreExit?: number; sshExit?: number; notify?: string } = {},
+  options: {
+    meta?: string;
+    restoreExit?: number;
+    restoreDataExit?: number;
+    sshExit?: number;
+    notify?: string;
+  } = {},
 ) {
   const root = mkdtempSync(path.join(tmpdir(), "yedek-"));
   roots.push(root);
@@ -45,7 +51,13 @@ function sandbox(
     path.join(bin, "ssh"),
     `printf 'PGDMP-sahte'; cat '${path.join(root, "meta.txt")}' >&2; echo "$@" > '${path.join(root, "ssh-args")}'; exit ${options.sshExit ?? 0}`,
   );
-  executable(path.join(bin, "pg_restore"), `exit ${options.restoreExit ?? 0}`);
+  executable(
+    path.join(bin, "pg_restore"),
+    `
+if [[ "$1" == --list ]]; then exit ${options.restoreExit ?? 0}; fi
+[[ "$1 $2" == '--exit-on-error --file=/dev/null' ]] || exit 98
+exit ${options.restoreDataExit ?? 0}`,
+  );
   executable(path.join(root, "ping.sh"), `echo "$@" >> '${path.join(root, "pings")}'`);
   const run = () =>
     spawnSync("bash", [nightly], {
@@ -112,6 +124,7 @@ describe("gecelik sunucu dışı yedek", () => {
     ["eksik işaret", { meta: "SNAPSHOT_OK\nDUMP_DONE" }, "MARKER_MISSING_META_DONE"],
     ["az tablo", { meta: "SNAPSHOT_OK\nDUMP_DONE\ntable|a|1|0\nMETA_DONE" }, "TABLES_TOO_FEW"],
     ["okunamayan arşiv", { restoreExit: 1 }, "ARCHIVE_UNREADABLE"],
+    ["TOC geçer ama veri/codec çözülmez", { restoreDataExit: 1 }, "ARCHIVE_DATA_UNREADABLE"],
     ["ssh hatası", { sshExit: 255 }, "SSH_OR_DUMP"],
   ])("%s: hata verir, bildirim dener, önceki kopyaya dokunmaz", (_label, options, code) => {
     const { root, backups, run } = sandbox(options);

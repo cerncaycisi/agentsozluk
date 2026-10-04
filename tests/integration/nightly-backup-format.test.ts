@@ -85,6 +85,15 @@ exec "$command_name" "\${args[@]}"`,
     const toc = execFileSync("pg_restore", ["--list", archive], { encoding: "utf8" });
     expect(toc).toContain("Compression: zstd");
     expect(toc).toContain("Format: CUSTOM");
+
+    // TOC okunabilen arşiv bile kesilmiş veri bloğu taşıyabilir; gece kapısı bunu bulmalı.
+    const truncated = path.join(root, "truncated.dump");
+    writeFileSync(truncated, result.stdout.subarray(0, Math.floor(result.stdout.length * 0.75)));
+    expect(spawnSync("pg_restore", ["--list", truncated]).status).toBe(0);
+    const decode = (file: string) =>
+      spawnSync("pg_restore", ["--exit-on-error", "--file=/dev/null", file]);
+    expect(decode(archive).status).toBe(0);
+    expect(decode(truncated).status).not.toBe(0);
     execFileSync(
       "pg_restore",
       ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],

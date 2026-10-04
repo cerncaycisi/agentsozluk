@@ -186,7 +186,8 @@ toplu komutlar bu ilk alt pakette tamamlandı sayılmaz.
 **O5 profil-only CAS notu:** kaynakta doğrulandı; persona sürümü değişmeden çalışma
 ayarlarının kaybolabildiği yol dar durum hash'iyle yerelde kapatıldı. Son 47 birim/arayüz/sözleşme
 ve 52 PG testi geçti; ilk okuma hash'i/sürümü form yenilemesinde korunur. Opus 5 koşulları kaynak envanteri/yönlendirme kanıtıyla
-kapatıldı; son exact CI açık. Yeni migration veya acil pause/iptal/durdurma önkoşulu eklenmedi.
+kapatıldı. #312 final `41123ca`, CI `37193401818` 7/7; main `0ea725d`. Bu alt paketin
+kod/hakem/CI işi tamam; dağıtım açık. Yeni migration veya acil pause/iptal/durdurma önkoşulu eklenmedi.
 
 ## 3. Kabul, maliyet ve geri alma
 
@@ -279,7 +280,8 @@ hash’leri korundu. Yaklaşık 234 MB açıldı, boş alan 6.119.620.608 bayt o
 ortadan kaldırmaz. 09:55 UTC native `zstd:3` hazırlığında 21 shell/1 gerçek PG16
 dump-restore testi geçti; yerel mevcut-yedek veri akışı 676.647.983 bayt oldu. Native
 üretim dump boyutu henüz ölçülmedi. Canlı PG16 binary codec desteği salt okunur doğrulandı;
-kurulum için Opus/exact CI açık. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+Opus koşuluyla alıcıya yayımlama öncesi tam blok decode eklendi (son 23 test PASS).
+Gzip emniyet hardlink'i retention dışında sabit; exact CI ve atomik kurulum açık. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
 Her build/deploy için güncel değer gerekir; üretimde <8 GiB veya ≥%90 dolulukta build yok.

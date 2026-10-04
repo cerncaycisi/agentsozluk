@@ -2206,12 +2206,15 @@ Parçalar (`deploy/backup/`):
   [4 Ekim makbuzunda](O3_YEDEK_2026-10-04.md); kurulmadan önce exact CI/hakem ve
   üretim/restore istemcisinin zstd desteği doğrulanır. Eski gzip dump'lar korunur.
 - `gecelik-yedek.sh` — operatör sunucusunda. İşaretler, ≥40 tablo satırı ve
-  `pg_restore --list` geçmeden dosyayı kalıcı adına taşımaz; tek-çalışma kilidi, çalışma başına
+  `pg_restore --list` ve 600 saniye sınırlı tam veri bloğu decode geçmeden dosyayı kalıcı
+  adına taşımaz; tek-çalışma kilidi, çalışma başına
   benzersiz geçici dosya, var olan kopyanın üzerine yazmama, her hata ve TERM için tek
   yakalayıcı (bildirim + yalnız bu çalışmanın dosyalarını silme). Döndürme yalnız
   `agent-sozluk-YYYYMMDDTHHMMSSZ.dump` biçimini seçer, bu çalışmanın yedeğini silmez.
-  `--list` yalnız içindekiler listesini okur; veri bloklarının geri yüklenebilirliğini
-  kanıtlamaz — tam restore provası (24 Eylül yöntemi) ayda bir elle yapılır.
+  Decode SQL'i DB'ye uygulamaz; constraint/index/veri eşitliğini kanıtlamaz. Tam restore
+  provası (24 Eylül yöntemi) ayda bir elle yapılır. İlk native zstd tam restore kabulüne
+  kadar checksum/blok kontrolü geçmiş son gzip kopyası retention kalıbı dışında
+  sabitlenir; bu pin bağımsız ikinci depolama kopyası sayılmaz.
 - `agentsozluk-yedek.service` / `.timer` — kullanıcı systemd birimleri (linger açık).
 
 Operatör sunucusunda kurulum:
