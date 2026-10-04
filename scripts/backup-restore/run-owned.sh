@@ -58,7 +58,7 @@ cleanup() {
     # Ayrı kontrol bağlantısı; isim+OID+sahip+işaret tek sorguda doğrulanmadan KILL yok.
     # Yalnız bu çalışmanın kullanıcı/app adı ve hedef OID'si. Diğer oturumlar korunur.
     if ! timeout -s KILL 30 env PGUSER="$control" PGAPPNAME="$control_app" \
-      PGOPTIONS='-c statement_timeout=10000 -c lock_timeout=5000' \
+      PGOPTIONS='-c statement_timeout=20000 -c lock_timeout=5000' \
       psql -XAtq -v ON_ERROR_STOP=1 -d postgres \
       -v "target=$target" -v "owner=$owner" -v "marker=o3:$op" \
       -v "expected_oid=$expected_oid" -v "work_app=$work_app" \
@@ -86,6 +86,10 @@ DO $$ BEGIN RAISE EXCEPTION 'O3_CLEANUP_IDENTITY_MISMATCH'; END $$;
 SQL
     then
       printf '%s\n' O3_CLEANUP_UNCONFIRMED >&2
+      original=2
+      printf '%s\n' O3_CLEANUP_UNCONFIRMED > "$journal/cleanup-status"
+    else
+      printf '%s\n' O3_OWNED_SESSIONS_GONE > "$journal/cleanup-status"
     fi
   fi
   if [ "$finished" -ne 1 ]; then

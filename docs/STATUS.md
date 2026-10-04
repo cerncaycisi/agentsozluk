@@ -4462,3 +4462,26 @@ makbuzuyla temizlenecek, toplu rol/DB silme yapılmaz. Format/lint/typecheck/3
 requirements/shell PASS; yeni belge kapanışı, peer/exact CI ve gerçek dış-yedek
 restore hâlâ açık. `do not repeat`: güçlü owner fixture'ını üretim CREATEDB
 kanıtı sayma; ortak HBA'yı bu test için genişletme; READY'yi metadata kabulü sayma.
+
+### O3 ilk hakem ve dar kapanış — 4 Ekim 22:02 UTC
+
+#328 exact `645190b`, actual Opus 5 KOŞULLU GO; bağımlılık paketinin eksikliği
+ve argüman testinin yalnız sayı kapısını sınadığı doğrulandı. Yeni 14 yedi-argüman
+reddi/3 staging link yolu ve gerçek comment sapmasında hiçbir backend'e dokunmayan
+cleanup testi eklendi. Cleanup belirsizliği ayrı exit 2/status, 20s SQL/30s dış
+süre sınırı; restore bütçesi aynı. Son isolated PG16 7/7 PASS, küme kapalı.
+Ham modelUsage Opus yanında 21 token Haiku yardımcı çağrısını da içerir; yalnız
+Opus kullanım denmez. Orphan/create makbuzu eksikse otomatik DROP/retry yok;
+runbook teknik notu yazıldı. Son hakem/exact CI ve dış backup restore hâlâ açık.
+İlk application candidate `d829dd0` main CI 37237038884 7/7 PASS; release artifact
+37237966991 hazırlanıyor, bu kayıt deploy başarı iddiası değildir.
+Tekrarlama: bozuk sayı testini tüm içerik/link kapılarının kanıtı sayma; cleanup
+belirsizliğini restore exit 1 ile birleştirme; ad/OID/owner/comment eksikken silme.
+
+4 Ekim 22:05 UTC operatör kontrol ayrımı: final `requirements:m2:check` bilerek
+`DONE-082 must be PASS for final M2 verification; found BLOCKED.` ile kapalı;
+P7/168 saat henüz yok, PASS'a çevrilmedi. Yanlış komut adı
+`requirements:m2:development:check` mevcut değil; doğru development komutu
+package.json'dan okunarak çalıştırılır. Bu çağrılar O3 ürün regresyonu değildir.
+Tekrarlama: development doğrulamasını final kabul kapısıyla karıştırma; komut
+adını bellekten türetme.

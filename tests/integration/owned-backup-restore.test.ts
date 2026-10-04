@@ -1,6 +1,15 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, it } from "vitest";
@@ -129,6 +138,33 @@ it("O3 CREATE kontrolünde uygulama sahibinin ayrıcalığını artırmadan yetk
     expect(
       f.sql("postgres", `SELECT rolsuper OR rolcreatedb FROM pg_roles WHERE rolname='${f.owner}'`),
     ).toBe("f");
+  });
+}, 30_000);
+
+it("O3 temizlikte değişen hedef kimliğine dokunmaz ve belirsizliği ayrı exit ile bildirir", async () => {
+  await fixture(async (f) => {
+    f.sql(f.source, "CREATE TABLE sample(id int)");
+    const stage = f.stage();
+    f.dump(stage);
+    writeFileSync(`${stage.dir}/verify.sql`, "SELECT pg_sleep(30);\n");
+    const running = f.run(stage, 4);
+    await f.until(() => existsSync(`${stage.dir}/run/verify.stdout`));
+    f.remember(stage);
+    const preserved = f.sleeper(stage.target, `o3-${stage.op}`);
+    await f.until(() => f.active(stage.target, `o3-${stage.op}`) === "2");
+    f.sql("postgres", `COMMENT ON DATABASE "${stage.target}" IS 'fixture-identity-changed'`);
+    const result = await running;
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("O3_CLEANUP_UNCONFIRMED");
+    expect(readFileSync(`${stage.dir}/run/cleanup.stderr`, "utf8")).toContain(
+      "O3_CLEANUP_IDENTITY_MISMATCH",
+    );
+    expect(readFileSync(`${stage.dir}/run/cleanup-status`, "utf8").trim()).toBe(
+      "O3_CLEANUP_UNCONFIRMED",
+    );
+    expect(f.active(stage.target, `o3-${stage.op}`)).toBe("2");
+    await f.stop(preserved);
+    expect(f.sql(f.source, "SELECT count(*) FROM sample")).toBe("0");
   });
 }, 30_000);
 
@@ -345,8 +381,83 @@ function makeFixture() {
   };
 }
 
-it("O3 güvensiz kimlik/argümanlarda DB komutuna erişmez", () => {
+it("O3 eksik argümanlarda DB komutuna erişmez", () => {
   const bad = spawnSync("sh", [script, "not-a-valid-op"], { encoding: "utf8" });
   expect(bad.status).not.toBe(0);
   expect(bad.stderr.trim()).toBe("O3_ARGUMENTS_INVALID");
+});
+
+it("O3 yedi argümanın bozuk içeriğini ve staging symlinklerini DB erişiminden önce reddeder", () => {
+  const op = randomBytes(16).toString("hex");
+  const target = `agent_sozluk_o3_${op}`;
+  const base = [
+    op,
+    "o3_source_test",
+    "o3_owner_test",
+    "o3_control_test",
+    "a".repeat(64),
+    "b".repeat(64),
+    "30",
+  ];
+  const badArguments: Array<[number, string]> = [
+    [0, "f".repeat(31)],
+    [0, "F".repeat(32)],
+    [1, "source-bad"],
+    [1, "Source"],
+    [1, "s".repeat(64)],
+    [1, target],
+    [2, "owner'bad"],
+    [3, "control;bad"],
+    [4, "c".repeat(63)],
+    [5, "C".repeat(64)],
+    [6, "0"],
+    [6, "01"],
+    [6, "2701"],
+    [6, "1;psql"],
+  ];
+  const markerDir = mkdtempSync(path.join(tmpdir(), "o3-guard-test-"));
+  const called = path.join(markerDir, "db-command-called");
+  for (const binary of ["psql", "pg_restore", "sha256sum"])
+    writeFileSync(path.join(markerDir, binary), `#!/bin/sh\ntouch '${called}'\nexit 99\n`, {
+      mode: 0o700,
+    });
+  const env = { ...process.env, PATH: `${markerDir}:${process.env.PATH}` };
+  const stage = `/tmp/agentsozluk-o3-${op}`;
+  expect(existsSync(stage)).toBe(false);
+  try {
+    for (const [index, value] of badArguments) {
+      const args = [...base];
+      args[index] = value;
+      const result = spawnSync("sh", [script, ...args], { env, encoding: "utf8", timeout: 5000 });
+      expect(result.status).toBe(1);
+      expect(result.stderr.trim()).toBe("O3_ARGUMENTS_INVALID");
+      expect(existsSync(called)).toBe(false);
+    }
+    // Dizin linki, dump linki ve verify linki bağımsız; hepsi hash/DB komutundan önce.
+    const real = path.join(markerDir, "real");
+    mkdirSync(real);
+    writeFileSync(path.join(real, "backup.dump"), "fixture");
+    writeFileSync(path.join(real, "verify.sql"), "fixture");
+    for (const kind of ["directory", "dump", "verify"]) {
+      if (kind === "directory") symlinkSync(real, stage);
+      else {
+        mkdirSync(stage, { mode: 0o700 });
+        for (const name of ["backup.dump", "verify.sql"])
+          if (
+            (kind === "dump" && name === "backup.dump") ||
+            (kind === "verify" && name === "verify.sql")
+          )
+            symlinkSync(path.join(real, name), path.join(stage, name));
+          else copyFileSync(path.join(real, name), path.join(stage, name));
+      }
+      const result = spawnSync("sh", [script, ...base], { env, encoding: "utf8", timeout: 5000 });
+      expect(result.status).toBe(1);
+      expect(result.stderr.trim()).toBe("O3_STAGING_INVALID");
+      expect(existsSync(called)).toBe(false);
+      rmSync(stage, { recursive: true });
+    }
+  } finally {
+    rmSync(stage, { force: true, recursive: true });
+    rmSync(markerDir, { force: true, recursive: true });
+  }
 });

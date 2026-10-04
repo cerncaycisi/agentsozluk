@@ -8,6 +8,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 22:02 UTC:** #328 O3 ilk Opus KOŞULLU GO; argüman/link ve cleanup
+  kimlik sapması kapanışlarıyla 7/7 isolated PG16 PASS. Son hakem/exact CI ve
+  üretim dış backup restore açık. İlk application exact `d829dd0` main CI7/7;
+  artifact `37237966991` hazırlanıyor, deploy henüz yok.
+
 - **4 Ekim 21:40 UTC:** #327 final `cc0b2e7`, CI `37235882789` **7/7 PASS**;
   main `d829dd0`, tam ağaç eşliği/temiz main doğrulandı. Main CI `37237038884`
   açık; ardından tek exact artifact/A5/cutover. Canlı hâlâ `9bf3653`.
