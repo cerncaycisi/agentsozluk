@@ -4552,3 +4552,29 @@ Gerçek unshare-user/pid/ipc/uts probe ve provider inspect PASS; CLI0.160.0/Luna
 structured output doğrulandı. Sudo, sistem ayarı veya kullanıcı görevleri değiştirilmedi.
 Auth kopyası/model çağrısı yok. Tekrarlama: kullanıcı-dizini araçla çözülen eksik paket
 için global namespace kısıtını kaldırma; version/help kontrolünü auth/kapasite kanıtı sayma.
+
+## 4 Ekim 2026 — release ayar özeti ve oturum devri
+
+Gökhan önceki cbfbda04-214f-49f6-9c6f-7b3f15242cbb çalışmasını aynı goal ve süreli
+yetkiyle sürdürmeyi istedi. Yürütücü bu devirde gpt-6.1-sol; önceki Astra ve Opus
+makbuzları yeniden adlandırılmadı. Devam eden P3/P4/P5 pilotunun kimliği, başlangıcı,
+bütçesi ve detached kaynak ağacı korundu; ikinci model işçisi başlatılmadı.
+
+Dağıtım ön hazırlığında release settings fingerprint hatası kaynakta doğrulandı:
+agent_global_settings üzerinde dört OFF/NULL sütunu eklenmesi tam JSON satır hash'ini
+değiştirir; A5 veri ve katalog doğrulaması geçse bile release son kontrolü yanlış ret
+verirdi. Yalnız exact october-2026-v1/v2 için eksik dört alan aynı başlangıç değerleriyle
+JSONB'ye eklenir, ardından gerçek satır değerleri üzerine yazılır. Hiçbir gerçek eski
+veya yeni değer özetten çıkarılmaz. Migration'sız ve bilinmeyen profil tam satırı korur.
+A5 katalog, OFF/NULL, eski veri/şema/geçmiş ve rollback kapıları aynen kalır.
+
+İlk yerel 16 PG16 + 18 release betiği = 34 test PASS. Yeni dört senaryo iki profilde
+şema eklemesini ve runtimeEnabled, rewardMode, birthMode, lastBirthScanAt,
+lastBirthCandidateAt değer sapmalarını gerçek psql/restore/migration ile sınadı.
+Final kaynakta dört release senaryosu tekrar PASS; format/lint/typecheck ve üç gereksinim kontrolü PASS.
+Kod hakemi, exact CI ve üretim geçişi henüz açık; gerçek üretim ayarı değiştirilmedi.
+
+P2 development 12 geçerli karar/1 Opus okuma; kaynak denetiminde 1 yeni/1 eski/4 beraberlik.
+Ham okuyucu ve operatör ayrışması private makbuzda korundu. Üstünlük eşiği geçmedi;
+saklı set açılmadı, yeni bütçe verilmedi. Somut doğrulanmış ihlal 0; fayda BELİRSİZ.
+Bu yalnız karar pilotudur; kamuya yayımlanmış entry veya genel karakter başarısı değildir.

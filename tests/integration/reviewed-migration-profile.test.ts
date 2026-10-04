@@ -118,6 +118,42 @@ ${body}
     return result;
   }
 
+  function settingsFingerprint(database: string, selectedProfile = profileName) {
+    const remote = readFileSync(path.join(repo, "scripts/production-release-remote.sh"), "utf8");
+    const definition = remote.slice(
+      remote.indexOf("settings_fingerprint() {"),
+      remote.indexOf("\nlifecycle_fingerprint() {"),
+    );
+    const result = spawnSync(
+      "bash",
+      [
+        "-c",
+        `set -Eeuo pipefail
+reviewed_migration_profile=${quote(selectedProfile)}
+hash_stream() { sha256sum | cut -d ' ' -f 1; }
+compose_stub() {
+  [[ "$1 $2 $3 $4" == "exec -T db psql" ]] || return 99
+  shift 4
+  local args=()
+  while (($#)); do
+    case "$1" in
+      -U | -d) shift 2 ;;
+      *) args+=("$1"); shift ;;
+    esac
+  done
+  psql "\${args[@]}" -d ${quote(url(database))}
+}
+compose=(compose_stub)
+${definition}
+settings_fingerprint`,
+      ],
+      { encoding: "utf8", timeout: 15_000 },
+    );
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout.trim()).toMatch(/^[0-9a-f]{64}$/u);
+    return result.stdout.trim();
+  }
+
   // Senkron psql/restore çağrıları iki profil boyunca RPC cevaplarını bekletmesin.
   // Test/üretim timeout'u büyütülmez; her senaryo sonunda event loop'a dönülür.
   afterEach(async () => {
@@ -197,6 +233,35 @@ reviewed_index_size_receipt ${afterName}`);
   });
 
   describe("exact Ekim paketi: gerçek PG16 restore ve geçiş", () => {
+    it("release ayar özeti yalnız exact profilin OFF/NULL şema eklemesini eşit sayar", () => {
+      expect(settingsFingerprint(afterName)).toBe(settingsFingerprint(beforeName));
+      expect(settingsFingerprint(afterName, "")).not.toBe(settingsFingerprint(beforeName, ""));
+      expect(settingsFingerprint(afterName, "october-2026-v3")).not.toBe(
+        settingsFingerprint(beforeName, "october-2026-v3"),
+      );
+    });
+
+    it("release özeti eski ayarın ve dört yeni ayarın değer sapmalarını korur", () => {
+      const baseline = settingsFingerprint(beforeName);
+      const mutations = [
+        ['"runtimeEnabled" = NOT "runtimeEnabled"', '"runtimeEnabled" = NOT "runtimeEnabled"'],
+        ["\"rewardMode\" = 'SHADOW'", "\"rewardMode\" = 'OFF'"],
+        ["\"birthMode\" = 'CANDIDATES'", "\"birthMode\" = 'OFF'"],
+        ['"lastBirthScanAt" = now()', '"lastBirthScanAt" = NULL'],
+        ['"lastBirthCandidateAt" = now()', '"lastBirthCandidateAt" = NULL'],
+      ];
+      for (const [mutation, undo] of mutations) {
+        expect(settingsFingerprint(afterName)).toBe(baseline);
+        try {
+          sql(afterName, `UPDATE agent_global_settings SET ${mutation};`);
+          expect(settingsFingerprint(afterName)).not.toBe(baseline);
+        } finally {
+          sql(afterName, `UPDATE agent_global_settings SET ${undo};`);
+        }
+      }
+      expect(settingsFingerprint(afterName)).toBe(baseline);
+    });
+
     it("yeni tablo FK istisnası genel kapıya veya JS prototype isimlerine taşmaz", () => {
       pass("assert_fk_targets");
       const generic = phase('reviewed_migration_profile=""; assert_fk_targets');

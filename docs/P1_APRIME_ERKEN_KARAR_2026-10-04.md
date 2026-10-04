@@ -93,3 +93,11 @@ güvenlik ayarı değişmedi. Gerçek provider `inspect()` kendi namespace'inde
 Auth kopyalanmadı, model çağrısı0. Bu auth/kota veya üretim kapasite kanıtı değildir;
 canlıdaki kayıtlı CLI0.144.6 ile aynı sürüm olduğu iddia edilmez. Pilot içinde tek exact
 CLI sabitlenecek, iki karşılaştırma kolu aynı çalıştırıcıyı kullanacak.
+
+### Exact teslim
+
+#326 final `e990f9dfcb1f0d27db83fbd8a5bfcb3576858d9e`, exact CI `37230102535`
+**7/7 PASS**; squash main `4d05d1e8706fd1247d99ee5248fe214ce74cef6c`, main CI
+`37230917091` **7/7 PASS**. Test edilen ağaç ve uzak main eşliği önceki teslim makbuzunda
+doğrulandı. Erken giriş kodu tamamlandı; gerçek pilot sonuçları ayrı kaydedilir.
+Üretim uygulama sürümü bu birleştirmeyle değişmedi.

@@ -8,6 +8,19 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 20:30 UTC devir ve dağıtım düzeltmesi:** Gökhan'ın aynı goal/yetkiyle
+  devam talimatıyla yürütücü bu oturumda `gpt-6.1-sol`; önceki Astra/Opus kayıtları
+  tarihsel olarak korunur. Erken A′ kapısı #326 ile main `4d05d1e` üzerinde, main CI
+  `37230917091` **7/7 PASS**. P2 ilk set 12 geçerli karar/1 Opus okuma ile tamamlandı;
+  operatör kaynak kontrolünde **1 yeni / 1 eski / 4 beraberlik**, doğrulanmış ihlal 0.
+  Üstünlük eşiği geçmedi; saklı set açılmıyor, fayda **BELİRSİZ**. P3/P4/P5'in mevcut
+  18 girdilik kontrolü aynı kimlik/bütçe/saatle sürüyor; yeni çalışma açılmadı.
+  Release ayar özetinin dört yeni OFF/NULL sütunu yanlış değişiklik sayması yerelde
+  düzeltildi: 16 PG16 +18 release testi PASS; son kaynakta dört PG16 senaryosu ayrıca
+  tekrar geçti. Eski/yeni ayar sapmaları korunur. Format/lint/typecheck/3 gereksinim
+  kontrolü PASS; bağımsız Opus, exact CI ve gerçek üretim geçişi açık.
+  [Migration ve release kapısı](P1_EKIM_MIGRATION_PROFILI_2026-10-04.md).
+
 - **4 Ekim 19:38 UTC kullanıcı düzeltmesi — hemen geçerli:** “bittikçe canlıya alalım” ve
   “A′ gözlemine erken bakalım” talimatlarıyla **6 Ekim / 72 saat dağıtım beklemesi kaldırıldı**.
   Hazır işler teknik kapıları geçince küçük paketlerle yayımlanır; 7–9 Ekim bir bekleme tarihi

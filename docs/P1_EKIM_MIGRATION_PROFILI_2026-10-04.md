@@ -188,3 +188,22 @@ yardımcı Haiku kullanımı hakem modelini değiştirmez. #320 exact head CI a�
 **7/7 PASS**. Main `88c7f562124020d45c0041e98b1e2ebb6287d000`; uzak SHA ve test
 edilen head'in tree eşliği doğrulandı. Önceki CI yeni belge push'u nedeniyle iptal
 edildi, PASS sayılmadı. V2 kod/hakem/CI tamam; üretim prova ve cutover kapıları açık.
+
+## Release ayar özetinin Ekim profiliyle uyumu — 4 Ekim
+
+A5'in veri parmak izi yeni dört alanı ayırıp başlangıç değerlerini ayrıca denetlerken,
+release betiğinin `settings_fingerprint()` işlevi tam satır JSON'unu karşılaştırıyordu.
+Doğru migration bile `OFF/NULL` alanları ekleyince hash'i değiştiriyor ve son release
+kontrolü geçişi durduruyordu. Üretimde denenmedi; dağıtım ön hazırlığında bulundu.
+
+Yalnız exact `october-2026-v1/v2` için eksik alanlar `OFF/OFF/NULL/NULL` ile tamamlanır,
+gerçek satır JSON'u sağ tarafta bunların üzerine yazılır. Böylece hiçbir gerçek ayar
+değeri özetten çıkarılmaz; dört yeni alandaki sapma da hash'i değiştirir. Diğer profiller
+ve migration'sız mod tam satırı karşılaştırır. A5'in eski veri, katalog, başlangıç değerleri
+ve geri dönüş kapıları korunur.
+
+İki profilde 16 PG16 / 18 release betiği testi PASS; son kaynakta dört yeni PG16
+senaryosu ayrıca tekrar geçti. Eski `runtimeEnabled` ve yeni dört alanın sapması,
+şema eklemesinin eşliği, migration'sız ve bilinmeyen profil davranışı gerçek psql ile
+sınandı. Format/lint/typecheck ve üç gereksinim testi PASS. Exact kod hakemi/CI ve
+üretim büyüklüğündeki restore/önceki imaj geçişi henüz açık.
