@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -8,6 +8,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -286,9 +287,10 @@ describe("gecelik sunucu dışı yedek", () => {
       .join("\n");
     expect(code).not.toMatch(/SSH_ORIGINAL_COMMAND|\beval\b/u);
     // Yazılan tek dosya veri içermeyen tek-çalışma kilidi.
-    expect(code.match(/>\s*\/(opt|var|tmp|home)\S*/gu)).toStrictEqual([
-      ">/tmp/agentsozluk-yedek.lock",
-    ]);
+    expect(code).toContain("exec 9>>lock");
+    expect(code).toContain("umask 077");
+    expect(code).toContain("lock_invalid");
+    expect(code).not.toContain(">/tmp/agentsozluk-yedek.lock");
   });
 
   it("üretim komutu tek çalışır, süre sınırı ve bekçi oturumları kapatır", () => {
@@ -329,7 +331,16 @@ describe("gecelik sunucu dışı yedek", () => {
         "exit 9",
       ].join("\n"),
     );
-    const script = path.resolve("deploy/backup/uretim-yedek-komutu.sh");
+    const script = path.join(root, "producer.sh");
+    expect(remote.match(/lock_dir="\/tmp\/agentsozluk-yedek-\$\{lock_uid\}"/gu)).toHaveLength(1);
+    writeFileSync(
+      script,
+      remote.replace(
+        'lock_dir="/tmp/agentsozluk-yedek-${lock_uid}"',
+        `lock_dir="${root}/lock-directory"`,
+      ),
+      { mode: 0o700 },
+    );
     for (let attempt = 0; attempt < 50; attempt += 1) {
       const result = spawnSync("bash", [script], {
         encoding: "utf8",
@@ -341,6 +352,47 @@ describe("gecelik sunucu dışı yedek", () => {
       expect(result.stderr).toMatch(/SNAPSHOT_OK\n[\s\S]*DUMP_DONE\n[\s\S]*META_DONE\n$/u);
     }
   }, 120_000);
+
+  it("üretim kilidinde symlink, hardlink ve açık dizin reddedilir; sentinel değişmez", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yedek-lock-"));
+    roots.push(root);
+    const bin = path.join(root, "bin");
+    mkdirSync(bin);
+    executable(path.join(bin, "hostname"), "echo agent-sozluk-prod");
+    executable(path.join(bin, "docker"), "echo UNEXPECTED_DATABASE_ACCESS >&2; exit 98");
+    const dir = path.join(root, "lock-directory");
+    const script = path.join(root, "producer.sh");
+    writeFileSync(
+      script,
+      remote.replace('lock_dir="/tmp/agentsozluk-yedek-${lock_uid}"', `lock_dir="${dir}"`),
+      { mode: 0o700 },
+    );
+    const sentinel = path.join(root, "sentinel");
+    writeFileSync(sentinel, "korunacak veri");
+    const reject = () => {
+      const result = spawnSync("bash", [script], {
+        encoding: "utf8",
+        env: { NODE_ENV: "test", PATH: `${bin}:/usr/bin:/bin` },
+        timeout: 5000,
+      });
+      expect(result.status).toBe(76);
+      expect(result.stderr).toContain("YEDEK_LOCK_UNSAFE");
+      expect(result.stderr).not.toContain("UNEXPECTED_DATABASE_ACCESS");
+      expect(readFileSync(sentinel, "utf8")).toBe("korunacak veri");
+    };
+    symlinkSync(root, dir);
+    reject();
+    rmSync(dir);
+    mkdirSync(dir, { mode: 0o755 });
+    reject();
+    chmodSync(dir, 0o700);
+    symlinkSync(sentinel, path.join(dir, "lock"));
+    reject();
+    rmSync(path.join(dir, "lock"));
+    execFileSync("ln", [sentinel, path.join(dir, "lock")]);
+    chmodSync(sentinel, 0o600);
+    reject();
+  });
 
   it("zamanlayıcı gecelik ve kaçırılanı telafi eder", () => {
     expect(timer).toMatch(/^OnCalendar=\*-\*-\* 04:30:00 Europe\/Istanbul$/mu);

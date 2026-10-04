@@ -7,6 +7,82 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+### O3 son yerel kapanış — 4 Ekim 22:57 UTC
+
+Owned `de_DE.UTF-8` → C para gösterimi önce gerçek COPY format hatasını ortaya
+çıkardı; source dump ve helper restore istemcisi geçici `lc_monetary=C` ile düzeltildi.
+Son focused farklı para locale provası **2/2 PASS**; mevcut helper ve native format
+birlikte **9/9 gerçek PG16 PASS** (53,77 saniye), **44 unit/shell PASS**. Kaynak/target
+`saat dilimi`, float ve para ayarları da ayrışır. Kaynak `t` sütunuyla dump öncesi
+reddedilir; boş stdout, sentinel kilit dosyası değişmezliği, symlink/hardlink/unsafe
+mode olumsuz yolları geçti. Teste ait özel locale/kümeler kapalı; ortak PG korunur.
+CLI `Address already in use` ön yoklaması TIME_WAIT bağlanmasıydı; private probe
+SO_REUSEADDR ile dinleyen sunucuya dokunmadan ayrıldı. Bu hata ürün regresyonu değildir.
+Yeni kaynak betiği üretimde kurulmadı; son hakem/exact CI ve gerçek dış restore açık.
+
+## O3 son dar hakem kapanışı ve kapasite başlangıcı — 4 Ekim 23:16 UTC
+
+Gerçek `claude-opus-5`, sunulan exact
+`8084fc7bbc9421af3e1f782e9851e4364b371f2a` dosya metinleri için **KOŞULLU GO**;
+82,918 saniye, 5.078 çıktı/3.865 düşünme tokenı; yardımcı Haiku 25 çıktı tokenı.
+Hakem araçsızdır: git ağacını kendisi açmadı. Operatör packet `git show` ve temiz
+exact checkout ile bağlandı; bağımsız Git/SHA sorgusu yaptığı iddia edilmez.
+Yeni bloklayan ürün riski bulmadı; source holder/metadata `pg_catalog` pin'i doğru.
+Koşulu target shadow provasının eksikliğiydi. Yalnız sentetik target DB'ye de
+`search_path=public,pg_catalog` eklendi; restore edilmiş gölge fonksiyon unqualified
+0, catalog fonksiyon nonzero. Actual source/target gölge altında strict comparison,
+özel de_DE/C para render ve native restore **2/2 PG16 PASS** (23:15:55). Runtime
+kodu reviewed `8084fc7` ile aynı; yalnız test/ölçüm belgesi kapanır. Son exact CI
+normal zorunlu kapıdır; koşulsuz GO veya üretim restore kabulü denmez.
+
+Eski dış native arşiv yerel TOC/schema-only ön kontrolü: 671.960.158 bayt, PG16.14/
+zstd/CUSTOM, 50 public tablo adı kendi metadata'sıyla eşit; 3.270.401 satır/3 sequence.
+Materialized/foreign/BLOB/large object TOC kaydı yok. Metadata hash
+`554e9ffe76ef9c0405222dad56bd17516aea11c0ba0b206d5561955cac7b718c`, schema-only
+hash `5065da0e582422c6889fa5aab5a1b8e92390d0e7497a7fe955a78af5a5e7efba`.
+Bu arşiv tam restore/veri eşliği değildir; gerçek izole restore açık.
+
+23:08:28 UTC pinli canlı `d829dd0`, pause/ayar305/openRuns0/leases0 ve diğer Codex
+süreci yok kapılarıyla existing reviewed CLI **cold10→warm10→dual2** kapasite
+başladı. Worker app/image/PID korunur; output/diagnostics create-exclusive 0600.
+O3 CI beklerken bağımsız ilerler; üretimde tek ağır iş, restore başlamadı. Paket
+strict runbook diagnostics doğrulaması ve admin rota kaydı ayrıca gereklidir;
+başlatma kapasite PASS değildir. P7/T0 henüz yok, final M2 BLOCKED aynı.
+
+## 4 Ekim 22:51 UTC — uygulama canlı ve persona rollout tamam
+
+Üretim app/image/runtime/worker exact `d829dd06eb4aa68154f521667302e6744b67399e`.
+Main CI `37237038884` **7/7 PASS**, artifact `37237966991` SUCCESS. Aynı exact
+adayın manual-prepaused A5 işlemi 22:24:59.300–22:38:06.257 UTC, exit 0 ve
+`RELEASE_COMPLETE PASS`: tam frozen yedek 1.332.482.331 bayt, SHA-256
+`e606e590a09f936d259c074c014f66cfb98ad2bf3ff09895d19db004c48da0c0`; izole
+restore/veri/şema/sequence ve eski imaj smoke geçti. Tam işlem süresi frozen
+kesinti süresi diye yazılmaz. Exact v2 dokuz migration uygulandı; 22:42:09 kesitinde
+37 finished, yarım/rolledback 0. Health/ready/search **200/200/200**, worker active/running;
+release lock/migration hold/op yok. İmaj `sha256:94fbb41387378a2ccad677bab62fee1d1d17e5366ce55e208c494f15033c2e43`.
+Root boş 25.334.874.112 bayt, kullanım %68; önceki rollback imaj/runtime korunur, cleanup yok.
+
+22:51 UTC existing reviewed persona aracıyla DRY_RUN→APPLY, exact plan hash
+`12d14f820ebc8974b797656f033d804b7c365f03bc77f292fe7509556dc22baf` CAS:
+36 profile/sürüm, **36 audit +36 outbox**, untouched 0, persona drift/validation
+failure 0. Persona içeriği korunur. Son plan hash
+`89dbaed014d448fafe2669a7a8e10c1fe5175267d66ad3d2990bedcf4f36b0bb`, pending 0.
+Rollout `46383f31-b5d3-42f6-a04c-30dbbadf7050`; runtime pause/ayar305 korunur.
+Bu ölçüm üslup üstünlüğü veya P7 kabulü değildir. P1/heartbeat/P2–P6/P8/O5 kodu
+canlıya geçti; kapasite yenileme, sınırlı etki/aktivasyon ve canlı kabul açık.
+Yetki aynı 3–17 Ekim full plan istisnası; exact SHA/eylem makbuzlu, approval env kalıcı değil.
+
+O3 üçüncü hakem gerçek `claude-opus-5`, exact `8e8e27d543649f7b9b82fee6476e0b7ddbc2daa2`
+**KOŞULLU GO**, 191,979 saniye; Haiku yardımcı 29 çıktı tokenı ayrıca kayıtlı.
+Koşullar: timezone/lc_monetary/float fixture farklılığı, kaynak `t` sütunu reddi,
+öngörülebilir tmp lock symlink/truncate koruması ve son exact CI. Bunlar source
+kontrolüyle açık kabul edildi; önceki görüş GO diye yeniden adlandırılmadı.
+Yeni private0700 UID lock/0600 tek-link append ve descriptor inode eşliği;
+kaynak snapshot içinde dump öncesi `O3_AMBIGUOUS_ROW_ALIAS`. Son **44 unit/shell
++2 gerçek PG16 PASS** (source alias negatif dahil); parasal locale farklılığının
+ayrı owned LOCPATH kümesindeki doğrudan gösterim testi sürüyor. Üretim backup
+komutu henüz değiştirilmedi; gerçek eski dış backup restore hâlâ açık.
+
 ## 4 Ekim 2026 — pilot ikinci hakem ve canlı migration envanteri
 
 Gerçek Opus 5 exact `02631a02dab22ec767411a0267ff22216a586713` için **KOŞULLU GO (dar)**;
@@ -4444,3 +4520,111 @@ sınar (`deploy-production-no-migration.sh` fetch/checkout +son SSH guard'ı).
 koşullar salt okunur kesitle tamamlanmış sayılmaz; gerçek CI/dağıtım sonucu ayrıca
 kaydedilecek. Bu kapanıştan sonraki belge makbuzunda kod/test ağacının reviewed
 SHA ile aynı kaldığı doğrulanır; reviewed SHA yeni belge SHA'sına yeniden adlandırılmaz.
+
+### 4 Ekim 21:32 UTC — O3 taslak rol ayrımı, gerçek PG16 kanıtı
+
+Main tabanı `d829dd06eb4aa68154f521667302e6744b67399e`; önceki tested `ee1cd48`
+kodu aynı, yalnız #327 belge kapanışı var. Özgün iki untracked O3 taslağı hash'li
+kopyayla korunur. Owner ile CREATE DATABASE üretim rolüne uymuyordu; kontrol rolü
+ayrıldı, uygulama sahibine privilege grant yok. Helper üretimde çalıştırılmadı.
+
+İlk ortak PG denemesi 1 PASS/4 FAIL: `no pg_hba.conf entry`; ortak HBA/DB görevleri
+korundu. Yeni yalnız sentetik PG16.14 localhost:55441 kümesinde **5/5 PASS**,
+sonrasında pg_ctl stop PASS. Non-CREATEDB owner, yetkisiz kontrol reddi, hash/ad/
+tekrar, gerçek yavaş restore süre kesmesi, verify ortak bütçesi ve iki yabancı
+backend'in korunması doğrudan sınandı. Çalışma kümesi özel receipt/log ile korunur;
+ilk başarısız ortak fixture'ın yerel test rol/artifact artıkları ayrıca sahiplik
+makbuzuyla temizlenecek, toplu rol/DB silme yapılmaz. Format/lint/typecheck/3
+requirements/shell PASS; yeni belge kapanışı, peer/exact CI ve gerçek dış-yedek
+restore hâlâ açık. `do not repeat`: güçlü owner fixture'ını üretim CREATEDB
+kanıtı sayma; ortak HBA'yı bu test için genişletme; READY'yi metadata kabulü sayma.
+
+### O3 ilk hakem ve dar kapanış — 4 Ekim 22:02 UTC
+
+#328 exact `645190b`, actual Opus 5 KOŞULLU GO; bağımlılık paketinin eksikliği
+ve argüman testinin yalnız sayı kapısını sınadığı doğrulandı. Yeni 14 yedi-argüman
+reddi/3 staging link yolu ve gerçek comment sapmasında hiçbir backend'e dokunmayan
+cleanup testi eklendi. Cleanup belirsizliği ayrı exit 2/status, 20s SQL/30s dış
+süre sınırı; restore bütçesi aynı. Son isolated PG16 7/7 PASS, küme kapalı.
+Ham modelUsage Opus yanında 21 token Haiku yardımcı çağrısını da içerir; yalnız
+Opus kullanım denmez. Orphan/create makbuzu eksikse otomatik DROP/retry yok;
+runbook teknik notu yazıldı. Son hakem/exact CI ve dış backup restore hâlâ açık.
+İlk application candidate `d829dd0` main CI 37237038884 7/7 PASS; release artifact
+37237966991 hazırlanıyor, bu kayıt deploy başarı iddiası değildir.
+Tekrarlama: bozuk sayı testini tüm içerik/link kapılarının kanıtı sayma; cleanup
+belirsizliğini restore exit 1 ile birleştirme; ad/OID/owner/comment eksikken silme.
+
+4 Ekim 22:05 UTC operatör kontrol ayrımı: final `requirements:m2:check` bilerek
+`DONE-082 must be PASS for final M2 verification; found BLOCKED.` ile kapalı;
+P7/168 saat henüz yok, PASS'a çevrilmedi. Yanlış komut adı
+`requirements:m2:development:check` mevcut değil; doğru development komutu
+package.json'dan okunarak çalıştırılır. Bu çağrılar O3 ürün regresyonu değildir.
+Tekrarlama: development doğrulamasını final kabul kapısıyla karıştırma; komut
+adını bellekten türetme.
+
+### 4 Ekim 22:04–22:13 UTC — exact d829 inert kurulum ve pause hatası
+
+Exact `d829dd06eb4aa68154f521667302e6744b67399e` main CI `37237038884`
+7/7 PASS, release artifact `37237966991` SUCCESS. Üretim imajı inert kuruldu:
+`sha256:94fbb41387378a2ccad677bab62fee1d1d17e5366ce55e208c494f15033c2e43`,
+GNU runtime ABI127 hazır. Wrapper exact remote checkout'u d829'a bağladı;
+`SOCIETY_FLOW_FAIL code=INTERNAL_ERROR`, wrapper line632/status1 ile durdu.
+A5, frozen backup/restore, migration ve cutover başlamadı. Artifact kurulumunu
+canlı release başarısı sayma.
+
+Taze pinli salt okunur yeniden üretim: candidate tam global query **P2022,
+column birthMode**; dört yeni OFF/NULL sütun henüz migration ile eklenmediği için
+candidate Prisma şeması eski DB'yle uyumsuz. `setGlobalRuntimeEnabledIfChanged`
+tam settings okur; idempotent pause olsa bile ilk okuma düşer. Ayar sürümü304,
+runtimeEnabledtrue: transaction commit yok. App image/tag/runtime/worker exact
+`9bf3653ff152d4a704c1774ccd6782e0a3322f29`; uygulama çalışıyor. 28 applied,
+checksum sapması/unfinished/hold/migration-op/A5 konteyner veya backend yok.
+Failed lock exact owner kaydı özel makbuzda korundu; baseline-complete yok.
+
+Eski canlı immutable release `agent-society-flow.ts status` SUCCESS. Runbook
+lock temizliği READ ONLY: tek kayıtlı deploy scope, başka deploy süreç0,
+`/etc/pam.d/sudo` +tüm include dosyalarında pam_systemd yok; diğer kapılar geçti.
+Hiçbir kilit kaldırılmadı/pause/retry yapılmadı; mevcut şemaya uygun audited
+pre-pause +exact failed lock cleanup +aynı SHA/artifact/manual-paused A5 devamı
+farklı model işletim hakeminde. Teknik kapı atlamak veya raw SQL ayar yazmak yok.
+İlk teşhis SQL'inde kabuk quote hatası yalnız `column runtimeenabled does not
+exist` verdi; Python subprocess stdin ile düzeltilip aynı READ ONLY sorgu geçti.
+Tekrarlama: yeni Prisma şemasıyla eski DB'ye pre-migration tam-model query yapma;
+artifact READY'yi cutover diye yazma; başarısız kilidi sahip/scope/DB kanıtsız silme.
+
+O3 ikinci gerçek Opus5 exact `ecf7bf0a20efb75ffa2ae1f884315dc669f02e3a`
+KOŞULLU GO, 271,563 saniye; modelUsage ayrıca 14-token Haiku yardımcı çağrısı.
+Serialization GUC/faz süre testleri için ek koşullar açık. Varsayımsal format
+satırlarını parser'a eklemek eski native metadata'yı kırabilir; kaynakla birlikte
+uzlaştırılır. 7/7 yerel test kanıtı korunur; exactCI koşuyor, helper deploy edilmedi.
+
+### 4 Ekim 22:24 UTC — P2022 sonrası audited pause ve exact A5 devamı
+
+İşletim hakemi Opus5/medium gerçek KOŞULLU, 46,105s; Haiku17 yardımcı tokenı.
+İlk high çağrı360s timeout, tamamlanmış review sayılmadı. Hakem ikinci kaynakta
+`setSocietyFlowEnabled` yolunu okudu; seçilen immutable CLI gerçekte idempotent
+`setGlobalRuntimeEnabledIfChanged` kullanır, kaynakla teyit edildi. Koşullu karar
+GO diye yeniden adlandırılmaz. running=0/drain şartı mevcut bounded proof'a bağlandı.
+
+Taze aynı-scope/pin/oldapp-tag-runtime9bf/actor/role guard altında eski canlı CLI
+pause **304→305**, false; diğer ayarların hash'i aynı. Queued/running/cancel-requested/
+aktif lease **0/0/0/0**. Aynı oturumda bütün PAM/scope/A5/backend/history/kimlik
+kapıları tekrar geçti; yalnız exact failed owner dosyası +boş lock dizini kaldırıldı.
+Hiçbir baseline/migration-op/image/runtime silinmedi. Aynı d829/artifact37237966991
+manual-prepaused wrapper yeniden başladı; disk27,665,956,864 bayt, eski app/runtime
+9bf sabit. planned/image-verified/drain0/frozen geçti; taze frozen dump
+**1.332.482.331 bayt**, SHA256
+`e606e590a09f936d259c074c014f66cfb98ad2bf3ff09895d19db004c48da0c0`.
+Restore/şema/sequence/old-image/migration/cutover sonucu hâlâ açık; frozen sırasında
+başka DB bağlantısı açılmadı. Script bayrağının kaldırılması doğrulanmış manual
+pause önkoşuluna bağlıdır, pause veya teknik güvenlik kapısı atlamak değildir.
+
+O3 son yerel kapanış: dört output GUC source+restore SET LOCAL; metadata formatı
+korunur. 7 helper PG16 ve odaklı2 producer/native-restore PASS, 43unit/shellPASS.
+İlk yeni fixture rezerv `binary` ve INSERT kolon sayısı hatalarıydı; hedefli düzeltme
+sonrası typed GUC sapması senaryosu geçti. Test wrapper exit taşınması/cause korunması
+kanıtı ayrıca kayıtta. Yeni source backup betiği henüz üretimde kurulu değil;
+son farklı model incelemesi/exactCI/full dış backup restore açık.
+Tekrarlama: candidate Prisma'yla eski şemada tam query'yi retry etme; hakemin yanlış
+seçilen fonksiyonuna dayalı idempotence iddiasını source olmadan benimseme; backup
+meta formatını strict parser/eskikopya uyumu olmadan genişletme.

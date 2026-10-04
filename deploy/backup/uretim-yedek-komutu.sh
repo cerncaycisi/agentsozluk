@@ -18,7 +18,25 @@ test "$(hostname)" = agent-sozluk-prod
 
 # Tek çalışma (Astra, PR #204 P1): yedek anahtarıyla açılan paralel bağlantılar ikinci bir
 # tam dump başlatamaz. Kilit dosyası üretimde yazılan tek dosyadır ve veri içermez.
-exec 9>/tmp/agentsozluk-yedek.lock
+umask 077
+lock_uid=$(id -u)
+lock_dir="/tmp/agentsozluk-yedek-${lock_uid}"
+lock_invalid() { echo "YEDEK_LOCK_UNSAFE" >&2; exit 76; }
+if ! mkdir -m 700 -- "$lock_dir" 2>/dev/null; then
+  [[ -d "$lock_dir" && ! -L "$lock_dir" ]] || lock_invalid
+fi
+[[ $(stat -c '%u:%a' -- "$lock_dir") == "${lock_uid}:700" ]] || lock_invalid
+# Diğer UID dizine erişemez; aynı UID zaten yedek komutunun yetki sınırındadır.
+cd -P -- "$lock_dir"
+[[ "$PWD" == "$lock_dir" ]] || lock_invalid
+if [[ -e lock || -L lock ]]; then
+  [[ -f lock && ! -L lock ]] || lock_invalid
+  [[ $(stat -c '%u:%a:%h' -- lock) == "${lock_uid}:600:1" ]] || lock_invalid
+fi
+# Append mevcut dosyayı truncate etmez; yeni dosya umask ile 0600 olur.
+exec 9>>lock
+[[ $(stat -c '%u:%a:%h' -- lock) == "${lock_uid}:600:1" ]] || lock_invalid
+[[ $(stat -Lc '%d:%i' -- /proc/self/fd/9) == $(stat -c '%d:%i' -- lock) ]] || lock_invalid
 flock -n 9 || { echo "YEDEK_BUSY" >&2; exit 75; }
 
 compose=(docker compose --env-file /opt/agent-sozluk/app/.env
@@ -29,7 +47,7 @@ APP=agentsozluk-yedek
 # boşta kalabilir, bekçi süre dolunca bütün yedek oturumlarını sonlandırır.
 LIMIT_S=3000
 pg_env=(-e "PGAPPNAME=$APP"
-  -e "PGOPTIONS=-c timezone=UTC -c extra_float_digits=3 -c idle_in_transaction_session_timeout=${LIMIT_S}s")
+  -e "PGOPTIONS=-c timezone=UTC -c extra_float_digits=3 -c lc_monetary=C -c idle_in_transaction_session_timeout=${LIMIT_S}s")
 terminate_backup_sessions() {
   "${compose[@]}" exec -T db psql -XAtq -U agent_sozluk -d agent_sozluk -c \
     "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE application_name = '$APP' AND pid <> pg_backend_pid()" \
@@ -55,7 +73,19 @@ coproc HOLDER {
 # PID hemen saklanır: coprocess bitince Bash `HOLDER_PID`'i siler, `set -u` altında
 # sonraki `wait` betiği düşürüyordu (Astra: 250 koşuda 10).
 holder_pid=$HOLDER_PID
-echo "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SELECT pg_export_snapshot();" >&"${HOLDER[1]}"
+cat >&"${HOLDER[1]}" <<'SQL'
+BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SET LOCAL search_path = pg_catalog;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+      AND a.attnum > 0 AND NOT a.attisdropped AND a.attname = 't') THEN
+    RAISE EXCEPTION 'O3_AMBIGUOUS_ROW_ALIAS';
+  END IF;
+END $$;
+SELECT pg_export_snapshot();
+SQL
 read -r -t 60 snapshot <&"${HOLDER[0]}"
 [[ "$snapshot" =~ ^[0-9A-F]+-[0-9A-F]+-[0-9]+$ ]]
 echo "SNAPSHOT_OK" >&2
@@ -73,6 +103,11 @@ timeout --kill-after=30 600 "${compose[@]}" exec -T "${pg_env[@]}" db \
   psql -XAtq -F '|' -v ON_ERROR_STOP=1 -U agent_sozluk -d agent_sozluk >&2 <<SQL
 BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET TRANSACTION SNAPSHOT '$snapshot';
+SET LOCAL DateStyle = 'ISO, MDY';
+SET LOCAL IntervalStyle = 'iso_8601';
+SET LOCAL bytea_output = 'hex';
+SET LOCAL lc_monetary = 'C';
+SET LOCAL search_path = pg_catalog;
 SELECT 'server_version|' || current_setting('server_version');
 SELECT 'table|' || c.relname || '|' || (xpath('/row/n/text()', x))[1]::text || '|' || (xpath('/row/h/text()', x))[1]::text
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace

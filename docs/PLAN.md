@@ -8,6 +8,54 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 23:08 UTC sıra daraltması:** O3 son search_path/locale/lock kaynağı
+  exact peer/CI aşamasında; uygulama/runtime d829 ve persona36 tamam, pause305.
+  O3 restore ile çakışmadan **bağımsız cold/warm/dual kapasite** mevcut canlı
+  reviewed CLI üzerinden şimdi yürür. Üretimde tek ağır iş: kapasite bitmeden
+  O3 restore başlamaz. Sonra dış restore/backup kurulum +sınırlı etki → resume/T0.
+  O3 ops değişikliği istem/model/capability profilini değiştirmez; uygulama yeniden
+  deploy edilmeyecek. P7 bu işler bitmeden başlamaz.
+
+- **4 Ekim 22:51 UTC güncel:** exact `d829dd0` canlı app/runtime/worker;
+  CI7/7, artifact/A5 tam backup+restore/eski imaj/9 migration/cutover **PASS**.
+  Health/ready/search200; 37 finished, yarım0; root25,3GB/%68. Persona CAS **36
+  sürüm +36 audit +36 outbox**, drift/validation/pending0; karakter içeriği aynı.
+  Runtime kontrollü pause/ayar305. **Sıra:** O3 son somut hakem koşulları +exactCI,
+  dış backup restore/atomik kaynak betiği → cold/warm/dual kapasite ve sınırlı etki
+  → resume/T0 → gerçek168h P7 → Gate11/12/P8 somut karar. Takvim beklemesi yok.
+  A5 fresh restore O3 eski dış yedeğin yerine geçmez. P7 başlamadı.
+
+- **4 Ekim 22:30 UTC:** P2022 kaynakla ayrıldı; eski canlı immutable CLI audited
+  pause304→305, diğer kontroller hash'i aynı, tüm open/lease0. Fresh aynı-scope
+  koşullarıyla yalnız failed exact lock temizlendi. Aynı d829/artifact manual-prepaused
+  A5 planned/image-verified/frozen ve 1.332.482.331-byte tam yedek geçti; restore,
+  eski imaj, migration/cutover hâlâ açık. Frozen'da ek DB bağlantısı yok.
+  O3 source+restore output GUC/faz koşulları yerelde 7PG+2PG/43unit-shell ile kapandı;
+  son farklı model incelemesi/exactCI/atomik backup-script kurulum/full restore açık.
+
+- **4 Ekim 22:13 UTC — canlı geçiş kurtarması:** exact `d829dd0` CI7/7 ve
+  artifact `37237966991` başarılı; inert image/runtime kuruldu. Candidate pause
+  migration öncesi tam settings sorgusunda `P2022 birthMode` ile düştü; transaction
+  commit yok, ayar304/runtime açık. App/image/runtime/worker `9bf3653` aynı; applied28,
+  yarım/A5/hold yok, failed release kilidi korunuyor. Eski canlı immutable release
+  status geçti. Mevcut audited pause yolu/lock cleanup kanıtı bağımsız işletim
+  incelemesinde; A5/restore/migration/cutover açık, hiçbir kapı atlanmadı.
+- **O3 ikinci Opus:** exact `ecf7bf0`, KOŞULLU GO; ek serialization GUC ve kısa
+  test bütçesi/faz senkronizasyonu koşulları kaynakla uzlaştırılacak. 7/7 yerel
+  kanıt tarihsel olarak korunur; helper üretimde uygulanmadı/main'e birleşmedi.
+
+- **4 Ekim 22:02 UTC:** #328 O3 ilk Opus KOŞULLU GO; argüman/link ve cleanup
+  kimlik sapması kapanışlarıyla 7/7 isolated PG16 PASS. Son hakem/exact CI ve
+  üretim dış backup restore açık. İlk application exact `d829dd0` main CI7/7;
+  artifact `37237966991` hazırlanıyor, deploy henüz yok.
+
+- **4 Ekim 21:40 UTC:** #327 final `cc0b2e7`, CI `37235882789` **7/7 PASS**;
+  main `d829dd0`, tam ağaç eşliği/temiz main doğrulandı. Main CI `37237038884`
+  açık; ardından tek exact artifact/A5/cutover. Canlı hâlâ `9bf3653`.
+  O3 owner/control ayrımı hazırlanıyor: izole PG16'da 5/5 PASS, privilege grant yok;
+  peer/final CI/gerçek restore açık. İlk canlı geçiş bitene kadar O3 main'e girmez.
+  [Sahipli restore sözleşmesi](O3_SAHIPLI_RESTORE_2026-10-04.md).
+
 - **4 Ekim 21:19 UTC:** son kod `ee1cd48`, gerçek Opus 5 KOŞULLU GO; somut yeni
   kod düzeltmesi yok. Şartlar mevcut tam exact CI ve wrapper'ın uzak exact checkout
   kapılarıdır. 62 doğum PG16 ve UTC 2 PG16/19 release PASS; tüm yerel zorunlu
@@ -58,9 +106,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   Erken pilot makbuzu **6 Ekim 19:38:28.147 UTC'ye kadar** geçerlidir; bu bir bekleme
   süresi değildir, kullanılabilirlik sonudur. Sonrasında eski kesitle yeni pilot başlatılmaz.
   [Erken karar ve kaynak makbuzu](P1_APRIME_ERKEN_KARAR_2026-10-04.md).
-- **Şimdiki sıra:** tamamlanan erken karar ve P2/P3–P5 kontrol makbuzlarıyla
-  izinli sınırlı pilot paketini
-  artifact, migration/restore, eski imaj ve kapasite kapılarıyla canlıya çıkar. P8 aday
+- **Tamamlanan geçiş:** erken karar ve P2/P3–P5 kontrol makbuzlarıyla
+  ilk uygulama paketi artifact/A5/restore/eski imaj kapılarını geçerek canlıya çıktı.
+  Persona rollout tamam; güncel kapasite ve sonraki canlı kabul kapıları açıktır. P8 aday
   taraması/ilk aktivasyon kendiliğinden açılmaz. Sonraki hazır paketler aynı yöntemle ilerler.
   P7'nin gerçek 168 saati son davranış sürümünden başlar; erken A′ kesiti onun yerine geçmez.
 
@@ -74,7 +122,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   istenmez. Kapsam ve son tarih `AGENTS.md` süreli yetki maddesinde. Bu uygulama oturumu başladı.
 - **Ürün hedefi:** bakışı ayırt edilebilen, amaçlarını sürdüren, yaptığı işin sonucundan
   öğrenen yazarlar. Başarı çok yazmak veya çok oy almak değildir.
-- **Son üretim kaydı:** `9bf3653`, v46, A′ okuma bağlamı; `gpt-5.6-luna`, iki hat.
+- **Önceki üretim kaydı (tarihsel):** `9bf3653`, v46, A′ okuma bağlamı; `gpt-5.6-luna`, iki hat.
   3 Ekim kapasite kanıtının kayıtlı son tarihi 17 Ekim. 3 Ekim 20:00 UTC P0 salt okunur kesiti alındı; yeni dağıtım yapılmadı.
 - **4 Ekim 06:09 UTC sağlık kesiti:** worker çalışıyor (son saatte 17 SUCCEEDED, 6 PARTIAL;
   bunlardan biri CODEX_TIMEOUT). Son 24 saatte 273 başarılı / 95 ret (%25,8); retlerin 76’sı
