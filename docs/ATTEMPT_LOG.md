@@ -3949,3 +3949,26 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Son kalite kontrolünde yeni UI mock tipinin `import()` annotation'ı
   `@typescript-eslint/consistent-type-imports` nedeniyle reddedildi; type-only namespace
   importuna çevrildi. Runtime/mock davranışı değiştirilmedi, lint kuralı gevşetilmedi.
+
+### 4 Ekim 2026 10:37–10:49 UTC — O3 kurulum/ilk native yedek ve O5 #314
+
+- #313 merged `e8bb0e06c144552ad3b3c840bd8da9ffaeef58ce`, push CI `37194998932`
+  7/7. İlk yerel preflight `ORIGIN_MISMATCH`: aynı repo URL'sinin `.git` son eki yoktu;
+  görev checkout yolunda exact repo normalize edilince PASS. Üretime başarısız erişim
+  veya pin gevşetme değil; önceki checkout/diğer kullanıcı işi değiştirilmedi.
+- 10:37:12–10:37:14 iki backup dosyası kilit altında eski dosyalar korunarak atomik
+  kuruldu. Alıcı `20f3df1…`, gönderici `04966de…`; tam hash'ler O3 makbuzunda. Canlı
+  `9bf3653`, app imajı ve worker kimliği aynı. Opus B4 koşulu gerçek kurulumla kapandı.
+- 10:39:01–10:41:07 ilk native zstd: exit 0 / 671.960.158 bayt / 50 tablo /
+  3.270.401 satır. SHA `fe56869003c8824576250b9711bbd31cf3b1bd19abdf018443f41c7d456ac810`
+  ve tüm veri blokları PASS. Yedi normal kopya + gzip pin; boş alan 6.679.306.240 bayt.
+  Timer aktif; dış bildirim kapalı. Tam SQL restore yapılmadı; A′ yük aralığı kaydedildi.
+- #314 final `9ffa18f2d023abe54c0413b7666af5a0cd6f4c30`, CI `37195890146` 7/7;
+  main `16790be3815558c709f023f479809d803a3255f1`. Fresh merge/uzak SHA/ağaç eşitliği
+  PASS. Son 4 PG16/7 birim-UI; lint ilk `consistent-type-imports` hatası type-only
+  import ile düzeldi, final format/lint/typecheck/requirements/OpenAPI PASS.
+- 10:49:21 pinli READ ONLY sağlık `9bf3653`: son saat 19 SUCCEEDED/3 PARTIAL,
+  son 24 saat 294 başarılı/91 ret (%23,6). 76 tekrar, 15 sayı; ret açık.
+- Tekrarlama: yerel origin son ek farkını production host uyuşmazlığı sayma; decode'u
+  SQL restore sayma; gzip pinini ilk native tam restore öncesi silme; kayan sağlık
+  penceresindeki farkı henüz dağıtılmamış koda bağlama. Koşullu hakemi yeniden adlandırma.

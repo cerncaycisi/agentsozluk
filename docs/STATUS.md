@@ -7,6 +7,20 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 10:37–10:49 UTC — yedek kurulumu ve sağlık kesiti
+
+- #313 main `e8bb0e0` exact push CI 7/7 sonrasında iki yedek betiği kilit/staged rename
+  ile kuruldu. Eski dosyalar saklandı; canlı checkout `9bf3653`, uygulama imajı ve
+  worker kimliği değişmedi. Timer aktif, sonraki iş 5 Ekim 01:39 UTC.
+- İlk native zstd yedek 125,994 sn’de tamamlandı: **671.960.158 bayt**, 50 tablo,
+  3.270.401 satır; checksum, metadata işaretleri ve bütün veri blokları PASS. Yedi
+  normal kopya ve eski gzip pin korundu. Boş alan 6.679.306.240 bayt. Farklı snapshot
+  gzip dosyasına göre %48,93 küçük; aynı snapshot karşılaştırması veya SQL restore değil.
+- 10:49 READ ONLY sağlık: son saat 19 SUCCEEDED / 3 PARTIAL; 24 saatte 294 başarılı /
+  91 ret (%23,6). Tekrar/benzerlik 76, kesin sayı 15; alarm açık. Canlı sürüm değişmedi.
+  Kayan pencereler bağımsız deney değildir. Yedek yükü 10:39:01–10:41:07 A′ etkisidir.
+- [Kurulum, hash ve geri yükleme sınırı](O3_YEDEK_2026-10-04.md). Tam restore yapılmadı.
+
 ## 2026-10-04 — O5 içerik hedef sınırı yerelde
 
 - `8531f64` tabanında run/agent penceresinin sessiz ilk-500 kesilmesi kapatıldı:
@@ -15,7 +29,8 @@
   değiştirmedi; açık tek seçim yalnız bir entry'yi gizledi. Son 3 odaklı PG16 ve
   5 birim/arayüz PASS. Opus `d5a75e6` KOŞULLU GO sonrası NO_MATCH ve seçim bağlamı
   eklendi; son 4 PG16/7 birim-UI PASS. 127 runtime testi odaklı koşuda çalışmadı.
-  Final exact CI/canlı açık.
+  Final `9ffa18f`, CI `37195890146` 7/7; #314 main `16790be`, uzak SHA/ağaç eşitliği
+  doğrulandı. Canlı dağıtım açık.
   [O5 makbuzu](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
 
 ## 2026-10-04 — O3 native sıkıştırma yerel kanıtı
@@ -29,7 +44,7 @@
   TOC geçen kesik arşiv gerçek decode'da reddedildi. Son 23 test PASS. Gzip retention
   dışında hardlink ile sabitlendi. #313 final `8531f64`, CI `37194424580` 7/7; main
   `e8bb0e0`, uzak SHA/ağaç eşitliği ve push CI `37194998932` 7/7 PASS. Atomik
-  kurulum ve gerçek yeni yedek ölçümü açık.
+  kurulum ve gerçek yeni yedek ölçümü aşağıdaki 10:37–10:42 kaydıyla tamamlandı.
   [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 ## 2026-10-04 — profil ayarı durum karşılaştırması yerelde

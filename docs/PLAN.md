@@ -28,6 +28,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - **4 Ekim 07:01 UTC yenileme:** son saat 20 SUCCEEDED / 4 PARTIAL; son 24 saat
   274 başarılı / 95 ret (%25,7). Ret açık; canlı checkout aynı. Pencereler örtüşür,
   iki kesit bağımsız deney veya iyileşme kanıtı sayılmaz.
+- **4 Ekim 10:49 UTC yenileme:** son saat 19 SUCCEEDED / 3 PARTIAL; son 24 saat
+  294 başarılı / 91 ret (**%23,6**). Retlerin 76’sı tekrar/benzerlik, 15’i kesin sayı.
+  Canlı `9bf3653` aynı; ret alarmı açık. Örtüşen pencere değişimi kod etkisi sayılmaz.
 - **O4 somut ret düzeltmesi:** 4 Ekim 07:59–08:21 UTC salt okunur 20 vakada kaynak
   sayı gösterimi hatası bulundu. `$272.5M` / `272,5 milyon` eşleşmesi ve yanlış tamsayı
   parçası kapatıldı; #310 final `21be9cb`, CI `37189898438` 7/7, main `b4d69d6`.
@@ -192,7 +195,9 @@ kod/hakem/CI işi tamam; dağıtım açık. Yeni migration veya acil pause/iptal
 **O5 içerik tamlık notu:** kalan komut envanterinde run/agent penceresinin ilk 500 kaydı
 tamamıymış gibi işleyebildiği kaynakta bulundu. 501 ile taşma kontrolü, mutasyon öncesi
 422 ve seçim daraltma yolu hazır. Opus koşuluyla boş seçim NO_MATCH ve sonuç/makbuzda
-seçim zamanı/run durumu eklendi; son 4 PG16/7 birim-UI geçti. Final exact CI açık.
+seçim zamanı/run durumu eklendi; son 4 PG16/7 birim-UI geçti. #314 final `9ffa18f`,
+CI `37195890146` 7/7; main `16790be`, uzak SHA/test edilen ağaç eşitliği doğrulandı.
+Bu dar düzeltmenin kod/hakem/CI işi tamam; canlı dağıtım açık.
 Diğer komutların kapsam kararı ve canlı dağıtım bu dar düzeltmeyle kapanmaz. İstek
 kesilirse tekil audit'ler korunurken toplu makbuzun eksik kalabilmesi O5 kalan
 görünürlük/uzlaştırma sınırıdır; yeni atomiklik iddiası yok.
@@ -291,7 +296,12 @@ dump-restore testi geçti; yerel mevcut-yedek veri akışı 676.647.983 bayt old
 Opus koşuluyla alıcıya yayımlama öncesi tam blok decode eklendi (son 23 test PASS).
 Gzip emniyet hardlink'i retention dışında sabit. #313 final `8531f64`, CI `37194424580`
 7/7; main `e8bb0e0`, ağaç eşitliği ve push CI `37194998932` 7/7 doğrulandı.
-Atomik kurulum ve yeni gerçek yedek açık. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+10:37 UTC iki betik eski hash/geri dönüş kopyası korunarak atomik kuruldu; uygulama
+imajı/worker değişmedi. 10:39–10:41 UTC ilk native yedek **671.960.158 bayt**,
+checksum/50 tablo/3.270.401 satır/tam blok decode PASS; yedi normal kopya ve gzip pin
+korundu. Boş alan **6.679.306.240 bayt**. Timer aktif, sonraki iş 5 Ekim 01:39 UTC.
+Kurulum/ilk yeni yedek tamam; 5 Ekim otomatik makbuz ve 7 Ekim tam DB restore açık.
+Yedek yükü A′ döneminin operasyonel etkisi olarak kaydedildi. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
 Her build/deploy için güncel değer gerekir; üretimde <8 GiB veya ≥%90 dolulukta build yok.

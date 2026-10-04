@@ -2202,9 +2202,10 @@ görüntüdendir; sequence değerleri PostgreSQL gereği anlık görüntüye ba�
 Parçalar (`deploy/backup/`):
 
 - `uretim-yedek-komutu.sh` — üretimde zorunlu komut. Yalnız okur, dosya yazmaz, istemcinin
-  istediği komutu kullanmaz. Native custom `zstd:3` adayı O3
-  [4 Ekim makbuzunda](O3_YEDEK_2026-10-04.md); kurulmadan önce exact CI/hakem ve
-  üretim/restore istemcisinin zstd desteği doğrulanır. Eski gzip dump'lar korunur.
+  istediği komutu kullanmaz. Native custom `zstd:3`, #313 main `e8bb0e0` exact CI/hakem
+  koşulları ve iki uç codec kontrolünden sonra 4 Ekim 10:37 UTC kuruldu. İlk gerçek
+  yedek checksum/blok decode geçti; [kurulum makbuzu](O3_YEDEK_2026-10-04.md).
+  Eski gzip dump'lar korunur; yeni kurtarma ortamında da codec desteği doğrulanır.
 - `gecelik-yedek.sh` — operatör sunucusunda. İşaretler, ≥40 tablo satırı ve
   `pg_restore --list` ve 600 saniye sınırlı tam veri bloğu decode geçmeden dosyayı kalıcı
   adına taşımaz; tek-çalışma kilidi, çalışma başına
