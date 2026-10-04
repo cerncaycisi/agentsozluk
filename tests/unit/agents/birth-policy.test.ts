@@ -4,7 +4,7 @@ import {
   selectBirthParentEvidence,
   type BirthAssessmentEvidence,
 } from "@/modules/agents/domain/birth-policy";
-import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
+import { reviewedSourceLocaleFocus } from "@/modules/agents/personas/source-locale-metadata";
 import { birthDraftBank } from "@/modules/agents/personas/birth-drafts";
 import { agentPersonaTemplates } from "@/modules/agents/personas/templates";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
@@ -174,7 +174,6 @@ describe("independent birth drafts", () => {
     expect(
       new Set(birthDraftBank.flatMap(({ persona }) => persona.sources.map(({ url }) => url))).size,
     ).toBe(24);
-    const verified = new Map(verifiedSourcePool().map((source) => [source.url, source]));
     for (const { persona } of birthDraftBank) {
       expect(
         new Set(persona.sources.map(({ url }) => new URL(url).origin)).size,
@@ -182,12 +181,10 @@ describe("independent birth drafts", () => {
       expect(new Set(persona.sources.flatMap(({ topics }) => topics)).size).toBeGreaterThanOrEqual(
         5,
       );
-      for (const source of persona.sources) {
-        const registered = verified.get(source.url);
-        expect(registered).toBeDefined();
-        expect(source.sourceType).toBe(registered!.sourceType);
-        expect(source.topics).toEqual(registered!.topics);
-      }
+      expect(Object.keys(persona.sourceTopicMappings)).toHaveLength(12);
+      expect(
+        persona.sources.filter(({ url }) => reviewedSourceLocaleFocus(url) !== "GLOBAL"),
+      ).toHaveLength(4);
     }
     const universe: unknown[] = [...agentPersonaTemplates];
     for (const draft of birthDraftBank) {

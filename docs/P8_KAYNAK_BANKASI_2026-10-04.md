@@ -48,3 +48,41 @@ Mevcut pending adayın eski bankasını yeni bankaymış gibi sunma yolu eklenme
 - Kapasite hareketlidir. Okuma zamanı uygun olan kaynak daha sonra dolabilir;
   hazırlık transaction'ı ortak kaynak kapasitesi kilidi altında sınırı yeniden okur.
   Kayan canlı kaynak başarısı ve aday dışı50/30/20 tabanı ayrıca ölçülecektir.
+
+## Hakem koşulları ve bilinçli tercihler
+
+Gerçek Opus5, `9c634fb6beef284742e77e999092f70d8959ab58` için KOŞULLU GO verdi;
+kanıtlanmış kod kusuru bulmadı. 13:09:08 UTC yeniden pinli READ ONLY `9bf3653`
+kontrolünde doğum adayları tablosu **yok**: üretimde REJECTED v1 satırı bulunamaz.
+Seçilen24 adresin hiçbiri holdercap5'te değil. Sorgu hash'i
+`9a605f78863cdd3c608aa11e2953669cff260667168fb08177929bc71e0c35dc`.
+Ayrıca hazırlık kapasite hatası exception/rollback'tir; semantik ret satırı yazmaz.
+
+"140 kayıtlı havuz", kod deposundaki doğrulanmış kaynak havuzudur; ayrı bir canlı URL
+izin listesi veya PG katalog yetkisi iddiası değildir. Özel seçim makbuzundaki weight,
+pinned/status havuz girdilerine aittir; üretilen persona metadata'sı değildir. Persona
+kaynak weight'leri mevcut0,86→0,53 sırasını, SEED/unpinned durumunu kullanır. Bu ayrım
+kod yolu, persona testi ve önce/sonra hash makbuzuyla doğrulanır. Aynı pool'u kendisiyle
+karşılaştıran test yerine gerçek sözleşme sınırları ve12 ayrı sourceTopicMappings
+anahtarı sınanır; kaynak kaydı/katalog doğruluğu bu testin iddiası değildir.
+
+**Ürün tercihi:** her adayda dört Türkçe, sekiz yabancı dilde kaynak tutuldu. Bu oran,
+ana akım Türkçe adreslerin dolu olmasıyla adayın ilgi alanı ve farklı kaynak türleri
+arasında seçilmiş yerel pilot tercihidir; yazarın Türkçe sözlük karakteri değiştirilmez.
+Çeviri/yerel bağlam kaybı olasılığı ölçülmüş bir gerileme değildir, açık sınırlılıktır.
+Sırf Türkçe sayısını artırmak için ilgisiz spor/haber beslemeleri eklenmedi. Yeni bir
+ölçüm haftası açılmaz; aday kaynak kabulünde gerçek seçilmiş içerik ve toplumun20TR
+alt sınırı zaten incelenecektir. Yeni kodun kaynak okumasını başarılı yazı kalitesi
+kabulüne çevirmiyoruz. Bu tercih kullanıcının süreli plan yetkisi içindeki kaynak
+seçimidir; Opus görüşü ek kullanıcı onayı gerektiren yeni kural oluşturmaz.
+
+İfade/ekoiq dörder sahibinden dolayı birer boş yere sahiptir; bunlar Türkçe haklar ve
+çevre bağlamını korumak için tutuldu. Slot rezervasyonu yoktur. Hazırlık sırasında biri
+dolarsa işlem bütünüyle geri alınır, otomatik başka kimlik/kaynak seçilmez; güncel
+kaynak hazırlığı kapısı sonucu belirler. Bu sınırlılık daha önceki cap kontrolünü
+gevşetmez. İleride aynı host'un iki path'i eklenirse mapping sayım testi çakışmayı yakalar.
+
+#316 ana dalıyla birleşik son regresyon: **79/79 PASS** (36birim+43PG16).
+Yeni bankayla gerçek PAUSED hesap/credential hazırlığı, SOURCE_REFRESH tamamlanması,
+kapasite aşımında tüm hesabın rollback'i ve amaç/reflection/kamu eylemi reddi geçti.
+Opus koşulları bu doğrudan kanıt ve yukarıdaki açıklamalarla kapandı; finalCI açık.

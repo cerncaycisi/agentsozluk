@@ -4093,3 +4093,27 @@ false/true` yapabildi; geçici rol ve DB silindi.
   üretimde yeni source/fetch/kimlik yazılmadı ve aktivasyon kanıtı değildir.
 - Tekrarlama: koşullu görüşü koşulsuz hakem GO diye yazma; eksik alıntıya dayanmış
   varsayımı mevcut kaynak karşısında otomatik kod değişikliği gerekçesi yapma.
+
+### 4 Ekim 2026 13:09–13:10 UTC — hazırlık birleşimi ve kaynak bankası
+
+- #316 final `f262a8cade87c34e1958ffc9fb81abaf2c932f70`, CI `37203877096` 7/7;
+  fresh exact head/base/review/CLEAN kontrolü ardından main
+  `462642d5ba7bd6e66da12e2f2b027438c89172a9`. Uzak SHA ve test edilen tree eşliği PASS.
+- #317 `9c634fb` gerçek Opus5 KOŞULLU GO. B1 varsayımı için13:09:08UTC pinli
+  READ ONLY9bf'de tablo-yokluğu ve24URL canlı holder<5 doğrulandı. Sorgu hash'i
+  `9a605f78863cdd3c608aa11e2953669cff260667168fb08177929bc71e0c35dc`.
+  Hazırlık hatası REJECTED yazmıyor; mevcut v1 retleri varsa korunur.
+- B2/B6 aynıhavuz eşliği yerine12mapping/4TR ve çeşitlilik sözleşmesi; B3 özel
+  seçimin havuz metadata'sı ile üretilenpersona metadata'sı ayrıldı. B4 bir-slot risk,
+  B5 heraday4TR/8yabancı kaynak tercihi açık belgelendi; süreli yetki içinde yerel
+  kaynak seçimi, yeni kullanıcı onayı veya yeni deney haftası çıkarılmadı.
+- #317 main462642d üzerine rebase edildi; önceki/rebase sonrası paket diff SHA256
+  `f664247ae3861764a5081778395cb3b38e478c7ba31c2117d698686c2557f857` aynı.
+  Eski hash9c634fb hakem kaydında korunur, yeni head diye yeniden adlandırılmaz.
+- Tekrarlama: havuz weight'ini üretilmiş persona weight'i diye sunma; aday tablosu
+  henüz yokken canlı ret satırı varmış gibi politika değiştiripdraftVersion artırma;
+  bir-slot kapıyı kapasite garantisi veya statik okunabilirliği aktivasyon kabulü sayma.
+
+- #316 ile birleşik kaynak bankası son koşusu **79/79 PASS** (36birim+43PG16).
+  Eski36+20 koşusuyla karıştırılmadı. PAUSED gerçek hesap/kaynak/tamamlama ve kapasite
+  aşımında rollback yeni bankayla geçti; Opus koşulları kanıtla kapandı. FinalCI açık.
