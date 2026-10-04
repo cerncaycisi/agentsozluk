@@ -8,6 +8,7 @@ import {
 } from "@/lib/text/word-boundary";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import { exactSourceNumericClaims } from "@/modules/agents/domain/source-numbers";
 
 export const repairableContentRejectionCodes = new Set([
   "DUPLICATE_SIMILARITY",
@@ -451,10 +452,7 @@ function withoutUrls(value: string): string {
 
 function exactNumericClaims(value: string): Set<string> {
   const normalized = normalizedGroundingText(withoutUrls(value));
-  return new Set(
-    normalized.match(/(?<![\p{L}\p{N}_])[-+]?[0-9]+(?:[.,][0-9]+)*(?:\s*%)?(?![\p{L}\p{N}_])/gu) ??
-      [],
-  );
+  return exactSourceNumericClaims(normalized);
 }
 
 function directQuoteClaims(value: string): string[] {

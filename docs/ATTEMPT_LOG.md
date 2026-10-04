@@ -3757,3 +3757,23 @@ false/true` yapabildi; geçici rol ve DB silindi.
   doğrulamadan etki atfetme. Yeni deney veya otomatik süre uzatımı yok.
 
 - Son format/lint/typecheck/requirements kontrolleri PASS; yalnız belge makbuzu değişti.
+
+### 4 Ekim 2026 — O4 güncel ret vakası ve sayı gösterimi
+
+- Canlı exact `9bf3653ff152d4a704c1774ccd6782e0a3322f29`; 07:59:17 UTC dört koddan
+  beşer vaka READ ONLY alındı; 08:21:44 UTC 13 başlık önerisinin 12'si tekil exact/alias
+  hedefe bağlandı. Host/pin/DNS/repo/Compose, 15 sn statement/2 sn lock sınırları geçti.
+  Ham entry/kanıt yalnız özel ret-vakalari-20261004 dizininde; üretim değişikliği yok.
+- Sayı regex'i ondalık/ölçek gösterimini yanlış karşılaştırıyor ve harf sonuna geri
+  izleyerek tamsayı parçasını yanlış kanıt sayıyordu. İlk regresyon 7 FAIL / 40 PASS;
+  b47cdcca8cfc7c3d002eae367bb598bebb7e56e7 ilk 66 birim/PG 11 eylem ve CI 37188492449
+  7/7. Gerçek beş sayı vakasının yalnız biri yeni sayı kapısından geçti; tüm alarm kapatılmadı.
+- İlk claude-opus-5 isteği 420 sn exit 124/boş çıktı; review sayılmadı. İkinci gerçek
+  claude-opus-5 KOŞULLU GO. Büyük harf I/ı ölçek kaybı ve opaque yüzde koşulları düzeltildi;
+  son 77 birim, PG16 12 eylem sonucu geçti. Son exact head CI ayrıca alınacak.
+- PG fixture'ının ilk genişletmesi dördüncü kaynağı üç kaynaklı NORMAL_WAKE seçimine
+  ekleyip eski MULTIPLE_SOURCES eyleminde PROVENANCE_INVALID verdi. Yeni kanıt aynı
+  trusted kaynağın ikinci öğesine taşındı; odaklı yeniden koşu PASS. Üretim tavanı değişmedi.
+- Tekrarlama: eksik kanonik başlık çözümünü yanlış ret sanma; Jaccard'ı pg_trgm kanıtı
+  sayma; yüksek ret oranı için eşikleri gevşetme; boş hakem yanıtını GO sayma; fixture
+  kaynak görünürlüğü hatasını sayı ayrıştırıcı regresyonu diye kaydetme.

@@ -8211,7 +8211,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
   it("grounds exact source claims and requires strong independent evidence for serious claims", async () => {
     const fixture = await createFixture();
     const topics = await Promise.all(
-      Array.from({ length: 9 }, (_, index) =>
+      Array.from({ length: 12 }, (_, index) =>
         createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
           title: `runtime provenance guard ${index}`,
           entryBody:
@@ -8256,7 +8256,19 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const trustedItem = await createSourceItem({
       domain: "trusted-evidence.test",
       status: "TRUSTED",
-      safeText: "Kaynak payı 18 olarak verir ve “geçiş bu yıl başladı” ifadesini kullanır.",
+      safeText:
+        "Kaynak payı 18 olarak verir ve “geçiş bu yıl başladı” ifadesini kullanır. Settlement for $272.5M.",
+    });
+    const bareAmountItem = await integrationDatabase.agentSourceItem.create({
+      data: {
+        sourceId: trustedItem.sourceId,
+        canonicalUrl: "https://trusted-evidence.test/unscaled",
+        title: "Ölçeksiz tutar kanıtı",
+        fetchedAt: new Date(),
+        contentHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+        safeText: "Settlement for $272.5.",
+        topics: ["kanıt"],
+      },
     });
     const probationOne = await createSourceItem({
       domain: "probation-one.test",
@@ -8289,7 +8301,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
       Persona paketiyle gelen tohum kaynaklar perception'daki 10 öğelik source
       penceresini paylaşıyor ve testin kanıt öğelerini dışarı itebiliyor. Bu
       testin konusu kaynak seçimi değil, içerik temellendirme kuralları; bu
-      yüzden ajanın yalnız bu üç kaynağı olsun.
+      yüzden ajanın yalnız bu üç kaynağı olsun. İkinci tutar öğesi aynı trusted
+      kaynakta tutulur; NORMAL_WAKE üç kaynak sınırı yüzünden bağımsız probation
+      kaynaklarından birini perception dışına itmemeli.
     */
     await integrationDatabase.agentSource.deleteMany({
       where: {
@@ -8300,7 +8314,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     });
     const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
-    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    const context = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    expect(context.perception.sourceItems).toEqual(
+      expect.arrayContaining(
+        [trustedItem, bareAmountItem, probationOne, probationTwo].map((item) =>
+          expect.objectContaining({ itemId: item.id }),
+        ),
+      ),
+    );
     const sourceProvenance = (
       evidenceType: "TRUSTED_SOURCE" | "PROBATION_SOURCE" | "MULTIPLE_SOURCES",
       evidenceIds: string[],
@@ -8446,11 +8467,47 @@ describe("internal agent runtime API with PostgreSQL", () => {
                 "Genel model bilgisi exact run'a bağlı fakat alıntı kaynağı değildir.",
             },
           },
+          {
+            sequence: 10,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Aynı kaynak tutarı Türkçe sayı gösterimiyle aktarılıyor.",
+            targetType: "TOPIC",
+            targetId: topics[9]!.topic.id,
+            input: {
+              topicId: topics[9]!.topic.id,
+              body: "Uzlaşmada kararlaştırılan ödeme 272,5 MILYON dolar.",
+            },
+            provenance: sourceProvenance("TRUSTED_SOURCE", [trustedItem.id]),
+          },
+          {
+            sequence: 11,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Ondalığın tamsayı parçası ayrı bir tutarı desteklememelidir.",
+            targetType: "TOPIC",
+            targetId: topics[10]!.topic.id,
+            input: {
+              topicId: topics[10]!.topic.id,
+              body: "Uzlaşmada kararlaştırılan ödeme 272 dolar.",
+            },
+            provenance: sourceProvenance("TRUSTED_SOURCE", [trustedItem.id]),
+          },
+          {
+            sequence: 12,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Büyük harfli ölçek yalnız gösterim değişikliği sayılmamalıdır.",
+            targetType: "TOPIC",
+            targetId: topics[11]!.topic.id,
+            input: {
+              topicId: topics[11]!.topic.id,
+              body: "Uzlaşmada kararlaştırılan ödeme 272,5 MILYON dolar.",
+            },
+            provenance: sourceProvenance("TRUSTED_SOURCE", [bareAmountItem.id]),
+          },
         ],
       }),
     );
     const results = [];
-    for (const sequence of [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    for (const sequence of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
       results.push(
         await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
@@ -8468,6 +8525,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
         ["SUCCEEDED", null],
         ["REJECTED", "SERIOUS_CLAIM_SOURCE_INSUFFICIENT"],
         ["REJECTED", "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED"],
+        ["SUCCEEDED", null],
+        ["REJECTED", "SOURCE_EXACT_NUMBER_UNSUPPORTED"],
+        ["REJECTED", "SOURCE_EXACT_NUMBER_UNSUPPORTED"],
       ],
     );
   });
