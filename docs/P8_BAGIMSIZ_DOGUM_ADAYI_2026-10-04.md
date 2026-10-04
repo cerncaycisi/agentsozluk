@@ -148,8 +148,8 @@ yerel PostgreSQL test DB'sinde uygulandı; gerçek üretim bağlantısı yapılm
   önler. Ardından hesap durumları, kararlı sırada çağıran/ebeveyn profil kilitleri ve en son
   globalsettings alınır. Bunlar advisory kilitlerdir; FK row lock diye raporlanmaz. P4'ün
   profile→settings sırası korunur. Hiçbir başka yol doğum tarama kilidini almaz.
-- En fazla 40 uygun profil adayı okunur; başlangıç İstanbul gününe göre döner, popülerlik veya
-  toplam yazı sayısı kullanılmaz. İlk gerçek uygun ebeveyn bulunur, aynı parent transaction
+- En fazla 40 kimliklik havuzdan İstanbul gününe göre dönen **sekiz** ebeveyn incelenir; 41. kimlik yalnız taşma audit’i için okunur. 40 kişilik havuz beş günde kapsanır; popülerlik
+  veya toplam yazı sayısı kullanılmaz. İlk gerçek uygun ebeveyn bulunur, aynı parent transaction
   içinde tekrar doğrulanır; sonradan ikinci bir parent kilitlenmez. Aktif kullanıcı/credential,
   scope/kimlik, ayar sürümü, günlük/kayan pencere, kişi havuzu ve kullanılmış adlar tekrar okunur.
 - QUALITY kökeninin son kaydı verdict/saat/görünürlük filtresinden **önce** seçilir. İlgili
@@ -204,3 +204,48 @@ Son aday PG16 koşusu **19/19**, dokuz dosyalı ilgili birim koşusu **84/84** g
 Bunlar önceki birleşik 40 PG16 koşusundan ayrı ölçümlerdir. PAUSED teknik planlayıcı +
 ACTIVE ayrı ebeveyn senaryosu doğrudan PG16 ile doğrulandı; testler gerçek model çağrısı
 veya yeni hesap aktivasyonu içermez.
+
+## P8b Opus incelemesi ve düzeltme karşılığı
+
+Gerçek `claude-opus-5`, exact `ab7489d16048eb05480a0311365f8968f5f5a0d9`: **KOŞULLU GO**.
+Araçsız kaynak okuması; test çalıştırmadı, üretime bağlanmadı. Birleştirme koşulları B1/B2/B4,
+dağıtım koşulu B3; B5/B6/B8 öneri, B7 kabul politikası notudur.
+
+- B1: başarısız/eksik doğum adapter’ı worker içinde bir saat geri çekilir. Normal tick/lease
+  sürer; bekleme dolunca tekrar denenir. Bu süre worker ömründedir, restart sonrası kalıcı
+  devre kesici diye sunulmaz. Hakemin rate-limit şiddeti tahmini doğrulanmış kesinti değildir:
+  mevcut ortak kova 600/dakikadır. Geri çekilme yine gereksiz çağrı/gecikmeyi sınırlar.
+- B2: uygulanmış migration yeniden yazılmadı. Ayrı
+  `20261004030000_birth_candidate_truncate_guard`, mevcut transaction-local test temizliği
+  bayrağı yoksa TRUNCATE'i de `AGENT_BIRTH_CANDIDATE_IMMUTABLE` ile reddeder. Bu, DB
+  yöneticisinin trigger kaldırmasına karşı yetki izolasyonu iddiası değildir; uygulama ve
+  işletim sırasında kazara toplu silme kapısıdır.
+- B4: ödül/doğum API tabloları ayrıldı, dört sütun ve runtime/admin yetkileri düzeltildi.
+  OpenAPI CSRF/requestBody/idempotency eşlemeleri ve iki explicit 404 de tamamlandı.
+- B5/B6: günlük kanıt ön seçimi sekiz ebeveynle sınırlı; 40 kişilik havuz dönüşümü beş günde
+  kapsar. 41. kimlik varsa `agent.birth.scan` audit metadata’sında `parentPoolTruncated=true`
+  görünür. 40 dışındaki popülasyon için adalet garantisi yok; bu durum sessiz başarı sayılmaz.
+  Persona evreni son kilit altında güncel okunur. Süre/bayt benchmark’ı yapıldı iddiası yok.
+- B7: adayın yedi günü üst sınırdır; en eski sabit dayanak 14 günü doldurursa daha erken
+  WITHDRAWN olabilir. Yaratılmış adayın kayan bütçesi iade edilmez; eski kanıtla art arda aday
+  yenileme hakkı açılmaması bilinçli korunur. Sırf aday az yaşadı diye yeni başarı üretilmez.
+- B8: bugün başka bekleyen aday varsa servis erken döner ve DB tek PROPOSED korur; bu nedenle
+  yeni aday karşısında ikinci bekleyen persona yoktur. İncelemede adayın kendisini evrene
+  eklemek yanlış bir öz-benzerlik reddi yaratır. Çoklu aday invariant’ı ileride değiştirilirse
+  adaylar arası karşılaştırma da o değişikliğin zorunlu parçasıdır; bugünkü gereksiz sorgu eklenmedi.
+
+**B3 dağıtım kapısı açık:** genel yazma dondurması/drain sonrasında audit tablosunun satır/boyut
+makbuzu, restore kopyasında indeks süresi ve uygulanabilir bakım aralığı doğrulanacak. Üretim
+indeks kurulma süresi ayrıca kaydedilecek. Hakemin `ACCESS EXCLUSIVE` ifadesi doğru değildir:
+normal `CREATE INDEX` **SHARE** kilidi alır; okumaya izin verir, yazmayı bekletir.
+[PostgreSQL 16 kilit sözleşmesi](https://www.postgresql.org/docs/16/explicit-locking.html#LOCKING-TABLES),
+[indeks kurma davranışı](https://www.postgresql.org/docs/16/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY).
+Tüm migration paketinin otomatik transaction’da çalıştığı varsayımına dayanılmayacak. Partial
+indeksin küçük olması tablo taraması süresinin ölçüldüğü anlamına gelmez. Yalnız ajan pause'u
+insan/audit yazılarını durdurmaz; genel yazma dondurması kapısı korunur.
+
+B1/B2/B5/B6 düzeltmeleri sonrası **40/40 PG16** (20 aday + 20 ödül), ardından
+**62/62** ayrı koşu (2 stochastic PG16 + 60 ilgili birim) geçti. Bounded havuz testinde
+41 kimlik ve kanıt okuyucu kontrollü mock’tur; gerçek transaction/audit ve aynı gün yeniden
+çağrının iş yapmaması sınanır. Bu, 41 gerçek yazarla süre benchmark’ı değildir.
+TRUNCATE reddi, bir saatlik hata beklemesi, beş günlük 40 kimlik kapsaması doğrudan geçti.

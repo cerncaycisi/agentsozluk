@@ -1,8 +1,10 @@
 import * as birthEvidence from "@/modules/agents/application/birth-evidence";
+import * as birthRecords from "@/modules/agents/repository/birth-candidates";
 import { runRuntimeStochasticTick } from "@/modules/agents/application/stochastic-scheduler";
 import { NextRequest } from "next/server";
 import { POST as inspectRoute } from "@/app/api/v1/admin/agent-births/inspect/route";
 import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
+import { getEnvironment } from "@/config/env";
 import { createOpaqueToken } from "@/lib/security/crypto";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -287,6 +289,26 @@ describe("private birth candidates with PostgreSQL", () => {
       lastBirthScanAt: now,
     });
   });
+  it("bounds daily evidence work and records an overflowing parent pool", async () => {
+    const f = await fixture();
+    await f.mode("CANDIDATES");
+    // 41 kimlikli kontrollü havuz; gerçek transaction/audit, maliyet sınırı için sahte kanıt okuyucu.
+    const pool = vi
+      .spyOn(birthRecords, "listBirthParentIds")
+      .mockResolvedValue(Array.from({ length: 41 }, () => ({ id: randomUUID() })));
+    const evidence = vi.spyOn(birthEvidence, "currentBirthParentEvidence").mockResolvedValue(null);
+    try {
+      expect(await f.tick()).toEqual({ outcome: "NO_ELIGIBLE_PARENT", candidateId: null });
+      expect(evidence).toHaveBeenCalledTimes(8);
+      const audit = await db.auditLog.findFirstOrThrow({ where: { action: "agent.birth.scan" } });
+      expect(audit.metadata).toMatchObject({ parentPoolTruncated: true, parentPoolLimit: 40 });
+      expect(await f.tick()).toEqual({ outcome: "NOT_DUE", candidateId: null });
+      expect(evidence).toHaveBeenCalledTimes(8);
+    } finally {
+      evidence.mockRestore();
+      pool.mockRestore();
+    }
+  });
   it("protects immutable snapshots and never reopens a closed candidate", async () => {
     const f = await fixture();
     const candidate = await f.create();
@@ -296,6 +318,10 @@ describe("private birth candidates with PostgreSQL", () => {
     await expect(db.agentBirthCandidate.delete({ where: { id: candidate.id } })).rejects.toThrow(
       /AGENT_BIRTH_CANDIDATE_IMMUTABLE/u,
     );
+    await expect(db.$executeRaw`TRUNCATE "agent_birth_candidates"`).rejects.toThrow(
+      /AGENT_BIRTH_CANDIDATE_IMMUTABLE/u,
+    );
+    expect(await db.agentBirthCandidate.count()).toBe(1);
     await rejectBirthCandidate(db, f.actor, { candidateId: candidate.id, expectedVersion: 1 }, now);
     await expect(
       db.agentBirthCandidate.update({
@@ -425,18 +451,22 @@ describe("private birth candidates with PostgreSQL", () => {
           expiresAt: new Date(now.getTime() + 3600000),
         },
       });
+      const origin = new URL(getEnvironment().APP_URL).origin;
       const request = () =>
-        new NextRequest("http://localhost:3000/api/v1/admin/agent-births/inspect", {
+        new NextRequest(`${origin}/api/v1/admin/agent-births/inspect`, {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            origin: "http://localhost:3000",
+            origin,
             "x-csrf-token": csrfToken,
             "idempotency-key": key,
             cookie: `${SESSION_COOKIE_NAME}=${sessionToken}; ${CSRF_COOKIE_NAME}=${csrfToken}`,
           },
           body: JSON.stringify({ candidateId: candidate.id }),
         });
+      const crossOrigin = request();
+      crossOrigin.headers.set("origin", "https://untrusted.invalid");
+      expect((await inspectRoute(crossOrigin)).status).toBe(403);
       const first = await inspectRoute(request());
       expect(first.status).toBe(200);
       expect((await first.json()).data.status).toBe("PROPOSED");

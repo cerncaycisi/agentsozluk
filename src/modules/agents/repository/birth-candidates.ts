@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { birthParentPoolLimit } from "@/modules/agents/domain/birth-scheduling";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import {
   birthEvidenceLifetimeMs,
@@ -84,7 +85,8 @@ export const listBirthParentIds = (db: DatabaseExecutor) =>
     },
     select: { id: true },
     orderBy: { id: "asc" },
-    take: 40,
+    // Bir fazla kimlik yalnız taşmayı audit’te görünür kılmak için.
+    take: birthParentPoolLimit + 1,
   });
 export const listBirthPersonaUniverse = (tx: TransactionClient) =>
   tx.agentProfile.findMany({

@@ -8,6 +8,7 @@ import {
   AgentRuntimeWorker,
   randomStochasticTickDelay,
   STOCHASTIC_BUSY_RETRY_MS,
+  BIRTH_SCAN_FAILURE_RETRY_MS,
 } from "@/runtime/worker";
 
 function idleControlPlane(): RuntimeControlPlane {
@@ -87,6 +88,7 @@ describe("stochastic society scheduling", () => {
   it.each(["failure", "missing"])(
     "keeps leasing when the independent birth adapter has %s",
     async (kind) => {
+      let now = new Date("2026-10-04T12:00:00Z");
       const controlPlane = idleControlPlane();
       const onSafeEvent = vi.fn();
       const scheduler: RuntimeStochasticSchedulerControlPlane = {
@@ -102,9 +104,22 @@ describe("stochastic society scheduling", () => {
         provider: unusedProvider,
         stochasticScheduling: { controlPlane: scheduler },
         onSafeEvent,
+        now: () => now,
+        random: () => 0,
       });
       await worker.runOnce();
-      expect(controlPlane.lease).toHaveBeenCalledTimes(1);
+      now = new Date(now.getTime() + 2 * 60_000);
+      await worker.runOnce();
+      expect(controlPlane.lease).toHaveBeenCalledTimes(2);
+      expect(scheduler.tickScheduler).toHaveBeenCalledTimes(2);
+      if (kind === "failure") expect(scheduler.tickBirthCandidates).toHaveBeenCalledTimes(1);
+      expect(
+        onSafeEvent.mock.calls.filter(([event]) => event.code === "BIRTH_SCAN_FAILED"),
+      ).toHaveLength(1);
+      now = new Date(now.getTime() + BIRTH_SCAN_FAILURE_RETRY_MS);
+      await worker.runOnce();
+      expect(controlPlane.lease).toHaveBeenCalledTimes(3);
+      if (kind === "failure") expect(scheduler.tickBirthCandidates).toHaveBeenCalledTimes(2);
       expect(onSafeEvent).toHaveBeenCalledWith({ level: "error", code: "BIRTH_SCAN_FAILED" });
       expect(onSafeEvent).toHaveBeenCalledWith({ level: "info", code: "STOCHASTIC_TICK_QUEUED" });
     },

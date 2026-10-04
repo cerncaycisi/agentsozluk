@@ -3550,3 +3550,25 @@ false/true` yapabildi; geçici rol ve DB silindi.
   DRAFT/PAUSED/ACTIVE planlayıcı credential verebildiğinden çağırana gereksiz ACTIVE şartı
   kaldırıldı; ebeveyn ACTIVE şartı korundu ve ayrı PAUSED planlayıcı senaryosu geçti.
   Tekrarlama: teknik scheduler kimliğinin profil durumunu seçilen ebeveynin kabulüyle karıştırma.
+
+- P8b exact `ab7489d16048eb05480a0311365f8968f5f5a0d9`, CI `37171957519` quality:
+  `POST /api/v1/admin/agent-births/mode security must be exactly [sessionCookie, csrfHeader]`.
+  Runtime CSRF uygulanıyordu; yeni OpenAPI yollarında yalnız sessionCookie override’ı ve
+  doğrulayıcı kayıtları eksikti. Üç admin yolunda ortak CSRF sözleşmesi ve dört yolun
+  requestBody/idempotency/internal-runtime eşlemeleri düzeltildi; tam `openapi:validate` 147 işlem için geçti. Tekrarlama: yalnız OpenAPI birim fixture’larını tam `openapi:validate` yerine sayma.
+
+- Aynı CI database koşusunda 386/387 geçti; tek hata HTTP inceleme fixture’ında
+  `expected 403 to be 200`. Fixture localhost Origin kullanırken CI APP_URL 127.0.0.1 idi;
+  gerçek origin kontrolü doğru reddetti. İstek origin’i doğrulanmış APP_URL’den türetildi ve
+  ayrıca yanlış origin için 403 kontrolü eklendi. Güvenlik kontrolü veya CI ortamı gevşetilmedi;
+  CI APP_URL ile odaklı PG16 tekrar 1/1 geçti: doğru origin 200, yanlış origin 403;
+  idempotent reversal WITHDRAWN ve askıya alınmış admin 403 korundu.
+
+- P8b gerçek Opus 5 exact `ab7489d16048eb05480a0311365f8968f5f5a0d9`: KOŞULLU GO;
+  birleştirme koşulları B1/B2/B4 uygulandı. Worker hatası bir saat bekler; ayrı
+  `20261004030000_birth_candidate_truncate_guard` yerelde uygulandı; API tabloları ayrıldı.
+  B5/B6 için günlük sekiz ön seçim, beş günde 40 kimlik kapsaması ve taşma audit’i eklendi.
+  Son 40/40 PG16, ayrı 62/62 (2 PG16 + 60 birim) geçti. TRUNCATE koruması ve zamanlı
+  geri çekilme doğrudan doğrulandı. B3 audit indeksinin üretim süre/boyut kapısı açık.
+- Tekrarlama: uygulanmış migration’ı yerel olduğu için yeniden yazma; CREATE INDEX’in
+  SHARE kilidini ACCESS EXCLUSIVE diye kaydetme; istemci testi adresini localhost’a sabitleme.

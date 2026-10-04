@@ -1949,13 +1949,8 @@ paths:
     post:
       operationId: changeAgentBirthMode
       tags: [Admin]
-      security: [{ sessionCookie: [] }]
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/AgentBirthModeInput" }
+      requestBody: { $ref: "#/components/requestBodies/AgentBirthMode" }
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "401": { $ref: "#/components/responses/Error" }
@@ -1968,17 +1963,13 @@ paths:
     post:
       operationId: inspectAgentBirthCandidate
       tags: [Admin]
-      security: [{ sessionCookie: [] }]
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/AgentBirthInspectionInput" }
+      requestBody: { $ref: "#/components/requestBodies/AgentBirthInspection" }
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/ValidationError" }
@@ -1987,17 +1978,13 @@ paths:
     post:
       operationId: rejectAgentBirthCandidate
       tags: [Admin]
-      security: [{ sessionCookie: [] }]
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/AgentBirthRejectionInput" }
+      requestBody: { $ref: "#/components/requestBodies/AgentBirthRejection" }
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/ValidationError" }
@@ -2008,11 +1995,7 @@ paths:
       tags: [Agent Runtime]
       security: [{ runtimeBearer: [] }]
       parameters: [{ $ref: "#/components/parameters/RuntimeIdempotencyKey" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/RuntimeStochasticTickInput" }
+      requestBody: { $ref: "#/components/requestBodies/RuntimeStochasticTick" }
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "401": { $ref: "#/components/responses/Error" }
@@ -4385,6 +4368,21 @@ components:
         content:
           { application/json: { schema: { $ref: "#/components/schemas/RuntimeDailyPlanInput" } } },
       }
+    AgentBirthMode:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentBirthModeInput" }
+    AgentBirthInspection:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentBirthInspectionInput" }
+    AgentBirthRejection:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentBirthRejectionInput" }
     RuntimeStochasticTick:
       {
         required: true,

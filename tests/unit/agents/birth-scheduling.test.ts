@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { birthScanDue, rotateBirthParents } from "@/modules/agents/domain/birth-scheduling";
+import {
+  birthScanDue,
+  rotateBirthParents,
+  birthParentScanLimit,
+} from "@/modules/agents/domain/birth-scheduling";
 import { runRuntimeBirthTick } from "@/modules/agents/application/birth-candidates";
 import type { DatabaseExecutor } from "@/lib/db/types";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
@@ -23,6 +27,19 @@ describe("bounded birth scheduling", () => {
     expect([...today].sort()).toEqual(parents);
     expect(parents).toEqual(["a", "b", "c"]);
     expect(rotateBirthParents([], now)).toEqual([]);
+  });
+  it("visits the 40-profile pool within five daily bounded scans", () => {
+    const parents = Array.from({ length: 40 }, (_, id) => id);
+    const visited = new Set<number>();
+    for (let day = 0; day < 5; day += 1) {
+      const batch = rotateBirthParents(parents, new Date(now.getTime() + day * 86400000)).slice(
+        0,
+        birthParentScanLimit,
+      );
+      expect(batch).toHaveLength(8);
+      batch.forEach((id) => visited.add(id));
+    }
+    expect(visited.size).toBe(40);
   });
   it("uses Istanbul dates without allowing clock rollback to reopen a daily attempt", () => {
     expect(birthScanDue(enabled, now)).toBe(true);

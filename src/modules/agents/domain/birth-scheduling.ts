@@ -1,5 +1,8 @@
 import { istanbulCalendarDateKey } from "@/modules/agents/domain/runtime-controls";
 
+export const birthParentPoolLimit = 40;
+export const birthParentScanLimit = 8;
+
 export function birthScanDue(
   settings: {
     birthMode: "OFF" | "CANDIDATES";
@@ -28,6 +31,7 @@ export function birthScanDue(
 export function rotateBirthParents<T>(parents: readonly T[], now: Date): T[] {
   if (!parents.length) return [];
   const day = Math.floor(Date.parse(`${istanbulCalendarDateKey(now)}T00:00:00Z`) / 86400000);
-  const offset = ((day % parents.length) + parents.length) % parents.length;
+  const offset =
+    (((day * birthParentScanLimit) % parents.length) + parents.length) % parents.length;
   return [...parents.slice(offset), ...parents.slice(0, offset)];
 }

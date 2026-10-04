@@ -3790,3 +3790,13 @@ W3.3 sonrasına, link kotası veya reciprocal spam eklenmeden sıraya alındı.
 #300 head `e50465d`, main `c2f5db7`: Opus 5 ikinci tur KOD GO, CI `37158795400` 7/7.
 Uzak SHA ve ağaç eşitliği doğrulandı. 126/126 ilk tam PG16 koşusuna ek olarak hakem düzeltmeleri
 sonrası 8/8 amaç, 119 birim, 7 reset ve 1 admin erişim testi geçti. Üretim değişmedi.
+
+### 4 Ekim — P8b koşullu hakem kapanışı, yerel kanıt
+
+- Opus 5 exact `ab7489d16048eb05480a0311365f8968f5f5a0d9` KOŞULLU GO. B1/B2/B4
+  worker hata beklemesi, toplu silme koruması ve API sözleşmesi düzeltildi.
+- Yerel son 40 PG16 (20 aday/20 ödül) ve ayrı 2 stochastic PG16 + 60 birim geçti.
+  Bunlar önceki 19/84 ve 40 birleşik koşularından ayrı ölçümlerdir.
+- İlk CI quality OpenAPI eşlemesinde, database/coverage HTTP fixture Origin farkında kaldı.
+  OpenAPI 147 işlemle ve odaklı PG16 CI Origin ayarıyla geçti; taze tam CI henüz açık.
+- Canlı dağıtım, doğal doğum veya 41 gerçek yazarlı süre benchmark’ı yapılmadı.

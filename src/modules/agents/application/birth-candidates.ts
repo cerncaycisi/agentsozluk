@@ -12,7 +12,12 @@ import {
   birthCandidateLifetimeMs,
   buildBirthPersona,
 } from "@/modules/agents/domain/birth-policy";
-import { birthScanDue, rotateBirthParents } from "@/modules/agents/domain/birth-scheduling";
+import {
+  birthScanDue,
+  rotateBirthParents,
+  birthParentPoolLimit,
+  birthParentScanLimit,
+} from "@/modules/agents/domain/birth-scheduling";
 import { assertRuntimeCredential } from "@/modules/agents/domain/runtime-auth";
 import { istanbulWeekWindow } from "@/modules/agents/domain/source-evolution";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
@@ -148,8 +153,15 @@ async function runLockedRuntimeBirthTick(
   const cooldown =
     initial.lastBirthCandidateAt &&
     initial.lastBirthCandidateAt.getTime() + birthCandidateLifetimeMs > now.getTime();
+  let parentPoolTruncated = false;
   if (!pending && !cooldown) {
-    for (const parent of rotateBirthParents(await records.listBirthParentIds(client), now)) {
+    const parents = await records.listBirthParentIds(client);
+    parentPoolTruncated = parents.length > birthParentPoolLimit;
+    const dailyParents = rotateBirthParents(parents.slice(0, birthParentPoolLimit), now).slice(
+      0,
+      birthParentScanLimit,
+    );
+    for (const parent of dailyParents) {
       const eligible = await inTransaction(client, (tx) =>
         currentBirthParentEvidence(tx, parent.id, now),
       );
@@ -200,6 +212,9 @@ async function runLockedRuntimeBirthTick(
       await audit(tx, principal.actor, "agent.birth.scan", candidateId, {
         outcome: code,
         policyVersion: birthPolicyVersion,
+        ...(parentPoolTruncated
+          ? { parentPoolTruncated: true, parentPoolLimit: birthParentPoolLimit }
+          : {}),
       });
       return outcome(code, candidateId);
     };
