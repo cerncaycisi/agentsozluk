@@ -1,3 +1,4 @@
+import { withAgentContentItemSavepoint } from "@/modules/moderation/repository/agent-content";
 import { POST as bulkHideRoute } from "@/app/api/v1/admin/agent-content/bulk-hide/route";
 import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
 import { getEnvironment } from "@/config/env";
@@ -10092,6 +10093,26 @@ describe("internal agent runtime API with PostgreSQL", () => {
         },
       }),
     ).toBe(1);
+    // Aynı sentetik havuzda 100 açık hedef; varsayılan dış Prisma 5 s tavanı değişmez.
+    const start = performance.now();
+    const hundred = await integrationDatabase.$transaction((transaction) =>
+      bulkSetAgentContentVisibility(transaction, adminActor(fixture.admin.id), true, {
+        entryIds: extra.slice(0, 100).map(({ entryId }) => entryId),
+        reason: "Yüz açık hedef aynı dış transaction içinde sonuç makbuzuyla tamamlanır.",
+        confirmation: "HIDE_AGENT_CONTENT",
+        behaviorReasonCode: "REPETITIVE",
+        editorNote: "Aynı çekirdek katkıyı yeni bir değer eklemeden tekrarlama.",
+      }),
+    );
+    process.stdout.write(
+      `O5_BULK_100_LOCAL_MEASUREMENT ${JSON.stringify({ items: 100, elapsedMs: Math.round(performance.now() - start) })}\n`,
+    );
+    expect(hundred).toMatchObject({ status: "SUCCEEDED", selectedCount: 100, failed: [] });
+    expect(
+      await integrationDatabase.entry.count({
+        where: { id: { in: extra.slice(0, 100).map(({ entryId }) => entryId) }, status: "HIDDEN" },
+      }),
+    ).toBe(100);
   });
 
   it("bulk hides and restores only provenance-backed agent entries while preserving counters", async () => {
@@ -10482,6 +10503,35 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(restored.searchEntryIds).toContain(agentEntryId);
     expect(restored.debeEntryIds).toContain(agentEntryId);
     expect(restored.indexing).toMatchObject({ index: true, follow: true });
+  });
+
+  it("rejects nested bulk item savepoints without leaving partial writes or poisoning later items", async () => {
+    const admin = await createAdmin();
+    await integrationDatabase.$transaction(async (transaction) => {
+      await expect(
+        withAgentContentItemSavepoint(transaction, async () => {
+          await transaction.user.update({
+            where: { id: admin.id },
+            data: { displayName: "Geri alınmalı" },
+          });
+          await withAgentContentItemSavepoint(transaction, async () => {
+            throw new Error("UNREACHABLE_NESTED_WORK");
+          });
+        }),
+      ).rejects.toThrow("AGENT_CONTENT_SAVEPOINT_REENTRY");
+      expect(await transaction.user.findUniqueOrThrow({ where: { id: admin.id } })).toMatchObject({
+        displayName: admin.displayName,
+      });
+      await withAgentContentItemSavepoint(transaction, () =>
+        transaction.user.update({
+          where: { id: admin.id },
+          data: { displayName: "Sonraki işlem" },
+        }),
+      );
+    });
+    expect(
+      await integrationDatabase.user.findUniqueOrThrow({ where: { id: admin.id } }),
+    ).toMatchObject({ displayName: "Sonraki işlem" });
   });
 
   it.each([false, true])(

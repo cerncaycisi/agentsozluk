@@ -305,3 +305,35 @@ Son odaklı koşu **10 PG16 PASS** (önceki yedi dahil): 501 taşma reddi yenide
 Gerçek HTTP hem anahtarsız hem idempotency anahtarlı çağrıda toplu makbuz SQL hatasıyla
 500 verdi ve entry ACTIVE kaldı. Hata kaldırıldıktan sonra aynı istek 200 döndü;
 anahtarlı tekrar ikinci gizleme veya ikinci toplu audit üretmedi. Üretim bağlantısı yok.
+
+### O5 B3 bağımsız hakem ve koşulların uzlaştırılması
+
+Gerçek `claude-opus-5`, exact `607351838d7b3f6a9c54093bee1342de792a8090`:
+**KOŞULLU GO**. Çekirdek transaction/savepoint düzeltmesini doğru buldu. Koşullar:
+
+- Aynı transaction'da yardımcıya yeniden giriş veya paralel çağrı açıkça reddedilir;
+  süreç içi WeakSet her başarı/hata çıkışında temizlenir. İç içe giriş kendi callback'ini
+  çalıştırmadan hata verir. Genel SQL veya değişken savepoint adı eklenmedi.
+- **Yetki serileşmesi:** her entry'de principal tekrar okunur ama admin shared kullanıcı
+  kilidi batch'in sonuna kadar tutulur. Exclusive rol/statü iptali bekler. Bu iptalin
+  entry aralarında uygulanacağı anlamına gelmez; anahtarsız yolda önceki entry arası
+  pencere kalktı, anahtarlı dış transaction yolunda zaten bu sınır vardı. Eski “taze
+  yetki” ifadeleri iptali batch ortasında geçirebilme garantisi değildir.
+- **Süre daralması açık:** anahtarsız yolun entry başına 15 s bütçesi artık tüm batch
+  için 15 s'dir. Anahtarlı yol zaten toplam 5 s idi. Timeout'ta makbuzsuz kısmi commit
+  yerine bütün işlem geri alınır. 500 sayısal sınır her yükte başarılı 500 yazı vaadi değil.
+- Anahtarsız commit sonrası tekrar gizlenmiş entry için ENTRY_NOT_EDITABLE verebilir;
+  ilk yanıtı replay etmez. API belirtimi bu ayrımı ve anahtarlı tekrar yolunu açıklar.
+- Hata kodlarının PARTIAL gövdesinde görünmesi mevcut sözleşmedir; bu düzeltme yeni
+  altyapı alarmı/telemetri vaadi değildir. Hakemin bu görünürlük notu yeni blok sayılmadı.
+
+Exact tam CI henüz bekleniyor; filtreli testin atladığı runtime senaryoları tam CI
+sonucu olmadan geçti sayılmaz. Yerel ek guard/hacim kanıtı aşağıda ayrı kaydedilir.
+
+Son ek doğrulama **11 PG16 PASS** (önceki on dahil). İç içe yardımcının callback'i
+çalışmadı, dış öğedeki değişiklik geri alındı ve aynı transaction'daki sonraki öğe commit
+edildi. Aynı 501 kayıtlık sentetik havuzdan 100 açık hedefin gizlenmesi varsayılan **5 s**
+dış Prisma transaction'ında başarılı oldu; çağrı toplamı **2.314 ms**. Fixture tek başlık
+ve yerel DB kullanır; TX aktif süre telemetrisi, üretim büyüklüğü veya 500 hedef performans
+kanıtı değildir. Tavanlar değiştirilmedi. API belgesi anahtarsız N×15 s → toplam15 s
+ve batch boyunca yetki kilidi farkını açıkça kaydeder.
