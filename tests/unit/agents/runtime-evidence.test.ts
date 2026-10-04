@@ -35,4 +35,21 @@ describe("runtime perception evidence contract", () => {
       ]),
     ).toEqual({ ids: [currentRunId], sourceItemIds: [] });
   });
+  it("does not promote assessment or target IDs to factual, reflection or memory evidence", () => {
+    const existingEntryId = randomUUID();
+    expect(
+      deriveRuntimePerceptionEvidence({
+        authorFeedback: [
+          {
+            id: randomUUID(),
+            entryId: randomUUID(),
+            purposeId: randomUUID(),
+            sourceId: randomUUID(),
+            state: "SUPPORTED",
+          },
+        ],
+        recentEntries: [{ id: existingEntryId }],
+      }),
+    ).toEqual({ ids: [existingEntryId], sourceItemIds: [] });
+  });
 });

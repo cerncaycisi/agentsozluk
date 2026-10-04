@@ -7,6 +7,15 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — P4 amaç kanalı ana dalda; kalite ve özel geri bildirim yerelde
+
+- #301 head `665263f222cd21b0b8513ebf197474342b24c1a9`, CI `37162033767` 7/7;
+  main `0bb3e77139d7303802983cb91f06700b4af6567d`. Uzak SHA/ağaç eşitliği doğrulandı.
+  Opus 5 ikinci tur KOD GO koşulları kaynak teyidi ve mekanik düzeltmeyle kapandı.
+- P4b ilk yerel 27/27 PG16, 109 runtime/persona/evidence ve 28 sözleşme birim testi geçti;
+  OpenAPI 143 işlemle uyumlu. Son bağlam koruması sonrası ödül dosyası 19/19 geçti; hakem ve CI açık.
+  Migration yalnız yerel test DB'de; üretim/v46/A′ değişmedi. [Makbuz](P4_KALITE_VE_YAZAR_GERI_BILDIRIMI_2026-10-04.md).
+
 ## 2026-10-03 — P6 görünür boş bkz ana dalda; P3 amaç yerelde
 
 - #299 head `40b696db9757aa2f0343a4c8fdda52c7e6fb4490`, CI `37156839754` 7/7;

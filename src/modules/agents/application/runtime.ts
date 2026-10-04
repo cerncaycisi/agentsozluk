@@ -1,3 +1,10 @@
+import { authorFeedbackKey, authorFeedbackLimit } from "@/modules/agents/domain/rewards";
+import {
+  runtimeAuthorFeedback,
+  frozenAuthorFeedbackIds,
+  presentedFeedbackAssessmentIds,
+  type AuthorFeedbackCard,
+} from "@/modules/agents/application/author-feedback";
 import { purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import {
   applyRuntimePurposeChanges,
@@ -249,6 +256,7 @@ function boundedPerceptionSnapshot(
   records: PerceptionRecords,
   now: Date,
   purposeContext: Awaited<ReturnType<typeof runtimePurposeContext>>,
+  feedback: AuthorFeedbackCard[],
 ) {
   const persona = seedPersonaSchema.parse(run.personaVersion.persona);
   const followedTopicIdSet = new Set(records.followedTopicIds);
@@ -401,6 +409,7 @@ function boundedPerceptionSnapshot(
       topicExploration: 8,
       behaviorLessons: 5,
       actionFeedback: actionFeedbackLimit,
+      authorFeedback: authorFeedbackLimit,
     },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
@@ -496,6 +505,7 @@ function boundedPerceptionSnapshot(
     */
     sourceCandidates: records.sourceCandidates,
     ...purposeContext,
+    [authorFeedbackKey]: feedback,
   };
   /*
     Kırpma yalnız güvenlik ağı. Canlı ölçüm (21 Ağu, son 6 saat, 117 run): perception
@@ -517,6 +527,7 @@ function boundedPerceptionSnapshot(
       sayılabilecek writerOpenedTopics/sourceItems kuyruğundan önce atmak da
       yanlış olurdu — onlar zaten fazlalık, bu ise tümden kayboluyor.
     */ else if (snapshot.sourceCandidates.length > 0) snapshot.sourceCandidates.pop();
+    else if (snapshot.authorFeedback.length > 0) snapshot.authorFeedback.pop();
     else if (snapshot.actionFeedback.length > 0) snapshot.actionFeedback.pop();
     else if (snapshot.writerOpenedTopics.length > 0) snapshot.writerOpenedTopics.pop();
     else if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
@@ -1751,6 +1762,15 @@ export function getRuntimeRunContext(
       run.runType === "NORMAL_WAKE"
         ? await runtimePurposeContext(transaction, run, now)
         : { purposes: [], purposeTopics: [] };
+    const feedback =
+      run.runType === "NORMAL_WAKE"
+        ? await runtimeAuthorFeedback(
+            transaction,
+            run.agentProfileId,
+            now,
+            frozenAuthorFeedbackIds(run.perceptionSummary),
+          )
+        : [];
     let perception: Record<string, unknown>;
     if (
       run.perceptionSummary &&
@@ -1776,6 +1796,7 @@ export function getRuntimeRunContext(
             },
           ),
           purposeTopics: filterIds(perception.purposeTopics, visibleIds),
+          [authorFeedbackKey]: feedback,
         };
         await storeRuntimePerceptionSummary(transaction, runId, perception);
       }
@@ -1800,7 +1821,13 @@ export function getRuntimeRunContext(
           publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
         includeActionFeedback: run.runType === "NORMAL_WAKE",
       });
-      const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now, purposes);
+      const builtPerception = boundedPerceptionSnapshot(
+        run,
+        perceptionRecords,
+        now,
+        purposes,
+        feedback,
+      );
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);
       perception = builtPerception;
     }
@@ -1906,7 +1933,12 @@ export function getRuntimeRunContext(
         perceptionFrozen: true,
         contextHash,
       },
-      metadata: { origin: "RUNTIME_CONTEXT", presentedAt: now.toISOString(), contextHash },
+      metadata: {
+        origin: "RUNTIME_CONTEXT",
+        presentedAt: now.toISOString(),
+        contextHash,
+        feedbackAssessmentIds: presentedFeedbackAssessmentIds(perception),
+      },
       occurredAt: now,
     });
     return {

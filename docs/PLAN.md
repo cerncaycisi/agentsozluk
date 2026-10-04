@@ -29,7 +29,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   exact head CI 7/7 ve hakem koşulları tamam. Kısa pilot/canlı rollout açık. P3 teknik sonuç
   kartı #298 ile `cac7e7c` ana dalında; Opus KOD GO, CI 7/7, yerelde 119 entegrasyon/124 birim
   testi geçti. Amaç yaşam döngüsü #300 ile `c2f5db7` ana dalında: Opus 5 KOD GO ve CI 7/7.
-  Son sekiz amaç PG16 senaryosu, 119 ilgili birim testi geçti; canlı pilot açık. [Amaç makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md). [P3 makbuzu](P3_SONUC_KARTI_2026-10-03.md). P4 bağımsız amaç değerlendirmesi uygulanıyor; politika OFF/SHADOW/FULFILL_SLOT, tek etki doğrulanmış amacın kapanması.
+  Son sekiz amaç PG16 senaryosu, 119 ilgili birim testi geçti; canlı pilot açık. [Amaç makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md). [P3 makbuzu](P3_SONUC_KARTI_2026-10-03.md). P4 amaç kanalı #301 ile `0bb3e77` ana dalında, Opus koşulları ve CI 7/7 tamam.
+  Kalite kanalı/özel `authorFeedback` yerelde uygulanıyor; 27 PG16 ve 137 ilgili birim testi
+  geçti. Hakem/CI/pilot açık. [P4b makbuzu](P4_KALITE_VE_YAZAR_GERI_BILDIRIMI_2026-10-04.md).
   P5 kontrollü evrim doğrulaması ve P8 yerel doğum adayı aynı ilk sürümde hazırlanır.
   P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
   boşluklarda: açılmamış görünür bkz #299 ile `c72a089` ana dalında, Opus KOD GO/CI 7/7;

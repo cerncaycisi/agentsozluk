@@ -20,6 +20,9 @@ import {
   assessmentPacketLifetimeMs,
   rewardSevenDayLimit,
   rewardPolicyVersion,
+  assessmentContentHash as contentHash,
+  assessmentEntryVisibilityHash,
+  type AssessmentVisibilityCheck,
 } from "@/modules/agents/domain/rewards";
 import type {
   IssueAssessmentPacketInput,
@@ -33,9 +36,6 @@ function reject(message: string): never {
 }
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
-}
-function contentHash(text: string) {
-  return sha256(text.normalize("NFKC").trim().replaceAll(/\s+/gu, " "));
 }
 
 // Kimlik/oy/persona paket dışında; tarzdan kimlik çıkarılamadığı iddia edilmez.
@@ -66,6 +66,7 @@ async function buildPurposeAssessment(
   let sourceAt: Date;
   let sourceContentHash: string;
   let observation: InputJsonObject;
+  let visibilityChecks: AssessmentVisibilityCheck[];
   if (purpose.kind === "EXPLORE_CONTRIBUTION") {
     if (
       typeof proof.decisionEventId !== "string" ||
@@ -109,6 +110,11 @@ async function buildPurposeAssessment(
       reject("Okunan kanıtın metni değişti.");
     const independent = entries.filter((entry) => entry.authorId !== purpose.agentProfile.userId);
     if (!independent.length) reject("Yalnız kendi içeriği bağımsız amaç kanıtı sayılmaz.");
+    visibilityChecks = entries.map((entry) => ({
+      kind: "ENTRY",
+      id: entry.id,
+      contentHash: assessmentEntryVisibilityHash(entry),
+    }));
     sourceActKey = `JOURNAL:${event.id}`;
     sourceAt = event.occurredAt;
     sourceContentHash = contentHash(event.safeMessage);
@@ -138,6 +144,18 @@ async function buildPurposeAssessment(
       reject("Kendi eylemi olumlu amaç kanıtı olamaz.");
     if (new Set([...entries, ...sources].map((item) => item.id)).size !== ids.length)
       reject("Yeni kanıt artık doğrulanamıyor.");
+    visibilityChecks = [
+      ...entries.map((entry) => ({
+        kind: "ENTRY" as const,
+        id: entry.id,
+        contentHash: assessmentEntryVisibilityHash(entry),
+      })),
+      ...sources.map((source) => ({
+        kind: "SOURCE_ITEM" as const,
+        id: source.id,
+        contentHash: contentHash(`${source.title}\n${source.safeText}\n${source.canonicalUrl}`),
+      })),
+    ];
     const baseline = object(purpose.baseline);
     const previous =
       typeof baseline.beliefVersion === "number" && baseline.beliefVersion > 0
@@ -191,14 +209,109 @@ async function buildPurposeAssessment(
       purposeId,
       purposeVersion: purpose.version,
       claimEvidence: purpose.claimEvidence,
+      visibilityChecks,
       sourceActKey,
       sourceAt: sourceAt.toISOString(),
     }),
   );
-  return { purpose, packet, packageHash, sourceActKey, sourceAt, sourceContentHash };
+  return {
+    purpose,
+    packet,
+    packageHash,
+    sourceActKey,
+    sourceAt,
+    sourceContentHash,
+    visibilityChecks,
+  };
 }
 
-export function issuePurposeAssessmentPacket(
+async function buildQualityAssessment(
+  tx: TransactionClient,
+  profileId: string,
+  entryId: string,
+  now: Date,
+) {
+  const record = await records.findQualityAssessmentEntry(tx, profileId, entryId);
+  if (!record || record.entry.authorId !== record.agentProfile.userId)
+    reject("Kendi görünür yazısının gerçek yayın eylemi bulunamadı.");
+  const sourceAt = record.action.createdAt;
+  if (sourceAt > now || sourceAt.getTime() + rewardLifetimeMs <= now.getTime())
+    reject("Yayın olayı yedi günlük değerlendirme aralığı dışında.");
+  const previous = await records.findQualityPriorEntries(
+    tx,
+    entryId,
+    record.entry.topicId,
+    record.entry.createdAt,
+  );
+  const configuration = await records.getRewardConfiguration(tx);
+  const packet = {
+    policyVersion: rewardPolicyVersion,
+    settingsVersion: configuration.settingsVersion,
+    mode: configuration.rewardMode,
+    channel: "QUALITY",
+    criterion: "USEFUL_CONTRIBUTION_IN_GIVEN_CONTEXT",
+    scope:
+      "Yalnız verilen yazı ve en fazla beş önceki görünür katkı; doğrulanamayan olgusal iddia SUPPORTED sayılmaz. Kısalık, boş bkz, öznel veya karşı görüş kusur değildir.",
+    topicTitle: record.entry.topic.title,
+    entry: {
+      body: record.entry.body,
+      createdAt: record.entry.createdAt.toISOString(),
+      updatedAt: record.entry.updatedAt.toISOString(),
+    },
+    priorEntries: previous.reverse().map((entry) => ({
+      body: truncateUntrustedText(entry.body, 2000),
+      createdAt: entry.createdAt.toISOString(),
+    })),
+  };
+  if (Buffer.byteLength(canonicalLifeEventJson(packet), "utf8") > 64 * 1024)
+    reject("Kanıt paketi güvenli boyut sınırını aşıyor.");
+  const sourceActKey = `ACTION:${record.action.id}`;
+  const sourceContentHash = contentHash(record.entry.body);
+  const visibilityChecks = [record.entry, ...previous].map((entry) => ({
+    kind: "ENTRY" as const,
+    id: entry.id,
+    contentHash: assessmentEntryVisibilityHash(entry),
+  }));
+  const packageHash = sha256(
+    canonicalLifeEventJson({
+      packet,
+      entryId,
+      sourceActKey,
+      sourceAt: sourceAt.toISOString(),
+      visibilityChecks,
+    }),
+  );
+  return {
+    purpose: null,
+    packet,
+    packageHash,
+    sourceActKey,
+    sourceAt,
+    sourceContentHash,
+    visibilityChecks,
+  };
+}
+
+async function buildAssessment(
+  tx: TransactionClient,
+  profileId: string,
+  target: { purposeId?: string | null; entryId?: string | null },
+  now: Date,
+) {
+  if (target.purposeId && !target.entryId)
+    return {
+      ...(await buildPurposeAssessment(tx, profileId, target.purposeId, now)),
+      channel: "INTRINSIC" as const,
+    };
+  if (target.entryId && !target.purposeId)
+    return {
+      ...(await buildQualityAssessment(tx, profileId, target.entryId, now)),
+      channel: "QUALITY" as const,
+    };
+  reject("Değerlendirme hedefi tek ve kanalla uyumlu olmalıdır.");
+}
+
+export function issueAuthorAssessmentPacket(
   client: DatabaseExecutor,
   actor: ActorContext,
   input: IssueAssessmentPacketInput,
@@ -209,17 +322,18 @@ export function issuePurposeAssessmentPacket(
     await lockAgentProfile(tx, input.agentProfileId);
     await lockAgentSettings(tx);
     if ((await records.getRewardMode(tx)) === "OFF") reject("Ödül değerlendirmesi kapalı.");
-    const built = await buildPurposeAssessment(tx, input.agentProfileId, input.purposeId, now);
+    const built = await buildAssessment(tx, input.agentProfileId, input, now);
     const nonce = createOpaqueToken();
     const expiresAt = new Date(
       Math.min(
         now.getTime() + assessmentPacketLifetimeMs,
-        built.purpose.expiresAt.getTime(),
+        built.purpose?.expiresAt.getTime() ?? Infinity,
         built.sourceAt.getTime() + rewardLifetimeMs,
       ),
     );
     const record = await records.createAssessmentPacket(tx, {
       ...input,
+      channel: built.channel,
       createdById: actor.actorId,
       nonceHash: sha256(nonce),
       packageHash: built.packageHash,
@@ -236,7 +350,7 @@ export function issuePurposeAssessmentPacket(
   });
 }
 
-export function submitPurposeAssessment(
+export function submitAuthorAssessment(
   client: DatabaseExecutor,
   actor: ActorContext,
   input: SubmitRewardAssessmentInput,
@@ -258,7 +372,7 @@ export function submitPurposeAssessment(
     await lockAgentSettings(tx);
     const mode = await records.getRewardMode(tx);
     if (mode === "OFF") reject("Ödül değerlendirmesi kapalı.");
-    const built = await buildPurposeAssessment(tx, issued.agentProfileId, issued.purposeId, now);
+    const built = await buildAssessment(tx, issued.agentProfileId, issued, now);
     if (built.packageHash !== issued.packageHash)
       reject("İncelenen amaç veya kanıt değişti; yeni paket gerekir.");
     const supported = input.verdict === "SUPPORTED";
@@ -284,6 +398,8 @@ export function submitPurposeAssessment(
       packetId: issued.id,
       agentProfileId: issued.agentProfileId,
       purposeId: issued.purposeId,
+      entryId: issued.entryId,
+      channel: built.channel,
       createdById: actor.actorId,
       mode,
       verdict: input.verdict,
@@ -297,10 +413,13 @@ export function submitPurposeAssessment(
       applied,
       creditedSourceKey: applied ? built.sourceActKey : null,
       creditedContentHash: applied ? built.sourceContentHash : null,
-      evidenceSnapshot: built.packet,
+      evidenceSnapshot: {
+        packet: built.packet,
+        visibilityChecks: built.visibilityChecks.map((check) => ({ ...check })),
+      },
       createdAt: now,
     });
-    if (applied)
+    if (applied && built.purpose)
       await updatePurposeRecord(tx, built.purpose, {
         status: "FULFILLED",
         activeSlot: null,
@@ -308,7 +427,9 @@ export function submitPurposeAssessment(
         updatedAt: now,
       });
     const disposition = applied
-      ? "FULFILLED"
+      ? built.channel === "INTRINSIC"
+        ? "FULFILLED"
+        : "QUALITY_RECORDED"
       : duplicate
         ? "ALREADY_CREDITED"
         : capped
@@ -324,6 +445,7 @@ export function submitPurposeAssessment(
       requestId: actor.requestId,
       metadata: {
         mode,
+        channel: built.channel,
         verdict: input.verdict,
         applied,
         disposition,
@@ -336,7 +458,7 @@ export function submitPurposeAssessment(
   });
 }
 
-export function reversePurposeAssessment(
+export function reverseAuthorAssessment(
   client: DatabaseExecutor,
   actor: ActorContext,
   input: ReverseRewardAssessmentInput,
@@ -357,7 +479,8 @@ export function reversePurposeAssessment(
       reason: input.reason,
       createdAt: now,
     });
-    if (assessment.applied) await records.revokeFulfilledPurpose(tx, assessment.purposeId, now);
+    if (assessment.applied && assessment.purposeId)
+      await records.revokeFulfilledPurpose(tx, assessment.purposeId, now);
     await appendAuditLog(tx, {
       actorId: actor.actorId,
       action: "agent.reward.reversed",

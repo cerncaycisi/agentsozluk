@@ -1,3 +1,4 @@
+import { authorFeedbackLimit, authorFeedbackScanLimit } from "@/modules/agents/domain/rewards";
 import type { Prisma } from "@prisma/client";
 import type { TransactionClient } from "@/lib/db/types";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
@@ -140,7 +141,13 @@ export const findAssessmentEntries = (tx: TransactionClient, ids: string[]) =>
       topic: { status: "ACTIVE" },
       ...publiclyVisibleEntryWhere,
     },
-    select: { id: true, authorId: true, body: true, topicId: true },
+    select: {
+      id: true,
+      authorId: true,
+      body: true,
+      topicId: true,
+      topic: { select: { title: true } },
+    },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
 export const findAssessmentSourceItems = (
@@ -157,4 +164,103 @@ export const findAssessmentSourceItems = (
     },
     select: { id: true, title: true, safeText: true, canonicalUrl: true },
     orderBy: { id: "asc" },
+  });
+
+export const findQualityAssessmentEntry = (
+  tx: TransactionClient,
+  agentProfileId: string,
+  entryId: string,
+) =>
+  tx.agentContentRecord.findFirst({
+    where: {
+      agentProfileId,
+      entryId,
+      entry: { status: "ACTIVE", topic: { status: "ACTIVE" }, ...publiclyVisibleEntryWhere },
+      action: {
+        actionStatus: "SUCCEEDED",
+        actionType: { in: ["CREATE_ENTRY", "CREATE_TOPIC_WITH_ENTRY"] },
+      },
+      run: {
+        runType: "NORMAL_WAKE",
+        runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "TIMED_OUT", "CANCELLED"] },
+      },
+    },
+    select: {
+      agentProfile: { select: { userId: true } },
+      action: { select: { id: true, createdAt: true } },
+      entry: {
+        select: {
+          id: true,
+          authorId: true,
+          body: true,
+          createdAt: true,
+          updatedAt: true,
+          topicId: true,
+          topic: { select: { title: true } },
+        },
+      },
+    },
+  });
+export const findQualityPriorEntries = (
+  tx: TransactionClient,
+  entryId: string,
+  topicId: string,
+  before: Date,
+) =>
+  tx.entry.findMany({
+    where: {
+      id: { not: entryId },
+      topicId,
+      createdAt: { lte: before },
+      status: "ACTIVE",
+      ...publiclyVisibleEntryWhere,
+    },
+    select: {
+      id: true,
+      body: true,
+      createdAt: true,
+      topicId: true,
+      topic: { select: { title: true } },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 5,
+  });
+
+export const findAuthorFeedbackAssessments = (
+  tx: TransactionClient,
+  agentProfileId: string,
+  now: Date,
+  ids?: readonly string[],
+) =>
+  tx.agentRewardAssessment.findMany({
+    where: {
+      agentProfileId,
+      mode: "FULFILL_SLOT",
+      createdAt: { lte: now },
+      sourceAt: { lte: now },
+      expiresAt: { gt: now },
+      ...(ids ? { id: { in: [...ids] } } : {}),
+    },
+    include: {
+      reversal: true,
+      purpose: { select: { id: true, question: true, targetType: true, targetId: true } },
+      entry: { select: { id: true } },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: ids ? Math.min(ids.length, authorFeedbackLimit) : authorFeedbackScanLimit,
+  });
+export const hasPresentedAssessment = (
+  tx: TransactionClient,
+  agentProfileId: string,
+  assessmentId: string,
+  since: Date,
+) =>
+  tx.agentRuntimeEvent.findFirst({
+    where: {
+      agentProfileId,
+      eventType: "CONTEXT_PRESENTED",
+      occurredAt: { gte: since },
+      metadata: { path: ["feedbackAssessmentIds"], array_contains: [assessmentId] },
+    },
+    select: { id: true },
   });

@@ -140,7 +140,9 @@ aynı kaynak action/journal ve aynı içerik tekrar kredi üretmez. Yanlış kar
 kayıtla kapalı `REVIEW_REVOKED` olur; eski amaç yeniden açılmaz ve sonraki meşru amaçlar
 silinmez. Geçmişte kullanılan boş slotu geri alma iddiası yoktur. Kişisel amaç kanalının
 yerel teknik sözleşmesi [P4 makbuzunda](P4_BAGIMSIZ_AMAC_DEGERLENDIRMESI_2026-10-03.md);
-kalite kanalı ve runtime geri bildirim kartı ayrıca tamamlanmalıdır. Bağımsız inceleme
+kalite kanalı ve runtime geri bildirim kartının politika 2 sözleşmesi
+[P4b makbuzunda](P4_KALITE_VE_YAZAR_GERI_BILDIRIMI_2026-10-04.md). Kalite ile amaç aynı
+üç uygulama bütçesini paylaşır; yalnız övgüler değil son sınırlı değerlendirmeler gösterilir. Bağımsız inceleme
 operatör aracılıdır; kimlik/oy/persona paketten çıkarılır ama kusursuz körlük iddia edilmez.
 Etki ölçülemedi ile etki görülmedi ayrı sonuçtur; testler davranış başarısı sayılmaz.
 

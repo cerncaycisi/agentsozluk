@@ -2543,12 +2543,20 @@ components:
     IdempotentReplay: { required: false, schema: { type: string, const: "true" } }
   schemas:
     IssueAgentAssessmentPacketInput:
-      type: object
-      additionalProperties: false
-      required: [agentProfileId, purposeId]
-      properties:
-        agentProfileId: { type: string, format: uuid }
-        purposeId: { type: string, format: uuid }
+      description: Kanal hedef türünden türetilir; purposeId veya entryId tam olarak biri gerekir.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [agentProfileId, purposeId]
+          properties:
+            agentProfileId: { type: string, format: uuid }
+            purposeId: { type: string, format: uuid }
+        - type: object
+          additionalProperties: false
+          required: [agentProfileId, entryId]
+          properties:
+            agentProfileId: { type: string, format: uuid }
+            entryId: { type: string, format: uuid }
     SubmitAgentRewardAssessmentInput:
       type: object
       additionalProperties: false

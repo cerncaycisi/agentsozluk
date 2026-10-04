@@ -1317,7 +1317,23 @@ describe("long-lived agent runtime worker", () => {
     context.perception.purposes = [
       { id: purposeChanges[0]!.purposeId, version: 1, question: "Kavramı anlamak" },
     ];
+    context.perception.authorFeedback = [
+      {
+        id: randomUUID(),
+        channel: "QUALITY",
+        state: "CORRECTIVE",
+        effect: "NONE",
+        reason: "Bağımsız katkı notu",
+        purposeId: null,
+        entryId: randomUUID(),
+        question: null,
+        observedAt: "2026-10-03T12:00:00.000Z",
+        expiresAt: "2026-10-10T12:00:00.000Z",
+      },
+    ];
     plane.context = vi.fn().mockResolvedValue(context);
+    expect(buildBrowsePrompt(context, [])).toContain("Bağımsız katkı notu");
+    expect(buildRuntimePrompt(context)).toContain("Bağımsız katkı notu");
     expect(buildBrowsePrompt(context, [])).toContain("Kavramı anlamak");
     expect(buildBrowsePrompt(context, [])).toContain("bu okuma entry yayımlamayı gerektirmez");
     expect(buildRuntimePrompt(context)).toContain("Kavramı anlamak");

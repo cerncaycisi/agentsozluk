@@ -1,3 +1,4 @@
+import { authorFeedbackKey } from "@/modules/agents/domain/rewards";
 import { purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import { actionFeedbackKey } from "@/modules/agents/domain/action-feedback";
 
@@ -53,7 +54,10 @@ export function deriveRuntimePerceptionEvidence(
     perception && typeof perception === "object" && !Array.isArray(perception)
       ? Object.fromEntries(
           Object.entries(perception).filter(
-            ([key]) => key !== actionFeedbackKey && key !== purposePerceptionKey,
+            ([key]) =>
+              key !== actionFeedbackKey &&
+              key !== purposePerceptionKey &&
+              key !== authorFeedbackKey,
           ),
         )
       : perception;

@@ -1,3 +1,4 @@
+import { runtimeAuthorFeedback } from "@/modules/agents/application/author-feedback";
 import {
   runtimeReadTopicEntryLimit,
   truncateUntrustedText,
@@ -5,9 +6,9 @@ import {
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
-  issuePurposeAssessmentPacket,
-  submitPurposeAssessment,
-  reversePurposeAssessment,
+  issueAuthorAssessmentPacket,
+  submitAuthorAssessment,
+  reverseAuthorAssessment,
   changeRewardMode,
 } from "@/modules/agents/application/rewards";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
@@ -146,7 +147,7 @@ async function fixture() {
   });
   const adminActor = actor(admin.id);
   const issue = () =>
-    issuePurposeAssessmentPacket(
+    issueAuthorAssessmentPacket(
       db,
       adminActor,
       { agentProfileId: profile.id, purposeId: purpose.id },
@@ -161,8 +162,9 @@ async function fixture() {
   const submit = async (
     packet: Awaited<ReturnType<typeof issue>>,
     verdict: "SUPPORTED" | "INSUFFICIENT" | "CORRECTIVE" = "SUPPORTED",
+    at = now,
   ) =>
-    submitPurposeAssessment(
+    submitAuthorAssessment(
       db,
       adminActor,
       {
@@ -174,7 +176,7 @@ async function fixture() {
         independentReviewConfirmed: true,
         reason: "İncelenen kanıt niyetin tamamlandığını destekliyor.",
       },
-      now,
+      at,
     );
   return {
     admin,
@@ -191,6 +193,46 @@ async function fixture() {
     submit,
   };
 }
+
+async function publishedEntry(f: Awaited<ReturnType<typeof fixture>>, body: string) {
+  const entry = await db.entry.create({
+    data: {
+      topicId: f.topic.id,
+      authorId: f.writer.id,
+      body,
+      normalizedBody: body,
+      origin: "AGENT",
+      createdAt: new Date(now.getTime() - 500),
+      updatedAt: new Date(now.getTime() - 500),
+    },
+  });
+  const sequence = (await db.agentAction.count({ where: { runId: f.run.id } })) + 1;
+  const action = await db.agentAction.create({
+    data: {
+      runId: f.run.id,
+      agentProfileId: f.profile.id,
+      sequence,
+      actionType: "CREATE_ENTRY",
+      actionStatus: "SUCCEEDED",
+      input: { body },
+      result: { entryId: entry.id },
+      createdAt: new Date(now.getTime() - 1000),
+    },
+  });
+  await db.agentContentRecord.create({
+    data: { entryId: entry.id, agentProfileId: f.profile.id, runId: f.run.id, actionId: action.id },
+  });
+  const issue = () =>
+    issueAuthorAssessmentPacket(
+      db,
+      f.adminActor,
+      { agentProfileId: f.profile.id, entryId: entry.id },
+      now,
+    );
+  return { entry, action, issue };
+}
+const feedback = (profileId: string, at = now, frozenIds?: string[]) =>
+  db.$transaction((tx) => runtimeAuthorFeedback(tx, profileId, at, frozenIds));
 
 beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
@@ -230,7 +272,7 @@ describe("independent purpose assessment with PostgreSQL", () => {
     const f = await fixture();
     await f.mode("SHADOW");
     await expect(
-      issuePurposeAssessmentPacket(
+      issueAuthorAssessmentPacket(
         db,
         { ...f.adminActor, actorId: f.writer.id },
         { agentProfileId: f.profile.id, purposeId: f.purpose.id },
@@ -254,7 +296,7 @@ describe("independent purpose assessment with PostgreSQL", () => {
     await expect(f.submit(packet)).rejects.toMatchObject({ code: "AGENT_REWARD_CONFLICT" });
     const fresh = await f.issue();
     await expect(
-      submitPurposeAssessment(
+      submitAuthorAssessment(
         db,
         f.adminActor,
         {
@@ -313,10 +355,10 @@ describe("independent purpose assessment with PostgreSQL", () => {
       assessmentId: awarded.assessmentId,
       reason: "İnceleme hatası bağımsız olarak doğrulandı.",
     };
-    expect(await reversePurposeAssessment(db, f.adminActor, reversal, now)).toMatchObject({
+    expect(await reverseAuthorAssessment(db, f.adminActor, reversal, now)).toMatchObject({
       replayed: false,
     });
-    expect(await reversePurposeAssessment(db, f.adminActor, reversal, now)).toMatchObject({
+    expect(await reverseAuthorAssessment(db, f.adminActor, reversal, now)).toMatchObject({
       replayed: true,
     });
     expect(await db.agentPurpose.count({ where: { status: "ACTIVE" } })).toBe(2);
@@ -324,7 +366,7 @@ describe("independent purpose assessment with PostgreSQL", () => {
       status: "REVIEW_REVOKED",
       activeSlot: null,
     });
-    const packet = await issuePurposeAssessmentPacket(
+    const packet = await issueAuthorAssessmentPacket(
       db,
       f.adminActor,
       { agentProfileId: f.profile.id, purposeId: next.id },
@@ -354,7 +396,7 @@ describe("independent purpose assessment with PostgreSQL", () => {
     await expect(f.issue()).rejects.toMatchObject({ code: "AGENT_REWARD_CONFLICT" });
     await db.entry.update({ where: { id: f.entry.id }, data: { authorId: f.admin.id } });
     await expect(
-      issuePurposeAssessmentPacket(
+      issueAuthorAssessmentPacket(
         db,
         f.adminActor,
         { agentProfileId: f.profile.id, purposeId: f.purpose.id },
@@ -402,7 +444,7 @@ describe("independent purpose assessment with PostgreSQL", () => {
           expiresAt: new Date(now.getTime() + 86400000),
         },
       });
-      const packet = await issuePurposeAssessmentPacket(
+      const packet = await issueAuthorAssessmentPacket(
         db,
         f.adminActor,
         { agentProfileId: f.profile.id, purposeId: purpose.id },
@@ -506,7 +548,7 @@ describe("independent purpose assessment with PostgreSQL", () => {
     });
     await expect(f.issue()).rejects.toMatchObject({ code: "AGENT_REWARD_CONFLICT" });
     expect(
-      await reversePurposeAssessment(
+      await reverseAuthorAssessment(
         db,
         f.adminActor,
         { assessmentId: granted.assessmentId, reason: "Yanlış kararı geri al." },
@@ -543,6 +585,7 @@ describe("independent purpose assessment with PostgreSQL", () => {
       data: { perceptionSummary: { readTopics: [{ id: f.topic.id, entries }] } },
     });
     const packet = await f.issue();
+    if (!("observation" in packet.packet)) throw new Error("EXPECTED_PURPOSE_PACKET");
     const shown = packet.packet.observation.entries as Array<{ body: string }>;
     expect(shown).toEqual(entries.map(({ body }) => ({ body })));
     expect(JSON.stringify(packet.packet)).not.toContain(truncateUntrustedText(longBody, 2000));
@@ -566,5 +609,274 @@ describe("independent purpose assessment with PostgreSQL", () => {
     const audits = await db.auditLog.findMany({ where: { action: "agent.reward.mode_changed" } });
     expect(audits).toHaveLength(1);
     expect(audits[0]!.metadata).toMatchObject({ reason: "Yerel kontrollü test." });
+  });
+  it("assesses a real short bkz publication; editing does not create a new credit or revive stale feedback", async () => {
+    const f = await fixture();
+    await f.mode("FULFILL_SLOT");
+    const publication = await publishedEntry(f, "(bkz: henüz açılmamış kavram)");
+    const packet = await publication.issue();
+    expect(packet.packet.channel).toBe("QUALITY");
+    expect(JSON.stringify(packet.packet)).not.toContain(f.writer.username);
+    const decision = await f.submit(packet);
+    expect(decision).toMatchObject({ applied: true, disposition: "QUALITY_RECORDED" });
+    expect(await db.agentPurpose.findUnique({ where: { id: f.purpose.id } })).toMatchObject({
+      status: "ACTIVE",
+      activeSlot: 1,
+    });
+    expect(await feedback(f.profile.id)).toEqual([
+      expect.objectContaining({
+        id: decision.assessmentId,
+        channel: "QUALITY",
+        state: "SUPPORTED",
+        entryId: publication.entry.id,
+      }),
+    ]);
+    await db.topic.update({ where: { id: f.topic.id }, data: { title: "Başka kapsam" } });
+    expect(await feedback(f.profile.id)).toEqual([]);
+    await db.topic.update({ where: { id: f.topic.id }, data: { title: f.topic.title } });
+    await db.entry.update({
+      where: { id: publication.entry.id },
+      data: { body: "Tamamen yeni bir iddia ve farklı yazı." },
+    });
+    expect(await feedback(f.profile.id)).toEqual([]);
+    const changed = await f.submit(
+      await publication.issue(),
+      "SUPPORTED",
+      new Date(now.getTime() + 1),
+    );
+    expect(changed).toMatchObject({ applied: false, disposition: "ALREADY_CREDITED" });
+    expect(await db.agentRewardAssessment.count({ where: { applied: true } })).toBe(1);
+  });
+  it("rejects a foreign publication, absent source action, and wrong channel/target rows", async () => {
+    const f = await fixture();
+    await f.mode("SHADOW");
+    await expect(
+      issueAuthorAssessmentPacket(
+        db,
+        f.adminActor,
+        { agentProfileId: f.profile.id, entryId: f.entry.id },
+        now,
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_REWARD_CONFLICT" });
+    const own = await db.entry.create({
+      data: {
+        topicId: f.topic.id,
+        authorId: f.writer.id,
+        body: "Köken eylemi olmayan yazı.",
+        normalizedBody: "koken",
+        origin: "AGENT",
+      },
+    });
+    await expect(
+      issueAuthorAssessmentPacket(
+        db,
+        f.adminActor,
+        { agentProfileId: f.profile.id, entryId: own.id },
+        now,
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_REWARD_CONFLICT" });
+    const packet = await f.issue();
+    await expect(
+      db.agentAssessmentPacket.update({
+        where: { id: packet.packetId },
+        data: { channel: "QUALITY" },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      db.agentAssessmentPacket.update({
+        where: { id: packet.packetId },
+        data: { entryId: own.id },
+      }),
+    ).rejects.toThrow();
+  });
+  it("invalidates the quality packet and feedback when its prior context changes or is hidden", async () => {
+    const f = await fixture();
+    await f.mode("FULFILL_SLOT");
+    await db.entry.update({
+      where: { id: f.entry.id },
+      data: { createdAt: new Date(now.getTime() - 5000) },
+    });
+    const publication = await publishedEntry(f, "Önceki katkının sınırını açıklayan karşı görüş.");
+    const packet = await publication.issue();
+    if (!("priorEntries" in packet.packet)) throw new Error("EXPECTED_QUALITY_PACKET");
+    expect(packet.packet.priorEntries).toHaveLength(1);
+    await db.entry.update({ where: { id: f.entry.id }, data: { body: "Önceki katkı değişti." } });
+    await expect(f.submit(packet)).rejects.toMatchObject({ code: "AGENT_REWARD_CONFLICT" });
+    expect(await db.agentRewardAssessment.count()).toBe(0);
+    const decision = await f.submit(await publication.issue());
+    expect(await feedback(f.profile.id)).toEqual([
+      expect.objectContaining({ id: decision.assessmentId }),
+    ]);
+    await db.entry.update({ where: { id: f.entry.id }, data: { status: "HIDDEN", hiddenAt: now } });
+    expect(await feedback(f.profile.id)).toEqual([]);
+  });
+  it("shares the three-credit cap between intrinsic and quality channels", async () => {
+    const f = await fixture();
+    await f.mode("FULFILL_SLOT");
+    await f.submit(await f.issue());
+    for (let i = 0; i < 3; i++) {
+      const publication = await publishedEntry(f, `Bağımsız katkı ${i}: özgün bir gerekçe.`);
+      expect(await f.submit(await publication.issue())).toMatchObject(
+        i < 2 ? { applied: true } : { applied: false, disposition: "SEVEN_DAY_LIMIT" },
+      );
+    }
+    expect(await db.agentRewardAssessment.count({ where: { applied: true } })).toBe(3);
+  });
+  it("selects recent distinct events instead of praise and fences another writer, OFF and frozen contexts", async () => {
+    const f = await fixture();
+    await f.mode("FULFILL_SLOT");
+    const verdicts = ["SUPPORTED", "CORRECTIVE", "INSUFFICIENT", "SUPPORTED"] as const;
+    const decisions = [];
+    for (let i = 0; i < verdicts.length; i++) {
+      const publication = await publishedEntry(f, `Değerlendirilecek farklı katkı ${i}.`);
+      decisions.push(
+        await f.submit(await publication.issue(), verdicts[i]!, new Date(now.getTime() + i)),
+      );
+    }
+    const at = new Date(now.getTime() + 10);
+    const cards = await feedback(f.profile.id, at);
+    expect(cards.map((card) => card.state)).toEqual(["SUPPORTED", "INSUFFICIENT", "CORRECTIVE"]);
+    expect(await feedback(f.profile.id, at, [])).toEqual([]);
+    expect(await feedback(f.profile.id, at, [decisions[1]!.assessmentId])).toEqual([
+      expect.objectContaining({ state: "CORRECTIVE" }),
+    ]);
+    const other = await fixture();
+    expect(await feedback(other.profile.id, at)).toEqual([]);
+    await changeRewardMode(db, f.adminActor, {
+      mode: "OFF",
+      expectedMode: "FULFILL_SLOT",
+      reason: "Geri bildirimi durdur.",
+    });
+    expect(await feedback(f.profile.id, at)).toEqual([]);
+    expect(await db.moderationAction.count()).toBe(0);
+    expect(await db.agentRuntimeState.count()).toBe(0);
+  });
+  it("retracts a shown assessment within the original TTL without exposing hidden content or inventing unseen feedback", async () => {
+    const f = await fixture();
+    await f.mode("FULFILL_SLOT");
+    const publication = await publishedEntry(f, "Bir önceki olumlu değerlendirme yanlış olabilir.");
+    const decision = await f.submit(await publication.issue());
+    await db.$transaction((tx) =>
+      appendRuntimeEvent(tx, {
+        agentProfileId: f.profile.id,
+        runId: f.run.id,
+        eventType: "CONTEXT_PRESENTED",
+        safeMessage: "Geri bildirim sunuldu.",
+        metadata: { feedbackAssessmentIds: [decision.assessmentId] },
+        occurredAt: now,
+      }),
+    );
+    await reverseAuthorAssessment(
+      db,
+      f.adminActor,
+      { assessmentId: decision.assessmentId, reason: "Bağımsız incelemedeki hata doğrulandı." },
+      now,
+    );
+    await db.entry.update({
+      where: { id: publication.entry.id },
+      data: { status: "HIDDEN", hiddenAt: now },
+    });
+    expect(await feedback(f.profile.id)).toEqual([
+      expect.objectContaining({
+        id: decision.assessmentId,
+        state: "REVERSED",
+        effect: "NONE",
+        entryId: null,
+        purposeId: null,
+        question: null,
+      }),
+    ]);
+    expect(await feedback(f.profile.id, new Date(now.getTime() + 8 * 86400000))).toEqual([]);
+    const unseen = await publishedEntry(f, "Henüz yazara gösterilmeyen ikinci değerlendirme.");
+    const second = await f.submit(await unseen.issue());
+    await reverseAuthorAssessment(
+      db,
+      f.adminActor,
+      { assessmentId: second.assessmentId, reason: "Gösterilmeden önce geri alındı." },
+      now,
+    );
+    expect((await feedback(f.profile.id)).map((card) => card.id)).toEqual([decision.assessmentId]);
+  });
+  it("revalidates owned source evidence before showing intrinsic feedback", async () => {
+    const f = await fixture();
+    await f.mode("FULFILL_SLOT");
+    const source = await db.agentSource.create({
+      data: {
+        agentProfileId: f.profile.id,
+        url: "https://evidence.example.test/feed",
+        normalizedDomain: "evidence.example.test",
+        sourceType: "RSS",
+        status: "TRUSTED",
+        topics: ["kanıt"],
+        trustScore: 0.7,
+        interestScore: 0.5,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "TEST",
+      },
+    });
+    const item = await db.agentSourceItem.create({
+      data: {
+        sourceId: source.id,
+        canonicalUrl: "https://evidence.example.test/item",
+        title: "Bağımsız dayanak",
+        safeText: "Yeni kanıt kanaati sınamaya yeterli bir gerekçe içerir.",
+        contentHash: "a".repeat(64),
+        topics: ["kanıt"],
+        fetchedAt: now,
+      },
+    });
+    const base = {
+      agentProfileId: f.profile.id,
+      topicKey: f.topic.title,
+      statement: "Gerekçeyi inceledikten sonra aynı kanaatteyim.",
+      confidence: 0.5,
+      evidenceSummary: "Yeni bağımsız kaynakla yeniden sınandı.",
+      evidenceProvenance: {
+        evidenceType: "TRUSTED_SOURCE",
+        evidenceIds: [item.id],
+        summary: "Kaynak dayanağı.",
+      },
+      firstFormedAt: new Date(now.getTime() - 3000),
+      status: "ACTIVE",
+    };
+    const before = await db.agentBelief.create({
+      data: { ...base, version: 1, lastUpdatedAt: new Date(now.getTime() - 3000) },
+    });
+    const belief = await db.agentBelief.create({
+      data: { ...base, version: 2, lastUpdatedAt: new Date(now.getTime() - 1000) },
+    });
+    await db.agentPurpose.update({
+      where: { id: f.purpose.id },
+      data: {
+        kind: "TEST_BELIEF",
+        targetType: "BELIEF",
+        targetId: before.id,
+        baseline: { beliefVersion: 1 },
+        claimEvidence: { beliefId: belief.id, beliefVersion: 2, newEvidenceIds: [item.id] },
+      },
+    });
+    await db.agentAction.create({
+      data: {
+        runId: f.run.id,
+        agentProfileId: f.profile.id,
+        sequence: 1,
+        actionType: "UPDATE_BELIEF",
+        actionStatus: "SUCCEEDED",
+        input: {},
+        result: { beliefId: belief.id },
+        createdAt: new Date(now.getTime() - 1000),
+      },
+    });
+    const decision = await f.submit(await f.issue());
+    expect(await feedback(f.profile.id)).toEqual([
+      expect.objectContaining({
+        id: decision.assessmentId,
+        channel: "INTRINSIC",
+        state: "SUPPORTED",
+      }),
+    ]);
+    await db.agentSource.update({ where: { id: source.id }, data: { adminBlocked: true } });
+    expect(await feedback(f.profile.id)).toEqual([]);
   });
 });
