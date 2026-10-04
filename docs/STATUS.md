@@ -7,6 +7,19 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 13:29 UTC — kaynak bankası teslimi ve v2 geçiş provası
+
+- #317 final `9945807eadd7bd5ed4e44a1f548cc72ae0561860`, CI `37205037707` 7/7;
+  main `cdc4d5d85817a326feb1ff9f55805b0f3581afa3`. Fresh head/check/review/CLEAN,
+  uzak SHA ve test edilen ağaç eşliği PASS. Opus5 koşulları kapandı. Canlı değişmedi.
+  #316 main push CI `37204636460` da7/7 PASS.
+- Ayrı v2 migration profili: v1 baytları ve ilk8 SQL checksum'ı aynı; tek9. dosya
+  ve170 katalog tanımı. Son **113birim/21PG16 PASS**:12iki-profil restore,2gerçek
+  zaman aşımı,7genel A5 SQL. İlk FK dizi sırası hatası ve ayrı Vitest RPC gecikmesi
+  düzeltildi; karşılaştırma veya süre sınırı gevşetilmedi. Opus/exactCI açık.
+- Yerel fixture üretim büyüklüğünde süre veya eski9bf imaj boot kanıtı değildir;
+  gerçek restore/rollback/cutover kapıları korunuyor.
+
 ## 2026-10-04 13:10 UTC — #316 hazırlık teslimi; #317 kaynak bankası
 
 - #316 final `f262a8cade87c34e1958ffc9fb81abaf2c932f70`, CI `37203877096` 7/7;
@@ -4026,3 +4039,7 @@ konuşma geçmişi ve mevcut/önceki araç sürümleri korundu. Yerel CHECKPOINT
 alan kazandırmadı ve ayar 4096 MB/eski kaynağa döndü; kazanç cache temizliğindendir.
 Yedek betiği sort/stat hata yolları ve isteğe bağlı sessiz manual çalışma 19 shell testiyle
 doğrulandı; exact hakem/CI, kurulum ve telafi yedeği bu kayda dahil değildir.
+
+4 Ekim v2 migration profili `1d1de66` için gerçek Opus 5 KOD GO: somut kod kusuru
+bulunmadı. Audit UUID bilgi eksiği kaynakla kapandı; 113 birim / 21 PG16 geçti.
+#320 exact CI ve canlı dağıtım kapıları açık.

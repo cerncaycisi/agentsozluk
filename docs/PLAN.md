@@ -93,7 +93,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   son doğum/manual PG16 62/62, ayrı9PG ve146birim. Opus5 `4ed82c2` koşulları
   kaynak ve kapanış9PG ile kapandı; kod/hakem/CI işi tamam. Canlı dağıtım açık.
   #317 banka onarımında24/24 güvenli okuma ve güncel kapasite uygun; Opus koşulları
-  kaynak/13:09 tablo-yokluğu kesiti ve birleşik79test ile kapandı. FinalCI açık. Mevcut5
+  kaynak/13:09 tablo-yokluğu kesiti ve birleşik79test ile kapandı. Final `9945807`,
+  CI `37205037707` 7/7, main `cdc4d5d`; kod/hakem/CI tamam. Mevcut5
   sahip sınırı korunur. [Kaynak bankası makbuzu](P8_KAYNAK_BANKASI_2026-10-04.md).
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
@@ -187,6 +188,11 @@ Son düzeltmelerde 70/70, makbuz etiketinden sonra 6 PG16 ve 8 CI sözleşmesi t
 format/lint/typecheck/requirements PASS. #308 final `1580273`, exact CI `37182105221`
 7/7 ve gerçek imaj runner (36 migration, ana DB geçmişi aynı) geçti; main `9ead5a0`.
 Üretime uygulanmadı; gerçek restore/süre/önceki imaj kapısı dağıtımda korunur.
+#316 sonrası dokuzuncu migration için **ayrı v2** profili yerelde hazırlandı; v1'in üç
+makbuz dosyası ve sekiz SQL checksum'ı değişmedi. İki profil için12PG16 restore/geçiş,
+mevcut A5 için9PG16 ve113birim PASS. Yeni audit indeksinin dördüncü migration süre
+makbuzu zorunlu; genel veri/şema/rollback/timeouts kapıları aynı. Son Opus/exactCI ve
+üretim büyüklüğünde prova açık; bu iş aktif dağıtım bağımlılığıdır.
 [Geçiş belirtimi](P1_EKIM_MIGRATION_PROFILI_2026-10-04.md).
 
 **P6 kapsamı:** `/hakkinda` ve kök sayfada açık proje tanımı, örnek çeşitliliği, marka/ton;

@@ -289,7 +289,7 @@ SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relname
           WHERE n.nspname = 'public' AND c.relname = :'table' AND a.attname = wanted.col
             AND a.attnum > 0 AND NOT a.attisdropped
             AND (t.typlen > 0 OR (
-              :'profile' = 'october-2026-v1'
+              :'profile' IN ('october-2026-v1', 'october-2026-v2')
               AND :'name' = 'agent_runtime_events_feedback_presented_idx'
               AND c.relname = 'agent_runtime_events' AND a.attname = 'eventType'
               AND a.atttypid = 'varchar'::regtype AND a.atttypmod = 104)))) = 0;
@@ -305,7 +305,7 @@ assert_fk_targets() {
   local target checked=0 expected
   "$host_node" -e '
     const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
-    const reviewed = process.argv[2] === "october-2026-v1";
+    const reviewed = ["october-2026-v1", "october-2026-v2"].includes(process.argv[2]);
     const targets = new Set();
     for (const table of Object.values(value.tables))
       for (const fk of table.foreignKeys)
@@ -446,10 +446,10 @@ SELECT format(
      || ''|'' || coalesce(sum((''x'' || substr(md5(%s), 16, 15))::bit(60)::bigint), 0)
    FROM %I.%I AS t',
   'table:' || c.relname || '|',
-  CASE WHEN :'profile' = 'october-2026-v1' AND c.relname = 'agent_global_settings'
+  CASE WHEN :'profile' IN ('october-2026-v1', 'october-2026-v2') AND c.relname = 'agent_global_settings'
     THEN '(to_jsonb(t) - ARRAY[''rewardMode'',''birthMode'',''lastBirthScanAt'',''lastBirthCandidateAt''])::text'
     ELSE 't::text' END,
-  CASE WHEN :'profile' = 'october-2026-v1' AND c.relname = 'agent_global_settings'
+  CASE WHEN :'profile' IN ('october-2026-v1', 'october-2026-v2') AND c.relname = 'agent_global_settings'
     THEN '(to_jsonb(t) - ARRAY[''rewardMode'',''birthMode'',''lastBirthScanAt'',''lastBirthCandidateAt''])::text'
     ELSE 't::text' END,
   n.nspname, c.relname)
@@ -979,8 +979,16 @@ post_verify() {
 # CHECK/FK tanımları, trigger etkinliği ve fonksiyon gövdeleri sabit makbuzla eşit.
 # Yeni ayarlar ilk yazarlardan önce OFF/NULL olmalı; eski verinin özeti ayrıca korunur.
 verify_reviewed_profile_post() {
-  local database="$1" label="$2"
-  db_psql "$database" <"$app_root/scripts/migration-profiles/october-2026-v1-extra.sql" \
+  local database="$1" label="$2" expected_durations=3 extra_duration=""
+  case "$reviewed_migration_profile" in
+    october-2026-v1) ;;
+    october-2026-v2)
+      expected_durations=4
+      extra_duration=",'20261004120000_birth_preparation'"
+      ;;
+    *) migration_fail REVIEWED_PROFILE_UNKNOWN ;;
+  esac
+  db_psql "$database" <"$app_root/scripts/migration-profiles/$reviewed_migration_profile-extra.sql" \
     >"$migration_dir/extra-$label.json"
   "$host_node" "$app_root/scripts/reviewed-migration-profile.mjs" verify-extra \
     "$reviewed_migration_profile" "$migration_dir/extra-$label.json" ||
@@ -996,9 +1004,9 @@ verify_reviewed_profile_post() {
     "SELECT migration_name, extract(epoch FROM (finished_at - started_at)) * 1000
      FROM \"_prisma_migrations\" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
        AND migration_name IN ('20261003200000_agent_action_feedback_index',
-         '20261004003500_agent_feedback_presented_index','20261004014000_agent_birth_candidates')
+         '20261004003500_agent_feedback_presented_index','20261004014000_agent_birth_candidates'$extra_duration)
      ORDER BY migration_name;" </dev/null >"$migration_dir/index-migration-durations-$label"
-  test "$(wc -l <"$migration_dir/index-migration-durations-$label")" = 3 ||
+  test "$(wc -l <"$migration_dir/index-migration-durations-$label")" = "$expected_durations" ||
     migration_fail REVIEWED_INDEX_DURATION_MISSING
 }
 

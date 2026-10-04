@@ -29,7 +29,7 @@ usage() {
     '' \
     'A release that adds migrations (additive only, A5) additionally needs the exact approved list:' \
     '  AGENT_SOZLUK_PRODUCTION_APPROVED_MIGRATIONS=<name1,name2> ... --apply-migrations <name1,name2>' \
-    'Exact reviewed October bundle only: additionally --reviewed-migration-profile october-2026-v1' \
+    'Exact reviewed October bundle only: additionally --reviewed-migration-profile october-2026-v1|october-2026-v2' \
     '' \
     'The default artifact path passes a short-lived GitHub redirect to the pinned server; the' \
     'artifact never transits the operator Mac. Use --operator-transfer only as an explicit fallback.' \
@@ -77,7 +77,7 @@ while (($# > 0)); do
       ;;
     --reviewed-migration-profile)
       reviewed_migration_profile="${2:-}"
-      test "$reviewed_migration_profile" = october-2026-v1 || {
+      [[ "$reviewed_migration_profile" = october-2026-v1 || "$reviewed_migration_profile" = october-2026-v2 ]] || {
         printf 'RELEASE_WRAPPER_FAIL code=INVALID_REVIEWED_MIGRATION_PROFILE\n' >&2
         exit 90
       }
@@ -161,7 +161,7 @@ elif test -n "${AGENT_SOZLUK_PRODUCTION_APPROVED_MIGRATIONS:-}"; then
   exit 90
 fi
 if test -n "$reviewed_migration_profile"; then
-  test "$reviewed_migration_profile" = october-2026-v1 && test -n "$approved_migrations" || {
+  [[ "$reviewed_migration_profile" = october-2026-v1 || "$reviewed_migration_profile" = october-2026-v2 ]] && test -n "$approved_migrations" || {
     printf 'RELEASE_WRAPPER_FAIL code=INVALID_REVIEWED_MIGRATION_PROFILE\n' >&2
     exit 90
   }
