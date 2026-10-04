@@ -8,6 +8,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 21:40 UTC:** #327 final `cc0b2e7`, CI `37235882789` **7/7 PASS**;
+  main `d829dd0`, tam ağaç eşliği/temiz main doğrulandı. Main CI `37237038884`
+  açık; ardından tek exact artifact/A5/cutover. Canlı hâlâ `9bf3653`.
+  O3 owner/control ayrımı hazırlanıyor: izole PG16'da 5/5 PASS, privilege grant yok;
+  peer/final CI/gerçek restore açık. İlk canlı geçiş bitene kadar O3 main'e girmez.
+  [Sahipli restore sözleşmesi](O3_SAHIPLI_RESTORE_2026-10-04.md).
+
 - **4 Ekim 21:19 UTC:** son kod `ee1cd48`, gerçek Opus 5 KOŞULLU GO; somut yeni
   kod düzeltmesi yok. Şartlar mevcut tam exact CI ve wrapper'ın uzak exact checkout
   kapılarıdır. 62 doğum PG16 ve UTC 2 PG16/19 release PASS; tüm yerel zorunlu

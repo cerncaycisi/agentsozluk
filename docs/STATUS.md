@@ -4444,3 +4444,21 @@ sınar (`deploy-production-no-migration.sh` fetch/checkout +son SSH guard'ı).
 koşullar salt okunur kesitle tamamlanmış sayılmaz; gerçek CI/dağıtım sonucu ayrıca
 kaydedilecek. Bu kapanıştan sonraki belge makbuzunda kod/test ağacının reviewed
 SHA ile aynı kaldığı doğrulanır; reviewed SHA yeni belge SHA'sına yeniden adlandırılmaz.
+
+### 4 Ekim 21:32 UTC — O3 taslak rol ayrımı, gerçek PG16 kanıtı
+
+Main tabanı `d829dd06eb4aa68154f521667302e6744b67399e`; önceki tested `ee1cd48`
+kodu aynı, yalnız #327 belge kapanışı var. Özgün iki untracked O3 taslağı hash'li
+kopyayla korunur. Owner ile CREATE DATABASE üretim rolüne uymuyordu; kontrol rolü
+ayrıldı, uygulama sahibine privilege grant yok. Helper üretimde çalıştırılmadı.
+
+İlk ortak PG denemesi 1 PASS/4 FAIL: `no pg_hba.conf entry`; ortak HBA/DB görevleri
+korundu. Yeni yalnız sentetik PG16.14 localhost:55441 kümesinde **5/5 PASS**,
+sonrasında pg_ctl stop PASS. Non-CREATEDB owner, yetkisiz kontrol reddi, hash/ad/
+tekrar, gerçek yavaş restore süre kesmesi, verify ortak bütçesi ve iki yabancı
+backend'in korunması doğrudan sınandı. Çalışma kümesi özel receipt/log ile korunur;
+ilk başarısız ortak fixture'ın yerel test rol/artifact artıkları ayrıca sahiplik
+makbuzuyla temizlenecek, toplu rol/DB silme yapılmaz. Format/lint/typecheck/3
+requirements/shell PASS; yeni belge kapanışı, peer/exact CI ve gerçek dış-yedek
+restore hâlâ açık. `do not repeat`: güçlü owner fixture'ını üretim CREATEDB
+kanıtı sayma; ortak HBA'yı bu test için genişletme; READY'yi metadata kabulü sayma.
