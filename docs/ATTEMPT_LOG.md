@@ -4021,3 +4021,75 @@ false/true` yapabildi; geçici rol ve DB silindi.
   sayısıyla görünür. Kapsam kararı tamam, canlı kullanım ve kesinti makbuzu B3 açık.
 - Tekrarlama: NO_FINDING'i PASS/iyileşme oranı yapma; saklı setsiz sözleşme kontrolünü
   davranış faydası deneyine çevirme; Opus'un kaynak dışı varsayımını otomatik kabul etme.
+
+### 4 Ekim 2026 11:51–12:13 UTC — P8 köken ve PAUSED hazırlık yolu
+
+- Taban `f9faf6c474d7e6fbe036177f85de1c352ea36ccb`, push CI `37199380356` 7/7.
+  Pinli READ ONLY `9bf3653`: 36 ACTIVE; kuruluş 10 CUSTOM/6 IMPORT/20 TEMPLATE.
+  İlk persona 36/36, güncel şablonla exact eşlik 14 TEMPLATE. Son dört gözlenen
+  ilk aktivasyon bu grupta; tarihçenin tamlığı bu sorguyla ispatlanmadı.
+- İlk yeniden görüş çağrısı gerçek Opus 5 olmasına rağmen araçsız ortamda XML shell
+  isteği döndürdü; çalışma/inceleme sayılmadı. Açık metin sistem bağlamıyla ikinci
+  çağrı gerçek Opus 5 DÜZELTİLMELİ verdi. Ortak kaynak kilidi ve audit immutable
+  trigger'ı kaynakla doğrulandı; öznel n=10/7 gün sürekli fetch çıkarımları kullanılmadı.
+- `20261004120000_birth_preparation` yalnız test PG16'ya uygulandı (37 migration).
+  İlk typecheck kaynak fixture'ında zorunlu status/score/origin alanlarını eksik buldu;
+  fixture tamamlandı, üretim kısıtı değiştirilmedi. 58 birim/34 PG16 PASS.
+- Mevcut manual SOURCE_REFRESH'in PAUSED'a zaten izin verdiği varsayımı yanlış çıktı:
+  hem kuyruk hem lease ACTIVE kontrolü taşıyor. Yalnız yönetilen PREPARED çocuk için
+  explicit SOURCE_REFRESH/trigger/kamu-bayrakları filtresi eklendi; otomatik maintenance
+  ve critical-breaker DRY_RUN yok. Ayrı 6 HTTP/kaynak lease PG16 PASS, 34 test atlandı.
+- Tekrarlama: generic nonPublishing listesini PAUSED lease kanıtı sayma; şablon eşliğini
+  tek başına bağımsız köken sayma; araç isteği çıktısını peer review sayma; yerel hesap
+  hazırlığını P7/aktivasyon veya canlı kaynak başarısı diye yazma. V2 geçiş profili açık.
+
+- P8 son birleşik regresyon 146 birim / 63 PG16 PASS; PAUSED gerçek context/attempt/result
+  yolu source item saklıyor, entry sıfır. Format/lint/typecheck/requirements/OpenAPI PASS.
+  Önceki 34+6 odaklı sayımları birleşik 63 diye yeniden etiketlemedik; ayrı koşudur.
+
+### 4 Ekim 2026 12:31–12:43 UTC — P8 gerçek worker kapanışı ve hakem bulguları
+
+- #316 `b5b2073`, CI `37201972817` 7/7; Opus 5 ilk kod hükmü DÜZELTİLMELİ.
+  B1 shared→exclusive kilit iddiası helper kaynağıyla yanlışlandı; paralel hazırlık
+  reddi exact `AGENT_BIRTH_PREPARATION_BLOCKED` / `STALE_PREVIEW` olarak sınandı.
+- PG16 gerçek source attempt/result sonrasındaki NO_ACTION önce `REJECTED` döndü;
+  ACTIVE guard hazırlanmış PAUSED kaynak işini de engelliyordu. Dar bağlı-kimlik/run
+  istisnası eklendi. Son odaklı koşuda normal `SKIPPED` ve run `SUCCEEDED` doğrulandı.
+  İlk test beklentisi NO_ACTION için SUCCEEDED idi; mevcut doğru semantik SKIPPED'dir.
+  Kaynak okuması SOURCE_READ hafızası oluşturur; ek memory yazımı öncesi sayıyla
+  karşılaştırıldı. Eski fixture bir run içerdiği için sıradan PAUSED testi delta sayar.
+- Son birleşik doğum/manual koşusu **62 PG16 PASS**. Komuttaki yanlış onboarding
+  dosya adı bu koşuya dahil olmadı; ayrı doğru dosya kontrolüyle tamamlanacak.
+  Yeni unit/quality/son hakem/CI henüz tamamlanmış sayılmadı.
+- 12:25–12:27 UTC canlı9bf READ ONLY: doğum bankalarının13/22 URL'si holdercap5.
+  İzinli140 havuzda47 sınırda; stok düşürme/eşik gevşetme yapılmadı. İlk özel sorgu
+  ikinci bankayı yanlış etiketledi, doğru draftKey tersolcek; URL/count kanıtı değişmedi.
+- Tekrarlama: lease→source result testini worker completion kanıtı sayma; doğrudan
+  oluşturulan principal'ı gerçek Bearer auth kabulü yapma; peer'in yanlış kilit
+  varsayımıyla actor kilidini gereksiz exclusive yapma; HTTP başarısını holder uygunluğu
+  sayma; çalışmayan dosyayı test toplamına ekleme.
+
+- Ayrı doğru onboarding4 ve mevcut runtime güvenlik sınırları5: **9 PG16 PASS**,
+  126 diğer runtime senaryosu bu odakta atlandı. Toplam yeni genişlik62+9=71;
+  önceki63 ile aynı koşu veya tamamı runtime regresyonu diye gösterilmedi.
+- Son ilgili birim regresyonu **146/146 PASS**. Tür/lint/format kontrolleri ve ikinci
+  Opus kod incelemesi bu kaydın hazırlanmasından sonra tamamlanacak.
+
+### 4 Ekim 2026 12:52–12:54 UTC — P8 Opus koşullarının kapanışı
+
+- Gerçek `claude-opus-5`, exact `4ed82c2d473182510ebf62bc9449d89f37572ac9`:
+  KOŞULLU GO (yalnız hazırlık). Çıktının yanlış Astra başlığı gerçek modeli değiştirmez;
+  auxiliary Haiku usage hakem sayılmadı. Ham görüş özel kayıtta değişmeden tutuldu.
+- N1: amaç servisi başta NORMAL_WAKE ister; PAUSED SOURCE_REFRESH completion'a CREATE
+  gönderilen yeni test `PURPOSE_NORMAL_WAKE_REQUIRED`, PARTIAL ve sıfır amaç kaydı
+  doğruladı. N2: global afterEach zaten useRealTimers içeriyor; sahte timer sızıntısı
+  yok. Rollout tarihine aynı enjekte edilen now geçirildi. N3: nonPublishing listesi
+  SOURCE_REFRESH içeriyor; true kamu varsayılanları false yazılır ve lease testi geçer.
+  Kaynak dışı simetrik422 önerisi uygulanmadı. B5/B8 çıkmaz/tek-TX koşulları belgelendi.
+- Kapanış odaklı gerçek PG16 **9/9 PASS**, diğer165 test atlandı. Önceki146birim ve
+  62+9PG kaydı ayrı tutulur; yeni geniş test toplamı gibi toplanmaz.
+- Sonraki banka düzeltmesinin yerel güvenli okuyucu kontrolü12:52:08–12:52:46UTC:
+  24/24 URL okunabilir,24/24 en az bir seçilmiş öğe. Bu static aday kontrolüdür;
+  üretimde yeni source/fetch/kimlik yazılmadı ve aktivasyon kanıtı değildir.
+- Tekrarlama: koşullu görüşü koşulsuz hakem GO diye yazma; eksik alıntıya dayanmış
+  varsayımı mevcut kaynak karşısında otomatik kod değişikliği gerekçesi yapma.

@@ -7,6 +7,36 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 12:45 UTC — P8 kaynak işinin gerçek kapanışı
+
+- #316 ilk `b5b2073` CI7/7; Opus 5 DÜZELTİLMELİ. Bearer kimlik doğrulamasıyla
+  worker yolu, PAUSED kaynak işinin NO_ACTION adımında hatalı ret buldu. Dar istisna
+  sonrası action SKIPPED ve run SUCCEEDED; profil PAUSED. Yayın/oy/takip/öneri/inanç
+  reddi, reflection/ek hafıza yazma reddi ve sıradan PAUSED regresyonları geçti.
+- Son **62 doğum/manual + 9 onboarding/runtime PG16 PASS**; 126 diğer runtime
+  senaryosu atlandı. Son kod hakemi/CI açık; eski ilk63 koşusunun yerine geçirilmedi.
+- Opus5 `4ed82c2` KOŞULLU GO koşulları kaynak ve yeni9PG ile kapandı: purpose kolu
+  SOURCE_REFRESH'te kayıt yazmıyor; timer cleanup mevcut, rollout tek now kullanıyor;
+  public bayrakları nonPublishing yolu kapatıyor. SonCI açık. Final9 koşuda165 test atlandı.
+- 12:25–12:27 salt okunur canlı kapasite: banka22 URL'sinin13'ü holdercap5; izinli140
+  havuzda47 sınırda. Hazırlık bu bankayla haklı reddedilir; banka onarımı açık. Canlı
+  profil/ayar/kaynak değişmedi; kaynak sınırı gevşetilmedi.
+
+## 2026-10-04 12:21 UTC — P8 hesap/kaynak hazırlığı yerelde
+
+- `f9faf6c` tabanında yeni PAUSED hesap hazırlığı ve yalnız explicit SOURCE_REFRESH
+  kuyruk/lease yolu: **146 birim / 63 PG16 PASS** (40 doğum, 19 manual run, 4 onboarding).
+  Kaynak testi gerçek context/attempt/result yolunda bir source item yazdı, entry yazmadı.
+  Paralel hazırlık tek hesap; kaynak sınırı veya enrollment eksikliği bütün yeni kimliği
+  rollback etti. HTTP replay/CSRF/askıya alınmış admin, immutable hazırlık ve ACTIVE bypass
+  reddi doğrudan sınandı. Kontroller sentetik fixture'dır; canlı fetch/model/aktivasyon yok.
+- Format/lint/typecheck/requirements/OpenAPI PASS; 153 runtime operation eşleşti.
+  Kod hakemi/exact CI açık. Dokuzuncu migration yalnız yerel test DB'sinde; v1 geçiş
+  profili değişmedi, v2 superset/restore ve gerçek eski imaj kapıları açık.
+- 11:51–11:52 pinli `9bf3653` kesiti: 36 ACTIVE; ilk persona/köken metodu eşliğinde
+  14 TEMPLATE profil dar kök politikasına aday. Son dört gözlenen aktivasyon bunlarda;
+  eksiksiz tarihçe veya ilk doğum izni iddiası yok. Üretim değiştirilmedi.
+
 ## 2026-10-04 10:58 UTC — aktif amaç istemi düzeltmesi yerelde
 
 - `81baa48` tabanında kısa pilot hazırlığı aktif amacın `kind` alanında worker'ın

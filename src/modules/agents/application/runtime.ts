@@ -35,6 +35,8 @@ import {
   findRuntimeSourceResultLifeEvent,
 } from "@/modules/agents/repository/life-ledger";
 import { lockPersonaUniverse } from "@/modules/agents/repository/persona-lock";
+import { birthPreparationIsOpen } from "@/modules/agents/domain/birth-preparation";
+import { findManagedBirthForChild } from "@/modules/agents/repository/birth-preparation";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import {
   duplicateRepairCandidateIsSafe,
@@ -1406,7 +1408,7 @@ export async function leaseRuntimeRun(
   return inTransaction(client, async (transaction) => {
     await lockRuntimeAgent(transaction, principal.agentProfileId);
     const agent = await getRuntimeAgentLifecycle(transaction, principal.agentProfileId);
-    if (!agent || agent.lifecycleStatus !== "ACTIVE") {
+    if (!agent || !["ACTIVE", "PAUSED"].includes(agent.lifecycleStatus)) {
       return {
         run: null,
         reason: "NOT_ACTIVE",
@@ -1426,16 +1428,22 @@ export async function leaseRuntimeRun(
       agent-profile kilidini ilk sırada almak bu güvencenin şartıdır.
     */
     await lockAgentSettings(transaction);
-    const rolloutDate = await pauseExpiredProductionRollout(
-      transaction,
-      principal.actor,
-      new Date(),
-    );
-    if (rolloutDate.expired) return { run: null, reason: "ERROR_PAUSED" };
+    const now = dependencies.now ?? new Date();
     const settings = await getRuntimeGlobalSettings(transaction);
+    const birthSourcePreparationOnly = agent.lifecycleStatus === "PAUSED";
+    if (
+      birthSourcePreparationOnly &&
+      (settings.birthMode !== "CANDIDATES" ||
+        !birthPreparationIsOpen(
+          await findManagedBirthForChild(transaction, principal.agentProfileId),
+          now,
+        ))
+    )
+      return { run: null, reason: "NOT_ACTIVE" };
+    const rolloutDate = await pauseExpiredProductionRollout(transaction, principal.actor, now);
+    if (rolloutDate.expired) return { run: null, reason: "ERROR_PAUSED" };
     if (!settings.runtimeEnabled) return { run: null, reason: "PAUSED" };
     const maintenanceMode = settings.runtimeOperatingMode === "MAINTENANCE";
-    const now = dependencies.now ?? new Date();
     const expiredCancellations = await listExpiredCancellationRunsForFinalization(
       transaction,
       principal.agentProfileId,
@@ -1564,6 +1572,8 @@ export async function leaseRuntimeRun(
       yeniden kuruluyor.
     */
     let halfOpenProbe: CircuitBreakerHalfOpenDecision | null = null;
+    if (birthSourcePreparationOnly && breakers.runtimePaused)
+      return { run: null, reason: "ERROR_PAUSED" };
     if (breakers.runtimePaused) {
       halfOpenProbe = evaluateCircuitBreakerHalfOpenProbe({
         runtimePaused: true,
@@ -1590,7 +1600,7 @@ export async function leaseRuntimeRun(
       });
     }
     if (activeLeaseCount >= concurrency) return { run: null, reason: "CAPACITY_FULL" };
-    if (settings.schedulerEnabled) {
+    if (settings.schedulerEnabled && !birthSourcePreparationOnly) {
       const queuedRuns: QueuedRunEventRecord[] = [];
       const localDate = istanbulLocalDate(now);
       const planned = await planRuntimeMaintenance(transaction, {
@@ -1614,6 +1624,7 @@ export async function leaseRuntimeRun(
       writeRunsPaused: breakers.writeRunsPaused,
       contentSlowdownMinutes: breakers.contentSlowdown ? breakerConfig.duplicateCooldownMinutes : 0,
       runtimeOperatingMode: settings.runtimeOperatingMode,
+      birthSourcePreparationOnly,
       now,
     });
     if (!run) return { run: null, reason: "QUEUE_EMPTY" };

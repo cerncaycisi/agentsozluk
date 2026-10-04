@@ -325,3 +325,128 @@ incelemesi diye adlandırılmaz.
 main `8aeeb0a15849073454e12ad3777de7f6eb49b420`. Fresh head/base/review/CLEAN/MERGEABLE,
 uzak SHA ve squash ağacı eşitliği doğrulandı. Son 38 test ve yerel kalite kapıları PASS;
 üretim kaynak havuzu/persona snapshot'ı değiştirilmedi. Gerçek aday hazırlığı/aktivasyonu açık.
+
+## P8c — hesap ve kaynak hazırlığı (yerel uygulama, henüz kod kabulü yok)
+
+4 Ekim 11:51–11:52 UTC pinli READ ONLY envanterinde canlı `9bf3653` üzerinde 36/36
+profil ACTIVE. 10 CUSTOM, 6 IMPORT, 20 TEMPLATE için kuruluş audit'i, genesis ve ilk
+persona mevcut. Güncel kaynak kataloğuyla ilk persona eşliği 14 TEMPLATE profilde var;
+son dört **gözlenen** ilk aktivasyon bu grupta. Bu, bütün aktivasyon tarihçesinin eksiksiz
+olduğunu kanıtlamaz. Son rollout 22 Temmuz ABORTED, kalıcı activation anchor 19 Temmuz;
+mevcut guard bu yerleşik toplum durumunu kabul ediyor. Eski 5 ACTIVE/5 PAUSED başlangıç
+şartı bugünkü 36 kişilik topluma uygulanmıyor. SQL hash'leri özel envanter makbuzunda.
+
+İlk admin pilotu için ayrı permit tablosu ve otomatik aktivasyon tick'i kaldırıldı.
+Otomatik olan mevcut aday taramasıdır; ilerideki ilk ACTIVE geçişi aynı transaction içinde
+yeni kontroller yapan yönetici işlemi olacak. Bu sadeleştirme otomatik hesap etkinleşmesi
+olarak raporlanmaz. Nüfus 40, kök başına yaşayan 2, kayan yedi günde bir soy aktivasyonu ve
+son dört eklemede en az iki bağımsız köken şartları korunur; bu bölüm son üç aktivasyon
+kapısını henüz uygulanmış saymaz. Gerçek 168 saat P7, kaynak ve kapasite kapıları açıktır.
+
+Yerel hazırlık uygulaması:
+
+- `/admin/agent-births/prepare`, HUMAN ADMIN/CSRF/idempotency altında aday version/hash
+  ve settingsVersion alır. Kullanıcı durumları → ebeveyn profili → global ayar → kaynak
+  kapasitesi → persona evreni kilitleriyle güncel üç dayanak, ebeveyn/persona ve ayrışma
+  yeniden okunur. Aynı transaction'da yeni PAUSED kimlik, kendi kaynakları ve yönetilen
+  encrypted enrollment açılır. `createAgent` iç transaction'ı yeniden kullanır; açık
+  yanıtta yalnız aday/profil ID'si, sürüm, durum ve süre bulunur. Ham credential taşınmaz.
+- Genel oluşturmadaki kaynak kapasitesi istisnası burada yok: ekleme sonrasında stok 25
+  ve URL başına sahip 5 sınırı ortak kapasite kilidi altında doğrulanır. Aşım bütün yeni
+  kullanıcı/credential/kaynak/audit kayıtlarını geri alır. Bu okuma SERİALİZABLE iddiası
+  değildir; aynı advisory kilidine katılan mevcut ekleme/geri açma yollarına dayanır.
+- İlk kök kabulü dar: tek `agent.created` + tek `AGENT_CREATION` genesis, ikisinde TEMPLATE,
+  kuruluş zamanına yakın INITIAL sürüm ve bilinen şablon içeriği eşliği gerekir. CUSTOM,
+  IMPORT, CLONE veya eksik tarihçe eşit metinle kök olamaz. Yönetilen çocuk bağlantısı,
+  fiziksel CUSTOM yaratılmasından önce gelir. Katalog hash'i, ilk persona hash'i, kuruluş
+  audit/genesis ID ve içerik hash'leri hazırlıkta sabitlenir. Bu, güvenilen uygulama
+  kayıtları ve incelenmiş şablonlara bağlı politika sınıflandırmasıdır; DB yöneticisine
+  karşı soyun kriptografik ispatı değildir. 22 eski profili sessizce kök ilan etmez.
+- Adayın yedi günlük teklif TTL'si korunur. PREPARED geçişi immutable çocuk/kök ve ayrı
+  14 günlük hazırlık süresi yazar; eski persona/kanıt/soy snapshot'ı değiştirilmez. Genel
+  lifecycle ACTIVE komutu bu çocuğu açamaz. Yeni migration trigger'ı değişiklik/silme
+  yasağını korur; unique çocuk bağı ve tek hazırlanmış kayıt vardır. İlk pilot **tek
+  hazırlanmış kimlikle** sınırlıdır: süre bitince yeni hesap üretmek için bütçe iade edilmez,
+  kayıt ve PAUSED hesap korunur. Bu bilinçli pilot sınırıdır; sonsuz yeniden deneme veya
+  elle SQL ile süre uzatma yolu yoktur. Sonraki çoklu doğum politikası ayrı teslimdir.
+- Kaynak yolundaki önceki varsayım düzeltildi: `isNonPublishingRun` listesi PAUSED kuyruğa
+  izin vermiyordu; manual queue ve lease ACTIVE istiyordu. Yeni dar istisna yalnız açık
+  PREPARED/PAUSED, CANDIDATES ve geçerli hazırlık süresinde `SOURCE_REFRESH` içindir.
+  Yönetici işi `ADMIN_BIRTH_SOURCE` olarak yazar; lease aynı kimlik/tür/trigger ve kapalı
+  kamu bayraklarını tekrar arar. Normal işler, READ_ONLY/DRY_RUN/REFLECTION veya otomatik
+  maintenance planı açılmaz. Global pause, rollout, kapasite ve kesici kapıları sürer.
+  Kritik kesici için bu profilde yeni DRY_RUN probe yaratılmaz. Standart SSRF okuyucusu ve
+  gerçek source-result yolu korunur; yalnız URL listesini kaynak kanıtı sayma yoktur.
+
+Gerçek Opus 5'in ikinci dar **metin** görüşü DÜZELTİLMELİ verdi. Kod okumadı; koşullarına
+koşulsuz GO atfedilmez. Katalog/kanıt hash'i, bilinmeyen köken reddi ve gerçek PAUSED kaynak
+yolu uygulamaya alındı. Kapasite yarış iddiasında metindeki ortak kilit gözden kaçmıştı;
+mevcut `92024003` ve global ayar kilidi korunuyor. Audit UPDATE/DELETE zaten DB trigger'ıyla
+reddediliyor. İlk pilotta çocuk ebeveyn olamaz; önerilen genel recursive cycle sistemi bu
+tek nesil yoluna eklenmedi. İlk ikinci-görüş denemesi araçsız oturumda uygulanmamış XML
+shell isteği döndürdü; teknik inceleme sayılmadı. Açık sistem bağlamıyla tekrar yalnız
+metin görüşü alındı. Son kod/satır incelemesi ayrıca gereklidir.
+
+Aktivasyon diliminde katalog değişikliği `TEMPLATE_CATALOG_CHANGED`, kayıp soy kanıtı
+`LINEAGE_EVIDENCE_LOST`, belirsiz son-dört sırası açık ret olmalıdır. P7 rapor hash'i ile
+rapor içindeki deploy/config/pencere eşleşmesi ve operatör beyanı ayrı tutulacak; yönetici
+beyanı DB'nin rapor hesabını bağımsız kanıtladığı iddiasına dönüşmeyecek. Mevcut raporun
+küresel kaynak havuzu kohort dışını da sayar: aday dışlanmış güncel 50 kaynak/30 origin/
+20 TR tabanı ayrıca doğrulanmalı, eski rapor anlamı sessizce değiştirilmemeli. Kaynak
+penceresi son yedi günde bir faydalı öğedir; yedi gün aralıksız fetch şartı değildir.
+14 günlük QUALITY TTL ayrıca bağlayıcıdır; hazırlık süresi 17 Ekim doğumunu garanti etmez.
+
+İlk ölçüm 58 birim / 34 PG16 PASS; ardından HTTP replay/CSRF, PAUSED source lease,
+OFF/expiry/global pause/suspension için ayrı 6 PG16 PASS (34 eski test bu odakta atlandı).
+Geniş regresyon ve kod hakemi açıktır. `20261004120000_birth_preparation` yalnız yerel
+PG16 test DB'sine uygulandı. Değişmez v1 migration profili dokunulmadı; ayrı exact v2
+superset/restore/katalog ve eski `9bf3653` boot provası üretim önkoşuludur.
+
+Son birleşik regresyon **146 birim / 63 PG16 PASS**: 40 doğum, 19 manual run, 4 onboarding.
+PAUSED kaynak yolunda context→attempt→result gerçek servisleri bir source item sakladı;
+yeni entry yok. Format/lint/typecheck/requirements/OpenAPI (153 operation) PASS. Bu yeni
+ölçüm önceki 34+6 odaklı koşulardan ayrıdır; gerçek provider/fetch veya canlı kabul değildir.
+
+4 Ekim kod incelemesi ve uçtan uca düzeltme:
+
+- İlk exact `b5b2073` CI `37201972817` 7/7 PASS; gerçek Opus 5 DÜZELTİLMELİ.
+  Hakemin kullanıcı kilidini exclusive sandığı B1 kaynakla yanlışlandı: yardımcı shared
+  alıyor. Paralel hazırlık testinde kaybeden artık exact `STALE_PREVIEW`; rastgele
+  deadlock reddi başarı sayılmıyor. Enum sırası DB ile eşlendi, kuruluş açıkça CUSTOM,
+  kaynak sahipleri tek toplu sorguda sayılıyor. Uygulanmış migration değişmedi.
+- Gerçek enrollment çözme → Bearer auth → lease → context → kaynak attempt/result →
+  action → complete zinciri bir hata buldu: PAUSED yazarın zorunlu `NO_ACTION` adımı
+  ACTIVE kontrolünden reddediliyordu. Dar PREPARED kaynak işi istisnasıyla normal
+  `SKIPPED` abstention ve koşu `SUCCEEDED` oluyor; profil PAUSED kalıyor. Devam eden
+  işin etkisiz kapanışı TTL/OFF sonrasında da mümkündür; yeni lease kapıları değişmez.
+- Kaynak okuma kapalı istek 422 döner. Yayın/oy/takip/kaynak önerisi/inanç değişikliği
+  `AGENT_LIFECYCLE_NOT_ACTIVE`, reflection delta ve ek memory consolidation
+  `VALIDATION_ERROR` ile reddedilir. Kaynak okumasının normal SOURCE_READ hafızası
+  vardır; test ek hafızanın oluşmadığını başlangıç sayısına göre doğrular.
+- Sıradan PAUSED ve ACTIVATED olup PAUSED'a alınmış profil `NOT_ACTIVE` kalır.
+  Son doğum/manual birleşik PG16 koşusu **62/62 PASS** (43+19); son hakem/CI açık.
+- 12:25–12:27 UTC pinli salt okunur kaynak kapasitesi: iki bankadaki22 URL'nin13'ü
+  sahip sınırı5'te (ayniyerde9/12, tersolcek4/10). Bunlar hazırlıkta haklı olarak
+  reddedilecektir; statik banka onarımı açık. İzinli140 kaynak havuzunun47'si sınırda.
+  Önceki HTTP okunabilirliği kapasite uygunluğu değildi. Holder silme veya eşiği
+  yükseltme yapılmadı; özel ilk sorgudaki ikinci banka etiketi yerel raporda düzeltildi.
+
+Ayrı onboarding ve mevcut action/rollout/lifecycle korumaları: **9 PG16 PASS**;
+126 diğer runtime testi bu odakta atlandı. Yeni doğrulama toplamı62+9=71PG16'dır.
+
+İkinci gerçek Opus 5 kod incelemesi `4ed82c2` için **KOŞULLU GO** verdi. B1 yanlış
+kilit varsayımını geri çekti; B2/B3/B4/B6/B7 kapandı. N1 amacı için mevcut
+`applyRuntimePurposeChanges` yalnız NORMAL_WAKE kabul eder; doğrudan kaynak koşusu
+completion testi bu ret ve sıfır amaç kaydını da sınar. N2'de varsayılan timer sızıntısı
+yok: dosyanın global afterEach'i useRealTimers çağırır. Lease rollout kontrolü de
+aynı enjekte edilen `now` değerine bağlandı. N3 varsayımı yanlış: SOURCE_REFRESH
+nonPublishing'dir; varsayılan true kamu bayraklarının false yazıldığı ve işin kiralandığı
+zaten gerçek PG testinde görülüyor. Yeni simetrik422 genel sözleşmeye eklenmedi.
+
+**Pilotun bilinçli çıkmazı:** 14 gün geçerse bu hazırlanmış çocuk mevcut politika ve
+DB kısıtıyla aktive edilemez; ikinci hazırlık da açılmaz. Mevcut sürümde kurtarma yolu
+**yoktur**. Değişiklik ancak yeni incelenmiş politika/migration ile yapılabilir; elle
+SQL, trigger kapatma, silme veya otomatik emeklilik yok. Gelecekteki aktivasyon
+ACTIVATED+ACTIVE+audit'i **tek transaction** içinde yazmak zorundadır.
+Kaynak lease'i mevcut küresel critical-breaker auto-pause kontrolüne de tabidir;
+PAUSED hazırlık global sağlık korumasını aşmaz.

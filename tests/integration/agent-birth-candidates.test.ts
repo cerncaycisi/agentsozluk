@@ -3,11 +3,34 @@ import * as birthRecords from "@/modules/agents/repository/birth-candidates";
 import { runRuntimeStochasticTick } from "@/modules/agents/application/stochastic-scheduler";
 import { NextRequest } from "next/server";
 import { POST as inspectRoute } from "@/app/api/v1/admin/agent-births/inspect/route";
+import { POST as prepareRoute } from "@/app/api/v1/admin/agent-births/prepare/route";
+import { prepareBirthCandidate } from "@/modules/agents/application/birth-preparation";
+import { changeAgentLifecycle } from "@/modules/agents/application/control-plane";
+import { createManualAgentRun } from "@/modules/agents/application/manual-runs";
+import {
+  leaseRuntimeRun,
+  getRuntimeRunContext,
+  recordRuntimeSourceAttempt,
+  recordRuntimeSourceResult,
+  recordRuntimeActions,
+  recordRuntimeMemories,
+  completeRuntimeRun,
+} from "@/modules/agents/application/runtime";
+import { executeRuntimeAction } from "@/modules/agents/application/action-executor";
+import {
+  runtimeActionsSchema,
+  runtimeCompleteSchema,
+} from "@/modules/agents/validation/runtime-schemas";
+import {
+  getRuntimeCredentialRoster,
+  acknowledgeRuntimeCredentialRoster,
+} from "@/modules/agents/application/runtime-credentials";
+import { manualAgentRunSchema } from "@/modules/agents/validation/scheduling-schemas";
 import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
 import { getEnvironment } from "@/config/env";
 import { createOpaqueToken } from "@/lib/security/crypto";
-import { randomUUID } from "node:crypto";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { generateKeyPairSync, randomUUID } from "node:crypto";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   runRuntimeBirthTick,
   changeBirthMode,
@@ -20,7 +43,11 @@ import {
   reverseAuthorAssessment,
   changeRewardMode,
 } from "@/modules/agents/application/rewards";
-import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
+import {
+  authenticateRuntimeRequest,
+  type RuntimePrincipal,
+} from "@/modules/agents/application/runtime-auth";
+import { unsealRuntimeCredential } from "@/modules/agents/domain/runtime-credential-enrollment";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { agentPersonaTemplates } from "@/modules/agents/personas/templates";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
@@ -234,6 +261,10 @@ async function fixture() {
 }
 
 beforeEach(resetIntegrationDatabase);
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
+});
 afterAll(closeIntegrationDatabase);
 describe("private birth candidates with PostgreSQL", () => {
   it("defaults off; one private candidate creates no account, source, entry, run or credential", async () => {
@@ -590,5 +621,661 @@ describe("private birth candidates with PostgreSQL", () => {
       changeBirthMode(db, f.actor, { mode: "OFF", expectedSettingsVersion: 1 }, now),
     ).rejects.toMatchObject({ code: "AGENT_BIRTH_CONFLICT" });
     expect(await db.agentBirthCandidate.count()).toBe(0);
+  });
+});
+
+async function preparationFixture(method = "TEMPLATE") {
+  const f = await fixture();
+  const candidate = await f.create();
+  // Kontrollü köken geçmişi; üretim bağımsızlığı veya tarihsel backfill iddiası değildir.
+  const createdAt = f.profile.createdAt;
+  await db.auditLog.create({
+    data: {
+      actorId: f.admin.id,
+      requestId: randomUUID(),
+      action: "agent.created",
+      entityType: "AgentProfile",
+      entityId: f.profile.id,
+      metadata: { method, lifecycleStatus: "PAUSED", personaVersion: 1 },
+      createdAt,
+    },
+  });
+  await db.agentRuntimeEvent.create({
+    data: {
+      agentProfileId: f.profile.id,
+      eventType: "LIFE_GENESIS_SNAPSHOT",
+      safeMessage: "Yerel köken fixture'ı",
+      metadata: { origin: "AGENT_CREATION", method, boundary: true },
+      createdAt,
+      occurredAt: createdAt,
+    },
+  });
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  vi.stubEnv(
+    "AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64",
+    publicKey.export({ format: "der", type: "spki" }).toString("base64"),
+  );
+  const settings = await db.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } });
+  const input = {
+    candidateId: candidate.id,
+    expectedVersion: candidate.version,
+    expectedSnapshotHash: candidate.snapshotHash,
+    expectedSettingsVersion: settings.settingsVersion,
+  };
+  return {
+    ...f,
+    candidate,
+    input,
+    privateKeyPem: privateKey.export({ format: "pem", type: "pkcs8" }),
+    prepare: (at = now) => prepareBirthCandidate(db, f.actor, input, at),
+  };
+}
+
+describe("birth account preparation with PostgreSQL", () => {
+  it("creates exactly one PAUSED independent account without exposing a credential or copying memory", async () => {
+    const f = await preparationFixture();
+    const before = await db.user.count();
+    const result = await f.prepare();
+    expect(Object.keys(result).sort()).toEqual([
+      "candidateId",
+      "candidateVersion",
+      "childProfileId",
+      "preparationExpiresAt",
+      "status",
+    ]);
+    expect(result.status).toBe("PREPARED");
+    expect(result.candidateVersion).toBe(2);
+    const child = await db.agentProfile.findUniqueOrThrow({
+      where: { id: result.childProfileId },
+      include: { user: true, currentPersonaVersion: true, credentials: true, sources: true },
+    });
+    expect(child.lifecycleStatus).toBe("PAUSED");
+    expect(child.user).toMatchObject({
+      kind: "AGENT",
+      role: "USER",
+      status: "ACTIVE",
+      loginDisabled: true,
+    });
+    expect(child.currentPersonaVersion?.persona).toEqual(f.candidate.persona);
+    expect(child.credentials).toHaveLength(1);
+    expect(child.credentials[0]!.runtimeEnrollmentCipher).toBeTruthy();
+    expect(child.sources).toHaveLength(12);
+    expect(child.sources.every((source) => source.status === "SEED" && !source.adminPinned)).toBe(
+      true,
+    );
+    expect(await db.user.count()).toBe(before + 1);
+    expect(await db.agentMemoryEpisode.count({ where: { agentProfileId: child.id } })).toBe(0);
+    expect(await db.agentBelief.count({ where: { agentProfileId: child.id } })).toBe(0);
+    expect(await db.agentPurpose.count({ where: { agentProfileId: child.id } })).toBe(0);
+    const prepared = await db.agentBirthCandidate.findUniqueOrThrow({
+      where: { id: f.candidate.id },
+    });
+    expect(prepared).toMatchObject({
+      status: "PREPARED",
+      childProfileId: child.id,
+      rootProfileId: f.profile.id,
+      persona: f.candidate.persona,
+      evidence: f.candidate.evidence,
+      snapshotHash: f.candidate.snapshotHash,
+    });
+    expect(prepared.preparationExpiresAt!.getTime() - prepared.preparedAt!.getTime()).toBe(
+      14 * 86400000,
+    );
+    expect(await inspectBirthCandidate(db, f.actor, {}, now)).toMatchObject({
+      id: prepared.id,
+      status: "PREPARED",
+    });
+    await expect(
+      changeAgentLifecycle(
+        db,
+        f.actor,
+        child.id,
+        { status: "ACTIVE", reason: "Kapıyı atlama denemesi." },
+        now,
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_BIRTH_ACTIVATION_REQUIRED" });
+    expect(await f.tick(new Date(now.getTime() + 86400000))).toMatchObject({
+      outcome: "FIRST_PILOT_ALREADY_PREPARED",
+    });
+    expect(await db.agentBirthCandidate.count()).toBe(1);
+    expect(await db.auditLog.count({ where: { action: "agent.birth.prepared" } })).toBe(1);
+    await expect(
+      db.agentBirthCandidate.update({
+        where: { id: prepared.id },
+        data: { preparationExpiresAt: new Date(now.getTime() + 20 * 86400000) },
+      }),
+    ).rejects.toThrow("AGENT_BIRTH_CANDIDATE_IMMUTABLE");
+    await expect(
+      db.agentBirthCandidate.update({
+        where: { id: prepared.id },
+        data: { preparationEvidence: { replaced: true } },
+      }),
+    ).rejects.toThrow("AGENT_BIRTH_CANDIDATE_IMMUTABLE");
+  });
+  it("serializes two preparations into one account and one immutable receipt", async () => {
+    const f = await preparationFixture();
+    const results = await Promise.allSettled([f.prepare(), f.prepare()]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toMatchObject([
+      {
+        status: "rejected",
+        reason: { code: "AGENT_BIRTH_PREPARATION_BLOCKED", details: { reason: "STALE_PREVIEW" } },
+      },
+    ]);
+    expect(await db.agentProfile.count()).toBe(2);
+    expect(await db.agentCredential.count()).toBe(2);
+    expect(await db.auditLog.count({ where: { action: "agent.birth.prepared" } })).toBe(1);
+  });
+  it("rolls back the complete new identity when managed enrollment is unavailable", async () => {
+    const f = await preparationFixture();
+    vi.stubEnv("AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64", "");
+    const users = await db.user.count();
+    await expect(f.prepare()).rejects.toMatchObject({ code: "AGENT_BIRTH_PREPARATION_BLOCKED" });
+    expect(await db.user.count()).toBe(users);
+    expect(await db.agentProfile.count()).toBe(1);
+    expect(await db.agentCredential.count()).toBe(1);
+    expect(await db.agentSource.count()).toBe(0);
+    expect(
+      await db.agentBirthCandidate.findUnique({ where: { id: f.candidate.id } }),
+    ).toMatchObject({ status: "PROPOSED", childProfileId: null });
+  });
+  it("enforces holder capacity after creation and rolls back its audit, credential and sources", async () => {
+    const f = await preparationFixture();
+    const persona = f.candidate.persona as { sources: Array<{ url: string }> };
+    const url = persona.sources[0]!.url;
+    for (let i = 0; i < 5; i++) {
+      const holder = await f.user(`holder_${i}`, "AGENT", "USER");
+      const profile = await db.agentProfile.create({
+        data: {
+          userId: holder.id,
+          activeTimeProfile: {},
+          createdById: f.admin.id,
+          updatedById: f.admin.id,
+        },
+      });
+      await db.agentSource.create({
+        data: {
+          agentProfileId: profile.id,
+          url,
+          normalizedDomain: new URL(url).hostname,
+          sourceType: "HTML",
+          topics: ["culture"],
+          status: "SEED",
+          trustScore: 0.5,
+          interestScore: 0.5,
+          noveltyScore: 0.5,
+          usefulnessScore: 0.5,
+          addedByOrigin: "INITIAL_PERSONA",
+        },
+      });
+    }
+    const counts = async () =>
+      Promise.all([
+        db.user.count(),
+        db.agentProfile.count(),
+        db.agentCredential.count(),
+        db.agentSource.count(),
+        db.auditLog.count(),
+        db.agentRuntimeEvent.count(),
+      ]);
+    const before = await counts();
+    await expect(f.prepare()).rejects.toMatchObject({ code: "AGENT_BIRTH_PREPARATION_BLOCKED" });
+    expect(await counts()).toEqual(before);
+    expect(
+      await db.agentBirthCandidate.findUnique({ where: { id: f.candidate.id } }),
+    ).toMatchObject({ status: "PROPOSED" });
+  });
+  it.each(["CUSTOM", "IMPORT", "CLONE"])(
+    "refuses %s origin even when its initial persona matches a template",
+    async (method) => {
+      const f = await preparationFixture(method);
+      await expect(f.prepare()).rejects.toMatchObject({ code: "AGENT_BIRTH_PREPARATION_BLOCKED" });
+      expect(await db.agentProfile.count()).toBe(1);
+    },
+  );
+  it.each(["version", "snapshot", "settings", "expired", "reversed", "mode", "admin"])(
+    "rechecks %s before creating an account",
+    async (kind) => {
+      const f = await preparationFixture();
+      if (kind === "version") f.input.expectedVersion++;
+      if (kind === "snapshot") f.input.expectedSnapshotHash = "0".repeat(64);
+      if (kind === "settings") f.input.expectedSettingsVersion++;
+      if (kind === "mode") await f.mode("OFF");
+      if (kind === "admin")
+        await db.user.update({ where: { id: f.admin.id }, data: { status: "SUSPENDED" } });
+      if (kind === "reversed")
+        await reverseAuthorAssessment(
+          db,
+          f.actor,
+          {
+            assessmentId: f.entries[0]!.assessmentId,
+            reason: "Hazırlık öncesi kanıt geri alındı.",
+          },
+          now,
+        );
+      await expect(
+        f.prepare(kind === "expired" ? f.candidate.expiresAt : now),
+      ).rejects.toBeDefined();
+      expect(await db.agentProfile.count()).toBe(1);
+      expect(await db.agentCredential.count()).toBe(1);
+      expect(
+        await db.agentBirthCandidate.findUnique({ where: { id: f.candidate.id } }),
+      ).toMatchObject({ childProfileId: null });
+    },
+  );
+});
+
+describe("prepared writer HTTP and source collection boundaries", () => {
+  it("replays preparation without another identity and rechecks the admin session and CSRF", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(now);
+    try {
+      const f = await preparationFixture();
+      const sessionToken = createOpaqueToken();
+      const csrfToken = createOpaqueToken();
+      const key = randomUUID();
+      await db.session.create({
+        data: {
+          userId: f.admin.id,
+          tokenHash: sha256(sessionToken),
+          csrfTokenHash: sha256(csrfToken),
+          expiresAt: new Date(now.getTime() + 3600000),
+        },
+      });
+      const origin = new URL(getEnvironment().APP_URL).origin;
+      const request = () =>
+        new NextRequest(`${origin}/api/v1/admin/agent-births/prepare`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin,
+            "x-csrf-token": csrfToken,
+            "idempotency-key": key,
+            cookie: `${SESSION_COOKIE_NAME}=${sessionToken}; ${CSRF_COOKIE_NAME}=${csrfToken}`,
+          },
+          body: JSON.stringify(f.input),
+        });
+      const missingCsrf = request();
+      missingCsrf.headers.delete("x-csrf-token");
+      expect((await prepareRoute(missingCsrf)).status).toBe(403);
+      const first = await prepareRoute(request());
+      expect(first.status).toBe(200);
+      const firstBody = await first.json();
+      expect(firstBody.data.status).toBe("PREPARED");
+      const replay = await prepareRoute(request());
+      expect(replay.status).toBe(200);
+      expect(replay.headers.get("Idempotent-Replay")).toBe("true");
+      expect((await replay.json()).data).toEqual(firstBody.data);
+      expect(await db.agentProfile.count()).toBe(2);
+      await db.user.update({ where: { id: f.admin.id }, data: { status: "SUSPENDED" } });
+      expect((await prepareRoute(request())).status).toBe(403);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it.each(["SUCCESS", "ATTACK"])(
+    "authenticates and completes PAUSED SOURCE_REFRESH with %s boundaries",
+    async (scenario) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(now);
+      const f = await preparationFixture();
+      const prepared = await f.prepare();
+      const child = await db.agentProfile.findUniqueOrThrow({
+        where: { id: prepared.childProfileId },
+        include: { credentials: true },
+      });
+      const credential = child.credentials[0]!;
+      const raw = unsealRuntimeCredential(credential.runtimeEnrollmentCipher!, {
+        agentProfileId: child.id,
+        credentialId: credential.id,
+        privateKeyPem: f.privateKeyPem,
+      });
+      const principal = await authenticateRuntimeRequest(db, {
+        authorization: `Bearer ${raw}`,
+        hasBrowserSession: false,
+        requiredScope: "runtime:write",
+        requestId: randomUUID(),
+      });
+      expect(principal).toMatchObject({ agentProfileId: child.id, lifecycleStatus: "PAUSED" });
+      const roster = await getRuntimeCredentialRoster(db, principal, "birth-source-worker", now);
+      await acknowledgeRuntimeCredentialRoster(
+        db,
+        principal,
+        {
+          workerId: "birth-source-worker",
+          desiredFingerprint: roster.desiredFingerprint,
+          loadedCredentialIds: roster.entries.map((entry) => entry.credentialId),
+        },
+        now,
+      );
+      for (const runType of [
+        "NORMAL_WAKE",
+        "ENTRY_BURST",
+        "REFLECTION",
+        "DRY_RUN",
+        "READ_ONLY",
+      ] as const)
+        await expect(
+          createManualAgentRun(db, f.actor, child.id, manualAgentRunSchema.parse({ runType }), now),
+        ).rejects.toMatchObject({ code: "AGENT_LIFECYCLE_INVALID" });
+      await expect(
+        createManualAgentRun(
+          db,
+          f.actor,
+          child.id,
+          manualAgentRunSchema.parse({ runType: "SOURCE_REFRESH", allowSourceReading: false }),
+          now,
+        ),
+      ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
+      const sourceRun = await createManualAgentRun(
+        db,
+        f.actor,
+        child.id,
+        manualAgentRunSchema.parse({ runType: "SOURCE_REFRESH", allowSourceReading: true }),
+        now,
+      );
+      expect(sourceRun).toMatchObject({
+        runType: "SOURCE_REFRESH",
+        trigger: "ADMIN_BIRTH_SOURCE",
+        allowTopicCreation: false,
+        allowVoting: false,
+        allowFollowing: false,
+        allowSourceReading: true,
+      });
+      // Veritabanına kontrollü yanlış iş eklenir: lease seçim kapısı bunu atlamalıdır.
+      const publicRun = await db.agentRun.create({
+        data: {
+          agentProfileId: child.id,
+          personaVersionId: child.currentPersonaVersionId!,
+          runType: "NORMAL_WAKE",
+          trigger: "ADMIN_MANUAL",
+          runStatus: "QUEUED",
+          queuePriority: "EMERGENCY_ADMIN",
+          idempotencyKey: randomUUID(),
+          timeoutSeconds: 600,
+          desiredEntryMin: 0,
+          desiredEntryMax: 1,
+          availableAt: now,
+        },
+      });
+      await db.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { runtimeEnabled: true, schedulerEnabled: true },
+      });
+      const lease = await leaseRuntimeRun(
+        db,
+        principal,
+        { workerId: "birth-source-worker", leaseSeconds: 60 },
+        { now, checkReadiness: async () => {} },
+      );
+      expect(lease.run).toMatchObject({ id: sourceRun.id, runType: "SOURCE_REFRESH" });
+      expect(await db.agentRun.findUnique({ where: { id: publicRun.id } })).toMatchObject({
+        runStatus: "QUEUED",
+      });
+      expect(
+        await db.agentRun.count({ where: { agentProfileId: child.id, runType: "REFLECTION" } }),
+      ).toBe(0);
+      expect(await db.agentProfile.findUnique({ where: { id: child.id } })).toMatchObject({
+        lifecycleStatus: "PAUSED",
+      });
+      const context = await getRuntimeRunContext(
+        db,
+        principal,
+        sourceRun.id,
+        "birth-source-worker",
+        lease.run!.leaseToken,
+      );
+      expect(context.run.runType).toBe("SOURCE_REFRESH");
+      const source = await db.agentSource.findFirstOrThrow({ where: { agentProfileId: child.id } });
+      const attempt = {
+        workerId: "birth-source-worker",
+        leaseToken: lease.run!.leaseToken,
+        sourceId: source.id,
+        attemptId: randomUUID(),
+      };
+      await recordRuntimeSourceAttempt(db, principal, sourceRun.id, attempt);
+      const safeText = "Kaynak hazırlığının PostgreSQL veri yolunu doğrulayan kontrollü metin.";
+      await recordRuntimeSourceResult(db, principal, sourceRun.id, {
+        ...attempt,
+        items: [
+          {
+            canonicalUrl: new URL("/p8-test-item", source.url).href,
+            title: "Kontrollü kaynak öğesi",
+            contentHash: sha256(safeText),
+            safeText,
+          },
+        ],
+      });
+      expect(
+        await db.agentSourceItem.count({ where: { sourceId: source.id, fetchedAt: now } }),
+      ).toBe(1);
+      expect(await db.entry.count({ where: { authorId: child.userId } })).toBe(0);
+      const owned = { workerId: "birth-source-worker", leaseToken: lease.run!.leaseToken };
+      const completion = runtimeCompleteSchema.parse({
+        ...owned,
+        outcome: "SUCCEEDED",
+        state: { curiosity: 0.5, confidence: 0.6, topicFatigue: {} },
+        safeRunSummary: {
+          operationSummary: "Kontrollü kaynak hazırlığı tamamlandı.",
+          observedItemIds: [],
+          proposedActionCount: 1,
+          completedActionCount: 1,
+          rejectedActionCount: 0,
+          shortRationale: "Yalnız kaynak okundu.",
+        },
+        usageMetadata: { durationMs: 1, provider: "codex-cli" },
+        performanceMetrics: {},
+      });
+      if (scenario === "ATTACK") {
+        const memoriesBefore = await db.agentMemoryEpisode.count({
+          where: { agentProfileId: child.id },
+        });
+        await expect(
+          recordRuntimeMemories(db, principal, sourceRun.id, {
+            ...owned,
+            memories: [
+              {
+                sourceMemoryIds: [randomUUID()],
+                summary: "Yetkisiz bellek denemesi.",
+                salience: 0.5,
+              },
+            ],
+          }),
+        ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+        await expect(
+          completeRuntimeRun(
+            db,
+            principal,
+            sourceRun.id,
+            runtimeCompleteSchema.parse({
+              ...completion,
+              reflectionDelta: {
+                safeSummary: "Yetkisiz karakter değişikliği denemesi.",
+                evidenceIds: [sourceRun.id],
+                interestDeltas: [],
+                sourceTrustDeltas: [],
+                relationshipTrustDeltas: [],
+                beliefConfidenceDeltas: [],
+                temperamentDeltas: [{ key: "warmth", delta: 0.01 }],
+                coreValueDeltas: [],
+              },
+            }),
+          ),
+        ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+        const attempts = [
+          {
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            input: { title: "deneme başlığı", body: "Yetkisiz yayın denemesi." },
+          },
+          { actionType: "VOTE_UP", input: { entryId: randomUUID() } },
+          { actionType: "FOLLOW_USER", input: { userId: f.writer.id } },
+          {
+            actionType: "PROPOSE_SOURCE",
+            input: { url: "https://example.com/feed", sourceType: "RSS", topics: ["kültür"] },
+          },
+          {
+            actionType: "UPDATE_BELIEF",
+            input: { topicKey: "deneme", statement: "Yetkisiz inanç değişimi.", confidence: 0.5 },
+          },
+        ];
+        await recordRuntimeActions(
+          db,
+          principal,
+          sourceRun.id,
+          runtimeActionsSchema.parse({
+            ...owned,
+            actions: attempts.map((action, index) => ({
+              ...action,
+              sequence: index + 1,
+              safeReason: "Kontrollü yetki sınırı denemesi.",
+            })),
+          }),
+          now,
+        );
+        for (let sequence = 1; sequence <= attempts.length; sequence++) {
+          expect(
+            await executeRuntimeAction(
+              db,
+              principal,
+              sourceRun.id,
+              { ...owned, sequence },
+              { checkReadiness: async () => {}, requireLifeLedger: false },
+            ),
+          ).toMatchObject({
+            actionStatus: "REJECTED",
+            rejectionCode: "AGENT_LIFECYCLE_NOT_ACTIVE",
+          });
+        }
+        expect(await db.entry.count({ where: { authorId: child.userId } })).toBe(0);
+        expect(await db.agentPersonaVersion.count({ where: { agentProfileId: child.id } })).toBe(1);
+        expect(await db.agentMemoryEpisode.count({ where: { agentProfileId: child.id } })).toBe(
+          memoriesBefore,
+        );
+        expect(
+          await completeRuntimeRun(
+            db,
+            principal,
+            sourceRun.id,
+            runtimeCompleteSchema.parse({
+              ...completion,
+              purposeChanges: [
+                {
+                  operation: "CREATE",
+                  kind: "UNDERSTAND_CONCEPT",
+                  targetType: "TOPIC",
+                  targetId: randomUUID(),
+                  question: "Kaynak hazırlığında amaç yazılabilir mi?",
+                },
+              ],
+            }),
+          ),
+        ).toMatchObject({
+          runStatus: "PARTIAL",
+          purposes: { status: "REJECTED", reasonCode: "PURPOSE_NORMAL_WAKE_REQUIRED" },
+        });
+        expect(await db.agentPurpose.count({ where: { agentProfileId: child.id } })).toBe(0);
+      } else {
+        await recordRuntimeActions(
+          db,
+          principal,
+          sourceRun.id,
+          runtimeActionsSchema.parse({
+            ...owned,
+            actions: [
+              {
+                sequence: 1,
+                actionType: "NO_ACTION",
+                safeReason: "Kaynak yenileme tamamlandı.",
+                input: {},
+              },
+            ],
+          }),
+          now,
+        );
+        expect(
+          await executeRuntimeAction(
+            db,
+            principal,
+            sourceRun.id,
+            { ...owned, sequence: 1 },
+            { checkReadiness: async () => {}, requireLifeLedger: false },
+          ),
+        ).toMatchObject({ actionStatus: "SKIPPED" });
+        await completeRuntimeRun(db, principal, sourceRun.id, completion);
+        expect(await db.agentRun.findUnique({ where: { id: sourceRun.id } })).toMatchObject({
+          runStatus: "SUCCEEDED",
+          leaseOwner: null,
+          leaseToken: null,
+        });
+        expect(await db.agentProfile.findUnique({ where: { id: child.id } })).toMatchObject({
+          lifecycleStatus: "PAUSED",
+        });
+      }
+    },
+  );
+  it.each(["OFF", "EXPIRED", "GLOBAL_PAUSED", "SUSPENDED", "ACTIVATED"])(
+    "cannot lease preparation with %s",
+    async (block) => {
+      const f = await preparationFixture();
+      const prepared = await f.prepare();
+      const child = await db.agentProfile.findUniqueOrThrow({
+        where: { id: prepared.childProfileId },
+        include: { credentials: true },
+      });
+      const principal: RuntimePrincipal = {
+        ...f.principal,
+        agentProfileId: child.id,
+        credentialId: child.credentials[0]!.id,
+        lifecycleStatus: "PAUSED",
+        actor: { ...f.principal.actor, actorId: child.userId },
+      };
+      await db.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { runtimeEnabled: block !== "GLOBAL_PAUSED" },
+      });
+      if (block === "ACTIVATED")
+        await db.agentBirthCandidate.update({
+          where: { id: prepared.candidateId },
+          data: { status: "ACTIVATED", version: { increment: 1 }, activatedAt: now },
+        });
+      if (block === "OFF") await f.mode("OFF");
+      if (block === "SUSPENDED")
+        await db.agentProfile.update({
+          where: { id: child.id },
+          data: { lifecycleStatus: "SUSPENDED" },
+        });
+      const result = await leaseRuntimeRun(
+        db,
+        principal,
+        { workerId: "birth-source-worker", leaseSeconds: 60 },
+        {
+          now: block === "EXPIRED" ? new Date(prepared.preparationExpiresAt) : now,
+          checkReadiness: async () => {},
+        },
+      );
+      expect(result.run).toBeNull();
+      expect(result.reason).toBe(block === "GLOBAL_PAUSED" ? "PAUSED" : "NOT_ACTIVE");
+    },
+  );
+  it("does not lease an ordinary PAUSED author without a birth record", async () => {
+    const f = await fixture();
+    await db.agentProfile.update({
+      where: { id: f.profile.id },
+      data: { lifecycleStatus: "PAUSED" },
+    });
+    await db.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { runtimeEnabled: true },
+    });
+    const runsBefore = await db.agentRun.count({ where: { agentProfileId: f.profile.id } });
+    expect(
+      await leaseRuntimeRun(
+        db,
+        { ...f.principal, lifecycleStatus: "PAUSED" },
+        { workerId: "ordinary-paused", leaseSeconds: 60 },
+        { now, checkReadiness: async () => {} },
+      ),
+    ).toMatchObject({ run: null, reason: "NOT_ACTIVE" });
+    expect(await db.agentRun.count({ where: { agentProfileId: f.profile.id } })).toBe(runsBefore);
   });
 });

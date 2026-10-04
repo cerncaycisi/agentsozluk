@@ -1,4 +1,5 @@
 import { globalAgentSettingsAggregateId as GLOBAL_SETTINGS_AGGREGATE_ID } from "@/modules/agents/domain/settings-identity";
+import { findManagedBirthForChild } from "@/modules/agents/repository/birth-preparation";
 import { runtimeUncountedSourceStatuses } from "@/modules/agents/domain/source-status";
 import {
   runtimeAgentSourceLimit,
@@ -1196,6 +1197,13 @@ export async function changeAgentLifecycle(
     if (!current) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     assertLifecycleTransition(current.lifecycleStatus, input.status);
     if (input.status === "ACTIVE") {
+      const managedBirth = await findManagedBirthForChild(transaction, agentProfileId);
+      if (managedBirth && managedBirth.status !== "ACTIVATED")
+        throw new AppError(
+          "AGENT_BIRTH_ACTIVATION_REQUIRED",
+          409,
+          "Hazırlanan yazar ayrı doğum aktivasyonu koşullarını tamamlamalıdır.",
+        );
       await assertProductionRolloutMutationAllowed(transaction, now);
       await assertManagedRuntimeCredentialReady(transaction, agentProfileId, now);
       await ensureProductionActivationAnchor(transaction, {

@@ -1,4 +1,5 @@
 import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
+import { birthSourcePreparationTrigger } from "@/modules/agents/domain/birth-preparation";
 import {
   actionFeedbackLimit,
   actionFeedbackWindowMs,
@@ -99,6 +100,7 @@ export async function getRuntimeGlobalSettings(transaction: Prisma.TransactionCl
     where: { id: "global" },
     select: {
       runtimeEnabled: true,
+      birthMode: true,
       publishEnabled: true,
       publicWriteEnabled: true,
       runtimeOperatingMode: true,
@@ -453,6 +455,7 @@ export async function claimNextRuntimeRun(
     writeRunsPaused: boolean;
     contentSlowdownMinutes: number;
     runtimeOperatingMode?: RuntimeOperatingMode;
+    birthSourcePreparationOnly?: boolean;
     now: Date;
   },
 ) {
@@ -461,6 +464,12 @@ export async function claimNextRuntimeRun(
     SELECT candidate."id", candidate."startedAt"
     FROM "agent_runs" AS candidate
     WHERE candidate."agentProfileId" = ${input.agentProfileId}::uuid
+      AND (NOT ${input.birthSourcePreparationOnly ?? false} OR (
+        candidate."runType" = 'SOURCE_REFRESH' AND candidate."trigger" = ${birthSourcePreparationTrigger}
+        AND candidate."requestedById" IS NOT NULL
+        AND candidate."allowSourceReading" AND NOT candidate."allowTopicCreation"
+        AND NOT candidate."allowVoting" AND NOT candidate."allowFollowing"
+      ))
       AND candidate."availableAt" <= ${input.now}
       AND candidate."attempts" <= ${input.maxRetryCount}
       AND (
@@ -835,6 +844,9 @@ export function findRuntimeActionForExecution(
         select: {
           id: true,
           runType: true,
+          trigger: true,
+          requestedById: true,
+          allowSourceReading: true,
           runStatus: true,
           leaseOwner: true,
           leaseToken: true,
@@ -1983,6 +1995,25 @@ export async function countRuntimeSourceHolders(
     select: { agentProfileId: true },
   });
   return holders.length;
+}
+
+/** Aynı kapasite kilidi altında doğum paketinin tüm URL'leri tek sorguda sayılır. */
+export async function countRuntimeSourceHoldersForUrls(
+  transaction: Prisma.TransactionClient,
+  urls: string[],
+): Promise<Map<string, number>> {
+  const holders = await transaction.agentSource.findMany({
+    where: {
+      url: { in: urls },
+      adminBlocked: false,
+      status: { notIn: [...runtimeUncountedSourceStatuses] },
+    },
+    distinct: ["url", "agentProfileId"],
+    select: { url: true, agentProfileId: true },
+  });
+  const counts = new Map<string, number>();
+  for (const holder of holders) counts.set(holder.url, (counts.get(holder.url) ?? 0) + 1);
+  return counts;
 }
 
 export async function countRuntimeAgentSources(
