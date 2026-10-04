@@ -7,7 +7,7 @@
 # yok sayılır.
 #
 # NE YAPAR: veritabanını YALNIZ okur. Dışa aktarılmış tek bir anlık görüntü tutulur;
-# `pg_dump -Fc` o anlık görüntüden stdout'a yazar, aynı anlık görüntüdeki tablo satır
+# `pg_dump -Fc --compress=zstd:3` o anlık görüntüden stdout'a yazar, aynı anlık görüntüdeki tablo satır
 # sayısı + içerik özeti stderr'e gider. Üretim diskine dosya yazılmaz.
 #
 # KANITLANMIŞ YOL: 24 Eylül tek seferlik yedek ve PostgreSQL 16.14 restore provası bu
@@ -62,9 +62,11 @@ echo "SNAPSHOT_OK" >&2
 # İstemci akışı okumayı bırakırsa `pg_dump` yazarken bloklanır ve PostgreSQL oturumunun
 # kapanması onu uyandırmaz; bu yüzden istemci süreci de süreyle sınırlı. Ölünce betik hata
 # ile çıkar ve kilit bırakılır (Astra, PR #204 2. tur P1).
+# PG16 native zstd: aynı custom arşiv/pg_restore yolu, ek dış sarmalayıcı yok.
+# Düzey 3 tek süreçte sınırlı CPU kullanır; snapshot/retention sözleşmesi değişmez.
 timeout --kill-after=30 "$LIMIT_S" "${compose[@]}" exec -T "${pg_env[@]}" db pg_dump \
   -U agent_sozluk -d agent_sozluk --snapshot="$snapshot" --format=custom --no-owner \
-  --no-privileges </dev/null
+  --no-privileges --compress=zstd:3 </dev/null
 echo "DUMP_DONE" >&2
 # Sequence değerleri anlık görüntüye bağlı değildir (PostgreSQL davranışı); bilgi amaçlı.
 timeout --kill-after=30 600 "${compose[@]}" exec -T "${pg_env[@]}" db \

@@ -7,6 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — O3 native sıkıştırma yerel kanıtı
+
+- Mevcut 1.316 GB dump'ın yerel decode veri akışı zstd:3 ile 676.647.983 bayt;
+  37,92 sn, exit 0. Kaynak değişmedi. Bu native üretim dump boyutu veya restore kabulü değil.
+- 10.000 sentetik satır native zstd dump/restore sayı/özet/sequence PASS; değiştirilmiş
+  zorunlu yedek betiğinin 1.000 satırlık gerçek PG16 provası ve 21 shell testi PASS.
+- 09:55 UTC canlı `9bf3653` PG16.14 binary zstd desteği pinli salt okunur kontrol edildi;
+  DB/mutasyon yok. Opus `5b7bc73` KOŞULLU GO sonrası blok decode kapısı eklendi;
+  TOC geçen kesik arşiv gerçek decode'da reddedildi. Son 23 test PASS. Gzip retention
+  dışında hardlink ile sabitlendi. Exact CI, atomik kurulum ve gerçek yeni yedek ölçümü açık.
+  [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+
 ## 2026-10-04 — profil ayarı durum karşılaştırması yerelde
 
 - `c53f8c3` tabanındaki ayrı dalda O5 profil-only CAS boşluğu kapatıldı. Beş çalışma
@@ -16,7 +28,8 @@
   kaybeden yazım kazananın ayarını veya audit sayısını değiştirmedi. Güncel tekrar geçti,
   ayar değişikliği persona sürümü üretmedi. Opus 5 `1488353` koşulları kaynakla kapandı;
   son yönlendirme assertion’ı dahil 47/47 tekrar geçti. İlk CI `37192759460` 7/7;
-  son test/metin/makbuz head’inin exact CI ve canlı dağıtımı henüz tamamlanmadı.
+  final `41123ca`, CI `37193401818` 7/7 PASS. #312 main `0ea725d`; fresh merge ve
+  uzak SHA/ağaç eşitliği doğrulandı. Canlı dağıtım açık.
 - [O5 makbuzu](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
 
 ## 2026-10-04 — yedek blokları ve doğum kaynakları

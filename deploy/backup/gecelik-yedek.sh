@@ -6,8 +6,9 @@
 # üretimdeki zorunlu komutu `uretim-yedek-komutu.sh`'tir, başka bir şey çalıştıramaz.
 #
 # KABUL: çıkış 0, stderr'de SNAPSHOT_OK/DUMP_DONE/META_DONE, en az 40 tablo satırı ve
-# `pg_restore --list` geçmeli. Ancak o zaman geçici dosya kalıcı adına yayımlanır. Son
-# ${KEEP} kopya kalır. `--list` yalnız içindekiler listesini okur; tam geri yükleme provası
+# `pg_restore --list` ve bütün veri bloklarının decode kontrolü geçmeli. Ancak o zaman
+# geçici dosya kalıcı adına yayımlanır. Son
+# ${KEEP} kopya kalır. Decode SQL'i DB'ye uygulamaz; tam geri yükleme provası
 # runbook'taki elle, periyodik adımdır.
 #
 # DAYANIKLILIK (Astra, PR #204): tek çalışma kilidi; her çalışmanın kendi benzersiz geçici
@@ -88,6 +89,11 @@ tables=$(grep -c '^table|' "$tmp_meta" || true)
 test -s "$tmp_dump" || fail DUMP_EMPTY
 test -x "$PG_RESTORE" || fail PG_RESTORE_MISSING
 "$PG_RESTORE" --list "$tmp_dump" >/dev/null 2>&1 || fail ARCHIVE_UNREADABLE
+# TOC tek başına codec desteğini/veri bloklarını sınamaz. Aynı restore ikilisiyle
+# bütün arşivi çöz; SQL dosyası yaratma veya DB'ye uygulama. Başarısızsa yayımlama/
+# retention başlamaz, önceki kopyalar korunur. Büyük/bozuk arşivde sınırsız bekleme yok.
+timeout --kill-after=30 600 "$PG_RESTORE" --exit-on-error --file=/dev/null "$tmp_dump" \
+  >/dev/null 2>&1 || fail ARCHIVE_DATA_UNREADABLE
 
 # Boyut okuması başarı makbuzunun bir parçası; echo içindeki command substitution
 # hata kodunu yutmasın. Yayımlamadan önce doğrula, önceki kopyaları koru.
