@@ -1,3 +1,7 @@
+import { POST as bulkHideRoute } from "@/app/api/v1/admin/agent-content/bulk-hide/route";
+import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
+import { getEnvironment } from "@/config/env";
+import { createOpaqueToken, sha256 } from "@/lib/security/crypto";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import { buildRuntimePrompt } from "@/runtime/worker";
 import {
@@ -10478,6 +10482,260 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(restored.searchEntryIds).toContain(agentEntryId);
     expect(restored.debeEntryIds).toContain(agentEntryId);
     expect(restored.indexing).toMatchObject({ index: true, follow: true });
+  });
+
+  it.each([false, true])(
+    "rolls back bulk entry effects when the aggregate receipt fails (outer transaction: %s)",
+    async (outerTransaction) => {
+      const fixture = await createFixture();
+      const generated = await createRuntimeAgentEntries(fixture, [
+        "Kent bostanlarında yağmur suyu biriktirmek yaz kuraklığında verimi koruyor.",
+        "Dağıtık sistem gözlemlerinde kuyruk gecikmesini yüzdeliklerle izlemek gerekir.",
+      ]);
+      const entryIds = generated.content.map(({ entryId }) => entryId);
+      await integrationDatabase.$executeRaw`CREATE FUNCTION test_bulk_receipt_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."eventType" = 'content.bulk-hidden' THEN RAISE EXCEPTION 'TEST_BULK_RECEIPT_FAILED'; END IF; RETURN NEW; END $$`;
+      await integrationDatabase.$executeRaw`CREATE TRIGGER test_bulk_receipt_fail BEFORE INSERT ON agent_runtime_events FOR EACH ROW EXECUTE FUNCTION test_bulk_receipt_fail()`;
+      const input = {
+        entryIds,
+        reason: "Toplu makbuz yazılamazsa içerik ve tekil yan etkiler de geri alınmalı.",
+        confirmation: "HIDE_AGENT_CONTENT" as const,
+        behaviorReasonCode: "REPETITIVE" as const,
+        editorNote: "Önceki katkıyı yeni bir gerekçe olmadan yineleme.",
+      };
+      try {
+        const operation = outerTransaction
+          ? integrationDatabase.$transaction((transaction) =>
+              bulkSetAgentContentVisibility(transaction, adminActor(fixture.admin.id), true, input),
+            )
+          : bulkSetAgentContentVisibility(
+              integrationDatabase,
+              adminActor(fixture.admin.id),
+              true,
+              input,
+            );
+        await expect(operation).rejects.toThrow();
+      } finally {
+        await integrationDatabase.$executeRaw`DROP TRIGGER test_bulk_receipt_fail ON agent_runtime_events`;
+        await integrationDatabase.$executeRaw`DROP FUNCTION test_bulk_receipt_fail()`;
+      }
+      expect(
+        await integrationDatabase.entry.count({
+          where: { id: { in: entryIds }, status: "ACTIVE" },
+        }),
+      ).toBe(2);
+      for (const { topic } of generated.topics) {
+        expect(
+          await integrationDatabase.topic.findUniqueOrThrow({ where: { id: topic.id } }),
+        ).toMatchObject({ entryCount: 2 });
+      }
+      expect(
+        await integrationDatabase.moderationAction.count({ where: { reason: input.reason } }),
+      ).toBe(0);
+      expect(
+        await integrationDatabase.auditLog.count({
+          where: { action: { in: ["entry.hidden", "agent.content.bulk_hidden"] } },
+        }),
+      ).toBe(0);
+      expect(
+        await integrationDatabase.outboxEvent.count({
+          where: { eventType: { in: ["entry.hidden", "agent.content.bulk_hidden"] } },
+        }),
+      ).toBe(0);
+      expect(
+        await integrationDatabase.entryTrashCase.count({ where: { entryId: { in: entryIds } } }),
+      ).toBe(0);
+      expect(
+        await integrationDatabase.agentRuntimeEvent.count({
+          where: { eventType: { in: ["CONTENT_MODERATED", "content.bulk-hidden"] } },
+        }),
+      ).toBe(0);
+    },
+  );
+
+  it.each([false, true])(
+    "keeps HTTP bulk receipts atomic with optional idempotency (key: %s)",
+    async (withKey) => {
+      const fixture = await createFixture();
+      const generated = await createRuntimeAgentEntries(fixture, [
+        "Kent bostanlarında yağmur suyu biriktirmek yaz kuraklığında verimi koruyor.",
+      ]);
+      const entryId = generated.content[0]!.entryId;
+      const token = createOpaqueToken();
+      const csrf = createOpaqueToken();
+      await integrationDatabase.session.create({
+        data: {
+          userId: fixture.admin.id,
+          tokenHash: sha256(token),
+          csrfTokenHash: sha256(csrf),
+          expiresAt: new Date(Date.now() + 3_600_000),
+        },
+      });
+      const origin = new URL(getEnvironment().APP_URL).origin;
+      const key = randomUUID();
+      const request = () =>
+        new NextRequest(`${origin}/api/v1/admin/agent-content/bulk-hide`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin,
+            "x-csrf-token": csrf,
+            ...(withKey ? { "idempotency-key": key } : {}),
+            cookie: `${SESSION_COOKIE_NAME}=${token}; ${CSRF_COOKIE_NAME}=${csrf}`,
+          },
+          body: JSON.stringify({
+            entryIds: [entryId],
+            reason: "HTTP kesinti makbuzu olmadan entry etkisi kalmamalı.",
+            confirmation: "HIDE_AGENT_CONTENT",
+            behaviorReasonCode: "REPETITIVE",
+            editorNote: "Önceki katkıyı yeni bir gerekçe olmadan yineleme.",
+          }),
+        });
+      await integrationDatabase.$executeRaw`CREATE FUNCTION test_bulk_http_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."eventType" = 'content.bulk-hidden' THEN RAISE EXCEPTION 'TEST_BULK_HTTP_FAILED'; END IF; RETURN NEW; END $$`;
+      await integrationDatabase.$executeRaw`CREATE TRIGGER test_bulk_http_fail BEFORE INSERT ON agent_runtime_events FOR EACH ROW EXECUTE FUNCTION test_bulk_http_fail()`;
+      try {
+        expect((await bulkHideRoute(request())).status).toBe(500);
+      } finally {
+        await integrationDatabase.$executeRaw`DROP TRIGGER test_bulk_http_fail ON agent_runtime_events`;
+        await integrationDatabase.$executeRaw`DROP FUNCTION test_bulk_http_fail()`;
+      }
+      expect(
+        await integrationDatabase.entry.findUniqueOrThrow({ where: { id: entryId } }),
+      ).toMatchObject({ status: "ACTIVE" });
+      expect(
+        await integrationDatabase.auditLog.count({
+          where: { action: "agent.content.bulk_hidden" },
+        }),
+      ).toBe(0);
+      expect((await bulkHideRoute(request())).status).toBe(200);
+      if (withKey) expect((await bulkHideRoute(request())).status).toBe(200);
+      expect(
+        await integrationDatabase.entry.findUniqueOrThrow({ where: { id: entryId } }),
+      ).toMatchObject({ status: "HIDDEN" });
+      expect(
+        await integrationDatabase.auditLog.count({
+          where: { action: "agent.content.bulk_hidden" },
+        }),
+      ).toBe(1);
+      expect(
+        await integrationDatabase.moderationAction.count({ where: { actionType: "ENTRY_HIDDEN" } }),
+      ).toBe(1);
+    },
+  );
+
+  it("keeps failed bulk items unchanged after a post-write application error", async () => {
+    const fixture = await createFixture();
+    const generated = await createRuntimeAgentEntries(fixture, [
+      "Kent bostanlarında yağmur suyu biriktirmek yaz kuraklığında verimi koruyor.",
+    ]);
+    const entryId = generated.content[0]!.entryId;
+    // Eksik geri bildirim notu entry/counter/audit yazıldıktan sonra AppError üretir.
+    const outcome = await integrationDatabase.$transaction((transaction) =>
+      bulkSetAgentContentVisibility(transaction, adminActor(fixture.admin.id), true, {
+        entryIds: [entryId],
+        reason: "Yazı sonrası doğrulama hatası entry değişikliğini de geri almalı.",
+        confirmation: "HIDE_AGENT_CONTENT",
+      }),
+    );
+    expect(outcome).toMatchObject({
+      status: "FAILED",
+      succeeded: [],
+      failed: [{ entryId, code: "VALIDATION_ERROR" }],
+    });
+    expect(
+      await integrationDatabase.entry.findUniqueOrThrow({ where: { id: entryId } }),
+    ).toMatchObject({ status: "ACTIVE" });
+    expect(
+      await integrationDatabase.topic.findUniqueOrThrow({
+        where: { id: generated.topics[0]!.topic.id },
+      }),
+    ).toMatchObject({ entryCount: 2 });
+    expect(
+      await integrationDatabase.moderationAction.count({ where: { actionType: "ENTRY_HIDDEN" } }),
+    ).toBe(0);
+    expect(await integrationDatabase.auditLog.count({ where: { action: "entry.hidden" } })).toBe(0);
+    expect(
+      await integrationDatabase.outboxEvent.count({ where: { eventType: "entry.hidden" } }),
+    ).toBe(0);
+    expect(
+      await integrationDatabase.auditLog.findFirstOrThrow({
+        where: { action: "agent.content.bulk_hidden" },
+      }),
+    ).toMatchObject({ metadata: { status: "FAILED", succeededCount: 0, failedCount: 1 } });
+  });
+
+  it("recovers from a post-write SQL error and commits only successful bulk items with a partial receipt", async () => {
+    const fixture = await createFixture();
+    const generated = await createRuntimeAgentEntries(fixture, [
+      "Kent bostanlarında yağmur suyu biriktirmek yaz kuraklığında verimi koruyor.",
+      "Dağıtık sistem gözlemlerinde kuyruk gecikmesini yüzdeliklerle izlemek gerekir.",
+      "Müze koleksiyonlarının dijital katalogları eserlerin dolaşım geçmişini görünür kılıyor.",
+    ]);
+    const entryIds = generated.content.map(({ entryId }) => entryId);
+    const failedId = entryIds[1]!;
+    // Son yan etkideki SQL hatası entry, sayaç, audit ve geri bildirimden sonra gelir.
+    await integrationDatabase.$executeRaw`CREATE FUNCTION test_bulk_item_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF EXISTS (SELECT 1 FROM entries WHERE id = NEW."entryId" AND body = 'Dağıtık sistem gözlemlerinde kuyruk gecikmesini yüzdeliklerle izlemek gerekir.') THEN RAISE EXCEPTION 'TEST_BULK_ITEM_FAILED'; END IF; RETURN NEW; END $$`;
+    await integrationDatabase.$executeRaw`CREATE TRIGGER test_bulk_item_fail BEFORE INSERT ON entry_trash_cases FOR EACH ROW EXECUTE FUNCTION test_bulk_item_fail()`;
+    try {
+      const outcome = await integrationDatabase.$transaction((transaction) =>
+        bulkSetAgentContentVisibility(transaction, adminActor(fixture.admin.id), true, {
+          entryIds,
+          reason: "Tekil SQL hatası diğer entry sonuçlarını veya toplu makbuzu bozmamalı.",
+          confirmation: "HIDE_AGENT_CONTENT",
+          behaviorReasonCode: "REPETITIVE",
+          editorNote: "Önceki katkıyı yeni bir gerekçe olmadan yineleme.",
+        }),
+      );
+      expect(outcome).toMatchObject({
+        status: "PARTIAL",
+        selectedCount: 3,
+        succeeded: [{ entryId: entryIds[0] }, { entryId: entryIds[2] }],
+        failed: [
+          { entryId: failedId, code: "INTERNAL_ERROR", message: "Entry işlemi tamamlanamadı." },
+        ],
+      });
+    } finally {
+      await integrationDatabase.$executeRaw`DROP TRIGGER test_bulk_item_fail ON entry_trash_cases`;
+      await integrationDatabase.$executeRaw`DROP FUNCTION test_bulk_item_fail()`;
+    }
+    expect(
+      await integrationDatabase.entry.findUniqueOrThrow({ where: { id: failedId } }),
+    ).toMatchObject({ status: "ACTIVE" });
+    expect(
+      await integrationDatabase.entry.count({ where: { id: { in: entryIds }, status: "HIDDEN" } }),
+    ).toBe(2);
+    for (const [index, { topic }] of generated.topics.entries()) {
+      expect(
+        await integrationDatabase.topic.findUniqueOrThrow({ where: { id: topic.id } }),
+      ).toMatchObject({ entryCount: index === 1 ? 2 : 1 });
+    }
+    expect(
+      await integrationDatabase.moderationAction.count({
+        where: { actionType: "ENTRY_HIDDEN", targetId: failedId },
+      }),
+    ).toBe(0);
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: { action: "entry.hidden", entityId: failedId },
+      }),
+    ).toBe(0);
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: { eventType: "entry.hidden", aggregateId: failedId },
+      }),
+    ).toBe(0);
+    expect(
+      await integrationDatabase.entryTrashCase.count({ where: { entryId: { in: entryIds } } }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { eventType: "CONTENT_MODERATED" },
+      }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.auditLog.findFirstOrThrow({
+        where: { action: "agent.content.bulk_hidden" },
+      }),
+    ).toMatchObject({ metadata: { status: "PARTIAL", succeededCount: 2, failedCount: 1 } });
   });
 
   it("reports partial restoration when a selected entry lacks agent provenance", async () => {

@@ -13,6 +13,7 @@ import {
   listAgentContentRecords,
   resolveAgentContentRecords,
   upsertAgentTopicWriteLock,
+  withAgentContentItemSavepoint,
 } from "@/modules/moderation/repository/agent-content";
 import { appendModerationAction } from "@/modules/moderation/repository/history";
 import type {
@@ -160,7 +161,8 @@ export async function bulkSetAgentContentVisibility(
   const expected = hidden ? "HIDE_AGENT_CONTENT" : "RESTORE_AGENT_CONTENT";
   if (input.confirmation !== expected)
     throw new AppError("VALIDATION_ERROR", 422, "Bulk işlem için açık confirmation gereklidir.");
-  const { records, selection } = await inTransaction(client, async (transaction) => {
+  // Başarılı entry etkileri ve toplu makbuz aynı commit içinde kalır.
+  return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     const selected = await resolveAgentContentRecords(transaction, input, new Date());
     if (selected.length > agentContentBulkTargetLimit)
@@ -169,53 +171,52 @@ export async function bulkSetAgentContentVisibility(
         422,
         `Seçim ${agentContentBulkTargetLimit} entry sınırını aşıyor. Zaman aralığını daraltın veya entry'leri tek tek seçin.`,
       );
-    return {
-      records: selected,
-      selection: {
-        // Uygulama tarafındaki çözümleme bitiş zamanı; MVCC snapshot kimliği değildir.
-        resolvedAt: new Date().toISOString(),
-        runStatus: input.runId ? (selected[0]?.run.runStatus ?? null) : null,
-      },
+    const records = selected;
+    const selection = {
+      // Uygulama tarafındaki çözümleme bitiş zamanı; MVCC snapshot kimliği değildir.
+      resolvedAt: new Date().toISOString(),
+      runStatus: input.runId ? (selected[0]?.run.runStatus ?? null) : null,
     };
-  });
-  if (records.length === 0 && !input.entryIds)
-    return { status: "NO_MATCH", selectedCount: 0, succeeded: [], failed: [], selection };
-  const byEntryId = new Map(records.map((record) => [record.entryId, record]));
-  const targetIds = input.entryIds ?? records.map(({ entryId }) => entryId);
-  const aggregateId = input.runId ?? input.agentProfileId ?? targetIds[0]!;
-  const succeeded: Array<{ entryId: string; runId: string; agentProfileId: string }> = [];
-  const failed: Array<{ entryId: string; code: string; message: string }> = [];
-  for (const entryId of targetIds) {
-    const record = byEntryId.get(entryId);
-    if (!record) {
-      failed.push({
-        entryId,
-        code: "NOT_AGENT_CONTENT",
-        message: "Entry doğrulanmış agent content kaydı taşımıyor.",
-      });
-      continue;
+    if (records.length === 0 && !input.entryIds)
+      return { status: "NO_MATCH", selectedCount: 0, succeeded: [], failed: [], selection };
+    const byEntryId = new Map(records.map((record) => [record.entryId, record]));
+    const targetIds = input.entryIds ?? records.map(({ entryId }) => entryId);
+    const aggregateId = input.runId ?? input.agentProfileId ?? targetIds[0]!;
+    const succeeded: Array<{ entryId: string; runId: string; agentProfileId: string }> = [];
+    const failed: Array<{ entryId: string; code: string; message: string }> = [];
+    for (const entryId of targetIds) {
+      const record = byEntryId.get(entryId);
+      if (!record) {
+        failed.push({
+          entryId,
+          code: "NOT_AGENT_CONTENT",
+          message: "Entry doğrulanmış agent content kaydı taşımıyor.",
+        });
+        continue;
+      }
+      try {
+        await withAgentContentItemSavepoint(transaction, () =>
+          setAgentEntryVisibility(transaction, actor, entryId, hidden, {
+            reason: input.reason,
+            ...(input.behaviorReasonCode && input.editorNote
+              ? {
+                  behaviorReasonCode: input.behaviorReasonCode,
+                  editorNote: input.editorNote,
+                }
+              : {}),
+          }),
+        );
+        succeeded.push({
+          entryId,
+          runId: record.runId,
+          agentProfileId: record.agentProfileId,
+        });
+      } catch (error) {
+        failed.push({ entryId, ...failure(error) });
+      }
     }
-    try {
-      await setAgentEntryVisibility(client, actor, entryId, hidden, {
-        reason: input.reason,
-        ...(input.behaviorReasonCode && input.editorNote
-          ? {
-              behaviorReasonCode: input.behaviorReasonCode,
-              editorNote: input.editorNote,
-            }
-          : {}),
-      });
-      succeeded.push({
-        entryId,
-        runId: record.runId,
-        agentProfileId: record.agentProfileId,
-      });
-    } catch (error) {
-      failed.push({ entryId, ...failure(error) });
-    }
-  }
-  const status = failed.length === 0 ? "SUCCEEDED" : succeeded.length === 0 ? "FAILED" : "PARTIAL";
-  await inTransaction(client, async (transaction) => {
+    const status =
+      failed.length === 0 ? "SUCCEEDED" : succeeded.length === 0 ? "FAILED" : "PARTIAL";
     await requireAgentAdminInTransaction(transaction, actor);
     const metadata = {
       actorKind: actor.actorKind,
@@ -269,6 +270,6 @@ export async function bulkSetAgentContentVisibility(
         : "Agent içerikleri bulk işlemle geri açıldı.",
       metadata,
     });
+    return { status, selectedCount: targetIds.length, succeeded, failed, selection };
   });
-  return { status, selectedCount: targetIds.length, succeeded, failed, selection };
 }

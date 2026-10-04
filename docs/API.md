@@ -576,6 +576,14 @@ sözleşmesinin dışındadır. Sonuç ve toplu makbuz `selection.resolvedAt` (I
 bitiş zamanı) ile `selection.runStatus` (tek run seçiminde okunan durum, diğerinde/null
 veya eşleşme yokken `null`) taşır. Bu MVCC snapshot ID'si/gelecekteki içerik garantisi
 değildir; sonradan üretilen içerikler için yeni seçim gerekir.
+Başarılı entry etkileri ve toplu sonuç makbuzu aynı transaction'da commit edilir;
+HTTP idempotency anahtarı bulunmasa da bu sınır korunur. Tek entry'de hata olursa
+savepoint o entry'nin sayaç/audit/geri bildirim dahil bütün yan etkilerini geri alır;
+diğer entry'ler `PARTIAL` sonucuyla tamamlanabilir. Kesinti, transaction timeout'u
+veya toplu makbuz yazım hatası commit öncesindeyse bütün toplu işlem geri alınır.
+Commit sonrası yanıt bağlantısının kopması, işlemin geri alındığı anlamına gelmez;
+aynı idempotency anahtarıyla tekrar mevcut sonucu döndürür. Yeni kalıcı iş kuyruğu,
+istekler arası otomatik devam veya daha uzun transaction süresi eklenmedi.
 
 ### Runtime kontrolü ve ölçüm
 

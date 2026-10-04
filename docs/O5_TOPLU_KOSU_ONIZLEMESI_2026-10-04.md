@@ -273,3 +273,35 @@ Kapsam/envanter kararı tamam. **O5 kapanmadı:** canlı dağıtım/kullanım ma
 #314 B3 (istek kesilince tekil kayıtlar varken toplu makbuzun eksik kalması) görünürlük/
 uzlaştırma sınırı açık. Genel ayar CAS ve #312 profil CAS, yeni iş önizlemesinin yerine
 geçmez; ayrıca acil durdurmaya ek kapı haline getirilmez.
+
+## Toplu içerik makbuzu ile etkilerin atomik kaydı — 4 Ekim
+
+B3 kaynağı doğrulandı: idempotency anahtarsız çağrıda her entry ayrı transaction'da,
+toplu makbuz ise en sonda yazılıyordu. İstek son makbuzdan önce kesilirse tekil etkiler
+kalabiliyordu. İdempotent HTTP yolu zaten tek dış transaction kullanıyordu; fakat
+entry yazıldıktan sonraki yakalanan AppError o entry'nin etkisini geri almıyordu.
+
+Yerel düzeltmede seçim, entry etkileri ve toplu moderation/audit/outbox/runtime makbuzu
+tek transaction'dadır. Entry başına sabit adlı, sıralı savepoint; AppError veya SQL
+hatasında o entry'nin tüm yazılarını geri alır ve PostgreSQL aborted durumunu temizler.
+Diğer entry'ler PARTIAL ile tamamlanabilir. Son toplu makbuz yazılamaz veya transaction
+sona ermeden bağlantı kesilirse tüm etkiler geri alınır. Commit edilmiş ama yanıtı
+ulaşmamış istek geri alınmış sayılmaz; mevcut idempotency tekrar sözleşmesi geçerlidir.
+
+Mevcut 500 eşleşme/100 açık hedef sınırı, NO_MATCH, seçim zamanı ve her entry'de taze
+yetki/provenance/topic-entry kilidi korunur. Genel transaction tavanı doğrudan 15 s,
+idempotent HTTP'de 5 s; bu paket artırmaz. Tam 500 hedefin her yükte süresine sığdığı
+iddiası yok; timeout güvenli biçimde bütün batch'i reddeder, küçük seçimle denenebilir.
+Migration, yeni kuyruk veya arka planda devam mekanizması eklenmedi.
+
+İlk **7 PG16 testi PASS**: son runtime makbuzunda enjekte edilmiş SQL hatası hem doğrudan
+hem dış transaction'da entry/counter/moderation/audit/outbox/geri bildirim/trash etkilerini
+geri aldı. Yazı sonrası AppError FAILED kaydını doğru bıraktı; üç entry'nin ortasındaki
+SQL hatası yalnız o entry'yi geri aldı, sonraki entry işlendi ve iki başarı/tek hata PARTIAL
+makbuzu yazıldı. Mevcut NO_MATCH, hide/restore ve provenance PARTIAL regresyonları geçti.
+Hakem/exact CI ve canlı kullanım henüz açık; bu yerel kanıt üretim kesintisi provası değildir.
+
+Son odaklı koşu **10 PG16 PASS** (önceki yedi dahil): 501 taşma reddi yeniden geçti.
+Gerçek HTTP hem anahtarsız hem idempotency anahtarlı çağrıda toplu makbuz SQL hatasıyla
+500 verdi ve entry ACTIVE kaldı. Hata kaldırıldıktan sonra aynı istek 200 döndü;
+anahtarlı tekrar ikinci gizleme veya ikinci toplu audit üretmedi. Üretim bağlantısı yok.
