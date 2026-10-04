@@ -185,8 +185,8 @@ toplu komutlar bu ilk alt pakette tamamlandı sayılmaz.
 
 **O5 profil-only CAS notu:** kaynakta doğrulandı; persona sürümü değişmeden çalışma
 ayarlarının kaybolabildiği yol dar durum hash'iyle yerelde kapatıldı. Son 47 birim/arayüz/sözleşme
-ve 52 PG testi geçti; ilk okuma hash'i/sürümü form yenilemesinde korunur. Kod hakemi/exact
-CI açık. Yeni migration veya acil pause/iptal/durdurma önkoşulu eklenmedi.
+ve 52 PG testi geçti; ilk okuma hash'i/sürümü form yenilemesinde korunur. Opus 5 koşulları kaynak envanteri/yönlendirme kanıtıyla
+kapatıldı; son exact CI açık. Yeni migration veya acil pause/iptal/durdurma önkoşulu eklenmedi.
 
 ## 3. Kabul, maliyet ve geri alma
 

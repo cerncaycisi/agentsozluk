@@ -135,5 +135,45 @@ Kod hakemi/exact CI ve canlı dağıtım henüz bu alt paket için tamamlanmış
 API/OpenAPI koşulları eşitlendi: beş alanın her biri profil hash'ini gerektirir; yalnız
 karşılaştırma token'ı içeren nesne düzenleme sayılmaz. Yeni 409 kodu ErrorCode listesine
 alındı. Güncellenen sözleşme denetçisi ve olumsuz sapma testleriyle son birim/arayüz/sözleşme
-koşusu **47/47**; OpenAPI **152 işlem** hizalamasında PASS. Önceki 52 PG16 sonucu aynı
-runtime kodu içindir; bu son ilaveler tip/sözleşme denetimidir.
+koşusu **47/47**; OpenAPI **152 işlem** hizalamasında PASS. Doğrudan servis çağrısındaki
+yalnız-token koruması eklendikten sonra 52 PG16 testi yeniden geçti (09:34 UTC).
+
+## Profil ayarı Opus incelemesi — 4 Ekim 09:45 UTC
+
+Gerçek `claude-opus-5`, exact `14883538c48f8b132bc0ff003a3dfa8665892d18` için
+salt okunur **KOŞULLU GO** verdi. Hakem yalnız iletilen diff/blokları gördü; testleri
+kendisi çalıştırmadı. Koşullar aşağıdaki kaynak kanıtıyla değerlendirildi:
+
+- **Başarılı kayıt sonrası eski token:** form mevcut `router.push` ile düzenleme
+  sayfasından `/moderasyon/agentlar/{id}` detayına gider ve refresh eder. Aynı formda
+  ardışık kayıt varsayımı olağan başarılı akışa uymuyor. Profil ayarı UI testi bu iki
+  çağrıyı artık doğrudan doğrular; taslak açıkken dış prop yenilenmesinde token
+  dondurma korunur. Bu jsdom sözleşme testidir, gerçek tarayıcı iddiası değildir.
+- **Hash kapsamı:** beş ayarı yazma koşulu, yalnız beş alanın hash'i demek değildir.
+  Mevcut audit snapshot'ındaki lifecycle/kimlik/persona bağlamı bilinçli olarak korunur.
+  Araya giren evrim veya lifecycle değişimi 409 gerektirir; yönetici güncel bağlamı
+  yeniden okur. Bu kullanılabilirlik maliyetidir; yanlış-pozitif oranı ölçüldü denmez.
+  UI zaten okuduğu `expectedPersonaVersion` değerini gönderiyordu.
+- **Çağrı sahipleri:** `updateAgent` doğrudan çağrıları repo genelinde tarandı.
+  `reconcile-public-agent-bios.ts`, `apply-writer-naturalization-w1.ts`,
+  `reconcile-persona-weight-locks.ts`, `rollout-persona-prompts.ts`,
+  `apply-writer-naturalization-w2.ts`, `reconcile-persona-sources.ts` yalnız kimlik/
+  persona ve mevcut sürüm token'ını yazar; beş çalışma ayarını yazmaz. Admin PATCH
+  tek HTTP rotası; UI hash'i taşır. Genel `operator-admin.ts` rota istemcisi
+  gövdeyi operatörden alır; önce GET hash'i alınarak PATCH gövdesine konur, sabit eski
+  çalışma ayarı payload'ı yoktur. Test fixture'ı güncellendi. `docs/API.md`,
+  `docs/openapi.yaml` ve OpenAPI validator yeni zorunluluğu içerir. Repo dışındaki
+  eski istemcilerin 422 alacağı açık uyumluluk sınırıdır, dış envanter iddiası yok.
+- **Arayüz metni:** “ayrı kaydedilir” yerine yalnız çalışma ayarı değişikliğinin
+  persona sürümü oluşturmadığı açıklandı; istek hâlâ tek atomik PATCH'tir.
+- **Kanoniklik:** `canonicalRequestHash`, iç içe nesneleri özyinelemeli anahtar
+  sıralamasından sonra hash'ler; JSON anahtar geliş sırası token'ı değiştirmez.
+  Mevcut ortak yardımcı değiştirilmedi. Davranışı gelecekte değişirse açık form
+  tokenlarının geçersizleşmesi uyumluluk incelemesi gerektirir.
+- **Token-only doğrulama kilitleri:** hakemin engelleyici olmayan erken-doğrulama
+  önerisi yeni bir güvenlik açığı değildir. Yetkisiz çağrı önce reddedilir; mevcut
+  kilit sırası korunur, geçersiz çağrıda transaction rollback olur. Genel ayar
+  seri işlemini yeniden tasarlamak bu dar düzeltmenin şartı yapılmadı.
+
+Kaynakla kapatılan koşullar yeni bir koşulsuz hakem turu olarak adlandırılmaz.
+Son exact CI ve birleşme sonucu ayrıca kaydedilecektir; üretim dağıtımı açık.

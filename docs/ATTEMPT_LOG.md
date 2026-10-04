@@ -3849,3 +3849,21 @@ false/true` yapabildi; geçici rol ve DB silindi.
   ardından `AgentUpdateInput properties mismatch` ile OpenAPI denetçisinin eski alan
   listesini yakaladı. Kod kaydı, beş bağımlı alan ve token-only nesne reddi aynı sözleşmeye
   getirildi; denetim gevşetilmedi. Son 47/47 birim/arayüz/sözleşme, 152 OpenAPI işlem PASS.
+
+### 4 Ekim 2026 — O5 profil ayarı Opus koşulları
+
+- Opus 5 exact `14883538c48f8b132bc0ff003a3dfa8665892d18` üzerinde KOŞULLU GO;
+  gerçek model `modelUsage.claude-opus-5`. Salt okunur, araç/üretim erişimi yok.
+- Aynı formda ikinci kayıt çekincesi, mevcut başarı sonrası detay sayfasına `router.push`
+  kaynağıyla kapandı; UI testine yönlendirme/refresh doğrulaması eklendi. Hash'in geniş
+  bağlamı bilinçli sözleşme olarak korundu. Altı doğrudan script çağrısı yalnız persona/
+  kimlik alanları; API/OpenAPI hash şartı kayıtlı. Kanoniklik özyinelemeli sıralamada mevcut.
+- Yanıltıcı “ayrı kaydedilir” metni düzeltildi. Yalnız-token doğrudan servis korumasının
+  son kaynakla 09:34 UTC 52 PG16 PASS tekrar kaydı korundu. Son exact CI henüz açık.
+- Tekrarlama: kısmi diff'te görünmeyen başarı yönlendirmesini yok sayma; koşullu hakem
+  sonucunu yeni bir koşulsuz GO diye yeniden adlandırma.
+
+- Yeni yönlendirme assertion'ı ilk koşuda 46/47 verdi: jsdom konumu `/` olduğu için
+  mevcut hassas-konum gezinme koruması `window.location.assign` seçiyordu, Next push
+  mock'u çağrılmıyordu. Admin UI fixture URL'si gerçek `/moderasyon/agentlar` bağlamına
+  sabitlendi; üretim gezinme koruması veya assertion kaldırılmadı.

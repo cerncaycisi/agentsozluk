@@ -33,7 +33,7 @@ export default async function AgentEditPage({ params }: { params: Promise<{ id: 
   return (
     <ModerationLayout
       title={`${agent.user.displayName} düzenle`}
-      description="Kullanıcı adı değiştirilemez. Karakter değişiklikleri sürümlenir; çalışma ayarları ayrı kaydedilir."
+      description="Kullanıcı adı değiştirilemez. Karakter değişiklikleri yeni persona sürümü oluşturur; yalnız çalışma ayarı değişikliği oluşturmaz."
     >
       <AgentPersonaEditForm
         key={agent.id}

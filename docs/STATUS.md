@@ -14,7 +14,9 @@
   Persona-only sürüm kapısı ve acil durdurma yolları korundu; migration yok.
 - Son 47 birim/arayüz/sözleşme, 52 PG16 testi geçti. Gerçek eşzamanlı iki yazımdan biri 409 aldı;
   kaybeden yazım kazananın ayarını veya audit sayısını değiştirmedi. Güncel tekrar geçti,
-  ayar değişikliği persona sürümü üretmedi. Hakem/CI/canlı henüz tamamlanmadı.
+  ayar değişikliği persona sürümü üretmedi. Opus 5 `1488353` koşulları kaynakla kapandı;
+  son yönlendirme assertion’ı dahil 47/47 tekrar geçti. İlk CI `37192759460` 7/7;
+  son test/metin/makbuz head’inin exact CI ve canlı dağıtımı henüz tamamlanmadı.
 - [O5 makbuzu](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
 
 ## 2026-10-04 — yedek blokları ve doğum kaynakları

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-environment-options {"url":"http://localhost:3000/moderasyon/agentlar"}
 
 import { ClientApiError } from "@/lib/http/client";
 
@@ -276,6 +277,8 @@ describe("agent admin UX contracts", () => {
     );
     const payload = mocks.apiRequest.mock.calls[0]?.[1]?.body;
     expect(payload).not.toHaveProperty("persona");
+    expect(mocks.push).toHaveBeenCalledWith(`/moderasyon/agentlar/${agentId}`);
+    expect(mocks.refresh).toHaveBeenCalled();
   });
 
   it("confirms persona rollback with visible success feedback", async () => {
