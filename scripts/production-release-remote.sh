@@ -241,6 +241,11 @@ assert_runtime_unit() {
 }
 
 assert_state_fingerprints() {
+  if ! test -f "$state_dir/settings-profile" ||
+     ! test "$reviewed_migration_profile" = "$(cat "$state_dir/settings-profile")"; then
+    printf 'RELEASE_FAIL code=SETTINGS_PROFILE_CHANGED\n' >&2
+    exit 97
+  fi
   test "$(settings_fingerprint)" = "$(cat "$state_dir/settings-hash")"
   test "$(lifecycle_fingerprint)" = "$(cat "$state_dir/lifecycle-hash")"
 }
@@ -327,6 +332,7 @@ capture_initial_state() {
   printf '%s\n' "$previous_runtime" >"$state_dir/previous-runtime"
   docker inspect --format '{{.Image}}' "$app_container" >"$state_dir/previous-image-id"
   settings_fingerprint >"$state_dir/settings-hash"
+  printf '%s\n' "$reviewed_migration_profile" >"$state_dir/settings-profile"
   lifecycle_fingerprint >"$state_dir/lifecycle-hash"
   migration_snapshot >"$state_dir/baseline-applied-migrations"
   candidate_migration_snapshot >"$state_dir/baseline-candidate-migrations"

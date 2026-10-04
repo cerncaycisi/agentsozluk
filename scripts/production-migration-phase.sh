@@ -447,10 +447,12 @@ SELECT format(
    FROM %I.%I AS t',
   'table:' || c.relname || '|',
   CASE WHEN :'profile' IN ('october-2026-v1', 'october-2026-v2') AND c.relname = 'agent_global_settings'
-    THEN '(to_jsonb(t) - ARRAY[''rewardMode'',''birthMode'',''lastBirthScanAt'',''lastBirthCandidateAt''])::text'
+    THEN '(jsonb_build_object(''rewardMode'',''OFF'',''birthMode'',''OFF'',
+      ''lastBirthScanAt'',NULL,''lastBirthCandidateAt'',NULL) || to_jsonb(t))::text'
     ELSE 't::text' END,
   CASE WHEN :'profile' IN ('october-2026-v1', 'october-2026-v2') AND c.relname = 'agent_global_settings'
-    THEN '(to_jsonb(t) - ARRAY[''rewardMode'',''birthMode'',''lastBirthScanAt'',''lastBirthCandidateAt''])::text'
+    THEN '(jsonb_build_object(''rewardMode'',''OFF'',''birthMode'',''OFF'',
+      ''lastBirthScanAt'',NULL,''lastBirthCandidateAt'',NULL) || to_jsonb(t))::text'
     ELSE 't::text' END,
   n.nspname, c.relname)
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace

@@ -327,6 +327,28 @@ reviewed_index_size_receipt ${afterName}`);
         sql(afterName, 'UPDATE agent_global_settings SET "runtimeEnabled" = NOT "runtimeEnabled";');
       }
     });
+    it("tam migration kapısı dört yeni ayar sapmasını içerik karşılaştırmasında reddeder", () => {
+      const mutations = [
+        ["\"rewardMode\" = 'SHADOW'", "\"rewardMode\" = 'OFF'"],
+        ["\"birthMode\" = 'CANDIDATES'", "\"birthMode\" = 'OFF'"],
+        ['"lastBirthScanAt" = now()', '"lastBirthScanAt" = NULL'],
+        ['"lastBirthCandidateAt" = now()', '"lastBirthCandidateAt" = NULL'],
+      ];
+      pass(`post_verify ${afterName} clean "$migration_dir/scratch-pre-table-schemas"`);
+      for (const [mutation, undo] of mutations) {
+        try {
+          sql(afterName, `UPDATE agent_global_settings SET ${mutation};`);
+          const result = phase(
+            `post_verify ${afterName} drift "$migration_dir/scratch-pre-table-schemas"`,
+          );
+          expect(result.status).toBe(97);
+          expect(result.stderr).toContain("POST_TABLE_CONTENT_CHANGED");
+        } finally {
+          sql(afterName, `UPDATE agent_global_settings SET ${undo};`);
+        }
+      }
+      pass(`post_verify ${afterName} clean "$migration_dir/scratch-pre-table-schemas"`);
+    }, 120_000);
     it("aynı veri üzerinde eski constraint değişmesi şema kapısını düşürür", () => {
       try {
         sql(

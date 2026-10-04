@@ -24,8 +24,9 @@ zaman alanı `NULL` başlar. Yeni tablolar yazıcılar açılmadan boş olmalıd
 
 Eski tablo verileri, sequence'ler, migration geçmişi ve tablo şemaları A5 kapılarında
 karşılaştırılır. Yalnız global ayar satırının parmak izi iki tarafta JSONB'den alınır;
-sadece dört yeni alan dışarıda tutulur. Eski alan değişirse kontrol düşer. Yeni
-alan değerleri ayrıca sınanır. Şema filtresi sadece global tablonun exact dört
+eksik dört yeni alan OFF/NULL başlangıcıyla tamamlanır ve gerçek satır değerleri
+üzerine yazılır. Eski veya yeni alan değişirse kontrol düşer. Yeni alan başlangıçları
+ayrıca sınanır. Şema filtresi sadece global tablonun exact dört
 `pg_dump` sütun satırını çıkarır; tür/default/eksik/yinelenmiş sütun reddedilir.
 Diğer şema metni aynen korunur; genel bir SQL normalizasyonu yapılmaz.
 
@@ -207,3 +208,30 @@ senaryosu ayrıca tekrar geçti. Eski `runtimeEnabled` ve yeni dört alanın sap
 şema eklemesinin eşliği, migration'sız ve bilinmeyen profil davranışı gerçek psql ile
 sınandı. Format/lint/typecheck ve üç gereksinim testi PASS. Exact kod hakemi/CI ve
 üretim büyüklüğündeki restore/önceki imaj geçişi henüz açık.
+
+### İlk hakem ve iki katmanın uzlaştırılması
+
+Gerçek `claude-opus-5`, exact `fd4a3b927f5cc9457c47f80b798c68f0baf3b8a0` için
+**DÜZELTİLMELİ** verdi; actual modelUsage yalnız bu model. B1'in eski migration
+kapısında genel fail-open iddiası kaynakla doğrulanmadı: `post_verify()` başlangıç
+OFF/NULL kontrolünü zaten zorunlu çağırır. Buna rağmen veri özeti de release ile aynı
+`defaults || to_jsonb(t)` kuralına daraltıldı; artık yeni alan sapması içerik
+karşılaştırmasında doğrudan görünür, son başlangıç kontrolü de korunur.
+
+B2'de profil değişikliğinin ayar verisi yerine farklı hash hesabı üretmesi teşhis
+belirsizliğiydi; eski guard fail closed kalıyordu. Baseline artık `settings-profile`
+makbuzunu da atomik tamamlama işaretinden önce yazar; eksik veya değişmiş profil
+`SETTINGS_PROFILE_CHANGED` ile durur. Aynı SHA yeniden girişinde profil korunmalıdır.
+Önceki sürümün eksik makbuzu otomatik tamamlanmaz veya baseline silinmez.
+
+B3 tip sapmasını ham JSON metniyle ayırma önerisi alınmadı: JSON null veya enum/text
+OFF temsili tip denetimi değildir; mevcut exact SQL checksum, normalize-schema ve
+sabit katalog kapıları type/default/eksik/yinelenmiş sütunu ayrıca reddeder. Hash
+eşliği yerel gerçek pre/post DB testiyle sınanır. Mevcut tip/default regresyonları
+yeniden çalıştırılır. İlk görüş yeniden adlandırılmaz; son test/ikinci hakem/CI açıktır.
+
+Son yerel **82 PASS**:18 PG16,29 exact profil,16 faz davranışı,19 release betiği.
+Tam `post_verify` başlangıç/son temiz eşliğinde dört yeni alan sapmasını doğrudan
+`POST_TABLE_CONTENT_CHANGED` ile reddeder. Aynı hash'lerle profil değiştirme/eksik
+profil makbuzu `SETTINGS_PROFILE_CHANGED` ile reddedilir; doğru üç profil yolu geçer.
+B3 için mevcut type/default/eksik/yinelenmiş sütun testleri yeniden geçti.

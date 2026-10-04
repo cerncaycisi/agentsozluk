@@ -4353,3 +4353,29 @@ P2 development 12 geçerli karar/1 Opus okuma; kaynak denetiminde 1 yeni/1 eski/
 Ham okuyucu ve operatör ayrışması private makbuzda korundu. Üstünlük eşiği geçmedi;
 saklı set açılmadı, yeni bütçe verilmedi. Somut doğrulanmış ihlal 0; fayda BELİRSİZ.
 Bu yalnız karar pilotudur; kamuya yayımlanmış entry veya genel karakter başarısı değildir.
+
+## 4 Ekim 2026 — P345 gerçek kontrolü ve release hakem uzlaştırması
+
+Exact detached `e990f9dfcb1f0d27db83fbd8a5bfcb3576858d9e`, Luna/max/CLI0.160.0:
+18 geçerli karar, 0 teknik hata/tekrar; tek actual `claude-opus-5` okumasıyla
+19 mantıksal çağrı/25 dakika49,8 saniye. 20:49 UTC yürütücü kaynak kontrolünde
+somut sözleşme ihlali 0; yayımlama/DB mutasyonu yok. Katalog dışı sanılan üç
+MODEL_KNOWLEDGE eylem kanıtı normal run ID'sidir. NO_ACTION null selectedOptionSeq
+şemada meşrudur; ham raporun indeks kaymaları vaka etiketiyle düzeltildi. P5 yalnız
+gözlem; sonuç NO_CONFIRMED_CONTRACT_VIOLATION, davranış PASS veya fayda değildir.
+
+#327 ilk exact `fd4a3b927f5cc9457c47f80b798c68f0baf3b8a0`, CI `37232666236`
+7/7 PASS; Opus 5 DÜZELTİLMELİ, actual modelUsage yalnız claude-opus-5. Migration
+kapısındaki OFF/NULL denetimi zaten vardı; genel fail-open iddiası kaynakla
+doğrulanmadı. İki veri özeti aynı başlangıç tamamlama kuralına bağlandı; profil
+makbuzu baseline'da saklanıp yeniden girişte açık SETTINGS_PROFILE_CHANGED ile
+denetlenir. SHA'ya ait eksik eski makbuz otomatik doldurulmaz veya silinmez.
+
+Son yerel 18 PG16 +29 exact profil +16 faz davranışı +19 release testi =82 PASS.
+Yeni tam post_verify testleri dört yeni alan sapmasını içerik kapısında reddetti;
+üç profilin aynı hash'lerle tüm yeniden giriş kombinasyonları ve eksik makbuz
+reddi geçti. Tip/default/eksik/yinelenmiş sütun regresyonları da geçti. İkinci
+hakem ve final exact CI açık; üretim canlı9bf hâlâ değiştirilmedi.
+Tekrarlama: tek alt fonksiyon özetiyle bütün kapı fail-open ilan etme; ham JSON
+temsilinden SQL tipi çıkarma; mevcut hakem kararını kaynakla uzlaştırmadan GO
+diye yeniden adlandırma; pilotu yayın veya P7 kabulüne dönüştürme.

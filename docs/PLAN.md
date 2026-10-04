@@ -8,6 +8,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 20:51 UTC:** P3/P4/P5 gerçek kontrolü tamam: 18 geçerli karar, teknik hata/tekrar 0,
+  bir Opus okuyucusuyla 19 çağrı/25 dakika 49,8 saniye. Kaynak kontrolünde somut sözleşme
+  ihlali yok; davranış faydası veya PASS iddiası yok. Gerçek kısa kontrol işi aktif kuyruktan
+  çıktı; canlı sınırlı etki/rollout/kapasite açık. #327 ilk CI `37232666236` 7/7 PASS;
+  Opus düzeltme görüşü sonrası release/migration özetleri birleştirildi ve profil makbuzu
+  yeniden girişe bağlandı. Son 82 yerel test PASS; ikinci hakem/final CI açık. Sıradaki
+  iş bu teknik düzeltmenin teslimi ve hazır paketin artifact/restore/migration dağıtımı.
+
 - **4 Ekim 20:30 UTC devir ve dağıtım düzeltmesi:** Gökhan'ın aynı goal/yetkiyle
   devam talimatıyla yürütücü bu oturumda `gpt-6.1-sol`; önceki Astra/Opus kayıtları
   tarihsel olarak korunur. Erken A′ kapısı #326 ile main `4d05d1e` üzerinde, main CI

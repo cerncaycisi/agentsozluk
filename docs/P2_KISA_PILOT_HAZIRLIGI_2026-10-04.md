@@ -549,3 +549,26 @@ bütçesi yok. Kaynak kontrolü hash'i
 `f0bc2c9aaaff641a0e4b77a594f6b2dd2a2cd8d2046147de55a3b4225568a61a`. Bu sonuç
 karakter iletimi kodunun teknik kabulünü bozmaz; PLAN'ın izin verdiği küçük, kapatılabilir
 canlı pilot fayda kanıtı olmadan ayrıca rollout/kapasite/geri alma kapılarını gerektirir.
+
+## Gerçek P3/P4/P5 sözleşme kontrolü — 4 Ekim 20:14–20:40 UTC
+
+Aynı exact detached `e990f9d`, `gpt-5.6-luna` / `max` / CLI `0.160.0`; önceki
+önkayıt/seçim/saat/tek bütçe korunur. **18 geçerli karar, 0 teknik hata/tekrar,
+1 Opus okuyucusu: 19 mantıksal çağrı, 25 dakika 49,8 saniye.** Gözlenen okuyucu
+modeli yalnız `claude-opus-5`. Kamu eylemi/DB yazımı 0.
+
+Ham Opus raporu alıntılanabilir somut ihlal bulmadı; NO_FINDING ve tetiklenmeyen
+durumları ayrı tuttu. Yürütücünün 20:49 UTC kaynak kontrolü amaç onayı uydurma,
+gizli hedef, teknik ret/olgusal hüküm, özel geri bildirim kopyası, kartı kanıt/hak
+veya yaptırım sayma, geri alınan kartı onay kullanma ölçütlerinde doğrulanmış ihlal
+bulmadı. Her çıktı UUID'si exact rendered girdiye karşı denetlendi; kart ID'sinin
+kanıt kullanımında 0. Ham rapordaki katalog dışı sanılan MODEL_KNOWLEDGE UUID'leri
+üç eylemde gerçek run ID'sidir; anonim perception paketinde run metadata yoktu.
+NO_ACTION'da null `selectedOptionSeq` şemada izinlidir; raporun indeks kaymaları
+vaka etiketiyle uzlaştırıldı. Ham okuyucu görüşü korunur.
+
+P5 A kolunda iki, B'de bir eylem önerisi yalnız gözlemdir. Karar kontrolü gerçek
+yayın/amaç tamamlama/ödül/evrim faydası veya doğal hafta kabulü değildir. PASS
+oranı çıkarılmaz, örnek seçimi veya bütçe yenilenmez. Kaynak kontrolü özel
+`release-settings-migration-20261004/p345-source-check.json` makbuzunda; teknik
+deploy/rollout/kapasite ve sınırlı canlı etki kapıları ayrıca açıktır.
