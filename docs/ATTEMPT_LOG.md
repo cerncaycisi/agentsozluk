@@ -3625,3 +3625,30 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Uzun geçerli görüntü başlığının `/baslik/ac?title` yolunda kırpılması RSC testiyle kapatıldı; 2048 girdi sınırı ve ortak normalizasyon kullanıldı. NFKC genişlemesi VARCHAR(400) sınırına tekrar bağlandı.
 - Son yerel sonuç 20 PG16 + 16 birim/RSC = 36/36. İlk turdaki eksik kaynak şüphesi rota dosyasıyla kapanmıştı; bu turda yeni izin kapısı veya uygulama eşiği gevşetilmedi. Son exact CI/birleştirme ayrı makbuzdur.
 - Tekrarlama: eşleme anahtarını genişletirken create, restore ve withdraw kilit kapsamını birlikte kontrol et; yalnız normalize uzunluğa bakıp görüntü metnini başka hedefe kırpma.
+
+### 4 Ekim 2026 — P6 #306 birleşmesi ve O3 yerel DISK_LOW hazırlığı
+
+- P6 final `c217262db9e50026cc26988b045674f898e5916f`, CI `37176800118` 7/7; main `717e5e4d16bb916337592fd206af1b55bd98c777`. Fresh exact head/base/check/review/CLEAN kontrolü, remote SHA ve ağaç eşitliği doğrulandı; dal silindi, T3 bağlantısı merged.
+- Yerel yedek servisi 4 Ekim 01:31:56 UTC `YEDEK_FAIL code=DISK_LOW`/exit 1 verdi. Yedi eski yedek 27 Eylül–3 Ekim korunuyordu. Üretime bağlantı yapılmadan yerel servis/journal, dizin boyutları ve disk ölçüldü.
+- Yerel PG16 CHECKPOINT alan açmadı. Aktif client yokken max_wal_size 4096→1024 MB geçici reload/CHECKPOINT de kazanç sağlamadı; finally RESET/reload ile 4096 MB ve `/home/agent/pg16/rehearsal/postgresql.conf` kaynağı doğrulandı. DB/pg_wal dosyası elle silinmedi; tekrar etme, bu deneme alan çözümü değildir.
+- Silme filtresi: kullanılmayan Codex 0.155.1, T3 0.0.42; npm content cache; yaşı >1 gün `plugins-clone-*` geçici klonları; yalnız durdurulmuş yerel önizlemenin `.next` çıktısı. Exe/cwd/argv aday kullanım kontrolünde canlı süreç yoktu. İlk boş alan 4.470.718.464 → 5.512.822.784 bayt, kazanç 1.042.104.320 bayt. Yedi dump ad/boyut eşitliği; Codex current 0.160.0/previous 0.156.0 ve T3 0.0.45/önceki 0.0.43-nightly dizinleri korundu. Hiçbir hizmet yeniden başlatılmadı.
+- Resmî `pnpm store prune` yalnız kullanılmayan 375 dosya/28 paketi ve metadata cache'ini kaldırdı; son disk 5.823.488 KiB boş/%86. Yedek minimum 5 GiB eşiği düşürülmedi. Konuşma kayıtları, ham kanıtlar, kullanıcı işleri ve yedekler silinmedi.
+- O3 betik adayı: stat yayımlamadan önce denetleniyor, sort pipeline hatası ana kabukta yakalanıyor; failure/partial-sort halinde önceki kopyalar korunuyor, yanlış YEDEK_OK yok. Manual `AGENTSOZLUK_BACKUP_NOTIFY=0` dış bildirim başlatmaz; zamanlayıcının varsayılanı aynı. Ayrı `c217262` tabanlı worktree'de 19/19 ve format/lint/typecheck/requirements geçti. Kurulum, yeni yedek ve restore henüz yok.
+- Tekrarlama: hardlinkli node_modules toplamını geri kazanılabilir disk sanma; paket önbelleği için yöneticinin prune komutunu kullan. Yedek FAIL'i başarılı kopya veya restore kanıtı sayma.
+
+### 4 Ekim 2026 — O3 #307 hakem koşulu ve checksum kontrolü
+
+- Gerçek `claude-opus-5`, exact `da04b515fc6abe5fbe571dace2cd63069a21fde6`: KOŞULLU GO. Geçersiz bildirim ayarının sessiz kalması koşullu engeldi; varsayılan alarm korunacak şekilde düzeltildi, açık 0 hâlâ sessizdir. Normal zamanlayıcının ayarı değiştirilmedi.
+- Sağlama değeri boş/bozuksa `CHECKSUM_INVALID`, geçerli durumda gerçek 11 bayt beklentisi eklendi. Son 21/21 shell testi ve bash sözdizimi geçti. Test bildirimleri sahte yerel dosyaya yazıldı; dış mesaj gönderilmedi.
+- `here-string` yerine süreç ikamesine dönülmedi: yönlendirme kurulma hatası fail-closed kalır, alt komut hatasını while'ın yutması yeniden açılmaz. Düşük önem önerisinin reddi davranış gerekçesidir, GO kararı uydurulmadı.
+- Tekrarlama: yalnız nonzero command exit değil, yayımlanan checksum biçimini de doğrula; sessiz manual seçeneği ile bozuk zamanlayıcı ayarını aynı sayma.
+
+### 4 Ekim 2026 — O3 exact CI tarayıcı fixture çakışması
+
+- `ad4aa87c7495d184420f1d722b64caa84e2e2578`, CI `37178237277`: browser 90 PASS/1 FAIL; mobile boş arama önerisi üç denemede görünmedi. Trace gerçek `/api/v1/search/suggest?q=zzzq%20deneme` HTTP 200 ve `evde ekmek yapma denemeleri` sonucunu gösterdi. Hidrasyon geçti; hata ağ veya yeni yedek kodu değildir.
+- Kök neden: boş sonuç varsayılan fixture, mevcut fuzzy aramada seed başlığıyla eşleşiyor. Sorgu iki anlamsız tokena taşındı; boş sonucu gerçek PG16 üzerinde ayrıca sınayan odaklı test eklendi. Arama davranışı/eşiği ve E2E görünürlük/URL beklentisi gevşetilmedi.
+- Tekrarlama: gerçek kelimeli sorguyu kanıtsız "sonuç yok" fixture'ı sayma; trace yanıtını ayırmadan timeout yükseltme veya kör CI tekrarı yapma. Yeni exact kontroller ayrı kaydedilir.
+
+- Düzeltme makbuzu: `641eb0d001ef3fb800b891b74ff98082d15fea17`, CI `37178828324` browser 87 PASS/4 FAIL. İlk metin değişimi aynı dosyadaki önceki senaryonun beklentisine uygulanmış; yeni autocomplete girdisi eski etiketi bekliyordu. Bu yürütücü hatasıdır. Her iki senaryoda sorgu/etiket/URL tek fixture sabitine bağlandı; ürün kodu değiştirilmedi. Yeni doğrulama ayrı kaydedilir.
+
+- Yerel tarayıcı kanıtı: aynı iki gerçek E2E senaryosu masaüstü/mobil **4/4 PASS**, `focused-browser-3.log`; assert ve timeout değiştirilmedi. Yalnız loopback 3100, seed edilmiş yerel test DB. Ayrı config'in ilk webServer cwd hatası repo cwd verilerek giderildi; sonraki ilk soğuk dev `/ara` isteği 17,35 sn ile toplam 30 sn test bütçesine takıldı (3/4). Önbellekli odaklı tekrar 4/4 geçti. Geçici server test aracı tarafından kapatıldı. Üretim derlemesi kanıtı hâlâ exact CI'dır.

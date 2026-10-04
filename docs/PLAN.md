@@ -43,8 +43,10 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
   boşluklarda: açılmamış görünür bkz #299 ile `c72a089` ana dalında, Opus KOD GO/CI 7/7;
   tanıtım/kök açıklaması mevcut kodda doğrulandı; yeniden yazılmıyor. İnsan ukte bırakma/
-  geri çekme, admin gizleme/geri açma ve güvenli liste yerelde tamam: 125 ilgili test ve
-  gerçek masaüstü/mobil tarayıcı akışı geçti. Opus/exact CI kapıları sırada. P7 yedi günlük kabul özellik paketinden sonra yürür.
+  geri çekme, admin gizleme/geri açma ve güvenli liste #306 ile `717e5e4` ana dalında: iki
+  Opus turunun koşulları kapandı, son CI 7/7. Son 20 PG16/16 birim-RSC, önceki 67 ve
+  geniş 125 test; gerçek masaüstü/mobil tarayıcı akışı geçti. P6’da ilk sürüm için canlı
+  dağıtım/kullanım makbuzu kaldı. [Ukte makbuzu](P6_UKTE_2026-10-04.md). P7 yedi günlük kabul özellik paketinden sonra yürür.
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim
@@ -201,7 +203,13 @@ belirtilir, ilk pencere deneysel kesinlik veya Gate 10 kabulü sayılmaz.
 | **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                        |
 | **O5** | Operatör toplu işlem önizlemesi, 17 Ekim durum       | Hedef/payload/sürüm ve geri alma özeti; yetki, CAS, idempotency korunur                                                                                             |
 
-Yerel operatör diski önceki kayıtta ~%90, üretim diski ayrı kayıtta ~%62'dir; bunları karıştırma.
+**O3 güncel olay:** 4 Ekim 01:31 UTC gecelik yedek yerel `DISK_LOW` ile durdu; önceki
+yedi kopya korundu. Kullanılmayan araç sürümü/paket/build cache temizliğiyle yerel boş alan
+~4,2 → 5,6 GiB (%89 → %86) oldu. `sort/stat` hata yutma düzeltmesi 19 yerel testi ve
+kalite kapılarını geçti; bağımsız hakem/CI, kurulum ve telafi yedeği henüz tamamlanmadı.
+7 Ekim restore/taze yedek kanıtı kapanmış sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+
+Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
 Her build/deploy için güncel değer gerekir; üretimde <8 GiB veya ≥%90 dolulukta build yok.
 Aktif/önceki imaj, runtime ve named volume korunur. Yerel ham veri yalnız ilgili kişisel ortamda.
 

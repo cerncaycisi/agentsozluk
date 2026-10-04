@@ -25,6 +25,7 @@ KEY="${AGENTSOZLUK_BACKUP_KEY:-$HOME/.ssh/agentsozluk_backup}"
 KNOWN_HOSTS="${AGENTSOZLUK_KNOWN_HOSTS:-$HOME/.ssh/agentsozluk_known_hosts}"
 PG_RESTORE="${AGENTSOZLUK_PG_RESTORE:-$HOME/.local/pgclient/bin/pg_restore}"
 MIN_FREE_BYTES="${AGENTSOZLUK_BACKUP_MIN_FREE_BYTES:-5368709120}"
+NOTIFY="${AGENTSOZLUK_BACKUP_NOTIFY:-1}"
 HOST=deploy@46.225.20.177
 NAME_PATTERN='^agent-sozluk-[0-9]{8}T[0-9]{6}Z\.dump$'
 
@@ -34,7 +35,9 @@ final=""
 stage="baslangic"
 
 notify() {
-  "$HOME/ping.sh" "Agent Sözlük yedek" "$1" >/dev/null 2>&1 || true
+  if [[ "$NOTIFY" = 1 ]]; then
+    "$HOME/ping.sh" "Agent Sözlük yedek" "$1" >/dev/null 2>&1 || true
+  fi
 }
 
 fail() {
@@ -53,6 +56,7 @@ trap 'fail "UNEXPECTED_${stage}"' ERR
 trap 'fail SIGNAL' INT TERM
 
 stage="ayarlar"
+[[ "$NOTIFY" =~ ^[01]$ ]] || { NOTIFY=1; fail NOTIFY_INVALID; }
 [[ "$KEEP" =~ ^[1-9][0-9]?$ ]] || fail KEEP_INVALID
 [[ "$MIN_FREE_BYTES" =~ ^[0-9]+$ ]] || fail MIN_FREE_INVALID
 install -d -m 0700 "$DIR" || fail DIR_UNAVAILABLE
@@ -85,9 +89,15 @@ test -s "$tmp_dump" || fail DUMP_EMPTY
 test -x "$PG_RESTORE" || fail PG_RESTORE_MISSING
 "$PG_RESTORE" --list "$tmp_dump" >/dev/null 2>&1 || fail ARCHIVE_UNREADABLE
 
+# Boyut okuması başarı makbuzunun bir parçası; echo içindeki command substitution
+# hata kodunu yutmasın. Yayımlamadan önce doğrula, önceki kopyaları koru.
+bytes=$(stat -c %s "$tmp_dump") || fail DUMP_SIZE_UNREADABLE
+[[ "$bytes" =~ ^[0-9]+$ ]] && ((bytes > 0)) || fail DUMP_SIZE_INVALID
+
 stage="yayimlama"
 # Önce yan dosyalar, en son yedeğin kendisi: yedek görünür olduğunda sağlaması ve özeti hazır.
 checksum=$(sha256sum "$tmp_dump" | awk '{print $1}')
+[[ "$checksum" =~ ^[0-9a-f]{64}$ ]] || fail CHECKSUM_INVALID
 printf '%s  %s\n' "$checksum" "$final" >"$final.sha256"
 mv -n -- "$tmp_meta" "${final%.dump}.meta"
 test ! -e "$tmp_meta" || fail META_PUBLISH
@@ -101,12 +111,15 @@ stage="dondurme"
 # ve yeni yedek hiçbir koşulda silinmez (Astra P3).
 listing=$(find "$DIR" -maxdepth 1 -type f -name 'agent-sozluk-*.dump' -printf '%f\n') ||
   fail ROTATION_LIST
+# Süreç ikamesinin çıkış kodu while'a taşınmaz. Kısmi stdout üretip hata veren
+# sort da retention silmelerine girmeden ana kabukta durdurulur.
+sorted_listing=$(printf '%s\n' "$listing" | LC_ALL=C sort) || fail ROTATION_SORT
 others=()
 while IFS= read -r name; do
   if [[ -n "$name" && "$name" =~ $NAME_PATTERN && "$DIR/$name" != "$final" ]]; then
     others+=("$name")
   fi
-done < <(printf '%s\n' "$listing" | sort)
+done <<<"$sorted_listing"
 excess=$((${#others[@]} + 1 - KEEP))
 removed=0
 for ((i = 0; i < excess; i++)); do
@@ -114,4 +127,4 @@ for ((i = 0; i < excess; i++)); do
   rm -f -- "$old" "$old.sha256" "${old%.dump}.meta" || fail ROTATION_DELETE
   removed=$((removed + 1))
 done
-echo "YEDEK_OK file=$(basename "$final") bytes=$(stat -c %s "$final") tables=$tables kept=$((${#others[@]} + 1 - removed))"
+echo "YEDEK_OK file=${final##*/} bytes=$bytes tables=$tables kept=$((${#others[@]} + 1 - removed))"

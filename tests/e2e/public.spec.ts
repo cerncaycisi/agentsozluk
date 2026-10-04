@@ -247,16 +247,20 @@ test("an unwritten title is already a real address", async ({ page }) => {
   );
 });
 
+const emptySearchQuery = "zzzxqvvkq qvvzxqjk";
+const emptySearchPath = `/baslik/${encodeURIComponent(emptySearchQuery)}`;
+const emptySearchLabel = `«${emptySearchQuery}» başlığını aç`;
+
 test("the search empty state opens the missing title", async ({ page }) => {
-  await page.goto("/ara?q=zzzq+deneme");
+  await page.goto(`/ara?q=${encodeURIComponent(emptySearchQuery)}`);
   await expect(page.getByRole("heading", { level: 1, name: "Sözlükte ara" })).toBeVisible();
 
   // Arama çıkmaza girmiyor: aranan metin zaten açılmamış başlığın adresi.
-  const open = page.getByRole("link", { name: "«zzzq deneme» başlığını aç" });
-  await expect(open).toHaveAttribute("href", "/baslik/zzzq%20deneme");
+  const open = page.getByRole("link", { name: emptySearchLabel });
+  await expect(open).toHaveAttribute("href", emptySearchPath);
   await open.click();
-  await expect(page).toHaveURL(/\/baslik\/zzzq%20deneme$/u, { timeout: 20_000 });
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("zzzq deneme");
+  await expect(page).toHaveURL(new RegExp(`${emptySearchPath}$`, "u"), { timeout: 20_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(emptySearchQuery);
 });
 
 test("a segment that cannot be a title still renders the Turkish 404", async ({ page }) => {
@@ -559,10 +563,12 @@ test.describe("header search autocomplete", () => {
     const input = page.locator("#header-search");
     await expect(input).toHaveAttribute("role", "combobox", { timeout: 20_000 });
 
-    await input.fill("zzzq deneme");
-    const option = page.getByRole("option", { name: "«zzzq deneme» başlığını aç" });
+    // Gerçek kelime "deneme", seed içindeki "denemeleri" ile fuzzy eşleşir.
+    // Boş sonuç senaryosu için Türkçe başlıklara benzemeyen iki token kullan.
+    await input.fill(emptySearchQuery);
+    const option = page.getByRole("option", { name: emptySearchLabel });
     await expect(option).toBeVisible({ timeout: 20_000 });
-    await expect(option).toHaveAttribute("href", "/baslik/zzzq%20deneme");
+    await expect(option).toHaveAttribute("href", emptySearchPath);
   });
 });
 
