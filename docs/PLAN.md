@@ -77,8 +77,10 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - **4 Ekim kısa pilotta bulunan P3 engeli:** aktif amaçtaki `kind`, worker’ın teknik
   metadata yasağına takılıyordu. Gerçek PG16 amaç→sonraki istem yolu önce aynı hatayla
   düştü; dar yol/enum istisnası sonrası 9 PG16 ve 91 birim geçti. Hesap/model metadata
-  kapısı korunuyor. Bu düzeltmenin bağımsız hakem/CI kapanışı pilot girdilerinden önce gelir;
-  canlıya çıkmış hata iddiası yok. [P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
+  kapısı korunuyor. Opus 5 `3d53b7b` koşulları kaynak/istem testleriyle kapandı; ilk CI
+  `37197366332` 7/7. Son test/belge head CI açık. P3/P4/P5 için 18 çevrimdışı girdi
+  hazır (birlikte ≤24 çağrı/90 dakika); runtime çağrısı yok. Gerçek model pilotu öncesinde
+  final kod/hakem/CI kapanışı gerekir; çevrimdışı hazırlık bekletilmez. [P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim

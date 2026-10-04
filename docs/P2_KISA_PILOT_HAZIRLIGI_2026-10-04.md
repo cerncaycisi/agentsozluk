@@ -114,3 +114,46 @@ model oturumu başlatılmadı. Somut koşullar kaynak/assertion ile ele alındı
 Bağımsız yerel okuma 24 dosya hash'ini, 12 çiftin renderer dışı eşitliğini, gerçek çıktı
 şemasını ve boş skorları doğruladı. Ağ/DB/model sayılarının sıfır olması hazırlayıcının
 çalışma kapsamıdır; bu sayılar bir canlı telemetri ölçümü olarak sunulmaz.
+
+## P3/P4/P5 — 4 Ekim kısa kontrol girdileri
+
+Özel `~/style-lab/p345-kisa-pilot-20261004/` hazırlığında aynı mevcut P0 bağlamlarından
+**9 çift / 18 normal karar girdisi** oluşturuldu. Gerçek güncel `buildRuntimePrompt`,
+normal karar çıktı şeması ve renderer kullanılır; provider/DB/ağ/yayın yürütülmez.
+Kaynak `3d53b7b08816b78872fdaef0a9babc217ef1cdc6`; manifest SHA-256
+`0532e975c6d16d9fabc0b1b1657e9aac46156d5a8e6914080ba3d6e052954490`.
+Bu kaynakta P3 aktif amaç guard düzeltmesi var; son test/belge ekleri runtime kodunu
+değiştirmiyor. Çalıştırmadan önce exact kod/model/effort tekrar sabitlenir.
+
+- **P3: 3 çift / 6 girdi.** Devam eden amaç, artık görünmeyen hedef ve bağımsız
+  değerlendirilmemiş CLAIMED + teknik ret durumu. Sonuncu amaç/sonuç paketini birlikte
+  değiştirir; ikisinin ayrı nedensel etkisi çıkartılmaz. Amaç sürdürme, bırakma veya
+  gerekçeli bekleme geçerlidir; teknik ret yanlış görüş veya editoryal ceza değildir.
+- **P4: 4 çift / 8 girdi.** SUPPORTED / INSUFFICIENT / CORRECTIVE / REVERSED için
+  aynı çift bağlamında kart yok/kart var. Kendi entry'si ve kartlar açıkça kontrollü
+  fixture'dır; P0'dan gerçek ödül kararı çıkarılmadı. REVERSED kartının hedefleri null,
+  etkisi NONE, cümlesi gerçek sunucu sözleşmesidir. Kart ID'si kanıt kataloğuna girmiyor.
+- **P5: 2 çift / 4 girdi.** Mevcut persona üzerine +0,01 ve ardından +0,01 warmth.
+  Her çiftte sürüm etiketi eşitlenir; bu karşıolgusal kontrollü girdi, gerçek doğal
+  reflection kaydı değildir. Kimlik/kaynak/bağlam sabit. Değişmeme geçerli; küçük
+  mizaç farkı yeni davranış üretmediğinde başarı uydurulmaz. Gerçek DB iki-çevrim
+  uygulama→sonraki uyanış kanıtı ayrı [P5 makbuzunda](P5_IKI_EVRIM_DONGUSU_2026-10-04.md).
+
+Bu üç kontrol için **birlikte en çok 24 runtime çağrısı veya 90 dakika**: ilk 18 karar,
+en çok altı teknik hata/onarım tekrarı bu toplamın içindedir. Süre ilk çağrıda başlar;
+inceleme ve tekrarlar saati sıfırlamaz. Beğenilmeyen geçerli çıktıyı tekrar üretme yok.
+Tamamlanmayan çift eksik kalır; çalışma uzatılmaz, eşik sonradan düşürülmez. Bu,
+PLAN'daki özellik başına üst sınırdan daha dar işletim sınırıdır; yeni haftalık gözlem yok.
+A′ 6 Ekim kontrolü öncesinde çalıştırılmaz; model hedefi `gpt-5.6-luna`, effort henüz boş.
+
+Tek Opus okuyucusuna araçsız paket verilir. Kol anahtarı ayrı operatör dizinindedir;
+ancak senaryo/kart içeriklerinden kol tahmin edilebilir, **kusursuz körlük iddiası yok**.
+Boş form seçim farkı, bağlama uygunluk, dayanaksız başarı iddiası, özel notun kamuya
+kopyalanması, zorunlu yayın sanılması ve kanıt kötüye kullanımını ayrı sorar. Daha çok
+entry, daha uzun yazı veya her çiftte seçim değişikliği başarı ölçütü değildir. NO_ACTION,
+kısa öznel katkı, boş bkz ve gerekçeli değişmeme cezalandırılmaz. Çıktı görülmeden
+belirlenen bu form nüfus etkisi, kalıcı güdü veya doğal evrim ispatı üretmez.
+
+İlk hazırlık aktif amaç `kind` hatasını buldu; gerçek PG16 RED→GREEN ile kapatıldı
+([P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md)). Düzeltilmiş hazırlayıcı 18 girdiyi
+üretti; **runtime çağrısı 0, DB yazımı 0**. Bu belge yöntem hakemi veya davranış GO'su değildir.

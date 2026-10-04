@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { purposeKinds } from "@/modules/agents/domain/purpose";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   RuntimeControlPlaneError,
@@ -1266,34 +1267,56 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("otomatik tamamlama kuyruğu");
   });
 
-  it.each(["UNDERSTAND_CONCEPT", "TEST_BELIEF", "EXPLORE_CONTRIBUTION"])(
-    "renders semantic purpose kind %s without allowing account metadata",
+  it.each(purposeKinds)(
+    "renders semantic purpose kind %s through normal and browse prompts",
     (kind) => {
       const context = fixtureContext(randomUUID());
-      context.perception.purposes = [{ id: randomUUID(), kind, question: "Kavramı anlamak" }];
+      const purposeId = randomUUID();
+      context.perception.purposes = [{ id: purposeId, kind, question: "Kavramı anlamak" }];
       expect(buildRuntimePrompt(context)).toContain(`"kind":"${kind}"`);
+      expect(buildBrowsePrompt(context, [])).toContain(`"kind":"${kind}"`);
+      const parsed = parseRuntimeDecisionOutput(canonicalNormalOutput("Amaç bağlamı kontrolü."));
+      if (!parsed.success) throw parsed.error;
+      const worthinessPrompt = buildActionWorthinessPrompt(context, parsed.data);
+      expect(worthinessPrompt).not.toContain(purposeId);
+      expect(worthinessPrompt).not.toContain(`"kind":"${kind}"`);
     },
   );
 
   it.each([
-    { purposes: [{ kind: "AGENT" }] },
-    { purposes: [{ kind: "UNKNOWN_PURPOSE" }] },
-    { purposes: [{ kind: { provider: "must-not-pass" } }] },
-    { purposes: [{ kind: "TEST_BELIEF", model: "must-not-pass" }] },
-    { purposes: [{ kind: "TEST_BELIEF", nested: { kind: "TEST_BELIEF" } }] },
-    { purposes: { kind: "TEST_BELIEF" } },
-    { purposes: [[{ kind: "TEST_BELIEF" }]] },
-    { purposes: [{ Kind: "TEST_BELIEF" }] },
-    { recentEntries: [{ kind: "TEST_BELIEF" }] },
-  ])(
-    "keeps the purpose-kind exception confined to exact semantic values and path: %j",
-    (perception) => {
-      const context = fixtureContext(randomUUID());
-      expect(() => buildRuntimePrompt({ ...context, perception })).toThrow(
-        "RUNTIME_CONTEXT_FORBIDDEN_METADATA:",
-      );
+    { perception: { purposes: [{ kind: "AGENT" }] }, path: "perception.purposes[0].kind" },
+    {
+      perception: { purposes: [{ kind: "UNKNOWN_PURPOSE" }] },
+      path: "perception.purposes[0].kind",
     },
-  );
+    {
+      perception: { purposes: [{ kind: { provider: "must-not-pass" } }] },
+      path: "perception.purposes[0].kind",
+    },
+    {
+      perception: { purposes: [{ kind: "TEST_BELIEF", model: "must-not-pass" }] },
+      path: "perception.purposes[0].model",
+    },
+    {
+      perception: { purposes: [{ kind: "TEST_BELIEF", nested: { kind: "TEST_BELIEF" } }] },
+      path: "perception.purposes[0].nested.kind",
+    },
+    { perception: { purposes: { kind: "TEST_BELIEF" } }, path: "perception.purposes.kind" },
+    {
+      perception: { purposes: [[{ kind: "TEST_BELIEF" }]] },
+      path: "perception.purposes[0][0].kind",
+    },
+    { perception: { purposes: [{ Kind: "TEST_BELIEF" }] }, path: "perception.purposes[0].Kind" },
+    {
+      perception: { recentEntries: [{ kind: "TEST_BELIEF" }] },
+      path: "perception.recentEntries[0].kind",
+    },
+  ])("rejects forbidden metadata at the exact path $path", ({ perception, path }) => {
+    const context = fixtureContext(randomUUID());
+    expect(() => buildRuntimePrompt({ ...context, perception })).toThrowError(
+      new Error(`RUNTIME_CONTEXT_FORBIDDEN_METADATA:${path}`),
+    );
+  });
 
   it("fails closed when forbidden ontology metadata is nested inside perception", () => {
     const context = fixtureContext(randomUUID());

@@ -135,3 +135,31 @@ Son **91 birim PASS** (worker 88, amaç 3), **9 gerçek PG16 amaç senaryosu PAS
 122 diğer runtime senaryosu bu odaklı PG koşusunda çalışmadı. Gerçek iki aktif amaç
 kaydı artık normal karar istemine taşınır. Runtime model çağrısı/üretim yazımı yok.
 Bağımsız Opus ve exact CI sonucu ayrıca kaydedilecektir. Kısa pilot henüz çalışmadı.
+
+### Opus koşulları ve gerçek istem yolları
+
+Exact `3d53b7b08816b78872fdaef0a9babc217ef1cdc6`, gerçek `claude-opus-5`:
+**KOŞULLU GO**, istismar edilebilir izin aktarımı/ontoloji sızıntısı bulunmadı.
+İlk `opus` alias çağrısı `claude-opus-5-5` döndürdüğü için zorunlu hakem kaydı
+sayılmadı; ikinci çağrı exact `claude-opus-5` ile sabitlendi. Tarihsel model adları
+ve ilk çıktı korunur. Araçlar/MCP/skills kapalı; hakem verilen kaynağı okudu, test çalıştırmadı.
+
+- G6 kapandı: `assertNoForbiddenContextMetadata` başka dış çağırana sahip değil;
+  iki iç recursive çağrı ve `projectRuntimePerception` kök çağrısı var. Yasak listenin
+  son alanı `lifecycleStatus`; amaç projeksiyonunda bu yok. Gerçek PG test de geçiyor.
+- G1 kapandı: AW aynı korumayı **daraltmadan önce** çağırır; ardından
+  `projectActionWorthinessPerception` amaçları taşımaz. Yeni üç-enum testi normal ve
+  BROWSE istemlerinin türü taşıdığını, AW üretiminin geçip amaç kimliği/türünü
+  taşımadığını doğrular. Bu yalnız builder doğrulamasıdır; yeni provider koşusu değil.
+- G2 kaynakla daraltıldı: `repository/purposes.ts:17` `findPurposeTopicRecords`
+  zaten yalnız `{id,title}` seçer; ham bütün topic satırı döndürmez. Üretici sınırı korunur.
+- G3 mevcut BROWSE doğrudan serileştirmesi değiştirilmedi; burada semantic kind zaten
+  taşınıyordu. Yeni teknik metadata izni açılmadı.
+- G4/G5: negatif testler beklenen **tam hata yolunu** doğrular; pozitif set kapalı domain
+  `purposeKinds` dizisinden türetilir ve test adı gerçek assertion kapsamını söyler.
+
+Bu kapanışlardan sonra **91/91 birim tekrar PASS**. Üretim kodu hakem SHA'sıyla aynı;
+son ekler test/belgedir. Tam exact CI koşulu halen ayrı, sonuç alınmadan birleşmez.
+
+İlk hakem SHA `3d53b7b` CI `37197366332` **7/7 PASS**; atlanan runtime senaryoları
+CI database/coverage kapılarında geçti. Son test/belge head ayrıca exact CI alır.
