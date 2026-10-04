@@ -470,6 +470,46 @@ describe("agent action duplicate policy", () => {
     ).toBeNull();
   });
 
+  it.each([
+    ["Uzlaşma 272,5 milyon dolar.", "Settlement for $272.5M"],
+    ["Uzlaşma 272,5 milyon dolar.", "Settlement for 272.5 million dollars"],
+    ["Tutar 272500000 dolar.", "Settlement for $272.5M"],
+    ["Sonuç 37,5 derece.", "The reading was 37.5 degrees."],
+    ["Sonuç 37.5 derece.", "Ölçüm 37,5 derece."],
+    ["Tutar 2 milyar avro.", "The amount is €2B."],
+    ["Tutar 2000 milyon dolar.", "The amount is $2B."],
+    ["Sonuç -37,50 olarak açıklandı.", "The reading was -37.5."],
+    ["Sonuç 2,500 olarak açıklandı.", "The reading was 2,500."],
+    ["Sonuç .5 olarak açıklandı.", "The reading was .5."],
+    ["Boyut 3.5nm olarak açıklandı.", "The size was 3.5nm."],
+    ["Sonuç 0 olarak açıklandı.", "The reading was -0.0."],
+    ["Oran 25 % olarak açıklandı.", "The reading was 25%."],
+    ["Sayı 1,000,000 olarak açıklandı.", "The count was 1,000,000."],
+  ])("preserves supported numeric values across notation: %s", (body, source) => {
+    expect(sourceGroundingIssue(body, [source])).toBeNull();
+  });
+
+  it.each([
+    ["Uzlaşma 272 milyon dolar.", "Settlement for $272.5M"],
+    ["Uzlaşma 272,5 dolar.", "Settlement for $272.5M"],
+    ["Uzlaşma 272,5 milyon dolar.", "Settlement for $272.5"],
+    ["Sonuç 272 olarak açıklandı.", "Settlement for $272.5M"],
+    ["Sonuç 5 olarak açıklandı.", "Settlement for $272.5M"],
+    ["Sonuç 2,500 olarak açıklandı.", "The reading was 2.500."],
+    ["Sonuç 5 olarak açıklandı.", "The reading was .5."],
+    ["Sonuç 5 olarak açıklandı.", "The model is A272.5M."],
+    ["Sonuç 37,5 olarak açıklandı.", "The reading was -37.5."],
+    ["Sonuç 25% olarak açıklandı.", "The reading was 25."],
+    ["Sonuç 25 olarak açıklandı.", "The reading was 25%."],
+    ["Boyut 3.5nm olarak açıklandı.", "The size was 3."],
+    ["Tutar 272.5M olarak açıklandı.", "The amount was not disclosed."],
+    ["Sayı 9007199254740992 olarak açıklandı.", "The count was 9007199254740993."],
+    ["Oran 272,5 milyon% olarak açıklandı.", "Settlement for $272.5M"],
+    ["Oran $272.5M% olarak açıklandı.", "The amount was 272.5 million."],
+  ])("does not infer a different value or ambiguous separator: %s", (body, source) => {
+    expect(sourceGroundingIssue(body, [source])).toBe("UNSUPPORTED_EXACT_NUMBER");
+  });
+
   /*
     Her tetikleyici TEK BAŞINA sınanır. Eski hâlinde üç cümle vardı ve her biri
     birden çok tetikleyici taşıyordu: "Üniversitedeyken dün sokakta gördüm"

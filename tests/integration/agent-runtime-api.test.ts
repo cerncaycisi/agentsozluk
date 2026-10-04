@@ -8211,7 +8211,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
   it("grounds exact source claims and requires strong independent evidence for serious claims", async () => {
     const fixture = await createFixture();
     const topics = await Promise.all(
-      Array.from({ length: 9 }, (_, index) =>
+      Array.from({ length: 11 }, (_, index) =>
         createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
           title: `runtime provenance guard ${index}`,
           entryBody:
@@ -8256,7 +8256,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const trustedItem = await createSourceItem({
       domain: "trusted-evidence.test",
       status: "TRUSTED",
-      safeText: "Kaynak payı 18 olarak verir ve “geçiş bu yıl başladı” ifadesini kullanır.",
+      safeText:
+        "Kaynak payı 18 olarak verir ve “geçiş bu yıl başladı” ifadesini kullanır. Settlement for $272.5M.",
     });
     const probationOne = await createSourceItem({
       domain: "probation-one.test",
@@ -8446,11 +8447,35 @@ describe("internal agent runtime API with PostgreSQL", () => {
                 "Genel model bilgisi exact run'a bağlı fakat alıntı kaynağı değildir.",
             },
           },
+          {
+            sequence: 10,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Aynı kaynak tutarı Türkçe sayı gösterimiyle aktarılıyor.",
+            targetType: "TOPIC",
+            targetId: topics[9]!.topic.id,
+            input: {
+              topicId: topics[9]!.topic.id,
+              body: "Uzlaşmada kararlaştırılan ödeme 272,5 milyon dolar.",
+            },
+            provenance: sourceProvenance("TRUSTED_SOURCE", [trustedItem.id]),
+          },
+          {
+            sequence: 11,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Ondalığın tamsayı parçası ayrı bir tutarı desteklememelidir.",
+            targetType: "TOPIC",
+            targetId: topics[10]!.topic.id,
+            input: {
+              topicId: topics[10]!.topic.id,
+              body: "Uzlaşmada kararlaştırılan ödeme 272 dolar.",
+            },
+            provenance: sourceProvenance("TRUSTED_SOURCE", [trustedItem.id]),
+          },
         ],
       }),
     );
     const results = [];
-    for (const sequence of [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    for (const sequence of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
       results.push(
         await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
@@ -8468,6 +8493,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
         ["SUCCEEDED", null],
         ["REJECTED", "SERIOUS_CLAIM_SOURCE_INSUFFICIENT"],
         ["REJECTED", "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED"],
+        ["SUCCEEDED", null],
+        ["REJECTED", "SOURCE_EXACT_NUMBER_UNSUPPORTED"],
       ],
     );
   });
