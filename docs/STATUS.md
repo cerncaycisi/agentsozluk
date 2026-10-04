@@ -4250,3 +4250,22 @@ sequence, t sütunu/uyumsuz ad/public dışı veri ilişkisi **0**. Yalnız prov
 OID/sahip bağlı DB temizlendi. Veri satırı restore'u/üretim erişimi yok; O3 tam restore değil.
 Tekrarlama: kirlenmiş fixture'da beklenen mismatch'i yeni davranış kanıtı sayma; ilk ve
 ikinci hakem gerekçesi çelişirse gizleme, mevcut kapsamı gerçek kaynakla doğrula.
+
+## 4 Ekim 2026 — O3 doğrulayıcı kodunun exact teslimi
+
+#324 final `c667e69275fcb5ea8e5753e37a9532f865183612`, exact CI `37222466378` **7/7 PASS**.
+Squash main `7af04c6e38f3e57278229512e6f728c24188447f`; taze head/base/check/review/CLEAN
+ve uzak main/test edilen ağaç eşliği doğrulandı. Önceki `3047674` CI `37221790973` de
+7/7 PASS. Yerel son 21 makbuz + 2 entegrasyon = 23, önceki 22 shell PASS;
+format/lint/typecheck/gereksinimler ve iki sentetik CLI yolu geçti.
+
+Gerçek Opus 5 üçüncü dar uzlaştırmada exact `c667e69` için **KOŞULLU GO (yalnız yardımcı
+kod kabulü)** verdi. B2 itirazını önceki F1 ile çeliştiği için geri çekti; B1 temiz test
+tabanı ve K1 gerçek şema/ad uyumu kapandı. Üç çağrının actual modelUsage değeri yalnız
+claude-opus-5; Astra hakem turu yok. Son görüşün hata kodu, sequence ve kapsam notları
+O3 belirtiminde açık; tam restore veya üretim yetkisi verdiği iddia edilmez.
+
+Seçilen native dump checksum'ı tekrar geçti; yerel schema-only kopyası 50 tablo/3
+sequence için uyumlu ve OID/sahip eşliğiyle temizlendi. Veri satırları yüklenmedi.
+Yardımcı kod teslimi tamam; 5 Ekim otomatik yedek ve A′ sonrası 7 Ekim gerçek restore
+kapıları açık. Gzip pin korunuyor. Yeni uygulama dağıtımı veya üretim mutasyonu yok.

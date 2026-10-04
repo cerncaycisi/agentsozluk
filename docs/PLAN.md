@@ -378,9 +378,13 @@ checksum/50 tablo/3.270.401 satır/tam blok decode PASS; yedi normal kopya ve gz
 korundu. Boş alan **6.679.306.240 bayt**. Timer aktif, sonraki iş 5 Ekim 01:39 UTC.
 Kurulum/ilk yeni yedek tamam; 5 Ekim otomatik makbuz ve 7 Ekim tam DB restore açık.
 4 Ekim yerel restore makbuz aracı hazırlandı: ad/OID bağlı READ ONLY SQL ve tam tablo/
-sequence karşılaştırması; ilk 43, Opus koşulları sonrası son 23 ilgili test PASS.
-İlk exact `4816c66` CI 7/7; final hakem/CI açık. Bu hazırlık tam üretim restore değildir; süreç sınırı/izole hedef makbuzu
-çalışma gününde ayrıca uygulanır.
+sequence karşılaştırması #324 ile tamam: final `c667e69`, CI `37222466378` **7/7**,
+main `7af04c6`; uzak SHA/test edilen ağaç eşliği PASS. Opus dar kapanışta B2 itirazını
+geri çekti, B1/K1 kapandı; KOŞULLU GO'nun kapsam notları makbuzda açık. Son 23 ilgili
+ve önceki 22 shell testi PASS. Gerçek native arşivin yerel schema-only kontrolü 50 tablo/3
+sequence için uyumlu, kendi kopyası temizlendi; veri satırları restore edilmedi.
+Yardımcı kod işi aktif hazırlıktan çıktı. 5 Ekim otomatik yedek ve 7 Ekim tam restore
+aynen açık; süreç sınırı/izole hedef makbuzu çalışma gününde ayrıca uygulanır.
 Yedek yükü A′ döneminin operasyonel etkisi olarak kaydedildi. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
