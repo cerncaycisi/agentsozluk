@@ -1440,11 +1440,7 @@ export async function leaseRuntimeRun(
         ))
     )
       return { run: null, reason: "NOT_ACTIVE" };
-    const rolloutDate = await pauseExpiredProductionRollout(
-      transaction,
-      principal.actor,
-      new Date(),
-    );
+    const rolloutDate = await pauseExpiredProductionRollout(transaction, principal.actor, now);
     if (rolloutDate.expired) return { run: null, reason: "ERROR_PAUSED" };
     if (!settings.runtimeEnabled) return { run: null, reason: "PAUSED" };
     const maintenanceMode = settings.runtimeOperatingMode === "MAINTENANCE";

@@ -1151,6 +1151,29 @@ describe("prepared writer HTTP and source collection boundaries", () => {
         expect(await db.agentMemoryEpisode.count({ where: { agentProfileId: child.id } })).toBe(
           memoriesBefore,
         );
+        expect(
+          await completeRuntimeRun(
+            db,
+            principal,
+            sourceRun.id,
+            runtimeCompleteSchema.parse({
+              ...completion,
+              purposeChanges: [
+                {
+                  operation: "CREATE",
+                  kind: "UNDERSTAND_CONCEPT",
+                  targetType: "TOPIC",
+                  targetId: randomUUID(),
+                  question: "Kaynak hazırlığında amaç yazılabilir mi?",
+                },
+              ],
+            }),
+          ),
+        ).toMatchObject({
+          runStatus: "PARTIAL",
+          purposes: { status: "REJECTED", reasonCode: "PURPOSE_NORMAL_WAKE_REQUIRED" },
+        });
+        expect(await db.agentPurpose.count({ where: { agentProfileId: child.id } })).toBe(0);
       } else {
         await recordRuntimeActions(
           db,

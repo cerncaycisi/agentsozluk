@@ -15,6 +15,9 @@
   reddi, reflection/ek hafıza yazma reddi ve sıradan PAUSED regresyonları geçti.
 - Son **62 doğum/manual + 9 onboarding/runtime PG16 PASS**; 126 diğer runtime
   senaryosu atlandı. Son kod hakemi/CI açık; eski ilk63 koşusunun yerine geçirilmedi.
+- Opus5 `4ed82c2` KOŞULLU GO koşulları kaynak ve yeni9PG ile kapandı: purpose kolu
+  SOURCE_REFRESH'te kayıt yazmıyor; timer cleanup mevcut, rollout tek now kullanıyor;
+  public bayrakları nonPublishing yolu kapatıyor. SonCI açık. Final9 koşuda165 test atlandı.
 - 12:25–12:27 salt okunur canlı kapasite: banka22 URL'sinin13'ü holdercap5; izinli140
   havuzda47 sınırda. Hazırlık bu bankayla haklı reddedilir; banka onarımı açık. Canlı
   profil/ayar/kaynak değişmedi; kaynak sınırı gevşetilmedi.

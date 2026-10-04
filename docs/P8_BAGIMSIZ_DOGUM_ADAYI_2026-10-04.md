@@ -433,3 +433,20 @@ yeni entry yok. Format/lint/typecheck/requirements/OpenAPI (153 operation) PASS.
 
 Ayrı onboarding ve mevcut action/rollout/lifecycle korumaları: **9 PG16 PASS**;
 126 diğer runtime testi bu odakta atlandı. Yeni doğrulama toplamı62+9=71PG16'dır.
+
+İkinci gerçek Opus 5 kod incelemesi `4ed82c2` için **KOŞULLU GO** verdi. B1 yanlış
+kilit varsayımını geri çekti; B2/B3/B4/B6/B7 kapandı. N1 amacı için mevcut
+`applyRuntimePurposeChanges` yalnız NORMAL_WAKE kabul eder; doğrudan kaynak koşusu
+completion testi bu ret ve sıfır amaç kaydını da sınar. N2'de varsayılan timer sızıntısı
+yok: dosyanın global afterEach'i useRealTimers çağırır. Lease rollout kontrolü de
+aynı enjekte edilen `now` değerine bağlandı. N3 varsayımı yanlış: SOURCE_REFRESH
+nonPublishing'dir; varsayılan true kamu bayraklarının false yazıldığı ve işin kiralandığı
+zaten gerçek PG testinde görülüyor. Yeni simetrik422 genel sözleşmeye eklenmedi.
+
+**Pilotun bilinçli çıkmazı:** 14 gün geçerse bu hazırlanmış çocuk mevcut politika ve
+DB kısıtıyla aktive edilemez; ikinci hazırlık da açılmaz. Mevcut sürümde kurtarma yolu
+**yoktur**. Değişiklik ancak yeni incelenmiş politika/migration ile yapılabilir; elle
+SQL, trigger kapatma, silme veya otomatik emeklilik yok. Gelecekteki aktivasyon
+ACTIVATED+ACTIVE+audit'i **tek transaction** içinde yazmak zorundadır.
+Kaynak lease'i mevcut küresel critical-breaker auto-pause kontrolüne de tabidir;
+PAUSED hazırlık global sağlık korumasını aşmaz.

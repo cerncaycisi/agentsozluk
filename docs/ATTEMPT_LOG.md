@@ -4074,3 +4074,22 @@ false/true` yapabildi; geçici rol ve DB silindi.
   önceki63 ile aynı koşu veya tamamı runtime regresyonu diye gösterilmedi.
 - Son ilgili birim regresyonu **146/146 PASS**. Tür/lint/format kontrolleri ve ikinci
   Opus kod incelemesi bu kaydın hazırlanmasından sonra tamamlanacak.
+
+### 4 Ekim 2026 12:52–12:54 UTC — P8 Opus koşullarının kapanışı
+
+- Gerçek `claude-opus-5`, exact `4ed82c2d473182510ebf62bc9449d89f37572ac9`:
+  KOŞULLU GO (yalnız hazırlık). Çıktının yanlış Astra başlığı gerçek modeli değiştirmez;
+  auxiliary Haiku usage hakem sayılmadı. Ham görüş özel kayıtta değişmeden tutuldu.
+- N1: amaç servisi başta NORMAL_WAKE ister; PAUSED SOURCE_REFRESH completion'a CREATE
+  gönderilen yeni test `PURPOSE_NORMAL_WAKE_REQUIRED`, PARTIAL ve sıfır amaç kaydı
+  doğruladı. N2: global afterEach zaten useRealTimers içeriyor; sahte timer sızıntısı
+  yok. Rollout tarihine aynı enjekte edilen now geçirildi. N3: nonPublishing listesi
+  SOURCE_REFRESH içeriyor; true kamu varsayılanları false yazılır ve lease testi geçer.
+  Kaynak dışı simetrik422 önerisi uygulanmadı. B5/B8 çıkmaz/tek-TX koşulları belgelendi.
+- Kapanış odaklı gerçek PG16 **9/9 PASS**, diğer165 test atlandı. Önceki146birim ve
+  62+9PG kaydı ayrı tutulur; yeni geniş test toplamı gibi toplanmaz.
+- Sonraki banka düzeltmesinin yerel güvenli okuyucu kontrolü12:52:08–12:52:46UTC:
+  24/24 URL okunabilir,24/24 en az bir seçilmiş öğe. Bu static aday kontrolüdür;
+  üretimde yeni source/fetch/kimlik yazılmadı ve aktivasyon kanıtı değildir.
+- Tekrarlama: koşullu görüşü koşulsuz hakem GO diye yazma; eksik alıntıya dayanmış
+  varsayımı mevcut kaynak karşısında otomatik kod değişikliği gerekçesi yapma.
