@@ -149,7 +149,11 @@ exec "$command_name" "\${args[@]}"`,
     expect(() => verify()).toThrow("O3_UNVERIFIED_SCHEMA");
     sql(target, "DROP SCHEMA other_data CASCADE; SELECT lo_create(0)");
     expect(() => verify()).toThrow("O3_UNSUPPORTED_LARGE_OBJECT");
-    sql(target, "SELECT lo_unlink(oid) FROM pg_largeobject_metadata");
+    sql(
+      target,
+      "SELECT lo_unlink(oid) FROM pg_largeobject_metadata; UPDATE probe SET amount = amount - 1 WHERE id = 1",
+    );
+    expect(compareBackupRestore(metadata, verify()).result).toBe("O3_DATA_MATCH");
     expect(sql(target, "SELECT last_value || '|' || is_called FROM probe_id_seq")).toBe(
       beforeSequence,
     );
@@ -157,6 +161,13 @@ exec "$command_name" "\${args[@]}"`,
     // Aynı satır sayısıyla içerik bozulması gizlenemez.
     sql(target, "UPDATE probe SET payload = '{}' WHERE id = 1");
     expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_TABLE_MISMATCH");
+    sql(target, "DROP TABLE probe, empty_probe");
+    execFileSync(
+      "pg_restore",
+      ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
+      { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
+    );
+    expect(compareBackupRestore(metadata, verify()).result).toBe("O3_DATA_MATCH");
     sql(target, "DELETE FROM probe WHERE id = 1");
     expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_TABLE_MISMATCH");
 
@@ -167,6 +178,7 @@ exec "$command_name" "\${args[@]}"`,
       ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
       { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
     );
+    expect(compareBackupRestore(metadata, verify()).result).toBe("O3_DATA_MATCH");
     sql(target, "SELECT setval('probe_id_seq', 1, false)");
     expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_SEQUENCE_UNSAFE");
     sql(target, "SELECT setval('probe_id_seq', 1000, true)");

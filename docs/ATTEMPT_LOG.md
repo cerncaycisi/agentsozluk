@@ -4405,3 +4405,15 @@ SQL uygulaması değildir. Ham metadata formatı ve iki sentetik CLI yolu ayrıc
 Tekrarlama: yorum satırını veya dosya adını oturum/süreç sahipliği kanıtı sayma; assertion'ı
 gevşeterek başarısız test yardımcısını geçirme; kaynakla çelişen hakem gerekçesini kopyalama.
 İkinci inceleme/final CI açık; üretim restore/dağıtım yapılmadı.
+
+## 4 Ekim 2026 — O3 temiz test tabanı ve seçili yedeğin şema uyumu
+
+Opus 5 `3047674` görüşü DÜZELTİLMELİ: B1 test kirlenmesi doğrulandı. Her içerik/satır
+bozulması öncesi temiz eşlik assertion'ı eklendi; son 23 test PASS. B2, önceki F1'deki
+`t` kapısına genel şema desteği gerekçesiyle itiraz etti; sınırlı yardımcıda fail closed
+korunur, eski gönderici/hash sözleşmesi tek taraflı değiştirilmez. Bağımsız kapanış açık.
+17:53 UTC yerel native arşiv checksum tekrar PASS; schema-only geri yüklemede 50 tablo/3
+sequence, t sütunu/uyumsuz ad/public dışı veri ilişkisi **0**. Yalnız provanın oluşturduğu
+OID/sahip bağlı DB temizlendi. Veri satırı restore'u/üretim erişimi yok; O3 tam restore değil.
+Tekrarlama: kirlenmiş fixture'da beklenen mismatch'i yeni davranış kanıtı sayma; ilk ve
+ikinci hakem gerekçesi çelişirse gizleme, mevcut kapsamı gerçek kaynakla doğrula.
