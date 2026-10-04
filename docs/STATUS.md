@@ -7,6 +7,17 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — O5 içerik hedef sınırı yerelde
+
+- `8531f64` tabanında run/agent penceresinin sessiz ilk-500 kesilmesi kapatıldı:
+  500 üzeri seçim mutasyon öncesi 422; açık küçük seçim çalışır. Migration yok.
+- 501 kayıtlık sentetik hacimde dört çağrı hiçbir entry/audit/moderation/outbox/event
+  değiştirmedi; açık tek seçim yalnız bir entry'yi gizledi. Son 3 odaklı PG16 ve
+  5 birim/arayüz PASS. Opus `d5a75e6` KOŞULLU GO sonrası NO_MATCH ve seçim bağlamı
+  eklendi; son 4 PG16/7 birim-UI PASS. 127 runtime testi odaklı koşuda çalışmadı.
+  Final exact CI/canlı açık.
+  [O5 makbuzu](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
+
 ## 2026-10-04 — O3 native sıkıştırma yerel kanıtı
 
 - Mevcut 1.316 GB dump'ın yerel decode veri akışı zstd:3 ile 676.647.983 bayt;
@@ -16,7 +27,9 @@
 - 09:55 UTC canlı `9bf3653` PG16.14 binary zstd desteği pinli salt okunur kontrol edildi;
   DB/mutasyon yok. Opus `5b7bc73` KOŞULLU GO sonrası blok decode kapısı eklendi;
   TOC geçen kesik arşiv gerçek decode'da reddedildi. Son 23 test PASS. Gzip retention
-  dışında hardlink ile sabitlendi. Exact CI, atomik kurulum ve gerçek yeni yedek ölçümü açık.
+  dışında hardlink ile sabitlendi. #313 final `8531f64`, CI `37194424580` 7/7; main
+  `e8bb0e0`, uzak SHA/ağaç eşitliği ve push CI `37194998932` 7/7 PASS. Atomik
+  kurulum ve gerçek yeni yedek ölçümü açık.
   [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 
 ## 2026-10-04 — profil ayarı durum karşılaştırması yerelde
