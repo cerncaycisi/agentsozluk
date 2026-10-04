@@ -163,3 +163,12 @@ son ekler test/belgedir. Tam exact CI koşulu halen ayrı, sonuç alınmadan bir
 
 İlk hakem SHA `3d53b7b` CI `37197366332` **7/7 PASS**; atlanan runtime senaryoları
 CI database/coverage kapılarında geçti. Son test/belge head ayrıca exact CI alır.
+
+### #315 ana dal makbuzu
+
+Final `842e67a9af17e45ae50765a6c390afa7812c4be3`, CI `37198112214` **7/7 PASS**.
+Fresh exact head/base/check/review/CLEAN ardından squash main
+`d24add72a1c645df0375aefc6a6721504ecff821`; uzak SHA ve test edilmiş ağaç
+`10ac096647f016432ed01801b8b85761637f2af1` eşit. Son 91 birim ve 9 PG16,
+format/lint/typecheck/requirements PASS. Opus 5 `3d53b7b` koşulları yukarıdaki kaynak/
+assertion ve full CI ile kapandı. Canlı dağıtım yok; P3 davranış faydası kabulü değildir.

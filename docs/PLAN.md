@@ -78,9 +78,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   metadata yasağına takılıyordu. Gerçek PG16 amaç→sonraki istem yolu önce aynı hatayla
   düştü; dar yol/enum istisnası sonrası 9 PG16 ve 91 birim geçti. Hesap/model metadata
   kapısı korunuyor. Opus 5 `3d53b7b` koşulları kaynak/istem testleriyle kapandı; ilk CI
-  `37197366332` 7/7. Son test/belge head CI açık. P3/P4/P5 için 18 çevrimdışı girdi
-  hazır (birlikte ≤24 çağrı/90 dakika); runtime çağrısı yok. Gerçek model pilotu öncesinde
-  final kod/hakem/CI kapanışı gerekir; çevrimdışı hazırlık bekletilmez. [P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
+  `37197366332` ve final `842e67a` CI `37198112214` 7/7; #315 main `d24add7`.
+  Kod/hakem/CI işi tamam, canlı dağıtım açık. P3/P4/P5 için 18 çevrimdışı sözleşme
+  girdisi v2 hazır (okuyucu dahil toplam ≤24 model çağrısı/90 dakika); çağrı yok. [P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
 - **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
   işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim
@@ -241,6 +241,12 @@ başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime mode
   anlaşmazlıkta. Zorunlu kod hakemliği/benchmark ayrı ve korunur. Bütçe dolunca otomatik uzatma
   yok: sorun varsa düzelt, net değilse etkiyi BELİRSİZ kaydet. Belirsiz aday faydası kanıtlanmış
   sayılmaz; teknik kabulü geçen ilk sürümde yalnız küçük, kapatılabilir pilot etkisine izin verir.
+- **Sabit sözleşme kontrolü ayrı:** P3/P4/P5 v2 9 çift/18 girdi yalnız somut ihlal
+  arar; davranış faydası deneyi veya 6+6 karşılaştırmanın yerine geçmez. P5 yalnız gözlem,
+  diğerlerinde exact alıntılı ihlal/NO_FINDING/NOT_EXERCISED/INCOMPLETE vardır; PASS
+  oranı yok. A′ 6 Ekim kapısı geçerli. 18 karar + en çok 5 teknik tekrar + 1 Opus okuması,
+  toplam 24 çağrı/90 dakika; düzeltmede yeni bütçe otomatik açılmaz.
+  [V2 önkayıt](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
 - 24–48 saatlik ilk kullanım yalnız bariz arıza/ürün hatası taramasıdır; bağımlı kodun
   geliştirilmesini bekletmez ve resmî yedi günün yerine geçmez. Uzun dönem kalite/evrim
   izlemesi normal kullanımda sürer. P5 yerel zaman kontrollü testi doğal hafta gibi raporlanmaz.
@@ -268,13 +274,13 @@ başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime mode
 
 ## 4. Operasyon hattı — özelliklerden bağımsız korunacaklar
 
-| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                            |
-| ------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **O1** | Heartbeat #296, 6 Ekim                               | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                       |
-| **O2** | Kapasite, 15 Ekim                                    | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                              |
-| **O3** | Yedek/disk 5 Ekim; restore 7 Ekim                    | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
-| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                               |
-| **O5** | Diğer toplu komutların durum kararı, 17 Ekim         | Toplu kuyruğa alma #309 ile hazır; diğer komutların kapsamı/kullanım kanıtı ve dağıtım açık. Acil iptal/durdurma mevcut yetki/seri denetimleriyle sürer                    |
+| Kimlik | İş ve sonraki kontrol                                      | Kapanış / sınır                                                                                                                                                            |
+| ------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **O1** | Heartbeat #296, 6 Ekim                                     | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                       |
+| **O2** | Kapasite, 15 Ekim                                          | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                              |
+| **O3** | Yedek/disk 5 Ekim; restore 7 Ekim                          | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
+| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim       | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                               |
+| **O5** | Toplu komutların canlı kabulü/kesinti görünürlüğü, 17 Ekim | Kuyruk #309, profil #312, içerik #314 hazır; rota kapsam kararı kaynakla kapandı. Dağıtım/kullanım ve kesilen içerik isteğinde toplu makbuz görünürlüğü açık               |
 
 **O3 güncel olay:** 4 Ekim 01:31 UTC gecelik yedek yerel `DISK_LOW` ile durdu; önceki
 yedi kopya korundu. Kullanılmayan araç sürümü/paket/build cache temizliğiyle yerel boş alan

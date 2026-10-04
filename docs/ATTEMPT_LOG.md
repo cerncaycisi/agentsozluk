@@ -4000,3 +4000,24 @@ false/true` yapabildi; geçici rol ve DB silindi.
   Üç kontrolün toplam tavanı 24 çağrı/90 dakika; henüz çağrı/DB yazımı yok.
 - Tekrarlama: model alias'ını exact model kanıtı sayma; koşullu hakemi koşulsuz GO'ya
   çevirme; Opus'un eksik alıntı çekincesini kaynakta olmayan yeni güvenlik açığı sayma.
+
+### 4 Ekim 2026 — #315 kapanışı ve kısa sözleşme kontrolünün daraltılması
+
+- #315 final `842e67a9af17e45ae50765a6c390afa7812c4be3`, CI `37198112214` 7/7;
+  main `d24add72a1c645df0375aefc6a6721504ecff821`. Fresh merge/uzak SHA/test edilen
+  ağaç eşitliği PASS; birleşmiş dal kaldırıldı. Canlı kod `9bf3653` değişmedi.
+- Ayrı yöntem görüşünde gerçek Opus 5 ilk P3/P4/P5 metnine DÜZELTİLMELİ verdi.
+  Öznel PASS yerine exact alıntılı ihlal, NO_FINDING/NOT_EXERCISED/INCOMPLETE seçildi.
+  P3 amaç iddiası/teknik ret ayrıldı, P5 tek karşıolgusal gözleme indirildi; 9 çift/18
+  girdi korundu. Bütçe 18 karar + ≤5 teknik tekrar + 1 okuyucu = toplam≤24 model çağrısı,
+  inceleme dahil90dk. A′ kapısı zaten vardı; kaldırılmış gibi raporlanmadı.
+- Yeni bütçe açma ve özel kartı kanıt kataloğuna ekleme önerileri kabul edilmedi.
+  Kod/istem değişirse smoke kapanır; otomatik yeni çalışma yok. V2 manifest
+  `38221745769d42a4d9ea7267dd5c2317744e23cff2c84be3bed8f5dddeab95a0`, hazırlayıcı/
+  criteria hash'lerini bağlar; beyan edilen değişken farkları assertion ile doğrulandı.
+  Runtime çağrısı/DB yazımı0. İlk v1 özel dizinde korundu; aktif kuyruk PLAN'da uzlaştırıldı.
+- O5 kalan kaynak envanteri: yeni iş preview, dört acil iptal/stop yolu ve iki içerik
+  toplu yolu ayrıldı. Acil hedef sorgusu kesilmiyor; audit ID kesimi explicit omitted
+  sayısıyla görünür. Kapsam kararı tamam, canlı kullanım ve kesinti makbuzu B3 açık.
+- Tekrarlama: NO_FINDING'i PASS/iyileşme oranı yapma; saklı setsiz sözleşme kontrolünü
+  davranış faydası deneyine çevirme; Opus'un kaynak dışı varsayımını otomatik kabul etme.

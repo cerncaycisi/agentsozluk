@@ -250,3 +250,26 @@ review/CLEAN kontrolü yapıldı; uzak main ve test edilen head ağacı
 `b1b67ceb80991b1290da7a169cb36c62bbf5929d` aynı. Opus `d5a75e6` koşulları yukarıdaki
 kaynak/testlerle kapandı; yeni SHA için ayrı koşulsuz hakem sonucu iddia edilmez.
 Canlıya dağıtılmadı. B3 görünürlük sınırı ve diğer toplu komut kapsam kararı açık.
+
+## 4 Ekim kalan toplu komutların kapsam kararı
+
+`842e67a` kaynak envanteri; yeni üretim kullanımı veya ayrı yeni test koşusu değildir.
+Agent yönetimindeki toplu rota grupları aşağıdaki şekilde ayrıldı:
+
+| Grup                                                              | Kapsam kararı ve mevcut kanıt                                                                                                                                         |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent-runs/bulk/preview`, `agent-runs/bulk`                      | Yeni iş/maliyet üretir; #309 signed preview ve durum/süre/CAS kapısı gerekli ve hazır.                                                                                |
+| Global ve `[agentId]` `runs/cancel-pending`, `runs/graceful-stop` | Acil risk azaltır; yeni preview şartı eklenmez. Fresh admin ardından profile→run/lease kilidi ve güncel uygunluk tekrar okuması; sonuç/audit/outbox aynı transaction. |
+| `agent-content/bulk-hide`, `agent-content/bulk-restore`           | #314 sınır/NO_MATCH/seçim bağlamı ve her entry'de taze yetki. İşlem başındaki seçimin sınırı UI'da görünür; sonradan gelen entry dahil değildir.                      |
+
+`repository/manual-runs.ts:listBulkRunCommandCandidates` hedef listesini `take` ile
+kesmiyor; yalnız son audit ID dizisi sınırlı ve `omittedRunIdCount` açık. Global UI iki
+komutun etkisini confirmation ve gerçek etkilenen run sayısıyla gösterir. Aynı yönetici
+önizleme/iptal yarışması `agent-manual-runs.test.ts`, global/tek-profil iptal/stop ile
+çalışan action sıralaması `agent-runtime-api.test.ts` içinde mevcut; #315 full CI bu
+paketleri de geçti. Bu inceleme acil kontrol kodunu değiştirmedi.
+
+Kapsam/envanter kararı tamam. **O5 kapanmadı:** canlı dağıtım/kullanım makbuzu ve
+#314 B3 (istek kesilince tekil kayıtlar varken toplu makbuzun eksik kalması) görünürlük/
+uzlaştırma sınırı açık. Genel ayar CAS ve #312 profil CAS, yeni iş önizlemesinin yerine
+geçmez; ayrıca acil durdurmaya ek kapı haline getirilmez.

@@ -15,8 +15,10 @@
 - Exact amaç dizisi/üç enum değerine dar istisna sonrası **91 birim / 9 PG16 PASS**.
   Hesap/model metadata reddi korunuyor; 122 diğer runtime testi odaklı koşuda atlandı.
   Opus 5 `3d53b7b` KOŞULLU GO; kaynak/istem yolları ve tam hata yolu assertion
-  koşulları kapandı, son 91 birim tekrar PASS. Final exact CI/canlı açık.
-  P3/P4/P5 için 9 çift/18 çevrimdışı karar girdisi oluştu; model çağrısı yok.
+  koşulları kapandı, son 91 birim tekrar PASS. Final `842e67a` CI `37198112214` 7/7;
+  #315 main `d24add7`, uzak SHA/ağaç aynı. Canlı dağıtım açık.
+  P3/P4/P5 v2 9 çift/18 çevrimdışı sözleşme girdisi hazır; P3 8/P4 8/P5 2 girdi.
+  Okuyucu dahil toplam ≤24 model çağrısı/90 dakika, henüz çağrı yok; fayda/GO iddiası yok.
 - [P3 kanıtı](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
 
 ## 2026-10-04 10:37–10:49 UTC — yedek kurulumu ve sağlık kesiti
