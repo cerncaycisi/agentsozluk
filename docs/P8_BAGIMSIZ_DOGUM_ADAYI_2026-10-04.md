@@ -319,4 +319,9 @@ Yeni banka hash'i `e774c1e4c83120a24877e37757de1c395a8130c2ff6a8a2d3f2f38a822f49
 okuması sonradan yapıldı. Hiçbir üretim kaydı/ayar/istem değiştirilmedi. Arkitera ağırlığı
 ve eski on kaynak sırası korundu; iki başarısız isteğe dayanarak kaynak düşürülmedi.
 Koşullar kaynak/ölçüm/testle kapatılır; hakemin ilk koşullu görüşü yeni-SHA koşulsuz
-incelemesi diye adlandırılmaz. Son exact CI ve birleşme makbuzu ayrıca kaydedilir.
+incelemesi diye adlandırılmaz.
+
+#311 final `c53f8c3b5cb5e71b237f9cc11e8b5a0a754daf62`, CI `37191249963` **7/7**;
+main `8aeeb0a15849073454e12ad3777de7f6eb49b420`. Fresh head/base/review/CLEAN/MERGEABLE,
+uzak SHA ve squash ağacı eşitliği doğrulandı. Son 38 test ve yerel kalite kapıları PASS;
+üretim kaynak havuzu/persona snapshot'ı değiştirilmedi. Gerçek aday hazırlığı/aktivasyonu açık.

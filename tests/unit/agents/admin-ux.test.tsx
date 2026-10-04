@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-environment-options {"url":"http://localhost:3000/moderasyon/agentlar"}
 
 import { ClientApiError } from "@/lib/http/client";
 
@@ -188,6 +189,7 @@ describe("agent admin UX contracts", () => {
         agentId={agentId}
         persona={persona}
         personaVersion={4}
+        profileStateHash={"a".repeat(64)}
         profile={profile}
       />,
     );
@@ -216,6 +218,7 @@ describe("agent admin UX contracts", () => {
             // Form açılırken okunan sürüm CAS token'ı olarak geri gider; araya giren
             // düzenleme olduysa sunucu 409 döner, bayat form sessizce yazılmaz.
             expectedPersonaVersion: 4,
+            expectedProfileStateHash: "a".repeat(64),
             persona: expect.objectContaining({
               username: persona.username,
               temperament: expect.objectContaining({ curiosity: 0.88 }),
@@ -229,6 +232,53 @@ describe("agent admin UX contracts", () => {
 
     await user.click(screen.getByRole("tab", { name: "Gelişmiş" }));
     expect(screen.getByLabelText("Persona JSON/YAML (JSON)")).toBeVisible();
+  });
+
+  it("keeps an open profile draft bound to its original read when server props refresh", async () => {
+    mocks.apiRequest.mockResolvedValue({});
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <AgentPersonaEditForm
+        agentId={agentId}
+        persona={persona}
+        personaVersion={4}
+        profileStateHash={"a".repeat(64)}
+        profile={profile}
+      />,
+    );
+    const timeout = screen.getByLabelText("Manual timeout (saniye)");
+    await user.clear(timeout);
+    await user.type(timeout, "720");
+    rerender(
+      <AgentPersonaEditForm
+        agentId={agentId}
+        persona={{
+          ...persona,
+          publicBio: "Sunucuda başka bir yönetici tarafından güncellenen uzun biyografi.",
+        }}
+        personaVersion={5}
+        profileStateHash={"b".repeat(64)}
+        profile={{ ...profile, manualTimeoutSeconds: 840 }}
+      />,
+    );
+    expect(screen.getByLabelText("Manual timeout (saniye)")).toHaveValue(720);
+    await user.click(screen.getByRole("button", { name: "Profil ayarlarını kaydet" }));
+    await waitFor(() =>
+      expect(mocks.apiRequest).toHaveBeenCalledWith(
+        `/api/v1/admin/agents/${agentId}`,
+        expect.objectContaining({
+          body: expect.objectContaining({
+            expectedPersonaVersion: 4,
+            expectedProfileStateHash: "a".repeat(64),
+            manualTimeoutSeconds: 720,
+          }),
+        }),
+      ),
+    );
+    const payload = mocks.apiRequest.mock.calls[0]?.[1]?.body;
+    expect(payload).not.toHaveProperty("persona");
+    expect(mocks.push).toHaveBeenCalledWith(`/moderasyon/agentlar/${agentId}`);
+    expect(mocks.refresh).toHaveBeenCalled();
   });
 
   it("confirms persona rollback with visible success feedback", async () => {

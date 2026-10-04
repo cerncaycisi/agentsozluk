@@ -97,3 +97,83 @@ Final `113f3aa8ab3d29be130f448988597520032c1ac7`, CI `37184176713` **7/7 PASS**;
 head/base, review durumu ve CLEAN doğrulandı; uzak SHA/ağaç eşitliği geçti, dal silindi.
 Son 50 test/kalite kapıları PASS; 100 hedefin son tekrarında 193 ms preview / 548 ms
 queue ölçüldü. E2E final exact CI'da da geçti. Üretim dağıtımı henüz yapılmadı.
+
+## Profil çalışma ayarlarının kayıp güncelleme koruması — 4 Ekim
+
+O5'in profil-only CAS notu kaynakta doğrulandı: iki açık form aynı persona sürümündeyken
+ilk kaydın çalışma ayarını ikinci form sessizce geri yazabiliyordu. Profil kilidi işlemleri
+sıralıyor, fakat ilk okunan ayar durumunu karşılaştırmıyordu. Persona sürümünü sırf ayar
+kaydetmek için artırmak karakter evrimi değildir; bu yola gidilmedi.
+
+Yönetici detay yanıtı `profileStateHash` taşır. Hash sürümü 1; profil ID'si ve mevcut audit
+snapshot'ındaki kimlik/persona sürümü, lifecycle ve beş çalışma ayarı kanonik SHA-256 ile
+bağlanır. Runtime sayaçları dahil değildir. Bu yetki/önizleme imzası veya monoton sürüm
+numarası değildir; mevcut değerlerin eşitliği önkoşuludur. A→B→A geçmişini ayrı bir sürüm
+olarak ayırt ettiği iddia edilmez.
+
+`activeTimeProfile`, `personaEvolutionEnabled`, `sourceEvolutionEnabled`,
+`scheduledTimeoutSeconds` veya `manualTimeoutSeconds` yazan PATCH ve doğrudan servis
+çağrısında `expectedProfileStateHash` zorunludur. Mevcut taze admin ve profile → settings
+kilitleri altında karşılaştırılır; değişmiş durum **AGENT_PROFILE_STATE_CONFLICT / 409**,
+eksik/bozuk zorunlu hash **422** verir. Hash tek başına düzenleme sayılmaz ve audit'in
+changedFields listesine yazılmaz. Yalnız persona yazan mevcut operasyon betikleri kendi
+`expectedPersonaVersion` kontrolünü kullanmayı sürdürür. Migration yok.
+
+Açık tarayıcı formu persona, persona sürümü, çalışma ayarları ve durum hash'ini aynı ilk
+okumaya sabitler. Yeni sunucu prop'ları kullanıcının eski taslağını yeni duruma onay vermiş
+saymaz. Başka yazar sayfasında form yeniden kurulur. Eski HTTP istemcileri çalışma ayarı
+PATCH'inden önce detay GET'indeki hash'i almalıdır; eski payload 422 ile durur. Bu API
+uyumluluk notu dağıtımda korunur; acil pause/iptal/durdurma yollarına yeni kapı eklenmedi.
+
+İlk yerel regresyon **30 birim/arayüz ve 52 PostgreSQL testi PASS**: aynı eski durumdan iki
+gerçek yarışan ayar güncellemesinin yalnız biri kabul edildi, bayat form kazananın ayarını
+ve audit sayısını değiştirmedi, taze tekrar geçti, ayar değişikliği persona sürümü üretmedi.
+Rerender edilen arayüz aynı eski hash/sürümü gönderdi ve kullanıcının 720 saniyelik taslağını
+korudu. Toplu koşu önizlemesinin profil değişikliğini reddetmesi de mevcut PG testinde sürdü.
+Kod hakemi/exact CI ve canlı dağıtım henüz bu alt paket için tamamlanmış sayılmaz.
+
+API/OpenAPI koşulları eşitlendi: beş alanın her biri profil hash'ini gerektirir; yalnız
+karşılaştırma token'ı içeren nesne düzenleme sayılmaz. Yeni 409 kodu ErrorCode listesine
+alındı. Güncellenen sözleşme denetçisi ve olumsuz sapma testleriyle son birim/arayüz/sözleşme
+koşusu **47/47**; OpenAPI **152 işlem** hizalamasında PASS. Doğrudan servis çağrısındaki
+yalnız-token koruması eklendikten sonra 52 PG16 testi yeniden geçti (09:34 UTC).
+
+## Profil ayarı Opus incelemesi — 4 Ekim 09:45 UTC
+
+Gerçek `claude-opus-5`, exact `14883538c48f8b132bc0ff003a3dfa8665892d18` için
+salt okunur **KOŞULLU GO** verdi. Hakem yalnız iletilen diff/blokları gördü; testleri
+kendisi çalıştırmadı. Koşullar aşağıdaki kaynak kanıtıyla değerlendirildi:
+
+- **Başarılı kayıt sonrası eski token:** form mevcut `router.push` ile düzenleme
+  sayfasından `/moderasyon/agentlar/{id}` detayına gider ve refresh eder. Aynı formda
+  ardışık kayıt varsayımı olağan başarılı akışa uymuyor. Profil ayarı UI testi bu iki
+  çağrıyı artık doğrudan doğrular; taslak açıkken dış prop yenilenmesinde token
+  dondurma korunur. Bu jsdom sözleşme testidir, gerçek tarayıcı iddiası değildir.
+- **Hash kapsamı:** beş ayarı yazma koşulu, yalnız beş alanın hash'i demek değildir.
+  Mevcut audit snapshot'ındaki lifecycle/kimlik/persona bağlamı bilinçli olarak korunur.
+  Araya giren evrim veya lifecycle değişimi 409 gerektirir; yönetici güncel bağlamı
+  yeniden okur. Bu kullanılabilirlik maliyetidir; yanlış-pozitif oranı ölçüldü denmez.
+  UI zaten okuduğu `expectedPersonaVersion` değerini gönderiyordu.
+- **Çağrı sahipleri:** `updateAgent` doğrudan çağrıları repo genelinde tarandı.
+  `reconcile-public-agent-bios.ts`, `apply-writer-naturalization-w1.ts`,
+  `reconcile-persona-weight-locks.ts`, `rollout-persona-prompts.ts`,
+  `apply-writer-naturalization-w2.ts`, `reconcile-persona-sources.ts` yalnız kimlik/
+  persona ve mevcut sürüm token'ını yazar; beş çalışma ayarını yazmaz. Admin PATCH
+  tek HTTP rotası; UI hash'i taşır. Genel `operator-admin.ts` rota istemcisi
+  gövdeyi operatörden alır; önce GET hash'i alınarak PATCH gövdesine konur, sabit eski
+  çalışma ayarı payload'ı yoktur. Test fixture'ı güncellendi. `docs/API.md`,
+  `docs/openapi.yaml` ve OpenAPI validator yeni zorunluluğu içerir. Repo dışındaki
+  eski istemcilerin 422 alacağı açık uyumluluk sınırıdır, dış envanter iddiası yok.
+- **Arayüz metni:** “ayrı kaydedilir” yerine yalnız çalışma ayarı değişikliğinin
+  persona sürümü oluşturmadığı açıklandı; istek hâlâ tek atomik PATCH'tir.
+- **Kanoniklik:** `canonicalRequestHash`, iç içe nesneleri özyinelemeli anahtar
+  sıralamasından sonra hash'ler; JSON anahtar geliş sırası token'ı değiştirmez.
+  Mevcut ortak yardımcı değiştirilmedi. Davranışı gelecekte değişirse açık form
+  tokenlarının geçersizleşmesi uyumluluk incelemesi gerektirir.
+- **Token-only doğrulama kilitleri:** hakemin engelleyici olmayan erken-doğrulama
+  önerisi yeni bir güvenlik açığı değildir. Yetkisiz çağrı önce reddedilir; mevcut
+  kilit sırası korunur, geçersiz çağrıda transaction rollback olur. Genel ayar
+  seri işlemini yeniden tasarlamak bu dar düzeltmenin şartı yapılmadı.
+
+Kaynakla kapatılan koşullar yeni bir koşulsuz hakem turu olarak adlandırılmaz.
+Son exact CI ve birleşme sonucu ayrıca kaydedilecektir; üretim dağıtımı açık.

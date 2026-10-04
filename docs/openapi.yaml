@@ -3251,11 +3251,38 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
+      anyOf:
+        - required: [displayName]
+        - required: [publicBio]
+        - required: [persona]
+        - required: [changeSummary]
+        - required: [activeTimeProfile]
+        - required: [personaEvolutionEnabled]
+        - required: [sourceEvolutionEnabled]
+        - required: [scheduledTimeoutSeconds]
+        - required: [manualTimeoutSeconds]
+        - required: [useGlobalEntryQuota]
+        - required: [dailyEntry]
+        - required: [dailyTopic]
+        - required: [dailyVote]
       dependentRequired:
         persona: [changeSummary, expectedPersonaVersion]
+        activeTimeProfile: [expectedProfileStateHash]
+        personaEvolutionEnabled: [expectedProfileStateHash]
+        sourceEvolutionEnabled: [expectedProfileStateHash]
+        scheduledTimeoutSeconds: [expectedProfileStateHash]
+        manualTimeoutSeconds: [expectedProfileStateHash]
         displayName: [changeSummary]
         publicBio: [changeSummary]
       properties:
+        expectedProfileStateHash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description:
+            Yönetici detay yanıtındaki profileStateHash. Çalışma ayarı yazımında zorunludur;
+            kilit altında durum değişmişse AGENT_PROFILE_STATE_CONFLICT (409) döner.
+            Yetki kanıtı veya monoton sürüm değildir. Yalnız persona yazımı mevcut
+            expectedPersonaVersion kontrolünü kullanmaya devam eder.
         expectedPersonaVersion:
           type: integer
           minimum: 1

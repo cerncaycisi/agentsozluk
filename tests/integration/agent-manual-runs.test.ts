@@ -19,6 +19,7 @@ import {
   createBulkAgentRuns,
   createManualAgentRun,
   getAgentRunDetail,
+  getAgentDetail,
   lifecycleChangeSchema,
   listAgentRuns,
   manualAgentRunSchema,
@@ -269,7 +270,12 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
           integrationDatabase,
           actor(admin.id),
           created.agent.profile.id,
-          updateAgentSchema.parse({ manualTimeoutSeconds: 720 }),
+          updateAgentSchema.parse({
+            expectedProfileStateHash: (
+              await getAgentDetail(integrationDatabase, actor(admin.id), created.agent.profile.id)
+            ).profileStateHash,
+            manualTimeoutSeconds: 720,
+          }),
         );
       if (change === "persona")
         await updateAgent(

@@ -33,12 +33,14 @@ export default async function AgentEditPage({ params }: { params: Promise<{ id: 
   return (
     <ModerationLayout
       title={`${agent.user.displayName} düzenle`}
-      description="Username değiştirilemez; kaydetme yeni ve immutable bir PersonaVersion oluşturur."
+      description="Kullanıcı adı değiştirilemez. Karakter değişiklikleri yeni persona sürümü oluşturur; yalnız çalışma ayarı değişikliği oluşturmaz."
     >
       <AgentPersonaEditForm
+        key={agent.id}
         agentId={agent.id}
         persona={agent.currentPersonaVersion.persona}
         personaVersion={agent.currentPersonaVersion.version}
+        profileStateHash={agent.profileStateHash}
         profile={{
           activeTimeProfile: agent.activeTimeProfile,
           personaEvolutionEnabled: agent.personaEvolutionEnabled,

@@ -7,6 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — profil ayarı durum karşılaştırması yerelde
+
+- `c53f8c3` tabanındaki ayrı dalda O5 profil-only CAS boşluğu kapatıldı. Beş çalışma
+  ayarı, aynı ilk okumaya ait durum hash'iyle profil kilidi altında karşılaştırılır.
+  Persona-only sürüm kapısı ve acil durdurma yolları korundu; migration yok.
+- Son 47 birim/arayüz/sözleşme, 52 PG16 testi geçti. Gerçek eşzamanlı iki yazımdan biri 409 aldı;
+  kaybeden yazım kazananın ayarını veya audit sayısını değiştirmedi. Güncel tekrar geçti,
+  ayar değişikliği persona sürümü üretmedi. Opus 5 `1488353` koşulları kaynakla kapandı;
+  son yönlendirme assertion’ı dahil 47/47 tekrar geçti. İlk CI `37192759460` 7/7;
+  son test/metin/makbuz head’inin exact CI ve canlı dağıtımı henüz tamamlanmadı.
+- [O5 makbuzu](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
+
 ## 2026-10-04 — yedek blokları ve doğum kaynakları
 
 - 4 Ekim telafi dump checksum yeniden PASS. PG16 bütün veri bloklarını 23,223 sn’de
@@ -16,7 +28,8 @@
   #311 ilk 38 test geçti; Opus 5 koşulları kapandı. İlk kaynak okumasında DB/üretim
   bağlantısı/model çağrısı yok; 09:05 UTC ayrı READ ONLY şema sorgusunda aday tablosunun
   henüz bulunmadığı doğrulandı. Donmuş 36 kişilik validator raporları önce/sonra aynı.
-  Son exact CI/birleşme açık.
+  #311 final `c53f8c3`, CI `37191249963` 7/7; main `8aeeb0a`. Fresh merge ve uzak
+  SHA/ağaç eşitliği doğrulandı. Gerçek aday/aktivasyon ve canlı dağıtım açık.
   [O3](O3_YEDEK_2026-10-04.md) ve [P8](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
 
 ## 2026-10-04 — O4 sayı gösterimi düzeltmesi
