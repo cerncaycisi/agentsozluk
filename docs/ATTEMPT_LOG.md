@@ -4453,3 +4453,19 @@ için aynı test dosyasında style uyarısı çıktı; biçimleme ve dokunulmada
 Ürün regresyonu değildi. Tekrarlama: kontrol sürerken aynı kaynakları değiştirme; yerel
 sentetik A′ fixture'ını gerçek karar veya runtime pilot kanıtına dönüştürme. Opus ve exact
 CI açık; üretim uygulaması değişmedi. Ana dal e83bf04 CI37223578656 ayrıca tamamı PASS.
+
+## 4 Ekim 2026 — P2 ilk hakem bulgularının yerel kapanışı
+
+Opus 5 exact `5e76296635f7abd78db238678bdf7e04077889bc` için DÜZELTİLMELİ verdi;
+actual modelUsage yalnız claude-opus-5. 27 dakika saklı giriş payı, ham okuyucu/operatör
+farkı, Opus-only gözlenen model, doğrudan packet eşliği, P2 algı kapsamı ve eksik saklı
+set testleri eklendi. Son89 birleşik + ayrı7 provider testi PASS. Gerçek provider sınıfı
+aynı run ID ile dört ardışık sahte subprocess çağrısında ayrı dönüş ve temizlik verdi.
+Bilinmeyen IO/yarım koşu terminal politikası korundu ve sınandı; otomatik kurtarma yok.
+
+Hakemin 6 dakikalık tavanı sabit gerçek latency sayıp tamamlanmayı imkânsız ilan etmesi
+sentetik64 dakika iki-set koşusuyla çürütüldü; bu gerçek latency ölçümü değildir. 6+6 veya
+24/90 bütçesi azaltılmadı/uzatılmadı. İlk exact CLI, gerçek4Ekim saatinde sıfır çağrıyla
+`PILOT_DATE_GATE_CLOSED` verdi. İkinci inceleme/final CI açık, gerçek pilot0. Tekrarlama:
+zaman tavanını ölçülmüş süre sayma; okuyucu kanaatini doğrulanmış ihlal diye etiketleme;
+şekil/alıntı kontrolünü operatörün kaynak denetimi yerine koyma.

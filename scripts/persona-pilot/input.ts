@@ -171,6 +171,12 @@ export function preparePersonaPilot(
         arms.get(label) === "new" ? renderPersonaPrompt(original.persona) : original.renderedPrompt;
       if (input.context.persona.renderedPrompt !== expected)
         throw new Error("PILOT_PERSONA_RENDERER_CHANGED");
+      if (
+        Object.keys(input.context.perception).some(
+          (key) => !["observedAt", "recentEntries"].includes(key),
+        )
+      )
+        throw new Error("PILOT_PERSONA_CONTEXT_SCOPE_CHANGED");
       contexts.push(input.context);
       inputs.push({
         label,

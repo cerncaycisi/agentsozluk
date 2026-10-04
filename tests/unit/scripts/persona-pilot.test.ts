@@ -413,3 +413,100 @@ describe("P2 iki aşamalı kalıcı pilot (ağsız)", () => {
     }
   });
 });
+
+describe("P2 hakem bulgularının karşı örnekleri", () => {
+  it("sentetik 2dk karar +5dk okuyucu +3dk kontrol ile iki set64dk içinde sığar", async () => {
+    const f = fixture();
+    f.provider.invoke.mockImplementation(async () => {
+      f.advance(2 * 60000);
+      return f.result;
+    });
+    const reader = f.reader.invoke.getMockImplementation()!;
+    f.reader.invoke.mockImplementation(async (...args) => {
+      f.advance(5 * 60000);
+      return reader(...args);
+    });
+    await runPersonaPilot(f.options);
+    f.advance(3 * 60000);
+    await runPersonaPilot({ ...f.options, review: f.review("development") });
+    await runPersonaPilot(f.options);
+    f.advance(3 * 60000);
+    await runPersonaPilot({ ...f.options, review: f.review("holdout") });
+    expect(await runPersonaPilot(f.options)).toMatchObject({
+      status: "BOTH_THRESHOLDS_MET_NOT_BEHAVIOR_PASS",
+      runtimeCalls: 24,
+      readerCalls: 2,
+      manualReviewRemainingMs: 26 * 60000,
+    });
+  });
+  it("ilk set geçip saklı set reddedilebilir; iki okuyucu hükmü ve override sayısı görünür", async () => {
+    const f = fixture();
+    await runPersonaPilot(f.options);
+    await runPersonaPilot({ ...f.options, review: f.review("development") });
+    await runPersonaPilot(f.options);
+    const review = f.review("holdout");
+    review.value.readerDisagreement = "Kaynak incelemesi üstünlüğü doğrulamadı.";
+    for (const item of review.value.cases) item.winnerSlot = "TIE";
+    await runPersonaPilot({ ...f.options, review });
+    const result = await runPersonaPilot(f.options);
+    expect(result).toMatchObject({
+      status: "THRESHOLD_NOT_MET",
+      development: { status: "THRESHOLD_MET", changedCaseIds: [] },
+      holdout: {
+        status: "THRESHOLD_NOT_MET",
+        newWins: 0,
+        readerAssessment: { status: "THRESHOLD_MET", newWins: 6 },
+      },
+    });
+    expect(result.holdout?.changedCaseIds).toHaveLength(6);
+  });
+  it("saklı okuma son tarihi aşarsa geç raporu başarı saymaz", async () => {
+    const f = fixture();
+    await runPersonaPilot(f.options);
+    await runPersonaPilot({ ...f.options, review: f.review("development") });
+    const reader = f.reader.invoke.getMockImplementation()!;
+    f.reader.invoke.mockImplementationOnce(async (...args) => {
+      f.advance(91 * 60000);
+      return reader(...args);
+    });
+    expect(await runPersonaPilot(f.options)).toMatchObject({
+      status: "INCOMPLETE",
+      runtimeCalls: 24,
+    });
+    expect(f.journal().reviews).toHaveLength(1);
+  });
+  it("Opus yanında yardımcı model görülürse P2 okumasını kabul etmez", async () => {
+    const f = fixture();
+    const reader = f.reader.invoke.getMockImplementation()!;
+    f.reader.invoke.mockImplementationOnce(async (...args) => ({
+      ...(await reader(...args)),
+      observedModels: ["claude-opus-5", "claude-haiku-test"],
+    }));
+    expect(await runPersonaPilot(f.options)).toMatchObject({ status: "INCOMPLETE" });
+    expect(f.journal().attempts.at(-1).safeCode).toBe("PILOT_READER_MODEL_CHANGED");
+  });
+  it("puanlanan bağlam okuyucunun gördüğü paketten farklı olamaz", async () => {
+    const f = fixture();
+    await runPersonaPilot(f.options);
+    const review = f.review("development");
+    // Gerçek prepare ayrıca hash kapısıyla engeller; paket bağı bağımsız sınanıyor.
+    f.prepared.pairs[0]!.preferences = { coreValues: ["başka tercih"] };
+    await expect(runPersonaPilot({ ...f.options, review })).rejects.toThrow(
+      "PILOT_PERSONA_READER_PACKET_CHANGED",
+    );
+  });
+  it("bilinmeyen ortam hatasında otomatik bütçe kurtarma yapmaz", async () => {
+    const f = fixture();
+    await runPersonaPilot(f.options);
+    await expect(
+      runPersonaPilot({
+        ...f.options,
+        prepare: () => {
+          throw new Error("synthetic IO unavailable");
+        },
+      }),
+    ).rejects.toThrow("synthetic IO unavailable");
+    expect(f.journal().terminalReason).toBe("PILOT_FATAL_ERROR");
+    await expect(runPersonaPilot(f.options)).rejects.toThrow("PILOT_FATAL_ERROR");
+  });
+});

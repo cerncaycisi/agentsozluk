@@ -58,8 +58,8 @@ describe("P2 saklı set politikası", () => {
   });
   it("son okuma ve kaynak kontrolü için süre bırakır", () => {
     const result = evaluatePersonaPhase(promising());
-    expect(canStartPersonaHoldout(result, 12, 16 * 60_000)).toBe(true);
-    for (const remaining of [16 * 60_000 - 1, -1, NaN, Infinity])
+    expect(canStartPersonaHoldout(result, 12, 27 * 60_000)).toBe(true);
+    for (const remaining of [27 * 60_000 - 1, -1, NaN, Infinity])
       expect(canStartPersonaHoldout(result, 12, remaining)).toBe(false);
   });
   it("aynı çifti iki kez veya dengesiz kol anahtarını saymaz", () => {

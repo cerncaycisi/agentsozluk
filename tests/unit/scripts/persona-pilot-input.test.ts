@@ -214,6 +214,13 @@ describe("P2 donmuş girdi bağları", () => {
       preparePersonaPilot(f.configBytes(), source, Date.parse("2026-10-04T18:00:00Z")),
     ).toThrow("PILOT_DATE_GATE_CLOSED");
   });
+  it("P2 paketine amaç/ödül/teknik geri bildirim bağlamı eklenemez", () => {
+    const f = fixture();
+    f.edit(0, 0, (context) => {
+      context.perception.purposes = [];
+    });
+    expect(f.prepare).toThrow("PILOT_PERSONA_CONTEXT_SCOPE_CHANGED");
+  });
   it("fixture hash uyarlaması olmadan sahte baseline kabul edilmez", () => {
     const f = fixture();
     synthetic.baseline = "";

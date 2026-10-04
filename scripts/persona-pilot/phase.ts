@@ -62,6 +62,6 @@ export function canStartPersonaHoldout(
     result.status === "THRESHOLD_MET" &&
     runtimeCalls === 12 &&
     Number.isFinite(remainingMs) &&
-    remainingMs >= PERSONA_FINAL_REVIEW_RESERVE_MS + PERSONA_MIN_CALL_SLICE_MS
+    remainingMs >= PERSONA_FINAL_REVIEW_RESERVE_MS + 12 * PERSONA_MIN_CALL_SLICE_MS
   );
 }

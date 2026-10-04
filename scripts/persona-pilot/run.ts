@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import {
   closeSync,
   existsSync,
@@ -195,11 +196,17 @@ export async function runPersonaPilot(options: {
       );
       if (!reader?.outputHash || !reader.packetHash)
         throw new Error("PILOT_PERSONA_READER_REQUIRED");
+      const packet = packetFor(phase);
+      assert.deepEqual(
+        JSON.parse(readPrivate(path.join(options.directory, `${phase}-packet.json`))),
+        { cases: packet },
+        "PILOT_PERSONA_READER_PACKET_CHANGED",
+      );
       return evaluatePersonaReview(value, {
         readerOutputHash: reader.outputHash,
         packetHash: reader.packetHash,
         report: JSON.parse(JSON.parse(readPrivate(outputFile(reader))).report),
-        packet: packetFor(phase),
+        packet,
         pairs: prepared.pairs.filter((pair) => pair.phase === phase),
       });
     };
@@ -389,7 +396,13 @@ export async function runPersonaPilot(options: {
     }
     const packet = packetFor(phase);
     const packetFile = path.join(options.directory, `${phase}-packet.json`);
-    atomicPrivateJson(packetFile, { cases: packet });
+    if (existsSync(packetFile))
+      assert.deepEqual(
+        JSON.parse(readPrivate(packetFile)),
+        { cases: packet },
+        "PILOT_PERSONA_READER_PACKET_CHANGED",
+      );
+    else atomicPrivateJson(packetFile, { cases: packet });
     const reservation = reserve("READER", `${phase}-reader`, hash(readPrivate(packetFile)));
     if (reservation) {
       let report: Awaited<ReturnType<PilotReader["invoke"]>> | null = null;
@@ -400,10 +413,8 @@ export async function runPersonaPilot(options: {
         );
         if (
           report.model !== "claude-opus-5" ||
-          !report.observedModels.includes("claude-opus-5") ||
-          report.observedModels.some(
-            (model) => model !== "claude-opus-5" && !model.startsWith("claude-haiku-"),
-          )
+          report.observedModels.length !== 1 ||
+          report.observedModels[0] !== "claude-opus-5"
         )
           throw new Error("PILOT_READER_MODEL_CHANGED");
         if (report.version !== prepared.config.readerVersion)

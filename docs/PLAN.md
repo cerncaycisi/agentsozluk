@@ -140,10 +140,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   kod etkisi çıkarılmaz. Ana dal `8c56852` teslim kaydı CI `37219729005` 7/7 PASS.
 
 - **4 Ekim P2 çalıştırıcı hazırlığı:** ilk/saklı set için aynı90 dakika, kalıcı24runtime /
-  en çok2Opus okuması ve kaynak doğrulaması eklendi. Son39P2 +43ortak ağsız test PASS;
+  en çok 2 Opus okuması ve kaynak doğrulaması eklendi. Son 46 P2 + 43 ortak ve ayrı
+  7 provider testi PASS;
   gerçek P0/eski hazırlığın24girdisi güncel girdi doğrulayıcıyla uyumlu (yalnız yerel
   sentetik tarih testi; A′ makbuzu veya runnable paket değil). Otomatik retry yok;
-  eksik çift eşik düşürmez. Opus kod/yöntem incelemesi ve exact CI açık; gerçek çağrı0.
+  eksik çift eşik düşürmez. İlk Opus düzeltmeleri sonrası 27 dakika saklı giriş payı,
+  görünür okuyucu-operatör farkı ve yalnız Opus model kapısı eklendi. İkinci görüş/final
+  CI açık; gerçek çağrı 0.
   [P2 çalıştırıcı sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
 
 ## 1. Ürün sözleşmesi

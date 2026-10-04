@@ -4278,3 +4278,10 @@ bu salt yerel testte A′/saat sentetiktir, model/provider/DB çağrısı yoktur
 iki okuyucu aynı90dakika, tam çift eşiği, hash bağlı operatör kaynak kontrolü, kesinti ve
 süre bütçesi test edildi. Bağımsız Opus incelemesi ve exact CI açık. Gerçek pilot0,
 canlı9bf değişmedi. Ana dal e83bf04 teslim kaydı CI37223578656 tamamı PASS.
+
+P2 ilk Opus (`5e76296`) DÜZELTİLMELİ görüşü sonrası 46 P2 +43 ortak =89 ve ayrı
+7 provider testi geçti. Saklı giriş payı27 dakika; okuyucu-operatör farkı özette görünür;
+P2'de Opus dışı gözlenen model reddedilir. Aynı run ID ile dört ardışık gerçek provider
+sınıfı/sahte subprocess çağrısında ayrı çıktılar ve geçici dizin temizliği doğrulandı.
+Sentetik64 dakika senaryosu yalnız süre aritmetiği karşı örneği, gerçek latency değildir.
+İkinci Opus ve final CI açık; gerçek pilot/üretim değişikliği0.
