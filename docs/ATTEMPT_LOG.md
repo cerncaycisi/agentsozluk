@@ -3722,3 +3722,21 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - 100 hedef fixture'ının ilk koşusu yanlış `ADMIN_CREATE` enumuyla bir testte kaldı (17 PASS); schema'daki `INITIAL` kullanıldı, 18/18 geçti. Bu test hazırlığı hatasıdır; ürün regresyonu veya performans hatası sayılmadı.
 - TTL ilk admin kilidini de sayacak şekilde düzeltildi; görüntülenen kullanıcı adları bağlandı; boş preview erken reddedildi. Tekil yolun mevcut kapıları ve trigger'ın enum değil String olması kaynakla doğrulandı. Date hash'in 24 saatlik eski kayıt conflict sınırı dağıtım notuna işlendi. Son kalite/CI ayrı kaydedilir.
 - Tekrarlama: shared kilidi exclusive sanıp yetki seri denetimini kaldırma; 100 hedefli yerel fixture süresini üretim kapasite kanıtı sayma; ilk niyet yanıtını peer onayı kabul etme.
+
+### 4 Ekim 2026 — O5 #309 kapanış ve canlı sağlık yenilemesi
+
+- Final `113f3aa8ab3d29be130f448988597520032c1ac7`, CI `37184176713` 7/7; source/test/peer koşulları kapandı. Fresh exact head/base/review/CLEAN ile squash main `cbb8aaf8c3d602a5a4dfe422efe17291b1057a96`. Uzak SHA/ağaç eşitliği ve dal temizliği doğrulandı; #308/#309 T3 bağı merged olarak göründü.
+- Son 50 test ve kalite kapıları PASS. İlk son-lint ölçümdeki console.info kullanımını no-console ile reddetti; güvenli süre makbuzu stdout'a taşındı, lint/typecheck/requirements/format tekrar PASS. 100 hedef son ölçüm 193 ms / 548 ms; test transaction sınırı 15 sn aynı. Koşullu peer görüşü koşulsuz GO olarak yeniden adlandırılmadı.
+- 07:01:04 UTC host/pin/DNS/repo/Compose sonrası READ ONLY 15 sn kesit, canlı `9bf3653`. Son başlangıç 06:57:04; son saat 20 SUCCEEDED / 4 PARTIAL. Son 24 saatte 274 SUCCEEDED / 95 REJECTED (%25,7): topic semantic 43, framing 26, numeric 15, similarity 8, pause 3. Önceki pencereyle örtüşür; bağımsız iyileşme iddiası yok. Gövde/istem/credential okunmadı, dış bildirim veya canlı değişiklik yapılmadı.
+- Tekrarlama: önceki head'in yeşil CI'ını son dar düzeltmenin yerine kullanma; son ret oranını sırf worker çalışıyor diye çözülmüş sayma.
+
+### 4 Ekim 2026 — O3 kullanılmayan CLI sürümünde sınırlı temizlik
+
+- 07:05:50 UTC operatör; yalnız unused `claude/versions/2.1.280`, aktif executable referansı yok. 233.713.664 ayrılan bayt kaldırıldı; root boş 5.885.968.384 → 6.119.620.608 bayt. Current 2.1.288 ve önceki 2.1.281 hash eşitliği, current symlink doğrulandı; özel makbuz `unused-claude-version-cleanup.json`.
+- Yedi dış yedek, DB/WAL, kullanıcı projeleri/oturumları/T3 ve çalışan işler korunur. 5 GiB sınırı/KEEP=7 değişmedi. 5 Ekim sonraki gecelik makbuzu ayrıca izlenir; tam restore hâlâ açık.
+- Tekrarlama: eski sürüm temizliğini backup/restore veya kalıcı disk kapasitesi kabulü sayma; kaynağı belirsiz kullanıcı DB'sini yer kazanmak için silme.
+
+### 4 Ekim 2026 — A′ operatör çalışma aralığı notu
+
+- Kullanıcının 3 Ekim 19:50 UTC uygulama talimatından 4 Ekim 07:10 UTC kesitine kadar Astra kod/hazırlık oturumu sürdü. Bu duvar saati aralığı kesintisiz CPU kullanımı veya ölçülmüş token/kota miktarı değildir; kota etkisi ayrıştırılmadı. Opus ayrı sağlayıcı incelemeleri ve 05:40–05:43 backup yükü kendi makbuzlarıyla korunur.
+- 6 Ekim A′ değerlendirmesi bu aralığı temiz bağımsız deney saymayacak. Takvim otomatik uzatılmadı, runtime model deneyi/benchmark veya yeni davranış dağıtımı yapılmadı. Tekrarlama: yetkili kullanıcı çalışmasını gözlemden gizleme veya sırf kod testleri geçti diye canlı etki kanıtı yazma.

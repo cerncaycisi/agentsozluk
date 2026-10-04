@@ -36,12 +36,12 @@ iptal/durdurma gibi diğer toplu komutlar için yeni bağlama garantisi verilmez
   idempotency kaydı 24 saatlik TTL içinde conflict verebilir; eski kayıt yeniden yürütülmez.
   Date içermeyen isteklerin hash'i değişmez.
 
-## Doğrulama
+## İlk doğrulama
 
 İlk 26, son 45 test PASS: gerçek PG16 değişen payload/tarih/ayar/profil/persona/kadro,
 aynı makbuzla iki yarışan istek, başka admin/süre, HTTP preview/submit replay ve taze
 yetki; sekiz imza/süre birim, dört hash ve 15 admin UX testi dahil. Ayrı iki mevcut
-PG16 profili kilitleme/iptal yarışı da geçti. Hakem, son kalite ve exact CI henüz açık.
+PG16 profili kilitleme/iptal yarışı da geçti. Sonraki hakemlik ve exact kapanış aşağıdadır.
 Üretim değişmedi; normal ajan davranışı bu admin önizlemesinden etkilenmez.
 
 ## Bağımsız Opus incelemesi
@@ -89,3 +89,11 @@ adlandırılmaz. Yerel/test/CI kanıtı canlı kabul yerine geçmez.
 
 Son sınır düzeltmeleriyle **50/50** test geçti; ilk admin kilidinde beklerken süre
 dolması ve idempotency başlığı olmayan HTTP tekrar reddi de doğrudan doğrulandı.
+
+## Exact kapanış
+
+Final `113f3aa8ab3d29be130f448988597520032c1ac7`, CI `37184176713` **7/7 PASS**;
+#309 main `cbb8aaf8c3d602a5a4dfe422efe17291b1057a96`. Birleşmeden hemen önce exact
+head/base, review durumu ve CLEAN doğrulandı; uzak SHA/ağaç eşitliği geçti, dal silindi.
+Son 50 test/kalite kapıları PASS; 100 hedefin son tekrarında 193 ms preview / 548 ms
+queue ölçüldü. E2E final exact CI'da da geçti. Üretim dağıtımı henüz yapılmadı.

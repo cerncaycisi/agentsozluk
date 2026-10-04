@@ -25,6 +25,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   tekrar/benzerlik, 16’sı desteklenmeyen kesin sayı, 3’ü pause. Ret alarmı açık ürün sinyalidir;
   otomatik yanlış-pozitif veya kesinti sayılmaz. P1 mevcut kayıt incelemesi bunları ayırır;
   sırf oranı düşürmek için eşik/istem değiştirilmez. O3 telafi yedeği 05:43 UTC tamamlandı.
+- **4 Ekim 07:01 UTC yenileme:** son saat 20 SUCCEEDED / 4 PARTIAL; son 24 saat
+  274 başarılı / 95 ret (%25,7). Ret açık; canlı checkout aynı. Pencereler örtüşür,
+  iki kesit bağımsız deney veya iyileşme kanıtı sayılmaz.
 - **İlk tarihli kontrol:** 6 Ekim, yaklaşık 13:00 TSİ; A′ için gerçek resume zamanından
   en az 72 saat geçmiş olmalı. Kayıt 3 Ekim ~09:20 UTC'dir; kesin aralık rapor öncesi doğrulanır.
 - **Hazır kod:** heartbeat #296, main `d373376`, Opus KOD GO ve CI 7/7; canlıya alınmadı.
@@ -155,13 +158,14 @@ Okura görünür yeni otomatik öğenin somut önizlemesi dağıtım paketinde G
 yerel hazırlık için ayrı izin kuyruğu açılmaz. Search Console/GEO rutin aylık takip işi olarak
 kalır; teslim takvimini uzatmaz. Üçüncü taraf tanıtım/post yok.
 
-**O5 ilk alt paket:** toplu koşu önizlemesi artık istemci ekranına güvenmek yerine
-hedef/payload/persona-profil/ayar sürümüne bağlanıyor. 10 dakika, aynı admin, tek kullanım;
-ağ tekrarında aynı idempotency sonucu. İlk 26, son 45 ve iki ayrı gerçek kilit testi geçti.
-Opus 5 koşullu kabul verdi; shared kilit varsayımı kaynak/yarış testiyle çürütüldü,
-100 hedefte ilk yerel süre 227/621 ms. İlk exact CI 7/7; son dar koşul kapanışı/CI
-açık, üretimde değil. Global iptal/durdurma gibi diğer toplu
-komutlar bu ilk alt pakette tamamlandı sayılmaz. [O5 belirtimi](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
+**O5 ilk alt paket tamam:** toplu koşu önizlemesi hedef/payload/persona-profil/ayar
+sürümüne bağlandı. #309 final `113f3aa`, exact CI `37184176713` **7/7**; main
+`cbb8aaf`. Son 50 test ve önceki iki gerçek kilit senaryosu geçti. Opus 5 koşulları
+kaynak/testle kapandı; shared kilit varsayımı çürütüldü. Son yerel 100 hedef süreleri
+193/548 ms (preview/queue); canlı performans iddiası değil. Kuyruğa alma alt paketinin
+kod/hakem/CI işi aktif kuyruktan çıktı; dağıtım açık. Global iptal/durdurma gibi diğer
+toplu komutlar bu ilk alt pakette tamamlandı sayılmaz.
+[O5 belirtimi](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
 
 ## 3. Kabul, maliyet ve geri alma
 
@@ -177,6 +181,10 @@ aşamasında serbesttir; üretim dağıtımı yine exact sürüm ve pencere etki
 Kritik güvenlik düzeltmesi ertelenmez; pencere gerekçesiyle kesilir ve yeniden tarihlenir.
 3 Ekim bkz deneyi mevcut A′ gözlemine denk geldi; 72 saatlik raporda bu karıştırıcı açıkça
 belirtilir, ilk pencere deneysel kesinlik veya Gate 10 kabulü sayılmaz.
+3 Ekim 19:50–4 Ekim 07:10 UTC aralığında kullanıcı talebiyle Astra uygulama oturumu
+da sürdü; paylaşılan kotaya etkisi ayrı ölçülmedi. 4 Ekim 05:40–05:43 backup yükü de
+makbuzlu operatör etkisidir. Bunlar 6 Ekim kararında saklanmaz; otomatik pencere
+uzatması veya yeni karşılaştırma deneyi başlatma gerekçesi yapılmaz.
 
 - **Kodun varlığı ≠ davranış başarısı.** Birim/entegrasyon testleri veri ve yetki sözleşmesini;
   kör içerik değerlendirmesi ürün etkisini kanıtlar. Mevcut şema mesafesi tek başına yeterli değil.
@@ -222,7 +230,7 @@ belirtilir, ilk pencere deneysel kesinlik veya Gate 10 kabulü sayılmaz.
 | **O2** | Kapasite, 15 Ekim                                    | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                              |
 | **O3** | Yedek/disk 5 Ekim; restore 7 Ekim                    | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
 | **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                               |
-| **O5** | Operatör toplu işlem önizlemesi, 17 Ekim durum       | Hedef/payload/sürüm ve geri alma özeti; yetki, CAS, idempotency korunur                                                                                                    |
+| **O5** | Diğer toplu komutların durum kararı, 17 Ekim         | Toplu kuyruğa alma #309 ile hazır; diğer komutların kapsamı/kullanım kanıtı ve dağıtım açık. Acil iptal/durdurma mevcut yetki/seri denetimleriyle sürer                    |
 
 **O3 güncel olay:** 4 Ekim 01:31 UTC gecelik yedek yerel `DISK_LOW` ile durdu; önceki
 yedi kopya korundu. Kullanılmayan araç sürümü/paket/build cache temizliğiyle yerel boş alan
@@ -238,8 +246,10 @@ A′ kararı sonrası üretimde **ayrı, yalnız bu provanın oluşturduğu DB'y
 karşılaştırılır; uygulama DB'si hedef olamaz. Prova kopyası doğrulama sonrası kaldırılır.
 Bu dış yedek provası, A5'in geçiş anındaki taze/frozen backup ve ayrı restore kapısının
 yerine geçmez. Tam restore 7 Ekim hedefidir; düşük disk eşiği düşürülmez.
-5 Ekim gece makbuzu ayrıca kontrol edilir: mevcut 5.838.831.616 bayt ile 5 GiB
-ön eşiği arasında yaklaşık 470 MB pay var. 28 Eylül–4 Ekim dump boyutu
+5 Ekim gece makbuzu ayrıca kontrol edilir. 07:05 UTC kullanılmayan üçüncü eski
+Claude CLI sürümü `2.1.280` kaldırıldı; çalışan/current `2.1.288` ve önceki `2.1.281`
+hash’leri korundu. Yaklaşık 234 MB açıldı, boş alan 6.119.620.608 bayt oldu;
+5 GiB ön eşiğiyle aradaki pay yaklaşık 751 MB. 28 Eylül–4 Ekim dump boyutu
 1.182.167.798 → 1.315.865.212 bayt büyüdü; yedi kopyalı retention kapasite ihtiyacını
 ortadan kaldırmaz. Bugünkü telafi yedeği kalıcı disk çözümü sayılmaz. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
 

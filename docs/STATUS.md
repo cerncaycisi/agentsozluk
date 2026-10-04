@@ -7,6 +7,20 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — O5 toplu koşu önizlemesi ana dalda
+
+- #309 final `113f3aa8ab3d29be130f448988597520032c1ac7`, exact CI `37184176713`
+  7/7; main `cbb8aaf8c3d602a5a4dfe422efe17291b1057a96`, uzak SHA ve squash ağaç
+  eşitliği doğrulandı. Son 50 test, önceki iki kilit yarışı ve gerçek UI E2E geçti.
+- Gerçek Opus 5 KOŞULLU GO; koşullar kaynak/testle kapandı. İlk tur yalnız niyet yanıtı
+  olduğundan kabul sayılmadı. Yerel 100 hedef son ölçümü 193 ms preview / 548 ms queue;
+  üretim performansı değil. [Makbuz](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
+- 07:01 UTC canlı salt okunur kesit: son saat 20 başarılı/4 kısmi koşu; son 24 saat
+  274 başarılı/95 ret (%25,7). Canlı checkout `9bf3653`; deploy/ayar/istem değişmedi.
+- 07:05 UTC unused Claude `2.1.280` binary temizliği ~234 MB açtı; current ve previous
+  hash’leri aynı. Boş alan 6.119.620.608 bayt. Yedek/DB/kullanıcı işi silinmedi;
+  tam restore ve 5 Ekim sonraki gecelik makbuzu açık.
+
 ## 2026-10-04 — P1 migration profili ana dalda
 
 - #308 final `1580273cc5ef54f3d47a581c4d09751c4a50c755`, CI `37182105221` 7/7;
