@@ -82,3 +82,11 @@ Hakem koşullarından sonra yeni PG senaryosu dahil dört ilgili vaka **4/4** ge
 (`reflection-regression-2.log`); profil işaretçisi, altı ondalık sıcaklık, tek çevrim kanıtı
 ve mutlak kaynak bütçesi assert'leri dahil. İlk exact `675ef85` CI `37166324538` **7/7**;
 son test/belge düzeltmesinin exact CI sonucu ayrıca kaydedilir. Üretim kodu değişmedi.
+
+## Ana dal kapanışı
+
+Son exact head `d2ac2d1c8b08b41afec0a96d0f835df04bd09848`, CI `37167331459` **7/7**.
+Opus'un A1/A2/A3 koşulları yukarıdaki mekanik/test kapanışıyla karşılandı. Taze head/base,
+checks/reviews ve mergeability doğrulamasından sonra #303 squash ile
+`2277eb41055d19e4535f238ee75b0a1f6d2f7e3e` ana dalına alındı. Uzak SHA ve final head ile
+aynı ağaç doğrulandı. Üretim erişimi/dağıtım yok; doğal pilot açık.

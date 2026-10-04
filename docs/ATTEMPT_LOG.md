@@ -3494,3 +3494,31 @@ false/true` yapabildi; geçici rol ve DB silindi.
   Hakemin +0,02/-0,02 için sıfır tüketim çıkarımı source yolunda doğru değildi: PG testi
   source audit usedAfter=0,04 değerini doğruladı. Tekrarlama: domain net bütçesini ek
   application kaynak kapısını okumadan bütün evrim mekanizmasının tek sınırı sayma.
+
+## 2026-10-04 — P5 #303 kapanışı, P8 ilk politika/taslak doğrulaması
+
+- P5 final head `d2ac2d1c8b08b41afec0a96d0f835df04bd09848`, CI `37167331459` 7/7;
+  taze head/base/checks/reviews/mergeability ardından main `2277eb41055d19e4535f238ee75b0a1f6d2f7e3e`.
+  Uzak SHA ve ağaç eşitliği doğrulandı. P8 yeni dosyaları aynı ağaçlı main tabanına korunarak taşındı.
+- P8 bu main tabanında yerel ilk test 17/19: `PERSONA_PAIRWISE_DISTANCE_REJECTED`;
+  ikinci taslak/mevcut persona RMS 0,1432. Eşik değiştirilmedi; belirsizlikle kalabilen
+  karakter tutumu metin/temperament içinde tutarlı hale getirildi. Tekrar 19/19.
+- Mevcut 3 Ekim 20:00:19 UTC P0 kesitinde 36 persona karşısında iki taslak ve 72 ebeveyn
+  varyantı geçti. Yeni üretim erişimi yok. Saf domain sonucu DB transaction veya doğal
+  karakter kanıtı sayılmaz; güncel aday üretiminde bütün evren tekrar doğrulanacak.
+- Opus 5 dar politika görüşü koşullu TASARIM GO: kayan zamanın kalıcı sayaç+global kilitle
+  korunması, kamu yüzeyinin sıfır olması ve kaynak hazırlığı yoksa aktivasyonun bloke kalması
+  sözleşmeye yazıldı. Kod peer incelemesi bunun yerine geçmez.
+- Tekrarlama: takvim-haftası unique anahtarını kayan yedi gün bütçesi sanma; SEED URL listesini
+  taze kaynak kapısı sayma; aşırı benzer taslağı kabul etmek için kapıları gevşetme.
+
+- P8a Opus 5 exact `b6c290048f0a3c3ce12952653d21360f2215c85f`: DÜZELT. QUALITY dışı
+  kayıtların 32 köken penceresini tüketmesi domain filtresiyle kapatıldı; mevcut kaynakta
+  INTRINSIC köken biçimi farklı olsa da pencere tüketimi gerçek bir sözleşme sorunuydu.
+  Reversal saat/kanal filtresinden önce korunur; sabitlenmiş taslak alanı değiştirilmez;
+  bozuk evren verisi erken null dönüşüyle gizlenmez. Yeni doğrudan testler ve iki farklı
+  10 kaynaklık havuzla son birleşik persona regresyonu 47/47 (25 yeni + 22 mevcut).
+- P8b ilk schema/migration/repository işi review kapanışı sırasında ayrı stash'te korundu;
+  P8a commit'ine DB/otomasyon kodu karıştırılmadı. Migration henüz yerelde de uygulanmadı.
+- Tekrarlama: iki ödül kanalını ebeveyn adaylığına aynı pencereyle sokma; statik kaynak
+  ayrılığını aktif okuma/tazelik sayma; geçmiş 41 koşusunu güncel 47 koşusuyla karıştırma.
