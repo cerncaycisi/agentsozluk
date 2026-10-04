@@ -4156,3 +4156,36 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - 113 birim / 21 PG16, format/lint/typecheck/requirements PASS; exact CI açık.
 - Tekrarlama: yardımcı Haiku çağrısını hakem kimliği sayma; KOD GO'yu canlı kabul
   veya uygulanmış migration kanıtı diye raporlama.
+
+### 4 Ekim 2026 — v2 birleşimi ve aktivasyonun ilk doğrulaması
+
+- #320 ilk CI `37206519311`, belge push'u nedeniyle iptal edildi. `validate` işi
+  iptal edilmiş alt işleri başarı saymadığı için red verdi; bu kod regresyonu değildi.
+  Final `4f68c57b497e91013fafe4cf8903ca5450e0613e`, CI `37206758504` 7/7 geçti.
+- Fresh head/base/check/review/CLEAN kontrolü ardından main
+  `88c7f562124020d45c0041e98b1e2ebb6287d000`; uzak SHA ve test edilen tree eşliği
+  doğrulandı. #320 T3'e bağlı ve merged. Canlı uygulama hâlâ değiştirilmedi.
+- Aktivasyon branch'i aynı main üzerine, kendi yerel değişiklikleri korunarak taşındı.
+  İlk37 birim geçti. İlk PG denemesi fixture'da geçersiz `NORMAL_SCHEDULED` enum'u
+  yüzünden uygulamaya ulaşmadan düştü; mevcut `SCHEDULED_CONTENT` düzeltmesi sonrası
+  gerçek atomic ACTIVATED/ACTIVE/audit ve tekrar reddi testi geçti. Şema değişmedi.
+- Son odaklı koşu 13 PG16 ve 67 birim PASS. Eski raporun kaynak havuzu anlamı
+  ortak fonksiyona taşındı, mevcut rapor testleri geçti. Yeni ret testleri ayrıca
+  exact safe reason ile güçlendiriliyor; hakem ve son CI açık.
+- Tekrarlama: iptal edilen CI'ı PASS veya ürün hatası diye yazma; fixture enum hatasını
+  üretim sorunu sayma. Sahte tarihli testler gerçek P7 veya doğal kaynak okuması değildir.
+
+### 4 Ekim 2026 14:15 UTC — aktivasyon son yerel kontrolleri
+
+- Ortam: `feat/birth-activation`, main `88c7f56` tabanı, yerel PostgreSQL16.
+  75 birleşik PG senaryosu geçti. Son benchmark-before-window/klon/ret nedeni
+  eklerinden sonra 15/15 aktivasyon PG ve 67/67 birim geçti; örtüşen koşular toplanmadı.
+- Yaşayan eski CLONE'ın sourceAgentId kanıtı kuruluş audit'inde yoktur. Son-dört
+  dışında ve hiç aktive edilmemiş klonun da `LEGACY_CLONE_LINEAGE_UNKNOWN` ile
+  reddedildiği gerçek PG testinde doğrulandı; soy nüfusu tahmin edilmedi.
+- Son typecheck'te yalnız fixture kopyasındaki nullable Prisma JsonValue, yazma
+  InputJsonValue tipine uymadı (`TS2322`); iki bilinen boş JSON nesnesi açık yazıldı.
+  Son format/lint/typecheck/requirements ve OpenAPI154 PASS. Üretim değişmedi.
+- Tekrarlama: report envelope hash'ini haricî rapor dosyasının sunucu doğrulaması
+  diye sunma; benchmark'tan önce başlayan pencereyi gerçek P7 sayma; eski klon
+  son-dört dışında diye soy nüfusundan çıkarma. Opus ve exact CI açık.

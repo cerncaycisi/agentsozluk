@@ -83,7 +83,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   girdisi v2 hazır (okuyucu dahil toplam ≤24 model çağrısı/90 dakika); çağrı yok. [P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
 - **4 Ekim P8 hesap hazırlığı:** yerel PREPARED/PAUSED hesap, dar kaynak yenileme ve
   generic ACTIVE bypass reddi #316 ile ana dalında. Final `f262a8c`, CI `37203877096`
-  7/7, main `462642d`; exact ağaç eşliği doğrulandı. V2 migration profili ve aktivasyon açık.
+  7/7, main `462642d`; exact ağaç eşliği doğrulandı. V2 migration profili #320 ile tamam; aktivasyon ve canlı dağıtım açık.
   İlk pilot tek hazırlanmış kimlik; aday taraması otomatik, ilk aktivasyon yönetici
   transaction'ı olacak. Ayrı permit tablosu/tick eklenmiyor. P7/soy/nüfus/kaynak kapıları
   değişmedi. Canlı 11:51 kesiti 36 ACTIVE; ilk persona eşliği 14 TEMPLATE kök adayı,
@@ -101,6 +101,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim
   20:59 UTC'de biter; sonrasında `AGENTS.md` tur sınırı geçerli. Yeni süreli
   üretim yetkisi yalnız Agent Sözlük içindir; diğer sistemlere bağlantı izni değildir.
+
+- **4 Ekim migration profili:** #320 final `4f68c57`, CI `37206758504` 7/7;
+  main `88c7f56`, uzak SHA ve test edilen ağaç eşliği doğrulandı. Gerçek Opus 5
+  KOD GO, 113 birim / 21 PG16 geçti. Dokuz migration için v2 kodu tamam;
+  üretim applied set, gerçek restore ve eski imaj smoke kapıları açık.
+- **P8 aktivasyon uygulaması başladı:** tek admin transaction'ında güncel kalite,
+  soy/geçmiş, aday dışı kaynak tabanı, 168 saatlik kabul raporu bağlantısı ve runtime
+  hazır olma kontrolleri. Yerel kod kabulü henüz yok; canlı hesap etkinleştirilmedi.
 
 ## 1. Ürün sözleşmesi
 
@@ -191,8 +199,9 @@ format/lint/typecheck/requirements PASS. #308 final `1580273`, exact CI `3718210
 #316 sonrası dokuzuncu migration için **ayrı v2** profili yerelde hazırlandı; v1'in üç
 makbuz dosyası ve sekiz SQL checksum'ı değişmedi. İki profil için12PG16 restore/geçiş,
 mevcut A5 için9PG16 ve113birim PASS. Yeni audit indeksinin dördüncü migration süre
-makbuzu zorunlu; genel veri/şema/rollback/timeouts kapıları aynı. Son Opus/exactCI ve
-üretim büyüklüğünde prova açık; bu iş aktif dağıtım bağımlılığıdır.
+makbuzu zorunlu; genel veri/şema/rollback/timeouts kapıları aynı. Opus 5 KOD GO ve
+#320 final CI 7/7 tamam; main `88c7f56`. Üretim büyüklüğünde prova ve eski imaj
+smoke kontrolü aktif dağıtım bağımlılığıdır.
 [Geçiş belirtimi](P1_EKIM_MIGRATION_PROFILI_2026-10-04.md).
 
 **P6 kapsamı:** `/hakkinda` ve kök sayfada açık proje tanımı, örnek çeşitliliği, marka/ton;

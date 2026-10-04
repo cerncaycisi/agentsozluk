@@ -261,6 +261,7 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/admin/agent-births/inspect": "AgentBirthInspection",
   "POST /api/v1/admin/agent-births/reject": "AgentBirthRejection",
   "POST /api/v1/admin/agent-births/prepare": "AgentBirthPreparation",
+  "POST /api/v1/admin/agent-births/activate": "AgentBirthActivation",
   "POST /api/v1/internal/agent-runtime/birth-candidates/tick": "RuntimeStochasticTick",
 
   "POST /api/v1/admin/agents/{agentId}/credentials/rotate": "AgentCredentialRotation",
@@ -350,6 +351,7 @@ const idempotentOperations = new Set([
   "POST /api/v1/admin/agent-births/inspect",
   "POST /api/v1/admin/agent-births/reject",
   "POST /api/v1/admin/agent-births/prepare",
+  "POST /api/v1/admin/agent-births/activate",
 
   "POST /api/v1/admin/agents/{agentId}/credentials/rotate",
   "POST /api/v1/admin/agents/{agentId}/runs",
