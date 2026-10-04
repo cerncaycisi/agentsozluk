@@ -1379,6 +1379,16 @@ other than the resolved current and immediately previous release. It compares vo
 post-cutover container-image hashes plus disk before/after evidence. It never invokes Docker
 system/volume prune and never removes database data or the current/previous runtime releases.
 
+### Ekim release ayar özeti yeniden giriş önkoşulu
+
+`settings-profile` makbuzu baseline tamamlanmadan önce yazılır. Yeni exact SHA'ya
+başlamadan release kilidi ve yarım migration operasyonunun olmadığı doğrulanır.
+Eski bir baseline'da bu makbuz yoksa `SETTINGS_PROFILE_CHANGED` ile durulur:
+makbuz otomatik doldurulmaz, baseline silinmez ve eski `.release-op-*` dizinleri
+toplu temizlenmez. Uçuş içi işlem kendi exact SHA/kaynak sürümü ve mevcut kurtarma
+kurallarıyla uzlaştırılır; yeni SHA'ya devredilmez. Bu önkoşul mevcut kilit ve
+migration kimliği kapısını değiştirmez.
+
 ### Migration'lı sürüm (A5, yalnız ek yapan)
 
 Bu mod, aynı sarmalayıcıyla ve yalnız **yalnız ek yapan** migration'lar için kullanılır. Kısa

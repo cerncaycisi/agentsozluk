@@ -1,5 +1,6 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -37,6 +38,57 @@ function run(
 }
 
 describe("schema-neutral production release lane", () => {
+  it("aynı hash'lerle yeniden girişte farklı veya eksik settings profilini reddeder", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "release-settings-profile-"));
+    const start = remote.indexOf("assert_state_fingerprints() {");
+    const end = remote.indexOf("\n# Başlangıç kaydı");
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const definition = remote.slice(start, end);
+    const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+    const profiles = ["", "october-2026-v1", "october-2026-v2"];
+    const invoke = (profile: string) =>
+      spawnSync(
+        "bash",
+        [
+          "-c",
+          `set -Eeuo pipefail
+state_dir=${quote(directory)}
+reviewed_migration_profile=${quote(profile)}
+settings_fingerprint() { printf 'settings\\n'; }
+lifecycle_fingerprint() { printf 'lifecycle\\n'; }
+${definition}
+assert_state_fingerprints
+printf 'PASSED\\n'`,
+        ],
+        { encoding: "utf8", timeout: 5000 },
+      );
+    try {
+      writeFileSync(path.join(directory, "settings-hash"), "settings\n");
+      writeFileSync(path.join(directory, "lifecycle-hash"), "lifecycle\n");
+      for (const baseline of profiles) {
+        writeFileSync(path.join(directory, "settings-profile"), baseline + "\n");
+        for (const current of profiles) {
+          const result = invoke(current);
+          if (baseline === current) {
+            expect(result.status, result.stderr).toBe(0);
+            expect(result.stdout).toContain("PASSED");
+          } else {
+            expect(result.status).toBe(97);
+            expect(result.stderr).toContain("SETTINGS_PROFILE_CHANGED");
+            expect(result.stdout).not.toContain("PASSED");
+          }
+        }
+      }
+      rmSync(path.join(directory, "settings-profile"));
+      const missing = invoke("");
+      expect(missing.status).toBe(97);
+      expect(missing.stderr).toContain("SETTINGS_PROFILE_CHANGED");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("keeps both shell entrypoints syntax-valid", () => {
     expect(() => execFileSync("bash", ["-n", wrapperPath])).not.toThrow();
     expect(() => execFileSync("bash", ["-n", remotePath])).not.toThrow();

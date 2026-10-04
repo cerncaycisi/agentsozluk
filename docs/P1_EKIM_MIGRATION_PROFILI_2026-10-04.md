@@ -24,8 +24,9 @@ zaman alanı `NULL` başlar. Yeni tablolar yazıcılar açılmadan boş olmalıd
 
 Eski tablo verileri, sequence'ler, migration geçmişi ve tablo şemaları A5 kapılarında
 karşılaştırılır. Yalnız global ayar satırının parmak izi iki tarafta JSONB'den alınır;
-sadece dört yeni alan dışarıda tutulur. Eski alan değişirse kontrol düşer. Yeni
-alan değerleri ayrıca sınanır. Şema filtresi sadece global tablonun exact dört
+eksik dört yeni alan OFF/NULL başlangıcıyla tamamlanır ve gerçek satır değerleri
+üzerine yazılır. Eski veya yeni alan değişirse kontrol düşer. Yeni alan başlangıçları
+ayrıca sınanır. Şema filtresi sadece global tablonun exact dört
 `pg_dump` sütun satırını çıkarır; tür/default/eksik/yinelenmiş sütun reddedilir.
 Diğer şema metni aynen korunur; genel bir SQL normalizasyonu yapılmaz.
 
@@ -188,3 +189,102 @@ yardımcı Haiku kullanımı hakem modelini değiştirmez. #320 exact head CI a�
 **7/7 PASS**. Main `88c7f562124020d45c0041e98b1e2ebb6287d000`; uzak SHA ve test
 edilen head'in tree eşliği doğrulandı. Önceki CI yeni belge push'u nedeniyle iptal
 edildi, PASS sayılmadı. V2 kod/hakem/CI tamam; üretim prova ve cutover kapıları açık.
+
+## Release ayar özetinin Ekim profiliyle uyumu — 4 Ekim
+
+A5'in veri parmak izi yeni dört alanı ayırıp başlangıç değerlerini ayrıca denetlerken,
+release betiğinin `settings_fingerprint()` işlevi tam satır JSON'unu karşılaştırıyordu.
+Doğru migration bile `OFF/NULL` alanları ekleyince hash'i değiştiriyor ve son release
+kontrolü geçişi durduruyordu. Üretimde denenmedi; dağıtım ön hazırlığında bulundu.
+
+Yalnız exact `october-2026-v1/v2` için eksik alanlar `OFF/OFF/NULL/NULL` ile tamamlanır,
+gerçek satır JSON'u sağ tarafta bunların üzerine yazılır. Böylece hiçbir gerçek ayar
+değeri özetten çıkarılmaz; dört yeni alandaki sapma da hash'i değiştirir. Diğer profiller
+ve migration'sız mod tam satırı karşılaştırır. A5'in eski veri, katalog, başlangıç değerleri
+ve geri dönüş kapıları korunur.
+
+İki profilde 16 PG16 / 18 release betiği testi PASS; son kaynakta dört yeni PG16
+senaryosu ayrıca tekrar geçti. Eski `runtimeEnabled` ve yeni dört alanın sapması,
+şema eklemesinin eşliği, migration'sız ve bilinmeyen profil davranışı gerçek psql ile
+sınandı. Format/lint/typecheck ve üç gereksinim testi PASS. Exact kod hakemi/CI ve
+üretim büyüklüğündeki restore/önceki imaj geçişi henüz açık.
+
+### İlk hakem ve iki katmanın uzlaştırılması
+
+Gerçek `claude-opus-5`, exact `fd4a3b927f5cc9457c47f80b798c68f0baf3b8a0` için
+**DÜZELTİLMELİ** verdi; actual modelUsage yalnız bu model. B1'in eski migration
+kapısında genel fail-open iddiası kaynakla doğrulanmadı: `post_verify()` başlangıç
+OFF/NULL kontrolünü zaten zorunlu çağırır. Buna rağmen veri özeti de release ile aynı
+`defaults || to_jsonb(t)` kuralına daraltıldı; artık yeni alan sapması içerik
+karşılaştırmasında doğrudan görünür, son başlangıç kontrolü de korunur.
+
+B2'de profil değişikliğinin ayar verisi yerine farklı hash hesabı üretmesi teşhis
+belirsizliğiydi; eski guard fail closed kalıyordu. Baseline artık `settings-profile`
+makbuzunu da atomik tamamlama işaretinden önce yazar; eksik veya değişmiş profil
+`SETTINGS_PROFILE_CHANGED` ile durur. Aynı SHA yeniden girişinde profil korunmalıdır.
+Önceki sürümün eksik makbuzu otomatik tamamlanmaz veya baseline silinmez.
+
+B3 tip sapmasını ham JSON metniyle ayırma önerisi alınmadı: JSON null veya enum/text
+OFF temsili tip denetimi değildir; mevcut exact SQL checksum, normalize-schema ve
+sabit katalog kapıları type/default/eksik/yinelenmiş sütunu ayrıca reddeder. Hash
+eşliği yerel gerçek pre/post DB testiyle sınanır. Mevcut tip/default regresyonları
+yeniden çalıştırılır. İlk görüş yeniden adlandırılmaz; son test/ikinci hakem/CI açıktır.
+
+Son yerel **82 PASS**:18 PG16,29 exact profil,16 faz davranışı,19 release betiği.
+Tam `post_verify` başlangıç/son temiz eşliğinde dört yeni alan sapmasını doğrudan
+`POST_TABLE_CONTENT_CHANGED` ile reddeder. Aynı hash'lerle profil değiştirme/eksik
+profil makbuzu `SETTINGS_PROFILE_CHANGED` ile reddedilir; doğru üç profil yolu geçer.
+B3 için mevcut type/default/eksik/yinelenmiş sütun testleri yeniden geçti.
+
+### İkinci görüş ve UTC kapanışı
+
+Gerçek `claude-opus-5`, exact `28b91d0f2eb4dc6a2a0a8a471445f2b43b734fba`
+için **KOŞULLU GO** verdi. Zaman dilimi bulgusu kaynakla doğrulandı: mevcut
+`updatedAt` timestamptz değeri farklı oturum TimeZone'larında farklı JSON metni
+üretir. Release özeti artık kendi salt okunur oturumunda `SET TimeZone = 'UTC'`
+uygular; DB/rol ayarını değiştirmez. Eksik sütun ile OFF/NULL başlangıcının bu
+özette eşit olduğu yorumda açık; sütun varlığı/tipi katalog kapısının işidir.
+
+Eski baseline makbuzu otomatik doldurulmaz; eski exact SHA operasyonu yeni SHA'ya
+aktarılmaz. 21:00 UTC pinli kesitte release kilidi, migration işareti/hold yok;
+app/runtime `9bf3653`, worker aktif. Eksik makbuzlu işlem varsa yayına devam edilmez,
+runbook'taki aynı eski SHA kurtarma yolu izlenir; eski `.release-op-*` dizinlerini
+toplu silme önerisi alınmadı. Önceki/aktif rollback kanıtı korunur.
+
+`assert_migration_mode` çağrısını capture'dan önce taşıma önerisi kaynakla reddedildi:
+işlev migration'sız modda capture'ın oluşturduğu iki baseline dosyasını karşılaştırır;
+reviewed modda işlem yapmaz. Exact profil/listenin gerçek kapısı `plan_migrations`
+içindedir ve dondurmadan önce çalışır. Çağrıyı taşımak doğru migration'sız ilk
+koşuyu bozar. Boş global ayar ve gelecekteki v3 önerileri mevcut kodun takip
+notlarıdır; bu diff için doğrulanmış veri kaybı/fail-open bulgusu değildir.
+
+21:00:27 UTC gerçek DB makbuzu: 28 uygulanmış/0 yarım, 9 bekleyen tam v2 checksum
+kümesi; DB 5.815.196.695 bayt, root boş 29.737.578.496 bayt/%62. Bu salt okunur
+hazırlık, frozen restore/indeks süresi veya eski imaj boot kanıtı değildir.
+
+UTC dar düzeltmesi sonrası iki yeni gerçek PG16 senaryosu ve 19 release birim testi
+PASS. Ham UTC/Tokyo JSON farkı fixture'da doğrulandı; aynı veri için gerçek release
+hash'i hem reviewed hem migration'sız modda eşit kaldı. Önceki 82 ölçümü ayrı
+koşudur. Son UTC kod hakemi/exact CI henüz açık.
+
+Son tarihsel fixture doğrulaması **62/62 PG16 PASS**; standart 15s transaction
+bütçesi ve bütün auth/CSRF/yarış/geri alma/soy/kaynak/kapasite olumsuz beklentileri
+korundu. Typecheck PASS. Bu test kimlikleri/raporları yereldir, canlı doğum veya
+P7 kabulü değildir. Son UTC/fixture kaynağının hakem ve exact CI kapısı açıktır.
+
+### Son bağımsız kod kapanışı — 4 Ekim 21:19 UTC
+
+Gerçek `claude-opus-5`, exact `ee1cd480a4bf76b32fcca9870d4b67b8b67feeec`
+için **KOŞULLU GO** verdi (121,816 saniye; araç/test/üretim erişimi yok). UTC,
+gerçek eski/yeni değerlerin özet içinde korunması ve ayrı katalog kapısı doğrulandı.
+Capture öncesine çağrı taşıma önerisini bağımsız kaynak kontrolüyle geri çekti.
+Koşulsuz KOD GO diye yazılmıyor; önceki görüşler aynen korunuyor.
+
+İki operasyon koşulu mevcut release kapılarıyla izlenir: son exact kaynak için tam
+CI database/coverage dahil 7/7 yeşil olmadan merge/artifact yok; uzak betik
+çalışmadan wrapper fetch/checkout ile HEAD'i exact aday SHA'ya bağlar ve tekrar
+sınar (`deploy-production-no-migration.sh` fetch/checkout +son SSH guard'ı).
+21:00'da eski canlı SHA okunması arıza değildir, cutover öncesi tabandır. Bu
+koşullar salt okunur kesitle tamamlanmış sayılmaz; gerçek CI/dağıtım sonucu ayrıca
+kaydedilecek. Bu kapanıştan sonraki belge makbuzunda kod/test ağacının reviewed
+SHA ile aynı kaldığı doğrulanır; reviewed SHA yeni belge SHA'sına yeniden adlandırılmaz.

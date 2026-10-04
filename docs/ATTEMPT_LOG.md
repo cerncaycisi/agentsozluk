@@ -4552,3 +4552,120 @@ Gerçek unshare-user/pid/ipc/uts probe ve provider inspect PASS; CLI0.160.0/Luna
 structured output doğrulandı. Sudo, sistem ayarı veya kullanıcı görevleri değiştirilmedi.
 Auth kopyası/model çağrısı yok. Tekrarlama: kullanıcı-dizini araçla çözülen eksik paket
 için global namespace kısıtını kaldırma; version/help kontrolünü auth/kapasite kanıtı sayma.
+
+## 4 Ekim 2026 — release ayar özeti ve oturum devri
+
+Gökhan önceki cbfbda04-214f-49f6-9c6f-7b3f15242cbb çalışmasını aynı goal ve süreli
+yetkiyle sürdürmeyi istedi. Yürütücü bu devirde gpt-6.1-sol; önceki Astra ve Opus
+makbuzları yeniden adlandırılmadı. Devam eden P3/P4/P5 pilotunun kimliği, başlangıcı,
+bütçesi ve detached kaynak ağacı korundu; ikinci model işçisi başlatılmadı.
+
+Dağıtım ön hazırlığında release settings fingerprint hatası kaynakta doğrulandı:
+agent_global_settings üzerinde dört OFF/NULL sütunu eklenmesi tam JSON satır hash'ini
+değiştirir; A5 veri ve katalog doğrulaması geçse bile release son kontrolü yanlış ret
+verirdi. Yalnız exact october-2026-v1/v2 için eksik dört alan aynı başlangıç değerleriyle
+JSONB'ye eklenir, ardından gerçek satır değerleri üzerine yazılır. Hiçbir gerçek eski
+veya yeni değer özetten çıkarılmaz. Migration'sız ve bilinmeyen profil tam satırı korur.
+A5 katalog, OFF/NULL, eski veri/şema/geçmiş ve rollback kapıları aynen kalır.
+
+İlk yerel 16 PG16 + 18 release betiği = 34 test PASS. Yeni dört senaryo iki profilde
+şema eklemesini ve runtimeEnabled, rewardMode, birthMode, lastBirthScanAt,
+lastBirthCandidateAt değer sapmalarını gerçek psql/restore/migration ile sınadı.
+Final kaynakta dört release senaryosu tekrar PASS; format/lint/typecheck ve üç gereksinim kontrolü PASS.
+Kod hakemi, exact CI ve üretim geçişi henüz açık; gerçek üretim ayarı değiştirilmedi.
+
+P2 development 12 geçerli karar/1 Opus okuma; kaynak denetiminde 1 yeni/1 eski/4 beraberlik.
+Ham okuyucu ve operatör ayrışması private makbuzda korundu. Üstünlük eşiği geçmedi;
+saklı set açılmadı, yeni bütçe verilmedi. Somut doğrulanmış ihlal 0; fayda BELİRSİZ.
+Bu yalnız karar pilotudur; kamuya yayımlanmış entry veya genel karakter başarısı değildir.
+
+## 4 Ekim 2026 — P345 gerçek kontrolü ve release hakem uzlaştırması
+
+Exact detached `e990f9dfcb1f0d27db83fbd8a5bfcb3576858d9e`, Luna/max/CLI0.160.0:
+18 geçerli karar, 0 teknik hata/tekrar; tek actual `claude-opus-5` okumasıyla
+19 mantıksal çağrı/25 dakika49,8 saniye. 20:49 UTC yürütücü kaynak kontrolünde
+somut sözleşme ihlali 0; yayımlama/DB mutasyonu yok. Katalog dışı sanılan üç
+MODEL_KNOWLEDGE eylem kanıtı normal run ID'sidir. NO_ACTION null selectedOptionSeq
+şemada meşrudur; ham raporun indeks kaymaları vaka etiketiyle düzeltildi. P5 yalnız
+gözlem; sonuç NO_CONFIRMED_CONTRACT_VIOLATION, davranış PASS veya fayda değildir.
+
+#327 ilk exact `fd4a3b927f5cc9457c47f80b798c68f0baf3b8a0`, CI `37232666236`
+7/7 PASS; Opus 5 DÜZELTİLMELİ, actual modelUsage yalnız claude-opus-5. Migration
+kapısındaki OFF/NULL denetimi zaten vardı; genel fail-open iddiası kaynakla
+doğrulanmadı. İki veri özeti aynı başlangıç tamamlama kuralına bağlandı; profil
+makbuzu baseline'da saklanıp yeniden girişte açık SETTINGS_PROFILE_CHANGED ile
+denetlenir. SHA'ya ait eksik eski makbuz otomatik doldurulmaz veya silinmez.
+
+Son yerel 18 PG16 +29 exact profil +16 faz davranışı +19 release testi =82 PASS.
+Yeni tam post_verify testleri dört yeni alan sapmasını içerik kapısında reddetti;
+üç profilin aynı hash'lerle tüm yeniden giriş kombinasyonları ve eksik makbuz
+reddi geçti. Tip/default/eksik/yinelenmiş sütun regresyonları da geçti. İkinci
+hakem ve final exact CI açık; üretim canlı9bf hâlâ değiştirilmedi.
+Tekrarlama: tek alt fonksiyon özetiyle bütün kapı fail-open ilan etme; ham JSON
+temsilinden SQL tipi çıkarma; mevcut hakem kararını kaynakla uzlaştırmadan GO
+diye yeniden adlandırma; pilotu yayın veya P7 kabulüne dönüştürme.
+
+### 4 Ekim 21:03 UTC — release UTC özeti ve ikinci hakem kaynak kontrolü
+
+İkinci salt okunur hakem gerçek `claude-opus-5`, exact
+`28b91d0f2eb4dc6a2a0a8a471445f2b43b734fba` için KOŞULLU GO verdi. Doğrulanmış
+TimeZone yanlış ret riski release SQL oturumunda UTC sabitlemeyle kapandı; DB/rol
+ayarına yazma yok. Gerçek PG16'da UTC/Tokyo ham `updatedAt` JSON'u farklı olduğu
+halde iki exact profilde ve migration'sız modda release özeti aynı: **2 yeni PG16
++19 release birim PASS**. Önceki 82 test ayrı makbuzdur; hepsi bu turda yeniden
+çalıştırılmış sayılmaz. Marker aralıkları yoksa test helper'ları açıkça düşer.
+
+Eski eksik profil makbuzunu doldurma/toplu silme yapılmaz; runbook önkoşulu yazıldı.
+`assert_migration_mode`'u capture önüne taşıma önerisi kaynakta migration'sız ilk
+koşuyu bozar; exact reviewed liste doğrulaması zaten dondurma öncesidir. Hakem
+koşulları kaynakla değerlendirildi; son UTC kodunun bağımsız görüşü/exact CI ve
+üretim restore/cutover hâlâ açık. `do not repeat`: eski state'i yeni SHA'ya taşıma;
+bir öneriyi çağırdığı fonksiyonun gerçek bağımlılığını okumadan uygulama.
+
+### 4 Ekim — #327 CI saat fixture'ı teşhisi
+
+Exact `28b91d0f2eb4dc6a2a0a8a471445f2b43b734fba`, CI `37234139545` FAIL:
+quality/behavior/browser/container PASS, database/coverage/validate FAIL.
+Database 483 PASS/14 FAIL; release/migration senaryoları geçti. Aynı doğum
+aktivasyonu fixture'ı veritabanı ve coverage işlerinde kaldı. Özel loglar kaynakla
+okundu; kör CI tekrarı veya eşik/timeout/üretim guard'ı gevşetme yapılmadı.
+
+Kök neden: fake Date `2026-10-04T20:59:00Z`, PostgreSQL DEFAULT now() ise gerçek
+saat. Yeni çocuk profile/audit/genesis kayıtları 21:07–21:08 oluşunca
+`ACTIVATION_HISTORY_UNKNOWN` doğru fail closed yanıtıdır; queued fixture'ın
+`availableAt` değeri de sabit now'ın ilerisine düşer. İlk yerel deneme yalnız
+`Database agent_sozluk_test does not exist` ortam hatasıydı; yeni ve yalnız bu işe
+ait `agent_sozluk_release327_test` DB'si oluşturulup 37 migration uygulanınca gerçek
+aktivasyon hatası 1/1 tekrarlandı. Mevcut test DB'leri/kullanıcı işleri korunur.
+
+Düzeltme yalnız testte: hazırlığın yeni profile/persona/audit/life-event INSERT
+`createdAt` alanları create query extension ile kontrollü saate bağlandı; mevcut
+alanlar üzerine yazılmaz. Queue `availableAt: now` alır. Hiçbir tarihsel immutable
+satır sonradan değiştirilmez, trigger devre dışı bırakılmaz; uygulama/DB guard'ları
+aynı. İlk dar aktivasyon 1/1 PASS; ara tam koşu 61 PASS/1 queue fixture FAIL.
+Prisma extension'ın tip uyumsuzluğu yalnız test transaction adaptöründe açıkça
+sınırlandı; uygulama DatabaseExecutor sözleşmesi değiştirilmedi. Son tam doğrulama
+ayrı kayda yazılır. `do not repeat`: fake JS saatini DB DEFAULT now()'ın da
+sabitlendiği kanıtı sayma; fixture saat farkını üretim regresyonu diye raporlama.
+
+Son tarihsel fixture doğrulaması **62/62 PG16 PASS**; standart 15s transaction
+bütçesi ve bütün auth/CSRF/yarış/geri alma/soy/kaynak/kapasite olumsuz beklentileri
+korundu. Typecheck PASS. Bu test kimlikleri/raporları yereldir, canlı doğum veya
+P7 kabulü değildir. Son UTC/fixture kaynağının hakem ve exact CI kapısı açıktır.
+
+### Son bağımsız kod kapanışı — 4 Ekim 21:19 UTC
+
+Gerçek `claude-opus-5`, exact `ee1cd480a4bf76b32fcca9870d4b67b8b67feeec`
+için **KOŞULLU GO** verdi (121,816 saniye; araç/test/üretim erişimi yok). UTC,
+gerçek eski/yeni değerlerin özet içinde korunması ve ayrı katalog kapısı doğrulandı.
+Capture öncesine çağrı taşıma önerisini bağımsız kaynak kontrolüyle geri çekti.
+Koşulsuz KOD GO diye yazılmıyor; önceki görüşler aynen korunuyor.
+
+İki operasyon koşulu mevcut release kapılarıyla izlenir: son exact kaynak için tam
+CI database/coverage dahil 7/7 yeşil olmadan merge/artifact yok; uzak betik
+çalışmadan wrapper fetch/checkout ile HEAD'i exact aday SHA'ya bağlar ve tekrar
+sınar (`deploy-production-no-migration.sh` fetch/checkout +son SSH guard'ı).
+21:00'da eski canlı SHA okunması arıza değildir, cutover öncesi tabandır. Bu
+koşullar salt okunur kesitle tamamlanmış sayılmaz; gerçek CI/dağıtım sonucu ayrıca
+kaydedilecek. Bu kapanıştan sonraki belge makbuzunda kod/test ağacının reviewed
+SHA ile aynı kaldığı doğrulanır; reviewed SHA yeni belge SHA'sına yeniden adlandırılmaz.

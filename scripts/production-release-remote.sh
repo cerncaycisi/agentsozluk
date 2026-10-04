@@ -108,11 +108,18 @@ candidate_migration_snapshot() {
 }
 
 settings_fingerprint() {
+  # Exact Ekim profilleri dört ayarı OFF/NULL ile ekler. Eksik sütunları
+  # aynı başlangıç değerleriyle tamamla; mevcut (eski/yeni) değerleri koru.
+  # Eksik sütun ve başlangıç değeri bu özette eşittir; varlık/tip katalogda sınanır.
   "${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 \
-    -U agent_sozluk -d agent_sozluk \
-    -c 'SELECT to_jsonb(s)::text FROM agent_global_settings s ORDER BY id;' \
-    </dev/null |
-    hash_stream
+    -v "profile=$reviewed_migration_profile" -U agent_sozluk -d agent_sozluk <<'SQL' | hash_stream
+SET TimeZone = 'UTC';
+SELECT (CASE WHEN :'profile' IN ('october-2026-v1', 'october-2026-v2')
+  THEN jsonb_build_object('rewardMode', 'OFF', 'birthMode', 'OFF',
+    'lastBirthScanAt', NULL, 'lastBirthCandidateAt', NULL) || to_jsonb(s)
+  ELSE to_jsonb(s) END)::text
+FROM agent_global_settings s ORDER BY id;
+SQL
 }
 
 lifecycle_fingerprint() {
@@ -235,6 +242,11 @@ assert_runtime_unit() {
 }
 
 assert_state_fingerprints() {
+  if ! test -f "$state_dir/settings-profile" ||
+     ! test "$reviewed_migration_profile" = "$(cat "$state_dir/settings-profile")"; then
+    printf 'RELEASE_FAIL code=SETTINGS_PROFILE_CHANGED\n' >&2
+    exit 97
+  fi
   test "$(settings_fingerprint)" = "$(cat "$state_dir/settings-hash")"
   test "$(lifecycle_fingerprint)" = "$(cat "$state_dir/lifecycle-hash")"
 }
@@ -321,6 +333,7 @@ capture_initial_state() {
   printf '%s\n' "$previous_runtime" >"$state_dir/previous-runtime"
   docker inspect --format '{{.Image}}' "$app_container" >"$state_dir/previous-image-id"
   settings_fingerprint >"$state_dir/settings-hash"
+  printf '%s\n' "$reviewed_migration_profile" >"$state_dir/settings-profile"
   lifecycle_fingerprint >"$state_dir/lifecycle-hash"
   migration_snapshot >"$state_dir/baseline-applied-migrations"
   candidate_migration_snapshot >"$state_dir/baseline-candidate-migrations"
