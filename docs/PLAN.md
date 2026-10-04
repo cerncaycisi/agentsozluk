@@ -139,16 +139,18 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   hitap, 1 snapshot dışı hedef. Ret alarmı açık; dağıtım olmadı, örtüşen pencerelerden
   kod etkisi çıkarılmaz. Ana dal `8c56852` teslim kaydı CI `37219729005` 7/7 PASS.
 
-- **4 Ekim P2 çalıştırıcı hazırlığı:** ilk/saklı set için aynı90 dakika, kalıcı24runtime /
-  en çok 2 Opus okuması ve kaynak doğrulaması eklendi. Son 51 P2 + 43 ortak +
-  7 provider = 101 ağsız test PASS;
-  gerçek P0/eski hazırlığın24girdisi güncel girdi doğrulayıcıyla uyumlu (yalnız yerel
-  sentetik tarih testi; A′ makbuzu veya runnable paket değil). Otomatik retry yok;
-  eksik çift eşik düşürmez. İlk Opus düzeltmeleri sonrası 27 dakika saklı giriş payı,
-  görünür okuyucu-operatör farkı ve yalnız Opus model kapısı eklendi. İkinci Opus
-  sonrası form hatası düzeltilebilir, ilk evre rezervi 42 dakika ve tek taraflı okuyucu
-  yükseltmesi kapalı. Son bağımsız kapanış/final CI açık; gerçek çağrı 0.
-  [P2 çalıştırıcı sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
+- **P2 çalıştırıcısı teslim edildi:** #325 final `0b99703`, exact CI `37226959945`
+  **7/7**, main `abd1ae7`; uzak SHA/ağaç eşliği PASS. Son 101 ağsız test ve son 30 runner
+  tekrar geçti. Opus 5 dar **KOŞULLU GO**: 27 dakika giriş tamamlama garantisi değil;
+  eksik setin okuması yalnız kısmi sorun tespiti. Yazılı koşullar/mevcut negatif test
+  makbuzda. Çalıştırıcı kod işi aktif geliştirme kuyruğundan çıktı; 6 Ekim A′ sonrası
+  güncel kaynak/model/effort ile girdilerin dondurulması, gerçek P2 pilotu ve canlı dağıtım
+  açık. Gerçek çağrı0. [P2 sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
+- **4 Ekim 19:12 UTC sağlık:** taze pin/DNS/host/origin/exact `9bf3653` ile READ ONLY
+  kesitte son saat 16 SUCCEEDED / 6 PARTIAL (biri CODEX_TIMEOUT), terminal FAILED yok.
+  Son 24 saatte293 başarılı / 98 ret (**%25,06**); 82 tekrar/benzerlik, 14 kesin sayı,
+  1 doğrudan hitap, 1 snapshot dışı hedef. Ret alarmı açık; dağıtım yapılmadı. Örtüşen
+  pencerelerden kod etkisi veya doğal 24 saat teknik hata oranı çıkarılmaz.
 
 ## 1. Ürün sözleşmesi
 
@@ -471,6 +473,10 @@ kimliklendirilir; M2'nin mevcut eşiğini yeni ürün uğruna gevşetme.
 3 Ekim P0: güncel 36 profil, 129 entry, altı kör çiftte 3 doğru/2 yanlış/1 belirsiz;
 alan→istem boşlukları kodla doğrulandı. Küçük örnek genellenmedi; P2 başarı iddiası yok.
 [Ölçüm ve uygulama makbuzu](P0_P2_KARAKTER_2026-10-03.md). Ek uzun taban deneyi yok.
+
+4 Ekim P2 çalıştırıcı kodu #325 ile tamam: `0b99703` → main `abd1ae7`;
+exact CI 7/7,101 ağsız test, Opus 5 dar koşullu kod kabulü ve yazılı kapanış. Bu tamamlanma
+P2 davranış pilotu veya P7 kabulü değildir; gerçek model çağrısı 0.
 
 ## 7. Plan bakımı ve kanıt
 

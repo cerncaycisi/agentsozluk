@@ -4481,3 +4481,34 @@ test PASS. İlk exact CI37225298842 7/7; ikinci/final CI ve bağımsız kapanı�
 Tekrarlama: model çağrısı belirsizliğiyle yalnız yerel form yazım hatasını bir tutma;
 operator öz beyanından kör okuyucunun reddini tek başına yükseltme; hash kontrolü süresini
 model invoke sayısıyla karıştırma. Gerçek pilot0, üretim erişimi/mutasyonu0.
+
+## 4 Ekim 2026 — P2 exact teslim ve Opus koşullarının kapanışı
+
+#325 final `0b99703703ec4f754df5e6fa7b4506aaf7748318`, exact CI `37226959945` **7/7 PASS**; squash main `abd1ae7b4fcfaa553088db294d427b8aef32aade`.
+Taze head/base/check/review/CLEAN kontrolü, uzak main ve test edilen ağaç eşliği doğrulandı.
+Son 51 P2 +43 ortak +7 provider =**101 ağsız test**; son 30 runner tekrar geçti.
+Format/lint/typecheck ve gereksinim kontrolü PASS. Önceki exact CI'lar `37225298842`
+ve `37226098727` de 7/7. Gerçek pilot çağrısı 0; üretim uygulaması dağıtılmadı.
+
+Opus 5 üçüncü dar KOŞULLU GO'nun K1 süre garantisi yokluğu ve K2 yalnız tanısal kısmi
+okuma koşulları açıkça yazıldı. Mevcut tek-teknik-hata negatif testi 5 tam çift/ 12 çağrı/
+INCOMPLETE ile saklı seti kapalı tutar. İlk iki DÜZELTİLMELİ görüş yeniden adlandırılmadı.
+Her actual modelUsage yalnız claude-opus-5; yeni koşulsuz GO/deploy yetkisi iddiası yok.
+Tekrarlama: 27dakika asgari girişini tamamlanma veya gerçek latency garantisi sayma;
+kısmi okumayı eksik çiftleri düşürerek davranış başarısına dönüştürme.
+
+## 4 Ekim 2026 — 19:12 UTC sağlık yenilemesi
+
+Taze host pin/DNS/hostname/origin/exact 9bf guard'ı ve tek RR READ ONLY işlem; sorgu 15 s.
+Son saat 16 SUCCEEDED/ 6 PARTIAL (biri CODEX_TIMEOUT), FAILED 0. Son 24 saat 293 başarılı /
+98 ret =%25,06; 82 tekrar/benzerlik, 14 kesin sayı,1 doğrudan hitap, 1 snapshot dışı hedef.
+Özel makbuz `health-20261004-191217`; sorgu SHA-256
+`f263ee93b90af3b49ee15e64b31e22791a0e9ceeefc0addd7dc020db4853ec9a`.
+Üretim yazımı/deploy yok; alarm açık. Tekrarlama: örtüşen pencere farkını yeni kodun etkisi
+veya bu 1 saatlik kesiti 24 saat doğal teknik hata oranı diye raporlama.
+
+İlk birleştirme ön okumasında yerel eski `gh pr view --json` sürümü `baseRefOid`
+alanını desteklemedi (`Unknown JSON field: "baseRefOid"`); mutasyon başlamamıştı.
+Base SHA, REST pull kaydından alınıp head/check/review/remote main tekrar taze doğrulandı;
+yalnız ardından exact SHA ile merge yapıldı. Tekrarlama: bu CLI'da desteklenmeyen
+`baseRefOid` alanını yeniden kullanma; REST `base.sha` denetimini atlama.

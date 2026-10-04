@@ -491,3 +491,34 @@ Süresinde kaydedilmiş nihai olumsuz/olumlu sonuç, 90 dakika sonrası tekrar o
 korunur. Tamamlanmış faza yanlışlıkla yeni inceleme gönderilmesi `PILOT_PERSONA_PHASE_CLOSED`
 ile reddedilir; önceden doğrulanmış sonucu terminal süre hatasına çeviremez. Bu kontrol
 kaynak/hash bozulmasını veya yetki tarih sınırını gevşetmez; final sonuç tarihi kayıtlıdır.
+
+### Üçüncü dar kapanış ve kod teslimi
+
+Gerçek `claude-opus-5`, exact `0b99703703ec4f754df5e6fa7b4506aaf7748318` için
+**KOŞULLU GO (yalnız çalıştırıcı kodu)** verdi. Önceki iki DÜZELTİLMELİ görüş korunur;
+üç kod incelemesinin actual modelUsage alanı yalnız claude-opus-5. Astra hakem turu yok.
+
+- **K1 yazılı sınır:** 27 dakika yalnız asgari giriş payıdır; saklı setin tamamlanmasını
+  veya latency'yi koruduğu iddiası yoktur. Okuyucu/kaynak kontrolü 15 dakikanın tamamını
+  kullanırsa 12 kararın 27 dakikaya sığması, kararların toplam 12 dakikadan kısa sürmesini
+  (ortalama 60 saniyeden kısa; hash/IO/temizlik de aynı saatte) ister. Bu gerçekleşmiş süre
+  varsayımı değildir. Daha yavaş koşu kısmen açılıp INCOMPLETE kalabilir; tavan uzamaz,
+  örnek azalmaz. Karar başına 6 dakika yalnız üst sınırdır; süre tahmini değildir.
+- **K2 yazılı yürütücü kararı:** eksik set tek okuyucuya yalnız eldeki çıktılarda somut
+  sorun aramak için gidebilir. Çağrı kendi slotunu ve aynı 90 dakika payını tüketir;
+  eksik çiftle üstünlük/başarı yoktur. Mevcut negatif test
+  `tests/unit/scripts/persona-pilot.test.ts:238` tek teknik hatadan sonra okuyucu
+  makbuzunu/kaynak kontrolünü tamamlayıp **5 tam çift / 12 runtime / INCOMPLETE** bırakır;
+  saklı set açılmaz, ek runtime çağrısı yoktur. Ek veya yeniden okuma hakkı açılmaz.
+- Hakemin sınıflandırma notunda somut erişilebilir tetikleyici bulunmadı. Eski inceleme
+  hash/IO kontrolü yeni form sarmalayıcısının dışındadır; bu sınır korunur. Koşullar kaynak,
+  yazılı sınır ve mevcut negatif testle karşılandı; yeni koşulsuz GO iddiası yoktur.
+
+#325 final `0b99703703ec4f754df5e6fa7b4506aaf7748318`, exact CI `37226959945` **7/7 PASS**; squash main `abd1ae7b4fcfaa553088db294d427b8aef32aade`.
+Taze head/base/check/review/CLEAN kontrolü, uzak main ve test edilen ağaç eşliği doğrulandı.
+Son 51 P2 +43 ortak +7 provider =**101 ağsız test**; son 30 runner tekrar geçti.
+Format/lint/typecheck ve gereksinim kontrolü PASS. Önceki exact CI'lar `37225298842`
+ve `37226098727` de 7/7. Gerçek pilot çağrısı 0; üretim uygulaması dağıtılmadı.
+
+Kod işi tamam. A′ kararı, güncel source/model/effort/CLI ile gerçek v2 dondurma ve pilot
+çıktıları ayrı açık işlerdir. Yerel sentetik A′/saat uyum makbuzu bunların yerine geçmez.

@@ -4291,3 +4291,24 @@ P2 ikinci Opus (`d98f2ab`) DÜZELTİLMELİ görüşü sonrası son **101 ağsız
 ilk evre42 dakika pay korur; okuyucu reddini operatör tek başına olumluya çeviremez.
 Ham packet/stdin bayt eşliği ve her hazırlık kontrolünün aynı saate dahil oluşu sınandı.
 Son bağımsız kapanış/final CI açık; gerçek pilot0 ve üretim değişikliği0.
+
+## 4 Ekim 2026 — P2 çalıştırıcı kod teslimi
+
+#325 final `0b99703703ec4f754df5e6fa7b4506aaf7748318`, exact CI `37226959945` **7/7 PASS**; squash main `abd1ae7b4fcfaa553088db294d427b8aef32aade`.
+Taze head/base/check/review/CLEAN kontrolü, uzak main ve test edilen ağaç eşliği doğrulandı.
+Son 51 P2 +43 ortak +7 provider =**101 ağsız test**; son 30 runner tekrar geçti.
+Format/lint/typecheck ve gereksinim kontrolü PASS. Önceki exact CI'lar `37225298842`
+ve `37226098727` de 7/7. Gerçek pilot çağrısı 0; üretim uygulaması dağıtılmadı.
+
+Opus 5 son dar KOŞULLU GO; form kurtarması, 42/27 dakika payları, tek taraflı olumlu
+hüküm reddi ve packet/stdin bayt eşliği kaynakla kapandı. Kalan süre/tanısal kısmi okuma
+koşulları P2 sözleşmesinde yazılı ve mevcut negatif testle destekli. Gerçek P2 pilotu 0;
+6 Ekim A′ sonrası çalışma/canlı kabul açık.
+
+## 4 Ekim 2026 — 19:12 UTC canlı sağlık
+
+Canlı exact 9bf3653, taze pin/DNS/hostname/origin denetimi ardından RR READ ONLY / 15 s sorgu.
+Son saatte 16 SUCCEEDED/ 6 PARTIAL (1 CODEX_TIMEOUT); terminal FAILED 0. Son 24 saatte
+293 başarılı/ 98 ret =**%25,06**; 42 semantic + 33 framing + 7 similarity = 82 tekrar, 14 kesin sayı,
+1 doğrudan hitap, 1 snapshot dışı hedef. Ret alarmı açık. Yeni dağıtım veya DB yazımı yok;
+örtüşen kesitler iyileşme/kötüleşme için nedensel kod kanıtı değildir.
