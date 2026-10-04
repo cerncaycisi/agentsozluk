@@ -39,6 +39,7 @@ frozen_deadline=0
 # (Astra, 23 Eylül).
 recovering=0
 migration_status=0
+reviewed_migration_profile="${reviewed_migration_profile:-}"
 
 migration_fail() {
   printf 'RELEASE_FAIL code=%s\n' "$1" >&2
@@ -82,6 +83,9 @@ set_phase() {
 }
 
 migration_identity() {
+  if test -n "$reviewed_migration_profile"; then
+    printf '%s|' "$reviewed_migration_profile"
+  fi
   printf '%s|%s\n' "$candidate_sha" "$(printf '%s\n' "$approved_migrations" | sha256sum | cut -d ' ' -f 1)"
 }
 
@@ -173,8 +177,14 @@ plan_migrations() {
   # dosyada açılan tablo diğerinde "mevcut" sayılmasın.
   while IFS= read -r name; do cat "$(migration_file "$name")"; printf '\n'; done \
     <"$pending" >"$migration_dir/pending.sql"
-  "$host_node" "$app_root/scripts/check-additive-migration.mjs" "$migration_dir/pending.sql" \
-    >"$migration_dir/expectation.json" || migration_fail MIGRATION_NOT_ADDITIVE
+  if test -n "$reviewed_migration_profile"; then
+    "$host_node" "$app_root/scripts/reviewed-migration-profile.mjs" verify \
+      "$reviewed_migration_profile" "$app_root" "$pending" \
+      >"$migration_dir/expectation.json" || migration_fail REVIEWED_MIGRATION_REJECTED
+  else
+    "$host_node" "$app_root/scripts/check-additive-migration.mjs" "$migration_dir/pending.sql" \
+      >"$migration_dir/expectation.json" || migration_fail MIGRATION_NOT_ADDITIVE
+  fi
   # Mevcut tabloya eklenen indekslerin adları: şema özetinde yalnız bunların
   # `CREATE INDEX` satırı hariç tutulur (başka her şey birebir kalmalı).
   "$host_node" -e '
@@ -237,6 +247,14 @@ preflight_migration() {
 
   assert_fk_targets
   assert_existing_index_targets
+  if test -n "$reviewed_migration_profile"; then
+    test "$(db_psql agent_sozluk -c \
+      "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.agent_global_settings'::regclass
+       AND NOT attisdropped AND attname IN ('rewardMode','birthMode','lastBirthScanAt','lastBirthCandidateAt');" \
+      </dev/null)" = 0 || migration_fail REVIEWED_COLUMNS_ALREADY_PRESENT
+    test "$(db_psql agent_sozluk -c 'SHOW block_size;' </dev/null)" = 8192 ||
+      migration_fail REVIEWED_INDEX_BLOCK_SIZE_UNSUPPORTED
+  fi
   assert_disk_budget full
 }
 
@@ -255,7 +273,8 @@ assert_existing_index_targets() {
     migration_fail EXPECTATION_UNREADABLE
   while IFS='|' read -r name table columns; do
     test -n "$name" || migration_fail EXISTING_INDEX_ENTRY_EMPTY
-    test "$(db_psql agent_sozluk -v "name=$name" -v "table=$table" -v "columns=$columns" <<'SQL'
+    test "$(db_psql agent_sozluk -v "name=$name" -v "table=$table" -v "columns=$columns" \
+      -v "profile=$reviewed_migration_profile" <<'SQL'
 SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = 'public' AND c.relname = :'table' AND c.relkind = 'r') = 1
    AND (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -266,7 +285,12 @@ SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relname
           JOIN pg_namespace n ON n.oid = c.relnamespace
           JOIN pg_type t ON t.oid = a.atttypid
           WHERE n.nspname = 'public' AND c.relname = :'table' AND a.attname = wanted.col
-            AND a.attnum > 0 AND NOT a.attisdropped AND t.typlen > 0)) = 0;
+            AND a.attnum > 0 AND NOT a.attisdropped
+            AND (t.typlen > 0 OR (
+              :'profile' = 'october-2026-v1'
+              AND :'name' = 'agent_runtime_events_feedback_presented_idx'
+              AND c.relname = 'agent_runtime_events' AND a.attname = 'eventType'
+              AND a.atttypid = 'varchar'::regtype AND a.atttypmod = 104)))) = 0;
 SQL
 )" = t || migration_fail EXISTING_INDEX_TARGET_UNSUPPORTED
   done <"$migration_dir/existing-index-targets"
@@ -281,7 +305,8 @@ assert_fk_targets() {
     const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
     const targets = new Set();
     for (const table of Object.values(value.tables))
-      for (const fk of table.foreignKeys) targets.add(fk.referencedTable);
+      for (const fk of table.foreignKeys)
+        if (!(fk.referencedTable in value.tables)) targets.add(fk.referencedTable);
     for (const target of [...targets].sort()) process.stdout.write(target + "\n");
   ' "$migration_dir/expectation.json" >"$migration_dir/fk-targets" ||
     migration_fail EXPECTATION_UNREADABLE
@@ -403,7 +428,7 @@ SET IntervalStyle = 'postgres'; SET extra_float_digits = 1; SET bytea_output = '
 # hiçbir yere yazılmaz; yalnız sayılar ve toplamlar.
 db_fingerprint() {
   local database="$1" output="$2"
-  db_psql "$database" >"$output" <<SQL
+  db_psql "$database" -v "profile=$reviewed_migration_profile" >"$output" <<SQL
 $fingerprint_settings
 SELECT count(*) = 0 AS supported FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public' AND c.relkind IN ('f', 'm') \gset
@@ -413,10 +438,17 @@ WHERE n.nspname = 'public' AND c.relkind IN ('f', 'm') \gset
 \quit
 \endif
 SELECT format(
-  'SELECT %L || count(*) || ''|'' || coalesce(sum((''x'' || substr(md5(t::text), 1, 15))::bit(60)::bigint), 0)
-     || ''|'' || coalesce(sum((''x'' || substr(md5(t::text), 16, 15))::bit(60)::bigint), 0)
+  'SELECT %L || count(*) || ''|'' || coalesce(sum((''x'' || substr(md5(%s), 1, 15))::bit(60)::bigint), 0)
+     || ''|'' || coalesce(sum((''x'' || substr(md5(%s), 16, 15))::bit(60)::bigint), 0)
    FROM %I.%I AS t',
-  'table:' || c.relname || '|', n.nspname, c.relname)
+  'table:' || c.relname || '|',
+  CASE WHEN :'profile' = 'october-2026-v1' AND c.relname = 'agent_global_settings'
+    THEN '(to_jsonb(t) - ARRAY[''rewardMode'',''birthMode'',''lastBirthScanAt'',''lastBirthCandidateAt''])::text'
+    ELSE 't::text' END,
+  CASE WHEN :'profile' = 'october-2026-v1' AND c.relname = 'agent_global_settings'
+    THEN '(to_jsonb(t) - ARRAY[''rewardMode'',''birthMode'',''lastBirthScanAt'',''lastBirthCandidateAt''])::text'
+    ELSE 't::text' END,
+  n.nspname, c.relname)
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
 ORDER BY c.relname \gexec
@@ -527,7 +559,15 @@ schema_dump_filter() {
           for (k = i - 1; k < j; k++) drop[k] = 1
         }
         for (i = 1; i <= NR; i++) if (!(i in drop)) print line[i]
-      }'
+      }' | normalize_reviewed_schema
+}
+
+normalize_reviewed_schema() {
+  if test -n "$reviewed_migration_profile"; then
+    "$host_node" "$app_root/scripts/reviewed-migration-profile.mjs" normalize-schema "$reviewed_migration_profile"
+  else
+    cat
+  fi
 }
 
 # Önceden var olan her tablonun ayrı şema özeti (migration sonrası birebir kalmalı).
@@ -710,6 +750,9 @@ run_migration() {
   image_id="$(cat "$state_dir/candidate-image-id")" || migration_fail CANDIDATE_IMAGE_ID_MISSING
   test "$(docker image inspect --format '{{.Id}}' "$candidate_image")" = "$image_id" ||
     migration_fail CANDIDATE_IMAGE_TAG_MOVED
+  if test -n "$reviewed_migration_profile"; then
+    reviewed_index_size_receipt "$target"
+  fi
   set_database_timeouts "$target"
   # Aşama ancak bütün ön koşullar geçtikten sonra, konteyner başlamadan hemen
   # önce `migrating` olur; öncesindeki bir hata prod şemasını değiştirmemiştir ve
@@ -922,7 +965,50 @@ post_verify() {
       migration_fail POST_NEW_TABLE_NOT_EMPTY
   done <"$migration_dir/new-tables"
   assert_catalog_expectation "$database" "$label"
+  if test -n "$reviewed_migration_profile"; then
+    verify_reviewed_profile_post "$database" "$label"
+  fi
   new_object_definitions "$database" >"$migration_dir/definitions-$label"
+}
+
+# Katalog beklentisi yalnız isim/sayım değildir: indeks predicate/ifade/yönleri,
+# CHECK/FK tanımları, trigger etkinliği ve fonksiyon gövdeleri sabit makbuzla eşit.
+# Yeni ayarlar ilk yazarlardan önce OFF/NULL olmalı; eski verinin özeti ayrıca korunur.
+verify_reviewed_profile_post() {
+  local database="$1" label="$2"
+  db_psql "$database" <"$app_root/scripts/migration-profiles/october-2026-v1-extra.sql" \
+    >"$migration_dir/extra-$label.json"
+  "$host_node" "$app_root/scripts/reviewed-migration-profile.mjs" verify-extra \
+    "$reviewed_migration_profile" "$migration_dir/extra-$label.json" ||
+    migration_fail REVIEWED_EXTRA_CATALOG_MISMATCH
+  test "$(db_psql "$database" -c \
+    "SELECT count(*) FROM agent_global_settings WHERE \"rewardMode\" <> 'OFF'
+      OR \"birthMode\" <> 'OFF' OR \"lastBirthScanAt\" IS NOT NULL
+      OR \"lastBirthCandidateAt\" IS NOT NULL;" </dev/null)" = 0 ||
+    migration_fail REVIEWED_INITIAL_VALUES_CHANGED
+  # İndeksler kendi migration dosyalarının parçası. Bu süreler indeks ifadesinin
+  # tek başına süresi değil, onu içeren migration'ın üst sınır makbuzudur.
+  db_psql "$database" -F '|' -c \
+    "SELECT migration_name, extract(epoch FROM (finished_at - started_at)) * 1000
+     FROM \"_prisma_migrations\" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
+       AND migration_name IN ('20261003200000_agent_action_feedback_index',
+         '20261004003500_agent_feedback_presented_index','20261004014000_agent_birth_candidates')
+     ORDER BY migration_name;" </dev/null >"$migration_dir/index-migration-durations-$label"
+  test "$(wc -l <"$migration_dir/index-migration-durations-$label")" = 3 ||
+    migration_fail REVIEWED_INDEX_DURATION_MISSING
+}
+
+reviewed_index_size_receipt() {
+  local database="$1"
+  db_psql "$database" -F '|' >"$migration_dir/index-tables-$database" <<'SQL'
+SELECT 'agent_actions', count(*), pg_total_relation_size('public.agent_actions') FROM agent_actions
+UNION ALL
+SELECT 'agent_runtime_events', count(*), pg_total_relation_size('public.agent_runtime_events') FROM agent_runtime_events
+UNION ALL
+SELECT 'audit_logs', count(*), pg_total_relation_size('public.audit_logs') FROM audit_logs;
+SQL
+  test "$(wc -l <"$migration_dir/index-tables-$database")" = 3 ||
+    migration_fail REVIEWED_INDEX_SIZE_RECEIPT_MISSING
 }
 
 # --- 8. Prova -----------------------------------------------------------------

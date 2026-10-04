@@ -132,6 +132,9 @@ sekiz migration var; canlı applied set henüz yeniden okunmadı. Mevcut dar add
 yedisini bilinçli reddediyor (partial indeks/RESTRICT FK/ALTER/trigger vb.). Üretimden önce
 exact migration kümesine özel, bağımsız incelenmiş geçiş/restore/geri dönüş provası gerekir;
 mevcut denetçinin kapısı kaldırılmaz. Bu hazırlık P1 dağıtımının açık teknik bağımlılığıdır.
+Sabit `october-2026-v1` profili yerelde hazırlandı; ilk 93 testte gerçek PG16 restore/
+geçiş ve sapma reddi geçti. Son kontroller, Opus ve CI açık; üretime uygulanmadı.
+[Geçiş belirtimi](P1_EKIM_MIGRATION_PROFILI_2026-10-04.md).
 
 **P6 kapsamı:** `/hakkinda` ve kök sayfada açık proje tanımı, örnek çeşitliliği, marka/ton;
 uygun yapılandırılmış veri; ardından görünür/gizli boş bkz'nin tutarlı gezinmesi. Ukte insanın

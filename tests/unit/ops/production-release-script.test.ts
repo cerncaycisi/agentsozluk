@@ -194,6 +194,28 @@ describe("schema-neutral production release lane", () => {
   });
 
   describe("A5 migration'lı mod", () => {
+    it("bilinmeyen veya listesiz exact profili ağa çıkmadan reddeder", () => {
+      const base = ["--sha", sha, "--artifact-run", "1", "--execute"];
+      const approved = { AGENT_SOZLUK_PRODUCTION_APPROVED_SHA: sha };
+      for (const profile of ["", "baska", "october-2026-v1"]) {
+        const result = run(
+          wrapperPath,
+          [...base, "--reviewed-migration-profile", profile],
+          approved,
+        );
+        expect(result.status).toBe(90);
+        expect(result.stderr).toContain("INVALID_REVIEWED_MIGRATION_PROFILE");
+      }
+      expect(
+        run(remotePath, [
+          sha,
+          "no-cleanup",
+          "reviewed:baska:20261003200000_agent_action_feedback_index",
+          "0123456789abcdef",
+        ]).stderr,
+      ).toContain("INVALID_MIGRATION_MODE");
+    });
+
     it("migration listesini SHA'dan ayrı, birebir onay ister; ağa çıkmadan düşer", () => {
       const base = ["--sha", sha, "--artifact-run", "1", "--execute"];
       const approved = { AGENT_SOZLUK_PRODUCTION_APPROVED_SHA: sha };

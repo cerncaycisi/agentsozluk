@@ -3652,3 +3652,10 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Düzeltme makbuzu: `641eb0d001ef3fb800b891b74ff98082d15fea17`, CI `37178828324` browser 87 PASS/4 FAIL. İlk metin değişimi aynı dosyadaki önceki senaryonun beklentisine uygulanmış; yeni autocomplete girdisi eski etiketi bekliyordu. Bu yürütücü hatasıdır. Her iki senaryoda sorgu/etiket/URL tek fixture sabitine bağlandı; ürün kodu değiştirilmedi. Yeni doğrulama ayrı kaydedilir.
 
 - Yerel tarayıcı kanıtı: aynı iki gerçek E2E senaryosu masaüstü/mobil **4/4 PASS**, `focused-browser-3.log`; assert ve timeout değiştirilmedi. Yalnız loopback 3100, seed edilmiş yerel test DB. Ayrı config'in ilk webServer cwd hatası repo cwd verilerek giderildi; sonraki ilk soğuk dev `/ara` isteği 17,35 sn ile toplam 30 sn test bütçesine takıldı (3/4). Önbellekli odaklı tekrar 4/4 geçti. Geçici server test aracı tarafından kapatıldı. Üretim derlemesi kanıtı hâlâ exact CI'dır.
+
+### 4 Ekim 2026 — P1 sabit migration profili yerel prova
+
+- `ced672d` tabanındaki çalışma ağacı, Node 22 / yerel PG16; üretim değişikliği yok. Genel additive denetçi korunarak sekiz exact dosya için ayrı profil hazırlandı. Kaynak migration'lardan ayrı before-test DB kuruldu, dump gerçek after-test DB'ye restore edildi, sekiz migration gerçek Prisma CLI ile uygulandı.
+- İlk 93/93 (mevcut A5 restore/zaman aşımı ve genel denetçi dahil), son odaklı 36/36 (5 PG16 + 13 profil + 18 release testi) geçti. Eski ayar/constraint sapması, kapatılmış immutable trigger, yanlış başlangıç modu ve dar VARCHAR(100) dışına çıkma reddedildi. Yalnız bu testin oluşturduğu iki DB, bağlı test oturumları kapatılarak silindi.
+- Makbuz `P1_EKIM_MIGRATION_PROFILI_2026-10-04.md`. Bu küçük fixture üretim indeks süresi, eski Docker imajının açılışı veya canlı geçiş kanıtı değildir. Opus ve exact CI açık.
+- Tekrarlama: partial indeks/trigger için genel SQL parser kapısını kaldırma; restore sonrası eski şema ile yeni ek sütunları kontrolsüz normalize etme; migration'ın tümünü tek atomik işlem sayma.

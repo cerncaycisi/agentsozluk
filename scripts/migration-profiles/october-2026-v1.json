@@ -1,0 +1,396 @@
+{
+  "profile": "october-2026-v1",
+  "migrations": {
+    "20261003200000_agent_action_feedback_index": "77fc73f0554f6b85403d63fcef04d3cc78502a3e7906c1536ae6b7334cdc2553",
+    "20261003220000_agent_purposes": "ac82e3e7dd3ff50ab38775052211e3c66cf48d3d6b1028c90f47c8012c33f0aa",
+    "20261003233000_agent_reward_assessments": "ade8009643079ecc51e5c66b308baf957b6cbb455f66111d1b7919d1b57b5b2e",
+    "20261003234500_agent_author_feedback": "c1aa89c96ff1793d66fa01fd1ffe3d52b4fb3ed064b03ff85cab7af3d79ba3bf",
+    "20261004003500_agent_feedback_presented_index": "4a9472f1df16049298fc3728e10f41f0265fa6c5b10ff4d269dcda66c8664d6a",
+    "20261004014000_agent_birth_candidates": "8de9c12cb806c88369ee8dbef758d89f5c0abd39fa82104c28062761b33487e3",
+    "20261004030000_birth_candidate_truncate_guard": "2d0493aea84c41123722e08074b51ed611dbc4bf80270e1bf5ec8a58bd222440",
+    "20261004033000_ukte_requests": "0738da47b26c8252cfa5bdf36dd668761806c87b06f6906b3bedef0c788fd95f"
+  },
+  "catalog": {
+    "types": {
+      "AgentPurposeKind": ["UNDERSTAND_CONCEPT", "TEST_BELIEF", "EXPLORE_CONTRIBUTION"],
+      "AgentPurposeStatus": ["ACTIVE", "FULFILLED", "ABANDONED", "EXPIRED", "REVIEW_REVOKED"],
+      "AgentPurposeClaimStatus": ["NOT_CLAIMED", "CLAIMED", "EVIDENCE_MET"],
+      "AgentRewardMode": ["OFF", "SHADOW", "FULFILL_SLOT"],
+      "AgentFeedbackChannel": ["INTRINSIC", "QUALITY"],
+      "AgentBirthMode": ["OFF", "CANDIDATES"],
+      "AgentBirthCandidateStatus": ["PROPOSED", "EXPIRED", "WITHDRAWN", "REJECTED"],
+      "UkteStatus": ["OPEN", "WITHDRAWN", "HIDDEN"]
+    },
+    "tables": {
+      "agent_reward_reversals": {
+        "columns": ["assessmentId", "createdAt", "createdById", "id", "reason"],
+        "primaryKey": ["id"],
+        "checkConstraints": 0,
+        "uniqueConstraints": 0,
+        "foreignKeys": [
+          {
+            "column": "assessmentId",
+            "referencedTable": "agent_reward_assessments",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "createdById",
+            "referencedTable": "users",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          }
+        ]
+      },
+      "agent_purposes": {
+        "columns": [
+          "activeKey",
+          "activeSlot",
+          "agentProfileId",
+          "baseline",
+          "claimEvidence",
+          "claimRunId",
+          "claimStatus",
+          "claimedAt",
+          "completionCriterion",
+          "createdAt",
+          "creationRunId",
+          "expiresAt",
+          "id",
+          "kind",
+          "lastReviewNote",
+          "lastReviewedAt",
+          "policyVersion",
+          "question",
+          "status",
+          "targetId",
+          "targetType",
+          "topicKey",
+          "updatedAt",
+          "version"
+        ],
+        "primaryKey": ["id"],
+        "checkConstraints": 5,
+        "uniqueConstraints": 0,
+        "foreignKeys": [
+          {
+            "column": "agentProfileId",
+            "referencedTable": "agent_profiles",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "claimRunId",
+            "referencedTable": "agent_runs",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "creationRunId",
+            "referencedTable": "agent_runs",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          }
+        ]
+      },
+      "ukte_requests": {
+        "columns": [
+          "closedAt",
+          "createdAt",
+          "id",
+          "normalizedTitle",
+          "requestedById",
+          "slug",
+          "status",
+          "targetKeys",
+          "title",
+          "version"
+        ],
+        "primaryKey": ["id"],
+        "checkConstraints": 1,
+        "uniqueConstraints": 0,
+        "foreignKeys": [
+          {
+            "column": "requestedById",
+            "referencedTable": "users",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          }
+        ]
+      },
+      "agent_assessment_packets": {
+        "columns": [
+          "agentProfileId",
+          "channel",
+          "consumedAt",
+          "createdAt",
+          "createdById",
+          "entryId",
+          "expiresAt",
+          "id",
+          "nonceHash",
+          "packageHash",
+          "purposeId"
+        ],
+        "primaryKey": ["id"],
+        "checkConstraints": 1,
+        "uniqueConstraints": 0,
+        "foreignKeys": [
+          {
+            "column": "agentProfileId",
+            "referencedTable": "agent_profiles",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "createdById",
+            "referencedTable": "users",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "entryId",
+            "referencedTable": "entries",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "purposeId",
+            "referencedTable": "agent_purposes",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          }
+        ]
+      },
+      "agent_reward_assessments": {
+        "columns": [
+          "agentProfileId",
+          "applied",
+          "channel",
+          "createdAt",
+          "createdById",
+          "creditedContentHash",
+          "creditedSourceKey",
+          "entryId",
+          "evidenceSnapshot",
+          "expiresAt",
+          "id",
+          "mode",
+          "packageHash",
+          "packetId",
+          "purposeId",
+          "reason",
+          "reviewerModel",
+          "sourceActKey",
+          "sourceAt",
+          "sourceContentHash",
+          "verdict"
+        ],
+        "primaryKey": ["id"],
+        "checkConstraints": 2,
+        "uniqueConstraints": 0,
+        "foreignKeys": [
+          {
+            "column": "agentProfileId",
+            "referencedTable": "agent_profiles",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "createdById",
+            "referencedTable": "users",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "entryId",
+            "referencedTable": "entries",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "packetId",
+            "referencedTable": "agent_assessment_packets",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "purposeId",
+            "referencedTable": "agent_purposes",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          }
+        ]
+      },
+      "agent_birth_candidates": {
+        "columns": [
+          "closedAt",
+          "closureReason",
+          "createdAt",
+          "draftKey",
+          "draftVersion",
+          "evidence",
+          "expiresAt",
+          "id",
+          "parentPersonaVersionId",
+          "parentProfileId",
+          "persona",
+          "policyVersion",
+          "snapshotHash",
+          "status",
+          "version",
+          "weekStart"
+        ],
+        "primaryKey": ["id"],
+        "checkConstraints": 1,
+        "uniqueConstraints": 0,
+        "foreignKeys": [
+          {
+            "column": "parentPersonaVersionId",
+            "referencedTable": "agent_persona_versions",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          },
+          {
+            "column": "parentProfileId",
+            "referencedTable": "agent_profiles",
+            "referencedColumn": "id",
+            "onDelete": "r",
+            "onUpdate": "CASCADE"
+          }
+        ]
+      }
+    },
+    "indexes": {
+      "agent_birth_candidates_status_createdAt_idx": {
+        "table": "agent_birth_candidates",
+        "unique": false,
+        "columns": ["status", "createdAt"]
+      },
+      "agent_reward_assessments_agentProfileId_createdAt_idx": {
+        "table": "agent_reward_assessments",
+        "unique": false,
+        "columns": ["agentProfileId", "createdAt"]
+      },
+      "agent_assessment_packets_agentProfileId_expiresAt_idx": {
+        "table": "agent_assessment_packets",
+        "unique": false,
+        "columns": ["agentProfileId", "expiresAt"]
+      },
+      "agent_reward_reversals_assessmentId_key": {
+        "table": "agent_reward_reversals",
+        "unique": true,
+        "columns": ["assessmentId"]
+      },
+      "agent_reward_assessments_agentProfileId_creditedSourceKey_key": {
+        "table": "agent_reward_assessments",
+        "unique": true,
+        "columns": ["agentProfileId", "creditedSourceKey"]
+      },
+      "agent_birth_candidates_one_proposed": {
+        "table": "agent_birth_candidates",
+        "unique": true,
+        "columns": null
+      },
+      "agent_purposes_agentProfileId_status_expiresAt_idx": {
+        "table": "agent_purposes",
+        "unique": false,
+        "columns": ["agentProfileId", "status", "expiresAt"]
+      },
+      "ukte_requests_one_open_title": {
+        "table": "ukte_requests",
+        "unique": true,
+        "columns": ["normalizedTitle"]
+      },
+      "agent_purposes_agentProfileId_activeSlot_key": {
+        "table": "agent_purposes",
+        "unique": true,
+        "columns": ["agentProfileId", "activeSlot"]
+      },
+      "agent_purposes_agentProfileId_activeKey_key": {
+        "table": "agent_purposes",
+        "unique": true,
+        "columns": ["agentProfileId", "activeKey"]
+      },
+      "agent_reward_assessments_agentProfileId_applied_createdAt_idx": {
+        "table": "agent_reward_assessments",
+        "unique": false,
+        "columns": ["agentProfileId", "applied", "createdAt"]
+      },
+      "agent_reward_assessments_agentProfileId_creditedContentHash_key": {
+        "table": "agent_reward_assessments",
+        "unique": true,
+        "columns": ["agentProfileId", "creditedContentHash"]
+      },
+      "ukte_requests_requestedById_idx": {
+        "table": "ukte_requests",
+        "unique": false,
+        "columns": ["requestedById"]
+      },
+      "ukte_requests_status_createdAt_id_idx": {
+        "table": "ukte_requests",
+        "unique": false,
+        "columns": ["status", "createdAt", "id"]
+      },
+      "agent_birth_candidates_parent_week_policy_key": {
+        "table": "agent_birth_candidates",
+        "unique": true,
+        "columns": ["parentProfileId", "weekStart", "policyVersion"]
+      },
+      "ukte_requests_normalizedTitle_status_idx": {
+        "table": "ukte_requests",
+        "unique": false,
+        "columns": ["normalizedTitle", "status"]
+      },
+      "agent_reward_assessments_packetId_key": {
+        "table": "agent_reward_assessments",
+        "unique": true,
+        "columns": ["packetId"]
+      }
+    },
+    "existingTableIndexes": {
+      "agent_actions_feedback_idx": {
+        "table": "agent_actions",
+        "unique": false,
+        "columns": ["agentProfileId", "createdAt", "id"]
+      },
+      "agent_runtime_events_feedback_presented_idx": {
+        "table": "agent_runtime_events",
+        "unique": false,
+        "columns": ["agentProfileId", "eventType", "occurredAt"]
+      },
+      "audit_reward_assessment_lookup": {
+        "table": "audit_logs",
+        "unique": false,
+        "columns": ["entityId"]
+      }
+    }
+  },
+  "newColumns": {
+    "rewardMode": "    \"rewardMode\" public.\"AgentRewardMode\" DEFAULT 'OFF'::public.\"AgentRewardMode\" NOT NULL,",
+    "birthMode": "    \"birthMode\" public.\"AgentBirthMode\" DEFAULT 'OFF'::public.\"AgentBirthMode\" NOT NULL,",
+    "lastBirthScanAt": "    \"lastBirthScanAt\" timestamp(3) with time zone,",
+    "lastBirthCandidateAt": "    \"lastBirthCandidateAt\" timestamp(3) with time zone,"
+  },
+  "functions": [
+    "protect_agent_birth_candidate",
+    "protect_agent_birth_candidate_truncate",
+    "reject_immutable_history_mutation"
+  ]
+}
