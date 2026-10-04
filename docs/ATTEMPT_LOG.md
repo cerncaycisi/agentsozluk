@@ -3642,3 +3642,9 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Sağlama değeri boş/bozuksa `CHECKSUM_INVALID`, geçerli durumda gerçek 11 bayt beklentisi eklendi. Son 21/21 shell testi ve bash sözdizimi geçti. Test bildirimleri sahte yerel dosyaya yazıldı; dış mesaj gönderilmedi.
 - `here-string` yerine süreç ikamesine dönülmedi: yönlendirme kurulma hatası fail-closed kalır, alt komut hatasını while'ın yutması yeniden açılmaz. Düşük önem önerisinin reddi davranış gerekçesidir, GO kararı uydurulmadı.
 - Tekrarlama: yalnız nonzero command exit değil, yayımlanan checksum biçimini de doğrula; sessiz manual seçeneği ile bozuk zamanlayıcı ayarını aynı sayma.
+
+### 4 Ekim 2026 — O3 exact CI tarayıcı fixture çakışması
+
+- `ad4aa87c7495d184420f1d722b64caa84e2e2578`, CI `37178237277`: browser 90 PASS/1 FAIL; mobile boş arama önerisi üç denemede görünmedi. Trace gerçek `/api/v1/search/suggest?q=zzzq%20deneme` HTTP 200 ve `evde ekmek yapma denemeleri` sonucunu gösterdi. Hidrasyon geçti; hata ağ veya yeni yedek kodu değildir.
+- Kök neden: boş sonuç varsayılan fixture, mevcut fuzzy aramada seed başlığıyla eşleşiyor. Sorgu iki anlamsız tokena taşındı; boş sonucu gerçek PG16 üzerinde ayrıca sınayan odaklı test eklendi. Arama davranışı/eşiği ve E2E görünürlük/URL beklentisi gevşetilmedi.
+- Tekrarlama: gerçek kelimeli sorguyu kanıtsız "sonuç yok" fixture'ı sayma; trace yanıtını ayırmadan timeout yükseltme veya kör CI tekrarı yapma. Yeni exact kontroller ayrı kaydedilir.

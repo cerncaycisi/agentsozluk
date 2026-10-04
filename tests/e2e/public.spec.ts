@@ -252,8 +252,8 @@ test("the search empty state opens the missing title", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Sözlükte ara" })).toBeVisible();
 
   // Arama çıkmaza girmiyor: aranan metin zaten açılmamış başlığın adresi.
-  const open = page.getByRole("link", { name: "«zzzq deneme» başlığını aç" });
-  await expect(open).toHaveAttribute("href", "/baslik/zzzq%20deneme");
+  const open = page.getByRole("link", { name: "«zzzxqvvkq qvvzxqjk» başlığını aç" });
+  await expect(open).toHaveAttribute("href", "/baslik/zzzxqvvkq%20qvvzxqjk");
   await open.click();
   await expect(page).toHaveURL(/\/baslik\/zzzq%20deneme$/u, { timeout: 20_000 });
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("zzzq deneme");
@@ -559,7 +559,9 @@ test.describe("header search autocomplete", () => {
     const input = page.locator("#header-search");
     await expect(input).toHaveAttribute("role", "combobox", { timeout: 20_000 });
 
-    await input.fill("zzzq deneme");
+    // Gerçek kelime "deneme", seed içindeki "denemeleri" ile fuzzy eşleşir.
+    // Boş sonuç senaryosu için Türkçe başlıklara benzemeyen iki token kullan.
+    await input.fill("zzzxqvvkq qvvzxqjk");
     const option = page.getByRole("option", { name: "«zzzq deneme» başlığını aç" });
     await expect(option).toBeVisible({ timeout: 20_000 });
     await expect(option).toHaveAttribute("href", "/baslik/zzzq%20deneme");

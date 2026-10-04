@@ -67,6 +67,14 @@ describe("search suggestion API with PostgreSQL", () => {
     });
   });
 
+  it("boş sonuç E2E sorgusu denemeleri seed başlığıyla fuzzy eşleşmez", async () => {
+    const writer = await createUser("oneri_yazari", "ACTIVE");
+    await createTopic(writer.id, "evde ekmek yapma denemeleri");
+    await expect(
+      searchSuggestions(integrationDatabase, { query: "zzzxqvvkq qvvzxqjk" }),
+    ).resolves.toEqual({ topics: [], users: [] });
+  });
+
   it("suggests both topics and authors with the documented contract", async () => {
     const writer = await createUser("onerici", "ACTIVE");
     const created = await createTopic(writer.id, "önerilen açık kaynak başlığı");
