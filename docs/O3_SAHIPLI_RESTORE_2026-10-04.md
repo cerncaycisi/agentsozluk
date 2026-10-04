@@ -128,3 +128,27 @@ index kataloglarının bağımsız eşliği iddiası yok; pg_restore bütün ar�
 çıkışıyla uygular. Partition ebeveyn/çocuk toplamları iki tarafta da aynı yöntemle
 hesaplanabilir, rows benzersiz fiziksel satır sayısı vaadi değildir. A5'in daha
 ayrıntılı frozen katalog/şema/index kapıları bu O3 helper ile değiştirilmez.
+
+O3 üçüncü hakem gerçek `claude-opus-5`, exact `8e8e27d543649f7b9b82fee6476e0b7ddbc2daa2`
+**KOŞULLU GO**, 191,979 saniye; Haiku yardımcı 29 çıktı tokenı ayrıca kayıtlı.
+Koşullar: timezone/lc_monetary/float fixture farklılığı, kaynak `t` sütunu reddi,
+öngörülebilir tmp lock symlink/truncate koruması ve son exact CI. Bunlar source
+kontrolüyle açık kabul edildi; önceki görüş GO diye yeniden adlandırılmadı.
+Yeni private0700 UID lock/0600 tek-link append ve descriptor inode eşliği;
+kaynak snapshot içinde dump öncesi `O3_AMBIGUOUS_ROW_ALIAS`. Son **44 unit/shell
++2 gerçek PG16 PASS** (source alias negatif dahil); parasal locale farklılığının
+ayrı owned LOCPATH kümesindeki doğrudan gösterim testi sürüyor. Üretim backup
+komutu henüz değiştirilmedi; gerçek eski dış backup restore hâlâ açık.
+
+### O3 son yerel kapanış — 4 Ekim 22:57 UTC
+
+Owned `de_DE.UTF-8` → C para gösterimi önce gerçek COPY format hatasını ortaya
+çıkardı; source dump ve helper restore istemcisi geçici `lc_monetary=C` ile düzeltildi.
+Son focused farklı para locale provası **2/2 PASS**; mevcut helper ve native format
+birlikte **9/9 gerçek PG16 PASS** (53,77 saniye), **44 unit/shell PASS**. Kaynak/target
+`saat dilimi`, float ve para ayarları da ayrışır. Kaynak `t` sütunuyla dump öncesi
+reddedilir; boş stdout, sentinel kilit dosyası değişmezliği, symlink/hardlink/unsafe
+mode olumsuz yolları geçti. Teste ait özel locale/kümeler kapalı; ortak PG korunur.
+CLI `Address already in use` ön yoklaması TIME_WAIT bağlanmasıydı; private probe
+SO_REUSEADDR ile dinleyen sunucuya dokunmadan ayrıldı. Bu hata ürün regresyonu değildir.
+Yeni kaynak betiği üretimde kurulmadı; son hakem/exact CI ve gerçek dış restore açık.

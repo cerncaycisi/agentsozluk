@@ -46,13 +46,13 @@ it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri 
       `CREATE TABLE probe (
       id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       payload jsonb NOT NULL, amount numeric(12,3) NOT NULL, happened timestamptz NOT NULL,
-      calendar date NOT NULL, elapsed interval NOT NULL, bytes_value bytea NOT NULL, price money NOT NULL
+      calendar date NOT NULL, elapsed interval NOT NULL, bytes_value bytea NOT NULL, price money NOT NULL, approximation double precision NOT NULL
     );
-    INSERT INTO probe(payload, amount, happened, calendar, elapsed, bytes_value, price)
+    INSERT INTO probe(payload, amount, happened, calendar, elapsed, bytes_value, price, approximation)
     SELECT jsonb_build_object('event','LEASE_HEARTBEAT','state','RUNNING',
       'run',md5(g::text),'note',repeat('sentetik Türkçe kayıt ',12)),
       g/7.0,'2026-10-04 00:00:00+00'::timestamptz+g*interval '1 second',
-      date '2026-10-04'+(g%28),g*interval '2 minutes',decode(lpad(to_hex(g),8,'0'),'hex'),g::numeric::money
+      date '2026-10-04'+(g%28),g*interval '2 minutes',decode(lpad(to_hex(g),8,'0'),'hex'),g::numeric::money,g::double precision/7
     FROM generate_series(1,1000) g;
     CREATE TABLE empty_probe (id bigserial PRIMARY KEY, note text);`,
     );
@@ -64,7 +64,32 @@ it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri 
     sql("postgres", `ALTER DATABASE "${target}" SET DateStyle = 'SQL, DMY'`);
     sql("postgres", `ALTER DATABASE "${target}" SET IntervalStyle = 'postgres_verbose'`);
     sql("postgres", `ALTER DATABASE "${target}" SET bytea_output = 'escape'`);
-    // Üretim betiği değişmeden yürür; yalnız host ve Compose taşıması yereldir.
+    sql("postgres", `ALTER DATABASE "${source}" SET timezone = 'Asia/Tokyo'`);
+    sql("postgres", `ALTER DATABASE "${target}" SET timezone = 'America/New_York'`);
+    sql("postgres", `ALTER DATABASE "${source}" SET extra_float_digits = -3`);
+    sql("postgres", `ALTER DATABASE "${target}" SET extra_float_digits = 0`);
+    const monetaryLocale = process.env.O3_TEST_MONETARY_LOCALE ?? "C.UTF-8";
+    expect(monetaryLocale).toMatch(/^[a-zA-Z0-9_.@-]+$/u);
+    sql("postgres", `ALTER DATABASE "${source}" SET lc_monetary = '${monetaryLocale}'`);
+    sql("postgres", `ALTER DATABASE "${target}" SET lc_monetary = 'C'`);
+    for (const setting of ["timezone", "extra_float_digits", "lc_monetary"])
+      expect(sql(source, `SHOW ${setting}`)).not.toBe(sql(target, `SHOW ${setting}`));
+    if (process.env.O3_TEST_MONETARY_LOCALE)
+      expect(sql(source, "SELECT price::text FROM probe WHERE id = 1")).not.toBe(
+        sql(target, "SELECT 1::numeric::money::text"),
+      );
+    // Aynı guard'lar; yalnız sabit lock dizini/host/Compose taşıması owned fixture'dadır.
+    const producer = readFileSync("deploy/backup/uretim-yedek-komutu.sh", "utf8");
+    expect(producer.match(/lock_dir="\/tmp\/agentsozluk-yedek-\$\{lock_uid\}"/gu)).toHaveLength(1);
+    const producerScript = path.join(root, "producer.sh");
+    writeFileSync(
+      producerScript,
+      producer.replace(
+        'lock_dir="/tmp/agentsozluk-yedek-${lock_uid}"',
+        `lock_dir="${root}/lock-directory"`,
+      ),
+      { mode: 0o700 },
+    );
     executable("hostname", "echo agent-sozluk-prod");
     executable(
       "docker",
@@ -84,11 +109,14 @@ while (($#)); do
 done
 exec "$command_name" "\${args[@]}"`,
     );
-    const result = await runOwnedProducer({
-      ...process.env,
-      PATH: `${root}:${process.env.PATH}`,
-      BACKUP_PROBE_URL: url(source),
-    });
+    const result = await runOwnedProducer(
+      {
+        ...process.env,
+        PATH: `${root}:${process.env.PATH}`,
+        BACKUP_PROBE_URL: url(source),
+      },
+      { script: producerScript, timeoutMs: 30_000 },
+    );
     expect(result.status, result.stderr.toString()).toBe(0);
     const metadata = result.stderr.toString();
     for (const marker of ["SNAPSHOT_OK", "DUMP_DONE", "META_DONE"])
@@ -98,6 +126,16 @@ exec "$command_name" "\${args[@]}"`,
     const toc = execFileSync("pg_restore", ["--list", archive], { encoding: "utf8" });
     expect(toc).toContain("Compression: zstd");
     expect(toc).toContain("Format: CUSTOM");
+
+    sql(source, "ALTER TABLE probe ADD COLUMN t text DEFAULT 'same'");
+    const aliasRejected = await runOwnedProducer(
+      { ...process.env, PATH: `${root}:${process.env.PATH}`, BACKUP_PROBE_URL: url(source) },
+      { script: producerScript, timeoutMs: 30_000 },
+    );
+    expect(aliasRejected.status).not.toBe(0);
+    expect(aliasRejected.stderr.toString()).toContain("O3_AMBIGUOUS_ROW_ALIAS");
+    expect(aliasRejected.stdout.length).toBe(0);
+    sql(source, "ALTER TABLE probe DROP COLUMN t");
 
     // TOC okunabilen arşiv bile kesilmiş veri bloğu taşıyabilir; gece kapısı bunu bulmalı.
     const truncated = path.join(root, "truncated.dump");
@@ -110,7 +148,11 @@ exec "$command_name" "\${args[@]}"`,
     execFileSync(
       "pg_restore",
       ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
-      { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 30_000,
+        env: { ...process.env, PGOPTIONS: "-c lc_monetary=C" },
+      },
     );
     const verificationSql = readFileSync("scripts/backup-restore/verify.sql", "utf8");
     const verify = (expectedOid = owned.get(target)!, expectedName = target) =>
@@ -175,7 +217,11 @@ exec "$command_name" "\${args[@]}"`,
     execFileSync(
       "pg_restore",
       ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
-      { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 30_000,
+        env: { ...process.env, PGOPTIONS: "-c lc_monetary=C" },
+      },
     );
     expect(compareBackupRestore(metadata, verify()).result).toBe("O3_DATA_MATCH");
     sql(target, "DELETE FROM probe WHERE id = 1");
@@ -186,7 +232,11 @@ exec "$command_name" "\${args[@]}"`,
     execFileSync(
       "pg_restore",
       ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
-      { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 30_000,
+        env: { ...process.env, PGOPTIONS: "-c lc_monetary=C" },
+      },
     );
     expect(compareBackupRestore(metadata, verify()).result).toBe("O3_DATA_MATCH");
     sql(target, "SELECT setval('probe_id_seq', 1, false)");

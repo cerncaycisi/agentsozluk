@@ -142,7 +142,7 @@ expected_oid=$(cat "$journal/create.stdout")
 case "$expected_oid" in ''|*[!0-9]*) expected_oid=''; fail O3_CREATE_RECEIPT_INVALID ;; esac
 printf 'database=%s\noid=%s\nowner=%s\noperation=%s\n' "$target" "$expected_oid" "$owner" "$op" > "$journal/identity"
 phase=restore
-bounded env PGAPPNAME="$work_app" PGOPTIONS='-c lock_timeout=5000' \
+bounded env PGAPPNAME="$work_app" PGOPTIONS='-c lock_timeout=5000 -c lc_monetary=C' \
   pg_restore --exit-on-error --no-owner --no-privileges --dbname "$target" "$stage/backup.dump" \
   > "$journal/restore.stdout" 2> "$journal/restore.stderr" || fail O3_RESTORE_CLIENT_FAILED
 # CREATE'den sonra harici DDL olmadığı operatör kilidiyle sağlanır; tekrar kimlik kontrolü.

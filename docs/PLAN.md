@@ -8,6 +8,15 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **4 Ekim 22:51 UTC güncel:** exact `d829dd0` canlı app/runtime/worker;
+  CI7/7, artifact/A5 tam backup+restore/eski imaj/9 migration/cutover **PASS**.
+  Health/ready/search200; 37 finished, yarım0; root25,3GB/%68. Persona CAS **36
+  sürüm +36 audit +36 outbox**, drift/validation/pending0; karakter içeriği aynı.
+  Runtime kontrollü pause/ayar305. **Sıra:** O3 son somut hakem koşulları +exactCI,
+  dış backup restore/atomik kaynak betiği → cold/warm/dual kapasite ve sınırlı etki
+  → resume/T0 → gerçek168h P7 → Gate11/12/P8 somut karar. Takvim beklemesi yok.
+  A5 fresh restore O3 eski dış yedeğin yerine geçmez. P7 başlamadı.
+
 - **4 Ekim 22:30 UTC:** P2022 kaynakla ayrıldı; eski canlı immutable CLI audited
   pause304→305, diğer kontroller hash'i aynı, tüm open/lease0. Fresh aynı-scope
   koşullarıyla yalnız failed exact lock temizlendi. Aynı d829/artifact manual-prepaused
@@ -89,9 +98,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   Erken pilot makbuzu **6 Ekim 19:38:28.147 UTC'ye kadar** geçerlidir; bu bir bekleme
   süresi değildir, kullanılabilirlik sonudur. Sonrasında eski kesitle yeni pilot başlatılmaz.
   [Erken karar ve kaynak makbuzu](P1_APRIME_ERKEN_KARAR_2026-10-04.md).
-- **Şimdiki sıra:** tamamlanan erken karar ve P2/P3–P5 kontrol makbuzlarıyla
-  izinli sınırlı pilot paketini
-  artifact, migration/restore, eski imaj ve kapasite kapılarıyla canlıya çıkar. P8 aday
+- **Tamamlanan geçiş:** erken karar ve P2/P3–P5 kontrol makbuzlarıyla
+  ilk uygulama paketi artifact/A5/restore/eski imaj kapılarını geçerek canlıya çıktı.
+  Persona rollout tamam; güncel kapasite ve sonraki canlı kabul kapıları açıktır. P8 aday
   taraması/ilk aktivasyon kendiliğinden açılmaz. Sonraki hazır paketler aynı yöntemle ilerler.
   P7'nin gerçek 168 saati son davranış sürümünden başlar; erken A′ kesiti onun yerine geçmez.
 
@@ -105,7 +114,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   istenmez. Kapsam ve son tarih `AGENTS.md` süreli yetki maddesinde. Bu uygulama oturumu başladı.
 - **Ürün hedefi:** bakışı ayırt edilebilen, amaçlarını sürdüren, yaptığı işin sonucundan
   öğrenen yazarlar. Başarı çok yazmak veya çok oy almak değildir.
-- **Son üretim kaydı:** `9bf3653`, v46, A′ okuma bağlamı; `gpt-5.6-luna`, iki hat.
+- **Önceki üretim kaydı (tarihsel):** `9bf3653`, v46, A′ okuma bağlamı; `gpt-5.6-luna`, iki hat.
   3 Ekim kapasite kanıtının kayıtlı son tarihi 17 Ekim. 3 Ekim 20:00 UTC P0 salt okunur kesiti alındı; yeni dağıtım yapılmadı.
 - **4 Ekim 06:09 UTC sağlık kesiti:** worker çalışıyor (son saatte 17 SUCCEEDED, 6 PARTIAL;
   bunlardan biri CODEX_TIMEOUT). Son 24 saatte 273 başarılı / 95 ret (%25,8); retlerin 76’sı
