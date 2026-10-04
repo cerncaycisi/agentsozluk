@@ -4117,3 +4117,30 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - #316 ile birleşik kaynak bankası son koşusu **79/79 PASS** (36birim+43PG16).
   Eski36+20 koşusuyla karıştırılmadı. PAUSED gerçek hesap/kaynak/tamamlama ve kapasite
   aşımında rollback yeni bankayla geçti; Opus koşulları kanıtla kapandı. FinalCI açık.
+
+### 4 Ekim 2026 13:19–13:25 UTC — ayrı v2 migration profili
+
+- Taban main`462642d`, ayrı worktree`wt-october-v2`; v1'in üç profil dosyası ve bütün
+  uygulanmış SQL dosyaları değişmedi. V2 aynı sekiz checksum+tek dokuzuncu dosya,
+  wrapper/remote/checker explicit iki-ad allowlist ve170 PG16 katalog tanımı.
+- İlk44birim PASS. İlk12PG'de11PASS/1FAIL: `CATALOG_EXPECTATION_MISMATCH`.
+  Gerçek yerel katalogla recursive nesne karşılaştırması yalnız doğum FK dizisinin
+  sırasını ayırdı. Manifest sütun adına göre sıralandı; array/enum sırası denetimi
+  veya DB kısıtı gevşetilmedi. Başarısızlık uygulama/veri kaybı regresyonu değildi.
+- Aynı koşudaki `[vitest-worker]: Timeout calling "onTaskUpdate"` ayrı test-harness
+  sorunudur: ardışık senkron psql/restore iki-suite boyunca RPC cevabını bekletti.
+  Her test sonuna setImmediate dönüşü eklendi; test/üretim süre sınırı artırılmadı.
+- Son iki profil restore/geçiş koşusu **12/12 PASS**,71,71s, unhandled error yok.
+  Geçici DB'ler yalnız bu koşunun oluşturduğu isimlerle temizlendi; ana test DB ve
+  üretim değişmedi. Genel A5/regresyon, Opus ve exactCI açık.
+- Tekrarlama: sıralı katalog dizilerini key-sort edilmiş nesne sanma; v2'yi eski
+  v1 makbuzunun üzerine yazma; v1 uygulanmış DB'ye tek dosya geçişini full-v2 diye
+  kabul etme; RPC timeout'u SQL migration başarısızlığıyla aynı kök neden sayma.
+
+- Son v2 regresyonu **115/115 PASS**:113birim+2PG16 gerçek lock/statement timeout.
+  Ayrı genel A5 SQL **7/7PG16 PASS**; iki profilin12PG'siyle toplam113birim/21PG.
+  Kaynak#317 maincdc4d5d üzerine yalnız kendi değişiklikleriyle güvenli geçiş yapıldı;
+  iki append-only deneme makbuzu korundu. Kendi geçici stash'i exact ID ile geri
+  alındı ve kaldırıldı; diğer worktree veya kullanıcı işi değiştirilmedi.
+- #317 final9945807 CI37205037707 7/7 sonrası maincdc4d5d; fresh merge/uzakSHA/ağaç
+  eşliği doğrulandı. #316 main push CI37204636460 da7/7. İki PR T3'e bağlı ve merged.

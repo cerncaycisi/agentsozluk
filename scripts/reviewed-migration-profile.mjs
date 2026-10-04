@@ -5,16 +5,22 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const profileName = "october-2026-v1";
-export const profile = JSON.parse(
-  readFileSync(new URL("./migration-profiles/october-2026-v1.json", import.meta.url), "utf8"),
-);
+const supportedProfiles = new Set(["october-2026-v1", "october-2026-v2"]);
+function assertProfileName(name) {
+  if (!supportedProfiles.has(name)) throw new Error("REVIEWED_PROFILE_UNKNOWN");
+}
+function readProfile(name) {
+  assertProfileName(name);
+  return JSON.parse(
+    readFileSync(new URL(`./migration-profiles/${name}.json`, import.meta.url), "utf8"),
+  );
+}
+export const profile = readProfile(profileName);
 
-export function assertExtraCatalog(actual) {
+export function assertExtraCatalog(actual, name = profileName) {
+  assertProfileName(name);
   const expected = JSON.parse(
-    readFileSync(
-      new URL("./migration-profiles/october-2026-v1-extra.json", import.meta.url),
-      "utf8",
-    ),
+    readFileSync(new URL(`./migration-profiles/${name}-extra.json`, import.meta.url), "utf8"),
   );
   const canonical = (value) =>
     Array.isArray(value)
@@ -32,7 +38,7 @@ export function assertExtraCatalog(actual) {
 }
 
 export function verifyProfile(name, root, pending) {
-  if (name !== profileName) throw new Error("REVIEWED_PROFILE_UNKNOWN");
+  const profile = readProfile(name);
   const names = Object.keys(profile.migrations);
   if (JSON.stringify(pending) !== JSON.stringify(names)) {
     throw new Error("REVIEWED_PROFILE_SET_MISMATCH");
@@ -48,7 +54,8 @@ export function verifyProfile(name, root, pending) {
 
 // pg_dump'ın yalnız bu dört ek sütun satırı çıkarılır. Farklı tür/default/konum,
 // yinelenen veya eksik ek sütun paketi hata verir; eski şema metni korunur.
-export function normalizeProfileSchema(input) {
+export function normalizeProfileSchema(input, name = profileName) {
+  const profile = readProfile(name);
   let inside = false;
   let seenTable = false;
   const seen = new Set();
@@ -81,14 +88,14 @@ export function normalizeProfileSchema(input) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [command, name, root, pendingFile] = process.argv.slice(2);
-    if (name !== profileName) throw new Error("REVIEWED_PROFILE_UNKNOWN");
+    assertProfileName(name);
     if (command === "verify") {
       const pending = readFileSync(pendingFile, "utf8").trim().split("\n");
       process.stdout.write(JSON.stringify(verifyProfile(name, root, pending)) + "\n");
     } else if (command === "normalize-schema") {
-      process.stdout.write(normalizeProfileSchema(readFileSync(0, "utf8")));
+      process.stdout.write(normalizeProfileSchema(readFileSync(0, "utf8"), name));
     } else if (command === "verify-extra") {
-      assertExtraCatalog(JSON.parse(readFileSync(root, "utf8")));
+      assertExtraCatalog(JSON.parse(readFileSync(root, "utf8")), name);
     } else {
       throw new Error("REVIEWED_PROFILE_COMMAND_INVALID");
     }

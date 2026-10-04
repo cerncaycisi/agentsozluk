@@ -197,7 +197,14 @@ describe("schema-neutral production release lane", () => {
     it("bilinmeyen veya listesiz exact profili ağa çıkmadan reddeder", () => {
       const base = ["--sha", sha, "--artifact-run", "1", "--execute"];
       const approved = { AGENT_SOZLUK_PRODUCTION_APPROVED_SHA: sha };
-      for (const profile of ["", "baska", "october-2026-v1"]) {
+      for (const profile of [
+        "",
+        "baska",
+        "october-2026-v1",
+        "october-2026-v2",
+        "october-2026-v3",
+        "../october-2026-v2",
+      ]) {
         const result = run(
           wrapperPath,
           [...base, "--reviewed-migration-profile", profile],

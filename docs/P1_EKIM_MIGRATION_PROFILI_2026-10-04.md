@@ -133,3 +133,47 @@ Makbuz dosyası etiketinden sonra 6/6 PG16 ve 8/8 CI sözleşmesi testi de geçt
 Gerçek container runner probu `applied=36 main_history=unchanged` verdi. #308 main
 `9ead5a0746e3af7e94622670c76efc28254fd362` olarak birleşti; uzak SHA ve squash ağaç
 eşitliği doğrulandı. Üretim restore/önceki imaj/cutover kapıları açık.
+
+## V2 — doğum hesabı hazırlığının dokuzuncu migration'ı
+
+#316 sonrasında hedef şema37 migration içerir. `october-2026-v2`, v1'in sıralı sekiz
+SQL dosyasını **aynı checksum'larla** ve yalnız ardından
+`20261004120000_birth_preparation` dosyasını kabul eder. V1 manifest/ek SQL/ek katalog
+baytları değişmedi; ayrı v2 dosyaları eklendi. Genel additive SQL denetçisi ve varsayılan
+migration'sız yol korunur. Wrapper/uzak yürütücü/checker yalnız explicit v1 veya v2
+adını kabul eder; bilinmeyen ad veya path ile farklı katalog seçilemez.
+
+V2 **v1 uygulanmış DB'ye yalnız dokuzuncu dosyayı uygulama profili değildir**.
+Önceki üretim tabanından tam dokuz bekleyen migration gerekir; sekiz/tek dosya/ek dosya
+ve sıra sapması reddedilir. Canlı applied set, artifact içi dosyalar ve exact checkout
+üretim preflight'ında yeniden eşleşmelidir; checkout SHA tek başına DB geçmişi değildir.
+
+Doğum tablosunda altı ek nullable alan, iki FK, bir CHECK ve üç indeks; mevcut enum'da
+iki ek durum ve yeni immutable geçiş fonksiyonu tanımı pinlenir. Audit tablosunun
+`audit_agent_creation_lookup` partial indeksi ayrı ek katalogda yer alır. Toplam170
+katalog tanımı yerel PostgreSQL16'dan çıkarıldı. Katalog makbuzu tasarımın bağımsız
+ispatı değildir; immutable hazırlık davranışı #316'nın gerçek PG16 testlerinde sınandı.
+
+Eski veri/sütun karşılaştırmasının istisnası yine yalnız aynı dört global ayar alanıdır.
+Doğum tablosu üretim tabanında yeni tablodur ve writers açılmadan boş kalmalıdır.
+Yeni imajda bütün migration'lar uygulanır; enum sırası dahil son katalog bütünüyle
+karşılaştırılır. V2 audit lookup için dördüncü migration süre makbuzu zorunludur;
+aynı üç mevcut tablonun boyut makbuzları sürer. V1 üç süre makbuzuyla çalışmaya devam eder.
+
+İlk44 birim PASS. İlk gerçek PG koşusunda v1'in altı ve v2'nin beş senaryosu geçti;
+v2 genel katalog kapısı `CATALOG_EXPECTATION_MISMATCH` ile durdu. Yeni FK listesi
+manifestte sona eklenmişti, sorgu sütun adına göre sıralıyordu. Yerel gerçek katalog
+karşılaştırması tek farkın bu sıra olduğunu doğruladı. Manifest sırası düzeltildi;
+karşılaştırma/SQL kısıtı gevşetilmedi. Ayrıca iki senkron test grubunun RPC cevabını
+geciktirmesi için senaryolar arasında event loop'a dönüş eklendi; timeout artırılmadı.
+
+Son gerçek PG16 eski şema→dump→restore→geçiş denemesi **12/12 PASS**,6v1+6v2.
+Her ikisinde eski veri, sequence/geçmiş/şema ve yeni nesneler doğrulandı; eski ayar ve
+constraint sapması, disabled trigger ve OFF dışı başlangıç değeri reddedildi. Bu
+boş/küçük fixture ölçümü üretim büyüklüğünde süre veya eski9bf Docker boot kanıtı değildir.
+Üretimde genel yazma dondurması, gerçek restore/indeks süresi, eski imaj boot/smoke,
+45dakika bütçe ve5/300s DB zaman aşımı kapıları aynen sürer. Üretime uygulanmadı.
+Son regresyon **113birim/21PG16 PASS**: iki profil için12restore/geçiş, mevcut A5
+için7SQL ve2gerçek zaman aşımı. V1 makbuz baytları, tam v2 superset, ilk/son SQL
+checksum sapması ve yeni CHECK tanımı sapması ayrıca sınandı. Farklı model hakemi
+ve exactCI açık.
