@@ -4360,3 +4360,60 @@ final kod/scripts ağacı incelenen SHA ile aynı. Yeni koşulsuz hakem görüş
 Çalıştırıcı kod hazırlığı tamam; A′ sonrası girdilerin güncel exact sürümde sabitlenmesi,
 gerçek sözleşme kontrolü ve P2/P7 davranış kabulü açık. Pilot çağrısı 0, üretim dağıtımı yok.
 Tekrarlama: geçerli taşıma/JSON sonucunu davranış kabulü sayma; eski manifesti çalıştırma.
+
+## 4 Ekim 2026 — O3 restore doğrulaması yerel hazırlık
+
+`8c56852` tabanında readonly SQL ve dosya makbuzu karşılaştırması hazırlandı.
+**20 makbuz + 22 mevcut shell + 1 gerçek PG16 = 43 test PASS**. Gerçek göndericinin
+native zstd arşivi iki sentetik tabloya (1.000 satır + boş tablo) geri yüklendi; tam sayı/
+içerik özeti eşliği geçti. Yanlış hedef OID, aynı sayıda bozuk içerik, eksik satır, geri
+kalmış/çevrimli/tükenmiş ve sahipsiz sequence reddedildi. Kontrol sequence'i ilerletmedi.
+Yalnız testin oluşturduğu ad/OID bağlı iki küçük DB temizlendi; üretime bağlanılmadı.
+Hakem/exact CI ve gerçek büyük restore açık.
+Tekrarlama: yalnız arşiv decode veya veri kıyasını tam restore/temizlik kapanışı sayma.
+
+## 4 Ekim 2026 — 17:26 UTC canlı sağlık kesiti
+
+Taze ED25519/DNS/hostname/origin/exact `9bf3653ff152d4a704c1774ccd6782e0a3322f29`
+guard'ı ardından tek RR READ ONLY işlem, sorgu başına 15 s sınırı. Son saat
+**22 SUCCEEDED / 4 PARTIAL**, terminal FAILED yok. Son 24 saat **297 başarılı / 96 ret,
+%24,43**: 79 tekrar/benzerlik (45 semantic, 28 framing, 6 similarity), 15 kesin sayı,
+1 doğrudan hitap, 1 snapshot dışı hedef. Ret alarmı açık; kayan pencere değişimi
+kod etkisi veya 24 saat doğal teknik hata oranı değildir. Üretim yazımı/dağıtım yok.
+Özel makbuz `health-20261004-172617`; sorgu SHA-256
+`f263ee93b90af3b49ee15e64b31e22791a0e9ceeefc0addd7dc020db4853ec9a`.
+Ana dal `8c56852` push CI `37219729005` ayrıca 7/7 PASS.
+
+## 4 Ekim 2026 — O3 hakem koşullarının yerel kapanışı
+
+Opus 5 exact `4816c6630d217100c685aaae78f3c4f934d6abf7` için KOŞULLU GO; aynı exact
+CI `37220283870` 7/7 PASS. Alias gölgelemesi gerçek PG karşı örneğiyle doğrulandı ve
+`t` sütunu reddedildi; kapsam dışı şema/large object, transaction içi bitiş işareti,
+pg_catalog search_path, SHA bağlı CLI makbuzu ve test hata temizliği tamamlandı.
+Bilinmeyen metadata uyarısını ayıklama önerisi reddedildi; gerçek native metadata biçimi
+50 tablo/3 sequence için geçti, uyarı fail closed. F6'nın kilit iddiası fd 9 kapanışıyla
+çürütüldü; testin own process group timeout'u ayrıca güvenceye alındı.
+
+Son 21 makbuz + 2 entegrasyon = **23 PASS**, önceki 22 shell PASS. Yeni timeout testinin
+ilk çalışması `Test timed out in 10000ms`: test yardımcısının 3000 ms parametresi yanlışlıkla
+sabit 30000 ms yerine bağlanmamıştı. Kendi kalan grubunun PID/komut/PGID/UID eşliğiyle
+sonlandırılması sonrası parametre düzeltildi; gerçek alt süreç kapanışı 3009 ms'de geçti.
+Bu üretim veya yedek gönderici regresyonu değildi. İlk yerel TOC ayrıştırması `SEQUENCE
+OWNED BY` üç sözcüklü türünü ayırmadığı için assertion verdi; tür ayrımı düzeltildi:
+50 TABLE/50 TABLE DATA/3 SEQUENCE, yalnız public; LO/foreign/materialized yok. Bu TOC,
+SQL uygulaması değildir. Ham metadata formatı ve iki sentetik CLI yolu ayrıca geçti.
+Tekrarlama: yorum satırını veya dosya adını oturum/süreç sahipliği kanıtı sayma; assertion'ı
+gevşeterek başarısız test yardımcısını geçirme; kaynakla çelişen hakem gerekçesini kopyalama.
+İkinci inceleme/final CI açık; üretim restore/dağıtım yapılmadı.
+
+## 4 Ekim 2026 — O3 temiz test tabanı ve seçili yedeğin şema uyumu
+
+Opus 5 `3047674` görüşü DÜZELTİLMELİ: B1 test kirlenmesi doğrulandı. Her içerik/satır
+bozulması öncesi temiz eşlik assertion'ı eklendi; son 23 test PASS. B2, önceki F1'deki
+`t` kapısına genel şema desteği gerekçesiyle itiraz etti; sınırlı yardımcıda fail closed
+korunur, eski gönderici/hash sözleşmesi tek taraflı değiştirilmez. Bağımsız kapanış açık.
+17:53 UTC yerel native arşiv checksum tekrar PASS; schema-only geri yüklemede 50 tablo/3
+sequence, t sütunu/uyumsuz ad/public dışı veri ilişkisi **0**. Yalnız provanın oluşturduğu
+OID/sahip bağlı DB temizlendi. Veri satırı restore'u/üretim erişimi yok; O3 tam restore değil.
+Tekrarlama: kirlenmiş fixture'da beklenen mismatch'i yeni davranış kanıtı sayma; ilk ve
+ikinci hakem gerekçesi çelişirse gizleme, mevcut kapsamı gerçek kaynakla doğrula.

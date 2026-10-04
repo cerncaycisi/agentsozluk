@@ -1,12 +1,13 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, it } from "vitest";
+import { compareBackupRestore } from "../../scripts/backup-restore/receipt";
 import { requireTestDatabaseUrl } from "../../scripts/test-database-safety";
 
-it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri yükler", () => {
+it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri yükler", async () => {
   const base = new URL(requireTestDatabaseUrl(process.env.TEST_DATABASE_URL, "Backup format"));
   base.search = "";
   const suffix = randomBytes(6).toString("hex");
@@ -33,6 +34,7 @@ it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri 
     writeFileSync(file, `#!/usr/bin/env bash\nset -euo pipefail\n${body}\n`);
     chmodSync(file, 0o700);
   };
+  const errors: unknown[] = [];
   try {
     for (const name of [source, target]) {
       expect(oid(name)).toBe("");
@@ -49,7 +51,8 @@ it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri 
     SELECT jsonb_build_object('event','LEASE_HEARTBEAT','state','RUNNING',
       'run',md5(g::text),'note',repeat('sentetik Türkçe kayıt ',12)),
       g/7.0,'2026-10-04 00:00:00+00'::timestamptz+g*interval '1 second'
-    FROM generate_series(1,1000) g;`,
+    FROM generate_series(1,1000) g;
+    CREATE TABLE empty_probe (id bigserial PRIMARY KEY, note text);`,
     );
     // Üretim betiği değişmeden yürür; yalnız host ve Compose taşıması yereldir.
     executable("hostname", "echo agent-sozluk-prod");
@@ -71,10 +74,10 @@ while (($#)); do
 done
 exec "$command_name" "\${args[@]}"`,
     );
-    const result = spawnSync("bash", [path.resolve("deploy/backup/uretim-yedek-komutu.sh")], {
-      env: { ...process.env, PATH: `${root}:${process.env.PATH}`, BACKUP_PROBE_URL: url(source) },
-      timeout: 30_000,
-      maxBuffer: 8 * 1024 * 1024,
+    const result = await runOwnedProducer({
+      ...process.env,
+      PATH: `${root}:${process.env.PATH}`,
+      BACKUP_PROBE_URL: url(source),
     });
     expect(result.status, result.stderr.toString()).toBe(0);
     const metadata = result.stderr.toString();
@@ -99,19 +102,197 @@ exec "$command_name" "\${args[@]}"`,
       ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
       { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
     );
-    const restored = sql(
-      target,
-      `SET timezone='UTC'; SET extra_float_digits=3;
-      SELECT 'table|probe|'||count(*)::text||'|'||sum(hashtextextended(t::text,0))::text FROM probe t;`,
+    const verificationSql = readFileSync("scripts/backup-restore/verify.sql", "utf8");
+    const verify = (expectedOid = owned.get(target)!, expectedName = target) =>
+      execFileSync(
+        "psql",
+        [
+          "-XAtq",
+          "-d",
+          url(target),
+          "-v",
+          `restore_database=${expectedName}`,
+          "-v",
+          `restore_oid=${expectedOid}`,
+        ],
+        {
+          input: verificationSql,
+          encoding: "utf8",
+          stdio: ["pipe", "pipe", "pipe"],
+          timeout: 15_000,
+        },
+      );
+    const beforeSequence = sql(target, "SELECT last_value || '|' || is_called FROM probe_id_seq");
+    expect(compareBackupRestore(metadata, verify())).toEqual({
+      result: "O3_DATA_MATCH",
+      scope: "public",
+      serverVersion: sql(target, "SHOW server_version"),
+      tables: 2,
+      rows: "1000",
+      sequences: 2,
+    });
+    expect(sql(target, "SELECT last_value || '|' || is_called FROM probe_id_seq")).toBe(
+      beforeSequence,
     );
-    expect(restored).toMatch(/^table\|probe\|1000\|/u);
-    expect(metadata.split("\n")).toContain(restored);
-    expect(sql(target, "SELECT nextval('probe_id_seq')>(SELECT max(id) FROM probe)")).toBe("t");
+    expect(() => verify("0")).toThrow("O3_TARGET_MISMATCH");
+    expect(() => verify(owned.get(target)!, "agent_sozluk")).toThrow("O3_TARGET_MISMATCH");
+    sql(target, "ALTER TABLE probe ADD COLUMN t text DEFAULT 'same'");
+    const aliasHash = () => sql(target, "SELECT sum(hashtextextended(t::text, 0)) FROM probe AS t");
+    const beforeAlias = aliasHash();
+    sql(target, "UPDATE probe SET amount = amount + 1 WHERE id = 1");
+    expect(aliasHash()).toBe(beforeAlias);
+    expect(() => verify()).toThrow("O3_AMBIGUOUS_ROW_ALIAS");
+    sql(
+      target,
+      "ALTER TABLE probe DROP COLUMN t; CREATE SCHEMA other_data; CREATE TABLE other_data.extra (id int)",
+    );
+    expect(() => verify()).toThrow("O3_UNVERIFIED_SCHEMA");
+    sql(target, "DROP SCHEMA other_data CASCADE; SELECT lo_create(0)");
+    expect(() => verify()).toThrow("O3_UNSUPPORTED_LARGE_OBJECT");
+    sql(
+      target,
+      "SELECT lo_unlink(oid) FROM pg_largeobject_metadata; UPDATE probe SET amount = amount - 1 WHERE id = 1",
+    );
+    expect(compareBackupRestore(metadata, verify()).result).toBe("O3_DATA_MATCH");
+    expect(sql(target, "SELECT last_value || '|' || is_called FROM probe_id_seq")).toBe(
+      beforeSequence,
+    );
+
+    // Aynı satır sayısıyla içerik bozulması gizlenemez.
+    sql(target, "UPDATE probe SET payload = '{}' WHERE id = 1");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_TABLE_MISMATCH");
+    sql(target, "DROP TABLE probe, empty_probe");
+    execFileSync(
+      "pg_restore",
+      ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
+      { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
+    );
+    expect(compareBackupRestore(metadata, verify()).result).toBe("O3_DATA_MATCH");
+    sql(target, "DELETE FROM probe WHERE id = 1");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_TABLE_MISMATCH");
+
+    // Test yalnız kendi küçük kopyasını yeniden yükler; gerçek operatör bunu otomatik yapmaz.
+    sql(target, "DROP TABLE probe, empty_probe");
+    execFileSync(
+      "pg_restore",
+      ["--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url(target), archive],
+      { stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 },
+    );
+    expect(compareBackupRestore(metadata, verify()).result).toBe("O3_DATA_MATCH");
+    sql(target, "SELECT setval('probe_id_seq', 1, false)");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_SEQUENCE_UNSAFE");
+    sql(target, "SELECT setval('probe_id_seq', 1000, true)");
+    expect(compareBackupRestore(metadata, verify()).sequences).toBe(2);
+    sql(target, "ALTER SEQUENCE probe_id_seq CYCLE");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_SEQUENCE_UNSAFE");
+    sql(target, "ALTER SEQUENCE probe_id_seq NO CYCLE");
+    sql(target, "CREATE SEQUENCE stray");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_SEQUENCE_UNSAFE");
+    sql(target, "DROP SEQUENCE stray; ALTER SEQUENCE probe_id_seq MAXVALUE 1000");
+    expect(() => compareBackupRestore(metadata, verify())).toThrow("O3_SEQUENCE_UNSAFE");
+  } catch (error) {
+    errors.push(error);
   } finally {
     for (const [name, expectedOid] of owned) {
-      expect(oid(name)).toBe(expectedOid);
-      sql("postgres", `DROP DATABASE "${name}"`);
+      try {
+        expect(oid(name)).toBe(expectedOid);
+        sql("postgres", `DROP DATABASE "${name}"`);
+      } catch (error) {
+        // Bilinmeyen OID'yi silme; diğer sahip olunan kopyanın temizliğini yine dene.
+        errors.push(error);
+      }
     }
+    try {
+      rmSync(root, { recursive: true, force: true });
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length)
+    throw new AggregateError(errors, "Backup fixture doğrulaması/temizliği başarısız");
+}, 90_000);
+
+// Timeout yalnız kabuğu değil, bu testin ayrı süreç grubunu da kapatır.
+function runOwnedProducer(
+  env: NodeJS.ProcessEnv,
+  options = { script: path.resolve("deploy/backup/uretim-yedek-komutu.sh"), timeoutMs: 30_000 },
+) {
+  return new Promise<{ status: number | null; stdout: Buffer; stderr: Buffer }>(
+    (resolve, reject) => {
+      const child = spawn("bash", [options.script], {
+        env,
+        detached: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      const stdout: Buffer[] = [],
+        stderr: Buffer[] = [];
+      let bytes = 0;
+      let failure: Error | undefined;
+      const kill = () => {
+        if (child.pid) {
+          try {
+            process.kill(-child.pid, "SIGKILL");
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== "ESRCH")
+              failure ??= new Error("BACKUP_TEST_CLEANUP_FAILED");
+          }
+        }
+      };
+      const timer = setTimeout(() => {
+        failure = new Error("BACKUP_TEST_TIMEOUT");
+        kill();
+      }, options.timeoutMs);
+      for (const [stream, chunks] of [
+        [child.stdout, stdout],
+        [child.stderr, stderr],
+      ] as const) {
+        stream.on("data", (chunk: Buffer) => {
+          bytes += chunk.length;
+          if (bytes > 8 * 1024 * 1024) {
+            failure = new Error("BACKUP_TEST_OUTPUT_LIMIT");
+            kill();
+          } else chunks.push(chunk);
+        });
+      }
+      child.once("error", (error) => {
+        failure = error;
+        kill();
+      });
+      child.once("close", (status) => {
+        clearTimeout(timer);
+        kill();
+        if (failure) reject(failure);
+        else resolve({ status, stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) });
+      });
+    },
+  );
+}
+
+it("yedek testinin timeout'u kendi alt süreç grubunu da kapatır", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "backup-group-"));
+  const script = path.join(root, "hang.sh");
+  const childFile = path.join(root, "child.pid");
+  writeFileSync(
+    script,
+    "trap '' TERM\nsleep 60 &\nprintf '%s\\n' \"$!\" > \"$BACKUP_CHILD_PID_FILE\"\nwait\n",
+  );
+  try {
+    await expect(
+      runOwnedProducer(
+        { ...process.env, BACKUP_CHILD_PID_FILE: childFile },
+        { script, timeoutMs: 3000 },
+      ),
+    ).rejects.toThrow("BACKUP_TEST_TIMEOUT");
+    const childPid = readFileSync(childFile, "utf8").trim();
+    expect(childPid).toMatch(/^[1-9][0-9]*$/u);
+    try {
+      const stat = readFileSync(`/proc/${childPid}/stat`, "utf8");
+      // Ölü ama init tarafından henüz toplanmamış zombi, çalışan süreç değildir.
+      expect(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0]).toBe("Z");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  } finally {
     rmSync(root, { recursive: true, force: true });
   }
-}, 90_000);
+}, 10_000);
