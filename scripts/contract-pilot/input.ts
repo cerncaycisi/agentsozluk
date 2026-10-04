@@ -91,34 +91,7 @@ export interface PreparedPilot {
 
 export function preparePilot(configBytes: string, sourceSha: string, now: number): PreparedPilot {
   const config = pilotConfigSchema.parse(JSON.parse(configBytes));
-  if (sourceSha !== config.sourceSha) throw new Error("PILOT_SOURCE_CHANGED");
-  if (now < Date.parse("2026-10-06T10:00:00Z") || now >= AUTHORITY_END)
-    throw new Error("PILOT_DATE_GATE_CLOSED");
-  const receiptBytes = readPrivate(config.aPrimeReceiptFile);
-  if (hash(receiptBytes) !== config.aPrimeReceiptSha256) throw new Error("PILOT_RECEIPT_CHANGED");
-  const receipt = z
-    .object({
-      version: z.literal(1),
-      kind: z.literal("A_PRIME_DECISION"),
-      productionSha: sha,
-      resumedAt: z.iso.datetime(),
-      windowEndedAt: z.iso.datetime(),
-      concludedAt: z.iso.datetime(),
-      decision: z.enum(["ACCEPT", "REJECT", "INCONCLUSIVE"]),
-    })
-    .parse(JSON.parse(receiptBytes));
-  if (
-    receipt.productionSha !== config.aPrimeProductionSha ||
-    Date.parse(receipt.resumedAt) < Date.parse("2026-10-03T00:00:00Z")
-  )
-    throw new Error("PILOT_A_PRIME_COHORT_CHANGED");
-  if (
-    Date.parse(receipt.windowEndedAt) - Date.parse(receipt.resumedAt) < 72 * 3_600_000 ||
-    Date.parse(receipt.concludedAt) < Date.parse(receipt.windowEndedAt) ||
-    Date.parse(receipt.concludedAt) > now
-  )
-    throw new Error("PILOT_A_PRIME_WINDOW_INVALID");
-  // A′ kararının içeriği operatör kanıtıdır; sunucu metrikleri burada yeniden hesaplanmaz.
+  assertPilotWindow(config, sourceSha, now);
   privateDirectory(config.manifestDirectory);
   const manifestBytes = readPrivate(path.join(config.manifestDirectory, "manifest.json"));
   if (hash(manifestBytes) !== config.manifestSha256) throw new Error("PILOT_MANIFEST_CHANGED");
@@ -181,4 +154,35 @@ export function preparePilot(configBytes: string, sourceSha: string, now: number
   )
     throw new Error("PILOT_CASE_COUNTS_INVALID");
   return { config, fingerprint: hash(configBytes), inputs, criteria: JSON.parse(criteriaBytes) };
+}
+
+export function assertPilotWindow(config: PilotConfig, sourceSha: string, now: number): void {
+  if (sourceSha !== config.sourceSha) throw new Error("PILOT_SOURCE_CHANGED");
+  if (now < Date.parse("2026-10-06T10:00:00Z") || now >= AUTHORITY_END)
+    throw new Error("PILOT_DATE_GATE_CLOSED");
+  const receiptBytes = readPrivate(config.aPrimeReceiptFile);
+  if (hash(receiptBytes) !== config.aPrimeReceiptSha256) throw new Error("PILOT_RECEIPT_CHANGED");
+  const receipt = z
+    .object({
+      version: z.literal(1),
+      kind: z.literal("A_PRIME_DECISION"),
+      productionSha: sha,
+      resumedAt: z.iso.datetime(),
+      windowEndedAt: z.iso.datetime(),
+      concludedAt: z.iso.datetime(),
+      decision: z.enum(["ACCEPT", "REJECT", "INCONCLUSIVE"]),
+    })
+    .parse(JSON.parse(receiptBytes));
+  if (
+    receipt.productionSha !== config.aPrimeProductionSha ||
+    Date.parse(receipt.resumedAt) < Date.parse("2026-10-03T00:00:00Z")
+  )
+    throw new Error("PILOT_A_PRIME_COHORT_CHANGED");
+  if (
+    Date.parse(receipt.windowEndedAt) - Date.parse(receipt.resumedAt) < 72 * 3_600_000 ||
+    Date.parse(receipt.concludedAt) < Date.parse(receipt.windowEndedAt) ||
+    Date.parse(receipt.concludedAt) > now
+  )
+    throw new Error("PILOT_A_PRIME_WINDOW_INVALID");
+  // A′ kararının içeriği operatör kanıtıdır; sunucu metrikleri burada yeniden hesaplanmaz.
 }

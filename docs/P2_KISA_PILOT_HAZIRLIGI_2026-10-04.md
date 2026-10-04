@@ -49,6 +49,13 @@ bütçesi en az 12 olmalı; daha azsa yeni çağrı açılmaz ve sonuç BELİRS�
 ayrıca her çağrı öncesi kontrol edilir; eldeki süre 12 çağrının bitmesini garanti etmez. Mevcut pilot betikleri sınırsız
 retry veya paralel model çağrısıyla yeniden kullanılmaz.
 
+4 Ekim uygulama uzlaştırması: PLAN'daki “bir toplu kör okuma” ifadesi set başınadır.
+İlk altı çift kör okunmadan saklı set açılmaz; saklı set açılırsa aynı model, önceki
+okumayı taşımayan ikinci oturumda onu okur. **En çok 24 runtime + 2 okuyucu invoke**,
+ikisi ve operatörün kaynak kontrolü **aynı 90 dakikada**; yeni süre/tekrar hakkı yok.
+P3/P4/P5'in okuyucu dahil toplam24 kuralı bundan farklıdır ve değişmez. Bu açıklama
+hiçbir P2 çıktısı üretilmeden yapıldı; kod incelemesinde ayrıca Opus'a sunulur.
+
 Tek kör okuyucu `claude-opus-5` olacaktır: araç/MCP kapalı, oturum geçmişi taşınmayan
 çağrıya yalnız hazırlanmış okuma paketi stdin üzerinden verilir; dosya/dizin yolu verilmez.
 Okuyucuya yalnız kimlikleri çıkarılmış çıktı, ortak bağlam ve isimsiz persona
@@ -328,3 +335,159 @@ ile süreç başlangıcına pay bırakıldı; davranış değişmedi. K2 detache
 kuralı yukarıya eklendi. K3–K5'in bloklamayan OS erişim, toplam süre, auth ve terminal
 lafızları da açıklandı. Koşullu görüş final SHA için yeni koşulsuz hakemlik sayılmaz.
 Son exact CI takip ediliyor. Gerçek pilot çağrısı 0, üretim değişikliği yok.
+
+## 4 Ekim — P2 iki aşamalı çalıştırıcı hazırlığı
+
+`scripts/run-persona-pilot.ts` yalnız normal DECISION üretir. Ürün/yayın/DB/control-plane
+kurmaz. P3/P4/P5'ten ortak özel dosya, A′ tarih makbuzu ve Opus transport parçalarını
+kullanır; onların 24 toplam invoke kuralı değişmedi. P2 için 24 runtime + en çok iki
+Opus okuması aynı 90 dakika içindedir. **Otomatik teknik retry yoktur**: 24 ilk kol zaten
+tüm runtime payını kullanır. Teknik hata özel kayıtta kalır; eksik çiftle eşik küçültülmez.
+Bu kod hazırlığı canlı model/effort eşliği veya gerçek pilot sonucu değildir.
+
+- Sabit özel kayıt `~/style-lab/p2-pilot-hazirlik-20261004/execution/`. Yeni kimlik,
+  başka çıktı dizini veya reset argümanı yok. wx kilit ve fsync/atomik kayıt her çağrıdan
+  önce yazılır. Yarım rezervasyon, kaynak/config sapması, auth ve bilinmeyen hata terminal
+  kapanır. Kilit kendiliğinden temizlenmez. Yeniden çalıştırma geçerli çıktıyı tekrar üretmez.
+- İlk aşama 12 kol → ilk kör okuma → kaynak doğrulaması. Eşik 4 yeni / en fazla 1 eski /
+  sıfır doğrulanmış yeni ihlal. Sonra ayrı `--execute`, kalan çağrı ve süre kapısıyla
+  saklı 12 kolu açar. Saklı set aynı modelin geçmişsiz ikinci okumasını ve ayrı kaynak
+  kontrolünü ister. İnceleme komutu kendi başına sonraki model aşamasını başlatmaz.
+- İlk aşama kararları sırasında iki okuma/kaynak kontrolü için 30 dakika ve saklı setin
+  12 asgari çağrı dilimi için 12 dakika: **toplam 42 dakika** ayrılır. Saklı set için
+  15 dakika okuma/kontrol payı korunur. Karar başına en çok 6 dakika, okuyucu başına 12 dakika; kalan
+  çağrı dilimi en az 60 saniye. Bu pay tamamlanma garantisi değildir. Saklı sete girişte
+  en az27 dakika ve 12 runtime hakkı gerekir. Okuyucu, modelsiz denetimler, manuel kontrol,
+  süreç temizliği ve yeniden başlatma ilk rezervasyonla başlayan aynı saate dahildir.
+  Geç tamamlanma başarıya çevrilmez; tavan dolunca INCOMPLETE kaydı kalır.
+- Her aşamanın 0600 `*-packet.json` dosyasında yalnız altı case, isimsiz tercih kartı,
+  yazar nesnesi çıkarılmış ortak bağlam ve A/B çıktıları bulunur. Yeni/eski anahtarı,
+  kullanıcı adı alanı, renderer metni, faz adı ve dosya yolu okuyucuya verilmez.
+  Serbest metindeki kendiliğinden kimlik/slogan sızıntısı körlük sınırıdır. Ortak okuyucunun
+  araçsız CLI/aynı UID sınırı yukarıda açıklanır; OS gizliliği iddiası yoktur.
+- Okuyucu JSON'u altı benzersiz vaka, kazanan, gerekçe, alıntılar ve ayrı ihlaller içerir.
+  A/B/TIE için iki koldan kanıt gerekir; eksik kol INSUFFICIENT. Alıntılar çıktının gerçek
+  string alanlarında bulunmalıdır. Geçersiz rapor özel kanıtta korunur, yeniden okuyucu
+  hakkı açmaz. Bu mekanik alıntı eşliği gerekçenin doğruluğunu kanıtlamaz.
+- Operatörün 0600 incelemesi `version:1`, `readerOutputHash`, `packetHash`,
+  `sourceVerified:true`, `readerDisagreement:string|null` ve aynı `cases` şeklini taşır.
+  `cases` içindeki her öğe `caseId`, `winnerSlot`, `evidence:[{slot,quote,reason}]`,
+  `violations:[{slot,quote,reason,rule}]`, `reason` içerir. Farklı bir hüküm/alıntı kaydedilirse
+  somut anlaşmazlık gerekçesi şarttır; gerekiyorsa ikinci bağımsız hakem PLAN sınırındadır,
+  çalıştırıcı kendiliğinden ek hakem başlatmaz. Operatör kaynak ve anlam denetimini gerçekten
+  yapmadan `sourceVerified` yazmaz. Çıktı/packet/okuyucu hash'leri kontrol edilir; kol anahtarını
+  kod uygular. Geçmiş inceleme sonradan değiştirilirse kayıt kapanır. İki eşik geçse bile
+  sonuç `BOTH_THRESHOLDS_MET_NOT_BEHAVIOR_PASS`; otomatik yayın/dağıtım veya P7 kabulü yoktur.
+
+P2 config, ortak config'e ayrıca `baselineFile`, `keyFile`, `keySha256` ekler. Manifest
+v2, exact kaynak/profil/builder hash'i, sabit P0 hash'i, `PERSONA_DECISION_PILOT`, Luna/max,
+24 runtime/2 okuyucu/90 dakika ve 12 çifti bağlar. Tam normal context şeması ve gerçek
+`buildRuntimePrompt` byte eşliği, baseline persona belgesi/sürümü, eski kaydedilmiş/yeni
+gerçek renderer, çiftin yalnız renderer farkı, her sette6 yazar/3 bağlam/3-3 kol ve aynı
+başlıktaki iki yazarın ortak run ayarı kontrol edilir. Seçim seed'i ve yazarların bağlamda
+entry yazarı olmaması sabit hazırlayıcının sorumluluğudur; çalıştırıcı seçim algoritmasını
+ikinci kez uygulamaz. Eski v1 paketi çalıştırılmaz; A′ sonrasında temiz detached kaynakta
+aynı seçim kuralıyla ayrı v2 üretilir, eski hazırlık ve ayrı anahtar korunur.
+
+```sh
+# A′ öncesi reddedilir; model çağırmayan ön kontrol.
+corepack pnpm exec tsx scripts/run-persona-pilot.ts /absolute/private/config.json
+# İlk aşama; kaynak kontrolü sonrası aynı komut saklı aşamayı başlatır.
+corepack pnpm exec tsx scripts/run-persona-pilot.ts /absolute/private/config.json --execute
+# Kaynak kontrolü de ilk rezervasyondan itibaren 90 dakika içinde tamamlanmalı.
+corepack pnpm exec tsx scripts/run-persona-pilot.ts /absolute/private/config.json --review development /absolute/private/development-review.json
+corepack pnpm exec tsx scripts/run-persona-pilot.ts /absolute/private/config.json --review holdout /absolute/private/holdout-review.json
+```
+
+İlk yerel kanıt: **39 P2 + 43 ortak çalıştırıcı =82 ağsız test PASS**. Normal girdi testlerinde üretim metni kullanılmaz; yalnız sentetik baseline
+hash'i uyarlanır ve bu uyarlama kaldırıldığında gerçek P0 sabitlemesinin reddi ayrıca
+sınanır. Diğer hash/renderer/şema/A′ kapıları gerçektir. Gerçek pilot çağrısı 0; bağımsız
+Opus kod/yöntem incelemesi ve exact CI açık.
+
+Gerçek özel P0 dosyası ve eski 24 girdiyle ayrı yerel uyum kontrolü12 çift / 24 girdi geçti.
+Bu testte tarih/A′ makbuzu sentetiktir, provider yolları bilerek geçersizdir; yalnız
+`preparePersonaPilot` çağrıldı. `input-compatibility-only` makbuzu gerçek A′ kararı,
+çalıştırılabilir v2 manifesti veya model doğrulaması değildir. Eski dosyalar değiştirilmedi.
+
+### İlk Opus incelemesinin uzlaştırması
+
+Gerçek `claude-opus-5`, exact `5e76296635f7abd78db238678bdf7e04077889bc` için
+**DÜZELTİLMELİ** dedi. Actual modelUsage yalnız `claude-opus-5`; rapor özel dosyada korunur.
+Görüşü koşulsuz GO diye yeniden adlandırmıyoruz.
+
+- **A — süre:** saklı giriş payı 16 → **27 dakika** oldu: 12 asgari çağrı dilimi + 15
+  dakika son okuma/kaynak payı. Bu koşul 12 çağrının tamamlanmasını garanti etmez; karar
+  başına tavan6 dakika ve her çağrı öncesi kalan süre kapısı korunur. “Tavan6 dakika ise
+  90 dakikada imkânsız” çıkarımı doğru değil: sentetik2 dakika karar +5 dakika okuyucu +
+  3 dakika kontrol senaryosu iki seti64 dakikada tamamladı. Bu yalnız mekanik karşı örnektir,
+  ölçülmüş latency değildir. Her çağrı6 dakika sürerse ilk set bile tamamlanmaz; INCOMPLETE
+  tasarlanan sonuçtur. 6+6 örneği azaltma, ek bütçe veya yeni hafta önerisi alınmadı.
+- **B — kaynak incelemesi:** okuyucunun ham `readerAssessment` sonucu ve operatörün
+  değiştirdiği `changedCaseIds` özette görünür. Ham ihlal `REPORTED_NEW_VIOLATION`/
+  `reportedNewViolations` olarak etiketlenir; doğrulanmış hüküm değildir. Kaynak doğrulaması
+  operatörün sorumluluğudur; alıntı varlığı veya gerekçe uzunluğu semantik doğruluk kanıtı
+  sayılmaz. `NO_ACTION` enum'unun iki çıktıda bulunması üstünlüğü kanıtlamaz. Tam okuyucu,
+  packet ve inceleme dosyaları hash bağlı korunur. Ürün/dağıtım PASS'ı hiçbir yolda üretilmez.
+- **C — ortam/yarım koşu:** fail closed bilinçli korunur. Bilinmeyen ortam hatasından veya
+  RESERVED kaydından otomatik devam yoktur; çağrı yapılmadığı ispatlanamıyorsa bütçe yeniden
+  açılmaz. Geçici IO hata yolunun terminal kaldığı yeni test geçti. Kilit temizleme, başarısız
+  pilotu otomatik kurtarma veya saat sıfırlama yetkisi değildir.
+- **D — model:** P2 artık `observedModels` içinde yalnız exact `claude-opus-5` kabul eder;
+  yardımcı Haiku dahi görülürse rapor eksik sayılır. Gözlenen adlar ham kanıtta korunur.
+  P3/P4/P5'in mevcut transport/yardımcı model sözleşmesi değiştirilmedi.
+- **E — ortak run ID:** `CodexCliProvider` geçici dizini run ID ile açar; çağrılar ardışık,
+  `debugRetentionHours:0`. Çağrı dönüşünden önce `finally` geçici dizini siler; runner çıktı
+  kopyasını ayrı, indeksli, hash bağlı dosyaya yazar. Gerçek provider sınıfının sahte subprocess
+  testi aynı run ID ile dört ayrı çıktı döndürdü ve her dönüşte çalışma dizini yoktu. Bu test
+  gerçek model kullanmaz; aynı run ID karar varyasyonunun karıştırılmaması için korunur.
+- **F — kör paket/kanıt:** hesaplanan packet diskte okuyucuya sunulan paketle doğrudan
+  eşlenir; önceki packet üzerine yazılmaz. İlk set geçip saklı setin kalması ve geç saklı
+  okuyucu testleri eklendi. P2 algısı yalnız `observedAt/recentEntries`; P3/P4 kartları
+  eklenirse reddedilir. Serbest metin veya renderer'ın biçimsel izi kolu ima edebilir;
+  kusursuz körlük/istatistiksel genelleme iddiası yoktur. Sahte okuyucunun eşik testi yalnız
+  boru hattını doğrular, gerçek persona üstünlüğü değildir.
+
+Son birleşik **46 P2 + 43 ortak =89** ağsız test ve ayrı **7 provider** testi PASS.
+Son iki aşama fixture'ında okuyucu-operatör farkı, süre dışı saklı okuma ve ek model reddi
+sınandı. İkinci bağımsız görüş/final CI açık; gerçek pilot çağrısı 0.
+
+### İkinci Opus incelemesinin uzlaştırması
+
+Gerçek `claude-opus-5`, exact `d98f2ab94355eed953ee0706ca11eb29d4e23dd5` için
+**DÜZELTİLMELİ** dedi; actual modelUsage yalnız `claude-opus-5`. İlk exact `5e76296`
+CI `37225298842` 7/7 PASS; bu sonuç ikinci görüşün bulgularını kapatmaz.
+
+1. **Form hatası ile koşu belirsizliği ayrıldı.** Yalnız yeni operatör formunun bilinen
+   şekil/alıntı/case/bağ hataları terminal değildir. Hata kodu döner, aynı state'te geçen
+   süre kaydedilir; düzeltme aynı 90 dakikada kabul edilebilir. Model/okuyucu çağrısı ve
+   başlangıç zamanı değişmez. Tekrar kaydedilen inceleme reddedilir; önceki makbuz yeniden
+   yazılmaz. Tarih/süre, kaynak/hash, özel dosya IO veya geçmiş inceleme bozulması terminal
+   kalır. Evidence dizisinin yalnız sırası değiştiğinde sahte anlaşmazlık üretilmez.
+2. **İlk evre rezervi 42 dakika:** iki okuma/kontrol için30 + saklı12 asgari dilim.
+   Bu, 27 dakika saklı giriş kapısının ihtiyaç duyduğu payı ilk evrede de korur. Gerçek
+   çağrı sürelerinin tamamlanmayı garanti etmediği ve yavaş/eksik koşunun INCOMPLETE kaldığı
+   açık. Örnek sayısı, tek saat ve24runtime/2okuyucu üst sınırı değişmedi.
+3. **Dosya/hash kontrol zamanı** ilk rezervasyondan sonraki aynı duvar saatinden düşer;
+   model çağrı sayısı değildir. Her `prepare()`e süre ekleyen sahte saat testi bunu doğrular.
+   Bilinmeyen IO/yarım rezervasyonun terminal olması bilinçli; otomatik ortam kurtarması
+   belirsiz bir model çağrısını tekrar açamaz. Salt form düzeltmesi bu sınıfa sokulmaz.
+4. **Tek taraflı yükseltme yok.** `gateEligible`, hem kör okuyucu hem kaynak doğrulamasının
+   eşiği geçmesini ister. Okuyucu eşiği geçmezken operatör bütün kazananları değiştirse bile
+   `READER_DISAGREEMENT` çıkar, saklı set açılmaz/iki-set sonucu geçer sayılmaz. Altı vakanın
+   yukarı çevrilmesi negatif testte12runtime çağrısında kaldı. İki hüküm ve değişen case
+   listesi korunur. Somut anlaşmazlık için bağımsız içerik hakemi ancak PLAN ve kalan
+   bütçe içinde düşünülebilir; bu çalıştırıcı yeni çağrı veya ikinci bütçe açmaz.
+5. **Packet baytları:** okuyucuya hash bağlı 0600 packet dosyasının aynen okunan baytları
+   gönderilir; compact/pretty serileştirme farkı kaldırıldı. Opus dışı model ancak CLI
+   sonuç makbuzunda gözlenebilir; böyle bir çağrı harcanmış sayılır ve rapor reddedilir,
+   önceden garanti edildiği iddia edilmez. Provider modeli için kanıt `observedModels`;
+   adapter'ın sabit etiketine tek başına güvenilmez.
+
+Son **51 P2 +43 ortak +7 provider =101 ağsız test PASS**. Sıfır gerçek pilot çağrısı.
+Üçüncü inceleme yalnız bu kapanışların doğrulanmasıdır; önceki DÜZELTİLMELİ görüşler
+korunur. Final CI ve bağımsız kapanış açık; üretim uygulaması değişmedi.
+
+Süresinde kaydedilmiş nihai olumsuz/olumlu sonuç, 90 dakika sonrası tekrar okunduğunda
+korunur. Tamamlanmış faza yanlışlıkla yeni inceleme gönderilmesi `PILOT_PERSONA_PHASE_CLOSED`
+ile reddedilir; önceden doğrulanmış sonucu terminal süre hatasına çeviremez. Bu kontrol
+kaynak/hash bozulmasını veya yetki tarih sınırını gevşetmez; final sonuç tarihi kayıtlıdır.

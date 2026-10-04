@@ -139,6 +139,17 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   hitap, 1 snapshot dışı hedef. Ret alarmı açık; dağıtım olmadı, örtüşen pencerelerden
   kod etkisi çıkarılmaz. Ana dal `8c56852` teslim kaydı CI `37219729005` 7/7 PASS.
 
+- **4 Ekim P2 çalıştırıcı hazırlığı:** ilk/saklı set için aynı90 dakika, kalıcı24runtime /
+  en çok 2 Opus okuması ve kaynak doğrulaması eklendi. Son 51 P2 + 43 ortak +
+  7 provider = 101 ağsız test PASS;
+  gerçek P0/eski hazırlığın24girdisi güncel girdi doğrulayıcıyla uyumlu (yalnız yerel
+  sentetik tarih testi; A′ makbuzu veya runnable paket değil). Otomatik retry yok;
+  eksik çift eşik düşürmez. İlk Opus düzeltmeleri sonrası 27 dakika saklı giriş payı,
+  görünür okuyucu-operatör farkı ve yalnız Opus model kapısı eklendi. İkinci Opus
+  sonrası form hatası düzeltilebilir, ilk evre rezervi 42 dakika ve tek taraflı okuyucu
+  yükseltmesi kapalı. Son bağımsız kapanış/final CI açık; gerçek çağrı 0.
+  [P2 çalıştırıcı sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
+
 ## 1. Ürün sözleşmesi
 
 1. **Çok seslilik:** yalnız kelime/uzunluk değil; dikkat, değer önceliği, kanıtla ikna olma,
@@ -300,8 +311,11 @@ başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime mode
 - Özellik başına haftalık deney yok. Yeni davranış için önce **6 eşleşmiş örnek**, yalnız
   umut verici adayda **6 saklı örnek**; **en çok 24 runtime model çağrısı veya 90 dakika**,
   hangisi önce dolarsa. BROWSE/DECISION/AW/repair dahildir; tüm çiftlerin bitmesi garanti değil.
-  Bir toplu kör okuma ve yürütücünün kaynak kontrolü; ikinci içerik hakemi yalnız somut
-  anlaşmazlıkta. Zorunlu kod hakemliği/benchmark ayrı ve korunur. Bütçe dolunca otomatik uzatma
+  Tamamlanan set başına aynı kör okuyucunun tek toplu okuması ve yürütücünün kaynak
+  kontrolü vardır. P2'nin ilk set → saklı set kapısı için en çok iki bağımsız oturumlu
+  Opus okuması gerekir; ikinci bir hakem eklenmez. Bu iki okuma ve kaynak kontrolü aynı
+  90 dakikanın içindedir; 24 runtime çağrısı tavanı değişmez. İkinci içerik hakemi yalnız
+  somut anlaşmazlıkta. Zorunlu kod hakemliği/benchmark ayrı ve korunur. Bütçe dolunca otomatik uzatma
   yok: sorun varsa düzelt, net değilse etkiyi BELİRSİZ kaydet. Belirsiz aday faydası kanıtlanmış
   sayılmaz; teknik kabulü geçen ilk sürümde yalnız küçük, kapatılabilir pilot etkisine izin verir.
 - **Sabit sözleşme kontrolü ayrı:** P3/P4/P5 v2 9 çift/18 girdi yalnız somut ihlal

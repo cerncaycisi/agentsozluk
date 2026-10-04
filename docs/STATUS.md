@@ -4269,3 +4269,25 @@ Seçilen native dump checksum'ı tekrar geçti; yerel schema-only kopyası 50 ta
 sequence için uyumlu ve OID/sahip eşliğiyle temizlendi. Veri satırları yüklenmedi.
 Yardımcı kod teslimi tamam; 5 Ekim otomatik yedek ve A′ sonrası 7 Ekim gerçek restore
 kapıları açık. Gzip pin korunuyor. Yeni uygulama dağıtımı veya üretim mutasyonu yok.
+
+## 4 Ekim 2026 — P2 iki aşamalı çalıştırıcı hazırlığı
+
+Yerel P2 çalıştırıcısında39, ortak P3/P4/P5 regresyonunda43 ağsız test geçti. Gerçek özel
+P0/eski hazırlık24girdi için gerçek renderer/normal şema/yazar eşliği uyum kontrolü geçti;
+bu salt yerel testte A′/saat sentetiktir, model/provider/DB çağrısı yoktur. 24runtime ve
+iki okuyucu aynı90dakika, tam çift eşiği, hash bağlı operatör kaynak kontrolü, kesinti ve
+süre bütçesi test edildi. Bağımsız Opus incelemesi ve exact CI açık. Gerçek pilot0,
+canlı9bf değişmedi. Ana dal e83bf04 teslim kaydı CI37223578656 tamamı PASS.
+
+P2 ilk Opus (`5e76296`) DÜZELTİLMELİ görüşü sonrası 46 P2 +43 ortak =89 ve ayrı
+7 provider testi geçti. Saklı giriş payı27 dakika; okuyucu-operatör farkı özette görünür;
+P2'de Opus dışı gözlenen model reddedilir. Aynı run ID ile dört ardışık gerçek provider
+sınıfı/sahte subprocess çağrısında ayrı çıktılar ve geçici dizin temizliği doğrulandı.
+Sentetik64 dakika senaryosu yalnız süre aritmetiği karşı örneği, gerçek latency değildir.
+İkinci Opus ve final CI açık; gerçek pilot/üretim değişikliği0.
+
+P2 ikinci Opus (`d98f2ab`) DÜZELTİLMELİ görüşü sonrası son **101 ağsız test PASS**
+(51 P2/43 ortak/7 provider). Bilinen form hatası aynı saat/çağrı sayısıyla düzeltilebilir;
+ilk evre42 dakika pay korur; okuyucu reddini operatör tek başına olumluya çeviremez.
+Ham packet/stdin bayt eşliği ve her hazırlık kontrolünün aynı saate dahil oluşu sınandı.
+Son bağımsız kapanış/final CI açık; gerçek pilot0 ve üretim değişikliği0.

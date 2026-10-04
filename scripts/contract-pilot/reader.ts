@@ -18,6 +18,7 @@ export function opusReader(
   executable: string,
   directory: string,
   expectedVersion: string,
+  systemPrompt: string = system,
 ): PilotReader {
   // Var olan kişisel HOME OAuth kimliği; endpoint/proxy/API key/Node injection env yok.
   const env: NodeJS.ProcessEnv = {
@@ -89,7 +90,7 @@ export function opusReader(
             "",
             "--no-session-persistence",
             "--system-prompt",
-            system,
+            systemPrompt,
             "--output-format",
             "json",
           ],

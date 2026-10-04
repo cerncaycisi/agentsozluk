@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -293,4 +293,51 @@ describe("Codex CLI provider security contract", () => {
     }
     expect(source).not.toContain("code ?? 1");
   });
+});
+
+it("aynı run ID ile dört ardışık pilot çağrısı önceki dönüş değerini taşımaz", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-sozluk-provider-pilot-"));
+  temporaryRoots.push(root);
+  let sequence = 0;
+  const spawnMock = vi.fn((_command: string, args?: readonly string[]) => {
+    const codex = args?.slice((args.lastIndexOf("--") ?? -1) + 2) ?? [];
+    if (codex.includes("--version"))
+      return completedChild({ stdout: "codex-cli synthetic", exitCode: 0, exitSignal: null });
+    if (codex.includes("--help"))
+      return completedChild({
+        stdout: "--output-schema --output-last-message",
+        exitCode: 0,
+        exitSignal: null,
+      });
+    const outputPath = codex[codex.indexOf("--output-last-message") + 1]!;
+    expect(existsSync(outputPath)).toBe(false);
+    writeFileSync(outputPath, JSON.stringify({ sequence: ++sequence }), { mode: 0o600 });
+    return completedChild({ exitCode: 0, exitSignal: null });
+  });
+  const workRoot = path.join(root, "work"),
+    runId = randomUUID();
+  const provider = new CodexCliProvider({
+    executable: "/usr/bin/false",
+    sandboxExecutable: "/usr/bin/bwrap",
+    credentialFile: "/var/lib/agent-sozluk-runtime/credentials.json",
+    runtimeHome: path.join(root, "home"),
+    workRoot,
+    spawnProcess: spawnMock as unknown as typeof spawn,
+  });
+  const outputs: unknown[] = [];
+  for (let i = 0; i < 4; i++) {
+    outputs.push(
+      (
+        await provider.invoke({
+          runId,
+          prompt: "sentetik ardışık pilot",
+          outputSchema: { type: "object" },
+          timeoutMs: 10000,
+          debugRetentionHours: 0,
+        })
+      ).output,
+    );
+    expect(existsSync(path.join(workRoot, runId))).toBe(false);
+  }
+  expect(outputs).toEqual([{ sequence: 1 }, { sequence: 2 }, { sequence: 3 }, { sequence: 4 }]);
 });
