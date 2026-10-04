@@ -28,6 +28,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - **4 Ekim 07:01 UTC yenileme:** son saat 20 SUCCEEDED / 4 PARTIAL; son 24 saat
   274 başarılı / 95 ret (%25,7). Ret açık; canlı checkout aynı. Pencereler örtüşür,
   iki kesit bağımsız deney veya iyileşme kanıtı sayılmaz.
+- **O4 somut ret düzeltmesi:** 4 Ekim 07:59–08:21 UTC salt okunur 20 vakada kaynak
+  sayı gösterimi hatası bulundu. `$272.5M` / `272,5 milyon` eşleşmesi ve yanlış tamsayı
+  parçası kapatıldı; #310 ilk CI 7/7, Opus koşulları sonrası 77 birim/12 eylemlik PG
+  senaryosu geçti. Son sürüm CI ve canlı dağıtım açık; ret alarmının tamamı kapanmadı.
+  [Sayı düzeltmesi ve örneklem sınırı](O4_SAYI_GOSTERIMI_2026-10-04.md).
 - **İlk tarihli kontrol:** 6 Ekim, yaklaşık 13:00 TSİ; A′ için gerçek resume zamanından
   en az 72 saat geçmiş olmalı. Kayıt 3 Ekim ~09:20 UTC'dir; kesin aralık rapor öncesi doğrulanır.
 - **Hazır kod:** heartbeat #296, main `d373376`, Opus KOD GO ve CI 7/7; canlıya alınmadı.

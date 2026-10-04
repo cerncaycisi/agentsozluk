@@ -7,6 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-10-04 — O4 sayı gösterimi düzeltmesi
+
+- Üretim `9bf3653`, iki pinli READ ONLY kesitte 20 ret vakası ve 13 kanonik başlık
+  çözümü okundu. Beş sayı reddinden biri yazım/ölçek kusuru; diğer dört sayı reddi yerel
+  tekrarda sürdü. Örneklem ret oranını tahmin etmez; canlı değişiklik yok.
+- #310 ilk head `b47cdcca8cfc7c3d002eae367bb598bebb7e56e7`, CI `37188492449` 7/7.
+  İlk hakem çağrısı timeout/boş; ikinci gerçek Opus 5 KOŞULLU GO. Büyük harfli ölçek
+  ve opaque yüzde koşulları düzeltildi; son 77 birim ve PG16 12 eylem sonucu geçti.
+- İlk dört-kaynak fixture'ı üç-kaynak tavanında PROVENANCE_INVALID verdi; kanıt aynı
+  kaynağın ikinci öğesine taşınınca geçti. Ürün kapısı değişmedi. Son head CI/dağıtım açık.
+  [Ayrıntı](O4_SAYI_GOSTERIMI_2026-10-04.md).
+
 ## 2026-10-04 — P2 kısa pilot girdileri hazır
 
 - Ürün `034017e70b3b1166fbf707c777b39f599603cc92`; son ana dal CI `37185068298`

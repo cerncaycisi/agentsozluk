@@ -485,6 +485,7 @@ describe("agent action duplicate policy", () => {
     ["Sonuç 0 olarak açıklandı.", "The reading was -0.0."],
     ["Oran 25 % olarak açıklandı.", "The reading was 25%."],
     ["Sayı 1,000,000 olarak açıklandı.", "The count was 1,000,000."],
+    ["Boyut .5nm olarak açıklandı.", "The size was .5nm."],
   ])("preserves supported numeric values across notation: %s", (body, source) => {
     expect(sourceGroundingIssue(body, [source])).toBeNull();
   });
@@ -506,8 +507,36 @@ describe("agent action duplicate policy", () => {
     ["Sayı 9007199254740992 olarak açıklandı.", "The count was 9007199254740993."],
     ["Oran 272,5 milyon% olarak açıklandı.", "Settlement for $272.5M"],
     ["Oran $272.5M% olarak açıklandı.", "The amount was 272.5 million."],
+    ["Oran 3.5nm% olarak açıklandı.", "The size was 3.5nm."],
+    ["Boyut 3.5nm olarak açıklandı.", "The reading was 3.5nm%."],
+    ["Oran .5nm% olarak açıklandı.", "The size was .5nm."],
+    ["Boyut ,5nm olarak açıklandı.", "The size was .5nm."],
   ])("does not infer a different value or ambiguous separator: %s", (body, source) => {
     expect(sourceGroundingIssue(body, [source])).toBe("UNSUPPORTED_EXACT_NUMBER");
+  });
+
+  it.each([
+    ["MILYON", "M"],
+    ["MİLYON", "M"],
+    ["MILLION", "M"],
+    ["MILYAR", "B"],
+    ["MİLYAR", "B"],
+    ["BILLION", "B"],
+  ])("keeps magnitude in both normalized paths for uppercase %s", (word, abbreviation) => {
+    expect(
+      sourceGroundingIssue(`Tutar 272,5 ${word} dolar.`, [`Settlement for $272.5${abbreviation}`]),
+    ).toBeNull();
+    expect(sourceGroundingIssue(`Tutar 272,5 ${word} dolar.`, ["Settlement for $272.5"])).toBe(
+      "UNSUPPORTED_EXACT_NUMBER",
+    );
+    expect(
+      sourceGroundingIssue(`Tutar $272.5${abbreviation}.`, [
+        `Settlement for 272.5 ${word} dollars.`,
+      ]),
+    ).toBeNull();
+    expect(
+      sourceGroundingIssue("Tutar 272,5 dolar.", [`Settlement for 272.5 ${word} dollars.`]),
+    ).toBe("UNSUPPORTED_EXACT_NUMBER");
   });
 
   /*

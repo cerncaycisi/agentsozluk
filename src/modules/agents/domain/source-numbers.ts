@@ -40,12 +40,20 @@ export function exactSourceNumericClaims(normalized: string): Set<string> {
     if (!compact && /^[\p{L}\p{N}_]/u.test(tail)) {
       // A decimal with an unknown suffix must not disappear from the candidate
       // check either. Keep it opaque rather than accepting its integer prefix.
-      if (/[.,]/u.test(value))
-        claims.add(`opaque:${value}${/^[\p{L}\p{N}_]+/u.exec(tail)?.[0] ?? ""}`);
+      if (/[.,]/u.test(value) || leadingSeparator) {
+        const suffix = /^[\p{L}\p{N}_]+/u.exec(tail)?.[0] ?? "";
+        const percent = /^\s*%/u.test(tail.slice(suffix.length));
+        const prefix = leadingSeparator ? normalized[match.index - 1] : "";
+        claims.add(`opaque:${prefix}${value}${suffix}${percent ? "%" : ""}`);
+      }
       continue;
     }
-    const written = /^\s+(million|milyon|billion|milyar)(?![\p{L}\p{N}_])/u.exec(tail);
-    const magnitude = compact?.[1] ?? written?.[1];
+    // tr-TR lower maps ASCII I to dotless ı, including English MILLION/BILLION.
+    // Fold only the closed magnitude vocabulary, never the complete evidence.
+    const written = /^\s+(m[iı]ll[iı]on|m[iı]lyon|b[iı]ll[iı]on|m[iı]lyar)(?![\p{L}\p{N}_])/u.exec(
+      tail,
+    );
+    const magnitude = (compact?.[1] ?? written?.[1])?.replaceAll("ı", "i");
     const scale =
       magnitude === "m" || magnitude === "million" || magnitude === "milyon"
         ? 6
