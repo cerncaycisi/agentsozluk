@@ -124,6 +124,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   pencere farkı kod etkisi değil. Yerel operatör preflight'ı aynı repo URL normalizasyonu
   sonrası geçti; gerçek release/restore/benchmark kapılarının yerine geçmez.
 
+- **4 Ekim pilot çalıştırıcısı:** P3/P4/P5 için kalıcı 24 mantıksal çağrı/90 dakika
+  bütçesi ve araçsız Opus okuyucusu hazırlandı; ilk 29 / son 43 ağsız test PASS. Gerçek pilot çağrısı 0.
+  İlk Opus bulgularıyla 15 dakika okuyucu payı ve dar ortam eklendi; ikinci Opus dar
+  koşulları kapandı, incelenmiş `02631a0` CI 7/7. Final CI/merge sürüyor. A′ sonrası güncel source/model/effort/CLI girdileri
+  yeniden sabitlenecek. Eski `effort:null` hazırlığı çalıştırılmaz. P2/P7 davranış kabulü
+  bundan ayrı ve açık. [Çalıştırma sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
+
 ## 1. Ürün sözleşmesi
 
 1. **Çok seslilik:** yalnız kelime/uzunluk değil; dikkat, değer önceliği, kanıtla ikna olma,
@@ -198,11 +205,16 @@ indeksi için genel yazma dondurması, tablo satır/boyut makbuzu ve restore kop
 doğrulaması da dağıtım kapısıdır; yalnız ajan pause’u yeterli değildir.
 
 **P8 dağıtım kapısı:** audit lookup indeksinde genel yazma dondurması, tablo boyutu ve
-restore kopyasında süre makbuzu şarttır; P2 ile aynı paket olmasa da bu kapı korunur. 4 Ekim yerel envanterinde `9bf3653` checkout'u ile aday arasında
-sekiz migration var; canlı applied set henüz yeniden okunmadı. Mevcut dar additive denetçi
-yedisini bilinçli reddediyor (partial indeks/RESTRICT FK/ALTER/trigger vb.). Üretimden önce
-exact migration kümesine özel, bağımsız incelenmiş geçiş/restore/geri dönüş provası gerekir;
-mevcut denetçinin kapısı kaldırılmaz. Bu hazırlık P1 dağıtımının açık teknik bağımlılığıdır.
+restore kopyasında süre makbuzu şarttır; P2 ile aynı paket olmasa da bu kapı korunur.
+İlk yerel envanterde sekiz bekleyen migration vardı; #316 ile dokuz oldu. **4 Ekim
+16:43 UTC** taze ED25519/DNS/hostname/origin/exact `9bf3653` guard'lı READ ONLY envanter:
+**28 applied, yarım kayıt 0, checksum sapması 0**. Yerel 37 migration eksi 28 applied,
+incelenmiş v2 profilinin **9 SQL'iyle ad/checksum olarak tam eşit**. PG 16.14, 50 public
+tablo, DB 5.801.974.807 bayt. Envanter release anında tekrarlanır; bu okuma üretim
+boyutlu restore ve önceki imaj kapılarını kapatmaz. Genel additive denetçi ilk sekizli
+kümenin yedisini bilinçli reddediyordu (partial indeks/RESTRICT FK/ALTER/trigger vb.);
+kapısı kaldırılmaz. Exact kümeye özel profil kodu tamam, gerçek üretim boyutunda geçiş/
+restore/geri dönüş provası P1 dağıtımının açık teknik bağımlılığıdır.
 Sabit `october-2026-v1` profili yerelde hazırlandı; ilk 93, son odaklı 36 testte
 PG16 restore/geçiş ve sapma reddi geçti. Opus 5 koşullu kabul verdi; genel FK istisnası
 profile daraltıldı, üretim boyutu salt okunur ölçüldü ve ukte kaynak koşulları kaynak/testle kapandı.

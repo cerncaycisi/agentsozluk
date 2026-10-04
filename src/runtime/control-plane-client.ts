@@ -13,7 +13,7 @@ const leaseResponseSchema = z.object({
   reason: z.string().nullable(),
 });
 
-const contextResponseSchema = z.object({
+export const contextResponseSchema = z.object({
   /*
     Kararın üretildiği snapshot sürümü; karar batch'inde geri gönderilir.
     İsteğe bağlı okunuyor: sunucu bu alanı henüz döndürmüyorken worker'ın

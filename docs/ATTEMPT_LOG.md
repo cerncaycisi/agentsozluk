@@ -4295,3 +4295,56 @@ kimlik/içerik/ham hata loglama.
 Exact CI veritabanı logu ayrıca okundu: ana entegrasyon koşusunda **34 dosya / 490 test**
 PASS; `agent-runtime-api.test.ts` içindeki **139 senaryonun tamamı**, atlama olmadan geçti.
 Ardından çalışan dar life-ledger koşularındaki atlamalar bu ana koşunun yerine geçirilmedi.
+
+## 4 Ekim 2026 — P3/P4/P5 çalıştırıcı hazırlığı
+
+`c303936` tabanındaki yerel geliştirmede 29 ağsız test PASS; normal wire, kalıcı rezervasyon,
+18+5+1 çağrı tavanı, ortak90dakika, fatal sapma, eski kilit/yarım rezervasyon ve okuyucunun
+kendi süreç grubunu sonlandırması doğrulandı. Tip kontrolü geçti. Gerçek runtime/pilot
+çağrısı0, üretim değişikliği yok. Hakem ve exact CI henüz açık. Ana dal `c303936` push
+CI `37213095956` 7/7 PASS. Detay/operatör sözleşmesi P2 hazırlık belgesinde.
+Tekrarlama: eski SHA/effort:null manifestini doğrudan çalıştırma; geçerli ama beğenilmeyen
+çıktıya retry açma; çağrı rezervasyonunu veya saati resetleyerek kayıp kanıtı silme.
+
+## 4 Ekim 2026 — pilot çalıştırıcısı Opus bulgularının kapanışı
+
+İlk exact `ce5a3c95643c298f80332a37bf08605eed9e9a38` CI `37215033914` 7/7 PASS;
+gerçek Opus 5 aynı SHA için DÜZELTİLMELİ dedi. Okuyucuya süre kalmaması, miras alınan
+ortam, geç okuyucu ön kontrolü ve güvenli hata teşhisi kaynakla doğrulandı. Son 15 dakika
+okuyucu/kaynak kontrolüne ayrıldı; dar ortam, ayrı geçici dizin, ilk modelden önce CLI
+kontrolü, full prompt/context byte eşliği ve kapalı okuyucu alanları eklendi. Büyük saat
+sapması kapanır, küçük düzeltme süre kredisi vermez; yetki sonuna 90 dakika kalmadan başlanmaz.
+
+Yerel son **43 pilot + 13 runtime istemcisi + 3 gereksinim = 59 test PASS**. İlk sürümün
+gerçek CLI ön kontrolü `PILOT_DATE_GATE_CLOSED` ile model/credential erişiminden önce durdu.
+Mevcut 18 özel v2 girdinin 18/18 normal prompt byte eşliği ve okuyucu şekli doğrulandı; bu
+eski source/effort hazırlığının yeniden-freeze yerine geçmesi değildir. Gerçek pilot 0;
+üretim değişmedi. İkinci exact hakem ve son CI henüz açık.
+
+Tekrarlama: tarihsel tek 352 saniyeyi güncel gecikme dağılımı sayıp sabit örnekleri azaltma
+veya 90 dakikayı uzatma; bu öneri alınmadı. Tanımsız INTERNAL_ERROR'a kör retry verme.
+Dosya hash'inin zaten bağladığı prompt/context'e ikinci hash eklemek yerine renderer
+byte eşliğini sınamak gerekir. Okuyucu raporu transport başarı makbuzuyla davranış PASS olmaz.
+
+## 4 Ekim 2026 — pilot ikinci hakem ve canlı migration envanteri
+
+Gerçek Opus 5 exact `02631a02dab22ec767411a0267ff22216a586713` için **KOŞULLU GO (dar)**;
+actual modelUsage yalnız claude-opus-5. Dar ortamla gerçek kod okuması başarılı. Aynı CI
+`37217437084` **7/7 PASS**. Koşullar: timeout testinde 300 ms → 3000 ms süreç payı ve pilotta
+exact detached checkout'a 90 dakika dokunmama. İkisi kapandı; bloklamayan OS erişim/auth/
+kurulum süresi/terminal notları belirtimde açık. Final CI/merge henüz açık; yeni koşulsuz
+GO veya davranış kabulü iddiası yok. Gerçek pilot 0; üretim dağıtımı yok.
+
+16:43:37 UTC taze ED25519/DNS/hostname/origin/exact 9bf guard'lı RR READ ONLY envanter:
+**28 uygulanmış migration; yarım kayıt 0, checksum sapması 0**. Adayın 37 SQL'i eksi 28 applied,
+reviewed october-2026-v2'nin **9 SQL'iyle ad/checksum olarak tam eşit**. PG 16.14, 50 public tablo,
+DB 5.801.974.807 bayt. Üretim yazımı 0. Bu anlık kanıt release anında tekrarlanır;
+restore/indeks süresi/eski imaj smoke kapıları açık. Özel makbuz migration-inventory-20261004-1644.
+
+O3 yerel hazırlığı: ilk native arşivin 671.960.158 bayt/0600, metadata 50 tablo/3.270.401 satır/
+3 sequence/üç işaret kaydı okundu. Metadata SHA-256 554e9ffe76ef9c0405222dad56bd17516aea11c0ba0b206d5561955cac7b718c.
+Arşiv checksum'ı önceki doğrulamaya referanstır; bu adımda büyük arşiv yeniden hashlenmedi
+ve restore yapılmadı. Sequence metadata'sı MVCC snapshot değildir; geri yüklemede ayrıca
+sıradaki değerin güvenliği sınanır. Gzip emniyet kopyası tam native restore'a kadar korunur.
+Tekrarlama: checkout'tan pending set varsayma; 0 model ön kontrolünü auth başarısı sayma;
+bütçe dışı model yoklaması yapma; okuyucu koşullu GO'sunu deploy onayı olarak sunma.
