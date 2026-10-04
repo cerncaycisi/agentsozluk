@@ -127,7 +127,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - **4 Ekim pilot çalıştırıcısı:** P3/P4/P5 için kalıcı 24 mantıksal çağrı/90 dakika
   bütçesi ve araçsız Opus okuyucusu hazırlandı; ilk 29 / son 43 ağsız test PASS. Gerçek pilot çağrısı 0.
   İlk Opus bulgularıyla 15 dakika okuyucu payı ve dar ortam eklendi; ikinci Opus dar
-  koşulları kapandı, incelenmiş `02631a0` CI 7/7. Final CI/merge sürüyor. A′ sonrası güncel source/model/effort/CLI girdileri
+  koşulları kapandı. #323 final `89797c2`, exact CI `37218521794` **7/7**; main
+  `0bb509a`, uzak SHA/test edilen ağaç eşliği PASS. Çalıştırıcı kod işi tamam.
+  A′ sonrası güncel source/model/effort/CLI girdileri
   yeniden sabitlenecek. Eski `effort:null` hazırlığı çalıştırılmaz. P2/P7 davranış kabulü
   bundan ayrı ve açık. [Çalıştırma sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
 

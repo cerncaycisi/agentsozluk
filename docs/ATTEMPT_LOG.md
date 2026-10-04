@@ -4348,3 +4348,15 @@ ve restore yapılmadı. Sequence metadata'sı MVCC snapshot değildir; geri yük
 sıradaki değerin güvenliği sınanır. Gzip emniyet kopyası tam native restore'a kadar korunur.
 Tekrarlama: checkout'tan pending set varsayma; 0 model ön kontrolünü auth başarısı sayma;
 bütçe dışı model yoklaması yapma; okuyucu koşullu GO'sunu deploy onayı olarak sunma.
+
+## 4 Ekim 2026 — P3/P4/P5 çalıştırıcı kod teslimi
+
+#323 final `89797c27bd73aeb1455cf27475f44e71733cf91e`, exact CI `37218521794` **7/7 PASS**.
+Squash main `0bb509a9a29ec534f2b4d940d4c01cc8e99cca56`; taze head/base/check/review/CLEAN
+kontrolü ve uzak main/test edilen ağaç eşliği doğrulandı. Son yerel 43 pilot + 13 runtime
+istemcisi + 3 gereksinim = **59 test PASS**; format/lint/typecheck PASS.
+Gerçek Opus 5'in `02631a0` için dar koşullu görüşünün iki mekanik koşulu kapandı;
+final kod/scripts ağacı incelenen SHA ile aynı. Yeni koşulsuz hakem görüşü iddiası yok.
+Çalıştırıcı kod hazırlığı tamam; A′ sonrası girdilerin güncel exact sürümde sabitlenmesi,
+gerçek sözleşme kontrolü ve P2/P7 davranış kabulü açık. Pilot çağrısı 0, üretim dağıtımı yok.
+Tekrarlama: geçerli taşıma/JSON sonucunu davranış kabulü sayma; eski manifesti çalıştırma.

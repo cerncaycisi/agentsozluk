@@ -4183,3 +4183,14 @@ kimlik/içerik/ham hata loglama.
 Exact CI veritabanı logu ayrıca okundu: ana entegrasyon koşusunda **34 dosya / 490 test**
 PASS; `agent-runtime-api.test.ts` içindeki **139 senaryonun tamamı**, atlama olmadan geçti.
 Ardından çalışan dar life-ledger koşularındaki atlamalar bu ana koşunun yerine geçirilmedi.
+
+## 4 Ekim 2026 — P3/P4/P5 çalıştırıcı kod teslimi
+
+#323 final `89797c27bd73aeb1455cf27475f44e71733cf91e`, exact CI `37218521794` **7/7 PASS**.
+Squash main `0bb509a9a29ec534f2b4d940d4c01cc8e99cca56`; taze head/base/check/review/CLEAN
+kontrolü ve uzak main/test edilen ağaç eşliği doğrulandı. Son yerel 43 pilot + 13 runtime
+istemcisi + 3 gereksinim = **59 test PASS**; format/lint/typecheck PASS.
+Gerçek Opus 5'in `02631a0` için dar koşullu görüşünün iki mekanik koşulu kapandı;
+final kod/scripts ağacı incelenen SHA ile aynı. Yeni koşulsuz hakem görüşü iddiası yok.
+Çalıştırıcı kod hazırlığı tamam; A′ sonrası girdilerin güncel exact sürümde sabitlenmesi,
+gerçek sözleşme kontrolü ve P2/P7 davranış kabulü açık. Pilot çağrısı 0, üretim dağıtımı yok.

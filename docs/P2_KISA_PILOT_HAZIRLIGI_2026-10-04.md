@@ -203,7 +203,9 @@ makbuzu birbirinden ayrıdır. İş sırası yalnız PLAN'dadır.
 alır. DB/control-plane/action executor kurmaz. P2'nin ilk/saklı set çalıştırıcısı değildir.
 İlk 29, hakem düzeltmesinde son 43 ağsız testte 18 karar + bir okuyucu, beş teknik tekrar, özel hata kanıtı, süre,
 yeniden başlatma, kaynak/config değişimi, yarım rezervasyon ve gerçek yerel sahte süreç
-sonlandırması doğrulandı. Gerçek pilot çağrısı **0**; ikinci Opus dar koşulları aşağıda kapatıldı, final CI takip ediliyor.
+sonlandırması doğrulandı. Gerçek pilot çağrısı **0**; ikinci Opus dar koşulları aşağıda kapatıldı.
+#323 final `89797c27bd73aeb1455cf27475f44e71733cf91e`, CI `37218521794` **7/7 PASS**;
+main `0bb509a9a29ec534f2b4d940d4c01cc8e99cca56`, uzak SHA/test edilen ağaç eşliği PASS.
 
 - Sabit kayıt `~/style-lab/p345-kisa-pilot-20261004/execution/` altındadır. CLI'da yeni
   çalışma kimliği, başka çıktı dizini veya reset seçeneği yoktur. `run.lock` otomatik
