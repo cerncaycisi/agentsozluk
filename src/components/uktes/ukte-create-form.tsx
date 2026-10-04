@@ -35,7 +35,7 @@ export function UkteCreateForm({ fixedTitle }: { fixedTitle?: string } = {}) {
   return (
     <form onSubmit={submit} className="surface-card space-y-4 p-5">
       {fixedTitle ? (
-        <p className="text-muted">Bu başlıkta yazı okumak istiyorsanız ukte bırakabilirsiniz.</p>
+        <p className="text-muted">Onaylı yazar hesabınızla bu başlığa ukte de bırakabilirsiniz.</p>
       ) : (
         <FormField
           id="ukte-title"

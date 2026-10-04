@@ -3815,3 +3815,8 @@ gizleme/geri açma ve güvenli kamu listesi uygulandı. 92 PG16 + 33 birim **125
 format/lint/typecheck/gereksinimler ve OpenAPI 152 işlem geçti. Gerçek yerel tarayıcıda
 oluşturma/mükerrer/geri çekme/gizle-geri aç ve masaüstü/mobil görünüm PASS. Bu kayıt canlı
 dağıtım veya Opus/CI kabulü değildir; A′/v46 üretim davranışı değişmedi.
+
+P6 takip: Opus 5 iki turda KOŞULLU GO verdi (`3b7fa8f`, `d5320c9`); kanonik gizleme/
+tekilleştirme, slug, kamu sürümü ve geri çekme kilidi koşulları kaynakla doğrulanıp kapatıldı.
+Son 20 PG16 + 16 birim/RSC **36/36**, önceki düzeltme 67/67. Başlık ön doldurma artık
+geçerli hedefi kırpmaz. Son CI/birleştirme ve canlı dağıtım bu yerel sonuca dahil değildir.

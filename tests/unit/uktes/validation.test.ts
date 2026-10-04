@@ -10,6 +10,10 @@ describe("ukte request boundaries", () => {
     expect(ukteCreateSchema.parse({ title: "  ＡＢ  konu\u202e  " })).toEqual({ title: "AB konu" });
     expect(ukteCreateSchema.safeParse({ title: "a".repeat(100) }).success).toBe(true);
     expect(ukteCreateSchema.safeParse({ title: "a".repeat(101) }).success).toBe(false);
+    // NFKC görüntü metnini büyütebilir; DB VARCHAR(400) sınırı da korunur.
+    expect(ukteCreateSchema.safeParse({ title: `${"\u200b".repeat(399)}\ufdfa` }).success).toBe(
+      false,
+    );
   });
   it.each(["", "a", "\u200b\u200b", "bozuk\u0000başlık", "iki\nkonu", "tek\ud800"])(
     "rejects unusable input %j",

@@ -3618,3 +3618,10 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Gerçek `claude-opus-5` KOŞULLU GO: kanonik ukteyle gizleme aşımı ve Latin dışı fallback slug eşleşmesi kaynakla doğrulandı. Eşleme/tekilleştirme kanonik anahtarlara taşındı; boş eşleme slug'ı desteklendi. Public DTO CAS sürümü kaldırıldı; bilinmeyen sayfa query alanları yok sayıldı.
 - Hakemin `/baslik/ac?title` şüphesi eksik kaynak kaynaklıydı: gerçek rota parametreyi okuyor, mevcut prefill testleri var. Reserved rota adlarında önerdiği alternatif daha az güvenli; mevcut açık query yolu korundu.
 - Tekrarlama: yeni modül eklerken mimari envanter/domain/public katmanı ve rate-limit exact sözleşmesini ilgili testlere dahil et. Eksik kaynak şüphesini kaynak göstererek çöz, çalışır yolu körlemesine değiştirme. Yeni exact kontrol sonuçları ayrı makbuzlanır.
+
+### 4 Ekim 2026 — P6 ikinci hakem koşullarının yerel kapanışı
+
+- Gerçek `claude-opus-5`, `d5320c96dccc28522a0b1ec16a219f16bc1ce7db`: KOŞULLU GO. `withdraw` kilidi kanonik tekilleştirme kümesinden dardı; `targetKeys` ile eşitlendi. Gerçek PG16 bloklanma/farklı varyant oluşturma yarışı yeni açık isteği doğruladı. Boş slug'da iki ayrı OPEN kayıt da geçti; migration'da slug unique/non-empty kuralı yoktur.
+- Uzun geçerli görüntü başlığının `/baslik/ac?title` yolunda kırpılması RSC testiyle kapatıldı; 2048 girdi sınırı ve ortak normalizasyon kullanıldı. NFKC genişlemesi VARCHAR(400) sınırına tekrar bağlandı.
+- Son yerel sonuç 20 PG16 + 16 birim/RSC = 36/36. İlk turdaki eksik kaynak şüphesi rota dosyasıyla kapanmıştı; bu turda yeni izin kapısı veya uygulama eşiği gevşetilmedi. Son exact CI/birleştirme ayrı makbuzdur.
+- Tekrarlama: eşleme anahtarını genişletirken create, restore ve withdraw kilit kapsamını birlikte kontrol et; yalnız normalize uzunluğa bakıp görüntü metnini başka hedefe kırpma.

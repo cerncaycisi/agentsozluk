@@ -95,7 +95,7 @@ export function withdrawUkte(
     const first = await records.findUkte(tx, id);
     if (!first || first.requestedById !== actor.actorId || first.status === "HIDDEN")
       throw notFound();
-    await lockTopicTitles(tx, [first.normalizedTitle]);
+    await lockTopicTitles(tx, first.targetKeys);
     const row = await records.findUkte(tx, id);
     if (!row || row.status === "HIDDEN") throw notFound();
     if (row.status === "WITHDRAWN") return { withdrawn: true };

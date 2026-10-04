@@ -150,8 +150,10 @@ describe("explicit human ukte requests with PostgreSQL", () => {
     await f.topic("東京");
     const row = await createUkte(db, f.ownerActor, { title: "京都" });
     expect(await db.ukteRequest.findUnique({ where: { id: row.id } })).toMatchObject({ slug: "" });
+    await createUkte(db, f.actor(f.other.id), { title: "大阪" });
+    expect(await db.ukteRequest.count({ where: { slug: "", status: "OPEN" } })).toBe(2);
     const list = await listPublicUktes(db, {});
-    expect(list.items.map((item) => item.title)).toEqual(["京都"]);
+    expect(new Set(list.items.map((item) => item.title))).toEqual(new Set(["京都", "大阪"]));
     await expect(createUkte(db, f.ownerActor, { title: "東京" })).rejects.toMatchObject({
       code: "UKTE_UNAVAILABLE",
     });
@@ -300,6 +302,64 @@ describe("explicit human ukte requests with PostgreSQL", () => {
         reason: "Tekrar incelendi.",
       }),
     ).rejects.toMatchObject({ code: "UKTE_UNAVAILABLE" });
+  });
+  it("serializes withdrawal before a new canonical request on the shared target key", async () => {
+    const f = await fixture();
+    const first = await createUkte(db, f.ownerActor, { title: "mor gökyüzü hakkında" });
+    let release!: () => void;
+    let acquired!: (pid: number) => void;
+    let acquisitionFailed!: (error: unknown) => void;
+    const signal = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const ready = new Promise<number>((resolve, reject) => {
+      acquired = resolve;
+      acquisitionFailed = reject;
+    });
+    const holder = db.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${"mor gökyüzü"}, 0))`;
+        const [row] = await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid() AS pid`;
+        acquired(row!.pid);
+        await signal;
+      },
+      { timeout: 15_000 },
+    );
+    void holder.catch(acquisitionFailed);
+    const holderPid = await ready;
+    const pending: Promise<unknown>[] = [];
+    async function waitForWaiters(count: number) {
+      const deadline = Date.now() + 3000;
+      while (Date.now() < deadline) {
+        const [row] = await db.$queryRaw<Array<{ count: number }>>`
+          SELECT count(*)::int AS count FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'
+          AND pg_blocking_pids(pid) @> ARRAY[${holderPid}::int]
+        `;
+        if ((row?.count ?? 0) >= count) return;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      throw new Error("UKTE_CANONICAL_LOCK_NOT_OBSERVED");
+    }
+    try {
+      const withdrawal = withdrawUkte(db, f.ownerActor, first.id);
+      pending.push(withdrawal);
+      await waitForWaiters(1);
+      const creation = createUkte(db, f.actor(f.other.id), { title: "mor gökyüzü nedir" });
+      pending.push(creation);
+      await waitForWaiters(2);
+      release();
+      await holder;
+      await withdrawal;
+      expect(await creation).toMatchObject({ created: true });
+      expect((await listPublicUktes(db, {})).items.map((row) => row.title)).toEqual([
+        "mor gökyüzü nedir",
+      ]);
+    } finally {
+      release();
+      await holder;
+      await Promise.allSettled(pending);
+    }
   });
   it("paginates stably and keeps already published requests after account approval changes", async () => {
     const f = await fixture();

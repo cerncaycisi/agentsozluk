@@ -7,7 +7,8 @@ export const ukteCreateSchema = z
       .string()
       .max(400)
       .refine((value) => !/[\p{Cc}\p{Cs}]/u.test(value), "Başlık geçersiz karakter içeriyor.")
-      .pipe(topicTitleSchema),
+      .pipe(topicTitleSchema)
+      .refine((value) => [...value].length <= 400, "Başlık görüntü metni çok uzun."),
   })
   .strict();
 export const ukteListSchema = z.object({ before: z.string().uuid().optional() }).strict();
