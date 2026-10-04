@@ -114,3 +114,52 @@ main `c2f5db7254735bf0fb845aa26ee70bf4b522c80e`; uzak main ve ağaç eşitliği 
 Dal temizlendi, üretim dağıtımı yok. İki engellemeyen not (işlem özetini koruma ve komut/slot
 sınırlarını ayırma) P4 kod diliminde kapanıyor. TTL sunucu geçişidir; reddedilmiş öneri
 batch'inden önce doğal EXPIRED kaydı yazılabilir.
+
+## 4 Ekim — aktif amaçtan karar istemine geçiş hatası
+
+Kısa pilotun gerçek `buildRuntimePrompt` hazırlığı, `81baa486d995e1d1fca6988b32602062619eafb3`
+tabanında `RUNTIME_CONTEXT_FORBIDDEN_METADATA:perception.purposes[0].kind` verdi.
+Amaç perception kaydı `kind` taşırken worker bunu hesap ontolojisi etiketiyle aynı
+sayıyordu. Önceki servis testleri bağlamı okuyordu; worker fixture'ındaki amaçta `kind`
+yoktu. Yeni gerçek PG16 assertion'ı aynı amaç oluşturma→sonraki uyanış→istem yolunda
+**düzeltme öncesi düştü**. Ortam veya model hatası değil; henüz canlıya çıkmamış P3 yoludur.
+
+Worker yalnız doğrudan `perception.purposes` dizisinin nesnelerinde, exact `kind`
+anahtarında, mevcut üç `purposeKinds` enum değerine izin verir. İzin alt nesne/dizilere,
+yan alanlara veya başka perception konumlarına taşınmaz. `AGENT`, bilinmeyen tür,
+nesne türü, `model`, iç içe `kind`, dizi olmayan amaç ve farklı yazımlı anahtar reddedilir.
+Mevcut topicFatigue istisnası, hesap ontolojisi yasağı ve perception allowlist aynı kalır.
+Wire alan adı/DB/migration değişmez; v50 istem metni ve alan kümesi aynı sözleşmedir.
+
+Son **91 birim PASS** (worker 88, amaç 3), **9 gerçek PG16 amaç senaryosu PASS**;
+122 diğer runtime senaryosu bu odaklı PG koşusunda çalışmadı. Gerçek iki aktif amaç
+kaydı artık normal karar istemine taşınır. Runtime model çağrısı/üretim yazımı yok.
+Bağımsız Opus ve exact CI sonucu ayrıca kaydedilecektir. Kısa pilot henüz çalışmadı.
+
+### Opus koşulları ve gerçek istem yolları
+
+Exact `3d53b7b08816b78872fdaef0a9babc217ef1cdc6`, gerçek `claude-opus-5`:
+**KOŞULLU GO**, istismar edilebilir izin aktarımı/ontoloji sızıntısı bulunmadı.
+İlk `opus` alias çağrısı `claude-opus-5-5` döndürdüğü için zorunlu hakem kaydı
+sayılmadı; ikinci çağrı exact `claude-opus-5` ile sabitlendi. Tarihsel model adları
+ve ilk çıktı korunur. Araçlar/MCP/skills kapalı; hakem verilen kaynağı okudu, test çalıştırmadı.
+
+- G6 kapandı: `assertNoForbiddenContextMetadata` başka dış çağırana sahip değil;
+  iki iç recursive çağrı ve `projectRuntimePerception` kök çağrısı var. Yasak listenin
+  son alanı `lifecycleStatus`; amaç projeksiyonunda bu yok. Gerçek PG test de geçiyor.
+- G1 kapandı: AW aynı korumayı **daraltmadan önce** çağırır; ardından
+  `projectActionWorthinessPerception` amaçları taşımaz. Yeni üç-enum testi normal ve
+  BROWSE istemlerinin türü taşıdığını, AW üretiminin geçip amaç kimliği/türünü
+  taşımadığını doğrular. Bu yalnız builder doğrulamasıdır; yeni provider koşusu değil.
+- G2 kaynakla daraltıldı: `repository/purposes.ts:17` `findPurposeTopicRecords`
+  zaten yalnız `{id,title}` seçer; ham bütün topic satırı döndürmez. Üretici sınırı korunur.
+- G3 mevcut BROWSE doğrudan serileştirmesi değiştirilmedi; burada semantic kind zaten
+  taşınıyordu. Yeni teknik metadata izni açılmadı.
+- G4/G5: negatif testler beklenen **tam hata yolunu** doğrular; pozitif set kapalı domain
+  `purposeKinds` dizisinden türetilir ve test adı gerçek assertion kapsamını söyler.
+
+Bu kapanışlardan sonra **91/91 birim tekrar PASS**. Üretim kodu hakem SHA'sıyla aynı;
+son ekler test/belgedir. Tam exact CI koşulu halen ayrı, sonuç alınmadan birleşmez.
+
+İlk hakem SHA `3d53b7b` CI `37197366332` **7/7 PASS**; atlanan runtime senaryoları
+CI database/coverage kapılarında geçti. Son test/belge head ayrıca exact CI alır.

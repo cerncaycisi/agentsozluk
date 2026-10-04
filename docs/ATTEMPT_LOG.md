@@ -3972,3 +3972,31 @@ false/true` yapabildi; geçici rol ve DB silindi.
 - Tekrarlama: yerel origin son ek farkını production host uyuşmazlığı sayma; decode'u
   SQL restore sayma; gzip pinini ilk native tam restore öncesi silme; kayan sağlık
   penceresindeki farkı henüz dağıtılmamış koda bağlama. Koşullu hakemi yeniden adlandırma.
+
+### 4 Ekim 2026 10:57–10:58 UTC — P3 gerçek amaç/worker sınırı
+
+- Taban `81baa486d995e1d1fca6988b32602062619eafb3`; çevrimdışı kısa pilot hazırlığı
+  `RUNTIME_CONTEXT_FORBIDDEN_METADATA:perception.purposes[0].kind` verdi. Gerçek
+  PG16 amaç→ikinci uyanış→`buildRuntimePrompt` assertion'ı önce aynı hatayla düştü.
+  Önceki worker fixture'ı `kind` içermiyordu; DB kaydı içeriyor. Kod regresyonu doğrulandı.
+- İzin yalnız doğrudan amaç dizisi kaydı/exact anahtar/üç domain enum değeriyle sınırlı;
+  hesap türü/yan alan/iç içe/farklı yol reddi test edildi. Son 91 birim ve 9 PG16 PASS,
+  diğer 122 runtime senaryosu bu odaklı koşuda çalışmadı. Hakem/exact CI açık.
+- Tekrarlama: servis bağlamı testiyle gerçek worker istemi sınırını doğrulanmış sayma;
+  `kind` yasağını genel kaldırma; sentetik pilot girdisini gerçek üretim amacı veya
+  model başarısı diye kaydetme. Pilot hazırlığı bu somut hata kapanınca devam eder.
+
+- P3 #315 exact `3d53b7b08816b78872fdaef0a9babc217ef1cdc6`: ilk `opus` alias
+  gerçek `claude-opus-5-5` döndürdü; zorunlu Opus 5 hakemi diye etiketlenmedi. İkinci
+  çağrı exact `claude-opus-5`, KOŞULLU GO. Her iki ham kayıt ayrı korundu; yardımcı
+  Haiku usage kaydı hakem modeli sayılmadı. Araç/MCP/skills kapalıydı.
+- Başka guard çağıranı olmadığı ve kalan yasak alan `lifecycleStatus` kaynakla doğrulandı.
+  AW aynı guard'dan geçip amaçları daraltarak çıkarır; BROWSE semantic kind'i zaten taşır.
+  Repository purposeTopics yalnız id/title seçer. Domain enum'dan türetilen üç pozitif
+  normal/BROWSE/AW testi ve tam hata yolu negatifleriyle son **91/91 PASS**.
+- Düzeltilmiş P3/P4/P5 çevrimdışı hazırlığı 9 çift/18 normal karar girdisi üretti;
+  manifest `0532e975c6d16d9fabc0b1b1657e9aac46156d5a8e6914080ba3d6e052954490`.
+  Kontrollü fixture/karşıolgusal sürüm eşlemesi, gerçek amaç/ödül/evrim geçmişi değil.
+  Üç kontrolün toplam tavanı 24 çağrı/90 dakika; henüz çağrı/DB yazımı yok.
+- Tekrarlama: model alias'ını exact model kanıtı sayma; koşullu hakemi koşulsuz GO'ya
+  çevirme; Opus'un eksik alıntı çekincesini kaynakta olmayan yeni güvenlik açığı sayma.

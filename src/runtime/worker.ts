@@ -1,5 +1,5 @@
 import { authorFeedbackKey } from "@/modules/agents/domain/rewards";
-import { purposePerceptionKey } from "@/modules/agents/domain/purpose";
+import { purposeKinds, purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import { projectActionWorthinessPerception } from "@/modules/agents/domain/runtime-action-worthiness-context";
 import {
   RuntimeProviderCancelledError,
@@ -338,9 +338,19 @@ function normalizedMetadataKey(key: string): string {
     .replaceAll(/[^a-z0-9]/gu, "");
 }
 
-function assertNoForbiddenContextMetadata(value: unknown, path = "perception"): void {
+function assertNoForbiddenContextMetadata(
+  value: unknown,
+  path = "perception",
+  isPurposeRecord = false,
+): void {
   if (Array.isArray(value)) {
-    value.forEach((item, index) => assertNoForbiddenContextMetadata(item, `${path}[${index}]`));
+    value.forEach((item, index) =>
+      assertNoForbiddenContextMetadata(
+        item,
+        `${path}[${index}]`,
+        path === `perception.${purposePerceptionKey}`,
+      ),
+    );
     return;
   }
   if (!value || typeof value !== "object") return;
@@ -348,7 +358,15 @@ function assertNoForbiddenContextMetadata(value: unknown, path = "perception"): 
     path === previousTopicFatiguePath &&
     runtimeFastStateSchema.shape.topicFatigue.safeParse(value).success;
   for (const [key, nested] of Object.entries(value)) {
-    if (!hasSchemaValidDynamicKeys && forbiddenContextMetadataKeys.has(normalizedMetadataKey(key)))
+    // Amaç türü hesap ontolojisi değildir. Yalnız doğrudan amaç dizisi kaydında,
+    // exact anahtar ve kapalı domain enum değeri geçer; alt nesnelere izin taşınmaz.
+    const hasSemanticPurposeKind =
+      isPurposeRecord && key === "kind" && purposeKinds.some((kind) => kind === nested);
+    if (
+      !hasSchemaValidDynamicKeys &&
+      !hasSemanticPurposeKind &&
+      forbiddenContextMetadataKeys.has(normalizedMetadataKey(key))
+    )
       throw new Error(`RUNTIME_CONTEXT_FORBIDDEN_METADATA:${path}.${key}`);
     assertNoForbiddenContextMetadata(nested, `${path}.${key}`);
   }
