@@ -5161,3 +5161,52 @@ Saatlik/deadline takip etkin; deadline yalnız zaman uygunluğudur, otomatik kab
 
 Tekrarlama: geçici ACK uyarısını ölçmeden sürekli scheduler arızası sayma; doğal bakım
 kohortunu kabul denominator’ına ekleme; yeşil CI’yi168 saat veya final M2 kanıtı sayma.
+
+## 5 Ekim 02:43 UTC — Gate12 hazırlığı ve P7 birinci saat
+
+Önceki ölçüm main `3bdf613e9a8e5fb0399081b9ae1312c67fea3c3c`, exact
+CI`37254860327` **7/7 PASS**. Yeni Gate12 uyarlaması üretim işlemi değildir:
+Gate7’nin ilk M2 geçişine ait10profil/PAUSED sorgusu ve düz metin talimatı bugünkü
+36ACTIVE topluma uygulanmaz. Kanonik PLAN ve runbook güncel kapsamı aynı sırada
+belirtir. Lifecycle/persona korunur; audited global pause yalnız runtimeEnabled.
+
+İlk gerçek `claude-opus-5` incelemesi `c243ca192d0d841a9e483d8a256a9586b9cbfcf9`,
+**54,798s KOŞULLU GO**; ikinci exact `d2ec759b0ac7c188fdd830affb638b7bb42b9a1e`,
+**118,901s KOŞULLU GO**. Her ikisinde yardımcı `claude-haiku-4-5-20251001` kayıtlı.
+Hakem yalnız verilen git-show/nl paketini okudu; SHA fetch/test/üretim erişimi yapmadı.
+Koşullar kaynakla kapandı: eski SQL, cleanup ve düz metin yanlarında legacy uyarıları;
+configured maximum run timeout+120s süreli drain, ölçülen RUNNING/CANCEL_REQUESTED0
+ve canlılease0, timeout/sapmada freeze/backup/reboot yok; gerçek anchor ve Türkçe metin.
+İkinci hakemin queued-claim belirsizliği actual `leaseRuntimeRun` kaynağıyla çözüldü:
+`runtime.ts:1400/1445` settings kilidi altında runtimeEnabledfalse için PAUSED döner;
+`runtime.ts:1619` claimNextRuntimeRun’a ulaşmaz. API lease route bu servisi çağırır.
+Bu üç dosya canlı d829 ile byte-identical doğrulandı; bu kod koşu oluşturma yolu değildir.
+Bekleyen küme silinmeden source/restore/reboot parmak izinde korunur; stop sonrası drain
+sıfırları tekrar ölçülür. Görüşler koşulsuz GO diye yeniden adlandırılmadı.
+
+Türkçe Gate12 paragrafından sonra yerel test **20/21** kaldı: eski
+`repeat Gate 7 backup and` literal’i. Uygulama/ortam regresyonu veya üretim CI hatası
+olmadığı kaynakla ayrıldı. Aynı testin üç restore/V1 ifade kontrolü Türkçe karşılıklarıyla
+korundu; lifecycle/drain/fail-closed/inline legacy ve ayrı operation/OID/owner/marker/
+kör if-exists reddi doğrudan eklendi. Son **21/21 PASS**, format/lint/typecheck PASS.
+Üretim reset içeren development ledger runner’ı çalıştırılmaz; V1/ledger crypto kapıları
+O3 noncrypto satır özetiyle ikame edilmez. Son exact CI ayrıca izlenir; Gate12 PASS değildir.
+
+**02:30:10.294UTC otomatik saatlik service success/exit0:** gerçek pencerenin1,287 saati;
+app d829, worker PID2270111/NRestarts0,36credentials, health/ready200/200.
+Doğal NORMAL_WAKE0, doğal P4 kart sunumu0. ACK02:03:27.958UTC/1602sn;
+`P7_ROSTER_ACK_STALE_REQUIRES_DISPOSITION` yeniden açık. Önceki02:06 geçici kapanış
+kaydı korunur.02:31:22.882UTC ayrı salt okunur bakım kesiti: REFLECTION35SUCCEEDED/
+1TIMED_OUT, SOURCE_REFRESH19SUCCEEDED/2RUNNING/15QUEUED; gece ağırlığı0,03.
+Worker54 tamamlanan iş kodu gösterdi; yapay tick, heartbeat, model koşusu, cancel veya
+restart yapılmadı. Bakım kohortu doğal denominator değildir; %0/%100 oran üretilmedi.
+Sonraki loader/ACK ve doğal coverage gözlenir; kalıcı scheduler arızası iddiası yok.
+
+P7 T0,168 saat ve grace aynı; saatlik/deadline timer etkin, goal aktif.
+Gate11/P6/O5 kaynak matrisi ve frozen pre/post reboot sınırları yalnız özel hazırlık
+paketidir. Uygulama deploy’u veya canlı smoke/restore/reboot sonucu değildir.
+M2/DONE-082 BLOCKED ve P7 IN_PROGRESS_NOT_PASS korunur.
+
+Tekrarlama: ilk-M2 on-profil lifecycle SQL’ini güncel topluma uygulama; function bağlamı
+olmadan lease guard’ını yalnız run-creation sanma; restore izolasyon/sahiplik guard’ını
+çeviri sırasında kaybetme; uzun bakım ACK uyarısını gizleme veya doğal başarıya çevirme.

@@ -366,6 +366,15 @@ describe("Milestone 2 production operator runbook", () => {
     );
     expect(recoveryProse).toContain("configured maximum run timeout +120 saniyedir");
     expect(recoveryProse).toContain("freeze/backup/reboot başlamaz");
+    expect(recoveryProse).toContain("Restore hedefi ayrı ve yeni operation’a ait olmalıdır");
+    expect(recoveryProse).toContain("OID, owner ve operation marker eşliği");
+    expect(recoveryProse).toContain("kör `--if-exists` temizliği kullanılmaz");
+    expect(recoveryProse).toContain(
+      "servis settings kilidi altında `runtimeEnabled=false` için `PAUSED` döner",
+    );
+    expect(recoveryProse).toContain(
+      "düz metin talimatı ve sabit sayım SQL'i güncel stochastic Gate12'de uygulanmaz",
+    );
     expect(gate7).toContain(
       "-- İLK M2 GEÇİŞİ ÖRNEĞİ: güncel stochastic Gate12'de bu SQL'i çalıştırma.",
     );

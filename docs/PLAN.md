@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 02:16 UTC — P7 doğal gözlemi sürüyor; exact CI7/7 ve başlangıç ACK kapanışı doğrulandı.**
+**5 Ekim 02:43 UTC — P7 birinci saat gözlemi sürüyor; Gate12 uyarlamasının kaynak kapıları kapandı.**
 Goal aktiftir. M2/DONE-082 henüz `BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
 Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
@@ -45,6 +45,11 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   exact CI`37253378070` **7/7 PASS**,02:10:30UTC. Test/runbook kaynakları Opus
   incelemesinden sonra byte-identical kaldı. Bu belge/test commit’i app d829’a deploy
   edilmedi; canlı kabul penceresi ve davranış sabit kaldı.
+- Ölçüm makbuzu main3bdf613, CI37254860327 **7/7 PASS**. Gate12 hazırlığında ilk-M2
+  on-profil SQL/düz metin/cleanup sınırı ve süreli drain/OID-owner-operation kapıları
+  Opus54,798s+118,901s koşullarıyla kaynakta kapandı; ilgili test21/21.
+  Görüşler KOŞULLU GO olarak korunur; final exact CI ayrıca izlenir. Bu hazırlık canlı
+  backup/restore/reboot veya Gate12 PASS değildir.
 
 ### Tek aktif sıra
 
@@ -53,7 +58,9 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
    Başlangıç bakımı12 REFLECTION başarılı/1timeout; geçici ACK uyarısı02:03 yenilenmesiyle
-   müdahalesiz kapandı. Sonraki batch tazeliği ve doğal coverage izlenir; bakım doğal koşu değildir.
+   müdahalesiz kapandı;02:30 kesitinde SOURCE_REFRESH batch’i sırasında tekrar açık.
+   02:31 bakım35reflection başarılı/1timeout;19source refresh başarılı/2çalışan/15bekleyen.
+   Doğal koşu hâlâ0; sonraki loader/ACK ve doğal coverage izlenir; bakım doğal koşu değildir.
    İstem/model/effort/ayar/policy/manual persona değişirse yeni T0 gerekir.
    Olağan doğal hafıza/reflection/evrim ayrı kayıtlanır; yeni shared-Codex lab/benchmark yok.
 2. **Gate10 tam rapor → Gate11/12:** süre dolunca doğal kohort, yazar başına ≥3terminal,

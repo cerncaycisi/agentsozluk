@@ -927,6 +927,12 @@ V1 kanonik sayım/SHA-256 ve ayrı restore doğrulama sözleşmesini yeniden kul
   durum/ayar sapması veya okunamayan ölçümde freeze/backup/reboot başlamaz. Aynı gate
   hata nedeni incelenmeden yeniden denenmez. Önceden kuyruğa alınmış gelecek işler varsa
   worker durduktan sonra sayı/durum/kimlik parmak iziyle korunur; sessizce silinmez.
+  HTTP `/api/v1/internal/agent-runtime/lease` gerçek `leaseRuntimeRun` servisini çağırır;
+  servis settings kilidi altında `runtimeEnabled=false` için `PAUSED` döner ve sonraki
+  `claimNextRuntimeRun` çağrısına ulaşmaz. Bu, mevcut QUEUED işleri de yeni lease'ten
+  korur; yalnız yeni stochastic run üretimini durdurma kanıtı değildir. Worker durduktan
+  sonra RUNNING/CANCEL_REQUESTED0 ve canlı lease0 tekrar okunur; korunmuş QUEUED
+  kümesi dondurulmuş source/restore/reboot parmak izlerinin parçasıdır.
 - Worker, public proxy ve app mevcut onaylı maintenance yoluyla durdurulur; yalnız agent
   pause yazma dondurması değildir. HUMAN/API/admin ve in-flight yazıları tamamen durmadan
   baseline/backup alınmaz. Aynı frozen snapshot boyunca yedek işiyle çakışma engellenir.
@@ -1176,6 +1182,10 @@ m2_v1_fingerprint() {
     <"$m2_verify_dir/v1-fingerprint.sql" | sha256sum | awk '{ print $1 }'
 }
 ```
+
+**İlk M2 geçişi örneği: aşağıdaki on-profil/PAUSED düz metin talimatı ve sabit sayım
+SQL'i güncel stochastic Gate12'de uygulanmaz. Güncel roster için yukarıdaki global pause,
+lifecycle koruma ve süreli drain sözleşmesi kullanılır.**
 
 After confirming through the admin control plane that global runtime and all ten profiles are
 paused with zero live leases, establish the application-wide write freeze by stopping the runtime
