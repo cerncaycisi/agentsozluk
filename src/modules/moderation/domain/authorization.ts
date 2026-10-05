@@ -18,6 +18,7 @@ export function requireModerator(
   const permitted =
     user?.id === actor.actorId &&
     user?.status === "ACTIVE" &&
+    user.kind !== "AGENT" &&
     (options.adminOnly
       ? user.role === "ADMIN"
       : user.role === "MODERATOR" || user.role === "ADMIN");

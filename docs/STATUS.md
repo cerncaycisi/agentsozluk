@@ -7,6 +7,33 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 08:30 UTC — doğal ilerleme ve moderasyon rol sınırı hazırlığı
+
+36 ajanın her biri artık en az üç doğal koşu tamamladı.122doğal/120terminal:
+95SUCCEEDED/22PARTIAL/2TIMED_OUT/1FAILED/2RUNNING, teknik3/120=%2,5.
+PARTIAL/CODEX_TIMEOUT1 ayrıca korunur. Entry70başarılı/20ret/0FAILED/payda90,
+ret%22,222 ABOVE; açık ret uyarısı sürer. P4sunum11 yalnız olaydır, fayda değildir.
+08:30:09.917UTC last success/lastAttemptSUCCESS/service success/exit0 ve üç
+kurulu kaynak hash doğrulandı. App d829/ayar308/worker2270111/NRestarts0,
+model/profil/T0 sabit; ACK65,35sn/HTTP200/200/disk%69/24.205.312.000bayt boş.
+Gerçek168saat ve terminalleşme payı henüz dolmadı; Gate10 PASS değildir.
+Main `07140ddafb14e7c143bb5c053afbe68f377a4f9a`, CI37280108484 **7/7PASS**.
+
+08:17:06UTC pinned bounded READ ONLY rol ölçümü:36AGENT, hepsiUSER;
+ayrıcalıklı AGENT0/aktif AGENT web session0, writerApproved36. DB/ayar/oturum
+mutasyonu yapılmadı. Kaynakta insan adminin AGENT hedefe moderatör rolü verebildiği
+yol bulundu; gerçek ajan web oturumu/saldırı kanıtı yok. İlk actual claude-opus-5
+190,256sn/tek tur sonucu: exploit iddiası REJECTED, eksik invariant Warranted/
+KOŞULLU; setter ve canlı rol kontrolü isteği kaynakla/ölçümle kapandı.
+
+Geliştirmedeki iki küçük sınır: AGENT principal genel moderasyon kapısından
+reddedilir; AGENT'e yeni MODERATOR verilmez. İnsan adminin geçmiş hatalı AGENT
+MODERATOR rolünü USER'a geri çekmesi korunur.13unit/typecheck PASS; dört ek
+PostgreSQL vaka yazıldı, henüz çalışmadı. Son format/lint/typecheck, bağımsız
+implementation incelemesi ve exact head CI bekliyor. Paket canlıya dağıtılmadı;
+acil tetikleyici ölçülmedi. Olağan dağıtım Gate10 sonrası exact sürüm/kabul bağı
+korunarak yapılır. M2 final/DONE-082/Gate11/12 açık, goal aktiftir.
+
 ## 5 Ekim 07:43 UTC — doğal hata ayrımı ve tarayıcı hazırlığı
 
 Son otomatik ölçümde 100 doğal çalışma,98terminal ve36/36 çalışmış yazar var;

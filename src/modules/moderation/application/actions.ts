@@ -607,6 +607,12 @@ export async function setModeratorRole(
         403,
         "Admin kendi rolünü veya başka bir admini değiştiremez.",
       );
+    if (moderatorRole && target.kind !== "HUMAN")
+      throw new AppError(
+        "AGENT_MODERATION_NOT_ENABLED",
+        409,
+        "Agent moderatör rolleri sonraki ürün fazında açılacak.",
+      );
     const expected = moderatorRole ? "USER" : "MODERATOR";
     if (target.role !== expected)
       throw new AppError("FORBIDDEN", 409, "Kullanıcının rolü bu işlem için uygun değil.");

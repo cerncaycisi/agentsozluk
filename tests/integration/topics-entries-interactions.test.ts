@@ -4199,6 +4199,102 @@ describe("reports and moderation with PostgreSQL", () => {
     ).toBe(2);
   });
 
+  it("blocks moderator grants to agents while allowing an admin to remove a legacy agent role", async () => {
+    const admin = await createUser("agent_role_guard_admin");
+    const agent = await createUser("agent_role_guard_target");
+    await integrationDatabase.user.update({ where: { id: admin.id }, data: { role: "ADMIN" } });
+    await integrationDatabase.user.update({
+      where: { id: agent.id },
+      data: { kind: "AGENT", loginDisabled: true },
+    });
+    expect(
+      await integrationDatabase.user.findUniqueOrThrow({ where: { id: agent.id } }),
+    ).toMatchObject({
+      kind: "AGENT",
+      role: "USER",
+      writerApproved: true,
+    });
+    const reason = { reason: "M2 ajan moderatör rol sınırı doğrulanıyor." };
+
+    await expect(
+      setModeratorRole(integrationDatabase, actor(admin.id), agent.id, true, reason),
+    ).rejects.toMatchObject({ code: "AGENT_MODERATION_NOT_ENABLED", status: 409 });
+    expect(
+      await integrationDatabase.user.findUniqueOrThrow({ where: { id: agent.id } }),
+    ).toMatchObject({
+      role: "USER",
+    });
+    expect(await integrationDatabase.moderationAction.count()).toBe(0);
+    expect(await integrationDatabase.auditLog.count()).toBe(0);
+    expect(await integrationDatabase.outboxEvent.count()).toBe(0);
+
+    // Yalnız test DB: geçmişte yanlış verilmiş rolün güvenli geri alınmasını doğrular.
+    await integrationDatabase.user.update({ where: { id: agent.id }, data: { role: "MODERATOR" } });
+    await expect(
+      setModeratorRole(integrationDatabase, actor(admin.id), agent.id, false, reason),
+    ).resolves.toMatchObject({ role: "USER" });
+    expect(
+      await integrationDatabase.user.findUniqueOrThrow({ where: { id: agent.id } }),
+    ).toMatchObject({ role: "USER", kind: "AGENT" });
+    expect(await integrationDatabase.moderationAction.count()).toBe(1);
+    expect(await integrationDatabase.auditLog.count()).toBe(1);
+    expect(await integrationDatabase.outboxEvent.count()).toBe(1);
+  });
+
+  it("prevents an agent admin from revoking a human admin capability without side effects", async () => {
+    const target = await createUser("agent_revoke_human_target");
+    const agent = await createUser("agent_revoke_privileged_actor");
+    await integrationDatabase.user.update({ where: { id: target.id }, data: { role: "ADMIN" } });
+    // Yalnız test DB: ayrıcalıklı AGENT satırına karşı izin kapısını sınar.
+    await integrationDatabase.user.update({
+      where: { id: agent.id },
+      data: { kind: "AGENT", role: "ADMIN", loginDisabled: true },
+    });
+    const capability = await grantGammazCapability(target.id);
+    const agentActor: ActorContext = { ...actor(agent.id), actorKind: "AGENT", actorRole: "ADMIN" };
+
+    await expect(
+      setUserModerationCapability(integrationDatabase, agentActor, target.id, "GAMMAZ", false, {
+        reason: "Agent aktörün insan capability iptalini reddetme kontrolü.",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    expect(
+      await integrationDatabase.userModerationCapability.findUniqueOrThrow({
+        where: { id: capability.id },
+      }),
+    ).toMatchObject({ revokedAt: null });
+    expect(await userHasModerationCapability(integrationDatabase, target.id, "GAMMAZ")).toBe(true);
+    expect(await integrationDatabase.moderationAction.count()).toBe(0);
+    expect(await integrationDatabase.auditLog.count()).toBe(0);
+    expect(await integrationDatabase.outboxEvent.count()).toBe(0);
+  });
+
+  it.each(["ADMIN", "MODERATOR"] as const)(
+    "prevents an AGENT %s from suspending a human account without side effects",
+    async (role) => {
+      const target = await createUser(`agent_suspend_human_${role.toLowerCase()}`);
+      const agent = await createUser(`agent_suspend_actor_${role.toLowerCase()}`);
+      await integrationDatabase.user.update({
+        where: { id: agent.id },
+        data: { kind: "AGENT", role, loginDisabled: true },
+      });
+      const agentActor: ActorContext = { ...actor(agent.id), actorKind: "AGENT", actorRole: role };
+      await expect(
+        setUserSuspension(integrationDatabase, agentActor, target.id, true, {
+          reason: "Agent aktörün insan hesabını askıya alması reddedilmeli.",
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+      expect(
+        await integrationDatabase.user.findUniqueOrThrow({ where: { id: target.id } }),
+      ).toMatchObject({
+        status: "ACTIVE",
+      });
+      expect(await integrationDatabase.moderationAction.count()).toBe(0);
+      expect(await integrationDatabase.auditLog.count()).toBe(0);
+      expect(await integrationDatabase.outboxEvent.count()).toBe(0);
+    },
+  );
+
   it("serializes review-capability revocation ahead of a concurrent moderation write", async () => {
     const admin = await createUser("role_race_admin");
     const moderator = await createUser("role_race_moderator");

@@ -5549,3 +5549,34 @@ Tekrarlama: hashli kodu kaynak eşliği olmadan tahmin etme; generic provider-st
 kodundan kota kök nedeni üretme; sonraki ret sayısını önceki paydaya bölme;
 boş-sayfa readiness'i canlı UI kabulü sayma; mevcut font/kütüphane cache'i
 varken yeniden sistem kurulumu yapma veya açık unavailable'ı sürekli tekrar çağırma.
+
+### 08:17–08:30 UTC — ajan moderasyon rol sınırı, canlı durum ve doğal ilerleme
+
+Kaynak main07140dd/app d829; kendi `fix/agent-moderation-kind-boundary` worktree.
+İlk source-only Opus5 actual190,256sn/tek tur/tools0/networktools0 incelemesi:
+gerçek production exploit iddiası REJECTED; generic kind guard eksikliği
+Warranted/KOŞULLU. Yardımcı Haiku4.5 28output token primary hakem değildir.
+Normal admin role setter'ında kind filtresi yok; createAgent AGENT/USER/loginDisabled
+ve Prisma writerApproved defaulttrue ile rol verme source yolu doğrulandı.
+08:17:06UTC exact pin/read-only/5sn statement/2sn lock ölçümü:36AGENT/USER36,
+privilegedAGENT0/activeAgentSession0; settings308/app d829/worker0restart korunur.
+Bu, gerçek exploit veya acil deploy tetikleyicisi değildir. Kimlik/rol/session
+mutasyonu ve provider çağrısı yapılmadı.
+
+Düzeltme genel requireModerator'da AGENT'i reddeder; setModeratorRole yalnız
+yeni grant için HUMAN hedef ister. Legacy AGENT MODERATOR rolünün insan adminle
+USER'a geri alınması korunur.13unit ve typecheck PASS; dört PostgreSQL vaka
+hazır, henüz yürütülmedi. Repository dönüş seçimi kind içermediğinden legacy
+cleanup testindeki kind assertion ayrı DB read'e düzeltildi; bu bir fixture/
+assertion düzeltmesidir, product regresyon kanıtı değildir. Son kalite/exact head
+CI ve farklı model implementation review beklenir; canlı deployment yok.
+
+08:30 otomatik O4 success/exit0/lastAttemptSUCCESS/hash eşliği:122natural/
+120terminal/36yazar≥3terminal, teknik3/120=%2,5; entry20/90=%22,222 ABOVE.
+Ret uyarısı açık. 07:34 tarihsel19ret bu güncel paydaya karıştırılmaz.
+Main071 exact CI37280108484 yedi jobPASS özel makbuzda doğrulandı.
+Tekrarlama: domain kabulünü web exploit diye adlandırma; ordinary admin grant
+source yolunu yok sayma; privileged AGENT/session fixture'ını üretimde yaratma;
+ret kodlarından editoryal doğruluk çıkarmama; eski kabul raporunu farklı sürüme
+repin etme. P7 sabit penceresinde olağan role fix yalnız hazırlanır, güvenlik
+aciliyeti doğrulanırsa canonical plan ve yeni T0 kapısı korunur.
