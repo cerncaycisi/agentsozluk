@@ -6382,3 +6382,15 @@ Fable315.693ms kaynak incelemesi blocking yük ve orphan-journal bulguları üre
 yeni kod closure ve exact CI bekler. İlk420sn çağrı sonuçsuzdur, PASS değildir.
 Ayrı core worktree'de küçük testDB üzerinde3atomic namespace/rollbackPGPASS.
 Hiçbiri production reset, reopen, fullsize restore/prova veya yeni168hPASS değildir.
+
+## 5 Ekim 23:39 — journal son kod kapıları
+
+Exact828 CI[37388001009](https://github.com/cerncaycisi/agentsozluk/actions/runs/37388001009)
+7/7 SUCCESS; main237 CI37384199827 de SUCCESS. Actual `claude-opus-5-5`
+326.734ms koşullu inceleme: commit/exposure için DB saati, bounded indeks ve
+fullsize ölçüm şartları. İlk iki migration değişmedi; yeni clock migration'ı
+uygulandı. Son kaynak3dosya28unit ve2dosya26PG PASS; bunlar828 tam CI sonucu
+ile aynı exact kaynak değildir. Yeni exact CI/closure bekler. 23:26:38UTC pinned
+canlı okumasında D202/settings311/worker inactive;7013başlık21628entry duruyor.
+Reset/reopen/newT0 yok. Production CLI/HMAC34unit ve küçük namespace3PG önceki
+çekirdek sonuçlarıdır; tam ölçekli reset/restore/kontrol kapısı yerine geçmez.

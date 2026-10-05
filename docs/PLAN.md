@@ -8,6 +8,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+**5 Ekim 23:39 — son journal düzeltmeleri yerelde geçti.** PR334 exact828 CI
+7/7 SUCCESS; bu sonuç son ek düzeltmeleri kapsamaz. Actual Opus5.5 incelemesi
+DB saati ve indeks yükü için koşul koydu; yeni ayrı migration ve sayfalama/backoff
+hazırlandı. Son kaynak28unit/26PG PASS. Yeni exact CI ve inceleme kapanışı bekler.
+23:26 canlı okuma: aynıD202, worker inactive, RUNNING/CANCEL_REQUESTED0;
+7013başlık/21628entry henüz silinmedi. Production yürütücüsü, dış generation,
+taze yedek/gerçek restore ve prova açık; reset/açılış yapılmadı.
+
 **5 Ekim23:18 — journal/410 düzeltmeleri doğrulanıyor.** İlk paket main237'de,
 canlı hâlâD202/toplum kapalı. PR334 ilkCI'da browser/containerPASS; eski ukte
 pozitif örneği nedeniylePG/coverageFAIL. Örnek yeni sözleşmeye uyarlanıp

@@ -1,4 +1,5 @@
-import { findResetGoneDecision } from "@/modules/maintenance/repository/reset-gone";
+import { getResetGoneDecision } from "@/modules/maintenance/application/reset-gone";
+import type { DatabaseClient } from "@/lib/db/types";
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -97,26 +98,36 @@ describe("great reset journal immutability and one-use state", () => {
             protectedSha256: "3".repeat(64),
             clearedCounts: { topics: 1, entries: 1 },
           };
-          await tx.greatResetCommit.create({ data: commit });
+          const marker = await tx.greatResetCommit.create({
+            data: { ...commit, committedAt: new Date("2000-01-01T00:00:00Z") },
+          });
+          const consumed = await tx.greatResetIntent.findUniqueOrThrow({ where: { operationId } });
+          expect(marker.committedAt.getTime()).toBeGreaterThanOrEqual(
+            consumed.consumedAt!.getTime(),
+          );
           expect(
-            await findResetGoneDecision(tx, {
+            await getResetGoneDecision(tx as unknown as DatabaseClient, {
               kind: "ENTRY",
               reference: "PUBLIC_ID",
               publicId: 123,
             }),
           ).toBe("GONE");
-          expect(await findResetGoneDecision(tx, { kind: "ENTRY", reference: "UUID", uuid })).toBe(
-            "GONE",
-          );
           expect(
-            await findResetGoneDecision(tx, {
+            await getResetGoneDecision(tx as unknown as DatabaseClient, {
+              kind: "ENTRY",
+              reference: "UUID",
+              uuid,
+            }),
+          ).toBe("GONE");
+          expect(
+            await getResetGoneDecision(tx as unknown as DatabaseClient, {
               kind: "TOPIC",
               reference: "PUBLIC_ID",
               publicId: 123,
             }),
           ).toBe("PASS");
           expect(
-            await findResetGoneDecision(tx, {
+            await getResetGoneDecision(tx as unknown as DatabaseClient, {
               kind: "ENTRY",
               reference: "PUBLIC_ID",
               publicId: 999,
@@ -130,9 +141,16 @@ describe("great reset journal immutability and one-use state", () => {
               }),
             /GREAT_RESET_TOMBSTONES_SEALED/u,
           );
-          await tx.greatResetExposureEvent.create({
-            data: { operationId, journalSha256: "4".repeat(64) },
+          const exposure = await tx.greatResetExposureEvent.create({
+            data: {
+              operationId,
+              journalSha256: "4".repeat(64),
+              occurredAt: new Date("2000-01-01T00:00:00Z"),
+            },
           });
+          expect(exposure.occurredAt.getTime()).toBeGreaterThanOrEqual(
+            marker.committedAt.getTime(),
+          );
           await expectSqlRejection(
             tx,
             () =>
@@ -330,5 +348,62 @@ describe("great reset journal immutability and one-use state", () => {
         throw rollback;
       }),
     ).rejects.toBe(rollback);
+  });
+  it("loads only the committed operation through the actual cached application path", async () => {
+    const rollback = new Error("JOURNAL_INDEX_FIXTURE_ROLLBACK");
+    await expect(
+      integrationDatabase.$transaction(
+        async (tx) => {
+          const first = randomUUID();
+          await createIntent(tx, first);
+          await tx.greatResetIntent.update({
+            where: { operationId: first },
+            data: { consumedAt: new Date() },
+          });
+          await tx.greatResetTombstone.create({
+            data: { kind: "ENTRY", uuid: randomUUID(), publicId: 1001n, operationId: first },
+          });
+          const second = randomUUID();
+          await createIntent(tx, second);
+          await tx.greatResetIntent.update({
+            where: { operationId: second },
+            data: { consumedAt: new Date() },
+          });
+          await tx.greatResetTombstone.create({
+            data: { kind: "ENTRY", uuid: randomUUID(), publicId: 1002n, operationId: second },
+          });
+          await tx.$queryRaw`SELECT set_config('agentsozluk.reset_operation',${first},true)`;
+          await tx.greatResetCommit.create({
+            data: {
+              operationId: first,
+              releaseSha: "a".repeat(40),
+              manifestSha256: "1".repeat(64),
+              planSha256: "2".repeat(64),
+              protectedSha256: "3".repeat(64),
+              clearedCounts: { topics: 0, entries: 1 },
+            },
+          });
+          const client = tx as unknown as DatabaseClient;
+          expect(
+            await getResetGoneDecision(client, {
+              kind: "ENTRY",
+              reference: "PUBLIC_ID",
+              publicId: 1001,
+            }),
+          ).toBe("GONE");
+          expect(
+            await getResetGoneDecision(client, {
+              kind: "ENTRY",
+              reference: "PUBLIC_ID",
+              publicId: 1002,
+            }),
+          ).toBe("PASS");
+          // İkinci niyet commitlenemez. Hiçbir trigger/constraint bypass olmadan fixture tamamı geri alınır.
+          throw rollback;
+        },
+        { timeout: 20000 },
+      ),
+    ).rejects.toBe(rollback);
+    expect(await integrationDatabase.greatResetIntent.count()).toBe(0);
   });
 });

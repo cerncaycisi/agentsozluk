@@ -6742,3 +6742,20 @@ Tekrarlama: boş/timeout hakem çıktısınıPASS sayma; modelin tools-kapalı y
 araç anlatımını actual disk/tool kanıtı sanma; pending-trigger ret kodunu immutable
 trigger çalıştı diye kaydetme; rollback-only küçükPG testini fullsize veya canlı reset
 kabulü sayma; ilkcommitted migration'ı düzeltme amacıyla değiştirme.
+
+## 5 Ekim 23:39 — Opus journal koşulları ve odaklı doğrulama
+
+Exact828 CI37388001009 7/7 SUCCESS; main237 CI37384199827 SUCCESS. Actual
+Opus5.5/326.734ms kaynağı incelerken kronoloji ve indeks boyutu koşulu koydu.
+Yeni migration DB saatiyle commit/exposure sırasını korur, eski unsafe orphan
+kayıt varsa durur; tüketilmiş niyetin deferred commit guard'ı korunur. Gereksiz
+her-tombstone deferred EXISTS kuyruğu kaldırılır. Eski migrationlar değişmedi.
+İndeks1000satırlık keyset sayfalar,100000üst sınır,1sn monotonic hata backoff'u
+kullanır. PG artık gerçek application/cache yolunu ve operation filtresini sınar.
+
+İlk odaklı unit denemesi27PASS/1FAIL: test eski private error mesajını bekliyordu;
+uygulama sabit safe error'a geçmişti. Beklenti ve backoff negatif vakası düzeltildi:
+son3dosya28unitPASS. Clock migration native deployPASS; ardından2dosya26PGPASS.
+Bunlar son yeni source, henüz commit/CI/peer closure değildir. Canlı reset yok.
+Tekrarlama: eski safe-error fixture hatasını DB veya runtime regresyonu sayma;
+828 CI'yı son clock/paging source'a mal etme; küçük testDB'yi fullsize prova sayma.

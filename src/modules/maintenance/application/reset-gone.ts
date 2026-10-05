@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logging/logger";
 import type { DatabaseClient } from "@/lib/db/types";
 import { inTransaction } from "@/lib/db/transaction";
 import type { ResetGoneCandidate } from "../domain/reset-gone";
@@ -10,6 +11,7 @@ import {
 type Reader = {
   index?: ResetGoneIndex | null;
   absentUntil: number;
+  retryAfter: number;
   loading?: Promise<ResetGoneIndex | null>;
   live: Map<string, Promise<"PASS" | "GONE">>;
 };
@@ -23,17 +25,25 @@ export async function getResetGoneDecision(
 ): Promise<"PASS" | "GONE"> {
   let state = readers.get(client);
   if (!state) {
-    state = { absentUntil: 0, live: new Map() };
+    state = { absentUntil: 0, retryAfter: 0, live: new Map() };
     readers.set(client, state);
   }
   if (
     state.index === undefined ||
     (state.index === null && performance.now() >= state.absentUntil)
   ) {
+    if (performance.now() < state.retryAfter) throw new Error("GREAT_RESET_GONE_INDEX_UNAVAILABLE");
     state.loading ??= inTransaction(client, loadResetGoneIndex);
     try {
       state.index = await state.loading;
       if (state.index === null) state.absentUntil = performance.now() + absentTtlMs;
+    } catch {
+      state.retryAfter = performance.now() + 1000;
+      logger.warn(
+        { code: "GREAT_RESET_GONE_INDEX_UNAVAILABLE" },
+        "Reset address index unavailable",
+      );
+      throw new Error("GREAT_RESET_GONE_INDEX_UNAVAILABLE");
     } finally {
       delete state.loading;
     }

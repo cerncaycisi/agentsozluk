@@ -18,3 +18,6 @@ export function resetGoneCandidate(method: string, pathname: string): ResetGoneC
     ? { kind, reference: "PUBLIC_ID", publicId: parsed.publicId }
     : null;
 }
+
+/** Tek seferlik v1 reset kaynak kümesinin ölçülüp prova edilecek bellek sınırı. */
+export const MAX_RESET_TOMBSTONES = 100_000;

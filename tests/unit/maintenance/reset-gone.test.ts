@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { resetGoneCandidate } from "@/modules/maintenance/domain/reset-gone";
-import { findResetGoneDecision } from "@/modules/maintenance/repository/reset-gone";
-import type { TransactionClient } from "@/lib/db/types";
+import { getResetGoneDecision } from "@/modules/maintenance/application/reset-gone";
+import type { DatabaseClient } from "@/lib/db/types";
 
 const uuid = "550e8400-e29b-41d4-a716-446655440000";
 function fixture(commit: boolean, live: boolean, tombstone: boolean, operationId = "reset") {
@@ -10,7 +10,11 @@ function fixture(commit: boolean, live: boolean, tombstone: boolean, operationId
     greatResetCommit: { findFirst: vi.fn(async () => (commit ? { operationId: "reset" } : null)) },
     topic: { findUnique: vi.fn(async () => (live ? { id: uuid } : null)) },
     entry: { findUnique: vi.fn(async () => (live ? { id: uuid } : null)) },
-    greatResetTombstone: { findUnique: vi.fn(async () => (tombstone ? { operationId } : null)) },
+    greatResetTombstone: {
+      findMany: vi.fn(async () =>
+        tombstone && operationId === "reset" ? [{ kind: "ENTRY", uuid, publicId: 42n }] : [],
+      ),
+    },
   };
 }
 
@@ -54,7 +58,7 @@ describe("reset gone boundary", () => {
     async (commit, live, tombstone, result) => {
       const tx = fixture(commit, live, tombstone);
       expect(
-        await findResetGoneDecision(tx as unknown as TransactionClient, {
+        await getResetGoneDecision(tx as unknown as DatabaseClient, {
           kind: "ENTRY",
           reference: "PUBLIC_ID",
           publicId: 42,
@@ -62,20 +66,23 @@ describe("reset gone boundary", () => {
       ).toBe(result);
       if (!commit) {
         expect(tx.entry.findUnique).not.toHaveBeenCalled();
-        expect(tx.greatResetTombstone.findUnique).not.toHaveBeenCalled();
+        expect(tx.greatResetTombstone.findMany).not.toHaveBeenCalled();
       }
-      if (live) expect(tx.greatResetTombstone.findUnique).not.toHaveBeenCalled();
+      if (live) expect(tx.entry.findUnique).toHaveBeenCalled();
     },
   );
   it("refuses a tombstone bound to another commit", async () => {
     const tx = fixture(true, false, true, "different");
     expect(
-      await findResetGoneDecision(tx as unknown as TransactionClient, {
+      await getResetGoneDecision(tx as unknown as DatabaseClient, {
         kind: "TOPIC",
         reference: "UUID",
         uuid,
       }),
     ).toBe("PASS");
-    expect(tx.topic.findUnique).toHaveBeenCalledWith({ where: { id: uuid }, select: { id: true } });
+    expect(tx.greatResetTombstone.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { operationId: "reset" }, take: 1000 }),
+    );
+    expect(tx.topic.findUnique).not.toHaveBeenCalled();
   });
 });

@@ -19,7 +19,7 @@ FAC'te byte-identical, CI koşulu kapandı. BEGIN failure/recovery sınırı
 22:42:50 UTC squash main `237139f89e0e245144a67eac8c18b22025da48c7`;
 tek parentEE2F, tree reviewedFAC ile birebir eşit. Root/origin aynı main ve
 clean doğrulandı; kendi belge değişimleri aynı incoming blob ile doğrulanarak
-korundu. Main push CI ayrıca bekler. Bu kodu production'a deploy etmedik.
+korundu. Main push CI37384199827 SUCCESS olarak ayrıca doğrulandı. Bu kodu production'a deploy etmedik.
 
 ## Dört korunan journal modeli
 
@@ -54,7 +54,7 @@ reset DB okuması yoktur. UUID sonekli topic eski parser'ı paylaşır.
 410 kısa statik Türkçe HTML, no-store/noindex ve assetsiz CSP taşır; HEAD gövde
 boştur. Okuma hatası410 üretmez,503no-store döner. Dar iki matcher prefetch/RSC
 isteğini de görür; normal prefetch'e eskiden dışlanan CSP/analytics eklenmez.
-Commit cache'i eklenmedi; her süreçte karar DB'den okunur. Her sorgu2sn/lock1sn
+İlk6b1 sürümünde cache yoktu; aşağıdaki23:18 ve23:39 düzeltmeleri pozitif immutable indeks ve kısa negatif cache ekledi. Her sorgu2sn/lock1sn
 ve normal transaction/havuz bütçesinde kalır; gerçek üretim p95/prefetch yük
 kabulü henüz yoktur. Mevcut geniş matcher korunur.
 
@@ -78,7 +78,7 @@ koşu tamamlanmadı. Bu tam PASS değildir. CI'ın pool10 ayarıyla odaklı tekr
 **3dosya80PGtestPASS**; topics76/40,240sn, journal2/0,931sn, BIGINT2/0,921sn.
 Önceki4PG bu80'in alt kümesidir; yeniden yeni test diye toplanmaz. Havuz nedeni
 bu ilgili dosyada odaklı tekrar ile ayrıştırıldı; kod/eşik/guard değişmedi.
-Yerel artifact build veya browser E2E sonucu henüz yok. E2E kaynağı gerçek
+Bu ilk yerel kesitte artifact build veya browser E2E sonucu yoktu; aşağıda exact828 CI browser/container başarısı ayrıca kaydedilir. E2E kaynağı gerçek
 numeric/UUID/HEAD/prefetch/RSC/404/live200/308/Türkçe yalın başlık ve POST
 sınırlarını yazdı; CI sonucu bekler. Format/lint/typecheckPASS; farklı model
 kaynak incelemesi bu paket için henüz bekler.
@@ -127,3 +127,29 @@ Yeni production çekirdeği ayrı worktree'de3gerçekPG vakaPASS: tek işlemde
 silme/tombstone/archive/namespace ve tüm DDL+sequence+journal rollback. Bunlar
 küçük sahipli test DB'sindedir; production CLI/gate, HMAC, fullsize restore/prova,
 peer, canlı migration/reset ve açılış tamamlandı sayılmaz.
+
+## 23:39 Opus kapanış düzeltmeleri
+
+Exact828 CI37388001009 **7/7 SUCCESS**. Actual `claude-opus-5-5`/326.734ms,
+tools kapalı salt okunur kaynak incelemesinde F1 DB saati, F2 koşullu fullsize
+indeks yükü, F3 eski unsafe journal önkoşulu, F4 gerçek application PG yolu,
+F5 gereksiz deferred tombstone kuyruğu bulgularını verdi. Koşullu sonuç production
+reset veya son yeni source onayı değildir. Yeni exact head CI/closure bekler.
+
+Yeni ayrı `20261005233000_great_reset_journal_clock_bounds` migration'ı
+committedAt ve occurredAt'i DB clock_timestamp ile yazar; tüketim/commit sırasını
+kontrol eder. Gelecek createdAt, commitsiz tüketim veya orphan tombstone varsa
+migration durur. Niyetin deferred atomic-commit guard'ı doğrulanıp korunur;
+tombstone başına redundant deferred EXISTS kaldırılır. Sonraki transaction,
+commit sonrası sealed mezar taşı kümesine yazamaz. İlk iki migration değişmedi.
+
+İndeks1000satırlık kind/UUID keyset sayfalara ayrılır; toplam100000mezar taşı
+üst sınırı vardır. Hata sabit safe code ile görünür ve1sn monotonic backoff
+tekrar yükünü kısar. Bu sınır üretim silme başlamadan da uygulanır; mevcut
+28641kayıt bu sınırın altındadır. Gerçek fullsize yükleme süresi/RSS/p95/DB havuzu
+ölçülmeden production kapısı kapalı kalır;100concurrent unit onun yerine geçmez.
+
+Son kaynak3dosya**28unitPASS**, clock migration native deployPASS ve2dosya
+**26PGPASS**. PG gerçek application cache yolunu, doğru operation'a bağlı
+mezar taşını, explicit eski saat değerlerinin DB tarafından düzeltilmesini
+kanıtlar. Bunlar final source local kanıtlarıdır;828 CI farklı exact source'tur.

@@ -70,11 +70,17 @@ describe("reset gone process cache and prefetch pressure", () => {
     expect(f.tx.greatResetCommit.findFirst).toHaveBeenCalledTimes(2);
   });
   it("does not cache an unsuccessful marker/index load or invent GONE", async () => {
+    vi.useFakeTimers({ toFake: ["performance"] });
     const f = fixture();
     f.tx.greatResetTombstone.findMany.mockRejectedValueOnce(new Error("private query details"));
     await expect(getResetGoneDecision(f.client, candidate)).rejects.toThrow(
-      "private query details",
+      "GREAT_RESET_GONE_INDEX_UNAVAILABLE",
     );
+    await expect(getResetGoneDecision(f.client, candidate)).rejects.toThrow(
+      "GREAT_RESET_GONE_INDEX_UNAVAILABLE",
+    );
+    expect(f.tx.greatResetCommit.findFirst).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1001);
     expect(await getResetGoneDecision(f.client, candidate)).toBe("GONE");
     expect(f.tx.greatResetCommit.findFirst).toHaveBeenCalledTimes(2);
   });
@@ -94,6 +100,32 @@ describe("reset gone process cache and prefetch pressure", () => {
     );
     expect(await getResetGoneDecision(f.client, { kind: "ENTRY", reference: "UUID", uuid })).toBe(
       "GONE",
+    );
+  });
+  it("loads a larger immutable index in bounded keyset pages", async () => {
+    const f = fixture();
+    const first = Array.from({ length: 1000 }, (_, i) => ({
+      kind: "ENTRY",
+      uuid: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      publicId: BigInt(i + 1),
+    }));
+    f.tx.greatResetTombstone.findMany
+      .mockResolvedValueOnce(first)
+      .mockResolvedValueOnce([{ kind: "ENTRY", uuid, publicId: 1001n }]);
+    expect(
+      await getResetGoneDecision(f.client, {
+        kind: "ENTRY",
+        reference: "PUBLIC_ID",
+        publicId: 1001,
+      }),
+    ).toBe("GONE");
+    expect(f.tx.greatResetTombstone.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        take: 1000,
+        skip: 1,
+        cursor: { kind_uuid: { kind: "ENTRY", uuid: first.at(-1)!.uuid } },
+      }),
     );
   });
 });
