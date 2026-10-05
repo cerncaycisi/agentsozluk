@@ -95,6 +95,9 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    üretim yolundan çıkarıldı, public entry subprocess öncesinde kapalı. Mevcut kanonik
    runbook V1 COUNT/COPY→SHA256/ON_ERROR_STOP/pipefail ve ayrı ledger kapıları kullanılır.
    Adayın24ağsız assertion'ı gerçek SQL/Docker veya FD düzeyi sızıntı kanıtı değildir.
+   Final tam `verify:m2` için exact main/başarılı push CI, geçici PostgreSQL16 ve
+   loopback test DB kullanan elle çağrılan GitHub Actions kaynağı hazırlanıyor;
+   development/final ayrıdır. İlk full dispatch/sonuç henüz yok; DONE-082 açık.
 3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
    aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
    Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız

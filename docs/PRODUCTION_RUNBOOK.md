@@ -2615,6 +2615,21 @@ zero active `BLOCKED`/`FAIL`, a clean tree, exact production/main SHA equality a
 rollback image/release. A failed gate remains immutable evidence; correct the cause and repeat only
 the affected current stochastic gate under a new approval.
 
+#### Tam M2 komutu için uzak doğrulama hazırlığı
+
+`.github/workflows/m2-integrated-verification.yml` elle çağrılır; exact40karakter
+güncel main SHA ve o SHA'nın başarılı push CI'sını ister. Node22/pnpm10 ve yalnız
+job'a ait loopback `agent_sozluk_test` PostgreSQL16 üzerinde mevcut tam komutu
+çalıştırır. `verify:m2` içindeki test DB, M1 regresyonu ve final temiz ağaç kapıları
+korunur. Operatör sunucusunda tam test/build veya üretim DB reseti yapılmaz.
+
+`verification_mode=final` önce `requirements:m2:check`, ardından `verify:m2` ister;
+DONE-082 BLOCKED iken final başarılı olamaz. `development` ayrı seçenektir ve
+`verify:m2:development` sonucunu final kabul saymaz. Başta ve sonda exact main/temiz
+ağaç doğrulanır; arada main ilerlerse son kapı düşer. Bu CI işi üretime bağlanmaz,
+dağıtmaz veya Gate10/11/12'yi ölçmez. Workflow kaynak hazırlığı, henüz tam komutun
+başarılı gerçek çalıştırılması değildir; ilk dispatch ve exact sonuç ayrıca makbuzlanır.
+
 The final evidence record contains:
 
 - exact main/app/image/runtime SHA, CI and Release Candidate Bundle run/artifact IDs;

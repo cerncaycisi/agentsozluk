@@ -1,0 +1,172 @@
+name: M2 Integrated Verification
+run-name: M2 ${{ inputs.verification_mode }} · ${{ inputs.candidate_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Doğrulanacak exact 40 karakter main SHA
+        required: true
+        type: string
+      verification_mode:
+        description: Geliştirme kanıtı final üretim kabulünün yerine geçmez
+        required: true
+        default: final
+        type: choice
+        options:
+          - final
+          - development
+
+permissions:
+  contents: read
+  actions: read
+
+# Bu workflow kendi tam koşusunu yarıda kesmez; tek M2 işi aynı anda çalışır.
+concurrency:
+  group: m2-integrated-verification
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  integrated:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: agent_sozluk_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d agent_sozluk_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      E2E_APP_URL: http://127.0.0.1:3000
+      APP_URL: http://127.0.0.1:3000
+      APP_SECRET: agent-sozluk-ci-validation-only-secret
+      NEXT_PUBLIC_APP_NAME: Agent Sözlük
+      NEXT_TELEMETRY_DISABLED: "1"
+      SEED_DEMO: "false"
+      TRUST_PROXY: "true"
+      TRUST_PROXY_HOPS: "0"
+
+    steps:
+      - name: Girdileri doğrula
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          VERIFICATION_MODE: ${{ inputs.verification_mode }}
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          case "$VERIFICATION_MODE" in
+            final|development) ;;
+            *) exit 1 ;;
+          esac
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Exact main ve başarılı push CI kapısı
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = cerncaycisi/agentsozluk
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          main_sha="$(gh api repos/cerncaycisi/agentsozluk/git/ref/heads/main --jq .object.sha)"
+          test "$main_sha" = "$CANDIDATE_SHA"
+          successful_ci="$(
+            gh run list -R cerncaycisi/agentsozluk \
+              --workflow CI --commit "$CANDIDATE_SHA" --event push \
+              --status success --limit 20 --json headSha,conclusion,event,workflowName \
+              --jq '[.[] | select(
+                .headSha == env.CANDIDATE_SHA and .conclusion == "success" and
+                .event == "push" and .workflowName == "CI"
+              )] | length'
+          )"
+          test "$successful_ci" -ge 1
+
+      - uses: ./.github/actions/setup-project
+
+      - name: İzlenebilirlik ön kapısı
+        env:
+          VERIFICATION_MODE: ${{ inputs.verification_mode }}
+        run: |
+          set -euo pipefail
+          if test "$VERIFICATION_MODE" = final; then
+            pnpm requirements:m2:check
+          else
+            pnpm requirements:m2:check:development
+          fi
+
+      - name: Playwright Chromium kur
+        run: pnpm exec playwright install --with-deps chromium
+
+      # SQL reset yalnız job'un loopback agent_sozluk_test DB'sinde yapılır.
+      # verify:m2 içindeki test DB/loopback, M1 ve final temiz ağaç kapıları korunur.
+      - name: Tam M2 komutunu çalıştır
+        timeout-minutes: 80
+        env:
+          VERIFICATION_MODE: ${{ inputs.verification_mode }}
+        run: |
+          set -euo pipefail
+          if test "$VERIFICATION_MODE" = final; then
+            pnpm verify:m2
+          else
+            pnpm verify:m2:development
+          fi
+
+      - name: Son exact kaynak ve temiz ağaç kapısı
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          pnpm repo:check-clean
+          main_sha="$(gh api repos/cerncaycisi/agentsozluk/git/ref/heads/main --jq .object.sha)"
+          test "$main_sha" = "$CANDIDATE_SHA"
+
+      - name: Başarılı kapsamı kaydet
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          VERIFICATION_MODE: ${{ inputs.verification_mode }}
+        run: |
+          printf 'SHA: `%s`\n\nMod: `%s`\n\n' \
+            "$CANDIDATE_SHA" "$VERIFICATION_MODE" >> "$GITHUB_STEP_SUMMARY"
+          if test "$VERIFICATION_MODE" = final; then
+            printf 'Final verify:m2 komutu exit0. Canlı Gate10/11/12 kanıtları ayrıca gereklidir.\n' \
+              >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf 'verify:m2:development komutu exit0; final M2/DONE-082 kabulü değildir.\n' \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+          printf '\nÜretim erişimi veya deploy yapılmadı.\n' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Başarısız test artefaktlarını sakla
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m2-verification-${{ inputs.verification_mode }}-${{ inputs.candidate_sha }}
+          path: |
+            playwright-report/
+            test-results/
+            coverage/
+          if-no-files-found: ignore
+          retention-days: 1

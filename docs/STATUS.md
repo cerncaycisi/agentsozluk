@@ -7,6 +7,19 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim — tam M2 uzak doğrulama kaynak hazırlığı
+
+Mevcut `verify:m2` M1 regresyonu, test DB reseti, build/agent E2E ve final temiz
+aday/izlenebilirlik kapılarını birlikte çalıştırır.1GB operatör VM'de tam test/build
+başlatılmadı. Yeni elle çağrılan GitHub Actions kaynağı yalnız runner'ın PostgreSQL16
+loopback `agent_sozluk_test` DB'sini kullanır; exact main SHA/başarılı push CI
+öncesi ve exact main/temiz ağaç sonrası kapısı vardır. Development/final seçimi
+ayrıdır; final izlenebilirlik ön kapısı DONE-082 BLOCKED iken düşer.
+
+Mevcut Actions pin ve test DB güvenliği testleri **8/8 PASS**. Yeni workflow henüz
+merge/dispatch edilmedi; full `verify:m2` veya final M2 PASS değildir. Üretim
+erişimi/model çağrısı/deploy yok; P7/O4 doğal takip ve mevcut T0 sabit.
+
 ## 5 Ekim 05:03 UTC — kaynak CI tamam; Gate11 fixture ayrımı ve reddedilen yardımcı
 
 Ölçüm makbuzu main `a59314e6f779829db700d238e42e062d07829e8d`, exact

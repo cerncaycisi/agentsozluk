@@ -5381,3 +5381,22 @@ Tekrarlama: kapsamı dar24assert PASS'ini sızıntı/SQL/Docker cleanup kanıtı
 REJECTED private helperi observer/üretime kurma; yerel grup kill'ini sunucu backend
 bitişi sayma; kaynakta olmayan harici hata izleyicisini proje olgusu diye yazma;
 HUMAN fixture veya sahte kusurla positive agent-content kabulü üretme.
+
+## 5 Ekim — tam M2 komutu için exact SHA uzak job hazırlığı
+
+Kaynak tabanı `27a2d274f437fdbd5613147ecaf08af2ad49d8f4`, branch
+ci/m2-integrated-verification. verify:m2 kaynak incelemesi gerçek tam komutun
+M1 regresyon/reset/build/agent E2E/final clean-tree zincirini gösterdi.1GB VM'de
+Next/Docker/tam test başlamadı. Yeni workflow_dispatch job runner'a ait PG16 ve
+sabit loopback agent_sozluk_test kullanır; girdi SHA/mode env üzerinden doğrulanır,
+exact güncel main +başarılı push CI ön koşulu ve son exact main/clean tree korunur.
+Final ve development komutları/raporları ayrı; final traceability önce kontrol
+edilir, mevcut BLOCKED ağır final işi başlamadan düşer. Üretim key/endpoint veya
+approval değişkeni taşınmaz; yalnız seçili repo read yetkisi ve test fixture env'i.
+
+Mevcut Actions SHA pin/test DB safety8/8PASS; ilgili yeni kaynak için bağımsız
+hakem/exact CI ve ilk full development dispatch henüz açık. İlk kaynak hazırlığı
+bir gerçek verify:m2 başarı makbuzu değildir.
+Tekrarlama: split CI7 veya development kontrolünü tam final komut çalıştırılması
+sayma; geçici test DB resetini üretimde çalıştırma; workflow inputlarını shell
+koduna interpolate etme; main ilerlerken eski exact sonucu yeni SHA'ya yazma.
