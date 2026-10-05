@@ -20,6 +20,7 @@ import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-po
 import { Prisma, PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { POST as failRoute } from "@/app/api/v1/internal/agent-runtime/runs/[runId]/fail/route";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
@@ -9784,6 +9785,84 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(serializedEvents).not.toContain("safeText");
     expect(serializedEvents).not.toContain("rawBody");
   });
+
+  it.each([undefined, "CODEX_RATE_LIMITED" as const])(
+    "persists only an optional safe provider cause through the fail route (%s)",
+    async (providerSafeCode) => {
+      const fixture = await createFixture();
+      const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+      const workerId = "provider-cause-route-worker";
+      const leased = await leaseRuntimeRun(integrationDatabase, principal, {
+        workerId,
+        leaseSeconds: 60,
+      });
+      const runId = leased.run!.id;
+      const interval = {
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        durationMs: 0,
+        phase: "DECISION",
+        ...(providerSafeCode ? { providerSafeCode } : {}),
+      };
+      const usageMetadata = { durationMs: 1, provider: "codex-cli", codexIntervals: [interval] };
+      const payload = {
+        workerId,
+        leaseToken: leased.run!.leaseToken,
+        outcome: "FAILED",
+        errorCode: "CODEX_DECISION_FAILED",
+        errorSummary: "Karar sağlayıcısı güvenli biçimde tamamlanamadı.",
+        usageMetadata,
+      };
+      const makeRequest = (body: unknown, key: string) =>
+        new NextRequest(`http://localhost/api/v1/internal/agent-runtime/runs/${runId}/fail`, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${fixture.credential}`,
+            "content-type": "application/json",
+            "idempotency-key": key,
+          },
+          body: JSON.stringify(body),
+        });
+      const invalid = await failRoute(
+        makeRequest(
+          {
+            ...payload,
+            usageMetadata: {
+              ...usageMetadata,
+              codexIntervals: [{ ...interval, providerSafeCode: "RAW_STDERR_SECRET" }],
+            },
+          },
+          "invalid-provider-cause",
+        ),
+        { params: Promise.resolve({ runId }) },
+      );
+      expect(invalid.status).toBe(422);
+      expect(
+        await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: runId } }),
+      ).toMatchObject({ runStatus: "RUNNING", usageMetadata: null });
+      const response = await failRoute(makeRequest(payload, "safe-provider-cause"), {
+        params: Promise.resolve({ runId }),
+      });
+      expect(response.status).toBe(200);
+      const stored = await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: runId } });
+      expect(stored).toMatchObject({
+        runStatus: "FAILED",
+        errorCode: "CODEX_DECISION_FAILED",
+        usageMetadata,
+      });
+      expect(JSON.stringify(stored.usageMetadata)).not.toContain("RAW_STDERR_SECRET");
+      const replay = await failRoute(makeRequest(payload, "safe-provider-cause"), {
+        params: Promise.resolve({ runId }),
+      });
+      expect(replay.status).toBe(200);
+      expect(replay.headers.get("Idempotent-Replay")).toBe("true");
+      expect(
+        await integrationDatabase.outboxEvent.count({
+          where: { aggregateId: runId, eventType: "agent.run.failed" },
+        }),
+      ).toBe(1);
+    },
+  );
 
   it("requires idempotency and replays lease without creating a second claim", async () => {
     const fixture = await createFixture(2);

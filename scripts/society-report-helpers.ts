@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import {
+  isRuntimeProviderExecutionSafeCode,
+  type RuntimeProviderExecutionSafeCode,
+} from "@/modules/agents/domain/provider-failure-telemetry";
 export {
   REFLECTION_STATUSES,
   parseReflectionStatus,
@@ -102,6 +106,62 @@ const TERMINAL_RUN_STATUSES = new Set(["SUCCEEDED", "PARTIAL", "FAILED", "CANCEL
 
 export function isTerminalRunStatus(value: string): boolean {
   return TERMINAL_RUN_STATUSES.has(value);
+}
+
+const providerFailurePhases = new Map([
+  ["CODEX_DECISION_FAILED", "DECISION"],
+  ["CODEX_DECISION_REPAIR_FAILED", "DECISION_REPAIR"],
+  ["CODEX_ACTION_WORTHINESS_FAILED", "ACTION_WORTHINESS"],
+]);
+
+/**
+ * Çağrı sayısı değil, verilen terminal kohorttaki sağlayıcı nedeniyle kapanan koşular.
+ * Önceki kurtarılmış çağrının hatası son koşunun nedeni sayılmaz. Timeout nedeninin
+ * sınıflandırılması yoktur; eksik/eski/uyumsuz telemetri "bilinmiyor" kalır.
+ */
+export function summarizeProviderFailureCauses(
+  runs: readonly { runStatus: string; errorCode: string | null; usageMetadata: unknown }[],
+): {
+  runs: number;
+  knownCauseRuns: number;
+  unknownCauseRuns: number;
+  rateLimitedRuns: number;
+  upstreamUnavailableRuns: number;
+  codes: Array<[RuntimeProviderExecutionSafeCode, number]>;
+} {
+  const counts = new Map<RuntimeProviderExecutionSafeCode, number>();
+  let failures = 0;
+  let unknownCauseRuns = 0;
+  for (const run of runs) {
+    if (!["FAILED", "TIMED_OUT", "PARTIAL"].includes(run.runStatus)) continue;
+    const stage = providerFailurePhases.get(run.errorCode ?? "");
+    const legacyCause = isRuntimeProviderExecutionSafeCode(run.errorCode) ? run.errorCode : null;
+    if (!stage && !legacyCause && run.errorCode !== "CODEX_TIMEOUT") continue;
+    failures += 1;
+    let cause = legacyCause;
+    if (stage && run.usageMetadata && typeof run.usageMetadata === "object") {
+      const intervals = (run.usageMetadata as Record<string, unknown>).codexIntervals;
+      const last = Array.isArray(intervals) ? intervals.at(-1) : null;
+      if (
+        last &&
+        typeof last === "object" &&
+        last.phase === stage &&
+        isRuntimeProviderExecutionSafeCode(last.providerSafeCode)
+      ) {
+        cause = last.providerSafeCode;
+      }
+    }
+    if (cause) counts.set(cause, (counts.get(cause) ?? 0) + 1);
+    else unknownCauseRuns += 1;
+  }
+  return {
+    runs: failures,
+    knownCauseRuns: failures - unknownCauseRuns,
+    unknownCauseRuns,
+    rateLimitedRuns: counts.get("CODEX_RATE_LIMITED") ?? 0,
+    upstreamUnavailableRuns: counts.get("CODEX_UPSTREAM_UNAVAILABLE") ?? 0,
+    codes: [...counts.entries()].sort(([left], [right]) => left.localeCompare(right)),
+  };
 }
 
 export type EpisodeActionCardinality = "ZERO" | "ONE" | "MULTI";

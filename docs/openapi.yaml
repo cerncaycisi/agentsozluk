@@ -4233,6 +4233,40 @@ components:
         completedActionCount: { type: integer, minimum: 0 }
         rejectedActionCount: { type: integer, minimum: 0 }
         shortRationale: { type: string, minLength: 1, maxLength: 1000 }
+    RuntimeCodexInterval:
+      type: object
+      additionalProperties: false
+      required: [startedAt, finishedAt, durationMs]
+      description: Çağrı aralığı; bitiş başlangıçtan önce olamaz. Eksik sağlayıcı nedeni bilinmiyor kabul edilir.
+      properties:
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time }
+        durationMs: { type: integer, minimum: 0, maximum: 86400000 }
+        phase:
+          type: string
+          enum: [BROWSE, DECISION, DECISION_REPAIR, ACTION_WORTHINESS, CONTENT_REPAIR]
+        providerSafeCode:
+          type: string
+          description: Yalnız kapalı sağlayıcı hata sözlüğü; ham hata veya stderr saklanmaz. Koşunun aşama kodunu değiştirmez.
+          enum:
+            - CODEX_ARGUMENT_UNSUPPORTED
+            - CODEX_AUTH_REQUIRED
+            - CODEX_SCHEMA_MISSING_REQUIRED
+            - CODEX_SCHEMA_ADDITIONAL_PROPERTIES
+            - CODEX_SCHEMA_FORMAT_UNSUPPORTED
+            - CODEX_SCHEMA_UNSUPPORTED
+            - CODEX_RATE_LIMITED
+            - CODEX_UPSTREAM_UNAVAILABLE
+            - CODEX_PROCESS_SIGNALLED
+            - CODEX_EXEC_FAILED_NO_STDERR
+            - CODEX_EXEC_FAILED
+            - CODEX_OUTPUT_INVALID
+        promptChars: { type: integer, minimum: 0 }
+        promptBytes: { type: integer, minimum: 0 }
+        censored: { type: boolean }
+        setupMs: { type: integer, minimum: 0, maximum: 86400000 }
+        inspectMs: { type: integer, minimum: 0, maximum: 86400000 }
+        modelMs: { type: integer, minimum: 0, maximum: 86400000 }
     RuntimeUsageMetadata:
       type: object
       additionalProperties: false
@@ -4243,6 +4277,11 @@ components:
         cachedInputTokens: { type: integer, minimum: 0 }
         durationMs: { type: integer, minimum: 0, maximum: 86400000 }
         provider: { type: string, const: codex-cli }
+        codexIntervals:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items: { $ref: "#/components/schemas/RuntimeCodexInterval" }
         model: { type: string, minLength: 1, maxLength: 200 }
         promptProfileHash: { type: string, pattern: "^[a-f0-9]{64}$" }
         processPeakRssMb: { type: number, minimum: 0, maximum: 65536 }

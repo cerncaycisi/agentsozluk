@@ -19,6 +19,7 @@ import {
   renderTable,
   selectRunCohortActions,
   summarizeEntryRejections,
+  summarizeProviderFailureCauses,
   summarizeFreshSourceCoverage,
   ENTRY_REJECTION_THRESHOLD_PERCENT,
   type ContentAttribution,
@@ -314,6 +315,7 @@ async function main(): Promise<void> {
           runType: true,
           runStatus: true,
           errorCode: true,
+          usageMetadata: true,
           finishedAt: true,
           performanceMetrics: true,
           agentProfile: { select: { user: { select: { username: true } } } },
@@ -792,6 +794,7 @@ async function main(): Promise<void> {
       (run) => classifyRunPair(run.trigger, run.runType) === "natural-public",
     );
     const terminalNaturalRuns = naturalRuns.filter((run) => terminalRunIds.has(run.id));
+    const providerFailureCauses = summarizeProviderFailureCauses(terminalNaturalRuns);
     const terminalizedAfterWindow = terminalNaturalRuns.filter(
       ({ finishedAt }) => finishedAt !== null && finishedAt >= window.to,
     );
@@ -1128,6 +1131,26 @@ async function main(): Promise<void> {
         ],
       ),
       "",
+      "DOĞAL KOŞU SAĞLAYICI HATALARI — GÜVENLİ NEDEN KAPSAMI",
+      "Birim: terminal doğal koşu; PARTIAL dahil. Teknik FAILED+TIMED_OUT oranının paydası ayrı kalır.",
+      "Eksik/eski/timeout nedeni bilinmiyor; bilinen kota sayısı 0, kota yokluğu kanıtı değildir.",
+      renderTable(
+        ["runs", "knownCause", "unknownCause", "rateLimited", "upstreamUnavailable"],
+        [
+          [
+            String(providerFailureCauses.runs),
+            String(providerFailureCauses.knownCauseRuns),
+            String(providerFailureCauses.unknownCauseRuns),
+            String(providerFailureCauses.rateLimitedRuns),
+            String(providerFailureCauses.upstreamUnavailableRuns),
+          ],
+        ],
+      ),
+      renderTable(
+        ["providerSafeCode", "runs"],
+        providerFailureCauses.codes.map(([code, count]) => [code, String(count)]),
+      ),
+      "",
       "NATURAL PARTIAL SAFE REASONS",
       renderTable(
         ["safeCodeSet", "runs"],
@@ -1363,6 +1386,11 @@ async function main(): Promise<void> {
       `actions_updated_after_window_included=${actionCohort.updatedAfterWindow}`,
       `natural_runs=${terminalNaturalRuns.length}`,
       `natural_runs.nonterminal=${nonterminalNaturalRuns}`,
+      `natural_provider_failure_runs=${providerFailureCauses.runs}`,
+      `natural_provider_failure_runs.known_cause=${providerFailureCauses.knownCauseRuns}`,
+      `natural_provider_failure_runs.unknown_cause=${providerFailureCauses.unknownCauseRuns}`,
+      `natural_provider_failure_runs.rate_limited=${providerFailureCauses.rateLimitedRuns}`,
+      `natural_provider_failure_runs.upstream_unavailable=${providerFailureCauses.upstreamUnavailableRuns}`,
       `natural_runs.terminalized_after_window=${terminalizedAfterWindow.length}`,
       `natural_runs.terminalized_after_window_max_delay_seconds=${maximumTerminalizationDelaySeconds}`,
       `natural_runs.succeeded=${naturalRunStatusCounts.get("SUCCEEDED") ?? 0}`,

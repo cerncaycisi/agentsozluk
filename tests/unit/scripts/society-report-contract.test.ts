@@ -62,6 +62,7 @@ describe("society observation report contracts", () => {
       "NATURAL ENTRY REJECTION RATE",
       "NATURAL EPISODE OUTCOMES",
       "NATURAL PARTIAL SAFE REASONS",
+      "DOĞAL KOŞU SAĞLAYICI HATALARI — GÜVENLİ NEDEN KAPSAMI",
       "LIFECYCLE WINDOW COHORT",
       "NATURAL COVERAGE BY AGENT",
       "NATURAL SELF-TOPIC REVISITS BY AGENT",
@@ -98,6 +99,10 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("natural_runs.failed_or_timed_out_rate=");
     expect(baseline).toContain("natural_runs.cancelled=");
     expect(baseline).toContain("natural_runs.partial_without_safe_reason=");
+    expect(baseline).toContain("usageMetadata: true");
+    expect(baseline).toContain("summarizeProviderFailureCauses(terminalNaturalRuns)");
+    expect(baseline).toContain("natural_provider_failure_runs.unknown_cause=");
+    expect(baseline).not.toMatch(/JSON\.stringify\([^)]*usageMetadata/u);
     expect(baseline).toContain("natural_runs.cancelled_without_safe_reason=");
     expect(baseline).toContain("natural_runs.terminalized_after_window=");
     expect(baseline).toContain("natural_runs.terminalized_after_window_max_delay_seconds=");

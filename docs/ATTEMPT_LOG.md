@@ -5843,3 +5843,51 @@ post-window doğrulanacak. Üretim/HTTP/hesap/oturum/model işlemi yok.
 Tekrarlama: onay verme setter'ını onay kaldırma yolu sanma; revoke davranışının
 PG fixture kanıtını canlı adım sayma; deactivation401/suspension ile onun yerine
 geçme; doğrudan user SQL'i üretme veya readonly hazırlığı Gate11PASS diye yazma.
+
+## 5 Ekim 2026 13:06 UTC — O4 sağlayıcı neden kaybı; kaynak düzeltmesi hazırlığı
+
+Canlı exact d829dd06eb4aa68154f521667302e6744b67399e; geliştirme tabanı
+fbe7e37bf9ec3f5da066ed86cadcb99cf9884bb6, exact CI37309587846 **7/7 PASS**.
+12:30 otomatik gözlem 218natural/216terminal;166SUCCEEDED/42PARTIAL/6FAILED/
+2TIMED_OUT/2RUNNING. Teknik8/216=%3,704; PARTIAL/CODEX_TIMEOUT3 ayrı.
+FAILED aşama ayrımı3ACTION_WORTHINESS/2DECISION/1DECISION_REPAIR; kök sağlayıcı
+nedeni ölçülmedi. Entry121başarılı/38ret/payda159=%23,899 ABOVE.
+Ayrı12:34:59 salt okunur teşhis39ret: FRAMING10/SIMILARITY5/SEMANTIC_REPETITION22/
+NUMBER_UNSUPPORTED2. PARTIAL aksiyon40ret/62başarılı başka birimdir.
+39ret önceki38in dağılımı veya159payda parçası diye sunulmaz. Observer3kaynak
+hash/service success/exit0/lastAttemptSUCCESS; app/worker2270111/restart0/
+settings308/model/profil/diğercontrols/T0 aynı. Yeni çağrı veya canlı mutation yok.
+
+Actual farklı model `claude-opus-5` exactFBE kaynak okuması160,603sn/exit0:
+worker typed provider safeCode'u son aralıkta saklamıyor, aşama kodu alt nedeni
+açıklamıyor. Bu O4 gözlenebilirlik açığıdır; ölçülen6hata kota/upstreamdi veya
+ürün regresyonudur iddiası yok. Tasarım görüşü yeni uygulama peer onayı değildir.
+Kaynak hazırlığı optional closed-enum providerSafeCode, ortak12-kod sözlüğü,
+wire strict guard ve terminal doğal kohortta bilinen/bilinmeyen ayrımıdır.
+Eski/plain/timeout eksikleri bilinmiyor; erken kurtarılmış çağrı son hataya bağlanmaz.
+Yerel13:05:34, beş dosya145unit PASS (worker92/provider7/reporthelper23/runtime18/
+reportcontract5). Ham ayrıntı ve forged kod guard'ları korundu. Yeni fail-route
+PostgreSQL kayıt/replay testleri hazırlanmıştır, henüz çalışmış sayılmaz.
+Bu paket henüz commit/CI/uygulama hakemi/dağıtım veya final M2 kabulü değildir.
+Önceki DBC tam geliştirme SUCCESS yeni değişen kaynak için yeniden etiketlenmez.
+
+Tekrarlama: generic aşama kodundan kota/upstream yokluğu çıkarma; önceki çağrı
+hatasını son koşuya mal etme; kod sayısı0ı eksiksiz tanı sayma; timeout kök nedenini
+uydurma; tasarım görüşünü uygulama/deploy onayı, eski tam testleri yeni kod kanıtı
+veya erken pencereyi168saat kabulü diye yazma. Canlı T0/worker/model değişmedi.
+
+### 13:12 UTC — O4 kaynak ön kontrolleri tamamlandı
+
+Taban exact FBE / çalışma dalı `fix/provider-failure-telemetry`. 145 ilgili unit ve
+33 mimari/zaman aşımı/OpenAPI testi PASS: toplam178 ayrı test. Worker92 düzeltme
+sonrası yeniden PASS; bu tekrar ek92 yeni test değildir. OpenAPI154operation,
+format/lint/typecheck, M1requirements3 ve M2development464activePASS/
+77superseded/25partial/2approvedBLOCKED/0FAIL PASS. Yeni PostgreSQL fail-route
+kayıt ve replay vakaları hâlâ uzak CI bekler; canlı veya tam M2 kabulü değildir.
+İlk typecheck exit2/TS2339: beş yeni test erişiminde genel unknown usageMetadata
+üzerinden codexIntervals okunuyordu. Test gerçek usageMetadataSchema.parse ile
+okuyacak biçimde düzeltildi; worker92, format/lint/typecheck tekrar exit0. API tipi,
+strict şema veya eşik gevşetilmedi. Ürün/üretim regresyonu iddiası yok.
+Tekrarlama: unknown JSON'a cast ile şekil uydurma; wire şemasının gerçekten alanı
+koruduğunu doğrula. Kaynak/diff için exact SHA farklı-model uygulama incelemesi,
+CI ve birleşmiş kaynak tam geliştirme kapısı sıradadır. Canlı d829/T0 aynı.

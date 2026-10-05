@@ -1,3 +1,7 @@
+import {
+  isRuntimeProviderExecutionSafeCode,
+  type RuntimeProviderExecutionSafeCode,
+} from "@/modules/agents/domain/provider-failure-telemetry";
 import { authorFeedbackKey } from "@/modules/agents/domain/rewards";
 import { purposeKinds, purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import { projectActionWorthinessPerception } from "@/modules/agents/domain/runtime-action-worthiness-context";
@@ -1248,6 +1252,7 @@ export class AgentRuntimeWorker {
       finishedAt: string;
       durationMs: number;
       phase: RuntimeCodexPhase;
+      providerSafeCode?: RuntimeProviderExecutionSafeCode;
       promptChars: number;
       promptBytes: number;
       censored?: boolean;
@@ -1287,6 +1292,7 @@ export class AgentRuntimeWorker {
         patladığında sayı "deadline'a kalan süre" olur. `censored` bunu
         söylüyor; bayrak olmadan kesilmiş süre yavaşlama sanılıyordu.
       */
+      let providerSafeCode: RuntimeProviderExecutionSafeCode | undefined;
       let completed = false;
       let censored = false;
       let diagnostics: RuntimeProviderAttemptDiagnostics | undefined;
@@ -1308,8 +1314,11 @@ export class AgentRuntimeWorker {
         ) {
           censored = !completed;
           diagnostics = error.diagnostics ?? diagnostics;
-        } else if (error instanceof RuntimeProviderExecutionError)
+        } else if (error instanceof RuntimeProviderExecutionError) {
           diagnostics = error.diagnostics ?? diagnostics;
+          // TypeScript tipi tek başına wire güvenlik sınırı değildir.
+          if (isRuntimeProviderExecutionSafeCode(error.safeCode)) providerSafeCode = error.safeCode;
+        }
         if (diagnostics?.hostMetrics) failedCallHostMetrics = diagnostics.hostMetrics;
         throw error;
       } finally {
@@ -1321,6 +1330,7 @@ export class AgentRuntimeWorker {
           phase,
           promptChars,
           promptBytes,
+          ...(providerSafeCode ? { providerSafeCode } : {}),
           ...(censored ? { censored } : {}),
           ...(diagnostics
             ? {

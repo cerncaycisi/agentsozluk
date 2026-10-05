@@ -1,3 +1,4 @@
+import { runtimeProviderExecutionSafeCodes } from "@/modules/agents/domain/provider-failure-telemetry";
 import { runtimePurposeChangesSchema } from "@/modules/agents/validation/purpose-schemas";
 import { z } from "zod";
 import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
@@ -394,6 +395,8 @@ const codexIntervalSchema = z
       saymak `/complete` ile `/fail`i 422'ye düşürürdü.
     */
     phase: z.enum(runtimeCodexPhases).optional(),
+    // Eksik eski kayıt bilinmeyendir; yalnız kapalı sağlayıcı kodu kabul edilir.
+    providerSafeCode: z.enum(runtimeProviderExecutionSafeCodes).optional(),
     /*
       Provider'a verilen prompt'un UTF-16 kod birimi ve UTF-8 bayt sayısı.
       Token sayısı değildir; outputSchema ve CLI'nin eklediği bağlam dahil değildir.

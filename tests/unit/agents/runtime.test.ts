@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { assertRuntimeCredential, parseRuntimeBearer } from "@/modules/agents/domain/runtime-auth";
 import { relationshipProvenanceIsVisible } from "@/modules/agents/domain/provenance";
 import {
+  usageMetadataSchema,
   runtimeActionsSchema,
   runtimeCompleteSchema,
   runtimeEventsSchema,
@@ -9,6 +10,8 @@ import {
   runtimeSourceResultSchema,
 } from "@/modules/agents/validation/runtime-schemas";
 import { runtimeDecisionSchema } from "@/runtime/output";
+
+import { runtimeProviderExecutionSafeCodes } from "@/modules/agents/domain/provider-failure-telemetry";
 
 const leaseToken = "l".repeat(43);
 
@@ -390,6 +393,53 @@ describe("agent runtime authentication and payload boundaries", () => {
         ...completion,
         errorCode: "SOURCE_REFRESH_NO_USEFUL_ITEMS",
         errorSummary: "Başarılı run hata kodu taşıyamaz.",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("provider failure telemetry wire privacy", () => {
+  const interval = {
+    startedAt: "2026-10-05T00:00:00.000Z",
+    finishedAt: "2026-10-05T00:00:00.001Z",
+    durationMs: 1,
+    phase: "DECISION",
+  };
+  it("accepts legacy metadata and every closed provider safe code", () => {
+    expect(usageMetadataSchema.safeParse({ durationMs: 1, provider: "codex-cli" }).success).toBe(
+      true,
+    );
+    for (const providerSafeCode of [undefined, ...runtimeProviderExecutionSafeCodes]) {
+      const value = {
+        durationMs: 1,
+        provider: "codex-cli",
+        codexIntervals: [{ ...interval, ...(providerSafeCode ? { providerSafeCode } : {}) }],
+      };
+      expect(usageMetadataSchema.parse(value)).toEqual(value);
+    }
+  });
+  it.each([
+    "RAW_STDERR_OR_SECRET",
+    "CODEX_RATE_LIMITED\nprivate",
+    "",
+    null,
+    0,
+    { code: "CODEX_RATE_LIMITED" },
+  ])("rejects arbitrary provider cause %j", (providerSafeCode) => {
+    expect(
+      usageMetadataSchema.safeParse({
+        durationMs: 1,
+        provider: "codex-cli",
+        codexIntervals: [{ ...interval, providerSafeCode }],
+      }).success,
+    ).toBe(false);
+  });
+  it("rejects raw text beside a valid code", () => {
+    expect(
+      usageMetadataSchema.safeParse({
+        durationMs: 1,
+        provider: "codex-cli",
+        codexIntervals: [{ ...interval, providerSafeCode: "CODEX_RATE_LIMITED", stderr: "SECRET" }],
       }).success,
     ).toBe(false);
   });

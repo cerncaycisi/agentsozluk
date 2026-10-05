@@ -17,6 +17,7 @@ import {
   selectRunCohortActions,
   summarizeFreshSourceCoverage,
   summarizeEntryRejections,
+  summarizeProviderFailureCauses,
 } from "../../../scripts/society-report-helpers";
 
 describe("society report window parsing", () => {
@@ -436,5 +437,94 @@ describe("summarizeEntryRejections", () => {
       ["A", 1],
       ["B", 1],
     ]);
+  });
+});
+
+describe("safe provider failure cause coverage", () => {
+  const run = (errorCode: string, phase?: string, code?: unknown, runStatus = "FAILED") => ({
+    runStatus,
+    errorCode,
+    usageMetadata: phase
+      ? { codexIntervals: [{ phase, ...(code !== undefined ? { providerSafeCode: code } : {}) }] }
+      : null,
+  });
+  it("counts final-stage typed causes in run units, including PARTIAL", () => {
+    expect(
+      summarizeProviderFailureCauses([
+        run("CODEX_DECISION_FAILED", "DECISION", "CODEX_RATE_LIMITED"),
+        run("CODEX_DECISION_REPAIR_FAILED", "DECISION_REPAIR", "CODEX_SCHEMA_UNSUPPORTED"),
+        run(
+          "CODEX_ACTION_WORTHINESS_FAILED",
+          "ACTION_WORTHINESS",
+          "CODEX_UPSTREAM_UNAVAILABLE",
+          "PARTIAL",
+        ),
+        run("CODEX_TIMEOUT", undefined, undefined, "TIMED_OUT"),
+        run("CODEX_TIMEOUT", undefined, undefined, "PARTIAL"),
+        run("CONTROL_PLANE_CONTEXT_FAILED"),
+      ]),
+    ).toEqual({
+      runs: 5,
+      knownCauseRuns: 3,
+      unknownCauseRuns: 2,
+      rateLimitedRuns: 1,
+      upstreamUnavailableRuns: 1,
+      codes: [
+        ["CODEX_RATE_LIMITED", 1],
+        ["CODEX_SCHEMA_UNSUPPORTED", 1],
+        ["CODEX_UPSTREAM_UNAVAILABLE", 1],
+      ],
+    });
+  });
+  it("keeps legacy/missing/invalid causes unknown without rendering raw metadata", () => {
+    const summary = summarizeProviderFailureCauses([
+      run("CODEX_DECISION_FAILED"),
+      run("CODEX_DECISION_FAILED", "DECISION", "RAW_SECRET"),
+      { ...run("CODEX_ACTION_WORTHINESS_FAILED"), usageMetadata: "RAW_SECRET" },
+      { ...run("CODEX_DECISION_FAILED"), usageMetadata: { codexIntervals: [null] } },
+      run("CODEX_DECISION_FAILED", "DECISION", { code: "CODEX_RATE_LIMITED" }),
+    ]);
+    expect(summary).toMatchObject({
+      runs: 5,
+      knownCauseRuns: 0,
+      unknownCauseRuns: 5,
+      rateLimitedRuns: 0,
+      upstreamUnavailableRuns: 0,
+      codes: [],
+    });
+    expect(JSON.stringify(summary)).not.toContain("RAW_SECRET");
+  });
+  it("does not attribute earlier recovered calls or the wrong phase to final failure", () => {
+    const metadata = {
+      codexIntervals: [
+        { phase: "DECISION", providerSafeCode: "CODEX_RATE_LIMITED" },
+        { phase: "DECISION_REPAIR" },
+      ],
+    };
+    expect(
+      summarizeProviderFailureCauses([
+        { ...run("CODEX_DECISION_REPAIR_FAILED"), usageMetadata: metadata },
+        run("CODEX_ACTION_WORTHINESS_FAILED", "DECISION", "CODEX_RATE_LIMITED"),
+        run("CODEX_TIMEOUT", "DECISION", "CODEX_RATE_LIMITED", "TIMED_OUT"),
+        run("CODEX_DECISION_FAILED", "DECISION", "CODEX_RATE_LIMITED", "SUCCEEDED"),
+        run("CODEX_DECISION_FAILED", "DECISION", "CODEX_RATE_LIMITED", "RUNNING"),
+        run("CODEX_DECISION_FAILED", "DECISION", "CODEX_RATE_LIMITED", "CANCELLED"),
+      ]),
+    ).toMatchObject({ runs: 3, knownCauseRuns: 0, unknownCauseRuns: 3, rateLimitedRuns: 0 });
+  });
+  it("recognizes only exact legacy safe codes without reading narrative fields", () => {
+    expect(
+      summarizeProviderFailureCauses([
+        run("CODEX_RATE_LIMITED"),
+        run("CODEX_UPSTREAM_UNAVAILABLE"),
+        run("CODEX_RATE_LIMITED private"),
+      ]),
+    ).toMatchObject({
+      runs: 2,
+      knownCauseRuns: 2,
+      unknownCauseRuns: 0,
+      rateLimitedRuns: 1,
+      upstreamUnavailableRuns: 1,
+    });
   });
 });
