@@ -332,11 +332,13 @@ describe("gecelik sunucu dışı yedek", () => {
       ].join("\n"),
     );
     const script = path.join(root, "producer.sh");
-    expect(remote.match(/lock_dir="\/tmp\/agentsozluk-yedek-\$\{lock_uid\}"/gu)).toHaveLength(1);
+    expect(
+      remote.match(/lock_dir="\/opt\/agent-sozluk\/scripts\/\.agentsozluk-yedek-\$\{lock_uid\}"/gu),
+    ).toHaveLength(1);
     writeFileSync(
       script,
       remote.replace(
-        'lock_dir="/tmp/agentsozluk-yedek-${lock_uid}"',
+        'lock_dir="/opt/agent-sozluk/scripts/.agentsozluk-yedek-${lock_uid}"',
         `lock_dir="${root}/lock-directory"`,
       ),
       { mode: 0o700 },
@@ -364,7 +366,10 @@ describe("gecelik sunucu dışı yedek", () => {
     const script = path.join(root, "producer.sh");
     writeFileSync(
       script,
-      remote.replace('lock_dir="/tmp/agentsozluk-yedek-${lock_uid}"', `lock_dir="${dir}"`),
+      remote.replace(
+        'lock_dir="/opt/agent-sozluk/scripts/.agentsozluk-yedek-${lock_uid}"',
+        `lock_dir="${dir}"`,
+      ),
       { mode: 0o700 },
     );
     const sentinel = path.join(root, "sentinel");

@@ -4978,3 +4978,23 @@ son hakem/exactCI ile kurmak; 5 Ekim gece timer makbuzunu ölçmek. Kapasite tam
 
 Tekrarlama: geçici staging silme tartışmasını kaynak DROP riski gibi raporlama;
 tarihsel dış metadata'yı dump içinde ya da helperrun içinde varmış gibi sunma.
+
+## 5 Ekim — O3 kaynak fix koşulları ve P7 stok ön kontrolü
+
+Exact `9cee0406359ffaa1ef1a05a012e0786b27e6afaa`, gerçek Opus5 **KOŞULLU GO**,
+98,773s/yardımcıHaiku ayrıca kayıtlı. Otomatik UID/PID scoped backend temizliği doğru;
+runbook genel pkill/backend sonlandırma ve `/tmp` reboot sonrası pre-squat koşulları
+kaynakla kabul edildi. Desenli kill kaldırılır; tek doğrulanmış APP+DB+user daralır.
+Lock root-owned/yazılamaz scripts parent'ında kalıcı UID0700/600 dizine taşınır;
+installer bu parent'ı CREATE'den önce doğrular. Eski legacy0664 lock değiştirilmez.
+
+5 Ekim00:26:43 boundedREADONLY/15s stok ön kontrolü: **36 aktif profil,126 taze faydalı
+kaynak,118 origin,62Türkçe/Türkiye odağı**, invalidtopics0; tüm36profil ≥10kaynak/
+≥6origin/≥5kategori. Son7gün mevcut stoktur, yeni P7 pencere kabulü değildir.
+Doğal teknik yeni kohort ve ledger/diğer ön uygunluk ölçümleri ayrıca açık.
+P4 gerçek eligible doğal yayın QUALITY paketi existing auditedAPI ile OFF→SHADOW
+CAS/ayar305→306, iki HTTP200; tek paket15dkTTL, bağımsız kör karar bekliyor.
+Nonce/kimlik/yazı/girdi metinleri bu makbuza konmadı; runtimefalse, birthOFF aynı.
+
+Tekrarlama: `/tmp` kilit kurulmasını reboot kalıcılığı sanma; otomatik dar temizliği
+runbook geniş kill ile bozma; stok ön kontrolünü yeni168h kabulü sayma.

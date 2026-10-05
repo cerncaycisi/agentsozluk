@@ -21,7 +21,9 @@ test "$(hostname)" = agent-sozluk-prod
 # tam dump başlatamaz. Kilit dosyası üretimde yazılan tek dosyadır ve veri içermez.
 umask 077
 lock_uid=$(id -u)
-lock_dir="/tmp/agentsozluk-yedek-${lock_uid}"
+# Kurulum root-owned/yazılamaz scripts parent'ında bu UID dizinini hazırlar.
+# Kalıcı parent reboot/tmpfiles sonrası başka UID'nin ad kapmasını engeller.
+lock_dir="/opt/agent-sozluk/scripts/.agentsozluk-yedek-${lock_uid}"
 lock_invalid() { echo "YEDEK_LOCK_UNSAFE" >&2; exit 76; }
 if ! mkdir -m 700 -- "$lock_dir" 2>/dev/null; then
   [[ -d "$lock_dir" && ! -L "$lock_dir" ]] || lock_invalid

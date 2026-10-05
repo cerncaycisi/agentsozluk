@@ -2240,7 +2240,9 @@ görüntüdendir; sequence değerleri PostgreSQL gereği anlık görüntüye ba�
 
 **4 Ekim O3 sertleştirme — kurulum kanıtı henüz açık:** reviewed source komutunda
 legacy `/tmp/agentsozluk-yedek.lock` yerine deploy UID'sine bağlı private0700
-`/tmp/agentsozluk-yedek-UID/lock` 0600/tek-link/append ve fd-inode guard vardır.
+`/opt/agent-sozluk/scripts/.agentsozluk-yedek-UID/lock` 0600/tek-link/append ve fd-inode
+guard vardır. Root-owned/yazılamaz scripts parent'ı kurulumda doğrulanır; lock UID
+0700 dizini burada kalıcıdır. Reboot/tmpfiles sonrası başka UID ad kapamaz.
 Eski ve yeni flock aynı kurulum oturumunda tutulmadan atomik geçiş yapılmaz;
 backup backend0 ve pinli app/image/worker değişmezliği önce/sonra kaydedilir.
 Kaynak snapshot ve metadata search_path katalogla sabitlenir; dump +restore
@@ -2305,13 +2307,18 @@ systemctl --user disable --now agentsozluk-yedek.timer
 systemctl --user stop agentsozluk-yedek.service
 # üretim
 #  1) ~deploy/.ssh/authorized_keys içinden `agentsozluk-yedek` satırını sil
-#  2) açık yedek oturumlarını kapat:
-sudo pkill -f /opt/agent-sozluk/scripts/uretim-yedek-komutu.sh || true
-#  3) kalan PostgreSQL oturumlarını kapat:
+#  2) takılı tek çalışmanın application_name'ini salt okunur envanterden doğrula.
+# UID/PID eşliği olmadan süreç veya backend sonlandırma; desenli pkill kullanma.
+# Aşağıdaki yer tutucu gerçek kernel PID ile değiştirilmeden regex geçmez.
+backup_app='agentsozluk-yedek-1000-DOGRULANMIS_PID'
+[[ "$backup_app" =~ ^agentsozluk-yedek-1000-[1-9][0-9]*$ ]] || exit 1
 docker compose --env-file /opt/agent-sozluk/app/.env \
   -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T db psql -XAtq \
-  -U agent_sozluk -d agent_sozluk -c "SELECT count(pg_terminate_backend(pid)) FROM \
-  pg_stat_activity WHERE application_name = 'agentsozluk-yedek' OR application_name LIKE 'agentsozluk-yedek-%'" </dev/null
+  -v ON_ERROR_STOP=1 -v "backup_app=$backup_app" -U agent_sozluk -d agent_sozluk <<'SQL'
+SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity
+WHERE application_name = :'backup_app' AND datname = current_database()
+  AND usename = current_user AND pid <> pg_backend_pid();
+SQL
 ```
 
 ## Public-agent bio reconciliation

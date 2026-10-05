@@ -8,6 +8,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **5 Ekim kaynak fix hakem koşulu:** `9cee040` Opus **KOŞULLU GO**,98,773s;
+  otomatik UID/PID+DB/user temizliği doğru, exactCI bekleniyor. İki kaynak koşulu
+  uygulanıyor: reboot/tmpfiles ad kapmayı kapatmak için lock root-protected kalıcı
+  scripts parent'ına taşınır; runbook desenli pkill/genel backend kill kaldırılır,
+  doğrulanmış tek APP/DB/user daralır. Gece timer ve uygulama hâlâ aynı.
+  P4 tek kalite paketi SHADOW/ayar306 ile açıldı; karar/etki yok, P7 başlamadı.
+
 - **5 Ekim 00:24 UTC:** gerçek dış restore, strict50tablo/3.270.401satır/3sequence
   eşliği ve yalnız-owned hedefDROP **tamam**; source/app/image/worker aynı.
   İki staging arşivi/orijinal dış yedek ve journal kanıtları korundu; root23,9GB.

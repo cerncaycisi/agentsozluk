@@ -88,12 +88,16 @@ it("zorunlu yedek komutunun native zstd arşivini metadata ve sequence ile geri 
     expect(sql(source, "SELECT pg_catalog.hashtextextended('sentetik',0)")).not.toBe("0");
     // Aynı guard'lar; yalnız sabit lock dizini/host/Compose taşıması owned fixture'dadır.
     const producer = readFileSync("deploy/backup/uretim-yedek-komutu.sh", "utf8");
-    expect(producer.match(/lock_dir="\/tmp\/agentsozluk-yedek-\$\{lock_uid\}"/gu)).toHaveLength(1);
+    expect(
+      producer.match(
+        /lock_dir="\/opt\/agent-sozluk\/scripts\/\.agentsozluk-yedek-\$\{lock_uid\}"/gu,
+      ),
+    ).toHaveLength(1);
     const producerScript = path.join(root, "producer.sh");
     writeFileSync(
       producerScript,
       producer.replace(
-        'lock_dir="/tmp/agentsozluk-yedek-${lock_uid}"',
+        'lock_dir="/opt/agent-sozluk/scripts/.agentsozluk-yedek-${lock_uid}"',
         `lock_dir="${root}/lock-directory"`,
       ),
       { mode: 0o700 },
