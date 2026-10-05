@@ -8,6 +8,27 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+- **5 Ekim 00:24 UTC:** gerçek dış restore, strict50tablo/3.270.401satır/3sequence
+  eşliği ve yalnız-owned hedefDROP **tamam**; source/app/image/worker aynı.
+  İki staging arşivi/orijinal dış yedek ve journal kanıtları korundu; root23,9GB.
+  Restore/DB cleanup aktif sıradan çıktı; kapasite de tamam/staleAt19Ekim.
+  **Sıra:** O3 UID/PID scoped sourcefix son hakem/exactCI/kurulum → sınırlı ödül
+  +P7 ön uygunluk → resume/T0 → gerçek168h → Gate11/12/P8. Gece mevcut timer
+  makbuzu ayrıca ölçülür; yeni timer/uygulama deploy yok. P7 başlamadı.
+
+- **5 Ekim 00:18 UTC güncel:** mainO3 `3cdf64c` CI7/7; canlı app/runtime/worker
+  `d829dd0`, persona36 tamam, pause305/open0/lease0. **Cold10/warm10/dual2 kapasite
+  tamam**:22 koşu/failure0, strict+HTTP200 persist, fingerprint eşit, staleAt19Ekim.
+  Yeniden benchmark aktif sıradan çıktı. **Gerçek eski dış backup restore/veri
+  eşliği tamam**:283s/exit0,50tablo/3.270.401satır/3sequence-safe. Owned hedef
+  guardedDROP/staging kapanışı sürüyor. Kaynak kurulumunun son Opus DÜZELTİLMELİ
+  B1'i farklıUID ortakbackend temizliği; scoped UID/PID+DB/user düzeltmesi 2PGPASS,
+  son hakem/exactCI/kurulum açık. Legacy lock değişmedi; fchmod yapılmadı.
+  **Aktif sıra:** O3 yalnız-owned cleanup ve kaynak fix hakem/CI/kurulum → sınırlı
+  ödül etkisi +P7 ön uygunluk → resume/T0 → gerçek168h → Gate11/12/P8 kararı.
+  P7 başlamadı, DONE-082 BLOCKED. Uygulama yeniden deploy gerekmiyor.
+  [Ölçülen sonuçlar](STATUS.md).
+
 - **4 Ekim 23:08 UTC sıra daraltması:** O3 son search_path/locale/lock kaynağı
   exact peer/CI aşamasında; uygulama/runtime d829 ve persona36 tamam, pause305.
   O3 restore ile çakışmadan **bağımsız cold/warm/dual kapasite** mevcut canlı

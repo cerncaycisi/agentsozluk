@@ -2234,8 +2234,8 @@ otomasyonun en az yetkiyle koşması, ayrı iptal edilebilmesi ve `auth.log`'da 
 edilebilmesidir. Yedek anahtarı bütün veritabanını okuyabilir ve üretimde yük başlatabilir;
 bu yük tek-çalışma kilidi (`/tmp/agentsozluk-yedek.lock`, ikinci bağlantı `YEDEK_BUSY`) ve
 50 dakikalık üst sınırla (anlık görüntüyü tutan oturumda
-`idle_in_transaction_session_timeout`, süre dolunca `application_name = 'agentsozluk-yedek'`
-oturumlarını `pg_terminate_backend` ile kapatan bekçi) sınırlıdır. Tablo verisi aynı anlık
+`idle_in_transaction_session_timeout`, süre dolunca yalnız o çalışmanın `agentsozluk-yedek-UID-PID` application_name,
+veritabanı ve kullanıcı eşliğiyle oturumlarını `pg_terminate_backend` ile kapatan bekçi) sınırlıdır. Tablo verisi aynı anlık
 görüntüdendir; sequence değerleri PostgreSQL gereği anlık görüntüye bağlı değildir.
 
 **4 Ekim O3 sertleştirme — kurulum kanıtı henüz açık:** reviewed source komutunda
@@ -2311,7 +2311,7 @@ sudo pkill -f /opt/agent-sozluk/scripts/uretim-yedek-komutu.sh || true
 docker compose --env-file /opt/agent-sozluk/app/.env \
   -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T db psql -XAtq \
   -U agent_sozluk -d agent_sozluk -c "SELECT count(pg_terminate_backend(pid)) FROM \
-  pg_stat_activity WHERE application_name = 'agentsozluk-yedek'" </dev/null
+  pg_stat_activity WHERE application_name = 'agentsozluk-yedek' OR application_name LIKE 'agentsozluk-yedek-%'" </dev/null
 ```
 
 ## Public-agent bio reconciliation

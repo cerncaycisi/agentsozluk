@@ -10,8 +10,9 @@
 # `pg_dump -Fc --compress=zstd:3` o anlık görüntüden stdout'a yazar, aynı anlık görüntüdeki tablo satır
 # sayısı + içerik özeti stderr'e gider. Üretim diskine dosya yazılmaz.
 #
-# KANITLANMIŞ YOL: 24 Eylül tek seferlik yedek ve PostgreSQL 16.14 restore provası bu
-# betiğin aynısıyla alındı (50/50 tablo sayı + özet eşit). Ders: `docker compose exec -T`
+# TARİHSEL KANIT: 24 Eylül önceki sürümle 50/50 tablo sayı + özet eşitliği ölçüldü.
+# Güncel native codec/GUC/katalog yolu 4 Ekim ayrı gerçek PG16 provasında doğrulandı;
+# önceki makbuz güncel sürümün kanıtı sayılmaz. Ders: `docker compose exec -T`
 # stdin'i yutar; her exec'in stdin'i ayrı bağlanır.
 set -euo pipefail
 test "$(hostname)" = agent-sozluk-prod
@@ -41,16 +42,18 @@ flock -n 9 || { echo "YEDEK_BUSY" >&2; exit 75; }
 
 compose=(docker compose --env-file /opt/agent-sozluk/app/.env
   -f /opt/agent-sozluk/runtime/compose.production.yaml)
-APP=agentsozluk-yedek
+# UID başına lock ayrı olduğundan watchdog/trap yalnız bu çalışmanın backendlerini kapatır.
+# UID/PID yalnız kernel sayısal değeridir; SQL veya application_name girdisi alınmaz.
+APP="agentsozluk-yedek-${lock_uid}-$$"
 # Toplam süre üst sınırı. `docker exec` istemcisi ölse bile konteynerdeki süreç yaşar; bu
 # yüzden kesin kapanış PostgreSQL tarafında: anlık görüntüyü tutan oturum en çok LIMIT_S
-# boşta kalabilir, bekçi süre dolunca bütün yedek oturumlarını sonlandırır.
+# boşta kalabilir, bekçi süre dolunca yalnız bu çalışmanın yedek oturumlarını sonlandırır.
 LIMIT_S=3000
 pg_env=(-e "PGAPPNAME=$APP"
   -e "PGOPTIONS=-c timezone=UTC -c extra_float_digits=3 -c lc_monetary=C -c idle_in_transaction_session_timeout=${LIMIT_S}s")
 terminate_backup_sessions() {
   "${compose[@]}" exec -T db psql -XAtq -U agent_sozluk -d agent_sozluk -c \
-    "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE application_name = '$APP' AND pid <> pg_backend_pid()" \
+    "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE application_name = '$APP' AND datname = current_database() AND usename = current_user AND pid <> pg_backend_pid()" \
     </dev/null >/dev/null 2>&1 || true
 }
 # Bekçi kilidi ve stdout'u devralmaz: yoksa betik bitse de `sleep` SSH oturumunu ve kilidi

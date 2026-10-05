@@ -117,14 +117,52 @@ while (($#)); do
 done
 exec "$command_name" "\${args[@]}"`,
     );
-    const result = await runOwnedProducer(
-      {
-        ...process.env,
-        PATH: `${root}:${process.env.PATH}`,
-        BACKUP_PROBE_URL: url(source),
-      },
-      { script: producerScript, timeoutMs: 30_000 },
+    // Farklı UID/çalışma ve önceki sürümün backendleri aynı kaynak DB'de yaşarken
+    // başarılı producer'ın EXIT temizliği yalnız kendi UID/PID application_name'ini kapatır.
+    const foreignNames = ["agentsozluk-yedek", `agentsozluk-yedek-99999-${suffix}`];
+    const foreignClients = foreignNames.map((name) =>
+      spawn(
+        "psql",
+        ["-XAtq", "-v", "ON_ERROR_STOP=1", "-d", url(source), "-c", "SELECT pg_sleep(60)"],
+        {
+          env: { ...process.env, PGAPPNAME: name },
+          stdio: "ignore",
+        },
+      ),
     );
+    const foreignCount = () =>
+      sql(
+        source,
+        `SELECT count(*) FROM pg_stat_activity WHERE datname='${source}' AND application_name IN ('${foreignNames.join("','")}') AND state='active'`,
+      );
+    let result: Awaited<ReturnType<typeof runOwnedProducer>>;
+    try {
+      const deadline = Date.now() + 5000;
+      while (foreignCount() !== "2" && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(foreignCount()).toBe("2");
+      result = await runOwnedProducer(
+        { ...process.env, PATH: `${root}:${process.env.PATH}`, BACKUP_PROBE_URL: url(source) },
+        { script: producerScript, timeoutMs: 30_000 },
+      );
+      expect(result.status, result.stderr.toString()).toBe(0);
+      expect(foreignCount()).toBe("2");
+      expect(
+        sql(
+          source,
+          `SELECT count(*) FROM pg_stat_activity WHERE datname='${source}' AND application_name LIKE 'agentsozluk-yedek-%' AND application_name NOT IN ('${foreignNames.join("','")}')`,
+        ),
+      ).toBe("0");
+    } finally {
+      // Yalnız bu fixture'ın yeni DB'sindeki iki sentetik application_name.
+      sql(
+        source,
+        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='${source}' AND application_name IN ('${foreignNames.join("','")}')`,
+      );
+      for (const client of foreignClients) {
+        if (client.exitCode === null && client.signalCode === null) client.kill("SIGTERM");
+      }
+    }
     expect(result.status, result.stderr.toString()).toBe(0);
     const metadata = result.stderr.toString();
     for (const marker of ["SNAPSHOT_OK", "DUMP_DONE", "META_DONE"])
@@ -363,13 +401,21 @@ it("yedek testinin timeout'u kendi alt süreç grubunu da kapatır", async () =>
     ).rejects.toThrow("BACKUP_TEST_TIMEOUT");
     const childPid = readFileSync(childFile, "utf8").trim();
     expect(childPid).toMatch(/^[1-9][0-9]*$/u);
-    try {
-      const stat = readFileSync(`/proc/${childPid}/stat`, "utf8");
-      // Ölü ama init tarafından henüz toplanmamış zombi, çalışan süreç değildir.
-      expect(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0]).toBe("Z");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
+    // SIGKILL gönderimi ile scheduler'ın süreci terminalleştirmesi aynı an değildir.
+    // Bütçe içinde Z/ENOENT ölçülür; canlı R/S durumu başarı sayılmaz.
+    const deadline = Date.now() + 2000;
+    let terminal = false;
+    do {
+      try {
+        const stat = readFileSync(`/proc/${childPid}/stat`, "utf8");
+        terminal = stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0] === "Z";
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        terminal = true;
+      }
+      if (!terminal) await new Promise((resolve) => setTimeout(resolve, 20));
+    } while (!terminal && Date.now() < deadline);
+    expect(terminal).toBe(true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

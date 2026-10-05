@@ -4892,3 +4892,89 @@ başladı. Worker app/image/PID korunur; output/diagnostics create-exclusive 060
 O3 CI beklerken bağımsız ilerler; üretimde tek ağır iş, restore başlamadı. Paket
 strict runbook diagnostics doğrulaması ve admin rota kaydı ayrıca gereklidir;
 başlatma kapasite PASS değildir. P7/T0 henüz yok, final M2 BLOCKED aynı.
+
+## 5 Ekim — kapasite, harici restore ve kaynak kurulumu denemesi
+
+Canlı uygulama/runtime/worker exact `d829dd06eb4aa68154f521667302e6744b67399e`;
+kontrollü pause/ayar305, openRuns0/leases0. O3 #328 main
+`3cdf64c93d7ce8f6ca1e24ebf3850bb6bc248c8c`, exact CI `37244364415` **7/7 PASS**;
+PR head `bd3f15e`, CI `37243375583` **7/7 PASS**, test edilmiş ağaç eşliği doğrulandı.
+
+**Kapasite tamam:** 4 Ekim 23:08:28.738–23:56:28.301 UTC, cold10/warm10/dual2,
+22 gerçek karar, failureRate0/HEALTHY, health/readiness sabit, OOM/swap yok.
+Cold p50/p75/p95=max: 128651/202465/435750 ms, tek süreç249MB;
+warm109612/121089/183820 ms, tek245MB; iki gerçek eşzamanlı koşu başarılı,
+peak466MB. Actual üretim `codex-cli 0.144.6`, profil hash
+`05a9bffbfc631c8f3a31c7fb5cf1cf209c1b5841a31c0f5c524164c6fcad390a`.
+Yerel pilot CLI0.160.0 kohortuyla havuzlanmaz. Runbook altı dosya strict validator
+hash `7bd5e8adbc63f92e3655e0b6e038316498e5934c64b3e29771fa2b88f7165c36`
+PASS; admin capability-package POST HTTP200, dual destektrue/downgradefalse.
+Üç gerçek DB capability kaydı mevcut worker fingerprint'iyle eşit, staleAt
+**19 Ekim 00:04:18 UTC**, yedi günlük pencere payı yeterli. 00:09:49 yalnız owned
+capacity marker kanıtları korunarak arşivlendi; app/image/worker değişmedi.
+
+**Gerçek dış restore/veri karşılaştırması tamam:** 4 Ekim 10:39 native harici dump,
+671.960.158 bayt, archiveSHA
+`fe56869003c8824576250b9711bbd31cf3b1bd19abdf018443f41c7d456ac810`;
+5 Ekim 00:11:41–00:16:24, helper283s/exit0. Yeni sahipli hedefOID1197845,
+sourceOID16385; controlpostgres SUPER, owneragent_sozluk LOGIN/NOSUPER/NOCREATEDB/
+NOCREATEROLE, privilege grant yok. Exact3cdf helper kullanıldı; app d829 korundu.
+Strict `O3_DATA_MATCH`: **50 public tablo, 3.270.401 satır, üç sequence güvenliği**;
+metadataSHA `554e9ffe76ef9c0405222dad56bd17516aea11c0ba0b206d5561955cac7b718c`,
+restore receiptSHA `4bdd18877247542267a6c8be537a3781d7e4ceb5a6c4f7ccdfc1ac44054b3ad8`.
+Noncrypto satır metni özeti/küme karşılaştırmasıdır; full katalog/FK/index/trigger/
+view/function/type eşliği veya sequence exact değer eşliği iddia edilmez.
+Yalnız owned hedefin guardedDROP/staging temizliği bağımsız işletim incelemesinde;
+başarılı restore bunları veya yedek kaynağı kurulumunu tamamlandı saymaz.
+
+**Kaynak kurulum engeli:** ilk installer'ın legacy lock0644 varsayımı gerçek0664
+nedeniyle değişiklik öncesi durdu; üretim oldsource04966deb aynı, key/timer korunur.
+Fchmod önerisi hiç uygulanmadı; readonly legacy flock+private UIDlock alternatifi hazır.
+Son gerçek Opus işletim incelemesi **DÜZELTİLMELİ**,132,247s, Haiku yardımcı ayrıca
+kayıtlı. Literal payload/SHA/eski producer koşulları kapandı; farklıUID çalışmaların
+ortak application_name üzerinden birbirini kapatması somut B1 olarak kabul edildi.
+Yeni kaynak UID/PID application_name +DB/user scope ile yalnız kendi backendini temizler;
+eski sürüm yorumunun güncel kanıt olduğu iddiası kaldırıldı. Format sürüm satırı ekleme
+önerisi kaynakla ayrıldı: her dump kendi metadata'sıyla karşılaştırılır; önceki yedekler
+ve parser değiştirilmez. Farklı de_DE/C para render'ı doğrudan önceki ve güncel gerçek
+PG16 provasındadır. Son sentetik native testte eski ve başka çalışma backendleri korunur:
+**2/2 PG16 PASS**; ilk SIGKILL testindeki R→Z scheduler yarışı bounded2s ölçümle ayrıldı,
+canlı süreç başarı sayılmadı. Son kaynak hakem/exactCI/kurulum açık.
+
+P7/T0 henüz başlamadı; final M2/DONE-082 BLOCKED. Sıra: yalnız owned restore temizliği
+ve yedek kaynak düzeltmesinin hakem/CI/kurulumu → sınırlı ödül etkisi +P7 ön uygunluk
+→ resume/T0 → gerçek168h → Gate11/12/P8 somut karar. Aynı3–17Ekim fullplan yetkisi;
+exact scope makbuzlu, approval env kalıcı değil.
+
+Tekrarlama: legacy lock mode varsayımıyla yazma başlatma; fchmod ile geçiş dayatma;
+UID lock ayrıysa ortak application_name backend sonlandırma; SIGKILL gönderimini
+terminal süreç kanıtı sayma. O3 eski dış restore ile A5 taze frozen restore farklıdır.
+
+## 5 Ekim 00:24 UTC — O3 sahipli restore kapanışı
+
+`O3_DATA_MATCH` exact parser üretimde de orijinal dış metadata baytlarıyla tekrar
+hesaplandı; metadata554e/verify receipt4bdd,50tablo/3.270.401satır/3sequence-safe.
+Helper'ın dump/verify hash journal'ları archivefe5686/verify6224 ile eşit.
+Yalnız OID1197845/owneragent_sozluk/commento3:70896aa2a6514d7bae493d747a0837c1
+ve backend0 şartlarıyla tek hedef `DROP DATABASE` edildi; IFEXISTS/FORCE/KILL yok.
+SourceOID16385 ve app/image/worker aynı. Owned marker arşivlendi; **iki üretim
+staging arşivi ve orijinal dış dump/metadata silinmedi**, journal kanıtları korundu.
+Son root boş alan23.883.956.224 bayt. Bunlar eski imaj/runtime/volume temizliği değildir.
+
+İki cleanup Opus görüşü81,723s/74,935s **DÜZELTİLMELİ** olarak korunur; her ikisi
+kaynak/üretim DROP korumasını doğru buldu, arşiv silme kabulüne itiraz etti.
+İkinci görüşte önerilen `run/metadata.meta` tarihsel helper çıktısı değildir:
+orijinal metadata operatörde dump ile aynı filename/scope'ta ayrı stderr makbuzudur;
+uydurulmadı. Her iki dosyanın gerçek SHA'sı işlemden önce yeniden doğrulandı.
+Sequence son değer eşliği baştan beri iddia edilmez; reviewedSQL `seqsafe` ölçümü ve
+ad kümesidir. Potansiyel tartışmalı arşiv silme uygulanmadı; yalnız incelemelerde
+somut olarak kabul edilen ownedDROP yolu, güçlendirilmiş kimlik/lock/journal/parser
+kapılarıyla yürütüldü. Helper finalCI/source review kanıtı değişmedi.
+
+Gerçek eski harici yedeğin restore/veri karşılaştırması ve sahipli DB kapanışı aktif
+kuyruktan çıktı. Kalan O3 işi: kaynak betiğinin UID/PID oturum temizliği düzeltmesini
+son hakem/exactCI ile kurmak; 5 Ekim gece timer makbuzunu ölçmek. Kapasite tamam;
+ödül/P7 ön uygunluk/resume/T0 ve gerçek168h henüz açık.
+
+Tekrarlama: geçici staging silme tartışmasını kaynak DROP riski gibi raporlama;
+tarihsel dış metadata'yı dump içinde ya da helperrun içinde varmış gibi sunma.
