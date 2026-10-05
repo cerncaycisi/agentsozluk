@@ -5549,3 +5549,79 @@ Tekrarlama: hashli kodu kaynak eşliği olmadan tahmin etme; generic provider-st
 kodundan kota kök nedeni üretme; sonraki ret sayısını önceki paydaya bölme;
 boş-sayfa readiness'i canlı UI kabulü sayma; mevcut font/kütüphane cache'i
 varken yeniden sistem kurulumu yapma veya açık unavailable'ı sürekli tekrar çağırma.
+
+### 08:17–08:30 UTC — ajan moderasyon rol sınırı, canlı durum ve doğal ilerleme
+
+Kaynak main07140dd/app d829; kendi `fix/agent-moderation-kind-boundary` worktree.
+İlk source-only Opus5 actual190,256sn/tek tur/tools0/networktools0 incelemesi:
+gerçek production exploit iddiası REJECTED; generic kind guard eksikliği
+Warranted/KOŞULLU. Yardımcı Haiku4.5 28output token primary hakem değildir.
+Normal admin role setter'ında kind filtresi yok; createAgent AGENT/USER/loginDisabled
+ve Prisma writerApproved defaulttrue ile rol verme source yolu doğrulandı.
+08:17:06UTC exact pin/read-only/5sn statement/2sn lock ölçümü:36AGENT/USER36,
+privilegedAGENT0/activeAgentSession0; settings308/app d829/worker0restart korunur.
+Bu, gerçek exploit veya acil deploy tetikleyicisi değildir. Kimlik/rol/session
+mutasyonu ve provider çağrısı yapılmadı.
+
+Düzeltme genel requireModerator'da AGENT'i reddeder; setModeratorRole yalnız
+yeni grant için HUMAN hedef ister. Legacy AGENT MODERATOR rolünün insan adminle
+USER'a geri alınması korunur.13unit ve typecheck PASS; dört PostgreSQL vaka
+hazır, henüz yürütülmedi. Repository dönüş seçimi kind içermediğinden legacy
+cleanup testindeki kind assertion ayrı DB read'e düzeltildi; bu bir fixture/
+assertion düzeltmesidir, product regresyon kanıtı değildir. Son kalite/exact head
+CI ve farklı model implementation review beklenir; canlı deployment yok.
+
+08:30 otomatik O4 success/exit0/lastAttemptSUCCESS/hash eşliği:122natural/
+120terminal/36yazar≥3terminal, teknik3/120=%2,5; entry20/90=%22,222 ABOVE.
+Ret uyarısı açık. 07:34 tarihsel19ret bu güncel paydaya karıştırılmaz.
+Main071 exact CI37280108484 yedi jobPASS özel makbuzda doğrulandı.
+Tekrarlama: domain kabulünü web exploit diye adlandırma; ordinary admin grant
+source yolunu yok sayma; privileged AGENT/session fixture'ını üretimde yaratma;
+ret kodlarından editoryal doğruluk çıkarmama; eski kabul raporunu farklı sürüme
+repin etme. P7 sabit penceresinde olağan role fix yalnız hazırlanır, güvenlik
+aciliyeti doğrulanırsa canonical plan ve yeni T0 kapısı korunur.
+
+### 08:43 UTC — son role-boundary hakemliği ve koşul kapanışı hazırlığı
+
+Exact2ecdd5281ac925ecf3785e15970d541b514d33f8/PR331/CI37284806082pending.
+ActualOpus5/241,069sn/tek tur, auxHaiku4.5 14token; readonlytools0/network0.
+Sonuç KOŞULLU GO, unconditional GO değil. Diff source fail-closed/izin genişlemesi0;
+principal select/consumer kanıtı, context-mismatch assertion ve CI henüz şart.
+Kaynak select.kindtrue, HUMAN ADMIN audit/operator, writer-side path ve runtime
+callsite yokluğu doğrulandı. İki capability kind guard parentta zaten var;
+source hunk sayısı2. DBkind required/defaultHUMAN: optional TS kind yalnız legacy
+caller uyumudur, kind'sız tarihsel DB satırı değildir.
+
+İki ek unit (AGENT ADMIN/MODERATOR DBprincipal + HUMANactor) yazıldı;15unit final
+kalite henüz bekler. Source code ve dört PG vaka byte-identical; PG çalışma
+kanıtı CI sonuçlarından sonra alınır. İlk13unit/quality ve3requirementsPASS exact
+2ecdd private makbuzlandı. Koşul: Gate10 final bitişinde yeni readonlyprivileged/
+activeAgentSession sayımı; yamasız d829 AGENTgrant smoke yok. Eski raporu yeni
+SHA/config'a taşımadan dağıtım/son kabul zamanlaması korunur.
+Tekrarlama: source-only KOŞULLU GO'yu unconditionalGO diye kaydetme; actorKind'a
+bakan kusurlu guard'ı aynı-context testlerle doğrulama; kind'sız DB geçmişi uydurma;
+PG testlerini yapılmadan PASS yazma veya full-development407 sonucunu yeniSHA
+sonucu diye taşıma.
+
+### 08:48 UTC — role-boundary PG fixture FAIL, korunmuş DB invariantı
+
+Exact2ecdd5281ac925ecf3785e15970d541b514d33f8/run37284806082,
+database job111681047802 FAIL;4yeni vaka başarısız. Exact safe error:
+`PrismaClientUnknownRequestError` / PostgreSQL `users_agent_role_check`.
+Immutable migration20260717163037_milestone_2_agent_runtime:739 zaten
+AGENT→USER rolünü zorunlu tutuyor; agent-data-model integration testi de korur.
+Kök neden: yeni fixture legacyMODERATOR veya AGENTADMIN/MODERATOR satırı
+oluşturmaya çalıştı. Normal adminin bu rolü gerçekten verebildiği önceki source
+çıkarımı eksikti; route/application erişimi DB başarı demek değildir. Çıkarım
+geri çekildi; bu production exploit veya application regresyonu kanıtı değil.
+
+Çözüm adayı: role-boundary source iki hunk aynen; grant409/assertions korunur,
+imkânsız legacy fixture kaldırılır; diğer PG vakalarında gerçekAGENTUSER DBrow
+ve sahtecontext yüksekrol kullanılır. Constraint/migration değiştirilmez. Dört
+negatif vaka yeni exacthead CI'da çalışınca doğrudan makbuzlanır, henüz PASS değil.
+73f5fbf localfullformat/lint/type/15unit/3requirementsPASS sourceprep receipt;
+PGbaşarı yerine kullanılmaz. Önceki Opus190,256/241,069 source-only görüşlerinin
+DB/fixture çıkarımları bu kaynakla düzeltilir; farklımodel finalclosure pending.
+Tekrarlama: immutable migration CHECK'lerini source güvenlik incelemesinden
+çıkarmama; test için CHECK disable/drop yapma; imkânsız ayrıcalıklı AGENT fixture
+üretme; eski full407 veya localunit sonucunu yeniPG sonucu sayma. Prod mutasyonu0.

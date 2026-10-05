@@ -7,6 +7,79 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 08:48 UTC — PostgreSQL fixture hatası ve eksik güvenlik çıkarımının düzeltmesi
+
+CI37284806082/exact2ecdd database job111681047802 **FAIL**: yeni dört vaka,
+`users_agent_role_check` kısıtına takıldı. Constraint immutable migration
+20260717163037_milestone_2_agent_runtime:739'da `kind <> AGENT OR role = USER`;
+aynı yerde loginDisabled kısıtı da var. Mevcut agent-data-model PG testi ayrıcalıklı
+AGENT oluşturmayı zaten reddediyor. Yeni fixture'lar bu DB invariantına aykırıydı;
+normal adminin ajana başarılı MODERATOR verebildiği önceki source çıkarımı eksikti
+ve geri çekildi. Önceki iki source-only hakemlik DB kısıtını kapsamıyordu.
+
+Application düzeltmesi açık409 `AGENT_MODERATION_NOT_ENABLED` sağlar ve generic
+principal kind guard'ını güçlendirir; mevcut DB koruması kaldırılmaz/değiştirilmez.
+Legacy ayrıcalıklı AGENT fixture'ı kaldırıldı. PG negatif capability/suspension
+vakaları gerçekAGENT/USER principal ve sahteADMIN/MODERATOR context ile yazıldı.
+Birinci grant409/no-side-effect vakası korunur; son exacthead CI/PG henüz bekler.
+15unit/format/lint/type ve3requirements PASS exact73f5fbf yalnız yerel makbuzdur;
+başarısız PG veya yeni fixture başarı diye sayılmaz. Yeni review/source closure
+sonuçları beklenir. Prod d829/settings308/worker0restart/T0 korunur; deployment yok.
+
+Aşağıdaki08:30/08:43 kayıtları tarihsel hazırlık çıkarımlarıdır; eksik DB sınırı ve
+imkânsız fixture iddiaları bu08:48 kaydıyla düzeltilmiştir. M2/goal hâlâ aktiftir.
+
+## 5 Ekim 08:43 UTC — rol düzeltmesi son incelemesinin koşulları
+
+Exact `2ecdd5281ac925ecf3785e15970d541b514d33f8`, PR331 bağlı/draft;
+CI37284806082 sürüyor. Yerel full format/lint/typecheck,13unit ve3M1requirements
+PASS. Actual claude-opus-5/241,069sn/tek tur son implementation görüşü **KOŞULLU GO**:
+source deltalarında hata/izin genişlemesi yok; eksik gösterilen consumer/select
+kaynakları, DB-kind/context mismatch testi ve exact CI koşulları henüz açık.
+Auxiliary Haiku4.5 14output token primary hakem değildir; tools/networktools0.
+
+Kaynak kapanışı: preflight findModerationPrincipal kind'ı seçiyor, audit yalnız
+HUMAN ADMIN'e control-plane görünürlüğü veriyor, operator seçimi actualHUMAN/ADMIN/
+ACTIVE koşullu. Writer-side revival/appeal generic moderator guard kullanmıyor;
+reviewer APPEAL_DECIDER kapısı değişmedi. Runtime/entry/topic yollarında generic
+guard/role setter/capability setter çağrısı yok. Parent diff yalnız iki executable
+hunk; diğer iki capability kind guard ebeveynde zaten var. Optional kind tarihsel
+kind'sız DB kaydı değil caller geri uyumluluğudur.
+
+Hakem isteğiyle iki HUMAN-context/AGENT-principal negatif testi eklendi; yeni
+15unit ve son kalite henüz çalışmadı. Mevcut dört PG vaka değişmedi, CI pending.
+Gate10 bitişinde yeni rol/session sayımı alınacak; yamasız d829 üzerinde AGENT'e
+moderatör rolü vermeyi deneme yok. Gate11 negatif grant ancak patch deploy sonrası;
+P8 exact report/configuration/deployment bağı atlanmaz. Canlı d829 aynı, restart/
+settings/policy/pencere değişimi yok. Güvenlik kabulü, deployment ve finalM2 değildir.
+
+## 5 Ekim 08:30 UTC — doğal ilerleme ve moderasyon rol sınırı hazırlığı
+
+36 ajanın her biri artık en az üç doğal koşu tamamladı.122doğal/120terminal:
+95SUCCEEDED/22PARTIAL/2TIMED_OUT/1FAILED/2RUNNING, teknik3/120=%2,5.
+PARTIAL/CODEX_TIMEOUT1 ayrıca korunur. Entry70başarılı/20ret/0FAILED/payda90,
+ret%22,222 ABOVE; açık ret uyarısı sürer. P4sunum11 yalnız olaydır, fayda değildir.
+08:30:09.917UTC last success/lastAttemptSUCCESS/service success/exit0 ve üç
+kurulu kaynak hash doğrulandı. App d829/ayar308/worker2270111/NRestarts0,
+model/profil/T0 sabit; ACK65,35sn/HTTP200/200/disk%69/24.205.312.000bayt boş.
+Gerçek168saat ve terminalleşme payı henüz dolmadı; Gate10 PASS değildir.
+Main `07140ddafb14e7c143bb5c053afbe68f377a4f9a`, CI37280108484 **7/7PASS**.
+
+08:17:06UTC pinned bounded READ ONLY rol ölçümü:36AGENT, hepsiUSER;
+ayrıcalıklı AGENT0/aktif AGENT web session0, writerApproved36. DB/ayar/oturum
+mutasyonu yapılmadı. Kaynakta insan adminin AGENT hedefe moderatör rolü verebildiği
+yol bulundu; gerçek ajan web oturumu/saldırı kanıtı yok. İlk actual claude-opus-5
+190,256sn/tek tur sonucu: exploit iddiası REJECTED, eksik invariant Warranted/
+KOŞULLU; setter ve canlı rol kontrolü isteği kaynakla/ölçümle kapandı.
+
+Geliştirmedeki iki küçük sınır: AGENT principal genel moderasyon kapısından
+reddedilir; AGENT'e yeni MODERATOR verilmez. İnsan adminin geçmiş hatalı AGENT
+MODERATOR rolünü USER'a geri çekmesi korunur.13unit/typecheck PASS; dört ek
+PostgreSQL vaka yazıldı, henüz çalışmadı. Son format/lint/typecheck, bağımsız
+implementation incelemesi ve exact head CI bekliyor. Paket canlıya dağıtılmadı;
+acil tetikleyici ölçülmedi. Olağan dağıtım Gate10 sonrası exact sürüm/kabul bağı
+korunarak yapılır. M2 final/DONE-082/Gate11/12 açık, goal aktiftir.
+
 ## 5 Ekim 07:43 UTC — doğal hata ayrımı ve tarayıcı hazırlığı
 
 Son otomatik ölçümde 100 doğal çalışma,98terminal ve36/36 çalışmış yazar var;

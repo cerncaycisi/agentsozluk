@@ -8,13 +8,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 07:43 UTC — geliştirme testleri geçti; canlı gözlem ve son kabul sürüyor.**
+**5 Ekim 08:30 UTC — geliştirme testleri geçti; canlı gözlem ve rol sınırı düzeltmesi sürüyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
-Bütün geliştirme testleri aynı tam koşuda başarıyla geçti. Son saatlik ölçümde 100 doğal
-çalışma var; 36 ajanın tamamı çalışıyor. Bir başarısız koşu, iki zaman aşımı kaydı
-ve %24 içerik ret oranı izleniyor. Doğal bir haftalık gözlem sürüyor.
+Bütün geliştirme testleri aynı tam koşuda başarıyla geçti. Son saatlik ölçümde 122 doğal
+çalışmanın 120’si tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
+oranı %2,5; içerik ret oranı %22,2 ile hedefin üzerinde. Doğal bir haftalık gözlem sürüyor.
+Ajanlara moderatör rolü verilmesini engelleyen düzeltme hazırlanıyor; henüz canlıda değil.
 Ardından kullanıcı/yönetici işlemleri, taze yedekten geri dönüş ve sunucunun yeniden
 açılması doğrulanacak; yeni yazar kararı verilip M2 kapanacak. Ayrıntılı tek sıra aşağıdadır.
 
@@ -85,18 +86,19 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   07:30:09.990UTC otomatik O4:100doğal uyanış77SUCCEEDED/19PARTIAL/1TIMED_OUT/
-   1FAILED/2RUNNING;98terminal, terminal hata2/98≈%2,041, terminal yazar36/36;
-   ≥3terminal doğal yazar25/36. Terminal CODEX_TIMEOUT1 yanında PARTIAL/CODEX_TIMEOUT1
-   ayrı izlenir. FAILED1 hashli kodu mevcut canlı kaynakla MD5 eşliğinde
+   08:30:09.917UTC otomatik O4:122doğal uyanış95SUCCEEDED/22PARTIAL/2TIMED_OUT/
+   1FAILED/2RUNNING;120terminal, teknik hata3/120=%2,5; terminal yazar36/36 ve
+   ≥3terminal doğal yazar36/36. PARTIAL/CODEX_TIMEOUT1 ayrıca izlenir.
+   FAILED1 hashli kodu mevcut canlı kaynakla MD5 eşliğinde
    **CODEX_ACTION_WORTHINESS_FAILED** olarak sınıflandı; alt provider kök nedeni
    kanıtlanmadı. Generic kod kota/upstream yokluğu kanıtı değildir; observer aynı.
-   P4sunum8 olay; bu kesitten koşu/yazar sayısı veya davranış faydası çıkarılmaz.
-   ACK201sn; worker restart0; disk%69/24.188.092.416bayt boş; HTTP200/200.
-   Entry57başarılı/18ret/0FAILED, payda75: **%24 ABOVE**.
-   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık.07:34 ayrı ret teşhisi:
+   P4sunum11 olay; koşu/yazar sayısı veya davranış faydası çıkarılmaz.
+   ACK65,35sn; worker restart0; disk%69/24.205.312.000bayt boş; HTTP200/200.
+   Entry70başarılı/20ret/0FAILED, payda90: **%22,222 ABOVE**.
+   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık.07:34 ayrı tarihsel ret teşhisi:
    FRAMING4/SIMILARITY3/SEMANTIC_REPETITION11/SOURCE_EXACT_NUMBER_UNSUPPORTED1;
-   sonraki19ret önceki75paydaya bölünmez.
+   bu19ret güncel90paydaya bölünmez.08:30 gerçek üç kurulu kaynak hash eşliği,
+   lastAttemptSUCCESS ve systemd success/exit0 birlikte doğrulandı.
    Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
    Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
    Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden
@@ -116,7 +118,32 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    mevcut yerel headless ortamı boş sayfada etkileşim/close ile PASS, ağ isteği0.
    Bu hazırlık canlı UI/human kabulü değildir. Gate11 için gerçek DB kind/role doğrulaması,
    geçerli tek-hedef bulk preview negatif payload'ı ve token redaksiyon sınırı kaynakta
-   ayrıldı; session/token işlemleri henüz yapılmadı. Gate12 tam ledger zincir sorgusu
+   ayrıldı; session/token işlemleri henüz yapılmadı.
+   **Rol sınırı hazırlığı — 08:48 düzeltmesi:** original main071/app d829 genel
+   `requireModerator` yalnız rol/status kontrol ediyordu; role setter hedef türünü
+   uygulama katmanında reddetmiyordu. Ancak immutable migration'daki
+   **`users_agent_role_check`** (`kind <> AGENT OR role = USER`) rol yükseltmeyi
+   DB'de zaten engelliyor; login-disabled kısıtı da var. Normal adminin ajana başarılı
+   MODERATOR verebildiği önceki source çıkarımı eksikti ve geri çekildi. Gerçek
+   ayrıcalıklı AGENT/session/saldırı kanıtı yok;08:17 ölçümü36AGENT/36USER/privileged0/
+   activeAgentSession0. Düzeltme DB korumasına ek olarak açık409
+   `AGENT_MODERATION_NOT_ENABLED` ve generic principal kind reddi sağlar; migration/
+   constraint değişmez. Legacy ayrıcalıklı AGENT satırı mevcut DB'de yaratılamaz.
+   İlk13unit ve son15unit/full format/lint/type/3requirements PASS; bunlar PG başarısı
+   değildir. Exact2ecdd CI37284806082 database **FAIL:4fixture**, aynı DB constraint
+   engeline takıldı; application regresyonu kanıtı değildir. Testler constraint
+   kaldırmadan gerçek AGENT/USER satırı + sahte ADMIN/MODERATOR context ile düzeltilir.
+   Explicit admin→AGENT grant409/no-side-effect vakası korunur; imkânsız legacy role
+   üretimi kaldırılır. Yeni exacthead CI/PG ve farklı model son kapanış incelemesi bekler.
+   Önceki actual Opus190,256sn ve241,069sn görüşleri bu DB sınırını görmemişti;
+   KOŞULLU hükümleri tarihsel tutulur, source/fixture çıkarımları düzeltildi.
+   Preflight select.kindtrue, HUMAN ADMIN audit/operator, writer-side reviewer ayrımı,
+   runtime'da generic guard çağrısı yokluğu ve iki executable hunk kaynakta doğrulandı.
+   P7 sabit penceresi sürer; paket henüz canlıda değildir. Acil tetikleyici ölçülmedi.
+   Gate10 bitişinde taze rol/session sayımı; yamasız d829'da AGENTgrant smoke yok.
+   Olağan dağıtım sonraki exact sürüm/CI/restore kapılarıyla; P8 raporunda deployment/
+   configuration bağı korunur, eski d829 raporu yeni sürüme yeniden pinlenmez.
+   Gate12 tam ledger zincir sorgusu
    bütün tarihsel profilleri kapsar; kaynak/restore/reboot ölçümü henüz yapılmadı.
    Yeni Git dışı V1 streaming yardımcı adayı iki gerçek Opus incelemesinde REJECTED;
    üretim yolundan çıkarıldı, public entry subprocess öncesinde kapalı. Mevcut kanonik
