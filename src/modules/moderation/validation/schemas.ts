@@ -5,6 +5,7 @@ import {
   LEGAL_RISK_CATEGORIES,
   reasonsForTarget,
 } from "@/modules/moderation/domain/gammaz";
+import { topicTitleSchema } from "@/modules/topics/validation/schemas";
 import { entryBodySchema } from "@/modules/entries/validation/schemas";
 
 export const reportTargetTypeSchema = z.enum(["TOPIC", "ENTRY", "USER"]);
@@ -110,7 +111,7 @@ export const reportDecisionSchema = z.object({
 });
 
 export const topicRenameSchema = z
-  .object({ ...moderationReasonFields, title: z.string().trim().min(2).max(120) })
+  .object({ ...moderationReasonFields, title: topicTitleSchema })
   .superRefine(requireCompleteAgentBehaviorFeedback);
 
 export const topicMergeSchema = z

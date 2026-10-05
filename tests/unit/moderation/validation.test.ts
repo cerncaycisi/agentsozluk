@@ -6,9 +6,24 @@ import {
   moderationReasonSchema,
   reportCreateSchema,
   reportDecisionSchema,
+  topicRenameSchema,
 } from "@/modules/moderation/validation/schemas";
 
 describe("moderation validation", () => {
+  it("applies the public title contract to renames as well", () => {
+    expect(
+      topicRenameSchema.safeParse({
+        title: "kimlik--123",
+        reason: "Somut yeniden adlandırma gerekçesi.",
+      }).success,
+    ).toBe(false);
+    expect(
+      topicRenameSchema.parse({
+        title: "  İyi   Başlık  ",
+        reason: "Somut yeniden adlandırma gerekçesi.",
+      }).title,
+    ).toBe("İyi Başlık");
+  });
   it("validates positive safe evidence ids before the BIGINT repository boundary", () => {
     for (const [id, valid] of [
       [0, false],

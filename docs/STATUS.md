@@ -6358,3 +6358,17 @@ Fable190.041ms closure KOŞULLU GO: kaynak sınırları kapalı, exact tam CI ş
 bekler. Yeni üretim paketinde dört korunan journal modeli/migration ve 410
 application/repository/middleware kodu hazırlanıyor; henüz doğrulanmadı,
 merge/deploy/reset/silme/açılış yok. Canlı son ölçüm D202/settings311/worker0.
+
+## 5 Ekim 2026 22:46 UTC — BIGINT main teslimi, journal/410 hazırlığı
+
+PR333 exactFAC CI37382293215 **7/7PASS**:2392unit/515PG/91browser;
+coverage2907tekrar, satır%94,33/dal%86,58/fonksiyon%95,97. Fable190.041ms kaynak
+koşulları ve exactCI şartı kapandı; farklı model hükmü tarihsel KOŞULLU GO'dur.
+Squashmain237139f89e0e245144a67eac8c18b22025da48c7,22:42:50UTC; reviewedFACtree
+birebir, rootclean/remoteeşit. MainCI ayrıca bekler; production son kesitD202.
+
+Yeni ayrı paket: dört korunan journal+Node410+ortak başlık sınırı;111unit ve
+pool10 odaklı80PGPASS. Pool1 geniş koşu300sn timeout ve14topicfailure ile
+bitmedi; tam suitePASS değildir. Odaklı tekrar çevre nedeni ayrımını sağladı.
+E2E yazıldı ama henüz çalışmadı; peer/CI ve fullproductionreset/backup/restore/
+prova/açılış açık. [Ayrıntı](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md).

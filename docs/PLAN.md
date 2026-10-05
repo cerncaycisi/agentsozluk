@@ -8,6 +8,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+**5 Ekim 22:46 UTC — ilk reset hazırlığı main'de; canlı reset yapılmadı.**
+PR333 exactFAC CI7/7PASS;22:42:50 squashmain237139f, reviewedtree eşit ve root
+clean. Yeni journal/410 paketinde111unit ve pool10 odaklı80PGPASS; browser ve
+farklı-model incelemesi bekler. [Paket kanıtı](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md)
+hangi sonucun geliştirme, hangisinin hâlâ production kapısı olduğunu gösterir.
+Ayrı production yürütücüsü/guard, dış generation ve gerçek yedek/restore/prova
+sonrasında reset ve audited açılış yapılacak. Eski168h aday kesildi; yeniT0 yok.
+
 **22:21:** Yeni CI'da migration ve browserPASS; yeni iki PG vaka username
 fixture'ında fazla uzunluk nedeniyleFAIL. Fixture düzeltiliyor; constraint veya
 eşik gevşetilmedi. Exact-source tam CI bekler. İkinci ayrı worktree'de journal

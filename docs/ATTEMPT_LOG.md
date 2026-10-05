@@ -6693,3 +6693,28 @@ gevşetilmedi. Coverage/container son sonucu bekler; yeni exact-source CI şartt
 Native log özel dizinde; ham failing-row/email/passwordHash Git'e alınmadı.
 Tekrarlama: TS-uyumlu Prisma fixture'ını DB-constraint uyumlu sayma;
 fixture hatasını migration düzeltmesi regresyonu diye raporlama.
+
+## 5 Ekim 2026 22:46 UTC — exact BIGINT CI/main ve journal PG kanıtı
+
+FAC37382293215 CI7/7PASS;2392unit/515PG/91browser,coverage2907tekrar.
+PR333 hemen önce exacthead/checks/reviewstate/mergeability/mainbase yeniden
+okunarak22:42:50UTC squashmain237139f ile birleşti. TreeFACeşit, parentEE2F;
+root kendi beş belge blob'unun incoming ile eşitliğini doğrulayıp korunarakclean
+fast-forward oldu. İkinci worktree'nin17değişen dosyası hash eşitliğiyle
+korunup aynı tree'li squashmain tabanına geçirildi. Native T3 linki kayıtlı.
+
+Yeni local PG16.14/cluster7689521646432264978/roleagent, yalnız yeni sahipli
+stage_test/OID8516470/operationf77ceb58 marker. Bütün migration ve4yeni PG
+PASS. Son kaynak111unitPASS. Geniş local suite yanlış pool1 ile topics76/14
+failure+pooltimeout gördü ve300sn sınırında tamamlanmadı; tamPASS değildir.
+Sadece sahipli Vitest süreçleri kapandı. İlk cleanup matcher kendi shell'ini de
+seçerek143 döndü; exe=node ile daraltılan doğrulamada kalan Vitest0. Başka
+cwd/servis/DB etkilenmedi. CI ile aynı pool10 odaklı tekrar80PGPASS:topics76 ve
+ikişerjournal/BIGINT. Kod veya eşik gevşetilmedi. Tüm fixture journal/namespace
+DDL rollback'leri gerçekPG'de doğrulandı; rawfailingsatırlarprivate logdadır.
+
+Tekrarlama: pool1 tek-backend reset yürütücüsü şartını paralel uygulama
+integration fixture'ına taşıma;300sn tamamlanmayan geniş koşuyuPASS sayma.
+Subprocess bütçesinde ayrı processgroup ve sahipli cleanup kullan; shell komut
+metnindeki vitest sözcüğüne göre süreç seçme. Küçük test DB'sini fullsize
+production restore/prova veya journal/410 kodunu actualreset/açılış sayma.
