@@ -7,6 +7,75 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 10:00 UTC — yeni ana dalın tam geliştirme doğrulaması başarılı
+
+Exact **`dbc88a06c853fbef78ff9ca2f8c3799858ba2f63`** için
+[`37289761730`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37289761730),
+job111697154899 **SUCCESS**. Tam `verify:m2:development` adımı
+09:25:12–10:00:20 UTC, **35 dakika 8 saniye**; job 36 dakika 23 saniye.
+Girdi, exact main/başarılı push CI, izlenebilirlik, Chrome, tam komut ve son
+exact kaynak/temiz ağaç kapılarının tümü başarılı. Koşu sonrasında temiz root
+ve remote main aynı DBC olarak doğrulandı; yeniden dispatch yapılmadı.
+
+M1: 2.355 unit, 510 PostgreSQL integration, coverage aşamasında yeniden
+çalışan 2.865 test, 91 E2E. Coverage satır %94,34, dal %86,53, fonksiyon %95,90.
+Ajan: 828 unit, 309 integration, 1 simulation, 24 E2E. Gereksinim kontrolleri
+ve geliştirme izlenebilirliği geçti; coverage tekrarları ayrı test gibi toplanmaz.
+Log 1.102.379 bayt; SHA256
+`c71c40d9ba9e625a3cb38fc6d4a7da5f2f308e3fabe86c536e2ee049d9ccede1`.
+Opus K2 tam birleşmiş-main doğrulama koşulu kapandı; tarihsel görüş
+**KOŞULLU GO**, dar paket geri alma planı saklıdır.
+
+Üretime dağıtım yapılmadı. Canlı sürüm d829 ve P7 penceresi korunur.
+Gate10/11/12, P8 ve final `verify:m2` açık; DONE-082 kabul edilmiş değildir.
+Goal aktiftir. Aşağıdaki 09:30 kaydı o anki devam eden koşunun tarihsel kesitidir.
+
+## 5 Ekim 09:30–09:33 UTC — doğal ret artışı, yeni tam M2 koşusu sürüyor
+
+09:30:03.678UTC144natural/143terminal:108SUCCEEDED/32PARTIAL/2TIMED_OUT/
+1FAILED/1RUNNING; teknik3/143≈%2,098.36/36yazar≥3terminal; operator0.
+PARTIAL/CODEX_TIMEOUT2 ayrı izlenir. Entry78başarılı/29ret/0FAILED/payda107,
+ret%27,103 ABOVE. Uyarı açık, kurallar/model/istem/pencere değiştirilmedi.
+P4sunum11 yalnız olay; yeni amaç/persona0 yalnız bu kesit, eligibility/no-change
+kapanışı değil. ACK244,48sn/HTTP200/200/disk%69/24.272.437.248bayt boş.
+Actual installed3hash/service success/exit0/lastAttemptSUCCESS; appd829/settings308/
+worker2270111/NRestarts0/CLI0.144.6/modelLunaMax/profile/T0 aynı.
+
+09:33:52.966UTC ayrı bounded READ ONLY teşhisi29ret:FRAMING8/SIMILARITY4/
+SEMANTIC_REPETITION16/EXACT_NUMBER_UNSUPPORTED1. PARTIALaction30REJECTED/48SUCCEEDED.
+Sonraki kod sayıları önceki107paydaya bölünmez; editoryal doğruluk/false-positive
+veya neden-etki ölçülmedi. Pinned identity aynı; body/reason/prompt/env export0.
+
+MainDBC pushCI37287966604 **7/7PASS**. Yeni `verify:m2:development` run37289761730,
+job111697154899, exactDBC; input/exactmain/pushCI/setup/traceability/Chrome ön
+kapıları PASS, gerçek tam komut IN_PROGRESS. Finalsource step ve komut sonucu
+henüz yok; bufullPASS veya production/finalM2 kabulü değildir. Main sabit, üç
+belge receipt'i ownbranchte hazırlanır; fullsonuçtan önce commit/push yok.
+
+## 5 Ekim 09:07 UTC — rol talebi sınırı ana dal teslimi
+
+[#331](https://github.com/cerncaycisi/agentsozluk/pull/331) exact4aed head,
+CI37286340367 **7/7PASS**. PostgreSQL35dosya/510PASS; değişen topics/entries
+integration dosyası76PASS/skip0. Dört yeni koşulsuz vaka bu dosyada; grant409
+ayırt edicidir, üç context-denial vaka mevcut DB yetkisi/yan-etkisiz ret invariantı.
+Existing elevated/login AGENT DBconstraint testi PASS. Default reporter hızlı
+vaka adlarını ayrı basmaz; exact source/hash ve bütün dosya PASS doğrudan yürütme
+kanıtı, ayrı adların yazıldığı iddiası yok. Eski37284806082/2ecdd4fixtureFAIL saklanır.
+
+Final actual claude-opus-5/105,446sn/tek tur, auxiliaryHaiku4.5 13token;
+readonlytools/network/production0, **KOŞULLU GO**. Önceki source/select/consumer/
+DBconstraint/context koşulları kapandı, K1currentheadCI7 geçti. K2: merge sonrası
+exactmain full `verify:m2:development` başarılı olmadan production delivery yok;
+source regresyonunda yalnız own squashcommit için normal revert/kalite/CI.
+Eski parent HTTP500 ölçülmedi; yeni açık application409 sözleşmesi ölçüldü.
+
+09:07:27UTC squashmain `dbc88a06c853fbef78ff9ca2f8c3799858ba2f63`, parent07140dd,
+tree reviewedhead4aed ile eşit. Root clean FF/origin exactmatch; owncheckoutclean.
+PushCI37287966604 **7/7PASS**, yeni full koşu run37289761730 09:23:58UTC
+development olarak tekdispatch ile başladı; sonucu henüz yok.407b79e full başarısı
+buSHA'ya taşınmaz. Prod d829/settings308/worker2270111/NRestarts0/model/
+profil/T0 aynı; deployment0. Main bu full test bitene kadar sabit tutulur. Gate10/11/12/P8/finalM2 açık, goal aktiftir.
+
 ## 5 Ekim 08:48 UTC — PostgreSQL fixture hatası ve eksik güvenlik çıkarımının düzeltmesi
 
 CI37284806082/exact2ecdd database job111681047802 **FAIL**: yeni dört vaka,

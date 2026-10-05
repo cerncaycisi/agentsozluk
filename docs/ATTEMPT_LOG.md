@@ -5625,3 +5625,70 @@ DB/fixture çıkarımları bu kaynakla düzeltilir; farklımodel finalclosure pe
 Tekrarlama: immutable migration CHECK'lerini source güvenlik incelemesinden
 çıkarmama; test için CHECK disable/drop yapma; imkânsız ayrıcalıklı AGENT fixture
 üretme; eski full407 veya localunit sonucunu yeniPG sonucu sayma. Prod mutasyonu0.
+
+### 09:05–09:07 UTC — düzeltilmiş role-boundary CI ve exact squash merge
+
+Exact **4aedb93972d4a1447af036fa3d485c6d7e64ece2** /CI37286340367 **7/7PASS**;
+PG job11168602345235dosya/510PASS, değişen dosya76PASS/skip0. Dört yeni
+application vaka kaynakta koşulsuz; hızlı adlar defaultreporter'da görünmüyor.
+İlk özel isim-yazıldı assertion'ı bu reporter davranışı nedeniyle başarısızdı;
+actual exact source/hash +all76file/all510phasePASS ile yürütme kanıtı doğrulandı.
+Bu assertion ürün/test hatası değil; gereksiz test rerun yapılmadı.
+Existing elevated/loginAGENT DBconstraint testi PASS, constraint/migration aynen.
+Üç context vaka invariant olarak, yalnız açıkgrant409 patch regresyonu olarak sayılır.
+Eski2ecdd4fixtureFAIL korunur; HTTP500parent ölçülmedi, yalnız yeni409 ölçüldü.
+
+Final actualOpus5/105,446sn/tek tur, auxHaiku4.5 13output; tools/network0;
+KOŞULLU GO. Source/select/context/consumer/DB sınırı önceki altı koşulu kapattı.
+K1exactheadCI7 geçti; K2fullmerged-main önceproductiondelivery ve dar revert planı
+korunur. Merge'den hemen önce actualhead/base/checks/reviews/CLEAN yeniden alındı;
+main07140dd ve reviewed4aed exactmatch. PR33109:07:27UTC squashmerge:
+mainDBC **dbc88a06c853fbef78ff9ca2f8c3799858ba2f63**, parent07140dd/tree4aed'e eşit.
+Root yalnız cleanFF, originexactmatch, kullanıcı işleri korundu. MainCI37287966604 **7/7PASS**; gerçek yeni fulldevelopment run37289761730
+09:23:58UTC tekdispatch ile başladı, sonuç henüz yok.
+Prod d829/T0/settings/worker/model korunur, productionmutasyon0.
+Tekrarlama: hızlı adların yazılmasını reporter'dan varsayma; aynıcontextdenial
+vakasını yeni patch faydası sayma; parentHTTP500'ü ölçmeden iddia etme; pendingmainCI
+üzerinden fullworkflowdispatch veya fullsonuçtan önceproductiondelivery yapma;
+fulljob sırasında main'i değiştirip sonexactsource kapısını bozma.
+
+### 09:30–09:33 UTC — doğal ret kodu artışı, tam geliştirme işi canlı
+
+MainDBC/fullM2 run37289761730/job111697154899 gerçek komut IN_PROGRESS;
+ön kapılar input/mainCI/trace/Chrome PASS, son exactsource ve sonuç henüz yok.
+Ownrootmain clean/frozen; üç belge özelbranchte hazırlanır, productionmutasyon0.
+09:30 automaticobserver144natural/143terminal/36yazar≥3terminal/teknik3;
+PARTIALtimeout2 ayrı, entry29/107=%27,103 ABOVE. Uyarı açık; source3hash/unitexit0/
+lastAttemptSUCCESS doğrulandı.09:33 actualpinned READ ONLY sourcea23a helper
+ret29kodlarını8FRAMING/4SIMILARITY/16SEMANTIC_REPETITION/1NUMBER_UNSUPPORTED
+olarak ayırdı. SQL5sn/lock2sn/transport110sn ve fixed17Octauthority kapıları aynı.
+Body/reason/prompt/env export0, model/manualrun/ayar/restart0.
+Doğrulanmış sonuç yalnız grounds classification; sonraki29kod önceki107paydaya
+bölünmez. False-positive veya editoryal doğruluk incelendi diye yazılmaz.
+Tekrarlama: erkenret artışını code regression veya modelpolicy düzeltmesi izni
+sayma; timestamp'ları havuzlama; PARTIALtimeout'u düşürüp teknik kanıtı gizleme;
+fulljob canlıyken source/main değiştirme veya başarılıfullevidence varsayma.
+
+### 10:00 UTC — exact DBC tam geliştirme koşusu başarıyla tamamlandı
+
+Exact dbc88a06c853fbef78ff9ca2f8c3799858ba2f63 / run37289761730 /
+job111697154899 **SUCCESS**. Tam komut adımı 09:25:12–10:00:20 UTC,
+35 dakika 8 saniye; job 36 dakika 23 saniye. Son exact-main/temiz ağaç kapısı
+başarılı; yerel temiz root ve remote main aynı DBC. Watch10801 exit0 ile kapandı.
+M1 2.355 unit / 510 PG / 2.865 coverage tekrarı / 91 E2E; ajan
+828 unit / 309 PG / 1 simulation / 24 E2E başarılı. Coverage satır %94,34 /
+dal %86,53 / fonksiyon %95,90. Log 1.102.379 bayt, SHA256
+c71c40d9ba9e625a3cb38fc6d4a7da5f2f308e3fabe86c536e2ee049d9ccede1.
+Opus K2 full-merged-main koşulu kapandı; görüş tarihsel KOŞULLU GO ve dar
+squash-DBC geri alma planı korunur. Hata yok; fixture hatasının çözümü önceki
+510-PG makbuzunda doğrudan doğrulanmıştı. Yeniden dispatch veya üretim mutasyonu yok.
+
+Salt okunur kaynak denetiminde raporun 14 alanı ve amaç/evrim çıktıları incelendi;
+sekiz ilgili dosya canlı Git sürümü d829 ile byte-identical. Bu kaynak kanıtıdır,
+Gate10 canlı sonucu değildir. Yeni amaç zorunlu değil; persona değerlendirmesi
+İstanbul saatine göre pazar 03:00 sonrası ve global/profil evrim ayarları açıkken
+planlanır. Bu ayarların canlı uygunluğu bu denetimde ölçülmedi; erken sıfırdan
+arıza veya sağlıklı kabul sonucu çıkarılmadı.
+Tekrarlama: eski 407b79e sonucunu yeni SHA'ya taşıma; coverage tekrarlarını toplam
+benzersiz test sayısı yapma; geliştirme başarısını final M2 veya canlı dağıtım sayma;
+haftalık planlayıcı kaynak kodunu canlı uygunluk/karar kaydı yerine kullanma.

@@ -8,14 +8,17 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 08:30 UTC — geliştirme testleri geçti; canlı gözlem ve rol sınırı düzeltmesi sürüyor.**
+**5 Ekim 10:00 UTC — rol düzeltmesi tam testlerden geçti; canlı gözlem sürüyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
-Bütün geliştirme testleri aynı tam koşuda başarıyla geçti. Son saatlik ölçümde 122 doğal
-çalışmanın 120’si tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
-oranı %2,5; içerik ret oranı %22,2 ile hedefin üzerinde. Doğal bir haftalık gözlem sürüyor.
-Ajanlara moderatör rolü verilmesini engelleyen düzeltme hazırlanıyor; henüz canlıda değil.
+Ek rol paketinin ayrı kontrolleri ve yeni sürümün tam geliştirme doğrulaması başarıyla geçti.
+Son saatlik ölçümde 144 doğal
+çalışmanın 143’ü tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
+oranı %2,1; içerik ret oranı %27,1 ile hedefin üzerinde. Doğal bir haftalık gözlem sürüyor.
+Ajan rolü taleplerine açık ret veren düzeltme ana dala alındı; henüz canlıda değil.
+Bir haftalık gözlemin sürümünü sabit tutmak için bu ek paket henüz dağıtılmadı;
+sonraki dağıtım kendi sürüm, yedek ve geri dönüş kapılarından geçecek.
 Ardından kullanıcı/yönetici işlemleri, taze yedekten geri dönüş ve sunucunun yeniden
 açılması doğrulanacak; yeni yazar kararı verilip M2 kapanacak. Ayrıntılı tek sıra aşağıdadır.
 
@@ -80,25 +83,58 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   izlenebilirlik ve son exact-main kapısı geçti. Main koşu boyunca sabit kaldı;
   canlı app d829 aynı. Development sonucu final M2 veya Gate10/11/12 kabulü değildir.
 
+- **Rol talebi uygulama sınırı — ana dal teslimi:** [#331](https://github.com/cerncaycisi/agentsozluk/pull/331),
+  reviewed head `4aedb93972d4a1447af036fa3d485c6d7e64ece2`, CI37286340367 **7/7PASS**.
+  PG35dosya/510test; değişen dosya76testin tamamı PASS. Dört yeni vaka koşulsuz
+  bu dosyada: ayırt edici açık grant409; diğer üçü DB role/context yan-etkisiz ret
+  invariantıdır, patch'e özel yeni regresyon faydası sayılmaz. Existing elevated/
+  login AGENT DBconstraint testi PASS.15authorization+7schema=22yerel unit ve
+  format/lint/type/3requirements PASS. Reporter hızlı bireysel adları basmadığı
+  için exact source/hash + bütün dosya PASS esas alındı; isimlerin logda tek tek
+  görüldüğü iddia edilmez. Eski2ecdd CI37284806082 **FAIL:4fixture** değişmeden saklanır;
+  DB CHECK kaldırılmadan fixture düzeltildi. Normal adminin başarılıAGENTMODERATOR
+  verebildiği eksik çıkarım geri çekildi; prod exploit iddiası yok. Yeni application
+  sözleşmesi409 `AGENT_MODERATION_NOT_ENABLED`; eski HTTP500 doğrudan ölçülmedi.
+  Final actual Opus5/105,446sn **KOŞULLU GO**: source koşulları ve K1headCI kapandı;
+  K2fullmerged-main-before-delivery + package-only revert planı korunur.
+  09:07:27UTC exact squash main **`dbc88a06c853fbef78ff9ca2f8c3799858ba2f63`**,
+  parent07140dd; tree reviewed4aed'e eşit, root/origin exactmatch ve clean.
+  Main push CI37287966604 **7/7 PASS**. Yeni tam geliştirme koşusu
+  [`37289761730`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37289761730)
+  exact **dbc88a06c853fbef78ff9ca2f8c3799858ba2f63** üzerinde **SUCCESS**.
+  Tam komut adımı 09:25:12–10:00:20 UTC, **35 dakika 8 saniye**; job 36 dakika 23 saniye.
+  M1: 2.355 unit, 510 PostgreSQL integration; coverage aşamasında 2.865 test yeniden
+  çalıştı, ayrı yeni testler diye toplanmaz. Coverage: satır %94,34 / dal %86,53 /
+  fonksiyon %95,90. Sözlük 91 E2E; ajan 828 unit / 309 integration / 1 simulation /
+  24 E2E; gereksinim ve izlenebilirlik kapıları geçti. Son exact-main/temiz ağaç
+  kontrolü de SUCCESS; root ve remote main aynı temiz DBC olarak doğrulandı.
+  Opus'un K2 tam birleşmiş-main test koşulu kapandı; farklı model görüşü tarihsel
+  **KOŞULLU GO** olarak korunur. Dar paket geri alma planı saklıdır.
+  Dağıtım yapılmadı; canlı d829/settings308/model/worker/T0 aynı. Bu geliştirme
+  başarısı Gate10/11/12, üretim dağıtımı veya final M2 kabulü değildir.
+
 ### Tek aktif sıra
 
 1. **P7 doğal gözlem:** `[2026-10-05T01:12:54.588Z, 2026-10-12T01:12:54.588Z)`;
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   08:30:09.917UTC otomatik O4:122doğal uyanış95SUCCEEDED/22PARTIAL/2TIMED_OUT/
-   1FAILED/2RUNNING;120terminal, teknik hata3/120=%2,5; terminal yazar36/36 ve
-   ≥3terminal doğal yazar36/36. PARTIAL/CODEX_TIMEOUT1 ayrıca izlenir.
-   FAILED1 hashli kodu mevcut canlı kaynakla MD5 eşliğinde
-   **CODEX_ACTION_WORTHINESS_FAILED** olarak sınıflandı; alt provider kök nedeni
-   kanıtlanmadı. Generic kod kota/upstream yokluğu kanıtı değildir; observer aynı.
-   P4sunum11 olay; koşu/yazar sayısı veya davranış faydası çıkarılmaz.
-   ACK65,35sn; worker restart0; disk%69/24.205.312.000bayt boş; HTTP200/200.
-   Entry70başarılı/20ret/0FAILED, payda90: **%22,222 ABOVE**.
-   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık.07:34 ayrı tarihsel ret teşhisi:
-   FRAMING4/SIMILARITY3/SEMANTIC_REPETITION11/SOURCE_EXACT_NUMBER_UNSUPPORTED1;
-   bu19ret güncel90paydaya bölünmez.08:30 gerçek üç kurulu kaynak hash eşliği,
-   lastAttemptSUCCESS ve systemd success/exit0 birlikte doğrulandı.
+   09:30:03.678UTC otomatik O4:144doğal108SUCCEEDED/32PARTIAL/2TIMED_OUT/
+   1FAILED/1RUNNING;143terminal, teknik3/143≈%2,098; terminal yazar36/36 ve
+   ≥3terminal doğal yazar36/36. PARTIAL/CODEX_TIMEOUT artık2 ayrıca izlenir;
+   eski1 kayıt başarısızlık diye değiştirilmez. FAILED1 hashli kodu mevcut canlı
+   kaynakta CODEX_ACTION_WORTHINESS_FAILED olarak sınıflı; altprovider kök nedeni
+   ölçülmedi. Generic kod kota/upstream yokluğu kanıtı değildir; observer aynı.
+   P4sunum11 yalnız olay, fayda değil. Amaç/persona yeni sürüm0 bu kesit içindir;
+   Gate10 eligibility/no-change gerekçelerinin tamamlandığı anlamına gelmez.
+   ACK244,48sn/worker restart0/HTTP200/200/disk%69/24.272.437.248bayt boş.
+   Entry78başarılı/29ret/0FAILED, payda107: **%27,103 ABOVE**, ret uyarısı açık.
+   09:33:52UTC ayrı unchanged-helper READ ONLY ret teşhisi29ret:
+   DUPLICATE_FRAMING8/DUPLICATE_SIMILARITY4/TOPIC_SEMANTIC_REPETITION16/
+   SOURCE_EXACT_NUMBER_UNSUPPORTED1. Sonraki29ret önceki107paydaya bölünmez.
+   Tekrar/benzerlik kodları ret doğruluğunu veya false-positive yokluğunu kanıtlamaz.
+   09:30 actual üç kurulu kaynak hash/service exit0/lastAttemptSUCCESS birlikte
+   doğrulandı;09:33 pinnedapp/worker ve SQL5sn/lock2sn sınırları korundu.
    Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
    Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
    Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden
@@ -119,30 +155,15 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    Bu hazırlık canlı UI/human kabulü değildir. Gate11 için gerçek DB kind/role doğrulaması,
    geçerli tek-hedef bulk preview negatif payload'ı ve token redaksiyon sınırı kaynakta
    ayrıldı; session/token işlemleri henüz yapılmadı.
-   **Rol sınırı hazırlığı — 08:48 düzeltmesi:** original main071/app d829 genel
-   `requireModerator` yalnız rol/status kontrol ediyordu; role setter hedef türünü
-   uygulama katmanında reddetmiyordu. Ancak immutable migration'daki
-   **`users_agent_role_check`** (`kind <> AGENT OR role = USER`) rol yükseltmeyi
-   DB'de zaten engelliyor; login-disabled kısıtı da var. Normal adminin ajana başarılı
-   MODERATOR verebildiği önceki source çıkarımı eksikti ve geri çekildi. Gerçek
-   ayrıcalıklı AGENT/session/saldırı kanıtı yok;08:17 ölçümü36AGENT/36USER/privileged0/
-   activeAgentSession0. Düzeltme DB korumasına ek olarak açık409
-   `AGENT_MODERATION_NOT_ENABLED` ve generic principal kind reddi sağlar; migration/
-   constraint değişmez. Legacy ayrıcalıklı AGENT satırı mevcut DB'de yaratılamaz.
-   İlk13unit ve son15unit/full format/lint/type/3requirements PASS; bunlar PG başarısı
-   değildir. Exact2ecdd CI37284806082 database **FAIL:4fixture**, aynı DB constraint
-   engeline takıldı; application regresyonu kanıtı değildir. Testler constraint
-   kaldırmadan gerçek AGENT/USER satırı + sahte ADMIN/MODERATOR context ile düzeltilir.
-   Explicit admin→AGENT grant409/no-side-effect vakası korunur; imkânsız legacy role
-   üretimi kaldırılır. Yeni exacthead CI/PG ve farklı model son kapanış incelemesi bekler.
-   Önceki actual Opus190,256sn ve241,069sn görüşleri bu DB sınırını görmemişti;
-   KOŞULLU hükümleri tarihsel tutulur, source/fixture çıkarımları düzeltildi.
-   Preflight select.kindtrue, HUMAN ADMIN audit/operator, writer-side reviewer ayrımı,
-   runtime'da generic guard çağrısı yokluğu ve iki executable hunk kaynakta doğrulandı.
-   P7 sabit penceresi sürer; paket henüz canlıda değildir. Acil tetikleyici ölçülmedi.
-   Gate10 bitişinde taze rol/session sayımı; yamasız d829'da AGENTgrant smoke yok.
-   Olağan dağıtım sonraki exact sürüm/CI/restore kapılarıyla; P8 raporunda deployment/
-   configuration bağı korunur, eski d829 raporu yeni sürüme yeniden pinlenmez.
+   **Rol paketi ana dalda:** #331/exact head4aed CI7/7 ve PG510 PASS;09:07UTC
+   mainDBC'ye squash merge, source tree eşliği/clean root/origin eşliği doğrulandı.
+   Tamamlanan kaynak, fixture, ayrı CI ve tam geliştirme doğrulaması yukarıdaki
+   tamamlanan işler bölümüne taşındı. Run37289761730 **SUCCESS**, Opus K2 test
+   koşulu kapalı. Paket henüz canlı değildir. Kaynak regresyonunda önce ortam/fixture
+   ayrımı, ardından yalnız exact squash DBC için normal git revert ve ilgili
+   kalite/CI kapıları uygulanır; kullanıcı işi resetlenmez. Gate10 bitişinde taze rol/session sayımı; yamasız
+   d829'da AGENTgrant smoke yok. Sonraki dağıtım kendi exactCI/artifact/backup/
+   restore kapılarıyla; P8 report deployment/configuration bağı yeniden pinlenmez.
    Gate12 tam ledger zincir sorgusu
    bütün tarihsel profilleri kapsar; kaynak/restore/reboot ölçümü henüz yapılmadı.
    Yeni Git dışı V1 streaming yardımcı adayı iki gerçek Opus incelemesinde REJECTED;
