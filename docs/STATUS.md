@@ -32,6 +32,19 @@ explicit GH_TOKEN yalnız metadata adımlarındadır. Loopback istemci URL'sidir
 mevcut verifier'ın HTTP dinleyicisi0.0.0.0, yeni bağlama garantisi yazılmaz.
 Yeni kaynak kapanışı ve ilk full development dispatch henüz ölçülmedi.
 
+Son actual claude-opus-5 incelemesi exact
+`a5d4550a676f777f8c2f6888bc9c5cc398c15721`, **118,390sn KOŞULLU GO**;
+yardımcı Haiku ayrıca kayıtlı. `playwright.config.ts:41` varsayılan `chrome`
+kanalını seçiyor; workflow'ın `chromium` kurması gerçek hazırlık uyumsuzluğuydu.
+Kurulum mevcut browser CI ile `chrome` olarak hizalandı. Koşullu görüşler
+koşulsuz GO diye yeniden adlandırılmaz; son SHA/CI ve ilk tam koşu hâlâ açıktır.
+Final requirement testi yalnız manifest/belge/policy okur; mevcut test setup'ı
+ortam varsayılanları atar, DB bağlantısı kurmaz. Şemasız DB uyarısı kaynakta
+doğrulanmadı. `.next/`, coverage ve E2E raporları Git ignore kapsamındadır;
+bu kaynak kontrolü gerçek full final temiz-ağaç sonucu değildir. Test DB adı
+doğrulaması ve verifiers içindeki DATABASE_URL sabitlemesi korunur; ayrı
+`db:reset` guard'ının çalıştırıldığı iddia edilmez. İlk tam komut süresi bilinmiyor.
+
 **05:30:10.008UTC otomatik O4 success/exit0:**54doğal koşu,
 38SUCCEEDED/15PARTIAL/1RUNNING,53terminal, teknik hata0; terminal yazar36/36,
 ≥3terminal doğal yazar0/36. Operator koşu0, ACK05:25:57.321UTC/253sn,

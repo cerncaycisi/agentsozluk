@@ -96,8 +96,10 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    Adayın24ağsız assertion'ı gerçek SQL/Docker veya FD düzeyi sızıntı kanıtı değildir.
    Final tam `verify:m2` için exact main/başarılı push CI, geçici PostgreSQL16 ve
    loopback test DB kullanan elle çağrılan GitHub Actions kaynağı hazırlanıyor;
-   development/final ayrıdır. PR#330/Opus194,153sn KOŞULLU GO; koşul kapanışı ve
-   ilk full dispatch/sonuç henüz yok, DONE-082 açık.
+   development/final ayrıdır. PR#330 Opus194,153sn ve exact a5d4550 üzerinde
+   118,390sn KOŞULLU GO; son incelemenin Chrome kanal koşulu gerçek config ile
+   doğrulanıp kurulum `chrome` olarak hizalandı. Son exact CI ve ilk full
+   dispatch/sonuç henüz yok, DONE-082 açık.
 3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
    aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
    Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız

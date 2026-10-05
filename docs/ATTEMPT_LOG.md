@@ -5420,3 +5420,28 @@ Kamu metni/credential/prompt export yok, app/model/ayar/T0/deploy aynı.
 Tekrarlama: source-only conditional görüşü fullM2PASS sayma; iki modun final
 kapılarını karıştırma; P4 event sayısını yazar sayısı veya ödül faydası yazma;
 aynı rejim tabanı yokken küçük önceki kesiti ret-regresyon tabanı ilan etme.
+
+### PR#330 son kaynak incelemesi — 05:57 UTC
+
+Exact `a5d4550a676f777f8c2f6888bc9c5cc398c15721`, actual claude-opus-5
+118,390sn **KOŞULLU GO**, yardımcı Haiku; araç/ağ/üretim erişimi/Astra0.
+Kaynakla doğrulanan koşul: Playwright config varsayılan branded `chrome`,
+aday yalnız `chromium` kuruyordu. Kurulum browser CI ile `chrome` olarak
+hizalandı; E2E executable hatası gerçekten yaşanmış gibi yazılmadı. Diğer
+uyarılar ayrıldı: final requirement testi/setup DB'ye bağlanmaz; çıktı dizinleri
+Git ignore kapsamındadır ama full final clean sonucu henüz yok. Reset güvenliği
+test URL adı ve verifier'ın DATABASE_URL sabitlemesidir; ayrı db:reset betiği
+çalıştırılmaz. İlk tam komut süresi bilinmiyor, bütçe yeterlilik PASS'i yok.
+
+Bu hazırlık sırasında daha önce ledger'da kayıtlı iki eski CLI uyumsuzluğu
+yanlışlıkla tekrarlandı: `gh pr edit` exact
+`GraphQL: Projects (classic) is being deprecated in favor of the new Projects experience. (repository.pullRequest.projectCards)`;
+`gh pr view --json baseRefOid` desteklenmeyen alan. Push başarılıydı;
+`set -eu` ilk dizide sonraki model incelemesini başlatmadan durdu. Aynı PR
+gövdesi REST PATCH ile05:49:57UTC başarıyla güncellendi; base SHA REST pull
+kaydından okundu. Son inceleme gerçekten05:55:12UTC ayrı başlatıldı ve
+118,390sn sonra sonuçlandı. Bu CLI hataları uygulama/CI regresyonu değildir.
+Tekrarlama: eski Projects GraphQL düzenlemesini veya desteklenmeyen baseRefOid
+alanını kullanma; PR gövdesinde structured REST JSON, base SHA'da REST kullan.
+Kanalı project adından tahmin etme; config kanalını oku. Henüz yeni exact CI,
+merge/dispatch/full M2 veya üretim kabulü tamamlanmadı.

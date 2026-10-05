@@ -2622,6 +2622,10 @@ güncel main SHA ve o SHA'nın başarılı push CI'sını ister. Node22/pnpm10 v
 job'a ait loopback `agent_sozluk_test` PostgreSQL16 üzerinde mevcut tam komutu
 çalıştırır. `verify:m2` içindeki test DB, M1 regresyonu ve final temiz ağaç kapıları
 korunur. Operatör sunucusunda tam test/build veya üretim DB reseti yapılmaz.
+Playwright yapılandırmasının varsayılan branded `chrome` kanalı kurulmalıdır;
+yalnız `chromium` kurulumu config ile aynı kanal değildir. Job120dk, setup ve
+Chrome kurulumu10'ar dk, tam komut80dk sınırlıdır; ilk gerçek süre ölçülmeden
+bu bütçe yeterli veya tam komut başarılı sayılmaz.
 
 `verification_mode=final` önce `requirements:m2:check`, ardından `verify:m2` ister;
 DONE-082 BLOCKED iken final başarılı olamaz. `development` ayrı seçenektir ve

@@ -118,9 +118,9 @@ jobs:
             pnpm requirements:m2:check:development
           fi
 
-      - name: Playwright Chromium kur
+      - name: Playwright Chrome kur
         timeout-minutes: 10
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chrome
 
       # SQL reset yalnız job'un loopback agent_sozluk_test DB'sinde yapılır.
       # verify:m2 içindeki test DB/loopback, M1 ve final temiz ağaç kapıları korunur.
