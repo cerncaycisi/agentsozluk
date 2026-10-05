@@ -5822,3 +5822,24 @@ Tekrarlama: kanonik varyantı eski key ile gönderip409u tekilleştirme sayma;
 replay.created:true değerini yeni kayıt veya güncelOPEN kanıtı sayma;
 429/bağlantı belirsizliğinde kör yeni key üretme; fixture/audit SQL silme;
 şema/limit sabiti kontrolünü gerçek yetki/HTTP/Gate11 veya P6 kullanım kabulü sayma.
+
+### 12:21 UTC — yürütülemeyen onay geri alma varsayımını düzeltme
+
+Exact kaynak main c6c0e693a2b54041e996b4ede49614c919615f5b / canlı d829.
+Hazırlık hatası: 12:05 önerisinde approve-writer'ın onayı geri alabildiği varsayıldı;
+route envanteri ve repository setter yalnız writerApproved=true gösterdi.
+Gerçek çağrı/hata kodu/üretim regresyonu yok. Önerilen onay kaldırma canlı adımı
+çıkarıldı; doğrudan üretim kullanıcı SQL'i veya yeni onay-revoke özelliği eklenmedi.
+Eski özel JSON/script original-1205 arşivinde ve tarihsel STATUS kaydında korunur.
+Garanti DBC37289761730 ukte20 PG PASS'te doğrulandı; coverage tekrar aynı20,
+canlı proof veya40test değil. Güncel test dosyası DBC ile birebir eşit.
+Düzeltilmiş dizi owner create4/withdraw3, other withdraw1; limit5/saat ve30/dk.
+Yerel90859 exit0/14şema-anahtar-limit-kapatma-alanı kontrolü;20kaynak dosyası ve
+ayrı approval işlevi d829 byte-equal. Tam moderation actions dosyası eşit denmez.
+Kapatma kendi parola/kullanıcı adı+session/CSRF ile/me/deactivate uygulama yoludur;
+alana boş değer parse'ı geçerli parola kanıtı değildir. Yalnız yeni sahipli HUMANUSER
+fixture; gerçek DEACTIVATED/anonimleştirme/session revoke ve ilgisiz durum korunması
+post-window doğrulanacak. Üretim/HTTP/hesap/oturum/model işlemi yok.
+Tekrarlama: onay verme setter'ını onay kaldırma yolu sanma; revoke davranışının
+PG fixture kanıtını canlı adım sayma; deactivation401/suspension ile onun yerine
+geçme; doğrudan user SQL'i üretme veya readonly hazırlığı Gate11PASS diye yazma.

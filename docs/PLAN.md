@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 12:05 UTC — kabul hazırlıkları ilerliyor; doğal haftalık gözlem sürüyor.**
+**5 Ekim 12:21 UTC — canlı kabul hazırlığı uzlaştırıldı; doğal haftalık gözlem sürüyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
@@ -132,16 +132,22 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   Gate11 PASS, yeni hesap/onay veya yayın yetkisi testi değildir. Ağ ayrımı ve
   sınırlı kanıt aşağıdaki tarihli STATUS/ATTEMPT makbuzunda saklıdır.
 
-- **Ukte kullanım kabulü için çevrimdışı hazırlık — 12:05 UTC:** main
-  `bda75002957ba8ea3bde2fe32cdc3b0b654ce75c`, CI37304416767 **7/7 PASS**.
-  On dört ilgili kaynak canlı d829 ile byte-identical; 12 şema/anahtar/limit
-  kontrolü geçti. Bu sayılar HTTP veya canlı yetki testi değildir. Aynı anahtar
-  ve aynı gövde replay'i ilk `created:true` yanıtını döndürür; yeni anahtarlı
-  kanonik mükerrer istek aynı ID ile `created:false` döndürmelidir. Onay kaldırılınca
-  replay de taze yetki kontrolünden geçer; aktif HUMAN kendi uktesini yazar onayı
-  olmadan geri çekebilir. Sahipli test dizisi beş oluşturma isteğiyle saatlik
-  sınırı doldurur; kör tekrar yapılmaz. Hesap/oturum veya üretim işlemi yapılmadı.
-  Gerçek hedef, sahipli hesap/oturum temizliği ve yürütücü incelemesi Gate11'de bekler.
+- **Ukte kullanım hazırlığı — 12:05, düzeltme 12:21 UTC:** kaynak main
+  `c6c0e693a2b54041e996b4ede49614c919615f5b`; önceki bda CI37304416767 7/7 PASS.
+  Yeni çevrimdışı kontrol14/14; yirmi kaynak dosyası ve ayrı approveUserWriter
+  işlevi canlı d829 ile birebir eşit. Onay geri alma uygulama yolu bulunmadı;
+  önceki beş-istek önerisindeki onay kaldırma adımı yürütülebilir canlı test değildir.
+  Bu davranışın garantisi DBC tam koşusundaki ukte20 PG testinde doğrulandı;
+  coverage tekrarını ayrı20 yeni test veya canlı kanıt diye saymayız.
+  Desteklenen canlı dizi onaysız ret, onay sonrası oluşturma, aynı-key replay,
+  ayrı-key kanonik mükerrer ve sahip/başka hesap geri çekmesidir: sahibi için
+  dört oluşturma isteği, üç geri çekme; başka hesap için bir geri çekme.
+  Aynı-key replay cached created:true, yeni-key mükerrer created:false bekler;
+  gerçek ID/count/audit ayrıca ölçülür. Sonrasında yalnız yeni sahipli HUMAN/USER
+  hesapları `/api/v1/me/deactivate` ile kapatılır; gerçek parola/kullanıcı adı,
+  oturum iptali/anonimleştirme ve ilgisiz durumların korunması ayrıca doğrulanır.
+  Alan şeması geçerli parola kanıtı değildir. Üretim/hesap/oturum işlemi yok;
+  gerçek hedef, yürütücü/secret transport hakemi ve canlı kullanım kabulü bekler.
 
 ### Tek aktif sıra
 

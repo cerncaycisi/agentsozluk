@@ -7,6 +7,37 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 12:21 UTC — ukte canlı adımı düzeltmesi ve hesap kapatma yolu
+
+Önceki hazırlıkta yazar onayını kaldırıp replay denemesi yürütülebilir bir adım
+olarak varsayıldı. Mevcut uygulama yalnız `approve-writer` ile onay verir;
+incelenen kullanıcı route envanterinde ve setter'da onay geri alma yolu yok.
+Bu adım canlı diziden çıkarıldı; yeni özellik veya SQL kullanıcı mutasyonu eklenmedi.
+Kuralın kendisi değiştirilmedi: DBC tam geliştirme koşusu37289761730 içinde
+`tests/integration/uktes.test.ts` **20/20 PG** geçti; 09:43 coverage'da aynı20 tekrar
+çalıştı. Bu dosya güncel kaynakla birebir eşit. Onay değişimi sonrası replay ve
+onaysız sahibin geri çekme davranışı bu test kanıtında kalır; canlı sonuç değildir.
+
+Düzeltilmiş yerel kontrol **14/14**; yirmi dosya ve ayrı approveUserWriter işlevi
+canlı d829 kaynaklarıyla birebir eşit. Moderation actions dosyasının tamamı için
+birebir eşlik iddiası yok; birleşmiş rol düzeltmesi o dosyada ayrı değişikliktir.
+Canlı dizi onaysız ret, gerçek onay, ilk oluşturma, aynı-key replay, yeni-key
+kanonik mükerrer, başka hesabın404ü ve sahibin geri çekme/tekrarlarıdır.
+Sahip için **dört oluşturma, üç geri çekme**; diğer aktif HUMAN için bir geri çekme.
+Beş/saat oluşturma sınırında teorik bir istek payı kalır; kör tekrar yetkisi değildir.
+
+Kapatma yolu `POST /api/v1/me/deactivate`: `currentPassword` ve
+`usernameConfirmation`, gerçek kendi oturumu ve CSRF. Yerel kontrol yalnız
+alan biçimini doğruladı; boş örnekler geçerli parola/hesap kanıtı değildir.
+Uygulama kendi oturumlarını iptal eder, hesap kimliğini anonimleştirir ve
+DEACTIVATED yapar; değişmez audit/outbox ile WITHDRAWN ukte korunur.
+Canlıda yalnız işlem için yeni açılmış HUMAN/USER fixture hesapları kullanılacak;
+başka hesap, AGENT, admin, başka kullanıcıya etki eden vote/block/follow veya
+bookmark hedefi yok. Gerçek kapatma ve eski session401 sonucu ayrıca ölçülecek.
+Hassas değerler argv/env/log/JSON'a yazılmaz; yeni yürütücü/secret transport
+farklı model incelemesi hâlâ bekler. Üretim/HTTP/hesap/oturum işlemi yok.
+P6 kullanım/Gate11/final M2 kabulü açık; önceki12:05 önerisi tarihsel aşağıda korunur.
+
 ## 5 Ekim 12:05 UTC — ukte kullanım kabulünün hazırlığı
 
 Main `bda75002957ba8ea3bde2fe32cdc3b0b654ce75c`, CI37304416767 **7/7 PASS**;
