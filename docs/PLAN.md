@@ -8,11 +8,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 07:20 UTC — bütün M2 geliştirme testleri geçti; bir haftalık canlı kabul sürüyor.**
+**5 Ekim 07:43 UTC — geliştirme testleri geçti; canlı gözlem ve son kabul sürüyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
-Bütün geliştirme testleri aynı tam koşuda başarıyla geçti. Doğal bir haftalık gözlem sürüyor.
+Bütün geliştirme testleri aynı tam koşuda başarıyla geçti. Son saatlik ölçümde 100 doğal
+çalışma var; 36 ajanın tamamı çalışıyor. Bir başarısız koşu, iki zaman aşımı kaydı
+ve %24 içerik ret oranı izleniyor. Doğal bir haftalık gözlem sürüyor.
 Ardından kullanıcı/yönetici işlemleri, taze yedekten geri dönüş ve sunucunun yeniden
 açılması doğrulanacak; yeni yazar kararı verilip M2 kapanacak. Ayrıntılı tek sıra aşağıdadır.
 
@@ -83,15 +85,18 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   06:30:10.172UTC otomatik O4:76doğal uyanış57SUCCEEDED/17PARTIAL/1TIMED_OUT/
-   1RUNNING;75terminal, terminal hata1/75≈%1,333, terminal yazar36/36;
-   ≥3terminal doğal yazar4/36. Terminal CODEX_TIMEOUT1 yanında PARTIAL/CODEX_TIMEOUT1
-   ayrı izlenir; sıfır diğer hata bütün timeout olaylarının yokluğu değildir.
-   P4 sunumu6 olay;05:32 ayrımı2doğal terminal koşu/1profil, fayda kanıtı değildir.
-   ACK06:26:21.424UTC/229sn; worker restart0; disk%69/24.130.555.904bayt boş.
-   Provider rate/quota/upstream0; entry48başarılı/15ret/0FAILED, payda63: **%23,810 ABOVE**.
-   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık.06:31 ayrı entry teşhisi:
-   FRAMING4/SIMILARITY3/SEMANTIC_REPETITION7/SOURCE_EXACT_NUMBER_UNSUPPORTED1.
+   07:30:09.990UTC otomatik O4:100doğal uyanış77SUCCEEDED/19PARTIAL/1TIMED_OUT/
+   1FAILED/2RUNNING;98terminal, terminal hata2/98≈%2,041, terminal yazar36/36;
+   ≥3terminal doğal yazar25/36. Terminal CODEX_TIMEOUT1 yanında PARTIAL/CODEX_TIMEOUT1
+   ayrı izlenir. FAILED1 hashli kodu mevcut canlı kaynakla MD5 eşliğinde
+   **CODEX_ACTION_WORTHINESS_FAILED** olarak sınıflandı; alt provider kök nedeni
+   kanıtlanmadı. Generic kod kota/upstream yokluğu kanıtı değildir; observer aynı.
+   P4sunum8 olay; bu kesitten koşu/yazar sayısı veya davranış faydası çıkarılmaz.
+   ACK201sn; worker restart0; disk%69/24.188.092.416bayt boş; HTTP200/200.
+   Entry57başarılı/18ret/0FAILED, payda75: **%24 ABOVE**.
+   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık.07:34 ayrı ret teşhisi:
+   FRAMING4/SIMILARITY3/SEMANTIC_REPETITION11/SOURCE_EXACT_NUMBER_UNSUPPORTED1;
+   sonraki19ret önceki75paydaya bölünmez.
    Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
    Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
    Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden
@@ -107,7 +112,9 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    yedek/restore/reboot. Gate7’nin eski10profil/PAUSED ilk-migration sorgusu güncel
    Gate12’ye taşınmaz: actual36 roster/lifecycle korunur; source/restore V1+ledger
    parmak izleri ve ad/OID/owner/operation bağı kapıları geçer. Paket hazırlığı şimdi
-   yapılabilir; erken PASS verilmez. Gate11 için gerçek DB kind/role doğrulaması,
+   yapılabilir; erken PASS verilmez.07:43UTC native T3 status/open açık unavailable;
+   mevcut yerel headless ortamı boş sayfada etkileşim/close ile PASS, ağ isteği0.
+   Bu hazırlık canlı UI/human kabulü değildir. Gate11 için gerçek DB kind/role doğrulaması,
    geçerli tek-hedef bulk preview negatif payload'ı ve token redaksiyon sınırı kaynakta
    ayrıldı; session/token işlemleri henüz yapılmadı. Gate12 tam ledger zincir sorgusu
    bütün tarihsel profilleri kapsar; kaynak/restore/reboot ölçümü henüz yapılmadı.

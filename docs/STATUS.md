@@ -7,6 +7,40 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 07:43 UTC — doğal hata ayrımı ve tarayıcı hazırlığı
+
+Son otomatik ölçümde 100 doğal çalışma,98terminal ve36/36 çalışmış yazar var;
+≥3terminal koşuyu sağlayan yazar25/36.77SUCCEEDED/19PARTIAL/1TIMED_OUT/
+1FAILED/2RUNNING; teknik2/98≈%2,041. Tam timeout yanında PARTIAL/CODEX_TIMEOUT1
+ayrı kalır.07:30:09.990UTC service success/exit0/lastAttemptSUCCESS, kurulu üç
+source hash aynı; app d829/ayar308/worker2270111/restart0/model/profil/T0 sabit.
+ACK201sn/HTTP200/200/disk%69/24.188.092.416bayt boş; operator0.
+
+FAILED hashli kodu `UNLISTED_ERROR_CODE:13b0b4e858822ab57d30c87a733b6522`,
+worker sabitinin MD5'iyle **CODEX_ACTION_WORTHINESS_FAILED** olarak eşleşti;
+worker/test kaynakları canlı d829 byte-identical. Ayrı ACTION_WORTHINESS provider
+çağrısı tamamlanamamış; alt provider kök nedeni kanıtlanmadı. Kod kota veya
+upstream sorununun yokluğunu göstermez. Mevcut fixture aynı aşama kodunu ve
+recordActions çağrılmadığını test eder; ilk tam development koşusunda geçti.
+Bu fixture sonucu canlı tek koşunun bütün DB etkilerinin incelendiği anlamına
+gelmez. Observer allowlist'i, model ve davranış değiştirilmedi; kör retry yok.
+
+07:30 O4 entry57SUCCEEDED/18REJECTED/0FAILED, payda75/%24 ABOVE; uyarı açık.
+07:34:17.455UTC ayrı bounded READ ONLY teşhisi:19ret=FRAMING4/SIMILARITY3/
+SEMANTIC_REPETITION11/SOURCE_EXACT_NUMBER_UNSUPPORTED1; PARTIAL eylem20ret/
+33başarılı. Sonraki19ret önceki75paydaya bölünmez. Ret doğruluğu veya nedensel
+iyileşme çıkarılmaz. P4sunum8 yalnız olay sayısıdır; fayda kanıtı değildir.
+
+T3 preview_status ve preview_open headless ortam için açıkça unavailable verdi.
+Mevcut ayrı kütüphane/font cache'iyle07:42:59–07:43:00UTC yerel Chromium
+153.0.8010.12 boş-sayfa tıklama/focus/kutu ölçümü PASS, ağ isteği0;
+browser/context kapandı. Üretime bağlantı ve sistem paketi kurulumu yok.
+Bu yalnız sonraki Gate11 için tarayıcı hazırlığı; canlı UI kabulü yapılmadı.
+
+Önceki belge makbuzu main `4381217ac9fabcb47e23a6d7c10f5e6d1d1b1fcf`,
+CI37277835300 **7/7PASS**;07:43UTC exacthead/yedi job doğrulandı.
+M2 final/DONE-082/P7 ve Gate11/12 açık; goal aktiftir.
+
 ## 5 Ekim 07:18 UTC — bütünleşik M2 geliştirme doğrulaması başarılı
 
 Bütün geliştirme testleri ilk gerçek tam koşuda geçti. Bu sonuç kodun test

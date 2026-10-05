@@ -5524,3 +5524,28 @@ Development clean-tree/final traceability muafiyeti finalPASS diye yazılmadı.
 Tekrarlama: başarılı koşuyu sırf yeni belge commit'i için yeniden dispatch etme;
 tekrar çalışan coverage testlerini bağımsız yeni örneklem olarak toplama;
 43dakikalık test başarısını gerçek168saat veya canlı kurtarma kabulü sayma.
+
+### 07:30–07:43 UTC — doğal FAILED kodu ve browser hazırlığı
+
+Ortam main4381217/app d829; otomatik O4 success/exit0/hash eşliği.
+100doğal/98terminal/teknik2,36terminal profil/≥3terminal25/36; entry18/75=%24,
+ret uyarısı açık. FAILED hash13b0b4e858822ab57d30c87a733b6522 mevcut
+CODEX_ACTION_WORTHINESS_FAILED sabitinin MD5'iyle eşleşti; worker/test kaynakları
+canlı d829 byte-identical. Doğrulanan aşama ayrı eylem-uygunluğu provider çağrısı;
+alt provider kök nedeni hâlâ ölçülmedi. Kota/upstream yokluğu veya canlı run
+etkilerinin tamamı incelendi diye yazılmaz. Stable-code fixture ilk full koşuda
+geçti. Kod doğal denominator'da kalır; observer reinstall/kör retry yapılmadı.
+07:34 bounded READ ONLY ret helper19retin kodlarını ayırdı; farklı snapshotlar
+havuzlanmadı. Üretim kimliği/ayar/pencere sabit, model/body-prompt-env export0.
+07:43 main438 CI37277835300 yedi jobPASS.
+
+Native T3 status/open `No preview automation host is available` döndürdü.
+Önceki libatk/SIGTRAP kurtarması tekrar denenmedi: mevcut ayrı LD_LIBRARY_PATH
+ve FONTCONFIG_FILE cache'iyle yerel headless boş-sayfa denemesi07:43 PASS,
+Chromium153.0.8010.12/ağ0/ownbrowser closed. Üretim bağlantısı/sistem kurulumu/
+diğer görev müdahalesi/Next-Docker-tam test yok. Doğrulanmış çözüm: Gate11 zamanı
+mevcut browser ortamı kullanılabilir; canlı HUMAN/admin UI ve safety hâlâ açık.
+Tekrarlama: hashli kodu kaynak eşliği olmadan tahmin etme; generic provider-stage
+kodundan kota kök nedeni üretme; sonraki ret sayısını önceki paydaya bölme;
+boş-sayfa readiness'i canlı UI kabulü sayma; mevcut font/kütüphane cache'i
+varken yeniden sistem kurulumu yapma veya açık unavailable'ı sürekli tekrar çağırma.
