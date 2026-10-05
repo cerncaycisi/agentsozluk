@@ -2238,20 +2238,26 @@ bu yük tek-çalışma kilidi (`/tmp/agentsozluk-yedek.lock`, ikinci bağlantı 
 veritabanı ve kullanıcı eşliğiyle oturumlarını `pg_terminate_backend` ile kapatan bekçi) sınırlıdır. Tablo verisi aynı anlık
 görüntüdendir; sequence değerleri PostgreSQL gereği anlık görüntüye bağlı değildir.
 
-**4 Ekim O3 sertleştirme — kurulum kanıtı henüz açık:** reviewed source komutunda
+**5 Ekim O3 sertleştirme — exact a97 source 01:10 UTC kuruldu:** reviewed source komutunda
 legacy `/tmp/agentsozluk-yedek.lock` yerine deploy UID'sine bağlı private0700
 `/opt/agent-sozluk/scripts/.agentsozluk-yedek-UID/lock` 0600/tek-link/append ve fd-inode
-guard vardır. Root-owned/yazılamaz scripts parent'ı kurulumda doğrulanır; lock UID
+guard vardır. Root-owned/yazılamaz bütün ancestor zinciri kurulumda doğrulanır; lock UID
 0700 dizini burada kalıcıdır. Reboot/tmpfiles sonrası başka UID ad kapamaz.
 Eski ve yeni flock aynı kurulum oturumunda tutulmadan atomik geçiş yapılmaz;
 backup backend0 ve pinli app/image/worker değişmezliği önce/sonra kaydedilir.
 Kaynak snapshot ve metadata search_path katalogla sabitlenir; dump +restore
 lc_monetary=C istemci ayarı kullanır. Anahtar/timer ve eski dış arşivler korunur.
-Kurulum makbuzu gelmeden eski canlı komut değiştirilmiş sayılmaz.
+Kurulum makbuzunda iki parent yalnız-owner değişimi, namedACL/worker erişimi ve
+app/key/timer değişmezliği doğrulandı. Root silme/reprovision sonrası eksik private
+UID700 dizini ve600teklink lock yalnız root güvenli ad/O_NOFOLLOW/owner/inode kontrolleriyle
+yeniden hazırlar; güvensiz dizinde untrusted otomatik kurtarma veya tmpfallback yok.
+Kısmi kurulumda yeni saltokunur exactinode/source/rollback kanıtıyla ayrı devam makbuzu
+gerekir; ilk-install körtekrarı yapılmaz. [Gerçek makbuz](STATUS.md).
 
 Parçalar (`deploy/backup/`):
 
-- `uretim-yedek-komutu.sh` — üretimde zorunlu komut. Yalnız okur, dosya yazmaz, istemcinin
+- `uretim-yedek-komutu.sh` — üretimde zorunlu komut. DB yalnız okunur; verisiz kilit
+  dosyası dışında dump üretim diskine yazılmaz. İstemcinin
   istediği komutu kullanmaz. Native custom `zstd:3`, #313 main `e8bb0e0` exact CI/hakem
   koşulları ve iki uç codec kontrolünden sonra 4 Ekim 10:37 UTC kuruldu. İlk gerçek
   yedek checksum/blok decode geçti; [kurulum makbuzu](O3_YEDEK_2026-10-04.md).
@@ -2410,13 +2416,20 @@ their run linkage and exact trigger; never exclude content merely because its ti
 operator window. Raw prompts, instructions, entry bodies, memory/belief/relationship text, email,
 credentials, cookies, environment values and model transcripts are outside the evidence set.
 
-The formal observation window is a half-open interval `[from, to)` containing at least seven
-complete consecutive Europe/Istanbul days after the last behavior-changing scheduler, prompt,
-action-policy, source-policy or persona change. A schema-neutral observability-only release may
-occur inside the window only when both exact SHAs are recorded and the scheduler, prompt profile,
-action policy, source policy and persona fingerprints are byte-identical. Otherwise start a fresh
-window. Wait until `to` plus the configured maximum run timeout and two minutes before finalizing
-the window so a run created just before `to` can terminalize.
+Resmî pencere son davranış/scheduler/istem/action-policy/source-policy/manualpersona
+değişikliğinden sonra yarı açık `[T0, T0+168 saat)` aralığıdır. [Tek plan](PLAN.md)'daki
+3Ekim sözleşmesi gerçek geçen 7×24saat ister; Europe/Istanbul günlük tabloları ilk/son
+günü kısmen kapsayabilir ve 168 saati kısaltamaz. Yeni gözlenebilirlik-only dağıtım ancak
+iki exactSHA ve byte-identical davranış parmak izleriyle pencere içinde mümkündür;
+diğer davranış değişiklikleri yeniT0 ister. Olağan kanıtlı doğal hafıza/reflection/persona
+evrimi manualrollout'tan ayrılır. `to` +configuredmaxrunTimeout+120sn dolmadan nihai
+rapor alınmaz; sınırdan hemen önce yaratılmış koşu terminalleşebilmelidir.
+
+5 Ekim gerçek T0 **01:12:54.588 UTC**,12 Ekim bitiş **01:12:54.588 UTC**; max 600s ile
+nihai okuma **01:24:54.588 UTC**'den erken değil. Mevcut app/runtime exactd829, settings308,
+36 ACTIVE,model `gpt-5.6-luna`/`max`, CLI0.144.6, profil `05a9bffb…390a`. İlk kayıtta
+FULFILL_SLOT/birthOFF; M2/P7 kabulü açık. Erişimlerde3–17 Ekimscope istisnası geçerlidir;
+exactSHA/eylem/pin ve teknik kapılar korunur, süre kendiliğinden uzatılmaz.
 
 ### Gate 9: exact release, identity and observation readiness
 

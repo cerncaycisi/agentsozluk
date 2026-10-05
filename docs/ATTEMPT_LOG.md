@@ -4998,3 +4998,117 @@ Nonce/kimlik/yazı/girdi metinleri bu makbuza konmadı; runtimefalse, birthOFF a
 
 Tekrarlama: `/tmp` kilit kurulmasını reboot kalıcılığı sanma; otomatik dar temizliği
 runbook geniş kill ile bozma; stok ön kontrolünü yeni168h kabulü sayma.
+
+## 5 Ekim 01:23 UTC — O3 kurulum, P4 ve gerçek P7 başlangıcı
+
+Canlı uygulama, imaj ve immutable runtime
+`d829dd06eb4aa68154f521667302e6744b67399e` olarak korundu. Ops kaynağı
+`a97cd979db0959af416f91d6fb0b4762370fcc6b`, exact CI `37248350512` **7/7 PASS**.
+5 Ekim 01:10:44.175 UTC'de yedek komutu atomik kuruldu: eski hash `04966deb…ff37`,
+yeni hash `ffa97e002e5b024e5c6d41f20974fa69083c513e4e80b8260b4d97d39e64f119`.
+Eski root:root/0755 geri dönüş dosyası korundu. Eski 0664 kilide chmod, unlink veya
+recreate uygulanmadı; eski ve yeni flock aynı oturumda tutuldu, yedek backend sayısı 0.
+
+`/` ve `/opt` root/0755 olarak doğrulandı. `/opt/agent-sozluk` inode 259772 ve
+`scripts` inode 259774 yalnız sahip UID1000→0 değişimi aldı; GID1000, mode0750,
+alt dosyaların metadata'sı ve named ACL aynı kaldı. Worker UID999/GID987;
+parent traversal, current read/execute ve codex-home/work write erişimi önce/sonra eşit.
+App container `55d40bbf…79c`, image `94fbb413…2e43`, worker PID2270111,
+StartMonotonic1994697120079, anahtar/timer ve source OID16385 korundu.
+Recursive chown, volume veya imaj temizliği yapılmadı.
+
+Kaynak hakemi gerçek Opus: 79,183s **KOŞULLU GO**; eski source hash/`exec 9` yolu
+koşulu salt okunur kanıtla ve işlem öncesi tekrar kapandı. İşletim görüşleri gerçek
+Opus 79,410s ve 88,648s **DÜZELTİLMELİ** olarak korunur; yardımcı Haiku ayrıca kayıtlı.
+Büyükebeveyn bulgusu iki exact inode ile kapandı. Bütün sertleştirme penceresi için
+`initial==guard`, değişim öncesi source hash/`bash -n`, intent/applied journal ve
+worker erişim/ACL karşılaştırmaları eklendi. Son B3'te istenen project-root write,
+worker sözleşmesinde gerekli değildir: `ReadWritePaths` yalnız codex-home/work.
+Eksik UID0700/0600 lock root tarafından güvenli kimlik kontrolleriyle hazırlanır;
+kısmi kurulumda ayrı makbuzla bilinen inode/UID/source/rollback doğrulanır. Kör tekrar
+ve güvensiz tmp fallback yok. Gerekirse yalnız bilinen inode'ların owner ters adımı
+kullanılır; GID/mode/ACL ve çocuklar korunur. Aynı UID'nin tam deploy-sudo/root yetkisi
+tehdit sınırı dışıdır; legacy inode unlink koşulu için mutlak yarış-yok iddiası yok.
+Olumsuz görüşler GO diye yeniden adlandırılmadı.
+
+**P4:** SHADOW assessment `5a8a86fd-1954-4b5b-9715-f60c79dee1f2`, Opus19,149s;
+fresh FULFILL_SLOT assessment `c54b0c5a-9185-40de-aaa1-5299ade3446b`, Opus14,028s.
+İki ayrı kör hüküm **INSUFFICIENT/applied=false/NO_REWARD**; yardımcı Haiku kayıtlı.
+API200, settings305→306→307. Aynı uygulama servisi tek QUALITY/INSUFFICIENT/NONE
+kartını okudu; TTL11 Ekim22:24:05.549UTC. Pozitif kredi0; puan/yayın hakkı/kota
+etkisi yok. Doğal CONTEXT_PRESENTED henüz0. Body, nonce veya okuyucu metni bu
+makbuza alınmadı; olumlu hüküm için örnek değiştirilmedi.
+
+**P7 ön kapıları:** kaynak126/origin118/TR odağı62; tüm36 profil kaynak tabanı uygun.
+00:47:28.926–00:49:35.384UTC tam ledger: **2.208.277 olay/36 profil**, sequence,
+previousHash, contentHash ve eventHash sapması0. İlk bütünleşik sorgunun35s istemci
+timeout'u veri regresyonu kanıtı değildir; kendi query sayısı0 okunup profil başına
+90sSQL/100sclient ile tamamlandı. Genel cancel/backend kill yok. Gate9 worker
+hardening, CLI help, legacy plan/slot/override0, kapalı rollout, app/db healthy ve
+internal/public200 geçti. Kapasite19 Ekim'e kadar geçerli; eski810 terminal koşu yeni
+pencereye katılmaz.
+
+İlk resume01:11:49UTC'de container'da `ERR_MODULE_NOT_FOUND` ile değişiklik öncesi
+çıktı; Dockerfile bu CLI'yi paketlemiyor. Runbook'taki immutable host CLI, root file/
+source hash ve yeniden doğrulanan aynı kapsam kapılarıyla tek çağrı **307→308** geçti.
+Audited global `breaker.reset` başlangıcı:
+
+- **T0:** `2026-10-05T01:12:54.588Z`.
+- **Bitiş:** `2026-10-12T01:12:54.588Z`; gerçek168 saat.
+- **Nihai okuma:** configured600s+120s payıyla en erken `2026-10-12T01:24:54.588Z`.
+
+Other-controls MD5 `33ef90605cd06b5839e9aa7885c9bd8a`; başlangıç roster MD5
+`2895fb798c14ceea7eb8adb471938ec4`. 36ACTIVE/credentials36/iki hat;
+CLI0.144.6, model`gpt-5.6-luna`/`max`, profil
+`05a9bffbfc631c8f3a31c7fb5cf1cf209c1b5841a31c0f5c524164c6fcad390a`.
+FULFILL_SLOT/birthOFF/NORMAL; scheduler/publish/public-write açık, health/ready200/200.
+Operatör model koşusu0, restart0.
+
+**Kalıcı salt okunur takip:** yalnız yeni `agentsozluk-p7-observe.service`, saatlik
+`:30` timer ve12 Ekim01:25UTC deadline timer kuruldu. Gerçek Opus55,359s KOŞULLU GO;
+yardımcı Haiku kayıtlı. Koşulları: remote toplam90s/client110s bütçe, timeout124
+makbuzu ve2saat freshness; yalnız izinli hata kodları/diğerleri MD5; tek ED25519 kayıt
+ve exact fingerprint. İlk systemd denemesi `FileNotFoundError: dig` ile bağlantı
+öncesi durdu; mutlak binary yolu düzeltildi. İkinci deneme sistem SSH proxy include
+izin kontrolünde durdu; yalnız bu gözlemci `ssh -F /dev/null` ve explicit bütün pin/
+identity kapılarıyla düzeltildi. Sistem dosyaları değiştirilmedi. Gerçek service
+`Result=success`, `ExecMainStatus=0`, PrivateTmp/NoNewPrivileges=yes. Diğer kullanıcı
+işleri/timer dosyaları korundu. 01:23:01UTC kesitinde doğal koşu0, uyarı0, güncel
+heartbeat ve NRestarts0; bu erken örnek başarı/hata oranı kanıtı değildir.
+
+**M2/DONE-082 BLOCKED; P7 IN_PROGRESS_NOT_PASS.** Tam168 saat, Gate10, sonra Gate11/12
+ve P8 kararı açık. Olağan doğal hafıza/reflection/evrim manual rollout'tan ayrılır;
+model/policy/istem değişimi yeni T0 ister. Devam eden Sol operatör sohbetinin paylaşılan
+kota etkisi ayrıca ölçülmedi. Gece mevcut yedek timer'ının otomatik makbuzu ayrıca
+ölçülür. Yeni uygulama deploy yapılmadı; özel kanıtlar0700/0600 ortamda saklanır.
+
+Tekrarlama: root parent için ancestor zincirini varsayma; recursive chown yapma;
+worker project-root write şartı uydurma; container içinde olmayan flow CLI ile resume
+deneme; systemd PATH/global SSH config varsayma; T0 makbuzunu168 saat PASS sayma.
+
+## 5 Ekim 01:36 UTC — otomatik yedek ve P7 başlangıç bakımı
+
+Mevcut gecelik timer **01:31:35–01:33:38.508UTC** yeni exact a97 kaynak komutuyla
+başarılı: **684.034.107 bayt, 56 tablo, 3.357.181 satır, üç sequence, yedi normal kopya**.
+Dump SHA256 `b8d289348efd2a84a468abcac597f1b6a4d39fa7ce5e5dabae5e001765f2439c`,
+metadata SHA256 `a0564d073f8f210d95763acd9707a0290aad9d90ac31a7bd624a9150385e63d3`.
+`YEDEK_OK`, service success/exit0; bağımsız checksum tekrar okuması PASS.
+Mevcut kabul edilmiş alıcı TOC ve bütün veri bloklarını decode ettikten sonra yayımladı.
+Operatör yeni backup koşusu başlatmadı. Yerel boş alan **6.284.468.224 bayt**;
+eski gzip emniyet pini ve yedi normal kopya korundu. Yeni schema dokuz migration sonrası
+56 tablo içerir; eski O3 restore'un 50 tablosu kendi eski metadata'sıyla karşılaştırılmıştı.
+Bu yeni arşiv decode'u Gate12'nin sonraki tam SQL restore kapısının yerine geçmez.
+O3 kaynak/restore/5Ekim timer işi aktif kuyruktan çıktı; olağan gecelik işletim sürer.
+
+01:36:42UTC P7 başlangıç kesitinde doğal NORMAL_WAKE0; ayrı bakım kohortu:
+REFLECTION12 SUCCEEDED/1TIMED_OUT/2RUNNING, SOURCE_REFRESH15QUEUED.
+Global gece ağırlığı0,03; bakım uyanışları doğal kamu başarısı diye sayılmaz.
+Worker heartbeat'i güncel; roster ACK son01:12:59.609UTC, yani7dk freshness sınırını
+geçmiş. Kaynakta loader/ACK `runOnce` başında, tick aynı taze ACK'den sonra, ardından
+36 credential iki çalışma hattında işlenir; uzun başlangıç bakım batch'i bitmeden
+ACK/tick yeniden çağrılmaz. Bu geçici readiness göstergesi sınırı açıkça kaydedilir;
+“yazar36 sürekli hazır” veya doğal uzun dönem güvenilirliği iddiası yapılmaz.
+Gözlemciye ACK yaşı ve `P7_ROSTER_ACK_STALE_REQUIRES_DISPOSITION` eklendi.
+Mevcut koşular kesilmez, yapay tick/heartbeat/manualrun yaratılmaz; sonraki doğal batch,
+ACK yenilenmesi ve tam hafta kapsamı O4/P7 içinde ölçülür. Tek maintenance timeout,
+boş doğal denominator'a %0 veya %100 hata oranı diye aktarılmaz.

@@ -8,281 +8,60 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-- **5 Ekim kaynak fix hakem koşulu:** `9cee040` Opus **KOŞULLU GO**,98,773s;
-  otomatik UID/PID+DB/user temizliği doğru, exactCI bekleniyor. İki kaynak koşulu
-  uygulanıyor: reboot/tmpfiles ad kapmayı kapatmak için lock root-protected kalıcı
-  scripts parent'ına taşınır; runbook desenli pkill/genel backend kill kaldırılır,
-  doğrulanmış tek APP/DB/user daralır. Gece timer ve uygulama hâlâ aynı.
-  P4 tek kalite paketi SHADOW/ayar306 ile açıldı; karar/etki yok, P7 başlamadı.
+**5 Ekim 01:36 UTC — gerçek 168 saatlik P7 penceresi başladı; saatlik takip çalışıyor.**
+Goal aktiftir. M2/DONE-082 henüz `BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
+Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
+3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
+Önceki ilerleme kayıtları [Ekim arşivinde](PLAN_ARSIVI_2026-10.md) tarihsel olarak saklanır.
 
-- **5 Ekim 00:24 UTC:** gerçek dış restore, strict50tablo/3.270.401satır/3sequence
-  eşliği ve yalnız-owned hedefDROP **tamam**; source/app/image/worker aynı.
-  İki staging arşivi/orijinal dış yedek ve journal kanıtları korundu; root23,9GB.
-  Restore/DB cleanup aktif sıradan çıktı; kapasite de tamam/staleAt19Ekim.
-  **Sıra:** O3 UID/PID scoped sourcefix son hakem/exactCI/kurulum → sınırlı ödül
-  +P7 ön uygunluk → resume/T0 → gerçek168h → Gate11/12/P8. Gece mevcut timer
-  makbuzu ayrıca ölçülür; yeni timer/uygulama deploy yok. P7 başlamadı.
+### Canlı ve tamamlanan teslimler
 
-- **5 Ekim 00:18 UTC güncel:** mainO3 `3cdf64c` CI7/7; canlı app/runtime/worker
-  `d829dd0`, persona36 tamam, pause305/open0/lease0. **Cold10/warm10/dual2 kapasite
-  tamam**:22 koşu/failure0, strict+HTTP200 persist, fingerprint eşit, staleAt19Ekim.
-  Yeniden benchmark aktif sıradan çıktı. **Gerçek eski dış backup restore/veri
-  eşliği tamam**:283s/exit0,50tablo/3.270.401satır/3sequence-safe. Owned hedef
-  guardedDROP/staging kapanışı sürüyor. Kaynak kurulumunun son Opus DÜZELTİLMELİ
-  B1'i farklıUID ortakbackend temizliği; scoped UID/PID+DB/user düzeltmesi 2PGPASS,
-  son hakem/exactCI/kurulum açık. Legacy lock değişmedi; fchmod yapılmadı.
-  **Aktif sıra:** O3 yalnız-owned cleanup ve kaynak fix hakem/CI/kurulum → sınırlı
-  ödül etkisi +P7 ön uygunluk → resume/T0 → gerçek168h → Gate11/12/P8 kararı.
-  P7 başlamadı, DONE-082 BLOCKED. Uygulama yeniden deploy gerekmiyor.
-  [Ölçülen sonuçlar](STATUS.md).
+- Uygulama, imaj ve immutable runtime **`d829dd06eb4aa68154f521667302e6744b67399e`**.
+  Exact CI7/7 ve artifact/A5 yedek, restore, eski imaj, dokuz migration, cutover PASS.
+  P1/heartbeat/P2–P6/P8/O5 kodu canlı; 36 persona sürümü/audit/outbox ve drift0 tamam.
+  Worker PID2270111/NRestarts0; resume307→308, 36ACTIVE, iki hat, health/ready200/200.
+- P2 gerçek ilk pilot: 12 geçerli karar, teknik hata0; kaynak hükmü 1yeni/1eski/4beraberlik.
+  **Fayda BELİRSİZ**, saklı set açılmadı. P3/P4/P5 sözleşme kontrolü: 18 geçerli karar,
+  bir Opus okuması, 25dk49,8sn; doğrulanmış ihlal0. Bunlar uzun dönem fayda kanıtı değildir.
+- Cold10/warm10/dual2: **22 gerçek kapasite koşusu, failure0**, üç capability kaydı tamam.
+  Actual CLI0.144.6, model `gpt-5.6-luna`/`max`, profil `05a9bffb…390a`;
+  staleAt19 Ekim00:04:18UTC. Yerel pilot CLI0.160.0 ile havuzlanmaz.
+- O3 eski dış native yedek gerçek restore: **283sn/exit0**, 50tablo/3.270.401satır/
+  3sequence-safe eşliği. Yalnız sahipli hedef DB kaldırıldı; staging/orijinal arşivler korunur.
+  `a97cd979db0959af416f91d6fb0b4762370fcc6b` CI7/7; 01:10:44UTC source hash
+  `ffa97e00…4f119` atomik kuruldu. Root ancestor zinciri, kalıcı UID lock, iki flock,
+  ACL ve worker erişimi doğrulandı; key/timer/app/image/worker korundu.
+- P4 tek gerçek kalite paketi SHADOW, sonra FULFILL_SLOT: iki ayrı kör Opus hükmü
+  **INSUFFICIENT**, pozitif kredi0/etkiNONE. Doğal isteme sunum henüz ölçülmedi;
+  olumlu ödül veya amaç tamamlanması uydurulmaz. BirthModeOFF.
+- P7 ön uygunluk: 126taze kaynak/118origin/62TR odağı; tüm36 yazarın kaynak tabanı uygun.
+  **2.208.277 ledger olayı/36profil**, dört sequence/hash sapması0. Gate9 worker,
+  CLI/roster/kapasite/legacy-plan0/health kapıları geçti. Geçmiş810 koşu yeni pencereye katılmaz.
+- Salt okunur saatlik ve deadline timer aktif; gerçek systemd service success/exit0,
+  PrivateTmp/NoNewPrivileges=yes. Opus55,359s koşulları timeout, hata redaksiyonu ve
+  exact pin kontrolleriyle kapandı. İlk01:23 kesitinde doğal koşu0, heartbeat güncel;01:36 bakım/ACK notu aşağıdadır.
 
-- **4 Ekim 23:08 UTC sıra daraltması:** O3 son search_path/locale/lock kaynağı
-  exact peer/CI aşamasında; uygulama/runtime d829 ve persona36 tamam, pause305.
-  O3 restore ile çakışmadan **bağımsız cold/warm/dual kapasite** mevcut canlı
-  reviewed CLI üzerinden şimdi yürür. Üretimde tek ağır iş: kapasite bitmeden
-  O3 restore başlamaz. Sonra dış restore/backup kurulum +sınırlı etki → resume/T0.
-  O3 ops değişikliği istem/model/capability profilini değiştirmez; uygulama yeniden
-  deploy edilmeyecek. P7 bu işler bitmeden başlamaz.
+### Tek aktif sıra
 
-- **4 Ekim 22:51 UTC güncel:** exact `d829dd0` canlı app/runtime/worker;
-  CI7/7, artifact/A5 tam backup+restore/eski imaj/9 migration/cutover **PASS**.
-  Health/ready/search200; 37 finished, yarım0; root25,3GB/%68. Persona CAS **36
-  sürüm +36 audit +36 outbox**, drift/validation/pending0; karakter içeriği aynı.
-  Runtime kontrollü pause/ayar305. **Sıra:** O3 son somut hakem koşulları +exactCI,
-  dış backup restore/atomik kaynak betiği → cold/warm/dual kapasite ve sınırlı etki
-  → resume/T0 → gerçek168h P7 → Gate11/12/P8 somut karar. Takvim beklemesi yok.
-  A5 fresh restore O3 eski dış yedeğin yerine geçmez. P7 başlamadı.
+1. **P7 doğal gözlem:** `[2026-10-05T01:12:54.588Z, 2026-10-12T01:12:54.588Z)`;
+   tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
+   **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
+   Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
+   Başlangıç bakımı12 REFLECTION başarılı/1timeout, roster ACK7dk sınırını geçiyor;
+   batch bitişi/ACK yenilenmesi ve doğal coverage ayrıca ölçülür; bakım doğal koşu değildir.
+   İstem/model/effort/ayar/policy/manual persona değişirse yeni T0 gerekir.
+   Olağan doğal hafıza/reflection/evrim ayrı kayıtlanır; yeni shared-Codex lab/benchmark yok.
+2. **Gate10 tam rapor → Gate11/12:** süre dolunca doğal kohort, yazar başına ≥3terminal,
+   ≤%5 teknik hata, ret/PARTIAL güvenli nedenler, provenance/kamu eşliği, ledger/kaynak/
+   evrim kapıları doğrudan ölçülür. Sonra adlandırılmış insan/yetki smoke ve taze
+   yedek/restore/reboot. Paket hazırlığı şimdi yapılabilir; erken PASS verilmez.
+3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
+   aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
+   Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız
+   doğrudan kanıtla kapanır. Raf işleri bu sırayı bölmez.
 
-- **4 Ekim 22:30 UTC:** P2022 kaynakla ayrıldı; eski canlı immutable CLI audited
-  pause304→305, diğer kontroller hash'i aynı, tüm open/lease0. Fresh aynı-scope
-  koşullarıyla yalnız failed exact lock temizlendi. Aynı d829/artifact manual-prepaused
-  A5 planned/image-verified/frozen ve 1.332.482.331-byte tam yedek geçti; restore,
-  eski imaj, migration/cutover hâlâ açık. Frozen'da ek DB bağlantısı yok.
-  O3 source+restore output GUC/faz koşulları yerelde 7PG+2PG/43unit-shell ile kapandı;
-  son farklı model incelemesi/exactCI/atomik backup-script kurulum/full restore açık.
-
-- **4 Ekim 22:13 UTC — canlı geçiş kurtarması:** exact `d829dd0` CI7/7 ve
-  artifact `37237966991` başarılı; inert image/runtime kuruldu. Candidate pause
-  migration öncesi tam settings sorgusunda `P2022 birthMode` ile düştü; transaction
-  commit yok, ayar304/runtime açık. App/image/runtime/worker `9bf3653` aynı; applied28,
-  yarım/A5/hold yok, failed release kilidi korunuyor. Eski canlı immutable release
-  status geçti. Mevcut audited pause yolu/lock cleanup kanıtı bağımsız işletim
-  incelemesinde; A5/restore/migration/cutover açık, hiçbir kapı atlanmadı.
-- **O3 ikinci Opus:** exact `ecf7bf0`, KOŞULLU GO; ek serialization GUC ve kısa
-  test bütçesi/faz senkronizasyonu koşulları kaynakla uzlaştırılacak. 7/7 yerel
-  kanıt tarihsel olarak korunur; helper üretimde uygulanmadı/main'e birleşmedi.
-
-- **4 Ekim 22:02 UTC:** #328 O3 ilk Opus KOŞULLU GO; argüman/link ve cleanup
-  kimlik sapması kapanışlarıyla 7/7 isolated PG16 PASS. Son hakem/exact CI ve
-  üretim dış backup restore açık. İlk application exact `d829dd0` main CI7/7;
-  artifact `37237966991` hazırlanıyor, deploy henüz yok.
-
-- **4 Ekim 21:40 UTC:** #327 final `cc0b2e7`, CI `37235882789` **7/7 PASS**;
-  main `d829dd0`, tam ağaç eşliği/temiz main doğrulandı. Main CI `37237038884`
-  açık; ardından tek exact artifact/A5/cutover. Canlı hâlâ `9bf3653`.
-  O3 owner/control ayrımı hazırlanıyor: izole PG16'da 5/5 PASS, privilege grant yok;
-  peer/final CI/gerçek restore açık. İlk canlı geçiş bitene kadar O3 main'e girmez.
-  [Sahipli restore sözleşmesi](O3_SAHIPLI_RESTORE_2026-10-04.md).
-
-- **4 Ekim 21:19 UTC:** son kod `ee1cd48`, gerçek Opus 5 KOŞULLU GO; somut yeni
-  kod düzeltmesi yok. Şartlar mevcut tam exact CI ve wrapper'ın uzak exact checkout
-  kapılarıdır. 62 doğum PG16 ve UTC 2 PG16/19 release PASS; tüm yerel zorunlu
-  kontroller PASS. Şimdi belge kapanışı → yeni exact CI → merge/artifact/A5/cutover.
-  Üretim geçişi, persona rollout, kapasite ve canlı sınırlı etki/P7 hâlâ açık.
-
-- **4 Ekim CI teşhisi:** #327 `28b91d0` CI `37234139545` kırmızı; 14 doğum
-  fixture hatası gerçek DB/fake Date ayrışmasından. Üretim kodu/guard değişmedi;
-  test INSERT saatleri ve queue availableAt kontrol altına alındı. Son yerel
-  doğum paketi 62/62 PASS; UTC hakemi ve yeni exact CI açık. Kırmızı SHA birleşmez.
-
-- **4 Ekim 21:03 UTC:** #327 ikinci Opus görüşü KOŞULLU GO; gerçek oturum zaman
-  dilimi yanlış ret riski UTC ile kapandı, yeni 2 PG16/19 release testi PASS.
-  Son UTC kod incelemesi/CI açık; sıradaki iş fix teslimi ve hemen artifact/A5/cutover.
-  P2/P3–P5 mevcut kısa kontroller tamamlandı; yeniden çağrı veya saklı set açılmıyor.
-  Pinli canlı kesitte 28 applied/0 yarım +tam 9 v2 pending, 29,7 GB boş alan,
-  kilit/hold yok. Canlı sürüm hâlâ `9bf3653`; bu makbuz deploy değildir.
-
-- **4 Ekim 20:51 UTC:** P3/P4/P5 gerçek kontrolü tamam: 18 geçerli karar, teknik hata/tekrar 0,
-  bir Opus okuyucusuyla 19 çağrı/25 dakika 49,8 saniye. Kaynak kontrolünde somut sözleşme
-  ihlali yok; davranış faydası veya PASS iddiası yok. Gerçek kısa kontrol işi aktif kuyruktan
-  çıktı; canlı sınırlı etki/rollout/kapasite açık. #327 ilk CI `37232666236` 7/7 PASS;
-  Opus düzeltme görüşü sonrası release/migration özetleri birleştirildi ve profil makbuzu
-  yeniden girişe bağlandı. Son 82 yerel test PASS; ikinci hakem/final CI açık. Sıradaki
-  iş bu teknik düzeltmenin teslimi ve hazır paketin artifact/restore/migration dağıtımı.
-
-- **4 Ekim 20:30 UTC devir ve dağıtım düzeltmesi:** Gökhan'ın aynı goal/yetkiyle
-  devam talimatıyla yürütücü bu oturumda `gpt-6.1-sol`; önceki Astra/Opus kayıtları
-  tarihsel olarak korunur. Erken A′ kapısı #326 ile main `4d05d1e` üzerinde, main CI
-  `37230917091` **7/7 PASS**. P2 ilk set 12 geçerli karar/1 Opus okuma ile tamamlandı;
-  operatör kaynak kontrolünde **1 yeni / 1 eski / 4 beraberlik**, doğrulanmış ihlal 0.
-  Üstünlük eşiği geçmedi; saklı set açılmıyor, fayda **BELİRSİZ**. P3/P4/P5'in mevcut
-  18 girdilik kontrolü aynı kimlik/bütçe/saatle sürüyor; yeni çalışma açılmadı.
-  Release ayar özetinin dört yeni OFF/NULL sütunu yanlış değişiklik sayması yerelde
-  düzeltildi: 16 PG16 +18 release testi PASS; son kaynakta dört PG16 senaryosu ayrıca
-  tekrar geçti. Eski/yeni ayar sapmaları korunur. Format/lint/typecheck/3 gereksinim
-  kontrolü PASS; bağımsız Opus, exact CI ve gerçek üretim geçişi açık.
-  [Migration ve release kapısı](P1_EKIM_MIGRATION_PROFILI_2026-10-04.md).
-
-- **4 Ekim 19:38 UTC kullanıcı düzeltmesi — hemen geçerli:** “bittikçe canlıya alalım” ve
-  “A′ gözlemine erken bakalım” talimatlarıyla **6 Ekim / 72 saat dağıtım beklemesi kaldırıldı**.
-  Hazır işler teknik kapıları geçince küçük paketlerle yayımlanır; 7–9 Ekim bir bekleme tarihi
-  değildir. Aşağıdaki eski tarihli makbuzlar o anki durumu anlatır, bu kararı geçersiz kılmaz.
-  Gerçek 304 resume audit kaydı **3 Ekim 09:17:44.154 UTC**, erken kesit **4 Ekim
-  19:38:28.146203 UTC**: 34 saat 21 dakika; 429 başarılı/146 ret (**%25,39**), retlerin
-  123'ü tekrar/benzerlik. **INCONCLUSIVE erken değerlendirme**; ≥%30 iyileşme veya 72 saat
-  kabulü iddiası yok. Canlı sürüm hâlâ `9bf3653`; bu karar tek başına deploy değildir.
-  Erken pilot makbuzu **6 Ekim 19:38:28.147 UTC'ye kadar** geçerlidir; bu bir bekleme
-  süresi değildir, kullanılabilirlik sonudur. Sonrasında eski kesitle yeni pilot başlatılmaz.
-  [Erken karar ve kaynak makbuzu](P1_APRIME_ERKEN_KARAR_2026-10-04.md).
-- **Tamamlanan geçiş:** erken karar ve P2/P3–P5 kontrol makbuzlarıyla
-  ilk uygulama paketi artifact/A5/restore/eski imaj kapılarını geçerek canlıya çıktı.
-  Persona rollout tamam; güncel kapasite ve sonraki canlı kabul kapıları açıktır. P8 aday
-  taraması/ilk aktivasyon kendiliğinden açılmaz. Sonraki hazır paketler aynı yöntemle ilerler.
-  P7'nin gerçek 168 saati son davranış sürümünden başlar; erken A′ kesiti onun yerine geçmez.
-
-- **3 Ekim kullanıcı düzeltmesi:** haftalar süren ardışık ölçüm kaldırıldı. **3–9 Ekim ilk
-  çalışan sürümler; 10–17 Ekim düzeltme ve resmî kabul hedefi.** Uzun dönem evrim gözlemi
-  geliştirmeyi veya yerel doğum adayını bekletmez. Tam backlog’u iki haftada bitirme iddiası yok.
-
-- **Çalışma yetkisi:** Gökhan’ın 3 Ekim açık talimatıyla 17 Ekim 2026 19:50 UTC’ye kadar
-  plan içindeki üretim okuma/deploy/pause/resume ve gerekli işletim işleri yetkili. Exact SHA,
-  CI, bağımsız hakem, backup/rollback ve host doğrulaması sürer; işlem başına tekrar onay
-  istenmez. Kapsam ve son tarih `AGENTS.md` süreli yetki maddesinde. Bu uygulama oturumu başladı.
-- **Ürün hedefi:** bakışı ayırt edilebilen, amaçlarını sürdüren, yaptığı işin sonucundan
-  öğrenen yazarlar. Başarı çok yazmak veya çok oy almak değildir.
-- **Önceki üretim kaydı (tarihsel):** `9bf3653`, v46, A′ okuma bağlamı; `gpt-5.6-luna`, iki hat.
-  3 Ekim kapasite kanıtının kayıtlı son tarihi 17 Ekim. 3 Ekim 20:00 UTC P0 salt okunur kesiti alındı; yeni dağıtım yapılmadı.
-- **4 Ekim 06:09 UTC sağlık kesiti:** worker çalışıyor (son saatte 17 SUCCEEDED, 6 PARTIAL;
-  bunlardan biri CODEX_TIMEOUT). Son 24 saatte 273 başarılı / 95 ret (%25,8); retlerin 76’sı
-  tekrar/benzerlik, 16’sı desteklenmeyen kesin sayı, 3’ü pause. Ret alarmı açık ürün sinyalidir;
-  otomatik yanlış-pozitif veya kesinti sayılmaz. P1 mevcut kayıt incelemesi bunları ayırır;
-  sırf oranı düşürmek için eşik/istem değiştirilmez. O3 telafi yedeği 05:43 UTC tamamlandı.
-- **4 Ekim 07:01 UTC yenileme:** son saat 20 SUCCEEDED / 4 PARTIAL; son 24 saat
-  274 başarılı / 95 ret (%25,7). Ret açık; canlı checkout aynı. Pencereler örtüşür,
-  iki kesit bağımsız deney veya iyileşme kanıtı sayılmaz.
-- **4 Ekim 10:49 UTC yenileme:** son saat 19 SUCCEEDED / 3 PARTIAL; son 24 saat
-  294 başarılı / 91 ret (**%23,6**). Retlerin 76’sı tekrar/benzerlik, 15’i kesin sayı.
-  Canlı `9bf3653` aynı; ret alarmı açık. Örtüşen pencere değişimi kod etkisi sayılmaz.
-- **O4 somut ret düzeltmesi:** 4 Ekim 07:59–08:21 UTC salt okunur 20 vakada kaynak
-  sayı gösterimi hatası bulundu. `$272.5M` / `272,5 milyon` eşleşmesi ve yanlış tamsayı
-  parçası kapatıldı; #310 final `21be9cb`, CI `37189898438` 7/7, main `b4d69d6`.
-  Opus koşulları sonrası 77 birim/12 eylemlik PG senaryosu geçti. Kod/hakem/CI tamam;
-  canlı dağıtım açık, ret alarmının tamamı kapanmadı.
-  [Sayı düzeltmesi ve örneklem sınırı](O4_SAYI_GOSTERIMI_2026-10-04.md).
-- **İlk A′ kontrolü erkene alındı:** 4 Ekim 19:38 UTC makbuzu ve kesin resume doğrulandı;
-  eski 6 Ekim / 72 saat takvim beklemesi kullanıcı talimatıyla kaldırıldı.
-- **Hazır kod:** heartbeat #296, main `d373376`, Opus KOD GO ve CI 7/7; canlıya alınmadı.
-- **Kapanan deney:** bkz 23/40 çiftte kullanıcı isteğiyle durdu; aday kabul edilmedi,
-  yeni koşu yok. Boş hedefli/yalnız bkz ve ayrı ukte ihtiyacı korunuyor.
-- **Yeni ana iş:** P0 kısa denetim tamam; P2 karakter bağlantısı #297 ile `5053923` ana dalında,
-  exact head CI 7/7 ve hakem koşulları tamam. Kısa pilot/canlı rollout açık. P3 teknik sonuç
-  kartı #298 ile `cac7e7c` ana dalında; Opus KOD GO, CI 7/7, yerelde 119 entegrasyon/124 birim
-  testi geçti. Amaç yaşam döngüsü #300 ile `c2f5db7` ana dalında: Opus 5 KOD GO ve CI 7/7.
-  Son sekiz amaç PG16 senaryosu, 119 ilgili birim testi geçti; canlı pilot açık. [Amaç makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md). [P3 makbuzu](P3_SONUC_KARTI_2026-10-03.md). P4 amaç kanalı #301 ile `0bb3e77` ana dalında, Opus koşulları ve CI 7/7 tamam.
-  Kalite kanalı/özel `authorFeedback` #302 ile `db28695` ana dalında; Opus 5 KOD GO,
-  CI 7/7, son 29 PG16 ve 147 ilgili birim testi geçti. P4'te kalan iş kısa gölge/pilot ve
-  canlı kabul. [P4b makbuzu](P4_KALITE_VE_YAZAR_GERI_BILDIRIMI_2026-10-04.md).
-  P5 iki çevrim→sonraki uyanış/karar istemi #303 ile `2277eb4` ana dalında (4 PG16,
-  17 birim, son CI 7/7); Opus mekanik koşulları kapandı. Doğal fayda pilotu açık.
-  [P5 makbuzu](P5_IKI_EVRIM_DONGUSU_2026-10-04.md). P8 politika/iki bağımsız taslak #304 ile `1f0534d` ana dalında; Opus KOD GO/CI 7/7,
-  47 ilgili birim ve mevcut 36 kişilik P0 kesitinde 72 ebeveyn varyantı geçti. Özel aday defteri
-  ve ayrı otomatik tarama #305 ile `1e265f4` ana dalında: Opus 5 KOD GO, son CI 7/7;
-  40 PG16 ve ayrı 2 PG16/60 birim geçti.
-  Hesap hazırlığı/kaynak bankası/aktivasyon kodu #316/#317/#321 ile tamam; canlı uygulama açık. [P8 sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
-  P1 mevcut A′ kararıdır; kod geliştirmeye takvim bariyeri değildir. P6 küçük okur işleri
-  boşluklarda: açılmamış görünür bkz #299 ile `c72a089` ana dalında, Opus KOD GO/CI 7/7;
-  tanıtım/kök açıklaması mevcut kodda doğrulandı; yeniden yazılmıyor. İnsan ukte bırakma/
-  geri çekme, admin gizleme/geri açma ve güvenli liste #306 ile `717e5e4` ana dalında: iki
-  Opus turunun koşulları kapandı, son CI 7/7. Son 20 PG16/16 birim-RSC, önceki 67 ve
-  geniş 125 test; gerçek masaüstü/mobil tarayıcı akışı geçti. P6’da ilk sürüm için canlı
-  dağıtım/kullanım makbuzu kaldı. [Ukte makbuzu](P6_UKTE_2026-10-04.md). P7 yedi günlük kabul özellik paketinden sonra yürür.
-- **4 Ekim pilot hazırlığı:** P2 için mevcut P0 kesitinden 6 ilk / 6 saklı çiftin
-  24 normal karar girdisi yerelde hazırlandı; model çağrısı yok. Ortak bağlam ve run
-  varyasyonu sabit, tek fark persona aktarımı. Model/effort ve sürüm çalıştırmadan önce
-  yeniden sabitlenir. A′ tarihi yalnız canlı değişiklik/runtime pilot kapısıdır; kalan
-  yerel hazırlıkları durdurmaz. [Hazırlık ve sınırlar](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
-- **4 Ekim kaynak hazırlığı:** iki doğum taslağının 20 URL’sinden 19’u okundu;
-  Arkitera iki kez zaman aşımına uğradı. Mevcut izinli havuzda üç yedek adres okundu;
-  ilk taslağa Fayn/Aeon #311’de eklendi (38 test; Opus koşulları kaynak/ölçümle kapandı).
-  Final `c53f8c3`, CI `37191249963` 7/7; main `8aeeb0a`. Gerçek aday kaynak hazırlığı
-  ve aktivasyon kapıları açık. [P8 makbuzu](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
-- **4 Ekim kısa pilotta bulunan P3 engeli:** aktif amaçtaki `kind`, worker’ın teknik
-  metadata yasağına takılıyordu. Gerçek PG16 amaç→sonraki istem yolu önce aynı hatayla
-  düştü; dar yol/enum istisnası sonrası 9 PG16 ve 91 birim geçti. Hesap/model metadata
-  kapısı korunuyor. Opus 5 `3d53b7b` koşulları kaynak/istem testleriyle kapandı; ilk CI
-  `37197366332` ve final `842e67a` CI `37198112214` 7/7; #315 main `d24add7`.
-  Kod/hakem/CI işi tamam, canlı dağıtım açık. P3/P4/P5 için 18 çevrimdışı sözleşme
-  girdisi v2 hazır (okuyucu dahil toplam ≤24 model çağrısı/90 dakika); çağrı yok. [P3 makbuzu](P3_AMAC_YASAM_DONGUSU_2026-10-03.md).
-- **4 Ekim P8 hesap hazırlığı:** yerel PREPARED/PAUSED hesap, dar kaynak yenileme ve
-  generic ACTIVE bypass reddi #316 ile ana dalında. Final `f262a8c`, CI `37203877096`
-  7/7, main `462642d`; exact ağaç eşliği doğrulandı. V2 migration profili #320 ve aktivasyon kodu #321 ile tamam; canlı uygulama açık.
-  İlk pilot tek hazırlanmış kimlik; aday taraması otomatik, ilk aktivasyon yönetici
-  transaction'ı olacak. Ayrı permit tablosu/tick eklenmiyor. P7/soy/nüfus/kaynak kapıları
-  değişmedi. Canlı 11:51 kesiti 36 ACTIVE; ilk persona eşliği 14 TEMPLATE kök adayı,
-  kalan tarihçe kanıtsız bağımsız sayılmıyor. [P8c sözleşmesi](P8_BAGIMSIZ_DOGUM_ADAYI_2026-10-04.md).
-- **P8 #316 kod incelemesi:** ilk head `b5b2073` CI7/7; Opus 5 düzeltme istedi.
-  Gerçek Bearer→kaynak→koşu tamamlama testi PAUSED `NO_ACTION` hatasını bulup kapattı;
-  son doğum/manual PG16 62/62, ayrı9PG ve146birim. Opus5 `4ed82c2` koşulları
-  kaynak ve kapanış9PG ile kapandı; kod/hakem/CI işi tamam. Canlı dağıtım açık.
-  #317 banka onarımında24/24 güvenli okuma ve güncel kapasite uygun; Opus koşulları
-  kaynak/13:09 tablo-yokluğu kesiti ve birleşik79test ile kapandı. Final `9945807`,
-  CI `37205037707` 7/7, main `cdc4d5d`; kod/hakem/CI tamam. Mevcut5
-  sahip sınırı korunur. [Kaynak bankası makbuzu](P8_KAYNAK_BANKASI_2026-10-04.md).
-- **Çalışma sınırı:** küçük kişisel sunucuda tek ağır iş/tek model işçisi; çalışan kullanıcı
-  işleri korunur. P0/P2 uygulaması başladı; tarihler işin başlamasını bekleten engel değildir.
-- **Hakem:** Astra yürütür, Opus bağımsız inceler. Mevcut Astra tur muafiyeti 4 Ekim
-  20:59 UTC'de biter; sonrasında `AGENTS.md` tur sınırı geçerli. Yeni süreli
-  üretim yetkisi yalnız Agent Sözlük içindir; diğer sistemlere bağlantı izni değildir.
-
-- **4 Ekim migration profili:** #320 final `4f68c57`, CI `37206758504` 7/7;
-  main `88c7f56`, uzak SHA ve test edilen ağaç eşliği doğrulandı. Gerçek Opus 5
-  KOD GO, 113 birim / 21 PG16 geçti. Dokuz migration için v2 kodu tamam;
-  üretim applied set, gerçek restore ve eski imaj smoke kapıları açık.
-- **P8 aktivasyon kodu tamam:** #321 final `0bf60db`, exact CI `37210442983`
-  **7/7**, main `0f073cc`; uzak SHA ve test edilen ağaç eşliği doğrulandı. Opus 5
-  ikinci görüş `dbe80e6` KOŞULLU GO; tek ölçüm etiketleme koşulu kapandı. 68 ilgili
-  birim ve 18 odaklı PG16; son dört HTTP/sınır/atomiklik senaryosu da geçti (örtüşür).
-  36 profilli fixture'ın 555 ms uçtan uca HTTP süresi TX aktif süre veya üretim kapasite
-  kanıtı değildir. Yerel aktivasyon işi aktif geliştirme kuyruğundan çıktı; canlı dağıtım,
-  168 saatlik P7 raporu, güncel soy/kaynak/kapasite ve ilk somut aktivasyon kararı açık.
-- **O5 B3 kod teslimi tamam:** #322 final `0d1c845`, exact CI `37211890454`
-  **7/7**, main `0245eb4`; uzak SHA/ağaç eşliği PASS. İki Opus 5 görüşünün
-  mekanik koşulları kaynak/12 PG16/tam CI ile kapandı. 10 ilgili birim-UI de geçti.
-  Entry etkileri ve toplu makbuz aynı commit; tek entry hatası savepoint ile geri alınır.
-  B3 kod işi aktif kuyruktan çıktı; O5 için canlı dağıtım/kullanım makbuzu açık.
-- **4 Ekim 15:09 UTC sağlık:** canlı `9bf3653` değişmedi; son saat 16 SUCCEEDED / 5 PARTIAL /
-  1 FAILED (`CODEX_DECISION_PROVENANCE_INVALID`). Son 24 saat 304 başarılı / 92 ret
-  (**%23,23**); 76 tekrar/benzerlik, 15 kesin sayı, 1 doğrudan hitap. Alarm açık, örtüşen
-  pencere farkı kod etkisi değil. Yerel operatör preflight'ı aynı repo URL normalizasyonu
-  sonrası geçti; gerçek release/restore/benchmark kapılarının yerine geçmez.
-
-- **4 Ekim pilot çalıştırıcısı:** P3/P4/P5 için kalıcı 24 mantıksal çağrı/90 dakika
-  bütçesi ve araçsız Opus okuyucusu hazırlandı; ilk 29 / son 43 ağsız test PASS. Gerçek pilot çağrısı 0.
-  İlk Opus bulgularıyla 15 dakika okuyucu payı ve dar ortam eklendi; ikinci Opus dar
-  koşulları kapandı. #323 final `89797c2`, exact CI `37218521794` **7/7**; main
-  `0bb509a`, uzak SHA/test edilen ağaç eşliği PASS. Çalıştırıcı kod işi tamam.
-  A′ sonrası güncel source/model/effort/CLI girdileri
-  yeniden sabitlenecek. Eski `effort:null` hazırlığı çalıştırılmaz. P2/P7 davranış kabulü
-  bundan ayrı ve açık. [Çalıştırma sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
-
-- **4 Ekim 17:26 UTC sağlık:** taze pin/DNS/host/origin/exact `9bf3653` ile READ ONLY
-  kesit: son saat 22 SUCCEEDED / 4 PARTIAL, terminal FAILED yok. Son 24 saat
-  297 başarılı / 96 ret (**%24,43**); 79 tekrar/benzerlik, 15 kesin sayı, 1 doğrudan
-  hitap, 1 snapshot dışı hedef. Ret alarmı açık; dağıtım olmadı, örtüşen pencerelerden
-  kod etkisi çıkarılmaz. Ana dal `8c56852` teslim kaydı CI `37219729005` 7/7 PASS.
-
-- **P2 çalıştırıcısı teslim edildi:** #325 final `0b99703`, exact CI `37226959945`
-  **7/7**, main `abd1ae7`; uzak SHA/ağaç eşliği PASS. Son 101 ağsız test ve son 30 runner
-  tekrar geçti. Opus 5 dar **KOŞULLU GO**: 27 dakika giriş tamamlama garantisi değil;
-  eksik setin okuması yalnız kısmi sorun tespiti. Yazılı koşullar/mevcut negatif test
-  makbuzda. Çalıştırıcı kod işi aktif geliştirme kuyruğundan çıktı; 6 Ekim A′ sonrası
-  güncel kaynak/model/effort ile girdilerin dondurulması, gerçek P2 pilotu ve canlı dağıtım
-  açık. Gerçek çağrı0. [P2 sözleşmesi](P2_KISA_PILOT_HAZIRLIGI_2026-10-04.md).
-- **4 Ekim 19:12 UTC sağlık:** taze pin/DNS/host/origin/exact `9bf3653` ile READ ONLY
-  kesitte son saat 16 SUCCEEDED / 6 PARTIAL (biri CODEX_TIMEOUT), terminal FAILED yok.
-  Son 24 saatte293 başarılı / 98 ret (**%25,06**); 82 tekrar/benzerlik, 14 kesin sayı,
-  1 doğrudan hitap, 1 snapshot dışı hedef. Ret alarmı açık; dağıtım yapılmadı. Örtüşen
-  pencerelerden kod etkisi veya doğal 24 saat teknik hata oranı çıkarılmaz.
+Tam ölçümler [STATUS.md](STATUS.md), denemeler [ATTEMPT_LOG.md](ATTEMPT_LOG.md).
+Pencereyi başlatmak planı bitirmek değildir; goal gerçek kabul ve sonraki kapılara kadar aktiftir.
 
 ## 1. Ürün sözleşmesi
 
@@ -316,7 +95,7 @@ her özelliğin uzun dönem faydasının kesin ispatı değildir. Kod/test/hakem
 | **P5 — evrim**             | 8–9 Ekim                                             | Yerelde kontrollü zaman/kanıt ile iki döngünün veri ve davranış yolunu doğrula; doğal haftalık takip teslim sonrası sürer, iki hafta bekleme kapısı yok  |
 | **P8 — yeni yazar**        | 8–9 Ekim aday mekanizması; 17 Ekim aktivasyon kararı | Kanıtlı ebeveynlerden yerel bağımsız aday; soy/nüfus/çeşitlilik testleri. Tek adaylık canlı pilot P7, kaynak/kapasite ve somut politika kapılarına bağlı |
 | **P6 — okur / bkz / ukte** | 4–9 Ekim küçük işler; 17 Ekim durum                  | Önce tanıtım ve boş bkz yolu; küçük ukte oluşturma/geri çekme akışı. Ana sayfa deneyi ve kapsamlı SEO çalışması ilk sürümü bekletmez                     |
-| **P7 — M2 kabulü**         | 10–17 Ekim hedef                                     | Son davranış dağıtımı ve benchmark sonrasında tek 7×24 saatlik sabit pencere; ardından Gate 11/12. Pencere başlangıcı fiilî dağıtıma bağlı               |
+| **P7 — M2 kabulü**         | 5–12 Ekim gerçek pencere                             | Son davranış dağıtımı ve benchmark sonrasında tek 7×24 saatlik sabit pencere; ardından Gate 11/12. Pencere başlangıcı fiilî dağıtıma bağlı               |
 
 **İki haftalık kapsam:** karakter, amaç/sonuç, sınırlı ödül, evrim yolu ve yerel doğum adayının
 çalışan ilk sürümleri. Ana sayfa algoritması, model değişimi, derin refactor ve kapsamlı SEO
@@ -359,29 +138,11 @@ doğrulaması da dağıtım kapısıdır; yalnız ajan pause’u yeterli değild
 
 **P8 dağıtım kapısı:** audit lookup indeksinde genel yazma dondurması, tablo boyutu ve
 restore kopyasında süre makbuzu şarttır; P2 ile aynı paket olmasa da bu kapı korunur.
-İlk yerel envanterde sekiz bekleyen migration vardı; #316 ile dokuz oldu. **4 Ekim
-16:43 UTC** taze ED25519/DNS/hostname/origin/exact `9bf3653` guard'lı READ ONLY envanter:
-**28 applied, yarım kayıt 0, checksum sapması 0**. Yerel 37 migration eksi 28 applied,
-incelenmiş v2 profilinin **9 SQL'iyle ad/checksum olarak tam eşit**. PG 16.14, 50 public
-tablo, DB 5.801.974.807 bayt. Envanter release anında tekrarlanır; bu okuma üretim
-boyutlu restore ve önceki imaj kapılarını kapatmaz. Genel additive denetçi ilk sekizli
-kümenin yedisini bilinçli reddediyordu (partial indeks/RESTRICT FK/ALTER/trigger vb.);
-kapısı kaldırılmaz. Exact kümeye özel profil kodu tamam, gerçek üretim boyutunda geçiş/
-restore/geri dönüş provası P1 dağıtımının açık teknik bağımlılığıdır.
-Sabit `october-2026-v1` profili yerelde hazırlandı; ilk 93, son odaklı 36 testte
-PG16 restore/geçiş ve sapma reddi geçti. Opus 5 koşullu kabul verdi; genel FK istisnası
-profile daraltıldı, üretim boyutu salt okunur ölçüldü ve ukte kaynak koşulları kaynak/testle kapandı.
-Son düzeltmelerde 70/70, makbuz etiketinden sonra 6 PG16 ve 8 CI sözleşmesi testi geçti;
-format/lint/typecheck/requirements PASS. #308 final `1580273`, exact CI `37182105221`
-7/7 ve gerçek imaj runner (36 migration, ana DB geçmişi aynı) geçti; main `9ead5a0`.
-Üretime uygulanmadı; gerçek restore/süre/önceki imaj kapısı dağıtımda korunur.
-#316 sonrası dokuzuncu migration için **ayrı v2** profili yerelde hazırlandı; v1'in üç
-makbuz dosyası ve sekiz SQL checksum'ı değişmedi. İki profil için12PG16 restore/geçiş,
-mevcut A5 için9PG16 ve113birim PASS. Yeni audit indeksinin dördüncü migration süre
-makbuzu zorunlu; genel veri/şema/rollback/timeouts kapıları aynı. Opus 5 KOD GO ve
-#320 final CI 7/7 tamam; main `88c7f56`. Üretim büyüklüğünde prova ve eski imaj
-smoke kontrolü aktif dağıtım bağımlılığıdır.
-[Geçiş belirtimi](P1_EKIM_MIGRATION_PROFILI_2026-10-04.md).
+Bu dağıtım kapısı4 Ekim exact d829 A5 ile kapandı: tüm dokuz SQL, taze frozen yedek,
+üretim boyutunda restore/veri-şema/süre, önceki imaj ve cutover PASS; applied37/yarım0.
+V1/v2 hazırlık makbuzları tarihsel olarak saklanır; yeniden hazırlık kuyruğu değildir.
+Gelecekteki migration aynı identity, write-freeze, exact SQL, backup/restore/rollback
+ve süre kapılarını tekrar gerektirir. [Geçiş belirtimi](P1_EKIM_MIGRATION_PROFILI_2026-10-04.md).
 
 **P6 kapsamı:** `/hakkinda` ve kök sayfada açık proje tanımı, örnek çeşitliliği, marka/ton;
 uygun yapılandırılmış veri; ardından görünür/gizli boş bkz'nin tutarlı gezinmesi. Ukte insanın
@@ -392,30 +153,12 @@ Okura görünür yeni otomatik öğenin somut önizlemesi dağıtım paketinde G
 yerel hazırlık için ayrı izin kuyruğu açılmaz. Search Console/GEO rutin aylık takip işi olarak
 kalır; teslim takvimini uzatmaz. Üçüncü taraf tanıtım/post yok.
 
-**O5 ilk alt paket tamam:** toplu koşu önizlemesi hedef/payload/persona-profil/ayar
-sürümüne bağlandı. #309 final `113f3aa`, exact CI `37184176713` **7/7**; main
-`cbb8aaf`. Son 50 test ve önceki iki gerçek kilit senaryosu geçti. Opus 5 koşulları
-kaynak/testle kapandı; shared kilit varsayımı çürütüldü. Son yerel 100 hedef süreleri
-193/548 ms (preview/queue); canlı performans iddiası değil. Kuyruğa alma alt paketinin
-kod/hakem/CI işi aktif kuyruktan çıktı; dağıtım açık. Global iptal/durdurma gibi diğer
-toplu komutlar bu ilk alt pakette tamamlandı sayılmaz.
-[O5 belirtimi](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
-
-**O5 profil-only CAS notu:** kaynakta doğrulandı; persona sürümü değişmeden çalışma
-ayarlarının kaybolabildiği yol dar durum hash'iyle yerelde kapatıldı. Son 47 birim/arayüz/sözleşme
-ve 52 PG testi geçti; ilk okuma hash'i/sürümü form yenilemesinde korunur. Opus 5 koşulları kaynak envanteri/yönlendirme kanıtıyla
-kapatıldı. #312 final `41123ca`, CI `37193401818` 7/7; main `0ea725d`. Bu alt paketin
-kod/hakem/CI işi tamam; dağıtım açık. Yeni migration veya acil pause/iptal/durdurma önkoşulu eklenmedi.
-
-**O5 içerik tamlık notu:** kalan komut envanterinde run/agent penceresinin ilk 500 kaydı
-tamamıymış gibi işleyebildiği kaynakta bulundu. 501 ile taşma kontrolü, mutasyon öncesi
-422 ve seçim daraltma yolu hazır. Opus koşuluyla boş seçim NO_MATCH ve sonuç/makbuzda
-seçim zamanı/run durumu eklendi; son 4 PG16/7 birim-UI geçti. #314 final `9ffa18f`,
-CI `37195890146` 7/7; main `16790be`, uzak SHA/test edilen ağaç eşitliği doğrulandı.
-Bu dar düzeltmenin kod/hakem/CI işi tamam; canlı dağıtım açık.
-Diğer komutların kapsam kararı ve canlı dağıtım bu dar düzeltmeyle kapanmaz. İstek
-kesilirse makbuzsuz tekil commit kalması #322 ile tek transaction + entry savepoint'i
-içinde kapandı; kod/hakem/exactCI tamam, canlı kullanım açık.
+**O5 kod ve dağıtım tamam:** kuyruk#309, profil#312, içerik#314/#322 ve rota kapsamı
+kod/hakem/exact CI ile kapandı, app d829 içinde canlı. Kuyruk önizlemesi exact hedef/
+payload/persona/settings CAS taşır; profil grubu expected version ile atomiktir;
+içerik taraması ilk500 satıra daralmaz. Diğer global pause/iptal komutları yalnız ilgili
+kendi sözleşmeleriyle uygulanır; bu CAS kontrollerinden genel bypass çıkarılmaz.
+Kalan sınırlı canlı kullanım makbuzu Gate11 işlem paketindedir. [Toplu komut makbuzu](O5_TOPLU_KOSU_ONIZLEMESI_2026-10-04.md).
 
 ## 3. Kabul, maliyet ve geri alma
 
@@ -491,59 +234,24 @@ başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime mode
 
 ## 4. Operasyon hattı — özelliklerden bağımsız korunacaklar
 
-| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                            |
-| ------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **O1** | Heartbeat #296, ilk hazır dağıtım                    | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                       |
-| **O2** | Kapasite, 15 Ekim                                    | Kayıtlı 17 Ekim son tarihinden önce yenileme hazırlığı; yeni fingerprint varsa tarihi bekleme. Otomatik dağıtım izni değildir                                              |
-| **O3** | Yedek/disk 5 Ekim; restore teknik hazırlık sonrası   | Gecelik dış yedek 25 Eylül'de kurulu; tekrar kurma. Son başarılı makbuz/retention; yeterli diskli izole restore. `sort`/`stat` kapandı. Aynı sağlayıcı artık riski kayıtlı |
-| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                               |
-| **O5** | Toplu komutların canlı kabulü, 17 Ekim               | Kuyruk #309, profil #312, içerik #314/#322 kod/hakem/CI tamam; rota kapsam kararı kaynakla kapandı. Canlı dağıtım/kullanım makbuzu açık                                    |
+| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                                      |
+| ------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **O1** | Canlı heartbeat ve P7 olay büyümesi                  | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                                 |
+| **O2** | P7 boyunca kapasite fingerprint takibi               | Cold/warm/dual ölçümü tamam; mevcut son tarih19 Ekim00:04:18UTC ve12 Ekim pencere/payını karşılıyor. Fingerprint değişirse yeni kapasite ve gerekli yeni T0; gereksiz benchmark yok. |
+| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                                         |
+| **O5** | Toplu komutların canlı kabulü, 17 Ekim               | Kuyruk #309, profil #312, içerik #314/#322 kod/hakem/CI tamam; rota kapsam kararı kaynakla kapandı. Kod canlı; sınırlı kullanım makbuzu Gate11’de açık                               |
 
-**O3 güncel olay:** 4 Ekim 01:31 UTC gecelik yedek yerel `DISK_LOW` ile durdu; önceki
-yedi kopya korundu. Kullanılmayan araç sürümü/paket/build cache temizliğiyle yerel boş alan
-~4,2 → 5,6 GiB (%89 → %86) oldu. `sort/stat`/checksum ve alarm düzeltmesi #307 ile
-`ef216d4` ana dalında; Opus koşulu kapandı, son exact CI 7/7. 21 shell, 7 arama PG16
-ve ilgili gerçek masaüstü/mobil 4 E2E geçti. Kabul edilmiş yerel betik atomik kuruldu;
-eski dosya/hash saklı. 05:40–05:43 UTC telafi yedeği geçti: 1.315.865.212 bayt,
-50 tablo, üç snapshot işareti, checksum tekrar okuma ve arşiv listesi PASS; son yedi
-kopya korunuyor. Sonraki yerel kontrolde checksum yeniden geçti; bütün arşiv veri blokları
-23,223 sn’de hatasız decode edildi. Bu SQL uygulaması/constraint/index kanıtı değildir;
-Teknik hazırlık sonrası tam restore kanıtı açık.
-4 Ekim 05:46 UTC ölçümü: DB 5.741.173.783 bayt, operatörde ~5,84 GB boş; yerel tam
-restore'a güvenli pay yok. Üretimde 29.130.304 KiB boş (%62 kullanım). O3 dış yedeği,
-4 Ekim erken karar sonrası üretimde **ayrı, yalnız bu provanın oluşturduğu DB'ye** geri yüklenip
-karşılaştırılır; uygulama DB'si hedef olamaz. Prova kopyası doğrulama sonrası kaldırılır.
-Bu dış yedek provası, A5'in geçiş anındaki taze/frozen backup ve ayrı restore kapısının
-yerine geçmez. Tam restore teknik hazırlık sonrası yapılır; eski 7 Ekim tarihi bekleme şartı değildir, düşük disk eşiği düşürülmez.
-5 Ekim gece makbuzu ayrıca kontrol edilir. 07:05 UTC kullanılmayan üçüncü eski
-Claude CLI sürümü `2.1.280` kaldırıldı; çalışan/current `2.1.288` ve önceki `2.1.281`
-hash’leri korundu. Yaklaşık 234 MB açıldı, boş alan 6.119.620.608 bayt oldu;
-5 GiB ön eşiğiyle aradaki pay yaklaşık 751 MB. 28 Eylül–4 Ekim dump boyutu
-1.182.167.798 → 1.315.865.212 bayt büyüdü; yedi kopyalı retention kapasite ihtiyacını
-ortadan kaldırmaz. 09:55 UTC native `zstd:3` hazırlığında 21 shell/1 gerçek PG16
-dump-restore testi geçti; yerel mevcut-yedek veri akışı 676.647.983 bayt oldu. Native
-üretim dump boyutu henüz ölçülmedi. Canlı PG16 binary codec desteği salt okunur doğrulandı;
-Opus koşuluyla alıcıya yayımlama öncesi tam blok decode eklendi (son 23 test PASS).
-Gzip emniyet hardlink'i retention dışında sabit. #313 final `8531f64`, CI `37194424580`
-7/7; main `e8bb0e0`, ağaç eşitliği ve push CI `37194998932` 7/7 doğrulandı.
-10:37 UTC iki betik eski hash/geri dönüş kopyası korunarak atomik kuruldu; uygulama
-imajı/worker değişmedi. 10:39–10:41 UTC ilk native yedek **671.960.158 bayt**,
-checksum/50 tablo/3.270.401 satır/tam blok decode PASS; yedi normal kopya ve gzip pin
-korundu. Boş alan **6.679.306.240 bayt**. Timer aktif, sonraki iş 5 Ekim 01:39 UTC.
-Kurulum/ilk yeni yedek tamam; 5 Ekim otomatik makbuz ve teknik hazırlık sonrası tam DB restore açık.
-4 Ekim yerel restore makbuz aracı hazırlandı: ad/OID bağlı READ ONLY SQL ve tam tablo/
-sequence karşılaştırması #324 ile tamam: final `c667e69`, CI `37222466378` **7/7**,
-main `7af04c6`; uzak SHA/test edilen ağaç eşliği PASS. Opus dar kapanışta B2 itirazını
-geri çekti, B1/K1 kapandı; KOŞULLU GO'nun kapsam notları makbuzda açık. Son 23 ilgili
-ve önceki 22 shell testi PASS. Gerçek native arşivin yerel schema-only kontrolü 50 tablo/3
-sequence için uyumlu, kendi kopyası temizlendi; veri satırları restore edilmedi.
-Yardımcı kod işi aktif hazırlıktan çıktı. 5 Ekim otomatik yedek ve teknik hazırlık sonrası tam restore
-açık; süreç sınırı/izole hedef makbuzu çalışma gününde ayrıca uygulanır.
-Yedek yükü A′ döneminin operasyonel etkisi olarak kaydedildi. [O3 makbuzu](O3_YEDEK_2026-10-04.md).
+**O3 teslimi tamam:** eski dış yedeğin gerçek restore/veri eşliği ve owned DB
+kapanışı, exact a97 kaynak kurulumu ve5Ekim mevcut timer'ın otomatik native yedeği
+PASS. Son arşiv684.034.107 bayt/56tablo/3.357.181satır/3sequence; checksum/TOC/
+tam blok decode, yedi kopya ve gzip pin korundu. Yerel boş6.284.468.224 bayt.
+Eski aşama kayıtları [Ekim arşivinde](PLAN_ARSIVI_2026-10.md), ölçüm
+[STATUS.md](STATUS.md)/[O3 makbuzunda](O3_YEDEK_2026-10-04.md). Gate12'nin son
+pencere sonrası taze backup/restore/reboot kapısı bundan ayrıdır.
 
-Yerel operatör diski son ölçümde %86, üretim diski ayrı eski kayıtta ~%62'dir; bunları karıştırma.
-Her build/deploy için güncel değer gerekir; üretimde <8 GiB veya ≥%90 dolulukta build yok.
-Aktif/önceki imaj, runtime ve named volume korunur. Yerel ham veri yalnız ilgili kişisel ortamda.
+Yerel operatör ve üretim diski ayrı ölçülür. Her build/deploy için güncel değer gerekir;
+üretimde <8GiB veya ≥%90 dolulukta build yok. Aktif/önceki imaj, runtime ve named
+volume korunur. Yerel ham veri yalnız ilgili kişisel ortamda saklanır.
 
 ## 5. Ertelenmiş işler — kaybolmayan ama ana sırayı bölmeyen
 
@@ -572,8 +280,8 @@ Yeni ödül sistemi mevcut oy hakkını veya kamu sıralamasını sessizce deği
 
 Kullanıcının 3 Ekim düzeltmesiyle **önce ilk özellik paketi, ardından tek resmî pencere**
 seçildi. Eski 6–13 Ekim penceresi açılmadan kaldırıldı; geliştirmeyi bir hafta durduran
-bekleme yok. Son davranış dağıtımı ve zorunlu benchmark 9/10 Ekim’e yetişirse hedef 10–17
-Ekim’de 7×24 saattir. Gerçek başlangıç T0 ise bitiş T0+168 saattir; takvim uğruna kısaltılmaz.
+bekleme yok. Son davranış dağıtımı ve zorunlu benchmark4 Ekim'de tamamlandı; gerçek pencere
+5–12 Ekim'dir. Eski10–17 Ekim yalnız teslim hedefiydi, ayrı ikinci pencere açılmaz. Gerçek başlangıç T0 ise bitiş T0+168 saattir; takvim uğruna kısaltılmaz.
 Gate 11/12 ayrıca süre/erişim gerektirebilir; 17 Ekim hedefi ölçülmemiş DONE-082 sözü değildir.
 
 **P7 ön uygunluk:** aynı izinli salt okunur paketle mevcut rejimin teknik hataları,
@@ -581,9 +289,8 @@ roster/uyanış durumu, kaynak tabanı ve pencereyi kapsayan kapasite doğrulan�
 kayıtları varsa kohortları ayrılır; önce ayrıca yedi gün veri biriktirme önkoşulu yok.
 Bilinen teknik/kaynak/kapasite engeli düzeltilmeden pencere açılmaz. Yeni rejimde uzun dönem
 oranın henüz ölçülememesi zaten yapılacak yedi günlük kabulün konusudur; kısa ön kontrol
-PASS veya uzun dönem güvenilirlik iddiası üretmez. Mevcut 17 Ekim kapasite son tarihi gerçek
-pencere bitişini karşılamıyorsa benchmark **pencere öncesinde** yenilenir. O2’nin 15 Ekim
-kontrolü bu zorunluluğu ertelemez. Pencere kayarsa yeni tarih ve sebep yazılır.
+PASS veya uzun dönem güvenilirlik iddiası üretmez. Ölçülen19 Ekim kapasite son tarihi mevcut pencere/payını karşılar. Bir fingerprint
+değişikliği veya kayma yüzünden yeni pencereyi karşılamıyorsa benchmark **pencere öncesinde** yenilenir. O2 takibi bu zorunluluğu ertelemez. Pencere kayarsa yeni tarih ve sebep yazılır.
 
 Pencere içindeki koşulu etkileyen hata için düzeltme ertelenmez; gerekiyorsa pencere yeniden
 başlar. Böyle bir durumda yalnız resmî kabul kayar; hazırlanmış ürün özellikleri yeniden
@@ -613,8 +320,8 @@ alan→istem boşlukları kodla doğrulandı. Küçük örnek genellenmedi; P2 b
 [Ölçüm ve uygulama makbuzu](P0_P2_KARAKTER_2026-10-03.md). Ek uzun taban deneyi yok.
 
 4 Ekim P2 çalıştırıcı kodu #325 ile tamam: `0b99703` → main `abd1ae7`;
-exact CI 7/7,101 ağsız test, Opus 5 dar koşullu kod kabulü ve yazılı kapanış. Bu tamamlanma
-P2 davranış pilotu veya P7 kabulü değildir; gerçek model çağrısı 0.
+exact CI7/7,101 ağsız test,Opus dar koşullu kod kabulü. Ardından gerçek ilk set12
+karar/0 teknik hata ile tamamlandı: fayda BELİRSİZ,saklı set kapalı. P7 kabulü değildir.
 
 ## 7. Plan bakımı ve kanıt
 
