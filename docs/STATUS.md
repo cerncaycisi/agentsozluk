@@ -7,6 +7,35 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 12:05 UTC — ukte kullanım kabulünün hazırlığı
+
+Main `bda75002957ba8ea3bde2fe32cdc3b0b654ce75c`, CI37304416767 **7/7 PASS**;
+root ve özel çalışma ağacı temiz, remote main eşit. Uygulama kodu tam geliştirme
+koşusu37289761730 ile doğrulanan DBC'den beri değişmedi. Bu belge/CI kapanışı canlı
+sürümü veya haftalık pencereyi değiştirmedi.
+
+Ukte için **12 çevrimdışı şema/anahtar/limit kontrolü** geçti; ilgili **14 kaynak**
+canlı d829 sürümündeki dosyalarla birebir eşit. Geçerli oluşturma gövdesi yalnız
+`title`, geri çekme gövdesi `{}`. Kanonik eşdeğer başlık aynı hedefi bulur; gövde
+farklı olduğundan ayrı idempotency anahtarı gerekir. Aynı anahtar ve aynı gövde
+replay'i önceki `created:true` yanıtını döndürür; yeni anahtarlı mükerrerde
+`created:false` beklenir. Her iki durumda gerçek ID ve kayıt/audit sayımı canlıda
+ayrıca doğrulanmalıdır; cached yanıt güncel OPEN durumunu kanıtlamaz.
+
+Kaynak sözleşmesi: yazar onayı olmayan hesap ukte oluşturamaz; onay kaldırıldıktan sonra eski
+oluşturma anahtarıyla replay de `403 WRITER_APPROVAL_REQUIRED` almalıdır. Aktif
+HUMAN kendi uktesini onaysız da geri çekebilir; başka aktif HUMAN için geçerli
+ID ve `{}` ile `404 UKTE_NOT_FOUND` beklenir. Bu HTTP sonuçları henüz ölçülmedi.
+Planlanan sahipli dizi **beş oluşturma isteği** ile beş/saat sınırını doldurur;
+sahibin üç ve diğer hesabın bir geri çekme isteği otuz/dakika sınırının altında.
+Hız sınırı replay'e de uygulanır; belirsiz sonuçta kör yeniden deneme yapılmaz.
+
+Canlı test için hedeflenen son durum sahipli `WITHDRAWN` kayıt ve değişmez `ukte.created`/`ukte.withdrawn`
+audit'inin korunmasıdır; rate/idempotency/oturum yan etkileri ayrıca sayılır.
+Üretim/HTTP/hesap/oturum işlemi yok. Gerçek boş hedef, sahipli hesap/oturum
+kapatma yolu ve yeni yürütücünün farklı model incelemesi hâlâ Gate11 ön koşullarıdır.
+Bu hazırlık P6 canlı kullanım, Gate11 veya final M2 PASS değildir.
+
 ## 5 Ekim 11:30 UTC — doğal gözlem ve ret uyarısı
 
 11:30:09.956968 UTC otomatik **192 doğal /190 terminal**:149SUCCEEDED/38PARTIAL/

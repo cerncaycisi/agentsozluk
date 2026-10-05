@@ -5802,3 +5802,23 @@ ModelobserverNONE_BY_CONSTRUCTION metin alanı actualprovider sayacı değil.
 Tekrarlama: browserrequest iptallerini agententry ret paydasına katma; önceki29ret
 kodunu yeni35in dağılımı sayma; event17den ödül/amaç/persona faydası çıkarma;
 erken190terminal veya düşük teknik oranını gerçek168h/finalkabul diye yazma.
+
+### 12:05 UTC — P6 ukte canlı kabulü için çevrimdışı sözleşme ve istek bütçesi
+
+Exact main bda75002957ba8ea3bde2fe32cdc3b0b654ce75c / CI37304416767 7/7 PASS;
+canlı kaynak d829. Salt yerel hazırlıkta 14 dosyanın d829 byte eşliği ve 12 şema,
+kanonik hedef, istek hash'i, hız sınırı ve kısa oturum sabiti kontrolü geçti.
+Yerel51225 exit0; DB/HTTP/üretim/hesap/oturum/model işlemi yok. Yeni yürütücü yok.
+Kök neden olarak bir ürün hatası bulunmadı; gelecekteki testin replay ile yeni
+anahtarlı mükerrer oluşturmayı karıştırmaması ve beş/saat sınırını aşmaması sağlandı.
+Aynı-key replay önceki created:true, farklı-key mükerrer created:false; ID/count/audit
+kanıtı ayrıca gerekir. Onay kaldırılınca replay403; aktif sahibi onaysız withdraw200,
+başkası404 sözleşmesi kaynakta ayrıldı. HTTP sonuçları henüz ölçülmedi.
+Planlanan owner create5, owner withdraw3/other withdraw1; create için retry payı0.
+Canlı testte hedef WITHDRAWN ve audit korunmasıdır; rate/idempotency/session etkileri ayrıca sayılır.
+Gerçek hedef, kendi hesap/session temizliği ve secret transport/executor hakemi
+post-window işlem makbuzunda doğrulanmadan bu hazırlık canlıda çalıştırılmaz.
+Tekrarlama: kanonik varyantı eski key ile gönderip409u tekilleştirme sayma;
+replay.created:true değerini yeni kayıt veya güncelOPEN kanıtı sayma;
+429/bağlantı belirsizliğinde kör yeni key üretme; fixture/audit SQL silme;
+şema/limit sabiti kontrolünü gerçek yetki/HTTP/Gate11 veya P6 kullanım kabulü sayma.

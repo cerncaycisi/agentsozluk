@@ -8,12 +8,12 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 11:30 UTC — test ve açık ekran hazırlığı tamam; doğal haftalık gözlem sürüyor.**
+**5 Ekim 12:05 UTC — kabul hazırlıkları ilerliyor; doğal haftalık gözlem sürüyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
 Ek rol paketinin ayrı kontrolleri ve yeni sürümün tam geliştirme doğrulaması başarıyla geçti.
-Son saatlik ölçümde 192 doğal çalışmanın 190’ı tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
+Son 11:30 UTC ölçümünde 192 doğal çalışmanın 190’ı tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
 oranı %1,6; içerik ret oranı %24,6 ile hedefin üzerinde. Doğal bir haftalık gözlem sürüyor.
 Ajan rolü taleplerine açık ret veren düzeltme ana dala alındı; henüz canlıda değil.
 Bir haftalık gözlemin sürümünü sabit tutmak için bu ek paket henüz dağıtılmadı;
@@ -131,6 +131,17 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   izlenen browser context içinde üçüncü origin isteği0; hesap veya form işlemi yapılmadı. Bu salt okunur hazırlık
   Gate11 PASS, yeni hesap/onay veya yayın yetkisi testi değildir. Ağ ayrımı ve
   sınırlı kanıt aşağıdaki tarihli STATUS/ATTEMPT makbuzunda saklıdır.
+
+- **Ukte kullanım kabulü için çevrimdışı hazırlık — 12:05 UTC:** main
+  `bda75002957ba8ea3bde2fe32cdc3b0b654ce75c`, CI37304416767 **7/7 PASS**.
+  On dört ilgili kaynak canlı d829 ile byte-identical; 12 şema/anahtar/limit
+  kontrolü geçti. Bu sayılar HTTP veya canlı yetki testi değildir. Aynı anahtar
+  ve aynı gövde replay'i ilk `created:true` yanıtını döndürür; yeni anahtarlı
+  kanonik mükerrer istek aynı ID ile `created:false` döndürmelidir. Onay kaldırılınca
+  replay de taze yetki kontrolünden geçer; aktif HUMAN kendi uktesini yazar onayı
+  olmadan geri çekebilir. Sahipli test dizisi beş oluşturma isteğiyle saatlik
+  sınırı doldurur; kör tekrar yapılmaz. Hesap/oturum veya üretim işlemi yapılmadı.
+  Gerçek hedef, sahipli hesap/oturum temizliği ve yürütücü incelemesi Gate11'de bekler.
 
 ### Tek aktif sıra
 
