@@ -402,7 +402,8 @@ const codexIntervalSchema = z
       ortasında patladığında süre "çağrı ne kadar sürdü" değil, "deadline'a ne
       kadar kalmıştı" olur. 3 Eylül 2026'daki teşhis turu tam bu yüzden yanlış
       yere baktı — kesilmiş süreler yavaşlama sanıldı. Bayrak olmadan bu hata
-      her analizde yeniden yapılabilir.
+      her analizde yeniden yapılabilir. Faz bütçesi kesmesi de (örneğin BROWSE
+      timeout) bu bayrağı kullanır; tek başına koşu deadline nedenini kanıtlamaz.
     */
     censored: z.boolean().optional(),
     /* Sürenin ayrışması: kurulum + CLI denetimi modelin payı değildir. */

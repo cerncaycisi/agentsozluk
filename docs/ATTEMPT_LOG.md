@@ -5985,3 +5985,55 @@ timeout'u kaynakregresyonu veya GO sayma; kod0 cümlesini veriden bağımsız ya
 strictAPI belgesindeki eksik19alanı additionalProperties:true ile gizleme;
 REJECTED teşhis adayını çalıştırma; peer önerisini uygulama0–24/P7identity gate'ini
 gevşetme yetkisi sayma; şimdiki retention değerinden eski dosya varlığı çıkarma.
+
+## 5 Ekim 2026 14:29 UTC — O4 kurtarılmış kesilme ve iç wire sözleşmesi
+
+PR332 kaynak1504e14def39def98fe049a6bb2d7e9174a3f3cc için actualOpus5/208,667sn
+**KOŞULLU GO** alındı. Önceki F-A..H kaynak kapanışı doğrulandı; R1 güvenli kod
+olmayan kesilmiş kurtarma çağrılarının raporda görünmemesi, R2 iç nesnelerin belge
+sözleşmesinin yalnız üst seviye alan listesiyle korunması doğrulandı. Kod davranış
+hatası bulunmadı. R1/R2 teslim öncesi, yeni exactCI ve birleşmiş full development
+koşulları korunur; görüş üretim yetkisi veya final kabul değildir.
+
+R1 ayrı `censoredWithoutCodeCalls` ve makine anahtarıyla kapandı. Bu sayı yalnız
+`censored:true` ve eksik providerSafeCode çağrılarını, terminal doğal koşularda
+sayar; bilinen neden sayısına katılmaz. Kesilme tek başına timeout kök nedeni veya
+%6,667 teknik oranının açıklaması değildir. Ham/invalid kod taşınmaz. R2 için yeni
+üç iç nesne doğrudan Zod JSON şemasıyla karşılaştırılır: alanlar, required,
+additionalProperties, enum ve sayısal/dizi sınırları birlikte test edilir. Yeni
+bir ikinci enum sözlüğü oluşturulmadı. R3 required kümesi, R4 tüm-terminal çağrı
+kohortu açıklaması, R5 faz bütçesi kesilmesinin censored yorumu, R6 makine satır
+sırası ve opsiyonel R7 tarihsel gezinme-öncesi ölçüm açıklaması da kapandı.
+
+14:26:34 yerel ondosya **192 distinct test PASS**; worker95/schema19/helper26/
+OpenAPI24/report5 ve diğer mevcut provider/mimari/ledger testleri dahildir. İlk
+focused55 bu192ye eklenmez. OpenAPI154operation PASS. Yeni kalite kontrolleri ve
+exact commit/CI/hakem bekler; önceki187 veya1504CI yeni düzeltmenin kanıtı değildir.
+İlk komut zincirinde olmayan `openapi:check` adı nedeniyle exit254 alındı; testler
+192PASS idi ve kalite adımlarına henüz ulaşılmamıştı. package.json kaynağı doğrulanıp
+mevcut `openapi:validate` ile devam edildi; ürün/test regresyonu veya başarılı
+kalite sonucu diye yorumlanmaz. Sonraki lint testin kullanılmayan `_description`
+değişkeni nedeniyle uyarı verdi; eşik düşürülmeden kopyada description kaldırma
+biçimine geçildi ve kalite kontrolleri yeniden başlatıldı.
+
+V2 salt okunur teşhis hakemi ayrı seri turdadır; üretim erişimi henüz yok. V1REJECTED
+kaynak hiçbir zaman çalıştırılmadı. Canlı d829/settings308/worker/T0 aynı; P7 ve
+DONE082/DONE084 açık, goal aktiftir. Tekrarlama: kesilme sayısını bilinen kök neden
+sayma; üst seviye alan eşitliğini iç sözleşme eşitliği sayma; olmayan komut adına
+geçmeden package.json'u oku; eski test/CI/hakem sonucunu yeniSHAya taşıma.
+
+14:32:37 yeniden kalite zinciri **format/lint/typecheck, M1requirements3 ve
+M2development464/77/25/2/0 PASS** ile tamamlandı; uyarı/eşik gevşetmesi yok.
+API24 focused tekrar yeni test sayısı değildir. Ayrı teşhis V2 actualOpus5/289,881sn
+KOŞULLU GO: explicit public tablolar, enum kontrolü ve eksik/bozuk aralık paydaları
+şartıyla; hiçbir üretim çalıştırması yok. V3 bu şartları ve pencere tamlığı, safe
+parse, özel dizin izni, exactyetki başlangıcını kapattı; compile/missingpeer0child/-O
+ret üç çevrimdışı kontrol PASS, yeni hakem bekler. trigger kaynakta String'dir;
+AgentRunType/Status gerçek enum sözlüğü ayrıca doğrulanır. Erken hata oranı final
+oranın matematiksel alt sınırı sayılmaz; bu peer önerisi uygulanmadı.
+14:30:09.968 aynı scheduled observer SUCCESS/exit0/hash3: 262doğal/260terminal,
+197SUCCEEDED/47PARTIAL/14FAILED/2TIMED_OUT/2RUNNING. Teknik16/260=%6,154 hâlâ
+
+> %5; yeni terminal20 içinde ek FAILED/TIMED_OUT yok. Entry148başarı/43ret/0FAILED/
+> payda191=%22,513 ABOVE. Ayrı13:30 ve14:30 paydalar havuzlanmaz. P7 erken, finaleligible
+> false; d829/settings308/worker/T0 aynı, hiçbir teşhis üretim erişimi yok.

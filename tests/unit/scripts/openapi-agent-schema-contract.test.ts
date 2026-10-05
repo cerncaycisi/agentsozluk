@@ -9,6 +9,7 @@ import {
 import path from "node:path";
 import SwaggerParser from "@apidevtools/swagger-parser";
 import { beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   assertAgentMutationSchemaContracts,
   type OpenApiDocument,
@@ -153,6 +154,29 @@ describe("OpenAPI provider telemetry wire alignment", () => {
       Object.keys(usageMetadataSchema.shape).sort(),
     );
     expect(schema?.additionalProperties).toBe(false);
+  });
+  it.each(["decisionRepair", "actionWorthiness", "browseExperiment"] as const)(
+    "keeps the complete nested %s contract equal to Zod",
+    (field) => {
+      const documented = inlineSchema(
+        sourceDocument.components?.schemas?.RuntimeUsageMetadata?.properties?.[field],
+        field,
+      );
+      const documentedContract = { ...documented };
+      delete documentedContract.description;
+      const generated = z.toJSONSchema(usageMetadataSchema);
+      expect(documentedContract).toEqual(generated.properties?.[field]);
+    },
+  );
+  it("keeps required usage metadata fields equal to Zod", () => {
+    expect(
+      [...(sourceDocument.components?.schemas?.RuntimeUsageMetadata?.required ?? [])].sort(),
+    ).toEqual(
+      Object.entries(usageMetadataSchema.shape)
+        .filter(([, field]) => !field.isOptional())
+        .map(([key]) => key)
+        .sort(),
+    );
   });
   it("keeps the safe code and phase dictionaries equal to the runtime contract", () => {
     const schema = sourceDocument.components?.schemas?.RuntimeCodexInterval;

@@ -105,6 +105,10 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("summarizeProviderFailureCalls(terminalNaturalRuns)");
     expect(baseline).toContain("natural_provider_cause_calls.by_phase.");
     expect(baseline).toContain("natural_provider_cause_calls.runs_with_recorded_cause=");
+    expect(baseline).toContain("natural_provider_cause_calls.censored_without_code=");
+    expect(
+      baseline.indexOf("natural_provider_cause_cohort_runs.upstream_unavailable="),
+    ).toBeLessThan(baseline.indexOf("natural_provider_cause_calls="));
     expect(baseline).not.toContain("bilinen kota sayısı 0");
     expect(baseline).toContain("natural_provider_cause_cohort_runs.unknown_cause.timeout=");
     expect(baseline).not.toMatch(/JSON\.stringify\([^)]*usageMetadata/u);

@@ -1135,7 +1135,7 @@ async function main(): Promise<void> {
       "",
       "DOĞAL KOŞU SAĞLAYICI NEDEN KOHORTU",
       "Birim: terminal doğal koşu; PARTIAL dahil. Teknik FAILED+TIMED_OUT oranının paydası ayrı kalır.",
-      `Eksik/eski/timeout nedeni bilinmiyor; bilinen kota: ${providerFailureCauses.rateLimitedRuns} koşu / ${providerFailureCalls.codes.find(([code]) => code === "CODEX_RATE_LIMITED")?.[1] ?? 0} çağrı; sayılar kota yokluğu kanıtı değildir.`,
+      `Eksik/eski/timeout nedeni bilinmiyor; bilinen kota: ${providerFailureCauses.rateLimitedRuns} koşu / ${providerFailureCalls.codes.find(([code]) => code === "CODEX_RATE_LIMITED")?.[1] ?? 0} çağrı (çağrı sayısı tüm terminal doğal koşuları kapsar); sayılar kota yokluğu kanıtı değildir.`,
       renderTable(
         [
           "runs",
@@ -1164,8 +1164,9 @@ async function main(): Promise<void> {
       ),
       "",
       "DOĞAL SAĞLAYICI ÇAĞRILARI — KAYDEDİLMİŞ GÜVENLİ HATA NEDENLERİ",
-      "Birim: çağrı; kurtarılmış/yutulmuş çağrılar dahil. Son koşu nedeni veya teknik hata oranı değildir.",
+      "Birim: kaydedilmiş güvenli nedeni olan çağrı; kurtarılmış/yutulmuş hatalar dahil. Kod taşımayan kesilmiş çağrılar ayrı sayılır; kesilme timeout kök nedeni değildir. Son koşu nedeni veya teknik hata oranı değildir.",
       `recorded_cause_calls=${providerFailureCalls.calls}; runs_with_recorded_cause=${providerFailureCalls.runsWithRecordedCause}`,
+      `censored_without_code_calls=${providerFailureCalls.censoredWithoutCodeCalls}`,
       renderTable(
         ["providerSafeCode", "calls"],
         providerFailureCalls.codes.map(([code, count]) => [code, String(count)]),
@@ -1419,6 +1420,7 @@ async function main(): Promise<void> {
       `natural_provider_cause_cohort_runs.upstream_unavailable=${providerFailureCauses.upstreamUnavailableRuns}`,
       `natural_provider_cause_calls=${providerFailureCalls.calls}`,
       `natural_provider_cause_calls.runs_with_recorded_cause=${providerFailureCalls.runsWithRecordedCause}`,
+      `natural_provider_cause_calls.censored_without_code=${providerFailureCalls.censoredWithoutCodeCalls}`,
       ...providerFailureCalls.codes.map(
         ([code, count]) => `natural_provider_cause_calls.${code}=${count}`,
       ),

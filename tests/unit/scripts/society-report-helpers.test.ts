@@ -574,6 +574,7 @@ describe("recorded provider failure calls are separate from final run causes", (
     ];
     expect(summarizeProviderFailureCalls(runs)).toEqual({
       calls: 3,
+      censoredWithoutCodeCalls: 0,
       runsWithRecordedCause: 3,
       codes: [
         ["CODEX_RATE_LIMITED", 2],
@@ -616,9 +617,37 @@ describe("recorded provider failure calls are separate from final run causes", (
     ]);
     expect(summary).toEqual({
       calls: 2,
+      censoredWithoutCodeCalls: 0,
       runsWithRecordedCause: 1,
       codes: [["CODEX_RATE_LIMITED", 2]],
       byPhase: [["UNKNOWN", "CODEX_RATE_LIMITED", 2]],
+    });
+    expect(JSON.stringify(summary)).not.toContain("RAW_SECRET");
+  });
+  it("separates censored calls without a code from recorded causes and ignores invalid shapes", () => {
+    const summary = summarizeProviderFailureCalls([
+      {
+        runStatus: "SUCCEEDED",
+        usageMetadata: {
+          codexIntervals: [
+            { phase: "BROWSE", censored: true },
+            { phase: "DECISION", censored: false },
+            { phase: "CONTENT_REPAIR", censored: true, providerSafeCode: "CODEX_RATE_LIMITED" },
+            { censored: true, providerSafeCode: "RAW_SECRET_CODE" },
+            { censored: "true" },
+            null,
+          ],
+        },
+      },
+      { runStatus: "PARTIAL", usageMetadata: { codexIntervals: [{ censored: true }] } },
+      { runStatus: "RUNNING", usageMetadata: { codexIntervals: [{ censored: true }] } },
+    ]);
+    expect(summary).toEqual({
+      calls: 1,
+      censoredWithoutCodeCalls: 2,
+      runsWithRecordedCause: 1,
+      codes: [["CODEX_RATE_LIMITED", 1]],
+      byPhase: [["CONTENT_REPAIR", "CODEX_RATE_LIMITED", 1]],
     });
     expect(JSON.stringify(summary)).not.toContain("RAW_SECRET");
   });

@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 14:08 UTC — erken teknik hata hedefin üzerinde; kaynak ve teşhis kapıları kapanıyor.**
+**5 Ekim 14:29 UTC — erken teknik hata hedefin üzerinde; kaynak ve teşhis kapıları kapanıyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
@@ -197,6 +197,16 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    doğrudan ayrılır ve pozitif legacy assertion var. Machinecall/run anahtarları
    gruplanır; recoveredBROWSEtimeout testi, gerekçe konumu ve unknown toplamı eklendi.
    Son187ilgili test/OpenAPI154/format/lint/type PASS; önceki185in üstüne eklenmez.
+   Yeni exact1504 için actualOpus5/208,667sn KOŞULLU GO; önceki kaynak koşulları
+   kapandı. R1 kodsuz kesilmiş kurtarma çağrıları ayrı sayılır; R2 üç iç wire nesnesi
+   Zod JSON şemasıyla bütünüyle karşılaştırılır. Required kümesi, kohort açıklaması,
+   censored faz-bütçesi yorumu ve makine sıra assertion'ı da tamamlandı. Yeni192
+   ilgili test/OpenAPI154 PASS; focused55 ayrı toplam değildir. Yeni exact kaynak
+   format/lint/type/M1req/M2dev PASS; yeni hakem/CI ve mergedfull kapıları bekler.
+   Canlı davranış değişmedi. Son14:30 otomatik kesit260terminal/teknik16=%6,154
+   hâlâ hedefin üzerinde; ret43/191=%22,513. Önceki kesitler ayrı saklanır.
+   Teşhis V2 actualOpus5/289,881sn KOŞULLU GO koşulları V3 kaynakta kapandı;
+   üç offline kontrol PASS, hakem bekler. Hiçbiri üretimde çalıştırılmadı.
    Son düzeltmeler için yeni exact peer/CI ve birleşmiş kaynak fulldevelopment
    hâlâ bekler; 8281 CI yeni187kaynak kanıtı değildir.
    Ayrı salt okunur teşhis adayı ilkactualOpus5/233sn **REJECTED**: güvenli root

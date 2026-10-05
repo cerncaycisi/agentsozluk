@@ -131,6 +131,7 @@ export function summarizeProviderFailureCalls(
   runs: readonly { runStatus: string; usageMetadata: unknown }[],
 ): {
   calls: number;
+  censoredWithoutCodeCalls: number;
   runsWithRecordedCause: number;
   codes: Array<[RuntimeProviderExecutionSafeCode, number]>;
   byPhase: Array<[RuntimeCodexPhase | "UNKNOWN", RuntimeProviderExecutionSafeCode, number]>;
@@ -141,6 +142,7 @@ export function summarizeProviderFailureCalls(
     Map<RuntimeProviderExecutionSafeCode, number>
   >();
   let calls = 0;
+  let censoredWithoutCodeCalls = 0;
   let runsWithRecordedCause = 0;
   for (const run of runs) {
     if (!isTerminalRunStatus(run.runStatus)) continue;
@@ -148,6 +150,7 @@ export function summarizeProviderFailureCalls(
     for (const interval of providerIntervals(run.usageMetadata)) {
       const record = telemetryRecord(interval);
       const code = record?.providerSafeCode;
+      if (record?.censored === true && code === undefined) censoredWithoutCodeCalls += 1;
       if (!isRuntimeProviderExecutionSafeCode(code)) continue;
       const phaseValue = record?.phase;
       const phase = isRuntimeCodexPhase(phaseValue) ? phaseValue : "UNKNOWN";
@@ -162,6 +165,7 @@ export function summarizeProviderFailureCalls(
   }
   return {
     calls,
+    censoredWithoutCodeCalls,
     runsWithRecordedCause,
     codes: [...codes.entries()].sort(([a], [b]) => a.localeCompare(b)),
     byPhase: [...byPhase.entries()]
