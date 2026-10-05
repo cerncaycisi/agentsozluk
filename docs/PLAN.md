@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 03:44 UTC — doğal akış ve O4 gözlemcisi çalışıyor; CI süre düzeltmesi son kapıda.**
+**5 Ekim 04:30 UTC — doğal akış/O4 çalışıyor; CI süre düzeltmesi tamam, ret uyarısı açık.**
 Goal aktiftir. M2/DONE-082 henüz `BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
 Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
@@ -32,15 +32,17 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   `ffa97e00…4f119` atomik kuruldu. Root ancestor zinciri, kalıcı UID lock, iki flock,
   ACL ve worker erişimi doğrulandı; key/timer/app/image/worker korundu.
 - P4 tek gerçek kalite paketi SHADOW, sonra FULFILL_SLOT: iki ayrı kör Opus hükmü
-  **INSUFFICIENT**, pozitif kredi0/etkiNONE. Doğal isteme sunum henüz ölçülmedi;
-  olumlu ödül veya amaç tamamlanması uydurulmaz. BirthModeOFF.
+  **INSUFFICIENT**, pozitif kredi0/etkiNONE. 03:44 kesitinde doğal kohorta bağlı
+  üç CONTEXT_PRESENTED olayı ölçüldü;04:17 ayrımı **tek doğal terminal koşu/tek yazar**.
+  Üç ayrı deneme veya davranış faydası çıkarılmaz. Olumlu ödül veya amaç tamamlanması uydurulmaz. BirthModeOFF.
 - P7 ön uygunluk: 126taze kaynak/118origin/62TR odağı; tüm36 yazarın kaynak tabanı uygun.
   **2.208.277 ledger olayı/36profil**, dört sequence/hash sapması0. Gate9 worker,
   CLI/roster/kapasite/legacy-plan0/health kapıları geçti. Geçmiş810 koşu yeni pencereye katılmaz.
 - Salt okunur saatlik ve deadline timer aktif; gerçek systemd service success/exit0,
   PrivateTmp/NoNewPrivileges=yes. Opus55,359s koşulları timeout, hata redaksiyonu ve
   exact pin kontrolleriyle kapandı. Başlangıç bakımından sonra ACK02:03:27.958UTC doğal
-  batch ile yenilendi;02:06 kesitinde167sn/uyarı0, restart0. Doğal koşu hâlâ0; oran hesaplanmaz.
+  batch ile yenilendi;02:06 erken kesitinde167sn/uyarı0, restart0 ve doğal koşu0 idi.
+  Sonraki04:30 kesitinde34 doğal koşu ölçüldü; erken sıfır kesiti tarihsel saklanır.
 - Gerçek168 saat/grace/yeniT0 test uzlaştırması `6cbdafc5c219ec63e79a7ec94cba5081924d9ff6`,
   exact CI`37253378070` **7/7 PASS**,02:10:30UTC. Test/runbook kaynakları Opus
   incelemesinden sonra byte-identical kaldı. Bu belge/test commit’i app d829’a deploy
@@ -50,7 +52,10 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   Opus54,798s+118,901s koşullarıyla kaynakta kapandı; ilgili test21/21.
   Görüşler KOŞULLU GO olarak korunur; main19fc CI37256720380 coverage15dk sınırında
   CANCELLED, validate bağımlılık nedeniyle FAIL. Test308/2846 geçti; coverage PASS değildir.
-  Job20/adım16dk düzeltmesi son exact CI gerektirir. Bu hazırlık canlı
+  Job20/adım16dk düzeltmesi #329 ile kapandı: exact head5461 CI37260900294 ve
+  main `df583b6395a73f1cc0cea20d94b316e871228d3f` CI37262052820 **7/7 PASS**.
+  PR coverage job15dk41sn/adım15dk01sn; testler ve eşikler korunur. Main04:20:16UTC
+  kapandı; eski CANCELLED kaydı başarı diye değiştirilmez. Bu hazırlık canlı
   backup/restore/reboot veya Gate12 PASS değildir.
 
 ### Tek aktif sıra
@@ -59,11 +64,18 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   03:44 actual O4 kesitinde16 doğal uyanış:12SUCCEEDED/3PARTIAL/1RUNNING;
-   teknik hata0, terminal yazar15/36;≥3terminal doğal yazar0/36, P4 sunumu3.
-   ACK03:39:03.805UTC/324sn taze, uyarı0; worker restart0.
-   O4 SQL137ms/OS AVAILABLE; disk%69/24.018.628.608bayt boş; entry ret3/13
-   (%23,077) SMALL_SAMPLE, sağlayıcı/timeout sayıları0. Saatlik takip sürer.
+   04:30:03.580UTC otomatik O4 kesitinde34 doğal uyanış:25SUCCEEDED/7PARTIAL/2RUNNING;
+   teknik hata0,32terminal koşu, terminal yazar31/36;≥3terminal doğal yazar0/36.
+   P4 sunumu3 olay;04:17 ayrımı tek doğal koşu/tek yazardır, fayda kanıtı değildir.
+   ACK04:27:44.144UTC/139sn taze; worker restart0. O4 SQL161ms/OS AVAILABLE;
+   disk%69/24.071.172.096bayt boş, sağlayıcı/timeout sayıları0.
+   Entry19başarılı/7ret/0FAILED, payda26: **%26,923 ABOVE**;
+   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açıktır. 04:32 ayrı teşhiste8ret:
+   DUPLICATE_FRAMING2/DUPLICATE_SIMILARITY2/TOPIC_SEMANTIC_REPETITION3/
+   SOURCE_EXACT_NUMBER_UNSUPPORTED1. Farklı snapshot sayıları havuzlanmaz.
+   Kodlar ret doğruluğunu veya teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
+   Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden
+   ayrımı sürer; doğrulanmış güvenlik kusurunda düzeltme/pencere yeniden tarihleme kapısı korunur.
    Uzun SOURCE_REFRESH bakımından sonra loader ve doğal akış müdahalesiz ilerledi.
    Önceki stale kesitler saklanır; bakım doğal denominator değildir. Tam yazar coverage
    ve terminalleşme izlenir; bu erken kesit Gate10 veya davranış faydası kanıtı değildir.
@@ -75,7 +87,10 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    yedek/restore/reboot. Gate7’nin eski10profil/PAUSED ilk-migration sorgusu güncel
    Gate12’ye taşınmaz: actual36 roster/lifecycle korunur; source/restore V1+ledger
    parmak izleri ve ad/OID/owner/operation bağı kapıları geçer. Paket hazırlığı şimdi
-   yapılabilir; erken PASS verilmez.
+   yapılabilir; erken PASS verilmez. Gate11 için gerçek DB kind/role doğrulaması,
+   geçerli tek-hedef bulk preview negatif payload'ı ve token redaksiyon sınırı kaynakta
+   ayrıldı; session/token işlemleri henüz yapılmadı. Gate12 tam ledger zincir sorgusu
+   bütün tarihsel profilleri kapsar; kaynak/restore/reboot ölçümü henüz yapılmadı.
 3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
    aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
    Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız
@@ -83,6 +98,8 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 
 Tam ölçümler [STATUS.md](STATUS.md), denemeler [ATTEMPT_LOG.md](ATTEMPT_LOG.md).
 Pencereyi başlatmak planı bitirmek değildir; goal gerçek kabul ve sonraki kapılara kadar aktiftir.
+M2 geliştirme izlenebilirliği04:27UTC PASS:465aktif PASS/77superseded/1onaylı BLOCKED,
+0FAIL,543toplam;25kısmi supersession bu satırların içindedir. Final `verify:m2` ve DONE-082 açık.
 
 ## 1. Ürün sözleşmesi
 

@@ -5301,3 +5301,45 @@ Son exact CI henüz açık; P7/Gate10/11/12 ve M2/DONE-082 tamamlanmış sayılm
 
 Tekrarlama: shell devamını başarısız kurulum kapısı diye yorumlama; ilk hatada dur;
 peer iddiasını kaynakla doğrula; eksik/sınırlı ölçümü sıfır-yokluk veya PASS'a çevirme.
+
+## 5 Ekim 04:30 UTC — #329/main exact CI kapanışı ve O4 ret uyarısı
+
+Ortam: yerel Node22/Corepack pnpm10; app/image/runtime exact
+`d829dd06eb4aa68154f521667302e6744b67399e`, model/profile/T0 aynı.
+Süreli3–17 Ekim yetkisinde yalnız pinli bounded READ ONLY teşhis; deploy/restart/
+manüel tick/session/ayar/worker müdahalesi yapılmadı.
+
+#329 head`5461ec45c21278e801b42f2505f13fac1a4523dd`, exact CI37260900294
+7/7PASS. Coverage15dk41sn job/15dk01sn adım, uploadSUCCESS; eski15dk job
+bütçesi bu tamamlanan örnekten de kısadır. Job20/adım16dk, test/eşik kaynakları
+korundu. Son head/check/review/CLEAN/MERGEABLE tekrar okunup04:05:59UTC
+squash merge`df583b6395a73f1cc0cea20d94b316e871228d3f`; tree eşliği ve
+19fcparent doğrulandı. MainCI37262052820 validate04:20:16UTC dahil7/7PASS.
+Eski19fcCI37256720380 coverageCANCELLED/validateFAIL başarı diye değiştirilmedi;
+kalıcı takılma olasılığı bu iki başarıyla bütünüyle dışlanmış sayılmaz.
+
+04:30:03.580UTC otomatik service success/exit0,last-attemptSUCCESS;
+O4 pair57e8c3c4…bb49/caller24df9259…3e6e/remote5bad7382…532e/
+bootstrapb768c4d8…6b8e eşliği doğrulandı.34doğal koşu25SUCCEEDED/7PARTIAL/
+2RUNNING;32terminal/31profil, ≥3terminal profil0/36; teknik hata0.
+ACK139sn, HTTP200/200, worker2270111/restart0. SQL161ms/OSAVAILABLE;
+root%69/24.071.172.096bayt boş. Entry19SUCCEEDED/7REJECTED/0FAILED,
+payda26/%26,923: `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION`.
+
+Kök neden ayrımı04:32:50.863UTC ayrı5snREAD ONLY/2snlock scalar sorguda:
+8ret=FRAMING2/SIMILARITY2/SEMANTIC_REPETITION3/SOURCE_EXACT_NUMBER_UNSUPPORTED1.
+PARTIAL eylemler8ret/10başarılı. İki zamanın sayıları havuzlanmadı; body/reason/
+source metni/prompt/credential export yok. Exact action-executor kaynak koruma
+kodlarıyla eşlendi; yanlış ret veya teknik regresyon metin kanıtı olmadan
+ilan edilmedi. Karar: uyarı açık, doğal takip/Gate10 neden ayrımı; istem/policy/
+ayar/T0 sabit, O4 hedefi sağlandı veya P7PASS yazılmadı. P4 üç sunum olayı
+04:17 ayrımında tek doğal terminal koşu/tek yazardır; fayda/pozitif kredi yok.
+
+Gate11 gerçek kind/role ve valid bulk-preview payload/token sınırı ile Gate12
+bütün tarihsel profillerin ledger SQL'i yalnız kaynakta hazırlandı; session/token/
+restore/reboot henüz çalıştırılmadı. M2development04:27PASS465aktif/77superseded/
+1BLOCKED/0FAIL/543toplam;25partial supersession örtüşür. FinalM2 açık.
+
+Tekrarlama: tarihsel CANCELLED'ı yeşile çevirme; farklı snapshot ret sayılarını
+tek orana katma; policy ret kodunu yanlış ret veya doğru koruma kanıtı sayma;
+P4 üç olayı üç deney diye yazma; development PASS'ini final kabul sayma.

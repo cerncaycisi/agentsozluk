@@ -7,6 +7,64 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 04:30 UTC — exact CI kapanışı ve ilk yeterli entry ret örneklemi
+
+PR[#329](https://github.com/cerncaycisi/agentsozluk/pull/329) exact head
+`5461ec45c21278e801b42f2505f13fac1a4523dd`, CI`37260900294` **7/7 PASS**;
+coverage job15dk41sn/adım15dk01sn. Job20dk/adım16dk sınırları ile testler/eşikler
+korunarak son upload ve validate tamamlandı. 04:05:59UTC squash merge
+`df583b6395a73f1cc0cea20d94b316e871228d3f`; head ile merge tree eşit,
+parent19fc614. Main exact CI`37262052820` **7/7 PASS**, validate04:20:16UTC.
+Eski19fc coverage CANCELLED/validate FAIL tarihsel kaydı korunur. Bu belge/CI
+paketi app d829'a deploy edilmedi; canlı model/istem/ayar/T0 değişmedi.
+
+**04:30:03.580UTC otomatik service success/exit0**, son-attempt SUCCESS;
+kurulu O4 pair/bootstrap hash eşliği doğrulandı. Gerçek pencere3,286saat;
+34doğal NORMAL_WAKE:25SUCCEEDED/7PARTIAL/2RUNNING,32terminal, teknik hata0.
+Terminal yazar31/36, ≥3terminal doğal koşulu sağlayan yazar0/36. Operator koşu0.
+ACK04:27:44.144UTC/139sn; worker PID2270111/NRestarts0,
+settings308/runtimeTRUE/FULFILL_SLOT/BirthOFF,36credential/iki hat,
+controls33ef9060…8a ve CLI0.144.6/profile05a9bffb…390a sabit; health/ready200/200.
+
+O4 SQL161ms, OS AVAILABLE; root%69/24.071.172.096bayt boş.
+RuntimeUID999 proses örneği2/RSS334.749.696bayt/race0; bu hat/koşu sağlığı değildir.
+Doğal entry19başarılı/7ret/0FAILED/0diğer; payda26, **%26,923 ABOVE**.
+`O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık; önceki13paydalı
+SMALL_SAMPLE uyarısız kesit bunun yerine geçmez. Rate/quota/upstream/timeout/
+diğer FAILED0; CODEX_RATE_LIMITED olsaydı kota nedeni ayrıca ispatlanmalıydı.
+Diğer rollerin yedek görünürlüğü UNKNOWN/null; same-role-only0 genel yedek
+veya harici yedek yokluğu kanıtı değildir. Pencere-createdAt bakım kümesi null,
+T0 öncesi açılıp pencere içinde çalışan bakım batch'inin tarihini silmez.
+
+**04:32:50.863UTC ayrı READ ONLY/5sn teşhis:**8ret,
+DUPLICATE_FRAMING2/DUPLICATE_SIMILARITY2/TOPIC_SEMANTIC_REPETITION3/
+SOURCE_EXACT_NUMBER_UNSUPPORTED1. PARTIAL eylemler8REJECTED/10SUCCEEDED.
+04:30 ile farklı snapshot;8 sayısı7/26 oranına eklenmez. Kaynak
+`action-executor.ts:1232,1354,1364,1381,1394` bu kodların kaynak/tekrar korumalarına
+ait olduğunu gösterir; metinler okunmadığından ret doğruluğu veya yanlış ret
+hükmü verilmez. **Karar:** uyarı açık, doğal izlem ve Gate10 neden ayrımı sürer;
+istem/policy/persona değişmedi, kabul eşiği gevşetilmedi, fayda/PASS yazılmadı.
+Doğrulanmış güvenlik kusurunda düzeltme ve yeni pencere kapısı korunur.
+
+P4 CONTEXT_PRESENTED3;04:17:26.191UTC bounded ayrımı **tek doğal terminal koşu/
+tek profil**. Üç ayrı deney değildir; iki kör Opus hükmü INSUFFICIENT,
+pozitif kredi0/etkiNONE kalır. Yeni amaç/persona sürümü0 yalnız bu kesitin ölçümüdür.
+
+Gate11 hazırlığında application-issued session ile gerçek DB kind/role kontrolü,
+tek-hedef bulk preview geçerli negatif payload'ı ve maskelenen previewToken sınırı
+kaynakta ayrıldı. AGENT session oluşturulmadı; bootstrap-admin mevcut hesabın
+parola/rolünü değiştirdiği için fixture değildir. CLI smoke, UI/login PASS sayılamaz.
+Gate12 tam ledger zinciri sorgusu tarihsel/retired profilleri de kapsar; V1 row SHA,
+source/restore/frozen reboot eşliği hâlâ gerçek çalıştırma gerektirir. Bu hazırlıklar
+üretim yetki/backup/restore/reboot kabulü değildir.
+
+04:27UTC M2 development traceability PASS:465aktif PASS,77ADR-012 superseded,
+25kısmi supersession,1onaylı post-merge BLOCKED,0FAIL (543toplam).
+25kısmi supersession ayrı25satır değildir. Final `verify:m2`/DONE-082 BLOCKED;
+P7 IN_PROGRESS_NOT_PASS. Saatlik/deadline timer ve goal aktif; nihai Gate10
+incelemesi en erken12 Ekim01:24:54.588UTC. Sol geliştirme oturumunun paylaşılan
+kota etkisi ayrı ölçülmedi; yeni runtime benchmark/lab çağrısı yapılmadı.
+
 ## 5 Ekim 03:30 UTC — doğal akış ve coverage süre teşhisi
 
 **03:30:10.235UTC otomatik service success/exit0:** gerçek pencere2,287saat;
