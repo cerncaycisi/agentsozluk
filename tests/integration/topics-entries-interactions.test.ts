@@ -4199,7 +4199,7 @@ describe("reports and moderation with PostgreSQL", () => {
     ).toBe(2);
   });
 
-  it("blocks moderator grants to agents while allowing an admin to remove a legacy agent role", async () => {
+  it("rejects moderator grants to agents with an explicit application error and no side effects", async () => {
     const admin = await createUser("agent_role_guard_admin");
     const agent = await createUser("agent_role_guard_target");
     await integrationDatabase.user.update({ where: { id: admin.id }, data: { role: "ADMIN" } });
@@ -4227,28 +4227,16 @@ describe("reports and moderation with PostgreSQL", () => {
     expect(await integrationDatabase.moderationAction.count()).toBe(0);
     expect(await integrationDatabase.auditLog.count()).toBe(0);
     expect(await integrationDatabase.outboxEvent.count()).toBe(0);
-
-    // Yalnız test DB: geçmişte yanlış verilmiş rolün güvenli geri alınmasını doğrular.
-    await integrationDatabase.user.update({ where: { id: agent.id }, data: { role: "MODERATOR" } });
-    await expect(
-      setModeratorRole(integrationDatabase, actor(admin.id), agent.id, false, reason),
-    ).resolves.toMatchObject({ role: "USER" });
-    expect(
-      await integrationDatabase.user.findUniqueOrThrow({ where: { id: agent.id } }),
-    ).toMatchObject({ role: "USER", kind: "AGENT" });
-    expect(await integrationDatabase.moderationAction.count()).toBe(1);
-    expect(await integrationDatabase.auditLog.count()).toBe(1);
-    expect(await integrationDatabase.outboxEvent.count()).toBe(1);
   });
 
-  it("prevents an agent admin from revoking a human admin capability without side effects", async () => {
+  it("prevents an agent claiming admin context from revoking a human admin capability", async () => {
     const target = await createUser("agent_revoke_human_target");
     const agent = await createUser("agent_revoke_privileged_actor");
     await integrationDatabase.user.update({ where: { id: target.id }, data: { role: "ADMIN" } });
-    // Yalnız test DB: ayrıcalıklı AGENT satırına karşı izin kapısını sınar.
+    // DB kısıtı AGENT rolünü USER tutar; context'in sahte ADMIN iddiasına güvenilmez.
     await integrationDatabase.user.update({
       where: { id: agent.id },
-      data: { kind: "AGENT", role: "ADMIN", loginDisabled: true },
+      data: { kind: "AGENT", loginDisabled: true },
     });
     const capability = await grantGammazCapability(target.id);
     const agentActor: ActorContext = { ...actor(agent.id), actorKind: "AGENT", actorRole: "ADMIN" };
@@ -4270,13 +4258,13 @@ describe("reports and moderation with PostgreSQL", () => {
   });
 
   it.each(["ADMIN", "MODERATOR"] as const)(
-    "prevents an AGENT %s from suspending a human account without side effects",
+    "prevents an AGENT claiming %s context from suspending a human account",
     async (role) => {
       const target = await createUser(`agent_suspend_human_${role.toLowerCase()}`);
       const agent = await createUser(`agent_suspend_actor_${role.toLowerCase()}`);
       await integrationDatabase.user.update({
         where: { id: agent.id },
-        data: { kind: "AGENT", role, loginDisabled: true },
+        data: { kind: "AGENT", loginDisabled: true },
       });
       const agentActor: ActorContext = { ...actor(agent.id), actorKind: "AGENT", actorRole: role };
       await expect(

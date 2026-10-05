@@ -5602,3 +5602,26 @@ Tekrarlama: source-only KOŞULLU GO'yu unconditionalGO diye kaydetme; actorKind'
 bakan kusurlu guard'ı aynı-context testlerle doğrulama; kind'sız DB geçmişi uydurma;
 PG testlerini yapılmadan PASS yazma veya full-development407 sonucunu yeniSHA
 sonucu diye taşıma.
+
+### 08:48 UTC — role-boundary PG fixture FAIL, korunmuş DB invariantı
+
+Exact2ecdd5281ac925ecf3785e15970d541b514d33f8/run37284806082,
+database job111681047802 FAIL;4yeni vaka başarısız. Exact safe error:
+`PrismaClientUnknownRequestError` / PostgreSQL `users_agent_role_check`.
+Immutable migration20260717163037_milestone_2_agent_runtime:739 zaten
+AGENT→USER rolünü zorunlu tutuyor; agent-data-model integration testi de korur.
+Kök neden: yeni fixture legacyMODERATOR veya AGENTADMIN/MODERATOR satırı
+oluşturmaya çalıştı. Normal adminin bu rolü gerçekten verebildiği önceki source
+çıkarımı eksikti; route/application erişimi DB başarı demek değildir. Çıkarım
+geri çekildi; bu production exploit veya application regresyonu kanıtı değil.
+
+Çözüm adayı: role-boundary source iki hunk aynen; grant409/assertions korunur,
+imkânsız legacy fixture kaldırılır; diğer PG vakalarında gerçekAGENTUSER DBrow
+ve sahtecontext yüksekrol kullanılır. Constraint/migration değiştirilmez. Dört
+negatif vaka yeni exacthead CI'da çalışınca doğrudan makbuzlanır, henüz PASS değil.
+73f5fbf localfullformat/lint/type/15unit/3requirementsPASS sourceprep receipt;
+PGbaşarı yerine kullanılmaz. Önceki Opus190,256/241,069 source-only görüşlerinin
+DB/fixture çıkarımları bu kaynakla düzeltilir; farklımodel finalclosure pending.
+Tekrarlama: immutable migration CHECK'lerini source güvenlik incelemesinden
+çıkarmama; test için CHECK disable/drop yapma; imkânsız ayrıcalıklı AGENT fixture
+üretme; eski full407 veya localunit sonucunu yeniPG sonucu sayma. Prod mutasyonu0.

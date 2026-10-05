@@ -7,6 +7,28 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 08:48 UTC — PostgreSQL fixture hatası ve eksik güvenlik çıkarımının düzeltmesi
+
+CI37284806082/exact2ecdd database job111681047802 **FAIL**: yeni dört vaka,
+`users_agent_role_check` kısıtına takıldı. Constraint immutable migration
+20260717163037_milestone_2_agent_runtime:739'da `kind <> AGENT OR role = USER`;
+aynı yerde loginDisabled kısıtı da var. Mevcut agent-data-model PG testi ayrıcalıklı
+AGENT oluşturmayı zaten reddediyor. Yeni fixture'lar bu DB invariantına aykırıydı;
+normal adminin ajana başarılı MODERATOR verebildiği önceki source çıkarımı eksikti
+ve geri çekildi. Önceki iki source-only hakemlik DB kısıtını kapsamıyordu.
+
+Application düzeltmesi açık409 `AGENT_MODERATION_NOT_ENABLED` sağlar ve generic
+principal kind guard'ını güçlendirir; mevcut DB koruması kaldırılmaz/değiştirilmez.
+Legacy ayrıcalıklı AGENT fixture'ı kaldırıldı. PG negatif capability/suspension
+vakaları gerçekAGENT/USER principal ve sahteADMIN/MODERATOR context ile yazıldı.
+Birinci grant409/no-side-effect vakası korunur; son exacthead CI/PG henüz bekler.
+15unit/format/lint/type ve3requirements PASS exact73f5fbf yalnız yerel makbuzdur;
+başarısız PG veya yeni fixture başarı diye sayılmaz. Yeni review/source closure
+sonuçları beklenir. Prod d829/settings308/worker0restart/T0 korunur; deployment yok.
+
+Aşağıdaki08:30/08:43 kayıtları tarihsel hazırlık çıkarımlarıdır; eksik DB sınırı ve
+imkânsız fixture iddiaları bu08:48 kaydıyla düzeltilmiştir. M2/goal hâlâ aktiftir.
+
 ## 5 Ekim 08:43 UTC — rol düzeltmesi son incelemesinin koşulları
 
 Exact `2ecdd5281ac925ecf3785e15970d541b514d33f8`, PR331 bağlı/draft;

@@ -119,33 +119,31 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    Bu hazırlık canlı UI/human kabulü değildir. Gate11 için gerçek DB kind/role doğrulaması,
    geçerli tek-hedef bulk preview negatif payload'ı ve token redaksiyon sınırı kaynakta
    ayrıldı; session/token işlemleri henüz yapılmadı.
-   **Rol sınırı hazırlığı:** original main071/app d829 genel `requireModerator`
-   yalnız rol/status kontrol ediyordu; insan adminin `setModeratorRole` yolunda
-   AGENT hedef türü reddedilmiyordu. Ajanın writerApproved varsayılanı true olduğundan
-   rol verme yolu normal admin işlemiyle erişilebilir; ajan web oturumu veya gerçek
-   saldırı kanıtlanmış değildir.08:17:06UTC bounded READ ONLY ölçüm:36AGENT/36USER,
-   ayrıcalıklı AGENT0, aktif AGENT web session0; app/ayar/worker değişmedi.
-   İlk actual Opus5/190,256sn incelemesi gerçek exploit iddiasını REJECTED, eksik
-   invariantı Warranted/KOŞULLU buldu. Kaynak kapanışı rol setter'ını doğruladı.
-   Hazırlanan düzeltme AGENT principal'ı genel kapıda reddeder, AGENT'e yeni
-   moderatör rolü verilmesini engeller; insan admin eski hatalı AGENT rolünü geri
-   alabilir.13unit/typecheck PASS; dört PostgreSQL vaka, son kalite/bağımsız inceleme
-   ve exact head CI henüz bekliyor. Bu paket henüz canlıda değildir. Acil üretim
-   tetikleyicisi ölçülmedi; P7 sabit penceresi korunur, olağan dağıtım Gate10 sonrası
-   exact sürüm/CI/restore ve kabul-bağı kapılarıyla değerlendirilir. Erken deployment
-   veya eski raporun yeni davranış sürümüne taşınması yapılmaz.
-   Son implementation hakemliği exact2ecdd/actualOpus5/241,069sn **KOŞULLU GO**:
-   source deltalarında hata veya izin genişlemesi yok; gösterilmeyen select/consumer
-   kaynakları, DB-kind/context uyuşmazlık testi ve CI koşulları açık bırakıldı.
-   `findModerationPrincipal.select.kind=true`, HUMAN ADMIN audit/operator seçimi,
-   writer-side revival/appeal yolu ve runtime'da bu role setter/guard çağrısı olmadığı
-   kaynakta doğrulandı; capability kind kapıları ebeveynde zaten vardı. Opsiyonel kind,
-   kind'sız DB kaydı değil eski caller sözleşmesidir. HUMAN actor context'e rağmen
-   AGENT DB principal reddini sınayan iki test eklendi; son15unit/CI henüz bekler.
-   Gate10 kapanışında taze ayrıcalıklı AGENT/session sayımı da alınır. Yamasız d829'da
-   AGENT hedefe grant-moderator smoke yapılmaz; negatif canlı vaka ancak yamalı sürüm
-   ve kendi exact dağıtım kapıları sonrası yürür. P8 raporunda exact deployment ve
-   configuration hash bağları korunur; eski d829 raporu yeni sürüme yeniden pinlenmez. Gate12 tam ledger zincir sorgusu
+   **Rol sınırı hazırlığı — 08:48 düzeltmesi:** original main071/app d829 genel
+   `requireModerator` yalnız rol/status kontrol ediyordu; role setter hedef türünü
+   uygulama katmanında reddetmiyordu. Ancak immutable migration'daki
+   **`users_agent_role_check`** (`kind <> AGENT OR role = USER`) rol yükseltmeyi
+   DB'de zaten engelliyor; login-disabled kısıtı da var. Normal adminin ajana başarılı
+   MODERATOR verebildiği önceki source çıkarımı eksikti ve geri çekildi. Gerçek
+   ayrıcalıklı AGENT/session/saldırı kanıtı yok;08:17 ölçümü36AGENT/36USER/privileged0/
+   activeAgentSession0. Düzeltme DB korumasına ek olarak açık409
+   `AGENT_MODERATION_NOT_ENABLED` ve generic principal kind reddi sağlar; migration/
+   constraint değişmez. Legacy ayrıcalıklı AGENT satırı mevcut DB'de yaratılamaz.
+   İlk13unit ve son15unit/full format/lint/type/3requirements PASS; bunlar PG başarısı
+   değildir. Exact2ecdd CI37284806082 database **FAIL:4fixture**, aynı DB constraint
+   engeline takıldı; application regresyonu kanıtı değildir. Testler constraint
+   kaldırmadan gerçek AGENT/USER satırı + sahte ADMIN/MODERATOR context ile düzeltilir.
+   Explicit admin→AGENT grant409/no-side-effect vakası korunur; imkânsız legacy role
+   üretimi kaldırılır. Yeni exacthead CI/PG ve farklı model son kapanış incelemesi bekler.
+   Önceki actual Opus190,256sn ve241,069sn görüşleri bu DB sınırını görmemişti;
+   KOŞULLU hükümleri tarihsel tutulur, source/fixture çıkarımları düzeltildi.
+   Preflight select.kindtrue, HUMAN ADMIN audit/operator, writer-side reviewer ayrımı,
+   runtime'da generic guard çağrısı yokluğu ve iki executable hunk kaynakta doğrulandı.
+   P7 sabit penceresi sürer; paket henüz canlıda değildir. Acil tetikleyici ölçülmedi.
+   Gate10 bitişinde taze rol/session sayımı; yamasız d829'da AGENTgrant smoke yok.
+   Olağan dağıtım sonraki exact sürüm/CI/restore kapılarıyla; P8 raporunda deployment/
+   configuration bağı korunur, eski d829 raporu yeni sürüme yeniden pinlenmez.
+   Gate12 tam ledger zincir sorgusu
    bütün tarihsel profilleri kapsar; kaynak/restore/reboot ölçümü henüz yapılmadı.
    Yeni Git dışı V1 streaming yardımcı adayı iki gerçek Opus incelemesinde REJECTED;
    üretim yolundan çıkarıldı, public entry subprocess öncesinde kapalı. Mevcut kanonik
