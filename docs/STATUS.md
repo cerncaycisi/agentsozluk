@@ -7,6 +7,26 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 10:57 UTC — güncel üretim/main eşliği doğru biçimde açık
+
+`DONE-084` satırındaki PASS eski 8a9 üretim/main eşlik makbuzuna aitti.
+Bu ID ADR-012 supersession listesinde yok ve güncel final şartı olarak aktif.
+10:30 otomatik gözlem gerçek source checkout/image label/immutable runtime d829
+pinlerini doğruladı; 10:57 yerel ve remote main89a0f39 temiz/eşit. Bunlar farklı
+sürümler, bu yüzden güncel `DONE-084` **BLOCKED**. Eski kanıt silinmedi; üretim
+regresyonu, acil dağıtım gerekçesi veya P7 reseti sayılmadı. Yeni izin/muafiyet yok.
+
+Güncel izlenebilirlik **464 aktif PASS /77 superseded /25 kısmi supersession /
+2 onaylı BLOCKED /0 FAIL /543 toplam**, ham541PASS/2BLOCKED. Açık ID'ler
+DONE-082 ve DONE-084. Mevcut development allowlist bu ID'yi zaten içerir;
+final checker PASS istemeye devam eder. Kontrol kodu/eşik/manifest değişmedi.
+Son dağıtımın taze source/image/runtime/remote main eşliği kapanmadan M2 tamam değil.
+10:58 mevcut development checker bu yeni tabloyla PASS; ilgili policy5/5 test PASS.
+Katı final checker DONE-082 nedeniyle reddetti. Yalnız bellekte DONE-082 kapanış
+simülasyonunda DONE-084 nedeniyle reddetmeye devam etti; gerçek traceability
+satırına simülasyonla PASS yazılmadı. Manifest/policy/test kodu aynı, üretim erişimi0.
+Aşağıdaki eski CI ve full sonuçları yalnız kendi exact kaynaklarını doğrular.
+
 ## 5 Ekim 10:30 UTC — doğal gözlem ilerliyor, ret uyarısı açık
 
 10:30:10.110211 UTC otomatik ölçüm: **168 doğal / 166 terminal**;

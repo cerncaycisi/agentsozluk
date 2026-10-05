@@ -21,7 +21,8 @@ sonraki dağıtım kendi sürüm, yedek ve geri dönüş kapılarından geçecek
 Ardından kullanıcı/yönetici işlemleri, taze yedekten geri dönüş ve sunucunun yeniden
 açılması doğrulanacak; yeni yazar kararı verilip M2 kapanacak. Ayrıntılı tek sıra aşağıdadır.
 
-Goal aktiftir. M2/DONE-082 henüz `BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
+Goal aktiftir. M2 `DONE-082` ve güncel üretim/main eşliği `DONE-084` henüz
+`BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
 Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
 Önceki ilerleme kayıtları [Ekim arşivinde](PLAN_ARSIVI_2026-10.md) tarihsel olarak saklanır.
@@ -186,7 +187,11 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    Tam geliştirme koşusunun hazırlığı ve ilk gerçek sonucu tamamlandı; makbuzu yukarıdadır.
    Kalan final `verify:m2`, üretim kapıları ve izlenebilirlik kapandıktan sonra exact
    güncel main/başarılı push CI ile aynı uzak test yolunda çalıştırılır. Development
-   sonucu final kabul yerine kullanılmaz; DONE-082/P7 kapıları korunur.
+   sonucu final kabul yerine kullanılmaz; DONE-082/DONE-084/P7 kapıları korunur.
+   Son dağıtım eşliği `DONE-084` güncel durum için yeniden açıldı: canlı d829,
+   henüz dağıtılmamış ana dal farklıdır. Eski 8a9 eşlik kanıtı tarihsel korunur.
+   Gözlem sırasında eşlik sağlamak için dağıtım yapılmaz; sonraki exact sürüm/CI/
+   artifact/geri dönüş kapıları ardından source/imaj/runtime/main yeniden ölçülür.
 3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
    aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
    Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız
@@ -196,8 +201,14 @@ Tam ölçümler [STATUS.md](STATUS.md), denemeler [ATTEMPT_LOG.md](ATTEMPT_LOG.m
 Pencereyi başlatmak planı bitirmek değildir; goal gerçek kabul ve sonraki kapılara kadar aktiftir.
 Ölçüm makbuzu main `a59314e6f779829db700d238e42e062d07829e8d`, exact CI37264429897
 7/7PASS,04:51:54UTC; app d829 aynı, deploy/pencere reseti yapılmadı.
-M2 geliştirme izlenebilirliği04:27UTC PASS:465aktif PASS/77superseded/1onaylı BLOCKED,
-0FAIL,543toplam;25kısmi supersession bu satırların içindedir. Final `verify:m2` ve DONE-082 açık.
+M2 geliştirme tablosu 5 Ekim güncel durum için uzlaştırıldı: 464 aktif PASS /
+77 superseded / 25 kısmi supersession / 2 onaylı BLOCKED (`DONE-082`, `DONE-084`) /
+0 FAIL / 543 toplam. 10:58 mevcut development checker ve ilgili5policy test PASS;
+katı final checker DONE-082 nedeniyle reddetti, yalnız bellekte bu satırı kapatma
+simülasyonunda DONE-084 nedeniyle reddetmeye devam etti. Hiçbir gerçek satır
+simülasyonla PASS yapılmadı. Eski 04:27 doğrulaması kendi SHA'sı için saklıdır.
+Final `verify:m2`, haftalık
+kabul ve son üretim/main eşliği açık; erken PASS veya yeni muafiyet verilmedi.
 
 ## 1. Ürün sözleşmesi
 
