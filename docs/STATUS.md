@@ -7,6 +7,179 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 20:09 UTC — ajan akışı açık; yeni gerçek haftalık kabul başladı
+
+Exact D202 `d202f3d8dc0078e2fe3bd64cf122e5ba44381da7`, eşli app/immutable
+runtime/worker aynı. Mevcut audited HUMAN ADMIN native society-flow `resume`
+yalnız runtimeEnabled309→310 açtı; health/ready200/200. Gerçek global
+`breaker.reset` olayının **T0=5Ekim20:08:37.749UTC**, bitiş **12Ekim20:08:37.749UTC**;
+configured maksimum timeout600sn+120sn nedeniyle son değerlendirme **12Ekim
+20:20:37.749UTC'den önce değil**. TSİ başlangıç23:08, bitiş12Ekim23:08,
+değerlendirme23:20sonrası. Gerçek168saat; eski306koşu ve kapasite/operatör
+senaryoları bu paydaya katılmadı. `IN_PROGRESS_NOT_PASS`; DONE-082/084 açık.
+
+Yeni sahipli observer Git/imaj dışında özel dizinde kuruldu;0444 caller/remote/
+manifest ve0500 bundle çift hash'i `47a68983…f45697`. Tarihler yalnız gerçek
+window manifestinden katıUTCISO ve168h/720sn aritmetik kontrolüyle şablona girer;
+bootstrap çift/kaynak hash'lerini her çağrıda kontrol eder. Eski observer ve
+immutable tarihçe korunur. Yeni eşsiz yerel systemd units
+`agentsozluk-p7-d202-20261005.{service,timer}` ve `-deadline.timer` gerçek aktif;
+service success/exit0, NoNewPrivileges/PrivateTmp=yes,200sn unit bütçesi.
+Saatlik sonraki20:30UTC ve deadline12Ekim20:20:38UTC doğrudan doğrulandı.
+Her bağlantı öncesi17Ekim19:50UTC yetki sonu/120sn payı, tek ED25519/DNS ve
+kaynak pin kontrolü vardır; süre uzatılmaz. Üretimde observer yalnız okur;
+SQL/CLI model çağrısı, davranış değişimi veya otomatik onarım yapmaz.
+
+20:09:02 ilk gerçek okuma PASS: uyarı0,36yüklü ajan/iki hat, CLI0.144.6/profil
+05a9bffb…390a, credential ACK20:08:59.872UTC/3sn; NORMAL/FULFILL_SLOT/BirthOFF,
+scheduler/publish/publicwrite açık, settings310, worker aktif. Doğal koşu0,
+terminal0, operatör koşusu0; bu25sn erken başlangıç kesitidir ve başarı oranı
+veya haftalık kabul çıkarılmaz. Sonraki doğal faaliyet normal scheduler'a aittir.
+Model `gpt-5.6-luna`/`max`; operatör sohbetinin paylaşılan kota etkisi ayrıca
+ölçülmedi, temiz kota karşılaştırması iddiası yok. Pencere içinde sharedCodex
+lab/Astra hakemliği veya ajan algısını değiştiren dağıtım başlatılmaz.
+
+ActualOpus5 ilk kaynak görüşü358729ms **KOŞULLU GO**;360sn wrapper teardown
+zaman aşımı sonuç JSON'unu yok etmedi. İlk anda sonuç yok sanılarak açılan
+tekrar yalnız sahipli Claude child'ı durdurularak kapandı; diğer işler korunur.
+Gerçek başarılı model JSON ve wrapper124 ayrı saklandı. B1–B9 şartları kapandı:
+UTC normalizasyonu/DB saati, gerçek prior pause309/reset3081 ve reset3100 provası,
+mutasyon sonrası tekilASC anchor adaylarının assert öncesi güvenli çıktısı,
+minimalchildenv+stdout/stderrallowlist, ölçülmemiş reward literal'lerinin çıkarılması,
+gerçekoperatör sayımı0, mutasyondan önce185sn kalan bütçe, tamgrace+yetki payı,
+timer200sn/scheduling/NULLcredential-row uyarısı. Yerel koşul kapanışında ilk
+AST taraması `AttributeError: 'Subscript' object has no attribute 'id'` ile durdu;
+üretim eylemi yoktu. Yalnız tamamlanmamış observer bölümü uygun AST Name filtresiyle
+bitirildi; eski kaynaklar saklandı, tam uygulama kör tekrarlanmadı.
+
+20:06:06 doğrudan readonly anchor/source provası UTC/pause3091/reset3081/
+reset3100 ve native flow hash `343e1bd4…655c` PASS. Odaklı actualOpus5/49649ms
+**KOŞULLU GO**: resume yolunda kalan blocker yok; installer digestlerinin
+scope'dan doğrudan türetilmesi kaynakla doğrulandı, eksik sync row `or {}`/
+`.get`/açık uyarı ile kapandı. Original verdictler GO diye değiştirilmedi.
+Yerel O_EXCL/fsync consumed kayıt sonrası resume **bir kez** yürütüldü;
+timeout/nonzero sonrası COMMIT_STATUS_UNKNOWN ve salt okunur uzlaştırma dışında
+tekrar yok. Gerçek CLI receipt/anchor dosyaları ve tekil event korunur.
+
+Sırada haftalık doğal kabul/O4 takip, Gate11 hazırlığının mevcut exact kaynakla
+uzlaştırılması; tam168h/grace ardından Gate10, gerçek Gate11/12 ve P8/finalM2.
+Bu başlangıç planın tamamlanması değildir; aynı original goal aktiftir.
+
+Tekrarlama: wrapper timeout'unu tamamlanmış model JSON yokluğu diye varsayma;
+actual model sonucuyla client exit'ini ayrı kaydet. T0'ı host saatinden veya
+planlanan saattan üretme; bilinmeyen child çıktısını serialize etme; consumed
+resume'u tekrar yürütme. Saatlik raporun zaman bakımından eligible olması
+Gate10/11/12 PASS değildir. Belge makbuzu commit'i davranış dağıtımı veya
+canlı SHA'nın kendiliğinden değişmesi değildir.
+
+## 5 Ekim 19:55 UTC — yeni kapasite ve başlangıç ön kontrolleri tamam
+
+Exact `d202f3d8dc0078e2fe3bd64cf122e5ba44381da7` canlı. Gerçek yeni kapasite
+18:44:59.863–19:25:27.719 UTC: cold10/warm10/dual2, toplam22 mantıksal senaryo;
+eski örnekler katılmadı. Cold/sıcak hata0; eşzamanlı başarı2. Cold p50/p75/p95/max
+110223/148374/178808/178808ms, RSS256MB; sıcak106542/123575/166259/166259ms,
+RSS248MB; eşzamanlı RSS472MB. Native dual dosyasındaki count10 ve yüzde/süre
+alanları yeni sıcak tabandan mirastır; on ilave dual örneği veya taze OOM kanıtı
+sayılmaz. RSS200ms hostPID soy ağacı örneklemesidir; fiziksel/cgroup peak değildir.
+CLI `codex-cli 0.144.6`; build profil hash'i `05a9bffb…390a` ham prompt eşliği değildir.
+WorkerPID3499084/NRestarts0 ve başlatma zamanı before/after aynı.
+
+19:34 strict native validator `7bd5e8ad…165c36` altı yeni600 dosyası/10+10+2
+teşhisle geçti. Kurulu tam Zod şeması ve native dual koşulunun800MB minimum dahil
+bütün koşulları doğrulandı;11 kurulu kaynak hash'i pinlendi. Yalnız hesaplanan
+paket19:34:30–19:34:34 existing authenticated HUMAN ADMIN capability-package
+API'den200 ile kaydedildi. Yeni UUID'ler cold `23cd6cc8-32b6-41b3-94af-5f936207a513`,
+warm `2444311b-a14c-4244-a673-3df08bdb0284`, dual `e5a08085-dfd0-4fd3-b189-1a1bdb743dd2`;
+üçüHEALTHY, dualSupportedtrue/downgradefalse. Son geçerlilik19Ekim19:34:34UTC;
+yedi gün ve720sn payı karşılar. Audit/outbox/runtimeevent/idempotency aynı
+uygulama transaction'ında; ek geçici session/rate-limit işlemleri ayrı normal yan
+etkilerdir. Kaynakta transaction client'ın yeniden kullanılması doğrulandı;
+hakemin G1 non-atomic çıkarımı kaynakla çürütüldü, önceki görüş değiştirilmedi.
+
+19:40:54 bağımsız DB okuması: üç gerçek UUID/metrik/fingerprint, audit1/outbox1/
+runtimeevent1/idempotency1, sahipli geçici aktif admin session0. Global paused309,
+açık iş/lease0. Farklı-model actualOpus5 kapasite görüşleri93116/255105ms KOŞULLU,
+115472ms odaklı GO; persistence235337/263990/347731ms KOŞULLU, kaynak şartları
+somut kapandı; original görüşler korunur. Astra turu0. Retirement actualOpus5
+178879ms KOŞULLU GO; başarısız transport/postguard **INDETERMINATE**, otomatik
+tekrar yok; prior strict/Zod/dual kanıtı taşınır, retirement bunları yeniden
+çalıştırdı iddiası yok. 19:52:02 yeniden bağımsız DB kontrolü ve yalnız sahipli
+root700 `.capacity-operation` atomik `RENAME_NOREPLACE` ile completed adına
+emekli edildi; tüm dosya/inode'lar korundu. DB yazımı/resume/restart/cleanup yok.
+
+19:52:47 yeni kaynak stok okuması native `summarizeFreshSourceCoverage` ile
+126taze kaynak/118origin/62Türkçe-Türkiye odağı;36 aktif yazarın10kaynak/6origin/
+5kategori tabanı uygun, topic payload kusuru0. Bu ön stok yeni haftanın kaynak
+kanıtı değildir. 19:52:58 Gate9 paused ön kontrol: hardened worker36/iki hat,
+legacy plan/slot/run/override0, pendingquota yok, CLI/capability eşliği, internal/
+public health-ready200 ve iki raporCLIhelp PASS. Son Gate9 resume bekler.
+19:53:04–19:55:18 tam tarihsel ledger36profil/**2.224.237olay**, sequence/previous/
+content/event hash sapması0; yalnız yeni hafta değil bütün geçmiş kontrol edildi.
+
+Yeni immutable observer ve audited309→310 resume paketi hazırlanır; farklı-model
+salt okunur görüşü sürer. **Henüz yeni T0 yok, otomatik ajan akışı paused309.**
+Gate10/11/12, P8 ve finalM2/DONE-082/084 açık; goal kapsamı aynı ve aktiftir.
+
+Tekrarlama: consumed benchmark/persist/retire tekrar yürütülmez; API200 belirsiz
+transportta yeni-key POST açılmaz; önce gerçek core transaction kanıtı salt okunur
+uzlaştırılır. Dual warm mirasını yeni dual10 sayma; ön stok/tam ledger kontrolünü
+168h kabulü sayma; eski erken306koşuyu yeni paydaya taşıma.
+
+## 5 Ekim 18:51 UTC — yeni sürümde kapasite ölçümü gerçekten başladı
+
+Exact D202, operation `f7e0e63ab71c4171869c93610043150d`, başlangıç
+`2026-10-05T18:44:59.863525+00:00`. Cold aşaması18:45:00 başladı; 18:51:21
+salt okunur sahipli servis kontrolü active/running, PID3517546,
+User/Groupagent-runtime, UMask0077, KillModecontrol-group/RuntimeMax1h50min
+doğruladı. O anda servis MemoryCurrent374.411.264bayt; bu peak/RSS kapasite
+sonucu veya OOM/failure PASS değildir. Henüz tamamlanmış örnek sayısı raporlanmadı.
+Global paused309; yeni formal T0 yok. Cold10/warm10/dual2 toplam22 gerçek
+mantıksal örnek hedeflenir. Dual dosyanın benchmarkRunCount10 değeri yeni warm
+baseline'dan mirastır; on ilave dual örneği diye sayılmaz.
+
+ActualOpus5 farklı-model salt okunur görüşleri93116ms/255105ms KOŞULLU GO olarak
+saklandı. 115472ms odaklı görüş GO ve somut kaynak şartları kapalı: poll deadline
+döngü başında, quiescence cgroup-absent/empty şeklinde dürüst makbuz, native
+validator bu eski bool alanlarını tüketmez. Son kaynakSHA256
+`f27b522da9d1ddecc7c129b865c98bc051d88de1fe1bb2ee4f010d38231b6147`.
+18:41:26 doğrudan okuma eski kapasite lock yokluğunu, credential600 UID999/GID987
+ve ek grup olmadan erişimi doğruladı; credential içeriği okunmadı/çıktılanmadı.
+Detacheden provider alt süreçleri yalnız bu eşsiz servisin cgroup sınırındadır;
+başka servis/PID sinyali, otomatik resume veya kör tekrar yok.
+
+Sonraki strictvalidator aynı `7bd5e8adbc63f92e3655e0b6e038316498e5934c64b3e29771fa2b88f7165c36`;
+altı yeni600 dosyası/diagnostics ve gerçek serviceproof sonrası mevcut yetkili
+capability-package API kullanılır. Hazırlanan bu adım henüz yürütülmedi ve kendi
+salt okunur incelemesi sürer. RSS hostPID soy ağacının200ms örnekleme tahminidir;
+fiziksel toplam/cgroup peak iddiası yok. Dual OOM false ve failure/percentiles
+native warm mirasıdır; taze dual başarı2/RSS/swap ayrı ölçülür. Build profilehash
+ham prompt eşliği diye açıklanmaz. Yeni168h/Gate10/11/12/finalM2 henüz PASS değil.
+
+## 5 Ekim 18:14 UTC — yeni sürüm canlı; goal ve haftalık kabul açık
+
+Exact `d202f3d8dc0078e2fe3bd64cf122e5ba44381da7`, CI37337286839 7/7 PASS,
+artifact37339708935 SUCCESS. Eşli app/immutable runtime/worker dağıtımı
+18:09:03 UTC SUCCESS; 18:14:03 ayrı kontrol PASS. Health/ready/search200,
+workerPID3499084/NRestarts0/36ACTIVE/iki hat; global paused/settings309.
+37 migration kaynak hash eşliği before/after, migration uygulanmadı.
+Root free20.338.925.568bayt, D829 rollback çifti korunur; cleanup yapılmadı.
+Daemon image `sha256:35bd1cdeeaa999e2769d7d9273cbf9690d8d0d4ebc1a9581c8757eb9aa19d61f`;
+portable artifact config digest daemon imageID ile aynı şey sayılmaz.
+
+17:04 taze native custom yedek692.030.038bayt/SHA256
+`eb82309b8413f506f43a1821f40a2e54827da062fe048068bb668f0f29c26daa`.
+Gerçek restore17:40:31–17:45:17/285sn/exit0; 56tablo/3.381.659satır/3sequence-safe
+eşliği PASS. SourceOID16385 değişmedi; yalnız sahipli hedefOID1341138
+18:00:37'de kaldırıldı. İki arşiv kopyası, 14 native journal dosyası ve receiptler korundu.
+Bu sonuç frozen final Gate12/reboot kabulü değildir.
+
+16:56 audited pause308→309; açık iş/lease0 doğrulandı. Eski sahipli observer
+timerları emekli edildi; immutable tarihçe korundu. 306 doğal terminal koşu:
+228SUCCEEDED/62PARTIAL/14FAILED/2TIMED_OUT; teknik16/306=%5,2288 erken NOT_PASS.
+36REFLECTION ve36SOURCE_REFRESH doğal paydaya eklenmez. Yeni kapasite henüz
+başlamadı, yeni T0 yok. Kapasite→Gate9→resume/yeni168h→Gate10/11/12→P8/finalM2
+tek sırası PLAN'dadır. DONE-082/084 açık, goal aktiftir.
+
 ## 5 Ekim 12:21 UTC — ukte canlı adımı düzeltmesi ve hesap kapatma yolu
 
 Önceki hazırlıkta yazar onayını kaldırıp replay denemesi yürütülebilir bir adım

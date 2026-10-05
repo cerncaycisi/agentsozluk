@@ -8,31 +8,56 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 15:49 UTC — tam O4 geliştirme testi geçti; dağıtım ve gerçek168h sırası uzlaştırılıyor.**
-Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
-ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
-kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
-Ek rol paketinin ayrı kontrolleri ve yeni sürümün tam geliştirme doğrulaması başarıyla geçti.
-Son 15:30 UTC otomatik kesitte 280 doğal çalışmanın 278’i tamamlandı; teknik
-hata sayısı16, oran %5,8 ile %5 hedefinin üzerinde. İçerik ret oranı %22,4 ile
-%20 hedefinin üzerinde. Sağlayıcı neden kodunun kayıtta eksikliği üretimde
-ölçüldü. Güvenli kod telemetrisi ana dala alındı; yeni birleşmiş sürümün tam
-geliştirme testi başarıyla geçti.
-Mevcut doğal akışın teşhis takibi sürüyor; ikame kabul penceresi henüz başlamadı.
-Ajan rolü taleplerine açık ret veren düzeltme ana dala alındı; henüz canlıda değil.
-Paket henüz dağıtılmadı. Yeni tam sürümü bir haftanın sonuna bırakıp ardından
-tekrar168h beklemek17Ekim hedefini aşabilir. Teknik kapılardan sonra tam paket
-ve açık yeni168h sırası hazırlanır; eski erken ölçümler kabul yerine sayılmaz.
-Ardından kullanıcı/yönetici işlemleri, taze yedekten geri dönüş ve sunucunun yeniden
-açılması doğrulanacak; yeni yazar kararı verilip M2 kapanacak. Ayrıntılı tek sıra aşağıdadır.
+**5 Ekim 20:09 UTC — ajan akışı açık, gerçek haftalık kabul başladı.**
+Sözlük ve36ajanın otomatik akışı yeni eşli D202 sürümünde açık. Gerçek kapasite,
+kaynak tabanı ve tam geçmişin bütünlük kontrolü geçti; sonuçlar ayrıca DB'den
+doğrulandı. Denetimli resume309→310 tamamlandı. İlk bağımsız izleme20:09UTC:
+sağlık/hazır olma200,36yüklü ajan/iki hat, güncel ACK ve uyarı0. Henüz25snlik
+kesitte doğal koşu0; bundan haftalık başarı çıkarılmaz. Yeni yazar doğumu kapalı.
 
-Goal aktiftir. M2 `DONE-082` ve güncel üretim/main eşliği `DONE-084` henüz
-`BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
-Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
-3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
-Önceki ilerleme kayıtları [Ekim arşivinde](PLAN_ARSIVI_2026-10.md) tarihsel olarak saklanır.
+**Yeni gerçek168saat:**5Ekim20:08:37.749UTC →12Ekim20:08:37.749UTC.
+Son koşuların configured600sn+120sn payıyla değerlendirme12Ekim20:20:37.749UTC
+sonrasında. TSİ başlangıç23:08, bitiş12Ekim23:08, değerlendirme23:20sonrası.
+Yeni immutable observerın saatlik ve son tarih timerları aktif/doğrulanmış;
+üretimi yalnız okur. Eski erken306terminal/16teknik hata kesiti NOT_PASS
+olarak saklıdır, yeni döneme katılmaz. Taze yedeğin gerçek restore eşliği geçti;
+final frozen restore ve reboot kapısı ayrıca bekler.
+
+Goal aynı kapsamıyla aktiftir; P7 `IN_PROGRESS_NOT_PASS`, DONE-082/084 açık.
+Sırada haftalık doğal kabul, gerçek kullanıcı/admin işlemleri, son kurtarma/reboot,
+P8 ve finalM2 var. Testlerin veya pencere başlangıcının geçmesi goal'ü bitirmez.
+Yürütücü `gpt-6.1-sol`, salt okunur hakem `claude-opus-5`;3–17Ekim yetkisi ve
+teknik kapılar korunur. Önceki tarihli kayıtlar kendi dönemlerinin kanıtlarıdır.
 
 ### Canlı ve tamamlanan teslimler
+
+- **5 Ekim yeni başlangıç tamam:** exactD202, audited resume309→310,
+  gerçekT0 `2026-10-05T20:08:37.749Z`. Sonuç gerçek168h/720sn sonrası incelenir;
+  şimdiki durum IN_PROGRESS_NOT_PASS. Yeni private immutable observer ve
+  eşsiz saatlik/deadline timerları gerçek success/active; ilk okuma uyarı0/
+  healthready200/güncelACK36/iki hat. Differentmodel actualOpus5 kaynak
+  şartları kapandı; eski tarihçe korunur. Ayrıntı[STATUS.md](STATUS.md)'de.
+
+- **5 Ekim yeni kapasite ve ön uygunluk tamam:**22 yeni mantıksal senaryo
+  cold10/warm10/dual2;hata0/eşzamanlı başarı2. Strict altı dosya ve kurulu tam
+  şema/native dual koşulu PASS; API200, üçHEALTHY yeniUUID, exactonce dört
+  kayıt1, geçici session0 ayrı DB okumayla doğrulandı. Son geçerlilik19Ekim
+  19:34:34UTC. Sahipli ölçüm kilidi19:52 emekli; kanıtlar korundu. Kaynak126/
+  origin118/TR62 ve36yazarın tabanı; tam ledger2.224.237olay/sapma0. Son Gate9
+  resume ve yeniT0 bekler; ayrıntı[STATUS.md](STATUS.md)'de.
+
+- **5 Ekim yeni eşli dağıtım:** exact D202, push CI37337286839 **7/7 PASS**,
+  artifact37339708935 SUCCESS; 18:09:03 UTC cutover, 18:14:03 bağımsız kontrol PASS.
+  App/runtime/worker aynı kaynak; worker PID3499084/NRestarts0, 36ACTIVE/iki hat.
+  Global paused/settings309, açık koşu ve aktif lease0; health/ready/search200.
+  Taze native yedek SHA256 `eb82309b8413f506f43a1821f40a2e54827da062fe048068bb668f0f29c26daa`,
+  restore285sn/exit0, 56tablo/3.381.659satır/3sequence-safe eşliği. Sadece sahipli
+  O3 hedefOID1341138 kaldırıldı; sourceOID16385 ve arşivler korundu. D829 önceki
+  rollback çifti korunur. Eski sahipli observer timerları durduruldu ve tarihçe
+  saklandı. Bu18:14kesitinde yeni kapasite/T0 henüz yoktu;19:55yeni kapasite tamamlandı.
+  YeniT0/Gate10/11/12/finalM2 hâlâ açık.
+
+**Aşağıdaki D829 kayıtları önceki teslimin tarihsel kanıtlarıdır.**
 
 - Uygulama, imaj ve immutable runtime **`d829dd06eb4aa68154f521667302e6744b67399e`**.
   Exact CI7/7 ve artifact/A5 yedek, restore, eski imaj, dokuz migration, cutover PASS.
@@ -154,7 +179,7 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   Alan şeması geçerli parola kanıtı değildir. Üretim/hesap/oturum işlemi yok;
   gerçek hedef, yürütücü/secret transport hakemi ve canlı kullanım kabulü bekler.
 
-### O4 teslimi ve gözlem sürümü
+### O4 kaynak teslimi ve önceki gözlem sürümünün tarihçesi
 
 Hata takibi paketi #332 ile ana dala alındı; exactmain `d6ce2ee642269c231d69bf5f1b02bc61bcfd3bb2`,
 tree reviewedc29ileeşit. HeadCI7/7, PG513/API142 ve actualOpus5/156,653sn kaynak
@@ -169,7 +194,8 @@ Dağıtımda app ve worker aynı exactpaketle birlikte güncellenmelidir; yeni w
 eski API'ye yeni alan göndermesi 422 yaratabilir. Bu hazırlık mevcut doğal pencereyi
 kesmez. Canlı dağıtım sırası aşağıdaki tek sırada uzlaştırıldı: exactCI/artifact/
 backup/rollback kapıları, tam eşli paket ve yeni ön uygunluk sonrası yeni168h;
-sonra Gate10/11/12. Eski Gate10 sonrası dağıtım varsayımı aktif kuyruk değildir. Gerekli bir müdahale pencereyi kesecekse eski T0 ve hatalı
+sonra Gate10/11/12. Bu5Ekim dağıtım ve başlangıç sırası artık tamamdır;
+eski Gate10 sonrası dağıtım varsayımı aktif kuyruk değildir. Gerekli bir müdahale pencereyi kesecekse eski T0 ve hatalı
 kesitler saklanıp `INTERRUPTED_NOT_PASS` makbuzu ile yeni gerçek168saat başlangıcı
 ayrı yazılır; eski rapor yeni deployment/configurationa yeniden pinlenmez. O4
 telemetrisinin yayınlanması kök hatayı çözdü kabul edilmez. Sürekli geliştirme ve
@@ -195,49 +221,22 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
 
 ### Tek aktif sıra
 
-1. **Tek plan ve test makbuzunun yayını:** yeni fullD6CE SUCCESS ve son exactmain
-   kapısı tamamlandı; kaynak teslimi yukarıdaki tamamlananlar bölümündedir.
-   Gerçek log/count/hash, tek takvim uzlaştırması ve salt okunur tasarım şart-kapanış
-   görüşü aynı belge teslimine bağlanır; yeni docs-only exactmain ve kendi CI7
-   tamamlanır. Yalnız beş belge değişir; rollback sorgu makbuzu runbooka da bağlanır. Mevcut750 kod/script/Prisma/workflow/
-   package/lock dosyasının D6CE ile byte eşliği doğrudan kontrol edildi, yeni commit
-   sonrasında tekrar doğrulanır. Bu kaynak eşliği üretim veya tam davranış kanıtı değildir.
-2. **Tam paketi teslim et; ardından tek yeni gerçek pencere:** taze exactmain/CI/
-   farklı-model sourcepeer kapsamı/temiz checkout, bir günlük artifact, host/lock/
-   disk/yedek/restore/rollback kapıları tamamlanır. Migration kümesi değişmediği
-   doğrudan doğrulanır. Auditedpause; RUNNING/CANCEL_REQUESTED0 ve aktiflease0
-   doğrudan görülmeden app+worker cutover yok. Karışık yeniworker/eskiAPI yazması
-   engellenir. Rollback'te de pause/drain/lease0, workerstop doğrulaması, pinli eski
-   app+immutable runtime eşli dönüşü ve sağlıklı ölçüm öncesi resume yasağı korunur;
-   işlemin çift üzerinde kontrollü olması tek bir OS atomik komut iddiası değildir.
-   Pre-cutover koşular createdAt/kimlik ve terminal durum makbuzuyla ayrılır;
-   eski/gap/benchmark/operator koşuları yeni doğal paydaya katılmaz.
+1. **Devam eden tek gerçek168saat:**5Ekim20:08:37.749UTC başlangıç,
+   12Ekim20:08:37.749UTC bitiş, configured600sn+120sn nedeniyle son rapor
+   12Ekim20:20:37.749UTC sonrasında. Kaynak/CLI/model/ayar koşulları korunur;
+   saatlik sahipli observer/O4 sağlık-verim takibi sürer. Yeni sharedCodex
+   lab/Astra işi ve ajan algısını değiştiren dağıtım yok. Kritik güvenlik
+   kusuru olursa kaynak/hakem kapısıyla müdahale ve pencere etkisi kaydedilir.
+   Eski erken306doğal terminal/16teknik hata NOT_PASS kesiti, benchmark ve
+   operatör işleri ayrı kalır. BirthOFF/36ACTIVE/model `gpt-5.6-luna`/`max`.
 
-   Eski aday pencere **EARLY_NOT_PASS / REPLACEMENT_PLANNED**: T0
-   `2026-10-05T01:12:54.588Z`, eski hedef12Ekim; son gerçek15:30 kesiti280doğal/
-   278terminal/teknik16≈%5,755,52PARTIAL ve entry45ret/201≈%22,388. Sonuçlar
-   [Ekim arşivinde](PLAN_ARSIVI_2026-10.md), STATUS/ATTEMPT ve özel değişmez
-   observer makbuzlarında korunur. Cutover henüz yapılmadı; son actual sınır/drain/
-   yarım koşular üretim eylem makbuzunda yazılır, gelecek tarih ölçülmüş sayılmaz.
-   Bu adayın yerine yenisi geçer; aynı anda iki resmî kabul penceresi açılmaz.
-   Şimdiki salt okunur timer yalnız mevcut dönemin teşhisini sürdürür. Geçişte
-   sadece sahipli P7 timer/service durdurulur; başka kullanıcı işleri korunur.
-
-   Yeni kurulu sürüm için Gate9 kimlik/capability/fingerprint ve cold10/warm10/
-   dual2 kapasite taze gerçek üretim ölçümüyle tekrar doğrulanır; yeni kapasite
-   işi doğal akış paused iken, **yeni T0 öncesinde** ayrı kohorttur. Çevrimdışı
-   actualexport eşliği bu ölçümün yerine geçmez. Failure/kapasite/fingerprint/
-   secret/duplicate/breaker kapısı başarısızsa T0 açılmaz; ortam/fixture ayrılır,
-   kör tekrar ve eşik düşürme yok. Kaynak, roster ve tam historicalledger ön
-   uygunluğu da yeniden doğrulanır. BirthOFF/36ACTIVE/model/ayar korunur.
-
-   Observer üretim imajının ve Git ağacının **dışında**, sahipli özel sürüm/dizindir;
-   kurulması DONE-084'ün kaynak eşliğini tek başına değiştirmez. Yeni exactapp/image/
-   runtime/worker/settings/T0 pinli kaynak ayrıca gerçek farklı-model incelemesi
-   alır; immutable eski observer/history silinmez veya yeni dönem diye pinlenmez.
-   Son rollout/kapasite/resume/readiness ardından **gerçek T0 +168saat +configured
-   maksimum timeout +120sn** yazılır. Henüz yeni T0/bitiş tarihi ölçülmedi. 5–6Ekim
-   tamamlanırsa12–13Ekim kapanışı mümkün olur; bu teslim veya kabul garantisi değildir.
+   Başlangıç kapıları tamamlandı: eşli D202 dağıtım/native backup-restore/
+   rollback koruması; taze cold10/warm10/dual2 ve strict/API200/DBexactonce;
+   kaynak126/origin118/TR62/tüm36tabanı ve2.224.237olay tamhistoricalledger;
+   hardenedworker/CLI/legacy0/health/raporCLI Gate9 ön kontrol; immutable yeni
+   dışobserver/farklımodel kaynak şartları ve gerçek audited resume/readiness.
+   Ön kontroller tam haftanın, doğal kaynak kullanımı veya uzun dönem davranış
+   etkisinin yerine geçmez. Timer eligible sonucu yalnız zaman şartıdır.
 
    **Ön taahhüt:** mevcut16 hatanın sağlayıcı kökü bilinmiyor; yeni telemetri bunu
    geleceğe dönük ölçülebilir yapar, geçmişi onarmaz. Yeni dönemde hata nedenleri
@@ -248,7 +247,7 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
    yeni davranış düzeltmesi zorunluysa kaynak/hakem ve yeni gerçek pencere ile
    takvim riski kaydedilir,17Ekim19:50UTC yetkisi uzatılmaz.
 
-3. **Yeni P7 → gerçek Gate11/12:** tam168h/grace ardından doğal kohort, her tam
+2. **Tam P7 → gerçek Gate11/12:** tam168h/grace ardından doğal kohort, her tam
    aktif yazar≥3terminal, ≤%5teknik hata, stable-safe reasons, provenance/kamu
    exactonce, gap-free ledger, kaynak/evrim görünürlüğü. Gerçek kullanıcı/admin
    ekranları ve geçerli CSRF/session ile namednegative sınırlar, ukte kullanım/
@@ -260,7 +259,7 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
    eşliği, reboot/differentbootID/tek hardenedworker/200200 ve doğalterminal.
    İki kez REJECTED Git dışı streaminghelper yürütülmez; kanonik runbook yolu
    kullanılır. DONE-082 yalnız doğrudan canlı kanıtla kapanır.
-4. **P8 ve final M2:** yeterli gerçek soy/kalite/kaynak/nüfus/kapasite kanıtıyla
+3. **P8 ve final M2:** yeterli gerçek soy/kalite/kaynak/nüfus/kapasite kanıtıyla
    tek aday; yetersiz kanıtta ölçülmüş NO_BIRTH, doğum veya fayda uydurulmaz.
    DONE-084 için son üretim kaynak/imaj/runtime/güncelmain eşliği doğrudan
    ölçülür. Kabul makbuzu docs commitleri gerçek davranışın bütün kaynak/lock/
@@ -454,12 +453,12 @@ başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime mode
 
 ## 4. Operasyon hattı — özelliklerden bağımsız korunacaklar
 
-| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                                      |
-| ------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **O1** | Canlı heartbeat ve P7 olay büyümesi                  | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                                 |
-| **O2** | P7 boyunca kapasite fingerprint takibi               | Cold/warm/dual ölçümü tamam; mevcut son tarih19 Ekim00:04:18UTC ve12 Ekim pencere/payını karşılıyor. Fingerprint değişirse yeni kapasite ve gerekli yeni T0; gereksiz benchmark yok. |
-| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                                         |
-| **O5** | Toplu komutların canlı kabulü, 17 Ekim               | Kuyruk #309, profil #312, içerik #314/#322 kod/hakem/CI tamam; rota kapsam kararı kaynakla kapandı. Kod canlı; sınırlı kullanım makbuzu Gate11’de açık                               |
+| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                                                 |
+| ------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **O1** | Canlı heartbeat ve P7 olay büyümesi                  | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                                            |
+| **O2** | P7 boyunca kapasite fingerprint takibi               | Cold/warm/dual ölçümü tamam; D202 taze son tarih19 Ekim19:34:34UTC; gerçek yeniT0+168h+720sn koşulu doğrulanır. Fingerprint değişirse yeni kapasite ve gerekli yeni T0; gereksiz benchmark yok. |
+| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                                                    |
+| **O5** | Toplu komutların canlı kabulü, 17 Ekim               | Kuyruk #309, profil #312, içerik #314/#322 kod/hakem/CI tamam; rota kapsam kararı kaynakla kapandı. Kod canlı; sınırlı kullanım makbuzu Gate11’de açık                                          |
 
 **O3 teslimi tamam:** eski dış yedeğin gerçek restore/veri eşliği ve owned DB
 kapanışı, exact a97 kaynak kurulumu ve5Ekim mevcut timer'ın otomatik native yedeği
