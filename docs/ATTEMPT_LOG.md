@@ -5112,3 +5112,29 @@ Gözlemciye ACK yaşı ve `P7_ROSTER_ACK_STALE_REQUIRES_DISPOSITION` eklendi.
 Mevcut koşular kesilmez, yapay tick/heartbeat/manualrun yaratılmaz; sonraki doğal batch,
 ACK yenilenmesi ve tam hafta kapsamı O4/P7 içinde ölçülür. Tek maintenance timeout,
 boş doğal denominator'a %0 veya %100 hata oranı diye aktarılmaz.
+
+## 5 Ekim — CI takvim ifadesi ile gerçek168 saat sözleşmesinin uzlaştırması
+
+Main `258b9c485cd0057c4536ffe8fabbfc42823767f4`, CI`37252578367` behavior job'u
+`tests/unit/ops/production-runbook.test.ts:256` eski İngilizce “at least seven complete
+consecutive Europe/Istanbul days” literal'ini aradığı için düştü:1failed/2339passed.
+Üretim uygulaması d829 ve davranış kodu değişmedi; ürün regresyonu değildir.
+3Ekim kanonik plan/kullanıcı sözleşmesi gerçek `[T0,T0+168h)` ister; İstanbul günü
+bucket'larının ilk/son kısmi günleri168 saat yerine sayılamaz. Testi eski cümleye
+uydurmak için sözleşme geri çevrilmedi. Aynı test artık exact168 saat, kısmi günlerin
+süreyi kısaltamaması, configured maximum timeout+120s ve davranış değişiminde yeniT0
+şartlarını birlikte koruyor; doğal≥3/≤%5/kamu-kaynak-ledger sınırları aynı.
+Son odaklı runbook **21/21 PASS**. Format/lint/typecheck, M1 gereksinimleri3/3 ve M2-development0FAIL geçti.
+Bağımsız dar kaynak incelemesi ve son exact CI açık; final M2/DONE-082 açık kalır.
+Tekrarlama: tarihsel İngilizce literal'i kullanıcıca belirlenen gerçek süre sözleşmesi
+sanma; test kırılmasını üretim davranışı regresyonuna veya168 saat küçültme iznine çevirme.
+
+### P7 testinin bağımsız kapanışı
+
+Gerçek `claude-opus-5`, exact `ccf8f04fb8ec848ef8ea4e1aedff8268b31532ca`,
+**KOŞULLU GO**,41,204s; yardımcı `claude-haiku-4-5-20251001` ayrıca kayıtlı.
+Kabul zayıflaması bulmadı: gerçek168 saat, max timeout+120sn ve yeni T0 koşulları
+korunuyor; app/worker değişmedi, mevcut pencere için deploy/reset gerekmiyor.
+İki koşul kaynakla kapandı: test prose'u `/\s+/gu` ile normalize ediyor ve21/21 geçiyor;
+eski İngilizce literal runbook'ta bulunmuyor. Hakem verilen git-show packet'ini okudu,
+SHA'yı kendisi fetch etmedi veya test çalıştırmadı. Son exact CI ayrıca gerekli.

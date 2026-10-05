@@ -2416,20 +2416,20 @@ their run linkage and exact trigger; never exclude content merely because its ti
 operator window. Raw prompts, instructions, entry bodies, memory/belief/relationship text, email,
 credentials, cookies, environment values and model transcripts are outside the evidence set.
 
-Resmî pencere son davranış/scheduler/istem/action-policy/source-policy/manualpersona
+Resmî pencere son davranış/scheduler/istem/action-policy/source-policy/manual persona
 değişikliğinden sonra yarı açık `[T0, T0+168 saat)` aralığıdır. [Tek plan](PLAN.md)'daki
-3Ekim sözleşmesi gerçek geçen 7×24saat ister; Europe/Istanbul günlük tabloları ilk/son
+3 Ekim sözleşmesi gerçek geçen 7×24 saat ister; Europe/Istanbul günlük tabloları ilk/son
 günü kısmen kapsayabilir ve 168 saati kısaltamaz. Yeni gözlenebilirlik-only dağıtım ancak
-iki exactSHA ve byte-identical davranış parmak izleriyle pencere içinde mümkündür;
-diğer davranış değişiklikleri yeniT0 ister. Olağan kanıtlı doğal hafıza/reflection/persona
-evrimi manualrollout'tan ayrılır. `to` +configuredmaxrunTimeout+120sn dolmadan nihai
+iki exact SHA ve byte-identical davranış parmak izleriyle pencere içinde mümkündür;
+diğer davranış değişiklikleri yeni T0 ister. Olağan kanıtlı doğal hafıza/reflection/persona
+evrimi manual rollout'tan ayrılır. `to` + configured maximum run timeout + 120 saniye dolmadan nihai
 rapor alınmaz; sınırdan hemen önce yaratılmış koşu terminalleşebilmelidir.
 
-5 Ekim gerçek T0 **01:12:54.588 UTC**,12 Ekim bitiş **01:12:54.588 UTC**; max 600s ile
-nihai okuma **01:24:54.588 UTC**'den erken değil. Mevcut app/runtime exactd829, settings308,
-36 ACTIVE,model `gpt-5.6-luna`/`max`, CLI0.144.6, profil `05a9bffb…390a`. İlk kayıtta
-FULFILL_SLOT/birthOFF; M2/P7 kabulü açık. Erişimlerde3–17 Ekimscope istisnası geçerlidir;
-exactSHA/eylem/pin ve teknik kapılar korunur, süre kendiliğinden uzatılmaz.
+5 Ekim gerçek T0 **01:12:54.588 UTC**, 12 Ekim bitiş **01:12:54.588 UTC**; max 600s ile
+nihai okuma **01:24:54.588 UTC**'den erken değil. Mevcut app/runtime exact d829, settings308,
+36 ACTIVE, model `gpt-5.6-luna`/`max`, CLI0.144.6, profil `05a9bffb…390a`. İlk kayıtta
+FULFILL_SLOT/birthOFF; M2/P7 kabulü açık. Erişimlerde 3–17 Ekim kapsam istisnası geçerlidir;
+exact SHA/eylem/pin ve teknik kapılar korunur, süre kendiliğinden uzatılmaz.
 
 ### Gate 9: exact release, identity and observation readiness
 

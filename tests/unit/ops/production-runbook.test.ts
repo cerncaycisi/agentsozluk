@@ -249,13 +249,16 @@ describe("Milestone 2 production operator runbook", () => {
     expect(capacityGate).toContain("cold/warm/dual sample counts");
   });
 
-  it("defines the current seven-day stochastic acceptance without public-action quotas", () => {
+  it("requires 168 elapsed hours and terminalization grace without public-action quotas", () => {
     expect(stochasticAcceptance).toContain(
       "## Current stochastic production acceptance — Gates 9–12",
     );
+    expect(stochasticAcceptance).toContain("`[T0, T0+168 saat)`");
+    expect(stochasticAcceptanceProse).toContain("günü kısmen kapsayabilir ve 168 saati kısaltamaz");
     expect(stochasticAcceptanceProse).toContain(
-      "at least seven complete consecutive Europe/Istanbul days",
+      "`to` + configured maximum run timeout + 120 saniye dolmadan nihai rapor alınmaz",
     );
+    expect(stochasticAcceptanceProse).toContain("diğer davranış değişiklikleri yeni T0 ister");
     expect(stochasticAcceptance).toContain("`STOCHASTIC_TICK` + `NORMAL_WAKE`");
     expect(stochasticAcceptance).toContain("run_matrix_warnings=0");
     expect(stochasticAcceptanceProse).toContain("at least three terminal natural wakes");
