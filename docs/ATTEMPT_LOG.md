@@ -5343,3 +5343,41 @@ restore/reboot henüz çalıştırılmadı. M2development04:27PASS465aktif/77sup
 Tekrarlama: tarihsel CANCELLED'ı yeşile çevirme; farklı snapshot ret sayılarını
 tek orana katma; policy ret kodunu yanlış ret veya doğru koruma kanıtı sayma;
 P4 üç olayı üç deney diye yazma; development PASS'ini final kabul sayma.
+
+## 5 Ekim 05:03 UTC — Gate12 yardımcı adayı REJECTED; kanonik yol korunuyor
+
+Ortam main `a59314e6f779829db700d238e42e062d07829e8d`, exact CI37264429897
+7/7PASS04:51:54UTC; app/runtime d829 aynı. Yeni private helper ilkSHA256
+3e000cee…584, ikinci `0fe6e0929f2958fa41fa6d362cb0774f209bb15680ac04d95a325c3c436a49e5`.
+Gerçek claude-opus-5 salt okunur162,603sn ve339,960sn **REJECTED**;
+Haiku yardımcı model ayrıca kayıtlı, Astra0. Peer araç/ağ/üretim kullanmadı.
+
+İlk gerçek yerel fixture `GATE12_STREAM_DESCENDANT_OUTLIVES_PARENT_TIMEOUT`:
+parent kill yerel descendant'ı bırakıyordu. Unreaped leader PID/PGID ile yalnız
+own start_new_session grubunun temizliği düzeltildi. İlk anlıkR assertion
+SIGKILL delivery yarışıydı; focused≤300ms Z/GONE kontrolü iki durumu ayırdı.
+EAGAIN testi global os.read patch ile Popen error-pipeını bozmuştu; yalnız
+created stdin/stdout FD enjeksiyonu sonrası24assert PASS. Bu fixture nedenleri
+canlı kod regresyonu sayılmadı; test kaynakları ve sınırlı sonuçlar korundu.
+
+İkinci hakem FD düzeyi leak capture, pozitif kanonik hash girişi, tam psql/Docker
+argv ve container/server backend bitişi kanıtının eksik olduğunu gösterdi.
+Kaynak gözlemi: public sabit psql argv ON_ERROR_STOP/-X/-A/-t/-q/-T içeriyordu;
+test bunların hepsini veya gerçek PG davranışını ölçmüyordu. Yerel processgroup
+kill'i container/backend sonlandırma kanıtı değildir. Aday kurulmadı ve üretim
+akışından çıkarıldı; public entry `GATE12_REJECTED_CANDIDATE_NOT_EXECUTABLE`,
+guard proof0subprocess. İncelenen exact kaynak/hash ve REJECTED görüşler özel
+arşivde saklandı; koşulsuz/koşullu GO diye yeniden adlandırılmadı.
+
+Doğrulanmış çözüm: bu yeni isteğe bağlı yardımcıyı kullanma; mevcut kanonik runbook
+V1 COUNT/COPY→SHA256 + ON_ERROR_STOP/pipefail ve ayrı ledger/eşlik yolu korunur.
+Gerçek Gate12 identity/OID-owner-operation/all-writer-freeze/taze restore/reboot
+hâlâ açık; hiçbir backup/restore/reboot/P7PASS yazılmadı. Altı Gate11 kaynağı d829
+byte eşliğinde: yeni HUMAN ACTIVE/writerApproved=false, ordinary HUMAN content
+NOT_AGENT_CONTENT; OTHER_EDITORIAL nötr smoke değildir. Gerçek uygun hedef yokken
+fake editorial ders veya agent-content provenance oluşturulmaz.
+
+Tekrarlama: kapsamı dar24assert PASS'ini sızıntı/SQL/Docker cleanup kanıtı sayma;
+REJECTED private helperi observer/üretime kurma; yerel grup kill'ini sunucu backend
+bitişi sayma; kaynakta olmayan harici hata izleyicisini proje olgusu diye yazma;
+HUMAN fixture veya sahte kusurla positive agent-content kabulü üretme.

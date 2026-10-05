@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 04:30 UTC — doğal akış/O4 çalışıyor; CI süre düzeltmesi tamam, ret uyarısı açık.**
+**5 Ekim 05:03 UTC — P7/O4 doğal takipte; kaynak CI kapalı, ret uyarısı açık.**
 Goal aktiftir. M2/DONE-082 henüz `BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
 Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
@@ -91,6 +91,10 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    geçerli tek-hedef bulk preview negatif payload'ı ve token redaksiyon sınırı kaynakta
    ayrıldı; session/token işlemleri henüz yapılmadı. Gate12 tam ledger zincir sorgusu
    bütün tarihsel profilleri kapsar; kaynak/restore/reboot ölçümü henüz yapılmadı.
+   Yeni Git dışı V1 streaming yardımcı adayı iki gerçek Opus incelemesinde REJECTED;
+   üretim yolundan çıkarıldı, public entry subprocess öncesinde kapalı. Mevcut kanonik
+   runbook V1 COUNT/COPY→SHA256/ON_ERROR_STOP/pipefail ve ayrı ledger kapıları kullanılır.
+   Adayın24ağsız assertion'ı gerçek SQL/Docker veya FD düzeyi sızıntı kanıtı değildir.
 3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
    aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
    Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız
@@ -98,6 +102,8 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 
 Tam ölçümler [STATUS.md](STATUS.md), denemeler [ATTEMPT_LOG.md](ATTEMPT_LOG.md).
 Pencereyi başlatmak planı bitirmek değildir; goal gerçek kabul ve sonraki kapılara kadar aktiftir.
+Ölçüm makbuzu main `a59314e6f779829db700d238e42e062d07829e8d`, exact CI37264429897
+7/7PASS,04:51:54UTC; app d829 aynı, deploy/pencere reseti yapılmadı.
 M2 geliştirme izlenebilirliği04:27UTC PASS:465aktif PASS/77superseded/1onaylı BLOCKED,
 0FAIL,543toplam;25kısmi supersession bu satırların içindedir. Final `verify:m2` ve DONE-082 açık.
 

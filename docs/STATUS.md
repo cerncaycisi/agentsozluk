@@ -7,6 +7,44 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 05:03 UTC — kaynak CI tamam; Gate11 fixture ayrımı ve reddedilen yardımcı
+
+Ölçüm makbuzu main `a59314e6f779829db700d238e42e062d07829e8d`, exact
+CI`37264429897` **7/7PASS**, validate04:51:54UTC. Yerel Node22.23.1/pnpm10.34.5
+format/lint/typecheck, M1requirements3/3 ve M2development kontrolü PASS;
+remote/root SHA eşit ve ağaç temiz. Bu salt belge commit'i app d829'a deploy edilmedi.
+
+Gate11 kaynak ayrımı: yeni kayıt HUMAN/USER/ACTIVE, writerApproved=false;
+NEW bir UserStatus değildir. O5 bulk-hide ordinary HUMAN fixture'ını
+NOT_AGENT_CONTENT ile reddeder; pozitif ajan içeriği smoke kanıtı olamaz.
+OTHER_EDITORIAL de gerçek kusur hükmüdür, nötr test gerekçesi değildir.
+Hide/restore gerçek CONTENT_MODERATED/CONTENT_RESTORED olayları üretir;
+hedef/geri alma somutlaşmadan ve worker pause/drain boyunca geçici dersin
+algılanması önlenmeden live-positive PASS verilmez. Altı kaynak byte-identical d829.
+
+Git dışı isteğe bağlı V1 streaming kütüphane adayı için gerçek `claude-opus-5`
+**162,603sn REJECTED**, ardından değişen kaynakta **339,960sn REJECTED**;
+yardımcı Haiku ayrıca kayıtlı, Astra turu0. İlk kaynakta sahipli yerel alt sürecin
+timeout sonrası açık kalması gerçek fixture ile gösterildi; own processgroup
+kapanışı düzeltildi.10, ardından24sınırlı ağsız assertion geçti. İlk immediate-R
+fixture SIGKILL delivery yarışı; ikinci EAGAIN fixture Popen error-pipeına da
+vuruyordu. Z/GONE≤300ms ve yalnız owned stdin/stdout FD enjeksiyonu ile ayrıldılar.
+
+İkinci inceleme, FD düzeyi çıktı yakalama/pozitif kanonik giriş/tam argv ve
+container/server backend kapanışının bu testlerle ölçülmediğini gösterdi.
+24 assertion PASS bu garantilerin veya üretim hazırlığının PASS'i değildir.
+İncelenen helperSHA256 `0fe6e0929f2958fa41fa6d362cb0774f209bb15680ac04d95a325c3c436a49e5`
+ve makbuzları özel arşivde korundu. Aday **üretim yolundan çıkarıldı**;
+public entry `GATE12_REJECTED_CANDIDATE_NOT_EXECUTABLE` ile subprocess öncesi
+reddediyor; doğrudan guard kontrolü0subprocess. Gözlemciye veya üretime kurulmadı.
+
+Gate12 mevcut kanonik V1 COUNT/COPY→SHA256/ON_ERROR_STOP/pipefail ve ledger
+runbook yolundan hazırlanır. Kimlik/DBOID-owner-operation, bütün yazıların dondurulması,
+taze source/restore/frozen reboot eşliği henüz gerçek işlem gerektirir; yeni araç
+adayını reddetmek bu kapıları kapatmaz. App/worker/model/ayar/T0 aynı; P7/O4
+saatlik/deadline timer aktif, son actual ölçüm04:30, ret uyarısı açık, goal aktif.
+Bu kaynak hazırlığı üretim/model çağrısı veya P7/M2 kabulü değildir.
+
 ## 5 Ekim 04:30 UTC — exact CI kapanışı ve ilk yeterli entry ret örneklemi
 
 PR[#329](https://github.com/cerncaycisi/agentsozluk/pull/329) exact head
