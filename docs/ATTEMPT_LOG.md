@@ -6642,3 +6642,26 @@ korunur. Yeni gerçek VM/null-prototype vakasıyla ilgili3dosya10testPASS.
 Bu son kaynak için2389 tam unit sonucu yeniden iddia edilmiyor; aynı exact
 head'in tüm CI sonuçları beklenir. Type/lint/format son gate ve farklı model
 kod incelemesi bekler. Üretimde kaynak/migration/reset değişimi yok.
+
+## 5 Ekim 2026 22:06 UTC — gerçek BIGINT migration regresyonu
+
+PR333 exact `6473321fdbc97311338565e3d7b03f22ef94b29b`,
+CI37378502073 **FAIL**. Behavior/database/coverage/browser migration adımında
+kırıldı; qualityPASS. Native database job111993954375 logu kök nedeni doğruladı:
+`cannot alter type of a column used in a trigger definition`; topics publicId
+immutable trigger'ı kolon bağımlılığı taşır. `current transaction is aborted`
+ikincil hatadır. Fixture veya runner problemi değildir; üretime uygulanmadı.
+
+Fable5.1 gerçek kod hakemi175.675ms KOŞULLU GO; migration bağımlılığı, default
+select/JSON sınırları ve PG fixture kapsamı açık bulgulardı. Moderation actions
+ve topic yönetim listesi default DTO sınırları dönüştürüldü. Renderer/Zod4
+şeması gerçek safe-ID unit'leriyle doğrulandı;5dosya41testPASS. Yeni prepare/
+finish migration aynı immutable function/trigger kapısını koruyarak bağımlılığı
+kaldırır ve özgün trigger'ı geri kurar; geçmiş migration byte-identical kaldı.
+Yeni PG testleri farklı topic/entry ID, application audit/outbox, idempotency JSON,
+search/moderation ve iki sequence+CHECK tam rollback sınırlarını kapsar;
+PG/CI/farklı-model closure henüz bekler. Ayrıntı RESET_BIGINT_SINIR_KANITI dosyasında.
+
+Tekrarlama: transaction-aborted mesajını kök neden sayma; trigger'ı disable/drop
+ederek migration'ı geçirme; yazılmış PG testini çalışmış diye kaydetme; yeni
+BIGINT hazırlığını reset/dağıtım veya P7 PASS sayma.

@@ -8,6 +8,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+**22:06 reset kodu:** İlk BIGINT paketinin draft [PR333](https://github.com/cerncaycisi/agentsozluk/pull/333)
+CI'ı gerçek PostgreSQL trigger bağımlılığı nedeniyle FAIL; üretime uygulanmadı.
+Geçmiş migration değişmeden, immutable guard korunarak yeni pre/post adımlar
+hazırlandı. Moderasyon JSON sınırları kapatıldı, ilgili41unitPASS. Yeni PG/CI
+ve Fable closure bekler; [sınır envanteri](RESET_BIGINT_SINIR_KANITI_2026-10-05.md)
+kanıt ve açık koşulları içerir. Bu reset tamam veya canlı açılış değildir.
+
 **5 Ekim 21:05 UTC — kullanıcı reseti hazırlanıyor; toplum ve worker kapalı.**
 Gökhan toplumu durdurup sıfırlamamızı, insan verisini de silmemizi ve ardından
 tekrar açarak aynı goal'e devam etmemizi istedi. Mevcut native audited pause

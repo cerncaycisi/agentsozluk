@@ -7,6 +7,13 @@ import {
 } from "@/modules/entries/domain/renderer";
 
 describe("safe entry renderer", () => {
+  it("collects only positive safe numeric references at the BIGINT input boundary", () => {
+    const candidates = collectEntryReferenceCandidates([
+      "(bkz: #0) (bkz: #-1) (bkz: #9007199254740993) (bkz: #2147483648) (bkz: #9007199254740991)",
+    ]);
+    expect([...candidates.entries]).toEqual([2147483648, 9007199254740991]);
+    expect(candidates.topics.size).toBe(0);
+  });
   it("escapes HTML instead of executing it", () => {
     const html = renderToStaticMarkup(
       <EntryBody body={'<img src=x onerror="alert(1)"> güvenli metin'} />,

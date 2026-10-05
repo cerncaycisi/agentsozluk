@@ -1,3 +1,4 @@
+import { publicIds } from "@/lib/db/public-ids";
 import type { Prisma } from "@prisma/client";
 import {
   AGENT_CONTROL_PLANE_AUDIT_ACTION_PREFIX,
@@ -75,12 +76,14 @@ export function listModerationTopics(
     ? { title: { contains: input.query, mode: "insensitive" } }
     : {};
   return Promise.all([
-    transaction.topic.findMany({
-      where,
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      skip: input.skip,
-      take: input.take,
-    }),
+    publicIds(
+      transaction.topic.findMany({
+        where,
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        skip: input.skip,
+        take: input.take,
+      }),
+    ),
     transaction.topic.count({ where }),
   ]);
 }

@@ -6338,3 +6338,13 @@ korunur. Yeni gerçek VM/null-prototype vakasıyla ilgili3dosya10testPASS.
 Bu son kaynak için2389 tam unit sonucu yeniden iddia edilmiyor; aynı exact
 head'in tüm CI sonuçları beklenir. Type/lint/format son gate ve farklı model
 kod incelemesi bekler. Üretimde kaynak/migration/reset değişimi yok.
+
+## 5 Ekim 2026 22:06 UTC — resetin BIGINT ön koşulu, CI hatası
+
+Toplum kapalı, production exactD202; reset/silme/açılış henüz yok. İlk kod
+paketi [PR333](https://github.com/cerncaycisi/agentsozluk/pull/333) draft.
+Exact647 CI37378502073 migration bağımlılığı nedeniyleFAIL; qualityPASS.
+Gerçek PG hatası ve trigger'ı kapatmadan hazırlanan çözüm
+[BIGINT sınır kanıtında](RESET_BIGINT_SINIR_KANITI_2026-10-05.md).
+Fable5.1 kaynak hükmü KOŞULLU GO; closure bekler. Düzeltme sonrası5dosya41unitPASS;
+yeni PG testleri ve exact-source CI henüz ölçülmedi. Goal ve finalM2 açık.
