@@ -902,6 +902,42 @@ SHA. A short SHA, branch name, image tag or timestamp is not sufficient. Any mis
 
 ### Gate 7: backup and isolated restore drill
 
+#### Güncel Gate12 için Gate7’nin yeniden kullanım sınırı
+
+Aşağıdaki ilk M2 migration örneğinin sabit **10 profil / PAUSED** sorgusu ve ilk-geçiş
+lifecycle işlemleri, güncel stochastic Gate12’de çalıştırılmaz. Güncel Gate9–12 ve
+[tek plan](PLAN.md) önceliklidir. Gate12 yalnız Gate7’nin genel write-freeze, yedek,
+V1 kanonik sayım/SHA-256 ve ayrı restore doğrulama sözleşmesini yeniden kullanır:
+
+- Audited global pause yalnız `runtimeEnabled` geçişidir; mevcut 36 ACTIVE yazarın
+  lifecycle/persona durumunu değiştirmez. Çalışan işler doğal terminalleşir; run cancel,
+  catch-up veya daily-plan üretimi yoktur. Önceden kuyruğa alınmış gelecek işler varsa
+  worker durduktan sonra sayı/durum/kimlik parmak iziyle korunur; sessizce silinmez.
+- Worker, public proxy ve app mevcut onaylı maintenance yoluyla durdurulur; yalnız agent
+  pause yazma dondurması değildir. HUMAN/API/admin ve in-flight yazıları tamamen durmadan
+  baseline/backup alınmaz. Aynı frozen snapshot boyunca yedek işiyle çakışma engellenir.
+- Actual katılımcı listesi ve source DB kimliği başta kaydedilir; eski `count(*) = 10`
+  veya bütün profilleri PAUSED yapma komutu kullanılmaz. Source/restored V1 SHA-256 ile
+  ledger rowcount, profil sequence sınırları, previous-hash linkage ve deterministic
+  chain fingerprint eşlenir. Ham V1 satırları SHA-256 stdin’e akar; dosya/loga yazılmaz.
+- Restore hedefi ayrı ve yeni operation’a ait olmalıdır. Ad allowlist/denylist tek başına
+  sahiplik kanıtı değildir: oluşturma makbuzu, OID, owner ve operation marker eşliği
+  doğrulanır. Başarısız hedef/journal korunur; cleanup yalnız tekrar doğrulanan aynı
+  sahipli hedefe uygulanır. `DROP ... FORCE`, genel backend kill veya kör `--if-exists`
+  temizliği kullanılmaz; mevcut bounded owned-restore helper kullanılacaksa exact
+  source/hash ve kendi O3 doğrulamasına **ek** V1/ledger kapıları ayrıca bağlanır.
+- Backup ve restore aynı root dosya sistemindeyse en az **3× actual DB size +1GiB**
+  staging payı ve normal 8GiB root kapısı birlikte aranır; ayrı mount’larda Gate7’nin
+  her mount için daha sıkı ölçülen payı korunur. Current/previous image/runtime,
+  named volume, eski emniyet yedeği ve diğer kullanıcı işleri korunur.
+- Restore eşliği, sağlıklı dönüş ve özgün setting/lifecycle/queue eşliği ölçülmeden
+  resume yapılmaz. Reboot/final acceptance aşağıdaki güncel Gate12’ye tabidir;
+  bu uyarlama backup/restore/reboot çalıştırıldığı veya PASS olduğu anlamına gelmez.
+
+`pnpm agent:verify-life-ledger` geliştirme test runner’ıdır ve test DB reset içerir;
+üretim ledger doğrulaması veya restore komutu olarak çalıştırılmaz. Üretimde mevcut
+salt okunur chain sorguları ve frozen source/restore parmak izleri kullanılır.
+
 Backup, write-freeze and restore verification are production mutations and require explicit
 approval for that exact scope. Run this procedure in Bash, replace every timestamp marker with the
 same UTC timestamp, and keep the operator-approved application-wide write freeze in place from the
@@ -2536,7 +2572,8 @@ delete failed evidence to make this gate green.
 
 Gate 12 is intentionally disruptive and split across explicit approvals. First pause society flow,
 drain leases without cancelling runs, freeze application writes, then repeat Gate 7 backup and
-isolated restore. Require byte-identical V1 preservation plus equal life-ledger row count,
+isolated restore under its **Güncel Gate12 için Gate7’nin yeniden kullanım sınırı** adapter;
+never execute the initial-migration ten-profile PAUSED query for the current roster. Require byte-identical V1 preservation plus equal life-ledger row count,
 per-profile sequence bounds, previous-hash linkage and deterministic chain fingerprint between
 production and the isolated restore. Resume ordinary application writes only after the backup and
 restore checks pass.

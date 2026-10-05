@@ -59,7 +59,10 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 2. **Gate10 tam rapor → Gate11/12:** süre dolunca doğal kohort, yazar başına ≥3terminal,
    ≤%5 teknik hata, ret/PARTIAL güvenli nedenler, provenance/kamu eşliği, ledger/kaynak/
    evrim kapıları doğrudan ölçülür. Sonra adlandırılmış insan/yetki smoke ve taze
-   yedek/restore/reboot. Paket hazırlığı şimdi yapılabilir; erken PASS verilmez.
+   yedek/restore/reboot. Gate7’nin eski10profil/PAUSED ilk-migration sorgusu güncel
+   Gate12’ye taşınmaz: actual36 roster/lifecycle korunur; source/restore V1+ledger
+   parmak izleri ve ad/OID/owner/operation bağı kapıları geçer. Paket hazırlığı şimdi
+   yapılabilir; erken PASS verilmez.
 3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
    aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
    Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız
