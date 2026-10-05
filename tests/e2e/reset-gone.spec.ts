@@ -88,6 +88,10 @@ test("known removed numeric/UUID links are 410, live links win and unknown links
         { timeout: 15000 },
       );
     }
+    // Negatif process cache en çok250ms; gerçek reset/restore bütün app süreçlerini yeniden açar.
+    await expect
+      .poll(async () => (await request.get("/entry/777777001")).status(), { timeout: 5000 })
+      .toBe(410);
     for (const path of [
       "/entry/777777001",
       `/entry/${removedEntry}`,

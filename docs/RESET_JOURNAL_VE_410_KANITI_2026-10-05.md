@@ -82,3 +82,48 @@ Yerel artifact build veya browser E2E sonucu henüz yok. E2E kaynağı gerçek
 numeric/UUID/HEAD/prefetch/RSC/404/live200/308/Türkçe yalın başlık ve POST
 sınırlarını yazdı; CI sonucu bekler. Format/lint/typecheckPASS; farklı model
 kaynak incelemesi bu paket için henüz bekler.
+
+## 23:18 closure — ilk CI ve farklı-model bulguları
+
+Exact `6b1ccd61931f53aed4bd53e3e05d9177650a709a` için PR334/CI37385115483
+FAIL: quality/behavior/container/browserPASS; database/coverageFAIL; validate
+bağımlılıktanFAIL. Gerçek PG517 vakada516PASS, tek hata eski ukte testinin
+`başlık--123` biçimini hâlâ geçerli sanmasıdır. Paylaşılan title kuralı nedeniyle
+ukte de reddedilir; test olumlu `ac`/UUID/sonunda sayı olmayan örnekleri korur,
+API422 ve kayıt0 için yeni negatif vaka ekler. Odaklı gerçekPG25PASS.
+
+İlk Fable çağrısı420sn/boşstdout+stderr: inceleme sonucu yok, PASS değildir. Aynı
+SHA odaklı kaynak girdisi actual `claude-fable-5-1`/315.693ms ile sonuç verdi.
+CLI tools kapalıdır; yanıt içindeki dosya/araç okuma anlatımları bağımsız gerçek
+disk okuması kanıtı değildir. Değişen kaynak ve satırlardan bulgular ayrı doğrulandı.
+H1 merge-blocking yük, H2 orphan tombstone, M1 ortak niyet kilidi, M2 saat kaynağı
+uygulamada düzeltildi; yeni exact-source Fable closure ve CI hâlâ şarttır.
+
+Başarılı process okuması pozitif immutable marker/tombstone indeksini tutar;
+yok sonucu monotonic250ms ile sınırlı ve eşzamanlı okuma tek uçuş olur. Bilinen
+mezar taşında canlı varlık sonucu geçmişe dönük saklanmaz, yalnız aynı anda
+aynı adrese gelen okuma birleşir. Unknown kayıt yüklü index'te DB'ye gitmez.
+40odaklıunitPASS, bunların7'si cache/yarış/süre/hata sınırıdır. Reset ve restore
+bütün app süreçlerini yeniden yaratmalıdır. Gerçek standalone havuz/sorgu/p95
+production-boyut ölçümü hâlâ kabul kapısıdır; unit100eşzamanlı vaka onun yerine geçmez.
+
+İlk committed migration değişmedi. Ayrı atomic journal migration'ı, tüketilmiş
+niyet/tombstone için deferred commit zorunluluğu ve INSERT'e DB saati uygular;
+aynı niyet row'u FOR UPDATE ile sıralanır. Gerçek PG, commit olmadan kalıcılaştırma
+ve geleceğe taşınmış createdAt girişini reddeder. İmmutability TRUNCATE testinden
+önce geçerli deferred olaylar SET CONSTRAINTS ALL IMMEDIATE ile boşaltılır:
+PG'nin pending-trigger reddi asıl immutable trigger kanıtı diye kullanılmaz.
+
+M3 yarış varsayımı geçerli config'te yok: workers1 ve mevcut iki browser projesi
+CI'daPASS; M4 public fixture etkisi gerçek bütün browser suite'indeFAIL üretmedi.
+UUID ile başlayan başlıkların mevcut legacy ayrıştırılması ve dedicated composer
+query'si korunur; yeni UUID-title yasağı eklenmedi. Alt-yol404 ve bozuk/leading-zero
+adres davranışı mevcut parser kapsamıdır. session_replication_role=origin ve
+bütün trigger'lar O kapısı sürer; ENABLE ALWAYS ile bu kapı gevşetilmedi.
+Süresi dolmuş açık niyet otomatik yeniden kullanılmaz: ayrı audited invalidasyon,
+yeni intent ve taze backup/restore/manifest/plan gerekir.
+
+Yeni production çekirdeği ayrı worktree'de3gerçekPG vakaPASS: tek işlemde
+silme/tombstone/archive/namespace ve tüm DDL+sequence+journal rollback. Bunlar
+küçük sahipli test DB'sindedir; production CLI/gate, HMAC, fullsize restore/prova,
+peer, canlı migration/reset ve açılış tamamlandı sayılmaz.

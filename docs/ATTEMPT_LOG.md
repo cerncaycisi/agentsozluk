@@ -6718,3 +6718,27 @@ integration fixture'ına taşıma;300sn tamamlanmayan geniş koşuyuPASS sayma.
 Subprocess bütçesinde ayrı processgroup ve sahipli cleanup kullan; shell komut
 metnindeki vitest sözcüğüne göre süreç seçme. Küçük test DB'sini fullsize
 production restore/prova veya journal/410 kodunu actualreset/açılış sayma.
+
+## 5 Ekim23:18 — journal CI, Fable bulguları ve gerçek PG closure
+
+Exact6b1/CI37385115483 database517/516PASS/1FAIL: ukte pozitif numeric-suffix
+örneği yeni paylaşılan title guard'ıyla çelişir. Yeni test olumlu reserved örnekleri
+korur ve API422/kayıt0 negatif kanıt ekler; focused25PGPASS. İlk yeni vaka400
+sanmıştı; uygulamanın mevcut validation kodu422 kaynakla doğrulanıp test düzeltildi.
+
+Fable ilk420sn stdout/stderr0 sonucunda review yok; Python boş JSON parse hatası
+bağımsız model onayı değildir. Odaklı aynıSHA actualFable5.1/315.693ms, H1/H2/M1/M2
+bulguları source ile doğrulandı. İlk migration aynen korunup ayrı deferred atomic
+commit/DB-clock/FOR UPDATE migration eklendi. İlk yeni immutability testinde
+pending constraint trigger PG55006 ile TRUNCATE'i önce reddetti; geçerli deferred
+olaylar açıkça doğrulanarak immutable trigger'ın asıl55000 reddi sınandı. Son25PGPASS.
+Process cache40unitPASS; exactOptionalPropertyTypes TS2412, optional property
+undefined assignment yerine silinerek kapatıldı; son quality sonucunu ayrıca doğrula.
+
+Ayrı namespace core3PGPASS: gerçek TRUNCATE34, legacy tombstone, outbox archive,
+transactional rangeCHECK/seqRESTART, explicit eski/güvensizID ret ve DDL/seq/journal
+rollback. Sabit hedef üretim guard'ı ve controlDB gate kodu yazılıyor, canlı uygulanmadı.
+Tekrarlama: boş/timeout hakem çıktısınıPASS sayma; modelin tools-kapalı yanıttaki
+araç anlatımını actual disk/tool kanıtı sanma; pending-trigger ret kodunu immutable
+trigger çalıştı diye kaydetme; rollback-only küçükPG testini fullsize veya canlı reset
+kabulü sayma; ilkcommitted migration'ı düzeltme amacıyla değiştirme.

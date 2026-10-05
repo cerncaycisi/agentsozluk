@@ -164,13 +164,22 @@ describe("explicit human ukte requests with PostgreSQL", () => {
   });
   it("carries reserved route-like titles through the dedicated composer query", async () => {
     const f = await fixture();
-    const titles = ["ac", randomUUID(), "başlık--123"];
+    const titles = ["ac", randomUUID(), "başlık--123 konu"];
     for (const title of titles) await createUkte(db, f.ownerActor, { title });
     for (const item of (await listPublicUktes(db, {})).items) {
       const url = new URL(item.writeUrl, "http://localhost");
       expect(url.pathname).toBe("/baslik/ac");
       expect(url.searchParams.get("title")).toBe(item.title);
     }
+  });
+  it("rejects a numeric permalink-shaped ukte before storing an unfulfillable request", async () => {
+    const f = await fixture();
+    const request = await f.requestFor(f.owner.id);
+    for (const title of ["başlık--123", "başlık--１２３"]) {
+      const response = await createRoute(request("/api/v1/uktes", { title }));
+      expect(response.status).toBe(422);
+    }
+    expect(await db.ukteRequest.count()).toBe(0);
   });
   it.each(["approval", "suspension", "agent"])(
     "rejects %s using current database authority even with a forged HUMAN actor",

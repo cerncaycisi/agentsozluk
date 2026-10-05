@@ -6372,3 +6372,13 @@ pool10 odaklı80PGPASS. Pool1 geniş koşu300sn timeout ve14topicfailure ile
 bitmedi; tam suitePASS değildir. Odaklı tekrar çevre nedeni ayrımını sağladı.
 E2E yazıldı ama henüz çalışmadı; peer/CI ve fullproductionreset/backup/restore/
 prova/açılış açık. [Ayrıntı](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md).
+
+## 5 Ekim23:18 — journal/410 ilk CI ve closure geliştirmesi
+
+PR334 exact6b1 CI37385115483 FAIL; browser/container/quality/behaviorPASS,
+PG516PASS/1ukte fixtureFAIL, coverage/validateFAIL. Son kaynak ukte API422/kayıt0
+ve atomic journal odaklı25PGPASS; cache/parser/middleware/ukte40unitPASS.
+Fable315.693ms kaynak incelemesi blocking yük ve orphan-journal bulguları üretti;
+yeni kod closure ve exact CI bekler. İlk420sn çağrı sonuçsuzdur, PASS değildir.
+Ayrı core worktree'de küçük testDB üzerinde3atomic namespace/rollbackPGPASS.
+Hiçbiri production reset, reopen, fullsize restore/prova veya yeni168hPASS değildir.

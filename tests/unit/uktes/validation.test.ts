@@ -54,3 +54,8 @@ describe("ukte request boundaries", () => {
     expect(ukteListSchema.safeParse({ status: "HIDDEN" }).success).toBe(false);
   });
 });
+
+it.each(["başlık--123", "başlık--１２３", "başlık--2147483648"])(
+  "rejects an ukte with a numeric permalink suffix: %s",
+  (title) => expect(ukteCreateSchema.safeParse({ title }).success).toBe(false),
+);

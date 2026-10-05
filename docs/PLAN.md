@@ -8,6 +8,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+**5 Ekim23:18 — journal/410 düzeltmeleri doğrulanıyor.** İlk paket main237'de,
+canlı hâlâD202/toplum kapalı. PR334 ilkCI'da browser/containerPASS; eski ukte
+pozitif örneği nedeniylePG/coverageFAIL. Örnek yeni sözleşmeye uyarlanıp
+API422/kayıt0 doğrulandı;25odaklıPGPASS. Fable yük/atomic journal bulguları
+düzeltildi;40unitPASS, yeni exact-source closure/CI bekler. Production çekirdeğinin
+3PG atomiklik/rollback testi küçük testDB'sindePASS; fullsize/prod kapısı değildir.
+Ayrıntı[journal makbuzunda](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md).
+
 **5 Ekim 22:46 UTC — ilk reset hazırlığı main'de; canlı reset yapılmadı.**
 PR333 exactFAC CI7/7PASS;22:42:50 squashmain237139f, reviewedtree eşit ve root
 clean. Yeni journal/410 paketinde111unit ve pool10 odaklı80PGPASS; browser ve

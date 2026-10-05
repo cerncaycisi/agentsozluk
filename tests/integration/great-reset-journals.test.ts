@@ -141,6 +141,8 @@ describe("great reset journal immutability and one-use state", () => {
               }),
             /Unique constraint/u,
           );
+          // Geçerli atomic marker var: deferred olayları doğrula, TRUNCATE testinde asıl immutable trigger çalışsın.
+          await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
           for (const mutation of [
             () =>
               tx.greatResetCommit.update({
@@ -169,6 +171,7 @@ describe("great reset journal immutability and one-use state", () => {
               tx.$executeRaw`TRUNCATE ONLY public.great_reset_exposure_events, ONLY public.great_reset_commits, ONLY public.great_reset_tombstones, ONLY public.great_reset_intents`,
           ])
             await expectSqlRejection(tx, mutation, /GREAT_RESET_JOURNAL_IMMUTABLE/u);
+          await tx.$executeRaw`SET CONSTRAINTS ALL DEFERRED`;
           const second = randomUUID();
           await createIntent(tx, second);
           await tx.greatResetIntent.update({
@@ -255,5 +258,77 @@ describe("great reset journal immutability and one-use state", () => {
       ),
     ).rejects.toBe(rollback);
     expect(await integrationDatabase.greatResetIntent.count()).toBe(0);
+  });
+  it("requires intent consumption and tombstones to commit together with the reset marker", async () => {
+    await expect(
+      integrationDatabase.$transaction(async (tx) => {
+        const operationId = randomUUID();
+        await createIntent(tx, operationId);
+        await tx.greatResetIntent.update({
+          where: { operationId },
+          data: { consumedAt: new Date() },
+        });
+      }),
+    ).rejects.toThrow(/GREAT_RESET_ATOMIC_COMMIT_REQUIRED/u);
+    expect(await integrationDatabase.greatResetIntent.count()).toBe(0);
+    await expect(
+      integrationDatabase.$transaction(async (tx) => {
+        const operationId = randomUUID();
+        await createIntent(tx, operationId);
+        await tx.greatResetIntent.update({
+          where: { operationId },
+          data: { consumedAt: new Date() },
+        });
+        await tx.greatResetTombstone.create({
+          data: { kind: "ENTRY", uuid: randomUUID(), publicId: 1n, operationId },
+        });
+      }),
+    ).rejects.toThrow(/GREAT_RESET_ATOMIC_COMMIT_REQUIRED/u);
+    expect(await integrationDatabase.greatResetIntent.count()).toBe(0);
+    expect(await integrationDatabase.greatResetTombstone.count()).toBe(0);
+  });
+  it("anchors intent creation to the database clock and keeps the two-hour ceiling real", async () => {
+    const rollback = new Error("JOURNAL_CLOCK_FIXTURE_ROLLBACK");
+    await expect(
+      integrationDatabase.$transaction(async (tx) => {
+        const operationId = randomUUID();
+        await tx.$queryRaw`SELECT set_config('agentsozluk.reset_operation', ${operationId}, true)`;
+        const future = new Date(Date.now() + 10 * 365 * 24 * 3600_000);
+        await expectSqlRejection(
+          tx,
+          () =>
+            tx.greatResetIntent.create({
+              data: {
+                operationId,
+                createdAt: future,
+                expiresAt: new Date(future.getTime() + 3600_000),
+                releaseSha: "a".repeat(40),
+                scope,
+                sourceDatabaseOid: 1n,
+                sourceClusterId: "1",
+              },
+            }),
+          /great_reset_intents_expiry/u,
+        );
+        const old = new Date("2000-01-01T00:00:00Z");
+        const intent = await tx.greatResetIntent.create({
+          data: {
+            operationId,
+            createdAt: old,
+            expiresAt: new Date(Date.now() + 3600_000),
+            releaseSha: "a".repeat(40),
+            scope,
+            sourceDatabaseOid: 1n,
+            sourceClusterId: "1",
+          },
+        });
+        const [clock] = await tx.$queryRaw<{ valid: boolean }[]>`SELECT
+        "createdAt" > clock_timestamp() - INTERVAL '5 seconds' AND "expiresAt" <= "createdAt" + INTERVAL '2 hours' AS valid
+        FROM public.great_reset_intents WHERE "operationId"=${operationId}::uuid`;
+        expect(clock?.valid).toBe(true);
+        expect(intent.createdAt).not.toEqual(old);
+        throw rollback;
+      }),
+    ).rejects.toBe(rollback);
   });
 });
