@@ -6459,3 +6459,174 @@ planlanan saattan üretme; bilinmeyen child çıktısını serialize etme; consu
 resume'u tekrar yürütme. Saatlik raporun zaman bakımından eligible olması
 Gate10/11/12 PASS değildir. Belge makbuzu commit'i davranış dağıtımı veya
 canlı SHA'nın kendiliğinden değişmesi değildir.
+
+## 5 Ekim 20:40 UTC — çalışan akış ve son kabul hazırlığı
+
+Canlı uygulama/runtime kaynağı `d202f3d8dc0078e2fe3bd64cf122e5ba44381da7`;
+ana dal `ee2f88186e8bc9d9db68c082da2be29c4f47a818` yalnız belge makbuzudur.
+Belge sürümü üretime dağıtılmadı. Gerçek haftalık pencere ve ayarlar değişmedi;
+DONE-082/084 açık, original goal aktif.
+
+**20:30:10 UTC gerçek otomatik izleme:** 36 aktif yazar, settings310, iki hat;
+10 doğal çalışma: 8 SUCCEEDED, 1 PARTIAL, 1 RUNNING. Dokuz terminal çalışmada
+teknik FAILED/TIMED_OUT 0, terminal yazar kapsamı 9; her yazarın üç terminal
+çalışma şartı henüz sağlanmadı. Operatör çalışması 0. İçerik oluşturma işlemleri
+7 başarılı/1 ret/0 hata; sekiz istekte %12,5 ret küçük örneklemdir, neden veya
+kalite kabulü çıkarılmaz. Sağlık/hazır olma 200/200, uyarı 0, worker PID3499084 /
+NRestarts0. Credential ACK 20:27:43 UTC; kök disk %74 dolu, 20.541.947.904 bayt
+boş. Observer service exit0/SUCCESS; sonraki saatlik okuma 21:30 UTC.
+
+**Gate10 son okuyucusu hazırlandı; üretimde yürütülmedi.** Git/imaj dışında,
+gerçek pencerenin sonu +600sn+120sn öncesinde DNS/SSH bile başlatmayan araç.
+Mevcut iki native raporu kurulu exact kaynak ve salt okunur Prisma havuzuyla
+okuyacak; ham rapor/hata yerine yalnız izinli sayımlar ve çıktı hash'i döndürür.
+Toplum raporunda 52, hafıza/evrim raporunda 9 zorunlu alanın her birinin exact
+kaynakta tekil çıktı satırı doğrulandı. Bağlantı kanıtı ve başarıyla disconnect
+sonrası beforeExit/exit0 tamamlanma kanıtı aynı rastgele nonce'a bağlıdır.
+Altı yerel hata enjeksiyonu geçti: başarı, asenkron hata, erken exit0, eksik
+disconnect, unhandled rejection, yanlış read-only ayarı. Bunlar sahte yerel
+Prisma/modül testidir; gerçek DB raporu veya Gate10 PASS değildir.
+
+Actual `claude-opus-5` ilk görüş 41.919ms REJECTED olarak korundu. Odaklı ikinci
+görüş 94.415ms CONDITIONAL_GO; yardımcı Haiku kullanımı da gerçek model kaydında
+korunur. Kaynak şartları kapandı: caller içinde sabit en erken tarih + scope
+SHA256 pini ve actual peer sonuç hash'i; başarısız native exit kontrolü proof
+assert'inden önce; bütün remote abort yollarında sabit güvenli JSON hata kodu.
+Mevcut settings310/kontrol hash'i/36 roster için sessiz sapma izni yok; sapma
+olursa yeniden salt okunur uzlaştırma ve incelenmiş pencere hükmü gerekir,
+otomatik tekrar yapılmaz. OutputSHA kontrol pini değil ölçüm makbuzudur.
+Son erken çağrı `GATE10_TOO_EARLY_NO_CONNECTION` ile herhangi bir harici komut
+öncesinde durdu. Caller/scope/remote/wrapper ve peer sonucu0444 saklandı.
+Tam Gate10 için ayrıca provenance, kamu etkisi, tam ledger, ret/neden/kaynak ve
+evrim hükümleri gerekir; bu iki sayım raporu tek başına kabul değildir.
+
+**Gate11 ve Gate12 hazırlıkları:** Gate11'in sekiz eski hazırlık grubundaki 61
+kaynak referansı mevcut D202 ile çevrimdışı eşlendi; eski canlı makbuzları yeni
+PASS diye pinlenmedi. Sahipli hesap kayıt/CSRF/ukte/hesap kapatma için bellek
+üzerinden çalışan tarayıcı kanalının ilk kaynağı hazırlandı; Node syntax PASS,
+doğrudan çağrı `GATE11_PREPARATION_ONLY_NO_EXECUTION`. Kanalın hakemi, gerçek
+koordinatörü, kullanıcı/yönetici UI kabulü ve DB sonrası doğrulaması henüz yok;
+üretim hesabı/oturumu/isteği oluşturulmadı. Native T3 preview status ve open açık
+UNAVAILABLE; bu ortamda yerel tarayıcı alternatifi kullanılabilir.
+
+Gate12 için kanonik runbook V1 COUNT ve COPY SQL'i değiştirilmeden ayrı paket
+haline getirildi. Ham COPY satırları yalnız native SHA256 stdin'ine gidecek;
+reddedilmiş özel streaming helper kullanılmaz. Tam geçmiş ledger SQL'i ve
+önceden başarılı actual restore backend'inin iki kaynak hash'i doğrulandı.
+Bu paket hiçbir SQL/üretim işlemi yürütmedi; son frozen restore, reboot ve
+Gate12 PASS hâlâ bekler. Tek aktif sıra PLAN.md'dedir.
+
+**Belge CI çevre olayı:** exact ee2f881, run37368382698. Behavior işi hiçbir adım
+başlatmadan 20:28:23 UTC CANCELLED; runner_id0. GitHub'ın exact güvenli hatası:
+`The job was not acquired by Runner of type hosted even after multiple attempts`.
+Kod testi çalışmadığı için regresyon veya PASS sonucu çıkarılmaz. Coverage,
+browser, quality, database, container SUCCESS; validate queued. Ana dal sabit,
+kontrol/eşik/timeout değiştirilmedi. Tüm işler bittikten sonra yalnız aksayan
+işlerin aynı exact SHA üzerindeki odaklı tekrarı bekler.
+
+Tekrarlama: GitHub runner atanamamasını test regresyonu diye yama yapma; çalışan
+CI sırasında yeni main push ile kalan işleri iptal etme. Erken/hatalı/yarım
+raporu kabul sayma, peer şartı false iken veya kaynak pini değişmişken bağlantı
+açma. Kanal hazırlığını kullanıcı kabulü veya final kurtarma sayma; eski
+consumed resume/kapasite/restore işlemlerini yeniden yürütme.
+
+## 5 Ekim 2026 — native pause/drain/worker stop, reset kapsamı ve CI uzlaştırması
+
+Exact canlı kaynak `d202f3d8dc0078e2fe3bd64cf122e5ba44381da7`.
+Native audited pause20:59:56.598 UTC, settings310→311, olay2245045.
+Başlamış iş doğal olarak bitti;21:05:19 doğrulamasında RUNNING0,
+CANCEL_REQUESTED0/canlı lease0. Yalnız proje worker'ı disable/stop edildi:
+inactive/MainPID0/disabled; önceki enable durumu enabled olarak korundu.
+Kuyrukta bir iş henüz silinmedi. Site/app/DB aynı; health/ready200/200.
+Reset/veri silme/yeni resume yapılmadı.
+
+Eski haftalık aday `USER_REQUEST_INTERRUPTED_NOT_PASS`: saatlik ve deadline
+observer timerları inactive/disabled, tarihçe ve ölçümler korunuyor. Eski12Ekim
+son tarihi artık kabul tarihi değildir. Yeni168h+600+120sn yalnız gerçek reset
+sonrası audited resumeT0'dan hesaplanacak; yetki17Ekim19:50UTC'de biter.
+
+Actual `claude-opus-5-5` ilk birleşik pause/drain/stop taslağı26.612ms REJECTED
+olarak saklandı ve yürütülmedi. Önceden incelenmiş native pause ayrı yürütüldü.
+Actual `claude-fable-5-1`63.471ms CONDITIONAL_GO, sadece stop aşaması için;
+kaynak koşulları kapatıldıktan sonra duruş yapıldı. Restart politikası manual
+systemctl stop'tan sonra kendiliğinden yeniden başlatma sayılmadı; runtime
+claim'in global runtimeEnabled kapısını kilit altında okuduğu exact kaynakla
+kanıtlandı. Bu görüşler reset PASS veya reopen incelemesi değildir.
+
+Astra kapsam görüşü155sn, istenen model `gpt-6-astra`, reset işi tur1/2;
+CLI parametresi kaydedildi, JSON olay akışı gerçek model alanı vermediği için
+model kimliğinin ek bağımsız kanıtı iddia edilmiyor. Görüş; local-only sınır,
+QUEUED engeli, gerçek içerik/restore ve tarihsel ID güvenliği açıklarını gösterdi.
+İkinci tur tam kod incelemesine ayrıldı. Actual `claude-opus-5-5` güncel geniş
+kapsam görüşü145.369ms: önceki AGENT-only önerisini geri çekti; üretim kodu ve
+reset kabulü değildir. Yardımcı Haiku kullanımı model makbuzlarında korundu.
+
+İnsan+ajan+seed sözlük içeriği ve etkileşimleri, ajan hafıza/inanç/ilişki/amaç/
+koşu türevleri temizlenecek. Kimlikler/personalar/credentials/kaynaklar ve
+operatör/audit/contact/outbox/yedek kayıtları koruma sınıfındadır; bu, bütün
+saklama ortamlarında insan metninin fiziksel imhası değildir. Bilinen silinmiş
+adresler için26Eylül410 kararı korunur. CONTINUE IDENTITY+404 kısa yolu eski
+kabulü karşılamadığından seçilmedi. Ayrı üretim profili, BIGINT namespace,
+tombstone/intent/commit/exposure ve restore-generation kapıları hazırlanıyor;
+yerel guard izin listesi genişletilmiyor. Çalışma ayrı worktree'de; canlıya
+hiçbir yeni kaynak veya migration uygulanmadı.
+
+Exact ana dal `ee2f88186e8bc9d9db68c082da2be29c4f47a818` CI
+[37368382698](https://github.com/cerncaycisi/agentsozluk/actions/runs/37368382698)
+21:04:08 UTC **7/7 SUCCESS**. İlk denemede behavior/validate runner alamadı;
+aynı SHA `--failed` odaklı tekrarında eksik işler geçti. Başarılı beş işin
+önceki sonuçları korundu; kod/eşik/timeout değiştirilmedi. Belge teslimi canlı
+D202 dağıtımı değildir. DONE-082/084 açık; original goal aktiftir.
+
+Tekrarlama: tüketilmiş pause/drain-stop/resume komutlarını yeniden yürütme.
+REJECTED birleşik taslağı stop kanıtı sayma. Eski gözlem timerlarını veya eski
+T0'a bağlı final okuyucuyu açma. Yerel allowlist'i üretime genişletme; genel
+TRUNCATE/CASCADE/migrate reset, trigger kapatma veya kör COMMIT tekrarı yok.
+Normal app çalışırken society pause'u tam writer freeze sayma. Eski restore
+makbuzunu yeni resetin taze frozen yedeği yerine kullanma. Hakemin takvim
+hesabı da doğrudan aritmetikle doğrulanır:168h+720sn için yetki sonuna göre
+son olası T0 **10Ekim19:38UTC**; final kapılara ayrıca zaman gerekir.
+
+## 5 Ekim 2026 — BIGINT hazırlığının yerel sınır kontrolleri
+
+Taban exact `ee2f88186e8bc9d9db68c082da2be29c4f47a818`, ayrı kişisel worktree.
+İlk offline frozen install `ERR_PNPM_NO_OFFLINE_TARBALL`: esbuild0.28.1 tarball
+önbellekte eksikti. Aynı frozen lock ile normal install başarılı; lock/paket
+sürümü değişmedi. Yeni source typecheck TS2345/TS2367, kalan trash DTO sınırı
+ve fixture BIGINT/number karşılaştırmasını gösterdi; repository dönüşümü ve
+beklenen JSON number düzeltildi. Sonraki TS2339 yalnız optional SQL fixture
+satırındaydı; satır guard ile düzeltildi, final kontrol bekliyor.
+
+Prettier'a doğrudan `.prisma`/`.sql` vermek `No parser could be inferred` ile
+reddedildi; TS/Markdown değişimleri formatlandı, Prisma native formatter ile
+schema doğrulandı. Normal format:checkPASS; ilgili44dosya343unitPASS. İki yeni
+PostgreSQL testinin sonucu henüz yok. Üretime kod/migration veya reset yok.
+Tekrarlama: eksik offline tarball'ı kod regresyonu sayma; Prisma/SQL için olmayan
+Prettier parser'ını zorlama; fixture ORM BIGINT'i API number sözleşmesiyle
+karıştırma. Unit veya biçim kontrolünü gerçek restore/reset/CI PASS sayma.
+
+## 5 Ekim 2026 21:38 UTC — BIGINT tam unit PASS ve reset ön envanteri
+
+Yeni source için tüm unit koşusu **275dosya/2389testPASS**,346,17sn. Önceki
+343 ilgili test bu toplamın alt kümesidir; yeni test diye toplanmaz. Lint ve
+son typecheckPASS. Yeni iki PostgreSQL testi hâlâ bekler; production build ve
+exact-source CI henüz yok. Production reset/CLI/açılış kabulü tamamlanmadı.
+
+21:29:54 UTC gerçek read-only envanter exactD202/sourceOID16385/küme
+7663503447447879713/PG16.14/DBowner-roleagent_sozluk; rol superuserfalse.
+Settings311: runtimefalse, diğer scheduler/publish/publicWrite üç bayraktrue.
+QUEUED1/RUNNING-CANCEL_REQUESTED0;15 insan ve36 ajan hesabı.7013başlık ve
+21628entry:207HUMAN/21421AGENT; publicId aralığıtopic1..7030/entry1..21630.
+56publictablo (55model+_prisma_migrations), prepared0, diğerbackend5.
+Dört maintenance/alarm/sayac/backup timer active/enabled, servisleri inactive.
+Bu hazır reset veya tam freeze değildir; bütün writer'lar bakımda kapatılacak.
+
+DBboyutu6.010.330.135bayt; rootavail20.577.964.032bayt. Nominal
+max(8GiB,3DB+1GiB)=19.104.732.229bayt tabanı ayrı hesaplandı. İki yeni yedek,
+WAL ve artifact payı dahil toplam baş mesafesi henüz kabul edilmedi. Inventory
+statvfs yüzde hesabı GNUdf ayrılmış blokları dışlayan Use% ile aynı ölçü değildir;
+build/cleanup kapısında doğrudan df ve Docker ölçüsü kullanılacak. Docker:
+9imaj/12,75GB/10,18GBreclaimable,3aktif;buildcache35,76MB. Reclaimable olmak
+silme yetkisi veya uygun filtresi değildir. Hiçbir imaj/cache/volume silinmedi.
+Tekrarlama: çalışan site/backends ve açık üç bayrağı tam pause sayma;
+nominal disk tabanını toplam restore/migration headroom PASS sayma.

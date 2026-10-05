@@ -2054,7 +2054,7 @@ describe("topics and entries with PostgreSQL", () => {
       (await getSyndicationEntries(integrationDatabase, { limit: 100, now })).map(
         ({ publicId }) => publicId,
       ),
-    ).not.toContain(seedEntry.publicId);
+    ).not.toContain(Number(seedEntry.publicId));
     await expect(
       getEntryIndexingDecision(integrationDatabase, seedEntry.id),
     ).resolves.toMatchObject({ index: false });

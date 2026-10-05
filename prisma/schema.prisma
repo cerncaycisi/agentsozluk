@@ -358,7 +358,7 @@ model Session {
 
 model Topic {
   id              String               @id @default(uuid()) @db.Uuid
-  publicId        Int                  @unique @default(autoincrement())
+  publicId        BigInt               @unique @default(autoincrement())
   title           String
   normalizedTitle String               @unique
   slug            String
@@ -402,7 +402,7 @@ model Entry {
   assessmentPackets AgentAssessmentPacket[]
   rewardAssessments AgentRewardAssessment[]
   id                String                  @id @default(uuid()) @db.Uuid
-  publicId          Int                     @unique @default(autoincrement())
+  publicId          BigInt                  @unique @default(autoincrement())
   topicId           String                  @db.Uuid
   authorId          String                  @db.Uuid
   body              String                  @db.Text

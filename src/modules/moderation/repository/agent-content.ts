@@ -1,3 +1,4 @@
+import { publicIds } from "@/lib/db/public-ids";
 import type { Prisma } from "@prisma/client";
 import { logger } from "@/lib/logging/logger";
 import { agentContentBulkTargetLimit } from "@/modules/moderation/domain/agent-content-limits";
@@ -72,39 +73,41 @@ export async function listAgentContentRecords(
         : {}),
   };
   const [records, totalItems] = await Promise.all([
-    transaction.agentContentRecord.findMany({
-      where,
-      skip: input.skip,
-      take: input.take,
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      select: {
-        id: true,
-        createdAt: true,
-        entry: {
-          select: {
-            id: true,
-            publicId: true,
-            body: true,
-            status: true,
-            createdAt: true,
-            topic: { select: { id: true, publicId: true, title: true, slug: true } },
+    publicIds(
+      transaction.agentContentRecord.findMany({
+        where,
+        skip: input.skip,
+        take: input.take,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          createdAt: true,
+          entry: {
+            select: {
+              id: true,
+              publicId: true,
+              body: true,
+              status: true,
+              createdAt: true,
+              topic: { select: { id: true, publicId: true, title: true, slug: true } },
+            },
           },
-        },
-        agentProfile: {
-          select: { id: true, user: { select: { username: true, displayName: true } } },
-        },
-        run: {
-          select: {
-            id: true,
-            runType: true,
-            runStatus: true,
-            createdAt: true,
-            provocationOverride: true,
+          agentProfile: {
+            select: { id: true, user: { select: { username: true, displayName: true } } },
           },
+          run: {
+            select: {
+              id: true,
+              runType: true,
+              runStatus: true,
+              createdAt: true,
+              provocationOverride: true,
+            },
+          },
+          action: { select: { id: true, provenance: true } },
         },
-        action: { select: { id: true, provenance: true } },
-      },
-    }),
+      }),
+    ),
     transaction.agentContentRecord.count({ where }),
   ]);
   const entryIds = records.map(({ entry }) => entry.id);

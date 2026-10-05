@@ -1,3 +1,4 @@
+import { publicIdBigInt, publicIds, type PublicIds } from "@/lib/db/public-ids";
 import type { ContentOrigin, Prisma } from "@prisma/client";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
@@ -43,7 +44,9 @@ export const entryDetailSelect = {
   _count: { select: { revisions: true, bookmarks: true } },
 } satisfies Prisma.EntrySelect;
 
-export type EntryDetailRecord = Prisma.EntryGetPayload<{ select: typeof entryDetailSelect }>;
+export type EntryDetailRecord = PublicIds<
+  Prisma.EntryGetPayload<{ select: typeof entryDetailSelect }>
+>;
 
 export async function lockEntryState(
   transaction: Prisma.TransactionClient,
@@ -64,39 +67,52 @@ export function createEntryRecord(
     createdAt: Date;
   },
 ) {
-  return transaction.entry.create({
-    data: {
-      topicId: input.topicId,
-      authorId: input.authorId,
-      body: input.body,
-      normalizedBody: normalizeEntrySearchText(input.body),
-      origin: input.origin,
-      createdAt: input.createdAt,
-    },
-    select: entryDetailSelect,
-  });
+  return publicIds(
+    transaction.entry.create({
+      data: {
+        topicId: input.topicId,
+        authorId: input.authorId,
+        body: input.body,
+        normalizedBody: normalizeEntrySearchText(input.body),
+        origin: input.origin,
+        createdAt: input.createdAt,
+      },
+      select: entryDetailSelect,
+    }),
+  );
 }
 
 export function findEntryById(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entry.findUnique({ where: { id: entryId }, select: entryDetailSelect });
+  return publicIds(
+    transaction.entry.findUnique({ where: { id: entryId }, select: entryDetailSelect }),
+  );
 }
 
 export function findEntryByPublicId(transaction: Prisma.TransactionClient, publicId: number) {
-  return transaction.entry.findUnique({ where: { publicId }, select: entryDetailSelect });
+  return publicIds(
+    transaction.entry.findUnique({
+      where: { publicId: publicIdBigInt(publicId) },
+      select: entryDetailSelect,
+    }),
+  );
 }
 
 export function findPublicEntryById(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entry.findFirst({
-    where: { id: entryId, ...publiclyVisibleEntryWhere },
-    select: entryDetailSelect,
-  });
+  return publicIds(
+    transaction.entry.findFirst({
+      where: { id: entryId, ...publiclyVisibleEntryWhere },
+      select: entryDetailSelect,
+    }),
+  );
 }
 
 export function findPublicEntryByPublicId(transaction: Prisma.TransactionClient, publicId: number) {
-  return transaction.entry.findFirst({
-    where: { publicId, ...publiclyVisibleEntryWhere },
-    select: entryDetailSelect,
-  });
+  return publicIds(
+    transaction.entry.findFirst({
+      where: { publicId: publicIdBigInt(publicId), ...publiclyVisibleEntryWhere },
+      select: entryDetailSelect,
+    }),
+  );
 }
 
 export async function updateEntryRecord(
@@ -240,13 +256,15 @@ export function listTopicEntries(
     ...(input.query ? { normalizedBody: { contains: input.query, mode: "insensitive" } } : {}),
   };
   return Promise.all([
-    transaction.entry.findMany({
-      where,
-      select: entryDetailSelect,
-      orderBy,
-      skip: input.skip,
-      take: input.take,
-    }),
+    publicIds(
+      transaction.entry.findMany({
+        where,
+        select: entryDetailSelect,
+        orderBy,
+        skip: input.skip,
+        take: input.take,
+      }),
+    ),
     transaction.entry.count({ where }),
   ]);
 }
@@ -288,29 +306,33 @@ export async function findVisibleEntryReferences(
   };
   const [topics, entries, users] = await Promise.all([
     input.normalizedTopicTitles.length > 0
-      ? transaction.topic.findMany({
-          where: topicWhere,
-          select: {
-            publicId: true,
-            slug: true,
-            normalizedTitle: true,
-            aliases: {
-              where: { normalizedTitle: { in: input.normalizedTopicTitles } },
-              select: { normalizedTitle: true },
+      ? publicIds(
+          transaction.topic.findMany({
+            where: topicWhere,
+            select: {
+              publicId: true,
+              slug: true,
+              normalizedTitle: true,
+              aliases: {
+                where: { normalizedTitle: { in: input.normalizedTopicTitles } },
+                select: { normalizedTitle: true },
+              },
             },
-          },
-        })
+          }),
+        )
       : [],
     input.entryPublicIds.length > 0
-      ? transaction.entry.findMany({
-          where: {
-            publicId: { in: input.entryPublicIds },
-            status: "ACTIVE",
-            topic: { status: "ACTIVE" },
-            ...publiclyVisibleEntryWhere,
-          },
-          select: { publicId: true },
-        })
+      ? publicIds(
+          transaction.entry.findMany({
+            where: {
+              publicId: { in: input.entryPublicIds.map(publicIdBigInt) },
+              status: "ACTIVE",
+              topic: { status: "ACTIVE" },
+              ...publiclyVisibleEntryWhere,
+            },
+            select: { publicId: true },
+          }),
+        )
       : [],
     input.usernames.length > 0
       ? transaction.user.findMany({

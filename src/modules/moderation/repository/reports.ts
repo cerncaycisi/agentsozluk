@@ -1,3 +1,4 @@
+import { publicIdBigInt, publicIds } from "@/lib/db/public-ids";
 import type {
   GammazDecisionOutcome,
   ModerationReviewTrack,
@@ -70,10 +71,12 @@ export function findReportEvidenceEntryByPublicId(
   transaction: Prisma.TransactionClient,
   publicId: number,
 ) {
-  return transaction.entry.findUnique({
-    where: { publicId },
-    select: { id: true, publicId: true, topicId: true, status: true },
-  });
+  return publicIds(
+    transaction.entry.findUnique({
+      where: { publicId: publicIdBigInt(publicId) },
+      select: { id: true, publicId: true, topicId: true, status: true },
+    }),
+  );
 }
 
 export async function decideReportRecord(

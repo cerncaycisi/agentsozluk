@@ -1,3 +1,4 @@
+import { publicIds } from "@/lib/db/public-ids";
 import type { Prisma } from "@prisma/client";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
@@ -201,52 +202,54 @@ export function listUserFollows(
     followed: { status: "ACTIVE" },
   };
   return Promise.all([
-    transaction.userFollow.findMany({
-      where,
-      orderBy: [{ createdAt: "desc" }, { followedId: "desc" }],
-      skip,
-      take,
-      select: {
-        createdAt: true,
-        followed: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            bio: true,
-            entries: {
-              where: {
-                status: "ACTIVE",
-                topic: { status: "ACTIVE" },
-                ...publiclyVisibleEntryWhere,
+    publicIds(
+      transaction.userFollow.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { followedId: "desc" }],
+        skip,
+        take,
+        select: {
+          createdAt: true,
+          followed: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              bio: true,
+              entries: {
+                where: {
+                  status: "ACTIVE",
+                  topic: { status: "ACTIVE" },
+                  ...publiclyVisibleEntryWhere,
+                },
+                orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+                take: 3,
+                select: {
+                  id: true,
+                  publicId: true,
+                  body: true,
+                  score: true,
+                  createdAt: true,
+                  topic: { select: { id: true, publicId: true, title: true, slug: true } },
+                  _count: { select: { revisions: true, bookmarks: true } },
+                },
               },
-              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-              take: 3,
-              select: {
-                id: true,
-                publicId: true,
-                body: true,
-                score: true,
-                createdAt: true,
-                topic: { select: { id: true, publicId: true, title: true, slug: true } },
-                _count: { select: { revisions: true, bookmarks: true } },
-              },
-            },
-            _count: {
-              select: {
-                entries: {
-                  where: {
-                    status: "ACTIVE",
-                    topic: { status: "ACTIVE" },
-                    ...publiclyVisibleEntryWhere,
+              _count: {
+                select: {
+                  entries: {
+                    where: {
+                      status: "ACTIVE",
+                      topic: { status: "ACTIVE" },
+                      ...publiclyVisibleEntryWhere,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-    }),
+      }),
+    ),
     transaction.userFollow.count({ where }),
   ]);
 }
@@ -340,27 +343,29 @@ export function listBookmarks(
     },
   };
   return Promise.all([
-    transaction.entryBookmark.findMany({
-      where,
-      select: {
-        createdAt: true,
-        entry: {
-          select: {
-            id: true,
-            publicId: true,
-            body: true,
-            score: true,
-            createdAt: true,
-            topic: { select: { id: true, publicId: true, title: true, slug: true } },
-            author: { select: { id: true, username: true, displayName: true } },
-            _count: { select: { revisions: true, bookmarks: true } },
+    publicIds(
+      transaction.entryBookmark.findMany({
+        where,
+        select: {
+          createdAt: true,
+          entry: {
+            select: {
+              id: true,
+              publicId: true,
+              body: true,
+              score: true,
+              createdAt: true,
+              topic: { select: { id: true, publicId: true, title: true, slug: true } },
+              author: { select: { id: true, username: true, displayName: true } },
+              _count: { select: { revisions: true, bookmarks: true } },
+            },
           },
         },
-      },
-      orderBy: [{ createdAt: "desc" }, { entryId: "desc" }],
-      skip,
-      take,
-    }),
+        orderBy: [{ createdAt: "desc" }, { entryId: "desc" }],
+        skip,
+        take,
+      }),
+    ),
     transaction.entryBookmark.count({ where }),
   ]);
 }
@@ -373,36 +378,38 @@ export async function listFollows(
 ) {
   const where: Prisma.TopicFollowWhereInput = { userId, topic: { status: "ACTIVE" } };
   const [items, totalItems] = await Promise.all([
-    transaction.topicFollow.findMany({
-      where,
-      select: {
-        createdAt: true,
-        topic: {
-          select: {
-            id: true,
-            publicId: true,
-            title: true,
-            slug: true,
-            entries: {
-              where: { status: "ACTIVE", ...publiclyVisibleEntryWhere },
-              select: { createdAt: true },
-              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-              take: 1,
-            },
-            _count: {
-              select: {
-                entries: {
-                  where: { status: "ACTIVE", ...publiclyVisibleEntryWhere },
+    publicIds(
+      transaction.topicFollow.findMany({
+        where,
+        select: {
+          createdAt: true,
+          topic: {
+            select: {
+              id: true,
+              publicId: true,
+              title: true,
+              slug: true,
+              entries: {
+                where: { status: "ACTIVE", ...publiclyVisibleEntryWhere },
+                select: { createdAt: true },
+                orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+                take: 1,
+              },
+              _count: {
+                select: {
+                  entries: {
+                    where: { status: "ACTIVE", ...publiclyVisibleEntryWhere },
+                  },
                 },
               },
             },
           },
         },
-      },
-      orderBy: [{ createdAt: "desc" }, { topicId: "desc" }],
-      skip,
-      take,
-    }),
+        orderBy: [{ createdAt: "desc" }, { topicId: "desc" }],
+        skip,
+        take,
+      }),
+    ),
     transaction.topicFollow.count({ where }),
   ]);
   return [
@@ -436,28 +443,30 @@ export function listVotes(
     },
   };
   return Promise.all([
-    transaction.entryVote.findMany({
-      where,
-      select: {
-        value: true,
-        updatedAt: true,
-        entry: {
-          select: {
-            id: true,
-            publicId: true,
-            body: true,
-            score: true,
-            createdAt: true,
-            topic: { select: { id: true, publicId: true, title: true, slug: true } },
-            author: { select: { id: true, username: true, displayName: true } },
-            _count: { select: { revisions: true, bookmarks: true } },
+    publicIds(
+      transaction.entryVote.findMany({
+        where,
+        select: {
+          value: true,
+          updatedAt: true,
+          entry: {
+            select: {
+              id: true,
+              publicId: true,
+              body: true,
+              score: true,
+              createdAt: true,
+              topic: { select: { id: true, publicId: true, title: true, slug: true } },
+              author: { select: { id: true, username: true, displayName: true } },
+              _count: { select: { revisions: true, bookmarks: true } },
+            },
           },
         },
-      },
-      orderBy: [{ updatedAt: "desc" }, { entryId: "desc" }],
-      skip,
-      take,
-    }),
+        orderBy: [{ updatedAt: "desc" }, { entryId: "desc" }],
+        skip,
+        take,
+      }),
+    ),
     transaction.entryVote.count({ where }),
   ]);
 }

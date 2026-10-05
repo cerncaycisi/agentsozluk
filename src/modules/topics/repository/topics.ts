@@ -1,3 +1,4 @@
+import { publicIdBigInt, publicIds, type PublicIds } from "@/lib/db/public-ids";
 import type { ContentOrigin, Prisma } from "@prisma/client";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
@@ -16,7 +17,9 @@ export const topicSummarySelect = {
   updatedAt: true,
 } satisfies Prisma.TopicSelect;
 
-export type TopicSummaryRecord = Prisma.TopicGetPayload<{ select: typeof topicSummarySelect }>;
+export type TopicSummaryRecord = PublicIds<
+  Prisma.TopicGetPayload<{ select: typeof topicSummarySelect }>
+>;
 
 export async function lockTopicState(
   transaction: Prisma.TransactionClient,
@@ -48,12 +51,14 @@ export async function lockTopicTitles(
 }
 
 export function findTopicConflict(transaction: Prisma.TransactionClient, normalizedTitle: string) {
-  return transaction.topic.findFirst({
-    where: {
-      OR: [{ normalizedTitle }, { aliases: { some: { normalizedTitle } } }],
-    },
-    select: topicSummarySelect,
-  });
+  return publicIds(
+    transaction.topic.findFirst({
+      where: {
+        OR: [{ normalizedTitle }, { aliases: { some: { normalizedTitle } } }],
+      },
+      select: topicSummarySelect,
+    }),
+  );
 }
 
 /**
@@ -61,33 +66,37 @@ export function findTopicConflict(transaction: Prisma.TransactionClient, normali
  * Benzersizlik `normalizedTitle` üzerinde olduğu için bu sorgu ayrı gerekiyor.
  */
 export function findActiveTopicsBySlug(transaction: Prisma.TransactionClient, slug: string) {
-  return transaction.topic.findMany({
-    where: { status: "ACTIVE", slug },
-    select: topicSummarySelect,
-    orderBy: { publicId: "asc" },
-  });
+  return publicIds(
+    transaction.topic.findMany({
+      where: { status: "ACTIVE", slug },
+      select: topicSummarySelect,
+      orderBy: { publicId: "asc" },
+    }),
+  );
 }
 
 export function findActiveTopicConflicts(
   transaction: Prisma.TransactionClient,
   normalizedTitles: string[],
 ) {
-  return transaction.topic.findMany({
-    where: {
-      status: "ACTIVE",
-      OR: [
-        { normalizedTitle: { in: normalizedTitles } },
-        { aliases: { some: { normalizedTitle: { in: normalizedTitles } } } },
-      ],
-    },
-    select: {
-      ...topicSummarySelect,
-      aliases: {
-        where: { normalizedTitle: { in: normalizedTitles } },
-        select: { normalizedTitle: true },
+  return publicIds(
+    transaction.topic.findMany({
+      where: {
+        status: "ACTIVE",
+        OR: [
+          { normalizedTitle: { in: normalizedTitles } },
+          { aliases: { some: { normalizedTitle: { in: normalizedTitles } } } },
+        ],
       },
-    },
-  });
+      select: {
+        ...topicSummarySelect,
+        aliases: {
+          where: { normalizedTitle: { in: normalizedTitles } },
+          select: { normalizedTitle: true },
+        },
+      },
+    }),
+  );
 }
 
 export function createTopicWithFirstEntryRecord(
@@ -102,56 +111,62 @@ export function createTopicWithFirstEntryRecord(
     now: Date;
   },
 ) {
-  return transaction.topic.create({
-    data: {
-      title: input.title,
-      normalizedTitle: input.normalizedTitle,
-      slug: input.slug,
-      createdById: input.createdById,
-      entryCount: 1,
-      lastEntryAt: input.now,
-      entries: {
-        create: {
-          authorId: input.createdById,
-          body: input.entryBody,
-          normalizedBody: normalizeEntrySearchText(input.entryBody),
-          origin: input.origin,
-          createdAt: input.now,
+  return publicIds(
+    transaction.topic.create({
+      data: {
+        title: input.title,
+        normalizedTitle: input.normalizedTitle,
+        slug: input.slug,
+        createdById: input.createdById,
+        entryCount: 1,
+        lastEntryAt: input.now,
+        entries: {
+          create: {
+            authorId: input.createdById,
+            body: input.entryBody,
+            normalizedBody: normalizeEntrySearchText(input.entryBody),
+            origin: input.origin,
+            createdAt: input.now,
+          },
         },
       },
-    },
-    select: {
-      ...topicSummarySelect,
-      entries: {
-        select: { id: true, publicId: true, body: true, status: true, createdAt: true },
-        take: 1,
+      select: {
+        ...topicSummarySelect,
+        entries: {
+          select: { id: true, publicId: true, body: true, status: true, createdAt: true },
+          take: 1,
+        },
       },
-    },
-  });
+    }),
+  );
 }
 
 export function findTopicById(transaction: Prisma.TransactionClient, topicId: string) {
-  return transaction.topic.findUnique({
-    where: { id: topicId },
-    select: {
-      ...topicSummarySelect,
-      createdById: true,
-      createdBy: { select: { username: true, displayName: true } },
-      mergedInto: { select: topicSummarySelect },
-    },
-  });
+  return publicIds(
+    transaction.topic.findUnique({
+      where: { id: topicId },
+      select: {
+        ...topicSummarySelect,
+        createdById: true,
+        createdBy: { select: { username: true, displayName: true } },
+        mergedInto: { select: topicSummarySelect },
+      },
+    }),
+  );
 }
 
 export function findTopicByPublicId(transaction: Prisma.TransactionClient, publicId: number) {
-  return transaction.topic.findUnique({
-    where: { publicId },
-    select: {
-      ...topicSummarySelect,
-      createdById: true,
-      createdBy: { select: { username: true, displayName: true } },
-      mergedInto: { select: topicSummarySelect },
-    },
-  });
+  return publicIds(
+    transaction.topic.findUnique({
+      where: { publicId: publicIdBigInt(publicId) },
+      select: {
+        ...topicSummarySelect,
+        createdById: true,
+        createdBy: { select: { username: true, displayName: true } },
+        mergedInto: { select: topicSummarySelect },
+      },
+    }),
+  );
 }
 
 export function isFollowingTopic(
@@ -207,10 +222,12 @@ export async function updateTopicAfterEntryCreate(
   topicId: string,
   createdAt: Date,
 ): Promise<void> {
-  await transaction.topic.update({
-    where: { id: topicId },
-    data: { entryCount: { increment: 1 }, lastEntryAt: createdAt },
-  });
+  await publicIds(
+    transaction.topic.update({
+      where: { id: topicId },
+      data: { entryCount: { increment: 1 }, lastEntryAt: createdAt },
+    }),
+  );
 }
 
 export async function recalculateTopicCounter(
@@ -239,13 +256,15 @@ export function listActiveTopicsForSitemap(
   skip: number,
   take: number,
 ) {
-  return transaction.topic.findMany({
-    where: { status: "ACTIVE" },
-    select: { id: true, publicId: true, slug: true, updatedAt: true },
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-    skip,
-    take,
-  });
+  return publicIds(
+    transaction.topic.findMany({
+      where: { status: "ACTIVE" },
+      select: { id: true, publicId: true, slug: true, updatedAt: true },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      skip,
+      take,
+    }),
+  );
 }
 
 export function countActiveTopics(transaction: Prisma.TransactionClient) {
@@ -307,19 +326,21 @@ export async function listTopicDirectoryPage(
   skip: number,
   take: number,
 ) {
-  const rows = await transaction.topic.findMany({
-    where: topicDirectoryWhere(policy),
-    select: {
-      id: true,
-      publicId: true,
-      slug: true,
-      title: true,
-      _count: { select: { entries: { where: visibleEntryWhere } } },
-    },
-    orderBy: { publicId: "asc" },
-    skip,
-    take,
-  });
+  const rows = await publicIds(
+    transaction.topic.findMany({
+      where: topicDirectoryWhere(policy),
+      select: {
+        id: true,
+        publicId: true,
+        slug: true,
+        title: true,
+        _count: { select: { entries: { where: visibleEntryWhere } } },
+      },
+      orderBy: { publicId: "asc" },
+      skip,
+      take,
+    }),
+  );
   return rows.map(({ _count, ...topic }) => ({ ...topic, entryCount: _count.entries }));
 }
 

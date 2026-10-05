@@ -95,7 +95,7 @@ describe("indexing policy with PostgreSQL", () => {
         getSyndicationEntries(integrationDatabase, { now }),
       ]);
       expect(sitemap.find((item) => item.id === entry.id)?.updatedAt).toEqual(dates.get(entry.id));
-      expect(feed.find((item) => item.publicId === entry.publicId)?.updatedAt).toEqual(
+      expect(feed.find((item) => item.publicId === Number(entry.publicId))?.updatedAt).toEqual(
         dates.get(entry.id),
       );
       const atom = buildAtomFeed("https://example.test", siteSyndicationFeed(feed, now));
@@ -178,8 +178,8 @@ describe("indexing policy with PostgreSQL", () => {
         [0, 1].map((page) => getSitemapEntries(integrationDatabase, { page, pageSize: 1 })),
       );
       expect(result.map((entries) => entries.map((entry) => entry.publicId))).toEqual([
-        [first.publicId],
-        [second.publicId],
+        [Number(first.publicId)],
+        [Number(second.publicId)],
       ]);
     };
     await pages();
@@ -323,7 +323,7 @@ describe("indexing policy with PostgreSQL", () => {
     ).toEqual(expect.arrayContaining([oldHuman.id, oldAgent.id]));
     expect(
       (await getSyndicationEntries(integrationDatabase, { now })).map(({ publicId }) => publicId),
-    ).toEqual(expect.arrayContaining([agentEntry.publicId, humanEntry.publicId]));
+    ).toEqual(expect.arrayContaining([Number(agentEntry.publicId), Number(humanEntry.publicId)]));
     expect(
       (
         await getSyndicationEntries(integrationDatabase, {
@@ -331,7 +331,7 @@ describe("indexing policy with PostgreSQL", () => {
           topicId: oldHuman.id,
         })
       ).map(({ publicId }) => publicId),
-    ).toEqual(expect.arrayContaining([agentEntry.publicId, humanEntry.publicId]));
+    ).toEqual(expect.arrayContaining([Number(agentEntry.publicId), Number(humanEntry.publicId)]));
     expect(
       (
         await getSyndicationEntries(integrationDatabase, {
@@ -339,10 +339,10 @@ describe("indexing policy with PostgreSQL", () => {
           authorId: agent.id,
         })
       ).map(({ publicId }) => publicId),
-    ).toEqual([agentEntry.publicId]);
+    ).toEqual([Number(agentEntry.publicId)]);
     expect(
       (await getSyndicationEntries(integrationDatabase, { now })).map(({ publicId }) => publicId),
-    ).not.toContain(hiddenTopicEntry.publicId);
+    ).not.toContain(Number(hiddenTopicEntry.publicId));
     const dashboard = await getIndexingDashboard(integrationDatabase, actor(human.id), now);
     expect(dashboard).toMatchObject({ hiddenTopics: 1, hiddenUrls: 2, delayedTopics: 1 });
     expect(dashboard.queue.map(({ id }) => id)).toContain(recentHuman.id);
@@ -360,7 +360,7 @@ describe("indexing policy with PostgreSQL", () => {
     ).toEqual([humanEntry.id]);
     expect(
       (await getSyndicationEntries(integrationDatabase, { now })).map(({ publicId }) => publicId),
-    ).toEqual([humanEntry.publicId]);
+    ).toEqual([Number(humanEntry.publicId)]);
     expect(await getTopicIndexingDecision(integrationDatabase, oldAgent.id)).toEqual({
       index: false,
       follow: false,
