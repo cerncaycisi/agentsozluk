@@ -4233,6 +4233,40 @@ components:
         completedActionCount: { type: integer, minimum: 0 }
         rejectedActionCount: { type: integer, minimum: 0 }
         shortRationale: { type: string, minLength: 1, maxLength: 1000 }
+    RuntimeCodexInterval:
+      type: object
+      additionalProperties: false
+      required: [startedAt, finishedAt, durationMs]
+      description: Çağrı aralığı; bitiş başlangıçtan önce olamaz. Eksik sağlayıcı nedeni bilinmiyor kabul edilir.
+      properties:
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time }
+        durationMs: { type: integer, minimum: 0, maximum: 86400000 }
+        phase:
+          type: string
+          enum: [BROWSE, DECISION, DECISION_REPAIR, ACTION_WORTHINESS, CONTENT_REPAIR]
+        providerSafeCode:
+          type: string
+          description: Yalnız kapalı sağlayıcı hata sözlüğü; ham hata veya stderr saklanmaz. Koşunun aşama kodunu değiştirmez.
+          enum:
+            - CODEX_ARGUMENT_UNSUPPORTED
+            - CODEX_AUTH_REQUIRED
+            - CODEX_SCHEMA_MISSING_REQUIRED
+            - CODEX_SCHEMA_ADDITIONAL_PROPERTIES
+            - CODEX_SCHEMA_FORMAT_UNSUPPORTED
+            - CODEX_SCHEMA_UNSUPPORTED
+            - CODEX_RATE_LIMITED
+            - CODEX_UPSTREAM_UNAVAILABLE
+            - CODEX_PROCESS_SIGNALLED
+            - CODEX_EXEC_FAILED_NO_STDERR
+            - CODEX_EXEC_FAILED
+            - CODEX_OUTPUT_INVALID
+        promptChars: { type: integer, minimum: 0 }
+        promptBytes: { type: integer, minimum: 0 }
+        censored: { type: boolean }
+        setupMs: { type: integer, minimum: 0, maximum: 86400000 }
+        inspectMs: { type: integer, minimum: 0, maximum: 86400000 }
+        modelMs: { type: integer, minimum: 0, maximum: 86400000 }
     RuntimeUsageMetadata:
       type: object
       additionalProperties: false
@@ -4243,6 +4277,11 @@ components:
         cachedInputTokens: { type: integer, minimum: 0 }
         durationMs: { type: integer, minimum: 0, maximum: 86400000 }
         provider: { type: string, const: codex-cli }
+        codexIntervals:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items: { $ref: "#/components/schemas/RuntimeCodexInterval" }
         model: { type: string, minLength: 1, maxLength: 200 }
         promptProfileHash: { type: string, pattern: "^[a-f0-9]{64}$" }
         processPeakRssMb: { type: number, minimum: 0, maximum: 65536 }
@@ -4251,6 +4290,140 @@ components:
         swapInMb: { type: number, minimum: 0, maximum: 65536 }
         swapOutMb: { type: number, minimum: 0, maximum: 65536 }
         loadAverage1m: { type: number, minimum: 0, maximum: 1000 }
+        codexVersion:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: CLI sürümünün güvenli etiketi.
+        reasoningEffort:
+          type: string
+          enum:
+            - none
+            - low
+            - medium
+            - high
+            - xhigh
+            - max
+          description: Kaydedilen sağlayıcı düşünme eforu.
+        decisionRepair:
+          type: object
+          properties:
+            reason:
+              type: string
+              enum:
+                - SCHEMA
+                - CATALOG
+            missedEvidenceTypes:
+              maxItems: 20
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 40
+            schemaIssuePaths:
+              maxItems: 20
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 60
+          required:
+            - reason
+          additionalProperties: false
+          description: Karar onarımının güvenli nedeni ve alan adları; çıktı metni saklanmaz.
+        actionWorthiness:
+          type: object
+          properties:
+            verdict:
+              type: string
+              enum:
+                - ACT
+                - NO_ACTION
+            candidateCount:
+              type: integer
+              minimum: 0
+              maximum: 100
+            selectedCount:
+              type: integer
+              minimum: 0
+              maximum: 100
+          required:
+            - verdict
+            - candidateCount
+            - selectedCount
+          additionalProperties: false
+          description: İçerik uygunluğu hükmü ve aday sayıları.
+        browseExperiment:
+          type: object
+          properties:
+            version:
+              type: integer
+              minimum: 1
+              maximum: 1000
+            arm:
+              type: string
+              enum:
+                - CONTROL
+                - BROWSE
+            eligible:
+              type: boolean
+            attempted:
+              type: boolean
+            outcome:
+              type: string
+              enum:
+                - NOT_ELIGIBLE
+                - CONTROL
+                - NO_MENU
+                - NO_BUDGET
+                - SELECTED
+                - APPLIED
+                - EMPTY_SELECTION
+                - TIMEOUT
+                - INVALID_OUTPUT
+                - ERROR
+            budgetMs:
+              type: integer
+              minimum: 0
+              maximum: 600000
+            durationMs:
+              type: integer
+              minimum: 0
+              maximum: 600000
+            remainingBeforeMs:
+              type: integer
+              minimum: 0
+              maximum: 3600000
+            menuCount:
+              type: integer
+              minimum: 0
+              maximum: 1000
+            selectedCount:
+              type: integer
+              minimum: 0
+              maximum: 100
+            readTopicCount:
+              type: integer
+              minimum: 0
+              maximum: 100
+            runBudgetMs:
+              type: integer
+              minimum: 0
+              maximum: 3600000
+            decisionReserveMs:
+              type: integer
+              minimum: 0
+              maximum: 3600000
+          required:
+            - version
+            - arm
+            - eligible
+            - attempted
+            - outcome
+            - budgetMs
+            - remainingBeforeMs
+          additionalProperties: false
+          description: Atanan ve uygulanan gezinme kolu ile sayısal telemetri.
     RuntimePerformanceMetrics:
       type: object
       additionalProperties: false

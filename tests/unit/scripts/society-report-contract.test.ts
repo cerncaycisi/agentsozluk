@@ -62,6 +62,7 @@ describe("society observation report contracts", () => {
       "NATURAL ENTRY REJECTION RATE",
       "NATURAL EPISODE OUTCOMES",
       "NATURAL PARTIAL SAFE REASONS",
+      "DOĞAL KOŞU SAĞLAYICI NEDEN KOHORTU",
       "LIFECYCLE WINDOW COHORT",
       "NATURAL COVERAGE BY AGENT",
       "NATURAL SELF-TOPIC REVISITS BY AGENT",
@@ -98,6 +99,19 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("natural_runs.failed_or_timed_out_rate=");
     expect(baseline).toContain("natural_runs.cancelled=");
     expect(baseline).toContain("natural_runs.partial_without_safe_reason=");
+    expect(baseline).toContain("usageMetadata: true");
+    expect(baseline).toContain("summarizeProviderFailureCauses(terminalNaturalRuns)");
+    expect(baseline).toContain("natural_provider_cause_cohort_runs.unknown_cause=");
+    expect(baseline).toContain("summarizeProviderFailureCalls(terminalNaturalRuns)");
+    expect(baseline).toContain("natural_provider_cause_calls.by_phase.");
+    expect(baseline).toContain("natural_provider_cause_calls.runs_with_recorded_cause=");
+    expect(baseline).toContain("natural_provider_cause_calls.censored_without_code=");
+    expect(
+      baseline.indexOf("natural_provider_cause_cohort_runs.upstream_unavailable="),
+    ).toBeLessThan(baseline.indexOf("natural_provider_cause_calls="));
+    expect(baseline).not.toContain("bilinen kota sayısı 0");
+    expect(baseline).toContain("natural_provider_cause_cohort_runs.unknown_cause.timeout=");
+    expect(baseline).not.toMatch(/JSON\.stringify\([^)]*usageMetadata/u);
     expect(baseline).toContain("natural_runs.cancelled_without_safe_reason=");
     expect(baseline).toContain("natural_runs.terminalized_after_window=");
     expect(baseline).toContain("natural_runs.terminalized_after_window_max_delay_seconds=");

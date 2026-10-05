@@ -1,3 +1,7 @@
+import {
+  runtimeCodexPhases,
+  runtimeProviderExecutionSafeCodes,
+} from "@/modules/agents/domain/provider-failure-telemetry";
 import { runtimePurposeChangesSchema } from "@/modules/agents/validation/purpose-schemas";
 import { z } from "zod";
 import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
@@ -368,21 +372,11 @@ export const runtimeCodexInvocationLimit = 5;
 */
 export const runtimeReadTopicLimit = 3;
 
-/**
- * Koşu başına 3-4 Codex çağrısı yapılıyor ve tek çağrının medyanı 101 sn
- * (ölçüm: 1 Eylül 2026, üretim, 7 gün, n=8323 aralık). Faz etiketi olmadan
- * 440 sn'lik karar süresinin hangi fazdan geldiği ölçülemiyordu; hangi fazın
- * pahalı olduğu bilinmeden hiçbir iyileştirme hedeflenemez.
- */
-export const runtimeCodexPhases = [
-  "BROWSE",
-  "DECISION",
-  "DECISION_REPAIR",
-  "ACTION_WORTHINESS",
-  "CONTENT_REPAIR",
-] as const;
-
-export type RuntimeCodexPhase = (typeof runtimeCodexPhases)[number];
+/** Faz sözlüğü ve gerekçesi: provider-failure-telemetry.ts. */
+export {
+  runtimeCodexPhases,
+  type RuntimeCodexPhase,
+} from "@/modules/agents/domain/provider-failure-telemetry";
 
 const codexIntervalSchema = z
   .object({
@@ -394,6 +388,8 @@ const codexIntervalSchema = z
       saymak `/complete` ile `/fail`i 422'ye düşürürdü.
     */
     phase: z.enum(runtimeCodexPhases).optional(),
+    // Eksik eski kayıt bilinmeyendir; yalnız kapalı sağlayıcı kodu kabul edilir.
+    providerSafeCode: z.enum(runtimeProviderExecutionSafeCodes).optional(),
     /*
       Provider'a verilen prompt'un UTF-16 kod birimi ve UTF-8 bayt sayısı.
       Token sayısı değildir; outputSchema ve CLI'nin eklediği bağlam dahil değildir.
@@ -406,7 +402,8 @@ const codexIntervalSchema = z
       ortasında patladığında süre "çağrı ne kadar sürdü" değil, "deadline'a ne
       kadar kalmıştı" olur. 3 Eylül 2026'daki teşhis turu tam bu yüzden yanlış
       yere baktı — kesilmiş süreler yavaşlama sanıldı. Bayrak olmadan bu hata
-      her analizde yeniden yapılabilir.
+      her analizde yeniden yapılabilir. Faz bütçesi kesmesi de (örneğin BROWSE
+      timeout) bu bayrağı kullanır; tek başına koşu deadline nedenini kanıtlamaz.
     */
     censored: z.boolean().optional(),
     /* Sürenin ayrışması: kurulum + CLI denetimi modelin payı değildir. */

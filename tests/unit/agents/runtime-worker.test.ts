@@ -1932,78 +1932,95 @@ describe("long-lived agent runtime worker", () => {
     });
   });
 
-  it("keeps the run PARTIAL and emits a specific event when the repair provider fails", async () => {
-    const runId = randomUUID();
-    const topicId = randomUUID();
-    const plane = controlPlane(runId);
-    plane.executeActions = vi.fn().mockResolvedValue({
-      actions: [
-        {
-          id: randomUUID(),
-          sequence: 1,
-          actionType: "CREATE_ENTRY",
-          actionStatus: "REJECTED",
-          rejectionCode: "USER_ENTRY_HIGH_RISK_REPRODUCTION",
-        },
-      ],
-    });
-    const provider: RuntimeProvider = {
-      inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
-      invoke: vi
-        .fn()
-        .mockResolvedValueOnce({
-          provider: "codex-cli",
-          version: "test",
-          durationMs: 10,
-          output: canonicalNormalOutput("Riskli entry adayı değerlendirildi.", {
-            actions: [
-              {
-                type: "CREATE_ENTRY",
-                targetId: topicId,
-                body: "Başlıktaki entry'den görünür bir alıntı taşıyan metin.",
-                desire: 0.8,
-                safeReason: "Görünür topic entry adayını destekliyor.",
-                claimProvenance: [
-                  {
-                    provenance: "PLATFORM_EVENT",
-                    evidenceIds: [runId],
-                    shortRationale: "Görünür runtime olayı entry adayını destekliyor.",
-                  },
-                ],
-              },
-            ],
-          }),
-        })
-        .mockRejectedValueOnce(new Error("SIMULATED_REPAIR_PROVIDER_FAILURE")),
-    };
-    const onSafeEvent = vi.fn();
-    const worker = new AgentRuntimeWorker({
-      workerId: "failed-content-repair-worker",
-      credentials: [`agt_${"s".repeat(43)}`],
-      controlPlane: plane,
-      provider,
-      onSafeEvent,
-    });
+  it.each([false, true])(
+    "keeps failed repair PARTIAL and records only a safe cause (typed=%s)",
+    async (typed) => {
+      const runId = randomUUID();
+      const topicId = randomUUID();
+      const plane = controlPlane(runId);
+      plane.executeActions = vi.fn().mockResolvedValue({
+        actions: [
+          {
+            id: randomUUID(),
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            actionStatus: "REJECTED",
+            rejectionCode: "USER_ENTRY_HIGH_RISK_REPRODUCTION",
+          },
+        ],
+      });
+      const provider: RuntimeProvider = {
+        inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+        invoke: vi
+          .fn()
+          .mockResolvedValueOnce({
+            provider: "codex-cli",
+            version: "test",
+            durationMs: 10,
+            output: canonicalNormalOutput("Riskli entry adayı değerlendirildi.", {
+              actions: [
+                {
+                  type: "CREATE_ENTRY",
+                  targetId: topicId,
+                  body: "Başlıktaki entry'den görünür bir alıntı taşıyan metin.",
+                  desire: 0.8,
+                  safeReason: "Görünür topic entry adayını destekliyor.",
+                  claimProvenance: [
+                    {
+                      provenance: "PLATFORM_EVENT",
+                      evidenceIds: [runId],
+                      shortRationale: "Görünür runtime olayı entry adayını destekliyor.",
+                    },
+                  ],
+                },
+              ],
+            }),
+          })
+          .mockRejectedValueOnce(
+            typed
+              ? new RuntimeProviderExecutionError("CODEX_RATE_LIMITED")
+              : new Error("SIMULATED_REPAIR_PROVIDER_FAILURE"),
+          ),
+      };
+      const onSafeEvent = vi.fn();
+      const worker = new AgentRuntimeWorker({
+        workerId: "failed-content-repair-worker",
+        credentials: [`agt_${"s".repeat(43)}`],
+        controlPlane: plane,
+        provider,
+        onSafeEvent,
+      });
 
-    await expect(worker.runOnce()).resolves.toBe(1);
+      await expect(worker.runOnce()).resolves.toBe(1);
 
-    expect(provider.invoke).toHaveBeenCalledTimes(2);
-    expect(plane.recordActions).toHaveBeenCalledTimes(1);
-    expect(plane.complete).toHaveBeenCalledWith(
-      expect.any(String),
-      "failed-content-repair-worker",
-      runId,
-      LEASE_TOKEN,
-      expect.objectContaining({ outcome: "PARTIAL" }),
-      expect.any(Object),
-    );
-    expect(plane.fail).not.toHaveBeenCalled();
-    expect(onSafeEvent).toHaveBeenCalledWith({
-      level: "error",
-      code: "CONTENT_REPAIR_PROVIDER_FAILED",
-      runId,
-    });
-  });
+      expect(provider.invoke).toHaveBeenCalledTimes(2);
+      expect(plane.recordActions).toHaveBeenCalledTimes(1);
+      expect(plane.complete).toHaveBeenCalledWith(
+        expect.any(String),
+        "failed-content-repair-worker",
+        runId,
+        LEASE_TOKEN,
+        expect.objectContaining({ outcome: "PARTIAL" }),
+        expect.any(Object),
+      );
+      expect(plane.fail).not.toHaveBeenCalled();
+      expect(onSafeEvent).toHaveBeenCalledWith({
+        level: "error",
+        code: "CONTENT_REPAIR_PROVIDER_FAILED",
+        runId,
+      });
+      const usage = usageMetadataSchema.parse(
+        vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata,
+      );
+      expect(JSON.stringify(usage)).not.toContain("SIMULATED_REPAIR_PROVIDER_FAILURE");
+      if (typed)
+        expect(usage.codexIntervals?.at(-1)).toMatchObject({
+          phase: "CONTENT_REPAIR",
+          providerSafeCode: "CODEX_RATE_LIMITED",
+        });
+      else expect(usage.codexIntervals?.at(-1)).not.toHaveProperty("providerSafeCode");
+    },
+  );
 
   it("keeps a rejected topic run PARTIAL when the control plane refuses its optional repair", async () => {
     const runId = randomUUID();
@@ -2610,78 +2627,146 @@ describe("long-lived agent runtime worker", () => {
     );
   });
 
-  it("keeps a typed provider execution failure inside the current stage-safe worker code", async () => {
-    const runId = randomUUID();
-    const plane = controlPlane(runId);
-    const provider: RuntimeProvider = {
-      inspect: vi.fn(),
-      invoke: vi
-        .fn()
-        .mockRejectedValue(new RuntimeProviderExecutionError("CODEX_UPSTREAM_UNAVAILABLE")),
-    };
+  it.each([false, true])(
+    "preserves typed provider cause with diagnostics=%s and the stage-safe code",
+    async (withDiagnostics) => {
+      const runId = randomUUID();
+      const plane = controlPlane(runId);
+      const provider: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: vi.fn().mockRejectedValue(
+          new RuntimeProviderExecutionError(
+            "CODEX_UPSTREAM_UNAVAILABLE",
+            withDiagnostics
+              ? {
+                  setupMs: 4,
+                  inspectMs: 2,
+                  modelMs: 7,
+                }
+              : undefined,
+          ),
+        ),
+      };
+      const worker = new AgentRuntimeWorker({
+        workerId: "typed-provider-failure-worker",
+        credentials: [`agt_${"v".repeat(43)}`],
+        controlPlane: plane,
+        provider,
+      });
+
+      await expect(worker.runOnce()).resolves.toBe(1);
+
+      expect(plane.fail).toHaveBeenCalledWith(
+        expect.any(String),
+        "typed-provider-failure-worker",
+        runId,
+        LEASE_TOKEN,
+        expect.objectContaining({ outcome: "FAILED", errorCode: "CODEX_DECISION_FAILED" }),
+      );
+      const payload = vi.mocked(plane.fail).mock.calls[0]?.[4];
+      expect(usageMetadataSchema.parse(payload?.usageMetadata).codexIntervals).toEqual([
+        expect.objectContaining({
+          phase: "DECISION",
+          providerSafeCode: "CODEX_UPSTREAM_UNAVAILABLE",
+        }),
+      ]);
+      if (withDiagnostics)
+        expect(usageMetadataSchema.parse(payload?.usageMetadata).codexIntervals?.[0]).toMatchObject(
+          {
+            setupMs: 4,
+            inspectMs: 2,
+            modelMs: 7,
+          },
+        );
+    },
+  );
+
+  it("does not persist a forged typed safe code or raw error message", async () => {
+    const plane = controlPlane(randomUUID());
+    const error = new RuntimeProviderExecutionError("CODEX_RATE_LIMITED");
+    Object.assign(error, { safeCode: "RAW_FORGED_PROVIDER_DETAIL", message: "RAW_ERROR_MESSAGE" });
     const worker = new AgentRuntimeWorker({
-      workerId: "typed-provider-failure-worker",
+      workerId: "invalid-safe-code-worker",
       credentials: [`agt_${"v".repeat(43)}`],
       controlPlane: plane,
-      provider,
+      provider: { inspect: vi.fn(), invoke: vi.fn().mockRejectedValue(error) },
     });
-
     await expect(worker.runOnce()).resolves.toBe(1);
-
-    expect(plane.fail).toHaveBeenCalledWith(
-      expect.any(String),
-      "typed-provider-failure-worker",
-      runId,
-      LEASE_TOKEN,
-      expect.objectContaining({ outcome: "FAILED", errorCode: "CODEX_DECISION_FAILED" }),
-    );
-    expect(JSON.stringify(vi.mocked(plane.fail).mock.calls[0]?.[4])).not.toContain(
-      "CODEX_UPSTREAM_UNAVAILABLE",
-    );
+    const payload = vi.mocked(plane.fail).mock.calls[0]?.[4];
+    expect(payload?.errorCode).toBe("CODEX_DECISION_FAILED");
+    expect(
+      usageMetadataSchema.parse(payload?.usageMetadata).codexIntervals?.[0],
+    ).not.toHaveProperty("providerSafeCode");
+    expect(JSON.stringify(payload)).not.toMatch(/RAW_FORGED_PROVIDER_DETAIL|RAW_ERROR_MESSAGE/u);
   });
 
-  it("distinguishes a failed Codex schema-repair invocation from invalid repaired output", async () => {
-    const runId = randomUUID();
-    const plane = controlPlane(runId);
-    const provider: RuntimeProvider = {
-      inspect: vi.fn(),
-      invoke: vi
-        .fn()
-        .mockResolvedValueOnce({
-          provider: "codex-cli",
-          version: "test",
-          durationMs: 1,
-          output: { actions: [{ actionType: "MODERATE_USER" }] },
-        })
-        .mockRejectedValueOnce(new Error("RAW_REPAIR_DETAIL_MUST_NOT_PERSIST")),
-    };
-    const worker = new AgentRuntimeWorker({
-      workerId: "decision-repair-failure-worker",
-      credentials: [`agt_${"r".repeat(43)}`],
-      controlPlane: plane,
-      provider,
-    });
+  it.each([false, true])(
+    "distinguishes repair failure and records only a safe cause (typed=%s)",
+    async (typed) => {
+      const runId = randomUUID();
+      const plane = controlPlane(runId);
+      const provider: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: vi
+          .fn()
+          .mockResolvedValueOnce({
+            provider: "codex-cli",
+            version: "test",
+            durationMs: 1,
+            output: { actions: [{ actionType: "MODERATE_USER" }] },
+          })
+          .mockRejectedValueOnce(
+            typed
+              ? new RuntimeProviderExecutionError("CODEX_RATE_LIMITED")
+              : new Error("RAW_REPAIR_DETAIL_MUST_NOT_PERSIST"),
+          ),
+      };
+      const worker = new AgentRuntimeWorker({
+        workerId: "decision-repair-failure-worker",
+        credentials: [`agt_${"r".repeat(43)}`],
+        controlPlane: plane,
+        provider,
+      });
 
-    await expect(worker.runOnce()).resolves.toBe(1);
+      await expect(worker.runOnce()).resolves.toBe(1);
 
-    expect(provider.invoke).toHaveBeenCalledTimes(2);
-    expect(plane.fail).toHaveBeenCalledWith(
-      expect.any(String),
-      "decision-repair-failure-worker",
-      runId,
-      LEASE_TOKEN,
-      expect.objectContaining({ outcome: "FAILED", errorCode: "CODEX_DECISION_REPAIR_FAILED" }),
-    );
-  });
+      expect(provider.invoke).toHaveBeenCalledTimes(2);
+      expect(plane.fail).toHaveBeenCalledWith(
+        expect.any(String),
+        "decision-repair-failure-worker",
+        runId,
+        LEASE_TOKEN,
+        expect.objectContaining({ outcome: "FAILED", errorCode: "CODEX_DECISION_REPAIR_FAILED" }),
+      );
+      const payload = vi.mocked(plane.fail).mock.calls[0]?.[4];
+      expect(JSON.stringify(payload)).not.toContain("RAW_REPAIR_DETAIL_MUST_NOT_PERSIST");
+      const intervals = usageMetadataSchema.parse(payload?.usageMetadata).codexIntervals;
+      expect(intervals?.[0]).not.toHaveProperty("providerSafeCode");
+      if (typed)
+        expect(intervals?.[1]).toMatchObject({
+          phase: "DECISION_REPAIR",
+          providerSafeCode: "CODEX_RATE_LIMITED",
+        });
+      else expect(intervals?.[1]).not.toHaveProperty("providerSafeCode");
+    },
+  );
 
   it.each([
     {
       caseName: "provider failure",
+      typed: false,
+      expectedCode: "CODEX_ACTION_WORTHINESS_FAILED",
+      worthinessResult: null,
+    },
+    {
+      caseName: "typed provider failure",
+      typed: true,
       expectedCode: "CODEX_ACTION_WORTHINESS_FAILED",
       worthinessResult: null,
     },
     {
       caseName: "invalid output",
+      typed: false,
       expectedCode: "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID",
       worthinessResult: {
         provider: "codex-cli" as const,
@@ -2692,7 +2777,7 @@ describe("long-lived agent runtime worker", () => {
     },
   ])(
     "classifies action-worthiness $caseName independently from candidate generation",
-    async ({ expectedCode, worthinessResult }) => {
+    async ({ typed, expectedCode, worthinessResult }) => {
       const runId = randomUUID();
       const plane = controlPlane(runId);
       const topicId = randomUUID();
@@ -2720,7 +2805,13 @@ describe("long-lived agent runtime worker", () => {
         inspect: vi.fn(),
         invoke: worthinessResult
           ? vi.fn().mockResolvedValue(worthinessResult)
-          : vi.fn().mockRejectedValue(new Error("RAW_WORTHINESS_DETAIL_MUST_NOT_PERSIST")),
+          : vi
+              .fn()
+              .mockRejectedValue(
+                typed
+                  ? new RuntimeProviderExecutionError("CODEX_RATE_LIMITED")
+                  : new Error("RAW_WORTHINESS_DETAIL_MUST_NOT_PERSIST"),
+              ),
       };
       const worker = new AgentRuntimeWorker({
         workerId: "worthiness-failure-worker",
@@ -2740,6 +2831,16 @@ describe("long-lived agent runtime worker", () => {
         LEASE_TOKEN,
         expect.objectContaining({ outcome: "FAILED", errorCode: expectedCode }),
       );
+      const payload = vi.mocked(plane.fail).mock.calls[0]?.[4];
+      expect(JSON.stringify(payload)).not.toContain("RAW_WORTHINESS_DETAIL_MUST_NOT_PERSIST");
+      const intervals = usageMetadataSchema.parse(payload?.usageMetadata).codexIntervals;
+      expect(intervals?.[0]).not.toHaveProperty("providerSafeCode");
+      if (typed)
+        expect(intervals?.at(-1)).toMatchObject({
+          phase: "ACTION_WORTHINESS",
+          providerSafeCode: "CODEX_RATE_LIMITED",
+        });
+      else expect(intervals?.at(-1)).not.toHaveProperty("providerSafeCode");
     },
   );
 
@@ -4092,36 +4193,52 @@ describe("long-lived agent runtime worker", () => {
     expect(usage?.browseExperiment?.outcome).toBe("CONTROL");
   });
 
-  it("completes the run when the browse phase fails instead of failing the whole wake", async () => {
-    // Gezinme kolunu sabitle: CONTROL kolunda faz hiç çalışmaz.
-    const runId = runIdForArm("BROWSE");
-    const plane = controlPlane(runId);
-    plane.context = vi
-      .fn()
-      .mockResolvedValue(browsableContext(runId, [randomUUID(), randomUUID()]));
-    const provider: RuntimeProvider = {
-      inspect: vi.fn(),
-      invoke: vi
+  it.each(["CODEX_OUTPUT_INVALID", "CODEX_RATE_LIMITED", "TIMEOUT"] as const)(
+    "completes the wake and preserves recovered BROWSE cause %s",
+    async (providerSafeCode) => {
+      // Gezinme kolunu sabitle: CONTROL kolunda faz hiç çalışmaz.
+      const runId = runIdForArm("BROWSE");
+      const plane = controlPlane(runId);
+      plane.context = vi
         .fn()
-        .mockRejectedValueOnce(new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID"))
-        .mockResolvedValue({
-          provider: "codex-cli",
-          version: "test",
-          durationMs: 5,
-          output: canonicalNormalOutput("Gezinme düştü, koşu devam etti."),
-        }),
-    };
-    const worker = new AgentRuntimeWorker({
-      workerId: "browse-failure-worker",
-      credentials: [`agt_${"f".repeat(43)}`],
-      controlPlane: plane,
-      provider,
-    });
+        .mockResolvedValue(browsableContext(runId, [randomUUID(), randomUUID()]));
+      const provider: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: vi
+          .fn()
+          .mockRejectedValueOnce(
+            providerSafeCode === "TIMEOUT"
+              ? new RuntimeProviderTimeoutError()
+              : new RuntimeProviderExecutionError(providerSafeCode),
+          )
+          .mockResolvedValue({
+            provider: "codex-cli",
+            version: "test",
+            durationMs: 5,
+            output: canonicalNormalOutput("Gezinme düştü, koşu devam etti."),
+          }),
+      };
+      const worker = new AgentRuntimeWorker({
+        workerId: "browse-failure-worker",
+        credentials: [`agt_${"f".repeat(43)}`],
+        controlPlane: plane,
+        provider,
+      });
 
-    await expect(worker.runOnce()).resolves.toBe(1);
-    expect(plane.complete).toHaveBeenCalled();
-    expect(plane.fail).not.toHaveBeenCalled();
-  });
+      await expect(worker.runOnce()).resolves.toBe(1);
+      const usage = usageMetadataSchema.parse(
+        vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata,
+      );
+      if (providerSafeCode === "TIMEOUT") {
+        expect(usage.codexIntervals?.[0]).toMatchObject({ phase: "BROWSE", censored: true });
+        expect(usage.codexIntervals?.[0]).not.toHaveProperty("providerSafeCode");
+      } else expect(usage.codexIntervals?.[0]).toMatchObject({ phase: "BROWSE", providerSafeCode });
+      expect(usage.codexIntervals?.at(-1)).not.toHaveProperty("providerSafeCode");
+
+      expect(plane.complete).toHaveBeenCalled();
+      expect(plane.fail).not.toHaveBeenCalled();
+    },
+  );
 
   /*
     28 Ağustos ölçümü (16 gerçek perception, üretimin modeli):

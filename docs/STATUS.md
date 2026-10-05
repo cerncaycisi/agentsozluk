@@ -5608,3 +5608,181 @@ Nonce/kimlik/yazı/girdi metinleri bu makbuza konmadı; runtimefalse, birthOFF a
 
 Tekrarlama: `/tmp` kilit kurulmasını reboot kalıcılığı sanma; otomatik dar temizliği
 runbook geniş kill ile bozma; stok ön kontrolünü yeni168h kabulü sayma.
+
+## 5 Ekim 2026 13:06 UTC — O4 sağlayıcı neden kaybı; kaynak düzeltmesi hazırlığı
+
+Canlı exact d829dd06eb4aa68154f521667302e6744b67399e; geliştirme tabanı
+fbe7e37bf9ec3f5da066ed86cadcb99cf9884bb6, exact CI37309587846 **7/7 PASS**.
+12:30 otomatik gözlem 218natural/216terminal;166SUCCEEDED/42PARTIAL/6FAILED/
+2TIMED_OUT/2RUNNING. Teknik8/216=%3,704; PARTIAL/CODEX_TIMEOUT3 ayrı.
+FAILED aşama ayrımı3ACTION_WORTHINESS/2DECISION/1DECISION_REPAIR; kök sağlayıcı
+nedeni ölçülmedi. Entry121başarılı/38ret/payda159=%23,899 ABOVE.
+Ayrı12:34:59 salt okunur teşhis39ret: FRAMING10/SIMILARITY5/SEMANTIC_REPETITION22/
+NUMBER_UNSUPPORTED2. PARTIAL aksiyon40ret/62başarılı başka birimdir.
+39ret önceki38in dağılımı veya159payda parçası diye sunulmaz. Observer3kaynak
+hash/service success/exit0/lastAttemptSUCCESS; app/worker2270111/restart0/
+settings308/model/profil/diğercontrols/T0 aynı. Yeni çağrı veya canlı mutation yok.
+
+Actual farklı model `claude-opus-5` exactFBE kaynak okuması160,603sn/exit0:
+worker typed provider safeCode'u son aralıkta saklamıyor, aşama kodu alt nedeni
+açıklamıyor. Bu O4 gözlenebilirlik açığıdır; ölçülen6hata kota/upstreamdi veya
+ürün regresyonudur iddiası yok. Tasarım görüşü yeni uygulama peer onayı değildir.
+Kaynak hazırlığı optional closed-enum providerSafeCode, ortak12-kod sözlüğü,
+wire strict guard ve terminal doğal kohortta bilinen/bilinmeyen ayrımıdır.
+Eski/plain/timeout eksikleri bilinmiyor; erken kurtarılmış çağrı son hataya bağlanmaz.
+Yerel13:05:34, beş dosya145unit PASS (worker92/provider7/reporthelper23/runtime18/
+reportcontract5). Ham ayrıntı ve forged kod guard'ları korundu. Yeni fail-route
+PostgreSQL kayıt/replay testleri hazırlanmıştır, henüz çalışmış sayılmaz.
+Bu paket henüz commit/CI/uygulama hakemi/dağıtım veya final M2 kabulü değildir.
+Önceki DBC tam geliştirme SUCCESS yeni değişen kaynak için yeniden etiketlenmez.
+
+### 13:12 UTC — O4 kaynak ön kontrolleri tamamlandı
+
+Taban exact FBE / çalışma dalı `fix/provider-failure-telemetry`. 145 ilgili unit ve
+33 mimari/zaman aşımı/OpenAPI testi PASS: toplam178 ayrı test. Worker92 düzeltme
+sonrası yeniden PASS; bu tekrar ek92 yeni test değildir. OpenAPI154operation,
+format/lint/typecheck, M1requirements3 ve M2development464activePASS/
+77superseded/25partial/2approvedBLOCKED/0FAIL PASS. Yeni PostgreSQL fail-route
+kayıt ve replay vakaları hâlâ uzak CI bekler; canlı veya tam M2 kabulü değildir.
+İlk typecheck exit2/TS2339: beş yeni test erişiminde genel unknown usageMetadata
+üzerinden codexIntervals okunuyordu. Test gerçek usageMetadataSchema.parse ile
+okuyacak biçimde düzeltildi; worker92, format/lint/typecheck tekrar exit0. API tipi,
+strict şema veya eşik gevşetilmedi. Ürün/üretim regresyonu iddiası yok.
+Tekrarlama: unknown JSON'a cast ile şekil uydurma; wire şemasının gerçekten alanı
+koruduğunu doğrula. Kaynak/diff için exact SHA farklı-model uygulama incelemesi,
+CI ve birleşmiş kaynak tam geliştirme kapısı sıradadır. Canlı d829/T0 aynı.
+
+## 5 Ekim 2026 13:34 UTC — teknik erken kesit %5 üzerinde; O4 peer bulguları düzeltildi
+
+Canlı exact d829dd06eb4aa68154f521667302e6744b67399e/settings308;
+13:30:10.211542 otomatik242natural/240terminal:180SUCCEEDED/44PARTIAL/
+14FAILED/2TIMED_OUT/2RUNNING. Teknik16/240=%6,667; önceki8/216=%3,704'ün
+üzerinde ve erken kesit %5 hedefini aştı. PARTIAL CODEX_TIMEOUT3/RUNTIME_TIMEOUT1
+ayrı tutulur. FAILED14 aşama ayrımı8ACTION_WORTHINESS/5DECISION/1DECISION_REPAIR;
+provider kök nedeni bilinmiyor. RUNTIME_TIMEOUT static sourceMD5
+6ce74c590cfbce54adb3938c8f4a4452 ile doğrulandı. Kota/upstream sayaç0 yokluk kanıtı değil.
+Entry134başarılı/40ret/0FAILED/payda174=%22,989 ABOVE; uyarı açık. Ret39 eski12:34
+kesiti yeni40ın dağılımı veya174payda parçası değildir.36/36≥3terminal/operator0/
+P4olay17/amaç-persona0 erken. Sync111,940sn/HTTP200/200/restart0/disk%69/
+24.442.503.168bayt boş. Üç kurulu kaynak hash/service exit0/lastAttemptSUCCESS,
+app/CID/worker/model/profil/diğercontrols/T0 aynı.12,287saat/finaleligible=false.
+Bu teknik artış neden araştırması gerektirir; erken kesit nihai Gate10 hükmü değildir.
+
+Kaynak PR332 T3'e bağlandı; exact ilk a256ca761192fe9f73403e0ea401058fa44600e0,
+CI37315242731 **7/7PASS**. PG35dosya512test/API141 PASS; iki yeni /fail kayıt/replay
+vakası dahildir. Ek focused tekrarlar yeni test diye toplanmaz. Log289.803bayt/SHA256
+9b92f811f7fec205e4cbf0444f29b1b1946b5985a3a0f111bdb97505a30ea03b.
+Parentrun sürerken gh run view --log alınamadı; exact başarılıjob111780215140/logs
+REST okuması başarılı. İlk regex ANSI renklerini kaçırdı; escape kodları kaldırılınca
+141test/full512 kaynak kanıtı doğrulandı. CI yeniden başlatılmadı; ürün regresyonu yok.
+
+Actual Opus5 kaynak incelemesi13:14:23–13:20:22,357,263sn/exit0 **KOŞULLU GO**.
+F1: kurtarılmış BROWSE/CONTENT_REPAIR safe cause raporda eksikti. F2: timeoutları da
+sayan kohort adı teknik hata sayısıyla karışabilirdi. F3–F8: ortak stage/faz, typed
+unknown reader, OpenAPI eşitlik, /complete PG,422yanıt gizliliği, explicitfixture alanı.
+Bu bulgular kaynakla doğrulandı ve aynı dalda düzeltildi. Ayrı çağrı tablosu tüm terminal
+natural koşulardaki kapalı safeCode'ları kod/faz ile sayar; finalcause/FAILED+TIMED_OUT
+paydası değişmez. UnknownTimeout/unknownLegacyOrMissing ayrı, eski/timeout nedenler
+uydurulmaz; rawphase/code taşınmaz. Worker/schema/report shared domain sözlüğü kullanır.
+Yeni13:26:15 ondosya185test PASS; OpenAPI154/format/lint/type PASS.185 önceki178in
+üstüne eklenmez; yedi ek test ve ilgili tekrarlar yeni kaynağı doğrular. Yeni /complete
+PG ham422yanıt/nochange/kayıt/replay/oneoutbox henüz uzak CI bekler. İlk peer/CI yeni
+kaynak için koşulsuz GO/PASS değildir; exact yeniden inceleme ve yeniCI ardından
+birleşmiş kaynak fulldevelopment gerekir. Canlı mutation, yeni model isteği veya
+T0 değişikliği yok; goal aktif, DONE082/DONE084 final kapıları açık.
+
+## 5 Ekim 2026 14:08 UTC — O4 tam wire belgesi; peer süre sınırı ve çalıştırılmayan teşhis
+
+İkinci yayınlı exact8281e4793a841c71f21e6dd0bb4a6e520b01db23, CI37317986011
+**7/7PASS**; PGjob111789473873/35dosya513test/API142 PASS. Sonraki focused
+142|138skipped tekrar ayrı142 yeni test değildir. Yeni /complete recoveredcause/
+raw422 yanıt/nochange/kayıt/replay/oneoutbox ve /fail iki vaka doğrudan bu dosyada.
+Log289.686bayt/SHA256011b9476ea7dd5bebc8d1866a76310ef995904f07e18f2af25a51e355c220a10.
+Bu CI yayınlı8281e47'ye aittir; sonraki kaynak düzeltmelerine taşınmaz.
+
+İkinci geniş peer13:36:00–13:43:00,229.043bayt literal source/420sn timeout/
+exit124/sonuç0bayt: `O4_IMPLEMENTATION_PEER_TIMEOUT_NOT_COMPLETE`. KodFAIL,
+REJECTED veya GO değil. Kapsam daraltıldı; gerçekOpus5 source8281/215,136sn
+KOŞULLU GO verdi. F-A sabit kota0 ifadesinin tablodaki pozitifcall ile çelişmesi,
+F-B strictOpenAPI'nin runtimeUsage alanlarını eksik belgelemesi, F-C bilinmeyen
+legacy sayacının dolaylı çıkarımı ve pozitifassertion eksikliği doğrulandı.
+F-D/E machinecall/run birimi ve gruplama da düzeltildi. Sözlük/guard/strictwire/
+deadline/censor/teknikpayda değişmedi. Opsiyonel BROWSEtimeout censure/eksikcause
+vakası, unknown toplamı ve faz tanımındaki gerekçe de tamamlandı.
+
+OpenAPI eksik beş alan (codexVersion/reasoningEffort/decisionRepair/actionWorthiness/
+browseExperiment) çalışan Zod JSON şemasından çıkarıldı; toplam19top-level alanın
+property-set eşitliği ve additionalProperties:false testte doğrulanır. Bütün YAML
+arşivi yeniden biçimlendirilmedi; yalnız134 yeni sözleşme satırı eklenir.
+Yeni13:55:49 ondosya187test PASS (worker95/OpenAPI20; diğerlerinin mevcut185 seti
+korunur). OpenAPI154operation/format/lint/type PASS; 185+187 veya coverage tekrarları
+iki ayrı test toplamı gibi toplanmaz. Yeni exact kaynak için peer/CI, sonra merged
+full verify:m2:development hâlâ gerekir. Canlı d829/worker/T0 aynı; final kabul yok.
+
+Sınırlı teşhis aracının ilkreview actualOpus5/233sn **REJECTED**; üretim erişimi0.
+Safe rootavailability tek skalerdi; kod/faz/call/run ve payda/projection birimleri
+ayrılmalıydı. Guard durumlarının safeError, worker kimliği, süre bitimine pay ve
+schema-tipi/UTC yorumu güçlendirildi. Kod kaynakta doğrulandı: AgentRun.createdAt
+@db.Timestamptz(3), kullanım JSON; settings debugRetentionHours uygulama şeması0–24.
+Hakemin48saatin meşru olabileceği çıkarımı mevcut uygulama sözleşmesini karşılamaz;
+sınır kaldırılmadı. V2 metadata farkını güvenli kayda alıp **STOP** döndürür; wrapper
+sonraki erişimi reddeder, farkı kabul edilmiş baseline saymaz. Mevcut retention
+geçmişteki ayar veya dosya varlığı kanıtı değildir. V2 root sayımı kod/faz ve
+call/distinctrun; technicalFAILED+TIMED_OUT/partial/diagnostic kohortları ayrıdır.
+Parent image/checkout/immutable-release/workerPID/account ve expiry/pin kapıları
+korunur. Absolutebinaries,150sn authority payı, UTF8, -O ret ve tekprobe makbuzu var.
+Çevrimdışı compileBoth/missingpeer0children/optimizedPython ret PASS; V2 hakem
+henüz yok, hiçbir yeniSSH/HTTP/DB/providermodel/debugsetting/timer işlemi yapılmadı.
+Son gerçek doğal kesit13:30 teknik16/240=%6,667; yeni ölçüm veya neden uydurulmaz.
+
+## 5 Ekim 2026 14:29 UTC — O4 kurtarılmış kesilme ve iç wire sözleşmesi
+
+PR332 kaynak1504e14def39def98fe049a6bb2d7e9174a3f3cc için actualOpus5/208,667sn
+**KOŞULLU GO** alındı. Önceki F-A..H kaynak kapanışı doğrulandı; R1 güvenli kod
+olmayan kesilmiş kurtarma çağrılarının raporda görünmemesi, R2 iç nesnelerin belge
+sözleşmesinin yalnız üst seviye alan listesiyle korunması doğrulandı. Kod davranış
+hatası bulunmadı. R1/R2 teslim öncesi, yeni exactCI ve birleşmiş full development
+koşulları korunur; görüş üretim yetkisi veya final kabul değildir.
+
+R1 ayrı `censoredWithoutCodeCalls` ve makine anahtarıyla kapandı. Bu sayı yalnız
+`censored:true` ve eksik providerSafeCode çağrılarını, terminal doğal koşularda
+sayar; bilinen neden sayısına katılmaz. Kesilme tek başına timeout kök nedeni veya
+%6,667 teknik oranının açıklaması değildir. Ham/invalid kod taşınmaz. R2 için yeni
+üç iç nesne doğrudan Zod JSON şemasıyla karşılaştırılır: alanlar, required,
+additionalProperties, enum ve sayısal/dizi sınırları birlikte test edilir. Yeni
+bir ikinci enum sözlüğü oluşturulmadı. R3 required kümesi, R4 tüm-terminal çağrı
+kohortu açıklaması, R5 faz bütçesi kesilmesinin censored yorumu, R6 makine satır
+sırası ve opsiyonel R7 tarihsel gezinme-öncesi ölçüm açıklaması da kapandı.
+
+14:26:34 yerel ondosya **192 distinct test PASS**; worker95/schema19/helper26/
+OpenAPI24/report5 ve diğer mevcut provider/mimari/ledger testleri dahildir. İlk
+focused55 bu192ye eklenmez. OpenAPI154operation PASS. Yeni kalite kontrolleri ve
+exact commit/CI/hakem bekler; önceki187 veya1504CI yeni düzeltmenin kanıtı değildir.
+İlk komut zincirinde olmayan `openapi:check` adı nedeniyle exit254 alındı; testler
+192PASS idi ve kalite adımlarına henüz ulaşılmamıştı. package.json kaynağı doğrulanıp
+mevcut `openapi:validate` ile devam edildi; ürün/test regresyonu veya başarılı
+kalite sonucu diye yorumlanmaz. Sonraki lint testin kullanılmayan `_description`
+değişkeni nedeniyle uyarı verdi; eşik düşürülmeden kopyada description kaldırma
+biçimine geçildi ve kalite kontrolleri yeniden başlatıldı.
+
+V2 salt okunur teşhis hakemi ayrı seri turdadır; üretim erişimi henüz yok. V1REJECTED
+kaynak hiçbir zaman çalıştırılmadı. Canlı d829/settings308/worker/T0 aynı; P7 ve
+DONE082/DONE084 açık, goal aktiftir. Tekrarlama: kesilme sayısını bilinen kök neden
+sayma; üst seviye alan eşitliğini iç sözleşme eşitliği sayma; olmayan komut adına
+geçmeden package.json'u oku; eski test/CI/hakem sonucunu yeniSHAya taşıma.
+
+14:32:37 yeniden kalite zinciri **format/lint/typecheck, M1requirements3 ve
+M2development464/77/25/2/0 PASS** ile tamamlandı; uyarı/eşik gevşetmesi yok.
+API24 focused tekrar yeni test sayısı değildir. Ayrı teşhis V2 actualOpus5/289,881sn
+KOŞULLU GO: explicit public tablolar, enum kontrolü ve eksik/bozuk aralık paydaları
+şartıyla; hiçbir üretim çalıştırması yok. V3 bu şartları ve pencere tamlığı, safe
+parse, özel dizin izni, exactyetki başlangıcını kapattı; compile/missingpeer0child/-O
+ret üç çevrimdışı kontrol PASS, yeni hakem bekler. trigger kaynakta String'dir;
+AgentRunType/Status gerçek enum sözlüğü ayrıca doğrulanır. Erken hata oranı final
+oranın matematiksel alt sınırı sayılmaz; bu peer önerisi uygulanmadı.
+14:30:09.968 aynı scheduled observer SUCCESS/exit0/hash3: 262doğal/260terminal,
+197SUCCEEDED/47PARTIAL/14FAILED/2TIMED_OUT/2RUNNING. Teknik16/260=%6,154 hâlâ
+
+> %5; yeni terminal20 içinde ek FAILED/TIMED_OUT yok. Entry148başarı/43ret/0FAILED/
+> payda191=%22,513 ABOVE. Ayrı13:30 ve14:30 paydalar havuzlanmaz. P7 erken, finaleligible
+> false; d829/settings308/worker/T0 aynı, hiçbir teşhis üretim erişimi yok.

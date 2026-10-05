@@ -1,6 +1,15 @@
+import {
+  runtimeProviderExecutionSafeCodes,
+  runtimeCodexPhases,
+} from "@/modules/agents/domain/provider-failure-telemetry";
+import {
+  runtimeCodexInvocationLimit,
+  usageMetadataSchema,
+} from "@/modules/agents/validation/runtime-schemas";
 import path from "node:path";
 import SwaggerParser from "@apidevtools/swagger-parser";
 import { beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   assertAgentMutationSchemaContracts,
   type OpenApiDocument,
@@ -134,6 +143,52 @@ describe("OpenAPI agent mutation schema contracts", () => {
     manualRun.properties.dailyMaximumOverride = { type: "boolean" };
     expect(() => assertAgentMutationSchemaContracts(drifted)).toThrow(
       /ManualAgentRunInput.dailyMaximumOverride must be absent/u,
+    );
+  });
+});
+
+describe("OpenAPI provider telemetry wire alignment", () => {
+  it("documents every accepted usage metadata field without opening the object", () => {
+    const schema = sourceDocument.components?.schemas?.RuntimeUsageMetadata;
+    expect(Object.keys(schema?.properties ?? {}).sort()).toEqual(
+      Object.keys(usageMetadataSchema.shape).sort(),
+    );
+    expect(schema?.additionalProperties).toBe(false);
+  });
+  it.each(["decisionRepair", "actionWorthiness", "browseExperiment"] as const)(
+    "keeps the complete nested %s contract equal to Zod",
+    (field) => {
+      const documented = inlineSchema(
+        sourceDocument.components?.schemas?.RuntimeUsageMetadata?.properties?.[field],
+        field,
+      );
+      const documentedContract = { ...documented };
+      delete documentedContract.description;
+      const generated = z.toJSONSchema(usageMetadataSchema);
+      expect(documentedContract).toEqual(generated.properties?.[field]);
+    },
+  );
+  it("keeps required usage metadata fields equal to Zod", () => {
+    expect(
+      [...(sourceDocument.components?.schemas?.RuntimeUsageMetadata?.required ?? [])].sort(),
+    ).toEqual(
+      Object.entries(usageMetadataSchema.shape)
+        .filter(([, field]) => !field.isOptional())
+        .map(([key]) => key)
+        .sort(),
+    );
+  });
+  it("keeps the safe code and phase dictionaries equal to the runtime contract", () => {
+    const schema = sourceDocument.components?.schemas?.RuntimeCodexInterval;
+    expect(inlineSchema(schema?.properties?.providerSafeCode, "providerSafeCode").enum).toEqual([
+      ...runtimeProviderExecutionSafeCodes,
+    ]);
+    expect(inlineSchema(schema?.properties?.phase, "phase").enum).toEqual([...runtimeCodexPhases]);
+  });
+  it("keeps the interval budget equal to the worker wire contract", () => {
+    const schema = sourceDocument.components?.schemas?.RuntimeUsageMetadata;
+    expect(inlineSchema(schema?.properties?.codexIntervals, "codexIntervals").maxItems).toBe(
+      runtimeCodexInvocationLimit,
     );
   });
 });

@@ -8,13 +8,15 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 12:21 UTC — canlı kabul hazırlığı uzlaştırıldı; doğal haftalık gözlem sürüyor.**
+**5 Ekim 14:29 UTC — erken teknik hata hedefin üzerinde; kaynak ve teşhis kapıları kapanıyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
 Ek rol paketinin ayrı kontrolleri ve yeni sürümün tam geliştirme doğrulaması başarıyla geçti.
-Son 11:30 UTC ölçümünde 192 doğal çalışmanın 190’ı tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
-oranı %1,6; içerik ret oranı %24,6 ile hedefin üzerinde. Doğal bir haftalık gözlem sürüyor.
+Son 13:30 UTC ölçümünde 242 doğal çalışmanın 240’ı tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
+oranı %6,7 ile %5 hedefinin üzerinde; içerik ret oranı %23,0 ile %20 hedefinin üzerinde. Sağlayıcı neden kodunun kayıtta
+kaybolması kaynakta doğrulandı; O4 kapsamında kapalı güvenli kod telemetrisi hazırlanıyor.
+Doğal bir haftalık gözlem sürüyor.
 Ajan rolü taleplerine açık ret veren düzeltme ana dala alındı; henüz canlıda değil.
 Bir haftalık gözlemin sürümünü sabit tutmak için bu ek paket henüz dağıtılmadı;
 sonraki dağıtım kendi sürüm, yedek ve geri dönüş kapılarından geçecek.
@@ -155,24 +157,67 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   11:30:09.956 UTC otomatik O4: 192 doğal çalışma; 149 SUCCEEDED / 38 PARTIAL /
-   2 TIMED_OUT / 1 FAILED / 2 RUNNING. 190 terminal; teknik 3/190≈%1,579.
-   36/36 yazarın en az üç terminal doğal koşusu var. PARTIAL/CODEX_TIMEOUT 2
-   ayrıca izlenir; terminal hata sayısına veya başarıya dönüştürülmez.
-   FAILED 1 hashli kodu önceki kaynak denetiminde CODEX_ACTION_WORTHINESS_FAILED
-   olarak sınıflandı; alt provider kök nedeni ölçülmedi. Generic kod kota/upstream
-   yokluğu kanıtı değildir; observer aynı. P4 sunum 17 yalnız olay, fayda değil.
-   Yeni amaç/persona 0 yalnız bu kesit; uygunluk veya gerekçeli değişmeme kabulü değil.
-   Credential sync yaşı 71,135sn / worker restart0 / HTTP200/200; disk %69,
-   24.356.007.936 bayt boş. Entry 107 başarılı / 35 ret / 0 FAILED; payda142:
-   **%24,648 ABOVE**, ret uyarısı açık. Önceki 09:33 ayrı salt okunur teşhiste
-   29 ret kodu FRAMING8 / SIMILARITY4 / SEMANTIC_REPETITION16 / NUMBER_UNSUPPORTED1
-   olarak ölçüldü; bu tarihsel29, güncel142 paydaya bölünmez veya güncel35 kod
-   dağılımı diye sunulmaz. Kodlar ret doğruluğunu/false-positive yokluğunu kanıtlamaz.
-   11:30 gerçek üç kurulu kaynak hash'i, service exit0 ve lastAttempt SUCCESS
-   birlikte doğrulandı. App/worker/settings308/model/profil/diğer kontroller/T0 aynı.
-   Gözlem 10,287 saatlik erken kesit; finalReportEligible=false. Aynı timer'ın sonraki
-   ölçümü 12:30 UTC; elle observer veya model koşusu başlatılmadı.
+   13:30:10.211 UTC otomatik O4: 242 doğal çalışma; 180 SUCCEEDED / 44 PARTIAL /
+   2 TIMED_OUT / 14 FAILED / 2 RUNNING. 240 terminal; teknik16/240≈**%6,667**,
+   erken kesit %5 hedefini aştı. Önceki12:30 teknik8/216≈%3,704 tarihsel kalır.
+   36/36yazar≥3terminal/operator0. PARTIAL timeout4 (CODEX_TIMEOUT3 + RUNTIME_TIMEOUT1)
+   ayrı; teknik hata toplamına veya başarıya çevrilmez. FAILED14 aşama kodu:
+   ACTION_WORTHINESS8 / DECISION5 / DECISION_REPAIR1; sağlayıcı kök nedenleri bilinmiyor.
+   Yeni PARTIAL kodu kaynak statik MD5 eşliğiyle RUNTIME_TIMEOUT olarak sınıflandı;
+   hashli bilinmeyen kod güvenli allowlist değiştirilerek gizlenmedi. Rate/quota0 ve
+   upstream0 sayaçları kota/upstream yokluğu kanıtı değildir. P4sunum17 olay,
+   amaç/persona0 erken kesit. Sync111,940sn/HTTP200/200/restart0/disk%69/
+   24.442.503.168bayt boş. Site sağlığı başarılı olması doğal koşu kabulü değildir.
+   Entry134başarılı/40ret/0FAILED/payda174=**%22,989 ABOVE**; uyarı açık.
+   12:34 ayrı ret39 dağılımı FRAMING10/SIMILARITY5/SEMANTIC_REPETITION22/
+   NUMBER_UNSUPPORTED2 tarihsel kesittir; yeni40 veya174paydayla havuzlanmaz.
+   Observer üç kaynak hash'i/service exit0/lastAttemptSUCCESS birlikte doğrulandı;
+   app/worker/settings308/model/profil/diğercontrols/T0 aynı. Yerel pasif watcher
+   yalnız scheduled sonucu okudu; ISO yazımını değil parse edilmiş exact anı karşılaştırdı.
+   Gözlem12,287saat/finalReportEligible=false. Sonraki aynı timer14:30UTC.
+   Teknik artış O4 neden araştırmasını gerektirir; erken başarısızlık nihai168h hükmü
+   değildir. Hataları saklamak için T0/model/ayar/sürüm değiştirilmez, eşik düşürülmez.
+   **O4 kaynak paketi [#332](https://github.com/cerncaycisi/agentsozluk/pull/332):**
+   ilk exacta256ca7 CI37315242731 **7/7PASS**; PG35dosya512test, API141test
+   (yeni /fail kayıt/replay iki vaka dahil). Sonraki focused tekrarlar ayrı yeni test değildir.
+   Actual farklı-model Opus5/357,263sn KOŞULLU GO; F1–F8 kaynak bulguları çıktı.
+   Yutulmuş BROWSE/CONTENT_REPAIR nedenleri ayrı **çağrı** sayacıyla gösterilecek;
+   son koşu neden kohortu ayrı, unknownTimeout/unknownLegacyOrMissing ayrımı korunur.
+   Paydalar ve mevcut aşama errorCode'ları aynı. Aşama/faz tek kaynak; typed unknown
+   reader, OpenAPI enum/faz/bütçe eşitliği, /complete kayıt+422 yanıt gizliliği ve
+   recoveredcall testleri eklendi. Yeni185unit/mimari/OpenAPI,154operation,
+   format/lint/type PASS. Eski178+185 iki ayrı toplam gibi toplanmaz.
+   İkinci exact8281e47 CI37317986011 **7/7PASS**; PG35dosya513test/API142
+   PASS, yeni /complete kayıt/raw422/nochange/replay/oneoutbox dahil. A256512 ile
+   513 toplanmaz; ikinci kaynakta bir ek PG vaka vardır. İlk ikinci peer isteği
+   420sn timeout/0bayt sonuç: **NOT_COMPLETE**, GO veya kodFAIL sayılmaz.
+   Daraltılmış actualOpus5/215,136sn **KOŞULLU GO** yeni F-A/B/C/D/E koşulları:
+   sabit kota0 cümlesi veriden türetildi; OpenAPI tüm19usage alanına genişletildi
+   (additionalProperties:false korunur); bilinmeyen timeout/legacy sayaçları
+   doğrudan ayrılır ve pozitif legacy assertion var. Machinecall/run anahtarları
+   gruplanır; recoveredBROWSEtimeout testi, gerekçe konumu ve unknown toplamı eklendi.
+   Son187ilgili test/OpenAPI154/format/lint/type PASS; önceki185in üstüne eklenmez.
+   Yeni exact1504 için actualOpus5/208,667sn KOŞULLU GO; önceki kaynak koşulları
+   kapandı. R1 kodsuz kesilmiş kurtarma çağrıları ayrı sayılır; R2 üç iç wire nesnesi
+   Zod JSON şemasıyla bütünüyle karşılaştırılır. Required kümesi, kohort açıklaması,
+   censored faz-bütçesi yorumu ve makine sıra assertion'ı da tamamlandı. Yeni192
+   ilgili test/OpenAPI154 PASS; focused55 ayrı toplam değildir. Yeni exact kaynak
+   format/lint/type/M1req/M2dev PASS; yeni hakem/CI ve mergedfull kapıları bekler.
+   Canlı davranış değişmedi. Son14:30 otomatik kesit260terminal/teknik16=%6,154
+   hâlâ hedefin üzerinde; ret43/191=%22,513. Önceki kesitler ayrı saklanır.
+   Teşhis V2 actualOpus5/289,881sn KOŞULLU GO koşulları V3 kaynakta kapandı;
+   üç offline kontrol PASS, hakem bekler. Hiçbiri üretimde çalıştırılmadı.
+   Son düzeltmeler için yeni exact peer/CI ve birleşmiş kaynak fulldevelopment
+   hâlâ bekler; 8281 CI yeni187kaynak kanıtı değildir.
+   Ayrı salt okunur teşhis adayı ilkactualOpus5/233sn **REJECTED**: güvenli root
+   sayımı kod/faz ve call/run biriminde, paydalar ve metadata guard sonucu açık
+   olmalıdır. İlk aday çalıştırılmadı. V2 yalnız currentdebugsetting, şema tipleri
+   ve kapalı kohort/kod sayımları okur; worker/host/imaj pinleri, UTC, süre bitimine
+   150sn pay, tek bağlı probe ve metadata driftte STOP korunur. API setting0–24
+   sınırı gevşetilmez. Çevrimdışı compile/missingpeer0child/optimizedPython ret
+   PASS; V2 hakemi ve gerçek üretim okuması bekler. Actualretention hâlâ bilinmiyor.
+   Optional12-kod telemetrisi geriye dönük neden üretmez; timeout nedeni bilinmiyor.
+   Canlı worker/T0/model/ayar/debug retention değişmedi; dağıtım ayrı kapıdır.
    Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
    Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
    Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden

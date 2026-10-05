@@ -1,3 +1,8 @@
+import {
+  isRuntimeProviderExecutionSafeCode,
+  runtimeProviderFailureStages,
+  type RuntimeProviderExecutionSafeCode,
+} from "@/modules/agents/domain/provider-failure-telemetry";
 import { authorFeedbackKey } from "@/modules/agents/domain/rewards";
 import { purposeKinds, purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import { projectActionWorthinessPerception } from "@/modules/agents/domain/runtime-action-worthiness-context";
@@ -280,11 +285,11 @@ const runtimeWorkerFailures = {
     errorSummary: "Runtime karar çağrısını güvenli biçimde hazırlayamadı.",
   },
   decisionProvider: {
-    errorCode: "CODEX_DECISION_FAILED",
+    errorCode: runtimeProviderFailureStages.decisionProvider.errorCode,
     errorSummary: "İlk Codex karar çağrısı güvenli biçimde tamamlanamadı.",
   },
   decisionRepairProvider: {
-    errorCode: "CODEX_DECISION_REPAIR_FAILED",
+    errorCode: runtimeProviderFailureStages.decisionRepairProvider.errorCode,
     errorSummary: "Codex karar onarım çağrısı güvenli biçimde tamamlanamadı.",
   },
   decisionOutput: {
@@ -296,7 +301,7 @@ const runtimeWorkerFailures = {
     errorSummary: "Runtime karar kanıtlarını güvenli perception kataloğuna bağlayamadı.",
   },
   actionWorthinessProvider: {
-    errorCode: "CODEX_ACTION_WORTHINESS_FAILED",
+    errorCode: runtimeProviderFailureStages.actionWorthinessProvider.errorCode,
     errorSummary: "Codex action-worthiness çağrısı güvenli biçimde tamamlanamadı.",
   },
   actionWorthinessOutput: {
@@ -1248,6 +1253,7 @@ export class AgentRuntimeWorker {
       finishedAt: string;
       durationMs: number;
       phase: RuntimeCodexPhase;
+      providerSafeCode?: RuntimeProviderExecutionSafeCode;
       promptChars: number;
       promptBytes: number;
       censored?: boolean;
@@ -1287,6 +1293,7 @@ export class AgentRuntimeWorker {
         patladığında sayı "deadline'a kalan süre" olur. `censored` bunu
         söylüyor; bayrak olmadan kesilmiş süre yavaşlama sanılıyordu.
       */
+      let providerSafeCode: RuntimeProviderExecutionSafeCode | undefined;
       let completed = false;
       let censored = false;
       let diagnostics: RuntimeProviderAttemptDiagnostics | undefined;
@@ -1308,8 +1315,11 @@ export class AgentRuntimeWorker {
         ) {
           censored = !completed;
           diagnostics = error.diagnostics ?? diagnostics;
-        } else if (error instanceof RuntimeProviderExecutionError)
+        } else if (error instanceof RuntimeProviderExecutionError) {
           diagnostics = error.diagnostics ?? diagnostics;
+          // TypeScript tipi tek başına wire güvenlik sınırı değildir.
+          if (isRuntimeProviderExecutionSafeCode(error.safeCode)) providerSafeCode = error.safeCode;
+        }
         if (diagnostics?.hostMetrics) failedCallHostMetrics = diagnostics.hostMetrics;
         throw error;
       } finally {
@@ -1321,6 +1331,7 @@ export class AgentRuntimeWorker {
           phase,
           promptChars,
           promptBytes,
+          ...(providerSafeCode ? { providerSafeCode } : {}),
           ...(censored ? { censored } : {}),
           ...(diagnostics
             ? {

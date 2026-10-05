@@ -19,6 +19,8 @@ import {
   renderTable,
   selectRunCohortActions,
   summarizeEntryRejections,
+  summarizeProviderFailureCauses,
+  summarizeProviderFailureCalls,
   summarizeFreshSourceCoverage,
   ENTRY_REJECTION_THRESHOLD_PERCENT,
   type ContentAttribution,
@@ -314,6 +316,7 @@ async function main(): Promise<void> {
           runType: true,
           runStatus: true,
           errorCode: true,
+          usageMetadata: true,
           finishedAt: true,
           performanceMetrics: true,
           agentProfile: { select: { user: { select: { username: true } } } },
@@ -792,6 +795,8 @@ async function main(): Promise<void> {
       (run) => classifyRunPair(run.trigger, run.runType) === "natural-public",
     );
     const terminalNaturalRuns = naturalRuns.filter((run) => terminalRunIds.has(run.id));
+    const providerFailureCauses = summarizeProviderFailureCauses(terminalNaturalRuns);
+    const providerFailureCalls = summarizeProviderFailureCalls(terminalNaturalRuns);
     const terminalizedAfterWindow = terminalNaturalRuns.filter(
       ({ finishedAt }) => finishedAt !== null && finishedAt >= window.to,
     );
@@ -1128,6 +1133,49 @@ async function main(): Promise<void> {
         ],
       ),
       "",
+      "DOĞAL KOŞU SAĞLAYICI NEDEN KOHORTU",
+      "Birim: terminal doğal koşu; PARTIAL dahil. Teknik FAILED+TIMED_OUT oranının paydası ayrı kalır.",
+      `Eksik/eski/timeout nedeni bilinmiyor; bilinen kota: ${providerFailureCauses.rateLimitedRuns} koşu / ${providerFailureCalls.codes.find(([code]) => code === "CODEX_RATE_LIMITED")?.[1] ?? 0} çağrı (çağrı sayısı tüm terminal doğal koşuları kapsar); sayılar kota yokluğu kanıtı değildir.`,
+      renderTable(
+        [
+          "runs",
+          "knownCause",
+          "unknownCause",
+          "unknownTimeout",
+          "unknownLegacyOrMissing",
+          "rateLimited",
+          "upstreamUnavailable",
+        ],
+        [
+          [
+            String(providerFailureCauses.runs),
+            String(providerFailureCauses.knownCauseRuns),
+            String(providerFailureCauses.unknownCauseRuns),
+            String(providerFailureCauses.unknownTimeoutRuns),
+            String(providerFailureCauses.unknownLegacyOrMissingRuns),
+            String(providerFailureCauses.rateLimitedRuns),
+            String(providerFailureCauses.upstreamUnavailableRuns),
+          ],
+        ],
+      ),
+      renderTable(
+        ["providerSafeCode", "runs"],
+        providerFailureCauses.codes.map(([code, count]) => [code, String(count)]),
+      ),
+      "",
+      "DOĞAL SAĞLAYICI ÇAĞRILARI — KAYDEDİLMİŞ GÜVENLİ HATA NEDENLERİ",
+      "Birim: kaydedilmiş güvenli nedeni olan çağrı; kurtarılmış/yutulmuş hatalar dahil. Kod taşımayan kesilmiş çağrılar ayrı sayılır; kesilme timeout kök nedeni değildir. Son koşu nedeni veya teknik hata oranı değildir.",
+      `recorded_cause_calls=${providerFailureCalls.calls}; runs_with_recorded_cause=${providerFailureCalls.runsWithRecordedCause}`,
+      `censored_without_code_calls=${providerFailureCalls.censoredWithoutCodeCalls}`,
+      renderTable(
+        ["providerSafeCode", "calls"],
+        providerFailureCalls.codes.map(([code, count]) => [code, String(count)]),
+      ),
+      renderTable(
+        ["phase", "providerSafeCode", "calls"],
+        providerFailureCalls.byPhase.map(([phase, code, count]) => [phase, code, String(count)]),
+      ),
+      "",
       "NATURAL PARTIAL SAFE REASONS",
       renderTable(
         ["safeCodeSet", "runs"],
@@ -1363,6 +1411,22 @@ async function main(): Promise<void> {
       `actions_updated_after_window_included=${actionCohort.updatedAfterWindow}`,
       `natural_runs=${terminalNaturalRuns.length}`,
       `natural_runs.nonterminal=${nonterminalNaturalRuns}`,
+      `natural_provider_cause_cohort_runs=${providerFailureCauses.runs}`,
+      `natural_provider_cause_cohort_runs.known_cause=${providerFailureCauses.knownCauseRuns}`,
+      `natural_provider_cause_cohort_runs.unknown_cause=${providerFailureCauses.unknownCauseRuns}`,
+      `natural_provider_cause_cohort_runs.unknown_cause.timeout=${providerFailureCauses.unknownTimeoutRuns}`,
+      `natural_provider_cause_cohort_runs.unknown_cause.legacy_or_missing=${providerFailureCauses.unknownLegacyOrMissingRuns}`,
+      `natural_provider_cause_cohort_runs.rate_limited=${providerFailureCauses.rateLimitedRuns}`,
+      `natural_provider_cause_cohort_runs.upstream_unavailable=${providerFailureCauses.upstreamUnavailableRuns}`,
+      `natural_provider_cause_calls=${providerFailureCalls.calls}`,
+      `natural_provider_cause_calls.runs_with_recorded_cause=${providerFailureCalls.runsWithRecordedCause}`,
+      `natural_provider_cause_calls.censored_without_code=${providerFailureCalls.censoredWithoutCodeCalls}`,
+      ...providerFailureCalls.codes.map(
+        ([code, count]) => `natural_provider_cause_calls.${code}=${count}`,
+      ),
+      ...providerFailureCalls.byPhase.map(
+        ([phase, code, count]) => `natural_provider_cause_calls.by_phase.${phase}.${code}=${count}`,
+      ),
       `natural_runs.terminalized_after_window=${terminalizedAfterWindow.length}`,
       `natural_runs.terminalized_after_window_max_delay_seconds=${maximumTerminalizationDelaySeconds}`,
       `natural_runs.succeeded=${naturalRunStatusCounts.get("SUCCEEDED") ?? 0}`,
