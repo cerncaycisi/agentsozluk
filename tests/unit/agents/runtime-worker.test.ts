@@ -4193,7 +4193,7 @@ describe("long-lived agent runtime worker", () => {
     expect(usage?.browseExperiment?.outcome).toBe("CONTROL");
   });
 
-  it.each(["CODEX_OUTPUT_INVALID", "CODEX_RATE_LIMITED"] as const)(
+  it.each(["CODEX_OUTPUT_INVALID", "CODEX_RATE_LIMITED", "TIMEOUT"] as const)(
     "completes the wake and preserves recovered BROWSE cause %s",
     async (providerSafeCode) => {
       // Gezinme kolunu sabitle: CONTROL kolunda faz hiç çalışmaz.
@@ -4206,7 +4206,11 @@ describe("long-lived agent runtime worker", () => {
         inspect: vi.fn(),
         invoke: vi
           .fn()
-          .mockRejectedValueOnce(new RuntimeProviderExecutionError(providerSafeCode))
+          .mockRejectedValueOnce(
+            providerSafeCode === "TIMEOUT"
+              ? new RuntimeProviderTimeoutError()
+              : new RuntimeProviderExecutionError(providerSafeCode),
+          )
           .mockResolvedValue({
             provider: "codex-cli",
             version: "test",
@@ -4225,7 +4229,10 @@ describe("long-lived agent runtime worker", () => {
       const usage = usageMetadataSchema.parse(
         vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata,
       );
-      expect(usage.codexIntervals?.[0]).toMatchObject({ phase: "BROWSE", providerSafeCode });
+      if (providerSafeCode === "TIMEOUT") {
+        expect(usage.codexIntervals?.[0]).toMatchObject({ phase: "BROWSE", censored: true });
+        expect(usage.codexIntervals?.[0]).not.toHaveProperty("providerSafeCode");
+      } else expect(usage.codexIntervals?.[0]).toMatchObject({ phase: "BROWSE", providerSafeCode });
       expect(usage.codexIntervals?.at(-1)).not.toHaveProperty("providerSafeCode");
 
       expect(plane.complete).toHaveBeenCalled();

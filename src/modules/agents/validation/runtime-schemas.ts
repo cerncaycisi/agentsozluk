@@ -372,12 +372,7 @@ export const runtimeCodexInvocationLimit = 5;
 */
 export const runtimeReadTopicLimit = 3;
 
-/**
- * Koşu başına 3-4 Codex çağrısı yapılıyor ve tek çağrının medyanı 101 sn
- * (ölçüm: 1 Eylül 2026, üretim, 7 gün, n=8323 aralık). Faz etiketi olmadan
- * 440 sn'lik karar süresinin hangi fazdan geldiği ölçülemiyordu; hangi fazın
- * pahalı olduğu bilinmeden hiçbir iyileştirme hedeflenemez.
- */
+/** Faz sözlüğü ve gerekçesi: provider-failure-telemetry.ts. */
 export {
   runtimeCodexPhases,
   type RuntimeCodexPhase,

@@ -2,7 +2,10 @@ import {
   runtimeProviderExecutionSafeCodes,
   runtimeCodexPhases,
 } from "@/modules/agents/domain/provider-failure-telemetry";
-import { runtimeCodexInvocationLimit } from "@/modules/agents/validation/runtime-schemas";
+import {
+  runtimeCodexInvocationLimit,
+  usageMetadataSchema,
+} from "@/modules/agents/validation/runtime-schemas";
 import path from "node:path";
 import SwaggerParser from "@apidevtools/swagger-parser";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -144,6 +147,13 @@ describe("OpenAPI agent mutation schema contracts", () => {
 });
 
 describe("OpenAPI provider telemetry wire alignment", () => {
+  it("documents every accepted usage metadata field without opening the object", () => {
+    const schema = sourceDocument.components?.schemas?.RuntimeUsageMetadata;
+    expect(Object.keys(schema?.properties ?? {}).sort()).toEqual(
+      Object.keys(usageMetadataSchema.shape).sort(),
+    );
+    expect(schema?.additionalProperties).toBe(false);
+  });
   it("keeps the safe code and phase dictionaries equal to the runtime contract", () => {
     const schema = sourceDocument.components?.schemas?.RuntimeCodexInterval;
     expect(inlineSchema(schema?.properties?.providerSafeCode, "providerSafeCode").enum).toEqual([

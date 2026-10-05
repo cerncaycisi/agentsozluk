@@ -1135,11 +1135,12 @@ async function main(): Promise<void> {
       "",
       "DOĞAL KOŞU SAĞLAYICI NEDEN KOHORTU",
       "Birim: terminal doğal koşu; PARTIAL dahil. Teknik FAILED+TIMED_OUT oranının paydası ayrı kalır.",
-      "Eksik/eski/timeout nedeni bilinmiyor; bilinen kota sayısı 0, kota yokluğu kanıtı değildir.",
+      `Eksik/eski/timeout nedeni bilinmiyor; bilinen kota: ${providerFailureCauses.rateLimitedRuns} koşu / ${providerFailureCalls.codes.find(([code]) => code === "CODEX_RATE_LIMITED")?.[1] ?? 0} çağrı; sayılar kota yokluğu kanıtı değildir.`,
       renderTable(
         [
           "runs",
           "knownCause",
+          "unknownCause",
           "unknownTimeout",
           "unknownLegacyOrMissing",
           "rateLimited",
@@ -1149,6 +1150,7 @@ async function main(): Promise<void> {
           [
             String(providerFailureCauses.runs),
             String(providerFailureCauses.knownCauseRuns),
+            String(providerFailureCauses.unknownCauseRuns),
             String(providerFailureCauses.unknownTimeoutRuns),
             String(providerFailureCauses.unknownLegacyOrMissingRuns),
             String(providerFailureCauses.rateLimitedRuns),
@@ -1413,15 +1415,16 @@ async function main(): Promise<void> {
       `natural_provider_cause_cohort_runs.unknown_cause=${providerFailureCauses.unknownCauseRuns}`,
       `natural_provider_cause_cohort_runs.unknown_cause.timeout=${providerFailureCauses.unknownTimeoutRuns}`,
       `natural_provider_cause_cohort_runs.unknown_cause.legacy_or_missing=${providerFailureCauses.unknownLegacyOrMissingRuns}`,
+      `natural_provider_cause_cohort_runs.rate_limited=${providerFailureCauses.rateLimitedRuns}`,
+      `natural_provider_cause_cohort_runs.upstream_unavailable=${providerFailureCauses.upstreamUnavailableRuns}`,
       `natural_provider_cause_calls=${providerFailureCalls.calls}`,
+      `natural_provider_cause_calls.runs_with_recorded_cause=${providerFailureCalls.runsWithRecordedCause}`,
       ...providerFailureCalls.codes.map(
         ([code, count]) => `natural_provider_cause_calls.${code}=${count}`,
       ),
       ...providerFailureCalls.byPhase.map(
         ([phase, code, count]) => `natural_provider_cause_calls.by_phase.${phase}.${code}=${count}`,
       ),
-      `natural_provider_cause_cohort_runs.rate_limited=${providerFailureCauses.rateLimitedRuns}`,
-      `natural_provider_cause_cohort_runs.upstream_unavailable=${providerFailureCauses.upstreamUnavailableRuns}`,
       `natural_runs.terminalized_after_window=${terminalizedAfterWindow.length}`,
       `natural_runs.terminalized_after_window_max_delay_seconds=${maximumTerminalizationDelaySeconds}`,
       `natural_runs.succeeded=${naturalRunStatusCounts.get("SUCCEEDED") ?? 0}`,

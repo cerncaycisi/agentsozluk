@@ -491,6 +491,8 @@ describe("safe provider failure cause coverage", () => {
       runs: 5,
       knownCauseRuns: 0,
       unknownCauseRuns: 5,
+      unknownTimeoutRuns: 0,
+      unknownLegacyOrMissingRuns: 5,
       rateLimitedRuns: 0,
       upstreamUnavailableRuns: 0,
       codes: [],
@@ -513,7 +515,14 @@ describe("safe provider failure cause coverage", () => {
         run("CODEX_DECISION_FAILED", "DECISION", "CODEX_RATE_LIMITED", "RUNNING"),
         run("CODEX_DECISION_FAILED", "DECISION", "CODEX_RATE_LIMITED", "CANCELLED"),
       ]),
-    ).toMatchObject({ runs: 3, knownCauseRuns: 0, unknownCauseRuns: 3, rateLimitedRuns: 0 });
+    ).toMatchObject({
+      runs: 3,
+      knownCauseRuns: 0,
+      unknownCauseRuns: 3,
+      unknownTimeoutRuns: 1,
+      unknownLegacyOrMissingRuns: 2,
+      rateLimitedRuns: 0,
+    });
   });
   it("recognizes only exact legacy safe codes without reading narrative fields", () => {
     expect(

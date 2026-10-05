@@ -5935,3 +5935,53 @@ Tekrarlama: kurtarılmış call kodlarını kayıtta tutup raporda atlama; call/
 birimlerini havuzlama; eskiCI/peer'i yeniSHAya taşıma; parentrun log erişim kısıtını
 ve ANSI parser miss'ini testFAIL sayma; legacy metadata'yı strict tümşema parse ile
 silme; %6,7 erken oranı gizlemek için T0/model/ayar/eşik değişikliği yapma.
+
+## 5 Ekim 2026 14:08 UTC — O4 tam wire belgesi; peer süre sınırı ve çalıştırılmayan teşhis
+
+İkinci yayınlı exact8281e4793a841c71f21e6dd0bb4a6e520b01db23, CI37317986011
+**7/7PASS**; PGjob111789473873/35dosya513test/API142 PASS. Sonraki focused
+142|138skipped tekrar ayrı142 yeni test değildir. Yeni /complete recoveredcause/
+raw422 yanıt/nochange/kayıt/replay/oneoutbox ve /fail iki vaka doğrudan bu dosyada.
+Log289.686bayt/SHA256011b9476ea7dd5bebc8d1866a76310ef995904f07e18f2af25a51e355c220a10.
+Bu CI yayınlı8281e47'ye aittir; sonraki kaynak düzeltmelerine taşınmaz.
+
+İkinci geniş peer13:36:00–13:43:00,229.043bayt literal source/420sn timeout/
+exit124/sonuç0bayt: `O4_IMPLEMENTATION_PEER_TIMEOUT_NOT_COMPLETE`. KodFAIL,
+REJECTED veya GO değil. Kapsam daraltıldı; gerçekOpus5 source8281/215,136sn
+KOŞULLU GO verdi. F-A sabit kota0 ifadesinin tablodaki pozitifcall ile çelişmesi,
+F-B strictOpenAPI'nin runtimeUsage alanlarını eksik belgelemesi, F-C bilinmeyen
+legacy sayacının dolaylı çıkarımı ve pozitifassertion eksikliği doğrulandı.
+F-D/E machinecall/run birimi ve gruplama da düzeltildi. Sözlük/guard/strictwire/
+deadline/censor/teknikpayda değişmedi. Opsiyonel BROWSEtimeout censure/eksikcause
+vakası, unknown toplamı ve faz tanımındaki gerekçe de tamamlandı.
+
+OpenAPI eksik beş alan (codexVersion/reasoningEffort/decisionRepair/actionWorthiness/
+browseExperiment) çalışan Zod JSON şemasından çıkarıldı; toplam19top-level alanın
+property-set eşitliği ve additionalProperties:false testte doğrulanır. Bütün YAML
+arşivi yeniden biçimlendirilmedi; yalnız134 yeni sözleşme satırı eklenir.
+Yeni13:55:49 ondosya187test PASS (worker95/OpenAPI20; diğerlerinin mevcut185 seti
+korunur). OpenAPI154operation/format/lint/type PASS; 185+187 veya coverage tekrarları
+iki ayrı test toplamı gibi toplanmaz. Yeni exact kaynak için peer/CI, sonra merged
+full verify:m2:development hâlâ gerekir. Canlı d829/worker/T0 aynı; final kabul yok.
+
+Sınırlı teşhis aracının ilkreview actualOpus5/233sn **REJECTED**; üretim erişimi0.
+Safe rootavailability tek skalerdi; kod/faz/call/run ve payda/projection birimleri
+ayrılmalıydı. Guard durumlarının safeError, worker kimliği, süre bitimine pay ve
+schema-tipi/UTC yorumu güçlendirildi. Kod kaynakta doğrulandı: AgentRun.createdAt
+@db.Timestamptz(3), kullanım JSON; settings debugRetentionHours uygulama şeması0–24.
+Hakemin48saatin meşru olabileceği çıkarımı mevcut uygulama sözleşmesini karşılamaz;
+sınır kaldırılmadı. V2 metadata farkını güvenli kayda alıp **STOP** döndürür; wrapper
+sonraki erişimi reddeder, farkı kabul edilmiş baseline saymaz. Mevcut retention
+geçmişteki ayar veya dosya varlığı kanıtı değildir. V2 root sayımı kod/faz ve
+call/distinctrun; technicalFAILED+TIMED_OUT/partial/diagnostic kohortları ayrıdır.
+Parent image/checkout/immutable-release/workerPID/account ve expiry/pin kapıları
+korunur. Absolutebinaries,150sn authority payı, UTF8, -O ret ve tekprobe makbuzu var.
+Çevrimdışı compileBoth/missingpeer0children/optimizedPython ret PASS; V2 hakem
+henüz yok, hiçbir yeniSSH/HTTP/DB/providermodel/debugsetting/timer işlemi yapılmadı.
+Son gerçek doğal kesit13:30 teknik16/240=%6,667; yeni ölçüm veya neden uydurulmaz.
+
+Tekrarlama:229k+duplicatedsource peer paketini aynı şekilde süre sınırına gönderme;
+timeout'u kaynakregresyonu veya GO sayma; kod0 cümlesini veriden bağımsız yazma;
+strictAPI belgesindeki eksik19alanı additionalProperties:true ile gizleme;
+REJECTED teşhis adayını çalıştırma; peer önerisini uygulama0–24/P7identity gate'ini
+gevşetme yetkisi sayma; şimdiki retention değerinden eski dosya varlığı çıkarma.

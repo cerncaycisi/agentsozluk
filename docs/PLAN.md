@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 13:34 UTC — erken teknik hata hedefin üzerinde; O4 tanısı ve kaynak düzeltmesi sürüyor.**
+**5 Ekim 14:08 UTC — erken teknik hata hedefin üzerinde; kaynak ve teşhis kapıları kapanıyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
@@ -187,8 +187,25 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    reader, OpenAPI enum/faz/bütçe eşitliği, /complete kayıt+422 yanıt gizliliği ve
    recoveredcall testleri eklendi. Yeni185unit/mimari/OpenAPI,154operation,
    format/lint/type PASS. Eski178+185 iki ayrı toplam gibi toplanmaz.
-   Düzeltilmiş kaynak için yeni exact peer/CI ve birleşmiş kaynak tam geliştirme
-   bekler; a256 CI yeni kaynak kanıtı değildir. Yeni /complete PG henüz ölçülmedi.
+   İkinci exact8281e47 CI37317986011 **7/7PASS**; PG35dosya513test/API142
+   PASS, yeni /complete kayıt/raw422/nochange/replay/oneoutbox dahil. A256512 ile
+   513 toplanmaz; ikinci kaynakta bir ek PG vaka vardır. İlk ikinci peer isteği
+   420sn timeout/0bayt sonuç: **NOT_COMPLETE**, GO veya kodFAIL sayılmaz.
+   Daraltılmış actualOpus5/215,136sn **KOŞULLU GO** yeni F-A/B/C/D/E koşulları:
+   sabit kota0 cümlesi veriden türetildi; OpenAPI tüm19usage alanına genişletildi
+   (additionalProperties:false korunur); bilinmeyen timeout/legacy sayaçları
+   doğrudan ayrılır ve pozitif legacy assertion var. Machinecall/run anahtarları
+   gruplanır; recoveredBROWSEtimeout testi, gerekçe konumu ve unknown toplamı eklendi.
+   Son187ilgili test/OpenAPI154/format/lint/type PASS; önceki185in üstüne eklenmez.
+   Son düzeltmeler için yeni exact peer/CI ve birleşmiş kaynak fulldevelopment
+   hâlâ bekler; 8281 CI yeni187kaynak kanıtı değildir.
+   Ayrı salt okunur teşhis adayı ilkactualOpus5/233sn **REJECTED**: güvenli root
+   sayımı kod/faz ve call/run biriminde, paydalar ve metadata guard sonucu açık
+   olmalıdır. İlk aday çalıştırılmadı. V2 yalnız currentdebugsetting, şema tipleri
+   ve kapalı kohort/kod sayımları okur; worker/host/imaj pinleri, UTC, süre bitimine
+   150sn pay, tek bağlı probe ve metadata driftte STOP korunur. API setting0–24
+   sınırı gevşetilmez. Çevrimdışı compile/missingpeer0child/optimizedPython ret
+   PASS; V2 hakemi ve gerçek üretim okuması bekler. Actualretention hâlâ bilinmiyor.
    Optional12-kod telemetrisi geriye dönük neden üretmez; timeout nedeni bilinmiyor.
    Canlı worker/T0/model/ayar/debug retention değişmedi; dağıtım ayrı kapıdır.
    Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.

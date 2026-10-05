@@ -201,6 +201,7 @@ export function summarizeProviderFailureCauses(
   let failures = 0;
   let unknownCauseRuns = 0;
   let unknownTimeoutRuns = 0;
+  let unknownLegacyOrMissingRuns = 0;
   for (const run of runs) {
     if (!["FAILED", "TIMED_OUT", "PARTIAL"].includes(run.runStatus)) continue;
     const stage = providerFailurePhases.get(run.errorCode ?? "");
@@ -214,16 +215,19 @@ export function summarizeProviderFailureCauses(
         cause = last.providerSafeCode;
       }
     }
-    if (run.errorCode === "CODEX_TIMEOUT") unknownTimeoutRuns += 1;
     if (cause) counts.set(cause, (counts.get(cause) ?? 0) + 1);
-    else unknownCauseRuns += 1;
+    else {
+      unknownCauseRuns += 1;
+      if (run.errorCode === "CODEX_TIMEOUT") unknownTimeoutRuns += 1;
+      else unknownLegacyOrMissingRuns += 1;
+    }
   }
   return {
     runs: failures,
     knownCauseRuns: failures - unknownCauseRuns,
     unknownCauseRuns,
     unknownTimeoutRuns,
-    unknownLegacyOrMissingRuns: unknownCauseRuns - unknownTimeoutRuns,
+    unknownLegacyOrMissingRuns,
     rateLimitedRuns: counts.get("CODEX_RATE_LIMITED") ?? 0,
     upstreamUnavailableRuns: counts.get("CODEX_UPSTREAM_UNAVAILABLE") ?? 0,
     codes: [...counts.entries()].sort(([left], [right]) => left.localeCompare(right)),
