@@ -133,7 +133,19 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    ve exact head CI henüz bekliyor. Bu paket henüz canlıda değildir. Acil üretim
    tetikleyicisi ölçülmedi; P7 sabit penceresi korunur, olağan dağıtım Gate10 sonrası
    exact sürüm/CI/restore ve kabul-bağı kapılarıyla değerlendirilir. Erken deployment
-   veya eski raporun yeni davranış sürümüne taşınması yapılmaz. Gate12 tam ledger zincir sorgusu
+   veya eski raporun yeni davranış sürümüne taşınması yapılmaz.
+   Son implementation hakemliği exact2ecdd/actualOpus5/241,069sn **KOŞULLU GO**:
+   source deltalarında hata veya izin genişlemesi yok; gösterilmeyen select/consumer
+   kaynakları, DB-kind/context uyuşmazlık testi ve CI koşulları açık bırakıldı.
+   `findModerationPrincipal.select.kind=true`, HUMAN ADMIN audit/operator seçimi,
+   writer-side revival/appeal yolu ve runtime'da bu role setter/guard çağrısı olmadığı
+   kaynakta doğrulandı; capability kind kapıları ebeveynde zaten vardı. Opsiyonel kind,
+   kind'sız DB kaydı değil eski caller sözleşmesidir. HUMAN actor context'e rağmen
+   AGENT DB principal reddini sınayan iki test eklendi; son15unit/CI henüz bekler.
+   Gate10 kapanışında taze ayrıcalıklı AGENT/session sayımı da alınır. Yamasız d829'da
+   AGENT hedefe grant-moderator smoke yapılmaz; negatif canlı vaka ancak yamalı sürüm
+   ve kendi exact dağıtım kapıları sonrası yürür. P8 raporunda exact deployment ve
+   configuration hash bağları korunur; eski d829 raporu yeni sürüme yeniden pinlenmez. Gate12 tam ledger zincir sorgusu
    bütün tarihsel profilleri kapsar; kaynak/restore/reboot ölçümü henüz yapılmadı.
    Yeni Git dışı V1 streaming yardımcı adayı iki gerçek Opus incelemesinde REJECTED;
    üretim yolundan çıkarıldı, public entry subprocess öncesinde kapalı. Mevcut kanonik

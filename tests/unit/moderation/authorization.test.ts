@@ -31,6 +31,18 @@ describe("moderation principal authorization", () => {
     },
   );
 
+  it.each(["ADMIN", "MODERATOR"] as const)(
+    "rejects an AGENT %s database principal even when actor context claims HUMAN",
+    (role) => {
+      const principal = { id: actorId, kind: "AGENT" as const, role, status: "ACTIVE" };
+      for (const adminOnly of [false, true]) {
+        expect(() => requireModerator(principal, humanActor, { adminOnly })).toThrowError(
+          expect.objectContaining({ code: "FORBIDDEN", status: 403 }),
+        );
+      }
+    },
+  );
+
   it.each([
     { role: "ADMIN" as const, adminOnly: true },
     { role: "ADMIN" as const, adminOnly: false },
@@ -40,7 +52,7 @@ describe("moderation principal authorization", () => {
     expect(requireModerator(principal, humanActor, { adminOnly })).toBe(principal);
   });
 
-  it("preserves historical human principals without the optional kind field", () => {
+  it("preserves legacy caller principals without the optional kind field", () => {
     const principal = { id: actorId, role: "ADMIN" as const, status: "ACTIVE" };
     expect(requireModerator(principal, humanActor, { adminOnly: true })).toBe(principal);
   });

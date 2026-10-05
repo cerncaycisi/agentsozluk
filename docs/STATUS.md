@@ -7,6 +7,30 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 08:43 UTC — rol düzeltmesi son incelemesinin koşulları
+
+Exact `2ecdd5281ac925ecf3785e15970d541b514d33f8`, PR331 bağlı/draft;
+CI37284806082 sürüyor. Yerel full format/lint/typecheck,13unit ve3M1requirements
+PASS. Actual claude-opus-5/241,069sn/tek tur son implementation görüşü **KOŞULLU GO**:
+source deltalarında hata/izin genişlemesi yok; eksik gösterilen consumer/select
+kaynakları, DB-kind/context mismatch testi ve exact CI koşulları henüz açık.
+Auxiliary Haiku4.5 14output token primary hakem değildir; tools/networktools0.
+
+Kaynak kapanışı: preflight findModerationPrincipal kind'ı seçiyor, audit yalnız
+HUMAN ADMIN'e control-plane görünürlüğü veriyor, operator seçimi actualHUMAN/ADMIN/
+ACTIVE koşullu. Writer-side revival/appeal generic moderator guard kullanmıyor;
+reviewer APPEAL_DECIDER kapısı değişmedi. Runtime/entry/topic yollarında generic
+guard/role setter/capability setter çağrısı yok. Parent diff yalnız iki executable
+hunk; diğer iki capability kind guard ebeveynde zaten var. Optional kind tarihsel
+kind'sız DB kaydı değil caller geri uyumluluğudur.
+
+Hakem isteğiyle iki HUMAN-context/AGENT-principal negatif testi eklendi; yeni
+15unit ve son kalite henüz çalışmadı. Mevcut dört PG vaka değişmedi, CI pending.
+Gate10 bitişinde yeni rol/session sayımı alınacak; yamasız d829 üzerinde AGENT'e
+moderatör rolü vermeyi deneme yok. Gate11 negatif grant ancak patch deploy sonrası;
+P8 exact report/configuration/deployment bağı atlanmaz. Canlı d829 aynı, restart/
+settings/policy/pencere değişimi yok. Güvenlik kabulü, deployment ve finalM2 değildir.
+
 ## 5 Ekim 08:30 UTC — doğal ilerleme ve moderasyon rol sınırı hazırlığı
 
 36 ajanın her biri artık en az üç doğal koşu tamamladı.122doğal/120terminal:

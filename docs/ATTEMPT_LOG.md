@@ -5580,3 +5580,25 @@ source yolunu yok sayma; privileged AGENT/session fixture'ını üretimde yaratm
 ret kodlarından editoryal doğruluk çıkarmama; eski kabul raporunu farklı sürüme
 repin etme. P7 sabit penceresinde olağan role fix yalnız hazırlanır, güvenlik
 aciliyeti doğrulanırsa canonical plan ve yeni T0 kapısı korunur.
+
+### 08:43 UTC — son role-boundary hakemliği ve koşul kapanışı hazırlığı
+
+Exact2ecdd5281ac925ecf3785e15970d541b514d33f8/PR331/CI37284806082pending.
+ActualOpus5/241,069sn/tek tur, auxHaiku4.5 14token; readonlytools0/network0.
+Sonuç KOŞULLU GO, unconditional GO değil. Diff source fail-closed/izin genişlemesi0;
+principal select/consumer kanıtı, context-mismatch assertion ve CI henüz şart.
+Kaynak select.kindtrue, HUMAN ADMIN audit/operator, writer-side path ve runtime
+callsite yokluğu doğrulandı. İki capability kind guard parentta zaten var;
+source hunk sayısı2. DBkind required/defaultHUMAN: optional TS kind yalnız legacy
+caller uyumudur, kind'sız tarihsel DB satırı değildir.
+
+İki ek unit (AGENT ADMIN/MODERATOR DBprincipal + HUMANactor) yazıldı;15unit final
+kalite henüz bekler. Source code ve dört PG vaka byte-identical; PG çalışma
+kanıtı CI sonuçlarından sonra alınır. İlk13unit/quality ve3requirementsPASS exact
+2ecdd private makbuzlandı. Koşul: Gate10 final bitişinde yeni readonlyprivileged/
+activeAgentSession sayımı; yamasız d829 AGENTgrant smoke yok. Eski raporu yeni
+SHA/config'a taşımadan dağıtım/son kabul zamanlaması korunur.
+Tekrarlama: source-only KOŞULLU GO'yu unconditionalGO diye kaydetme; actorKind'a
+bakan kusurlu guard'ı aynı-context testlerle doğrulama; kind'sız DB geçmişi uydurma;
+PG testlerini yapılmadan PASS yazma veya full-development407 sonucunu yeniSHA
+sonucu diye taşıma.
