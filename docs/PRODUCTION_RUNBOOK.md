@@ -2625,8 +2625,9 @@ korunur. Operatör sunucusunda tam test/build veya üretim DB reseti yapılmaz.
 
 `verification_mode=final` önce `requirements:m2:check`, ardından `verify:m2` ister;
 DONE-082 BLOCKED iken final başarılı olamaz. `development` ayrı seçenektir ve
-`verify:m2:development` sonucunu final kabul saymaz. Başta ve sonda exact main/temiz
-ağaç doğrulanır; arada main ilerlerse son kapı düşer. Bu CI işi üretime bağlanmaz,
+`verify:m2:development` sonucunu final kabul saymaz. Başta temiz ağaç ve iki modda
+son exact main doğrulanır; final modunda son temiz ağaç kapısı da zorunludur.
+Arada main ilerlerse son kapı düşer. Bu CI işi üretime bağlanmaz,
 dağıtmaz veya Gate10/11/12'yi ölçmez. Workflow kaynak hazırlığı, henüz tam komutun
 başarılı gerçek çalıştırılması değildir; ilk dispatch ve exact sonuç ayrıca makbuzlanır.
 

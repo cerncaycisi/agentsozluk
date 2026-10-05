@@ -5400,3 +5400,23 @@ bir gerçek verify:m2 başarı makbuzu değildir.
 Tekrarlama: split CI7 veya development kontrolünü tam final komut çalıştırılması
 sayma; geçici test DB resetini üretimde çalıştırma; workflow inputlarını shell
 koduna interpolate etme; main ilerlerken eski exact sonucu yeni SHA'ya yazma.
+
+### PR#330 koşullu hakem ve saatlik05:30 kesiti
+
+İlk exact038fb0d kaynak, gerçekOpus194,153sn KOŞULLU GO/yardımcıHaiku; Astra0.
+Job/setup/tam-komut bütçesi ve final/development clean-tree hizası koşulları
+kaynakta düzeltildi; yeni job120/tam80/setup10/Chromium10dk. CI adı/push main
+ve yedi package script gerçek kaynakta doğrulandı.27a2CI7/7PASS üzerinden
+aynı gh--jq gate1döndürdü. Son kaynak review/CI/ilk dispatch henüz açık.
+Checkout'un kendi read-token kullanımı metadata GH_TOKEN scope'undan ayrı;
+loopback URL HTTPbind0.0.0.0 ile karıştırılmaz. Koşullu görüş GO diye değiştirilmez.
+
+05:30actualservice success/exit0, installedpairhash aynı;54doğal/53terminal,
+36terminal profil/≥3terminal0profil, teknik0; ACK253sn/restart0/HTTP200/200.
+Entry32SUCCEEDED/13REJECTED, payda45/%28,889, uyarı açık; provider/timeout0.
+05:32 ayrı READ ONLY entry ret kodları13; PARTIAL eylem14ret/24başarılı,
+entry dışı ret oranı bozmaz. P4events6=2natural terminalrun/1profile; fayda değil.
+Kamu metni/credential/prompt export yok, app/model/ayar/T0/deploy aynı.
+Tekrarlama: source-only conditional görüşü fullM2PASS sayma; iki modun final
+kapılarını karıştırma; P4 event sayısını yazar sayısı veya ödül faydası yazma;
+aynı rejim tabanı yokken küçük önceki kesiti ret-regresyon tabanı ilan etme.

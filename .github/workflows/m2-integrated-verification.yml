@@ -33,7 +33,7 @@ defaults:
 jobs:
   integrated:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     services:
       postgres:
         image: postgres:16-alpine
@@ -63,6 +63,7 @@ jobs:
 
     steps:
       - name: Girdileri doğrula
+        id: validate_inputs
         env:
           CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           VERIFICATION_MODE: ${{ inputs.verification_mode }}
@@ -73,6 +74,7 @@ jobs:
             final|development) ;;
             *) exit 1 ;;
           esac
+          printf 'validated=true\n' >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -103,6 +105,7 @@ jobs:
           test "$successful_ci" -ge 1
 
       - uses: ./.github/actions/setup-project
+        timeout-minutes: 10
 
       - name: İzlenebilirlik ön kapısı
         env:
@@ -116,6 +119,7 @@ jobs:
           fi
 
       - name: Playwright Chromium kur
+        timeout-minutes: 10
         run: pnpm exec playwright install --with-deps chromium
 
       # SQL reset yalnız job'un loopback agent_sozluk_test DB'sinde yapılır.
@@ -135,11 +139,14 @@ jobs:
       - name: Son exact kaynak ve temiz ağaç kapısı
         env:
           CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          VERIFICATION_MODE: ${{ inputs.verification_mode }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          pnpm repo:check-clean
+          if test "$VERIFICATION_MODE" = final; then
+            pnpm repo:check-clean
+          fi
           main_sha="$(gh api repos/cerncaycisi/agentsozluk/git/ref/heads/main --jq .object.sha)"
           test "$main_sha" = "$CANDIDATE_SHA"
 
@@ -160,7 +167,7 @@ jobs:
           printf '\nÜretim erişimi veya deploy yapılmadı.\n' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Başarısız test artefaktlarını sakla
-        if: failure()
+        if: failure() && steps.validate_inputs.outputs.validated == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: m2-verification-${{ inputs.verification_mode }}-${{ inputs.candidate_sha }}
