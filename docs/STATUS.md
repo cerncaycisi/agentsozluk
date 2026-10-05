@@ -1078,7 +1078,7 @@ Olumsuz görüşler GO diye yeniden adlandırılmadı.
 fresh FULFILL_SLOT assessment `c54b0c5a-9185-40de-aaa1-5299ade3446b`, Opus14,028s.
 İki ayrı kör hüküm **INSUFFICIENT/applied=false/NO_REWARD**; yardımcı Haiku kayıtlı.
 API200, settings305→306→307. Aynı uygulama servisi tek QUALITY/INSUFFICIENT/NONE
-kartını okudu; TTL11 Ekim22:24:05.549UTC. Pozitif kredi0; puan/yayın hakkı/kota
+kartını okudu; TTL11 Ekim22:21:05.549UTC. Pozitif kredi0; puan/yayın hakkı/kota
 etkisi yok. Doğal CONTEXT_PRESENTED henüz0. Body, nonce veya okuyucu metni bu
 makbuza alınmadı; olumlu hüküm için örnek değiştirilmedi.
 
@@ -1250,7 +1250,7 @@ başlatma kapasite PASS değildir. P7/T0 henüz yok, final M2 BLOCKED aynı.
 
 Üretim app/image/runtime/worker exact `d829dd06eb4aa68154f521667302e6744b67399e`.
 Main CI `37237038884` **7/7 PASS**, artifact `37237966991` SUCCESS. Aynı exact
-adayın manual-prepaused A5 işlemi 22:24:59.300–22:38:06.257 UTC, exit 0 ve
+adayın manual-prepaused A5 işlemi 22:21:59.300–22:38:06.257 UTC, exit 0 ve
 `RELEASE_COMPLETE PASS`: tam frozen yedek 1.332.482.331 bayt, SHA-256
 `e606e590a09f936d259c074c014f66cfb98ad2bf3ff09895d19db004c48da0c0`; izole
 restore/veri/şema/sequence ve eski imaj smoke geçti. Tam işlem süresi frozen
@@ -5795,7 +5795,7 @@ Serialization GUC/faz süre testleri için ek koşullar açık. Varsayımsal for
 satırlarını parser'a eklemek eski native metadata'yı kırabilir; kaynakla birlikte
 uzlaştırılır. 7/7 yerel test kanıtı korunur; exactCI koşuyor, helper deploy edilmedi.
 
-### 4 Ekim 22:24 UTC — P2022 sonrası audited pause ve exact A5 devamı
+### 4 Ekim 22:21 UTC — P2022 sonrası audited pause ve exact A5 devamı
 
 İşletim hakemi Opus5/medium gerçek KOŞULLU, 46,105s; Haiku17 yardımcı tokenı.
 İlk high çağrı360s timeout, tamamlanmış review sayılmadı. Hakem ikinci kaynakta
@@ -6348,3 +6348,13 @@ Gerçek PG hatası ve trigger'ı kapatmadan hazırlanan çözüm
 [BIGINT sınır kanıtında](RESET_BIGINT_SINIR_KANITI_2026-10-05.md).
 Fable5.1 kaynak hükmü KOŞULLU GO; closure bekler. Düzeltme sonrası5dosya41unitPASS;
 yeni PG testleri ve exact-source CI henüz ölçülmedi. Goal ve finalM2 açık.
+
+## 5 Ekim 2026 22:21 UTC — reset ön koşulu test ayrımı
+
+ExactB536 yeni CI migration, quality, unit/behavior ve browser adımlarıPASS.
+Database35dosyaPASS; iki yeni BIGINT vaka fazla uzun username fixture'ında
+23514/users_username_format_check ileFAIL. Suffix20hex yapıldı, kurallar aynı.
+Fable190.041ms closure KOŞULLU GO: kaynak sınırları kapalı, exact tam CI şartı
+bekler. Yeni üretim paketinde dört korunan journal modeli/migration ve 410
+application/repository/middleware kodu hazırlanıyor; henüz doğrulanmadı,
+merge/deploy/reset/silme/açılış yok. Canlı son ölçüm D202/settings311/worker0.

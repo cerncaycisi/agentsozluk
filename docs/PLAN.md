@@ -8,6 +8,12 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+**22:21:** Yeni CI'da migration ve browserPASS; yeni iki PG vaka username
+fixture'ında fazla uzunluk nedeniyleFAIL. Fixture düzeltiliyor; constraint veya
+eşik gevşetilmedi. Exact-source tam CI bekler. İkinci ayrı worktree'de journal
+ve 410 kodu yazıldı, henüz test/review/deploy yok. Toplum son doğrulamada kapalı;
+silme ve açılış yapılmadı.
+
 **22:06 reset kodu:** İlk BIGINT paketinin draft [PR333](https://github.com/cerncaycisi/agentsozluk/pull/333)
 CI'ı gerçek PostgreSQL trigger bağımlılığı nedeniyle FAIL; üretime uygulanmadı.
 Geçmiş migration değişmeden, immutable guard korunarak yeni pre/post adımlar

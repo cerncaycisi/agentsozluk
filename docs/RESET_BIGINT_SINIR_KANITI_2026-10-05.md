@@ -11,25 +11,25 @@ ID'si ve diğer BIGINT alanlar bu değişimin kapsamında değildir. Repository
 number'a dönüştürür; JSON içindeki sayıları değiştirmez. Number girdi
 `publicIdBigInt` ile doğrulanarak sorguya taşınır. Üst sınır `9007199254740991`.
 
-| Kaynak                                                                                          | Sınır ve uygulanan kontrol                                                                                                                                                             |
-| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| topics/repository/topics.ts                                                                     | Özet/default ve ilk-entry DTO'ları, dizin, sitemap, birleşme hedefi dönüştürülür. Snippet yalnız body; görünür özet yalnız sayım.                                                      |
-| entries/repository/entries.ts                                                                   | Oluşturma/detay/liste/update sonrası DTO ve referanslar dönüştürülür; numeric sorgu girdileri BIGINT.                                                                                  |
-| feeds/repository/feeds.ts                                                                       | Üç topic raw SQL akışı, ilişki DTO'ları ve top-entry raw SQL dönüştürülür; raw türleri BIGINT olarak tanımlı.                                                                          |
-| indexing/repository/indexing.ts                                                                 | Sitemap ve syndication numeric DTO'ları dönüştürülür. Politika/kind/sayaç ve gecikme listesi publicId seçmez.                                                                          |
-| interactions/repository/interactions.ts                                                         | Bookmark/follow iç içe publicId DTO'ları dönüştürülür; vote counter select publicId içermez.                                                                                           |
-| users/repository/profiles.ts                                                                    | Public entry/topic listeleri dönüştürülür.                                                                                                                                             |
-| moderation/repository/actions.ts                                                                | Default entry/topic dönüşleri ve rename/move/status sonuçları dönüştürülür. Yetki/çatışma sorguları seçili UUID/status alanlarıdır; void merge çıktısı dışarı taşınmaz.                |
-| moderation/repository/queries.ts                                                                | Default topic yönetim listesi dönüştürülür. Audit JSON ve user liste sınırları yeni publicId üretmez.                                                                                  |
-| moderation/repository/reports.ts                                                                | Delil publicId sorgusu BIGINT girdi + number çıktı; report target select yalnız UUID/owner/status.                                                                                     |
-| moderation/repository/trash-appeal.ts                                                           | Entry ve topic içeren seçili DTO'lar dönüştürülür; owner/reviewer yalnız UUID alanları.                                                                                                |
-| moderation/repository/seed-visibility.ts                                                        | Entry/topic publicId önce dönüştürülür; application audit/outbox'ta daha sonra entryPublicId/topicPublicId adlarına atanır.                                                            |
-| moderation/repository/agent-content.ts                                                          | İçerik listesi dönüştürülür; write-lock ve bulk resolver'ın dar select'lerinde publicId yok.                                                                                           |
-| agents/repository/control-plane.ts ve manual-runs.ts                                            | Run/content detail iç içe entry.publicId dönüştürülür; source.topics JSON alanı Topic ilişkisi değildir.                                                                               |
-| agents/repository/runtime.ts                                                                    | Numeric bkz adayları BIGINT sorguya, seçilen entry.publicId number'a dönüştürülür. Diğer topic/entry perception/read/quality select'leri UUID/title/body/time seçer; publicId içermez. |
-| agents/repository/purposes.ts ve rewards.ts                                                     | Dar UUID/title/body/time select'leri publicId içermez. Ledger'ın BIGINT ID'si mevcut ayrı sınırında kalır.                                                                             |
-| moderation/repository/authorization.ts ve agent-behavior-feedback.ts; uktes/repository/uktes.ts | Yetki ve bağlama sorgularındaki dar select'lerde publicId yok.                                                                                                                         |
-| search/repository/search.ts                                                                     | publicId PostgreSQL'de `::text` ile URL'ye katılır; JS'ye BIGINT/numeric ID alanı dönmez.                                                                                              |
+| Kaynak                                                                                          | Sınır ve uygulanan kontrol                                                                                                                                                                                                                                         |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| topics/repository/topics.ts                                                                     | Özet/default ve ilk-entry DTO'ları, dizin, sitemap, birleşme hedefi dönüştürülür. Snippet yalnız body; görünür özet yalnız sayım.                                                                                                                                  |
+| entries/repository/entries.ts                                                                   | Oluşturma/detay/liste/update sonrası DTO ve referanslar dönüştürülür; numeric sorgu girdileri BIGINT.                                                                                                                                                              |
+| feeds/repository/feeds.ts                                                                       | Üç topic raw SQL akışı, ilişki DTO'ları ve top-entry raw SQL dönüştürülür; raw türleri BIGINT olarak tanımlı.                                                                                                                                                      |
+| indexing/repository/indexing.ts                                                                 | Sitemap ve syndication numeric DTO'ları dönüştürülür. Politika/kind/sayaç ve gecikme listesi publicId seçmez.                                                                                                                                                      |
+| interactions/repository/interactions.ts                                                         | Bookmark/follow iç içe publicId DTO'ları dönüştürülür; vote counter select publicId içermez.                                                                                                                                                                       |
+| users/repository/profiles.ts                                                                    | Public entry/topic listeleri dönüştürülür.                                                                                                                                                                                                                         |
+| moderation/repository/actions.ts                                                                | Default entry/topic dönüşleri ve rename/move/status sonuçları dönüştürülür. Yetki/çatışma sorguları seçili UUID/status alanlarıdır; void merge çıktısı dışarı taşınmaz.                                                                                            |
+| moderation/repository/queries.ts                                                                | Default topic yönetim listesi dönüştürülür. Audit JSON ve user liste sınırları yeni publicId üretmez.                                                                                                                                                              |
+| moderation/repository/reports.ts                                                                | Delil publicId sorgusu BIGINT girdi + number çıktı; report target select yalnız UUID/owner/status.                                                                                                                                                                 |
+| moderation/repository/trash-appeal.ts                                                           | Entry ve topic içeren seçili DTO'lar dönüştürülür; owner/reviewer yalnız UUID alanları.                                                                                                                                                                            |
+| moderation/repository/seed-visibility.ts                                                        | Entry/topic publicId önce dönüştürülür; application audit/outbox'ta daha sonra entryPublicId/topicPublicId adlarına atanır.                                                                                                                                        |
+| moderation/repository/agent-content.ts                                                          | İçerik listesi dönüştürülür; write-lock ve bulk resolver'ın dar select'lerinde publicId yok.                                                                                                                                                                       |
+| agents/repository/control-plane.ts ve manual-runs.ts                                            | Run/content detail iç içe entry.publicId dönüştürülür; source.topics JSON alanı Topic ilişkisi değildir.                                                                                                                                                           |
+| agents/repository/runtime.ts                                                                    | Numeric bkz adayları BIGINT sorguya, seçilen entry.publicId number'a dönüştürülür. Doğrudan diğer topic/entry perception/read/quality select'leri UUID/title/body/time seçer; publicId içermez. TrendingTopics ise feeds listScoredTopics number DTO'sunu aktarır. |
+| agents/repository/purposes.ts ve rewards.ts                                                     | Dar UUID/title/body/time select'leri publicId içermez. Ledger'ın BIGINT ID'si mevcut ayrı sınırında kalır.                                                                                                                                                         |
+| moderation/repository/authorization.ts ve agent-behavior-feedback.ts; uktes/repository/uktes.ts | Yetki ve bağlama sorgularındaki dar select'lerde publicId yok.                                                                                                                                                                                                     |
+| search/repository/search.ts                                                                     | publicId PostgreSQL'de `::text` ile URL'ye katılır; JS'ye BIGINT/numeric ID alanı dönmez.                                                                                                                                                                          |
 
 `src` içindeki bütün Topic/Entry delegate çağrıları ile literal publicId ve
 ilişki select'leri birlikte tarandı; yalnız TypeScript başarısı sınır kanıtı
@@ -87,3 +87,39 @@ Düzeltme sonrası ilgili **5 dosya/41 unit PASS**, 22:04:31 UTC, 3,38sn.
 Önceki b508 kaynakta275dosya2389unit ve647 kaynakta3dosya10unit ayrı tarihsel
 sonuçlardır; yeni exact-source tam CI sonucu yerine kullanılmaz. Yeni farklı
 model kaynak incelemesi, PostgreSQL, container ve browser sonucu beklenir.
+
+## Fable kaynak closure ve migration hata yolu
+
+Actual Fable5.1 exact `b536eea7be0d19bc5df0124af5fffe542fbdae45`,
+190.041ms: **KOŞULLU GO**, F1/F2 kaynakta kapalı; mergeyi engelleyen kaçak
+bulunmadı. F3/F4 gerçek exact CI sonucuna bağlı, production F5/F6 açık.
+Yeni CI37380531693 migration adımlarını geçti; diğer sonuçlar bekler.
+B2 sınırlaması kabul edildi: mevcut PG negative test publicId UPDATE değişmezliğini
+sınar; değiştirilmiş function/trigger ile migration guard hata yolu ayrıca
+çalıştırılmış değildir. Bu yönde geniş bir negative-guard PASS iddiası yoktur.
+B4 fixture cutoff'u bir saniyelik sabit pay yerine iki gerçek entry'nin
+createdAt üst sınırından türetilerek belirlenir. Runtime trending feed aktarımı
+B6 envantere eklendi. Geçersiz direct repository çağıran için range Error
+sözleşmesi bilinçlidir; dış giriş parser/Zod'dadır. Bütün API handler'larında
+canlı geçersiz-ID deneyi yapıldığı iddia edilmez.
+
+B1 hata yolu **kabul edilen kapalı-kalma davranışıdır**: açık BEGIN atomikliği
+korunur; NOWAIT/guard hatası Prisma'da ikincil aborted-transaction mesajı
+üretebilir. Bu durumda dağıtım, yeniden açılış ve sonraki migration durur.
+Finish başarısızsa geniş BEFORE UPDATE guard'ı kalır; publicId değişmezliği
+kalkmaz. Otomatik retry/resolve veya guard kapatma yoktur.
+
+Somut recovery adımı: bakım/freeze ve aynı pinli kimlik korunarak native özel
+migration logu ile `_prisma_migrations` kayıtları ve function/trigger katalogları
+birlikte okunur. Failed dosyanın bütün DDL'inin rollback'i, source checksum'u
+ve tam beklenen ara durum kanıtlanmadan `migrate resolve` kullanılmaz.
+Prepare başarısızsa özgün kolon-specific guard'lar; BIGINT başarısızsa prepare
+sonrası geniş guard ve eski INTEGER state; finish başarısızsa BIGINT/legacy
+CHECK/seq state ve geniş guard beklenir. Yalnız tam bilinen rollback kanıtından
+sonra ilgili exact dosya `migrate resolve --rolled-back <migration>` olarak
+işaretlenip aynı freeze/bounded-client kapısında yeniden deploy edilebilir.
+Commit durumu veya şema belirsizse işlem yapılmaz; kullanıcıya somut durum
+bildirilir. Kurtarma komutu bu makbuzda çalıştırılmadı. Disk/yedek/gerçek restore
+ve exact release kapıları ayrıca geçerlidir. `ONLY` prepare lock'unda ikinci
+tablo kalıtımına yayılabilir; production preflight'ı her iki tabloda inheritance/
+partition yokluğunu ayrıca doğrulamadan migration çalıştırmaz.

@@ -23,7 +23,7 @@ import {
 } from "./database";
 
 async function createUser() {
-  const username = `bigint_${randomUUID().replaceAll("-", "")}`;
+  const username = `bigint_${randomUUID().replaceAll("-", "").slice(0, 20)}`;
   return integrationDatabase.user.create({
     data: {
       kind: "HUMAN",
@@ -218,7 +218,9 @@ describe("BIGINT public id migration and PostgreSQL DTOs", () => {
             sitemapDelayMinutes: 0,
             agentTopicIndexingEnabled: true,
           };
-          const later = new Date(now.getTime() + 1000);
+          const later = new Date(
+            Math.max(created.entry.createdAt.getTime(), added.createdAt.getTime()) + 1,
+          );
           const results = await Promise.all([
             findTopicByPublicId(tx, created.topic.publicId),
             findEntryByPublicId(tx, created.entry.publicId),
