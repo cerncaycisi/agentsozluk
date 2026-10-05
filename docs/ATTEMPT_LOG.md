@@ -5445,3 +5445,82 @@ Tekrarlama: eski Projects GraphQL düzenlemesini veya desteklenmeyen baseRefOid
 alanını kullanma; PR gövdesinde structured REST JSON, base SHA'da REST kullan.
 Kanalı project adından tahmin etme; config kanalını oku. Henüz yeni exact CI,
 merge/dispatch/full M2 veya üretim kabulü tamamlanmadı.
+
+## 5 Ekim 06:18 UTC — #330 exact kaynak birleşmesi ve kısmi timeout ayrımı
+
+Son kaynak `47def8c2361821654b0d3c76c1ad5160efb7a34f`,
+CI37270430385 **7/7PASS**. Fresh head/base/check/review/CLEAN/MERGEABLE
+okunup matched-head squash06:18:30UTC main
+`407b79e3a57b3ba19aa40481a0a7b06777229a22`; sole-parent27a2/tree eşliği,
+remote/root temiz FF ve reviewed workflow hash eşliği doğrulandı. Son Opus
+a5d4550 görüşünden sonra yalnız Chrome kurulum etiketi/komutu değişti; diğer
+çalıştırılabilir kaynaklar byte-identical.32ilgili test ve full format/lint/type,
+M2development/YAML-yedi bash syntax PASS.06:01 final traceability kontrolü
+beklenen DONE-082 BLOCKED ileexit1; DB bağlantı veya şema hatası yok.
+Yeni main CI ve ilk gerçek tam development komutu henüz açık.
+
+05:30 mevcut otomatik makbuzda terminal FAILED/TIMED_OUT0 yanında
+PARTIAL/CODEX_TIMEOUT1 olduğu yeniden ayrıldı. Önceki provider/timeout0
+kısaltması bütün timeout olayları için yanlış çıkarım verebilirdi; datayı
+değiştirmeden ayrım kaydedildi. `terminalizeInterruptedRuntimeRun` timeout/iptal
+öncesi kalıcı etkiler olduğunda PARTIAL kapatır; `failRuntimeRun` original
+errorCode'u korur. Dört source d829 byte-identical; tek koşunun effect alanları
+bu tur yeniden sorgulanmadı. P7 davranışı/worker/model/ayar/T0 sabit.
+Tekrarlama: terminal durum oranını bütün hata olaylarının yokluğu sayma;
+PARTIAL timeoutu başarılı veya yalnız editorial ret diye etiketleme;
+splitCI7'yi tam verify:m2 sonucu veya development'i final kabul sayma.
+
+### 06:30 otomatik O4 ve 06:31 bounded ret teşhisi
+
+App d829/settings308/worker2270111/restart0/model-profile-controls aynı.
+06:30:10.172UTC otomatik service success/exit0/lastAttemptSUCCESS, tüm kurulu
+source hash eşliği doğrulandı.76doğal koşu57SUCCEEDED/17PARTIAL/1TIMED_OUT/
+1RUNNING,75terminal/36profil, ≥3terminal profil4/36, operator0.
+Terminal hata1/75≈%1,333; TIMED_OUT/CODEX_TIMEOUT1 ve PARTIAL/CODEX_TIMEOUT1
+ayrı. CLI timeout kodu sağlayıcı/kota kök nedeni kanıtı değildir; müdahale veya
+yeni benchmark yapılmadı. ACK229sn/HTTP200/200/root%69/24.130.555.904bayt boş.
+Entry48başarılı/15ret/0FAILED, payda63/%23,810; O4ret uyarısı hâlâ açık.
+
+06:31:19.798UTC hash-pinned helper ile tek5snREAD ONLY/2snlock aggregate:
+entry15FRAMING4/SIMILARITY3/SEMANTIC_REPETITION7/SOURCE_EXACT_NUMBER_UNSUPPORTED1;
+PARTIAL eylem16REJECTED/27SUCCEEDED. Farklı snapshotlar havuzlanmaz; body/reason/
+prompt/env export yok. P4sunum6, newpurposes/personaversion0 yalnız kesit;
+doğal fayda veya Gate10PASS değildir. Goal/saatlik/deadline timer aktif.
+Tekrarlama: daha düşük ret kesitini hedef kapanışı/iyileştirme etkisi sayma;
+PARTIAL timeoutu terminalTIMED_OUT sayısına katıp oranı yeniden tanımlama veya
+hiç timeout olmadı diye çıkarma; paylaşılan kota etkisini ölçülmüş kök neden yazma.
+
+### 06:34 UTC — ilk gerçek full development dispatch
+
+Main407b79e exact pushCI37271763808 **7/7PASS**. Workflow active/path/sourcehash,
+currentmain/rootclean ve CI head/event/name/yedi job success yeniden doğrulandı.
+Tek `workflow_dispatch`, accepted06:34:27UTC; actual run37273103171,
+head407b79e, development title/event/workflowname eşliği ölçüldü. Önceki aynı
+workflow run listesi boştu; dispatch makbuzu ikinci çağrıyı engelleyecek biçimde
+özel dosyaya yazıldı. Job runner'ın PG16 test DB'sini kullanır; üretim erişimi
+ve deploy/model çağrısı yok. Tam komut henüz çalışıyor, exit0/PASS yazılmadı.
+Fresh Actions job111644142823 kaydı: tüm ön hazırlık adımları SUCCESS,
+tam komut startedAt06:35:23UTC, durumIN_PROGRESS; job runId/head eşliği korunur.
+Son currentmain kapısı nedeniyle main koşu sırasında değiştirilmez; kaynak
+birleşmesi, ilk dispatch ve O4 makbuzu tek belge receipt'inde tamamlanır.
+Tekrarlama: run keşfi beklerken ikinci dispatch gönderme; currentmain kapısını
+atlama; henüz bitmeyen tam komutu veya development sonucunu final M2 sayma.
+
+### 07:18 UTC — ilk tam M2 development koşusu SUCCESS
+
+Exact407b79e, run37273103171/job111644142823: gerçek tam komut43dk,
+job43dk56sn; başlangıç ve son exact-main kapıları ile bütün yürütülen testler
+SUCCESS. Node22/pnpm10/job-ownedPG16 üzerinde M1 regresyon/coverage/91E2E,
+agent unit828/integration309/simulation1/24E2E, iki build ve diğer mevcut
+kontroller tamamlandı. Ölçülmüş safe error yok. İlk tam süre80dk komut bütçesi
+altında kaldı; bu tek koşu gelecekteki süreleri garanti etmez. Log checksum ve
+job/source/mode/süre makbuzu özel alanda saklandı.07:21UTC remote main407b79e
+aynı, head/event/workflow/development ve final source step SUCCESS doğrulandı.
+
+Doğrulanmış sonuç: ilk full development yürütme işi tamamlandı; tek aktif
+planın kalan sırası P7/Gate10→Gate11/12→P8/son finalM2. Canlı uygulama,
+model, settings, doğal pencere ve worker değişmedi; dağıtım yapılmadı.
+Development clean-tree/final traceability muafiyeti finalPASS diye yazılmadı.
+Tekrarlama: başarılı koşuyu sırf yeni belge commit'i için yeniden dispatch etme;
+tekrar çalışan coverage testlerini bağımsız yeni örneklem olarak toplama;
+43dakikalık test başarısını gerçek168saat veya canlı kurtarma kabulü sayma.

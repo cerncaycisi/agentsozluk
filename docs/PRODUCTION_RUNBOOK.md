@@ -2624,16 +2624,18 @@ job'a ait loopback `agent_sozluk_test` PostgreSQL16 üzerinde mevcut tam komutu
 korunur. Operatör sunucusunda tam test/build veya üretim DB reseti yapılmaz.
 Playwright yapılandırmasının varsayılan branded `chrome` kanalı kurulmalıdır;
 yalnız `chromium` kurulumu config ile aynı kanal değildir. Job120dk, setup ve
-Chrome kurulumu10'ar dk, tam komut80dk sınırlıdır; ilk gerçek süre ölçülmeden
-bu bütçe yeterli veya tam komut başarılı sayılmaz.
+Chrome kurulumu10'ar dk, tam komut80dk sınırlıdır. İlk gerçek development
+koşusu37273103171 exact407b79e üzerinde07:18UTC SUCCESS: tam komut43dk,
+job43dk56sn; bu tek ölçüm gelecekteki/final koşu süresini garanti etmez.
 
 `verification_mode=final` önce `requirements:m2:check`, ardından `verify:m2` ister;
 DONE-082 BLOCKED iken final başarılı olamaz. `development` ayrı seçenektir ve
 `verify:m2:development` sonucunu final kabul saymaz. Başta temiz ağaç ve iki modda
 son exact main doğrulanır; final modunda son temiz ağaç kapısı da zorunludur.
 Arada main ilerlerse son kapı düşer. Bu CI işi üretime bağlanmaz,
-dağıtmaz veya Gate10/11/12'yi ölçmez. Workflow kaynak hazırlığı, henüz tam komutun
-başarılı gerçek çalıştırılması değildir; ilk dispatch ve exact sonuç ayrıca makbuzlanır.
+dağıtmaz veya Gate10/11/12'yi ölçmez. İlk tam development başarısının exact
+makbuzu [STATUS.md](STATUS.md) içindedir. Final komut ve canlı kabul kapıları
+ayrı tamamlanır; development sonucu onların yerine kullanılmaz.
 
 The final evidence record contains:
 

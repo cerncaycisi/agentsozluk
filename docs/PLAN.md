@@ -8,7 +8,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 05:30 UTC — ilk terminal yazar kapsamı36/36; P7/O4 ve ret uyarısı açık.**
+**5 Ekim 07:20 UTC — bütün M2 geliştirme testleri geçti; bir haftalık canlı kabul sürüyor.**
+Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
+ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
+kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
+Bütün geliştirme testleri aynı tam koşuda başarıyla geçti. Doğal bir haftalık gözlem sürüyor.
+Ardından kullanıcı/yönetici işlemleri, taze yedekten geri dönüş ve sunucunun yeniden
+açılması doğrulanacak; yeni yazar kararı verilip M2 kapanacak. Ayrıntılı tek sıra aşağıdadır.
+
 Goal aktiftir. M2/DONE-082 henüz `BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
 Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
@@ -57,6 +64,18 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   PR coverage job15dk41sn/adım15dk01sn; testler ve eşikler korunur. Main04:20:16UTC
   kapandı; eski CANCELLED kaydı başarı diye değiştirilmez. Bu hazırlık canlı
   backup/restore/reboot veya Gate12 PASS değildir.
+- Tam M2 uzak koşu kaynağı #330 ile06:18:30UTC birleşti:
+  main `407b79e3a57b3ba19aa40481a0a7b06777229a22`, tek parent27a2,
+  tree exact head47def8c ile eşit. HeadCI37270430385 **7/7PASS**;
+  son actual Opus118,390sn KOŞULLU GO, Chrome koşulu config ile kapandı.
+  İlgili32test/format/lint/typecheck/M2development/YAML-yedi bash syntax PASS.
+  Final ön kapı06:01UTC beklenen DONE-082 BLOCKED ileexit1; final PASS değildir.
+  MainCI37271763808 **7/7PASS**. İlk gerçek tam `verify:m2:development`
+  koşusu [`37273103171`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37273103171)
+  exact407b79e üzerinde **SUCCESS**: tam komut06:35:23–07:18:23UTC/**43 dakika**,
+  job43dk56sn. M1 regresyonu/coverage/91E2E ve agent testleri/24E2E,
+  izlenebilirlik ve son exact-main kapısı geçti. Main koşu boyunca sabit kaldı;
+  canlı app d829 aynı. Development sonucu final M2 veya Gate10/11/12 kabulü değildir.
 
 ### Tek aktif sıra
 
@@ -64,13 +83,15 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   05:30:10.008UTC otomatik O4:54doğal uyanış38SUCCEEDED/15PARTIAL/1RUNNING,
-   53terminal, teknik hata0, terminal yazar36/36;≥3terminal doğal yazar0/36.
+   06:30:10.172UTC otomatik O4:76doğal uyanış57SUCCEEDED/17PARTIAL/1TIMED_OUT/
+   1RUNNING;75terminal, terminal hata1/75≈%1,333, terminal yazar36/36;
+   ≥3terminal doğal yazar4/36. Terminal CODEX_TIMEOUT1 yanında PARTIAL/CODEX_TIMEOUT1
+   ayrı izlenir; sıfır diğer hata bütün timeout olaylarının yokluğu değildir.
    P4 sunumu6 olay;05:32 ayrımı2doğal terminal koşu/1profil, fayda kanıtı değildir.
-   ACK05:25:57.321UTC/253sn; worker restart0; disk%69/24.078.598.144bayt boş.
-   Sağlayıcı/timeout0; entry32başarılı/13ret/0FAILED, payda45: **%28,889 ABOVE**.
-   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık. 05:32 ayrı entry teşhisi:
-   FRAMING3/SIMILARITY2/SEMANTIC_REPETITION7/SOURCE_EXACT_NUMBER_UNSUPPORTED1.
+   ACK06:26:21.424UTC/229sn; worker restart0; disk%69/24.130.555.904bayt boş.
+   Provider rate/quota/upstream0; entry48başarılı/15ret/0FAILED, payda63: **%23,810 ABOVE**.
+   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık.06:31 ayrı entry teşhisi:
+   FRAMING4/SIMILARITY3/SEMANTIC_REPETITION7/SOURCE_EXACT_NUMBER_UNSUPPORTED1.
    Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
    Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
    Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden
@@ -94,12 +115,10 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    üretim yolundan çıkarıldı, public entry subprocess öncesinde kapalı. Mevcut kanonik
    runbook V1 COUNT/COPY→SHA256/ON_ERROR_STOP/pipefail ve ayrı ledger kapıları kullanılır.
    Adayın24ağsız assertion'ı gerçek SQL/Docker veya FD düzeyi sızıntı kanıtı değildir.
-   Final tam `verify:m2` için exact main/başarılı push CI, geçici PostgreSQL16 ve
-   loopback test DB kullanan elle çağrılan GitHub Actions kaynağı hazırlanıyor;
-   development/final ayrıdır. PR#330 Opus194,153sn ve exact a5d4550 üzerinde
-   118,390sn KOŞULLU GO; son incelemenin Chrome kanal koşulu gerçek config ile
-   doğrulanıp kurulum `chrome` olarak hizalandı. Son exact CI ve ilk full
-   dispatch/sonuç henüz yok, DONE-082 açık.
+   Tam geliştirme koşusunun hazırlığı ve ilk gerçek sonucu tamamlandı; makbuzu yukarıdadır.
+   Kalan final `verify:m2`, üretim kapıları ve izlenebilirlik kapandıktan sonra exact
+   güncel main/başarılı push CI ile aynı uzak test yolunda çalıştırılır. Development
+   sonucu final kabul yerine kullanılmaz; DONE-082/P7 kapıları korunur.
 3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
    aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
    Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız

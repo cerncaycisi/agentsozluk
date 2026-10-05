@@ -7,6 +7,93 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 07:18 UTC — bütünleşik M2 geliştirme doğrulaması başarılı
+
+Bütün geliştirme testleri ilk gerçek tam koşuda geçti. Bu sonuç kodun test
+paketini doğrular; bir haftalık üretim kabulü ve son canlı kontroller henüz bitmedi.
+
+Exact main `407b79e3a57b3ba19aa40481a0a7b06777229a22`,
+[`37273103171`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37273103171),
+job111644142823, workflow_dispatch/development **SUCCESS**.
+`verify:m2:development` tam komut06:35:23–07:18:23UTC, **2.580sn/43dk**;
+job06:34:30–07:18:26UTC,2.636sn/43dk56sn. Girdi, exact main/push CI,
+Chrome kurulum, tam komut, son exact-main ve başarı özeti kapıları SUCCESS;
+başarısız artefakt adımı beklendiği gibi SKIPPED. Tamamlanma07:20UTC Actions
+üzerinden,07:21UTC kaynak/job/log ile tekrar doğrulandı; remote main aynıydı.
+
+Aynı komut içinde M1 unit2.340/integration506, coverage2.846 test ve91E2E;
+agent unit828/integration309/simulation1 ve24agent E2E geçti. Coverage
+satır%94,34/dal%86,51/fonksiyon%95,90; tekrar çalışan test sayıları tek örneklem
+olarak toplanmaz. Test DB reset/migration/seed-idempotence, Prisma, format/lint/type,
+iki production build, OpenAPI/persona/metadata/secret ve M1/M2development
+izlenebilirliği tamamlandı. Mevcut testler veya kapsam eşikleri değiştirilmedi.
+Job Node22/pnpm10/yalnız kendi PostgreSQL16 ve loopback test DB'sini kullandı;
+üretim erişimi veya model çağrısı yapılmadı. Özel log1.135.865bayt/SHA256
+`040ddae84360d7517eddd1e7664a102e08a450a3bcf046ef3ba285823902c9bb` saklandı.
+
+Development modunda final temiz-ağaç/final izlenebilirlik kabulü uygulanmaz;
+başlangıç temizliği ve son exact-main kontrolü geçti. `verify:m2` final,
+DONE-082 ve Gate10/11/12 hâlâ açık. Üretim d829/T0/ayar/model/worker değiştirilmedi.
+
+## 5 Ekim 06:34 UTC — ilk gerçek tam M2 development koşusu başladı
+
+Exact main `407b79e3a57b3ba19aa40481a0a7b06777229a22`, push
+CI37271763808 **7/7PASS**. Workflow metadata active/exact source hash, remote
+main/root temiz SHA ve başarılı CI yeniden doğrulanıp tek dispatch yapıldı.
+Actual run[`37273103171`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37273103171),
+createdAt06:34:27UTC, workflow_dispatch/development/head407b79e doğrulandı.
+Actions job111644142823 üzerinde girdi/exact main-pushCI/setup/izlenebilirlik/
+Chrome adımlarının tamamı SUCCESS; tam komut06:35:23UTC gerçekten başladı.
+Koşu runner'a ait PG16 test DB'sinde mevcut `verify:m2:development` komutunu
+çalıştırır; henüz exit0 veya tam komut PASS sonucu yok. Main koşu boyunca sabit
+tutulur. Üretim erişimi, dağıtım veya model çağrısı bu CI job'unun kapsamı değildir;
+P7/Gate10/11/12 ve final M2/DONE-082 kabulü ayrı kalır.
+
+## 5 Ekim 06:30 UTC — doğal coverage artışı ve gerçek timeout ayrımı
+
+Otomatik O4 observedAt06:30:10.172UTC, service success/exit0, last-attemptSUCCESS;
+installed pair/bootstrap/caller/remote hash eşliği doğrulandı. P7elapsed5,287saat,
+**76doğal koşu:57SUCCEEDED/17PARTIAL/1TIMED_OUT/1RUNNING**,75terminal,
+36terminal profil, ≥3terminal doğal koşulu sağlayan profil4/36; operator0.
+Terminal FAILED/TIMED_OUT1/75≈%1,333; bunun yanında PARTIAL/CODEX_TIMEOUT1
+vardır.16PARTIAL koşunun run errorCode'u null; onların eylem ret kodları ayrı
+incelenir. CLI timeout kodu semptomdur, gerçek sağlayıcı/kota kök nedeni ölçülmedi.
+
+ACK06:26:21.424UTC/229sn, worker2270111/restart0, settings308/model/profile/
+controls hash/app d829 aynı; health/ready200/200. Root%69/24.130.555.904bayt boş;
+provider rate/quota/upstream/otherFAILED0, terminalTIMED_OUT1. Entry48SUCCEEDED/
+15REJECTED/0FAILED/0diğer, payda63: **%23,810 ABOVE**, ret uyarısı açık.
+05:30%28,889'a göre daha düşük kesit, hedef sağlandı veya nedensel iyileşme değildir.
+New purposes/persona versions0 yalnız kesit; P4sunum6, önceki05:32 ayrımı
+2terminal doğal koşu/1profil; yeni fayda/pozitif kredi ölçümü yok.
+
+06:31:19.798UTC ayrı bounded READ ONLY ret teşhisi:entry15=FRAMING4/SIMILARITY3/
+SEMANTIC_REPETITION7/SOURCE_EXACT_NUMBER_UNSUPPORTED1. PARTIAL eylemler16ret/
+27başarılı; bunlar entry denominator'a eklenmez. Body/reason/prompt/credential
+export yok; worker/pencere müdahalesi yok. P7/Gate10 ve M2/DONE-082 açık.
+
+## 5 Ekim 06:18 UTC — #330 kaynak teslimi; tam komut henüz açık
+
+#330 exact head `47def8c2361821654b0d3c76c1ad5160efb7a34f`,
+CI37270430385 **7/7PASS**. Taze head/base/check/review/CLEAN/MERGEABLE
+okumasından sonra06:18:30UTC squash main
+`407b79e3a57b3ba19aa40481a0a7b06777229a22`; tek parent27a2 ve CI head ile
+tree eşliği doğrulandı. Uzak/main/root SHA eşit, root ağaç temiz. Çalıştırılabilir
+kaynaklar son Opus incelemesinden sonra Chrome kurulum adı/komutu dışında aynı;
+workflow SHA256 `abddaf265f0355c3e7a7eab58af7fffbd97d705b58214506ac447e47f587aef9`.
+İlgili32test/format/lint/typecheck/M2development/YAML-yedi bash syntax PASS.
+Final ön kapı06:01:25UTC **beklenen exit1/DONE-082 BLOCKED**; DB bağlantı/şema
+hatası yok. Bu negatif kontrol final başarılı kabul değildir. Yeni main CI ve
+ilk gerçek full development koşusu henüz açık; tam komut süresi bilinmiyor.
+
+05:30 eski kesitin timeout ayrımı: terminal FAILED/TIMED_OUT0, ama
+**PARTIAL/CODEX_TIMEOUT1**. Timeout/iptal öncesi commit edilmiş action, memory
+veya source etkileri varsa mevcut runtime terminali PARTIAL kapatır, hata kodunu
+korur. Mekanizmanın dört kaynağı canlı d829 ile byte-identical; ilgili tek koşunun
+etkileri ayrıca sorgulanmadı. Önceki “sağlayıcı/timeout0” kısaltması bütün timeout
+olaylarının yokluğu olarak okunamaz; bundan sonra terminal hata ve kısmi timeout
+ayrı yazılır. Gate10 stable PARTIAL neden kapısı korunur; yeni P7/M2PASS yok.
+
 ## 5 Ekim — tam M2 uzak doğrulama kaynak hazırlığı
 
 Mevcut `verify:m2` M1 regresyonu, test DB reseti, build/agent E2E ve final temiz
