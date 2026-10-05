@@ -181,7 +181,9 @@ jobs:
 
   coverage:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 5 Ekim: 308 dosya geçti; V8 raporu tamamlanmadan 15dk job limiti iptal etti.
+    # Yalnız runner bütçesi20dk; test süreleri ve coverage eşikleri aynı kalır.
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
