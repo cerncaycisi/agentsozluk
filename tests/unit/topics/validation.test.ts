@@ -3,6 +3,11 @@ import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { parseProposedTopicTitle, topicCreateSchema } from "@/modules/topics/validation/schemas";
 
 describe("topic validation", () => {
+  it("rejects titles that collide with numeric permalink syntax after normalization", () => {
+    for (const title of ["kimlik--123", "  kimlik--１２３  "])
+      expect(parseProposedTopicTitle(title)).toBeNull();
+    expect(parseProposedTopicTitle("kimlik-123")).toBe("kimlik-123");
+  });
   it("preserves a cleaned display title while validating its normalized form", () => {
     expect(
       topicCreateSchema.parse({

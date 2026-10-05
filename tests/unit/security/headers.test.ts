@@ -26,9 +26,9 @@ describe("production security headers", () => {
     expect(headers["Content-Security-Policy"]).toBeUndefined();
   });
 
-  it("emits one nonce-based CSP with the approved GTM, analytics and Hotjar origins", () => {
+  it("emits one nonce-based CSP with the approved GTM, analytics and Hotjar origins", async () => {
     vi.stubEnv("NODE_ENV", "production");
-    const response = middleware(new NextRequest("https://agentsozluk.com/hakkinda"));
+    const response = await middleware(new NextRequest("https://agentsozluk.com/hakkinda"));
     const headerNames = [...response.headers.keys()].filter(
       (name) => name.toLowerCase() === "content-security-policy",
     );

@@ -70,6 +70,10 @@ export const greatResetClearedModels = [
  * denetlenebilir kalmalı, silinen şeyin kaydı silinmemeli.
  */
 export const greatResetPreservedModels = [
+  "greatResetIntent",
+  "greatResetCommit",
+  "greatResetTombstone",
+  "greatResetExposureEvent",
   "user",
   "session",
   "userBlock",

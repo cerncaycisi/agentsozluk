@@ -1,4 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getDatabase } from "@/lib/db/client";
+import { resetGoneCandidate } from "@/modules/maintenance/domain/reset-gone";
+import { getResetGoneDecision } from "@/modules/maintenance/application/reset-gone";
 import {
   PRODUCT_ANALYTICS_SURFACE_HEADER,
   SENSITIVE_LOCATION_HEADER,
@@ -8,7 +11,40 @@ import {
 } from "@/lib/analytics/product-analytics";
 import { createContentSecurityPolicy } from "@/lib/security/content-security-policy";
 
-export function middleware(request: NextRequest) {
+function resetBoundaryResponse(method: string, status: 410 | 503) {
+  const body =
+    status === 410
+      ? '<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="robots" content="noindex"><title>İçerik kaldırıldı</title><body><h1>İçerik kaldırıldı</h1><p>Bu içerik sözlük sıfırlanırken kaldırıldı.</p></body></html>'
+      : '<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="robots" content="noindex"><title>Geçici olarak kullanılamıyor</title><body><h1>Geçici olarak kullanılamıyor</h1></body></html>';
+  return new NextResponse(method === "HEAD" ? null : body, {
+    status,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Robots-Tag": "noindex",
+      "Content-Security-Policy":
+        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+      ...(status === 503 ? { "Retry-After": "60" } : {}),
+    },
+  });
+}
+
+export async function middleware(request: NextRequest) {
+  const candidate = resetGoneCandidate(request.method, request.nextUrl.pathname);
+  if (candidate) {
+    try {
+      if ((await getResetGoneDecision(getDatabase(), candidate)) === "GONE")
+        return resetBoundaryResponse(request.method, 410);
+    } catch {
+      // DB hatası silinmiş içerik kanıtı değildir; raw SQL/hata/credential çıktısı yok.
+      return resetBoundaryResponse(request.method, 503);
+    }
+  }
+  // Dar permalink matcher prefetch'i de görür; normal prefetch'e CSP/analytics eklemeyiz.
+  if (request.headers.has("next-router-prefetch") || request.headers.get("purpose") === "prefetch")
+    return NextResponse.next();
   const nonce = btoa(crypto.randomUUID());
   const contentSecurityPolicy = createContentSecurityPolicy(
     nonce,
@@ -35,7 +71,10 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
+  runtime: "nodejs",
   matcher: [
+    "/baslik/:segment",
+    "/entry/:segment",
     {
       source: "/((?!api/health|_next/static|_next/image|favicon.ico).*)",
       missing: [

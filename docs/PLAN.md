@@ -8,6 +8,30 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+**5 Ekim 23:39 — son journal düzeltmeleri yerelde geçti.** PR334 exact828 CI
+7/7 SUCCESS; bu sonuç son ek düzeltmeleri kapsamaz. Actual Opus5.5 incelemesi
+DB saati ve indeks yükü için koşul koydu; yeni ayrı migration ve sayfalama/backoff
+hazırlandı. Son kaynak28unit/26PG PASS. Yeni exact CI ve inceleme kapanışı bekler.
+23:26 canlı okuma: aynıD202, worker inactive, RUNNING/CANCEL_REQUESTED0;
+7013başlık/21628entry henüz silinmedi. Production yürütücüsü, dış generation,
+taze yedek/gerçek restore ve prova açık; reset/açılış yapılmadı.
+
+**5 Ekim23:18 — journal/410 düzeltmeleri doğrulanıyor.** İlk paket main237'de,
+canlı hâlâD202/toplum kapalı. PR334 ilkCI'da browser/containerPASS; eski ukte
+pozitif örneği nedeniylePG/coverageFAIL. Örnek yeni sözleşmeye uyarlanıp
+API422/kayıt0 doğrulandı;25odaklıPGPASS. Fable yük/atomic journal bulguları
+düzeltildi;40unitPASS, yeni exact-source closure/CI bekler. Production çekirdeğinin
+3PG atomiklik/rollback testi küçük testDB'sindePASS; fullsize/prod kapısı değildir.
+Ayrıntı[journal makbuzunda](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md).
+
+**5 Ekim 22:46 UTC — ilk reset hazırlığı main'de; canlı reset yapılmadı.**
+PR333 exactFAC CI7/7PASS;22:42:50 squashmain237139f, reviewedtree eşit ve root
+clean. Yeni journal/410 paketinde111unit ve pool10 odaklı80PGPASS; browser ve
+farklı-model incelemesi bekler. [Paket kanıtı](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md)
+hangi sonucun geliştirme, hangisinin hâlâ production kapısı olduğunu gösterir.
+Ayrı production yürütücüsü/guard, dış generation ve gerçek yedek/restore/prova
+sonrasında reset ve audited açılış yapılacak. Eski168h aday kesildi; yeniT0 yok.
+
 **22:21:** Yeni CI'da migration ve browserPASS; yeni iki PG vaka username
 fixture'ında fazla uzunluk nedeniyleFAIL. Fixture düzeltiliyor; constraint veya
 eşik gevşetilmedi. Exact-source tam CI bekler. İkinci ayrı worktree'de journal

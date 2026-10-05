@@ -18,7 +18,8 @@ inactive/disabled. Yeni T0 yalnız reset sonrası gerçek audited resume'dur.
 ## Veri kapsamı
 
 Kaynak sınıflandırıcı `greatResetClearedModels` şu anda **34 model** içerir;
-`greatResetPreservedModels` **21 model**. Sayılar yürütücüde sabitlenmez:
+`greatResetPreservedModels` journal paketiyle **25 model** (önceki21 + dört
+reset kanıtı). Toplam59Prisma model/60public tablo, migration tablosu dahil. Sayılar yürütücüde sabitlenmez:
 Prisma DMMF ve PostgreSQL katalogları iki yönde, tam adlarla karşılaştırılır.
 Yeni model veya FK kapalı kalma nedenidir; CASCADE ile aşılmaz.
 

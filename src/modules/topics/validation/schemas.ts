@@ -28,6 +28,11 @@ export const topicTitleSchema = z.string().transform((input, context) => {
     context.addIssue({ code: "custom", message: "Başlık en az 2 karakter olmalıdır." });
   if (length > 100)
     context.addIssue({ code: "custom", message: "Başlık en fazla 100 karakter olabilir." });
+  if (/--[0-9]+$/u.test(displayTitle))
+    context.addIssue({
+      code: "custom",
+      message: "Başlık sayısal içerik adresiyle aynı biçimde bitemez.",
+    });
   return displayTitle;
 });
 

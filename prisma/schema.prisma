@@ -1602,3 +1602,57 @@ model UkteRequest {
   @@index([requestedById])
   @@map("ukte_requests")
 }
+
+// Korunan reset kanıtı; içerik/ajan-state tablolarıyla FK bağı yoktur.
+model GreatResetIntent {
+  operationId       String                @id @db.Uuid
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+  expiresAt         DateTime              @db.Timestamptz(3)
+  releaseSha        String                @db.VarChar(40)
+  scope             String                @db.VarChar(80)
+  sourceDatabaseOid BigInt
+  sourceClusterId   String                @db.VarChar(20)
+  consumedAt        DateTime?             @db.Timestamptz(3)
+  invalidatedAt     DateTime?             @db.Timestamptz(3)
+  commit            GreatResetCommit?
+  tombstones        GreatResetTombstone[]
+
+  @@map("great_reset_intents")
+}
+
+model GreatResetCommit {
+  operationId     String                   @id @db.Uuid
+  singleton       Boolean                  @unique @default(true)
+  committedAt     DateTime                 @default(now()) @db.Timestamptz(3)
+  formatVersion   Int                      @default(1)
+  releaseSha      String                   @db.VarChar(40)
+  manifestSha256  String                   @db.VarChar(64)
+  planSha256      String                   @db.VarChar(64)
+  protectedSha256 String                   @db.VarChar(64)
+  clearedCounts   Json
+  intent          GreatResetIntent         @relation(fields: [operationId], references: [operationId], onDelete: Restrict, onUpdate: Restrict)
+  exposure        GreatResetExposureEvent?
+
+  @@map("great_reset_commits")
+}
+
+model GreatResetTombstone {
+  kind        String           @db.VarChar(5)
+  uuid        String           @db.Uuid
+  publicId    BigInt
+  operationId String           @db.Uuid
+  intent      GreatResetIntent @relation(fields: [operationId], references: [operationId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([kind, uuid])
+  @@unique([kind, publicId])
+  @@map("great_reset_tombstones")
+}
+
+model GreatResetExposureEvent {
+  operationId   String           @id @db.Uuid
+  occurredAt    DateTime         @default(now()) @db.Timestamptz(3)
+  journalSha256 String           @db.VarChar(64)
+  commit        GreatResetCommit @relation(fields: [operationId], references: [operationId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("great_reset_exposure_events")
+}

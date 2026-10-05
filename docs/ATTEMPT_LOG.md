@@ -6693,3 +6693,69 @@ gevşetilmedi. Coverage/container son sonucu bekler; yeni exact-source CI şartt
 Native log özel dizinde; ham failing-row/email/passwordHash Git'e alınmadı.
 Tekrarlama: TS-uyumlu Prisma fixture'ını DB-constraint uyumlu sayma;
 fixture hatasını migration düzeltmesi regresyonu diye raporlama.
+
+## 5 Ekim 2026 22:46 UTC — exact BIGINT CI/main ve journal PG kanıtı
+
+FAC37382293215 CI7/7PASS;2392unit/515PG/91browser,coverage2907tekrar.
+PR333 hemen önce exacthead/checks/reviewstate/mergeability/mainbase yeniden
+okunarak22:42:50UTC squashmain237139f ile birleşti. TreeFACeşit, parentEE2F;
+root kendi beş belge blob'unun incoming ile eşitliğini doğrulayıp korunarakclean
+fast-forward oldu. İkinci worktree'nin17değişen dosyası hash eşitliğiyle
+korunup aynı tree'li squashmain tabanına geçirildi. Native T3 linki kayıtlı.
+
+Yeni local PG16.14/cluster7689521646432264978/roleagent, yalnız yeni sahipli
+stage_test/OID8516470/operationf77ceb58 marker. Bütün migration ve4yeni PG
+PASS. Son kaynak111unitPASS. Geniş local suite yanlış pool1 ile topics76/14
+failure+pooltimeout gördü ve300sn sınırında tamamlanmadı; tamPASS değildir.
+Sadece sahipli Vitest süreçleri kapandı. İlk cleanup matcher kendi shell'ini de
+seçerek143 döndü; exe=node ile daraltılan doğrulamada kalan Vitest0. Başka
+cwd/servis/DB etkilenmedi. CI ile aynı pool10 odaklı tekrar80PGPASS:topics76 ve
+ikişerjournal/BIGINT. Kod veya eşik gevşetilmedi. Tüm fixture journal/namespace
+DDL rollback'leri gerçekPG'de doğrulandı; rawfailingsatırlarprivate logdadır.
+
+Tekrarlama: pool1 tek-backend reset yürütücüsü şartını paralel uygulama
+integration fixture'ına taşıma;300sn tamamlanmayan geniş koşuyuPASS sayma.
+Subprocess bütçesinde ayrı processgroup ve sahipli cleanup kullan; shell komut
+metnindeki vitest sözcüğüne göre süreç seçme. Küçük test DB'sini fullsize
+production restore/prova veya journal/410 kodunu actualreset/açılış sayma.
+
+## 5 Ekim23:18 — journal CI, Fable bulguları ve gerçek PG closure
+
+Exact6b1/CI37385115483 database517/516PASS/1FAIL: ukte pozitif numeric-suffix
+örneği yeni paylaşılan title guard'ıyla çelişir. Yeni test olumlu reserved örnekleri
+korur ve API422/kayıt0 negatif kanıt ekler; focused25PGPASS. İlk yeni vaka400
+sanmıştı; uygulamanın mevcut validation kodu422 kaynakla doğrulanıp test düzeltildi.
+
+Fable ilk420sn stdout/stderr0 sonucunda review yok; Python boş JSON parse hatası
+bağımsız model onayı değildir. Odaklı aynıSHA actualFable5.1/315.693ms, H1/H2/M1/M2
+bulguları source ile doğrulandı. İlk migration aynen korunup ayrı deferred atomic
+commit/DB-clock/FOR UPDATE migration eklendi. İlk yeni immutability testinde
+pending constraint trigger PG55006 ile TRUNCATE'i önce reddetti; geçerli deferred
+olaylar açıkça doğrulanarak immutable trigger'ın asıl55000 reddi sınandı. Son25PGPASS.
+Process cache40unitPASS; exactOptionalPropertyTypes TS2412, optional property
+undefined assignment yerine silinerek kapatıldı; son quality sonucunu ayrıca doğrula.
+
+Ayrı namespace core3PGPASS: gerçek TRUNCATE34, legacy tombstone, outbox archive,
+transactional rangeCHECK/seqRESTART, explicit eski/güvensizID ret ve DDL/seq/journal
+rollback. Sabit hedef üretim guard'ı ve controlDB gate kodu yazılıyor, canlı uygulanmadı.
+Tekrarlama: boş/timeout hakem çıktısınıPASS sayma; modelin tools-kapalı yanıttaki
+araç anlatımını actual disk/tool kanıtı sanma; pending-trigger ret kodunu immutable
+trigger çalıştı diye kaydetme; rollback-only küçükPG testini fullsize veya canlı reset
+kabulü sayma; ilkcommitted migration'ı düzeltme amacıyla değiştirme.
+
+## 5 Ekim 23:39 — Opus journal koşulları ve odaklı doğrulama
+
+Exact828 CI37388001009 7/7 SUCCESS; main237 CI37384199827 SUCCESS. Actual
+Opus5.5/326.734ms kaynağı incelerken kronoloji ve indeks boyutu koşulu koydu.
+Yeni migration DB saatiyle commit/exposure sırasını korur, eski unsafe orphan
+kayıt varsa durur; tüketilmiş niyetin deferred commit guard'ı korunur. Gereksiz
+her-tombstone deferred EXISTS kuyruğu kaldırılır. Eski migrationlar değişmedi.
+İndeks1000satırlık keyset sayfalar,100000üst sınır,1sn monotonic hata backoff'u
+kullanır. PG artık gerçek application/cache yolunu ve operation filtresini sınar.
+
+İlk odaklı unit denemesi27PASS/1FAIL: test eski private error mesajını bekliyordu;
+uygulama sabit safe error'a geçmişti. Beklenti ve backoff negatif vakası düzeltildi:
+son3dosya28unitPASS. Clock migration native deployPASS; ardından2dosya26PGPASS.
+Bunlar son yeni source, henüz commit/CI/peer closure değildir. Canlı reset yok.
+Tekrarlama: eski safe-error fixture hatasını DB veya runtime regresyonu sayma;
+828 CI'yı son clock/paging source'a mal etme; küçük testDB'yi fullsize prova sayma.

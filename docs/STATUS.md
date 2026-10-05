@@ -6358,3 +6358,39 @@ Fable190.041ms closure KOŞULLU GO: kaynak sınırları kapalı, exact tam CI ş
 bekler. Yeni üretim paketinde dört korunan journal modeli/migration ve 410
 application/repository/middleware kodu hazırlanıyor; henüz doğrulanmadı,
 merge/deploy/reset/silme/açılış yok. Canlı son ölçüm D202/settings311/worker0.
+
+## 5 Ekim 2026 22:46 UTC — BIGINT main teslimi, journal/410 hazırlığı
+
+PR333 exactFAC CI37382293215 **7/7PASS**:2392unit/515PG/91browser;
+coverage2907tekrar, satır%94,33/dal%86,58/fonksiyon%95,97. Fable190.041ms kaynak
+koşulları ve exactCI şartı kapandı; farklı model hükmü tarihsel KOŞULLU GO'dur.
+Squashmain237139f89e0e245144a67eac8c18b22025da48c7,22:42:50UTC; reviewedFACtree
+birebir, rootclean/remoteeşit. MainCI ayrıca bekler; production son kesitD202.
+
+Yeni ayrı paket: dört korunan journal+Node410+ortak başlık sınırı;111unit ve
+pool10 odaklı80PGPASS. Pool1 geniş koşu300sn timeout ve14topicfailure ile
+bitmedi; tam suitePASS değildir. Odaklı tekrar çevre nedeni ayrımını sağladı.
+E2E yazıldı ama henüz çalışmadı; peer/CI ve fullproductionreset/backup/restore/
+prova/açılış açık. [Ayrıntı](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md).
+
+## 5 Ekim23:18 — journal/410 ilk CI ve closure geliştirmesi
+
+PR334 exact6b1 CI37385115483 FAIL; browser/container/quality/behaviorPASS,
+PG516PASS/1ukte fixtureFAIL, coverage/validateFAIL. Son kaynak ukte API422/kayıt0
+ve atomic journal odaklı25PGPASS; cache/parser/middleware/ukte40unitPASS.
+Fable315.693ms kaynak incelemesi blocking yük ve orphan-journal bulguları üretti;
+yeni kod closure ve exact CI bekler. İlk420sn çağrı sonuçsuzdur, PASS değildir.
+Ayrı core worktree'de küçük testDB üzerinde3atomic namespace/rollbackPGPASS.
+Hiçbiri production reset, reopen, fullsize restore/prova veya yeni168hPASS değildir.
+
+## 5 Ekim 23:39 — journal son kod kapıları
+
+Exact828 CI[37388001009](https://github.com/cerncaycisi/agentsozluk/actions/runs/37388001009)
+7/7 SUCCESS; main237 CI37384199827 de SUCCESS. Actual `claude-opus-5-5`
+326.734ms koşullu inceleme: commit/exposure için DB saati, bounded indeks ve
+fullsize ölçüm şartları. İlk iki migration değişmedi; yeni clock migration'ı
+uygulandı. Son kaynak3dosya28unit ve2dosya26PG PASS; bunlar828 tam CI sonucu
+ile aynı exact kaynak değildir. Yeni exact CI/closure bekler. 23:26:38UTC pinned
+canlı okumasında D202/settings311/worker inactive;7013başlık21628entry duruyor.
+Reset/reopen/newT0 yok. Production CLI/HMAC34unit ve küçük namespace3PG önceki
+çekirdek sonuçlarıdır; tam ölçekli reset/restore/kontrol kapısı yerine geçmez.
