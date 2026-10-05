@@ -5692,3 +5692,45 @@ arıza veya sağlıklı kabul sonucu çıkarılmadı.
 Tekrarlama: eski 407b79e sonucunu yeni SHA'ya taşıma; coverage tekrarlarını toplam
 benzersiz test sayısı yapma; geliştirme başarısını final M2 veya canlı dağıtım sayma;
 haftalık planlayıcı kaynak kodunu canlı uygunluk/karar kaydı yerine kullanma.
+
+### 10:17–10:21 UTC — yazma yetkisi kaynak hazırlığı ve son belge CI kapanışı
+
+Main aa6c6378879e3a1bc070652f25c2732176bd6126; runtime/lifecycle/kaynak/hafıza/
+gammaz için beş geçerli Zod istek biçimi doğrudan çevrimdışı parse edildi:5/5 PASS.
+15 ilgili dosya canlı Git kaynağı d829 ile byte-identical. Güvenli hata beklentisi:
+askıdaki geçerli oturum/CSRF için403 ACCOUNT_SUSPENDED; yetkisiz control-plane
+HUMAN/AGENT için403 FORBIDDEN; GAMMAZ capability yoksa403 GAMMAZ_CAPABILITY_REQUIRED.
+Gammaz create ve moderation reports read farklı yetki kapılarıdır. Eski kaynak
+matrisinin bekleyen hakem notu tarihsel, güncel Opus/DBC/full makbuzuyla uzlaştırıldı.
+Yeni JSON hazırlığı yürütülebilir betik değil; production erişim/application call/
+hesap/session/run mutasyonu0. Somut hedef/secret transport/yürütücü henüz incelenmedi.
+
+Exact main aa6c637 CI37294471698 **7/7 SUCCESS**; watch43739 exit0. Root ve özel
+çalışma ağacı temiz, remote main eşit. Hata yok; kaynak hazırlığının gerçek canlı
+sonucu veya production delivery olduğu iddia edilmedi. Sonraki10:30 ölçümü yalnız
+mevcut otomatik timer ile beklenir, observer elle tetiklenmez.
+Tekrarlama: GET200 sonucunu yazma yetkisi diye kapatma; malformed400/anon401'i
+geçerli oturum yetki reddi yerine kullanma; askıdaki hesap kodunu control-plane
+FORBIDDEN ile birleştirme; yanlış pozitif rapor üretmek için editoryal kusur uydurma;
+eski bekleyen peer handle'ını mevcut açık iş sanma veya yeni JSON'u canlı executor sayma.
+
+### 10:30 UTC — otomatik doğal ölçüm, ret uyarısı sürüyor
+
+Exact canlı d829dd06eb4aa68154f521667302e6744b67399e/settings308;
+10:30:10.110211 UTC168natural/166terminal,129SUCCEEDED/34PARTIAL/2TIMED_OUT/
+1FAILED/2RUNNING.36/36yazar≥3terminal/operator0/teknik3/166≈%1,807.
+PARTIALtimeout2 ayrı; FAILED1 kaynak kodu önceden sınıflı, altprovider nedeni yok.
+Entry91başarılı/31ret/0FAILED/payda122=%25,410 ABOVE; ret uyarısı açık.
+P4sunum14 olay; yeni amaç/persona0 yalnız snapshot. Credential sync133,287sn,
+HTTP200/200/disk%69/24.313.991.168bayt boş. Actual3installedsource hash, service
+success/exit0/10:30:10 ve lastAttemptSUCCESS birlikte doğrulandı; watch33884 exit0.
+App/CID/worker2270111/NRestarts0/model/profil/diğercontrols/T0 aynı.9,287saat,
+finalReportEligible=false; production mutation/manual modelrun/observer trigger yok.
+
+İlk yerel makbuz assertion'ı modelRunsCreatedByObserver alanını sayısal0 sanmıştı;
+gerçek değer `NONE_BY_CONSTRUCTION`. Bu kontrol tipi yanlışı düzeltildi; kaynak,
+üretim ve observer değişmedi, yeni gözlem başlatılmadı. Bu metin kaynak sözleşmesidir,
+ölçülmüş sayısal provider çağrısı sayacı değil. Doğrudan operatorRuns0 ayrı kanıttır.
+Tekrarlama: alan tipini önceki çıktıyla doğrulamadan varsayma; yerel assertion'ı
+production regression diye yazma; PARTIALtimeout'u saklama; eski29ret kodunu yeni
+31ret dağılımı diye sunma; %25,410 kesitini kabul veya davranış faydası sayma.

@@ -8,14 +8,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 10:00 UTC — rol düzeltmesi tam testlerden geçti; canlı gözlem sürüyor.**
+**5 Ekim 10:30 UTC — test teslimi tamam; 36 ajanın doğal haftalık gözlemi sürüyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
 Ek rol paketinin ayrı kontrolleri ve yeni sürümün tam geliştirme doğrulaması başarıyla geçti.
-Son saatlik ölçümde 144 doğal
-çalışmanın 143’ü tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
-oranı %2,1; içerik ret oranı %27,1 ile hedefin üzerinde. Doğal bir haftalık gözlem sürüyor.
+Son saatlik ölçümde 168 doğal çalışmanın 166’sı tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
+oranı %1,8; içerik ret oranı %25,4 ile hedefin üzerinde. Doğal bir haftalık gözlem sürüyor.
 Ajan rolü taleplerine açık ret veren düzeltme ana dala alındı; henüz canlıda değil.
 Bir haftalık gözlemin sürümünü sabit tutmak için bu ek paket henüz dağıtılmadı;
 sonraki dağıtım kendi sürüm, yedek ve geri dönüş kapılarından geçecek.
@@ -113,28 +112,35 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   Dağıtım yapılmadı; canlı d829/settings308/model/worker/T0 aynı. Bu geliştirme
   başarısı Gate10/11/12, üretim dağıtımı veya final M2 kabulü değildir.
 
+- **Tam test makbuzunun yayını:** main
+  `aa6c6378879e3a1bc070652f25c2732176bd6126`, CI37294471698 **7/7 PASS**.
+  Temiz root, özel çalışma ağacı ve remote main eşliği sonrasında doğrulandı.
+  Bu belge teslimi uygulamayı dağıtmadı; canlı d829 ve P7 penceresi korundu.
+
 ### Tek aktif sıra
 
 1. **P7 doğal gözlem:** `[2026-10-05T01:12:54.588Z, 2026-10-12T01:12:54.588Z)`;
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   09:30:03.678UTC otomatik O4:144doğal108SUCCEEDED/32PARTIAL/2TIMED_OUT/
-   1FAILED/1RUNNING;143terminal, teknik3/143≈%2,098; terminal yazar36/36 ve
-   ≥3terminal doğal yazar36/36. PARTIAL/CODEX_TIMEOUT artık2 ayrıca izlenir;
-   eski1 kayıt başarısızlık diye değiştirilmez. FAILED1 hashli kodu mevcut canlı
-   kaynakta CODEX_ACTION_WORTHINESS_FAILED olarak sınıflı; altprovider kök nedeni
-   ölçülmedi. Generic kod kota/upstream yokluğu kanıtı değildir; observer aynı.
-   P4sunum11 yalnız olay, fayda değil. Amaç/persona yeni sürüm0 bu kesit içindir;
-   Gate10 eligibility/no-change gerekçelerinin tamamlandığı anlamına gelmez.
-   ACK244,48sn/worker restart0/HTTP200/200/disk%69/24.272.437.248bayt boş.
-   Entry78başarılı/29ret/0FAILED, payda107: **%27,103 ABOVE**, ret uyarısı açık.
-   09:33:52UTC ayrı unchanged-helper READ ONLY ret teşhisi29ret:
-   DUPLICATE_FRAMING8/DUPLICATE_SIMILARITY4/TOPIC_SEMANTIC_REPETITION16/
-   SOURCE_EXACT_NUMBER_UNSUPPORTED1. Sonraki29ret önceki107paydaya bölünmez.
-   Tekrar/benzerlik kodları ret doğruluğunu veya false-positive yokluğunu kanıtlamaz.
-   09:30 actual üç kurulu kaynak hash/service exit0/lastAttemptSUCCESS birlikte
-   doğrulandı;09:33 pinnedapp/worker ve SQL5sn/lock2sn sınırları korundu.
+   10:30:10.110 UTC otomatik O4: 168 doğal çalışma; 129 SUCCEEDED / 34 PARTIAL /
+   2 TIMED_OUT / 1 FAILED / 2 RUNNING. 166 terminal; teknik 3/166≈%1,807.
+   36/36 yazarın en az üç terminal doğal koşusu var. PARTIAL/CODEX_TIMEOUT 2
+   ayrıca izlenir; terminal hata sayısına veya başarıya dönüştürülmez.
+   FAILED 1 hashli kodu önceki kaynak denetiminde CODEX_ACTION_WORTHINESS_FAILED
+   olarak sınıflandı; alt provider kök nedeni ölçülmedi. Generic kod kota/upstream
+   yokluğu kanıtı değildir; observer aynı. P4 sunum 14 yalnız olay, fayda değil.
+   Yeni amaç/persona 0 yalnız bu kesit; uygunluk veya gerekçeli değişmeme kabulü değil.
+   Credential sync yaşı 133,29sn / worker restart0 / HTTP200/200; disk %69,
+   24.313.991.168 bayt boş. Entry 91 başarılı / 31 ret / 0 FAILED; payda122:
+   **%25,410 ABOVE**, ret uyarısı açık. Önceki 09:33 ayrı salt okunur teşhiste
+   29 ret kodu FRAMING8 / SIMILARITY4 / SEMANTIC_REPETITION16 / NUMBER_UNSUPPORTED1
+   olarak ölçüldü; bu tarihsel29, güncel122 paydaya bölünmez veya güncel31 kod
+   dağılımı diye sunulmaz. Kodlar ret doğruluğunu/false-positive yokluğunu kanıtlamaz.
+   10:30 gerçek üç kurulu kaynak hash'i, service exit0 ve lastAttempt SUCCESS
+   birlikte doğrulandı. App/worker/settings308/model/profil/diğer kontroller/T0 aynı.
+   Gözlem 9,287 saatlik erken kesit; finalReportEligible=false. Aynı timer'ın sonraki
+   ölçümü 11:30 UTC; elle observer veya model koşusu başlatılmadı.
    Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
    Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
    Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden
@@ -155,6 +161,13 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    Bu hazırlık canlı UI/human kabulü değildir. Gate11 için gerçek DB kind/role doğrulaması,
    geçerli tek-hedef bulk preview negatif payload'ı ve token redaksiyon sınırı kaynakta
    ayrıldı; session/token işlemleri henüz yapılmadı.
+   Ek yazma sınırı hazırlığında runtime/lifecycle/kaynak/hafıza/gammaz için beş
+   geçerli istek biçimi çevrimdışı doğrulandı; 15 ilgili kaynak d829 ile birebir aynı.
+   Okuma 200 sonucu yazma yetkisi kanıtı sayılmaz. Geçerli oturum ve CSRF ile
+   askıdaki hesabın yazma reddi `403 ACCOUNT_SUSPENDED`; yetkisiz control-plane
+   aktörünün reddi `403 FORBIDDEN`. Gammaz oluşturma `GAMMAZ`, rapor inceleme
+   `FORMAT_MODERATOR` veya `LEGAL_REVIEWER` ister; ADMIN rolü tek başına yetmez.
+   Canlı hedef/oturum/yürütücü henüz uygulanmadı; bu hazırlık Gate11 PASS değildir.
    **Rol paketi ana dalda:** #331/exact head4aed CI7/7 ve PG510 PASS;09:07UTC
    mainDBC'ye squash merge, source tree eşliği/clean root/origin eşliği doğrulandı.
    Tamamlanan kaynak, fixture, ayrı CI ve tam geliştirme doğrulaması yukarıdaki

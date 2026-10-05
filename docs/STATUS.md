@@ -7,6 +7,45 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 10:30 UTC — doğal gözlem ilerliyor, ret uyarısı açık
+
+10:30:10.110211 UTC otomatik ölçüm: **168 doğal / 166 terminal**;
+129 SUCCEEDED, 34 PARTIAL, 2 TIMED_OUT, 1 FAILED, 2 RUNNING. 36/36 yazar en az
+üç terminal doğal çalışma bitirdi; operator0. Teknik hata 3/166≈**%1,807**.
+PARTIAL/CODEX_TIMEOUT2 ayrıca saklanır. FAILED hashli kodun önceki kaynak eşliği
+CODEX_ACTION_WORTHINESS_FAILED; alt provider nedeni hâlâ doğrulanmış değildir.
+
+Entry91 başarılı /31 ret /0 FAILED; payda122, **%25,410 ABOVE**.
+`O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık. Önceki 09:33 ret kodu
+teşhisi ayrı kesittir; bu yeni31 retin dağılımı veya doğruluk incelemesi değildir.
+P4 sunum14 yalnız olay; yeni amaç/persona0 yalnız bu erken kesit. Credential sync
+yaşı133,287sn; HTTP200/200, worker2270111/restart0, disk%69/24.313.991.168bayt boş.
+Settings308/model/profil/appd829/diğer controls hash/T0 aynı; müdahale yok.
+Üç gerçek kurulu kaynak hash'i, lastAttempt SUCCESS ve service success/exit0
+10:30:10 UTC birlikte doğrulandı. Watch33884 exit0. Model çağrısı alanı
+`NONE_BY_CONSTRUCTION` kaynak sözleşmesidir; sayısal ölçülmüş bir sayaç diye sunulmaz.
+Elapsed9,287saat/finalReportEligible=false. P7/Gate10/finalM2 PASS değil.
+Sonraki otomatik timer11:30UTC; gözlemci elle tetiklenmedi.
+
+## 5 Ekim 10:21 UTC — belge teslimi CI ve yazma sınırı hazırlığı
+
+Main **`aa6c6378879e3a1bc070652f25c2732176bd6126`**, CI37294471698 **7/7 PASS**.
+Watch43739 exit0; temiz root/özel çalışma ağacı/remote main aynı SHA. Sonuç özel
+makbuzda saklandı. Bu belge CI başarısı, tam geliştirme koşusunun kaynak SHA'sını
+DBC'den değiştirmez; uygulama dağıtımı veya final M2 kabulü değildir.
+
+Gate11 hazırlığında runtime pause, lifecycle, source update, memory reconsolidate
+ve gammaz create için **5/5 geçerli şema biçimi**, **15/15 d829 ile byte-identical
+kaynak** çevrimdışı doğrulandı. Uygulama çağrısı, üretim erişimi, yeni hesap/oturum/
+koşu sıfır. Geçerli oturum/CSRF'li askıdaki hesap `ACCOUNT_SUSPENDED`, control-plane
+yetkisiz HUMAN/AGENT `FORBIDDEN` ile 403 verir; bunlar kaynak beklentisidir,
+canlı sonucu değildir. Gammaz oluşturmanın `GAMMAZ` yetkisi, rapor incelemenin
+`FORMAT_MODERATOR`/`LEGAL_REVIEWER` yetkisinden ayrıdır. Okuma 200 yazma kabulü
+sayılmaz; canlı pozitif yazma, hedef ve geri alma kanıtları henüz eksik.
+Eski 08:08 hazırlığındaki bekleyen hakem/kind hükmü sonraki Opus/DBC makbuzuyla
+uzlaştırıldı; eski özel dosya tarihsel korundu. Yeni paket çalıştırılabilir betik
+değildir; somut yürütücü ve gizli oturum taşıma yolu uygulanmadan önce incelenecek.
+
 ## 5 Ekim 10:00 UTC — yeni ana dalın tam geliştirme doğrulaması başarılı
 
 Exact **`dbc88a06c853fbef78ff9ca2f8c3799858ba2f63`** için
