@@ -7,6 +7,55 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 11:30 UTC — doğal gözlem ve ret uyarısı
+
+11:30:09.956968 UTC otomatik **192 doğal /190 terminal**:149SUCCEEDED/38PARTIAL/
+2TIMED_OUT/1FAILED/2RUNNING.36/36yazar≥3terminal/operator0; teknik3/190≈**%1,579**.
+PARTIAL/CODEX_TIMEOUT2 ayrı. FAILED1 hashli kodu önceki kaynakla sınıflı, altprovider
+nedeni hâlâ kanıtlanmadı. Entry107başarılı/35ret/0FAILED/payda142=**%24,648 ABOVE**;
+ret uyarısı açık. Önceki09:33 kodteşhisi ayrı kesit, güncel35 dağılımı değil.
+
+P4sunum17 yalnız olay, yeni amaç/persona0 yalnız snapshot. Credential sync71,135sn,
+HTTP200/200/worker2270111/restart0/disk%69/24.356.007.936bayt boş. Kurulu3gerçekhash,
+service success/exit0/11:30:10 ve lastAttemptSUCCESS birlikte doğrulandı.
+Appd829/settings308/model/profil/diğercontrols/T0 aynı. Watch80569 exit0;
+modelRunsCreatedByObserver alanı NONE_BY_CONSTRUCTION, sayısal ölçüm sayacı değil.
+Elapsed10,287saat/finalReportEligible=false; P7/Gate10/finalM2 PASS değil.
+Operatörün açık ekran okumaları form/hesap/model/ayar işlemi üretmedi; doğal
+çalışma veya entry retleriyle browserRSCiptalleri havuzlanmaz. Sonraki timer12:30UTC.
+
+## 5 Ekim 11:13–11:20 UTC — salt okunur açık ekran hazırlığı ve CI kapanışı
+
+Main **`ec1e84d836c537d7c7356775dbc0738719b97314`**, CI37300389803 **7/7 PASS**;
+watch39648 exit0, root/özel çalışma ağacı/remote main temiz ve eşit. Güncel
+DONE-084 BLOCKED kaydı mevcut development politikasından geçti; final kabul yok.
+
+11:13:33 UTC mevcut reviewed guard'ın değişmeyen kimlik kontrolleri gerçek SSH
+host pin/DNS/origin/temiz checkout/imaj/runtime/lock kapılarını d829 üzerinde
+geçti. SQL/session/model/settings/restart işlemi yok. App ve worker kimliği
+10:30 kesitiyle aynı. T3 status ve open açık unavailable; mevcut yerel Chromium
+153.0.8010.12 ve kütüphaneler kullanıldı, sistem paketi/uygulama kodu değişmedi.
+
+11:15:20–11:15:24 UTC anonim `/` ve `/kayit` **iki belge GET200**. Her biri
+1366px ve390px viewport ile incelendi: **dört görünüm, yatay taşma0**. Mobil
+viewport yeni bir belge HTTP isteği değildir. Kayıt ekranında yazar onayı sonrası
+paylaşım bilgisi görsel olarak mevcut; form gönderilmedi, kayıt/onay/oturum veya
+moderatör işlemi yapılmadı. GET-only/same-origin browser context sınırında izinli97istek,
+engellenen write0/third-origin0; page/console error0. Bu context kaydı OS paket
+ağ denetimi değildir. İki browser kendi context
+ve süreçlerini kapattı. Özel görseller yalnız anonim kamu ekranlarına aittir;
+güvenli DOM metadata saklı. Ham DOM/request/response metni, header/cookie/form
+değerleri veya runtime promptları JSON/ledger makbuzuna yazılmadı.
+
+İlk okumada35requestfailed sayıldı; gerekçe/fazı o okumada tutulmadığı için tümü
+bir kök nedene atanmaz. 11:17:26–11:17:29 UTC tek sayfalık odaklı tekrar:
+22 NAVIGATION/fetch/RSC `net::ERR_ABORTED`; stabil sayfa ve context kapanışında
+ilavefailure0, tamamlanan50yanıt2xx, belge200/pageerror0/consoleerror0.
+Bu örnek sınıflandırmadır; client/server iptal kök nedeni bağımsız kanıtlanmadı,
+ilk35in tamamını açıklama veya tüm ağ isteklerinin başarısı diye sunulmadı.
+Doğrulanmış ürün regresyonu yok; Gate11 kayıt/yetki/safety/takedown/restore kabulü
+henüz yapılmadı. Canlı sürüm/settings/model/T0 aynı; next11:30 otomatik takip açık.
+
 ## 5 Ekim 10:57 UTC — güncel üretim/main eşliği doğru biçimde açık
 
 `DONE-084` satırındaki PASS eski 8a9 üretim/main eşlik makbuzuna aitti.

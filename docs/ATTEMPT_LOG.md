@@ -5760,3 +5760,45 @@ Bu simülasyon gerçek proje dosyasına/status'a yazılmadı; yalnız özel rece
 kaydedildi. Policy/test/manifest/threshold değişmedi, üretim bağlantısı0.
 Eski 08-13 ekinin542PASS/1BLOCKED kesiti tarihsel aynen korunur; yeni güncel
 541PASS/2BLOCKED üstteki tarihli ek ve canonicalPLAN'da tutulur.
+
+### 11:13–11:20 UTC — gerçek anonim açık ekran hazırlığı, ağ ayrımı ve CI7
+
+Exactmain ec1e84d836c537d7c7356775dbc0738719b97314 /CI37300389803 **7/7PASS**;
+watch39648 exit0, temiz root/özel çalışma ağacı/remote main eşit. DONE-084 güncel
+BLOCKED ve mevcut developer/final politika korunur. App d829 source/worker kimliği
+11:13:33 gerçek read-only guard ile10:30 kesitine eşit; guard kaynak5bad hashaynı.
+SSH pin/DNSA/hostname/origin/checkout/imaj/runtime/lock kontrolleri geçti, SQL yok.
+T3status+open environment5121 için açık unavailable; mevcutChromium/kütüphane
+kullanıldı, paket veya uygulama kodu değişmedi.11:15 iki belgeGET200 (/ ve/kayit),
+ikişer1366/390viewport→dörtgörünüm/yataytaşma0; mobilresize yeniHTTPkanıtı değil.
+Yazar-onayı-bilgisi görsel mevcut; form/account/session/actionmutation0.
+GET-only/same-origin97izinli, write/third-origin0, page/consoleerror0; ownbrowserclosed.
+
+İlk35requestfailed için reason/phase kaydı yoktu; productregression sayılmadı.
+11:17 odaklı tek sayfa tekrar22NAVIGATION RSCfetch net::ERR_ABORTED;50completed2xx,
+200document, stable/close ilavefailure0/pageerror0/consoleerror0. Client/server kök
+neden ölçülmedi, ilk35tümünü kapanış/nav iptali diye geriye dönük sınıflama yok.
+Özel4görsel yalnız anonim kamuekranı; güvenliDOM ve safekodlar saklı. HamDOM/
+request-response metni/header/cookie/form değerleri/runtimeprompt ledger veya
+JSON makbuzuna yazılmadı. Ağ sayıları browser context kapsamıdır, OSpaket denetimi değil.
+Bu hazırlık gerçekGate11PASS değil; kontrollü kayıt/onay/yetki/moderasyon post-window.
+Tekrarlama: mobilviewport'u yeniHTTPörneği sayma; kodsuzrequestfailed sayısını
+ürün arızası sanma; örnek22iptali tüm35e taşıma; signupGET200ü kayıt/onay/yayın
+başarısı veya bu salt okunur hazırlığı Gate11 kapanışı diye yazma. YeniT0 yok.
+
+### 11:30 UTC — otomatik doğal gözlem, ret uyarısı açık
+
+Exactcanlı d829dd06eb4aa68154f521667302e6744b67399e/settings308;
+11:30:09.956968 UTC192natural/190terminal:149SUCCEEDED/38PARTIAL/2TIMED_OUT/
+1FAILED/2RUNNING.36/36yazar≥3terminal/operator0/teknik3/190≈%1,579.
+PARTIALtimeout2 ayrı, FAILED1 knownsourcehash ve altprovider ayrımı aynı.
+Entry107başarılı/35ret/0FAILED/payda142=%24,648 ABOVE; ret uyarısı açık.
+P4sunum17 olay; yeni amaç/persona0 snapshot. Sync71,135sn/HTTP200/200/
+disk%69/24.356.007.936bayt boş. Actual3installedsource hash, service
+success/exit0/11:30:10 ve lastAttemptSUCCESS birlikte; watch80569 exit0.
+App/CID/worker2270111/NRestarts0/model/profil/diğercontrols/T0 aynı.
+10,287saat/finalReportEligible=false; yeni model/manualtick/settings işlemi yok.
+ModelobserverNONE_BY_CONSTRUCTION metin alanı actualprovider sayacı değil.
+Tekrarlama: browserrequest iptallerini agententry ret paydasına katma; önceki29ret
+kodunu yeni35in dağılımı sayma; event17den ödül/amaç/persona faydası çıkarma;
+erken190terminal veya düşük teknik oranını gerçek168h/finalkabul diye yazma.

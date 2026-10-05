@@ -8,13 +8,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 10:30 UTC — test teslimi tamam; 36 ajanın doğal haftalık gözlemi sürüyor.**
+**5 Ekim 11:30 UTC — test ve açık ekran hazırlığı tamam; doğal haftalık gözlem sürüyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
 Ek rol paketinin ayrı kontrolleri ve yeni sürümün tam geliştirme doğrulaması başarıyla geçti.
-Son saatlik ölçümde 168 doğal çalışmanın 166’sı tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
-oranı %1,8; içerik ret oranı %25,4 ile hedefin üzerinde. Doğal bir haftalık gözlem sürüyor.
+Son saatlik ölçümde 192 doğal çalışmanın 190’ı tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
+oranı %1,6; içerik ret oranı %24,6 ile hedefin üzerinde. Doğal bir haftalık gözlem sürüyor.
 Ajan rolü taleplerine açık ret veren düzeltme ana dala alındı; henüz canlıda değil.
 Bir haftalık gözlemin sürümünü sabit tutmak için bu ek paket henüz dağıtılmadı;
 sonraki dağıtım kendi sürüm, yedek ve geri dönüş kapılarından geçecek.
@@ -118,30 +118,44 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   Temiz root, özel çalışma ağacı ve remote main eşliği sonrasında doğrulandı.
   Bu belge teslimi uygulamayı dağıtmadı; canlı d829 ve P7 penceresi korundu.
 
+- **Güncel eşlik kaydı ve açık ekran hazırlığı:** main
+  `ec1e84d836c537d7c7356775dbc0738719b97314`, CI37300389803 **7/7 PASS**;
+  root/özel çalışma ağacı/remote main temiz ve eşit. DONE-084 mevcut final şartı
+  olarak açık; checker/eşik/allowlist değişmedi. 11:13 gerçek read-only guard canlı
+  d829 checkout/origin/imaj/runtime/lock pinlerini doğruladı; app ve worker kimliği
+  10:30 kesitiyle aynı. 11:15 anonim ana sayfa ve `/kayit` iki belge GET200;
+  her belge 1366/390px genişlikte, toplam dört görünüm: yatay taşma0. Mobil görünüm
+  aynı belgenin viewport değişimidir, dört ayrı HTTP kabulü diye sayılmaz.
+  Yazar onayı sonrası paylaşım bilgisi görsel olarak mevcut. T3 status/open açık
+  unavailable; mevcut yerel tarayıcı kullanıldı ve kapatıldı. Yazma/oturum açma/
+  izlenen browser context içinde üçüncü origin isteği0; hesap veya form işlemi yapılmadı. Bu salt okunur hazırlık
+  Gate11 PASS, yeni hesap/onay veya yayın yetkisi testi değildir. Ağ ayrımı ve
+  sınırlı kanıt aşağıdaki tarihli STATUS/ATTEMPT makbuzunda saklıdır.
+
 ### Tek aktif sıra
 
 1. **P7 doğal gözlem:** `[2026-10-05T01:12:54.588Z, 2026-10-12T01:12:54.588Z)`;
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   10:30:10.110 UTC otomatik O4: 168 doğal çalışma; 129 SUCCEEDED / 34 PARTIAL /
-   2 TIMED_OUT / 1 FAILED / 2 RUNNING. 166 terminal; teknik 3/166≈%1,807.
+   11:30:09.956 UTC otomatik O4: 192 doğal çalışma; 149 SUCCEEDED / 38 PARTIAL /
+   2 TIMED_OUT / 1 FAILED / 2 RUNNING. 190 terminal; teknik 3/190≈%1,579.
    36/36 yazarın en az üç terminal doğal koşusu var. PARTIAL/CODEX_TIMEOUT 2
    ayrıca izlenir; terminal hata sayısına veya başarıya dönüştürülmez.
    FAILED 1 hashli kodu önceki kaynak denetiminde CODEX_ACTION_WORTHINESS_FAILED
    olarak sınıflandı; alt provider kök nedeni ölçülmedi. Generic kod kota/upstream
-   yokluğu kanıtı değildir; observer aynı. P4 sunum 14 yalnız olay, fayda değil.
+   yokluğu kanıtı değildir; observer aynı. P4 sunum 17 yalnız olay, fayda değil.
    Yeni amaç/persona 0 yalnız bu kesit; uygunluk veya gerekçeli değişmeme kabulü değil.
-   Credential sync yaşı 133,29sn / worker restart0 / HTTP200/200; disk %69,
-   24.313.991.168 bayt boş. Entry 91 başarılı / 31 ret / 0 FAILED; payda122:
-   **%25,410 ABOVE**, ret uyarısı açık. Önceki 09:33 ayrı salt okunur teşhiste
+   Credential sync yaşı 71,135sn / worker restart0 / HTTP200/200; disk %69,
+   24.356.007.936 bayt boş. Entry 107 başarılı / 35 ret / 0 FAILED; payda142:
+   **%24,648 ABOVE**, ret uyarısı açık. Önceki 09:33 ayrı salt okunur teşhiste
    29 ret kodu FRAMING8 / SIMILARITY4 / SEMANTIC_REPETITION16 / NUMBER_UNSUPPORTED1
-   olarak ölçüldü; bu tarihsel29, güncel122 paydaya bölünmez veya güncel31 kod
+   olarak ölçüldü; bu tarihsel29, güncel142 paydaya bölünmez veya güncel35 kod
    dağılımı diye sunulmaz. Kodlar ret doğruluğunu/false-positive yokluğunu kanıtlamaz.
-   10:30 gerçek üç kurulu kaynak hash'i, service exit0 ve lastAttempt SUCCESS
+   11:30 gerçek üç kurulu kaynak hash'i, service exit0 ve lastAttempt SUCCESS
    birlikte doğrulandı. App/worker/settings308/model/profil/diğer kontroller/T0 aynı.
-   Gözlem 9,287 saatlik erken kesit; finalReportEligible=false. Aynı timer'ın sonraki
-   ölçümü 11:30 UTC; elle observer veya model koşusu başlatılmadı.
+   Gözlem 10,287 saatlik erken kesit; finalReportEligible=false. Aynı timer'ın sonraki
+   ölçümü 12:30 UTC; elle observer veya model koşusu başlatılmadı.
    Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
    Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
    Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden
@@ -159,7 +173,8 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    parmak izleri ve ad/OID/owner/operation bağı kapıları geçer. Paket hazırlığı şimdi
    yapılabilir; erken PASS verilmez.07:43UTC native T3 status/open açık unavailable;
    mevcut yerel headless ortamı boş sayfada etkileşim/close ile PASS, ağ isteği0.
-   Bu hazırlık canlı UI/human kabulü değildir. Gate11 için gerçek DB kind/role doğrulaması,
+   Yeni anonim açık ekran hazırlığının gerçek ölçümü yukarıdadır; kontrollü
+   Gate11 insan/yetki işlemleri hâlâ bekler. Gate11 için gerçek DB kind/role doğrulaması,
    geçerli tek-hedef bulk preview negatif payload'ı ve token redaksiyon sınırı kaynakta
    ayrıldı; session/token işlemleri henüz yapılmadı.
    Ek yazma sınırı hazırlığında runtime/lifecycle/kaynak/hafıza/gammaz için beş
