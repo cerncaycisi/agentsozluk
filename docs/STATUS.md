@@ -7,6 +7,61 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim — tam M2 uzak doğrulama kaynak hazırlığı
+
+Mevcut `verify:m2` M1 regresyonu, test DB reseti, build/agent E2E ve final temiz
+aday/izlenebilirlik kapılarını birlikte çalıştırır.1GB operatör VM'de tam test/build
+başlatılmadı. Yeni elle çağrılan GitHub Actions kaynağı yalnız runner'ın PostgreSQL16
+loopback `agent_sozluk_test` DB'sini kullanır; exact main SHA/başarılı push CI
+öncesi, iki modda son exact main ve final modda son temiz ağaç kapısı vardır. Development/final seçimi
+ayrıdır; final izlenebilirlik ön kapısı DONE-082 BLOCKED iken düşer.
+
+Mevcut Actions pin ve test DB güvenliği testleri **8/8 PASS**. Yeni workflow PR#330
+olarak açıldı; henüz merge/dispatch edilmedi, full `verify:m2` veya final M2 PASS değildir. Üretim
+erişimi/model çağrısı/deploy yok; P7/O4 doğal takip ve mevcut T0 sabit.
+
+### Exact kaynak hakemi ve 05:30 doğal takip
+
+PR#330 ilk head `038fb0df14459ac4c771fb7c0b7ed6214d450f64`, gerçek
+claude-opus-5 **194,153sn KOŞULLU GO**, yardımcı Haiku ayrıca kayıtlı, Astra0.
+Koşullar kaynakta kapatılıyor: job120dk/tam komut80dk, setup/Chromium10'ar dk;
+son clean-tree yalnız final moda hizalandı. CI name/push-main ve yedi script adı
+kaynakta doğrulandı; exact27a2 pushCI gate `gh --jq env.CANDIDATE_SHA` gerçek
+sorguda1başarılırun döndürdü. Checkout da platform read token'ını kullanır;
+explicit GH_TOKEN yalnız metadata adımlarındadır. Loopback istemci URL'sidir;
+mevcut verifier'ın HTTP dinleyicisi0.0.0.0, yeni bağlama garantisi yazılmaz.
+Yeni kaynak kapanışı ve ilk full development dispatch henüz ölçülmedi.
+
+Son actual claude-opus-5 incelemesi exact
+`a5d4550a676f777f8c2f6888bc9c5cc398c15721`, **118,390sn KOŞULLU GO**;
+yardımcı Haiku ayrıca kayıtlı. `playwright.config.ts:41` varsayılan `chrome`
+kanalını seçiyor; workflow'ın `chromium` kurması gerçek hazırlık uyumsuzluğuydu.
+Kurulum mevcut browser CI ile `chrome` olarak hizalandı. Koşullu görüşler
+koşulsuz GO diye yeniden adlandırılmaz; son SHA/CI ve ilk tam koşu hâlâ açıktır.
+Final requirement testi yalnız manifest/belge/policy okur; mevcut test setup'ı
+ortam varsayılanları atar, DB bağlantısı kurmaz. Şemasız DB uyarısı kaynakta
+doğrulanmadı. `.next/`, coverage ve E2E raporları Git ignore kapsamındadır;
+bu kaynak kontrolü gerçek full final temiz-ağaç sonucu değildir. Test DB adı
+doğrulaması ve verifiers içindeki DATABASE_URL sabitlemesi korunur; ayrı
+`db:reset` guard'ının çalıştırıldığı iddia edilmez. İlk tam komut süresi bilinmiyor.
+
+**05:30:10.008UTC otomatik O4 success/exit0:**54doğal koşu,
+38SUCCEEDED/15PARTIAL/1RUNNING,53terminal, teknik hata0; terminal yazar36/36,
+≥3terminal doğal yazar0/36. Operator koşu0, ACK05:25:57.321UTC/253sn,
+worker2270111/restart0, settings308/controls hash/model-profile/app d829 aynı.
+Health/ready200/200; root%69/24.078.598.144bayt boş. Entry32başarılı/13ret/
+0FAILED/0diğer, payda45: **%28,889 ABOVE**, ret uyarısı açık; sağlayıcı/timeout0.
+Doğal koşu50eşiği geçildi; aynı rejim için yeterli taban yokken önceki küçük
+kesitten nedensel ret regresyonu veya persona kusuru çıkarılmaz.
+
+05:32:19.335UTC ayrı5snREAD ONLY teşhis:entryret13=FRAMING3/SIMILARITY2/
+SEMANTIC_REPETITION7/SOURCE_EXACT_NUMBER_UNSUPPORTED1. PARTIAL eylemler
+14REJECTED/24SUCCEEDED; entry dışı retler entry oranına eklenmez. Kodların
+ret doğruluğu veya yanlış ret metin kanıtı yok; uyarı/doğal takip açık.
+P4 05:32:20.098UTC ayrımı6sunum/**2doğal terminal koşu/1profil**;
+üç veya altı bağımsız yazar/deney değildir, pozitif kredi0/faydaINSUFFICIENT.
+New purposes/persona versions0 yalnız kesit ölçümüdür; P7/M2PASS değil.
+
 ## 5 Ekim 05:03 UTC — kaynak CI tamam; Gate11 fixture ayrımı ve reddedilen yardımcı
 
 Ölçüm makbuzu main `a59314e6f779829db700d238e42e062d07829e8d`, exact

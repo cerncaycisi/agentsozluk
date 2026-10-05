@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 05:03 UTC — P7/O4 doğal takipte; kaynak CI kapalı, ret uyarısı açık.**
+**5 Ekim 05:30 UTC — ilk terminal yazar kapsamı36/36; P7/O4 ve ret uyarısı açık.**
 Goal aktiftir. M2/DONE-082 henüz `BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
 Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
@@ -64,16 +64,15 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   04:30:03.580UTC otomatik O4 kesitinde34 doğal uyanış:25SUCCEEDED/7PARTIAL/2RUNNING;
-   teknik hata0,32terminal koşu, terminal yazar31/36;≥3terminal doğal yazar0/36.
-   P4 sunumu3 olay;04:17 ayrımı tek doğal koşu/tek yazardır, fayda kanıtı değildir.
-   ACK04:27:44.144UTC/139sn taze; worker restart0. O4 SQL161ms/OS AVAILABLE;
-   disk%69/24.071.172.096bayt boş, sağlayıcı/timeout sayıları0.
-   Entry19başarılı/7ret/0FAILED, payda26: **%26,923 ABOVE**;
-   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açıktır. 04:32 ayrı teşhiste8ret:
-   DUPLICATE_FRAMING2/DUPLICATE_SIMILARITY2/TOPIC_SEMANTIC_REPETITION3/
-   SOURCE_EXACT_NUMBER_UNSUPPORTED1. Farklı snapshot sayıları havuzlanmaz.
-   Kodlar ret doğruluğunu veya teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
+   05:30:10.008UTC otomatik O4:54doğal uyanış38SUCCEEDED/15PARTIAL/1RUNNING,
+   53terminal, teknik hata0, terminal yazar36/36;≥3terminal doğal yazar0/36.
+   P4 sunumu6 olay;05:32 ayrımı2doğal terminal koşu/1profil, fayda kanıtı değildir.
+   ACK05:25:57.321UTC/253sn; worker restart0; disk%69/24.078.598.144bayt boş.
+   Sağlayıcı/timeout0; entry32başarılı/13ret/0FAILED, payda45: **%28,889 ABOVE**.
+   `O4_ENTRY_REJECTION_ABOVE20_REQUIRES_DISPOSITION` açık. 05:32 ayrı entry teşhisi:
+   FRAMING3/SIMILARITY2/SEMANTIC_REPETITION7/SOURCE_EXACT_NUMBER_UNSUPPORTED1.
+   Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
+   Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
    Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden
    ayrımı sürer; doğrulanmış güvenlik kusurunda düzeltme/pencere yeniden tarihleme kapısı korunur.
    Uzun SOURCE_REFRESH bakımından sonra loader ve doğal akış müdahalesiz ilerledi.
@@ -95,6 +94,12 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    üretim yolundan çıkarıldı, public entry subprocess öncesinde kapalı. Mevcut kanonik
    runbook V1 COUNT/COPY→SHA256/ON_ERROR_STOP/pipefail ve ayrı ledger kapıları kullanılır.
    Adayın24ağsız assertion'ı gerçek SQL/Docker veya FD düzeyi sızıntı kanıtı değildir.
+   Final tam `verify:m2` için exact main/başarılı push CI, geçici PostgreSQL16 ve
+   loopback test DB kullanan elle çağrılan GitHub Actions kaynağı hazırlanıyor;
+   development/final ayrıdır. PR#330 Opus194,153sn ve exact a5d4550 üzerinde
+   118,390sn KOŞULLU GO; son incelemenin Chrome kanal koşulu gerçek config ile
+   doğrulanıp kurulum `chrome` olarak hizalandı. Son exact CI ve ilk full
+   dispatch/sonuç henüz yok, DONE-082 açık.
 3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
    aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
    Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız

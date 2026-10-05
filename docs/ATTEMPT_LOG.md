@@ -5381,3 +5381,67 @@ Tekrarlama: kapsamı dar24assert PASS'ini sızıntı/SQL/Docker cleanup kanıtı
 REJECTED private helperi observer/üretime kurma; yerel grup kill'ini sunucu backend
 bitişi sayma; kaynakta olmayan harici hata izleyicisini proje olgusu diye yazma;
 HUMAN fixture veya sahte kusurla positive agent-content kabulü üretme.
+
+## 5 Ekim — tam M2 komutu için exact SHA uzak job hazırlığı
+
+Kaynak tabanı `27a2d274f437fdbd5613147ecaf08af2ad49d8f4`, branch
+ci/m2-integrated-verification. verify:m2 kaynak incelemesi gerçek tam komutun
+M1 regresyon/reset/build/agent E2E/final clean-tree zincirini gösterdi.1GB VM'de
+Next/Docker/tam test başlamadı. Yeni workflow_dispatch job runner'a ait PG16 ve
+sabit loopback agent_sozluk_test kullanır; girdi SHA/mode env üzerinden doğrulanır,
+exact güncel main +başarılı push CI ön koşulu ve son exact main/clean tree korunur.
+Final ve development komutları/raporları ayrı; final traceability önce kontrol
+edilir, mevcut BLOCKED ağır final işi başlamadan düşer. Üretim key/endpoint veya
+approval değişkeni taşınmaz; yalnız seçili repo read yetkisi ve test fixture env'i.
+
+Mevcut Actions SHA pin/test DB safety8/8PASS; ilgili yeni kaynak için bağımsız
+hakem/exact CI ve ilk full development dispatch henüz açık. İlk kaynak hazırlığı
+bir gerçek verify:m2 başarı makbuzu değildir.
+Tekrarlama: split CI7 veya development kontrolünü tam final komut çalıştırılması
+sayma; geçici test DB resetini üretimde çalıştırma; workflow inputlarını shell
+koduna interpolate etme; main ilerlerken eski exact sonucu yeni SHA'ya yazma.
+
+### PR#330 koşullu hakem ve saatlik05:30 kesiti
+
+İlk exact038fb0d kaynak, gerçekOpus194,153sn KOŞULLU GO/yardımcıHaiku; Astra0.
+Job/setup/tam-komut bütçesi ve final/development clean-tree hizası koşulları
+kaynakta düzeltildi; yeni job120/tam80/setup10/Chromium10dk. CI adı/push main
+ve yedi package script gerçek kaynakta doğrulandı.27a2CI7/7PASS üzerinden
+aynı gh--jq gate1döndürdü. Son kaynak review/CI/ilk dispatch henüz açık.
+Checkout'un kendi read-token kullanımı metadata GH_TOKEN scope'undan ayrı;
+loopback URL HTTPbind0.0.0.0 ile karıştırılmaz. Koşullu görüş GO diye değiştirilmez.
+
+05:30actualservice success/exit0, installedpairhash aynı;54doğal/53terminal,
+36terminal profil/≥3terminal0profil, teknik0; ACK253sn/restart0/HTTP200/200.
+Entry32SUCCEEDED/13REJECTED, payda45/%28,889, uyarı açık; provider/timeout0.
+05:32 ayrı READ ONLY entry ret kodları13; PARTIAL eylem14ret/24başarılı,
+entry dışı ret oranı bozmaz. P4events6=2natural terminalrun/1profile; fayda değil.
+Kamu metni/credential/prompt export yok, app/model/ayar/T0/deploy aynı.
+Tekrarlama: source-only conditional görüşü fullM2PASS sayma; iki modun final
+kapılarını karıştırma; P4 event sayısını yazar sayısı veya ödül faydası yazma;
+aynı rejim tabanı yokken küçük önceki kesiti ret-regresyon tabanı ilan etme.
+
+### PR#330 son kaynak incelemesi — 05:57 UTC
+
+Exact `a5d4550a676f777f8c2f6888bc9c5cc398c15721`, actual claude-opus-5
+118,390sn **KOŞULLU GO**, yardımcı Haiku; araç/ağ/üretim erişimi/Astra0.
+Kaynakla doğrulanan koşul: Playwright config varsayılan branded `chrome`,
+aday yalnız `chromium` kuruyordu. Kurulum browser CI ile `chrome` olarak
+hizalandı; E2E executable hatası gerçekten yaşanmış gibi yazılmadı. Diğer
+uyarılar ayrıldı: final requirement testi/setup DB'ye bağlanmaz; çıktı dizinleri
+Git ignore kapsamındadır ama full final clean sonucu henüz yok. Reset güvenliği
+test URL adı ve verifier'ın DATABASE_URL sabitlemesidir; ayrı db:reset betiği
+çalıştırılmaz. İlk tam komut süresi bilinmiyor, bütçe yeterlilik PASS'i yok.
+
+Bu hazırlık sırasında daha önce ledger'da kayıtlı iki eski CLI uyumsuzluğu
+yanlışlıkla tekrarlandı: `gh pr edit` exact
+`GraphQL: Projects (classic) is being deprecated in favor of the new Projects experience. (repository.pullRequest.projectCards)`;
+`gh pr view --json baseRefOid` desteklenmeyen alan. Push başarılıydı;
+`set -eu` ilk dizide sonraki model incelemesini başlatmadan durdu. Aynı PR
+gövdesi REST PATCH ile05:49:57UTC başarıyla güncellendi; base SHA REST pull
+kaydından okundu. Son inceleme gerçekten05:55:12UTC ayrı başlatıldı ve
+118,390sn sonra sonuçlandı. Bu CLI hataları uygulama/CI regresyonu değildir.
+Tekrarlama: eski Projects GraphQL düzenlemesini veya desteklenmeyen baseRefOid
+alanını kullanma; PR gövdesinde structured REST JSON, base SHA'da REST kullan.
+Kanalı project adından tahmin etme; config kanalını oku. Henüz yeni exact CI,
+merge/dispatch/full M2 veya üretim kabulü tamamlanmadı.
