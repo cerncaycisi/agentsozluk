@@ -1806,3 +1806,144 @@ Bu dar düzeltmenin kod/hakem/CI işi tamam; canlı dağıtım açık.
 Diğer komutların kapsam kararı ve canlı dağıtım bu dar düzeltmeyle kapanmaz. İstek
 kesilirse makbuzsuz tekil commit kalması #322 ile tek transaction + entry savepoint'i
 içinde kapandı; kod/hakem/exactCI tamam, canlı kullanım açık.
+
+## 5 Ekim 2026 15:41 UTC — yeni sürüm ve gerçek168h için ikame sıra hazırlığı
+
+Aşağıdaki sıra D6CE kaynak/test teslimi ve gerçek erken gözlem makbuzlarının
+tarihsel kaydıdır; aktif kuyruk değildir. Yeni sıra yalnız `PLAN.md` içindedir.
+Eski pencerenin tam168h kabulü tamamlanmadı; hiçbir erken ölçüm PASS yapılmadı.
+
+### Tek aktif sıra
+
+1. **P7 doğal gözlem:** `[2026-10-05T01:12:54.588Z, 2026-10-12T01:12:54.588Z)`;
+   tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
+   **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
+   Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
+   13:30:10.211 UTC otomatik O4: 242 doğal çalışma; 180 SUCCEEDED / 44 PARTIAL /
+   2 TIMED_OUT / 14 FAILED / 2 RUNNING. 240 terminal; teknik16/240≈**%6,667**,
+   erken kesit %5 hedefini aştı. Önceki12:30 teknik8/216≈%3,704 tarihsel kalır.
+   36/36yazar≥3terminal/operator0. PARTIAL timeout4 (CODEX_TIMEOUT3 + RUNTIME_TIMEOUT1)
+   ayrı; teknik hata toplamına veya başarıya çevrilmez. FAILED14 aşama kodu:
+   ACTION_WORTHINESS8 / DECISION5 / DECISION_REPAIR1; sağlayıcı kök nedenleri bilinmiyor.
+   Yeni PARTIAL kodu kaynak statik MD5 eşliğiyle RUNTIME_TIMEOUT olarak sınıflandı;
+   hashli bilinmeyen kod güvenli allowlist değiştirilerek gizlenmedi. Rate/quota0 ve
+   upstream0 sayaçları kota/upstream yokluğu kanıtı değildir. P4sunum17 olay,
+   amaç/persona0 erken kesit. Sync111,940sn/HTTP200/200/restart0/disk%69/
+   24.442.503.168bayt boş. Site sağlığı başarılı olması doğal koşu kabulü değildir.
+   Entry134başarılı/40ret/0FAILED/payda174=**%22,989 ABOVE**; uyarı açık.
+   12:34 ayrı ret39 dağılımı FRAMING10/SIMILARITY5/SEMANTIC_REPETITION22/
+   NUMBER_UNSUPPORTED2 tarihsel kesittir; yeni40 veya174paydayla havuzlanmaz.
+   Observer üç kaynak hash'i/service exit0/lastAttemptSUCCESS birlikte doğrulandı;
+   app/worker/settings308/model/profil/diğercontrols/T0 aynı. Yerel pasif watcher
+   yalnız scheduled sonucu okudu; ISO yazımını değil parse edilmiş exact anı karşılaştırdı.
+   Gözlem12,287saat/finalReportEligible=false. Sonraki aynı timer14:30UTC.
+   Teknik artış O4 neden araştırmasını gerektirir; erken başarısızlık nihai168h hükmü
+   değildir. Hataları saklamak için T0/model/ayar/sürüm değiştirilmez, eşik düşürülmez.
+   **O4 kaynak paketi [#332](https://github.com/cerncaycisi/agentsozluk/pull/332):**
+   ilk exacta256ca7 CI37315242731 **7/7PASS**; PG35dosya512test, API141test
+   (yeni /fail kayıt/replay iki vaka dahil). Sonraki focused tekrarlar ayrı yeni test değildir.
+   Actual farklı-model Opus5/357,263sn KOŞULLU GO; F1–F8 kaynak bulguları çıktı.
+   Yutulmuş BROWSE/CONTENT_REPAIR nedenleri ayrı **çağrı** sayacıyla gösterilecek;
+   son koşu neden kohortu ayrı, unknownTimeout/unknownLegacyOrMissing ayrımı korunur.
+   Paydalar ve mevcut aşama errorCode'ları aynı. Aşama/faz tek kaynak; typed unknown
+   reader, OpenAPI enum/faz/bütçe eşitliği, /complete kayıt+422 yanıt gizliliği ve
+   recoveredcall testleri eklendi. Yeni185unit/mimari/OpenAPI,154operation,
+   format/lint/type PASS. Eski178+185 iki ayrı toplam gibi toplanmaz.
+   İkinci exact8281e47 CI37317986011 **7/7PASS**; PG35dosya513test/API142
+   PASS, yeni /complete kayıt/raw422/nochange/replay/oneoutbox dahil. A256512 ile
+   513 toplanmaz; ikinci kaynakta bir ek PG vaka vardır. İlk ikinci peer isteği
+   420sn timeout/0bayt sonuç: **NOT_COMPLETE**, GO veya kodFAIL sayılmaz.
+   Daraltılmış actualOpus5/215,136sn **KOŞULLU GO** yeni F-A/B/C/D/E koşulları:
+   sabit kota0 cümlesi veriden türetildi; OpenAPI tüm19usage alanına genişletildi
+   (additionalProperties:false korunur); bilinmeyen timeout/legacy sayaçları
+   doğrudan ayrılır ve pozitif legacy assertion var. Machinecall/run anahtarları
+   gruplanır; recoveredBROWSEtimeout testi, gerekçe konumu ve unknown toplamı eklendi.
+   Son187ilgili test/OpenAPI154/format/lint/type PASS; önceki185in üstüne eklenmez.
+   Yeni exact1504 için actualOpus5/208,667sn KOŞULLU GO; önceki kaynak koşulları
+   kapandı. R1 kodsuz kesilmiş kurtarma çağrıları ayrı sayılır; R2 üç iç wire nesnesi
+   Zod JSON şemasıyla bütünüyle karşılaştırılır. Required kümesi, kohort açıklaması,
+   censored faz-bütçesi yorumu ve makine sıra assertion'ı da tamamlandı. Yeni192
+   ilgili test/OpenAPI154 PASS; focused55 ayrı toplam değildir. Yeni exact kaynak
+   format/lint/type/M1req/M2dev PASS; yeni hakem/CI ve mergedfull kapıları bekler.
+   Canlı davranış değişmedi. Son14:30 otomatik kesit260terminal/teknik16=%6,154
+   hâlâ hedefin üzerinde; ret43/191=%22,513. Önceki kesitler ayrı saklanır.
+   Teşhis V2 actualOpus5/289,881sn KOŞULLU GO koşulları V3 kaynakta kapandı;
+   üç offline kontrol PASS, hakem bekler. Hiçbiri üretimde çalıştırılmadı.
+   Son düzeltmeler için yeni exact peer/CI ve birleşmiş kaynak fulldevelopment
+   hâlâ bekler; 8281 CI yeni187kaynak kanıtı değildir.
+   Ayrı salt okunur teşhis adayı ilkactualOpus5/233sn **REJECTED**: güvenli root
+   sayımı kod/faz ve call/run biriminde, paydalar ve metadata guard sonucu açık
+   olmalıdır. İlk aday çalıştırılmadı. V2 yalnız currentdebugsetting, şema tipleri
+   ve kapalı kohort/kod sayımları okur; worker/host/imaj pinleri, UTC, süre bitimine
+   150sn pay, tek bağlı probe ve metadata driftte STOP korunur. API setting0–24
+   sınırı gevşetilmez. Çevrimdışı compile/missingpeer0child/optimizedPython ret
+   PASS; V2 hakemi ve gerçek üretim okuması bekler. Actualretention hâlâ bilinmiyor.
+   Optional12-kod telemetrisi geriye dönük neden üretmez; timeout nedeni bilinmiyor.
+   Canlı worker/T0/model/ayar/debug retention değişmedi; dağıtım ayrı kapıdır.
+   Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
+   Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
+   Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden
+   ayrımı sürer; doğrulanmış güvenlik kusurunda düzeltme/pencere yeniden tarihleme kapısı korunur.
+   Uzun SOURCE_REFRESH bakımından sonra loader ve doğal akış müdahalesiz ilerledi.
+   Önceki stale kesitler saklanır; bakım doğal denominator değildir. Tam yazar coverage
+   ve terminalleşme izlenir; bu erken kesit Gate10 veya davranış faydası kanıtı değildir.
+   İstem/model/effort/ayar/policy/manual persona değişirse yeni T0 gerekir.
+   Olağan doğal hafıza/reflection/evrim ayrı kayıtlanır; yeni shared-Codex lab/benchmark yok.
+2. **Gate10 tam rapor → Gate11/12:** süre dolunca doğal kohort, yazar başına ≥3terminal,
+   ≤%5 teknik hata, ret/PARTIAL güvenli nedenler, provenance/kamu eşliği, ledger/kaynak/
+   evrim kapıları doğrudan ölçülür. Sonra adlandırılmış insan/yetki smoke ve taze
+   yedek/restore/reboot. Gate7’nin eski10profil/PAUSED ilk-migration sorgusu güncel
+   Gate12’ye taşınmaz: actual36 roster/lifecycle korunur; source/restore V1+ledger
+   parmak izleri ve ad/OID/owner/operation bağı kapıları geçer. Paket hazırlığı şimdi
+   yapılabilir; erken PASS verilmez.07:43UTC native T3 status/open açık unavailable;
+   mevcut yerel headless ortamı boş sayfada etkileşim/close ile PASS, ağ isteği0.
+   Yeni anonim açık ekran hazırlığının gerçek ölçümü yukarıdadır; kontrollü
+   Gate11 insan/yetki işlemleri hâlâ bekler. Gate11 için gerçek DB kind/role doğrulaması,
+   geçerli tek-hedef bulk preview negatif payload'ı ve token redaksiyon sınırı kaynakta
+   ayrıldı; session/token işlemleri henüz yapılmadı.
+   Ek yazma sınırı hazırlığında runtime/lifecycle/kaynak/hafıza/gammaz için beş
+   geçerli istek biçimi çevrimdışı doğrulandı; 15 ilgili kaynak d829 ile birebir aynı.
+   Okuma 200 sonucu yazma yetkisi kanıtı sayılmaz. Geçerli oturum ve CSRF ile
+   askıdaki hesabın yazma reddi `403 ACCOUNT_SUSPENDED`; yetkisiz control-plane
+   aktörünün reddi `403 FORBIDDEN`. Gammaz oluşturma `GAMMAZ`, rapor inceleme
+   `FORMAT_MODERATOR` veya `LEGAL_REVIEWER` ister; ADMIN rolü tek başına yetmez.
+   Canlı hedef/oturum/yürütücü henüz uygulanmadı; bu hazırlık Gate11 PASS değildir.
+   **Rol paketi ana dalda:** #331/exact head4aed CI7/7 ve PG510 PASS;09:07UTC
+   mainDBC'ye squash merge, source tree eşliği/clean root/origin eşliği doğrulandı.
+   Tamamlanan kaynak, fixture, ayrı CI ve tam geliştirme doğrulaması yukarıdaki
+   tamamlanan işler bölümüne taşındı. Run37289761730 **SUCCESS**, Opus K2 test
+   koşulu kapalı. Paket henüz canlı değildir. Kaynak regresyonunda önce ortam/fixture
+   ayrımı, ardından yalnız exact squash DBC için normal git revert ve ilgili
+   kalite/CI kapıları uygulanır; kullanıcı işi resetlenmez. Gate10 bitişinde taze rol/session sayımı; yamasız
+   d829'da AGENTgrant smoke yok. Sonraki dağıtım kendi exactCI/artifact/backup/
+   restore kapılarıyla; P8 report deployment/configuration bağı yeniden pinlenmez.
+   Gate12 tam ledger zincir sorgusu
+   bütün tarihsel profilleri kapsar; kaynak/restore/reboot ölçümü henüz yapılmadı.
+   Yeni Git dışı V1 streaming yardımcı adayı iki gerçek Opus incelemesinde REJECTED;
+   üretim yolundan çıkarıldı, public entry subprocess öncesinde kapalı. Mevcut kanonik
+   runbook V1 COUNT/COPY→SHA256/ON_ERROR_STOP/pipefail ve ayrı ledger kapıları kullanılır.
+   Adayın24ağsız assertion'ı gerçek SQL/Docker veya FD düzeyi sızıntı kanıtı değildir.
+   Tam geliştirme koşusunun hazırlığı ve ilk gerçek sonucu tamamlandı; makbuzu yukarıdadır.
+   Kalan final `verify:m2`, üretim kapıları ve izlenebilirlik kapandıktan sonra exact
+   güncel main/başarılı push CI ile aynı uzak test yolunda çalıştırılır. Development
+   sonucu final kabul yerine kullanılmaz; DONE-082/DONE-084/P7 kapıları korunur.
+   Son dağıtım eşliği `DONE-084` güncel durum için yeniden açıldı: canlı d829,
+   henüz dağıtılmamış ana dal farklıdır. Eski 8a9 eşlik kanıtı tarihsel korunur.
+   Gözlem sırasında eşlik sağlamak için dağıtım yapılmaz. Runbook'un yalnız
+   gözlenebilirlik istisnası tam D829→D6CE paketi için 15:19 gerçek Opus5 görüşünde
+   NOT_ELIGIBLE/NOT_PROVEN: rol sözleşmesi değişikliği de pakettedir, bütün davranış
+   parmak izi kanıtı yoktur. Paket küçültülmez, hash/rapor yeniden pinlenmez; mevcut
+   T0 değişmez. Sonraki dağıtım Gate10 sonrası exactCI/artifact/yedek/geri dönüş
+   kapılarıyla yapılır; kabul bağlamı ve yeni T0 gereksinimi dağıtım öncesinde açıkça
+   uzlaştırılır. Artifact bir gün saklandığından dağıtıma yakın taze üretilir;
+   bu incelemede artifact dispatch veya üretim işlemi yapılmadı.
+   **Takvim uzlaştırması inceleniyor:** 12Ekim sonrası karma dağıtım yeni168h
+   gerektirirse bitiş19Ekim, verilen yetki17Ekim19:50UTC olur. Kapıları tamamlayıp
+   tam paketi şimdi dağıtma ve eski erken pencereyi koruyarak açık yeni T0+168h
+   başlatma seçeneği actualOpus tasarım incelemesindedir. Bu seçenek mevcut
+   aktif sırayı henüz değiştirmez; onaylanmış uygulama/hakem/observer/pin/backup
+   kapıları olmadan dağıtım yok. Yetki süresi, kapsam ve eşikler uzatılmaz.
+3. **P8 kararı ve son kapanış:** P7/soy/kaynak/nüfus/kapasite kapılarıyla tek aday
+   aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
+   Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız
+   doğrudan kanıtla kapanır. Raf işleri bu sırayı bölmez.

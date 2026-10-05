@@ -6037,3 +6037,232 @@ oranın matematiksel alt sınırı sayılmaz; bu peer önerisi uygulanmadı.
 > %5; yeni terminal20 içinde ek FAILED/TIMED_OUT yok. Entry148başarı/43ret/0FAILED/
 > payda191=%22,513 ABOVE. Ayrı13:30 ve14:30 paydalar havuzlanmaz. P7 erken, finaleligible
 > false; d829/settings308/worker/T0 aynı, hiçbir teşhis üretim erişimi yok.
+
+## 5 Ekim 2026 15:00 UTC — O4 paketinin ana dal teslimi ve gerçek neden erişilebilirliği
+
+PR332 sonhead **c29aaa8d041647bd426c031f5b888e6a9290b197**: CI37325720961
+**7/7PASS**, actualOpus5/156,653sn **KOŞULLU GO**, bloklayıcı kaynak bulgusu0.
+R1..R7 kaynak koşulları kapandı; taze CI koşulu kapandı, birleşmiş tam development
+teslim koşulu açıktır. Nonblocking öneriler mevcut strictwire veya rapor iddiasını
+bozan somut hata göstermedi. Hakemin BROWSEtimeout testini görmediği sınır,
+önceki1504 incelemesinin gördüğü mevcut worker95 testiyle ayrılır; kaynak yeniden
+yazılmadı. PG35dosya513test/API142 PASS doğrudan completedjob111815833544 logunda
+kanıtlandı; focused4|138skipped ikinci142 diye toplanmaz. Log290.787bayt/SHA256
+3b866dc7b088db5021b637282546576220865ef18d6e9225387bcbd5c3cc514a.
+
+14:46:49UTC exactsquashmain **d6ce2ee642269c231d69bf5f1b02bc61bcfd3bb2**;
+parentFBE, tree reviewedc29ileeşit, root/remote temiz exactmain. Merge öncesi freshhead,
+yedi SUCCESS check, inceleme durumu ve MERGEABLE/clean yeniden okundu. Branch
+protection GET404 politika muafiyeti sayılmadı. MainCI37327480256 sürüyor; yalnız
+bu push7/7 ve son exactmain kapısından sonra tam `verify:m2:development` başlatılacak.
+ÖncekiDBC/fullSUCCESS yeni O4 kaynağının kanıtı değildir. Ana dal tam koşu boyunca
+sabit kalacak; bu belge yalnız ayrı sahipli docs dalında hazırlanır.
+
+Salt okunur teşhis: V1 actualOpus5/233sn REJECTED hiç çalıştırılmadı. V2/V3/V4
+koşullu kaynak görüşleri ve hashleri ayrı korunur; gerekli kapanışlar explicitpublic
+SQL, yedi kolon tipi/enum namespace, eksik/bozuk metadata bölümü, earlywindow,
+özelizin, expiry/UTF8/one-shot ve exactidentity kapılarıyla tamamlandı. Regexuppercase
+etiket ihracı redaksiyon olmadığı için uygulanmadı; kapalı12-kod korunur. Hakemin
+V3 STOP'tan önce stdout baskısı çıkarımı kaynakla çürütüldü; assert baskıdan önce.
+V4 actualOpus5/272,466sn kaynak-kanıt koşulları, aynı baytları değiştirmeden gerçek
+D829 settings modeli ve metadata-yazan satırlarıyla actualOpus5/124,057sn
+**GO / SOURCE_CONDITIONS_CLOSED** olarak kapandı. Nonblocking N1..N3 şartı hakem tarafından açıkça kaldırıldı; aralık0–24/P7pin/SQL5sn gevşetilmedi. Kaynak makbuzu exactremote
+fef671b17cc2882a57ff10f92a7974cc5431cc19866e2ecde1a5ff588cdb143e ve wrapper
+804cac47dee3b98bac818030eab242ea4a700934d5536354b0927ee69537e0d0 ile bağlıdır.
+İnceleme üretim yetkisi değildir; eylem Gökhan'ın 3–17Ekim fixeda467 kapsamındadır.
+
+**14:54:58.118UTC gerçek ONE READONLY probe SUCCESS/exit0/metadataOK:**
+settings308 ve **debugRetentionHours0**. Pencere henüz13,701saat; actualearlyend,
+targetend/coverageSeconds ayrı, windowCompletefalse.272doğal/270terminal;
+teknik16/270=%5,926 hedefin üzerinde. Bu sayılar14:30 16/260 veya13:30 16/240 ile
+havuzlanmaz. FAILED14 aynı ACTION_WORTHINESS8/DECISION5/REPAIR1, TIMED_OUT2 aynı
+CODEX_TIMEOUT. PARTIAL50 içinde CODEX_TIMEOUT4/RUNTIME_TIMEOUT1/NONE45; kısmi
+kesilmeler teknik16ya eklenmez. Teşhis outcome66koşunun tamamında intervalsarray var:
+240çağrı, invalid0/missing0/nonarray0. Bilinen rootcalls0/rootruns0; 240ının koduNONE.
+Faz çağrıları AW58/BROWSE66/CONTENT_REPAIR43/DECISION66/REPAIR7; bunlar başarısız
+çağrı sayısı değildir, terminal FAILED/TIMED_OUT/PARTIAL koşularının tüm kayıtlı
+çağrılarıdır. Mevcut D829 worker sağlayıcı kodunu yazmadığından root0 kaynakta
+beklenen erişilebilirlik açığıdır; yeni bir kota-yok veya hata-düzeldi bulgusu değildir.
+
+Host/appCID/image/runtime/workerPID2270111restart0/UIDGID ve SQL7tip/enum namespace
+pinleri geçti; settings308/T0/model/worker aynı. Ham stderr/body/prompt/workfile
+okunmadı, provider/model çağrısı veya uygulama/ayar/timer mutation0. Mevcut retention0
+geçmişteki her ayarın veya her dosyanın yokluğunun doğrudan kanıtı değildir. Aynıprobe
+consumed makbuzu korunur; tekrar çalıştırılmaz. Güvenli neden kaydı yeni paketin
+pairedapp+worker dağıtımı sonrası gelecekteki çağrılarda mümkün olur; eski kayıtların
+kök nedeni geriye dönük uydurulmaz. P7 hâlâ IN_PROGRESS_NOT_PASS; T0reset/deploy yok.
+
+Yerel makbuz hazırlığında NameError ve sonra hatalı tırnak nedeniyle SyntaxError
+ayrıldı ve düzeltildi; ne peer ne üretim probe tekrarlandı. Ürün regresyonu veya
+üretim başarısızlığı sayılmaz. Tekrarlama: kanıt paketinden settings/metadata-yazıcı
+kaynağını eksiltme; uppercase labelı safeCode sayma; rawkanıt veya varsayımla
+bilinmeyen kök nedeni doldurma; yalnız peerGO ile üretim yetkisi verildiğini yazma;
+one-shot makbuzunu silme; yeni sourcefull bitmeden dağıtım/kabul iddiası verme.
+
+15:01:29UTC mainCI37327480256 **7/7PASS**. Taze exactmain/cleanroot/Opus/workflow
+hash abddaf265f0355c3e7a7eab58af7fffbd97d705b58214506ac447e47f587aef9 ve
+no-existing-run kapıları sonrası yalnız bir development dispatch15:01:37–45UTC
+exit0; actualrun **37329464702**, job111828565259, exactD6CE. Girdi, exactpushCI,
+izlenebilirlik ve Chrome adımları SUCCESS;15:03 gerçek `Tam M2 komutunu çalıştır`
+**IN_PROGRESS** olarak okundu. Bu yalnız jobstart veya queue değil, komut adımıdır;
+sonuç henüz SUCCESS değildir. Ana dal sabit, productiond829/P7aynı. EskiDBCfull
+ve yeni headCI bu devam eden komutun yerine yazılmaz.
+
+## 5 Ekim 2026 15:26 UTC — gözlem sırasında dağıtım istisnasının somut sınıflandırılması
+
+Runbook'un gözlenebilirlik-only istisnası, canlı exact
+`d829dd06eb4aa68154f521667302e6744b67399e` ile birleşmiş exact
+`d6ce2ee642269c231d69bf5f1b02bc61bcfd3bb2` arasındaki tam paket için incelendi.
+Actual Opus5/205,273sn görüşü **NOT_ELIGIBLE / NOT_PROVEN**; modelUsage ayrıca
+`claude-haiku-4-5-20251001` yardımcı kullanımını içerir, gizlenmez. Tam paket rol
+sözleşmesi değişikliğini içerdiğinden gözlem içinde dağıtılmaz. Paket küçültülmez;
+mevcut T0/pencere korunur, dağıtım Gate10 sonrası sırada kalır. Bu tasarım görüşü
+uygulama GO, üretim erişim yetkisi veya tamamlanmış M2 kabulü değildir.
+
+Hakemin bütün gerekçeleri körlemesine kabul edilmedi: yanlış Prisma377–430 alıntısı
+Topic/Entry'ydi; gerçek User276, UserKind HUMAN|AGENT ve immutable migration739–740
+AGENT role/login CHECK ile doğrulandı. ADMIN hedefi yeni dal öncesi403 alır;
+AGENT+MODERATOR DB'de geçersizdir. Erişilebilir AGENT/USER grant için yeni açık409
+uygulama sözleşmesi değişikliğidir; eski canlı HTTP500 ölçülmedi. Yeni telemetri
+baytlarının farklı olması tek başına runbook istisnasını çürütmez; ancak bütün
+davranış parmak izi kanıtı yoktur. Seçilmiş dosya hashleri böyle bir kanıt sayılmaz.
+Strictwire/pairedapp+worker, safeCode constructor ve OpenAPI19alan kapanışları önceki
+exact kaynak/test görüşüyle korunur; kısaltılmış sınıflandırma girdisinin eksiği yeni
+regresyon değildir. O3 makbuz kaybında orphan korunması/otomatik DROP veya retry
+yapılmaması önceki deneme kaydında zaten vardır.
+
+Release Candidate artifact saklama süresi **bir gün**: bir haftalık kapanış için
+şimdi üretmek geçerli artifact sağlamaz. Workflow dispatch yapılmadı; artifact
+gerçek dağıtıma yakın taze exact kaynaktan üretilecek. Tam geliştirme koşusu
+37329464702/111828565259 aynı exactD6CE'de sürüyor; sonuç SUCCESS değildir.
+Yeni SSH/HTTP/DB/model/ayar/timer/restart/deploy veya T0 işlemi0. Goal aktiftir.
+
+Tekrarlama: bir sınıflandırma görüşünün eksik girdisini kanıtlanmış ürün hatası sayma;
+telemetri için tasarlanmış istisnayı tüm kayıt baytları eşit olmalı diye yeniden
+tanımlama; rol yamasını çıkarıp eski raporu yeniden pinleyerek pencereye uydurma;
+artifaktın bir günlük ömrünü haftalık teslim için yeterli sayma.
+
+## 5 Ekim 2026 15:31 UTC — son doğal kesit ve yeni sürüm takviminin uzlaştırma hazırlığı
+
+15:30:10.315UTC aynı scheduled observer **SUCCESS/exit0/üç-source-hash PASS**:
+280doğal/278terminal;210SUCCEEDED/52PARTIAL/14FAILED/2TIMED_OUT/2RUNNING.
+Teknik16/278≈**%5,755** hâlâ %5 hedefinin üstünde; önceki260terminale göre hata
+sayısı artmadı. Entry156başarılı/45ret/0FAILED/other1/payda201=**%22,388 ABOVE**;
+uyarı açık. Eski39ret dağılımı yeni45in dağılımı değildir. Ayar308/birthOFF/appCID/
+T0 ve kurulu observer hashleri korunur; finalReportEligible=false. Yerel pasif
+watcher64617 yalnız scheduled sonucu okudu ve exit0 ile kapandı. Yeni doğal koşu
+zorlama, ayar/CLI/model/worker/üretim yazması yok. Bu erken168h kabulü değildir.
+
+Exact Git kaynak arşivleri D829 ve D6CE, gerçek Node22 `--import tsx` ile
+çevrimdışı yüklendi; ağ bağlantısı preload ile reddedildi. Gerçek export:
+RUNTIME_PROMPT_PROFILE_HASH `05a9bffbfc631c8f3a31c7fb5cf1cf209c1b5841a31c0f5c524164c6fcad390a`
+iki sürümde aynı. Decision/normal-wire/action-worthiness JSON şemalarının ayrı
+SHA256'ları, faz sözlüğü ve çağrı5/okuma3 sınırları eşit. Bu yalnız ilgili
+model sözleşmesi/parmak izi kanıtıdır; bütün davranış eşliği, yeni üretim
+kapasite ölçümü veya gözlenebilirlik-only uygunluğu değildir. İlk tsxCLI denemesi
+preload'un yerel CLI IPC bağlantısını da reddetmesiyle exit1; üretim/model/DB
+çağrısı0. Focused Node loader yolu IPC'siz ve aynı ağ yasağıyla PASS verdi;
+ürün regresyonu değildir.
+
+Takvim çelişkisi somutlaştırıldı: tam karma paketi12Ekim eskiGate10 sonrası
+dağıtmak yeni168h gerekiyorsa19Ekim'e taşar;17Ekim19:50UTC yetkisi uzatılamaz.
+Yeni alternatif, teknik kapılardan sonra tam paketi şimdi teslim etmek, eski
+erken pencereyi NOT_PASS tarihçesi olarak korumak ve yeni gerçek T0+168h başlatmak.
+Doğal davranışın değişmediği veya eski pencerenin kesinFAIL olduğu varsayılmaz;
+teknik eşikler/safe-cause kapıları aynı kalır, dönemler havuzlanmaz. Kanonik
+PLAN değişikliği ve yeni exact uygulama/observer kapıları önce somutlaştırılacak.
+Salt okunur Opus tasarım hakemi40595 sürüyor; bu seçenek henüz uygulama veya
+dağıtım kararı değildir. Goal/kapsam aynı; süre veya kabul gevşetmesi yok.
+
+## 5 Ekim 2026 15:41 UTC — takvim hakemi; üretim kapıları kapanmadan eylem yok
+
+ActualOpus5/290,991sn salt okunur görüş: takvim/kanonik makbuz **KOŞULLU GO**;
+kod+üretim/T0 taslağı **REJECTED**, mevcut ön koşullar kapanmadan yürütülmez.
+Şartlar, tek ikame pencere/erken tarihçenin korunması, failure path safeCode
+kanıtı veya açık tek-deneme riski, tek aktif sıra, fullSUCCESS→docCI→artifact
+sırası, cutover ve rollback lease0/eşli runtime, observer dış-imaj sahipliği.
+ModelUsage Opus5 yanında haiku4.5 yardımcı kullanımını içerir. Astra turu0;
+yürütücüSol/hakemOpus farklı-model kuralının doğrudan uygulamasıdır.
+
+Yeni kaynak failure path'inde typed CODEX_UPSTREAM_UNAVAILABLE worker→strict
+usage şeması ve CODEX_RATE_LIMITED /fail→DB/replay/oneoutbox doğrudan mevcut
+worker95/API142 testlerinde kanıtlıdır. Source tree reviewedC29→mergedD6CE eşit,
+headPG35dosya513test PASS; yeni mergedfull halen sürüyor. Bu enstrümantasyonun
+çalıştığı kanıttır;16 erken üretim hatasının nedeninin düzeldiği veya ≤%5 olduğu
+kanıtı değildir. İlk gerçek takvim görüşü REJECTED olarak değişmeden korunur;
+plan taslağı şimdi şartları kaynak ve namedgates ile kapatır, yeni peer kapanışı
+bekler. Eski formal hedefi sessiz repin yok; cutover yapılmadı, yeniT0 yok.
+
+Kapasite actualexport eşliği freshmeasurement diye taşınmaz: pairedrelease
+sonrası doğal akışpaused ve yeniT0 öncesi taze cold/warm/dual kapısı ayrıldı.
+Observer zaten özel Git dışı dizindedir; source eşliğiyle karıştırılmaz. Gerçek
+sourceeşliği/sondokümancandidate artifact zinciri finalDONE084te ayrıca ölçülür.
+Ret audit'inin varlığı varsayılmaz; source recordAction ret sonrasındadır. Rol
+grant409 beklentisi activeyetkisiz403 veya suspended403 ile karıştırılmaz.
+
+15:36:53 yerel format/lint/type/M1requirements3/M2development464/77/25/2/0 PASS.
+Ardından yalnız belge taslağı güncellendi; yeni commit öncesi format tekrar
+gerekir. Yetkili GitHubrepo privatefalse/adminmaintainpushtrue; artifactinventory
+50active/324.278.650bayt. Bu hesap billingstorage kota/headroom kanıtı değildir.
+Yerelgh --slurp desteklemedi; geçersizflag nedeniyle artifact API çağrısı yoktu,
+--paginate+JSON decoder focusedreread ile inventory doğrulandı. Hiçbir artifact
+silinmedi veya workflowdispatch yapılmadı. Goal aynı/aktif; üretim işlemi0.
+
+Tekrarlama: koşullu doküman GOyu üretim GO sayma; REJECTED görüşü yeniden adlandırma;
+çalışan full sırasında maini ilerletme; kapasite exporteşliğini cold/warm ölçümü
+sayma; eski bitişi yeniT0 diye kullanma; Git dışı observeri imajın parçası sanma.
+
+## 5 Ekim 2026 15:49 UTC — yeni birleşmiş O4 tam geliştirme doğrulaması SUCCESS
+
+Exact **d6ce2ee642269c231d69bf5f1b02bc61bcfd3bb2**, run
+[37329464702](https://github.com/cerncaycisi/agentsozluk/actions/runs/37329464702),
+job111828565259 **SUCCESS**. Tam `verify:m2:development` adımı15:03:02–15:47:12UTC,
+**44 dakika10saniye**; son exactmain kapısı SUCCESS. Ana dal komut ve son kapı
+boyunca D6CE'de kaldı; gerçeksonuç ardından root/remote exactD6CE ve temiz ağaç
+doğrulandı. Opus'un birleşmiş full-source teslim koşulu kapandı; tarihsel
+156,653sn KOŞULLU GO görüşü yeniden adlandırılmaz.
+
+Doğrudan completedjob logu916.746bayt/SHA256
+`43b28b9be0a6f986403e3a03e8d390c2e7fe7ea07b76dbcffefb9b08e553fe6b`.
+M1 doğrulama adımlarında **2.385unit /513PG integration**, coverage tekrarında
+**2.898test**; satır%94,35/dal%86,57/fonksiyon%95,90, eşikler aynı.
+Sözlük91E2E; sonraki ajan adımlarında844unit/312integration/1simulation/24E2E
+PASS. Agent adımları ve coverage önceki M1 aşamalarındaki aynı testleri de içerir;
+bu sayılar distinctyeni test toplamı diye toplanmaz. Worker95/API142 kayıt+raw422/
+persist/replay testleri ilkkomut ve tekrarlarında doğrudan logda PASS.
+M1requirements3/M2development ve son exact-source kapıları da geçti.
+
+Bu yeni kaynak testi eskiDBC/full makbuzu yerine geçirilmedi. Test/geliştirme
+paketi tamamlandı; şimdi tek kanonik takvim makbuzu ve kendi exactCI teslimi
+bekler. Actual8129 kaynak/takvim şart-kapanış hakemi sürüyor; yeni üretim
+kapasite/pairedrelease/observer/newT0 veya Gate10/11/12/finalM2 yapılmış sayılmaz.
+CanlıD829/settings308/T0/worker aynı; goaloriginal kapsamıyla aktif.
+
+Tekrarlama: coverage/agent-stage tekrarlarını ayrı yeni test toplamına ekleme;
+geliştirme SUCCESS ile gerçek168h veya finalM2 satırlarını PASS yapma; exactsource
+kapısı bitmeden maini ilerletme; tarihsel koşullu görüşü koşulsuz GO diye çevirme.
+
+## 5 Ekim 2026 15:54 UTC — takvim şartlarının kaynak kapanışı
+
+ActualOpus5/218,980sn yeni kapanış görüşü **KOŞULLU GO**: kaynak failure-path
+şartı kapalı; B1–B4 belge kapanışı ve gerçek üretim kapıları ayrı. ModelUsage
+Opus5+haiku4.5, Astra turu0. Önceki290,991sn üretim-taslak REJECTED kaydı korunur.
+B1 kanonik runbook1605 sırasına rollback öncesi ve workerstop sonrası doğrudan
+RUNNING/CANCEL_REQUESTED/activelease0 +auditedpause/configuredtimeout+120 +
+app/runtime aynı eskiSHA olmadan resume yasağı eklendi. Bu canlı drenaj veya
+rollback makbuzu değil, yürütme ön koşulunun somut belge tanımıdır. B2 önceki
+kapasite son tarihi19Ekim00:04:18UTC aynıfingerprint ve T0+168h+grace şartına
+bağlandı; yeni sürüm taze gerçekcold/warm/dual önceliği korunur. B3 D6CE birleşme
+öncesiC29 CI7/PG513 ve birleşme sonrasıfullboyunca freeze sırası açıklandı.
+B4 worker95 önce yereldi; yeni tamamlanmışfull logunda15:05:17.042UTC ve tekrarları
+doğrudan95test PASS olduğu görüldü. Sayılar yeni test toplamı diye toplanmaz.
+
+Ana dal fullSUCCESS+sonkapı sonrası değiştirilebilir; henüz docs commit/push veya
+artifact yok. Beş belge değişir,750 kod/script/Prisma/workflow/package/lock
+dosyası aynı; adaycommit/source/remote/CI kapıları ayrıca yeniden doğrulanacak.
+Kapanış görüşü üretim/benchmark/observer/NewT0 yetkisi veya PASS değildir.
+Eylem kapsamı Gökhan'ın aynı3–17Ekim yetkisinden gelir, teknik kapılar korunur.
+İlk yerel belge güncellemesi indentation assertion'da durdu: yalnız runbook
+yazılmıştı, PLAN/STATUS/ATTEMPT henüz değişmemişti. Değişen dosyalar doğrudan
+okunup kalan belge değişimi uygulandı; Git veya üretim eylemi tekrarlanmadı.
+Eski Gate10-sonrası-dağıtım cümlesi de yeni tek sırayla uzlaştırıldı.

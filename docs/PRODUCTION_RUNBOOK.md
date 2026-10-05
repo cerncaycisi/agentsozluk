@@ -1603,12 +1603,22 @@ elle temizlikten sonra mümkündür. Prod şeması değişmeden önceki bir hata
 aşamayı `image-verified`'e geri aldığından yeniden koşu dondurmayı baştan kurar.
 
 **Elle geri dönüş (imaj).** Veritabanı restore edilmez; yeni tablolar kalır. Sıra: `compose stop
-caddy` → worker drene + stop → `agent-sozluk:production` = önceki imaj kimliği
+caddy` → audited global pause ve configured maksimum koşu timeout'u +120sn içinde
+worker'ın doğal drenajı → **RUNNING=0 / CANCEL_REQUESTED=0 / active lease=0** doğrudan
+sorgu makbuzu → worker stop ve inactive/dead birim doğrulaması → aynı üç sıfırın
+worker durduktan sonra tekrar sorgu makbuzu → `agent-sozluk:production` = önceki imaj kimliği
 (`.release-op-<sha>/previous-image-id`) → `runtime/current` = önceki release
 (`previous-runtime`) → önceki imajla migration'sız override'lı `up -d --force-recreate app` → iç
 health/ready + imaj/revision kimliği → `compose start caddy` → dış health → etiket, çalışan app
 ve `runtime/current` önceki sürümde eşleşince `/opt/agent-sozluk/runtime/.migration-hold`
-kaldırılır (yoksa worker açılamaz) → worker start ve birim doğrulaması. Yedek dosyası yalnız felaket içindir; yedekten sonraki yazmalar restore'da kaybolur.
+kaldırılır (yoksa worker açılamaz) → worker start ve birim doğrulaması. Çalışan app imajı
+ve immutable runtime eski aynı exact SHA'da eşleşmeden worker veya global resume açılmaz.
+Drenajın süreyi doldurması sıfır kanıtı değildir; timeout, okunamayan sorgu veya sıfır
+olmayan değer halinde imaj/runtime geri geçişi başlamaz. Uçuşta yeni-worker lease'i
+varken eski strict API açılmaz; run cancel, genel backend kill veya DB reset kullanılmaz.
+Durdurulmuş worker altında app+runtime eşli geçişi kontrollü bir işlemdir; iki servisin
+tek OS atomik komutla değiştiği iddia edilmez. Yedek dosyası yalnız felaket içindir;
+yedekten sonraki yazmalar restore'da kaybolur.
 
 ### Gate 8: deploy, additive migration and V1 preservation
 
