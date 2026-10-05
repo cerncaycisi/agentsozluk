@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 02:43 UTC — P7 birinci saat gözlemi sürüyor; Gate12 uyarlamasının kaynak kapıları kapandı.**
+**5 Ekim 03:44 UTC — doğal akış ve O4 gözlemcisi çalışıyor; CI süre düzeltmesi son kapıda.**
 Goal aktiftir. M2/DONE-082 henüz `BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
 Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
@@ -48,7 +48,9 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 - Ölçüm makbuzu main3bdf613, CI37254860327 **7/7 PASS**. Gate12 hazırlığında ilk-M2
   on-profil SQL/düz metin/cleanup sınırı ve süreli drain/OID-owner-operation kapıları
   Opus54,798s+118,901s koşullarıyla kaynakta kapandı; ilgili test21/21.
-  Görüşler KOŞULLU GO olarak korunur; final exact CI ayrıca izlenir. Bu hazırlık canlı
+  Görüşler KOŞULLU GO olarak korunur; main19fc CI37256720380 coverage15dk sınırında
+  CANCELLED, validate bağımlılık nedeniyle FAIL. Test308/2846 geçti; coverage PASS değildir.
+  Job20/adım16dk düzeltmesi son exact CI gerektirir. Bu hazırlık canlı
   backup/restore/reboot veya Gate12 PASS değildir.
 
 ### Tek aktif sıra
@@ -57,10 +59,14 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   Başlangıç bakımı12 REFLECTION başarılı/1timeout; geçici ACK uyarısı02:03 yenilenmesiyle
-   müdahalesiz kapandı;02:30 kesitinde SOURCE_REFRESH batch’i sırasında tekrar açık.
-   02:31 bakım35reflection başarılı/1timeout;19source refresh başarılı/2çalışan/15bekleyen.
-   Doğal koşu hâlâ0; sonraki loader/ACK ve doğal coverage izlenir; bakım doğal koşu değildir.
+   03:44 actual O4 kesitinde16 doğal uyanış:12SUCCEEDED/3PARTIAL/1RUNNING;
+   teknik hata0, terminal yazar15/36;≥3terminal doğal yazar0/36, P4 sunumu3.
+   ACK03:39:03.805UTC/324sn taze, uyarı0; worker restart0.
+   O4 SQL137ms/OS AVAILABLE; disk%69/24.018.628.608bayt boş; entry ret3/13
+   (%23,077) SMALL_SAMPLE, sağlayıcı/timeout sayıları0. Saatlik takip sürer.
+   Uzun SOURCE_REFRESH bakımından sonra loader ve doğal akış müdahalesiz ilerledi.
+   Önceki stale kesitler saklanır; bakım doğal denominator değildir. Tam yazar coverage
+   ve terminalleşme izlenir; bu erken kesit Gate10 veya davranış faydası kanıtı değildir.
    İstem/model/effort/ayar/policy/manual persona değişirse yeni T0 gerekir.
    Olağan doğal hafıza/reflection/evrim ayrı kayıtlanır; yeni shared-Codex lab/benchmark yok.
 2. **Gate10 tam rapor → Gate11/12:** süre dolunca doğal kohort, yazar başına ≥3terminal,

@@ -5210,3 +5210,94 @@ M2/DONE-082 BLOCKED ve P7 IN_PROGRESS_NOT_PASS korunur.
 Tekrarlama: ilk-M2 on-profil lifecycle SQL’ini güncel topluma uygulama; function bağlamı
 olmadan lease guard’ını yalnız run-creation sanma; restore izolasyon/sahiplik guard’ını
 çeviri sırasında kaybetme; uzun bakım ACK uyarısını gizleme veya doğal başarıya çevirme.
+
+## 5 Ekim 03:30 UTC — doğal akış ve coverage süre teşhisi
+
+**03:30:10.235UTC otomatik service success/exit0:** gerçek pencere2,287saat;
+12 doğal NORMAL_WAKE:8SUCCEEDED/2PARTIAL/2RUNNING, P4 doğal kart sunumu3.
+ACK03:25:47.263UTC/263sn taze, uyarı0; worker PID2270111/NRestarts0,
+app/image/runtime d829,36credentials/iki hat ve health/ready200/200 sabit.
+Manuel heartbeat/tick/model koşusu/cancel/restart yapılmadı. Önceki bakım/stale
+kesitler saklanır; P4 sunumu davranış faydası veya pozitif ödül kanıtı değildir.
+P7 IN_PROGRESS_NOT_PASS, gerçek168saat/grace ve M2/DONE-082 BLOCKED aynı.
+
+Main `19fc614a816da774ef05514ec4691b83f5f38ef0`, CI`37256720380`:
+beş paralel job başarılı, coverage`111595264416` CANCELLED ve validate
+`111598291220` bağımlılık sonucu FAIL. GitHub annotation:
+`The job has exceeded the maximum execution time of 15m0s`.
+Job02:46:39; container02:46:40–52, checkout52–54, setup54–02:47:10,
+migration10–12, coverage02:47:12–03:01:41. Log308/308dosya ve2846/2846test PASS,
+Vitest867,84sn; coverage final eşik sonucu doğrulanmadı. Upload03:01:41–43
+başarılı olması coverage PASS değildir. App/runtime regresyonu gösteren assertion yok.
+
+CI kaynak düzeltmesi `a0a96500957e210dbaa1262bb38b45e1fb37240d`:
+yalnız coverage job20dk/adım16dk. Testlerin timeout ayarı, testler ve coverage
+eşikleri korunur. Ayrı adım sınırı rapor takılmasını job sınırından ayırmayı sağlar;
+takılma dışlanmış değildir, çözüm ancak son exact CI ile ölçülecek.
+Odaklı10/10 ve format/lint/typecheck PASS. İlk gerçek Opus ikinci incelemesindeki
+A1 koşulu actual step süreleriyle, A2 ayrı adım sınırıyla kaynakta kapandı;
+ci.yml son kaynak incelemesi108,208sn KOŞULLU GO; kaynak koşulları kapandı, exact CI açık.
+
+O4 taslağı henüz kurulmadı. İlk `claude-opus-5`176,847sn KOŞULLU GO;
+ikinci444,702sn KOŞULLU GO; yardımcı `claude-haiku-4-5-20251001` ayrıca kayıtlı.
+İkinci hakem OS örneklemesinin core kaybettirme riskini buldu. Son taslakta
+P7 core/HTTP önce; OS ayrı3sn child, SQL ayrı5sn READ ONLY. Hata null/UNAVAILABLE,
+core korunur; dört sabit CODEX_SCHEMA kodu izin listesine eklendi, bilinmeyen değer
+md5 kalır. Byte hash doğrudan gönderilen byte'a bağlı; içerik adresli çift her tur
+kontrol edilir, operatör UID'si hâlâ güven sınırıdır. Same-role-only yedek sayacı
+öteki rollerin/yedek türlerinin yokluğunu kanıtlamaz.22/22 özel offline hata kontrolü
+PASS; o kesitte üretim/model koşusu yapılmadı. Son actual kapanış aşağıda;
+koşullu görüşler koşulsuz GO diye yeniden adlandırılmaz.
+
+Tekrarlama: test PASS'ini coverage PASS sayma; yavaşlık/takılma ayrışmadan bütçeyi
+tekrar artırma; opsiyonel OS/SQL hatasını P7 verisinin kaybına dönüştürme; içerik
+adresli yerel dosyayı güvenlik bakımından değişmez sayma; doğal kart sunumunu fayda
+veya7günlük kabul diye yazma.
+
+### O4 kaynak ve actual service kapanışı — 03:44 UTC
+
+Son gerçek `claude-opus-5`108,208sn **KOŞULLU GO**, yardımcı Haiku kayıtlı.
+Hakem yalnız verilen kaynak paketini okudu; fetch/test/üretim erişimi yapmadı.
+Koşullar kaynakla kapandı: loaded+inactive ve exact python3/observer ExecStart
+kurulumda assert edildi; bozuk/list son-gözlem dosyası caller ve bootstrap'ta korunur.
+Son24/24 offline kontrol PASS. Hakemin “Upload coverage always yok” iddiası exact
+ci.yml:225 `if: always()` ile çürütüldü; `modelUsage` bir dict olduğundan Python `in`
+tam anahtar eşliğidir, substring değildir. Son küçük kapanış düzeltmeleri dosya hash'leriyle
+ayrı makbuza bağlandı; koşullu görüş koşulsuz GO diye değiştirilmedi.
+
+İlk yeni bozuk-JSON-list fixture bootstrap `AttributeError` gösterdi. Aynı denemede
+inline closure betiği SyntaxError verdi; installer `REVIEW_CONDITIONS_NOT_RECONCILED`
+ile kaynak/pointer değişmeden durdu. Shell sonraki eski readonly service'i başlattı:
+03:43:11 success/exit0, uygulama/model/ayar değişmedi. Komut dizisi artık `set -eu`;
+caller/bootstrap dict kontrolü ve closure düzeltilip24/24 doğrulandı. Kör kurulum tekrarı yok.
+
+**03:44:26.792UTC yerel atomik kurulum:** aynı observe.lock, loaded/inactive/ExecStart
+kanıtı; içerik adresli çift `57e8c3c4de1ed0b02db8be3fb35e81e7839e4f4685eb8ed37cdc44d25a37bb49`,
+bootstrap `b768c4d81116279cb45abe0e15bdf0cf95b2c463b754920b3892930c127d6b8e`,
+remote `5bad738285012042ba3db5ba632b60466ca1730d0224fc2c1296e2f0ec65532e`.
+Dosyalar0400/dizin0500; aynı operatör UID'sinin yazma yetkisi güven sınırıdır,
+güvenlik bakımından değişmezlik iddiası yok. Eski remote/pair korundu; user unit/timer
+kaynak hash'leri aynı. Bunlar Git dışı özel operatör dosyalarıdır; appSHA d829,
+repo context19fc614; yeni CI commit'inin içinde oldukları iddia edilmez.
+
+**03:44:27.903UTC actual systemd service success/exit0:**16 doğal uyanış,
+12SUCCEEDED/3PARTIAL/1RUNNING, teknik hata0; terminal yazar15/36,
+≥3terminal doğal yazar0/36; P4 doğal sunumu3. ACK324sn, uyarı0,
+health/ready200/200, worker PID2270111/NRestarts0. O4 READ ONLY SQL137ms,
+OS AVAILABLE; root%69/24.018.628.608bayt boş, runtimeUID999 Codex örneği
+1proses/165.638.144bayt RSS; proses sayısı hat veya koşu sağlığı değildir.
+Entry10başarılı/3ret/0FAILED, ret%23,077, payda13: **SMALL_SAMPLE**;
+%20 eşiği için yeterli örneklem yok, başarılı kabul veya otomatik düzeltme yok.
+Rate/quota, upstream, timeout/diğer FAILED0. Başka rollerin yedek görünürlüğü
+UNKNOWN/null; same-role-only0 genel yedek yokluğu kanıtı değildir.
+Pencere-createdAt bakım kümesi null; T0 öncesinde açılıp pencere içinde çalışan eski
+bakım batch'inin tarihsel ölçümü bununla silinmez. Ayrı SQL zamanları aynı snapshot değildir.
+
+Bu Sol geliştirme/CI teşhis oturumu P7 sırasında sürüyor; worker ile paylaşılan kota
+etkisi ayrıca ölçülmedi. Opus farklı sağlayıcıdır; süreleri ve yerel yük aralığı makbuzludur.
+Observer runtime model çağrısı oluşturmaz; bu, kurgu gereği sınırdır. App/worker/model/
+ayar/T0 değişmedi. O4 uygulama deploy'u değildir; saatlik/deadline timer ve goal aktif.
+Son exact CI henüz açık; P7/Gate10/11/12 ve M2/DONE-082 tamamlanmış sayılmaz.
+
+Tekrarlama: shell devamını başarısız kurulum kapısı diye yorumlama; ilk hatada dur;
+peer iddiasını kaynakla doğrula; eksik/sınırlı ölçümü sıfır-yokluk veya PASS'a çevirme.
