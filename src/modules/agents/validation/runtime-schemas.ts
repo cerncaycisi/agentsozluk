@@ -1,4 +1,7 @@
-import { runtimeProviderExecutionSafeCodes } from "@/modules/agents/domain/provider-failure-telemetry";
+import {
+  runtimeCodexPhases,
+  runtimeProviderExecutionSafeCodes,
+} from "@/modules/agents/domain/provider-failure-telemetry";
 import { runtimePurposeChangesSchema } from "@/modules/agents/validation/purpose-schemas";
 import { z } from "zod";
 import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
@@ -375,15 +378,10 @@ export const runtimeReadTopicLimit = 3;
  * 440 sn'lik karar süresinin hangi fazdan geldiği ölçülemiyordu; hangi fazın
  * pahalı olduğu bilinmeden hiçbir iyileştirme hedeflenemez.
  */
-export const runtimeCodexPhases = [
-  "BROWSE",
-  "DECISION",
-  "DECISION_REPAIR",
-  "ACTION_WORTHINESS",
-  "CONTENT_REPAIR",
-] as const;
-
-export type RuntimeCodexPhase = (typeof runtimeCodexPhases)[number];
+export {
+  runtimeCodexPhases,
+  type RuntimeCodexPhase,
+} from "@/modules/agents/domain/provider-failure-telemetry";
 
 const codexIntervalSchema = z
   .object({

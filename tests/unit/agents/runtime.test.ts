@@ -11,7 +11,11 @@ import {
 } from "@/modules/agents/validation/runtime-schemas";
 import { runtimeDecisionSchema } from "@/runtime/output";
 
-import { runtimeProviderExecutionSafeCodes } from "@/modules/agents/domain/provider-failure-telemetry";
+import {
+  runtimeProviderExecutionSafeCodes,
+  runtimeProviderFailureStages,
+  runtimeCodexPhases,
+} from "@/modules/agents/domain/provider-failure-telemetry";
 
 const leaseToken = "l".repeat(43);
 
@@ -443,4 +447,14 @@ describe("provider failure telemetry wire privacy", () => {
       }).success,
     ).toBe(false);
   });
+});
+
+it("keeps terminal provider failure phases within the shared wire dictionary", () => {
+  for (const { phase } of Object.values(runtimeProviderFailureStages))
+    expect(runtimeCodexPhases).toContain(phase);
+  expect(Object.values(runtimeProviderFailureStages).map(({ errorCode }) => errorCode)).toEqual([
+    "CODEX_DECISION_FAILED",
+    "CODEX_DECISION_REPAIR_FAILED",
+    "CODEX_ACTION_WORTHINESS_FAILED",
+  ]);
 });

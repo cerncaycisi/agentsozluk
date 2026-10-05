@@ -20,6 +20,7 @@ import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-po
 import { Prisma, PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { POST as completeRoute } from "@/app/api/v1/internal/agent-runtime/runs/[runId]/complete/route";
 import { POST as failRoute } from "@/app/api/v1/internal/agent-runtime/runs/[runId]/fail/route";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
 import type { ActorContext } from "@/modules/auth/domain/actor";
@@ -9837,6 +9838,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         { params: Promise.resolve({ runId }) },
       );
       expect(invalid.status).toBe(422);
+      expect(await invalid.text()).not.toContain("RAW_STDERR_SECRET");
       expect(
         await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: runId } }),
       ).toMatchObject({ runStatus: "RUNNING", usageMetadata: null });
@@ -9863,6 +9865,94 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ).toBe(1);
     },
   );
+
+  it("persists a recovered provider cause through complete and redacts invalid input", async () => {
+    const fixture = await createFixture();
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const workerId = "provider-cause-complete-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const at = new Date().toISOString();
+    const usageMetadata = {
+      durationMs: 1,
+      provider: "codex-cli",
+      codexIntervals: [
+        {
+          startedAt: at,
+          finishedAt: at,
+          durationMs: 0,
+          phase: "BROWSE",
+          providerSafeCode: "CODEX_RATE_LIMITED",
+        },
+        { startedAt: at, finishedAt: at, durationMs: 0, phase: "DECISION" },
+      ],
+    };
+    const payload = {
+      workerId,
+      leaseToken: leased.run!.leaseToken,
+      outcome: "SUCCEEDED",
+      state: completedRuntimeFastState,
+      safeRunSummary: {
+        operationSummary: "Gezinme hatası sonrasında güvenli karar tamamlandı.",
+        observedItemIds: [],
+        proposedActionCount: 0,
+        completedActionCount: 0,
+        rejectedActionCount: 0,
+        shortRationale: "Bu koşuda güvenli yeni action gerekmiyor.",
+      },
+      usageMetadata,
+      performanceMetrics: {},
+    };
+    const makeRequest = (body: unknown, key: string) =>
+      new NextRequest(`http://localhost/api/v1/internal/agent-runtime/runs/${runId}/complete`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${fixture.credential}`,
+          "content-type": "application/json",
+          "idempotency-key": key,
+        },
+        body: JSON.stringify(body),
+      });
+    const invalid = await completeRoute(
+      makeRequest(
+        {
+          ...payload,
+          usageMetadata: {
+            ...usageMetadata,
+            codexIntervals: [
+              { ...usageMetadata.codexIntervals[0], providerSafeCode: "RAW_COMPLETE_SECRET" },
+            ],
+          },
+        },
+        "invalid-complete-cause",
+      ),
+      { params: Promise.resolve({ runId }) },
+    );
+    expect(invalid.status).toBe(422);
+    expect(await invalid.text()).not.toContain("RAW_COMPLETE_SECRET");
+    expect(
+      await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: runId } }),
+    ).toMatchObject({ runStatus: "RUNNING", usageMetadata: null });
+    const response = await completeRoute(makeRequest(payload, "safe-complete-cause"), {
+      params: Promise.resolve({ runId }),
+    });
+    expect(response.status).toBe(200);
+    const stored = await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(stored).toMatchObject({ runStatus: "SUCCEEDED", errorCode: null, usageMetadata });
+    const replay = await completeRoute(makeRequest(payload, "safe-complete-cause"), {
+      params: Promise.resolve({ runId }),
+    });
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get("Idempotent-Replay")).toBe("true");
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: { aggregateId: runId, eventType: "agent.run.completed" },
+      }),
+    ).toBe(1);
+  });
 
   it("requires idempotency and replays lease without creating a second claim", async () => {
     const fixture = await createFixture(2);

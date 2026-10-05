@@ -18,6 +18,7 @@ import {
   summarizeFreshSourceCoverage,
   summarizeEntryRejections,
   summarizeProviderFailureCauses,
+  summarizeProviderFailureCalls,
 } from "../../../scripts/society-report-helpers";
 
 describe("society report window parsing", () => {
@@ -467,6 +468,8 @@ describe("safe provider failure cause coverage", () => {
       runs: 5,
       knownCauseRuns: 3,
       unknownCauseRuns: 2,
+      unknownTimeoutRuns: 2,
+      unknownLegacyOrMissingRuns: 0,
       rateLimitedRuns: 1,
       upstreamUnavailableRuns: 1,
       codes: [
@@ -526,5 +529,88 @@ describe("safe provider failure cause coverage", () => {
       rateLimitedRuns: 1,
       upstreamUnavailableRuns: 1,
     });
+  });
+});
+
+describe("recorded provider failure calls are separate from final run causes", () => {
+  it("includes recovered BROWSE and CONTENT_REPAIR calls without changing run cause counts", () => {
+    const runs = [
+      {
+        runStatus: "SUCCEEDED",
+        errorCode: null,
+        usageMetadata: {
+          codexIntervals: [
+            { phase: "BROWSE", providerSafeCode: "CODEX_RATE_LIMITED" },
+            { phase: "DECISION" },
+          ],
+        },
+      },
+      {
+        runStatus: "PARTIAL",
+        errorCode: null,
+        usageMetadata: {
+          codexIntervals: [
+            { phase: "DECISION" },
+            { phase: "CONTENT_REPAIR", providerSafeCode: "CODEX_UPSTREAM_UNAVAILABLE" },
+          ],
+        },
+      },
+      {
+        runStatus: "FAILED",
+        errorCode: "CODEX_ACTION_WORTHINESS_FAILED",
+        usageMetadata: {
+          codexIntervals: [{ phase: "ACTION_WORTHINESS", providerSafeCode: "CODEX_RATE_LIMITED" }],
+        },
+      },
+    ];
+    expect(summarizeProviderFailureCalls(runs)).toEqual({
+      calls: 3,
+      runsWithRecordedCause: 3,
+      codes: [
+        ["CODEX_RATE_LIMITED", 2],
+        ["CODEX_UPSTREAM_UNAVAILABLE", 1],
+      ],
+      byPhase: [
+        ["ACTION_WORTHINESS", "CODEX_RATE_LIMITED", 1],
+        ["BROWSE", "CODEX_RATE_LIMITED", 1],
+        ["CONTENT_REPAIR", "CODEX_UPSTREAM_UNAVAILABLE", 1],
+      ],
+    });
+    expect(summarizeProviderFailureCauses(runs)).toMatchObject({
+      runs: 1,
+      knownCauseRuns: 1,
+      rateLimitedRuns: 1,
+      unknownCauseRuns: 0,
+    });
+  });
+  it("counts repeated known causes in call units and never renders a raw phase or code", () => {
+    const summary = summarizeProviderFailureCalls([
+      {
+        runStatus: "PARTIAL",
+        usageMetadata: {
+          codexIntervals: [
+            { providerSafeCode: "CODEX_RATE_LIMITED" },
+            { phase: "RAW_SECRET_PHASE", providerSafeCode: "CODEX_RATE_LIMITED" },
+            { phase: "DECISION", providerSafeCode: "RAW_SECRET_CODE" },
+            null,
+          ],
+        },
+      },
+      {
+        runStatus: "RUNNING",
+        usageMetadata: {
+          codexIntervals: [{ phase: "BROWSE", providerSafeCode: "CODEX_RATE_LIMITED" }],
+        },
+      },
+      { runStatus: "SUCCEEDED", usageMetadata: null },
+      { runStatus: "FAILED", usageMetadata: { codexIntervals: "RAW_SECRET" } },
+    ]);
+    expect(summary).toEqual({
+      calls: 2,
+      runsWithRecordedCause: 1,
+      codes: [["CODEX_RATE_LIMITED", 2]],
+      byPhase: [["UNKNOWN", "CODEX_RATE_LIMITED", 2]],
+    });
+    expect(JSON.stringify(summary)).not.toContain("RAW_SECRET");
   });
 });

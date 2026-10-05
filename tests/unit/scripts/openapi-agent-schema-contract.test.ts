@@ -1,3 +1,8 @@
+import {
+  runtimeProviderExecutionSafeCodes,
+  runtimeCodexPhases,
+} from "@/modules/agents/domain/provider-failure-telemetry";
+import { runtimeCodexInvocationLimit } from "@/modules/agents/validation/runtime-schemas";
 import path from "node:path";
 import SwaggerParser from "@apidevtools/swagger-parser";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -134,6 +139,22 @@ describe("OpenAPI agent mutation schema contracts", () => {
     manualRun.properties.dailyMaximumOverride = { type: "boolean" };
     expect(() => assertAgentMutationSchemaContracts(drifted)).toThrow(
       /ManualAgentRunInput.dailyMaximumOverride must be absent/u,
+    );
+  });
+});
+
+describe("OpenAPI provider telemetry wire alignment", () => {
+  it("keeps the safe code and phase dictionaries equal to the runtime contract", () => {
+    const schema = sourceDocument.components?.schemas?.RuntimeCodexInterval;
+    expect(inlineSchema(schema?.properties?.providerSafeCode, "providerSafeCode").enum).toEqual([
+      ...runtimeProviderExecutionSafeCodes,
+    ]);
+    expect(inlineSchema(schema?.properties?.phase, "phase").enum).toEqual([...runtimeCodexPhases]);
+  });
+  it("keeps the interval budget equal to the worker wire contract", () => {
+    const schema = sourceDocument.components?.schemas?.RuntimeUsageMetadata;
+    expect(inlineSchema(schema?.properties?.codexIntervals, "codexIntervals").maxItems).toBe(
+      runtimeCodexInvocationLimit,
     );
   });
 });

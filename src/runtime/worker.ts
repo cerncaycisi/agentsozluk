@@ -1,5 +1,6 @@
 import {
   isRuntimeProviderExecutionSafeCode,
+  runtimeProviderFailureStages,
   type RuntimeProviderExecutionSafeCode,
 } from "@/modules/agents/domain/provider-failure-telemetry";
 import { authorFeedbackKey } from "@/modules/agents/domain/rewards";
@@ -284,11 +285,11 @@ const runtimeWorkerFailures = {
     errorSummary: "Runtime karar çağrısını güvenli biçimde hazırlayamadı.",
   },
   decisionProvider: {
-    errorCode: "CODEX_DECISION_FAILED",
+    errorCode: runtimeProviderFailureStages.decisionProvider.errorCode,
     errorSummary: "İlk Codex karar çağrısı güvenli biçimde tamamlanamadı.",
   },
   decisionRepairProvider: {
-    errorCode: "CODEX_DECISION_REPAIR_FAILED",
+    errorCode: runtimeProviderFailureStages.decisionRepairProvider.errorCode,
     errorSummary: "Codex karar onarım çağrısı güvenli biçimde tamamlanamadı.",
   },
   decisionOutput: {
@@ -300,7 +301,7 @@ const runtimeWorkerFailures = {
     errorSummary: "Runtime karar kanıtlarını güvenli perception kataloğuna bağlayamadı.",
   },
   actionWorthinessProvider: {
-    errorCode: "CODEX_ACTION_WORTHINESS_FAILED",
+    errorCode: runtimeProviderFailureStages.actionWorthinessProvider.errorCode,
     errorSummary: "Codex action-worthiness çağrısı güvenli biçimde tamamlanamadı.",
   },
   actionWorthinessOutput: {

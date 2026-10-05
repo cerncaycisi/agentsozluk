@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import {
   isRuntimeProviderExecutionSafeCode,
+  isRuntimeCodexPhase,
+  runtimeProviderFailureStages,
+  type RuntimeCodexPhase,
   type RuntimeProviderExecutionSafeCode,
 } from "@/modules/agents/domain/provider-failure-telemetry";
 export {
@@ -108,11 +111,74 @@ export function isTerminalRunStatus(value: string): boolean {
   return TERMINAL_RUN_STATUSES.has(value);
 }
 
-const providerFailurePhases = new Map([
-  ["CODEX_DECISION_FAILED", "DECISION"],
-  ["CODEX_DECISION_REPAIR_FAILED", "DECISION_REPAIR"],
-  ["CODEX_ACTION_WORTHINESS_FAILED", "ACTION_WORTHINESS"],
-]);
+const providerFailurePhases = new Map<string, RuntimeCodexPhase>(
+  Object.values(runtimeProviderFailureStages).map(({ errorCode, phase }) => [errorCode, phase]),
+);
+
+function telemetryRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function providerIntervals(usageMetadata: unknown): readonly unknown[] {
+  const intervals = telemetryRecord(usageMetadata)?.codexIntervals;
+  return Array.isArray(intervals) ? intervals : [];
+}
+
+/** Birim: çağrı; kurtarılmış/yutulmuş hatalar dahil, son koşu nedeni değildir. */
+export function summarizeProviderFailureCalls(
+  runs: readonly { runStatus: string; usageMetadata: unknown }[],
+): {
+  calls: number;
+  runsWithRecordedCause: number;
+  codes: Array<[RuntimeProviderExecutionSafeCode, number]>;
+  byPhase: Array<[RuntimeCodexPhase | "UNKNOWN", RuntimeProviderExecutionSafeCode, number]>;
+} {
+  const codes = new Map<RuntimeProviderExecutionSafeCode, number>();
+  const byPhase = new Map<
+    RuntimeCodexPhase | "UNKNOWN",
+    Map<RuntimeProviderExecutionSafeCode, number>
+  >();
+  let calls = 0;
+  let runsWithRecordedCause = 0;
+  for (const run of runs) {
+    if (!isTerminalRunStatus(run.runStatus)) continue;
+    let hasCause = false;
+    for (const interval of providerIntervals(run.usageMetadata)) {
+      const record = telemetryRecord(interval);
+      const code = record?.providerSafeCode;
+      if (!isRuntimeProviderExecutionSafeCode(code)) continue;
+      const phaseValue = record?.phase;
+      const phase = isRuntimeCodexPhase(phaseValue) ? phaseValue : "UNKNOWN";
+      calls += 1;
+      hasCause = true;
+      codes.set(code, (codes.get(code) ?? 0) + 1);
+      const phaseCounts = byPhase.get(phase) ?? new Map<RuntimeProviderExecutionSafeCode, number>();
+      phaseCounts.set(code, (phaseCounts.get(code) ?? 0) + 1);
+      byPhase.set(phase, phaseCounts);
+    }
+    if (hasCause) runsWithRecordedCause += 1;
+  }
+  return {
+    calls,
+    runsWithRecordedCause,
+    codes: [...codes.entries()].sort(([a], [b]) => a.localeCompare(b)),
+    byPhase: [...byPhase.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .flatMap(([phase, counts]) =>
+        [...counts.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(
+            ([code, count]): [
+              RuntimeCodexPhase | "UNKNOWN",
+              RuntimeProviderExecutionSafeCode,
+              number,
+            ] => [phase, code, count],
+          ),
+      ),
+  };
+}
 
 /**
  * Çağrı sayısı değil, verilen terminal kohorttaki sağlayıcı nedeniyle kapanan koşular.
@@ -125,6 +191,8 @@ export function summarizeProviderFailureCauses(
   runs: number;
   knownCauseRuns: number;
   unknownCauseRuns: number;
+  unknownTimeoutRuns: number;
+  unknownLegacyOrMissingRuns: number;
   rateLimitedRuns: number;
   upstreamUnavailableRuns: number;
   codes: Array<[RuntimeProviderExecutionSafeCode, number]>;
@@ -132,6 +200,7 @@ export function summarizeProviderFailureCauses(
   const counts = new Map<RuntimeProviderExecutionSafeCode, number>();
   let failures = 0;
   let unknownCauseRuns = 0;
+  let unknownTimeoutRuns = 0;
   for (const run of runs) {
     if (!["FAILED", "TIMED_OUT", "PARTIAL"].includes(run.runStatus)) continue;
     const stage = providerFailurePhases.get(run.errorCode ?? "");
@@ -139,18 +208,13 @@ export function summarizeProviderFailureCauses(
     if (!stage && !legacyCause && run.errorCode !== "CODEX_TIMEOUT") continue;
     failures += 1;
     let cause = legacyCause;
-    if (stage && run.usageMetadata && typeof run.usageMetadata === "object") {
-      const intervals = (run.usageMetadata as Record<string, unknown>).codexIntervals;
-      const last = Array.isArray(intervals) ? intervals.at(-1) : null;
-      if (
-        last &&
-        typeof last === "object" &&
-        last.phase === stage &&
-        isRuntimeProviderExecutionSafeCode(last.providerSafeCode)
-      ) {
+    if (stage) {
+      const last = telemetryRecord(providerIntervals(run.usageMetadata).at(-1));
+      if (last?.phase === stage && isRuntimeProviderExecutionSafeCode(last.providerSafeCode)) {
         cause = last.providerSafeCode;
       }
     }
+    if (run.errorCode === "CODEX_TIMEOUT") unknownTimeoutRuns += 1;
     if (cause) counts.set(cause, (counts.get(cause) ?? 0) + 1);
     else unknownCauseRuns += 1;
   }
@@ -158,6 +222,8 @@ export function summarizeProviderFailureCauses(
     runs: failures,
     knownCauseRuns: failures - unknownCauseRuns,
     unknownCauseRuns,
+    unknownTimeoutRuns,
+    unknownLegacyOrMissingRuns: unknownCauseRuns - unknownTimeoutRuns,
     rateLimitedRuns: counts.get("CODEX_RATE_LIMITED") ?? 0,
     upstreamUnavailableRuns: counts.get("CODEX_UPSTREAM_UNAVAILABLE") ?? 0,
     codes: [...counts.entries()].sort(([left], [right]) => left.localeCompare(right)),

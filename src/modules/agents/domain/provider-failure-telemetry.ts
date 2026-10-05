@@ -24,3 +24,26 @@ export function isRuntimeProviderExecutionSafeCode(
     runtimeProviderExecutionSafeCodes.some((safeCode) => safeCode === value)
   );
 }
+
+export const runtimeCodexPhases = [
+  "BROWSE",
+  "DECISION",
+  "DECISION_REPAIR",
+  "ACTION_WORTHINESS",
+  "CONTENT_REPAIR",
+] as const;
+export type RuntimeCodexPhase = (typeof runtimeCodexPhases)[number];
+
+/** Worker ve raporun ortak terminal sağlayıcı aşamaları. */
+export const runtimeProviderFailureStages = {
+  decisionProvider: { errorCode: "CODEX_DECISION_FAILED", phase: "DECISION" },
+  decisionRepairProvider: { errorCode: "CODEX_DECISION_REPAIR_FAILED", phase: "DECISION_REPAIR" },
+  actionWorthinessProvider: {
+    errorCode: "CODEX_ACTION_WORTHINESS_FAILED",
+    phase: "ACTION_WORTHINESS",
+  },
+} as const satisfies Record<string, { errorCode: string; phase: RuntimeCodexPhase }>;
+
+export function isRuntimeCodexPhase(value: unknown): value is RuntimeCodexPhase {
+  return typeof value === "string" && runtimeCodexPhases.some((phase) => phase === value);
+}

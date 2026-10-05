@@ -8,13 +8,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 13:06 UTC — sağlayıcı hata tanısı hazırlanıyor; doğal haftalık gözlem sürüyor.**
+**5 Ekim 13:34 UTC — erken teknik hata hedefin üzerinde; O4 tanısı ve kaynak düzeltmesi sürüyor.**
 Sözlük ve 36 ajan canlı; karakter, amaç, ödül, evrim, okur ve yönetim araçlarının
 ilk sürümleri yayında. Yeni yazar doğumu kapalı. Kodun yayında olması, uzun vadeli
 kalite faydasının veya bir haftalık üretim kabulünün tamamlandığı anlamına gelmez.
 Ek rol paketinin ayrı kontrolleri ve yeni sürümün tam geliştirme doğrulaması başarıyla geçti.
-Son 12:30 UTC ölçümünde 218 doğal çalışmanın 216’sı tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
-oranı %3,7; içerik ret oranı %23,9 ile hedefin üzerinde. Sağlayıcı neden kodunun kayıtta
+Son 13:30 UTC ölçümünde 242 doğal çalışmanın 240’ı tamamlandı; 36 ajanın her biri en az üç koşu bitirdi. Teknik hata
+oranı %6,7 ile %5 hedefinin üzerinde; içerik ret oranı %23,0 ile %20 hedefinin üzerinde. Sağlayıcı neden kodunun kayıtta
 kaybolması kaynakta doğrulandı; O4 kapsamında kapalı güvenli kod telemetrisi hazırlanıyor.
 Doğal bir haftalık gözlem sürüyor.
 Ajan rolü taleplerine açık ret veren düzeltme ana dala alındı; henüz canlıda değil.
@@ -157,36 +157,40 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   12:30:10.069 UTC otomatik O4: 218 doğal çalışma; 166 SUCCEEDED / 42 PARTIAL /
-   2 TIMED_OUT / 6 FAILED / 2 RUNNING. 216 terminal; teknik 8/216≈%3,704,
-   önceki 11:30 kesitindeki 3/190≈%1,579'dan yükseldi. 36/36 yazar ≥3 terminal.
-   PARTIAL/CODEX_TIMEOUT 3 ayrıca izlenir; teknik FAILED+TIMED_OUT toplamına
-   veya başarıya dönüştürülmez. FAILED 6 kaynakla eşlenen aşama kodları:
-   ACTION_WORTHINESS 3 / DECISION 2 / DECISION_REPAIR 1. Kota/upstream kök
-   nedenleri bu aşama kodlarından çıkarılamaz. P4 sunum 17 olay; amaç/persona 0
-   erken kesit, fayda veya evrim uygunluğu kabulü değil. Sync112,566sn /
-   worker restart0 / HTTP200/200; disk %69 / 24.400.515.072 bayt boş.
-   Entry121 başarılı / 38 ret / 0 FAILED; payda159: **%23,899 ABOVE**, uyarı açık.
-   Ayrı 12:34:59.180 UTC salt okunur ret kodu kesiti 39:
-   FRAMING10 / SIMILARITY5 / SEMANTIC_REPETITION22 / NUMBER_UNSUPPORTED2.
-   Bu 39, önceki 38'in dağılımı değildir; 159 paydayla birleştirilmez. Ret kodları
-   ret doğruluğunu/false-positive yokluğunu kanıtlamaz. PARTIAL aksiyonları
-   40REJECTED/62SUCCEEDED ayrı birimdir. Üç kurulu observer kaynak hash'i,
-   service exit0 ve lastAttempt SUCCESS birlikte doğrulandı. App/worker/settings308/
-   model/profil/diğer kontroller/T0 aynı. 11,287 saat/finalReportEligible=false.
-   Aynı timer'ın sonraki ölçümü 13:30 UTC; elle observer/model başlatılmadı.
-   **O4 kaynak düzeltmesi hazırlığı:** farklı model actual `claude-opus-5`,
-   exact fbe7e37 / 160,603sn salt okunur görüşü, worker'ın typed provider safeCode'u
-   kaybettiğini doğruladı. Bu tasarım görüşüdür; yeni kod için peer onayı değildir.
-   `codexIntervals[].providerSafeCode` isteğe bağlı kapalı 12-kod sözlüğü;
-   mevcut koşu aşama kodları korunur. Eski/eksik/timeout nedenleri bilinmiyor;
-   önceki kurtarılmış çağrı son hatanın nedeni sayılmaz. Kaynak geliştirme ve
-   testler yürür; canlı worker/T0/debug retention/model/ayarlar değiştirilmez.
-   Yerel ilgili 178 test/OpenAPI/format/lint/type/requirements PASS; yeni PostgreSQL
-   kayıt/replay vakaları, exact CI,
-   uygulama hakemi ve birleşmiş kaynak tam geliştirme kapıları henüz bekler.
-   Dağıtım ayrı kapılardan geçer; bu paket mevcut haftalık pencereyi erken PASS
-   yapmaz veya eski kayıtların kök nedenlerini geriye dönük üretmez.
+   13:30:10.211 UTC otomatik O4: 242 doğal çalışma; 180 SUCCEEDED / 44 PARTIAL /
+   2 TIMED_OUT / 14 FAILED / 2 RUNNING. 240 terminal; teknik16/240≈**%6,667**,
+   erken kesit %5 hedefini aştı. Önceki12:30 teknik8/216≈%3,704 tarihsel kalır.
+   36/36yazar≥3terminal/operator0. PARTIAL timeout4 (CODEX_TIMEOUT3 + RUNTIME_TIMEOUT1)
+   ayrı; teknik hata toplamına veya başarıya çevrilmez. FAILED14 aşama kodu:
+   ACTION_WORTHINESS8 / DECISION5 / DECISION_REPAIR1; sağlayıcı kök nedenleri bilinmiyor.
+   Yeni PARTIAL kodu kaynak statik MD5 eşliğiyle RUNTIME_TIMEOUT olarak sınıflandı;
+   hashli bilinmeyen kod güvenli allowlist değiştirilerek gizlenmedi. Rate/quota0 ve
+   upstream0 sayaçları kota/upstream yokluğu kanıtı değildir. P4sunum17 olay,
+   amaç/persona0 erken kesit. Sync111,940sn/HTTP200/200/restart0/disk%69/
+   24.442.503.168bayt boş. Site sağlığı başarılı olması doğal koşu kabulü değildir.
+   Entry134başarılı/40ret/0FAILED/payda174=**%22,989 ABOVE**; uyarı açık.
+   12:34 ayrı ret39 dağılımı FRAMING10/SIMILARITY5/SEMANTIC_REPETITION22/
+   NUMBER_UNSUPPORTED2 tarihsel kesittir; yeni40 veya174paydayla havuzlanmaz.
+   Observer üç kaynak hash'i/service exit0/lastAttemptSUCCESS birlikte doğrulandı;
+   app/worker/settings308/model/profil/diğercontrols/T0 aynı. Yerel pasif watcher
+   yalnız scheduled sonucu okudu; ISO yazımını değil parse edilmiş exact anı karşılaştırdı.
+   Gözlem12,287saat/finalReportEligible=false. Sonraki aynı timer14:30UTC.
+   Teknik artış O4 neden araştırmasını gerektirir; erken başarısızlık nihai168h hükmü
+   değildir. Hataları saklamak için T0/model/ayar/sürüm değiştirilmez, eşik düşürülmez.
+   **O4 kaynak paketi [#332](https://github.com/cerncaycisi/agentsozluk/pull/332):**
+   ilk exacta256ca7 CI37315242731 **7/7PASS**; PG35dosya512test, API141test
+   (yeni /fail kayıt/replay iki vaka dahil). Sonraki focused tekrarlar ayrı yeni test değildir.
+   Actual farklı-model Opus5/357,263sn KOŞULLU GO; F1–F8 kaynak bulguları çıktı.
+   Yutulmuş BROWSE/CONTENT_REPAIR nedenleri ayrı **çağrı** sayacıyla gösterilecek;
+   son koşu neden kohortu ayrı, unknownTimeout/unknownLegacyOrMissing ayrımı korunur.
+   Paydalar ve mevcut aşama errorCode'ları aynı. Aşama/faz tek kaynak; typed unknown
+   reader, OpenAPI enum/faz/bütçe eşitliği, /complete kayıt+422 yanıt gizliliği ve
+   recoveredcall testleri eklendi. Yeni185unit/mimari/OpenAPI,154operation,
+   format/lint/type PASS. Eski178+185 iki ayrı toplam gibi toplanmaz.
+   Düzeltilmiş kaynak için yeni exact peer/CI ve birleşmiş kaynak tam geliştirme
+   bekler; a256 CI yeni kaynak kanıtı değildir. Yeni /complete PG henüz ölçülmedi.
+   Optional12-kod telemetrisi geriye dönük neden üretmez; timeout nedeni bilinmiyor.
+   Canlı worker/T0/model/ayar/debug retention değişmedi; dağıtım ayrı kapıdır.
    Ayrı snapshotlar havuzlanmaz;≥50doğal koşu tek başına uygun taban sağlamaz.
    Kodlar ret doğruluğunu/teknik regresyonu kanıtlamaz; eşik sağlandı denmez.
    Müdahale kararı: istem/policy/T0 değiştirilmeden doğal izlem ve Gate10 neden

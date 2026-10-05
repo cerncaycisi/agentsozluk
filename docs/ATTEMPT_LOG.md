@@ -5891,3 +5891,47 @@ strict şema veya eşik gevşetilmedi. Ürün/üretim regresyonu iddiası yok.
 Tekrarlama: unknown JSON'a cast ile şekil uydurma; wire şemasının gerçekten alanı
 koruduğunu doğrula. Kaynak/diff için exact SHA farklı-model uygulama incelemesi,
 CI ve birleşmiş kaynak tam geliştirme kapısı sıradadır. Canlı d829/T0 aynı.
+
+## 5 Ekim 2026 13:34 UTC — teknik erken kesit %5 üzerinde; O4 peer bulguları düzeltildi
+
+Canlı exact d829dd06eb4aa68154f521667302e6744b67399e/settings308;
+13:30:10.211542 otomatik242natural/240terminal:180SUCCEEDED/44PARTIAL/
+14FAILED/2TIMED_OUT/2RUNNING. Teknik16/240=%6,667; önceki8/216=%3,704'ün
+üzerinde ve erken kesit %5 hedefini aştı. PARTIAL CODEX_TIMEOUT3/RUNTIME_TIMEOUT1
+ayrı tutulur. FAILED14 aşama ayrımı8ACTION_WORTHINESS/5DECISION/1DECISION_REPAIR;
+provider kök nedeni bilinmiyor. RUNTIME_TIMEOUT static sourceMD5
+6ce74c590cfbce54adb3938c8f4a4452 ile doğrulandı. Kota/upstream sayaç0 yokluk kanıtı değil.
+Entry134başarılı/40ret/0FAILED/payda174=%22,989 ABOVE; uyarı açık. Ret39 eski12:34
+kesiti yeni40ın dağılımı veya174payda parçası değildir.36/36≥3terminal/operator0/
+P4olay17/amaç-persona0 erken. Sync111,940sn/HTTP200/200/restart0/disk%69/
+24.442.503.168bayt boş. Üç kurulu kaynak hash/service exit0/lastAttemptSUCCESS,
+app/CID/worker/model/profil/diğercontrols/T0 aynı.12,287saat/finaleligible=false.
+Bu teknik artış neden araştırması gerektirir; erken kesit nihai Gate10 hükmü değildir.
+
+Kaynak PR332 T3'e bağlandı; exact ilk a256ca761192fe9f73403e0ea401058fa44600e0,
+CI37315242731 **7/7PASS**. PG35dosya512test/API141 PASS; iki yeni /fail kayıt/replay
+vakası dahildir. Ek focused tekrarlar yeni test diye toplanmaz. Log289.803bayt/SHA256
+9b92f811f7fec205e4cbf0444f29b1b1946b5985a3a0f111bdb97505a30ea03b.
+Parentrun sürerken gh run view --log alınamadı; exact başarılıjob111780215140/logs
+REST okuması başarılı. İlk regex ANSI renklerini kaçırdı; escape kodları kaldırılınca
+141test/full512 kaynak kanıtı doğrulandı. CI yeniden başlatılmadı; ürün regresyonu yok.
+
+Actual Opus5 kaynak incelemesi13:14:23–13:20:22,357,263sn/exit0 **KOŞULLU GO**.
+F1: kurtarılmış BROWSE/CONTENT_REPAIR safe cause raporda eksikti. F2: timeoutları da
+sayan kohort adı teknik hata sayısıyla karışabilirdi. F3–F8: ortak stage/faz, typed
+unknown reader, OpenAPI eşitlik, /complete PG,422yanıt gizliliği, explicitfixture alanı.
+Bu bulgular kaynakla doğrulandı ve aynı dalda düzeltildi. Ayrı çağrı tablosu tüm terminal
+natural koşulardaki kapalı safeCode'ları kod/faz ile sayar; finalcause/FAILED+TIMED_OUT
+paydası değişmez. UnknownTimeout/unknownLegacyOrMissing ayrı, eski/timeout nedenler
+uydurulmaz; rawphase/code taşınmaz. Worker/schema/report shared domain sözlüğü kullanır.
+Yeni13:26:15 ondosya185test PASS; OpenAPI154/format/lint/type PASS.185 önceki178in
+üstüne eklenmez; yedi ek test ve ilgili tekrarlar yeni kaynağı doğrular. Yeni /complete
+PG ham422yanıt/nochange/kayıt/replay/oneoutbox henüz uzak CI bekler. İlk peer/CI yeni
+kaynak için koşulsuz GO/PASS değildir; exact yeniden inceleme ve yeniCI ardından
+birleşmiş kaynak fulldevelopment gerekir. Canlı mutation, yeni model isteği veya
+T0 değişikliği yok; goal aktif, DONE082/DONE084 final kapıları açık.
+
+Tekrarlama: kurtarılmış call kodlarını kayıtta tutup raporda atlama; call/run/partial
+birimlerini havuzlama; eskiCI/peer'i yeniSHAya taşıma; parentrun log erişim kısıtını
+ve ANSI parser miss'ini testFAIL sayma; legacy metadata'yı strict tümşema parse ile
+silme; %6,7 erken oranı gizlemek için T0/model/ayar/eşik değişikliği yapma.
