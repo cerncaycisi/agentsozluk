@@ -26,7 +26,8 @@ export function convertPublicIds<T>(value: T): PublicIds<T> {
   if (
     value === null ||
     typeof value !== "object" ||
-    Object.getPrototypeOf(value) !== Object.prototype
+    (Object.getPrototypeOf(value) !== null &&
+      Object.getPrototypeOf(value).constructor?.name !== "Object")
   ) {
     return value as PublicIds<T>;
   }

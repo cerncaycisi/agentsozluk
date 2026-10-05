@@ -6630,3 +6630,15 @@ build/cleanup kapısında doğrudan df ve Docker ölçüsü kullanılacak. Docke
 silme yetkisi veya uygun filtresi değildir. Hiçbir imaj/cache/volume silinmedi.
 Tekrarlama: çalışan site/backends ve açık üç bayrağı tam pause sayma;
 nominal disk tabanını toplam restore/migration headroom PASS sayma.
+
+## 5 Ekim 2026 21:46 UTC — BIGINT dönüştürücüde realm sınırı
+
+2389unitin geçtiği yerel kaynak commit'i
+`b5083cbca0755f62dd895242970e4ca2a4d7d983`; dal push edildi, henüz PR/CI yok.
+Son kontrol, farklı JS realm veya null-prototype düz DB satırında eski
+Object.prototype eşitliğinin dönüşümü atlayabileceğini gösterdi. Plain-row
+kontrolü realm'den bağımsızlaştırıldı; Date/özel instance ve diğer BIGINT alanlar
+korunur. Yeni gerçek VM/null-prototype vakasıyla ilgili3dosya10testPASS.
+Bu son kaynak için2389 tam unit sonucu yeniden iddia edilmiyor; aynı exact
+head'in tüm CI sonuçları beklenir. Type/lint/format son gate ve farklı model
+kod incelemesi bekler. Üretimde kaynak/migration/reset değişimi yok.

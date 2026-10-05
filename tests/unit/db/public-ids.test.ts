@@ -1,3 +1,4 @@
+import { runInNewContext } from "node:vm";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { convertPublicIds, publicIdBigInt, publicIdNumber, publicIds } from "@/lib/db/public-ids";
 import {
@@ -33,6 +34,26 @@ describe("BIGINT public ids at the repository boundary", () => {
       publicId: Number.MAX_SAFE_INTEGER,
       slug: "yeni",
     });
+  });
+
+  it("converts plain rows from another JavaScript realm and null-prototype rows", () => {
+    const foreign = runInNewContext("({ publicId: 2147483648n, createdAt: new Date(0) })") as {
+      publicId: bigint;
+      createdAt: Date;
+    };
+    const converted = convertPublicIds(foreign);
+    expect(converted.publicId).toBe(2147483648);
+    expect(converted.createdAt).toBe(foreign.createdAt);
+    expect(() => JSON.stringify(converted)).not.toThrow();
+    const noPrototype = Object.assign(Object.create(null) as { publicId: bigint }, {
+      publicId: 42n,
+    });
+    expect(convertPublicIds(noPrototype).publicId).toBe(42);
+    class Value {
+      amount = 3;
+    }
+    const instance = new Value();
+    expect(convertPublicIds({ amount: instance }).amount).toBe(instance);
   });
 
   it("fails closed instead of rounding an unsafe SQL id", async () => {
