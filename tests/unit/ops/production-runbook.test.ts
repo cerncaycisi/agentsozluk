@@ -340,9 +340,9 @@ describe("Milestone 2 production operator runbook", () => {
 
   it("requires approved backup, restore and reboot with a natural post-resume wake", () => {
     for (const evidence of [
-      "repeat Gate 7 backup and",
-      "isolated restore",
-      "byte-identical V1 preservation",
+      "Gate7 yedek/ayrı restore sözleşmesi yalnız",
+      "Üretim ve sahipli restore arasında V1 byte-identical eşliği",
+      "güncel yeniden kullanım sınırı",
       "deterministic chain fingerprint",
       "specific approvals for pause,",
       "reboot, post-reboot connection and final resume",
@@ -357,6 +357,18 @@ describe("Milestone 2 production operator runbook", () => {
       expect(stochasticAcceptanceProse).toContain(evidence);
     expect(stochasticAcceptanceProse).toContain("Do not print either boot ID");
     expect(stochasticAcceptanceProse).toContain("A failed gate remains immutable evidence");
+    expect(stochasticAcceptanceProse).toContain(
+      "ilk migration'ın on-profil PAUSED sorgusu güncel roster için çalıştırılmaz",
+    );
+    const recoveryProse = gate7.replace(/\s+/gu, " ");
+    expect(recoveryProse).toContain(
+      "mevcut 36 ACTIVE yazarın lifecycle/persona durumunu değiştirmez",
+    );
+    expect(recoveryProse).toContain("configured maximum run timeout +120 saniyedir");
+    expect(recoveryProse).toContain("freeze/backup/reboot başlamaz");
+    expect(gate7).toContain(
+      "-- İLK M2 GEÇİŞİ ÖRNEĞİ: güncel stochastic Gate12'de bu SQL'i çalıştırma.",
+    );
   });
 
   it("preserves the retired human smoke only inside an explicit non-executable archive", () => {

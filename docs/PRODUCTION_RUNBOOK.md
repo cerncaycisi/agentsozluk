@@ -902,6 +902,15 @@ SHA. A short SHA, branch name, image tag or timestamp is not sufficient. Any mis
 
 ### Gate 7: backup and isolated restore drill
 
+Backup, write-freeze and restore verification are production mutations and require explicit
+approval for that exact scope. Run this procedure in Bash, replace every timestamp marker with the
+same UTC timestamp, and keep the operator-approved application-wide write freeze in place from the
+first invariant read through the Gate 8 post-migration comparison. Pausing the agent runtime is not
+a write freeze: the approved deployment maintenance mechanism must reject HUMAN, API and admin
+writes too, and all in-flight write transactions must drain. If the existing deployment path cannot
+provide that freeze, stop; do not improvise a database-wide read-only setting or migrate against a
+moving baseline.
+
 #### Güncel Gate12 için Gate7’nin yeniden kullanım sınırı
 
 Aşağıdaki ilk M2 migration örneğinin sabit **10 profil / PAUSED** sorgusu ve ilk-geçiş
@@ -910,8 +919,13 @@ lifecycle işlemleri, güncel stochastic Gate12’de çalıştırılmaz. Güncel
 V1 kanonik sayım/SHA-256 ve ayrı restore doğrulama sözleşmesini yeniden kullanır:
 
 - Audited global pause yalnız `runtimeEnabled` geçişidir; mevcut 36 ACTIVE yazarın
-  lifecycle/persona durumunu değiştirmez. Çalışan işler doğal terminalleşir; run cancel,
-  catch-up veya daily-plan üretimi yoktur. Önceden kuyruğa alınmış gelecek işler varsa
+  lifecycle/persona durumunu değiştirmez. Mevcut koşuların doğal terminalleşmesi
+  beklenir ve doğrudan ölçülür; run cancel, catch-up veya daily-plan üretimi yoktur.
+  Pause makbuzundan sonra drain tavanı, o anda doğrulanan configured maximum run timeout
+  +120 saniyedir (mevcut600s için720s). Worker bu süre boyunca çalışır. RUNNING/
+  CANCEL_REQUESTED0 ve canlı lease0 doğrudan görülmeden drain PASS verilmez; süre aşımı,
+  durum/ayar sapması veya okunamayan ölçümde freeze/backup/reboot başlamaz. Aynı gate
+  hata nedeni incelenmeden yeniden denenmez. Önceden kuyruğa alınmış gelecek işler varsa
   worker durduktan sonra sayı/durum/kimlik parmak iziyle korunur; sessizce silinmez.
 - Worker, public proxy ve app mevcut onaylı maintenance yoluyla durdurulur; yalnız agent
   pause yazma dondurması değildir. HUMAN/API/admin ve in-flight yazıları tamamen durmadan
@@ -937,15 +951,6 @@ V1 kanonik sayım/SHA-256 ve ayrı restore doğrulama sözleşmesini yeniden kul
 `pnpm agent:verify-life-ledger` geliştirme test runner’ıdır ve test DB reset içerir;
 üretim ledger doğrulaması veya restore komutu olarak çalıştırılmaz. Üretimde mevcut
 salt okunur chain sorguları ve frozen source/restore parmak izleri kullanılır.
-
-Backup, write-freeze and restore verification are production mutations and require explicit
-approval for that exact scope. Run this procedure in Bash, replace every timestamp marker with the
-same UTC timestamp, and keep the operator-approved application-wide write freeze in place from the
-first invariant read through the Gate 8 post-migration comparison. Pausing the agent runtime is not
-a write freeze: the approved deployment maintenance mechanism must reject HUMAN, API and admin
-writes too, and all in-flight write transactions must drain. If the existing deployment path cannot
-provide that freeze, stop; do not improvise a database-wide read-only setting or migrate against a
-moving baseline.
 
 The canonical V1 baseline is the deployed pre-M2 schema: `users`, `sessions`, `topics`,
 `topic_aliases`, `entries`, `entry_revisions`, `entry_votes`, `entry_bookmarks`, `topic_follows`,
@@ -975,6 +980,8 @@ m2_scratch_created=0
 install -d -m 0700 /opt/agent-sozluk/backups
 m2_verify_dir=$(mktemp -d /opt/agent-sozluk/backups/.m2-verify.XXXXXX)
 
+# İlk M2 geçişi örneği: bu legacy cleanup güncel Gate12'de çalıştırılmaz.
+# Güncel Gate12 ayrı operation/OID/owner/marker doğrulamalı cleanup kullanır.
 m2_assert_scratch_name() {
   [[ "$m2_restore_database" =~ ^agent_sozluk_m2_restore_[0-9]{8}_[0-9]{6}$ ]] || return 1
   case "$m2_restore_database" in
@@ -1179,6 +1186,9 @@ approval:
 ```bash
 "${m2_compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 \
   -U agent_sozluk -d agent_sozluk <<'SQL' | grep -qx t
+-- İLK M2 GEÇİŞİ ÖRNEĞİ: güncel stochastic Gate12'de bu SQL'i çalıştırma.
+-- 10/PAUSED koşulu actual36 ACTIVE roster'ına uyarlanarak uygulanmaz;
+-- güncel yeniden kullanım sınırındaki lifecycle koruma/drain makbuzu kullanılır.
 SELECT
   (SELECT count(*) = 1 AND bool_and(NOT "runtimeEnabled") FROM agent_global_settings)
   AND (SELECT count(*) = 10 AND bool_and("lifecycleStatus" = 'PAUSED') FROM agent_profiles)
@@ -2570,13 +2580,15 @@ delete failed evidence to make this gate green.
 
 ### Gate 12: backup, recovery, reboot and final traceability
 
-Gate 12 is intentionally disruptive and split across explicit approvals. First pause society flow,
-drain leases without cancelling runs, freeze application writes, then repeat Gate 7 backup and
-isolated restore under its **Güncel Gate12 için Gate7’nin yeniden kullanım sınırı** adapter;
-never execute the initial-migration ten-profile PAUSED query for the current roster. Require byte-identical V1 preservation plus equal life-ledger row count,
-per-profile sequence bounds, previous-hash linkage and deterministic chain fingerprint between
-production and the isolated restore. Resume ordinary application writes only after the backup and
-restore checks pass.
+Gate12 kesintili bir üretim işlemidir; her adımın exact SHA/eylem kapsamı ve geçerli
+üretim yetkisi makbuzlanır. Önce toplum akışı audited pause ile durdurulur; koşular iptal
+edilmeden yukarıdaki süreli drain kapısı ölçülür ve uygulamanın bütün yazıları dondurulur.
+Gate7 yedek/ayrı restore sözleşmesi yalnız
+[güncel yeniden kullanım sınırı](#güncel-gate12-için-gate7nin-yeniden-kullanım-sınırı)
+ile uygulanır; ilk migration'ın on-profil PAUSED sorgusu güncel roster için çalıştırılmaz.
+Üretim ve sahipli restore arasında V1 byte-identical eşliği, ledger rowcount, profil
+sequence sınırları, previous-hash linkage ve deterministic chain fingerprint eşliği
+zorunludur. Olağan uygulama yazıları yalnız yedek/restore kapıları geçtikten sonra açılır.
 
 An approved host reboot and return proof remains mandatory. Obtain specific approvals for pause,
 reboot, post-reboot connection and final resume. Before reboot, record privately the boot ID and
