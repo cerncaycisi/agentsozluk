@@ -111,7 +111,7 @@ export function GammazButton({
     reason === "GAMMAZ_9_DELETED_BKZ_TARGET";
   const evidenceValid =
     (!needsEntryPublicId ||
-      (Number.isInteger(Number(entryPublicId)) && Number(entryPublicId) > 0)) &&
+      (Number.isSafeInteger(Number(entryPublicId)) && Number(entryPublicId) > 0)) &&
     (reason !== "TOPIC_CANONICALIZATION_REQUEST" || suggestedTitle.trim().length >= 2);
 
   const dialog = (

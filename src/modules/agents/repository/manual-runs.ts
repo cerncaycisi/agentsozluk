@@ -1,3 +1,4 @@
+import { publicIds } from "@/lib/db/public-ids";
 import type { Prisma } from "@prisma/client";
 import { WRITE_CAPABLE_AGENT_RUN_TYPES } from "@/modules/agents/domain/manual-runs";
 
@@ -198,26 +199,28 @@ export function createRetryRunRecord(
 }
 
 export function getAgentRunDetailRecord(transaction: Prisma.TransactionClient, runId: string) {
-  return transaction.agentRun.findUnique({
-    where: { id: runId },
-    omit: { leaseToken: true },
-    include: {
-      agentProfile: {
-        select: {
-          user: { select: { displayName: true, username: true } },
+  return publicIds(
+    transaction.agentRun.findUnique({
+      where: { id: runId },
+      omit: { leaseToken: true },
+      include: {
+        agentProfile: {
+          select: {
+            user: { select: { displayName: true, username: true } },
+          },
+        },
+        events: { orderBy: { sequence: "asc" } },
+        actions: { orderBy: { sequence: "asc" } },
+        contentRecords: {
+          select: {
+            entryId: true,
+            createdAt: true,
+            entry: { select: { publicId: true } },
+          },
         },
       },
-      events: { orderBy: { sequence: "asc" } },
-      actions: { orderBy: { sequence: "asc" } },
-      contentRecords: {
-        select: {
-          entryId: true,
-          createdAt: true,
-          entry: { select: { publicId: true } },
-        },
-      },
-    },
-  });
+    }),
+  );
 }
 
 export function listAgentRunsRecord(transaction: Prisma.TransactionClient, agentProfileId: string) {

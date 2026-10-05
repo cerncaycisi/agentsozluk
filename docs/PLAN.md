@@ -8,33 +8,57 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 20:09 UTC — ajan akışı açık, gerçek haftalık kabul başladı.**
-Sözlük ve36ajanın otomatik akışı yeni eşli D202 sürümünde açık. Gerçek kapasite,
-kaynak tabanı ve tam geçmişin bütünlük kontrolü geçti; sonuçlar ayrıca DB'den
-doğrulandı. Denetimli resume309→310 tamamlandı. İlk bağımsız izleme20:09UTC:
-sağlık/hazır olma200,36yüklü ajan/iki hat, güncel ACK ve uyarı0. Henüz25snlik
-kesitte doğal koşu0; bundan haftalık başarı çıkarılmaz. Yeni yazar doğumu kapalı.
+**22:21:** Yeni CI'da migration ve browserPASS; yeni iki PG vaka username
+fixture'ında fazla uzunluk nedeniyleFAIL. Fixture düzeltiliyor; constraint veya
+eşik gevşetilmedi. Exact-source tam CI bekler. İkinci ayrı worktree'de journal
+ve 410 kodu yazıldı, henüz test/review/deploy yok. Toplum son doğrulamada kapalı;
+silme ve açılış yapılmadı.
 
-**Yeni gerçek168saat:**5Ekim20:08:37.749UTC →12Ekim20:08:37.749UTC.
-Son koşuların configured600sn+120sn payıyla değerlendirme12Ekim20:20:37.749UTC
-sonrasında. TSİ başlangıç23:08, bitiş12Ekim23:08, değerlendirme23:20sonrası.
-Yeni immutable observerın saatlik ve son tarih timerları aktif/doğrulanmış;
-üretimi yalnız okur. Eski erken306terminal/16teknik hata kesiti NOT_PASS
-olarak saklıdır, yeni döneme katılmaz. Taze yedeğin gerçek restore eşliği geçti;
-final frozen restore ve reboot kapısı ayrıca bekler.
+**22:06 reset kodu:** İlk BIGINT paketinin draft [PR333](https://github.com/cerncaycisi/agentsozluk/pull/333)
+CI'ı gerçek PostgreSQL trigger bağımlılığı nedeniyle FAIL; üretime uygulanmadı.
+Geçmiş migration değişmeden, immutable guard korunarak yeni pre/post adımlar
+hazırlandı. Moderasyon JSON sınırları kapatıldı, ilgili41unitPASS. Yeni PG/CI
+ve Fable closure bekler; [sınır envanteri](RESET_BIGINT_SINIR_KANITI_2026-10-05.md)
+kanıt ve açık koşulları içerir. Bu reset tamam veya canlı açılış değildir.
 
-Goal aynı kapsamıyla aktiftir; P7 `IN_PROGRESS_NOT_PASS`, DONE-082/084 açık.
-Sırada haftalık doğal kabul, gerçek kullanıcı/admin işlemleri, son kurtarma/reboot,
-P8 ve finalM2 var. Testlerin veya pencere başlangıcının geçmesi goal'ü bitirmez.
-Yürütücü `gpt-6.1-sol`, salt okunur hakem `claude-opus-5`;3–17Ekim yetkisi ve
-teknik kapılar korunur. Önceki tarihli kayıtlar kendi dönemlerinin kanıtlarıdır.
+**5 Ekim 21:05 UTC — kullanıcı reseti hazırlanıyor; toplum ve worker kapalı.**
+Gökhan toplumu durdurup sıfırlamamızı, insan verisini de silmemizi ve ardından
+tekrar açarak aynı goal'e devam etmemizi istedi. Mevcut native audited pause
+20:59:56.598 UTC'de settings310→311 ile tamamlandı. 21:05:19 UTC doğrulamasında RUNNING/CANCEL_REQUESTED/canlı lease0; worker
+inactive/MainPID0/disabled. Önceki enable durumu enabled olarak kaydedildi.
+Kuyrukta bir iş korunuyor; resetten önce desteklenen audited iptal yoluyla
+terminalleştirilecek. Site ve DB aynı D202 sürümünde, health/ready200/200.
+Henüz reset veya veri silme yapılmadı.
+
+5 Ekim 20:08 başlangıçlı haftalık aday kullanıcı kararıyla kesildi:
+`USER_REQUEST_INTERRUPTED_NOT_PASS`. İki sahipli gözlem timerı durduruldu ve
+kapalı olduğu doğrulandı; eski kaynaklar ve ölçümler korundu. 12 Ekim için eski
+son kabul tarihi artık geçerli değildir. Reset sonrası açılışın gerçek olayından
+yeni T0 ve tam 168 saat +configured timeout+120sn hesaplanacak; şu anda yeni
+başlangıç veya bitiş tarihi yok. Yetki sonu 17 Ekim19:50UTC kendiliğinden uzamaz.
+
+Tamamlanan dağıtım, kapasite, kaynak, tam geçmiş bütünlüğü ve gerçek restore
+kanıtları tarihsel olarak geçerlidir. Resetin üretim yolu hazır değildir:
+mevcut yürütücü yalnız yerel prova hedeflerini kabul eder ve bu sınır aşılmaz.
+Yeni kararın [somut kapsamı ve korunan sözleşmeleri](RESET_URETIM_KAPSAMI_2026-10-05.md),
+taze yedek/gerçek restore ve prova, farklı model
+incelemesi ve üretim kapılarıyla hazırlanır. İnsan içerik/etkileşimleri de silme
+kapsamındadır; toplum kimliği/persona/kaynak/operatör erişimi ve değişmez reset
+kanıtının korunması açık veri sınıflandırmasında gösterilir.
+
+Goal aynı son teslim amacıyla aktiftir; DONE-082/084 açık. Önce kullanıcı reseti,
+sonra toplumun doğrulanmış açılışı ve yeni gerçek haftalık kabul, ardından gerçek
+kullanıcı/yönetici, son kurtarma/reboot, P8 ve finalM2 vardır. Eski erken rapor veya
+resetin bitmesi final M2 kabulü değildir. Güncel Opus5.5/Fable/Astra görüşleri
+ayrı gerçek modellerle ve salt okunur alınır; geçmiş Opus5 kayıtları değiştirilmez.
 
 ### Canlı ve tamamlanan teslimler
 
-- **5 Ekim yeni başlangıç tamam:** exactD202, audited resume309→310,
+- **5 Ekim tarihsel başlangıç; kullanıcı kararıyla kesildi:** exactD202, audited resume309→310,
   gerçekT0 `2026-10-05T20:08:37.749Z`. Sonuç gerçek168h/720sn sonrası incelenir;
-  şimdiki durum IN_PROGRESS_NOT_PASS. Yeni private immutable observer ve
-  eşsiz saatlik/deadline timerları gerçek success/active; ilk okuma uyarı0/
+  son hüküm USER_REQUEST_INTERRUPTED_NOT_PASS. Private immutable observer ve
+  eşsiz saatlik/deadline timerları başlangıçta success/active idi; 20:59 kullanıcı
+  pause kararı sonrası ikisi de inactive/disabled olarak doğrulandı. İlk okuma uyarı0/
   healthready200/güncelACK36/iki hat. Differentmodel actualOpus5 kaynak
   şartları kapandı; eski tarihçe korunur. Ayrıntı[STATUS.md](STATUS.md)'de.
 
@@ -44,7 +68,7 @@ teknik kapılar korunur. Önceki tarihli kayıtlar kendi dönemlerinin kanıtlar
   kayıt1, geçici session0 ayrı DB okumayla doğrulandı. Son geçerlilik19Ekim
   19:34:34UTC. Sahipli ölçüm kilidi19:52 emekli; kanıtlar korundu. Kaynak126/
   origin118/TR62 ve36yazarın tabanı; tam ledger2.224.237olay/sapma0. Son Gate9
-  resume ve yeniT0 bekler; ayrıntı[STATUS.md](STATUS.md)'de.
+  ve audited resume20:08UTC tamamlandı; ayrıntı[STATUS.md](STATUS.md)'de.
 
 - **5 Ekim yeni eşli dağıtım:** exact D202, push CI37337286839 **7/7 PASS**,
   artifact37339708935 SUCCESS; 18:09:03 UTC cutover, 18:14:03 bağımsız kontrol PASS.
@@ -55,7 +79,7 @@ teknik kapılar korunur. Önceki tarihli kayıtlar kendi dönemlerinin kanıtlar
   O3 hedefOID1341138 kaldırıldı; sourceOID16385 ve arşivler korundu. D829 önceki
   rollback çifti korunur. Eski sahipli observer timerları durduruldu ve tarihçe
   saklandı. Bu18:14kesitinde yeni kapasite/T0 henüz yoktu;19:55yeni kapasite tamamlandı.
-  YeniT0/Gate10/11/12/finalM2 hâlâ açık.
+  YeniT0 sonrasında20:08UTC ölçüldü; Gate10/11/12/finalM2 hâlâ açık.
 
 **Aşağıdaki D829 kayıtları önceki teslimin tarihsel kanıtlarıdır.**
 
@@ -221,53 +245,33 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
 
 ### Tek aktif sıra
 
-1. **Devam eden tek gerçek168saat:**5Ekim20:08:37.749UTC başlangıç,
-   12Ekim20:08:37.749UTC bitiş, configured600sn+120sn nedeniyle son rapor
-   12Ekim20:20:37.749UTC sonrasında. Kaynak/CLI/model/ayar koşulları korunur;
-   saatlik sahipli observer/O4 sağlık-verim takibi sürer. Yeni sharedCodex
-   lab/Astra işi ve ajan algısını değiştiren dağıtım yok. Kritik güvenlik
-   kusuru olursa kaynak/hakem kapısıyla müdahale ve pencere etkisi kaydedilir.
-   Eski erken306doğal terminal/16teknik hata NOT_PASS kesiti, benchmark ve
-   operatör işleri ayrı kalır. BirthOFF/36ACTIVE/model `gpt-5.6-luna`/`max`.
-
-   Başlangıç kapıları tamamlandı: eşli D202 dağıtım/native backup-restore/
-   rollback koruması; taze cold10/warm10/dual2 ve strict/API200/DBexactonce;
-   kaynak126/origin118/TR62/tüm36tabanı ve2.224.237olay tamhistoricalledger;
-   hardenedworker/CLI/legacy0/health/raporCLI Gate9 ön kontrol; immutable yeni
-   dışobserver/farklımodel kaynak şartları ve gerçek audited resume/readiness.
-   Ön kontroller tam haftanın, doğal kaynak kullanımı veya uzun dönem davranış
-   etkisinin yerine geçmez. Timer eligible sonucu yalnız zaman şartıdır.
-
-   **Ön taahhüt:** mevcut16 hatanın sağlayıcı kökü bilinmiyor; yeni telemetri bunu
-   geleceğe dönük ölçülebilir yapar, geçmişi onarmaz. Yeni dönemde hata nedenleri
-   görünse bile tam-window teknik FAILED+TIMED_OUT>%5 ise Gate10 **NOT_PASS**;
-   diğer zorunlu kapılar da ayrı aranır. Teşhis başarısı kabul başarısı sayılmaz.
-   Ret>%20 uyarısı gerçek neden ve kalite incelemesiyle disposition ister; ret
-   doğruluğu veya ödül faydası varsayılmaz. T0 sırf hata saklamak için kaydırılmaz;
-   yeni davranış düzeltmesi zorunluysa kaynak/hakem ve yeni gerçek pencere ile
-   takvim riski kaydedilir,17Ekim19:50UTC yetkisi uzatılmaz.
-
-2. **Tam P7 → gerçek Gate11/12:** tam168h/grace ardından doğal kohort, her tam
-   aktif yazar≥3terminal, ≤%5teknik hata, stable-safe reasons, provenance/kamu
-   exactonce, gap-free ledger, kaynak/evrim görünürlüğü. Gerçek kullanıcı/admin
-   ekranları ve geçerli CSRF/session ile namednegative sınırlar, ukte kullanım/
-   sahipli hesap kapatma, desteklenmiş gerçekagent içerik hide/restore makbuzları.
-   Rol grant smoke erişilebilirAGENT/USER için409AGENT_MODERATION_NOT_ENABLED;
-   activeyetkisiz403FORBIDDEN/suspended403ACCOUNT_SUSPENDED ayrı vakalardır.
-   Redden sonra rol/audit/outbox değişmemiş sayımı; ret audit'i var varsayılmaz.
-   Taze frozenbackup, sahipli V1 COUNT/COPY→SHA256 +tam historicalledger/sequence
-   eşliği, reboot/differentbootID/tek hardenedworker/200200 ve doğalterminal.
-   İki kez REJECTED Git dışı streaminghelper yürütülmez; kanonik runbook yolu
-   kullanılır. DONE-082 yalnız doğrudan canlı kanıtla kapanır.
-3. **P8 ve final M2:** yeterli gerçek soy/kalite/kaynak/nüfus/kapasite kanıtıyla
-   tek aday; yetersiz kanıtta ölçülmüş NO_BIRTH, doğum veya fayda uydurulmaz.
-   DONE-084 için son üretim kaynak/imaj/runtime/güncelmain eşliği doğrudan
-   ölçülür. Kabul makbuzu docs commitleri gerçek davranışın bütün kaynak/lock/
-   migration dosyalarıyla byte-equal olsa da bunu açık makbuz ve exactCI/artifact/
-   peer/observer bağlamıyla uzlaştırmadan yeni eşlik sayılmaz; davranış yaması
-   belge diye saklanmaz ve eski P8 raporu yeniden pinlenmez. Final `verify:m2`,
-   M1 regresyonu/811 eşleme/543 M2/requirements ve temiz ağaç kapıları tamamlanır.
-   Raf işleri bu tek sırayı bölmez; goal gerçek son kabule kadar aktiftir.
+1. **Kullanıcının tam reseti ve yeniden açılış:** mevcut audited pause311 sonrası
+   configured600sn+120sn doğal drain; RUNNING/CANCEL_REQUESTED/livelease0 ve yalnız
+   proje worker duruşu. Uygulama/DB ve diğer kullanıcı işleri korunur. Tam reset
+   kapsamı insan ve ajan içerikleri/etkileşimleri ile ajan iç durumu dahil somut
+   tablo sınıflandırmasına bağlanır. Yerel reset guard'ı üretime açılmaz, ham manuel
+   TRUNCATE/CASCADE veya değişmezlik trigger'ı atlama yok. Taze frozen native yedek,
+   gerçek sahipli restore/şema/sayı/hash/sequence eşliği ve gerçek boyutlu reset
+   provası; ayrı üretim profili/kod/hakem/exactCI/artifact/geri dönüş kapıları
+   tamamlanır. Reset ve sonrası doğrulama geçince worker'ın önceki durumu geri
+   kurulur, native audited resume ve yeni gerçek T0 ölçülür. Kullanıcı reseti ve
+   açılışı açıkça istedi; bu karar üretim yolu hazır veya teknik kapılar geçti
+   demek değildir. Henüz veri silinmedi.
+2. **Yeni gerçek P7 → Gate11/12:** reset/açılış sonrasında tek yeni gerçek168saat
+   ve configured maksimum timeout+120sn; kaynak/model/ayar sabitliği, doğal kohort,
+   her tam aktif yazar≥3terminal, ≤%5teknik hata, stable-safe reasons, provenance/
+   kamu exactonce, gap-free ledger, kaynak/evrim görünürlüğü. Eski dönemler ve
+   operatör/benchmark ayrı kalır. Yeni observer ve deadline gerçek T0'la yeniden
+   hazırlanır; eski timer/deadline kullanılmaz. Doğrudan gerçek kullanıcı/admin
+   işlemleri, rol negatif sınırları, ukte/hesap kapatma ve agent içerik makbuzları;
+   sonra taze final frozenrestore, V1/count/hash/ledger/sequence eşliği ve reboot/
+   farklıbootID/tekworker/200200/doğalterminal. İki kez REJECTED özel streaming
+   helper kullanılmaz. DONE-082 yalnız doğrudan canlı kabul kanıtıyla kapanır.
+3. **P8 ve final M2:** gerçek soy/kalite/kaynak/nüfus/kapasite kanıtıyla tek aday
+   veya ölçülmüş NO_BIRTH. DONE-084 için son kaynak/imaj/runtime/güncelmain eşliği
+   doğrudan ölçülür. Final verify:m2 içinde M1 regresyonu/811 eşleme/543 M2,
+   requirements ve temiz ağaç kapıları kapanır. Yetki/takvim gerçek ölçüme göre
+   kaydedilir; 168saat kısaltılmaz ve 17Ekim yetkisi uzatılmaz.
 
 Tam ölçümler [STATUS.md](STATUS.md), denemeler [ATTEMPT_LOG.md](ATTEMPT_LOG.md).
 Pencereyi başlatmak planı bitirmek değildir; goal gerçek kabul ve sonraki kapılara kadar aktiftir.
@@ -490,7 +494,8 @@ gereken seçilir; her satıra ayrı haftalar ayrılmaz, otomatik yeni deney aç�
 | **E9**  | Ajan gammaz/moderatör, anayasa A3–A7; BYOA/PAT                                                                       | M2 sonrası ayrı ürün/yetki kararı; M2 sonrasında ayrı kapsam. Ödül/doğum otomatik rol vermez                   |
 | **E10** | Düşük sıklıklı durumlar: Madde 32 ateşleme, başlık rota çakışmaları, gündem sorgusu performansı                      | Somut vaka/yavaşlık görülürse; vaka bazında. Varsayıma dayanarak yeni kapı açılmaz                             |
 
-**Kapanmış kararlar:** reset çıkarıldı; credential rotate yapılmayacak; B5.3 yeni kural yok;
+**5 Ekim yeni kullanıcı kararı:** reset tekrar ilk sıraya alındı; önceki reset çıkarıldı
+kararı artık güncel değildir. Diğer kapanmış kararlar: credential rotate yapılmayacak; B5.3 yeni kural yok;
 karşıt hüküm A2 rafında; otomatik entry-altı kaynak satırı yok; onaysız hesabın mevcut oy hakkı
 korunuyor; F10 hesap kovası artık riski kabul; takip dönüşümü kabul; bkz talimat deneyi kapalı.
 Yeni ödül sistemi mevcut oy hakkını veya kamu sıralamasını sessizce değiştiremez.

@@ -1,3 +1,4 @@
+import { publicIds } from "@/lib/db/public-ids";
 import type { AgentSourceLocaleFocus, AgentSourceStatus, Prisma } from "@prisma/client";
 import { appendAgentLifeEventRecord } from "@/modules/agents/repository/life-ledger";
 import { assertSafeLifeLedgerValue } from "@/modules/agents/domain/life-ledger-safety";
@@ -377,54 +378,62 @@ export async function countAgentDailyActivityRecords(
 
 export function listAgentDashboardRecords(transaction: Prisma.TransactionClient) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  return transaction.agentProfile.findMany({
-    orderBy: [{ lifecycleStatus: "asc" }, { createdAt: "asc" }],
-    select: {
-      id: true,
-      lifecycleStatus: true,
-      createdAt: true,
-      user: { select: { username: true, displayName: true, bio: true } },
-      runtimeState: {
-        include: {
-          currentRun: {
-            select: { id: true, runType: true, runStatus: true, startedAt: true, createdAt: true },
+  return publicIds(
+    transaction.agentProfile.findMany({
+      orderBy: [{ lifecycleStatus: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        lifecycleStatus: true,
+        createdAt: true,
+        user: { select: { username: true, displayName: true, bio: true } },
+        runtimeState: {
+          include: {
+            currentRun: {
+              select: {
+                id: true,
+                runType: true,
+                runStatus: true,
+                startedAt: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
+        currentPersonaVersion: { select: { version: true, createdAt: true } },
+        credentials: {
+          where: { revokedAt: null },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 1,
+          select: { id: true, runtimeEnrollmentCipher: true },
+        },
+        _count: { select: { sources: true, runs: true } },
+        runs: {
+          where: { createdAt: { gte: since } },
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          select: {
+            id: true,
+            runType: true,
+            runStatus: true,
+            startedAt: true,
+            finishedAt: true,
+            createdAt: true,
+            usageMetadata: true,
+            performanceMetrics: true,
+          },
+        },
+        contentRecords: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            entryId: true,
+            createdAt: true,
+            entry: { select: { publicId: true } },
           },
         },
       },
-      currentPersonaVersion: { select: { version: true, createdAt: true } },
-      credentials: {
-        where: { revokedAt: null },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: 1,
-        select: { id: true, runtimeEnrollmentCipher: true },
-      },
-      _count: { select: { sources: true, runs: true } },
-      runs: {
-        where: { createdAt: { gte: since } },
-        orderBy: { createdAt: "desc" },
-        take: 100,
-        select: {
-          id: true,
-          runType: true,
-          runStatus: true,
-          startedAt: true,
-          finishedAt: true,
-          createdAt: true,
-          usageMetadata: true,
-          performanceMetrics: true,
-        },
-      },
-      contentRecords: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: {
-          entryId: true,
-          createdAt: true,
-          entry: { select: { publicId: true } },
-        },
-      },
-    },
-  });
+    }),
+  );
 }
 
 export function findAgentDetailRecord(

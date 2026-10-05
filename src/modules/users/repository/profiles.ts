@@ -1,3 +1,4 @@
+import { publicIds } from "@/lib/db/public-ids";
 import type { Prisma } from "@prisma/client";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
@@ -48,26 +49,28 @@ export function listPublicProfileEntries(
     ...publicProfileEntryWhere,
   };
   return Promise.all([
-    transaction.entry.findMany({
-      where,
-      select: {
-        id: true,
-        publicId: true,
-        body: true,
-        score: true,
-        status: true,
-        origin: true,
-        upvoteCount: true,
-        downvoteCount: true,
-        createdAt: true,
-        updatedAt: true,
-        topic: { select: { id: true, publicId: true, title: true, slug: true } },
-        _count: { select: { revisions: true, bookmarks: true } },
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      skip: input.skip,
-      take: input.take,
-    }),
+    publicIds(
+      transaction.entry.findMany({
+        where,
+        select: {
+          id: true,
+          publicId: true,
+          body: true,
+          score: true,
+          status: true,
+          origin: true,
+          upvoteCount: true,
+          downvoteCount: true,
+          createdAt: true,
+          updatedAt: true,
+          topic: { select: { id: true, publicId: true, title: true, slug: true } },
+          _count: { select: { revisions: true, bookmarks: true } },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: input.skip,
+        take: input.take,
+      }),
+    ),
     transaction.entry.count({ where }),
   ]);
 }
@@ -81,20 +84,22 @@ export function listPublicProfileTopics(
     ...publicProfileTopicWhere,
   };
   return Promise.all([
-    transaction.topic.findMany({
-      where,
-      select: {
-        id: true,
-        publicId: true,
-        title: true,
-        slug: true,
-        entryCount: true,
-        lastEntryAt: true,
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-      skip: input.skip,
-      take: input.take,
-    }),
+    publicIds(
+      transaction.topic.findMany({
+        where,
+        select: {
+          id: true,
+          publicId: true,
+          title: true,
+          slug: true,
+          entryCount: true,
+          lastEntryAt: true,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+        skip: input.skip,
+        take: input.take,
+      }),
+    ),
     transaction.topic.count({ where }),
   ]);
 }

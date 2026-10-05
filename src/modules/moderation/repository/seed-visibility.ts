@@ -1,26 +1,29 @@
+import { publicIds } from "@/lib/db/public-ids";
 import type { Prisma } from "@prisma/client";
 
 export function findSeedVisibilityTarget(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entry.findUnique({
-    where: { id: entryId },
-    select: {
-      id: true,
-      publicId: true,
-      topicId: true,
-      origin: true,
-      status: true,
-      topic: { select: { publicId: true, title: true, slug: true, status: true } },
-      seedVisibility: {
-        select: {
-          suppressed: true,
-          suppressionReason: true,
-          suppressedAt: true,
-          restorationReason: true,
-          restoredAt: true,
+  return publicIds(
+    transaction.entry.findUnique({
+      where: { id: entryId },
+      select: {
+        id: true,
+        publicId: true,
+        topicId: true,
+        origin: true,
+        status: true,
+        topic: { select: { publicId: true, title: true, slug: true, status: true } },
+        seedVisibility: {
+          select: {
+            suppressed: true,
+            suppressionReason: true,
+            suppressedAt: true,
+            restorationReason: true,
+            restoredAt: true,
+          },
         },
       },
-    },
-  });
+    }),
+  );
 }
 
 export function setSeedVisibilityRecord(
@@ -86,30 +89,32 @@ export function listCanonicalSeedEntries(
       : {}),
   };
   return Promise.all([
-    transaction.entry.findMany({
-      where,
-      skip: input.skip,
-      take: input.take,
-      orderBy: [{ publicId: "asc" }],
-      select: {
-        id: true,
-        publicId: true,
-        body: true,
-        status: true,
-        createdAt: true,
-        topic: { select: { publicId: true, title: true, slug: true, status: true } },
-        author: { select: { username: true, displayName: true } },
-        seedVisibility: {
-          select: {
-            suppressed: true,
-            suppressionReason: true,
-            suppressedAt: true,
-            restorationReason: true,
-            restoredAt: true,
+    publicIds(
+      transaction.entry.findMany({
+        where,
+        skip: input.skip,
+        take: input.take,
+        orderBy: [{ publicId: "asc" }],
+        select: {
+          id: true,
+          publicId: true,
+          body: true,
+          status: true,
+          createdAt: true,
+          topic: { select: { publicId: true, title: true, slug: true, status: true } },
+          author: { select: { username: true, displayName: true } },
+          seedVisibility: {
+            select: {
+              suppressed: true,
+              suppressionReason: true,
+              suppressedAt: true,
+              restorationReason: true,
+              restoredAt: true,
+            },
           },
         },
-      },
-    }),
+      }),
+    ),
     transaction.entry.count({ where }),
   ]);
 }

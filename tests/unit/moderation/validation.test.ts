@@ -9,6 +9,30 @@ import {
 } from "@/modules/moderation/validation/schemas";
 
 describe("moderation validation", () => {
+  it("validates positive safe evidence ids before the BIGINT repository boundary", () => {
+    for (const [id, valid] of [
+      [0, false],
+      [-1, false],
+      [9007199254740993, false],
+      [2147483648, true],
+      [9007199254740991, true],
+    ] as const) {
+      for (const [reason, key] of [
+        ["GAMMAZ_8_DUPLICATE_ENTRY", "duplicateEntryPublicId"],
+        ["GAMMAZ_3_MISSING_CONTINUATION_CONTEXT", "referenceEntryPublicId"],
+      ] as const) {
+        expect(
+          reportCreateSchema.safeParse({
+            targetType: "ENTRY",
+            targetId: "00000000-0000-4000-8000-000000000001",
+            reason,
+            details: "Somut gerekçe ve geçerli delil sınır testi.",
+            evidence: { [key]: id },
+          }).success,
+        ).toBe(valid);
+      }
+    }
+  });
   it("accepts only active constitutional reasons with concrete details", () => {
     expect(
       reportCreateSchema.safeParse({

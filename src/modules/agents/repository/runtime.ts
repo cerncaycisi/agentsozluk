@@ -1,3 +1,4 @@
+import { publicIdBigInt, publicIds } from "@/lib/db/public-ids";
 import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
 import { birthSourcePreparationTrigger } from "@/modules/agents/domain/birth-preparation";
 import {
@@ -2599,15 +2600,17 @@ async function listRuntimePerceptionLinkedTopics(
         })
       : [],
     entryPublicIds.length > 0
-      ? transaction.entry.findMany({
-          where: {
-            publicId: { in: entryPublicIds },
-            status: "ACTIVE",
-            topic: { status: "ACTIVE" },
-            ...publiclyVisibleEntryWhere,
-          },
-          select: { publicId: true, topic: { select: linkedTopicSelect } },
-        })
+      ? publicIds(
+          transaction.entry.findMany({
+            where: {
+              publicId: { in: entryPublicIds.map(publicIdBigInt) },
+              status: "ACTIVE",
+              topic: { status: "ACTIVE" },
+              ...publiclyVisibleEntryWhere,
+            },
+            select: { publicId: true, topic: { select: linkedTopicSelect } },
+          }),
+        )
       : [],
     normalizedTopicTitles.length > 0
       ? transaction.topic.findMany({
