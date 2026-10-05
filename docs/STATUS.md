@@ -7,6 +7,29 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 5 Ekim 02:16 UTC — exact CI kapanışı ve doğal ACK yenilenmesi
+
+Main `6cbdafc5c219ec63e79a7ec94cba5081924d9ff6`, exact CI`37253378070`
+**7/7 PASS**, son validate02:10:30UTC. Quality, behavior, browser, database, coverage,
+container ve validate başarılı. Önceki eski-literal başarısızlığı giderildi; kabul
+süre/coverage/hata/veri güvenliği eşikleri düşürülmedi. Opus inceleme SHA’sından sonra
+runbook ve test kaynak hash’leri birebir korundu; yalnız ölçüm belgeleri eklendi.
+Remote main exact eşliği ve iki teslim checkout’unda temiz ağaç doğrulandı.
+
+02:06:15.01554UTC salt okunur kesit: credential ACK **02:03:27.958UTC**, yaş167sn,
+uyarı0; worker PID2270111/NRestarts0, image/model/CLI/profile ve36ACTIVE sabit.
+Uzun başlangıç bakım batch’i bitince mevcut loader doğal olarak ACK yeniledi;
+manuel heartbeat/tick, run cancellation veya restart yapılmadı. Önceki01:36/01:40
+stale uyarıları tarihsel kanıt olarak korunur. Doğal NORMAL_WAKE0 olduğundan teknik
+başarı/hata oranı hesaplanmadı; uzun dönem coverage ve P4 doğal sunum henüz açık.
+
+Bu makbuz uygulama deploy’u değildir. App/runtime d829 ve gerçek P7 T0 değişmedi;
+168 saat, Gate10/11/12 ve P8 kapanışından önce M2/DONE-082 PASS verilmez.
+Saatlik/deadline takip etkin; deadline yalnız zaman uygunluğudur, otomatik kabul değildir.
+
+Tekrarlama: geçici ACK uyarısını ölçmeden sürekli scheduler arızası sayma; doğal bakım
+kohortunu kabul denominator’ına ekleme; yeşil CI’yi168 saat veya final M2 kanıtı sayma.
+
 ## 5 Ekim — CI takvim ifadesi ile gerçek168 saat sözleşmesinin uzlaştırması
 
 Main `258b9c485cd0057c4536ffe8fabbfc42823767f4`, CI`37252578367` behavior job'u

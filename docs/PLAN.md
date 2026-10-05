@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 01:36 UTC — gerçek 168 saatlik P7 penceresi başladı; saatlik takip çalışıyor.**
+**5 Ekim 02:16 UTC — P7 doğal gözlemi sürüyor; exact CI7/7 ve başlangıç ACK kapanışı doğrulandı.**
 Goal aktiftir. M2/DONE-082 henüz `BLOCKED`; P7 `IN_PROGRESS_NOT_PASS`.
 Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
 3–17 Ekim kapsamındaki süreli yetki ve bütün teknik kapılar korunur.
@@ -39,7 +39,12 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
   CLI/roster/kapasite/legacy-plan0/health kapıları geçti. Geçmiş810 koşu yeni pencereye katılmaz.
 - Salt okunur saatlik ve deadline timer aktif; gerçek systemd service success/exit0,
   PrivateTmp/NoNewPrivileges=yes. Opus55,359s koşulları timeout, hata redaksiyonu ve
-  exact pin kontrolleriyle kapandı. İlk01:23 kesitinde doğal koşu0, heartbeat güncel;01:36 bakım/ACK notu aşağıdadır.
+  exact pin kontrolleriyle kapandı. Başlangıç bakımından sonra ACK02:03:27.958UTC doğal
+  batch ile yenilendi;02:06 kesitinde167sn/uyarı0, restart0. Doğal koşu hâlâ0; oran hesaplanmaz.
+- Gerçek168 saat/grace/yeniT0 test uzlaştırması `6cbdafc5c219ec63e79a7ec94cba5081924d9ff6`,
+  exact CI`37253378070` **7/7 PASS**,02:10:30UTC. Test/runbook kaynakları Opus
+  incelemesinden sonra byte-identical kaldı. Bu belge/test commit’i app d829’a deploy
+  edilmedi; canlı kabul penceresi ve davranış sabit kaldı.
 
 ### Tek aktif sıra
 
@@ -47,8 +52,8 @@ Bu tur yürütücü `gpt-6.1-sol`, bağımsız hakem `claude-opus-5`.
    tam **168 saat**. Son koşular için configured600+120sn terminalleşme payı:
    **nihai rapor en erken 12 Ekim01:24:54.588UTC** (04:24:54.588TSİ).
    Pencere içinde salt okunur takip ve O4 sağlık/ret ayrımı. O3 teslimi tamam.
-   Başlangıç bakımı12 REFLECTION başarılı/1timeout, roster ACK7dk sınırını geçiyor;
-   batch bitişi/ACK yenilenmesi ve doğal coverage ayrıca ölçülür; bakım doğal koşu değildir.
+   Başlangıç bakımı12 REFLECTION başarılı/1timeout; geçici ACK uyarısı02:03 yenilenmesiyle
+   müdahalesiz kapandı. Sonraki batch tazeliği ve doğal coverage izlenir; bakım doğal koşu değildir.
    İstem/model/effort/ayar/policy/manual persona değişirse yeni T0 gerekir.
    Olağan doğal hafıza/reflection/evrim ayrı kayıtlanır; yeni shared-Codex lab/benchmark yok.
 2. **Gate10 tam rapor → Gate11/12:** süre dolunca doğal kohort, yazar başına ≥3terminal,
