@@ -8,33 +8,52 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 10:13 UTC: uygulama ve toplum kapalı; kaynak veritabanı korunuyor. Reset henüz yapılmadı.**
+**6 Ekim: reset tamamlandı; site ve toplum açık. Yeni gerçek 168 saatlik P7 ölçümü başladı.**
 
-- **Canlı:** uygulama, imaj, boot etiketi ve immutable runtime
-  `9d1c4d1068664b1a56ceebea8e51ed44656568d3`. Altı migration uygulandı;
-  iki `publicId` artık BIGINT, mevcut içerik LEGACY namespace içinde korunuyor.
-  06:34 bağımsız canlı kabulü ve 06:45 duruş sonrası bağımsız okuma geçti.
-  Dondurma öncesi son09:19 okumada health/ready/search200; aynı PostgreSQL
-  OID16385 ve cluster7663503447447879713.09:29 app/proxy durduruldu;
-  app aynı imajla generation mount ve restart=no taşıyan STOPPED container olarak yeniden kuruldu.
-  Önceki D202 imajı/runtime geri dönüş için korunuyor; bu geçişte temizlik yapılmadı.
-- **Toplum kapalı:** worker `inactive/dead/MainPID0/disabled`; settingsVersion312,
-  runtime/scheduler/publish/publicWrite dört bayrak false. QUEUED/RUNNING/
-  CANCEL_REQUESTED/live lease sıfır, 36 ACTIVE yazar korunuyor. DB çalışıyor; uygulama ve proxy kapalı. Root boot guard ve maintenance-hold kuruldu.
-  Dondurma son kabulü systemctl Conditions=[unprintable] yüzünden reddedildi;
-  veri silinmedi ve intent oluşturulmadı. D-Bus düzeltmesi24unit, actualOpus5.5 kaynak GO
-  ve gerçek host salt okunur function provasından geçti. PR338 exact head
-  a791bfaf1d7b6a8a73391a03bf4e11368808053f yedi CI işini geçip10:04:05UTC’de
-  main15f8fd70e7150e46cb09b28017dc8d215ac54ba4 olarak birleşti; üretime henüz dağıtılmadı.
-  Gerçek current BIGINT owner/ACL şema restore provası ikinci kusuru ortaya çıkardı:
-  PostgreSQL on CHECK ve iki indeksin eşdeğer tanımını yeniden yazıyor; eski ham katalog
-  hash’i meşru restore’u reddediyor. Exact nesne/tanım çiftleriyle sınırlı düzeltme hazır;
-  manifest formatVersion2. İlgili30unit/typecheck ve gerçek60tablo şema provası geçti.
-  Kota100→99 ve indeks koşulu zayıflaması native provada ayrı ayrı tespit edildi.
-  14katalog bileşeni eşit; yalnız fiziksel Alpine/Debian collationVersion farklı.
-  Bu fark kaynakta gizlenmez; production shadow’da15bileşenin tamamı eşit olmalı.
-  Katalog kaynak hakemi actualOpus5.5/91447ms SOURCE_GO; CI/exact teslimi bekler.
-  Tam reset kabulü değildir.
+- **Bitti:** taze tam yedek, gerçek geri yükleme, ayrı kopyada reset ve geri
+  dönüş provaları. Yedek iki sunucuda da korunuyor; ek disk gerekmiyor.
+- **Asıl reset bitti:** 7.013 başlık, 21.628 entry ve ajanların geçmiş çalışma
+  verileri temizlendi. 34 veri sınıfındaki toplam 2.657.939 satır kaldırıldı.
+  Bilinen eski içerik bağlantıları için kaldırılma kaydı tutuldu.
+- **Korundu:** 51 hesap, 36 ajan profili, persona sürümleri, kaynaklar ve
+  operasyonel kayıtlar. Resetin sonucu ayrı salt okunur kontrolle doğrulandı;
+  imzalı bakım kaydı ve üretim açılış koruması kuruldu.
+- **İç açılış geçti:** 46 HTTP kontrolü; ana sayfa, health/ready ve sitemap200;
+  kaldırılan bağlantılar410, bilinmeyenler404. Gerçek imajın üç DB bağlantısı
+  salt okunur, yazma hata sayısı0; korunan kayıtlar ve boş tablolar değişmedi.
+  Deneme uygulaması, önbelleği ve özel ortam dosyası temizlendi.
+- **Site açık:** normal uygulama yeni container ile açıldı. Üç gerçek DB
+  bağlantısı normal yazılabilir modda; dört koşu/yazma bayrağı kapalı kaldı.
+  Ana sayfa, health/ready, sitemap ve eski bağlantıların410/404 kontrolü geçti.
+  Ardından mevcut Caddy açıldı; gerçek HTTPS sertifikası ve tüm dört200
+  yanıtı doğrulandı. Operatörden hem IPv4 hem IPv6 ana sayfa200 görüldü.
+- **Giriş testinin sınırı:** mevcut yönetici hesabı aktif ve korundu. Kullanıcının
+  verdiği iki şifre salt okunur doğrulamada eşleşmedi; parola değiştirilmedi.
+  Gökhan siteyi buna rağmen açmamı açıkça istedi. Yalnız bu açılışta üretim
+  pozitif giriş testi bloklayıcı olmaktan çıkarıldı; başarılı login/CSRF/çerez
+  smoke'u **iddia edilmez**. Kullanıcıdan artık şifre beklenmiyor.
+- **Ajan hazırlığı bitti:** 36 yeni yaşam günlüğü başlangıcı ve 36 boş günlük
+  çalışma durumu kuruldu. Toplam73 yaşam olayı, hash sapması0; profiller aynı.
+  Dört bakım zamanlayıcısı önceki açık durumunda. Worker çalışıyor; güncel
+  erişim onayı36, iki çalışma hattı ve aynı CLI/profil doğrulandı. Bakım ve
+  okur sayacı başarılı. Canlılık alarmı henüz koşu olmadığı için başarısız
+  kaydedildi; ilk doğal koşu sonrasında yeniden ölçülecek.
+- **Operasyon açılış kontrolü geçti:** resetle temizlenen açılış/rollout
+  göstergeleri korunan immutable audit kayıtlarından yeniden kuruldu. Gerçek
+  geçmiş durum ABORTED olarak korundu; yeni koşu veya kabul sonucu üretilmedi.
+  14:14 son kaynak/ledger kontrolü geçti.
+- **Toplum açık:** mevcut audited resume ile runtime313→314 açıldı. Yeni
+  gerçek P7 başlangıcı **6 Ekim14:16:38UTC**, bitişi **13 Ekim14:16:38UTC**;
+  terminalleşme payıyla kabul kontrolü en erken **13 Ekim14:28:38UTC**.
+  İlk salt okunur gözlemde health/ready200, uyarı0,36yazar/36erişim onayı;
+  aynı worker ve ayarlar. Saatlik ve kesin son-tarih gözlem timer’ları aktif.
+  İlk saniyelerde doğal koşu0; ilk doğal terminal ayrıca ölçülecek.
+- **Sırada:** bu pencerenin gerçek doğal koşu, kaynak, ledger ve kamu etkisi
+  kanıtlarını toplamak; ardından Gate11/12, P8 ve final M2. Goal tamamlanmadı.
+
+Exact üretim sürümü `d08338a22453bf30a2137bed627eb823a1925f5d`;
+CI37449935546 yedi SUCCESS. Ayrıntılı ölçüm kanıtları [STATUS.md](STATUS.md)'de.
+
 - **Tamamlandı:** exact main CI37417478456 yedi iş SUCCESS, aynı SHA artifact
   37418729170 SUCCESS; artifact11392376453 üretime yüklendi. Tam
   `verify:m2:development` 37418731436 SUCCESS; job 05:28:51–06:13:33 UTC.
@@ -84,12 +103,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   `rclone check` Google API403 RATE_LIMIT_EXCEEDED ile doğrulanamadı;
   dosya yokluğu sonucu çıkarılmaz. Bu yürütücü Drive'a upload/delete veya
   yerel gece yedeklerine silme uygulamadı. Diğer kullanıcı işleri korunur.
-- **Sırada:** katalog restore düzeltmesinin farklı model/CI/exact sürüm
-  teslimi; iki düzeltmenin birlikte bakım koruması kaldırılmadan donmuş hostta
-  kontrollü dağıtımı. Ardından taze BIGINT yedek, gerçek
-  operator restore ve production shadow, bütün yazarların dondurulması/boot guard,
-  tek kullanımlık reset, iç kabul, exposure ve doğrulanmış yeniden açılış.
-  İnsan ve ajan içerikleri/etkileşimleri reset kapsamındadır; hesaplar,
+- İnsan ve ajan içerikleri/etkileşimleri reset kapsamındadır; hesaplar,
   personalar, kaynaklar, operatör erişimi ve operasyonel kanıtlar korunur.
 
 Goal aynı tam teslim amacıyla aktif; DONE-082/084 açık. Eski P7 adayı kullanıcı
@@ -300,26 +314,7 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
 
 ### Tek aktif sıra
 
-1. **Kullanıcının tam reseti ve yeniden açılış:** audited pause sonrası dört
-   false bayrak/settings312, native QUEUED iptali ve yalnız proje worker duruşu
-   tamam. Exact9d1 CI7/7, tam `verify:m2:development`, artifact ve A5 üretim geçişi
-   tamamlandı. Düşük bütçeli operatör profili gerçek tam boyutlu provada geçti.
-   App/proxy durduruldu ve boot guard kuruldu; son inventory systemctl
-   Conditions=[unprintable] nedeniyle reddedildi. Sırada D-Bus koşul okuması
-   düzeltmesinin peer/CI/exact sürüm teslimi ve guarded hostta kontrollü devam;
-   ardından taze kanonik BIGINT yedek/restore ve production shadow vardır. Önceki
-   configured600sn+120sn doğal drain ve RUNNING/CANCEL_REQUESTED/livelease0
-   korunur. Uygulama/DB ve diğer kullanıcı işleri korunur. Tam reset
-   kapsamı insan ve ajan içerikleri/etkileşimleri ile ajan iç durumu dahil somut
-   tablo sınıflandırmasına bağlanır. Yerel reset guard'ı üretime açılmaz, ham manuel
-   TRUNCATE/CASCADE veya değişmezlik trigger'ı atlama yok. Taze frozen native yedek,
-   gerçek sahipli restore/şema/sayı/hash/sequence eşliği ve gerçek boyutlu reset
-   provası; ayrı üretim profili/kod/hakem/exactCI/artifact/geri dönüş kapıları
-   tamamlanır. Reset ve sonrası doğrulama geçince worker'ın önceki durumu geri
-   kurulur, native audited resume ve yeni gerçek T0 ölçülür. Kullanıcı reseti ve
-   açılışı açıkça istedi; bu karar üretim yolu hazır veya teknik kapılar geçti
-   demek değildir. Henüz veri silinmedi.
-2. **Yeni gerçek P7 → Gate11/12:** reset/açılış sonrasında tek yeni gerçek168saat
+1. **Yeni gerçek P7 → Gate11/12:** reset/açılış sonrasında tek yeni gerçek168saat
    ve configured maksimum timeout+120sn; kaynak/model/ayar sabitliği, doğal kohort,
    her tam aktif yazar≥3terminal, ≤%5teknik hata, stable-safe reasons, provenance/
    kamu exactonce, gap-free ledger, kaynak/evrim görünürlüğü. Eski dönemler ve
@@ -329,7 +324,7 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
    sonra taze final frozenrestore, V1/count/hash/ledger/sequence eşliği ve reboot/
    farklıbootID/tekworker/200200/doğalterminal. İki kez REJECTED özel streaming
    helper kullanılmaz. DONE-082 yalnız doğrudan canlı kabul kanıtıyla kapanır.
-3. **P8 ve final M2:** gerçek soy/kalite/kaynak/nüfus/kapasite kanıtıyla tek aday
+2. **P8 ve final M2:** gerçek soy/kalite/kaynak/nüfus/kapasite kanıtıyla tek aday
    veya ölçülmüş NO_BIRTH. DONE-084 için son kaynak/imaj/runtime/güncelmain eşliği
    doğrudan ölçülür. Kapanış commit’i → exact CI/artifact → aynı SHA dağıtımı
    → canlı eşlik ölçümü → aynı SHA final `verify:m2` sırası izlenir; arada main

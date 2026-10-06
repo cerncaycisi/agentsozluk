@@ -7690,3 +7690,413 @@ Tekrarlama: eşdeğer PostgreSQL deparse değişimini veri kaybı sayma; genel
 ifade sadeleştirmesiyle eşik/koşul/ACL farklarını gizleme. Operator fiziksel
 collationVersion farkını production shadow’da kabul etme. Yeni sürümde tüm
 15bileşen production shadow’da eşit olmadan reset yürütme.
+
+## 6 Ekim 11:07 UTC — iki düzeltme üretimde; taze kanonik reset yedeği alındı
+
+PR339 head8fee1f245d7c1161fafcadec52d4ef7e35edd14c, CI37448663700 yedi
+SUCCESS;10:27:46UTC merge d08338a22453bf30a2137bed627eb823a1925f5d.
+Exact main CI37449935546 yedi SUCCESS; artifact37451673769 SUCCESS,
+artifact11407455225/242.043.049bayt. Native staging kaynak/imaj/runtime
+kontrolleri geçti. İlk özel frozen-upgrade kontrolü
+ARTIFACT_IMAGE_RECEIPT_CHANGED/ADMISSION/mutationStarted=false ile durdu;
+OCI config digest ile Docker loaded image ID farklı kimliklerdir. Resmî
+installer sözleşmesine göre ayrı bağları doğrulayan dar düzeltme actualOpus5.5
+55887ms GO_FROZEN_UPGRADE_ONLY aldı. Aynı sahipli staging kilidinden,
+restage/build yapılmadan sürüm geçişi ve bağımsız salt okunur kabul geçti.
+
+Runtime/production tag d083; app4982af3daca049c81f1c7463f74255ebef8a0212b461cb9249fef6e18137fa4e
+STOPPED/restart=no, imajab6a2f7f4804aa0b865714fb8280c0ae7e701fd7f82e95f6cd2d5db4cecdeaca.
+Proxy kapalı; DB e645/OID16385/cluster7663503447447879713 değişmedi.
+Worker inactive/dead/disabled/MainPID0, settings312 dörtfalse/work0.
+Boot hold bir an bile kaldırılmadı, aynı işlem ffec2979-6d66-49e6-abfd-6f6a8145a441
+ve yeni SHA'ya atomik bağlandı. Önceki9d1 imaj/runtime korunuyor.
+Bağımsız okumada tam freeze inventory eşit, git index owner1000.
+
+Korumalı kanonik PREPARE_INTENT ve manifestformat2/60tablo/3sequence/15katalog
+geçti. Native tam owner/ACL yedeği1.350.152.116bayt,
+SHA256e9731db57c08f7def70030eaa59c971a544914d273e133f824a4944116588ca9.
+Manifestcbabed711dbd23ad82806527706b0ca953087c169aa506418c591b23ce5162e2;
+implementation22287d6758927afdb3e3a190f7d0013df7b0a7f0f1ab4822898a470f2807f1ab.
+KaynakDB6.000.311.319bayt, root boş20.414.791.680bayt;
+intent sonu13:02:52.729UTC. Tam yedek alındı; geri yükleme/production-shadow
+kabulü değildir. Yerel checksum/restore ve aynı container'da15bileşen eşliği,
+tek kanonik reset, açılış ve yeniT0 henüz tamamlanmadı. Site ve toplum kapalı.
+
+Tekrarlama: OCI config digest'i Docker image ID'ye eşitleme; başarılı staging'i
+tekrarlama; aynı tüketilmiş intent/backup nonce'unu yeniden çalıştırma.
+Hold/kilit kaldırarak ilerleme; source içeriği silindi veya goal bitti deme.
+
+## 6 Ekim 11:20 UTC — taze kanonik yedek operatörde tam boyutlu geri yüklendi
+
+Exact production/main d08338a22453bf30a2137bed627eb823a1925f5d.
+Fresh PRE_RESET_BIGINT arşiv1.350.152.116bayt/SHAe9731db57c08f7def70030eaa59c971a544914d273e133f824a4944116588ca9
+pinned kaynakta ve operatörde tam checksum/yeniden okuma ile doğrulandı.
+Yalnız yürütücünün kendi A5 kalibrasyon kopyası, kaynak eski ve yeni yedekleri
+tekrar doğrulandıktan sonra kaldırıldı:1.349.563.991bayt, operatör boş
+10.363.080.704→11.712.647.168bayt. Kullanıcı gecelik yedeklerine dokunulmadı.
+Yeni arşiv inode157743/dev2049/UID1001/nlink1; alım sonrası boş10.361.372.672bayt.
+
+Fresh canonical operator gerçek native non-superuser owner/ACL restore geçti.
+60tablo tam içerik özeti,3sequence tanım/durum ve14katalog bileşeni eşit;
+DB metadata projection yalnız collationVersion2.41→sourceNULL map ile kaynak
+DB digest'ine eşit. Diğer hiçbir DB alanı/role/ACL/ayar gizlenmedi. Gerçek
+restore4.762.016.791bayt; temiz restart sonrası manifest aynı. Minimum boş
+3.032.559.616bayt,512MiB floor/2GiB adsız fiziksel reserve korunur. Owned worker
+3145928 ve supervisor exit0/orphan0; yalnız sahipli payload temizlendi.
+Bu gerçek profile PASS'tir; production-shadow15bileşen veya reset kabulü değildir.
+
+Aynı production container'da kaynak DB aclNULL/commentNULL/limit-1/settings0,
+UTF8/en_US.utf8/libc/ICUnull/collationVersionNULL native salt okunur ölçüldü.
+Özel shadow kaynak ilk Opus178750ms NO_GO: request isim alanı ve container
+restore timeout kusurları düzeltildi; operator14platform farkının deterministic
+shadow ret olduğu ilk çıkarım actualOpus113924ms tarafından geri çekildi.
+ActualOpus58424ms final GO_PRODUCTION_SHADOW_ONLY. Tam15katalog eşliği marker
+öncesi zorunlu; ayrı kopyada tek reset/reconcile, kopya ayrı rollback/rename
+provası için korunur. Canonical reset/silme/reopen/yeniT0 hâlâ yapılmadı.
+
+Üretimde yalnız artık önceki olmayan D202 exact kullanılmayan imaj silindi:
+filterEXACT_D202_SINGLE_UNUSED_ID_ONLY, free20.049.375.232→21.765.255.168,
+kazanç1.715.879.936bayt. Native dockerDf Images5/active3/6.005GB,
+containers3/active1, volumes3/active3/7.051GB, buildcache35.76MB.
+Konteynerler/worker aynı; currentd083/immediateprevious9d1 imaj/runtime,
+volume/cache/yedekler korunur. Fresh dump sonrası root boş20.414.791.680bayt.
+
+Tekrarlama: operator14katalog PASS'i production15katalog PASS gibi gösterme;
+platform farkı için broad metadata toleransı açma; aynı geçmiş kalibrasyonu
+tekrarlama; kanonik backup nonce'unu yenileme veya kullanıcı yedeklerini silme.
+Sıradaki gerçek shadow+tam rollback/gate/rename kabulü olmadan asıl reset yok.
+
+## 6 Ekim 11:58 UTC — gerçek production shadow reset kabulü geçti
+
+Exact d08338a22453bf30a2137bed627eb823a1925f5d, işlem
+ffec2979-6d66-49e6-abfd-6f6a8145a441. Asıl DB OID16385 korunur.
+Fresh PRE_RESET_BIGINT SHA256e9731db57c08f7def70030eaa59c971a544914d273e133f824a4944116588ca9.
+Production kopyası OID1627494: gerçek native owner/ACL restore sonrası bütün
+60 tablo/3sequence/15katalog manifesti kaynak cbabed711dbd23ad82806527706b0ca953087c169aa506418c591b23ce5162e2
+ile aynı. Marker sonrası ilk salt okunur MANIFEST
+GREAT_RESET_PRECONDITIONS_FAILED ile reddedildi; reset çalışmadı. Sonraki
+salt okunur native blocker ölçümü source/shadow için boş; tarihsel transient
+neden kanıtlanmadı. İlk başarısızlık PASS diye değiştirilmez.
+
+Sahipli mevcut kopyada tekrar restore yapmadan, ilk EXECUTE öncesi sıfır
+backend/kimlik/intents1/commit-tombstone-exposure0 doğrulandı. ActualOpus5.5
+31951ms genel literal kapanışı ve19818ms daha kısa outer cap kapanışı geçti.
+MANIFEST/PREVIEW/ilk EXECUTE/RECONCILE gerçek CLI kabulü geçti; gate OPEN,
+34 temizlenen/25 korunan sınıf, verified COMMITTED. Tek shadow EXECUTE164,518sn.
+Asıl DB tam manifesti tekrar kaynakla aynı; app/proxy/worker kapalı.
+Root boş19.694.878.720bayt. Bu yalnız ayrı kopya kabulüdür; kanonik reset yok.
+
+Ayrı tam restore/dual pinned gate/atomic rename geri dönüş provası başladı;
+henüz PASS değil. ActualOpus5.5 literal31951ms ve dar cap23959ms kapanışı,
+embedded JS birebir hash eşliğiyle bağlandı. Üç gerçek Prisma bağlantısında,
+sadece postgres kontrol DB'sinde connection-startup options ile
+SHOW default_transaction_read_only=on ve distinctPID3 doğrulandı. Bu normal
+app HTTP/iç kabul veya bütün app havuzu kabulü değildir.
+
+Tekrarlama: ilk salt okunur ret üzerine bütün full restore'u yeniden çalışma;
+copy PASS'i asıl reset diye sunma; kaynakta reset EXECUTE'ünü kör tekrarlama.
+
+## 6 Ekim 12:28 UTC — kanonik reset tamamlandı; kamu açılışı henüz yok
+
+Exact d08338a22453bf30a2137bed627eb823a1925f5d, işlem
+ffec2979-6d66-49e6-abfd-6f6a8145a441. Tam shadow+rollback kabulü geçti:
+60tablo/3sequence/15katalog, gerçek owner/ACL restore, dual pinned gate,
+atomic rename ROLLBACK ve COMMIT, actual ROLLED_BACK repository admission.
+Sahipli OID1627494/1769878 kopyaları kimlik ve sıfır backend doğrulamasıyla
+kaldırıldı; kaynakOID16385 aynı manifestcbab ile korundu. Root boş20.364.046.336bayt.
+
+İlk kanonik PREVIEW özel yürütücüde SHADOW_UNKNOWN_RECONCILE/ADMISSION/
+mutationStarted=false ile durdu. Dosya permission döngüsünün mode değişkenini
+0o600 ile ezmesi TypeError'a neden oluyordu; file_mode ayrı adıyla düzeltildi.
+Salt okunur bağımsız uzlaştırma: canonical-actions boş, PREVIEW/EXECUTE request/
+result yok; intent1/commit0/tombstone0/exposure0/generation boş. ActualOpus5.5
+30025ms literal kapanışı; gerçek PREVIEW ardından tek EXECUTE geçti.
+
+Kanonik reset verified=true/gateOPEN: topics7.013, entries21.628, 34 temizlenen
+sınıf toplam2.657.939satır; idempotency74.544 expiry. 51 kullanıcı/36profil/
+451persona sürümü/799 agent source korunur. Bilinen kaldırılan UUID/numeric ID
+mezar taşları ve yeni sequence2147483648 aralığı aynı transaction'da kuruldu.
+İlk RECONCILE admission SOURCE_CONNECTION_STATE_CHANGED ile consume öncesi
+reddedildi; tarihsel transient backend nedeni kanıtlanmadı. ControlDB-only
+okumada sourcebackend0 görüldükten sonra salt okunur RECONCILE passedCOMMITTED.
+İkinci EXECUTE yok. Protected SHAe21ec2a4f2c6c66c3d6cc24d2929a8010e7ff5897c212cdd97d19766d3d0a437.
+
+Operatör private HMAC store PREPARED→COMMITTED_MAINTENANCE doğrulandı; key
+operatörden çıkmadı. Canlı store'dan türeyen mirror root tarafından yayımlandı;
+rootlatch ve required=true compose kuruldu. Boot hold hâlâ aktif, app/proxy/worker
+kapalı; exposure0/TRAFFIC_OPEN yok. Yeni P7 T0 ve goal PASS yok.
+
+İlk iç salt okunur app denemesi START_OWNED_READONLY_INTERNAL_APP aşamasında
+INTERNAL_UNKNOWN sınıfı eski redakte hata ile durdu. Before protectedSHA aynı,
+34tablo boş/sequence tüketilmemiş. Gerçek cleanup errors[], ownedEnvRemoved=true,
+ownedcontainer0; cache layer/özel env temizlendi. Actual image BusyBox timeout
+TERM/-k native probeexit0; destek yokluğu değildir. Native hata nedeni henüz
+kanıtlanmadı. Yeni salt okunur nonce'da phase/class/line ve safe startup-code/hash
+teşhisi hazırlanıyor; asıl reset tekrar edilmez. Üretim .env'de bootstrap/smoke
+login credentialpair yok; mevcut giriş hesabının private dosyası kullanıcıdan
+soruldu. Başarılı normal app/login/public erişim iddiası yok.
+
+Tekrarlama: PREVIEW yürütücü hatasında yedek/fullsize provayı baştan yapma;
+mode değişkenini dosya permission döngüsünde kullanma; sourcebackend transient
+ret üzerine EXECUTE retry yapma; shadow/reset PASS'i kamu açılışı diye sunma.
+
+## 6 Ekim 12:50 UTC — reset sonrası salt okunur iç uygulama kabulü geçti
+
+Exact `d08338a22453bf30a2137bed627eb823a1925f5d`, işlem
+`ffec2979-6d66-49e6-abfd-6f6a8145a441`. Gerçek standalone imajda
+46 HTTP kontrolü: home/health/ready/sitemap200, bilinen eski UUID/numeric
+bağlantılar GET/HEAD/RSC/prefetch410 ve no-store/noindex/no-cookie;
+bilinmeyen bağlantılar404. Yirmi paralel prefetch p95=221,197ms.
+Gerçek imajdaki üç ayrı Prisma bağlantısı salt okunur; SQLSTATE25006
+sayısı0. Önce/sonra 25 korunan sınıf SHA
+`e21ec2a4f2c6c66c3d6cc24d2929a8010e7ff5897c212cdd97d19766d3d0a437`
+eşit; 34 temizlenen sınıf boş, topics/entries sequence başlangıcı
+2147483648 ve is_called=false değişmedi. Sahipli disposable container/cache
+ve özel ortam dosyası kaldırıldı; DB ve mevcut app/proxy/worker durumu korundu.
+Kanıt: özel operatör `canonical-reset-20261006/internal-readonly-acceptance-result-5.json`.
+
+İlk denemelerdeki port retlerinin kökü native ayrı küçük denemeyle ayrıldı:
+`internal:true` backend-only ağında container running=true iken
+NetworkSettings.Ports3000=null ve docker port exit1. V2 TypeError,
+V3 PRIVATE_PORT_NOT_READY tarihçesi korunur; V3 cleanup errors[]/envRemovedtrue/
+ownedcontainer0. V4 frontend ekleme adayı actualOpus5.5/39752ms NO_GO
+aldı ve **üretimde çalıştırılmadı**. Son aday host port/frontend kullanmaz;
+HTTP yalnız sahipli container içindeki 127.0.0.1 üzerinden yürür.
+ActualOpus5.5/37928ms GO; gerçek Dockerfile HOSTNAME=0.0.0.0 koşulu
+kaynakta doğrulandı. Bu hakemlikte Haiku yardımcı model kullanımı ayrıca
+kayıtta korunur; araç/subagent/SSH yok. Gerçek native kabul daha sonra geçti.
+
+Üretim .env smoke/bootstrap credentialpair içermez. Mevcut operatör özel
+proje dosyasında bootstrap çifti boş; o dosyada bulunan seed parolası,
+yalnız bilinen mevcut seed hesabında salt okunur Argon2 eşliğiyle sınandı:
+hesap var/aktif/admin; passwordMatches=false. HTTP login yapılmadı,
+parola veya hesap değiştirilmedi, credential çıktısı/logu yok.
+Mevcut hesabın private bilgi dosyası kullanıcıdan daha önce soruldu, cevap yok.
+Bu eksik kapanmadan TRAFFIC_OPEN/EXPOSURE/boot-hold kaldırma/kamu açılışı/
+worker resume yapılmaz. Terminal resmî CLI sırası için özel ön hazırlık var;
+credential gate eksik olduğundan çalıştırılmadı. Site/toplum kapalı,
+HMAC ve root nesil COMMITTED_MAINTENANCE, yeni P7T0 yok, goal aktif.
+
+Tekrarlama: kapalı backend ağında host publish bekleyerek kabul nonce'larını
+harcama; readonly kontrol için frontend/dış çıkış ekleme; gerçek iç kabulü
+kamu açılışı veya başarılı login gibi sunma; asıl reset EXECUTE'ünü tekrarlama.
+
+## 6 Ekim 13:12 UTC — reset sonrası site gerçek HTTPS ile açıldı
+
+Exact `d08338a22453bf30a2137bed627eb823a1925f5d`, işlem
+`ffec2979-6d66-49e6-abfd-6f6a8145a441`. Mevcut `10c4190d` görünen adlı HUMAN ADMIN
+aktif/girişe açık olarak salt okunur doğrulandı. Kimliği UUID prefix veya username
+sanılmamalı; doğru displayName sorgusu tek hesabı buldu. Kullanıcının verdiği iki
+parola yalnız memory/stdin üzerinden Argon2 ile sınandı; ikisi eşleşmedi.
+Parola/email/hash/token çıktı veya diske yazılmadı, hesap/parola değişmedi.
+Kullanıcı daha sonra siteyi parola sonucundan bağımsız açmayı açıkça emretti.
+Bu reset açılışında yalnız production pozitif-login smoke kapısı istisnadır;
+CI/veri/image/generation/yedek ve diğer kabul kapıları korunur. Üretim login,
+__Host-cookie ve CSRF logout PASS iddiası yok; kullanıcıdan şifre beklenmez.
+
+ActualOpus5.5/43941ms dar kaynak incelemesinin tek bloklayıcı bütçe şartı kapandı:
+terminal inner5320sn, outer5400sn, toplam authority6500sn. Önceki daha geniş
+privateTLS taslağı actualOpus5.5/49897ms NO_GO aldı ve çalıştırılmadı;
+son kabul sade, parolasız/özelproxy'siz açılış kaynağına aittir. Aynı HMAC
+COMMITTED nesli resmî CLI ile root üzerinde tekrar doğrulandı; operatörde
+TRAFFIC_OPEN event'i aynı binding/protectedSHA/clearedCounts ile append edildi.
+Resmî EXPOSURE, terminal mirror/latch yayımı ve boot-hold release geçti.
+**Bu andan sonra pre-reset dump'a dönüş yasaktır; sorunlar ileri düzeltilir.**
+
+Yeni normal app container
+`0e6b2c4ff920331b5671fb7a4235c4ffcb1838dc118684fe97200be0b8d36253`,
+imaj `sha256:ab6a2f7f4804aa0b865714fb8280c0ae7e701fd7f82e95f6cd2d5db4cecdeaca`.
+No-build/no-deps force-recreate; root nesil RO mount ve required=true,
+restartunless-stopped ve yalnız127.0.0.1:3000 doğrulandı. Gerçek üç ayrı Prisma
+bağlantısı default_transaction_read_only=off; dört bayrakfalse. Normal app
+home/health/ready/sitemap200, bilinen eskiGET/HEAD410/no-store/noindex/no-cookie,
+bilinmeyen404. Topics/entries0 ve sequence2147483648/is_called=false korundu.
+Root normal kabulünden sonra mevcut pinli Caddy CID
+`fbfa14f6c2bf17ea4de5267506130563f228df37a308ce6437a8eb82968f325b`
+başlatıldı. DB CID/OID16385/cluster korunur. Site gerçek HTTPS ile home/health/
+ready/sitemap200 ve geçerliCA sertifikasıyla açıldı. Operatörden ayrı ana sayfa
+kontrolü: IPv4 `46.225.20.177` HTTP200/TLSverify0; IPv6
+`2a01:4f8:1c1b:b837::1` HTTP200/TLSverify0 gözlemi; IPv6 adresinin host eşliği
+bu makbuzda ayrıca doğrulanmış sayılmaz. Önceki ERR_ADDRESS_UNREACHABLE sunucudan
+ve operatörden artık gözlenmedi; kullanıcının cihazı ayrıca ölçülmedi.
+
+Site açık; runtime worker hâlâ inactive/disabled/PID0 ve dört bayrakfalse.
+Toplum/newP7T0 henüz yok;168h/Gate10/DONE082/084/finalM2 tamamlanmadı.
+Kanıtlar özel operatörde forward-normal-opening-result.json,
+public-opening-result.json ve root normal-opening/public-opening makbuzları.
+Gece yedek Drive/KEEP3 ayrı işi plan+diff onayı olmadan uygulanmadı.
+
+Tekrarlama: login credential eksikliğini asıl resetin tamamlanmadığı gibi sunma;
+kullanıcının açık istisnasını diğer teknik kapılara yayma; pozitif login/CSRF
+PASS uydurma; TRAFFIC_OPEN sonrası eski dump restore etme; worker başlamadan
+P7T0 veya toplum açık sonucu verme.
+
+## 6 Ekim — reset sonrası 36 ajan ve duraklatılmış worker hazır
+
+Exact `d08338a22453bf30a2137bed627eb823a1925f5d`, reset işlemi
+`ffec2979-6d66-49e6-abfd-6f6a8145a441`. Mevcut repository snapshot/append
+yoluyla 36 yeni LIFE_GENESIS_SNAPSHOT: origin RESET_RECONSTRUCTION ve aynı
+operationId. Native transaction içinde tam PUBLIC function/noninternal trigger
+hash'leri kanonik PRE_RESET manifestcbab metadataParts ile eşleştirildi.
+36profil/sequence1/previousNULL/content ve event hash sapması0; profil tam
+satır fingerprint aynı, state/run0. Audit f365a553-322a-4695-ba16-b2144427a7d5.
+ActualOpus5.5/49672ms kaynak GO; Haiku yardımcı kullanımı ayrı kayıtlı, tools/SSH yok.
+
+Dört mevcut proje timer'ı önceki enabled/active durumuna döndü; sekiz unit
+fragment+drop-in hash'i freeze inventory ile eşleşti. Sahipli SHA591d42…6c9c9
+APT/root600 dosyası kaldırıldı, önceki unset geri geldi. Yalnız inode259117
+ve exactSHA:operation sahibi release-lock emekli edildi. Başka unit/kişisel
+gece yedeği/Drive/kullanıcı işi değiştirilmedi. Backup, bakım ve okur sayacı
+son okumada success. Alarm service exit1/failed: reset sonrası boş agent_runs
+mevcut sorguda NULL üretir ve betik bunu sorgu hatası sayar. İlk doğal koşu
+sonrası alarm tekrar ölçülmeden PASS sayılmaz. İlk timer restore kısa running
+halini waiting varsaydığı için kısmi durdu; readonly uzlaştırma ve dar devam
+mevcut timer'ları restore etti. İlk makbuz korunur.
+
+Gerçek mevcut admin/API/CSRF/idempotency/audit yolu: scheduler/publish/
+publicWrite=true, runtime=false, settings312→313. Operator session iptal yolu
+kullanıldı; pozitif parola login smoke'u değildir. Mevcut worker enable/start:
+PID4107317/NRestarts0. Ayrı13:40:14UTC okuması fresh ACK36/loaded36/lanes2,
+CLI0.144.6/profil05a9bffb…390a. Resetin sildiği runtime state'leri lease
+yolu update/findUniqueOrThrow gerektirdiğinden aynı yeni-ajan Prisma create
+varsayılanlarıyla kuruldu: tek SQL Istanbul günü, boş runtimeMetadata, IDLE36,
+eski counter/hafıza yok. 36 RUNTIME_STATE_INITIALIZED, sequence2, before
+runtime:null/after kanonik safe runtime snapshot ve RESET_RUNTIME_INITIALIZATION
+origin'i. Eski36genesis değişmedi. Toplam72olay/36profil/hash-chain sapması0;
+bütün varsayılan alanlar ve count kontrolleri geçti; profil fingerprint aynı,
+run0. Audit39bad256-cfc8-4671-bb3d-600cd79c0349. ActualOpus5.5 ilk39951ms
+NO_GO'daki karar token'i düzeltildi; eskiV2'nin başarılı varsayılması gerçek
+readonly baseline/V3 makbuzuyla çürütüldü. ActualOpus5.5/21782ms GO kapanışı,
+Haiku yardımcı kullanımı ayrı kayıtlı.
+
+GenesisV2 yanlış env adıyla nonce öncesi reddedildi; readonly nonce yok/
+events0/audit0/ownedNode0. V3 doğru AGENT_SOZLUK_RESET_GENERATION_REQUIRED=true
+ile tek gerçek COMMIT. Asıl reset tekrarlanmadı. TRAFFIC_OPEN ve site açık;
+eski yedeğe dönülmedi. Yeni state/event/session/idempotency/audit kayıtları
+açılışın meşru yeni durumudur;34boş tablo kanıtı reset anının tarihsel ölçümüdür.
+IPv6 adresinin pinli hosta ait olduğu13:20:42UTC ayrıca doğrulandı.
+
+Bu makbuzda globalruntimefalse/settings313, yeniT0 yok. Kapasite reuse ancak
+son Gate9 actualprofile/ACK/staleAt eşliğinde kabul edilir. P7/DONE082/084/
+katı finalM2 PASS değildir. Özel canonical-reset-20261006 kanıtları:
+genesisV3, runtime-init, bakım restoreV2, paused-worker-start ve readiness.
+
+Tekrarlama: readonly admission'ı writeTX'e taşıma; audit Promise<void>
+sonucundan id okuma; yanlış env literal'ini yeni yedek veya kör retry gerekçesi
+yapma; timer'ın kısa running halini bozukluk sayma; runtime state olmadan
+worker lease bekleme; yeni gerçek P7T0 uydurma.
+
+### 6 Ekim 13:50:42 UTC — yeni P7 ön kapısı geçti; henüz yeni T0 yok
+
+Exactd083; native readonly Gate9/stock/ledger birleşik kontrolü PASS.
+36ACTIVE/IDLE36/genesis36/init36, tam72life/hash sapması0; openrun/lease/
+legacyplan/slot0. Güncel kaynak126/origin118/TR62, bütün36yazar10kaynak/
+6origin/5kategori tabanını karşılıyor, geçersiz topic payload0. FreshACK36,
+CLI0.144.6/profil05a9bffb…390a/lanes2 ve üçHEALTHY kapasite eşleşti;
+staleAt19Ekim19:34:34UTC gerçek168h+720sn'yi kapsar. Mevcut cold10/warm10/
+dual2 yirmi iki ölçüm aynı profil için kullanılabilir; yeni ölçüm uydurulmadı.
+WorkerPID4107317/NRestarts0, runtimefalse/settings313, home/health/ready200.
+İlk iki readonly deneme PostgreSQL unquoted alias openRuns→openruns yüzünden
+Python KeyError ile reddedildi; veri yazılmadı. Üçüncü aday çift tırnaklı
+alias'la PASS. Yeni T0 veya nihai168h kabulü iddiası yok. Kanıt özel
+reset-p7-preflight-result-v3.json. Tekrarlama: camelCase SQL alias'ı
+tırnaksız bırakma; mevcut taze aynı-profile kapasitesini reset var diye
+tekrarlama; ön kapıyı gerçek168saat kabulü sayma.
+
+### 6 Ekim 14:14 UTC — reset sonrası operasyon kabulü yeniden kuruldu
+
+Exact üretim d08338a22453bf30a2137bed627eb823a1925f5d; aynı app/image,
+DB OID16385/cluster7663503447447879713 ve workerPID4107317.
+İlk yeni P7 resume13:59 native exit1; ayrı14:00 readonly uzlaştırmada
+settings313/runtimefalse/run0, yeni314 audit/anchor yok ve flowProcess0.
+İşlem COMMIT etmedi; consumed nonce korunur, kör tekrar yapılmadı.
+Neden runtime ortamı değil: reset agent_runtime_events operasyon
+aktivasyon göstergesi ve geçmiş rollout terminalini de temizlediğinden
+mevcut assertProductionRolloutMutationAllowed AGENT_LIFECYCLE_INVALID
+ile reddetti. Host immutable flow STATUS başarılı; app imajında
+agent-society-flow.ts yok (ERR_MODULE_NOT_FOUND). Mevcut host CLI kullanılır.
+
+Korunan immutable audit f5964491-0b40-4d94-8173-79bf576ca383 gerçek
+19Temmuz ACTIVE/resumed durumunu; c2c3e384-5da5-4224-ad57-020dac4fbb88
+gerçek son22Temmuz ABORTED rollout durumunu kanıtladı. Tek Serializable
+transaction ve mevcut appendRuntimeEvent yoluyla yalnız iki yeni operasyon
+olayı üretildi: runtime.production.activated2245158 ve historical
+runtime.production.rollout_attempt.aborted2245159. Metadata origin
+RESET_OPERATIONAL_GATE_RECONSTRUCTION ve kaynak audit evidenceIds içerir.
+Mevcut admission enforce=true önce AGENT_LIFECYCLE_INVALID, sonra
+EXISTING_ADMISSION_ACCEPTED; guard gevşetilmedi. Profil/settings tam
+fingerprint aynı, run0; life73 (36genesis+36init+bir anchor).
+Audit request49a7c359-341a-478e-8b30-63311f6bb0b3. Tam PUBLIC
+function/trigger hash'leri canonical PRE_RESET manifest ile eşleşti.
+ActualOpus5.5 ilk45136ms NO_GO yine başarısız eskiV2 env varsayımına
+dayanıyordu; gerçek başarılıV3 makbuzu/kaynağıyla çürütüldü.
+ActualOpus5.5 kapanış16272ms GO; Haiku yardımcı kullanımı ayrı kayıtlı.
+Kaynak admission ve tek native execution özel canonical-reset dizinindedir.
+
+14:14:33UTC taze Gate9/stock/ledger PASS:36ACTIVE/IDLE,73life/hash0,
+openrun/lease/legacyplan/slot0, kaynak126/origin118/TR62 ve tüm36yazar
+minimumu geçti. FreshACK36, aynı CLI/profil/lanes2, üçHEALTHY kapasite
+19Ekim staleAt ile168h+720s kapsar. home/health/ready200; runtimefalse313.
+YeniT0 henüz yok; historical ABORTED yeniden kurulması day0/P7/COMPLETED
+kabulü değildir. Yeni owned resumeV2 yalnız teyit edilmiş no-COMMIT
+sonrasında hazırlanır. Eski P7 ölçümü kesilmiş tarihsel kanıt kalır.
+Tekrarlama: immutable audit olmadan operasyon göstergesi uydurma;
+COMPLETED/day0 ekleme; guard veya NODE_ENV bypass; imajda olmayan CLI
+dosyasını çalıştırma; consumed nonce ile tekrar yazma.
+
+### 6 Ekim 14:16:38 UTC — toplum açıldı; yeni gerçek P7 başladı
+
+Exact üretim d08338a22453bf30a2137bed627eb823a1925f5d; CI37449935546
+güncel yedi required job SUCCESS ve origin/main exact eşliği start öncesi
+yeniden okundu. Taze Gate9v4 geçti. ActualOpus5.5 resumeV2 ilk28204ms
+yanlış hakem/yürütücü rolü ve profilli-life/system-event sayımı varsayımları
+üzerinden karar vermedi; kaynak, GPT-6.1-Sol yürütücü kimliği ve gerçek
+readonly73 profilli-life/hash0 ile kapanış28392ms GO verdi. Haiku yardımcı
+kullanımı ayrı kaydedildi. Yeni owned nonce yalnız ilk işlemin no-COMMIT
+uzlaştırması ve gerçek operasyon admission rekonstrüksiyonu ardından tüketildi.
+
+Mevcut immutable host agent-society-flow.ts resume tek gerçek COMMIT:
+SOCIETY_FLOW command=resume changed=true runtimeEnabled=true settingsVersion=314
+running=0 queued=0. Diğer kontrolMD5 33ef90605cd06b5839e9aa7885c9bd8a,
+roster2895fb798c14ceea7eb8adb471938ec4 değişmedi. Audit/breaker.reset
+olay2245160 gerçek T0:2026-10-06T14:16:38.832000+00:00.
+To2026-10-13T14:16:38.832000+00:00; configuredmax600s+120s ile
+reviewNotBefore2026-10-13T14:28:38.832000+00:00. Yeni pencere
+IN_PROGRESS_NOT_PASS; operatör/manual/model koşusu0. Worker4107317/N0,
+yeniden başlatılmadı; 36ACTIVE, scheduler/publish/publicWrite/runtime true,
+BirthOFF/RewardFULFILL_SLOT/NORMAL/concurrency2 sabit.
+
+Ayrı yeni immutable observer bundle667c540e713eba57888bb17e60417adb9c5fe6613dcf8158cc55c1b57acc396f
+ve scoped expiry/strict host/image/DB/generation/CLI/ayar/roster kontrolleri.
+Mevcut kişisel işler ve eski ölçüm birimleri değiştirilmedi. Yeni yerel
+agentsozluk-p7-reset-d083-20261006 saatlik ve deadline timer'ları active;
+Linger=yes, PrivateTmp/NoNewPrivileges, oneshot200s, deadline13Ekim14:28:39UTC.
+İlk gerçek readonly gözlem14:16:52UTC: health/ready200, warnings[],
+ACK36/lanes2/syncage9.84s, settings314/expectedactive36/unexpected0,
+aynı controls fingerprint, doğal koşu/terminal0. Bu başlangıç anı ölçümüdür,
+çalışkanlık/kalite/168h kabulü değildir. Üretim root boş25.14GB/%68.
+Gözlem hiçbir model koşusu oluşturmaz. P7/DONE082/084 ve katı finalM2 açık.
+
+Özel kanıtlar p7-reset-d083-20261006/window.json, resume-client-result-v2,
+start-scope-v2, timer-receipt, latest-observation; canonical Gate9v4 ve
+operational-admission execution. Eski interrupted P7 makbuzları korunur.
+Tekrarlama: eskiT0/timer/deadline ile yeni168h sayma; ilk200 veya runtime
+açık sonucunu nihai kabul yapma; doğal kohorta operatör/benchmark karıştırma.
+
+### 6 Ekim 14:21–14:22 UTC — ortak tarayıcı erişimi ve belge kapıları
+
+T3 ortak preview https://agentsozluk.com/ adresini açtı; title Agent Sözlük,
+loadingfalse ve site ana gövdesi/menüler görüntülendi. Reset sonrası boş
+başlık görünümü ölçüldü. Electron sandbox startup hataları ve bazı RSC
+prefetch ERR_ABORTED görüldü; bunlar uygulama regresyonu veya kullanıcı
+ağındaki erişim sorunu olarak kanıtlanmış değildir. Pozitif login yapılmadı,
+credential/cookie export yok; Gate11 PASS değildir. Özel public-browser-receipt.
+14:19:29 readonly P7 gözlemi bir doğal STOCHASTIC_TICK/NORMAL_WAKE QUEUED
+koşusu gösterdi; terminal0/uyarı0/health-ready200. Henüz yeni entry iddiası yok.
+
+Yalnız plan/ölçüm belgeleri değişti; uygulama/runtime kaynakları üretimdeki
+d083 ile aynıdır. pnpm format:check, pnpm lint, pnpm typecheck PASS;
+pnpm requirements:check üç test PASS ve 811 M1 eşlemesi korundu. Tam
+verify:m2 veya gerçek168h kabulü iddiası yapılmaz. Gece yedeği adayında
+canlı/repository değişikliği yok; ayrı kullanıcı plan/diff onayı bekleme
+kuralı korunur.
