@@ -579,15 +579,24 @@ pre_cutover_lease_scan() {
 
 # Kabul container'ı ayrık (-d) başlar ve kendi içinde 120 sn ile sınırlıdır; uzak
 # betik kesilse bile kendiliğinden biter. Kabuk sinyal tuzağı veya PID takibi yoktur:
-# sahipli önekli bütün kabul container'ları her koşunun başında ve sonunda kaldırılır
-# ve yoklukları doğrulanır. Docker sorgusunun hatası yokluk sayılmaz.
+# sahiplik etiketini VE tam `önek+16 hex op` adını taşıyan kabul container'ları her
+# koşunun başında ve sonunda kaldırılır, yoklukları doğrulanır. Yalnız önekle eşleşen
+# yabancı container'a dokunulmaz. Docker sorgusunun hatası yokluk sayılmaz.
 admission_prefix=agent-sozluk-reset-admission-
+admission_label=org.agentsozluk.reset-admission=probe
 admission_ids=''
 read_reset_admission_ids() {
-  admission_ids="$(docker ps -aq --filter "name=^${admission_prefix}")" || {
+  local listing id name
+  listing="$(docker ps -a --filter "label=$admission_label" --format '{{.ID}} {{.Names}}')" || {
     printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
     exit 97
   }
+  admission_ids=''
+  while read -r id name; do
+    test -n "$id" || continue
+    [[ "$name" =~ ^${admission_prefix}[0-9a-f]{16}$ ]] || continue
+    admission_ids+="$id "
+  done <<<"$listing"
 }
 remove_reset_admission_probes() {
   read_reset_admission_ids
@@ -605,8 +614,10 @@ remove_reset_admission_probes() {
 candidate_reset_admission() {
   local probe="${admission_prefix}${op_id}" status=''
   remove_reset_admission_probes
-  APP_IMAGE="$candidate_image" "${compose[@]}" run -d --name "$probe" --no-deps \
-    --pull never -T --entrypoint timeout app 120 \
+  # Başlatma da sınırlı: Docker yanıtı takılırsa kabul ve release kilidi süresiz kalmaz.
+  APP_IMAGE="$candidate_image" timeout --kill-after=10 60 "${compose[@]}" run -d \
+    --name "$probe" --label "$admission_label" --no-deps --pull never -T \
+    --entrypoint timeout app 120 \
     ./node_modules/.bin/tsx scripts/verify-reset-generation.ts </dev/null >/dev/null ||
     status=start-failed
   if test -z "$status"; then

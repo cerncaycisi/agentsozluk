@@ -392,6 +392,7 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
       psFails?: boolean;
       rmIgnored?: boolean;
       stale?: boolean;
+      foreign?: boolean;
     }) {
       const directory = mkdtempSync(path.join(tmpdir(), "release-admission-"));
       try {
@@ -399,7 +400,9 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
 exec 3>&1
 state=${quote(directory)}/containers
 : >"$state"
-${options.stale ? "printf 'stale1 agent-sozluk-reset-admission-eskiop\\nother9 agent-sozluk-app-1\\n' >\"$state\"" : "printf 'other9 agent-sozluk-app-1\\n' >\"$state\""}
+printf 'other9 agent-sozluk-app-1 -\\n' >"$state"
+${options.stale ? "printf 'stale1 agent-sozluk-reset-admission-00000000deadbeef probe\\n' >>\"$state\"" : ""}
+${options.foreign ? "printf 'foreign1 agent-sozluk-reset-admission-manual -\\nforeign2 agent-sozluk-reset-admission-manual probe\\n' >>\"$state\"" : ""}
 op_id=0123456789abcdef
 candidate_image=agent-sozluk:${sha}
 compose=(docker compose)
@@ -407,8 +410,8 @@ docker() {
   case "$1" in
     ps)
       ${options.psFails ? "return 42" : ""}
-      local filter="\${4#name=^}"
-      awk -v prefix="$filter" 'index($2, prefix) == 1 {print $1}' "$state" ;;
+      test "$2 $3 $4" = "-a --filter label=org.agentsozluk.reset-admission=probe" || return 9
+      awk '$3 == "probe" {print $1, $2}' "$state" ;;
     rm)
       shift 2
       printf 'RM %s\\n' "$*" >&3
@@ -421,7 +424,7 @@ docker() {
     compose)
       printf 'RUN %s\\n' "$*" >&3
       ${options.startFails ? "return 1" : ""}
-      printf 'probe1 %s\\n' "$5" >>"$state" ;;
+      printf 'probe1 %s %s\\n' "$5" "\${7#*=}" >>"$state" ;;
     wait)
       printf 'WAIT %s\\n' "$2" >&3
       ${options.waitFails ? "return 124" : ""}
@@ -429,10 +432,15 @@ docker() {
     *) return 1 ;;
   esac
 }
-timeout() { printf 'BOUND %s\\n' "$1" >&3; shift; "$@"; }
+timeout() {
+  while [[ "$1" == --* ]]; do shift; done
+  printf 'BOUND %s\\n' "$1" >&3
+  shift
+  "$@"
+}
 ${remote.slice(remote.indexOf("\nadmission_prefix="), remote.indexOf("\n}\n\n", remote.indexOf("\ncandidate_reset_admission() {")) + 3)}
 candidate_reset_admission
-printf 'LEFT %s\\n' "$(awk '{print $2}' "$state" | tr '\\n' ' ')"
+printf 'LEFT %s\\n' "$(awk '{print $1}' "$state" | tr '\\n' ' ')"
 echo PASSED`;
         return spawnSync("bash", ["-c", script], { encoding: "utf8", timeout: 20000 });
       } finally {
@@ -444,23 +452,31 @@ echo PASSED`;
       const ok = admission({});
       expect(ok.status).toBe(0);
       expect(ok.stdout).toContain(
-        "RUN compose run -d --name agent-sozluk-reset-admission-0123456789abcdef --no-deps --pull never -T --entrypoint timeout app 120 ./node_modules/.bin/tsx scripts/verify-reset-generation.ts",
+        "RUN compose run -d --name agent-sozluk-reset-admission-0123456789abcdef --label org.agentsozluk.reset-admission=probe --no-deps --pull never -T --entrypoint timeout app 120 ./node_modules/.bin/tsx scripts/verify-reset-generation.ts",
       );
+      expect(ok.stdout.indexOf("BOUND 60")).toBeLessThan(ok.stdout.indexOf("RUN "));
       expect(ok.stdout).toContain("BOUND 150");
       expect(ok.stdout).toContain("WAIT agent-sozluk-reset-admission-0123456789abcdef");
       expect(ok.stdout).toContain("RM probe1");
-      expect(ok.stdout).toContain("LEFT agent-sozluk-app-1 ");
+      expect(ok.stdout).toContain("LEFT other9 \n");
       expect(ok.stdout).toContain("PASSED");
       const candidate = definition("candidate_reset_admission");
       expect(candidate).not.toContain("trap");
-      expect(candidate).not.toContain("kill");
+      expect(candidate).not.toMatch(/(^|[\s;])kill\s/mu);
     });
 
     it("önceki koşudan kalan sahipli kabul container'ını başlamadan süpürür", () => {
       const result = admission({ stale: true });
       expect(result.status).toBe(0);
       expect(result.stdout.indexOf("RM stale1")).toBeLessThan(result.stdout.indexOf("RUN "));
-      expect(result.stdout).toContain("LEFT agent-sozluk-app-1 ");
+      expect(result.stdout).toContain("LEFT other9 \n");
+    });
+
+    it("sahiplik etiketi ve tam ad biçimi olmayan önekli container'a dokunmaz", () => {
+      const result = admission({ foreign: true });
+      expect(result.status).toBe(0);
+      expect(result.stdout).not.toContain("RM foreign");
+      expect(result.stdout).toContain("LEFT other9 foreign1 foreign2 \n");
     });
 
     it("ret, başlatma veya bekleme hatasında container'ı kaldırıp reddeder", () => {
