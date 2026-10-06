@@ -100,8 +100,9 @@ olmadan uzatılamaz. Tur bütçesi ve tek ağır iş kuralı değişmedi.
 - Tur bütçesi: iş başına en fazla 2 Astra turu _(Gökhan kararı, 25 Eylül 2026)_. Astra ve Sol
   turları üretim ajanlarıyla aynı Codex kotasını harcar. Astra bütçesi dolunca, inceleme
   gerçekten gerekiyorsa yalnız açık bulguların düzeltmesine dar bir Sol 6.1 turu yapılır
-  _(Gökhan kararı, 6 Ekim 2026)_. Yürütücü Sol ise bu yol kapalıdır. Sol da kapanış vermezse
-  yeni tur başlatma; kalan bulguları tasarım sorusu olarak Gökhan'a götür. Geçici muafiyet yalnız Gökhan'ın açık kararıyla verilir
+  _(Gökhan kararı, 6 Ekim 2026)_. Sol 6.1 turlarında sayı sınırı yoktur _(Gökhan kararı,
+  6 Ekim 2026: "Sol sınırsız")_. Yürütücü Sol ise bu yol kapalıdır; o durumda Astra bütçesi
+  dolunca kalan bulguları tasarım sorusu olarak Gökhan'a götür. Geçici muafiyet yalnız Gökhan'ın açık kararıyla verilir
   ve bitiş tarihiyle `docs/PLAN.md`'nin "Şu an neredeyiz" bölümüne yazılır.
 
 ## External action boundary
