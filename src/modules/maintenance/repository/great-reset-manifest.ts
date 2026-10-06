@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { greatResetInspection, type ResetTable } from "./great-reset";
+import { digestResetRestoreMetadata } from "./reset-restore-catalog";
 
 type Tx = Prisma.TransactionClient;
 export type ResetContentManifest = {
-  formatVersion: 1;
+  formatVersion: 2;
   tables: Record<string, { rows: number; sha256: string }>;
   sequences: { name: string; value: string }[];
   metadataSha256: string;
@@ -45,7 +46,13 @@ export async function resetContentManifest(
   }
   // OID, DB adı ve datallowconn restore ortamının kimlik kapısında doğrulanır;
   // nesne adları, owner/ACL/rol/config ise restore karşılaştırmasının içindedir.
-  const [metadata] = await tx.$queryRaw<{ sha256: string; parts: Record<string, string> }[]>`
+  const [metadata] = await tx.$queryRaw<
+    {
+      constraints: unknown;
+      indexes: unknown;
+      parts: Record<string, string>;
+    }[]
+  >`
     WITH metadata AS (SELECT jsonb_build_object(
       'database', (SELECT jsonb_build_object('owner', pg_get_userbyid(datdba),
         'encoding', pg_encoding_to_char(encoding), 'collation', datcollate, 'ctype', datctype,
@@ -94,17 +101,18 @@ export async function resetContentManifest(
         ORDER BY pg_get_userbyid(d.defaclrole) COLLATE "C",n.nspname COLLATE "C",d.defaclobjtype)
         FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid=d.defaclnamespace)
     ) AS value)
-    SELECT encode(sha256(convert_to(value::text, 'UTF8')), 'hex') AS sha256,
+    SELECT metadata.value->'constraints' AS constraints, metadata.value->'indexes' AS indexes,
       (SELECT jsonb_object_agg(key,encode(sha256(convert_to(part::text,'UTF8')),'hex'))
        FROM jsonb_each(metadata.value) AS component(key,part)) AS parts FROM metadata`;
   if (!metadata) throw new Error("GREAT_RESET_MANIFEST_FAILED");
+  const normalizedMetadata = digestResetRestoreMetadata(metadata);
   const state = await greatResetInspection.snapshot(tx, []);
   const value = {
-    formatVersion: 1 as const,
+    formatVersion: 2 as const,
     tables: contents,
     sequences: state.sequences,
-    metadataSha256: metadata.sha256,
-    metadataParts: metadata.parts,
+    metadataSha256: normalizedMetadata.sha256,
+    metadataParts: normalizedMetadata.parts,
   };
   return { ...value, sha256: createHash("sha256").update(JSON.stringify(value)).digest("hex") };
 }

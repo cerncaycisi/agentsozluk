@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 09:34 UTC: uygulama ve dış erişim donduruldu; veritabanı sağlam. Reset henüz yapılmadı.**
+**6 Ekim 10:13 UTC: uygulama ve toplum kapalı; kaynak veritabanı korunuyor. Reset henüz yapılmadı.**
 
 - **Canlı:** uygulama, imaj, boot etiketi ve immutable runtime
   `9d1c4d1068664b1a56ceebea8e51ed44656568d3`. Altı migration uygulandı;
@@ -23,7 +23,18 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   CANCEL_REQUESTED/live lease sıfır, 36 ACTIVE yazar korunuyor. DB çalışıyor; uygulama ve proxy kapalı. Root boot guard ve maintenance-hold kuruldu.
   Dondurma son kabulü systemctl Conditions=[unprintable] yüzünden reddedildi;
   veri silinmedi ve intent oluşturulmadı. D-Bus düzeltmesi24unit, actualOpus5.5 kaynak GO
-  ve gerçek host salt okunur function provasından geçti; exact teslim bekler; bu teknik kapı atlanmaz.
+  ve gerçek host salt okunur function provasından geçti. PR338 exact head
+  a791bfaf1d7b6a8a73391a03bf4e11368808053f yedi CI işini geçip10:04:05UTC’de
+  main15f8fd70e7150e46cb09b28017dc8d215ac54ba4 olarak birleşti; üretime henüz dağıtılmadı.
+  Gerçek current BIGINT owner/ACL şema restore provası ikinci kusuru ortaya çıkardı:
+  PostgreSQL on CHECK ve iki indeksin eşdeğer tanımını yeniden yazıyor; eski ham katalog
+  hash’i meşru restore’u reddediyor. Exact nesne/tanım çiftleriyle sınırlı düzeltme hazır;
+  manifest formatVersion2. İlgili30unit/typecheck ve gerçek60tablo şema provası geçti.
+  Kota100→99 ve indeks koşulu zayıflaması native provada ayrı ayrı tespit edildi.
+  14katalog bileşeni eşit; yalnız fiziksel Alpine/Debian collationVersion farklı.
+  Bu fark kaynakta gizlenmez; production shadow’da15bileşenin tamamı eşit olmalı.
+  Katalog kaynak hakemi actualOpus5.5/91447ms SOURCE_GO; CI/exact teslimi bekler.
+  Tam reset kabulü değildir.
 - **Tamamlandı:** exact main CI37417478456 yedi iş SUCCESS, aynı SHA artifact
   37418729170 SUCCESS; artifact11392376453 üretime yüklendi. Tam
   `verify:m2:development` 37418731436 SUCCESS; job 05:28:51–06:13:33 UTC.
@@ -73,8 +84,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   `rclone check` Google API403 RATE_LIMIT_EXCEEDED ile doğrulanamadı;
   dosya yokluğu sonucu çıkarılmaz. Bu yürütücü Drive'a upload/delete veya
   yerel gece yedeklerine silme uygulamadı. Diğer kullanıcı işleri korunur.
-- **Sırada:** systemd koşul okuması düzeltmesinin farklı model/CI/exact sürüm
-  teslimi ve donmuş hostta kontrollü devamı; ardından taze BIGINT yedek, gerçek
+- **Sırada:** katalog restore düzeltmesinin farklı model/CI/exact sürüm
+  teslimi; iki düzeltmenin birlikte bakım koruması kaldırılmadan donmuş hostta
+  kontrollü dağıtımı. Ardından taze BIGINT yedek, gerçek
   operator restore ve production shadow, bütün yazarların dondurulması/boot guard,
   tek kullanımlık reset, iç kabul, exposure ve doğrulanmış yeniden açılış.
   İnsan ve ajan içerikleri/etkileşimleri reset kapsamındadır; hesaplar,
