@@ -8146,3 +8146,42 @@ async bekliyor. Canlı script/service/saklama/Drive değişikliği0.
 Tekrarlama: ilk entry'yi nihai168h kabulü yapma; bakım koşularını doğal
 yazı kohortuna katma; eski ACK'ı fresh sayma; bu ayrı işin açık onayını
 genel full yetkiden türetme.
+
+### 6 Ekim 14:50–14:54 UTC — ayrı gece yedeği açık onayı uygulandı
+
+Repository başlangıcı6919ea4b7a0a98f2811935314dec7411be95cbdd;
+üretim uygulaması d08338a22453bf30a2137bed627eb823a1925f5d değişmedi.
+Gökhan v2 plan/diff’e açık onay verdi; reviewed diff89846d3fecd0c33d722fa972d19324f2211bf90dbcb2b35426ddb6a9d38358b1.
+ActualOpus5.5/47135ms GO, Haiku yardımcı kayıtlı. Yalnız operatör script
+ve service atomik değişti; kurulu hash’ler d2847637…3f76 ve8b842a75…fd4,
+repository exactbytes eşit. KEEP3/üç yeni dosya Drivecopy-check/100min;
+timer dosyası aynı/activeenabled. Diğer kullanıcı işleri yeniden başlatılmadı.
+
+Gerçek14:54 native service8sn/success/exit0: dump76.819.114bayt/60tablo,
+checksum afb078f595dc8803949c357e9a68263d8270b38b1dab1ab942ea1a31f5801bc5;
+SNAPSHOT_OK/DUMP_DONE/META_DONE ve TOC/tamdecode kabulü. Ayrı SHA okuması
+aynı, arşiv3/manifest0; önceki iki kopya korundu, retention silmesi gerekmedi.
+Drive upload safeerror403 RATE_LIMIT_EXCEEDED/exit1; kök neden mevcut
+GoogleAPI kota reddi. Check’e geçilmedi. Yerel kabul bozulmadan YEDEK_OK
+kept3/UPLOAD_FAILED ve unitexit0 ölçüldü; bulut çözümü/PASS iddia edilmez.
+Kişiselclient_id gerekebilir; ortakclient2026kapanışı runbook’ta, config/
+credential değiştirilmedi. Kör retry veya remote silme yapılmadı.
+
+Repository testinin adaydan yalnız Prettier80→100 farkı düzeltildi;
+TypeScript AST eşliği ve29test PASS. İlk AST yardımcı kontrolü SourceFile.text
+üzerinden bütünham dosyayı karşılaştırdığı için yalancı mismatch verdi;
+SourceFile hamtext hariç nodekind/identifier/literal/child sırası eşliği geçti.
+Script/service bytes onaylı kaldı. Private6mock ve bash-n PASS korunur;
+mock timeout124 gerçek900sn testi değildir. Üretim uygulaması/DB/worker
+restart/ayar değişikliği yok; gerçek P7 penceresi aynı.
+
+Tekrarlama: tüketilmiş kurulum/manualstart nonce’unu yeniden çalıştırma;
+Drive kota reddini yerel yedek başarısızlığı sayma; copy başarısızken check
+geçti veya Drive dosyaları eksiksiz deme; ortak client_id’yi sessiz değiştirme.
+
+14:57 P7 readonly tekrar: health/ready200, worker4107317/N0, settings314,
+36loaded/iki hat, doğal terminal1/teknik hata0/operator0; heartbeat güncel.
+ACK14:35 yaşı1277sn ile aynı stale uyarısı geri geldi. Başarılı14:42 kesiti
+kalıcı güncellik sayılmaz; tarihçe ve final disposition şartı korunur.
+Repository lint/typecheck PASS. İlk pnpm komutu shellPATH eksikliğiyle127
+verdi; mevcut Node22/Corepack yolu eklenerek aynı kontroller geçti.

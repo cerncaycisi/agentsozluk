@@ -7744,3 +7744,53 @@ async bekliyor. Canlı script/service/saklama/Drive değişikliği0.
 Tekrarlama: ilk entry'yi nihai168h kabulü yapma; bakım koşularını doğal
 yazı kohortuna katma; eski ACK'ı fresh sayma; bu ayrı işin açık onayını
 genel full yetkiden türetme.
+
+## 6 Ekim 14:50–14:54 UTC — onaylı gece yedeği v2 kuruldu; gerçek yerel yedek geçti
+
+Gökhan, v2 plan ve tam diff’i açıkça onayladı. Onaylı diff SHA256
+89846d3fecd0c33d722fa972d19324f2211bf90dbcb2b35426ddb6a9d38358b1.
+ActualOpus5.5/47135ms kaynak GO; yardımcı Haiku modelUsage ayrı kayıtlı.
+Operatör script SHA256 d2847637533b67826e5b96b80ec36b6cf26ecce3ae9dc8cdafbb668dde543f76;
+service SHA256 8b842a75af5adb9fb9c2602cddb1a535318749d7376f341c9487c68b18388fd4.
+Kurulu ve repository bytes eşit. Yerel KEEP3; yeni üç dosyayla sınırlı Drive
+copy/check, Drive hatasında yerel kabul korunur, remote silme yok.
+TimeoutStartSec100min native1h40min; timer source aynı/active/enabled,
+sonraki çalışma7Ekim01:39:23UTC. Kurulum sırasında yedek dosyaları değişmedi.
+
+Gerçek manuel native service14:54:01–14:54:09UTC success/exit0.
+Yeni agent-sozluk-20261006T145401Z.dump76.819.114bayt; SHA256
+afb078f595dc8803949c357e9a68263d8270b38b1dab1ab942ea1a31f5801bc5.
+SNAPSHOT_OK/DUMP_DONE/META_DONE,60tablo; TOC ve tam blok decode kabulü.
+Yeni checksum ikinci bağımsız okumada eşit; yerel arşiv sayısı3, geçici
+Drive manifest0. Önceki iki yerel arşiv korunuyor. Kanonik reset arşivi
+ayrı dizinde korundu; uygulama/worker ayarlarına mutation yapılmadı.
+
+Drive upload403 RATE_LIMIT_EXCEEDED/exit1; DRIVE_FAIL localBackupAccepted=true
+ve YEDEK_OK kept=3 drive=UPLOAD_FAILED. Upload başarısız olduğu için
+rclone check çalışmadı; gerçek cloud doğrulaması **iddia edilmez**. Drive’da
+silme yok. Ortak Google client_id2026 kapanışı notu runbook/script’te;
+kendi client_id gerekebilir, credential/config değiştirilmedi.
+
+29 unit ve6 değişmemiş aday pipeline mock PASS. Test dosyasındaki yalnız
+80→100 Prettier genişlik düzeltmesinden sonra TypeScript AST eşliği ve
+repository29test PASS; script/service onaylı hash’leri aynı. Timeout124
+fixture dönüşüdür; gerçek15dakikalık timeout veya native SIGTERM testi değildir.
+Özel kanıtlar p7-reset-d083-20261006/backup-proposal/v2 içinde approval,
+installation, formatting ve manual-verification JSON makbuzları.
+
+P7 aynı d083 runtime/settings314/worker4107317 ile devam ediyor.
+Roster cycle ACK14:35:48’e yenilendi;14:42 gözleminde yaş395,96sn<420sn,
+uyarı0/36loaded/iki hat/heartbeat14:42/doğal terminal1/teknik hata0.
+Önceki stale uyarıları korunur; kalıcı güncellik veya P7 PASS değildir.
+Gerçek168h+600+120sn kontrolü13Ekim14:28:38UTC’den önce yapılamaz.
+
+14:57 ayrı readonly P7 gözlemi: aynı36ACTIVE/36loaded/iki hat/settings314,
+worker4107317/N0, health/ready200; doğal terminal1/teknik hata0/operator0.
+Heartbeat14:57:03 güncel, iki native Codex süreç örneği var. ACK14:35:48
+yaşı1277sn olduğu için stale uyarısı tekrar geldi; döngü içindeki tarihi
+uyarı korunur. İşlem örneği başarı/sağlık veya tamamlanmış koşu sayısı değildir.
+Bu uyarı final kabulde disposition gerektirir; threshold/observer değiştirilmedi.
+
+Bu paket sonrası pnpm lint ve pnpm typecheck PASS; app/runtime/prisma ve
+migration dosyaları üretimdeki d083 ile aynıdır. Operatör yedek paketi,
+uygulama dağıtımı veya P7 yeniden başlangıcı değildir.

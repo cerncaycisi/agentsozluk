@@ -38,6 +38,9 @@ function sandbox(
     restoreDataExit?: number;
     sshExit?: number;
     notify?: string;
+    driveUploadExit?: number;
+    driveCheckExit?: number;
+    missingRclone?: boolean;
   } = {},
 ) {
   const root = mkdtempSync(path.join(tmpdir(), "yedek-"));
@@ -60,6 +63,28 @@ if [[ "$1" == --list ]]; then exit ${options.restoreExit ?? 0}; fi
 exit ${options.restoreDataExit ?? 0}`,
   );
   executable(path.join(root, "ping.sh"), `echo "$@" >> '${path.join(root, "pings")}'`);
+  if (!options.missingRclone) {
+    executable(
+      path.join(bin, "rclone"),
+      `
+printf '%s\\n' "$*" >> '${path.join(root, "drive-calls")}'
+operation="$1"
+shift
+while [[ "$#" -gt 0 ]]; do
+  if [[ "$1" = --files-from-raw ]]; then
+    shift
+    cat "$1" >> '${path.join(root, "drive-files")}'
+    break
+  fi
+  shift
+done
+case "$operation" in
+  copy) exit ${options.driveUploadExit ?? 0} ;;
+  check) exit ${options.driveCheckExit ?? 0} ;;
+  *) exit 98 ;;
+esac`,
+    );
+  }
   const run = () =>
     spawnSync("bash", [nightly], {
       encoding: "utf8",
@@ -71,6 +96,7 @@ exit ${options.restoreDataExit ?? 0}`,
         AGENTSOZLUK_BACKUP_KEY: path.join(root, "key"),
         AGENTSOZLUK_KNOWN_HOSTS: path.join(root, "known_hosts"),
         AGENTSOZLUK_PG_RESTORE: path.join(bin, "pg_restore"),
+        AGENTSOZLUK_RCLONE: path.join(bin, "rclone"),
         AGENTSOZLUK_BACKUP_MIN_FREE_BYTES: "1",
         ...(options.notify === undefined ? {} : { AGENTSOZLUK_BACKUP_NOTIFY: options.notify }),
       },
@@ -99,7 +125,7 @@ describe("gecelik sunucu dışı yedek", () => {
     expect(args).toContain(path.join(root, "key"));
   });
 
-  it("son 7 kopyayı tutar, en eskileri siler", () => {
+  it("son 3 kopyayı tutar, en eskileri siler", () => {
     const { backups, run } = sandbox();
     mkdirSync(backups, { recursive: true });
     for (let day = 1; day <= 8; day += 1) {
@@ -114,11 +140,70 @@ describe("gecelik sunucu dışı yedek", () => {
     const dumps = readdirSync(backups)
       .filter((name) => /^agent-sozluk-\d{8}T\d{6}Z\.dump$/u.test(name))
       .sort();
-    expect(dumps).toHaveLength(7);
-    expect(dumps[0]).toBe("agent-sozluk-20260903T010000Z.dump");
+    expect(dumps).toHaveLength(3);
+    expect(dumps[0]).toBe("agent-sozluk-20260907T010000Z.dump");
     expect(readdirSync(backups)).not.toContain("agent-sozluk-20260901T010000Z.meta");
     expect(readdirSync(backups)).toContain("baska-dosya.dump");
     expect(readdirSync(backups)).toContain("agent-sozluk-1-manuelT1Z.dump");
+  });
+
+  it.each([
+    ["başarı", {}, "VERIFIED", 2],
+    ["yükleme hatası", { driveUploadExit: 1 }, "UPLOAD_FAILED", 1],
+    ["kontrol hatası", { driveCheckExit: 1 }, "CHECK_FAILED", 2],
+    ["yükleme timeout", { driveUploadExit: 124 }, "UPLOAD_FAILED", 1],
+    ["rclone yok", { missingRclone: true }, "SETUP_FAILED", 0],
+  ] as const)(
+    "Drive %s: üç dosyayla sınırlı, yerel kabul korunur",
+    (_label, options, status, count) => {
+      const { root, backups, run } = sandbox(options);
+      mkdirSync(backups, { recursive: true });
+      for (let day = 1; day <= 8; day += 1) {
+        const stem = `agent-sozluk-202609${String(day).padStart(2, "0")}T010000Z`;
+        for (const suffix of [".dump", ".dump.sha256", ".meta"])
+          writeFileSync(path.join(backups, stem + suffix), "eski");
+      }
+      const result = run();
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain(`drive=${status}`);
+      expect(result.stdout).toContain("kept=3");
+      expect(result.stderr).not.toContain("YEDEK_FAIL");
+      if (status !== "VERIFIED") expect(result.stderr).toContain("localBackupAccepted=true");
+      const callFile = path.join(root, "drive-calls");
+      const calls = existsSync(callFile) ? readFileSync(callFile, "utf8").trim().split("\n") : [];
+      expect(calls).toHaveLength(count);
+      if (count > 0) {
+        expect(calls[0]).toContain("copy ");
+        for (const call of calls) {
+          expect(call).toContain("gdrive:agentic-server-yedekler/agentsozluk-backups");
+          expect(call).toContain("--files-from-raw");
+          expect(call).not.toMatch(/(?:sync|delete|purge)/u);
+        }
+        if (count === 2) expect(calls[1]).toContain("--one-way");
+        const selected = readFileSync(path.join(root, "drive-files"), "utf8").trim().split("\n");
+        expect(selected).toHaveLength(3 * count);
+        const names = [...new Set(selected)];
+        expect(names).toHaveLength(3);
+        expect(
+          names.every(
+            (name) =>
+              !name.includes("/") &&
+              /^agent-sozluk-\d{8}T\d{6}Z\.(?:dump(?:\.sha256)?|meta)$/u.test(name),
+          ),
+        ).toBe(true);
+        expect(names.every((name) => existsSync(path.join(backups, name)))).toBe(true);
+      }
+      expect(
+        readdirSync(backups).filter((name) => /^agent-sozluk-\d{8}T\d{6}Z\.dump$/u.test(name)),
+      ).toHaveLength(3);
+      expect(readdirSync(backups).some((name) => name.startsWith(".drive-files."))).toBe(false);
+    },
+  );
+
+  it("yerel yedek reddedilirse Drive'a kopyalamaz", () => {
+    const { root, run } = sandbox({ sshExit: 255 });
+    expect(run().status).toBe(1);
+    expect(existsSync(path.join(root, "drive-calls"))).toBe(false);
   });
 
   it.each([
@@ -153,11 +238,11 @@ describe("gecelik sunucu dışı yedek", () => {
       );
     const result = run();
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain("kept=7");
+    expect(result.stdout).toContain("kept=3");
     const dumps = readdirSync(backups).filter((name) =>
       /^agent-sozluk-\d{8}T\d{6}Z\.dump$/u.test(name),
     );
-    expect(dumps).toHaveLength(7);
+    expect(dumps).toHaveLength(3);
     // Yeni (saat geri alındığı için "en eski" görünen) yedek silinmedi; en eski gelecek kopya gitti.
     expect(dumps.some((name) => !name.startsWith("agent-sozluk-2099"))).toBe(true);
     expect(dumps).not.toContain("agent-sozluk-20990101T010000Z.dump");

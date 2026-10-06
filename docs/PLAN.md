@@ -52,8 +52,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   bağlantıları200. PublicID2147483648, provenance/run/action/entity eşliği
   ve tek kayıt doğrulandı. 14:36 toplam766 yaşam olayı/36profil/hash sapması0.
   Bu tek örnek, P7 kabulü değildir. Roster ACK döngü bitimine kadar eski
-  kaldığı için gözlem uyarısı var; heartbeat/koşu ilerliyor, yenilenmesi
-  ayrıca ölçülecek. Eşik veya observer değiştirilmedi.
+  kaldığı için tarihsel gözlem uyarısı korunuyor. ACK14:35’te yenilendi;
+  14:42 kesitinde yaş396sn, mevcut420sn eşiğinin altında ve uyarı0. Uzun
+  döngülerde yeniden eski kalabilir; heartbeat/koşu kanıtıyla son kabulde
+  ayrıca değerlendirilir.14:57’de uyarı yeniden görüldü; heartbeat güncel,
+  doğal terminal1/teknik hata0. Eşik veya observer değiştirilmedi.
 - **Sırada:** bu pencerenin gerçek doğal koşu, kaynak, ledger ve kamu etkisi
   kanıtlarını toplamak; ardından Gate11/12, P8 ve final M2. Goal tamamlanmadı.
 
@@ -113,19 +116,23 @@ CI37449935546 yedi SUCCESS. Ayrıntılı ölçüm kanıtları [STATUS.md](STATUS
   personalar, kaynaklar, operatör erişimi ve operasyonel kanıtlar korunur.
 
 Goal aynı tam teslim amacıyla aktif; DONE-082/084 açık. Eski P7 adayı kullanıcı
-kararıyla `USER_REQUEST_INTERRUPTED_NOT_PASS`; tarihçe korunur. Yeni T0 henüz yok.
-Reset sonrası audited resume ile gerçek168saat ve 600+120sn yeniden ölçülecek;
+kararıyla `USER_REQUEST_INTERRUPTED_NOT_PASS`; tarihçe korunur. Yeni T0
+6Ekim14:16:38UTC; gerçek168saat ve 600+120sn ölçümü devam ediyor;
 ardından Gate11/12, P8 ve katı final M2 var. Yetki17Ekim19:50UTC'de biter;
 son teorik T0 10Ekim19:38UTC, final kapılar için ayrıca zaman gerekir.
 [Reset kapsamı](RESET_URETIM_KAPSAMI_2026-10-05.md) ve M2 kabul şartları korunur.
 
-Gökhan'ın **resetten sonraki ayrı işi**: gece yedeğinde yerel KEEP7→3 ve
-`gdrive:agentic-server-yedekler/agentsozluk-backups` hedefine `.dump`/`.sha256`/
-`.meta` kopyalama, ardından `rclone check`. Drive hatası yerel başarılı yedeği
-geçersiz saymaz; hata kaydedilir. Drive retention/silme yapılmaz. **Önce somut
-plan ve diff sunulur, Gökhan'ın onayı beklenir; henüz uygulanmadı.** Native
-rclone ortak Google client_id'nin2026 içinde kapanacağını bildirdi; kendi
-client_id gereksinimi bu ayrı işte ele alınır.
+**Gece yedeği ayrı işi kuruldu:** Gökhan v2 plan ve tam diff’i açıkça onayladı.
+6Ekim14:50’de yerel KEEP3, yalnız yeni `.dump`/`.sha256`/`.meta` için
+`gdrive:agentic-server-yedekler/agentsozluk-backups` hedefine copy ve ardından
+`rclone check`, servis100dakika kuruldu. Timer aynı ve aktif. **Gerçek14:54
+çalışması:** 60tablo/76.819.114bayt yedek, checksum ve tam blok decode kabulü;
+servisexit0, yerelde3arşiv. Drive upload403 `RATE_LIMIT_EXCEEDED`; check’e
+geçilemedi ve bulut kopyası doğrulanmış sayılmaz. Hata kaydedildi, yerel kabul
+korundu; Drive’da silme yok. Kod teslimi için29test PASS; lint/typecheck PASS,
+son repository makbuzu ayrıca kaydedilir. Ortak Google client_id2026 kapanışı notu
+korunur; mevcut kota hatası için kişisel client_id gerekebilir. Bu sorun P7’yi
+durdurmaz; kimlik bilgisi taşınmadı veya değiştirilmedi.
 
 ### Canlı ve tamamlanan teslimler
 

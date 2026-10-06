@@ -21,7 +21,7 @@
 set -euo pipefail
 umask 077
 DIR="${AGENTSOZLUK_BACKUP_DIR:-$HOME/agentsozluk-backups}"
-KEEP="${AGENTSOZLUK_BACKUP_KEEP:-7}"
+KEEP="${AGENTSOZLUK_BACKUP_KEEP:-3}"
 KEY="${AGENTSOZLUK_BACKUP_KEY:-$HOME/.ssh/agentsozluk_backup}"
 KNOWN_HOSTS="${AGENTSOZLUK_KNOWN_HOSTS:-$HOME/.ssh/agentsozluk_known_hosts}"
 PG_RESTORE="${AGENTSOZLUK_PG_RESTORE:-$HOME/.local/pgclient/bin/pg_restore}"
@@ -32,6 +32,7 @@ NAME_PATTERN='^agent-sozluk-[0-9]{8}T[0-9]{6}Z\.dump$'
 
 tmp_dump=""
 tmp_meta=""
+manifest=""
 final=""
 stage="baslangic"
 
@@ -44,7 +45,7 @@ notify() {
 fail() {
   trap - ERR INT TERM
   echo "YEDEK_FAIL code=$1" >&2
-  rm -f -- "$tmp_dump" "$tmp_meta" 2>/dev/null || true
+  rm -f -- "$tmp_dump" "$tmp_meta" "$manifest" 2>/dev/null || true
   # Yayımlama yarıda kaldıysa bu çalışmanın yetim yan dosyaları da gider; başka yedeğe dokunmaz.
   if [[ -n "${final:-}" && ! -e "$final" ]]; then
     rm -f -- "$final.sha256" "${final%.dump}.meta" 2>/dev/null || true
@@ -112,6 +113,45 @@ test ! -e "$tmp_dump" || fail DUMP_PUBLISH
 tmp_dump=""
 tmp_meta=""
 
+# Google Drive ikincil kopyadır. Başarısızlık yerel kabulü geri almaz.
+# Ortak Google client_id 2026 kapanışı nedeniyle kişisel client_id gerekebilir.
+# Remote kimliği/config burada kopyalanmaz veya loglanmaz; mevcut gdrive kullanılır.
+stage="drive"
+rclone_bin="${AGENTSOZLUK_RCLONE:-$HOME/.local/bin/rclone}"
+drive_target="gdrive:agentic-server-yedekler/agentsozluk-backups"
+drive_status="LOCAL_ONLY"
+manifest=""
+if [[ -x "$rclone_bin" ]] && manifest=$(mktemp "$DIR/.drive-files.XXXXXX") &&
+  printf '%s\n' "${final##*/}" "${final##*/}.sha256" "$(basename "${final%.dump}.meta")" >"$manifest"; then
+  # Yalnız bu üç dosya; copy/sync-delete yok. Toplam upload bütçesi15 dakika.
+  if timeout --kill-after=15 900 "$rclone_bin" copy "$DIR" "$drive_target" \
+    --files-from-raw "$manifest" --transfers 1 --checkers 2 \
+    --retries 1 --low-level-retries 3 --contimeout 30s --timeout 2m; then
+    # one-way ve üç dosya filtresi, Drive'daki eski yedekleri silmez/sapma saymaz.
+    if timeout --kill-after=15 300 "$rclone_bin" check "$DIR" "$drive_target" \
+      --files-from-raw "$manifest" --one-way --checkers 2 \
+      --retries 1 --low-level-retries 3 --contimeout 30s --timeout 2m; then
+      drive_status="VERIFIED"
+      echo "DRIVE_OK file=${final##*/} files=3 verified=check"
+    else
+      drive_exit=$?
+      drive_status="CHECK_FAILED"
+      echo "DRIVE_FAIL stage=check exit=$drive_exit localBackupAccepted=true" >&2
+    fi
+  else
+    drive_exit=$?
+    drive_status="UPLOAD_FAILED"
+    echo "DRIVE_FAIL stage=upload exit=$drive_exit localBackupAccepted=true" >&2
+  fi
+else
+  drive_status="SETUP_FAILED"
+  echo "DRIVE_FAIL stage=setup localBackupAccepted=true" >&2
+fi
+# Yerel yedek yayımlandı. Drive yardımcı dosyası hatası başarıyı geçersiz saymaz.
+if [[ -n "$manifest" ]]; then
+  rm -f -- "$manifest" || echo "DRIVE_FAIL stage=manifest_cleanup localBackupAccepted=true" >&2
+fi
+
 stage="dondurme"
 # Bu çalışmanın yedeği listeden baştan çıkarılır: saat geri alınsa bile sayım doğru kalır
 # ve yeni yedek hiçbir koşulda silinmez (Astra P3).
@@ -133,4 +173,4 @@ for ((i = 0; i < excess; i++)); do
   rm -f -- "$old" "$old.sha256" "${old%.dump}.meta" || fail ROTATION_DELETE
   removed=$((removed + 1))
 done
-echo "YEDEK_OK file=${final##*/} bytes=$bytes tables=$tables kept=$((${#others[@]} + 1 - removed))"
+echo "YEDEK_OK file=${final##*/} bytes=$bytes tables=$tables kept=$((${#others[@]} + 1 - removed)) drive=$drive_status"

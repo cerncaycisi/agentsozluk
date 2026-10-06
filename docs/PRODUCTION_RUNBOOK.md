@@ -2314,8 +2314,8 @@ Kaldırmak için zamanlayıcıyı `disable --now` ile kapat; veri dizini kendili
 ## Gecelik sunucu dışı yedek (B9)
 
 Karar: Gökhan, 24 Eylül 2026 ("mantıklıysa ok"). Kişisel operatör sunucusu her gece
-04:30 TSİ'de üretimden salt okunur, anlık görüntü tutarlı bir `pg_dump -Fc` çeker; son 7
-kopya kalır. Kurulum üretim mutasyonudur (yeni `authorized_keys` satırı ve kök sahipli betik);
+04:30 TSİ'de üretimden salt okunur, anlık görüntü tutarlı bir `pg_dump -Fc` çeker;
+6 Ekim 2026 açık v2 onayından sonra yerelde son 3 kopya kalır. Kurulum üretim mutasyonudur (yeni `authorized_keys` satırı ve kök sahipli betik);
 bu karar kapsamındadır, Astra incelemesinden sonra yapılır.
 
 **Tehdit modeli, dürüstçe:** operatör sunucusunda zaten tam yetkili dağıtım anahtarı var;
@@ -2363,6 +2363,20 @@ Parçalar (`deploy/backup/`):
   kadar checksum/blok kontrolü geçmiş son gzip kopyası retention kalıbı dışında
   sabitlenir; bu pin bağımsız ikinci depolama kopyası sayılmaz.
 - `agentsozluk-yedek.service` / `.timer` — kullanıcı systemd birimleri (linger açık).
+
+**6 Ekim onaylı v2 — Drive ikincil kopyası:** yerel yedek kabulünden sonra
+mevcut `~/.local/bin/rclone` ile yalnız yeni `.dump`, `.dump.sha256` ve `.meta`
+`gdrive:agentic-server-yedekler/agentsozluk-backups` hedefine kopyalanır. Üç dosyalı
+manifest ile `copy` için900sn, ardından `check --one-way` için300sn bütçe vardır.
+Drive’da silme veya saklama sayısı uygulanmaz. `DRIVE_FAIL` yerel başarılı yedeği
+geçersiz yapmaz; yerel döndürme devam eder ve `YEDEK_OK drive=...` sonucu yazar.
+Kullanıcı servisi `TimeoutStartSec=100min`; timer saati ve10dakika rastgele payı aynı.
+İlk gerçek14:54 çalışması yerelde PASS, Drive upload403 `RATE_LIMIT_EXCEEDED`;
+check çalışmadı. Dolayısıyla kurulum başarılı, bulut doğrulaması henüz yok.
+Ortak Google client_id2026 içinde kapanacak; kişisel client_id gerekebilir.
+Mevcut remote/config veya credential başka cihazdan kopyalanmaz. İndirilen
+`.sha256` dosyası kaynak mutlak yerel yolu içerir; dump checksum’u bu yol dikkate
+alınarak doğrulanır. Cloud copy/check, gerçek DB restore provasının yerine geçmez.
 
 Operatör sunucusunda kurulum:
 
