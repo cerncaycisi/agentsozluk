@@ -6797,3 +6797,34 @@ reddini reset kodu regresyonu sayma; mevcut role/HBA'yı prova uğruna genişlet
 
 Birleşmiş9be için CI37391583484 son native okumada **7/7 SUCCESS** olarak
 doğrulandı. Bu main CI sonucu production deploy/reset veya yeni T0 değildir.
+
+## 6 Ekim 01:02 — operatör restore alanı ve actual host kapıları
+
+Exactmain16f/CI37393159609 7/7SUCCESS, canlıD202 sabit. Op5bef... eskiyedek
+transferi4dump+8yanfile/4.992.239.548bayt. SHA/size/private/fsync/4nativefullcodec
+PASS sonrası yalnız seçililocalcopies12unlink; recent3+safetyhardlinkkorundu.
+Localfree4.611.067.904→9.603.272.704; prodpostfree24.055.660.544/lockabsent,
+D202/worker0/DBvolume/images/runtimeunchanged. CanonicalRESETrestore değil.
+ActualOpus5.5 289.071ms koşullu,54.603ms zamanblocker,36.787ms GO. FirstFable
+300s exit124/stdout0 NO_REVIEW_RESULT_NOT_PASS. Total1500s/globalalarm/deadline,
+freshlocalNext+600smarj; rawprodsecret/body yok. Retention maxdepth1/differentname;
+aynıext4/dev2049; nativeprodbackupthreshold2DB veprojecteddfPASS. Başkaiş durmadı.
+
+Readonly admission ilkvolume path underscore varsayımıyla line55 fixed
+RESET_STORAGE_PREFLIGHT_FAILED verdi; actualDockerinspect volume adı
+agent-sozluk_postgres_data ve sourcepath/dev ölçümüyle kapandı. Reset CLI pin
+kaynakta düzeltildi; canlıvolume adı/değeri değiştirilmedi. İlk controlreader
+başarılıremote output'u eski eventmatcher nedeniyle RESET_PREFLIGHT_FAILED
+saydı; output önce kalıcı kaydedilip correctevent eşlenen fokusedread PASS:
+ana+postgresDB aynı gerçeknonsuperrole/cluster/sourceOID, noHBA/GRANT değişimi.
+Localpsql ilk libpq missing, sonra yanlışdefaultsocket: doğruLD_LIBRARY_PATH
+ve127.0.0.1 ile readonlypermission ölçümüPASS; DBcode regression değildir.
+
+Prototype ayrı7dosya86unitPASS/son typecheckPASS. İlk lint3unused-varswarning
+zero-warninggateFAIL; binding getter selected-schema parse ile düzeltildi,
+yeni lint sonucu ayrıca ölçülecek. Bootstrap native active-exited0; ExecStopDBdown.
+Yeni conditionhold/persistentgenerationmount kaynakta, henüzfullCI/peer/deploy yok.
+Tekrarlama: başarısız/noresultpeer'iGO sayma; varsayılanvolume/socket/event'i
+üretim kusuru sayma; tekdeneme transferini tekrarlama. Cache tekrar okumayımedia
+scan; codecdecode'yiactualrestore; eskişemaarchive'ıPRE_RESET_BIGINT sayma.
+Bootstrapservice'i durdurarakDB'yi indirme; yeni bootgates'i kurulmuş diye yazma.

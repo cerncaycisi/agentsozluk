@@ -7,6 +7,50 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 6 Ekim 01:02 UTC — reset restore alanı hazır; reset hâlâ uygulanmadı
+
+Main `16f90a55dd2f4c2a6438f228d7650317a798a6ce`, CI37393159609 **7/7 SUCCESS**.
+Kodun üretim dağıtımı yapılmadı. Canlı D202 app/DB, worker inactive/PID0;
+son içerik sayımı23:26 kesitidir. Üç ek yazma bayrağı o son ölçümde açık:
+bu durum tam writer freeze veya silme değildir. Goal aktif, yeniT0 yok.
+
+Eski-yedek taşıma op`5bef6a3dea7548a983f37df137526ec7`: dört dump+sekiz
+meta/sha dosyası aynı Agent Sözlük üretim özel arşivine root:0700/600 olarak
+kopyalandı. Her dosya exactsize/SHA tekrar okuma, dört tam PG16 decode,
+fsync/no-overwrite receipt başarılı. Ancak hepsi doğrulanınca seçili12eski
+**yerel kopya** kaldırıldı. 4.992.239.548bayt; operatör boş alanı
+4.611.067.904→9.603.272.704bayt. Son üç yerel yedek/yan dosya ve 4Ekim safety
+hardlink'i01:00:39 ayrı okumayla doğrulandı; inode924238/nlink2 korunur.
+
+Üretim bağımsız postcheck:12arşivdosyası/dörtcodec/release-lockAbsenttrue,
+D202/worker0 aynı; rootfree24.055.660.544bayt. Kaynak DB değiştirilmedi.
+Archive sınıfı `HISTORICAL_PRE_RESET_SCHEMA_INELIGIBLE_FOR_CANONICAL_RESET_RESTORE`;
+eski checksum yan dosyalarının mutlak yerel yolu aynen saklanır. Bu dosyalar
+üretimde `sha256sum -c` için yeniden yazılmadı ve yeni reset yedeği sayılmaz.
+Codec geçici Docker container/anonvolume oluşturup `--rm` ile kaldırdı;
+mevcut app/DB/namedvolume/rollback image/runtime değişmedi. Decode actualrestore
+değildir; fsync+pagecache tekrar okuma fiziksel media taraması değildir.
+
+Actual Opus5.5:289.071ms CONDITIONAL,54.603ms zamanlama blocker'ı,
+36.787ms final**GO**. ModelUsage içinde yardımcıHaiku korunur. Kaynak şartları:
+aynı/dev root/backup/DBvolume; maxdepth1 ve farklı isim filtreli production
+retention; gerçek timerUTC/success ve2×DB disk eşiği;1500s totalSIGALRM+monotonic
+bütçe/fresh localNext+600s marj; cached source bytes, python-I, parentfsync.
+İlk Fable300s timeout/stdout0 **NO_REVIEW_RESULT_NOT_PASS**; onay sayılmadı.
+Yerel nightly gerçek sonraki01:39:59UTC; production yedeği00:30:17tetiklendi,
+sonraki7Ekim00:30UTC. Önceki02:00 varsayımı native ölçümle geri çekildi.
+
+Üretim role`agent_sozluk` non-superuser: ana ve postgres control DB üzerinde
+native readonly gerçekauth/cluster7663503447447879713/sourceOID16385 PASS;
+HBA veya mevcut rol izinleri değiştirilmedi. Actualvolume adı
+`agent-sozluk_postgres_data`, underscore varsayımı düzeltildi. Bootstrap
+`agent-sozluk.service` active/exited/PID0/enabled; ExecStop compose down ileDB'yi
+indirir. Stop edilmedi. Root condition hold ve boot/redeploy kalıcı generation
+mount kaynakta hazırlanıyor; kurulmadı. CLI/boot son kaynak fullpeer/CI ve
+fullsize frozen backup/restore/shadow/atomicreset/açılış kapıları açıktır.
+Yerel ayrı7dosya86unit PASS, typecheck PASS; sonraki bootstrap eklemesi bu test
+kesitinde yoktur. Önceki5PG/smallCOMMIT tarihçe olarak korunur.
+
 ## 5 Ekim 20:40 UTC — çalışan akış ve son kabul hazırlığı
 
 Canlı uygulama/runtime kaynağı `d202f3d8dc0078e2fe3bd64cf122e5ba44381da7`;

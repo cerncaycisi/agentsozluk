@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 00:10 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 01:02 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
 kapalı; başlamış koşu ve canlı lease sıfır. Son içerik sayımı 23:26'da 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
@@ -21,7 +21,7 @@ reviewed B91 ile tree eşit, root çalışma ağacı temiz ve uzak sürümle eş
 B91 CI yedi iş başarılı: 2.425 unit, 521 PostgreSQL, 93 browser testi;
 coverage yeniden koşusunda 2.946 test, satır %94,40, dal %86,68, fonksiyon %96,04.
 Opus5.5 bağımsız kapanışında merge-blocking kusur yok; üretim kabul koşulları açık.
-Birleşmiş main CI37391583484 daha sonra yedi iş SUCCESS olarak doğrulandı. Kod üretime dağıtılmadı.
+Birleşmiş main CI37391583484 daha sonra yedi iş SUCCESS olarak doğrulandı. Main16f CI37393159609 da yedi iş SUCCESS. Kod üretime dağıtılmadı.
 [Ayrıntılı makbuz](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md).
 
 **Son operasyon:** kullanılmayan beş eski uygulama imajı bounded temizlikle
@@ -30,13 +30,28 @@ kaldırıldı; 8.468.799.488 bayt açıldı. Root boş alanı 20.625.170.432 →
 current/previous imaj ve runtime release, named volume, cache ve yedekler korundu.
 00:06 bağımsız okuma ve release-lock yokluğu doğrulandı. Bu veri reseti değildir.
 
+**Restore için yerel alan açıldı:** dört eski kişisel yedek ve sekiz yan dosya
+aynı projenin root:0700 özel üretim arşivine taşındı. Tam SHA-256 ve dört native
+PG16 custom decode başarılı; ardından yalnız doğrulanan 12 yerel kopya kaldırıldı.
+4.992.239.548 bayt; yerel boş alan 4.611.067.904 → 9.603.272.704 bayt.
+Son üç yerel yedek ve safety hardlink ayrı okumayla korunduğu doğrulandı.
+Üretim sonrası bağımsız okuma: arşiv12dosya, release-lock yok, D202/worker
+sabit; root boş alan24.055.660.544bayt. Bunlar tarihsel eski-şema yedekleridir;
+kanonik reset rollback yedeği veya gerçek restore kabulü değildir.
+
 **Sırada:** ayrı üretim yürütücüsünün son kod/inceleme/CI kapıları, gerçek boyutlu
 taze yedek ve restore, üretim gölgesinde aynı çekirdekle prova, bütün yazarların
 dondurulması, tek kullanımlık reset, iç kabul ve doğrulanmış açılış var.
-Yerel çekirdeğin 59 unit ve 5 PG testi geçti. Küçük sahipli DB'de gerçek COMMIT,
+Yerel çekirdeğin önceki59unit/5PG ve son ayrı7dosya86unit koşusu geçti.
+Son boot-guard eklemeleri bu86test kesitinden sonradır; henüz tamCI/hakem sonucu yok. Küçük sahipli DB'de gerçek COMMIT,
 kapının kapanıp açılması, 410, kimlik koruması ve ikinci reset reddi ölçüldü;
 üretim veya tam boyut kabulü değildir. Mevcut yerel role için non-superuser denemesi
 pg_hba/P1010 ile migration öncesinde durdu; kullanıcı erişim ayarları değiştirilmedi.
+Üretimin kendi non-superuser hesabıyla ana/control DB bağlantıları salt okunur
+olarak geçti. Gerçek volume adı `agent-sozluk_postgres_data`; önceki varsayılan
+underscore pini kaynakta düzeltildi. Aktif/exited bootstrap service'in ExecStop'u
+DB'yi de indiriyor; onu stop etmeden root hold ve kalıcı generation mount
+hazırlanıyor. Bunlar henüz üretime kurulmadı.
 
 Goal aynı son teslim amacıyla aktif; DONE-082/084 açık. Eski P7 adayı kullanıcı
 kararıyla `USER_REQUEST_INTERRUPTED_NOT_PASS`; eski gözlem timerları kapalı ve
