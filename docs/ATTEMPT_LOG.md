@@ -8244,3 +8244,22 @@ sharp0.35.5/rsvg2.63.2/vips8.18.7 gerçekten yüklendi. Dört üretilmiş piksel
 PNG kodlaması2×2 başarılı; kötü SVG veya kullanıcı içeriği çalıştırılmadı.
 Root node_modules ve üretim değiştirilmedi. Bu glibc native paket ölçümüdür;
 Alpine aday imaj/CI ve production cutover kabulü yerine geçmez.
+
+### 6 Ekim15:46 UTC — farklı model kaynak kabulü ve koşullu dağıtım sırası
+
+Exactae84f975c46cf31143ff5f44decd0f8c5a1f9bba actualclaude-opus-5-5,
+48.594ms GO_SOURCE_PATCH_ONLY; tools/ağ/üretim erişimi0, Haiku yardımcı
+model kullanımı ayrı kaydedildi. Somut diff kusuru yok; aday musl native
+paketi ve imajdaki production-deps/standalone bütün sharp kopyalarının sürüm
+kanıtı cutover önkoşulu. Hakem üretim yetkisi vermez; beyan edilen ölçümleri
+kendisi çalıştırmış sayılmaz.15:46 exactd083 native follow-up loaded binary
+sharp-linuxmusl-x64-0.35.4.node; health/ready200/optimizer404. Mutation0.
+
+Karar: config ile bilinen çözme yolu kapalıyken P7 fiziksel pencere korunur;
+yama kaynakta exactgreenCI sonrası teslim, production P7 sonrasına hazırlanır.
+Config/decoder tüketicisi/glibc binary/duyuruda musl-ağ genişlemesi veya public
+PoC/optimizer404 sapması koşullu beklemeyi bitirir. Evrensel güvenlik iddiası
+yok. PR340 T3’e bağlı; exactCI37490272863 hâlâ yürüyordu, merge/PASS yok.
+Private aday bütün-kopya native inspector syntaxPASS, **çalıştırılmadı**;
+Alpine/native/cutover kabulü açık. Tekrarlama: glibc fixture’i aday Alpine
+kanıtı yapma; sourcepeer’i artifact/deploy onayı sayma; P7 süre bağını repin etme.
