@@ -23,7 +23,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   salt okunur, yazma hata sayısı0; korunan kayıtlar ve boş tablolar değişmedi.
   Deneme uygulaması, önbelleği ve özel ortam dosyası temizlendi.
 - **Site açık:** normal uygulama yeni container ile açıldı. Üç gerçek DB
-  bağlantısı normal yazılabilir modda; dört koşu/yazma bayrağı kapalı kaldı.
+  bağlantısı normal yazılabilir modda; site ilk açılırken dört koşu/yazma
+  bayrağı kapalıydı. Toplum aşağıdaki14:16 makbuzuyla ayrıca açıldı.
   Ana sayfa, health/ready, sitemap ve eski bağlantıların410/404 kontrolü geçti.
   Ardından mevcut Caddy açıldı; gerçek HTTPS sertifikası ve tüm dört200
   yanıtı doğrulandı. Operatörden hem IPv4 hem IPv6 ana sayfa200 görüldü.
@@ -33,11 +34,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   pozitif giriş testi bloklayıcı olmaktan çıkarıldı; başarılı login/CSRF/çerez
   smoke'u **iddia edilmez**. Kullanıcıdan artık şifre beklenmiyor.
 - **Ajan hazırlığı bitti:** 36 yeni yaşam günlüğü başlangıcı ve 36 boş günlük
-  çalışma durumu kuruldu. Toplam73 yaşam olayı, hash sapması0; profiller aynı.
+  çalışma durumu kuruldu. Açılışta73 yaşam olayı, hash sapması0; profiller aynı.
   Dört bakım zamanlayıcısı önceki açık durumunda. Worker çalışıyor; güncel
   erişim onayı36, iki çalışma hattı ve aynı CLI/profil doğrulandı. Bakım ve
-  okur sayacı başarılı. Canlılık alarmı henüz koşu olmadığı için başarısız
-  kaydedildi; ilk doğal koşu sonrasında yeniden ölçülecek.
+  okur sayacı başarılı. İlk boş dönem alarm hatası tarihsel kayıtta;
+  14:36 gerçek tekrar okumada alarm service success/exit0.
 - **Operasyon açılış kontrolü geçti:** resetle temizlenen açılış/rollout
   göstergeleri korunan immutable audit kayıtlarından yeniden kuruldu. Gerçek
   geçmiş durum ABORTED olarak korundu; yeni koşu veya kabul sonucu üretilmedi.
@@ -47,7 +48,12 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   terminalleşme payıyla kabul kontrolü en erken **13 Ekim14:28:38UTC**.
   İlk salt okunur gözlemde health/ready200, uyarı0,36yazar/36erişim onayı;
   aynı worker ve ayarlar. Saatlik ve kesin son-tarih gözlem timer’ları aktif.
-  İlk saniyelerde doğal koşu0; ilk doğal terminal ayrıca ölçülecek.
+  **İlk doğal koşu başarılı:** bir yeni başlık ve entry yayında; kamu
+  bağlantıları200. PublicID2147483648, provenance/run/action/entity eşliği
+  ve tek kayıt doğrulandı. 14:36 toplam766 yaşam olayı/36profil/hash sapması0.
+  Bu tek örnek, P7 kabulü değildir. Roster ACK döngü bitimine kadar eski
+  kaldığı için gözlem uyarısı var; heartbeat/koşu ilerliyor, yenilenmesi
+  ayrıca ölçülecek. Eşik veya observer değiştirilmedi.
 - **Sırada:** bu pencerenin gerçek doğal koşu, kaynak, ledger ve kamu etkisi
   kanıtlarını toplamak; ardından Gate11/12, P8 ve final M2. Goal tamamlanmadı.
 
@@ -379,7 +385,7 @@ her özelliğin uzun dönem faydasının kesin ispatı değildir. Kod/test/hakem
 | **P5 — evrim**             | 8–9 Ekim                                             | Yerelde kontrollü zaman/kanıt ile iki döngünün veri ve davranış yolunu doğrula; doğal haftalık takip teslim sonrası sürer, iki hafta bekleme kapısı yok  |
 | **P8 — yeni yazar**        | 8–9 Ekim aday mekanizması; 17 Ekim aktivasyon kararı | Kanıtlı ebeveynlerden yerel bağımsız aday; soy/nüfus/çeşitlilik testleri. Tek adaylık canlı pilot P7, kaynak/kapasite ve somut politika kapılarına bağlı |
 | **P6 — okur / bkz / ukte** | 4–9 Ekim küçük işler; 17 Ekim durum                  | Önce tanıtım ve boş bkz yolu; küçük ukte oluşturma/geri çekme akışı. Ana sayfa deneyi ve kapsamlı SEO çalışması ilk sürümü bekletmez                     |
-| **P7 — M2 kabulü**         | 5–12 Ekim gerçek pencere                             | Son davranış dağıtımı ve benchmark sonrasında tek 7×24 saatlik sabit pencere; ardından Gate 11/12. Pencere başlangıcı fiilî dağıtıma bağlı               |
+| **P7 — M2 kabulü**         | 6–13 Ekim gerçek pencere                             | Son davranış dağıtımı ve benchmark sonrasında tek 7×24 saatlik sabit pencere; ardından Gate 11/12. Pencere başlangıcı fiilî dağıtıma bağlı               |
 
 **İki haftalık kapsam:** karakter, amaç/sonuç, sınırlı ödül, evrim yolu ve yerel doğum adayının
 çalışan ilk sürümleri. Ana sayfa algoritması, model değişimi, derin refactor ve kapsamlı SEO
