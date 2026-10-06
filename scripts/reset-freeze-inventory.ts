@@ -6,12 +6,12 @@ import { join } from "node:path";
 import { z } from "zod";
 import {
   readResetBootHold,
-  resetBootHoldPath,
   resetBootDropInPath,
   resetBootDropIn,
   resetBootHoldSchema,
   assertResetBootstrapConfiguration,
   assertResetAutomaticRebootDisabled,
+  assertLoadedResetBootHoldCondition,
 } from "./reset-production-boot-guard";
 
 const hash = z.string().regex(/^[a-f0-9]{64}$/u);
@@ -82,12 +82,10 @@ export function measureResetFreezeInventory(bootstrapSetup = false) {
       readFileSync(resetBootDropInPath, "utf8") !== resetBootDropIn ||
       !command(["show", "agent-sozluk.service", "--property=DropInPaths", "--value"])
         .split(/\s+/u)
-        .includes(resetBootDropInPath) ||
-      !command(["show", "agent-sozluk.service", "--property=Conditions", "--value"]).includes(
-        resetBootHoldPath,
-      )
+        .includes(resetBootDropInPath)
     )
       throw new Error("GREAT_RESET_BOOT_HOLD_NOT_LOADED");
+    assertLoadedResetBootHoldCondition();
   }
   const names = new Set<string>();
   for (const args of [

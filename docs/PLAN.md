@@ -8,92 +8,92 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 04:56 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
-Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
-kapalı; başlamış koşu ve canlı lease sıfır. Son native içerik sayımı 02:11'de 7.013 başlık
-ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
-personalar, kaynaklar, operatör erişimi ve operasyonel kanıtlar korunur.
-03:47 native yönetici API’siyle tek QUEUED iptal edildi; settingsVersion312’de
-runtime/scheduler/publish/publicWrite dört bayrak kapalı, RUNNING/lease/aktif
-operatör oturumu sıfır. Site/app ve DB çalışıyor; bu tam uygulama dondurması değildir.
+**6 Ekim 09:34 UTC: uygulama ve dış erişim donduruldu; veritabanı sağlam. Reset henüz yapılmadı.**
 
-**Tamamlanan hazırlıklar:** BIGINT sınır paketi PR333 ve journal/410 paketi PR334
-ana dala alındı. Journal/410 paketinin main teslimi `9be0d2c193cbd558b743cf4959f00c9c683ec945`;
-reviewed B91 ile tree eşit, root çalışma ağacı temiz ve uzak sürümle eşleşti.
-B91 CI yedi iş başarılı: 2.425 unit, 521 PostgreSQL, 93 browser testi;
-coverage yeniden koşusunda 2.946 test, satır %94,40, dal %86,68, fonksiyon %96,04.
-Opus5.5 bağımsız kapanışında merge-blocking kusur yok; üretim kabul koşulları açık.
-Birleşmiş main CI37391583484 daha sonra yedi iş SUCCESS olarak doğrulandı. Main16f CI37393159609 da yedi iş SUCCESS. Kod üretime dağıtılmadı.
-[Ayrıntılı makbuz](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md).
+- **Canlı:** uygulama, imaj, boot etiketi ve immutable runtime
+  `9d1c4d1068664b1a56ceebea8e51ed44656568d3`. Altı migration uygulandı;
+  iki `publicId` artık BIGINT, mevcut içerik LEGACY namespace içinde korunuyor.
+  06:34 bağımsız canlı kabulü ve 06:45 duruş sonrası bağımsız okuma geçti.
+  Dondurma öncesi son09:19 okumada health/ready/search200; aynı PostgreSQL
+  OID16385 ve cluster7663503447447879713.09:29 app/proxy durduruldu;
+  app aynı imajla generation mount ve restart=no taşıyan STOPPED container olarak yeniden kuruldu.
+  Önceki D202 imajı/runtime geri dönüş için korunuyor; bu geçişte temizlik yapılmadı.
+- **Toplum kapalı:** worker `inactive/dead/MainPID0/disabled`; settingsVersion312,
+  runtime/scheduler/publish/publicWrite dört bayrak false. QUEUED/RUNNING/
+  CANCEL_REQUESTED/live lease sıfır, 36 ACTIVE yazar korunuyor. DB çalışıyor; uygulama ve proxy kapalı. Root boot guard ve maintenance-hold kuruldu.
+  Dondurma son kabulü systemctl Conditions=[unprintable] yüzünden reddedildi;
+  veri silinmedi ve intent oluşturulmadı. D-Bus düzeltmesi24unit, actualOpus5.5 kaynak GO
+  ve gerçek host salt okunur function provasından geçti; exact teslim bekler; bu teknik kapı atlanmaz.
+- **Tamamlandı:** exact main CI37417478456 yedi iş SUCCESS, aynı SHA artifact
+  37418729170 SUCCESS; artifact11392376453 üretime yüklendi. Tam
+  `verify:m2:development` 37418731436 SUCCESS; job 05:28:51–06:13:33 UTC.
+  M1 unit2.547/PostgreSQL528, agent unit844/integration312/simulation1,
+  browser M1 93/agent24; requirements/OpenAPI/persona/secret/metadata ve son
+  exact kaynak/temiz ağaç kapıları geçti. Coverage3.075 aynı testlerin tekrarını
+  içerir, ayrı test sayısına eklenmez. Katı final M2 henüz tamamlanmadı.
+- **Korumalı A5 geçti:** 06:16:57 gerçek aday CLI/non-superuser uygulama rolüyle
+  salt okunur admission; taze native yedek1.349.563.991 bayt,
+  SHA256 `191c632d9bd76ca5ab06f1e9199971eb0e19ec6b2a23de8ef8a8ec4eaa87d8ca`.
+  Ayrı sahipli restore/şema/içerik/sequence eşliği, altı migration scratch provası,
+  önceki D202 imajında health/ready/search200, üretim migration/cutover ve
+  sonrasında 43 migration checksum/settings/lifecycle eşliği doğrulandı.
+  Eski imaj smoke HTTP200 ölçümüdür; ayrıca nonempty topic/entry Prisma sonucu
+  iddiası değildir. A5 yedeği kanonik PRE_RESET_BIGINT yedeği yerine geçmez.
+- **Daha düşük operatör bütçesi tam boyutlu provada geçti:** Gökhan'ın yeni talimatı,
+  aynı gerçek yedek/restore güvencesi sağlanabiliyorsa düşük bütçeyle ilerlemektir.
+  Genel aynı-disk emniyet eşiği19,1GB; bu gerçek tüketim ölçümü değildir.
+  Yalnız ayrı operatör PostgreSQL ortamı için aday bütçe yaklaşık11,76GB:
+  gerçek sıkıştırılmış arşiv1,35GB, ihtiyatlı source6,01GB,960MiB geçici dosya
+  sınırı,128MiB SOFT WAL planı,1GiB pay,32MiB diğer iş büyümesi payı ve2GiB fiziksel adsız acil rezerv.
+  Mevcut boş alan yaklaşık11,79GB; başta yeniden ölçülür, dar veya uyumsuz
+  durumda başlamaz. Üretimdeki disk/migration kapıları korunur.
+  Ayrı native küçük prova:2.700TOC nesneli restore, metadata/eksik-rol retleri,
+  temp_file_limit53400, gerçek disk eşiği/PID sapması, farklı collation altında
+  içerik eşliği ve native restart geçti. Restore istemcisi1milyon mock satırın
+  indeks yapımı sırasında SIGKILL ile kesildi; backend0/yarım tablo0.
+  Kontrol sürecinin SIGTERM/SIGKILL kesimlerinde yalnız sahipli PostgreSQL
+  kapandı, adsız rezerv geri verildi ve sahipli prova verisi temizlendi.
+  Bunlar **tam boyutlu kabul değildir**. ActualOpus5.5 tasarım koşullu kabulü;
+  ikinci kaynak turu SOURCE_NO_GO verdi. İki kesinti/GC kusuru düzeltildi,
+  native5case ve güncel parent-death provasından geçti; farklı model kapanışı
+  kabulü geçti. Exact A5 arşivi checksum eşliğiyle operatöre alındı;
+  ilk gerçek restore08:28’de native komut reddiyle durdu. Disk/süre eşiği
+  aşılmadı; minfree3,45GB, reserve/ownedpayload cleanup geçti. Neden henüz
+  bilinmiyor; SQLSTATE-only teşhis son koduyla native testleri geçti,
+  actualOpus5.5/30502ms kaynak kapanışı geçti.09:03 ayrı nonce ile
+  kontrollü ikinci tam prova başladı; 09:13:58 UTC’de PASS aldı.
+  56 tablo içerik/şema ve üç sequence eşliği, non-superuser restore ve gerçek
+  restart sonrası eşlik geçti. En düşük boş alan3.433.259.008 bayt;
+  2GiB acil rezerv dahil çalışma büyümesi7.002.456.064 bayt.
+  Arşivle birlikte ölçülen tüketim8.352.020.055 bayt; sahipli DB temizlendi.
+  Ek disk gerekmiyor; bu tarihsel A5 kalibrasyonu kanonik reset kabulü değildir. Yeni arşiv kopyası
+  oluşturulmadı, aynı inode/checksum ile taşındı; ilk kanıtlar korundu. A5 arşivi owner/ACL
+  kapsamı eksik olduğundan taze kanonik BIGINT yedek/restore yerine geçmez.
+  Drive listesinde yedekler görüldü; yerelde iki günün yedeği var. İki
+  `rclone check` Google API403 RATE_LIMIT_EXCEEDED ile doğrulanamadı;
+  dosya yokluğu sonucu çıkarılmaz. Bu yürütücü Drive'a upload/delete veya
+  yerel gece yedeklerine silme uygulamadı. Diğer kullanıcı işleri korunur.
+- **Sırada:** systemd koşul okuması düzeltmesinin farklı model/CI/exact sürüm
+  teslimi ve donmuş hostta kontrollü devamı; ardından taze BIGINT yedek, gerçek
+  operator restore ve production shadow, bütün yazarların dondurulması/boot guard,
+  tek kullanımlık reset, iç kabul, exposure ve doğrulanmış yeniden açılış.
+  İnsan ve ajan içerikleri/etkileşimleri reset kapsamındadır; hesaplar,
+  personalar, kaynaklar, operatör erişimi ve operasyonel kanıtlar korunur.
 
-**Son operasyon:** kullanılmayan beş eski uygulama imajı bounded temizlikle
-kaldırıldı; 8.468.799.488 bayt açıldı. Root boş alanı 20.625.170.432 →
-29.093.969.920 bayt, kullanım %74 → %63. Çalışan üç konteyner, worker,
-current/previous imaj ve runtime release, named volume, cache ve yedekler korundu.
-00:06 bağımsız okuma ve release-lock yokluğu doğrulandı. Bu veri reseti değildir.
+Goal aynı tam teslim amacıyla aktif; DONE-082/084 açık. Eski P7 adayı kullanıcı
+kararıyla `USER_REQUEST_INTERRUPTED_NOT_PASS`; tarihçe korunur. Yeni T0 henüz yok.
+Reset sonrası audited resume ile gerçek168saat ve 600+120sn yeniden ölçülecek;
+ardından Gate11/12, P8 ve katı final M2 var. Yetki17Ekim19:50UTC'de biter;
+son teorik T0 10Ekim19:38UTC, final kapılar için ayrıca zaman gerekir.
+[Reset kapsamı](RESET_URETIM_KAPSAMI_2026-10-05.md) ve M2 kabul şartları korunur.
 
-**Restore için yerel alan açıldı:** dört eski kişisel yedek ve sekiz yan dosya
-aynı projenin root:0700 özel üretim arşivine taşındı. Tam SHA-256 ve dört native
-PG16 custom decode başarılı; ardından yalnız doğrulanan 12 yerel kopya kaldırıldı.
-4.992.239.548 bayt; yerel boş alan 4.611.067.904 → 9.603.272.704 bayt.
-Son üç yerel yedek ve safety hardlink ayrı okumayla korunduğu doğrulandı.
-Üretim sonrası bağımsız okuma: arşiv12dosya, release-lock yok, D202/worker
-sabit; root boş alan24.055.660.544bayt. Bunlar tarihsel eski-şema yedekleridir;
-kanonik reset rollback yedeği veya gerçek restore kabulü değildir.
-
-**Sırada:** birleşmiş exact sürümün CI ve release artifact kabulü, adayın canlı
-salt okunur admission kontrolü, A5 geçişi, gerçek boyutlu operator restore ve üretim gölgesi, bütün yazarların dondurulması, tek kullanımlık
-reset, iç kabul ve doğrulanmış açılış var. [PR335](https://github.com/cerncaycisi/agentsozluk/pull/335)
-yürütücüsü ana dala `0914d34380e481b96d9b3bcac3e6eeca818f7760` olarak alındı;
-tree reviewed `01bb98f3d5a855eda75c1bce62046cd4d2316d62` ile aynı, exact head
-CI37403773670 yedi iş SUCCESS. Actual Opus5.5 üçüncü incelemede Y3'ü kapattı,
-kaynak merge engeli kalmadı. Önceki kırmızı CI ve NO-GO kayıtları korunuyor;
-main CI37404909548 de yedi iş SUCCESS; üretim kapıları ayrı ölçülür. Yeni sahipli küçük DB'de actual COMMIT,
-full protected hash reconcile ve bounded bağlantı kapısı kurtarma geçti; bu
-superuser/küçük-fixture ölçümü production non-superuser veya tam boyut kabulü değildir.
-
-Üretimde installer, reset veya yeniden açılış uygulanmadı. 03:51 native ölçümünde
-apt automatic-reboot explicit false; dört proje timerı inactive/disabled ve
-servisleri boşta. App generation mount/env henüz taşımıyor. Operator root boş alanı yaklaşık
-8,8 GB: source6,01 GB için 3DB+1GiB19,10 GB restore payı karşılanmıyor. Üretim
-sunucusundaki24,11 GB bu ayrı operator kapısını kapatmaz. Diğer kullanıcı DB'leri,
-T3/Claude işleri ve geçmişi silinmez. Ayrı reset migration profili exact altı
-immutable SQL ve yalnız iki public ID tip/sequence dönüşümünü kabul eder;
-mevcut içeriği, sequence değerlerini ve diğer şema farklarını normalleştirmez.
-Yeni nonce/OID8704553 PG16.14/Node22.23.1 native provası: altı migration,
-önceki56 tablo şema/içerik/sequence ve eski Prisma tarihçesi eşit,
-131 katalog tanımı exact ve dört journal boş; küçük prova, fullsize kabulü değil.
-PR336 ae76 için actualOpus5.5 kaynak KOŞULLU GO; production kapıları açık.
-Son hashguard düzeltmesi78unit geçti; f88 için actualOpus5.5 kapanışında
-source merge engeli yok. Son command-doc head344 CI37408970998 yedi iş SUCCESS; actualOpus5.5/149560ms
-incelemesinde kaynak merge engeli yok. PR336 03:40:41 UTC’de
-`82e4c082ad09e060b3080d85e9cd4c6d6181208b` olarak birleşti; parent0914,
-tree reviewed344 ile eşit, root temiz ve remote main eşliği doğrulandı.
-Birleşmiş82e CI37410108672, yeni belge push’ı sırasında CANCELLED; PASS değil.
-Current main699 CI37410360534 yedi iş SUCCESS; artifact37411684920 SUCCESS.
-Tam M2development37411727305, ajan E2E sunucu başlangıcında
-GREAT_RESET_GENERATION_ADMISSION_REJECTED ile FAIL. Main koşu boyunca699’da
-sabit kaldı; üretim etkisi yok. M1 E2E’nin immutable reset fixture’ı sonraki
-integration temizliğinde korunuyordu; ayrı sahipli native PG16 provası bu nedeni
-doğruladı. Ajan E2E öncesine allowlisted test DB için clean migration reset
-eklendi; güvenlik kontrolü ve tüm testler korunur. İlgili17unit PASS; yeni
-exact CI, farklı model incelemesi ve tam M2development yeniden koşusu sırada.
-PR337 önceki737 head CI37413121415 yedi iş SUCCESS; yeni kaynağa taşınmaz.
-Actual Opus5.5 e081 kaynak incelemesi121382ms: blocker yok, kaynak GO.
-Testin reset-konumu/gerçek datasource bağını kuvvetlendiren iki önerisi uygulandı;
-son head kapıları yeniden ölçülür. A5 öncesi tam development koşusu gerekir;
-katı finalM2, yeni168h/Gate11/12/P8 sonrasındadır. Production dağıtım/reset uygulanmadı.
-D202 journal öncesi admission küçük native sahipli PG'de READ ONLY geçti,
-required=true ret verdi; gerçek üretim/aday imaj kabulü yerine geçmez.
-
-Goal aynı son teslim amacıyla aktif; DONE-082/084 açık. Eski P7 adayı kullanıcı
-kararıyla `USER_REQUEST_INTERRUPTED_NOT_PASS`; eski gözlem timerları kapalı ve
-tarihçe korunuyor. Reset sonrası gerçek audited resume yeni T0 olacak; tam 168 saat
-ve 600+120 saniye grace yeniden ölçülecek. Şu anda yeni T0 veya bitiş tarihi yok.
-Ardından Gate 11/12, P8 ve final M2 kabulü var. Yetki 17 Ekim 19:50 UTC'de biter;
-168 saat+720 saniye için son teorik T0 10 Ekim 19:38 UTC, final kapılar için ayrıca
-zaman gerekir. [Reset kapsamı](RESET_URETIM_KAPSAMI_2026-10-05.md) ve M2 kabul
-şartları korunur; ikinci aktif kuyruk açılmaz.
+Gökhan'ın **resetten sonraki ayrı işi**: gece yedeğinde yerel KEEP7→3 ve
+`gdrive:agentic-server-yedekler/agentsozluk-backups` hedefine `.dump`/`.sha256`/
+`.meta` kopyalama, ardından `rclone check`. Drive hatası yerel başarılı yedeği
+geçersiz saymaz; hata kaydedilir. Drive retention/silme yapılmaz. **Önce somut
+plan ve diff sunulur, Gökhan'ın onayı beklenir; henüz uygulanmadı.** Native
+rclone ortak Google client_id'nin2026 içinde kapanacağını bildirdi; kendi
+client_id gereksinimi bu ayrı işte ele alınır.
 
 ### Canlı ve tamamlanan teslimler
 
@@ -289,9 +289,15 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
 ### Tek aktif sıra
 
 1. **Kullanıcının tam reseti ve yeniden açılış:** audited pause sonrası dört
-   false bayrak/settings312 ve native QUEUED iptali tamam. Önceki
-   configured600sn+120sn doğal drain; RUNNING/CANCEL_REQUESTED/livelease0 ve yalnız
-   proje worker duruşu. Uygulama/DB ve diğer kullanıcı işleri korunur. Tam reset
+   false bayrak/settings312, native QUEUED iptali ve yalnız proje worker duruşu
+   tamam. Exact9d1 CI7/7, tam `verify:m2:development`, artifact ve A5 üretim geçişi
+   tamamlandı. Düşük bütçeli operatör profili gerçek tam boyutlu provada geçti.
+   App/proxy durduruldu ve boot guard kuruldu; son inventory systemctl
+   Conditions=[unprintable] nedeniyle reddedildi. Sırada D-Bus koşul okuması
+   düzeltmesinin peer/CI/exact sürüm teslimi ve guarded hostta kontrollü devam;
+   ardından taze kanonik BIGINT yedek/restore ve production shadow vardır. Önceki
+   configured600sn+120sn doğal drain ve RUNNING/CANCEL_REQUESTED/livelease0
+   korunur. Uygulama/DB ve diğer kullanıcı işleri korunur. Tam reset
    kapsamı insan ve ajan içerikleri/etkileşimleri ile ajan iç durumu dahil somut
    tablo sınıflandırmasına bağlanır. Yerel reset guard'ı üretime açılmaz, ham manuel
    TRUNCATE/CASCADE veya değişmezlik trigger'ı atlama yok. Taze frozen native yedek,
@@ -313,7 +319,11 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
    helper kullanılmaz. DONE-082 yalnız doğrudan canlı kabul kanıtıyla kapanır.
 3. **P8 ve final M2:** gerçek soy/kalite/kaynak/nüfus/kapasite kanıtıyla tek aday
    veya ölçülmüş NO_BIRTH. DONE-084 için son kaynak/imaj/runtime/güncelmain eşliği
-   doğrudan ölçülür. Final verify:m2 içinde M1 regresyonu/811 eşleme/543 M2,
+   doğrudan ölçülür. Kapanış commit’i → exact CI/artifact → aynı SHA dağıtımı
+   → canlı eşlik ölçümü → aynı SHA final `verify:m2` sırası izlenir; arada main
+   değiştirilmez. PASS satırları doğrudan geçmiş canlı kanıtına dayanır; yeni
+   SHA’nın eşliği dağıtım sonrasında ayrıca ölçülmeden final kabul verilmez.
+   Final verify:m2 içinde M1 regresyonu/811 eşleme/543 M2,
    requirements ve temiz ağaç kapıları kapanır. Yetki/takvim gerçek ölçüme göre
    kaydedilir; 168saat kısaltılmaz ve 17Ekim yetkisi uzatılmaz.
 

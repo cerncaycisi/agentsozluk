@@ -17,6 +17,45 @@ export const resetBootDropIn = `[Unit]\nConditionPathExists=!${resetBootHoldPath
 export const resetBootHoldSchema = z
   .object({ operationId: z.string().uuid(), releaseSha: z.string().regex(/^[a-f0-9]{40}$/u) })
   .strict();
+/** systemctl show, karmaşık Conditions alanını `[unprintable]` döndürebilir. */
+export function assertLoadedResetBootHoldCondition(): void {
+  try {
+    const raw = execFileSync(
+      "/usr/bin/busctl",
+      [
+        "--json=short",
+        "get-property",
+        "org.freedesktop.systemd1",
+        "/org/freedesktop/systemd1/unit/agent_2dsozluk_2eservice",
+        "org.freedesktop.systemd1.Unit",
+        "Conditions",
+      ],
+      { encoding: "utf8", timeout: 10000, stdio: ["ignore", "pipe", "pipe"] },
+    );
+    const value = z
+      .object({
+        type: z.literal("a(sbbsi)"),
+        data: z.array(
+          z.tuple([z.string(), z.boolean(), z.boolean(), z.string(), z.number().int()]),
+        ),
+      })
+      .strict()
+      .parse(JSON.parse(raw));
+    const actual = value.data.map(([kind, trigger, negate, parameter]) =>
+      JSON.stringify([kind, trigger, negate, parameter]),
+    );
+    const expected = [
+      ["ConditionPathExists", false, true, resetBootHoldPath],
+      ["ConditionPathExists", false, false, "/opt/agent-sozluk/app/.env"],
+      ["ConditionPathExists", false, false, "/opt/agent-sozluk/runtime/compose.production.yaml"],
+    ].map((row) => JSON.stringify(row));
+    // Son alan eski değerlendirme sonucudur; yüklenen tanımın yerine geçmez.
+    if (JSON.stringify(actual.sort()) !== JSON.stringify(expected.sort()))
+      throw new Error("GREAT_RESET_BOOT_HOLD_NOT_LOADED");
+  } catch {
+    throw new Error("GREAT_RESET_BOOT_HOLD_NOT_LOADED");
+  }
+}
 /** Başka bir drop-in aynı ExecStart/condition korumasını sessizce geçersiz kılamaz. */
 export function assertResetBootstrapConfiguration(installed: boolean): void {
   const show = (property: string) =>
