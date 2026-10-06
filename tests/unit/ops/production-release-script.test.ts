@@ -367,7 +367,7 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
       expect(mount).toBeLessThan(
         kesim.indexOf("sudo systemctl start agent-sozluk-runtime.service"),
       );
-      const calisan = kesim.indexOf("RELEASE_FAIL code=RUNNING_RESET_ADMISSION_REJECTED");
+      const calisan = kesim.indexOf("  assert_running_reset_admission\n");
       expect(calisan).toBeGreaterThan(mount);
       expect(calisan).toBeLessThan(
         kesim.indexOf("sudo systemctl start agent-sozluk-runtime.service"),
@@ -433,8 +433,9 @@ docker() {
   esac
 }
 timeout() {
-  while [[ "$1" == --* ]]; do shift; done
-  printf 'BOUND %s\\n' "$1" >&3
+  local options=()
+  while [[ "$1" == --* ]]; do options+=("$1"); shift; done
+  printf 'BOUND %s\\n' "\${options[*]:+\${options[*]} }$1" >&3
   shift
   "$@"
 }
@@ -455,9 +456,14 @@ echo PASSED`;
         "RUN compose run -d --name agent-sozluk-reset-admission-0123456789abcdef --label org.agentsozluk.reset-admission=probe --no-deps --pull never -T --entrypoint timeout app 120 ./node_modules/.bin/tsx scripts/verify-reset-generation.ts",
       );
       // Her Docker çağrısı süreyle sınırlı: liste 30, silme 60, başlatma 60, bekleme 150.
-      expect(ok.stdout).toMatch(/^BOUND 30\nBOUND 60\nRUN compose run -d /mu);
-      expect(ok.stdout).toMatch(/BOUND 150\nWAIT agent-sozluk-reset-admission-/u);
-      expect(ok.stdout).toMatch(/BOUND 30\nBOUND 60\nRM probe1/u);
+      // Zorla sonlandırma payı dahil: liste 30+5, başlatma 60+10, bekleme 150, silme 60+5.
+      expect(ok.stdout).toMatch(
+        /^BOUND --kill-after=5 30\nBOUND --kill-after=10 60\nRUN compose run -d /u,
+      );
+      expect(ok.stdout).toMatch(/\nBOUND 150\nWAIT agent-sozluk-reset-admission-/u);
+      expect(ok.stdout).toMatch(
+        /\nBOUND --kill-after=5 30\nBOUND --kill-after=5 60\nRM probe1\nBOUND --kill-after=5 30\n/u,
+      );
       expect(ok.stdout).toContain("BOUND 150");
       expect(ok.stdout).toContain("WAIT agent-sozluk-reset-admission-0123456789abcdef");
       expect(ok.stdout).toContain("RM probe1");
@@ -503,6 +509,34 @@ echo PASSED`;
       expect(remove.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
     });
 
+    it("çalışan app içinde gerçek nesil kabulünü süreyle sınırlı koşturur", () => {
+      const run = (execStatus: number) =>
+        spawnSync(
+          "bash",
+          [
+            "-c",
+            `set -Eeuo pipefail
+compose=(docker compose)
+timeout() { printf 'BOUND %s\\n' "$*"; shift 2; "$@"; }
+docker() { printf 'EXEC %s\\n' "$*"; return ${execStatus}; }
+${definition("assert_running_reset_admission")}
+assert_running_reset_admission
+echo PASSED`,
+          ],
+          { encoding: "utf8" },
+        );
+      const ok = run(0);
+      expect(ok.status).toBe(0);
+      expect(ok.stdout).toContain(
+        "BOUND --kill-after=10 120 docker compose exec -T app ./node_modules/.bin/tsx scripts/verify-reset-generation.ts\nEXEC compose exec -T app ./node_modules/.bin/tsx scripts/verify-reset-generation.ts\nPASSED",
+      );
+      const rejected = run(1);
+      expect(rejected.status).toBe(97);
+      expect(rejected.stderr).toContain("RELEASE_FAIL code=RUNNING_RESET_ADMISSION_REJECTED");
+      const mount = definition("assert_reset_generation_mount");
+      expect(mount.match(/timeout --kill-after=5 30 docker inspect/gu)).toHaveLength(2);
+    });
+
     it("çalışan app'te nesil mount'u ve zorunluluk ortamı yoksa durur", () => {
       const check = (mounts: unknown, env: string[], overlay = 1) =>
         spawnSync(
@@ -512,6 +546,7 @@ echo PASSED`;
             `set -Eeuo pipefail
 generation_dir=/opt/agent-sozluk/reset/generation
 generation_overlay=${overlay}
+timeout() { while [[ "$1" == --* ]]; do shift; done; shift; "$@"; }
 docker() {
   case "$3" in
     *Mounts*) printf '%s\\n' ${quote(JSON.stringify(mounts))} ;;

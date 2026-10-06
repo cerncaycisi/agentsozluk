@@ -638,8 +638,10 @@ candidate_reset_admission() {
 assert_reset_generation_mount() {
   local container="$1" mounts environment
   test "$generation_overlay" = 1 || return 0
-  mounts="$(docker inspect --format '{{json .Mounts}}' "$container")"
-  environment="$(docker inspect --format '{{json .Config.Env}}' "$container")"
+  mounts="$(timeout --kill-after=5 30 docker inspect --format '{{json .Mounts}}' "$container")"
+  environment="$(
+    timeout --kill-after=5 30 docker inspect --format '{{json .Config.Env}}' "$container"
+  )"
   MOUNTS_JSON="$mounts" ENV_JSON="$environment" SOURCE="$generation_dir" node - <<'NODE'
 const mounts = JSON.parse(process.env.MOUNTS_JSON ?? "null");
 const env = JSON.parse(process.env.ENV_JSON ?? "null");
@@ -654,6 +656,16 @@ if (!bound || bound.length !== 1 || bound[0].Destination !== target || bound[0].
   process.exit(97);
 }
 NODE
+}
+
+# Ayrı kabul container'ı yeterli değil: çalışan app'in kendi gördüğü nesil de geçmeli.
+# Docker yanıtı takılırsa kabul ve release kilidi süresiz kalmaz.
+assert_running_reset_admission() {
+  timeout --kill-after=10 120 "${compose[@]}" exec -T app ./node_modules/.bin/tsx \
+    scripts/verify-reset-generation.ts </dev/null || {
+    printf 'RELEASE_FAIL code=RUNNING_RESET_ADMISSION_REJECTED\n' >&2
+    exit 97
+  }
 }
 
 cutover() {
@@ -724,12 +736,7 @@ cutover() {
       "$app_container"
   )" = "$candidate_sha"
   assert_reset_generation_mount "$app_container"
-  # Ayrı kabul container'ı yeterli değil: çalışan app'in kendi gördüğü nesil de geçmeli.
-  "${compose[@]}" exec -T app ./node_modules/.bin/tsx \
-    scripts/verify-reset-generation.ts </dev/null || {
-    printf 'RELEASE_FAIL code=RUNNING_RESET_ADMISSION_REJECTED\n' >&2
-    exit 97
-  }
+  assert_running_reset_admission
   entrypoint_json="$(
     docker inspect --format '{{json .Config.Entrypoint}}' "$app_container"
   )"
