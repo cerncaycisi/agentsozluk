@@ -82,8 +82,11 @@ olmadan uzatılamaz. Tur bütçesi ve tek ağır iş kuralı değişmedi.
 - Hakem yürütücüden farklı model olmalıdır. Aynı modelin ayrı oturumu farklı modelden
   peer review sayılmaz.
   - Yürütücü **Astra** olduğunda hakem **Fable veya Opus 5**'tir.
-  - Yürütücü **Claude** olduğunda hakem **Astra**'dır; Sol kullanılmaz:
+  - Yürütücü **Claude** olduğunda ilk hakem **Astra**'dır:
     `codex exec --model gpt-6-astra -c model_reasoning_effort="xhigh" --sandbox read-only`.
+    Aynı işte 2 Astra turu dolduktan sonra gerekirse hakem **Sol 6.1** olur:
+    `codex exec --model gpt-6.1-sol -c model_reasoning_effort="xhigh" --sandbox read-only`.
+    _(Gökhan kararı, 6 Ekim 2026: "astra max iki, sonrasında gerekirse sol 6.1".)_
     _(Gökhan kararı, 23 Eylül 2026: "astra senin peer'ın", Sol kuralı kaldırıldı. Kural
     aynı: hakem yürütücüden farklı model olmalı. 18–23 Eylül arası Sol turları kaydında
     Sol olarak, 18 Eylül öncesi turlar Astra olarak kalır.)_
@@ -94,9 +97,11 @@ olmadan uzatılamaz. Tur bütçesi ve tek ağır iş kuralı değişmedi.
   vermemelidir. Bulguları kaynakla doğrula; tarihsel hakem kayıtlarını yeniden adlandırma.
 - Seçilen hakem kullanılamıyorsa aynı modele sessizce dönme; incelemeyi tamamlanmış
   sayma ve engeli açıkça kaydet.
-- Tur bütçesi: iş başına en fazla 2 Astra turu _(Gökhan kararı, 25 Eylül 2026)_. Astra turları
-  üretim ajanlarıyla aynı Codex kotasını harcar. Bütçe dolunca tur başlatma; kalan bulguları
-  tasarım sorusu olarak Gökhan'a götür. Geçici muafiyet yalnız Gökhan'ın açık kararıyla verilir
+- Tur bütçesi: iş başına en fazla 2 Astra turu _(Gökhan kararı, 25 Eylül 2026)_. Astra ve Sol
+  turları üretim ajanlarıyla aynı Codex kotasını harcar. Astra bütçesi dolunca, inceleme
+  gerçekten gerekiyorsa yalnız açık bulguların düzeltmesine dar bir Sol 6.1 turu yapılır
+  _(Gökhan kararı, 6 Ekim 2026)_. Yürütücü Sol ise bu yol kapalıdır. Sol da kapanış vermezse
+  yeni tur başlatma; kalan bulguları tasarım sorusu olarak Gökhan'a götür. Geçici muafiyet yalnız Gökhan'ın açık kararıyla verilir
   ve bitiş tarihiyle `docs/PLAN.md`'nin "Şu an neredeyiz" bölümüne yazılır.
 
 ## External action boundary
