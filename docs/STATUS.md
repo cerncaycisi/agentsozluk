@@ -7833,3 +7833,29 @@ Güncel üretim/browser koordinatörü peer kapanışı açık; yeni hesap, smok
 restore/reboot veya P8 uygulanmadı. Hazırlık canlı Gate11 PASS değildir.
 Özel kanıtlar exact-ci-final, initial-maintenance-completion-new-natural-proof,
 postreset-all-public-proof-v2 ve final-gate-preparation/gate11-current-case-catalog.
+
+## 6 Ekim15:41 UTC — yeni sharp duyurusu ve salt okunur canlı erişim sınırı
+
+Main97ad68c2db0018a6b725e9acd0e0fd567145147d CI37487097505,
+quality job112349863497 dependency audit exit1/highGHSA-wq5f-xc86-pv6w.
+Önceki eaa3bc88 CI7SUCCESS tarihsel olarak korunur; yeni duyuru sonrası
+97ad68 adayının bütün CI kapıları geçtiği iddia edilmez. Duyuru:
+https://github.com/advisories/GHSA-wq5f-xc86-pv6w ; düzeltilmiş sharp0.35.5.
+Ayrı dal lock-only patch auditPASS, semantic sharp/libvips-onlyPASS;
+OGcache/releaseartifact/productionrelease32testPASS. Root node_modules eski;
+bu testler yeni native binary kabulü değildir. Peer/exactcandidateCI açık.
+
+Exact productiond083/app0e6b2c4f/imageab6a2f7f,15:41:14 salt okunur native
+ölçüm: Node22.23.3, Alpine, glibcVersionRuntimeNULL, builtimages.unoptimizedtrue.
+Root bare require sharp MODULE_NOT_FOUND; Next dependency-relative require
+sharp0.35.4/rsvg2.62.91/vips8.18.6 başarılı. Health/ready200, zararsız
+/_next/image?url=%2Ficon.svg&w=64&q=75 HTTP404. Decoder işlemi veya kötü
+SVG çalıştırılmadı; üretim mutasyonu0. Erişim koruması evrensel güvenlik
+kanıtı yerine geçmez. P7 aynı fiziksel pencerede;15:30 doğal14/12SUCCEEDED/
+2RUNNING/teknik hata0/uyarı0. Final PASS yok.
+
+15:44 izole altı paketlik native fixture: Node22.23.1/glibc2.41;
+sharp0.35.5/rsvg2.63.2/vips8.18.7 gerçekten yüklendi. Dört üretilmiş pikselin
+PNG kodlaması2×2 başarılı; kötü SVG veya kullanıcı içeriği çalıştırılmadı.
+Root node_modules ve üretim değiştirilmedi. Bu glibc native paket ölçümüdür;
+Alpine aday imaj/CI ve production cutover kabulü yerine geçmez.

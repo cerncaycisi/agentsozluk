@@ -145,6 +145,20 @@ bağları bu pencereye uygun değil; aynen çalıştırılmaz. Uktenin başka sa
 Güncel T3 browser koordinatörü ve peer kapanışı açık; bu hazırlık canlı Gate11
 PASS değildir. Gate10 geçmeden bu işlemler, Gate12 restore/reboot veya P8 yok.
 
+**Yeni güvenlik işi — 6 Ekim15:41:** main97ad68c2 CI37487097505 kalite işi,
+GHSA-wq5f-xc86-pv6w nedeniyle production dependency audit’te reddedildi.
+`sharp`0.35.5 düzeltmesi ayrı dalda; lockfile yalnız sharp/libvips ailesini
+günceller, audit PASS ve ilgili32test PASS. Henüz merge veya canlı dağıtım yok.
+Exact d083 imajında native sharp0.35.4/librsvg2.62.91 Next bağımlılığından
+çözüldü; Alpine/glibc runtime alanıNULL, built images.unoptimized=true.
+Health/ready200 ve zararsız SVG optimizer isteği404. Bu mevcut erişim
+korumasının ölçümüdür; evrensel istismar yokluğu veya yama kabulü değildir.
+Öncelik: farklı model incelemesi, exact aday CI ve üretim zamanlama kararı.
+Dağıtım doğal pencereyi keserse eski P7 korunur ve gerçek resume’dan yeni168saat
+başlar; observer bağları değiştirerek devamlılık üretilmez.
+15:30 saatlik kesit: doğal14/başarılı12/açık2/teknik hata0, uyarı0;
+36yazarın her birinde en az3başarı şartı henüz sağlanmadı.
+
 ### Canlı ve tamamlanan teslimler
 
 - **5 Ekim tarihsel başlangıç; kullanıcı kararıyla kesildi:** exactD202, audited resume309→310,

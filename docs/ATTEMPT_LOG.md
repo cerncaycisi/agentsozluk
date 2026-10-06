@@ -8216,3 +8216,31 @@ production mutation0. Gate10/11/12/DONE082084/finalM2 hâlâ açık.
 Tekrarlama: bütün entry referanslarını creationcount sayma; ilk örnek sampler’ı
 bütün hafta kanıtı yapma; eski source/date browser helper’ını yeni pencereye
 kör taşıma; valid suspended session yerine expired401 kullanarak rolPASS yazma.
+
+### 6 Ekim15:41 UTC — yeni audit reddi ve sharp native çözümleme teşhisi
+
+Exactmain97ad68c2db0018a6b725e9acd0e0fd567145147d/CI37487097505;
+quality112349863497 audit highGHSA-wq5f-xc86-pv6w/exit1. Yeni global duyuru
+6Ekim13:43:57UTC; eski green audit geçmiş ölçümüdür. Override0.35.5/lock-only
+patch ile auditPASS, semantic sharp/libvips-onlyPASS; ilgili32testPASS.
+İlk semantic helper bütün1.3.4 değerlerini normalize ettiği için değişmemiş
+es-to-primitive için yalancı mismatch verdi; yalnız sharp package-key ve
+sharp dependency değerleri normalize edilince tam YAML eşliği geçti.
+
+Exactproductiond083/imageab6a2f7f salt okunur ilk native probe MODULE_NOT_FOUND.
+Kök neden bare require('/app') pnpm bağımlılık yerleşimini çözmüyor; Next
+package-relative require native0.35.4/rsvg2.62.91 başarılı. Ayrı config/os
+ölçümü images.unoptimizedtrue/Alpine/glibcNULL; publichealth/ready200,
+zararsız SVG optimizer404. Source guard decoder öncesinde return yapar;
+bu patch dağıtımı veya evrensel güvenlik PASS değildir. Mutation/restart0.
+
+Tekrarlama: yeni duyuru audit’ini ignore/lower threshold ile aşma; bare require
+MODULE_NOT_FOUND sonucunu paketin imajda yokluğu sayma; fixture normalize
+işleminde başka paket sürümlerini değiştirme. Peer ve exactCI olmadan merge/
+deploy yok; P7 kesilirse sahte repin yerine gerçek yeni T0 gerekir.
+
+15:44 izole altı paketlik native fixture: Node22.23.1/glibc2.41;
+sharp0.35.5/rsvg2.63.2/vips8.18.7 gerçekten yüklendi. Dört üretilmiş pikselin
+PNG kodlaması2×2 başarılı; kötü SVG veya kullanıcı içeriği çalıştırılmadı.
+Root node_modules ve üretim değiştirilmedi. Bu glibc native paket ölçümüdür;
+Alpine aday imaj/CI ve production cutover kabulü yerine geçmez.
