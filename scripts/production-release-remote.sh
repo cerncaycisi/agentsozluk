@@ -579,24 +579,44 @@ pre_cutover_lease_scan() {
 
 # Sahipli isimli tek seferlik kabul container'ı; zaman aşımı, istemci ölümü veya
 # uzak betiğin HUP/TERM/INT ile kesilmesinde de kaldırılır. Docker sorgusunun hatası
-# yokluk sayılmaz.
+# yokluk sayılmaz. Kesinti başladıktan sonra gelen sinyaller yalnız kaydedilir:
+# istemci bitip container kaldırılıp yokluğu doğrulanmadan betik ölmez.
 admission_probe=''
 admission_pid=''
+admission_signal=''
+record_admission_signals() {
+  trap 'admission_signal="${admission_signal:-129}"' HUP
+  trap 'admission_signal="${admission_signal:-143}"' TERM
+  trap 'admission_signal="${admission_signal:-130}"' INT
+}
 reset_admission_cleanup() {
   local ids
-  docker rm -f "$admission_probe" >/dev/null 2>&1 || true
-  ids="$(docker ps -aq --filter "name=^${admission_probe}\$")" || ids=query-failed
+  record_admission_signals
+  # pty kapanınca HUP bütün ön plan grubuna gider; temizlik çocukları onu yok sayar.
+  (
+    trap '' HUP TERM INT
+    docker rm -f "$admission_probe"
+  ) >/dev/null 2>&1 || true
+  ids="$(
+    trap '' HUP TERM INT
+    docker ps -aq --filter "name=^${admission_probe}\$"
+  )" || ids=query-failed
+  trap - HUP TERM INT
   test -z "$ids" || {
     printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
     exit 97
   }
+  if test -n "$admission_signal"; then exit "$admission_signal"; fi
 }
 reset_admission_abort() {
-  trap - HUP TERM INT
+  admission_signal="${admission_signal:-$1}"
+  record_admission_signals
   kill -TERM "$admission_pid" 2>/dev/null || true
-  wait "$admission_pid" 2>/dev/null || true
+  # Tekrarlanan sinyal wait'i erken döndürür; istemci gerçekten bitene kadar bekle.
+  while kill -0 "$admission_pid" 2>/dev/null; do
+    wait "$admission_pid" 2>/dev/null || true
+  done
   reset_admission_cleanup
-  exit "$1"
 }
 candidate_reset_admission() {
   local ids status=0
@@ -615,7 +635,6 @@ candidate_reset_admission() {
     --entrypoint ./node_modules/.bin/tsx app scripts/verify-reset-generation.ts </dev/null &
   admission_pid=$!
   wait "$admission_pid" || status=$?
-  trap - HUP TERM INT
   reset_admission_cleanup
   test "$status" = 0 || {
     printf 'RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED\n' >&2

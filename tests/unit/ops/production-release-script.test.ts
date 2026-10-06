@@ -389,29 +389,42 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
       psFailsAfterRemove?: boolean;
       psFailsAlways?: boolean;
       hangup?: boolean;
+      stubbornClient?: boolean;
+      slowRemove?: boolean;
     }) {
       const script = `set -Eeuo pipefail
 exec 3>&1
 op_id=0123456789abcdef
 candidate_image=agent-sozluk:${sha}
 compose=(docker compose)
-attempted=0
+attempted_file="$(mktemp)"
+trap 'rm -f "$attempted_file"' EXIT
 docker() {
+  local attempted=0
+  if test -s "$attempted_file"; then attempted=1; fi
   case "$1" in
     ps)
       ${options.psFailsAlways ? "return 42" : ""}
       if test "$attempted" = 1 && ${options.psFailsAfterRemove ? "true" : "false"}; then return 42; fi
-      if test "$attempted" = 1 && ${options.linger ? "true" : "false"}; then echo lingering; fi ;;
-    rm) attempted=1; printf 'RM %s\\n' "$3" >&3; ${options.psFailsAfterRemove ? "return 43" : "return 0"} ;;
+      if test "$attempted" = 1 && ${options.linger ? "true" : "false"}; then echo lingering; fi
+      if test "$attempted" = 1; then printf 'PS_DONE\\n' >&3; fi ;;
+    rm)
+      echo 1 >"$attempted_file"
+      printf 'RM %s\\n' "$3" >&3
+      ${options.slowRemove ? "sleep 1; printf 'RM_DONE\\n' >&3" : ""}
+      ${options.psFailsAfterRemove ? "return 43" : "return 0"} ;;
     *) return 0 ;;
   esac
 }
 timeout() {
   printf 'RUN %s\\n' "$*"
+  ${options.stubbornClient ? "trap '' TERM; sleep 2; printf 'CLIENT_DONE\\n'; return 0" : ""}
   ${options.hangup ? "exec sleep 30" : `return ${options.runStatus ?? 0}`}
 }
-${definition("reset_admission_cleanup")}
+${remote.slice(remote.indexOf("\nadmission_probe=''\n"), remote.indexOf("\n}\n\n", remote.indexOf("\ncandidate_reset_admission() {")) + 3)}
 ${options.hangup ? "( sleep 0.5; kill -HUP $$ ) &" : ""}
+${options.stubbornClient ? "( sleep 0.3; kill -HUP $$; sleep 0.5; kill -HUP $$ ) &" : ""}
+${options.slowRemove && !options.stubbornClient ? "( sleep 0.4; kill -HUP $$ ) &" : ""}
 candidate_reset_admission
 echo PASSED`;
       return spawnSync("bash", ["-c", script], { encoding: "utf8", timeout: 20000 });
@@ -442,6 +455,20 @@ echo PASSED`;
       expect(before.status).toBe(97);
       expect(before.stdout).not.toContain("RUN ");
       expect(before.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
+    });
+
+    it("kesinti sırasında tekrarlanan sinyal istemci beklemesini ve temizliği kesmez", () => {
+      const repeated = admission({ stubbornClient: true });
+      expect(repeated.status).toBe(129);
+      expect(repeated.stdout).toContain("CLIENT_DONE");
+      expect(repeated.stdout).toContain("RM agent-sozluk-reset-admission-");
+      expect(repeated.stdout).toContain("PS_DONE");
+      expect(repeated.stdout.indexOf("CLIENT_DONE")).toBeLessThan(repeated.stdout.indexOf("RM "));
+      const duringRemove = admission({ slowRemove: true });
+      expect(duringRemove.status).toBe(129);
+      expect(duringRemove.stdout).toContain("RM_DONE");
+      expect(duringRemove.stdout).toContain("PS_DONE");
+      expect(duringRemove.stdout).not.toContain("PASSED");
     });
 
     it("uzak betik HUP ile kesilince istemciyi beklemeden kabul container'ını kaldırır", () => {
