@@ -577,7 +577,8 @@ pre_cutover_lease_scan() {
   fi
 }
 
-# Kabul container'ı ayrık (-d) başlar ve kendi içinde 120 sn ile sınırlıdır; uzak
+# Kabul container'ı ayrık (-d) başlar ve kendi içinde 120 sn ile sınırlıdır; bütün
+# Docker çağrıları da süreyle sınırlıdır. Uzak
 # betik kesilse bile kendiliğinden biter. Kabuk sinyal tuzağı veya PID takibi yoktur:
 # sahiplik etiketini VE tam `önek+16 hex op` adını taşıyan kabul container'ları her
 # koşunun başında ve sonunda kaldırılır, yoklukları doğrulanır. Yalnız önekle eşleşen
@@ -587,7 +588,11 @@ admission_label=org.agentsozluk.reset-admission=probe
 admission_ids=''
 read_reset_admission_ids() {
   local listing id name
-  listing="$(docker ps -a --filter "label=$admission_label" --format '{{.ID}} {{.Names}}')" || {
+  # Docker yanıtı takılırsa temizlik de süresiz kalmaz; zaman aşımı yokluk sayılmaz.
+  listing="$(
+    timeout --kill-after=5 30 \
+      docker ps -a --filter "label=$admission_label" --format '{{.ID}} {{.Names}}'
+  )" || {
     printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
     exit 97
   }
@@ -603,7 +608,7 @@ remove_reset_admission_probes() {
   if test -n "$admission_ids"; then
     # Kimlikler Docker'ın onaltılık container ID'leridir; sözcük bölme kasıtlı.
     # shellcheck disable=SC2086
-    docker rm -f $admission_ids >/dev/null 2>&1 || true
+    timeout --kill-after=5 60 docker rm -f $admission_ids >/dev/null 2>&1 || true
     read_reset_admission_ids
   fi
   test -z "$admission_ids" || {
