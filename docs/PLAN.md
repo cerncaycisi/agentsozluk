@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 01:02 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 01:32 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
 kapalı; başlamış koşu ve canlı lease sıfır. Son içerik sayımı 23:26'da 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
@@ -43,7 +43,10 @@ kanonik reset rollback yedeği veya gerçek restore kabulü değildir.
 taze yedek ve restore, üretim gölgesinde aynı çekirdekle prova, bütün yazarların
 dondurulması, tek kullanımlık reset, iç kabul ve doğrulanmış açılış var.
 Yerel çekirdeğin önceki59unit/5PG ve son ayrı7dosya86unit koşusu geçti.
-Son boot-guard eklemeleri bu86test kesitinden sonradır; henüz tamCI/hakem sonucu yok. Küçük sahipli DB'de gerçek COMMIT,
+Son8dosya107unit ve6PG geçti; ek idle backend
+veri silmeden reddedildi. Rollback rename sonrası yeni OID imzalı terminal
+kanıtına bağlandı. Final format/lint/type ve bash/Node syntax geçti; exact CI ve
+bağımsız hakem kapıları sırada. Küçük sahipli DB'de gerçek COMMIT,
 kapının kapanıp açılması, 410, kimlik koruması ve ikinci reset reddi ölçüldü;
 üretim veya tam boyut kabulü değildir. Mevcut yerel role için non-superuser denemesi
 pg_hba/P1010 ile migration öncesinde durdu; kullanıcı erişim ayarları değiştirilmedi.

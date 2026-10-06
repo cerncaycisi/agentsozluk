@@ -144,6 +144,14 @@ for required in \
   tsconfig.json \
   scripts/agent-runtime-worker.ts \
   scripts/agent-society-flow.ts \
+  scripts/great-reset-production.ts \
+  scripts/reset-generation-store.ts \
+  scripts/verify-reset-generation.ts \
+  scripts/reset-generation-mirror.ts \
+  scripts/reset-generation-operator.ts \
+  scripts/reset-freeze-inventory.ts \
+  scripts/reset-production-boot-guard.ts \
+  scripts/reset-implementation-hash.ts \
   node_modules/tsx/dist/cli.mjs \
   node_modules/.bin/tsx \
   node_modules/.bin/prisma; do

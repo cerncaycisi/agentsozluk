@@ -16,6 +16,14 @@ const validation = spawnSync(
 if (validation.error) throw validation.error;
 if (validation.status !== 0) process.exit(validation.status ?? 1);
 
+const generation = spawnSync(
+  process.execPath,
+  [tsxCli, path.join(root, "scripts", "verify-reset-generation.ts")],
+  { env: process.env, stdio: "inherit" },
+);
+if (generation.error) throw generation.error;
+if (generation.status !== 0) process.exit(generation.status ?? 1);
+
 await mkdir(path.join(standalone, ".next"), { recursive: true });
 await cp(path.join(root, ".next", "static"), path.join(standalone, ".next", "static"), {
   recursive: true,

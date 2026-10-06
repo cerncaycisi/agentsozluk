@@ -6468,3 +6468,32 @@ Canlı hâlâD202; reset/veri silme/reopen/newT0 yok. Goal ve finalM2 açık.
 
 Birleşmiş9be için CI37391583484 son native okumada **7/7 SUCCESS** olarak
 doğrulandı. Bu main CI sonucu production deploy/reset veya yeni T0 değildir.
+
+## 6 Ekim 01:24 UTC — reset yürütücüsünün odaklı doğrulaması
+
+Ayrı executor worktree, base993; canlıD202 ve worker kapalı durumu korunur.
+Bootstrap native readonly okumasında DropInPaths boş, exact root fragment,
+NeedDaemonReload=no, active/exited/MainPID0 doğrulandı. Kaynakta başka
+ExecStart override ve reload drift reddi eklendi; guard üretime kurulmadı.
+Son8dosya106unit PASS. Owned stageOID8516470/marker/owner/cluster/backend0
+kapısından sonra namespace5PG PASS; stale plan/DDL rollback/catalog drift,
+2002tombstone sayfalaması ve unsafe sequence/trigger reddi içerir. İlk pool10
+koşusunda1/5 precondition ret vardı; üretim single-backend kapısı değişmeden
+fixture havuzu kapatılıp çekirdek ayrı tek bağlantılı client ile doğrulandı.
+Final extra-idle-backend negatif testi, quality, exact CI ve hakem henüz açık.
+Reset/veri silme/reopen/newT0 yok. [Yürütücü sözleşmesi](RESET_YURUTUCU_SOZLESMESI_2026-10-06.md).
+
+01:28 kapanış kesiti:8dosya107unit ve owned-stage6PG PASS. Ek idle backend
+yolunda OTHER_DATABASE_CONNECTIONS/GREAT_RESET_PRECONDITIONS_FAILED, intent
+tüketilmedi ve içerik korundu. Kaynak incelemesinde atomic restore rename'in
+yeni canonical OID ürettiği kabul yolu eksik bulundu; source OID latch sabit
+kalırken yalnız signed ROLLED_BACK restoredDatabaseOid ve aynı audit/actual
+OID eşliği kabul edilir. Terminal OID rebind ve normal-state OID override
+negatif testleri geçti. Bu henüz actual rename/fullsize veya canlı kabulü değil.
+Main993CI37397597282 yedi işSUCCESS; executor henüz ayrı uncommitted kaynak.
+
+01:32 final quality: format:check/lint/typecheck ve üç bash/iki Node syntax
+komutunun her biri exit0. Kod107unit/6PG kesitiyle aynı; yalnız Türkçe makbuz
+güncellendi. Ayrı executor draft PR/exact-source CI ve farklı model kod
+incelemesi bir sonraki kapı; fullsize, native boot guard kurulum, reset/reopen
+ve yeniT0 hâlâ yapılmadı.

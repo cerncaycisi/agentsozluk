@@ -25,7 +25,7 @@ type Request = (
     }
 ) & { archiveOutbox?: true };
 type Fingerprint = { rows: number; sha256: string };
-type Table = { model: string; table: string; cleared: boolean };
+export type ResetTable = { model: string; table: string; cleared: boolean };
 type Tx = Prisma.TransactionClient;
 
 function digest(value: unknown): string {
@@ -47,7 +47,7 @@ function implementationDigest(): string {
   ]);
 }
 
-function tables(): Table[] {
+function tables(): ResetTable[] {
   const models = Prisma.dmmf.datamodel.models;
   const modelName = (name: string) => name[0]!.toLowerCase() + name.slice(1);
   assertCompleteResetClassification(models.map((model) => modelName(model.name)));
@@ -102,12 +102,16 @@ async function fingerprint(
   table: string,
   auditId?: string,
   archiveId?: string,
+  operationId?: string,
 ): Promise<Fingerprint> {
   // Satırlar/credential içerikleri istemciye veya log'a taşınmaz; özet DB'de hesaplanır.
   const projection =
     table === "idempotency_records"
       ? Prisma.sql`to_jsonb(t) - 'expiresAt'`
-      : Prisma.sql`to_jsonb(t)`;
+      : table === "great_reset_intents" && operationId
+        ? Prisma.sql`CASE WHEN t."operationId" = ${operationId}::uuid
+            THEN to_jsonb(t) - 'consumedAt' ELSE to_jsonb(t) END`
+        : Prisma.sql`to_jsonb(t)`;
   const filter =
     table === "audit_logs" && auditId
       ? Prisma.sql`WHERE t.id <> ${auditId}::uuid`
@@ -115,7 +119,9 @@ async function fingerprint(
         ? Prisma.sql`WHERE t.id <> ${archiveId}::uuid`
         : table === "outbox_reset_archive_events" && archiveId
           ? Prisma.sql`WHERE t."archiveId" <> ${archiveId}::uuid`
-          : Prisma.empty;
+          : operationId && ["great_reset_commits", "great_reset_tombstones"].includes(table)
+            ? Prisma.sql`WHERE t."operationId" <> ${operationId}::uuid`
+            : Prisma.empty;
   const [result] = await tx.$queryRaw<Fingerprint[]>(Prisma.sql`
     WITH row_hashes AS MATERIALIZED (
       SELECT encode(sha256(convert_to((${projection})::text, 'UTF8')), 'hex') AS row_hash
@@ -130,12 +136,18 @@ async function fingerprint(
   return result;
 }
 
-async function snapshot(tx: Tx, list: Table[], auditId?: string, archiveId?: string) {
+async function snapshot(
+  tx: Tx,
+  list: ResetTable[],
+  auditId?: string,
+  archiveId?: string,
+  operationId?: string,
+) {
   const result: Record<string, Fingerprint> = {};
   for (const { table, cleared } of list)
     result[table] = cleared
       ? await rowVersionFingerprint(tx, table)
-      : await fingerprint(tx, table, auditId, archiveId);
+      : await fingerprint(tx, table, auditId, archiveId, operationId);
   // expiresAt ayrıca plan hash'ine girer; koruma karşılaştırmasında tek istisnadır.
   const expiry = await tx.$queryRaw<{ sha256: string }[]>`
     SELECT encode(sha256(convert_to(coalesce(string_agg(id::text || ':' ||
@@ -215,7 +227,7 @@ async function identity(tx: Tx, databaseName: string, expected: LocalResetIdenti
   return actual;
 }
 
-async function inspectSchema(tx: Tx, list: Table[]) {
+async function inspectSchema(tx: Tx, list: ResetTable[], namespaceTransition = false) {
   const actual = await tx.$queryRaw<{ name: string; kind: string }[]>`
     SELECT c.relname AS name, c.relkind::text AS kind FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -237,7 +249,10 @@ async function inspectSchema(tx: Tx, list: Table[]) {
       'columns', (SELECT jsonb_agg(to_jsonb(c) ORDER BY table_name, ordinal_position)
         FROM information_schema.columns c WHERE table_schema = 'public'),
       'constraints', (SELECT jsonb_agg(pg_get_constraintdef(oid) ORDER BY conrelid, conname)
-        FROM pg_constraint WHERE connamespace = 'public'::regnamespace),
+        FROM pg_constraint WHERE connamespace = 'public'::regnamespace
+          AND (NOT ${namespaceTransition} OR conname NOT IN (
+            'topics_public_id_legacy_range', 'entries_public_id_legacy_range',
+            'topics_public_id_reset_range', 'entries_public_id_reset_range'))),
       'triggers', (SELECT jsonb_agg(jsonb_build_array(pg_get_triggerdef(t.oid),
         t.tgenabled, pg_get_functiondef(t.tgfoid)) ORDER BY t.tgrelid, t.tgname)
         FROM pg_trigger t WHERE NOT t.tgisinternal AND
@@ -253,7 +268,11 @@ async function inspectSchema(tx: Tx, list: Table[]) {
   return digest({ structure, migration });
 }
 
-async function blockers(tx: Tx, archiveOutbox = false): Promise<string[]> {
+async function blockers(
+  tx: Tx,
+  archiveOutbox = false,
+  checkLocalSequences = true,
+): Promise<string[]> {
   const result: string[] = [];
   const settings = await tx.agentGlobalSettings.findMany({
     select: {
@@ -332,7 +351,8 @@ async function blockers(tx: Tx, archiveOutbox = false): Promise<string[]> {
         AS "disabledTriggers"`;
   if (session?.role !== "origin" || session.disabledTriggers !== 0)
     result.push("TRIGGER_STATE_UNSAFE");
-  if ((await unsafePublicIdSequences(tx)).length) result.push("PUBLIC_ID_SEQUENCE_UNSAFE");
+  if (checkLocalSequences && (await unsafePublicIdSequences(tx)).length)
+    result.push("PUBLIC_ID_SEQUENCE_UNSAFE");
   return result;
 }
 
@@ -383,7 +403,7 @@ async function unsafePublicIdSequences(tx: Tx): Promise<string[]> {
  * Önizlemede yetki önkontrolü: eksik yetki pahalı arşiv aşamasında değil, baştan görünsün
  * (Astra, tasarım turu P2). Süper kullanıcı olmayan üretim rolü için anlamlı.
  */
-async function privilegeBlockers(tx: Tx, list: Table[]): Promise<string[]> {
+async function privilegeBlockers(tx: Tx, list: ResetTable[]): Promise<string[]> {
   const cleared = list.filter((row) => row.cleared).map((row) => row.table);
   const all = [...list.map((row) => row.table), "_prisma_migrations"];
   const [privileges] = await tx.$queryRaw<
@@ -603,3 +623,15 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     await database.$disconnect();
   }
 }
+
+/** Aynı salt okunur envanter; ayrı production guard yerel hedef kapısını çağırmaz/genişletmez. */
+export const greatResetInspection = {
+  digest,
+  tables,
+  tableSql,
+  snapshot,
+  fingerprint,
+  inspectSchema,
+  blockers,
+  privilegeBlockers,
+};

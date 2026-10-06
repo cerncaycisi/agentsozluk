@@ -3,6 +3,7 @@ set -eu
 
 ./node_modules/.bin/tsx scripts/validate-environment.ts
 node ./scripts/wait-for-database.mjs
+./node_modules/.bin/tsx scripts/verify-reset-generation.ts
 ./node_modules/.bin/prisma migrate deploy
 
 if [ "${NODE_ENV:-production}" != "production" ] && [ "${SEED_DEMO:-false}" = "true" ]; then

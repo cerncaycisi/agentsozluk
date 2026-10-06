@@ -6828,3 +6828,33 @@ Tekrarlama: başarısız/noresultpeer'iGO sayma; varsayılanvolume/socket/event'
 üretim kusuru sayma; tekdeneme transferini tekrarlama. Cache tekrar okumayımedia
 scan; codecdecode'yiactualrestore; eskişemaarchive'ıPRE_RESET_BIGINT sayma.
 Bootstrapservice'i durdurarakDB'yi indirme; yeni bootgates'i kurulmuş diye yazma.
+
+## 6 Ekim 01:24 UTC — namespace fixture bağlantı ayrımı
+
+Base993/executor kaynak:8dosya106unit PASS. Native bootstrap readonly exact
+fragment/no-dropin/no-reload aktif-exited0; production mutation yok. İlk
+owned-stage PG koşusu4PASS/1FAIL: stale-plan beklenirken
+GREAT_RESET_PRECONDITIONS_FAILED. Genel fixture pool10 idle bağlantıları ile
+tek-backend mutation kapısı ayrıldı; fixture client kapandı, çekirdek kendi
+pool1 client'ıyla çalıştı. Aynı stageOID8516470/owner-agent/nonce-marker/cluster
+ve backend0 yeniden kanıtlanınca5PGPASS. Üretim kapısı gevşetilmedi; ek idle
+backend negatif testi final koşuya ekleniyor. Quality ortasında değişen test
+dosyası format ret verdi; bash syntax sonucu format PASS diye yorumlanmadı.
+Tekrarlama: birden çok fixture bağlantısını production reset regresyonu sayma;
+format/lint/type komutlarından sonra ayrı syntax komutunun exit0'ını bütün
+quality sonucu sanma; küçük rollback provası fullsize/canlı reset değildir.
+
+01:28 final odaklı kaynak:107unit/6PGPASS. Ayrı idle observer backend
+negatif testi precondition ret/intentNULL/content1 ile pool nedenini doğrudan
+kanıtladı. Source rollback kabulü eski canonicalOID varsayımını taşıyordu;
+rename yeniDB OID'sini koruduğundan imzalı terminal restoredDatabaseOid ve
+audit/actual eşliği eklendi, immutable source binding değişmedi. Canlı
+restore veya production fault ölçümü iddia edilmez. Yeni unit fixture
+import() type annotation ESLint ret verdi; Record type ile düzeltildi,
+sonraki lint/type PASS. OID düzeltmesinden sonraki final quality ayrıca koşulur.
+Tekrarlama: source OID'yi restore rename sonrası actual OID sanma; terminal
+OID'yi unsigned/ordinary-state override ile kabul etme.
+
+01:32 final quality bütün6komut ayrı exit0: format/lint/typecheck, bash syntax
+ve ikiNode syntax. Yanıltıcı combined exit kullanılmadı. Exactsource commit/CI
+ve bağımsız kod hakemi sırada; measured107unit/6PG canlı kabulü sayılmaz.
