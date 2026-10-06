@@ -7960,3 +7960,18 @@ kullanımı makbuzda ayrı korunur. Next15.5.26/nodejsmiddleware kaynakla doğru
 Odaklı middleware8 test ve811 gereksinim izlenebilirliği geçti; format/lint/
 typecheck exit0. Canlı dağıtım yapılmadı; mevcut P7 sonrası paketine eklendi. Exact yeniCI
 ve artifact/build/native üretim kontrolü dağıtım öncesinde gereklidir.
+
+### 6 Ekim17:05 — kaldırılmış içerik UI tesliminin CI düzeltmesi
+
+Kaynak f65f94b5468adaa32584b6d0a9e491aa456a71db, CI37499542402 browser/
+quality/database/container SUCCESS; behavior tek unitFAIL: tasarım token testi
+TS içindeki sabit CSS özelliklerini (`border-bottom` vb.) Tailwind renk
+sınıfı sandı.2596 unitPASS/1FAIL; coverage henüz terminal değildi. Test
+değiştirilmedi. Sabit CSS ayrı JSONstring assete alındı; decode edilmiş
+byte’lar ve CSP hash eskiyle birebir. Bu bağımsız stylesheet Tailwind sınıfı
+kullanmıyor; JSON veri dosyası mevcut TS/TSX yardımcı sınıf taramasının
+kapsamında değildir. Başka sınıf/kapsam/threshold istisnası eklenmedi.
+Opus5.5/27.578ms dar kaynakGO; Haiku yardımcı model kaydı korundu.
+Doğrudan NodeESM tüketicisi yok; yalnız Next middleware kullanır. Mimari
+token2/middleware8 testPASS. Üç yerel tarayıcı görünümü yeniden doğrulanır;
+exact düzeltilmiş CI beklenir. Üretim dağıtılmadı, P7 aynıd083 ile sürüyor.

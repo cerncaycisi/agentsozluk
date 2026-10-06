@@ -8339,3 +8339,15 @@ Bu paketin ilk tam lint komutu143/SIGTERM ile çıktı; hata metni veya lint bul
 yoktu, sebep doğrulanamadı. Diğer ağır yerel iş bitince aynı pnpm lint tekrarında
 exit0 görüldü. Tip kontrolü exit0, odaklı middleware8/811 izlenebilirlik PASS.
 Bu süreç kesintisi kaynak regresyonu diye sınıflandırılmadı.
+
+### 6 Ekim17:05 — CSS kaynak verisi ve mimari test kapsamı
+
+f65f94b5468adaa32584b6d0a9e491aa456a71db CI37499542402 behaviorFAIL,
+safeerror `tasarım tokenı bütünlüğü / expected object to equal {}`. Yeni
+statik HTML stylesheet TS içinde olduğundan CSS propertynames renk
+yardımcı sınıfı sanıldı; fixture/env hatası değil, gerçek teslim uyumsuzluğu.
+CSS JSONstring assete ayrıldı, decodebyte/CSP eşliği gerçek hashle ölçüldü.
+Test değiştirilmedi;2 mimari+8middleware PASS. ActualOpus5.5 darGO.
+Tekrarlama: standalone statik sayfa stilinde odaklı yanıt testine ek olarak
+mevcut tasarım token taramasını da çalıştır; CSS veri assetini Tailwindclass
+taramasıyla aynı dil sayma. Üretim bağlantısı/deploy/mutasyon0.
