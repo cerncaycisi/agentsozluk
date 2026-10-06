@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 03:19 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 03:41 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
 kapalı; başlamış koşu ve canlı lease sıfır. Son native içerik sayımı 02:11'de 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
@@ -39,8 +39,8 @@ Son üç yerel yedek ve safety hardlink ayrı okumayla korunduğu doğrulandı.
 sabit; root boş alan24.055.660.544bayt. Bunlar tarihsel eski-şema yedekleridir;
 kanonik reset rollback yedeği veya gerçek restore kabulü değildir.
 
-**Sırada:** reset migration dağıtım profilinin native doğrulaması, gerçek boyutlu
-operator restore ve üretim gölgesi, bütün yazarların dondurulması, tek kullanımlık
+**Sırada:** birleşmiş exact sürümün CI ve release artifact kabulü, adayın canlı
+salt okunur admission kontrolü, A5 geçişi, gerçek boyutlu operator restore ve üretim gölgesi, bütün yazarların dondurulması, tek kullanımlık
 reset, iç kabul ve doğrulanmış açılış var. [PR335](https://github.com/cerncaycisi/agentsozluk/pull/335)
 yürütücüsü ana dala `0914d34380e481b96d9b3bcac3e6eeca818f7760` olarak alındı;
 tree reviewed `01bb98f3d5a855eda75c1bce62046cd4d2316d62` ile aynı, exact head
@@ -62,7 +62,11 @@ Yeni nonce/OID8704553 PG16.14/Node22.23.1 native provası: altı migration,
 131 katalog tanımı exact ve dört journal boş; küçük prova, fullsize kabulü değil.
 PR336 ae76 için actualOpus5.5 kaynak KOŞULLU GO; production kapıları açık.
 Son hashguard düzeltmesi78unit geçti; f88 için actualOpus5.5 kapanışında
-source merge engeli yok. Son command-doc SHA/CI kabulü ayrı kapı.
+source merge engeli yok. Son command-doc head344 CI37408970998 yedi iş SUCCESS; actualOpus5.5/149560ms
+incelemesinde kaynak merge engeli yok. PR336 03:40:41 UTC’de
+`82e4c082ad09e060b3080d85e9cd4c6d6181208b` olarak birleşti; parent0914,
+tree reviewed344 ile eşit, root temiz ve remote main eşliği doğrulandı.
+Birleşmiş sürüm CI37410108672 bekleniyor; dağıtım yapılmadı.
 D202 journal öncesi admission küçük native sahipli PG'de READ ONLY geçti,
 required=true ret verdi; gerçek üretim/aday imaj kabulü yerine geçmez.
 

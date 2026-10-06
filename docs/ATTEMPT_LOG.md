@@ -7016,3 +7016,30 @@ maskelenebilir, alt safe code ledger'da ayrıca korunur. Normalizer pinli/testli
 kısmi/boşluk çıktısı ve gelecekte OR içine taşınan phase hakkındaki non-blocking
 notlar measured kusur veya production GO sayılmadı. Yeni kaynak guard genişletilmedi.
 Reset/deploy/reopen/newT0 yok; operator kaynak kapasitesi yanıtı hâlâ bekliyor.
+
+## 6 Ekim 03:41 UTC — reset migration profili ana dalda
+
+PR336 exact head `344c038fd93a9ae24eb78ad4302a5eece600602b`,
+CI37408970998 yedi iş SUCCESS. Actual Opus5.5 son command-doc incelemesi
+149560ms: kaynak merge engeli yok; exact CI ve tree eşliğiyle KOŞULLU GO.
+Önceki f88 CI37408034737 de yedi iş SUCCESS; önceki actual Opus5.5
+183189ms kapanışı tarihsel ayrı kanıttır. 344 değişikliği yalnız belge;
+1123 kod/SQL/test/config blobu f88 ile aynı. Son kaynak78unit ve kalite
+kontrolleri PASS; küçük native kanıtlar fullsize veya production GO değildir.
+
+03:40:41 UTC squash main `82e4c082ad09e060b3080d85e9cd4c6d6181208b`,
+tek parent0914; Git tree reviewed344 ile eşit. Root fast-forward/temiz ağaç
+ve remote main exact eşliği doğrulandı. Birleşmiş sürüm CI37410108672
+başladı, henüz PASS sayılmaz. Son PR head/check/review/mergeability kapıları
+merge hemen öncesinde tekrar ölçüldü; yedi check SUCCESS ve CLEAN idi.
+
+Canlı D202 değişmedi; reset, migration, installer, yeniden açılış ve yeni T0
+yok. Operator tam boyutlu restore alanı açık ve kaynak kapasitesi yanıtı
+bekliyor. Aday imajın readonly admission ölçümünde imaj/Compose/daemon/env/
+rol/DB pinleri ve proxy'nin native config’i doğrulanacak; bu koşullar source
+merge engeli olarak yeniden adlandırılmadı. Goal aynı amaçla aktif.
+
+Tekrarlama: head CI’ı birleşmiş main CI yerine, küçük fixture’ı fullsize
+restore yerine veya ana dal teslimini canlı dağıtım yerine sayma. Operator
+alanı açığı için başka kullanıcı verisini silme; eski tüketilmiş temizlik ve
+arşiv işlemlerini yeniden çalıştırma.
