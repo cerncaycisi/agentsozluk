@@ -6656,3 +6656,118 @@ yok. Operator tam boyutlu restore alanı açık ve kaynak kapasitesi yanıtı
 bekliyor. Aday imajın readonly admission ölçümünde imaj/Compose/daemon/env/
 rol/DB pinleri ve proxy'nin native config’i doğrulanacak; bu koşullar source
 merge engeli olarak yeniden adlandırılmadı. Goal aynı amaçla aktif.
+
+## 6 Ekim 03:47 UTC — native yönetici yolu ile ajan yazma izinleri kapalı
+
+Canlı exact D202 ve aynı app/DB konteynerlerinde, source pinli
+`operator-admin.ts` gerçek yönetici oturumu/CSRF/API/audit/idempotency yolu
+kullanıldı. Tek QUEUED koşu kendi `/cancel` rotasıyla iptal edildi;
+sonra `PATCH /api/v1/admin/agent-settings` expectedSettingsVersion311 ile
+schedulerEnabled/publishEnabled/publicWriteEnabled false yapıldı.
+Ölçülen yeni sürüm312; runtimeEnabled false kalır. QUEUED/RUNNING/
+CANCEL_REQUESTED/lease/aktif operator-admin-cli session sıfır, worker inactive.
+İşlem UUID fc759f21-7fe9-4b84-b940-68e746ebcca0; iki idempotency anahtarı
+çağrıdan önce özel operatör makbuzuna yazıldı. Ham credential/token/body yok.
+
+03:42:49 salt okunur native Caddy config kabulü: sabit app:3000 upstream ve
+Docker discovery module yok; proxy/image kimlikleri aynı. Ana dal kaynak82e
+CI37410108672 yeni belge makbuzu699 push’ının concurrency kuralıyla CANCELLED;
+quality SUCCESS, diğer beş CANCELLED, validate FAILURE. PASS sayılmaz.
+Current exact main699 CI37410360534 devam ediyor. Kod/SQL dosyaları değişmedi.
+
+Site ve DB açık; içerik silme/reset/reopen/yeniT0 yok. Bu full uygulama freeze
+veya fullsize restore kabulü değildir. Operator alan kapısı ayrı açık.
+
+## 6 Ekim 03:51 UTC — proje timerları ve apt bakım sınırı
+
+İşlem71322226-4bba-4b40-a3c2-3a698f007e3a: native preflightta dört
+alarm/backup/maintenance/sayac timer active/enabled, karşılık servisler
+inactive/MainPID0 idi. Yalnız bu dört proje timerı stop/disable edildi;
+çalışan servis kesilmedi ve başka kullanıcı işi değiştirilmedi. Son okumada
+dördü inactive/disabled, dört servis inactive/MainPID0, worker inactive.
+Geçici kapanıştan sonra eski enabled/active durumlarının geri açılması gerekir.
+
+`/etc/apt/apt.conf.d/99agent-sozluk-reset-no-reboot` önce yoktu; root tarafından
+O_EXCL/NOFOLLOW ile oluşturulup dosya/ebeveyn fsync edildi.
+`Unattended-Upgrade::Automatic-Reboot` native apt-config çıktısında explicit
+false. Bu, bütün reboot kaynaklarını önlediği iddiası değildir. Bootstrap
+reset hold/drop-in/generation mount hâlâ kurulmadı; app/DB ve site açık.
+Reset/reopen/T0 yok; salt okunur admission operasyonu peer kapanışı ve CI bekler.
+
+## 6 Ekim 03:55 UTC — dağıtım admission operasyonu kaynak kapanışı
+
+Private operasyon wrapper’ı aynı main699 betiğine yalnız pre-lock/helper
+snapshot cleanup/pre-A5 admission kancaları ekler; mekanik insertion-only
+eşliği kaydedildi. İlk actual Opus5.5/219207ms NO_GO: Linux helper yolu
+uyumluluğu ve helper pininin uygulanmaması. Tarihsel ret korunur. Native
+Linux’ta mevcut Mac yol uyumluluğu root-owned linklerle ölçüldü; credential
+kopyalanmadı. Helper ilk üretim bağlantısından önce hash-pinli0700 snapshot’a
+alınır ve stream öncesinde yeniden pinlenir. Pause-society-flow flag’i bu
+operasyonda yasak; native bayraklar zaten312’de false. One-off adları exact op
+ile sınırlı, -T/DEVNULL; başarısızlıkta A5 başlamaz ve lock uzlaşı için kalır.
+
+Actual Opus5.5/212621ms kapanış: kaynak KOŞULLU GO; exact blocker bulunmadı.
+Native /tmp1777/root ve güvenilir root0755 alias ebeveynleri, native
+sanitatized Docker Compose5.3.1/required run options, mevcut sudo/root/git
+kabulü ölçüldü. Verify CLI SHA256 e7a71357cca9bd20851a2cb1322cc05c7926d50542d3ed50fc5ccc18c292ce0c;
+reviewed344 ile byte-equal, transaction callback READ ONLY repository admission
+fonksiyonunu çağırır. Bu kaynak incelemesi production/reset/fullsize GO değildir.
+
+03:52:48 sourceOID16385/cluster7663503447447879713/settings312/publicIdINTEGER
+sabit; DB6.010.330.135bayt, prodroot24.104.546.304bayt ve
+3DB+1GiB19.104.732.229bayt production headroom PASS. Docker system df:4image/
+3container/3volume; hiçbir temizlik yapılmadı. Operator boş alanı03:54’te
+8.720.871.424bayt; ayrı fullsize kapısı hâlâ açık. Actions artifacts03:53:
+40unexpired/308.336.034bayt; silme veya yeni artifact dispatch henüz yok.
+Main699 CI37410360534 dört iş SUCCESS, database/coverage sürüyor; final7/7
+ölçülmeden build/deploy yok. Canlı reset/reopen/yeniT0 uygulanmadı.
+
+## 6 Ekim 04:09 UTC — güncel main yeşil; reset rewrite/WAL payı
+
+Exact main6990d7e3dee1e1112921d7753cd0a1234cdb28db, CI37410360534
+yedi iş SUCCESS. Runtime/SQL/test/config blobları reviewed344 ile eşit;
+fark yalnız üç makbuz belgesinde. Artifact37411684920 ve tam M2 development
+37411727305 aynı exact699 için sürüyor; henüz PASS değil. Main bu tam koşu
+boyunca sabit tutulur. Bu koşular üretime bağlanmaz veya finalM2 kabulü vermez.
+
+Native03:58 actual non-superuser reset pre-SQL: iki INTEGER/default/NOT NULL/
+owner/sequence/range/cache/dependency ve invalidRows0/journal/function-yok
+metadata’sı; current699 verify-pre validator exit0. Production migration
+ve candidate-imaj admission yerine geçmez; source staged-image CLI ayrı ölçülür.
+
+04:03 native readonly rewrite/WAL: entries38.576.128 +topics5.251.072=
+43.827.200bayt; WAL671.088.640; max_wal_size1024MB, wal_keep_size0, archiveoff,
+replication slot/connection0. Ek planning payı8×relation+maxWal=1.424.359.424;
+3DB+1GiB’ye ek pre-freeze taban20.529.091.653bayt. MaxWal sert üst sınır değildir;
+actual staging sonrası taze free/retention ile guard ölçülür. Dump/restore45dk
+ve eski imajın scratch BIGINT/search smoke kapıları korunur. Runbook generic
+additive kuralına yalnız exact6SQL/reset-2026-v1 istisnası açıklanır; daha geniş
+SQL veya içerik reseti izni yok. Operator fullsize kapısı canonicalreset için
+ayrı ve OPEN; actualOpus5.5/89372ms scope uzlaştırması bunu doğruladı.
+
+Native /private/tmp root-owned symlink→/tmp1777root; tüm /Users alias
+ebeveynleri root0755, /homeagent ve .ssh agent0700; gerçek key agent0600,
+known_hosts root0644 ve tek ED25519 pin. Credential kopyalanmadı.
+Reset/reopen/newT0 yok; live D202/settings312/workerinactive/timer4disabled.
+
+## 6 Ekim 04:13 UTC — artifact başarı ve readonly rewrite guard kapanışı
+
+Exact699 artifact37411684920 SUCCESS: image build/smoke, native runtime bundle
+ve upload tamam. Exact named artifact/digest/boyut API’dan doğrulandı; bu
+üretime yükleme/cutover veya veri silme değildir. M2development37411727305
+sürer; main tam koşu boyunca699’da tutulur. Kaynak teslim makbuzu/runbook
+istisnası ayrı branch’te, yeni head yayımlanmadan main pin’i değiştirilmez.
+
+Actual Opus5.5/215232ms final private admission/rewrite guard kaynak GO;
+runbook metni üç sözel düzeltmeyle GO. Sözel düzeltmeler uygulandı: mevcut WAL
+boş alana yansır, ek pay admission tabanına eklenir (A5 dump kapısı değişmez),
+eski imaj BIGINT okuması prod migration’ından önce scratch’te ölçülür.
+HelperSHA2447c16e9c97bb3736851a1f94b267b9447f39f0a916c464b7486750b30bd829;
+wrapperSHA283554beffab2041223740787c9b1bc5af5a25b1ba9ec51092a1db42c962b7cc.
+Üç insertion’ın çıkarılması orijinal wrapper hash’ini aynen verir; receipt
+position alanları/admission-before-EXIT-trap-cleanup mekanik doğrulandı.
+
+A5 execute KOŞULLU; M2 development ve staging sonrası native admission/budget,
+taze yedek/restore/oldimage/timing koşulları kalır. Doc teslimi main pin’ini
+değiştirirse yeni exact CI/artifact gerekir; code-blob eşliği bu pin’in yerine
+geçmez. Operator fullsize/reset/exposure/reopen/newT0 NO_GO değişmedi.

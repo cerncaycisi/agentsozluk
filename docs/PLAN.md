@@ -8,12 +8,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 03:41 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 04:13 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
 kapalı; başlamış koşu ve canlı lease sıfır. Son native içerik sayımı 02:11'de 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
 personalar, kaynaklar, operatör erişimi ve operasyonel kanıtlar korunur.
-Üç diğer yazma bayrağı hâlâ açık olduğundan bu durum tam uygulama dondurması değildir.
+03:47 native yönetici API’siyle tek QUEUED iptal edildi; settingsVersion312’de
+runtime/scheduler/publish/publicWrite dört bayrak kapalı, RUNNING/lease/aktif
+operatör oturumu sıfır. Site/app ve DB çalışıyor; bu tam uygulama dondurması değildir.
 
 **Tamamlanan hazırlıklar:** BIGINT sınır paketi PR333 ve journal/410 paketi PR334
 ana dala alındı. Journal/410 paketinin main teslimi `9be0d2c193cbd558b743cf4959f00c9c683ec945`;
@@ -50,8 +52,9 @@ main CI37404909548 de yedi iş SUCCESS; üretim kapıları ayrı ölçülür. Ye
 full protected hash reconcile ve bounded bağlantı kapısı kurtarma geçti; bu
 superuser/küçük-fixture ölçümü production non-superuser veya tam boyut kabulü değildir.
 
-Üretimde installer, reset veya yeniden açılış uygulanmadı. Apt ayarı hâlâ açık
-false değil; app generation mount/env taşımıyor. Operator root boş alanı yaklaşık
+Üretimde installer, reset veya yeniden açılış uygulanmadı. 03:51 native ölçümünde
+apt automatic-reboot explicit false; dört proje timerı inactive/disabled ve
+servisleri boşta. App generation mount/env henüz taşımıyor. Operator root boş alanı yaklaşık
 8,8 GB: source6,01 GB için 3DB+1GiB19,10 GB restore payı karşılanmıyor. Üretim
 sunucusundaki24,11 GB bu ayrı operator kapısını kapatmaz. Diğer kullanıcı DB'leri,
 T3/Claude işleri ve geçmişi silinmez. Ayrı reset migration profili exact altı
@@ -66,7 +69,10 @@ source merge engeli yok. Son command-doc head344 CI37408970998 yedi iş SUCCESS;
 incelemesinde kaynak merge engeli yok. PR336 03:40:41 UTC’de
 `82e4c082ad09e060b3080d85e9cd4c6d6181208b` olarak birleşti; parent0914,
 tree reviewed344 ile eşit, root temiz ve remote main eşliği doğrulandı.
-Birleşmiş sürüm CI37410108672 bekleniyor; dağıtım yapılmadı.
+Birleşmiş82e CI37410108672, yeni belge push’ı sırasında CANCELLED; PASS değil.
+Current main699 CI37410360534 yedi iş SUCCESS; artifact37411684920 SUCCESS.
+Tam M2development37411727305 sürüyor, henüz PASS değil. Main tam koşu
+boyunca sabit kalır; production dağıtım/reset uygulanmadı.
 D202 journal öncesi admission küçük native sahipli PG'de READ ONLY geçti,
 required=true ret verdi; gerçek üretim/aday imaj kabulü yerine geçmez.
 
@@ -272,7 +278,8 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
 
 ### Tek aktif sıra
 
-1. **Kullanıcının tam reseti ve yeniden açılış:** mevcut audited pause311 sonrası
+1. **Kullanıcının tam reseti ve yeniden açılış:** audited pause sonrası dört
+   false bayrak/settings312 ve native QUEUED iptali tamam. Önceki
    configured600sn+120sn doğal drain; RUNNING/CANCEL_REQUESTED/livelease0 ve yalnız
    proje worker duruşu. Uygulama/DB ve diğer kullanıcı işleri korunur. Tam reset
    kapsamı insan ve ajan içerikleri/etkileşimleri ile ajan iç durumu dahil somut
