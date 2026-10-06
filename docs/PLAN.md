@@ -75,6 +75,10 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   artifact37507648534 hazırlanıyor. Şema değişikliği yok. Korumalı
   dağıtımda eski P7 gerçek kesim anıyla INTERRUPTED_NOT_PASS kaydedilir;
   açılış sonrası gerçek resume’dan yeni168saat başlar. Eski kanıtlar korunur.
+- **Astra tur bütçesi muafiyeti (geçici):** Gökhan 6 Ekim yaklaşık 19:15 UTC'de
+  sohbette açıkça "3. Astra turuna izin" seçti. Kapsam yalnız PR #342 (reset nesil
+  sudo düzeltmesi) için tek bir ek turdur. Muafiyet bu tur bitince, en geç
+  7 Ekim 2026 23:59 UTC'de sona erer; diğer işlerde 2 tur sınırı aynen geçerlidir.
 - **Sırada:** bu pencerenin gerçek doğal koşu, kaynak, ledger ve kamu etkisi
   kanıtlarını toplamak; ardından Gate11/12, P8 ve final M2. Goal tamamlanmadı.
 
