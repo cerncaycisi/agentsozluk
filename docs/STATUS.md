@@ -6771,3 +6771,29 @@ A5 execute KOŞULLU; M2 development ve staging sonrası native admission/budget,
 taze yedek/restore/oldimage/timing koşulları kalır. Doc teslimi main pin’ini
 değiştirirse yeni exact CI/artifact gerekir; code-blob eşliği bu pin’in yerine
 geçmez. Operator fullsize/reset/exposure/reopen/newT0 NO_GO değişmedi.
+
+## 6 Ekim 04:50 UTC — tam M2 koşusunda E2E aşamaları arası fixture artığı
+
+Exact6990d7e3dee1e1112921d7753cd0a1234cdb28db, M2development37411727305
+FAIL: M1 regresyonu, agent unit/integration/simulation ve ikinci production build
+geçti; agent E2E webServer başlangıcı GREAT_RESET_GENERATION_ADMISSION_REJECTED
+verdi. Agent E2E testleri ve son exact-main kapısı çalışmadı; final M2 PASS yok.
+Main koşu boyunca699’da kaldı. PR337 önceki737 head CI37413121415 yedi iş
+SUCCESS; bu eski sonuç düzeltme head’i için kabul değildir.
+
+Neden: tests/e2e/reset-gone.spec.ts gerçek immutable commit/tombstone fixture’ı
+bırakır. Sonraki resetIntegrationDatabase bunu silemez; Playwright webServer
+başlangıcı globalSetup’ın clean migration reset’inden önce admission kontrolüne
+girer. Yeni sahipli küçük PG16.14/OID8708713 ve Node22.23.1 native provası:
+başlangıç CLI exit0; aynı yapıda kalıcı journal fixture sonrası exit1;
+actual integration temizliği sonrası journal1/CLI exit1; aynı OID/owner/marker/
+cluster ve backend0 doğrulamasıyla clean migration reset sonrası journal0/CLI
+exit0. Trigger/üretim admission değişmedi; bu küçük prova full E2E değildir.
+
+verify-m2.ts yalnız ajan E2E öncesine clean migration reset ekler; var olan
+TEST_DATABASE_URL guard ve loopback app sınırı korunur. Dört davranış testi:
+final/development aşama izolasyonu, reset hatasında E2E başlamadan ret ve
+production DB URL’sinde komut çalışmadan ret. Önce3FAIL/1PASS, düzeltme sonrası
+4PASS; CI/traceability testleriyle17PASS. Yeni head peer/CI ve merged-main tam
+M2development yeniden koşusu tamamlanmadan A5 execute yok. Canlı D202,
+settings312 dörtfalse/workerinactive/dört timerdisabled; reset/reopen/newT0 yok.

@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 04:13 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 04:50 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
 kapalı; başlamış koşu ve canlı lease sıfır. Son native içerik sayımı 02:11'de 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
@@ -71,8 +71,15 @@ incelemesinde kaynak merge engeli yok. PR336 03:40:41 UTC’de
 tree reviewed344 ile eşit, root temiz ve remote main eşliği doğrulandı.
 Birleşmiş82e CI37410108672, yeni belge push’ı sırasında CANCELLED; PASS değil.
 Current main699 CI37410360534 yedi iş SUCCESS; artifact37411684920 SUCCESS.
-Tam M2development37411727305 sürüyor, henüz PASS değil. Main tam koşu
-boyunca sabit kalır; production dağıtım/reset uygulanmadı.
+Tam M2development37411727305, ajan E2E sunucu başlangıcında
+GREAT_RESET_GENERATION_ADMISSION_REJECTED ile FAIL. Main koşu boyunca699’da
+sabit kaldı; üretim etkisi yok. M1 E2E’nin immutable reset fixture’ı sonraki
+integration temizliğinde korunuyordu; ayrı sahipli native PG16 provası bu nedeni
+doğruladı. Ajan E2E öncesine allowlisted test DB için clean migration reset
+eklendi; güvenlik kontrolü ve tüm testler korunur. İlgili17unit PASS; yeni
+exact CI, farklı model incelemesi ve tam M2development yeniden koşusu sırada.
+PR337 önceki737 head CI37413121415 yedi iş SUCCESS; yeni kaynağa taşınmaz.
+Production dağıtım/reset uygulanmadı.
 D202 journal öncesi admission küçük native sahipli PG'de READ ONLY geçti,
 required=true ret verdi; gerçek üretim/aday imaj kabulü yerine geçmez.
 
