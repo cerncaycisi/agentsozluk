@@ -584,10 +584,11 @@ pre_cutover_lease_scan() {
 admission_probe=''
 admission_pid=''
 admission_signal=''
+admission_signal_count=0
 record_admission_signals() {
-  trap 'admission_signal="${admission_signal:-129}"' HUP
-  trap 'admission_signal="${admission_signal:-143}"' TERM
-  trap 'admission_signal="${admission_signal:-130}"' INT
+  trap 'admission_signal="${admission_signal:-129}"; admission_signal_count=$((admission_signal_count + 1))' HUP
+  trap 'admission_signal="${admission_signal:-143}"; admission_signal_count=$((admission_signal_count + 1))' TERM
+  trap 'admission_signal="${admission_signal:-130}"; admission_signal_count=$((admission_signal_count + 1))' INT
 }
 reset_admission_cleanup() {
   local ids
@@ -611,10 +612,14 @@ reset_admission_cleanup() {
 reset_admission_abort() {
   admission_signal="${admission_signal:-$1}"
   record_admission_signals
+  local seen
   kill -TERM "$admission_pid" 2>/dev/null || true
-  # Tekrarlanan sinyal wait'i erken döndürür; istemci gerçekten bitene kadar bekle.
-  while kill -0 "$admission_pid" 2>/dev/null; do
+  # Bash biten çocuğun durumunu her wait'te yeniden verir; sayısal PID canlılığına
+  # (yeniden kullanılabilir) bakılmaz. wait yalnız bir tuzak onu kestiyse tekrarlanır.
+  while :; do
+    seen="$admission_signal_count"
     wait "$admission_pid" 2>/dev/null || true
+    test "$admission_signal_count" != "$seen" || break
   done
   reset_admission_cleanup
 }
@@ -626,14 +631,17 @@ candidate_reset_admission() {
     printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
     exit 97
   }
-  trap 'reset_admission_abort 129' HUP
-  trap 'reset_admission_abort 143' TERM
-  trap 'reset_admission_abort 130' INT
+  # PID kaydedilene kadar sinyal yalnız kaydedilir; sonra bilinen çocuk durdurulur.
+  record_admission_signals
   # Arka planda başlatılıp beklenir: sinyal tuzağı istemci dönmeden hemen çalışır.
   APP_IMAGE="$candidate_image" timeout --kill-after=10 180 "${compose[@]}" run --rm \
     --name "$admission_probe" --no-deps --pull never -T \
     --entrypoint ./node_modules/.bin/tsx app scripts/verify-reset-generation.ts </dev/null &
   admission_pid=$!
+  trap 'reset_admission_abort 129' HUP
+  trap 'reset_admission_abort 143' TERM
+  trap 'reset_admission_abort 130' INT
+  if test -n "$admission_signal"; then reset_admission_abort "$admission_signal"; fi
   wait "$admission_pid" || status=$?
   reset_admission_cleanup
   test "$status" = 0 || {

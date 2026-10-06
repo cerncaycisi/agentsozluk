@@ -391,6 +391,8 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
       hangup?: boolean;
       stubbornClient?: boolean;
       slowRemove?: boolean;
+      hupBeforePid?: boolean;
+      pidAlwaysAlive?: boolean;
     }) {
       const script = `set -Eeuo pipefail
 exec 3>&1
@@ -419,15 +421,23 @@ docker() {
 timeout() {
   printf 'RUN %s\\n' "$*"
   ${options.stubbornClient ? "trap '' TERM; sleep 2; printf 'CLIENT_DONE\\n'; return 0" : ""}
+  ${options.hupBeforePid ? "sleep 0.5; printf 'CREATED\\n'; sleep 1; return 0" : ""}
   ${options.hangup ? "exec sleep 30" : `return ${options.runStatus ?? 0}`}
 }
 ${remote.slice(remote.indexOf("\nadmission_probe=''\n"), remote.indexOf("\n}\n\n", remote.indexOf("\ncandidate_reset_admission() {")) + 3)}
 ${options.hangup ? "( sleep 0.5; kill -HUP $$ ) &" : ""}
+${options.pidAlwaysAlive ? 'kill() { if test "$1" = -0; then return 0; fi; command kill "$@"; }' : ""}
+${options.hupBeforePid ? `set -T; trap '[[ $BASH_COMMAND == "admission_pid=\\$!" ]] && kill -HUP $$' DEBUG` : ""}
 ${options.stubbornClient ? "( sleep 0.3; kill -HUP $$; sleep 0.5; kill -HUP $$ ) &" : ""}
 ${options.slowRemove && !options.stubbornClient ? "( sleep 0.4; kill -HUP $$ ) &" : ""}
 candidate_reset_admission
 echo PASSED`;
-      return spawnSync("bash", ["-c", script], { encoding: "utf8", timeout: 20000 });
+      return spawnSync("bash", ["-c", script], {
+        encoding: "utf8",
+        timeout: options.pidAlwaysAlive ? 8000 : 20000,
+        // Bekleme döngüsü TERM'i kaydeder; gerileme testi takmasın diye KILL.
+        killSignal: "SIGKILL",
+      });
     }
 
     it("kabul container'ını sahipli isimle çalıştırır, her sonuçta kaldırır", () => {
@@ -469,6 +479,21 @@ echo PASSED`;
       expect(duringRemove.stdout).toContain("RM_DONE");
       expect(duringRemove.stdout).toContain("PS_DONE");
       expect(duringRemove.stdout).not.toContain("PASSED");
+    });
+
+    it("PID kaydından önce gelen sinyalde bilinen istemciyi durdurup sonra temizler", () => {
+      const result = admission({ hupBeforePid: true });
+      expect(result.status).toBe(129);
+      expect(result.stdout).toContain("RM agent-sozluk-reset-admission-");
+      expect(result.stdout).toContain("PS_DONE");
+      // İstemci durdurulmadan temizlik yapılsaydı container temizlikten sonra oluşurdu.
+      expect(result.stdout).not.toContain("CREATED");
+    });
+
+    it("sayısal PID yeniden kullanılsa da kesinti beklemesi meşgul döngüye girmez", () => {
+      const result = admission({ hangup: true, pidAlwaysAlive: true });
+      expect(result.status).toBe(129);
+      expect(result.stdout).toContain("PS_DONE");
     });
 
     it("uzak betik HUP ile kesilince istemciyi beklemeden kabul container'ını kaldırır", () => {
