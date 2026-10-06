@@ -383,126 +383,105 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
       return remote.slice(begin, end);
     }
 
+    // Sahte Docker, container'ları bir durum dosyasında tutar; gerçek önek filtresini
+    // (name=^önek) ve rm -f'yi taklit eder. Kabuk sinyal tuzağı yoktur.
     function admission(options: {
-      runStatus?: number;
-      linger?: boolean;
-      psFailsAfterRemove?: boolean;
-      psFailsAlways?: boolean;
-      hangup?: boolean;
-      stubbornClient?: boolean;
-      slowRemove?: boolean;
-      hupBeforePid?: boolean;
-      pidAlwaysAlive?: boolean;
+      waitStatus?: string;
+      waitFails?: boolean;
+      startFails?: boolean;
+      psFails?: boolean;
+      rmIgnored?: boolean;
+      stale?: boolean;
     }) {
-      const script = `set -Eeuo pipefail
+      const directory = mkdtempSync(path.join(tmpdir(), "release-admission-"));
+      try {
+        const script = `set -Eeuo pipefail
 exec 3>&1
+state=${quote(directory)}/containers
+: >"$state"
+${options.stale ? "printf 'stale1 agent-sozluk-reset-admission-eskiop\\nother9 agent-sozluk-app-1\\n' >\"$state\"" : "printf 'other9 agent-sozluk-app-1\\n' >\"$state\""}
 op_id=0123456789abcdef
 candidate_image=agent-sozluk:${sha}
 compose=(docker compose)
-attempted_file="$(mktemp)"
-trap 'rm -f "$attempted_file"' EXIT
 docker() {
-  local attempted=0
-  if test -s "$attempted_file"; then attempted=1; fi
   case "$1" in
     ps)
-      ${options.psFailsAlways ? "return 42" : ""}
-      if test "$attempted" = 1 && ${options.psFailsAfterRemove ? "true" : "false"}; then return 42; fi
-      if test "$attempted" = 1 && ${options.linger ? "true" : "false"}; then echo lingering; fi
-      if test "$attempted" = 1; then printf 'PS_DONE\\n' >&3; fi ;;
+      ${options.psFails ? "return 42" : ""}
+      local filter="\${4#name=^}"
+      awk -v prefix="$filter" 'index($2, prefix) == 1 {print $1}' "$state" ;;
     rm)
-      echo 1 >"$attempted_file"
-      printf 'RM %s\\n' "$3" >&3
-      ${options.slowRemove ? "sleep 1; printf 'RM_DONE\\n' >&3" : ""}
-      ${options.psFailsAfterRemove ? "return 43" : "return 0"} ;;
-    *) return 0 ;;
+      shift 2
+      printf 'RM %s\\n' "$*" >&3
+      ${options.rmIgnored ? "return 1" : ""}
+      local id
+      for id in "$@"; do
+        awk -v id="$id" '$1 != id' "$state" >"$state.next"
+        mv "$state.next" "$state"
+      done ;;
+    compose)
+      printf 'RUN %s\\n' "$*" >&3
+      ${options.startFails ? "return 1" : ""}
+      printf 'probe1 %s\\n' "$5" >>"$state" ;;
+    wait)
+      printf 'WAIT %s\\n' "$2" >&3
+      ${options.waitFails ? "return 124" : ""}
+      printf '%s\\n' ${quote(options.waitStatus ?? "0")} ;;
+    *) return 1 ;;
   esac
 }
-timeout() {
-  printf 'RUN %s\\n' "$*"
-  ${options.stubbornClient ? "trap '' TERM; sleep 2; printf 'CLIENT_DONE\\n'; return 0" : ""}
-  ${options.hupBeforePid ? "sleep 0.5; printf 'CREATED\\n'; sleep 1; return 0" : ""}
-  ${options.hangup ? "exec sleep 30" : `return ${options.runStatus ?? 0}`}
-}
-${remote.slice(remote.indexOf("\nadmission_probe=''\n"), remote.indexOf("\n}\n\n", remote.indexOf("\ncandidate_reset_admission() {")) + 3)}
-${options.hangup ? "( sleep 0.5; kill -HUP $$ ) &" : ""}
-${options.pidAlwaysAlive ? 'kill() { if test "$1" = -0; then return 0; fi; command kill "$@"; }' : ""}
-${options.hupBeforePid ? `set -T; trap '[[ $BASH_COMMAND == "admission_pid=\\$!" ]] && kill -HUP $$' DEBUG` : ""}
-${options.stubbornClient ? "( sleep 0.3; kill -HUP $$; sleep 0.5; kill -HUP $$ ) &" : ""}
-${options.slowRemove && !options.stubbornClient ? "( sleep 0.4; kill -HUP $$ ) &" : ""}
+timeout() { printf 'BOUND %s\\n' "$1" >&3; shift; "$@"; }
+${remote.slice(remote.indexOf("\nadmission_prefix="), remote.indexOf("\n}\n\n", remote.indexOf("\ncandidate_reset_admission() {")) + 3)}
 candidate_reset_admission
+printf 'LEFT %s\\n' "$(awk '{print $2}' "$state" | tr '\\n' ' ')"
 echo PASSED`;
-      return spawnSync("bash", ["-c", script], {
-        encoding: "utf8",
-        timeout: options.pidAlwaysAlive ? 8000 : 20000,
-        // Bekleme döngüsü TERM'i kaydeder; gerileme testi takmasın diye KILL.
-        killSignal: "SIGKILL",
-      });
+        return spawnSync("bash", ["-c", script], { encoding: "utf8", timeout: 20000 });
+      } finally {
+        rmSync(directory, { recursive: true, force: true });
+      }
     }
 
-    it("kabul container'ını sahipli isimle çalıştırır, her sonuçta kaldırır", () => {
+    it("kabulü ayrık, kendi içinde süre sınırlı ve sahipli adla çalıştırıp kaldırır", () => {
       const ok = admission({});
       expect(ok.status).toBe(0);
-      expect(ok.stdout).toContain("--name agent-sozluk-reset-admission-0123456789abcdef");
-      expect(ok.stdout).toContain("--no-deps --pull never -T");
-      expect(ok.stdout).toContain("RM agent-sozluk-reset-admission-0123456789abcdef");
+      expect(ok.stdout).toContain(
+        "RUN compose run -d --name agent-sozluk-reset-admission-0123456789abcdef --no-deps --pull never -T --entrypoint timeout app 120 ./node_modules/.bin/tsx scripts/verify-reset-generation.ts",
+      );
+      expect(ok.stdout).toContain("BOUND 150");
+      expect(ok.stdout).toContain("WAIT agent-sozluk-reset-admission-0123456789abcdef");
+      expect(ok.stdout).toContain("RM probe1");
+      expect(ok.stdout).toContain("LEFT agent-sozluk-app-1 ");
       expect(ok.stdout).toContain("PASSED");
-      const rejected = admission({ runStatus: 1 });
-      expect(rejected.status).toBe(97);
-      expect(rejected.stdout).toContain("RM agent-sozluk-reset-admission-");
-      expect(rejected.stderr).toContain("RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED");
-      const killed = admission({ runStatus: 137, linger: true });
-      expect(killed.status).toBe(97);
-      expect(killed.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
+      const candidate = definition("candidate_reset_admission");
+      expect(candidate).not.toContain("trap");
+      expect(candidate).not.toContain("kill");
+    });
+
+    it("önceki koşudan kalan sahipli kabul container'ını başlamadan süpürür", () => {
+      const result = admission({ stale: true });
+      expect(result.status).toBe(0);
+      expect(result.stdout.indexOf("RM stale1")).toBeLessThan(result.stdout.indexOf("RUN "));
+      expect(result.stdout).toContain("LEFT agent-sozluk-app-1 ");
+    });
+
+    it("ret, başlatma veya bekleme hatasında container'ı kaldırıp reddeder", () => {
+      for (const options of [{ waitStatus: "1" }, { startFails: true }, { waitFails: true }]) {
+        const result = admission(options);
+        expect(result.status, JSON.stringify(options)).toBe(97);
+        expect(result.stderr).toContain("RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED");
+        if (!("startFails" in options)) expect(result.stdout).toContain("RM probe1");
+        expect(result.stdout).not.toContain("PASSED");
+      }
     });
 
     it("Docker sorgu veya silme hatasını container yokluğu saymaz", () => {
-      const after = admission({ psFailsAfterRemove: true });
-      expect(after.status).toBe(97);
-      expect(after.stdout).not.toContain("PASSED");
-      expect(after.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
-      const before = admission({ psFailsAlways: true });
-      expect(before.status).toBe(97);
-      expect(before.stdout).not.toContain("RUN ");
-      expect(before.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
-    });
-
-    it("kesinti sırasında tekrarlanan sinyal istemci beklemesini ve temizliği kesmez", () => {
-      const repeated = admission({ stubbornClient: true });
-      expect(repeated.status).toBe(129);
-      expect(repeated.stdout).toContain("CLIENT_DONE");
-      expect(repeated.stdout).toContain("RM agent-sozluk-reset-admission-");
-      expect(repeated.stdout).toContain("PS_DONE");
-      expect(repeated.stdout.indexOf("CLIENT_DONE")).toBeLessThan(repeated.stdout.indexOf("RM "));
-      const duringRemove = admission({ slowRemove: true });
-      expect(duringRemove.status).toBe(129);
-      expect(duringRemove.stdout).toContain("RM_DONE");
-      expect(duringRemove.stdout).toContain("PS_DONE");
-      expect(duringRemove.stdout).not.toContain("PASSED");
-    });
-
-    it("PID kaydından önce gelen sinyalde bilinen istemciyi durdurup sonra temizler", () => {
-      const result = admission({ hupBeforePid: true });
-      expect(result.status).toBe(129);
-      expect(result.stdout).toContain("RM agent-sozluk-reset-admission-");
-      expect(result.stdout).toContain("PS_DONE");
-      // İstemci durdurulmadan temizlik yapılsaydı container temizlikten sonra oluşurdu.
-      expect(result.stdout).not.toContain("CREATED");
-    });
-
-    it("sayısal PID yeniden kullanılsa da kesinti beklemesi meşgul döngüye girmez", () => {
-      const result = admission({ hangup: true, pidAlwaysAlive: true });
-      expect(result.status).toBe(129);
-      expect(result.stdout).toContain("PS_DONE");
-    });
-
-    it("uzak betik HUP ile kesilince istemciyi beklemeden kabul container'ını kaldırır", () => {
-      const started = Date.now();
-      const result = admission({ hangup: true });
-      expect(Date.now() - started).toBeLessThan(10000);
-      expect(result.status).toBe(129);
-      expect(result.stdout).toContain("RM agent-sozluk-reset-admission-0123456789abcdef");
-      expect(result.stdout).not.toContain("PASSED");
+      const query = admission({ psFails: true });
+      expect(query.status).toBe(97);
+      expect(query.stdout).not.toContain("RUN ");
+      expect(query.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
+      const remove = admission({ rmIgnored: true });
+      expect(remove.status).toBe(97);
+      expect(remove.stdout).not.toContain("PASSED");
+      expect(remove.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
     });
 
     it("çalışan app'te nesil mount'u ve zorunluluk ortamı yoksa durur", () => {

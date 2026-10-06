@@ -577,73 +577,42 @@ pre_cutover_lease_scan() {
   fi
 }
 
-# Sahipli isimli tek seferlik kabul container'ı; zaman aşımı, istemci ölümü veya
-# uzak betiğin HUP/TERM/INT ile kesilmesinde de kaldırılır. Docker sorgusunun hatası
-# yokluk sayılmaz. Kesinti başladıktan sonra gelen sinyaller yalnız kaydedilir:
-# istemci bitip container kaldırılıp yokluğu doğrulanmadan betik ölmez.
-admission_probe=''
-admission_pid=''
-admission_signal=''
-admission_signal_count=0
-record_admission_signals() {
-  trap 'admission_signal="${admission_signal:-129}"; admission_signal_count=$((admission_signal_count + 1))' HUP
-  trap 'admission_signal="${admission_signal:-143}"; admission_signal_count=$((admission_signal_count + 1))' TERM
-  trap 'admission_signal="${admission_signal:-130}"; admission_signal_count=$((admission_signal_count + 1))' INT
-}
-reset_admission_cleanup() {
-  local ids
-  record_admission_signals
-  # pty kapanınca HUP bütün ön plan grubuna gider; temizlik çocukları onu yok sayar.
-  (
-    trap '' HUP TERM INT
-    docker rm -f "$admission_probe"
-  ) >/dev/null 2>&1 || true
-  ids="$(
-    trap '' HUP TERM INT
-    docker ps -aq --filter "name=^${admission_probe}\$"
-  )" || ids=query-failed
-  trap - HUP TERM INT
-  test -z "$ids" || {
+# Kabul container'ı ayrık (-d) başlar ve kendi içinde 120 sn ile sınırlıdır; uzak
+# betik kesilse bile kendiliğinden biter. Kabuk sinyal tuzağı veya PID takibi yoktur:
+# sahipli önekli bütün kabul container'ları her koşunun başında ve sonunda kaldırılır
+# ve yoklukları doğrulanır. Docker sorgusunun hatası yokluk sayılmaz.
+admission_prefix=agent-sozluk-reset-admission-
+admission_ids=''
+read_reset_admission_ids() {
+  admission_ids="$(docker ps -aq --filter "name=^${admission_prefix}")" || {
     printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
     exit 97
   }
-  if test -n "$admission_signal"; then exit "$admission_signal"; fi
 }
-reset_admission_abort() {
-  admission_signal="${admission_signal:-$1}"
-  record_admission_signals
-  local seen
-  kill -TERM "$admission_pid" 2>/dev/null || true
-  # Bash biten çocuğun durumunu her wait'te yeniden verir; sayısal PID canlılığına
-  # (yeniden kullanılabilir) bakılmaz. wait yalnız bir tuzak onu kestiyse tekrarlanır.
-  while :; do
-    seen="$admission_signal_count"
-    wait "$admission_pid" 2>/dev/null || true
-    test "$admission_signal_count" != "$seen" || break
-  done
-  reset_admission_cleanup
+remove_reset_admission_probes() {
+  read_reset_admission_ids
+  if test -n "$admission_ids"; then
+    # Kimlikler Docker'ın onaltılık container ID'leridir; sözcük bölme kasıtlı.
+    # shellcheck disable=SC2086
+    docker rm -f $admission_ids >/dev/null 2>&1 || true
+    read_reset_admission_ids
+  fi
+  test -z "$admission_ids" || {
+    printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
+    exit 97
+  }
 }
 candidate_reset_admission() {
-  local ids status=0
-  admission_probe="agent-sozluk-reset-admission-$op_id"
-  ids="$(docker ps -aq --filter "name=^${admission_probe}\$")" || ids=query-failed
-  test -z "$ids" || {
-    printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
-    exit 97
-  }
-  # PID kaydedilene kadar sinyal yalnız kaydedilir; sonra bilinen çocuk durdurulur.
-  record_admission_signals
-  # Arka planda başlatılıp beklenir: sinyal tuzağı istemci dönmeden hemen çalışır.
-  APP_IMAGE="$candidate_image" timeout --kill-after=10 180 "${compose[@]}" run --rm \
-    --name "$admission_probe" --no-deps --pull never -T \
-    --entrypoint ./node_modules/.bin/tsx app scripts/verify-reset-generation.ts </dev/null &
-  admission_pid=$!
-  trap 'reset_admission_abort 129' HUP
-  trap 'reset_admission_abort 143' TERM
-  trap 'reset_admission_abort 130' INT
-  if test -n "$admission_signal"; then reset_admission_abort "$admission_signal"; fi
-  wait "$admission_pid" || status=$?
-  reset_admission_cleanup
+  local probe="${admission_prefix}${op_id}" status=''
+  remove_reset_admission_probes
+  APP_IMAGE="$candidate_image" "${compose[@]}" run -d --name "$probe" --no-deps \
+    --pull never -T --entrypoint timeout app 120 \
+    ./node_modules/.bin/tsx scripts/verify-reset-generation.ts </dev/null >/dev/null ||
+    status=start-failed
+  if test -z "$status"; then
+    status="$(timeout 150 docker wait "$probe")" || status=wait-failed
+  fi
+  remove_reset_admission_probes
   test "$status" = 0 || {
     printf 'RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED\n' >&2
     exit 97
