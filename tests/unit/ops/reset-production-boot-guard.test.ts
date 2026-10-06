@@ -13,6 +13,8 @@ import {
   resetBootDropInPath,
   resetGenerationCompose,
   assertResetAutomaticRebootDisabled,
+  assertLoadedResetBootHoldCondition,
+  resetBootHoldPath,
 } from "../../../scripts/reset-production-boot-guard";
 
 afterEach(() => vi.resetAllMocks());
@@ -34,6 +36,60 @@ function configure(overrides: Record<string, string> = {}) {
     mode: 0o100444,
   });
 }
+describe("systemd 255 yapılandırılmış bakım koşulu", () => {
+  const conditions = () => [
+    ["ConditionPathExists", false, true, resetBootHoldPath, 0],
+    ["ConditionPathExists", false, false, "/opt/agent-sozluk/app/.env", 0],
+    ["ConditionPathExists", false, false, "/opt/agent-sozluk/runtime/compose.production.yaml", 0],
+  ];
+  const reply = (data: unknown) => JSON.stringify({ type: "a(sbbsi)", data });
+  it("systemctl metninden bağımsız, D-Bus'ta yüklenmiş ters bakım koşulunu kabul eder", () => {
+    show.mockImplementation((binary: string) =>
+      binary === "/usr/bin/busctl" ? reply(conditions()) : "[unprintable]",
+    );
+    expect(() => assertLoadedResetBootHoldCondition()).not.toThrow();
+    expect(show).toHaveBeenCalledWith(
+      "/usr/bin/busctl",
+      expect.arrayContaining(["org.freedesktop.systemd1.Unit", "Conditions"]),
+      expect.objectContaining({ timeout: 10000, stdio: ["ignore", "pipe", "pipe"] }),
+    );
+  });
+  it("koşul sırası ve önceki değerlendirme sonucu yüklenen tanımı değiştirmez", () => {
+    const rows = conditions()
+      .reverse()
+      .map((row) => [...row.slice(0, 4), -1]);
+    show.mockReturnValue(reply(rows));
+    expect(() => assertLoadedResetBootHoldCondition()).not.toThrow();
+  });
+  it.each(
+    [
+      conditions().slice(1),
+      conditions().map((row, i) => (i === 0 ? [row[0], false, false, row[3], 0] : row)),
+      conditions().map((row, i) => (i === 0 ? [row[0], true, true, row[3], 0] : row)),
+      conditions().map((row, i) => (i === 0 ? [row[0], false, true, "/tmp/hold", 0] : row)),
+      [...conditions(), conditions()[0]],
+      conditions().map((row, i) => (i === 1 ? [row[0], false, false, "/tmp/env", 0] : row)),
+    ].map((data) => ({ data })),
+  )("eksik, ters olmayan, trigger veya farklı koşulu reddeder: %j", ({ data }) => {
+    show.mockReturnValue(reply(data));
+    expect(() => assertLoadedResetBootHoldCondition()).toThrow("GREAT_RESET_BOOT_HOLD_NOT_LOADED");
+  });
+  it.each(["[unprintable]", "{}", '{"type":"s","data":[]}', reply([["ConditionPathExists"]])])(
+    "okunamayan veya yanlış biçimli koşulu kabul etmez: %s",
+    (raw) => {
+      show.mockReturnValue(raw);
+      expect(() => assertLoadedResetBootHoldCondition()).toThrow(
+        "GREAT_RESET_BOOT_HOLD_NOT_LOADED",
+      );
+    },
+  );
+  it("D-Bus erişim hatasını koruma yok koduyla kapalı tutar", () => {
+    show.mockImplementation(() => {
+      throw new Error("bus unavailable");
+    });
+    expect(() => assertLoadedResetBootHoldCondition()).toThrow("GREAT_RESET_BOOT_HOLD_NOT_LOADED");
+  });
+});
 describe("reset sırasında bootstrap yeniden açılış sınırı", () => {
   it.each(["", "RESET_REBOOT='true'", "RESET_REBOOT='FALSE'", "RESET_REBOOT='false'; extra"])(
     "açık false dışındaki otomatik reboot ayarını reddeder: %s",

@@ -7059,7 +7059,8 @@ CANCEL_REQUESTED/lease/aktif operator-admin-cli session sıfır, worker inactive
 03:42:49 salt okunur native Caddy config kabulü: sabit app:3000 upstream ve
 Docker discovery module yok; proxy/image kimlikleri aynı. Ana dal kaynak82e
 CI37410108672 yeni belge makbuzu699 push’ının concurrency kuralıyla CANCELLED;
-quality SUCCESS, diğer beş CANCELLED, validate FAILURE. PASS sayılmaz.
+quality SUCCESS, diğer beş CANCELLED, validate FAILURE. Validate retinin
+kesin alt nedeni ölçülmedi (failed-log çıktısı boş); PASS sayılmaz.
 Current exact main699 CI37410360534 devam ediyor. Kod/SQL dosyaları değişmedi.
 
 Site ve DB açık; içerik silme/reset/reopen/yeniT0 yok. Bu full uygulama freeze
@@ -7100,7 +7101,7 @@ ile sınırlı, -T/DEVNULL; başarısızlıkta A5 başlamaz ve lock uzlaşı iç
 
 Actual Opus5.5/212621ms kapanış: kaynak KOŞULLU GO; exact blocker bulunmadı.
 Native /tmp1777/root ve güvenilir root0755 alias ebeveynleri, native
-sanitatized Docker Compose5.3.1/required run options, mevcut sudo/root/git
+sanitized Docker Compose5.3.1/required run options, mevcut sudo/root/git
 kabulü ölçüldü. Verify CLI SHA256 e7a71357cca9bd20851a2cb1322cc05c7926d50542d3ed50fc5ccc18c292ce0c;
 reviewed344 ile byte-equal, transaction callback READ ONLY repository admission
 fonksiyonunu çağırır. Bu kaynak incelemesi production/reset/fullsize GO değildir.
@@ -7208,7 +7209,8 @@ Opus5.5/121382ms tools-disabled source GO: somut blocker yok. Kaynak incelemesi
 pinleri, üretim erişimi yok. Bu turda docs diff’i verilmedi; belge incelemesi
 sayılmaz. Resetin E2E'den hemen önce olması ve spawn ortamında DATABASE_URL /
 TEST_DATABASE_URL’nin doğrulanan test hedefi olması testte güçlendirildi;
-üretim gibi duran ambient DATABASE_URL’ye rağmen ikisi test URL’ine bağlanır.
+üretim gibi duran ambient DATABASE_URL’ye rağmen mock spawn çağrısında
+ikisinin env değeri test URL’idir; bu unit test gerçek bağlantı kurmaz.
 Verifier’ın üç satırlık kaynak düzeltmesi byte-equal kaldı.
 
 Hakem son tablo notunda A5 öncesi katı finalM2 istedi; bu canonical plan /
@@ -7218,3 +7220,442 @@ kapanır. A5 öncesi mevcut şart tam verify:m2:development exit0’dır. Kapı
 sırası kaynaklarla uzlaştırılacak; bu not kaynak blocker veya kullanıcı
 onayı değildir. Yeni exact head CI ve tam development yeniden koşusu açık;
 önceki737CI/e081hakem sonucu sonraki değişikliklerin yerine taşınmaz.
+
+## 6 Ekim 05:36 UTC — PR337 ana dal teslimi; aynı SHA tam doğrulama ve paket
+
+Reviewed c3e878a73768d2c0cbb909a55f227c9af6d2813b; actual Opus5.5/133007ms
+salt okunur kapanışında source ve docs GO, blocker yok. T1/T2 test önerileri
+kapandı; verifier üç satırı e081 ile byte-equal. Hakem final-before-A5 notunu
+resmi policy/workflow/PLAN ile uyuşmadığı için açıkça geri çekti. A5 öncesi tam
+M2development, finalM2 ise gerçek yeni168h/Gate11/12/P8 sonrası; hiçbir kapı
+gevşetilmedi. Spawn-env unit assertion’ı gerçek DB bağlantısı diye adlandırılmaz.
+Datasource schema DATABASE_URL kullanır; directUrl/prisma.config yok.
+
+Head CI37416230567 yedi iş SUCCESS. 05:13:37 squash merge main
+9d1c4d1068664b1a56ceebea8e51ed44656568d3, parent699; tree reviewed c3e ile
+eşit, immediate head/review/check/CLEAN kapıları, root fast-forward/clean ve
+remote exact eşliği PASS. Main CI37417478456 da yedi iş SUCCESS. Node22 final
+format/lint/typecheck ve17focused unit PASS. Önceki e081CI37415741155,
+son test güçlendirme push’ı yüzünden CANCELLED; yeni kaynağa PASS taşınmaz.
+
+05:28 exact9d1 artifact37418729170 ve tam M2development37418731436 dispatch
+kabul edildi; ikisi sürüyor, henüz başarı değil. Güncel kaynak/approved-wrapper/
+helper hash pinleri PASS; original wrapper699 byte-equal. Local operator
+preflight9d1 PASS; skill'in tarihsel repo yolu yalnız bellekte güncel root ile
+uzlaştırıldı, production teması yok. Actions metadata42unexpired/
+552.602.174bayt; billing/storage kotası expose değil, quota PASS iddiası yok.
+Artifact silinmedi. Main tam M2 ve A5 boyunca sabit kalır; makbuz ayrı branch’te.
+
+05:22:42 production readonly: D202/sourceOID16385/cluster7663503447447879713,
+settings312/publicIdINTEGER/workerinactive sabit; DB6.010.330.135bayt,
+root24.107.130.880bayt, required19.104.732.229bayt. Docker4image/3active
+container/3namedvolume, sanitized Compose5.3.1 PASS; mutation0. Aday CLI/
+staging sonrası rewrite payı ve gerçek A5 kapısı değildir.
+
+Kullanıcı “buraya” ile aynı40GBoperatör sunucusunu kastetti. Güncel ölçüm:
+rootfree8.717.336.576bayt; dört güncel dump +safety hardlink/yan dosyalarının
+benzersiz disk kullanımı3.362.185.216bayt. Tamamı taşınsa bile7.025.210.437bayt
+açık kalır; yalnız yedek transferi fullsize kapısını kapatmaz. Yeni6Ekim01:40
+yedeği mevcut. Silme/taşıma0; diğer kullanıcı DB’leri/T3/Claude işleri korundu.
+Çalışma dosyaları/cache ölçümlerinde açığı kapatacak güvenli alan bulunmadı.
+Üretim geçişi ile canonical operator fullsize/reset kapıları ayrı kalır.
+Reset/installer/migration/reopen/newT0 yok; goal aynı amaçla aktif.
+
+Tekrarlama: main’i full M2 veya artifact ile A5 arasında makbuz push’ıyla
+ilerletme; kapılar yeni SHA gerektirir. Source GO’yu canlı GO, metadata boyutunu
+billing quota, mock spawn env’ini gerçek bağlantı ya da yedek indirmeyi gerçek
+tam boyutlu restore sayma. Bilinmeyen CI alt nedenini nedensel hükümle doldurma.
+
+## 6 Ekim 05:38 UTC — exact9d1 release artifact hazır
+
+Release Candidate Bundle37418729170 exact9d1 için SUCCESS; build/smoke/native
+runtime/upload tamam. Artifact11392376453 adı release-candidate-9d1c4d1068664b1a56ceebea8e51ed44656568d3,
+241.925.866bayt, ZIP digest sha256:9e93a2b73717739cc2700993e8548bc9b7389733edb73a46d17502cd32ad90ee,
+expiresAt2026-10-07T05:36:43Z. Artifact API head/name/unexpired/size/digest
+kapıları PASS; henüz production’a yüklenmedi. Tam M2development37418731436
+sürüyor. Exact main9d1/root temiz sabit; bu makbuzun çalışma dalı ayrı, commit/
+push yapılmadı. Production migration/reset/reopen/newT0 yok.
+
+## 6 Ekim 06:23 UTC — tam M2 başarılı; A5 geçişi sürüyor
+
+Exact main `9d1c4d1068664b1a56ceebea8e51ed44656568d3` üzerinde tam
+M2development37418731436 SUCCESS. İş 05:28:51–06:13:33 UTC, 44 dakika 42 saniye;
+son exact kaynak/temiz ağaç kapısı da PASS. M1 unit2.547/PG528, coverage3.075;
+ajan unit844/entegrasyon312/simülasyon1 ve browser93+24 PASS. Coverage yeniden
+koşusunu ayrı test toplamına ekleme. Secret/metadata/OpenAPI/persona/requirements
+kapıları geçti. Katı final M2, DONE-082/084 ve gerçek168h kabulü açık kalır.
+
+06:11 kaynak yeniden okuması: root temiz, origin/main aynı exactSHA, pushCI
+37417478456 yedi iş SUCCESS; artifact11392376453/name/size/digest/expiry exact,
+repo push yetkisi mevcut. 06:15:08 native üretim D202/settings312/OID16385/
+cluster7663503447447879713, DB6.010.330.135 bayt ve root24.102.907.904 bayt;
+üretim3DB+1GiB PASS. Mevcut süreli yetki ve açık reset/açılış talimatıyla exact
+altı migration/profil/yedek/restore/eski-imaj/smoke/cutover/rollback kapsamı
+sohbette gösterildi. Approval ortamı yalnız wrapper’ın ilgili alt komutunda;
+kalıcı environment kaydı yok. Cleanup, içerik reseti veya resume çağrılmadı.
+
+Server-fetch37418729170/11392376453 tamamlandı; native imaj
+`sha256:7fc5781173dc9cfc435e702f741b173b4e528e3425b11f22280c48a563644d10`,
+runtime ABI127 hazır. 06:16:57 actual candidate admission-only CLI, gerçek
+getDatabase/READ ONLY uygulama rolü ve rewrite/WAL bütçesi PASS: non-superuser,
+journal0/OID16385/aynı cluster, üç kalıcı konteyner/imaj/restart ve source dosya
+hash’leri aynı. Required20.529.091.653/actual22.035.476.480 bayt; archiveoff,
+walkeep0/slot0/replication0. max_wal_size sert üst sınır sayılmadı. Bu ölçüm
+operatör tam boyutlu restore veya reset kabulü değildir.
+
+A5 06:21 gözleminde `frozen`; app/proxy kapalı, DB çalışıyor. Taze yedek
+1.349.563.991 bayt, SHA256
+`191c632d9bd76ca5ab06f1e9199971eb0e19ec6b2a23de8ef8a8ec4eaa87d8ca`.
+Restore, fingerprint, eski D202 BIGINT/search smoke, migration ve cutover henüz
+PASS sayılmaz. Wrapper canlı handle44522; tek ağır iş, kör tekrar yok.
+
+Operatör 05:53:29 yeniden ölçüm: aynı40GB disk, başka block device yok;
+root8.712.585.216 bayt ve 3DB+1GiB19.104.732.229 bayt, açık10.392.147.013 bayt.
+Gökhan kişisel Google Drive seçeneğini sordu; bağlantı/upload/yedek silme yapılmadı.
+Mevcut tüm yedekler offload edilse bile7.029.961.797 bayt açık kalır. Drive API
+büyük dosya yüklemeyi destekler; bu ortamda çağrılabilir Drive upload aracı
+bulunmadı. Yerel disk hesabı ve reset kapıları değişmedi.
+
+Tekrarlama: başarılı tam development koşusunu katı final/168h kabulü sayma;
+yeni nonce veya manuel migration ile çalışan A5’i yeniden başlatma. Başarısız
+wrapper’da lock/phase sahipliği uzlaştırılmadan eylem yok. Drive’ı bağlamayı
+yerel disk büyümesi veya doğrulanmış yedek yüklemesi sayma.
+
+## 6 Ekim 06:46 UTC — exact9d1 canlı teslimi, worker duruşu ve Drive alan kontrolü
+
+Üretim exact `9d1c4d1068664b1a56ceebea8e51ed44656568d3`; mainCI37417478456
+7/7SUCCESS, artifact37418729170/11392376453 SUCCESS. Tam M2development
+37418731436 SUCCESS ve son exact/temiz ağaç kapısı geçti. A5 actual aday
+admission/non-superuser/cluster/OID sabitliği; taze frozen native dump
+1.349.563.991 bayt/SHA256191c632d9bd76ca5ab06f1e9199971eb0e19ec6b2a23de8ef8a8ec4eaa87d8ca;
+actual ayrı restore fullfingerprint/sequence eşliği ve altı migration scratch
+kabulü geçti. Önceki D202 imajında health/ready/search HTTP200; ayrıca
+nonempty topic/entry Prisma sonucu ölçüldüğü iddia edilmez. Üretim altı migration
+ve cutover tamam, wrapper exit0. 06:34:04.792 bağımsız kabul: app/imaj/bootetiket/
+runtime exact9d1; 43 migration kaynak checksum eşliği, settings/lifecycle tam
+SHA256 eşliği, publicId BIGINT, commit0/exposure0, D202 rollback korunuyor.
+Temizlik yapılmadı; bu A5 yedeği taze kanonik PRE_RESET_BIGINT yedeği değildir.
+
+Dağıtımın açtığı fakat global paused worker yalnız proje kapsamında tekrar
+kapatıldı: nonce04d9e8f002c849a8bcef3d0f7b242757, exact9d1;
+actualOpus5.5 tools-disabled kaynak GO/no blocker, elapsed132869ms.
+Remote kaynak hash6d323e9985b5c9e8253ad8cbd1d33d3c0753408c6998e6154e092f40c6b652d2;
+PID3932484/settings312/dörtfalse/work0 ve host/source pinleri yürütmeden önce
+kontrol edildi. 06:45:18 exit0; ayrı 06:45:42.079 okumada workerinactive/dead/
+MainPID0/disabled/NRestarts0, QUEUED/RUNNING/CANCEL_REQUESTED/livelease0;
+aynı app/DB/proxy kimlikleri, dörtfalse/settings312/36ACTIVE/settingshash/
+lifecyclehash ve43migration korundu. Health/ready/search200. Kaynak GO,
+üretim reseti veya bootguard onayı değildir; timer/yeniden aktivasyon kapıları
+resetten önce yeniden ölçülecek. Reset/silme/resume/yeniT0 yapılmadı.
+
+Gökhan Drive'a taşıma bildirdi. Salt okunur liste18dosya; dört özgün güncel
+arşiv ve safetyalias dump dahil. Yerelde yalnız5/6Ekim dump ve yan dosyalar var.
+`rclone check --one-way` altı yerel dosya için Google API403
+RATE_LIMIT_EXCEEDED nedeniyle doğrulanamadı; raporun “missing” satırları başarısız
+listelemeden gelir, gerçek dosya yokluğu kabul edilmez. Native rclone ortak
+client_id'nin2026 içinde kapanacağını bildirdi. Yürütücü buluta yükleme/silme
+veya yerel yedek silme yapmadı. Operator boş11.794.501.632 bayt; source
+6.000.311.319 bayt, 3DB+1GiB19.074.675.781, açık7.280.174.149 bayt.
+Production root20.372.185.088 bayt ayrı operator kapısını kapatmaz.
+
+Ayrı sonraki iş kullanıcı talimatıyla kaydedildi: resetten sonra gece yedeğine
+Drive copy+check, yerel KEEP3, Drive'da silme yok; bulut hatası yerel başarılı
+yedeği geçersiz saymaz. **Uygulamadan önce plan/diff ve kullanıcı onayı şart.**
+Yedek betiği/timer değiştirilmedi. Goal/DONE-082/084 ve strict finalM2 açık.
+
+Tekrarlama: tüketilmiş workerstop nonce'ını veya uygulanmış altı migration A5
+wrapper'ını yeniden çalıştırma. Drive kota hatasını eksik/bozuk arşiv hükmüyle
+karıştırma. Yeni tam restore kapasite kapısını yedek listeleme/Drive bağlantısıyla
+PASS sayma; taze canonical rollback ve gerçek restore/prodshadow şartları kalır.
+
+### Aynı gün — disk sayısının anlamı
+
+19,1 GB, gerçek tüketim ölçümü değildir. PRODUCTION_RUNBOOK.md:949 aynı
+dosya sistemindeki backup/restore için 3×actualDB+1GiB boş alan emniyet
+eşiğini koyar; reset kapsamı da bu eşiği korur. Gökhan'ın itirazı üzerine
+“resetin fiziksel alan ihtiyacı” açıklaması düzeltildi. A5 scratch drop
+sonrası boş alan veya sıkıştırılmış dump boyutu, restore sırasındaki tepe
+kullanımı kanıtlamaz. Bu turda eşik düşürülmedi veya kapı atlanmadı.
+
+## 6 Ekim 08:04 UTC — kullanıcının düşük bütçe talimatı ve native koruma provaları
+
+Gökhan “daha düşük bütçeyle ilerlenebiliosa ilerle” dedi. Genel3DB+1GiB
+kuralı fiziksel tüketim diye sunulmadı; farklı bütçenin kabulü ayrı operatör
+ortamıyla sınırlı hazırlanıyor. Production disk/migration kapıları korunur.
+ActualOpus5.5/196470ms tasarım koşullu kabul: D1–D6 source/ön ölçüm şartları.
+Kaynak6.000.311.319B, relation5.989.212.160B, en büyükindex474.267.648B;
+kalibrasyonda önceki actualphysical6.010.330.135B daha yüksek olduğundan
+alınır. Native A5archive1.349.563.991B/SHA191c632d9bd76ca5ab06f1e9199971eb0e19ec6b2a23de8ef8a8ec4eaa87d8ca
+ve56table fingerprints/56scratchtable schemas salt okunur doğrulandı.
+Aday toplam11.721.970.286B: exactarchive+6.010.330.135B+960MiB temp hardlimit
++128MiB SOFT WAL planı+1GiB marj+2GiB fiziksel adsız O_TMPFILE rezerv.
+WAL hardcap veya OSquota iddiası yok. Guardian gerçek f_bavail izler; yalnız
+özel PG16.14 Unixsocket/datadir, fsync/FPI/synccommitON/minimalWAL/noarchive
+ve sunucu tarafı timeout/temp sınırları. Başlangıç alanı tekrar ölçülmeden
+ve farklımodel SOURCE kabulü olmadan gerçek kalibrasyon başlamaz.
+
+Küçük native kanıt:900table/2.700TOC restore/maxlocks1024; DBowner sapması
+algılandı; eksik ACLrole restore ret/tektransaction rollback/publictables0.
+Gerçek temp_file_limit SQLstate53400, gerçek statvfs-relative floor vePIDbirth
+retleri; C/en_US.utf8 içerik fingerprint eşliği. Üç trustedextension/1.000mock
+satır restart eşliği. Yeni özel ortamdaki1.000.000mock satırlı indeks yapımı
+sırasında yalnız pg_restore SIGKILL: backend0/publictables0. Guardian ana
+süreci SIGTERM veSIGKILL: yalnız kendi postmasterı faststop, anonim fiziksel
+rezerv kernel tarafından bırakıldı. Orphanreconciler UID/inode/path/PIDbirth/
+PGsystemidentifier doğrulayıp yalnız ölü controller'ın sahipli verisini
+temizledi. Yabancı FD truncation ve beklenmeyen hardlink reddedildi; reserve
+yolu symlink'i takip edilmedi. Bunların hiçbiri actual6GB fullsize PASS değil.
+
+İlk A5metadata okumasındaki root-owner varsayımı güvenli ret verdi:
+ARCHIVE_PATH_TRUST_CHANGED. Ayrıca ilk türetilmiş client yanlış yerde
+özet print'ine kesildiği için NameError_v_not_defined; production mutasyonu
+yok. Odaklı native owner okumaları gerçekdeployUID1000/GID1000'ı gösterdi:
+receipt664 dosyaları700 migration/op dizinleri içinde; backup700, ancestor
+dizinlerinde group/worldwrite yok. Mevcut authenticated operator trust
+sınırıyla owner izinleri pinlendi; chmod veya erişim genişletme yapılmadı.
+Düzeltme sonrası exactmetadata kabulü geçti. Source Docker version16.14,
+operatör16.14(Debian16.14-1.pgdg13+1); yalnız iki başlangıç sürüm yorumu
+karşılaştırmada eşlenir, DDL/constraint/owner/ACL atlanmaz. A5 producer
+owner/ACL içermediği için bu arşiv kalibrasyon içindir; taze canonical
+PRE_RESET_BIGINT sahibi/ACL tamlığı ayrı doğrulanacak.
+
+Sourcepeer şu kesitte çalışıyor; GO veya fullsize PASS verilmedi. Reset,
+bootguard installer, exposure, resume, yeniT0 yapılmadı. Gece yedeği/timer
+isteği resetten sonraki ayrı iş ve kullanıcı plan/diff/onayı şartıyla kalır;
+hiç değiştirilmedi. Goal/DONE-082/084/strictfinalM2 açık.
+
+Tekrarlama: readonly metadata wrapper'ın kök sahiplik varsayımını source
+regresyonu sayma. General3DB eşiği/yerel arşiv presence/fixture testlerini
+actualsource GO veya canonical reset kabulüne yükseltme. Failed özel restore
+verisi yalnız yeni operation UID/inode/PID/cluster kanıtı sonrası temizlenir;
+diğer işler/DB/roller/yedekler kapsam dışıdır.
+
+## 6 Ekim 08:20 UTC — düşük bütçe kaynak incelemesi ve kesinti düzeltmeleri
+
+Kaynak9d1 canlı kabulü ve worker duruşu değişmedi; reset/reopen/yeniT0 yok.
+İlk114.043bayt kaynak incelemesi600sn sonuçsuz TIMEOUT; kabul sayılmadı. Aynı
+kaynakların74.973bayt ikinci paketi actualOpus5.5/319624ms SOURCE_NO_GO:
+silme sırasında renamed payload'ın sahipsiz kalması ve başarısız fetch partial
+dosyasının kalması iki kaynak engelidir. Üretime bağlanmayan tools-disabled
+incelemenin modelUsage kayıtları Opus5.5 ve Haiku4.5'tir; source kabulü yok.
+
+Özel operatör helper'ları düzeltildi: private PG duruşundan sonra ve rename'den
+önce fsync RECLAIM makbuzu; üç sahipli aynı inode adı için tekrar devam eden
+bounded GC; bilinmeyen payload varken başarılı reconcile makbuzu yok. Fetch
+yeni partial'ı açık FD/inode kanıtıyla kaldırır, publication aralığında final
+kopyayı korur. Tam bütçe başta tekrar ölçülür;32MiB diğer iş büyümesi payıyla
+aday11.755.524.718bayt. Native küçük kesinti provası5case PASS: iki rename
+adında SIGKILL/pg_control silinmesi sonrası reclaim, failed transfer, link
+aralığı ve pathname substitution reddi. Güncel kodla kontrol süreci SIGTERM/
+SIGKILL ve fiziksel adsız rezerv dönüşü ayrıca PASS. Bunlar fullsize kabulü
+değildir. Düzeltme kaynak kapanışı bekleniyor; execution admission oluşturulmadı.
+
+Restore arşivi statement_timeout=0 çalıştırabilir; süre güvencesi900sn client/
+1200sn cluster controller ve1500sn supervisor'dır, sunucu timeout hardcap
+iddiası yok. Bu A5 kalibrasyonunda56tablo içeriği/DDL ve sequence kapsamı
+ölçülür; fonksiyon/enum/view/extension owner eşliği veya ACL kabulü iddia
+edilmez. Kanonik taze BIGINT yedek/full owner-ACL restore ayrı zorunlu kapıdır.
+
+Tekrarlama: sonuçsuz hakem turunu GO sayma; rename sonrası dizin yokluğundan
+GC başarısı çıkarma; yarım indirmeyi nightly yedek sanma veya mevcut yedekleri
+silme. Kanıtı yalnız aynı yeni operation/inode/süreç doğum kimliğine bağla.
+
+## 6 Ekim 08:24 UTC — düşük bütçe kaynak kapanışı; gerçek restore başladı
+
+Exact9d1 ve güncel altı private helper/üç repository hash'i için actual
+Opus5.5/180875ms GO_CALIBRATION_ONLY: iki kaynak engeli kapandı, yeni blocker
+yok. İnceleme üretime bağlanmadı; tam owner/ACL/BIGINT/shadow/reset/resume
+kabulü değildir. Altı kaynak hash'i ve runtime locale/cache/süre/root payı
+kanıtlarıyla private execution admission oluşturuldu. İlk başta root boş
+alan11.792.896.000bayt, aday eşik11.755.524.718bayt.
+
+Native exact A5 arşivi operatöre kopyalandı:1.349.563.991bayt ve SHA256
+191c632d9bd76ca5ab06f1e9199971eb0e19ec6b2a23de8ef8a8ec4eaa87d8ca eşleşti.
+Üretim salt okunur kimlik/worker/work/43migration/settings/lifecycle kabulü
+stream öncesinde tekrar geçti; üretim yazısı yok. Detached supervisor3116421
+ve yeni private operation0e32022a42474c4185da86826af0d657 altında native PG16.14
+fullsize restore başladı.2.147.483.648bayt adsız acil rezerv fiziksel ayrıldı;
+08:23:36 root boş8.021.037.056bayt. Sonuç henüz yok/PASS değil. Restore,
+56tablo içerik/DDL/sequence ve restart eşliği beklenecek; başka kullanıcı
+DB/role/işleri korunur. Consumed makbuzları silinerek yeniden çalıştırılmaz.
+
+## 6 Ekim 08:36 UTC — tam boyutlu ilk operatör provası reddedildi
+
+Exact A5 arşivi/fullsize private operation0e32022a42474c4185da86826af0d657:
+08:23:30–08:28:13 native restore safhası `NATIVE_COMMAND_REJECTED` ile durdu.
+Bu PASS değildir. Disk eşiği veya süre aşımı ölçülmedi; en düşük root boş
+3.451.805.696bayt. Başlangıç arşiv sonrası10.442.444.800bayt; gözlenen
+büyüme6.990.639.104bayt2GiB adsız rezervi de içerir. Bu yarım denemenin
+tüketimidir; tam restore için gereken alan sonucu değildir. Singletransaction
+rollback, fiziksel rezerv dönüşü/özel PG duruşu ve yalnız sahipli payload GC
+geçti; supervisor terminal-controller reconcile ile root10.439.905.280bayt
+yeniden boştu.1.349.563.991bayt doğrulanmış özel arşiv korunuyor. Üretim
+mutasyonu/reset/reopen/newT0 yok; diğer işler korunur.
+
+İlk kaynak stderr/log ayarı neden ayrıntısını saklamadığından kök neden
+bilinmiyor; temp_file_limit veya uygulama regresyonu diye sınıflandırılmadı.
+Kontrollü yeni prova öncesi yalnız native SQLSTATE/severity/phase, integer
+komut dönüşü ve00000satır sayısı kaydı hazırlanıyor; body/sorgu saklanmaz.
+İlk diagnostic source turu actualOpus5.5/136792ms SOURCE_NO_GO: eski fixture
+ile son hash'in farklılığı, çıkış kanıtı ve parçalanmış prefix kaybı. Textual
+tool invoke denemeleri araçlar kapalı olduğundan çalışmadı; kaynak metni
+incelemesidir, disk okuması/üretim erişimi iddia edilmez.
+
+Güncel native fixture son guardian hash60c98c54b1a58244efd43c9780508dd12c9d97f02e8685cf5c8defaf15efbcad
+ile ERROR P0001/22012/53400 sırasını ve phase/severity kaydını PASS verdi.
+Ayrı1MiB üstü native hata/fake prefix provası yalnız ikiP0001 kaydetti; ham
+message bütün sahipli receipt dosyalarında yok. Parser128byte prefix boyunca
+parçalanmayı korur; rastgele nonce yanlış body prefix'i dışlar,64hata tavanı
+ve overflow sayısı var. Pipe startup/stop döngüsünde de boşaltılır. Küçük
+fixture'da58P01 optional JIT kütüphanesi eksikliğiydi; private server/query
+JIT kapalı, sorgu sonuç semantiği değişmez. Bu ilk fullsize ret nedenini
+kanıtlamaz. Yeni diagnostic kaynak kapanışı bekleniyor; ikinci fullsize
+başlatılmadı, önceki consumed makbuzları aynen korunuyor.
+
+Tekrarlama: başlangıç LOG53400'ü restore ERROR53400 sanma; eski hash'in
+fixture PASS'ini yeni kaynağa taşıma; bilinmeyen ret için kör aynı nonce
+tekrarı veya loga entry/message body yazma. Kontrollü yeni denemeyi ayrı
+operation ve actual farklı model kapanışına bağla.
+
+## 6 Ekim 08:49 UTC — diagnostic terminal kaydı; yeni deneme hazırlanıyor
+
+Üretim değişmedi, ilk fullsize kabulü hâlâ FAIL/ret ve kök neden bilinmiyor.
+Private diagnostic kaynak kapanışları actualOpus5.5/121005ms ve75347ms
+SOURCE_NO_GO verdi: LOG/00000 backend türü ayrımı, LOG08xxx sayımı, geç
+terminal kayıtları ve stop başarısızken terminal kanıt kaybı. Son guardian
+yalnız finally DIAGNOSTIC_TERMINAL makbuzu ekleyerek stop hatasında da
+SQLSTATE/severity/phase/backend türü ve bounded sayaçları saklar. Fast-stop
+semantiği, kaynak eşikleri ve üretim yetkisi değişmedi; guardian'a SIGQUIT
+eklenmedi. Native son hash4ed5d91b37fd26c3c315fa8a10f8bcaf42c0ff8f6c06c845517f42f7b8021267
+için ordered SQLSTATE/clientexit3/phase ve megabyte/fake-prefix privacy
+provaları PASS. Gerçek sıra crash fixture'ı recovery beklemeden finish
+çağırdı: STOP_STATUS_UNKNOWN olsa da terminal postmaster LOG sayacı kalıcı
+kaydedildi; yalnız bu yeni boş/mock PG PID kimliği yeniden doğrulanarak
+fixture acil duruş/GC yapıldı. Bu üretim backend kill veya yeni restore
+stop yetkisi değildir. Private llvmjit modülü libLLVM.so.19.1 eksikliğini
+ldd ile doğruladı; private JIT off, diğer kullanıcı PostgreSQL'i değişmedi.
+
+Yeni700 operatör attempt dizini altı source/metadata/locale ile hazır;
+arşiv hâlâ ilk doğrulanmış konumunda, yeni admission henüz yok. Geçerli
+GO sonrası aynı inode arşiv yeni konuma no-overwrite link/unlink/fsync ile
+taşınacak, ekstra1,35GB kopya oluşturulmayacak. İlk consumed/kanıt makbuzları
+silinmez. Son tek kaynak değişikliğinin farklı model kapanışı sürüyor.
+Bunlar canonical owner/ACL/BIGINT/shadow/reset/resume/yeniT0 kabulü değildir.
+
+Tekrarlama: crash sonrası stop başarısını diagnostic receipt önkoşulu yapma;
+LOG53400'ü ERROR53400 sanma; diğer kullanıcı backend'lerini fixture'da dahi
+sinyalleme. Kontrollü yeni fullsize denemede kayıtları yeni nonce/hash'e bağla.
+
+## 6 Ekim 09:04 UTC — diagnostic kaynak kabulü; kontrollü ikinci fullsize başladı
+
+ActualOpus5.5 kaynak turları55982/98582ms SOURCE_NO_GO: shutdown LOG sayacının
+crash diye yorumlanması ve restart sonrası STOP_REQUESTED phase suffix'inin
+kalması. Sabit CRASH_CHILD/SHUTDOWN_REQ/OTHER sınıfları, sinyal sonrası ayrı
+phase ve start öncesi suffix temizliğiyle kapandı. Native son guardian
+9adaa691294f0f3ba6a4395d73fe81475e6058da1d11870aff5302c071d7e544 altında
+beş prova PASS: real-order crash sayacı0→2/terminal kayıt; SQL negatif
+crash0/shutdown1; restart phase shutdown2/active0/crash0; ordered3SQLSTATE/
+clientexit3; megabyte/fake-prefix/postfinish privacy. Son actualOpus5.5/
+30502ms GO_CALIBRATION_ONLY; tools-disabled metin incelemesi, üretim okuması
+değil. Dar INITDB start-hatası/kill penceresinde reconcile fail-closed
+kalabilir; startup-sized hedef kalırsa kaynak değiştirmeden kimlikle incelenir.
+Sayaç overflow>0 sonucu UNCLASSIFIED, crash yok kanıtı değildir.
+
+Ayrı700 attempt altı helper/üç ROOT hash, metadata, locale, deadline ve
+10.405.960.727bayt arşiv sonrası kapısıyla kabul edildi. Mevcut exact A5
+arşivi1.349.563.991bayt aynı inode üzerinde EXCL link/unlink/fsync ile
+taşındı; önce/sonra SHA256191c632d9bd76ca5ab06f1e9199971eb0e19ec6b2a23de8ef8a8ec4eaa87d8ca
+eşleşti/nlink1. Ek1,35GB kopya yok, eski consumed/kanıtlar korundu.
+Detached supervisor3123542 ve operation15d11cb479a94904b402d486237603f1 ile
+kontrollü ikinci tam restore başladı.09:03:56 root boş7.639.687.168bayt;
+sonuç henüz yok/PASS değil. Üretim mutasyonu/reset/reopen/yeniT0 yok.
+Bu yalnız eski A5 kalibrasyonudur; owner/ACL ve taze BIGINT canonical
+restore, production shadow ve reset kabulü açık kalır.
+
+Doc worktree Node22'de format:check/lint/typecheck exit0 ölçüldü; bu son
+eklemeden önceki formatter sonucu sonraki biçim kontrolü yerine taşınmaz.
+Kod ROOT9d1 temiz ve canlı exact9d1; dokümanlar henüz yayımlanmadı.
+Tekrarlama: kontrollü ikinci sonucu bekle; normal fast shutdown'u crash
+sayma, sayaç overflow'u negatif bulgu diye yazma, ilk consumed'ı silme.
+
+## 6 Ekim 09:14 UTC — düşük operatör bütçesinde gerçek tam boyutlu prova geçti
+
+Canlı sürüm9d1c4d1068664b1a56ceebea8e51ed44656568d3; üretimde değişiklik yok.
+İkinci native PG16.14 restore09:13:58 UTC’de
+PASS_FULLSIZE_A5_OPERATOR_CALIBRATION_ONLY: arşiv1.349.563.991 bayt,
+56tablo/56şema hash/3sequence eşliği, non-superuser rol ve gerçek restart eşliği.
+RestoreDB4.758.363.159 bayt; en düşük root boşluğu3.433.259.008 bayt.
+2GiB adsız acil rezerv dahil çalışma büyümesi7.002.456.064 bayt;
+arşiv dahil8.352.020.055 bayt ölçüldü. Native SQLSTATE hata/overflow0,
+owned PostgreSQL kapandı ve yalnız sahipli çalışma verisi temizlendi.
+ActualOpus5.5/30502ms kaynak kabulü; guardianSHA
+9adaa691294f0f3ba6a4395d73fe81475e6058da1d11870aff5302c071d7e544.
+
+19,1GB genel emniyet eşiği gerçek reset tüketimi değildi. Yaklaşık11,76GB
+başlangıç bütçesi bu gerçek arşivde yeterli bulundu; evrensel gereksinim
+iddiası değildir. A5 arşivi owner/ACL içermediğinden taze PRE_RESET_BIGINT
+ve kanonik katalog/owner/ACL/production-shadow/reset kabulü yerine geçmez.
+İlk denemenin native ret nedeni bilinmiyor; JIT fixture bulgusu bu ilk
+retin nedeni olarak yazılmaz. Reset/reopen/yeniT0 henüz yapılmadı.
+
+Tekrarlama: aynı geçen kalibrasyonu yeniden koşma; ilk ret makbuzunu
+PASS olarak değiştirme; eski A5 yedeğini kanonik BIGINT yedeği sayma.
+Sıradaki adım gerçek reset yedeği ve kapsamlı restore/production shadow’dur.
+
+## 6 Ekim 09:34 UTC — dondurma tamamlandı; systemd koşul okuması düzeltmesi gerekli
+
+Canlı imaj/runtime9d1c4d1068664b1a56ceebea8e51ed44656568d3. ActualOpus5.5
+preparation kaynak215636ms NO_GO: Compose create --no-deps geçersiz bayrağı.
+Önerilen up --no-start --no-deps --no-build --force-recreate app uygulandı;
+closure92040ms GO_PREP_ONLY. SourceSHA
+11389d87d16c6ddd40996ed4de1770574672c27073827300ea24368ff2fe6095;
+yürütmeden önce exact tag, Compose bayrakları, Docker root filesystem ve
+D829unique1,716GB bağımsız salt okunur kabul edildi.
+
+09:29 yalnız kullanılmayan D829 image kaldırıldı: root boş
+20.379.033.600→22.094.876.672 bayt, kazanç1.715.843.072 bayt.
+Üç konteyner/worker/current9d1+previousD202 imaj ve runtime aynı kaldı;
+volume/cache/yedekler değiştirilmedi. Sonrasında app/proxy durduruldu,
+BOOT_GUARD kuruldu ve yalnız app STOPPED olarak yeniden oluşturuldu.
+DB e645 sabit/running; app83d5c6ceee362c9e1a6610a919e0cd78f5ec26a54e824b7fc499e24f3d09e3ca,
+ayni7fc imaj/restart=no; Caddy fbfa stopped.
+
+Son inventory native ret: GREAT_RESET_BOOT_HOLD_NOT_LOADED,
+phaseCREATE_STOPPED_GENERATION_APP. Bağımsız okuma: hold/drop-in yüklü,
+ExecStop stop (down değil), NeedDaemonReload=no; ancak systemd255.4
+systemctl show Conditions alanı [unprintable] döndürüyor. Native busctl
+JSON a(sbbsi) tam üç koşulu gösterdi: maintenance-hold ters true, .env ve
+compose koşulları düz; triggerfalse/değerlendirme0. Bu source kontrolü
+kusurudur; yapılandırmanın bulunmadığı anlamına gelmez.
+
+Yeni düzeltme yapılandırılmış D-Bus koşullarını tam küme/negation/trigger/path
+ile doğrular; okunamayan/eksik/farklı tuple kapalı kalır. İlgili24unit geçti;
+peer/CI/exact sürüm ve guarded host devamı henüz tamamlanmadı.
+PREPARE_INTENT/yeni kanonik yedek/reset/exposure/açılış/yeniT0 yok.
+
+Tekrarlama: tüketilmiş hazırlık nonce'unu veya INSTALL_BOOT_GUARD'ı yeniden
+çalıştırma. Eski base service'i stop/down ile DB'yi indirme. Conditions
+metninin unprintable olmasını koruma yok kanıtı sayma; gate'i silme,
+immutable live runtime dosyasını hotpatch etme. Yeni exact sürümü ölçüp
+mevcut hold/DB/pins üzerinden kontrollü devam et.
+
+## 6 Ekim 09:40 UTC — D-Bus koşul okuması kaynak kabulü ve gerçek host provası
+
+Baseline9d1c4d1068664b1a56ceebea8e51ed44656568d3 üzerinde iki ops dosyası
+koşul okumasını yapılandırılmış D-Bus JSON'una taşır. Exact üçlü koşul kümesi,
+negation/trigger/path/tip ve bozuk yanıt retleri korunur. ActualOpus5.5/65971ms
+kaynak GO; reviewed iki runtime dosyası native provadan sonra byte-equal.
+Sunucudaki gerçek systemd255.4/D-Bus yanıtıyla aynı yeni function salt okunur
+inline provada NATIVE_STRUCTURED_CONDITION_FIX_PASS verdi. Bu production
+runtime dağıtımı veya nihai freeze kabulü değildir; canlı immutable dosya
+değiştirilmedi.
+
+İlgili24unit PASS. İlk typecheck test matrisinin it.each parametre
+bağlanmasında TS2345 verdi; native source kusuru değil. Matrisler {data}
+olarak tek parametreye bağlandı; ilgili24unit yeniden geçti. İki runtime
+dosyası değişmedi; final typecheck exit0. CI/exact teslim bekler.
+
+Tekrarlama: immutable9d1 runtime'ı hotpatch etme; korumayı kaldırarak
+yeni sürüm dağıtma. Hold aktif ve app/proxy durmuş halde exact yeni artifact
+staging ve korumalı sürüm geçişi hazırlanır; ayrı kaynak hakemi ve kimlik
+kapıları sonrasında kanonik reset hazırlığı devam eder.
