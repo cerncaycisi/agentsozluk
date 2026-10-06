@@ -534,9 +534,9 @@ schema_hash() {
   "${deadline[@]}" "${compose[@]}" exec -T db pg_dump --schema-only --no-owner --no-privileges \
     -U agent_sozluk -d "$database" "$@" </dev/null >"$dump" || migration_fail SCHEMA_DUMP_FAILED
   grep -q 'CREATE TABLE' "$dump" || migration_fail SCHEMA_DUMP_EMPTY
-  hash="$(schema_dump_filter <"$dump" | sha256sum | cut -d ' ' -f 1)"
+  hash="$(schema_dump_filter <"$dump" | sha256sum | cut -d ' ' -f 1)" || migration_fail SCHEMA_NORMALIZATION_FAILED
   rm -f "$dump"
-  [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || migration_fail SCHEMA_HASH_INVALID
+  [[ "$hash" =~ ^[0-9a-f]{64}$ && "$hash" != e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 ]] || migration_fail SCHEMA_HASH_INVALID
   printf '%s\n' "$hash"
 }
 
@@ -658,9 +658,9 @@ archive_schema_hash() {
   "${deadline[@]}" "${compose[@]}" exec -T db pg_restore --schema-only --no-owner --no-privileges \
     -f - <"$archive" >"$script" || migration_fail ARCHIVE_SCHEMA_FAILED
   grep -q 'CREATE TABLE' "$script" || migration_fail ARCHIVE_SCHEMA_EMPTY
-  hash="$(schema_dump_filter <"$script" | sha256sum | cut -d ' ' -f 1)"
+  hash="$(schema_dump_filter <"$script" | sha256sum | cut -d ' ' -f 1)" || migration_fail SCHEMA_NORMALIZATION_FAILED
   rm -f "$script"
-  [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || migration_fail SCHEMA_HASH_INVALID
+  [[ "$hash" =~ ^[0-9a-f]{64}$ && "$hash" != e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 ]] || migration_fail SCHEMA_HASH_INVALID
   printf '%s\n' "$hash"
 }
 

@@ -118,7 +118,56 @@ printf 'PASSED\n'`,
     { encoding: "utf8", timeout: 5000 },
   );
 }
+
+function schemaHashProbe(name: "schema_hash" | "archive_schema_hash", mode: string) {
+  const phase = readFileSync(path.join(root, "scripts/production-migration-phase.sh"), "utf8");
+  const definition = phase.match(new RegExp(`^${name}\\(\\) \\{[\\s\\S]*?^\\}`, "mu"))?.[0];
+  expect(definition).toBeDefined();
+  const dir = directory();
+  const archive = path.join(dir, "archive");
+  writeFileSync(archive, "synthetic fixture");
+  const columnType = mode === "invalid" ? "text" : "integer";
+  const filter =
+    mode === "empty"
+      ? "cat >/dev/null"
+      : `"${process.execPath}" "${checker}" normalize-schema reset-2026-v1`;
+  return spawnSync(
+    "bash",
+    [
+      "-c",
+      `set -Eeuo pipefail
+migration_dir='${dir}'
+compose=(compose_stub)
+compose_stub() { printf 'CREATE TABLE public.topics (\\n    "publicId" ${columnType} NOT NULL\\n);\\n'; }
+deadline_prefix() { deadline=(); }
+migration_fail() { printf '%s\\n' "$1" >&2; exit 97; }
+schema_dump_filter() { ${filter}; }
+${definition}
+# Exercise the || caller that suppresses errexit in the entire function body.
+${name} '${name === "schema_hash" ? "fixture" : archive}' || exit $?
+printf 'HASH_ACCEPTED\\n'`,
+    ],
+    { encoding: "utf8", timeout: 5000 },
+  );
+}
 describe("exact reset migration delivery profile", () => {
+  it.each(["schema_hash", "archive_schema_hash"] as const)(
+    "%s rejects failed or empty normalization even inside an OR caller",
+    (name) => {
+      const invalid = schemaHashProbe(name, "invalid");
+      expect(invalid.status).toBe(97);
+      expect(invalid.stderr).toContain("SCHEMA_NORMALIZATION_FAILED");
+      expect(invalid.stderr).toContain("REVIEWED_RESET_COLUMN_MISMATCH");
+      expect(invalid.stdout).not.toContain("HASH_ACCEPTED");
+      const empty = schemaHashProbe(name, "empty");
+      expect(empty.status).toBe(97);
+      expect(empty.stderr).toContain("SCHEMA_HASH_INVALID");
+      expect(empty.stdout).not.toContain("HASH_ACCEPTED");
+      const valid = schemaHashProbe(name, "valid");
+      expect(valid.status, valid.stderr).toBe(0);
+      expect(valid.stdout).toContain("HASH_ACCEPTED");
+    },
+  );
   it("accepts a D202 database with existing reward/birth columns for reset", () => {
     const result = migrationPreflight("reset-2026-v1");
     expect(result.status, result.stderr).toBe(0);

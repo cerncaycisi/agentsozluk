@@ -6963,3 +6963,38 @@ REVIEWED_COLUMNS_ALREADY_PRESENT ile reddedilir. Docker admin/FK/disk stubları
 kullanıldı; bu sadece native SQL seçimi kanıtı, full preflight veya production GO
 değildir. Main0914 CI37404909548 yedi iş SUCCESS. Son kaynak quality, exact SHA,
 CI ve bağımsız hakem ayrı kapılardır.
+
+## 6 Ekim 03:09 — PR336 kaynak hakemi ve küçük kapanış düzeltmeleri
+
+Exact ae76bed4b9cdd3c35f67de85be50203f472a02f5, actual Opus5.5/342.601ms,
+24exact kaynak/360.220bayt/tools-disabled: kaynakta merge engeli bulunmadı;
+exact7CI/tree eşliğiyle KOŞULLU GO. Production NO-GO kapıları açık. D1 için iki
+şema hash yolunda normalizer pipeline status'u açık kontrol edilir ve boş SHA-256
+reddedilir; `||` çağrısında gerçek normalizer ret/boş filtre/başarılı yol sınandı.
+Son3dosya78unit PASS. D2 pg_dump max gösterimi ve O1 A5'in worker/site dönüşü
+belgede açıklandı; global pause korunur, reset freeze öncesi worker yine durur.
+
+O2 kanıt eksiği için immutable D20237SQL ile yeni sahipli küçük DB/OID8706687:
+gerçek admission repo fonksiyonu journal yok/mirror yok/required=false için
+READ ONLY kabul etti; required=true reddedildi. Agent superuser kullanıldı;
+üretim/non-superuser/fullsize veya aday imaj kabulü değildir. Aday imajla actual
+üretim admission freeze'den önce ölçülecek. İlk fixture sorgusu unquoted camelCase
+alias'ı PostgreSQL'in küçültmesiyle assertion ret verdi; quoted alias ve pinli
+URL sonrası odaklı PASS. Bir diagnostic çağrı eksik local datasource nedeniyle
+PrismaClientInitializationError verdi; üretim veya kod regresyonu değildir.
+Yeni hashguard exact SHA/CI/differentmodel closure ayrı kapıdır; ae76 peer/CI
+sonraki kaynak için yeniden adlandırılmaz.
+
+02:54 native readonly bootstrap/proxy: aynı D202/pinli app/db/workerinactive;
+bootstrap active/exited0, TimeoutStopUSec2min, ExecStopPost/ExecReload boş.
+Proxy tekproject/service kimliği, imageID ve public80/443 pinlendi. Aug20 apt
+journal metadata'sı reboot nedeni kanıtlamadı; causal attribution UNKNOWN.
+Reset/deploy/reopen/newT0 yok. Operator fullsize alanı hâlâ açık; kullanıcıya
+kaynak kapasitesi sorusu iletildi, yanıt bekliyor. Diğer kullanıcı işleri korundu.
+
+Exact ae76 CI37406274384 yedi iş SUCCESS olarak doğrulandı.
+
+Tekrarlama: `||` bağlamında Bash errexit'e güvenme; normalizer ret ve boş
+çıktı hash'ini açık reddet. Quoted camelCase alias ve pinli local URL kullan;
+fixture retlerini source kusuru veya production ölçümü sayma. A5 worker active/
+paused dönüşünü reset açılışı sanma; freeze öncesi tekrar inactive kanıtla.
