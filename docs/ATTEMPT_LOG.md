@@ -8351,3 +8351,118 @@ Test değiştirilmedi;2 mimari+8middleware PASS. ActualOpus5.5 darGO.
 Tekrarlama: standalone statik sayfa stilinde odaklı yanıt testine ek olarak
 mevcut tasarım token taramasını da çalıştır; CSS veri assetini Tailwindclass
 taramasıyla aynı dil sayma. Üretim bağlantısı/deploy/mutasyon0.
+
+## 6 Ekim18:10–18:25 — kullanıcının hemen canlı UI talimatı, kesim öncesi kontroller
+
+Gökhan kaldırılmış içerik görünümü için “Al canlıya” dedi;13Ekim bekleme kararı
+PLAN'da uzlaştırıldı. Exactaday ea8f7eee5e36f2d60c6c8c2d336f2cd893e851bf;
+CI37503314764 yediSUCCESS, artifact37507648534 SUCCESS/ID11432892236.
+Şema/migration farkı0.18:03 salt okunur host/app/runtime/DB pinleri ve25.53GB
+boş alan geçti.18:10:02.223 audited pause314→315; eski gerçek P7
+USER_REQUEST_DEPLOY_INTERRUPTED_NOT_PASS, yalnız bu pencerenin timerları
+inactive/disabled. Hesap, persona ve eski ölçüm kanıtları korunur; reset yok.
+
+İlk containerCLI pause denemesi18:08 güvenli sonuç koşulunu karşılamadı.
+Mutasyon sonucu varsayılmadı: ayrı DB okuması runtime=true/version314,
+immutable host CLI status exit0 gösterdi. Aynı audited hizmet gerçek hostrelease
+üzerinden18:10 başarılı oldu; worker yeniden başlatılmadı. Container hata
+metni saklanmadığından kök neden kesinleştirilmedi; “yazdı/yazmadı” yalnız
+DB makbuzuyla ayrıldı. Tekrarlama: hostruntime CLI yolunu appcontainer CLI'si
+sanma; belirsiz pause'ta tekrar yazmadan önce gerçek durumu oku.
+
+18:11 doğal açık iş/lease0; taze native pg_dump97.146.235bayt,
+SHA2565a7e72d7d1cf30d676e45d7dc0c967b6f270f7a0a2f19f4ec4bc04c1e41b8834.
+TOC ve tam archive decode geçti;51hesap/36profil/93entry korundu. Gerçek
+restore yapılmadı; şema-nötr UI dağıtımı eski imaj/runtime çiftiyle geri
+alınabilir. Bu yedek Gate12 restore kabulü yerine geçmez.
+
+İki native aday kontrolü kesimden ÖNCE durdu; productioncutover0:
+
+1. İlk96: privatehook artifact configdigestae0929…66b7 ile gerçek
+   DockerloadedImageIDed2adf…4667 eşitliğini yanlış şart koştu. Repo installer
+   bu alanları ayrı tutar. Tar/zip/config hash doğrulaması korundu, actual
+   loadedID ayrıca pinlendi. ActualOpus5.5/27.237ms darGO; önceki93.294ms
+   mekanizmaGO'nun kimlik farkı kapanışı. Hashler gerçeği uydurmak için değiştirilmedi.
+2. İkinci96: DANGLING_PACKAGE_LINKS_REQUIRE_RECONCILIATION. Ayrı readonly,
+   secretsiz/networknone aday taramasında4.661dizin ve tek kopuk bağlantı:
+   /app/node_modules/.pnpm/node_modules/@agent-sozluk/runtime-release →
+   ../../../../packages/runtime-release. Bu birinci taraf hostworkspace yoludur.
+   V4 yalnız exactpath/target çiftini açıkça uzlaştırır; diğer kopuk/globalSharp
+   veya native closure koşulları korunur.12 gerçek predicate fixture PASS;
+   actualcandidate native kabulü ve farklımodel kapanışı henüz tamamlanmadı.
+
+İki hatada da yalnız owned lock, logind/PAM/diğer deployscope/A5container ve
+backend0 kapılarıyla temizlendi; ownerfile+boş directory dışında silme yok.
+App/runtime d083, worker4107317 ve DBkimliği aynı kaldı; site200/eski410.
+Tekrarlama: arşiv confighash'ini DockerloadedID ile eşitleme; Nextstandalone
+workspace bağlantısını bütün unresolvedlinkleri sessizce dışlayarak düzeltme.
+
+## 6 Ekim 18:29–18:35 — ea8f kesimi açılışta düştü, eski sürüme geri alındı
+
+Exact `ea8f7eee5e36f2d60c6c8c2d336f2cd893e851bf`, artifact 37507648534. Üçüncü
+native deneme paket kontrolünü geçti; 18:30:30'da worker durduruldu ve app aday
+imajla yeniden yaratıldı. Aday container `GREAT_RESET_GENERATION_ADMISSION_REJECTED`
+ile exit 1 verdi ve yeniden başlama döngüsüne girdi. Kamuya açık kesinti, Caddy
+kaydına göre 18:30:32–18:34:41 UTC arasında 120 istekte `502` oldu. Codex app'i
+elle d083 imajı ve reset overlay'iyle geri açtı (18:34:46 healthy). Ana sayfa,
+health ve ready yanıtları 200'e döndü. DB'ye dokunulmadı. `runtime/current` ve
+`agent-sozluk:production` d083'te kaldı.
+
+Kök neden: `/opt/agent-sozluk/reset` dizini `root:root 0700`. `production-release-remote.sh`
+nesil dizinini sudo'suz `test -e` ile aradığı için deploy kullanıcısı onu "yok"
+gördü. Bu yüzden `reset-generation-compose.yaml` overlay'i eklenmedi ve aday ne
+mount'u ne de `AGENT_SOZLUK_RESET_GENERATION_REQUIRED` değerini aldı. Aynı hata
+`maintenance-hold` kontrolünü de etkisiz bırakıyordu. Kanıt (Claude, 18:38, salt
+okunur `compose run`): aynı aday imaj overlay'le kabulde `rc=0` verdi, overlay
+olmadan `rc=1` verdi. `current.json` içindeki `releaseSha` alanı yalnız DB
+journal'ıyla eşleştiriliyor, çalışan imajla eşleştirilmiyor.
+
+Düzeltme PR #342 (`28a84640f1cf8779f56eba9e9c234c7a99c56aa7`): reset yolları
+artık `sudo -n` ile okunuyor; sudo çalışmazsa `ROOT_PROBE_UNAVAILABLE` ile
+duruluyor. Overlay var ama nesil dizini görünmüyorsa `RESET_GENERATION_UNRESOLVED`
+veriliyor. Aday imaj, eski app'e ve worker'a dokunulmadan önce aynı compose ile
+`verify-reset-generation.ts` kontrolünü geçmek zorunda. 6 yeni birim testi eski
+betikte düşüyor, yenisinde geçiyor.
+
+Geri alma sonrası durum (18:37, salt okunur): toplum `runtimeEnabled=false`,
+sürüm 315, running 0. Worker 18:30:30'dan beri inactive. Release kilidinin
+sahibi hâlâ `ea8f…:3701dbd86bb7d2d8`.
+
+Tekrarlama: root-only yollarda sudo'suz `test -e` sonucunu "yok" diye okuma.
+Kesimi, aday imajın açılış kabulü aynı mount'larla önceden denenmeden yapma.
+
+## 6 Ekim 18:45–19:10 — PR #342 hakem turları ve geçici toplum açılışı
+
+Yürütücü Claude Opus 5.5. Hakem Astra (`gpt-6-astra`, xhigh, read-only).
+
+- Tur 1 (`28a84640f1cf8779f56eba9e9c234c7a99c56aa7`) **NO-GO** verdi. Bulgular:
+  tekil sudo sorgu hatası yokluk sayılıyordu; sağlıklı aday yeniden girişi kabulü
+  atlıyordu; zaman aşımından sonra kabul container'ının temizlendiği
+  doğrulanmıyordu. Düzeltme `462b95d0af5fec07bad60ced96eaa80bc6e8a095` oldu:
+  present/absent/link sorgusu, kabul kısa yoldan önce çalışıyor, mount ve ortam
+  doğrulanıyor, sahipli isim kullanılıyor.
+- Tur 2 (`462b95d…`) **NO-GO** verdi; ilk iki bulgu kapandı. Kalan P2 bulgular:
+  `docker ps` hatası yokluk sayılıyordu; HUP/TERM kesintisinde temizlik
+  çalışmıyordu; alt mount nesil dizinini gölgeleyebiliyordu. Düzeltme
+  `287bb5a09be7f68afafc0ebf236cb03f6c3d8026` oldu: `query-failed` LINGERING
+  sayılıyor, kabul arka planda başlatılıp bekleniyor ve sinyal tuzağıyla
+  temizleniyor, alt mount reddediliyor, çalışan app içinde de kabul koşuyor.
+  Yerelde 30/30 test geçti; yeni testlerin 5'i `462b`'ye karşı düşüyor.
+- İş başına 2 Astra turu bütçesi doldu. `287bb5a` için hakem kapanışı **yok**.
+  Kural gereği üçüncü tur ancak Gökhan'ın açık kararıyla başlatılabilir. Merge
+  ve dağıtım bu karar gelene kadar bekliyor.
+
+Geçici açılış: üretim 18:59'da salt okunur kontrol edildi (app d083 healthy,
+`runtime/current` d083). `agent-sozluk-runtime.service` yeniden başlatıldı
+(active/running, restarts 0). d083 host release'inden audited
+`agent-society-flow.ts resume` 19:00:30 UTC'de çalıştı: `changed=true`, sürüm
+315→316, running 0. Aktör `bootstrap_admin`; kimlik basılmadı. Kamu kontrolünde
+`/`, `/api/health` ve `/api/ready` 200 döndü. Bu açılış P7 T0 **değildir**:
+kaldırılmış içerik dağıtımı yapılırsa yeniden pause ve drain gerekir. P7
+gözlem timer'ları yeniden kurulmadı. `ea8f` release kilidi yerinde duruyor;
+elle kilit temizliği bir sonraki dağıtım oturumunda runbook koşullarıyla
+yapılacak.
+
+Tekrarlama: `pgrep -f` desenini uzak `bash -c` komut satırında da geçen bir
+metinle kurma, yoksa komut kendi kendini eşleştirir. İki deneme bu yüzden "busy"
+diyerek mutasyon yapmadan durdu.

@@ -64,9 +64,17 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   yanıtı için site renkleri, okunur tipografi, mobil/açık/koyu düzen ve ana
   sayfa/arama bağlantıları hazırlandı. Sabit CSS hash’iyle dar CSP korunuyor;
   içerik veya adres HTML’e taşınmıyor. Kaynak/test/tarayıcı ve farklı model
-  güvenlik incelemesi makbuzu `STATUS.md` içinde. **Henüz canlıda değil**;
-  mevcut P7 imajını değiştirmemek için pencere sonrası exactCI/artifact
-  dağıtım paketine dahil edilecek. Ayrı kabul penceresi veya öncelik sırası yok.
+  güvenlik incelemesi makbuzu `STATUS.md` içinde. **Canlıda değil.** 18:30 kesimi
+  reset nesil overlay'i atlandığı için düştü ve yaklaşık 4 dakika 502 verdi; site
+  d083'e geri alındı. Dağıtım betiği düzeltmesi PR #342'de. İki Astra turu NO-GO
+  verdi, bulgular düzeltildi (`287bb5a`). Üçüncü hakem turu Gökhan kararını
+  bekliyor. Toplum 19:00:30'da d083 üzerinde geçici olarak açıldı (sürüm 316);
+  bu açılış P7 T0 sayılmaz. Gökhan6Ekim
+  “Al canlıya” talimatıyla13Ekim sonrasına bırakma kararını değiştirdi. Exact
+  ea8f7eee5e36f2d60c6c8c2d336f2cd893e851bf CI37503314764 yediSUCCESS;
+  artifact37507648534 hazırlanıyor. Şema değişikliği yok. Korumalı
+  dağıtımda eski P7 gerçek kesim anıyla INTERRUPTED_NOT_PASS kaydedilir;
+  açılış sonrası gerçek resume’dan yeni168saat başlar. Eski kanıtlar korunur.
 - **Sırada:** bu pencerenin gerçek doğal koşu, kaynak, ledger ve kamu etkisi
   kanıtlarını toplamak; ardından Gate11/12, P8 ve final M2. Goal tamamlanmadı.
 
@@ -190,6 +198,12 @@ aday SHA için yeniden üretilir; mevcut hazırlık43ac75b farklı imajda kullan
 Readonly rootfs/no overrideenv/outer OCI kimliği zorunlu; native aday yürütmesi yok.
 16:00 civarı T3 public ana sayfa render’ında10entry bağlantısı ve10article görüldü;
 entry gövdeleri toplanmadı. Bu kamu örneği tam haftalık provenance kabulü değildir.
+
+**6 Ekim yeni kullanıcı önceliği:** kaldırılmış içerik görünümü ve main’deki sharp
+yaması şimdi aynı şema-nötr exact sürümle dağıtılıyor. Önceki13Ekim bekleme
+kararı yukarıdaki doğrudan talimatla değişti. Toplum audited pause/drain ve
+aynı imaj native/geri alma kapılarıyla korunur; reset veya kullanıcı silme yok.
+Dağıtım/adres200/410 ve toplum resume makbuzu ölçüldükten sonra yazılır.
 
 ### Canlı ve tamamlanan teslimler
 
