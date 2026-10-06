@@ -8466,3 +8466,26 @@ yapılacak.
 Tekrarlama: `pgrep -f` desenini uzak `bash -c` komut satırında da geçen bir
 metinle kurma, yoksa komut kendi kendini eşleştirir. İki deneme bu yüzden "busy"
 diyerek mutasyon yapmadan durdu.
+
+## 6 Ekim 19:20–19:45 — PR #342 Astra tur 3 (muafiyetli) ve sinyal düzeltmesi
+
+Gökhan'ın açık kararıyla tek seferlik üçüncü Astra turu yapıldı (PLAN'daki muafiyet).
+İncelenen SHA `287bb5a09be7f68afafc0ebf236cb03f6c3d8026` (kod olarak `dc25549`
+ile aynı). Sonuç **NO-GO** oldu. Docker sorgu hatası ve alt mount bulguları
+kapandı. Kalan tek bulgu P2: kesinti temizliği sürerken ikinci HUP/TERM gelirse
+ya da `docker rm` sırasında HUP gelirse, `trap -` varsayılan sonlandırmayı geri
+getirdiği için betik temizlikten önce ölüyordu. Etki: geride salt okunur bir
+kabul container'ı kalabilir. Veri yazma yolu bulunmadı. `compose exec` kabulü
+read-only olarak onaylandı.
+
+Düzeltme `40bcc196acedbf95b9d82f4bfdd3f652345fb57c`: kesinti başladıktan sonra
+gelen sinyaller yalnız kaydediliyor. İstemci gerçekten bitene kadar bekleniyor.
+Temizlik çocukları sinyalleri yok sayıyor ve container'ın yokluğu doğrulandıktan
+sonra kaydedilen sinyalle çıkılıyor. Yerelde 31/31 test geçti; yeni test
+`287bb5a`'ya karşı düşüyor (betik HUP ile ölüyor, status `null`).
+`40bcc19` için **hakem kapanışı yok**. Muafiyet kullanıldı; yeni tur ancak
+Gökhan'ın kararıyla başlatılabilir.
+
+Tekrarlama: bash'te `trap - SIG` "yok say" anlamına gelmez, varsayılan
+sonlandırmayı geri getirir. Kesilmemesi gereken temizlikte sinyalleri kaydet,
+çocukları `trap ''` altında çalıştır.
