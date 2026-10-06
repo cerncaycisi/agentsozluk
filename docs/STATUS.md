@@ -6468,3 +6468,81 @@ Canlı hâlâD202; reset/veri silme/reopen/newT0 yok. Goal ve finalM2 açık.
 
 Birleşmiş9be için CI37391583484 son native okumada **7/7 SUCCESS** olarak
 doğrulandı. Bu main CI sonucu production deploy/reset veya yeni T0 değildir.
+
+## 6 Ekim 01:24 UTC — reset yürütücüsünün odaklı doğrulaması
+
+Ayrı executor worktree, base993; canlıD202 ve worker kapalı durumu korunur.
+Bootstrap native readonly okumasında DropInPaths boş, exact root fragment,
+NeedDaemonReload=no, active/exited/MainPID0 doğrulandı. Kaynakta başka
+ExecStart override ve reload drift reddi eklendi; guard üretime kurulmadı.
+Son8dosya106unit PASS. Owned stageOID8516470/marker/owner/cluster/backend0
+kapısından sonra namespace5PG PASS; stale plan/DDL rollback/catalog drift,
+2002tombstone sayfalaması ve unsafe sequence/trigger reddi içerir. İlk pool10
+koşusunda1/5 precondition ret vardı; üretim single-backend kapısı değişmeden
+fixture havuzu kapatılıp çekirdek ayrı tek bağlantılı client ile doğrulandı.
+Final extra-idle-backend negatif testi, quality, exact CI ve hakem henüz açık.
+Reset/veri silme/reopen/newT0 yok. [Yürütücü sözleşmesi](RESET_YURUTUCU_SOZLESMESI_2026-10-06.md).
+
+01:28 kapanış kesiti:8dosya107unit ve owned-stage6PG PASS. Ek idle backend
+yolunda OTHER_DATABASE_CONNECTIONS/GREAT_RESET_PRECONDITIONS_FAILED, intent
+tüketilmedi ve içerik korundu. Kaynak incelemesinde atomic restore rename'in
+yeni canonical OID ürettiği kabul yolu eksik bulundu; source OID latch sabit
+kalırken yalnız signed ROLLED_BACK restoredDatabaseOid ve aynı audit/actual
+OID eşliği kabul edilir. Terminal OID rebind ve normal-state OID override
+negatif testleri geçti. Bu henüz actual rename/fullsize veya canlı kabulü değil.
+Main993CI37397597282 yedi işSUCCESS; executor henüz ayrı uncommitted kaynak.
+
+01:32 final quality: format:check/lint/typecheck ve üç bash/iki Node syntax
+komutunun her biri exit0. Kod107unit/6PG kesitiyle aynı; yalnız Türkçe makbuz
+güncellendi. Ayrı executor draft PR/exact-source CI ve farklı model kod
+incelemesi bir sonraki kapı; fullsize, native boot guard kurulum, reset/reopen
+ve yeniT0 hâlâ yapılmadı.
+
+## 6 Ekim 02:04 UTC — PR335 ilk CI/hakem sonucu ve odaklı düzeltme
+
+Exact source435595a235989ceab95a0845981cba4806cd38fc, base993;
+draft PR335 T3 bağlantısı kaydedildi. CI37399661339: database/container/browser/
+coverage/behavior SUCCESS, quality production audit FAIL, validate FAIL.
+`source-map-js@1.2.1` GHSA-68fv-2mgg-jv7q için override1.2.2;
+frozen install ve production audit PASS. Node22.23.1/PostCSS source-map ve
+malicious offset reddi PASS. Yeni exact CI henüz yok.
+
+Actual Opus5.5/465.840ms ilk kaynak NO-GO: COMMIT sonrası cleanup yarışı ve
+stopped konteynerde eksik generation mount/env. Düzeltme: sınırlı backend wait,
+COMMIT makbuzunu koruma, REOPEN_GATE/readonly RECONCILE, restart=no/RO mount/env
+kontrolü; release hold, normalized full restore manifest kontrolü. Yeni9dosya
+120unit PASS. Owned stage8516470/marker/owner/cluster/backend0 doğrulamasından
+sonra7PG PASS. Restore audit filtresi ilk koşuda P2010/42883 `uuid = text`
+verdi; parameter ::uuid sonrası odaklı7/7 PASS. Son protected-content reconcile
+negatif testi de aynı owned-stage koşusunda PASS. Kapanış incelemesi/full CI açık.
+
+Native D202 bootstrap'ın tek ExecStartPre config--quiet olduğu exactbaseSHA ile
+ölçüldü; mevcutapp restartunless-stopped/mountfalse/envfalse. Kaynakinstaller ve
+konteyner yeniden yaratma henüz üretime uygulanmadı. Reset/veri silme/reopen/newT0
+yok; worker kapalı, fullsize/native kontrol/rename/boot/p95/168h ve finalM2 açık.
+
+02:06 son kaynak quality: format:check/lint/typecheck ve üç bash/iki Node syntax
+exit0. Ek release-script19unit PASS; bu testler120unit sayısına ek ayrı kesittir.
+
+## 6 Ekim 02:18 — ikinci actual hakem ve shutdown sınırı
+
+Exact206be378762f02411a10606ffb9b65ae1de2fca0 için actual Opus5.5/440.438ms,
+49exactGit kaynak/tools-disabled. Önceki Y1/Y2/O1–O4 kapandı; yeni Y3 nedeniyle
+merge NO-GO: bootstrap shutdown compose down pinli konteyner ID'lerini siliyordu.
+Drop-in baseExecStop'u stop--timeout60 ile değiştirir. Terminal DB/mirror kabulü
+sonrası root compose requiredtrue/restartunless-stopped ile atomik yayımlanır;
+maintenance reboot için apt explicitfalse freeze kapısı eklendi. İlk3dosya53unit
+PASS; son explicit apt negatif testleriyle3dosya57unit PASS.
+Native02:17 apt ayarı yok, yeni false kapısı henüz karşılanmıyor; mutation yok.
+Native02:11 root/deploy user managers/unitfiles/cron'da proje/PG yazıcısı yok;
+12projectunit, 4active timer, eski activation disabled. D202/OID16385/cluster,
+7013topic/21628entry, settings311(runtimefalse/diğer3true), QUEUED1/lease0 sabit.
+Üretimfree24.109.481.984bayt; 3DB+1GiB19.104.732.229bayt kapısıPASS. Operatör
+free8.8GB; localfullsize alan hesabıOPEN. Operatör gece yedeği01:40 success/exit0,
+MainPID0. Reset/reopen/newT0 yok. Yeni exact CI ve Y3 closure ayrı kapılardır.
+
+02:20 exact206 CI37402537444 **7/7 SUCCESS**; 93browser ve coverage
+satır%93,97/dal%86,53/fonksiyon%95,34 native log'da ölçüldü. Bu yeşil kaynak
+Y3 inceleme ret kaydını kapatmaz. Yeni shutdown/terminal/apt değişikliği için
+02:21 format:check/lint/typecheck exit0; son3dosya57unit PASS. YeniSHA/CI/closure
+ayrı kapıdır; production reset/reopen hâlâ yok.

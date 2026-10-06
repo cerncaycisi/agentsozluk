@@ -52,6 +52,10 @@ fi
   exit 90
 }
 test "$(hostname)" = agent-sozluk-prod || exit 91
+if test -e /opt/agent-sozluk/reset/maintenance-hold || test -L /opt/agent-sozluk/reset/maintenance-hold; then
+  printf 'RELEASE_FAIL code=RESET_MAINTENANCE_HOLD\n' >&2
+  exit 97
+fi
 test "$(git -C "$app_root" remote get-url origin)" = \
   https://github.com/cerncaycisi/agentsozluk.git || exit 92
 test -f "$compose_file" || exit 93
@@ -63,6 +67,37 @@ test "$(cat "$runtime_root/.release-lock/owner" 2>/dev/null)" = "$candidate_sha:
   printf 'RELEASE_FAIL code=RELEASE_LOCK_NOT_OWNED\n' >&2
   exit 97
 }
+compose=(
+  docker compose
+  --env-file "$env_file"
+  -f "$compose_file"
+)
+
+# DB backup dışında kalıcı root nesil latch'i bütün sonraki cutover'larda bağlanır.
+# İlk reset hazırlığı bu dizini yaratır; latch henüz yokken legacy boot mümkündür.
+generation_dir=/opt/agent-sozluk/reset/generation
+if test -e "$generation_dir" || test -L "$generation_dir"; then
+  test ! -L "$generation_dir"
+  test "$(stat -c '%U|%G|%a' "$generation_dir")" = 'root|root|755'
+  test "$(readlink -e "$generation_dir")" = "$generation_dir"
+  generation_override="$runtime_root/reset-generation-compose.yaml"
+  test ! -L "$generation_override"
+  test "$(stat -c '%U|%G|%a' "$generation_override")" = 'root|root|444'
+  compose+=(-f "$generation_override")
+  if test -e "$generation_dir/required.json"; then
+    node - "$generation_dir/current.json" <<'NODE'
+const fs = require("node:fs");
+try {
+  const mirror = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  if (!["TRAFFIC_OPEN", "ROLLED_BACK"].includes(mirror.state)) throw new Error();
+} catch {
+  process.stderr.write("RELEASE_FAIL code=RESET_MAINTENANCE_HOLD\n");
+  process.exit(97);
+}
+NODE
+  fi
+fi
+
 # Tamamlanmamış bir migration operasyonu varken migration'sız dağıtım olmaz.
 # `cutover-done` yazılıp işaret silinemeden kesilen bir koşu tamamlanmıştır:
 # işaret kaldırılır (Sol, 23 Eylül).
@@ -76,12 +111,6 @@ if test -e "$runtime_root/.migration-operation" && test "$migration_mode" = no-m
   fi
 fi
 install -d -m 0700 "$state_dir"
-
-compose=(
-  docker compose
-  --env-file "$env_file"
-  -f "$compose_file"
-)
 
 hash_stream() {
   sha256sum | cut -d ' ' -f 1
@@ -392,6 +421,10 @@ build_candidate_image() {
     image_config_digest="$image_id"
   fi
   printf '%s\n' "$image_config_digest" >"$state_dir/candidate-image-config-digest"
+  if test -e "$generation_dir/required.json"; then
+    docker run --rm --pull never --network none --entrypoint test "$candidate_image" \
+      -f /app/scripts/verify-reset-generation.ts </dev/null
+  fi
   docker run --rm --entrypoint /app/node_modules/.bin/tsx \
     "$candidate_image" scripts/release-smoke.ts </dev/null
   printf 'RELEASE_IMAGE_READY sha=%s image_id=%s\n' "$candidate_sha" "$image_id"
@@ -478,6 +511,7 @@ write_no_migration_override() {
       '      - >-' \
       '        ./node_modules/.bin/tsx scripts/validate-environment.ts &&' \
       '        node ./scripts/wait-for-database.mjs &&' \
+      '        ./node_modules/.bin/tsx scripts/verify-reset-generation.ts &&' \
       '        exec node server.js'
   } >"$override"
   chmod 0600 "$override"
@@ -537,12 +571,7 @@ cutover() {
     test "$leases" = 0
     pre_cutover_lease_scan
     write_no_migration_override
-    candidate_compose=(
-      docker compose
-      --env-file "$env_file"
-      -f "$compose_file"
-      -f "$override"
-    )
+    candidate_compose=("${compose[@]}" -f "$override")
     APP_IMAGE="$candidate_image" "${candidate_compose[@]}" config --quiet </dev/null
     APP_IMAGE="$candidate_image" "${candidate_compose[@]}" up -d \
       --no-deps --no-build --pull never --force-recreate app </dev/null
@@ -583,6 +612,7 @@ if (!Array.isArray(value) || value[0] !== "/bin/sh" || value[1] !== "-c") proces
 const command = value.slice(2).join(" ");
 if (!command.includes("validate-environment.ts") ||
     !command.includes("wait-for-database.mjs") ||
+    !command.includes("verify-reset-generation.ts") ||
     !command.includes("node server.js") ||
     command.includes("prisma migrate")) process.exit(1);
 NODE

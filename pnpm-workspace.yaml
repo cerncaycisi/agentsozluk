@@ -35,6 +35,7 @@ onlyBuiltDependencies:
 #   sharp    : libheif zafiyetleri (>=0.35.4)
 #   fast-uri : host karışıklığı (GHSA-v2hh-gcrm-f6hx, -7p8r-x3mc-p8w7 …; >=3.1.6).
 #              `@hookform/resolvers` 5.9 → `ajv` zinciri (#282, 2 Ekim 2026).
+#   source-map-js: indexed source-map offset DoS (GHSA-68fv-2mgg-jv7q; >=1.2.2).
 overrides:
   postcss: 8.5.28
   nanoid: 3.3.19
@@ -43,3 +44,4 @@ overrides:
   deepmerge-ts: 8.0.0
   sharp: 0.35.4
   fast-uri: 3.1.8
+  source-map-js: 1.2.2

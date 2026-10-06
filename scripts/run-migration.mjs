@@ -69,6 +69,19 @@ async function main() {
   if (connected !== targetDatabase) fail("TARGET_MISMATCH");
   process.stdout.write(`A5_MIGRATION_TARGET database=${connected}\n`);
 
+  // Gölge scratch yalnız migration provasıdır. Kanonik eski yedek nesli önce reddedilir.
+  if (targetDatabase === "agent_sozluk") {
+    const generation = spawnSync(
+      "./node_modules/.bin/tsx",
+      ["scripts/verify-reset-generation.ts"],
+      {
+        env: { ...process.env, DATABASE_URL: datasourceUrl },
+        stdio: "inherit",
+      },
+    );
+    if (generation.error || generation.status !== 0) fail("RESET_GENERATION_ADMISSION_REJECTED");
+  }
+
   const result = spawnSync("./node_modules/.bin/prisma", ["migrate", "deploy"], {
     env: { ...process.env, DATABASE_URL: datasourceUrl },
     stdio: "inherit",

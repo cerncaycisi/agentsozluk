@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 01:02 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 02:18 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
 kapalı; başlamış koşu ve canlı lease sıfır. Son içerik sayımı 23:26'da 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
@@ -42,11 +42,18 @@ kanonik reset rollback yedeği veya gerçek restore kabulü değildir.
 **Sırada:** ayrı üretim yürütücüsünün son kod/inceleme/CI kapıları, gerçek boyutlu
 taze yedek ve restore, üretim gölgesinde aynı çekirdekle prova, bütün yazarların
 dondurulması, tek kullanımlık reset, iç kabul ve doğrulanmış açılış var.
-Yerel çekirdeğin önceki59unit/5PG ve son ayrı7dosya86unit koşusu geçti.
-Son boot-guard eklemeleri bu86test kesitinden sonradır; henüz tamCI/hakem sonucu yok. Küçük sahipli DB'de gerçek COMMIT,
-kapının kapanıp açılması, 410, kimlik koruması ve ikinci reset reddi ölçüldü;
-üretim veya tam boyut kabulü değildir. Mevcut yerel role için non-superuser denemesi
-pg_hba/P1010 ile migration öncesinde durdu; kullanıcı erişim ayarları değiştirilmedi.
+Draft [PR335](https://github.com/cerncaycisi/agentsozluk/pull/335), kaynak435:
+ilk full CI'da beş iş geçti, quality bağımlılık güvenlik açığında kaldı ve validate
+FAIL oldu. Actual Opus5.5 iki yüksek bulguyla NO-GO verdi; sonuç korunuyor.
+Bulgular için COMMIT makbuzunu koruyan cleanup/uzlaşı yolu, konteyner generation
+zorunluluğu, release hold ve restore tam manifest karşılaştırması düzeltildi.
+Odaklı 120 unit ve sahipli stage 7 PostgreSQL testi geçti; son kaynak için
+format/lint/typecheck ve shell/Node syntax geçti. İkinci actual Opus incelemesi
+önceki kaynak bulgularını kapatıp shutdown'da pinli container ID kaybını buldu;
+stop override, terminal restart ve açık apt false kapıları hazırlanıyor. Son
+exact full CI ve Y3 kapanışı ayrı kapılardır. Küçük eski gerçek COMMIT
+üretim veya tam boyut kabulü değildir. Yerel non-superuser pg_hba/P1010 reddi
+nedeniyle kullanıcı erişim ayarları değiştirilmedi.
 Üretimin kendi non-superuser hesabıyla ana/control DB bağlantıları salt okunur
 olarak geçti. Gerçek volume adı `agent-sozluk_postgres_data`; önceki varsayılan
 underscore pini kaynakta düzeltildi. Aktif/exited bootstrap service'in ExecStop'u

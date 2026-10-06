@@ -6828,3 +6828,89 @@ Tekrarlama: başarısız/noresultpeer'iGO sayma; varsayılanvolume/socket/event'
 üretim kusuru sayma; tekdeneme transferini tekrarlama. Cache tekrar okumayımedia
 scan; codecdecode'yiactualrestore; eskişemaarchive'ıPRE_RESET_BIGINT sayma.
 Bootstrapservice'i durdurarakDB'yi indirme; yeni bootgates'i kurulmuş diye yazma.
+
+## 6 Ekim 01:24 UTC — namespace fixture bağlantı ayrımı
+
+Base993/executor kaynak:8dosya106unit PASS. Native bootstrap readonly exact
+fragment/no-dropin/no-reload aktif-exited0; production mutation yok. İlk
+owned-stage PG koşusu4PASS/1FAIL: stale-plan beklenirken
+GREAT_RESET_PRECONDITIONS_FAILED. Genel fixture pool10 idle bağlantıları ile
+tek-backend mutation kapısı ayrıldı; fixture client kapandı, çekirdek kendi
+pool1 client'ıyla çalıştı. Aynı stageOID8516470/owner-agent/nonce-marker/cluster
+ve backend0 yeniden kanıtlanınca5PGPASS. Üretim kapısı gevşetilmedi; ek idle
+backend negatif testi final koşuya ekleniyor. Quality ortasında değişen test
+dosyası format ret verdi; bash syntax sonucu format PASS diye yorumlanmadı.
+Tekrarlama: birden çok fixture bağlantısını production reset regresyonu sayma;
+format/lint/type komutlarından sonra ayrı syntax komutunun exit0'ını bütün
+quality sonucu sanma; küçük rollback provası fullsize/canlı reset değildir.
+
+01:28 final odaklı kaynak:107unit/6PGPASS. Ayrı idle observer backend
+negatif testi precondition ret/intentNULL/content1 ile pool nedenini doğrudan
+kanıtladı. Source rollback kabulü eski canonicalOID varsayımını taşıyordu;
+rename yeniDB OID'sini koruduğundan imzalı terminal restoredDatabaseOid ve
+audit/actual eşliği eklendi, immutable source binding değişmedi. Canlı
+restore veya production fault ölçümü iddia edilmez. Yeni unit fixture
+import() type annotation ESLint ret verdi; Record type ile düzeltildi,
+sonraki lint/type PASS. OID düzeltmesinden sonraki final quality ayrıca koşulur.
+Tekrarlama: source OID'yi restore rename sonrası actual OID sanma; terminal
+OID'yi unsigned/ordinary-state override ile kabul etme.
+
+01:32 final quality bütün6komut ayrı exit0: format/lint/typecheck, bash syntax
+ve ikiNode syntax. Yanıltıcı combined exit kullanılmadı. Exactsource commit/CI
+ve bağımsız kod hakemi sırada; measured107unit/6PG canlı kabulü sayılmaz.
+
+## 6 Ekim 02:04 UTC — PR335 ilk CI/hakem sonucu ve odaklı düzeltme
+
+Exact source435595a235989ceab95a0845981cba4806cd38fc, base993;
+draft PR335 T3 bağlantısı kaydedildi. CI37399661339: database/container/browser/
+coverage/behavior SUCCESS, quality production audit FAIL, validate FAIL.
+`source-map-js@1.2.1` GHSA-68fv-2mgg-jv7q için override1.2.2;
+frozen install ve production audit PASS. Node22.23.1/PostCSS source-map ve
+malicious offset reddi PASS. Yeni exact CI henüz yok.
+
+Actual Opus5.5/465.840ms ilk kaynak NO-GO: COMMIT sonrası cleanup yarışı ve
+stopped konteynerde eksik generation mount/env. Düzeltme: sınırlı backend wait,
+COMMIT makbuzunu koruma, REOPEN_GATE/readonly RECONCILE, restart=no/RO mount/env
+kontrolü; release hold, normalized full restore manifest kontrolü. Yeni9dosya
+120unit PASS. Owned stage8516470/marker/owner/cluster/backend0 doğrulamasından
+sonra7PG PASS. Restore audit filtresi ilk koşuda P2010/42883 `uuid = text`
+verdi; parameter ::uuid sonrası odaklı7/7 PASS. Son protected-content reconcile
+negatif testi de aynı owned-stage koşusunda PASS. Kapanış incelemesi/full CI açık.
+
+Native D202 bootstrap'ın tek ExecStartPre config--quiet olduğu exactbaseSHA ile
+ölçüldü; mevcutapp restartunless-stopped/mountfalse/envfalse. Kaynakinstaller ve
+konteyner yeniden yaratma henüz üretime uygulanmadı. Reset/veri silme/reopen/newT0
+yok; worker kapalı, fullsize/native kontrol/rename/boot/p95/168h ve finalM2 açık.
+
+Tekrarlama: başarılı COMMIT'i finally hatasıyla kayıp sayma; belirsiz sonucu
+kör reset/restore ile tekrarlama. generation mount'u diskte oluşturmayı eski
+konteynerin onu taşıdığı kanıtı sayma; yeni ID pinlenmeden reset yok. HMAC'ın
+üretimde doğrulandığını yazma; yalnız operatör doğrular. Failed source435CI ve
+NO-GO hakem tarihçesini yeşil olarak yeniden adlandırma. Node shell varsayılanı
+v24'tür; bütün geçerli proje kapılarını explicit Node22 PATH ile çalıştır.
+
+02:06 son kaynak quality: format:check/lint/typecheck ve üç bash/iki Node syntax
+exit0. Ek release-script19unit PASS; bu testler120unit sayısına ek ayrı kesittir.
+
+## 6 Ekim 02:18 — ikinci actual hakem ve shutdown sınırı
+
+Exact206be378762f02411a10606ffb9b65ae1de2fca0 için actual Opus5.5/440.438ms,
+49exactGit kaynak/tools-disabled. Önceki Y1/Y2/O1–O4 kapandı; yeni Y3 nedeniyle
+merge NO-GO: bootstrap shutdown compose down pinli konteyner ID'lerini siliyordu.
+Drop-in baseExecStop'u stop--timeout60 ile değiştirir. Terminal DB/mirror kabulü
+sonrası root compose requiredtrue/restartunless-stopped ile atomik yayımlanır;
+maintenance reboot için apt explicitfalse freeze kapısı eklendi. İlk3dosya53unit
+PASS; son explicit apt negatif testleriyle3dosya57unit PASS.
+Native02:17 apt ayarı yok, yeni false kapısı henüz karşılanmıyor; mutation yok.
+Native02:11 root/deploy user managers/unitfiles/cron'da proje/PG yazıcısı yok;
+12projectunit, 4active timer, eski activation disabled. D202/OID16385/cluster,
+7013topic/21628entry, settings311(runtimefalse/diğer3true), QUEUED1/lease0 sabit.
+Üretimfree24.109.481.984bayt; 3DB+1GiB19.104.732.229bayt kapısıPASS. Operatör
+free8.8GB; localfullsize alan hesabıOPEN. Operatör gece yedeği01:40 success/exit0,
+MainPID0. Reset/reopen/newT0 yok. Yeni exact CI ve Y3 closure ayrı kapılardır.
+
+02:20 exact206 CI37402537444 **7/7 SUCCESS**; 93browser ve coverage
+satır%93,97/dal%86,53/fonksiyon%95,34 native log'da ölçüldü. Bu yeşil kaynak
+Y3 inceleme ret kaydını kapatmaz. Yeni shutdown/terminal/apt değişikliği için
+02:21 format:check/lint/typecheck exit0; son3dosya57unit PASS. YeniSHA/CI/closure
+ayrı kapıdır; production reset/reopen hâlâ yok.
