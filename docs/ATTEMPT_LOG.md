@@ -8263,3 +8263,60 @@ yok. PR340 T3’e bağlı; exactCI37490272863 hâlâ yürüyordu, merge/PASS yok
 Private aday bütün-kopya native inspector syntaxPASS, **çalıştırılmadı**;
 Alpine/native/cutover kabulü açık. Tekrarlama: glibc fixture’i aday Alpine
 kanıtı yapma; sourcepeer’i artifact/deploy onayı sayma; P7 süre bağını repin etme.
+
+## 6 Ekim16:09–16:12 UTC — sharp kaynak yaması main’de; native final denetimi kaynak kabulü
+
+PR340 exacthead43ac75b3000fdd3124e29cf7eb0e0fe5525f3f4d,
+CI37490950943 yediSUCCESS;16:07:47 finalvalidateSUCCESS. Merge öncesi exact
+head/CI/review state/MERGEABLE+CLEAN ve remote base97ad68 eşliği tekrar okundu.
+Source peer actualOpus5.5/48.594ms ae84f975;43ac75b delta yalnız üç belge.
+16:09:35UTC merge245b583e76e30edeb47aafaf7dce66c7b6ed3260; root/remote
+main aynı ve temiz. Exact mainCI37493481161 başladı; henüz sonucu yok.
+Üretim d083, P7 ve worker aynı; bu repository teslimi production cutover değil.
+Eski37490272863 superseded; yenihead için eski yeşil kabul edilmedi.
+
+CLI ilk admission’da baseRefOid JSON alanını desteklemediği için mutasyondan
+önce ret verdi. REST pull.base.sha ile exactbase bağı kuruldu; yedi kontrol ve
+reviewstate yeniden okunup --match-head-commit ile yalnız doğruhead birleştirildi.
+Gh pr edit eski Projects(classic) GraphQL hatasında başarısızdı; aynı body REST
+PATCH ile yazıldı. T3 PR340 linked/merged ayrıca görüldü. Tekrarlama: desteklenmeyen
+CLI alanını tekrar çağırma; readmodel hatasını kod regresyonu sayma.
+
+Private nativeinspector V1 actualOpus5.5/76.203ms NO_GO: basenamealias körlüğü,
+metadata/native ayrımı, aynı süreçte çoklu SONAME ve yüklenen dosya bağları eksik.
+V2 actualOpus5.5/69.881ms NO_GO: child beyanına fazla güven, kaynak/kapanış
+hashleri ve buildercwd/clean/HEAD-lock eşliği eksik. İkisi çalıştırılmadı;
+retler korunur. V3 SHA51638274e560908a9f493d367609277653825e09be8a12cef295f725d593d223
+actualOpus5.5/110.889ms GO_READONLY_INSPECTOR_ONLY koşullu. Haiku yardımcı
+kullanımı üç kayıtta ayrıca korunur. Parent üçüncü taraf paket import etmeden
+bağımsız hash hesaplar; her kopya ayrı süreç; Next çözüm yolu/kopya eşliği,
+/app alias taraması/globalpackage envanteri, realpath, bütçe ve safe retler.
+LockedSRI tarball doğrulaması sharp/colour/detect-libc/semver/native/libvips altı
+paket125dosya. BinarySHA14ce8ddd283c101f225089152da805632568bfa372d336ccbfdd811f4f1dca02;
+libvipsELFSHA979b625437190a1970b835164e0e30d47dc60159ce6a394ce78cc40cb9d59ab8.
+Bunlar trusted upstream dosya pinleri; **canlı imaj native kabulü değildir**.
+
+Gerçeksharp0.35.5 dist/utility.cjs kaynağı: sharp.versions bileşenleri metadata;
+vips de nesne overwrite sonrası metadata olabilir. Önceki “rsvg nativeversion”
+yorumu daraltıldı: rsvg versions metadata + SRI-bound ELF eşliği; direct native
+libvipsVersion() ayrıca kullanılmalı. Yerel glibc directbinding8.18.7/isGlobalfalse/
+isWasmfalse ve loadedsharedobjectlibvips ölçümü yalnız hazırlıktır.
+
+V3 beş gerçek yerel admissionret fixture PASS. node -e argv kaynak byte’ları ve
+stdinJSONcontext hash kontrolü pozitif geçti; sonra Ubuntu OS için beklenen
+CANDIDATE_OS_NOT_MUSL_ALPINE/exit1. Shell command substitution newline kesebilir;
+bu yöntem kullanılmaz. Context/source/hash fixture’ları native başarı değildir.
+Manifest gerçek artifactSHA temiz exactcheckout’undan yeniden üretilmeli; hazırlık
+43ac75b ile başka imaj kabul edilmez. Hakemin ae84f975 parent’ına ilişkin C1
+etiketi gerçek finaladay SHA’yı belirlemez; kod actualimageSHA eşliğini zorlar.
+Closuretamper/path/hash guards kaynak incelemesi var, ayrı native fixture yok;
+yaml parser operator güven kökü ayrıca seal edilmedi; altı packagegraph exactlock
+ile yeniden doğrulanmalı. Systemlibc/binaries immutable OCI kimliğine dayanır.
+Readonlyrootfs ve nooverrideenv zorunlu. Execution/nativePASS yok; productioncalls0.
+
+Saatlik/deadline timer native aktif; son15:30service success/exit0, bir sonraki
+16:30UTC, final13Ekim14:28:39UTC. Yanlış -hourly.timer isimli okuma gerçekunit
+değildi; list-timers/loadstate ile doğru isim doğrulandı, reset/restart yok.
+T3 ana sayfa gerçekreload readycomplete/mainpresent/10article/10publicentrypath;
+gövde/prompt/password/session alınmadı. İlk≤20entrysampler bütünhafta kabulüne
+çevrilmez. P7/Gate11/12/P8/finalM2 açık; goalaktif.

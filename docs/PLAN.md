@@ -145,10 +145,12 @@ bağları bu pencereye uygun değil; aynen çalıştırılmaz. Uktenin başka sa
 Güncel T3 browser koordinatörü ve peer kapanışı açık; bu hazırlık canlı Gate11
 PASS değildir. Gate10 geçmeden bu işlemler, Gate12 restore/reboot veya P8 yok.
 
-**Yeni güvenlik işi — 6 Ekim15:41:** main97ad68c2 CI37487097505 kalite işi,
+**Güvenlik kaynak yaması tamam — 6 Ekim16:09:** main97ad68c2 CI37487097505 kalite işi,
 GHSA-wq5f-xc86-pv6w nedeniyle production dependency audit’te reddedildi.
 `sharp`0.35.5 düzeltmesi ayrı dalda; lockfile yalnız sharp/libvips ailesini
-günceller, audit PASS ve ilgili32test PASS. Henüz merge veya canlı dağıtım yok.
+günceller, audit PASS ve ilgili32test PASS. PR340 head43ac75b,
+exactCI37490950943 yediSUCCESS sonrası16:09:35UTC merge edildi:
+245b583e76e30edeb47aafaf7dce66c7b6ed3260. Canlı dağıtım henüz yok.
 Exact d083 imajında native sharp0.35.4/librsvg2.62.91 Next bağımlılığından
 çözüldü; Alpine/glibc runtime alanıNULL, built images.unoptimized=true.
 Health/ready200 ve zararsız SVG optimizer isteği404. Bu mevcut erişim
@@ -156,8 +158,9 @@ korumasının ölçümüdür; evrensel istismar yokluğu veya yama kabulü deği
 ActualOpus5.5/48.594ms exactae84f975 için GO_SOURCE_PATCH_ONLY verdi;
 Haiku yardımcı kullanımı ayrıca kaydedildi.15:46 native binary adı
 sharp-linuxmusl-x64-0.35.4.node doğrulandı. **Karar:** bilinen decoder yolu
-kapalıyken mevcut P7 sürer; kaynak yaması PR340 exactCI37490272863 sonrası
-merge edilir, canlı yama P7 kabulü sonrasındaki dağıtıma hazırlanır.
+kapalıyken mevcut P7 sürer; kaynak yaması main’de, canlı yama P7 kabulü
+sonrasındaki final dağıtımına hazırlanır. Eski37490272863 yeni doc head için
+kullanılmadı;43ac75b exactCI37490950943 doğrudan doğrulandı.
 Bu koşullu bekleme evrensel güvenlik veya musl’da açık yokluğu iddiası değildir.
 Optimizer ayarı açılırsa, yeni sharp/görsel tüketicisi eklenirse, glibc binary
 seçilirse, duyuru musl/ağ erişimine genişler veya kamu PoC çıkarsa, ya da
@@ -168,6 +171,18 @@ Dağıtım doğal pencereyi keserse eski P7 korunur ve gerçek resume’dan yeni
 başlar; observer bağları değiştirerek devamlılık üretilmez.
 15:30 saatlik kesit: doğal14/başarılı12/açık2/teknik hata0, uyarı0;
 36yazarın her birinde en az3başarı şartı henüz sağlanmadı.
+
+**Final imaj kontrolü hazırlandı; canlı kabul değil:** private inspector’ın ilk
+iki revizyonu NO_GO aldı; alias/kopya taraması, her kopya için ayrı native süreç,
+metadata ile gerçek ELF ayrımı ve bağımsız parent hash denetimi düzeltildi.
+V3 actualOpus5.5/110.889ms GO_READONLY_INSPECTOR_ONLY koşullu kabulü;
+beş yerel admission-ret fixture ve byte-exact argv/context hash kontrolü geçti.
+Lock SRI üzerinden altı runtime paketinin125 dosyalık güvenilir envanteri
+hazırlandı; native dosyalar aynı upstream paket SRI’sine bağlandı. Manifest gerçek
+aday SHA için yeniden üretilir; mevcut hazırlık43ac75b farklı imajda kullanılamaz.
+Readonly rootfs/no overrideenv/outer OCI kimliği zorunlu; native aday yürütmesi yok.
+16:00 civarı T3 public ana sayfa render’ında10entry bağlantısı ve10article görüldü;
+entry gövdeleri toplanmadı. Bu kamu örneği tam haftalık provenance kabulü değildir.
 
 ### Canlı ve tamamlanan teslimler
 
@@ -375,7 +390,9 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
 2. **P8 ve final M2:** gerçek soy/kalite/kaynak/nüfus/kapasite kanıtıyla tek aday
    veya ölçülmüş NO_BIRTH. DONE-084 için son kaynak/imaj/runtime/güncelmain eşliği
    doğrudan ölçülür. Kapanış commit’i → exact CI/artifact → aynı SHA dağıtımı
-   → canlı eşlik ölçümü → aynı SHA final `verify:m2` sırası izlenir; arada main
+   → canlı eşlik ölçümü → aynı SHA final `verify:m2` sırası izlenir; sharp yamasının
+   aday Alpine imajındaki tüm uygulama kopyaları ve seçilen native binary/kütüphane
+   hash eşliği dağıtım önkoşuludur. Arada main
    değiştirilmez. PASS satırları doğrudan geçmiş canlı kanıtına dayanır; yeni
    SHA’nın eşliği dağıtım sonrasında ayrıca ölçülmeden final kabul verilmez.
    Final verify:m2 içinde M1 regresyonu/811 eşleme/543 M2,
