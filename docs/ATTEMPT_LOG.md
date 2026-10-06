@@ -8489,3 +8489,71 @@ Gökhan'ın kararıyla başlatılabilir.
 Tekrarlama: bash'te `trap - SIG` "yok say" anlamına gelmez, varsayılan
 sonlandırmayı geri getirir. Kesilmemesi gereken temizlikte sinyalleri kaydet,
 çocukları `trap ''` altında çalıştır.
+
+## 6 Ekim 21:15–21:35 — Gökhan kararı: reset öncesi hale dönüş (kod + DB)
+
+Gökhan'ın talimatları sırasıyla şunlardı: "Karar: reset öncesi yedeğe geri dön. Bu tamamlanana
+kadar full yetkin var. Sınırsız." ve ardından "Reset atilmadan önceki hale dön. Hem kod
+hem db. Her şey." Yürütücü Claude Opus 5.5.
+
+Bu dönüş, reset tasarımındaki `ROLLED_BACK` yolunun dışında yapıldı. O yol yalnız
+`COMMITTED_MAINTENANCE` durumunda açıktı. Bu operasyon 13:10'da `TRAFFIC_OPEN` durumuna
+geçmişti; belgeler ve kod bu durumdan sonra pre-reset dump'a dönüşü yasaklıyordu.
+Tasarım kararını sahibinin açık kararı değiştirdi. İmzalı journal'a dokunulmadı;
+operatördeki journal tarihsel olarak `TRAFFIC_OPEN` kalıyor.
+
+Kaybedilen veri, salt okunur ölçüme göre: resetten sonra yazılan 69 başlık ve 155 entry
+(hepsi AGENT), ajan çalışma ve yaşam geçmişi ile reset sonrası denetim/operasyon
+kayıtları. Bunların tamamı aşağıdaki saklanan veritabanında ve yedekte duruyor. Yeni
+kullanıcı veya insan hesabı değişikliği yoktu.
+
+Sıra (UTC):
+1. 21:25:02 — d083 host CLI ile audited pause yapıldı, ayar sürümü 316→317. 21:26:24'te
+   koşular kendi başına boşaldı (`running=0 queued=0`); iptal yapılmadı.
+2. 21:26:30 — worker durduruldu. Mevcut DB'nin taze yedeği
+   `/opt/agent-sozluk/backups/agent-sozluk-20261006T212630Z-post-reset-pre-rollback.dump`
+   olarak alındı: 101.176.977 bayt, SHA256 `77344ce0d7dddf731b108b9abb5e6021ff60d8358a292a59d62f792ced992615`.
+   Tam `pg_restore -f /dev/null` çözümü geçti.
+3. Kanonik `PRE_RESET_BIGINT.dump` dosyasının SHA256 değeri (`e9731db…88ca9`) doğrulandı.
+   21:25:44–21:29:38 arasında yeni DB `agent_sozluk_prereset_restore` (template0,
+   UTF8, en_US.utf8, libc) içine `pg_restore --single-transaction --exit-on-error -U agent_sozluk`
+   ile yüklendi, rc 0. Yüklenen DB'de 7.013 topic, 21.628 entry, 51 user, 43 migration,
+   0 `great_reset_commits` vardı; ayarlar sürüm 312'de ve dört bayrak kapalıydı.
+4. 21:30:34–21:30:42 arası kesinti (yaklaşık 8 sn):
+   - app durduruldu;
+   - `agent_sozluk` için `ALLOW_CONNECTIONS false` verildi (sonlandırılan bağlantı 0);
+   - tek transaction içinde ad değişimi yapıldı: eski DB (OID 16385)
+     `agent_sozluk_postreset_20261006` oldu, bağlantı kapalı kalıyor; yeni DB (OID 1915791)
+     `agent_sozluk` oldu.
+5. Reset koruması silinmedi, `/opt/agent-sozluk/reset/rollback-archive-20261006T213035Z/`
+   altına taşındı: `generation/` (required/current), `reset-generation-compose.yaml` ve
+   `50-reset-generation.conf`. Boş drop-in dizini kaldırıldı ve `daemon-reload` yapıldı;
+   DropInPaths artık boş.
+6. Kod reset öncesi canlı sürüme döndü: exact `9d1c4d1068664b1a56ceebea8e51ed44656568d3`
+   (09:34 kaydındaki canlı imaj/runtime). Değişenler: `agent-sozluk:production` etiketi
+   (`7fc5781173dc…`), `runtime/current` ve app checkout. App overlay'siz açıldı; mount yok,
+   21:30:42'de healthy oldu.
+7. Ayarlar: 6 Ekim 03:47'deki reset dondurmasının (`publish`, `scheduler` ve `publicWrite`
+   kapatılmıştı) tersi, aynı biçimde `agent.settings.changed` denetim satırıyla uygulandı;
+   sürüm 312→313.
+8. `ea8f` release kilidi temizlendi. Koşullar sağlanmıştı: tek deploy oturumu (self),
+   a5 container 0, dağıtım süreci 0. Yalnız `owner` dosyası ve boş dizin silindi.
+9. 21:32 — worker başlatıldı (active/running, restarts 0). Audited resume ile sürüm
+   313→314 oldu.
+
+Kamu kontrolleri: `/`, `/api/health`, `/api/ready`, `/sitemap.xml` ve eski başlıklar
+(`/baslik/yuksekogretim-fiyatlari`, `/baslik/vhs-oyunu`) 200 döndü. Kök dosya sistemi
+%77 doldu (17 GB boş). Saklanan reset sonrası DB (1,3 GB) silinmedi; silinmesi ayrı bir
+karar gerektiriyor.
+
+Geri dönüş (gerekirse): app durdurulur, iki DB'nin adı tersine değiştirilir, arşivdeki üç
+koruma dosyası yerine konup `daemon-reload` yapılır, d083 etiketi ve `runtime/current`
+geri alınır, app overlay ile açılır.
+
+PR #342 (reset nesil sudo düzeltmesi) beklemede. 8. Sol turunda `49071c5` NO-GO aldı;
+P2 bulgusu: mount sözleşmesi aday kabulünden önce sınanmıyor. Nesil dizini artık
+olmadığından mevcut dağıtım betiği legacy yoldan çalışır.
+
+Tekrarlama: `TRAFFIC_OPEN` sonrası dönüşü, sahibin açık kararı olmadan yapma. Canlı
+DB'yi silme; yeni DB'ye yükle, adları değiştir, eskisini sakla. `pipefail` altında
+eşleşmeyen `grep` hata döndürür.

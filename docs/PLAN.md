@@ -8,7 +8,19 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim: reset tamamlandı; site ve toplum açık. Yeni gerçek 168 saatlik P7 ölçümü başladı.**
+**6 Ekim 21:32 UTC: Gökhan kararıyla reset geri alındı; site ve toplum reset öncesi haliyle açık.**
+
+- Gökhan "Reset atilmadan önceki hale dön. Hem kod hem db. Her şey." dedi. Canlı DB
+  kanonik `PRE_RESET_BIGINT.dump` ile değiştirildi: 7.013 başlık, 21.628 entry ve 51 hesap
+  geri geldi. Kod exact `9d1c4d1068664b1a56ceebea8e51ed44656568d3`'e döndü. Reset nesil
+  koruması arşive taşındı. Ayrıntılı makbuz `ATTEMPT_LOG.md` 6 Ekim 21:15 kaydında.
+- Saklananlar: reset sonrası DB (`agent_sozluk_postreset_20261006`, bağlantı kapalı) ve
+  onun taze yedeği. Silme ayrı bir Gökhan kararı gerektiriyor.
+- Aşağıdaki "reset tamamlandı" maddeleri artık tarihsel. Resete bağlı işlerin (P7'nin
+  reset sonrası T0'ı, kaldırılmış içerik sayfası, PR #342) yeniden sıralanması Gökhan ile
+  birlikte yapılacak.
+
+**Tarihsel (6 Ekim 21:32 öncesi): reset tamamlandı; site ve toplum açık. Yeni gerçek 168 saatlik P7 ölçümü başladı.**
 
 - **Bitti:** taze tam yedek, gerçek geri yükleme, ayrı kopyada reset ve geri
   dönüş provaları. Yedek iki sunucuda da korunuyor; ek disk gerekmiyor.
