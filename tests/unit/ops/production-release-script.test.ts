@@ -296,6 +296,11 @@ sudo() {
   esac
 }
 stat() { printf 'root|root|444\\n'; }
+timeout() {
+  test "$1 $2" = "--kill-after=5 30" || return 125
+  shift 2
+  "$@"
+}
 compose=(docker compose)
 ${remote.slice(start, holdEnd)}
 ${remote.slice(genStart, genEnd)}
@@ -318,6 +323,14 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
       const result = probe({ sudoWorks: false, generation: true, override: true });
       expect(result.status).toBe(97);
       expect(result.stderr).toContain("RELEASE_FAIL code=ROOT_PROBE_UNAVAILABLE");
+    });
+
+    it("bu PR'ın eklediği her root sudo sorgusu süreyle sınırlıdır", () => {
+      const section = remote.slice(start, genEnd);
+      const all = section.match(/sudo -n /gu) ?? [];
+      const bounded = section.match(/timeout --kill-after=5 30 sudo -n /gu) ?? [];
+      expect(all.length).toBe(4);
+      expect(bounded.length).toBe(all.length);
     });
 
     it("tek bir root sorgusunun hatasını yokluk saymaz", () => {

@@ -56,12 +56,13 @@ test "$(hostname)" = agent-sozluk-prod || exit 91
 # `test -e` sorgusu her yolda "yok" der. 6 Ekim'de nesil overlay'i bu yüzden
 # atlandı ve aday açılış kabulünde düştü. Reset yolları yalnız sudo ile okunur;
 # sudo veya sorgu hatası hiçbir zaman "yok" sayılmaz: yalnız açık `absent` kabul.
+# Her root sorgusu süreyle sınırlıdır; zaman aşımı da hata sayılır.
 reset_root=/opt/agent-sozluk/reset
 root_path_result=''
 root_path_state() {
   local state
   state="$(
-    sudo -n sh -c 'if test -L "$1"; then echo link; elif test -e "$1"; then echo present; else echo absent; fi' \
+    timeout --kill-after=5 30 sudo -n sh -c 'if test -L "$1"; then echo link; elif test -e "$1"; then echo present; else echo absent; fi' \
       root-path-probe "$1" </dev/null
   )" || state=''
   case "$state" in
@@ -105,8 +106,8 @@ resolve_reset_generation() {
   root_path_state "$generation_dir"
   if test "$root_path_result" != absent; then
     test "$root_path_result" = present
-    test "$(sudo -n stat -c '%U|%G|%a' "$generation_dir")" = 'root|root|755'
-    test "$(sudo -n readlink -e "$generation_dir")" = "$generation_dir"
+    test "$(timeout --kill-after=5 30 sudo -n stat -c '%U|%G|%a' "$generation_dir")" = 'root|root|755'
+    test "$(timeout --kill-after=5 30 sudo -n readlink -e "$generation_dir")" = "$generation_dir"
     test ! -L "$generation_override"
     test "$(stat -c '%U|%G|%a' "$generation_override")" = 'root|root|444'
     compose+=(-f "$generation_override")
@@ -115,7 +116,7 @@ resolve_reset_generation() {
     if test "$root_path_result" != absent; then
       test "$root_path_result" = present
       generation_required=1
-      mirror_json="$(sudo -n cat "$generation_dir/current.json")"
+      mirror_json="$(timeout --kill-after=5 30 sudo -n cat "$generation_dir/current.json")"
       MIRROR_JSON="$mirror_json" node - <<'NODE'
 try {
   const mirror = JSON.parse(process.env.MIRROR_JSON ?? "");
