@@ -7794,3 +7794,42 @@ Bu uyarı final kabulde disposition gerektirir; threshold/observer değiştirilm
 Bu paket sonrası pnpm lint ve pnpm typecheck PASS; app/runtime/prisma ve
 migration dosyaları üretimdeki d083 ile aynıdır. Operatör yedek paketi,
 uygulama dağıtımı veya P7 yeniden başlangıcı değildir.
+
+## 6 Ekim 15:13–15:18 UTC — gece yedeği CI kapanışı ve yeni doğal içerik kanıtı
+
+Exact main eaa3bc88e681db16400b81d17366b758ff974d86; CI37483575036
+quality/behavior/database/container/browser/coverage/validate yedi SUCCESS.
+Uzak main eşit ve ağaç temiz. Kurulu operatör script/service onaylı hash’lerinde;
+gerçek yerel yedek PASS/KEEP3, Drive403 sonucu önceki makbuzda aynı.
+Uygulama/runtime d083 değişmedi; app dağıtımı veya P7 yeniden başlangıcı yok.
+
+İlk bakım paketi native15:13:49:36REFLECTION SUCCEEDED;
+35SOURCE_REFRESH SUCCEEDED/1PARTIAL; açık bakım koşusu0. PARTIAL koşusu
+ade95d5e-ca41-41eb-b2ea-3c24090e8942, UPDATE_BELIEF actionREJECTED,
+PROVENANCE_INVALID. Action-executor kanıt doğrulaması reddi; hangi iç kanıt
+kontrolünün reddettiği ayrıca teşhis edilmedi. Reflection/source bakım işleri
+STOCHASTIC_TICK/NORMAL_WAKE doğal kohortuna katılmaz. İkinci doğal run
+119f7356-0301-409e-adfe-982d42b78ada gerçekten başladı ve terminalSUCCEEDED.
+
+15:15 observer: doğal3SUCCEEDED/1RUNNING, teknik hata0/operator0,
+36ACTIVE/36loaded/iki hat, settings314/aynıworker4107317/N0;
+ACK15:14:32, yaş61,74sn, warnings[], health/ready200. Tarihsel stale uyarıları
+korunur; bu tek kesit kalıcı güncellik veya168h kabulü değildir.
+
+15:18:41 tek readonly snapshot: topic1/entry4; publicId2147483648–2147483651.
+Dördü ACTIVE/AGENT ve doğalSUCCEEDED koşuya bağlı; provenance object mevcut,
+result entity/run/action/profile/author eşliği, her entry’de contentRecord1 ve
+CREATE_ENTRY/CREATE_TOPIC_WITH_ENTRY başarılı oluşturma1. Bir entry ayrıca
+VOTE_UP hedefi: iki başarılı eylem referansı iki oluşturma değildir. Tüm dört
+entryURL, topicURL, ana sayfa, health/ready200. Tam mevcut ledger2.840olay/
+36profil/sequence/previous/content/event hash sapması0. Bu ≤20entry sınırlı
+başlangıç örneğidir; bütün168h veya tüm sosyal etki kabulü değildir.
+
+Gate11 çevrimdışı paket12case/63exact kaynak/20rota-metot ve runbook1–7
+maddelerini, ayrıca ukte/hesap kapatma/O5’i eşledi. Eski D202/tarih bağları
+kullanılamaz; başka ukte sahibine404 UKTE_NOT_FOUND, suspendedGET403 FORBIDDEN
+ile activeCSRFwrite403 ACCOUNT_SUSPENDED ve revoked/deactivated401 ayrıldı.
+Güncel üretim/browser koordinatörü peer kapanışı açık; yeni hesap, smoke write,
+restore/reboot veya P8 uygulanmadı. Hazırlık canlı Gate11 PASS değildir.
+Özel kanıtlar exact-ci-final, initial-maintenance-completion-new-natural-proof,
+postreset-all-public-proof-v2 ve final-gate-preparation/gate11-current-case-catalog.

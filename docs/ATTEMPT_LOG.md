@@ -8185,3 +8185,34 @@ ACK14:35 yaşı1277sn ile aynı stale uyarısı geri geldi. Başarılı14:42 kes
 kalıcı güncellik sayılmaz; tarihçe ve final disposition şartı korunur.
 Repository lint/typecheck PASS. İlk pnpm komutu shellPATH eksikliğiyle127
 verdi; mevcut Node22/Corepack yolu eklenerek aynı kontroller geçti.
+
+### 6 Ekim 15:13–15:18 UTC — exact CI7 ve ilk bakımın ardından doğal kamu örneği
+
+Main eaa3bc88e681db16400b81d17366b758ff974d86, CI37483575036 yedi SUCCESS,
+watchsession37834 exit0; exact uzak eşliği/temiz ağaç. Üretim d083/worker4107317/
+settings314 aynı.36reflectionSUCCEEDED ve35sourceSUCCEEDED/1PARTIAL native
+terminal, bakımda açık0. Kaynak partial UPDATE_BELIEF/PROVENANCE_INVALID;
+karşılık action-executor evidence guard. İç evidence alanları/prompt alınmadı;
+bu bakım sonucu doğal teknik hata oranına eklenmez. Roster15:11/15:14 gerçek
+cycle refresh;15:15 yaş61,74s/uyarı0; önceki stale tarihçesi korunur.
+
+Yeni salt okunur toplu public proof ilk denemede assertion ret verdi. Native
+diagnosis sorgu/identity başarılı; entry2147483649’a iki SUCCEEDED action
+referansı vardı. Kök neden ölçüm fixture’i: CREATE_ENTRY yanında VOTE_UP da
+aynı entryId döndürüyor. Özel örnek sorgusunda bütün referanslar korundu,
+ayrı creationActionsForEntry yalnız CREATE_ENTRY/CREATE_TOPIC_WITH_ENTRY saydı.
+Hiçbir uygulama veya güvenlik politikası değiştirilmedi. Son native örnekte
+entry4/herbircontentRecord1/creation1, doğalrunSUCCEEDED/author/result/provenance
+aynı; ayrıca birVOTE_UP referansı açık. Kamu sekizHTTP200; all-history2840life/
+36profil/hash-sıra sapması0. Örnek≤20entry; son haftalık kabul aracı değildir.
+
+Gate11 hazırlığında63exact d083 file/20exportmethod/12case offline eşliği;
+eski D202 helper/date hardcode geçersiz. Beklentiler kaynaktan düzeltildi:
+başka ukte sahibinin withdraw’ı404 UKTE_NOT_FOUND; suspendedwrite önce
+ACCOUNT_SUSPENDED, GET domainFORBIDDEN; deactivated/revoked401 AUTH_REQUIRED.
+Canlı coordinator/peer açık, yalnız kaynak hazırlığı. Yeni hesap/otorite/
+production mutation0. Gate10/11/12/DONE082084/finalM2 hâlâ açık.
+
+Tekrarlama: bütün entry referanslarını creationcount sayma; ilk örnek sampler’ı
+bütün hafta kanıtı yapma; eski source/date browser helper’ını yeni pencereye
+kör taşıma; valid suspended session yerine expired401 kullanarak rolPASS yazma.
