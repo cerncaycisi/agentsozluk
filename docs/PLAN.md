@@ -8,73 +8,44 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**5 Ekim 23:39 — son journal düzeltmeleri yerelde geçti.** PR334 exact828 CI
-7/7 SUCCESS; bu sonuç son ek düzeltmeleri kapsamaz. Actual Opus5.5 incelemesi
-DB saati ve indeks yükü için koşul koydu; yeni ayrı migration ve sayfalama/backoff
-hazırlandı. Son kaynak28unit/26PG PASS. Yeni exact CI ve inceleme kapanışı bekler.
-23:26 canlı okuma: aynıD202, worker inactive, RUNNING/CANCEL_REQUESTED0;
-7013başlık/21628entry henüz silinmedi. Production yürütücüsü, dış generation,
-taze yedek/gerçek restore ve prova açık; reset/açılış yapılmadı.
+**6 Ekim 00:10 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
+kapalı; başlamış koşu ve canlı lease sıfır. Son içerik sayımı 23:26'da 7.013 başlık
+ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
+personalar, kaynaklar, operatör erişimi ve operasyonel kanıtlar korunur.
+Üç diğer yazma bayrağı hâlâ açık olduğundan bu durum tam uygulama dondurması değildir.
 
-**5 Ekim23:18 — journal/410 düzeltmeleri doğrulanıyor.** İlk paket main237'de,
-canlı hâlâD202/toplum kapalı. PR334 ilkCI'da browser/containerPASS; eski ukte
-pozitif örneği nedeniylePG/coverageFAIL. Örnek yeni sözleşmeye uyarlanıp
-API422/kayıt0 doğrulandı;25odaklıPGPASS. Fable yük/atomic journal bulguları
-düzeltildi;40unitPASS, yeni exact-source closure/CI bekler. Production çekirdeğinin
-3PG atomiklik/rollback testi küçük testDB'sindePASS; fullsize/prod kapısı değildir.
-Ayrıntı[journal makbuzunda](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md).
+**Tamamlanan hazırlıklar:** BIGINT sınır paketi PR333 ve journal/410 paketi PR334
+ana dala alındı. Journal/410 paketinin main teslimi `9be0d2c193cbd558b743cf4959f00c9c683ec945`;
+reviewed B91 ile tree eşit, root çalışma ağacı temiz ve uzak sürümle eşleşti.
+B91 CI yedi iş başarılı: 2.425 unit, 521 PostgreSQL, 93 browser testi;
+coverage yeniden koşusunda 2.946 test, satır %94,40, dal %86,68, fonksiyon %96,04.
+Opus5.5 bağımsız kapanışında merge-blocking kusur yok; üretim kabul koşulları açık.
+Birleşmiş main CI37391583484 daha sonra yedi iş SUCCESS olarak doğrulandı. Kod üretime dağıtılmadı.
+[Ayrıntılı makbuz](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md).
 
-**5 Ekim 22:46 UTC — ilk reset hazırlığı main'de; canlı reset yapılmadı.**
-PR333 exactFAC CI7/7PASS;22:42:50 squashmain237139f, reviewedtree eşit ve root
-clean. Yeni journal/410 paketinde111unit ve pool10 odaklı80PGPASS; browser ve
-farklı-model incelemesi bekler. [Paket kanıtı](RESET_JOURNAL_VE_410_KANITI_2026-10-05.md)
-hangi sonucun geliştirme, hangisinin hâlâ production kapısı olduğunu gösterir.
-Ayrı production yürütücüsü/guard, dış generation ve gerçek yedek/restore/prova
-sonrasında reset ve audited açılış yapılacak. Eski168h aday kesildi; yeniT0 yok.
+**Son operasyon:** kullanılmayan beş eski uygulama imajı bounded temizlikle
+kaldırıldı; 8.468.799.488 bayt açıldı. Root boş alanı 20.625.170.432 →
+29.093.969.920 bayt, kullanım %74 → %63. Çalışan üç konteyner, worker,
+current/previous imaj ve runtime release, named volume, cache ve yedekler korundu.
+00:06 bağımsız okuma ve release-lock yokluğu doğrulandı. Bu veri reseti değildir.
 
-**22:21:** Yeni CI'da migration ve browserPASS; yeni iki PG vaka username
-fixture'ında fazla uzunluk nedeniyleFAIL. Fixture düzeltiliyor; constraint veya
-eşik gevşetilmedi. Exact-source tam CI bekler. İkinci ayrı worktree'de journal
-ve 410 kodu yazıldı, henüz test/review/deploy yok. Toplum son doğrulamada kapalı;
-silme ve açılış yapılmadı.
+**Sırada:** ayrı üretim yürütücüsünün son kod/inceleme/CI kapıları, gerçek boyutlu
+taze yedek ve restore, üretim gölgesinde aynı çekirdekle prova, bütün yazarların
+dondurulması, tek kullanımlık reset, iç kabul ve doğrulanmış açılış var.
+Yerel çekirdeğin 59 unit ve 5 PG testi geçti. Küçük sahipli DB'de gerçek COMMIT,
+kapının kapanıp açılması, 410, kimlik koruması ve ikinci reset reddi ölçüldü;
+üretim veya tam boyut kabulü değildir. Mevcut yerel role için non-superuser denemesi
+pg_hba/P1010 ile migration öncesinde durdu; kullanıcı erişim ayarları değiştirilmedi.
 
-**22:06 reset kodu:** İlk BIGINT paketinin draft [PR333](https://github.com/cerncaycisi/agentsozluk/pull/333)
-CI'ı gerçek PostgreSQL trigger bağımlılığı nedeniyle FAIL; üretime uygulanmadı.
-Geçmiş migration değişmeden, immutable guard korunarak yeni pre/post adımlar
-hazırlandı. Moderasyon JSON sınırları kapatıldı, ilgili41unitPASS. Yeni PG/CI
-ve Fable closure bekler; [sınır envanteri](RESET_BIGINT_SINIR_KANITI_2026-10-05.md)
-kanıt ve açık koşulları içerir. Bu reset tamam veya canlı açılış değildir.
-
-**5 Ekim 21:05 UTC — kullanıcı reseti hazırlanıyor; toplum ve worker kapalı.**
-Gökhan toplumu durdurup sıfırlamamızı, insan verisini de silmemizi ve ardından
-tekrar açarak aynı goal'e devam etmemizi istedi. Mevcut native audited pause
-20:59:56.598 UTC'de settings310→311 ile tamamlandı. 21:05:19 UTC doğrulamasında RUNNING/CANCEL_REQUESTED/canlı lease0; worker
-inactive/MainPID0/disabled. Önceki enable durumu enabled olarak kaydedildi.
-Kuyrukta bir iş korunuyor; resetten önce desteklenen audited iptal yoluyla
-terminalleştirilecek. Site ve DB aynı D202 sürümünde, health/ready200/200.
-Henüz reset veya veri silme yapılmadı.
-
-5 Ekim 20:08 başlangıçlı haftalık aday kullanıcı kararıyla kesildi:
-`USER_REQUEST_INTERRUPTED_NOT_PASS`. İki sahipli gözlem timerı durduruldu ve
-kapalı olduğu doğrulandı; eski kaynaklar ve ölçümler korundu. 12 Ekim için eski
-son kabul tarihi artık geçerli değildir. Reset sonrası açılışın gerçek olayından
-yeni T0 ve tam 168 saat +configured timeout+120sn hesaplanacak; şu anda yeni
-başlangıç veya bitiş tarihi yok. Yetki sonu 17 Ekim19:50UTC kendiliğinden uzamaz.
-
-Tamamlanan dağıtım, kapasite, kaynak, tam geçmiş bütünlüğü ve gerçek restore
-kanıtları tarihsel olarak geçerlidir. Resetin üretim yolu hazır değildir:
-mevcut yürütücü yalnız yerel prova hedeflerini kabul eder ve bu sınır aşılmaz.
-Yeni kararın [somut kapsamı ve korunan sözleşmeleri](RESET_URETIM_KAPSAMI_2026-10-05.md),
-taze yedek/gerçek restore ve prova, farklı model
-incelemesi ve üretim kapılarıyla hazırlanır. İnsan içerik/etkileşimleri de silme
-kapsamındadır; toplum kimliği/persona/kaynak/operatör erişimi ve değişmez reset
-kanıtının korunması açık veri sınıflandırmasında gösterilir.
-
-Goal aynı son teslim amacıyla aktiftir; DONE-082/084 açık. Önce kullanıcı reseti,
-sonra toplumun doğrulanmış açılışı ve yeni gerçek haftalık kabul, ardından gerçek
-kullanıcı/yönetici, son kurtarma/reboot, P8 ve finalM2 vardır. Eski erken rapor veya
-resetin bitmesi final M2 kabulü değildir. Güncel Opus5.5/Fable/Astra görüşleri
-ayrı gerçek modellerle ve salt okunur alınır; geçmiş Opus5 kayıtları değiştirilmez.
+Goal aynı son teslim amacıyla aktif; DONE-082/084 açık. Eski P7 adayı kullanıcı
+kararıyla `USER_REQUEST_INTERRUPTED_NOT_PASS`; eski gözlem timerları kapalı ve
+tarihçe korunuyor. Reset sonrası gerçek audited resume yeni T0 olacak; tam 168 saat
+ve 600+120 saniye grace yeniden ölçülecek. Şu anda yeni T0 veya bitiş tarihi yok.
+Ardından Gate 11/12, P8 ve final M2 kabulü var. Yetki 17 Ekim 19:50 UTC'de biter;
+168 saat+720 saniye için son teorik T0 10 Ekim 19:38 UTC, final kapılar için ayrıca
+zaman gerekir. [Reset kapsamı](RESET_URETIM_KAPSAMI_2026-10-05.md) ve M2 kabul
+şartları korunur; ikinci aktif kuyruk açılmaz.
 
 ### Canlı ve tamamlanan teslimler
 

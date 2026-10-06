@@ -6759,3 +6759,41 @@ son3dosya28unitPASS. Clock migration native deployPASS; ardından2dosya26PGPASS.
 Bunlar son yeni source, henüz commit/CI/peer closure değildir. Canlı reset yok.
 Tekrarlama: eski safe-error fixture hatasını DB veya runtime regresyonu sayma;
 828 CI'yı son clock/paging source'a mal etme; küçük testDB'yi fullsize prova sayma.
+
+## 6 Ekim 00:10 UTC — ikinci hazırlık teslimi ve reset disk kapısı
+
+PR334 exact `b91d85d3dc51d755f48d1d33b1d851a9a125e85c`, CI37390047517
+**7/7 SUCCESS**: unit278dosya/2425test, PG37dosya/521test, browser93test.
+Coverage315dosya/2946 tekrar; satır%94,40/dal%86,68/fonksiyon%96,04. Tekrarlar
+ayrı yeni test sayısı değildir. Actual Opus5.5/254.210ms salt okunur closure:
+merge-blocking kusur yok; exact CI koşulu kapandı, üretim kabulü açık.
+23:59:55 UTC squashmain `9be0d2c193cbd558b743cf4959f00c9c683ec945`, tek parent237;
+treeB91 ile birebir, rootclean/remoteeşit. MainCI37391583484 bu kesitte sürüyor.
+
+Bounded disk temizliği actual Fable5.1/180.754ms kaynak koşulları kapatılarak
+6 Ekim00:04:54 UTC'de yapıldı. Filtre: exact beş Agent Sözlük imajı; her biri
+
+> 24saat, revision/tag pinli ve hiçbir konteynerde kullanılmıyor. CurrentD202 ve
+> immediate previousD829, bütün mevcut konteynerler, immutable release'ler,
+> volume/cache/yedekler korunur. Force veya prune yok. 8.468.799.488bayt açıldı;
+> free20.625.170.432→29.093.969.920bayt, df%74→%63. Docker9→4imaj;
+> current/previous ve üç aktif imaj sabit. Worker inactive/MainPID0/NRestarts0
+> sabit.00:06:23 bağımsız okuma, pinler ve release-lock yokluğu doğrulandı.
+
+Çekirdek çalışma ayrı, henüz commit/PR/peer/üretim teslimi yok:59unit/5PGPASS;
+2002 gerçek tombstone ile kind/cursor sınırı ve locked manifest değişim reddi
+kanıtlandı. Önceki küçük gerçek COMMIT provası23:45'te PASS; son yeni boot/HMAC
+kaynağı veya fullsize/prod yerine geçmez. Non-superuser yerel prova bağlantısı
+`no pg_hba.conf entry`/P1010 ile migration öncesi durdu; HBA/rol izinleri değişmedi.
+Canlı hâlâD202; reset/veri silme/reopen/newT0 yok. Goal ve finalM2 açık.
+
+Tekrarlama: tüketilmiş storage cleanup nonce'ını yeniden çalıştırma; unknown
+silmede readonly uzlaşı olmadan retry/lock temizliği yapma. Python assert'in
+optimize modda güvenlik kapısı olduğunu varsayma. Docker labels olmayan resmi
+imajlarda `.Config.Labels` template erişimi hata verir; `index .Config "Labels"`
+ile yokluğu ayrı işle. Root git için exact safe.directory kullan; özel evidence
+dizininde gh çağırırken repo çalışma dizini veya explicit -R ver. Yerel pg_hba
+reddini reset kodu regresyonu sayma; mevcut role/HBA'yı prova uğruna genişletme.
+
+Birleşmiş9be için CI37391583484 son native okumada **7/7 SUCCESS** olarak
+doğrulandı. Bu main CI sonucu production deploy/reset veya yeni T0 değildir.
