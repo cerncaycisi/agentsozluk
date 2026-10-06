@@ -577,19 +577,46 @@ pre_cutover_lease_scan() {
   fi
 }
 
-# Sahipli isimli tek seferlik kabul container'ı; zaman aşımı/istemci ölümünde de
-# kaldırılır ve yokluğu doğrulanır.
-candidate_reset_admission() {
-  local probe="agent-sozluk-reset-admission-$op_id" status=0
-  test -z "$(docker ps -aq --filter "name=^${probe}\$")"
-  APP_IMAGE="$candidate_image" timeout --kill-after=10 180 "${compose[@]}" run --rm \
-    --name "$probe" --no-deps --pull never -T --entrypoint ./node_modules/.bin/tsx app \
-    scripts/verify-reset-generation.ts </dev/null || status=$?
-  docker rm -f "$probe" >/dev/null 2>&1 || true
-  test -z "$(docker ps -aq --filter "name=^${probe}\$")" || {
+# Sahipli isimli tek seferlik kabul container'ı; zaman aşımı, istemci ölümü veya
+# uzak betiğin HUP/TERM/INT ile kesilmesinde de kaldırılır. Docker sorgusunun hatası
+# yokluk sayılmaz.
+admission_probe=''
+admission_pid=''
+reset_admission_cleanup() {
+  local ids
+  docker rm -f "$admission_probe" >/dev/null 2>&1 || true
+  ids="$(docker ps -aq --filter "name=^${admission_probe}\$")" || ids=query-failed
+  test -z "$ids" || {
     printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
     exit 97
   }
+}
+reset_admission_abort() {
+  trap - HUP TERM INT
+  kill -TERM "$admission_pid" 2>/dev/null || true
+  wait "$admission_pid" 2>/dev/null || true
+  reset_admission_cleanup
+  exit "$1"
+}
+candidate_reset_admission() {
+  local ids status=0
+  admission_probe="agent-sozluk-reset-admission-$op_id"
+  ids="$(docker ps -aq --filter "name=^${admission_probe}\$")" || ids=query-failed
+  test -z "$ids" || {
+    printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
+    exit 97
+  }
+  trap 'reset_admission_abort 129' HUP
+  trap 'reset_admission_abort 143' TERM
+  trap 'reset_admission_abort 130' INT
+  # Arka planda başlatılıp beklenir: sinyal tuzağı istemci dönmeden hemen çalışır.
+  APP_IMAGE="$candidate_image" timeout --kill-after=10 180 "${compose[@]}" run --rm \
+    --name "$admission_probe" --no-deps --pull never -T \
+    --entrypoint ./node_modules/.bin/tsx app scripts/verify-reset-generation.ts </dev/null &
+  admission_pid=$!
+  wait "$admission_pid" || status=$?
+  trap - HUP TERM INT
+  reset_admission_cleanup
   test "$status" = 0 || {
     printf 'RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED\n' >&2
     exit 97
@@ -604,8 +631,11 @@ assert_reset_generation_mount() {
   MOUNTS_JSON="$mounts" ENV_JSON="$environment" SOURCE="$generation_dir" node - <<'NODE'
 const mounts = JSON.parse(process.env.MOUNTS_JSON ?? "null");
 const env = JSON.parse(process.env.ENV_JSON ?? "null");
-const bound = Array.isArray(mounts) && mounts.filter((m) => m.Destination === "/run/agentsozluk-reset");
-if (!bound || bound.length !== 1 || bound[0].Type !== "bind" ||
+const target = "/run/agentsozluk-reset";
+// Alt mount (ör. current.json üzerine dosya) doğrulanan dizini gölgeleyebilir: reddedilir.
+const bound = Array.isArray(mounts) &&
+  mounts.filter((m) => m.Destination === target || String(m.Destination).startsWith(`${target}/`));
+if (!bound || bound.length !== 1 || bound[0].Destination !== target || bound[0].Type !== "bind" ||
     bound[0].Source !== process.env.SOURCE || bound[0].RW !== false ||
     !Array.isArray(env) || !env.includes("AGENT_SOZLUK_RESET_GENERATION_REQUIRED=true")) {
   process.stderr.write("RELEASE_FAIL code=RESET_GENERATION_MOUNT_MISSING\n");
@@ -682,6 +712,12 @@ cutover() {
       "$app_container"
   )" = "$candidate_sha"
   assert_reset_generation_mount "$app_container"
+  # Ayrı kabul container'ı yeterli değil: çalışan app'in kendi gördüğü nesil de geçmeli.
+  "${compose[@]}" exec -T app ./node_modules/.bin/tsx \
+    scripts/verify-reset-generation.ts </dev/null || {
+    printf 'RELEASE_FAIL code=RUNNING_RESET_ADMISSION_REJECTED\n' >&2
+    exit 97
+  }
   entrypoint_json="$(
     docker inspect --format '{{json .Config.Entrypoint}}' "$app_container"
   )"

@@ -367,6 +367,11 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
       expect(mount).toBeLessThan(
         kesim.indexOf("sudo systemctl start agent-sozluk-runtime.service"),
       );
+      const calisan = kesim.indexOf("RELEASE_FAIL code=RUNNING_RESET_ADMISSION_REJECTED");
+      expect(calisan).toBeGreaterThan(mount);
+      expect(calisan).toBeLessThan(
+        kesim.indexOf("sudo systemctl start agent-sozluk-runtime.service"),
+      );
       expect(remote).not.toMatch(/test -e "\$generation_dir/u);
       expect(remote).toContain('if test "$generation_required" = 1; then');
     });
@@ -378,41 +383,74 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
       return remote.slice(begin, end);
     }
 
-    function admission(runStatus: number, linger: boolean) {
+    function admission(options: {
+      runStatus?: number;
+      linger?: boolean;
+      psFailsAfterRemove?: boolean;
+      psFailsAlways?: boolean;
+      hangup?: boolean;
+    }) {
       const script = `set -Eeuo pipefail
 exec 3>&1
 op_id=0123456789abcdef
 candidate_image=agent-sozluk:${sha}
 compose=(docker compose)
-removed=0
+attempted=0
 docker() {
   case "$1" in
-    ps) if test "$removed" = 1 && ${linger ? "true" : "false"}; then echo lingering; fi ;;
-    rm) removed=1; printf 'RM %s\\n' "$3" >&3 ;;
+    ps)
+      ${options.psFailsAlways ? "return 42" : ""}
+      if test "$attempted" = 1 && ${options.psFailsAfterRemove ? "true" : "false"}; then return 42; fi
+      if test "$attempted" = 1 && ${options.linger ? "true" : "false"}; then echo lingering; fi ;;
+    rm) attempted=1; printf 'RM %s\\n' "$3" >&3; ${options.psFailsAfterRemove ? "return 43" : "return 0"} ;;
     *) return 0 ;;
   esac
 }
-timeout() { printf 'RUN %s\\n' "$*"; return ${runStatus}; }
-${definition("candidate_reset_admission")}
+timeout() {
+  printf 'RUN %s\\n' "$*"
+  ${options.hangup ? "exec sleep 30" : `return ${options.runStatus ?? 0}`}
+}
+${definition("reset_admission_cleanup")}
+${options.hangup ? "( sleep 0.5; kill -HUP $$ ) &" : ""}
 candidate_reset_admission
 echo PASSED`;
-      return spawnSync("bash", ["-c", script], { encoding: "utf8" });
+      return spawnSync("bash", ["-c", script], { encoding: "utf8", timeout: 20000 });
     }
 
     it("kabul container'ını sahipli isimle çalıştırır, her sonuçta kaldırır", () => {
-      const ok = admission(0, false);
+      const ok = admission({});
       expect(ok.status).toBe(0);
       expect(ok.stdout).toContain("--name agent-sozluk-reset-admission-0123456789abcdef");
       expect(ok.stdout).toContain("--no-deps --pull never -T");
       expect(ok.stdout).toContain("RM agent-sozluk-reset-admission-0123456789abcdef");
       expect(ok.stdout).toContain("PASSED");
-      const rejected = admission(1, false);
+      const rejected = admission({ runStatus: 1 });
       expect(rejected.status).toBe(97);
       expect(rejected.stdout).toContain("RM agent-sozluk-reset-admission-");
       expect(rejected.stderr).toContain("RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED");
-      const killed = admission(137, true);
+      const killed = admission({ runStatus: 137, linger: true });
       expect(killed.status).toBe(97);
       expect(killed.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
+    });
+
+    it("Docker sorgu veya silme hatasını container yokluğu saymaz", () => {
+      const after = admission({ psFailsAfterRemove: true });
+      expect(after.status).toBe(97);
+      expect(after.stdout).not.toContain("PASSED");
+      expect(after.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
+      const before = admission({ psFailsAlways: true });
+      expect(before.status).toBe(97);
+      expect(before.stdout).not.toContain("RUN ");
+      expect(before.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
+    });
+
+    it("uzak betik HUP ile kesilince istemciyi beklemeden kabul container'ını kaldırır", () => {
+      const started = Date.now();
+      const result = admission({ hangup: true });
+      expect(Date.now() - started).toBeLessThan(10000);
+      expect(result.status).toBe(129);
+      expect(result.stdout).toContain("RM agent-sozluk-reset-admission-0123456789abcdef");
+      expect(result.stdout).not.toContain("PASSED");
     });
 
     it("çalışan app'te nesil mount'u ve zorunluluk ortamı yoksa durur", () => {
@@ -450,6 +488,18 @@ echo PASSED`,
         [[], required],
         [[{ ...bound[0], RW: true }], required],
         [bound, ["NODE_ENV=production"]],
+        [
+          [
+            ...bound,
+            {
+              Type: "bind",
+              Source: "/tmp/eski-current.json",
+              Destination: "/run/agentsozluk-reset/current.json",
+              RW: false,
+            },
+          ],
+          required,
+        ],
       ] as const) {
         const result = check(mounts, [...env]);
         expect(result.status).toBe(97);
