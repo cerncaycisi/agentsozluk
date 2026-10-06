@@ -6797,3 +6797,22 @@ production DB URL’sinde komut çalışmadan ret. Önce3FAIL/1PASS, düzeltme s
 4PASS; CI/traceability testleriyle17PASS. Yeni head peer/CI ve merged-main tam
 M2development yeniden koşusu tamamlanmadan A5 execute yok. Canlı D202,
 settings312 dörtfalse/workerinactive/dört timerdisabled; reset/reopen/newT0 yok.
+
+## 6 Ekim 04:56 UTC — M2 fixture düzeltmesi kaynak incelemesi
+
+PR337 exact e081db68af78c3c2585e399bf7802ea96b2ed932 için actual
+Opus5.5/121382ms tools-disabled source GO: somut blocker yok. Kaynak incelemesi
+13dosya/67.623bayt ve native/kalite makbuzuna dayandı; hash/SHA yürütücü
+pinleri, üretim erişimi yok. Bu turda docs diff’i verilmedi; belge incelemesi
+sayılmaz. Resetin E2E'den hemen önce olması ve spawn ortamında DATABASE_URL /
+TEST_DATABASE_URL’nin doğrulanan test hedefi olması testte güçlendirildi;
+üretim gibi duran ambient DATABASE_URL’ye rağmen ikisi test URL’ine bağlanır.
+Verifier’ın üç satırlık kaynak düzeltmesi byte-equal kaldı.
+
+Hakem son tablo notunda A5 öncesi katı finalM2 istedi; bu canonical plan /
+M2_TRACEABILITY.md / m2-traceability-policy.ts ile uyuşmaz. Katı final
+DONE-082 ve DONE-084 PASS olmadan reddeder; gerçek168h/Gate11/12/P8 sonrası
+kapanır. A5 öncesi mevcut şart tam verify:m2:development exit0’dır. Kapı
+sırası kaynaklarla uzlaştırılacak; bu not kaynak blocker veya kullanıcı
+onayı değildir. Yeni exact head CI ve tam development yeniden koşusu açık;
+önceki737CI/e081hakem sonucu sonraki değişikliklerin yerine taşınmaz.

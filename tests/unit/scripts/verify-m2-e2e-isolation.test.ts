@@ -8,10 +8,12 @@ const originalExitCode = process.exitCode;
 let immutableCommit: boolean;
 let failCleanup: boolean;
 let commandHistory: string[][];
+let commandEnvironments: (NodeJS.ProcessEnv | undefined)[];
 
 beforeEach(() => {
   vi.resetModules();
   vi.stubEnv("TEST_DATABASE_URL", "postgresql://fixture@127.0.0.1:5432/m2_isolation_test");
+  vi.stubEnv("DATABASE_URL", "postgresql://fixture@127.0.0.1:5432/agent_sozluk");
   vi.stubEnv("E2E_APP_URL", "http://127.0.0.1:3000");
   vi.stubEnv("npm_execpath", "/fixture/pnpm.cjs");
   vi.spyOn(process.stdout, "write").mockImplementation(() => true);
@@ -20,12 +22,14 @@ beforeEach(() => {
   immutableCommit = false;
   failCleanup = false;
   commandHistory = [];
-  vi.mocked(spawnSync).mockImplementation((_command, args) => {
+  commandEnvironments = [];
+  vi.mocked(spawnSync).mockImplementation((_command, args, options) => {
     const command = Array.isArray(args) ? args.slice(1) : [];
     commandHistory.push(command);
+    commandEnvironments.push(options?.env);
     let status = 0;
-    // M1's 410 E2E creates a committed journal; integration/simulation cleanup
-    // cannot erase it. The real admission CLI rejects that state without a mirror.
+    // M1'in 410 E2E journal'ı integration/simulation temizliğinde korunur.
+    // Gerçek admission CLI, mirror yokken bu durumu reddeder.
     if (command[0] === "verify:m1") immutableCommit = true;
     if (command.includes("reset")) {
       if (immutableCommit && failCleanup) status = 2;
@@ -61,7 +65,7 @@ describe("M2 verification isolates successive production-server E2E runs", () =>
       const e2e = commandHistory.findIndex(([command]) => command === "test:agent-e2e");
       expect(m1).toBeGreaterThanOrEqual(0);
       expect(e2e).toBeGreaterThan(m1);
-      expect(commandHistory.slice(m1 + 1, e2e)).toContainEqual([
+      expect(commandHistory[e2e - 1]).toEqual([
         "exec",
         "prisma",
         "migrate",
@@ -69,6 +73,11 @@ describe("M2 verification isolates successive production-server E2E runs", () =>
         "--force",
         "--skip-seed",
       ]);
+      expect(commandEnvironments[e2e - 1]).toMatchObject({
+        NODE_ENV: "test",
+        DATABASE_URL: "postgresql://fixture@127.0.0.1:5432/m2_isolation_test",
+        TEST_DATABASE_URL: "postgresql://fixture@127.0.0.1:5432/m2_isolation_test",
+      });
       expect(commandHistory.at(-1)).toEqual([
         development ? "requirements:m2:check:development" : "requirements:m2:check",
       ]);

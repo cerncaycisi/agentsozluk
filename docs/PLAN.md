@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 04:50 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 04:56 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
 kapalı; başlamış koşu ve canlı lease sıfır. Son native içerik sayımı 02:11'de 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
@@ -79,7 +79,10 @@ doğruladı. Ajan E2E öncesine allowlisted test DB için clean migration reset
 eklendi; güvenlik kontrolü ve tüm testler korunur. İlgili17unit PASS; yeni
 exact CI, farklı model incelemesi ve tam M2development yeniden koşusu sırada.
 PR337 önceki737 head CI37413121415 yedi iş SUCCESS; yeni kaynağa taşınmaz.
-Production dağıtım/reset uygulanmadı.
+Actual Opus5.5 e081 kaynak incelemesi121382ms: blocker yok, kaynak GO.
+Testin reset-konumu/gerçek datasource bağını kuvvetlendiren iki önerisi uygulandı;
+son head kapıları yeniden ölçülür. A5 öncesi tam development koşusu gerekir;
+katı finalM2, yeni168h/Gate11/12/P8 sonrasındadır. Production dağıtım/reset uygulanmadı.
 D202 journal öncesi admission küçük native sahipli PG'de READ ONLY geçti,
 required=true ret verdi; gerçek üretim/aday imaj kabulü yerine geçmez.
 
