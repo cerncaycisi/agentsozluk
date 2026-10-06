@@ -55,17 +55,25 @@ test "$(hostname)" = agent-sozluk-prod || exit 91
 # /opt/agent-sozluk/reset root:root 0700'dür; deploy kullanıcısının sudo'suz
 # `test -e` sorgusu her yolda "yok" der. 6 Ekim'de nesil overlay'i bu yüzden
 # atlandı ve aday açılış kabulünde düştü. Reset yolları yalnız sudo ile okunur;
-# sudo çalışmıyorsa sonuç "yok" sayılmaz.
+# sudo veya sorgu hatası hiçbir zaman "yok" sayılmaz: yalnız açık `absent` kabul.
 reset_root=/opt/agent-sozluk/reset
-root_path_test() {
-  sudo -n test "$@"
+root_path_result=''
+root_path_state() {
+  local state
+  state="$(
+    sudo -n sh -c 'if test -L "$1"; then echo link; elif test -e "$1"; then echo present; else echo absent; fi' \
+      root-path-probe "$1" </dev/null
+  )" || state=''
+  case "$state" in
+    present | absent | link) root_path_result="$state" ;;
+    *)
+      printf 'RELEASE_FAIL code=ROOT_PROBE_UNAVAILABLE\n' >&2
+      exit 97
+      ;;
+  esac
 }
-sudo -n true || {
-  printf 'RELEASE_FAIL code=ROOT_PROBE_UNAVAILABLE\n' >&2
-  exit 97
-}
-if root_path_test -e "$reset_root/maintenance-hold" ||
-   root_path_test -L "$reset_root/maintenance-hold"; then
+root_path_state "$reset_root/maintenance-hold"
+if test "$root_path_result" != absent; then
   printf 'RELEASE_FAIL code=RESET_MAINTENANCE_HOLD\n' >&2
   exit 97
 fi
@@ -91,16 +99,21 @@ compose=(
 generation_dir="$reset_root/generation"
 generation_override="$runtime_root/reset-generation-compose.yaml"
 generation_required=0
+generation_overlay=0
 resolve_reset_generation() {
   local mirror_json
-  if root_path_test -e "$generation_dir" || root_path_test -L "$generation_dir"; then
-    root_path_test ! -L "$generation_dir"
+  root_path_state "$generation_dir"
+  if test "$root_path_result" != absent; then
+    test "$root_path_result" = present
     test "$(sudo -n stat -c '%U|%G|%a' "$generation_dir")" = 'root|root|755'
     test "$(sudo -n readlink -e "$generation_dir")" = "$generation_dir"
     test ! -L "$generation_override"
     test "$(stat -c '%U|%G|%a' "$generation_override")" = 'root|root|444'
     compose+=(-f "$generation_override")
-    if root_path_test -e "$generation_dir/required.json"; then
+    generation_overlay=1
+    root_path_state "$generation_dir/required.json"
+    if test "$root_path_result" != absent; then
+      test "$root_path_result" = present
       generation_required=1
       mirror_json="$(sudo -n cat "$generation_dir/current.json")"
       MIRROR_JSON="$mirror_json" node - <<'NODE'
@@ -564,6 +577,43 @@ pre_cutover_lease_scan() {
   fi
 }
 
+# Sahipli isimli tek seferlik kabul container'ı; zaman aşımı/istemci ölümünde de
+# kaldırılır ve yokluğu doğrulanır.
+candidate_reset_admission() {
+  local probe="agent-sozluk-reset-admission-$op_id" status=0
+  test -z "$(docker ps -aq --filter "name=^${probe}\$")"
+  APP_IMAGE="$candidate_image" timeout --kill-after=10 180 "${compose[@]}" run --rm \
+    --name "$probe" --no-deps --pull never -T --entrypoint ./node_modules/.bin/tsx app \
+    scripts/verify-reset-generation.ts </dev/null || status=$?
+  docker rm -f "$probe" >/dev/null 2>&1 || true
+  test -z "$(docker ps -aq --filter "name=^${probe}\$")" || {
+    printf 'RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING\n' >&2
+    exit 97
+  }
+  test "$status" = 0 || {
+    printf 'RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED\n' >&2
+    exit 97
+  }
+}
+
+assert_reset_generation_mount() {
+  local container="$1" mounts environment
+  test "$generation_overlay" = 1 || return 0
+  mounts="$(docker inspect --format '{{json .Mounts}}' "$container")"
+  environment="$(docker inspect --format '{{json .Config.Env}}' "$container")"
+  MOUNTS_JSON="$mounts" ENV_JSON="$environment" SOURCE="$generation_dir" node - <<'NODE'
+const mounts = JSON.parse(process.env.MOUNTS_JSON ?? "null");
+const env = JSON.parse(process.env.ENV_JSON ?? "null");
+const bound = Array.isArray(mounts) && mounts.filter((m) => m.Destination === "/run/agentsozluk-reset");
+if (!bound || bound.length !== 1 || bound[0].Type !== "bind" ||
+    bound[0].Source !== process.env.SOURCE || bound[0].RW !== false ||
+    !Array.isArray(env) || !env.includes("AGENT_SOZLUK_RESET_GENERATION_REQUIRED=true")) {
+  process.stderr.write("RELEASE_FAIL code=RESET_GENERATION_MOUNT_MISSING\n");
+  process.exit(97);
+}
+NODE
+}
+
 cutover() {
   local image_id app_container current_sha counts queued running cancel_requested leases
   local candidate_compose runtime_next entrypoint_json worker_state app_health
@@ -583,15 +633,12 @@ cutover() {
     )"
   fi
 
+  # Eski app ve worker'a dokunmadan önce, sağlıklı aday yeniden girişi dahil, aday
+  # imaj aynı compose, mount ve ortamla salt okunur reset nesil kabulünü geçmeli;
+  # yoksa kesim açılışta düşer (6 Ekim). /health nesil kanıtı değildir.
+  candidate_reset_admission
+
   if test "$app_health" != healthy; then
-    # Eski app ve worker'a dokunmadan önce aday imaj aynı compose, mount ve ortamla
-    # salt okunur reset nesil kabulünü geçmeli; yoksa kesim açılışta düşer (6 Ekim).
-    APP_IMAGE="$candidate_image" timeout --kill-after=10 180 "${compose[@]}" run --rm \
-      --no-deps --pull never -T --entrypoint ./node_modules/.bin/tsx app \
-      scripts/verify-reset-generation.ts </dev/null || {
-      printf 'RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED\n' >&2
-      exit 97
-    }
     wait_for_no_active_work
     sudo systemctl stop agent-sozluk-runtime.service
     test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = inactive
@@ -634,6 +681,7 @@ cutover() {
       --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' \
       "$app_container"
   )" = "$candidate_sha"
+  assert_reset_generation_mount "$app_container"
   entrypoint_json="$(
     docker inspect --format '{{json .Config.Entrypoint}}' "$app_container"
   )"

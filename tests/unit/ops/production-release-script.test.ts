@@ -261,6 +261,7 @@ printf 'PASSED\\n'`,
       required?: boolean;
       override?: boolean;
       state?: string;
+      failProbe?: string;
     }) {
       const directory = mkdtempSync(path.join(tmpdir(), "release-reset-root-"));
       try {
@@ -280,7 +281,14 @@ sudo() {
   ${options.sudoWorks === false ? "return 1" : ""}
   case "$1" in
     true) return 0 ;;
-    test) shift; local last="\${@: -1}"; test "\${@:1:$#-1}" "$(map "$last")" ;;
+    test)
+      shift
+      local last="\${@: -1}"
+      case "$last" in *${options.failProbe ?? "__yok__"}) return 2 ;; esac
+      test "\${@:1:$#-1}" "$(map "$last")" ;;
+    sh)
+      case "$5" in *${options.failProbe ?? "__yok__"}) return 2 ;; esac
+      command sh -c "$3" "$4" "$(map "$5")" ;;
     stat) printf 'root|root|755\\n' ;;
     readlink) printf '%s\\n' "$3" ;;
     cat) command cat "$(map "$2")" ;;
@@ -291,7 +299,7 @@ stat() { printf 'root|root|444\\n'; }
 compose=(docker compose)
 ${remote.slice(start, holdEnd)}
 ${remote.slice(genStart, genEnd)}
-printf 'compose=%s required=%s\\n' "\${compose[*]}" "$generation_required"`;
+printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_required" "$generation_overlay"`;
         return spawnSync("bash", ["-c", script], { encoding: "utf8" });
       } finally {
         rmSync(directory, { recursive: true, force: true });
@@ -310,6 +318,14 @@ printf 'compose=%s required=%s\\n' "\${compose[*]}" "$generation_required"`;
       const result = probe({ sudoWorks: false, generation: true, override: true });
       expect(result.status).toBe(97);
       expect(result.stderr).toContain("RELEASE_FAIL code=ROOT_PROBE_UNAVAILABLE");
+    });
+
+    it("tek bir root sorgusunun hatasını yokluk saymaz", () => {
+      for (const failProbe of ["maintenance-hold", "generation", "required.json"]) {
+        const result = probe({ generation: true, required: true, override: true, failProbe });
+        expect(result.status, failProbe).toBe(97);
+        expect(result.stderr, failProbe).toContain("RELEASE_FAIL code=ROOT_PROBE_UNAVAILABLE");
+      }
     });
 
     it("root-only bakım kilidini görür", () => {
@@ -338,16 +354,108 @@ printf 'compose=%s required=%s\\n' "\${compose[*]}" "$generation_required"`;
       expect(legacy.stdout).toContain("compose=docker compose required=0");
     });
 
-    it("eski app ve worker'a dokunmadan önce aday nesil kabulünü dener", () => {
+    it("sağlıklı aday yeniden girişi dahil, eski app ve worker'a dokunmadan önce kabulü dener", () => {
       const kesim = remote.slice(remote.indexOf("\ncutover() {"));
-      const kabul = kesim.indexOf("scripts/verify-reset-generation.ts </dev/null || {");
+      const kabul = kesim.indexOf("  candidate_reset_admission\n");
       expect(kabul).toBeGreaterThan(0);
+      expect(kabul).toBeLessThan(kesim.indexOf('if test "$app_health" != healthy; then'));
       expect(kabul).toBeLessThan(kesim.indexOf("wait_for_no_active_work"));
       expect(kabul).toBeLessThan(kesim.indexOf("sudo systemctl stop agent-sozluk-runtime.service"));
       expect(kabul).toBeLessThan(kesim.indexOf("--force-recreate app"));
-      expect(kesim).toContain("RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED");
-      expect(remote).not.toMatch(/(^|[^n] )test -e "\$generation_dir/mu);
+      const mount = kesim.indexOf('assert_reset_generation_mount "$app_container"');
+      expect(mount).toBeGreaterThan(kesim.indexOf("--force-recreate app"));
+      expect(mount).toBeLessThan(
+        kesim.indexOf("sudo systemctl start agent-sozluk-runtime.service"),
+      );
+      expect(remote).not.toMatch(/test -e "\$generation_dir/u);
       expect(remote).toContain('if test "$generation_required" = 1; then');
+    });
+
+    function definition(name: string) {
+      const begin = remote.indexOf(`\n${name}() {`);
+      const end = remote.indexOf("\n}\n\n", begin) + 3;
+      expect(begin).toBeGreaterThan(-1);
+      return remote.slice(begin, end);
+    }
+
+    function admission(runStatus: number, linger: boolean) {
+      const script = `set -Eeuo pipefail
+exec 3>&1
+op_id=0123456789abcdef
+candidate_image=agent-sozluk:${sha}
+compose=(docker compose)
+removed=0
+docker() {
+  case "$1" in
+    ps) if test "$removed" = 1 && ${linger ? "true" : "false"}; then echo lingering; fi ;;
+    rm) removed=1; printf 'RM %s\\n' "$3" >&3 ;;
+    *) return 0 ;;
+  esac
+}
+timeout() { printf 'RUN %s\\n' "$*"; return ${runStatus}; }
+${definition("candidate_reset_admission")}
+candidate_reset_admission
+echo PASSED`;
+      return spawnSync("bash", ["-c", script], { encoding: "utf8" });
+    }
+
+    it("kabul container'ını sahipli isimle çalıştırır, her sonuçta kaldırır", () => {
+      const ok = admission(0, false);
+      expect(ok.status).toBe(0);
+      expect(ok.stdout).toContain("--name agent-sozluk-reset-admission-0123456789abcdef");
+      expect(ok.stdout).toContain("--no-deps --pull never -T");
+      expect(ok.stdout).toContain("RM agent-sozluk-reset-admission-0123456789abcdef");
+      expect(ok.stdout).toContain("PASSED");
+      const rejected = admission(1, false);
+      expect(rejected.status).toBe(97);
+      expect(rejected.stdout).toContain("RM agent-sozluk-reset-admission-");
+      expect(rejected.stderr).toContain("RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED");
+      const killed = admission(137, true);
+      expect(killed.status).toBe(97);
+      expect(killed.stderr).toContain("RELEASE_FAIL code=RESET_ADMISSION_PROBE_LINGERING");
+    });
+
+    it("çalışan app'te nesil mount'u ve zorunluluk ortamı yoksa durur", () => {
+      const check = (mounts: unknown, env: string[], overlay = 1) =>
+        spawnSync(
+          "bash",
+          [
+            "-c",
+            `set -Eeuo pipefail
+generation_dir=/opt/agent-sozluk/reset/generation
+generation_overlay=${overlay}
+docker() {
+  case "$3" in
+    *Mounts*) printf '%s\\n' ${quote(JSON.stringify(mounts))} ;;
+    *) printf '%s\\n' ${quote(JSON.stringify(env))} ;;
+  esac
+}
+${definition("assert_reset_generation_mount")}
+assert_reset_generation_mount app
+echo PASSED`,
+          ],
+          { encoding: "utf8" },
+        );
+      const bound = [
+        {
+          Type: "bind",
+          Source: "/opt/agent-sozluk/reset/generation",
+          Destination: "/run/agentsozluk-reset",
+          RW: false,
+        },
+      ];
+      const required = ["NODE_ENV=production", "AGENT_SOZLUK_RESET_GENERATION_REQUIRED=true"];
+      expect(check(bound, required).stdout).toContain("PASSED");
+      for (const [mounts, env] of [
+        [[], required],
+        [[{ ...bound[0], RW: true }], required],
+        [bound, ["NODE_ENV=production"]],
+      ] as const) {
+        const result = check(mounts, [...env]);
+        expect(result.status).toBe(97);
+        expect(result.stderr).toContain("RELEASE_FAIL code=RESET_GENERATION_MOUNT_MISSING");
+      }
+      expect(check([], [], 0).stdout).toContain("PASSED");
     });
   });
 
