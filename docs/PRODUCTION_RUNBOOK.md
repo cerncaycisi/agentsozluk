@@ -1489,6 +1489,30 @@ kontrol her sütunun türünün sabit uzunlukta (`pg_type.typlen > 0`: timestamp
 olduğunu katalogdan doğrular. İndeks, tablo ve sütun adları `[A-Za-z_][A-Za-z0-9_]*` olmalıdır
 (`EXISTING_TABLE_INDEX_IDENTIFIER`).
 
+**Dar reset istisnası.** `reset-2026-v1`, yalnız
+[altı exact immutable SQL ve checksum sözleşmesi](RESET_MIGRATION_PROFILI_2026-10-06.md)
+için genel additive kuralından ayrılır. İki `publicId` INTEGER→BIGINT, aynı eski
+range CHECK/sequence MAXVALUE ve dört boş journal kabul edilir; LEGACY namespace
+ve mevcut içerik korunur. Mevcut tablo şema eşitlik karşılaştırmasında yalnız bu exact ID/sequence
+dönüşümü normalize edilir; diğer şema, içerik, sequence değerleri/sahipliği ve
+Prisma geçmişi aynen doğrulanır. Bu istisna genel SQL iznini genişletmez ve içerik
+resetini çalıştırmaz. Adayın üretim hesabıyla admission-only CLI kabulü freeze’den
+önce şarttır; yalnız health/ready değil eski imajın gerçek publicId/search okuması
+da üretim migration’ından önce scratch BIGINT şemada smoke ile doğrulanır. Operatör tam boyutlu restore ve
+PRE_RESET_BIGINT/prod-shadow kabulü sonraki kanonik reset için ayrı açık kapıdır.
+
+BIGINT geçişi tablo/indeks rewrite ve WAL üretir. Artifact staging sonrasında,
+freeze’den önce iki tablonun `pg_total_relation_size`, WAL retention ayarları,
+`max_wal_size`, archive/replication durumları ve gerçek root boş alanı ölçülür.
+Bu teslimde ek planlama payı `8 × (entriesBytes + topicsBytes) + maxWalBytes`;
+admission kapısında mevcut `3 × DB + 1GiB` tabanına eklenir. A5’in dump öncesi
+taze kapısı `3 × DB + 1GiB` olarak kalır. Mevcut WAL gerçek boş alana yansır.
+`max_wal_size` sert bir WAL üst sınırı
+değildir; archive/replication retention varsa bu basit hesapla ilerlenmez.
+Dump/restore öncesindeki mevcut taze disk kapıları ve 45 dakika bütçesi korunur.
+A5 sonrası eski imaj geri dönüşü yalnız native scratch BIGINT okuma kabulüyle
+kanıtlanır; additive varsayımı bu özel profile otomatik taşınmaz.
+
 **Onay.** SHA onayına ek olarak uygulanacak migration adları birebir onaylanır; ikisi ayrı
 değişkendir ve kalıcı yazılmaz:
 

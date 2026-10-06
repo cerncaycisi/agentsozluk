@@ -79,6 +79,9 @@ function main(): void {
   run("agent integration", ["test:agent-integration"]);
   run("agent simulation", ["test:agent-simulation"]);
   run("production build", ["build"], { NODE_ENV: "production" });
+  // M1 E2E'nin immutable reset fixture'ı integration temizliğinde korunur.
+  // Playwright webServer, globalSetup'tan önce başlar; admission öncesi temiz DB gerekir.
+  run("clean agent E2E database", ["exec", "prisma", "migrate", "reset", "--force", "--skip-seed"]);
   run("agent E2E", ["test:agent-e2e"], { E2E_PRODUCTION_SERVER: "true" });
   run("OpenAPI", ["openapi:validate"]);
   run("persona verification", ["agent:verify-personas"]);
