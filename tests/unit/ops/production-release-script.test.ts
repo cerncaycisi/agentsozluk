@@ -46,7 +46,7 @@ describe("schema-neutral production release lane", () => {
     expect(end).toBeGreaterThan(start);
     const definition = remote.slice(start, end);
     const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
-    const profiles = ["", "october-2026-v1", "october-2026-v2"];
+    const profiles = ["", "october-2026-v1", "october-2026-v2", "reset-2026-v1"];
     const invoke = (profile: string) =>
       spawnSync(
         "bash",
@@ -255,6 +255,7 @@ printf 'PASSED\\n'`,
         "october-2026-v1",
         "october-2026-v2",
         "october-2026-v3",
+        "reset-2026-v1",
         "../october-2026-v2",
       ]) {
         const result = run(

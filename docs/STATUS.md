@@ -6546,3 +6546,43 @@ satır%93,97/dal%86,53/fonksiyon%95,34 native log'da ölçüldü. Bu yeşil kayn
 Y3 inceleme ret kaydını kapatmaz. Yeni shutdown/terminal/apt değişikliği için
 02:21 format:check/lint/typecheck exit0; son3dosya57unit PASS. YeniSHA/CI/closure
 ayrı kapıdır; production reset/reopen hâlâ yok.
+
+## 6 Ekim 02:44 UTC — reset yürütücüsü birleşti; migration native prova
+
+PR335 ana dal `0914d34380e481b96d9b3bcac3e6eeca818f7760`, reviewed
+`01bb98f3d5a855eda75c1bce62046cd4d2316d62` ile tree eşit; root/remote temiz eşit.
+Exact head CI37403773670 yedi iş SUCCESS. Actual Opus5.5 üçüncü inceleme298.005ms:
+Y3 kapalı, source merge-blocking bulgu yok; production kapıları açık.
+206 CI37402537444 native PostgreSQL528 ve browser93; coverage3035 tekrar,
+line%93,97/branch%86,53/function%95,34. Tekrarlar ayrı test toplamı değildir.
+02:23 sahipli küçük DB8702184 actual COMMIT, readonly full-protected reconcile ve
+idle-backend bounded reopen reddi/sonradan açılış PASS; agent superuser ile ölçüldü,
+production non-superuser/boot/fullsize kanıtı değildir.
+
+Reset migration profilinin ilk native D202→main provası beklenen4 yerine6 kayıt
+uygulandığı için fixture kabulünde kaldı. Nedeni mevcut iki immutable trigger
+prepare/finish SQL'nin yeni profil listesinden eksik bırakılmasıydı; veritabanı
+regresyonu değildir. Hiçbir eski SQL değiştirilmedi. Exact profil altı checksum
+ile düzeltildi; ilk sahipli DB/ret makbuzu korundu. Yeni nonce/OID8704553,
+marker/owner/cluster ile sahipli PG16.14/Node22.23.1 provasında altı migration
+uygulandı. Önceki56 tablonun normalize edilmiş şeması, mevcut içerik hash'leri,
+sequence last_value/is_called/range/ownership ve eski Prisma kayıtları aynı;
+131 exact katalog tanımı eşleşti, dört yeni journal boş. Bu küçük gerçek native
+geçiş provası production veya tam boyut restore değildir.
+
+Üretim D202 ve worker kapalı; reset/reopen/newT0 yok. Operator40GB disk,
+02:42 boş8.750.436.352 bayt; source6.010.330.135 için19.104.732.229 bayt
+restore kapısı açık, ek yaklaşık10,4GB gerekir. Başka uygun disk yok. Diğer
+kullanıcı DB/T3/Claude geçmişi ve işleri korunuyor. Üretim24,11GB alanı ayrı
+operator kapısını kapatmaz. Kullanıcıdan disk kapasitesi bilgisi istendi; kaynak
+hazırlığı sürüyor. Fullsize/operator/prodshadow/non-super/native rename/boot/p95,
+168h/Gate11/12/P8/finalM2 henüz tamamlanmadı.
+
+02:49 ek kaynak kapısı: reset preflight eski October-only sütun/yeni indeks
+şartından ayrıldı. Mevcut D202 reward/birth sütunları reset için engel değil;
+October profillerinde aynı ret korunur. Odaklı3dosya76unit PASS. Sahipli
+OID8704553 üzerinde gerçek SQL/profile seçimi: reset geçer, iki October profili
+REVIEWED_COLUMNS_ALREADY_PRESENT ile reddedilir. Docker admin/FK/disk stubları
+kullanıldı; bu sadece native SQL seçimi kanıtı, full preflight veya production GO
+değildir. Main0914 CI37404909548 yedi iş SUCCESS. Son kaynak quality, exact SHA,
+CI ve bağımsız hakem ayrı kapılardır.

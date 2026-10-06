@@ -193,6 +193,11 @@ plan_migrations() {
   ' "$migration_dir/expectation.json" >"$migration_dir/existing-index-names" ||
     migration_fail EXPECTATION_UNREADABLE
 
+  if test "$reviewed_migration_profile" = reset-2026-v1; then
+    db_psql agent_sozluk <"$app_root/scripts/migration-profiles/reset-2026-v1-pre.sql" >"$migration_dir/reset-preconditions.json"
+    "$host_node" "$app_root/scripts/reviewed-migration-profile.mjs" verify-pre reset-2026-v1 "$migration_dir/reset-preconditions.json" || migration_fail REVIEWED_RESET_PRECONDITIONS_FAILED
+  fi
+
   install -d -m 0700 "$migration_marker"
   migration_identity >"$migration_marker/identity"
   printf '%s\n' "$state_dir" >"$migration_marker/state-dir"
@@ -247,7 +252,7 @@ preflight_migration() {
 
   assert_fk_targets
   assert_existing_index_targets
-  if test -n "$reviewed_migration_profile"; then
+  if [[ "$reviewed_migration_profile" = october-2026-v1 || "$reviewed_migration_profile" = october-2026-v2 ]]; then
     test "$(db_psql agent_sozluk -c \
       "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.agent_global_settings'::regclass
        AND NOT attisdropped AND attname IN ('rewardMode','birthMode','lastBirthScanAt','lastBirthCandidateAt');" \
@@ -305,7 +310,7 @@ assert_fk_targets() {
   local target checked=0 expected
   "$host_node" -e '
     const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
-    const reviewed = ["october-2026-v1", "october-2026-v2"].includes(process.argv[2]);
+    const reviewed = ["october-2026-v1", "october-2026-v2", "reset-2026-v1"].includes(process.argv[2]);
     const targets = new Set();
     for (const table of Object.values(value.tables))
       for (const fk of table.foreignKeys)
@@ -483,6 +488,10 @@ WHERE n.nspname = 'public'
 ORDER BY 1;
 SQL
   ! grep -qx UNSUPPORTED_RELATION_KIND "$output" || migration_fail UNSUPPORTED_RELATION_KIND
+  if test "$reviewed_migration_profile" = reset-2026-v1; then
+    "$host_node" "$app_root/scripts/reviewed-migration-profile.mjs" normalize-fingerprint reset-2026-v1 <"$output" >"$output.normalized" || migration_fail REVIEWED_RESET_SEQUENCE_MISMATCH
+    mv -T "$output.normalized" "$output"
+  fi
   test -s "$output"
 }
 
@@ -756,7 +765,7 @@ run_migration() {
   image_id="$(cat "$state_dir/candidate-image-id")" || migration_fail CANDIDATE_IMAGE_ID_MISSING
   test "$(docker image inspect --format '{{.Id}}' "$candidate_image")" = "$image_id" ||
     migration_fail CANDIDATE_IMAGE_TAG_MOVED
-  if test -n "$reviewed_migration_profile"; then
+  if [[ "$reviewed_migration_profile" = october-2026-v1 || "$reviewed_migration_profile" = october-2026-v2 ]]; then
     reviewed_index_size_receipt "$target"
   fi
   set_database_timeouts "$target"
@@ -983,6 +992,7 @@ post_verify() {
 verify_reviewed_profile_post() {
   local database="$1" label="$2" expected_durations=3 extra_duration=""
   case "$reviewed_migration_profile" in
+    reset-2026-v1) expected_durations=6 ;;
     october-2026-v1) ;;
     october-2026-v2)
       expected_durations=4
@@ -995,6 +1005,15 @@ verify_reviewed_profile_post() {
   "$host_node" "$app_root/scripts/reviewed-migration-profile.mjs" verify-extra \
     "$reviewed_migration_profile" "$migration_dir/extra-$label.json" ||
     migration_fail REVIEWED_EXTRA_CATALOG_MISMATCH
+  if test "$reviewed_migration_profile" = reset-2026-v1; then
+    db_psql "$database" -v "names=$approved_migrations" -F '|' >"$migration_dir/reset-migration-durations-$label" <<'SQL'
+SELECT migration_name,extract(epoch FROM (finished_at-started_at))*1000
+FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
+AND migration_name=ANY(string_to_array(:'names',',')) ORDER BY migration_name;
+SQL
+    test "$(wc -l <"$migration_dir/reset-migration-durations-$label")" = "$expected_durations" || migration_fail REVIEWED_RESET_DURATION_MISSING
+    return
+  fi
   test "$(db_psql "$database" -c \
     "SELECT count(*) FROM agent_global_settings WHERE \"rewardMode\" <> 'OFF'
       OR \"birthMode\" <> 'OFF' OR \"lastBirthScanAt\" IS NOT NULL

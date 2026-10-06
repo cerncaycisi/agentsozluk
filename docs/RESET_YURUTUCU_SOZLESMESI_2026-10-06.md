@@ -33,9 +33,13 @@ Mevcut bootstrap oneshot'un `ExecStop` komutu DB'yi de kapatır; service stop
 edilmez. `INSTALL_BOOT_GUARD`, tam freeze kanıtından sonra root maintenance hold,
 kalıcı generation bind mount ve exact root drop-in kurar. Drop-in shutdown için
 base `down` komutunu temizleyip `stop --timeout 60` kullanır; konteyner ID'leri
-korunur. Hold altındaki reboot sonrası yalnız pinli DB kontrollü yeniden başlatılır;
-bootstrap hold'u atlamak, container recreate veya hold'u elle silmek kurtarma yolu
-değildir. Bütün freeze kipleri `Unattended-Upgrade::Automatic-Reboot` için açık
+korunur. Graceful shutdown sonrası hold altındaki DB aynı pinli container ID ile
+kontrollü başlatılır. Hard reset, sağlayıcı veya manuel reboot için açık apt false
+ayarı genel engel değildir; DB/proxy durumu yeniden ölçülür ve proxy izolasyonu
+yeniden kanıtlanır. Bootstrap hold'u atlamak veya hold'u elle silmek kurtarma yolu
+değildir. Hold'dan sonraki bootstrap active/sub-state farkı yeni root:0600 freeze
+envanteri ve byte özetiyle request'lere bağlanır; yalnız beklenen state farkı
+kabul edilir, başka pin/aktivasyon farkı ayrıca uzlaştırılır. Bütün freeze kipleri `Unattended-Upgrade::Automatic-Reboot` için açık
 `false` ayarı ister; eksik/default/true reddedilir. Başka drop-in veya
 `NeedDaemonReload=yes` reddedilir. Hold varken boot uygulamayı açamaz.
 Kurulumdan sonra durdurulmuş app konteyneri kalıcı compose override ile yeniden
@@ -49,7 +53,11 @@ Hold yalnız DB ile eşleşen terminal `TRAFFIC_OPEN` veya `ROLLED_BACK` mirror
 sonrası kaldırılır. Terminal kanıt doğrulandıktan sonra kalıcı compose atomik/fsync
 ile `required=true, restart=unless-stopped` durumuna geçer, ardından hold kaldırılır.
 Son app bu terminal override ile yeniden oluşturulup politika/mount/boot kabulü
-ölçülür. Bakım süresindeki `restart=no` canlı işletimde kalıcı bırakılmaz.
+ölçülür. Terminal compose ile yalnız app için `up -d --no-build --no-deps
+--force-recreate app` kullanılır; proxy ayrı kabul adımında açılır. Active/exited
+bootstrap için `systemctl start` app'i yeniden yaratma kanıtı değildir; restart
+DB'yi durduracağından bu adımda kullanılmaz. Bakım süresindeki `restart=no`
+canlı işletimde kalıcı bırakılmaz.
 Yarım kalmış kurulum/publish otomatik yeniden denenmez.
 
 ## Tek kullanımlık işlem
@@ -105,8 +113,10 @@ yeni settingsVersion ile açılır, worker en son açılır ve yeni gerçek P7 T
 
 Restore kararı öncesinde `COMMITTED_MAINTENANCE` root mirror yayını zorunludur;
 sonradan ilk yayın olarak `ROLLED_BACK` kabul edilmez. Trafik journal'ı terminal
-olmadan hemen önce mevcut COMMITTED mirror ve DB admission salt okunur yeniden
-kanıtlanır; ret varsa journal terminale geçmez. Proxy kapalı/izole iç kabul ve
+olmadan hemen önce aynı `COMMITTED_MAINTENANCE` mirror ile idempotent
+`PUBLISH_GENERATION` yeniden çalıştırılır: DB admission salt okunur, root mirror
+yayını dosya yazmasıdır. CLI'da ayrı VERIFY kipi yoktur. Ret varsa journal
+terminale geçmez. Proxy kapalı/izole iç kabul ve
 hata sonrası control kapısını belirsiz kabul edip readonly uzlaştırma operasyonel
 ön koşullarıdır. Restore otomatik değildir. Canlı HMAC store yalnız `COMMITTED_MAINTENANCE`
 ve exact reset-anı dump'ına izin verir; DB'nin aynı commit'i, exposure/restore
@@ -169,3 +179,15 @@ Yeni drop-in stop, terminal restart ve explicit apt false kapıları kapanışa 
 Üretim ayarı veya drop-in bu kaynak değişikliğiyle kurulmuş sayılmaz. Native02:11
 root/deploy user manager ve user unit dosyaları/cron'da proje veya PG yazıcısı yok;
 bilinen dört active timer ve eski disabled activation timer envanteri korundu.
+
+6 Ekim 02:35:56 UTC: [PR335](https://github.com/cerncaycisi/agentsozluk/pull/335)
+ana dala `0914d34380e481b96d9b3bcac3e6eeca818f7760` olarak birleşti. Tree reviewed
+`01bb98f3d5a855eda75c1bce62046cd4d2316d62` ile aynı; exact head CI37403773670
+yedi iş SUCCESS. Üçüncü actual Opus5.5/298.005ms Y3'ü kapattı; source merge
+engeli yok, üretim kapıları açık. Yeni main CI ayrı ölçümdür.
+
+Terminal compose `.terminal` veya latch `.latched` geçici dosyası kalmışsa
+kapı kapalı kalır. Sahip/izin/exact beklenen body ve aynı operation hold
+kanıtlanmadan dosya kaldırılmaz; hold elle silinmez. Aug20 reboot nedeni
+bu reset hazırlığında native journal ile doğrulanmış değildir; apt false
+ayarı her reboot nedenini önlediği iddiasıyla kullanılmaz.

@@ -3,9 +3,14 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  normalizeResetMigrationSchema,
+  normalizeResetMigrationFingerprint,
+  assertResetMigrationPreconditions,
+} from "./reset-migration-profile.mjs";
 
 export const profileName = "october-2026-v1";
-const supportedProfiles = new Set(["october-2026-v1", "october-2026-v2"]);
+const supportedProfiles = new Set(["october-2026-v1", "october-2026-v2", "reset-2026-v1"]);
 function assertProfileName(name) {
   if (!supportedProfiles.has(name)) throw new Error("REVIEWED_PROFILE_UNKNOWN");
 }
@@ -52,9 +57,10 @@ export function verifyProfile(name, root, pending) {
   return profile.catalog;
 }
 
-// pg_dump'ın yalnız bu dört ek sütun satırı çıkarılır. Farklı tür/default/konum,
-// yinelenen veya eksik ek sütun paketi hata verir; eski şema metni korunur.
+// October profilleri yalnız dört settings sütununu çıkarır; reset profili ayrı
+// exact ID/sequence dönüşümünü doğrular. Diğer şema farkları görünür kalır.
 export function normalizeProfileSchema(input, name = profileName) {
+  if (name === "reset-2026-v1") return normalizeResetMigrationSchema(input);
   const profile = readProfile(name);
   let inside = false;
   let seenTable = false;
@@ -94,6 +100,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       process.stdout.write(JSON.stringify(verifyProfile(name, root, pending)) + "\n");
     } else if (command === "normalize-schema") {
       process.stdout.write(normalizeProfileSchema(readFileSync(0, "utf8"), name));
+    } else if (command === "normalize-fingerprint" && name === "reset-2026-v1") {
+      process.stdout.write(normalizeResetMigrationFingerprint(readFileSync(0, "utf8")));
+    } else if (command === "verify-pre" && name === "reset-2026-v1") {
+      assertResetMigrationPreconditions(JSON.parse(readFileSync(root, "utf8")));
     } else if (command === "verify-extra") {
       assertExtraCatalog(JSON.parse(readFileSync(root, "utf8")), name);
     } else {
