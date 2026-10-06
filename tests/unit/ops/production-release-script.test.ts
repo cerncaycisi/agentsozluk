@@ -245,6 +245,112 @@ printf 'PASSED\\n'`,
     expect(remote).toContain("disk_after=");
   });
 
+  describe("root/0700 reset dizini", () => {
+    // Sahte sudo yalnız $fake_root altını "root görünürlüğü" olarak sunar; sudo'suz
+    // erişim hiçbir reset yolunu görmez. 6 Ekim: sudo'suz test -e overlay'i atladı.
+    const start = remote.indexOf("reset_root=/opt/agent-sozluk/reset");
+    const holdEnd = remote.indexOf('test "$(git -C "$app_root" remote get-url origin)"');
+    const genStart = remote.indexOf('generation_dir="$reset_root/generation"');
+    const genEnd =
+      remote.indexOf("\nresolve_reset_generation\n") + "\nresolve_reset_generation\n".length;
+    const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+    function probe(options: {
+      sudoWorks?: boolean;
+      hold?: boolean;
+      generation?: boolean;
+      required?: boolean;
+      override?: boolean;
+      state?: string;
+    }) {
+      const directory = mkdtempSync(path.join(tmpdir(), "release-reset-root-"));
+      try {
+        const script = `set -Eeuo pipefail
+fake_root=${quote(directory)}/root
+runtime_root=${quote(directory)}/runtime
+mkdir -p "$fake_root/reset" "$runtime_root"
+${options.hold ? ': >"$fake_root/reset/maintenance-hold"' : ""}
+${options.generation ? 'mkdir "$fake_root/reset/generation"' : ""}
+${options.required ? ': >"$fake_root/reset/generation/required.json"' : ""}
+${options.generation ? `printf '{"state":"%s"}' ${quote(options.state ?? "TRAFFIC_OPEN")} >"$fake_root/reset/generation/current.json"` : ""}
+${options.override ? ': >"$runtime_root/reset-generation-compose.yaml"' : ""}
+map() { printf '%s\\n' "\${1/#\\/opt\\/agent-sozluk/$fake_root}"; }
+sudo() {
+  test "$1" = -n || return 1
+  shift
+  ${options.sudoWorks === false ? "return 1" : ""}
+  case "$1" in
+    true) return 0 ;;
+    test) shift; local last="\${@: -1}"; test "\${@:1:$#-1}" "$(map "$last")" ;;
+    stat) printf 'root|root|755\\n' ;;
+    readlink) printf '%s\\n' "$3" ;;
+    cat) command cat "$(map "$2")" ;;
+    *) return 1 ;;
+  esac
+}
+stat() { printf 'root|root|444\\n'; }
+compose=(docker compose)
+${remote.slice(start, holdEnd)}
+${remote.slice(genStart, genEnd)}
+printf 'compose=%s required=%s\\n' "\${compose[*]}" "$generation_required"`;
+        return spawnSync("bash", ["-c", script], { encoding: "utf8" });
+      } finally {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    }
+
+    it("nesil dizinini sudo ile görür, overlay'i ve latch'i bağlar", () => {
+      expect(start).toBeGreaterThan(-1);
+      expect(genStart).toBeGreaterThan(start);
+      const result = probe({ generation: true, required: true, override: true });
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("reset-generation-compose.yaml required=1");
+    });
+
+    it("sudo çalışmıyorsa reset yollarını yok saymaz", () => {
+      const result = probe({ sudoWorks: false, generation: true, override: true });
+      expect(result.status).toBe(97);
+      expect(result.stderr).toContain("RELEASE_FAIL code=ROOT_PROBE_UNAVAILABLE");
+    });
+
+    it("root-only bakım kilidini görür", () => {
+      const result = probe({ hold: true, generation: true, override: true });
+      expect(result.status).toBe(97);
+      expect(result.stderr).toContain("RELEASE_FAIL code=RESET_MAINTENANCE_HOLD");
+    });
+
+    it("overlay varken görünmeyen nesil dizinini legacy boot saymaz", () => {
+      const result = probe({ override: true });
+      expect(result.status).toBe(97);
+      expect(result.stderr).toContain("RELEASE_FAIL code=RESET_GENERATION_UNRESOLVED");
+    });
+
+    it("trafik açık olmayan nesil aynasında durur, latch'siz legacy boot'u korur", () => {
+      const held = probe({
+        generation: true,
+        required: true,
+        override: true,
+        state: "COMMITTED_MAINTENANCE",
+      });
+      expect(held.status).toBe(97);
+      expect(held.stderr).toContain("RELEASE_FAIL code=RESET_MAINTENANCE_HOLD");
+      const legacy = probe({});
+      expect(legacy.status).toBe(0);
+      expect(legacy.stdout).toContain("compose=docker compose required=0");
+    });
+
+    it("eski app ve worker'a dokunmadan önce aday nesil kabulünü dener", () => {
+      const kesim = remote.slice(remote.indexOf("\ncutover() {"));
+      const kabul = kesim.indexOf("scripts/verify-reset-generation.ts </dev/null || {");
+      expect(kabul).toBeGreaterThan(0);
+      expect(kabul).toBeLessThan(kesim.indexOf("wait_for_no_active_work"));
+      expect(kabul).toBeLessThan(kesim.indexOf("sudo systemctl stop agent-sozluk-runtime.service"));
+      expect(kabul).toBeLessThan(kesim.indexOf("--force-recreate app"));
+      expect(kesim).toContain("RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED");
+      expect(remote).not.toMatch(/(^|[^n] )test -e "\$generation_dir/mu);
+      expect(remote).toContain('if test "$generation_required" = 1; then');
+    });
+  });
+
   describe("A5 migration'lı mod", () => {
     it("bilinmeyen veya listesiz exact profili ağa çıkmadan reddeder", () => {
       const base = ["--sha", sha, "--artifact-run", "1", "--execute"];

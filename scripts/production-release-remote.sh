@@ -52,7 +52,20 @@ fi
   exit 90
 }
 test "$(hostname)" = agent-sozluk-prod || exit 91
-if test -e /opt/agent-sozluk/reset/maintenance-hold || test -L /opt/agent-sozluk/reset/maintenance-hold; then
+# /opt/agent-sozluk/reset root:root 0700'dür; deploy kullanıcısının sudo'suz
+# `test -e` sorgusu her yolda "yok" der. 6 Ekim'de nesil overlay'i bu yüzden
+# atlandı ve aday açılış kabulünde düştü. Reset yolları yalnız sudo ile okunur;
+# sudo çalışmıyorsa sonuç "yok" sayılmaz.
+reset_root=/opt/agent-sozluk/reset
+root_path_test() {
+  sudo -n test "$@"
+}
+sudo -n true || {
+  printf 'RELEASE_FAIL code=ROOT_PROBE_UNAVAILABLE\n' >&2
+  exit 97
+}
+if root_path_test -e "$reset_root/maintenance-hold" ||
+   root_path_test -L "$reset_root/maintenance-hold"; then
   printf 'RELEASE_FAIL code=RESET_MAINTENANCE_HOLD\n' >&2
   exit 97
 fi
@@ -75,28 +88,38 @@ compose=(
 
 # DB backup dışında kalıcı root nesil latch'i bütün sonraki cutover'larda bağlanır.
 # İlk reset hazırlığı bu dizini yaratır; latch henüz yokken legacy boot mümkündür.
-generation_dir=/opt/agent-sozluk/reset/generation
-if test -e "$generation_dir" || test -L "$generation_dir"; then
-  test ! -L "$generation_dir"
-  test "$(stat -c '%U|%G|%a' "$generation_dir")" = 'root|root|755'
-  test "$(readlink -e "$generation_dir")" = "$generation_dir"
-  generation_override="$runtime_root/reset-generation-compose.yaml"
-  test ! -L "$generation_override"
-  test "$(stat -c '%U|%G|%a' "$generation_override")" = 'root|root|444'
-  compose+=(-f "$generation_override")
-  if test -e "$generation_dir/required.json"; then
-    node - "$generation_dir/current.json" <<'NODE'
-const fs = require("node:fs");
+generation_dir="$reset_root/generation"
+generation_override="$runtime_root/reset-generation-compose.yaml"
+generation_required=0
+resolve_reset_generation() {
+  local mirror_json
+  if root_path_test -e "$generation_dir" || root_path_test -L "$generation_dir"; then
+    root_path_test ! -L "$generation_dir"
+    test "$(sudo -n stat -c '%U|%G|%a' "$generation_dir")" = 'root|root|755'
+    test "$(sudo -n readlink -e "$generation_dir")" = "$generation_dir"
+    test ! -L "$generation_override"
+    test "$(stat -c '%U|%G|%a' "$generation_override")" = 'root|root|444'
+    compose+=(-f "$generation_override")
+    if root_path_test -e "$generation_dir/required.json"; then
+      generation_required=1
+      mirror_json="$(sudo -n cat "$generation_dir/current.json")"
+      MIRROR_JSON="$mirror_json" node - <<'NODE'
 try {
-  const mirror = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  const mirror = JSON.parse(process.env.MIRROR_JSON ?? "");
   if (!["TRAFFIC_OPEN", "ROLLED_BACK"].includes(mirror.state)) throw new Error();
 } catch {
   process.stderr.write("RELEASE_FAIL code=RESET_MAINTENANCE_HOLD\n");
   process.exit(97);
 }
 NODE
+    fi
+  elif test -e "$generation_override" || test -L "$generation_override"; then
+    # Overlay kurulmuş ama nesil dizini görülemiyor: legacy boot'a düşülmez.
+    printf 'RELEASE_FAIL code=RESET_GENERATION_UNRESOLVED\n' >&2
+    exit 97
   fi
-fi
+}
+resolve_reset_generation
 
 # Tamamlanmamış bir migration operasyonu varken migration'sız dağıtım olmaz.
 # `cutover-done` yazılıp işaret silinemeden kesilen bir koşu tamamlanmıştır:
@@ -421,7 +444,7 @@ build_candidate_image() {
     image_config_digest="$image_id"
   fi
   printf '%s\n' "$image_config_digest" >"$state_dir/candidate-image-config-digest"
-  if test -e "$generation_dir/required.json"; then
+  if test "$generation_required" = 1; then
     docker run --rm --pull never --network none --entrypoint test "$candidate_image" \
       -f /app/scripts/verify-reset-generation.ts </dev/null
   fi
@@ -561,6 +584,14 @@ cutover() {
   fi
 
   if test "$app_health" != healthy; then
+    # Eski app ve worker'a dokunmadan önce aday imaj aynı compose, mount ve ortamla
+    # salt okunur reset nesil kabulünü geçmeli; yoksa kesim açılışta düşer (6 Ekim).
+    APP_IMAGE="$candidate_image" timeout --kill-after=10 180 "${compose[@]}" run --rm \
+      --no-deps --pull never -T --entrypoint ./node_modules/.bin/tsx app \
+      scripts/verify-reset-generation.ts </dev/null || {
+      printf 'RELEASE_FAIL code=CANDIDATE_RESET_ADMISSION_REJECTED\n' >&2
+      exit 97
+    }
     wait_for_no_active_work
     sudo systemctl stop agent-sozluk-runtime.service
     test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = inactive
