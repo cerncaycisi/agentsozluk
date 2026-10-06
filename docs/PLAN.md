@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 02:06 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 02:18 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
 kapalı; başlamış koşu ve canlı lease sıfır. Son içerik sayımı 23:26'da 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
@@ -48,7 +48,10 @@ FAIL oldu. Actual Opus5.5 iki yüksek bulguyla NO-GO verdi; sonuç korunuyor.
 Bulgular için COMMIT makbuzunu koruyan cleanup/uzlaşı yolu, konteyner generation
 zorunluluğu, release hold ve restore tam manifest karşılaştırması düzeltildi.
 Odaklı 120 unit ve sahipli stage 7 PostgreSQL testi geçti; son kaynak için
-format/lint/typecheck ve shell/Node syntax geçti; full CI ve kapanış incelemesi ayrı kapılardır. Küçük eski gerçek COMMIT
+format/lint/typecheck ve shell/Node syntax geçti. İkinci actual Opus incelemesi
+önceki kaynak bulgularını kapatıp shutdown'da pinli container ID kaybını buldu;
+stop override, terminal restart ve açık apt false kapıları hazırlanıyor. Son
+exact full CI ve Y3 kapanışı ayrı kapılardır. Küçük eski gerçek COMMIT
 üretim veya tam boyut kabulü değildir. Yerel non-superuser pg_hba/P1010 reddi
 nedeniyle kullanıcı erişim ayarları değiştirilmedi.
 Üretimin kendi non-superuser hesabıyla ana/control DB bağlantıları salt okunur

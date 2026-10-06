@@ -6891,3 +6891,26 @@ v24'tür; bütün geçerli proje kapılarını explicit Node22 PATH ile çalış
 
 02:06 son kaynak quality: format:check/lint/typecheck ve üç bash/iki Node syntax
 exit0. Ek release-script19unit PASS; bu testler120unit sayısına ek ayrı kesittir.
+
+## 6 Ekim 02:18 — ikinci actual hakem ve shutdown sınırı
+
+Exact206be378762f02411a10606ffb9b65ae1de2fca0 için actual Opus5.5/440.438ms,
+49exactGit kaynak/tools-disabled. Önceki Y1/Y2/O1–O4 kapandı; yeni Y3 nedeniyle
+merge NO-GO: bootstrap shutdown compose down pinli konteyner ID'lerini siliyordu.
+Drop-in baseExecStop'u stop--timeout60 ile değiştirir. Terminal DB/mirror kabulü
+sonrası root compose requiredtrue/restartunless-stopped ile atomik yayımlanır;
+maintenance reboot için apt explicitfalse freeze kapısı eklendi. İlk3dosya53unit
+PASS; son explicit apt negatif testleriyle3dosya57unit PASS.
+Native02:17 apt ayarı yok, yeni false kapısı henüz karşılanmıyor; mutation yok.
+Native02:11 root/deploy user managers/unitfiles/cron'da proje/PG yazıcısı yok;
+12projectunit, 4active timer, eski activation disabled. D202/OID16385/cluster,
+7013topic/21628entry, settings311(runtimefalse/diğer3true), QUEUED1/lease0 sabit.
+Üretimfree24.109.481.984bayt; 3DB+1GiB19.104.732.229bayt kapısıPASS. Operatör
+free8.8GB; localfullsize alan hesabıOPEN. Operatör gece yedeği01:40 success/exit0,
+MainPID0. Reset/reopen/newT0 yok. Yeni exact CI ve Y3 closure ayrı kapılardır.
+
+02:20 exact206 CI37402537444 **7/7 SUCCESS**; 93browser ve coverage
+satır%93,97/dal%86,53/fonksiyon%95,34 native log'da ölçüldü. Bu yeşil kaynak
+Y3 inceleme ret kaydını kapatmaz. Yeni shutdown/terminal/apt değişikliği için
+02:21 format:check/lint/typecheck exit0; son3dosya57unit PASS. YeniSHA/CI/closure
+ayrı kapıdır; production reset/reopen hâlâ yok.

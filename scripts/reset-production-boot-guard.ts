@@ -13,7 +13,7 @@ export const resetBootHoldPath = "/opt/agent-sozluk/reset/maintenance-hold";
 export const resetGenerationComposePath = "/opt/agent-sozluk/runtime/reset-generation-compose.yaml";
 export const resetBootDropInPath =
   "/etc/systemd/system/agent-sozluk.service.d/50-reset-generation.conf";
-export const resetBootDropIn = `[Unit]\nConditionPathExists=!${resetBootHoldPath}\n\n[Service]\nExecStartPre=\nExecStartPre=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml -f ${resetGenerationComposePath} config --quiet\nExecStart=\nExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml -f ${resetGenerationComposePath} up -d --no-build --remove-orphans\n`;
+export const resetBootDropIn = `[Unit]\nConditionPathExists=!${resetBootHoldPath}\n\n[Service]\nExecStartPre=\nExecStartPre=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml -f ${resetGenerationComposePath} config --quiet\nExecStart=\nExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml -f ${resetGenerationComposePath} up -d --no-build --remove-orphans\nExecStop=\nExecStop=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml -f ${resetGenerationComposePath} stop --timeout 60\n`;
 export const resetBootHoldSchema = z
   .object({ operationId: z.string().uuid(), releaseSha: z.string().regex(/^[a-f0-9]{40}$/u) })
   .strict();
@@ -48,8 +48,14 @@ export function assertResetBootstrapConfiguration(installed: boolean): void {
       throw new Error("GREAT_RESET_BOOTSTRAP_CONFIGURATION_CHANGED");
   }
 }
-export function resetGenerationCompose(required: boolean): string {
-  return `services:\n  app:\n    restart: "no"\n    environment:\n      AGENT_SOZLUK_RESET_GENERATION_REQUIRED: "${required}"\n    volumes:\n      - type: bind\n        source: /opt/agent-sozluk/reset/generation\n        target: /run/agentsozluk-reset\n        read_only: true\n        bind:\n          create_host_path: false\n`;
+/** Apt çıktısı yalnız açık false ise bakım boyunca otomatik reboot kapalıdır. */
+export function assertResetAutomaticRebootDisabled(value: string): void {
+  if (value.trim() !== "RESET_REBOOT='false'")
+    throw new Error("GREAT_RESET_AUTOMATIC_REBOOT_NOT_DISABLED");
+}
+export function resetGenerationCompose(required: boolean, terminal = false): string {
+  if (terminal && !required) throw new Error("GREAT_RESET_GENERATION_COMPOSE_INVALID");
+  return `services:\n  app:\n    restart: "${terminal ? "unless-stopped" : "no"}"\n    environment:\n      AGENT_SOZLUK_RESET_GENERATION_REQUIRED: "${required}"\n    volumes:\n      - type: bind\n        source: /opt/agent-sozluk/reset/generation\n        target: /run/agentsozluk-reset\n        read_only: true\n        bind:\n          create_host_path: false\n`;
 }
 function host() {
   if (
@@ -170,7 +176,8 @@ export async function latchProductionResetCompose(): Promise<void> {
   )
     throw new Error("GREAT_RESET_GENERATION_COMPOSE_INVALID");
   const actual = readFileSync(resetGenerationComposePath, "utf8");
-  if (actual === resetGenerationCompose(true)) return;
+  if (actual === resetGenerationCompose(true) || actual === resetGenerationCompose(true, true))
+    return;
   if (actual !== resetGenerationCompose(false))
     throw new Error("GREAT_RESET_GENERATION_COMPOSE_INVALID");
   const temporary = `${resetGenerationComposePath}.latched`;
@@ -199,9 +206,29 @@ export async function releaseProductionResetBootHold(value: ResetGenerationMirro
     realpathSync(path) !== path ||
     JSON.stringify(resetGenerationMirrorSchema.parse(JSON.parse(readFileSync(path, "utf8")))) !==
       JSON.stringify(mirror) ||
-    readFileSync(resetGenerationComposePath, "utf8") !== resetGenerationCompose(true)
+    ![resetGenerationCompose(true), resetGenerationCompose(true, true)].includes(
+      readFileSync(resetGenerationComposePath, "utf8"),
+    )
   )
     throw new Error("GREAT_RESET_BOOT_HOLD_RELEASE_FORBIDDEN");
+  // Terminal DB/mirror kanıtından sonra kalıcı restart politikası geri gelir.
+  // Rename sonrası kesintide hold kalır; aynı exact terminal içerik tekrar okunur.
+  trustedDirectory("/opt/agent-sozluk/runtime", 1000);
+  const composition = lstatSync(resetGenerationComposePath);
+  if (
+    !composition.isFile() ||
+    composition.isSymbolicLink() ||
+    composition.uid !== 0 ||
+    (composition.mode & 0o777) !== 0o444 ||
+    realpathSync(resetGenerationComposePath) !== resetGenerationComposePath
+  )
+    throw new Error("GREAT_RESET_GENERATION_COMPOSE_INVALID");
+  if (readFileSync(resetGenerationComposePath, "utf8") !== resetGenerationCompose(true, true)) {
+    const temporary = `${resetGenerationComposePath}.terminal`;
+    await exclusiveFile(temporary, resetGenerationCompose(true, true), 0o444);
+    await rename(temporary, resetGenerationComposePath);
+    await sync("/opt/agent-sozluk/runtime");
+  }
   await unlink(resetBootHoldPath);
   await sync("/opt/agent-sozluk/reset");
 }

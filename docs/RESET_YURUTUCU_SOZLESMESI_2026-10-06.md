@@ -31,7 +31,12 @@ envanterde olmalıdır. Uygulama konteyneri durmalıdır. Envanterin byte özeti
 
 Mevcut bootstrap oneshot'un `ExecStop` komutu DB'yi de kapatır; service stop
 edilmez. `INSTALL_BOOT_GUARD`, tam freeze kanıtından sonra root maintenance hold,
-kalıcı generation bind mount ve exact root drop-in kurar. Başka drop-in veya
+kalıcı generation bind mount ve exact root drop-in kurar. Drop-in shutdown için
+base `down` komutunu temizleyip `stop --timeout 60` kullanır; konteyner ID'leri
+korunur. Hold altındaki reboot sonrası yalnız pinli DB kontrollü yeniden başlatılır;
+bootstrap hold'u atlamak, container recreate veya hold'u elle silmek kurtarma yolu
+değildir. Bütün freeze kipleri `Unattended-Upgrade::Automatic-Reboot` için açık
+`false` ayarı ister; eksik/default/true reddedilir. Başka drop-in veya
 `NeedDaemonReload=yes` reddedilir. Hold varken boot uygulamayı açamaz.
 Kurulumdan sonra durdurulmuş app konteyneri kalıcı compose override ile yeniden
 oluşturulur ve **yeni container ID** freeze/request makbuzuna pinlenir. Bütün
@@ -41,7 +46,11 @@ bind mount ve generation environment anahtarını ister. Ham environment değerl
 `unless-stopped`, mount ve anahtar yoktur. Konteyner henüz değiştirilmedi.
 Root mirror yayımlandığında kalıcı compose zorunlu generation admission'a kilitlenir.
 Hold yalnız DB ile eşleşen terminal `TRAFFIC_OPEN` veya `ROLLED_BACK` mirror
-sonrası kaldırılır. Yarım kalmış kurulum/publish otomatik yeniden denenmez.
+sonrası kaldırılır. Terminal kanıt doğrulandıktan sonra kalıcı compose atomik/fsync
+ile `required=true, restart=unless-stopped` durumuna geçer, ardından hold kaldırılır.
+Son app bu terminal override ile yeniden oluşturulup politika/mount/boot kabulü
+ölçülür. Bakım süresindeki `restart=no` canlı işletimde kalıcı bırakılmaz.
+Yarım kalmış kurulum/publish otomatik yeniden denenmez.
 
 ## Tek kullanımlık işlem
 
@@ -94,7 +103,12 @@ smoke kullanılmaz. `EXPOSURE` aynı operasyon/journal için idempotent immutabl
 DB olayıdır; başka journal reddedilir. Exposure, mirror ve hold sonrası bayraklar
 yeni settingsVersion ile açılır, worker en son açılır ve yeni gerçek P7 T0 ölçülür.
 
-Restore otomatik değildir. Canlı HMAC store yalnız `COMMITTED_MAINTENANCE`
+Restore kararı öncesinde `COMMITTED_MAINTENANCE` root mirror yayını zorunludur;
+sonradan ilk yayın olarak `ROLLED_BACK` kabul edilmez. Trafik journal'ı terminal
+olmadan hemen önce mevcut COMMITTED mirror ve DB admission salt okunur yeniden
+kanıtlanır; ret varsa journal terminale geçmez. Proxy kapalı/izole iç kabul ve
+hata sonrası control kapısını belirsiz kabul edip readonly uzlaştırma operasyonel
+ön koşullarıdır. Restore otomatik değildir. Canlı HMAC store yalnız `COMMITTED_MAINTENANCE`
 ve exact reset-anı dump'ına izin verir; DB'nin aynı commit'i, exposure/restore
 yokluğu, boş yeni namespace ve tüketilmemiş sequence başlangıçları ayrıca
 kanıtlanır. Tam restore edilmiş sahipli gölge ve iki bağlantı kapısı/atomic rename
@@ -147,3 +161,11 @@ varken migration marker/state dizini değişikliğinden önce reddedilir.
 Override `1.2.2`, frozen install ve `pnpm audit --prod --audit-level=high` geçti.
 Node22.23.1 üzerinde PostCSS map generation ve malicious indexed offset reddi
 ölçüldü. Yeni full CI ve actual closure ayrı kapılardır; ilk kırmızı CI başarı değildir.
+
+6 Ekim ikinci actual Opus5.5/440.438ms incelemesi exact206 için önceki Y1/Y2/O1–O4
+kaynak koşullarını kapattı; yeni Y3 shutdown/ID kaybıyla merge **NO-GO** verdi.
+Yeni drop-in stop, terminal restart ve explicit apt false kapıları kapanışa sunulur.
+02:17 native apt readonly: değer ayarlı değil; açık false şartını karşılamaz.
+Üretim ayarı veya drop-in bu kaynak değişikliğiyle kurulmuş sayılmaz. Native02:11
+root/deploy user manager ve user unit dosyaları/cron'da proje veya PG yazıcısı yok;
+bilinen dört active timer ve eski disabled activation timer envanteri korundu.

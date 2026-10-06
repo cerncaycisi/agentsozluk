@@ -11,6 +11,8 @@ import {
   assertResetBootstrapConfiguration,
   resetBootDropIn,
   resetBootDropInPath,
+  resetGenerationCompose,
+  assertResetAutomaticRebootDisabled,
 } from "../../../scripts/reset-production-boot-guard";
 
 afterEach(() => vi.resetAllMocks());
@@ -33,6 +35,36 @@ function configure(overrides: Record<string, string> = {}) {
   });
 }
 describe("reset sırasında bootstrap yeniden açılış sınırı", () => {
+  it.each(["", "RESET_REBOOT='true'", "RESET_REBOOT='FALSE'", "RESET_REBOOT='false'; extra"])(
+    "açık false dışındaki otomatik reboot ayarını reddeder: %s",
+    (value) => {
+      expect(() => assertResetAutomaticRebootDisabled(value)).toThrow(
+        "GREAT_RESET_AUTOMATIC_REBOOT_NOT_DISABLED",
+      );
+      expect(() => assertResetAutomaticRebootDisabled("RESET_REBOOT='false'\n")).not.toThrow();
+    },
+  );
+
+  it("shutdown'da base down komutunu silmeyen stop ile değiştirir", () => {
+    const directives = resetBootDropIn.split("\n");
+    const stops = directives.filter((line) => line.startsWith("ExecStop="));
+    expect(stops).toHaveLength(2);
+    expect(stops[0]).toBe("ExecStop=");
+    expect(stops[1]).toContain("reset-generation-compose.yaml stop --timeout 60");
+    expect(stops[1]).not.toMatch(/\bdown\b/u);
+  });
+  it("bakımda restart'ı kapatır; yalnız latch'li terminal durumda otomatik restart'ı geri verir", () => {
+    for (const required of [true, false])
+      expect(resetGenerationCompose(required)).toContain('restart: "no"');
+    const terminal = resetGenerationCompose(true, true);
+    expect(terminal).toContain('restart: "unless-stopped"');
+    expect(terminal).toContain('AGENT_SOZLUK_RESET_GENERATION_REQUIRED: "true"');
+    expect(terminal).toContain("read_only: true");
+    expect(() => resetGenerationCompose(false, true)).toThrow(
+      "GREAT_RESET_GENERATION_COMPOSE_INVALID",
+    );
+  });
+
   it("kurulum öncesinde ek override istemez; kurulum sonrasında yalnız root hold override yüklenir", () => {
     configure({ DropInPaths: "" });
     expect(() => assertResetBootstrapConfiguration(false)).not.toThrow();

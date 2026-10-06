@@ -11,6 +11,7 @@ import {
   resetBootDropIn,
   resetBootHoldSchema,
   assertResetBootstrapConfiguration,
+  assertResetAutomaticRebootDisabled,
 } from "./reset-production-boot-guard";
 
 const hash = z.string().regex(/^[a-f0-9]{64}$/u);
@@ -19,6 +20,7 @@ export const resetFreezeInventorySchema = z
     formatVersion: z.literal(1),
     hostname: z.literal("agent-sozluk-prod"),
     bootstrapHold: resetBootHoldSchema.nullable(),
+    automaticReboot: z.literal(false),
     units: z
       .array(
         z
@@ -56,6 +58,17 @@ function digest(value: string | Buffer): string {
 export function measureResetFreezeInventory(bootstrapSetup = false) {
   if (process.getuid?.() !== 0 || hostname() !== "agent-sozluk-prod")
     throw new Error("GREAT_RESET_FREEZE_HOST_REQUIRED");
+  const reboot = execFileSync(
+    "/usr/bin/apt-config",
+    ["shell", "RESET_REBOOT", "Unattended-Upgrade::Automatic-Reboot"],
+    {
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  ).trim();
+  // Explicit false; eksik/default, true veya yorumlanamayan ayar kabul edilmez.
+  assertResetAutomaticRebootDisabled(reboot);
   let bootstrapHold = null;
   assertResetBootstrapConfiguration(!bootstrapSetup);
   if (!bootstrapSetup) {
@@ -194,6 +207,7 @@ export function measureResetFreezeInventory(bootstrapSetup = false) {
     formatVersion: 1,
     hostname: hostname(),
     bootstrapHold,
+    automaticReboot: false,
     units,
     cronFiles,
     crontabs,
