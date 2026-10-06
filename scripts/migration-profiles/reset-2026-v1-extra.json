@@ -1,0 +1,735 @@
+{
+  "column:topics:id": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:id": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "index:topics_pkey": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX topics_pkey ON public.topics USING btree (id)"
+  },
+  "column:topics:slug": {
+    "type": "text",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "index:entries_pkey": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX entries_pkey ON public.entries USING btree (id)"
+  },
+  "column:entries:body": {
+    "type": "text",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:title": {
+    "type": "text",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:score": {
+    "type": "integer",
+    "default": "0",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:status": {
+    "type": "\"TopicStatus\"",
+    "default": "'ACTIVE'::\"TopicStatus\"",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:origin": {
+    "type": "\"ContentOrigin\"",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:status": {
+    "type": "\"EntryStatus\"",
+    "default": "'ACTIVE'::\"EntryStatus\"",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:topicId": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:publicId": {
+    "type": "bigint",
+    "default": "nextval('topics_public_id_seq'::regclass)",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:authorId": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:hiddenAt": {
+    "type": "timestamp(3) with time zone",
+    "default": null,
+    "notNull": false,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:publicId": {
+    "type": "bigint",
+    "default": "nextval('entries_public_id_seq'::regclass)",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:createdAt": {
+    "type": "timestamp(3) with time zone",
+    "default": "CURRENT_TIMESTAMP",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:randomKey": {
+    "type": "double precision",
+    "default": "random()",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:updatedAt": {
+    "type": "timestamp(3) with time zone",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:createdAt": {
+    "type": "timestamp(3) with time zone",
+    "default": "CURRENT_TIMESTAMP",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:deletedAt": {
+    "type": "timestamp(3) with time zone",
+    "default": null,
+    "notNull": false,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:updatedAt": {
+    "type": "timestamp(3) with time zone",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:entryCount": {
+    "type": "integer",
+    "default": "0",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:createdById": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:lastEntryAt": {
+    "type": "timestamp(3) with time zone",
+    "default": null,
+    "notNull": false,
+    "identity": "",
+    "generated": ""
+  },
+  "index:topics_publicId_key": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX \"topics_publicId_key\" ON public.topics USING btree (\"publicId\")"
+  },
+  "column:entries:upvoteCount": {
+    "type": "integer",
+    "default": "0",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:mergedIntoId": {
+    "type": "uuid",
+    "default": null,
+    "notNull": false,
+    "identity": "",
+    "generated": ""
+  },
+  "index:entries_publicId_key": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX \"entries_publicId_key\" ON public.entries USING btree (\"publicId\")"
+  },
+  "index:topics_randomKey_idx": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE INDEX \"topics_randomKey_idx\" ON public.topics USING btree (\"randomKey\")"
+  },
+  "column:entries:downvoteCount": {
+    "type": "integer",
+    "default": "0",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:entries:normalizedBody": {
+    "type": "text",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:topics:normalizedTitle": {
+    "type": "text",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "constraint:topics:topics_pkey": {
+    "validated": true,
+    "definition": "PRIMARY KEY (id)"
+  },
+  "sequence:topics_public_id_seq": {
+    "max": "2147483647",
+    "min": "1",
+    "cache": "1",
+    "cycle": false,
+    "start": "1",
+    "ownedBy": ["topics", "publicId", "a"],
+    "dataType": "bigint",
+    "increment": "1",
+    "persistence": "p"
+  },
+  "index:great_reset_commits_pkey": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX great_reset_commits_pkey ON public.great_reset_commits USING btree (\"operationId\")"
+  },
+  "index:great_reset_intents_pkey": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX great_reset_intents_pkey ON public.great_reset_intents USING btree (\"operationId\")"
+  },
+  "sequence:entries_public_id_seq": {
+    "max": "2147483647",
+    "min": "1",
+    "cache": "1",
+    "cycle": false,
+    "start": "1",
+    "ownedBy": ["entries", "publicId", "a"],
+    "dataType": "bigint",
+    "increment": "1",
+    "persistence": "p"
+  },
+  "constraint:entries:entries_pkey": {
+    "validated": true,
+    "definition": "PRIMARY KEY (id)"
+  },
+  "column:great_reset_intents:scope": {
+    "type": "character varying(80)",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "index:topics_normalizedTitle_key": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX \"topics_normalizedTitle_key\" ON public.topics USING btree (\"normalizedTitle\")"
+  },
+  "index:great_reset_tombstones_pkey": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX great_reset_tombstones_pkey ON public.great_reset_tombstones USING btree (kind, uuid)"
+  },
+  "index:topics_status_createdAt_idx": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE INDEX \"topics_status_createdAt_idx\" ON public.topics USING btree (status, \"createdAt\" DESC)"
+  },
+  "column:great_reset_tombstones:kind": {
+    "type": "character varying(5)",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_tombstones:uuid": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "index:great_reset_intents_one_open": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX great_reset_intents_one_open ON public.great_reset_intents USING btree ((true)) WHERE ((\"consumedAt\" IS NULL) AND (\"invalidatedAt\" IS NULL))"
+  },
+  "index:topics_status_lastEntryAt_idx": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE INDEX \"topics_status_lastEntryAt_idx\" ON public.topics USING btree (status, \"lastEntryAt\" DESC)"
+  },
+  "column:great_reset_commits:singleton": {
+    "type": "boolean",
+    "default": "true",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_intents:createdAt": {
+    "type": "timestamp(3) with time zone",
+    "default": "CURRENT_TIMESTAMP",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_intents:expiresAt": {
+    "type": "timestamp(3) with time zone",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_commits:planSha256": {
+    "type": "character varying(64)",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_commits:releaseSha": {
+    "type": "character varying(40)",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_intents:consumedAt": {
+    "type": "timestamp(3) with time zone",
+    "default": null,
+    "notNull": false,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_intents:releaseSha": {
+    "type": "character varying(40)",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "function:protect_great_reset_intent()": {
+    "definition": "CREATE OR REPLACE FUNCTION public.protect_great_reset_intent()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'GREAT_RESET_JOURNAL_IMMUTABLE' USING ERRCODE = '55000';\n  END IF;\n  IF coalesce(current_setting('agentsozluk.reset_operation', true), '') <> NEW.\"operationId\"::text THEN\n    RAISE EXCEPTION 'GREAT_RESET_OPERATION_REQUIRED' USING ERRCODE = '55000';\n  END IF;\n  IF TG_OP = 'INSERT' THEN\n    NEW.\"createdAt\" := clock_timestamp();\n    IF NEW.\"consumedAt\" IS NOT NULL OR NEW.\"invalidatedAt\" IS NOT NULL\n      OR NEW.\"expiresAt\" <= clock_timestamp() THEN\n      RAISE EXCEPTION 'GREAT_RESET_INTENT_INVALID' USING ERRCODE = '55000';\n    END IF;\n  ELSE\n    IF (to_jsonb(OLD) - ARRAY['consumedAt','invalidatedAt']) IS DISTINCT FROM\n       (to_jsonb(NEW) - ARRAY['consumedAt','invalidatedAt'])\n       OR OLD.\"consumedAt\" IS NOT NULL OR OLD.\"invalidatedAt\" IS NOT NULL\n       OR (NEW.\"consumedAt\" IS NULL AND NEW.\"invalidatedAt\" IS NULL)\n       OR (NEW.\"consumedAt\" IS NOT NULL AND NEW.\"expiresAt\" <= clock_timestamp()) THEN\n      RAISE EXCEPTION 'GREAT_RESET_INTENT_TRANSITION_INVALID' USING ERRCODE = '55000';\n    END IF;\n  END IF;\n  IF TG_OP = 'UPDATE' THEN\n    IF NEW.\"consumedAt\" IS NOT NULL THEN NEW.\"consumedAt\" := clock_timestamp(); END IF;\n    IF NEW.\"invalidatedAt\" IS NOT NULL THEN NEW.\"invalidatedAt\" := clock_timestamp(); END IF;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  "column:great_reset_commits:committedAt": {
+    "type": "timestamp(3) with time zone",
+    "default": "CURRENT_TIMESTAMP",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_commits:operationId": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_intents:operationId": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_tombstones:publicId": {
+    "type": "bigint",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "index:entries_normalized_body_trgm_idx": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE INDEX entries_normalized_body_trgm_idx ON public.entries USING gin (immutable_unaccent(\"normalizedBody\") gin_trgm_ops)"
+  },
+  "index:great_reset_exposure_events_pkey": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX great_reset_exposure_events_pkey ON public.great_reset_exposure_events USING btree (\"operationId\")"
+  },
+  "index:topics_normalized_title_trgm_idx": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE INDEX topics_normalized_title_trgm_idx ON public.topics USING gin (immutable_unaccent(\"normalizedTitle\") gin_trgm_ops)"
+  },
+  "constraint:entries:entries_topicId_fkey": {
+    "validated": true,
+    "definition": "FOREIGN KEY (\"topicId\") REFERENCES topics(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+  },
+  "index:great_reset_commits_singleton_key": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX great_reset_commits_singleton_key ON public.great_reset_commits USING btree (singleton)"
+  },
+  "column:great_reset_commits:clearedCounts": {
+    "type": "jsonb",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_commits:formatVersion": {
+    "type": "integer",
+    "default": "1",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_intents:invalidatedAt": {
+    "type": "timestamp(3) with time zone",
+    "default": null,
+    "notNull": false,
+    "identity": "",
+    "generated": ""
+  },
+  "constraint:entries:entries_authorId_fkey": {
+    "validated": true,
+    "definition": "FOREIGN KEY (\"authorId\") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+  },
+  "column:great_reset_commits:manifestSha256": {
+    "type": "character varying(64)",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_tombstones:operationId": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "constraint:topics:topics_createdById_fkey": {
+    "validated": true,
+    "definition": "FOREIGN KEY (\"createdById\") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+  },
+  "trigger:topics:topics_public_id_immutable": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER topics_public_id_immutable BEFORE UPDATE OF \"publicId\" ON public.topics FOR EACH ROW EXECUTE FUNCTION prevent_public_id_update()"
+  },
+  "column:great_reset_commits:protectedSha256": {
+    "type": "character varying(64)",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "column:great_reset_intents:sourceClusterId": {
+    "type": "character varying(20)",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "constraint:topics:topics_mergedIntoId_fkey": {
+    "validated": true,
+    "definition": "FOREIGN KEY (\"mergedIntoId\") REFERENCES topics(id) ON UPDATE CASCADE ON DELETE SET NULL"
+  },
+  "index:entries_topicId_status_createdAt_idx": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE INDEX \"entries_topicId_status_createdAt_idx\" ON public.entries USING btree (\"topicId\", status, \"createdAt\")"
+  },
+  "constraint:topics:topics_merge_target_check": {
+    "validated": true,
+    "definition": "CHECK (((\"mergedIntoId\" IS NULL) OR (\"mergedIntoId\" <> id)))"
+  },
+  "index:entries_authorId_status_createdAt_idx": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE INDEX \"entries_authorId_status_createdAt_idx\" ON public.entries USING btree (\"authorId\", status, \"createdAt\" DESC)"
+  },
+  "trigger:entries:entries_public_id_immutable": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER entries_public_id_immutable BEFORE UPDATE OF \"publicId\" ON public.entries FOR EACH ROW EXECUTE FUNCTION prevent_public_id_update()"
+  },
+  "column:great_reset_intents:sourceDatabaseOid": {
+    "type": "bigint",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "constraint:entries:entries_body_length_check": {
+    "validated": true,
+    "definition": "CHECK (((char_length(body) >= 10) AND (char_length(body) <= 10000)))"
+  },
+  "column:great_reset_exposure_events:occurredAt": {
+    "type": "timestamp(3) with time zone",
+    "default": "CURRENT_TIMESTAMP",
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "function:protect_great_reset_journal_insert()": {
+    "definition": "CREATE OR REPLACE FUNCTION public.protect_great_reset_journal_insert()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nDECLARE intent public.great_reset_intents%ROWTYPE; commit_time timestamptz;\nBEGIN\n  IF coalesce(current_setting('agentsozluk.reset_operation', true), '') <> NEW.\"operationId\"::text THEN\n    RAISE EXCEPTION 'GREAT_RESET_OPERATION_REQUIRED' USING ERRCODE = '55000';\n  END IF;\n  SELECT * INTO intent FROM public.great_reset_intents WHERE \"operationId\" = NEW.\"operationId\" FOR UPDATE;\n  IF NOT FOUND OR intent.\"consumedAt\" IS NULL OR intent.\"invalidatedAt\" IS NOT NULL THEN\n    RAISE EXCEPTION 'GREAT_RESET_INTENT_NOT_CONSUMED' USING ERRCODE = '55000';\n  END IF;\n  IF TG_TABLE_NAME = 'great_reset_tombstones' AND intent.\"expiresAt\" <= clock_timestamp() THEN\n    RAISE EXCEPTION 'GREAT_RESET_INTENT_INVALID' USING ERRCODE = '55000';\n  END IF;\n  IF TG_TABLE_NAME = 'great_reset_tombstones' AND EXISTS (SELECT 1 FROM public.great_reset_commits) THEN\n    RAISE EXCEPTION 'GREAT_RESET_TOMBSTONES_SEALED' USING ERRCODE = '55000';\n  END IF;\n  IF TG_TABLE_NAME = 'great_reset_commits' THEN\n    NEW.\"committedAt\" := clock_timestamp();\n    IF NEW.\"committedAt\" < intent.\"consumedAt\" THEN\n      RAISE EXCEPTION 'GREAT_RESET_CLOCK_UNSAFE' USING ERRCODE='55000';\n    END IF;\n    IF intent.\"releaseSha\" <> NEW.\"releaseSha\" OR intent.\"expiresAt\" <= clock_timestamp() THEN\n      RAISE EXCEPTION 'GREAT_RESET_INTENT_INVALID' USING ERRCODE = '55000';\n    END IF;\n  END IF;\n  IF TG_TABLE_NAME = 'great_reset_exposure_events' THEN\n    NEW.\"occurredAt\" := clock_timestamp();\n    SELECT \"committedAt\" INTO commit_time FROM public.great_reset_commits WHERE \"operationId\"=NEW.\"operationId\";\n    IF commit_time IS NULL OR NEW.\"occurredAt\" < commit_time THEN\n      RAISE EXCEPTION 'GREAT_RESET_CLOCK_UNSAFE' USING ERRCODE='55000';\n    END IF;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  "column:great_reset_exposure_events:operationId": {
+    "type": "uuid",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "function:reject_great_reset_journal_mutation()": {
+    "definition": "CREATE OR REPLACE FUNCTION public.reject_great_reset_journal_mutation()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  RAISE EXCEPTION 'GREAT_RESET_JOURNAL_IMMUTABLE' USING ERRCODE = '55000';\nEND;\n$function$\n"
+  },
+  "index:great_reset_tombstones_kind_publicid_key": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE UNIQUE INDEX great_reset_tombstones_kind_publicid_key ON public.great_reset_tombstones USING btree (kind, \"publicId\")"
+  },
+  "trigger:entries:entries_protect_canonical_seed": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER entries_protect_canonical_seed BEFORE DELETE OR UPDATE ON public.entries FOR EACH ROW EXECUTE FUNCTION protect_canonical_seed_entries()"
+  },
+  "constraint:topics:topics_public_id_legacy_range": {
+    "validated": true,
+    "definition": "CHECK (((\"publicId\" >= 1) AND (\"publicId\" <= 2147483647)))"
+  },
+  "constraint:topics:topics_random_key_range_check": {
+    "validated": true,
+    "definition": "CHECK (((\"randomKey\" >= (0)::double precision) AND (\"randomKey\" <= (1)::double precision)))"
+  },
+  "column:great_reset_exposure_events:journalSha256": {
+    "type": "character varying(64)",
+    "default": null,
+    "notNull": true,
+    "identity": "",
+    "generated": ""
+  },
+  "index:entries_topicId_status_score_createdAt_idx": {
+    "live": true,
+    "ready": true,
+    "valid": true,
+    "definition": "CREATE INDEX \"entries_topicId_status_score_createdAt_idx\" ON public.entries USING btree (\"topicId\", status, score DESC, \"createdAt\")"
+  },
+  "constraint:entries:entries_public_id_legacy_range": {
+    "validated": true,
+    "definition": "CHECK (((\"publicId\" >= 1) AND (\"publicId\" <= 2147483647)))"
+  },
+  "constraint:entries:entries_score_consistency_check": {
+    "validated": true,
+    "definition": "CHECK ((score = (\"upvoteCount\" - \"downvoteCount\")))"
+  },
+  "constraint:topics:topics_entry_count_nonnegative_check": {
+    "validated": true,
+    "definition": "CHECK ((\"entryCount\" >= 0))"
+  },
+  "constraint:topics:topics_normalized_title_length_check": {
+    "validated": true,
+    "definition": "CHECK (((char_length(\"normalizedTitle\") >= 2) AND (char_length(\"normalizedTitle\") <= 100)))"
+  },
+  "constraint:great_reset_commits:great_reset_commits_pkey": {
+    "validated": true,
+    "definition": "PRIMARY KEY (\"operationId\")"
+  },
+  "constraint:great_reset_intents:great_reset_intents_pkey": {
+    "validated": true,
+    "definition": "PRIMARY KEY (\"operationId\")"
+  },
+  "function:require_great_reset_commit_at_transaction_end()": {
+    "definition": "CREATE OR REPLACE FUNCTION public.require_great_reset_commit_at_transaction_end()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  IF TG_TABLE_NAME = 'great_reset_intents' THEN\n    IF NEW.\"consumedAt\" IS NULL THEN RETURN NULL; END IF;\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM public.great_reset_commits WHERE \"operationId\"=NEW.\"operationId\") THEN\n    RAISE EXCEPTION 'GREAT_RESET_ATOMIC_COMMIT_REQUIRED' USING ERRCODE='55000';\n  END IF;\n  RETURN NULL;\nEND;\n$function$\n"
+  },
+  "constraint:great_reset_intents:great_reset_intents_expiry": {
+    "validated": true,
+    "definition": "CHECK (((\"expiresAt\" > \"createdAt\") AND (\"expiresAt\" <= (\"createdAt\" + '02:00:00'::interval))))"
+  },
+  "trigger:great_reset_commits:great_reset_commits_immutable": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER great_reset_commits_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON public.great_reset_commits FOR EACH STATEMENT EXECUTE FUNCTION reject_great_reset_journal_mutation()"
+  },
+  "constraint:entries:entries_vote_counters_nonnegative_check": {
+    "validated": true,
+    "definition": "CHECK (((\"upvoteCount\" >= 0) AND (\"downvoteCount\" >= 0)))"
+  },
+  "trigger:great_reset_intents:great_reset_intents_no_truncate": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER great_reset_intents_no_truncate BEFORE TRUNCATE ON public.great_reset_intents FOR EACH STATEMENT EXECUTE FUNCTION reject_great_reset_journal_mutation()"
+  },
+  "trigger:great_reset_intents:great_reset_intents_state_guard": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER great_reset_intents_state_guard BEFORE INSERT OR DELETE OR UPDATE ON public.great_reset_intents FOR EACH ROW EXECUTE FUNCTION protect_great_reset_intent()"
+  },
+  "trigger:great_reset_commits:great_reset_commits_insert_guard": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER great_reset_commits_insert_guard BEFORE INSERT ON public.great_reset_commits FOR EACH ROW EXECUTE FUNCTION protect_great_reset_journal_insert()"
+  },
+  "constraint:entries:entries_status_timestamps_consistent_check": {
+    "validated": true,
+    "definition": "CHECK ((((status = 'ACTIVE'::\"EntryStatus\") AND (\"deletedAt\" IS NULL) AND (\"hiddenAt\" IS NULL)) OR ((status = 'HIDDEN'::\"EntryStatus\") AND (\"deletedAt\" IS NULL) AND (\"hiddenAt\" IS NOT NULL)) OR ((status = 'DELETED'::\"EntryStatus\") AND (\"deletedAt\" IS NOT NULL) AND (\"hiddenAt\" IS NULL))))"
+  },
+  "constraint:great_reset_tombstones:great_reset_tombstones_pkey": {
+    "validated": true,
+    "definition": "PRIMARY KEY (kind, uuid)"
+  },
+  "constraint:great_reset_intents:great_reset_intents_scope_check": {
+    "validated": true,
+    "definition": "CHECK (((scope)::text = 'ALL_DICTIONARY_AND_AGENT_STATE_KEEP_IDENTITIES_V1'::text))"
+  },
+  "trigger:great_reset_tombstones:great_reset_tombstones_immutable": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER great_reset_tombstones_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON public.great_reset_tombstones FOR EACH STATEMENT EXECUTE FUNCTION reject_great_reset_journal_mutation()"
+  },
+  "constraint:great_reset_intents:great_reset_intents_terminal_state": {
+    "validated": true,
+    "definition": "CHECK (((NOT ((\"consumedAt\" IS NOT NULL) AND (\"invalidatedAt\" IS NOT NULL))) AND ((\"consumedAt\" IS NULL) OR ((\"consumedAt\" >= \"createdAt\") AND (\"consumedAt\" < \"expiresAt\"))) AND ((\"invalidatedAt\" IS NULL) OR (\"invalidatedAt\" >= \"createdAt\"))))"
+  },
+  "constraint:great_reset_commits:great_reset_commits_singleton_check": {
+    "validated": true,
+    "definition": "CHECK (singleton)"
+  },
+  "trigger:great_reset_tombstones:great_reset_tombstones_insert_guard": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER great_reset_tombstones_insert_guard BEFORE INSERT ON public.great_reset_tombstones FOR EACH ROW EXECUTE FUNCTION protect_great_reset_journal_insert()"
+  },
+  "constraint:great_reset_commits:great_reset_commits_operationId_fkey": {
+    "validated": true,
+    "definition": "FOREIGN KEY (\"operationId\") REFERENCES great_reset_intents(\"operationId\") ON UPDATE RESTRICT ON DELETE RESTRICT"
+  },
+  "constraint:great_reset_commits:great_reset_commits_planSha256_check": {
+    "validated": true,
+    "definition": "CHECK (((\"planSha256\")::text ~ '^[a-f0-9]{64}$'::text))"
+  },
+  "constraint:great_reset_commits:great_reset_commits_releaseSha_check": {
+    "validated": true,
+    "definition": "CHECK (((\"releaseSha\")::text ~ '^[a-f0-9]{40}$'::text))"
+  },
+  "constraint:great_reset_intents:great_reset_intents_releaseSha_check": {
+    "validated": true,
+    "definition": "CHECK (((\"releaseSha\")::text ~ '^[a-f0-9]{40}$'::text))"
+  },
+  "constraint:great_reset_tombstones:great_reset_tombstones_kind_check": {
+    "validated": true,
+    "definition": "CHECK (((kind)::text = ANY ((ARRAY['TOPIC'::character varying, 'ENTRY'::character varying])::text[])))"
+  },
+  "trigger:great_reset_intents:great_reset_intents_require_atomic_commit": {
+    "enabled": "O",
+    "definition": "CREATE CONSTRAINT TRIGGER great_reset_intents_require_atomic_commit AFTER UPDATE ON public.great_reset_intents DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION require_great_reset_commit_at_transaction_end()"
+  },
+  "constraint:great_reset_commits:great_reset_commits_clearedCounts_check": {
+    "validated": true,
+    "definition": "CHECK ((jsonb_typeof(\"clearedCounts\") = 'object'::text))"
+  },
+  "constraint:great_reset_commits:great_reset_commits_formatVersion_check": {
+    "validated": true,
+    "definition": "CHECK ((\"formatVersion\" = 1))"
+  },
+  "constraint:great_reset_commits:great_reset_commits_manifestSha256_check": {
+    "validated": true,
+    "definition": "CHECK (((\"manifestSha256\")::text ~ '^[a-f0-9]{64}$'::text))"
+  },
+  "constraint:great_reset_exposure_events:great_reset_exposure_events_pkey": {
+    "validated": true,
+    "definition": "PRIMARY KEY (\"operationId\")"
+  },
+  "constraint:great_reset_tombstones:great_reset_tombstones_publicId_check": {
+    "validated": true,
+    "definition": "CHECK (((\"publicId\" >= 1) AND (\"publicId\" <= 2147483647)))"
+  },
+  "constraint:great_reset_commits:great_reset_commits_protectedSha256_check": {
+    "validated": true,
+    "definition": "CHECK (((\"protectedSha256\")::text ~ '^[a-f0-9]{64}$'::text))"
+  },
+  "constraint:great_reset_intents:great_reset_intents_require_atomic_commit": {
+    "validated": true,
+    "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+  },
+  "constraint:great_reset_intents:great_reset_intents_sourceClusterId_check": {
+    "validated": true,
+    "definition": "CHECK (((\"sourceClusterId\")::text ~ '^[0-9]{1,20}$'::text))"
+  },
+  "constraint:great_reset_tombstones:great_reset_tombstones_operationId_fkey": {
+    "validated": true,
+    "definition": "FOREIGN KEY (\"operationId\") REFERENCES great_reset_intents(\"operationId\") ON UPDATE RESTRICT ON DELETE RESTRICT"
+  },
+  "trigger:great_reset_exposure_events:great_reset_exposure_events_immutable": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER great_reset_exposure_events_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON public.great_reset_exposure_events FOR EACH STATEMENT EXECUTE FUNCTION reject_great_reset_journal_mutation()"
+  },
+  "constraint:great_reset_intents:great_reset_intents_sourceDatabaseOid_check": {
+    "validated": true,
+    "definition": "CHECK ((\"sourceDatabaseOid\" > 0))"
+  },
+  "trigger:great_reset_exposure_events:great_reset_exposure_events_insert_guard": {
+    "enabled": "O",
+    "definition": "CREATE TRIGGER great_reset_exposure_events_insert_guard BEFORE INSERT ON public.great_reset_exposure_events FOR EACH ROW EXECUTE FUNCTION protect_great_reset_journal_insert()"
+  },
+  "constraint:great_reset_exposure_events:great_reset_exposure_events_operationId_fkey": {
+    "validated": true,
+    "definition": "FOREIGN KEY (\"operationId\") REFERENCES great_reset_commits(\"operationId\") ON UPDATE RESTRICT ON DELETE RESTRICT"
+  },
+  "constraint:great_reset_exposure_events:great_reset_exposure_events_journalSha256_check": {
+    "validated": true,
+    "definition": "CHECK (((\"journalSha256\")::text ~ '^[a-f0-9]{64}$'::text))"
+  }
+}

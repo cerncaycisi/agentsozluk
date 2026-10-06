@@ -1,0 +1,106 @@
+{
+  "profile": "reset-2026-v1",
+  "migrations": {
+    "20261005211400_public_id_trigger_type_prepare": "415971b79469816ab00377ce440ac540244d3675534578935e9af449b1d998fb",
+    "20261005211500_public_ids_bigint_legacy_guard": "511351a4476450847b369d063757bb8865bde1c168fafdee0171b6595f98e0b4",
+    "20261005211600_public_id_trigger_type_finish": "fe9c4a624829d5456f77b4e9d3299a5645994c8f7c60072787bf27ce903db2c6",
+    "20261005222000_great_reset_journals": "70218d24e488ce07da085fa7a1c7a7ed27931a8421f2bedc2170014432d19f3c",
+    "20261005231500_great_reset_atomic_journal_guard": "554cf670196468af490059af244698d38956d8e59241e767476cc6a4807ee473",
+    "20261005233000_great_reset_journal_clock_bounds": "a5025967768eace9ae5045c65ab7675ed431cec978c398911cc3e092a30fb908"
+  },
+  "catalog": {
+    "types": {},
+    "tables": {
+      "great_reset_commits": {
+        "columns": [
+          "clearedCounts",
+          "committedAt",
+          "formatVersion",
+          "manifestSha256",
+          "operationId",
+          "planSha256",
+          "protectedSha256",
+          "releaseSha",
+          "singleton"
+        ],
+        "primaryKey": ["operationId"],
+        "checkConstraints": 7,
+        "uniqueConstraints": 0,
+        "foreignKeys": [
+          {
+            "column": "operationId",
+            "referencedTable": "great_reset_intents",
+            "referencedColumn": "operationId",
+            "onDelete": "r",
+            "onUpdate": "r"
+          }
+        ]
+      },
+      "great_reset_exposure_events": {
+        "columns": ["journalSha256", "occurredAt", "operationId"],
+        "primaryKey": ["operationId"],
+        "checkConstraints": 1,
+        "uniqueConstraints": 0,
+        "foreignKeys": [
+          {
+            "column": "operationId",
+            "referencedTable": "great_reset_commits",
+            "referencedColumn": "operationId",
+            "onDelete": "r",
+            "onUpdate": "r"
+          }
+        ]
+      },
+      "great_reset_intents": {
+        "columns": [
+          "consumedAt",
+          "createdAt",
+          "expiresAt",
+          "invalidatedAt",
+          "operationId",
+          "releaseSha",
+          "scope",
+          "sourceClusterId",
+          "sourceDatabaseOid"
+        ],
+        "primaryKey": ["operationId"],
+        "checkConstraints": 6,
+        "uniqueConstraints": 0,
+        "foreignKeys": []
+      },
+      "great_reset_tombstones": {
+        "columns": ["kind", "operationId", "publicId", "uuid"],
+        "primaryKey": ["kind", "uuid"],
+        "checkConstraints": 2,
+        "uniqueConstraints": 0,
+        "foreignKeys": [
+          {
+            "column": "operationId",
+            "referencedTable": "great_reset_intents",
+            "referencedColumn": "operationId",
+            "onDelete": "r",
+            "onUpdate": "r"
+          }
+        ]
+      }
+    },
+    "indexes": {
+      "great_reset_commits_singleton_key": {
+        "table": "great_reset_commits",
+        "unique": true,
+        "columns": ["singleton"]
+      },
+      "great_reset_tombstones_kind_publicid_key": {
+        "table": "great_reset_tombstones",
+        "unique": true,
+        "columns": ["kind", "publicId"]
+      },
+      "great_reset_intents_one_open": {
+        "table": "great_reset_intents",
+        "unique": true,
+        "columns": null
+      }
+    },
+    "existingTableIndexes": {}
+  }
+}

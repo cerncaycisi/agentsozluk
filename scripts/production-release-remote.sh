@@ -11,7 +11,7 @@ trap report_unexpected_error ERR
 
 candidate_sha="${1:-}"
 cleanup_requested="${2:-no-cleanup}"
-# `no-migration`, `apply:<liste>` veya `reviewed:october-2026-v1|october-2026-v2:<liste>`.
+# `no-migration`, `apply:<liste>` veya `reviewed:october-2026-v1|october-2026-v2|reset-2026-v1:<liste>`.
 migration_mode="${3:-}"
 # Sarmalayıcının kilit sahipliği için ürettiği operasyon kimliği.
 op_id="${4:-}"
@@ -37,7 +37,7 @@ runtime_unit_target=/etc/systemd/system/agent-sozluk-runtime.service
 approved_migrations=''
 reviewed_migration_profile=''
 if test "$migration_mode" != no-migration; then
-  if [[ "$migration_mode" =~ ^reviewed:(october-2026-v1|october-2026-v2):([0-9]{14}_[a-z0-9_]+)(,[0-9]{14}_[a-z0-9_]+)*$ ]]; then
+  if [[ "$migration_mode" =~ ^reviewed:(october-2026-v1|october-2026-v2|reset-2026-v1):([0-9]{14}_[a-z0-9_]+)(,[0-9]{14}_[a-z0-9_]+)*$ ]]; then
     reviewed_migration_profile="${BASH_REMATCH[1]}"
     approved_migrations="${migration_mode#reviewed:$reviewed_migration_profile:}"
   elif [[ "$migration_mode" =~ ^apply:([0-9]{14}_[a-z0-9_]+)(,[0-9]{14}_[a-z0-9_]+)*$ ]]; then

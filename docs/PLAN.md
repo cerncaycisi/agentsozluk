@@ -8,9 +8,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 02:18 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 03:19 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
-kapalı; başlamış koşu ve canlı lease sıfır. Son içerik sayımı 23:26'da 7.013 başlık
+kapalı; başlamış koşu ve canlı lease sıfır. Son native içerik sayımı 02:11'de 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
 personalar, kaynaklar, operatör erişimi ve operasyonel kanıtlar korunur.
 Üç diğer yazma bayrağı hâlâ açık olduğundan bu durum tam uygulama dondurması değildir.
@@ -39,26 +39,32 @@ Son üç yerel yedek ve safety hardlink ayrı okumayla korunduğu doğrulandı.
 sabit; root boş alan24.055.660.544bayt. Bunlar tarihsel eski-şema yedekleridir;
 kanonik reset rollback yedeği veya gerçek restore kabulü değildir.
 
-**Sırada:** ayrı üretim yürütücüsünün son kod/inceleme/CI kapıları, gerçek boyutlu
-taze yedek ve restore, üretim gölgesinde aynı çekirdekle prova, bütün yazarların
-dondurulması, tek kullanımlık reset, iç kabul ve doğrulanmış açılış var.
-Draft [PR335](https://github.com/cerncaycisi/agentsozluk/pull/335), kaynak435:
-ilk full CI'da beş iş geçti, quality bağımlılık güvenlik açığında kaldı ve validate
-FAIL oldu. Actual Opus5.5 iki yüksek bulguyla NO-GO verdi; sonuç korunuyor.
-Bulgular için COMMIT makbuzunu koruyan cleanup/uzlaşı yolu, konteyner generation
-zorunluluğu, release hold ve restore tam manifest karşılaştırması düzeltildi.
-Odaklı 120 unit ve sahipli stage 7 PostgreSQL testi geçti; son kaynak için
-format/lint/typecheck ve shell/Node syntax geçti. İkinci actual Opus incelemesi
-önceki kaynak bulgularını kapatıp shutdown'da pinli container ID kaybını buldu;
-stop override, terminal restart ve açık apt false kapıları hazırlanıyor. Son
-exact full CI ve Y3 kapanışı ayrı kapılardır. Küçük eski gerçek COMMIT
-üretim veya tam boyut kabulü değildir. Yerel non-superuser pg_hba/P1010 reddi
-nedeniyle kullanıcı erişim ayarları değiştirilmedi.
-Üretimin kendi non-superuser hesabıyla ana/control DB bağlantıları salt okunur
-olarak geçti. Gerçek volume adı `agent-sozluk_postgres_data`; önceki varsayılan
-underscore pini kaynakta düzeltildi. Aktif/exited bootstrap service'in ExecStop'u
-DB'yi de indiriyor; onu stop etmeden root hold ve kalıcı generation mount
-hazırlanıyor. Bunlar henüz üretime kurulmadı.
+**Sırada:** reset migration dağıtım profilinin native doğrulaması, gerçek boyutlu
+operator restore ve üretim gölgesi, bütün yazarların dondurulması, tek kullanımlık
+reset, iç kabul ve doğrulanmış açılış var. [PR335](https://github.com/cerncaycisi/agentsozluk/pull/335)
+yürütücüsü ana dala `0914d34380e481b96d9b3bcac3e6eeca818f7760` olarak alındı;
+tree reviewed `01bb98f3d5a855eda75c1bce62046cd4d2316d62` ile aynı, exact head
+CI37403773670 yedi iş SUCCESS. Actual Opus5.5 üçüncü incelemede Y3'ü kapattı,
+kaynak merge engeli kalmadı. Önceki kırmızı CI ve NO-GO kayıtları korunuyor;
+main CI37404909548 de yedi iş SUCCESS; üretim kapıları ayrı ölçülür. Yeni sahipli küçük DB'de actual COMMIT,
+full protected hash reconcile ve bounded bağlantı kapısı kurtarma geçti; bu
+superuser/küçük-fixture ölçümü production non-superuser veya tam boyut kabulü değildir.
+
+Üretimde installer, reset veya yeniden açılış uygulanmadı. Apt ayarı hâlâ açık
+false değil; app generation mount/env taşımıyor. Operator root boş alanı yaklaşık
+8,8 GB: source6,01 GB için 3DB+1GiB19,10 GB restore payı karşılanmıyor. Üretim
+sunucusundaki24,11 GB bu ayrı operator kapısını kapatmaz. Diğer kullanıcı DB'leri,
+T3/Claude işleri ve geçmişi silinmez. Ayrı reset migration profili exact altı
+immutable SQL ve yalnız iki public ID tip/sequence dönüşümünü kabul eder;
+mevcut içeriği, sequence değerlerini ve diğer şema farklarını normalleştirmez.
+Yeni nonce/OID8704553 PG16.14/Node22.23.1 native provası: altı migration,
+önceki56 tablo şema/içerik/sequence ve eski Prisma tarihçesi eşit,
+131 katalog tanımı exact ve dört journal boş; küçük prova, fullsize kabulü değil.
+PR336 ae76 için actualOpus5.5 kaynak KOŞULLU GO; production kapıları açık.
+Son hashguard düzeltmesi78unit geçti; f88 için actualOpus5.5 kapanışında
+source merge engeli yok. Son command-doc SHA/CI kabulü ayrı kapı.
+D202 journal öncesi admission küçük native sahipli PG'de READ ONLY geçti,
+required=true ret verdi; gerçek üretim/aday imaj kabulü yerine geçmez.
 
 Goal aynı son teslim amacıyla aktif; DONE-082/084 açık. Eski P7 adayı kullanıcı
 kararıyla `USER_REQUEST_INTERRUPTED_NOT_PASS`; eski gözlem timerları kapalı ve

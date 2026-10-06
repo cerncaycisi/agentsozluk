@@ -6914,3 +6914,105 @@ satır%93,97/dal%86,53/fonksiyon%95,34 native log'da ölçüldü. Bu yeşil kayn
 Y3 inceleme ret kaydını kapatmaz. Yeni shutdown/terminal/apt değişikliği için
 02:21 format:check/lint/typecheck exit0; son3dosya57unit PASS. YeniSHA/CI/closure
 ayrı kapıdır; production reset/reopen hâlâ yok.
+
+## 6 Ekim 02:44 UTC — reset yürütücüsü birleşti; migration native prova
+
+PR335 ana dal `0914d34380e481b96d9b3bcac3e6eeca818f7760`, reviewed
+`01bb98f3d5a855eda75c1bce62046cd4d2316d62` ile tree eşit; root/remote temiz eşit.
+Exact head CI37403773670 yedi iş SUCCESS. Actual Opus5.5 üçüncü inceleme298.005ms:
+Y3 kapalı, source merge-blocking bulgu yok; production kapıları açık.
+206 CI37402537444 native PostgreSQL528 ve browser93; coverage3035 tekrar,
+line%93,97/branch%86,53/function%95,34. Tekrarlar ayrı test toplamı değildir.
+02:23 sahipli küçük DB8702184 actual COMMIT, readonly full-protected reconcile ve
+idle-backend bounded reopen reddi/sonradan açılış PASS; agent superuser ile ölçüldü,
+production non-superuser/boot/fullsize kanıtı değildir.
+
+Reset migration profilinin ilk native D202→main provası beklenen4 yerine6 kayıt
+uygulandığı için fixture kabulünde kaldı. Nedeni mevcut iki immutable trigger
+prepare/finish SQL'nin yeni profil listesinden eksik bırakılmasıydı; veritabanı
+regresyonu değildir. Hiçbir eski SQL değiştirilmedi. Exact profil altı checksum
+ile düzeltildi; ilk sahipli DB/ret makbuzu korundu. Yeni nonce/OID8704553,
+marker/owner/cluster ile sahipli PG16.14/Node22.23.1 provasında altı migration
+uygulandı. Önceki56 tablonun normalize edilmiş şeması, mevcut içerik hash'leri,
+sequence last_value/is_called/range/ownership ve eski Prisma kayıtları aynı;
+131 exact katalog tanımı eşleşti, dört yeni journal boş. Bu küçük gerçek native
+geçiş provası production veya tam boyut restore değildir.
+
+Üretim D202 ve worker kapalı; reset/reopen/newT0 yok. Operator40GB disk,
+02:42 boş8.750.436.352 bayt; source6.010.330.135 için19.104.732.229 bayt
+restore kapısı açık, ek yaklaşık10,4GB gerekir. Başka uygun disk yok. Diğer
+kullanıcı DB/T3/Claude geçmişi ve işleri korunuyor. Üretim24,11GB alanı ayrı
+operator kapısını kapatmaz. Kullanıcıdan disk kapasitesi bilgisi istendi; kaynak
+hazırlığı sürüyor. Fullsize/operator/prodshadow/non-super/native rename/boot/p95,
+168h/Gate11/12/P8/finalM2 henüz tamamlanmadı.
+
+Tekrarlama: migration sayısını sohbet özetinden varsayma; D202 exact migration
+kümesini current tree ile karşılaştır. Dört-journal sayısı altı-SQL sayısı değildir.
+Operator alanı yetersizken fullsize restore başlatma; üretim alanını yerel kapıya
+substitute etme. Küçük superuser PASS'i üretim GO olarak yazma. Native inventory
+ilk denemelerindeki yanlış lease tablo adı ve run status sütunu salt okunur sorgu
+fixture hatalarıydı; source adı/status düzeltmesi sonrası ölçüm geçti, mutation
+veya uygulama regresyonu yok. gh PR edit GraphQL classic-project ret halinde REST
+PATCH exact JSON kullan; ret komutunu başarı olarak kaydetme.
+
+02:49 ek kaynak kapısı: reset preflight eski October-only sütun/yeni indeks
+şartından ayrıldı. Mevcut D202 reward/birth sütunları reset için engel değil;
+October profillerinde aynı ret korunur. Odaklı3dosya76unit PASS. Sahipli
+OID8704553 üzerinde gerçek SQL/profile seçimi: reset geçer, iki October profili
+REVIEWED_COLUMNS_ALREADY_PRESENT ile reddedilir. Docker admin/FK/disk stubları
+kullanıldı; bu sadece native SQL seçimi kanıtı, full preflight veya production GO
+değildir. Main0914 CI37404909548 yedi iş SUCCESS. Son kaynak quality, exact SHA,
+CI ve bağımsız hakem ayrı kapılardır.
+
+## 6 Ekim 03:09 — PR336 kaynak hakemi ve küçük kapanış düzeltmeleri
+
+Exact ae76bed4b9cdd3c35f67de85be50203f472a02f5, actual Opus5.5/342.601ms,
+24exact kaynak/360.220bayt/tools-disabled: kaynakta merge engeli bulunmadı;
+exact7CI/tree eşliğiyle KOŞULLU GO. Production NO-GO kapıları açık. D1 için iki
+şema hash yolunda normalizer pipeline status'u açık kontrol edilir ve boş SHA-256
+reddedilir; `||` çağrısında gerçek normalizer ret/boş filtre/başarılı yol sınandı.
+Son3dosya78unit PASS. D2 pg_dump max gösterimi ve O1 A5'in worker/site dönüşü
+belgede açıklandı; global pause korunur, reset freeze öncesi worker yine durur.
+
+O2 kanıt eksiği için immutable D20237SQL ile yeni sahipli küçük DB/OID8706687:
+gerçek admission repo fonksiyonu journal yok/mirror yok/required=false için
+READ ONLY kabul etti; required=true reddedildi. Agent superuser kullanıldı;
+üretim/non-superuser/fullsize veya aday imaj kabulü değildir. Aday imajla actual
+üretim admission freeze'den önce ölçülecek. İlk fixture sorgusu unquoted camelCase
+alias'ı PostgreSQL'in küçültmesiyle assertion ret verdi; quoted alias ve pinli
+URL sonrası odaklı PASS. Bir diagnostic çağrı eksik local datasource nedeniyle
+PrismaClientInitializationError verdi; üretim veya kod regresyonu değildir.
+Yeni hashguard exact SHA/CI/differentmodel closure ayrı kapıdır; ae76 peer/CI
+sonraki kaynak için yeniden adlandırılmaz.
+
+02:54 native readonly bootstrap/proxy: aynı D202/pinli app/db/workerinactive;
+bootstrap active/exited0, TimeoutStopUSec2min, ExecStopPost/ExecReload boş.
+Proxy tekproject/service kimliği, imageID ve public80/443 pinlendi. Aug20 apt
+journal metadata'sı reboot nedeni kanıtlamadı; causal attribution UNKNOWN.
+Reset/deploy/reopen/newT0 yok. Operator fullsize alanı hâlâ açık; kullanıcıya
+kaynak kapasitesi sorusu iletildi, yanıt bekliyor. Diğer kullanıcı işleri korundu.
+
+Exact ae76 CI37406274384 yedi iş SUCCESS olarak doğrulandı.
+
+Tekrarlama: `||` bağlamında Bash errexit'e güvenme; normalizer ret ve boş
+çıktı hash'ini açık reddet. Quoted camelCase alias ve pinli local URL kullan;
+fixture retlerini source kusuru veya production ölçümü sayma. A5 worker active/
+paused dönüşünü reset açılışı sanma; freeze öncesi tekrar inactive kanıtla.
+
+## 6 Ekim 03:19 — PR336 hashguard kapanışı
+
+Exact f88d70c1231522b2c8a686a8ad41c847bf8c4538 için actual Opus5.5/183.189ms,
+7exact dosya/126.545bayt +20 önceki byte-equal dosya: merge-blocking bulgu yok,
+exact7CI/tree eşliğiyle kaynak KOŞULLU GO; production NO-GO kapıları açık. D1
+hata/boş hash kapısı ve O2 journal öncesi native READ ONLY dalları kaynak için
+kabul edildi; actual üretim CLI/non-superuser kapısı ayrı. E3 için admission-only
+exact compose komutu belirtime eklendi; `run-migration.mjs` ölçümde yasaklandı.
+Bu son değişiklik yalnız belge; runtime/SQL/manifest/profile kaynakları byte-equal
+kalır. Son belge SHA'sının CI ve command-review makbuzu ayrıca alınır.
+
+Pipeline için remote set -Eeuo pipefail ve `migration_phase` düz çağrısı kaynakta
+korunur; yeni hashguard retleri nested caller'da üst SCHEMA_DUMP_FAILED ile
+maskelenebilir, alt safe code ledger'da ayrıca korunur. Normalizer pinli/testli;
+kısmi/boşluk çıktısı ve gelecekte OR içine taşınan phase hakkındaki non-blocking
+notlar measured kusur veya production GO sayılmadı. Yeni kaynak guard genişletilmedi.
+Reset/deploy/reopen/newT0 yok; operator kaynak kapasitesi yanıtı hâlâ bekliyor.
