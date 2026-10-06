@@ -145,6 +145,30 @@ bağları bu pencereye uygun değil; aynen çalıştırılmaz. Uktenin başka sa
 Güncel T3 browser koordinatörü ve peer kapanışı açık; bu hazırlık canlı Gate11
 PASS değildir. Gate10 geçmeden bu işlemler, Gate12 restore/reboot veya P8 yok.
 
+**Yeni güvenlik işi — 6 Ekim15:41:** main97ad68c2 CI37487097505 kalite işi,
+GHSA-wq5f-xc86-pv6w nedeniyle production dependency audit’te reddedildi.
+`sharp`0.35.5 düzeltmesi ayrı dalda; lockfile yalnız sharp/libvips ailesini
+günceller, audit PASS ve ilgili32test PASS. Henüz merge veya canlı dağıtım yok.
+Exact d083 imajında native sharp0.35.4/librsvg2.62.91 Next bağımlılığından
+çözüldü; Alpine/glibc runtime alanıNULL, built images.unoptimized=true.
+Health/ready200 ve zararsız SVG optimizer isteği404. Bu mevcut erişim
+korumasının ölçümüdür; evrensel istismar yokluğu veya yama kabulü değildir.
+ActualOpus5.5/48.594ms exactae84f975 için GO_SOURCE_PATCH_ONLY verdi;
+Haiku yardımcı kullanımı ayrıca kaydedildi.15:46 native binary adı
+sharp-linuxmusl-x64-0.35.4.node doğrulandı. **Karar:** bilinen decoder yolu
+kapalıyken mevcut P7 sürer; kaynak yaması PR340 exactCI37490272863 sonrası
+merge edilir, canlı yama P7 kabulü sonrasındaki dağıtıma hazırlanır.
+Bu koşullu bekleme evrensel güvenlik veya musl’da açık yokluğu iddiası değildir.
+Optimizer ayarı açılırsa, yeni sharp/görsel tüketicisi eklenirse, glibc binary
+seçilirse, duyuru musl/ağ erişimine genişler veya kamu PoC çıkarsa, ya da
+optimizer404 koruması değişirse bekleme sonlandırılır. Dağıtım öncesi aday
+Alpine imajındaki bütün sharp kopyaları0.35.5/rsvg2.63.2 ve seçilen native
+musl binary ayrıca ölçülür; artifact/yedek/kimlik kapıları korunur.
+Dağıtım doğal pencereyi keserse eski P7 korunur ve gerçek resume’dan yeni168saat
+başlar; observer bağları değiştirerek devamlılık üretilmez.
+15:30 saatlik kesit: doğal14/başarılı12/açık2/teknik hata0, uyarı0;
+36yazarın her birinde en az3başarı şartı henüz sağlanmadı.
+
 ### Canlı ve tamamlanan teslimler
 
 - **5 Ekim tarihsel başlangıç; kullanıcı kararıyla kesildi:** exactD202, audited resume309→310,

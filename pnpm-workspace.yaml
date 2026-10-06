@@ -32,7 +32,7 @@ onlyBuiltDependencies:
 #              demek fazla kesin olurdu. Kanıt "kırılma
 #              görülmedi" düzeyindedir, "kırılamaz" değil. Prisma yükseltmesi
 #              geldiğinde bu satır KALDIRILMALI.
-#   sharp    : libheif zafiyetleri (>=0.35.4)
+#   sharp    : libheif zafiyetleri (>=0.35.4), librsvg GHSA-wq5f-xc86-pv6w (>=0.35.5)
 #   fast-uri : host karışıklığı (GHSA-v2hh-gcrm-f6hx, -7p8r-x3mc-p8w7 …; >=3.1.6).
 #              `@hookform/resolvers` 5.9 → `ajv` zinciri (#282, 2 Ekim 2026).
 #   source-map-js: indexed source-map offset DoS (GHSA-68fv-2mgg-jv7q; >=1.2.2).
@@ -42,6 +42,6 @@ overrides:
   browserslist: 4.29.0
   baseline-browser-mapping: 2.11.25
   deepmerge-ts: 8.0.0
-  sharp: 0.35.4
+  sharp: 0.35.5
   fast-uri: 3.1.8
   source-map-js: 1.2.2
