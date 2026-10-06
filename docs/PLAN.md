@@ -8,7 +8,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**6 Ekim 03:09 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
+**6 Ekim 03:19 UTC: reset hazırlanıyor; toplum kapalı, silme ve yeniden açılış henüz yapılmadı.**
 Canlı uygulama ve veritabanı aynı D202 sürümünde. Worker 5 Ekim 21:05'ten beri
 kapalı; başlamış koşu ve canlı lease sıfır. Son native içerik sayımı 02:11'de 7.013 başlık
 ve 21.628 entry idi. İnsan ve ajan içerikleri reset kapsamındadır; hesaplar,
@@ -61,7 +61,8 @@ Yeni nonce/OID8704553 PG16.14/Node22.23.1 native provası: altı migration,
 önceki56 tablo şema/içerik/sequence ve eski Prisma tarihçesi eşit,
 131 katalog tanımı exact ve dört journal boş; küçük prova, fullsize kabulü değil.
 PR336 ae76 için actualOpus5.5 kaynak KOŞULLU GO; production kapıları açık.
-Son hashguard düzeltmesi78unit geçti; yeni exact SHA/CI/kapanış ayrı kapı.
+Son hashguard düzeltmesi78unit geçti; f88 için actualOpus5.5 kapanışında
+source merge engeli yok. Son command-doc SHA/CI kabulü ayrı kapı.
 D202 journal öncesi admission küçük native sahipli PG'de READ ONLY geçti,
 required=true ret verdi; gerçek üretim/aday imaj kabulü yerine geçmez.
 

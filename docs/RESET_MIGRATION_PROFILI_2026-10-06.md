@@ -36,7 +36,7 @@ boş journal PASS. İlk profile dört SQL yazılması iki mevcut trigger migrati
 atlamıştı; ilk sayım ret kaydı korunur ve liste altıya düzeltildi. Ayrıca gerçek
 SQL/profile seçimi reseti mevcut settings sütunlarıyla kabul etti, iki October
 profilini aynı nedenle reddetti; Docker admin/FK/disk için stublar vardı.
-Odaklı76 unit geçti. Bunlar production/fullsize veya önceki imaj kabulü değildir.
+İlk kaynak makbuzunda76 odaklı unit geçti. Bunlar production/fullsize veya önceki imaj kabulü değildir.
 
 Dağıtım A5'in taze frozen backup, gerçek restore, scratch migration, önceki
 imaj/smoke, bounded süre/disk ve immutable release kapılarını kullanır. Bunlar
@@ -44,7 +44,7 @@ reset sonrası PRE_RESET_BIGINT yedek/restore ve gölge yürütücü provasıyla
 kanıtlardır. Operator alan kapısı henüz açık; teknik kapılar tamamlanmadan
 reset, exposure, toplum açılışı veya yeni P7 T0 iddia edilmez.
 
-A5 sonunda site ve worker yeniden açılır; runtime global pause korunur ve ajan
+Başarılı A5 sonunda site ve worker yeniden açılır; runtime global pause korunur ve ajan
 koşusu başlatılmaz. Reset freeze öncesinde worker tekrar durdurulur; bu geçici
 active/paused durumu kayıt altına alınır. Generic release'in otomatik cutover'u
 reset `TRAFFIC_OPEN` veya yeni P7 T0 değildir. D202 canonical generation admission,
@@ -54,3 +54,30 @@ aday imajla gerçek üretim admission'ı freeze'den önce ayrıca ölçülür.
 D1 hashguard sonrası78unit PASS. Sahipli D20237SQL/OID8706687 native admission
 journal yok/mirror yok/required=false için READ ONLY kabul, required=true ret
 verdi. Bu superuser/küçük veri kanıtı actual production admission yerine geçmez.
+
+## İlk D202 geçişinden önce salt okunur candidate admission
+
+Exact CI/artifact/imaj kimliği doğrulanmış aday seçilir. Mevcut D202 ilk geçişinde
+generation override/mount henüz yoktur; aşağıdaki compose/env/mount A5'in
+`run_migration` bağlantı ortamıyla aynı olmalıdır. Ek generation override veya
+latch tespit edilirse onu yok sayarak kontrol çalıştırılmaz; actual A5 compose
+listesiyle uzlaştırılır. İmaj revision etiketi ve `.Id` önce pinlenir, kalıcı app,
+DB ve proxy kimlikleri sonrasında değişmediği doğrulanır.
+
+```bash
+candidate_image="agent-sozluk:<exact 40 karakter aday SHA>"
+env -u DATABASE_URL -u COMPOSE_PROJECT_NAME -u COMPOSE_FILE -u COMPOSE_PROFILES \
+  APP_IMAGE="$candidate_image" /usr/bin/docker compose \
+  --env-file /opt/agent-sozluk/app/.env \
+  -f /opt/agent-sozluk/runtime/compose.production.yaml \
+  run --rm --no-deps --pull never --entrypoint ./node_modules/.bin/tsx \
+  app scripts/verify-reset-generation.ts
+```
+
+Bu komut yalnız generation admission CLI'sını çalıştırır. Salt okunur ölçüm için
+`run-migration.mjs` veya `run_migration` **kullanılmaz**: admission sonrasında
+migration başlatırlar. Aynı adayın mevcut non-superuser DB rolüyle
+`pg_control_system()` yetkisi ve gerçek D202/journal-yok hali ölçülür; ret varsa
+freeze ve migration başlamaz. Ölçüm ile migration arasında env/mount/latch veya
+imaj pininde değişiklik olursa önce yeniden uzlaştırılır. Rewind/manual yollarında
+başarılı cutover gibi worker/site açılışı iddia edilmez.

@@ -6616,3 +6616,21 @@ Reset/deploy/reopen/newT0 yok. Operator fullsize alanı hâlâ açık; kullanıc
 kaynak kapasitesi sorusu iletildi, yanıt bekliyor. Diğer kullanıcı işleri korundu.
 
 Exact ae76 CI37406274384 yedi iş SUCCESS olarak doğrulandı.
+
+## 6 Ekim 03:19 — PR336 hashguard kapanışı
+
+Exact f88d70c1231522b2c8a686a8ad41c847bf8c4538 için actual Opus5.5/183.189ms,
+7exact dosya/126.545bayt +20 önceki byte-equal dosya: merge-blocking bulgu yok,
+exact7CI/tree eşliğiyle kaynak KOŞULLU GO; production NO-GO kapıları açık. D1
+hata/boş hash kapısı ve O2 journal öncesi native READ ONLY dalları kaynak için
+kabul edildi; actual üretim CLI/non-superuser kapısı ayrı. E3 için admission-only
+exact compose komutu belirtime eklendi; `run-migration.mjs` ölçümde yasaklandı.
+Bu son değişiklik yalnız belge; runtime/SQL/manifest/profile kaynakları byte-equal
+kalır. Son belge SHA'sının CI ve command-review makbuzu ayrıca alınır.
+
+Pipeline için remote set -Eeuo pipefail ve `migration_phase` düz çağrısı kaynakta
+korunur; yeni hashguard retleri nested caller'da üst SCHEMA_DUMP_FAILED ile
+maskelenebilir, alt safe code ledger'da ayrıca korunur. Normalizer pinli/testli;
+kısmi/boşluk çıktısı ve gelecekte OR içine taşınan phase hakkındaki non-blocking
+notlar measured kusur veya production GO sayılmadı. Yeni kaynak guard genişletilmedi.
+Reset/deploy/reopen/newT0 yok; operator kaynak kapasitesi yanıtı hâlâ bekliyor.
