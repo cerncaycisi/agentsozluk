@@ -16,6 +16,7 @@ export type ResetContentManifest = {
 export async function resetContentManifest(
   tx: Tx,
   list: ResetTable[],
+  restoredOperationId?: string,
 ): Promise<ResetContentManifest> {
   await tx.$executeRaw`SET LOCAL timezone = 'UTC'`;
   await tx.$executeRaw`SET LOCAL extra_float_digits = 3`;
@@ -24,10 +25,18 @@ export async function resetContentManifest(
   await tx.$executeRaw`SET LOCAL row_security = off`;
   const contents: ResetContentManifest["tables"] = {};
   for (const table of [...list.map((row) => row.table), "_prisma_migrations"].sort()) {
+    const projection =
+      restoredOperationId && table === "great_reset_intents"
+        ? Prisma.sql`CASE WHEN t."operationId"=${restoredOperationId}::uuid THEN to_jsonb(t)||jsonb_build_object('invalidatedAt',NULL) ELSE to_jsonb(t) END`
+        : Prisma.sql`to_jsonb(t)`;
+    const filter =
+      restoredOperationId && table === "audit_logs"
+        ? Prisma.sql`WHERE t.action<>'GREAT_RESET_PRODUCTION_RESTORE' OR t."entityId" IS DISTINCT FROM ${restoredOperationId}::uuid`
+        : Prisma.empty;
     const [row] = await tx.$queryRaw<{ rows: number; sha256: string }[]>(Prisma.sql`
       WITH hashes AS MATERIALIZED (
-        SELECT encode(sha256(convert_to(to_jsonb(t)::text, 'UTF8')), 'hex') AS value
-        FROM ${greatResetInspection.tableSql(table)} t
+        SELECT encode(sha256(convert_to((${projection})::text, 'UTF8')), 'hex') AS value
+        FROM ${greatResetInspection.tableSql(table)} t ${filter}
       ) SELECT count(*)::int AS rows,
         encode(sha256(convert_to(coalesce(string_agg(value, E'\n' ORDER BY value COLLATE "C"), ''), 'UTF8')), 'hex') AS sha256
         FROM hashes`);

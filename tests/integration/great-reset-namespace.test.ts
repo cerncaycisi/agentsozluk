@@ -8,6 +8,7 @@ import {
   assertResetNamespace,
   executeNamespaceReset,
   previewNamespaceReset,
+  reconcileNamespaceReset,
 } from "@/modules/maintenance/repository/great-reset-production";
 import { loadResetGoneIndex } from "@/modules/maintenance/repository/reset-gone";
 import { getResetGoneDecision } from "@/modules/maintenance/application/reset-gone";
@@ -152,6 +153,25 @@ describe("actual atomic namespace reset on owned test PostgreSQL", () => {
           expect(result.verified).toBe(true);
           expect(result.topicTombstones).toBe(1);
           expect(result.entryTombstones).toBe(1);
+          const reconciled = await reconcileNamespaceReset(tx, request, plan.planSha256);
+          expect(reconciled.status).toBe("COMMITTED");
+          expect(reconciled).toMatchObject({
+            operationId: request.operationId,
+            clearedCounts: result.clearedCounts,
+            committedProtectedSha256: result.committedProtectedSha256,
+          });
+          const userBefore = await tx.user.findUniqueOrThrow({ where: { id: old.userId } });
+          await tx.user.update({
+            where: { id: old.userId },
+            data: { displayName: "Beklenmedik değişim" },
+          });
+          await expect(reconcileNamespaceReset(tx, request, plan.planSha256)).rejects.toThrow(
+            "GREAT_RESET_RECONCILIATION_REJECTED",
+          );
+          await tx.user.update({
+            where: { id: old.userId },
+            data: { displayName: userBefore.displayName, updatedAt: userBefore.updatedAt },
+          });
           expect(await tx.user.count({ where: { id: old.userId } })).toBe(1);
           expect(await tx.topic.count()).toBe(0);
           expect(await tx.entry.count()).toBe(0);
@@ -291,6 +311,44 @@ describe("actual atomic namespace reset on owned test PostgreSQL", () => {
     } finally {
       await observer.$disconnect();
     }
+  }, 90000);
+  it("binds restored content to the full source manifest, allowing only its restore audit and intent invalidation", async () => {
+    const old = await fixture();
+    await expect(
+      db.$transaction(
+        async (tx) => {
+          const request = await context(tx);
+          await tx.greatResetIntent.update({
+            where: { operationId: request.operationId },
+            data: { invalidatedAt: new Date() },
+          });
+          await tx.auditLog.create({
+            data: {
+              action: "GREAT_RESET_PRODUCTION_RESTORE",
+              entityType: "AGENT_SOZLUK_DATABASE",
+              entityId: request.operationId,
+              requestId: request.operationId,
+              metadata: { dumpSha256: "d".repeat(64) },
+            },
+          });
+          expect((await resetContentManifest(tx, inspect.tables())).sha256).not.toBe(
+            request.manifestSha256,
+          );
+          expect(
+            (await resetContentManifest(tx, inspect.tables(), request.operationId)).sha256,
+          ).toBe(request.manifestSha256);
+          await tx.user.update({
+            where: { id: old.userId },
+            data: { displayName: "Wrong restored content" },
+          });
+          expect(
+            (await resetContentManifest(tx, inspect.tables(), request.operationId)).sha256,
+          ).not.toBe(request.manifestSha256);
+          throw rollback;
+        },
+        { isolationLevel: "ReadCommitted", timeout: 90000 },
+      ),
+    ).rejects.toBe(rollback);
   }, 90000);
   it("rejects catalog drift under the mutation locks before consuming the intent", async () => {
     const old = await fixture();

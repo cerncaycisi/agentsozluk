@@ -52,6 +52,10 @@ fi
   exit 90
 }
 test "$(hostname)" = agent-sozluk-prod || exit 91
+if test -e /opt/agent-sozluk/reset/maintenance-hold || test -L /opt/agent-sozluk/reset/maintenance-hold; then
+  printf 'RELEASE_FAIL code=RESET_MAINTENANCE_HOLD\n' >&2
+  exit 97
+fi
 test "$(git -C "$app_root" remote get-url origin)" = \
   https://github.com/cerncaycisi/agentsozluk.git || exit 92
 test -f "$compose_file" || exit 93
@@ -63,20 +67,6 @@ test "$(cat "$runtime_root/.release-lock/owner" 2>/dev/null)" = "$candidate_sha:
   printf 'RELEASE_FAIL code=RELEASE_LOCK_NOT_OWNED\n' >&2
   exit 97
 }
-# Tamamlanmamış bir migration operasyonu varken migration'sız dağıtım olmaz.
-# `cutover-done` yazılıp işaret silinemeden kesilen bir koşu tamamlanmıştır:
-# işaret kaldırılır (Sol, 23 Eylül).
-if test -e "$runtime_root/.migration-operation" && test "$migration_mode" = no-migration; then
-  if test "$(cat "$runtime_root/.migration-operation/phase" 2>/dev/null)" = cutover-done; then
-    find "$runtime_root/.migration-operation" -xdev -depth -delete
-    printf 'RELEASE_MIGRATION_MARKER_CLEARED phase=cutover-done\n'
-  else
-    printf 'RELEASE_FAIL code=MIGRATION_OPERATION_INCOMPLETE\n' >&2
-    exit 97
-  fi
-fi
-install -d -m 0700 "$state_dir"
-
 compose=(
   docker compose
   --env-file "$env_file"
@@ -94,7 +84,33 @@ if test -e "$generation_dir" || test -L "$generation_dir"; then
   test ! -L "$generation_override"
   test "$(stat -c '%U|%G|%a' "$generation_override")" = 'root|root|444'
   compose+=(-f "$generation_override")
+  if test -e "$generation_dir/required.json"; then
+    node - "$generation_dir/current.json" <<'NODE'
+const fs = require("node:fs");
+try {
+  const mirror = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  if (!["TRAFFIC_OPEN", "ROLLED_BACK"].includes(mirror.state)) throw new Error();
+} catch {
+  process.stderr.write("RELEASE_FAIL code=RESET_MAINTENANCE_HOLD\n");
+  process.exit(97);
+}
+NODE
+  fi
 fi
+
+# Tamamlanmamış bir migration operasyonu varken migration'sız dağıtım olmaz.
+# `cutover-done` yazılıp işaret silinemeden kesilen bir koşu tamamlanmıştır:
+# işaret kaldırılır (Sol, 23 Eylül).
+if test -e "$runtime_root/.migration-operation" && test "$migration_mode" = no-migration; then
+  if test "$(cat "$runtime_root/.migration-operation/phase" 2>/dev/null)" = cutover-done; then
+    find "$runtime_root/.migration-operation" -xdev -depth -delete
+    printf 'RELEASE_MIGRATION_MARKER_CLEARED phase=cutover-done\n'
+  else
+    printf 'RELEASE_FAIL code=MIGRATION_OPERATION_INCOMPLETE\n' >&2
+    exit 97
+  fi
+fi
+install -d -m 0700 "$state_dir"
 
 hash_stream() {
   sha256sum | cut -d ' ' -f 1

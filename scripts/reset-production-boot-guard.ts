@@ -49,7 +49,7 @@ export function assertResetBootstrapConfiguration(installed: boolean): void {
   }
 }
 export function resetGenerationCompose(required: boolean): string {
-  return `services:\n  app:\n    environment:\n      AGENT_SOZLUK_RESET_GENERATION_REQUIRED: "${required}"\n    volumes:\n      - type: bind\n        source: /opt/agent-sozluk/reset/generation\n        target: /run/agentsozluk-reset\n        read_only: true\n        bind:\n          create_host_path: false\n`;
+  return `services:\n  app:\n    restart: "no"\n    environment:\n      AGENT_SOZLUK_RESET_GENERATION_REQUIRED: "${required}"\n    volumes:\n      - type: bind\n        source: /opt/agent-sozluk/reset/generation\n        target: /run/agentsozluk-reset\n        read_only: true\n        bind:\n          create_host_path: false\n`;
 }
 function host() {
   if (

@@ -13,6 +13,26 @@ export const legacyPublicIdMaximum = 2147483647n;
 export const resetPublicIdMinimum = 2147483648n;
 export const resetPublicIdMaximum = 9007199254740991n;
 
+/** Eski stopped container mount'suz docker start ile nesil latch'ini atlayamaz. */
+export function assertResetContainerGeneration(value: {
+  restart: string;
+  generationEnvPresent: boolean;
+  mounts: { Type: string; Source: string; Destination: string; RW: boolean }[];
+}): void {
+  if (
+    value.restart !== "no" ||
+    !value.generationEnvPresent ||
+    !value.mounts.some(
+      (m) =>
+        m.Type === "bind" &&
+        m.Source === "/opt/agent-sozluk/reset/generation" &&
+        m.Destination === "/run/agentsozluk-reset" &&
+        !m.RW,
+    )
+  )
+    throw new Error("GREAT_RESET_CONTAINER_GENERATION_REQUIRED");
+}
+
 export type ProductionResetInvocation = {
   hostname: string;
   cwd: string;

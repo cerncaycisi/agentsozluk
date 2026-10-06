@@ -5,7 +5,10 @@ import { hostname } from "node:os";
 import { dirname } from "node:path";
 import { parseEnv } from "node:util";
 import { z } from "zod";
-import { productionResetTarget } from "../src/modules/maintenance/domain/great-reset-production-guard";
+import {
+  productionResetTarget,
+  assertResetContainerGeneration,
+} from "../src/modules/maintenance/domain/great-reset-production-guard";
 import { resetImplementationHash } from "./reset-implementation-hash";
 import { measureResetFreezeInventory, resetFreezeInventorySchema } from "./reset-freeze-inventory";
 import { resetGenerationMirrorSchema } from "../src/modules/maintenance/domain/reset-generation-admission";
@@ -49,8 +52,10 @@ const requestSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("MANIFEST"), releaseSha: sha, operationId: uuid }).strict(),
   z.object({ mode: z.literal("PREPARE_INTENT"), releaseSha: sha, operationId: uuid }).strict(),
   z.object({ mode: z.literal("INVALIDATE_INTENT"), releaseSha: sha, operationId: uuid }).strict(),
+  z.object({ mode: z.literal("REOPEN_GATE"), releaseSha: sha, operationId: uuid }).strict(),
   z.object({ mode: z.literal("PREVIEW"), releaseSha: sha, context }).strict(),
   z.object({ mode: z.literal("EXECUTE"), releaseSha: sha, context, planSha256: hash }).strict(),
+  z.object({ mode: z.literal("RECONCILE"), releaseSha: sha, context, planSha256: hash }).strict(),
   z
     .object({
       mode: z.literal("EXPOSURE"),
@@ -122,7 +127,7 @@ function docker(id: string) {
       "inspect",
       id,
       "--format",
-      '{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Running}},"networks":{{json .NetworkSettings.Networks}},"mounts":{{json .Mounts}}}',
+      '{{ $generation := false }}{{range .Config.Env}}{{if or (eq . "AGENT_SOZLUK_RESET_GENERATION_REQUIRED=true") (eq . "AGENT_SOZLUK_RESET_GENERATION_REQUIRED=false")}}{{ $generation = true }}{{end}}{{end}}{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Running}},"restart":{{json .HostConfig.RestartPolicy.Name}},"generationEnvPresent":{{json $generation}},"networks":{{json .NetworkSettings.Networks}},"mounts":{{json .Mounts}}}',
     ],
     { encoding: "utf8", timeout: 10000, stdio: ["ignore", "pipe", "pipe"] },
   );
@@ -131,9 +136,17 @@ function docker(id: string) {
       id: z.string(),
       image: z.string(),
       running: z.boolean(),
+      restart: z.string(),
+      generationEnvPresent: z.boolean(),
       networks: z.record(z.string(), z.object({ IPAddress: z.string() })),
       mounts: z.array(
-        z.object({ Type: z.string(), Name: z.string().optional(), Destination: z.string() }),
+        z.object({
+          Type: z.string(),
+          Name: z.string().optional(),
+          Destination: z.string(),
+          Source: z.string(),
+          RW: z.boolean(),
+        }),
       ),
     })
     .parse(JSON.parse(raw));
@@ -201,6 +214,7 @@ async function main() {
     )
   )
     throw new Error("GREAT_RESET_CONTAINER_IDENTITY_MISMATCH");
+  if (!bootstrapSetup) assertResetContainerGeneration(app);
   const label = execFileSync(
     "/usr/bin/docker",
     [
@@ -272,7 +286,7 @@ async function main() {
       request.mirror.releaseSha !== releaseSha
     )
       throw new Error("GREAT_RESET_CONFIRMATION_MISMATCH");
-    await verifyProductionResetMirror(value, invocation, request.mirror);
+    await verifyProductionResetMirror(value, invocation, request.mirror, true);
     await publishProductionResetMirror(request.mirror);
     process.stdout.write(
       JSON.stringify({
@@ -295,6 +309,7 @@ async function main() {
           request,
         );
   process.stdout.write(`${JSON.stringify(result)}\n`);
+  if (result.connectionGate === "CLOSED_UNCERTAIN") process.exitCode = 2;
 }
 void main().catch((error: unknown) => {
   const code =

@@ -8,8 +8,10 @@ import {
   assertExpectedOutboxArchive,
   pendingOutboxSnapshot,
   outboxArchiveSummary,
+  outboxArchivesAreValid,
 } from "./outbox-reset-archive";
 import { resetContentManifest } from "./great-reset-manifest";
+import { z } from "zod";
 
 type Tx = Prisma.TransactionClient;
 export type NamespaceResetContext = {
@@ -21,6 +23,132 @@ export type NamespaceResetContext = {
   clusterId: string;
 };
 const idTables = ["entries", "topics"] as const;
+/** Cevabı kaybolmuş COMMIT yalnız immutable DB kanıtı ve donmuş state ile uzlaştırılır. */
+export async function reconcileNamespaceReset(
+  tx: Tx,
+  context: NamespaceResetContext,
+  planSha256: string,
+) {
+  assertResetOperation(context.operationId);
+  const list = inspect.tables();
+  const commit = await tx.greatResetCommit.findUnique({
+    where: { operationId: context.operationId },
+  });
+  const intent = await tx.greatResetIntent.findUnique({
+    where: { operationId: context.operationId },
+  });
+  if (
+    !intent ||
+    intent.releaseSha !== context.releaseSha ||
+    intent.scope !== resetScope ||
+    intent.sourceDatabaseOid.toString() !== context.databaseOid ||
+    intent.sourceClusterId !== context.clusterId ||
+    intent.invalidatedAt !== null ||
+    (await tx.greatResetExposureEvent.count()) ||
+    (await tx.auditLog.count({ where: { action: "GREAT_RESET_PRODUCTION_RESTORE" } }))
+  )
+    throw new Error("GREAT_RESET_RECONCILIATION_REJECTED");
+  if ((await inspect.blockers(tx, true, false)).length)
+    throw new Error("GREAT_RESET_PRECONDITIONS_FAILED");
+  if (!commit) {
+    if (
+      intent.consumedAt !== null ||
+      (await tx.greatResetCommit.count()) ||
+      (await tx.greatResetTombstone.count()) ||
+      (await resetContentManifest(tx, list)).sha256 !== context.manifestSha256
+    )
+      throw new Error("GREAT_RESET_RECONCILIATION_REJECTED");
+    await assertResetNamespace(tx, "LEGACY");
+    return { status: "ABORTED" as const, operationId: context.operationId };
+  }
+  if (
+    !intent.consumedAt ||
+    (await tx.greatResetCommit.count()) !== 1 ||
+    commit.releaseSha !== context.releaseSha ||
+    commit.manifestSha256 !== context.manifestSha256 ||
+    commit.planSha256 !== planSha256
+  )
+    throw new Error("GREAT_RESET_RECONCILIATION_REJECTED");
+  const audits = await tx.auditLog.findMany({
+    where: { action: "GREAT_RESET_PRODUCTION_EXECUTED" },
+  });
+  const counts = z
+    .object(
+      Object.fromEntries(
+        list.filter((t) => t.cleared).map((t) => [t.table, z.number().int().nonnegative()]),
+      ),
+    )
+    .strict()
+    .parse(commit.clearedCounts);
+  const proof = z
+    .object({
+      releaseSha: z.literal(context.releaseSha),
+      manifestSha256: z.literal(context.manifestSha256),
+      implementationSha256: z.literal(context.implementationSha256),
+      planSha256: z.literal(planSha256),
+      protectedSha256: z.literal(commit.protectedSha256),
+      clearedCounts: z.record(z.string(), z.number().int().nonnegative()),
+      topicTombstones: z.literal(counts.topics),
+      entryTombstones: z.literal(counts.entries),
+      outboxArchiveId: z.string().uuid().nullable(),
+      expiredIdempotencyRows: z.number().int().nonnegative(),
+    })
+    .passthrough();
+  if (audits.length !== 1 || audits[0]?.entityId !== context.operationId)
+    throw new Error("GREAT_RESET_RECONCILIATION_REJECTED");
+  const audit = proof.parse(audits[0].metadata);
+  if (
+    Object.keys(audit.clearedCounts).length !== Object.keys(counts).length ||
+    Object.keys(counts).some((key) => audit.clearedCounts[key] !== counts[key]) ||
+    (await tx.greatResetTombstone.count({
+      where: { operationId: context.operationId, kind: "TOPIC" },
+    })) !== counts.topics ||
+    (await tx.greatResetTombstone.count({
+      where: { operationId: context.operationId, kind: "ENTRY" },
+    })) !== counts.entries ||
+    (await tx.greatResetTombstone.count()) !== counts.topics! + counts.entries! ||
+    !(await outboxArchivesAreValid(tx)) ||
+    (await tx.idempotencyRecord.count({ where: { expiresAt: { not: new Date(0) } } }))
+  )
+    throw new Error("GREAT_RESET_RECONCILIATION_REJECTED");
+  for (const row of list.filter((t) => t.cleared)) {
+    const [count] = await tx.$queryRaw<{ rows: number }[]>(
+      Prisma.sql`SELECT count(*)::int AS rows FROM ${inspect.tableSql(row.table)}`,
+    );
+    if (count?.rows !== 0) throw new Error("GREAT_RESET_RECONCILIATION_REJECTED");
+  }
+  await assertResetNamespace(tx, "RESET");
+  const actualProtected: Record<string, { rows: number; sha256: string }> = {};
+  const normalizedProtected: typeof actualProtected = {};
+  for (const row of list.filter((t) => !t.cleared)) {
+    actualProtected[row.table] = await inspect.fingerprint(tx, row.table);
+    normalizedProtected[row.table] = await inspect.fingerprint(
+      tx,
+      row.table,
+      audits[0]!.id,
+      audit.outboxArchiveId ?? undefined,
+      context.operationId,
+    );
+  }
+  if (inspect.digest(normalizedProtected) !== commit.protectedSha256)
+    throw new Error("GREAT_RESET_RECONCILIATION_REJECTED");
+  return {
+    status: "COMMITTED" as const,
+    operationId: context.operationId,
+    planSha256,
+    manifestSha256: context.manifestSha256,
+    normalizedProtectedSha256: commit.protectedSha256,
+    committedProtectedSha256: createHash("sha256")
+      .update(JSON.stringify(actualProtected))
+      .digest("hex"),
+    clearedCounts: counts,
+    topicTombstones: counts.topics,
+    entryTombstones: counts.entries,
+    outboxArchiveId: audit.outboxArchiveId,
+    expiredIdempotencyRows: audit.expiredIdempotencyRows,
+    verified: true as const,
+  };
+}
 const legacyCheck = 'CHECK ((("publicId" >= 1) AND ("publicId" <= 2147483647)))';
 const resetCheck =
   "CHECK (((\"publicId\" >= '2147483648'::bigint) AND (\"publicId\" <= '9007199254740991'::bigint)))";

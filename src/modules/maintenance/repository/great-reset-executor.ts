@@ -19,10 +19,16 @@ import {
   assertResetNamespace,
   executeNamespaceReset,
   previewNamespaceReset,
+  reconcileNamespaceReset,
   type NamespaceResetContext,
 } from "./great-reset-production";
 
 type Tx = Prisma.TransactionClient;
+import {
+  finalizeResetExecution,
+  waitForResetGateSessions,
+  type ResetGateSessions,
+} from "../domain/reset-execution-finalization";
 type Target =
   | ReturnType<typeof productionResetTarget>
   | ReturnType<typeof rehearsalResetTarget>
@@ -34,6 +40,8 @@ export type ResetExecutionRequest = (
   | { mode: "PREVIEW"; context: NamespaceResetContext }
   | { mode: "EXECUTE"; context: NamespaceResetContext; planSha256: string }
   | { mode: "EXPOSURE"; operationId: string; journalSha256: string }
+  | { mode: "REOPEN_GATE"; operationId: string }
+  | { mode: "RECONCILE"; context: NamespaceResetContext; planSha256: string }
 ) & { releaseSha: string };
 
 async function settings(tx: Tx, readOnly: boolean) {
@@ -141,19 +149,19 @@ async function controlGate(
         actual.allow === allow
       )
         throw new Error("GREAT_RESET_CONTROL_IDENTITY_MISMATCH");
-      await tx.$queryRaw`SELECT 1 AS ok FROM (SELECT pg_stat_clear_snapshot()) AS cleared`;
-      const [sessions] = await tx.$queryRaw<{ others: number; pinned: number; prepared: number }[]>`
+      await waitForResetGateSessions(
+        async () => {
+          await tx.$queryRaw`SELECT 1 AS ok FROM (SELECT pg_stat_clear_snapshot()) AS cleared`;
+          const [sessions] = await tx.$queryRaw<ResetGateSessions[]>`
       SELECT (SELECT count(*)::int FROM pg_stat_activity WHERE datname=${target.databaseName} AND
         (${pinnedPid}::int IS NULL OR pid<>${pinnedPid}::int)) AS others,
         (SELECT count(*)::int FROM pg_stat_activity WHERE datname=${target.databaseName} AND pid=${pinnedPid}::int) AS pinned,
         (SELECT count(*)::int FROM pg_prepared_xacts WHERE database=${target.databaseName}) AS prepared`;
-      if (
-        !sessions ||
-        sessions.others !== 0 ||
-        sessions.prepared !== 0 ||
-        (pinnedPid !== null && sessions.pinned !== 1)
-      )
-        throw new Error("GREAT_RESET_CONTROL_CONNECTIONS_PRESENT");
+          return sessions;
+        },
+        allow,
+        pinnedPid,
+      );
       await tx.$executeRaw(
         Prisma.sql`ALTER DATABASE ${nameSql(target)} WITH ALLOW_CONNECTIONS ${allow ? Prisma.sql`true` : Prisma.sql`false`}`,
       );
@@ -174,166 +182,181 @@ async function run(target: Target, request: ResetExecutionRequest, expectedOid?:
   const database = new PrismaClient({ datasourceUrl: target.databaseUrl, log: [] });
   const control = new PrismaClient({ datasourceUrl: target.controlUrl, log: [] });
   let gateOid: string | null = null;
-  try {
-    return await database.$transaction(
-      async (tx) => {
-        const readOnly = request.mode === "MANIFEST" || request.mode === "PREVIEW";
-        await settings(tx, readOnly);
-        const actual = await identity(tx, target, expectedOid);
-        if (!actual.allow) throw new Error("GREAT_RESET_INITIAL_GATE_CLOSED");
-        if (
-          "context" in request &&
-          "databaseOid" in target.identity &&
-          (request.context.databaseOid !== actual.oid ||
-            request.context.clusterId !== actual.cluster)
-        )
-          throw new Error("GREAT_RESET_SOURCE_IDENTITY_MISMATCH");
-        if (request.mode === "EXECUTE") {
-          await controlGate(control, target, actual.oid, false, actual.pid);
-          gateOid = actual.oid;
-          const pinned = await identity(tx, target, actual.oid);
-          if (pinned.allow || pinned.pid !== actual.pid)
-            throw new Error("GREAT_RESET_CONTROL_GATE_FAILED");
-          return executeNamespaceReset(tx, request.context, request.planSha256);
-        }
-        if (request.mode === "PREVIEW") return previewNamespaceReset(tx, request.context);
-        if (request.mode === "MANIFEST") {
-          await assertFrozen(tx);
-          return resetContentManifest(tx, inspect.tables());
-        }
-        await tx.$queryRaw`SELECT set_config('agentsozluk.reset_operation',${request.operationId},true)`;
-        if (request.mode === "PREPARE_INTENT") {
-          await assertFrozen(tx);
+  const finalized = await finalizeResetExecution(
+    async () => {
+      if (request.mode === "REOPEN_GATE") {
+        const oid =
+          expectedOid ??
+          ("databaseOid" in target.identity ? target.identity.databaseOid : undefined);
+        if (!oid) throw new Error("GREAT_RESET_SOURCE_IDENTITY_MISMATCH");
+        await controlGate(control, target, oid, true, null);
+        return { mode: "REOPEN_GATE" as const, operationId: request.operationId, databaseOid: oid };
+      }
+      return database.$transaction(
+        async (tx) => {
+          const readOnly =
+            request.mode === "MANIFEST" ||
+            request.mode === "PREVIEW" ||
+            request.mode === "RECONCILE";
+          await settings(tx, readOnly);
+          const actual = await identity(tx, target, expectedOid);
+          if (!actual.allow) throw new Error("GREAT_RESET_INITIAL_GATE_CLOSED");
           if (
-            (await tx.greatResetCommit.count()) ||
-            (await tx.greatResetTombstone.count()) ||
-            (await tx.greatResetExposureEvent.count())
+            "context" in request &&
+            "databaseOid" in target.identity &&
+            (request.context.databaseOid !== actual.oid ||
+              request.context.clusterId !== actual.cluster)
           )
-            throw new Error("GREAT_RESET_ALREADY_EXECUTED");
-          const [clock] = await tx.$queryRaw<{ now: Date }[]>`SELECT clock_timestamp() AS now`;
-          if (!clock) throw new Error("GREAT_RESET_INTENT_INVALID");
-          const intent = await tx.greatResetIntent.create({
-            data: {
+            throw new Error("GREAT_RESET_SOURCE_IDENTITY_MISMATCH");
+          if (request.mode === "EXECUTE") {
+            await controlGate(control, target, actual.oid, false, actual.pid);
+            gateOid = actual.oid;
+            const pinned = await identity(tx, target, actual.oid);
+            if (pinned.allow || pinned.pid !== actual.pid)
+              throw new Error("GREAT_RESET_CONTROL_GATE_FAILED");
+            return executeNamespaceReset(tx, request.context, request.planSha256);
+          }
+          if (request.mode === "PREVIEW") return previewNamespaceReset(tx, request.context);
+          if (request.mode === "RECONCILE")
+            return reconcileNamespaceReset(tx, request.context, request.planSha256);
+          if (request.mode === "MANIFEST") {
+            await assertFrozen(tx);
+            return resetContentManifest(tx, inspect.tables());
+          }
+          await tx.$queryRaw`SELECT set_config('agentsozluk.reset_operation',${request.operationId},true)`;
+          if (request.mode === "PREPARE_INTENT") {
+            await assertFrozen(tx);
+            if (
+              (await tx.greatResetCommit.count()) ||
+              (await tx.greatResetTombstone.count()) ||
+              (await tx.greatResetExposureEvent.count())
+            )
+              throw new Error("GREAT_RESET_ALREADY_EXECUTED");
+            const [clock] = await tx.$queryRaw<{ now: Date }[]>`SELECT clock_timestamp() AS now`;
+            if (!clock) throw new Error("GREAT_RESET_INTENT_INVALID");
+            const intent = await tx.greatResetIntent.create({
+              data: {
+                operationId: request.operationId,
+                releaseSha: request.releaseSha,
+                scope: resetScope,
+                sourceDatabaseOid: BigInt(actual.oid),
+                sourceClusterId: actual.cluster,
+                createdAt: clock.now,
+                expiresAt: new Date(clock.now.getTime() + 2 * 3600_000),
+              },
+            });
+            await tx.auditLog.create({
+              data: {
+                action: "GREAT_RESET_PRODUCTION_INTENT_CREATED",
+                entityType: "AGENT_SOZLUK_DATABASE",
+                entityId: request.operationId,
+                requestId: request.operationId,
+                metadata: { releaseSha: request.releaseSha, scope: resetScope },
+              },
+            });
+            return {
               operationId: request.operationId,
               releaseSha: request.releaseSha,
-              scope: resetScope,
-              sourceDatabaseOid: BigInt(actual.oid),
+              createdAt: intent.createdAt,
+              expiresAt: intent.expiresAt,
+              sourceDatabaseOid: actual.oid,
               sourceClusterId: actual.cluster,
-              createdAt: clock.now,
-              expiresAt: new Date(clock.now.getTime() + 2 * 3600_000),
-            },
-          });
-          await tx.auditLog.create({
-            data: {
-              action: "GREAT_RESET_PRODUCTION_INTENT_CREATED",
-              entityType: "AGENT_SOZLUK_DATABASE",
-              entityId: request.operationId,
-              requestId: request.operationId,
-              metadata: { releaseSha: request.releaseSha, scope: resetScope },
-            },
-          });
-          return {
-            operationId: request.operationId,
-            releaseSha: request.releaseSha,
-            createdAt: intent.createdAt,
-            expiresAt: intent.expiresAt,
-            sourceDatabaseOid: actual.oid,
-            sourceClusterId: actual.cluster,
-          };
-        }
-        if (request.mode === "INVALIDATE_INTENT") {
-          if (await tx.greatResetCommit.count()) throw new Error("GREAT_RESET_ALREADY_EXECUTED");
-          const count =
-            await tx.$executeRaw`UPDATE public.great_reset_intents SET "invalidatedAt"=clock_timestamp()
+            };
+          }
+          if (request.mode === "INVALIDATE_INTENT") {
+            if (await tx.greatResetCommit.count()) throw new Error("GREAT_RESET_ALREADY_EXECUTED");
+            const count =
+              await tx.$executeRaw`UPDATE public.great_reset_intents SET "invalidatedAt"=clock_timestamp()
           WHERE "operationId"=${request.operationId}::uuid AND "releaseSha"=${request.releaseSha}
             AND "consumedAt" IS NULL AND "invalidatedAt" IS NULL`;
-          if (count !== 1) throw new Error("GREAT_RESET_INTENT_INVALID");
-          await tx.auditLog.create({
-            data: {
-              action: "GREAT_RESET_PRODUCTION_INTENT_INVALIDATED",
-              entityType: "AGENT_SOZLUK_DATABASE",
-              entityId: request.operationId,
-              requestId: request.operationId,
-              metadata: { releaseSha: request.releaseSha },
+            if (count !== 1) throw new Error("GREAT_RESET_INTENT_INVALID");
+            await tx.auditLog.create({
+              data: {
+                action: "GREAT_RESET_PRODUCTION_INTENT_INVALIDATED",
+                entityType: "AGENT_SOZLUK_DATABASE",
+                entityId: request.operationId,
+                requestId: request.operationId,
+                metadata: { releaseSha: request.releaseSha },
+              },
+            });
+            return { operationId: request.operationId, invalidated: true };
+          }
+          if (!/^[a-f0-9]{64}$/u.test(request.journalSha256))
+            throw new Error("GREAT_RESET_EXPOSURE_JOURNAL_REQUIRED");
+          const commit = await tx.greatResetCommit.findUnique({
+            where: { operationId: request.operationId },
+          });
+          if (
+            !commit ||
+            commit.releaseSha !== request.releaseSha ||
+            (await tx.auditLog.count({ where: { action: "GREAT_RESET_PRODUCTION_RESTORE" } }))
+          )
+            throw new Error("GREAT_RESET_EXPOSURE_NOT_ALLOWED");
+          await assertResetNamespace(tx, "RESET");
+          const frozen = await tx.agentGlobalSettings.findMany({
+            select: {
+              id: true,
+              runtimeEnabled: true,
+              schedulerEnabled: true,
+              publishEnabled: true,
+              publicWriteEnabled: true,
             },
           });
-          return { operationId: request.operationId, invalidated: true };
-        }
-        if (!/^[a-f0-9]{64}$/u.test(request.journalSha256))
-          throw new Error("GREAT_RESET_EXPOSURE_JOURNAL_REQUIRED");
-        const commit = await tx.greatResetCommit.findUnique({
-          where: { operationId: request.operationId },
-        });
-        if (
-          !commit ||
-          commit.releaseSha !== request.releaseSha ||
-          (await tx.auditLog.count({ where: { action: "GREAT_RESET_PRODUCTION_RESTORE" } }))
-        )
-          throw new Error("GREAT_RESET_EXPOSURE_NOT_ALLOWED");
-        await assertResetNamespace(tx, "RESET");
-        const frozen = await tx.agentGlobalSettings.findMany({
-          select: {
-            id: true,
-            runtimeEnabled: true,
-            schedulerEnabled: true,
-            publishEnabled: true,
-            publicWriteEnabled: true,
-          },
-        });
-        if (
-          frozen.length !== 1 ||
-          frozen[0]?.id !== "global" ||
-          frozen.some(
-            (row) =>
-              row.runtimeEnabled ||
-              row.schedulerEnabled ||
-              row.publishEnabled ||
-              row.publicWriteEnabled,
+          if (
+            frozen.length !== 1 ||
+            frozen[0]?.id !== "global" ||
+            frozen.some(
+              (row) =>
+                row.runtimeEnabled ||
+                row.schedulerEnabled ||
+                row.publishEnabled ||
+                row.publicWriteEnabled,
+            )
           )
-        )
-          throw new Error("GREAT_RESET_EXPOSURE_NOT_FROZEN");
-        for (const table of inspect.tables().filter((row) => row.cleared)) {
-          const [count] = await tx.$queryRaw<{ rows: number }[]>(
-            Prisma.sql`SELECT count(*)::int AS rows FROM ${inspect.tableSql(table.table)}`,
-          );
-          if (count?.rows !== 0) throw new Error("GREAT_RESET_EXPOSURE_NEW_STATE_PRESENT");
-        }
-        const prior = await tx.greatResetExposureEvent.findUnique({
-          where: { operationId: request.operationId },
-        });
-        if (prior && prior.journalSha256 !== request.journalSha256)
-          throw new Error("GREAT_RESET_EXPOSURE_JOURNAL_MISMATCH");
-        if (!prior)
-          await tx.greatResetExposureEvent.create({
-            data: { operationId: request.operationId, journalSha256: request.journalSha256 },
+            throw new Error("GREAT_RESET_EXPOSURE_NOT_FROZEN");
+          for (const table of inspect.tables().filter((row) => row.cleared)) {
+            const [count] = await tx.$queryRaw<{ rows: number }[]>(
+              Prisma.sql`SELECT count(*)::int AS rows FROM ${inspect.tableSql(table.table)}`,
+            );
+            if (count?.rows !== 0) throw new Error("GREAT_RESET_EXPOSURE_NEW_STATE_PRESENT");
+          }
+          const prior = await tx.greatResetExposureEvent.findUnique({
+            where: { operationId: request.operationId },
           });
-        const event = await tx.greatResetExposureEvent.findUniqueOrThrow({
-          where: { operationId: request.operationId },
-        });
-        return {
-          operationId: event.operationId,
-          journalSha256: event.journalSha256,
-          occurredAt: event.occurredAt,
-        };
-      },
-      {
-        isolationLevel:
-          request.mode === "MANIFEST" || request.mode === "PREVIEW"
-            ? "RepeatableRead"
-            : "ReadCommitted",
-        timeout: 900000,
-        maxWait: 5000,
-      },
-    );
-  } finally {
-    // Belirsiz COMMIT'te yeniden yürütme/restore yok. Önce kendi backend biter, sonra kapı açılır.
-    await database.$disconnect();
-    try {
+          if (prior && prior.journalSha256 !== request.journalSha256)
+            throw new Error("GREAT_RESET_EXPOSURE_JOURNAL_MISMATCH");
+          if (!prior)
+            await tx.greatResetExposureEvent.create({
+              data: { operationId: request.operationId, journalSha256: request.journalSha256 },
+            });
+          const event = await tx.greatResetExposureEvent.findUniqueOrThrow({
+            where: { operationId: request.operationId },
+          });
+          return {
+            operationId: event.operationId,
+            journalSha256: event.journalSha256,
+            occurredAt: event.occurredAt,
+          };
+        },
+        {
+          isolationLevel:
+            request.mode === "MANIFEST" ||
+            request.mode === "PREVIEW" ||
+            request.mode === "RECONCILE"
+              ? "RepeatableRead"
+              : "ReadCommitted",
+          timeout: 900000,
+          maxWait: 5000,
+        },
+      );
+    },
+    () => database.$disconnect(),
+    async () => {
       if (gateOid) await controlGate(control, target, gateOid, true, null);
-    } finally {
-      await control.$disconnect();
-    }
-  }
+    },
+    () => control.$disconnect(),
+  );
+  return { ...finalized.result, connectionGate: finalized.connectionGate };
 }
 
 function assertActualProductionInvocation(invocation: ProductionResetInvocation): void {
@@ -359,6 +382,7 @@ export async function verifyProductionResetMirror(
   value: string | undefined,
   invocation: ProductionResetInvocation,
   mirror: ResetGenerationMirror,
+  verifyRestoreContent = false,
 ): Promise<void> {
   assertActualProductionInvocation(invocation);
   const target = productionResetTarget(value, invocation);
@@ -381,8 +405,18 @@ export async function verifyProductionResetMirror(
         );
         if (!actual.allow) throw new Error("GREAT_RESET_INITIAL_GATE_CLOSED");
         await requireResetGenerationAdmission(tx, mirror, true);
+        if (verifyRestoreContent && mirror.state === "ROLLED_BACK") {
+          await tx.$executeRaw`SET LOCAL statement_timeout='300s'`;
+          const restored = await resetContentManifest(tx, inspect.tables(), mirror.operationId);
+          if (restored.sha256 !== mirror.manifestSha256)
+            throw new Error("GREAT_RESET_RESTORE_MANIFEST_MISMATCH");
+        }
       },
-      { isolationLevel: "RepeatableRead", timeout: 30000, maxWait: 5000 },
+      {
+        isolationLevel: "RepeatableRead",
+        timeout: verifyRestoreContent && mirror.state === "ROLLED_BACK" ? 900000 : 30000,
+        maxWait: 5000,
+      },
     );
   } finally {
     await database.$disconnect();

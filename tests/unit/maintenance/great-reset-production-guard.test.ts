@@ -3,6 +3,7 @@ import {
   productionResetTarget,
   productionShadowResetTarget,
   rehearsalResetTarget,
+  assertResetContainerGeneration,
 } from "@/modules/maintenance/domain/great-reset-production-guard";
 const sha = "a".repeat(40);
 const operationId = "550e8400-e29b-41d4-a716-446655440000";
@@ -14,6 +15,30 @@ const invocation = {
   databaseIp: "172.18.0.2",
 };
 const url = "postgresql://agent_sozluk:fixture@db:5432/agent_sozluk";
+describe("stopped container eski yedek açılış sınırı", () => {
+  const mount = {
+    Type: "bind",
+    Source: "/opt/agent-sozluk/reset/generation",
+    Destination: "/run/agentsozluk-reset",
+    RW: false,
+  };
+  const container = { restart: "no", generationEnvPresent: true, mounts: [mount] };
+  it("yalnız kalıcı readonly generation mount ve restart=no ile ilerler", () => {
+    expect(() => assertResetContainerGeneration(container)).not.toThrow();
+  });
+  it.each([
+    { restart: "always" },
+    { restart: "unless-stopped" },
+    { generationEnvPresent: false },
+    { mounts: [] },
+    { mounts: [{ ...mount, RW: true }] },
+    { mounts: [{ ...mount, Source: "/tmp/replayed-generation" }] },
+  ])("recreate edilmemiş veya unsafe container'ı reddeder: %j", (patch) => {
+    expect(() => assertResetContainerGeneration({ ...container, ...patch })).toThrow(
+      "GREAT_RESET_CONTAINER_GENERATION_REQUIRED",
+    );
+  });
+});
 describe("separate production and rehearsal reset target guards", () => {
   it("derives exactly one target and same-host/role postgres control URL", () => {
     const target = productionResetTarget(url, invocation);

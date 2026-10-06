@@ -33,6 +33,12 @@ Mevcut bootstrap oneshot'un `ExecStop` komutu DB'yi de kapatır; service stop
 edilmez. `INSTALL_BOOT_GUARD`, tam freeze kanıtından sonra root maintenance hold,
 kalıcı generation bind mount ve exact root drop-in kurar. Başka drop-in veya
 `NeedDaemonReload=yes` reddedilir. Hold varken boot uygulamayı açamaz.
+Kurulumdan sonra durdurulmuş app konteyneri kalıcı compose override ile yeniden
+oluşturulur ve **yeni container ID** freeze/request makbuzuna pinlenir. Bütün
+kurulum-dışı kipler `restart=no`, exact root generation dizininden salt okunur
+bind mount ve generation environment anahtarını ister. Ham environment değerleri
+çıktıya taşınmaz. Mevcut D202 konteyneri bu kapıyı karşılamaz; native ölçümde
+`unless-stopped`, mount ve anahtar yoktur. Konteyner henüz değiştirilmedi.
 Root mirror yayımlandığında kalıcı compose zorunlu generation admission'a kilitlenir.
 Hold yalnız DB ile eşleşen terminal `TRAFFIC_OPEN` veya `ROLLED_BACK` mirror
 sonrası kaldırılır. Yarım kalmış kurulum/publish otomatik yeniden denenmez.
@@ -54,9 +60,17 @@ sonrası kaldırılır. Yarım kalmış kurulum/publish otomatik yeniden denenme
    TRUNCATE, BIGINT namespace, commit/audit atomiktir. `setval`/`nextval`,
    CASCADE veya trigger kapatma kullanılmaz. Kendi backend'i ayrılıp diğer
    backend sıfır kanıtlanınca bağlantı kapısı açılır.
-5. COMMIT cevabı belirsizse tekrar reset veya otomatik restore yoktur. Native
-   salt okunur commit/audit/namespace uzlaşısı yapılır. Control gate sonucu
-   belirsizse site bakımda kalır; kapı körlemesine açılmaz.
+5. Backend kapanışı için bağlantı kapısı yalnız açılışta en fazla 20×250 ms
+   bekler; kapatma ve prepared transaction durumunda bekleyerek geçiş yapılmaz.
+   Disconnect/reopen hatası doğrulanmış COMMIT makbuzunu yutmaz:
+   `connectionGate=CLOSED_UNCERTAIN`, CLI exit2 ve site bakımda kalır.
+6. COMMIT cevabı belirsizse tekrar reset veya otomatik restore yoktur.
+   `REOPEN_GATE`, aynı pinli control DB'den target OID ve sıfır backend/prepared
+   transaction kanıtıyla yalnız bağlantı kapısını açar; uygulama hold'u sürer.
+   `RECONCILE` salt okunur RR transaction'da immutable commit/audit, namespace,
+   34 boş tablo, tombstone, intent ve normalize edilmiş korunacak veri hash'ini
+   karşılaştırır. Sonuç `COMMITTED` veya başlangıç manifest'i aynıysa `ABORTED`;
+   eşleşmeyen kanıt başarı değildir. Kapı zaten açıkken yeniden açma reddedilir.
 
 ## DB dışı nesil kanıtı ve açılış
 
@@ -68,8 +82,11 @@ Binding operation/release/dump/manifest/plan/implementation ve
 `PREPARED → COMMITTED_MAINTENANCE → TRAFFIC_OPEN | ROLLED_BACK`; belirsiz
 COMMIT çözülmeden geçiş yok, geri alınmış işlem `ABORTED` olur.
 
-`PUBLISH_GENERATION` yalnız DB admission ile eşleşen, imzalı canlı store'dan
-türetilmiş root mirror yayımlar. Boot/entrypoint/standalone/migration başında
+Operatör, mirror'ı mevcut canlı HMAC store'un aynı doğrulanmış byte'larından
+türetir; üretime aktarım güvenilir root request ile yapılır. Üretimde HMAC anahtarı
+yoktur ve imza matematiksel olarak doğrulanmaz. `PUBLISH_GENERATION` root request,
+DB admission ve kalıcı root latch'i doğrular; operatörün canlı zinciri doğrulaması
+ayrı zorunlu kapıdır. Bu güven sınırı root operatörüne karşı izolasyon iddiası değildir. Boot/entrypoint/standalone/migration başında
 DB/mirror/immutable latch birlikte doğrulanır. Eski dump ve yeni mirror birlikte
 LEGACY kabul edilemez. İç kabulde normal readonly pool ve 410 davranışı,
 ardından fresh normal app/TLS/Host kabulü ölçülür; topic/entry sequence tüketen
@@ -83,7 +100,15 @@ yokluğu, boş yeni namespace ve tüketilmemiş sequence başlangıçları ayrı
 kanıtlanır. Tam restore edilmiş sahipli gölge ve iki bağlantı kapısı/atomic rename
 provası yapılmadan canlı reset GO verilmez. Eski DB önce silinmez. Restore audit,
 intent invalidation, tam eşlik ve `ROLLED_BACK` admission ayrıca doğrulanır.
-Atomic rename yeni DB'nin OID'sini değiştirmez. Değişmez latch source
+`ROLLED_BACK` mirror yayımlanmadan bütün içerik manifest'i yeniden hesaplanır;
+yalnız aynı operation'ın intent `invalidatedAt` alanı ve restore audit satırı
+normalleştirilir. Sonuç original `manifestSha256` ile eşleşmezse yayın reddedilir.
+DB owner/ACL/locale/comment/settings dahil diğer farklara tolerans yoktur.
+Normal cold boot bu ağır karşılaştırmayı tekrar etmez; kısa DB/latch admission
+sürer. Restore edilen sahipli gölgede intent invalidation, native DB konsolundan
+aynı `agentsozluk.reset_operation` GUC ile, tüketilmemiş exact operation/release
+satırı için yapılır; executor'un canonical OID kapısı gevşetilmez.
+Atomic rename yeni DB'nin OID'sini değiştirmez; canonical ad artık yeni OID'ye bağlıdır. Değişmez latch source
 `databaseOid` değerini korur; yalnız imzalı terminal `ROLLED_BACK` event'i
 `restoredDatabaseOid` taşır. Mirror, actual yeni canonical OID ve restore audit'i
 aynı yeni OID'yi gerektirir. Ordinary reset/mutation source OID16385 kapısı
@@ -96,3 +121,29 @@ gerçek bakım süresi, iç pool/410 p95, unknown-COMMIT uzlaşısı, reboot ve 
 reset/reopen kanıtlarının yerine geçmez. Bu kanıtlar [STATUS.md](STATUS.md)'ye
 yalnız ölçüldükten sonra yazılır. Yeni 168 saatlik pencere başlamadan eski
 USER_REQUEST_INTERRUPTED_NOT_PASS kaydı başarıya çevrilmez.
+
+## İnceleme kapanışı ve native ön koşullar
+
+İlk kaynak `435595a235989ceab95a0845981cba4806cd38fc` için actual Opus5.5
+salt okunur inceleme 465.840 ms'de **NO-GO** verdi. Başarılı COMMIT makbuzunun
+cleanup hatasında kaybolması ve eski konteynerin generation kapısını taşımaması
+yüksek bulgulardı; yukarıdaki düzeltmeler kapanış incelemesine sunulur. Bu kayıt
+sonraki GO olarak yeniden adlandırılmaz. İki saatlik intent süresine PREPARE,
+dump, operatör restore'u, üretim gölgesi, canonical PREVIEW/EXECUTE zincirinin
+**tamamı** sığmalıdır. Süre yetmezse yeni intent/dump/manifest/prova gerekir.
+User-systemd/linger ve diğer kullanıcı cron aktivatörlerinin bulunmadığı ya da
+freeze kapsamına alındığı ayrıca native envanterle ölçülmelidir.
+
+Native bootstrap base SHA-256
+`ef47dccff5dbff0dd4f34b19c378c2339155a8c164abd1d73d3fb5578d434d02`
+altında tek `ExecStartPre`, mevcut compose `config --quiet` kontrolüdür.
+Başka migration-hold/docker-wait ön koşulu yoktur. Drop-in aynı config kontrolünü
+kalıcı generation override ile taşır; `Requires`, `After` ve mevcut path koşulları
+korunur. Generic release maintenance hold veya tamamlanmamış generation state
+varken migration marker/state dizini değişikliğinden önce reddedilir.
+
+İlk exact-source CI37399661339 quality işi **FAIL**: production zincirindeki
+`source-map-js@1.2.1`, [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q).
+Override `1.2.2`, frozen install ve `pnpm audit --prod --audit-level=high` geçti.
+Node22.23.1 üzerinde PostCSS map generation ve malicious indexed offset reddi
+ölçüldü. Yeni full CI ve actual closure ayrı kapılardır; ilk kırmızı CI başarı değildir.

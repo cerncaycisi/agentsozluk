@@ -6497,3 +6497,29 @@ komutunun her biri exit0. Kod107unit/6PG kesitiyle aynı; yalnız Türkçe makbu
 güncellendi. Ayrı executor draft PR/exact-source CI ve farklı model kod
 incelemesi bir sonraki kapı; fullsize, native boot guard kurulum, reset/reopen
 ve yeniT0 hâlâ yapılmadı.
+
+## 6 Ekim 02:04 UTC — PR335 ilk CI/hakem sonucu ve odaklı düzeltme
+
+Exact source435595a235989ceab95a0845981cba4806cd38fc, base993;
+draft PR335 T3 bağlantısı kaydedildi. CI37399661339: database/container/browser/
+coverage/behavior SUCCESS, quality production audit FAIL, validate FAIL.
+`source-map-js@1.2.1` GHSA-68fv-2mgg-jv7q için override1.2.2;
+frozen install ve production audit PASS. Node22.23.1/PostCSS source-map ve
+malicious offset reddi PASS. Yeni exact CI henüz yok.
+
+Actual Opus5.5/465.840ms ilk kaynak NO-GO: COMMIT sonrası cleanup yarışı ve
+stopped konteynerde eksik generation mount/env. Düzeltme: sınırlı backend wait,
+COMMIT makbuzunu koruma, REOPEN_GATE/readonly RECONCILE, restart=no/RO mount/env
+kontrolü; release hold, normalized full restore manifest kontrolü. Yeni9dosya
+120unit PASS. Owned stage8516470/marker/owner/cluster/backend0 doğrulamasından
+sonra7PG PASS. Restore audit filtresi ilk koşuda P2010/42883 `uuid = text`
+verdi; parameter ::uuid sonrası odaklı7/7 PASS. Son protected-content reconcile
+negatif testi de aynı owned-stage koşusunda PASS. Kapanış incelemesi/full CI açık.
+
+Native D202 bootstrap'ın tek ExecStartPre config--quiet olduğu exactbaseSHA ile
+ölçüldü; mevcutapp restartunless-stopped/mountfalse/envfalse. Kaynakinstaller ve
+konteyner yeniden yaratma henüz üretime uygulanmadı. Reset/veri silme/reopen/newT0
+yok; worker kapalı, fullsize/native kontrol/rename/boot/p95/168h ve finalM2 açık.
+
+02:06 son kaynak quality: format:check/lint/typecheck ve üç bash/iki Node syntax
+exit0. Ek release-script19unit PASS; bu testler120unit sayısına ek ayrı kesittir.
