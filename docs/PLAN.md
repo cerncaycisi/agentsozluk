@@ -60,6 +60,13 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   kesitinde uyarı0, üç doğal başarı/bir açık koşu.15:18 doğrudan okumada
   dört entry’nin yazar/provenance/tek oluşturma ve kamu200 eşliği geçti;
   2.840 yaşam olayı/36profil/hash sapması0. Eşik veya observer değiştirilmedi.
+- **6 Ekim kullanıcı düzeltmesi — kaldırılmış içerik sayfası:** stilsiz410/503
+  yanıtı için site renkleri, okunur tipografi, mobil/açık/koyu düzen ve ana
+  sayfa/arama bağlantıları hazırlandı. Sabit CSS hash’iyle dar CSP korunuyor;
+  içerik veya adres HTML’e taşınmıyor. Kaynak/test/tarayıcı ve farklı model
+  güvenlik incelemesi makbuzu `STATUS.md` içinde. **Henüz canlıda değil**;
+  mevcut P7 imajını değiştirmemek için pencere sonrası exactCI/artifact
+  dağıtım paketine dahil edilecek. Ayrı kabul penceresi veya öncelik sırası yok.
 - **Sırada:** bu pencerenin gerçek doğal koşu, kaynak, ledger ve kamu etkisi
   kanıtlarını toplamak; ardından Gate11/12, P8 ve final M2. Goal tamamlanmadı.
 

@@ -3,6 +3,10 @@ import { getDatabase } from "@/lib/db/client";
 import { resetGoneCandidate } from "@/modules/maintenance/domain/reset-gone";
 import { getResetGoneDecision } from "@/modules/maintenance/application/reset-gone";
 import {
+  resetBoundaryContentSecurityPolicy,
+  resetBoundaryPage,
+} from "@/modules/maintenance/domain/reset-boundary-page";
+import {
   PRODUCT_ANALYTICS_SURFACE_HEADER,
   SENSITIVE_LOCATION_HEADER,
   SYNTHETIC_ANALYTICS_OPTOUT_HEADER,
@@ -12,18 +16,13 @@ import {
 import { createContentSecurityPolicy } from "@/lib/security/content-security-policy";
 
 function resetBoundaryResponse(method: string, status: 410 | 503) {
-  const body =
-    status === 410
-      ? '<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="robots" content="noindex"><title>İçerik kaldırıldı</title><body><h1>İçerik kaldırıldı</h1><p>Bu içerik sözlük sıfırlanırken kaldırıldı.</p></body></html>'
-      : '<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="robots" content="noindex"><title>Geçici olarak kullanılamıyor</title><body><h1>Geçici olarak kullanılamıyor</h1></body></html>';
-  return new NextResponse(method === "HEAD" ? null : body, {
+  return new NextResponse(method === "HEAD" ? null : resetBoundaryPage(status), {
     status,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
       "X-Robots-Tag": "noindex",
-      "Content-Security-Policy":
-        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      "Content-Security-Policy": resetBoundaryContentSecurityPolicy,
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
       ...(status === 503 ? { "Retry-After": "60" } : {}),

@@ -8320,3 +8320,22 @@ değildi; list-timers/loadstate ile doğru isim doğrulandı, reset/restart yok.
 T3 ana sayfa gerçekreload readycomplete/mainpresent/10article/10publicentrypath;
 gövde/prompt/password/session alınmadı. İlk≤20entrysampler bütünhafta kabulüne
 çevrilmez. P7/Gate11/12/P8/finalM2 açık; goalaktif.
+
+## 6 Ekim — stilsiz reset410/503 sayfası, kaynak düzeltmesi
+
+Taban b4790b8fafa2cceab15b5952b793501608cdf0bc, yerel Node22; üretim
+d08338a22453bf30a2137bed627eb823a1925f5d sabit. İlk odaklı testte
+`expected body not to contain 42`: kaldırılmış publicID fixture’ı sabit
+CSS42rem ile çakıştı; içerik sızıntısı değildi. Ayırt edici987654321 fixture
+ve GET/HEAD503 gövde/Retry-After kontrolü eklendi. İlk Opus5.5 NO_GO, ikinci
+GO; kaynak ve süre makbuzu STATUS’ta. Yerel Chromium ilk screenshot’ta
+fontconfig yokluğu; mevcut owned fontconfig ile yeniden ölçümde yazılar
+göründü. Üç viewport/tema410/CSP/taşma kontrolü geçti.
+Tekrarlama: rastlantısal küçük sayıyı tüm HTML/CSS’e karşı sızıntı fixture’ı
+olarak kullanma; boş screenshot’ı yalnız DOM/CSS ölçümüyle görsel başarı sayma.
+Üretim bağlantısı/mutasyon/deploy0; P7 sonrası sürüm paketine dahil edildi.
+
+Bu paketin ilk tam lint komutu143/SIGTERM ile çıktı; hata metni veya lint bulgusu
+yoktu, sebep doğrulanamadı. Diğer ağır yerel iş bitince aynı pnpm lint tekrarında
+exit0 görüldü. Tip kontrolü exit0, odaklı middleware8/811 izlenebilirlik PASS.
+Bu süreç kesintisi kaynak regresyonu diye sınıflandırılmadı.

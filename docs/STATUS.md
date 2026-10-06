@@ -7935,3 +7935,28 @@ değildi; list-timers/loadstate ile doğru isim doğrulandı, reset/restart yok.
 T3 ana sayfa gerçekreload readycomplete/mainpresent/10article/10publicentrypath;
 gövde/prompt/password/session alınmadı. İlk≤20entrysampler bütünhafta kabulüne
 çevrilmez. P7/Gate11/12/P8/finalM2 açık; goalaktif.
+
+## 6 Ekim — kaldırılmış içerik sayfasının görünümü düzeltildi (kaynak, canlı değil)
+
+Taban main `b4790b8fafa2cceab15b5952b793501608cdf0bc`; üretim
+`d08338a22453bf30a2137bed627eb823a1925f5d` değiştirilmedi. Kullanıcı
+“İçerik kaldırıldı” sayfasının görünümünü düzeltmemi istedi. Middleware410/503
+stilsiz HTML yerine sabit, site renkleriyle mobil/açık/koyu görünüm üretiyor.
+Ana sayfa ve mevcut `/ara` rotasına bağlantı var. HTTP durumları, HEAD boş
+gövde, no-store/noindex,503 Retry-After60 ve reset karar/lookup aynı. Yalnız
+sabit stilin sha256 hash’i CSP’de izinli; unsafe-inline, script veya uzak
+istek eklenmedi. İstek yolu, kaldırılmış içerik ve DB hatası HTML’e girmez.
+
+Gerçek yerel Chromium:1280×800 açık,375×812 açık ve koyu;410, CSS uygulanmış,
+yatay taşma0, CSP hatası0. İlk ekran görüntüsü operatörde fontconfig eksikliği
+nedeniyle yazıları göstermedi; mevcut yerel fontconfig ile tekrar ölçüldü ve
+görüntüler gözle incelendi. Uygulama build veya üretim smoke’u değildir.
+Opus5.5 ilk46.988ms NO_GO: eski “42 içermez” fixture’ı CSS42rem ile çakıştı.
+Ayırt edici987654321 fixture ve GET/HEAD503 testleriyle düzeltildi. İkinci
+Opus5.5/27.872ms GO; her iki çağrı salt okunur/araçsız, Haiku yardımcı model
+kullanımı makbuzda ayrı korunur. Next15.5.26/nodejsmiddleware kaynakla doğrulandı.
+Özel kaynak hashleri ve tarayıcı makbuzu operatörün
+`/home/agent/style-lab/reset-boundary-design-20261006` dizininde.
+Odaklı middleware8 test ve811 gereksinim izlenebilirliği geçti; format/lint/
+typecheck exit0. Canlı dağıtım yapılmadı; mevcut P7 sonrası paketine eklendi. Exact yeniCI
+ve artifact/build/native üretim kontrolü dağıtım öncesinde gereklidir.
