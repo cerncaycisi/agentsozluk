@@ -59,6 +59,10 @@ test "$(hostname)" = agent-sozluk-prod || exit 91
 # Her root sorgusu süreyle sınırlıdır; zaman aşımı da hata sayılır.
 reset_root=/opt/agent-sozluk/reset
 root_path_result=''
+root_probe_failed() {
+  printf 'RELEASE_FAIL code=ROOT_PROBE_UNAVAILABLE\n' >&2
+  exit 97
+}
 root_path_state() {
   local state
   state="$(
@@ -102,12 +106,18 @@ generation_override="$runtime_root/reset-generation-compose.yaml"
 generation_required=0
 generation_overlay=0
 resolve_reset_generation() {
-  local mirror_json
+  local mirror_json generation_stat generation_real
   root_path_state "$generation_dir"
   if test "$root_path_result" != absent; then
     test "$root_path_result" = present
-    test "$(timeout --kill-after=5 30 sudo -n stat -c '%U|%G|%a' "$generation_dir")" = 'root|root|755'
-    test "$(timeout --kill-after=5 30 sudo -n readlink -e "$generation_dir")" = "$generation_dir"
+    # Çıktı ayrı atamada alınır: komut doğru çıktıyı yazıp sonra hata/zaman aşımı
+    # verirse, `test "$(…)"` kalıbı bu hatayı yutardı.
+    generation_stat="$(timeout --kill-after=5 30 sudo -n stat -c '%U|%G|%a' "$generation_dir")" ||
+      root_probe_failed
+    test "$generation_stat" = 'root|root|755'
+    generation_real="$(timeout --kill-after=5 30 sudo -n readlink -e "$generation_dir")" ||
+      root_probe_failed
+    test "$generation_real" = "$generation_dir"
     test ! -L "$generation_override"
     test "$(stat -c '%U|%G|%a' "$generation_override")" = 'root|root|444'
     compose+=(-f "$generation_override")
@@ -116,7 +126,8 @@ resolve_reset_generation() {
     if test "$root_path_result" != absent; then
       test "$root_path_result" = present
       generation_required=1
-      mirror_json="$(timeout --kill-after=5 30 sudo -n cat "$generation_dir/current.json")"
+      mirror_json="$(timeout --kill-after=5 30 sudo -n cat "$generation_dir/current.json")" ||
+        root_probe_failed
       MIRROR_JSON="$mirror_json" node - <<'NODE'
 try {
   const mirror = JSON.parse(process.env.MIRROR_JSON ?? "");
@@ -627,7 +638,7 @@ candidate_reset_admission() {
     ./node_modules/.bin/tsx scripts/verify-reset-generation.ts </dev/null >/dev/null ||
     status=start-failed
   if test -z "$status"; then
-    status="$(timeout 150 docker wait "$probe")" || status=wait-failed
+    status="$(timeout --kill-after=10 150 docker wait "$probe")" || status=wait-failed
   fi
   remove_reset_admission_probes
   test "$status" = 0 || {

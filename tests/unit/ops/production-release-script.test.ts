@@ -262,6 +262,7 @@ printf 'PASSED\\n'`,
       override?: boolean;
       state?: string;
       failProbe?: string;
+      failAfterOutput?: "stat" | "readlink" | "cat";
     }) {
       const directory = mkdtempSync(path.join(tmpdir(), "release-reset-root-"));
       try {
@@ -289,9 +290,9 @@ sudo() {
     sh)
       case "$5" in *${options.failProbe ?? "__yok__"}) return 2 ;; esac
       command sh -c "$3" "$4" "$(map "$5")" ;;
-    stat) printf 'root|root|755\\n' ;;
-    readlink) printf '%s\\n' "$3" ;;
-    cat) command cat "$(map "$2")" ;;
+    stat) printf 'root|root|755\\n'; ${options.failAfterOutput === "stat" ? "return 137" : ""} ;;
+    readlink) printf '%s\\n' "$3"; ${options.failAfterOutput === "readlink" ? "return 124" : ""} ;;
+    cat) command cat "$(map "$2")"; ${options.failAfterOutput === "cat" ? "return 1" : ""} ;;
     *) return 1 ;;
   esac
 }
@@ -331,6 +332,16 @@ printf 'compose=%s required=%s overlay=%s\\n' "\${compose[*]}" "$generation_requ
       const bounded = section.match(/timeout --kill-after=5 30 sudo -n /gu) ?? [];
       expect(all.length).toBe(4);
       expect(bounded.length).toBe(all.length);
+    });
+
+    it("doğru çıktı yazıp hata veren root sorgusunu yutmaz", () => {
+      for (const failAfterOutput of ["stat", "readlink", "cat"] as const) {
+        const result = probe({ generation: true, required: true, override: true, failAfterOutput });
+        expect(result.status, failAfterOutput).toBe(97);
+        expect(result.stderr, failAfterOutput).toContain(
+          "RELEASE_FAIL code=ROOT_PROBE_UNAVAILABLE",
+        );
+      }
     });
 
     it("tek bir root sorgusunun hatasını yokluk saymaz", () => {
@@ -473,11 +484,10 @@ echo PASSED`;
       expect(ok.stdout).toMatch(
         /^BOUND --kill-after=5 30\nBOUND --kill-after=10 60\nRUN compose run -d /u,
       );
-      expect(ok.stdout).toMatch(/\nBOUND 150\nWAIT agent-sozluk-reset-admission-/u);
+      expect(ok.stdout).toMatch(/\nBOUND --kill-after=10 150\nWAIT agent-sozluk-reset-admission-/u);
       expect(ok.stdout).toMatch(
         /\nBOUND --kill-after=5 30\nBOUND --kill-after=5 60\nRM probe1\nBOUND --kill-after=5 30\n/u,
       );
-      expect(ok.stdout).toContain("BOUND 150");
       expect(ok.stdout).toContain("WAIT agent-sozluk-reset-admission-0123456789abcdef");
       expect(ok.stdout).toContain("RM probe1");
       expect(ok.stdout).toContain("LEFT other9 \n");
