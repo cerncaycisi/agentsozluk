@@ -7659,3 +7659,34 @@ Tekrarlama: immutable9d1 runtime'ı hotpatch etme; korumayı kaldırarak
 yeni sürüm dağıtma. Hold aktif ve app/proxy durmuş halde exact yeni artifact
 staging ve korumalı sürüm geçişi hazırlanır; ayrı kaynak hakemi ve kimlik
 kapıları sonrasında kanonik reset hazırlığı devam eder.
+
+## 6 Ekim 10:13 UTC — D-Bus düzeltmesi birleşti; gerçek katalog restore kusuru ölçüldü
+
+PR338 head a791bfaf1d7b6a8a73391a03bf4e11368808053f, CI37445111455 yedi
+SUCCESS;10:04:05UTC merge15f8fd70e7150e46cb09b28017dc8d215ac54ba4.
+Üretim9d1 değişmedi: app/proxy kapalı, worker0, kaynakDB16385 korunuyor,
+maintenance-hold aktif. Reset intent/silme/açılış/yeniT0 yok.
+
+Current BIGINT60tabloluk gerçek schema-only arşiv301.710bayt,
+SHA256546489047036c4d9ef41a885f5abbce09a03f82d0687f72f7a94615ce8ee6a28.
+Owner/ACL atlanmadan ayrı sahipli PG16.14’de non-superuser restore geçti.
+Eski kanonik metadata karşılaştırması constraints/indexes/database üzerinde
+fark buldu. İlk ikisi PostgreSQL yeniden parse sonrası ölçülen on CHECK ve
+iki indeksin eşdeğer yazımı; database tek fark sourceAlpineNULL versus
+operatorDebian2.41 collationVersion. Bu fiziksel fark kodda silinmez.
+
+Exact nesne+tam tanım çiftleriyle sınırlı yeni katalog digest’i 15bileşenin
+hash’ini korur; yalnız bilinen eşdeğer tanımları eşler. Manifestformat2.
+30unit/typecheck PASS. Gerçek60tablo yeniden restore provasında14bileşen
+eşit; DB’nin collationVersion dışındaki tüm alanları eşit. Gerçek CHECK
+100→99 değişikliği yalnız constraints digest’ini; indeks koşulu zayıflatma
+yalnız indexes digest’ini değiştirdi. Sahipli fixture temizlendi. Bu şema
+provası tam boyutlu kanonik içerik/sequence veya üretim shadow kabulü değildir.
+ActualOpus5.5/91447ms SOURCE_GO; yardımcı Haiku gerçek modelUsage kaydında
+korunur. Başlatılmış intent yokken sürüm geçişi gerekir; gelecek farklı
+tanımlar ölçülmeden eşlenmez. CI/exact teslim henüz tamamlanmadı.
+
+Tekrarlama: eşdeğer PostgreSQL deparse değişimini veri kaybı sayma; genel
+ifade sadeleştirmesiyle eşik/koşul/ACL farklarını gizleme. Operator fiziksel
+collationVersion farkını production shadow’da kabul etme. Yeni sürümde tüm
+15bileşen production shadow’da eşit olmadan reset yürütme.
