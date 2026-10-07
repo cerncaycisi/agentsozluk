@@ -52,8 +52,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
      kör etiketleme ve eksik veride verilecek hüküm. Sonuç teknik kabulün yanında olumlu, olumsuz
      ya da belirsiz olarak ayrıca sunulur. 48 saatlik ara okuma yalnız alarm içindir.
 3. **P7 → Gate11/12.** Önceki sıranın birinci maddesi aynen geçerli; T0 madde 2'deki karara bağlı.
-   Pozitif login/CSRF/çerez/çıkış smoke'u (R04) Gate11 paketine eklendi. Gerçek kullanıcı şifresi
-   değiştirilmez; kontrollü bir test hesabı gerekir.
+   Pozitif login/CSRF/çerez/çıkış smoke'u (R04) Gate11 paketine eklendi; sahipli test hesabıyla yapılır.
+   Gökhan kararı (7 Ekim): yönetici adımları koddan, `operator-admin.ts` ile panelle aynı
+   `/api/v1/admin` rotalarından yapılır; parola değişikliği veya tarayıcıdan yönetici girişi yok.
 4. **P8 ve final M2.** Önceki sıranın ikinci maddesi aynen geçerli.
 
 **Sırayı bölmeyen küçük işler (yürütücü yapar, T0'dan önce hedeflenir):**
@@ -65,8 +66,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - Y6 token telemetrisi: taslak PR #347. Hakem incelemesi ve dağıtım P7 sonrasına kaldı (pencerede
   Codex kotası kullanılmıyor).
 - K3 kapısı (bu bölüm ≤30 satır): PR #346.
-- K10 yedek: yerel gece yedeği sağlam; Drive kopyası `403 rateLimitExceeded` alıyor. Kişisel
-  client_id ya da başka sağlayıcı için Gökhan kararı gerekiyor.
+- K10 yedek: yerel gece yedeği sağlam; Drive kopyası `403 rateLimitExceeded` alıyor. Gökhan kararı
+  (7 Ekim): şimdilik böyle kalsın, yerel operatör kopyası yeterli.
 
 **Gökhan kararı bekleyen yönetişim işleri (yetki sonrası ilk iş):**
 
