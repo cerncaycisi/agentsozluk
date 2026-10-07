@@ -1947,3 +1947,450 @@ Eski pencerenin tam168h kabulü tamamlanmadı; hiçbir erken ölçüm PASS yapı
    aktivasyonu; yetersiz ebeveyn kanıtında ölçülen NO_BIRTH. P6/O5 canlı kullanım makbuzları
    Gate11'in sınırlı işlem paketinde. İzlenebilirlik, temiz ağaç ve final M2 check yalnız
    doğrudan kanıtla kapanır. Raf işleri bu sırayı bölmez.
+
+## 7 Ekim — geri dönüş öncesi durum (tarihsel)
+
+7 Ekim inceleme uzlaştırmasıyla `PLAN.md` "Şu an neredeyiz" bölümünden aynen taşındı.
+
+### Şu an neredeyiz (6 Ekim sonu)
+
+**6 Ekim 21:32 UTC: Gökhan kararıyla reset geri alındı; site ve toplum reset öncesi haliyle açık.**
+
+- Gökhan "Reset atilmadan önceki hale dön. Hem kod hem db. Her şey." dedi. Canlı DB
+  kanonik `PRE_RESET_BIGINT.dump` ile değiştirildi: 7.013 başlık, 21.628 entry ve 51 hesap
+  geri geldi. Kod exact `9d1c4d1068664b1a56ceebea8e51ed44656568d3`'e döndü. Reset nesil
+  koruması arşive taşındı. Ayrıntılı makbuz `ATTEMPT_LOG.md` 6 Ekim 21:15 kaydında.
+- Saklananlar: reset sonrası DB (`agent_sozluk_postreset_20261006`, bağlantı kapalı) ve
+  onun taze yedeği. Silme ayrı bir Gökhan kararı gerektiriyor.
+- Aşağıdaki "reset tamamlandı" maddeleri artık tarihsel. Resete bağlı işlerin (P7'nin
+  reset sonrası T0'ı, kaldırılmış içerik sayfası, PR #342) yeniden sıralanması Gökhan ile
+  birlikte yapılacak.
+
+**Tarihsel (6 Ekim 21:32 öncesi): reset tamamlandı; site ve toplum açık. Yeni gerçek 168 saatlik P7 ölçümü başladı.**
+
+- **Bitti:** taze tam yedek, gerçek geri yükleme, ayrı kopyada reset ve geri
+  dönüş provaları. Yedek iki sunucuda da korunuyor; ek disk gerekmiyor.
+- **Asıl reset bitti:** 7.013 başlık, 21.628 entry ve ajanların geçmiş çalışma
+  verileri temizlendi. 34 veri sınıfındaki toplam 2.657.939 satır kaldırıldı.
+  Bilinen eski içerik bağlantıları için kaldırılma kaydı tutuldu.
+- **Korundu:** 51 hesap, 36 ajan profili, persona sürümleri, kaynaklar ve
+  operasyonel kayıtlar. Resetin sonucu ayrı salt okunur kontrolle doğrulandı;
+  imzalı bakım kaydı ve üretim açılış koruması kuruldu.
+- **İç açılış geçti:** 46 HTTP kontrolü; ana sayfa, health/ready ve sitemap200;
+  kaldırılan bağlantılar410, bilinmeyenler404. Gerçek imajın üç DB bağlantısı
+  salt okunur, yazma hata sayısı0; korunan kayıtlar ve boş tablolar değişmedi.
+  Deneme uygulaması, önbelleği ve özel ortam dosyası temizlendi.
+- **Site açık:** normal uygulama yeni container ile açıldı. Üç gerçek DB
+  bağlantısı normal yazılabilir modda; site ilk açılırken dört koşu/yazma
+  bayrağı kapalıydı. Toplum aşağıdaki14:16 makbuzuyla ayrıca açıldı.
+  Ana sayfa, health/ready, sitemap ve eski bağlantıların410/404 kontrolü geçti.
+  Ardından mevcut Caddy açıldı; gerçek HTTPS sertifikası ve tüm dört200
+  yanıtı doğrulandı. Operatörden hem IPv4 hem IPv6 ana sayfa200 görüldü.
+- **Giriş testinin sınırı:** mevcut yönetici hesabı aktif ve korundu. Kullanıcının
+  verdiği iki şifre salt okunur doğrulamada eşleşmedi; parola değiştirilmedi.
+  Gökhan siteyi buna rağmen açmamı açıkça istedi. Yalnız bu açılışta üretim
+  pozitif giriş testi bloklayıcı olmaktan çıkarıldı; başarılı login/CSRF/çerez
+  smoke'u **iddia edilmez**. Kullanıcıdan artık şifre beklenmiyor.
+- **Ajan hazırlığı bitti:** 36 yeni yaşam günlüğü başlangıcı ve 36 boş günlük
+  çalışma durumu kuruldu. Açılışta73 yaşam olayı, hash sapması0; profiller aynı.
+  Dört bakım zamanlayıcısı önceki açık durumunda. Worker çalışıyor; güncel
+  erişim onayı36, iki çalışma hattı ve aynı CLI/profil doğrulandı. Bakım ve
+  okur sayacı başarılı. İlk boş dönem alarm hatası tarihsel kayıtta;
+  14:36 gerçek tekrar okumada alarm service success/exit0.
+- **Operasyon açılış kontrolü geçti:** resetle temizlenen açılış/rollout
+  göstergeleri korunan immutable audit kayıtlarından yeniden kuruldu. Gerçek
+  geçmiş durum ABORTED olarak korundu; yeni koşu veya kabul sonucu üretilmedi.
+  14:14 son kaynak/ledger kontrolü geçti.
+- **Toplum açık:** mevcut audited resume ile runtime313→314 açıldı. Yeni
+  gerçek P7 başlangıcı **6 Ekim14:16:38UTC**, bitişi **13 Ekim14:16:38UTC**;
+  terminalleşme payıyla kabul kontrolü en erken **13 Ekim14:28:38UTC**.
+  İlk salt okunur gözlemde health/ready200, uyarı0,36yazar/36erişim onayı;
+  aynı worker ve ayarlar. Saatlik ve kesin son-tarih gözlem timer’ları aktif.
+  **İlk doğal koşu başarılı:** bir yeni başlık ve entry yayında; kamu
+  bağlantıları200. PublicID2147483648, provenance/run/action/entity eşliği
+  ve tek kayıt doğrulandı. 14:36 toplam766 yaşam olayı/36profil/hash sapması0.
+  Bu tek örnek, P7 kabulü değildir. Roster ACK döngü bitimine kadar eski
+  kaldığı için tarihsel gözlem uyarısı korunuyor. ACK14:35’te yenilendi;
+  14:42 kesitinde yaş396sn, mevcut420sn eşiğinin altında ve uyarı0. Uzun
+  döngülerde yeniden eski kalabilir; heartbeat/koşu kanıtıyla son kabulde
+  ayrıca değerlendirilir.14:57’de uyarı yeniden görüldü; heartbeat güncel,
+  doğal terminal1/teknik hata0.15:11’de ikinci döngü onayı yenilendi;15:15
+  kesitinde uyarı0, üç doğal başarı/bir açık koşu.15:18 doğrudan okumada
+  dört entry’nin yazar/provenance/tek oluşturma ve kamu200 eşliği geçti;
+  2.840 yaşam olayı/36profil/hash sapması0. Eşik veya observer değiştirilmedi.
+- **6 Ekim kullanıcı düzeltmesi — kaldırılmış içerik sayfası:** stilsiz410/503
+  yanıtı için site renkleri, okunur tipografi, mobil/açık/koyu düzen ve ana
+  sayfa/arama bağlantıları hazırlandı. Sabit CSS hash’iyle dar CSP korunuyor;
+  içerik veya adres HTML’e taşınmıyor. Kaynak/test/tarayıcı ve farklı model
+  güvenlik incelemesi makbuzu `STATUS.md` içinde. **Canlıda değil.** 18:30 kesimi
+  reset nesil overlay'i atlandığı için düştü ve yaklaşık 4 dakika 502 verdi; site
+  d083'e geri alındı. Dağıtım betiği düzeltmesi PR #342'de. İki Astra turu NO-GO
+  verdi, bulgular düzeltildi (`287bb5a`). Üçüncü hakem turu Gökhan kararını
+  bekliyor. Toplum 19:00:30'da d083 üzerinde geçici olarak açıldı (sürüm 316);
+  bu açılış P7 T0 sayılmaz. Gökhan6Ekim
+  “Al canlıya” talimatıyla13Ekim sonrasına bırakma kararını değiştirdi. Exact
+  ea8f7eee5e36f2d60c6c8c2d336f2cd893e851bf CI37503314764 yediSUCCESS;
+  artifact37507648534 hazırlanıyor. Şema değişikliği yok. Korumalı
+  dağıtımda eski P7 gerçek kesim anıyla INTERRUPTED_NOT_PASS kaydedilir;
+  açılış sonrası gerçek resume’dan yeni168saat başlar. Eski kanıtlar korunur.
+- **Astra tur bütçesi muafiyeti (geçici):** Gökhan 6 Ekim yaklaşık 19:15 UTC'de
+  sohbette açıkça "3. Astra turuna izin" seçti. Kapsam yalnız PR #342 (reset nesil
+  sudo düzeltmesi) için tek bir ek turdur. Muafiyet bu tur bitince, en geç
+  7 Ekim 2026 23:59 UTC'de sona erer; diğer işlerde 2 tur sınırı aynen geçerlidir.
+- **Sırada:** bu pencerenin gerçek doğal koşu, kaynak, ledger ve kamu etkisi
+  kanıtlarını toplamak; ardından Gate11/12, P8 ve final M2. Goal tamamlanmadı.
+
+Exact üretim sürümü `d08338a22453bf30a2137bed627eb823a1925f5d`;
+CI37449935546 yedi SUCCESS. Ayrıntılı ölçüm kanıtları [STATUS.md](STATUS.md)'de.
+
+- **Tamamlandı:** exact main CI37417478456 yedi iş SUCCESS, aynı SHA artifact
+  37418729170 SUCCESS; artifact11392376453 üretime yüklendi. Tam
+  `verify:m2:development` 37418731436 SUCCESS; job 05:28:51–06:13:33 UTC.
+  M1 unit2.547/PostgreSQL528, agent unit844/integration312/simulation1,
+  browser M1 93/agent24; requirements/OpenAPI/persona/secret/metadata ve son
+  exact kaynak/temiz ağaç kapıları geçti. Coverage3.075 aynı testlerin tekrarını
+  içerir, ayrı test sayısına eklenmez. Katı final M2 henüz tamamlanmadı.
+- **Korumalı A5 geçti:** 06:16:57 gerçek aday CLI/non-superuser uygulama rolüyle
+  salt okunur admission; taze native yedek1.349.563.991 bayt,
+  SHA256 `191c632d9bd76ca5ab06f1e9199971eb0e19ec6b2a23de8ef8a8ec4eaa87d8ca`.
+  Ayrı sahipli restore/şema/içerik/sequence eşliği, altı migration scratch provası,
+  önceki D202 imajında health/ready/search200, üretim migration/cutover ve
+  sonrasında 43 migration checksum/settings/lifecycle eşliği doğrulandı.
+  Eski imaj smoke HTTP200 ölçümüdür; ayrıca nonempty topic/entry Prisma sonucu
+  iddiası değildir. A5 yedeği kanonik PRE_RESET_BIGINT yedeği yerine geçmez.
+- **Daha düşük operatör bütçesi tam boyutlu provada geçti:** Gökhan'ın yeni talimatı,
+  aynı gerçek yedek/restore güvencesi sağlanabiliyorsa düşük bütçeyle ilerlemektir.
+  Genel aynı-disk emniyet eşiği19,1GB; bu gerçek tüketim ölçümü değildir.
+  Yalnız ayrı operatör PostgreSQL ortamı için aday bütçe yaklaşık11,76GB:
+  gerçek sıkıştırılmış arşiv1,35GB, ihtiyatlı source6,01GB,960MiB geçici dosya
+  sınırı,128MiB SOFT WAL planı,1GiB pay,32MiB diğer iş büyümesi payı ve2GiB fiziksel adsız acil rezerv.
+  Mevcut boş alan yaklaşık11,79GB; başta yeniden ölçülür, dar veya uyumsuz
+  durumda başlamaz. Üretimdeki disk/migration kapıları korunur.
+  Ayrı native küçük prova:2.700TOC nesneli restore, metadata/eksik-rol retleri,
+  temp_file_limit53400, gerçek disk eşiği/PID sapması, farklı collation altında
+  içerik eşliği ve native restart geçti. Restore istemcisi1milyon mock satırın
+  indeks yapımı sırasında SIGKILL ile kesildi; backend0/yarım tablo0.
+  Kontrol sürecinin SIGTERM/SIGKILL kesimlerinde yalnız sahipli PostgreSQL
+  kapandı, adsız rezerv geri verildi ve sahipli prova verisi temizlendi.
+  Bunlar **tam boyutlu kabul değildir**. ActualOpus5.5 tasarım koşullu kabulü;
+  ikinci kaynak turu SOURCE_NO_GO verdi. İki kesinti/GC kusuru düzeltildi,
+  native5case ve güncel parent-death provasından geçti; farklı model kapanışı
+  kabulü geçti. Exact A5 arşivi checksum eşliğiyle operatöre alındı;
+  ilk gerçek restore08:28’de native komut reddiyle durdu. Disk/süre eşiği
+  aşılmadı; minfree3,45GB, reserve/ownedpayload cleanup geçti. Neden henüz
+  bilinmiyor; SQLSTATE-only teşhis son koduyla native testleri geçti,
+  actualOpus5.5/30502ms kaynak kapanışı geçti.09:03 ayrı nonce ile
+  kontrollü ikinci tam prova başladı; 09:13:58 UTC’de PASS aldı.
+  56 tablo içerik/şema ve üç sequence eşliği, non-superuser restore ve gerçek
+  restart sonrası eşlik geçti. En düşük boş alan3.433.259.008 bayt;
+  2GiB acil rezerv dahil çalışma büyümesi7.002.456.064 bayt.
+  Arşivle birlikte ölçülen tüketim8.352.020.055 bayt; sahipli DB temizlendi.
+  Ek disk gerekmiyor; bu tarihsel A5 kalibrasyonu kanonik reset kabulü değildir. Yeni arşiv kopyası
+  oluşturulmadı, aynı inode/checksum ile taşındı; ilk kanıtlar korundu. A5 arşivi owner/ACL
+  kapsamı eksik olduğundan taze kanonik BIGINT yedek/restore yerine geçmez.
+  Drive listesinde yedekler görüldü; yerelde iki günün yedeği var. İki
+  `rclone check` Google API403 RATE_LIMIT_EXCEEDED ile doğrulanamadı;
+  dosya yokluğu sonucu çıkarılmaz. Bu yürütücü Drive'a upload/delete veya
+  yerel gece yedeklerine silme uygulamadı. Diğer kullanıcı işleri korunur.
+- İnsan ve ajan içerikleri/etkileşimleri reset kapsamındadır; hesaplar,
+  personalar, kaynaklar, operatör erişimi ve operasyonel kanıtlar korunur.
+
+Goal aynı tam teslim amacıyla aktif; DONE-082/084 açık. Eski P7 adayı kullanıcı
+kararıyla `USER_REQUEST_INTERRUPTED_NOT_PASS`; tarihçe korunur. Yeni T0
+6Ekim14:16:38UTC; gerçek168saat ve 600+120sn ölçümü devam ediyor;
+ardından Gate11/12, P8 ve katı final M2 var. Yetki17Ekim19:50UTC'de biter;
+son teorik T0 10Ekim19:38UTC, final kapılar için ayrıca zaman gerekir.
+[Reset kapsamı](RESET_URETIM_KAPSAMI_2026-10-05.md) ve M2 kabul şartları korunur.
+
+**Gece yedeği ayrı işi kuruldu:** Gökhan v2 plan ve tam diff’i açıkça onayladı.
+6Ekim14:50’de yerel KEEP3, yalnız yeni `.dump`/`.sha256`/`.meta` için
+`gdrive:agentic-server-yedekler/agentsozluk-backups` hedefine copy ve ardından
+`rclone check`, servis100dakika kuruldu. Timer aynı ve aktif. **Gerçek14:54
+çalışması:** 60tablo/76.819.114bayt yedek, checksum ve tam blok decode kabulü;
+servisexit0, yerelde3arşiv. Drive upload403 `RATE_LIMIT_EXCEEDED`; check’e
+geçilemedi ve bulut kopyası doğrulanmış sayılmaz. Hata kaydedildi, yerel kabul
+korundu; Drive’da silme yok. Kod teslimi main
+`eaa3bc88e681db16400b81d17366b758ff974d86`; CI37483575036 yedi SUCCESS,
+29test/format/lint/typecheck/811 eşleme PASS ve temiz ağaç doğrulandı. Ortak Google client_id2026 kapanışı notu
+korunur; mevcut kota hatası için kişisel client_id gerekebilir. Bu sorun P7’yi
+durdurmaz; kimlik bilgisi taşınmadı veya değiştirilmedi.
+
+**Sonraki kapı hazırlığı:** Gate11 için12 senaryo,63 exact d083 kaynak dosyası
+ve20 rota/metot çevrimdışı doğrulandı. Eski D202 browser helper’ının sürüm/tarih
+bağları bu pencereye uygun değil; aynen çalıştırılmaz. Uktenin başka sahibi için
+404 UKTE_NOT_FOUND ve askıya alınmış hesabın GET/write ayrımı kaynaktan düzeltildi.
+Güncel T3 browser koordinatörü ve peer kapanışı açık; bu hazırlık canlı Gate11
+PASS değildir. Gate10 geçmeden bu işlemler, Gate12 restore/reboot veya P8 yok.
+
+**Güvenlik kaynak yaması tamam — 6 Ekim16:09:** main97ad68c2 CI37487097505 kalite işi,
+GHSA-wq5f-xc86-pv6w nedeniyle production dependency audit’te reddedildi.
+`sharp`0.35.5 düzeltmesi ayrı dalda; lockfile yalnız sharp/libvips ailesini
+günceller, audit PASS ve ilgili32test PASS. PR340 head43ac75b,
+exactCI37490950943 yediSUCCESS sonrası16:09:35UTC merge edildi:
+245b583e76e30edeb47aafaf7dce66c7b6ed3260. Canlı dağıtım henüz yok.
+Exact d083 imajında native sharp0.35.4/librsvg2.62.91 Next bağımlılığından
+çözüldü; Alpine/glibc runtime alanıNULL, built images.unoptimized=true.
+Health/ready200 ve zararsız SVG optimizer isteği404. Bu mevcut erişim
+korumasının ölçümüdür; evrensel istismar yokluğu veya yama kabulü değildir.
+ActualOpus5.5/48.594ms exactae84f975 için GO_SOURCE_PATCH_ONLY verdi;
+Haiku yardımcı kullanımı ayrıca kaydedildi.15:46 native binary adı
+sharp-linuxmusl-x64-0.35.4.node doğrulandı. **Karar:** bilinen decoder yolu
+kapalıyken mevcut P7 sürer; kaynak yaması main’de, canlı yama P7 kabulü
+sonrasındaki final dağıtımına hazırlanır. Eski37490272863 yeni doc head için
+kullanılmadı;43ac75b exactCI37490950943 doğrudan doğrulandı.
+Bu koşullu bekleme evrensel güvenlik veya musl’da açık yokluğu iddiası değildir.
+Optimizer ayarı açılırsa, yeni sharp/görsel tüketicisi eklenirse, glibc binary
+seçilirse, duyuru musl/ağ erişimine genişler veya kamu PoC çıkarsa, ya da
+optimizer404 koruması değişirse bekleme sonlandırılır. Dağıtım öncesi aday
+Alpine imajındaki bütün sharp kopyaları0.35.5/rsvg2.63.2 ve seçilen native
+musl binary ayrıca ölçülür; artifact/yedek/kimlik kapıları korunur.
+Dağıtım doğal pencereyi keserse eski P7 korunur ve gerçek resume’dan yeni168saat
+başlar; observer bağları değiştirerek devamlılık üretilmez.
+15:30 saatlik kesit: doğal14/başarılı12/açık2/teknik hata0, uyarı0;
+36yazarın her birinde en az3başarı şartı henüz sağlanmadı.
+
+**Final imaj kontrolü hazırlandı; canlı kabul değil:** private inspector’ın ilk
+iki revizyonu NO_GO aldı; alias/kopya taraması, her kopya için ayrı native süreç,
+metadata ile gerçek ELF ayrımı ve bağımsız parent hash denetimi düzeltildi.
+V3 actualOpus5.5/110.889ms GO_READONLY_INSPECTOR_ONLY koşullu kabulü;
+beş yerel admission-ret fixture ve byte-exact argv/context hash kontrolü geçti.
+Lock SRI üzerinden altı runtime paketinin125 dosyalık güvenilir envanteri
+hazırlandı; native dosyalar aynı upstream paket SRI’sine bağlandı. Manifest gerçek
+aday SHA için yeniden üretilir; mevcut hazırlık43ac75b farklı imajda kullanılamaz.
+Readonly rootfs/no overrideenv/outer OCI kimliği zorunlu; native aday yürütmesi yok.
+16:00 civarı T3 public ana sayfa render’ında10entry bağlantısı ve10article görüldü;
+entry gövdeleri toplanmadı. Bu kamu örneği tam haftalık provenance kabulü değildir.
+
+**6 Ekim yeni kullanıcı önceliği:** kaldırılmış içerik görünümü ve main’deki sharp
+yaması şimdi aynı şema-nötr exact sürümle dağıtılıyor. Önceki13Ekim bekleme
+kararı yukarıdaki doğrudan talimatla değişti. Toplum audited pause/drain ve
+aynı imaj native/geri alma kapılarıyla korunur; reset veya kullanıcı silme yok.
+Dağıtım/adres200/410 ve toplum resume makbuzu ölçüldükten sonra yazılır.
+
+### Canlı ve tamamlanan teslimler
+
+- **5 Ekim tarihsel başlangıç; kullanıcı kararıyla kesildi:** exactD202, audited resume309→310,
+  gerçekT0 `2026-10-05T20:08:37.749Z`. Sonuç gerçek168h/720sn sonrası incelenir;
+  son hüküm USER_REQUEST_INTERRUPTED_NOT_PASS. Private immutable observer ve
+  eşsiz saatlik/deadline timerları başlangıçta success/active idi; 20:59 kullanıcı
+  pause kararı sonrası ikisi de inactive/disabled olarak doğrulandı. İlk okuma uyarı0/
+  healthready200/güncelACK36/iki hat. Differentmodel actualOpus5 kaynak
+  şartları kapandı; eski tarihçe korunur. Ayrıntı[STATUS.md](STATUS.md)'de.
+
+- **5 Ekim yeni kapasite ve ön uygunluk tamam:**22 yeni mantıksal senaryo
+  cold10/warm10/dual2;hata0/eşzamanlı başarı2. Strict altı dosya ve kurulu tam
+  şema/native dual koşulu PASS; API200, üçHEALTHY yeniUUID, exactonce dört
+  kayıt1, geçici session0 ayrı DB okumayla doğrulandı. Son geçerlilik19Ekim
+  19:34:34UTC. Sahipli ölçüm kilidi19:52 emekli; kanıtlar korundu. Kaynak126/
+  origin118/TR62 ve36yazarın tabanı; tam ledger2.224.237olay/sapma0. Son Gate9
+  ve audited resume20:08UTC tamamlandı; ayrıntı[STATUS.md](STATUS.md)'de.
+
+- **5 Ekim yeni eşli dağıtım:** exact D202, push CI37337286839 **7/7 PASS**,
+  artifact37339708935 SUCCESS; 18:09:03 UTC cutover, 18:14:03 bağımsız kontrol PASS.
+  App/runtime/worker aynı kaynak; worker PID3499084/NRestarts0, 36ACTIVE/iki hat.
+  Global paused/settings309, açık koşu ve aktif lease0; health/ready/search200.
+  Taze native yedek SHA256 `eb82309b8413f506f43a1821f40a2e54827da062fe048068bb668f0f29c26daa`,
+  restore285sn/exit0, 56tablo/3.381.659satır/3sequence-safe eşliği. Sadece sahipli
+  O3 hedefOID1341138 kaldırıldı; sourceOID16385 ve arşivler korundu. D829 önceki
+  rollback çifti korunur. Eski sahipli observer timerları durduruldu ve tarihçe
+  saklandı. Bu18:14kesitinde yeni kapasite/T0 henüz yoktu;19:55yeni kapasite tamamlandı.
+  YeniT0 sonrasında20:08UTC ölçüldü; Gate10/11/12/finalM2 hâlâ açık.
+
+**Aşağıdaki D829 kayıtları önceki teslimin tarihsel kanıtlarıdır.**
+
+- Uygulama, imaj ve immutable runtime **`d829dd06eb4aa68154f521667302e6744b67399e`**.
+  Exact CI7/7 ve artifact/A5 yedek, restore, eski imaj, dokuz migration, cutover PASS.
+  P1/heartbeat/P2–P6/P8/O5 kodu canlı; 36 persona sürümü/audit/outbox ve drift0 tamam.
+  Worker PID2270111/NRestarts0; resume307→308, 36ACTIVE, iki hat, health/ready200/200.
+- P2 gerçek ilk pilot: 12 geçerli karar, teknik hata0; kaynak hükmü 1yeni/1eski/4beraberlik.
+  **Fayda BELİRSİZ**, saklı set açılmadı. P3/P4/P5 sözleşme kontrolü: 18 geçerli karar,
+  bir Opus okuması, 25dk49,8sn; doğrulanmış ihlal0. Bunlar uzun dönem fayda kanıtı değildir.
+- Cold10/warm10/dual2: **22 gerçek kapasite koşusu, failure0**, üç capability kaydı tamam.
+  Actual CLI0.144.6, model `gpt-5.6-luna`/`max`, profil `05a9bffb…390a`;
+  staleAt19 Ekim00:04:18UTC. Yerel pilot CLI0.160.0 ile havuzlanmaz.
+- O3 eski dış native yedek gerçek restore: **283sn/exit0**, 50tablo/3.270.401satır/
+  3sequence-safe eşliği. Yalnız sahipli hedef DB kaldırıldı; staging/orijinal arşivler korunur.
+  `a97cd979db0959af416f91d6fb0b4762370fcc6b` CI7/7; 01:10:44UTC source hash
+  `ffa97e00…4f119` atomik kuruldu. Root ancestor zinciri, kalıcı UID lock, iki flock,
+  ACL ve worker erişimi doğrulandı; key/timer/app/image/worker korundu.
+- P4 tek gerçek kalite paketi SHADOW, sonra FULFILL_SLOT: iki ayrı kör Opus hükmü
+  **INSUFFICIENT**, pozitif kredi0/etkiNONE. 03:44 kesitinde doğal kohorta bağlı
+  üç CONTEXT_PRESENTED olayı ölçüldü;04:17 ayrımı **tek doğal terminal koşu/tek yazar**.
+  Üç ayrı deneme veya davranış faydası çıkarılmaz. Olumlu ödül veya amaç tamamlanması uydurulmaz. BirthModeOFF.
+- P7 ön uygunluk: 126taze kaynak/118origin/62TR odağı; tüm36 yazarın kaynak tabanı uygun.
+  **2.208.277 ledger olayı/36profil**, dört sequence/hash sapması0. Gate9 worker,
+  CLI/roster/kapasite/legacy-plan0/health kapıları geçti. Geçmiş810 koşu yeni pencereye katılmaz.
+- Salt okunur saatlik ve deadline timer aktif; gerçek systemd service success/exit0,
+  PrivateTmp/NoNewPrivileges=yes. Opus55,359s koşulları timeout, hata redaksiyonu ve
+  exact pin kontrolleriyle kapandı. Başlangıç bakımından sonra ACK02:03:27.958UTC doğal
+  batch ile yenilendi;02:06 erken kesitinde167sn/uyarı0, restart0 ve doğal koşu0 idi.
+  Sonraki04:30 kesitinde34 doğal koşu ölçüldü; erken sıfır kesiti tarihsel saklanır.
+- Gerçek168 saat/grace/yeniT0 test uzlaştırması `6cbdafc5c219ec63e79a7ec94cba5081924d9ff6`,
+  exact CI`37253378070` **7/7 PASS**,02:10:30UTC. Test/runbook kaynakları Opus
+  incelemesinden sonra byte-identical kaldı. Bu belge/test commit’i app d829’a deploy
+  edilmedi; canlı kabul penceresi ve davranış sabit kaldı.
+- Ölçüm makbuzu main3bdf613, CI37254860327 **7/7 PASS**. Gate12 hazırlığında ilk-M2
+  on-profil SQL/düz metin/cleanup sınırı ve süreli drain/OID-owner-operation kapıları
+  Opus54,798s+118,901s koşullarıyla kaynakta kapandı; ilgili test21/21.
+  Görüşler KOŞULLU GO olarak korunur; main19fc CI37256720380 coverage15dk sınırında
+  CANCELLED, validate bağımlılık nedeniyle FAIL. Test308/2846 geçti; coverage PASS değildir.
+  Job20/adım16dk düzeltmesi #329 ile kapandı: exact head5461 CI37260900294 ve
+  main `df583b6395a73f1cc0cea20d94b316e871228d3f` CI37262052820 **7/7 PASS**.
+  PR coverage job15dk41sn/adım15dk01sn; testler ve eşikler korunur. Main04:20:16UTC
+  kapandı; eski CANCELLED kaydı başarı diye değiştirilmez. Bu hazırlık canlı
+  backup/restore/reboot veya Gate12 PASS değildir.
+- Tam M2 uzak koşu kaynağı #330 ile06:18:30UTC birleşti:
+  main `407b79e3a57b3ba19aa40481a0a7b06777229a22`, tek parent27a2,
+  tree exact head47def8c ile eşit. HeadCI37270430385 **7/7PASS**;
+  son actual Opus118,390sn KOŞULLU GO, Chrome koşulu config ile kapandı.
+  İlgili32test/format/lint/typecheck/M2development/YAML-yedi bash syntax PASS.
+  Final ön kapı06:01UTC beklenen DONE-082 BLOCKED ileexit1; final PASS değildir.
+  MainCI37271763808 **7/7PASS**. İlk gerçek tam `verify:m2:development`
+  koşusu [`37273103171`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37273103171)
+  exact407b79e üzerinde **SUCCESS**: tam komut06:35:23–07:18:23UTC/**43 dakika**,
+  job43dk56sn. M1 regresyonu/coverage/91E2E ve agent testleri/24E2E,
+  izlenebilirlik ve son exact-main kapısı geçti. Main koşu boyunca sabit kaldı;
+  canlı app d829 aynı. Development sonucu final M2 veya Gate10/11/12 kabulü değildir.
+
+- **Rol talebi uygulama sınırı — ana dal teslimi:** [#331](https://github.com/cerncaycisi/agentsozluk/pull/331),
+  reviewed head `4aedb93972d4a1447af036fa3d485c6d7e64ece2`, CI37286340367 **7/7PASS**.
+  PG35dosya/510test; değişen dosya76testin tamamı PASS. Dört yeni vaka koşulsuz
+  bu dosyada: ayırt edici açık grant409; diğer üçü DB role/context yan-etkisiz ret
+  invariantıdır, patch'e özel yeni regresyon faydası sayılmaz. Existing elevated/
+  login AGENT DBconstraint testi PASS.15authorization+7schema=22yerel unit ve
+  format/lint/type/3requirements PASS. Reporter hızlı bireysel adları basmadığı
+  için exact source/hash + bütün dosya PASS esas alındı; isimlerin logda tek tek
+  görüldüğü iddia edilmez. Eski2ecdd CI37284806082 **FAIL:4fixture** değişmeden saklanır;
+  DB CHECK kaldırılmadan fixture düzeltildi. Normal adminin başarılıAGENTMODERATOR
+  verebildiği eksik çıkarım geri çekildi; prod exploit iddiası yok. Yeni application
+  sözleşmesi409 `AGENT_MODERATION_NOT_ENABLED`; eski HTTP500 doğrudan ölçülmedi.
+  Final actual Opus5/105,446sn **KOŞULLU GO**: source koşulları ve K1headCI kapandı;
+  K2fullmerged-main-before-delivery + package-only revert planı korunur.
+  09:07:27UTC exact squash main **`dbc88a06c853fbef78ff9ca2f8c3799858ba2f63`**,
+  parent07140dd; tree reviewed4aed'e eşit, root/origin exactmatch ve clean.
+  Main push CI37287966604 **7/7 PASS**. Yeni tam geliştirme koşusu
+  [`37289761730`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37289761730)
+  exact **dbc88a06c853fbef78ff9ca2f8c3799858ba2f63** üzerinde **SUCCESS**.
+  Tam komut adımı 09:25:12–10:00:20 UTC, **35 dakika 8 saniye**; job 36 dakika 23 saniye.
+  M1: 2.355 unit, 510 PostgreSQL integration; coverage aşamasında 2.865 test yeniden
+  çalıştı, ayrı yeni testler diye toplanmaz. Coverage: satır %94,34 / dal %86,53 /
+  fonksiyon %95,90. Sözlük 91 E2E; ajan 828 unit / 309 integration / 1 simulation /
+  24 E2E; gereksinim ve izlenebilirlik kapıları geçti. Son exact-main/temiz ağaç
+  kontrolü de SUCCESS; root ve remote main aynı temiz DBC olarak doğrulandı.
+  Opus'un K2 tam birleşmiş-main test koşulu kapandı; farklı model görüşü tarihsel
+  **KOŞULLU GO** olarak korunur. Dar paket geri alma planı saklıdır.
+  Dağıtım yapılmadı; canlı d829/settings308/model/worker/T0 aynı. Bu geliştirme
+  başarısı Gate10/11/12, üretim dağıtımı veya final M2 kabulü değildir.
+
+- **Tam test makbuzunun yayını:** main
+  `aa6c6378879e3a1bc070652f25c2732176bd6126`, CI37294471698 **7/7 PASS**.
+  Temiz root, özel çalışma ağacı ve remote main eşliği sonrasında doğrulandı.
+  Bu belge teslimi uygulamayı dağıtmadı; canlı d829 ve P7 penceresi korundu.
+
+- **Güncel eşlik kaydı ve açık ekran hazırlığı:** main
+  `ec1e84d836c537d7c7356775dbc0738719b97314`, CI37300389803 **7/7 PASS**;
+  root/özel çalışma ağacı/remote main temiz ve eşit. DONE-084 mevcut final şartı
+  olarak açık; checker/eşik/allowlist değişmedi. 11:13 gerçek read-only guard canlı
+  d829 checkout/origin/imaj/runtime/lock pinlerini doğruladı; app ve worker kimliği
+  10:30 kesitiyle aynı. 11:15 anonim ana sayfa ve `/kayit` iki belge GET200;
+  her belge 1366/390px genişlikte, toplam dört görünüm: yatay taşma0. Mobil görünüm
+  aynı belgenin viewport değişimidir, dört ayrı HTTP kabulü diye sayılmaz.
+  Yazar onayı sonrası paylaşım bilgisi görsel olarak mevcut. T3 status/open açık
+  unavailable; mevcut yerel tarayıcı kullanıldı ve kapatıldı. Yazma/oturum açma/
+  izlenen browser context içinde üçüncü origin isteği0; hesap veya form işlemi yapılmadı. Bu salt okunur hazırlık
+  Gate11 PASS, yeni hesap/onay veya yayın yetkisi testi değildir. Ağ ayrımı ve
+  sınırlı kanıt aşağıdaki tarihli STATUS/ATTEMPT makbuzunda saklıdır.
+
+- **Ukte kullanım hazırlığı — 12:05, düzeltme 12:21 UTC:** kaynak main
+  `c6c0e693a2b54041e996b4ede49614c919615f5b`; önceki bda CI37304416767 7/7 PASS.
+  Yeni çevrimdışı kontrol14/14; yirmi kaynak dosyası ve ayrı approveUserWriter
+  işlevi canlı d829 ile birebir eşit. Onay geri alma uygulama yolu bulunmadı;
+  önceki beş-istek önerisindeki onay kaldırma adımı yürütülebilir canlı test değildir.
+  Bu davranışın garantisi DBC tam koşusundaki ukte20 PG testinde doğrulandı;
+  coverage tekrarını ayrı20 yeni test veya canlı kanıt diye saymayız.
+  Desteklenen canlı dizi onaysız ret, onay sonrası oluşturma, aynı-key replay,
+  ayrı-key kanonik mükerrer ve sahip/başka hesap geri çekmesidir: sahibi için
+  dört oluşturma isteği, üç geri çekme; başka hesap için bir geri çekme.
+  Aynı-key replay cached created:true, yeni-key mükerrer created:false bekler;
+  gerçek ID/count/audit ayrıca ölçülür. Sonrasında yalnız yeni sahipli HUMAN/USER
+  hesapları `/api/v1/me/deactivate` ile kapatılır; gerçek parola/kullanıcı adı,
+  oturum iptali/anonimleştirme ve ilgisiz durumların korunması ayrıca doğrulanır.
+  Alan şeması geçerli parola kanıtı değildir. Üretim/hesap/oturum işlemi yok;
+  gerçek hedef, yürütücü/secret transport hakemi ve canlı kullanım kabulü bekler.
+
+### O4 kaynak teslimi ve önceki gözlem sürümünün tarihçesi
+
+Hata takibi paketi #332 ile ana dala alındı; exactmain `d6ce2ee642269c231d69bf5f1b02bc61bcfd3bb2`,
+tree reviewedc29ileeşit. HeadCI7/7, PG513/API142 ve actualOpus5/156,653sn kaynak
+koşulları kapandı. MainCI37327480256 7/7PASS; yeni tam development actualrun
+37329464702/job111828565259 üzerinde komut adımı IN_PROGRESS. Sonuç bekler;
+ana dal komut ve son exact kaynak kapısı bitene kadar sabittir. Paket
+henüz canlı değildir.14:54 gerçek salt okunur teşhis currentdebugRetention0 ve
+66terminaldiagnosticrun/240sağlaminterval/0kaydedilmişproviderSafeCode ölçtü.
+Çağrı nedenleri bilinmiyor; bu kota yokluğu veya hata düzelmesi değildir.
+
+Dağıtımda app ve worker aynı exactpaketle birlikte güncellenmelidir; yeni workerın
+eski API'ye yeni alan göndermesi 422 yaratabilir. Bu hazırlık mevcut doğal pencereyi
+kesmez. Canlı dağıtım sırası aşağıdaki tek sırada uzlaştırıldı: exactCI/artifact/
+backup/rollback kapıları, tam eşli paket ve yeni ön uygunluk sonrası yeni168h;
+sonra Gate10/11/12. Bu5Ekim dağıtım ve başlangıç sırası artık tamamdır;
+eski Gate10 sonrası dağıtım varsayımı aktif kuyruk değildir. Gerekli bir müdahale pencereyi kesecekse eski T0 ve hatalı
+kesitler saklanıp `INTERRUPTED_NOT_PASS` makbuzu ile yeni gerçek168saat başlangıcı
+ayrı yazılır; eski rapor yeni deployment/configurationa yeniden pinlenmez. O4
+telemetrisinin yayınlanması kök hatayı çözdü kabul edilmez. Sürekli geliştirme ve
+verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope aynıdır.
+
+- **O4 birleşmiş kaynak teslimi tamam:** PR332 reviewedC29/exactheadCI7,
+  PG35dosya513test/API142, actualOpus5/156,653sn KOŞULLU GO sourceblockers0.
+  MainD6CE CI37327480256 7/7PASS; yeni full
+  [37329464702](https://github.com/cerncaycisi/agentsozluk/actions/runs/37329464702)
+  **SUCCESS**:15:03:02–15:47:12UTC/44dk10sn, son exact-main kapısı da geçti.
+  M1unit2385/PG513/coverage2898 tekrar, line94,35/branch86,57/fn95,90;91E2E.
+  Agent844unit/312integration/1simulation/24E2E tekrarları ayrı yeni toplam
+  değildir. Worker95/API142 doğrudan PASS; mergedfull kaynak teslim koşulu kapalı.
+  D6CE reviewedC29/headCI37325720961 7/7 ve PG513/API142 ile14:46:49UTC'de
+  birleşti; main bundan sonra yeni full37329464702 ve son kapı bitene kadar sabitti.
+  Freeze birleşmeden sonraki main değişimlerine uygulandı; öncekiDBC full yeni
+  kaynak kanıtı sayılmadı. Worker95 önce yerel unit'ti; artık15:05:17 ve sonraki
+  full aşamalarda completedjob logunda95test PASS. Root/remote D6CE exactclean;
+  mevcut davranış/telemetri paketi henüz canlı değil.
+  Gerçek14:54 sourceavailability66koşu240interval koduNONE/currentdebug0;
+  geçmişproviderroot bilinmiyor. Yeni kaydın sourcefailure typedcause yolu
+  testte kanıtlı;16üretim hatası düzeldi veya Gate10PASS sonucu çıkarılmaz.
+
+### Eski tek aktif sıra (6 Ekim sonu)
+
+1. **Yeni gerçek P7 → Gate11/12:** reset/açılış sonrasında tek yeni gerçek168saat
+   ve configured maksimum timeout+120sn; kaynak/model/ayar sabitliği, doğal kohort,
+   her tam aktif yazar≥3terminal, ≤%5teknik hata, stable-safe reasons, provenance/
+   kamu exactonce, gap-free ledger, kaynak/evrim görünürlüğü. Eski dönemler ve
+   operatör/benchmark ayrı kalır. Yeni observer ve deadline gerçek T0'la yeniden
+   hazırlanır; eski timer/deadline kullanılmaz. Doğrudan gerçek kullanıcı/admin
+   işlemleri, rol negatif sınırları, ukte/hesap kapatma ve agent içerik makbuzları;
+   sonra taze final frozenrestore, V1/count/hash/ledger/sequence eşliği ve reboot/
+   farklıbootID/tekworker/200200/doğalterminal. İki kez REJECTED özel streaming
+   helper kullanılmaz. DONE-082 yalnız doğrudan canlı kabul kanıtıyla kapanır.
+2. **P8 ve final M2:** gerçek soy/kalite/kaynak/nüfus/kapasite kanıtıyla tek aday
+   veya ölçülmüş NO_BIRTH. DONE-084 için son kaynak/imaj/runtime/güncelmain eşliği
+   doğrudan ölçülür. Kapanış commit’i → exact CI/artifact → aynı SHA dağıtımı
+   → canlı eşlik ölçümü → aynı SHA final `verify:m2` sırası izlenir; sharp yamasının
+   aday Alpine imajındaki tüm uygulama kopyaları ve seçilen native binary/kütüphane
+   hash eşliği dağıtım önkoşuludur. Arada main
+   değiştirilmez. PASS satırları doğrudan geçmiş canlı kanıtına dayanır; yeni
+   SHA’nın eşliği dağıtım sonrasında ayrıca ölçülmeden final kabul verilmez.
+   Final verify:m2 içinde M1 regresyonu/811 eşleme/543 M2,
+   requirements ve temiz ağaç kapıları kapanır. Yetki/takvim gerçek ölçüme göre
+   kaydedilir; 168saat kısaltılmaz ve 17Ekim yetkisi uzatılmaz.
+
+Tam ölçümler [STATUS.md](STATUS.md), denemeler [ATTEMPT_LOG.md](ATTEMPT_LOG.md).
+Pencereyi başlatmak planı bitirmek değildir; goal gerçek kabul ve sonraki kapılara kadar aktiftir.
+Ölçüm makbuzu main `a59314e6f779829db700d238e42e062d07829e8d`, exact CI37264429897
+7/7PASS,04:51:54UTC; app d829 aynı, deploy/pencere reseti yapılmadı.
+M2 geliştirme tablosu 5 Ekim güncel durum için uzlaştırıldı: 464 aktif PASS /
+77 superseded / 25 kısmi supersession / 2 onaylı BLOCKED (`DONE-082`, `DONE-084`) /
+0 FAIL / 543 toplam. 10:58 mevcut development checker ve ilgili5policy test PASS;
+katı final checker DONE-082 nedeniyle reddetti, yalnız bellekte bu satırı kapatma
+simülasyonunda DONE-084 nedeniyle reddetmeye devam etti. Hiçbir gerçek satır
+simülasyonla PASS yapılmadı. Eski 04:27 doğrulaması kendi SHA'sı için saklıdır.
+Final `verify:m2`, haftalık
+kabul ve son üretim/main eşliği açık; erken PASS veya yeni muafiyet verilmedi.

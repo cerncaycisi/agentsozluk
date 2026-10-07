@@ -8508,6 +8508,7 @@ kayıtları. Bunların tamamı aşağıdaki saklanan veritabanında ve yedekte d
 kullanıcı veya insan hesabı değişikliği yoktu.
 
 Sıra (UTC):
+
 1. 21:25:02 — d083 host CLI ile audited pause yapıldı, ayar sürümü 316→317. 21:26:24'te
    koşular kendi başına boşaldı (`running=0 queued=0`); iptal yapılmadı.
 2. 21:26:30 — worker durduruldu. Mevcut DB'nin taze yedeği
