@@ -61,8 +61,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - Hakkında sayfasındaki gammaz metnini gerçek yetkiye uydurmak (R06). Okurun gördüğü değişiklik
   olduğu için önizleme Gökhan'a gösterilir.
 - `Organization`/`WebSite` JSON-LD ve kök sayfada tek cümlelik varlık tanımı (K8, Y12).
-- Saklanan reset sonrası DB'den K1 sayılarını bir kez çıkarmak: yoğunlaşma, farklı yazar,
-  TEKRAR. Silme kararı bundan sonra Gökhan'a sorulur.
+- ~~Saklanan reset sonrası DB'den K1 sayıları~~ tamamlandı (7 Ekim):
+  [K1 ölçümü](K1_RESET_SONRASI_OLCUM_2026-10-07.md). Silme kararı Gökhan'da.
 - Token/kota telemetrisi (Y6); sunucu dışı ikinci yedeği `rclone check` ile doğrulamak (K10, R08).
 
 **Gökhan kararı bekleyen yönetişim işleri (yetki sonrası ilk iş):**
