@@ -231,6 +231,7 @@ interface PromptContext {
   agent: { username: string };
   perception: {
     recentEntries?: Array<{ topic?: { id?: string } }>;
+    readTopics?: Array<{ id?: string }>;
   };
 }
 
@@ -241,6 +242,12 @@ function parsePromptContext(prompt: string): PromptContext {
   const end = prompt.indexOf(endMarker, start + startMarker.length);
   if (start < 0 || end < 0) throw new Error("SIMULATION_PROMPT_CONTEXT_MISSING");
   return JSON.parse(prompt.slice(start + startMarker.length, end)) as PromptContext;
+}
+
+function spreadMenuSelection(topics: Array<{ id: string }>, runId: string): string[] {
+  if (topics.length === 0) return [];
+  const offset = [...runId].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  return [...new Set([0, 1].map((step) => topics[(offset + step) % topics.length]!.id))];
 }
 
 export class FakeCodexProvider implements RuntimeProvider {
@@ -270,7 +277,12 @@ export class FakeCodexProvider implements RuntimeProvider {
         provider: "codex-cli" as const,
         version: "fake-codex-simulation-1",
         durationMs: 1,
-        output: { topicIds: (menu.topics ?? []).slice(0, 2).map((topic) => topic.id) },
+        /*
+          Koşu kimliğine göre menüye yayılır: her sahte ajan aynı iki başlığı okursa hepsi
+          aynı başlığa yazar ve kalıp gövdeler tekrar kontrolüne takılır; gerçek ajanlar
+          farklı başlıklar okur.
+        */
+        output: { topicIds: spreadMenuSelection(menu.topics ?? [], request.runId) },
       };
     }
     const context = parsePromptContext(request.prompt);
@@ -280,13 +292,24 @@ export class FakeCodexProvider implements RuntimeProvider {
     if (!this.#agentIndexes.has(username))
       this.#agentIndexes.set(username, this.#agentIndexes.size);
     const agentIndex = this.#agentIndexes.get(username)!;
-    const visibleTopicIds = [
-      ...new Set(
-        (context.perception.recentEntries ?? []).flatMap(({ topic }) =>
-          topic?.id ? [topic.id] : [],
-        ),
-      ),
-    ];
+    /*
+      Gerçek ajan gibi okuduğu başlığa yazar: dolu başlığa `CREATE_ENTRY` yalnız okunan
+      başlığa kabul edilir (7 Ekim 2026). Okuma yoksa önizlemedeki başlıklar kalır; sunucu
+      onları `TOPIC_NOT_READ` ile reddeder, üretimdeki davranış da budur.
+    */
+    const readTopicIds = (context.perception.readTopics ?? []).flatMap(({ id }) =>
+      id ? [id] : [],
+    );
+    const visibleTopicIds =
+      readTopicIds.length > 0
+        ? readTopicIds
+        : [
+            ...new Set(
+              (context.perception.recentEntries ?? []).flatMap(({ topic }) =>
+                topic?.id ? [topic.id] : [],
+              ),
+            ),
+          ];
     const forcedTopicId = this.#forcedTopicIdsByRun.get(request.runId) ?? null;
     if (context.run.runType === "REFLECTION")
       return {
@@ -520,6 +543,14 @@ export class FakeActionWorthinessProvider implements RuntimeProvider {
   }
 
   async invoke(request: RuntimeProviderRequest) {
+    // Aynı sağlayıcı yenilik kapısını da yürütür; simülasyon taslakları birbirinden farklı.
+    if (request.prompt.includes("Taslağın:"))
+      return {
+        provider: "codex-cli" as const,
+        version: "fake-action-worthiness-1",
+        durationMs: 300,
+        output: { karar: "YAYIMLA" },
+      };
     const { candidates } = parseWorthinessPromptContext(request.prompt);
     return {
       provider: "codex-cli" as const,
