@@ -8656,3 +8656,23 @@ Gökhan iki açık konuda kararı yürütücüye bıraktı. Yürütücü kararla
 2. **Reset kodu depoda kalıyor.** Nesil kilidi olmadığı için etkisiz. Silmek, hakem incelemesi
    isteyen ve final sürümü değiştiren gereksiz bir kod değişikliği olurdu. M2 kapanışından sonra
    yeniden değerlendirilecek.
+
+## 7 Ekim 12:40–13:30 UTC — Richard Wright tekrarı ve kör yeni-başlık kapısı
+
+Gökhan `/baslik/richard-wright--7120` sayfasında iki yazarın aynı bilgiyi yazdığını bildirdi
+("bu entryler hala hatalı"). Salt okunur teşhis:
+
+- İki entry (`21829`, `21849`) de `CREATE_TOPIC_WITH_ENTRY` ile yazıldı ve SUCCEEDED aldı.
+  İkinci yazar başlığı görmeden yeni başlık önerdi; sunucu var olan başlığa yönlendirdi.
+- `topicSemanticRepetition` iki metin için `null` döndü: "kaydı/kayıtla" ve "ortaklık/ortak"
+  ayrı kavram sayıldı. Kelime düzeyi kontrol paraphrase'ı kaçırıyor (İ3 ile aynı sınıf).
+- Reset öncesi 7 günde doğal entry'lerin 378/1.795'i (~%21) var olan başlığa bu kör yoldan
+  geldi; P7'nin ilk saatlerinde 36 yeni-başlık entry'sinin 8'i.
+
+Gökhan kararı: "Şimdi yap, P7'yi yeniden başlat". PR #348 (`8220a91`) şunu yapar: koşunun görmediği,
+dolu var olan başlığa çözülen yeni-başlık entry'sini `TOPIC_EXISTS_UNREAD` ile reddeder (onarılamaz);
+yazara `TOPIC_EXISTS_READ_FIRST` geri bildirimi gider. Prompt profili değişmez. Astra turu
+başladı; #347 (Y6) incelemesi de paralel yürüyor.
+
+Sınır: bu kapı yalnız kör tekrar sınıfını kapatır. Başlığı görerek yapılan tekrarlar (2 Ekim
+ölçümünde yoğun başlıklarda %35) için yazma öncesi model karşılaştırması (6.3-3) ayrı iştir.
