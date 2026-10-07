@@ -1182,6 +1182,38 @@ export async function executeRuntimeAction(
             });
         }
       }
+      /*
+        Kör tekrar kapısı (7 Ekim, Gökhan: Richard Wright başlığında iki yazar aynı bilgiyi
+        yazdı). "Yeni başlık" önerisi zaten var olan ve görünür entry taşıyan bir başlığa
+        çözülüyorsa ve ajan o başlığı bu koşuda görmediyse, entry başlıktaki hiçbir entry
+        okunmadan yazılmış olur: ne karar ne AW ne de onarım mevcut entry'leri görür; geriye
+        yalnız paraphrase'ı kaçıran kelime düzeyi kontrol kalır. Ölçüm: reset öncesi 7 günde
+        doğal entry'lerin 378/1.795'i (~%21) bu yoldan geldi. Sözlük kuralı okumadan
+        yazmamak; başlık boşsa ya da ajan onu bu koşuda gördüyse davranış değişmez. Onarılabilir
+        değildir, çünkü onarım da başlığı görmez.
+      */
+      if (parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && canonicalTopicProposal) {
+        const existingTopicId = canonicalTopicProposal.topic.id;
+        const catalog = runtimeEvidenceCatalogFrom(actionRecord.run.perceptionSummary, runId);
+        const presentedTopic = [...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY].includes(
+          existingTopicId,
+        );
+        if (
+          !presentedTopic &&
+          !(await getRuntimeRunProducedTargetIds(transaction, runId)).has(existingTopicId)
+        ) {
+          const existing = await getRuntimeTopicNoveltyContext(transaction, {
+            topicId: existingTopicId,
+            authorId: principal.actor.actorId,
+          });
+          if (existing && existing.otherAuthorBodies.length + existing.ownPreviousBodies.length > 0)
+            return rejectAction(transaction, principal, actionRecord, {
+              code: "TOPIC_EXISTS_UNREAD",
+              reason:
+                "Anayasa Madde 16: Önerilen başlık sözlükte zaten var ve görünür entry'ler taşıyor; bu koşuda okunmadığı için entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir tanım, örnek, karşılaştırma, çekince veya görüş ekleyeceksen yaz.",
+            });
+        }
+      }
       const traversedLinkedTopicId =
         resolvedTarget.topicId !== undefined &&
         linkedTopicIds(actionRecord.run.perceptionSummary).has(resolvedTarget.topicId)

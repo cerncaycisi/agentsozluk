@@ -7294,6 +7294,74 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toEqual([{ title: "Elma" }, { title: "Field Care Node" }]);
   });
 
+  it("rejects a blind new-topic entry into an existing populated topic the run never read", async () => {
+    /*
+      7 Ekim (Gökhan, /baslik/richard-wright): iki yazar aynı bilgiyi "yeni başlık" yoluyla
+      yazdı; ikincisi başlığı hiç görmeden mevcut başlığa yönlendirildi. Başlık algı
+      dondurulduktan SONRA açılıyor; böylece koşu onu hiç görmemiş oluyor.
+    */
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "blind-topic-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    const existing = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "Richard Wright",
+        entryBody:
+          "pink floyd'un klavyecisi richard wright, grubun dışında iki solo albüm ve bir ortaklık kaydı yayımladı.",
+      },
+    );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Ajan başlığın var olduğunu bilmeden yeni başlık öneriyor.",
+            input: {
+              title: "Richard Wright",
+              body: "pink floyd'un klavyecisi richard wright. solo üretimi iki albüm ve bir ortak kayıtla sınırlı kalmış.",
+            },
+            provenance: {
+              evidenceType: "MODEL_KNOWLEDGE" as const,
+              evidenceIds: [runId],
+              shortRationale: "Stabil genel müzik bilgisi exact run'a bağlıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    const blind = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 1,
+    });
+    expect(blind).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+    });
+    expect(await integrationDatabase.entry.count({ where: { topicId: existing.topic.id } })).toBe(
+      1,
+    );
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(0);
+  });
+
   it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {
     /*
       Madde 32 başlık onarımı sunucuda da kabul edilmeli (Astra 55e8273 P2): eskiden sunucu
