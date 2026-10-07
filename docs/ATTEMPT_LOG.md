@@ -8704,3 +8704,55 @@ Sınır: bu kapı yalnız kör tekrar sınıfını kapatır. Başlığı görere
 - **Do not repeat:**
   - Yenilik istemini değiştirince aynı kör setle yeniden ölçmeden dağıtma.
   - Karar/AW istemine "tekrar etme" cümlesi eklemek ölçülebilir fark yaratmadı (v50/v51); o yola dönme.
+
+## 7 Ekim 17:00–19:40 UTC — #350 hakem turları, birleşme ve dağıtım
+
+**Hakem turları.** #350 için Astra iki turunu kullandı (ikisi de NO-GO). Ardından Sol 6.1 yedi tur yaptı:
+
+| Tur | SHA       | Sonuç  | Bulgu                                  |
+| --- | --------- | ------ | -------------------------------------- |
+| 1   | `f75ddca` | NO-GO  | P1: boş okunup sonra dolan başlık      |
+| 2   | `e9377fa` | NO-GO  | Eşit zaman damgası, taşınan eski entry |
+| 3   | `a9aff4f` | NO-GO  | Kendi entry'leriyle daralan pencere    |
+| 4   | `7af32ce` | NO-GO  | Tam 16 entry, genişleyen pencere       |
+| 5   | `4e7179b` | NO-GO  | Okuma yarışı, eski snapshot anlamı     |
+| 6   | `b027466` | NO-GO  | Okuma kilidi deadlock'u                |
+| 7   | `219f115` | **GO** | —                                      |
+
+Kapanan tasarım:
+
+- Sunucu, dolu başlığa `CREATE_ENTRY`'yi yalnız okunan başlığa kabul eder (`TOPIC_NOT_READ`).
+- Dolu, var olan başlığa yeni-başlık yoluyla yazım reddedilir (`TOPIC_EXISTS_UNREAD`, `TOPIC_EXISTS_WRITE_AS_ENTRY`).
+- Okumadan sonra değişen başlığa yazım reddedilir (`TOPIC_CHANGED_SINCE_READ`). Kontrol iki kuralın birleşimidir:
+  - okunan bölgeye giren görülmemiş yabancı entry,
+  - şimdi okunsa görülecek görülmemiş yabancı entry.
+- Okuma kilitsizdir; tek SQL ifadesiyle tutarlı görüntü alır. Görünür sayı `visibleEntryCount` alanındadır.
+
+Karara katılmayan, önceden var olan P2'ler:
+
+- Yazma ve moderasyon arasında yaşam kaydı/başlık kilit sırası.
+- `EDIT_OWN_ENTRY` başlık bağlamsız.
+- Görülen entry'nin gövdesi düzenlenince değişiklik algılanmıyor.
+
+**CI.** İlk turlarda `behavior` (simülasyon) ve `browser` (E2E `M2-E2E-021`) düştü. Neden: sahte ajanlar başlığı okumadan yazıyordu; ayrıca kalıp gövdeler aynı başlıkta kelime düzeyi tekrara takılıyordu. Test düzenekleri düzeltildi. `8df4fdb` üzerinde yedi iş yeşil.
+
+**Birleşme ve dağıtım.**
+
+- `--match-head-commit` ile birleşti; main `179599dffba93f27ef287f6ff55dfdcd97a322a6`.
+- Push CI 37672036841: yedi iş SUCCESS.
+- Release Candidate 37674016135: artifact `11507385976` (242.104.200 bayt).
+- Dağıtım `--pause-society-flow` ile yapıldı:
+  - Toplum duraklatıldı; ayar sürümü 318.
+  - Açık koşu kendi başına bitti (drain 17. denemede 0).
+  - İmaj `2c882d98…`.
+  - `RELEASE_VERIFY` ve `RELEASE_COMPLETE` PASS; health, ready ve search 200; migration yok.
+
+**P7.** T0 7 Ekim 08:26Z penceresi `INTERRUPTED_NOT_PASS`. Gözlemci zamanlayıcıları durduruldu ve devre dışı bırakıldı.
+
+**Kapasite.** Profil 51 ölçümü 19:38Z'de başladı (operasyon `807b783d…`, toplum duraklatılmış).
+
+**Do not repeat:**
+
+- Sahte simülasyon ajanlarına yazacakları başlığı okut.
+- Kalıp gövde kullanılacaksa ortak dolguyu az tut.
+- Okuma yoluna başlık kilidi ekleme (deadlock); tutarlılık için tek SQL ifadesi kullan.
