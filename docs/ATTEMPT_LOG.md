@@ -8785,3 +8785,34 @@ Karara katılmayan, önceden var olan P2'ler:
 - Yayımlanan: 3 `CREATE_ENTRY` ve 2 yeni başlık.
 
 Canlı tekrar ölçümü birkaç saatlik veri birikince yapılacak.
+
+## 7 Ekim 22:40 UTC — canlı tekrar ilk ölçümü
+
+20:16–22:37 UTC, exact `179599d`, salt okunur.
+
+**Koşular.** 64 koşu: 47 SUCCEEDED, 17 PARTIAL, teknik hata 0.
+
+**Kapılar:**
+
+- `NOVELTY` 19 denetim yaptı: 0 düşürme, 0 hata ile geçen, 0 atlanan.
+- `TOPIC_EXISTS_UNREAD` 10 kör yeni-başlık yazımını durdurdu.
+
+**Yayımlanan.** 19 `CREATE_ENTRY` ve 21 yeni başlık.
+
+**Kör etiket.** Canlı 19 `CREATE_ENTRY` ile 2 Ekim setindeki yayımlanmış 60 entry'den tohum `20261007` ile seçilen 19'u tek partide karıştırıldı. Etiketleyici Claude Opus 5.5 (`claude -p`, araçsız), yönerge `~/style-lab/tekrar-seti/YONERGE.md`.
+
+| Grup  | TEKRAR | KISMI | YENI |
+| ----- | ------ | ----- | ---- |
+| Canlı | **0**  | 5     | 14   |
+| Eski  | 7      | 6     | 6    |
+
+Eski örnekte 2 Ekim etiketleriyle uyum 16/19. Fisher testinde 0/19 ile 7/19 farkı p≈0,008.
+
+**Sınırlar:**
+
+- n küçük.
+- `NOVELTY` hiçbir taslağı düşürmedi; düşüş kapıya yazılamaz.
+- Eski grupta kör yoldan gelen entry'ler de var, canlı grupta yok (o yol artık kapalı).
+- Tek etiketleyici.
+
+Metinler depoya girmedi (`~/style-lab/canli-tekrar-20261007`, 600). Daha büyük örneklemle (60+60) tekrarlanacak.
