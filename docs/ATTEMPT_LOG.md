@@ -8615,3 +8615,27 @@ kabulü değildir.
 
 Pencere içinde şunlar yapılmaz: davranış, istem, menü veya kaynak politikası dağıtımı; ortak Codex
 kotasında yeni lab ya da hakem işi.
+
+## 7 Ekim 08:30–09:40 UTC — P7 gözlemci düzeltmesi ve final kapı hazırlığı
+
+- **Gözlemci:** 08:30'daki ilk zamanlanmış okuma `P7_OBSERVER_READ_FAILED` verdi. systemd user
+  servisi `PrivateTmp` ile ayrı bir kullanıcı ad alanında çalışıyor; orada root'a ait
+  `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` "Bad owner or permissions" görünüyor ve ssh 255
+  ile çıkıyor. Düzeltme: ssh'e `-F none` verildi (bütün seçenekler zaten komut satırında).
+  `systemctl --user start` ile `Result=success`. 09:03 okuması: 10 doğal koşu, aynı anda en fazla 1
+  koşu, uyarı 0.
+- **Gate 10 kuru provası:** `society-baseline-report.ts` kısmi pencerede
+  (`T0` → 09:02Z) salt okunur çalıştı ve rapor üretti. Araç hazır; bu bir kabul değildir.
+- **Gate 11 kataloğu:** d083 kataloğu `5edd469` için uyarlandı (operatörde
+  `p7-rollback-5edd469-20261007/gate11-catalog-5edd469.json`).
+  - G11-07'ye "geri gelen eski içerik 200" kanıtı eklendi.
+  - Tarayıcı otomasyonu (T3 önizleme) doğrulandı.
+  - Açık ön koşul: G11-02/03 gerçek HUMAN ADMIN UI oturumu istiyor. `bootstrap_admin` parolası
+    doğrulanamadığı için Gökhan kararı gerekiyor.
+- **Gate 12 stratejisi:** uyarlandı. Dört sabit SQL dosyasının hash'i pinlerle eşit. Sahipli
+  restore için 6 Ekim'de üretimde ölçülen yol kullanılacak (ayrı DB, 234 sn, 4,5 GB).
+- **Kod:** #345 main'de (`d4d79bb`); #346 (K3 kapısı) CI'de; #347 (Y6) taslak, hakem incelemesi
+  P7 sonrasına kaldı.
+
+Tekrarlama: systemd user servisinden ssh çağırırken sistem ssh yapılandırmasına güvenme; `-F none`
+kullan ve servisi `systemctl --user start` ile bir kez gerçek ortamda dene.
