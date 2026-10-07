@@ -1486,8 +1486,9 @@ export async function executeRuntimeAction(
                 );
               const catalog = runtimeEvidenceCatalogFrom(actionRecord.run.perceptionSummary, runId);
               if ([...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY].includes(topic.id)) return;
-              if ((await getRuntimeRunProducedTargetIds(guardTransaction, runId)).has(topic.id))
-                return;
+              // Koşunun ürettiği hedefler için muafiyet yok: yardımcı entry'nin GÜNCEL başlığını
+              // döndürür ve taşınan entry okunmamış başlığa yanlış muafiyet verir (Sol 59c7d48 P2).
+              // Aynı koşuda açılan başlığa ikinci kez yeni-başlık yazmak zaten kendi tekrarıdır.
               if ((await countRuntimeVisibleTopicEntries(guardTransaction, topic.id)) === 0) return;
               throw new RuntimeActionRejectionError(
                 "TOPIC_EXISTS_UNREAD",
