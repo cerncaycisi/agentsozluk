@@ -438,6 +438,27 @@ describe("provider failure telemetry wire privacy", () => {
       }).success,
     ).toBe(false);
   });
+  it("accepts optional Codex token counts and rejects invalid ones (Y6)", () => {
+    const tokens = {
+      inputTokens: 12_345,
+      cachedInputTokens: 10_000,
+      outputTokens: 678,
+      reasoningOutputTokens: 400,
+    };
+    const value = {
+      durationMs: 1,
+      provider: "codex-cli",
+      codexIntervals: [{ ...interval, ...tokens }],
+    };
+    expect(usageMetadataSchema.parse(value)).toEqual(value);
+    for (const invalid of [-1, 1.5, 2_000_000_000, "12"])
+      expect(
+        usageMetadataSchema.safeParse({
+          ...value,
+          codexIntervals: [{ ...interval, ...tokens, inputTokens: invalid }],
+        }).success,
+      ).toBe(false);
+  });
   it("rejects raw text beside a valid code", () => {
     expect(
       usageMetadataSchema.safeParse({

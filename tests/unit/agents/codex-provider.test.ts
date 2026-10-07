@@ -12,6 +12,7 @@ import {
   CodexCliProvider,
   safeCodexFailure,
   sanitizeRetainedRuntimeOutput,
+  parseCodexTurnUsage,
 } from "@/runtime/codex-cli-provider";
 import { RuntimeProviderExecutionError } from "@/runtime/provider";
 
@@ -340,4 +341,91 @@ it("aynı run ID ile dört ardışık pilot çağrısı önceki dönüş değeri
     expect(existsSync(path.join(workRoot, runId))).toBe(false);
   }
   expect(outputs).toEqual([{ sequence: 1 }, { sequence: 2 }, { sequence: 3 }, { sequence: 4 }]);
+});
+
+describe("Codex token telemetry (Y6)", () => {
+  const usageLine = JSON.stringify({
+    type: "turn.completed",
+    usage: {
+      input_tokens: 24_763,
+      cached_input_tokens: 24_448,
+      output_tokens: 122,
+      reasoning_output_tokens: 64,
+    },
+  });
+
+  it("reads only numeric turn.completed usage and ignores content events", () => {
+    expect(parseCodexTurnUsage(usageLine)).toEqual({
+      inputTokens: 24_763,
+      cachedInputTokens: 24_448,
+      outputTokens: 122,
+      reasoningOutputTokens: 64,
+    });
+    for (const line of [
+      JSON.stringify({ type: "item.completed", item: { text: "turn.completed gibi metin" } }),
+      JSON.stringify({ type: "turn.completed" }),
+      JSON.stringify({ type: "turn.completed", usage: { input_tokens: -1, output_tokens: 1 } }),
+      JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1.5, output_tokens: 1 } }),
+      JSON.stringify({ type: "turn.completed", usage: { output_tokens: 1 } }),
+      '{"type":"turn.completed","usage":',
+      "",
+    ])
+      expect(parseCodexTurnUsage(line)).toBeUndefined();
+  });
+
+  async function invokeWithHelp(execHelp: string) {
+    const root = await mkdtemp(path.join(tmpdir(), "agent-sozluk-provider-tokens-"));
+    temporaryRoots.push(root);
+    const decisionArguments: string[][] = [];
+    const spawnMock = vi.fn((_command: string, args?: readonly string[]) => {
+      const codex = args?.slice((args.lastIndexOf("--") ?? -1) + 2) ?? [];
+      if (codex.includes("--version"))
+        return completedChild({ stdout: "codex-cli 0.144.6", exitCode: 0, exitSignal: null });
+      if (codex.length === 1 && codex[0] === "--help")
+        return completedChild({ stdout: "Codex CLI help", exitCode: 0, exitSignal: null });
+      if (codex[0] === "exec" && codex[1] === "--help")
+        return completedChild({ stdout: execHelp, exitCode: 0, exitSignal: null });
+      decisionArguments.push([...codex]);
+      const outputPath = codex[codex.indexOf("--output-last-message") + 1]!;
+      writeFileSync(outputPath, JSON.stringify({ ok: true }), { mode: 0o600 });
+      // Olaylar parça parça gelebilir; son satırda yeni satır olmayabilir.
+      const events = [
+        JSON.stringify({ type: "thread.started", thread_id: "t" }),
+        JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "{}" } }),
+        usageLine,
+      ].join("\n");
+      return completedChild({ stdout: events, exitCode: 0, exitSignal: null });
+    });
+    const provider = new CodexCliProvider({
+      executable: "/usr/bin/false",
+      sandboxExecutable: "/usr/bin/bwrap",
+      credentialFile: "/var/lib/agent-sozluk-runtime/credentials.json",
+      runtimeHome: path.join(root, "home"),
+      workRoot: path.join(root, "work"),
+      spawnProcess: spawnMock as unknown as typeof spawn,
+    });
+    const result = await provider.invoke({
+      runId: randomUUID(),
+      prompt: "token telemetrisi",
+      outputSchema: { type: "object" },
+      timeoutMs: 10_000,
+      debugRetentionHours: 0,
+    });
+    return { result, decisionArguments };
+  }
+
+  it("adds --json only when the CLI advertises it and carries usage into diagnostics", async () => {
+    const supported = await invokeWithHelp("--output-schema --output-last-message\n      --json\n");
+    expect(supported.decisionArguments[0]).toContain("--json");
+    expect(supported.result.output).toEqual({ ok: true });
+    expect(supported.result.diagnostics?.tokenUsage).toEqual({
+      inputTokens: 24_763,
+      cachedInputTokens: 24_448,
+      outputTokens: 122,
+      reasoningOutputTokens: 64,
+    });
+
+    const legacy = await invokeWithHelp("--output-schema --output-last-message");
+    expect(legacy.decisionArguments[0]).not.toContain("--json");
+  });
 });

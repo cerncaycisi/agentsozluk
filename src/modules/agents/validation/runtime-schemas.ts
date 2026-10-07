@@ -413,6 +413,14 @@ const codexIntervalSchema = z
     setupMs: z.number().int().min(0).max(86_400_000).optional(),
     inspectMs: z.number().int().min(0).max(86_400_000).optional(),
     modelMs: z.number().int().min(0).max(86_400_000).optional(),
+    /*
+      Y6 (7 Ekim): Codex `exec --json` `turn.completed.usage` sayıları. Eski worker ve
+      `--json` desteklemeyen CLI için isteğe bağlı; eksik değer sıfır sayılmaz.
+    */
+    inputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
+    cachedInputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
+    outputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
+    reasoningOutputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
   })
   .strict()
   .refine(
