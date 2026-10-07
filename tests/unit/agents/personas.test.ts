@@ -70,7 +70,7 @@ describe("original persona pack", () => {
       profile: RUNTIME_PROMPT_PROFILE_HASH,
     }).toEqual({
       rendered: "e7196f29d558f6848ad670a3fa3c3a42ce998219f2eaeb2ca735f5a23858874f",
-      profile: "be864aa27b2df6d1054ce2857191b293809c6bcb921021b2ed474b3a4c5b6534",
+      profile: "796fe4ea99882e483e651532941d24970bf0a0b8a07cf2a7052312d21ec26f2b",
     });
   });
 
