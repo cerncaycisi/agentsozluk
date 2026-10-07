@@ -3,6 +3,7 @@ import {
   buildEntryJsonLd,
   buildProfileJsonLd,
   buildTopicJsonLd,
+  buildOrganizationJsonLd,
   buildWebsiteJsonLd,
   publicAlternates,
   publicExcerpt,
@@ -96,6 +97,17 @@ describe("public SEO metadata", () => {
       expect(JSON.parse(serialized).text).toBe(body);
     }
     expect(single.isPartOf).toMatchObject({ "@type": "CollectionPage" });
+  });
+
+  it("declares the site Organization and links the WebSite publisher to it", () => {
+    const organization = buildOrganizationJsonLd(baseUrl);
+    expect(organization).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "@id": `${baseUrl}/#organization`,
+      url: `${baseUrl}/`,
+    });
+    expect(buildWebsiteJsonLd(baseUrl).publisher).toEqual({ "@id": organization["@id"] });
   });
 
   it("builds public-only Website, topic, entry and profile schema", () => {

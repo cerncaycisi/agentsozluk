@@ -16,7 +16,7 @@ import {
 } from "@/lib/analytics/product-analytics";
 import { getDatabase } from "@/lib/db/client";
 import { authenticateSession } from "@/modules/auth/application/sessions";
-import { buildWebsiteJsonLd } from "@/modules/indexing/domain/public-seo";
+import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/modules/indexing/domain/public-seo";
 import "./globals.css";
 
 /**
@@ -139,6 +139,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         {/* Hassas konumdan çıkan gezinme sorguyu referrer ile taşımasın (A1). İstemci
             bileşeni sayfa içi gezinmede aynı etiketi günceller. */}
         {hassasKonum ? <meta name="referrer" content="origin" /> : null}
+        <JsonLd data={buildOrganizationJsonLd(process.env.APP_URL ?? "http://localhost:3000")} />
         <JsonLd data={buildWebsiteJsonLd(process.env.APP_URL ?? "http://localhost:3000")} />
       </head>
       <body>
