@@ -6,7 +6,12 @@ import {
   runCapacityBenchmark,
   runConcurrencyCapabilityTest,
 } from "@/runtime/capability-benchmark";
-import { createCapabilityBenchmarkDiagnosticCollector } from "@/runtime/capability-diagnostics";
+import {
+  capabilityBenchmarkDiagnosticsSchema,
+  createCapabilityBenchmarkDiagnosticCollector,
+} from "@/runtime/capability-diagnostics";
+import { runtimeNoveltyVerdictJsonSchema } from "@/runtime/novelty-gate";
+import { parseRuntimeDecisionOutput } from "@/runtime/output";
 import {
   type RuntimeProvider,
   RuntimeProviderExecutionError,
@@ -324,6 +329,135 @@ describe("Codex capability benchmark harness", () => {
       proposedEntryActionCount: 10,
       failureRate: 0,
     });
+  });
+
+  it("measures novelty calls for entries written into read topics", async () => {
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
+        if (prompt.includes("Taslağın:")) return { ...result(200), output: { karar: "YAYIMLA" } };
+        if (prompt.includes("# Final action-worthiness decision"))
+          return { ...result(500), output: worthinessOutput() };
+        const readTopicId = /"readTopics":\[\{"id":"([0-9a-f-]{36})"/u.exec(prompt)?.[1];
+        const candidate = candidateOutput();
+        return {
+          ...result(1000),
+          output: readTopicId
+            ? {
+                ...candidate,
+                actions: candidate.actions.map((action) => ({ ...action, targetId: readTopicId })),
+              }
+            : candidate,
+        };
+      }),
+    };
+    const diagnostics: unknown[] = [];
+
+    const measurement = await runCapacityBenchmark(provider, {
+      baseUrl: "http://127.0.0.1:3000",
+      fetchImplementation: healthyFetch,
+      plannedContentRuns: 70,
+      diagnosticSink: (diagnostic) => diagnostics.push(diagnostic),
+    });
+
+    const noveltyCalls = vi
+      .mocked(provider.invoke)
+      .mock.calls.filter(([request]) => request.prompt.includes("Taslağın:"));
+    const denseScenarios = CAPACITY_BENCHMARK_SCENARIOS.filter(
+      ({ denseContext }) => denseContext,
+    ).length;
+    expect(denseScenarios).toBeGreaterThan(0);
+    expect(noveltyCalls).toHaveLength(denseScenarios);
+    expect(noveltyCalls[0]![0].outputSchema).toBe(runtimeNoveltyVerdictJsonSchema);
+    expect(measurement.maxDurationMs).toBe(1700);
+    expect(measurement.p50DurationMs).toBe(1500);
+    expect(
+      capabilityBenchmarkDiagnosticsSchema
+        .parse({
+          version: 1,
+          mode: "capacity",
+          terminalCode: "BENCHMARK_COMPLETED",
+          scenarios: diagnostics,
+        })
+        .scenarios.filter(({ stages }) => stages.at(-1)?.stage === "NOVELTY"),
+    ).toHaveLength(denseScenarios);
+  });
+
+  it("canonicalizes and normalizes like the worker before review and novelty", async () => {
+    const decisionOutput = {
+      ...candidateOutput(),
+      actions: [
+        {
+          type: "CREATE_TOPIC_WITH_ENTRY",
+          title: "Kapasite Rezervi",
+          body: "Rezerv, ölçülen p75 süreye göre ayrılmalıdır.",
+          desire: 0.7,
+          expectedOutcome: "Başlığa bağımsız bir görüş eklenir.",
+          selectedOptionSeq: 1,
+          safeReason: "Kavrama yeni bir görüş eklenebilir.",
+          claimProvenance: [],
+        },
+      ],
+      beliefDeltas: [
+        {
+          topicKey: "kapasite",
+          statement: "Rezerv ölçümle ayrılmalıdır.",
+          confidence: 0.6,
+          evidenceSummary: "Benchmark bağlamı görünür kanıttır.",
+          provenance: "MODEL_KNOWLEDGE",
+          evidenceIds: ["00000000-0000-4000-8000-000000000100"],
+          desire: 0.5,
+          expectedOutcome: "Kapasite inancı güncellenir.",
+          selectedOptionSeq: 1,
+        },
+      ],
+    };
+    expect(parseRuntimeDecisionOutput(decisionOutput).success).toBe(true);
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
+        if (prompt.includes("Taslağın:")) return { ...result(200), output: { karar: "VAZGEC" } };
+        if (prompt.includes("# Final action-worthiness decision"))
+          return {
+            ...result(500),
+            output: {
+              verdict: "ACT",
+              confidence: 0.8,
+              evaluations: [1, 2].map((sequence) => ({
+                sequence,
+                decision: "ACCEPT",
+                safeReason: "Aday uygulanabilir.",
+              })),
+              selectedSequences: [1, 2],
+              safeReason: "Adaylar uygulanmaya değer.",
+            },
+          };
+        return { ...result(1000), output: decisionOutput };
+      }),
+    };
+
+    const measurement = await runCapacityBenchmark(provider, {
+      baseUrl: "http://127.0.0.1:3000",
+      fetchImplementation: healthyFetch,
+      plannedContentRuns: 70,
+    });
+
+    const reviewPrompt = vi
+      .mocked(provider.invoke)
+      .mock.calls.find(([request]) =>
+        request.prompt.includes("# Final action-worthiness decision"),
+      )![0].prompt;
+    expect(reviewPrompt).toContain('"actionType":"CREATE_ENTRY"');
+    expect(
+      vi
+        .mocked(provider.invoke)
+        .mock.calls.filter(([request]) => request.prompt.includes("Taslağın:")),
+    ).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.filter(({ denseContext }) => denseContext).length);
+    expect(measurement.failureRate).toBe(0);
   });
 
   it("uses one bounded semantic repair and includes both calls in measured duration", async () => {

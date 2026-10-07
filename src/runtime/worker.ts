@@ -86,6 +86,14 @@ import {
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import {
+  applyRuntimeNoveltyDrops,
+  runtimeNoveltyCallLimit,
+  runtimeNoveltyCandidates,
+  runtimeNoveltyVerdictJsonSchema,
+  runtimeNoveltyVerdictSchema,
+  type RuntimeNoveltyCandidate,
+} from "@/runtime/novelty-gate";
+import {
   applyRuntimeActionWorthinessVerdict,
   parseRuntimeActionWorthinessVerdict,
   runtimeActionWorthinessVerdictJsonSchema,
@@ -840,6 +848,40 @@ export function buildActionWorthinessPrompt(
   ].join("\n");
 }
 
+/*
+  Yenilik çağrısının süre sınırları. Ölçüm (1–7 Ekim 2026, üretim, 2.110 koşu): koşu
+  sınırı 480 sn, AW bittiğinde kalan süre p50 246 sn, p05 72 sn; AW çağrısı p50 27 sn.
+  Yedek pay, yenilikten sonra kaydetme ve yürütmeye kalır. Süre yetmezse taslak denetimsiz
+  yayımlanır ve sayılır; koşuyu süre aşımına düşürmekten iyidir.
+*/
+const RUNTIME_NOVELTY_MAX_TIMEOUT_MS = 120_000;
+const RUNTIME_NOVELTY_EXECUTION_RESERVE_MS = 30_000;
+const RUNTIME_NOVELTY_MIN_TIMEOUT_MS = 20_000;
+
+// Plain-text bağlam: etiket kapatan karakter veri içinden gelemesin.
+function noveltyText(value: string): string {
+  return value.split(/\s+/u).join(" ").trim().replaceAll("<", "‹").replaceAll(">", "›");
+}
+
+export function buildNoveltyPrompt(candidate: RuntimeNoveltyCandidate): string {
+  return [
+    ...runtimePromptScaffold.noveltyInstructions,
+    "",
+    runtimePromptScaffold.untrustedOpening,
+    `Başlık: ${noveltyText(candidate.topicTitle)}`,
+    "",
+    "Önceki entry'ler:",
+    ...candidate.previousEntries.map(
+      (entry, index) =>
+        `[${index + 1}] ${noveltyText(entry.username)}${entry.mine ? " (sen)" : ""}: ${noveltyText(entry.body)}`,
+    ),
+    "",
+    "Taslağın:",
+    noveltyText(candidate.draft),
+    runtimePromptScaffold.untrustedClosing,
+  ].join("\n");
+}
+
 function objectRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -929,7 +971,8 @@ function parseDecisionForContext(context: RuntimeContext, output: unknown) {
   return parseRuntimeDecisionOutput(output);
 }
 
-function normalizedDecision(
+/** Worker'ın karar sonrası adımları; kapasite benchmark'ı aynı yolu ölçer. */
+export function normalizedDecision(
   decision: RuntimeDecision,
   options: { reflectionOnly: boolean },
 ): RuntimeDecision {
@@ -1019,7 +1062,14 @@ function normalizedDecision(
 }
 
 function visibleTopicCatalog(perception: Record<string, unknown>) {
-  const directTopics = recordArray(perception.writerOpenedTopics);
+  /*
+    Okunan başlıklar da katalogda: okunmuş başlığa yeni-başlık önerisi CREATE_ENTRY'ye
+    çevrilir ve yenilik denetimine girer (Astra, 7 Ekim).
+  */
+  const directTopics = [
+    ...recordArray(perception.writerOpenedTopics),
+    ...recordArray(perception.readTopics),
+  ];
   const nestedTopics = [
     ...recordArray(perception.recentEntries),
     ...recordArray(perception.ownRecentEntries),
@@ -1039,7 +1089,7 @@ function visibleTopicCatalog(perception: Record<string, unknown>) {
   return byNormalizedTitle;
 }
 
-function canonicalizeVisibleTopicActions(
+export function canonicalizeVisibleTopicActions(
   decision: RuntimeDecision,
   perception: Record<string, unknown>,
 ): { decision: RuntimeDecision; count: number } {
@@ -1360,6 +1410,14 @@ export class AgentRuntimeWorker {
       verdict: "ACT" | "NO_ACTION";
       candidateCount: number;
       selectedCount: number;
+    } | null = null;
+    /* Yenilik kapısının ne yaptığı — bkz `runtime-schemas.ts`, `novelty`. */
+    let novelty: {
+      candidateCount: number;
+      checkedCount: number;
+      droppedCount: number;
+      failedOpenCount: number;
+      skippedCount: number;
     } | null = null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
@@ -1788,6 +1846,85 @@ export class AgentRuntimeWorker {
           throw error;
         }
       }
+      /*
+        Yenilik denetimi: hem AW sonrası adaylar hem içerik onarımının yeniden yazdığı gövde
+        için aynı çağrı. Sayaçlar ilk denetimden önce kayda bağlanır; koşu faz ortasında
+        düşerse `/fail` de tamamlanan denetimleri taşır. Son gözden geçirme sağlayıcısı (AW ile
+        aynı) yoksa kapı da yoktur.
+      */
+      const noveltyProvider = reflectionOnly ? undefined : this.#options.actionWorthinessProvider;
+      const noveltyStats = () =>
+        (novelty ??= {
+          candidateCount: 0,
+          checkedCount: 0,
+          droppedCount: 0,
+          failedOpenCount: 0,
+          skippedCount: 0,
+        });
+      const checkNovelty = async (
+        candidate: RuntimeNoveltyCandidate,
+        allowed: boolean,
+      ): Promise<"YAYIMLA" | "VAZGEC" | null> => {
+        const stats = noveltyStats();
+        stats.candidateCount += 1;
+        await heartbeat();
+        deadline.throwIfStopped();
+        const timeoutMs = Math.min(
+          RUNTIME_NOVELTY_MAX_TIMEOUT_MS,
+          deadline.remainingMs() - RUNTIME_NOVELTY_EXECUTION_RESERVE_MS,
+        );
+        if (!allowed || timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS) {
+          stats.skippedCount += 1;
+          return null;
+        }
+        try {
+          const noveltyResult = await invokeCodex(
+            {
+              runId,
+              prompt: buildNoveltyPrompt(candidate),
+              outputSchema: runtimeNoveltyVerdictJsonSchema,
+              timeoutMs,
+              debugRetentionHours: context.run.debugRetentionHours,
+              signal: deadline.signal,
+            },
+            "NOVELTY",
+            noveltyProvider,
+          );
+          providerResult = {
+            ...noveltyResult,
+            durationMs: (providerResult?.durationMs ?? 0) + noveltyResult.durationMs,
+          };
+          const verdict = runtimeNoveltyVerdictSchema.parse(noveltyResult.output);
+          stats.checkedCount += 1;
+          if (verdict.karar === "VAZGEC") stats.droppedCount += 1;
+          return verdict.karar;
+        } catch (rawNoveltyError) {
+          const noveltyError = deadline.normalizeError(rawNoveltyError);
+          if (noveltyError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+            throw noveltyError;
+          /*
+            Çağrı hatası ya da geçersiz çıktı taslağı susturmaz ("emin değilsen YAYIMLA");
+            sayılır ve olay olarak bildirilir.
+          */
+          stats.failedOpenCount += 1;
+          this.#options.onSafeEvent?.({ level: "error", code: "NOVELTY_CHECK_FAILED_OPEN", runId });
+          return null;
+        }
+      };
+      const noveltyCandidates = noveltyProvider
+        ? runtimeNoveltyCandidates(decision, context.perception)
+        : [];
+      if (noveltyCandidates.length > 0) {
+        await enterPhase("VALIDATING");
+        const dropped = new Set<number>();
+        for (const [index, candidate] of noveltyCandidates.entries())
+          if ((await checkNovelty(candidate, index < runtimeNoveltyCallLimit)) === "VAZGEC")
+            dropped.add(candidate.sequence);
+        if (dropped.size > 0) {
+          decision = applyRuntimeNoveltyDrops(decision, dropped);
+          this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
+        }
+      }
       ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(
         decision,
         new Set(perceptionEvidence.sourceItemIds),
@@ -1840,7 +1977,9 @@ export class AgentRuntimeWorker {
           kural ihlali BROWSE kolunda düzeltilmeden yayımlanıyordu. Bu hem
           kalite kaybı hem deney karıştırıcısıydı (Sol hakem turu).
         */
-        const decisionPhaseCalls = codexIntervals.filter(({ phase }) => phase !== "BROWSE").length;
+        const decisionPhaseCalls = codexIntervals.filter(
+          ({ phase }) => phase !== "BROWSE" && phase !== "NOVELTY",
+        ).length;
         if (repairableRejection && !contentRepairAttempted && decisionPhaseCalls < 3) {
           contentRepairAttempted = true;
           await enterPhase("VALIDATING");
@@ -1900,10 +2039,31 @@ export class AgentRuntimeWorker {
                 nextSequence,
                 repairableRejection.rejectionCode ?? undefined,
               );
+              /*
+                Onarım gövdeyi değiştirir; ilk taslağın yenilik hükmü yeni metne taşınmaz.
+                Onarılan entry okunan dolu başlığa gidiyorsa bir kez daha denetlenir
+                (koşu başına tek onarım, dolayısıyla tek ek çağrı).
+              */
+              const repairNoveltyCandidate =
+                repairCandidate && noveltyProvider
+                  ? runtimeNoveltyCandidates(
+                      { ...decision, actions: [repairCandidate] },
+                      context.perception,
+                    )[0]
+                  : undefined;
               if (!repairCandidate) {
                 this.#options.onSafeEvent?.({
                   level: "error",
                   code: "CONTENT_REPAIR_CANDIDATE_INVALID",
+                  runId,
+                });
+              } else if (
+                repairNoveltyCandidate &&
+                (await checkNovelty(repairNoveltyCandidate, true)) === "VAZGEC"
+              ) {
+                this.#options.onSafeEvent?.({
+                  level: "info",
+                  code: "CONTENT_REPAIR_NOVELTY_DROPPED",
                   runId,
                 });
               } else {
@@ -2052,6 +2212,7 @@ export class AgentRuntimeWorker {
             ...(browseExperiment ? { browseExperiment } : {}),
             ...(decisionRepair ? { decisionRepair } : {}),
             ...(actionWorthiness ? { actionWorthiness } : {}),
+            ...(novelty ? { novelty } : {}),
             ...providerResult.hostMetrics,
           },
           performanceMetrics: {
@@ -2134,6 +2295,7 @@ export class AgentRuntimeWorker {
               ...(browseExperiment ? { browseExperiment } : {}),
               ...(decisionRepair ? { decisionRepair } : {}),
               ...(actionWorthiness ? { actionWorthiness } : {}),
+              ...(novelty ? { novelty } : {}),
               /*
                 Başarısızlık kaydına DÜŞEN çağrının host metriği yazılmalı.
                 Eskiden `providerResult?.hostMetrics` yazılıyordu — o bir

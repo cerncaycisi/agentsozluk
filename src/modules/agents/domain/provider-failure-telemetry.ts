@@ -37,6 +37,8 @@ export const runtimeCodexPhases = [
   "DECISION_REPAIR",
   "ACTION_WORTHINESS",
   "CONTENT_REPAIR",
+  // Yazım öncesi tekrar karşılaştırması; koşu başına en fazla `runtimeNoveltyCallLimit`.
+  "NOVELTY",
 ] as const;
 export type RuntimeCodexPhase = (typeof runtimeCodexPhases)[number];
 

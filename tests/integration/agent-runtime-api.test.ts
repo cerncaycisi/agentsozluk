@@ -14,6 +14,8 @@ import {
 } from "@/modules/agents/application/rewards";
 import type { RuntimePurposeChange } from "@/modules/agents/validation/purpose-schemas";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
+import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
+import { getRuntimeReadTopics } from "@/modules/agents/repository/runtime";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import { randomUUID } from "node:crypto";
 import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
@@ -151,7 +153,78 @@ function heartbeatRuntimeRun(
   });
 }
 
-function executeRuntimeAction(
+/*
+  7 Ekim 2026: dolu başlığa `CREATE_ENTRY` yalnız koşunun okuduğu başlığa yazılır. Gerçek
+  worker yazmadan önce başlığı gezinme fazında okur; bu fikstürler gezinmeyi atlar. Ajana
+  sunulmuş bir başlığa yazılacaksa o başlık okunmuş sayılır (sunulmamış hedef işaretlenmez,
+  snapshot dışı hedef testleri korunur). Okuma kuralının kendisi ayrı testte ve bu sarmalayıcı
+  olmadan sınanır.
+*/
+async function markPresentedEntryTargetRead(runId: string, sequence: number) {
+  const action = await integrationDatabase.agentAction.findFirst({
+    where: { runId, sequence, actionType: "CREATE_ENTRY" },
+    select: { input: true, targetType: true, targetId: true },
+  });
+  const topicId =
+    (action?.input as { topicId?: unknown } | null)?.topicId ??
+    (action?.targetType === "TOPIC" ? action.targetId : undefined);
+  if (typeof topicId !== "string") return;
+  const run = await integrationDatabase.agentRun.findUniqueOrThrow({
+    where: { id: runId },
+    select: { perceptionSummary: true },
+  });
+  const perception = (run.perceptionSummary ?? {}) as Record<string, unknown>;
+  const catalog = runtimeEvidenceCatalogFrom(perception, runId);
+  if (![...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY].includes(topicId)) return;
+  const readTopics = Array.isArray(perception.readTopics)
+    ? (perception.readTopics as Array<{ id?: unknown }>)
+    : [];
+  if (readTopics.some(({ id }) => id === topicId)) return;
+  // Gerçek okumayla aynı fonksiyon: en yeni pencere, tanım entry'si ve görünürlük birebir.
+  const [read] = await getRuntimeReadTopics(integrationDatabase, [topicId]);
+  await integrationDatabase.agentRun.update({
+    where: { id: runId },
+    data: {
+      perceptionSummary: {
+        ...perception,
+        readTopics: [
+          ...readTopics,
+          {
+            id: topicId,
+            title: read?.title ?? "",
+            entryCount: read?.entryCount ?? 0,
+            visibleEntryCount: read?.visibleEntryCount ?? 0,
+            entries: (read?.entries ?? []).map((entry) => ({
+              id: entry.id,
+              body: entry.body,
+              createdAt: entry.createdAt.toISOString(),
+            })),
+          },
+        ],
+      } as Prisma.InputJsonValue,
+    },
+  });
+}
+
+// Aynı koşuda başlığı yeniden okumanın fikstür karşılığı: sarmalayıcı bir sonraki yazımda
+// başlığın o anki entry'lerini snapshot'a yeniden koyar.
+async function forgetRuntimeTopicReads(runId: string) {
+  const run = await integrationDatabase.agentRun.findUniqueOrThrow({
+    where: { id: runId },
+    select: { perceptionSummary: true },
+  });
+  await integrationDatabase.agentRun.update({
+    where: { id: runId },
+    data: {
+      perceptionSummary: {
+        ...((run.perceptionSummary ?? {}) as Record<string, unknown>),
+        readTopics: [],
+      } as Prisma.InputJsonValue,
+    },
+  });
+}
+
+async function executeRuntimeAction(
   client: Parameters<typeof executeRuntimeActionApplication>[0],
   principal: Parameters<typeof executeRuntimeActionApplication>[1],
   runId: string,
@@ -160,6 +233,7 @@ function executeRuntimeAction(
   },
   dependencies?: Parameters<typeof executeRuntimeActionApplication>[4],
 ) {
+  await markPresentedEntryTargetRead(runId, input.sequence);
   return executeRuntimeActionApplication(
     client,
     principal,
@@ -695,6 +769,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }),
     );
 
+    await markPresentedEntryTargetRead(runId, 1);
     await expect(
       executeRuntimeActionApplication(integrationDatabase, writePrincipal, runId, {
         workerId,
@@ -765,6 +840,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       recordRuntimeLifeEventBatch(integrationDatabase, writePrincipal, runId, conflictingBatch),
     ).rejects.toMatchObject({ code: "AGENT_ACTION_LIFE_PROPOSAL_EXISTS", status: 409 });
 
+    await markPresentedEntryTargetRead(runId, 1);
     await expect(
       executeRuntimeActionApplication(integrationDatabase, writePrincipal, runId, {
         workerId,
@@ -1778,6 +1854,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const readinessRelease = new Promise<void>((resolve) => {
       releaseReadiness = resolve;
     });
+    await markPresentedEntryTargetRead(runId, 1);
     const execution = executeRuntimeActionApplication(
       integrationDatabase,
       writePrincipal,
@@ -1896,6 +1973,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseSettingsFence = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -2054,6 +2132,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseSettingsFence = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -2338,6 +2417,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseReadiness = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -2441,6 +2521,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       where: { runId, sequence: 1 },
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const result = await executeRuntimeActionApplication(
         integrationDatabase,
@@ -2596,6 +2677,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseReadiness = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -3037,6 +3119,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseReadiness = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(firstRunId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -7239,14 +7322,18 @@ describe("internal agent runtime API with PostgreSQL", () => {
         }),
       ),
     );
+    /*
+      7 Ekim 2026: kanonik eşleşme hâlâ var olan "Elma"yı bulur, ama başlık entry taşıdığı ve
+      bu koşuda okunmadığı için yeni-başlık yoluyla yazılmaz (yenilik denetimi atlanırdı).
+    */
     expect(canonicalRouted).toMatchObject({
-      actionStatus: "SUCCEEDED",
-      rejectionCode: null,
-      result: {
-        topicId: canonical.topic.id,
-        topicResolution: "EXISTING",
-      },
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: null,
     });
+    expect(await integrationDatabase.entry.count({ where: { topicId: canonical.topic.id } })).toBe(
+      1,
+    );
     expect(questionRejected).toMatchObject({
       actionStatus: "REJECTED",
       rejectionCode: "CONSTITUTION_TOPIC_QUESTION_ANSWER",
@@ -7285,7 +7372,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
       rejectionCode: "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
       rejectionReason: expect.stringContaining('"Tahtakale" başlığı altına') as unknown as string,
     });
-    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(2);
+    // Yalnız "Field Care Node" yazıldı; "Elma"ya yeni-başlık yoluyla entry eklenmedi.
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
     expect(
       await integrationDatabase.topic.findMany({
         orderBy: { title: "asc" },
@@ -7361,6 +7449,493 @@ describe("internal agent runtime API with PostgreSQL", () => {
     );
     expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(0);
   });
+
+  it("writes into a populated topic only after the run actually read it", async () => {
+    /*
+      7 Ekim 2026: yenilik denetimi önceki entry'leri okunan başlıktan görür. Önizlemede
+      görülen ama okunmayan dolu başlığa entry yazılmaz; okunan dolu başlığa da yeni-başlık
+      yoluyla yazılmaz. Okuma işaretleyen test sarmalayıcısı burada bilerek kullanılmıyor.
+    */
+    const fixture = await createFixture();
+    const existing = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "okuma kuralı başlığı",
+        entryBody: "Okuma kuralı başlığı için insanın yazdığı ilk tanım entry'si.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "read-rule-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const unread = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    expect(browsableTopicIds(unread.perception).has(existing.topic.id)).toBe(true);
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run okuma kuralı için görünür kanıttır.",
+    };
+    const execute = (sequence: number) =>
+      executeRuntimeActionApplication(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+        { requireLifeLedger: false },
+      );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Önizlemede görülen başlığa okumadan yazma denemesi.",
+            targetType: "TOPIC",
+            targetId: existing.topic.id,
+            input: {
+              topicId: existing.topic.id,
+              body: "Okunmadan yazılan ve yayımlanmaması gereken bir görüş.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    await expect(execute(1)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_NOT_READ",
+    });
+
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      existing.topic.id,
+    ]);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 2,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Okunan dolu başlığa yeni-başlık yoluyla yazma denemesi.",
+            input: {
+              title: "Okuma kuralı başlığı",
+              body: "Yeni başlık yoluyla gelen ve yenilik denetimini atlayacak görüş.",
+            },
+            provenance,
+          },
+          {
+            sequence: 3,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Okunan başlığa yeni bir ayrıntı eklenir.",
+            targetType: "TOPIC",
+            targetId: existing.topic.id,
+            input: {
+              topicId: existing.topic.id,
+              body: "Kuralın asıl sınadığı şey okunan entry'lere yeni bir şey eklemektir.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    await expect(execute(2)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_EXISTS_WRITE_AS_ENTRY",
+    });
+    await expect(execute(3)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    expect(await integrationDatabase.entry.count({ where: { topicId: existing.topic.id } })).toBe(
+      2,
+    );
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
+  });
+
+  it("rejects an entry into a topic that gained other authors' entries after it was read", async () => {
+    // Sol f75ddca P1: boş okunup sonra dolan başlık yenilik denetimini atlıyordu.
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "okunduktan sonra değişen başlık",
+        entryBody: "Değişen başlık için insanın yazdığı ilk tanım entry'si.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "changed-topic-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      topic.topic.id,
+    ]);
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run değişen başlık kuralı için görünür kanıttır.",
+    };
+    const execute = (sequence: number) =>
+      executeRuntimeActionApplication(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+        { requireLifeLedger: false },
+      );
+    const entryAction = (sequence: number, body: string) => ({
+      sequence,
+      actionType: "CREATE_ENTRY" as const,
+      safeReason: "Okunan başlığa yeni bir ayrıntı eklenir.",
+      targetType: "TOPIC" as const,
+      targetId: topic.topic.id,
+      input: { topicId: topic.topic.id, body },
+      provenance,
+    });
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          entryAction(1, "Okunan entry'lere bakınca eksik kalan ölçüm ayrıntısı şudur."),
+          entryAction(2, "Aynı başlığa ikinci olarak eklenen ve bambaşka bir örnek veren görüş."),
+          entryAction(3, "Başka biri yazdıktan sonra görmeden eklenen üçüncü görüş."),
+        ],
+      }),
+    );
+    await expect(execute(1)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    // Ajanın kendi 1. entry'si snapshot'ta yok ama ikinci yazımı engellemez.
+    await expect(execute(2)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
+      body: "Ajan okuduktan sonra insanın eklediği yeni entry.",
+    });
+    await expect(execute(3)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CHANGED_SINCE_READ",
+    });
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(2);
+  });
+
+  it("compares a long topic with the same read window and catches a restored old entry", async () => {
+    /*
+      Sol e9377fa P2: zaman tabanlı pencere eşit zaman damgasında değişmemiş başlığı
+      reddediyor, geri açılan/taşınan eski entry'yi kaçırıyordu. Kontrol artık başlığı
+      kilit altında aynı okuma fonksiyonuyla yeniden okuyor.
+    */
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "uzun ve eşit zamanlı başlık",
+        entryBody: "Uzun başlık için insanın yazdığı ilk tanım entry'si.",
+      },
+    );
+    const restored = await createEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      topic.topic.id,
+      { body: "Okumadan önce gizlenen, sonra geri açılacak eski entry." },
+    );
+    for (let index = 0; index < 17; index += 1)
+      await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
+        body: `Uzun başlıkta aynı anda yazılmış sayılan insan entry'si ${index}.`,
+      });
+    const sameTime = new Date(Date.now() - 60_000);
+    await integrationDatabase.entry.updateMany({
+      where: { topicId: topic.topic.id, id: { notIn: [restored.id] } },
+      data: { createdAt: sameTime },
+    });
+    await integrationDatabase.entry.update({
+      where: { id: restored.id },
+      data: {
+        status: "HIDDEN",
+        hiddenAt: new Date(),
+        createdAt: new Date(sameTime.getTime() - 60_000),
+      },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "long-topic-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      topic.topic.id,
+    ]);
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run uzun başlık kuralı için görünür kanıttır.",
+    };
+    const execute = (sequence: number) =>
+      executeRuntimeActionApplication(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+        { requireLifeLedger: false },
+      );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [1, 2].map((sequence) => ({
+          sequence,
+          actionType: "CREATE_ENTRY" as const,
+          safeReason: "Okunan uzun başlığa yeni bir ayrıntı eklenir.",
+          targetType: "TOPIC" as const,
+          targetId: topic.topic.id,
+          input: {
+            topicId: topic.topic.id,
+            body:
+              sequence === 1
+                ? "Uzun başlıkta eksik kalan ölçüm ayrıntısı şudur."
+                : "Geri açılan entry'den sonra görmeden eklenen ikinci görüş.",
+          },
+          provenance,
+        })),
+      }),
+    );
+    // Eşit zamanlı entry'ler değişmedi: aynı okuma penceresi, yazım geçer.
+    await expect(execute(1)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    // Eski entry geri açılınca başlığın tanım entry'si değişir; ajan onu görmedi.
+    await integrationDatabase.entry.update({
+      where: { id: restored.id },
+      data: { status: "ACTIVE", hiddenAt: null },
+    });
+    await expect(execute(2)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CHANGED_SINCE_READ",
+    });
+  });
+
+  it("does not let the agent's own entries hide an entry restored inside a whole-topic read", async () => {
+    /*
+      Sol a9aff4f P2: ajan 14 entry'lik başlığın tamamını okur, aynı başlığa iki entry yazar,
+      sonra başka yazarın gizli eski entry'si geri açılır. Yeniden okuma penceresi ajanın
+      kendi entry'leriyle dolup geri açılan entry'yi dışarıda bırakıyordu.
+    */
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "kendi entry'leriyle daralan başlık", entryBody: "Daralan başlığın tanımı." },
+    );
+    const hidden = await createEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      topic.topic.id,
+      { body: "Okumadan önce gizlenen ve sonra geri açılan insan entry'si." },
+    );
+    for (let index = 0; index < 13; index += 1)
+      await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
+        body: `Daralan başlıkta insanın yazdığı entry ${index}.`,
+      });
+    await integrationDatabase.entry.update({
+      where: { id: hidden.id },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "narrowing-topic-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      topic.topic.id,
+    ]);
+    const execute = (sequence: number) =>
+      executeRuntimeActionApplication(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+        { requireLifeLedger: false },
+      );
+    const bodies = [
+      "Daralan başlıkta eksik kalan ilk ölçüm ayrıntısı şudur.",
+      "Aynı başlığa bambaşka bir örnekle eklenen ikinci görüş.",
+      "Geri açılan entry'yi görmeden eklenen üçüncü görüş.",
+    ];
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: bodies.map((body, index) => ({
+          sequence: index + 1,
+          actionType: "CREATE_ENTRY" as const,
+          safeReason: "Okunan başlığa yeni bir ayrıntı eklenir.",
+          targetType: "TOPIC" as const,
+          targetId: topic.topic.id,
+          input: { topicId: topic.topic.id, body },
+          provenance: {
+            evidenceType: "PLATFORM_EVENT" as const,
+            evidenceIds: [runId],
+            shortRationale: "Runtime run daralan başlık kuralı için görünür kanıttır.",
+          },
+        })),
+      }),
+    );
+    await expect(execute(1)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    await expect(execute(2)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    await integrationDatabase.entry.update({
+      where: { id: hidden.id },
+      data: { status: "ACTIVE", hiddenAt: null },
+    });
+    await expect(execute(3)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CHANGED_SINCE_READ",
+    });
+  });
+
+  it.each([
+    {
+      label: "a whole sixteen-entry read narrowed by the agent's own entries",
+      // Tanım + 16 − gizli 1 = okunan 16 görünür entry (Sol 4e7179b P3).
+      humanEntries: 16,
+      hiddenIndex: 0,
+      agentWritesBeforeRestore: 2,
+      hideNewestOnRestore: false,
+    },
+    {
+      label: "a long-topic window that widens when a newer entry is hidden",
+      humanEntries: 19,
+      hiddenIndex: 3,
+      agentWritesBeforeRestore: 0,
+      hideNewestOnRestore: true,
+    },
+  ])(
+    "catches an entry restored after the read in $label",
+    async ({ humanEntries, hiddenIndex, agentWritesBeforeRestore, hideNewestOnRestore }) => {
+      // Sol 7af32ce P2 karşı örnekleri: tam 16 entry'lik okuma ve genişleyen pencere.
+      const fixture = await createFixture();
+      const topic = await createTopicWithFirstEntry(
+        integrationDatabase,
+        adminActor(fixture.admin.id),
+        { title: `geri açma sınırı ${randomUUID()}`, entryBody: "Sınır başlığının tanımı." },
+      );
+      const created = [];
+      for (let index = 0; index < humanEntries; index += 1)
+        created.push(
+          await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
+            body: `Sınır başlığında insanın yazdığı entry ${index}.`,
+          }),
+        );
+      const hidden = created[hiddenIndex]!;
+      const newest = created.at(-1)!;
+      await integrationDatabase.entry.update({
+        where: { id: hidden.id },
+        data: { status: "HIDDEN", hiddenAt: new Date() },
+      });
+      const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+      const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+      const writePrincipal = await runtimePrincipal(fixture.credential);
+      const workerId = `restore-boundary-worker-${hiddenIndex}`;
+      const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+        workerId,
+        leaseSeconds: 60,
+      });
+      const runId = leased.run!.id;
+      await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+      const context = await getRuntimeRunContext(
+        integrationDatabase,
+        readPrincipal,
+        runId,
+        workerId,
+        [topic.topic.id],
+      );
+      const [readTopic] = context.perception.readTopics as Array<{
+        visibleEntryCount: number;
+        entries: unknown[];
+      }>;
+      // Okuma önkoşulu: görünür sayı ve okunan entry'ler senaryoyla birebir.
+      expect(readTopic?.visibleEntryCount).toBe(humanEntries);
+      expect(readTopic?.entries).toHaveLength(Math.min(humanEntries, 16));
+      const execute = (sequence: number) =>
+        executeRuntimeActionApplication(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+          { requireLifeLedger: false },
+        );
+      const total = agentWritesBeforeRestore + 1;
+      await recordRuntimeActions(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeActionsSchema.parse({
+          workerId,
+          actions: Array.from({ length: total }, (_, index) => ({
+            sequence: index + 1,
+            actionType: "CREATE_ENTRY" as const,
+            safeReason: "Okunan başlığa yeni bir ayrıntı eklenir.",
+            targetType: "TOPIC" as const,
+            targetId: topic.topic.id,
+            input: {
+              topicId: topic.topic.id,
+              body: [
+                "Sınırı belirleyen ölçüm aralığı haftalık değil günlük tutulmalı.",
+                "Bir başka açıdan bakınca maliyet tablosu kullanıcı sayısıyla birlikte okunmalı.",
+                "Geri açılan entry görülmeden eklenen ve reddedilmesi gereken son görüş.",
+              ][index]!,
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT" as const,
+              evidenceIds: [runId],
+              shortRationale: "Runtime run sınır kuralı için görünür kanıttır.",
+            },
+          })),
+        }),
+      );
+      for (let sequence = 1; sequence <= agentWritesBeforeRestore; sequence += 1)
+        await expect(execute(sequence)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+      await integrationDatabase.entry.update({
+        where: { id: hidden.id },
+        data: { status: "ACTIVE", hiddenAt: null },
+      });
+      if (hideNewestOnRestore)
+        await integrationDatabase.entry.update({
+          where: { id: newest.id },
+          data: { status: "HIDDEN", hiddenAt: new Date() },
+        });
+      await expect(execute(total)).resolves.toMatchObject({
+        actionStatus: "REJECTED",
+        rejectionCode: "TOPIC_CHANGED_SINCE_READ",
+      });
+    },
+  );
 
   it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {
     /*
@@ -11326,14 +11901,19 @@ describe("internal agent runtime API with PostgreSQL", () => {
         return { fixture, writePrincipal, runId, workerId: workers[index]! };
       }),
     );
-    const published = await Promise.all(
-      leasedRuns.map(({ writePrincipal, runId, workerId }) =>
-        executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+    /*
+      Sırayla: her ajan yazmadan hemen önce başlığı okur. Eşzamanlı yazımda ikinci ajan,
+      okuduktan sonra gelen ilk entry'yi görmediği için `TOPIC_CHANGED_SINCE_READ` alır
+      (7 Ekim 2026); bu test kota olmadığını sınıyor, o kuralı değil.
+    */
+    const published = [];
+    for (const { writePrincipal, runId, workerId } of leasedRuns)
+      published.push(
+        await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
           sequence: 1,
         }),
-      ),
-    );
+      );
     expect(published).toEqual([
       expect.objectContaining({
         actionStatus: "SUCCEEDED",
@@ -11350,6 +11930,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(saturationEvents).toHaveLength(0);
 
     const override = leasedRuns[0]!;
+    await forgetRuntimeTopicReads(override.runId);
     await integrationDatabase.agentRun.update({
       where: { id: override.runId },
       data: { saturationOverride: true },

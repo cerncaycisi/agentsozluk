@@ -1063,6 +1063,53 @@ export async function countRuntimeVisibleTopicEntries(
   });
 }
 
+/**
+ * Okumadan sonra değişti mi (7 Ekim 2026)? Okuma sözleşmesi: tanım entry'si + en yeni
+ * `runtimeReadTopicEntryLimit` entry, sıra `(createdAt, id)`. `windowStart` okunan en yeni
+ * pencerenin en eski entry'sidir; null ise okuma başlığın tamamıydı. Ajanın kendi entry'leri
+ * sayılmaz. Değişiklik: görülmemiş başka yazar entry'si pencere bölgesine girmiş ya da
+ * başlığın tanım entry'si değişmiş.
+ */
+export async function hasRuntimeTopicChangedSinceRead(
+  transaction: Prisma.TransactionClient,
+  input: {
+    topicId: string;
+    seenEntryIds: readonly string[];
+    windowStart: { id: string; createdAt: Date } | null;
+    authorId: string;
+  },
+): Promise<boolean> {
+  const seen = new Set(input.seenEntryIds);
+  const visible = {
+    topicId: input.topicId,
+    status: "ACTIVE" as const,
+    ...publiclyVisibleEntryWhere,
+  };
+  // 1. Okunan bölgeye (tam okumada her yere) giren görülmemiş yabancı entry.
+  const unseenInReadRegion = await transaction.entry.count({
+    where: {
+      ...visible,
+      id: { notIn: [...seen] },
+      authorId: { not: input.authorId },
+      ...(input.windowStart
+        ? {
+            OR: [
+              { createdAt: { gt: input.windowStart.createdAt } },
+              { createdAt: input.windowStart.createdAt, id: { gt: input.windowStart.id } },
+            ],
+          }
+        : {}),
+    },
+  });
+  if (unseenInReadRegion > 0) return true;
+  // 2. Şimdi okunsa görülecek (tanım dahil) görülmemiş yabancı entry: görünürlük azalıp
+  // pencere genişlediğinde ya da tanım değiştiğinde (Sol 7af32ce P2).
+  const [current] = await getRuntimeReadTopics(transaction, [input.topicId]);
+  return Boolean(
+    current?.entries.some((entry) => !seen.has(entry.id) && entry.authorId !== input.authorId),
+  );
+}
+
 export async function getRuntimeTopicNoveltyContext(
   transaction: Prisma.TransactionClient,
   input: { topicId: string; authorId: string; excludeEntryId?: string },
@@ -2761,68 +2808,116 @@ export async function getRuntimeReadTopics(
 ) {
   const unique = [...new Set(topicIds)].slice(0, runtimeReadTopicLimit);
   if (unique.length === 0) return [];
-  const visibleEntry = {
-    where: { status: "ACTIVE" as const, ...publiclyVisibleEntryWhere },
-    select: {
-      id: true,
-      body: true,
-      createdAt: true,
-      author: { select: { id: true, username: true } },
-    },
-  };
-  const topics = await transaction.topic.findMany({
-    where: { id: { in: unique }, status: "ACTIVE" },
-    select: {
-      id: true,
-      title: true,
-      entryCount: true,
-      /*
-        En yeniler: başlıkta şu an süren konuşma. Tanım entry'si ayrı
-        çekiliyor, çünkü altı entry'yi geçen başlıklarda `desc` onu düşürür ve
-        başlığın ne olduğunu söyleyen tek entry tam da odur.
-      */
-      entries: {
-        ...visibleEntry,
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: runtimeReadTopicEntryLimit,
-      },
-    },
-  });
-  // Prisma aynı ilişkiyi tek sorguda iki kez seçtirmiyor; başlık başına tek
-  // indeksli satır olduğu için ayrı sorgular ucuz (en fazla üç tane).
-  const firstEntries = await Promise.all(
-    topics.map((topic) =>
-      transaction.entry.findFirst({
-        ...visibleEntry,
-        where: { ...visibleEntry.where, topicId: topic.id },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      }),
-    ),
-  );
-  return topics.map((topic, index) => {
-    const firstEntry = firstEntries[index];
+  /*
+    Tek SQL ifadesi (7 Ekim 2026): en yeni pencere, tanım entry'si ve görünür sayı aynı
+    ifade anlık görüntüsünden gelir. Yazım anındaki değişiklik kontrolü bu tutarlılığa
+    dayanır (Sol 4e7179b P2). Kilit kullanılmaz: okuma yolunda başlık kilidi, yaşam kaydı
+    ve toplu moderasyon kilitleriyle ters sıraya giriyordu (Sol b027466 P2).
+
+    Pencere: en yeni `runtimeReadTopicEntryLimit` entry `(createdAt, id)` azalan sırada;
+    tanım entry'si ayrıca, çünkü altı entry'yi geçen başlıklarda azalan sıra onu düşürür ve
+    başlığın ne olduğunu söyleyen tek entry tam da odur.
+  */
+  const rows = await transaction.$queryRaw<
+    Array<{
+      topicId: string;
+      title: string;
+      entryCount: number;
+      entryId: string | null;
+      body: string | null;
+      createdAt: Date | null;
+      authorId: string | null;
+      authorUsername: string | null;
+      ascendingRank: bigint | null;
+      descendingRank: bigint | null;
+      visibleEntryCount: bigint | null;
+    }>
+  >`
+    WITH read_topic AS (
+      SELECT topic."id", topic."title", topic."entryCount"
+      FROM "topics" AS topic
+      WHERE topic."id" = ANY(${[...unique]}::uuid[])
+        AND topic."status" = 'ACTIVE'
+    ), ranked AS (
+      SELECT
+        entry."id",
+        entry."topicId",
+        entry."body",
+        entry."createdAt",
+        entry."authorId",
+        author."username",
+        ROW_NUMBER() OVER (
+          PARTITION BY entry."topicId" ORDER BY entry."createdAt" ASC, entry."id" ASC
+        ) AS ascending_rank,
+        ROW_NUMBER() OVER (
+          PARTITION BY entry."topicId" ORDER BY entry."createdAt" DESC, entry."id" DESC
+        ) AS descending_rank,
+        COUNT(*) OVER (PARTITION BY entry."topicId") AS visible_count
+      FROM "entries" AS entry
+      JOIN read_topic ON read_topic."id" = entry."topicId"
+      JOIN "users" AS author ON author."id" = entry."authorId"
+      WHERE entry."status" = 'ACTIVE'
+        AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
+    )
+    SELECT
+      read_topic."id" AS "topicId",
+      read_topic."title",
+      read_topic."entryCount",
+      ranked."id" AS "entryId",
+      ranked."body",
+      ranked."createdAt",
+      ranked."authorId",
+      ranked."username" AS "authorUsername",
+      ranked.ascending_rank AS "ascendingRank",
+      ranked.descending_rank AS "descendingRank",
+      ranked.visible_count AS "visibleEntryCount"
+    FROM read_topic
+    LEFT JOIN ranked
+      ON ranked."topicId" = read_topic."id"
+      AND (ranked.descending_rank <= ${runtimeReadTopicEntryLimit} OR ranked.ascending_rank = 1)
+  `;
+  const byTopic = new Map<string, typeof rows>();
+  for (const row of rows) byTopic.set(row.topicId, [...(byTopic.get(row.topicId) ?? []), row]);
+  return unique.flatMap((topicId) => {
+    const topicRows = byTopic.get(topicId);
+    const topic = topicRows?.[0];
+    if (!topicRows || !topic) return [];
+    const entryRows = topicRows.filter(
+      (row): row is typeof row & { entryId: string; body: string; createdAt: Date } =>
+        row.entryId !== null && row.body !== null && row.createdAt !== null,
+    );
     /*
-      Okuma sırası kronolojik: okur da başlığı tanımdan bugüne doğru okur. Tanım
-      entry'si kimliğiyle başa sabitlenir ve kalanlardan çıkarılır: eşit zaman
-      damgasında sıralama tek başına onu ilk sıraya koymayı garanti etmez ve
-      uygulama katmanı ilk sırayı tam gövdeyle gösterir (Astra, A′ 1. tur).
+      Okuma sırası kronolojik: okur da başlığı tanımdan bugüne doğru okur. Tanım entry'si
+      başa sabitlenir ve kalanlardan çıkarılır; kalanlar eskiden yeniye (Astra, A′ 1. tur).
     */
+    const firstEntry = entryRows.find((row) => row.ascendingRank === 1n);
     const ordered = [
       ...(firstEntry ? [firstEntry] : []),
-      ...[...topic.entries].reverse().filter((entry) => entry.id !== firstEntry?.id),
+      ...entryRows
+        .filter((row) => row.entryId !== firstEntry?.entryId)
+        .sort((left, right) => Number((right.descendingRank ?? 0n) - (left.descendingRank ?? 0n))),
     ];
-    return {
-      id: topic.id,
-      title: topic.title,
-      entryCount: topic.entryCount,
-      entries: ordered.map((entry) => ({
-        id: entry.id,
-        body: entry.body,
-        authorId: entry.author.id,
-        authorUsername: entry.author.username,
-        createdAt: entry.createdAt,
-      })),
-    };
+    return [
+      {
+        id: topic.topicId,
+        title: topic.title,
+        entryCount: topic.entryCount,
+        /*
+          `visibleEntryCount` görünür entry sayısıdır; `entryCount` sayacı gizli tohum
+          entry'lerini de sayar ve eski anlamıyla kalır. Okumanın başlığın tamamı olup
+          olmadığı yazım anındaki değişiklik kontrolü için bu sayıyla kesin bilinir (Sol
+          7af32ce, 4e7179b P2).
+        */
+        visibleEntryCount: Number(topic.visibleEntryCount ?? 0n),
+        entries: ordered.map((row) => ({
+          id: row.entryId,
+          body: row.body,
+          authorId: row.authorId ?? "",
+          authorUsername: row.authorUsername ?? "",
+          createdAt: row.createdAt,
+        })),
+      },
+    ];
   });
 }
 

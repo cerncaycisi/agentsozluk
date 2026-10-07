@@ -43,6 +43,7 @@ export const benchmarkDiagnosticSafeCodes = [
   "CODEX_DECISION_OUTPUT_INVALID",
   "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID",
   "ACTION_WORTHINESS_CANDIDATE_SET_MISMATCH",
+  "CODEX_NOVELTY_OUTPUT_INVALID",
   "BENCHMARK_STAGE_FAILED",
 ] as const;
 
@@ -119,7 +120,7 @@ const benchmarkDiagnosticIssueSchema = z
 
 export const capabilityBenchmarkStageDiagnosticSchema = z
   .object({
-    stage: z.enum(["DECISION_PRIMARY", "DECISION_REPAIR", "ACTION_WORTHINESS"]),
+    stage: z.enum(["DECISION_PRIMARY", "DECISION_REPAIR", "ACTION_WORTHINESS", "NOVELTY"]),
     outcome: z.enum(["PASS", "SCHEMA_INVALID", "PROVIDER_FAILED"]),
     safeCode: z.enum(benchmarkDiagnosticSafeCodes),
     issues: z.array(benchmarkDiagnosticIssueSchema).max(8),
@@ -136,6 +137,7 @@ export const capabilityBenchmarkStageDiagnosticSchema = z
       "CODEX_DECISION_OUTPUT_INVALID",
       "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID",
       "ACTION_WORTHINESS_CANDIDATE_SET_MISMATCH",
+      "CODEX_NOVELTY_OUTPUT_INVALID",
     ]);
     const validOutcome =
       (outcome === "PASS" && safeCode === "OK" && issues.length === 0) ||
@@ -145,11 +147,16 @@ export const capabilityBenchmarkStageDiagnosticSchema = z
       (outcome === "SCHEMA_INVALID" && schemaFailureCodes.has(safeCode));
     if (!validOutcome)
       context.addIssue({ code: "custom", message: "Diagnostic outcome/code contract invalid." });
-    if (
-      outcome === "SCHEMA_INVALID" &&
-      ((stage === "ACTION_WORTHINESS" && safeCode === "CODEX_DECISION_OUTPUT_INVALID") ||
-        (stage !== "ACTION_WORTHINESS" && safeCode !== "CODEX_DECISION_OUTPUT_INVALID"))
-    )
+    const expectedSchemaCodes: Record<typeof stage, readonly string[]> = {
+      DECISION_PRIMARY: ["CODEX_DECISION_OUTPUT_INVALID"],
+      DECISION_REPAIR: ["CODEX_DECISION_OUTPUT_INVALID"],
+      ACTION_WORTHINESS: [
+        "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID",
+        "ACTION_WORTHINESS_CANDIDATE_SET_MISMATCH",
+      ],
+      NOVELTY: ["CODEX_NOVELTY_OUTPUT_INVALID"],
+    };
+    if (outcome === "SCHEMA_INVALID" && !expectedSchemaCodes[stage].includes(safeCode))
       context.addIssue({ code: "custom", message: "Diagnostic stage/code contract invalid." });
   });
 
@@ -159,14 +166,19 @@ export const capabilityBenchmarkScenarioDiagnosticSchema = z
     lane: z.union([z.literal(1), z.literal(2)]).nullable(),
     finalStatus: z.enum(["PASS", "FAIL"]),
     repairAttempted: z.boolean(),
-    stages: z.array(capabilityBenchmarkStageDiagnosticSchema).min(1).max(3),
+    // Karar, onarım, AW ve en fazla `runtimeNoveltyCallLimit` (2) yenilik aşaması.
+    stages: z.array(capabilityBenchmarkStageDiagnosticSchema).min(1).max(5),
   })
   .strict()
   .superRefine(({ finalStatus, repairAttempted, stages }, context) => {
     const stageNames = stages.map(({ stage }) => stage);
     const repairIndex = stageNames.indexOf("DECISION_REPAIR");
     const worthinessIndex = stageNames.indexOf("ACTION_WORTHINESS");
-    if (stageNames[0] !== "DECISION_PRIMARY" || new Set(stageNames).size !== stageNames.length)
+    const noveltyIndexes = stageNames.flatMap((stage, index) =>
+      stage === "NOVELTY" ? [index] : [],
+    );
+    const reviewStages = stageNames.filter((stage) => stage !== "NOVELTY");
+    if (stageNames[0] !== "DECISION_PRIMARY" || new Set(reviewStages).size !== reviewStages.length)
       context.addIssue({ code: "custom", path: ["stages"], message: "Stage order invalid." });
     if (
       repairAttempted !== repairIndex >= 0 ||
@@ -179,13 +191,32 @@ export const capabilityBenchmarkScenarioDiagnosticSchema = z
       });
     if (
       worthinessIndex >= 0 &&
-      (worthinessIndex !== stages.length - 1 ||
+      (worthinessIndex !== stages.length - 1 - noveltyIndexes.length ||
         stages[repairIndex >= 0 ? repairIndex : 0]?.outcome !== "PASS")
     )
       context.addIssue({
         code: "custom",
         path: ["stages"],
         message: "Action-worthiness stage contract invalid.",
+      });
+    /*
+      Yenilik aşamaları yalnız geçen AW'den sonra, ardışık gelir; ilk başarısız yenilik
+      aşaması sonuncudur.
+    */
+    if (
+      noveltyIndexes.length > 2 ||
+      (noveltyIndexes.length > 0 &&
+        (worthinessIndex < 0 ||
+          stages[worthinessIndex]?.outcome !== "PASS" ||
+          noveltyIndexes.some((index, order) => index !== worthinessIndex + 1 + order) ||
+          stages
+            .slice(0, -1)
+            .some(({ stage, outcome }) => stage === "NOVELTY" && outcome !== "PASS")))
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["stages"],
+        message: "Novelty stage contract invalid.",
       });
     const repairSucceeded = repairIndex >= 0 && stages[repairIndex]?.outcome === "PASS";
     const unresolvedFailure = stages.some(

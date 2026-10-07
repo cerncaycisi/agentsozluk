@@ -156,3 +156,58 @@ export function runtimePresentedUserIds(perceptionSummary: unknown): Set<string>
   }
   return ids;
 }
+
+/**
+ * Koşunun gezinme fazında gerçekten okuduğu (entry'leri perception'a girmiş) başlıklar.
+ * Dolu başlığa entry yalnız bunlara yazılabilir: yenilik denetimi önceki entry'leri buradan
+ * görür (7 Ekim 2026).
+ */
+export function runtimeReadTopicIds(perceptionSummary: unknown): Set<string> {
+  const perception =
+    perceptionSummary && typeof perceptionSummary === "object" && !Array.isArray(perceptionSummary)
+      ? (perceptionSummary as Record<string, unknown>)
+      : {};
+  return new Set(
+    recordArray(perception.readTopics).flatMap((topic) => {
+      const id = stringField(topic, "id");
+      return id ? [id] : [];
+    }),
+  );
+}
+
+/**
+ * Okunan başlığın snapshot'ı; başlık okunmadıysa null. Snapshot sırası okuma
+ * fonksiyonundan gelir: tanım entry'si, ardından en yeni pencere eskiden yeniye. Okuma,
+ * görünür entry sayısı (`visibleEntryCount`) kadar entry taşıyorsa başlığın tamamıdır
+ * (`windowStart` null); değilse `windowStart` pencerenin en eski entry'sidir (ikinci öğe).
+ * Sayı yoksa (bu alandan önceki snapshot) ya da sınır okunamazsa en sıkı yorum: okuma
+ * tamdı, görülmemiş her yabancı entry değişikliktir.
+ */
+export function runtimeReadTopicSnapshot(
+  perceptionSummary: unknown,
+  topicId: string,
+): { seenEntryIds: string[]; windowStart: { id: string; createdAt: Date } | null } | null {
+  const perception =
+    perceptionSummary && typeof perceptionSummary === "object" && !Array.isArray(perceptionSummary)
+      ? (perceptionSummary as Record<string, unknown>)
+      : {};
+  const topic = recordArray(perception.readTopics).find(
+    (candidate) => stringField(candidate, "id") === topicId,
+  );
+  if (!topic) return null;
+  const entries = recordArray(topic.entries);
+  const seenEntryIds = entries.flatMap((entry) => {
+    const id = stringField(entry, "id");
+    return id ? [id] : [];
+  });
+  const visibleEntryCount =
+    typeof topic.visibleEntryCount === "number" ? topic.visibleEntryCount : null;
+  if (visibleEntryCount === null || visibleEntryCount <= entries.length || entries.length < 2)
+    return { seenEntryIds, windowStart: null };
+  const boundary = entries[1]!;
+  const id = stringField(boundary, "id");
+  const createdAt = stringField(boundary, "createdAt");
+  const time = createdAt ? new Date(createdAt) : null;
+  if (!id || !time || Number.isNaN(time.getTime())) return { seenEntryIds, windowStart: null };
+  return { seenEntryIds, windowStart: { id, createdAt: time } };
+}

@@ -359,8 +359,11 @@ const safeRunSummarySchema = z
   CONTROL kolundan önce kaybediyordu. Aynı ihlal, gezinen ajanda düzeltilmeden
   yayımlanıyordu. Limit gezinmeyi kapsayacak şekilde büyütüldü; onarım kapısı
   ayrıca gezinme çağrısını saymıyor.
+
+  8 (7 Ekim 2026): yenilik kapısı AW sonrası en fazla iki, içerik onarımından sonra bir
+  çağrı ekler; içerik onarım kapısı bunları saymaz.
 */
-export const runtimeCodexInvocationLimit = 5;
+export const runtimeCodexInvocationLimit = 8;
 
 /*
   Ajanın gezinme fazında okumak için seçebileceği başlık sayısı. TEK KAYNAK:
@@ -469,6 +472,21 @@ export const usageMetadataSchema = z
         verdict: z.enum(["ACT", "NO_ACTION"]),
         candidateCount: z.number().int().min(0).max(100),
         selectedCount: z.number().int().min(0).max(100),
+      })
+      .strict()
+      .optional(),
+    /*
+      Yenilik kapısının ne yaptığı (7 Ekim 2026). failedOpen: çağrı hatası ya da geçersiz
+      çıktı; skipped: koşu başına çağrı sınırı ya da süre yetmedi. İkisinde de taslak
+      denetimsiz yayımlanır. Kimlik veya metin tutulmaz.
+    */
+    novelty: z
+      .object({
+        candidateCount: z.number().int().min(0).max(100),
+        checkedCount: z.number().int().min(0).max(100),
+        droppedCount: z.number().int().min(0).max(100),
+        failedOpenCount: z.number().int().min(0).max(100),
+        skippedCount: z.number().int().min(0).max(100),
       })
       .strict()
       .optional(),

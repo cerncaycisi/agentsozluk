@@ -81,9 +81,17 @@ export function parseRuntimeActionWorthinessVerdict(
   return verdict;
 }
 
+const actionWorthinessLabels = {
+  subject: "final action-worthiness",
+  selectedSummary: "Final action-worthiness değerlendirmesi uygulanacak adayları seçti.",
+  rejectedSummary: "Final action-worthiness değerlendirmesi bütün adayları reddetti.",
+};
+
 export function applyRuntimeActionWorthinessVerdict(
   decision: RuntimeDecision,
   verdict: RuntimeActionWorthinessVerdict,
+  // Yenilik kapısı aynı eleme mantığını kendi günlük etiketiyle kullanır.
+  labels: typeof actionWorthinessLabels = actionWorthinessLabels,
 ): RuntimeDecision {
   const finalJournalSequence = Math.max(0, ...decision.decisionJournal.map(({ seq }) => seq)) + 1;
   const selectedOptionSeqs = [
@@ -103,7 +111,7 @@ export function applyRuntimeActionWorthinessVerdict(
               verdict.verdict === "ACT"
                 ? ("OPTION_SELECTED" as const)
                 : ("OPTION_REJECTED" as const),
-            subject: "final action-worthiness",
+            subject: labels.subject,
             summary: verdict.safeReason,
             confidence: verdict.confidence,
             evidenceIds: [],
@@ -150,7 +158,7 @@ export function applyRuntimeActionWorthinessVerdict(
       ),
       safeRunSummary: {
         ...decision.safeRunSummary,
-        operationSummary: "Final action-worthiness değerlendirmesi uygulanacak adayları seçti.",
+        operationSummary: labels.selectedSummary,
         shortRationale: verdict.safeReason,
       },
     };
@@ -176,7 +184,7 @@ export function applyRuntimeActionWorthinessVerdict(
     sourceProposals: [],
     safeRunSummary: {
       ...decision.safeRunSummary,
-      operationSummary: "Final action-worthiness değerlendirmesi bütün adayları reddetti.",
+      operationSummary: labels.rejectedSummary,
       shortRationale: verdict.safeReason,
     },
   };
