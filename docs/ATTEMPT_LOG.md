@@ -8558,3 +8558,34 @@ olmadığından mevcut dağıtım betiği legacy yoldan çalışır.
 Tekrarlama: `TRAFFIC_OPEN` sonrası dönüşü, sahibin açık kararı olmadan yapma. Canlı
 DB'yi silme; yeni DB'ye yükle, adları değiştir, eskisini sakla. `pipefail` altında
 eşleşmeyen `grep` hata döndürür.
+
+## 7 Ekim 08:00–08:30 UTC — sharp güvenlik dağıtımı ve P7 ön uygunluk
+
+Exact `5edd4691f50d7c3c65c61134a412b4e9a7c1bcd9`: push CI 37590658283'ün yedi işi SUCCESS;
+Release Candidate 37592171004 SUCCESS, artifact `11469507179` (242.229.790 bayt). Kök dosya
+sisteminde 18,5 GB boş alan vardı; eski kilit yoktu. Wrapper `--pause-society-flow` ile çalıştı:
+
+- audited pause 314→315 yapıldı; tek açık koşu kendi başına terminalleşti (drain 7. denemede 0);
+- lease taraması geçti; yeni app 08:23:32'de açıldı ve legacy nesil kabulünü geçti (mount 0);
+- smoke'ta health, ready ve search 200 döndü; `RELEASE_VERIFY` ve `RELEASE_COMPLETE` PASS verdi;
+  wrapper 0 ile çıktı.
+
+Canlı imaj `ad6d2db1…`. İmajdaki tek sharp kopyası `0.35.5`, native `libvips-cpp.so.8.18.7`.
+`runtime/current` = `5edd469`. Kamu kontrolü: `/`, `/api/health`, `/api/ready`, `/sitemap.xml`
+ve iki eski başlık 200 döndü; 410 görülmedi.
+
+Tek hat: `codexConcurrency` 2'den 1'e indirildi (ayar sürümü 315→316); toplum duraklatılmışken
+aynı transaction'da `agent.settings.changed` denetim satırı yazıldı. Worker'ın `processingLanes=2`
+değeri fiziksel hat sayısıdır; sunucu, `CONFIGURED_SINGLE` kuralıyla aynı anda tek koşu verir.
+
+Gate 9 ön uygunluk (08:24 UTC, salt okunur):
+
+- dört bayrak NORMAL modda; ödül modu `FULFILL_SLOT`, doğum modu `OFF`; en büyük timeout 600 sn;
+- 36 ACTIVE yazar; roster parmak izi `2895fb79…`; diğer kontrollerin md5'i `64d34d4a…`;
+- açık eski plan, slot, koşu ve override sayısı 0; bekleyen kota ayarı yok;
+- `codex-cli 0.144.6`, profil `05a9bffb…390a`; 36 credential; capability kayıtları HEALTHY,
+  `staleAt` 19 Ekim (pencere sonundan sonra);
+- worker `agent-runtime` kullanıcısıyla active/running, NRestarts 0; rapor betikleri `--help` 0.
+
+İçerik önkaydı [P7_ICERIK_ONKAYIT_2026-10-07](P7_ICERIK_ONKAYIT_2026-10-07.md) T0'dan önce
+main'e girdi.
