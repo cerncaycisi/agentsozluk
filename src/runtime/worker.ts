@@ -86,6 +86,14 @@ import {
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import {
+  applyRuntimeNoveltyDrops,
+  runtimeNoveltyCallLimit,
+  runtimeNoveltyCandidates,
+  runtimeNoveltyVerdictJsonSchema,
+  runtimeNoveltyVerdictSchema,
+  type RuntimeNoveltyCandidate,
+} from "@/runtime/novelty-gate";
+import {
   applyRuntimeActionWorthinessVerdict,
   parseRuntimeActionWorthinessVerdict,
   runtimeActionWorthinessVerdictJsonSchema,
@@ -840,6 +848,40 @@ export function buildActionWorthinessPrompt(
   ].join("\n");
 }
 
+/*
+  Yenilik çağrısının süre sınırları. Ölçüm (1–7 Ekim 2026, üretim, 2.110 koşu): koşu
+  sınırı 480 sn, AW bittiğinde kalan süre p50 246 sn, p05 72 sn; AW çağrısı p50 27 sn.
+  Yedek pay, yenilikten sonra kaydetme ve yürütmeye kalır. Süre yetmezse taslak denetimsiz
+  yayımlanır ve sayılır; koşuyu süre aşımına düşürmekten iyidir.
+*/
+const RUNTIME_NOVELTY_MAX_TIMEOUT_MS = 120_000;
+const RUNTIME_NOVELTY_EXECUTION_RESERVE_MS = 30_000;
+const RUNTIME_NOVELTY_MIN_TIMEOUT_MS = 20_000;
+
+// Plain-text bağlam: etiket kapatan karakter veri içinden gelemesin.
+function noveltyText(value: string): string {
+  return value.split(/\s+/u).join(" ").trim().replaceAll("<", "‹").replaceAll(">", "›");
+}
+
+export function buildNoveltyPrompt(candidate: RuntimeNoveltyCandidate): string {
+  return [
+    ...runtimePromptScaffold.noveltyInstructions,
+    "",
+    runtimePromptScaffold.untrustedOpening,
+    `Başlık: ${noveltyText(candidate.topicTitle)}`,
+    "",
+    "Önceki entry'ler:",
+    ...candidate.previousEntries.map(
+      (entry, index) =>
+        `[${index + 1}] ${noveltyText(entry.username)}${entry.mine ? " (sen)" : ""}: ${noveltyText(entry.body)}`,
+    ),
+    "",
+    "Taslağın:",
+    noveltyText(candidate.draft),
+    runtimePromptScaffold.untrustedClosing,
+  ].join("\n");
+}
+
 function objectRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -1361,6 +1403,14 @@ export class AgentRuntimeWorker {
       candidateCount: number;
       selectedCount: number;
     } | null = null;
+    /* Yenilik kapısının ne yaptığı — bkz `runtime-schemas.ts`, `novelty`. */
+    let novelty: {
+      candidateCount: number;
+      checkedCount: number;
+      droppedCount: number;
+      failedOpenCount: number;
+      skippedCount: number;
+    } | null = null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
@@ -1788,6 +1838,77 @@ export class AgentRuntimeWorker {
           throw error;
         }
       }
+      // Son gözden geçirme sağlayıcısı (AW ile aynı) yoksa kapı da yoktur.
+      const noveltyCandidates =
+        reflectionOnly || !this.#options.actionWorthinessProvider
+          ? []
+          : runtimeNoveltyCandidates(decision, context.perception);
+      if (noveltyCandidates.length > 0) {
+        await enterPhase("VALIDATING");
+        const dropped = new Set<number>();
+        const noveltyStats = {
+          candidateCount: noveltyCandidates.length,
+          checkedCount: 0,
+          droppedCount: 0,
+          failedOpenCount: 0,
+          skippedCount: 0,
+        };
+        for (const [index, candidate] of noveltyCandidates.entries()) {
+          await heartbeat();
+          deadline.throwIfStopped();
+          const timeoutMs = Math.min(
+            RUNTIME_NOVELTY_MAX_TIMEOUT_MS,
+            deadline.remainingMs() - RUNTIME_NOVELTY_EXECUTION_RESERVE_MS,
+          );
+          if (index >= runtimeNoveltyCallLimit || timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS) {
+            noveltyStats.skippedCount += 1;
+            continue;
+          }
+          try {
+            const noveltyResult = await invokeCodex(
+              {
+                runId,
+                prompt: buildNoveltyPrompt(candidate),
+                outputSchema: runtimeNoveltyVerdictJsonSchema,
+                timeoutMs,
+                debugRetentionHours: context.run.debugRetentionHours,
+                signal: deadline.signal,
+              },
+              "NOVELTY",
+              this.#options.actionWorthinessProvider,
+            );
+            providerResult = {
+              ...noveltyResult,
+              durationMs: providerResult.durationMs + noveltyResult.durationMs,
+            };
+            const verdict = runtimeNoveltyVerdictSchema.parse(noveltyResult.output);
+            noveltyStats.checkedCount += 1;
+            if (verdict.karar === "VAZGEC") {
+              dropped.add(candidate.sequence);
+              noveltyStats.droppedCount += 1;
+            }
+          } catch (rawNoveltyError) {
+            const noveltyError = deadline.normalizeError(rawNoveltyError);
+            if (noveltyError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+              throw noveltyError;
+            /*
+              Çağrı hatası ya da geçersiz çıktı taslağı susturmaz ("emin değilsen YAYIMLA");
+              sayılır ve olay olarak bildirilir.
+            */
+            noveltyStats.failedOpenCount += 1;
+            this.#options.onSafeEvent?.({
+              level: "error",
+              code: "NOVELTY_CHECK_FAILED_OPEN",
+              runId,
+            });
+          }
+        }
+        novelty = noveltyStats;
+        if (dropped.size > 0) {
+          decision = applyRuntimeNoveltyDrops(decision, dropped);
+          this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
+        }
+      }
       ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(
         decision,
         new Set(perceptionEvidence.sourceItemIds),
@@ -1840,7 +1961,9 @@ export class AgentRuntimeWorker {
           kural ihlali BROWSE kolunda düzeltilmeden yayımlanıyordu. Bu hem
           kalite kaybı hem deney karıştırıcısıydı (Sol hakem turu).
         */
-        const decisionPhaseCalls = codexIntervals.filter(({ phase }) => phase !== "BROWSE").length;
+        const decisionPhaseCalls = codexIntervals.filter(
+          ({ phase }) => phase !== "BROWSE" && phase !== "NOVELTY",
+        ).length;
         if (repairableRejection && !contentRepairAttempted && decisionPhaseCalls < 3) {
           contentRepairAttempted = true;
           await enterPhase("VALIDATING");
@@ -2052,6 +2175,7 @@ export class AgentRuntimeWorker {
             ...(browseExperiment ? { browseExperiment } : {}),
             ...(decisionRepair ? { decisionRepair } : {}),
             ...(actionWorthiness ? { actionWorthiness } : {}),
+            ...(novelty ? { novelty } : {}),
             ...providerResult.hostMetrics,
           },
           performanceMetrics: {
@@ -2134,6 +2258,7 @@ export class AgentRuntimeWorker {
               ...(browseExperiment ? { browseExperiment } : {}),
               ...(decisionRepair ? { decisionRepair } : {}),
               ...(actionWorthiness ? { actionWorthiness } : {}),
+              ...(novelty ? { novelty } : {}),
               /*
                 Başarısızlık kaydına DÜŞEN çağrının host metriği yazılmalı.
                 Eskiden `providerResult?.hostMetrics` yazılıyordu — o bir

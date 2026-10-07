@@ -4244,7 +4244,7 @@ components:
         durationMs: { type: integer, minimum: 0, maximum: 86400000 }
         phase:
           type: string
-          enum: [BROWSE, DECISION, DECISION_REPAIR, ACTION_WORTHINESS, CONTENT_REPAIR]
+          enum: [BROWSE, DECISION, DECISION_REPAIR, ACTION_WORTHINESS, CONTENT_REPAIR, NOVELTY]
         providerSafeCode:
           type: string
           description: Yalnız kapalı sağlayıcı hata sözlüğü; ham hata veya stderr saklanmaz. Koşunun aşama kodunu değiştirmez.
@@ -4280,7 +4280,7 @@ components:
         codexIntervals:
           type: array
           minItems: 1
-          maxItems: 5
+          maxItems: 7
           items: { $ref: "#/components/schemas/RuntimeCodexInterval" }
         model: { type: string, minLength: 1, maxLength: 200 }
         promptProfileHash: { type: string, pattern: "^[a-f0-9]{64}$" }
@@ -4353,6 +4353,22 @@ components:
             - selectedCount
           additionalProperties: false
           description: İçerik uygunluğu hükmü ve aday sayıları.
+        novelty:
+          type: object
+          properties:
+            candidateCount: { type: integer, minimum: 0, maximum: 100 }
+            checkedCount: { type: integer, minimum: 0, maximum: 100 }
+            droppedCount: { type: integer, minimum: 0, maximum: 100 }
+            failedOpenCount: { type: integer, minimum: 0, maximum: 100 }
+            skippedCount: { type: integer, minimum: 0, maximum: 100 }
+          required:
+            - candidateCount
+            - checkedCount
+            - droppedCount
+            - failedOpenCount
+            - skippedCount
+          additionalProperties: false
+          description: Yenilik kapısının aday, denetlenen, çıkarılan ve denetimsiz geçen sayıları.
         browseExperiment:
           type: object
           properties:
