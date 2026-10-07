@@ -64,13 +64,20 @@ describe("execution feedback is not a quality judgment", () => {
 
   it("only explains known rejections, never inherits object properties", () => {
     const cards = projectActionFeedback(
-      ["DUPLICATE_SIMILARITY", "toString", "__proto__"].map((rejectionCode) => ({
-        ...result,
-        actionStatus: "REJECTED",
-        rejectionCode,
-      })),
+      ["DUPLICATE_SIMILARITY", "TOPIC_EXISTS_UNREAD", "toString", "__proto__"].map(
+        (rejectionCode) => ({
+          ...result,
+          actionStatus: "REJECTED",
+          rejectionCode,
+        }),
+      ),
       now,
     );
-    expect(cards.map(({ reason }) => reason)).toEqual(["SIMILARITY_REVIEW_REQUIRED", null, null]);
+    expect(cards.map(({ reason }) => reason)).toEqual([
+      "SIMILARITY_REVIEW_REQUIRED",
+      "TOPIC_EXISTS_READ_FIRST",
+      null,
+      null,
+    ]);
   });
 });

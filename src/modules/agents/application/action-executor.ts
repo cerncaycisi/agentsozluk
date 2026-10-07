@@ -51,6 +51,7 @@ import {
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
   getRuntimeTopicNoveltyContext,
+  countRuntimeVisibleTopicEntries,
   lockRuntimeAction,
   lockRuntimeAgent,
   lockRuntimeRunForLeaseMutation,
@@ -665,11 +666,31 @@ async function suggestRuntimeSourceForApproval(
   };
 }
 
+/**
+ * Yazma yolunun içinden verilen çalışma zamanı reddi. Herkese açık HTTP `ErrorCode` kümesine
+ * girmez; mevcut hata dönüşümü eylemi bu kodla REJECTED kaydeder. Ret, yazma
+ * yolunda içerik/kayıt oluşturulmadan önce fırlatılır; dış idempotency işlemi açıksa
+ * ACCEPTED→EXECUTING→REJECTED yaşam olayları birlikte kalır.
+ */
+class RuntimeActionRejectionError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "RuntimeActionRejectionError";
+  }
+}
+
 async function performAction(
   transaction: TransactionClient,
   principal: RuntimePrincipal,
   action: ParsedRuntimeAction,
   target: Extract<RuntimeActionTargetResolution, { ok: true }>,
+  existingTopicGuard?: (
+    transaction: DatabaseExecutor,
+    topic: { id: string; title: string },
+  ) => Promise<void>,
 ): Promise<{
   result: InputJsonValue;
   entryId?: string;
@@ -704,6 +725,7 @@ async function performAction(
         },
         {
           canonicalConflictStrategy: "ADD_ENTRY",
+          ...(existingTopicGuard ? { existingTopicGuard } : {}),
         },
       );
       return {
@@ -1438,7 +1460,49 @@ export async function executeRuntimeAction(
         "ACCEPTED",
         "EXECUTING",
       );
-      const execution = await performAction(transaction, principal, parsed.data, resolvedTarget);
+      /*
+        Kör tekrar kapısı (7 Ekim, Gökhan: Richard Wright başlığında iki yazar aynı bilgiyi
+        yazdı). "Yeni başlık" önerisi var olan ve görünür entry taşıyan bir başlığa
+        çözülüyorsa ve ajan o başlığı bu koşuda görmediyse entry hiçbir entry okunmadan
+        yazılmış olur: karar, AW ve onarım mevcut entry'leri görmez; kelime düzeyi tekrar
+        kontrolü paraphrase'ı kaçırır. Ölçüm: reset öncesi 7 günde doğal entry'lerin
+        378/1.795'i (~%21) bu yoldan geldi. Kontrol oluşturma servisinin içinde, entry'nin
+        gerçekten yazılacağı başlıkta ve o başlığın kilidi altında çalışır (Astra PR #348:
+        öndeki kontrol başka başlığa bakabiliyor ve eşzamanlı dolumu kaçırabiliyordu).
+        Boş başlıkta veya görülen başlıkta davranış değişmez; onarılabilir değildir.
+      */
+      const blindTopicGuard =
+        parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY"
+          ? async (guardTransaction: DatabaseExecutor, topic: { id: string; title: string }) => {
+              /*
+                Ön çözümleme ile yazma arasında hedef değiştiyse (başlık gizlendi, aynı ad
+                eşzamanlı açıldı) benzerlik/yenilik ve yazma kilidi kontrolleri bu başlık için
+                çalışmamıştır; yazmak yerine reddet (Astra fa2ffc9 P2).
+              */
+              if (topic.id !== canonicalTopicProposal?.topic.id)
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_RESOLUTION_CHANGED",
+                  "Önerilen başlığın çözümlendiği kayıt doğrulama ile yazma arasında değişti; entry yazılmadı. Başlığı yeniden okuyup tekrar değerlendir.",
+                );
+              const catalog = runtimeEvidenceCatalogFrom(actionRecord.run.perceptionSummary, runId);
+              if ([...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY].includes(topic.id)) return;
+              // Koşunun ürettiği hedefler için muafiyet yok: yardımcı entry'nin GÜNCEL başlığını
+              // döndürür ve taşınan entry okunmamış başlığa yanlış muafiyet verir (Sol 59c7d48 P2).
+              // Aynı koşuda açılan başlığa ikinci kez yeni-başlık yazmak zaten kendi tekrarıdır.
+              if ((await countRuntimeVisibleTopicEntries(guardTransaction, topic.id)) === 0) return;
+              throw new RuntimeActionRejectionError(
+                "TOPIC_EXISTS_UNREAD",
+                "Anayasa Madde 16: Önerilen başlık sözlükte zaten var ve görünür entry'ler taşıyor; bu koşuda okunmadığı için entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir tanım, örnek, karşılaştırma, çekince veya görüş ekleyeceksen yaz.",
+              );
+            }
+          : undefined;
+      const execution = await performAction(
+        transaction,
+        principal,
+        parsed.data,
+        resolvedTarget,
+        blindTopicGuard,
+      );
       if (traversedLinkedTopicId)
         await appendRuntimeEvent(transaction, {
           agentProfileId: principal.agentProfileId,
@@ -1560,7 +1624,7 @@ export async function executeRuntimeAction(
     if (!started) throw error;
     await dependencies.beforeFallback?.();
     const rejection =
-      error instanceof AppError
+      error instanceof AppError || error instanceof RuntimeActionRejectionError
         ? { status: "REJECTED" as const, code: error.code, reason: error.message }
         : {
             status: "FAILED" as const,
