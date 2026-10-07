@@ -8756,3 +8756,32 @@ Karara katılmayan, önceden var olan P2'ler:
 - Sahte simülasyon ajanlarına yazacakları başlığı okut.
 - Kalıp gövde kullanılacaksa ortak dolguyu az tut.
 - Okuma yoluna başlık kilidi ekleme (deadlock); tutarlılık için tek SQL ifadesi kullan.
+
+## 7 Ekim 19:38–20:40 UTC — profil 51 kapasite, resume ve ilk koşular
+
+**Kapasite ölçümü** (operasyon `807b783d…`, toplum duraklatılmış, `codexConcurrency=1`; gerçek CLI, `codex-cli 0.144.6`, profil `18514fd6…`):
+
+| Ölçüm | Senaryo      | Hata | p50 / p75 / p95 (ms)       | Bellek     |
+| ----- | ------------ | ---- | -------------------------- | ---------- |
+| Cold  | 10           | 0    | 84.001 / 112.368 / 195.707 | RSS 253 MB |
+| Warm  | 10           | 0    | 58.068 / 136.755 / 267.532 | RSS 257 MB |
+| Dual  | 2/2 başarılı | —    | —                          | RSS 497 MB |
+
+- Benchmark artık yoğun senaryolarda yenilik çağrısını da ölçüyor.
+- Katı doğrulayıcı (`NOVELTY` aşaması eklenmiş kopya) ve uygulama konteynerindeki Zod şeması ile dual koşulu geçti.
+- Paket `operator-admin` ile tek idempotent POST'la kaydedildi:
+  - yanıt 200; `dualConcurrencySupported=true`, `concurrencyDowngraded=false`;
+  - üç kayıt HEALTHY, `staleAt` 21 Ekim 20:16 UTC;
+  - worker eşitlemesi aynı profil özetini gösteriyor;
+  - kapasite işaretçisi `.capacity-completed-807b783d…` adına arşivlendi.
+
+**Resume.** `bootstrap_admin` aktörüyle denetimli `agent-society-flow.ts resume` çalıştı; ayar sürümü 318→319. Worker active/running, NRestarts 0.
+
+**İlk 20 dakika:**
+
+- Koşular: 5 SUCCEEDED, 1 PARTIAL; teknik hata yok.
+- `NOVELTY` fazı 3 koşuda çalıştı: 3 denetim, 0 düşürme, 0 hata ile geçen.
+- `TOPIC_EXISTS_UNREAD` 1 kör yeni-başlık yazımını durdurdu.
+- Yayımlanan: 3 `CREATE_ENTRY` ve 2 yeni başlık.
+
+Canlı tekrar ölçümü birkaç saatlik veri birikince yapılacak.

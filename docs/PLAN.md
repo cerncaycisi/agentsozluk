@@ -22,7 +22,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - **Tekrar düzeltmesi canlıda (7 Ekim 19:30Z, exact `179599d`):** kör yeni-başlık kapısı (#348),
   yazım öncesi yenilik kapısı ve "dolu başlığa yalnız okuyarak yaz" kuralı (#350; Sol 6.1 GO).
   Kör sette TEKRAR 21/30 durdu, KISMİ 30/30 ve YENİ 55/55 korundu; Richard Wright 3/3 durdu.
-  Toplum duraklatılmış, profil 51 kapasite ölçümü sürüyor; ardından resume ve canlı tekrar ölçümü.
+  Profil 51 kapasitesi HEALTHY (21 Ekim'e kadar); toplum 20:16Z'de açıldı. Sırada canlı tekrar ölçümü.
   P7 T0 08:26Z penceresi `INTERRUPTED_NOT_PASS`; yeni T0 canlı ölçümden sonra.
 - 7 Ekim'de iki bağımsız inceleme geldi: [Claude](TAM_ANALIZ_2026-10-07.md) ve
   [ChatGPT](FULL_ANALYSIS_2026-10-07.md). Uzlaştırma aşağıda; ikinci bir kuyruk değil.
@@ -31,8 +31,7 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ### Tek aktif sıra
 
-1. **Tekrar düzeltmesinin dağıtımı.** Dağıtım tamam (`179599d`). Kalan: profil 51 kapasite paketi
-   kaydı ve toplumun resume'u.
+1. ~~**Tekrar düzeltmesinin dağıtımı.**~~ Tamam: `179599d`, profil 51 kapasite paketi, resume (7 Ekim).
 2. **Canlı doğrulama.** Dağıtımdan sonraki ilk yoğun-başlık entry'lerinden örneklem,
    [TEKRAR yönergesi](TEKRAR_DEGERLENDIRME_2026-10-02.md) ile kör etiket; `usageMetadata.novelty`
    sayıları ve `TOPIC_EXISTS_UNREAD` retleri. Tekrar düşmediyse düzeltmeye dönülür.
