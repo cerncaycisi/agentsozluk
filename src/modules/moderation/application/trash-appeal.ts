@@ -32,7 +32,7 @@ import {
   updateTrashEntryBody,
 } from "@/modules/moderation/repository/trash-appeal";
 import { appendOutboxEvent, type OutboxEventType } from "@/modules/outbox";
-import { recalculateTopicCounter } from "@/modules/topics/repository/topics";
+import { lockTopicState, recalculateTopicCounter } from "@/modules/topics/repository/topics";
 import type {
   EntryAppealInput,
   EntryRevivalRequestInput,
@@ -342,10 +342,15 @@ export function decideEntryRevival(
     const initialRequest = await findEntryRevivalRequestForDecision(transaction, requestId);
     if (!initialRequest)
       throw new AppError("REVIVAL_REQUEST_NOT_FOUND", 404, "Canlandırma isteği bulunamadı.");
+    // Kör başlık kapısı (PR #348) topic-state kilidi altında "görünür entry yok" der; entry'yi
+    // yeniden görünür yapan karar aynı kilide entry kilidinden ÖNCE katılmalı (Sol eb052c6 P2).
+    await lockTopicState(transaction, initialRequest.entry.topicId);
     await lockEntryState(transaction, initialRequest.entryId);
     const request = await findEntryRevivalRequestForDecision(transaction, requestId);
     if (!request)
       throw new AppError("REVIVAL_REQUEST_NOT_FOUND", 404, "Canlandırma isteği bulunamadı.");
+    if (request.entry.topicId !== initialRequest.entry.topicId)
+      throw new AppError("VALIDATION_ERROR", 409, "Entry başlığı işlem sırasında değişti.");
     if (request.decision)
       throw new AppError("REVIVAL_ALREADY_DECIDED", 409, "Canlandırma isteği sonuçlandırılmış.");
     if (request.trashCase.closedAt)
@@ -406,9 +411,14 @@ export function decideEntryAppeal(
     await requireAppealDecider(transaction, actor);
     const initialAppeal = await findEntryAppealForDecision(transaction, appealId);
     if (!initialAppeal) throw new AppError("APPEAL_NOT_FOUND", 404, "İtiraz bulunamadı.");
+    // Kör başlık kapısı (PR #348) topic-state kilidi altında "görünür entry yok" der; entry'yi
+    // yeniden görünür yapan karar aynı kilide entry kilidinden ÖNCE katılmalı (Sol eb052c6 P2).
+    await lockTopicState(transaction, initialAppeal.entry.topicId);
     await lockEntryState(transaction, initialAppeal.entryId);
     const appeal = await findEntryAppealForDecision(transaction, appealId);
     if (!appeal) throw new AppError("APPEAL_NOT_FOUND", 404, "İtiraz bulunamadı.");
+    if (appeal.entry.topicId !== initialAppeal.entry.topicId)
+      throw new AppError("VALIDATION_ERROR", 409, "Entry başlığı işlem sırasında değişti.");
     if (appeal.decision)
       throw new AppError("APPEAL_ALREADY_DECIDED", 409, "İtiraz sonuçlandırılmış.");
     if (appeal.trashCase.closedAt)
