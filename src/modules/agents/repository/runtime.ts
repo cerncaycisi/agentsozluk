@@ -1063,6 +1063,55 @@ export async function countRuntimeVisibleTopicEntries(
   });
 }
 
+/**
+ * Okumadan sonra değişti mi (7 Ekim 2026)? Okuma sözleşmesi: tanım entry'si + en yeni
+ * `runtimeReadTopicEntryLimit` entry, sıra `(createdAt, id)`. `windowStart` okunan en yeni
+ * pencerenin en eski entry'sidir; null ise okuma başlığın tamamıydı. Ajanın kendi entry'leri
+ * sayılmaz. Değişiklik: görülmemiş başka yazar entry'si pencere bölgesine girmiş ya da
+ * başlığın tanım entry'si değişmiş.
+ */
+export async function hasRuntimeTopicChangedSinceRead(
+  transaction: Prisma.TransactionClient,
+  input: {
+    topicId: string;
+    seenEntryIds: readonly string[];
+    windowStart: { id: string; createdAt: Date } | null;
+    authorId: string;
+  },
+): Promise<boolean> {
+  const visible = {
+    topicId: input.topicId,
+    status: "ACTIVE" as const,
+    ...publiclyVisibleEntryWhere,
+  };
+  const unseenInWindow = await transaction.entry.count({
+    where: {
+      ...visible,
+      id: { notIn: [...input.seenEntryIds] },
+      authorId: { not: input.authorId },
+      ...(input.windowStart
+        ? {
+            OR: [
+              { createdAt: { gt: input.windowStart.createdAt } },
+              { createdAt: input.windowStart.createdAt, id: { gt: input.windowStart.id } },
+            ],
+          }
+        : {}),
+    },
+  });
+  if (unseenInWindow > 0) return true;
+  const definition = await transaction.entry.findFirst({
+    where: visible,
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, authorId: true },
+  });
+  return Boolean(
+    definition &&
+    definition.authorId !== input.authorId &&
+    !input.seenEntryIds.includes(definition.id),
+  );
+}
+
 export async function getRuntimeTopicNoveltyContext(
   transaction: Prisma.TransactionClient,
   input: { topicId: string; authorId: string; excludeEntryId?: string },

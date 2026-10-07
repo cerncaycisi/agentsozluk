@@ -4,7 +4,7 @@ import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime
 import {
   runtimeEvidenceCatalogFrom,
   runtimeReadTopicIds,
-  runtimeReadTopicSeenEntryIds,
+  runtimeReadTopicSnapshot,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 
 describe("runtime typed evidence catalog", () => {
@@ -84,19 +84,24 @@ describe("runtime typed evidence catalog", () => {
 });
 
 describe("runtime read topic snapshot", () => {
-  it("returns the seen entry ids of a read topic and null for an unread one", () => {
+  const entry = (index: number) => ({
+    id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    createdAt: new Date(Date.UTC(2026, 9, 7, 10, index)).toISOString(),
+  });
+  it("marks a short read as the whole topic and a long read by its window start", () => {
     const topicId = "10000000-0000-4000-8000-000000000001";
-    const entryId = "10000000-0000-4000-8000-000000000002";
-    expect(runtimeReadTopicSeenEntryIds({ readTopics: [] }, topicId)).toBeNull();
+    expect(runtimeReadTopicSnapshot({ readTopics: [] }, topicId, 15)).toBeNull();
     expect(
-      runtimeReadTopicSeenEntryIds({ readTopics: [{ id: topicId, entries: [] }] }, topicId),
-    ).toEqual(new Set());
+      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entries: [] }] }, topicId, 15),
+    ).toEqual({ seenEntryIds: [], windowStart: null });
+    // Okuma sırası: tanım (0), sonra en yeni on beş eskiden yeniye (6..20).
+    const long = [entry(0), ...Array.from({ length: 15 }, (_, index) => entry(6 + index))];
     expect(
-      runtimeReadTopicSeenEntryIds(
-        { readTopics: [{ id: topicId, entries: [{ id: entryId }, { body: "kimliksiz" }] }] },
-        topicId,
-      ),
-    ).toEqual(new Set([entryId]));
+      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entries: long }] }, topicId, 15),
+    ).toEqual({
+      seenEntryIds: long.map(({ id }) => id),
+      windowStart: { id: entry(6).id, createdAt: new Date(entry(6).createdAt) },
+    });
     expect(runtimeReadTopicIds({ readTopics: [{ id: topicId }, { title: "kimliksiz" }] })).toEqual(
       new Set([topicId]),
     );

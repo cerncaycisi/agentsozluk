@@ -7733,6 +7733,91 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
   });
 
+  it("does not let the agent's own entries hide an entry restored inside a whole-topic read", async () => {
+    /*
+      Sol a9aff4f P2: ajan 14 entry'lik başlığın tamamını okur, aynı başlığa iki entry yazar,
+      sonra başka yazarın gizli eski entry'si geri açılır. Yeniden okuma penceresi ajanın
+      kendi entry'leriyle dolup geri açılan entry'yi dışarıda bırakıyordu.
+    */
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "kendi entry'leriyle daralan başlık", entryBody: "Daralan başlığın tanımı." },
+    );
+    const hidden = await createEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      topic.topic.id,
+      { body: "Okumadan önce gizlenen ve sonra geri açılan insan entry'si." },
+    );
+    for (let index = 0; index < 13; index += 1)
+      await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
+        body: `Daralan başlıkta insanın yazdığı entry ${index}.`,
+      });
+    await integrationDatabase.entry.update({
+      where: { id: hidden.id },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "narrowing-topic-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      topic.topic.id,
+    ]);
+    const execute = (sequence: number) =>
+      executeRuntimeActionApplication(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+        { requireLifeLedger: false },
+      );
+    const bodies = [
+      "Daralan başlıkta eksik kalan ilk ölçüm ayrıntısı şudur.",
+      "Aynı başlığa bambaşka bir örnekle eklenen ikinci görüş.",
+      "Geri açılan entry'yi görmeden eklenen üçüncü görüş.",
+    ];
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: bodies.map((body, index) => ({
+          sequence: index + 1,
+          actionType: "CREATE_ENTRY" as const,
+          safeReason: "Okunan başlığa yeni bir ayrıntı eklenir.",
+          targetType: "TOPIC" as const,
+          targetId: topic.topic.id,
+          input: { topicId: topic.topic.id, body },
+          provenance: {
+            evidenceType: "PLATFORM_EVENT" as const,
+            evidenceIds: [runId],
+            shortRationale: "Runtime run daralan başlık kuralı için görünür kanıttır.",
+          },
+        })),
+      }),
+    );
+    await expect(execute(1)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    await expect(execute(2)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    await integrationDatabase.entry.update({
+      where: { id: hidden.id },
+      data: { status: "ACTIVE", hiddenAt: null },
+    });
+    await expect(execute(3)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CHANGED_SINCE_READ",
+    });
+  });
+
   it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {
     /*
       Madde 32 başlık onarımı sunucuda da kabul edilmeli (Astra 55e8273 P2): eskiden sunucu

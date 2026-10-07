@@ -176,12 +176,16 @@ export function runtimeReadTopicIds(perceptionSummary: unknown): Set<string> {
 }
 
 /**
- * Okunan başlığın snapshot'ında görülen entry kimlikleri; başlık okunmadıysa null.
+ * Okunan başlığın snapshot'ı; başlık okunmadıysa null. Snapshot sırası okuma
+ * fonksiyonundan gelir: tanım entry'si, ardından en yeni pencere eskiden yeniye. Snapshot
+ * `newestLimit`'ten uzunsa okuma başlığın tamamı değildi; `windowStart` pencerenin en eski
+ * entry'sidir (snapshot'ın ikinci öğesi).
  */
-export function runtimeReadTopicSeenEntryIds(
+export function runtimeReadTopicSnapshot(
   perceptionSummary: unknown,
   topicId: string,
-): Set<string> | null {
+  newestLimit: number,
+): { seenEntryIds: string[]; windowStart: { id: string; createdAt: Date } | null } | null {
   const perception =
     perceptionSummary && typeof perceptionSummary === "object" && !Array.isArray(perceptionSummary)
       ? (perceptionSummary as Record<string, unknown>)
@@ -190,10 +194,17 @@ export function runtimeReadTopicSeenEntryIds(
     (candidate) => stringField(candidate, "id") === topicId,
   );
   if (!topic) return null;
-  return new Set(
-    recordArray(topic.entries).flatMap((entry) => {
-      const id = stringField(entry, "id");
-      return id ? [id] : [];
-    }),
-  );
+  const entries = recordArray(topic.entries);
+  const seenEntryIds = entries.flatMap((entry) => {
+    const id = stringField(entry, "id");
+    return id ? [id] : [];
+  });
+  if (entries.length <= newestLimit) return { seenEntryIds, windowStart: null };
+  const boundary = entries[1]!;
+  const id = stringField(boundary, "id");
+  const createdAt = stringField(boundary, "createdAt");
+  const time = createdAt ? new Date(createdAt) : null;
+  // Bozuk snapshot'ta pencere bilinmiyor: en sıkı yorum, okumanın tam olduğunu varsaymaktır.
+  if (!id || !time || Number.isNaN(time.getTime())) return { seenEntryIds, windowStart: null };
+  return { seenEntryIds, windowStart: { id, createdAt: time } };
 }

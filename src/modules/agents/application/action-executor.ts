@@ -10,7 +10,7 @@ import {
   runtimeEvidenceCatalogFrom,
   runtimePresentedUserIds,
   runtimeReadTopicIds,
-  runtimeReadTopicSeenEntryIds,
+  runtimeReadTopicSnapshot,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { lockTopicState } from "@/modules/topics/repository/topics";
 import {
@@ -55,7 +55,8 @@ import {
   getRuntimeRecentAgentEntryBodies,
   getRuntimeTopicNoveltyContext,
   countRuntimeVisibleTopicEntries,
-  getRuntimeReadTopics,
+  hasRuntimeTopicChangedSinceRead,
+  runtimeReadTopicEntryLimit,
   lockRuntimeAction,
   lockRuntimeAgent,
   lockRuntimeRunForLeaseMutation,
@@ -1518,12 +1519,13 @@ export async function executeRuntimeAction(
       */
       if (parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId) {
         await lockTopicState(transaction, resolvedTarget.topicId);
-        const seenEntryIds = runtimeReadTopicSeenEntryIds(
+        const snapshot = runtimeReadTopicSnapshot(
           actionRecord.run.perceptionSummary,
           resolvedTarget.topicId,
+          runtimeReadTopicEntryLimit,
         );
         if (
-          !seenEntryIds &&
+          !snapshot &&
           (await countRuntimeVisibleTopicEntries(transaction, resolvedTarget.topicId)) > 0
         )
           return rejectAction(transaction, principal, actionRecord, {
@@ -1533,25 +1535,27 @@ export async function executeRuntimeAction(
           });
         /*
           Okunduktan sonra başkasının yazdığı, taşıdığı ya da geri açtığı entry'ler yenilik
-          denetiminde görülmedi; boş okunup sonra dolan başlık tamamen denetimsiz kalırdı
-          (Sol f75ddca P1). Karşılaştırma, başlığı kilit altında AYNI okuma fonksiyonuyla
-          yeniden okuyarak yapılır: sıralama, eşit zaman, görünürlük ve tanım entry'si
-          okumayla birebir aynıdır (Sol e9377fa P2). Ajanın kendi entry'leri sayılmaz: aynı
-          koşudaki ikinci entry kendi tekrar kontrolünden geçer.
+          denetiminde görülmedi (Sol f75ddca P1). Karşılaştırma okuma sözleşmesine göre:
+          okuma başlığın tamamıysa görülmemiş her yabancı entry, değilse okunan pencerenin
+          `(createdAt, id)` sınırından yenisi ve değişen tanım entry'si (Sol e9377fa ve a9aff4f
+          P2: zaman penceresi eşitlikte yanlış reddediyordu; yeniden okuma ajanın kendi
+          entry'leriyle daralıp geri açılan entry'yi kaçırıyordu). Ajanın kendi entry'leri
+          sayılmaz: aynı koşudaki ikinci entry kendi tekrar kontrolünden geçer.
         */
-        if (seenEntryIds) {
-          const [current] = await getRuntimeReadTopics(transaction, [resolvedTarget.topicId]);
-          if (
-            current?.entries.some(
-              (entry) => !seenEntryIds.has(entry.id) && entry.authorId !== principal.actor.actorId,
-            )
-          )
-            return rejectAction(transaction, principal, actionRecord, {
-              code: "TOPIC_CHANGED_SINCE_READ",
-              reason:
-                "Anayasa Madde 16: Bu başlığa sen okuduktan sonra yeni entry geldi; görmediğin entry'lerle karşılaştırılmadan yazılamaz. Başlığı yeniden okuyup yeni bir şey ekleyeceksen yaz.",
-            });
-        }
+        if (
+          snapshot &&
+          (await hasRuntimeTopicChangedSinceRead(transaction, {
+            topicId: resolvedTarget.topicId,
+            seenEntryIds: snapshot.seenEntryIds,
+            windowStart: snapshot.windowStart,
+            authorId: principal.actor.actorId,
+          }))
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "TOPIC_CHANGED_SINCE_READ",
+            reason:
+              "Anayasa Madde 16: Bu başlığa sen okuduktan sonra yeni entry geldi; görmediğin entry'lerle karşılaştırılmadan yazılamaz. Başlığı yeniden okuyup yeni bir şey ekleyeceksen yaz.",
+          });
       }
       const execution = await performAction(
         transaction,
