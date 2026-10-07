@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
-import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
+import {
+  runtimeEvidenceCatalogFrom,
+  runtimeReadTopicIds,
+  runtimeReadTopicSnapshot,
+} from "@/modules/agents/domain/runtime-evidence-catalog";
 
 describe("runtime typed evidence catalog", () => {
   it("does not let an ID buried in a memory legitimize a source citation", () => {
@@ -76,5 +80,30 @@ describe("runtime typed evidence catalog", () => {
     expect(catalog.USER_ENTRY).toEqual([]);
     expect(catalog.TRUSTED_SOURCE).toEqual([]);
     expect(catalog.AGENT_MEMORY).toEqual([]);
+  });
+});
+
+describe("runtime read topic snapshot", () => {
+  const entry = (index: number) => ({
+    id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    createdAt: new Date(Date.UTC(2026, 9, 7, 10, index)).toISOString(),
+  });
+  it("treats a short snapshot as the whole topic and a long one as its newest window", () => {
+    const topicId = "10000000-0000-4000-8000-000000000001";
+    expect(runtimeReadTopicSnapshot({ readTopics: [] }, topicId, 15)).toBeNull();
+    expect(
+      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entries: [] }] }, topicId, 15),
+    ).toEqual({ seenEntryIds: [], newerThan: null });
+    // Tanım entry'si (0) + en yeni on beş (6..20): pencere 6. entry'nin zamanında başlar.
+    const long = [entry(0), ...Array.from({ length: 15 }, (_, index) => entry(20 - index))];
+    expect(
+      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entries: long }] }, topicId, 15),
+    ).toEqual({
+      seenEntryIds: long.map(({ id }) => id),
+      newerThan: new Date(entry(6).createdAt),
+    });
+    expect(runtimeReadTopicIds({ readTopics: [{ id: topicId }, { title: "kimliksiz" }] })).toEqual(
+      new Set([topicId]),
+    );
   });
 });

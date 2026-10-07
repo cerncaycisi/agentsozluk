@@ -179,12 +179,47 @@ async function markPresentedEntryTargetRead(runId: string, sequence: number) {
     ? (perception.readTopics as Array<{ id?: unknown }>)
     : [];
   if (readTopics.some(({ id }) => id === topicId)) return;
+  // Gerçek okuma gibi başlığın o anki entry'leri snapshot'a girer.
+  const entries = await integrationDatabase.entry.findMany({
+    where: { topicId, status: "ACTIVE" },
+    select: { id: true, createdAt: true },
+  });
   await integrationDatabase.agentRun.update({
     where: { id: runId },
     data: {
       perceptionSummary: {
         ...perception,
-        readTopics: [...readTopics, { id: topicId, title: "", entryCount: 0, entries: [] }],
+        readTopics: [
+          ...readTopics,
+          {
+            id: topicId,
+            title: "",
+            entryCount: entries.length,
+            entries: entries.map((entry) => ({
+              id: entry.id,
+              body: "",
+              createdAt: entry.createdAt.toISOString(),
+            })),
+          },
+        ],
+      } as Prisma.InputJsonValue,
+    },
+  });
+}
+
+// Aynı koşuda başlığı yeniden okumanın fikstür karşılığı: sarmalayıcı bir sonraki yazımda
+// başlığın o anki entry'lerini snapshot'a yeniden koyar.
+async function forgetRuntimeTopicReads(runId: string) {
+  const run = await integrationDatabase.agentRun.findUniqueOrThrow({
+    where: { id: runId },
+    select: { perceptionSummary: true },
+  });
+  await integrationDatabase.agentRun.update({
+    where: { id: runId },
+    data: {
+      perceptionSummary: {
+        ...((run.perceptionSummary ?? {}) as Record<string, unknown>),
+        readTopics: [],
       } as Prisma.InputJsonValue,
     },
   });
@@ -7528,6 +7563,76 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
   });
 
+  it("rejects an entry into a topic that gained other authors' entries after it was read", async () => {
+    // Sol f75ddca P1: boş okunup sonra dolan başlık yenilik denetimini atlıyordu.
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "okunduktan sonra değişen başlık",
+        entryBody: "Değişen başlık için insanın yazdığı ilk tanım entry'si.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "changed-topic-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      topic.topic.id,
+    ]);
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run değişen başlık kuralı için görünür kanıttır.",
+    };
+    const execute = (sequence: number) =>
+      executeRuntimeActionApplication(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+        { requireLifeLedger: false },
+      );
+    const entryAction = (sequence: number, body: string) => ({
+      sequence,
+      actionType: "CREATE_ENTRY" as const,
+      safeReason: "Okunan başlığa yeni bir ayrıntı eklenir.",
+      targetType: "TOPIC" as const,
+      targetId: topic.topic.id,
+      input: { topicId: topic.topic.id, body },
+      provenance,
+    });
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          entryAction(1, "Okunan entry'lere bakınca eksik kalan ölçüm ayrıntısı şudur."),
+          entryAction(2, "Başka biri yazdıktan sonra görmeden eklenen ikinci görüş."),
+        ],
+      }),
+    );
+    // Ajanın kendi entry'si snapshot'ta olmasa da yeni yazımı engellemez.
+    await expect(execute(1)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
+      body: "Ajan okuduktan sonra insanın eklediği yeni entry.",
+    });
+    await expect(execute(2)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CHANGED_SINCE_READ",
+    });
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
+  });
+
   it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {
     /*
       Madde 32 başlık onarımı sunucuda da kabul edilmeli (Astra 55e8273 P2): eskiden sunucu
@@ -11492,14 +11597,19 @@ describe("internal agent runtime API with PostgreSQL", () => {
         return { fixture, writePrincipal, runId, workerId: workers[index]! };
       }),
     );
-    const published = await Promise.all(
-      leasedRuns.map(({ writePrincipal, runId, workerId }) =>
-        executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+    /*
+      Sırayla: her ajan yazmadan hemen önce başlığı okur. Eşzamanlı yazımda ikinci ajan,
+      okuduktan sonra gelen ilk entry'yi görmediği için `TOPIC_CHANGED_SINCE_READ` alır
+      (7 Ekim 2026); bu test kota olmadığını sınıyor, o kuralı değil.
+    */
+    const published = [];
+    for (const { writePrincipal, runId, workerId } of leasedRuns)
+      published.push(
+        await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
           sequence: 1,
         }),
-      ),
-    );
+      );
     expect(published).toEqual([
       expect.objectContaining({
         actionStatus: "SUCCEEDED",
@@ -11516,6 +11626,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(saturationEvents).toHaveLength(0);
 
     const override = leasedRuns[0]!;
+    await forgetRuntimeTopicReads(override.runId);
     await integrationDatabase.agentRun.update({
       where: { id: override.runId },
       data: { saturationOverride: true },

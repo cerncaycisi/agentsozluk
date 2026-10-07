@@ -10,6 +10,7 @@ import {
   runtimeEvidenceCatalogFrom,
   runtimePresentedUserIds,
   runtimeReadTopicIds,
+  runtimeReadTopicSnapshot,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { lockTopicState } from "@/modules/topics/repository/topics";
 import {
@@ -53,7 +54,9 @@ import {
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
   getRuntimeTopicNoveltyContext,
+  countRuntimeUnseenTopicEntries,
   countRuntimeVisibleTopicEntries,
+  runtimeReadTopicEntryLimit,
   lockRuntimeAction,
   lockRuntimeAgent,
   lockRuntimeRunForLeaseMutation,
@@ -1516,14 +1519,39 @@ export async function executeRuntimeAction(
       */
       if (parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId) {
         await lockTopicState(transaction, resolvedTarget.topicId);
+        const snapshot = runtimeReadTopicSnapshot(
+          actionRecord.run.perceptionSummary,
+          resolvedTarget.topicId,
+          runtimeReadTopicEntryLimit,
+        );
         if (
-          !runtimeReadTopicIds(actionRecord.run.perceptionSummary).has(resolvedTarget.topicId) &&
+          !snapshot &&
           (await countRuntimeVisibleTopicEntries(transaction, resolvedTarget.topicId)) > 0
         )
           return rejectAction(transaction, principal, actionRecord, {
             code: "TOPIC_NOT_READ",
             reason:
               "Anayasa Madde 16: Bu başlık entry taşıyor ama bu koşuda okunmadı; entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir şey ekleyeceksen yaz.",
+          });
+        /*
+          Okunduktan sonra başkasının yazdığı (ya da taşınan) entry'ler yenilik denetiminde
+          görülmedi; boş okunup sonra dolan başlık tamamen denetimsiz kalırdı (Sol f75ddca P1).
+          Ajanın kendi entry'leri sayılmaz: aynı koşudaki ikinci entry kendi tekrar
+          kontrolünden geçer.
+        */
+        if (
+          snapshot &&
+          (await countRuntimeUnseenTopicEntries(transaction, {
+            topicId: resolvedTarget.topicId,
+            seenEntryIds: snapshot.seenEntryIds,
+            newerThan: snapshot.newerThan,
+            authorId: principal.actor.actorId,
+          })) > 0
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "TOPIC_CHANGED_SINCE_READ",
+            reason:
+              "Anayasa Madde 16: Bu başlığa sen okuduktan sonra yeni entry geldi; görmediğin entry'lerle karşılaştırılmadan yazılamaz. Başlığı yeniden okuyup yeni bir şey ekleyeceksen yaz.",
           });
       }
       const execution = await performAction(
