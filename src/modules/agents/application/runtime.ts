@@ -1886,6 +1886,7 @@ export function getRuntimeRunContext(
           id: topic.id,
           title: topic.title,
           entryCount: topic.entryCount,
+          visibleEntryCount: topic.visibleEntryCount,
           entries: topic.entries.map((entry, index) => ({
             id: entry.id,
             username: entry.authorUsername,

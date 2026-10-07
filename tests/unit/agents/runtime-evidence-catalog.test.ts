@@ -90,8 +90,11 @@ describe("runtime read topic snapshot", () => {
   });
   it("uses the visible entry count to tell a whole-topic read from a window", () => {
     const topicId = "10000000-0000-4000-8000-000000000001";
-    const read = (entryCount: number | undefined, entries: unknown[]) =>
-      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entryCount, entries }] }, topicId);
+    const read = (visibleEntryCount: number | undefined, entries: unknown[]) =>
+      runtimeReadTopicSnapshot(
+        { readTopics: [{ id: topicId, entryCount: 99, visibleEntryCount, entries }] },
+        topicId,
+      );
     expect(runtimeReadTopicSnapshot({ readTopics: [] }, topicId)).toBeNull();
     expect(read(0, [])).toEqual({ seenEntryIds: [], windowStart: null });
     // Okuma sırası: tanım (0), sonra en yeni on beş eskiden yeniye (6..20).
@@ -102,7 +105,7 @@ describe("runtime read topic snapshot", () => {
       seenEntryIds: long.map(({ id }) => id),
       windowStart: { id: entry(6).id, createdAt: new Date(entry(6).createdAt) },
     });
-    // Sayı yoksa en sıkı yorum.
+    // Görünür sayı yoksa (eski snapshot; ham sayaç dikkate alınmaz) en sıkı yorum.
     expect(read(undefined, long)?.windowStart).toBeNull();
     expect(runtimeReadTopicIds({ readTopics: [{ id: topicId }, { title: "kimliksiz" }] })).toEqual(
       new Set([topicId]),

@@ -193,6 +193,7 @@ async function markPresentedEntryTargetRead(runId: string, sequence: number) {
             id: topicId,
             title: read?.title ?? "",
             entryCount: read?.entryCount ?? 0,
+            visibleEntryCount: read?.visibleEntryCount ?? 0,
             entries: (read?.entries ?? []).map((entry) => ({
               id: entry.id,
               body: entry.body,
@@ -7821,7 +7822,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
   it.each([
     {
       label: "a whole sixteen-entry read narrowed by the agent's own entries",
-      humanEntries: 15,
+      // Tanım + 16 − gizli 1 = okunan 16 görünür entry (Sol 4e7179b P3).
+      humanEntries: 16,
       hiddenIndex: 0,
       agentWritesBeforeRestore: 2,
       hideNewestOnRestore: false,
@@ -7866,9 +7868,20 @@ describe("internal agent runtime API with PostgreSQL", () => {
       });
       const runId = leased.run!.id;
       await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
-      await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
-        topic.topic.id,
-      ]);
+      const context = await getRuntimeRunContext(
+        integrationDatabase,
+        readPrincipal,
+        runId,
+        workerId,
+        [topic.topic.id],
+      );
+      const [readTopic] = context.perception.readTopics as Array<{
+        visibleEntryCount: number;
+        entries: unknown[];
+      }>;
+      // Okuma önkoşulu: görünür sayı ve okunan entry'ler senaryoyla birebir.
+      expect(readTopic?.visibleEntryCount).toBe(humanEntries);
+      expect(readTopic?.entries).toHaveLength(Math.min(humanEntries, 16));
       const execute = (sequence: number) =>
         executeRuntimeActionApplication(
           integrationDatabase,

@@ -40,6 +40,7 @@ import {
   listTopEntryPerTopic,
 } from "@/modules/feeds/repository/feeds";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import { lockTopicState } from "@/modules/topics/repository/topics";
 import {
   publiclyVisibleEntrySql,
   publiclyVisibleEntryWhere,
@@ -2808,6 +2809,12 @@ export async function getRuntimeReadTopics(
 ) {
   const unique = [...new Set(topicIds)].slice(0, runtimeReadTopicLimit);
   if (unique.length === 0) return [];
+  /*
+    Okuma başlık kilidi altında (7 Ekim 2026): yazım, geri açma, taşıma ve gizleme aynı
+    kilidi alır; entry listesi, tanım ve görünür sayı aynı anı yansıtır. Yazım anındaki
+    değişiklik kontrolü bu tutarlılığa dayanır (Sol 4e7179b P2).
+  */
+  await lockTopicState(transaction, unique);
   const visibleEntry = {
     where: { status: "ACTIVE" as const, ...publiclyVisibleEntryWhere },
     select: {
@@ -2847,9 +2854,10 @@ export async function getRuntimeReadTopics(
     ),
   );
   /*
-    `entryCount` görünür entry sayısıdır (7 Ekim 2026). Sayaç `topics.entryCount` gizli
-    tohum entry'lerini de sayıyordu; okumanın başlığın tamamı olup olmadığı yazım anındaki
-    değişiklik kontrolü için bu sayıyla kesin bilinir (Sol 7af32ce P2).
+    `visibleEntryCount` görünür entry sayısıdır (7 Ekim 2026); `entryCount` sayacı gizli
+    tohum entry'lerini de sayar ve eski anlamıyla kalır. Okumanın başlığın tamamı olup
+    olmadığı yazım anındaki değişiklik kontrolü için bu sayıyla kesin bilinir (Sol 7af32ce,
+    4e7179b P2: anlamı değişen alan eski snapshot'larla karışıyordu).
   */
   const visibleCounts = await Promise.all(
     topics.map((topic) =>
@@ -2871,7 +2879,8 @@ export async function getRuntimeReadTopics(
     return {
       id: topic.id,
       title: topic.title,
-      entryCount: visibleCounts[index] ?? 0,
+      entryCount: topic.entryCount,
+      visibleEntryCount: visibleCounts[index] ?? 0,
       entries: ordered.map((entry) => ({
         id: entry.id,
         body: entry.body,
