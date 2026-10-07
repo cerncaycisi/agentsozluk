@@ -539,6 +539,17 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       leaseToken,
     );
     expect(JSON.stringify(context.perception)).toContain(humanTopicId);
+    /*
+      Dolu başlığa `CREATE_ENTRY` yalnız koşunun okuduğu başlığa kabul edilir (7 Ekim 2026);
+      gerçek worker gibi gezinme fazında başlık okunur.
+    */
+    const read = await runtimeGet<{ perception: { readTopics?: { id: string }[] } }>(
+      request,
+      `/api/v1/internal/agent-runtime/runs/${runId}/context?readTopicIds=${humanTopicId}`,
+      workerId,
+      leaseToken,
+    );
+    expect(read.perception.readTopics?.map(({ id }) => id)).toEqual([humanTopicId]);
     agentEntryBody = `Agent society E2E runtime entry ${suffix}; görünür topic bağlamına dayanan benzersiz içerik.`;
     await runtimeApi(request, `/api/v1/internal/agent-runtime/runs/${runId}/actions`, {
       workerId,

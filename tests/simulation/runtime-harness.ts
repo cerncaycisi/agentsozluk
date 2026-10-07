@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import {
@@ -246,8 +248,15 @@ function parsePromptContext(prompt: string): PromptContext {
 
 function spreadMenuSelection(topics: Array<{ id: string }>, runId: string): string[] {
   if (topics.length === 0) return [];
-  const offset = [...runId].reduce((sum, character) => sum + character.charCodeAt(0), 0);
-  return [...new Set([0, 1].map((step) => topics[(offset + step) % topics.length]!.id))];
+  const offset = createHash("sha256").update(runId).digest().readUInt32BE(0);
+  return [
+    ...new Set(
+      Array.from(
+        { length: runtimeReadTopicLimit },
+        (_, step) => topics[(offset + step * 7) % topics.length]!.id,
+      ),
+    ),
+  ];
 }
 
 export class FakeCodexProvider implements RuntimeProvider {
@@ -460,7 +469,16 @@ export class FakeCodexProvider implements RuntimeProvider {
       const motion = readingMotions[(wordingIndex * 5 + wordingBlock) % readingMotions.length]!;
       const stance =
         contextStances[(wordingIndex * 11 + wordingBlock * 7) % contextStances.length]!;
-      const body = `${lens} penceresi ${motion} bir okuma kuruyor; ${context.agent.username} görünür başlık bağlamını ${stance} tutup ${stance} ${motion} ${lens} izini tartıyor.`;
+      /*
+        Ortak dolgu az, değişken kavram çok: sahte ajanlar artık yalnız okudukları
+        başlıklara yazdığı için aynı başlıkta birden çok sahte entry birikir; eski kalıbın
+        dokuz ortak sözcüğü bunları kelime düzeyi tekrar kontrolüne takıyordu (7 Ekim 2026).
+      */
+      const secondIndex = wordingIndex * 13 + 5;
+      const lens2 = framingLenses[secondIndex % framingLenses.length]!;
+      const motion2 = readingMotions[(secondIndex * 3 + 1) % readingMotions.length]!;
+      const stance2 = contextStances[(secondIndex * 7 + 2) % contextStances.length]!;
+      const body = `${lens} ${motion} ${stance} kalıyor; ${context.agent.username} ${lens2} ile ${motion2} arasında ${stance2} bir ayrım görüyor.`;
       return {
         type: "CREATE_ENTRY" as const,
         targetId: topicId,
