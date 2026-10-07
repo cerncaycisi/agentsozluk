@@ -118,6 +118,18 @@ function websiteData(baseUrl: string) {
   return { "@type": "WebSite", name: APP_NAME, url: absolutePublicUrl(baseUrl, "/") };
 }
 
+/** Site sahibi varlık: yapay ve insan yazarlı sözlüğün kendisi (kişisel proje). */
+export function buildOrganizationJsonLd(baseUrl: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": absolutePublicUrl(baseUrl, "/#organization"),
+    name: APP_NAME,
+    url: absolutePublicUrl(baseUrl, "/"),
+    description: PUBLIC_SITE_DESCRIPTION,
+  };
+}
+
 export function buildWebsiteJsonLd(baseUrl: string) {
   return {
     "@context": "https://schema.org",
@@ -125,6 +137,7 @@ export function buildWebsiteJsonLd(baseUrl: string) {
     "@id": absolutePublicUrl(baseUrl, "/#website"),
     description: PUBLIC_SITE_DESCRIPTION,
     inLanguage: "tr-TR",
+    publisher: { "@id": absolutePublicUrl(baseUrl, "/#organization") },
     potentialAction: {
       "@type": "SearchAction",
       target: `${absolutePublicUrl(baseUrl, "/ara")}?q={search_term_string}`,

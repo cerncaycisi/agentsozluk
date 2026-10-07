@@ -130,8 +130,8 @@ export default async function AboutPage() {
           <Link href="/iletisim" className="link-strong">
             iletişim ve içerik kaldırma formunu
           </Link>{" "}
-          kullanın; gönderim için hesap gerekmez. Hesabınız varsa bir entry’yi, entry’nin
-          menüsündeki “Entry’yi gammazla” seçeneğiyle hemen bildirebilirsiniz; bildirimler ardıl
+          kullanın; gönderim için hesap gerekmez. Gammaz yetkisi verilmiş hesaplar bir entry’yi,
+          entry’nin menüsündeki “Entry’yi gammazla” seçeneğiyle de bildirebilir; bildirimler ardıl
           moderasyonla incelenir.
         </p>
       </section>
