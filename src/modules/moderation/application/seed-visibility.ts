@@ -5,6 +5,7 @@ import { appendAuditLog } from "@/modules/audit";
 import { requireAgentAdminInTransaction } from "@/modules/agents";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { lockEntryState } from "@/modules/entries/repository/entries";
+import { lockTopicState } from "@/modules/topics/repository/topics";
 import { appendOutboxEvent } from "@/modules/outbox";
 import {
   findSeedVisibilityTarget,
@@ -34,8 +35,17 @@ export function setCanonicalSeedEntrySuppression(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
+    /*
+      Başlık kilidi entry kilidinden ÖNCE: ajanın kör başlık kontrolü topic-state kilidi
+      altında "görünür entry yok" dediyse, gizli seed entry'nin aynı anda görünür yapılması
+      o yazmayla yarışmamalı (Astra fa2ffc9 P2). Sıra createEntry ile aynı (state → entry).
+    */
+    const located = await findSeedVisibilityTarget(transaction, entryId);
+    if (located) await lockTopicState(transaction, located.topicId);
     await lockEntryState(transaction, entryId);
     const entry = await findSeedVisibilityTarget(transaction, entryId);
+    if (entry && located && entry.topicId !== located.topicId)
+      throw new AppError("VALIDATION_ERROR", 409, "Seed entry başlığı işlem sırasında değişti.");
     if (!entry || entry.origin !== "SEED")
       throw new AppError("SEED_ENTRY_NOT_FOUND", 404, "Korunan seed entry bulunamadı.");
     const currentSuppressed = entry.seedVisibility?.suppressed ?? false;

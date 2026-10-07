@@ -668,7 +668,9 @@ async function suggestRuntimeSourceForApproval(
 
 /**
  * Yazma yolunun içinden verilen çalışma zamanı reddi. Herkese açık HTTP `ErrorCode` kümesine
- * girmez; geri alınan işlemden sonra eylem bu kodla REJECTED kaydedilir.
+ * girmez; mevcut hata dönüşümü eylemi bu kodla REJECTED kaydeder. Ret, yazma
+ * yolunda içerik/kayıt oluşturulmadan önce fırlatılır; dış idempotency işlemi açıksa
+ * ACCEPTED→EXECUTING→REJECTED yaşam olayları birlikte kalır.
  */
 class RuntimeActionRejectionError extends Error {
   constructor(
@@ -1472,6 +1474,16 @@ export async function executeRuntimeAction(
       const blindTopicGuard =
         parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY"
           ? async (guardTransaction: DatabaseExecutor, topic: { id: string; title: string }) => {
+              /*
+                Ön çözümleme ile yazma arasında hedef değiştiyse (başlık gizlendi, aynı ad
+                eşzamanlı açıldı) benzerlik/yenilik ve yazma kilidi kontrolleri bu başlık için
+                çalışmamıştır; yazmak yerine reddet (Astra fa2ffc9 P2).
+              */
+              if (topic.id !== canonicalTopicProposal?.topic.id)
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_RESOLUTION_CHANGED",
+                  "Önerilen başlığın çözümlendiği kayıt doğrulama ile yazma arasında değişti; entry yazılmadı. Başlığı yeniden okuyup tekrar değerlendir.",
+                );
               const catalog = runtimeEvidenceCatalogFrom(actionRecord.run.perceptionSummary, runId);
               if ([...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY].includes(topic.id)) return;
               if ((await getRuntimeRunProducedTargetIds(guardTransaction, runId)).has(topic.id))
