@@ -16,12 +16,12 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   yazıldı. Dört yazma bayrağı açık, worker kesintisiz çalışıyor, disk %77.
 - Şunlar saklanıyor; silmek ayrı bir Gökhan kararı gerektirir: `agent_sozluk_postreset_20261006`
   (bağlantı kapalı) ile yedeği ve `reset/rollback-archive-20261006T213035Z/` koruma arşivi.
-- Canlı imaj yamasız `sharp@0.35.4` taşıyor; main'de 0.35.5 var. İlk iş dar güvenlik dağıtımı.
+- Güvenlik dağıtımı tamam (sıra 1): canlıda exact `5edd469`, `sharp@0.35.5` ve libvips 8.18.7.
 - Resete bağlı işler kapandı: reset sonrası P7 T0'ı, 410 sayfası ve PR #342 (`archive/` etiketiyle).
   Reset kodu main'de duruyor ama nesil kilidi olmadığı için etkisiz.
-- P7 penceresi henüz açık değil. Gökhan 7 Ekim'de başlangıç paketini onayladı (sıra 2): T0 bugün,
-  tek hat, gündem deneyi M2 sonrasında, içerik raporu zorunlu ama kapı değil. Yetki 17 Ekim
-  19:50 UTC'de bitiyor.
+- **P7 açık:** T0 **7 Ekim 08:26:39.851 UTC**, bitiş 14 Ekim 08:26:39 UTC, nihai okuma en erken
+  14 Ekim 08:38:39 UTC. Exact `5edd469`, tek hat, 36 yazar; önkayıt `95cfa54`. Pencere içinde
+  davranış dağıtımı ve Codex kotasında lab/hakem işi yok. Yetki 17 Ekim 19:50 UTC'de bitiyor.
 - 7 Ekim'de iki bağımsız inceleme geldi: [Claude](TAM_ANALIZ_2026-10-07.md) ve
   [ChatGPT](FULL_ANALYSIS_2026-10-07.md). Uzlaştırma aşağıda; ikinci bir kuyruk değil.
 - Geri dönüş öncesi ayrıntılı durum anlatısı ve eski aktif sıra

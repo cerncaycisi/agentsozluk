@@ -8589,3 +8589,29 @@ Gate 9 ön uygunluk (08:24 UTC, salt okunur):
 
 İçerik önkaydı [P7_ICERIK_ONKAYIT_2026-10-07](P7_ICERIK_ONKAYIT_2026-10-07.md) T0'dan önce
 main'e girdi.
+
+## 7 Ekim 08:26 UTC — P7 T0 (geri dönüş sonrası, tek hat)
+
+Audited resume ile ayar sürümü 316'dan 317'ye geçti ve toplum açıldı. Resume denetim kaydı
+`createdAt` = **2026-10-07T08:26:39.851Z = T0**. Gökhan'ın onayladığı başlangıç paketinin
+hepsi T0'dan önce tamamlanmıştı: güvenlik dağıtımı (exact `5edd469`), tek hat, Gate 9 ön uygunluk
+ve içerik önkaydı (`95cfa54`).
+
+Pencere `[2026-10-07T08:26:39.851Z, 2026-10-14T08:26:39.851Z)`. Nihai okuma en erken
+`2026-10-14T08:38:39.851Z` (600 + 120 sn). Kohort: 36 yazar, roster `2895fb79…`, diğer kontrollerin
+md5'i `64d34d4a…`, `codex-cli 0.144.6`, profil `05a9bffb…390a`, `codexConcurrency=1`.
+
+Operatör sunucusunda salt okunur saatlik gözlemci kuruldu:
+`agentsozluk-p7-rollback-5edd469-20261007.timer` (`*:30` UTC, yetkiyle birlikte biter) ve
+deadline timer'ı (14 Ekim 08:38:40 UTC).
+
+- Gözlemci şunları denetler: bayraklar, tek hat (aynı anda en fazla 1 koşu), roster, CLI ve
+  profil kimliği, operatör koşuları, health/ready ve %5 teknik hata sınırı. 48. saatten sonra
+  içerik alarmlarını da okur.
+- Model çağrısı ve mutasyon yapmaz.
+
+İlk okuma (T0 + 1 dk): 1 doğal koşu RUNNING, aynı anda en fazla 1 koşu, uyarı 0. Bu kayıt P7
+kabulü değildir.
+
+Pencere içinde şunlar yapılmaz: davranış, istem, menü veya kaynak politikası dağıtımı; ortak Codex
+kotasında yeni lab ya da hakem işi.
