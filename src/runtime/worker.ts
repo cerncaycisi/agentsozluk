@@ -1061,7 +1061,14 @@ function normalizedDecision(
 }
 
 function visibleTopicCatalog(perception: Record<string, unknown>) {
-  const directTopics = recordArray(perception.writerOpenedTopics);
+  /*
+    Okunan başlıklar da katalogda: okunmuş başlığa yeni-başlık önerisi CREATE_ENTRY'ye
+    çevrilir ve yenilik denetimine girer (Astra, 7 Ekim).
+  */
+  const directTopics = [
+    ...recordArray(perception.writerOpenedTopics),
+    ...recordArray(perception.readTopics),
+  ];
   const nestedTopics = [
     ...recordArray(perception.recentEntries),
     ...recordArray(perception.ownRecentEntries),
@@ -1838,72 +1845,80 @@ export class AgentRuntimeWorker {
           throw error;
         }
       }
-      // Son gözden geçirme sağlayıcısı (AW ile aynı) yoksa kapı da yoktur.
-      const noveltyCandidates =
-        reflectionOnly || !this.#options.actionWorthinessProvider
-          ? []
-          : runtimeNoveltyCandidates(decision, context.perception);
-      if (noveltyCandidates.length > 0) {
-        await enterPhase("VALIDATING");
-        const dropped = new Set<number>();
-        const noveltyStats = {
-          candidateCount: noveltyCandidates.length,
+      /*
+        Yenilik denetimi: hem AW sonrası adaylar hem içerik onarımının yeniden yazdığı gövde
+        için aynı çağrı. Sayaçlar ilk denetimden önce kayda bağlanır; koşu faz ortasında
+        düşerse `/fail` de tamamlanan denetimleri taşır. Son gözden geçirme sağlayıcısı (AW ile
+        aynı) yoksa kapı da yoktur.
+      */
+      const noveltyProvider = reflectionOnly ? undefined : this.#options.actionWorthinessProvider;
+      const noveltyStats = () =>
+        (novelty ??= {
+          candidateCount: 0,
           checkedCount: 0,
           droppedCount: 0,
           failedOpenCount: 0,
           skippedCount: 0,
-        };
-        for (const [index, candidate] of noveltyCandidates.entries()) {
-          await heartbeat();
-          deadline.throwIfStopped();
-          const timeoutMs = Math.min(
-            RUNTIME_NOVELTY_MAX_TIMEOUT_MS,
-            deadline.remainingMs() - RUNTIME_NOVELTY_EXECUTION_RESERVE_MS,
-          );
-          if (index >= runtimeNoveltyCallLimit || timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS) {
-            noveltyStats.skippedCount += 1;
-            continue;
-          }
-          try {
-            const noveltyResult = await invokeCodex(
-              {
-                runId,
-                prompt: buildNoveltyPrompt(candidate),
-                outputSchema: runtimeNoveltyVerdictJsonSchema,
-                timeoutMs,
-                debugRetentionHours: context.run.debugRetentionHours,
-                signal: deadline.signal,
-              },
-              "NOVELTY",
-              this.#options.actionWorthinessProvider,
-            );
-            providerResult = {
-              ...noveltyResult,
-              durationMs: providerResult.durationMs + noveltyResult.durationMs,
-            };
-            const verdict = runtimeNoveltyVerdictSchema.parse(noveltyResult.output);
-            noveltyStats.checkedCount += 1;
-            if (verdict.karar === "VAZGEC") {
-              dropped.add(candidate.sequence);
-              noveltyStats.droppedCount += 1;
-            }
-          } catch (rawNoveltyError) {
-            const noveltyError = deadline.normalizeError(rawNoveltyError);
-            if (noveltyError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
-              throw noveltyError;
-            /*
-              Çağrı hatası ya da geçersiz çıktı taslağı susturmaz ("emin değilsen YAYIMLA");
-              sayılır ve olay olarak bildirilir.
-            */
-            noveltyStats.failedOpenCount += 1;
-            this.#options.onSafeEvent?.({
-              level: "error",
-              code: "NOVELTY_CHECK_FAILED_OPEN",
-              runId,
-            });
-          }
+        });
+      const checkNovelty = async (
+        candidate: RuntimeNoveltyCandidate,
+        allowed: boolean,
+      ): Promise<"YAYIMLA" | "VAZGEC" | null> => {
+        const stats = noveltyStats();
+        stats.candidateCount += 1;
+        await heartbeat();
+        deadline.throwIfStopped();
+        const timeoutMs = Math.min(
+          RUNTIME_NOVELTY_MAX_TIMEOUT_MS,
+          deadline.remainingMs() - RUNTIME_NOVELTY_EXECUTION_RESERVE_MS,
+        );
+        if (!allowed || timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS) {
+          stats.skippedCount += 1;
+          return null;
         }
-        novelty = noveltyStats;
+        try {
+          const noveltyResult = await invokeCodex(
+            {
+              runId,
+              prompt: buildNoveltyPrompt(candidate),
+              outputSchema: runtimeNoveltyVerdictJsonSchema,
+              timeoutMs,
+              debugRetentionHours: context.run.debugRetentionHours,
+              signal: deadline.signal,
+            },
+            "NOVELTY",
+            noveltyProvider,
+          );
+          providerResult = {
+            ...noveltyResult,
+            durationMs: (providerResult?.durationMs ?? 0) + noveltyResult.durationMs,
+          };
+          const verdict = runtimeNoveltyVerdictSchema.parse(noveltyResult.output);
+          stats.checkedCount += 1;
+          if (verdict.karar === "VAZGEC") stats.droppedCount += 1;
+          return verdict.karar;
+        } catch (rawNoveltyError) {
+          const noveltyError = deadline.normalizeError(rawNoveltyError);
+          if (noveltyError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+            throw noveltyError;
+          /*
+            Çağrı hatası ya da geçersiz çıktı taslağı susturmaz ("emin değilsen YAYIMLA");
+            sayılır ve olay olarak bildirilir.
+          */
+          stats.failedOpenCount += 1;
+          this.#options.onSafeEvent?.({ level: "error", code: "NOVELTY_CHECK_FAILED_OPEN", runId });
+          return null;
+        }
+      };
+      const noveltyCandidates = noveltyProvider
+        ? runtimeNoveltyCandidates(decision, context.perception)
+        : [];
+      if (noveltyCandidates.length > 0) {
+        await enterPhase("VALIDATING");
+        const dropped = new Set<number>();
+        for (const [index, candidate] of noveltyCandidates.entries())
+          if ((await checkNovelty(candidate, index < runtimeNoveltyCallLimit)) === "VAZGEC")
+            dropped.add(candidate.sequence);
         if (dropped.size > 0) {
           decision = applyRuntimeNoveltyDrops(decision, dropped);
           this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
@@ -2023,10 +2038,31 @@ export class AgentRuntimeWorker {
                 nextSequence,
                 repairableRejection.rejectionCode ?? undefined,
               );
+              /*
+                Onarım gövdeyi değiştirir; ilk taslağın yenilik hükmü yeni metne taşınmaz.
+                Onarılan entry okunan dolu başlığa gidiyorsa bir kez daha denetlenir
+                (koşu başına tek onarım, dolayısıyla tek ek çağrı).
+              */
+              const repairNoveltyCandidate =
+                repairCandidate && noveltyProvider
+                  ? runtimeNoveltyCandidates(
+                      { ...decision, actions: [repairCandidate] },
+                      context.perception,
+                    )[0]
+                  : undefined;
               if (!repairCandidate) {
                 this.#options.onSafeEvent?.({
                   level: "error",
                   code: "CONTENT_REPAIR_CANDIDATE_INVALID",
+                  runId,
+                });
+              } else if (
+                repairNoveltyCandidate &&
+                (await checkNovelty(repairNoveltyCandidate, true)) === "VAZGEC"
+              ) {
+                this.#options.onSafeEvent?.({
+                  level: "info",
+                  code: "CONTENT_REPAIR_NOVELTY_DROPPED",
                   runId,
                 });
               } else {

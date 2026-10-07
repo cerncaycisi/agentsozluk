@@ -6,7 +6,11 @@ import {
   runCapacityBenchmark,
   runConcurrencyCapabilityTest,
 } from "@/runtime/capability-benchmark";
-import { createCapabilityBenchmarkDiagnosticCollector } from "@/runtime/capability-diagnostics";
+import {
+  capabilityBenchmarkDiagnosticsSchema,
+  createCapabilityBenchmarkDiagnosticCollector,
+} from "@/runtime/capability-diagnostics";
+import { runtimeNoveltyVerdictJsonSchema } from "@/runtime/novelty-gate";
 import {
   type RuntimeProvider,
   RuntimeProviderExecutionError,
@@ -324,6 +328,60 @@ describe("Codex capability benchmark harness", () => {
       proposedEntryActionCount: 10,
       failureRate: 0,
     });
+  });
+
+  it("measures novelty calls for entries written into read topics", async () => {
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
+        if (prompt.includes("Taslağın:")) return { ...result(200), output: { karar: "YAYIMLA" } };
+        if (prompt.includes("# Final action-worthiness decision"))
+          return { ...result(500), output: worthinessOutput() };
+        const readTopicId = /"readTopics":\[\{"id":"([0-9a-f-]{36})"/u.exec(prompt)?.[1];
+        const candidate = candidateOutput();
+        return {
+          ...result(1000),
+          output: readTopicId
+            ? {
+                ...candidate,
+                actions: candidate.actions.map((action) => ({ ...action, targetId: readTopicId })),
+              }
+            : candidate,
+        };
+      }),
+    };
+    const diagnostics: unknown[] = [];
+
+    const measurement = await runCapacityBenchmark(provider, {
+      baseUrl: "http://127.0.0.1:3000",
+      fetchImplementation: healthyFetch,
+      plannedContentRuns: 70,
+      diagnosticSink: (diagnostic) => diagnostics.push(diagnostic),
+    });
+
+    const noveltyCalls = vi
+      .mocked(provider.invoke)
+      .mock.calls.filter(([request]) => request.prompt.includes("Taslağın:"));
+    const denseScenarios = CAPACITY_BENCHMARK_SCENARIOS.filter(
+      ({ denseContext }) => denseContext,
+    ).length;
+    expect(denseScenarios).toBeGreaterThan(0);
+    expect(noveltyCalls).toHaveLength(denseScenarios);
+    expect(noveltyCalls[0]![0].outputSchema).toBe(runtimeNoveltyVerdictJsonSchema);
+    expect(measurement.maxDurationMs).toBe(1700);
+    expect(measurement.p50DurationMs).toBe(1500);
+    expect(
+      capabilityBenchmarkDiagnosticsSchema
+        .parse({
+          version: 1,
+          mode: "capacity",
+          terminalCode: "BENCHMARK_COMPLETED",
+          scenarios: diagnostics,
+        })
+        .scenarios.filter(({ stages }) => stages.at(-1)?.stage === "NOVELTY"),
+    ).toHaveLength(denseScenarios);
   });
 
   it("uses one bounded semantic repair and includes both calls in measured duration", async () => {

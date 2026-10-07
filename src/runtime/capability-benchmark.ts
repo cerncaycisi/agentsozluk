@@ -10,14 +10,22 @@ import { parseRuntimeDecisionOutput, runtimeNormalDecisionWireJsonSchema } from 
 import type { RuntimeProvider, RuntimeProviderResult } from "@/runtime/provider";
 import {
   buildActionWorthinessPrompt,
+  buildNoveltyPrompt,
   buildRuntimePrompt,
   RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
 } from "@/runtime/worker";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 import {
+  applyRuntimeActionWorthinessVerdict,
   parseRuntimeActionWorthinessVerdict,
   runtimeActionWorthinessVerdictJsonSchema,
 } from "@/runtime/action-worthiness";
+import {
+  runtimeNoveltyCallLimit,
+  runtimeNoveltyCandidates,
+  runtimeNoveltyVerdictJsonSchema,
+  runtimeNoveltyVerdictSchema,
+} from "@/runtime/novelty-gate";
 import {
   type CapabilityBenchmarkScenarioDiagnostic,
   type CapabilityBenchmarkStageDiagnostic,
@@ -212,8 +220,9 @@ async function invokeBenchmarkDecision(
     diagnostics?.providerFailure("ACTION_WORTHINESS", error);
     throw error;
   }
+  let verdict;
   try {
-    parseRuntimeActionWorthinessVerdict(reviewResult.output, candidateSequences);
+    verdict = parseRuntimeActionWorthinessVerdict(reviewResult.output, candidateSequences);
     diagnostics?.pass("ACTION_WORTHINESS");
   } catch (error) {
     diagnostics?.schemaFailure(
@@ -225,10 +234,39 @@ async function invokeBenchmarkDecision(
     );
     throw error;
   }
-  return {
-    ...combineSequentialResults(decisionResult, reviewResult),
-    output: decisionResult.output,
-  };
+  /*
+    Yenilik kapısı worker'daki gibi AW'nin seçtiği, okunan dolu başlığa yazılan entry'ler
+    için çalışır; maliyeti kapasite kanıtına girmeli (Astra, 7 Ekim). Worker hatada
+    yayımlar, benchmark ise geçersiz çıktıyı başarısızlık sayar: ölçülen şey modelin bu
+    sözleşmeyi taşıyıp taşımadığıdır.
+  */
+  let combined = combineSequentialResults(decisionResult, reviewResult);
+  const noveltyCandidates = runtimeNoveltyCandidates(
+    applyRuntimeActionWorthinessVerdict(parsed.data, verdict),
+    context.perception,
+  ).slice(0, runtimeNoveltyCallLimit);
+  for (const candidate of noveltyCandidates) {
+    let noveltyResult: RuntimeProviderResult;
+    try {
+      noveltyResult = await provider.invoke({
+        runId: context.run.id,
+        prompt: buildNoveltyPrompt(candidate),
+        outputSchema: runtimeNoveltyVerdictJsonSchema,
+        timeoutMs: Math.max(1, timeoutMs - combined.durationMs),
+      });
+    } catch (error) {
+      diagnostics?.providerFailure("NOVELTY", error);
+      throw error;
+    }
+    const parsedNovelty = runtimeNoveltyVerdictSchema.safeParse(noveltyResult.output);
+    if (!parsedNovelty.success) {
+      diagnostics?.schemaFailure("NOVELTY", "CODEX_NOVELTY_OUTPUT_INVALID", parsedNovelty.error);
+      throw parsedNovelty.error;
+    }
+    diagnostics?.pass("NOVELTY");
+    combined = combineSequentialResults(combined, noveltyResult);
+  }
+  return { ...combined, output: decisionResult.output };
 }
 
 interface Scenario {
@@ -458,8 +496,47 @@ function benchmarkContext(scenario: Scenario, index: number): RuntimeContext {
           ]
         : [],
       duplicateCandidate: scenario.duplicateBody ?? null,
+      /*
+        Yoğun senaryolarda ajan başlıkları gezinip okumuş gibi davranır; böylece okunan
+        başlığa yazılan entry yenilik çağrısını tetikler (üretimde başarılı CREATE_ENTRY'nin
+        tamamı okunan başlığa yazılıyor, 1–5 Ekim ölçümü).
+      */
+      ...(scenario.denseContext ? { readTopics: benchmarkReadTopics(entries) } : {}),
     },
   };
+}
+
+function benchmarkReadTopics(
+  entries: Array<{
+    id: string;
+    body: string;
+    createdAt: string;
+    topic: { id: string; title: string | undefined };
+    author: { username: string };
+  }>,
+) {
+  const topics = new Map<string, { id: string; title: string; entries: typeof entries }>();
+  for (const entry of entries) {
+    const topic = topics.get(entry.topic.id) ?? {
+      id: entry.topic.id,
+      title: entry.topic.title ?? "",
+      entries: [],
+    };
+    topic.entries.push(entry);
+    topics.set(entry.topic.id, topic);
+  }
+  return [...topics.values()].slice(0, 3).map((topic) => ({
+    id: topic.id,
+    title: topic.title,
+    entryCount: topic.entries.length,
+    entries: topic.entries.map((entry) => ({
+      id: entry.id,
+      username: entry.author.username,
+      mine: false,
+      body: entry.body,
+      createdAt: entry.createdAt,
+    })),
+  }));
 }
 
 export function capacityBenchmarkRequest(index = 0) {

@@ -4488,6 +4488,215 @@ describe("runtime novelty gate", () => {
     ]);
   });
 
+  const noveltyResult = (output: unknown, durationMs = 2) => ({
+    provider: "codex-cli" as const,
+    version: "test",
+    durationMs,
+    output,
+  });
+  const actAll = (sequences: number[]) =>
+    noveltyResult({
+      verdict: "ACT",
+      confidence: 0.7,
+      evaluations: sequences.map((sequence) => ({
+        sequence,
+        decision: "ACCEPT",
+        safeReason: "Katkı adayı.",
+      })),
+      selectedSequences: sequences,
+      safeReason: "Aday uygulanabilir.",
+    });
+
+  it("canonicalizes a new-topic proposal for a read topic and checks its novelty", async () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    context.perception.readTopics = [
+      noveltyReadTopic(topicId, [{ username: "ayse", body: "Native Son 1940'ta yayımlandı." }]),
+    ];
+    plane.context = vi.fn().mockResolvedValue(context);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue(
+        noveltyResult(
+          canonicalNormalOutput("Aday üretildi.", {
+            actions: [
+              {
+                type: "CREATE_TOPIC_WITH_ENTRY",
+                title: "Richard Wright",
+                body: "Native Son 1940 yılında çıktı.",
+                desire: 0.6,
+                safeReason: "Başlığa katkı adayı.",
+                claimProvenance: [],
+              },
+            ],
+          }),
+          5,
+        ),
+      ),
+    };
+    const reviewer: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce(actAll([1]))
+        .mockResolvedValueOnce(noveltyResult({ karar: "VAZGEC" })),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "novelty-worker",
+      credentials: [`agt_${"w".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      actionWorthinessProvider: reviewer,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(reviewer.invoke).toHaveBeenCalledTimes(2);
+    expect(plane.recordActions).toHaveBeenCalledWith(
+      expect.any(String),
+      "novelty-worker",
+      runId,
+      LEASE_TOKEN,
+      [expect.objectContaining({ actionType: "NO_ACTION" })],
+      expect.any(Object),
+      expect.any(Object),
+      FIXTURE_CONTEXT_HASH,
+    );
+  });
+
+  it("checks the novelty of a content-repaired body before recording it", async () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    context.perception.readTopics = [
+      noveltyReadTopic(topicId, [{ username: "ayse", body: "Native Son 1940'ta yayımlandı." }]),
+    ];
+    plane.context = vi.fn().mockResolvedValue(context);
+    plane.executeActions = vi.fn().mockResolvedValueOnce({
+      actions: [
+        {
+          id: randomUUID(),
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          actionStatus: "REJECTED",
+          rejectionCode: "TOPIC_SEMANTIC_REPETITION",
+        },
+      ],
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce(
+          noveltyResult(
+            canonicalNormalOutput("Aday üretildi.", {
+              actions: [noveltyEntryAction(topicId, "Wright'ın sürgünü romanlarına yön verdi.")],
+            }),
+            5,
+          ),
+        )
+        .mockResolvedValueOnce(
+          noveltyResult({ canRepair: true, body: "Native Son 1940 yılında yayımlanmıştı." }),
+        ),
+    };
+    const reviewer: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce(actAll([1]))
+        .mockResolvedValueOnce(noveltyResult({ karar: "YAYIMLA" }))
+        .mockResolvedValueOnce(noveltyResult({ karar: "VAZGEC" })),
+    };
+    const events: string[] = [];
+    const worker = new AgentRuntimeWorker({
+      workerId: "novelty-worker",
+      credentials: [`agt_${"w".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      actionWorthinessProvider: reviewer,
+      onSafeEvent: ({ code }) => events.push(code),
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(reviewer.invoke).toHaveBeenCalledTimes(3);
+    expect(reviewer.invoke).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining("Taslağın:\nNative Son 1940 yılında yayımlanmıştı."),
+      }),
+    );
+    expect(events).toContain("CONTENT_REPAIR_NOVELTY_DROPPED");
+    expect(plane.recordActions).toHaveBeenCalledTimes(1);
+    expect(plane.executeActions).toHaveBeenCalledTimes(1);
+    const completion = vi.mocked(plane.complete).mock.calls[0]![4] as {
+      usageMetadata: Record<string, unknown>;
+    };
+    expect(completion.usageMetadata.novelty).toEqual({
+      candidateCount: 2,
+      checkedCount: 2,
+      droppedCount: 1,
+      failedOpenCount: 0,
+      skippedCount: 0,
+    });
+  });
+
+  it("keeps completed novelty counts when the run is cancelled mid-phase", async () => {
+    const runId = randomUUID();
+    const firstTopic = randomUUID();
+    const secondTopic = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    context.perception.readTopics = [
+      noveltyReadTopic(firstTopic, [{ username: "ayse", body: "Native Son 1940'ta yayımlandı." }]),
+      noveltyReadTopic(secondTopic, [{ username: "can", body: "Black Boy otobiyografidir." }]),
+    ];
+    plane.context = vi.fn().mockResolvedValue(context);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue(
+        noveltyResult(
+          canonicalNormalOutput("Aday üretildi.", {
+            actions: [
+              noveltyEntryAction(firstTopic, "Native Son 1940 yılında çıktı."),
+              noveltyEntryAction(secondTopic, "Black Boy yazarın çocukluğunu anlatır."),
+            ],
+          }),
+          5,
+        ),
+      ),
+    };
+    const reviewer: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce(actAll([1, 2]))
+        .mockResolvedValueOnce(noveltyResult({ karar: "VAZGEC" }))
+        .mockRejectedValueOnce(new RuntimeProviderCancelledError()),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "novelty-worker",
+      credentials: [`agt_${"w".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      actionWorthinessProvider: reviewer,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(plane.recordActions).not.toHaveBeenCalled();
+    const failure = vi.mocked(plane.fail).mock.calls[0]![4] as {
+      usageMetadata: Record<string, unknown>;
+    };
+    expect(failure.usageMetadata.novelty).toEqual({
+      candidateCount: 2,
+      checkedCount: 1,
+      droppedCount: 1,
+      failedOpenCount: 0,
+      skippedCount: 0,
+    });
+    expect(usageMetadataSchema.parse(failure.usageMetadata).novelty).toBeDefined();
+  });
+
   it("publishes the draft when the novelty call fails", async () => {
     const runId = randomUUID();
     const topicId = randomUUID();

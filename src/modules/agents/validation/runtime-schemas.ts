@@ -360,10 +360,10 @@ const safeRunSummarySchema = z
   yayımlanıyordu. Limit gezinmeyi kapsayacak şekilde büyütüldü; onarım kapısı
   ayrıca gezinme çağrısını saymıyor.
 
-  7 (7 Ekim 2026): yenilik kapısı koşu başına en fazla iki ayrı çağrı ekler; içerik onarım
-  kapısı bunları da saymaz.
+  8 (7 Ekim 2026): yenilik kapısı AW sonrası en fazla iki, içerik onarımından sonra bir
+  çağrı ekler; içerik onarım kapısı bunları saymaz.
 */
-export const runtimeCodexInvocationLimit = 7;
+export const runtimeCodexInvocationLimit = 8;
 
 /*
   Ajanın gezinme fazında okumak için seçebileceği başlık sayısı. TEK KAYNAK:

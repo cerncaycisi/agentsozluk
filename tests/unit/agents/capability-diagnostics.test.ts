@@ -46,6 +46,67 @@ describe("capacity benchmark safe diagnostics", () => {
     ).toThrow();
   });
 
+  it("accepts novelty stages only after a passing action-worthiness stage", () => {
+    const pass = (stage: string) => ({ stage, outcome: "PASS", safeCode: "OK", issues: [] });
+    const scenario = (stages: unknown[], finalStatus = "PASS") =>
+      capabilityBenchmarkDiagnosticsSchema.safeParse({
+        version: 1,
+        mode: "capacity",
+        terminalCode: "BENCHMARK_COMPLETED",
+        scenarios: [
+          {
+            scenario: "dense-topic-context",
+            lane: null,
+            finalStatus,
+            repairAttempted: false,
+            stages,
+          },
+        ],
+      }).success;
+    const failedNovelty = {
+      stage: "NOVELTY",
+      outcome: "SCHEMA_INVALID",
+      safeCode: "CODEX_NOVELTY_OUTPUT_INVALID",
+      issues: [],
+    };
+    expect(
+      scenario([
+        pass("DECISION_PRIMARY"),
+        pass("ACTION_WORTHINESS"),
+        pass("NOVELTY"),
+        pass("NOVELTY"),
+      ]),
+    ).toBe(true);
+    expect(
+      scenario([pass("DECISION_PRIMARY"), pass("ACTION_WORTHINESS"), failedNovelty], "FAIL"),
+    ).toBe(true);
+    expect(scenario([pass("DECISION_PRIMARY"), pass("NOVELTY")])).toBe(false);
+    expect(scenario([pass("DECISION_PRIMARY"), pass("NOVELTY"), pass("ACTION_WORTHINESS")])).toBe(
+      false,
+    );
+    expect(
+      scenario([
+        pass("DECISION_PRIMARY"),
+        pass("ACTION_WORTHINESS"),
+        pass("NOVELTY"),
+        pass("NOVELTY"),
+        pass("NOVELTY"),
+      ]),
+    ).toBe(false);
+    expect(
+      scenario(
+        [pass("DECISION_PRIMARY"), pass("ACTION_WORTHINESS"), failedNovelty, pass("NOVELTY")],
+        "FAIL",
+      ),
+    ).toBe(false);
+    expect(
+      capabilityBenchmarkStageDiagnosticSchema.safeParse({
+        ...failedNovelty,
+        safeCode: "CODEX_DECISION_OUTPUT_INVALID",
+      }).success,
+    ).toBe(false);
+  });
+
   it("retains only bounded Zod codes and sanitized paths", () => {
     const rawSecret = "RAW_SECRET_VALUE_MUST_NOT_LEAK";
     const parsed = z

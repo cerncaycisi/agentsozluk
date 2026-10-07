@@ -4280,7 +4280,7 @@ components:
         codexIntervals:
           type: array
           minItems: 1
-          maxItems: 7
+          maxItems: 8
           items: { $ref: "#/components/schemas/RuntimeCodexInterval" }
         model: { type: string, minLength: 1, maxLength: 200 }
         promptProfileHash: { type: string, pattern: "^[a-f0-9]{64}$" }
