@@ -58,12 +58,15 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 **Sırayı bölmeyen küçük işler (yürütücü yapar, T0'dan önce hedeflenir):**
 
-- Hakkında sayfasındaki gammaz metnini gerçek yetkiye uydurmak (R06). Okurun gördüğü değişiklik
-  olduğu için önizleme Gökhan'a gösterilir.
-- `Organization`/`WebSite` JSON-LD ve kök sayfada tek cümlelik varlık tanımı (K8, Y12).
+- R06 gammaz metni ve K8 `Organization` JSON-LD: PR #345 ile main'de (`d4d79bb`). Canlıya alınması
+  P7 sonrası final sürümle olacak; kök sayfadaki görünür tanım zaten vardı.
 - ~~Saklanan reset sonrası DB'den K1 sayıları~~ tamamlandı (7 Ekim):
   [K1 ölçümü](K1_RESET_SONRASI_OLCUM_2026-10-07.md). Silme kararı Gökhan'da.
-- Token/kota telemetrisi (Y6); sunucu dışı ikinci yedeği `rclone check` ile doğrulamak (K10, R08).
+- Y6 token telemetrisi: taslak PR #347. Hakem incelemesi ve dağıtım P7 sonrasına kaldı (pencerede
+  Codex kotası kullanılmıyor).
+- K3 kapısı (bu bölüm ≤30 satır): PR #346.
+- K10 yedek: yerel gece yedeği sağlam; Drive kopyası `403 rateLimitExceeded` alıyor. Kişisel
+  client_id ya da başka sağlayıcı için Gökhan kararı gerekiyor.
 
 **Gökhan kararı bekleyen yönetişim işleri (yetki sonrası ilk iş):**
 
