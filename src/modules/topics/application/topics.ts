@@ -25,6 +25,7 @@ import {
   getTopicSnippetEntry,
   isFollowingTopic,
   listTopicDirectoryPage,
+  lockTopicState,
   lockTopicTitles,
   type TopicSummaryRecord,
 } from "@/modules/topics/repository/topics";
@@ -193,6 +194,29 @@ export async function resolveCanonicalTopicProposal(
     const exact = await findTopicConflict(transaction, normalizedTitle);
     if (exact) return { topic: exact, reason: "EXACT_OR_ALIAS" as const };
     /*
+      Sıra oluşturma servisiyle aynı: tam/alias → varyant → slug. 7 Ekim Astra (PR #348):
+      öneri slug'ı varyanttan önce seçiyordu, oluşturma tersini; kontrol edilen başlık ile
+      entry'nin yazıldığı başlık ayrışabiliyordu.
+    */
+    const variantCandidates = canonicalCandidates.filter(
+      (candidate) => candidate.normalizedQuery !== normalizedTitle,
+    );
+    if (variantCandidates.length > 0) {
+      const conflicts = await findActiveTopicConflicts(
+        transaction,
+        variantCandidates.map((candidate) => candidate.normalizedQuery),
+      );
+      for (const candidate of variantCandidates) {
+        const topic = conflicts.find(
+          (conflict) =>
+            conflict.normalizedTitle === candidate.normalizedQuery ||
+            conflict.aliases.some((alias) => alias.normalizedTitle === candidate.normalizedQuery),
+        );
+        if (topic) return { topic, reason: candidate.reason };
+      }
+    }
+
+    /*
       SLUG çakışması. Benzersizlik `normalizedTitle` üzerinde ama adres
       `slug` üzerinden kuruluyor ve slug üretimi kayıplı. "j cut" başlığı
       "j-cut" ile aynı slug'ı üretir, farklı `normalizedTitle` taşır ve bugüne
@@ -207,32 +231,37 @@ export async function resolveCanonicalTopicProposal(
       if (collision) return { topic: collision, reason: "SLUG_COLLISION" as const };
     }
 
-    const variantCandidates = canonicalCandidates.filter(
-      (candidate) => candidate.normalizedQuery !== normalizedTitle,
-    );
-    if (variantCandidates.length === 0) return null;
-    const conflicts = await findActiveTopicConflicts(
-      transaction,
-      variantCandidates.map((candidate) => candidate.normalizedQuery),
-    );
-    for (const candidate of variantCandidates) {
-      const topic = conflicts.find(
-        (conflict) =>
-          conflict.normalizedTitle === candidate.normalizedQuery ||
-          conflict.aliases.some((alias) => alias.normalizedTitle === candidate.normalizedQuery),
-      );
-      if (topic) return { topic, reason: candidate.reason };
-    }
-
     return null;
   });
+}
+
+async function guardExistingTopic(
+  transaction: DatabaseExecutor,
+  topic: { id: string; title: string },
+  guard?: (transaction: DatabaseExecutor, topic: { id: string; title: string }) => Promise<void>,
+) {
+  if (!guard) return;
+  // createEntry de aynı başlık kilidini alır; xact advisory kilit aynı işlemde yeniden alınabilir.
+  await lockTopicState(transaction, topic.id);
+  await guard(transaction, topic);
 }
 
 export async function createTopicWithFirstEntry(
   client: DatabaseExecutor,
   actor: ActorContext,
   input: TopicCreateInput,
-  options: { canonicalConflictStrategy?: "REJECT" | "ADD_ENTRY" } = {},
+  options: {
+    canonicalConflictStrategy?: "REJECT" | "ADD_ENTRY";
+    /**
+     * Entry var olan bir başlığa eklenecekse, başlık kilidi alındıktan sonra ve yazmadan
+     * hemen önce çağrılır. Kontrol, gerçekten yazılacak başlıkla aynı başlığa ve aynı kilit
+     * altında bakar; hata fırlatırsa entry yazılmaz.
+     */
+    existingTopicGuard?: (
+      transaction: DatabaseExecutor,
+      topic: { id: string; title: string },
+    ) => Promise<void>;
+  } = {},
 ) {
   const normalizedTitle = normalizeTopicTitle(input.title);
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
@@ -248,6 +277,7 @@ export async function createTopicWithFirstEntry(
     const conflict = await findTopicConflict(transaction, normalizedTitle);
     if (conflict) {
       if (options.canonicalConflictStrategy !== "ADD_ENTRY") throw topicExistsError(conflict);
+      await guardExistingTopic(transaction, conflict, options.existingTopicGuard);
       const entry = await createEntry(transaction, actor, conflict.id, {
         body: input.entryBody,
       });
@@ -275,6 +305,7 @@ export async function createTopicWithFirstEntry(
           if (canonicalTopic) {
             if (options.canonicalConflictStrategy !== "ADD_ENTRY")
               throw topicCanonicalSuggestionError(canonicalTopic, candidate);
+            await guardExistingTopic(transaction, canonicalTopic, options.existingTopicGuard);
             const entry = await createEntry(transaction, actor, canonicalTopic.id, {
               body: input.entryBody,
             });
@@ -304,6 +335,7 @@ export async function createTopicWithFirstEntry(
               normalizedQuery: collision.normalizedTitle,
               reason: "SLUG_COLLISION" as const,
             });
+          await guardExistingTopic(transaction, collision, options.existingTopicGuard);
           const entry = await createEntry(transaction, actor, collision.id, {
             body: input.entryBody,
           });

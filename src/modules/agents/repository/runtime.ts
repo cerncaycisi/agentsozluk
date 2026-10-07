@@ -1053,6 +1053,16 @@ export async function getRuntimeRecentAgentEntryBodies(
   return records.map(({ entry }) => entry.body);
 }
 
+/** Kör tekrar kapısı için yalnız sayı: başlıkta okurun gördüğü aktif entry var mı. */
+export async function countRuntimeVisibleTopicEntries(
+  transaction: Prisma.TransactionClient,
+  topicId: string,
+): Promise<number> {
+  return transaction.entry.count({
+    where: { topicId, status: "ACTIVE", ...publiclyVisibleEntryWhere },
+  });
+}
+
 export async function getRuntimeTopicNoveltyContext(
   transaction: Prisma.TransactionClient,
   input: { topicId: string; authorId: string; excludeEntryId?: string },

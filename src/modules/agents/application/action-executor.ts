@@ -51,6 +51,7 @@ import {
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
   getRuntimeTopicNoveltyContext,
+  countRuntimeVisibleTopicEntries,
   lockRuntimeAction,
   lockRuntimeAgent,
   lockRuntimeRunForLeaseMutation,
@@ -665,11 +666,29 @@ async function suggestRuntimeSourceForApproval(
   };
 }
 
+/**
+ * Yazma yolunun içinden verilen çalışma zamanı reddi. Herkese açık HTTP `ErrorCode` kümesine
+ * girmez; geri alınan işlemden sonra eylem bu kodla REJECTED kaydedilir.
+ */
+class RuntimeActionRejectionError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "RuntimeActionRejectionError";
+  }
+}
+
 async function performAction(
   transaction: TransactionClient,
   principal: RuntimePrincipal,
   action: ParsedRuntimeAction,
   target: Extract<RuntimeActionTargetResolution, { ok: true }>,
+  existingTopicGuard?: (
+    transaction: DatabaseExecutor,
+    topic: { id: string; title: string },
+  ) => Promise<void>,
 ): Promise<{
   result: InputJsonValue;
   entryId?: string;
@@ -704,6 +723,7 @@ async function performAction(
         },
         {
           canonicalConflictStrategy: "ADD_ENTRY",
+          ...(existingTopicGuard ? { existingTopicGuard } : {}),
         },
       );
       return {
@@ -1182,38 +1202,6 @@ export async function executeRuntimeAction(
             });
         }
       }
-      /*
-        Kör tekrar kapısı (7 Ekim, Gökhan: Richard Wright başlığında iki yazar aynı bilgiyi
-        yazdı). "Yeni başlık" önerisi zaten var olan ve görünür entry taşıyan bir başlığa
-        çözülüyorsa ve ajan o başlığı bu koşuda görmediyse, entry başlıktaki hiçbir entry
-        okunmadan yazılmış olur: ne karar ne AW ne de onarım mevcut entry'leri görür; geriye
-        yalnız paraphrase'ı kaçıran kelime düzeyi kontrol kalır. Ölçüm: reset öncesi 7 günde
-        doğal entry'lerin 378/1.795'i (~%21) bu yoldan geldi. Sözlük kuralı okumadan
-        yazmamak; başlık boşsa ya da ajan onu bu koşuda gördüyse davranış değişmez. Onarılabilir
-        değildir, çünkü onarım da başlığı görmez.
-      */
-      if (parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && canonicalTopicProposal) {
-        const existingTopicId = canonicalTopicProposal.topic.id;
-        const catalog = runtimeEvidenceCatalogFrom(actionRecord.run.perceptionSummary, runId);
-        const presentedTopic = [...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY].includes(
-          existingTopicId,
-        );
-        if (
-          !presentedTopic &&
-          !(await getRuntimeRunProducedTargetIds(transaction, runId)).has(existingTopicId)
-        ) {
-          const existing = await getRuntimeTopicNoveltyContext(transaction, {
-            topicId: existingTopicId,
-            authorId: principal.actor.actorId,
-          });
-          if (existing && existing.otherAuthorBodies.length + existing.ownPreviousBodies.length > 0)
-            return rejectAction(transaction, principal, actionRecord, {
-              code: "TOPIC_EXISTS_UNREAD",
-              reason:
-                "Anayasa Madde 16: Önerilen başlık sözlükte zaten var ve görünür entry'ler taşıyor; bu koşuda okunmadığı için entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir tanım, örnek, karşılaştırma, çekince veya görüş ekleyeceksen yaz.",
-            });
-        }
-      }
       const traversedLinkedTopicId =
         resolvedTarget.topicId !== undefined &&
         linkedTopicIds(actionRecord.run.perceptionSummary).has(resolvedTarget.topicId)
@@ -1470,7 +1458,38 @@ export async function executeRuntimeAction(
         "ACCEPTED",
         "EXECUTING",
       );
-      const execution = await performAction(transaction, principal, parsed.data, resolvedTarget);
+      /*
+        Kör tekrar kapısı (7 Ekim, Gökhan: Richard Wright başlığında iki yazar aynı bilgiyi
+        yazdı). "Yeni başlık" önerisi var olan ve görünür entry taşıyan bir başlığa
+        çözülüyorsa ve ajan o başlığı bu koşuda görmediyse entry hiçbir entry okunmadan
+        yazılmış olur: karar, AW ve onarım mevcut entry'leri görmez; kelime düzeyi tekrar
+        kontrolü paraphrase'ı kaçırır. Ölçüm: reset öncesi 7 günde doğal entry'lerin
+        378/1.795'i (~%21) bu yoldan geldi. Kontrol oluşturma servisinin içinde, entry'nin
+        gerçekten yazılacağı başlıkta ve o başlığın kilidi altında çalışır (Astra PR #348:
+        öndeki kontrol başka başlığa bakabiliyor ve eşzamanlı dolumu kaçırabiliyordu).
+        Boş başlıkta veya görülen başlıkta davranış değişmez; onarılabilir değildir.
+      */
+      const blindTopicGuard =
+        parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY"
+          ? async (guardTransaction: DatabaseExecutor, topic: { id: string; title: string }) => {
+              const catalog = runtimeEvidenceCatalogFrom(actionRecord.run.perceptionSummary, runId);
+              if ([...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY].includes(topic.id)) return;
+              if ((await getRuntimeRunProducedTargetIds(guardTransaction, runId)).has(topic.id))
+                return;
+              if ((await countRuntimeVisibleTopicEntries(guardTransaction, topic.id)) === 0) return;
+              throw new RuntimeActionRejectionError(
+                "TOPIC_EXISTS_UNREAD",
+                "Anayasa Madde 16: Önerilen başlık sözlükte zaten var ve görünür entry'ler taşıyor; bu koşuda okunmadığı için entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir tanım, örnek, karşılaştırma, çekince veya görüş ekleyeceksen yaz.",
+              );
+            }
+          : undefined;
+      const execution = await performAction(
+        transaction,
+        principal,
+        parsed.data,
+        resolvedTarget,
+        blindTopicGuard,
+      );
       if (traversedLinkedTopicId)
         await appendRuntimeEvent(transaction, {
           agentProfileId: principal.agentProfileId,
@@ -1592,7 +1611,7 @@ export async function executeRuntimeAction(
     if (!started) throw error;
     await dependencies.beforeFallback?.();
     const rejection =
-      error instanceof AppError
+      error instanceof AppError || error instanceof RuntimeActionRejectionError
         ? { status: "REJECTED" as const, code: error.code, reason: error.message }
         : {
             status: "FAILED" as const,
