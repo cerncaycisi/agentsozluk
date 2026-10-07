@@ -8676,3 +8676,31 @@ başladı; #347 (Y6) incelemesi de paralel yürüyor.
 
 Sınır: bu kapı yalnız kör tekrar sınıfını kapatır. Başlığı görerek yapılan tekrarlar (2 Ekim
 ölçümünde yoğun başlıklarda %35) için yazma öncesi model karşılaştırması (6.3-3) ayrı iştir.
+
+## 7 Ekim 13:30–16:30 UTC — #348 birleşti, yenilik kapısı (#350) ölçüldü
+
+- PR #348 (kör yeni-başlık kapısı) exact `0a700d64bf2bf6feeb4245a3adfde338f650df51`: Sol 6.1 3. tur
+  **GO**. Önceden var olan iki P2 karara katılmadı: başlık adı/state kilit döngüsü ve `CREATE_ENTRY`
+  yolunda üretilmiş-hedef muafiyeti. Yedi CI kontrolü yeşil. `--match-head-commit` ile birleşti,
+  main `23691ef`.
+- Salt okunur üretim ölçümü (1–5 Ekim, doğal koşular):
+  - Başarılı `CREATE_ENTRY`'lerin 499/499'u koşunun okuduğu başlığa yazılmış. Yenilik kapısı bu
+    yüzden worker'da, `readTopics` bağlamıyla çalışabiliyor.
+  - AW bittiğinde kalan süre p50 246 sn, p05 72 sn; koşu sınırı 480 sn.
+- PR #350 yenilik kapısı (`NOVELTY` fazı): birebir üretim istemi ve bayraklarıyla
+  (`gpt-5.6-luna`, `max`, `--output-schema`) 2 Ekim kör doğrulama seti ölçüldü:
+  - TEKRAR 21/30 durdu; KISMİ 30/30 ve YENİ 55/55 korundu.
+  - Kararlar önceki B v2 ölçümüyle 111/111 aynı. İlk koşuda 4 çağrı çıktısız kaldı; ikinci koşu
+    eksikleri tamamladı.
+  - Richard Wright çifti (`21829` → `21849`) 3/3 `VAZGEC`.
+- Astra 1. tur (`b09c518`) **NO-GO**, dört P2:
+  - Okunan başlığa `CREATE_TOPIC_WITH_ENTRY` kapıyı atlıyor.
+  - İçerik onarımı gövdesi denetlenmiyor.
+  - Kapasite benchmark'ı `NOVELTY`'yi ölçmüyor.
+  - Faz ortasında sayaçlar kayboluyor.
+    Dördü `ad02b42`'de düzeltildi; Astra 2. tur sürüyor.
+- Yerel doğrulama: 2.606 birim testi geçti. Düşen 4 test `verify-m2-e2e-isolation`; yerelde
+  Node 24 olmasından kaynaklanıyor ve main'de de düşüyor.
+- **Do not repeat:**
+  - Yenilik istemini değiştirince aynı kör setle yeniden ölçmeden dağıtma.
+  - Karar/AW istemine "tekrar etme" cümlesi eklemek ölçülebilir fark yaratmadı (v50/v51); o yola dönme.

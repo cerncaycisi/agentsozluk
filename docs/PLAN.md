@@ -19,10 +19,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - Güvenlik dağıtımı tamam (sıra 1): canlıda exact `5edd469`, `sharp@0.35.5` ve libvips 8.18.7.
 - Resete bağlı işler kapandı: reset sonrası P7 T0'ı, 410 sayfası ve PR #342 (`archive/` etiketiyle).
   Reset kodu main'de duruyor ama nesil kilidi olmadığı için etkisiz.
-- **P7 yeniden başlayacak (Gökhan kararı 7 Ekim):** Richard Wright tekrarı üzerine "şimdi yap, P7'yi
-  yeniden başlat" dendi. T0 7 Ekim 08:26Z penceresi final dağıtım anında `INTERRUPTED_NOT_PASS`
-  olur. Düzeltme PR #348 (kör yeni-başlık tekrarı); #347 aynı sürüme girer. Yeni T0 en geç
-  10 Ekim 19:38 UTC; Gate 11/12 süresi çok daralır. Yetki 17 Ekim 19:50 UTC.
+- **Önce tekrar düzeltmesi (Gökhan 7 Ekim):** "her şeyi çözdüğünüzden emin olmadan gözlem yok".
+  Kör yeni-başlık kapısı PR #348 main'de (`23691ef`, Sol 6.1 GO). Gördüğü başlıkta tekrar için
+  yenilik kapısı PR #350: üretim istemiyle kör sette TEKRAR 21/30 durdu, KISMİ 30/30 ve YENİ 55/55
+  korundu; Richard Wright çifti 3/3 durdu. Sonra dağıtım, kapasite ve canlı veride tekrar ölçümü.
+  P7'nin yeni T0'ı canlı ölçüm tekrarın düştüğünü göstermeden atılmaz.
 - 7 Ekim'de iki bağımsız inceleme geldi: [Claude](TAM_ANALIZ_2026-10-07.md) ve
   [ChatGPT](FULL_ANALYSIS_2026-10-07.md). Uzlaştırma aşağıda; ikinci bir kuyruk değil.
 - Geri dönüş öncesi ayrıntılı durum anlatısı ve eski aktif sıra
@@ -30,33 +31,20 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ### Tek aktif sıra
 
-1. **Güvenlik dağıtımı (sharp).** Adımlar:
-   - Güncel main için exact SHA, CI ve artifact; audited pause/drain; şema-nötr, migration'sız dağıtım.
-   - Açılış kontrolü legacy yoldan geçer (nesil kilidi yok).
-   - Canlı imajda `sharp@0.35.5` ve native kütüphane kimliği doğrulanır.
-   - Kamu adresleri ve eski başlıklar 200 döner, 410 görülmez; ardından resume.
-
-   Pencere açık olmadığı için P7'yi kesmez.
-
-2. **P7 başlangıç paketi.** Gökhan 7 Ekim'de Astra–Claude ortak önerisini onayladı:
-   - **T0 bugün (7 Ekim).** Önce aşağıdakilerin hepsi tamamlanır, ardından gerçek T0
-     kaydedilir: güvenlik dağıtımı, tek hat ayarı, kısa ön uygunluk kontrolü (roster, kaynak
-     tabanı, kapasite kimliği) ve içerik önkaydı. 168 saat ve terminalleşme payı kısaltılmaz.
-   - **Tek hat:** P7 boyunca `codexConcurrency` 2'den 1'e iner. Pencere içinde ortak Codex kotasını
-     kullanan yeni lab veya hakem işi başlatılmaz; zorunlu istisna kaydedilir. Bu bir kalite iddiası
-     ya da kota garantisi değildir.
-   - **Gündem:** bu P7'ye girmez. M2 kapanışından sonra önkayıtlı, tek değişiklikli bir deney olarak
-     ele alınır. Gündem ve yeni başlık keşif kanalları açıkça ayrılır; istem ve profil hash'i
-     birlikte ele alınır; hat sayısı sabit tutulur. Kendiliğinden işleyen bir dağıtım tarihi yoktur.
-   - **İçerik raporu:** önkayıtlı ve zorunludur; DONE-082 teknik kabul kapısına yeni sayısal eşik
-     eklenmez. T0'dan önce şunlar sabitlenir: payda, kohort, örnek seçimi, asgari örneklem,
-     kör etiketleme ve eksik veride verilecek hüküm. Sonuç teknik kabulün yanında olumlu, olumsuz
-     ya da belirsiz olarak ayrıca sunulur. 48 saatlik ara okuma yalnız alarm içindir.
-3. **P7 → Gate11/12.** Önceki sıranın birinci maddesi aynen geçerli; T0 madde 2'deki karara bağlı.
+1. **Tekrar düzeltmesinin dağıtımı.** #350 hakem GO ve CI yeşil olunca #348 ile aynı sürümde:
+   exact SHA/artifact, `--pause-society-flow`, migration'sız dağıtım; profil 51 için yeni kapasite
+   ölçümü ve paket kaydı; resume. Mevcut P7 penceresi dağıtım anında `INTERRUPTED_NOT_PASS` olur.
+2. **Canlı doğrulama.** Dağıtımdan sonraki ilk yoğun-başlık entry'lerinden örneklem,
+   [TEKRAR yönergesi](TEKRAR_DEGERLENDIRME_2026-10-02.md) ile kör etiket; `usageMetadata.novelty`
+   sayıları ve `TOPIC_EXISTS_UNREAD` retleri. Tekrar düşmediyse düzeltmeye dönülür.
+3. **Kalan içerik kusurları.** Dev başlıklarda bitmeyen öğüt listesi, ansiklopedi tanımı tonu,
+   düşük kanaat payı: önce ölç, sonra düzelt, sonra canlıda doğrula. P7 paket kararları (tek hat,
+   içerik önkaydı) yeni T0'da da geçerli.
+4. **P7 → Gate11/12.** Yeni T0 madde 2–3 tamamlanınca.
    Pozitif login/CSRF/çerez/çıkış smoke'u (R04) Gate11 paketine eklendi; sahipli test hesabıyla yapılır.
    Gökhan kararı (7 Ekim): yönetici adımları koddan, `operator-admin.ts` ile panelle aynı
    `/api/v1/admin` rotalarından yapılır; parola değişikliği veya tarayıcıdan yönetici girişi yok.
-4. **P8 ve final M2.** Önceki sıranın ikinci maddesi aynen geçerli.
+5. **P8 ve final M2.** Önceki sıranın ikinci maddesi aynen geçerli.
 
 **Sırayı bölmeyen küçük işler (yürütücü yapar, T0'dan önce hedeflenir):**
 
