@@ -7818,6 +7818,112 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
   });
 
+  it.each([
+    {
+      label: "a whole sixteen-entry read narrowed by the agent's own entries",
+      humanEntries: 15,
+      hiddenIndex: 0,
+      agentWritesBeforeRestore: 2,
+      hideNewestOnRestore: false,
+    },
+    {
+      label: "a long-topic window that widens when a newer entry is hidden",
+      humanEntries: 19,
+      hiddenIndex: 3,
+      agentWritesBeforeRestore: 0,
+      hideNewestOnRestore: true,
+    },
+  ])(
+    "catches an entry restored after the read in $label",
+    async ({ humanEntries, hiddenIndex, agentWritesBeforeRestore, hideNewestOnRestore }) => {
+      // Sol 7af32ce P2 karşı örnekleri: tam 16 entry'lik okuma ve genişleyen pencere.
+      const fixture = await createFixture();
+      const topic = await createTopicWithFirstEntry(
+        integrationDatabase,
+        adminActor(fixture.admin.id),
+        { title: `geri açma sınırı ${randomUUID()}`, entryBody: "Sınır başlığının tanımı." },
+      );
+      const created = [];
+      for (let index = 0; index < humanEntries; index += 1)
+        created.push(
+          await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
+            body: `Sınır başlığında insanın yazdığı entry ${index}.`,
+          }),
+        );
+      const hidden = created[hiddenIndex]!;
+      const newest = created.at(-1)!;
+      await integrationDatabase.entry.update({
+        where: { id: hidden.id },
+        data: { status: "HIDDEN", hiddenAt: new Date() },
+      });
+      const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+      const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+      const writePrincipal = await runtimePrincipal(fixture.credential);
+      const workerId = `restore-boundary-worker-${hiddenIndex}`;
+      const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+        workerId,
+        leaseSeconds: 60,
+      });
+      const runId = leased.run!.id;
+      await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+      await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+        topic.topic.id,
+      ]);
+      const execute = (sequence: number) =>
+        executeRuntimeActionApplication(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+          { requireLifeLedger: false },
+        );
+      const total = agentWritesBeforeRestore + 1;
+      await recordRuntimeActions(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeActionsSchema.parse({
+          workerId,
+          actions: Array.from({ length: total }, (_, index) => ({
+            sequence: index + 1,
+            actionType: "CREATE_ENTRY" as const,
+            safeReason: "Okunan başlığa yeni bir ayrıntı eklenir.",
+            targetType: "TOPIC" as const,
+            targetId: topic.topic.id,
+            input: {
+              topicId: topic.topic.id,
+              body: [
+                "Sınırı belirleyen ölçüm aralığı haftalık değil günlük tutulmalı.",
+                "Bir başka açıdan bakınca maliyet tablosu kullanıcı sayısıyla birlikte okunmalı.",
+                "Geri açılan entry görülmeden eklenen ve reddedilmesi gereken son görüş.",
+              ][index]!,
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT" as const,
+              evidenceIds: [runId],
+              shortRationale: "Runtime run sınır kuralı için görünür kanıttır.",
+            },
+          })),
+        }),
+      );
+      for (let sequence = 1; sequence <= agentWritesBeforeRestore; sequence += 1)
+        await expect(execute(sequence)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+      await integrationDatabase.entry.update({
+        where: { id: hidden.id },
+        data: { status: "ACTIVE", hiddenAt: null },
+      });
+      if (hideNewestOnRestore)
+        await integrationDatabase.entry.update({
+          where: { id: newest.id },
+          data: { status: "HIDDEN", hiddenAt: new Date() },
+        });
+      await expect(execute(total)).resolves.toMatchObject({
+        actionStatus: "REJECTED",
+        rejectionCode: "TOPIC_CHANGED_SINCE_READ",
+      });
+    },
+  );
+
   it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {
     /*
       Madde 32 başlık onarımı sunucuda da kabul edilmeli (Astra 55e8273 P2): eskiden sunucu

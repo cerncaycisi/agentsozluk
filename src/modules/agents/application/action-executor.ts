@@ -56,7 +56,6 @@ import {
   getRuntimeTopicNoveltyContext,
   countRuntimeVisibleTopicEntries,
   hasRuntimeTopicChangedSinceRead,
-  runtimeReadTopicEntryLimit,
   lockRuntimeAction,
   lockRuntimeAgent,
   lockRuntimeRunForLeaseMutation,
@@ -1522,7 +1521,6 @@ export async function executeRuntimeAction(
         const snapshot = runtimeReadTopicSnapshot(
           actionRecord.run.perceptionSummary,
           resolvedTarget.topicId,
-          runtimeReadTopicEntryLimit,
         );
         if (
           !snapshot &&
@@ -1535,12 +1533,13 @@ export async function executeRuntimeAction(
           });
         /*
           Okunduktan sonra başkasının yazdığı, taşıdığı ya da geri açtığı entry'ler yenilik
-          denetiminde görülmedi (Sol f75ddca P1). Karşılaştırma okuma sözleşmesine göre:
-          okuma başlığın tamamıysa görülmemiş her yabancı entry, değilse okunan pencerenin
-          `(createdAt, id)` sınırından yenisi ve değişen tanım entry'si (Sol e9377fa ve a9aff4f
-          P2: zaman penceresi eşitlikte yanlış reddediyordu; yeniden okuma ajanın kendi
-          entry'leriyle daralıp geri açılan entry'yi kaçırıyordu). Ajanın kendi entry'leri
-          sayılmaz: aynı koşudaki ikinci entry kendi tekrar kontrolünden geçer.
+          denetiminde görülmedi (Sol f75ddca P1). İki kuralın birleşimi: (1) okunan bölgeye —
+          okuma tamsa her yere, değilse okunan pencerenin `(createdAt, id)` sınırından yeniye —
+          giren görülmemiş yabancı entry; (2) şimdi aynı fonksiyonla okunsa görülecek
+          görülmemiş yabancı entry (tanım dahil). (1) ajanın kendi entry'leri pencereyi
+          daralttığında, (2) görünürlük azalıp pencere genişlediğinde yakalar (Sol e9377fa,
+          a9aff4f, 7af32ce P2). Ajanın kendi entry'leri sayılmaz: aynı koşudaki ikinci entry
+          kendi tekrar kontrolünden geçer.
         */
         if (
           snapshot &&

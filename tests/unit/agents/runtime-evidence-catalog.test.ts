@@ -88,20 +88,22 @@ describe("runtime read topic snapshot", () => {
     id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
     createdAt: new Date(Date.UTC(2026, 9, 7, 10, index)).toISOString(),
   });
-  it("marks a short read as the whole topic and a long read by its window start", () => {
+  it("uses the visible entry count to tell a whole-topic read from a window", () => {
     const topicId = "10000000-0000-4000-8000-000000000001";
-    expect(runtimeReadTopicSnapshot({ readTopics: [] }, topicId, 15)).toBeNull();
-    expect(
-      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entries: [] }] }, topicId, 15),
-    ).toEqual({ seenEntryIds: [], windowStart: null });
+    const read = (entryCount: number | undefined, entries: unknown[]) =>
+      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entryCount, entries }] }, topicId);
+    expect(runtimeReadTopicSnapshot({ readTopics: [] }, topicId)).toBeNull();
+    expect(read(0, [])).toEqual({ seenEntryIds: [], windowStart: null });
     // Okuma sırası: tanım (0), sonra en yeni on beş eskiden yeniye (6..20).
     const long = [entry(0), ...Array.from({ length: 15 }, (_, index) => entry(6 + index))];
-    expect(
-      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entries: long }] }, topicId, 15),
-    ).toEqual({
+    // Tam 16 görünür entry: okuma başlığın tamamıdır.
+    expect(read(16, long)).toEqual({ seenEntryIds: long.map(({ id }) => id), windowStart: null });
+    expect(read(21, long)).toEqual({
       seenEntryIds: long.map(({ id }) => id),
       windowStart: { id: entry(6).id, createdAt: new Date(entry(6).createdAt) },
     });
+    // Sayı yoksa en sıkı yorum.
+    expect(read(undefined, long)?.windowStart).toBeNull();
     expect(runtimeReadTopicIds({ readTopics: [{ id: topicId }, { title: "kimliksiz" }] })).toEqual(
       new Set([topicId]),
     );

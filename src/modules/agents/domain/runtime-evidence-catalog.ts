@@ -177,14 +177,15 @@ export function runtimeReadTopicIds(perceptionSummary: unknown): Set<string> {
 
 /**
  * Okunan başlığın snapshot'ı; başlık okunmadıysa null. Snapshot sırası okuma
- * fonksiyonundan gelir: tanım entry'si, ardından en yeni pencere eskiden yeniye. Snapshot
- * `newestLimit`'ten uzunsa okuma başlığın tamamı değildi; `windowStart` pencerenin en eski
- * entry'sidir (snapshot'ın ikinci öğesi).
+ * fonksiyonundan gelir: tanım entry'si, ardından en yeni pencere eskiden yeniye. Okuma,
+ * görünür entry sayısı (`entryCount`) kadar entry taşıyorsa başlığın tamamıdır
+ * (`windowStart` null); değilse `windowStart` pencerenin en eski entry'sidir (ikinci öğe).
+ * Sayı ya da sınır okunamazsa en sıkı yorum: okuma tamdı, görülmemiş her yabancı entry
+ * değişikliktir.
  */
 export function runtimeReadTopicSnapshot(
   perceptionSummary: unknown,
   topicId: string,
-  newestLimit: number,
 ): { seenEntryIds: string[]; windowStart: { id: string; createdAt: Date } | null } | null {
   const perception =
     perceptionSummary && typeof perceptionSummary === "object" && !Array.isArray(perceptionSummary)
@@ -199,12 +200,13 @@ export function runtimeReadTopicSnapshot(
     const id = stringField(entry, "id");
     return id ? [id] : [];
   });
-  if (entries.length <= newestLimit) return { seenEntryIds, windowStart: null };
+  const entryCount = typeof topic.entryCount === "number" ? topic.entryCount : null;
+  if (entryCount === null || entryCount <= entries.length || entries.length < 2)
+    return { seenEntryIds, windowStart: null };
   const boundary = entries[1]!;
   const id = stringField(boundary, "id");
   const createdAt = stringField(boundary, "createdAt");
   const time = createdAt ? new Date(createdAt) : null;
-  // Bozuk snapshot'ta pencere bilinmiyor: en sıkı yorum, okumanın tam olduğunu varsaymaktır.
   if (!id || !time || Number.isNaN(time.getTime())) return { seenEntryIds, windowStart: null };
   return { seenEntryIds, windowStart: { id, createdAt: time } };
 }

@@ -1079,15 +1079,17 @@ export async function hasRuntimeTopicChangedSinceRead(
     authorId: string;
   },
 ): Promise<boolean> {
+  const seen = new Set(input.seenEntryIds);
   const visible = {
     topicId: input.topicId,
     status: "ACTIVE" as const,
     ...publiclyVisibleEntryWhere,
   };
-  const unseenInWindow = await transaction.entry.count({
+  // 1. Okunan bölgeye (tam okumada her yere) giren görülmemiş yabancı entry.
+  const unseenInReadRegion = await transaction.entry.count({
     where: {
       ...visible,
-      id: { notIn: [...input.seenEntryIds] },
+      id: { notIn: [...seen] },
       authorId: { not: input.authorId },
       ...(input.windowStart
         ? {
@@ -1099,16 +1101,12 @@ export async function hasRuntimeTopicChangedSinceRead(
         : {}),
     },
   });
-  if (unseenInWindow > 0) return true;
-  const definition = await transaction.entry.findFirst({
-    where: visible,
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: { id: true, authorId: true },
-  });
+  if (unseenInReadRegion > 0) return true;
+  // 2. Şimdi okunsa görülecek (tanım dahil) görülmemiş yabancı entry: görünürlük azalıp
+  // pencere genişlediğinde ya da tanım değiştiğinde (Sol 7af32ce P2).
+  const [current] = await getRuntimeReadTopics(transaction, [input.topicId]);
   return Boolean(
-    definition &&
-    definition.authorId !== input.authorId &&
-    !input.seenEntryIds.includes(definition.id),
+    current?.entries.some((entry) => !seen.has(entry.id) && entry.authorId !== input.authorId),
   );
 }
 
@@ -2848,6 +2846,16 @@ export async function getRuntimeReadTopics(
       }),
     ),
   );
+  /*
+    `entryCount` görünür entry sayısıdır (7 Ekim 2026). Sayaç `topics.entryCount` gizli
+    tohum entry'lerini de sayıyordu; okumanın başlığın tamamı olup olmadığı yazım anındaki
+    değişiklik kontrolü için bu sayıyla kesin bilinir (Sol 7af32ce P2).
+  */
+  const visibleCounts = await Promise.all(
+    topics.map((topic) =>
+      transaction.entry.count({ where: { ...visibleEntry.where, topicId: topic.id } }),
+    ),
+  );
   return topics.map((topic, index) => {
     const firstEntry = firstEntries[index];
     /*
@@ -2863,7 +2871,7 @@ export async function getRuntimeReadTopics(
     return {
       id: topic.id,
       title: topic.title,
-      entryCount: topic.entryCount,
+      entryCount: visibleCounts[index] ?? 0,
       entries: ordered.map((entry) => ({
         id: entry.id,
         body: entry.body,
