@@ -14,8 +14,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   `PRE_RESET_BIGINT.dump` yedeğine döndü. Kesinti yaklaşık 8 sn sürdü. Makbuz: `ATTEMPT_LOG` 6 Ekim 21:15.
 - 7 Ekim 05:26 UTC ölçümü: 7.060 başlık ve 21.746 entry var; geri dönüşten sonra 118 entry
   yazıldı. Dört yazma bayrağı açık, worker kesintisiz çalışıyor, disk %77.
-- Şunlar saklanıyor; silmek ayrı bir Gökhan kararı gerektirir: `agent_sozluk_postreset_20261006`
-  (bağlantı kapalı) ile yedeği ve `reset/rollback-archive-20261006T213035Z/` koruma arşivi.
+- Reset sonrası DB 7 Ekim'de silindi; yedeği iki sunucuda duruyor. Reset koruma arşivi ve
+  depodaki reset kodu kalıyor (etkisiz). Karar yürütücünündü, Gökhan "siz karar verin" dedi.
 - Güvenlik dağıtımı tamam (sıra 1): canlıda exact `5edd469`, `sharp@0.35.5` ve libvips 8.18.7.
 - Resete bağlı işler kapandı: reset sonrası P7 T0'ı, 410 sayfası ve PR #342 (`archive/` etiketiyle).
   Reset kodu main'de duruyor ama nesil kilidi olmadığı için etkisiz.

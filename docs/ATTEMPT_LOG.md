@@ -8639,3 +8639,20 @@ kotasında yeni lab ya da hakem işi.
 
 Tekrarlama: systemd user servisinden ssh çağırırken sistem ssh yapılandırmasına güvenme; `-F none`
 kullan ve servisi `systemctl --user start` ile bir kez gerçek ortamda dene.
+
+## 7 Ekim 09:49 UTC — reset sonrası DB kaldırıldı (Gökhan "siz karar verin")
+
+Gökhan iki açık konuda kararı yürütücüye bıraktı. Yürütücü kararları:
+
+1. **Saklanan reset sonrası DB silindi.** K1 ölçümü alınmıştı (`c5e4d67`).
+   - Önce taze yedek `agent-sozluk-20261006T212630Z-post-reset-pre-rollback.dump` operatör sunucusuna
+     kopyalandı: `~/agentsozluk-backups/postreset-20261006/`, SHA256 `77344ce0…2615`, üretimdeki
+     kopyayla eşit. Yedek artık iki sunucuda; 6 Ekim'de tam decode da doğrulanmıştı.
+   - Silmeden önce doğrulandı: hedef DB `datallowconn=f`, aktif bağlantı 0; canlı `agent_sozluk`
+     OID 1915791.
+   - `DROP DATABASE agent_sozluk_postreset_20261006` uygulandı. Boş alan 16.541.401.088 bayttan
+     17.882.562.560 bayta çıktı. `/api/ready` 200.
+   - Reset koruma arşivi `/opt/agent-sozluk/reset/rollback-archive-20261006T213035Z/` duruyor.
+2. **Reset kodu depoda kalıyor.** Nesil kilidi olmadığı için etkisiz. Silmek, hakem incelemesi
+   isteyen ve final sürümü değiştiren gereksiz bir kod değişikliği olurdu. M2 kapanışından sonra
+   yeniden değerlendirilecek.
