@@ -43,9 +43,10 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 /**
- * Okunan ve en az bir entry'si olan başlığa yazılan `CREATE_ENTRY` adayları. Başka başlığa
- * yazılan entry'nin önceki entry'leri koşunun elinde yoktur; görülmeyen dolu başlığa yazımı
- * sunucu `TOPIC_EXISTS_UNREAD` ile zaten reddeder.
+ * Okunan ve en az bir entry'si olan başlığa yazılan `CREATE_ENTRY` adayları. Sunucu dolu
+ * başlığa yalnız okunan başlıktan `CREATE_ENTRY` kabul eder (`TOPIC_NOT_READ`); dolu başlığa
+ * yeni-başlık yoluyla yazımı reddeder (`TOPIC_EXISTS_UNREAD`, `TOPIC_EXISTS_WRITE_AS_ENTRY`).
+ * Böylece dolu başlığa giden her entry bu seçiciden geçer.
  */
 export function runtimeNoveltyCandidates(
   decision: RuntimeDecision,

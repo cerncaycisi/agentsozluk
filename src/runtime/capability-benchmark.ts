@@ -12,6 +12,8 @@ import {
   buildActionWorthinessPrompt,
   buildNoveltyPrompt,
   buildRuntimePrompt,
+  canonicalizeVisibleTopicActions,
+  normalizedDecision,
   RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
 } from "@/runtime/worker";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
@@ -204,7 +206,15 @@ async function invokeBenchmarkDecision(
   );
   const parsed = parseRuntimeDecisionOutput(decisionResult.output);
   if (!parsed.success) return decisionResult;
-  const candidateSequences = parsed.data.actions
+  /*
+    Worker'la aynı sıra: türetilen eylemler eklenir, okunan/görünen başlığa yeni-başlık
+    önerisi `CREATE_ENTRY`'ye çevrilir; AW ve yenilik bu karar üzerinde çalışır (Astra #350).
+  */
+  const decision = canonicalizeVisibleTopicActions(
+    normalizedDecision(parsed.data, { reflectionOnly: false }),
+    context.perception,
+  ).decision;
+  const candidateSequences = decision.actions
     .filter(({ actionType }) => actionType !== "NO_ACTION")
     .map(({ sequence }) => sequence);
   if (candidateSequences.length === 0) return decisionResult;
@@ -212,7 +222,7 @@ async function invokeBenchmarkDecision(
   try {
     reviewResult = await provider.invoke({
       runId: context.run.id,
-      prompt: buildActionWorthinessPrompt(context, parsed.data),
+      prompt: buildActionWorthinessPrompt(context, decision),
       outputSchema: runtimeActionWorthinessVerdictJsonSchema,
       timeoutMs: Math.max(1, timeoutMs - decisionResult.durationMs),
     });
@@ -242,7 +252,7 @@ async function invokeBenchmarkDecision(
   */
   let combined = combineSequentialResults(decisionResult, reviewResult);
   const noveltyCandidates = runtimeNoveltyCandidates(
-    applyRuntimeActionWorthinessVerdict(parsed.data, verdict),
+    applyRuntimeActionWorthinessVerdict(decision, verdict),
     context.perception,
   ).slice(0, runtimeNoveltyCallLimit);
   for (const candidate of noveltyCandidates) {

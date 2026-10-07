@@ -14,6 +14,7 @@ import {
 } from "@/modules/agents/application/rewards";
 import type { RuntimePurposeChange } from "@/modules/agents/validation/purpose-schemas";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
+import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import { randomUUID } from "node:crypto";
 import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
@@ -151,7 +152,45 @@ function heartbeatRuntimeRun(
   });
 }
 
-function executeRuntimeAction(
+/*
+  7 Ekim 2026: dolu başlığa `CREATE_ENTRY` yalnız koşunun okuduğu başlığa yazılır. Gerçek
+  worker yazmadan önce başlığı gezinme fazında okur; bu fikstürler gezinmeyi atlar. Ajana
+  sunulmuş bir başlığa yazılacaksa o başlık okunmuş sayılır (sunulmamış hedef işaretlenmez,
+  snapshot dışı hedef testleri korunur). Okuma kuralının kendisi ayrı testte ve bu sarmalayıcı
+  olmadan sınanır.
+*/
+async function markPresentedEntryTargetRead(runId: string, sequence: number) {
+  const action = await integrationDatabase.agentAction.findFirst({
+    where: { runId, sequence, actionType: "CREATE_ENTRY" },
+    select: { input: true, targetType: true, targetId: true },
+  });
+  const topicId =
+    (action?.input as { topicId?: unknown } | null)?.topicId ??
+    (action?.targetType === "TOPIC" ? action.targetId : undefined);
+  if (typeof topicId !== "string") return;
+  const run = await integrationDatabase.agentRun.findUniqueOrThrow({
+    where: { id: runId },
+    select: { perceptionSummary: true },
+  });
+  const perception = (run.perceptionSummary ?? {}) as Record<string, unknown>;
+  const catalog = runtimeEvidenceCatalogFrom(perception, runId);
+  if (![...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY].includes(topicId)) return;
+  const readTopics = Array.isArray(perception.readTopics)
+    ? (perception.readTopics as Array<{ id?: unknown }>)
+    : [];
+  if (readTopics.some(({ id }) => id === topicId)) return;
+  await integrationDatabase.agentRun.update({
+    where: { id: runId },
+    data: {
+      perceptionSummary: {
+        ...perception,
+        readTopics: [...readTopics, { id: topicId, title: "", entryCount: 0, entries: [] }],
+      } as Prisma.InputJsonValue,
+    },
+  });
+}
+
+async function executeRuntimeAction(
   client: Parameters<typeof executeRuntimeActionApplication>[0],
   principal: Parameters<typeof executeRuntimeActionApplication>[1],
   runId: string,
@@ -160,6 +199,7 @@ function executeRuntimeAction(
   },
   dependencies?: Parameters<typeof executeRuntimeActionApplication>[4],
 ) {
+  await markPresentedEntryTargetRead(runId, input.sequence);
   return executeRuntimeActionApplication(
     client,
     principal,
@@ -695,6 +735,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }),
     );
 
+    await markPresentedEntryTargetRead(runId, 1);
     await expect(
       executeRuntimeActionApplication(integrationDatabase, writePrincipal, runId, {
         workerId,
@@ -765,6 +806,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       recordRuntimeLifeEventBatch(integrationDatabase, writePrincipal, runId, conflictingBatch),
     ).rejects.toMatchObject({ code: "AGENT_ACTION_LIFE_PROPOSAL_EXISTS", status: 409 });
 
+    await markPresentedEntryTargetRead(runId, 1);
     await expect(
       executeRuntimeActionApplication(integrationDatabase, writePrincipal, runId, {
         workerId,
@@ -1778,6 +1820,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const readinessRelease = new Promise<void>((resolve) => {
       releaseReadiness = resolve;
     });
+    await markPresentedEntryTargetRead(runId, 1);
     const execution = executeRuntimeActionApplication(
       integrationDatabase,
       writePrincipal,
@@ -1896,6 +1939,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseSettingsFence = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -2054,6 +2098,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseSettingsFence = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -2338,6 +2383,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseReadiness = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -2441,6 +2487,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       where: { runId, sequence: 1 },
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const result = await executeRuntimeActionApplication(
         integrationDatabase,
@@ -2596,6 +2643,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseReadiness = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(runId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -3037,6 +3085,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseReadiness = resolve;
     });
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    await markPresentedEntryTargetRead(firstRunId, 1);
     try {
       const execution = executeRuntimeActionApplication(
         integrationDatabase,
@@ -7239,14 +7288,18 @@ describe("internal agent runtime API with PostgreSQL", () => {
         }),
       ),
     );
+    /*
+      7 Ekim 2026: kanonik eşleşme hâlâ var olan "Elma"yı bulur, ama başlık entry taşıdığı ve
+      bu koşuda okunmadığı için yeni-başlık yoluyla yazılmaz (yenilik denetimi atlanırdı).
+    */
     expect(canonicalRouted).toMatchObject({
-      actionStatus: "SUCCEEDED",
-      rejectionCode: null,
-      result: {
-        topicId: canonical.topic.id,
-        topicResolution: "EXISTING",
-      },
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: null,
     });
+    expect(await integrationDatabase.entry.count({ where: { topicId: canonical.topic.id } })).toBe(
+      1,
+    );
     expect(questionRejected).toMatchObject({
       actionStatus: "REJECTED",
       rejectionCode: "CONSTITUTION_TOPIC_QUESTION_ANSWER",
@@ -7285,7 +7338,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
       rejectionCode: "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
       rejectionReason: expect.stringContaining('"Tahtakale" başlığı altına') as unknown as string,
     });
-    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(2);
+    // Yalnız "Field Care Node" yazıldı; "Elma"ya yeni-başlık yoluyla entry eklenmedi.
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
     expect(
       await integrationDatabase.topic.findMany({
         orderBy: { title: "asc" },
@@ -7360,6 +7414,118 @@ describe("internal agent runtime API with PostgreSQL", () => {
       1,
     );
     expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(0);
+  });
+
+  it("writes into a populated topic only after the run actually read it", async () => {
+    /*
+      7 Ekim 2026: yenilik denetimi önceki entry'leri okunan başlıktan görür. Önizlemede
+      görülen ama okunmayan dolu başlığa entry yazılmaz; okunan dolu başlığa da yeni-başlık
+      yoluyla yazılmaz. Okuma işaretleyen test sarmalayıcısı burada bilerek kullanılmıyor.
+    */
+    const fixture = await createFixture();
+    const existing = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "okuma kuralı başlığı",
+        entryBody: "Okuma kuralı başlığı için insanın yazdığı ilk tanım entry'si.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "read-rule-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const unread = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    expect(browsableTopicIds(unread.perception).has(existing.topic.id)).toBe(true);
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run okuma kuralı için görünür kanıttır.",
+    };
+    const execute = (sequence: number) =>
+      executeRuntimeActionApplication(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+        { requireLifeLedger: false },
+      );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Önizlemede görülen başlığa okumadan yazma denemesi.",
+            targetType: "TOPIC",
+            targetId: existing.topic.id,
+            input: {
+              topicId: existing.topic.id,
+              body: "Okunmadan yazılan ve yayımlanmaması gereken bir görüş.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    await expect(execute(1)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_NOT_READ",
+    });
+
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      existing.topic.id,
+    ]);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 2,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Okunan dolu başlığa yeni-başlık yoluyla yazma denemesi.",
+            input: {
+              title: "Okuma kuralı başlığı",
+              body: "Yeni başlık yoluyla gelen ve yenilik denetimini atlayacak görüş.",
+            },
+            provenance,
+          },
+          {
+            sequence: 3,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Okunan başlığa yeni bir ayrıntı eklenir.",
+            targetType: "TOPIC",
+            targetId: existing.topic.id,
+            input: {
+              topicId: existing.topic.id,
+              body: "Kuralın asıl sınadığı şey okunan entry'lere yeni bir şey eklemektir.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    await expect(execute(2)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_EXISTS_WRITE_AS_ENTRY",
+    });
+    await expect(execute(3)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    expect(await integrationDatabase.entry.count({ where: { topicId: existing.topic.id } })).toBe(
+      2,
+    );
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
   });
 
   it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {

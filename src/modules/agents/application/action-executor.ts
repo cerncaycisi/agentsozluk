@@ -9,7 +9,9 @@ import { checkDatabaseReadiness } from "@/lib/db/readiness";
 import {
   runtimeEvidenceCatalogFrom,
   runtimePresentedUserIds,
+  runtimeReadTopicIds,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
+import { lockTopicState } from "@/modules/topics/repository/topics";
 import {
   agentSourceProposalOrigin,
   runtimeSourceSuggestionLimits,
@@ -1484,18 +1486,46 @@ export async function executeRuntimeAction(
                   "TOPIC_RESOLUTION_CHANGED",
                   "Önerilen başlığın çözümlendiği kayıt doğrulama ile yazma arasında değişti; entry yazılmadı. Başlığı yeniden okuyup tekrar değerlendir.",
                 );
-              const catalog = runtimeEvidenceCatalogFrom(actionRecord.run.perceptionSummary, runId);
-              if ([...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY].includes(topic.id)) return;
-              // Koşunun ürettiği hedefler için muafiyet yok: yardımcı entry'nin GÜNCEL başlığını
-              // döndürür ve taşınan entry okunmamış başlığa yanlış muafiyet verir (Sol 59c7d48 P2).
-              // Aynı koşuda açılan başlığa ikinci kez yeni-başlık yazmak zaten kendi tekrarıdır.
+              /*
+                Dolu başlığa yeni-başlık yoluyla entry yazılmaz (7 Ekim 2026). Okunmadıysa
+                entry hiçbir şey okunmadan yazılmış olur; okunduysa da worker yalnız tam
+                ad eşleşmesini `CREATE_ENTRY`'ye çevirebilir, varyant/alias/slug ile çözülen
+                öneri yenilik denetimini atlardı (Astra #350). Ölçüm, reset öncesi 7 gün:
+                var olan başlığa giden 378 yeni-başlık entry'sinin hiçbiri okunmamıştı,
+                görülen başlığa giden yoktu; kural meşru yazımı kesmiyor. Koşunun ürettiği
+                hedefler için muafiyet yok (Sol 59c7d48 P2).
+              */
               if ((await countRuntimeVisibleTopicEntries(guardTransaction, topic.id)) === 0) return;
+              if (runtimeReadTopicIds(actionRecord.run.perceptionSummary).has(topic.id))
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_EXISTS_WRITE_AS_ENTRY",
+                  "Anayasa Madde 16: Önerilen başlık bu koşuda okuduğun başlıklardan biri ve entry taşıyor; yeni başlık olarak yazılamaz. Okuduğun entry'lere yeni bir şey ekleyeceksen o başlığa entry olarak yaz.",
+                );
               throw new RuntimeActionRejectionError(
                 "TOPIC_EXISTS_UNREAD",
                 "Anayasa Madde 16: Önerilen başlık sözlükte zaten var ve görünür entry'ler taşıyor; bu koşuda okunmadığı için entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir tanım, örnek, karşılaştırma, çekince veya görüş ekleyeceksen yaz.",
               );
             }
           : undefined;
+      /*
+        Dolu başlığa `CREATE_ENTRY` yalnız koşunun okuduğu başlığa yazılır (7 Ekim 2026):
+        worker'daki yenilik denetimi önceki entry'leri okunan başlıktan görür; önizlemede
+        görülen başlığa yazılan entry denetimsiz kalırdı. Ölçüm, reset öncesi 7 gün: 649
+        başarılı `CREATE_ENTRY`'nin tamamı okunan başlığa yazılmıştı. Kontrol entry'nin
+        yazılacağı başlığın kilidi altında; createEntry aynı kilidi aynı işlemde yeniden alır.
+      */
+      if (parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId) {
+        await lockTopicState(transaction, resolvedTarget.topicId);
+        if (
+          !runtimeReadTopicIds(actionRecord.run.perceptionSummary).has(resolvedTarget.topicId) &&
+          (await countRuntimeVisibleTopicEntries(transaction, resolvedTarget.topicId)) > 0
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "TOPIC_NOT_READ",
+            reason:
+              "Anayasa Madde 16: Bu başlık entry taşıyor ama bu koşuda okunmadı; entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir şey ekleyeceksen yaz.",
+          });
+      }
       const execution = await performAction(
         transaction,
         principal,

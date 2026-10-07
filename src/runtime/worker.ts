@@ -971,7 +971,8 @@ function parseDecisionForContext(context: RuntimeContext, output: unknown) {
   return parseRuntimeDecisionOutput(output);
 }
 
-function normalizedDecision(
+/** Worker'ın karar sonrası adımları; kapasite benchmark'ı aynı yolu ölçer. */
+export function normalizedDecision(
   decision: RuntimeDecision,
   options: { reflectionOnly: boolean },
 ): RuntimeDecision {
@@ -1088,7 +1089,7 @@ function visibleTopicCatalog(perception: Record<string, unknown>) {
   return byNormalizedTitle;
 }
 
-function canonicalizeVisibleTopicActions(
+export function canonicalizeVisibleTopicActions(
   decision: RuntimeDecision,
   perception: Record<string, unknown>,
 ): { decision: RuntimeDecision; count: number } {

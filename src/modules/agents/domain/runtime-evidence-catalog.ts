@@ -156,3 +156,21 @@ export function runtimePresentedUserIds(perceptionSummary: unknown): Set<string>
   }
   return ids;
 }
+
+/**
+ * Koşunun gezinme fazında gerçekten okuduğu (entry'leri perception'a girmiş) başlıklar.
+ * Dolu başlığa entry yalnız bunlara yazılabilir: yenilik denetimi önceki entry'leri buradan
+ * görür (7 Ekim 2026).
+ */
+export function runtimeReadTopicIds(perceptionSummary: unknown): Set<string> {
+  const perception =
+    perceptionSummary && typeof perceptionSummary === "object" && !Array.isArray(perceptionSummary)
+      ? (perceptionSummary as Record<string, unknown>)
+      : {};
+  return new Set(
+    recordArray(perception.readTopics).flatMap((topic) => {
+      const id = stringField(topic, "id");
+      return id ? [id] : [];
+    }),
+  );
+}

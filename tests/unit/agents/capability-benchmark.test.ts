@@ -11,6 +11,7 @@ import {
   createCapabilityBenchmarkDiagnosticCollector,
 } from "@/runtime/capability-diagnostics";
 import { runtimeNoveltyVerdictJsonSchema } from "@/runtime/novelty-gate";
+import { parseRuntimeDecisionOutput } from "@/runtime/output";
 import {
   type RuntimeProvider,
   RuntimeProviderExecutionError,
@@ -382,6 +383,81 @@ describe("Codex capability benchmark harness", () => {
         })
         .scenarios.filter(({ stages }) => stages.at(-1)?.stage === "NOVELTY"),
     ).toHaveLength(denseScenarios);
+  });
+
+  it("canonicalizes and normalizes like the worker before review and novelty", async () => {
+    const decisionOutput = {
+      ...candidateOutput(),
+      actions: [
+        {
+          type: "CREATE_TOPIC_WITH_ENTRY",
+          title: "Kapasite Rezervi",
+          body: "Rezerv, ölçülen p75 süreye göre ayrılmalıdır.",
+          desire: 0.7,
+          expectedOutcome: "Başlığa bağımsız bir görüş eklenir.",
+          selectedOptionSeq: 1,
+          safeReason: "Kavrama yeni bir görüş eklenebilir.",
+          claimProvenance: [],
+        },
+      ],
+      beliefDeltas: [
+        {
+          topicKey: "kapasite",
+          statement: "Rezerv ölçümle ayrılmalıdır.",
+          confidence: 0.6,
+          evidenceSummary: "Benchmark bağlamı görünür kanıttır.",
+          provenance: "MODEL_KNOWLEDGE",
+          evidenceIds: ["00000000-0000-4000-8000-000000000100"],
+          desire: 0.5,
+          expectedOutcome: "Kapasite inancı güncellenir.",
+          selectedOptionSeq: 1,
+        },
+      ],
+    };
+    expect(parseRuntimeDecisionOutput(decisionOutput).success).toBe(true);
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
+        if (prompt.includes("Taslağın:")) return { ...result(200), output: { karar: "VAZGEC" } };
+        if (prompt.includes("# Final action-worthiness decision"))
+          return {
+            ...result(500),
+            output: {
+              verdict: "ACT",
+              confidence: 0.8,
+              evaluations: [1, 2].map((sequence) => ({
+                sequence,
+                decision: "ACCEPT",
+                safeReason: "Aday uygulanabilir.",
+              })),
+              selectedSequences: [1, 2],
+              safeReason: "Adaylar uygulanmaya değer.",
+            },
+          };
+        return { ...result(1000), output: decisionOutput };
+      }),
+    };
+
+    const measurement = await runCapacityBenchmark(provider, {
+      baseUrl: "http://127.0.0.1:3000",
+      fetchImplementation: healthyFetch,
+      plannedContentRuns: 70,
+    });
+
+    const reviewPrompt = vi
+      .mocked(provider.invoke)
+      .mock.calls.find(([request]) =>
+        request.prompt.includes("# Final action-worthiness decision"),
+      )![0].prompt;
+    expect(reviewPrompt).toContain('"actionType":"CREATE_ENTRY"');
+    expect(
+      vi
+        .mocked(provider.invoke)
+        .mock.calls.filter(([request]) => request.prompt.includes("Taslağın:")),
+    ).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.filter(({ denseContext }) => denseContext).length);
+    expect(measurement.failureRate).toBe(0);
   });
 
   it("uses one bounded semantic repair and includes both calls in measured duration", async () => {
