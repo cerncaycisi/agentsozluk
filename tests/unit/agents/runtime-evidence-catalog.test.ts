@@ -4,7 +4,7 @@ import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime
 import {
   runtimeEvidenceCatalogFrom,
   runtimeReadTopicIds,
-  runtimeReadTopicSnapshot,
+  runtimeReadTopicSeenEntryIds,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 
 describe("runtime typed evidence catalog", () => {
@@ -84,24 +84,19 @@ describe("runtime typed evidence catalog", () => {
 });
 
 describe("runtime read topic snapshot", () => {
-  const entry = (index: number) => ({
-    id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
-    createdAt: new Date(Date.UTC(2026, 9, 7, 10, index)).toISOString(),
-  });
-  it("treats a short snapshot as the whole topic and a long one as its newest window", () => {
+  it("returns the seen entry ids of a read topic and null for an unread one", () => {
     const topicId = "10000000-0000-4000-8000-000000000001";
-    expect(runtimeReadTopicSnapshot({ readTopics: [] }, topicId, 15)).toBeNull();
+    const entryId = "10000000-0000-4000-8000-000000000002";
+    expect(runtimeReadTopicSeenEntryIds({ readTopics: [] }, topicId)).toBeNull();
     expect(
-      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entries: [] }] }, topicId, 15),
-    ).toEqual({ seenEntryIds: [], newerThan: null });
-    // Tanım entry'si (0) + en yeni on beş (6..20): pencere 6. entry'nin zamanında başlar.
-    const long = [entry(0), ...Array.from({ length: 15 }, (_, index) => entry(20 - index))];
+      runtimeReadTopicSeenEntryIds({ readTopics: [{ id: topicId, entries: [] }] }, topicId),
+    ).toEqual(new Set());
     expect(
-      runtimeReadTopicSnapshot({ readTopics: [{ id: topicId, entries: long }] }, topicId, 15),
-    ).toEqual({
-      seenEntryIds: long.map(({ id }) => id),
-      newerThan: new Date(entry(6).createdAt),
-    });
+      runtimeReadTopicSeenEntryIds(
+        { readTopics: [{ id: topicId, entries: [{ id: entryId }, { body: "kimliksiz" }] }] },
+        topicId,
+      ),
+    ).toEqual(new Set([entryId]));
     expect(runtimeReadTopicIds({ readTopics: [{ id: topicId }, { title: "kimliksiz" }] })).toEqual(
       new Set([topicId]),
     );

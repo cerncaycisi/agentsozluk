@@ -15,6 +15,7 @@ import {
 import type { RuntimePurposeChange } from "@/modules/agents/validation/purpose-schemas";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
+import { getRuntimeReadTopics } from "@/modules/agents/repository/runtime";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import { randomUUID } from "node:crypto";
 import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
@@ -179,11 +180,8 @@ async function markPresentedEntryTargetRead(runId: string, sequence: number) {
     ? (perception.readTopics as Array<{ id?: unknown }>)
     : [];
   if (readTopics.some(({ id }) => id === topicId)) return;
-  // Gerçek okuma gibi başlığın o anki entry'leri snapshot'a girer.
-  const entries = await integrationDatabase.entry.findMany({
-    where: { topicId, status: "ACTIVE" },
-    select: { id: true, createdAt: true },
-  });
+  // Gerçek okumayla aynı fonksiyon: en yeni pencere, tanım entry'si ve görünürlük birebir.
+  const [read] = await getRuntimeReadTopics(integrationDatabase, [topicId]);
   await integrationDatabase.agentRun.update({
     where: { id: runId },
     data: {
@@ -193,11 +191,11 @@ async function markPresentedEntryTargetRead(runId: string, sequence: number) {
           ...readTopics,
           {
             id: topicId,
-            title: "",
-            entryCount: entries.length,
-            entries: entries.map((entry) => ({
+            title: read?.title ?? "",
+            entryCount: read?.entryCount ?? 0,
+            entries: (read?.entries ?? []).map((entry) => ({
               id: entry.id,
-              body: "",
+              body: entry.body,
               createdAt: entry.createdAt.toISOString(),
             })),
           },
@@ -7617,20 +7615,122 @@ describe("internal agent runtime API with PostgreSQL", () => {
         workerId,
         actions: [
           entryAction(1, "Okunan entry'lere bakınca eksik kalan ölçüm ayrıntısı şudur."),
-          entryAction(2, "Başka biri yazdıktan sonra görmeden eklenen ikinci görüş."),
+          entryAction(2, "Aynı başlığa ikinci olarak eklenen ve bambaşka bir örnek veren görüş."),
+          entryAction(3, "Başka biri yazdıktan sonra görmeden eklenen üçüncü görüş."),
         ],
       }),
     );
-    // Ajanın kendi entry'si snapshot'ta olmasa da yeni yazımı engellemez.
     await expect(execute(1)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    // Ajanın kendi 1. entry'si snapshot'ta yok ama ikinci yazımı engellemez.
+    await expect(execute(2)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
     await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
       body: "Ajan okuduktan sonra insanın eklediği yeni entry.",
+    });
+    await expect(execute(3)).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CHANGED_SINCE_READ",
+    });
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(2);
+  });
+
+  it("compares a long topic with the same read window and catches a restored old entry", async () => {
+    /*
+      Sol e9377fa P2: zaman tabanlı pencere eşit zaman damgasında değişmemiş başlığı
+      reddediyor, geri açılan/taşınan eski entry'yi kaçırıyordu. Kontrol artık başlığı
+      kilit altında aynı okuma fonksiyonuyla yeniden okuyor.
+    */
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "uzun ve eşit zamanlı başlık",
+        entryBody: "Uzun başlık için insanın yazdığı ilk tanım entry'si.",
+      },
+    );
+    const restored = await createEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      topic.topic.id,
+      { body: "Okumadan önce gizlenen, sonra geri açılacak eski entry." },
+    );
+    for (let index = 0; index < 17; index += 1)
+      await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
+        body: `Uzun başlıkta aynı anda yazılmış sayılan insan entry'si ${index}.`,
+      });
+    const sameTime = new Date(Date.now() - 60_000);
+    await integrationDatabase.entry.updateMany({
+      where: { topicId: topic.topic.id, id: { notIn: [restored.id] } },
+      data: { createdAt: sameTime },
+    });
+    await integrationDatabase.entry.update({
+      where: { id: restored.id },
+      data: {
+        status: "HIDDEN",
+        hiddenAt: new Date(),
+        createdAt: new Date(sameTime.getTime() - 60_000),
+      },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "long-topic-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      topic.topic.id,
+    ]);
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run uzun başlık kuralı için görünür kanıttır.",
+    };
+    const execute = (sequence: number) =>
+      executeRuntimeActionApplication(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, leaseToken: leaseTokenForWorker(workerId), sequence },
+        { requireLifeLedger: false },
+      );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [1, 2].map((sequence) => ({
+          sequence,
+          actionType: "CREATE_ENTRY" as const,
+          safeReason: "Okunan uzun başlığa yeni bir ayrıntı eklenir.",
+          targetType: "TOPIC" as const,
+          targetId: topic.topic.id,
+          input: {
+            topicId: topic.topic.id,
+            body:
+              sequence === 1
+                ? "Uzun başlıkta eksik kalan ölçüm ayrıntısı şudur."
+                : "Geri açılan entry'den sonra görmeden eklenen ikinci görüş.",
+          },
+          provenance,
+        })),
+      }),
+    );
+    // Eşit zamanlı entry'ler değişmedi: aynı okuma penceresi, yazım geçer.
+    await expect(execute(1)).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    // Eski entry geri açılınca başlığın tanım entry'si değişir; ajan onu görmedi.
+    await integrationDatabase.entry.update({
+      where: { id: restored.id },
+      data: { status: "ACTIVE", hiddenAt: null },
     });
     await expect(execute(2)).resolves.toMatchObject({
       actionStatus: "REJECTED",
       rejectionCode: "TOPIC_CHANGED_SINCE_READ",
     });
-    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
   });
 
   it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {

@@ -1063,32 +1063,6 @@ export async function countRuntimeVisibleTopicEntries(
   });
 }
 
-/**
- * Okuma snapshot'ında görünmeyen ve başkasına ait görünür entry sayısı (7 Ekim 2026).
- * `newerThan` null ise snapshot başlığın bütün görünür entry'lerini taşıyordu; değilse
- * yalnız snapshot'ın en yeni penceresinden yeni ya da eşit zamanlı entry'ler sayılır.
- */
-export async function countRuntimeUnseenTopicEntries(
-  transaction: Prisma.TransactionClient,
-  input: {
-    topicId: string;
-    seenEntryIds: readonly string[];
-    newerThan: Date | null;
-    authorId: string;
-  },
-): Promise<number> {
-  return transaction.entry.count({
-    where: {
-      topicId: input.topicId,
-      status: "ACTIVE",
-      ...publiclyVisibleEntryWhere,
-      id: { notIn: [...input.seenEntryIds] },
-      authorId: { not: input.authorId },
-      ...(input.newerThan ? { createdAt: { gte: input.newerThan } } : {}),
-    },
-  });
-}
-
 export async function getRuntimeTopicNoveltyContext(
   transaction: Prisma.TransactionClient,
   input: { topicId: string; authorId: string; excludeEntryId?: string },

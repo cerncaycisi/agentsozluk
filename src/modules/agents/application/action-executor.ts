@@ -10,7 +10,7 @@ import {
   runtimeEvidenceCatalogFrom,
   runtimePresentedUserIds,
   runtimeReadTopicIds,
-  runtimeReadTopicSnapshot,
+  runtimeReadTopicSeenEntryIds,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { lockTopicState } from "@/modules/topics/repository/topics";
 import {
@@ -54,9 +54,8 @@ import {
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
   getRuntimeTopicNoveltyContext,
-  countRuntimeUnseenTopicEntries,
   countRuntimeVisibleTopicEntries,
-  runtimeReadTopicEntryLimit,
+  getRuntimeReadTopics,
   lockRuntimeAction,
   lockRuntimeAgent,
   lockRuntimeRunForLeaseMutation,
@@ -1519,13 +1518,12 @@ export async function executeRuntimeAction(
       */
       if (parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId) {
         await lockTopicState(transaction, resolvedTarget.topicId);
-        const snapshot = runtimeReadTopicSnapshot(
+        const seenEntryIds = runtimeReadTopicSeenEntryIds(
           actionRecord.run.perceptionSummary,
           resolvedTarget.topicId,
-          runtimeReadTopicEntryLimit,
         );
         if (
-          !snapshot &&
+          !seenEntryIds &&
           (await countRuntimeVisibleTopicEntries(transaction, resolvedTarget.topicId)) > 0
         )
           return rejectAction(transaction, principal, actionRecord, {
@@ -1534,25 +1532,26 @@ export async function executeRuntimeAction(
               "Anayasa Madde 16: Bu başlık entry taşıyor ama bu koşuda okunmadı; entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir şey ekleyeceksen yaz.",
           });
         /*
-          Okunduktan sonra başkasının yazdığı (ya da taşınan) entry'ler yenilik denetiminde
-          görülmedi; boş okunup sonra dolan başlık tamamen denetimsiz kalırdı (Sol f75ddca P1).
-          Ajanın kendi entry'leri sayılmaz: aynı koşudaki ikinci entry kendi tekrar
-          kontrolünden geçer.
+          Okunduktan sonra başkasının yazdığı, taşıdığı ya da geri açtığı entry'ler yenilik
+          denetiminde görülmedi; boş okunup sonra dolan başlık tamamen denetimsiz kalırdı
+          (Sol f75ddca P1). Karşılaştırma, başlığı kilit altında AYNI okuma fonksiyonuyla
+          yeniden okuyarak yapılır: sıralama, eşit zaman, görünürlük ve tanım entry'si
+          okumayla birebir aynıdır (Sol e9377fa P2). Ajanın kendi entry'leri sayılmaz: aynı
+          koşudaki ikinci entry kendi tekrar kontrolünden geçer.
         */
-        if (
-          snapshot &&
-          (await countRuntimeUnseenTopicEntries(transaction, {
-            topicId: resolvedTarget.topicId,
-            seenEntryIds: snapshot.seenEntryIds,
-            newerThan: snapshot.newerThan,
-            authorId: principal.actor.actorId,
-          })) > 0
-        )
-          return rejectAction(transaction, principal, actionRecord, {
-            code: "TOPIC_CHANGED_SINCE_READ",
-            reason:
-              "Anayasa Madde 16: Bu başlığa sen okuduktan sonra yeni entry geldi; görmediğin entry'lerle karşılaştırılmadan yazılamaz. Başlığı yeniden okuyup yeni bir şey ekleyeceksen yaz.",
-          });
+        if (seenEntryIds) {
+          const [current] = await getRuntimeReadTopics(transaction, [resolvedTarget.topicId]);
+          if (
+            current?.entries.some(
+              (entry) => !seenEntryIds.has(entry.id) && entry.authorId !== principal.actor.actorId,
+            )
+          )
+            return rejectAction(transaction, principal, actionRecord, {
+              code: "TOPIC_CHANGED_SINCE_READ",
+              reason:
+                "Anayasa Madde 16: Bu başlığa sen okuduktan sonra yeni entry geldi; görmediğin entry'lerle karşılaştırılmadan yazılamaz. Başlığı yeniden okuyup yeni bir şey ekleyeceksen yaz.",
+            });
+        }
       }
       const execution = await performAction(
         transaction,

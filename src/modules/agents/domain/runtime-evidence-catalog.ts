@@ -176,15 +176,12 @@ export function runtimeReadTopicIds(perceptionSummary: unknown): Set<string> {
 }
 
 /**
- * Okunan başlığın snapshot'ı: görülen entry kimlikleri ve snapshot'ın kapsamı. Snapshot
- * en yeni `newestLimit` entry'yi ve ayrıca tanım entry'sini taşır; daha az entry varsa
- * başlığın tamamıdır (`newerThan` null). Değilse en yeni penceredeki en eski zaman döner.
+ * Okunan başlığın snapshot'ında görülen entry kimlikleri; başlık okunmadıysa null.
  */
-export function runtimeReadTopicSnapshot(
+export function runtimeReadTopicSeenEntryIds(
   perceptionSummary: unknown,
   topicId: string,
-  newestLimit: number,
-): { seenEntryIds: string[]; newerThan: Date | null } | null {
+): Set<string> | null {
   const perception =
     perceptionSummary && typeof perceptionSummary === "object" && !Array.isArray(perceptionSummary)
       ? (perceptionSummary as Record<string, unknown>)
@@ -193,19 +190,10 @@ export function runtimeReadTopicSnapshot(
     (candidate) => stringField(candidate, "id") === topicId,
   );
   if (!topic) return null;
-  const entries = recordArray(topic.entries).flatMap((entry) => {
-    const id = stringField(entry, "id");
-    const createdAt = stringField(entry, "createdAt");
-    const time = createdAt ? new Date(createdAt) : null;
-    return id && time && !Number.isNaN(time.getTime()) ? [{ id, time }] : [];
-  });
-  const seenEntryIds = entries.map(({ id }) => id);
-  if (entries.length <= newestLimit) return { seenEntryIds, newerThan: null };
-  const newest = [...entries]
-    .sort((left, right) => right.time.getTime() - left.time.getTime())
-    .slice(0, newestLimit);
-  return {
-    seenEntryIds,
-    newerThan: new Date(Math.min(...newest.map(({ time }) => time.getTime()))),
-  };
+  return new Set(
+    recordArray(topic.entries).flatMap((entry) => {
+      const id = stringField(entry, "id");
+      return id ? [id] : [];
+    }),
+  );
 }
