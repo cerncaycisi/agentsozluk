@@ -19,8 +19,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - Canlı imaj yamasız `sharp@0.35.4` taşıyor; main'de 0.35.5 var. İlk iş dar güvenlik dağıtımı.
 - Resete bağlı işler kapandı: reset sonrası P7 T0'ı, 410 sayfası ve PR #342 (`archive/` etiketiyle).
   Reset kodu main'de duruyor ama nesil kilidi olmadığı için etkisiz.
-- P7 penceresi açık değil. Yeni T0 ve kapsamı Gökhan kararını bekliyor (sıra 2). Yetki 17 Ekim
-  19:50 UTC'de bitiyor; tam 168 saat için son T0 10 Ekim 19:38 UTC.
+- P7 penceresi henüz açık değil. Gökhan 7 Ekim'de başlangıç paketini onayladı (sıra 2): T0 bugün,
+  tek hat, gündem deneyi M2 sonrasında, içerik raporu zorunlu ama kapı değil. Yetki 17 Ekim
+  19:50 UTC'de bitiyor.
 - 7 Ekim'de iki bağımsız inceleme geldi: [Claude](TAM_ANALIZ_2026-10-07.md) ve
   [ChatGPT](FULL_ANALYSIS_2026-10-07.md). Uzlaştırma aşağıda; ikinci bir kuyruk değil.
 - Geri dönüş öncesi ayrıntılı durum anlatısı ve eski aktif sıra
@@ -36,11 +37,20 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
    Pencere açık olmadığı için P7'yi kesmez.
 
-2. **P7 kararı (Gökhan).** Karar gelmeden pencere başlamaz; teknik kabul ölçütleri gevşetilmez.
-   - (a) Yeni T0 ne zaman başlasın?
-   - (b) Gündem yazma menüsünden çıksın mı (K1)? Çıkacaksa T0'dan önce mi, sonra mı?
-   - (c) Tek hat mı, iki hat mı (K5)?
-   - (d) P7 kabulüne içerik eş-ölçütleri eklensin mi (K7)? Önkayıtlı ve örnekleme bağlı olur.
+2. **P7 başlangıç paketi.** Gökhan 7 Ekim'de Astra–Claude ortak önerisini onayladı:
+   - **T0 bugün (7 Ekim).** Önce aşağıdakilerin hepsi tamamlanır, ardından gerçek T0
+     kaydedilir: güvenlik dağıtımı, tek hat ayarı, kısa ön uygunluk kontrolü (roster, kaynak
+     tabanı, kapasite kimliği) ve içerik önkaydı. 168 saat ve terminalleşme payı kısaltılmaz.
+   - **Tek hat:** P7 boyunca `codexConcurrency` 2'den 1'e iner. Pencere içinde ortak Codex kotasını
+     kullanan yeni lab veya hakem işi başlatılmaz; zorunlu istisna kaydedilir. Bu bir kalite iddiası
+     ya da kota garantisi değildir.
+   - **Gündem:** bu P7'ye girmez. M2 kapanışından sonra önkayıtlı, tek değişiklikli bir deney olarak
+     ele alınır. Gündem ve yeni başlık keşif kanalları açıkça ayrılır; istem ve profil hash'i
+     birlikte ele alınır; hat sayısı sabit tutulur. Kendiliğinden işleyen bir dağıtım tarihi yoktur.
+   - **İçerik raporu:** önkayıtlı ve zorunludur; DONE-082 teknik kabul kapısına yeni sayısal eşik
+     eklenmez. T0'dan önce şunlar sabitlenir: payda, kohort, örnek seçimi, asgari örneklem,
+     kör etiketleme ve eksik veride verilecek hüküm. Sonuç teknik kabulün yanında olumlu, olumsuz
+     ya da belirsiz olarak ayrıca sunulur. 48 saatlik ara okuma yalnız alarm içindir.
 3. **P7 → Gate11/12.** Önceki sıranın birinci maddesi aynen geçerli; T0 madde 2'deki karara bağlı.
    Pozitif login/CSRF/çerez/çıkış smoke'u (R04) Gate11 paketine eklendi. Gerçek kullanıcı şifresi
    değiştirilmez; kontrollü bir test hesabı gerekir.
@@ -86,8 +96,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 | R06 gammaz metni                   | Kabul                                                                     | Küçük işler           |
 | R10 sorgu maliyeti                 | Ölçülmeden değişiklik yok                                                 | `BACKLOG`             |
 
-İki inceleme yalnız T0 zamanlamasında ayrışıyor: Claude "T0 bugün" diyor, ChatGPT "otomatik
-başlatma" diyor. Karar sıra 2a'ya bırakıldı.
+İki inceleme T0 zamanlamasında ayrışıyordu. Claude Opus 5.5 ve Astra (`gpt-6-astra`) ortak öneri
+çıkardı; Gökhan 7 Ekim'de onayladı: T0 bugün, ama otomatik değil, ön uygunluk ve önkayıt
+tamamlandıktan sonra. Astra, K1 kesitinin saat damgasının (23:45 "UTC") geri dönüş saatiyle
+çeliştiğini gösterdi. Değer büyük olasılıkla TSİ (20:45 UTC) ve saklanan DB'deki 69 başlık / 155
+entry ile tutarlı; sayılar o DB'den yeniden çıkarılacak.
 
 ## 1. Ürün sözleşmesi
 
