@@ -146,6 +146,7 @@ describe("yazar sesi persona bağı (writing-variation v10)", () => {
         entryLength: "MEDIUM",
         preferredMinWords: persona.writing.preferredMinWords,
         preferredMaxWords: persona.writing.preferredMaxWords,
+        voice: { rhythm: persona.writing.rhythm, humorStyle: persona.humor.style },
         temperament: {
           humor: persona.temperament.humor,
           skepticism: persona.temperament.skepticism,
@@ -156,6 +157,17 @@ describe("yazar sesi persona bağı (writing-variation v10)", () => {
       }),
     );
     expect(prompt).not.toContain("- Form: ");
+  });
+
+  it("anayasa karar isteminde bir kez geçer; ses satırı yazma anına yakındır (#4)", () => {
+    const context = fixtureContext(runId);
+    const prompt = buildRuntimePrompt({
+      ...context,
+      persona: { ...context.persona, renderedPrompt: renderPersonaPrompt(persona) },
+    });
+    expect(prompt.split("# Agent Sözlük Anayasası writer contract").length - 1).toBe(1);
+    expect(prompt).toContain(`Sesin: ${persona.writing.rhythm} ${persona.humor.style}`);
+    expect(prompt.indexOf("Sesin: ")).toBeGreaterThan(prompt.indexOf("# Nasıl yazılır"));
   });
 
   it.each([

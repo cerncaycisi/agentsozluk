@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { activePurposeLimit } from "@/modules/agents/domain/purpose";
 import {
   createInterestScorer,
@@ -21,6 +22,40 @@ import {
 
 const browseMenuLimit = 24;
 export const interestTopicLimit = 8;
+
+/*
+  #6 (8 Ekim 2026): yazarın ilgisine bütün kelimeleriyle uyan sözlük başlıkları. Kalabalık
+  başlık geri plana itilir, seçim koşu kimliğiyle döner; aynı yazar her uyanışta aynı sekiz
+  başlığı görmez, aynı ilgiyi paylaşan iki yazar da aynı sırayı görmez.
+*/
+export function selectPersonalInterestTopics(
+  candidates: readonly { id: string; title: string; entryCount: number; interestKey: string }[],
+  interests: readonly WeightedInterest[],
+  seed: string,
+) {
+  const weightByKey = new Map(interests.map(({ key, weight }) => [key, weight]));
+  const best = new Map<string, { id: string; title: string; score: number; order: string }>();
+  for (const candidate of candidates) {
+    const weight = weightByKey.get(candidate.interestKey);
+    if (weight === undefined) continue;
+    // Kesin eşleşme: ilginin bütün kelimeleri başlıkta (önek araması fazla aday getirebilir).
+    if (createInterestScorer([{ key: candidate.interestKey, weight: 1 }])(candidate.title) < 0.999)
+      continue;
+    const crowd = candidate.entryCount <= 10 ? 1 : candidate.entryCount <= 30 ? 0.6 : 0.3;
+    const score = weight * crowd;
+    const order = createHash("sha256").update(`${seed}:${candidate.id}`).digest("hex");
+    const previous = best.get(candidate.id);
+    if (!previous || previous.score < score)
+      best.set(candidate.id, { id: candidate.id, title: candidate.title, score, order });
+  }
+  // En iyi iki katı aday arasından koşuya göre dönen sekiz başlık.
+  return [...best.values()]
+    .sort((left, right) => right.score - left.score || left.order.localeCompare(right.order))
+    .slice(0, interestTopicLimit * 2)
+    .sort((left, right) => left.order.localeCompare(right.order))
+    .slice(0, interestTopicLimit)
+    .map(({ id, title }) => ({ id, title }));
+}
 
 export function selectInterestTopics(
   perception: {

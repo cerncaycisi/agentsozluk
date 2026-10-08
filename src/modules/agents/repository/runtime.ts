@@ -1,5 +1,6 @@
 import {
   createInterestScorer,
+  interestTokens,
   selectWithInterestRotation,
   type WeightedInterest,
 } from "@/modules/agents/domain/interest-matching";
@@ -2829,6 +2830,13 @@ async function listRuntimePerceptionLinkedTopics(
 // runtimeReadTopicLimit tek kaynağı validation/runtime-schemas.ts; ayrışmayı önlemek için oradan.
 export { runtimeReadTopicLimit };
 export const runtimeReadTopicEntryLimit = 15;
+/*
+  #13 (8 Ekim 2026): pencere dışındaki eski hükümler görünmüyordu; kalabalık başlıkta eski bir
+  hüküm yeniden yazılabiliyordu. Okuma en yeni bu kadar entry'ye kesintisiz genişler; 15'ten
+  eskiler kısa önizlemeyle gelir (domain/perception.ts `runtimeReadTopicEntryLimit`). Blok
+  kesintisiz olduğu için okumadan sonra değişiklik kuralı (`windowStart`) aynı kalır.
+*/
+export const runtimeReadTopicArchiveLimit = 60;
 
 export async function getRuntimeReadTopics(
   transaction: Prisma.TransactionClient,
@@ -2902,7 +2910,7 @@ export async function getRuntimeReadTopics(
     FROM read_topic
     LEFT JOIN ranked
       ON ranked."topicId" = read_topic."id"
-      AND (ranked.descending_rank <= ${runtimeReadTopicEntryLimit} OR ranked.ascending_rank = 1)
+      AND (ranked.descending_rank <= ${runtimeReadTopicArchiveLimit} OR ranked.ascending_rank = 1)
   `;
   const byTopic = new Map<string, typeof rows>();
   for (const row of rows) byTopic.set(row.topicId, [...(byTopic.get(row.topicId) ?? []), row]);
@@ -3424,7 +3432,59 @@ export async function getRuntimePerceptionRecords(
     linkedTopics: dictionaryReferences.linkedTopics,
     openTopicReferences: dictionaryReferences.openTopicReferences,
     dictionaryLinkCandidates,
+    interestTopicCandidates:
+      input.includeTrendingTopics && input.interests && input.interests.length > 0
+        ? await listRuntimeInterestTopicCandidates(transaction, {
+            interests: input.interests,
+            agentUserId: input.agentUserId,
+            now: input.now,
+          })
+        : [],
   };
+}
+
+/*
+  #6 (8 Ekim 2026): ilgi menüsü bütün yazarların ortak gördüğü ~24 başlıktan seçiliyordu;
+  yerel kopyada yazarlar aynı başlıklara toplandı (72 okumada 39 farklı başlık, eski sürümde 49).
+  Her ilgi için bütün sözlükte başlık adında ilginin bütün kelimeleri geçen başlıklar aranır.
+  Kelime kökü önekiyle aranır (müzik → "müzi": müziği, müzisyen). Kesin eşleşme ve sıralama
+  uygulama katmanında yapılır. Yazarın son üç günde yazdığı başlıklar dışarıda kalır.
+*/
+const runtimeInterestCandidatePerInterest = 12;
+
+async function listRuntimeInterestTopicCandidates(
+  transaction: Prisma.TransactionClient,
+  input: { interests: readonly WeightedInterest[]; agentUserId: string; now: Date },
+) {
+  const recentlyWritten = await transaction.entry.findMany({
+    where: {
+      authorId: input.agentUserId,
+      createdAt: { gte: new Date(input.now.getTime() - 3 * 24 * 3_600_000) },
+    },
+    select: { topicId: true },
+    distinct: ["topicId"],
+  });
+  const excluded = recentlyWritten.map(({ topicId }) => topicId);
+  const results = await Promise.all(
+    input.interests.map(async (interest) => {
+      const prefixes = interestTokens(interest.key).map((token) =>
+        token.length >= 5 ? token.slice(0, token.length - 1) : token,
+      );
+      if (prefixes.length === 0) return [];
+      const topics = await transaction.topic.findMany({
+        where: {
+          status: "ACTIVE",
+          ...(excluded.length > 0 ? { id: { notIn: excluded } } : {}),
+          AND: prefixes.map((prefix) => ({ normalizedTitle: { contains: prefix } })),
+        },
+        select: { id: true, title: true, entryCount: true, lastEntryAt: true },
+        orderBy: [{ lastEntryAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
+        take: runtimeInterestCandidatePerInterest,
+      });
+      return topics.map((topic) => ({ ...topic, interestKey: interest.key }));
+    }),
+  );
+  return results.flat();
 }
 
 export async function getMeasuredRuntimeRunMetrics(

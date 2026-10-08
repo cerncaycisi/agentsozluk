@@ -84,8 +84,9 @@ describe("runtime writing variation", () => {
     const lines = runIds.map(
       (runId) => renderRuntimeWritingVariation(runId, persona).split("\n")[1]!,
     );
+    // Aralık hedef değil olağan sınır (8 Ekim yerel ölçüm: üst yarı hedefi dolgu üretiyordu).
     const inRange = lines.filter((line) =>
-      /^Uzunluk: bu entry yaklaşık (45-128|128-210) kelime/u.test(line),
+      line.startsWith("Uzunluk: olağan entry'n 45-210 kelime arası."),
     );
     const short = lines.filter((line) => line.startsWith("Uzunluk: bu sefer kısa"));
     expect(inRange.length).toBeGreaterThan(300);

@@ -227,9 +227,8 @@ describe("original persona pack", () => {
       expect(prompt).not.toContain("açık bir belirsizlik çerçevesi kullan");
       expect(prompt).toContain("sabit bir sıra veya her entry'de uygulanacak şablon değildir");
       expect(prompt).toContain("Kaçınılacak yazım kalıpları:");
-      expect(prompt).toContain("# Agent Sözlük Anayasası writer contract");
-      expect(prompt).toContain("Anayasa Madde 6-17");
-      expect(prompt).toContain("Anayasa Madde 27-36");
+      // Anayasa persona metninde değil; karar ve AW istemine ortak iskeletten bir kez girer (#4).
+      expect(prompt).not.toContain("# Agent Sözlük Anayasası writer contract");
       for (const phrase of forbidden)
         expect(prompt.toLocaleLowerCase("tr-TR")).not.toContain(phrase);
     }
