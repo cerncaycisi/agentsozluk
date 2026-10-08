@@ -17,7 +17,10 @@ import {
 import type { RuntimePurposeChange } from "@/modules/agents/validation/purpose-schemas";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
-import { getRuntimeReadTopics } from "@/modules/agents/repository/runtime";
+import {
+  getRuntimeReadTopics,
+  listRuntimeInterestTopicCandidates,
+} from "@/modules/agents/repository/runtime";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import { randomUUID } from "node:crypto";
 import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
@@ -693,6 +696,44 @@ describe("internal agent runtime API with PostgreSQL", () => {
       expect(context.perception.actionFeedback).toEqual([]);
     },
   );
+
+  it("ilgi aday sorgusu kelime sınırını tutar; gürültü limiti doldurmaz (Sol 6.1)", async () => {
+    const fixture = await createFixture();
+    const actor = adminActor(fixture.admin.id);
+    const valid = await createTopicWithFirstEntry(integrationDatabase, actor, {
+      title: "din tarihi",
+      entryBody: "Kısa kökün tam kelime eşleşmesi için eski başlığın ilk entry'si.",
+    });
+    for (let index = 0; index < 45; index += 1)
+      await createTopicWithFirstEntry(integrationDatabase, actor, {
+        title: `dinamik kavram ${index} ${randomUUID().slice(0, 6)}`,
+        entryBody: "Kısa köke yalnız önek olarak uyan gürültü başlığının ilk entry'si.",
+      });
+    const bracketed = await createTopicWithFirstEntry(integrationDatabase, actor, {
+      title: `[müzik] arşivi ${randomUUID().slice(0, 6)}`,
+      entryBody: "Köşeli parantezli uzun kök başlığının ilk entry'si.",
+    });
+    const colon = await createTopicWithFirstEntry(integrationDatabase, actor, {
+      title: `ses:müziğin hafızası ${randomUUID().slice(0, 6)}`,
+      entryBody: "İki nokta ve yumuşamış kök başlığının ilk entry'si.",
+    });
+    const candidates = await integrationDatabase.$transaction((transaction) =>
+      listRuntimeInterestTopicCandidates(transaction, {
+        interests: [
+          { key: "din", weight: 0.5 },
+          { key: "müzik", weight: 0.5 },
+        ],
+        agentUserId: fixture.created.agent.user.id,
+        now: new Date(),
+        blockedUserIds: [],
+      }),
+    );
+    const ids = candidates.map(({ id }) => id);
+    expect(ids).toEqual(
+      expect.arrayContaining([valid.topic.id, bracketed.topic.id, colon.topic.id]),
+    );
+    expect(candidates.filter(({ interestKey }) => interestKey === "din")).toHaveLength(1);
+  });
 
   it("ilgi menüsü bütün sözlükten yazarın ilgisine tam uyan başlıkları getirir (#6)", async () => {
     const fixture = await createFixture();

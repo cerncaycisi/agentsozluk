@@ -3454,7 +3454,7 @@ export async function getRuntimePerceptionRecords(
 // Kesin eşleştirme uygulama katmanında; önek araması geniş tutulur ki geçerli aday limitte kaybolmasın.
 const runtimeInterestCandidatePerInterest = 40;
 
-async function listRuntimeInterestTopicCandidates(
+export async function listRuntimeInterestTopicCandidates(
   transaction: Prisma.TransactionClient,
   input: {
     interests: readonly WeightedInterest[];
