@@ -327,13 +327,10 @@ roster/uyanış durumu, kaynak tabanı ve pencereyi kapsayan kapasite doğrulan�
 kayıtları varsa kohortları ayrılır; önce ayrıca yedi gün veri biriktirme önkoşulu yok.
 Bilinen teknik/kaynak/kapasite engeli düzeltilmeden pencere açılmaz. Yeni rejimde uzun dönem
 oranın henüz ölçülememesi zaten yapılacak yedi günlük kabulün konusudur; kısa ön kontrol
-PASS veya uzun dönem güvenilirlik iddiası üretmez. Önceki22-koşu kapasite
-makbuzunun son geçerliliği19Ekim00:04:18UTC'dir; ancak aynı doğrulanmış fingerprint
-ve T0+168h+configured maksimum timeout+120sn bu tarihten geç değilse dönem/payını
-karşılar. Bu tarih yeni sürümün ölçülmüş kapasitesi değildir. Yeni tek aktif sıradaki
-eşli dağıtım sonrası taze cold/warm/dual ölçümü eski kaydı ikame eder; yeni
-fingerprint/kapasite/son geçerlilik doğrudan doğrulanır. Fingerprint veya tarih
-uygun değilse benchmark **pencere öncesinde** yenilenir, teknik kapı atlanmaz.
+PASS veya uzun dönem güvenilirlik iddiası üretmez. Kapasite: HEALTHY ölçüm ve aynı Codex ana sürümü
+yeterlidir; ölçüm yaşla ya da talimat değişikliğiyle bayatlamaz (Gökhan 8 Ekim 2026: "bi kere ölçelim hep
+oralarda olsun"). Codex ana sürümü değişirse benchmark **pencere öncesinde** yenilenir, teknik kapı
+atlanmaz.
 O2 takibi bu zorunluluğu ertelemez. Pencere kayarsa yeni tarih ve sebep yazılır.
 
 Pencere içindeki koşulu etkileyen hata için düzeltme ertelenmez; gerekiyorsa pencere yeniden

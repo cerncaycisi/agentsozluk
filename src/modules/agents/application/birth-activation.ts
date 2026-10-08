@@ -209,13 +209,15 @@ export async function activateBirthCandidate(
       tx,
       report.baselineCapabilityId,
     );
+    /*
+      Ölçüm pencereden önce yapılmış ve sağlıklı olmalı. Yaşı ve talimat profili artık tazeliği
+      belirlemez (Gökhan 8 Ekim 2026: "bi kere ölçelim hep oralarda olsun").
+    */
     if (
       !baselineCapability ||
       baselineCapability.measuredAt > from ||
-      baselineCapability.staleAt <= from ||
       baselineCapability.capacityStatus !== "HEALTHY" ||
-      baselineCapability.benchmarkRunCount < 10 ||
-      baselineCapability.promptProfileHash !== RUNTIME_PROMPT_PROFILE_HASH
+      baselineCapability.benchmarkRunCount < 10
     )
       throw blocked("ACCEPTANCE_BENCHMARK_MISMATCH");
     for (const row of histories.profiles.filter((item) =>

@@ -49,7 +49,6 @@ SAGLIK_ZAMAN_ASIMI="${ALARM_SAGLIK_ZAMAN_ASIMI:-40}"     # sn; sorgu 25 + gönde
 SAGLIK_CODEX_HATA_ADET="${ALARM_SAGLIK_CODEX_HATA_ADET:-3}" # 60 dk'da bu kadar Codex hatası + 0 başarı
 SAGLIK_RET_ORANI_YUZDE="${ALARM_SAGLIK_RET_ORANI_YUZDE:-20}" # 24 sa entry ret oranı eşiği
 SAGLIK_RET_ASGARI="${ALARM_SAGLIK_RET_ASGARI:-20}"           # oran bu kadar entry eyleminden azsa bakılmaz
-SAGLIK_KAPASITE_UYARI_SN="${ALARM_SAGLIK_KAPASITE_UYARI_SN:-259200}" # kanıt bayatlamadan 3 gün önce
 SAGLIK_DURUM="${DURUM}-saglik"
 LEASE_DURUM="${DURUM}-lease"
 LEASE_IMLEC="${DURUM}-lease-imlec"
@@ -527,7 +526,8 @@ ${govde}"
 #  - codex:     son 60 dk'da Codex hataları var, başarılı koşu yok (kota ya da
 #               sağlayıcı; güvenli kod veritabanına yazılmadığı için ayrılamaz)
 #  - hat:       etkin eşzamanlılık ayarlanandan düşük (son karar olayı)
-#  - kapasite:  kapasite kanıtı bayatladı ya da 3 gün içinde bayatlayacak
+#  - kapasite:  kapasite ölçüm kaydı yok (8 Ekim: ölçüm yaşla ya da talimatla bayatlamaz;
+#               Codex ana sürümü değişirse etkin hat düşer ve `hat` bildirir)
 #  - ret:       son 24 sa entry eylemlerinin ret oranı eşiğin üstünde
 # Yalnız okur. Kendi alt sürecinde koşar; başarısızlığı yalnız journal'a düşer
 # (veritabanı arızasını canlılık zaten bildirir) ve çıkış kodunu etkilemez.
@@ -641,15 +641,11 @@ saglik_kontrol() {
   else
     hat_bilinmiyor=1
   fi
+  # Gökhan kararı (8 Ekim 2026): ölçüm bir kez yapılır; `staleAt` artık tazeliği belirlemez.
+  # Kalan süre geriye uyum için okunur ama alarm üretmez; yalnız kayıt yokluğu sorundur.
   if [[ "$kalan" == yok ]]; then
     sorunlar+=(kapasite)
     satirlar+=("Kapasite: ölçüm kaydı yok.")
-  elif (( kalan <= 0 )); then
-    sorunlar+=(kapasite)
-    satirlar+=("Kapasite: kanıt $(( -kalan / 86400 )) gündür bayat; yeniden ölç.")
-  elif (( kalan <= SAGLIK_KAPASITE_UYARI_SN )); then
-    sorunlar+=(kapasite)
-    satirlar+=("Kapasite: kanıt $(( kalan / 3600 )) saat içinde bayatlıyor; yeniden ölç.")
   fi
   # Eşik tamsayı bölmesiyle değil çarpımla karşılaştırılır: %20,8 > %20 (Astra, 2 Ekim).
   if (( ret + basari >= SAGLIK_RET_ASGARI )) \

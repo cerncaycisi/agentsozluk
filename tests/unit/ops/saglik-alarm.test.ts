@@ -112,18 +112,18 @@ describe("sağlık özeti", () => {
 
   it("etkin eşzamanlılık ayarın altındaysa nedeniyle bildirir", () => {
     const sonuc = calistir("SAGLIK 0 6 3 40 2 1 2 EVIDENCE_STALE -3600");
-    expect(sonuc.bildirimler[0]).toContain("Title: Agent Sözlük sağlık: hat,kapasite");
+    expect(sonuc.bildirimler[0]).toContain("Title: Agent Sözlük sağlık: hat");
+    expect(sonuc.bildirimler[0]).not.toContain("hat,kapasite");
     expect(sonuc.bildirimler[0]).toContain("etkin eşzamanlılık 1, ayar 2 (neden EVIDENCE_STALE)");
-    expect(sonuc.bildirimler[0]).toContain("kanıt 0 gündür bayat");
   });
 
-  it("kapasite kanıtı üç gün içinde bayatlayacaksa önceden uyarır", () => {
-    const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200");
+  // Gökhan kararı (8 Ekim): ölçüm yaşla bayatlamaz; yalnız kaydın yokluğu sorundur.
+  it("kapasiteyi yalnız ölçüm kaydı yoksa bildirir, kalan süreyle uyarmaz", () => {
+    expect(calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200").bildirimler).toEqual([]);
+    expect(calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH -86400").bildirimler).toEqual([]);
+    const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH yok");
     expect(sonuc.bildirimler[0]).toContain("Title: Agent Sözlük sağlık: kapasite");
-    expect(sonuc.bildirimler[0]).toContain("kanıt 2 saat içinde bayatlıyor");
-    expect(calistir(SAGLAM.replace("900000", "yok"), 1_900_000_000).bildirimler[0]).toContain(
-      "ölçüm kaydı yok",
-    );
+    expect(sonuc.bildirimler[0]).toContain("ölçüm kaydı yok");
   });
 
   it("ret oranı eşiği aşınca düşük öncelikle günde bir kez hatırlatır", () => {
@@ -151,7 +151,7 @@ describe("sağlık özeti", () => {
       [],
     );
     const degisen = calistir("SAGLIK 5 0 3 40 2 1 2 EVIDENCE_STALE -10", t + 1800);
-    expect(degisen.bildirimler[0]).toContain("sağlık: codex,hat,kapasite");
+    expect(degisen.bildirimler[0]).toContain("sağlık: codex,hat");
     expect(
       calistir("SAGLIK 5 0 3 40 2 1 2 EVIDENCE_STALE -10", t + 1800 + 6 * 3600 + 1).bildirimler,
     ).toHaveLength(1);
@@ -239,7 +239,7 @@ describe("sağlık özeti", () => {
   it("arada bildirilemeyen sorun yeni alarma eklenir", () => {
     const t = 1_800_000_000;
     calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t, { SAHTE_CURL_HATA: "1" });
-    const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200", t + 900);
+    const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH yok", t + 900);
     expect(sonuc.bildirimler[0]).toContain("sağlık: kapasite");
     expect(sonuc.bildirimler[0]).toContain("Arada görülen, bildirimi doğrulanamayan: codex.");
   });
@@ -269,7 +269,7 @@ describe("sağlık özeti", () => {
     const t = 1_800_000_000;
     calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000", t);
     calistir(SAGLAM, t + 900, { SAHTE_CURL_HATA: "1" });
-    const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200", t + 1800);
+    const sonuc = calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH yok", t + 1800);
     expect(sonuc.bildirimler[0]).toContain("sağlık: kapasite");
     expect(sonuc.bildirimler[0]).toContain("Düzelen: codex.");
     expect(sonuc.bildirimler[0]).not.toContain("doğrulanamayan: codex");
@@ -292,8 +292,8 @@ describe("sağlık özeti", () => {
 
   it("kısmi düzelmenin bildirimi gönderilemezse kaybolmaz (Astra, 3. tur)", () => {
     const t = 1_800_000_000;
-    calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 7200", t);
-    calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH 7200", t + 900, { SAHTE_CURL_HATA: "1" });
+    calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH yok", t);
+    calistir("SAGLIK 0 6 3 40 2 2 2 EVIDENCE_FRESH yok", t + 900, { SAHTE_CURL_HATA: "1" });
     const sonuc = calistir(SAGLAM, t + 1800);
     expect(sonuc.bildirimler[0]).toContain("Önceki sorun (codex,kapasite) artık görünmüyor.");
     expect(sonuc.bildirimler[0]).not.toContain("doğrulanamayan");

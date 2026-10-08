@@ -151,9 +151,6 @@ export default async function AgentCapacityPage() {
               <>
                 {" "}
                 Dayandığı ölçüm: {capacity.appliedConcurrencyDecision.measurementId}
-                {capacity.appliedConcurrencyDecision.staleAt
-                  ? ` · geçerlilik ${capacity.appliedConcurrencyDecision.staleAt}`
-                  : ""}
                 {capacity.appliedConcurrencyDecision.staleReasons.length > 0
                   ? ` · eskime: ${capacity.appliedConcurrencyDecision.staleReasons.join(", ")}`
                   : ""}
