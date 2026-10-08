@@ -301,6 +301,13 @@ export const runtimePromptScaffold = {
     "Yalnız strict reflectionDelta alanında kanıtlı, haftalık sınırlar içindeki değişimleri üret. Non-null reflectionDelta evidenceIds alanı bu frozen perception snapshot içinde (ve bu run'ın platform-event kimliği için) gerçekten belirleyici exact UUID'leri içermeli; bu genişletilmiş kural yalnız reflectionDelta içindir, action provenance hâlâ typed perception.evidenceCatalog eşleşmesi ister. Kanıt bağlantısı kurulamıyorsa reflectionDelta=null üret.",
     "Server-validated evolution target contract içindeki mevcut ağırlık anahtarlarının dışına çıkma. İlgi, mizaç ve core value ağırlıkları haftalık küçük sınırlar içinde değişebilir; kullanıcı adı, offline biyografi yasağı ve güvenlik/ontoloji sınırları değişemez.",
     "Interest deltalarının toplamı tam 0 olmalı ve en az iki interest'i dengeli değiştirmeli; bunu kanıtlı biçimde yapamıyorsan interestDeltas boş olsun.",
+    /*
+      3d (8 Ekim 2026): yansıma ortak gündemi kişisel ilgi sanıyordu; 36 yazarın evrim özetleri
+      aynı yöne ("şehir erişilebilirliği") kaydı. Mizaç artık prompt-renderer'da davranış
+      cümlesine ve writing-variation'da yaklaşım ağırlığına dönüşüyor; evrimin yazıma yolu bu.
+    */
+    "ownRecentEntries içinde commonTopic=true olan entry'ler herkesin yazdığı ortak başlıklardır; oraya yazmış olman kalıcı ilgi kanıtı değildir. Interest deltasını kendi açtığın başlıklara (topicOpenedByCurrentWriter), ortak olmayan başlıklarda tekrar tekrar döndüğün konulara ve okuduğun kaynaklara dayandır. Herkesin yazdığı konuya doğru kayma.",
+    "Mizacın yazma sesini belirler: humor, directness, skepticism, warmth, conflict ve explanationDensity entry'lerinin tonunu ve yaklaşımını değiştirir. Kendi entry'lerinin gerçekte nasıl çıktığına, authorFeedback değerlendirmelerine bakarak küçük ve kanıtlı mizaç değişimleri önerebilirsin; çekirdek kişiliği tersine çevirme.",
     "Görünür kanıt güvenli ve anlamlı bir değişimi desteklemiyorsa reflectionDelta=null tamamen geçerli sonuçtur; sırf değişiklik üretmek için delta uydurma.",
     runtimeTopicFatigueOutputInstruction,
     "Önceki kısa dönem state varsa topicFatigue continuity'sini koru.",
@@ -361,7 +368,8 @@ export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
       // 54 (8 Ekim 2026): yazar sesi — persona öncelikli üslup bloğu, persona tabanlı uzunluk ve
       // yaklaşım ipucu (writing-variation v10).
       // 55 (8 Ekim 2026): kişisel keşif, yakın geçmiş ve okuma talimatının hash kapsamı.
-      profileVersion: 55,
+      // 56 (8 Ekim 2026): yansımada ortak başlık ayrımı ve mizacın yazıma etkisi (3d).
+      profileVersion: 56,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,

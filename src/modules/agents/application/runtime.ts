@@ -190,6 +190,12 @@ interface RuntimeLeaseDependencies {
 }
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
+const memoryConsolidationRunTriggers: ReadonlySet<string> = new Set([
+  "NIGHTLY_MEMORY_CONSOLIDATION",
+  "ADMIN_MEMORY_RECONSOLIDATE",
+]);
+/** Başkasının açtığı ve bu kadar entry'si olan başlık yansımada ortak gündem sayılır. */
+const runtimeCommonTopicEntryCount = 8;
 
 function runtimeSourceStatePayload(state: RuntimeSourceState) {
   return {
@@ -309,11 +315,19 @@ function boundedPerceptionSnapshot(
   );
   // Hafıza süzgeci için: bu koşuda gövdesi zaten görünen source item kimlikleri.
   const visibleSourceItemIds = new Set(sourceItems.map((item) => item.itemId));
+  /*
+    Yansıma (3d, 8 Ekim 2026) yazarın son entry'lerini ilgi kanıtı sayıyordu; oysa çoğu herkesin
+    yazdığı ortak başlıklara gidiyordu ve evrim herkesi aynı ilgiye kaydırıyordu. `commonTopic`
+    kalabalık ve başkasının açtığı başlığı işaretler; yansıma talimatı bunu kişisel ilgi saymaz.
+  */
   const ownRecentEntries = records.ownEntries.slice(0, 8).map((entry) => ({
     ...entry,
     body: truncateUntrustedText(entry.body, 600),
     createdAt: entry.createdAt.toISOString(),
     topicOpenedByCurrentWriter: writerOpenedTopicIds.has(entry.topic.id),
+    commonTopic:
+      !writerOpenedTopicIds.has(entry.topic.id) &&
+      entry.topic.entryCount >= runtimeCommonTopicEntryCount,
   }));
   const writerOpenedTopics = records.writerOpenedTopics.map(({ id, title }) => ({ id, title }));
   const linkedTopics = records.linkedTopics.slice(0, 8).map((linkedTopic) => ({
@@ -618,7 +632,7 @@ async function applyRuntimeReflectionDelta(
       422,
       "Reflection delta yalnız REFLECTION run tamamlanırken gönderilebilir.",
     );
-  if (["NIGHTLY_MEMORY_CONSOLIDATION", "ADMIN_MEMORY_RECONSOLIDATE"].includes(input.run.trigger))
+  if (memoryConsolidationRunTriggers.has(input.run.trigger))
     throw new AppError(
       "VALIDATION_ERROR",
       422,
@@ -1792,8 +1806,17 @@ export function getRuntimeRunContext(
       run.runType === "NORMAL_WAKE"
         ? await runtimePurposeContext(transaction, run, now)
         : { purposes: [], purposeTopics: [] };
+    /*
+      Haftalık yansıma bağımsız yazar değerlendirmelerini de görür (3d): evrim yalnız
+      yazdıklarına değil, işinin nasıl karşılandığına da bakar. Kartlar kanıt kimliği olamaz
+      (`deriveRuntimePerceptionEvidence` bu anahtarları dışlar). Teknik işlem sonuç kartları
+      (`actionFeedback`) #298 kararıyla yalnız normal uyanışta kalır: teknik sonuç kişilik
+      değişimine gerekçe olmaz. Hafıza birleştirme koşusu yansıma türünde ama kart taşımaz.
+    */
+    const reflectionWithFeedback =
+      run.runType === "REFLECTION" && !memoryConsolidationRunTriggers.has(run.trigger);
     const feedback =
-      run.runType === "NORMAL_WAKE"
+      run.runType === "NORMAL_WAKE" || reflectionWithFeedback
         ? await runtimeAuthorFeedback(
             transaction,
             run.agentProfileId,
@@ -1828,6 +1851,9 @@ export function getRuntimeRunContext(
           purposeTopics: filterIds(perception.purposeTopics, visibleIds),
           [authorFeedbackKey]: feedback,
         };
+        await storeRuntimePerceptionSummary(transaction, runId, perception);
+      } else if (reflectionWithFeedback) {
+        perception = { ...perception, [authorFeedbackKey]: feedback };
         await storeRuntimePerceptionSummary(transaction, runId, perception);
       }
     } else {

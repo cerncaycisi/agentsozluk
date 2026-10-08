@@ -4063,6 +4063,11 @@ describe("internal agent runtime API with PostgreSQL", () => {
       visibleTopic.topic.id,
       { body: "OWN_PERCEPTION_BODY yalnız ownRecentEntries içinde görünmelidir." },
     );
+    // 3d: kalabalık ve başkasının açtığı başlık ortak; yazarın kendi açtığı başlık hiç ortak değil.
+    await integrationDatabase.topic.updateMany({
+      where: { id: { in: [visibleTopic.topic.id, writerOpenedTopic.topic.id] } },
+      data: { entryCount: 9 },
+    });
     const context = await getRuntimeRunContext(
       integrationDatabase,
       readPrincipal,
@@ -4092,7 +4097,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
       expect.arrayContaining([expect.objectContaining({ id: ownPerceptionEntry.id })]),
     );
     expect(context.perception.ownRecentEntries).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: ownPerceptionEntry.id })]),
+      expect.arrayContaining([
+        expect.objectContaining({ id: ownPerceptionEntry.id, commonTopic: true }),
+        expect.objectContaining({
+          topic: expect.objectContaining({ id: writerOpenedTopic.topic.id }),
+          topicOpenedByCurrentWriter: true,
+          commonTopic: false,
+        }),
+      ]),
     );
     expect(context.perception.writerOpenedTopics).toEqual(
       expect.arrayContaining([
@@ -12568,13 +12580,17 @@ describe("persistent runtime purposes with PostgreSQL", () => {
       profileId: fixture.created.agent.profile.id,
     };
   }
-  async function next(fixture: Awaited<ReturnType<typeof createFixture>>) {
+  async function next(
+    fixture: Awaited<ReturnType<typeof createFixture>>,
+    runType: "NORMAL_WAKE" | "REFLECTION" = "NORMAL_WAKE",
+    trigger = "PURPOSE_TEST",
+  ) {
     await integrationDatabase.agentRun.create({
       data: {
         agentProfileId: fixture.created.agent.profile.id,
-        runType: "NORMAL_WAKE",
+        runType,
         queuePriority: "MANUAL_SINGLE",
-        trigger: "PURPOSE_TEST",
+        trigger,
         requestedById: fixture.admin.id,
         personaVersionId: fixture.created.agent.personaVersion.id,
         idempotencyKey: randomUUID(),
@@ -13102,6 +13118,26 @@ describe("persistent runtime purposes with PostgreSQL", () => {
     expect(afterReversal.context.perception.authorFeedback).toEqual([
       expect.objectContaining({ id: decision.assessmentId, state: "REVERSED" }),
     ]);
+    // 3d: haftalık yansıma değerlendirme kartını görür; teknik sonuç kartı ve hafıza
+    // birleştirme koşusu dışarıda kalır.
+    await afterReversal.complete([]);
+    const reflection = await next(fixture, "REFLECTION", "WEEKLY_REFLECTION");
+    expect(reflection.context.perception.authorFeedback).toEqual([
+      expect.objectContaining({ id: decision.assessmentId, state: "REVERSED" }),
+    ]);
+    expect(reflection.context.perception.actionFeedback).toEqual([]);
+    const reflectionRefreshed = await getRuntimeRunContext(
+      integrationDatabase,
+      reflection.principal,
+      reflection.runId,
+      reflection.workerId,
+    );
+    expect(reflectionRefreshed.perception.authorFeedback).toEqual([
+      expect.objectContaining({ id: decision.assessmentId, state: "REVERSED" }),
+    ]);
+    await reflection.complete([]);
+    const consolidation = await next(fixture, "REFLECTION", "NIGHTLY_MEMORY_CONSOLIDATION");
+    expect(consolidation.context.perception.authorFeedback).toEqual([]);
     expect(await integrationDatabase.agentAction.count()).toBe(0);
   });
 });
