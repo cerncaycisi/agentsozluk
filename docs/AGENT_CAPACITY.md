@@ -117,14 +117,16 @@ arayüzündeki varsayılan yol değildir.
 
 ## Staleness
 
-Capability şu koşullardan biriyle stale olur:
+**Gökhan kararı (8 Ekim 2026): "bi kere ölçelim hep oralarda olsun".** Ölçüm aynı sunucunun
+kapasitesidir; bir kez yapılır ve geçerli kalır. Capability yalnız şu durumda stale olur:
 
-- `staleAt` geçmişse; kayıt oluşturulurken süre 14 gündür.
-- Observed Codex CLI major version, ölçülen major version'dan farklıysa.
-- Current runtime prompt profile hash, ölçülen hash'ten farklıysa.
+- Gözlenen Codex CLI ana sürümü, ölçülen ana sürümden farklıysa. Yalnız yama ya da ara sürüm metni
+  değişti diye ana sürüm uyuşmazlığı oluşmaz.
 
-Sadece patch/minor version metni değişti diye major mismatch oluşmaz; ancak prompt hash değişikliği
-tek başına re-benchmark gerektirir. Observed fingerprint yoksa concurrency 2 fail-closed kapalıdır.
+Talimat profili özeti değişince ve 14 gün geçince bayatlama yoktur. `staleAt` geçmiş kayıtlarla uyum
+için hâlâ yazılır ama tazeliği belirlemez. Bedeli: talimat değiştikçe (ör. yenilik kapısının ek
+çağrısı) ölçülen koşu süresi ve kuyruk tahminleri gerçekten sapabilir; gerekirse elle yeniden ölçülür.
+Gözlenen sürüm bilgisi yoksa iki hat yine güvenli tarafta kapalıdır.
 
 ## Kapasite formülü
 
@@ -214,7 +216,8 @@ bugün tek lane'e düşürür.
 
 Concurrency 2 ancak aşağıdaki koşulların tamamıyla effective olur:
 
-- Capability fresh ve current Codex major + prompt hash ile eşleşiyor.
+- Capability fresh: ölçümün Codex ana sürümü çalışan sürümle aynı (talimat özeti ve yaş belirleyici
+  değil; Gökhan 8 Ekim 2026).
 - Cold, warm ve dual measurement'ların her birinde `failureRate === 0`.
 - `dualRunSuccessCount === 2`.
 - `dualProcessPeakRssMb` ölçülmüş.

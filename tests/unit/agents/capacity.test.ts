@@ -102,14 +102,21 @@ describe("agent runtime capacity", () => {
     ).toBeNull();
   });
 
-  it("marks age, Codex major and prompt profile changes as stale", () => {
+  it("marks only a Codex major change as stale (Gökhan 8 Ekim: measure once)", () => {
     expect(
       capabilityFreshness(capability, {
         now: new Date("2026-08-01T00:00:00.000Z"),
         codexVersion: "codex-cli 3.0.0",
         promptProfileHash: "prompt-v2",
       }),
-    ).toEqual({ fresh: false, staleReasons: ["AGE", "CODEX_MAJOR", "PROMPT_PROFILE"] });
+    ).toEqual({ fresh: false, staleReasons: ["CODEX_MAJOR"] });
+    expect(
+      capabilityFreshness(capability, {
+        now: new Date("2027-08-01T00:00:00.000Z"),
+        codexVersion: capability.codexVersion,
+        promptProfileHash: "prompt-v2",
+      }),
+    ).toEqual({ fresh: true, staleReasons: [] });
   });
 
   it("requires a fresh successful measurement and 800 MB reserve for concurrency 2", () => {
@@ -135,13 +142,14 @@ describe("agent runtime capacity", () => {
         promptProfileHash: capability.promptProfileHash,
       }),
     ).toThrow(/capability/iu);
+    // Talimat değişikliği ölçümü bayatlatmaz (Gökhan 8 Ekim).
     expect(() =>
       assertDualConcurrencySupported(capability, {
         now,
         codexVersion: capability.codexVersion,
         promptProfileHash: "prompt-v2",
       }),
-    ).toThrow(/capability/iu);
+    ).not.toThrow();
     const result = calculateRuntimeCapacity({
       capability: { ...capability, dualConcurrencySupported: false },
       configuredConcurrency: 2,

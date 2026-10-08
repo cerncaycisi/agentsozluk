@@ -273,7 +273,7 @@ export async function assertProductionRolloutCompletionEvidence(
     capability.capacityStatus !== "HEALTHY" ||
     capability.benchmarkRunCount < 10 ||
     !capability.dualConcurrencySupported ||
-    capability.promptProfileHash !== RUNTIME_PROMPT_PROFILE_HASH ||
+    // Talimat profili eşleşmesi aranmaz; tazelik tek kuraldan gelir (Gökhan 8 Ekim: bir kez ölç).
     !capabilityFreshness(capability, {
       now: input.now,
       ...fingerprint,
