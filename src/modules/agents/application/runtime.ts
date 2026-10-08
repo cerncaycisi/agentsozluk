@@ -269,11 +269,11 @@ function perceptionPreviousFastState(perceptionSummary: unknown) {
 /*
   Tam metin alanı sınırlı ve başlıklar arasında adil (Astra, 9 Ekim): en kötü durumda üç başlık
   × 60 entry × 2000 karakter algıyı yüzlerce KB büyütüyordu; ortak bütçe ise ilk başlığa
-  yetip sonrakileri kısaltılmış metne düşürüyordu. Her okunan başlığa eşit pay; tek entry'nin
-  tam metni en fazla 1200 karakter (entry'lerin %95'i bunun altında).
+  yetip sonrakileri kısaltılmış metne düşürüyordu. Her okunan başlığa eşit pay. Entry metni
+  kırpılmaz: hüküm entry'nin sonundaysa kırpma tekrarı gizliyordu (Sol 6.1, 9 Ekim). Tipik
+  başlıkta tam metinler ~10 bin karakter; payı aşan entry kısaltılmış hâliyle karşılaştırılır.
 */
 const runtimeReadTopicFullBodiesMaximumChars = 60_000;
-const runtimeReadTopicFullBodyCharLimit = 1200;
 
 function boundedFullBodies(topics: { id: string; body: string }[][]) {
   const perTopic = Math.floor(runtimeReadTopicFullBodiesMaximumChars / Math.max(1, topics.length));
@@ -281,10 +281,9 @@ function boundedFullBodies(topics: { id: string; body: string }[][]) {
     const kept: { id: string; body: string }[] = [];
     let total = 0;
     for (const item of items) {
-      const body = truncateUntrustedText(item.body, runtimeReadTopicFullBodyCharLimit);
-      if (total + body.length > perTopic) continue;
-      total += body.length;
-      kept.push({ id: item.id, body });
+      if (total + item.body.length > perTopic) continue;
+      total += item.body.length;
+      kept.push(item);
     }
     return kept;
   });

@@ -3495,10 +3495,23 @@ async function listRuntimeInterestTopicCandidates(
             ? { createdById: { notIn: [...input.blockedUserIds] } }
             : {}),
           AND: tokens.map((token) => ({
-            OR: forms(token).flatMap((form) => [
-              { normalizedTitle: { startsWith: form } },
-              { normalizedTitle: { contains: ` ${form}` } },
-            ]),
+            OR: forms(token).flatMap((form) =>
+              // Üç harfli kök kesin eşleştiricide yalnız tam kelimedir ("din" ≠ "dinamik").
+              token.length < 4
+                ? [
+                    { normalizedTitle: { equals: form } },
+                    { normalizedTitle: { startsWith: `${form} ` } },
+                    { normalizedTitle: { endsWith: ` ${form}` } },
+                    { normalizedTitle: { contains: ` ${form} ` } },
+                  ]
+                : [
+                    { normalizedTitle: { startsWith: form } },
+                    // Kelime başı: boşluk ya da noktalama sonrası ("(müzik)", "ses/müzik").
+                    ...[" ", "(", '"', "“", "'", "/", "-"].map((before) => ({
+                      normalizedTitle: { contains: `${before}${form}` },
+                    })),
+                  ],
+            ),
           })),
         },
         select: { id: true, title: true, entryCount: true, lastEntryAt: true },
