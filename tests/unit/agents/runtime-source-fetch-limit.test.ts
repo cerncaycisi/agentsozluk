@@ -49,7 +49,7 @@ const input = {
 };
 
 describe("runtime source fetch target selection", () => {
-  it("güncel ilgiyi dönüşüm havuzunda öne alır ve kalan yerleri eski sıradan doldurur", async () => {
+  it("güncel ilgiye uyan kaynakları kümeye alır, kalan yerleri ve sırayı eski dönüşümden korur", async () => {
     const candidates = [
       "gündem",
       "film",
@@ -94,12 +94,13 @@ describe("runtime source fetch target selection", () => {
       );
       return records.sources.map(({ id }) => id);
     };
-    expect(await select("müzik")).toEqual(["source-3", "source-4", "source-0", "source-1"]);
+    // İlgi kümeyi seçer, sıra güven/tazelik sırasında kalır (yansıma güven değişimi okunur).
+    expect(await select("müzik")).toEqual(["source-0", "source-1", "source-3", "source-4"]);
     expect(await select("film ve diziler")).toEqual([
-      "source-5",
-      "source-1",
       "source-0",
+      "source-1",
       "source-2",
+      "source-5",
     ]);
   });
 

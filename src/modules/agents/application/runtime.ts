@@ -320,15 +320,22 @@ function boundedPerceptionSnapshot(
     yazdığı ortak başlıklara gidiyordu ve evrim herkesi aynı ilgiye kaydırıyordu. `commonTopic`
     kalabalık ve başkasının açtığı başlığı işaretler; yansıma talimatı bunu kişisel ilgi saymaz.
   */
-  const ownRecentEntries = records.ownEntries.slice(0, 8).map((entry) => ({
-    ...entry,
-    body: truncateUntrustedText(entry.body, 600),
-    createdAt: entry.createdAt.toISOString(),
-    topicOpenedByCurrentWriter: writerOpenedTopicIds.has(entry.topic.id),
-    commonTopic:
-      !writerOpenedTopicIds.has(entry.topic.id) &&
-      entry.topic.entryCount >= runtimeCommonTopicEntryCount,
-  }));
+  /*
+    Sahiplik başlığın kendi `createdById` alanından okunur: yansıma koşusu `writerOpenedTopics`
+    yüklemez ve yazarın kendi başlığı ortak sanılıyordu (Astra 2. tur). Kimlik modele gitmez.
+  */
+  const ownRecentEntries = records.ownEntries.slice(0, 8).map((entry) => {
+    const { createdById, ...topic } = entry.topic;
+    const opened = writerOpenedTopicIds.has(topic.id) || createdById === run.agentProfile.user.id;
+    return {
+      ...entry,
+      topic,
+      body: truncateUntrustedText(entry.body, 600),
+      createdAt: entry.createdAt.toISOString(),
+      topicOpenedByCurrentWriter: opened,
+      commonTopic: !opened && topic.entryCount >= runtimeCommonTopicEntryCount,
+    };
+  });
   const writerOpenedTopics = records.writerOpenedTopics.map(({ id, title }) => ({ id, title }));
   const linkedTopics = records.linkedTopics.slice(0, 8).map((linkedTopic) => ({
     ...linkedTopic,
@@ -1853,7 +1860,16 @@ export function getRuntimeRunContext(
         };
         await storeRuntimePerceptionSummary(transaction, runId, perception);
       } else if (reflectionWithFeedback) {
-        perception = { ...perception, [authorFeedbackKey]: feedback };
+        // Geri alma metni kartı büyütebilir; donmuş snapshot bayt sınırını aşmasın (Astra 2. tur).
+        const cards = [...feedback];
+        perception = { ...perception, [authorFeedbackKey]: cards };
+        while (
+          cards.length > 0 &&
+          Buffer.byteLength(JSON.stringify(perception), "utf8") > runtimePerceptionMaximumBytes
+        ) {
+          cards.pop();
+          perception = { ...perception, [authorFeedbackKey]: [...cards] };
+        }
         await storeRuntimePerceptionSummary(transaction, runId, perception);
       }
     } else {

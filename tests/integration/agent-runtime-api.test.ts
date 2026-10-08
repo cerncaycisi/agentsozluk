@@ -692,6 +692,62 @@ describe("internal agent runtime API with PostgreSQL", () => {
     },
   );
 
+  it("yansıma koşusunda yazarın kendi açtığı kalabalık başlığı ortak saymaz (3d)", async () => {
+    const fixture = await createFixture();
+    const writer = await runtimePrincipal(fixture.credential, "runtime:write");
+    const own = await createTopicWithFirstEntry(integrationDatabase, writer.actor, {
+      title: "yansıma kendi başlığı",
+      entryBody: "Kendi açtığım başlığın ilk entry'si, sahiplik testinde görünür.",
+    });
+    const shared = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "yansıma ortak başlığı",
+        entryBody: "Başkasının açtığı başlık, ortak gündem ayrımı için.",
+      },
+    );
+    await createEntry(integrationDatabase, writer.actor, shared.topic.id, {
+      body: "Ortak başlığa yazdığım entry, sahiplik ayrımı testinde.",
+    });
+    await integrationDatabase.topic.updateMany({
+      where: { id: { in: [own.topic.id, shared.topic.id] } },
+      data: { entryCount: 9 },
+    });
+    await integrationDatabase.agentRun.update({
+      where: { id: fixture.runs[0]!.id },
+      data: { runType: "REFLECTION", trigger: "WEEKLY_REFLECTION" },
+    });
+    const workerId = "reflection-ownership";
+    const leased = await leaseRuntimeRun(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:lease"),
+      { workerId, leaseSeconds: 60 },
+    );
+    expect(leased.run!.id).toBe(fixture.runs[0]!.id);
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      leased.run!.id,
+      workerId,
+    );
+    expect(context.perception.ownRecentEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          topic: expect.objectContaining({ id: own.topic.id }),
+          topicOpenedByCurrentWriter: true,
+          commonTopic: false,
+        }),
+        expect.objectContaining({
+          topic: expect.objectContaining({ id: shared.topic.id }),
+          topicOpenedByCurrentWriter: false,
+          commonTopic: true,
+        }),
+      ]),
+    );
+    expect(JSON.stringify(context.perception.ownRecentEntries)).not.toContain("createdById");
+  });
+
   it("authenticates only the hashed scoped credential and rejects browser sessions", async () => {
     const fixture = await createFixture();
     const principal = await runtimePrincipal(fixture.credential);

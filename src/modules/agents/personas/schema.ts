@@ -66,8 +66,9 @@ export const seedPersonaSchema = z
     writing: z.object({
       rhythm: z.string().min(10).max(300),
       entryLength: z.enum(["SHORT", "MEDIUM", "LONG", "MIXED"]),
-      preferredMinWords: z.number().int().min(20).max(500),
-      preferredMaxWords: z.number().int().min(40).max(1000),
+      // 8 Ekim 2026 (D1): kısa yazar 5–40 kelimeyle yazabilmeli; eski taban 20/40 kısa personayı uzatıyordu.
+      preferredMinWords: z.number().int().min(5).max(500),
+      preferredMaxWords: z.number().int().min(20).max(1000),
       structure: z.array(z.string().min(3).max(120)).min(2).max(8),
       avoidPatterns: z.array(z.string().min(3).max(160)).min(2).max(10),
     }),
