@@ -1,3 +1,4 @@
+import { createInterestScorer } from "@/modules/agents/domain/interest-matching";
 import { createHash } from "node:crypto";
 import type { SeedPersona } from "./schema";
 
@@ -109,21 +110,8 @@ export interface DiverseSourceTarget {
   excludedUrls?: ReadonlySet<string>;
 }
 
-function topicStems(value: string): string[] {
-  return value
-    .toLocaleLowerCase("tr-TR")
-    .split(/[^\p{L}]+/u)
-    .filter((word) => word.length >= 3 && !["ile", "için"].includes(word))
-    .map((word) => word.slice(0, 4));
-}
-
 export function sourceInterestAffinity(persona: SeedPersona, source: PersonaSource): number {
-  const sourceStems = new Set(source.topics.flatMap(topicStems));
-  return persona.interests.reduce(
-    (total, { key, weight }) =>
-      total + (topicStems(key).some((stem) => sourceStems.has(stem)) ? weight : 0),
-    0,
-  );
+  return createInterestScorer(persona.interests)(source.topics.join(" "));
 }
 
 export function planDiverseSourceAssignment(

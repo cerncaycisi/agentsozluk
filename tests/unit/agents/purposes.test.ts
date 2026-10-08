@@ -45,11 +45,15 @@ describe("bounded author purpose contract", () => {
         id: `topic-${i}`,
         title: `Başlık ${i}`,
       })),
+      linkedTopics: Array.from({ length: 30 }, (_, i) => ({
+        topic: { id: `linked-${i}`, title: `Bağlantı ${i}` },
+      })),
     };
     expect(deriveRuntimePerceptionEvidence(perception).ids).toEqual([targetId]);
     expect(runtimeEvidenceCatalogFrom(perception, "run").PLATFORM_EVENT).not.toContain(purposeId);
     expect(browsableTopicMenu(perception)).toHaveLength(24);
     expect(browsableTopicMenu(perception)[0]).toMatchObject({ id: targetId });
+    expect(browsableTopicMenu(perception).filter(({ hint }) => hint === "gündem")).toHaveLength(3);
   });
   it("uses provider-compatible required purpose output without default, format or oneOf", () => {
     const json = JSON.stringify(runtimeNormalDecisionWireJsonSchema);

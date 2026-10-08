@@ -5,6 +5,7 @@ import {
   assignVerifiedSources,
   reconciledCanonicalAdminPinned,
   sourceTopicMappings,
+  sourceInterestAffinity,
   uniqueVerifiedSourcePool,
 } from "../../../src/modules/agents/personas/source-assignment";
 import {
@@ -27,6 +28,20 @@ const importedPersona: SeedPersona = {
 };
 
 describe("verified source assignment", () => {
+  it("kaynak ilgisinde bağlaçları atar, kısmi eşleşme ve Türkçe ekleri ortak puanlar", () => {
+    const persona = {
+      ...base,
+      interests: [
+        { key: "film ve diziler", weight: 0.6, pinned: false },
+        { key: "müzik", weight: 0.4, pinned: false },
+      ],
+    };
+    expect(
+      sourceInterestAffinity(persona, { ...base.sources[0]!, topics: ["masa ve sandalye"] }),
+    ).toBe(0);
+    expect(sourceInterestAffinity(persona, { ...base.sources[0]!, topics: ["film"] })).toBe(0.3);
+    expect(sourceInterestAffinity(persona, { ...base.sources[0]!, topics: ["müziği"] })).toBe(0.4);
+  });
   it("deterministically retains verified sources, drops unknown URLs and keeps two-source headroom", () => {
     const first = assignVerifiedSources(importedPersona, verifiedPool);
     const second = assignVerifiedSources(importedPersona, [...verifiedPool].reverse());

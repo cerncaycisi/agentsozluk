@@ -112,7 +112,12 @@ import {
   sourceFetchTargetLimit,
   terminalizeInterruptedRuntimeRun,
 } from "@/modules/agents/domain/runtime-controls";
-import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
+import {
+  browsableTopicIds,
+  interestTopicLimit,
+  selectInterestTopics,
+} from "@/modules/agents/domain/runtime-browse";
+import { createInterestScorer } from "@/modules/agents/domain/interest-matching";
 import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
 import {
   assertSourceScoreWeeklyBudget,
@@ -282,6 +287,7 @@ function boundedPerceptionSnapshot(
     topicEntryCountLast30Minutes: recentTopicCounts.get(entry.topic.id) ?? 0,
     saturated: (recentTopicCounts.get(entry.topic.id) ?? 0) >= 15,
   }));
+  const interestScore = createInterestScorer(persona.interests);
   const sourceItems = selectDiverseSourceItems(
     records.sources.map((source) =>
       source.items.map((item) => ({
@@ -299,6 +305,7 @@ function boundedPerceptionSnapshot(
       })),
     ),
     10,
+    (item) => interestScore(`${item.title} ${item.summary ?? ""} ${item.safeText}`),
   );
   // Hafıza süzgeci için: bu koşuda gövdesi zaten görünen source item kimlikleri.
   const visibleSourceItemIds = new Set(sourceItems.map((item) => item.itemId));
@@ -392,6 +399,16 @@ function boundedPerceptionSnapshot(
     createdAt: entry.createdAt.toISOString(),
   }));
   const { runtimeMetadata } = records.state;
+  const topicChoiceSignals = buildTopicChoiceSignals(
+    ownRecentEntries,
+    selectedEntries,
+    linkedTopics,
+    8,
+  );
+  const interestTopics = selectInterestTopics(
+    { recentEntries: selectedEntries, topicChoiceSignals, linkedTopics, newTopics },
+    persona.interests,
+  );
   const snapshot = {
     observedAt: now.toISOString(),
     limits: {
@@ -409,6 +426,7 @@ function boundedPerceptionSnapshot(
       followedTopics: 8,
       followedWriterEntries: 6,
       topicExploration: 8,
+      interestTopics: interestTopicLimit,
       behaviorLessons: 5,
       actionFeedback: actionFeedbackLimit,
       authorFeedback: authorFeedbackLimit,
@@ -417,6 +435,7 @@ function boundedPerceptionSnapshot(
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
     [actionFeedbackKey]: projectActionFeedback(records.actionFeedbackRecords, now),
     recentEntries: selectedEntries,
+    interestTopics,
     trendingTopics,
     newTopics,
     followedTopics,
@@ -426,7 +445,7 @@ function boundedPerceptionSnapshot(
     dictionaryLinkCandidates,
     ownRecentEntries,
     writerOpenedTopics,
-    topicChoiceSignals: buildTopicChoiceSignals(ownRecentEntries, selectedEntries, linkedTopics, 8),
+    topicChoiceSignals,
     /*
       Aynı haber metnini ajana iki kez verme.
 
@@ -1818,6 +1837,7 @@ export function getRuntimeRunContext(
         runId,
         now,
         sourceFetchLimit: sourceFetchTargetLimit(run.runType, settings.sourceFetchLimit),
+        interests: seedPersonaSchema.parse(run.personaVersion.persona).interests,
         includeSources:
           run.runType === "REFLECTION" || (run.allowSourceReading && settings.sourceReadingEnabled),
         includeWriterOpenedTopics:
