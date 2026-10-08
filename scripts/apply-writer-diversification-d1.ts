@@ -14,7 +14,8 @@ import {
 import { lockAgentProfile, lockAgentSettings } from "@/modules/agents/repository/control-plane";
 import { resolveOperatorAdmin } from "./agent-operator";
 
-// D1 yazar çeşitlendirmesi: W2 betiğinin kalıbı (DRY_RUN → PAUSE → APPLY → RESUME, snapshot hash).
+// D1 yazar çeşitlendirmesi: W2 betiğinin kalıbı (DRY_RUN → PAUSE → APPLY, snapshot hash); akış
+// `agent:flow resume` ile açılır.
 const confirmation = "APPLY_WRITER_DIVERSIFICATION_D1";
 const d1ChangeSummary =
   "D1 çeşitlendirme: kişiliğe göre ayrışan kelime aralığı ve uzunluk sınıfı; ortak ilgi dağıtıldı.";
@@ -22,7 +23,7 @@ const terminalRunStatuses = ["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIM
 
 const environmentSchema = z
   .object({
-    AGENT_WRITER_D1_MODE: z.enum(["DRY_RUN", "PAUSE", "APPLY", "RESUME"]).default("DRY_RUN"),
+    AGENT_WRITER_D1_MODE: z.enum(["DRY_RUN", "PAUSE", "APPLY"]).default("DRY_RUN"),
     AGENT_WRITER_D1_CONFIRMATION: z.string().optional(),
     AGENT_WRITER_D1_EXPECTED_SNAPSHOT_HASH: z
       .string()
@@ -39,8 +40,7 @@ const environmentSchema = z
       context.addIssue({ code: "custom", message: "WRITER_D1_CONFIRMATION_REQUIRED" });
     }
     if (
-      (environment.AGENT_WRITER_D1_MODE === "APPLY" ||
-        environment.AGENT_WRITER_D1_MODE === "RESUME") &&
+      environment.AGENT_WRITER_D1_MODE === "APPLY" &&
       !environment.AGENT_WRITER_D1_EXPECTED_SNAPSHOT_HASH
     ) {
       context.addIssue({ code: "custom", message: "WRITER_D1_SNAPSHOT_HASH_REQUIRED" });
@@ -358,31 +358,11 @@ async function main(): Promise<void> {
       return;
     }
 
-    if (flow.settings.runtimeEnabled) throw new Error("WRITER_D1_ALREADY_RUNNING");
-    // RESUME, APPLY makbuzundaki afterSnapshotHash ile birebir aynı durumu ister (Sol 6.1 2. tur):
-    // APPLY sonrası hiçbir persona, ilgi ağırlığı veya profil alanı değişmemiş olmalı.
-    assertSnapshot(environment.AGENT_WRITER_D1_EXPECTED_SNAPSHOT_HASH, snapshot.snapshotHash);
-    for (const profile of snapshot.targets) {
-      if (
-        personaHash(profile.currentPersonaVersion!.persona) !==
-        personaHash(candidates.get(profile.user.username)!.persona)
-      ) {
-        throw new Error(`WRITER_D1_RESUME_TARGET_INVALID username=${profile.user.username}`);
-      }
-    }
-    const updated = await setSocietyFlowEnabled(
-      database,
-      { ...actor, requestId: randomUUID() },
-      true,
-      { reason: "D1 36 persona sürümü doğrulandı; toplum akışını açma." },
-    );
-    process.stdout.write(
-      `${JSON.stringify({
-        event: "WRITER_D1_RESUMED",
-        settingsVersion: updated.settingsVersion,
-        targetCount: writerDiversificationD1Targets.length,
-      })}\n`,
-    );
+    /*
+      RESUME bu betikte yok (Sol 6.1 3. tur): doğrulama ile akışı açma tek kilit altında atomik
+      olamıyordu. Akış standart yolla açılır: `agent:flow resume`. Uygulama sonrası doğrulama
+      DRY_RUN'dır: her hedef için changeNeeded=false beklenir.
+    */
   } finally {
     await database.$disconnect();
   }
