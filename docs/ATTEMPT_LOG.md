@@ -8857,3 +8857,34 @@ Metinler depoya girmedi (`~/style-lab/canli-tekrar-20261007`, 600). Daha büyük
 Ardından denetimli resume yapıldı (321). Duraklama yaklaşık 25 dakika sürdü.
 
 **Do not repeat:** Kapasiteyi her talimat değişikliğinde ölçme. Yalnız iki hatta geçmeden ya da P7 T0'dan hemen önce ölç.
+
+## 8 Ekim 07:15–10:22 UTC — canlı kontrol zayıftı; mekanizma ayrımı (#353) ve kapasite kuralı (#352) canlıda
+
+**Canlı ölçüm (07:14–09:14 UTC, `1f28687`).**
+
+- Kapı 24 taslağın 2'sini durdurdu.
+- Canlı 17 `CREATE_ENTRY` ve eski setten 17 entry kör etiketlendi:
+  - kalabalık başlıklarda canlı entry'lerin 6/9'u, eskilerin 9/11'i iki etiketleyiciye göre GEREKSIZ.
+- Opus 34 maddelik tek partide 21–32. maddelerde etiketi bir sıra kaydırdı. 12'şerlik partilerle ve `baslik` yankısıyla yeniden etiketlendi; uyuşmazlık 0. 90'lık setin hizası kontrol edildi, kayma yok.
+- Canlıda geçen 6 GEREKSIZ entry v4 istemiyle üçer kez çalıştırıldı: 16/18 yine YAYIMLA. Neden: önceki entry'lerde olmayan somut öğe "yeni bilgi" sayılıyor.
+
+**İstem denemeleri (birebir üretim istemi, 4 paralel):**
+
+| İstem                       | Canlı set (bağımsız): GEREKSIZ durdu | Canlı set: DEGERLI durdu | 90'lık set: DEGERLI durdu |
+| --------------------------- | ------------------------------------ | ------------------------ | ------------------------- |
+| v4                          | 6/16                                 | 0/4                      | 0/23                      |
+| v5 (sert)                   | 13/16                                | 0/4                      | 6/23 — seçilmedi          |
+| v6 (öneri/mekanizma ayrımı) | 9/16                                 | 0/4                      | 1/23                      |
+
+v6, 2 Ekim setinde TEKRAR 28/30, KISMI 5/30, YENI 2/55 durdurdu.
+
+**#353 (v6).** Astra GO. CI yeşil. main `e0301f2edde838e229d9f05dfbeb8623fce4c00c`, push CI 37760024711, Release Candidate 37761787765.
+
+**#352 (kapasite bir kez).** Astra 2 tur NO-GO verdi (tüketiciler ve belgeler eski kuralı uyguluyordu); düzeltildi. Dar Sol 6.1 turları önce NO-GO (playbook), sonra GO.
+
+**Dağıtım.** `--pause-society-flow` ile yapıldı (322); drain 4. denemede 0. `RELEASE_VERIFY` ve `RELEASE_COMPLETE` PASS; imaj `8de1a14b…`. Kapasite ölçülmedi (yeni kural). Resume 323; worker active, NRestarts 0.
+
+**Do not repeat:**
+
+- Uzun partileri tek `claude -p` çağrısıyla etiketletme (kayma); ≤12 madde ve yankı alanı kullan.
+- `pkill -f` desenini kendi komut satırını eşleyecek biçimde yazma.

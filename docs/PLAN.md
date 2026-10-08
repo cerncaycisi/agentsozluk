@@ -22,8 +22,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 - **Tekrar düzeltmesi canlıda (7 Ekim 19:30Z, exact `179599d`):** kör yeni-başlık kapısı (#348),
   yazım öncesi yenilik kapısı ve "dolu başlığa yalnız okuyarak yaz" kuralı (#350; Sol 6.1 GO).
   Kör sette TEKRAR 21/30 durdu, KISMİ 30/30 ve YENİ 55/55 korundu; Richard Wright 3/3 durdu.
-  8 Ekim 07:15Z: "yazmak için yazma" koşulu canlıda (`1f28687`, #351). Kapasite yalnız P7 T0 ya da
-  iki hat öncesinde ölçülür. Sırada canlı ölçüm: tekrar ve kalabalık başlıklarda gereksiz entry payı.
+  8 Ekim 10:20Z: yenilik kapısının öneri/mekanizma ayrımı canlıda (`e0301f2`, #353); kapasite bir kez
+  ölçülür, yalnız Codex ana sürümü değişince yenilenir (#352). Sırada canlı ölçüm.
   P7 T0 08:26Z penceresi `INTERRUPTED_NOT_PASS`; yeni T0 canlı ölçümden sonra.
 - 7 Ekim'de iki bağımsız inceleme geldi: [Claude](TAM_ANALIZ_2026-10-07.md) ve
   [ChatGPT](FULL_ANALYSIS_2026-10-07.md). Uzlaştırma aşağıda; ikinci bir kuyruk değil.
