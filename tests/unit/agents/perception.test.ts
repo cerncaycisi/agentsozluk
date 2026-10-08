@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createInterestScorer } from "@/modules/agents/domain/interest-matching";
 import {
   buildTopicChoiceSignals,
   selectDiverseSourceItems,
@@ -22,6 +23,37 @@ function candidate(id: string, title: string, followedTopic = false) {
 }
 
 describe("runtime perception selection", () => {
+  it("ilgi sırasını bağlaçtan değil, kısmi ve tam kelime eşleşmesinden kurar", () => {
+    const entries = [
+      candidate("bağlaç", "masa ve sandalye"),
+      candidate("kısmi", "film"),
+      candidate("tam", "film ve diziler"),
+    ];
+    expect(
+      selectPerceptionEntries(entries, {
+        seed: "ilgi",
+        interests: [{ key: "film ve diziler", weight: 1 }],
+        now,
+        limit: 3,
+      }).map(({ id }) => id),
+    ).toEqual(["tam", "kısmi", "bağlaç"]);
+  });
+
+  it("kaynak öğelerinde ilgi önceliğini kaynaklar arası dönüşümle birleştirir", () => {
+    const groups = [
+      ["alakasız", "film", "müzikal"],
+      ["başka", "müziği", "son"],
+    ];
+    const selected = selectDiverseSourceItems(
+      groups,
+      4,
+      createInterestScorer([{ key: "müzik", weight: 1 }]),
+    );
+    expect(selected).toEqual(["müziği", "müzikal", "alakasız", "başka"]);
+    expect(selectDiverseSourceItems(groups, 4, createInterestScorer([]))).toEqual(
+      selectDiverseSourceItems(groups, 4),
+    );
+  });
   it("is deterministic and ranks followed or persona-relevant entries", () => {
     const candidates = [
       candidate("00000000-0000-4000-8000-000000000001", "rastgele konu"),

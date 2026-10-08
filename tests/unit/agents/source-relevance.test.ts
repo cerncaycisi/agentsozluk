@@ -14,6 +14,25 @@ function item(index: number, title: string, safeText = title): SourceReadItem {
 }
 
 describe("persona-aware source item selection", () => {
+  it("bağlaç ve kelime içi alt dizeleri ilgiden saymaz; çekimli ilgili öğeyi öne alır", () => {
+    const items = [
+      item(1, "masa ve sandalye"),
+      item(2, "kısa not"),
+      item(3, "mikrofilm"),
+      item(4, "müziği düşünmek"),
+    ];
+    const selected = selectSourceReadItemsForPersona(items, {
+      persona: {
+        ...persona,
+        interests: [
+          { key: "film ve diziler", weight: 0.5, pinned: false },
+          { key: "müzik", weight: 0.5, pinned: false },
+        ],
+      },
+      sourceTopics: [],
+    });
+    expect(selected).toEqual([items[3], items[0], items[1]]);
+  });
   const persona = {
     ...findAgentPersonaTemplate("dengeharitasi")!,
     interests: [
@@ -22,6 +41,18 @@ describe("persona-aware source item selection", () => {
       { key: "enflasyon deneyimi", weight: 0.25, pinned: false },
     ],
   };
+
+  it("güncel persona ilgisini kaynak etiketinden ve eski yazdığı konudan önce sıralar", () => {
+    const items = [item(1, "gündelik hayat"), item(2, "müzikal"), item(3, "film ve diziler")];
+    const select = (key: string) =>
+      selectSourceReadItemsForPersona(items, {
+        persona: { ...persona, interests: [{ key, weight: 0.2, pinned: false }] },
+        sourceTopics: ["gündelik hayat"],
+        recentTopicTitles: ["gündelik hayat"],
+      });
+    expect(select("müzik")[0]).toEqual(items[1]);
+    expect(select("film ve diziler")[0]).toEqual(items[2]);
+  });
 
   it("keeps writer-local matches and only a bounded amount of unrelated discovery", () => {
     const items = [
@@ -97,6 +128,6 @@ describe("persona-aware source item selection", () => {
         persona,
         sourceTopics: ["ekonomi"],
       }),
-    ).toEqual(items);
+    ).toEqual([items[0], items[2], items[1]]);
   });
 });
