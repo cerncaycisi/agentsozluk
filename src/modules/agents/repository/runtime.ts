@@ -3486,38 +3486,38 @@ async function listRuntimeInterestTopicCandidates(
         const soft = token.length >= 4 ? softening[token.at(-1)!] : undefined;
         return soft ? [token, `${token.slice(0, -1)}${soft}`] : [token];
       };
-      const topics = await transaction.topic.findMany({
-        where: {
-          status: "ACTIVE",
-          ...(excluded.length > 0 ? { id: { notIn: excluded } } : {}),
-          // Engellenen kullanıcının açtığı başlık kişisel menüye girmez (Astra, 9 Ekim).
-          ...(input.blockedUserIds.length > 0
-            ? { createdById: { notIn: [...input.blockedUserIds] } }
-            : {}),
-          AND: tokens.map((token) => ({
-            OR: forms(token).flatMap((form) =>
-              // Üç harfli kök kesin eşleştiricide yalnız tam kelimedir ("din" ≠ "dinamik").
-              token.length < 4
-                ? [
-                    { normalizedTitle: { equals: form } },
-                    { normalizedTitle: { startsWith: `${form} ` } },
-                    { normalizedTitle: { endsWith: ` ${form}` } },
-                    { normalizedTitle: { contains: ` ${form} ` } },
-                  ]
-                : [
-                    { normalizedTitle: { startsWith: form } },
-                    // Kelime başı: boşluk ya da noktalama sonrası ("(müzik)", "ses/müzik").
-                    ...[" ", "(", '"', "“", "'", "/", "-"].map((before) => ({
-                      normalizedTitle: { contains: `${before}${form}` },
-                    })),
-                  ],
-            ),
-          })),
-        },
-        select: { id: true, title: true, entryCount: true, lastEntryAt: true },
-        orderBy: [{ lastEntryAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
-        take: runtimeInterestCandidatePerInterest,
+      /*
+        Kelime sınırı PostgreSQL düzenli ifadesiyle (Sol 6.1, 9 Ekim): sabit noktalama listesi
+        "[müzik]", "ses:müzik", "din, toplum" gibi geçerli başlıkları kaçırıyordu. Sınır: harf ya
+        da rakam olmayan karakter (Türkçe harfler açıkça harf sayılır). Üç harfli kök yalnız tam
+        kelimedir ("din" ≠ "dinamik"). İfade yalnız harf/rakamdan kurulur ve parametre olarak
+        gider; enjeksiyon yüzeyi yok.
+      */
+      const boundary = "[^[:alnum:]çğıöşüâîû]";
+      const patterns = tokens.map((token) => {
+        const alternatives = forms(token)
+          .map((form) => form.replaceAll(/[^\p{L}\p{N}]/gu, ""))
+          .join("|");
+        return token.length < 4
+          ? `(^|${boundary})(${alternatives})($|${boundary})`
+          : `(^|${boundary})(${alternatives})`;
       });
+      const topics = await transaction.$queryRaw<
+        { id: string; title: string; entryCount: number; lastEntryAt: Date | null }[]
+      >`
+        SELECT topic."id", topic."title", topic."entryCount", topic."lastEntryAt"
+        FROM "topics" AS topic
+        WHERE topic."status" = 'ACTIVE'
+          AND NOT (topic."id" = ANY(${excluded}::uuid[]))
+          -- Engellenen kullanıcının açtığı başlık kişisel menüye girmez (Astra, 9 Ekim).
+          AND NOT (topic."createdById" = ANY(${[...input.blockedUserIds]}::uuid[]))
+          AND ${Prisma.join(
+            patterns.map((pattern) => Prisma.sql`topic."normalizedTitle" ~ ${pattern}`),
+            " AND ",
+          )}
+        ORDER BY topic."lastEntryAt" DESC NULLS LAST, topic."id" ASC
+        LIMIT ${runtimeInterestCandidatePerInterest}
+      `;
       return topics.map((topic) => ({ ...topic, interestKey: interest.key }));
     }),
   );

@@ -714,6 +714,22 @@ describe("internal agent runtime API with PostgreSQL", () => {
         entryBody: "İlgi menüsü testinde ilgiye uymayan başlığın ilk entry'si.",
       },
     );
+    const bracketed = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "[mahremiyet] notları",
+        entryBody: "Köşeli parantezli ilgi başlığının ilk entry'si.",
+      },
+    );
+    const colon = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "veri:mahremiyet",
+        entryBody: "İki noktalı ilgi başlığının ilk entry'si.",
+      },
+    );
     const workerId = "interest-menu-worker";
     const leased = await leaseRuntimeRun(
       integrationDatabase,
@@ -729,6 +745,10 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const menu = context.perception.interestTopics as { id: string }[];
     expect(menu.map(({ id }) => id)).toContain(matching.topic.id);
     expect(menu.map(({ id }) => id)).not.toContain(unrelated.topic.id);
+    // Noktalama sonrası kelime başı da ilgi sayılır (Sol 6.1, 9 Ekim): "[mahremiyet]", "veri:mahremiyet".
+    expect(menu.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([bracketed.topic.id, colon.topic.id]),
+    );
   });
 
   it("yansıma koşusunda yazarın kendi açtığı kalabalık başlığı ortak saymaz (3d)", async () => {
