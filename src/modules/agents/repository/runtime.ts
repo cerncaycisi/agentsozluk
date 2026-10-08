@@ -3122,7 +3122,7 @@ export async function getRuntimePerceptionRecords(
         score: true,
         upvoteCount: true,
         downvoteCount: true,
-        topic: { select: { id: true, title: true } },
+        topic: { select: { id: true, title: true, entryCount: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 10,
