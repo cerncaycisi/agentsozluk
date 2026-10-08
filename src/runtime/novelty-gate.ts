@@ -35,6 +35,8 @@ export type RuntimeNoveltyCandidate = {
   topicTitle: string;
   previousEntries: Array<{ username: string; mine: boolean; body: string }>;
   draft: string;
+  /** Başlıktaki görünür entry sayısı (kalabalık ölçüsü); okumada yoksa verilmez. */
+  totalEntryCount?: number;
 };
 
 /*
@@ -131,7 +133,17 @@ export function runtimeNoveltyCandidates(
           ];
     return previousEntries.length === 0
       ? []
-      : [{ sequence: action.sequence, topicTitle: topic.title, previousEntries, draft }];
+      : [
+          {
+            sequence: action.sequence,
+            topicTitle: topic.title,
+            previousEntries,
+            draft,
+            ...(typeof topic.visibleEntryCount === "number"
+              ? { totalEntryCount: topic.visibleEntryCount }
+              : {}),
+          },
+        ];
   });
 }
 

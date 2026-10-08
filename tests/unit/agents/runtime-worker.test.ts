@@ -53,6 +53,7 @@ import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { runtimePromptScaffold } from "@/runtime/prompt-profile";
 import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
+import { runtimeLifeEventBatchSchema } from "@/modules/agents/validation/life-schemas";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 
 function usageWithIntervals(
@@ -1775,6 +1776,19 @@ describe("long-lived agent runtime worker", () => {
 
       expect(provider.invoke).toHaveBeenCalledTimes(2);
       expect(plane.recordActions).toHaveBeenCalledTimes(2);
+      // Onarım paketi karar kaydı taşımaz; seçenek bağı boş olmalı ki sunucu şeması kabul etsin
+      // (8 Ekim: CONTENT_REPAIR_CONTROL_PLANE_FAILED).
+      const repairPayload = vi.mocked(plane.recordActions).mock.calls[1]![5];
+      expect(repairPayload.actionIntents.map(({ selectedOptionSeq }) => selectedOptionSeq)).toEqual(
+        [null],
+      );
+      expect(
+        runtimeLifeEventBatchSchema.safeParse({
+          workerId: "duplicate-repair-worker",
+          leaseToken: LEASE_TOKEN,
+          payload: repairPayload,
+        }).success,
+      ).toBe(true);
       expect(plane.recordActions).toHaveBeenNthCalledWith(
         2,
         expect.any(String),
@@ -1803,7 +1817,7 @@ describe("long-lived agent runtime worker", () => {
               sequence: 2,
               desire: 0.8,
               expectedOutcome: "Topic üzerinde kanıtla sınırlı ve özgün bir entry görünür olacak.",
-              selectedOptionSeq: 1,
+              selectedOptionSeq: null,
             },
           ],
         }),

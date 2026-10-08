@@ -266,15 +266,17 @@ async function main(): Promise<void> {
 
     if (environment.AGENT_WRITER_D2_MODE === "APPLY") {
       assertSnapshot(environment.AGENT_WRITER_D2_EXPECTED_SNAPSHOT_HASH, snapshot.snapshotHash);
-      if (
-        snapshot.targets.some(
-          (profile) =>
-            personaHash(profile.currentPersonaVersion!.persona) ===
-            personaHash(candidates.get(profile.user.username)!.persona),
-        )
-      ) {
-        throw new Error("WRITER_D2_ALREADY_APPLIED");
-      }
+      /*
+        Yalnız değişmesi gereken hedefler uygulanır; hiçbiri değişmeyecekse paket zaten
+        uygulanmıştır. Kısmi güncelleme (ör. sonradan eklenen alt sınır) böyle mümkün olur.
+      */
+      const needsChange = (profile: (typeof snapshot.targets)[number]) =>
+        personaHash(profile.currentPersonaVersion!.persona) !==
+        personaHash(candidates.get(profile.user.username)!.persona);
+      const changingUsernames = new Set(
+        snapshot.targets.filter(needsChange).map(({ user }) => user.username),
+      );
+      if (changingUsernames.size === 0) throw new Error("WRITER_D2_ALREADY_APPLIED");
       if (flow.settings.runtimeEnabled || flow.openRunCount !== 0) {
         throw new Error(
           `WRITER_D2_APPLY_REQUIRES_PAUSE runtimeEnabled=${flow.settings.runtimeEnabled} openRuns=${flow.openRunCount}`,
@@ -304,6 +306,7 @@ async function main(): Promise<void> {
           );
           const lockedCandidates = prepareCandidates(lockedSnapshot);
           for (const profile of lockedSnapshot.targets) {
+            if (!changingUsernames.has(profile.user.username)) continue;
             const requestId = randomUUID();
             requestIds.push(requestId);
             await updateAgent(transaction, { ...actor, requestId }, profile.id, {
@@ -321,6 +324,11 @@ async function main(): Promise<void> {
         const beforeProfile = snapshot.targets[index]!;
         const afterProfile = after.targets[index]!;
         assertUnchangedProfile(beforeProfile, afterProfile);
+        if (!changingUsernames.has(beforeProfile.user.username)) {
+          if (afterProfile.currentPersonaVersion!.id !== beforeProfile.currentPersonaVersion!.id)
+            throw new Error(`WRITER_D2_POST_APPLY_INVALID username=${beforeProfile.user.username}`);
+          continue;
+        }
         if (
           afterProfile.currentPersonaVersion!.previousVersionId !==
             beforeProfile.currentPersonaVersion!.id ||
@@ -340,7 +348,7 @@ async function main(): Promise<void> {
           where: { requestId: { in: requestIds }, eventType: "agent.persona.versioned" },
         }),
       ]);
-      const expectedCount = writerDiversificationD2Targets.length;
+      const expectedCount = changingUsernames.size;
       if (
         requestIds.length !== expectedCount ||
         auditCount !== expectedCount ||

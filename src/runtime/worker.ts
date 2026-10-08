@@ -916,6 +916,10 @@ export function buildNoveltyPrompt(candidate: RuntimeNoveltyCandidate): string {
     "",
     runtimePromptScaffold.untrustedOpening,
     `Başlık: ${noveltyText(candidate.topicTitle)}`,
+    // #12 (8 Ekim): benzer entry seçimiyle kapı kalabalığı göremiyordu; toplam sayı ayrıca gider.
+    ...(candidate.totalEntryCount !== undefined
+      ? [`Başlıktaki önceki entry sayısı: ${candidate.totalEntryCount}`]
+      : []),
     "",
     "Önceki entry'ler:",
     ...candidate.previousEntries.map(
@@ -2132,7 +2136,14 @@ export class AgentRuntimeWorker {
                           sequence: repairCandidate.sequence,
                           desire: repairCandidate.desire,
                           expectedOutcome: repairCandidate.expectedOutcome,
-                          selectedOptionSeq: repairCandidate.selectedOptionSeq,
+                          /*
+                            Onarım paketinde karar kaydı yok; seçenek numarası gönderilirse
+                            şema "yalnız OPTION_SELECTED adımına bağlanabilir" diye reddediyor ve
+                            koşu CONTENT_REPAIR_CONTROL_PLANE_FAILED ile düşüyordu (8 Ekim yerel
+                            kopya, yeni başlık + DUPLICATE_FRAMING onarımı). Onarım yeni bir seçim
+                            değildir; bağ boş kalır.
+                          */
+                          selectedOptionSeq: null,
                         },
                       ],
                     },

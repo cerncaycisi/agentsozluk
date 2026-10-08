@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
-import { seedPersonaSchema } from "@/modules/agents/personas/schema";
+import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
+import { renderPersonaPrompt } from "@/modules/agents/personas/prompt-renderer";
+import { applyWeeklyPersonaEvolution } from "@/modules/agents/domain/persona-evolution";
+import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
 import { selectPersonalInterestTopics } from "@/modules/agents/domain/runtime-browse";
 import { runtimeReadTopicFullBodiesKey } from "@/modules/agents/domain/perception";
 import {
@@ -127,5 +130,52 @@ describe("#1/#12 D2 çekince adımı", () => {
         replaceStructure: [["olmayan adım", "yeni"]],
       }),
     ).toThrow("WRITER_D2_STRUCTURE_MISSING");
+  });
+});
+
+describe("#10 evrim yazıma ulaşır", () => {
+  const base = seedPersonaSchema.parse({
+    ...originalPersonaPack.personas[0],
+    temperament: { ...originalPersonaPack.personas[0]!.temperament, humor: 0.68 },
+  });
+  const evolve = (persona: SeedPersona) =>
+    applyWeeklyPersonaEvolution({
+      currentPersona: persona,
+      delta: {
+        safeSummary: "Esprili kısa entry'leri olumlu karşılandı; mizah biraz arttı.",
+        evidenceIds: ["00000000-0000-4000-8000-000000000001"],
+        interestDeltas: [],
+        sourceTrustDeltas: [],
+        relationshipTrustDeltas: [],
+        beliefConfidenceDeltas: [],
+        temperamentDeltas: [{ key: "humor", delta: 0.03 }],
+        coreValueDeltas: [],
+      },
+    }).persona;
+
+  it("bir haftalık mizah artışı persona istemindeki davranış cümlesini değiştirir", () => {
+    const after = evolve(base);
+    expect(renderPersonaPrompt(base)).toContain("Yeri geldiğinde espri yaparsın.");
+    expect(renderPersonaPrompt(after)).toContain("Mizah senin doğal dilin");
+    expect(renderPersonaPrompt(after)).toContain("mizah 0.71");
+  });
+
+  it("birikmiş mizah artışı yazım yaklaşımında mizah payını artırır", () => {
+    const share = (humor: number) => {
+      const runs = Array.from(
+        { length: 2000 },
+        (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      );
+      return (
+        runs.filter((runId) =>
+          renderRuntimeWritingVariation(runId, {
+            entryLength: "MEDIUM",
+            temperament: { humor, skepticism: 0.5, curiosity: 0.5, directness: 0.5, conflict: 0.3 },
+          }).includes("mizahını kullan"),
+        ).length / runs.length
+      );
+    };
+    // Dört hafta × 0,03: 0,68 → 0,80.
+    expect(share(0.8) - share(0.68)).toBeGreaterThan(0.04);
   });
 });

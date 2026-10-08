@@ -692,6 +692,43 @@ describe("internal agent runtime API with PostgreSQL", () => {
     },
   );
 
+  it("ilgi menüsü bütün sözlükten yazarın ilgisine tam uyan başlıkları getirir (#6)", async () => {
+    const fixture = await createFixture();
+    const interest = seedPersonaSchema.parse(fixture.created.agent.personaVersion.persona)
+      .interests[0]!.key;
+    const matching = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `${interest} üzerine küçük notlar`,
+        entryBody: "İlgi menüsü testinde yazarın ilgisine tam uyan başlığın ilk entry'si.",
+      },
+    );
+    const unrelated = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "tamamen alakasız bir kavram",
+        entryBody: "İlgi menüsü testinde ilgiye uymayan başlığın ilk entry'si.",
+      },
+    );
+    const workerId = "interest-menu-worker";
+    const leased = await leaseRuntimeRun(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:lease"),
+      { workerId, leaseSeconds: 60 },
+    );
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      leased.run!.id,
+      workerId,
+    );
+    const menu = context.perception.interestTopics as { id: string }[];
+    expect(menu.map(({ id }) => id)).toContain(matching.topic.id);
+    expect(menu.map(({ id }) => id)).not.toContain(unrelated.topic.id);
+  });
+
   it("yansıma koşusunda yazarın kendi açtığı kalabalık başlığı ortak saymaz (3d)", async () => {
     const fixture = await createFixture();
     const writer = await runtimePrincipal(fixture.credential, "runtime:write");
@@ -4500,6 +4537,16 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(longOld?.endsWith("…")).toBe(true);
     const longRecent = bodies.find((body) => body.startsWith("UZUN_YAKIN_ENTRY"));
     expect(longRecent?.length).toBe(600);
+    // #13: kısaltılan entry'lerin tam metni ayrı alanda; yalnız yenilik kapısı içindir.
+    const fullBodies = after.perception.readTopicFullBodies as { id: string; body: string }[];
+    const longOldEntry = readTopic.entries.find((entry) =>
+      entry.body.startsWith("UZUN_ESKI_ENTRY"),
+    );
+    expect(fullBodies.find(({ id }) => id === longOldEntry?.id)?.body.length).toBeGreaterThan(600);
+    expect(fullBodies.every(({ id }) => readTopic.entries.some((entry) => entry.id === id))).toBe(
+      true,
+    );
+    expect(buildRuntimePrompt(after)).not.toContain("readTopicFullBodies");
     // Tanım uzun olsa da tam (2000) gösterilir; yalnız aradaki eskiler önizlemedir.
     expect(readTopic.entries[0]?.body.endsWith("…")).toBe(false);
     expect(readTopic.entries.filter((entry) => entry.mine).map((entry) => entry.id)).toEqual([
