@@ -13,6 +13,10 @@ import {
 } from "@/modules/agents/personas/writer-diversification-d1";
 import { lockAgentProfile, lockAgentSettings } from "@/modules/agents/repository/control-plane";
 import { resolveOperatorAdmin } from "./agent-operator";
+import {
+  prepareOperatorCliEnvironment,
+  writeOperatorCliEnvironmentReport,
+} from "./operator-cli-environment";
 
 // D1 yazar çeşitlendirmesi: W2 betiğinin kalıbı (DRY_RUN → PAUSE → APPLY, snapshot hash); akış
 // `agent:flow resume` ile açılır.
@@ -203,6 +207,8 @@ function assertUnchangedProfile(
 }
 
 async function main(): Promise<void> {
+  // agent:flow ile aynı operatör ortamı (AGENT_OPERATOR_ENV_FILE, AGENT_DB_IP).
+  writeOperatorCliEnvironmentReport(prepareOperatorCliEnvironment());
   const environment = environmentSchema.parse(process.env);
   const database = getDatabase();
   try {
