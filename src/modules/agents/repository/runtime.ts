@@ -2310,7 +2310,12 @@ async function listRuntimePerceptionSources(
         })
       : [];
   const interestScore = createInterestScorer(input.interests);
-  const primary = selectWithInterestRotation(primaryCandidates, primaryLimit, (source) =>
+  /*
+    İlgi yalnız hangi kaynakların seçileceğini belirler; sıra güven/tazelik sırasında kalır.
+    Yansımanın kaynak güveni değişimi bir sonraki uyanışın okuma sırasını değiştirmeye devam
+    etmeli (iki çevrimli yansıma entegrasyon testi).
+  */
+  const interestChosen = selectWithInterestRotation(primaryCandidates, primaryLimit, (source) =>
     interestScore(
       [
         ...(Array.isArray(source.topics)
@@ -2320,6 +2325,8 @@ async function listRuntimePerceptionSources(
       ].join(" "),
     ),
   );
+  const interestChosenIds = new Set(interestChosen.map(({ id }) => id));
+  const primary = primaryCandidates.filter(({ id }) => interestChosenIds.has(id));
   const selected = discovery ? [...preferred, ...primary, discovery] : [...preferred, ...primary];
   if (selected.length === 0) return [];
   const domainRecords = await transaction.agentSource.findMany({

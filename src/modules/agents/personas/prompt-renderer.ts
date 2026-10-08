@@ -29,12 +29,51 @@ function temperamentSentences(t: SeedPersona["temperament"]): string[] {
     out.push("Açıklamayı seversin; bir şeyin neden ve nasıl öyle olduğunu anlatırsın.");
   else if (t.explanationDensity < 0.3) out.push("Açıklamaya girmez, kısa ve yoğun yazarsın.");
   if (t.conflict >= 0.6) out.push("Tartışmadan kaçmaz, karşı görüşünü yazarsın.");
-  else if (t.conflict < 0.25) out.push("Çatışmaya girmekten kaçınırsın.");
+  else if (t.conflict < 0.25) out.push("Kavgaya girmekten kaçınırsın.");
   if (t.evidenceDemand >= 0.65) out.push("Bir iddiayı kabul etmek için kanıt istersin.");
   if (t.topicExploration >= 0.65)
     out.push("Aynı başlıklarda dolanmayı sevmez, kendi ilgine giren yeni konular ararsın.");
   else if (t.topicExploration < 0.3) out.push("Bildiğin birkaç konuya derinlemesine dönersin.");
+  if (t.uncertaintyTolerance >= 0.65)
+    out.push("Belirsizlikle rahatsın; emin olmadığın yeri açıkça emin değilim diye bırakırsın.");
+  else if (t.uncertaintyTolerance < 0.3)
+    out.push("Belirsiz kalmaktan hoşlanmazsın; neyin bilinip neyin bilinmediğini netleştirirsin.");
+  /*
+    Ölçek satırı orta değerleri ve evrimin küçük adımlarını görünür tutar (Astra hakem turu,
+    8 Ekim): cümleler yalnız uçlarda çıkar, yansımanın 0,01'lik değişimi de istemde iz bırakmalı.
+  */
+  out.push(
+    `Mizaç ölçeğin (0–1): ${temperamentLabels
+      .map(([key, label]) => `${label} ${t[key].toFixed(2)}`)
+      .join(", ")}.`,
+  );
   return out;
+}
+
+const temperamentLabels: ReadonlyArray<[keyof SeedPersona["temperament"], string]> = [
+  ["humor", "mizah"],
+  ["directness", "doğrudanlık"],
+  ["skepticism", "şüphecilik"],
+  ["curiosity", "merak"],
+  ["warmth", "sıcaklık"],
+  ["explanationDensity", "açıklama yoğunluğu"],
+  ["conflict", "tartışmaya girme"],
+  ["evidenceDemand", "kanıt talebi"],
+  ["topicExploration", "konu keşfi"],
+  ["uncertaintyTolerance", "belirsizliğe tolerans"],
+];
+
+/*
+  `conflict.threshold` ile `temperament.conflict` birlikte okunur (Astra hakem turu, 8 Ekim):
+  düşük eşik + düşük çatışma eğilimi "küçük anlaşmazlıkta bile itiraz et" demek değil, küçük
+  farkı kavgaya çevirmeden kendi gözlemiyle eklemek demektir.
+*/
+function conflictThresholdSentence(persona: SeedPersona): string {
+  if (persona.conflict.threshold > 0.6) return "Ancak ciddi bir yanlış gördüğünde itiraz edersin.";
+  if (persona.conflict.threshold >= 0.3) return "Anlamlı bir anlaşmazlıkta itirazını söylersin.";
+  return persona.temperament.conflict < 0.35
+    ? "Küçük farkları da fark edersin; itiraz etmek yerine kendi gözlemini eklersin."
+    : "Küçük bir anlaşmazlıkta bile itirazını söylersin.";
 }
 
 export function renderPersonaPrompt(persona: SeedPersona): string {
@@ -89,11 +128,7 @@ export function renderPersonaPrompt(persona: SeedPersona): string {
     `Mizahın yöneldiği konular: ${persona.humor.preferredTargets.join("; ")}.`,
     `Mizah konusu yapmadıkların: ${persona.humor.neverTargets.join("; ")}.`,
     persona.conflict.responseMode,
-    persona.conflict.threshold < 0.3
-      ? "Küçük bir anlaşmazlıkta bile itirazını söylersin."
-      : persona.conflict.threshold > 0.6
-        ? "Ancak ciddi bir yanlış gördüğünde itiraz edersin."
-        : "Anlamlı bir anlaşmazlıkta itirazını söylersin.",
+    conflictThresholdSentence(persona),
     `Gerilimi düşürme işaretleri: ${persona.conflict.deescalationSignals.join("; ")}.`,
     "",
     "# Relationship preferences",

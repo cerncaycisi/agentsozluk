@@ -249,7 +249,7 @@ function weightedPick(weights: number[], byte: number): number {
 function lengthTarget(persona: RuntimeWritingPersona, byte: number): string | null {
   const min = persona.preferredMinWords;
   const max = persona.preferredMaxWords;
-  if (!min || !max || max <= min) return null;
+  if (!min || !max || max < min) return null;
   const mid = Math.round((min + max) / 2);
   const bucket = byte % 20;
   if (bucket < 3)

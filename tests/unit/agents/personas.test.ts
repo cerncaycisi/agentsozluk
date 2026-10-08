@@ -69,7 +69,7 @@ describe("original persona pack", () => {
       rendered: createHash("sha256").update(renderPersonaPrompt(pack.personas[0]!)).digest("hex"),
       profile: RUNTIME_PROMPT_PROFILE_HASH,
     }).toEqual({
-      rendered: "1b63bff6b501f0b102d18d81874dc2b775143e14d87403d1dc9919147a8356ab",
+      rendered: "dc7be153ef5142f48ed8b7096f0a892a7c28c2f6c75b8ade2f605c72d2f5d73d",
       profile: "5156d71f1f8c5c81fc429d777a89f660e7e2aebdc7f4c9dacacb5a950392f4ec",
     });
   });

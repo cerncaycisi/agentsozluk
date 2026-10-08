@@ -52,6 +52,7 @@ import { renderPersonaPrompt } from "@/modules/agents/personas/prompt-renderer";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { runtimePromptScaffold } from "@/runtime/prompt-profile";
+import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 
 function usageWithIntervals(
@@ -133,6 +134,40 @@ function fixtureContext(runId: string): RuntimeContext {
     perception: { observedAt: "2026-07-17T12:00:00.000Z", recentEntries: [] },
   };
 }
+
+describe("yazar sesi persona bağı (writing-variation v10)", () => {
+  const runId = "00000000-0000-4000-8000-000000000001";
+  const persona = seedPersonaSchema.parse(originalPersonaPack.personas[0]);
+
+  it("geçerli persona belgesinde uzunluk ve yaklaşım personadan gelir", () => {
+    const prompt = buildRuntimePrompt(fixtureContext(runId));
+    expect(prompt).toContain(
+      renderRuntimeWritingVariation(runId, {
+        entryLength: "MEDIUM",
+        preferredMinWords: persona.writing.preferredMinWords,
+        preferredMaxWords: persona.writing.preferredMaxWords,
+        temperament: {
+          humor: persona.temperament.humor,
+          skepticism: persona.temperament.skepticism,
+          curiosity: persona.temperament.curiosity,
+          directness: persona.temperament.directness,
+          conflict: persona.temperament.conflict,
+        },
+      }),
+    );
+    expect(prompt).not.toContain("- Form: ");
+  });
+
+  it.each([
+    ["eksik", undefined],
+    ["bozuk", { username: "kirik" }],
+  ])("%s persona belgesinde eski uzunluk formuna döner", (_label, document) => {
+    const context = fixtureContext(runId);
+    const prompt = buildRuntimePrompt({ ...context, persona: { ...context.persona, document } });
+    expect(prompt).toContain(renderRuntimeWritingVariation(runId, "MEDIUM"));
+    expect(prompt).toContain("- Form: ");
+  });
+});
 
 describe("kişisel keşif okuma bağlamı", () => {
   it("yakın geçmişi ve yorgunluğu yalnız başlıklar ve sayılarla güvenilmeyen bağlama ekler", () => {
@@ -1148,7 +1183,7 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("İlk cümleyi her seferinde başlık adını tekrar edip '-dır/-dir'");
     expect(prompt).toContain("Doğrudan tanım seçeneklerden yalnız biridir");
     // Persona belgesi varsa uzunluk personanın kelime aralığından gelir (writing-variation v10).
-    expect(prompt).toMatch(/Uzunluk: |- Form:/u);
+    expect(prompt).toMatch(/Uzunluk: /u);
     expect(prompt).toContain("Yaklaşım ipucu:");
     expect(prompt).toContain("# Nasıl yazılır");
     expect(prompt).toContain("Kendi personanın sesiyle yaz.");

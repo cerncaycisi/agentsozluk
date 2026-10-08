@@ -5997,7 +5997,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
         cycle === 0 ? [learned.id, alternative.id] : [alternative.id, learned.id],
       );
       const prompt = buildRuntimePrompt(context);
-      expect(prompt).toContain(JSON.stringify(evolved.temperament));
+      // Mizaç ham JSON değil, cümle + ölçek satırıyla gider (3a); evrim ölçekte görünür.
+      expect(prompt).toContain(`sıcaklık ${evolved.temperament.warmth.toFixed(2)}`);
       expect(prompt).toContain(`"personaVersion":${cycle + 2}`);
       expect(await finish(next.id, nextWorker)).toMatchObject({
         runStatus: "SUCCEEDED",
