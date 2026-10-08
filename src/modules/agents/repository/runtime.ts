@@ -1,5 +1,6 @@
 import {
   createInterestScorer,
+  interestTokens,
   selectWithInterestRotation,
   type WeightedInterest,
 } from "@/modules/agents/domain/interest-matching";
@@ -2829,6 +2830,13 @@ async function listRuntimePerceptionLinkedTopics(
 // runtimeReadTopicLimit tek kaynağı validation/runtime-schemas.ts; ayrışmayı önlemek için oradan.
 export { runtimeReadTopicLimit };
 export const runtimeReadTopicEntryLimit = 15;
+/*
+  #13 (8 Ekim 2026): pencere dışındaki eski hükümler görünmüyordu; kalabalık başlıkta eski bir
+  hüküm yeniden yazılabiliyordu. Okuma en yeni bu kadar entry'ye kesintisiz genişler; 15'ten
+  eskiler kısa önizlemeyle gelir (domain/perception.ts `runtimeReadTopicEntryLimit`). Blok
+  kesintisiz olduğu için okumadan sonra değişiklik kuralı (`windowStart`) aynı kalır.
+*/
+export const runtimeReadTopicArchiveLimit = 60;
 
 export async function getRuntimeReadTopics(
   transaction: Prisma.TransactionClient,
@@ -2902,7 +2910,7 @@ export async function getRuntimeReadTopics(
     FROM read_topic
     LEFT JOIN ranked
       ON ranked."topicId" = read_topic."id"
-      AND (ranked.descending_rank <= ${runtimeReadTopicEntryLimit} OR ranked.ascending_rank = 1)
+      AND (ranked.descending_rank <= ${runtimeReadTopicArchiveLimit} OR ranked.ascending_rank = 1)
   `;
   const byTopic = new Map<string, typeof rows>();
   for (const row of rows) byTopic.set(row.topicId, [...(byTopic.get(row.topicId) ?? []), row]);
@@ -3424,7 +3432,96 @@ export async function getRuntimePerceptionRecords(
     linkedTopics: dictionaryReferences.linkedTopics,
     openTopicReferences: dictionaryReferences.openTopicReferences,
     dictionaryLinkCandidates,
+    interestTopicCandidates:
+      input.includeTrendingTopics && input.interests && input.interests.length > 0
+        ? await listRuntimeInterestTopicCandidates(transaction, {
+            interests: input.interests,
+            agentUserId: input.agentUserId,
+            now: input.now,
+            blockedUserIds,
+          })
+        : [],
   };
+}
+
+/*
+  #6 (8 Ekim 2026): ilgi menüsü bütün yazarların ortak gördüğü ~24 başlıktan seçiliyordu;
+  yerel kopyada yazarlar aynı başlıklara toplandı (72 okumada 39 farklı başlık, eski sürümde 49).
+  Her ilgi için bütün sözlükte başlık adında ilginin bütün kelimeleri geçen başlıklar aranır.
+  Kelime kökü önekiyle aranır (müzik → "müzi": müziği, müzisyen). Kesin eşleşme ve sıralama
+  uygulama katmanında yapılır. Yazarın son üç günde yazdığı başlıklar dışarıda kalır.
+*/
+// Kesin eşleştirme uygulama katmanında; önek araması geniş tutulur ki geçerli aday limitte kaybolmasın.
+const runtimeInterestCandidatePerInterest = 40;
+
+export async function listRuntimeInterestTopicCandidates(
+  transaction: Prisma.TransactionClient,
+  input: {
+    interests: readonly WeightedInterest[];
+    agentUserId: string;
+    now: Date;
+    blockedUserIds: readonly string[];
+  },
+) {
+  const recentlyWritten = await transaction.entry.findMany({
+    where: {
+      authorId: input.agentUserId,
+      createdAt: { gte: new Date(input.now.getTime() - 3 * 24 * 3_600_000) },
+    },
+    select: { topicId: true },
+    distinct: ["topicId"],
+  });
+  const excluded = recentlyWritten.map(({ topicId }) => topicId);
+  const results = await Promise.all(
+    input.interests.map(async (interest) => {
+      /*
+        Kelime başında tam kök ya da ünlü öncesi yumuşamış kök (müzik/müziğ, uçak/uçağ). Daha kısa
+        önek ("müzi") "müzisyen…" gürültüsüyle limiti doldurup geçerli başlığı dışarıda
+        bırakıyordu (Astra, 9 Ekim). Kesin eşleşme yine uygulama katmanında.
+      */
+      const tokens = interestTokens(interest.key);
+      if (tokens.length === 0) return [];
+      const softening: Record<string, string> = { p: "b", ç: "c", t: "d", k: "ğ" };
+      const forms = (token: string) => {
+        const soft = token.length >= 4 ? softening[token.at(-1)!] : undefined;
+        return soft ? [token, `${token.slice(0, -1)}${soft}`] : [token];
+      };
+      /*
+        Kelime sınırı PostgreSQL düzenli ifadesiyle (Sol 6.1, 9 Ekim): sabit noktalama listesi
+        "[müzik]", "ses:müzik", "din, toplum" gibi geçerli başlıkları kaçırıyordu. Sınır: harf ya
+        da rakam olmayan karakter (Türkçe harfler açıkça harf sayılır). Üç harfli kök yalnız tam
+        kelimedir ("din" ≠ "dinamik"). İfade yalnız harf/rakamdan kurulur ve parametre olarak
+        gider; enjeksiyon yüzeyi yok.
+      */
+      const boundary = "[^[:alnum:]çğıöşüâîû]";
+      const patterns = tokens.map((token) => {
+        const alternatives = forms(token)
+          .map((form) => form.replaceAll(/[^\p{L}\p{N}]/gu, ""))
+          .join("|");
+        return token.length < 4
+          ? `(^|${boundary})(${alternatives})($|${boundary})`
+          : `(^|${boundary})(${alternatives})`;
+      });
+      const topics = await transaction.$queryRaw<
+        { id: string; title: string; entryCount: number; lastEntryAt: Date | null }[]
+      >`
+        SELECT topic."id", topic."title", topic."entryCount", topic."lastEntryAt"
+        FROM "topics" AS topic
+        WHERE topic."status" = 'ACTIVE'
+          AND NOT (topic."id" = ANY(${excluded}::uuid[]))
+          -- Engellenen kullanıcının açtığı başlık kişisel menüye girmez (Astra, 9 Ekim).
+          AND NOT (topic."createdById" = ANY(${[...input.blockedUserIds]}::uuid[]))
+          AND ${Prisma.join(
+            patterns.map((pattern) => Prisma.sql`topic."normalizedTitle" ~ ${pattern}`),
+            " AND ",
+          )}
+        ORDER BY topic."lastEntryAt" DESC NULLS LAST, topic."id" ASC
+        LIMIT ${runtimeInterestCandidatePerInterest}
+      `;
+      return topics.map((topic) => ({ ...topic, interestKey: interest.key }));
+    }),
+  );
+  return results.flat();
 }
 
 export async function getMeasuredRuntimeRunMetrics(

@@ -195,6 +195,8 @@ export interface RuntimeWritingPersona {
   temperament?: Partial<
     Record<"humor" | "skepticism" | "curiosity" | "directness" | "conflict", number>
   >;
+  /** Personanın kendi ritim ve mizah tarifi; yazma anına yakın hatırlatılır (#4). */
+  voice?: { rhythm: string; humorStyle: string };
 }
 
 const approaches = [
@@ -204,11 +206,11 @@ const approaches = [
   },
   {
     key: "dissent",
-    text: "Bu başlıkta okuduğun ya da yaygın bir kanaatin katılmadığın yerini düz söyle.",
+    text: "Bu başlıkta okuduğun ya da yaygın bir kanaatin katılmadığın yerini kendi kanaatinle söyle ('bence abartı, çünkü …', 'hiç katılmıyorum: …'); 'X tek başına Y değildir' diye düzeltme cümlesi kurma.",
   },
   {
     key: "question",
-    text: "Seni gerçekten meraklandıran bir soruyu entry'nin içinde sor (okura çağrı ya da tartışma daveti değil).",
+    text: "Bu entry'de seni gerçekten meraklandıran bir soru sor (okura çağrı ya da tartışma daveti değil).",
   },
   {
     key: "opinion",
@@ -220,7 +222,7 @@ const approaches = [
   },
   {
     key: "link",
-    text: "Gerçekten ilgili bir başka başlığa (bkz: başlık) ile bağlan.",
+    text: "Bu entry'yi ilgili bir başka başlığa (bkz: başlık) ile bağla; dictionaryLinkCandidates ya da bildiğin bir başlık olabilir.",
   },
 ] as const;
 
@@ -229,10 +231,11 @@ function approachWeights(t: RuntimeWritingPersona["temperament"] = {}): number[]
   return [
     v("humor") ** 2 * 1.6,
     (v("skepticism") * 0.7 + v("conflict") * 0.3) ** 2,
-    v("curiosity") ** 2 * 0.7,
+    // 8 Ekim yerel ölçüm: dolgu yasağıyla soru ve bkz %0-5'e düştü; ağırlıkları artırıldı.
+    v("curiosity") ** 2 * 1.1,
     v("directness") ** 2,
     0.35,
-    0.2,
+    0.45,
   ];
 }
 
@@ -250,12 +253,14 @@ function lengthTarget(persona: RuntimeWritingPersona, byte: number): string | nu
   const min = persona.preferredMinWords;
   const max = persona.preferredMaxWords;
   if (!min || !max || max < min) return null;
-  const mid = Math.round((min + max) / 2);
-  const bucket = byte % 20;
-  if (bucket < 3)
+  /*
+    8 Ekim yerel ölçüm (docs/YEREL_KANIT_2026-10-08.md): aralığın üst yarısı hedef olarak
+    verilince uzun yazarlar söyleyecek içerik yokken dolguyla uzattı (LONG 13/13 dolgu,
+    doğallık 2,15). Aralık hedef değil, olağan sınır; uzunluk içerikten gelir.
+  */
+  if (byte % 20 < 3)
     return "Uzunluk: bu sefer kısa; tek cümle, tek satırlık tepki ya da yalnız bir (bkz: başlık) yeterli.";
-  if (bucket < 14) return `Uzunluk: bu entry yaklaşık ${min}-${mid} kelime olsun.`;
-  return `Uzunluk: bu entry yaklaşık ${mid}-${max} kelime olsun; konu taşıyorsa ikinci paragraf olabilir.`;
+  return `Uzunluk: olağan entry'n ${min}-${max} kelime arası. Bu konuda söyleyeceğin kadar yaz: aralığın üst kısmına ancak somut ayrıntı, örnek, karşılaştırma ya da açıklaman varsa çık; yoksa alt kısımda kal. Çekince, özet ya da kendi yazdığını yorumlayan cümleyle uzatma.`;
 }
 
 export function renderRuntimeWritingVariation(
@@ -273,6 +278,7 @@ export function renderRuntimeWritingVariation(
   const approach = approaches[weightedPick(approachWeights(persona.temperament), digest[8]!)]!;
   return [
     "# Bu run için yazım varyasyonu",
+    ...(persona.voice ? [`Sesin: ${persona.voice.rhythm} ${persona.voice.humorStyle}`] : []),
     length,
     `Yaklaşım ipucu: ${approach.text} Konuya uymuyorsa kendi seçimini yap.`,
     "Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma.",

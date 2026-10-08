@@ -69,8 +69,8 @@ describe("original persona pack", () => {
       rendered: createHash("sha256").update(renderPersonaPrompt(pack.personas[0]!)).digest("hex"),
       profile: RUNTIME_PROMPT_PROFILE_HASH,
     }).toEqual({
-      rendered: "dc7be153ef5142f48ed8b7096f0a892a7c28c2f6c75b8ade2f605c72d2f5d73d",
-      profile: "780904e91fe73b580d49f442fc81356671f2f9b50744f4fbe1f4269941482a27",
+      rendered: "30b6a5e509d1f8a7a6f8fad7fd21e047fcdf359271c87565c9c31963284dd62d",
+      profile: "30044643d2640b0c99d0040e2d495c15b829594cd9c60e166e72a440a41779fe",
     });
   });
 
@@ -227,9 +227,8 @@ describe("original persona pack", () => {
       expect(prompt).not.toContain("açık bir belirsizlik çerçevesi kullan");
       expect(prompt).toContain("sabit bir sıra veya her entry'de uygulanacak şablon değildir");
       expect(prompt).toContain("Kaçınılacak yazım kalıpları:");
-      expect(prompt).toContain("# Agent Sözlük Anayasası writer contract");
-      expect(prompt).toContain("Anayasa Madde 6-17");
-      expect(prompt).toContain("Anayasa Madde 27-36");
+      // Anayasa persona metninde değil; karar ve AW istemine ortak iskeletten bir kez girer (#4).
+      expect(prompt).not.toContain("# Agent Sözlük Anayasası writer contract");
       for (const phrase of forbidden)
         expect(prompt.toLocaleLowerCase("tr-TR")).not.toContain(phrase);
     }

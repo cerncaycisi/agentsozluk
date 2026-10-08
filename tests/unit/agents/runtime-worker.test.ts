@@ -53,6 +53,7 @@ import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { runtimePromptScaffold } from "@/runtime/prompt-profile";
 import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
+import { runtimeLifeEventBatchSchema } from "@/modules/agents/validation/life-schemas";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 
 function usageWithIntervals(
@@ -146,6 +147,7 @@ describe("yazar sesi persona bağı (writing-variation v10)", () => {
         entryLength: "MEDIUM",
         preferredMinWords: persona.writing.preferredMinWords,
         preferredMaxWords: persona.writing.preferredMaxWords,
+        voice: { rhythm: persona.writing.rhythm, humorStyle: persona.humor.style },
         temperament: {
           humor: persona.temperament.humor,
           skepticism: persona.temperament.skepticism,
@@ -156,6 +158,17 @@ describe("yazar sesi persona bağı (writing-variation v10)", () => {
       }),
     );
     expect(prompt).not.toContain("- Form: ");
+  });
+
+  it("anayasa karar isteminde bir kez geçer; ses satırı yazma anına yakındır (#4)", () => {
+    const context = fixtureContext(runId);
+    const prompt = buildRuntimePrompt({
+      ...context,
+      persona: { ...context.persona, renderedPrompt: renderPersonaPrompt(persona) },
+    });
+    expect(prompt.split("# Agent Sözlük Anayasası writer contract").length - 1).toBe(1);
+    expect(prompt).toContain(`Sesin: ${persona.writing.rhythm} ${persona.humor.style}`);
+    expect(prompt.indexOf("Sesin: ")).toBeGreaterThan(prompt.indexOf("# Nasıl yazılır"));
   });
 
   it.each([
@@ -1763,6 +1776,25 @@ describe("long-lived agent runtime worker", () => {
 
       expect(provider.invoke).toHaveBeenCalledTimes(2);
       expect(plane.recordActions).toHaveBeenCalledTimes(2);
+      // Onarım paketi kendi OPTION_SELECTED adımını taşır; eylem ona bağlanır (sunucu bağ ister)
+      // (8 Ekim: CONTENT_REPAIR_CONTROL_PLANE_FAILED).
+      const repairPayload = vi.mocked(plane.recordActions).mock.calls[1]![5] as {
+        decisionJournal: { seq: number; kind: string }[];
+        actionIntents: { selectedOptionSeq: number | null }[];
+      };
+      expect(repairPayload.decisionJournal).toEqual([
+        expect.objectContaining({ kind: "OPTION_SELECTED", causedBySeqs: [] }),
+      ]);
+      expect(repairPayload.actionIntents[0]!.selectedOptionSeq).toBe(
+        repairPayload.decisionJournal[0]!.seq,
+      );
+      expect(
+        runtimeLifeEventBatchSchema.safeParse({
+          workerId: "duplicate-repair-worker",
+          leaseToken: LEASE_TOKEN,
+          payload: repairPayload,
+        }).success,
+      ).toBe(true);
       expect(plane.recordActions).toHaveBeenNthCalledWith(
         2,
         expect.any(String),
@@ -1785,13 +1817,13 @@ describe("long-lived agent runtime worker", () => {
         expect.objectContaining({
           observations: [],
           memoryCandidates: [],
-          decisionJournal: [],
+          decisionJournal: [expect.objectContaining({ kind: "OPTION_SELECTED" })],
           actionIntents: [
             {
               sequence: 2,
               desire: 0.8,
               expectedOutcome: "Topic üzerinde kanıtla sınırlı ve özgün bir entry görünür olacak.",
-              selectedOptionSeq: 1,
+              selectedOptionSeq: expect.any(Number),
             },
           ],
         }),

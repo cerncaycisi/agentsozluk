@@ -11,7 +11,10 @@ import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
 */
 describe("üslup turu 3", () => {
   const talimatlar = runtimePromptScaffold.dictionaryInstructions as readonly string[];
-  const blok = talimatlar.slice(0, talimatlar.indexOf("# Nasıl yazılır") + 9).join("\n");
+  // Blok "Sınırlar aynen geçerli" maddesiyle biter; madde eklenince kesim kaymasın.
+  const blok = talimatlar
+    .slice(0, talimatlar.findIndex((line) => line.startsWith("- Sınırlar aynen geçerli")) + 1)
+    .join("\n");
 
   it("ürün amacı bloğunun başında duruyor", () => {
     expect(talimatlar[0]).toBe("# Nasıl yazılır");

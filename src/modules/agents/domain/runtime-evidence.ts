@@ -1,6 +1,7 @@
 import { authorFeedbackKey } from "@/modules/agents/domain/rewards";
 import { purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import { actionFeedbackKey } from "@/modules/agents/domain/action-feedback";
+import { runtimeReadTopicFullBodiesKey } from "@/modules/agents/domain/perception";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f-]{27}$/iu;
 
@@ -57,7 +58,8 @@ export function deriveRuntimePerceptionEvidence(
             ([key]) =>
               key !== actionFeedbackKey &&
               key !== purposePerceptionKey &&
-              key !== authorFeedbackKey,
+              key !== authorFeedbackKey &&
+              key !== runtimeReadTopicFullBodiesKey,
           ),
         )
       : perception;

@@ -40,6 +40,7 @@
     "agent:flow": "tsx scripts/agent-society-flow.ts",
     "agent:rollout": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/agent-rollout.ts",
     "agent:diversify-writers-d1": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/apply-writer-diversification-d1.ts",
+    "agent:diversify-writers-d2": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/apply-writer-diversification-d2.ts",
     "agent:rollout-prompts": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/rollout-persona-prompts.ts",
     "agent:seed": "tsx scripts/agent-seed.ts",
     "agent:status": "tsx scripts/agent-codex-status.ts",

@@ -5,7 +5,9 @@ import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
 import { getEnvironment } from "@/config/env";
 import { createOpaqueToken, sha256 } from "@/lib/security/crypto";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
-import { buildRuntimePrompt } from "@/runtime/worker";
+import { buildRuntimePrompt, repairLifePayload } from "@/runtime/worker";
+import { recordRuntimeDecisionBatch, runtimeDecisionBatchSchema } from "@/modules/agents";
+import type { RuntimeDecision } from "@/runtime/output";
 import {
   issueAuthorAssessmentPacket,
   submitAuthorAssessment,
@@ -15,7 +17,10 @@ import {
 import type { RuntimePurposeChange } from "@/modules/agents/validation/purpose-schemas";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
-import { getRuntimeReadTopics } from "@/modules/agents/repository/runtime";
+import {
+  getRuntimeReadTopics,
+  listRuntimeInterestTopicCandidates,
+} from "@/modules/agents/repository/runtime";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import { randomUUID } from "node:crypto";
 import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
@@ -691,6 +696,101 @@ describe("internal agent runtime API with PostgreSQL", () => {
       expect(context.perception.actionFeedback).toEqual([]);
     },
   );
+
+  it("ilgi aday sorgusu kelime sınırını tutar; gürültü limiti doldurmaz (Sol 6.1)", async () => {
+    const fixture = await createFixture();
+    const actor = adminActor(fixture.admin.id);
+    const valid = await createTopicWithFirstEntry(integrationDatabase, actor, {
+      title: "din tarihi",
+      entryBody: "Kısa kökün tam kelime eşleşmesi için eski başlığın ilk entry'si.",
+    });
+    for (let index = 0; index < 45; index += 1)
+      await createTopicWithFirstEntry(integrationDatabase, actor, {
+        title: `dinamik kavram ${index} ${randomUUID().slice(0, 6)}`,
+        entryBody: "Kısa köke yalnız önek olarak uyan gürültü başlığının ilk entry'si.",
+      });
+    const bracketed = await createTopicWithFirstEntry(integrationDatabase, actor, {
+      title: `[müzik] arşivi ${randomUUID().slice(0, 6)}`,
+      entryBody: "Köşeli parantezli uzun kök başlığının ilk entry'si.",
+    });
+    const colon = await createTopicWithFirstEntry(integrationDatabase, actor, {
+      title: `ses:müziğin hafızası ${randomUUID().slice(0, 6)}`,
+      entryBody: "İki nokta ve yumuşamış kök başlığının ilk entry'si.",
+    });
+    const candidates = await integrationDatabase.$transaction((transaction) =>
+      listRuntimeInterestTopicCandidates(transaction, {
+        interests: [
+          { key: "din", weight: 0.5 },
+          { key: "müzik", weight: 0.5 },
+        ],
+        agentUserId: fixture.created.agent.user.id,
+        now: new Date(),
+        blockedUserIds: [],
+      }),
+    );
+    const ids = candidates.map(({ id }) => id);
+    expect(ids).toEqual(
+      expect.arrayContaining([valid.topic.id, bracketed.topic.id, colon.topic.id]),
+    );
+    expect(candidates.filter(({ interestKey }) => interestKey === "din")).toHaveLength(1);
+  });
+
+  it("ilgi menüsü bütün sözlükten yazarın ilgisine tam uyan başlıkları getirir (#6)", async () => {
+    const fixture = await createFixture();
+    const interest = seedPersonaSchema.parse(fixture.created.agent.personaVersion.persona)
+      .interests[0]!.key;
+    const matching = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `${interest} üzerine küçük notlar`,
+        entryBody: "İlgi menüsü testinde yazarın ilgisine tam uyan başlığın ilk entry'si.",
+      },
+    );
+    const unrelated = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "tamamen alakasız bir kavram",
+        entryBody: "İlgi menüsü testinde ilgiye uymayan başlığın ilk entry'si.",
+      },
+    );
+    const bracketed = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "[mahremiyet] notları",
+        entryBody: "Köşeli parantezli ilgi başlığının ilk entry'si.",
+      },
+    );
+    const colon = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "veri:mahremiyet",
+        entryBody: "İki noktalı ilgi başlığının ilk entry'si.",
+      },
+    );
+    const workerId = "interest-menu-worker";
+    const leased = await leaseRuntimeRun(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:lease"),
+      { workerId, leaseSeconds: 60 },
+    );
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      leased.run!.id,
+      workerId,
+    );
+    const menu = context.perception.interestTopics as { id: string }[];
+    expect(menu.map(({ id }) => id)).toContain(matching.topic.id);
+    expect(menu.map(({ id }) => id)).not.toContain(unrelated.topic.id);
+    // Noktalama sonrası kelime başı da ilgi sayılır (Sol 6.1, 9 Ekim): "[mahremiyet]", "veri:mahremiyet".
+    expect(menu.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([bracketed.topic.id, colon.topic.id]),
+    );
+  });
 
   it("yansıma koşusunda yazarın kendi açtığı kalabalık başlığı ortak saymaz (3d)", async () => {
     const fixture = await createFixture();
@@ -4450,14 +4550,17 @@ describe("internal agent runtime API with PostgreSQL", () => {
         entryBody: "TANIM_ENTRYSI: başlığın ne olduğunu söyleyen ilk entry.",
       },
     );
-    // Tanım + on yedi entry: `take: 15` tek başına tanımı düşürürdü (A′, 2 Ekim).
-    // 4. entry uzun: yeni pencerenin eski kısmında önizlemeye (600) kırpılmalı.
-    for (let index = 0; index < 17; index += 1)
+    // Tanım + altmış iki entry: pencere tanımı düşürmemeli (A′, 2 Ekim) ve en yeni 60'a
+    // kesintisiz genişler (#13, 8 Ekim). 4. entry arşivde (160), 52. entry en yeni 15 içinde
+    // ama en yeni altıda değil (600) kırpılmalı.
+    for (let index = 0; index < 62; index += 1)
       await createEntry(integrationDatabase, adminActor(fixture.admin.id), target.topic.id, {
         body:
           index === 4
             ? `UZUN_ESKI_ENTRY: ${"başlıkta süren konuşmanın uzun bir halkası. ".repeat(30)}`
-            : `SONRAKI_ENTRY_${index}: başlıkta süren konuşmanın bir halkası.`,
+            : index === 52
+              ? `UZUN_YAKIN_ENTRY: ${"başlıkta süren konuşmanın uzun bir halkası. ".repeat(30)}`
+              : `SONRAKI_ENTRY_${index}: başlıkta süren konuşmanın bir halkası.`,
       });
     const ownEntry = await createEntry(integrationDatabase, writePrincipal.actor, target.topic.id, {
       body: "KENDI_ENTRYM: ajanın bu başlıkta daha önce yazdığı hüküm.",
@@ -4488,13 +4591,25 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const bodies = readTopic.entries.map((entry) => entry.body);
     expect(bodies[0]).toContain("TANIM_ENTRYSI");
     expect(bodies.at(-1)).toContain("KENDI_ENTRYM");
-    // Tanım + son 15 (17 sonraki + kendi entry'si = 18; en eski üçü pencere dışında).
-    expect(bodies).toHaveLength(16);
+    // Tanım + son 60 (62 sonraki + kendi entry'si = 63; en eski üçü pencere dışında).
+    expect(bodies).toHaveLength(61);
     expect(bodies.some((body) => body.includes("SONRAKI_ENTRY_2:"))).toBe(false);
     expect(bodies.some((body) => body.includes("SONRAKI_ENTRY_3:"))).toBe(true);
     const longOld = bodies.find((body) => body.startsWith("UZUN_ESKI_ENTRY"));
-    expect(longOld?.length).toBe(600);
+    expect(longOld?.length).toBe(160);
     expect(longOld?.endsWith("…")).toBe(true);
+    const longRecent = bodies.find((body) => body.startsWith("UZUN_YAKIN_ENTRY"));
+    expect(longRecent?.length).toBe(600);
+    // #13: kısaltılan entry'lerin tam metni ayrı alanda; yalnız yenilik kapısı içindir.
+    const fullBodies = after.perception.readTopicFullBodies as { id: string; body: string }[];
+    const longOldEntry = readTopic.entries.find((entry) =>
+      entry.body.startsWith("UZUN_ESKI_ENTRY"),
+    );
+    expect(fullBodies.find(({ id }) => id === longOldEntry?.id)?.body.length).toBeGreaterThan(600);
+    expect(fullBodies.every(({ id }) => readTopic.entries.some((entry) => entry.id === id))).toBe(
+      true,
+    );
+    expect(buildRuntimePrompt(after)).not.toContain("readTopicFullBodies");
     // Tanım uzun olsa da tam (2000) gösterilir; yalnız aradaki eskiler önizlemedir.
     expect(readTopic.entries[0]?.body.endsWith("…")).toBe(false);
     expect(readTopic.entries.filter((entry) => entry.mine).map((entry) => entry.id)).toEqual([
@@ -6811,6 +6926,150 @@ describe("internal agent runtime API with PostgreSQL", () => {
     },
   );
 
+  it("içerik onarımı yaşam kaydında kendi seçim adımıyla kabul edilir (8 Ekim)", async () => {
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `onarım yaşam kaydı ${randomUUID()}`,
+        entryBody: "Onarım yaşam kaydı testinde tekrar edilecek insan entry'si.",
+      },
+    );
+    const workerId = "repair-ledger-worker";
+    const leased = await leaseRuntimeRun(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:lease"),
+      { workerId, leaseSeconds: 60 },
+    );
+    const runId = leased.run!.id;
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+      [topic.topic.id],
+    );
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Onarım yaşam kaydı integration adayıdır.",
+    };
+    const journal = [
+      {
+        seq: 1,
+        kind: "OPTION_SELECTED" as const,
+        subject: "entry",
+        summary: "Okunan başlığa entry yazmak seçildi.",
+        confidence: 0.8,
+        evidenceIds: [runId],
+        causedBySeqs: [],
+      },
+    ];
+    const original = {
+      sequence: 1,
+      actionType: "CREATE_ENTRY" as const,
+      safeReason: "Okunan başlığa katkı.",
+      targetType: "TOPIC" as const,
+      targetId: topic.topic.id,
+      input: {
+        topicId: topic.topic.id,
+        body: "Onarım yaşam kaydı testinde tekrar edilecek insan entry'si.",
+      },
+      provenance,
+    };
+    await recordRuntimeDecisionBatch(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeDecisionBatchSchema.parse({
+        workerId,
+        leaseToken: leaseTokenForWorker(workerId),
+        actions: [original],
+        payload: {
+          observations: [],
+          memoryCandidates: [],
+          decisionJournal: journal,
+          actionIntents: [
+            {
+              sequence: 1,
+              desire: 0.8,
+              expectedOutcome: "Entry yayımlanır.",
+              selectedOptionSeq: 1,
+            },
+          ],
+        },
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({ actionStatus: "REJECTED" });
+    const repair = {
+      ...original,
+      sequence: 2,
+      repairOfSequence: 1,
+      input: {
+        topicId: topic.topic.id,
+        body: "Aynı başlığa başka bir açıdan, yeni bir somut ayrıntıyla yazılmış onarılmış entry.",
+      },
+    };
+    const decision = {
+      decisionJournal: journal,
+      actions: [
+        { ...original, desire: 0.8, expectedOutcome: "Entry yayımlanır.", selectedOptionSeq: 1 },
+      ],
+    } as unknown as RuntimeDecision;
+    const repairCandidate = {
+      ...repair,
+      desire: 0.8,
+      expectedOutcome: "Onarılmış entry yayımlanır.",
+      selectedOptionSeq: 1,
+    } as unknown as RuntimeDecision["actions"][number];
+    // Eski davranış: seçim adımı olmadan bağ boşken sunucu reddeder.
+    await expect(
+      recordRuntimeDecisionBatch(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeDecisionBatchSchema.parse({
+          workerId,
+          leaseToken: leaseTokenForWorker(workerId),
+          actions: [repair],
+          payload: {
+            observations: [],
+            memoryCandidates: [],
+            decisionJournal: [],
+            actionIntents: [
+              { sequence: 2, desire: 0.8, expectedOutcome: "x", selectedOptionSeq: null },
+            ],
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_DECISION_LINK_REQUIRED" });
+    await recordRuntimeDecisionBatch(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeDecisionBatchSchema.parse({
+        workerId,
+        leaseToken: leaseTokenForWorker(workerId),
+        actions: [repair],
+        payload: repairLifePayload(decision, repairCandidate),
+      }),
+    );
+    const proposed = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: { runId, eventType: "ACTION_PROPOSED", subject: { path: ["sequence"], equals: 2 } },
+    });
+    expect(proposed.causedByEventIds).toHaveLength(1);
+  });
+
   it("executes a proposed entry through the V1 service and records provenance atomically", async () => {
     const fixture = await createFixture();
     const topic = await createTopicWithFirstEntry(
@@ -7899,7 +8158,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
     },
     {
       label: "a long-topic window that widens when a newer entry is hidden",
-      humanEntries: 19,
+      // Pencere en yeni 60 + tanım (#13); genişleme için başlık pencereden uzun olmalı.
+      humanEntries: 64,
       hiddenIndex: 3,
       agentWritesBeforeRestore: 0,
       hideNewestOnRestore: true,
@@ -7950,7 +8210,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }>;
       // Okuma önkoşulu: görünür sayı ve okunan entry'ler senaryoyla birebir.
       expect(readTopic?.visibleEntryCount).toBe(humanEntries);
-      expect(readTopic?.entries).toHaveLength(Math.min(humanEntries, 16));
+      expect(readTopic?.entries).toHaveLength(Math.min(humanEntries, 61));
       const execute = (sequence: number) =>
         executeRuntimeActionApplication(
           integrationDatabase,

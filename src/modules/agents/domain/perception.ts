@@ -157,11 +157,17 @@ export function truncateUntrustedText(value: string, maximum = 1200): string {
   return normalized.length <= maximum ? normalized : `${normalized.slice(0, maximum - 1)}…`;
 }
 
-// A′ okuma sözleşmesi: ilk ve en yeni altı entry 2000, aradaki eski entry'ler 600 karakter.
+// A′ okuma sözleşmesi: ilk ve en yeni altı entry 2000, en yeni 15'in kalanı 600 karakter.
+// #13 (8 Ekim): en yeni 15'ten eski arşiv entry'leri 160 karakterlik önizleme.
 export const runtimeReadTopicFullEntryCount = 6;
 export const runtimeReadTopicPreviewCharLimit = 600;
+export const runtimeReadTopicRecentCount = 15;
+export const runtimeReadTopicArchiveCharLimit = 160;
+/** İstemde kısaltılan okunan entry'lerin tam metni; yalnız yenilik kapısı için (#13). */
+export const runtimeReadTopicFullBodiesKey = "readTopicFullBodies";
 export function runtimeReadTopicEntryLimit(index: number, count: number): number {
-  return index === 0 || index >= count - runtimeReadTopicFullEntryCount
-    ? 2000
-    : runtimeReadTopicPreviewCharLimit;
+  if (index === 0 || index >= count - runtimeReadTopicFullEntryCount) return 2000;
+  return index >= count - runtimeReadTopicRecentCount
+    ? runtimeReadTopicPreviewCharLimit
+    : runtimeReadTopicArchiveCharLimit;
 }

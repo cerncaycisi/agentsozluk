@@ -116,6 +116,7 @@ import {
   browsableTopicIds,
   interestTopicLimit,
   selectInterestTopics,
+  selectPersonalInterestTopics,
 } from "@/modules/agents/domain/runtime-browse";
 import { createInterestScorer } from "@/modules/agents/domain/interest-matching";
 import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
@@ -144,6 +145,7 @@ import {
   selectPerceptionEntries,
   truncateUntrustedText,
   runtimeReadTopicEntryLimit,
+  runtimeReadTopicFullBodiesKey,
 } from "@/modules/agents/domain/perception";
 import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behavior-feedback";
 import {
@@ -262,6 +264,29 @@ function perceptionPreviousFastState(perceptionSummary: unknown) {
     (perceptionSummary as Record<string, unknown>).previousFastState,
   );
   return parsed.success ? parsed.data : null;
+}
+
+/*
+  Tam metin alanı sınırlı ve başlıklar arasında adil (Astra, 9 Ekim): en kötü durumda üç başlık
+  × 60 entry × 2000 karakter algıyı yüzlerce KB büyütüyordu; ortak bütçe ise ilk başlığa
+  yetip sonrakileri kısaltılmış metne düşürüyordu. Her okunan başlığa eşit pay. Entry metni
+  kırpılmaz: hüküm entry'nin sonundaysa kırpma tekrarı gizliyordu (Sol 6.1, 9 Ekim). Tipik
+  başlıkta tam metinler ~10 bin karakter; payı aşan entry kısaltılmış hâliyle karşılaştırılır.
+*/
+const runtimeReadTopicFullBodiesMaximumChars = 60_000;
+
+function boundedFullBodies(topics: { id: string; body: string }[][]) {
+  const perTopic = Math.floor(runtimeReadTopicFullBodiesMaximumChars / Math.max(1, topics.length));
+  return topics.flatMap((items) => {
+    const kept: { id: string; body: string }[] = [];
+    let total = 0;
+    for (const item of items) {
+      if (total + item.body.length > perTopic) continue;
+      total += item.body.length;
+      kept.push(item);
+    }
+    return kept;
+  });
 }
 
 function boundedPerceptionSnapshot(
@@ -426,10 +451,18 @@ function boundedPerceptionSnapshot(
     linkedTopics,
     8,
   );
-  const interestTopics = selectInterestTopics(
-    { recentEntries: selectedEntries, topicChoiceSignals, linkedTopics, newTopics },
+  const personalInterestTopics = selectPersonalInterestTopics(
+    records.interestTopicCandidates,
     persona.interests,
+    run.id,
   );
+  const interestTopics = [
+    ...personalInterestTopics,
+    ...selectInterestTopics(
+      { recentEntries: selectedEntries, topicChoiceSignals, linkedTopics, newTopics },
+      persona.interests,
+    ).filter(({ id }) => !personalInterestTopics.some((topic) => topic.id === id)),
+  ].slice(0, interestTopicLimit);
   const snapshot = {
     observedAt: now.toISOString(),
     limits: {
@@ -1989,6 +2022,28 @@ export function getRuntimeRunContext(
             createdAt: entry.createdAt.toISOString(),
           })),
         })),
+        /*
+          #13 (8 Ekim 2026): yenilik kapısı, taslağa en benzer eski entry'leri TAM metinle
+          görmeden tekrarı kaçırıyordu (yerel set: 60'lık kısaltılmış pencerede 9/15, en benzer
+          altı entry tam metinle 13/15; yeni katkı kaybı 0/15). İstemde kısaltılan entry'lerin
+          tam metni burada durur. Anahtar karar istemine girmez (runtimeAllowedPerceptionKeys
+          dışında); yalnız worker'daki yenilik kapısı kullanır. Kimlikler readTopics'tekilerle
+          aynıdır; yeni kanıt kimliği eklemez.
+        */
+        [runtimeReadTopicFullBodiesKey]: boundedFullBodies(
+          readTopics.map((topic) =>
+            topic.entries.flatMap((entry, index) => {
+              const full = truncateUntrustedText(entry.body, 2000);
+              return full ===
+                truncateUntrustedText(
+                  entry.body,
+                  runtimeReadTopicEntryLimit(index, topic.entries.length),
+                )
+                ? []
+                : [{ id: entry.id, body: full }];
+            }),
+          ),
+        ),
       };
       await storeRuntimePerceptionSummary(transaction, runId, perception);
     }
