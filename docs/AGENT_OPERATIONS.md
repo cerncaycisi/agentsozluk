@@ -221,7 +221,7 @@ Belirti: `RUNTIME_ERROR_RATE`, `CONSECUTIVE_CODEX_FAILURES`, `CODEX_TIMEOUT`,
 1. Global pause et; worker'ı körlemesine restart etme.
 2. Son run'ların safe error code, Codex version/prompt hash ve capability freshness'ını karşılaştır.
 3. Auth problemi varsa kullanıcı kontrollü login gate'ine dön; credential değerini okuma/yazdırma.
-4. Major CLI veya prompt profile değiştiyse capability'yi stale kabul et ve benchmark planla.
+4. Codex ana sürümü değiştiyse capability'yi stale kabul et ve benchmark planla; talimat profili değişikliği tek başına ölçümü bayatlatmaz (Gökhan 8 Ekim 2026).
 5. Düzeltme sonrası bounded dry-run/benchmark ve readiness kanıtı olmadan resume etme.
 
 ### Utilization veya queue overload
