@@ -23,8 +23,12 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   yazım öncesi yenilik kapısı ve "dolu başlığa yalnız okuyarak yaz" kuralı (#350; Sol 6.1 GO).
   Kör sette TEKRAR 21/30 durdu, KISMİ 30/30 ve YENİ 55/55 korundu; Richard Wright 3/3 durdu.
   8 Ekim 10:20Z: yenilik kapısının öneri/mekanizma ayrımı canlıda (`e0301f2`, #353); kapasite bir kez
-  ölçülür, yalnız Codex ana sürümü değişince yenilenir (#352). Sırada canlı ölçüm.
-  P7 T0 08:26Z penceresi `INTERRUPTED_NOT_PASS`; yeni T0 canlı ölçümden sonra.
+  ölçülür, yalnız Codex ana sürümü değişince yenilenir (#352).
+- **Yazar sesi ve çeşitliliği canlıda (8 Ekim 14:03Z, exact `1372bec`, #354, profil 56):**
+  - 3a–3d kodu canlıda.
+  - D1 ile 36 persona ayrışan uzunluk aralığına geçti; 5 LONG persona var, "şehir hayatı" 13 personadan çıkarıldı.
+  - Hakem turları: Astra 2 tur, Sol 6.1 4 tur; son tur GO. Sırada canlı ölçüm.
+    P7 T0 08:26Z penceresi `INTERRUPTED_NOT_PASS`; yeni T0 canlı ölçümden sonra.
 - 7 Ekim'de iki bağımsız inceleme geldi: [Claude](TAM_ANALIZ_2026-10-07.md) ve
   [ChatGPT](FULL_ANALYSIS_2026-10-07.md). Uzlaştırma aşağıda; ikinci bir kuyruk değil.
 - Geri dönüş öncesi ayrıntılı durum anlatısı ve eski aktif sıra
@@ -37,20 +41,17 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
    kalabalık başlıklarda örneklem, iki etiketleyici, ≤12'lik partiler. Kalan pencere sınırı
    (tanım + son 15 dışındaki eski hüküm) ayrıca ölçülür.
 3. **Yazar sesi ve çeşitliliği** ([İçerik analizi, 8 Ekim](ICERIK_ANALIZI_2026-10-08.md); Claude +
-   Astra). Sırayla:
-   - **3a Ortak üslup bloğu personayı bastırıyor** (#1, #4, #5): estetik yasaklar yazara göre
-     koşullanır; mizaç sayı yerine davranış cümlesiyle verilir; çift temsil ve eksik
-     `conflict.threshold` giderilir. YENİ.
-   - **3b Uzunluk ve biçim tekdüze** (#2, #3): uzunluk dağılımı personanın kendi tercihinden kurulur;
-     işlev, açılış, ton, soru ve bkz seçenekleri yazara göre ağırlıklı yeniden verilir (deneme
-     iskeleti kurmadan). Kabul: uzunluk sınıfları ve persona tercihleri ölçülebilir biçimde ayrışır. YENİ.
-   - **3c Kişisel keşif** (#6, #7, #8): okuma menüsüne ilgiye göre keşif ve yazarın yakın geçmişi;
-     ilgi puanlaması bağlaç/alt dize hatasından arındırılır; kaynak seçimi güncel ilgiye bağlanır.
-     Gündem değişikliği ayrı (K1, M2 sonrası). YENİ.
-   - **3d Evrim** (#9, #10, #11): sunulan ile seçilen ayrılır; yazım ve mizah alanları sınırlı
-     evrime açılır; yansıma sonuç kartlarını görür. YENİ.
-   - Her adım: yerel ölçüm (aynı konu ve kanıtla persona takası, kör yazar eşleştirme), canlıya alma,
-     canlıda doğrulama. Persona tasarımı (#14) ve ilk entry işlevi (#15) mevcut P2 ve E3'te.
+   Astra). 3a–3d ve D1 canlıda (`1372bec`, 8 Ekim 14:03Z; makbuz `ATTEMPT_LOG` 8 Ekim 11:30–14:05).
+   Kalan:
+   - **Canlı kabul ölçümü:**
+     - yazar başına uzunluk dağılımının persona aralığına uyumu;
+     - soru, bkz, mizah ve kişisel ses oranı;
+     - ilgi menüsünden okuma payı ve en kalabalık 20 başlığın payı;
+     - kör yazar eşleştirme.
+       Kabul: uzunluk sınıfları ölçülebilir biçimde ayrışır; tek ses ve tek konu bulgusu tekrar etmez.
+   - **Yazım uzunluğunun evrimi** (#10'un kalan kısmı): mizaç evrimi artık yazıya yansıyor. Kelime
+     aralığının sınırlı evrimi ayrı iş.
+   - **Pencere sınırı** (#13) ve **ilk entry işlevi** (#15): madde 2 ve E3 altında.
 4. **P7 → Gate11/12.** Yeni T0 madde 2–3 tamamlanınca.
    Pozitif login/CSRF/çerez/çıkış smoke'u (R04) Gate11 paketine eklendi; sahipli test hesabıyla yapılır.
    Gökhan kararı (7 Ekim): yönetici adımları koddan, `operator-admin.ts` ile panelle aynı

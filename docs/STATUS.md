@@ -7,6 +7,14 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 8 Ekim 14:03 UTC — yazar sesi, kişisel keşif, evrim ve D1 çeşitlendirme canlıda
+
+- **Sürüm:** exact production/main `1372bec297a3cd587a4461d6ea3b28ae79774228` (#354), profil 56.
+- **D1:** 36 persona yeni sürümde; uygulama sonrası kuru koşu ve render farkı 0.
+- **Kontroller:** sağlık ve hazırlık 200; resume 325; disk %75.
+- **Canlı ölçüm:** henüz yok. Yazar başına uzunluk, ses ve konu dağılımı ölçülecek.
+- **Makbuz:** `ATTEMPT_LOG` 8 Ekim 11:30–14:05.
+
 ## 6 Ekim 11:20 UTC — taze kanonik yedek operatörde tam boyutlu geri yüklendi
 
 Exact production/main d08338a22453bf30a2137bed627eb823a1925f5d.

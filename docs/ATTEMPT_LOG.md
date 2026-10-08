@@ -8888,3 +8888,66 @@ v6, 2 Ekim setinde TEKRAR 28/30, KISMI 5/30, YENI 2/55 durdurdu.
 
 - Uzun partileri tek `claude -p` çağrısıyla etiketletme (kayma); ≤12 madde ve yankı alanı kullan.
 - `pkill -f` desenini kendi komut satırını eşleyecek biçimde yazma.
+
+## 8 Ekim 11:30–14:05 UTC — yazar sesi, kişisel keşif, evrim ve D1 çeşitlendirme canlıda (#354)
+
+**Kapsam.** [İçerik analizi](ICERIK_ANALIZI_2026-10-08.md) 3a–3d ve #14. Gökhan'ın 8 Ekim tam yetkisiyle
+yapıldı (dağıtım ve yazar değişikliği dahil).
+
+- 3a/3b: Claude yazdı.
+- 3c: Astra (`gpt-6-astra`) yazdı, Claude inceledi.
+- 3d ve D1: Claude yazdı.
+
+**Hakem turları.**
+
+| Hakem          | İncelenen | Sonuç | Bulgular                                                                                                                |
+| -------------- | --------- | ----- | ----------------------------------------------------------------------------------------------------------------------- |
+| Astra 1. tur   | `f777d62` | NO-GO | `uncertaintyTolerance` istemden düşmüştü; düşük çatışma + düşük eşik çelişkili talimat; eşit aralık; zayıf worker testi |
+| Astra 2. tur   | `a01fe7d` | NO-GO | Yansımada kendi başlık "ortak" sayılıyordu; kaynak testi kırıktı; yenilemede bayt sınırı                                |
+| Sol 6.1 1. tur | `5f9ae53` | NO-GO | D1 RESUME idempotent değildi; duraklatma kilit altında yeniden okunmuyordu; form tabanı                                 |
+| Sol 6.1 2. tur | `0952d49` | NO-GO | Ayar→profil ters kilit sırası (deadlock)                                                                                |
+| Sol 6.1 3. tur | `0215a1e` | NO-GO | RESUME doğrulaması atomik değildi → RESUME kaldırıldı                                                                   |
+| Sol 6.1 4. tur | `3597c63` | GO    | —                                                                                                                       |
+
+`535a033` yalnız D1 betiğine `agent:flow` ile aynı operatör ortamı hazırlığını ekledi (ayrı hakem turu
+yapılmadı; değişiklik `agent-society-flow.ts` kalıbının birebir kopyası).
+
+**CI.** İlk tam koşuda `coverage` adımı 16 dk sınırında kesildi (`The action 'Coverage' has timed out
+after 16 minutes`). Testler geçiyordu. Main'de adım zaten 15–15,5 dk sürüyordu. Kök neden: süre
+payı kalmamıştı. Çözüm: adım 16→20 dk, iş 20→24 dk; eşikler ve test zaman aşımları aynı.
+`cdc2b49` CI 37783486757 tamamen yeşil.
+
+**Dağıtım.**
+
+- PR #354 head `cdc2b49` ile birleştirildi → main `1372bec297a3cd587a4461d6ea3b28ae79774228`.
+- Push CI 37785447035 yeşil; Release Candidate 37787353518.
+- Disk önce %86 (11 GB boş).
+- `--pause-society-flow` (324), `RELEASE_VERIFY` ve `RELEASE_COMPLETE` PASS; imaj `37b93a13…`.
+
+**D1 (canlı 36 persona).**
+
+1. `DRY_RUN`: 36/36 hedef doğrulandı; snapshot `5872adec…`, açık koşu 0.
+2. `APPLY`: 36 yeni persona sürümü; audit 36, outbox 36; after snapshot `aa093489…`.
+3. Sonrası `DRY_RUN`: değişiklik 0.
+4. `rollout-prompts` `DRY_RUN`: 36 profil, render farkı 0 (D1 sürümleri yeni renderer'la çizildi).
+5. Resume 325, 14:02:54Z; worker active, NRestarts 0.
+
+Kapasite ölçülmedi (#352).
+
+**İmaj temizliği.**
+
+- Disk dağıtımdan sonra %89'du.
+- Çalışan `1372bec` ile önceki `e0301f2` tutuldu.
+- Hiçbir container'ın kullanmadığı altı eski uygulama imajı (`1f28687`, `179599d`, `5edd469`, `ea8f7ee`,
+  `d08338a`, `9d1c4d1`) `docker image rm` ile silindi.
+- Boş alan 9.219.477.504 → 19.525.042.176 bayt (10,3 GB kazanıldı), kullanım %75.
+- Aktif imajlar değişmedi; worker active, NRestarts 0.
+- Volume ve release dizinlerine dokunulmadı.
+
+**Do not repeat:**
+
+- Yerelde aynı test veritabanında iki entegrasyon koşusunu üst üste başlatma; birbirini bozar
+  ("kullanıcı adı kullanılıyor", yönetici hatası).
+- Bu sunucuda `psql` PATH'te yok; yedek/reset entegrasyon testlerinin yerel hatası ortamdır, CI kapıdır.
+- Silen bir persona paketini "aynı dönüşümü yeniden uygula" ile doğrulama; idempotent yaz.
+- Ayar kilidini profil kilitlerinden önce alma.
