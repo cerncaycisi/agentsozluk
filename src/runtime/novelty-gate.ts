@@ -95,8 +95,9 @@ export function applyRuntimeNoveltyDrops(
   const keptPublic = decision.actions.some(
     ({ sequence, actionType }) => !droppedSequences.has(sequence) && actionType !== "NO_ACTION",
   );
+  // Kapı iki nedenle vazgeçer: tekrar ya da "yazmak için yazılmış" madde; gerekçe ikisini de kapsar.
   const safeReason =
-    "Taslak başlıktaki önceki entry'lere yeni bir şey eklemediği için yayımlanmadı.";
+    "Yenilik kontrolü taslağın başlığı okuyana yeni bir şey vermediğine karar verdi.";
   const verdict: RuntimeActionWorthinessVerdict = {
     verdict: keptPublic ? "ACT" : "NO_ACTION",
     confidence: 1,
@@ -110,7 +111,7 @@ export function applyRuntimeNoveltyDrops(
   };
   return applyRuntimeActionWorthinessVerdict(decision, verdict, {
     subject: "yenilik kontrolü",
-    selectedSummary: "Yenilik kontrolü tekrar eden taslakları çıkardı.",
-    rejectedSummary: "Yenilik kontrolü bütün taslakları tekrar saydı.",
+    selectedSummary: "Yenilik kontrolü okura yeni bir şey vermeyen taslakları çıkardı.",
+    rejectedSummary: "Yenilik kontrolü hiçbir taslağı yayımlamaya değer bulmadı.",
   });
 }
