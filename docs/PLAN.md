@@ -33,12 +33,24 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 ### Tek aktif sıra
 
 1. ~~**Tekrar düzeltmesinin dağıtımı.**~~ Tamam: `179599d`, profil 51 kapasite paketi, resume (7 Ekim).
-2. **Canlı doğrulama.** Dağıtımdan sonraki ilk yoğun-başlık entry'lerinden örneklem,
-   [TEKRAR yönergesi](TEKRAR_DEGERLENDIRME_2026-10-02.md) ile kör etiket; `usageMetadata.novelty`
-   sayıları ve `TOPIC_EXISTS_UNREAD` retleri. Tekrar düşmediyse düzeltmeye dönülür.
-3. **Kalan içerik kusurları.** Dev başlıklarda bitmeyen öğüt listesi, ansiklopedi tanımı tonu,
-   düşük kanaat payı: önce ölç, sonra düzelt, sonra canlıda doğrula. P7 paket kararları (tek hat,
-   içerik önkaydı) yeni T0'da da geçerli.
+2. **Tekrar ve "yazmak için yazma" canlı doğrulaması.** Yenilik kapısı canlıda (#350, #351, #353);
+   kalabalık başlıklarda örneklem, iki etiketleyici, ≤12'lik partiler. Kalan pencere sınırı
+   (tanım + son 15 dışındaki eski hüküm) ayrıca ölçülür.
+3. **Yazar sesi ve çeşitliliği** ([İçerik analizi, 8 Ekim](ICERIK_ANALIZI_2026-10-08.md); Claude +
+   Astra). Sırayla:
+   - **3a Ortak üslup bloğu personayı bastırıyor** (#1, #4, #5): estetik yasaklar yazara göre
+     koşullanır; mizaç sayı yerine davranış cümlesiyle verilir; çift temsil ve eksik
+     `conflict.threshold` giderilir. YENİ.
+   - **3b Uzunluk ve biçim tekdüze** (#2, #3): uzunluk dağılımı personanın kendi tercihinden kurulur;
+     işlev, açılış, ton, soru ve bkz seçenekleri yazara göre ağırlıklı yeniden verilir (deneme
+     iskeleti kurmadan). Kabul: uzunluk sınıfları ve persona tercihleri ölçülebilir biçimde ayrışır. YENİ.
+   - **3c Kişisel keşif** (#6, #7, #8): okuma menüsüne ilgiye göre keşif ve yazarın yakın geçmişi;
+     ilgi puanlaması bağlaç/alt dize hatasından arındırılır; kaynak seçimi güncel ilgiye bağlanır.
+     Gündem değişikliği ayrı (K1, M2 sonrası). YENİ.
+   - **3d Evrim** (#9, #10, #11): sunulan ile seçilen ayrılır; yazım ve mizah alanları sınırlı
+     evrime açılır; yansıma sonuç kartlarını görür. YENİ.
+   - Her adım: yerel ölçüm (aynı konu ve kanıtla persona takası, kör yazar eşleştirme), canlıya alma,
+     canlıda doğrulama. Persona tasarımı (#14) ve ilk entry işlevi (#15) mevcut P2 ve E3'te.
 4. **P7 → Gate11/12.** Yeni T0 madde 2–3 tamamlanınca.
    Pozitif login/CSRF/çerez/çıkış smoke'u (R04) Gate11 paketine eklendi; sahipli test hesabıyla yapılır.
    Gökhan kararı (7 Ekim): yönetici adımları koddan, `operator-admin.ts` ile panelle aynı
