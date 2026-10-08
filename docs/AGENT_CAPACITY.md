@@ -216,7 +216,8 @@ bugün tek lane'e düşürür.
 
 Concurrency 2 ancak aşağıdaki koşulların tamamıyla effective olur:
 
-- Capability fresh ve current Codex major + prompt hash ile eşleşiyor.
+- Capability fresh: ölçümün Codex ana sürümü çalışan sürümle aynı (talimat özeti ve yaş belirleyici
+  değil; Gökhan 8 Ekim 2026).
 - Cold, warm ve dual measurement'ların her birinde `failureRate === 0`.
 - `dualRunSuccessCount === 2`.
 - `dualProcessPeakRssMb` ölçülmüş.

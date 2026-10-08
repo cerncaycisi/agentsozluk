@@ -2501,9 +2501,9 @@ $compose exec -T \
 The command covers all visible `PAUSED`, `ACTIVE` and `SUSPENDED` writers, performs one atomic
 transaction and calls the authenticated application service for each changed profile. Immutable
 persona history, ontology/distance validation, audit, outbox and life events stay intact. After
-apply, rerun dry-run and require `changeCount=0`; then refresh the capability package because the
-prompt fingerprint changed and start a new natural observation window because persona state
-changed. Never substitute direct SQL or apply to a partial writer set.
+apply, rerun dry-run and require `changeCount=0`; then start a new natural observation window because persona state
+changed. A prompt-fingerprint change alone no longer requires a new capability package (Gökhan,
+8 October 2026: measure once; only a Codex major-version change invalidates it). Never substitute direct SQL or apply to a partial writer set.
 
 ## Current stochastic production acceptance — Gates 9–12
 
@@ -2547,8 +2547,8 @@ and repository guards, then prove:
   database containers are healthy;
 - internal and public health/readiness return `200/200`, runtime/scheduler/publish/public-write are
   enabled in `NORMAL`, and every writer intended to participate is `ACTIVE`;
-- the installed Codex CLI capability fingerprint and persisted cold/warm/dual measurement are
-  current for the exact CLI major, model, reasoning effort and prompt profile;
+- a persisted HEALTHY cold/warm/dual measurement exists for the installed Codex CLI major version
+  (Gökhan, 8 October 2026: a measurement does not expire by age or prompt profile);
 - `pnpm agent:report:society --help` and
   `pnpm agent:report:experiment-memory --help` load from the database-enabled application image
   without opening or mutating the database;

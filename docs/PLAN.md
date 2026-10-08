@@ -258,19 +258,19 @@ başladı; bu ek oturumun paylaşılan kota etkisi de ölçülmedi. Runtime mode
 - Her paket ayrı geri alınabilir: kod/istem sürümü, persona rollout makbuzu, state/amaç
   değişiklikleri için sürüm ve kapatma bayrağı. Append-only olaylar silinmez; yanlış geri bildirim
   ters kayıtla geçersizleştirilir. Yeni sözleşmeyi eski worker'ın yanlış yorumlaması engellenir.
-- Talimat/algı/model veya kapasiteyi etkileyen sözleşme değişince gereken benchmark yeniden
-  alınır. Kaynak dosyasını değiştirmek canlı persona snapshot'ını değiştirmez; rollout şarttır.
+- Kapasite ölçümü bir kez yapılır; yalnız Codex ana sürümü değişince yeniden alınır (Gökhan 8 Ekim
+  2026). Talimat ya da algı değişikliği tek başına benchmark gerektirmez. Kaynak dosyasını değiştirmek canlı persona snapshot'ını değiştirmez; rollout şarttır.
 - Commit öncesi ilgili testler + format/lint/typecheck, gereksinim kontrolü; kod PR ve tam CI.
   Güvenlik/koşu değişikliğinde farklı model hakemi; exact SHA üretim kapıları aynen geçerli.
 
 ## 4. Operasyon hattı — özelliklerden bağımsız korunacaklar
 
-| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                                                 |
-| ------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **O1** | Canlı heartbeat ve P7 olay büyümesi                  | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                                            |
-| **O2** | P7 boyunca kapasite fingerprint takibi               | Cold/warm/dual ölçümü tamam; D202 taze son tarih19 Ekim19:34:34UTC; gerçek yeniT0+168h+720sn koşulu doğrulanır. Fingerprint değişirse yeni kapasite ve gerekli yeni T0; gereksiz benchmark yok. |
-| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                                                    |
-| **O5** | Toplu komutların canlı kabulü, 17 Ekim               | Kuyruk #309, profil #312, içerik #314/#322 kod/hakem/CI tamam; rota kapsam kararı kaynakla kapandı. Kod canlı; sınırlı kullanım makbuzu Gate11’de açık                                          |
+| Kimlik | İş ve sonraki kontrol                                | Kapanış / sınır                                                                                                                                                        |
+| ------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **O1** | Canlı heartbeat ve P7 olay büyümesi                  | İlk/yeniden kiralama sinyali ve geçişler; canlı olay büyümesi öncesi/sonrası ölçülür. Migration/eski event silme yok                                                   |
+| **O2** | P7 boyunca kapasite fingerprint takibi               | HEALTHY cold/warm/dual ölçümü var (7 Ekim). Ölçüm yaşla ya da talimatla bayatlamaz (Gökhan 8 Ekim); yalnız Codex ana sürümü değişirse yeni ölçüm ve gerekirse yeni T0. |
+| **O4** | Sağlık ve verim, 10 Ekim; iki haftalık takip 17 Ekim | Kota/sağlayıcı ayrımı, etkin hat, kapasite, ret ve `CODEX_TIMEOUT`; ret ≤%20 ve entry/koşu artışı eski hedefi korunur, hacim kotası değildir                           |
+| **O5** | Toplu komutların canlı kabulü, 17 Ekim               | Kuyruk #309, profil #312, içerik #314/#322 kod/hakem/CI tamam; rota kapsam kararı kaynakla kapandı. Kod canlı; sınırlı kullanım makbuzu Gate11’de açık                 |
 
 **O3 teslimi tamam:** eski dış yedeğin gerçek restore/veri eşliği ve owned DB
 kapanışı, exact a97 kaynak kurulumu ve5Ekim mevcut timer'ın otomatik native yedeği
@@ -383,10 +383,10 @@ kadar**, yalnız bu plan için değiştirdi. Aşağıdaki paketler yürütücü 
 kanıtları kaydedilir ve verilen yetkiyle uygulanır; aynı onay tekrar sorulmaz. Süre sonrasında
 olağan belirli erişim/exact SHA onayı gerekir. Teknik kapılar yetki verilmesiyle kalkmaz.
 
-| Konu                                       | Somutlaştırılacak işlem makbuzu                                                                              | Ne zaman                                              |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| A′/P0 veri çıkarımı ve P7 pencere okuması  | Yetki aralığı içinde belirli salt okunur üretim erişimi; zaman aralığı ve hazır sorgu paketi                 | İlk erişimden önce; 4 Ekim erken kontrol tamam        |
-| Heartbeat ve sonraki kod/istem dağıtımları | Yürütücü: exact main SHA, CI/hakem, üretim eylemleri, geri alma paketi                                       | Her dağıtım öncesi; ilk paket hedefi 7–9 Ekim         |
-| Kapasite/rollout                           | Benchmark duruşu, rollout ve resume kapsamı; test edilmiş yol ve snapshot makbuzları                         | Gerekli fingerprint değişiminde; son tarihten önce O2 |
-| Gate 11/12                                 | Adlandırılmış smoke mutasyonları, yedek/restore, reboot ve dönüş makbuzları                                  | P7 kanıtından sonra hazırlanmış paketle               |
-| Otomatik doğumu açma                       | Bu plandaki kalite/soy/nüfus politikasının somut değerleri ve ilk aktivasyonun exact sürümü Gökhan'a sunulur | P8 kapıları geçince; 17 Ekim karar hedefi             |
+| Konu                                       | Somutlaştırılacak işlem makbuzu                                                                              | Ne zaman                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| A′/P0 veri çıkarımı ve P7 pencere okuması  | Yetki aralığı içinde belirli salt okunur üretim erişimi; zaman aralığı ve hazır sorgu paketi                 | İlk erişimden önce; 4 Ekim erken kontrol tamam    |
+| Heartbeat ve sonraki kod/istem dağıtımları | Yürütücü: exact main SHA, CI/hakem, üretim eylemleri, geri alma paketi                                       | Her dağıtım öncesi; ilk paket hedefi 7–9 Ekim     |
+| Kapasite/rollout                           | Benchmark duruşu, rollout ve resume kapsamı; test edilmiş yol ve snapshot makbuzları                         | Yalnız Codex ana sürümü değişince (8 Ekim kararı) |
+| Gate 11/12                                 | Adlandırılmış smoke mutasyonları, yedek/restore, reboot ve dönüş makbuzları                                  | P7 kanıtından sonra hazırlanmış paketle           |
+| Otomatik doğumu açma                       | Bu plandaki kalite/soy/nüfus politikasının somut değerleri ve ilk aktivasyonun exact sürümü Gökhan'a sunulur | P8 kapıları geçince; 17 Ekim karar hedefi         |
