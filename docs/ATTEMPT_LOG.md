@@ -8816,3 +8816,44 @@ Eski örnekte 2 Ekim etiketleriyle uyum 16/19. Fisher testinde 0/19 ile 7/19 far
 - Tek etiketleyici.
 
 Metinler depoya girmedi (`~/style-lab/canli-tekrar-20261007`, 600). Daha büyük örneklemle (60+60) tekrarlanacak.
+
+## 8 Ekim 05:40–07:15 UTC — "yazmak için yazma" kapısı (#351) canlıda
+
+**Gökhan:** "katkı sunmak için katkı sunmasın, yazmak için yazmasın".
+
+**Ölçüm (salt okunur):**
+
+- Dağıtımdan sonra 255 koşunun 191'i entry yazmaya çalıştı; beklenen entry sayısı her koşuda 0.
+- 30'dan fazla entry'li başlıklara giden entry'lerin %76'sı gündemden geliyor; bunların %41'i "-malı/gerekir" kalıbında.
+- Reset öncesi kalabalık başlıklardaki 60 yayımlanmış entry'nin 44'ü iki etiketleyiciye göre "yazmış olmak için yazılmış" (Opus ve Fable, kappa 0,60).
+- Metinler: `~/style-lab/yazmak-icin-20261008`.
+
+**Değişiklik.** Yenilik kapısı istemine ikinci koşul: taslak yalnız başlığa bir madde daha ekleyen sahipsiz genel öğütse VAZGEC. Yayımlama koşulu önceki entry'lerde olmayan katkıya bağlandı.
+
+**Ölçüm (birebir istem, 115/115 eşlik):**
+
+| Set      | Durdu |
+| -------- | ----- |
+| GEREKSIZ | 34/50 |
+| DEGERLI  | 0/23  |
+| TEKRAR   | 28/30 |
+| KISMI    | 7/30  |
+| YENI     | 2/55  |
+
+**Hakem.** Astra 1. tur (`1b16bd3`) NO-GO, iki P2: tekrar eden bilgiyi yayımlatan çelişki ve yanlış ret gerekçesi. Düzeltildi, yeniden ölçüldü; Astra 2. tur (`1af45df`) GO. CI yedi iş yeşil.
+
+**Birleşme ve dağıtım:**
+
+- Main `1f2868785ce01fa5079099146c3349e13b2dace8`, push CI 37738854629.
+- Release Candidate 37740328516: artifact `11533367897`.
+- Dağıtım `--pause-society-flow` ile yapıldı; ayar sürümü 320. `RELEASE_VERIFY` ve `RELEASE_COMPLETE` PASS; imaj `138acc4c…`.
+
+**Kapasite.** Profil 52 ölçümü 07:06'da başladı, Gökhan'ın sorusu üzerine 07:12'de durduruldu. Ölçüm yalnız iki hattı açar; tek hatta (`codexConcurrency=1`) talimat değişince yeniden ölçmek gereksiz. Durdurma adımları:
+
+- Kendi `systemd-run` birimi durduruldu.
+- Kilit `.capacity-abandoned-e4ef3cde…` adına arşivlendi.
+- Codex süreci kalmadı.
+
+Ardından denetimli resume yapıldı (321). Duraklama yaklaşık 25 dakika sürdü.
+
+**Do not repeat:** Kapasiteyi her talimat değişikliğinde ölçme. Yalnız iki hatta geçmeden ya da P7 T0'dan hemen önce ölç.
