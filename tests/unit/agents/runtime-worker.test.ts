@@ -1072,8 +1072,11 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("Tanım, gözlem, örnek, yorum, alıntı ve bkz");
     expect(prompt).toContain("İlk cümleyi her seferinde başlık adını tekrar edip '-dır/-dir'");
     expect(prompt).toContain("Doğrudan tanım seçeneklerden yalnız biridir");
-    expect(prompt).toContain("- Form:");
+    // Persona belgesi varsa uzunluk personanın kelime aralığından gelir (writing-variation v10).
+    expect(prompt).toMatch(/Uzunluk: |- Form:/u);
+    expect(prompt).toContain("Yaklaşım ipucu:");
     expect(prompt).toContain("# Nasıl yazılır");
+    expect(prompt).toContain("Kendi personanın sesiyle yaz.");
     expect(prompt).toContain("recentEntries içinde gerçekten devam edilecek bağımsız bir öncül");
     expect(prompt).toContain("link sayısı doldurmak");
     expect(prompt).toContain("hedefinin önceden açılmış olması gerekmez");

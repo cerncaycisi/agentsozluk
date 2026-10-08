@@ -78,7 +78,10 @@ import {
   runtimeMemoryConsolidationRepairInstruction,
   runtimeStructuredRepairInstruction,
 } from "@/runtime/prompt-profile";
-import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
+import {
+  renderRuntimeWritingVariation,
+  type RuntimeWritingPersona,
+} from "@/runtime/writing-variation";
 import {
   MAXIMUM_STOCHASTIC_TICK_DELAY_MS,
   MINIMUM_STOCHASTIC_TICK_DELAY_MS,
@@ -776,7 +779,7 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
       ? [runtimePromptScaffold.adminHeading, context.run.adminInstruction]
       : []),
     "",
-    renderRuntimeWritingVariation(context.run.id, context.persona.writing.entryLength),
+    renderRuntimeWritingVariation(context.run.id, runtimeWritingPersona(context)),
     runtimePromptScaffold.constitutionHeading,
     ...runtimePromptScaffold.constitutionInstructions,
     runtimePromptInvariants[2],
@@ -788,6 +791,28 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     "",
     ...runtimePromptInvariants.slice(4),
   ].join("\n");
+}
+
+/*
+  Yazım çeşitlemesi personanın kelime aralığını ve mizacını kullanır (8 Ekim 2026). Bağlamdaki
+  persona belgesi okunamazsa yalnız uzunluk etiketine düşülür; koşu durmaz.
+*/
+function runtimeWritingPersona(context: RuntimeContext): RuntimeWritingPersona {
+  const parsed = seedPersonaSchema.safeParse(context.persona.document);
+  if (!parsed.success) return { entryLength: context.persona.writing.entryLength };
+  const { writing, temperament } = parsed.data;
+  return {
+    entryLength: context.persona.writing.entryLength,
+    preferredMinWords: writing.preferredMinWords,
+    preferredMaxWords: writing.preferredMaxWords,
+    temperament: {
+      humor: temperament.humor,
+      skepticism: temperament.skepticism,
+      curiosity: temperament.curiosity,
+      directness: temperament.directness,
+      conflict: temperament.conflict,
+    },
+  };
 }
 
 export function buildActionWorthinessPrompt(

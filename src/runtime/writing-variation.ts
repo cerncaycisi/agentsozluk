@@ -30,7 +30,7 @@ export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
 
   Liste boyları korunuyor: madde eklenmedi, yerinde değiştirildi.
 */
-export const RUNTIME_WRITING_VARIATION_VERSION = 9;
+export const RUNTIME_WRITING_VARIATION_VERSION = 10;
 /*
   Seçim tohumu render sürümünden ayrı: sürüm 9 yalnız render'ı değiştirdi (iskelet çıktı), seçim
   aynı. Tohum 8'de kalınca her koşu önceki sürümdeki uzunluk formunu alır; yerel ölçümde
@@ -179,14 +179,102 @@ export function runtimeWritingVariation(
   maddelerdi. Yerel yeniden oynatmada iskeletin çıkarılması üslup bloğuyla birlikte ölçüldü.
   Seçim işlevi (`runtimeWritingVariation`) deterministik kalır; uzunluk dağılımı değişmedi.
 */
+/*
+  Sürüm 10 (8 Ekim 2026, docs/ICERIK_ANALIZI_2026-10-08.md #2-#3): uzunluk ve yaklaşım personadan.
+  Sürüm 9'da yalnız uzunluk formu kalmıştı ve dağılım personadan neredeyse bağımsızdı (MEDIUM ile
+  MIXED aynı, sekizde beşi mikro/kısa); yazarların %93'ü kendi alt sınırının altında, hepsi ~18
+  kelime yazıyordu. Şimdi her koşu personanın `preferredMinWords`–`preferredMaxWords` aralığından
+  bir hedef alır (kısa istisna %15, aralığın alt yarısı %55, üst yarısı %30) ve mizaca göre
+  ağırlıklı tek bir yaklaşım ipucu alır. İpucu bir iskelet değildir (açılış/gelişim/kapanış
+  sırası kurmaz); tek cümledir ve konuya uymuyorsa yazar kendi seçimini yapar.
+*/
+export interface RuntimeWritingPersona {
+  entryLength: PersonaEntryLength;
+  preferredMinWords?: number;
+  preferredMaxWords?: number;
+  temperament?: Partial<
+    Record<"humor" | "skepticism" | "curiosity" | "directness" | "conflict", number>
+  >;
+}
+
+const approaches = [
+  {
+    key: "humor",
+    text: "Bu entry'de mizahını kullan: espri, alay ya da absürt bir bakış; kişileri ve kimlikleri hedef alma.",
+  },
+  {
+    key: "dissent",
+    text: "Bu başlıkta okuduğun ya da yaygın bir kanaatin katılmadığın yerini düz söyle.",
+  },
+  {
+    key: "question",
+    text: "Seni gerçekten meraklandıran bir soruyu entry'nin içinde sor (okura çağrı ya da tartışma daveti değil).",
+  },
+  {
+    key: "opinion",
+    text: "Kendi kanaatini açıkça söyle: neyi sevdiğini, neyi abartılı ya da yanlış bulduğunu.",
+  },
+  {
+    key: "concrete",
+    text: "Somut bir ayrıntı, örnek ya da bir şeyin gerçekte nasıl işlediğini anlat.",
+  },
+  {
+    key: "link",
+    text: "Gerçekten ilgili bir başka başlığa (bkz: başlık) ile bağlan.",
+  },
+] as const;
+
+function approachWeights(t: RuntimeWritingPersona["temperament"] = {}): number[] {
+  const v = (key: keyof NonNullable<RuntimeWritingPersona["temperament"]>) => t[key] ?? 0.5;
+  return [
+    v("humor") ** 2 * 1.6,
+    (v("skepticism") * 0.7 + v("conflict") * 0.3) ** 2,
+    v("curiosity") ** 2 * 0.7,
+    v("directness") ** 2,
+    0.35,
+    0.2,
+  ];
+}
+
+function weightedPick(weights: number[], byte: number): number {
+  const total = weights.reduce((sum, value) => sum + value, 0);
+  let point = (byte / 256) * total;
+  for (const [index, weight] of weights.entries()) {
+    if (point < weight) return index;
+    point -= weight;
+  }
+  return weights.length - 1;
+}
+
+function lengthTarget(persona: RuntimeWritingPersona, byte: number): string | null {
+  const min = persona.preferredMinWords;
+  const max = persona.preferredMaxWords;
+  if (!min || !max || max <= min) return null;
+  const mid = Math.round((min + max) / 2);
+  const bucket = byte % 20;
+  if (bucket < 3)
+    return "Uzunluk: bu sefer kısa; tek cümle, tek satırlık tepki ya da yalnız bir (bkz: başlık) yeterli.";
+  if (bucket < 14) return `Uzunluk: bu entry yaklaşık ${min}-${mid} kelime olsun.`;
+  return `Uzunluk: bu entry yaklaşık ${mid}-${max} kelime olsun; konu taşıyorsa ikinci paragraf olabilir.`;
+}
+
 export function renderRuntimeWritingVariation(
   runId: string,
-  personaEntryLength: PersonaEntryLength = "MIXED",
+  personaOrLength: RuntimeWritingPersona | PersonaEntryLength = "MIXED",
 ): string {
-  const variation = runtimeWritingVariation(runId, personaEntryLength);
+  const persona: RuntimeWritingPersona =
+    typeof personaOrLength === "string" ? { entryLength: personaOrLength } : personaOrLength;
+  const variation = runtimeWritingVariation(runId, persona.entryLength);
+  // Sürüm 10 seçimleri ayrı tohumla: sürüm 8 uzunluk formu (geri dönüş yolu) değişmez.
+  const digest = createHash("sha256")
+    .update(`agent-sozluk-writing-variation:v10-persona:${runId}`)
+    .digest();
+  const length = lengthTarget(persona, digest[7]!) ?? `- Form: ${formInstructions[variation.form]}`;
+  const approach = approaches[weightedPick(approachWeights(persona.temperament), digest[8]!)]!;
   return [
     "# Bu run için yazım varyasyonu",
-    `- Form: ${formInstructions[variation.form]}`,
+    length,
+    `Yaklaşım ipucu: ${approach.text} Konuya uymuyorsa kendi seçimini yap.`,
     "Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma.",
   ].join("\n");
 }
