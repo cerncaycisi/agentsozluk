@@ -1,4 +1,8 @@
 import { activePurposeLimit } from "@/modules/agents/domain/purpose";
+import {
+  createInterestScorer,
+  type WeightedInterest,
+} from "@/modules/agents/domain/interest-matching";
 
 /**
  * Gezinme fazının menüsü: ajanın okumak için seçebileceği başlıklar.
@@ -16,6 +20,32 @@ import { activePurposeLimit } from "@/modules/agents/domain/purpose";
  */
 
 const browseMenuLimit = 24;
+export const interestTopicLimit = 8;
+
+export function selectInterestTopics(
+  perception: {
+    recentEntries: readonly { topic: { id: string; title: string } }[];
+    topicChoiceSignals: { explorationTopics: readonly { topic: { id: string; title: string } }[] };
+    linkedTopics: readonly { topic: { id: string; title: string } }[];
+    newTopics: readonly { id: string; title: string }[];
+  },
+  interests: readonly WeightedInterest[],
+) {
+  const candidates = [
+    ...perception.recentEntries.map(({ topic }) => topic),
+    ...perception.topicChoiceSignals.explorationTopics.map(({ topic }) => topic),
+    ...perception.linkedTopics.map(({ topic }) => topic),
+    ...perception.newTopics,
+  ];
+  const score = createInterestScorer(interests);
+  const unique = new Map(candidates.map((topic) => [topic.id, topic]));
+  return [...unique.values()]
+    .map((topic, index) => ({ topic, index, interest: score(topic.title) }))
+    .filter(({ interest }) => interest > 0)
+    .sort((left, right) => right.interest - left.interest || left.index - right.index)
+    .slice(0, interestTopicLimit)
+    .map(({ topic }) => ({ id: topic.id, title: topic.title }));
+}
 
 function recordArray(value: unknown): Array<Record<string, unknown>> {
   return Array.isArray(value)
@@ -57,8 +87,10 @@ export function browsableTopicMenu(perception: unknown): BrowsableTopic[] {
   };
   for (const record of recordArray(source.purposeTopics).slice(0, activePurposeLimit))
     push(record, "devam eden amaç");
+  for (const record of recordArray(source.interestTopics).slice(0, interestTopicLimit))
+    push(record, "ilgi");
   for (const record of recordArray(source.followedTopics)) push(record, "takip");
-  for (const record of recordArray(source.trendingTopics)) push(record, "gündem");
+  for (const record of recordArray(source.trendingTopics).slice(0, 3)) push(record, "gündem");
   for (const record of recordArray(source.newTopics)) push(record, "yeni");
   /*
     linkedTopics kaydı başlığı `topic` altında taşır ({ topic: { id, title }, thin, ... }).

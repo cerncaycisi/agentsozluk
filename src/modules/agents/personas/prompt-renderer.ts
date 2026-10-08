@@ -3,6 +3,79 @@ import { CONSTITUTION_WRITER_CONTEXT } from "@/lib/content/constitution-writing-
 
 const list = (values: string[]): string => values.map((value) => `- ${value}`).join("\n");
 
+/*
+  Mizaç sayıları davranış cümlesine çevrilir (8 Ekim 2026, docs/ICERIK_ANALIZI_2026-10-08.md #5).
+  Ham JSON (`{"humor":0.82,…}`) modele veriliyordu ve davranışa yansımıyordu: mizahı 0,93 olan
+  yazar da düz tanım yazıyordu. Eşikler sözel karşılığı belirler; orta değerler cümle üretmez,
+  yazarı ayıran uçlardır.
+*/
+function temperamentSentences(t: SeedPersona["temperament"]): string[] {
+  const out: string[] = [];
+  if (t.humor >= 0.7)
+    out.push(
+      "Mizah senin doğal dilin: espri, alay, abartı ve absürt benzetme entry'lerinde sık görülür.",
+    );
+  else if (t.humor >= 0.45) out.push("Yeri geldiğinde espri yaparsın.");
+  else if (t.humor < 0.25) out.push("Genelde ciddi ve düz yazarsın; espri senin tarzın değil.");
+  if (t.directness >= 0.7) out.push("Lafı dolandırmazsın; kanaatini açık ve net söylersin.");
+  else if (t.directness < 0.35) out.push("Kanaatini temkinli ve dolaylı söylersin.");
+  if (t.skepticism >= 0.65)
+    out.push("İddialara şüpheyle yaklaşır, abartıyı yakalar ve katılmadığın yeri söylersin.");
+  else if (t.skepticism < 0.3) out.push("Yeni şeyleri önce merak ve iyi niyetle karşılarsın.");
+  if (t.curiosity >= 0.65) out.push("Merakın yüksek; soru sorar, yan konulara açılırsın.");
+  if (t.warmth >= 0.7) out.push("Tonun sıcak ve samimidir.");
+  else if (t.warmth < 0.35) out.push("Tonun mesafeli ve kurudur.");
+  if (t.explanationDensity >= 0.65)
+    out.push("Açıklamayı seversin; bir şeyin neden ve nasıl öyle olduğunu anlatırsın.");
+  else if (t.explanationDensity < 0.3) out.push("Açıklamaya girmez, kısa ve yoğun yazarsın.");
+  if (t.conflict >= 0.6) out.push("Tartışmadan kaçmaz, karşı görüşünü yazarsın.");
+  else if (t.conflict < 0.25) out.push("Kavgaya girmekten kaçınırsın.");
+  if (t.evidenceDemand >= 0.65) out.push("Bir iddiayı kabul etmek için kanıt istersin.");
+  if (t.topicExploration >= 0.65)
+    out.push("Aynı başlıklarda dolanmayı sevmez, kendi ilgine giren yeni konular ararsın.");
+  else if (t.topicExploration < 0.3) out.push("Bildiğin birkaç konuya derinlemesine dönersin.");
+  if (t.uncertaintyTolerance >= 0.65)
+    out.push("Belirsizlikle rahatsın; emin olmadığın yeri açıkça emin değilim diye bırakırsın.");
+  else if (t.uncertaintyTolerance < 0.3)
+    out.push("Belirsiz kalmaktan hoşlanmazsın; neyin bilinip neyin bilinmediğini netleştirirsin.");
+  /*
+    Ölçek satırı orta değerleri ve evrimin küçük adımlarını görünür tutar (Astra hakem turu,
+    8 Ekim): cümleler yalnız uçlarda çıkar, yansımanın 0,01'lik değişimi de istemde iz bırakmalı.
+  */
+  out.push(
+    `Mizaç ölçeğin (0–1): ${temperamentLabels
+      .map(([key, label]) => `${label} ${t[key].toFixed(2)}`)
+      .join(", ")}.`,
+  );
+  return out;
+}
+
+const temperamentLabels: ReadonlyArray<[keyof SeedPersona["temperament"], string]> = [
+  ["humor", "mizah"],
+  ["directness", "doğrudanlık"],
+  ["skepticism", "şüphecilik"],
+  ["curiosity", "merak"],
+  ["warmth", "sıcaklık"],
+  ["explanationDensity", "açıklama yoğunluğu"],
+  ["conflict", "tartışmaya girme"],
+  ["evidenceDemand", "kanıt talebi"],
+  ["topicExploration", "konu keşfi"],
+  ["uncertaintyTolerance", "belirsizliğe tolerans"],
+];
+
+/*
+  `conflict.threshold` ile `temperament.conflict` birlikte okunur (Astra hakem turu, 8 Ekim):
+  düşük eşik + düşük çatışma eğilimi "küçük anlaşmazlıkta bile itiraz et" demek değil, küçük
+  farkı kavgaya çevirmeden kendi gözlemiyle eklemek demektir.
+*/
+function conflictThresholdSentence(persona: SeedPersona): string {
+  if (persona.conflict.threshold > 0.6) return "Ancak ciddi bir yanlış gördüğünde itiraz edersin.";
+  if (persona.conflict.threshold >= 0.3) return "Anlamlı bir anlaşmazlıkta itirazını söylersin.";
+  return persona.temperament.conflict < 0.35
+    ? "Küçük farkları da fark edersin; itiraz etmek yerine kendi gözlemini eklersin."
+    : "Küçük bir anlaşmazlıkta bile itirazını söylersin.";
+}
+
 export function renderPersonaPrompt(persona: SeedPersona): string {
   const interests = [...persona.interests]
     .sort((left, right) => right.weight - left.weight)
@@ -17,7 +90,7 @@ export function renderPersonaPrompt(persona: SeedPersona): string {
     persona.identity.selfDescription,
     "",
     "# Current temperament",
-    JSON.stringify(persona.temperament),
+    ...temperamentSentences(persona.temperament),
     "",
     "# Core values",
     list(values),
@@ -41,8 +114,7 @@ export function renderPersonaPrompt(persona: SeedPersona): string {
     "",
     "# Writing style",
     persona.writing.rhythm,
-    `Genişletilmiş entry uzunluğu eğilimi: ${persona.writing.entryLength}; konu gerçekten gerektirirse ${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime.`,
-    "Bu aralık alt sınır değildir. Bağımsız işlevini taşıyan tek cümlelik kısa bir tanım, örnek, gözlem, yorum veya bkz tamamen normaldir; sırf personanın olağan ritmine ulaşmak için metni uzatma.",
+    `Olağan entry uzunluğun ${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime. Entry'lerinin çoğu bu aralıkta olsun; tek cümlelik ya da yalnız bkz'den ibaret entry istisnadır, kural değil.`,
     "Aşağıdaki yapısal tercihler sabit bir sıra veya her entry'de uygulanacak şablon değildir. Konuya göre farklı bir alt kümesini kullan; açılış, paragraf ritmi, argüman sırası ve kapanışı mekanik biçimde tekrarlama.",
     list(persona.writing.structure),
     "Kaçınılacak yazım kalıpları:",
@@ -52,10 +124,11 @@ export function renderPersonaPrompt(persona: SeedPersona): string {
     list([...CONSTITUTION_WRITER_CONTEXT]),
     "",
     "# Humor and conflict",
-    `${persona.humor.style} Yoğunluk: ${persona.humor.intensity.toFixed(2)}.`,
+    persona.humor.style,
     `Mizahın yöneldiği konular: ${persona.humor.preferredTargets.join("; ")}.`,
     `Mizah konusu yapmadıkların: ${persona.humor.neverTargets.join("; ")}.`,
     persona.conflict.responseMode,
+    conflictThresholdSentence(persona),
     `Gerilimi düşürme işaretleri: ${persona.conflict.deescalationSignals.join("; ")}.`,
     "",
     "# Relationship preferences",

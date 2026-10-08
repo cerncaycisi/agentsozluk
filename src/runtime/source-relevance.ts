@@ -1,102 +1,38 @@
+import {
+  createInterestScorer,
+  interestTokens,
+  type WeightedInterest,
+} from "@/modules/agents/domain/interest-matching";
 import type { SeedPersona } from "@/modules/agents/personas/schema";
 import type { SourceReadItem } from "@/runtime/source-reader";
 
 const DEFAULT_SOURCE_ITEM_LIMIT = 10;
 const EXPLORATION_ITEM_LIMIT = 2;
 
-const GENERIC_TOKENS = new Set([
-  "aciklama",
-  "alan",
-  "bakis",
-  "bilgi",
-  "genel",
-  "guncel",
-  "gundem",
-  "haber",
-  "hakkinda",
-  "icin",
-  "ile",
-  "olay",
-  "olaylar",
-  "olan",
-  "olarak",
-  "uzerine",
-  "ve",
-  "veya",
-]);
-
-function normalize(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replaceAll(/\p{Mark}+/gu, "")
-    .toLocaleLowerCase("tr-TR")
-    .replaceAll(/[^a-z0-9]+/gu, " ")
-    .replaceAll(/\s+/gu, " ")
-    .trim();
-}
-
-function meaningfulTokens(value: string): string[] {
-  return normalize(value)
-    .split(" ")
-    .filter((token) => token.length >= 4 && !GENERIC_TOKENS.has(token));
-}
-
-interface WeightedAffinity {
-  phrase: string;
-  tokens: string[];
-  weight: number;
-}
-
 function affinityVocabulary(
   persona: SeedPersona | null,
   sourceTopics: readonly string[],
   recentTopicTitles: readonly string[],
-): WeightedAffinity[] {
+): WeightedInterest[] {
   const weights = new Map<string, number>();
   for (const interest of persona?.interests ?? []) {
-    const phrase = normalize(interest.key);
+    const phrase = interest.key.normalize("NFKC").toLocaleLowerCase("tr-TR");
     if (phrase) weights.set(phrase, Math.max(weights.get(phrase) ?? 0, interest.weight));
   }
   for (const topic of sourceTopics) {
-    const phrase = normalize(topic);
+    const phrase = topic.normalize("NFKC").toLocaleLowerCase("tr-TR");
     if (phrase) weights.set(phrase, Math.max(weights.get(phrase) ?? 0, 0.35));
   }
   for (const topic of recentTopicTitles) {
-    const phrase = normalize(topic);
+    const phrase = topic.normalize("NFKC").toLocaleLowerCase("tr-TR");
     if (phrase) weights.set(phrase, Math.max(weights.get(phrase) ?? 0, 0.45));
   }
   return [...weights.entries()]
-    .map(([phrase, weight]) => ({
-      phrase,
-      tokens: meaningfulTokens(phrase),
-      weight,
-    }))
-    .filter(({ tokens }) => tokens.length > 0);
+    .map(([key, weight]) => ({ key, weight }))
+    .filter(({ key }) => interestTokens(key).length > 0);
 }
 
-function itemAffinity(item: SourceReadItem, vocabulary: readonly WeightedAffinity[]): number {
-  const title = normalize(item.title);
-  const text = normalize(`${item.title} ${item.safeText}`);
-  return vocabulary.reduce((score, affinity) => {
-    const phraseInTitle = affinity.phrase.length >= 4 && title.includes(affinity.phrase);
-    const phraseInText = affinity.phrase.length >= 4 && text.includes(affinity.phrase);
-    const titleMatches = affinity.tokens.filter((token) => title.includes(token)).length;
-    const textMatches = affinity.tokens.filter((token) => text.includes(token)).length;
-    return (
-      score +
-      (phraseInTitle ? affinity.weight * 4 : 0) +
-      (phraseInText ? affinity.weight * 2 : 0) +
-      titleMatches * affinity.weight * 1.5 +
-      textMatches * affinity.weight * 0.5
-    );
-  }, 0);
-}
-
-/**
- * A broad feed remains useful for discovery, but it must not turn every unrelated
- * headline into writer memory. Keep the strongest writer-local matches and at
- * most two recent out-of-affinity items for serendipity.
- */
+/** İlgili öğeler öne gelir; mevcut sınırlı tesadüfi keşif payı korunur. */
 export function selectSourceReadItemsForPersona(
   items: readonly SourceReadItem[],
   input: {
@@ -117,10 +53,22 @@ export function selectSourceReadItemsForPersona(
   );
   if (vocabulary.length === 0) return items.slice(0, limit);
 
+  const score = createInterestScorer(vocabulary);
+  const personaScore = createInterestScorer(input.persona?.interests ?? []);
   const ranked = items
-    .map((item, index) => ({ item, index, affinity: itemAffinity(item, vocabulary) }))
+    .map((item, index) => ({
+      item,
+      index,
+      interest: personaScore(item.title) * 2 + personaScore(`${item.title} ${item.safeText}`),
+      affinity: score(item.title) * 2 + score(`${item.title} ${item.safeText}`),
+    }))
     .filter(({ affinity }) => affinity > 0)
-    .sort((left, right) => right.affinity - left.affinity || left.index - right.index);
+    .sort(
+      (left, right) =>
+        right.interest - left.interest ||
+        right.affinity - left.affinity ||
+        left.index - right.index,
+    );
   const relevantLimit = Math.max(1, limit - Math.min(EXPLORATION_ITEM_LIMIT, limit - 1));
   const relevant = ranked.slice(0, relevantLimit);
   const selectedIndexes = new Set(relevant.map(({ index }) => index));
@@ -129,7 +77,5 @@ export function selectSourceReadItemsForPersona(
     .filter(({ index }) => !selectedIndexes.has(index))
     .slice(0, Math.min(EXPLORATION_ITEM_LIMIT, limit - relevant.length));
 
-  return [...relevant, ...exploration]
-    .sort((left, right) => left.index - right.index)
-    .map(({ item }) => item);
+  return [...relevant, ...exploration].map(({ item }) => item);
 }

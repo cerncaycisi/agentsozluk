@@ -103,7 +103,7 @@ describe("W4 organic writer cohort", () => {
       expect(validated.report.minimumTemperamentDistance).toBeGreaterThanOrEqual(0.16);
       expect(validated.report.maximumTextNgramOverlap).toBeLessThanOrEqual(0.2);
       expect(renderPersonaPrompt(persona)).toContain(
-        "tek cümlelik kısa bir tanım, örnek, gözlem, yorum veya bkz tamamen normaldir",
+        "tek cümlelik ya da yalnız bkz'den ibaret entry istisnadır, kural değil",
       );
       existing.push(persona);
     }

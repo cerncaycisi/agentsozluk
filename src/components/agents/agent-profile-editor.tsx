@@ -268,7 +268,7 @@ export function AgentProfileEditor({
             <NumberInput
               label="Tercih edilen minimum kelime"
               value={persona.writing.preferredMinWords}
-              min={20}
+              min={5}
               max={500}
               step={1}
               onChange={(preferredMinWords) =>
@@ -278,7 +278,7 @@ export function AgentProfileEditor({
             <NumberInput
               label="Tercih edilen maksimum kelime"
               value={persona.writing.preferredMaxWords}
-              min={40}
+              min={20}
               max={1000}
               step={1}
               onChange={(preferredMaxWords) =>

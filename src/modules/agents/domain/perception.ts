@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import {
+  createInterestScorer,
+  selectWithInterestRotation,
+} from "@/modules/agents/domain/interest-matching";
 
 export interface PerceptionEntryCandidate {
   id: string;
@@ -38,17 +42,10 @@ export function selectPerceptionEntries(
     now: Date;
   },
 ): PerceptionEntryCandidate[] {
-  const interestWeights = input.interests.map(({ key, weight }) => ({
-    tokens: key.toLocaleLowerCase("tr-TR").split(/\s+/u),
-    weight,
-  }));
+  const interestScore = createInterestScorer(input.interests);
   return [...candidates]
     .map((candidate) => {
-      const text = `${candidate.topic.title} ${candidate.body}`.toLocaleLowerCase("tr-TR");
-      const interest = interestWeights.reduce(
-        (sum, item) => sum + (item.tokens.some((token) => text.includes(token)) ? item.weight : 0),
-        0,
-      );
+      const interest = interestScore(`${candidate.topic.title} ${candidate.body}`);
       const ageHours = Math.max(0, input.now.getTime() - candidate.createdAt.getTime()) / 3_600_000;
       const recency = 1 / (1 + ageHours / 12);
       const rank =
@@ -64,18 +61,23 @@ export function selectPerceptionEntries(
     .map(({ candidate }) => candidate);
 }
 
-export function selectDiverseSourceItems<T>(groups: readonly (readonly T[])[], limit: number): T[] {
+export function selectDiverseSourceItems<T>(
+  groups: readonly (readonly T[])[],
+  limit: number,
+  interestScore?: (item: T) => number,
+): T[] {
   if (!Number.isInteger(limit) || limit < 0) throw new RangeError("limit negatif olamaz.");
   const selected: T[] = [];
   const maximumDepth = groups.reduce((maximum, group) => Math.max(maximum, group.length), 0);
-  for (let depth = 0; depth < maximumDepth && selected.length < limit; depth += 1) {
+  const rotationLimit = interestScore ? Infinity : limit;
+  for (let depth = 0; depth < maximumDepth && selected.length < rotationLimit; depth += 1) {
     for (const group of groups) {
       const item = group[depth];
       if (item !== undefined) selected.push(item);
-      if (selected.length >= limit) break;
+      if (selected.length >= rotationLimit) break;
     }
   }
-  return selected;
+  return interestScore ? selectWithInterestRotation(selected, limit, interestScore) : selected;
 }
 
 export function buildTopicChoiceSignals(

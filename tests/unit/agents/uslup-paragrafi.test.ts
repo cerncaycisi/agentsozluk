@@ -11,13 +11,17 @@ import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
 */
 describe("üslup turu 3", () => {
   const talimatlar = runtimePromptScaffold.dictionaryInstructions as readonly string[];
-  const blok = talimatlar.slice(0, talimatlar.indexOf("# Nasıl yazılır") + 8).join("\n");
+  const blok = talimatlar.slice(0, talimatlar.indexOf("# Nasıl yazılır") + 9).join("\n");
 
   it("ürün amacı bloğunun başında duruyor", () => {
     expect(talimatlar[0]).toBe("# Nasıl yazılır");
-    expect(blok).toContain("zekice görünmeye çalışma; cilalı metin yapay görünür");
-    expect(blok).toContain("'X değil Y' karşıtlığı");
-    expect(blok).toContain("Noktalı virgül kullanma");
+    // 8 Ekim 2026: blok persona önceliğini söyler; herkese "esprisiz, benzetmesiz" yasağı kalktı.
+    expect(blok).toContain("Kendi personanın sesiyle yaz.");
+    expect(blok).toContain("Mizahın varsa kullan");
+    expect(blok).toContain("Hep aynı kalıpla yazma.");
+    expect(blok).toContain("Cilalı deneme kurma");
+    expect(blok).not.toContain("zekice görünmeye çalışma");
+    expect(blok).not.toContain("Benzetme, metafor");
     expect(blok).toContain("Kaynak adını süs ya da giriş kalıbı olarak");
     // Gerekli atıf korunur (anayasa: alıntıda kaynak; persona: iddianın sahibi).
     expect(blok).toContain("kime ait olduğunu sade biçimde söyle");
@@ -30,10 +34,9 @@ describe("üslup turu 3", () => {
     expect(blok).toContain("yaşamadığın fiziksel bir deneyimi (gittim, yedim, gördüm) uydurma");
     expect(blok).toContain("kanıtın desteklemediği kesin olgu, sayı ya da alıntı yazma");
     expect(blok).toContain("(bkz: başlık) vermek sözlükte çok olağandır");
-    expect(blok).toContain("Gövdede soru sormak da serbest");
-    expect(blok).toContain(
-      "Başlıkta okuduğun bir kanaate katılmıyorsan bunu düz söylemek de olağandır",
-    );
+    expect(blok).toContain("Gövdede soru sormak serbest");
+    expect(blok).toContain("okuduğun bir hükme katılmıyorsan itiraz et");
+    expect(blok).toContain("kişileri, kimlikleri ve savunmasızları hedef almadan");
   });
 
   it("v43 cümlesi ve deneme iskeleti geri gelmiyor", () => {

@@ -1,3 +1,8 @@
+import {
+  createInterestScorer,
+  selectWithInterestRotation,
+  type WeightedInterest,
+} from "@/modules/agents/domain/interest-matching";
 import { publicIdBigInt, publicIds } from "@/lib/db/public-ids";
 import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
 import { birthSourcePreparationTrigger } from "@/modules/agents/domain/birth-preparation";
@@ -2236,6 +2241,7 @@ async function listRuntimePerceptionSources(
     now: Date;
     sourceFetchLimit: number;
     preferredSourceIds: string[];
+    interests: readonly WeightedInterest[];
   },
 ) {
   const preferredUnordered =
@@ -2273,7 +2279,7 @@ async function listRuntimePerceptionSources(
         })
       : null;
   const primaryLimit = remainingLimit - (discovery ? 1 : 0);
-  const primary =
+  const primaryCandidates =
     primaryLimit > 0
       ? await transaction.agentSource.findMany({
           where: {
@@ -2296,9 +2302,31 @@ async function listRuntimePerceptionSources(
             { trustScore: "desc" },
             { id: "asc" },
           ],
-          take: primaryLimit,
+          // İlgi sırası dar bir eski-çekim penceresine hapsolmasın; havuz ajan kaynak sınırıyla bağlı.
+          take:
+            input.interests.length > 0
+              ? Math.max(primaryLimit, runtimeAgentSourceLimit)
+              : primaryLimit,
         })
       : [];
+  const interestScore = createInterestScorer(input.interests);
+  /*
+    İlgi yalnız hangi kaynakların seçileceğini belirler; sıra güven/tazelik sırasında kalır.
+    Yansımanın kaynak güveni değişimi bir sonraki uyanışın okuma sırasını değiştirmeye devam
+    etmeli (iki çevrimli yansıma entegrasyon testi).
+  */
+  const interestChosen = selectWithInterestRotation(primaryCandidates, primaryLimit, (source) =>
+    interestScore(
+      [
+        ...(Array.isArray(source.topics)
+          ? source.topics.filter((topic): topic is string => typeof topic === "string")
+          : []),
+        ...source.items.map((item) => `${item.title} ${item.summary ?? ""} ${item.safeText}`),
+      ].join(" "),
+    ),
+  );
+  const interestChosenIds = new Set(interestChosen.map(({ id }) => id));
+  const primary = primaryCandidates.filter(({ id }) => interestChosenIds.has(id));
   const selected = discovery ? [...preferred, ...primary, discovery] : [...preferred, ...primary];
   if (selected.length === 0) return [];
   const domainRecords = await transaction.agentSource.findMany({
@@ -2934,6 +2962,7 @@ export async function getRuntimePerceptionRecords(
     includeTrendingTopics?: boolean;
     includeActionFeedback?: boolean;
     sourceFetchLimit: number;
+    interests?: readonly WeightedInterest[];
   },
 ) {
   const blocked = await transaction.userBlock.findMany({
@@ -3093,7 +3122,7 @@ export async function getRuntimePerceptionRecords(
         score: true,
         upvoteCount: true,
         downvoteCount: true,
-        topic: { select: { id: true, title: true } },
+        topic: { select: { id: true, title: true, entryCount: true, createdById: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 10,
@@ -3237,6 +3266,7 @@ export async function getRuntimePerceptionRecords(
           now: input.now,
           sourceFetchLimit: input.sourceFetchLimit,
           preferredSourceIds,
+          interests: input.interests ?? [],
         })
       : Promise.resolve([]),
     /*

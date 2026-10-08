@@ -112,7 +112,12 @@ import {
   sourceFetchTargetLimit,
   terminalizeInterruptedRuntimeRun,
 } from "@/modules/agents/domain/runtime-controls";
-import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
+import {
+  browsableTopicIds,
+  interestTopicLimit,
+  selectInterestTopics,
+} from "@/modules/agents/domain/runtime-browse";
+import { createInterestScorer } from "@/modules/agents/domain/interest-matching";
 import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
 import {
   assertSourceScoreWeeklyBudget,
@@ -185,6 +190,12 @@ interface RuntimeLeaseDependencies {
 }
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
+const memoryConsolidationRunTriggers: ReadonlySet<string> = new Set([
+  "NIGHTLY_MEMORY_CONSOLIDATION",
+  "ADMIN_MEMORY_RECONSOLIDATE",
+]);
+/** Başkasının açtığı ve bu kadar entry'si olan başlık yansımada ortak gündem sayılır. */
+const runtimeCommonTopicEntryCount = 8;
 
 function runtimeSourceStatePayload(state: RuntimeSourceState) {
   return {
@@ -282,6 +293,7 @@ function boundedPerceptionSnapshot(
     topicEntryCountLast30Minutes: recentTopicCounts.get(entry.topic.id) ?? 0,
     saturated: (recentTopicCounts.get(entry.topic.id) ?? 0) >= 15,
   }));
+  const interestScore = createInterestScorer(persona.interests);
   const sourceItems = selectDiverseSourceItems(
     records.sources.map((source) =>
       source.items.map((item) => ({
@@ -299,15 +311,31 @@ function boundedPerceptionSnapshot(
       })),
     ),
     10,
+    (item) => interestScore(`${item.title} ${item.summary ?? ""} ${item.safeText}`),
   );
   // Hafıza süzgeci için: bu koşuda gövdesi zaten görünen source item kimlikleri.
   const visibleSourceItemIds = new Set(sourceItems.map((item) => item.itemId));
-  const ownRecentEntries = records.ownEntries.slice(0, 8).map((entry) => ({
-    ...entry,
-    body: truncateUntrustedText(entry.body, 600),
-    createdAt: entry.createdAt.toISOString(),
-    topicOpenedByCurrentWriter: writerOpenedTopicIds.has(entry.topic.id),
-  }));
+  /*
+    Yansıma (3d, 8 Ekim 2026) yazarın son entry'lerini ilgi kanıtı sayıyordu; oysa çoğu herkesin
+    yazdığı ortak başlıklara gidiyordu ve evrim herkesi aynı ilgiye kaydırıyordu. `commonTopic`
+    kalabalık ve başkasının açtığı başlığı işaretler; yansıma talimatı bunu kişisel ilgi saymaz.
+  */
+  /*
+    Sahiplik başlığın kendi `createdById` alanından okunur: yansıma koşusu `writerOpenedTopics`
+    yüklemez ve yazarın kendi başlığı ortak sanılıyordu (Astra 2. tur). Kimlik modele gitmez.
+  */
+  const ownRecentEntries = records.ownEntries.slice(0, 8).map((entry) => {
+    const { createdById, ...topic } = entry.topic;
+    const opened = writerOpenedTopicIds.has(topic.id) || createdById === run.agentProfile.user.id;
+    return {
+      ...entry,
+      topic,
+      body: truncateUntrustedText(entry.body, 600),
+      createdAt: entry.createdAt.toISOString(),
+      topicOpenedByCurrentWriter: opened,
+      commonTopic: !opened && topic.entryCount >= runtimeCommonTopicEntryCount,
+    };
+  });
   const writerOpenedTopics = records.writerOpenedTopics.map(({ id, title }) => ({ id, title }));
   const linkedTopics = records.linkedTopics.slice(0, 8).map((linkedTopic) => ({
     ...linkedTopic,
@@ -392,6 +420,16 @@ function boundedPerceptionSnapshot(
     createdAt: entry.createdAt.toISOString(),
   }));
   const { runtimeMetadata } = records.state;
+  const topicChoiceSignals = buildTopicChoiceSignals(
+    ownRecentEntries,
+    selectedEntries,
+    linkedTopics,
+    8,
+  );
+  const interestTopics = selectInterestTopics(
+    { recentEntries: selectedEntries, topicChoiceSignals, linkedTopics, newTopics },
+    persona.interests,
+  );
   const snapshot = {
     observedAt: now.toISOString(),
     limits: {
@@ -409,6 +447,7 @@ function boundedPerceptionSnapshot(
       followedTopics: 8,
       followedWriterEntries: 6,
       topicExploration: 8,
+      interestTopics: interestTopicLimit,
       behaviorLessons: 5,
       actionFeedback: actionFeedbackLimit,
       authorFeedback: authorFeedbackLimit,
@@ -417,6 +456,7 @@ function boundedPerceptionSnapshot(
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
     [actionFeedbackKey]: projectActionFeedback(records.actionFeedbackRecords, now),
     recentEntries: selectedEntries,
+    interestTopics,
     trendingTopics,
     newTopics,
     followedTopics,
@@ -426,7 +466,7 @@ function boundedPerceptionSnapshot(
     dictionaryLinkCandidates,
     ownRecentEntries,
     writerOpenedTopics,
-    topicChoiceSignals: buildTopicChoiceSignals(ownRecentEntries, selectedEntries, linkedTopics, 8),
+    topicChoiceSignals,
     /*
       Aynı haber metnini ajana iki kez verme.
 
@@ -599,7 +639,7 @@ async function applyRuntimeReflectionDelta(
       422,
       "Reflection delta yalnız REFLECTION run tamamlanırken gönderilebilir.",
     );
-  if (["NIGHTLY_MEMORY_CONSOLIDATION", "ADMIN_MEMORY_RECONSOLIDATE"].includes(input.run.trigger))
+  if (memoryConsolidationRunTriggers.has(input.run.trigger))
     throw new AppError(
       "VALIDATION_ERROR",
       422,
@@ -1773,8 +1813,17 @@ export function getRuntimeRunContext(
       run.runType === "NORMAL_WAKE"
         ? await runtimePurposeContext(transaction, run, now)
         : { purposes: [], purposeTopics: [] };
+    /*
+      Haftalık yansıma bağımsız yazar değerlendirmelerini de görür (3d): evrim yalnız
+      yazdıklarına değil, işinin nasıl karşılandığına da bakar. Kartlar kanıt kimliği olamaz
+      (`deriveRuntimePerceptionEvidence` bu anahtarları dışlar). Teknik işlem sonuç kartları
+      (`actionFeedback`) #298 kararıyla yalnız normal uyanışta kalır: teknik sonuç kişilik
+      değişimine gerekçe olmaz. Hafıza birleştirme koşusu yansıma türünde ama kart taşımaz.
+    */
+    const reflectionWithFeedback =
+      run.runType === "REFLECTION" && !memoryConsolidationRunTriggers.has(run.trigger);
     const feedback =
-      run.runType === "NORMAL_WAKE"
+      run.runType === "NORMAL_WAKE" || reflectionWithFeedback
         ? await runtimeAuthorFeedback(
             transaction,
             run.agentProfileId,
@@ -1810,6 +1859,18 @@ export function getRuntimeRunContext(
           [authorFeedbackKey]: feedback,
         };
         await storeRuntimePerceptionSummary(transaction, runId, perception);
+      } else if (reflectionWithFeedback) {
+        // Geri alma metni kartı büyütebilir; donmuş snapshot bayt sınırını aşmasın (Astra 2. tur).
+        const cards = [...feedback];
+        perception = { ...perception, [authorFeedbackKey]: cards };
+        while (
+          cards.length > 0 &&
+          Buffer.byteLength(JSON.stringify(perception), "utf8") > runtimePerceptionMaximumBytes
+        ) {
+          cards.pop();
+          perception = { ...perception, [authorFeedbackKey]: [...cards] };
+        }
+        await storeRuntimePerceptionSummary(transaction, runId, perception);
       }
     } else {
       const perceptionRecords = await getRuntimePerceptionRecords(transaction, {
@@ -1818,6 +1879,7 @@ export function getRuntimeRunContext(
         runId,
         now,
         sourceFetchLimit: sourceFetchTargetLimit(run.runType, settings.sourceFetchLimit),
+        interests: seedPersonaSchema.parse(run.personaVersion.persona).interests,
         includeSources:
           run.runType === "REFLECTION" || (run.allowSourceReading && settings.sourceReadingEnabled),
         includeWriterOpenedTopics:

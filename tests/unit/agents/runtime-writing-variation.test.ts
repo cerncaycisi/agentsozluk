@@ -59,14 +59,55 @@ describe("runtime writing variation", () => {
       ).toEqual(new Set(["MICRO", "SHORT", "MEDIUM", "LONG"]));
   });
 
-  it("renders only the length form and one shared boundary (v9)", () => {
+  it("renders length, one approach hint and one shared boundary (v10)", () => {
     const prompt = renderRuntimeWritingVariation("00000000-0000-4000-8000-000000000456");
 
     expect(prompt.split("\n")).toEqual([
       "# Bu run için yazım varyasyonu",
       expect.stringMatching(/^- Form: /u),
+      expect.stringMatching(/^Yaklaşım ipucu: .+ Konuya uymuyorsa kendi seçimini yap\.$/u),
       "Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma.",
     ]);
+  });
+
+  // 8 Ekim 2026: uzunluk personanın kendi aralığından, yaklaşım mizacından gelir.
+  it("targets the persona's own word range in most runs", () => {
+    const runIds = Array.from(
+      { length: 400 },
+      (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    );
+    const persona = {
+      entryLength: "MEDIUM" as const,
+      preferredMinWords: 45,
+      preferredMaxWords: 210,
+    };
+    const lines = runIds.map(
+      (runId) => renderRuntimeWritingVariation(runId, persona).split("\n")[1]!,
+    );
+    const inRange = lines.filter((line) =>
+      /^Uzunluk: bu entry yaklaşık (45-128|128-210) kelime/u.test(line),
+    );
+    const short = lines.filter((line) => line.startsWith("Uzunluk: bu sefer kısa"));
+    expect(inRange.length).toBeGreaterThan(300);
+    expect(short.length).toBeGreaterThan(20);
+    expect(short.length).toBeLessThan(110);
+    expect(inRange.length + short.length).toBe(lines.length);
+  });
+
+  it("gives a humorous persona the humor hint far more often than a dry one", () => {
+    const runIds = Array.from(
+      { length: 600 },
+      (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    );
+    const share = (humor: number) =>
+      runIds.filter((runId) =>
+        renderRuntimeWritingVariation(runId, {
+          entryLength: "SHORT",
+          temperament: { humor, skepticism: 0.4, curiosity: 0.4, directness: 0.5, conflict: 0.3 },
+        }).includes("mizahını kullan"),
+      ).length / runIds.length;
+    expect(share(0.9)).toBeGreaterThan(0.35);
+    expect(share(0.1)).toBeLessThan(0.05);
   });
 
   it("renders the exact instruction of the selected form for all four forms", () => {

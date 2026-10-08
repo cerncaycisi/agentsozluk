@@ -49,6 +49,61 @@ const input = {
 };
 
 describe("runtime source fetch target selection", () => {
+  it("güncel ilgiye uyan kaynakları kümeye alır, kalan yerleri ve sırayı eski dönüşümden korur", async () => {
+    const candidates = [
+      "gündem",
+      "film",
+      "gündelik hayat",
+      "müzik",
+      "müzikal",
+      "film ve diziler",
+    ].map((title, index) => ({
+      id: `source-${index}`,
+      normalizedDomain: `source-${index}.example`,
+      topics: [],
+      consecutiveFailures: 0,
+      lastFetchedAt: null,
+      items: [{ title, summary: null, safeText: "" }],
+    }));
+    const select = async (key: string) => {
+      const transaction = transactionMock();
+      transaction.agentSource.findMany.mockResolvedValueOnce(candidates).mockResolvedValueOnce([]);
+      const records = await getRuntimePerceptionRecords(
+        transaction as unknown as Prisma.TransactionClient,
+        {
+          ...input,
+          sourceFetchLimit: 4,
+          interests: [{ key, weight: 1 }],
+        },
+      );
+      expect(transaction.agentSource.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            agentProfileId: input.agentProfileId,
+            adminBlocked: false,
+          }),
+          take: 25,
+          orderBy: expect.arrayContaining([{ lastFetchedAt: { sort: "asc", nulls: "first" } }]),
+          select: expect.objectContaining({
+            items: expect.objectContaining({
+              where: { OR: [{ expiresAt: null }, { expiresAt: { gt: input.now } }] },
+              take: 3,
+            }),
+          }),
+        }),
+      );
+      return records.sources.map(({ id }) => id);
+    };
+    // İlgi kümeyi seçer, sıra güven/tazelik sırasında kalır (yansıma güven değişimi okunur).
+    expect(await select("müzik")).toEqual(["source-0", "source-1", "source-3", "source-4"]);
+    expect(await select("film ve diziler")).toEqual([
+      "source-0",
+      "source-1",
+      "source-2",
+      "source-5",
+    ]);
+  });
+
   it("uses the configured maximum instead of the old eight-source repository cap", async () => {
     const transaction = transactionMock();
 

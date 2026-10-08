@@ -79,6 +79,7 @@ export function runtimeEvidenceCatalogFrom(
   ];
   const offeredTopics = [
     ...recordArray(perception.purposeTopics),
+    ...recordArray(perception.interestTopics),
     ...recordArray(perception.trendingTopics),
     ...recordArray(perception.newTopics),
     ...recordArray(perception.followedTopics),
