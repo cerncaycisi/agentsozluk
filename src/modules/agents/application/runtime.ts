@@ -267,21 +267,27 @@ function perceptionPreviousFastState(perceptionSummary: unknown) {
 }
 
 /*
-  Tam metin alanının toplam boyutu sınırlı (Astra, 9 Ekim): en kötü durumda üç başlık × 60 entry ×
-  2000 karakter algıyı yüzlerce KB büyütüyordu. Yenilik kapısı en benzer altı entry'yi seçer;
-  sınırı aşan entry kısaltılmış hâliyle karşılaştırılır.
+  Tam metin alanı sınırlı ve başlıklar arasında adil (Astra, 9 Ekim): en kötü durumda üç başlık
+  × 60 entry × 2000 karakter algıyı yüzlerce KB büyütüyordu; ortak bütçe ise ilk başlığa
+  yetip sonrakileri kısaltılmış metne düşürüyordu. Her okunan başlığa eşit pay; tek entry'nin
+  tam metni en fazla 1200 karakter (entry'lerin %95'i bunun altında).
 */
 const runtimeReadTopicFullBodiesMaximumChars = 60_000;
+const runtimeReadTopicFullBodyCharLimit = 1200;
 
-function boundedFullBodies(items: { id: string; body: string }[]) {
-  const kept: { id: string; body: string }[] = [];
-  let total = 0;
-  for (const item of items) {
-    if (total + item.body.length > runtimeReadTopicFullBodiesMaximumChars) continue;
-    total += item.body.length;
-    kept.push(item);
-  }
-  return kept;
+function boundedFullBodies(topics: { id: string; body: string }[][]) {
+  const perTopic = Math.floor(runtimeReadTopicFullBodiesMaximumChars / Math.max(1, topics.length));
+  return topics.flatMap((items) => {
+    const kept: { id: string; body: string }[] = [];
+    let total = 0;
+    for (const item of items) {
+      const body = truncateUntrustedText(item.body, runtimeReadTopicFullBodyCharLimit);
+      if (total + body.length > perTopic) continue;
+      total += body.length;
+      kept.push({ id: item.id, body });
+    }
+    return kept;
+  });
 }
 
 function boundedPerceptionSnapshot(
@@ -2026,7 +2032,7 @@ export function getRuntimeRunContext(
           aynıdır; yeni kanıt kimliği eklemez.
         */
         [runtimeReadTopicFullBodiesKey]: boundedFullBodies(
-          readTopics.flatMap((topic) =>
+          readTopics.map((topic) =>
             topic.entries.flatMap((entry, index) => {
               const full = truncateUntrustedText(entry.body, 2000);
               return full ===

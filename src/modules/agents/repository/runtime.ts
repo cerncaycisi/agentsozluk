@@ -3474,11 +3474,18 @@ async function listRuntimeInterestTopicCandidates(
   const excluded = recentlyWritten.map(({ topicId }) => topicId);
   const results = await Promise.all(
     input.interests.map(async (interest) => {
-      // Son harf düşer: Türkçe yumuşama (uçak → uçağ, müzik → müziğ) önekte de yakalanır.
-      const prefixes = interestTokens(interest.key).map((token) =>
-        token.length >= 4 ? token.slice(0, token.length - 1) : token,
-      );
-      if (prefixes.length === 0) return [];
+      /*
+        Kelime başında tam kök ya da ünlü öncesi yumuşamış kök (müzik/müziğ, uçak/uçağ). Daha kısa
+        önek ("müzi") "müzisyen…" gürültüsüyle limiti doldurup geçerli başlığı dışarıda
+        bırakıyordu (Astra, 9 Ekim). Kesin eşleşme yine uygulama katmanında.
+      */
+      const tokens = interestTokens(interest.key);
+      if (tokens.length === 0) return [];
+      const softening: Record<string, string> = { p: "b", ç: "c", t: "d", k: "ğ" };
+      const forms = (token: string) => {
+        const soft = token.length >= 4 ? softening[token.at(-1)!] : undefined;
+        return soft ? [token, `${token.slice(0, -1)}${soft}`] : [token];
+      };
       const topics = await transaction.topic.findMany({
         where: {
           status: "ACTIVE",
@@ -3487,7 +3494,12 @@ async function listRuntimeInterestTopicCandidates(
           ...(input.blockedUserIds.length > 0
             ? { createdById: { notIn: [...input.blockedUserIds] } }
             : {}),
-          AND: prefixes.map((prefix) => ({ normalizedTitle: { contains: prefix } })),
+          AND: tokens.map((token) => ({
+            OR: forms(token).flatMap((form) => [
+              { normalizedTitle: { startsWith: form } },
+              { normalizedTitle: { contains: ` ${form}` } },
+            ]),
+          })),
         },
         select: { id: true, title: true, entryCount: true, lastEntryAt: true },
         orderBy: [{ lastEntryAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
