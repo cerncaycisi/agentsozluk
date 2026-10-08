@@ -227,9 +227,13 @@ describe("proven runtime concurrency with PostgreSQL", () => {
     const waitingProfileId = agents[2]!.agent.profile.id;
     const waitingRun = await queueManualRun(waitingProfileId);
 
-    // Kanıt eskiyor: ölçüm hâlâ duruyor ama geçerliliği bitti.
+    /*
+      Kanıt eskiyor: ölçüm hâlâ duruyor ama geçerliliği bitti. 8 Ekim'den beri ölçüm yaşla
+      ya da talimatla bayatlamaz; yalnız Codex ana sürümü değişirse. Ölçümün CLI sürümü
+      çalışan sürümden farklı bir ana sürüme çekiliyor.
+    */
     await integrationDatabase.agentRuntimeCapability.updateMany({
-      data: { staleAt: new Date(NOW.getTime() - 60 * 60 * 1000) },
+      data: { codexVersion: "codex-cli 9.0.0" },
     });
 
     const blocked = await lease(await principalFor(waitingProfileId), NOW);
@@ -240,7 +244,7 @@ describe("proven runtime concurrency with PostgreSQL", () => {
       effectiveConcurrency: 1,
       configuredConcurrency: 2,
       reason: "EVIDENCE_STALE",
-      staleReasons: ["AGE"],
+      staleReasons: ["CODEX_MAJOR"],
       callPath: "LEASE",
     });
 
@@ -370,7 +374,7 @@ describe("proven runtime concurrency with PostgreSQL", () => {
       data: { schedulerEnabled: true },
     });
     await integrationDatabase.agentRuntimeCapability.updateMany({
-      data: { staleAt: new Date(NOW.getTime() - 60 * 60 * 1000) },
+      data: { codexVersion: "codex-cli 9.0.0" },
     });
 
     const tick = await runRuntimeStochasticTick(

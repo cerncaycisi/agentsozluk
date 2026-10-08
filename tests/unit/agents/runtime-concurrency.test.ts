@@ -69,20 +69,13 @@ describe("effective runtime concurrency", () => {
     expect(result.staleReasons).toEqual([]);
   });
 
-  it("requires fresh capacity evidence after the v47 persona-choice rollout", async () => {
-    // v46 kapasite kaydı yeni v47 isteminde taze sayılamaz.
+  // Gökhan kararı (8 Ekim): ölçüm bir kez yapılır; talimat değişince bayatlamaz.
+  it("keeps a measurement taken under an earlier prompt profile fresh", async () => {
     const previousProfile = "7fca9a111e846f3af085b576a6e0ba8de5a232bc7f4dae95d9f592b3f2a939d9";
     const result = await resolve({ ...fresh, promptProfileHash: previousProfile });
-    expect(result.concurrency).toBe(1);
-    expect(result.reason).toBe("EVIDENCE_STALE");
-    expect(result.staleReasons).toContain("PROMPT_PROFILE");
-  });
-
-  it("invalidates v47 capacity when execution feedback enters perception", async () => {
-    const previousProfile = "93344f07c6f1cb1e8545d76c5a564d7fe00b16c4cdeca9b6bc677283e35fe085";
-    const result = await resolve({ ...fresh, promptProfileHash: previousProfile });
-    expect(result.concurrency).toBe(1);
-    expect(result.staleReasons).toContain("PROMPT_PROFILE");
+    expect(result.concurrency).toBe(2);
+    expect(result.reason).toBe("EVIDENCE_FRESH");
+    expect(result.staleReasons).toEqual([]);
   });
 
   /*
@@ -114,32 +107,26 @@ describe("effective runtime concurrency", () => {
   });
 
   it("reports which evidence went stale so the drop is not silent", async () => {
-    const expired = { ...fresh, id: "cap-expired", staleAt: new Date("2026-07-01T12:00:00.000Z") };
-    const result = await resolve(expired);
+    const otherMajor = { ...fresh, id: "cap-old-cli", codexVersion: "codex-cli 1.9.0" };
+    const result = await resolve(otherMajor);
     expect(result.concurrency).toBe(1);
     expect(result.reason).toBe("EVIDENCE_STALE");
-    expect(result.staleReasons).toContain("AGE");
+    expect(result.staleReasons).toEqual(["CODEX_MAJOR"]);
     expect(result.configuredConcurrency).toBe(2);
-    expect(result.measurementId).toBe("cap-expired");
-    expect(result.staleAt).toEqual(expired.staleAt);
+    expect(result.measurementId).toBe("cap-old-cli");
   });
 
-  it("treats a measurement taken under a different prompt profile as stale", async () => {
-    const result = await resolve({ ...fresh, promptProfileHash: "a".repeat(64) });
-    expect(result.concurrency).toBe(1);
-    expect(result.staleReasons).toContain("PROMPT_PROFILE");
+  it("does not expire a measurement by age", async () => {
+    const old = { ...fresh, staleAt: new Date("2026-07-01T12:00:00.000Z") };
+    const result = await resolve(old);
+    expect(result.concurrency).toBe(2);
+    expect(result.staleReasons).toEqual([]);
   });
 
   it("treats a different codex major version as stale", async () => {
     const result = await resolve({ ...fresh, codexVersion: "codex-cli 1.9.0" });
     expect(result.concurrency).toBe(1);
     expect(result.staleReasons).toContain("CODEX_MAJOR");
-  });
-
-  it("expires exactly at staleAt rather than a moment later", async () => {
-    const result = await resolve({ ...fresh, staleAt: now });
-    expect(result.concurrency).toBe(1);
-    expect(result.staleReasons).toContain("AGE");
   });
 
   it("refuses two lanes when no running version can be read at all", async () => {
@@ -160,9 +147,9 @@ describe("effective runtime concurrency", () => {
     expect(unsafe.reason).toBe("DUAL_CONCURRENCY_UNSUPPORTED");
     expect(unsafe.staleReasons).toEqual([]);
 
-    const stale = await resolve({ ...fresh, staleAt: new Date("2026-07-01T12:00:00.000Z") });
+    const stale = await resolve({ ...fresh, codexVersion: "codex-cli 1.9.0" });
     expect(stale.reason).toBe("EVIDENCE_STALE");
-    expect(stale.staleReasons).toContain("AGE");
+    expect(stale.staleReasons).toContain("CODEX_MAJOR");
   });
 
   it("agrees with the capacity view when the running version cannot be read", async () => {

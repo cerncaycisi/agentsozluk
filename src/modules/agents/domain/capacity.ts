@@ -74,24 +74,24 @@ function majorVersion(version: string): number | null {
   return match?.[1] ? Number(match[1]) : null;
 }
 
+/*
+  Gökhan kararı (8 Ekim 2026): "bi kere ölçelim hep oralarda olsun". Ölçüm aynı sunucunun
+  kapasitesidir; talimat özeti değişince ya da 14 gün geçince bayatlamaz. Yalnız Codex ana
+  sürümü değişirse yeniden ölçülür (farklı CLI farklı süreç ve bellek demektir). `staleAt`
+  geçmiş kayıtlarla uyum için yazılmaya devam eder ama tazeliği belirlemez; `AGE` ve
+  `PROMPT_PROFILE` nedenleri yalnız eski kayıtlarda görülebilir. Eski kural CAP-003/CAP-005.
+*/
 export function capabilityFreshness(
   capability: RuntimeCapabilityMeasurement,
   input: { now: Date; codexVersion?: string; promptProfileHash?: string },
 ): { fresh: boolean; staleReasons: CapabilityStaleReason[] } {
   const staleReasons: CapabilityStaleReason[] = [];
-  if (capability.staleAt <= input.now) staleReasons.push("AGE");
   if (input.codexVersion !== undefined) {
     const measuredMajor = majorVersion(capability.codexVersion);
     const currentMajor = majorVersion(input.codexVersion);
     if (measuredMajor === null || currentMajor === null || measuredMajor !== currentMajor) {
       staleReasons.push("CODEX_MAJOR");
     }
-  }
-  if (
-    input.promptProfileHash !== undefined &&
-    capability.promptProfileHash !== input.promptProfileHash
-  ) {
-    staleReasons.push("PROMPT_PROFILE");
   }
   return { fresh: staleReasons.length === 0, staleReasons };
 }
