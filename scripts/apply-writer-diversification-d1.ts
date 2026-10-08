@@ -11,6 +11,7 @@ import {
   applyWriterDiversificationD1Target,
   writerDiversificationD1Targets,
 } from "@/modules/agents/personas/writer-diversification-d1";
+import { lockAgentSettings } from "@/modules/agents/repository/control-plane";
 import { resolveOperatorAdmin } from "./agent-operator";
 
 // D1 yazar çeşitlendirmesi: W2 betiğinin kalıbı (DRY_RUN → PAUSE → APPLY → RESUME, snapshot hash).
@@ -275,6 +276,16 @@ async function main(): Promise<void> {
       const requestIds: string[] = [];
       await database.$transaction(
         async (transaction) => {
+          /*
+            Duraklatma şartı ayar kilidi altında yeniden okunur (Sol 6.1 turu): ilk kontrolden sonra
+            akış açılırsa ya da yeni koşu başlarsa eski persona sürümüne bağlı koşu kalmasın.
+          */
+          await lockAgentSettings(transaction);
+          const lockedFlow = await loadFlow(transaction);
+          if (lockedFlow.settings.runtimeEnabled || lockedFlow.openRunCount !== 0)
+            throw new Error(
+              `WRITER_D1_APPLY_REQUIRES_PAUSE runtimeEnabled=${lockedFlow.settings.runtimeEnabled} openRuns=${lockedFlow.openRunCount}`,
+            );
           const lockedSnapshot = await loadSnapshot(transaction);
           assertSnapshot(
             environment.AGENT_WRITER_D1_EXPECTED_SNAPSHOT_HASH,

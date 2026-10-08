@@ -63,16 +63,28 @@ describe("D1 yazar çeşitlendirmesi", () => {
     expect(strip(next)).toEqual(strip(current));
   });
 
-  it("canlı durum beklenenden saptıysa durur", () => {
+  it("tekrar uygulamada aynı kalır; taban ve kullanıcı adı sapmasında durur", () => {
     const noCity = withInterests([
       { key: "gündelik teknoloji", weight: 0.3, pinned: false },
       { key: "ürünler ve tasarım", weight: 0.3, pinned: false },
       { key: "kitaplar", weight: 0.2, pinned: false },
       { key: "iş hayatı", weight: 0.2, pinned: false },
     ]);
-    expect(() => applyWriterDiversificationD1Target(noCity, katmanizci)).toThrow(
-      "WRITER_D1_INTEREST_MISSING",
+    // İdempotent: ilgi zaten yoksa aynen kalır (uygulama sonrası RESUME/DRY_RUN).
+    expect(applyWriterDiversificationD1Target(noCity, katmanizci).interests).toEqual(
+      noCity.interests,
     );
+    const once = applyWriterDiversificationD1Target(
+      withInterests([
+        { key: "gündelik teknoloji", weight: 0.3, pinned: false },
+        { key: "ürünler ve tasarım", weight: 0.2, pinned: false },
+        { key: "kitaplar", weight: 0.15, pinned: false },
+        { key: "iş hayatı", weight: 0.15, pinned: false },
+        { key: "şehir hayatı", weight: 0.2, pinned: false },
+      ]),
+      katmanizci,
+    );
+    expect(applyWriterDiversificationD1Target(once, katmanizci)).toEqual(once);
     const four = withInterests([
       { key: "gündelik teknoloji", weight: 0.3, pinned: false },
       { key: "şehir hayatı", weight: 0.3, pinned: false },

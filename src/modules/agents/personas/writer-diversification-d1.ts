@@ -84,9 +84,11 @@ function dropInterests(
   drop: readonly string[],
   username: string,
 ): SeedPersona["interests"] {
-  for (const key of drop)
-    if (!interests.some((interest) => interest.key === key))
-      throw new Error(`WRITER_D1_INTEREST_MISSING username=${username}`);
+  /*
+    İdempotent: uygulanmış persona ilgiyi zaten taşımaz ve aynen döner (RESUME/DRY_RUN sonrası
+    doğrulama, Sol 6.1 turu). Canlı sapma betikteki snapshot hash kapısında yakalanır.
+  */
+  if (!drop.some((key) => interests.some((interest) => interest.key === key))) return interests;
   const kept = interests.filter(({ key }) => !drop.includes(key));
   const keptWeight = kept.reduce((sum, { weight }) => sum + weight, 0);
   if (kept.length < 4 || keptWeight <= 0)
