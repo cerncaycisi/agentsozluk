@@ -182,8 +182,9 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     # 5 Ekim: 308 dosya geçti; V8 raporu tamamlanmadan 15dk job limiti iptal etti.
-    # Job20dk/adım16dk; testlerin timeout ayarı ve coverage eşikleri aynı kalır.
-    timeout-minutes: 20
+    # 8 Ekim: main'de adım 15-15,5dk sürüyordu; PR #354'ün testleriyle 16dk adım sınırı aşıldı.
+    # Job24dk/adım20dk; testlerin timeout ayarı ve coverage eşikleri aynı kalır.
+    timeout-minutes: 24
     services:
       postgres:
         image: postgres:16-alpine
@@ -218,7 +219,7 @@ jobs:
         run: pnpm db:deploy
 
       - name: Coverage
-        timeout-minutes: 16
+        timeout-minutes: 20
         run: pnpm test:coverage
 
       - name: Upload coverage
