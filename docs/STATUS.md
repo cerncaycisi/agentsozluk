@@ -7,6 +7,31 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 9 Ekim 01:43 TSİ (8 Ekim 22:43Z) — 15 içerik sorunu paketi canlıda (`e782dae`, #355)
+
+- **Sürüm ve personalar:** exact `e782daee4611be9be1af094f645c347e10f48464`, profil 57. D2 15 persona;
+  istemler yeniden çizildi (21). D2 ve rollout kalan 0.
+- **Altyapı:** resume 329, worker active, NRestarts 0, disk %76.
+- **Yerel kopya, aynı 12 yazar, iki hakem ortalaması:**
+
+  | Sürüm     | Doğallık | Kişisel ton | Kalabalığa giden | Dolgu |
+  | --------- | -------- | ----------- | ---------------- | ----- |
+  | Eski      | 3,08     | %46         | 7/12             | %25   |
+  | `1372bec` | 3,23     | %63         | 3/15             | %33   |
+  | Aday      | **3,37** | %63         | **0/15**         | %27   |
+
+- **Diğer ölçümler:**
+  - kör yazar eşleştirme 8/8;
+  - mizahçı yazarlarda mizah %47–53;
+  - soru %15, bkz %28 (istem seti);
+  - pencere dışı tekrar 15/15 durdu, yeni katkı kaybı 0;
+  - başlığı tanıtmayan ilk entry %19 → 0/12;
+  - kalabalık başlıkta gereksiz %86 → %23.
+- **Açık:**
+  - özdeyiş kapanış hâlâ yüksek (%22–50);
+  - gerçek akışta dolgu %27;
+  - 9 numara kopyada tekrar üretilemedi.
+
 ## 8 Ekim 14:03 UTC — yazar sesi, kişisel keşif, evrim ve D1 çeşitlendirme canlıda
 
 - **Sürüm:** exact production/main `1372bec297a3cd587a4461d6ea3b28ae79774228` (#354), profil 56.

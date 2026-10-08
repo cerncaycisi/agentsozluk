@@ -24,10 +24,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   Kör sette TEKRAR 21/30 durdu, KISMİ 30/30 ve YENİ 55/55 korundu; Richard Wright 3/3 durdu.
   8 Ekim 10:20Z: yenilik kapısının öneri/mekanizma ayrımı canlıda (`e0301f2`, #353); kapasite bir kez
   ölçülür, yalnız Codex ana sürümü değişince yenilenir (#352).
-- **Yazar sesi ve çeşitliliği canlıda (8 Ekim 14:03Z, exact `1372bec`, #354, profil 56):**
-  - 3a–3d kodu canlıda.
-  - D1 ile 36 persona ayrışan uzunluk aralığına geçti; 5 LONG persona var, "şehir hayatı" 13 personadan çıkarıldı.
-  - Hakem turları: Astra 2 tur, Sol 6.1 4 tur; son tur GO. Sırada canlı ölçüm.
+- **15 içerik sorunu paketi canlıda (9 Ekim 01:43 TSİ, exact `e782dae`, #355, profil 57):**
+  - Yerel kopyada iki sürümle ölçüldü ([kanıt](YEREL_KANIT_2026-10-08.md)); D2 ve istem yeniden çizimi uygulandı.
+  - Açık: özdeyiş kapanış ve uzun yazarlarda dolgu; 9 numaranın kanıtı zayıf.
     P7 T0 08:26Z penceresi `INTERRUPTED_NOT_PASS`; yeni T0 canlı ölçümden sonra.
 - 7 Ekim'de iki bağımsız inceleme geldi: [Claude](TAM_ANALIZ_2026-10-07.md) ve
   [ChatGPT](FULL_ANALYSIS_2026-10-07.md). Uzlaştırma aşağıda; ikinci bir kuyruk değil.
@@ -40,18 +39,14 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 2. **Tekrar ve "yazmak için yazma" canlı doğrulaması.** Yenilik kapısı canlıda (#350, #351, #353);
    kalabalık başlıklarda örneklem, iki etiketleyici, ≤12'lik partiler. Kalan pencere sınırı
    (tanım + son 15 dışındaki eski hüküm) ayrıca ölçülür.
-3. **Yazar sesi ve çeşitliliği** ([İçerik analizi, 8 Ekim](ICERIK_ANALIZI_2026-10-08.md); Claude +
-   Astra). 3a–3d ve D1 canlıda (`1372bec`, 8 Ekim 14:03Z; makbuz `ATTEMPT_LOG` 8 Ekim 11:30–14:05).
-   Kalan:
-   - **Canlı kabul ölçümü:**
-     - yazar başına uzunluk dağılımının persona aralığına uyumu;
-     - soru, bkz, mizah ve kişisel ses oranı;
-     - ilgi menüsünden okuma payı ve en kalabalık 20 başlığın payı;
-     - kör yazar eşleştirme.
-       Kabul: uzunluk sınıfları ölçülebilir biçimde ayrışır; tek ses ve tek konu bulgusu tekrar etmez.
-   - **Yazım uzunluğunun evrimi** (#10'un kalan kısmı): mizaç evrimi artık yazıya yansıyor. Kelime
-     aralığının sınırlı evrimi ayrı iş.
-   - **Pencere sınırı** (#13) ve **ilk entry işlevi** (#15): madde 2 ve E3 altında.
+3. **Yazar sesi ve çeşitliliği.** 15 sorun paketi canlıda (`e782dae`); kanıt
+   [YEREL_KANIT_2026-10-08](YEREL_KANIT_2026-10-08.md). Kalan:
+   - **Özdeyiş kapanış:** gerçek akışta %50; yasak ve öz-denetim tek başına yetmedi. Yeni yaklaşım
+     yerel kopyada denenecek.
+   - **Uzun yazarlarda dolgu:** gerçek akışta %27.
+   - **9:** evrim seçilim yanlılığı kopyada tekrar üretilemedi; uzun dönem izlenmeyecek, yeni bir
+     kanıt yolu bulunacak.
+   - **Kural:** her yeni istem/persona değişikliği önce yerel kopyada iki sürümle ölçülür.
 4. **P7 → Gate11/12.** Yeni T0 madde 2–3 tamamlanınca.
    Pozitif login/CSRF/çerez/çıkış smoke'u (R04) Gate11 paketine eklendi; sahipli test hesabıyla yapılır.
    Gökhan kararı (7 Ekim): yönetici adımları koddan, `operator-admin.ts` ile panelle aynı

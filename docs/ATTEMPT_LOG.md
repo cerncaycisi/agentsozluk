@@ -8951,3 +8951,82 @@ Kapasite ölçülmedi (#352).
 - Bu sunucuda `psql` PATH'te yok; yedek/reset entegrasyon testlerinin yerel hatası ortamdır, CI kapıdır.
 - Silen bir persona paketini "aynı dönüşümü yeniden uygula" ile doğrulama; idempotent yaz.
 - Ayar kilidini profil kilitlerinden önce alma.
+
+## 8 Ekim 14:30 – 9 Ekim 01:45 TSİ — 15 içerik sorunu: yerel kopyada kanıt, sonra canlı (#355, `e782dae`)
+
+**Neden.** `1372bec` yerelde modelle denenmeden canlıya çıkmıştı. Sonra yapılan yerel ölçüm, dolgu
+oranının yükseldiğini ve doğallığın eskiyle aynı kaldığını gösterdi. Gökhan'ın talimatı: 15
+sorunun hepsi yerelde kanıtlanacak, sonra canlıya çıkılacak.
+
+**Yerel kopya.** Gece yedeği (8 Ekim 01:37Z), `agent_sozluk_replica`, PG17, `jit=off`. Ağır olay
+tabloları verisiz. Düzenekler `~/style-lab/kopya-deneme` altında:
+
+- gerçek worker akışı;
+- istem tekrarı;
+- iki hakem (Opus 5.5 ve Fable 5.1).
+
+Kanıt matrisi: `docs/YEREL_KANIT_2026-10-08.md`.
+
+**Bulunan ve düzeltilen hatalar:**
+
+- **İçerik onarımı:** yeni başlık + DUPLICATE_FRAMING + onarım zinciri, karar adımı olmadan
+  `selectedOptionSeq` gönderiyordu; şema `AGENT_DECISION_LINK_REQUIRED` ile reddediyordu
+  (`CONTENT_REPAIR_CONTROL_PLANE_FAILED`). Onarım paketi artık kendi `OPTION_SELECTED` adımını
+  taşıyor. Gerçek sunucu yolunu sınayan entegrasyon testi eklendi.
+- **Kalabalık başlık / yenilik kapısı:** V7c kuralları, taslağa en benzer 6 entry tam metinle (Dice),
+  toplam entry sayısı, okuma penceresi 60.
+- **Persona çekince adımı (D2):** 15 personanın yazım yapısındaki "sınır/çekince" adımı orta ve uzun
+  yazarlarda dolgu üretiyordu; içerik adımıyla değiştirildi. Uzun yazarların alt sınırı 30.
+
+**Denenip geri alınanlar:**
+
+- **v7:** üç yazım maddesini tek maddede birleştirmek, gerçek akışta özdeyiş kapanışı artırdı.
+- **v8:** son cümle öz-denetimi ölçülebilir fayda getirmedi.
+
+**Hakem turları:**
+
+- Astra (`gpt-6-astra`), 2 tur NO-GO; onarım, Dice, tam metin boyutu, ilgi sorgusu ve engel
+  filtresi düzeltildi.
+- Sol 6.1, 3 tur: ilk ikisi NO-GO (adil bütçe, kırpma, kısa kök, noktalama). Son tur GO; iki MINOR ve
+  performans notu bıraktı:
+  - **Performans:** ilgi başına ~11 ms.
+  - **Locale:** canlıda en_US.utf8, kopyada C.UTF-8; ikisinde de sorun yok.
+  - **Test:** aday sorgusu doğrudan sınanıyor.
+
+**CI ve dağıtım:**
+
+1. İlk PR CI'ı temiz ağaç kontrolünde düştü: `reports/persona-distance.json` yeni renderer'la
+   yeniden üretilmeliydi. Rapor commit edildi.
+2. #355 birleşti → main `e782daee4611be9be1af094f645c347e10f48464`. Push CI 37852467552 yeşil,
+   Release Candidate 37853889250.
+3. Dağıtım, `--pause-society-flow` ile (328), uygulama container'ı yeni imajla açıldıktan sonra
+   dış sağlık kontrolünde `curl: (28) Resolving timed out` hatasıyla düştü
+   (`RELEASE_FAIL code=UNEXPECTED line=726`). Durum okundu:
+   - `current=e782dae`, app yeni imajda, worker active;
+   - DNS düzelmiş, dış health 200;
+   - açılış etiketi eski imajdaydı.
+4. Yeniden koşu `RELEASE_LOCKED` aldı. Runbook'taki elle kilit temizliğinin beş koşulu aynı
+   oturumda doğrulandı (pam_systemd yok, tek deploy oturumu, yabancı scope süreci yok, a5
+   container/oturum yok, migration işareti yok); yalnız owner dosyası ve boş dizin kaldırıldı.
+5. Duraklatma bayrağı olmadan aynı SHA ile koşu: `RELEASE_VERIFY`, `RELEASE_BOOT_TAG` ve
+   `RELEASE_COMPLETE` PASS.
+
+**D2 ve istem yeniden çizimi:**
+
+- D2 `DRY_RUN`: 15/15 hedef, açık koşu 0. `APPLY`: audit 15, outbox 15.
+- `rollout-prompts`: 21 persona yeniden çizildi (anayasa persona metninden çıktı); audit 21,
+  outbox 21.
+- Sonrası kuru koşular: D2 kalan 0, rollout kalan 0.
+- Resume 329, 22:43:17Z; worker active, NRestarts 0.
+
+**İmaj temizliği:** `e0301f2` silindi, 1.717.788.672 bayt kazanıldı. Disk %78 → %76; aktif imaj
+değişmedi. Kalan imajlar: `e782dae` (çalışan) ve `1372bec` (önceki).
+
+**Do not repeat:**
+
+- İstem/persona değişikliğini yerel kopyada modelle ölçmeden dağıtma.
+- `pgrep -f` ya da `pkill -f` desenini kendi komut satırını eşleyecek biçimde yazma.
+- Testlerin değiştirdiği `reports/persona-distance.json`'u geri alma; renderer değiştiyse yeniden
+  üretip commit et.
+- Yerel kopyada yarıda kalan RUNNING koşular yeni kiraları engeller; deneme öncesi iptal et.
+- Dağıtım dış DNS'te düşerse önce durumu oku. Kilidi yalnız runbook'taki beş koşulla kaldır.
