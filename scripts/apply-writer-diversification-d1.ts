@@ -11,7 +11,7 @@ import {
   applyWriterDiversificationD1Target,
   writerDiversificationD1Targets,
 } from "@/modules/agents/personas/writer-diversification-d1";
-import { lockAgentSettings } from "@/modules/agents/repository/control-plane";
+import { lockAgentProfile, lockAgentSettings } from "@/modules/agents/repository/control-plane";
 import { resolveOperatorAdmin } from "./agent-operator";
 
 // D1 yazar çeşitlendirmesi: W2 betiğinin kalıbı (DRY_RUN → PAUSE → APPLY → RESUME, snapshot hash).
@@ -39,7 +39,8 @@ const environmentSchema = z
       context.addIssue({ code: "custom", message: "WRITER_D1_CONFIRMATION_REQUIRED" });
     }
     if (
-      environment.AGENT_WRITER_D1_MODE === "APPLY" &&
+      (environment.AGENT_WRITER_D1_MODE === "APPLY" ||
+        environment.AGENT_WRITER_D1_MODE === "RESUME") &&
       !environment.AGENT_WRITER_D1_EXPECTED_SNAPSHOT_HASH
     ) {
       context.addIssue({ code: "custom", message: "WRITER_D1_SNAPSHOT_HASH_REQUIRED" });
@@ -279,7 +280,11 @@ async function main(): Promise<void> {
           /*
             Duraklatma şartı ayar kilidi altında yeniden okunur (Sol 6.1 turu): ilk kontrolden sonra
             akış açılırsa ya da yeni koşu başlarsa eski persona sürümüne bağlı koşu kalmasın.
+            Kilit sırası updateAgent ve lease ile aynı: önce profiller (kimlik sırasıyla), sonra
+            ayar. Ters sıra kilit çevrimi kurar (Sol 6.1 2. tur).
           */
+          for (const profileId of snapshot.targets.map(({ id }) => id).sort())
+            await lockAgentProfile(transaction, profileId);
           await lockAgentSettings(transaction);
           const lockedFlow = await loadFlow(transaction);
           if (lockedFlow.settings.runtimeEnabled || lockedFlow.openRunCount !== 0)
@@ -354,6 +359,9 @@ async function main(): Promise<void> {
     }
 
     if (flow.settings.runtimeEnabled) throw new Error("WRITER_D1_ALREADY_RUNNING");
+    // RESUME, APPLY makbuzundaki afterSnapshotHash ile birebir aynı durumu ister (Sol 6.1 2. tur):
+    // APPLY sonrası hiçbir persona, ilgi ağırlığı veya profil alanı değişmemiş olmalı.
+    assertSnapshot(environment.AGENT_WRITER_D1_EXPECTED_SNAPSHOT_HASH, snapshot.snapshotHash);
     for (const profile of snapshot.targets) {
       if (
         personaHash(profile.currentPersonaVersion!.persona) !==
