@@ -61,7 +61,9 @@ export function runtimeNoveltySimilarity(draft: string, body: string): number {
   const right = stems(body);
   let shared = 0;
   for (const stem of left) if (right.has(stem)) shared += 1;
-  return shared / Math.max(1, Math.min(left.size, right.size));
+  // Dice: iki küme birlikte sayılır. Küçük kümeye bölmek kısa entry'lere (tek ortak kök) tam puan
+  // veriyor ve asıl tekrarı karşılaştırmadan çıkarabiliyordu (Astra, 9 Ekim).
+  return (2 * shared) / Math.max(1, left.size + right.size);
 }
 
 function record(value: unknown): Record<string, unknown> | null {

@@ -3438,6 +3438,7 @@ export async function getRuntimePerceptionRecords(
             interests: input.interests,
             agentUserId: input.agentUserId,
             now: input.now,
+            blockedUserIds,
           })
         : [],
   };
@@ -3450,11 +3451,17 @@ export async function getRuntimePerceptionRecords(
   Kelime kökü önekiyle aranır (müzik → "müzi": müziği, müzisyen). Kesin eşleşme ve sıralama
   uygulama katmanında yapılır. Yazarın son üç günde yazdığı başlıklar dışarıda kalır.
 */
-const runtimeInterestCandidatePerInterest = 12;
+// Kesin eşleştirme uygulama katmanında; önek araması geniş tutulur ki geçerli aday limitte kaybolmasın.
+const runtimeInterestCandidatePerInterest = 40;
 
 async function listRuntimeInterestTopicCandidates(
   transaction: Prisma.TransactionClient,
-  input: { interests: readonly WeightedInterest[]; agentUserId: string; now: Date },
+  input: {
+    interests: readonly WeightedInterest[];
+    agentUserId: string;
+    now: Date;
+    blockedUserIds: readonly string[];
+  },
 ) {
   const recentlyWritten = await transaction.entry.findMany({
     where: {
@@ -3467,14 +3474,19 @@ async function listRuntimeInterestTopicCandidates(
   const excluded = recentlyWritten.map(({ topicId }) => topicId);
   const results = await Promise.all(
     input.interests.map(async (interest) => {
+      // Son harf düşer: Türkçe yumuşama (uçak → uçağ, müzik → müziğ) önekte de yakalanır.
       const prefixes = interestTokens(interest.key).map((token) =>
-        token.length >= 5 ? token.slice(0, token.length - 1) : token,
+        token.length >= 4 ? token.slice(0, token.length - 1) : token,
       );
       if (prefixes.length === 0) return [];
       const topics = await transaction.topic.findMany({
         where: {
           status: "ACTIVE",
           ...(excluded.length > 0 ? { id: { notIn: excluded } } : {}),
+          // Engellenen kullanıcının açtığı başlık kişisel menüye girmez (Astra, 9 Ekim).
+          ...(input.blockedUserIds.length > 0
+            ? { createdById: { notIn: [...input.blockedUserIds] } }
+            : {}),
           AND: prefixes.map((prefix) => ({ normalizedTitle: { contains: prefix } })),
         },
         select: { id: true, title: true, entryCount: true, lastEntryAt: true },

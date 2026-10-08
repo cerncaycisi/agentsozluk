@@ -5,7 +5,9 @@ import { SESSION_COOKIE_NAME, CSRF_COOKIE_NAME } from "@/config/app";
 import { getEnvironment } from "@/config/env";
 import { createOpaqueToken, sha256 } from "@/lib/security/crypto";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
-import { buildRuntimePrompt } from "@/runtime/worker";
+import { buildRuntimePrompt, repairLifePayload } from "@/runtime/worker";
+import { recordRuntimeDecisionBatch, runtimeDecisionBatchSchema } from "@/modules/agents";
+import type { RuntimeDecision } from "@/runtime/output";
 import {
   issueAuthorAssessmentPacket,
   submitAuthorAssessment,
@@ -6862,6 +6864,150 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ).toMatchObject({ currentPersonaVersionId: fixture.created.agent.personaVersion.id });
     },
   );
+
+  it("içerik onarımı yaşam kaydında kendi seçim adımıyla kabul edilir (8 Ekim)", async () => {
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `onarım yaşam kaydı ${randomUUID()}`,
+        entryBody: "Onarım yaşam kaydı testinde tekrar edilecek insan entry'si.",
+      },
+    );
+    const workerId = "repair-ledger-worker";
+    const leased = await leaseRuntimeRun(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:lease"),
+      { workerId, leaseSeconds: 60 },
+    );
+    const runId = leased.run!.id;
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+      [topic.topic.id],
+    );
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Onarım yaşam kaydı integration adayıdır.",
+    };
+    const journal = [
+      {
+        seq: 1,
+        kind: "OPTION_SELECTED" as const,
+        subject: "entry",
+        summary: "Okunan başlığa entry yazmak seçildi.",
+        confidence: 0.8,
+        evidenceIds: [runId],
+        causedBySeqs: [],
+      },
+    ];
+    const original = {
+      sequence: 1,
+      actionType: "CREATE_ENTRY" as const,
+      safeReason: "Okunan başlığa katkı.",
+      targetType: "TOPIC" as const,
+      targetId: topic.topic.id,
+      input: {
+        topicId: topic.topic.id,
+        body: "Onarım yaşam kaydı testinde tekrar edilecek insan entry'si.",
+      },
+      provenance,
+    };
+    await recordRuntimeDecisionBatch(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeDecisionBatchSchema.parse({
+        workerId,
+        leaseToken: leaseTokenForWorker(workerId),
+        actions: [original],
+        payload: {
+          observations: [],
+          memoryCandidates: [],
+          decisionJournal: journal,
+          actionIntents: [
+            {
+              sequence: 1,
+              desire: 0.8,
+              expectedOutcome: "Entry yayımlanır.",
+              selectedOptionSeq: 1,
+            },
+          ],
+        },
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({ actionStatus: "REJECTED" });
+    const repair = {
+      ...original,
+      sequence: 2,
+      repairOfSequence: 1,
+      input: {
+        topicId: topic.topic.id,
+        body: "Aynı başlığa başka bir açıdan, yeni bir somut ayrıntıyla yazılmış onarılmış entry.",
+      },
+    };
+    const decision = {
+      decisionJournal: journal,
+      actions: [
+        { ...original, desire: 0.8, expectedOutcome: "Entry yayımlanır.", selectedOptionSeq: 1 },
+      ],
+    } as unknown as RuntimeDecision;
+    const repairCandidate = {
+      ...repair,
+      desire: 0.8,
+      expectedOutcome: "Onarılmış entry yayımlanır.",
+      selectedOptionSeq: 1,
+    } as unknown as RuntimeDecision["actions"][number];
+    // Eski davranış: seçim adımı olmadan bağ boşken sunucu reddeder.
+    await expect(
+      recordRuntimeDecisionBatch(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeDecisionBatchSchema.parse({
+          workerId,
+          leaseToken: leaseTokenForWorker(workerId),
+          actions: [repair],
+          payload: {
+            observations: [],
+            memoryCandidates: [],
+            decisionJournal: [],
+            actionIntents: [
+              { sequence: 2, desire: 0.8, expectedOutcome: "x", selectedOptionSeq: null },
+            ],
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_DECISION_LINK_REQUIRED" });
+    await recordRuntimeDecisionBatch(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeDecisionBatchSchema.parse({
+        workerId,
+        leaseToken: leaseTokenForWorker(workerId),
+        actions: [repair],
+        payload: repairLifePayload(decision, repairCandidate),
+      }),
+    );
+    const proposed = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: { runId, eventType: "ACTION_PROPOSED", subject: { path: ["sequence"], equals: 2 } },
+    });
+    expect(proposed.causedByEventIds).toHaveLength(1);
+  });
 
   it("executes a proposed entry through the V1 service and records provenance atomically", async () => {
     const fixture = await createFixture();

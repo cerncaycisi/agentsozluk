@@ -266,6 +266,24 @@ function perceptionPreviousFastState(perceptionSummary: unknown) {
   return parsed.success ? parsed.data : null;
 }
 
+/*
+  Tam metin alanının toplam boyutu sınırlı (Astra, 9 Ekim): en kötü durumda üç başlık × 60 entry ×
+  2000 karakter algıyı yüzlerce KB büyütüyordu. Yenilik kapısı en benzer altı entry'yi seçer;
+  sınırı aşan entry kısaltılmış hâliyle karşılaştırılır.
+*/
+const runtimeReadTopicFullBodiesMaximumChars = 60_000;
+
+function boundedFullBodies(items: { id: string; body: string }[]) {
+  const kept: { id: string; body: string }[] = [];
+  let total = 0;
+  for (const item of items) {
+    if (total + item.body.length > runtimeReadTopicFullBodiesMaximumChars) continue;
+    total += item.body.length;
+    kept.push(item);
+  }
+  return kept;
+}
+
 function boundedPerceptionSnapshot(
   run: OwnedRun,
   records: PerceptionRecords,
@@ -2007,17 +2025,19 @@ export function getRuntimeRunContext(
           dışında); yalnız worker'daki yenilik kapısı kullanır. Kimlikler readTopics'tekilerle
           aynıdır; yeni kanıt kimliği eklemez.
         */
-        [runtimeReadTopicFullBodiesKey]: readTopics.flatMap((topic) =>
-          topic.entries.flatMap((entry, index) => {
-            const full = truncateUntrustedText(entry.body, 2000);
-            return full ===
-              truncateUntrustedText(
-                entry.body,
-                runtimeReadTopicEntryLimit(index, topic.entries.length),
-              )
-              ? []
-              : [{ id: entry.id, body: full }];
-          }),
+        [runtimeReadTopicFullBodiesKey]: boundedFullBodies(
+          readTopics.flatMap((topic) =>
+            topic.entries.flatMap((entry, index) => {
+              const full = truncateUntrustedText(entry.body, 2000);
+              return full ===
+                truncateUntrustedText(
+                  entry.body,
+                  runtimeReadTopicEntryLimit(index, topic.entries.length),
+                )
+                ? []
+                : [{ id: entry.id, body: full }];
+            }),
+          ),
         ),
       };
       await storeRuntimePerceptionSummary(transaction, runId, perception);

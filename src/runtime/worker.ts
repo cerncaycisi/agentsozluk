@@ -614,6 +614,46 @@ function runtimeSourceEvidenceUsage(
   return { sourceItemsReferenced: referencedIds.size, sourceBackedActions };
 }
 
+/*
+  Onarım paketi kendi OPTION_SELECTED karar adımını taşır (8 Ekim yerel kopya). Sunucu, her
+  çalıştırılabilir eylemin aynı paketteki bir seçim adımına bağlanmasını şart koşuyor
+  (şema + AGENT_DECISION_LINK_REQUIRED). Eskiden onarım, karar kaydı olmadan orijinal seçim
+  numarasını gönderiyordu ve yeni başlık + DUPLICATE_FRAMING onarımı CONTENT_REPAIR_CONTROL_PLANE_FAILED
+  ile düşüyordu. Adımın kanıtı orijinal seçimden gelir; numarası orijinal adımların ardındadır.
+*/
+export function repairLifePayload(
+  decision: RuntimeDecision,
+  repairCandidate: RuntimeDecision["actions"][number],
+): RuntimeLifeEventsBatch {
+  const original = decision.decisionJournal.find(
+    ({ seq, kind }) => seq === repairCandidate.selectedOptionSeq && kind === "OPTION_SELECTED",
+  );
+  const seq = Math.max(0, ...decision.decisionJournal.map(({ seq: value }) => value)) + 1;
+  return {
+    observations: [],
+    memoryCandidates: [],
+    decisionJournal: [
+      {
+        seq,
+        kind: "OPTION_SELECTED",
+        subject: "içerik onarımı",
+        summary: "Reddedilen taslak sunucu gerekçesine göre yeniden yazıldı.",
+        confidence: repairCandidate.desire,
+        evidenceIds: original?.evidenceIds ?? [],
+        causedBySeqs: [],
+      },
+    ],
+    actionIntents: [
+      {
+        sequence: repairCandidate.sequence,
+        desire: repairCandidate.desire,
+        expectedOutcome: repairCandidate.expectedOutcome,
+        selectedOptionSeq: seq,
+      },
+    ],
+  };
+}
+
 function repairVoiceLines(context: RuntimeContext): string[] {
   const persona = runtimeWritingPersona(context);
   if (!persona.voice) return [];
@@ -2127,26 +2167,7 @@ export class AgentRuntimeWorker {
                     runId,
                     leaseToken,
                     [actionForControlPlane(repairCandidate)],
-                    {
-                      observations: [],
-                      memoryCandidates: [],
-                      decisionJournal: [],
-                      actionIntents: [
-                        {
-                          sequence: repairCandidate.sequence,
-                          desire: repairCandidate.desire,
-                          expectedOutcome: repairCandidate.expectedOutcome,
-                          /*
-                            Onarım paketinde karar kaydı yok; seçenek numarası gönderilirse
-                            şema "yalnız OPTION_SELECTED adımına bağlanabilir" diye reddediyor ve
-                            koşu CONTENT_REPAIR_CONTROL_PLANE_FAILED ile düşüyordu (8 Ekim yerel
-                            kopya, yeni başlık + DUPLICATE_FRAMING onarımı). Onarım yeni bir seçim
-                            değildir; bağ boş kalır.
-                          */
-                          selectedOptionSeq: null,
-                        },
-                      ],
-                    },
+                    repairLifePayload(decision, repairCandidate),
                     deadline.requestOptions(),
                   );
                   currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
