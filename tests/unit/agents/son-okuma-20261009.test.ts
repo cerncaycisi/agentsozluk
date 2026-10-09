@@ -65,6 +65,20 @@ describe("son okuma parçaları", () => {
     expect(applyRuntimeFinalRead(body, units, [2])).toBeNull();
   });
 
+  it("bağlantı, alıntı ve URL aralıklarında bölmez ve onları taşıyan parçayı silmez", () => {
+    expect(
+      runtimeFinalReadUnits("ilk. (bkz: dr. strangelove) son. [[dr. no]] bitti.").map(
+        ({ text }) => text,
+      ),
+    ).toEqual(["ilk.", "(bkz: dr. strangelove) son.", "[[dr. no]] bitti."]);
+    expect(runtimeFinalReadUnits("“ilk kapı açıldı. son kapı kapandı.” dedi.")[0]?.text).toBe(
+      "“ilk kapı açıldı. son kapı kapandı.”",
+    );
+    const body = `${planBody} (BKZ: eski plan) https://ornek.test/a.b sonra.`;
+    const units = runtimeFinalReadUnits(body);
+    expect(applyRuntimeFinalRead(body, units, [units.length])).toBeNull();
+  });
+
   it("çıktı şeması yalnız sil dizisini kabul eder", () => {
     expect(runtimeFinalReadVerdictSchema.safeParse({ sil: [2] }).success).toBe(true);
     expect(runtimeFinalReadVerdictSchema.safeParse({ sil: [2], body: "x" }).success).toBe(false);
@@ -95,6 +109,20 @@ describe("son okuma adayları", () => {
       [1, "okunan başlık"],
       [2, "yeni başlık"],
     ]);
+  });
+
+  it("kaynaklı entry'yi son okumaya almaz", () => {
+    const sourced = {
+      actions: [
+        {
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          input: { topicId: "t1", body: "bir. iki." },
+          provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: [], shortRationale: "x" },
+        },
+      ],
+    } as unknown as RuntimeDecision;
+    expect(runtimeFinalReadCandidates(sourced, new Map())).toEqual([]);
   });
 
   it("yalnız verilen gövdeleri değiştirir, diğer alanlara dokunmaz", () => {

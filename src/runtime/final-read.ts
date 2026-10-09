@@ -12,7 +12,7 @@ import type { RuntimeDecision } from "@/runtime/output";
   18 → 8 (Opus) ve 13 → 7 (Fable), dolguyu 13 → 3 ve 10 → 2 indirdi; doğallık 2,75 → 3,03 ve
   3,56 → 3,56 (docs/YEREL_KANIT_2026-10-08.md).
 
-  Korumalar deterministiktir: ilk parça, soru ve (bkz: …) taşıyan parça silinmez; bütün
+  Korumalar deterministiktir: ilk parça, soru, bağlantı, alıntı ya da URL taşıyan parça silinmez; bütün
   parçalar silinemez; kalan metin özgün gövdenin yarısından ve 20 kelimeden kısa olamaz. Hata, geçersiz çıktı
   ya da yetersiz süre gövdeyi olduğu gibi bırakır ve sayılır.
 */
@@ -50,13 +50,28 @@ export type RuntimeFinalReadCandidate = {
   Parça sınırı: harf ya da kapanış işaretinden sonra gelen . ! ? … ; ve boşluk. Rakamdan sonraki
   nokta ("7. sulh ceza") bölmez. Noktalı virgül de sınırdır: özdeyiş çoğu zaman "…; X biraz da
   Y'dir" biçiminde aynı cümlenin ikinci yarısında gelir.
+
+  Korunan aralıklar bölünmez ve onları taşıyan parça silinmez (Astra, 9 Ekim): bağlantılar
+  renderer'ın kuralıyla (`entries/domain/renderer.ts`, büyük/küçük harf duyarsız), tırnak içi
+  alıntılar ve URL'ler. "(bkz: dr. strangelove)" eskiden iki parçaya bölünüyordu.
 */
-const unitBoundary = /(?<=[^\d\s][.!?…;])\s+|(?<=[^\d\s][.!?…]["'”’)])\s+/gu;
+const unitBoundary = /(?<=[^\d\s][.!?…;])\s+|(?<=[^\d\s][.!?…]["'”’)\]])\s+/gu;
+const protectedSpan =
+  /\[\[[^\]\n]{2,100}\]\]|\(bkz:\s*[^)\n]{1,100}?\s*\)|“[^”]*”|"[^"\n]*"|«[^»]*»|https?:\/\/\S+/giu;
+
+function protectedRanges(body: string): Array<[number, number]> {
+  return [...body.matchAll(protectedSpan)].map((match) => [
+    match.index,
+    match.index + match[0].length,
+  ]);
+}
 
 export function runtimeFinalReadUnits(body: string): RuntimeFinalReadUnit[] {
+  const ranges = protectedRanges(body);
   const units: RuntimeFinalReadUnit[] = [];
   let position = 0;
   for (const match of body.matchAll(unitBoundary)) {
+    if (ranges.some(([start, end]) => match.index > start && match.index < end)) continue;
     units.push({ text: body.slice(position, match.index), separator: match[0] });
     position = match.index + match[0].length;
   }
@@ -65,7 +80,7 @@ export function runtimeFinalReadUnits(body: string): RuntimeFinalReadUnit[] {
 }
 
 function lockedUnit(text: string): boolean {
-  return text.includes("(bkz:") || text.includes("?") || text.includes("[[");
+  return text.includes("?") || protectedRanges(text).length > 0;
 }
 
 /**
@@ -118,6 +133,12 @@ export function runtimeFinalReadTopicTitles(
   return titles;
 }
 
+const runtimeFinalReadSourceProvenance = new Set([
+  "TRUSTED_SOURCE",
+  "PROBATION_SOURCE",
+  "MULTIPLE_SOURCES",
+]);
+
 /** Yayıma gidecek entry gövdeleri: iki ya da daha fazla parçası olan yeni entry'ler. */
 export function runtimeFinalReadCandidates(
   decision: RuntimeDecision,
@@ -128,6 +149,11 @@ export function runtimeFinalReadCandidates(
       return [];
     const body = action.input.body;
     if (typeof body !== "string") return [];
+    /*
+      Kaynaklı entry son okumaya girmez (Astra, 9 Ekim): kaynak doğrulaması alıntı, sayı ve atfı
+      gövdenin kendisinde arar; aradan cümle silmek doğrulanmış metni bozabilir.
+    */
+    if (runtimeFinalReadSourceProvenance.has(action.provenance?.evidenceType ?? "")) return [];
     const title =
       action.actionType === "CREATE_TOPIC_WITH_ENTRY"
         ? action.input.title

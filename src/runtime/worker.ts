@@ -2035,24 +2035,12 @@ export class AgentRuntimeWorker {
           return null;
         }
       };
-      const noveltyCandidates = noveltyProvider
-        ? runtimeNoveltyCandidates(decision, context.perception)
-        : [];
-      if (noveltyCandidates.length > 0) {
-        await enterPhase("VALIDATING");
-        const dropped = new Set<number>();
-        for (const [index, candidate] of noveltyCandidates.entries())
-          if ((await checkNovelty(candidate, index < runtimeNoveltyCallLimit)) === "VAZGEC")
-            dropped.add(candidate.sequence);
-        if (dropped.size > 0) {
-          decision = applyRuntimeNoveltyDrops(decision, dropped);
-          this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
-        }
-      }
       /*
-        Son okuma: yenilikten geçen her yeni entry gövdesi, yayımlanmadan önce yalnız parça
-        silen dar bir çağrıdan geçer (`src/runtime/final-read.ts`). Yeni gövdeyi model değil bu
-        kod kurar; hata ya da süre yetmezse gövde aynen yayımlanır ve sayılır.
+        Son okuma: AW'den geçen her yeni entry gövdesi yalnız parça silen dar bir çağrıdan geçer
+        (`src/runtime/final-read.ts`). Yeni gövdeyi model değil bu kod kurar; hata ya da süre
+        yetmezse gövde aynen kalır ve sayılır. Yenilik kapısından ÖNCE çalışır: kapı yayımlanacak
+        son gövdeye bakmalı (Astra, 9 Ekim). Koşu bütçesinde yeniliğin iki çağrısına ve içerik
+        onarımına yer bırakılır; son okuma onarım sayacına girmez.
       */
       const finalReadCandidates = noveltyProvider
         ? runtimeFinalReadCandidates(decision, runtimeFinalReadTopicTitles(context.perception))
@@ -2076,7 +2064,12 @@ export class AgentRuntimeWorker {
             RUNTIME_FINAL_READ_MAX_TIMEOUT_MS,
             deadline.remainingMs() - RUNTIME_NOVELTY_EXECUTION_RESERVE_MS,
           );
-          if (index >= runtimeFinalReadCallLimit || timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS) {
+          if (
+            index >= runtimeFinalReadCallLimit ||
+            // Sonra gelen yenilik kapısının iki çağrısına ve içerik onarımına yer kalır.
+            codexIntervals.length >= runtimeCodexInvocationLimit - runtimeNoveltyCallLimit - 1 ||
+            timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS
+          ) {
             stats.skippedCount += 1;
             continue;
           }
@@ -2116,6 +2109,20 @@ export class AgentRuntimeWorker {
         if (bodies.size > 0) {
           decision = applyRuntimeFinalReadBodies(decision, bodies);
           this.#options.onSafeEvent?.({ level: "info", code: "FINAL_READ_TRIMMED", runId });
+        }
+      }
+      const noveltyCandidates = noveltyProvider
+        ? runtimeNoveltyCandidates(decision, context.perception)
+        : [];
+      if (noveltyCandidates.length > 0) {
+        await enterPhase("VALIDATING");
+        const dropped = new Set<number>();
+        for (const [index, candidate] of noveltyCandidates.entries())
+          if ((await checkNovelty(candidate, index < runtimeNoveltyCallLimit)) === "VAZGEC")
+            dropped.add(candidate.sequence);
+        if (dropped.size > 0) {
+          decision = applyRuntimeNoveltyDrops(decision, dropped);
+          this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
         }
       }
       ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(
@@ -2171,7 +2178,7 @@ export class AgentRuntimeWorker {
           kalite kaybı hem deney karıştırıcısıydı (Sol hakem turu).
         */
         const decisionPhaseCalls = codexIntervals.filter(
-          ({ phase }) => phase !== "BROWSE" && phase !== "NOVELTY",
+          ({ phase }) => phase !== "BROWSE" && phase !== "NOVELTY" && phase !== "FINAL_READ",
         ).length;
         if (repairableRejection && !contentRepairAttempted && decisionPhaseCalls < 3) {
           contentRepairAttempted = true;
