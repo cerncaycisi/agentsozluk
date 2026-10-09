@@ -235,36 +235,24 @@ describe("son okuma adayları", () => {
     ]);
   });
 
-  it("kaynaklı entry'de yalnız sayı ve atıf taşımayan son parçayı siler", () => {
-    const sourced = (body: string) =>
-      ({
-        actions: [
-          {
-            sequence: 1,
-            actionType: "CREATE_ENTRY",
-            input: { topicId: "t1", body },
-            provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: [], shortRationale: "x" },
-          },
-        ],
-      }) as unknown as RuntimeDecision;
+  it("kaynaklı entry'yi son okumaya almaz; yalnız son parça kipi yine sayı ve atıfı korur", () => {
     const head =
-      "bankanın kosgeb ile yaptığı iş birliği reel ekonomiyi ve üretim ile ticaret ekosistemini destekleyecek finansman çözümlerini çeşitlendirme çerçevesinde anlatılıyor, ayrıntı yok.";
-    const [candidate] = runtimeFinalReadCandidates(
-      sourced(
-        `${head} ara cümle burada duruyor. tutar verilmeden etkisini hesaplamak mümkün değil.`,
-      ),
-      {},
-    );
-    expect(candidate?.lastUnitOnly).toBe(true);
-    const { body, units } = candidate!;
-    expect(applyRuntimeFinalRead(body, units, [2], { lastUnitOnly: true })).toBeNull();
-    expect(applyRuntimeFinalRead(body, units, [3], { lastUnitOnly: true })?.body).toBe(
-      `${head} ara cümle burada duruyor.`,
-    );
+      "Düzenli kahve tüketimi kalp hastalığına bağlı ölüm riskini azaltıyor ve bu etki, beslenme alışkanlıklarının uzun vadeli sağlık sonuçlarıyla bağlantısını araştıran çalışmada belirgin biçimde görünüyor.";
+    const sourced = {
+      actions: [
+        {
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          input: { topicId: "t1", body: `${head} Bu ilişki tek başına nedensellik kanıtı değil.` },
+          provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: [], shortRationale: "x" },
+        },
+      ],
+    } as unknown as RuntimeDecision;
+    expect(runtimeFinalReadCandidates(sourced, {})).toEqual([]);
     for (const tail of ["toplam 111 trilyon dolar.", "bakanlığa göre plan hazır."]) {
-      const [withTail] = runtimeFinalReadCandidates(sourced(`${head} ${tail}`), {});
+      const body = `${head} ${tail}`;
       expect(
-        applyRuntimeFinalRead(withTail!.body, withTail!.units, [2], { lastUnitOnly: true }),
+        applyRuntimeFinalRead(body, runtimeFinalReadUnits(body), [2], { lastUnitOnly: true }),
       ).toBeNull();
     }
   });

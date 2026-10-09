@@ -293,12 +293,12 @@ export function runtimeFinalReadCandidates(
     const body = action.input.body;
     if (typeof body !== "string") return [];
     /*
-      Kaynaklı entry'de aradan cümle silinmez (Astra, 9 Ekim): kaynak doğrulaması alıntı, sayı ve
-      atfı gövdenin kendisinde arar. Yalnız son parça silinebilir (`sourceLockedUnit`).
+      Kaynaklı entry son okumaya girmez (Sol 6.1, 9. tur): "Bu ilişki tek başına nedensellik
+      kanıtı değil." gibi bir son cümle, kaynağın kapsamını koruyan gerçek bir uyarı olabilir;
+      sunucunun kaynak doğrulaması yalnız sayı ve alıntıya baktığından silinmesini yakalamaz.
     */
-    const lastUnitOnly = runtimeFinalReadSourceProvenance.has(
-      action.provenance?.evidenceType ?? "",
-    );
+    if (runtimeFinalReadSourceProvenance.has(action.provenance?.evidenceType ?? "")) return [];
+    const lastUnitOnly = false;
     if (!quotesUnambiguous(body)) return [];
     /*
       Ciddi suç, güncel olay ya da kişi durumu işareti taşıyan entry son okumaya hiç girmez; çekince
