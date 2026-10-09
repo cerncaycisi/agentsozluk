@@ -57,7 +57,22 @@ export type RuntimeFinalReadCandidate = {
 */
 const unitBoundary = /(?<=[^\d\s][.!?…;])\s+|(?<=[^\d\s][.!?…]["'”’)\]])\s+/gu;
 const protectedSpan =
-  /\[\[[^\]\n]{2,100}\]\]|\(bkz:\s*[^)\n]{1,100}?\s*\)|“[^”]*”|"[^"\n]*"|«[^»]*»|https?:\/\/\S+/giu;
+  /\[\[[^\]\n]{2,100}\]\]|\(bkz:\s*[^)\n]{1,100}?\s*\)|“[^”]*”|"[^"]*"|«[^»]*»|https?:\/\/\S+/giu;
+
+/*
+  Alıntı sınırı güvenle bulunamayan gövde son okumaya girmez (Astra 2. tur): kapanmamış ya da
+  eşleşmeyen çift tırnak, ve tek kıvrık tırnakla açılan alıntı (’ Türkçede kesme işareti olarak da
+  kullanıldığı için ‘…’ aralığı güvenle eşlenemez).
+*/
+function quotesUnambiguous(body: string): boolean {
+  const count = (pattern: RegExp) => (body.match(pattern) ?? []).length;
+  return (
+    !body.includes("‘") &&
+    count(/“/gu) === count(/”/gu) &&
+    count(/«/gu) === count(/»/gu) &&
+    count(/"/gu) % 2 === 0
+  );
+}
 
 function protectedRanges(body: string): Array<[number, number]> {
   return [...body.matchAll(protectedSpan)].map((match) => [
@@ -154,6 +169,7 @@ export function runtimeFinalReadCandidates(
       gövdenin kendisinde arar; aradan cümle silmek doğrulanmış metni bozabilir.
     */
     if (runtimeFinalReadSourceProvenance.has(action.provenance?.evidenceType ?? "")) return [];
+    if (!quotesUnambiguous(body)) return [];
     const title =
       action.actionType === "CREATE_TOPIC_WITH_ENTRY"
         ? action.input.title

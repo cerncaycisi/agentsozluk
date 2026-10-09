@@ -125,6 +125,26 @@ describe("son okuma adayları", () => {
     expect(runtimeFinalReadCandidates(sourced, new Map())).toEqual([]);
   });
 
+  it("alıntı sınırı belirsiz gövdeyi son okumaya almaz, çok satırlı alıntıyı bölmez", () => {
+    const decisionFor = (body: string) =>
+      ({
+        actions: [{ sequence: 1, actionType: "CREATE_ENTRY", input: { topicId: "t1", body } }],
+      }) as unknown as RuntimeDecision;
+    for (const body of [
+      "giriş cümlesi burada. “kapanmamış alıntı. sonra gelen cümle.",
+      "giriş cümlesi burada. ‘işe giderken kitapları aldım. parayı vermedim.’ dedi.",
+      'giriş cümlesi burada. "tek tırnak. ikinci cümle.',
+    ])
+      expect(runtimeFinalReadCandidates(decisionFor(body), new Map())).toEqual([]);
+    const multiline = 'giriş cümlesi burada. "kitapları aldım.\n parayı vermedim." dedi.';
+    const [candidate] = runtimeFinalReadCandidates(decisionFor(multiline), new Map());
+    expect(candidate?.units.map(({ text }) => text)).toEqual([
+      "giriş cümlesi burada.",
+      '"kitapları aldım.\n parayı vermedim."',
+      "dedi.",
+    ]);
+  });
+
   it("yalnız verilen gövdeleri değiştirir, diğer alanlara dokunmaz", () => {
     const next = applyRuntimeFinalReadBodies(decision, new Map([[1, "bir."]]));
     expect(next.actions[0]?.input).toEqual({ topicId: "t1", body: "bir." });

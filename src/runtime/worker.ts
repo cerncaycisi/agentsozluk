@@ -956,6 +956,8 @@ const RUNTIME_NOVELTY_EXECUTION_RESERVE_MS = 30_000;
 const RUNTIME_NOVELTY_MIN_TIMEOUT_MS = 20_000;
 /* Son okuma yeniliğin süre payını ve alt sınırını kullanır; çağrı daha kısa olduğu için tavanı düşük. */
 const RUNTIME_FINAL_READ_MAX_TIMEOUT_MS = 90_000;
+/* Son okuma, sonra gelecek her yenilik denetimi için bu kadar süreyi ona bırakır. */
+const RUNTIME_FINAL_READ_NOVELTY_RESERVE_MS = 2 * RUNTIME_NOVELTY_MIN_TIMEOUT_MS;
 
 // Plain-text bağlam: etiket kapatan karakter veri içinden gelemesin.
 function noveltyText(value: string): string {
@@ -2056,18 +2058,31 @@ export class AgentRuntimeWorker {
           skippedCount: 0,
         });
         const bodies = new Map<number, string>();
+        /*
+          Bekleyen yenilik denetimleri son okumadan önce bilinir: aday kümesi gövdeye değil
+          hedefe bağlıdır. Süre ve çağrı payı önce onlara ayrılır (Astra 2. tur).
+        */
+        const pendingNoveltyCalls = Math.min(
+          runtimeNoveltyCallLimit,
+          runtimeNoveltyCandidates(decision, context.perception).length,
+        );
         for (const [index, candidate] of finalReadCandidates.entries()) {
           stats.candidateCount += 1;
           await heartbeat();
           deadline.throwIfStopped();
           const timeoutMs = Math.min(
             RUNTIME_FINAL_READ_MAX_TIMEOUT_MS,
-            deadline.remainingMs() - RUNTIME_NOVELTY_EXECUTION_RESERVE_MS,
+            deadline.remainingMs() -
+              RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
+              pendingNoveltyCalls * RUNTIME_FINAL_READ_NOVELTY_RESERVE_MS,
           );
           if (
             index >= runtimeFinalReadCallLimit ||
-            // Sonra gelen yenilik kapısının iki çağrısına ve içerik onarımına yer kalır.
-            codexIntervals.length >= runtimeCodexInvocationLimit - runtimeNoveltyCallLimit - 1 ||
+            /*
+              Sonra gelen yenilik çağrılarına, içerik onarımına ve onarılan gövdenin yenilik
+              denetimine yer kalır.
+            */
+            codexIntervals.length >= runtimeCodexInvocationLimit - runtimeNoveltyCallLimit - 2 ||
             timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS
           ) {
             stats.skippedCount += 1;
