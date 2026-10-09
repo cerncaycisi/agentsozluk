@@ -24,6 +24,10 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   Kör sette TEKRAR 21/30 durdu, KISMİ 30/30 ve YENİ 55/55 korundu; Richard Wright 3/3 durdu.
   8 Ekim 10:20Z: yenilik kapısının öneri/mekanizma ayrımı canlıda (`e0301f2`, #353); kapasite bir kez
   ölçülür, yalnız Codex ana sürümü değişince yenilenir (#352).
+- **Son okuma canlıda (9 Ekim 19:53 TSİ, exact `a22caf8`, #358, profil 58).** 9 ve 12 kapandı; 1'de
+  dolgu ve doğallık geçti, özdeyiş ölçümü sürüyor. Gökhan 9 Ekim: "bana bişi sormana gerek yok bu ay
+  boyunca" — 31 Ekim sonuna kadar dağıtım/erişim için ayrıca sorulmaz; teknik kapılar ve veri silme
+  hariç.
 - **15 içerik sorunu paketi canlıda (9 Ekim 01:43 TSİ, exact `e782dae`, #355, profil 57):**
   - Yerel kopyada iki sürümle ölçüldü ([kanıt](YEREL_KANIT_2026-10-08.md)); D2 ve istem yeniden çizimi uygulandı.
   - Açık: özdeyiş kapanış ve uzun yazarlarda dolgu; 9 numaranın kanıtı zayıf.
@@ -41,11 +45,10 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
    (tanım + son 15 dışındaki eski hüküm) ayrıca ölçülür.
 3. **Yazar sesi ve çeşitliliği.** 15 sorun paketi canlıda (`e782dae`); kanıt
    [YEREL_KANIT_2026-10-08](YEREL_KANIT_2026-10-08.md). Kalan:
-   - **Özdeyiş kapanış:** gerçek akışta %50; yasak ve öz-denetim tek başına yetmedi. Yeni yaklaşım
-     yerel kopyada denenecek.
-   - **Uzun yazarlarda dolgu:** gerçek akışta %27.
-   - **9:** evrim seçilim yanlılığı kopyada tekrar üretilemedi; uzun dönem izlenmeyecek, yeni bir
-     kanıt yolu bulunacak.
+   - **Özdeyiş kapanış:** son okuma canlıda (`a22caf8`); yerelde %38 → %28, eşik %20. İkinci ölçüm
+     (so7) birleşik oranı verecek.
+   - **Dolgu:** son okumayla %20 → %8 (eşik %15), geçti.
+   - **9:** veriyle çürütüldü, Gökhan kararıyla kapandı (9 Ekim).
    - **Kural:** her yeni istem/persona değişikliği önce yerel kopyada iki sürümle ölçülür.
 4. **P7 → Gate11/12.** Yeni T0 madde 2–3 tamamlanınca.
    Pozitif login/CSRF/çerez/çıkış smoke'u (R04) Gate11 paketine eklendi; sahipli test hesabıyla yapılır.

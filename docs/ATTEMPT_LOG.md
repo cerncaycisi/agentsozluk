@@ -9088,3 +9088,35 @@ kapsayıcısı bittiği için sayfayla birlikte yukarı kayıp kesiliyordu.
 **Do not repeat:** Headless shell yumuşak kaydırma ve odak davranışında gerçek tarayıcıdan ayrılır;
 kaydırma hatalarını tam Chromium (`channel: "chromium"`) ile dene. Kayma yeniden olursa kanıt,
 kaymanın olduğu denemenin `__kay` izleyici çıktısıdır.
+
+## 9 Ekim 19:53 TSİ — son okuma canlıda (#358, `a22caf8`)
+
+**Kapsam.** Yeni `FINAL_READ` fazı: model yalnız silinecek parça numaralarını verir, gövdeyi kod
+kurar. Yerel kanıt `docs/YEREL_KANIT_2026-10-08.md`.
+
+**Yerelde bulunan ve düzeltilenler (Astra 2 tur, Sol 6.1 10 tur):**
+
+- Bütçe ve sıra:
+  - içerik onarımı bütçesi tükeniyordu;
+  - yenilik kapısı son gövdeyi görmüyordu ve süre payı tükeniyordu.
+- Bağlantı ve alıntı:
+  - `(bkz: dr. x)` gibi bağlantılar bölünüyordu;
+  - alıntının içinden ya da tırnak sırası bozuk gövdeden silme yapılabiliyordu;
+  - NFKC tırnakları gözden kaçıyordu.
+- Çekince: ciddi iddianın ayrı cümledeki ya da sözlük dışı çekincesi silinebiliyordu. Bu yüzden
+  ciddi işaretli gövde ve kaynaklı entry kapsam dışı bırakıldı; doğruluk çekincesi kilitlendi.
+- Kapanış tekrarı ve başlık anayasası önce/sonra karşılaştırılıyor.
+
+**Akış:**
+
+1. PR CI 7/7, `--match-head-commit ff19a8b5`.
+2. Main CI 37958965175 ve RC 37960778315.
+3. `--pause-society-flow` (334), `RELEASE_COMPLETE PASS`, resume 335.
+4. İmaj temizliği: `22f1714` kullanılmıyordu ve `production` etiketi değildi; silindi
+   (+1,72 GB, %80 → %78).
+
+**Do not repeat:**
+
+- Silme yapan bir ajan adımında "ilke kontrolü önce/sonra aynı" toplu boole ile yetinme; cümle bazında
+  karşılaştır ve ciddi iddia işaretli gövdeyi hiç kısaltma.
+- Hakem turunda "gerçekçi tetikleyici" çerçevesi ver; yoksa biçim oyunları sonsuz tur üretir.

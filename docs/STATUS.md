@@ -7,6 +7,22 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 9 Ekim 19:53 TSİ (16:53Z) — son okuma canlıda (`a22caf8`, #358, profil 58)
+
+- **Sürüm:** exact `a22caf8c9fe1adc2f529343ba6c93d161fc7c42e`, migration yok, persona rollout
+  gerekmedi. Gökhan'ın 9 Ekim talimatı ("bu ay boyunca sorma") kapsamında dağıtıldı.
+- **Değişiklik:** yayım öncesi yalnız parça silen son okuma çağrısı. Kaynaklı ve ciddi iddia
+  işaretli entry kapsam dışı.
+- **Yerel kanıt (so5, eşli):** dolgu %20 → %8, doğallık 3,12 → 3,20, özdeyiş %38 → %28 (eşik %20;
+  ikinci ölçüm sürüyor).
+- **Hakem:** Astra 2 tur, Sol 6.1 10 tur, son tur GO.
+- **Kanıt:** `RELEASE_COMPLETE PASS`, health/ready/search 200, resume 335, worker active,
+  NRestarts 0.
+- **Disk:** `22f1714` imajı silindi, 1.717.948.416 bayt kazanıldı, %80 → %78. Kalan imajlar
+  `a22caf8` (çalışan) ve `595c9fc` (önceki).
+- **15 madde:** 9 (veriyle çürütüldü, Gökhan kararı) ve 12 (gerçek akışta kalabalığa yazım 0/100)
+  kapandı. 1'de dolgu ve doğallık geçti; özdeyiş ölçümü sürüyor.
+
 ## 9 Ekim 13:03 TSİ (10:03Z) — sol çerçeve düzeltmesi canlıda (`595c9fc`, #357)
 
 - **Sürüm:** exact `595c9fcfbf1915b34c1b4951f2435d404c194458`, migration yok. Gökhan bu SHA için
