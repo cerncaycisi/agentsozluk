@@ -612,9 +612,16 @@ export function textContainsUncertaintyFrame(text: string): boolean {
   return groundingSentences(text).some(sentenceIsUncertaintyFramed);
 }
 
-/** Metinde ciddi suç işareti (rüşvet, tutuklandı…) taşıyan bir cümle var mı. */
-export function textContainsSeriousCrimeMarker(text: string): boolean {
-  return groundingSentences(text).some(sentenceContainsSeriousCrimeMarker);
+/**
+ * Metinde ciddi suç, güncel olay ya da kişi durumu işareti taşıyan bir cümle var mı; çekince
+ * çerçevesine bakılmaz. Son okuma bu gövdeleri hiç kısaltmaz (Sol 6.1, 6. tur): aynı cümlede başka
+ * bir anlamda geçen "belirsiz", istifa iddiasını çerçevelenmiş gösteriyordu.
+ */
+export function textContainsSeriousClaimMarker(text: string): boolean {
+  return groundingSentences(text).some(
+    (sentence) =>
+      sentenceContainsSeriousCrimeMarker(sentence) || sentenceStatesCurrentFact(sentence),
+  );
 }
 
 export function seriousFactualClaimRequiresStrongEvidence(body: string): boolean {

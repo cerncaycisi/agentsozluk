@@ -6,8 +6,7 @@ import {
 import {
   hasUnrecordedOfflineFirstPersonClaim,
   repeatedEntryFraming,
-  seriousFactualClaimRequiresStrongEvidence,
-  textContainsSeriousCrimeMarker,
+  textContainsSeriousClaimMarker,
   textContainsUncertaintyFrame,
   unframedSeriousClaimSentences,
   userEntryContainsHighRiskReproduction,
@@ -286,13 +285,12 @@ export function runtimeFinalReadCandidates(
     );
     if (!quotesUnambiguous(body)) return [];
     /*
-      Ciddi suç isnadı ya da sunucunun güçlü kanıt istediği ciddi olgu (kişi durumu, güncel olay)
-      taşıyan entry son okumaya hiç girmez (Sol 6.1, 4. ve 5. tur): çekincesi ayrı cümlede
-      olabilir ("…istifa etti. Bu bilgi henüz kesinleşmedi."). Yerel örneklerde silme yapılan
-      15 gövdenin hiçbiri bu sınıfta değildi.
+      Ciddi suç, güncel olay ya da kişi durumu işareti taşıyan entry son okumaya hiç girmez; çekince
+      çerçevesine bakılmaz (Sol 6.1, 4.–6. tur): çekince ayrı cümlede olabilir ("…istifa etti. Bu
+      bilgi henüz kesinleşmedi.") ya da aynı cümlede başka anlamda geçen "belirsiz" iddiayı
+      çerçevelenmiş gösterebilir. Yerel örneklerde silme yapılan gövdelerin hiçbiri bu sınıfta değildi.
     */
-    if (textContainsSeriousCrimeMarker(body) || seriousFactualClaimRequiresStrongEvidence(body))
-      return [];
+    if (textContainsSeriousClaimMarker(body)) return [];
     const title =
       action.actionType === "CREATE_TOPIC_WITH_ENTRY"
         ? action.input.title
