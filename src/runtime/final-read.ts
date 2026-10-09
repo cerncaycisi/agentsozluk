@@ -6,6 +6,7 @@ import {
 import {
   hasUnrecordedOfflineFirstPersonClaim,
   repeatedEntryFraming,
+  seriousFactualClaimRequiresStrongEvidence,
   textContainsSeriousCrimeMarker,
   textContainsUncertaintyFrame,
   unframedSeriousClaimSentences,
@@ -284,8 +285,14 @@ export function runtimeFinalReadCandidates(
       action.provenance?.evidenceType ?? "",
     );
     if (!quotesUnambiguous(body)) return [];
-    // Ciddi suç isnadı taşıyan entry son okumaya hiç girmez (Sol 6.1, 4. tur).
-    if (textContainsSeriousCrimeMarker(body)) return [];
+    /*
+      Ciddi suç isnadı ya da sunucunun güçlü kanıt istediği ciddi olgu (kişi durumu, güncel olay)
+      taşıyan entry son okumaya hiç girmez (Sol 6.1, 4. ve 5. tur): çekincesi ayrı cümlede
+      olabilir ("…istifa etti. Bu bilgi henüz kesinleşmedi."). Yerel örneklerde silme yapılan
+      15 gövdenin hiçbiri bu sınıfta değildi.
+    */
+    if (textContainsSeriousCrimeMarker(body) || seriousFactualClaimRequiresStrongEvidence(body))
+      return [];
     const title =
       action.actionType === "CREATE_TOPIC_WITH_ENTRY"
         ? action.input.title

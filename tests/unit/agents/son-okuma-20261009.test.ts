@@ -129,6 +129,18 @@ describe("son okuma parçaları", () => {
       ],
     } as unknown as RuntimeDecision;
     expect(runtimeFinalReadCandidates(decision, {})).toEqual([]);
+    const status = {
+      actions: [
+        {
+          ...decision.actions[0]!,
+          input: {
+            topicId: "t1",
+            body: "Kent Hastanesinin başhekimi Deniz Aydın görevinden istifa etti ve yönetim kuruluna ayrılık kararını bildirerek hastanedeki yeni görev dağılımının önünü açtı. Bu bilgi henüz kesinleşmedi.",
+          },
+        },
+      ],
+    } as unknown as RuntimeDecision;
+    expect(runtimeFinalReadCandidates(status, {})).toEqual([]);
     const hedged =
       "yeni metro hattının açılış takvimi, ihale sürecindeki gecikmeler ve istasyonların bağlantı planı nedeniyle birkaç kez değişti ve vatandaşlar bunu takip etmekte zorlandı. Açılış tarihi henüz doğrulanmadı.";
     expect(applyRuntimeFinalRead(hedged, runtimeFinalReadUnits(hedged), [2])).toBeNull();
