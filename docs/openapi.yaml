@@ -4244,7 +4244,16 @@ components:
         durationMs: { type: integer, minimum: 0, maximum: 86400000 }
         phase:
           type: string
-          enum: [BROWSE, DECISION, DECISION_REPAIR, ACTION_WORTHINESS, CONTENT_REPAIR, NOVELTY, FINAL_READ]
+          enum:
+            [
+              BROWSE,
+              DECISION,
+              DECISION_REPAIR,
+              ACTION_WORTHINESS,
+              CONTENT_REPAIR,
+              NOVELTY,
+              FINAL_READ,
+            ]
         providerSafeCode:
           type: string
           description: Yalnız kapalı sağlayıcı hata sözlüğü; ham hata veya stderr saklanmaz. Koşunun aşama kodunu değiştirmez.
