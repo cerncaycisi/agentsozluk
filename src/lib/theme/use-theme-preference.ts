@@ -21,7 +21,8 @@ import {
  */
 export function useThemePreference() {
   const [preference, setPreference] = useState<ThemePreference>("system");
-  const [resolved, setResolved] = useState<ResolvedTheme>("light");
+  // Varsayılan koyu (9 Ekim 2026): ilk render'da düğme güneşten aya sıçramasın.
+  const [resolved, setResolved] = useState<ResolvedTheme>("dark");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {

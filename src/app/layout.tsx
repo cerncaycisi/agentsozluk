@@ -79,16 +79,27 @@ export const metadata: Metadata = {
  *     Çerez okunduğu için `generateViewport` dinamik; kök layout zaten
  *     `cookies()` çağırıyor, ek maliyet yok.
  */
-const THEME_COLOR = { light: "#FFFFFF", dark: "#1F232B" } as const;
+const THEME_COLOR = { light: "#FCFCFB", dark: "#1F232B" } as const;
 
 /* `lib/theme/preference.ts` tarayıcıya bağlı bir modül ("yalnız istemci
    bileşenlerinden çağrılır"); sunucu tarafı o dosyayı import etmesin diye ad
    burada duruyor. En azından dosya içinde tek yerde. */
 const THEME_COOKIE = "ajan_theme";
 
+/*
+  Varsayılan koyu tema (Gökhan, 9 Ekim 2026). Çerez yoksa site koyu açılır; açık ya da koyu
+  seçen kullanıcının tercihi korunur. İşletim sistemine uymak artık açık bir seçimdir ve
+  çerezde `system` olarak durur; yalnız o durumda `data-theme` yazılmaz ve CSS medya sorgusu
+  karar verir.
+*/
+function renderedTheme(cookie: string | undefined): "light" | "dark" | undefined {
+  if (cookie === "light" || cookie === "dark") return cookie;
+  return cookie === "system" ? undefined : "dark";
+}
+
 export async function generateViewport(): Promise<Viewport> {
-  const theme = (await cookies()).get(THEME_COOKIE)?.value;
-  if (theme === "light" || theme === "dark") {
+  const theme = renderedTheme((await cookies()).get(THEME_COOKIE)?.value);
+  if (theme) {
     return { colorScheme: theme, themeColor: THEME_COLOR[theme] };
   }
   return {
@@ -102,8 +113,7 @@ export async function generateViewport(): Promise<Viewport> {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [cookieStore, requestHeaders] = await Promise.all([cookies(), headers()]);
-  const theme = cookieStore.get(THEME_COOKIE)?.value;
-  const themeAttribute = theme === "light" || theme === "dark" ? theme : undefined;
+  const themeAttribute = renderedTheme(cookieStore.get(THEME_COOKIE)?.value);
   const session = await authenticateSession(
     getDatabase(),
     cookieStore.get(SESSION_COOKIE_NAME)?.value,

@@ -33,6 +33,7 @@ export function systemTheme(): ResolvedTheme {
 export function readPreference(): ThemePreference {
   const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (isExplicitTheme(saved)) return saved;
+  if (saved === "system") return "system";
   // Sunucu cookie'den `data-theme` yazdıysa localStorage boş olsa da onu esas al.
   const rendered = document.documentElement.dataset.theme;
   if (isExplicitTheme(rendered)) return rendered;
@@ -44,17 +45,17 @@ export function resolveTheme(preference: ThemePreference): ResolvedTheme {
 }
 
 /**
- * KRİTİK — `system` dalı üç kaydı birden temizler: `data-theme` attribute'u,
- * localStorage ve cookie. Üçünden biri kalırsa kullanıcı bir yıllık cookie'ye
- * saplanır ve işletim sistemi temasına bir daha dönemez. Görev 33'te düzeltilen
- * hata tam olarak buydu; bu dal silinmez, yalnız çağıran yer değişti (düğme
- * döngüsünden ayarlar sayfasına).
+ * KRİTİK — `system` dalı `data-theme` attribute'unu kaldırır ve tercihi açıkça `system`
+ * olarak yazar (localStorage + cookie). 9 Ekim 2026'dan beri çerez yoksa site koyu açılıyor;
+ * bu yüzden "sisteme dön" artık çerezi silemez, silerse kullanıcı varsayılan koyuya düşer ve
+ * işletim sistemi temasına dönemez (görev 33'teki hatanın yeni biçimi). Sunucu `system`
+ * çerezinde `data-theme` yazmaz, CSS medya sorgusu karar verir.
  */
 export function applyPreference(preference: ThemePreference) {
   if (preference === "system") {
     document.documentElement.removeAttribute("data-theme");
-    window.localStorage.removeItem(THEME_STORAGE_KEY);
-    document.cookie = `${THEME_STORAGE_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
+    window.localStorage.setItem(THEME_STORAGE_KEY, "system");
+    document.cookie = `${THEME_STORAGE_KEY}=system; Path=/; Max-Age=${THEME_COOKIE_MAX_AGE}; SameSite=Lax`;
   } else {
     document.documentElement.dataset.theme = preference;
     window.localStorage.setItem(THEME_STORAGE_KEY, preference);

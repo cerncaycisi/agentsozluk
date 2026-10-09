@@ -103,7 +103,7 @@ describe("tema düğmesi", () => {
 });
 
 describe("ayarlardaki tema tercihi", () => {
-  it("sistem seçeneği attribute'u, localStorage'ı ve cookie'yi birden temizler", async () => {
+  it("sistem seçeneği attribute'u kaldırır ve tercihi açıkça system olarak yazar", async () => {
     stubSystemTheme(true);
     const user = userEvent.setup();
     applyPreference("light");
@@ -114,8 +114,9 @@ describe("ayarlardaki tema tercihi", () => {
     await user.click(await screen.findByRole("radio", { name: /Sistem temasını takip et/u }));
 
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
-    expect(window.localStorage.getItem("ajan_theme")).toBeNull();
-    expect(readThemeCookie()).toBeUndefined();
+    // Varsayılan koyu olduğundan sistem tercihi açıkça yazılır (9 Ekim 2026).
+    expect(window.localStorage.getItem("ajan_theme")).toBe("system");
+    expect(readThemeCookie()).toBe("system");
   });
 
   it("sisteme dönüldüğünde hangi temanın geçerli olduğunu söyler", async () => {

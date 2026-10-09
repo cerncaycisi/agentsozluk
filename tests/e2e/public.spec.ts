@@ -152,6 +152,11 @@ test("DEBE exposes seeded previous-day positive entries", async ({ page }) => {
   await expect(page.locator("article").first()).toBeVisible();
 });
 
+test("dark theme is the default without a saved preference", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});
+
 test("theme persists in cookie and local storage", async ({ page, context }) => {
   await page.goto("/");
   const toggle = page.getByRole("button", { name: "Koyu tema" });
@@ -176,13 +181,15 @@ test("settings page returns the theme to the operating system", async ({ page, c
   await page.goto("/ayarlar");
   await page.getByRole("radio", { name: /Sistem temasını takip et/u }).check();
 
-  // Üçü birden temizlenmeli: attribute, localStorage ve cookie. Biri kalırsa
-  // kullanıcı işletim sistemi temasına bir daha dönemez (görev 33).
+  // Attribute kalkar; tercih açıkça `system` yazılır. Varsayılan koyu olduğundan çerez
+  // silinseydi kullanıcı işletim sistemi temasına dönemezdi (görev 33, 9 Ekim 2026).
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.*/u);
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("ajan_theme"))).toBeNull();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("ajan_theme"))).toBe("system");
   await expect
-    .poll(async () => (await context.cookies()).some((cookie) => cookie.name === "ajan_theme"))
-    .toBe(false);
+    .poll(
+      async () => (await context.cookies()).find((cookie) => cookie.name === "ajan_theme")?.value,
+    )
+    .toBe("system");
 
   await page.reload();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.*/u);
