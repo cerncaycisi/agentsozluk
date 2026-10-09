@@ -79,6 +79,15 @@ describe("son okuma parçaları", () => {
     expect(applyRuntimeFinalRead(body, units, [units.length])).toBeNull();
   });
 
+  it("ilke kontrollerinden birinin sonucunu değiştiren silmeyi yapmaz", () => {
+    const body =
+      "belediyenin yeni ulaşım ihalesinde müdür şirketten rüşvet aldı ve kamu denetimini devre dışı bırakmak için sözleşmenin mali kontrol maddelerini bilerek çıkardı; ancak bu iddia henüz doğrulanmadı.";
+    const units = runtimeFinalReadUnits(body);
+    expect(units).toHaveLength(2);
+    expect(applyRuntimeFinalRead(body, units, [2])).toBeNull();
+    expect(applyRuntimeFinalRead(body, units, [2], true)).toBeNull();
+  });
+
   it("çıktı şeması yalnız sil dizisini kabul eder", () => {
     expect(runtimeFinalReadVerdictSchema.safeParse({ sil: [2] }).success).toBe(true);
     expect(runtimeFinalReadVerdictSchema.safeParse({ sil: [2], body: "x" }).success).toBe(false);
@@ -155,6 +164,8 @@ describe("son okuma adayları", () => {
       "giriş cümlesi burada. ”eski sözün sonu. “sistem parayı aldı. geri ödemeyi yapmadı.",
       "giriş cümlesi burada. » ters açılış. « sonra gelen cümle.",
       "giriş cümlesi burada. “dış “iç” alıntı” bitti.",
+      '"önsöz “alıntı başladı." giriş cümlesi burada. son alıntı bitti.”',
+      'giriş cümlesi burada. “dış "iç" alıntı” bitti.',
     ])
       expect(runtimeFinalReadCandidates(decisionFor(body), new Map())).toEqual([]);
     const multiline = 'giriş cümlesi burada. "kitapları aldım.\n parayı vermedim." dedi.';

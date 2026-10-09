@@ -1,4 +1,10 @@
 import { z } from "zod";
+import { constitutionalEntryWritingIssue } from "@/lib/content/constitution-writing-policy";
+import {
+  hasUnrecordedOfflineFirstPersonClaim,
+  seriousFactualClaimRequiresStrongEvidence,
+  userEntryContainsHighRiskReproduction,
+} from "@/modules/agents/domain/action-policy";
 import type { RuntimeDecision } from "@/runtime/output";
 
 /*
@@ -68,19 +74,32 @@ const protectedSpan =
   kullanıldığı için ‘…’ aralığı güvenle eşlenemez).
 */
 function quotesUnambiguous(body: string): boolean {
-  if (body.includes("‘") || (body.match(/"/gu) ?? []).length % 2 !== 0) return false;
-  const closing: Record<string, string> = { "“": "”", "«": "»" };
+  if (body.includes("‘")) return false;
+  // Düz tırnak da aynı durum makinesine girer: çapraz ya da iç içe alıntı reddedilir (Sol 6.1).
+  const closing: Record<string, string> = { "“": "”", "«": "»", '"': '"' };
   let open: string | null = null;
   for (const char of body) {
-    if (char in closing) {
+    if (open !== null && char === open) open = null;
+    else if (char in closing) {
       if (open !== null) return false;
       open = closing[char]!;
-    } else if (char === "”" || char === "»") {
-      if (open !== char) return false;
-      open = null;
-    }
+    } else if (char === "”" || char === "»") return false;
   }
   return open === null;
+}
+
+/*
+  Silme, sunucunun gövdeye bakan ilke kontrollerinden hiçbirinin sonucunu değiştirmemeli (Sol 6.1):
+  "…rüşvet aldı; ancak bu iddia henüz doğrulanmadı." gövdesinden çekince silinince ciddi iddia
+  güçlü kanıt ister hâle geliyordu. Herhangi bir kontrolün sonucu değişirse özgün gövde kalır.
+*/
+function policyFingerprint(body: string): string {
+  return JSON.stringify([
+    seriousFactualClaimRequiresStrongEvidence(body),
+    userEntryContainsHighRiskReproduction(body),
+    hasUnrecordedOfflineFirstPersonClaim(body),
+    constitutionalEntryWritingIssue(body)?.code ?? null,
+  ]);
 }
 
 function protectedRanges(body: string): Array<[number, number]> {
@@ -147,6 +166,7 @@ export function applyRuntimeFinalRead(
   if (text.endsWith(";") || text.endsWith(",")) text = `${text.slice(0, -1)}.`;
   if (text.length * 2 < body.length) return null;
   if (text.split(/\s+/u).filter(Boolean).length < runtimeFinalReadMinKeptWords) return null;
+  if (policyFingerprint(text) !== policyFingerprint(body)) return null;
   return { body: text, removedUnitCount: remove.size };
 }
 
