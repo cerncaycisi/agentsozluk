@@ -79,7 +79,7 @@ export const metadata: Metadata = {
  *     Çerez okunduğu için `generateViewport` dinamik; kök layout zaten
  *     `cookies()` çağırıyor, ek maliyet yok.
  */
-const THEME_COLOR = { light: "#FFFFFF", dark: "#1F232B" } as const;
+const THEME_COLOR = { light: "#FCFCFB", dark: "#1F232B" } as const;
 
 /* `lib/theme/preference.ts` tarayıcıya bağlı bir modül ("yalnız istemci
    bileşenlerinden çağrılır"); sunucu tarafı o dosyayı import etmesin diye ad

@@ -34,19 +34,25 @@
  * kullanımlarının HEPSİ `/10` tonlaması, üstlerindeki metin `--ink` ya da rengin
  * kendisi. Kullanılmayan token eklemek yerine ölçülen kullanım karşılandı.
  */
+/*
+  Açık tema "sade beyaz" (Gökhan, 9 Ekim 2026; PR #356 görselleri, seçenek B): krem zemin + saf
+  beyaz kutu + soğuk gri yazının yamalı görünümü yerine tek düz zemin, koyu yazı, belirgin
+  çizgi. Kontrast (zemin 252 252 251): ink 16,97 · muted 5,98 · primary 6,21 · border-strong 3,56.
+  Koyu tema değişmedi.
+*/
 :root {
   color-scheme: light;
-  --page: 245 243 236;
-  --surface: 255 255 255;
-  --ink: 43 47 54;
-  --muted: 101 108 122;
+  --page: 252 252 251;
+  --surface: 252 252 251;
+  --ink: 24 26 30;
+  --muted: 92 98 108;
   --primary: 158 67 45;
-  --accent: 74 80 88;
+  --accent: 70 76 86;
   --destructive: 180 35 24;
   --success: 17 110 74;
   --warning: 118 99 0;
-  --border: 224 221 214;
-  --border-strong: 138 138 132;
+  --border: 222 223 226;
+  --border-strong: 130 134 141;
   --on-primary: 255 255 255;
   --on-accent: 255 255 255;
   --on-destructive: 255 255 255;
@@ -93,7 +99,7 @@
    *                          kalıyor ama dolgunun ne kadar koyulaşabileceğinin
    *                          sınırını bu çiziyor; ölçüm 5. maddede.
    */
-  --state-tint: 43 47 54;
+  --state-tint: 24 26 30;
   --overlay-hover: linear-gradient(rgb(var(--state-tint) / 0.08) 0 0);
   --overlay-press: linear-gradient(rgb(var(--state-tint) / 0.14) 0 0);
   --overlay-hover-fill: linear-gradient(rgb(var(--state-tint) / 0.12) 0 0);
