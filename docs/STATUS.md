@@ -13,15 +13,15 @@
   gerekmedi. Gökhan'ın 9 Ekim talimatı ("bu ay boyunca sorma") kapsamında dağıtıldı.
 - **Değişiklik:** yayım öncesi yalnız parça silen son okuma çağrısı. Kaynaklı ve ciddi iddia
   işaretli entry kapsam dışı.
-- **Yerel kanıt (so5, eşli):** dolgu %20 → %8, doğallık 3,12 → 3,20, özdeyiş %38 → %28 (eşik %20;
-  ikinci ölçüm sürüyor).
+- **Yerel kanıt (so5 + so7, 47 entry, eşli, iki hakem):** özdeyiş %31 → %18, dolgu %20 → %7,
+  doğallık 3,38. so7 canlıdaki kodla birebir aynı.
 - **Hakem:** Astra 2 tur, Sol 6.1 10 tur, son tur GO.
 - **Kanıt:** `RELEASE_COMPLETE PASS`, health/ready/search 200, resume 335, worker active,
   NRestarts 0.
 - **Disk:** `22f1714` imajı silindi, 1.717.948.416 bayt kazanıldı, %80 → %78. Kalan imajlar
   `a22caf8` (çalışan) ve `595c9fc` (önceki).
 - **15 madde:** 9 (veriyle çürütüldü, Gökhan kararı) ve 12 (gerçek akışta kalabalığa yazım 0/100)
-  kapandı. 1'de dolgu ve doğallık geçti; özdeyiş ölçümü sürüyor.
+  kapandı; 1 de kapandı. **15/15.**
 
 ## 9 Ekim 13:03 TSİ (10:03Z) — sol çerçeve düzeltmesi canlıda (`595c9fc`, #357)
 

@@ -60,23 +60,23 @@ Kısaltmalar:
 - **Eski:** `e0301f2`.
 - **Aday:** bu paket.
 
-| #   | Sonuç                                                                                                                                                                    | Durum                                   |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------- |
-| 1   | Kör eşleştirme 8/8, mizah %47–53. Son okuma (gerçek akış, eşli): dolgu %20 → %8, doğallık 3,12 → 3,20, özdeyiş %38 → %28 (eşik %20; ikinci ölçüm sürüyor)                | dolgu/doğallık geçti; özdeyiş ölçülüyor |
-| 2   | Sınıf ortalamaları SHORT 22–24 · MIXED 30–36 · MEDIUM 45–52 · LONG 49–57 kelime; aralıkta 27/29 (A), 41/42 (B)                                                           | geçti                                   |
-| 3   | Soru %0 → %19, bkz %0 → %21 (B, v7)                                                                                                                                      | geçti                                   |
-| 4   | Anayasa 2 → 1 kopya; ortak kural 32.493 → 29.594 karakter; persona payı %19,8 → %22,2                                                                                    | geçti                                   |
-| 5   | Bütün mizaç boyutları cümle + ölçek satırıyla; çelişkili çatışma talimatı yok (birim testi)                                                                              | geçti                                   |
-| 6   | A, aynı 12 yazar: en çok okunan 5 başlığın payı %35 → %23; kişisel ilgi menüsü koşuların %90'ında dolu                                                                   | geçti                                   |
-| 7   | Kopyadaki 7.193 başlıkta çöp ilgi eşleşmesi 22.193 → 0                                                                                                                   | geçti                                   |
-| 8   | A: kişisel ton %46 → %72–83                                                                                                                                              | geçti                                   |
-| 9   | Veriyle çürütüldü: 81 geçmiş yansımada ilgi artışı yazarın kendi entry'lerine dayanıyor (272 kendi, 16 akış); ayrıntı aşağıda. Gökhan kararıyla kapandı (9 Ekim)         | kapandı                                 |
-| 10  | Haftalık +0,03 mizah, persona istemindeki cümleyi ve yazım yaklaşımı dağılımını değiştiriyor (birim testi); eskide mizaç ham sayıydı                                     | geçti                                   |
-| 11  | Yansıma değerlendirme kartlarını görüyor, hafıza birleştirme görmüyor, kart kimliği kanıta sızmıyor (entegrasyon). Kopyada geçerli kart olmadığı için A'da gösterilemedi | geçti (test)                            |
-| 12  | Gerçek akışta kalabalığa yazım 7/12 → 0/100 (6 koşu). Zorlanmış kalabalık testte gereksiz 3/13 (%23); değerli kaybı 1/11                                                 | geçti (gerçek akış)                     |
-| 13  | Pencere dışı tekrar: 8/15 → 13/15 durdu, yeni katkı kaybı 0/15                                                                                                           | geçti                                   |
-| 14  | "Şehir hayatı" 17 → 4 persona; 5 LONG persona; kopyada 36/36 doğrulayıcıdan geçti                                                                                        | geçti                                   |
-| 15  | Başlığı tanıtmayan ilk entry: eski 5/26 (%19) → aday 0/12                                                                                                                | geçti                                   |
+| #   | Sonuç                                                                                                                                                                    | Durum               |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| 1   | Kör eşleştirme 8/8, mizah %47–53. Son okuma, iki gerçek akış koşusu birleşik (47 entry): özdeyiş %31 → %18, dolgu %20 → %7, doğallık 3,38                                | geçti               |
+| 2   | Sınıf ortalamaları SHORT 22–24 · MIXED 30–36 · MEDIUM 45–52 · LONG 49–57 kelime; aralıkta 27/29 (A), 41/42 (B)                                                           | geçti               |
+| 3   | Soru %0 → %19, bkz %0 → %21 (B, v7)                                                                                                                                      | geçti               |
+| 4   | Anayasa 2 → 1 kopya; ortak kural 32.493 → 29.594 karakter; persona payı %19,8 → %22,2                                                                                    | geçti               |
+| 5   | Bütün mizaç boyutları cümle + ölçek satırıyla; çelişkili çatışma talimatı yok (birim testi)                                                                              | geçti               |
+| 6   | A, aynı 12 yazar: en çok okunan 5 başlığın payı %35 → %23; kişisel ilgi menüsü koşuların %90'ında dolu                                                                   | geçti               |
+| 7   | Kopyadaki 7.193 başlıkta çöp ilgi eşleşmesi 22.193 → 0                                                                                                                   | geçti               |
+| 8   | A: kişisel ton %46 → %72–83                                                                                                                                              | geçti               |
+| 9   | Veriyle çürütüldü: 81 geçmiş yansımada ilgi artışı yazarın kendi entry'lerine dayanıyor (272 kendi, 16 akış); ayrıntı aşağıda. Gökhan kararıyla kapandı (9 Ekim)         | kapandı             |
+| 10  | Haftalık +0,03 mizah, persona istemindeki cümleyi ve yazım yaklaşımı dağılımını değiştiriyor (birim testi); eskide mizaç ham sayıydı                                     | geçti               |
+| 11  | Yansıma değerlendirme kartlarını görüyor, hafıza birleştirme görmüyor, kart kimliği kanıta sızmıyor (entegrasyon). Kopyada geçerli kart olmadığı için A'da gösterilemedi | geçti (test)        |
+| 12  | Gerçek akışta kalabalığa yazım 7/12 → 0/100 (6 koşu). Zorlanmış kalabalık testte gereksiz 3/13 (%23); değerli kaybı 1/11                                                 | geçti (gerçek akış) |
+| 13  | Pencere dışı tekrar: 8/15 → 13/15 durdu, yeni katkı kaybı 0/15                                                                                                           | geçti               |
+| 14  | "Şehir hayatı" 17 → 4 persona; 5 LONG persona; kopyada 36/36 doğrulayıcıdan geçti                                                                                        | geçti               |
+| 15  | Başlığı tanıtmayan ilk entry: eski 5/26 (%19) → aday 0/12                                                                                                                | geçti               |
 
 **Yenilik kapısı V7c** (etiketli 90'lık set ve bağımsız canlı set):
 
@@ -100,7 +100,7 @@ Kısaltmalar:
 - **v7:** üç yazım maddesini tek maddede birleştirmek, gerçek akışta özdeyiş kapanışı artırdı
   (aynı 12 yazarda doğallık 3,50 → 2,94).
 
-## 9 Ekim güncellemesi — 9 ve 12 kapandı, 1 için son okuma
+## 9 Ekim güncellemesi — 1, 9 ve 12 kapandı (15/15)
 
 ### 9 — veriyle çürütüldü (Gökhan kararı, 9 Ekim: "Evet, kanıtla kapat")
 
@@ -154,8 +154,23 @@ Bulgular:
 - **Dolgu ve doğallık eşiği geçti.** Özdeyiş bu koşuda azaldı ama %20 eşiğinin altına inmedi.
 - **Özdeyiş koşudan koşuya çok oynuyor:** aynı kodla taban v9a'da %47, so1'de %10–19, so3'te
   %15–20, so5'te %38. Dört koşunun birleşik tabanı %20,5 (56 entry).
-- **İkinci ölçüm koşusu** (`so7`, son kod) özdeyişin birleşik değerini verecek; sonucu bu bölüme
-  eklenecek.
+- **İkinci ölçüm (`so7`, canlıdaki `a22caf8` ile birebir aynı kod, 22 yayın):**
+
+  |                 | Opus önce → sonra | Fable önce → sonra |
+  | --------------- | ----------------- | ------------------ |
+  | Özdeyiş kapanış | 6 → 2 (/22)       | 4 → 1              |
+  | Dolgu           | 5 → 2             | 4 → 1              |
+  | Doğallık        | 3,23 → 3,32       | 3,86 → 3,86        |
+
+  Espri 5 → 5, kayıp yok.
+
+- **İki koşu birleşik (47 entry, iki hakem ortalaması):**
+  - özdeyiş %31 → **%18** (eşik %20);
+  - dolgu %20 → **%7** (eşik %15);
+  - doğallık **3,38** (eşik 3,12).
+
+  Üçü de geçti; **1 kapandı.**
+
 - **20 kelime sınırı ölçümden geldi:** kısa entry'de son cümle yazarın sesiydi. 20 kelimenin altına
   inen 7 silmede doğallık −0,14 ve espri kaybı 1 ölçüldü.
 
