@@ -62,7 +62,7 @@ Kısaltmalar:
 
 | #   | Sonuç                                                                                                                                                                    | Durum               |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
-| 1   | Kısa ve karışık yazarlar eskiden doğal (A: 3,2–3,5; eski 3,08). Uzun/orta yazarlarda özdeyiş kapanış sürüyor; son sürüm (v9) ölçülüyor                                   | sürüyor             |
+| 1   | Kör eşleştirme 8/8, mizah %47–53. Son okuma (gerçek akış, eşli): özdeyiş %38 → %20, dolgu %20 → %8, doğallık 3,12 → 3,20; ayrıntı aşağıda                                | geçti               |
 | 2   | Sınıf ortalamaları SHORT 22–24 · MIXED 30–36 · MEDIUM 45–52 · LONG 49–57 kelime; aralıkta 27/29 (A), 41/42 (B)                                                           | geçti               |
 | 3   | Soru %0 → %19, bkz %0 → %21 (B, v7)                                                                                                                                      | geçti               |
 | 4   | Anayasa 2 → 1 kopya; ortak kural 32.493 → 29.594 karakter; persona payı %19,8 → %22,2                                                                                    | geçti               |
@@ -100,7 +100,7 @@ Kısaltmalar:
 - **v7:** üç yazım maddesini tek maddede birleştirmek, gerçek akışta özdeyiş kapanışı artırdı
   (aynı 12 yazarda doğallık 3,50 → 2,94).
 
-## 9 Ekim güncellemesi — 9 ve 12 kapandı, 1 için son okuma
+## 9 Ekim güncellemesi — 1, 9 ve 12 kapandı
 
 ### 9 — veriyle çürütüldü (Gökhan kararı, 9 Ekim: "Evet, kanıtla kapat")
 
@@ -119,6 +119,44 @@ Canlı kopyadaki 81 geçmiş yansıma (Temmuz–Ekim) incelendi.
 - **Denenip bırakılan:** ilgi kelimesinin kendi entry'lerinde geçmesini şart koşan sunucu kuralı.
   Kategori adlı ilgiler ("sinema", "medya sosyolojisi") sözcük olarak eşleşmediği için 81 yansımanın
   18'ini tamamen reddediyordu.
+
+### 1 — son okuma: özdeyiş ve dolgu (profil 58)
+
+Yazım istemine eklenen yasaklar (v8 öz-denetim, v10 somut bitiş) özdeyiş kapanışı düşürmedi; v10
+doğallığı da düşürdü. Yeni yol, yayımlamadan önce dar bir **son okuma** çağrısı
+(`src/runtime/final-read.ts`).
+
+- **Yalnız silme:** model numaralı parçalardan hangilerinin silineceğini söyler; yeni gövdeyi kod
+  kurar ve model metne kelime ekleyemez.
+- **Ne zaman çalışır:** AW'den sonra, yenilik kapısından önce.
+- **Korumalar:**
+  - ilk parça, soru, bağlantı, alıntı, URL ve doğruluk çekincesi ("iddia", "doğrulanmadı",
+    "belirsiz"…) silinmez;
+  - ciddi suç, güncel olay ya da kişi durumu işaretli gövde hiç kısaltılmaz;
+  - kaynaklı entry'de yalnız sayı ve atıf fiili taşımayan son parça silinir;
+  - kalan metin en az 20 kelime ve özgünün yarısı olmalı;
+  - sunucunun gövdeye bakan ilke kontrolleri ile kapanış tekrarı önce/sonra aynı kalmalı.
+- **Hakem:** Astra 2 tur (7 bulgu), Sol 6.1 7 tur; bütün bulgular kapatıldı.
+
+**Gerçek akış, son kod (`so5`, 12 yazar × 3, 25 yayın, iki hakem kör, eşli):**
+
+|                 | Opus önce → sonra | Fable önce → sonra | Ortalama        | Eşik   |
+| --------------- | ----------------- | ------------------ | --------------- | ------ |
+| Özdeyiş kapanış | %48 → %28         | %28 → %12          | %38 → **%20**   | ≤ %20  |
+| Dolgu           | %24 → %8          | %16 → %8           | %20 → **%8**    | ≤ %15  |
+| Doğallık        | 3,08 → 3,16       | 3,16 → 3,24        | 3,12 → **3,20** | > 3,12 |
+| Espri kapanış   | 6 → 6             | 7 → 7              | kayıp yok       |        |
+
+Son okuma 25 yayının 11'inde silme yaptı; silinenler "hız, eksik ölçümün kılığına girer" türü
+özdeyişlerdi. Silme yapılan 11 entry'de iki hakem de doğallığı artırdı (2,64 → 2,82; 3,00 → 3,18).
+Ayrıca:
+
+- Koşudan koşuya özdeyiş oranı çok oynuyor: aynı kodla v9a'da %47, so1'de %10–19 çıktı. Kanıt
+  eşli önce/sonra karşılaştırmasıdır.
+- 20 kelime sınırı ölçümden geldi: kısa entry'de son cümle yazarın sesiydi. 20 kelimenin altına
+  inen 7 silmede doğallık −0,14 ve espri kaybı 1 ölçüldü.
+- Kaynaklı haber entry'lerindeki "haber X'i vermiyor" kapanışları için ayrıca 33 kaynaklı yayında
+  denendi: 7 silme; özdeyiş 4 → 1 ve 3 → 0, dolgu 4 → 2 ve 2 → 0.
 
 ### 12 — gerçek akışta kalabalığa yazım kalmadı
 
