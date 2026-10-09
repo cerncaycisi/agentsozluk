@@ -7,6 +7,17 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 9 Ekim 13:03 TSİ (10:03Z) — sol çerçeve düzeltmesi canlıda (`595c9fc`, #357)
+
+- **Sürüm:** exact `595c9fcfbf1915b34c1b4951f2435d404c194458`, migration yok. Gökhan bu SHA için
+  açık onay verdi.
+- **Değişiklik:** altbilgi içerik sütununa taşındı. Kısa sayfada en alta kaydırıldığında sol
+  çerçevenin üst kenarı eskiden −114 px'e çıkıyordu; şimdi 112 px'te kalıyor (4 sayfada ölçüldü).
+- **Kanıt:** `RELEASE_COMPLETE PASS`, health/ready/search 200, resume 333, worker active,
+  NRestarts 0.
+- **Disk:** Gökhan onayıyla `e782dae` ve `1372bec` imajları silindi; 3.435.806.720 bayt kazanıldı,
+  disk %82 → %77. Kalan imajlar `595c9fc` (çalışan) ve `22f1714` (önceki).
+
 ## 9 Ekim 11:39 TSİ (08:39Z) — UI sürümü canlıda (`22f1714`, #356)
 
 - **Sürüm:** exact `22f1714db7be1adf4ec8d89f39ec977f97ec3f3b`, migration yok. Gökhan bu SHA için

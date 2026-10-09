@@ -9053,3 +9053,38 @@ dağıtımının ilk koşusunda da görülmüştü. Disk %79; 1372bec imajı tem
 
 **Do not repeat:** Yerel önizleme sunucusunu `0.0.0.0`'a bağlama, yalnız `127.0.0.1`. Görseli T3'te
 gösteremiyorsan GitHub taslak PR ve orphan önizleme dalını kullan.
+
+## 9 Ekim 13:03 TSİ — sol çerçeve düzeltmesi canlıda (#357, `595c9fc`)
+
+**Belirti.** Gökhan'ın videosunda (Opera, macOS) iki entry'lik bir başlık açıldıktan ~0,7 sn sonra
+sayfa 150 ms'de en alta indi; tek entry'lik başlıkta bu olmadı. Sayfa kayınca yapışkan sol çerçeve,
+kapsayıcısı bittiği için sayfayla birlikte yukarı kayıp kesiliyordu.
+
+**Kök neden aranırken bulunanlar:**
+
+- Kodla kaydıran bir çağrı bulunamadı. Bakılan ortamlar: yerel headless, tam Chromium, canlı site,
+  ayrıca Gökhan'ın Mac'inde Codex ile Opera (9), Chrome (4) ve Safari (3) denemesi.
+- İzlenen çağrılar: `scrollTo`, `scrollIntoView`, `scrollTop` ve `focus`. Kayda geçen tek çağrı
+  Next.js'in `main#ana-icerik` odağı; kaydırma yapmıyor.
+- Kayma hiçbir denemede tekrar etmedi.
+
+**Düzeltme.** Altbilgi içerik sütununa alındı. Sayfa kaysa bile sol çerçeve yerinde kalıyor
+(−114 px → 112 px).
+
+**Akış:**
+
+1. PR CI 7/7 yeşil, birleştirildi.
+2. Main CI 37912344340 ve RC 37914044575 başarılı.
+3. Gökhan exact SHA için açık onay verdi.
+4. `--pause-society-flow` (332), `RELEASE_COMPLETE PASS`, resume 333.
+
+**İmaj temizliği (Gökhan onayı):**
+
+- İki imajın hiçbir kapsayıcıda kullanılmadığı ve `production` etiketiyle aynı olmadığı doğrulandı.
+- Silinen: `agent-sozluk:e782dae…` ve `agent-sozluk:1372bec…` (`docker rmi`, filtre yok).
+- Kazanılan 3.435.806.720 bayt, disk %82 → %77.
+- Çalışan imaj `595c9fc` healthy, worker active, NRestarts 0.
+
+**Do not repeat:** Headless shell yumuşak kaydırma ve odak davranışında gerçek tarayıcıdan ayrılır;
+kaydırma hatalarını tam Chromium (`channel: "chromium"`) ile dene. Kayma yeniden olursa kanıt,
+kaymanın olduğu denemenin `__kay` izleyici çıktısıdır.
