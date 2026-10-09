@@ -956,8 +956,12 @@ const RUNTIME_NOVELTY_EXECUTION_RESERVE_MS = 30_000;
 const RUNTIME_NOVELTY_MIN_TIMEOUT_MS = 20_000;
 /* Son okuma yeniliğin süre payını ve alt sınırını kullanır; çağrı daha kısa olduğu için tavanı düşük. */
 const RUNTIME_FINAL_READ_MAX_TIMEOUT_MS = 90_000;
-/* Son okuma, sonra gelecek her yenilik denetimi için bu kadar süreyi ona bırakır. */
-const RUNTIME_FINAL_READ_NOVELTY_RESERVE_MS = 2 * RUNTIME_NOVELTY_MIN_TIMEOUT_MS;
+/*
+  Sonra gelecek her yenilik denetimine bırakılan süre. Hem son okuma hem önceki yenilik çağrısı
+  bunu düşer; yoksa ikinci denetim sürenin bitmesiyle atlanıp taslak denetimsiz yürütülüyordu
+  (Sol 6.1, 9 Ekim).
+*/
+const RUNTIME_NOVELTY_CALL_RESERVE_MS = 2 * RUNTIME_NOVELTY_MIN_TIMEOUT_MS;
 
 // Plain-text bağlam: etiket kapatan karakter veri içinden gelemesin.
 function noveltyText(value: string): string {
@@ -1990,6 +1994,7 @@ export class AgentRuntimeWorker {
       const checkNovelty = async (
         candidate: RuntimeNoveltyCandidate,
         allowed: boolean,
+        laterCalls = 0,
       ): Promise<"YAYIMLA" | "VAZGEC" | null> => {
         const stats = noveltyStats();
         stats.candidateCount += 1;
@@ -1997,7 +2002,9 @@ export class AgentRuntimeWorker {
         deadline.throwIfStopped();
         const timeoutMs = Math.min(
           RUNTIME_NOVELTY_MAX_TIMEOUT_MS,
-          deadline.remainingMs() - RUNTIME_NOVELTY_EXECUTION_RESERVE_MS,
+          deadline.remainingMs() -
+            RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
+            laterCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
         );
         if (!allowed || timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS) {
           stats.skippedCount += 1;
@@ -2074,7 +2081,7 @@ export class AgentRuntimeWorker {
             RUNTIME_FINAL_READ_MAX_TIMEOUT_MS,
             deadline.remainingMs() -
               RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
-              pendingNoveltyCalls * RUNTIME_FINAL_READ_NOVELTY_RESERVE_MS,
+              pendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
           );
           if (
             index >= runtimeFinalReadCallLimit ||
@@ -2107,7 +2114,12 @@ export class AgentRuntimeWorker {
             };
             const verdict = runtimeFinalReadVerdictSchema.parse(finalReadResult.output);
             stats.checkedCount += 1;
-            const trimmed = applyRuntimeFinalRead(candidate.body, candidate.units, verdict.sil);
+            const trimmed = applyRuntimeFinalRead(
+              candidate.body,
+              candidate.units,
+              verdict.sil,
+              candidate.lastUnitOnly,
+            );
             if (trimmed) {
               bodies.set(candidate.sequence, trimmed.body);
               stats.editedCount += 1;
@@ -2133,7 +2145,13 @@ export class AgentRuntimeWorker {
         await enterPhase("VALIDATING");
         const dropped = new Set<number>();
         for (const [index, candidate] of noveltyCandidates.entries())
-          if ((await checkNovelty(candidate, index < runtimeNoveltyCallLimit)) === "VAZGEC")
+          if (
+            (await checkNovelty(
+              candidate,
+              index < runtimeNoveltyCallLimit,
+              Math.max(0, Math.min(runtimeNoveltyCallLimit, noveltyCandidates.length) - index - 1),
+            )) === "VAZGEC"
+          )
             dropped.add(candidate.sequence);
         if (dropped.size > 0) {
           decision = applyRuntimeNoveltyDrops(decision, dropped);

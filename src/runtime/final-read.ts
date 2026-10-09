@@ -44,6 +44,8 @@ export type RuntimeFinalReadCandidate = {
   topicTitle: string;
   body: string;
   units: RuntimeFinalReadUnit[];
+  /** Kaynaklı entry: yalnız son parça, o da kaynak doğrulamasının baktığı bir şey taşımıyorsa. */
+  lastUnitOnly: boolean;
 };
 
 /*
@@ -60,18 +62,25 @@ const protectedSpan =
   /\[\[[^\]\n]{2,100}\]\]|\(bkz:\s*[^)\n]{1,100}?\s*\)|“[^”]*”|"[^"]*"|«[^»]*»|https?:\/\/\S+/giu;
 
 /*
-  Alıntı sınırı güvenle bulunamayan gövde son okumaya girmez (Astra 2. tur): kapanmamış ya da
-  eşleşmeyen çift tırnak, ve tek kıvrık tırnakla açılan alıntı (’ Türkçede kesme işareti olarak da
+  Alıntı sınırı güvenle bulunamayan gövde son okumaya girmez (Astra 2. tur, Sol 6.1): yönlü
+  tırnaklar (“ ” ve « ») sırayla açılıp kapanmalı ve iç içe olmamalı; düz çift tırnak sayısı çift
+  olmalı. Tek kıvrık tırnakla açılan alıntı hiç kabul edilmez (’ Türkçede kesme işareti olarak da
   kullanıldığı için ‘…’ aralığı güvenle eşlenemez).
 */
 function quotesUnambiguous(body: string): boolean {
-  const count = (pattern: RegExp) => (body.match(pattern) ?? []).length;
-  return (
-    !body.includes("‘") &&
-    count(/“/gu) === count(/”/gu) &&
-    count(/«/gu) === count(/»/gu) &&
-    count(/"/gu) % 2 === 0
-  );
+  if (body.includes("‘") || (body.match(/"/gu) ?? []).length % 2 !== 0) return false;
+  const closing: Record<string, string> = { "“": "”", "«": "»" };
+  let open: string | null = null;
+  for (const char of body) {
+    if (char in closing) {
+      if (open !== null) return false;
+      open = closing[char]!;
+    } else if (char === "”" || char === "»") {
+      if (open !== char) return false;
+      open = null;
+    }
+  }
+  return open === null;
 }
 
 function protectedRanges(body: string): Array<[number, number]> {
@@ -104,14 +113,29 @@ function lockedUnit(text: string): boolean {
  * (yarıdan uzun, en az `runtimeFinalReadMinKeptWords` kelime) geçmiyorsa `null` döner; çağıran
  * gövdeyi olduğu gibi bırakır.
  */
+/*
+  Kaynaklı entry'de son parçayı kilitleyen işaretler: sayı ve atıf fiili. Kaynak doğrulaması
+  sayıyı, alıntıyı ve iddianın sahibini gövdede arar; bunları taşımayan son cümle genelde
+  "haber X'i vermiyor" türü çekince ya da özdeyiştir (9 Ekim yerel ölçüm: 33 kaynaklı entry'nin
+  7'sinde silindi; iki hakemde özdeyiş 4 → 1 ve 3 → 0, dolgu 4 → 2 ve 2 → 0).
+*/
+const sourceLockedUnit =
+  /\d|(?:^|[^\p{L}])(?:göre|aktardığı|aktarıyor|aktarılıyor|bildiriliyor|bildirdi|açıkladı|açıklıyor|açıklandı|belirtiyor|belirtildi|belirtiliyor|atfediliyor|dedi|diyor|söyledi)(?=$|[^\p{L}])/iu;
+
 export function applyRuntimeFinalRead(
   body: string,
   units: readonly RuntimeFinalReadUnit[],
   deleteNumbers: readonly number[],
+  lastUnitOnly = false,
 ): { body: string; removedUnitCount: number } | null {
   const remove = new Set(
     deleteNumbers.filter(
-      (number) => number >= 2 && number <= units.length && !lockedUnit(units[number - 1]!.text),
+      (number) =>
+        number >= 2 &&
+        number <= units.length &&
+        !lockedUnit(units[number - 1]!.text) &&
+        (!lastUnitOnly ||
+          (number === units.length && !sourceLockedUnit.test(units[number - 1]!.text))),
     ),
   );
   if (remove.size === 0 || remove.size >= units.length) return null;
@@ -165,10 +189,12 @@ export function runtimeFinalReadCandidates(
     const body = action.input.body;
     if (typeof body !== "string") return [];
     /*
-      Kaynaklı entry son okumaya girmez (Astra, 9 Ekim): kaynak doğrulaması alıntı, sayı ve atfı
-      gövdenin kendisinde arar; aradan cümle silmek doğrulanmış metni bozabilir.
+      Kaynaklı entry'de aradan cümle silinmez (Astra, 9 Ekim): kaynak doğrulaması alıntı, sayı ve
+      atfı gövdenin kendisinde arar. Yalnız son parça silinebilir (`sourceLockedUnit`).
     */
-    if (runtimeFinalReadSourceProvenance.has(action.provenance?.evidenceType ?? "")) return [];
+    const lastUnitOnly = runtimeFinalReadSourceProvenance.has(
+      action.provenance?.evidenceType ?? "",
+    );
     if (!quotesUnambiguous(body)) return [];
     const title =
       action.actionType === "CREATE_TOPIC_WITH_ENTRY"
@@ -185,6 +211,7 @@ export function runtimeFinalReadCandidates(
             topicTitle: typeof title === "string" ? title : "",
             body,
             units,
+            lastUnitOnly,
           },
         ];
   });

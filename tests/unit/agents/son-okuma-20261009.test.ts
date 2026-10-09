@@ -111,18 +111,36 @@ describe("son okuma adayları", () => {
     ]);
   });
 
-  it("kaynaklı entry'yi son okumaya almaz", () => {
-    const sourced = {
-      actions: [
-        {
-          sequence: 1,
-          actionType: "CREATE_ENTRY",
-          input: { topicId: "t1", body: "bir. iki." },
-          provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: [], shortRationale: "x" },
-        },
-      ],
-    } as unknown as RuntimeDecision;
-    expect(runtimeFinalReadCandidates(sourced, new Map())).toEqual([]);
+  it("kaynaklı entry'de yalnız sayı ve atıf taşımayan son parçayı siler", () => {
+    const sourced = (body: string) =>
+      ({
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            input: { topicId: "t1", body },
+            provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: [], shortRationale: "x" },
+          },
+        ],
+      }) as unknown as RuntimeDecision;
+    const head =
+      "bankanın kosgeb ile yaptığı iş birliği reel ekonomiyi ve üretim ile ticaret ekosistemini destekleyecek finansman çözümlerini çeşitlendirme çerçevesinde anlatılıyor, ayrıntı yok.";
+    const [candidate] = runtimeFinalReadCandidates(
+      sourced(
+        `${head} ara cümle burada duruyor. tutar verilmeden etkisini hesaplamak mümkün değil.`,
+      ),
+      new Map(),
+    );
+    expect(candidate?.lastUnitOnly).toBe(true);
+    const { body, units } = candidate!;
+    expect(applyRuntimeFinalRead(body, units, [2], true)).toBeNull();
+    expect(applyRuntimeFinalRead(body, units, [3], true)?.body).toBe(
+      `${head} ara cümle burada duruyor.`,
+    );
+    for (const tail of ["toplam 111 trilyon dolar.", "bakanlığa göre plan hazır."]) {
+      const [withTail] = runtimeFinalReadCandidates(sourced(`${head} ${tail}`), new Map());
+      expect(applyRuntimeFinalRead(withTail!.body, withTail!.units, [2], true)).toBeNull();
+    }
   });
 
   it("alıntı sınırı belirsiz gövdeyi son okumaya almaz, çok satırlı alıntıyı bölmez", () => {
@@ -134,6 +152,9 @@ describe("son okuma adayları", () => {
       "giriş cümlesi burada. “kapanmamış alıntı. sonra gelen cümle.",
       "giriş cümlesi burada. ‘işe giderken kitapları aldım. parayı vermedim.’ dedi.",
       'giriş cümlesi burada. "tek tırnak. ikinci cümle.',
+      "giriş cümlesi burada. ”eski sözün sonu. “sistem parayı aldı. geri ödemeyi yapmadı.",
+      "giriş cümlesi burada. » ters açılış. « sonra gelen cümle.",
+      "giriş cümlesi burada. “dış “iç” alıntı” bitti.",
     ])
       expect(runtimeFinalReadCandidates(decisionFor(body), new Map())).toEqual([]);
     const multiline = 'giriş cümlesi burada. "kitapları aldım.\n parayı vermedim." dedi.';
