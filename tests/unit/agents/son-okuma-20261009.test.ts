@@ -153,6 +153,21 @@ describe("son okuma parçaları", () => {
       ],
     } as unknown as RuntimeDecision;
     expect(runtimeFinalReadCandidates(statusWithDecoy, {})).toEqual([]);
+    const upper = {
+      actions: [
+        {
+          ...status.actions[0]!,
+          input: {
+            topicId: "t1",
+            body: (status.actions[0]!.input.body as string).replace("istifa etti", "ISTIFA ETTI"),
+          },
+        },
+      ],
+    } as unknown as RuntimeDecision;
+    expect(runtimeFinalReadCandidates(upper, {})).toEqual([]);
+    const plain =
+      "yeni kütüphane binasının açılış töreni, kitapların taşınması ve okuma salonlarının düzenlenmesiyle birlikte birkaç haftalık bir hazırlık gerektirdi ve mahalleli bunu merakla izledi. Açılış tarihi HENÜZ KESİNLEŞMEDİ.";
+    expect(applyRuntimeFinalRead(plain, runtimeFinalReadUnits(plain), [2])).toBeNull();
     for (const breakChar of ["\n", "\r\n"]) {
       const broken = {
         actions: [

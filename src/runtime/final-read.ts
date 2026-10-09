@@ -171,9 +171,25 @@ export function runtimeFinalReadUnits(body: string): RuntimeFinalReadUnit[] {
   henüz doğrulanmadı." ayrı cümle olduğunda sunucunun cümle bazlı çekince kontrolü önceki iddiayı
   çerçevelenmiş saymaz; silinince çekince sessizce kaybolurdu.
 */
+/*
+  Sunucunun çekince sözlüğü dar; son okuma ayrıca doğruluk bildiren her parçayı kilitler (Sol 6.1,
+  8. tur: "Bu bilgi henüz kesinleşmedi."). Büyük/küçük harf ve Türkçe küçültme fark etmez.
+*/
+const veracityHedge =
+  /(?:^|[^\p{L}])(?:henüz|hâlâ doğrulan|kesinleş|netleş|doğrulan|teyit|onaylanma|iddia|söylenti|rivayet|öne sür)/u;
+
+function containsVeracityHedge(text: string): boolean {
+  return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
+    veracityHedge.test(lower),
+  );
+}
+
 function lockedUnit(text: string): boolean {
   return (
-    text.includes("?") || protectedRanges(text).length > 0 || textContainsUncertaintyFrame(text)
+    text.includes("?") ||
+    protectedRanges(text).length > 0 ||
+    textContainsUncertaintyFrame(text) ||
+    containsVeracityHedge(text)
   );
 }
 

@@ -618,9 +618,13 @@ export function textContainsUncertaintyFrame(text: string): boolean {
  * bir anlamda geçen "belirsiz", istifa iddiasını çerçevelenmiş gösteriyordu.
  */
 export function textContainsSeriousClaimMarker(text: string): boolean {
-  // Cümlelere bölünmez, satır sonu dahil bütün boşluklar teke iner: "istifa\netti" de yakalanır (7. tur).
-  const whole = normalizedGroundingText(text.normalize("NFKC").replaceAll(/\s+/gu, " "));
-  return sentenceContainsSeriousCrimeMarker(whole) || sentenceStatesCurrentFact(whole);
+  /*
+    Cümlelere bölünmez, satır sonu dahil bütün boşluklar teke iner ("istifa\netti", 7. tur);
+    varsayılan ve Türkçe küçültme varyantlarının hepsi denenir ("ISTIFA ETTI", 8. tur).
+  */
+  return normalizedGroundingTextVariants(text.normalize("NFKC").replaceAll(/\s+/gu, " ")).some(
+    (whole) => sentenceContainsSeriousCrimeMarker(whole) || sentenceStatesCurrentFact(whole),
+  );
 }
 
 export function seriousFactualClaimRequiresStrongEvidence(body: string): boolean {
