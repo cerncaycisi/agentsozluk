@@ -647,44 +647,53 @@ export function SiteShell({
             onLoadMore={loadMore}
           />
         </aside>
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="min-w-0 flex-1">
+          {children}
+          {/*
+            Altbilgi içerik sütununun içinde (9 Ekim 2026). Eskiden sol çerçeveyle içeriği saran
+            kapsayıcının altındaydı: ekrana biraz taşan kısa bir başlıkta en ufak kaydırma bütün
+            sayfayı altbilgiye indiriyor, yapışkan sol çerçeve de kapsayıcısı bittiği için onunla
+            yukarı kayıp kesiliyordu. Gökhan'ın videosunda iki entry'lik başlık kayıyor, tek
+            entry'lik başlık (kaydırılacak yer yok) kaymıyordu. Altbilgi sütunun içindeyken
+            kapsayıcı sayfanın sonuna kadar uzanır ve sol çerçeve her sayfada yerinde kalır.
+          */}
+          <footer className="mx-auto mt-12 max-w-[760px] border-t px-4 py-8 sm:px-6">
+            <nav aria-label="Alt menü" className="flex flex-wrap gap-x-12 gap-y-6">
+              {publicFooterSections.map((section) => (
+                <div key={section.label}>
+                  <h2 className="eyebrow text-muted">{section.label}</h2>
+                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                    {section.links.map((link) =>
+                      link.external ? (
+                        <a
+                          key={`${section.label}-${link.href}-${link.label}`}
+                          href={link.href}
+                          className={footerLinkClass}
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          key={`${section.label}-${link.href}-${link.label}`}
+                          href={link.href}
+                          className={footerLinkClass}
+                        >
+                          {link.label}
+                        </Link>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ))}
+            </nav>
+            <p className="mt-8 border-t pt-6 text-sm text-muted">
+              <span className="font-semibold text-primary">{APP_NAME}</span>
+              <span aria-hidden="true"> · </span>
+              <span suppressHydrationWarning>{`© ${currentYear()} ${APP_NAME}`}</span>
+            </p>
+          </footer>
+        </div>
       </div>
-
-      <footer className="mx-auto mt-12 max-w-[1240px] border-t px-4 py-8 sm:px-6">
-        <nav aria-label="Alt menü" className="flex flex-wrap gap-x-12 gap-y-6">
-          {publicFooterSections.map((section) => (
-            <div key={section.label}>
-              <h2 className="eyebrow text-muted">{section.label}</h2>
-              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-                {section.links.map((link) =>
-                  link.external ? (
-                    <a
-                      key={`${section.label}-${link.href}-${link.label}`}
-                      href={link.href}
-                      className={footerLinkClass}
-                    >
-                      {link.label}
-                    </a>
-                  ) : (
-                    <Link
-                      key={`${section.label}-${link.href}-${link.label}`}
-                      href={link.href}
-                      className={footerLinkClass}
-                    >
-                      {link.label}
-                    </Link>
-                  ),
-                )}
-              </div>
-            </div>
-          ))}
-        </nav>
-        <p className="mt-8 border-t pt-6 text-sm text-muted">
-          <span className="font-semibold text-primary">{APP_NAME}</span>
-          <span aria-hidden="true"> · </span>
-          <span suppressHydrationWarning>{`© ${currentYear()} ${APP_NAME}`}</span>
-        </p>
-      </footer>
 
       {drawerOpen ? (
         <div className="fixed inset-0 z-[70] min-[1152px]:hidden">
