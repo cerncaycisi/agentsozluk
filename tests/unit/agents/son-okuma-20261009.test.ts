@@ -153,6 +153,23 @@ describe("son okuma parçaları", () => {
       ],
     } as unknown as RuntimeDecision;
     expect(runtimeFinalReadCandidates(statusWithDecoy, {})).toEqual([]);
+    for (const breakChar of ["\n", "\r\n"]) {
+      const broken = {
+        actions: [
+          {
+            ...status.actions[0]!,
+            input: {
+              topicId: "t1",
+              body: (status.actions[0]!.input.body as string).replace(
+                "istifa etti",
+                `istifa${breakChar}etti`,
+              ),
+            },
+          },
+        ],
+      } as unknown as RuntimeDecision;
+      expect(runtimeFinalReadCandidates(broken, {})).toEqual([]);
+    }
     const hedged =
       "yeni metro hattının açılış takvimi, ihale sürecindeki gecikmeler ve istasyonların bağlantı planı nedeniyle birkaç kez değişti ve vatandaşlar bunu takip etmekte zorlandı. Açılış tarihi henüz doğrulanmadı.";
     expect(applyRuntimeFinalRead(hedged, runtimeFinalReadUnits(hedged), [2])).toBeNull();
