@@ -221,9 +221,11 @@ describe("son okuma adayları", () => {
   } as unknown as RuntimeDecision;
 
   it("iki ya da daha fazla parçalı yeni entry'leri başlığıyla seçer", () => {
-    const titles = runtimeFinalReadTopicTitles({
-      readTopics: [{ id: "t1", title: "okunan başlık", entries: [] }],
-    });
+    expect(
+      runtimeFinalReadTopicTitles({
+        readTopics: [{ id: "t1", title: "okunan başlık", entries: [] }],
+      }).get("t1"),
+    ).toBe("okunan başlık");
     const candidates = runtimeFinalReadCandidates(decision, {
       readTopics: [{ id: "t1", title: "okunan başlık", entries: [] }],
     });
