@@ -594,6 +594,39 @@ function sentenceIsUncertaintyFramed(sentence: string): boolean {
   return uncertaintyFramePatterns.some((pattern) => pattern.test(sentence));
 }
 
+/**
+ * Çekincesiz ciddi iddia cümleleri (normalize edilmiş). Son okuma, silmeden sonra kalan her
+ * böyle cümlenin silmeden önce de aynen çekincesiz olduğunu doğrular (Sol 6.1, 9 Ekim):
+ * toplu bir boole, gövdenin başka yerinde zaten ciddi iddia varken yeni açılanı gizliyordu.
+ */
+export function unframedSeriousClaimSentences(body: string): string[] {
+  return groundingSentences(body).filter(
+    (sentence) =>
+      !sentenceIsUncertaintyFramed(sentence) &&
+      (sentenceContainsSeriousCrimeMarker(sentence) || sentenceStatesCurrentFact(sentence)),
+  );
+}
+
+/** Metinde doğruluk çekincesi (iddia, doğrulanmadı, belirsiz…) olan bir cümle var mı. */
+export function textContainsUncertaintyFrame(text: string): boolean {
+  return groundingSentences(text).some(sentenceIsUncertaintyFramed);
+}
+
+/**
+ * Metinde ciddi suç, güncel olay ya da kişi durumu işareti taşıyan bir cümle var mı; çekince
+ * çerçevesine bakılmaz. Son okuma bu gövdeleri hiç kısaltmaz (Sol 6.1, 6. tur): aynı cümlede başka
+ * bir anlamda geçen "belirsiz", istifa iddiasını çerçevelenmiş gösteriyordu.
+ */
+export function textContainsSeriousClaimMarker(text: string): boolean {
+  /*
+    Cümlelere bölünmez, satır sonu dahil bütün boşluklar teke iner ("istifa\netti", 7. tur);
+    varsayılan ve Türkçe küçültme varyantlarının hepsi denenir ("ISTIFA ETTI", 8. tur).
+  */
+  return normalizedGroundingTextVariants(text.normalize("NFKC").replaceAll(/\s+/gu, " ")).some(
+    (whole) => sentenceContainsSeriousCrimeMarker(whole) || sentenceStatesCurrentFact(whole),
+  );
+}
+
 export function seriousFactualClaimRequiresStrongEvidence(body: string): boolean {
   return groundingSentences(body).some(
     (sentence) =>

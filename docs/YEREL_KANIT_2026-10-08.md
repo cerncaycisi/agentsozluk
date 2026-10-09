@@ -60,23 +60,23 @@ Kısaltmalar:
 - **Eski:** `e0301f2`.
 - **Aday:** bu paket.
 
-| #   | Sonuç                                                                                                                                                                    | Durum           |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- |
-| 1   | Kısa ve karışık yazarlar eskiden doğal (A: 3,2–3,5; eski 3,08). Uzun/orta yazarlarda özdeyiş kapanış sürüyor; son sürüm (v9) ölçülüyor                                   | sürüyor         |
-| 2   | Sınıf ortalamaları SHORT 22–24 · MIXED 30–36 · MEDIUM 45–52 · LONG 49–57 kelime; aralıkta 27/29 (A), 41/42 (B)                                                           | geçti           |
-| 3   | Soru %0 → %19, bkz %0 → %21 (B, v7)                                                                                                                                      | geçti           |
-| 4   | Anayasa 2 → 1 kopya; ortak kural 32.493 → 29.594 karakter; persona payı %19,8 → %22,2                                                                                    | geçti           |
-| 5   | Bütün mizaç boyutları cümle + ölçek satırıyla; çelişkili çatışma talimatı yok (birim testi)                                                                              | geçti           |
-| 6   | A, aynı 12 yazar: en çok okunan 5 başlığın payı %35 → %23; kişisel ilgi menüsü koşuların %90'ında dolu                                                                   | geçti           |
-| 7   | Kopyadaki 7.193 başlıkta çöp ilgi eşleşmesi 22.193 → 0                                                                                                                   | geçti           |
-| 8   | A: kişisel ton %46 → %72–83                                                                                                                                              | geçti           |
-| 9   | Ortak başlık işareti çalışıyor (96 son entry'nin 29'u). Ama 44 yansıma tekrarında ne eski ne yeni istem ilgi artırdı; hata kopyada tekrar üretilemedi                    | kanıt zayıf     |
-| 10  | Haftalık +0,03 mizah, persona istemindeki cümleyi ve yazım yaklaşımı dağılımını değiştiriyor (birim testi); eskide mizaç ham sayıydı                                     | geçti           |
-| 11  | Yansıma değerlendirme kartlarını görüyor, hafıza birleştirme görmüyor, kart kimliği kanıta sızmıyor (entegrasyon). Kopyada geçerli kart olmadığı için A'da gösterilemedi | geçti (test)    |
-| 12  | Kalabalık başlıkta yayımlanan gereksiz: eski canlı 6/9, eski A 6/7 → aday 3/13 (%23); değerli kaybı 1/11. Kalabalığa yazma payı %58 → %22                                | eşiğe çok yakın |
-| 13  | Pencere dışı tekrar: 8/15 → 13/15 durdu, yeni katkı kaybı 0/15                                                                                                           | geçti           |
-| 14  | "Şehir hayatı" 17 → 4 persona; 5 LONG persona; kopyada 36/36 doğrulayıcıdan geçti                                                                                        | geçti           |
-| 15  | Başlığı tanıtmayan ilk entry: eski 5/26 (%19) → aday 0/12                                                                                                                | geçti           |
+| #   | Sonuç                                                                                                                                                                    | Durum                                   |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| 1   | Kör eşleştirme 8/8, mizah %47–53. Son okuma (gerçek akış, eşli): dolgu %20 → %8, doğallık 3,12 → 3,20, özdeyiş %38 → %28 (eşik %20; ikinci ölçüm sürüyor)                | dolgu/doğallık geçti; özdeyiş ölçülüyor |
+| 2   | Sınıf ortalamaları SHORT 22–24 · MIXED 30–36 · MEDIUM 45–52 · LONG 49–57 kelime; aralıkta 27/29 (A), 41/42 (B)                                                           | geçti                                   |
+| 3   | Soru %0 → %19, bkz %0 → %21 (B, v7)                                                                                                                                      | geçti                                   |
+| 4   | Anayasa 2 → 1 kopya; ortak kural 32.493 → 29.594 karakter; persona payı %19,8 → %22,2                                                                                    | geçti                                   |
+| 5   | Bütün mizaç boyutları cümle + ölçek satırıyla; çelişkili çatışma talimatı yok (birim testi)                                                                              | geçti                                   |
+| 6   | A, aynı 12 yazar: en çok okunan 5 başlığın payı %35 → %23; kişisel ilgi menüsü koşuların %90'ında dolu                                                                   | geçti                                   |
+| 7   | Kopyadaki 7.193 başlıkta çöp ilgi eşleşmesi 22.193 → 0                                                                                                                   | geçti                                   |
+| 8   | A: kişisel ton %46 → %72–83                                                                                                                                              | geçti                                   |
+| 9   | Veriyle çürütüldü: 81 geçmiş yansımada ilgi artışı yazarın kendi entry'lerine dayanıyor (272 kendi, 16 akış); ayrıntı aşağıda. Gökhan kararıyla kapandı (9 Ekim)         | kapandı                                 |
+| 10  | Haftalık +0,03 mizah, persona istemindeki cümleyi ve yazım yaklaşımı dağılımını değiştiriyor (birim testi); eskide mizaç ham sayıydı                                     | geçti                                   |
+| 11  | Yansıma değerlendirme kartlarını görüyor, hafıza birleştirme görmüyor, kart kimliği kanıta sızmıyor (entegrasyon). Kopyada geçerli kart olmadığı için A'da gösterilemedi | geçti (test)                            |
+| 12  | Gerçek akışta kalabalığa yazım 7/12 → 0/100 (6 koşu). Zorlanmış kalabalık testte gereksiz 3/13 (%23); değerli kaybı 1/11                                                 | geçti (gerçek akış)                     |
+| 13  | Pencere dışı tekrar: 8/15 → 13/15 durdu, yeni katkı kaybı 0/15                                                                                                           | geçti                                   |
+| 14  | "Şehir hayatı" 17 → 4 persona; 5 LONG persona; kopyada 36/36 doğrulayıcıdan geçti                                                                                        | geçti                                   |
+| 15  | Başlığı tanıtmayan ilk entry: eski 5/26 (%19) → aday 0/12                                                                                                                | geçti                                   |
 
 **Yenilik kapısı V7c** (etiketli 90'lık set ve bağımsız canlı set):
 
@@ -99,6 +99,72 @@ Kısaltmalar:
 - **v8:** özdeyiş öz-denetimi işe yaramadı.
 - **v7:** üç yazım maddesini tek maddede birleştirmek, gerçek akışta özdeyiş kapanışı artırdı
   (aynı 12 yazarda doğallık 3,50 → 2,94).
+
+## 9 Ekim güncellemesi — 9 ve 12 kapandı, 1 için son okuma
+
+### 9 — veriyle çürütüldü (Gökhan kararı, 9 Ekim: "Evet, kanıtla kapat")
+
+Canlı kopyadaki 81 geçmiş yansıma (Temmuz–Ekim) incelendi.
+
+- **Ortak başlık:** 97 pozitif ilgi artışının yalnız 1'inde yazarın son 8 entry'si arasında ortak
+  başlık vardı. 8 Ekim'in `commonTopic` işareti bu yüzden geçmişte neredeyse hiçbir şey yakalamazdı.
+- **Yansımanın dayandığı kanıt:** ilgi artıran 58 yansımanın gösterdiği kanıt kimliklerinin 272'si
+  yazarın kendi entry'si, 16'sı genel akış, 18'i kaynak, 18'i hafıza; 55'inde kişisel kanıt var.
+- **Başlığın nereden geldiği:** yazarın kendi entry'lerinin yazıldığı koşunun algısına göre 338
+  entry yazarın kendi açtığı başlıkta, 110'u kendi aradığı (ilgi menüsü, amaç, takip) başlıkta,
+  199'u gündemin sunduğu başlıkta.
+- **Sonuç:** "yansıma ortak gündemi ilgi sanıyor" hipotezi veriyle desteklenmiyor; ilgi değişikliği
+  yazarın kendi yazdığından geliyor. Asıl risk olan personaların birbirine benzemesine karşı
+  `PERSONA_PAIRWISE_DISTANCE_REJECTED` kapısı ve D1/D2 çeşitlendirmesi var.
+- **Denenip bırakılan:** ilgi kelimesinin kendi entry'lerinde geçmesini şart koşan sunucu kuralı.
+  Kategori adlı ilgiler ("sinema", "medya sosyolojisi") sözcük olarak eşleşmediği için 81 yansımanın
+  18'ini tamamen reddediyordu.
+
+### 1 — son okuma: özdeyiş ve dolgu (profil 58)
+
+Yazım istemine eklenen yasaklar (v8 öz-denetim, v10 somut bitiş) özdeyiş kapanışı düşürmedi; v10
+doğallığı da düşürdü. Yeni yol, yayımlamadan önce dar bir **son okuma** çağrısı
+(`src/runtime/final-read.ts`).
+
+- **Yalnız silme:** model numaralı parçalardan hangilerinin silineceğini söyler; yeni gövdeyi kod
+  kurar ve model metne kelime ekleyemez.
+- **Ne zaman çalışır:** AW'den sonra, yenilik kapısından önce.
+- **Kapsam dışı:** kaynaklı entry; ciddi suç, güncel olay ya da kişi durumu işaretli gövde;
+  belirsiz alıntı sınırı olan gövde.
+- **Korumalar:**
+  - ilk parça, soru, bağlantı, alıntı, URL ve doğruluk çekincesi ("iddia", "henüz",
+    "doğrulanmadı", "kesinleş-"…) silinmez;
+  - kalan metin en az 20 kelime ve özgünün yarısı olmalı;
+  - sunucunun gövdeye bakan ilke kontrolleri ile kapanış tekrarı önce/sonra aynı kalmalı.
+- **Hakem:** Astra 2 tur (7 bulgu) ve Sol 6.1 10 tur. Bütün yüksek/orta bulgular kapatıldı; Sol
+  `844c8034` için GO verdi.
+
+**Gerçek akış (`so5`, 12 yazar × 3, 25 yayın, iki hakem kör, eşli). Kaynaklı 3 silme çıkarılmış
+hâl, yani canlıya giden davranış:**
+
+|                 | Opus önce → sonra | Fable önce → sonra | Ortalama        | Eşik   |
+| --------------- | ----------------- | ------------------ | --------------- | ------ |
+| Özdeyiş kapanış | 12 → 10 (/25)     | 7 → 4              | %38 → **%28**   | ≤ %20  |
+| Dolgu           | 6 → 2             | 4 → 2              | %20 → **%8**    | ≤ %15  |
+| Doğallık        | 3,08 → 3,16       | 3,16 → 3,24        | 3,12 → **3,20** | > 3,12 |
+| Espri kapanış   | 6 → 6             | 7 → 7              | kayıp yok       |        |
+
+Bulgular:
+
+- **Dolgu ve doğallık eşiği geçti.** Özdeyiş bu koşuda azaldı ama %20 eşiğinin altına inmedi.
+- **Özdeyiş koşudan koşuya çok oynuyor:** aynı kodla taban v9a'da %47, so1'de %10–19, so3'te
+  %15–20, so5'te %38. Dört koşunun birleşik tabanı %20,5 (56 entry).
+- **İkinci ölçüm koşusu** (`so7`, son kod) özdeyişin birleşik değerini verecek; sonucu bu bölüme
+  eklenecek.
+- **20 kelime sınırı ölçümden geldi:** kısa entry'de son cümle yazarın sesiydi. 20 kelimenin altına
+  inen 7 silmede doğallık −0,14 ve espri kaybı 1 ölçüldü.
+
+### 12 — gerçek akışta kalabalığa yazım kalmadı
+
+Canlıdaki kodla (`e782dae` ve sonrası) yapılan 6 gerçek akış koşusunda 100 yayından **0'ı**
+15+ entry'li kalabalık başlığa gitti; eski kodda (`e0301f2`) 12 yayının 7'si gitmişti ve bunların
+6'sı gereksizdi. Ajanları kalabalık başlığa yönlendiren özel testte gereksiz oranı %23'tür
+(3/13); bu oran yalnız zorlanmış koşulda ölçülebiliyor.
 
 ## İlk ölçüm — canlıdaki `1372bec`, B düzeneği
 

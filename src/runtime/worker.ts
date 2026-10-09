@@ -97,6 +97,15 @@ import {
   type RuntimeNoveltyCandidate,
 } from "@/runtime/novelty-gate";
 import {
+  applyRuntimeFinalRead,
+  applyRuntimeFinalReadBodies,
+  runtimeFinalReadCallLimit,
+  runtimeFinalReadCandidates,
+  runtimeFinalReadVerdictJsonSchema,
+  runtimeFinalReadVerdictSchema,
+  type RuntimeFinalReadCandidate,
+} from "@/runtime/final-read";
+import {
   applyRuntimeActionWorthinessVerdict,
   parseRuntimeActionWorthinessVerdict,
   runtimeActionWorthinessVerdictJsonSchema,
@@ -944,6 +953,14 @@ export function buildActionWorthinessPrompt(
 const RUNTIME_NOVELTY_MAX_TIMEOUT_MS = 120_000;
 const RUNTIME_NOVELTY_EXECUTION_RESERVE_MS = 30_000;
 const RUNTIME_NOVELTY_MIN_TIMEOUT_MS = 20_000;
+/* Son okuma yeniliğin süre payını ve alt sınırını kullanır; çağrı daha kısa olduğu için tavanı düşük. */
+const RUNTIME_FINAL_READ_MAX_TIMEOUT_MS = 90_000;
+/*
+  Sonra gelecek her yenilik denetimine bırakılan süre. Hem son okuma hem önceki yenilik çağrısı
+  bunu düşer; yoksa ikinci denetim sürenin bitmesiyle atlanıp taslak denetimsiz yürütülüyordu
+  (Sol 6.1, 9 Ekim).
+*/
+const RUNTIME_NOVELTY_CALL_RESERVE_MS = 2 * RUNTIME_NOVELTY_MIN_TIMEOUT_MS;
 
 // Plain-text bağlam: etiket kapatan karakter veri içinden gelemesin.
 function noveltyText(value: string): string {
@@ -969,6 +986,18 @@ export function buildNoveltyPrompt(candidate: RuntimeNoveltyCandidate): string {
     "",
     "Taslağın:",
     noveltyText(candidate.draft),
+    runtimePromptScaffold.untrustedClosing,
+  ].join("\n");
+}
+
+export function buildFinalReadPrompt(candidate: RuntimeFinalReadCandidate): string {
+  return [
+    ...runtimePromptScaffold.finalReadInstructions,
+    "",
+    runtimePromptScaffold.untrustedOpening,
+    `Başlık: ${noveltyText(candidate.topicTitle)}`,
+    "Parçalar:",
+    ...candidate.units.map(({ text }, index) => `${index + 1}. ${noveltyText(text)}`),
     runtimePromptScaffold.untrustedClosing,
   ].join("\n");
 }
@@ -1510,6 +1539,15 @@ export class AgentRuntimeWorker {
       failedOpenCount: number;
       skippedCount: number;
     } | null = null;
+    /* Son okumanın ne yaptığı — bkz `runtime-schemas.ts`, `finalRead`. */
+    let finalRead: {
+      candidateCount: number;
+      checkedCount: number;
+      editedCount: number;
+      removedUnitCount: number;
+      failedOpenCount: number;
+      skippedCount: number;
+    } | null = null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
@@ -1955,6 +1993,7 @@ export class AgentRuntimeWorker {
       const checkNovelty = async (
         candidate: RuntimeNoveltyCandidate,
         allowed: boolean,
+        laterCalls = 0,
       ): Promise<"YAYIMLA" | "VAZGEC" | null> => {
         const stats = noveltyStats();
         stats.candidateCount += 1;
@@ -1962,7 +2001,9 @@ export class AgentRuntimeWorker {
         deadline.throwIfStopped();
         const timeoutMs = Math.min(
           RUNTIME_NOVELTY_MAX_TIMEOUT_MS,
-          deadline.remainingMs() - RUNTIME_NOVELTY_EXECUTION_RESERVE_MS,
+          deadline.remainingMs() -
+            RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
+            laterCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
         );
         if (!allowed || timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS) {
           stats.skippedCount += 1;
@@ -2002,6 +2043,100 @@ export class AgentRuntimeWorker {
           return null;
         }
       };
+      /*
+        Son okuma: AW'den geçen her yeni entry gövdesi yalnız parça silen dar bir çağrıdan geçer
+        (`src/runtime/final-read.ts`). Yeni gövdeyi model değil bu kod kurar; hata ya da süre
+        yetmezse gövde aynen kalır ve sayılır. Yenilik kapısından ÖNCE çalışır: kapı yayımlanacak
+        son gövdeye bakmalı (Astra, 9 Ekim). Koşu bütçesinde yeniliğin iki çağrısına ve içerik
+        onarımına yer bırakılır; son okuma onarım sayacına girmez.
+      */
+      const finalReadCandidates = noveltyProvider
+        ? runtimeFinalReadCandidates(decision, context.perception)
+        : [];
+      if (finalReadCandidates.length > 0) {
+        await enterPhase("VALIDATING");
+        const stats = (finalRead ??= {
+          candidateCount: 0,
+          checkedCount: 0,
+          editedCount: 0,
+          removedUnitCount: 0,
+          failedOpenCount: 0,
+          skippedCount: 0,
+        });
+        const bodies = new Map<number, string>();
+        /*
+          Bekleyen yenilik denetimleri son okumadan önce bilinir: aday kümesi gövdeye değil
+          hedefe bağlıdır. Süre ve çağrı payı önce onlara ayrılır (Astra 2. tur).
+        */
+        const pendingNoveltyCalls = Math.min(
+          runtimeNoveltyCallLimit,
+          runtimeNoveltyCandidates(decision, context.perception).length,
+        );
+        for (const [index, candidate] of finalReadCandidates.entries()) {
+          stats.candidateCount += 1;
+          await heartbeat();
+          deadline.throwIfStopped();
+          const timeoutMs = Math.min(
+            RUNTIME_FINAL_READ_MAX_TIMEOUT_MS,
+            deadline.remainingMs() -
+              RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
+              pendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
+          );
+          if (
+            index >= runtimeFinalReadCallLimit ||
+            /*
+              Sonra gelen yenilik çağrılarına, içerik onarımına ve onarılan gövdenin yenilik
+              denetimine yer kalır.
+            */
+            codexIntervals.length >= runtimeCodexInvocationLimit - runtimeNoveltyCallLimit - 2 ||
+            timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS
+          ) {
+            stats.skippedCount += 1;
+            continue;
+          }
+          try {
+            const finalReadResult = await invokeCodex(
+              {
+                runId,
+                prompt: buildFinalReadPrompt(candidate),
+                outputSchema: runtimeFinalReadVerdictJsonSchema,
+                timeoutMs,
+                debugRetentionHours: context.run.debugRetentionHours,
+                signal: deadline.signal,
+              },
+              "FINAL_READ",
+              noveltyProvider,
+            );
+            providerResult = {
+              ...finalReadResult,
+              durationMs: (providerResult?.durationMs ?? 0) + finalReadResult.durationMs,
+            };
+            const verdict = runtimeFinalReadVerdictSchema.parse(finalReadResult.output);
+            stats.checkedCount += 1;
+            const trimmed = applyRuntimeFinalRead(
+              candidate.body,
+              candidate.units,
+              verdict.sil,
+              candidate,
+            );
+            if (trimmed) {
+              bodies.set(candidate.sequence, trimmed.body);
+              stats.editedCount += 1;
+              stats.removedUnitCount += trimmed.removedUnitCount;
+            }
+          } catch (rawFinalReadError) {
+            const finalReadError = deadline.normalizeError(rawFinalReadError);
+            if (finalReadError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+              throw finalReadError;
+            stats.failedOpenCount += 1;
+            this.#options.onSafeEvent?.({ level: "error", code: "FINAL_READ_FAILED_OPEN", runId });
+          }
+        }
+        if (bodies.size > 0) {
+          decision = applyRuntimeFinalReadBodies(decision, bodies);
+          this.#options.onSafeEvent?.({ level: "info", code: "FINAL_READ_TRIMMED", runId });
+        }
+      }
       const noveltyCandidates = noveltyProvider
         ? runtimeNoveltyCandidates(decision, context.perception)
         : [];
@@ -2009,7 +2144,13 @@ export class AgentRuntimeWorker {
         await enterPhase("VALIDATING");
         const dropped = new Set<number>();
         for (const [index, candidate] of noveltyCandidates.entries())
-          if ((await checkNovelty(candidate, index < runtimeNoveltyCallLimit)) === "VAZGEC")
+          if (
+            (await checkNovelty(
+              candidate,
+              index < runtimeNoveltyCallLimit,
+              Math.max(0, Math.min(runtimeNoveltyCallLimit, noveltyCandidates.length) - index - 1),
+            )) === "VAZGEC"
+          )
             dropped.add(candidate.sequence);
         if (dropped.size > 0) {
           decision = applyRuntimeNoveltyDrops(decision, dropped);
@@ -2069,7 +2210,7 @@ export class AgentRuntimeWorker {
           kalite kaybı hem deney karıştırıcısıydı (Sol hakem turu).
         */
         const decisionPhaseCalls = codexIntervals.filter(
-          ({ phase }) => phase !== "BROWSE" && phase !== "NOVELTY",
+          ({ phase }) => phase !== "BROWSE" && phase !== "NOVELTY" && phase !== "FINAL_READ",
         ).length;
         if (repairableRejection && !contentRepairAttempted && decisionPhaseCalls < 3) {
           contentRepairAttempted = true;
@@ -2292,6 +2433,7 @@ export class AgentRuntimeWorker {
             ...(decisionRepair ? { decisionRepair } : {}),
             ...(actionWorthiness ? { actionWorthiness } : {}),
             ...(novelty ? { novelty } : {}),
+            ...(finalRead ? { finalRead } : {}),
             ...providerResult.hostMetrics,
           },
           performanceMetrics: {
@@ -2375,6 +2517,7 @@ export class AgentRuntimeWorker {
               ...(decisionRepair ? { decisionRepair } : {}),
               ...(actionWorthiness ? { actionWorthiness } : {}),
               ...(novelty ? { novelty } : {}),
+              ...(finalRead ? { finalRead } : {}),
               /*
                 Başarısızlık kaydına DÜŞEN çağrının host metriği yazılmalı.
                 Eskiden `providerResult?.hostMetrics` yazılıyordu — o bir

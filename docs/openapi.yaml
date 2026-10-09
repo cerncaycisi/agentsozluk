@@ -4244,7 +4244,16 @@ components:
         durationMs: { type: integer, minimum: 0, maximum: 86400000 }
         phase:
           type: string
-          enum: [BROWSE, DECISION, DECISION_REPAIR, ACTION_WORTHINESS, CONTENT_REPAIR, NOVELTY]
+          enum:
+            [
+              BROWSE,
+              DECISION,
+              DECISION_REPAIR,
+              ACTION_WORTHINESS,
+              CONTENT_REPAIR,
+              NOVELTY,
+              FINAL_READ,
+            ]
         providerSafeCode:
           type: string
           description: Yalnız kapalı sağlayıcı hata sözlüğü; ham hata veya stderr saklanmaz. Koşunun aşama kodunu değiştirmez.
@@ -4369,6 +4378,24 @@ components:
             - skippedCount
           additionalProperties: false
           description: Yenilik kapısının aday, denetlenen, çıkarılan ve denetimsiz geçen sayıları.
+        finalRead:
+          type: object
+          properties:
+            candidateCount: { type: integer, minimum: 0, maximum: 100 }
+            checkedCount: { type: integer, minimum: 0, maximum: 100 }
+            editedCount: { type: integer, minimum: 0, maximum: 100 }
+            removedUnitCount: { type: integer, minimum: 0, maximum: 1000 }
+            failedOpenCount: { type: integer, minimum: 0, maximum: 100 }
+            skippedCount: { type: integer, minimum: 0, maximum: 100 }
+          required:
+            - candidateCount
+            - checkedCount
+            - editedCount
+            - removedUnitCount
+            - failedOpenCount
+            - skippedCount
+          additionalProperties: false
+          description: Son okumanın aday, okunan, kısaltılan, silinen parça ve okunmadan geçen sayıları.
         browseExperiment:
           type: object
           properties:
