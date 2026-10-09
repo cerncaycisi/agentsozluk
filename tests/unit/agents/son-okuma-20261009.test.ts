@@ -3,6 +3,7 @@ import {
   applyRuntimeFinalRead,
   applyRuntimeFinalReadBodies,
   runtimeFinalReadCandidates,
+  runtimeFinalReadMinKeptWords,
   runtimeFinalReadTopicTitles,
   runtimeFinalReadUnits,
   runtimeFinalReadVerdictSchema,
@@ -24,21 +25,30 @@ describe("son okuma parçaları", () => {
     ]);
   });
 
+  const planBody =
+    "haftalık yemek planı pazartesi günkü hevesle cuma akşamki yorgunluğu aynı mutfağa sığdırmaya çalışır.  artan yemeği ertesi güne bırakmak planı bozmaz, tersine planı kurtaran tek hamledir. plan biraz da sınavdır.";
+  const planKept =
+    "haftalık yemek planı pazartesi günkü hevesle cuma akşamki yorgunluğu aynı mutfağa sığdırmaya çalışır.  artan yemeği ertesi güne bırakmak planı bozmaz, tersine planı kurtaran tek hamledir.";
+
   it("silinmeyen parçaları özgün ayraçlarıyla yeniden kurar", () => {
-    const body = "yemek planı hevesle başlar.  artan yemek planı kurtarır. plan biraz da sınavdır.";
-    const units = runtimeFinalReadUnits(body);
-    expect(applyRuntimeFinalRead(body, units, [3])).toEqual({
-      body: "yemek planı hevesle başlar.  artan yemek planı kurtarır.",
+    expect(applyRuntimeFinalRead(planBody, runtimeFinalReadUnits(planBody), [3])).toEqual({
+      body: planKept,
       removedUnitCount: 1,
     });
   });
 
   it("noktalı virgülle biten son parçayı noktayla kapatır", () => {
-    const longer =
-      "çamaşırları yıkamak kadar katlamak da planın parçası, kimin neyi katlayacağı belli değil. makine bitince evde küçük bir kurul toplanıyor; kurul biraz da aile meclisidir.";
-    expect(applyRuntimeFinalRead(longer, runtimeFinalReadUnits(longer), [3])?.body).toBe(
-      "çamaşırları yıkamak kadar katlamak da planın parçası, kimin neyi katlayacağı belli değil. makine bitince evde küçük bir kurul toplanıyor.",
+    const body = `${planBody.slice(0, -"plan biraz da sınavdır.".length)}evde küçük bir kurul toplanıyor; kurul biraz da aile meclisidir.`;
+    expect(applyRuntimeFinalRead(body, runtimeFinalReadUnits(body), [4])?.body).toBe(
+      `${planKept} evde küçük bir kurul toplanıyor.`,
     );
+  });
+
+  it("silmeden sonra 20 kelimeden az kalıyorsa dokunmaz", () => {
+    expect(runtimeFinalReadMinKeptWords).toBe(20);
+    const body =
+      "bozcaada'da ekoloji belgeselleri gösteren uluslararası bir festival. farklı coğrafyalardan filmleri aynı programa topluyor; ekoloji burada broşür köşesi değil, filmin kendisi.";
+    expect(applyRuntimeFinalRead(body, runtimeFinalReadUnits(body), [3])).toBeNull();
   });
 
   it("ilk parçayı, soruyu, bkz'yi ve aralık dışı numaraları silmez", () => {

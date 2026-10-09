@@ -13,9 +13,16 @@ import type { RuntimeDecision } from "@/runtime/output";
   3,56 → 3,56 (docs/YEREL_KANIT_2026-10-08.md).
 
   Korumalar deterministiktir: ilk parça, soru ve (bkz: …) taşıyan parça silinmez; bütün
-  parçalar silinemez; kalan metin özgün gövdenin yarısından kısa olamaz. Hata, geçersiz çıktı
+  parçalar silinemez; kalan metin özgün gövdenin yarısından ve 20 kelimeden kısa olamaz. Hata, geçersiz çıktı
   ya da yetersiz süre gövdeyi olduğu gibi bırakır ve sayılır.
 */
+
+/*
+  Silmeden sonra en az bu kadar kelime kalmalı. Kısa entry'de son cümle çoğu zaman yazarın sesidir:
+  eşli kör okumada kalan metin 20 kelimenin altına düşen 7 silmede doğallık −0,14, espri kaybı 1,
+  özdeyiş kazancı 0,5'ti; 20 ve üstünde kalan 33 silmede doğallık +0,12…+0,27 ve özdeyiş kazancı 8.
+*/
+export const runtimeFinalReadMinKeptWords = 20;
 
 /** Koşu başına en fazla bu kadar son okuma çağrısı; fazlası okunmadan yayımlanır ve sayılır. */
 export const runtimeFinalReadCallLimit = 2;
@@ -64,7 +71,8 @@ function lockedUnit(text: string): boolean {
 /**
  * Silinecek parça numaralarını (1 tabanlı) uygular. Korunan, aralık dışı ya da ilk parçayı
  * hedefleyen numaralar yok sayılır. Hiçbir şey silinmiyorsa ya da kalan metin korumaları
- * geçmiyorsa `null` döner; çağıran gövdeyi olduğu gibi bırakır.
+ * (yarıdan uzun, en az `runtimeFinalReadMinKeptWords` kelime) geçmiyorsa `null` döner; çağıran
+ * gövdeyi olduğu gibi bırakır.
  */
 export function applyRuntimeFinalRead(
   body: string,
@@ -83,7 +91,9 @@ export function applyRuntimeFinalRead(
     .join("")
     .trimEnd();
   if (text.endsWith(";") || text.endsWith(",")) text = `${text.slice(0, -1)}.`;
-  return text.length * 2 < body.length ? null : { body: text, removedUnitCount: remove.size };
+  if (text.length * 2 < body.length) return null;
+  if (text.split(/\s+/u).filter(Boolean).length < runtimeFinalReadMinKeptWords) return null;
+  return { body: text, removedUnitCount: remove.size };
 }
 
 function record(value: unknown): Record<string, unknown> | null {
