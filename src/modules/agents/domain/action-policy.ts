@@ -607,6 +607,16 @@ export function unframedSeriousClaimSentences(body: string): string[] {
   );
 }
 
+/** Metinde doğruluk çekincesi (iddia, doğrulanmadı, belirsiz…) olan bir cümle var mı. */
+export function textContainsUncertaintyFrame(text: string): boolean {
+  return groundingSentences(text).some(sentenceIsUncertaintyFramed);
+}
+
+/** Metinde ciddi suç işareti (rüşvet, tutuklandı…) taşıyan bir cümle var mı. */
+export function textContainsSeriousCrimeMarker(text: string): boolean {
+  return groundingSentences(text).some(sentenceContainsSeriousCrimeMarker);
+}
+
 export function seriousFactualClaimRequiresStrongEvidence(body: string): boolean {
   return groundingSentences(body).some(
     (sentence) =>

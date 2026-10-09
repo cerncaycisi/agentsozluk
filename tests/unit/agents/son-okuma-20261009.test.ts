@@ -115,6 +115,25 @@ describe("son okuma parçaları", () => {
     ).toBeNull();
   });
 
+  it("ciddi suç isnadı taşıyan gövdeyi aday yapmaz, doğruluk çekincesini hiç silmez", () => {
+    const crime =
+      "Belediyenin ulaşım ihalesinde müdür şirketten rüşvet aldı ve kamu denetimini devre dışı bırakmak için sözleşmenin mali kontrol maddelerini bilerek çıkardı. Ancak bu iddia henüz doğrulanmadı.";
+    const decision = {
+      actions: [
+        {
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          input: { topicId: "t1", body: crime },
+          provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: [], shortRationale: "x" },
+        },
+      ],
+    } as unknown as RuntimeDecision;
+    expect(runtimeFinalReadCandidates(decision, {})).toEqual([]);
+    const hedged =
+      "yeni metro hattının açılış takvimi, ihale sürecindeki gecikmeler ve istasyonların bağlantı planı nedeniyle birkaç kez değişti ve vatandaşlar bunu takip etmekte zorlandı. Açılış tarihi henüz doğrulanmadı.";
+    expect(applyRuntimeFinalRead(hedged, runtimeFinalReadUnits(hedged), [2])).toBeNull();
+  });
+
   it("NFKC ile tırnağa dönüşen karakter taşıyan gövdeyi aday yapmaz", () => {
     const body =
       "Bir metnin bellekte bıraktığı iz, kelimelerin sözlükteki anlamından çok aralarındaki ritme ve okurun dikkatine bağlıdır. ＂Güneş her sabah aynı pencereye vurur. Rüzgâr başka sokaklardan gelir.＂";

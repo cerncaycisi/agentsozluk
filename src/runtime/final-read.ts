@@ -6,6 +6,8 @@ import {
 import {
   hasUnrecordedOfflineFirstPersonClaim,
   repeatedEntryFraming,
+  textContainsSeriousCrimeMarker,
+  textContainsUncertaintyFrame,
   unframedSeriousClaimSentences,
   userEntryContainsHighRiskReproduction,
 } from "@/modules/agents/domain/action-policy";
@@ -164,8 +166,15 @@ export function runtimeFinalReadUnits(body: string): RuntimeFinalReadUnit[] {
   return units.filter(({ text }) => text.trim().length > 0);
 }
 
+/*
+  Doğruluk çekincesi taşıyan parça hiçbir entry'de silinmez (Sol 6.1, 4. tur): "Ancak bu iddia
+  henüz doğrulanmadı." ayrı cümle olduğunda sunucunun cümle bazlı çekince kontrolü önceki iddiayı
+  çerçevelenmiş saymaz; silinince çekince sessizce kaybolurdu.
+*/
 function lockedUnit(text: string): boolean {
-  return text.includes("?") || protectedRanges(text).length > 0;
+  return (
+    text.includes("?") || protectedRanges(text).length > 0 || textContainsUncertaintyFrame(text)
+  );
 }
 
 /**
@@ -275,6 +284,8 @@ export function runtimeFinalReadCandidates(
       action.provenance?.evidenceType ?? "",
     );
     if (!quotesUnambiguous(body)) return [];
+    // Ciddi suç isnadı taşıyan entry son okumaya hiç girmez (Sol 6.1, 4. tur).
+    if (textContainsSeriousCrimeMarker(body)) return [];
     const title =
       action.actionType === "CREATE_TOPIC_WITH_ENTRY"
         ? action.input.title
