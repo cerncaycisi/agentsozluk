@@ -5,8 +5,8 @@ import { useThemePreference } from "@/lib/theme/use-theme-preference";
 
 /**
  * Başlıktaki tema düğmesi: iki durum, güneş ve ay. Üçüncü bir "sistem" ikonu
- * yok — kullanıcı düğmeye hiç dokunmadıysa site zaten işletim sistemini takip
- * ediyor, sisteme geri dönüş ise ayarlar sayfasındaki seçenekte.
+ * yok — kullanıcı düğmeye hiç dokunmadıysa site koyu açılır (9 Ekim 2026 varsayılanı);
+ * işletim sistemini takip etmek ayarlar sayfasındaki seçenekte.
  *
  * İkon mevcut durumu gösterir (koyu tema → ay), sonraki eylemi değil; sitenin
  * geri kalanındaki durum ikonlarıyla aynı okuma.

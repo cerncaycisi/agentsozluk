@@ -265,6 +265,16 @@ html {
   scroll-behavior: smooth;
 }
 
+/*
+  Sol çerçeveden başlığa tıklayınca sayfa aşağı kayıyordu (9 Ekim 2026): Next.js gezinme
+  sonrası `main#ana-icerik`e (tabIndex=-1) odak veriyor ve tarayıcı onu görünüm alanının
+  tepesine hizalıyordu; içerik yapışkan başlığın altında kalıyordu. Kenar çubuğunun
+  `top-28` payı kadar kaydırma payı, odak kaydırmasını sayfanın tepesinde tutar.
+*/
+#ana-icerik {
+  scroll-margin-top: 7rem;
+}
+
 body {
   min-height: 100vh;
   background: rgb(var(--page));
