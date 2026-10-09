@@ -1,8 +1,12 @@
 import { z } from "zod";
-import { constitutionalEntryWritingIssue } from "@/lib/content/constitution-writing-policy";
+import {
+  constitutionalEntryWritingIssue,
+  constitutionalTopicCreationIssue,
+} from "@/lib/content/constitution-writing-policy";
 import {
   hasUnrecordedOfflineFirstPersonClaim,
-  seriousFactualClaimRequiresStrongEvidence,
+  repeatedEntryFraming,
+  unframedSeriousClaimSentences,
   userEntryContainsHighRiskReproduction,
 } from "@/modules/agents/domain/action-policy";
 import type { RuntimeDecision } from "@/runtime/output";
@@ -52,7 +56,19 @@ export type RuntimeFinalReadCandidate = {
   units: RuntimeFinalReadUnit[];
   /** Kaynaklı entry: yalnız son parça, o da kaynak doğrulamasının baktığı bir şey taşımıyorsa. */
   lastUnitOnly: boolean;
+  /** Yeni başlık açan entry: başlık anayasası gövdeyle birlikte denetlenir. */
+  createsTopic: boolean;
+  /** Kapanış çakışması karşılaştırması için algıdaki kendi son entry'leri ve başlıktaki diğerleri. */
+  ownRecentBodies: string[];
+  topicOtherBodies: string[];
 };
+
+export type RuntimeFinalReadContext = Partial<
+  Pick<
+    RuntimeFinalReadCandidate,
+    "lastUnitOnly" | "createsTopic" | "topicTitle" | "ownRecentBodies" | "topicOtherBodies"
+  >
+>;
 
 /*
   Parça sınırı: harf ya da kapanış işaretinden sonra gelen . ! ? … ; ve boşluk. Rakamdan sonraki
@@ -73,8 +89,19 @@ const protectedSpan =
   olmalı. Tek kıvrık tırnakla açılan alıntı hiç kabul edilmez (’ Türkçede kesme işareti olarak da
   kullanıldığı için ‘…’ aralığı güvenle eşlenemez).
 */
+const quoteLike = /["“”«»'‘’]/gu;
+
 function quotesUnambiguous(body: string): boolean {
   if (body.includes("‘")) return false;
+  /*
+    Sunucu ilke denetimi NFKC uygular: tam genişlikli ＂ orada " olur ve alıntı sayılır (Sol 6.1).
+    Normalleştirme tırnak sayısını değiştiriyorsa alıntı sınırı güvenle bulunamaz.
+  */
+  if (
+    (body.match(quoteLike) ?? []).join("") !==
+    (body.normalize("NFKC").match(quoteLike) ?? []).join("")
+  )
+    return false;
   // Düz tırnak da aynı durum makinesine girer: çapraz ya da iç içe alıntı reddedilir (Sol 6.1).
   const closing: Record<string, string> = { "“": "”", "«": "»", '"': '"' };
   let open: string | null = null;
@@ -91,15 +118,30 @@ function quotesUnambiguous(body: string): boolean {
 /*
   Silme, sunucunun gövdeye bakan ilke kontrollerinden hiçbirinin sonucunu değiştirmemeli (Sol 6.1):
   "…rüşvet aldı; ancak bu iddia henüz doğrulanmadı." gövdesinden çekince silinince ciddi iddia
-  güçlü kanıt ister hâle geliyordu. Herhangi bir kontrolün sonucu değişirse özgün gövde kalır.
+  güçlü kanıt ister hâle geliyordu. Ciddi iddia cümle bazında karşılaştırılır: silmeden sonra
+  çekincesiz kalan her ciddi iddia cümlesi silmeden önce de aynen çekincesiz olmalı. Yeni başlıkta
+  başlık anayasası gövdeyle birlikte, kapanış tekrarı algıdaki kendi ve başlık entry'leriyle
+  önce/sonra karşılaştırılır. Herhangi biri değişirse özgün gövde kalır.
 */
-function policyFingerprint(body: string): string {
+function policyFingerprint(body: string, context: RuntimeFinalReadContext): string {
   return JSON.stringify([
-    seriousFactualClaimRequiresStrongEvidence(body),
     userEntryContainsHighRiskReproduction(body),
     hasUnrecordedOfflineFirstPersonClaim(body),
     constitutionalEntryWritingIssue(body)?.code ?? null,
+    context.createsTopic
+      ? (constitutionalTopicCreationIssue(context.topicTitle ?? "", body)?.code ?? null)
+      : null,
+    repeatedEntryFraming(body, context.ownRecentBodies ?? [], context.topicOtherBodies ?? [])
+      ?.edge ?? null,
   ]);
+}
+
+function policyPreserved(before: string, after: string, context: RuntimeFinalReadContext): boolean {
+  const unframedBefore = new Set(unframedSeriousClaimSentences(before));
+  return (
+    unframedSeriousClaimSentences(after).every((sentence) => unframedBefore.has(sentence)) &&
+    policyFingerprint(after, context) === policyFingerprint(before, context)
+  );
 }
 
 function protectedRanges(body: string): Array<[number, number]> {
@@ -145,8 +187,9 @@ export function applyRuntimeFinalRead(
   body: string,
   units: readonly RuntimeFinalReadUnit[],
   deleteNumbers: readonly number[],
-  lastUnitOnly = false,
+  context: RuntimeFinalReadContext = {},
 ): { body: string; removedUnitCount: number } | null {
+  const lastUnitOnly = context.lastUnitOnly === true;
   const remove = new Set(
     deleteNumbers.filter(
       (number) =>
@@ -166,7 +209,7 @@ export function applyRuntimeFinalRead(
   if (text.endsWith(";") || text.endsWith(",")) text = `${text.slice(0, -1)}.`;
   if (text.length * 2 < body.length) return null;
   if (text.split(/\s+/u).filter(Boolean).length < runtimeFinalReadMinKeptWords) return null;
-  if (policyFingerprint(text) !== policyFingerprint(body)) return null;
+  if (!policyPreserved(body, text, context)) return null;
   return { body: text, removedUnitCount: remove.size };
 }
 
@@ -201,8 +244,24 @@ const runtimeFinalReadSourceProvenance = new Set([
 /** Yayıma gidecek entry gövdeleri: iki ya da daha fazla parçası olan yeni entry'ler. */
 export function runtimeFinalReadCandidates(
   decision: RuntimeDecision,
-  topicTitles: ReadonlyMap<string, string>,
+  perception: Record<string, unknown>,
 ): RuntimeFinalReadCandidate[] {
+  const topicTitles = runtimeFinalReadTopicTitles(perception);
+  const ownRecentBodies = (
+    Array.isArray(perception.ownRecentEntries) ? perception.ownRecentEntries : []
+  )
+    .map((entry) => record(entry)?.body)
+    .filter((body): body is string => typeof body === "string");
+  const readTopics = (Array.isArray(perception.readTopics) ? perception.readTopics : [])
+    .map(record)
+    .filter((topic): topic is Record<string, unknown> => topic !== null);
+  const topicOtherBodies = (topicId: unknown): string[] => {
+    const topic = readTopics.find(({ id }) => id === topicId);
+    return (Array.isArray(topic?.entries) ? topic.entries : [])
+      .map(record)
+      .filter((entry) => entry && entry.mine !== true && typeof entry.body === "string")
+      .map((entry) => entry!.body as string);
+  };
   return decision.actions.flatMap((action) => {
     if (action.actionType !== "CREATE_ENTRY" && action.actionType !== "CREATE_TOPIC_WITH_ENTRY")
       return [];
@@ -232,6 +291,9 @@ export function runtimeFinalReadCandidates(
             body,
             units,
             lastUnitOnly,
+            createsTopic: action.actionType === "CREATE_TOPIC_WITH_ENTRY",
+            ownRecentBodies,
+            topicOtherBodies: topicOtherBodies(action.input.topicId),
           },
         ];
   });

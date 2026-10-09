@@ -101,7 +101,6 @@ import {
   applyRuntimeFinalReadBodies,
   runtimeFinalReadCallLimit,
   runtimeFinalReadCandidates,
-  runtimeFinalReadTopicTitles,
   runtimeFinalReadVerdictJsonSchema,
   runtimeFinalReadVerdictSchema,
   type RuntimeFinalReadCandidate,
@@ -2052,7 +2051,7 @@ export class AgentRuntimeWorker {
         onarımına yer bırakılır; son okuma onarım sayacına girmez.
       */
       const finalReadCandidates = noveltyProvider
-        ? runtimeFinalReadCandidates(decision, runtimeFinalReadTopicTitles(context.perception))
+        ? runtimeFinalReadCandidates(decision, context.perception)
         : [];
       if (finalReadCandidates.length > 0) {
         await enterPhase("VALIDATING");
@@ -2118,7 +2117,7 @@ export class AgentRuntimeWorker {
               candidate.body,
               candidate.units,
               verdict.sil,
-              candidate.lastUnitOnly,
+              candidate,
             );
             if (trimmed) {
               bodies.set(candidate.sequence, trimmed.body);

@@ -594,6 +594,19 @@ function sentenceIsUncertaintyFramed(sentence: string): boolean {
   return uncertaintyFramePatterns.some((pattern) => pattern.test(sentence));
 }
 
+/**
+ * Çekincesiz ciddi iddia cümleleri (normalize edilmiş). Son okuma, silmeden sonra kalan her
+ * böyle cümlenin silmeden önce de aynen çekincesiz olduğunu doğrular (Sol 6.1, 9 Ekim):
+ * toplu bir boole, gövdenin başka yerinde zaten ciddi iddia varken yeni açılanı gizliyordu.
+ */
+export function unframedSeriousClaimSentences(body: string): string[] {
+  return groundingSentences(body).filter(
+    (sentence) =>
+      !sentenceIsUncertaintyFramed(sentence) &&
+      (sentenceContainsSeriousCrimeMarker(sentence) || sentenceStatesCurrentFact(sentence)),
+  );
+}
+
 export function seriousFactualClaimRequiresStrongEvidence(body: string): boolean {
   return groundingSentences(body).some(
     (sentence) =>

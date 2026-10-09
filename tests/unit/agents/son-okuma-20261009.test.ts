@@ -85,7 +85,43 @@ describe("son okuma parçaları", () => {
     const units = runtimeFinalReadUnits(body);
     expect(units).toHaveLength(2);
     expect(applyRuntimeFinalRead(body, units, [2])).toBeNull();
-    expect(applyRuntimeFinalRead(body, units, [2], true)).toBeNull();
+    expect(applyRuntimeFinalRead(body, units, [2], { lastUnitOnly: true })).toBeNull();
+  });
+
+  it("başka bir ciddi iddia varken yeni açılan çekincesiz iddiayı fark eder", () => {
+    const body =
+      "Mahkemenin kararı, belediye ihalesindeki rüşvet ilişkisini açığa çıkaran denetim raporunun nasıl işlendiğini ve kamu kaynaklarının kontrolünde hangi kurumsal boşlukların bulunduğunu gösteren bir örnek. Şirket müdürü kamu görevlisine rüşvet verdi; ancak bu iddia henüz doğrulanmadı.";
+    const units = runtimeFinalReadUnits(body);
+    expect(applyRuntimeFinalRead(body, units, [units.length], { lastUnitOnly: true })).toBeNull();
+  });
+
+  it("yeni başlıkta başlık anayasasını ve kapanış tekrarını önce/sonra karşılaştırır", () => {
+    const topicBody =
+      "Beklenmedik bir haberin okura olağanüstü bir olay gibi sunulması, merakı öne çıkarıp ayrıntıyı geriye iten ve haberin önemini daha okunmadan belirleyen anlatım tercihidir. Magazin dilinde kullanılan bir manşet klişesidir.";
+    expect(
+      applyRuntimeFinalRead(topicBody, runtimeFinalReadUnits(topicBody), [2], {
+        createsTopic: true,
+        topicTitle: "şok gelişme",
+      }),
+    ).toBeNull();
+    const framed =
+      "Yeni arayüzün menüleri sadeleştirmesi, klavye kullanan okurun seçeneklere daha hızlı ulaşmasını sağlayan bir düzenleme olsa da erişimin herkes için eşit hale geldiğini tek başına göstermiyor. Tasarım bazen küçük bir sabır meselesidir.";
+    expect(
+      applyRuntimeFinalRead(framed, runtimeFinalReadUnits(framed), [2], {
+        ownRecentBodies: [
+          "Kütüphanedeki rafların yerini değiştirmek, kitapların daha çok okunduğunu tek başına kanıtlamıyor.",
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("NFKC ile tırnağa dönüşen karakter taşıyan gövdeyi aday yapmaz", () => {
+    const body =
+      "Bir metnin bellekte bıraktığı iz, kelimelerin sözlükteki anlamından çok aralarındaki ritme ve okurun dikkatine bağlıdır. ＂Güneş her sabah aynı pencereye vurur. Rüzgâr başka sokaklardan gelir.＂";
+    const decision = {
+      actions: [{ sequence: 1, actionType: "CREATE_ENTRY", input: { topicId: "t1", body } }],
+    } as unknown as RuntimeDecision;
+    expect(runtimeFinalReadCandidates(decision, {})).toEqual([]);
   });
 
   it("çıktı şeması yalnız sil dizisini kabul eder", () => {
@@ -113,7 +149,9 @@ describe("son okuma adayları", () => {
     const titles = runtimeFinalReadTopicTitles({
       readTopics: [{ id: "t1", title: "okunan başlık", entries: [] }],
     });
-    const candidates = runtimeFinalReadCandidates(decision, titles);
+    const candidates = runtimeFinalReadCandidates(decision, {
+      readTopics: [{ id: "t1", title: "okunan başlık", entries: [] }],
+    });
     expect(candidates.map(({ sequence, topicTitle }) => [sequence, topicTitle])).toEqual([
       [1, "okunan başlık"],
       [2, "yeni başlık"],
@@ -138,17 +176,19 @@ describe("son okuma adayları", () => {
       sourced(
         `${head} ara cümle burada duruyor. tutar verilmeden etkisini hesaplamak mümkün değil.`,
       ),
-      new Map(),
+      {},
     );
     expect(candidate?.lastUnitOnly).toBe(true);
     const { body, units } = candidate!;
-    expect(applyRuntimeFinalRead(body, units, [2], true)).toBeNull();
-    expect(applyRuntimeFinalRead(body, units, [3], true)?.body).toBe(
+    expect(applyRuntimeFinalRead(body, units, [2], { lastUnitOnly: true })).toBeNull();
+    expect(applyRuntimeFinalRead(body, units, [3], { lastUnitOnly: true })?.body).toBe(
       `${head} ara cümle burada duruyor.`,
     );
     for (const tail of ["toplam 111 trilyon dolar.", "bakanlığa göre plan hazır."]) {
-      const [withTail] = runtimeFinalReadCandidates(sourced(`${head} ${tail}`), new Map());
-      expect(applyRuntimeFinalRead(withTail!.body, withTail!.units, [2], true)).toBeNull();
+      const [withTail] = runtimeFinalReadCandidates(sourced(`${head} ${tail}`), {});
+      expect(
+        applyRuntimeFinalRead(withTail!.body, withTail!.units, [2], { lastUnitOnly: true }),
+      ).toBeNull();
     }
   });
 
@@ -167,9 +207,9 @@ describe("son okuma adayları", () => {
       '"önsöz “alıntı başladı." giriş cümlesi burada. son alıntı bitti.”',
       'giriş cümlesi burada. “dış "iç" alıntı” bitti.',
     ])
-      expect(runtimeFinalReadCandidates(decisionFor(body), new Map())).toEqual([]);
+      expect(runtimeFinalReadCandidates(decisionFor(body), {})).toEqual([]);
     const multiline = 'giriş cümlesi burada. "kitapları aldım.\n parayı vermedim." dedi.';
-    const [candidate] = runtimeFinalReadCandidates(decisionFor(multiline), new Map());
+    const [candidate] = runtimeFinalReadCandidates(decisionFor(multiline), {});
     expect(candidate?.units.map(({ text }) => text)).toEqual([
       "giriş cümlesi burada.",
       '"kitapları aldım.\n parayı vermedim."',
@@ -184,7 +224,9 @@ describe("son okuma adayları", () => {
   });
 
   it("istem parçaları numaralı ve güvenilmeyen içerik sınırında verir", () => {
-    const [candidate] = runtimeFinalReadCandidates(decision, new Map([["t1", "okunan başlık"]]));
+    const [candidate] = runtimeFinalReadCandidates(decision, {
+      readTopics: [{ id: "t1", title: "okunan başlık", entries: [] }],
+    });
     const prompt = buildFinalReadPrompt(candidate!);
     expect(prompt).toContain("Yalnız silebilirsin");
     expect(prompt).toContain(
