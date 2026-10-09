@@ -97,6 +97,16 @@ import {
   type RuntimeNoveltyCandidate,
 } from "@/runtime/novelty-gate";
 import {
+  applyRuntimeFinalRead,
+  applyRuntimeFinalReadBodies,
+  runtimeFinalReadCallLimit,
+  runtimeFinalReadCandidates,
+  runtimeFinalReadTopicTitles,
+  runtimeFinalReadVerdictJsonSchema,
+  runtimeFinalReadVerdictSchema,
+  type RuntimeFinalReadCandidate,
+} from "@/runtime/final-read";
+import {
   applyRuntimeActionWorthinessVerdict,
   parseRuntimeActionWorthinessVerdict,
   runtimeActionWorthinessVerdictJsonSchema,
@@ -944,6 +954,8 @@ export function buildActionWorthinessPrompt(
 const RUNTIME_NOVELTY_MAX_TIMEOUT_MS = 120_000;
 const RUNTIME_NOVELTY_EXECUTION_RESERVE_MS = 30_000;
 const RUNTIME_NOVELTY_MIN_TIMEOUT_MS = 20_000;
+/* Son okuma yeniliğin süre payını ve alt sınırını kullanır; çağrı daha kısa olduğu için tavanı düşük. */
+const RUNTIME_FINAL_READ_MAX_TIMEOUT_MS = 90_000;
 
 // Plain-text bağlam: etiket kapatan karakter veri içinden gelemesin.
 function noveltyText(value: string): string {
@@ -969,6 +981,18 @@ export function buildNoveltyPrompt(candidate: RuntimeNoveltyCandidate): string {
     "",
     "Taslağın:",
     noveltyText(candidate.draft),
+    runtimePromptScaffold.untrustedClosing,
+  ].join("\n");
+}
+
+export function buildFinalReadPrompt(candidate: RuntimeFinalReadCandidate): string {
+  return [
+    ...runtimePromptScaffold.finalReadInstructions,
+    "",
+    runtimePromptScaffold.untrustedOpening,
+    `Başlık: ${noveltyText(candidate.topicTitle)}`,
+    "Parçalar:",
+    ...candidate.units.map(({ text }, index) => `${index + 1}. ${noveltyText(text)}`),
     runtimePromptScaffold.untrustedClosing,
   ].join("\n");
 }
@@ -1510,6 +1534,15 @@ export class AgentRuntimeWorker {
       failedOpenCount: number;
       skippedCount: number;
     } | null = null;
+    /* Son okumanın ne yaptığı — bkz `runtime-schemas.ts`, `finalRead`. */
+    let finalRead: {
+      candidateCount: number;
+      checkedCount: number;
+      editedCount: number;
+      removedUnitCount: number;
+      failedOpenCount: number;
+      skippedCount: number;
+    } | null = null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
@@ -2016,6 +2049,75 @@ export class AgentRuntimeWorker {
           this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
         }
       }
+      /*
+        Son okuma: yenilikten geçen her yeni entry gövdesi, yayımlanmadan önce yalnız parça
+        silen dar bir çağrıdan geçer (`src/runtime/final-read.ts`). Yeni gövdeyi model değil bu
+        kod kurar; hata ya da süre yetmezse gövde aynen yayımlanır ve sayılır.
+      */
+      const finalReadCandidates = noveltyProvider
+        ? runtimeFinalReadCandidates(decision, runtimeFinalReadTopicTitles(context.perception))
+        : [];
+      if (finalReadCandidates.length > 0) {
+        await enterPhase("VALIDATING");
+        const stats = (finalRead ??= {
+          candidateCount: 0,
+          checkedCount: 0,
+          editedCount: 0,
+          removedUnitCount: 0,
+          failedOpenCount: 0,
+          skippedCount: 0,
+        });
+        const bodies = new Map<number, string>();
+        for (const [index, candidate] of finalReadCandidates.entries()) {
+          stats.candidateCount += 1;
+          await heartbeat();
+          deadline.throwIfStopped();
+          const timeoutMs = Math.min(
+            RUNTIME_FINAL_READ_MAX_TIMEOUT_MS,
+            deadline.remainingMs() - RUNTIME_NOVELTY_EXECUTION_RESERVE_MS,
+          );
+          if (index >= runtimeFinalReadCallLimit || timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS) {
+            stats.skippedCount += 1;
+            continue;
+          }
+          try {
+            const finalReadResult = await invokeCodex(
+              {
+                runId,
+                prompt: buildFinalReadPrompt(candidate),
+                outputSchema: runtimeFinalReadVerdictJsonSchema,
+                timeoutMs,
+                debugRetentionHours: context.run.debugRetentionHours,
+                signal: deadline.signal,
+              },
+              "FINAL_READ",
+              noveltyProvider,
+            );
+            providerResult = {
+              ...finalReadResult,
+              durationMs: (providerResult?.durationMs ?? 0) + finalReadResult.durationMs,
+            };
+            const verdict = runtimeFinalReadVerdictSchema.parse(finalReadResult.output);
+            stats.checkedCount += 1;
+            const trimmed = applyRuntimeFinalRead(candidate.body, candidate.units, verdict.sil);
+            if (trimmed) {
+              bodies.set(candidate.sequence, trimmed.body);
+              stats.editedCount += 1;
+              stats.removedUnitCount += trimmed.removedUnitCount;
+            }
+          } catch (rawFinalReadError) {
+            const finalReadError = deadline.normalizeError(rawFinalReadError);
+            if (finalReadError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+              throw finalReadError;
+            stats.failedOpenCount += 1;
+            this.#options.onSafeEvent?.({ level: "error", code: "FINAL_READ_FAILED_OPEN", runId });
+          }
+        }
+        if (bodies.size > 0) {
+          decision = applyRuntimeFinalReadBodies(decision, bodies);
+          this.#options.onSafeEvent?.({ level: "info", code: "FINAL_READ_TRIMMED", runId });
+        }
+      }
       ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(
         decision,
         new Set(perceptionEvidence.sourceItemIds),
@@ -2292,6 +2394,7 @@ export class AgentRuntimeWorker {
             ...(decisionRepair ? { decisionRepair } : {}),
             ...(actionWorthiness ? { actionWorthiness } : {}),
             ...(novelty ? { novelty } : {}),
+            ...(finalRead ? { finalRead } : {}),
             ...providerResult.hostMetrics,
           },
           performanceMetrics: {
@@ -2375,6 +2478,7 @@ export class AgentRuntimeWorker {
               ...(decisionRepair ? { decisionRepair } : {}),
               ...(actionWorthiness ? { actionWorthiness } : {}),
               ...(novelty ? { novelty } : {}),
+              ...(finalRead ? { finalRead } : {}),
               /*
                 Başarısızlık kaydına DÜŞEN çağrının host metriği yazılmalı.
                 Eskiden `providerResult?.hostMetrics` yazılıyordu — o bir

@@ -39,6 +39,8 @@ export const runtimeCodexPhases = [
   "CONTENT_REPAIR",
   // Yazım öncesi tekrar karşılaştırması; koşu başına en fazla `runtimeNoveltyCallLimit`.
   "NOVELTY",
+  // Yayım öncesi yalnız silen son okuma; koşu başına en fazla `runtimeFinalReadCallLimit`.
+  "FINAL_READ",
 ] as const;
 export type RuntimeCodexPhase = (typeof runtimeCodexPhases)[number];
 

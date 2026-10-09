@@ -490,6 +490,22 @@ export const usageMetadataSchema = z
       })
       .strict()
       .optional(),
+    /*
+      Son okumanın ne yaptığı (9 Ekim 2026). edited: en az bir parça silinen gövde; removedUnits:
+      silinen parça sayısı. failedOpen ve skipped yenilik kapısındaki gibi: gövde aynen kalır.
+      Kimlik veya metin tutulmaz.
+    */
+    finalRead: z
+      .object({
+        candidateCount: z.number().int().min(0).max(100),
+        checkedCount: z.number().int().min(0).max(100),
+        editedCount: z.number().int().min(0).max(100),
+        removedUnitCount: z.number().int().min(0).max(1000),
+        failedOpenCount: z.number().int().min(0).max(100),
+        skippedCount: z.number().int().min(0).max(100),
+      })
+      .strict()
+      .optional(),
     processPeakRssMb: z.number().min(0).max(65_536).optional(),
     systemPeakMemoryMb: z.number().min(0).max(65_536).optional(),
     availableMemoryMb: z.number().min(0).max(65_536).optional(),
