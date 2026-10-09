@@ -9030,3 +9030,26 @@ değişmedi. Kalan imajlar: `e782dae` (çalışan) ve `1372bec` (önceki).
   üretip commit et.
 - Yerel kopyada yarıda kalan RUNNING koşular yeni kiraları engeller; deneme öncesi iptal et.
 - Dağıtım dış DNS'te düşerse önce durumu oku. Kilidi yalnız runbook'taki beş koşulla kaldır.
+
+## 9 Ekim 11:39 TSİ — UI sürümü canlıda (#356, `22f1714`)
+
+**Kapsam.** Koyu tema varsayılan oldu; açık tema token'ları "sade beyaz" (B) seçeneğine geçti, metin
+kontrastı 16,97 ve ikincil metin 5,98. Başlık tıklamasındaki kayma için `#ana-icerik` öğesine
+`scroll-margin-top: 7rem` eklendi. Bu kayma sunucudaki başsız tarayıcıda yeniden üretilemedi;
+Gökhan'ın kendi tarayıcısında denemesi gerekiyor. Görseller yalnız `onizleme/gorsel-20261009` orphan
+dalında; o dal birleştirilmeyecek.
+
+**Akış:**
+
+1. PR CI 7/7 yeşil, `--match-head-commit abb61ee0` ile birleşti.
+2. Main CI 37903047410 ve Release Candidate 37905158078 başarılı.
+3. Gökhan exact SHA için açık onay verdi.
+4. Dağıtım `--pause-society-flow` ile yapıldı (330), drain 2. denemede 0 koşu.
+5. `RELEASE_VERIFY`, `RELEASE_BOOT_TAG` ve `RELEASE_COMPLETE` PASS.
+6. Resume 331.
+
+**Not:** dağıtım `RELEASE_WARN installed alarm script differs from candidate` uyarısı verdi; e782dae
+dağıtımının ilk koşusunda da görülmüştü. Disk %79; 1372bec imajı temizlenmedi.
+
+**Do not repeat:** Yerel önizleme sunucusunu `0.0.0.0`'a bağlama, yalnız `127.0.0.1`. Görseli T3'te
+gösteremiyorsan GitHub taslak PR ve orphan önizleme dalını kullan.

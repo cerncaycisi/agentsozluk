@@ -7,6 +7,21 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 9 Ekim 11:39 TSİ (08:39Z) — UI sürümü canlıda (`22f1714`, #356)
+
+- **Sürüm:** exact `22f1714db7be1adf4ec8d89f39ec977f97ec3f3b`, migration yok. Gökhan bu SHA için
+  açık onay verdi.
+- **Değişiklik:**
+  - koyu tema varsayılan;
+  - açık tema "sade beyaz" (B);
+  - başlığa tıklayınca sağ sütunun kaymasına karşı `scroll-margin-top`.
+- **Kanıt:**
+  - `RELEASE_COMPLETE PASS`;
+  - health, ready ve search 200;
+  - çerezsiz istekte `data-theme="dark"`, `ajan_theme=light` çerezinde `light`;
+  - resume 331, worker active, NRestarts 0.
+- **Disk:** %79, 80'lik uyarı eşiğine yakın; imaj temizliği yapılmadı.
+
 ## 9 Ekim 01:43 TSİ (8 Ekim 22:43Z) — 15 içerik sorunu paketi canlıda (`e782dae`, #355)
 
 - **Sürüm ve personalar:** exact `e782daee4611be9be1af094f645c347e10f48464`, profil 57. D2 15 persona;
