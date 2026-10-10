@@ -33,6 +33,7 @@ export function getEntryIndexingRecord(transaction: Prisma.TransactionClient, en
     select: {
       status: true,
       deletedAt: true,
+      topicId: true,
       author: { select: { kind: true } },
       topic: { select: { status: true } },
     },
@@ -123,13 +124,75 @@ function entrySitemapWhere(
   };
 }
 
-export function countIndexableTopics(
+/*
+  İNCE BAŞLIK EŞİĞİ — Gökhan kararı G4, 10 Ekim 2026.
+
+  Görünür ve aktif entry'si ikiden az olan, tek entry'si de 40 kelimeden kısa başlık `noindex`
+  olur ve sitemap'e girmez. İkinci entry ya da uzun bir entry gelince kendiliğinden geri döner.
+  Hiçbir şey silinmez; başlık dizini ve okur yüzeyi değişmez. Kelime sayısı Prisma filtresiyle
+  ifade edilemediği için koşul ham SQL'dir (`Prisma.sql`, parametreli).
+*/
+export const THIN_TOPIC_MIN_WORDS = 40;
+
+const visibleActiveEntrySql = (alias: Prisma.Sql) =>
+  Prisma.sql`${alias}."status" = 'ACTIVE' AND ${alias}."deletedAt" IS NULL AND ${publiclyVisibleEntrySql(alias)}`;
+
+export const substantialTopicSql = (topic: Prisma.Sql) => Prisma.sql`(
+  (
+    SELECT COUNT(*)
+    FROM "entries" AS counted_entry
+    WHERE counted_entry."topicId" = ${topic}.id
+      AND ${visibleActiveEntrySql(Prisma.sql`counted_entry`)}
+  ) >= 2
+  OR EXISTS (
+    SELECT 1
+    FROM "entries" AS long_entry
+    WHERE long_entry."topicId" = ${topic}.id
+      AND ${visibleActiveEntrySql(Prisma.sql`long_entry`)}
+      AND array_length(regexp_split_to_array(btrim(long_entry.body), '[[:space:]]+'), 1)
+        >= ${THIN_TOPIC_MIN_WORDS}
+  )
+)`;
+
+export async function isSubstantialTopic(
+  transaction: Prisma.TransactionClient,
+  topicId: string,
+): Promise<boolean> {
+  const rows = await transaction.$queryRaw<Array<{ substantial: boolean }>>(Prisma.sql`
+    SELECT ${substantialTopicSql(Prisma.sql`topic`)} AS substantial
+    FROM "topics" AS topic
+    WHERE topic.id = ${topicId}::uuid
+  `);
+  return rows[0]?.substantial === true;
+}
+
+function sitemapTopicSql(
+  settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,
+  now: Date,
+): Prisma.Sql {
+  const cutoff = new Date(now.getTime() - settings.sitemapDelayMinutes * 60_000);
+  const humanOnly =
+    settings.indexingMode === "NOINDEX_AGENT_CONTENT" || !settings.agentTopicIndexingEnabled;
+  return Prisma.sql`
+    FROM "topics" AS topic
+    JOIN "users" AS creator ON creator.id = topic."createdById"
+    WHERE topic."status" = 'ACTIVE'
+      AND topic."createdAt" <= ${cutoff}
+      ${humanOnly ? Prisma.sql`AND creator."kind" = 'HUMAN'` : Prisma.empty}
+      AND ${substantialTopicSql(Prisma.sql`topic`)}
+  `;
+}
+
+export async function countIndexableTopics(
   transaction: Prisma.TransactionClient,
   settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,
   now: Date,
 ) {
-  if (settings.indexingMode === "NOINDEX_ALL_DYNAMIC") return Promise.resolve(0);
-  return transaction.topic.count({ where: sitemapWhere(settings, now) });
+  if (settings.indexingMode === "NOINDEX_ALL_DYNAMIC") return 0;
+  const rows = await transaction.$queryRaw<Array<{ count: bigint }>>(
+    Prisma.sql`SELECT COUNT(*)::bigint AS count ${sitemapTopicSql(settings, now)}`,
+  );
+  return Number(rows[0]?.count ?? 0);
 }
 
 export function listIndexableTopics(
@@ -142,13 +205,15 @@ export function listIndexableTopics(
       [] as Array<{ id: string; publicId: number; slug: string; updatedAt: Date }>,
     );
   return publicIds(
-    transaction.topic.findMany({
-      where: sitemapWhere(settings, input.now),
-      select: { id: true, publicId: true, slug: true, updatedAt: true },
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      skip: input.skip,
-      take: input.take,
-    }),
+    transaction.$queryRaw<
+      Array<{ id: string; publicId: bigint; slug: string; updatedAt: Date }>
+    >(Prisma.sql`
+      SELECT topic.id, topic."publicId", topic.slug, topic."updatedAt"
+      ${sitemapTopicSql(settings, input.now)}
+      ORDER BY topic."updatedAt" DESC, topic.id DESC
+      OFFSET ${input.skip}
+      LIMIT ${input.take}
+    `),
   );
 }
 

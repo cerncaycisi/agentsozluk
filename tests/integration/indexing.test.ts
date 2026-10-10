@@ -309,7 +309,8 @@ describe("indexing policy with PostgreSQL", () => {
       },
     });
 
-    expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(2);
+    // Entry'siz `oldAgent` ince başlıktır (G4); sitemap'e yalnız iki entry'li `oldHuman` girer.
+    expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(1);
     expect(await getSitemapEntryCount(integrationDatabase, now)).toBe(2);
     expect(
       (await getSitemapEntries(integrationDatabase, { page: 0, pageSize: 10, now })).map(
@@ -320,7 +321,7 @@ describe("indexing policy with PostgreSQL", () => {
       (await getSitemapTopics(integrationDatabase, { page: 0, pageSize: 10, now })).map(
         ({ id }) => id,
       ),
-    ).toEqual(expect.arrayContaining([oldHuman.id, oldAgent.id]));
+    ).toEqual([oldHuman.id]);
     expect(
       (await getSyndicationEntries(integrationDatabase, { now })).map(({ publicId }) => publicId),
     ).toEqual(expect.arrayContaining([Number(agentEntry.publicId), Number(humanEntry.publicId)]));
@@ -351,7 +352,8 @@ describe("indexing policy with PostgreSQL", () => {
       indexingMode: "NOINDEX_AGENT_CONTENT",
       sitemapDelayMinutes: 0,
     });
-    expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(2);
+    // Entry'siz `recentHuman` gecikme kalksa da ince kalır (G4).
+    expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(1);
     expect(await getSitemapEntryCount(integrationDatabase, now)).toBe(1);
     expect(
       (await getSitemapEntries(integrationDatabase, { page: 0, pageSize: 10, now })).map(
@@ -421,6 +423,70 @@ describe("indexing policy with PostgreSQL", () => {
       delayedTopics: 0,
       queue: [],
     });
+  });
+
+  it("noindexes thin topics until a second or a long entry arrives (G4)", async () => {
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const human = await createUser("HUMAN", "thin");
+    const createdAt = new Date(now.getTime() - 7 * 60 * 60_000);
+    const topic = await integrationDatabase.topic.create({
+      data: {
+        title: "Thin indexing topic",
+        normalizedTitle: "thin indexing topic",
+        slug: "thin-indexing-topic",
+        createdById: human.id,
+        createdAt,
+      },
+    });
+    const addEntry = (body: string) =>
+      integrationDatabase.entry.create({
+        data: {
+          topicId: topic.id,
+          authorId: human.id,
+          body,
+          normalizedBody: body.toLocaleLowerCase("tr-TR"),
+          origin: "WEB",
+          createdAt,
+        },
+      });
+    const shortEntry = await addEntry("Kısa tek entry ince başlık sayılır.");
+    // 39 kelime: eşiğin hemen altı, yine ince.
+    await integrationDatabase.entry.update({
+      where: { id: shortEntry.id },
+      data: { body: Array.from({ length: 39 }, (_, index) => `kelime${index}`).join(" ") },
+    });
+
+    expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(0);
+    expect(await getTopicIndexingDecision(integrationDatabase, topic.id)).toMatchObject({
+      index: false,
+      follow: true,
+      includeInSitemap: false,
+    });
+    expect(await getEntryIndexingDecision(integrationDatabase, shortEntry.id)).toMatchObject({
+      index: false,
+    });
+
+    // 40 kelimeye çıkan tek entry başlığı ince olmaktan çıkarır.
+    await integrationDatabase.entry.update({
+      where: { id: shortEntry.id },
+      data: { body: Array.from({ length: 40 }, (_, index) => `kelime${index}`).join(" ") },
+    });
+    expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(1);
+    expect(await getTopicIndexingDecision(integrationDatabase, topic.id)).toMatchObject({
+      index: true,
+    });
+
+    // Kısa ama iki görünür entry de yeterli.
+    await integrationDatabase.entry.update({
+      where: { id: shortEntry.id },
+      data: { body: "Yine kısa ilk entry." },
+    });
+    await addEntry("Kısa ikinci entry.");
+    expect(
+      (await getSitemapTopics(integrationDatabase, { page: 0, pageSize: 10, now })).map(
+        ({ id }) => id,
+      ),
+    ).toEqual([topic.id]);
   });
 
   it("counts today's sitemap additions on the Europe/Istanbul date boundary", async () => {
