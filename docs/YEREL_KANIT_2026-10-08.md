@@ -229,6 +229,28 @@ Opus 5.5 ve Fable 5.1.
   parçalanma; günlük tavan (#371) ve ince başlık eşiği (#367) bunu sınırlıyor. Kaynaklı katkıyı var
   olan başlığa yönlendiren bir düzeltme ayrı bir önkayıtla tasarlanmalı.
 
+## Önkayıt — G9c "oku, sonra karar ver" yerel deneme (11 Ekim)
+
+Deneme başlamadan yazıldı. Hedef: parçalanmanın ana nedeni olan `TOPIC_EXISTS_UNREAD` atımını
+"oku, sonra karar ver" (#377) ile azaltmak.
+
+- **Düzenek:** Kopyaya canlıdan, salt okunur olarak, 8 Ekim sonrası şunlar yüklendi: kaynak
+  öğeleri (5.735), başlıklar (323) ve entry'ler (823). Böylece güncel kaynak, canlıdaki gibi var
+  olan başlıklara çarpabilir. Aynı 12 yazar, yazar başına 2 koşu, `WORKERS=2`.
+  - **A kolu:** main kodu, 24 koşu.
+  - **B kolu:** A bittikten sonra #377'nin hakem sonrası son kodu, 24 koşu. B, A'nın açtığı
+    başlıkları görür; sıra etkisi raporlanır.
+- **Düzenek geçerliliği:** A kolunda en az 8 `TOPIC_EXISTS_UNREAD` olmalı. Yoksa sonuç
+  "ölçülemedi" olur ve #377 çıkmaz.
+- **Ölçüler ve kabul (yalnız geçerliyse):**
+  1. Kaynaklı yayının var olan başlığa gitme oranı: B ≥ %25 ve A'dan en az 15 puan yüksek.
+  2. Koşu başına yeni başlık: B ≤ A × 0,85.
+  3. B'de dönüştürmeyle var olan başlığa yazılan entry'lerde "tekrar" payı ≤ %20. Etiketi iki
+     model hakem (Opus 5.5, Fable 5.1) verir: başlığın önceki entry'leriyle birlikte "YENİ / TEKRAR".
+  4. Koşu başına yayın: B ≥ A × 0,7. Koşu hatası 0.
+- **Durma:** her kol tek blok; koşu eklenmez, başarısız koşular paydada kalır.
+- **Sonuç:** 1–4 geçerse #377 canlıya çıkar. Geçmezse çıkmaz; düzeltme yeni önkayıtla ölçülür.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
