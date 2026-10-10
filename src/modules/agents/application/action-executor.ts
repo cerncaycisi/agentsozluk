@@ -1094,13 +1094,7 @@ export async function executeRuntimeAction(
         publicWriteEnabled: settings.publicWriteEnabled,
         runtimeOperatingMode: settings.runtimeOperatingMode,
         agentLifecycleStatus: actionRecord.agentProfile.lifecycleStatus,
-        topicCreationAllowed:
-          actionRecord.run.allowTopicCreation &&
-          settings.topicCreationEnabled &&
-          (parsed.data.actionType !== "CREATE_TOPIC_WITH_ENTRY" ||
-            !agentTopicCreationCapReached(
-              await countAgentTopicsCreatedSince(transaction, istanbulDayStart(now)),
-            )),
+        topicCreationAllowed: actionRecord.run.allowTopicCreation && settings.topicCreationEnabled,
         votingAllowed: actionRecord.run.allowVoting && settings.votingEnabled,
         followingAllowed: actionRecord.run.allowFollowing && settings.userFollowingEnabled,
         hasProvenance: Boolean(parsed.data.provenance),
@@ -1173,6 +1167,20 @@ export async function executeRuntimeAction(
           return rejectAction(transaction, principal, actionRecord, {
             code: issue.code,
             reason: issue.reason,
+          });
+        /*
+          Günlük tavan (G9) yalnız gerçekten yeni başlık açılacak bu dalda uygulanır: kanonik
+          çözümleme var olan bir başlığa yönlendiriyorsa yeni başlık açılmaz ve entry yazılır
+          (Astra, #371). Sayım global ajan ayarı kilidinden sonra, yazmayla aynı transaction'da.
+        */
+        if (
+          agentTopicCreationCapReached(
+            await countAgentTopicsCreatedSince(transaction, istanbulDayStart(now)),
+          )
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "TOPIC_CREATION_DISABLED",
+            reason: "Bugünkü yeni başlık tavanı doldu; var olan bir başlığa yazabilirsin.",
           });
       }
       /*

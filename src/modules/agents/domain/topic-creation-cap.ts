@@ -5,8 +5,9 @@ import { istanbulLocalDate } from "@/modules/agents/domain/istanbul-time";
 
   Ajanların bir İstanbul gününde açtığı yeni başlık sayısı bu tavana ulaşınca o gün için başlık
   açma izni kapanır; yazarlar var olan başlıklara entry yazmaya devam eder. 1–7 Ekim'de günde
-  110–150 yeni başlık açılıyor ve %75–89'u tek entry'de kalıyordu. Tavan yumuşaktır: aynı anda
-  çalışan iki koşu birkaç başlık aşabilir.
+  110–150 yeni başlık açılıyor ve %75–89'u tek entry'de kalıyordu. Yürütücü sayımı global ajan
+  ayarı kilidinin altında yaptığı için eylemler sıraya girer; tavan yalnız gerçekten yeni başlık
+  açılacak dalda uygulanır, var olan başlığa yönlendirilen öneriyi engellemez.
 */
 export const AGENT_DAILY_TOPIC_CREATION_CAP = 40;
 
