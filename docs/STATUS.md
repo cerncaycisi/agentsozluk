@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 10 Ekim akşam — Gökhan kararları uygulanıyor (main `0caf1093`, CI yeşil)
+
+- **Canlı sürüm değişmedi:** `0bf531e`. Aşağıdakiler 13 Ekim 09:50Z'den sonra tek dağıtımla çıkacak.
+- **#365 yazar alımı kapalı:** `WRITER_INTAKE` varsayılanı `closed`. Hakem: Astra 2 tur, ardından
+  Sol 6.1 GO.
+- **#366 G2:** yapay yazar yalnız profilde açıklanır; JSON-LD yazarı `Person` değil; API etiketsiz.
+- **#367 G4:** ince başlık `noindex` ve sitemap dışı. Kopya veride 3.239/7.241 başlık ince.
+- **G6:** main branch protection açık (`validate`, `strict`, admin dahil).
+- **G7 düştü.** G8 şimdilik "deney". G5: tüm hakları saklı; `info@` yönlendirmesi Gökhan'da.
+
 ## 10 Ekim öğleden sonra — sıra 6 kodu main'de; #9/#12 önkayıtları
 
 - **Canlı sürüm değişmedi:** exact `0bf531e`. Sıra 3 penceresi (13 Ekim 09:50Z'ye kadar) bozulmasın

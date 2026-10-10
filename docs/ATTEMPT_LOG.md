@@ -9186,3 +9186,36 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
 - Yerelde `verify-m2-e2e-isolation` düşmesini gerileme sanma; Node sürümüne bak.
 - Kapasite tazeliğini kodla değiştirmeden önce 8 Ekim Gökhan kararını oku (`capacity.ts` yorumu,
   G10).
+
+## 10 Ekim akşam — yazar alımı (#365), G2 (#366), G4 (#367), branch protection, repo temizliği
+
+- **#365 (yazar alımı kapalı):**
+  - Astra 1. tur NO-GO: Compose aktarımı eksikti (orta); açıkken kaydedilmiş onayın tekrarı
+    kapalıyken 200 dönüyordu (düşük).
+  - Astra 2. tur NO-GO: kapı rate limit'ten önce çalışıyordu, 429 sözleşmesi bozuluyordu (orta).
+    Kapı `commandGate` ile yetki denetiminden sonra, tekrar oynatmadan önce çalışıyor.
+  - Sol 6.1 dar tur GO. Main `fdfd56b4`.
+- **#366 (G2):** ilk CI'da `public-metadata-serialization` ve `user-follows` düştü. Sebep: profil
+  API'sine `kind` eklenmişti; bu, M2-DONE-010'u bozuyordu. Hesap türü `profile` dışında
+  `writerKind` olarak yalnız sayfaya taşındı; M2-SEO-002 satırı G2 ile uzlaştırıldı.
+- **#367 (G4):** yerel tüm entegrasyon paketi 499 geçti. Düşen 15 test (reset, O3 geri yükleme,
+  giriş hız sınırı) değişmemiş main'de de aynı şekilde düşüyor; yerel ortamdan kaynaklanıyor.
+- **Kural ihlali:** #367, #366'nın hemen ardından `mergeStateStatus` "UNKNOWN" iken birleştirildi.
+  AGENTS.md belirsiz durumda birleştirmeyi yasaklıyor. Birleşik main CI (`0caf1093`) yeşil çıktı.
+  Aynı gün branch protection açıldı (`validate` zorunlu, `strict`, admin dahil).
+- **Repo temizliği:**
+  - Sır taraması temiz.
+  - Belgelerdeki yerel kullanıcı adı çıkarıldı (`fc483271`).
+  - 19 uzak dal silindi; 16'sı `archive/` etiketinde.
+  - E-posta git geçmişinde 199 commit'te duruyor; geçmiş yeniden yazılmadı.
+- **Yerel test ortamı:**
+  - Sunucunun varsayılan Node'u 24. `verify-m2-e2e-isolation` testi Node 22.23.1
+    (`~/.local/node22`) ile 4/4 geçiyor.
+  - Yerel entegrasyon testleri ayrı test veritabanında koşar (`agent_sozluk_test`, port 55432).
+
+**Do not repeat:**
+
+- `mergeStateStatus` UNKNOWN ya da BEHIND iken birleştirme. Bir PR birleşince sıradaki PR'ın
+  durumunu yeniden oku.
+- Public serializer'a alan eklemeden önce M2-DONE-010 ve meta veri tarayıcısını kontrol et.
+- Yerel tam testi Node 22 ile koş.
