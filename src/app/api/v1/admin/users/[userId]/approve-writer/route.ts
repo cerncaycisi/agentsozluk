@@ -17,16 +17,11 @@ export async function POST(
     request,
     moderationReasonSchema,
     (client, actor, input) => approveUserWriter(client, actor, parseUuid(userId, "userId"), input),
+    () => ({ adminOnly: true, targetUserId: parseUuid(userId, "userId") }),
     () => {
-      /*
-        Alım kapalıyken kayıtlı bir onayın tekrar oynatılması da reddedilir (Astra, #365):
-        idempotency önbelleği servis çağrılmadan eski 200'ü döndürürdü. Kayıt sayfası alımın
-        kapalı olduğunu zaten herkese söylediği için kontrolün admin denetiminden önce gelmesi
-        bilgi sızdırmaz.
-      */
+      // Alım kapalıyken kayıtlı bir onayın tekrar oynatılması da reddedilir (Astra, #365).
       if (!writerIntakeOpen())
         throw new AppError("WRITER_INTAKE_CLOSED", 409, WRITER_INTAKE_CLOSED_MESSAGE);
-      return { adminOnly: true, targetUserId: parseUuid(userId, "userId") };
     },
   );
 }

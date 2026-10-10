@@ -220,12 +220,29 @@ describe("moderation idempotency preflight", () => {
 
     process.env.WRITER_INTAKE = "closed";
     try {
+      const bucketBefore = (await integrationDatabase.rateLimitBucket.findFirstOrThrow()).count;
       const replay = await callApproveWriter(pendingWriter.id, session, idempotencyKey);
       expect(replay.status).toBe(409);
       expect(replay.headers.get("Idempotent-Replay")).toBeNull();
       await expect(replay.json()).resolves.toMatchObject({
         error: { code: "WRITER_INTAKE_CLOSED" },
       });
+      // Kapı hız sınırından sonra çalışır: istek kotaya sayılır, dolu kovada 429 döner.
+      const bucket = await integrationDatabase.rateLimitBucket.findFirstOrThrow();
+      expect(bucket.count).toBe(bucketBefore + 1);
+      await integrationDatabase.rateLimitBucket.update({
+        where: { id: bucket.id },
+        data: { count: RATE_LIMIT_RULES.moderationCommand.limit },
+      });
+      const limited = await callApproveWriter(pendingWriter.id, session, idempotencyKey);
+      expect(limited.status).toBe(429);
+      await expect(limited.json()).resolves.toMatchObject({ error: { code: "RATE_LIMITED" } });
+
+      // Admin olmayan hesap kapı yerine yetki hatası alır.
+      const moderator = await createUser("writer_intake_replay_moderator", "MODERATOR");
+      const moderatorSession = await createPersistedSession(moderator.id);
+      const forbidden = await callApproveWriter(pendingWriter.id, moderatorSession, randomUUID());
+      expect(forbidden.status).toBe(403);
     } finally {
       process.env.WRITER_INTAKE = "open";
     }
