@@ -11,7 +11,11 @@ import {
   createCapabilityBenchmarkDiagnosticCollector,
 } from "@/runtime/capability-diagnostics";
 import { runtimeFinalReadVerdictJsonSchema } from "@/runtime/final-read";
-import { RUNTIME_STRUCTURED_REPAIR_INSTRUCTION } from "@/runtime/worker";
+import {
+  RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS,
+  RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
+  runtimeFinalReadTimeoutMs,
+} from "@/runtime/worker";
 import { runtimeNoveltyVerdictJsonSchema } from "@/runtime/novelty-gate";
 import { parseRuntimeDecisionOutput } from "@/runtime/output";
 import {
@@ -529,6 +533,27 @@ describe("Codex capability benchmark harness", () => {
       expect(finalReadCalls(direct)).toHaveLength(2 * CAPACITY_BENCHMARK_SCENARIOS.length);
       expect(finalReadCalls(repaired)).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.length);
       for (const { timeoutMs } of finalReadCalls(direct)) expect(timeoutMs).toBe(90_000);
+    });
+
+    it("reserves time for every pending novelty check at the exact boundary (Astra #363 2. tur)", () => {
+      const budget = (
+        remainingMs: number,
+        overrides: Partial<{ index: number; invocationsSoFar: number }> = {},
+      ) =>
+        runtimeFinalReadTimeoutMs({
+          index: 0,
+          invocationsSoFar: 2,
+          reservedCalls: RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS,
+          remainingMs,
+          pendingNoveltyCalls: 2,
+          ...overrides,
+        });
+      expect(budget(130_000)).toBe(20_000);
+      expect(budget(129_999)).toBeNull();
+      expect(budget(1_000_000)).toBe(90_000);
+      expect(budget(1_000_000, { index: 2 })).toBeNull();
+      expect(budget(1_000_000, { invocationsSoFar: 3 })).toBe(90_000);
+      expect(budget(1_000_000, { invocationsSoFar: 4 })).toBeNull();
     });
 
     it("skips the final read when the remaining run time is reserved for execution", async () => {
