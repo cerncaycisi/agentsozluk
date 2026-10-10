@@ -1550,10 +1550,8 @@ export async function executeRuntimeAction(
                   provenance.evidenceType,
                 ) &&
                 (await listRunConflictTopicIds(guardTransaction, runId)).size === 0 &&
-                (
-                  await findSourceItemSearchTexts(guardTransaction, provenance.evidenceIds)
-                ).some((text) =>
-                  normalizeTopicTitle(text).includes(normalizeTopicTitle(topic.title)),
+                (await findSourceItemSearchTexts(guardTransaction, provenance.evidenceIds)).some(
+                  (text) => normalizeTopicTitle(text).includes(normalizeTopicTitle(topic.title)),
                 );
               throw new RuntimeActionRejectionError(
                 "TOPIC_EXISTS_UNREAD",
