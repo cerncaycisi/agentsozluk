@@ -10,11 +10,14 @@ import { parseRuntimeDecisionOutput, runtimeNormalDecisionWireJsonSchema } from 
 import type { RuntimeProvider, RuntimeProviderResult } from "@/runtime/provider";
 import {
   buildActionWorthinessPrompt,
+  buildFinalReadPrompt,
   buildNoveltyPrompt,
   buildRuntimePrompt,
   canonicalizeVisibleTopicActions,
   normalizedDecision,
+  RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS,
   RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
+  runtimeFinalReadTimeoutMs,
 } from "@/runtime/worker";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 import {
@@ -22,6 +25,13 @@ import {
   parseRuntimeActionWorthinessVerdict,
   runtimeActionWorthinessVerdictJsonSchema,
 } from "@/runtime/action-worthiness";
+import {
+  applyRuntimeFinalRead,
+  applyRuntimeFinalReadBodies,
+  runtimeFinalReadCandidates,
+  runtimeFinalReadVerdictJsonSchema,
+  runtimeFinalReadVerdictSchema,
+} from "@/runtime/final-read";
 import {
   runtimeNoveltyCallLimit,
   runtimeNoveltyCandidates,
@@ -189,11 +199,20 @@ function scenarioDiagnosticRecorder(
 }
 
 async function invokeBenchmarkDecision(
-  provider: RuntimeProvider,
+  measuredProvider: RuntimeProvider,
   context: RuntimeContext,
   timeoutMs: number,
   diagnostics?: ScenarioDiagnosticRecorder,
 ): Promise<RuntimeProviderResult> {
+  // Worker'ın koşu başına çağrı bütçesi son okumayı sınırlar; ölçüm de çağrıları sayar.
+  let invocations = 0;
+  const provider: RuntimeProvider = {
+    inspect: () => measuredProvider.inspect(),
+    invoke: (request) => {
+      invocations += 1;
+      return measuredProvider.invoke(request);
+    },
+  };
   const decisionResult = await invokeWithStructuredRepair(
     provider,
     {
@@ -251,10 +270,66 @@ async function invokeBenchmarkDecision(
     sözleşmeyi taşıyıp taşımadığıdır.
   */
   let combined = combineSequentialResults(decisionResult, reviewResult);
-  const noveltyCandidates = runtimeNoveltyCandidates(
-    applyRuntimeActionWorthinessVerdict(decision, verdict),
+  let reviewed = applyRuntimeActionWorthinessVerdict(decision, verdict);
+  /*
+    Son okuma worker'daki gibi AW'den sonra, yenilik kapısından önce ve worker'ın çağrı/süre
+    bütçesiyle (`runtimeFinalReadTimeoutMs`) çalışır; maliyeti kapasite kanıtına girmeli (Astra
+    DD-07, 10 Ekim). Bütçe yetmezse worker gibi atlanır. Yenilik gibi geçersiz çıktı burada
+    başarısızlıktır.
+  */
+  const pendingNoveltyCalls = Math.min(
+    runtimeNoveltyCallLimit,
+    runtimeNoveltyCandidates(reviewed, context.perception).length,
+  );
+  const finalReadBodies = new Map<number, string>();
+  for (const [index, candidate] of runtimeFinalReadCandidates(
+    reviewed,
     context.perception,
-  ).slice(0, runtimeNoveltyCallLimit);
+  ).entries()) {
+    const finalReadTimeoutMs = runtimeFinalReadTimeoutMs({
+      index,
+      invocationsSoFar: invocations,
+      reservedCalls: RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS,
+      remainingMs: timeoutMs - combined.durationMs,
+      pendingNoveltyCalls,
+    });
+    if (finalReadTimeoutMs === null) continue;
+    let finalReadResult: RuntimeProviderResult;
+    try {
+      finalReadResult = await provider.invoke({
+        runId: context.run.id,
+        prompt: buildFinalReadPrompt(candidate),
+        outputSchema: runtimeFinalReadVerdictJsonSchema,
+        timeoutMs: finalReadTimeoutMs,
+      });
+    } catch (error) {
+      diagnostics?.providerFailure("FINAL_READ", error);
+      throw error;
+    }
+    const parsedFinalRead = runtimeFinalReadVerdictSchema.safeParse(finalReadResult.output);
+    if (!parsedFinalRead.success) {
+      diagnostics?.schemaFailure(
+        "FINAL_READ",
+        "CODEX_FINAL_READ_OUTPUT_INVALID",
+        parsedFinalRead.error,
+      );
+      throw parsedFinalRead.error;
+    }
+    diagnostics?.pass("FINAL_READ");
+    combined = combineSequentialResults(combined, finalReadResult);
+    const trimmed = applyRuntimeFinalRead(
+      candidate.body,
+      candidate.units,
+      parsedFinalRead.data.sil,
+      candidate,
+    );
+    if (trimmed) finalReadBodies.set(candidate.sequence, trimmed.body);
+  }
+  if (finalReadBodies.size > 0) reviewed = applyRuntimeFinalReadBodies(reviewed, finalReadBodies);
+  const noveltyCandidates = runtimeNoveltyCandidates(reviewed, context.perception).slice(
+    0,
+    runtimeNoveltyCallLimit,
+  );
   for (const candidate of noveltyCandidates) {
     let noveltyResult: RuntimeProviderResult;
     try {

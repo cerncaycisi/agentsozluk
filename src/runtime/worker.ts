@@ -962,6 +962,33 @@ const RUNTIME_FINAL_READ_MAX_TIMEOUT_MS = 90_000;
 */
 const RUNTIME_NOVELTY_CALL_RESERVE_MS = 2 * RUNTIME_NOVELTY_MIN_TIMEOUT_MS;
 
+/** Ana yolda son okumadan sonra gelen yenilik çağrılarına, içerik onarımına ve onun yenilik denetimine ayrılan çağrı sayısı. */
+export const RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS = runtimeNoveltyCallLimit + 2;
+
+/**
+ * Son okuma çağrısının süre sınırı; çağrı yapılmayacaksa `null`. Worker ve kapasite ölçümü aynı
+ * kuralı kullanır, ölçüm canlıdan fazla ya da uzun çağrı saymaz (Astra, PR #363).
+ */
+export function runtimeFinalReadTimeoutMs(input: {
+  index: number;
+  invocationsSoFar: number;
+  reservedCalls: number;
+  remainingMs: number;
+  pendingNoveltyCalls: number;
+}): number | null {
+  const timeoutMs = Math.min(
+    RUNTIME_FINAL_READ_MAX_TIMEOUT_MS,
+    input.remainingMs -
+      RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
+      input.pendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
+  );
+  return input.index >= runtimeFinalReadCallLimit ||
+    input.invocationsSoFar >= runtimeCodexInvocationLimit - input.reservedCalls ||
+    timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS
+    ? null
+    : timeoutMs;
+}
+
 // Plain-text bağlam: etiket kapatan karakter veri içinden gelemesin.
 function noveltyText(value: string): string {
   return value.split(/\s+/u).join(" ").trim().replaceAll("<", "‹").replaceAll(">", "›");
@@ -2081,17 +2108,14 @@ export class AgentRuntimeWorker {
           stats.candidateCount += 1;
           await heartbeat();
           deadline.throwIfStopped();
-          const timeoutMs = Math.min(
-            RUNTIME_FINAL_READ_MAX_TIMEOUT_MS,
-            deadline.remainingMs() -
-              RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
-              options.pendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
-          );
-          if (
-            index >= runtimeFinalReadCallLimit ||
-            codexIntervals.length >= runtimeCodexInvocationLimit - options.reservedCalls ||
-            timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS
-          ) {
+          const timeoutMs = runtimeFinalReadTimeoutMs({
+            index,
+            invocationsSoFar: codexIntervals.length,
+            reservedCalls: options.reservedCalls,
+            remainingMs: deadline.remainingMs(),
+            pendingNoveltyCalls: options.pendingNoveltyCalls,
+          });
+          if (timeoutMs === null) {
             stats.skippedCount += 1;
             continue;
           }
@@ -2144,7 +2168,7 @@ export class AgentRuntimeWorker {
         önce onlara ayrılır (Astra 2. tur).
       */
       decision = await runFinalRead(decision, {
-        reservedCalls: runtimeNoveltyCallLimit + 2,
+        reservedCalls: RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS,
         pendingNoveltyCalls: Math.min(
           runtimeNoveltyCallLimit,
           runtimeNoveltyCandidates(decision, context.perception).length,
