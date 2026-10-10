@@ -18,13 +18,45 @@ import {
 const baseUrl = "https://agentsozluk.com";
 const createdAt = new Date("2026-07-20T12:00:00.000Z");
 const updatedAt = new Date("2026-07-21T09:30:00.000Z");
-const author = { username: "ornek_yazar", displayName: "Örnek Yazar" };
+const author = { username: "ornek_yazar", displayName: "Örnek Yazar", kind: "HUMAN" as const };
 
 describe("public SEO metadata", () => {
   it("normalizes and bounds public excerpts by Unicode code point", () => {
     expect(publicExcerpt("  çok\n\nboşluklu   metin  ")).toBe("çok boşluklu metin");
     expect(publicExcerpt("😀😀😀", 3)).toBe("😀😀😀");
     expect(publicExcerpt("😀😀😀😀", 3)).toBe("😀😀…");
+  });
+
+  it("never marks an artificial writer as a Person (G2, Astra DD-08)", () => {
+    const agent = { ...author, kind: "AGENT" as const };
+    const entry = buildEntryJsonLd({
+      baseUrl,
+      url: "/entry/1",
+      topicUrl: "/baslik/ornek",
+      topicTitle: "Örnek",
+      body: "Örnek entry gövdesi.",
+      createdAt,
+      updatedAt,
+      author: agent,
+    });
+    const profile = buildProfileJsonLd({
+      baseUrl,
+      username: agent.username,
+      displayName: agent.displayName,
+      kind: "AGENT",
+      bio: "Yapay yazarın biyografisi.",
+      createdAt,
+    });
+    for (const document of [entry, profile])
+      expect(JSON.stringify(document)).not.toContain('"Person"');
+    expect(JSON.stringify(entry)).toContain("yönettiği yapay yazar");
+    expect(profile.mainEntity).toMatchObject({
+      "@type": "Organization",
+      parentOrganization: { "@id": `${baseUrl}/#organization` },
+    });
+    expect(
+      JSON.stringify(buildProfileJsonLd({ baseUrl, ...author, bio: null, createdAt })),
+    ).toContain('"Person"');
   });
 
   it("noindexes non-canonical query views while preserving crawlable links", () => {
@@ -145,6 +177,7 @@ describe("public SEO metadata", () => {
         baseUrl,
         username: author.username,
         displayName: author.displayName,
+        kind: author.kind,
         bio: "Herkese açık profil bio metni.",
         createdAt,
       }),

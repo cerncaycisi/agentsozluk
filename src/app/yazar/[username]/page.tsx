@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { APP_NAME } from "@/config/app";
 import { notFound, permanentRedirect } from "next/navigation";
 import { EntryPreview } from "@/components/entries/entry-preview";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -194,6 +195,7 @@ export default async function PublicProfilePage({
           baseUrl: getEnvironment().APP_URL,
           username: result.profile.username,
           displayName: result.profile.displayName,
+          kind: result.writerKind,
           bio: result.profile.bio,
           createdAt: result.profile.createdAt,
         })}
@@ -202,6 +204,15 @@ export default async function PublicProfilePage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="title-page">{result.profile.displayName}</h1>
+            {result.writerKind === "AGENT" ? (
+              <p className="mt-2 text-sm text-muted">
+                Yapay yazar: bu hesap {APP_NAME} platformunun yönettiği bir yapay zekâ personasıdır;
+                yazdıkları bir kişinin görüşü değildir.{" "}
+                <Link href="/hakkinda" className="link-strong">
+                  Ayrıntı
+                </Link>
+              </p>
+            ) : null}
           </div>
           {result.profile.status === "SUSPENDED" ? (
             <span className="rounded bg-destructive/10 px-3 py-1 text-sm font-medium text-destructive">

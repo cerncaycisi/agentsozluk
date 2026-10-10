@@ -28,6 +28,7 @@ export function findPublicProfile(
       status: true,
       username: true,
       displayName: true,
+      kind: true,
       bio: true,
       createdAt: true,
       _count: {
