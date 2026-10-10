@@ -99,6 +99,36 @@ describe("capacity benchmark safe diagnostics", () => {
         "FAIL",
       ),
     ).toBe(false);
+    const failedFinalRead = {
+      stage: "FINAL_READ",
+      outcome: "SCHEMA_INVALID",
+      safeCode: "CODEX_FINAL_READ_OUTPUT_INVALID",
+      issues: [],
+    };
+    const reviewed = [pass("DECISION_PRIMARY"), pass("ACTION_WORTHINESS")];
+    expect(
+      scenario([
+        ...reviewed,
+        pass("FINAL_READ"),
+        pass("FINAL_READ"),
+        pass("NOVELTY"),
+        pass("NOVELTY"),
+      ]),
+    ).toBe(true);
+    expect(scenario([...reviewed, pass("FINAL_READ")])).toBe(true);
+    expect(scenario([...reviewed, failedFinalRead], "FAIL")).toBe(true);
+    expect(scenario([...reviewed, pass("NOVELTY"), pass("FINAL_READ")])).toBe(false);
+    expect(scenario([pass("DECISION_PRIMARY"), pass("FINAL_READ")])).toBe(false);
+    expect(scenario([...reviewed, failedFinalRead, pass("NOVELTY")], "FAIL")).toBe(false);
+    expect(
+      scenario([...reviewed, pass("FINAL_READ"), pass("FINAL_READ"), pass("FINAL_READ")]),
+    ).toBe(false);
+    expect(
+      capabilityBenchmarkStageDiagnosticSchema.safeParse({
+        ...failedFinalRead,
+        safeCode: "CODEX_NOVELTY_OUTPUT_INVALID",
+      }).success,
+    ).toBe(false);
     expect(
       capabilityBenchmarkStageDiagnosticSchema.safeParse({
         ...failedNovelty,

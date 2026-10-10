@@ -10,6 +10,7 @@ import {
   capabilityBenchmarkDiagnosticsSchema,
   createCapabilityBenchmarkDiagnosticCollector,
 } from "@/runtime/capability-diagnostics";
+import { runtimeFinalReadVerdictJsonSchema } from "@/runtime/final-read";
 import { runtimeNoveltyVerdictJsonSchema } from "@/runtime/novelty-gate";
 import { parseRuntimeDecisionOutput } from "@/runtime/output";
 import {
@@ -383,6 +384,122 @@ describe("Codex capability benchmark harness", () => {
         })
         .scenarios.filter(({ stages }) => stages.at(-1)?.stage === "NOVELTY"),
     ).toHaveLength(denseScenarios);
+  });
+
+  it("measures final-read calls after review and checks novelty on the trimmed body", async () => {
+    const closing = "Gitar biraz da evin ortak hafızasıdır.";
+    const body = `Gitar, tel titreşimini gövdedeki hava boşluğunda büyüten, perdeli sapı sayesinde aynı tel üzerinde farklı sesler çıkarabilen ve hem eşlikte hem solo çalımda kullanılan bir çalgıdır. ${closing}`;
+    const order: string[] = [];
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
+        if (prompt.includes("Parçalar:")) {
+          order.push("FINAL_READ");
+          return { ...result(300), output: { sil: [2] } };
+        }
+        if (prompt.includes("Taslağın:")) {
+          order.push("NOVELTY");
+          return { ...result(200), output: { karar: "YAYIMLA" } };
+        }
+        if (prompt.includes("# Final action-worthiness decision")) {
+          order.push("ACTION_WORTHINESS");
+          return { ...result(500), output: worthinessOutput() };
+        }
+        order.push("DECISION");
+        const readTopicId = /"readTopics":\[\{"id":"([0-9a-f-]{36})"/u.exec(prompt)?.[1];
+        const candidate = candidateOutput();
+        return {
+          ...result(1000),
+          output: {
+            ...candidate,
+            actions: candidate.actions.map((action) => ({
+              ...action,
+              body,
+              ...(readTopicId ? { targetId: readTopicId } : {}),
+            })),
+          },
+        };
+      }),
+    };
+    const diagnostics: unknown[] = [];
+
+    const measurement = await runCapacityBenchmark(provider, {
+      baseUrl: "http://127.0.0.1:3000",
+      fetchImplementation: healthyFetch,
+      plannedContentRuns: 70,
+      diagnosticSink: (diagnostic) => diagnostics.push(diagnostic),
+    });
+
+    const calls = vi.mocked(provider.invoke).mock.calls.map(([request]) => request);
+    const finalReadCalls = calls.filter(({ prompt }) => prompt.includes("Parçalar:"));
+    const noveltyCalls = calls.filter(({ prompt }) => prompt.includes("Taslağın:"));
+    const denseScenarios = CAPACITY_BENCHMARK_SCENARIOS.filter(
+      ({ denseContext }) => denseContext,
+    ).length;
+    expect(finalReadCalls).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.length);
+    expect(finalReadCalls[0]!.outputSchema).toBe(runtimeFinalReadVerdictJsonSchema);
+    expect(noveltyCalls).toHaveLength(denseScenarios);
+    for (const { prompt } of noveltyCalls) expect(prompt).not.toContain(closing);
+    expect(order.join(" ")).not.toMatch(/NOVELTY FINAL_READ|ACTION_WORTHINESS NOVELTY/u);
+    expect(measurement.failureRate).toBe(0);
+    expect(measurement.maxDurationMs).toBe(2000);
+    expect(measurement.p50DurationMs).toBe(1800);
+    expect(
+      capabilityBenchmarkDiagnosticsSchema
+        .parse({
+          version: 1,
+          mode: "capacity",
+          terminalCode: "BENCHMARK_COMPLETED",
+          scenarios: diagnostics,
+        })
+        .scenarios.map(({ stages }) => stages.map(({ stage }) => stage).join(" ")),
+    ).toEqual(
+      expect.arrayContaining([
+        "DECISION_PRIMARY ACTION_WORTHINESS FINAL_READ",
+        "DECISION_PRIMARY ACTION_WORTHINESS FINAL_READ NOVELTY",
+      ]),
+    );
+  });
+
+  it("fails a scenario whose final-read output breaks the contract without retaining it", async () => {
+    const diagnostics = createCapabilityBenchmarkDiagnosticCollector("capacity");
+    const body =
+      "Gitar, tel titreşimini gövdedeki hava boşluğunda büyüten, perdeli sapı sayesinde aynı tel üzerinde farklı sesler çıkarabilen ve hem eşlikte hem solo çalımda kullanılan bir çalgıdır. Gitar biraz da evin ortak hafızasıdır.";
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
+        if (prompt.includes("Parçalar:"))
+          return { ...result(300), output: { sil: [2], govde: "RAW_FINAL_READ_MUST_NOT_LEAK" } };
+        if (prompt.includes("# Final action-worthiness decision"))
+          return { ...result(500), output: worthinessOutput() };
+        const candidate = candidateOutput();
+        return {
+          ...result(1000),
+          output: { ...candidate, actions: candidate.actions.map((a) => ({ ...a, body })) },
+        };
+      }),
+    };
+
+    await expect(
+      runCapacityBenchmark(provider, {
+        baseUrl: "http://127.0.0.1:3000",
+        fetchImplementation: healthyFetch,
+        diagnosticSink: diagnostics.record,
+      }),
+    ).rejects.toThrow("CAPABILITY_BENCHMARK_EXHAUSTED");
+    const document = diagnostics.document("BENCHMARK_EXHAUSTED");
+
+    expect(document.scenarios[0]?.finalStatus).toBe("FAIL");
+    expect(document.scenarios[0]?.stages.at(-1)).toMatchObject({
+      stage: "FINAL_READ",
+      outcome: "SCHEMA_INVALID",
+      safeCode: "CODEX_FINAL_READ_OUTPUT_INVALID",
+    });
+    expect(JSON.stringify(document)).not.toContain("RAW_FINAL_READ_MUST_NOT_LEAK");
   });
 
   it("canonicalizes and normalizes like the worker before review and novelty", async () => {

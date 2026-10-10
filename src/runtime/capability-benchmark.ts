@@ -10,6 +10,7 @@ import { parseRuntimeDecisionOutput, runtimeNormalDecisionWireJsonSchema } from 
 import type { RuntimeProvider, RuntimeProviderResult } from "@/runtime/provider";
 import {
   buildActionWorthinessPrompt,
+  buildFinalReadPrompt,
   buildNoveltyPrompt,
   buildRuntimePrompt,
   canonicalizeVisibleTopicActions,
@@ -22,6 +23,14 @@ import {
   parseRuntimeActionWorthinessVerdict,
   runtimeActionWorthinessVerdictJsonSchema,
 } from "@/runtime/action-worthiness";
+import {
+  applyRuntimeFinalRead,
+  applyRuntimeFinalReadBodies,
+  runtimeFinalReadCallLimit,
+  runtimeFinalReadCandidates,
+  runtimeFinalReadVerdictJsonSchema,
+  runtimeFinalReadVerdictSchema,
+} from "@/runtime/final-read";
 import {
   runtimeNoveltyCallLimit,
   runtimeNoveltyCandidates,
@@ -251,10 +260,53 @@ async function invokeBenchmarkDecision(
     sözleşmeyi taşıyıp taşımadığıdır.
   */
   let combined = combineSequentialResults(decisionResult, reviewResult);
-  const noveltyCandidates = runtimeNoveltyCandidates(
-    applyRuntimeActionWorthinessVerdict(decision, verdict),
-    context.perception,
-  ).slice(0, runtimeNoveltyCallLimit);
+  let reviewed = applyRuntimeActionWorthinessVerdict(decision, verdict);
+  /*
+    Son okuma worker'daki gibi AW'den sonra, yenilik kapısından önce çalışır ve en çok
+    `runtimeFinalReadCallLimit` gövdeye bakar; maliyeti kapasite kanıtına girmeli (Astra DD-07,
+    10 Ekim). Yenilik gibi geçersiz çıktı burada başarısızlıktır.
+  */
+  const finalReadBodies = new Map<number, string>();
+  for (const candidate of runtimeFinalReadCandidates(reviewed, context.perception).slice(
+    0,
+    runtimeFinalReadCallLimit,
+  )) {
+    let finalReadResult: RuntimeProviderResult;
+    try {
+      finalReadResult = await provider.invoke({
+        runId: context.run.id,
+        prompt: buildFinalReadPrompt(candidate),
+        outputSchema: runtimeFinalReadVerdictJsonSchema,
+        timeoutMs: Math.max(1, timeoutMs - combined.durationMs),
+      });
+    } catch (error) {
+      diagnostics?.providerFailure("FINAL_READ", error);
+      throw error;
+    }
+    const parsedFinalRead = runtimeFinalReadVerdictSchema.safeParse(finalReadResult.output);
+    if (!parsedFinalRead.success) {
+      diagnostics?.schemaFailure(
+        "FINAL_READ",
+        "CODEX_FINAL_READ_OUTPUT_INVALID",
+        parsedFinalRead.error,
+      );
+      throw parsedFinalRead.error;
+    }
+    diagnostics?.pass("FINAL_READ");
+    combined = combineSequentialResults(combined, finalReadResult);
+    const trimmed = applyRuntimeFinalRead(
+      candidate.body,
+      candidate.units,
+      parsedFinalRead.data.sil,
+      candidate,
+    );
+    if (trimmed) finalReadBodies.set(candidate.sequence, trimmed.body);
+  }
+  if (finalReadBodies.size > 0) reviewed = applyRuntimeFinalReadBodies(reviewed, finalReadBodies);
+  const noveltyCandidates = runtimeNoveltyCandidates(reviewed, context.perception).slice(
+    0,
+    runtimeNoveltyCallLimit,
+  );
   for (const candidate of noveltyCandidates) {
     let noveltyResult: RuntimeProviderResult;
     try {
