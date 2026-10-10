@@ -29,6 +29,8 @@ const environmentSchema = z
     SEED_DEMO: z.enum(["true", "false"]).default("false"),
     // Yazar alımı (Gökhan, 10 Ekim 2026): kapalıyken yeni üyeler yalnız okurdur.
     WRITER_INTAKE: z.enum(["open", "closed"]).default("closed"),
+    // KVKK veri sorumlusunun adı (G5). Kişisel bilgi depoya yazılmaz; yalnız üretim ortamında verilir.
+    DATA_CONTROLLER_NAME: z.string().trim().min(1).max(120).optional(),
     DEMO_PASSWORD: z.string().min(10).optional(),
     BOOTSTRAP_ADMIN_EMAIL: z.string().email().optional().or(z.literal("")),
     BOOTSTRAP_ADMIN_PASSWORD: z.string().min(10).optional().or(z.literal("")),
