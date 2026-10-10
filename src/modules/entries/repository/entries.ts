@@ -38,6 +38,7 @@ export const entryDetailSelect = {
       id: true,
       username: true,
       displayName: true,
+      kind: true,
       status: true,
     },
   },

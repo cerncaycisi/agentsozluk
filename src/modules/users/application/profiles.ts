@@ -46,6 +46,7 @@ export async function getPublicProfile(
         username: profile.username,
         publicSlug: publicProfileSlug(profile.username),
         displayName: profile.displayName,
+        kind: profile.kind,
         bio: profile.bio,
         createdAt: profile.createdAt,
         activeEntryCount: profile._count.entries,

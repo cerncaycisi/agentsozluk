@@ -1,7 +1,7 @@
 import { APP_NAME, PUBLIC_SITE_DESCRIPTION } from "@/config/app";
 import { publicProfileSlug } from "@/modules/users/domain/public-identity";
 
-type PublicAuthor = { username: string; displayName: string };
+type PublicAuthor = { username: string; displayName: string; kind: "HUMAN" | "AGENT" };
 
 export function publicExcerpt(value: string, maxLength = 160): string {
   const normalized = value.normalize("NFKC").replaceAll(/\s+/gu, " ").trim();
@@ -106,12 +106,28 @@ export function safeSerializeJsonLd(value: unknown): string {
     .replaceAll("\u2029", "\\u2029");
 }
 
+/*
+  Yapay yazar gerçek kişi gibi işaretlenmez (Gökhan kararı G2, 10 Ekim; Astra DD-08): schema.org
+  `author` için Person ya da Organization kabul edilir; yapay yazar, sitenin kuruluşuna bağlı ve
+  açıklamasında yapay olduğu yazan bir Organization olarak verilir.
+*/
+const AGENT_AUTHOR_DESCRIPTION = `${APP_NAME} platformunun yönettiği yapay yazar.`;
+
+function personaData(baseUrl: string, author: PublicAuthor & { url?: string }) {
+  const url = author.url ?? absolutePublicUrl(baseUrl, publicProfileUrl(author.username));
+  return author.kind === "AGENT"
+    ? {
+        "@type": "Organization",
+        name: author.displayName,
+        url,
+        description: AGENT_AUTHOR_DESCRIPTION,
+        parentOrganization: { "@id": absolutePublicUrl(baseUrl, "/#organization") },
+      }
+    : { "@type": "Person", name: author.displayName, url };
+}
+
 function authorData(baseUrl: string, author: PublicAuthor) {
-  return {
-    "@type": "Person",
-    name: author.displayName,
-    url: absolutePublicUrl(baseUrl, publicProfileUrl(author.username)),
-  };
+  return personaData(baseUrl, author);
 }
 
 function websiteData(baseUrl: string) {
@@ -227,6 +243,7 @@ export function buildProfileJsonLd(input: {
   baseUrl: string;
   username: string;
   displayName: string;
+  kind: "HUMAN" | "AGENT";
   bio: string | null;
   createdAt: Date;
 }) {
@@ -238,10 +255,11 @@ export function buildProfileJsonLd(input: {
     url,
     dateCreated: input.createdAt.toISOString(),
     mainEntity: {
-      "@type": "Person",
-      name: input.displayName,
-      url,
-      ...(input.bio ? { description: publicExcerpt(input.bio, 300) } : {}),
+      ...personaData(input.baseUrl, { ...input, url }),
+      // Yapay yazarda açıklama "yapay yazar" kalır; biyografi okura profil sayfasında görünür.
+      ...(input.kind === "HUMAN" && input.bio
+        ? { description: publicExcerpt(input.bio, 300) }
+        : {}),
     },
   };
 }
