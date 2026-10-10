@@ -29,10 +29,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
   veriyle çürütüldü; 12'de kalabalığa yazım 0/100. Gökhan 9 Ekim: "bana bişi sormana gerek yok bu ay
   boyunca" — 31 Ekim sonuna kadar dağıtım/erişim için ayrıca sorulmaz; teknik kapılar ve veri silme
   hariç.
-- **15 içerik sorunu paketi canlıda (9 Ekim 01:43 TSİ, exact `e782dae`, #355, profil 57):**
-  - Yerel kopyada iki sürümle ölçüldü ([kanıt](YEREL_KANIT_2026-10-08.md)); D2 ve istem yeniden çizimi uygulandı.
-  - Açık: özdeyiş kapanış ve uzun yazarlarda dolgu; 9 numaranın kanıtı zayıf.
-    P7 T0 08:26Z penceresi `INTERRUPTED_NOT_PASS`; yeni T0 canlı ölçümden sonra.
+- 15 içerik sorunu paketi `e782dae` (#355, profil 57) 9 Ekim 01:43 TSİ'de canlıya çıktı
+  ([kanıt](YEREL_KANIT_2026-10-08.md)). P7 T0 08:26Z penceresi `INTERRUPTED_NOT_PASS`.
 - 7 Ekim'de iki bağımsız inceleme geldi: [Claude](TAM_ANALIZ_2026-10-07.md) ve
   [ChatGPT](FULL_ANALYSIS_2026-10-07.md). Uzlaştırma aşağıda; ikinci bir kuyruk değil.
 - Geri dönüş öncesi ayrıntılı durum anlatısı ve eski aktif sıra
