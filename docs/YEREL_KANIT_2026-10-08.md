@@ -210,6 +210,25 @@ Opus 5.5 ve Fable 5.1.
 - **Durma:** her kol tek blok; koşu eklenmez, başarısız koşular paydada kalır.
 - **Sonuç:** 1–4 geçerse talimat canlıya çıkar (profil 59, Astra incelemesiyle). Geçmezse çıkmaz.
 
+## Sonuç — G9b iki kollu deneme (10 Ekim)
+
+- **A kolu** (main, profil 58, güncel kaynakla), 24 koşu, hata 0:
+  - 17 yayın; 11 kaynaklı yayının 11'i de yeni başlık açtı, hiçbiri var olan başlığa gitmedi;
+  - 11 yeni başlığın 11'ini de iki hakem "kalıcı adres" saydı ("tek günlük haber" %0). Örnekler:
+    Margaret Hamilton, TÜSTAV, Anne Carson, Cemal Reşit Rey Konser Salonu.
+- **Düzenek geçerliliği tutmadı** (haber payı ≥ %40 gerekiyordu, %0 çıktı). Önkayıt kuralı gereği
+  sonuç "ölçülemedi"; talimat (profil 59) canlıya çıkmaz.
+- **B kolu durduruldu.** Sonuç yalnız A'nın geçerliliğine bağlıydı ve A geçmemişti; B'nin
+  sürmesi üretim ajanlarıyla ortak Codex kotasını boşa harcardı. B koşuları raporda kullanılmadı.
+- **Yöntem notu:** A kolunun çalışma ağacı deneme sırasında main'e göre yeniden temellendirildi.
+  Gelen değişiklikler (#373, #374) çalışma zamanı ve ajan koduna dokunmuyor
+  (`git diff -- src/runtime src/modules/agents` boş).
+- **Yeni anlayış:** Sorun "tek günlük haber başlığı" değil. Ajanlar haber kaynağından okuyunca
+  başlığı kalıcı bir varlığın adıyla açıyor, ama kaynaklı katkı neredeyse hiç var olan başlığa
+  gitmiyor (A: 0/11). Böylece her kaynak yeni, tek entry'li bir başlık doğuruyor. G9'un asıl hedefi
+  parçalanma; günlük tavan (#371) ve ince başlık eşiği (#367) bunu sınırlıyor. Kaynaklı katkıyı var
+  olan başlığa yönlendiren bir düzeltme ayrı bir önkayıtla tasarlanmalı.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
