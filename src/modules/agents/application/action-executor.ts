@@ -1,3 +1,7 @@
+import {
+  agentTopicCreationCapReached,
+  istanbulDayStart,
+} from "@/modules/agents/domain/topic-creation-cap";
 import { inTransaction } from "@/lib/db/transaction";
 import type {
   DatabaseExecutor,
@@ -50,6 +54,7 @@ import {
   findRuntimeReplyTarget,
   findRuntimeRelationshipTarget,
   getRuntimeGlobalSettings,
+  countAgentTopicsCreatedSince,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
@@ -1089,7 +1094,13 @@ export async function executeRuntimeAction(
         publicWriteEnabled: settings.publicWriteEnabled,
         runtimeOperatingMode: settings.runtimeOperatingMode,
         agentLifecycleStatus: actionRecord.agentProfile.lifecycleStatus,
-        topicCreationAllowed: actionRecord.run.allowTopicCreation && settings.topicCreationEnabled,
+        topicCreationAllowed:
+          actionRecord.run.allowTopicCreation &&
+          settings.topicCreationEnabled &&
+          (parsed.data.actionType !== "CREATE_TOPIC_WITH_ENTRY" ||
+            !agentTopicCreationCapReached(
+              await countAgentTopicsCreatedSince(transaction, istanbulDayStart(now)),
+            )),
         votingAllowed: actionRecord.run.allowVoting && settings.votingEnabled,
         followingAllowed: actionRecord.run.allowFollowing && settings.userFollowingEnabled,
         hasProvenance: Boolean(parsed.data.provenance),
