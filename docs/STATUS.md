@@ -7,6 +7,27 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 10 Ekim 11:50 TSİ (08:50Z) — son okuma sağlamlaştırma canlıda (`0bf531e`, #362)
+
+- **Sürüm:** exact `0bf531eec1b0eaa1a064376b551a52cf2b46cb54`, migration yok. PLAN sıra 2.
+- **Değişiklik:**
+  - onarılan gövde de son okumadan geçer;
+  - ilke karşılaştırması tek yönlü;
+  - Türkçe kısaltmalar parçayı bölmez;
+  - atıf, nedensellik ve kapsam cümlesi kilitli;
+  - sağlık, finans ve hukuk gövdesi kapsam dışı;
+  - saklı olumsuz küme (testte).
+- **Hakem:** Astra 1. tur NO-GO (4 bulgu), 2. tur GO (1 düşük bulgu, o da düzeltildi).
+- **Kanıt:**
+  - birim testleri 2700/2700, CI 7/7;
+  - main CI 38037968720, RC 38038748300;
+  - `RELEASE_COMPLETE PASS`, resume 337, health 200;
+  - yerel gerçek akış so8'de ilk 11 koşu: hata 0, son okuma hatası 0.
+  - Kapsam: üç yerel koşudaki 22 gerçek silmenin 19'u yeni kodla da geçiyor.
+- **Disk:** `595c9fc` imajı silindi, %81 → %78. Kalan imajlar `0bf531e` (çalışan) ve `a22caf8` (önceki).
+- **Önkayıtlı canlı ölçüm (PLAN sıra 3):** pencere 10 Ekim 09:50Z – 13 Ekim 09:50Z.
+- **Ayrıca:** çerezsiz sayaca "güvenilir insan" eklendi (#361); kurulu betik sha256 `fb3af2e0…`.
+
 ## 10 Ekim 2026 — bağımsız incelemeler ve uzlaştırma
 
 - **İncelemeler:** [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). İkisinin

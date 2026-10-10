@@ -9134,3 +9134,32 @@ yedi saat sürdü. İki bağımsız inceleme de bunu buldu.
 
 **Do not repeat:** `docs/PLAN.md` değişikliğini main'e itmeden önce
 `npx vitest run tests/unit/docs` koş.
+
+## 10 Ekim 11:50 TSİ — son okuma sağlamlaştırma canlıda (#362, `0bf531e`); sayaç güncellendi (#361)
+
+**Son okuma (PLAN sıra 2):**
+
+- Astra 1. tur NO-GO, dört bulgu:
+  - hassas alan sözcükleri çekimli biçimde kaçıyordu ("aşının", kiracı, anapara);
+  - atıf ve kapsam çekimleri kaçıyordu ("söyledi", "yalnızca … sınırlı");
+  - "hisse" kökü "hissettiriyor"u eliyordu;
+  - kısaltma paragraf sınırını yutuyordu.
+- Kök tabanlı eşleşmeyle düzeltildi. Astra 2. tur GO; tek düşük bulgu, ses düşmesi ("söyl-üyor"),
+  de düzeltildi.
+- Onarım yolundaki son okuma gerçek akışta henüz tetiklenmedi; bunun için worker testi eklendi.
+
+**Akış:**
+
+1. PR CI 7/7, `--match-head-commit 14735a0b`.
+2. Main CI 38037968720, RC 38038748300.
+3. `--pause-society-flow` (336), `RELEASE_COMPLETE PASS`, resume 337.
+4. İmaj temizliği: `595c9fc`, +1,72 GB, %81 → %78.
+
+**Sayaç (#361):** kurulu betik `e7cc2441…` yerine `fb3af2e0…` oldu (`sudo install`, sha256
+doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
+
+**Do not repeat:**
+
+- Dağıtım logunu `cut -c1-200` ile kırpma: `free_bytes` sayısı yarıda kesilip disk dolu sanıldı.
+- Sözcük listesi kilitlerinde Türkçe çekim ve ses düşmesi için kök + her ek eşleşmesi kullan; kelime
+  sınırlı tam kelime yetmez.

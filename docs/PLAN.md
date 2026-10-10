@@ -13,8 +13,8 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- Canlı exact `a22caf8` (profil 58, son okuma), 9 Ekim 19:53 TSİ'den beri. İlk 353 koşuda son okuma
-  100 entry okudu, 34'ünü kısalttı, hata 0 (üretim, salt okunur, 10 Ekim).
+- Canlı exact `0bf531e` (son okuma sağlamlaştırma), 10 Ekim 11:50 TSİ'den beri. Önceki `a22caf8`'in
+  ilk 353 koşusunda son okuma 100 entry okudu, 34'ünü kısalttı, hata 0.
 - İncelemeler: [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). Uzlaştırma
   aşağıda; ikinci bir kuyruk değil.
 - **Ortak ana bulgu:** talep kanıtı yok (28 günde 63 arama tıkı, son 30 günde insan entry 0). Başarı
@@ -44,15 +44,9 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
 
    Başarısız koşular paydada kalır; koşu sayısı ve durma kuralı önceden yazılır.
 
-2. **Son okuma sağlamlaştırma.**
-   - Onarılan gövde de son okumadan geçer.
-   - İlke parmak izi tek yönlü olur: silmeden sonraki ihlaller, öncekilerin alt kümesi olmalı.
-   - Türkçe kısaltmalar parçayı bölmez; kullanılmayan `lastUnitOnly` kodu kalkar.
-   - Sağlık, finans ve hukuk gövdeleri kapsam dışı kalır; atıf, nedensellik ve kapsam sınırı
-     cümleleri kilitlenir.
-   - Astra'nın DD-03 karşı örnekleri, saklı bir olumsuz test kümesine eklenir.
-   - Yerel model denemesi ve Astra incelemesi yapılır.
-3. **Önkayıtlı canlı ölçüm.** Sıra 2 canlıya çıktıktan sonra 72 saatlik sabit bir pencere açılır.
+2. ~~**Son okuma sağlamlaştırma.**~~ Canlıda: exact `0bf531e` (#362), 10 Ekim 08:50Z. Astra 2. turda GO.
+3. **Önkayıtlı canlı ölçüm.** Pencere 10 Ekim 09:50Z – 13 Ekim 09:50Z; tasarım `YEREL_KANIT`
+   "Önkayıt" bölümünde.
    - Eşik ve payda pencere başlamadan bu dosyaya yazılır; tek koşu yapılır, koşu eklenmez.
    - Ölçülenler: son okuma telemetrisi (okunan, kısaltılan, atlanan, onarılan), iki model hakemin
      kör etiketleri ve Gökhan'ın 20 entry'lik kendi okuması.

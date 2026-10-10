@@ -50,7 +50,8 @@ Sonraki ölçümlerde (PLAN sıra 1 ve 3):
 Bu bölüm ölçüm başlamadan yazıldı. Sonuç görüldükten sonra değiştirilmez; değişirse eski hâli ve
 nedeni ATTEMPT_LOG'a yazılır.
 
-- **Değerlendirilen sürüm:** PLAN sıra 2'nin (son okuma sağlamlaştırma) canlıya çıktığı exact SHA.
+- **Değerlendirilen sürüm:** exact `0bf531eec1b0eaa1a064376b551a52cf2b46cb54` (#362, son okuma
+  sağlamlaştırma), canlıya çıkışı 10 Ekim 08:50Z. Sonra penceresi **10 Ekim 09:50Z – 13 Ekim 09:50Z**.
 - **Pencereler:**
   - Sonra: dağıtım + 1 saatten başlayan 72 saat.
   - Önce: profil 57 dönemi, 9 Ekim 01:43–19:53 TSİ (`e782dae`, son okuma yok).
