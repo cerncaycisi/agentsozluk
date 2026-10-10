@@ -687,6 +687,12 @@ class RuntimeActionRejectionError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    /**
+     * Retle birlikte eylem sonucuna yazılan güvenli kimlikler. `conflictTopicId`, dolu
+     * başlığa çarpan önerinin hangi başlığa çözüldüğünü söyler; sunucu bu koşunun yalnız
+     * bu başlığı okumasına izin verir ("oku, sonra karar ver").
+     */
+    readonly details: { conflictTopicId?: string } = {},
   ) {
     super(message);
     this.name = "RuntimeActionRejectionError";
@@ -1531,6 +1537,7 @@ export async function executeRuntimeAction(
               throw new RuntimeActionRejectionError(
                 "TOPIC_EXISTS_UNREAD",
                 "Anayasa Madde 16: Önerilen başlık sözlükte zaten var ve görünür entry'ler taşıyor; bu koşuda okunmadığı için entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir tanım, örnek, karşılaştırma, çekince veya görüş ekleyeceksen yaz.",
+                { conflictTopicId: topic.id },
               );
             }
           : undefined;
@@ -1736,7 +1743,15 @@ export async function executeRuntimeAction(
     await dependencies.beforeFallback?.();
     const rejection =
       error instanceof AppError || error instanceof RuntimeActionRejectionError
-        ? { status: "REJECTED" as const, code: error.code, reason: error.message }
+        ? {
+            status: "REJECTED" as const,
+            code: error.code,
+            reason: error.message,
+            conflictTopicId:
+              error instanceof RuntimeActionRejectionError
+                ? error.details.conflictTopicId
+                : undefined,
+          }
         : {
             status: "FAILED" as const,
             code: "ACTION_EXECUTION_FAILED",
@@ -1781,6 +1796,9 @@ export async function executeRuntimeAction(
         }),
         rejectionCode: rejection.code,
         rejectionReason: rejection.reason,
+        ...("conflictTopicId" in rejection && rejection.conflictTopicId
+          ? { result: { conflictTopicId: rejection.conflictTopicId } }
+          : {}),
       });
       await appendActionStatusLifeEvent(
         transaction,

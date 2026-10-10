@@ -75,6 +75,8 @@ const actionsResponseSchema = z.object({
       actionType: z.string(),
       actionStatus: z.string(),
       rejectionCode: z.string().nullable(),
+      // Retle birlikte sunucunun yazdığı güvenli kimlikler (ör. `conflictTopicId`).
+      result: z.unknown().optional(),
     }),
   ),
 });

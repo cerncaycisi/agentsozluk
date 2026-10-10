@@ -834,6 +834,7 @@ export function listRuntimeActionsForRepairValidation(
       provenance: true,
       validationResult: true,
       rejectionCode: true,
+      result: true,
     },
   });
 }
@@ -2844,6 +2845,30 @@ export const runtimeReadTopicEntryLimit = 15;
   kesintisiz olduğu için okumadan sonra değişiklik kuralı (`windowStart`) aynı kalır.
 */
 export const runtimeReadTopicArchiveLimit = 60;
+
+/**
+ * Bu koşunun kendi `TOPIC_EXISTS_UNREAD` retlerinde sunucunun çözdüğü başlıklar. Okuma izin
+ * listesini menü dışına yalnız bu kimliklerle genişletir ("oku, sonra karar ver"); kimlik
+ * worker'dan değil, sunucunun kendi ret kaydından gelir.
+ */
+export async function listRunConflictTopicIds(
+  transaction: Prisma.TransactionClient,
+  runId: string,
+): Promise<Set<string>> {
+  const actions = await transaction.agentAction.findMany({
+    where: { runId, actionStatus: "REJECTED", rejectionCode: "TOPIC_EXISTS_UNREAD" },
+    select: { result: true },
+  });
+  return new Set(
+    actions.flatMap(({ result }) => {
+      const value =
+        result && typeof result === "object" && !Array.isArray(result)
+          ? (result as Record<string, unknown>).conflictTopicId
+          : undefined;
+      return typeof value === "string" ? [value] : [];
+    }),
+  );
+}
 
 export async function getRuntimeReadTopics(
   transaction: Prisma.TransactionClient,

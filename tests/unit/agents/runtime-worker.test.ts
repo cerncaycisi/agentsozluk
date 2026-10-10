@@ -4987,6 +4987,141 @@ describe("runtime novelty gate", () => {
     expect(completion.usageMetadata.finalRead).toMatchObject({ editedCount: 1, checkedCount: 1 });
   });
 
+  describe("oku, sonra karar ver (TOPIC_EXISTS_UNREAD)", () => {
+    const setup = (options: { noveltyVerdict: "YAYIMLA" | "VAZGEC"; preRead?: number }) => {
+      const runId = randomUUID();
+      const conflictId = randomUUID();
+      const plane = controlPlane(runId);
+      const base = fixtureContext(runId);
+      const preRead = Array.from({ length: options.preRead ?? 0 }, () =>
+        noveltyReadTopic(randomUUID(), [{ username: "can", body: "Ayrı bir başlığın entry'si." }]),
+      );
+      if (preRead.length > 0) base.perception.readTopics = preRead;
+      const withConflict = structuredClone(base);
+      withConflict.perception.readTopics = [
+        ...preRead,
+        noveltyReadTopic(conflictId, [{ username: "ayse", body: "Kavramın var olan tanımı." }]),
+      ];
+      plane.context = vi.fn().mockImplementation(async (...args: unknown[]) => {
+        const readTopicIds = args[5] as string[] | undefined;
+        return readTopicIds?.includes(conflictId) ? withConflict : base;
+      });
+      plane.executeActions = vi
+        .fn()
+        .mockResolvedValueOnce({
+          actions: [
+            {
+              id: randomUUID(),
+              sequence: 1,
+              actionType: "CREATE_TOPIC_WITH_ENTRY",
+              actionStatus: "REJECTED",
+              rejectionCode: "TOPIC_EXISTS_UNREAD",
+              result: { conflictTopicId: conflictId },
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          actions: [
+            {
+              id: randomUUID(),
+              sequence: 2,
+              actionType: "CREATE_ENTRY",
+              actionStatus: "SUCCEEDED",
+              rejectionCode: null,
+            },
+          ],
+        });
+      const body = "Kavrama gündelik hayattan somut ve yeni bir örnek ekleyen tek cümle.";
+      const provider: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: vi.fn().mockResolvedValueOnce(
+          noveltyResult(
+            canonicalNormalOutput("Aday üretildi.", {
+              actions: [
+                {
+                  type: "CREATE_TOPIC_WITH_ENTRY",
+                  title: "Var olan kavram",
+                  body,
+                  desire: 0.6,
+                  safeReason: "Kavrama katkı adayı.",
+                  claimProvenance: [],
+                },
+              ],
+            }),
+            5,
+          ),
+        ),
+      };
+      const reviewer: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: vi
+          .fn()
+          .mockResolvedValueOnce(actAll([1]))
+          .mockResolvedValueOnce(noveltyResult({ karar: options.noveltyVerdict })),
+      };
+      const events: string[] = [];
+      const worker = new AgentRuntimeWorker({
+        workerId: "read-then-decide-worker",
+        credentials: [`agt_${"w".repeat(43)}`],
+        controlPlane: plane,
+        provider,
+        actionWorthinessProvider: reviewer,
+        onSafeEvent: ({ code }) => events.push(code),
+      });
+      return { worker, plane, reviewer, conflictId, body, events };
+    };
+
+    it("reads the hit topic and writes the same body there once when novelty publishes", async () => {
+      const { worker, plane, conflictId, body, events } = setup({ noveltyVerdict: "YAYIMLA" });
+
+      await expect(worker.runOnce()).resolves.toBe(1);
+      const readCall = vi
+        .mocked(plane.context)
+        .mock.calls.find((call) => (call[5] as string[] | undefined)?.includes(conflictId));
+      expect(readCall).toBeDefined();
+      const converted = vi.mocked(plane.recordActions).mock.calls[1]![4] as Array<
+        Record<string, unknown>
+      >;
+      expect(converted).toEqual([
+        expect.objectContaining({
+          sequence: 2,
+          repairOfSequence: 1,
+          actionType: "CREATE_ENTRY",
+          targetType: "TOPIC",
+          targetId: conflictId,
+          input: { topicId: conflictId, body },
+        }),
+      ]);
+      expect(vi.mocked(plane.executeActions)).toHaveBeenCalledTimes(2);
+      expect(events).toContain("READ_THEN_DECIDE_WRITTEN");
+    });
+
+    it("writes nothing when the novelty gate drops the draft", async () => {
+      const { worker, plane, events } = setup({ noveltyVerdict: "VAZGEC" });
+
+      await expect(worker.runOnce()).resolves.toBe(1);
+      expect(vi.mocked(plane.recordActions)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(plane.executeActions)).toHaveBeenCalledTimes(1);
+      expect(events).toContain("READ_THEN_DECIDE_NOVELTY_DROPPED");
+    });
+
+    it("does not try when the run already read the maximum number of topics", async () => {
+      const { worker, plane, conflictId, events } = setup({
+        noveltyVerdict: "YAYIMLA",
+        preRead: 3,
+      });
+
+      await expect(worker.runOnce()).resolves.toBe(1);
+      expect(
+        vi
+          .mocked(plane.context)
+          .mock.calls.some((call) => (call[5] as string[] | undefined)?.includes(conflictId)),
+      ).toBe(false);
+      expect(vi.mocked(plane.recordActions)).toHaveBeenCalledTimes(1);
+      expect(events).toContain("READ_THEN_DECIDE_SKIPPED");
+    });
+  });
+
   it("keeps completed novelty counts when the run is cancelled mid-phase", async () => {
     const runId = randomUUID();
     const firstTopic = randomUUID();

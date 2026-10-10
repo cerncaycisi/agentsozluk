@@ -47,6 +47,8 @@ import {
   isRepairableContentRejectionCode,
   isTitleRepairableContentRejectionCode,
   titleRepairCandidateIsSafe,
+  conversionRepairCandidateIsSafe,
+  isConversionRepairableRejectionCode,
 } from "@/modules/agents/domain/action-policy";
 import {
   appendRuntimeActions,
@@ -67,6 +69,7 @@ import {
   getRuntimeAgentLifecycle,
   getRuntimeGlobalSettings,
   countAgentTopicsCreatedSince,
+  listRunConflictTopicIds,
   heartbeatRuntimeRunRecord,
   listExpiredCancellationRunsForFinalization,
   lockAndReadRuntimeRunFinalizationState,
@@ -1952,7 +1955,17 @@ export function getRuntimeRunContext(
       Menü türetmesi worker ile ortak: domain/runtime-browse.ts.
     */
     const browseMenu = browsableTopicIds(perception);
-    const allowedReadTopicIds = readTopicIds.filter((id) => browseMenu.has(id));
+    /*
+      "Oku, sonra karar ver" (10 Ekim 2026): dolu başlığa çarpan yeni-başlık önerisi reddedilince
+      sunucu çarpılan başlığı ret kaydına yazar. Aynı koşu yalnız bu başlıkları menü dışından
+      okuyabilir; kimlik worker'ın beyanından değil sunucunun kendi kaydından gelir.
+    */
+    const conflictTopicIds = readTopicIds.some((id) => !browseMenu.has(id))
+      ? await listRunConflictTopicIds(transaction, runId)
+      : new Set<string>();
+    const allowedReadTopicIds = readTopicIds.filter(
+      (id) => browseMenu.has(id) || conflictTopicIds.has(id),
+    );
     const rejectedReadTopicCount = readTopicIds.length - allowedReadTopicIds.length;
     if (rejectedReadTopicCount > 0)
       /*
@@ -2253,12 +2266,16 @@ export function recordRuntimeActions(
       if (
         !origin ||
         origin.actionStatus !== "REJECTED" ||
-        !isRepairableContentRejectionCode(origin.rejectionCode) ||
+        !(
+          isRepairableContentRejectionCode(origin.rejectionCode) ||
+          isConversionRepairableRejectionCode(origin.rejectionCode)
+        ) ||
         marker(origin.validationResult) !== null ||
         existingActions.some(({ validationResult }) => marker(validationResult) !== null) ||
         candidate.sequence <= Math.max(0, ...existingActions.map(({ sequence }) => sequence)) ||
         !repairCandidateIsSafe(
           origin.rejectionCode,
+          conflictTopicIdFromResult(origin.result),
           {
             sequence: origin.sequence,
             actionType: origin.actionType,
@@ -3018,11 +3035,20 @@ export function failRuntimeRun(
   Eskiden yalnız gövde denetimi vardı; onarım şeması API'de düştüğü için fark görünmüyordu
   (Astra, 55e8273 P2).
 */
+function conflictTopicIdFromResult(result: unknown): string | null {
+  if (!result || typeof result !== "object" || Array.isArray(result)) return null;
+  const value = (result as Record<string, unknown>).conflictTopicId;
+  return typeof value === "string" ? value : null;
+}
+
 function repairCandidateIsSafe(
   rejectionCode: string | null,
+  conflictTopicId: string | null,
   original: Parameters<typeof duplicateRepairCandidateIsSafe>[0],
   candidate: Parameters<typeof duplicateRepairCandidateIsSafe>[1],
 ): boolean {
+  if (isConversionRepairableRejectionCode(rejectionCode))
+    return conversionRepairCandidateIsSafe(original, candidate, conflictTopicId);
   if (duplicateRepairCandidateIsSafe(original, candidate)) return true;
   return (
     isTitleRepairableContentRejectionCode(rejectionCode) &&
