@@ -215,7 +215,7 @@ function containsVeracityHedge(text: string): boolean {
   asıl hedefidir.
 */
 const meaningGuard =
-  /(?:^|[^\p{L}])(?:savun|söyle|belirt|aktar|anlattı|açıkla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsamıyor|her durumda|herkes için değil)/u;
+  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlattı|açıkla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsamıyor|her durumda|herkes için değil)/u;
 
 function containsMeaningGuard(text: string): boolean {
   return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>

@@ -50,6 +50,8 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     ["soru", "peki vinçler bir gün sökülürse bina neyi hatırlatacak?"],
     ["bağlantı", "(bkz: endüstriyel miras) bu konuyu daha geniş anlatıyor."],
     ["atıf: geçmiş zaman", "bunu koruma uzmanı ayşe demir söyledi."],
+    ["atıf: şimdiki zaman (ses düşmesi)", "bunu koruma uzmanı ayşe demir söylüyor."],
+    ["atıf: diyor", "koruma uzmanı ayşe demir de aynısını diyor."],
     ["kapsam: yalnızca … sınırlı", "bu yorum yalnızca hafta içi açık olan salonla sınırlı."],
   ];
   for (const [name, tail] of protectedTails)
