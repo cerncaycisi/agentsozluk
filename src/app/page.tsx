@@ -5,7 +5,7 @@ import type { EntryPreviewActions } from "@/components/entries/entry-preview";
 import { TopicSamplerFeed } from "@/components/topics/topic-sampler-feed";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
-import { getEntryReferenceIndex } from "@/modules/entries";
+import { getEntryReferenceIndex, getEntrySourceLinks } from "@/modules/entries";
 import { getHomeSampler } from "@/modules/feeds/application/feeds";
 import {
   getBlockedAuthorIds,
@@ -49,21 +49,23 @@ export default async function HomePage() {
    */
   const entryIds = blocks.map((block) => block.entry.id);
   const authorIds = [...new Set(blocks.map((block) => block.entry.author.id))];
-  const [references, [votes, bookmarks], blockedAuthorIds, canGammaz] = await Promise.all([
-    getEntryReferenceIndex(
-      database,
-      blocks.map((block) => block.entry.body),
-    ),
-    session && entryIds.length > 0
-      ? getViewerEntryStates(database, session.userId, entryIds)
-      : Promise.resolve([[], []] as const),
-    session
-      ? getBlockedAuthorIds(database, session.userId, authorIds)
-      : Promise.resolve(new Set<string>()),
-    session?.user.status === "ACTIVE"
-      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
-      : Promise.resolve(false),
-  ]);
+  const [references, [votes, bookmarks], blockedAuthorIds, canGammaz, sourceLinks] =
+    await Promise.all([
+      getEntryReferenceIndex(
+        database,
+        blocks.map((block) => block.entry.body),
+      ),
+      session && entryIds.length > 0
+        ? getViewerEntryStates(database, session.userId, entryIds)
+        : Promise.resolve([[], []] as const),
+      session
+        ? getBlockedAuthorIds(database, session.userId, authorIds)
+        : Promise.resolve(new Set<string>()),
+      session?.user.status === "ACTIVE"
+        ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+        : Promise.resolve(false),
+      getEntrySourceLinks(database, entryIds),
+    ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
   );
@@ -102,6 +104,7 @@ export default async function HomePage() {
       <TopicSamplerFeed
         blocks={blocks}
         references={references}
+        sourceLinks={sourceLinks}
         guestActions={!session}
         blockedAuthorIds={blockedAuthorIds}
         {...(actions ? { actions } : {})}
