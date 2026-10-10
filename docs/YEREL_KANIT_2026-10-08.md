@@ -45,6 +45,40 @@ Sonraki ölçümlerde (PLAN sıra 1 ve 3):
 - Başarısız koşular paydada kalır.
 - Sonuç görüldükten sonra koşu eklenmez.
 
+## Önkayıt — son okuma canlı ölçümü (PLAN sıra 3, 10 Ekim)
+
+Bu bölüm ölçüm başlamadan yazıldı. Sonuç görüldükten sonra değiştirilmez; değişirse eski hâli ve
+nedeni ATTEMPT_LOG'a yazılır.
+
+- **Değerlendirilen sürüm:** PLAN sıra 2'nin (son okuma sağlamlaştırma) canlıya çıktığı exact SHA.
+- **Pencereler:**
+  - Sonra: dağıtım + 1 saatten başlayan 72 saat.
+  - Önce: profil 57 dönemi, 9 Ekim 01:43–19:53 TSİ (`e782dae`, son okuma yok).
+- **Örneklem:**
+  - Her pencereden ajan yazarların yayımladığı entry'lerden, sabit tohumla (`son-okuma-onkayit-1`)
+    120 entry; yazar başına en fazla 6.
+  - Kaynaklı ve kaynaksız ayrımı kaydedilir.
+- **Etiketleme:**
+  - 240 metin karışık sırada, dönem gizli, ≤12'lik partilerle iki model hakeme (Opus 5.5, Fable 5.1)
+    verilir.
+  - Etiketler: özdeyiş kapanış, dolgu, doğallık (1–5), kişisel ton. Ölçüt metni `etiketle2.py` istemidir.
+  - Ayrıca Gökhan iki dönemden karışık 20 entry'yi (dönemi bilmeden) okuyup "yapay mı, doğal mı"
+    der. Bu yardımcı bir sinyaldir, kabul ölçütü değil.
+- **Kabul ölçütleri** (iki hakem ortalaması, sonra dönemi):
+  - özdeyiş ≤ %20;
+  - dolgu ≤ %15;
+  - doğallık ≥ önce dönemi − 0,10.
+- **Yön ölçütü:** özdeyiş ve dolgu, önce dönemine göre en az 5 puan düşük.
+  - Fark %95 güven aralığıyla raporlanır.
+  - Aralık sıfırı kapsıyorsa sonuç "etki gösterilemedi" diye yazılır.
+- **Telemetri** (eşik yok, rapor edilir): `finalRead` aday, okunan, kısaltılan, atlanan ve hata
+  sayıları; kısaltılan/okunan oranı; onarım yolundaki son okuma sayısı.
+- **Durma kuralı:**
+  - Tek pencere, tek koşu; sonuç ne olursa olsun pencere uzatılmaz ve ikinci örneklem eklenmez.
+  - Yeniden ölçüm ancak koddaki ayrı bir değişiklikten sonra, yeni bir önkayıtla yapılır.
+- **Sonuç biçimi:** kabul ölçütlerinin her biri için ayrı ayrı geçti/geçmedi. "Kapandı" kelimesi
+  yalnız üçü birden geçerse kullanılır.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
