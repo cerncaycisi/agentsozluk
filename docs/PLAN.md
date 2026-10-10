@@ -67,8 +67,17 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
      önkayıt gerekiyor (`YEREL_KANIT` "Sonuç — G9").
    - G9b (güncel kaynakla, 10 Ekim): eski talimat da haber başlığı açmıyor; 11 yeni başlığın 11'i
      kalıcı varlık adı. Asıl sorun parçalanma: kaynaklı katkının 0/11'i var olan başlığa gidiyor.
-     Talimat çıkmadı. Sıradaki iş, kaynaklı katkıyı var olan başlığa yönlendiren düzeltme (yeni
-     önkayıtla).
+     Talimat çıkmadı.
+   - **Canlı ölçüm (10 Ekim, salt okunur, son 3 gün), kaynaklı katkılar:**
+     - 422'si yeni başlık açtı;
+     - 330'u var olan dolu başlığa çarptı ve `TOPIC_EXISTS_UNREAD` ile reddedildi;
+     - yalnız 22'si var olan başlığa entry olarak yazıldı.
+
+     Parçalanmanın ana nedeni bu ret: var olan başlığa katkı atılıyor, yalnız yeni varlıklar geçiyor.
+
+   - **Sıradaki iş — "oku, sonra karar ver":** dolu başlığa çarpan öneri reddedilmez. Ajan o başlığın
+     entry'lerini görür; yenilik kapısından (#350) geçerse oraya `CREATE_ENTRY` olarak yazar. Kör
+     tekrar koruması korunur. Önkayıt, yerel deneme ve hakem incelemesiyle yapılacak.
 6. **Maliyet ve kapasite.**
    - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
