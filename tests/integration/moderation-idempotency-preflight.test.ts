@@ -206,6 +206,31 @@ describe("moderation idempotency preflight", () => {
     ).toBe(1);
   });
 
+  it("rejects a stored writer-approval replay once writer intake is closed (Astra #365)", async () => {
+    const admin = await createUser("writer_intake_replay_admin");
+    const pendingWriter = await createUser("writer_intake_replay_target");
+    await integrationDatabase.user.update({ where: { id: admin.id }, data: { role: "ADMIN" } });
+    await integrationDatabase.user.update({
+      where: { id: pendingWriter.id },
+      data: { writerApproved: false },
+    });
+    const session = await createPersistedSession(admin.id);
+    const idempotencyKey = randomUUID();
+    expect((await callApproveWriter(pendingWriter.id, session, idempotencyKey)).status).toBe(200);
+
+    process.env.WRITER_INTAKE = "closed";
+    try {
+      const replay = await callApproveWriter(pendingWriter.id, session, idempotencyKey);
+      expect(replay.status).toBe(409);
+      expect(replay.headers.get("Idempotent-Replay")).toBeNull();
+      await expect(replay.json()).resolves.toMatchObject({
+        error: { code: "WRITER_INTAKE_CLOSED" },
+      });
+    } finally {
+      process.env.WRITER_INTAKE = "open";
+    }
+  });
+
   it("rejects a stored replay after the format capability is revoked", async () => {
     const moderator = await createUser("replay_demoted_moderator", "MODERATOR");
     const capability = await grantFormatCapability(moderator.id);

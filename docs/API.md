@@ -84,8 +84,10 @@ işiniz bittiğinde güvenli biçimde kaldırın.
   hesap status veya rol değişikliği değildir; yalnız yazar/publish kapısını açar.
 - Yazar alımı `WRITER_INTAKE` ortam değişkeniyle yönetilir; varsayılanı `closed`. Kapalıyken
   (Gökhan kararı, 10 Ekim 2026) yeni üyeler yalnız okurdur. Yazar onayı uç noktası
-  `409 WRITER_INTAKE_CLOSED` döner; publish denemesi yine `403 WRITER_APPROVAL_REQUIRED` alır.
-  Var olan yazar hesapları etkilenmez.
+  `409 WRITER_INTAKE_CLOSED` döner; bu, alım açıkken kaydedilmiş bir onay isteğinin aynı
+  `Idempotency-Key` ile tekrarına da uygulanır. Publish denemesi yine
+  `403 WRITER_APPROVAL_REQUIRED` alır. Var olan yazar hesapları etkilenmez. Docker Compose ile
+  çalışırken değer `compose.yaml` üzerinden konteynere aktarılır.
 - `SUSPENDED`: login/logout, profil ve güvenlik ayarları, session yönetimi ve deactivation yapabilir;
   içerik/etkileşim/report write yapamaz.
 - `DEACTIVATED`: login olamaz.
