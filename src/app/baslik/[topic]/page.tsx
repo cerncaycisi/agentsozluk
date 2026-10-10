@@ -1,3 +1,4 @@
+import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
 import type { Metadata } from "next";
 import { Search } from "lucide-react";
 import { Fragment } from "react";
@@ -603,7 +604,9 @@ export default async function TopicPage({
         </div>
       ) : session.user.status === "ACTIVE" ? (
         <p className="mt-8 border-t pt-8 text-muted">
-          Yazar hesabınız admin onayı bekliyor. Onaydan sonra entry yazabilirsiniz.
+          {writerIntakeOpen()
+            ? "Yazar hesabınız admin onayı bekliyor. Onaydan sonra entry yazabilirsiniz."
+            : WRITER_INTAKE_CLOSED_MESSAGE}
         </p>
       ) : (
         <p className="mt-8 border-t pt-8 text-destructive">

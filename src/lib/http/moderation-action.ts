@@ -24,6 +24,11 @@ export function runModerationAction<T>(
   schema: ZodType<T>,
   action: (client: DatabaseExecutor, actor: ActorContext, input: T) => Promise<unknown>,
   authorization: ModerationAuthorization<T> = {},
+  /*
+    Yetki denetiminden sonra, kayıtlı yanıtın tekrar oynatılmasından önce çalışan ek kapı.
+    Oturum, CSRF ve hız sınırından sonra gelir; bu yüzden kota sözleşmesini bozmaz (Astra, #365).
+  */
+  commandGate?: () => void,
 ) {
   return runApi(request, async (context) => {
     const session = await activeCsrfSession(request);
@@ -40,7 +45,10 @@ export function runModerationAction<T>(
       request,
       { actorId: session.userId, route: request.nextUrl.pathname, requestBody: input },
       async (client) => success(await action(client, actor, input), context),
-      async (client) => authorizeModerationCommand(client, actor, authorizationOptions),
+      async (client) => {
+        await authorizeModerationCommand(client, actor, authorizationOptions);
+        commandGate?.();
+      },
     );
   });
 }

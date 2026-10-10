@@ -27,6 +27,8 @@ const environmentSchema = z
     TRUST_PROXY: z.enum(["true", "false"]).default("false"),
     TRUST_PROXY_HOPS: z.coerce.number().int().nonnegative().default(0),
     SEED_DEMO: z.enum(["true", "false"]).default("false"),
+    // Yazar alımı (Gökhan, 10 Ekim 2026): kapalıyken yeni üyeler yalnız okurdur.
+    WRITER_INTAKE: z.enum(["open", "closed"]).default("closed"),
     DEMO_PASSWORD: z.string().min(10).optional(),
     BOOTSTRAP_ADMIN_EMAIL: z.string().email().optional().or(z.literal("")),
     BOOTSTRAP_ADMIN_PASSWORD: z.string().min(10).optional().or(z.literal("")),

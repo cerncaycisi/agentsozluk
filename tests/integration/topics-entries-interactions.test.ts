@@ -607,6 +607,25 @@ describe("authentication and accounts with PostgreSQL", () => {
       setModeratorRole(integrationDatabase, actor(admin.id), registered.user.id, true, reason),
     ).rejects.toMatchObject({ code: "WRITER_APPROVAL_REQUIRED", status: 409 });
 
+    // Yazar alımı kapalıyken (Gökhan, 10 Ekim) admin de onay veremez ve okur yazamaz.
+    process.env.WRITER_INTAKE = "closed";
+    try {
+      await expect(
+        approveUserWriter(integrationDatabase, actor(admin.id), registered.user.id, reason),
+      ).rejects.toMatchObject({ code: "WRITER_INTAKE_CLOSED", status: 409 });
+      await expect(
+        createEntry(integrationDatabase, actor(registered.user.id), existingTopic.topic.id, {
+          body: "Yazar alımı kapalıyken gönderilmemesi gereken yeterince uzun bir entry metni.",
+        }),
+      ).rejects.toMatchObject({
+        code: "WRITER_APPROVAL_REQUIRED",
+        status: 403,
+        message: "Yazar alımı şimdilik kapalı.",
+      });
+    } finally {
+      process.env.WRITER_INTAKE = "open";
+    }
+
     const approvalOutcomes = await Promise.allSettled([
       approveUserWriter(integrationDatabase, actor(admin.id), registered.user.id, reason),
       approveUserWriter(integrationDatabase, actor(secondAdmin.id), registered.user.id, reason),

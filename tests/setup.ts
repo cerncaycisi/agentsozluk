@@ -6,3 +6,5 @@ process.env.DATABASE_URL ??=
 process.env.APP_URL ??= "http://localhost:3000";
 process.env.APP_SECRET ??= "test-secret-with-at-least-thirty-two-bytes";
 process.env.NEXT_TELEMETRY_DISABLED ??= "1";
+// Mevcut onay akışı testleri açık alımla çalışır; kapalı durum ayrı testlerde.
+process.env.WRITER_INTAKE ??= "open";
