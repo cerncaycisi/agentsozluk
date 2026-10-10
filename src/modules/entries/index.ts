@@ -4,6 +4,7 @@ export {
   editEntry,
   getEntry,
   getEntryReferenceIndex,
+  getEntrySourceLinks,
   getEntryRevisions,
   getTopicEntries,
   type EntryViewer,
