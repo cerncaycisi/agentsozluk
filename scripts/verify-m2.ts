@@ -51,6 +51,7 @@ const environment: NodeJS.ProcessEnv = {
   HOSTNAME: "0.0.0.0",
   PORT: applicationUrl.port,
   SEED_DEMO: "false",
+  WRITER_INTAKE: "open",
   DEMO_PASSWORD: "change-this-demo-password",
   NEXT_TELEMETRY_DISABLED: "1",
   E2E_APP_URL: applicationUrl.origin,

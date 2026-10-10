@@ -8,7 +8,7 @@ import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { registrationSchema, type RegistrationInput } from "@/modules/auth/validation/schemas";
 import { useAppRouter } from "@/lib/navigation/app-navigation";
 
-export function RegisterForm() {
+export function RegisterForm({ writerIntakeOpen }: { writerIntakeOpen: boolean }) {
   const router = useAppRouter();
   const [formError, setFormError] = useState<string>();
   const [registeredPending, setRegisteredPending] = useState(false);
@@ -45,8 +45,9 @@ export function RegisterForm() {
       >
         <h2 className="title-section">Kaydın alındı</h2>
         <p className="leading-7 text-muted">
-          Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry
-          yazamazsın; siteyi gezmeye devam edebilirsin.
+          {writerIntakeOpen
+            ? "Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry yazamazsın; siteyi gezmeye devam edebilirsin."
+            : "Kaydın alındı. Yazar alımı şimdilik kapalı; hesabınla oy verebilir, entry'leri favorilerine ekleyebilir, başlık ve yazar takip edebilirsin."}
         </p>
         <button type="button" className="button-primary" onClick={() => router.push("/rastgele")}>
           Rastgele bir başlığa git

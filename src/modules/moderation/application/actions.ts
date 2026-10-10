@@ -1,6 +1,7 @@
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
+import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
 import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { lockUserActorAndTargetTransition } from "@/modules/auth/repository/users";
@@ -562,6 +563,8 @@ export async function approveUserWriter(
     const admin = requireModerator(await findModerationActor(transaction, actor.actorId), actor, {
       adminOnly: true,
     });
+    if (!writerIntakeOpen())
+      throw new AppError("WRITER_INTAKE_CLOSED", 409, WRITER_INTAKE_CLOSED_MESSAGE);
     const target = await findModerationTargetUser(transaction, userId);
     if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
     assertCanActOnUser(admin, target);

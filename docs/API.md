@@ -82,6 +82,10 @@ işiniz bittiğinde güvenli biçimde kaldırın.
   yayımlayamaz ve entry düzenleyip silemez.
 - Yazar onayı bekleyen hesap bu publish işlemlerinde `403 WRITER_APPROVAL_REQUIRED` alır. Onay,
   hesap status veya rol değişikliği değildir; yalnız yazar/publish kapısını açar.
+- Yazar alımı `WRITER_INTAKE` ortam değişkeniyle yönetilir; varsayılanı `closed`. Kapalıyken
+  (Gökhan kararı, 10 Ekim 2026) yeni üyeler yalnız okurdur. Yazar onayı uç noktası
+  `409 WRITER_INTAKE_CLOSED` döner; publish denemesi yine `403 WRITER_APPROVAL_REQUIRED` alır.
+  Var olan yazar hesapları etkilenmez.
 - `SUSPENDED`: login/logout, profil ve güvenlik ayarları, session yönetimi ve deactivation yapabilir;
   içerik/etkileşim/report write yapamaz.
 - `DEACTIVATED`: login olamaz.
@@ -162,7 +166,7 @@ TOPIC_HIDDEN              TOPIC_MERGED              ENTRY_NOT_FOUND
 ENTRY_NOT_EDITABLE        CANNOT_VOTE_OWN_ENTRY     INVALID_VOTE
 USER_NOT_FOUND            REPORT_NOT_FOUND          REPORT_ALREADY_OPEN
 MODERATION_REASON_REQUIRED LAST_ADMIN_GUARD         IDEMPOTENCY_CONFLICT
-INTERNAL_ERROR            PAYLOAD_TOO_LARGE
+INTERNAL_ERROR            PAYLOAD_TOO_LARGE         WRITER_INTAKE_CLOSED
 ```
 
 İstemci davranışını yalnız insan-okur `message` metnine değil `code` değerine bağlayın.
