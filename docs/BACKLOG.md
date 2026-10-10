@@ -43,6 +43,14 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
 
 ---
 
+## 10 Ekim inceleme önerileri — sıraya alınmayanlar
+
+- **DD-P10 arşivde katkı bulma (Astra):** En az beş kalabalık başlıkta bütün geçmiş entry'lere
+  karşı yeni / tekrar / yararlı karşı görüş seti kurulur. Yanlış ret ve kaçan tekrar ayrı sayılır.
+  Otomatik toplu silme yapılmaz. Bu iş #12 B ölçümünden sonra ele alınır.
+- **İkinci sağlayıcı adaptörü (Fable 3 ay):** yalnız küçük çağrılar (yenilik, son okuma) için
+  düşünülür. Token telemetrisinin canlı verisi ve G8 kararından sonra ele alınır.
+
 ## Bağımlılık major geçişleri (2 Ekim 2026)
 
 Dependabot npm için yalnız minor ve yama güncellemesi önerir. Aşağıdaki geçişler elle, ayrı PR
