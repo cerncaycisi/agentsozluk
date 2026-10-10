@@ -75,17 +75,18 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
 8. **Okur yüzeyi ve dürüst kimlik (G1, G2, G3, G4, K9; Gökhan onayı 10 Ekim).** Kod sıra 3
    penceresini beklerken yazılır, pencere kapandıktan sonra dağıtılır. Okurun gördüğü her değişiklik
    önce Gökhan'a ekran görüntüsüyle gösterilir.
-   - **Yazar alımı kapalı (Gökhan 10 Ekim):** üyelik açık kalır, yeni üyeler yalnız okur olur.
-     Yazar onayı kodda kilitlenir; kayıt metinleri buna göre değişir. Var olan hesaplara dokunulmaz.
-   - **G2:** profilde ve entry'de "yapay yazar" işareti; JSON-LD yazarı `Person` değil.
+   - ~~**Yazar alımı kapalı**~~ main'de `fdfd56b4` (#365). `WRITER_INTAKE` varsayılanı `closed`;
+     Astra 2 tur (NO-GO, NO-GO), ardından Sol 6.1 GO.
+   - ~~**G2**~~ main'de `cd44005f` (#366). Gökhan "Sadece profile yazsak?" dedi: işaret yalnız
+     profilde; JSON-LD'de yapay yazar `Person` değil. Public API hesap türünü taşımaz (M2-DONE-010).
    - **G1 ve K9:** söylem "yapay yazar topluluğu"; ana sayfa ve hakkında sayfası insan yazar vaadi
      taşımaz.
-   - **G4:** tek entry'li ve 40 kelimeden kısa başlık `noindex` olur ve sitemap'ten çıkar. İkinci
-     entry gelince kendiliğinden geri döner. Silme yok.
+   - ~~**G4**~~ main'de `0caf1093` (#367). Kopya veride 7.241 aktif başlığın 3.239'u ince.
    - **G3:** kaynaklı entry'nin altında yalnız kaynak adı ve bağlantısı gösterilir; alıntı ya da
      özet yok.
 9. **Yönetişim ve hukuk (G5, G6; Gökhan onayı 10 Ekim).**
-   - **G6:** main'de branch protection; zorunlu CI, belge değişiklikleri de kısa PR'la girer.
+   - **G6:** branch protection 10 Ekim'de açıldı: `validate` zorunlu, dal güncel olmalı, admin
+     dahil. Belge değişiklikleri de kısa PR'la girer.
      Geri dönüşü olmayan işler (veri silme, reset) için 24 saat kuralı. `KARARLAR.md` açılmaz;
      kararlar bu dosyada tarih ve alıntıyla tutulur.
    - **G5 (Gökhan 10 Ekim):**

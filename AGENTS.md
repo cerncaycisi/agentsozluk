@@ -116,6 +116,9 @@ preserve unrelated work and confirm that the resulting remote state matches the 
 When merging a pull request, re-read its exact head, required-check conclusions, review state and
 mergeability immediately before the merge; never merge a red, pending, stale or ambiguous revision.
 A repository action does not authorize production access or deployment.
+Since 10 October 2026 `main` is protected (Gökhan kararı G6): the `validate` check is required, the
+branch must be up to date with `main`, and the rule applies to admins. Every change, documentation
+included, reaches `main` through a pull request; do not disable the protection to push directly.
 
 Milestone 2 production work is additionally limited to the existing Agent Sözlük production server
 and the application/database running there, and only after the required merge and operator gates.
