@@ -4871,6 +4871,88 @@ describe("runtime novelty gate", () => {
     });
   });
 
+  it("runs the final read on a content-repaired body before its novelty check", async () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    context.perception.readTopics = [
+      noveltyReadTopic(topicId, [{ username: "ayse", body: "Native Son 1940'ta yayımlandı." }]),
+    ];
+    plane.context = vi.fn().mockResolvedValue(context);
+    plane.executeActions = vi
+      .fn()
+      .mockResolvedValueOnce({
+        actions: [
+          {
+            id: randomUUID(),
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            actionStatus: "REJECTED",
+            rejectionCode: "TOPIC_SEMANTIC_REPETITION",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        actions: [
+          {
+            id: randomUUID(),
+            sequence: 2,
+            actionType: "CREATE_ENTRY",
+            actionStatus: "SUCCEEDED",
+            rejectionCode: null,
+          },
+        ],
+      });
+    const kept =
+      "wright'ın paris yılları ona amerika'yı uzaktan yazma imkânı verdi, mektuplarında da bu mesafenin romanlarına nasıl sızdığını yıllarca uzun uzun anlatır.";
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce(
+          noveltyResult(
+            canonicalNormalOutput("Aday üretildi.", {
+              actions: [noveltyEntryAction(topicId, "Wright'ın sürgünü romanlarına yön verdi.")],
+            }),
+            5,
+          ),
+        )
+        .mockResolvedValueOnce(
+          noveltyResult({ canRepair: true, body: `${kept} sürgün biraz da yazının kendisidir.` }),
+        ),
+    };
+    const reviewer: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce(actAll([1]))
+        .mockResolvedValueOnce(noveltyResult({ karar: "YAYIMLA" }))
+        .mockResolvedValueOnce(noveltyResult({ sil: [2] }))
+        .mockResolvedValueOnce(noveltyResult({ karar: "YAYIMLA" })),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "novelty-worker",
+      credentials: [`agt_${"w".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      actionWorthinessProvider: reviewer,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    // Onarılan gövde son okumadan geçer; yenilik kapısı ve kayıt kısaltılmış gövdeyi görür.
+    expect(vi.mocked(reviewer.invoke).mock.calls[2]![0].prompt).toContain("Yalnız silebilirsin");
+    expect(vi.mocked(reviewer.invoke).mock.calls[3]![0].prompt).toContain(`Taslağın:\n${kept}\n`);
+    const recorded = vi.mocked(plane.recordActions).mock.calls[1]![4] as Array<{
+      input: { body: string };
+    }>;
+    expect(recorded[0]!.input.body).toBe(kept);
+    const completion = vi.mocked(plane.complete).mock.calls[0]![4] as {
+      usageMetadata: Record<string, unknown>;
+    };
+    expect(completion.usageMetadata.finalRead).toMatchObject({ editedCount: 1, checkedCount: 1 });
+  });
+
   it("keeps completed novelty counts when the run is cancelled mid-phase", async () => {
     const runId = randomUUID();
     const firstTopic = randomUUID();
