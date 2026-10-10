@@ -9163,3 +9163,26 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
 - Dağıtım logunu `cut -c1-200` ile kırpma: `free_bytes` sayısı yarıda kesilip disk dolu sanıldı.
 - Sözcük listesi kilitlerinde Türkçe çekim ve ses düşmesi için kök + her ek eşleşmesi kullan; kelime
   sınırlı tam kelime yetmez.
+
+## 10 Ekim öğleden sonra — #347 ve #364 main'de, #363 kapasite `FINAL_READ`
+
+- **#347:** dal, #362'den önceki main'e dayanıyordu. `worker.ts` değişikliği nedeniyle merge öncesi
+  yeniden temellendirildi; çakışma yok. Yeni head `743f6a82` CI 7/7 → `c23738dd`.
+  Dağıtılmadı, sıra 3 penceresi korunuyor.
+- **#363:** Astra 1. tur NO-GO, gerçekçi tetikleyicilerle:
+  - onarım + AW + iki aday durumunda worker 1, ölçüm 2 son okuma yapıyordu;
+  - 110 sn bütçede worker son okumayı atlıyor, ölçüm 30 sn'lik çağrı başlatıyordu.
+
+  Kural `runtimeFinalReadTimeoutMs` olarak çıkarıldı; worker ve ölçüm aynı fonksiyonu kullanıyor. 2. tur GO.
+
+- **Yerel tam birim testi:** `verify-m2-e2e-isolation.test.ts` 4 test düşüyor. Neden: sunucuda
+  Node 24.21.0 var, test `verify:m2 requires Node.js 22` diyor. Aynı hata main'de de çıkıyor;
+  CI Node 22 ile geçiyor.
+
+**Do not repeat:**
+
+- Uzun süre bekleyen PR'ı merge etmeden önce main'e göre yeniden temellendir ve CI'ı yeni head'de
+  bekle.
+- Yerelde `verify-m2-e2e-isolation` düşmesini gerileme sanma; Node sürümüne bak.
+- Kapasite tazeliğini kodla değiştirmeden önce 8 Ekim Gökhan kararını oku (`capacity.ts` yorumu,
+  G10).

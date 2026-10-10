@@ -7,6 +7,27 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 10 Ekim öğleden sonra — sıra 6 kodu main'de; #9/#12 önkayıtları
+
+- **Canlı sürüm değişmedi:** exact `0bf531e`. Sıra 3 penceresi (13 Ekim 09:50Z'ye kadar) bozulmasın
+  diye aşağıdakiler pencere kapanınca dağıtılacak.
+- **#347 token telemetrisi:**
+  - main `c23738dd`, PR head `743f6a82`, CI 7/7.
+  - Astra 2. tur GO.
+  - Yerel gerçek CLI (`codex-cli 0.160.0`, `--json`): çıktı dosyası değişmedi, `turn.completed.usage`
+    geldi.
+- **#364 `/iletisim` gammaz metni (R06):** main `92512bab`, CI 7/7.
+- **#363 kapasite ölçümü `FINAL_READ`'i ölçer (main `1e903f1a`, CI 7/7):** son okumanın çağrı ve süre bütçesi worker'la ortak
+  fonksiyonda (`runtimeFinalReadTimeoutMs`).
+  - Astra 1. tur NO-GO: 3 bulgu. Bütçe ve süre bulguları düzeltildi. Eski ölçümün bayatlamaması
+    8 Ekim Gökhan kararına bağlı, G10 olarak açık.
+  - Astra 2. tur GO; tek düşük bulgu (sınır testi) eklendi.
+- **so8 (yerel kopya, #362 sağlamlaştırılmış son okuma kodu):**
+  - 24 koşu; 23 yazma denemesi, 10 yayın.
+  - Son okuma: aday 8, okunan 7, kısaltılan 1, atlanan 1, hata 0.
+- **Önkayıt:** #12 (A canlı gözlemsel, B yerel 30 taslak) ve #9 (yerel iki kol, 56 koşu)
+  `YEREL_KANIT`'te; ölçümden önce yazıldı.
+
 ## 10 Ekim 11:50 TSİ (08:50Z) — son okuma sağlamlaştırma canlıda (`0bf531e`, #362)
 
 - **Sürüm:** exact `0bf531eec1b0eaa1a064376b551a52cf2b46cb54`, migration yok. PLAN sıra 2.

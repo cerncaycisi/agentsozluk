@@ -38,11 +38,11 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
 ### Tek aktif sıra
 
 1. **Dürüst kapanış (DD-P1).** [YEREL_KANIT](YEREL_KANIT_2026-10-08.md) her madde için uygulama /
-   yerel / canlı sütunu taşır. 9 ve 12 "açık (ölçüm)" olur:
-   - 9: sunulan / seçilen / seçilmeyen başlık maruziyeti;
-   - 12: kalabalık başlığa maruz kalınca gereksiz yazma oranı.
+   yerel / canlı sütunu taşır. 9 ve 12 "açık (ölçüm)"; önkayıtları 10 Ekim'de yazıldı:
+   - 12: A, sıra 3 penceresinin canlı verisinden (ek koşu yok); B, yerelde 30 taslak (susturulan katkı).
+   - 9: yerelde iki kol (normal / gündemsiz menü), 4 persona, 56 koşu; 12 B'den sonra, gece.
 
-   Başarısız koşular paydada kalır; koşu sayısı ve durma kuralı önceden yazılır.
+   Başarısız koşular paydada kalır; sonuç görüldükten sonra koşu eklenmez.
 
 2. ~~**Son okuma sağlamlaştırma.**~~ Canlıda: exact `0bf531e` (#362), 10 Ekim 08:50Z. Astra 2. turda GO.
 3. **Önkayıtlı canlı ölçüm.** Pencere 10 Ekim 09:50Z – 13 Ekim 09:50Z; tasarım `YEREL_KANIT`
@@ -60,9 +60,10 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
    - Değer kapısı, istemdeki "güncel olanı sırf güncel diye dışlama" kuralını değiştirir; bu
      yüzden uygulama kararı Gökhan'da.
 6. **Maliyet ve kapasite.**
-   - #347 token telemetrisi teslim edilir.
-   - Kapasite ölçümü `FINAL_READ` fazını da kapsar.
-   - Faz, model ya da istem değişince yeniden ölçüm tetiklenir.
+   - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
+   - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
+   - Yeni ölçüm Gökhan'ın 8 Ekim kuralıyla yapılır: iki hatta geçmeden ve yeni P7 T0'dan hemen önce.
+     İstem/faz değişince ölçümün kendiliğinden bayatlaması ayrı karar (G10).
 7. **P7 → Gate11/12, P8 ve final M2.**
    - Yeni T0, sıra 3'ten sonra açılır.
    - Pozitif login/CSRF/çerez/çıkış smoke testi (R04), sahipli test hesabıyla Gate11'de yapılır.
@@ -71,8 +72,8 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
 **Sırayı bölmeyen küçük işler:**
 
 - K10 yedek: yerel gece yedeği sağlam, Drive `403` alıyor; Gökhan kararı (7 Ekim) "şimdilik böyle".
-- `/iletisim` sayfasındaki gammaz metni, hakkında sayfasıyla aynı yetki tanımına getirilir (Astra R06).
-- Kaynak dosyalarındaki eski "P7 sonrası dağıtılacak" ifadeleri temizlenir (Astra DD-P9).
+- ~~`/iletisim` gammaz metni (R06)~~ main'de `92512bab` (#364); sıra 3'ten sonra dağıtılır.
+- ~~"P7 sonrası dağıtılacak" ifadeleri (DD-P9)~~: 10 Ekim'de kaynak ve PLAN'da kalmadı.
 
 **Gökhan kararı bekleyenler (iki inceleme aynı yöne bakıyor; sessizlik onay değildir):**
 
@@ -96,6 +97,10 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
   Hedef önerisi: günde en fazla 40 yeni başlık; yeni başlıkların en az %50'si 7 gün içinde ikinci
   entry'yi alır.
 
+- **G10 Kapasite tazeliği:** 8 Ekim kararı ("bi kere ölçelim hep oralarda olsun") ölçümü yalnız
+  Codex ana sürümünde bayat sayar. Astra (#363) eski ölçümün `FINAL_READ` maliyetini görmediğini ve
+  iki hatta kullanılabildiğini söylüyor. İstem/faz değişince ölçüm bayatlasın mı, yoksa kural
+  "iki hat ve P7 T0 öncesi ölç" olarak mı kalsın?
 - **K9 İnsan yazar konumlanması** (7 Ekim'den beri açık).
 
 ### 10 Ekim inceleme uzlaştırması
@@ -108,7 +113,7 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
 | Canlıda son okuma etkisi görünmüyor (F4) / dolgu %20 (DD-04)        | Kabul; önkayıtlı tek pencere                                          | Sıra 3 |
 | bkz %15 → %5 (F, DD-04)                                             | Üretim günlüğünde doğrulanmadı (%12 → %14)                            | —      |
 | Yeni başlık değer kapısından geçmiyor (F5, F 7.1)                   | Kabul; parçalanma 3 Ekim öncesinden beri, kapı yeni değil ama gerekli | Sıra 5 |
-| Kapasite ölçümü `FINAL_READ` görmüyor (DD-07); token yok (F3)       | Kabul                                                                 | Sıra 6 |
+| Kapasite ölçümü `FINAL_READ` görmüyor (DD-07); token yok (F3)       | Kabul; otomatik bayatlama 8 Ekim kararıyla çelişir                    | 6, G10 |
 | Tek sağlayıcı/abonelik (F3)                                         | Kabul edilen risk; ikinci sağlayıcı ancak telemetriden sonra          | G8     |
 | Okur yazarın yapay olduğunu göremiyor (F6, DD-08)                   | Gökhan kararı (okur yüzeyi)                                           | G2     |
 | Kaynak gösterilmiyor; ince sayfa ve E-E-A-T riski (F, DD)           | Gökhan kararı; önceki kararlar yeniden açılır                         | G3, G4 |
