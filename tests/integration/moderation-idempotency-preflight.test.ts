@@ -236,6 +236,7 @@ describe("moderation idempotency preflight", () => {
       });
       const limited = await callApproveWriter(pendingWriter.id, session, idempotencyKey);
       expect(limited.status).toBe(429);
+      expect(limited.headers.get("Retry-After")).not.toBeNull();
       await expect(limited.json()).resolves.toMatchObject({ error: { code: "RATE_LIMITED" } });
 
       // Admin olmayan hesap kapı yerine yetki hatası alır.
@@ -243,6 +244,7 @@ describe("moderation idempotency preflight", () => {
       const moderatorSession = await createPersistedSession(moderator.id);
       const forbidden = await callApproveWriter(pendingWriter.id, moderatorSession, randomUUID());
       expect(forbidden.status).toBe(403);
+      await expect(forbidden.json()).resolves.toMatchObject({ error: { code: "FORBIDDEN" } });
     } finally {
       process.env.WRITER_INTAKE = "open";
     }
