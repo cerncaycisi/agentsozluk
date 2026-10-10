@@ -186,6 +186,30 @@ Opus 5.5 ve Fable 5.1.
   üretmiyor. Talimatın etkisini ölçmek için güncel kaynak öğeleri yüklenmiş bir düzenek ve yeni bir
   önkayıt gerekiyor.
 
+## Önkayıt — G9b haber başlığı talimatı, güncel kaynakla iki kollu deneme (10 Ekim)
+
+İlk deneme, kopyada güncel haber kaynağı olmadığı için ölçemedi. Bu deneme başlamadan yazıldı.
+
+- **Düzenek:**
+  - Kopyaya canlıdan, salt okunur olarak, 8 Ekim 01:36Z sonrası kaynak öğeleri yüklendi: 5.735 öğe,
+    3 yeni kaynak. En yeni öğe 10 Ekim 19:48Z.
+  - Aynı 12 yazar, yazar başına 2 koşu, `WORKERS=2`.
+  - **A kolu:** main kodu (profil 58), 24 koşu.
+  - **B kolu:** A bittikten sonra aynı kod ve talimat yaması (profil 59), 24 koşu.
+  - Kollar sırayla koşar; B, A'nın açtığı başlıkları görür. Bu sıra etkisi raporda yazılır.
+- **Etiket:** her yeni başlık, iki model hakemle (Opus 5.5, Fable 5.1) "tek günlük haber / kalıcı
+  adres" diye etiketlenir; kol bilgisi hakeme verilmez.
+- **Düzenek geçerliliği:** A kolunda en az 6 yeni başlık açılmalı ve bunların en az %40'ı haber
+  etiketi almalı. Bu tutmazsa düzenek sorunu yine üretmiyordur; sonuç "ölçülemedi" diye yazılır ve
+  talimat çıkmaz.
+- **Kabul (yalnız düzenek geçerliyse):**
+  1. B'nin "tek günlük haber" payı ≤ %25 ve A'dan en az 15 puan düşük.
+  2. B'nin koşu başına yayını, A'nın en az %70'i.
+  3. B'de kaynaklı yayının var olan başlığa gitme oranı A'dan yüksek.
+  4. Koşu hatası 0.
+- **Durma:** her kol tek blok; koşu eklenmez, başarısız koşular paydada kalır.
+- **Sonuç:** 1–4 geçerse talimat canlıya çıkar (profil 59, Astra incelemesiyle). Geçmezse çıkmaz.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
