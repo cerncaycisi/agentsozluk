@@ -64,7 +64,7 @@ Gökhan 9 Ekim’de süreyi açık sohbet talimatıyla uzattı: “bana bişi so
 Bu istisna 31 Ekim 2026 20:59 UTC’de (31 Ekim 23:59 TSİ) kendiliğinden geçersiz olur; sonrasında bu bölüm
 silinmelidir. Kayıt başlangıcı 3 Ekim 2026 19:50 UTC. Kapsam, `a4676c781f22a1ac7e32fdd9927ff52d045fd684`
 sürümündeki `docs/PLAN.md` iki haftalık teslimidir. 9 Ekim uzatmasında kapsam, güncel `docs/PLAN.md`
-tek aktif sırasıdır; aynı dosyadaki "Gökhan kararı bekleyenler" listesi kapsam dışıdır. Bu kapsamda Agent Sözlük geliştirme, üretim okuma, release artifact,
+tek aktif sırasıdır; aynı dosyada "Gökhan kararı bekleyen" ya da "Gökhan'dan beklenen" diye işaretli maddeler kapsam dışıdır. Bu kapsamda Agent Sözlük geliştirme, üretim okuma, release artifact,
 dağıtım/migration, pause/drain/resume, benchmark, smoke, yedek/restore ve gerekli yeniden
 başlatma yetkisi verilmiştir. Yukarıdaki her erişimde/dağıtımda yeniden kullanıcı onayı isteme
 kuralına bu süre ve kapsam için istisnadır; yürütücü doğrulanmış exact SHA ve eylem kapsamını
