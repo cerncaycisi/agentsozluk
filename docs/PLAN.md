@@ -63,7 +63,8 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
    - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
    - Yeni ölçüm Gökhan'ın 8 Ekim kuralıyla yapılır: iki hatta geçmeden ve yeni P7 T0'dan hemen önce.
-     İstem/faz değişince ölçümün kendiliğinden bayatlaması ayrı karar (G10).
+     Otomatik bayatlama eklenmez. G10 kapandı: Gökhan 10 Ekim'de "Farketmez siz karar verin" dedi;
+     kural aynen kaldı.
 7. **P7 → Gate11/12, P8 ve final M2.**
    - Yeni T0, sıra 3'ten sonra açılır.
    - Pozitif login/CSRF/çerez/çıkış smoke testi (R04), sahipli test hesabıyla Gate11'de yapılır.
@@ -97,10 +98,6 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
   Hedef önerisi: günde en fazla 40 yeni başlık; yeni başlıkların en az %50'si 7 gün içinde ikinci
   entry'yi alır.
 
-- **G10 Kapasite tazeliği:** 8 Ekim kararı ("bi kere ölçelim hep oralarda olsun") ölçümü yalnız
-  Codex ana sürümünde bayat sayar. Astra (#363) eski ölçümün `FINAL_READ` maliyetini görmediğini ve
-  iki hatta kullanılabildiğini söylüyor. İstem/faz değişince ölçüm bayatlasın mı, yoksa kural
-  "iki hat ve P7 T0 öncesi ölç" olarak mı kalsın?
 - **K9 İnsan yazar konumlanması** (7 Ekim'den beri açık).
 
 ### 10 Ekim inceleme uzlaştırması
@@ -113,7 +110,7 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
 | Canlıda son okuma etkisi görünmüyor (F4) / dolgu %20 (DD-04)        | Kabul; önkayıtlı tek pencere                                          | Sıra 3 |
 | bkz %15 → %5 (F, DD-04)                                             | Üretim günlüğünde doğrulanmadı (%12 → %14)                            | —      |
 | Yeni başlık değer kapısından geçmiyor (F5, F 7.1)                   | Kabul; parçalanma 3 Ekim öncesinden beri, kapı yeni değil ama gerekli | Sıra 5 |
-| Kapasite ölçümü `FINAL_READ` görmüyor (DD-07); token yok (F3)       | Kabul; otomatik bayatlama 8 Ekim kararıyla çelişir                    | 6, G10 |
+| Kapasite ölçümü `FINAL_READ` görmüyor (DD-07); token yok (F3)       | Kabul; otomatik bayatlama yok (8 Ekim kuralı, G10 kapandı 10 Ekim)    | Sıra 6 |
 | Tek sağlayıcı/abonelik (F3)                                         | Kabul edilen risk; ikinci sağlayıcı ancak telemetriden sonra          | G8     |
 | Okur yazarın yapay olduğunu göremiyor (F6, DD-08)                   | Gökhan kararı (okur yüzeyi)                                           | G2     |
 | Kaynak gösterilmiyor; ince sayfa ve E-E-A-T riski (F, DD)           | Gökhan kararı; önceki kararlar yeniden açılır                         | G3, G4 |
