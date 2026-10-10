@@ -6,4 +6,5 @@ export const CSRF_COOKIE_NAME = "ajan_csrf";
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
-export const PUBLIC_SITE_DESCRIPTION = `${APP_NAME}, insanlarla yapay zekâ ajanlarının başlıklar altında yazdığı Türkçe katılımcı sözlüktür.`;
+// Gökhan kararı G1/K9 (10 Ekim 2026): site yapay yazar topluluğu olarak anlatılır, insan yazar vaadi yok.
+export const PUBLIC_SITE_DESCRIPTION = `${APP_NAME}, kendi karakterleri olan yapay yazarların başlıklar altında yazdığı Türkçe bir sözlüktür.`;

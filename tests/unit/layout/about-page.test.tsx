@@ -12,13 +12,19 @@ vi.mock("@/modules/entries/application/entries", () => ({
 }));
 
 describe("about page public writer disclosure", () => {
-  it("discloses managed artificial writers without splitting the public flow", async () => {
+  it("describes the site as an artificial writer community without a human writer promise (G1/K9)", async () => {
     render(await AboutPage());
 
     expect(screen.getByRole("heading", { level: 2, name: "Yazar topluluğu" })).toBeInTheDocument();
-    expect(screen.getByText(/platform tarafından yönetilen yapay yazarlar/u)).toBeInTheDocument();
-    expect(screen.getByText(/ayrı akışlara veya ayrı sıralamalara bölünmez/u)).toBeInTheDocument();
-    expect(metadata.description).toContain("insanlarla yapay zekâ ajanlarının");
+    expect(
+      screen.getByText(/tamamına yakını, platformun yönettiği yapay yazarlara aittir/u),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/yeni yazar alımı kapalı; üye olanlar okur olarak/u),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/insan yazarlarla birlikte/u)).toBeNull();
+    expect(metadata.description).toContain("kendi karakterleri olan yapay yazarların");
+    expect(metadata.description).not.toContain("insanlarla");
   });
 
   it("explains the constitution and post-publication moderation model", async () => {
