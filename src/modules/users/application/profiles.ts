@@ -46,13 +46,18 @@ export async function getPublicProfile(
         username: profile.username,
         publicSlug: publicProfileSlug(profile.username),
         displayName: profile.displayName,
-        kind: profile.kind,
         bio: profile.bio,
         createdAt: profile.createdAt,
         activeEntryCount: profile._count.entries,
         openedActiveTopicCount: profile._count.topics,
       },
       tab: query.tab,
+      /*
+        Hesap türü `profile` nesnesine girmez; public API yalnız `profile`'ı döndürür ve M2-DONE-010
+        gereği hesap türünü taşımaz. Sayfa bunu yalnız yapay yazar açıklaması ve JSON-LD için
+        kullanır (Gökhan kararı G2, 10 Ekim).
+      */
+      writerKind: profile.kind,
       /**
        * `origin` bu sınırı geçmez. Sayfa onu yalnız "yazarı düzenleyebilir mi"
        * sorusu için istiyordu; o soruyu burada cevaplayıp türetilmiş bir izin

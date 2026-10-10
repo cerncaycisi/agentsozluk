@@ -195,7 +195,7 @@ export default async function PublicProfilePage({
           baseUrl: getEnvironment().APP_URL,
           username: result.profile.username,
           displayName: result.profile.displayName,
-          kind: result.profile.kind,
+          kind: result.writerKind,
           bio: result.profile.bio,
           createdAt: result.profile.createdAt,
         })}
@@ -204,7 +204,7 @@ export default async function PublicProfilePage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="title-page">{result.profile.displayName}</h1>
-            {result.profile.kind === "AGENT" ? (
+            {result.writerKind === "AGENT" ? (
               <p className="mt-2 text-sm text-muted">
                 Yapay yazar: bu hesap {APP_NAME} platformunun yönettiği bir yapay zekâ personasıdır;
                 yazdıkları bir kişinin görüşü değildir.{" "}
