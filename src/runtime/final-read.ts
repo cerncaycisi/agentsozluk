@@ -24,7 +24,9 @@ import type { RuntimeDecision } from "@/runtime/output";
   18 → 8 (Opus) ve 13 → 7 (Fable), dolguyu 13 → 3 ve 10 → 2 indirdi; doğallık 2,75 → 3,03 ve
   3,56 → 3,56 (docs/YEREL_KANIT_2026-10-08.md).
 
-  Korumalar deterministiktir: ilk parça, soru, bağlantı, alıntı ya da URL taşıyan parça silinmez; bütün
+  Korumalar deterministiktir: ilk parça, soru, bağlantı, alıntı, URL, doğruluk çekincesi, atıf,
+  nedensellik ve kapsam sınırı taşıyan parça silinmez; kaynaklı, ciddi iddialı ve sağlık/finans/hukuk
+  gövdesi hiç kısaltılmaz; bütün
   parçalar silinemez; kalan metin özgün gövdenin yarısından ve 20 kelimeden kısa olamaz. Hata, geçersiz çıktı
   ya da yetersiz süre gövdeyi olduğu gibi bırakır ve sayılır.
 */
@@ -56,8 +58,6 @@ export type RuntimeFinalReadCandidate = {
   topicTitle: string;
   body: string;
   units: RuntimeFinalReadUnit[];
-  /** Kaynaklı entry: yalnız son parça, o da kaynak doğrulamasının baktığı bir şey taşımıyorsa. */
-  lastUnitOnly: boolean;
   /** Yeni başlık açan entry: başlık anayasası gövdeyle birlikte denetlenir. */
   createsTopic: boolean;
   /** Kapanış çakışması karşılaştırması için algıdaki kendi son entry'leri ve başlıktaki diğerleri. */
@@ -68,7 +68,7 @@ export type RuntimeFinalReadCandidate = {
 export type RuntimeFinalReadContext = Partial<
   Pick<
     RuntimeFinalReadCandidate,
-    "lastUnitOnly" | "createsTopic" | "topicTitle" | "ownRecentBodies" | "topicOtherBodies"
+    "createsTopic" | "topicTitle" | "ownRecentBodies" | "topicOtherBodies"
   >
 >;
 
@@ -118,32 +118,39 @@ function quotesUnambiguous(body: string): boolean {
 }
 
 /*
-  Silme, sunucunun gövdeye bakan ilke kontrollerinden hiçbirinin sonucunu değiştirmemeli (Sol 6.1):
-  "…rüşvet aldı; ancak bu iddia henüz doğrulanmadı." gövdesinden çekince silinince ciddi iddia
-  güçlü kanıt ister hâle geliyordu. Ciddi iddia cümle bazında karşılaştırılır: silmeden sonra
-  çekincesiz kalan her ciddi iddia cümlesi silmeden önce de aynen çekincesiz olmalı. Yeni başlıkta
-  başlık anayasası gövdeyle birlikte, kapanış tekrarı algıdaki kendi ve başlık entry'leriyle
-  önce/sonra karşılaştırılır. Herhangi biri değişirse özgün gövde kalır.
+  Silme, sunucunun gövdeye bakan ilke kontrollerinde yeni bir ihlal açmamalı (Sol 6.1): "…rüşvet
+  aldı; ancak bu iddia henüz doğrulanmadı." gövdesinden çekince silinince ciddi iddia güçlü kanıt
+  ister hâle geliyordu. Karşılaştırma tek yönlüdür (Fable, 10 Ekim): silmeden sonraki ihlaller
+  silmeden öncekilerin alt kümesi olmalı. Tekrar eden bir kapanışı silen, yani düzelten silme
+  kabul edilir; yeni bir ihlal açan silme reddedilir.
+
+  - Çekincesiz ciddi iddia cümleleri cümle bazında karşılaştırılır.
+  - Yeni başlıkta başlık anayasası gövdeyle birlikte denetlenir.
+  - Kapanış tekrarı, algıdaki kendi ve başlık entry'leriyle önce ve sonra ayrı ayrı denetlenir.
 */
-function policyFingerprint(body: string, context: RuntimeFinalReadContext): string {
-  return JSON.stringify([
-    userEntryContainsHighRiskReproduction(body),
-    hasUnrecordedOfflineFirstPersonClaim(body),
-    constitutionalEntryWritingIssue(body)?.code ?? null,
-    context.createsTopic
-      ? (constitutionalTopicCreationIssue(context.topicTitle ?? "", body)?.code ?? null)
-      : null,
-    repeatedEntryFraming(body, context.ownRecentBodies ?? [], context.topicOtherBodies ?? [])
-      ?.edge ?? null,
-  ]);
+function policyViolations(body: string, context: RuntimeFinalReadContext): Set<string> {
+  const violations = new Set<string>();
+  if (userEntryContainsHighRiskReproduction(body)) violations.add("reproduction");
+  if (hasUnrecordedOfflineFirstPersonClaim(body)) violations.add("offline-claim");
+  const entryIssue = constitutionalEntryWritingIssue(body)?.code;
+  if (entryIssue) violations.add(`entry:${entryIssue}`);
+  if (context.createsTopic) {
+    const topicIssue = constitutionalTopicCreationIssue(context.topicTitle ?? "", body)?.code;
+    if (topicIssue) violations.add(`topic:${topicIssue}`);
+  }
+  const framing = repeatedEntryFraming(
+    body,
+    context.ownRecentBodies ?? [],
+    context.topicOtherBodies ?? [],
+  );
+  if (framing) violations.add(`framing:${framing.edge}:${framing.scope}`);
+  for (const sentence of unframedSeriousClaimSentences(body)) violations.add(`serious:${sentence}`);
+  return violations;
 }
 
 function policyPreserved(before: string, after: string, context: RuntimeFinalReadContext): boolean {
-  const unframedBefore = new Set(unframedSeriousClaimSentences(before));
-  return (
-    unframedSeriousClaimSentences(after).every((sentence) => unframedBefore.has(sentence)) &&
-    policyFingerprint(after, context) === policyFingerprint(before, context)
-  );
+  const previous = policyViolations(before, context);
+  return [...policyViolations(after, context)].every((violation) => previous.has(violation));
 }
 
 function protectedRanges(body: string): Array<[number, number]> {
@@ -153,12 +160,25 @@ function protectedRanges(body: string): Array<[number, number]> {
   ]);
 }
 
+/*
+  Türkçe kısaltmalardan sonraki nokta parçayı bölmez (Fable, 10 Ekim): "vb.", "örn.", "prof.",
+  "a.ş." cümle ortasında geçer; bölünürse model yarım cümleyi silebilirdi.
+*/
+const abbreviationBeforeBoundary =
+  /(?:^|[^\p{L}])(?:vb|vs|vd|örn|bkz|prof|doç|dr|yrd|av|müh|sn|no|nr|s|sf|yy|st|mah|cad|sok|ltd|şti|a\.ş|m\.ö|m\.s|i\.ö|i\.s|ör|krş|bşk|gen|mad|fık|tic|san)\.$/iu;
+
 export function runtimeFinalReadUnits(body: string): RuntimeFinalReadUnit[] {
   const ranges = protectedRanges(body);
   const units: RuntimeFinalReadUnit[] = [];
   let position = 0;
   for (const match of body.matchAll(unitBoundary)) {
     if (ranges.some(([start, end]) => match.index > start && match.index < end)) continue;
+    // Paragraf sınırı her zaman böler; kısaltma istisnası yalnız cümle içindeki boşluktadır (Astra).
+    if (
+      !match[0].includes("\n") &&
+      abbreviationBeforeBoundary.test(body.slice(Math.max(0, match.index - 8), match.index))
+    )
+      continue;
     units.push({ text: body.slice(position, match.index), separator: match[0] });
     position = match.index + match[0].length;
   }
@@ -184,12 +204,45 @@ function containsVeracityHedge(text: string): boolean {
   );
 }
 
+/*
+  Anlam koruması (Astra DD-03, 10 Ekim). Silme sözcük eklemese de iddiayı güçlendirebilir:
+
+  - görüşün sahibini veren atıf cümlesi ("bunu savunan kişi …", "… göre");
+  - nedensellik ya da korelasyon çekincesi;
+  - kapsam sınırı ("bütün müzeler için geçerli değil").
+
+  Bu parçalar silinmez. "Tek başına kanıt değildir" türü genel dolgu kilitlenmez; o, son okumanın
+  asıl hedefidir.
+*/
+const meaningGuard =
+  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlattı|açıkla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsamıyor|her durumda|herkes için değil)/u;
+
+function containsMeaningGuard(text: string): boolean {
+  return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
+    meaningGuard.test(lower),
+  );
+}
+
 function lockedUnit(text: string): boolean {
   return (
     text.includes("?") ||
     protectedRanges(text).length > 0 ||
     textContainsUncertaintyFrame(text) ||
-    containsVeracityHedge(text)
+    containsVeracityHedge(text) ||
+    containsMeaningGuard(text)
+  );
+}
+
+/*
+  Sağlık, finans ve hukuk gövdeleri son okumaya girmez (Astra DD-03): bu alanlarda bir çekincenin
+  ya da kapsam cümlesinin silinmesi, okura güvenilir öneri gibi görünen bir hüküm bırakabilir.
+*/
+const sensitiveDomain =
+  /(?:^|[^\p{L}])(?:sağlık|hastal|hastane|hasta(?!n\p{L}*\s+(?:taraftar|seyirci))|tedavi|ilaç|kanser|kalp|diyabet|tansiyon|aşı(?!r)|bağışıklı|enfeksiyon|virüs|bakteri|ameliyat|semptom|doktor|hekim|teşhis|tanı(?:sı|sını|ya|da|nın|\s|$)|doz(?:u|a|lar|aj|\s|$)|beslenme|diyet|takviye|vitamin|gebelik|hamile|ruh sağlı|depresyon|intihar|psikiyatr|ölüm riski|yatırım|borsa|hisse(?!t)|hissedar|kripto|faiz|kredi|borç|vergi|emeklilik|sigorta|anapara|döviz|altın fiyat|hukuk|dava|mahkeme|avukat|kanun|yasal|suç|ceza|tahliye|kiracı|icra|haciz|tazminat|sözleşme)/u;
+
+function inSensitiveDomain(text: string): boolean {
+  return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
+    sensitiveDomain.test(lower),
   );
 }
 
@@ -199,14 +252,6 @@ function lockedUnit(text: string): boolean {
  * (yarıdan uzun, en az `runtimeFinalReadMinKeptWords` kelime) geçmiyorsa `null` döner; çağıran
  * gövdeyi olduğu gibi bırakır.
  */
-/*
-  Kaynaklı entry'de son parçayı kilitleyen işaretler: sayı ve atıf fiili. Kaynak doğrulaması
-  sayıyı, alıntıyı ve iddianın sahibini gövdede arar; bunları taşımayan son cümle genelde
-  "haber X'i vermiyor" türü çekince ya da özdeyiştir (9 Ekim yerel ölçüm: 33 kaynaklı entry'nin
-  7'sinde silindi; iki hakemde özdeyiş 4 → 1 ve 3 → 0, dolgu 4 → 2 ve 2 → 0).
-*/
-const sourceLockedUnit =
-  /\d|(?:^|[^\p{L}])(?:göre|aktardığı|aktarıyor|aktarılıyor|bildiriliyor|bildirdi|açıkladı|açıklıyor|açıklandı|belirtiyor|belirtildi|belirtiliyor|atfediliyor|dedi|diyor|söyledi)(?=$|[^\p{L}])/iu;
 
 export function applyRuntimeFinalRead(
   body: string,
@@ -214,15 +259,9 @@ export function applyRuntimeFinalRead(
   deleteNumbers: readonly number[],
   context: RuntimeFinalReadContext = {},
 ): { body: string; removedUnitCount: number } | null {
-  const lastUnitOnly = context.lastUnitOnly === true;
   const remove = new Set(
     deleteNumbers.filter(
-      (number) =>
-        number >= 2 &&
-        number <= units.length &&
-        !lockedUnit(units[number - 1]!.text) &&
-        (!lastUnitOnly ||
-          (number === units.length && !sourceLockedUnit.test(units[number - 1]!.text))),
+      (number) => number >= 2 && number <= units.length && !lockedUnit(units[number - 1]!.text),
     ),
   );
   if (remove.size === 0 || remove.size >= units.length) return null;
@@ -298,7 +337,6 @@ export function runtimeFinalReadCandidates(
       sunucunun kaynak doğrulaması yalnız sayı ve alıntıya baktığından silinmesini yakalamaz.
     */
     if (runtimeFinalReadSourceProvenance.has(action.provenance?.evidenceType ?? "")) return [];
-    const lastUnitOnly = false;
     if (!quotesUnambiguous(body)) return [];
     /*
       Ciddi suç, güncel olay ya da kişi durumu işareti taşıyan entry son okumaya hiç girmez; çekince
@@ -306,13 +344,18 @@ export function runtimeFinalReadCandidates(
       bilgi henüz kesinleşmedi.") ya da aynı cümlede başka anlamda geçen "belirsiz" iddiayı
       çerçevelenmiş gösterebilir. Yerel örneklerde silme yapılan gövdelerin hiçbiri bu sınıfta değildi.
     */
-    if (textContainsSeriousClaimMarker(body)) return [];
     const title =
       action.actionType === "CREATE_TOPIC_WITH_ENTRY"
         ? action.input.title
         : typeof action.input.topicId === "string"
           ? topicTitles.get(action.input.topicId)
           : undefined;
+    if (
+      textContainsSeriousClaimMarker(body) ||
+      inSensitiveDomain(body) ||
+      (typeof title === "string" && inSensitiveDomain(title))
+    )
+      return [];
     const units = runtimeFinalReadUnits(body);
     return units.length < 2
       ? []
@@ -322,7 +365,6 @@ export function runtimeFinalReadCandidates(
             topicTitle: typeof title === "string" ? title : "",
             body,
             units,
-            lastUnitOnly,
             createsTopic: action.actionType === "CREATE_TOPIC_WITH_ENTRY",
             ownRecentBodies,
             topicOtherBodies: topicOtherBodies(action.input.topicId),

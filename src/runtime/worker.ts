@@ -2047,15 +2047,12 @@ export class AgentRuntimeWorker {
         Son okuma: AW'den geçen her yeni entry gövdesi yalnız parça silen dar bir çağrıdan geçer
         (`src/runtime/final-read.ts`). Yeni gövdeyi model değil bu kod kurar; hata ya da süre
         yetmezse gövde aynen kalır ve sayılır. Yenilik kapısından ÖNCE çalışır: kapı yayımlanacak
-        son gövdeye bakmalı (Astra, 9 Ekim). Koşu bütçesinde yeniliğin iki çağrısına ve içerik
-        onarımına yer bırakılır; son okuma onarım sayacına girmez.
+        son gövdeye bakmalı (Astra, 9 Ekim). Koşu bütçesinde sonraki çağrılara yer bırakılır; son
+        okuma onarım sayacına girmez. İçerik onarımının ürettiği gövde de aynı yoldan geçer
+        (Fable ve Astra, 10 Ekim): onarım dolguyu geri getirebiliyordu.
       */
-      const finalReadCandidates = noveltyProvider
-        ? runtimeFinalReadCandidates(decision, context.perception)
-        : [];
-      if (finalReadCandidates.length > 0) {
-        await enterPhase("VALIDATING");
-        const stats = (finalRead ??= {
+      const finalReadStats = () =>
+        (finalRead ??= {
           candidateCount: 0,
           checkedCount: 0,
           editedCount: 0,
@@ -2063,16 +2060,18 @@ export class AgentRuntimeWorker {
           failedOpenCount: 0,
           skippedCount: 0,
         });
+      const runFinalRead = async (
+        target: RuntimeDecision,
+        options: { reservedCalls: number; pendingNoveltyCalls: number },
+      ): Promise<RuntimeDecision> => {
+        const candidates = noveltyProvider
+          ? runtimeFinalReadCandidates(target, context.perception)
+          : [];
+        if (candidates.length === 0) return target;
+        await enterPhase("VALIDATING");
+        const stats = finalReadStats();
         const bodies = new Map<number, string>();
-        /*
-          Bekleyen yenilik denetimleri son okumadan önce bilinir: aday kümesi gövdeye değil
-          hedefe bağlıdır. Süre ve çağrı payı önce onlara ayrılır (Astra 2. tur).
-        */
-        const pendingNoveltyCalls = Math.min(
-          runtimeNoveltyCallLimit,
-          runtimeNoveltyCandidates(decision, context.perception).length,
-        );
-        for (const [index, candidate] of finalReadCandidates.entries()) {
+        for (const [index, candidate] of candidates.entries()) {
           stats.candidateCount += 1;
           await heartbeat();
           deadline.throwIfStopped();
@@ -2080,15 +2079,11 @@ export class AgentRuntimeWorker {
             RUNTIME_FINAL_READ_MAX_TIMEOUT_MS,
             deadline.remainingMs() -
               RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
-              pendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
+              options.pendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
           );
           if (
             index >= runtimeFinalReadCallLimit ||
-            /*
-              Sonra gelen yenilik çağrılarına, içerik onarımına ve onarılan gövdenin yenilik
-              denetimine yer kalır.
-            */
-            codexIntervals.length >= runtimeCodexInvocationLimit - runtimeNoveltyCallLimit - 2 ||
+            codexIntervals.length >= runtimeCodexInvocationLimit - options.reservedCalls ||
             timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS
           ) {
             stats.skippedCount += 1;
@@ -2132,11 +2127,23 @@ export class AgentRuntimeWorker {
             this.#options.onSafeEvent?.({ level: "error", code: "FINAL_READ_FAILED_OPEN", runId });
           }
         }
-        if (bodies.size > 0) {
-          decision = applyRuntimeFinalReadBodies(decision, bodies);
-          this.#options.onSafeEvent?.({ level: "info", code: "FINAL_READ_TRIMMED", runId });
-        }
-      }
+        if (bodies.size === 0) return target;
+        this.#options.onSafeEvent?.({ level: "info", code: "FINAL_READ_TRIMMED", runId });
+        return applyRuntimeFinalReadBodies(target, bodies);
+      };
+      /*
+        Ana yol: sonra gelen yenilik çağrılarına, içerik onarımına ve onarılan gövdenin yenilik
+        denetimine yer kalır. Onarılan gövdenin son okuması yalnız bütçe kalırsa çalışır; ana yolun
+        kapsamını daraltmaz. Bekleyen yenilik denetimleri gövdeye değil hedefe bağlıdır; süre payı
+        önce onlara ayrılır (Astra 2. tur).
+      */
+      decision = await runFinalRead(decision, {
+        reservedCalls: runtimeNoveltyCallLimit + 2,
+        pendingNoveltyCalls: Math.min(
+          runtimeNoveltyCallLimit,
+          runtimeNoveltyCandidates(decision, context.perception).length,
+        ),
+      });
       const noveltyCandidates = noveltyProvider
         ? runtimeNoveltyCandidates(decision, context.perception)
         : [];
@@ -2276,10 +2283,22 @@ export class AgentRuntimeWorker {
                 Onarılan entry okunan dolu başlığa gidiyorsa bir kez daha denetlenir
                 (koşu başına tek onarım, dolayısıyla tek ek çağrı).
               */
-              const repairNoveltyCandidate =
-                repairCandidate && noveltyProvider
-                  ? runtimeNoveltyCandidates(
+              /*
+                Onarılan gövde de son okumadan geçer; ardından gelen yenilik denetimine bir çağrı
+                ve süre payı bırakılır.
+              */
+              const finalReadRepair = repairCandidate
+                ? (
+                    await runFinalRead(
                       { ...decision, actions: [repairCandidate] },
+                      { reservedCalls: 1, pendingNoveltyCalls: 1 },
+                    )
+                  ).actions[0]
+                : undefined;
+              const repairNoveltyCandidate =
+                finalReadRepair && noveltyProvider
+                  ? runtimeNoveltyCandidates(
+                      { ...decision, actions: [finalReadRepair] },
                       context.perception,
                     )[0]
                   : undefined;
@@ -2307,8 +2326,8 @@ export class AgentRuntimeWorker {
                     this.#options.workerId,
                     runId,
                     leaseToken,
-                    [actionForControlPlane(repairCandidate)],
-                    repairLifePayload(decision, repairCandidate),
+                    [actionForControlPlane(finalReadRepair ?? repairCandidate)],
+                    repairLifePayload(decision, finalReadRepair ?? repairCandidate),
                     deadline.requestOptions(),
                   );
                   currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
