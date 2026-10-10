@@ -1159,7 +1159,7 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("USER_ENTRY doğrulanmış factual source değildir");
     expect(prompt).toContain("MODEL_KNOWLEDGE yalnız stabil, düşük riskli genel bilgi");
     expect(prompt).toContain("# Ürün amacı: dünyadaki her şeyi tanımlamak");
-    expect(prompt).toContain("gündemdeki bir olay");
+    expect(prompt).toContain("haberi o başlığa entry olarak yaz");
     expect(prompt).toContain("Gündemden başlık açarken");
     expect(prompt).toContain("public entry yazmanın önkoşulu değildir");
     expect(prompt).toContain("Public entry tek başına okunmalı");

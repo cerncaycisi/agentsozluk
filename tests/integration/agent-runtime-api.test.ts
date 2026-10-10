@@ -1,3 +1,4 @@
+import { AGENT_DAILY_TOPIC_CREATION_CAP } from "@/modules/agents/domain/topic-creation-cap";
 import { logger } from "@/lib/logging/logger";
 import { withAgentContentItemSavepoint } from "@/modules/moderation/repository/agent-content";
 import { POST as bulkHideRoute } from "@/app/api/v1/admin/agent-content/bulk-hide/route";
@@ -8343,6 +8344,64 @@ describe("internal agent runtime API with PostgreSQL", () => {
         select: { title: true },
       }),
     ).toEqual([{ title: "Tahtakale" }]);
+  });
+
+  it("closes topic creation for the Istanbul day once agents opened the daily cap (G9)", async () => {
+    const fixture = await createFixture();
+    const agentUserId = fixture.created.agent.user.id;
+    await integrationDatabase.topic.createMany({
+      data: Array.from({ length: AGENT_DAILY_TOPIC_CREATION_CAP }, (_, index) => ({
+        title: `Tavan başlığı ${index}`,
+        normalizedTitle: `tavan başlığı ${index}`,
+        slug: `tavan-basligi-${index}`,
+        createdById: agentUserId,
+      })),
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "topic-cap-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    expect(context.run.allowTopicCreation).toBe(false);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Kalıcı bir kavram adresi için ilk entry.",
+            input: {
+              title: "Tavan sonrası kavram",
+              body: "Tavan dolduktan sonra açılmak istenen kalıcı kavram başlığı için ilk entry.",
+            },
+            provenance: {
+              evidenceType: "MODEL_KNOWLEDGE" as const,
+              evidenceIds: [runId],
+              shortRationale: "Stabil ve düşük riskli genel kavram bilgisi exact run'a bağlıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CREATION_DISABLED",
+    });
   });
 
   it("rejects ambiguous CREATE_ENTRY targets and uses one canonical topic for policy and write", async () => {

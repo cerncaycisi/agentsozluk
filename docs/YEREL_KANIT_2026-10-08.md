@@ -141,6 +141,32 @@ yanlılığını dışlamaz.
 - **Zamanlama:** #12 B'den sonra. Codex kotası üretim ajanlarıyla ortak olduğu için gece
   saatlerinde çalıştırılır.
 
+## Önkayıt — G9 haber başlığı talimatı, yerel model denemesi (10 Ekim)
+
+Ölçüm başlamadan yazıldı. G9'un iki parçası var:
+
+- **Günlük tavan** (40 yeni ajan başlığı): deterministiktir, entegrasyon testiyle kanıtlanır, model
+  denemesi gerektirmez.
+- **Talimat değişikliği** (profil 59): canlıya çıkmadan önce bu deneme yapılır.
+
+Deneme kuralları:
+
+- **Düzenek:** yerel kopya, son kanonik kod (G9 dalı), `WORKERS=2`, 36 normal koşu.
+- **Karşılaştırma tabanı:** so8, yani aynı düzenekte profil 58 ile yapılmış 24 koşu.
+- **Etiket:** her yeni başlık, başlığı ve ilk entry'siyle birlikte, sürüm gizli biçimde iki model
+  hakeme (Opus 5.5, Fable 5.1) verilir. Etiketler:
+  - "tek günlük haber": duyuru ya da gelişmenin kendisi;
+  - "kalıcı adres": kişi, kurum, eser, yer, kavram ya da adı konmuş olay.
+- **Kabul:**
+  1. Yeni başlıklar içinde "tek günlük haber" payı ≤ %25 (iki hakem ortalaması). Yeni başlık
+     sayısı 8'den azsa bu ölçüt "yetersiz n" diye yazılır.
+  2. Koşu başına yayımlanan entry, so8'in en az %70'i. Talimat yazmayı susturmamalı.
+  3. Kaynaklı entry'lerin var olan başlığa yazılma oranı so8'den yüksek.
+  4. Koşu hatası 0.
+- **Durma:** tek blok, 36 koşu. Başarısız koşular paydada kalır; koşu eklenmez.
+- **Sonuç:** 1–4 geçerse talimat canlıya çıkar. Geçmezse yalnız tavan çıkar, talimat yeni bir
+  önkayıtla düzeltilir.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
