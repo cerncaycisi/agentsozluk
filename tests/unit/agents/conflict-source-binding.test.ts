@@ -61,6 +61,11 @@ describe("oku, sonra karar ver kaynak bağı (Astra #377 2. tur)", () => {
     expect(presentedSourceTextNamesTopic([item(cut)], "भारत")).toBe(false);
   });
 
+  it("keeps a complete name before an emoji with a variation selector at the cut (Sol #377 4. tur)", () => {
+    const cut = `${"a".repeat(789)} OpenAI ✈️ devam`;
+    expect(presentedSourceTextNamesTopic([item(cut)], "OpenAI")).toBe(true);
+  });
+
   it("reads only the cited items from the frozen snapshot", () => {
     const perception = {
       sourceItems: [

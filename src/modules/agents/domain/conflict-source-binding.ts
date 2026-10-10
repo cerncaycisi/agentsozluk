@@ -32,8 +32,12 @@ function shownFolded(value: string): string {
   if (!value.endsWith("…")) return foldForSourceMatch(value);
   const cut = value.slice(0, -1);
   const folded = foldForSourceMatch(cut);
-  // Birleşen işaretler (\p{M}) de kelimenin parçasıdır (Sol #377 3. tur P2).
-  return /[\p{L}\p{N}\p{M}]$/u.test(cut) ? folded.replace(/\s*\S+$/u, "") : folded;
+  /*
+    Sondaki birleşen işaretler (\p{M}) bağlı oldukları temel karakterle değerlendirilir (Sol #377
+    3. ve 4. tur P2): "भारती…" yarım kelimedir; "OpenAI ✈️…" ise emoji varyasyon işaretiyle biter ve
+    tam görünen "OpenAI" korunur.
+  */
+  return /[\p{L}\p{N}]\p{M}*$/u.test(cut) ? folded.replace(/\s*\S+$/u, "") : folded;
 }
 
 export function presentedSourceTextNamesTopic(
