@@ -49,6 +49,8 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     ["istisna", "kış aylarında kapanan salon bunun istisnası."],
     ["soru", "peki vinçler bir gün sökülürse bina neyi hatırlatacak?"],
     ["bağlantı", "(bkz: endüstriyel miras) bu konuyu daha geniş anlatıyor."],
+    ["atıf: geçmiş zaman", "bunu koruma uzmanı ayşe demir söyledi."],
+    ["kapsam: yalnızca … sınırlı", "bu yorum yalnızca hafta içi açık olan salonla sınırlı."],
   ];
   for (const [name, tail] of protectedTails)
     it(name, () => {
@@ -59,9 +61,25 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     for (const body of [
       "Düzenli kahve tüketimi kalp hastalığına bağlı ölüm riskini azaltıyor ve bu etki uzun vadeli beslenme alışkanlıklarıyla birlikte görülüyor. Bu ilişki tek başına kanıt değil.",
       "yeni kredi kampanyası faiz oranını düşük gösteriyor ama vade uzadıkça toplam geri ödeme artıyor ve dosya masrafı ayrıca ekleniyor. kampanya biraz da reklam metnidir.",
+      "aşının koruyuculuğu, vücudun mikrobu önceden tanımasını sağlayarak sonraki karşılaşmada daha hızlı yanıt vermesine yardımcı olur ve ağır seyretme olasılığını düşürür. bu anlatım yetişkinler için.",
+      "altın birikimi uzun vadede değer koruyor gibi görünse de anaparanın bir kısmı alım satım farkında ve saklama masrafında eriyor, bu yüzden hesap kısa vadede tutmuyor. iş biraz da sabır meselesi.",
       "kira artışına itiraz eden kiracının mahkemeye başvurma süresi sözleşmenin yenilendiği tarihten itibaren işliyor ve bu süre kaçırılırsa hak kayboluyor. süreç biraz da sabır işidir.",
     ])
       expect(candidateFor(body)).toEqual([]);
+  });
+
+  it("başlığı hassas alanda olan entry aday olmaz", () => {
+    const decision = {
+      actions: [
+        {
+          sequence: 1,
+          actionType: "CREATE_TOPIC_WITH_ENTRY",
+          input: { title: "ilaç fiyatları", body: `${head}. kütüphane biraz da hafıza odasıdır.` },
+          provenance: { evidenceType: "MODEL_KNOWLEDGE", evidenceIds: [], shortRationale: "x" },
+        },
+      ],
+    } as unknown as RuntimeDecision;
+    expect(runtimeFinalReadCandidates(decision, {})).toEqual([]);
   });
 
   it("kaynaklı entry hiç aday olmaz", () => {
@@ -84,6 +102,20 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
 });
 
 describe("son okuma saklı olumsuz küme: asıl hedef hâlâ silinebilir", () => {
+  it("hassas alan sözcüklerine benzeyen sıradan sözcükler gövdeyi dışlamaz", () => {
+    for (const word of ["hissettiriyor", "aşırı", "tanıdık"])
+      expect(
+        candidateFor(`${head.replace("taşıyor", word)}. kütüphane biraz da hafıza odasıdır.`),
+      ).toHaveLength(1);
+  });
+
+  it("kısaltmadan sonra gelen paragraf sınırı yine böler", () => {
+    const units = runtimeFinalReadUnits(
+      `${head}, eski presler vb.\n\nbina biraz da kendi okurudur.`,
+    );
+    expect(units).toHaveLength(2);
+  });
+
   const removableTails: Array<[string, string]> = [
     ["özdeyiş kapanışı", "bina biraz da kendi geçmişinin okurudur."],
     [

@@ -173,7 +173,11 @@ export function runtimeFinalReadUnits(body: string): RuntimeFinalReadUnit[] {
   let position = 0;
   for (const match of body.matchAll(unitBoundary)) {
     if (ranges.some(([start, end]) => match.index > start && match.index < end)) continue;
-    if (abbreviationBeforeBoundary.test(body.slice(Math.max(0, match.index - 8), match.index)))
+    // Paragraf sınırı her zaman böler; kısaltma istisnası yalnız cümle içindeki boşluktadır (Astra).
+    if (
+      !match[0].includes("\n") &&
+      abbreviationBeforeBoundary.test(body.slice(Math.max(0, match.index - 8), match.index))
+    )
       continue;
     units.push({ text: body.slice(position, match.index), separator: match[0] });
     position = match.index + match[0].length;
@@ -211,7 +215,7 @@ function containsVeracityHedge(text: string): boolean {
   asıl hedefidir.
 */
 const meaningGuard =
-  /(?:^|[^\p{L}])(?:savun|göre(?:\s|$|[^\p{L}])|diyor|diyen|söylüyor|söyleyen|belirtiyor|belirten|aktarıyor|aktaran|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli değil|geçerli olmayabilir|için geçerli|genellenemez|genelleme yapılamaz|her durumda değil|istisna)/u;
+  /(?:^|[^\p{L}])(?:savun|söyle|belirt|aktar|anlattı|açıkla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsamıyor|her durumda|herkes için değil)/u;
 
 function containsMeaningGuard(text: string): boolean {
   return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
@@ -234,7 +238,7 @@ function lockedUnit(text: string): boolean {
   ya da kapsam cümlesinin silinmesi, okura güvenilir öneri gibi görünen bir hüküm bırakabilir.
 */
 const sensitiveDomain =
-  /(?:^|[^\p{L}])(?:sağlık|hastal|hasta(?:\s|$|[^\p{L}])|tedavi|ilaç|kanser|kalp|diyabet|tansiyon|aşı(?:\s|$|[^\p{L}])|aşıl|doktor|hekim|teşhis|tanı(?:\s|$|[^\p{L}])|beslenme|diyet|takviye|vitamin|gebelik|hamile|ruh sağlığı|depresyon|intihar|ölüm riski|yatırım tavsiye|borsa|hisse|kripto|faiz|kredi|borç|vergi|emeklilik|sigorta|hukuk|dava|mahkeme|avukat|kanun|yasal|suç(?:\s|$|[^\p{L}])|ceza)/u;
+  /(?:^|[^\p{L}])(?:sağlık|hastal|hastane|hasta(?!n\p{L}*\s+(?:taraftar|seyirci))|tedavi|ilaç|kanser|kalp|diyabet|tansiyon|aşı(?!r)|bağışıklı|enfeksiyon|virüs|bakteri|ameliyat|semptom|doktor|hekim|teşhis|tanı(?:sı|sını|ya|da|nın|\s|$)|doz(?:u|a|lar|aj|\s|$)|beslenme|diyet|takviye|vitamin|gebelik|hamile|ruh sağlı|depresyon|intihar|psikiyatr|ölüm riski|yatırım|borsa|hisse(?!t)|hissedar|kripto|faiz|kredi|borç|vergi|emeklilik|sigorta|anapara|döviz|altın fiyat|hukuk|dava|mahkeme|avukat|kanun|yasal|suç|ceza|tahliye|kiracı|icra|haciz|tazminat|sözleşme)/u;
 
 function inSensitiveDomain(text: string): boolean {
   return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
@@ -340,13 +344,18 @@ export function runtimeFinalReadCandidates(
       bilgi henüz kesinleşmedi.") ya da aynı cümlede başka anlamda geçen "belirsiz" iddiayı
       çerçevelenmiş gösterebilir. Yerel örneklerde silme yapılan gövdelerin hiçbiri bu sınıfta değildi.
     */
-    if (textContainsSeriousClaimMarker(body) || inSensitiveDomain(body)) return [];
     const title =
       action.actionType === "CREATE_TOPIC_WITH_ENTRY"
         ? action.input.title
         : typeof action.input.topicId === "string"
           ? topicTitles.get(action.input.topicId)
           : undefined;
+    if (
+      textContainsSeriousClaimMarker(body) ||
+      inSensitiveDomain(body) ||
+      (typeof title === "string" && inSensitiveDomain(title))
+    )
+      return [];
     const units = runtimeFinalReadUnits(body);
     return units.length < 2
       ? []
