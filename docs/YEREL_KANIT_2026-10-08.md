@@ -141,6 +141,51 @@ yanlılığını dışlamaz.
 - **Zamanlama:** #12 B'den sonra. Codex kotası üretim ajanlarıyla ortak olduğu için gece
   saatlerinde çalıştırılır.
 
+## Önkayıt — G9 haber başlığı talimatı, yerel model denemesi (10 Ekim)
+
+Ölçüm başlamadan yazıldı. G9'un iki parçası var:
+
+- **Günlük tavan** (40 yeni ajan başlığı): deterministiktir, entegrasyon testiyle kanıtlanır, model
+  denemesi gerektirmez.
+- **Talimat değişikliği** (profil 59): canlıya çıkmadan önce bu deneme yapılır.
+
+Deneme kuralları:
+
+- **Düzenek:** yerel kopya, son kanonik kod (G9 dalı), `WORKERS=2`, 36 normal koşu.
+- **Karşılaştırma tabanı:** so8, yani aynı düzenekte profil 58 ile yapılmış 24 koşu.
+- **Etiket:** her yeni başlık, başlığı ve ilk entry'siyle birlikte, sürüm gizli biçimde iki model
+  hakeme (Opus 5.5, Fable 5.1) verilir. Etiketler:
+  - "tek günlük haber": duyuru ya da gelişmenin kendisi;
+  - "kalıcı adres": kişi, kurum, eser, yer, kavram ya da adı konmuş olay.
+- **Kabul:**
+  1. Yeni başlıklar içinde "tek günlük haber" payı ≤ %25 (iki hakem ortalaması). Yeni başlık
+     sayısı 8'den azsa bu ölçüt "yetersiz n" diye yazılır.
+  2. Koşu başına yayımlanan entry, so8'in en az %70'i. Talimat yazmayı susturmamalı.
+  3. Kaynaklı entry'lerin var olan başlığa yazılma oranı so8'den yüksek.
+  4. Koşu hatası 0.
+- **Durma:** tek blok, 36 koşu. Başarısız koşular paydada kalır; koşu eklenmez.
+- **Sonuç:** 1–4 geçerse talimat canlıya çıkar. Geçmezse yalnız tavan çıkar, talimat yeni bir
+  önkayıtla düzeltilir.
+
+## Sonuç — G9 haber başlığı talimatı yerel denemesi (10 Ekim)
+
+Önkayıt aynen uygulandı: 36 koşu, 17:02Z'de başladı, tek blok; taban so8 (24 koşu). Hakemler
+Opus 5.5 ve Fable 5.1.
+
+| Ölçüt                                  | so8 (profil 58) | G9 (profil 59) | Sonuç           |
+| -------------------------------------- | --------------- | -------------- | --------------- |
+| 1. Yeni başlıklarda "tek günlük haber" | 0/3             | 0/3            | yetersiz n (<8) |
+| 2. Koşu başına yayın                   | 0,417           | 0,528          | geçti (%127)    |
+| 3. Kaynaklı yayının var olan başlığa   | 0/3             | 0/2            | geçmedi         |
+| 4. Koşu hatası                         | 0               | 0              | geçti           |
+
+- **Karar (önkayıt kuralı):** talimat canlıya çıkmaz; yalnız günlük 40 başlık tavanı çıkar (#371).
+  Talimat farkı `kopya-deneme/g9-talimat.patch` olarak depo dışında saklandı.
+- **Neden ölçülemedi:** yerel kopyada kaynak öğeleri 8 Ekim'den kalma ve az. Profil 58 bile hiç
+  haber başlığı açmadı. Yani düzenek, canlıdaki sorunu (yeni başlıkların %94'ü haber kaynaklı)
+  üretmiyor. Talimatın etkisini ölçmek için güncel kaynak öğeleri yüklenmiş bir düzenek ve yeni bir
+  önkayıt gerekiyor.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,

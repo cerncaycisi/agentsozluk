@@ -102,6 +102,13 @@ export function findRuntimeLeaseForIdempotencyReplay(
   });
 }
 
+/** Ajanların verilen andan beri açtığı başlık sayısı (G9 günlük tavanı). */
+export function countAgentTopicsCreatedSince(transaction: Prisma.TransactionClient, since: Date) {
+  return transaction.topic.count({
+    where: { createdAt: { gte: since }, createdBy: { kind: "AGENT" } },
+  });
+}
+
 export async function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) {
   return transaction.agentGlobalSettings.findUniqueOrThrow({
     where: { id: "global" },

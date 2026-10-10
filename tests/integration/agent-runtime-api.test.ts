@@ -1,3 +1,4 @@
+import { AGENT_DAILY_TOPIC_CREATION_CAP } from "@/modules/agents/domain/topic-creation-cap";
 import { logger } from "@/lib/logging/logger";
 import { withAgentContentItemSavepoint } from "@/modules/moderation/repository/agent-content";
 import { POST as bulkHideRoute } from "@/app/api/v1/admin/agent-content/bulk-hide/route";
@@ -8343,6 +8344,215 @@ describe("internal agent runtime API with PostgreSQL", () => {
         select: { title: true },
       }),
     ).toEqual([{ title: "Tahtakale" }]);
+  });
+
+  it("closes topic creation for the Istanbul day once agents opened the daily cap (G9)", async () => {
+    const fixture = await createFixture();
+    const agentUserId = fixture.created.agent.user.id;
+    await integrationDatabase.topic.createMany({
+      data: Array.from({ length: AGENT_DAILY_TOPIC_CREATION_CAP }, (_, index) => ({
+        title: `Tavan başlığı ${index}`,
+        normalizedTitle: `tavan başlığı ${index}`,
+        slug: `tavan-basligi-${index}`,
+        createdById: agentUserId,
+      })),
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "topic-cap-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    expect(context.run.allowTopicCreation).toBe(false);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Kalıcı bir kavram adresi için ilk entry.",
+            input: {
+              title: "Tavan sonrası kavram",
+              body: "Kalıcı bir kavramı tanımlayan, bağımsız okunabilen ve yeterince uzun bir açıklama metni.",
+            },
+            provenance: {
+              evidenceType: "MODEL_KNOWLEDGE" as const,
+              evidenceIds: [runId],
+              shortRationale: "Stabil ve düşük riskli genel kavram bilgisi exact run'a bağlıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CREATION_DISABLED",
+    });
+  });
+
+  it("still routes a capped new-topic proposal to an existing empty topic without opening one (Astra #371)", async () => {
+    const fixture = await createFixture();
+    await integrationDatabase.topic.createMany({
+      data: Array.from({ length: AGENT_DAILY_TOPIC_CREATION_CAP }, (_, index) => ({
+        title: `Yönlendirme tavanı ${index}`,
+        normalizedTitle: `yönlendirme tavanı ${index}`,
+        slug: `yonlendirme-tavani-${index}`,
+        createdById: fixture.created.agent.user.id,
+      })),
+    });
+    const existing = await integrationDatabase.topic.create({
+      data: {
+        title: "Var olan boş başlık",
+        normalizedTitle: "var olan boş başlık",
+        slug: "var-olan-bos-baslik",
+        createdById: fixture.admin.id,
+      },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "topic-cap-route-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    const topicCountBefore = await integrationDatabase.topic.count();
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Var olan kavram adresine ilk entry.",
+            input: {
+              title: "Var olan boş başlık",
+              body: "Var olan kavramı tanımlayan, bağımsız okunabilen ve yeterince uzun bir açıklama metni.",
+            },
+            provenance: {
+              evidenceType: "MODEL_KNOWLEDGE" as const,
+              evidenceIds: [runId],
+              shortRationale: "Stabil ve düşük riskli genel kavram bilgisi exact run'a bağlıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED", rejectionCode: null });
+    expect(await integrationDatabase.topic.count()).toBe(topicCountBefore);
+    expect(
+      await integrationDatabase.entry.count({ where: { topicId: existing.id, status: "ACTIVE" } }),
+    ).toBe(1);
+  });
+
+  it("rejects instead of opening a new topic when the resolved topic is hidden before the write (Astra #371 2. tur)", async () => {
+    const fixture = await createFixture();
+    await integrationDatabase.topic.createMany({
+      data: Array.from({ length: AGENT_DAILY_TOPIC_CREATION_CAP }, (_, index) => ({
+        title: `Yarış tavanı ${index}`,
+        normalizedTitle: `yarış tavanı ${index}`,
+        slug: `yaris-tavani-${index}`,
+        createdById: fixture.created.agent.user.id,
+      })),
+    });
+    const existing = await integrationDatabase.topic.create({
+      data: {
+        title: "gizli-kesit",
+        normalizedTitle: "gizli-kesit",
+        slug: "gizli-kesit",
+        createdById: fixture.admin.id,
+      },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "topic-cap-race-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Var olan kavram adresine bağımsız katkı.",
+            input: {
+              // Slug eşleşmesiyle var olan başlığa çözülen ad varyantı (Astra: "j-cut" / "j cut").
+              title: "gizli kesit",
+              body: "Var olan kavramı tanımlayan, bağımsız okunabilen ve yeterince uzun bir açıklama metni.",
+            },
+            provenance: {
+              evidenceType: "MODEL_KNOWLEDGE" as const,
+              evidenceIds: [runId],
+              shortRationale: "Stabil ve düşük riskli genel kavram bilgisi exact run'a bağlıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    const topicCountBefore = await integrationDatabase.topic.count();
+    try {
+      await expect(
+        executeRuntimeAction(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          { workerId, sequence: 1 },
+          {
+            afterCanonicalTopicResolved: async () => {
+              await secondClient.topic.update({
+                where: { id: existing.id },
+                data: { status: "HIDDEN" },
+              });
+            },
+          },
+        ),
+      ).resolves.toMatchObject({
+        actionStatus: "REJECTED",
+        rejectionCode: "TOPIC_RESOLUTION_CHANGED",
+      });
+    } finally {
+      await secondClient.$disconnect();
+    }
+    expect(await integrationDatabase.topic.count()).toBe(topicCountBefore);
   });
 
   it("rejects ambiguous CREATE_ENTRY targets and uses one canonical topic for policy and write", async () => {

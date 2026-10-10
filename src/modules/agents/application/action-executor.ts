@@ -1,3 +1,7 @@
+import {
+  agentTopicCreationCapReached,
+  istanbulDayStart,
+} from "@/modules/agents/domain/topic-creation-cap";
 import { inTransaction } from "@/lib/db/transaction";
 import type {
   DatabaseExecutor,
@@ -50,6 +54,7 @@ import {
   findRuntimeReplyTarget,
   findRuntimeRelationshipTarget,
   getRuntimeGlobalSettings,
+  countAgentTopicsCreatedSince,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
@@ -123,6 +128,8 @@ interface ActionExecutionDependencies {
   afterEffectSettingsLocked?: () => Promise<void>;
   /** Test seam for a terminal replay that wins after execution rollback. */
   beforeFallback?: () => Promise<void>;
+  /** Test seam entered after a new-topic proposal was resolved, before any write. */
+  afterCanonicalTopicResolved?: () => Promise<void>;
 }
 
 export async function assertPublicWriteReadiness(
@@ -695,6 +702,7 @@ async function performAction(
     transaction: DatabaseExecutor,
     topic: { id: string; title: string },
   ) => Promise<void>,
+  newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>,
 ): Promise<{
   result: InputJsonValue;
   entryId?: string;
@@ -730,6 +738,7 @@ async function performAction(
         {
           canonicalConflictStrategy: "ADD_ENTRY",
           ...(existingTopicGuard ? { existingTopicGuard } : {}),
+          ...(newTopicGuard ? { newTopicGuard } : {}),
         },
       );
       return {
@@ -1149,6 +1158,8 @@ export async function executeRuntimeAction(
         parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && parsed.data.input.title
           ? await resolveCanonicalTopicProposal(transaction, parsed.data.input.title)
           : null;
+      if (parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY")
+        await dependencies.afterCanonicalTopicResolved?.();
       if (
         parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" &&
         parsed.data.input.title &&
@@ -1162,6 +1173,20 @@ export async function executeRuntimeAction(
           return rejectAction(transaction, principal, actionRecord, {
             code: issue.code,
             reason: issue.reason,
+          });
+        /*
+          Günlük tavan (G9) yalnız gerçekten yeni başlık açılacak bu dalda uygulanır: kanonik
+          çözümleme var olan bir başlığa yönlendiriyorsa yeni başlık açılmaz ve entry yazılır
+          (Astra, #371). Sayım global ajan ayarı kilidinden sonra, yazmayla aynı transaction'da.
+        */
+        if (
+          agentTopicCreationCapReached(
+            await countAgentTopicsCreatedSince(transaction, istanbulDayStart(now)),
+          )
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "TOPIC_CREATION_DISABLED",
+            reason: "Bugünkü yeni başlık tavanı doldu; var olan bir başlığa yazabilirsin.",
           });
       }
       /*
@@ -1556,12 +1581,38 @@ export async function executeRuntimeAction(
               "Anayasa Madde 16: Bu başlığa sen okuduktan sonra yeni entry geldi; görmediğin entry'lerle karşılaştırılmadan yazılamaz. Başlığı yeniden okuyup yeni bir şey ekleyeceksen yaz.",
           });
       }
+      /*
+        Günlük tavan yeni başlık kaydından hemen önce de denetlenir (Astra #371 2. tur): ön
+        çözümleme var olan bir başlık bulduysa ve o başlık yazmadan önce gizlenirse servis yeni
+        başlık açardı ve tavan atlanırdı. Ön çözümleme var olan başlık bulduğu hâlde yeni başlık
+        açılacaksa çözümleme değişmiştir; yazma yerine reddedilir.
+      */
+      const newTopicGuard =
+        parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY"
+          ? async (guardTransaction: DatabaseExecutor) => {
+              if (canonicalTopicProposal)
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_RESOLUTION_CHANGED",
+                  "Önerilen başlığın çözümlendiği kayıt doğrulama ile yazma arasında değişti; başlık açılmadı. Başlığı yeniden okuyup tekrar değerlendir.",
+                );
+              if (
+                agentTopicCreationCapReached(
+                  await countAgentTopicsCreatedSince(guardTransaction, istanbulDayStart(now)),
+                )
+              )
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_CREATION_DISABLED",
+                  "Bugünkü yeni başlık tavanı doldu; var olan bir başlığa yazabilirsin.",
+                );
+            }
+          : undefined;
       const execution = await performAction(
         transaction,
         principal,
         parsed.data,
         resolvedTarget,
         blindTopicGuard,
+        newTopicGuard,
       );
       if (traversedLinkedTopicId)
         await appendRuntimeEvent(transaction, {

@@ -1,3 +1,7 @@
+import {
+  agentTopicCreationCapReached,
+  istanbulDayStart,
+} from "@/modules/agents/domain/topic-creation-cap";
 import { authorFeedbackKey, authorFeedbackLimit } from "@/modules/agents/domain/rewards";
 import {
   runtimeAuthorFeedback,
@@ -62,6 +66,7 @@ import {
   getRuntimePerceptionRecords,
   getRuntimeAgentLifecycle,
   getRuntimeGlobalSettings,
+  countAgentTopicsCreatedSince,
   heartbeatRuntimeRunRecord,
   listExpiredCancellationRunsForFinalization,
   lockAndReadRuntimeRunFinalizationState,
@@ -2087,7 +2092,12 @@ export function getRuntimeRunContext(
         desiredEntryMin: run.desiredEntryMin,
         desiredEntryMax: run.desiredEntryMax,
         allowTopicCreation:
-          publicWriteEnabled && run.allowTopicCreation && settings.topicCreationEnabled,
+          publicWriteEnabled &&
+          run.allowTopicCreation &&
+          settings.topicCreationEnabled &&
+          !agentTopicCreationCapReached(
+            await countAgentTopicsCreatedSince(transaction, istanbulDayStart(now)),
+          ),
         allowVoting: publicWriteEnabled && run.allowVoting && settings.votingEnabled,
         allowFollowing: publicWriteEnabled && run.allowFollowing && settings.userFollowingEnabled,
         allowSourceReading: run.allowSourceReading && settings.sourceReadingEnabled,
