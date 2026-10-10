@@ -40,9 +40,11 @@ export interface RuntimeProviderRequest {
  */
 export interface RuntimeProviderTokenUsage {
   inputTokens: number;
-  cachedInputTokens: number;
   outputTokens: number;
-  reasoningOutputTokens: number;
+  /** CLI bildirmediyse yoktur; sıfır sayılmaz. */
+  cachedInputTokens?: number;
+  /** CLI bildirmediyse yoktur; sıfır sayılmaz. */
+  reasoningOutputTokens?: number;
 }
 
 export interface RuntimeProviderAttemptDiagnostics {

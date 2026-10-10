@@ -368,9 +368,30 @@ describe("Codex token telemetry (Y6)", () => {
       JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1.5, output_tokens: 1 } }),
       JSON.stringify({ type: "turn.completed", usage: { output_tokens: 1 } }),
       '{"type":"turn.completed","usage":',
+      JSON.stringify({ type: "turn.completed", usage: { input_tokens: null, output_tokens: 1 } }),
+      JSON.stringify({
+        type: "turn.completed",
+        usage: { input_tokens: 1, output_tokens: 1, cached_input_tokens: -3 },
+      }),
       "",
     ])
       expect(parseCodexTurnUsage(line)).toBeUndefined();
+  });
+
+  it("keeps missing or null optional counters absent instead of zero (Astra, 10 Ekim)", () => {
+    expect(
+      parseCodexTurnUsage(
+        JSON.stringify({ type: "turn.completed", usage: { input_tokens: 20, output_tokens: 10 } }),
+      ),
+    ).toEqual({ inputTokens: 20, outputTokens: 10 });
+    expect(
+      parseCodexTurnUsage(
+        JSON.stringify({
+          type: "turn.completed",
+          usage: { input_tokens: 20, output_tokens: 10, reasoning_output_tokens: null },
+        }),
+      ),
+    ).toEqual({ inputTokens: 20, outputTokens: 10 });
   });
 
   async function invokeWithHelp(execHelp: string) {
@@ -427,5 +448,7 @@ describe("Codex token telemetry (Y6)", () => {
 
     const legacy = await invokeWithHelp("--output-schema --output-last-message");
     expect(legacy.decisionArguments[0]).not.toContain("--json");
+    // --json yokken stdout'taki olay biçimli metin ölçüm sayılmaz (Astra, 10 Ekim).
+    expect(legacy.result.diagnostics?.tokenUsage).toBeUndefined();
   });
 });

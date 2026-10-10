@@ -271,28 +271,27 @@ export function parseCodexTurnUsage(line: string): RuntimeProviderTokenUsage | u
   const { type, usage } = event as { type?: unknown; usage?: unknown };
   if (type !== "turn.completed" || !usage || typeof usage !== "object") return undefined;
   const raw = usage as Record<string, unknown>;
-  const count = (key: string): number | undefined => {
-    const value = raw[key] ?? 0;
-    return Number.isSafeInteger(value) &&
-      (value as number) >= 0 &&
-      (value as number) <= MAX_TOKEN_COUNT
-      ? (value as number)
-      : undefined;
+  /*
+    Eksik ya da `null` sayaç sıfır sayılmaz (Astra, 10 Ekim): bilinmeyen kullanım ölçülmüş sıfır
+    gibi saklanırsa maliyet yanlışlaşır. Girdi ve çıktı zorunlu; önbellek ve düşünme sayaçları
+    yalnız geçerli tamsayı olarak geldiyse yazılır. Geçersiz bir değer bütün ölçümü düşürür.
+  */
+  const valid = (value: unknown): value is number =>
+    Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= MAX_TOKEN_COUNT;
+  const optional = (key: string): number | undefined | null => {
+    if (!(key in raw) || raw[key] === null) return undefined;
+    return valid(raw[key]) ? raw[key] : null;
   };
-  const inputTokens = count("input_tokens");
-  const cachedInputTokens = count("cached_input_tokens");
-  const outputTokens = count("output_tokens");
-  const reasoningOutputTokens = count("reasoning_output_tokens");
-  if (
-    inputTokens === undefined ||
-    cachedInputTokens === undefined ||
-    outputTokens === undefined ||
-    reasoningOutputTokens === undefined ||
-    !("input_tokens" in raw) ||
-    !("output_tokens" in raw)
-  )
-    return undefined;
-  return { inputTokens, cachedInputTokens, outputTokens, reasoningOutputTokens };
+  if (!valid(raw.input_tokens) || !valid(raw.output_tokens)) return undefined;
+  const cachedInputTokens = optional("cached_input_tokens");
+  const reasoningOutputTokens = optional("reasoning_output_tokens");
+  if (cachedInputTokens === null || reasoningOutputTokens === null) return undefined;
+  return {
+    inputTokens: raw.input_tokens,
+    outputTokens: raw.output_tokens,
+    ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }),
+    ...(reasoningOutputTokens === undefined ? {} : { reasoningOutputTokens }),
+  };
 }
 
 function collect(
@@ -301,6 +300,7 @@ function collect(
   timeoutMs: number,
   signal?: AbortSignal,
   terminateProcessGroup = false,
+  parseJsonEvents = false,
 ): Promise<{
   exitCode: number | null;
   exitSignal: NodeJS.Signals | null;
@@ -347,21 +347,26 @@ function collect(
     child.stderr.on("data", (chunk: Buffer) => {
       if (stderr.length < 16_384) stderr += chunk.toString("utf8").slice(0, 16_384 - stderr.length);
     });
-    // `--json` yoksa stdout boş ya da düz metindir; ayrıştırıcı hiçbir şey bulmaz.
-    child.stdout.on("data", (chunk: Buffer) => {
-      pendingEvent += chunk.toString("utf8");
-      let newline = pendingEvent.indexOf("\n");
-      while (newline >= 0) {
-        tokenUsage = parseCodexTurnUsage(pendingEvent.slice(0, newline)) ?? tokenUsage;
-        pendingEvent = pendingEvent.slice(newline + 1);
-        newline = pendingEvent.indexOf("\n");
-      }
-      if (pendingEvent.length > MAX_PENDING_EVENT_CHARS) pendingEvent = "";
-    });
+    /*
+      Olay akışı yalnız `--json` ile çalışan çağrıda ayrıştırılır (Astra, 10 Ekim): `--json`
+      yoksa stdout model metni taşıyabilir ve o metindeki sayılar ölçüm sayılmamalı.
+    */
+    if (!parseJsonEvents) child.stdout.resume();
+    else
+      child.stdout.on("data", (chunk: Buffer) => {
+        pendingEvent += chunk.toString("utf8");
+        let newline = pendingEvent.indexOf("\n");
+        while (newline >= 0) {
+          tokenUsage = parseCodexTurnUsage(pendingEvent.slice(0, newline)) ?? tokenUsage;
+          pendingEvent = pendingEvent.slice(newline + 1);
+          newline = pendingEvent.indexOf("\n");
+        }
+        if (pendingEvent.length > MAX_PENDING_EVENT_CHARS) pendingEvent = "";
+      });
     child.on("error", (error) => finish(() => reject(error)));
     child.on("close", (exitCode, exitSignal) =>
       finish(() => {
-        tokenUsage = parseCodexTurnUsage(pendingEvent) ?? tokenUsage;
+        if (parseJsonEvents) tokenUsage = parseCodexTurnUsage(pendingEvent) ?? tokenUsage;
         pendingEvent = "";
         resolve({
           exitCode,
@@ -624,6 +629,7 @@ export class CodexCliProvider implements RuntimeProvider {
         remainingMs(),
         request.signal,
         this.#options.spawnProcess === undefined,
+        inspected.supportsJsonEvents,
       );
       tokenUsage = result.tokenUsage;
       /*
