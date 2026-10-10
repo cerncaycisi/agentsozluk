@@ -8679,7 +8679,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(await integrationDatabase.topic.count()).toBe(topicCountBefore);
   });
 
-  async function readThenDecideSetup(sourceText: string) {
+  async function readThenDecideSetup(
+    sourceText: string,
+    extraActions: (
+      populatedId: string,
+      body: string,
+      provenance: Record<string, unknown>,
+    ) => Array<Record<string, unknown>> = () => [],
+  ) {
     const fixture = await createFixture();
     const source = await integrationDatabase.agentSource.create({
       data: {
@@ -8780,6 +8787,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
             input: { title: "Dolu kavram", body },
             provenance,
           },
+          ...extraActions(populated.id, body, provenance),
         ],
       }),
     );
@@ -8879,6 +8887,48 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(
       await integrationDatabase.entry.count({ where: { topicId: populated.id, status: "ACTIVE" } }),
     ).toBe(2);
+  });
+
+  it("rejects an unmarked entry recorded before the conflict once the topic is readable (Astra #377 2. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (populatedId, body, provenance) => [
+        {
+          sequence: 2,
+          actionType: "CREATE_ENTRY",
+          safeReason: "Önceden kaydedilen işaretsiz entry.",
+          targetType: "TOPIC",
+          targetId: populatedId,
+          input: { topicId: populatedId, body: `${body} Önceden kaydedilmiş farklı gövde.` },
+          provenance,
+        },
+      ],
+    );
+    expect(setup.rejected).toMatchObject({
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: { conflictTopicId: setup.populated.id },
+    });
+    await getRuntimeRunContext(
+      integrationDatabase,
+      setup.readPrincipal,
+      setup.runId,
+      setup.workerId,
+      [setup.earlier.topic.id, setup.populated.id],
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, setup.writePrincipal, setup.runId, {
+        workerId: setup.workerId,
+        sequence: 2,
+      }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
+    expect(
+      await integrationDatabase.entry.count({
+        where: { topicId: setup.populated.id, status: "ACTIVE" },
+      }),
+    ).toBe(1);
   });
 
   it("does not make a hit topic readable when its name is not in the cited source text", async () => {

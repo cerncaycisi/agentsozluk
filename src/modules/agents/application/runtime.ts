@@ -287,8 +287,12 @@ const runtimeReadTopicFullBodiesMaximumChars = 60_000;
 function boundedFullBodies(
   topics: { id: string; body: string }[][],
   topicCount: number = topics.length,
+  remaining: number = runtimeReadTopicFullBodiesMaximumChars,
 ) {
-  const perTopic = Math.floor(runtimeReadTopicFullBodiesMaximumChars / Math.max(1, topicCount));
+  const perTopic = Math.min(
+    remaining,
+    Math.floor(runtimeReadTopicFullBodiesMaximumChars / Math.max(1, topicCount)),
+  );
   return topics.flatMap((items) => {
     const kept: { id: string; body: string }[] = [];
     let total = 0;
@@ -2055,32 +2059,51 @@ export function getRuntimeRunContext(
           : [{ id: entry.id, body: full }];
       });
     /*
-      Ek okuma (Astra #377 P1): yalnız bu koşunun okunabilir çakışma başlıkları istendiğinde
-      önceki okumaların görüntüsü OLDUĞU GİBİ kalır, yeni başlık sona eklenir. Tazelemek,
-      bekleyen eylemlerin "okuduktan sonra başlık değişti" korumasını etkisizleştirirdi.
+      Ek okuma (Astra #377 1. ve 2. tur P1): koşu bir kez başlık okuduktan sonra yeni okuma
+      önceki görüntüleri OLDUĞU GİBİ bırakır, yalnız yeni başlıkları ekler. Tazelemek, bekleyen
+      eylemlerin "okuduktan sonra başlık değişti" korumasını etkisizleştirirdi; çarpılan
+      başlığın menüde olup olmaması fark etmez.
     */
-    const appendConflictRead =
-      alreadyReadTopics &&
-      allowedReadTopicIds.some((id) => !browseMenu.has(id) && conflictTopicIds.has(id));
+    const existingReadTopics = alreadyReadTopics
+      ? ((perception as Record<string, unknown>).readTopics as Array<{ id: string }>)
+      : [];
+    const appendConflictRead = existingReadTopics.length > 0 && allowedReadTopicIds.length > 0;
     if (appendConflictRead) {
-      const existingRead = (perception as Record<string, unknown>).readTopics as Array<{
-        id: string;
-      }>;
+      const existingRead = existingReadTopics;
       const existingIds = new Set(existingRead.map(({ id }) => id));
       const newIds = allowedReadTopicIds
         .filter((id) => !existingIds.has(id))
         .slice(0, Math.max(0, runtimeReadTopicLimit - existingRead.length));
       if (newIds.length > 0) {
         const added = await getRuntimeReadTopics(transaction, newIds);
-        const existingFull = (perception as Record<string, unknown>)[runtimeReadTopicFullBodiesKey];
+        const existingFullValue = (perception as Record<string, unknown>)[
+          runtimeReadTopicFullBodiesKey
+        ];
+        const existingFullBodies = (
+          Array.isArray(existingFullValue) ? existingFullValue : []
+        ).filter(
+          (item): item is { id: string; body: string } =>
+            Boolean(item) &&
+            typeof (item as { id?: unknown }).id === "string" &&
+            typeof (item as { body?: unknown }).body === "string",
+        );
         perception = {
           ...perception,
           readTopics: [...existingRead, ...added.map(presentReadTopic)],
           [runtimeReadTopicFullBodiesKey]: [
-            ...(Array.isArray(existingFull) ? existingFull : []),
+            ...existingFullBodies,
+            /*
+              Toplam tam metin sınırı korunur (Astra #377 2. tur P2): yeni başlığa kalan bütçe
+              ile başlık başı paydan küçüğü ayrılır.
+            */
             ...boundedFullBodies(
               added.map(readTopicFullBodies),
               existingRead.length + added.length,
+              Math.max(
+                0,
+                runtimeReadTopicFullBodiesMaximumChars -
+                  existingFullBodies.reduce((sum, item) => sum + item.body.length, 0),
+              ),
             ),
           ],
         };

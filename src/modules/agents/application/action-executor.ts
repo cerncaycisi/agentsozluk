@@ -110,6 +110,7 @@ import {
 } from "@/modules/interactions";
 import { createTopicWithFirstEntry, resolveCanonicalTopicProposal } from "@/modules/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import { presentedSourceTextNamesTopic } from "@/modules/agents/domain/conflict-source-binding";
 import { appendOutboxEvent, type OutboxEventInput } from "@/modules/outbox";
 import {
   guardProductionRolloutRuntimeMutation,
@@ -1550,8 +1551,9 @@ export async function executeRuntimeAction(
                   provenance.evidenceType,
                 ) &&
                 (await listRunConflictTopicIds(guardTransaction, runId)).size === 0 &&
-                (await findSourceItemSearchTexts(guardTransaction, provenance.evidenceIds)).some(
-                  (text) => normalizeTopicTitle(text).includes(normalizeTopicTitle(topic.title)),
+                presentedSourceTextNamesTopic(
+                  await findSourceItemSearchTexts(guardTransaction, provenance.evidenceIds),
+                  topic.title,
                 );
               throw new RuntimeActionRejectionError(
                 "TOPIC_EXISTS_UNREAD",
@@ -1569,6 +1571,20 @@ export async function executeRuntimeAction(
       */
       if (parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId) {
         await lockTopicState(transaction, resolvedTarget.topicId);
+        /*
+          Bu koşunun okunabilir çakışma başlığına yalnız işaretli dönüşüm yazar (Astra #377 2. tur
+          P1): çakışmadan önce kaydedilmiş işaretsiz bir entry, başlık okunduktan sonra
+          yürütülürse dönüşümün gövde/provenance eşitliği ve tek onarım sınırı atlanırdı.
+        */
+        if (
+          repairValidationMarker(actionRecord.validationResult).repairOfSequence === undefined &&
+          (await listRunConflictTopicIds(transaction, runId)).has(resolvedTarget.topicId)
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+            reason:
+              "Bu başlık bu koşuda yeni-başlık önerisiyle çakıştı; oraya yalnız o önerinin işaretli dönüşümü yazabilir.",
+          });
         const snapshot = runtimeReadTopicSnapshot(
           actionRecord.run.perceptionSummary,
           resolvedTarget.topicId,
