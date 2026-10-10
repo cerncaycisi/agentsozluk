@@ -107,7 +107,7 @@ Komuttan önce hedef çıktı dizini yokluğunu ve harness'ı kontrol et.
 Entegrasyon yardımcısı aynı üç argümanla `integration-local.py`; sonraki
 çıktı dizini `integration-02`. Yardımcıları okumadan körlemesine çalıştırma.
 Guard Mac `MacBook-Pro-26.local`, yerel PostgreSQL cluster
-`7663213515019154520`, owner `gokhannihalgul` ve sentetik DB marker'ına bağlı.
+`7663213515019154520`, owner `<yerel-kullanici>` ve sentetik DB marker'ına bağlı.
 Üretim dump'ı veya mevcut veritabanı kullanılmaz.
 
 ## Canlı ölçüm ve sonraki kapılar

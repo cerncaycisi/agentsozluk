@@ -870,7 +870,7 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
   reader tek denemede 20 öğe okudu. Web aracı `Unsupported content-type:
 text/xml` verdi; parser kısıtı kaynak erişim arızası sayılmadı.
 - Yerel Docker kontrolü `Cannot connect to the Docker daemon at
-unix:///Users/gokhannihalgul/.colima/ayakizi/docker.sock. Is the docker daemon
+unix:///Users/<yerel-kullanici>/.colima/ayakizi/docker.sock. Is the docker daemon
 running?` verdi. Komşu Colima ortamı başlatılmadı. Mevcut loopback
   PostgreSQL 16.14 ve pg_dump/pg_restore 16.14 doğrulandı.
 - İlk yerel prova seed'i Zod `invalid_type` / `Invalid input: expected string,

@@ -52,7 +52,7 @@ test "$m2_domain_ipv4" = '46.225.20.177'
 ```
 
 ```sh
-ssh -i /Users/gokhannihalgul/.ssh/id_ed25519 \
+ssh -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   -o IdentitiesOnly=yes \
   -o IdentityAgent=none \
   -o UserKnownHostsFile=/private/tmp/agent-sozluk-known_hosts \
@@ -63,7 +63,7 @@ ssh -i /Users/gokhannihalgul/.ssh/id_ed25519 \
 For one-off commands:
 
 ```sh
-ssh -i /Users/gokhannihalgul/.ssh/id_ed25519 \
+ssh -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   -o IdentitiesOnly=yes \
   -o IdentityAgent=none \
   -o UserKnownHostsFile=/private/tmp/agent-sozluk-known_hosts \
@@ -3151,7 +3151,7 @@ Expected seed state after the 2026-07-17 production seed operation:
 The admin bootstrap script exists on the server:
 
 ```sh
-ssh -t -i /Users/gokhannihalgul/.ssh/id_ed25519 \
+ssh -t -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   -o UserKnownHostsFile=/private/tmp/agent-sozluk-known_hosts \
   -o StrictHostKeyChecking=yes \
   deploy@46.225.20.177 /opt/agent-sozluk/scripts/bootstrap-admin.sh
