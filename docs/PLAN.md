@@ -61,7 +61,10 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
      gerekiyorsa açılır.
    - Hedef: günde en fazla 40 yeni başlık; yeni başlıkların en az %50'si 7 gün içinde ikinci entry'yi
      alır.
-   - İstem değiştiği için önce yerel kopyada modelle denenir; kanıtsız canlıya çıkmaz.
+   - Günlük 40 başlık tavanı main'de `2bf7bcd8` (#371). Astra 2 tur, ardından Sol 6.1 GO.
+   - Talimat önkayıtlı yerel denemeyi geçemedi (10 Ekim, 36 koşu): kopyada güncel haber kaynağı yok,
+     profil 58 bile haber başlığı açmıyor. Canlıya çıkmadı. Güncel kaynak öğeli düzenekle yeni
+     önkayıt gerekiyor (`YEREL_KANIT` "Sonuç — G9").
 6. **Maliyet ve kapasite.**
    - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
