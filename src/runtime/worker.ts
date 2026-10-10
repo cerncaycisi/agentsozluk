@@ -2286,7 +2286,6 @@ export class AgentRuntimeWorker {
           ? conflictTopicIdOf(conflictRejection.result)
           : null;
         if (conflictTopicId && !contentRepairAttempted && noveltyProvider) {
-          contentRepairAttempted = true;
           const readIds = recordArray(context.perception.readTopics)
             .map(({ id }) => id)
             .filter((id): id is string => typeof id === "string");
@@ -2302,6 +2301,8 @@ export class AgentRuntimeWorker {
           ) {
             this.#options.onSafeEvent?.({ level: "info", code: "READ_THEN_DECIDE_SKIPPED", runId });
           } else {
+            // Onarım hakkı yalnız dönüşüm gerçekten denenince tüketilir (Astra #377 P2).
+            contentRepairAttempted = true;
             try {
               currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
               context = await this.#options.controlPlane.context(
@@ -2322,7 +2323,11 @@ export class AgentRuntimeWorker {
                   code: "READ_THEN_DECIDE_SKIPPED",
                   runId,
                 });
-              } else if ((await checkNovelty(noveltyCandidate, true)) === "VAZGEC") {
+              } else if ((await checkNovelty(noveltyCandidate, true)) !== "YAYIMLA") {
+                /*
+                  Yalnız açık "YAYIMLA" yazdırır (Astra #377 P1): ilk karar bu başlığı hiç
+                  görmemişti; denetim hata verir ya da süre kalmazsa kör yazım olurdu.
+                */
                 this.#options.onSafeEvent?.({
                   level: "info",
                   code: "READ_THEN_DECIDE_NOVELTY_DROPPED",

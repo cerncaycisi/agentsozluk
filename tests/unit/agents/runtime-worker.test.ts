@@ -4988,7 +4988,10 @@ describe("runtime novelty gate", () => {
   });
 
   describe("oku, sonra karar ver (TOPIC_EXISTS_UNREAD)", () => {
-    const setup = (options: { noveltyVerdict: "YAYIMLA" | "VAZGEC"; preRead?: number }) => {
+    const setup = (options: {
+      noveltyVerdict: "YAYIMLA" | "VAZGEC" | "HATA";
+      preRead?: number;
+    }) => {
       const runId = randomUUID();
       const conflictId = randomUUID();
       const plane = controlPlane(runId);
@@ -5057,7 +5060,10 @@ describe("runtime novelty gate", () => {
         invoke: vi
           .fn()
           .mockResolvedValueOnce(actAll([1]))
-          .mockResolvedValueOnce(noveltyResult({ karar: options.noveltyVerdict })),
+          .mockImplementationOnce(async () => {
+            if (options.noveltyVerdict === "HATA") throw new Error("NOVELTY_PROVIDER_DOWN");
+            return noveltyResult({ karar: options.noveltyVerdict });
+          }),
       };
       const events: string[] = [];
       const worker = new AgentRuntimeWorker({
@@ -5098,6 +5104,15 @@ describe("runtime novelty gate", () => {
 
     it("writes nothing when the novelty gate drops the draft", async () => {
       const { worker, plane, events } = setup({ noveltyVerdict: "VAZGEC" });
+
+      await expect(worker.runOnce()).resolves.toBe(1);
+      expect(vi.mocked(plane.recordActions)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(plane.executeActions)).toHaveBeenCalledTimes(1);
+      expect(events).toContain("READ_THEN_DECIDE_NOVELTY_DROPPED");
+    });
+
+    it("writes nothing when the novelty check fails instead of publishing blind (Astra #377)", async () => {
+      const { worker, plane, events } = setup({ noveltyVerdict: "HATA" });
 
       await expect(worker.runOnce()).resolves.toBe(1);
       expect(vi.mocked(plane.recordActions)).toHaveBeenCalledTimes(1);

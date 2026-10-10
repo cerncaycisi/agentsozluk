@@ -2851,6 +2851,19 @@ export const runtimeReadTopicArchiveLimit = 60;
  * listesini menü dışına yalnız bu kimliklerle genişletir ("oku, sonra karar ver"); kimlik
  * worker'dan değil, sunucunun kendi ret kaydından gelir.
  */
+/** Kaynak öğelerinin aranabilir metni (başlık, özet, güvenli metin); "oku, sonra karar ver" bağı. */
+export async function findSourceItemSearchTexts(
+  transaction: Prisma.TransactionClient,
+  itemIds: readonly string[],
+): Promise<string[]> {
+  if (itemIds.length === 0) return [];
+  const items = await transaction.agentSourceItem.findMany({
+    where: { id: { in: [...itemIds] } },
+    select: { title: true, summary: true, safeText: true },
+  });
+  return items.map(({ title, summary, safeText }) => [title, summary ?? "", safeText].join(" "));
+}
+
 export async function listRunConflictTopicIds(
   transaction: Prisma.TransactionClient,
   runId: string,

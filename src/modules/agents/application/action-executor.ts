@@ -55,6 +55,8 @@ import {
   findRuntimeRelationshipTarget,
   getRuntimeGlobalSettings,
   countAgentTopicsCreatedSince,
+  findSourceItemSearchTexts,
+  listRunConflictTopicIds,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
@@ -1534,10 +1536,29 @@ export async function executeRuntimeAction(
                   "TOPIC_EXISTS_WRITE_AS_ENTRY",
                   "Anayasa Madde 16: Önerilen başlık bu koşuda okuduğun başlıklardan biri ve entry taşıyor; yeni başlık olarak yazılamaz. Okuduğun entry'lere yeni bir şey ekleyeceksen o başlığa entry olarak yaz.",
                 );
+              /*
+                "Oku, sonra karar ver" bağı (Astra #377 P1): çarpılan başlık yalnız şu durumda
+                okunabilir hâle gelir: öneri kaynaklı, başlığın adı atıf yapılan ve koşuya sunulmuş
+                kaynak öğesinin metninde geçiyor ve koşuda daha önce böyle bir çakışma yok. Hedefi
+                worker'ın keyfî ad seçimi değil, sunucunun gösterdiği kaynak metni bağlar. Canlı
+                ölçüm (7–10 Ekim): 339 çakışmanın 280'inde ad kaynak metninde geçiyordu.
+              */
+              const provenance = parsed.data.provenance;
+              const sourceBound =
+                provenance &&
+                ["TRUSTED_SOURCE", "PROBATION_SOURCE", "MULTIPLE_SOURCES"].includes(
+                  provenance.evidenceType,
+                ) &&
+                (await listRunConflictTopicIds(guardTransaction, runId)).size === 0 &&
+                (
+                  await findSourceItemSearchTexts(guardTransaction, provenance.evidenceIds)
+                ).some((text) =>
+                  normalizeTopicTitle(text).includes(normalizeTopicTitle(topic.title)),
+                );
               throw new RuntimeActionRejectionError(
                 "TOPIC_EXISTS_UNREAD",
                 "Anayasa Madde 16: Önerilen başlık sözlükte zaten var ve görünür entry'ler taşıyor; bu koşuda okunmadığı için entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir tanım, örnek, karşılaştırma, çekince veya görüş ekleyeceksen yaz.",
-                { conflictTopicId: topic.id },
+                sourceBound ? { conflictTopicId: topic.id } : {},
               );
             }
           : undefined;
