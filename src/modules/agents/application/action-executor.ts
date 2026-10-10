@@ -55,8 +55,8 @@ import {
   findRuntimeRelationshipTarget,
   getRuntimeGlobalSettings,
   countAgentTopicsCreatedSince,
-  findSourceItemSearchTexts,
   listRunConflictTopicIds,
+  findRuntimeEntryTopicId,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
@@ -110,7 +110,10 @@ import {
 } from "@/modules/interactions";
 import { createTopicWithFirstEntry, resolveCanonicalTopicProposal } from "@/modules/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
-import { presentedSourceTextNamesTopic } from "@/modules/agents/domain/conflict-source-binding";
+import {
+  presentedSourceItems,
+  presentedSourceTextNamesTopic,
+} from "@/modules/agents/domain/conflict-source-binding";
 import { appendOutboxEvent, type OutboxEventInput } from "@/modules/outbox";
 import {
   guardProductionRolloutRuntimeMutation,
@@ -1531,6 +1534,19 @@ export async function executeRuntimeAction(
                 görülen başlığa giden yoktu; kural meşru yazımı kesmiyor. Koşunun ürettiği
                 hedefler için muafiyet yok (Sol 59c7d48 P2).
               */
+              /*
+                Kanonik yönlendirme de çakışma başlığına işaretsiz yazamaz (Sol #377 P2): başlığın
+                görünür entry'leri sonradan gizlense bile önceden kaydedilmiş öneri oraya gitmez.
+              */
+              if (
+                repairValidationMarker(actionRecord.validationResult).repairOfSequence ===
+                  undefined &&
+                (await listRunConflictTopicIds(guardTransaction, runId)).has(topic.id)
+              )
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+                  "Bu başlık bu koşuda yeni-başlık önerisiyle çakıştı; oraya yalnız o önerinin işaretli dönüşümü yazabilir.",
+                );
               if ((await countRuntimeVisibleTopicEntries(guardTransaction, topic.id)) === 0) return;
               if (runtimeReadTopicIds(actionRecord.run.perceptionSummary).has(topic.id))
                 throw new RuntimeActionRejectionError(
@@ -1552,7 +1568,7 @@ export async function executeRuntimeAction(
                 ) &&
                 (await listRunConflictTopicIds(guardTransaction, runId)).size === 0 &&
                 presentedSourceTextNamesTopic(
-                  await findSourceItemSearchTexts(guardTransaction, provenance.evidenceIds),
+                  presentedSourceItems(actionRecord.run.perceptionSummary, provenance.evidenceIds),
                   topic.title,
                 );
               throw new RuntimeActionRejectionError(
@@ -1569,22 +1585,30 @@ export async function executeRuntimeAction(
         başarılı `CREATE_ENTRY`'nin tamamı okunan başlığa yazılmıştı. Kontrol entry'nin
         yazılacağı başlığın kilidi altında; createEntry aynı kilidi aynı işlemde yeniden alır.
       */
+      /*
+        Bu koşunun okunabilir çakışma başlığına yalnız işaretli dönüşüm yazar (Astra #377 2. tur,
+        Sol 1. tur P1): çakışmadan önce kaydedilmiş işaretsiz bir entry ya da kendi entry'sini
+        düzenleme, başlık okunduktan sonra yürütülürse dönüşümün gövde/provenance eşitliği ve
+        tek onarım sınırı atlanırdı.
+      */
+      const conflictWriteTopicId =
+        parsed.data.actionType === "CREATE_ENTRY"
+          ? resolvedTarget.topicId
+          : parsed.data.actionType === "EDIT_OWN_ENTRY" && resolvedTarget.entryId
+            ? await findRuntimeEntryTopicId(transaction, resolvedTarget.entryId)
+            : null;
+      if (
+        conflictWriteTopicId &&
+        repairValidationMarker(actionRecord.validationResult).repairOfSequence === undefined &&
+        (await listRunConflictTopicIds(transaction, runId)).has(conflictWriteTopicId)
+      )
+        return rejectAction(transaction, principal, actionRecord, {
+          code: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+          reason:
+            "Bu başlık bu koşuda yeni-başlık önerisiyle çakıştı; oraya yalnız o önerinin işaretli dönüşümü yazabilir.",
+        });
       if (parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId) {
         await lockTopicState(transaction, resolvedTarget.topicId);
-        /*
-          Bu koşunun okunabilir çakışma başlığına yalnız işaretli dönüşüm yazar (Astra #377 2. tur
-          P1): çakışmadan önce kaydedilmiş işaretsiz bir entry, başlık okunduktan sonra
-          yürütülürse dönüşümün gövde/provenance eşitliği ve tek onarım sınırı atlanırdı.
-        */
-        if (
-          repairValidationMarker(actionRecord.validationResult).repairOfSequence === undefined &&
-          (await listRunConflictTopicIds(transaction, runId)).has(resolvedTarget.topicId)
-        )
-          return rejectAction(transaction, principal, actionRecord, {
-            code: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
-            reason:
-              "Bu başlık bu koşuda yeni-başlık önerisiyle çakıştı; oraya yalnız o önerinin işaretli dönüşümü yazabilir.",
-          });
         const snapshot = runtimeReadTopicSnapshot(
           actionRecord.run.perceptionSummary,
           resolvedTarget.topicId,

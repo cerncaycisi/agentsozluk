@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   foldForSourceMatch,
+  presentedSourceItems,
   presentedSourceTextNamesTopic,
 } from "@/modules/agents/domain/conflict-source-binding";
 
@@ -36,5 +37,27 @@ describe("oku, sonra karar ver kaynak bağı (Astra #377 2. tur)", () => {
     expect(
       presentedSourceTextNamesTopic([item("x", "Saklı Kavram duyuruldu")], "Saklı Kavram"),
     ).toBe(true);
+  });
+
+  it("ignores the half word left at a truncation point (Sol #377)", () => {
+    // 797 karakterlik önek: 800 sınırında kalan metin tam olarak "…a su…" olur.
+    const cut = `${"a".repeat(796)} sunucusunun bakımı`;
+    expect(presentedSourceTextNamesTopic([item(cut)], "su")).toBe(false);
+  });
+
+  it("reads only the cited items from the frozen snapshot", () => {
+    const perception = {
+      sourceItems: [
+        { itemId: "a", title: "Dolu kavram haberi", safeText: "metin", summary: null },
+        { itemId: "b", title: "Başka kavram", safeText: "metin", summary: null },
+      ],
+    };
+    expect(presentedSourceItems(perception, ["b"])).toEqual([
+      { title: "Başka kavram", summary: null, safeText: "metin" },
+    ]);
+    expect(
+      presentedSourceTextNamesTopic(presentedSourceItems(perception, ["b"]), "Dolu kavram"),
+    ).toBe(false);
+    expect(presentedSourceItems(null, ["a"])).toEqual([]);
   });
 });

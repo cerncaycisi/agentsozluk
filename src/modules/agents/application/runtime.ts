@@ -289,18 +289,19 @@ function boundedFullBodies(
   topicCount: number = topics.length,
   remaining: number = runtimeReadTopicFullBodiesMaximumChars,
 ) {
-  const perTopic = Math.min(
-    remaining,
-    Math.floor(runtimeReadTopicFullBodiesMaximumChars / Math.max(1, topicCount)),
-  );
+  const perTopic = Math.floor(runtimeReadTopicFullBodiesMaximumChars / Math.max(1, topicCount));
+  // Kalan toplam bütçe başlıklar arasında tükenir (Sol #377 P2); ilk okumada tam bütçedir.
+  let budget = remaining;
   return topics.flatMap((items) => {
     const kept: { id: string; body: string }[] = [];
+    const cap = Math.min(perTopic, budget);
     let total = 0;
     for (const item of items) {
-      if (total + item.body.length > perTopic) continue;
+      if (total + item.body.length > cap) continue;
       total += item.body.length;
       kept.push(item);
     }
+    budget -= total;
     return kept;
   });
 }

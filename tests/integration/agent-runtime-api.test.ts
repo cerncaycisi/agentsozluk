@@ -8685,7 +8685,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
       populatedId: string,
       body: string,
       provenance: Record<string, unknown>,
+      ownEntryId: string | null,
     ) => Array<Record<string, unknown>> = () => [],
+    options: { ownEntryInPopulated?: boolean } = {},
   ) {
     const fixture = await createFixture();
     const source = await integrationDatabase.agentSource.create({
@@ -8766,6 +8768,17 @@ describe("internal agent runtime API with PostgreSQL", () => {
         origin: "WEB",
       },
     });
+    const ownEntry = options.ownEntryInPopulated
+      ? await integrationDatabase.entry.create({
+          data: {
+            topicId: populated.id,
+            authorId: fixture.created.agent.user.id,
+            body: "Ajanın bu başlığa daha önce yazdığı, kavramı başka yönden anlatan entry.",
+            normalizedBody: "ajanın bu başlığa daha önce yazdığı",
+            origin: "AGENT",
+          },
+        })
+      : null;
     const provenance = {
       evidenceType: "TRUSTED_SOURCE" as const,
       evidenceIds: [item.id],
@@ -8787,7 +8800,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
             input: { title: "Dolu kavram", body },
             provenance,
           },
-          ...extraActions(populated.id, body, provenance),
+          ...extraActions(populated.id, body, provenance, ownEntry?.id ?? null),
         ],
       }),
     );
@@ -8929,6 +8942,47 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { topicId: setup.populated.id, status: "ACTIVE" },
       }),
     ).toBe(1);
+  });
+
+  it("rejects an unmarked edit of the agent's own entry in the conflict topic (Sol #377)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (_populatedId, _body, provenance, ownEntryId) => [
+        {
+          sequence: 2,
+          actionType: "EDIT_OWN_ENTRY",
+          safeReason: "Önceden kaydedilen işaretsiz düzenleme.",
+          targetType: "ENTRY",
+          targetId: ownEntryId,
+          input: {
+            entryId: ownEntryId,
+            body: "Ajanın kendi entry'sini çakışmadan önce kaydedilmiş bambaşka bir gövdeyle değiştirmesi.",
+          },
+          provenance,
+        },
+      ],
+      { ownEntryInPopulated: true },
+    );
+    expect(setup.rejected).toMatchObject({
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: { conflictTopicId: setup.populated.id },
+    });
+    await getRuntimeRunContext(
+      integrationDatabase,
+      setup.readPrincipal,
+      setup.runId,
+      setup.workerId,
+      [setup.earlier.topic.id, setup.populated.id],
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, setup.writePrincipal, setup.runId, {
+        workerId: setup.workerId,
+        sequence: 2,
+      }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
   });
 
   it("does not make a hit topic readable when its name is not in the cited source text", async () => {

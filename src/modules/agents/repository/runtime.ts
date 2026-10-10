@@ -2846,23 +2846,23 @@ export const runtimeReadTopicEntryLimit = 15;
 */
 export const runtimeReadTopicArchiveLimit = 60;
 
+/** Entry'nin bağlı olduğu başlık; çakışma başlığına düzenleme yoluyla yazmayı denetler. */
+export async function findRuntimeEntryTopicId(
+  transaction: Prisma.TransactionClient,
+  entryId: string,
+): Promise<string | null> {
+  const entry = await transaction.entry.findUnique({
+    where: { id: entryId },
+    select: { topicId: true },
+  });
+  return entry?.topicId ?? null;
+}
+
 /**
  * Bu koşunun kendi `TOPIC_EXISTS_UNREAD` retlerinde sunucunun çözdüğü başlıklar. Okuma izin
  * listesini menü dışına yalnız bu kimliklerle genişletir ("oku, sonra karar ver"); kimlik
  * worker'dan değil, sunucunun kendi ret kaydından gelir.
  */
-/** Kaynak öğelerinin başlık, özet ve güvenli metni; "oku, sonra karar ver" bağı. */
-export function findSourceItemSearchTexts(
-  transaction: Prisma.TransactionClient,
-  itemIds: readonly string[],
-) {
-  if (itemIds.length === 0) return Promise.resolve([]);
-  return transaction.agentSourceItem.findMany({
-    where: { id: { in: [...itemIds] } },
-    select: { title: true, summary: true, safeText: true },
-  });
-}
-
 export async function listRunConflictTopicIds(
   transaction: Prisma.TransactionClient,
   runId: string,
