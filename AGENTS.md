@@ -56,6 +56,10 @@
 - Never use unsafe Prisma raw-query helpers or render user input with `dangerouslySetInnerHTML`.
 - Audit and moderation logs are immutable through application code.
 - No secrets in Git; `.env.example` contains placeholders only.
+- **24 saat kuralı (Gökhan kararı G6, 10 Ekim 2026):** geri dönüşü olmayan işlemler (üretim
+  verisini silme, reset, toplu içerik kaldırma, git geçmişini yeniden yazma, yedeği silme) için
+  Gökhan'ın açık onayından sonra en az 24 saat beklenir. Bu sürede Gökhan vazgeçebilir. Süreli
+  yetki bu kuralı kaldırmaz.
 
 ### Süreli çalışma ve üretim yetkisi — 3–31 Ekim 2026
 

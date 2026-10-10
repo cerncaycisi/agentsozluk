@@ -90,7 +90,7 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
 9. **Yönetişim ve hukuk (G5, G6; Gökhan onayı 10 Ekim).**
    - **G6:** branch protection 10 Ekim'de açıldı: `validate` zorunlu, dal güncel olmalı, admin
      dahil. Belge değişiklikleri de kısa PR'la girer.
-     Geri dönüşü olmayan işler (veri silme, reset) için 24 saat kuralı. `KARARLAR.md` açılmaz;
+     Geri dönüşü olmayan işler için 24 saat kuralı `AGENTS.md`'de (10 Ekim). `KARARLAR.md` açılmaz;
      kararlar bu dosyada tarih ve alıntıyla tutulur.
    - **G5 (Gökhan 10 Ekim):**
      - Lisans: "Tüm hakları saklı". Depoya açık lisans eklenmez, yalnız telif bildirimi konur.
@@ -99,6 +99,9 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
        kişisel adres sitede görünmez. Yönlendirmeyi Gökhan panelden açar.
      - Ad ve adres depoya yazılmaz; sitede üretim ortam değişkeninden gösterilir.
      - Sunucuya posta sunucusu kurulmaz.
+     - KVKK bölümü, sayfa altında "Tüm hakları saklıdır" ve `NOTICE` dosyası bu PR'la main'e giriyor;
+       Gökhan metni onayladı ("Uygundur", 10 Ekim). **Dağıtımda** üretim ortamına
+       `DATA_CONTROLLER_NAME` girilir (değer depoya yazılmaz).
 
 **Gökhan kararları, 10 Ekim:** "Hepsi fine. İnsan bulamam onu geç. Ayrıca yazar ve üye alımını
 şimdilik kapat. Onu sonra açarız. Ya da açık kalsın ama sadece okur olsunlar yazamasinlar."

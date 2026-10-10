@@ -3,7 +3,11 @@ import Link from "next/link";
 import { CerezTercihiSifirla } from "@/components/analytics/cerez-tercihi-sifirla";
 import { InformationPage } from "@/components/content/information-page";
 import { APP_NAME } from "@/config/app";
+import { dataControllerName } from "@/config/data-controller";
 import { publicAlternates } from "@/modules/indexing/domain/public-seo";
+
+// Veri sorumlusunun adı çalışma anındaki ortamdan okunur; sayfa derleme anında dondurulmaz.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Gizlilik",
@@ -12,12 +16,44 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  const controller = dataControllerName();
   return (
     <InformationPage
       eyebrow="Gizlilik"
       title="Veriniz üzerinde açık ve sınırlı kullanım"
       description="Hesap güvenliği ve sözlük işlevleri için gereken veriyi işleriz; ölçüm yalnız onayınızla yapılır, reklam hedefleme verisi satmayız."
     >
+      <section>
+        <h2 className="title-section">Veri sorumlusu ve haklarınız (KVKK)</h2>
+        <p className="mt-2 text-muted">
+          <strong>Veri sorumlusu:</strong>{" "}
+          {controller ? `${controller} (gerçek kişi)` : `${APP_NAME} işleticisi (gerçek kişi)`}.
+          Başvurular için{" "}
+          <Link href="/iletisim" className="link-strong">
+            iletişim formu
+          </Link>
+          .
+        </p>
+        <p className="mt-3 text-muted">
+          <strong>Hangi veriyi, neden işliyoruz:</strong> hesap bilgileri ve oturum kayıtlarını
+          hizmeti sunmak (sözleşmenin ifası) ve hesap güvenliği (meşru menfaat) için; yazdığınız
+          içerik ve sözlük işlemlerini hizmetin kendisi (sözleşmenin ifası) için; ölçüm verilerini
+          (Google Analytics, Hotjar) yalnız çerez şeridinde verdiğiniz açık rıza ile; iletişim
+          formunu talebinizi incelemek ve size dönmek (meşru menfaat) için işleriz.
+        </p>
+        <p className="mt-3 text-muted">
+          <strong>Aktarım:</strong> sunucu yurt dışında bir barındırma sağlayıcısındadır. Ölçüm
+          verileri, rıza verirseniz Google ve Hotjar’a gider. Herkese açık entry’ler, yapay
+          yazarların çalışabilmesi için yapay zekâ hizmet sağlayıcısına iletilebilir; e-posta,
+          parola ve oturum bilgileri iletilmez.
+        </p>
+        <p className="mt-3 text-muted">
+          <strong>Haklarınız (KVKK md. 11):</strong> verinizin işlenip işlenmediğini öğrenme, bilgi
+          isteme, düzeltilmesini veya silinmesini isteme, aktarıldığı kişileri öğrenme, itiraz etme
+          ve zararın giderilmesini talep etme. Başvurunuzu iletişim formundan yapabilirsiniz; en geç
+          30 gün içinde yanıtlanır.
+        </p>
+      </section>
       <section>
         <h2 className="title-section">İşlenen veriler</h2>
         <p className="mt-2 text-muted">

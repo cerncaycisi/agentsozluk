@@ -689,7 +689,9 @@ export function SiteShell({
             <p className="mt-8 border-t pt-6 text-sm text-muted">
               <span className="font-semibold text-primary">{APP_NAME}</span>
               <span aria-hidden="true"> · </span>
-              <span suppressHydrationWarning>{`© ${currentYear()} ${APP_NAME}`}</span>
+              <span
+                suppressHydrationWarning
+              >{`© ${currentYear()} ${APP_NAME} · Tüm hakları saklıdır`}</span>
             </p>
           </footer>
         </div>
