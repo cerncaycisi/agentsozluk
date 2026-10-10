@@ -15,7 +15,9 @@ import {
   buildRuntimePrompt,
   canonicalizeVisibleTopicActions,
   normalizedDecision,
+  RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS,
   RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
+  runtimeFinalReadTimeoutMs,
 } from "@/runtime/worker";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 import {
@@ -26,7 +28,6 @@ import {
 import {
   applyRuntimeFinalRead,
   applyRuntimeFinalReadBodies,
-  runtimeFinalReadCallLimit,
   runtimeFinalReadCandidates,
   runtimeFinalReadVerdictJsonSchema,
   runtimeFinalReadVerdictSchema,
@@ -198,11 +199,20 @@ function scenarioDiagnosticRecorder(
 }
 
 async function invokeBenchmarkDecision(
-  provider: RuntimeProvider,
+  measuredProvider: RuntimeProvider,
   context: RuntimeContext,
   timeoutMs: number,
   diagnostics?: ScenarioDiagnosticRecorder,
 ): Promise<RuntimeProviderResult> {
+  // Worker'ın koşu başına çağrı bütçesi son okumayı sınırlar; ölçüm de çağrıları sayar.
+  let invocations = 0;
+  const provider: RuntimeProvider = {
+    inspect: () => measuredProvider.inspect(),
+    invoke: (request) => {
+      invocations += 1;
+      return measuredProvider.invoke(request);
+    },
+  };
   const decisionResult = await invokeWithStructuredRepair(
     provider,
     {
@@ -262,22 +272,35 @@ async function invokeBenchmarkDecision(
   let combined = combineSequentialResults(decisionResult, reviewResult);
   let reviewed = applyRuntimeActionWorthinessVerdict(decision, verdict);
   /*
-    Son okuma worker'daki gibi AW'den sonra, yenilik kapısından önce çalışır ve en çok
-    `runtimeFinalReadCallLimit` gövdeye bakar; maliyeti kapasite kanıtına girmeli (Astra DD-07,
-    10 Ekim). Yenilik gibi geçersiz çıktı burada başarısızlıktır.
+    Son okuma worker'daki gibi AW'den sonra, yenilik kapısından önce ve worker'ın çağrı/süre
+    bütçesiyle (`runtimeFinalReadTimeoutMs`) çalışır; maliyeti kapasite kanıtına girmeli (Astra
+    DD-07, 10 Ekim). Bütçe yetmezse worker gibi atlanır. Yenilik gibi geçersiz çıktı burada
+    başarısızlıktır.
   */
+  const pendingNoveltyCalls = Math.min(
+    runtimeNoveltyCallLimit,
+    runtimeNoveltyCandidates(reviewed, context.perception).length,
+  );
   const finalReadBodies = new Map<number, string>();
-  for (const candidate of runtimeFinalReadCandidates(reviewed, context.perception).slice(
-    0,
-    runtimeFinalReadCallLimit,
-  )) {
+  for (const [index, candidate] of runtimeFinalReadCandidates(
+    reviewed,
+    context.perception,
+  ).entries()) {
+    const finalReadTimeoutMs = runtimeFinalReadTimeoutMs({
+      index,
+      invocationsSoFar: invocations,
+      reservedCalls: RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS,
+      remainingMs: timeoutMs - combined.durationMs,
+      pendingNoveltyCalls,
+    });
+    if (finalReadTimeoutMs === null) continue;
     let finalReadResult: RuntimeProviderResult;
     try {
       finalReadResult = await provider.invoke({
         runId: context.run.id,
         prompt: buildFinalReadPrompt(candidate),
         outputSchema: runtimeFinalReadVerdictJsonSchema,
-        timeoutMs: Math.max(1, timeoutMs - combined.durationMs),
+        timeoutMs: finalReadTimeoutMs,
       });
     } catch (error) {
       diagnostics?.providerFailure("FINAL_READ", error);

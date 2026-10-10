@@ -11,6 +11,7 @@ import {
   createCapabilityBenchmarkDiagnosticCollector,
 } from "@/runtime/capability-diagnostics";
 import { runtimeFinalReadVerdictJsonSchema } from "@/runtime/final-read";
+import { RUNTIME_STRUCTURED_REPAIR_INSTRUCTION } from "@/runtime/worker";
 import { runtimeNoveltyVerdictJsonSchema } from "@/runtime/novelty-gate";
 import { parseRuntimeDecisionOutput } from "@/runtime/output";
 import {
@@ -461,6 +462,85 @@ describe("Codex capability benchmark harness", () => {
         "DECISION_PRIMARY ACTION_WORTHINESS FINAL_READ NOVELTY",
       ]),
     );
+  });
+
+  describe("applies the worker's final-read call and time budget", () => {
+    const longBody = (topic: string) =>
+      `${topic}, tel titreşimini gövdedeki hava boşluğunda büyüten, perdeli sapı sayesinde aynı tel üzerinde farklı sesler çıkarabilen ve hem eşlikte hem solo çalımda kullanılan bir çalgıdır. ${topic} biraz da evin ortak hafızasıdır.`;
+    const twoEntryOutput = () => {
+      const candidate = candidateOutput();
+      const [action] = candidate.actions;
+      return {
+        ...candidate,
+        actions: [
+          { ...action, body: longBody("Gitar") },
+          {
+            ...action,
+            targetId: "00000000-0000-4000-8000-000000000101",
+            body: longBody("Bağlama"),
+          },
+        ],
+      };
+    };
+    const twoEntryWorthiness = {
+      ...worthinessOutput(),
+      evaluations: [1, 2].map((sequence) => ({
+        sequence,
+        decision: "ACCEPT",
+        safeReason: "Aday bağımsız sözlük değeri taşıyor.",
+      })),
+      selectedSequences: [1, 2],
+    };
+    const providerWith = (options: { repair: boolean; decisionMs?: number; reviewMs?: number }) =>
+      ({
+        inspect: vi
+          .fn()
+          .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+        invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
+          if (prompt.includes("Parçalar:")) return { ...result(300), output: { sil: [] } };
+          if (prompt.includes("Taslağın:")) return { ...result(200), output: { karar: "YAYIMLA" } };
+          if (prompt.includes("# Final action-worthiness decision"))
+            return { ...result(options.reviewMs ?? 500), output: twoEntryWorthiness };
+          const repaired = prompt.includes(RUNTIME_STRUCTURED_REPAIR_INSTRUCTION);
+          return {
+            ...result(options.decisionMs ?? 1000),
+            output: options.repair && !repaired ? invalidDecisionOutput() : twoEntryOutput(),
+          };
+        }),
+      }) satisfies RuntimeProvider;
+    const finalReadCalls = (provider: RuntimeProvider) =>
+      vi
+        .mocked(provider.invoke)
+        .mock.calls.filter(([request]) => request.prompt.includes("Parçalar:"))
+        .map(([request]) => request);
+
+    it("reads both drafts without repair and only one after a structured repair (Astra #363)", async () => {
+      const direct = providerWith({ repair: false });
+      await runCapacityBenchmark(direct, {
+        baseUrl: "http://127.0.0.1:3000",
+        fetchImplementation: healthyFetch,
+      });
+      const repaired = providerWith({ repair: true });
+      await runCapacityBenchmark(repaired, {
+        baseUrl: "http://127.0.0.1:3000",
+        fetchImplementation: healthyFetch,
+      });
+
+      expect(finalReadCalls(direct)).toHaveLength(2 * CAPACITY_BENCHMARK_SCENARIOS.length);
+      expect(finalReadCalls(repaired)).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.length);
+      for (const { timeoutMs } of finalReadCalls(direct)) expect(timeoutMs).toBe(90_000);
+    });
+
+    it("skips the final read when the remaining run time is reserved for execution", async () => {
+      const provider = providerWith({ repair: false, decisionMs: 60_000, reviewMs: 20_000 });
+      await runCapacityBenchmark(provider, {
+        baseUrl: "http://127.0.0.1:3000",
+        fetchImplementation: healthyFetch,
+        timeoutMs: 110_000,
+      });
+
+      expect(finalReadCalls(provider)).toHaveLength(0);
+    });
   });
 
   it("fails a scenario whose final-read output breaks the contract without retaining it", async () => {
