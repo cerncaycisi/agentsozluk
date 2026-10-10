@@ -32,7 +32,8 @@ function shownFolded(value: string): string {
   if (!value.endsWith("…")) return foldForSourceMatch(value);
   const cut = value.slice(0, -1);
   const folded = foldForSourceMatch(cut);
-  return /[\p{L}\p{N}]$/u.test(cut) ? folded.replace(/\s*\S+$/u, "") : folded;
+  // Birleşen işaretler (\p{M}) de kelimenin parçasıdır (Sol #377 3. tur P2).
+  return /[\p{L}\p{N}\p{M}]$/u.test(cut) ? folded.replace(/\s*\S+$/u, "") : folded;
 }
 
 export function presentedSourceTextNamesTopic(

@@ -17,7 +17,6 @@ import {
   runtimeReadTopicSnapshot,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { lockTopicState } from "@/modules/topics/repository/topics";
-import { lockEntryState } from "@/modules/entries/repository/entries";
 import {
   agentSourceProposalOrigin,
   runtimeSourceSuggestionLimits,
@@ -57,7 +56,6 @@ import {
   getRuntimeGlobalSettings,
   countAgentTopicsCreatedSince,
   listRunConflictTopicIds,
-  findRuntimeEntryTopicId,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
@@ -372,29 +370,6 @@ function repairValidationMarker(value: unknown): { repairOfSequence?: number } {
   return typeof sequence === "number" && Number.isInteger(sequence)
     ? { repairOfSequence: sequence }
     : {};
-}
-
-/*
-  Düzenlenecek entry'nin başlığı, düzenleme servisiyle AYNI kilit sırasıyla (başlık, sonra entry)
-  okunur ve kilitler işlem sonuna dek tutulur (Sol #377 2. tur P1): denetimden sonra entry
-  çakışma başlığına taşınamaz. Arada başlık değiştiyse düzenleme reddedilir.
-*/
-async function lockedEditTopicId(
-  transaction: TransactionClient,
-  entryId: string,
-): Promise<string | null> {
-  const initial = await findRuntimeEntryTopicId(transaction, entryId);
-  if (!initial) return null;
-  await lockTopicState(transaction, initial);
-  await lockEntryState(transaction, entryId);
-  const current = await findRuntimeEntryTopicId(transaction, entryId);
-  if (current !== initial)
-    throw new AppError(
-      "ENTRY_NOT_EDITABLE",
-      409,
-      "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
-    );
-  return current;
 }
 
 function validationWithRepairMarker(
@@ -739,6 +714,7 @@ async function performAction(
     topic: { id: string; title: string },
   ) => Promise<void>,
   newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>,
+  editTopicGuard?: (transaction: DatabaseExecutor, topicId: string) => Promise<void>,
 ): Promise<{
   result: InputJsonValue;
   entryId?: string;
@@ -795,6 +771,7 @@ async function performAction(
           body: requiredString(input.body, "body"),
         },
         entryId,
+        editTopicGuard ? { topicGuard: editTopicGuard } : {},
       );
       return { result: { entryId: updated.id, topicId: updated.topicId } };
     }
@@ -1616,11 +1593,7 @@ export async function executeRuntimeAction(
         tek onarım sınırı atlanırdı.
       */
       const conflictWriteTopicId =
-        parsed.data.actionType === "CREATE_ENTRY"
-          ? resolvedTarget.topicId
-          : parsed.data.actionType === "EDIT_OWN_ENTRY" && resolvedTarget.entryId
-            ? await lockedEditTopicId(transaction, resolvedTarget.entryId)
-            : null;
+        parsed.data.actionType === "CREATE_ENTRY" ? resolvedTarget.topicId : null;
       if (
         conflictWriteTopicId &&
         repairValidationMarker(actionRecord.validationResult).repairOfSequence === undefined &&
@@ -1696,6 +1669,22 @@ export async function executeRuntimeAction(
                 );
             }
           : undefined;
+      /*
+        Düzenleme de çakışma başlığına işaretsiz yazamaz (Sol #377 P1). Denetim düzenleme
+        servisinin kendi kilitleri altında, entry'nin güncel başlığıyla yapılır; böylece
+        denetimden sonra taşıma yarışı kalmaz ve yeni bir kilit sırası eklenmez (Sol 3. tur P2).
+      */
+      const editTopicGuard =
+        parsed.data.actionType === "EDIT_OWN_ENTRY" &&
+        repairValidationMarker(actionRecord.validationResult).repairOfSequence === undefined
+          ? async (guardTransaction: DatabaseExecutor, topicId: string) => {
+              if ((await listRunConflictTopicIds(guardTransaction, runId)).has(topicId))
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+                  "Bu başlık bu koşuda yeni-başlık önerisiyle çakıştı; oraya yalnız o önerinin işaretli dönüşümü yazabilir.",
+                );
+            }
+          : undefined;
       const execution = await performAction(
         transaction,
         principal,
@@ -1703,6 +1692,7 @@ export async function executeRuntimeAction(
         resolvedTarget,
         blindTopicGuard,
         newTopicGuard,
+        editTopicGuard,
       );
       if (traversedLinkedTopicId)
         await appendRuntimeEvent(transaction, {

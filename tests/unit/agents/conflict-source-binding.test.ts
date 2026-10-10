@@ -56,6 +56,11 @@ describe("oku, sonra karar ver kaynak bağı (Astra #377 2. tur)", () => {
     );
   });
 
+  it("treats a combining mark before the cut as part of a half word (Sol #377 3. tur)", () => {
+    const cut = `${"a".repeat(793)} भारतीय devam`;
+    expect(presentedSourceTextNamesTopic([item(cut)], "भारत")).toBe(false);
+  });
+
   it("reads only the cited items from the frozen snapshot", () => {
     const perception = {
       sourceItems: [
