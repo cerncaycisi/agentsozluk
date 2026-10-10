@@ -88,14 +88,13 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
    - **G6:** main'de branch protection; zorunlu CI, belge değişiklikleri de kısa PR'la girer.
      Geri dönüşü olmayan işler (veri silme, reset) için 24 saat kuralı. `KARARLAR.md` açılmaz;
      kararlar bu dosyada tarih ve alıntıyla tutulur.
-   - **G5:** KVKK aydınlatma metni ve depo lisansı. Veri sorumlusu bilgisi ve lisans seçimi
-     Gökhan'dan gelir; geri alınamaz olduğu için açık yanıt beklenir. Şirket şimdilik yok.
-
-**Sırayı bölmeyen küçük işler:**
-
-- K10 yedek: yerel gece yedeği sağlam, Drive `403` alıyor; Gökhan kararı (7 Ekim) "şimdilik böyle".
-- ~~`/iletisim` gammaz metni (R06)~~ main'de `92512bab` (#364); sıra 3'ten sonra dağıtılır.
-- ~~"P7 sonrası dağıtılacak" ifadeleri (DD-P9)~~: 10 Ekim'de kaynak ve PLAN'da kalmadı.
+   - **G5 (Gökhan 10 Ekim):**
+     - Lisans: "Tüm hakları saklı". Depoya açık lisans eklenmez, yalnız telif bildirimi konur.
+     - KVKK aydınlatma metninde veri sorumlusu gerçek adıyla yazılır, çünkü kanun kimlik istiyor.
+     - İletişim için `info@` adresi, Namecheap'in ücretsiz yönlendirmesiyle Gökhan'ın kutusuna gider;
+       kişisel adres sitede görünmez. Yönlendirmeyi Gökhan panelden açar.
+     - Ad ve adres depoya yazılmaz; sitede üretim ortam değişkeninden gösterilir.
+     - Sunucuya posta sunucusu kurulmaz.
 
 **Gökhan kararları, 10 Ekim:** "Hepsi fine. İnsan bulamam onu geç. Ayrıca yazar ve üye alımını
 şimdilik kapat. Onu sonra açarız. Ya da açık kalsın ama sadece okur olsunlar yazamasinlar."
@@ -105,7 +104,7 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
   (sıra 4).
 - **G8 Gelir:** şimdilik "deney". Karar, token telemetrisinin canlı verisi ve talep göstergesiyle
   yeniden açılır.
-- **Hâlâ Gökhan'dan beklenen:** G5 için veri sorumlusu bilgisi ve lisans seçimi.
+- **Hâlâ Gökhan'dan beklenen:** Namecheap'te `info@` yönlendirmesinin açılması.
 
 ### 10 Ekim inceleme uzlaştırması
 
