@@ -48,6 +48,7 @@ vi.mock("@/config/env", () => ({ getEnvironment: () => ({ APP_URL: "https://orne
 vi.mock("@/lib/auth/server-session", () => ({ currentPageSession }));
 vi.mock("@/modules/entries/application/entries", () => ({
   getEntryReferenceIndex: async () => new Map(),
+  getEntrySourceLinks: async () => new Map(),
   getTopicEntries,
 }));
 vi.mock("@/modules/interactions/application/interactions", () => ({
