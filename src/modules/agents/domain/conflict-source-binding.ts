@@ -23,14 +23,16 @@ export function foldForSourceMatch(value: string): string {
 }
 
 /*
-  Kırpılan alanın sonundaki yarım kelime eşleşmeye katılmaz (Sol #377 P2): "sunucusunun"
-  800 karakterde "su…" diye kesilirse "su" tam kelime sayılmamalı.
+  Kırpılan alanın sonundaki yarım kelime eşleşmeye katılmaz (Sol #377): "sunucusunun" 800
+  karakterde "su…" diye kesilirse "su" tam kelime sayılmamalı. Kesimden hemen önceki karakter
+  harf ya da rakam değilse ("OpenAI:…") son kelime tamdır ve korunur; "OpenAI’n…" kesiminde
+  yalnız "n" parçası düşer.
 */
-function withoutTruncatedTail(value: string): string {
-  if (!value.endsWith("…")) return value;
+function shownFolded(value: string): string {
+  if (!value.endsWith("…")) return foldForSourceMatch(value);
   const cut = value.slice(0, -1);
-  const lastSpace = cut.search(/\s\S*$/u);
-  return lastSpace >= 0 ? cut.slice(0, lastSpace) : "";
+  const folded = foldForSourceMatch(cut);
+  return /[\p{L}\p{N}]$/u.test(cut) ? folded.replace(/\s*\S+$/u, "") : folded;
 }
 
 export function presentedSourceTextNamesTopic(
@@ -40,13 +42,11 @@ export function presentedSourceTextNamesTopic(
   const title = foldForSourceMatch(topicTitle);
   if (title.length === 0) return false;
   return items.some((item) => {
-    const shown = foldForSourceMatch(
-      [
-        withoutTruncatedTail(truncateUntrustedText(item.title, 300)),
-        item.summary ? withoutTruncatedTail(truncateUntrustedText(item.summary, 500)) : "",
-        withoutTruncatedTail(truncateUntrustedText(item.safeText, 800)),
-      ].join(" "),
-    );
+    const shown = [
+      shownFolded(truncateUntrustedText(item.title, 300)),
+      item.summary ? shownFolded(truncateUntrustedText(item.summary, 500)) : "",
+      shownFolded(truncateUntrustedText(item.safeText, 800)),
+    ].join(" ");
     return ` ${shown} `.includes(` ${title} `);
   });
 }

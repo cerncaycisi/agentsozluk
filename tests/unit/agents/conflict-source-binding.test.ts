@@ -45,6 +45,17 @@ describe("oku, sonra karar ver kaynak bağı (Astra #377 2. tur)", () => {
     expect(presentedSourceTextNamesTopic([item(cut)], "su")).toBe(false);
   });
 
+  it("keeps a complete name right before the cut (Sol #377 2. tur)", () => {
+    const prefix = "a".repeat(790);
+    // Kesim "OpenAI’n…" ya da "OpenAI:…" ile biter; tam ad korunur, yalnız "n" düşer.
+    expect(
+      presentedSourceTextNamesTopic([item(`${prefix} OpenAI’nin yeni modeli`)], "OpenAI"),
+    ).toBe(true);
+    expect(presentedSourceTextNamesTopic([item(`${prefix} OpenAI: yeni model`)], "OpenAI")).toBe(
+      true,
+    );
+  });
+
   it("reads only the cited items from the frozen snapshot", () => {
     const perception = {
       sourceItems: [

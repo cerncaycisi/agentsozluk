@@ -17,6 +17,7 @@ import {
   runtimeReadTopicSnapshot,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { lockTopicState } from "@/modules/topics/repository/topics";
+import { lockEntryState } from "@/modules/entries/repository/entries";
 import {
   agentSourceProposalOrigin,
   runtimeSourceSuggestionLimits,
@@ -371,6 +372,29 @@ function repairValidationMarker(value: unknown): { repairOfSequence?: number } {
   return typeof sequence === "number" && Number.isInteger(sequence)
     ? { repairOfSequence: sequence }
     : {};
+}
+
+/*
+  Düzenlenecek entry'nin başlığı, düzenleme servisiyle AYNI kilit sırasıyla (başlık, sonra entry)
+  okunur ve kilitler işlem sonuna dek tutulur (Sol #377 2. tur P1): denetimden sonra entry
+  çakışma başlığına taşınamaz. Arada başlık değiştiyse düzenleme reddedilir.
+*/
+async function lockedEditTopicId(
+  transaction: TransactionClient,
+  entryId: string,
+): Promise<string | null> {
+  const initial = await findRuntimeEntryTopicId(transaction, entryId);
+  if (!initial) return null;
+  await lockTopicState(transaction, initial);
+  await lockEntryState(transaction, entryId);
+  const current = await findRuntimeEntryTopicId(transaction, entryId);
+  if (current !== initial)
+    throw new AppError(
+      "ENTRY_NOT_EDITABLE",
+      409,
+      "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+    );
+  return current;
 }
 
 function validationWithRepairMarker(
@@ -1595,7 +1619,7 @@ export async function executeRuntimeAction(
         parsed.data.actionType === "CREATE_ENTRY"
           ? resolvedTarget.topicId
           : parsed.data.actionType === "EDIT_OWN_ENTRY" && resolvedTarget.entryId
-            ? await findRuntimeEntryTopicId(transaction, resolvedTarget.entryId)
+            ? await lockedEditTopicId(transaction, resolvedTarget.entryId)
             : null;
       if (
         conflictWriteTopicId &&
