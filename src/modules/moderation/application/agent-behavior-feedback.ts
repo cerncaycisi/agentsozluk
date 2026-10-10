@@ -2,12 +2,28 @@ import type { TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
+import { lockAgentLifeLedger } from "@/modules/agents/repository/life-ledger";
 import { agentBehaviorReasonLabels } from "@/modules/agents/domain/behavior-feedback";
 import {
   findAgentFeedbackTarget,
   findLatestAgentFeedbackEvent,
 } from "@/modules/moderation/repository/agent-behavior-feedback";
 import type { ModerationReasonInput } from "@/modules/moderation/validation/schemas";
+
+/*
+  Kilit sırası (11 Ekim 2026, Sol #377 incelemesi): ajan yürütücüsü yaşam kaydı kilidini
+  (`agent-life`) başlık kilidinden ÖNCE alır. Moderasyon ise başlık ve entry kilidini tutarken
+  geri bildirim yazarken yaşam kaydı kilidini bekliyordu; iki işlem birbirini bekleyip PostgreSQL
+  birini iptal ediyordu. Geri bildirim yazacak moderasyon yolları, hedefin ajanının yaşam kaydı
+  kilidini başlık kilidinden önce bu fonksiyonla alır; içerik kaydı ile ajan eşlemesi değişmez.
+*/
+export async function lockAgentBehaviorFeedbackLedger(
+  transaction: TransactionClient,
+  input: { targetType: "ENTRY" | "TOPIC"; targetId: string },
+): Promise<void> {
+  const target = await findAgentFeedbackTarget(transaction, input);
+  if (target) await lockAgentLifeLedger(transaction, target.agentProfileId);
+}
 
 export async function appendAgentBehaviorFeedback(
   transaction: TransactionClient,
