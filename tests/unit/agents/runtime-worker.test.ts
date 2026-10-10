@@ -2650,6 +2650,40 @@ describe("long-lived agent runtime worker", () => {
     expect(usage.usageMetadata.codexIntervals[0]!.modelMs).toBe(4_800);
   });
 
+  it("copies provider token counts into the Codex interval without inventing zeros (Y6)", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const tokenUsage = {
+      inputTokens: 21_000,
+      cachedInputTokens: 18_000,
+      outputTokens: 900,
+      reasoningOutputTokens: 600,
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "token-worker",
+      credentials: [`agt_${"t".repeat(43)}`],
+      controlPlane: plane,
+      provider: {
+        inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+        invoke: vi.fn().mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: canonicalNormalOutput("Token sayılı koşu."),
+          diagnostics: { setupMs: 1, inspectMs: 1, modelMs: 3, tokenUsage },
+        }),
+      },
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    const usage = vi.mocked(plane.complete).mock.calls[0]![4] as {
+      usageMetadata: { codexIntervals: Array<Record<string, unknown>> };
+    };
+    expect(usage.usageMetadata.codexIntervals[0]).toMatchObject(tokenUsage);
+    expect(usageMetadataSchema.safeParse(usage.usageMetadata).success).toBe(true);
+  });
+
   it("measures UTF-16 units and UTF-8 bytes without persisting prompt content", async () => {
     const runId = randomUUID();
     const plane = controlPlane(runId);

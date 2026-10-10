@@ -9,6 +9,7 @@ import type {
   RuntimeProviderHostMetrics,
   RuntimeProviderRequest,
   RuntimeProviderResult,
+  RuntimeProviderTokenUsage,
 } from "@/runtime/provider";
 import {
   RuntimeProviderCancelledError,
@@ -248,21 +249,70 @@ export function cancelRuntimeWorkDirectoryExpiry(workDirectory: string): void {
   runtimeWorkExpiryTimers.delete(workDirectory);
 }
 
+/** Tek satırlık sayısal sınır: bozuk ya da aşırı büyük olay sayı sayılmaz. */
+const MAX_TOKEN_COUNT = 1_000_000_000;
+/** Bölünmemiş tek olay satırının tutulacağı üst sınır; aşan içerik satırı atılır. */
+const MAX_PENDING_EVENT_CHARS = 1_048_576;
+
+/**
+ * `codex exec --json` satırından yalnız `turn.completed.usage` sayılarını çıkarır. İçerik
+ * taşıyan olaylar (`item.*`) JSON olarak bile ayrıştırılmaz; böylece model metni bellekte
+ * gereğinden uzun tutulmaz ve hiçbir yere yazılmaz.
+ */
+export function parseCodexTurnUsage(line: string): RuntimeProviderTokenUsage | undefined {
+  if (!line.includes('"turn.completed"')) return undefined;
+  let event: unknown;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+  if (!event || typeof event !== "object") return undefined;
+  const { type, usage } = event as { type?: unknown; usage?: unknown };
+  if (type !== "turn.completed" || !usage || typeof usage !== "object") return undefined;
+  const raw = usage as Record<string, unknown>;
+  /*
+    Eksik ya da `null` sayaç sıfır sayılmaz (Astra, 10 Ekim): bilinmeyen kullanım ölçülmüş sıfır
+    gibi saklanırsa maliyet yanlışlaşır. Girdi ve çıktı zorunlu; önbellek ve düşünme sayaçları
+    yalnız geçerli tamsayı olarak geldiyse yazılır. Geçersiz bir değer bütün ölçümü düşürür.
+  */
+  const valid = (value: unknown): value is number =>
+    Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= MAX_TOKEN_COUNT;
+  const optional = (key: string): number | undefined | null => {
+    if (!(key in raw) || raw[key] === null) return undefined;
+    return valid(raw[key]) ? raw[key] : null;
+  };
+  if (!valid(raw.input_tokens) || !valid(raw.output_tokens)) return undefined;
+  const cachedInputTokens = optional("cached_input_tokens");
+  const reasoningOutputTokens = optional("reasoning_output_tokens");
+  if (cachedInputTokens === null || reasoningOutputTokens === null) return undefined;
+  return {
+    inputTokens: raw.input_tokens,
+    outputTokens: raw.output_tokens,
+    ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }),
+    ...(reasoningOutputTokens === undefined ? {} : { reasoningOutputTokens }),
+  };
+}
+
 function collect(
   child: ChildProcessWithoutNullStreams,
   input: string,
   timeoutMs: number,
   signal?: AbortSignal,
   terminateProcessGroup = false,
+  parseJsonEvents = false,
 ): Promise<{
   exitCode: number | null;
   exitSignal: NodeJS.Signals | null;
   stderr: string;
   timedOut: boolean;
   cancelled: boolean;
+  tokenUsage?: RuntimeProviderTokenUsage;
 }> {
   return new Promise((resolve, reject) => {
     let stderr = "";
+    let pendingEvent = "";
+    let tokenUsage: RuntimeProviderTokenUsage | undefined;
     let settled = false;
     let timedOut = false;
     let cancelled = false;
@@ -297,10 +347,36 @@ function collect(
     child.stderr.on("data", (chunk: Buffer) => {
       if (stderr.length < 16_384) stderr += chunk.toString("utf8").slice(0, 16_384 - stderr.length);
     });
-    child.stdout.resume();
+    /*
+      Olay akışı yalnız `--json` ile çalışan çağrıda ayrıştırılır (Astra, 10 Ekim): `--json`
+      yoksa stdout model metni taşıyabilir ve o metindeki sayılar ölçüm sayılmamalı.
+    */
+    if (!parseJsonEvents) child.stdout.resume();
+    else
+      child.stdout.on("data", (chunk: Buffer) => {
+        pendingEvent += chunk.toString("utf8");
+        let newline = pendingEvent.indexOf("\n");
+        while (newline >= 0) {
+          tokenUsage = parseCodexTurnUsage(pendingEvent.slice(0, newline)) ?? tokenUsage;
+          pendingEvent = pendingEvent.slice(newline + 1);
+          newline = pendingEvent.indexOf("\n");
+        }
+        if (pendingEvent.length > MAX_PENDING_EVENT_CHARS) pendingEvent = "";
+      });
     child.on("error", (error) => finish(() => reject(error)));
     child.on("close", (exitCode, exitSignal) =>
-      finish(() => resolve({ exitCode, exitSignal, stderr, timedOut, cancelled })),
+      finish(() => {
+        if (parseJsonEvents) tokenUsage = parseCodexTurnUsage(pendingEvent) ?? tokenUsage;
+        pendingEvent = "";
+        resolve({
+          exitCode,
+          exitSignal,
+          stderr,
+          timedOut,
+          cancelled,
+          ...(tokenUsage ? { tokenUsage } : {}),
+        });
+      }),
     );
     child.stdin.end(input);
     const timeout = setTimeout(() => {
@@ -406,6 +482,7 @@ export class CodexCliProvider implements RuntimeProvider {
   ): Promise<{
     version: string;
     supportsStructuredOutput: boolean;
+    supportsJsonEvents: boolean;
     model: string;
     reasoningEffort: typeof AGENT_RUNTIME_CODEX_REASONING_EFFORT;
   }> {
@@ -422,12 +499,15 @@ export class CodexCliProvider implements RuntimeProvider {
       reasoningEffort: AGENT_RUNTIME_CODEX_REASONING_EFFORT,
       supportsStructuredOutput:
         execHelp.includes("--output-schema") && execHelp.includes("--output-last-message"),
+      // Token telemetrisi (Y6) yalnız olay akışını destekleyen CLI'da açılır.
+      supportsJsonEvents: /(^|\s)--json(\s|$)/mu.test(execHelp),
     };
   }
 
   async inspect(): Promise<{
     version: string;
     supportsStructuredOutput: boolean;
+    supportsJsonEvents: boolean;
     model: string;
     reasoningEffort: typeof AGENT_RUNTIME_CODEX_REASONING_EFFORT;
   }> {
@@ -459,11 +539,13 @@ export class CodexCliProvider implements RuntimeProvider {
     let setupMs = 0;
     let modelStartedAtMs = 0;
     let hostMetrics: RuntimeProviderHostMetrics | undefined;
+    let tokenUsage: RuntimeProviderTokenUsage | undefined;
     const diagnostics = (): RuntimeProviderAttemptDiagnostics => ({
       setupMs,
       inspectMs,
       modelMs: modelStartedAtMs === 0 ? 0 : Math.max(0, Date.now() - modelStartedAtMs),
       ...(hostMetrics ? { hostMetrics } : {}),
+      ...(tokenUsage ? { tokenUsage } : {}),
     });
     const remainingMs = (): number => {
       if (request.signal?.aborted) throw new RuntimeProviderCancelledError(diagnostics());
@@ -520,6 +602,8 @@ export class CodexCliProvider implements RuntimeProvider {
         "--ignore-user-config",
         "--ignore-rules",
         "--skip-git-repo-check",
+        // Y6: olay akışı yalnız token sayıları için okunur; karar çıktısı yine dosyadan gelir.
+        ...(inspected.supportsJsonEvents ? ["--json"] : []),
         "--sandbox",
         "read-only",
         "--output-schema",
@@ -545,7 +629,9 @@ export class CodexCliProvider implements RuntimeProvider {
         remainingMs(),
         request.signal,
         this.#options.spawnProcess === undefined,
+        inspected.supportsJsonEvents,
       );
+      tokenUsage = result.tokenUsage;
       /*
         Host metriği hata yolunda da taşınmalı. Eskiden burada toplanıyor ama
         hemen ardından atılan exception'a iliştirilmiyordu; worker da

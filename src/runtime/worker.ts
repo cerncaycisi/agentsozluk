@@ -1430,6 +1430,10 @@ export class AgentRuntimeWorker {
       setupMs?: number;
       inspectMs?: number;
       modelMs?: number;
+      inputTokens?: number;
+      cachedInputTokens?: number;
+      outputTokens?: number;
+      reasoningOutputTokens?: number;
     }> = [];
     const codexInvocationErrors = new Set<unknown>();
     /* Düşen çağrının host metriği; başarısızlık kaydına bu yazılır. */
@@ -1510,6 +1514,8 @@ export class AgentRuntimeWorker {
                 modelMs: diagnostics.modelMs,
               }
             : {}),
+          // Y6: yalnız CLI'nin bildirdiği sayılar; eksikse alan yazılmaz, sıfır sayılmaz.
+          ...(diagnostics?.tokenUsage ? { ...diagnostics.tokenUsage } : {}),
         });
       }
     };
