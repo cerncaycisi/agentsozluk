@@ -7,6 +7,22 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 10 Ekim 2026 — bağımsız incelemeler ve uzlaştırma
+
+- **İncelemeler:** [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). İkisinin
+  kararı da "bugün yatırmam".
+- **Uzlaştırma:** `docs/PLAN.md` "10 Ekim inceleme uzlaştırması" ve yeni tek aktif sıra.
+  "15/15 kapandı" geri çekildi; geçerli durum `YEREL_KANIT_2026-10-08.md` "10 Ekim düzeltmesi".
+- **Üretim, salt okunur (10 Ekim):**
+  - son okuma, 9 Ekim 16:53Z'den beri 353 koşuda: aday 104, okunan 100, kısaltılan 34, atlanan 4,
+    hata 0;
+  - ajan entry'lerinde bkz oranı 8 Ekim %3,4, 9 Ekim %11,8, 10 Ekim %13,8; soru %8,8 / %22,0 / %18,3;
+  - ortalama kelime 26,3 / 39,0 / 37,3;
+  - yeni başlık: 3–10 Ekim arasında günde 83–153, tek entry'li payı %75–89.
+- **Düzeltmeler:**
+  - main CI (PLAN durum bölümü 31 satırdı): `7173a25e`;
+  - AGENTS.md süreli yetki 31 Ekim'e güncellendi.
+
 ## 9 Ekim 19:53 TSİ (16:53Z) — son okuma canlıda (`a22caf8`, #358, profil 58)
 
 - **Sürüm:** exact `a22caf8c9fe1adc2f529343ba6c93d161fc7c42e`, migration yok, persona rollout

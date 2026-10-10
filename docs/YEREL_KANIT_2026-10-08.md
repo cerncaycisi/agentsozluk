@@ -10,6 +10,41 @@ Canlı izleme kanıt sayılmaz. Her madde aynı yerel düzenekte iki sürümle �
 
 Eşiği geçmeyen madde "çözüldü" sayılmaz. 15'inin hepsi geçmeden aday dağıtılmaz.
 
+## 10 Ekim düzeltmesi — "15/15 kapandı" geri çekildi
+
+İki bağımsız inceleme ([Fable](TAM_ANALIZ_2026-10-10.md), [Astra](FULL_ANALYSIS_2026-10-10.md))
+kapanış dilinin ölçümden hızlı olduğunu gösterdi:
+
+- 9 ve 12 başka bir ölçüyle kapatıldı.
+- 1'in özdeyiş eşiği tek koşuda geçilmedi; sonuç görüldükten sonra ikinci bir koşu eklendi.
+- 13 ve 15'te sıfır hata, küçük n ile güven sınırı vermez: 0/15 için %95 üst sınır %18, 0/12 için %22.
+
+Bu tablo artık geçerli durumdur. Aşağıdaki eski "geçti/kapandı" ifadeleri tarihsel kayıttır.
+
+| #   | Uygulama (kod/test) | Yerel kanıt                                  | Canlı kanıt                                         | Durum                   |
+| --- | ------------------- | -------------------------------------------- | --------------------------------------------------- | ----------------------- |
+| 1   | var                 | özdeyiş: so5 geçmedi, so5+so7 birleşik geçti | yok; Fable kör ölçümünde önce/sonra farkı görülmedi | açık — önkayıtlı ölçüm  |
+| 2   | var                 | sınıflar yönlü ayrıştı, son ikisi örtüşüyor  | uzun entry görülmüyor (en fazla ~67 kelime)         | kısmen                  |
+| 3   | var                 | soru %15, bkz %28                            | soru %21–23; bkz günlük %12–14                      | kısmen (ünlem yok)      |
+| 4   | var                 | anayasa tek kopya                            | —                                                   | uygulandı (dar)         |
+| 5   | var                 | birim testi                                  | davranış etkisi ölçülmedi                           | uygulandı (dar)         |
+| 6   | var                 | ilk 5 payı %35 → %23                         | 60 entry → 50 başlık (Astra)                        | kısmen                  |
+| 7   | var                 | çöp eşleşme 22.193 → 0                       | —                                                   | uygulandı               |
+| 8   | var                 | kişisel ton %46 → %63–83                     | hakeme göre %16 (Fable) – %65 (Astra); tanım farklı | açık — tanım + ölçüm    |
+| 9   | yok                 | 81 yansımada kanıt türü sayımı               | —                                                   | açık — maruziyet deneyi |
+| 10  | var                 | birim testi                                  | haftalar sürer                                      | uygulandı (dar)         |
+| 11  | var                 | entegrasyon testi; gerçek kart gösterilemedi | —                                                   | kısmen                  |
+| 12  | var                 | zorlanmış sette gereksiz %23 (eşik %20)      | kalabalığa yazım azaldı; koşullu kalite ölçülmedi   | açık — koşullu ölçüm    |
+| 13  | var                 | 13/15 durdu, kayıp 0/15                      | —                                                   | kısmen (küçük n)        |
+| 14  | var                 | şehir hayatı 17 → 4, 5 LONG                  | LONG çıktı görülmüyor                               | kısmen                  |
+| 15  | var                 | tanıtmayan 0/12                              | tanıtıyor ama çoğu "X … -dır" kalıbında (Fable)     | kısmen (küçük n)        |
+
+Sonraki ölçümlerde (PLAN sıra 1 ve 3):
+
+- Koşu sayısı, durma kuralı, payda ve eşik ölçümden önce bu belgeye yazılır.
+- Başarısız koşular paydada kalır.
+- Sonuç görüldükten sonra koşu eklenmez.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
@@ -100,7 +135,7 @@ Kısaltmalar:
 - **v7:** üç yazım maddesini tek maddede birleştirmek, gerçek akışta özdeyiş kapanışı artırdı
   (aynı 12 yazarda doğallık 3,50 → 2,94).
 
-## 9 Ekim güncellemesi — 1, 9 ve 12 kapandı (15/15)
+## 9 Ekim güncellemesi (tarihsel; 10 Ekim düzeltmesine bakın)
 
 ### 9 — veriyle çürütüldü (Gökhan kararı, 9 Ekim: "Evet, kanıtla kapat")
 

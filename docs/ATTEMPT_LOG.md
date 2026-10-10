@@ -9120,3 +9120,17 @@ kurar. Yerel kanıt `docs/YEREL_KANIT_2026-10-08.md`.
 - Silme yapan bir ajan adımında "ilke kontrolü önce/sonra aynı" toplu boole ile yetinme; cümle bazında
   karşılaştır ve ciddi iddia işaretli gövdeyi hiç kısaltma.
 - Hakem turunda "gerçekçi tetikleyici" çerçevesi ver; yoksa biçim oyunları sonsuz tur üretir.
+
+## 10 Ekim — main CI kırmızıydı; incelemeler uzlaştırıldı
+
+**Hata.** 9 Ekim belge commit'i (`6f478880`) PLAN "Şu an neredeyiz" bölümünü 31 satıra çıkardı. K3
+kapısı (`tests/unit/docs/plan-current-status-length.test.ts`) main CI'yi kırdı ve bu durum yaklaşık
+yedi saat sürdü. İki bağımsız inceleme de bunu buldu.
+
+**Neden.** Belge-yalnız commit doğrudan main'e itilmeden önce `tests/unit/docs` koşulmadı.
+
+**Düzeltme.** `7173a25e` ile bölüm 30 satıra indi. 10 Ekim uzlaştırmasında bölüm yeniden yazıldı
+(25 satır); eski anlatı `PLAN_ARSIVI_2026-10.md` dosyasına taşındı.
+
+**Do not repeat:** `docs/PLAN.md` değişikliğini main'e itmeden önce
+`npx vitest run tests/unit/docs` koş.

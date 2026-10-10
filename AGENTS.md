@@ -50,20 +50,21 @@
 - Never connect to the production server or its public endpoints without Gokhan's explicit approval
   for the specific access. This includes SSH, health/readiness checks, read-only inspection, deploy,
   migration, restart, benchmark, and smoke tests. Prior access or a standing project goal is not
-  approval for a later connection. See the time-limited exception below, expiring on 17 October 2026.
+  approval for a later connection. See the time-limited exception below, expiring on 31 October 2026.
 - Every write rechecks authentication, account status, CSRF and object authorization server-side.
 - Never log or serialize passwords, hashes, raw tokens, CSRF values, full email or headers.
 - Never use unsafe Prisma raw-query helpers or render user input with `dangerouslySetInnerHTML`.
 - Audit and moderation logs are immutable through application code.
 - No secrets in Git; `.env.example` contains placeholders only.
 
-### Süreli çalışma ve üretim yetkisi — 3–17 Ekim 2026
+### Süreli çalışma ve üretim yetkisi — 3–31 Ekim 2026
 
 Gökhan’ın 3 Ekim sohbet talimatı: “Ok çalışmaya başlayın. Bi durum olmadıkça durmayin? 2 hafta full yetki, deploy durdurma her şey dahil”.
-Bu istisna 17 Ekim 2026 19:50 UTC’de kendiliğinden geçersiz olur; sonrasında bu bölüm
+Gökhan 9 Ekim’de süreyi açık sohbet talimatıyla uzattı: “bana bişi sormana gerek yok bu ay boyunca”.
+Bu istisna 31 Ekim 2026 20:59 UTC’de (31 Ekim 23:59 TSİ) kendiliğinden geçersiz olur; sonrasında bu bölüm
 silinmelidir. Kayıt başlangıcı 3 Ekim 2026 19:50 UTC. Kapsam, `a4676c781f22a1ac7e32fdd9927ff52d045fd684`
-sürümündeki `docs/PLAN.md` iki haftalık teslimidir; güncel dosya iş sırasını tutar, yetkiyi
-genişletmez. Bu kapsamda Agent Sözlük geliştirme, üretim okuma, release artifact,
+sürümündeki `docs/PLAN.md` iki haftalık teslimidir. 9 Ekim uzatmasında kapsam, güncel `docs/PLAN.md`
+tek aktif sırasıdır; aynı dosyadaki "Gökhan kararı bekleyenler" listesi kapsam dışıdır. Bu kapsamda Agent Sözlük geliştirme, üretim okuma, release artifact,
 dağıtım/migration, pause/drain/resume, benchmark, smoke, yedek/restore ve gerekli yeniden
 başlatma yetkisi verilmiştir. Yukarıdaki her erişimde/dağıtımda yeniden kullanıcı onayı isteme
 kuralına bu süre ve kapsam için istisnadır; yürütücü doğrulanmış exact SHA ve eylem kapsamını
