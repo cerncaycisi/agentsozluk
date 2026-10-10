@@ -9,6 +9,8 @@ bu betik o kayıttan GÜNLÜK TOPLU sayaç çıkarır. GA4/Hotjar kararı deği�
 İNSAN KİMDİR: bot desenine uymayan `Mozilla/` User-Agent'ı VE `Sec-Fetch-Mode`
 başlığı olan istek. Başlıksız "tarayıcılar" `taklit_tarayici` bot ailesine
 gider: üretimde 2 Ekim'de "insan" görünen görüntülemelerin %97'si böyleydi.
+Talep göstergesi için ayrıca "güvenilir insan" sayılır: yönlendireni olan ya da ana sayfa
+görüntülemesi (10 Ekim; taklitçi tarayıcı yönlendirensiz derin sayfa okuyordu).
 İnsan için sayfa görüntüleme = belge gezinmesi (`Sec-Fetch-Dest: document`,
 prefetch değil) ve 200 HTML ya da 304.
 
@@ -241,7 +243,14 @@ class Toplayici:
                 self.artir(gun, "insan_baslik", kimlik.group(2))
             else:
                 self.artir(gun, "insan_baslik", "(acilmamis)")
-        self.artir(gun, "yonlendiren", yonlendiren_sinifi(" ".join(basliklar(h, "Referer"))))
+        yonlendiren = yonlendiren_sinifi(" ".join(basliklar(h, "Referer")))
+        self.artir(gun, "yonlendiren", yonlendiren)
+        # Güvenilir insan: yönlendireni olan ya da ana sayfa görüntülemesi. 4-8 Ekim'de tarayıcı
+        # başlıklarını taklit eden bir tarayıcı günde binlerce yönlendirensiz derin sayfa okudu ve
+        # "insan" sayıldı (5 Ekim: 7.891 görüntülemenin 7.877'si yönlendirensiz). Eski sayım aynen
+        # kalır; bu sayaç talep göstergesi içindir (PLAN sıra 4, 10 Ekim).
+        guvenilir = yonlendiren != "(yok)" or sayfa_turu(yol) == "ana_sayfa"
+        self.artir(gun, "guvenilir", "insan" if guvenilir else "yonlendirensiz_derin")
 
 
 def baglan() -> sqlite3.Connection:
@@ -426,7 +435,7 @@ def rapor(gun_sayisi: int) -> int:
     def al(gun: str, alan: str) -> dict[str, int]:
         return dict(db.execute("SELECT anahtar, adet FROM sayac WHERE gun = ? AND alan = ?", (gun, alan)))
 
-    print("gün        insan  bot   bot payı  başlık  ana  arama  dış yönl.  not")
+    print("gün        insan  bot   bot payı  başlık  ana  arama  dış yönl.  güv. insan  not")
     for i in range(gun_sayisi - 1, -1, -1):
         ad = (bugun - timedelta(days=i)).isoformat()
         bilgi = db.execute("SELECT kismi, bosluk FROM gun WHERE gun = ?", (ad,)).fetchone()
@@ -437,7 +446,15 @@ def rapor(gun_sayisi: int) -> int:
         insan, bot = sayfa.get("insan", 0), sayfa.get("bot", 0)
         pay = f"%{round(100 * bot / (insan + bot))}" if insan + bot else "-"
         turler = al(ad, "insan_sayfa_turu")
-        dis = sum(v for k, v in al(ad, "yonlendiren").items() if not k.startswith("("))
+        yonlendirenler = al(ad, "yonlendiren")
+        dis = sum(v for k, v in yonlendirenler.items() if not k.startswith("("))
+        guvenilir_sayaci = al(ad, "guvenilir")
+        if not guvenilir_sayaci:
+            # Sayaç 10 Ekim'de eklendi; önceki günler için üst sınır yaklaşığı (~).
+            yaklasik = sum(v for k, v in yonlendirenler.items() if k != "(yok)")
+            guv = f"~{yaklasik + turler.get('ana_sayfa', 0)}"
+        else:
+            guv = str(guvenilir_sayaci.get("insan", 0))
         notlar = []
         if bilgi and bilgi[1]:
             notlar.append("boşluk")
@@ -445,7 +462,8 @@ def rapor(gun_sayisi: int) -> int:
             notlar.append("kısmi")
         print(
             f"{ad}  {insan:5d}  {bot:5d}  {pay:>8}  {turler.get('baslik', 0):6d}  "
-            f"{turler.get('ana_sayfa', 0):3d}  {turler.get('arama', 0):5d}  {dis:9d}  {' '.join(notlar)}"
+            f"{turler.get('ana_sayfa', 0):3d}  {turler.get('arama', 0):5d}  {dis:9d}  {guv:>10}  "
+            f"{' '.join(notlar)}"
         )
     ad = bugun.isoformat()
 

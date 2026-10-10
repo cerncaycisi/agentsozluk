@@ -166,6 +166,8 @@ describe("çerezsiz okur sayacı", () => {
     expect(g.insan_sayfa_turu).toEqual({ ana_sayfa: 1, baslik: 2, arama: 1 });
     expect(g.insan_baslik).toEqual({ "6526": 2 });
     expect(g.yonlendiren).toEqual({ "www.google.com": 1, "(site ici)": 1, "(yok)": 2 });
+    // Güvenilir insan: ana sayfa + iki yönlendirenli; yönlendirensiz arama sayılmaz.
+    expect(g.guvenilir).toEqual({ insan: 3, yonlendirensiz_derin: 1 });
     expect(g.rsc_gezinme).toEqual({ insan: 1 });
     expect(g.istek).toMatchObject({ toplam: 13, "2xx": 12, "4xx": 1, baska_alan: 1, api_dis: 1 });
   });
@@ -346,6 +348,8 @@ describe("çerezsiz okur sayacı", () => {
     expect(sonuc.status).toBe(0);
     expect(sonuc.stdout).toMatch(/2026-10-02 +1 +1 +%50/);
     expect(sonuc.stdout).toContain("(publicId): 5 1");
+    // Yönlendirensiz derin başlık güvenilir insan sayılmaz.
+    expect(sonuc.stdout).toMatch(/2026-10-02 +1 +1 +%50 +1 +0 +0 +0 +0 {2}/u);
   });
 
   it("uygulamanın başlık kimliği sayılmayan sayısal yolları kimlik diye saklamaz (Astra, 2. tur)", () => {
