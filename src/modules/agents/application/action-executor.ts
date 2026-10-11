@@ -123,6 +123,8 @@ interface ActionExecutionDependencies {
   afterEffectSettingsLocked?: () => Promise<void>;
   /** Test seam for a terminal replay that wins after execution rollback. */
   beforeFallback?: () => Promise<void>;
+  /** Test seam entered after a new-topic proposal was resolved, before any write. */
+  afterCanonicalTopicResolved?: () => Promise<void>;
 }
 
 export async function assertPublicWriteReadiness(
@@ -695,6 +697,7 @@ async function performAction(
     transaction: DatabaseExecutor,
     topic: { id: string; title: string },
   ) => Promise<void>,
+  newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>,
 ): Promise<{
   result: InputJsonValue;
   entryId?: string;
@@ -730,6 +733,7 @@ async function performAction(
         {
           canonicalConflictStrategy: "ADD_ENTRY",
           ...(existingTopicGuard ? { existingTopicGuard } : {}),
+          ...(newTopicGuard ? { newTopicGuard } : {}),
         },
       );
       return {
@@ -1149,6 +1153,8 @@ export async function executeRuntimeAction(
         parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && parsed.data.input.title
           ? await resolveCanonicalTopicProposal(transaction, parsed.data.input.title)
           : null;
+      if (parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY")
+        await dependencies.afterCanonicalTopicResolved?.();
       if (
         parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" &&
         parsed.data.input.title &&
@@ -1556,12 +1562,29 @@ export async function executeRuntimeAction(
               "Anayasa Madde 16: Bu başlığa sen okuduktan sonra yeni entry geldi; görmediğin entry'lerle karşılaştırılmadan yazılamaz. Başlığı yeniden okuyup yeni bir şey ekleyeceksen yaz.",
           });
       }
+      /*
+        Ön çözümleme var olan bir başlık bulduysa ve o başlık yazmadan önce gizlenirse servis
+        yeni başlık açardı; o zaman yeni başlık anayasa denetimi de atlanmış olurdu (Astra #371
+        2. tur). Çözümleme değiştiyse yazma yerine reddedilir. Günlük tavan 11 Ekim'de
+        kaldırıldı (Gökhan kararı); bu koruma tavandan bağımsızdır (Astra #389).
+      */
+      const newTopicGuard =
+        parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY"
+          ? async () => {
+              if (canonicalTopicProposal)
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_RESOLUTION_CHANGED",
+                  "Önerilen başlığın çözümlendiği kayıt doğrulama ile yazma arasında değişti; başlık açılmadı. Başlığı yeniden okuyup tekrar değerlendir.",
+                );
+            }
+          : undefined;
       const execution = await performAction(
         transaction,
         principal,
         parsed.data,
         resolvedTarget,
         blindTopicGuard,
+        newTopicGuard,
       );
       if (traversedLinkedTopicId)
         await appendRuntimeEvent(transaction, {

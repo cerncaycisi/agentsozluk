@@ -8389,6 +8389,83 @@ describe("internal agent runtime API with PostgreSQL", () => {
     },
   );
 
+  it("rejects instead of opening a new topic when the resolved topic is hidden before the write (Astra #371 2. tur)", async () => {
+    const fixture = await createFixture();
+    const existing = await integrationDatabase.topic.create({
+      data: {
+        title: "gizli-kesit",
+        normalizedTitle: "gizli-kesit",
+        slug: "gizli-kesit",
+        createdById: fixture.admin.id,
+      },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "topic-resolution-race-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Var olan kavram adresine bağımsız katkı.",
+            input: {
+              // Slug eşleşmesiyle var olan başlığa çözülen ad varyantı (Astra: "j-cut" / "j cut").
+              title: "gizli kesit",
+              body: "Var olan kavramı tanımlayan, bağımsız okunabilen ve yeterince uzun bir açıklama metni.",
+            },
+            provenance: {
+              evidenceType: "MODEL_KNOWLEDGE" as const,
+              evidenceIds: [runId],
+              shortRationale: "Stabil ve düşük riskli genel kavram bilgisi exact run'a bağlıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
+    const topicCountBefore = await integrationDatabase.topic.count();
+    try {
+      await expect(
+        executeRuntimeAction(
+          integrationDatabase,
+          writePrincipal,
+          runId,
+          { workerId, sequence: 1 },
+          {
+            afterCanonicalTopicResolved: async () => {
+              await secondClient.topic.update({
+                where: { id: existing.id },
+                data: { status: "HIDDEN" },
+              });
+            },
+          },
+        ),
+      ).resolves.toMatchObject({
+        actionStatus: "REJECTED",
+        rejectionCode: "TOPIC_RESOLUTION_CHANGED",
+      });
+    } finally {
+      await secondClient.$disconnect();
+    }
+    expect(await integrationDatabase.topic.count()).toBe(topicCountBefore);
+  });
+
   it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {
     /*
       Madde 32 başlık onarımı sunucuda da kabul edilmeli (Astra 55e8273 P2): eskiden sunucu
