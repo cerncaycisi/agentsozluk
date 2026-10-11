@@ -1537,14 +1537,11 @@ export async function executeRuntimeAction(
                 hedefler için muafiyet yok (Sol 59c7d48 P2).
               */
               /*
-                Kanonik yönlendirme de çakışma başlığına işaretsiz yazamaz (Sol #377 P2): başlığın
-                görünür entry'leri sonradan gizlense bile önceden kaydedilmiş öneri oraya gitmez.
+                Kanonik yönlendirme çakışma başlığına hiç yazamaz (Sol #377 P2, 10. tur): başlığın
+                görünür entry'leri sonradan gizlense bile önceden kaydedilmiş öneri ya da onun
+                onarımı oraya gitmez. Gerçek dönüşüm her zaman CREATE_ENTRY'dir.
               */
-              if (
-                repairValidationMarker(actionRecord.validationResult).repairOfSequence ===
-                  undefined &&
-                (await listRunConflictTopicIds(guardTransaction, runId)).has(topic.id)
-              )
+              if ((await listRunConflictTopicIds(guardTransaction, runId)).has(topic.id))
                 throw new RuntimeActionRejectionError(
                   "TOPIC_CONFLICT_REQUIRES_CONVERSION",
                   "Bu başlık bu koşuda yeni-başlık önerisiyle çakıştı; oraya yalnız o önerinin işaretli dönüşümü yazabilir.",

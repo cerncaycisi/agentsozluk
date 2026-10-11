@@ -9239,6 +9239,68 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
   });
 
+  it("does not let a new-topic repair reach the conflict topic once its entries are hidden (Sol #377 10. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (_populatedId, _body, provenance) => [
+        {
+          sequence: 2,
+          actionType: "CREATE_TOPIC_WITH_ENTRY",
+          safeReason: "Aynı kavrama kendinden söz eden ikinci öneri.",
+          input: {
+            title: "Dolu kavram",
+            body: "Bu entry kavramın gündelik kullanımına dair ayrı bir gözlem ekliyor ve uzun.",
+          },
+          provenance,
+        },
+      ],
+    );
+    const { runId, workerId, writePrincipal, populated } = setup;
+    expect(setup.rejected).toMatchObject({ result: { conflictTopicId: populated.id } });
+    const second = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 2,
+    });
+    expect(second).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "CONSTITUTION_ENTRY_SELF_META",
+    });
+    await integrationDatabase.entry.updateMany({
+      where: { topicId: populated.id },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 3,
+            repairOfSequence: 2,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Kendinden söz etmeyen onarım.",
+            input: {
+              title: "Dolu kavram",
+              body: "Kavramın gündelik kullanımına dair ayrı ve kendi başına okunabilen bir gözlem.",
+            },
+            provenance: setup.provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 3 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
+    expect(
+      await integrationDatabase.entry.count({ where: { topicId: populated.id, status: "ACTIVE" } }),
+    ).toBe(0);
+  });
+
   it("does not make a hit topic readable when its name is not in the cited source text", async () => {
     const setup = await readThenDecideSetup(
       "Bambaşka bir konudaki gelişme; önerilen başlığın adı bu metinde hiç geçmiyor.",
