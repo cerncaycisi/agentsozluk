@@ -469,6 +469,31 @@ G9h tasarımı aynen geçerli; deneme başlamadan yazıldı. Tek fark:
   koşu düşüşü 0 olmalı. Görülürse G/Ç ve takas ölçülür, sonuç "ölçülemedi" sayılır.
 - Kod: #377 `606f68f6`; 12 yazar × 4 koşu; canlı kaynak; günlük başlık tavanı kapalı.
 
+## Sonuç — G9i (11 Ekim): geçerli deneme; #377 `606f68f6` geçmedi
+
+- **Geçerlilik:** B kolu 48 koşu (16:57–19:01Z, `WORKERS=1`); başarısız koşu 0, ortam kaynaklı
+  düşüş 0. Kontrol G9g-A.
+
+  | Ölçü                                      | A (G9g-A) | B (#377 `606f68f6`)       | Eşik                 | Sonuç   |
+  | ----------------------------------------- | --------- | ------------------------- | -------------------- | ------- |
+  | Kaynaklı yayının var olan başlığa gitmesi | %0        | %33,3 (6/18)              | ≥ %25 ve A + 15 puan | geçti   |
+  | Koşu başına yeni başlık                   | 0,229     | 0,250                     | ≤ 0,195              | geçmedi |
+  | Dönüştürülen entry'lerde tekrar           | —         | %50 (3/6, iki hakem aynı) | ≤ %20                | geçmedi |
+  | Koşu başına yayın; başarısız koşu         | 0,479; 0  | 0,667; 0                  | ≥ 0,335; 0           | geçti   |
+
+- **#377 çıkmıyor.**
+- **Ne öğrenildi:**
+  - Çakışan önerilerin önemli bir kısmı, başlıkta zaten yazılmış aynı haberin tekrarı. Çakışma
+    zaten bu yüzden oluşuyor. Yenilik kapısı bunları "YAYIMLA" diye geçirdi, iki hakem 6'nın 3'ünü
+    tekrar saydı. Yani `TOPIC_EXISTS_UNREAD` reddi çoğu durumda doğru çalışıyor; "parçalanmanın
+    ana nedeni bu ret" varsayımı bu veriyle zayıfladı.
+  - 2. ölçü baştan yanlış kurulmuştu: çakışmalar zaten başlık açmıyordu, dönüştürme yeni başlık
+       sayısını düşüremezdi. Yeni başlık sayısı günlük tavanla (#371) sınırlanıyor.
+  - Dönüştürme yayın sayısını artırdı (0,48 → 0,67), ama yarısı tekrar.
+- **Sıradaki:** Yeni başlık parçalanması canlıda tavanla (#371) ve sıra 5 ölçümüyle izlenir.
+  Tekrar sorunu çözülmeden dönüştürme yeniden denenmez. Yenilik kapısının bu tekrarları neden
+  geçirdiği ayrı bir iştir.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
