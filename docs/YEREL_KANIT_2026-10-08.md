@@ -251,6 +251,43 @@ Deneme başlamadan yazıldı. Hedef: parçalanmanın ana nedeni olan `TOPIC_EXIS
 - **Durma:** her kol tek blok; koşu eklenmez, başarısız koşular paydada kalır.
 - **Sonuç:** 1–4 geçerse #377 canlıya çıkar. Geçmezse çıkmaz; düzeltme yeni önkayıtla ölçülür.
 
+## Sonuç — G9c (11 Ekim): ölçülemedi
+
+- **A kolu** (main `61bff691`, 24 koşu, 05:18–07:14Z):
+  - Koşu hatası 0. Yayın 1. `TOPIC_EXISTS_UNREAD` 5; geçerlilik eşiği 8, düzenek geçersiz.
+  - 15 yayın eylemi (10 `CREATE_ENTRY`, 5 `CREATE_TOPIC_WITH_ENTRY`) `ACTION_EXECUTION_FAILED` ile
+    düştü.
+- **Kök neden — düzenek, kod değil:** Kopyaya canlıdan aktarılan başlık ve entry'ler `publicId`
+  taşıyordu; yerel `publicId` sıraları ilerletilmemişti. Yerelde açılan her yeni başlık ve entry
+  benzersiz anahtar çakışmasıyla düştü.
+  - PostgreSQL günlüğünde aynı aralıkta 10 `entries_publicId_key` ve 5 `topics_publicId_key` hatası
+    var; düşen eylem sayısıyla birebir.
+  - İki koşuluk teşhis denemesinde `TOPIC_EXISTS_UNREAD` doğru biçimde `REJECTED` kaydedildi.
+- **B kolu** başladıktan yaklaşık 1 dakika sonra durduruldu: A geçersiz olduğu için sonucu
+  değiştirmeyecekti ve ortak Codex kotasını harcıyordu. Kopyadaki 24 B koşusu iptal edildi.
+- #377 çıkmadı.
+
+## Önkayıt — G9d "oku, sonra karar ver" yerel deneme (11 Ekim)
+
+G9c'nin tasarımı aynen korunur. Yalnız düzenek düzeltildi; deneme başlamadan yazıldı.
+
+- **Düzenek düzeltmesi (11 Ekim 07:21Z):**
+  - `topics_public_id_seq` ve `entries_public_id_seq` kopyadaki en büyük `publicId`'ye ilerletildi.
+  - Canlıdan salt okunur ek aktarım: 10 Ekim 19:48Z sonrasının 2.635 kaynak öğesi (var olanların
+    `fetchedAt` dahil güncellendi), 49 başlık (40 yeni) ve 101 yeni entry.
+  - Kopyada son 12 saatte çekilmiş 2.657 kaynak öğesi var.
+- **Kollar:**
+  - **A:** main `61bff691`.
+  - **B:** #377 `8a875152`.
+  - İkisinde de aynı 12 yazar, yazar başına 2 koşu, `WORKERS=2`; B, A bittikten sonra başlar.
+- **Düzenek geçerliliği:** A kolunda en az 8 `TOPIC_EXISTS_UNREAD` ve sıfır
+  `ACTION_EXECUTION_FAILED` olmalı. İkisinden biri tutmazsa sonuç "ölçülemedi" olur ve #377
+  çıkmaz.
+- **Erken durma:** A'nın ilk 6 koşusunda `ACTION_EXECUTION_FAILED` görülürse deneme durur ve
+  "ölçülemedi" sayılır.
+- **Ölçüler, kabul ve sonuç:** G9c'deki 1–4 aynen geçerli. Kaynak tazeliği B'de A'dan yaklaşık iki
+  saat eskidir; sıra etkisi raporlanır.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,

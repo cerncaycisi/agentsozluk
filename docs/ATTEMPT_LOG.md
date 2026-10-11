@@ -9219,3 +9219,61 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   durumunu yeniden oku.
 - Public serializer'a alan eklemeden önce M2-DONE-010 ve meta veri tarayıcısını kontrol et.
 - Yerel tam testi Node 22 ile koş.
+
+## 11 Ekim — yürütücü ↔ moderasyon kilitlenmesi (#379, main `61bff691`)
+
+- **Başlangıç:** Sol 6.1, #377'nin 5. turunda main'de var olan bir döngü buldu. Yürütücü önce yaşam
+  kaydı (`agent-life`), sonra başlık kilidini alıyor. Moderasyon geri bildirimi ise başlık ve entry
+  kilidinden sonra `agent-life` kilidini **bekliyor**. PostgreSQL birini `40P01` ile iptal ediyor.
+- **Denenen ve bırakılan yollar:**
+  1. _Kilit sırasını değiştirmek_ (moderasyon `agent-life`'ı önce alsın). Astra 1. tur NO-GO:
+     yeniden adlandırmada yeni döngü açtı; toplu gizleme, run FK ve hedef değişimi döngüleri
+     kaldı.
+  2. _Kurbanı iki tarafta da baştan denemek._ Astra 2. tur ve Sol 1–7. turlar: yürütücü tarafında
+     yeniden deneme işçinin 15 sn HTTP sınırını aşabiliyordu. İşçi tarafı tekrar ve "sonuç
+     bilinmiyor" sınıflaması eklendi; her turda yeni kenar durumu çıktı (yanıt gövdesi kaybı,
+     tekrarın hata yanıtı, şema dışı yanıt, devre kesici sayımı, rapor metriği, normalizasyon).
+     Katman tümüyle kaldırıldı.
+  3. _Koşu iptalinin kilit sırasını değiştirmek_ (Sol 11. tur, main'de de var). Sol 12. tur: çapraz
+     ajan heartbeat/context ile main'de olmayan yeni bir döngü açtı. Geri alındı; `BACKLOG`'daki
+     kilit sırası denetimine bırakıldı.
+- **Çalışan çözüm:** insan tarafı (moderasyon, yönetici) ajan kilidini **beklemez**.
+  - Kilitler `pg_try_advisory_xact_lock` ve `FOR KEY SHARE NOWAIT` ile denenir; alınamazsa
+    transaction geri alınır, kısa beklemeyle baştan denenir, sonunda 409 döner.
+  - Ajan yürütücüsü değişmedi; kurban seçilemiyor.
+  - Bariyerli yarış testleri, beklemeden denenen yardımcıların geri çekilmesini sayaçla izler; eski
+    bekleyen kodla kırılır.
+
+**Do not repeat:**
+
+- Ajan çalışma zamanı yoluna yeniden deneme koyma. İşçinin süre sınırı ve kaybolan yanıt, sonu
+  gelmeyen bir belirsizlik katmanı açar. Döngüyü, süre sınırı olmayan insan tarafının geri
+  çekilmesiyle kır.
+- Tek bir kilit sırasını değiştirmeden önce o kilidi alan bütün yolları tabloya dök; heartbeat ve
+  context sahipliği kilitlerden sonra doğruluyor.
+- Hakeme kapsamı açık ver ("bu PR'ın döngüleri" + "main'de de var, ayrı listele"); "yönetici ↔
+  çalışma zamanı döngüleri" gibi geniş bir çerçeve her turda yeni ve bağımsız bir eski döngü getirir.
+- Yarış testinde sabit bekleme (`setTimeout(300)`) kullanma; geri çekilmeyi ya da bekleyen kilidi
+  gözleyen bariyer kur.
+
+## 11 Ekim — G9c yerel deneme ölçülemedi (kopya `publicId` sırası)
+
+- **Ortam:** yerel kopya `agent_sozluk_replica`. A kolu main `61bff691`, 24 koşu, 05:18–07:14Z.
+- **Hata:** 15 yayın eylemi `ACTION_EXECUTION_FAILED` ile düştü. Eylem kaydında ayrıntı yok.
+- **Kök neden:** canlıdan aktarılan başlık ve entry'ler `publicId` taşıyordu; yerel
+  `topics_public_id_seq` (7.280, en büyük 7.615) ve `entries_public_id_seq` (22.272, en büyük
+  23.104) geride kalmıştı. Yeni satırlar `entries_publicId_key` ve `topics_publicId_key`
+  çakışmasıyla düştü. PostgreSQL günlüğünde 10 + 5 hata vardı; düşen eylem sayısıyla aynı.
+- **Teşhis yolu:** yürütücünün catch bloğuna geçici çıktı eklendi (deneme worktree'sinde, depoya
+  girmedi). İki koşuda yalnız beklenen `TOPIC_EXISTS_UNREAD` görüldü. Ardından PostgreSQL günlüğü
+  (`~/.local/pg16/log`) zaman aralığına göre tarandı.
+- **Çözüm:** iki sıra `setval` ile en büyük değere ilerletildi. Kopyaya canlıdan salt okunur taze
+  kaynak, başlık ve entry aktarıldı; bunlar da `publicId`'siz eklendi, sıralar yeniden ilerletildi.
+
+**Do not repeat:**
+
+- Kopyaya canlıdan satır aktardıktan sonra `publicId` sıralarını ilerlet. Ya da aktarırken
+  `publicId` sütununu dışarıda bırak.
+- `ACTION_EXECUTION_FAILED` görünce önce PostgreSQL günlüğüne bak; eylem kaydı ayrıntı taşımaz.
+- Deneme kolunu `pgrep -f <betik-adı>` ile durdurma: desen kendi kabuğunla eşleşip onu öldürür
+  (11 Ekim'de yine oldu). `ps` ile PID'leri bul, `kill <pid>` kullan.
