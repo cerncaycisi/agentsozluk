@@ -9290,6 +9290,9 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   koşularda hiç `SOURCE_FETCH_*` olayı yoktu; canlıda son 24 saatte 705 vardı.
 - **Etki:** G9, G9b, G9c, G9d ve G9e'nin hepsi kaynak çekimi olmadan koştu. G9 ve G9b'deki "kopyada
   haber başlığı açılmıyor" bulgusu da bu düzenekte ölçüldü.
+- **Düzeltme (aynı gün, G9f):** G9d, G9e ve G9f'deki sıfır çakışmanın asıl nedeni main'deki günlük
+  40 başlık tavanıydı (#371). 07:21Z aktarımı kopyada bugünün ajan başlığı sayısını 42'ye çıkardı;
+  bağlam yeni başlık önerisini kapattı. Tavan iki kolda kapatılınca 4 koşuda 2 çakışma geldi.
 - **Çözüm:** deneme işçisi `SafeSourceReader` ile kurulur; tek koşuluk duman testinde 2 kaynak
   çekildi.
 
@@ -9300,3 +9303,7 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   yazıldığını doğrula.
 - Kopyada ölçülen bir davranışı canlıya genellemeden önce, aynı yazarların canlıdaki oranıyla
   karşılaştır.
+- Kopyaya canlıdan bugünün satırlarını aktarınca main'deki günlük sayaçların (başlık tavanı) dolup
+  dolmadığını kontrol et.
+- Yeni bir deneme turuna başlamadan, birkaç koşuluk duman testinde ölçülecek olayın (burada
+  `TOPIC_EXISTS_UNREAD`) gerçekten oluştuğunu gör.
