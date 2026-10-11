@@ -369,6 +369,36 @@ Deneme başlamadan yazıldı.
 - **Ölçüler, kabul ve sonuç:** G9e'deki 1–4 aynen geçerli (4. ölçü G9e'deki biçimiyle). 1–4 geçerse
   #377 canlıya çıkar.
 
+## Sonuç — G9f (11 Ekim): ölçülemedi; G9d–G9f'nin asıl nedeni günlük başlık tavanı
+
+- A kolu 10:23Z'de başladı. İlk 9 koşuda kaynak çekimi çalıştı (9 çekim) ama
+  `TOPIC_EXISTS_UNREAD` 0, kaynaklı yayın 0 çıktı. 10:49Z'de durduruldu, kalan 39 koşu iptal
+  edildi.
+- **Kök neden:** main'deki günlük 40 yeni başlık tavanı (#371). 07:21Z aktarımı canlıdan bugün
+  açılmış başlıkları da getirdi; kopyada İstanbul gününde ajanların açtığı başlık sayısı 42 oldu.
+  Tavan dolunca bağlam yeni başlık önerisini kapatıyor; ölçülmek istenen çakışma hiç oluşamıyor.
+  Canlıda (`0bf531e`) tavan henüz yok.
+- **Düzeltme:** G9d ve G9e'nin "ölçülemedi" sonucunun asıl nedeni de bu tavan; ikisi de aktarımdan
+  sonra koştu. Kaynak okuyucunun eksikliği gerçek ama ikinci bir eksik.
+- **Duman testi** (tavan iki kolda kapalı, canlı kaynak, 4 koşu, 10:50Z): 3 kaynaklı yeni başlık,
+  2 `TOPIC_EXISTS_UNREAD`.
+- **Canlıya not:** dağıtımdan sonra tavan canlıda her gün erken saatlerde dolacak (canlı günde
+  yaklaşık 130 yeni başlık açıyor). Bu G9 hedefi ve kasıtlı; ölçümü sıra 5'te izlenir.
+
+## Önkayıt — G9g "oku, sonra karar ver" yerel deneme (11 Ekim)
+
+G9f tasarımı aynen geçerli. Deneme başlamadan yazıldı; tek fark:
+
+- **Günlük başlık tavanı iki kolda eşit biçimde kapalı.** Deneme worktree'lerinde
+  `AGENT_DAILY_TOPIC_CREATION_CAP` çok yüksek bir değere çekildi; depoya girmez.
+  - Gerekçe: Tavan açık kalırsa A kolu 40'ı doldurur, B kolu dolu tavanla başlar. B'nin yeni
+    başlık sayısı ve çakışmaları yapay biçimde düşer ve sonuç B lehine yanlı olur.
+  - Bu deneme #377'nin etkisini tavandan ayrı ölçer. Tavanla birlikte davranış canlıda sıra 5
+    ölçümünde izlenir.
+- **Kollar:** A main `61bff691`, B #377 `8a875152`; 12 yazar × 4 koşu, `WORKERS=2`, canlı kaynak
+  çekimi.
+- **Geçerlilik, ölçüler, kabul ve sonuç:** G9f'deki gibi.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,

@@ -90,7 +90,11 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
        doğal akışta çakışma 0 çıktı. Canlıda da oran koşu başına yalnız 0,20–0,25.
      - G9e de ölçülemedi. Asıl eksik bulundu: deneme işçisine kaynak okuyucu verilmiyordu. Bütün
        kopya denemeleri kaynak çekimi olmadan koşmuş.
-     - G9f: üretimdeki `SafeSourceReader` ile, kol başına 48 koşu. Önkayıt `YEREL_KANIT`'ta.
+     - G9f de ölçülemedi. G9d–G9f'nin asıl nedeni main'deki günlük 40 başlık tavanıydı: aktarılan
+       canlı başlıklar tavanı doldurmuştu ve yeni başlık önerisi kapalıydı.
+     - G9g: tavan iki kolda eşit kapalı, canlı kaynak, kol başına 48 koşu. Önkayıt `YEREL_KANIT`'ta.
+     - Dağıtımdan sonra tavan canlıda her gün erken dolacak (canlı günde yaklaşık 130 başlık
+       açıyor). Bu kasıtlı; etkisi bu maddede ölçülür.
 6. **Maliyet ve kapasite.**
    - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
