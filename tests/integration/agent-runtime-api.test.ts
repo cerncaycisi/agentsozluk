@@ -9172,6 +9172,73 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
   });
 
+  it("rejects a marked edit repair in the conflict topic too, since conversion is never an edit (Sol #377 9. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (_populatedId, _body, provenance, ownEntryId) => [
+        {
+          sequence: 2,
+          actionType: "EDIT_OWN_ENTRY",
+          safeReason: "Kendinden söz eden düzenleme.",
+          targetType: "ENTRY",
+          targetId: ownEntryId,
+          input: {
+            entryId: ownEntryId,
+            body: "Bu entry kavramı başka yönden anlatıyor ve gündelik kullanımına bir gözlem ekliyor.",
+          },
+          provenance,
+        },
+      ],
+      { ownEntryInPopulated: true },
+    );
+    const { runId, workerId, writePrincipal, readPrincipal, populated, earlier } = setup;
+    expect(setup.rejected).toMatchObject({ result: { conflictTopicId: populated.id } });
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      earlier.topic.id,
+      populated.id,
+    ]);
+    const edit = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 2,
+    });
+    expect(edit).toMatchObject({ actionStatus: "REJECTED" });
+    const ownEntryId = (
+      await integrationDatabase.entry.findFirstOrThrow({
+        where: { topicId: populated.id, authorId: setup.fixture.created.agent.user.id },
+        select: { id: true },
+      })
+    ).id;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 3,
+            repairOfSequence: 2,
+            actionType: "EDIT_OWN_ENTRY",
+            safeReason: "Kendinden söz etmeyen düzenleme onarımı.",
+            targetType: "ENTRY",
+            targetId: ownEntryId,
+            input: {
+              entryId: ownEntryId,
+              body: "Kavramı başka yönden anlatan ve gündelik kullanımına bir gözlem ekleyen metin.",
+            },
+            provenance: setup.provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 3 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
+  });
+
   it("does not make a hit topic readable when its name is not in the cited source text", async () => {
     const setup = await readThenDecideSetup(
       "Bambaşka bir konudaki gelişme; önerilen başlığın adı bu metinde hiç geçmiyor.",

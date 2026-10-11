@@ -1679,13 +1679,13 @@ export async function executeRuntimeAction(
             }
           : undefined;
       /*
-        Düzenleme de çakışma başlığına işaretsiz yazamaz (Sol #377 P1). Denetim düzenleme
-        servisinin kendi kilitleri altında, entry'nin güncel başlığıyla yapılır; böylece
+        Düzenleme çakışma başlığına hiç yazamaz (Sol #377 P1, 9. tur): dönüşüm her zaman
+        CREATE_ENTRY'dir, bu yüzden işaretli bir düzenleme onarımı da muaf değildir. Denetim
+        düzenleme servisinin kendi kilitleri altında, entry'nin güncel başlığıyla yapılır; böylece
         denetimden sonra taşıma yarışı kalmaz ve yeni bir kilit sırası eklenmez (Sol 3. tur P2).
       */
       const editTopicGuard =
-        parsed.data.actionType === "EDIT_OWN_ENTRY" &&
-        repairValidationMarker(actionRecord.validationResult).repairOfSequence === undefined
+        parsed.data.actionType === "EDIT_OWN_ENTRY"
           ? async (guardTransaction: DatabaseExecutor, topicId: string) => {
               if ((await listRunConflictTopicIds(guardTransaction, runId)).has(topicId))
                 throw new RuntimeActionRejectionError(
