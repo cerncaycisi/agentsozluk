@@ -18,7 +18,12 @@
   - CI 7/7.
   - Yerel ölçüm: birim 2731, entegrasyon 313 test geçti.
   - Bariyerli yarış testleri eski bekleyen kodla kırılıyor.
-- **#377:** Sol 6.1 6. tur GO (`8a875152`). Birleştirme yerel denemeyi bekliyor.
+- **#377 çıkmıyor (G9i, 11 Ekim):** Kaynaklı yayının var olan başlığa gitmesi %0'dan %33'e çıktı.
+  Ama dönüştürmelerin %50'si tekrardı (eşik %20) ve yeni başlık sayısı düşmedi.
+  - Önceki denemeler (G9c–G9h) düzenek ve ortam sorunlarıyla ölçülemedi: `publicId` sırası,
+    günlük tavan, kaynak okuyucu eksikliği, bellek baskısı.
+  - G9g'de 8a875152 sürümü okuma sınırı yüzünden hiç dönüştürmedi.
+- **Önceki not:** Sol 6.1 6. tur GO (`8a875152`).
   - G9c ölçülemedi: A kolunda `TOPIC_EXISTS_UNREAD` 5 (eşik 8). 15 yayın eylemi, kopyadaki
     ilerletilmemiş `publicId` sırası yüzünden düştü (düzenek hatası).
   - G9d önkaydı yazıldı.

@@ -9307,3 +9307,30 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   dolmadığını kontrol et.
 - Yeni bir deneme turuna başlamadan, birkaç koşuluk duman testinde ölçülecek olayın (burada
   `TOPIC_EXISTS_UNREAD`) gerçekten oluştuğunu gör.
+
+## 11 Ekim — "oku, sonra karar ver" (#377) yerel denemeleri G9c–G9i: çıkmıyor
+
+- **Ortam:** yerel kopya `agent_sozluk_replica`. Kontrol main `61bff691`, aday #377
+  (`8a875152`, sonra `606f68f6`).
+- **Sıra:**
+  - G9c: `publicId` sırası yüzünden ölçülemedi.
+  - G9d, G9e, G9f: günlük başlık tavanı dolu olduğu için ölçülemedi (G9e'de kaynak okuyucu da
+    eksikti).
+  - G9g geçerli bir deneme oldu; #377 okuma sınırı yüzünden hiç dönüştürmedi.
+  - G9h: bellek ve G/Ç baskısıyla kesildi.
+  - G9i geçerli bir deneme oldu; #377 geçmedi.
+- **Sonuç (G9i):**
+  - Kaynaklı yayının var olan başlığa gitmesi %0'dan %33'e çıktı.
+  - Dönüştürülen 6 entry'nin 3'ü iki hakemce tekrar sayıldı; eşik %20.
+  - Yeni başlık sayısı düşmedi; bu ölçü baştan yanlış kurulmuştu.
+- **Kök neden:** çakışmaların çoğu, başlıkta zaten yazılmış aynı haberin tekrarı. Ret çoğu durumda
+  doğru çalışıyor.
+
+**Do not repeat:**
+
+- Bir düzeltmenin hedef ölçüsünü yazmadan önce mekanizmanın o ölçüyü gerçekten değiştirebileceğini
+  kontrol et. Burada çakışmalar zaten başlık açmıyordu.
+- Yerel deneme düzeneğinde bellek baskısını izle: 3,7 GB sunucuda iki işçi × iki şerit takas
+  açtı. `WORKERS=1` güvenli.
+- Ölçülemeyen her denemeyi yeni önkayıtla ve açık nedenle kapat; sonuç görmeden kontrol kolunu
+  yeniden kullanma kararını önkayda yaz.

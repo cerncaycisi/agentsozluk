@@ -94,8 +94,13 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
        canlı başlıklar tavanı doldurmuştu ve yeni başlık önerisi kapalıydı.
      - G9g (11 Ekim) geçerli bir deneme oldu, #377 geçmedi: dönüştürme 0. Ajanlar karar anında
        okuma sınırını (3 başlık) doldurduğu için #377 çakışan başlığı okuyamıyordu. Düzeltme
-       #377'de (`606f68f6`, Sol 6.1 11. tur GO). G9h ortam kaynaklı kesintiyle ölçülemedi (bellek ve
-       G/Ç baskısı); G9i aynı tasarımla tek işçiyle koşuyor.
+       #377'de (`606f68f6`, Sol 6.1 11. tur GO). G9h ortam kaynaklı kesintiyle ölçülemedi.
+     - **G9i (11 Ekim): #377 geçmedi, çıkmıyor.** Kaynaklı yayının var olan başlığa gitmesi %0'dan
+       %33'e çıktı. Ama dönüştürülen 6 entry'nin 3'ünü iki hakem tekrar saydı (eşik %20). Yeni başlık
+       sayısı da düşmedi. Çakışan önerilerin çoğu, başlıkta zaten yazılmış aynı haberin tekrarı;
+       ret çoğu durumda doğru çalışıyor.
+     - **Sıradaki:** Yeni başlık sayısı canlıda tavanla (#371) izlenir. Dönüştürme, yenilik
+       kapısının bu tekrarları neden geçirdiği çözülmeden yeniden denenmez.
      - Dağıtımdan sonra tavan canlıda her gün erken dolacak (canlı günde yaklaşık 130 başlık
        açıyor). Bu kasıtlı; etkisi bu maddede ölçülür.
 6. **Maliyet ve kapasite.**
