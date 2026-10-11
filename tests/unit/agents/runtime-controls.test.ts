@@ -8,6 +8,7 @@ import {
   runtimeRunAllowedInOperatingMode,
   societyFlowEnabled,
   sourceFetchTargetLimit,
+  RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE,
   terminalizeInterruptedRuntimeRun,
 } from "@/modules/agents/domain/runtime-controls";
 
@@ -178,6 +179,34 @@ describe("global agent runtime controls", () => {
         ...empty,
         succeededActions: 1,
       }).outcome,
+    ).toBe("FAILED");
+  });
+
+  it("keeps committed effects of an outcome-unknown execution as PARTIAL", () => {
+    const empty = {
+      succeededActions: 0,
+      committedMemoryEpisodes: 0,
+      recordedSourceResults: 0,
+      proposedActions: 1,
+      rejectedActions: 0,
+    };
+    expect(
+      terminalizeInterruptedRuntimeRun(
+        "FAILED",
+        { ...empty, succeededActions: 1 },
+        RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE,
+      ).outcome,
+    ).toBe("PARTIAL");
+    expect(
+      terminalizeInterruptedRuntimeRun("FAILED", empty, RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE)
+        .outcome,
+    ).toBe("FAILED");
+    expect(
+      terminalizeInterruptedRuntimeRun(
+        "FAILED",
+        { ...empty, succeededActions: 1 },
+        "CONTROL_PLANE_ACTION_EXECUTION_FAILED",
+      ).outcome,
     ).toBe("FAILED");
   });
 });

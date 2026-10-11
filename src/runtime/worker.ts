@@ -22,7 +22,10 @@ import type {
   RuntimeExecution,
   RuntimeLifeEventsBatch,
 } from "@/runtime/control-plane-client";
-import { RuntimeControlPlaneError } from "@/runtime/control-plane-client";
+import {
+  isRetryableTransportError,
+  RuntimeControlPlaneError,
+} from "@/runtime/control-plane-client";
 import {
   runtimeDecisionJsonSchema,
   runtimeDecisionSchema,
@@ -46,7 +49,10 @@ import {
   isTitleRepairableContentRejectionCode,
   titleRepairCandidateIsSafe,
 } from "@/modules/agents/domain/action-policy";
-import { sourceFetchTargetLimit } from "@/modules/agents/domain/runtime-controls";
+import {
+  RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE,
+  sourceFetchTargetLimit,
+} from "@/modules/agents/domain/runtime-controls";
 import { browsableTopicMenu, type BrowsableTopic } from "@/modules/agents/domain/runtime-browse";
 import {
   runtimeBrowseArm,
@@ -336,6 +342,10 @@ const runtimeWorkerFailures = {
   actionExecution: {
     errorCode: "CONTROL_PLANE_ACTION_EXECUTION_FAILED",
     errorSummary: "Runtime action yürütme aşamasını güvenli biçimde tamamlayamadı.",
+  },
+  actionOutcomeUnknown: {
+    errorCode: RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE,
+    errorSummary: "Action yürütme yanıtı taşıma hatasıyla kayboldu; sonuç bilinmiyor.",
   },
   contentRepairControlPlane: {
     errorCode: "CONTENT_REPAIR_CONTROL_PLANE_FAILED",
@@ -1410,6 +1420,8 @@ export class AgentRuntimeWorker {
     const deadline = new RuntimeRunDeadline(lease.run.startedAt, lease.run.timeoutSeconds);
     let runtimeStatus = "STARTING";
     let currentFailure: RuntimeWorkerFailure = runtimeWorkerFailures.starting;
+    // Yalnız executeActions isteği sürerken true: yanıtı kaybolan yürütmenin sonucu bilinmez.
+    let executeInFlight = false;
     let heartbeatInFlight: Promise<void> | null = null;
     const heartbeat = (): Promise<void> => {
       if (heartbeatInFlight) return heartbeatInFlight;
@@ -2226,6 +2238,7 @@ export class AgentRuntimeWorker {
         currentFailure = runtimeWorkerFailures.actionExecution;
         await heartbeat();
         deadline.throwIfStopped();
+        executeInFlight = true;
         const execution = await this.#options.controlPlane.executeActions(
           credential,
           this.#options.workerId,
@@ -2234,6 +2247,7 @@ export class AgentRuntimeWorker {
           [originalAction.sequence],
           deadline.requestOptions(),
         );
+        executeInFlight = false;
         executedActions.push(...execution.actions);
         deadline.throwIfStopped();
         const repairableRejection = execution.actions.find(
@@ -2362,6 +2376,7 @@ export class AgentRuntimeWorker {
                   );
                   currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
                   await enterPhase("EXECUTING");
+                  executeInFlight = true;
                   const repairedExecution = await this.#options.controlPlane.executeActions(
                     credential,
                     this.#options.workerId,
@@ -2370,6 +2385,7 @@ export class AgentRuntimeWorker {
                     [repairCandidate.sequence],
                     deadline.requestOptions(),
                   );
+                  executeInFlight = false;
                   executedActions.push(...repairedExecution.actions);
                   if (
                     repairedExecution.actions.some(
@@ -2531,7 +2547,10 @@ export class AgentRuntimeWorker {
               }
             : {
                 outcome: "FAILED",
-                ...currentFailure,
+                // Yürütme yanıtı taşımada kaybolduysa sunucu yazmış olabilir (Sol #379).
+                ...(executeInFlight && isRetryableTransportError(rawError)
+                  ? runtimeWorkerFailures.actionOutcomeUnknown
+                  : currentFailure),
               };
       /*
         Deney kaydı Codex hiç çağrılmamış olsa bile yazılmalı: gezinme bütçe

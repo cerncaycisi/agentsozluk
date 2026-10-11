@@ -2448,6 +2448,36 @@ describe("long-lived agent runtime worker", () => {
     );
   });
 
+  it.each([
+    [new TypeError("fetch failed"), "CONTROL_PLANE_ACTION_OUTCOME_UNKNOWN"],
+    [new DOMException("request timed out", "TimeoutError"), "CONTROL_PLANE_ACTION_OUTCOME_UNKNOWN"],
+    [new RuntimeControlPlaneError("ACTION_REJECTED"), "CONTROL_PLANE_ACTION_EXECUTION_FAILED"],
+  ])(
+    "reports a lost execution response as outcome-unknown, not a plain failure (%s)",
+    async (error, errorCode) => {
+      const runId = randomUUID();
+      const plane = controlPlane(runId);
+      plane.executeActions = vi.fn().mockRejectedValue(error);
+      const worker = new AgentRuntimeWorker({
+        workerId: "execute-transport-worker",
+        credentials: [`agt_${"u".repeat(43)}`],
+        controlPlane: plane,
+        provider: noActionProvider(),
+      });
+
+      await expect(worker.runOnce()).resolves.toBe(1);
+
+      expect(plane.executeActions).toHaveBeenCalled();
+      expect(plane.fail).toHaveBeenCalledWith(
+        expect.any(String),
+        "execute-transport-worker",
+        runId,
+        LEASE_TOKEN,
+        expect.objectContaining({ outcome: "FAILED", errorCode }),
+      );
+    },
+  );
+
   it("classifies a provider timeout as a Codex timeout", async () => {
     const runId = randomUUID();
     const plane = controlPlane(runId);

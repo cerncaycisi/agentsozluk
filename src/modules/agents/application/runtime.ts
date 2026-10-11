@@ -2951,7 +2951,11 @@ export function failRuntimeRun(
     // fail-closed pause when necessary, then allow the owned run to terminalize.
     await guardProductionRolloutRuntimeMutation(transaction, principal.actor, now);
     const measuredMetrics = await getMeasuredRuntimeRunMetrics(transaction, runId);
-    const terminal = terminalizeInterruptedRuntimeRun(input.outcome, measuredMetrics);
+    const terminal = terminalizeInterruptedRuntimeRun(
+      input.outcome,
+      measuredMetrics,
+      input.errorCode,
+    );
     const outcome = terminal.outcome;
     await finishRuntimeRunRecord(transaction, {
       runId,

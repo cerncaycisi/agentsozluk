@@ -350,7 +350,8 @@ async function boundedJsonEnvelope(response: Response): Promise<Envelope> {
     if (done) break;
     received += value.byteLength;
     if (received > MAXIMUM_CONTROL_PLANE_RESPONSE_BYTES) {
-      await reader.cancel();
+      // İptal hatası boyut hatasını taşıma hatasına çevirip tekrar tetiklememeli (Sol #379).
+      await reader.cancel().catch(() => undefined);
       throw new RuntimeControlPlaneError("CONTROL_PLANE_RESPONSE_TOO_LARGE");
     }
     chunks.push(value);
@@ -368,7 +369,7 @@ async function boundedJsonEnvelope(response: Response): Promise<Envelope> {
   }
 }
 
-function isRetryableTransportError(error: unknown): boolean {
+export function isRetryableTransportError(error: unknown): boolean {
   return (
     error instanceof TypeError ||
     (error instanceof DOMException && ["AbortError", "TimeoutError"].includes(error.name))
