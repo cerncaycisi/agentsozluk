@@ -22,12 +22,88 @@ import {
   getRuntimeReadTopics,
   listRuntimeInterestTopicCandidates,
 } from "@/modules/agents/repository/runtime";
-import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
+import { appendRuntimeEvent, lockAgentProfile } from "@/modules/agents/repository/control-plane";
+import { lockAgentLifeLedger } from "@/modules/agents/repository/life-ledger";
+import { lockTopicState } from "@/modules/topics/repository/topics";
+import { setAgentEntryVisibility } from "@/modules/moderation/application/actions";
 import { randomUUID } from "node:crypto";
 import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as LifeLedgerRepository from "@/modules/agents/repository/life-ledger";
+import type * as BehaviorFeedbackRepository from "@/modules/moderation/repository/agent-behavior-feedback";
+import type * as ModerationActionsRepository from "@/modules/moderation/repository/actions";
+import type * as ControlPlaneRepository from "@/modules/agents/repository/control-plane";
+import { TransientLockConflictError } from "@/lib/db/errors";
+
+/*
+  Moderasyonun ajan kilitlerini beklemeden denediği yardımcılar sayılır: yarış testleri
+  zamanlamaya değil, moderasyonun gerçekten geri çekildiği ana bağlanır (#379).
+*/
+const lockBackoffs = vi.hoisted(() => ({ count: 0 }));
+vi.mock("@/modules/agents/repository/life-ledger", async (importOriginal) => {
+  const original = await importOriginal<typeof LifeLedgerRepository>();
+  return {
+    ...original,
+    tryLockAgentLifeLedger: async (...args: Parameters<typeof original.tryLockAgentLifeLedger>) => {
+      const locked = await original.tryLockAgentLifeLedger(...args);
+      if (!locked) lockBackoffs.count += 1;
+      return locked;
+    },
+  };
+});
+vi.mock("@/modules/moderation/repository/agent-behavior-feedback", async (importOriginal) => {
+  const original = await importOriginal<typeof BehaviorFeedbackRepository>();
+  return {
+    ...original,
+    lockAgentFeedbackReferencesNowait: async (
+      ...args: Parameters<typeof original.lockAgentFeedbackReferencesNowait>
+    ) => {
+      try {
+        return await original.lockAgentFeedbackReferencesNowait(...args);
+      } catch (error) {
+        lockBackoffs.count += 1;
+        throw error;
+      }
+    },
+  };
+});
+vi.mock("@/modules/moderation/repository/actions", async (importOriginal) => {
+  const original = await importOriginal<typeof ModerationActionsRepository>();
+  return {
+    ...original,
+    tryLockModerationKey: async (...args: Parameters<typeof original.tryLockModerationKey>) => {
+      const locked = await original.tryLockModerationKey(...args);
+      if (!locked) lockBackoffs.count += 1;
+      return locked;
+    },
+  };
+});
+
+vi.mock("@/modules/agents/repository/control-plane", async (importOriginal) => {
+  const original = await importOriginal<typeof ControlPlaneRepository>();
+  return {
+    ...original,
+    rotateAgentCredentialRecords: async (
+      ...args: Parameters<typeof original.rotateAgentCredentialRecords>
+    ) => {
+      try {
+        return await original.rotateAgentCredentialRecords(...args);
+      } catch (error) {
+        if (error instanceof TransientLockConflictError) lockBackoffs.count += 1;
+        throw error;
+      }
+    },
+  };
+});
+
+async function untilModerationBacksOff(before: number) {
+  for (let attempt = 0; lockBackoffs.count <= before; attempt += 1) {
+    if (attempt > 500) throw new Error("moderation never backed off from the agent lock");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
 import { POST as completeRoute } from "@/app/api/v1/internal/agent-runtime/runs/[runId]/complete/route";
 import { POST as failRoute } from "@/app/api/v1/internal/agent-runtime/runs/[runId]/fail/route";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
@@ -101,6 +177,7 @@ import {
 } from "@/modules/moderation";
 import { searchAll } from "@/modules/search";
 import { createTopicWithFirstEntry } from "@/modules/topics";
+import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { getPublicProfile } from "@/modules/users";
 import {
   closeIntegrationDatabase,
@@ -291,6 +368,13 @@ async function createAdmin() {
       termsAcceptedAt: new Date(),
     },
   });
+}
+
+async function databaseDeadlockCount(): Promise<bigint> {
+  const [row] = await integrationDatabase.$queryRaw<Array<{ deadlocks: bigint }>>`
+    SELECT deadlocks FROM pg_stat_database WHERE datname = current_database()
+  `;
+  return row!.deadlocks;
 }
 
 function adminActor(adminId: string): ActorContext {
@@ -1050,6 +1134,45 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { action: "agent.run.leased", entityId: fixture.runs[0]!.id },
       }),
     ).toBe(0);
+  });
+
+  it("lets a credential rotation back off from a runtime request's credential row", async () => {
+    const fixture = await createFixture();
+    const profileId = fixture.created.agent.profile.id;
+    const deadlocksBefore = await databaseDeadlockCount();
+    let rotation: Promise<unknown> | undefined;
+    /*
+      Çalışma zamanı isteğinin sırası: kimlik doğrulama kimlik satırını günceller, sonra
+      yürütücü profil kilidini bekler. Döndürme profil kilidini tutarken kimlik satırını
+      BEKLESEYDİ bariyer hiç geçilmez, bu transaction profilde beklerken döngü kurulurdu.
+    */
+    await integrationDatabase.$transaction(
+      async (transaction) => {
+        await transaction.$queryRaw`
+          SELECT 1 FROM "agent_credentials"
+          WHERE "agentProfileId" = ${profileId}::uuid AND "revokedAt" IS NULL
+          FOR UPDATE
+        `;
+        const backoffsBefore = lockBackoffs.count;
+        rotation = rotateAgentCredential(
+          integrationDatabase,
+          adminActor(fixture.admin.id),
+          profileId,
+          runtimeCredentialRotationSchema.parse({
+            reason: "Çalışma zamanı isteği bitince döndürme tamamlanmalıdır.",
+          }),
+        );
+        rotation.catch(() => undefined);
+        await untilModerationBacksOff(backoffsBefore);
+        await lockAgentProfile(transaction, profileId);
+      },
+      { timeout: 15_000 },
+    );
+    await expect(rotation).resolves.toMatchObject({ credential: expect.any(String) });
+    expect(await databaseDeadlockCount()).toBe(deadlocksBefore);
+    await expect(runtimePrincipal(fixture.credential)).rejects.toMatchObject({
+      code: "AUTH_REQUIRED",
+    });
   });
 
   it("rotates credentials atomically and invalidates the previously issued token", async () => {
@@ -11465,6 +11588,187 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { id: { in: extra.slice(0, 100).map(({ entryId }) => entryId) }, status: "HIDDEN" },
       }),
     ).toBe(100);
+  });
+
+  it.each([
+    ["single", "life"],
+    ["bulk", "life"],
+    ["single", "run"],
+    ["bulk", "run"],
+    ["single", "action"],
+    ["bulk", "action"],
+    ["single", "profile"],
+    ["bulk", "profile"],
+  ] as const)(
+    "lets a %s agent entry hide back off from the executor's %s lock instead of deadlocking",
+    async (variant, heldLock) => {
+      const fixture = await createFixture();
+      const generated = await createRuntimeAgentEntries(fixture, [
+        "Moderasyon ajanın kilidini beklemez; geri çekilip yeniden dener.",
+      ]);
+      const entryId = generated.content[0]!.entryId;
+      const profileId = fixture.created.agent.profile.id;
+      const { topicId } = await integrationDatabase.entry.findUniqueOrThrow({
+        where: { id: entryId },
+        select: { topicId: true },
+      });
+      const { actionId } = await integrationDatabase.agentContentRecord.findUniqueOrThrow({
+        where: { entryId },
+        select: { actionId: true },
+      });
+      const deadlocksBefore = await databaseDeadlockCount();
+      const feedback = {
+        reason: "Ajan kilidi boşalınca bu gizleme tamamlanmalıdır.",
+        behaviorReasonCode: "REPETITIVE" as const,
+        editorNote: "Aynı çekirdek katkıyı yeni bir değer eklemeden tekrarlama.",
+      };
+      let moderation: Promise<unknown> | undefined;
+      /*
+        Yürütücünün sırası: önce ajan kilidi (yaşam kaydı, run/action satırı ya da yansımanın
+        profil satırı), sonra başlık. Moderasyon başlığı tutarken ajan kilidini BEKLESEYDİ
+        bariyer hiç geçilmez, bu transaction başlıkta beklerken döngü kurulurdu.
+      */
+      await integrationDatabase.$transaction(
+        async (transaction) => {
+          if (heldLock === "life") await lockAgentLifeLedger(transaction, profileId);
+          if (heldLock === "run")
+            await transaction.$queryRaw`
+              SELECT 1 FROM "agent_runs" WHERE "id" = ${generated.runId}::uuid FOR UPDATE
+            `;
+          if (heldLock === "action")
+            await transaction.$queryRaw`
+              SELECT 1 FROM "agent_actions" WHERE "id" = ${actionId}::uuid FOR UPDATE
+            `;
+          if (heldLock === "profile")
+            await transaction.$queryRaw`
+              SELECT 1 FROM "agent_profiles" WHERE "id" = ${profileId}::uuid FOR UPDATE
+            `;
+          const backoffsBefore = lockBackoffs.count;
+          moderation =
+            variant === "single"
+              ? setAgentEntryVisibility(
+                  integrationDatabase,
+                  adminActor(fixture.admin.id),
+                  entryId,
+                  true,
+                  feedback,
+                )
+              : bulkSetAgentContentVisibility(
+                  integrationDatabase,
+                  adminActor(fixture.admin.id),
+                  true,
+                  { ...feedback, entryIds: [entryId], confirmation: "HIDE_AGENT_CONTENT" },
+                );
+          moderation.catch(() => undefined);
+          await untilModerationBacksOff(backoffsBefore);
+          await lockTopicState(transaction, topicId);
+        },
+        { timeout: 15_000 },
+      );
+      await expect(moderation).resolves.toBeDefined();
+      expect(await databaseDeadlockCount()).toBe(deadlocksBefore);
+      expect(
+        await integrationDatabase.entry.findUniqueOrThrow({
+          where: { id: entryId },
+          select: { status: true },
+        }),
+      ).toEqual({ status: "HIDDEN" });
+      expect(
+        await integrationDatabase.moderationAction.count({
+          where: { actionType: "ENTRY_HIDDEN", targetId: entryId },
+        }),
+      ).toBe(1);
+      expect(
+        await integrationDatabase.agentRuntimeEvent.count({
+          where: { agentProfileId: profileId, eventType: "CONTENT_MODERATED" },
+        }),
+      ).toBe(1);
+    },
+  );
+
+  it("lets a topic rename back off from a title lock the executor holds", async () => {
+    const fixture = await createFixture();
+    // Moderatör kendi başlığını adlandıramaz; başlığı başka bir yönetici açar.
+    const author = await createAdmin();
+    const { topic } = await createTopicWithFirstEntry(integrationDatabase, adminActor(author.id), {
+      title: `kilit sırası eski ad ${randomUUID()}`,
+      entryBody: "Yeniden adlandırma başlık adı kilidini beklemeden dener.",
+    });
+    const topicId = topic.id;
+    await integrationDatabase.userModerationCapability.create({
+      data: {
+        userId: fixture.admin.id,
+        grantedById: fixture.admin.id,
+        capability: "FORMAT_MODERATOR",
+      },
+    });
+    const title = `kilit sırası yeni ad ${randomUUID()}`;
+    const deadlocksBefore = await databaseDeadlockCount();
+    let rename: Promise<unknown> | undefined;
+    // Ajanın kanonik çözümlemesi: önce başlık adı kilidi, sonra (mevcut başlığa çözülürse) başlık.
+    await integrationDatabase.$transaction(
+      async (transaction) => {
+        await transaction.$executeRaw`
+          SELECT pg_advisory_xact_lock(hashtextextended(${normalizeTopicTitle(title)}, 0))
+        `;
+        const backoffsBefore = lockBackoffs.count;
+        rename = renameTopic(integrationDatabase, adminActor(fixture.admin.id), topicId, {
+          title,
+          reason: "Başlık adı kilidi boşalınca yeniden adlandırma tamamlanmalıdır.",
+        });
+        rename.catch(() => undefined);
+        await untilModerationBacksOff(backoffsBefore);
+        await lockTopicState(transaction, topicId);
+      },
+      { timeout: 15_000 },
+    );
+    await expect(rename).resolves.toBeDefined();
+    expect(await databaseDeadlockCount()).toBe(deadlocksBefore);
+    expect(
+      await integrationDatabase.topic.findUniqueOrThrow({
+        where: { id: topicId },
+        select: { title: true },
+      }),
+    ).toEqual({ title });
+  });
+
+  it("answers 409 without writing when the executor keeps the agent lock past the retry budget", async () => {
+    const fixture = await createFixture();
+    const generated = await createRuntimeAgentEntries(fixture, [
+      "Ajan kilidi uzun süre tutulursa moderasyon hiçbir şey yazmadan vazgeçer.",
+    ]);
+    const entryId = generated.content[0]!.entryId;
+    const profileId = fixture.created.agent.profile.id;
+    let outcome: unknown;
+    await integrationDatabase.$transaction(
+      async (transaction) => {
+        await lockAgentLifeLedger(transaction, profileId);
+        outcome = await setAgentEntryVisibility(
+          integrationDatabase,
+          adminActor(fixture.admin.id),
+          entryId,
+          true,
+          {
+            reason: "Ajan kilidi boşalmadığı için bu gizleme reddedilmelidir.",
+            behaviorReasonCode: "REPETITIVE",
+            editorNote: "Aynı çekirdek katkıyı yeni bir değer eklemeden tekrarlama.",
+          },
+        ).catch((error: unknown) => error);
+      },
+      { timeout: 15_000 },
+    );
+    expect(outcome).toMatchObject({ code: "AGENT_PROFILE_STATE_CONFLICT", status: 409 });
+    expect(
+      await integrationDatabase.entry.findUniqueOrThrow({
+        where: { id: entryId },
+        select: { status: true },
+      }),
+    ).toEqual({ status: "ACTIVE" });
+    expect(
+      await integrationDatabase.moderationAction.count({
+        where: { actionType: "ENTRY_HIDDEN", targetId: entryId },
+      }),
+    ).toBe(0);
   });
 
   it("bulk hides and restores only provenance-backed agent entries while preserving counters", async () => {

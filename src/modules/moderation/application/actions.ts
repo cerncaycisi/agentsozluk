@@ -1,4 +1,5 @@
-import { inTransaction } from "@/lib/db/transaction";
+import { TransientLockConflictError } from "@/lib/db/errors";
+import { inLockConflictRetryingTransaction, inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
@@ -29,7 +30,7 @@ import {
   findModerationTargetUser,
   findTopicForModeration,
   findTopicIdentityConflict,
-  lockModerationKey,
+  tryLockModerationKey,
   mergeTopicRecords,
   moveEntryRecord,
   renameTopicRecord,
@@ -200,7 +201,7 @@ async function setEntryVisibilityWithAuthorization(
   input: ModerationReasonInput,
   authorization: "CONSTITUTIONAL" | "AGENT_CONTENT_ADMIN",
 ) {
-  return inTransaction(client, async (transaction) => {
+  return inLockConflictRetryingTransaction(client, async (transaction) => {
     let relation: { reportId?: string; decisionId?: string } = {};
     if (authorization === "AGENT_CONTENT_ADMIN") {
       requireModerator(await findModerationActor(transaction, actor.actorId), actor, {
@@ -316,7 +317,7 @@ export async function setTopicVisibility(
   hidden: boolean,
   input: ModerationReasonInput,
 ) {
-  return inTransaction(client, async (transaction) => {
+  return inLockConflictRetryingTransaction(client, async (transaction) => {
     const relation = await requireContentActionPermission(transaction, actor, {
       ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
       targetType: "TOPIC",
@@ -363,7 +364,7 @@ export async function renameTopic(
 ) {
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
   const normalizedTitle = normalizeTopicTitle(title);
-  return inTransaction(client, async (transaction) => {
+  return inLockConflictRetryingTransaction(client, async (transaction) => {
     const relation = await requireContentActionPermission(transaction, actor, {
       ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
       targetType: "TOPIC",
@@ -371,7 +372,8 @@ export async function renameTopic(
       actionType: "TOPIC_RENAMED",
     });
     await lockTopicState(transaction, topicId);
-    await lockModerationKey(transaction, normalizedTitle);
+    if (!(await tryLockModerationKey(transaction, normalizedTitle)))
+      throw new TransientLockConflictError();
     const topic = await findTopicForModeration(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
     if (await findTopicIdentityConflict(transaction, topicId, normalizedTitle))

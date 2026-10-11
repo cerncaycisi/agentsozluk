@@ -252,10 +252,15 @@ export const runtimeExecuteActionsSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
     leaseToken: runtimeLeaseTokenSchema,
+    /*
+      Bir yürütme isteği tek eylem: bütün sequence'ler aynı transaction'da kilit
+      biriktirir ve moderasyonla döngü kurabilir. İşçi zaten her istekte tek eylem
+      gönderiyor (Sol #379).
+    */
     sequences: z
       .array(z.number().int().positive())
       .min(1)
-      .max(50)
+      .max(1)
       .refine(
         (values) => new Set(values).size === values.length,
         "Sequence değerleri benzersiz olmalıdır.",

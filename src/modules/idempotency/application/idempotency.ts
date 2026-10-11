@@ -29,6 +29,8 @@ export async function executeIdempotently(
     now?: Date;
     /** Verilirse transaction süresi loglanır. Bugün yalnız lease kullanıyor. */
     telemetryLabel?: string;
+    /** Kilit çakışmasında baştan deneme; yalnız moderasyon/yönetici rotaları (#379). */
+    retryOnLockConflict?: boolean;
   },
   execute: (transaction: TransactionClient) => Promise<{
     status: number;
@@ -86,5 +88,6 @@ export async function executeIdempotently(
       return { status: result.status, body: result.body, replayed: false };
     },
     input.telemetryLabel ? { label: input.telemetryLabel } : undefined,
+    input.retryOnLockConflict ?? false,
   );
 }

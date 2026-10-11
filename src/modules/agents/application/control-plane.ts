@@ -12,7 +12,7 @@ import {
 import { randomUUID } from "node:crypto";
 import { canonicalRequestHash } from "@/modules/idempotency/domain/idempotency";
 import { agentProfileSettingFields } from "@/modules/agents/validation/schemas";
-import { inTransaction } from "@/lib/db/transaction";
+import { inLockConflictRetryingTransaction, inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, InputJsonValue, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { createOpaqueToken, sha256 } from "@/lib/security/crypto";
@@ -1826,7 +1826,7 @@ export async function rotateAgentCredential(
     agentProfileId,
     credentialId,
   });
-  return inTransaction(client, async (transaction) => {
+  return inLockConflictRetryingTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
     await lockAgentSettings(transaction);

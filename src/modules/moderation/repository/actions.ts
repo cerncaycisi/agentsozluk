@@ -65,11 +65,19 @@ export async function setTopicStatus(
     : null;
 }
 
-export async function lockModerationKey(
+/*
+  Başlık adı kilidi, ajanın kanonik çözümlemesinin ilk aldığı kilittir; ajan onu tutup
+  başlık durumu kilidini bekleyebilir. Yeniden adlandırma başlık durumunu tuttuğu için
+  ad kilidini beklemez, beklemeden dener (#379).
+*/
+export async function tryLockModerationKey(
   transaction: Prisma.TransactionClient,
   key: string,
-): Promise<void> {
-  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+): Promise<boolean> {
+  const [row] = await transaction.$queryRaw<Array<{ locked: boolean }>>`
+    SELECT pg_try_advisory_xact_lock(hashtextextended(${key}, 0)) AS locked
+  `;
+  return row?.locked === true;
 }
 
 export async function findTopicIdentityConflict(
