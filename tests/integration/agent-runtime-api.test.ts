@@ -8687,7 +8687,11 @@ describe("internal agent runtime API with PostgreSQL", () => {
       provenance: Record<string, unknown>,
       ownEntryId: string | null,
     ) => Array<Record<string, unknown>> = () => [],
-    options: { ownEntryInPopulated?: boolean; extraEarlierReads?: number } = {},
+    options: {
+      ownEntryInPopulated?: boolean;
+      extraEarlierReads?: number;
+      executeFirst?: boolean;
+    } = {},
   ) {
     const fixture = await createFixture();
     const source = await integrationDatabase.agentSource.create({
@@ -8813,10 +8817,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
         ],
       }),
     );
-    const rejected = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
-      workerId,
-      sequence: 1,
-    });
+    const rejected =
+      options.executeFirst === false
+        ? null
+        : await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+            workerId,
+            sequence: 1,
+          });
     return {
       fixture,
       runId,
@@ -8976,6 +8983,49 @@ describe("internal agent runtime API with PostgreSQL", () => {
     await expect(
       executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 2 }),
     ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+  });
+
+  it("records a single run conflict even when two rejections interleave before their fallback writes (Sol #377 7. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (_populatedId, body, provenance) => [
+        {
+          sequence: 2,
+          actionType: "CREATE_TOPIC_WITH_ENTRY",
+          safeReason: "Aynı kavrama ikinci bir öneri.",
+          input: { title: "Dolu kavram", body: `${body} İkinci bir açıdan.` },
+          provenance,
+        },
+      ],
+      { executeFirst: false },
+    );
+    const { runId, workerId, writePrincipal, populated } = setup;
+    // 1. eylemin ret kaydı yazılmadan önce 2. eylem baştan sona yürür.
+    const first = await executeRuntimeAction(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      { workerId, sequence: 1 },
+      {
+        beforeFallback: async () => {
+          await expect(
+            executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+              workerId,
+              sequence: 2,
+            }),
+          ).resolves.toMatchObject({
+            rejectionCode: "TOPIC_EXISTS_UNREAD",
+            result: { conflictTopicId: populated.id },
+          });
+        },
+      },
+    );
+    expect(first).toMatchObject({ rejectionCode: "TOPIC_EXISTS_UNREAD" });
+    const withConflict = await integrationDatabase.agentAction.findMany({
+      where: { runId, result: { path: ["conflictTopicId"], not: Prisma.AnyNull } },
+      select: { sequence: true },
+    });
+    expect(withConflict).toEqual([{ sequence: 2 }]);
   });
 
   it("rejects an unmarked entry recorded before the conflict once the topic is readable (Astra #377 2. tur)", async () => {

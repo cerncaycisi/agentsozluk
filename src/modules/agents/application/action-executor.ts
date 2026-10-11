@@ -1861,6 +1861,17 @@ export async function executeRuntimeAction(
       // A concurrent replay may have reached a terminal state while the failed
       // execution transaction was rolling back. Never downgrade that result.
       if (terminalStatuses.has(action.actionStatus)) return runtimeActionResult(action);
+      /*
+        Koşu başına tek çakışma hakkı ret kaydı yazılırken koşu kilidi altında yeniden denetlenir
+        (Sol #377 7. tur): yürütme transaction'ı geri alınmışken başka bir eylem araya girip
+        kendi çakışmasını yazmış olabilir.
+      */
+      const conflictTopicId =
+        "conflictTopicId" in rejection &&
+        rejection.conflictTopicId &&
+        (await listRunConflictTopicIds(transaction, runId)).size === 0
+          ? rejection.conflictTopicId
+          : null;
       const updated = await updateRuntimeActionStatus(transaction, action.id, {
         actionStatus: rejection.status,
         validationResult: validationWithRepairMarker(action, {
@@ -1869,9 +1880,7 @@ export async function executeRuntimeAction(
         }),
         rejectionCode: rejection.code,
         rejectionReason: rejection.reason,
-        ...("conflictTopicId" in rejection && rejection.conflictTopicId
-          ? { result: { conflictTopicId: rejection.conflictTopicId } }
-          : {}),
+        ...(conflictTopicId ? { result: { conflictTopicId } } : {}),
       });
       await appendActionStatusLifeEvent(
         transaction,
