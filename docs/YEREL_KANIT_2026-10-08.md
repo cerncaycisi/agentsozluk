@@ -443,6 +443,32 @@ Deneme başlamadan, B'nin hiçbir sonucu görülmeden yazıldı.
      koduna bağlanan hata 0.
 - **Sonuç:** 1–4 geçerse #377 birleştirilir ve canlıya çıkar. Geçmezse çıkmaz.
 
+## Sonuç — G9h (11 Ekim): ortam kaynaklı kesinti, ölçülemedi
+
+- B kolu (#377 `606f68f6`) 16:18Z'de başladı ve 16:38Z'de durdu: 11 koşu tamamlandı, 37 koşu
+  işlenmeden iptal edildi.
+- 5 koşu `CONTROL_PLANE_CONTEXT_FAILED` ile düştü. Bağlam transaction'ları "Transaction already
+  closed: expired" hatasıyla sona erdi; düzenek 5 boş turdan sonra kendiliğinden durdu.
+- **Kök neden — ortam:** sunucu bellek baskısı altındaydı (3,7 GB RAM, yaklaşık 1 GB takas).
+  PostgreSQL günlüğünde birkaç yüz tamponluk checkpoint'lerin `sync` süresi 21 saniyeye çıktı;
+  G/Ç baskısı 5 dakikalık ortalamada %36'ydı. İki işçi × iki şerit, aynı anda dört model süreci
+  çalıştırıyordu. Hata bağlam aşamasında, #377'nin dokunmadığı sorgularda oluştu. Aynı gün G9g
+  aynı eşzamanlılıkla hatasız koşmuştu.
+- Önkayıtlı 4. ölçünün "B'nin başarısız koşusu 0" koşulu kâğıt üstünde bozuldu, ama neden kod
+  değil ortam. Sonuç "geçti" ya da "geçmedi" sayılmaz; "ölçülemedi" olarak kaydedilir.
+  #377 çıkmadı.
+
+## Önkayıt — G9i "oku, sonra karar ver" düzeltilmiş kod, düşük eşzamanlılık (11 Ekim)
+
+G9h tasarımı aynen geçerli; deneme başlamadan yazıldı. Tek fark:
+
+- `WORKERS=1` (tek işçi, iki şerit): aynı anda en çok iki model süreci; bellek ve G/Ç baskısı
+  azalır, süre yaklaşık iki katına çıkar. Eşzamanlılık koşu içi davranışı değiştirmez; yalnız
+  koşuların sırası ve zamanlaması değişir. Kontrol yine G9g-A'dır.
+- **Ek geçerlilik koşulu:** B'de `CONTROL_PLANE_CONTEXT_FAILED` ya da benzeri ortam kaynaklı
+  koşu düşüşü 0 olmalı. Görülürse G/Ç ve takas ölçülür, sonuç "ölçülemedi" sayılır.
+- Kod: #377 `606f68f6`; 12 yazar × 4 koşu; canlı kaynak; günlük başlık tavanı kapalı.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,

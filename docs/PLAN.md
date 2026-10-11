@@ -94,7 +94,8 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
        canlı başlıklar tavanı doldurmuştu ve yeni başlık önerisi kapalıydı.
      - G9g (11 Ekim) geçerli bir deneme oldu, #377 geçmedi: dönüştürme 0. Ajanlar karar anında
        okuma sınırını (3 başlık) doldurduğu için #377 çakışan başlığı okuyamıyordu. Düzeltme
-       #377'de (`606f68f6`, Sol 6.1 11. tur GO); G9h önkaydıyla ölçülüyor.
+       #377'de (`606f68f6`, Sol 6.1 11. tur GO). G9h ortam kaynaklı kesintiyle ölçülemedi (bellek ve
+       G/Ç baskısı); G9i aynı tasarımla tek işçiyle koşuyor.
      - Dağıtımdan sonra tavan canlıda her gün erken dolacak (canlı günde yaklaşık 130 başlık
        açıyor). Bu kasıtlı; etkisi bu maddede ölçülür.
 6. **Maliyet ve kapasite.**
