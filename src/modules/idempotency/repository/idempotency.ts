@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { retryOnDeadlock } from "@/lib/db/transaction";
 import { logger, safeErrorCode } from "@/lib/logging/logger";
 import type { JsonValue } from "@/modules/idempotency/domain/idempotency";
 
@@ -41,12 +42,20 @@ export function withIdempotencyLock<T>(
   telemetry?: { label: string },
 ): Promise<T> {
   let callbackBasi: number | undefined;
+  /*
+    Idempotent yazının bütün etkisi bu transaction'dadır; kilitlenme iptalinde
+    (40P01) hiçbir şey yazılmamış olur ve iş baştan çalıştırılabilir. Ajan
+    yürütücüsü ile moderasyon farklı sırayla kilit alabildiği için bu yol
+    kilitlenmeyi kullanıcıya hata olarak göstermez (#379).
+  */
   const calistir = () =>
-    client.$transaction(async (transaction) => {
-      if (telemetry) callbackBasi = performance.now();
-      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${scope}, 0))`;
-      return work(transaction);
-    });
+    retryOnDeadlock(() =>
+      client.$transaction(async (transaction) => {
+        if (telemetry) callbackBasi = performance.now();
+        await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${scope}, 0))`;
+        return work(transaction);
+      }),
+    );
   if (!telemetry) return calistir();
 
   const baslangic = performance.now();

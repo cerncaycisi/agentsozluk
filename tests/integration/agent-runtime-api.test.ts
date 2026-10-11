@@ -23,6 +23,11 @@ import {
   listRuntimeInterestTopicCandidates,
 } from "@/modules/agents/repository/runtime";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
+import { lockAgentLifeLedger } from "@/modules/agents/repository/life-ledger";
+import { executeIdempotently } from "@/modules/idempotency/application/idempotency";
+import type { JsonValue } from "@/modules/idempotency/domain/idempotency";
+import { lockTopicState } from "@/modules/topics/repository/topics";
+import { setAgentEntryVisibility } from "@/modules/moderation/application/actions";
 import { randomUUID } from "node:crypto";
 import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-pool";
 import { Prisma, PrismaClient } from "@prisma/client";
@@ -291,6 +296,13 @@ async function createAdmin() {
       termsAcceptedAt: new Date(),
     },
   });
+}
+
+async function databaseDeadlockCount(): Promise<bigint> {
+  const [row] = await integrationDatabase.$queryRaw<Array<{ deadlocks: bigint }>>`
+    SELECT deadlocks FROM pg_stat_database WHERE datname = current_database()
+  `;
+  return row!.deadlocks;
 }
 
 function adminActor(adminId: string): ActorContext {
@@ -2064,6 +2076,144 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseReadiness();
       await secondClient.$disconnect();
     }
+  });
+
+  it("re-runs a deadlock-aborted action instead of recording a failed fallback", async () => {
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential, "runtime:write");
+    const workerId = "deadlock-retry";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `deadlock retry ${randomUUID()}`,
+        entryBody: "İnsan entry içeriği kilitlenme sonrası yeniden denemeyi doğrular.",
+      },
+    );
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
+    const body = `Deadlock retry action ${randomUUID()}.`;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "The first attempt is aborted as a PostgreSQL deadlock victim.",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: { topicId: topic.topic.id, body },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Controlled integration run is visible platform evidence.",
+            },
+          },
+        ],
+      }),
+    );
+    await markPresentedEntryTargetRead(runId, 1);
+    let attempts = 0;
+    let fallbacks = 0;
+    const deadlock = new Prisma.PrismaClientKnownRequestError("deadlock detected", {
+      code: "P2010",
+      clientVersion: Prisma.prismaVersion.client,
+      meta: { code: "40P01" },
+    });
+    await expect(
+      executeRuntimeActionApplication(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, leaseToken: leased.run!.leaseToken, sequence: 1 },
+        {
+          requireLifeLedger: false,
+          afterPublicWriteSettingsLocked: async () => {
+            attempts += 1;
+            if (attempts === 1) throw deadlock;
+          },
+          beforeFallback: async () => {
+            fallbacks += 1;
+          },
+        },
+      ),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    expect({ attempts, fallbacks }).toEqual({ attempts: 2, fallbacks: 0 });
+    expect(await integrationDatabase.entry.count({ where: { body } })).toBe(1);
+
+    // İşçi her zaman Idempotency-Key gönderir: yürütücü dış transaction'ın içinde çalışır.
+    // Kilitlenme ret kaydına dönüşmeden dış transaction'a çıkar ve iş baştan yapılır.
+    const nestedBody = `Nested deadlock retry action ${randomUUID()}.`;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 2,
+            actionType: "CREATE_ENTRY",
+            safeReason: "The idempotent outer transaction re-runs the aborted attempt.",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: { topicId: topic.topic.id, body: nestedBody },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Controlled integration run is visible platform evidence.",
+            },
+          },
+        ],
+      }),
+    );
+    await markPresentedEntryTargetRead(runId, 2);
+    attempts = 0;
+    const nested = await executeIdempotently(
+      integrationDatabase,
+      {
+        actorId: fixture.created.agent.user.id,
+        route: `/api/v1/internal/agent-runtime/runs/${runId}/actions/execute`,
+        key: randomUUID(),
+        requestBody: { sequence: 2 },
+      },
+      async (transaction) => ({
+        status: 200,
+        body: (await executeRuntimeActionApplication(
+          transaction,
+          writePrincipal,
+          runId,
+          { workerId, leaseToken: leased.run!.leaseToken, sequence: 2 },
+          {
+            requireLifeLedger: false,
+            afterPublicWriteSettingsLocked: async () => {
+              attempts += 1;
+              if (attempts === 1) throw deadlock;
+            },
+            beforeFallback: async () => {
+              fallbacks += 1;
+            },
+          },
+        )) as unknown as JsonValue,
+      }),
+    );
+    expect(nested.body).toMatchObject({ actionStatus: "SUCCEEDED" });
+    expect({ attempts, fallbacks }).toEqual({ attempts: 2, fallbacks: 0 });
+    expect(await integrationDatabase.entry.count({ where: { body: nestedBody } })).toBe(1);
   });
 
   it("does not let the public-write kill switch return ahead of an old-snapshot action commit", async () => {
@@ -11466,6 +11616,84 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }),
     ).toBe(100);
   });
+
+  it.each(["single", "bulk"] as const)(
+    "retries a %s agent entry hide that PostgreSQL aborts in an executor-order lock cycle",
+    async (variant) => {
+      const fixture = await createFixture();
+      const generated = await createRuntimeAgentEntries(fixture, [
+        "Kilitlenmede iptal edilen moderasyon işlemi baştan denenip tamamlanmalıdır.",
+      ]);
+      const entryId = generated.content[0]!.entryId;
+      const profileId = fixture.created.agent.profile.id;
+      const { topicId } = await integrationDatabase.entry.findUniqueOrThrow({
+        where: { id: entryId },
+        select: { topicId: true },
+      });
+      const deadlocksBefore = await databaseDeadlockCount();
+      const feedback = {
+        reason: "Kilitlenme sonrası yeniden deneme bu gizlemeyi tamamlamalıdır.",
+        behaviorReasonCode: "REPETITIVE" as const,
+        editorNote: "Aynı çekirdek katkıyı yeni bir değer eklemeden tekrarlama.",
+      };
+      let moderation: Promise<unknown> | undefined;
+      // Yürütücünün sırası: önce ajan yaşam kaydı, sonra başlık. Moderasyon tersini alır.
+      await integrationDatabase.$transaction(
+        async (transaction) => {
+          await lockAgentLifeLedger(transaction, profileId);
+          moderation =
+            variant === "single"
+              ? setAgentEntryVisibility(
+                  integrationDatabase,
+                  adminActor(fixture.admin.id),
+                  entryId,
+                  true,
+                  feedback,
+                )
+              : bulkSetAgentContentVisibility(
+                  integrationDatabase,
+                  adminActor(fixture.admin.id),
+                  true,
+                  { ...feedback, entryIds: [entryId], confirmation: "HIDE_AGENT_CONTENT" },
+                );
+          moderation.catch(() => undefined);
+          // Moderasyon başlık kilidini alıp yaşam kaydı kilidinde beklemeye başlayana dek.
+          for (let attempt = 0; ; attempt += 1) {
+            const [lockWaits] = await integrationDatabase.$queryRaw<Array<{ waiting: bigint }>>`
+              SELECT count(*) AS waiting FROM pg_locks
+              WHERE locktype = 'advisory' AND NOT granted AND database = (
+                SELECT oid FROM pg_database WHERE datname = current_database()
+              )`;
+            if (lockWaits!.waiting > 0n) break;
+            if (attempt > 200) throw new Error("moderation never waited for the life lock");
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }
+          // Döngüyü kapatır; önce bekleyen moderasyon kurban seçilir.
+          await lockTopicState(transaction, topicId);
+        },
+        { timeout: 15_000 },
+      );
+      await expect(moderation).resolves.toBeDefined();
+      const deadlocksAfter = await databaseDeadlockCount();
+      expect(deadlocksAfter).toBeGreaterThan(deadlocksBefore);
+      expect(
+        await integrationDatabase.entry.findUniqueOrThrow({
+          where: { id: entryId },
+          select: { status: true },
+        }),
+      ).toEqual({ status: "HIDDEN" });
+      expect(
+        await integrationDatabase.moderationAction.count({
+          where: { actionType: "ENTRY_HIDDEN", targetId: entryId },
+        }),
+      ).toBe(1);
+      expect(
+        await integrationDatabase.agentRuntimeEvent.count({
+          where: { agentProfileId: profileId, eventType: "CONTENT_MODERATED" },
+        }),
+      ).toBe(1);
+    },
+  );
 
   it("bulk hides and restores only provenance-backed agent entries while preserving counters", async () => {
     const fixture = await createFixture();

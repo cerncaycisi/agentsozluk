@@ -1,4 +1,4 @@
-import { inTransaction } from "@/lib/db/transaction";
+import { inDeadlockRetryingTransaction, inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
@@ -53,10 +53,7 @@ import {
   closeOpenTrashCaseForEntry,
   openModerationHiddenTrashCase,
 } from "@/modules/moderation/application/trash-appeal";
-import {
-  appendAgentBehaviorFeedback,
-  lockAgentBehaviorFeedbackLedger,
-} from "@/modules/moderation/application/agent-behavior-feedback";
+import { appendAgentBehaviorFeedback } from "@/modules/moderation/application/agent-behavior-feedback";
 
 function agentBehaviorMetadata(input: ModerationReasonInput) {
   return input.behaviorReasonCode && input.editorNote
@@ -203,7 +200,7 @@ async function setEntryVisibilityWithAuthorization(
   input: ModerationReasonInput,
   authorization: "CONSTITUTIONAL" | "AGENT_CONTENT_ADMIN",
 ) {
-  return inTransaction(client, async (transaction) => {
+  return inDeadlockRetryingTransaction(client, async (transaction) => {
     let relation: { reportId?: string; decisionId?: string } = {};
     if (authorization === "AGENT_CONTENT_ADMIN") {
       requireModerator(await findModerationActor(transaction, actor.actorId), actor, {
@@ -219,7 +216,6 @@ async function setEntryVisibilityWithAuthorization(
     }
     const initialEntry = await findEntryForModeration(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
-    await lockAgentBehaviorFeedbackLedger(transaction, { targetType: "ENTRY", targetId: entryId });
     await lockTopicState(transaction, initialEntry.topicId);
     await lockEntryState(transaction, entryId);
     const entry = await findEntryForModeration(transaction, entryId);
@@ -320,14 +316,13 @@ export async function setTopicVisibility(
   hidden: boolean,
   input: ModerationReasonInput,
 ) {
-  return inTransaction(client, async (transaction) => {
+  return inDeadlockRetryingTransaction(client, async (transaction) => {
     const relation = await requireContentActionPermission(transaction, actor, {
       ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
       targetType: "TOPIC",
       targetId: topicId,
       actionType: hidden ? "TOPIC_HIDDEN" : "TOPIC_RESTORED",
     });
-    await lockAgentBehaviorFeedbackLedger(transaction, { targetType: "TOPIC", targetId: topicId });
     await lockTopicState(transaction, topicId);
     const topic = await findTopicForModeration(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
@@ -368,14 +363,13 @@ export async function renameTopic(
 ) {
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
   const normalizedTitle = normalizeTopicTitle(title);
-  return inTransaction(client, async (transaction) => {
+  return inDeadlockRetryingTransaction(client, async (transaction) => {
     const relation = await requireContentActionPermission(transaction, actor, {
       ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
       targetType: "TOPIC",
       targetId: topicId,
       actionType: "TOPIC_RENAMED",
     });
-    await lockAgentBehaviorFeedbackLedger(transaction, { targetType: "TOPIC", targetId: topicId });
     await lockTopicState(transaction, topicId);
     await lockModerationKey(transaction, normalizedTitle);
     const topic = await findTopicForModeration(transaction, topicId);

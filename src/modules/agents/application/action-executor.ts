@@ -2,7 +2,8 @@ import {
   agentTopicCreationCapReached,
   istanbulDayStart,
 } from "@/modules/agents/domain/topic-creation-cap";
-import { inTransaction } from "@/lib/db/transaction";
+import { isDeadlockError } from "@/lib/db/errors";
+import { inDeadlockRetryingTransaction, inTransaction } from "@/lib/db/transaction";
 import type {
   DatabaseExecutor,
   InputJsonObject,
@@ -959,7 +960,9 @@ export async function executeRuntimeAction(
 ) {
   let started = false;
   try {
-    return await inTransaction(client, async (transaction) => {
+    return await inDeadlockRetryingTransaction(client, async (transaction) => {
+      // Kilitlenme sonrası yeniden denemede bayrak yalnız bu denemeyi yansıtır.
+      started = false;
       await lockRuntimeAgent(transaction, principal.agentProfileId);
       await lockRuntimeRunForLeaseMutation(transaction, runId);
       const initial = await findRuntimeActionForExecution(transaction, {
@@ -1733,6 +1736,9 @@ export async function executeRuntimeAction(
     });
   } catch (error) {
     if (!started) throw error;
+    // Kilitlenme iptalinde transaction hiçbir şey yazmadı; ret kaydı yerine en dıştaki
+    // transaction işi baştan dener (iç içe çağrıda transaction zaten iptal edilmiştir).
+    if (isDeadlockError(error)) throw error;
     await dependencies.beforeFallback?.();
     const rejection =
       error instanceof AppError || error instanceof RuntimeActionRejectionError
