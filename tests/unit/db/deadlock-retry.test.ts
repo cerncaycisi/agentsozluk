@@ -49,9 +49,10 @@ describe("lock conflict retry", () => {
 
     const clock = 0;
     const keepsFailing = vi.fn().mockRejectedValue(knownError("P2034"));
-    await expect(retryOnLockConflict(keepsFailing, () => clock)).rejects.toMatchObject({
-      code: "P2034",
-    });
+    // Tükenen kilitlenme de kullanıcıya 500 değil, yeniden denenebilir 409 olarak çıkar.
+    await expect(retryOnLockConflict(keepsFailing, () => clock)).rejects.toBeInstanceOf(
+      TransientLockConflictError,
+    );
     expect(keepsFailing).toHaveBeenCalledTimes(LOCK_CONFLICT_RETRY_ATTEMPTS);
   });
 

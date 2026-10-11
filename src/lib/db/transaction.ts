@@ -1,5 +1,5 @@
 import { performance } from "node:perf_hooks";
-import { isRetryableLockConflict } from "@/lib/db/errors";
+import { isRetryableLockConflict, TransientLockConflictError } from "@/lib/db/errors";
 import type { DatabaseClient, DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 
 export interface TransactionOptions {
@@ -16,6 +16,10 @@ export const LOCK_CONFLICT_RETRY_ATTEMPTS = 5;
 /** Yeni deneme ilk denemenin başından en geç bu kadar sonra başlar. */
 export const LOCK_CONFLICT_RETRY_BUDGET_MS = 4_000;
 
+function asLockConflict(error: unknown): unknown {
+  return error instanceof TransientLockConflictError ? error : new TransientLockConflictError();
+}
+
 export async function retryOnLockConflict<T>(
   run: () => Promise<T>,
   now: () => number = () => performance.now(),
@@ -25,11 +29,13 @@ export async function retryOnLockConflict<T>(
     try {
       return await run();
     } catch (error) {
-      if (attempt >= LOCK_CONFLICT_RETRY_ATTEMPTS || !isRetryableLockConflict(error)) throw error;
+      if (!isRetryableLockConflict(error)) throw error;
+      // Tükenen kilit çakışması kullanıcıya 500 değil, yeniden denenebilir 409 olarak görünür.
+      if (attempt >= LOCK_CONFLICT_RETRY_ATTEMPTS) throw asLockConflict(error);
       // Ajanın kısa transaction'ı bitsin; aynı anda yeniden girilmesin diye rastgele.
       await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 150 * attempt));
       // Sınır beklemeden sonra denetlenir; yeni deneme hiçbir zaman sınırdan sonra başlamaz.
-      if (now() >= retryUntil) throw error;
+      if (now() >= retryUntil) throw asLockConflict(error);
     }
   }
 }

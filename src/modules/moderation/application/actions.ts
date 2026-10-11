@@ -1,3 +1,4 @@
+import { TransientLockConflictError } from "@/lib/db/errors";
 import { inLockConflictRetryingTransaction, inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
@@ -29,7 +30,7 @@ import {
   findModerationTargetUser,
   findTopicForModeration,
   findTopicIdentityConflict,
-  lockModerationKey,
+  tryLockModerationKey,
   mergeTopicRecords,
   moveEntryRecord,
   renameTopicRecord,
@@ -371,7 +372,8 @@ export async function renameTopic(
       actionType: "TOPIC_RENAMED",
     });
     await lockTopicState(transaction, topicId);
-    await lockModerationKey(transaction, normalizedTitle);
+    if (!(await tryLockModerationKey(transaction, normalizedTitle)))
+      throw new TransientLockConflictError();
     const topic = await findTopicForModeration(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
     if (await findTopicIdentityConflict(transaction, topicId, normalizedTitle))

@@ -31,6 +31,60 @@ import { verifiedSourcePool } from "@/modules/agents/personas/verified-source-po
 import { Prisma, PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as LifeLedgerRepository from "@/modules/agents/repository/life-ledger";
+import type * as BehaviorFeedbackRepository from "@/modules/moderation/repository/agent-behavior-feedback";
+import type * as ModerationActionsRepository from "@/modules/moderation/repository/actions";
+
+/*
+  Moderasyonun ajan kilitlerini beklemeden denediği yardımcılar sayılır: yarış testleri
+  zamanlamaya değil, moderasyonun gerçekten geri çekildiği ana bağlanır (#379).
+*/
+const lockBackoffs = vi.hoisted(() => ({ count: 0 }));
+vi.mock("@/modules/agents/repository/life-ledger", async (importOriginal) => {
+  const original = await importOriginal<typeof LifeLedgerRepository>();
+  return {
+    ...original,
+    tryLockAgentLifeLedger: async (...args: Parameters<typeof original.tryLockAgentLifeLedger>) => {
+      const locked = await original.tryLockAgentLifeLedger(...args);
+      if (!locked) lockBackoffs.count += 1;
+      return locked;
+    },
+  };
+});
+vi.mock("@/modules/moderation/repository/agent-behavior-feedback", async (importOriginal) => {
+  const original = await importOriginal<typeof BehaviorFeedbackRepository>();
+  return {
+    ...original,
+    lockAgentFeedbackReferencesNowait: async (
+      ...args: Parameters<typeof original.lockAgentFeedbackReferencesNowait>
+    ) => {
+      try {
+        return await original.lockAgentFeedbackReferencesNowait(...args);
+      } catch (error) {
+        lockBackoffs.count += 1;
+        throw error;
+      }
+    },
+  };
+});
+vi.mock("@/modules/moderation/repository/actions", async (importOriginal) => {
+  const original = await importOriginal<typeof ModerationActionsRepository>();
+  return {
+    ...original,
+    tryLockModerationKey: async (...args: Parameters<typeof original.tryLockModerationKey>) => {
+      const locked = await original.tryLockModerationKey(...args);
+      if (!locked) lockBackoffs.count += 1;
+      return locked;
+    },
+  };
+});
+
+async function untilModerationBacksOff(before: number) {
+  for (let attempt = 0; lockBackoffs.count <= before; attempt += 1) {
+    if (attempt > 500) throw new Error("moderation never backed off from the agent lock");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
 import { POST as completeRoute } from "@/app/api/v1/internal/agent-runtime/runs/[runId]/complete/route";
 import { POST as failRoute } from "@/app/api/v1/internal/agent-runtime/runs/[runId]/fail/route";
 import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
@@ -104,6 +158,7 @@ import {
 } from "@/modules/moderation";
 import { searchAll } from "@/modules/search";
 import { createTopicWithFirstEntry } from "@/modules/topics";
+import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { getPublicProfile } from "@/modules/users";
 import {
   closeIntegrationDatabase,
@@ -11481,6 +11536,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ["single", "life"],
     ["bulk", "life"],
     ["single", "run"],
+    ["bulk", "run"],
+    ["single", "action"],
+    ["single", "profile"],
   ] as const)(
     "lets a %s agent entry hide back off from the executor's %s lock instead of deadlocking",
     async (variant, heldLock) => {
@@ -11494,6 +11552,10 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { id: entryId },
         select: { topicId: true },
       });
+      const { actionId } = await integrationDatabase.agentContentRecord.findUniqueOrThrow({
+        where: { entryId },
+        select: { actionId: true },
+      });
       const deadlocksBefore = await databaseDeadlockCount();
       const feedback = {
         reason: "Ajan kilidi boşalınca bu gizleme tamamlanmalıdır.",
@@ -11502,17 +11564,26 @@ describe("internal agent runtime API with PostgreSQL", () => {
       };
       let moderation: Promise<unknown> | undefined;
       /*
-        Yürütücünün sırası: önce yaşam kaydı (ya da run satırı), sonra başlık. Moderasyon
-        başlığı alıp ajan kilidini BEKLESEYDİ bu transaction başlıkta beklerken döngü kurulur
-        ve PostgreSQL birini iptal ederdi. Moderasyon beklemeden vazgeçtiği için ikisi de biter.
+        Yürütücünün sırası: önce ajan kilidi (yaşam kaydı, run/action satırı ya da yansımanın
+        profil satırı), sonra başlık. Moderasyon başlığı tutarken ajan kilidini BEKLESEYDİ
+        bariyer hiç geçilmez, bu transaction başlıkta beklerken döngü kurulurdu.
       */
       await integrationDatabase.$transaction(
         async (transaction) => {
           if (heldLock === "life") await lockAgentLifeLedger(transaction, profileId);
-          else
+          if (heldLock === "run")
             await transaction.$queryRaw`
               SELECT 1 FROM "agent_runs" WHERE "id" = ${generated.runId}::uuid FOR UPDATE
             `;
+          if (heldLock === "action")
+            await transaction.$queryRaw`
+              SELECT 1 FROM "agent_actions" WHERE "id" = ${actionId}::uuid FOR UPDATE
+            `;
+          if (heldLock === "profile")
+            await transaction.$queryRaw`
+              SELECT 1 FROM "agent_profiles" WHERE "id" = ${profileId}::uuid FOR UPDATE
+            `;
+          const backoffsBefore = lockBackoffs.count;
           moderation =
             variant === "single"
               ? setAgentEntryVisibility(
@@ -11529,8 +11600,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
                   { ...feedback, entryIds: [entryId], confirmation: "HIDE_AGENT_CONTENT" },
                 );
           moderation.catch(() => undefined);
-          // Moderasyon en az bir kez ajan kilidine çarpıp geri çekilsin.
-          await new Promise((resolve) => setTimeout(resolve, 300));
+          await untilModerationBacksOff(backoffsBefore);
           await lockTopicState(transaction, topicId);
         },
         { timeout: 15_000 },
@@ -11555,6 +11625,52 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ).toBe(1);
     },
   );
+
+  it("lets a topic rename back off from a title lock the executor holds", async () => {
+    const fixture = await createFixture();
+    // Moderatör kendi başlığını adlandıramaz; başlığı başka bir yönetici açar.
+    const author = await createAdmin();
+    const { topic } = await createTopicWithFirstEntry(integrationDatabase, adminActor(author.id), {
+      title: `kilit sırası eski ad ${randomUUID()}`,
+      entryBody: "Yeniden adlandırma başlık adı kilidini beklemeden dener.",
+    });
+    const topicId = topic.id;
+    await integrationDatabase.userModerationCapability.create({
+      data: {
+        userId: fixture.admin.id,
+        grantedById: fixture.admin.id,
+        capability: "FORMAT_MODERATOR",
+      },
+    });
+    const title = `kilit sırası yeni ad ${randomUUID()}`;
+    const deadlocksBefore = await databaseDeadlockCount();
+    let rename: Promise<unknown> | undefined;
+    // Ajanın kanonik çözümlemesi: önce başlık adı kilidi, sonra (mevcut başlığa çözülürse) başlık.
+    await integrationDatabase.$transaction(
+      async (transaction) => {
+        await transaction.$executeRaw`
+          SELECT pg_advisory_xact_lock(hashtextextended(${normalizeTopicTitle(title)}, 0))
+        `;
+        const backoffsBefore = lockBackoffs.count;
+        rename = renameTopic(integrationDatabase, adminActor(fixture.admin.id), topicId, {
+          title,
+          reason: "Başlık adı kilidi boşalınca yeniden adlandırma tamamlanmalıdır.",
+        });
+        rename.catch(() => undefined);
+        await untilModerationBacksOff(backoffsBefore);
+        await lockTopicState(transaction, topicId);
+      },
+      { timeout: 15_000 },
+    );
+    await expect(rename).resolves.toBeDefined();
+    expect(await databaseDeadlockCount()).toBe(deadlocksBefore);
+    expect(
+      await integrationDatabase.topic.findUniqueOrThrow({
+        where: { id: topicId },
+        select: { title: true },
+      }),
+    ).toEqual({ title });
+  });
 
   it("answers 409 without writing when the executor keeps the agent lock past the retry budget", async () => {
     const fixture = await createFixture();
