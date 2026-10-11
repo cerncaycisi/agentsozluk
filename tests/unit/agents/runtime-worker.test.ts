@@ -5120,10 +5120,26 @@ describe("runtime novelty gate", () => {
       expect(events).toContain("READ_THEN_DECIDE_NOVELTY_DROPPED");
     });
 
-    it("does not try when the run already read the maximum number of topics", async () => {
+    it("still reads the hit topic when the run already used the normal read limit (G9g)", async () => {
       const { worker, plane, conflictId, events } = setup({
         noveltyVerdict: "YAYIMLA",
         preRead: 3,
+      });
+
+      await expect(worker.runOnce()).resolves.toBe(1);
+      expect(
+        vi
+          .mocked(plane.context)
+          .mock.calls.some((call) => (call[5] as string[] | undefined)?.includes(conflictId)),
+      ).toBe(true);
+      expect(vi.mocked(plane.recordActions)).toHaveBeenCalledTimes(2);
+      expect(events).toContain("READ_THEN_DECIDE_WRITTEN");
+    });
+
+    it("does not try once the run has used the extra conflict read as well", async () => {
+      const { worker, plane, conflictId, events } = setup({
+        noveltyVerdict: "YAYIMLA",
+        preRead: 4,
       });
 
       await expect(worker.runOnce()).resolves.toBe(1);

@@ -8687,7 +8687,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       provenance: Record<string, unknown>,
       ownEntryId: string | null,
     ) => Array<Record<string, unknown>> = () => [],
-    options: { ownEntryInPopulated?: boolean } = {},
+    options: { ownEntryInPopulated?: boolean; extraEarlierReads?: number } = {},
   ) {
     const fixture = await createFixture();
     const source = await integrationDatabase.agentSource.create({
@@ -8743,8 +8743,17 @@ describe("internal agent runtime API with PostgreSQL", () => {
       where: { id: runId },
       data: { allowSourceReading: true },
     });
+    const extraEarlier = [];
+    for (let index = 0; index < (options.extraEarlierReads ?? 0); index += 1)
+      extraEarlier.push(
+        await createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
+          title: `Önceden okunan ek başlık ${index}`,
+          entryBody: `Önceden okunan ek başlığın ilk entry'si, ayrı bir tanım metni ${index}.`,
+        }),
+      );
     const first = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
       earlier.topic.id,
+      ...extraEarlier.map(({ topic }) => topic.id),
     ]);
     expect(first.perception.sourceItems).toEqual(
       expect.arrayContaining([expect.objectContaining({ itemId: item.id })]),
@@ -8816,6 +8825,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       readPrincipal,
       populated,
       earlier,
+      extraEarlier,
       provenance,
       body,
       rejected,
@@ -8900,6 +8910,72 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(
       await integrationDatabase.entry.count({ where: { topicId: populated.id, status: "ACTIVE" } }),
     ).toBe(2);
+  });
+
+  it("lets the hit topic be read once beyond the normal read limit and nothing else (G9g)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      () => [],
+      { extraEarlierReads: 2 },
+    );
+    const { fixture, runId, workerId, writePrincipal, readPrincipal, populated, earlier } = setup;
+    const alreadyRead = [earlier.topic.id, ...setup.extraEarlier.map(({ topic }) => topic.id)];
+    expect(alreadyRead).toHaveLength(3);
+    expect(setup.rejected).toMatchObject({
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: { conflictTopicId: populated.id },
+    });
+    const late = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "Sonradan açılan menü dışı başlık",
+        entryBody: "Sonradan açılan ve okunmaması gereken başlığın ilk entry metni burada.",
+      },
+    );
+    const reread = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      ...alreadyRead,
+      populated.id,
+      late.topic.id,
+    ]);
+    const readIds = (
+      (reread.perception as { readTopics?: Array<{ id: string }> }).readTopics ?? []
+    ).map(({ id }) => id);
+    expect(readIds).toEqual([...alreadyRead, populated.id]);
+    // Ek hak tek sefer: dördüncü okumadan sonra hiçbir başlık eklenmez.
+    const again = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      ...alreadyRead,
+      populated.id,
+      late.topic.id,
+    ]);
+    expect(
+      ((again.perception as { readTopics?: Array<{ id: string }> }).readTopics ?? []).map(
+        ({ id }) => id,
+      ),
+    ).toEqual([...alreadyRead, populated.id]);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 2,
+            repairOfSequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Okunan başlığa aynı katkı entry olarak yazılıyor.",
+            targetType: "TOPIC",
+            targetId: populated.id,
+            input: { topicId: populated.id, body: setup.body },
+            provenance: setup.provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 2 }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
   });
 
   it("rejects an unmarked entry recorded before the conflict once the topic is readable (Astra #377 2. tur)", async () => {

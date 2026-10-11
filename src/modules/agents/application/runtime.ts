@@ -1969,9 +1969,11 @@ export function getRuntimeRunContext(
       sunucu çarpılan başlığı ret kaydına yazar. Aynı koşu yalnız bu başlıkları menü dışından
       okuyabilir; kimlik worker'ın beyanından değil sunucunun kendi kaydından gelir.
     */
-    const conflictTopicIds = readTopicIds.some((id) => !browseMenu.has(id))
-      ? await listRunConflictTopicIds(transaction, runId)
-      : new Set<string>();
+    // Menüde olsa da olmasa da çakışma başlığı ek okuma hakkı taşır (G9g, 11 Ekim).
+    const conflictTopicIds =
+      readTopicIds.length > 0
+        ? await listRunConflictTopicIds(transaction, runId)
+        : new Set<string>();
     const allowedReadTopicIds = readTopicIds.filter(
       (id) => browseMenu.has(id) || conflictTopicIds.has(id),
     );
@@ -2072,9 +2074,19 @@ export function getRuntimeRunContext(
     if (appendConflictRead) {
       const existingRead = existingReadTopics;
       const existingIds = new Set(existingRead.map(({ id }) => id));
-      const newIds = allowedReadTopicIds
-        .filter((id) => !existingIds.has(id))
+      const unreadIds = allowedReadTopicIds.filter((id) => !existingIds.has(id));
+      const menuIds = unreadIds
+        .filter((id) => !conflictTopicIds.has(id))
         .slice(0, Math.max(0, runtimeReadTopicLimit - existingRead.length));
+      /*
+        Çakışan başlık okuma sınırının üstünde de bir kez okunabilir (G9g, 11 Ekim): karar
+        anında ajan neredeyse her koşuda 3 başlık okuyor; sınır doluyken "oku, sonra karar ver"
+        çakışmaların %92'sinde hiç devreye giremiyordu. Toplam okuma sınır + 1'i geçmez.
+      */
+      const conflictIds = unreadIds
+        .filter((id) => conflictTopicIds.has(id))
+        .slice(0, Math.max(0, runtimeReadTopicLimit + 1 - existingRead.length - menuIds.length));
+      const newIds = [...menuIds, ...conflictIds];
       if (newIds.length > 0) {
         const added = await getRuntimeReadTopics(transaction, newIds);
         const existingFullValue = (perception as Record<string, unknown>)[

@@ -2294,10 +2294,11 @@ export class AgentRuntimeWorker {
             conflictTopicId,
             nextSequence,
           );
+          // Sunucu çakışan başlığa okuma sınırının üstünde bir kez yer açar (G9g, 11 Ekim).
           if (
             !converted ||
             readIds.includes(conflictTopicId) ||
-            readIds.length >= runtimeReadTopicLimit
+            readIds.length > runtimeReadTopicLimit
           ) {
             this.#options.onSafeEvent?.({ level: "info", code: "READ_THEN_DECIDE_SKIPPED", runId });
           } else {
