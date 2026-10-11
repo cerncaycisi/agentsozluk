@@ -22,7 +22,7 @@ import {
   getRuntimeReadTopics,
   listRuntimeInterestTopicCandidates,
 } from "@/modules/agents/repository/runtime";
-import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
+import { appendRuntimeEvent, lockAgentProfile } from "@/modules/agents/repository/control-plane";
 import { lockAgentLifeLedger } from "@/modules/agents/repository/life-ledger";
 import { lockTopicState } from "@/modules/topics/repository/topics";
 import { setAgentEntryVisibility } from "@/modules/moderation/application/actions";
@@ -34,6 +34,8 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as LifeLedgerRepository from "@/modules/agents/repository/life-ledger";
 import type * as BehaviorFeedbackRepository from "@/modules/moderation/repository/agent-behavior-feedback";
 import type * as ModerationActionsRepository from "@/modules/moderation/repository/actions";
+import type * as ControlPlaneRepository from "@/modules/agents/repository/control-plane";
+import { TransientLockConflictError } from "@/lib/db/errors";
 
 /*
   Moderasyonun ajan kilitlerini beklemeden denediği yardımcılar sayılır: yarış testleri
@@ -75,6 +77,23 @@ vi.mock("@/modules/moderation/repository/actions", async (importOriginal) => {
       const locked = await original.tryLockModerationKey(...args);
       if (!locked) lockBackoffs.count += 1;
       return locked;
+    },
+  };
+});
+
+vi.mock("@/modules/agents/repository/control-plane", async (importOriginal) => {
+  const original = await importOriginal<typeof ControlPlaneRepository>();
+  return {
+    ...original,
+    rotateAgentCredentialRecords: async (
+      ...args: Parameters<typeof original.rotateAgentCredentialRecords>
+    ) => {
+      try {
+        return await original.rotateAgentCredentialRecords(...args);
+      } catch (error) {
+        if (error instanceof TransientLockConflictError) lockBackoffs.count += 1;
+        throw error;
+      }
     },
   };
 });
@@ -1115,6 +1134,45 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { action: "agent.run.leased", entityId: fixture.runs[0]!.id },
       }),
     ).toBe(0);
+  });
+
+  it("lets a credential rotation back off from a runtime request's credential row", async () => {
+    const fixture = await createFixture();
+    const profileId = fixture.created.agent.profile.id;
+    const deadlocksBefore = await databaseDeadlockCount();
+    let rotation: Promise<unknown> | undefined;
+    /*
+      Çalışma zamanı isteğinin sırası: kimlik doğrulama kimlik satırını günceller, sonra
+      yürütücü profil kilidini bekler. Döndürme profil kilidini tutarken kimlik satırını
+      BEKLESEYDİ bariyer hiç geçilmez, bu transaction profilde beklerken döngü kurulurdu.
+    */
+    await integrationDatabase.$transaction(
+      async (transaction) => {
+        await transaction.$queryRaw`
+          SELECT 1 FROM "agent_credentials"
+          WHERE "agentProfileId" = ${profileId}::uuid AND "revokedAt" IS NULL
+          FOR UPDATE
+        `;
+        const backoffsBefore = lockBackoffs.count;
+        rotation = rotateAgentCredential(
+          integrationDatabase,
+          adminActor(fixture.admin.id),
+          profileId,
+          runtimeCredentialRotationSchema.parse({
+            reason: "Çalışma zamanı isteği bitince döndürme tamamlanmalıdır.",
+          }),
+        );
+        rotation.catch(() => undefined);
+        await untilModerationBacksOff(backoffsBefore);
+        await lockAgentProfile(transaction, profileId);
+      },
+      { timeout: 15_000 },
+    );
+    await expect(rotation).resolves.toMatchObject({ credential: expect.any(String) });
+    expect(await databaseDeadlockCount()).toBe(deadlocksBefore);
+    await expect(runtimePrincipal(fixture.credential)).rejects.toMatchObject({
+      code: "AUTH_REQUIRED",
+    });
   });
 
   it("rotates credentials atomically and invalidates the previously issued token", async () => {
