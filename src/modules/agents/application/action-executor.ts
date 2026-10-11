@@ -55,6 +55,7 @@ import {
   findRuntimeRelationshipTarget,
   getRuntimeGlobalSettings,
   countAgentTopicsCreatedSince,
+  findRunActionConflictTopicId,
   listRunConflictTopicIds,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
@@ -1594,10 +1595,18 @@ export async function executeRuntimeAction(
       */
       const conflictWriteTopicId =
         parsed.data.actionType === "CREATE_ENTRY" ? resolvedTarget.topicId : null;
+      /*
+        Muafiyet yalnız gerçek dönüşüme (Sol #377 8. tur P1): onarım, bu başlığa çakışmayı
+        kaydeden eylemin onarımı olmalı. Başka bir eylemin genel içerik onarımı çakışan başlığa
+        gövde/provenance eşitliği aranmadan yazamaz.
+      */
+      const repairOf = repairValidationMarker(actionRecord.validationResult).repairOfSequence;
       if (
         conflictWriteTopicId &&
-        repairValidationMarker(actionRecord.validationResult).repairOfSequence === undefined &&
-        (await listRunConflictTopicIds(transaction, runId)).has(conflictWriteTopicId)
+        (await listRunConflictTopicIds(transaction, runId)).has(conflictWriteTopicId) &&
+        (repairOf === undefined ||
+          (await findRunActionConflictTopicId(transaction, runId, repairOf)) !==
+            conflictWriteTopicId)
       )
         return rejectAction(transaction, principal, actionRecord, {
           code: "TOPIC_CONFLICT_REQUIRES_CONVERSION",

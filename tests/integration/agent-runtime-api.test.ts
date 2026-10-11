@@ -9028,6 +9028,67 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(withConflict).toEqual([{ sequence: 2 }]);
   });
 
+  it("does not let another action's content repair write into the conflict topic (Sol #377 8. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (populatedId, _body, provenance) => [
+        {
+          sequence: 2,
+          actionType: "CREATE_ENTRY",
+          safeReason: "Kavrama başka bir katkı.",
+          targetType: "TOPIC",
+          targetId: populatedId,
+          input: {
+            topicId: populatedId,
+            body: "Bu entry kavramın gündelik kullanımına dair ayrı bir gözlem ekliyor ve uzun.",
+          },
+          provenance,
+        },
+      ],
+    );
+    const { runId, workerId, writePrincipal, readPrincipal, populated, earlier } = setup;
+    expect(setup.rejected).toMatchObject({ result: { conflictTopicId: populated.id } });
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      earlier.topic.id,
+      populated.id,
+    ]);
+    const second = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 2,
+    });
+    expect(second).toMatchObject({ actionStatus: "REJECTED" });
+    expect(second.rejectionCode).not.toBe("TOPIC_CONFLICT_REQUIRES_CONVERSION");
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 3,
+            repairOfSequence: 2,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Kendinden söz etmeyen onarım.",
+            targetType: "TOPIC",
+            targetId: populated.id,
+            input: {
+              topicId: populated.id,
+              body: "Kavramın gündelik kullanımına dair ayrı ve kendi başına okunabilen bir gözlem.",
+            },
+            provenance: setup.provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 3 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
+  });
+
   it("rejects an unmarked entry recorded before the conflict once the topic is readable (Astra #377 2. tur)", async () => {
     const setup = await readThenDecideSetup(
       "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",

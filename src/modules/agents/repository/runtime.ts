@@ -2870,6 +2870,23 @@ export async function listRunConflictTopicIds(
   );
 }
 
+/** Koşunun bu sıradaki eylemi çakışma kaydettiyse çakışan başlık; yoksa null. */
+export async function findRunActionConflictTopicId(
+  transaction: Prisma.TransactionClient,
+  runId: string,
+  sequence: number,
+): Promise<string | null> {
+  const action = await transaction.agentAction.findFirst({
+    where: { runId, sequence, actionStatus: "REJECTED", rejectionCode: "TOPIC_EXISTS_UNREAD" },
+    select: { result: true },
+  });
+  const value =
+    action?.result && typeof action.result === "object" && !Array.isArray(action.result)
+      ? (action.result as Record<string, unknown>).conflictTopicId
+      : undefined;
+  return typeof value === "string" ? value : null;
+}
+
 export async function getRuntimeReadTopics(
   transaction: Prisma.TransactionClient,
   topicIds: readonly string[],
