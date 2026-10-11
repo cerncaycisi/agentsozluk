@@ -37,23 +37,42 @@ describe("deadlock retry", () => {
     expect(keepsFailing).toHaveBeenCalledTimes(DEADLOCK_RETRY_ATTEMPTS);
   });
 
-  it("starts no new attempt once the time budget is spent", async () => {
+  it("starts no new attempt after the retry limit, checked after the backoff", async () => {
     const deadlock = knownError("P2034");
     let clock = 0;
+    const now = () => clock;
     const slow = vi.fn(async () => {
       clock += DEADLOCK_RETRY_BUDGET_MS;
       throw deadlock;
     });
-    await expect(retryOnDeadlock(slow, () => clock)).rejects.toBe(deadlock);
+    await expect(retryOnDeadlock(slow, { now })).rejects.toBe(deadlock);
     expect(slow).toHaveBeenCalledTimes(1);
 
+    // Sınırın hemen altında biten deneme: bekleme sınırı aşırınca yeni deneme başlamaz.
     clock = 0;
-    const fastThenSlow = vi.fn(async () => {
-      clock += DEADLOCK_RETRY_BUDGET_MS / 2;
+    const almost = vi.fn(async () => {
+      clock += DEADLOCK_RETRY_BUDGET_MS - 1;
       throw deadlock;
     });
-    await expect(retryOnDeadlock(fastThenSlow, () => clock)).rejects.toBe(deadlock);
-    expect(fastThenSlow).toHaveBeenCalledTimes(2);
+    vi.useFakeTimers();
+    try {
+      const base = Date.now();
+      const pending = retryOnDeadlock(almost, { now: () => clock + Date.now() - base });
+      const outcome = expect(pending).rejects.toBe(deadlock);
+      await vi.advanceTimersByTimeAsync(200);
+      await outcome;
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(almost).toHaveBeenCalledTimes(1);
+
+    clock = 0;
+    const fast = vi.fn(async () => {
+      clock += 100;
+      throw deadlock;
+    });
+    await expect(retryOnDeadlock(fast, { now, retryUntil: 150 })).rejects.toBe(deadlock);
+    expect(fast).toHaveBeenCalledTimes(2);
   });
 
   it("does not re-run other failures", async () => {

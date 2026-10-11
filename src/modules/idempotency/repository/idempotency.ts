@@ -34,12 +34,19 @@ export interface StoredIdempotencyResponse {
   Callback hiç başlamadıysa `acquireMs` ve `activeMs` null'dır.
 */
 const PRISMA_VARSAYILAN_TIMEOUT_MS = 5_000;
+const PRISMA_VARSAYILAN_MAX_WAIT_MS = 2_000;
 
 export function withIdempotencyLock<T>(
   client: PrismaClient,
   scope: string,
   work: (transaction: Prisma.TransactionClient) => Promise<T>,
   telemetry?: { label: string },
+  /**
+    İsteğin yanıtlanması gereken son an (`performance.now()` ölçeği). Kilitlenme
+    sonrası yeni deneme ancak en kötü süreli bir deneme (bağlantı bekleme + Prisma
+    transaction sınırı) bu anı aşmadan bitebilecekse başlar (Sol #379).
+  */
+  requestDeadline?: number,
 ): Promise<T> {
   /*
     Idempotent yazının bütün etkisi bu transaction'dadır; kilitlenme iptalinde
@@ -96,7 +103,15 @@ export function withIdempotencyLock<T>(
       }
     })();
   };
-  return retryOnDeadlock(tekDeneme);
+  return retryOnDeadlock(
+    tekDeneme,
+    requestDeadline === undefined
+      ? {}
+      : {
+          retryUntil:
+            requestDeadline - PRISMA_VARSAYILAN_MAX_WAIT_MS - PRISMA_VARSAYILAN_TIMEOUT_MS,
+        },
+  );
 }
 
 export async function findIdempotencyRecord(

@@ -1,3 +1,4 @@
+import { performance } from "node:perf_hooks";
 import { isDeadlockError } from "@/lib/db/errors";
 import type { DatabaseClient, DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 
@@ -11,31 +12,33 @@ export interface TransactionOptions {
 }
 
 export const DEADLOCK_RETRY_ATTEMPTS = 3;
-/*
-  Yeni deneme yalnız ilk denemenin başından bu süre geçmeden başlar. İşçi
-  isteği 15 sn ile sınırlı; idempotent yolda son deneme en çok 2 sn bağlantı
-  bekleyip 5 sn sürebildiği için en kötü toplam ~11,3 sn kalır (Astra #379).
-  Süre aşılırsa kilitlenme hatası olduğu gibi yukarı çıkar.
-*/
+/** Çağıran bir sınır vermezse yeni deneme ilk denemenin başından en geç bu kadar sonra başlar. */
 export const DEADLOCK_RETRY_BUDGET_MS = 4_000;
+
+export interface DeadlockRetryOptions {
+  /**
+    `performance.now()` ölçeğinde an: bundan sonra yeni deneme başlamaz. Süre sınırı
+    olan istekler (işçi 15 sn) bunu istek başından hesaplar (Sol #379).
+  */
+  retryUntil?: number;
+  now?: () => number;
+}
 
 export async function retryOnDeadlock<T>(
   run: () => Promise<T>,
-  now: () => number = () => performance.now(),
+  options: DeadlockRetryOptions = {},
 ): Promise<T> {
-  const start = now();
+  const now = options.now ?? (() => performance.now());
+  const retryUntil = options.retryUntil ?? now() + DEADLOCK_RETRY_BUDGET_MS;
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await run();
     } catch (error) {
-      if (
-        attempt >= DEADLOCK_RETRY_ATTEMPTS ||
-        now() - start >= DEADLOCK_RETRY_BUDGET_MS ||
-        !isDeadlockError(error)
-      )
-        throw error;
+      if (attempt >= DEADLOCK_RETRY_ATTEMPTS || !isDeadlockError(error)) throw error;
       // İki kurban aynı anda yeniden girip yine çakışmasın diye kısa, rastgele bekleme.
       await new Promise((resolve) => setTimeout(resolve, 20 + Math.random() * 80 * attempt));
+      // Sınır beklemeden sonra denetlenir; yeni deneme hiçbir zaman sınırdan sonra başlamaz.
+      if (now() >= retryUntil) throw error;
     }
   }
 }

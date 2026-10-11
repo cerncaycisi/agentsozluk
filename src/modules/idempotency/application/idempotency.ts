@@ -29,6 +29,8 @@ export async function executeIdempotently(
     now?: Date;
     /** Verilirse transaction süresi loglanır. Bugün yalnız lease kullanıyor. */
     telemetryLabel?: string;
+    /** Yanıtın en geç verilmesi gereken an (`performance.now()` ölçeği); bkz. `withIdempotencyLock`. */
+    requestDeadline?: number;
   },
   execute: (transaction: TransactionClient) => Promise<{
     status: number;
@@ -86,5 +88,6 @@ export async function executeIdempotently(
       return { status: result.status, body: result.body, replayed: false };
     },
     input.telemetryLabel ? { label: input.telemetryLabel } : undefined,
+    input.requestDeadline,
   );
 }

@@ -167,7 +167,7 @@ describe("transaction süresi telemetrisi", () => {
         saat.simdi += 20;
         const sonuc = await cb(tx);
         if (cagri === 1) {
-          saat.simdi += 4_200;
+          saat.simdi += 2_500;
           throw kilitlenme;
         }
         saat.simdi += 10;
@@ -182,7 +182,7 @@ describe("transaction süresi telemetrisi", () => {
     const kayitlar = logMock.info.mock.calls.map(([kayit]) => kayit);
     expect(kayitlar).toHaveLength(2);
     // Yavaş, kilitlenen deneme alarmın okuduğu activeMs ile görünür kalır.
-    expect(kayitlar[0]).toMatchObject({ outcome: "failed", acquireMs: 20, activeMs: 4_200 });
+    expect(kayitlar[0]).toMatchObject({ outcome: "failed", acquireMs: 20, activeMs: 2_500 });
     expect(kayitlar[0]).not.toHaveProperty("attempt");
     expect(kayitlar[1]).toMatchObject({
       outcome: "committed",
@@ -190,6 +190,37 @@ describe("transaction süresi telemetrisi", () => {
       acquireMs: 20,
       activeMs: 10,
     });
+  });
+
+  it("istek son anına sığmayacak yeni denemeyi başlatmaz", async () => {
+    const { withIdempotencyLock } = await import("@/modules/idempotency/repository/idempotency");
+    const kilitlenme = new Prisma.PrismaClientKnownRequestError("deadlock detected", {
+      code: "P2010",
+      clientVersion: Prisma.prismaVersion.client,
+      meta: { code: "40P01" },
+    });
+    const tx = { $executeRaw: vi.fn(async () => 1) };
+    const istemci = {
+      $transaction: vi.fn(async (cb: Callback) => {
+        await cb(tx);
+        saat.simdi += 4_200;
+        throw kilitlenme;
+      }),
+    };
+    // İstek başından 14 sn; en kötü deneme 2 + 5 sn sürebildiği için 4,2 sn sonra yeni deneme sığmaz.
+    await expect(
+      withIdempotencyLock(
+        istemci as never,
+        "kapsam",
+        async () => "tamam",
+        { label: "runtime.lease" },
+        saat.simdi + 11_000,
+      ),
+    ).rejects.toBe(kilitlenme);
+    expect(istemci.$transaction).toHaveBeenCalledTimes(1);
+    expect(logMock.info.mock.calls.map(([kayit]) => kayit)).toEqual([
+      expect.objectContaining({ outcome: "failed", activeMs: 4_200 }),
+    ]);
   });
 
   it("okunurken fırlatan hata nesnesini bile aynen yukarı taşır", async () => {
