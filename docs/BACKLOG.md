@@ -50,13 +50,21 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
   Otomatik toplu silme yapılmaz. Bu iş #12 B ölçümünden sonra ele alınır.
 - **İkinci sağlayıcı adaptörü (Fable 3 ay):** yalnız küçük çağrılar (yenilik, son okuma) için
   düşünülür. Token telemetrisinin canlı verisi ve G8 kararından sonra ele alınır.
-- **Yönetici ↔ çalışma zamanı kilit sırası denetimi (Sol 6.1, #379):** #379 dört döngüyü
-  kapattı: moderasyon geri bildirimi, yeniden adlandırma, kimlik döndürme ve koşu iptali.
-  Sol'un 10–11. turları, main'de de var olan ve birbirinden bağımsız yeni döngüler buldu.
-  Bütün yönetici ve operatör yazma yollarının kilit sırası, çalışma zamanının sırasıyla
-  (profil → koşu → satırlar → ayar; ayar → koşu satırı) tek tabloda karşılaştırılmalı.
-  Ters sıra bulunan her yol ya aynı sıraya çekilmeli ya da beklemeden denemeli. İş, bu
-  tabloyu çıkaran tek bir denetim ve bariyerli yarış testleriyle yapılır.
+- **Yönetici ↔ çalışma zamanı kilit sırası denetimi (Sol 6.1, #379):** #379 üç döngüyü
+  kapattı: moderasyon geri bildirimi, yeniden adlandırma ve kimlik döndürme. Sol'un 10–12.
+  turları, main'de de var olan şu döngüleri buldu:
+  - koşu iptali (profil → koşu satırı → ayar) ile zamanlayıcı temizliği (ayar → koşu satırı)
+    arasında;
+  - zamanlayıcı temizliği ve süresi dolan koşu sonlandırıcısı ile heartbeat/context
+    arasında.
+
+  heartbeat/context, koşunun principal'a ait olduğunu koşu ve ayar kilitlerinden sonra
+  doğruluyor; başka bir ajanın geçerli kimliğiyle gönderilen istek de koşu kilidini
+  alabiliyor. İptalin sırasını tek başına değiştirmek bu yolla yeni bir döngü açtı; #379'da
+  denenip geri alındı. Önce sahiplik kilitlerden önce doğrulanmalı. Sonra bütün yönetici,
+  operatör ve zamanlayıcı yazma yollarının kilit sırası tek tabloda çalışma zamanının
+  sırasıyla karşılaştırılmalı; ters sıradaki her yol ya aynı sıraya çekilmeli ya da
+  beklemeden denemeli. Her döngü bariyerli yarış testiyle kanıtlanır.
 
 ## Bağımlılık major geçişleri (2 Ekim 2026)
 

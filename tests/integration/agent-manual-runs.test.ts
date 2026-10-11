@@ -8,7 +8,6 @@ import { createOpaqueToken, sha256 } from "@/lib/security/crypto";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as manualRecords from "@/modules/agents/repository/manual-runs";
-import { lockAgentSettings } from "@/modules/agents/repository/control-plane";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
   bulkAgentRunPreviewSchema,
@@ -446,54 +445,6 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
       data: { status: "SUSPENDED" },
     });
     expect((await bulkRoute(request(path, payload, submitKey))).status).toBe(403);
-  });
-
-  it("cancels a queued run without a lock cycle against the scheduler's settings-then-run order", async () => {
-    const admin = await createAdmin();
-    const created = await createActiveAgent(admin.id, 0);
-    const queued = await createManualAgentRun(
-      integrationDatabase,
-      actor(admin.id),
-      created.agent.profile.id,
-      manualAgentRunSchema.parse({ runType: "NORMAL_WAKE" }),
-    );
-    const [before] = await integrationDatabase.$queryRaw<Array<{ deadlocks: bigint }>>`
-      SELECT deadlocks FROM pg_stat_database WHERE datname = current_database()
-    `;
-    let cancel: Promise<{ runStatus: string }> | undefined;
-    /*
-      Zamanlayıcının sırası: önce ayar kilidi, sonra temizlediği koşu satırı. İptal koşu
-      satırını tutup ayar kilidini BEKLESEYDİ, bu transaction satırda beklerken döngü kurulurdu.
-    */
-    await integrationDatabase.$transaction(
-      async (transaction) => {
-        await lockAgentSettings(transaction);
-        cancel = cancelAgentRun(integrationDatabase, actor(admin.id), queued.run.id, {
-          reason: "Zamanlayıcı ayar kilidini tutarken iptal sırayla beklemelidir.",
-        });
-        cancel.catch(() => undefined);
-        // İptal ayar kilidinde beklemeye başlayana dek (bloklayan bekleme, zamanlama değil).
-        for (let attempt = 0; ; attempt += 1) {
-          const [waits] = await integrationDatabase.$queryRaw<Array<{ waiting: bigint }>>`
-            SELECT count(*) AS waiting FROM pg_locks
-            WHERE locktype = 'advisory' AND NOT granted AND database = (
-              SELECT oid FROM pg_database WHERE datname = current_database()
-            )`;
-          if (waits!.waiting > 0n) break;
-          if (attempt > 500) throw new Error("cancel never waited for the settings lock");
-          await new Promise((resolve) => setTimeout(resolve, 5));
-        }
-        await transaction.$queryRaw`
-          SELECT 1 FROM "agent_runs" WHERE "id" = ${queued.run.id}::uuid FOR UPDATE
-        `;
-      },
-      { timeout: 15_000 },
-    );
-    await expect(cancel).resolves.toMatchObject({ runStatus: "CANCELLED" });
-    const [after] = await integrationDatabase.$queryRaw<Array<{ deadlocks: bigint }>>`
-      SELECT deadlocks FROM pg_stat_database WHERE datname = current_database()
-    `;
-    expect(after!.deadlocks).toBe(before!.deadlocks);
   });
 
   it("does not block same-admin cancellation while readonly preview holds the shared user-state lock", async () => {
