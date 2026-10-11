@@ -373,6 +373,43 @@ describe("runtime control-plane HTTP contract", () => {
     expect(fetchMock.mock.calls[1]![1]?.body).toBe(fetchMock.mock.calls[0]![1]?.body);
   });
 
+  it("replays an action execution whose response body is lost after the headers arrive", async () => {
+    const committed = {
+      data: {
+        actions: [
+          {
+            id: randomUUID(),
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            actionStatus: "SUCCEEDED",
+            rejectionCode: null,
+          },
+        ],
+      },
+    };
+    const brokenBody = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.error(new DOMException("body timed out", "TimeoutError"));
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(brokenBody)
+      .mockResolvedValueOnce(jsonResponse(committed));
+    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
+
+    await expect(
+      client.executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1]),
+    ).resolves.toMatchObject({ actions: [{ sequence: 1, actionStatus: "SUCCEEDED" }] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const firstHeaders = fetchMock.mock.calls[0]![1]?.headers as Record<string, string>;
+    const secondHeaders = fetchMock.mock.calls[1]![1]?.headers as Record<string, string>;
+    expect(secondHeaders["idempotency-key"]).toBe(firstHeaders["idempotency-key"]);
+  });
+
   it("recovers a committed lease after its first response is lost by replaying the same key", async () => {
     const runId = randomUUID();
     const startedAt = new Date().toISOString();

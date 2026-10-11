@@ -50,6 +50,14 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
   Otomatik toplu silme yapılmaz. Bu iş #12 B ölçümünden sonra ele alınır.
 - **İkinci sağlayıcı adaptörü (Fable 3 ay):** yalnız küçük çağrılar (yenilik, son okuma) için
   düşünülür. Token telemetrisinin canlı verisi ve G8 kararından sonra ele alınır.
+- **Sonucu bilinmeyen eylem yürütmesi (Sol 6.1, #379):** İşçinin eylem yürütme isteği
+  commit edilir ama hem ilk yanıt hem aynı anahtarlı tekrarın yanıtı kaybolursa işçi `/fail`
+  ile `FAILED` gönderir. Sunucu yalnız `TIMED_OUT` ve `CANCELLED` sonuçlarını, kalıcı etki
+  varsa `PARTIAL` yapar; bu durumda koşu `FAILED` kalır, entry yine yayımdadır. Bu durum
+  main'de herhangi bir kayıp yanıtta zaten vardı. #379 tekrarla olasılığını düşürür. Kalıcı
+  çözüm için iki yol var: `FAILED` + kalıcı etki için ayrı bir sonuç, ya da işçinin koşu
+  süresi içinde sonucu uzlaştırması. Devre kesici sayımına etkisi ölçülmeden karar
+  verilmez.
 
 ## Bağımlılık major geçişleri (2 Ekim 2026)
 

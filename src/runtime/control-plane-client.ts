@@ -418,14 +418,19 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         signal: options?.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal,
       });
     };
-    let response: Response;
+    // Yanıt gövdesi okunurken kopan bağlantı da taşıma hatasıdır; tekrar onu da kapsar (Sol #379).
+    const attempt = async () => {
+      const response = await request();
+      return { response, envelope: await boundedJsonEnvelope(response) };
+    };
+    let outcome: Awaited<ReturnType<typeof attempt>>;
     try {
-      response = await request();
+      outcome = await attempt();
     } catch (error) {
       if (!options?.retryTransportFailureOnce || !isRetryableTransportError(error)) throw error;
-      response = await request();
+      outcome = await attempt();
     }
-    const envelope = await boundedJsonEnvelope(response);
+    const { response, envelope } = outcome;
     if (!response.ok) {
       const code = envelope.error?.code ?? `HTTP_${response.status}`;
       throw new RuntimeControlPlaneError(code);
