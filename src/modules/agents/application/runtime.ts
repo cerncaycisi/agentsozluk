@@ -1,3 +1,4 @@
+import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
 import {
   agentTopicCreationCapReached,
   istanbulDayStart,
@@ -47,6 +48,8 @@ import {
   isRepairableContentRejectionCode,
   isTitleRepairableContentRejectionCode,
   titleRepairCandidateIsSafe,
+  conversionRepairCandidateIsSafe,
+  isConversionRepairableRejectionCode,
 } from "@/modules/agents/domain/action-policy";
 import {
   appendRuntimeActions,
@@ -67,6 +70,7 @@ import {
   getRuntimeAgentLifecycle,
   getRuntimeGlobalSettings,
   countAgentTopicsCreatedSince,
+  listRunConflictTopicIds,
   heartbeatRuntimeRunRecord,
   listExpiredCancellationRunsForFinalization,
   lockAndReadRuntimeRunFinalizationState,
@@ -280,16 +284,24 @@ function perceptionPreviousFastState(perceptionSummary: unknown) {
 */
 const runtimeReadTopicFullBodiesMaximumChars = 60_000;
 
-function boundedFullBodies(topics: { id: string; body: string }[][]) {
-  const perTopic = Math.floor(runtimeReadTopicFullBodiesMaximumChars / Math.max(1, topics.length));
+function boundedFullBodies(
+  topics: { id: string; body: string }[][],
+  topicCount: number = topics.length,
+  remaining: number = runtimeReadTopicFullBodiesMaximumChars,
+) {
+  const perTopic = Math.floor(runtimeReadTopicFullBodiesMaximumChars / Math.max(1, topicCount));
+  // Kalan toplam bütçe başlıklar arasında tükenir (Sol #377 P2); ilk okumada tam bütçedir.
+  let budget = remaining;
   return topics.flatMap((items) => {
     const kept: { id: string; body: string }[] = [];
+    const cap = Math.min(perTopic, budget);
     let total = 0;
     for (const item of items) {
-      if (total + item.body.length > perTopic) continue;
+      if (total + item.body.length > cap) continue;
       total += item.body.length;
       kept.push(item);
     }
+    budget -= total;
     return kept;
   });
 }
@@ -1952,7 +1964,19 @@ export function getRuntimeRunContext(
       Menü türetmesi worker ile ortak: domain/runtime-browse.ts.
     */
     const browseMenu = browsableTopicIds(perception);
-    const allowedReadTopicIds = readTopicIds.filter((id) => browseMenu.has(id));
+    /*
+      "Oku, sonra karar ver" (10 Ekim 2026): dolu başlığa çarpan yeni-başlık önerisi reddedilince
+      sunucu çarpılan başlığı ret kaydına yazar. Aynı koşu yalnız bu başlıkları menü dışından
+      okuyabilir; kimlik worker'ın beyanından değil sunucunun kendi kaydından gelir.
+    */
+    // Menüde olsa da olmasa da çakışma başlığı ek okuma hakkı taşır (G9g, 11 Ekim).
+    const conflictTopicIds =
+      readTopicIds.length > 0
+        ? await listRunConflictTopicIds(transaction, runId)
+        : new Set<string>();
+    const allowedReadTopicIds = readTopicIds.filter(
+      (id) => browseMenu.has(id) || conflictTopicIds.has(id),
+    );
     const rejectedReadTopicCount = readTopicIds.length - allowedReadTopicIds.length;
     if (rejectedReadTopicCount > 0)
       /*
@@ -1978,26 +2002,23 @@ export function getRuntimeRunContext(
       yalnız ilk gezinmede boş yazılır.
     */
     const alreadyReadTopics = Array.isArray((perception as Record<string, unknown>).readTopics);
-    if (readTopicIds.length > 0 && (allowedReadTopicIds.length > 0 || !alreadyReadTopics)) {
-      const readTopics = await getRuntimeReadTopics(transaction, allowedReadTopicIds);
-      perception = {
-        ...perception,
-        readTopics: readTopics.map((topic) => ({
-          id: topic.id,
-          title: topic.title,
-          entryCount: topic.entryCount,
-          visibleEntryCount: topic.visibleEntryCount,
-          entries: topic.entries.map((entry, index) => ({
-            id: entry.id,
-            username: entry.authorUsername,
-            /*
+    type RuntimeReadTopicRecord = Awaited<ReturnType<typeof getRuntimeReadTopics>>[number];
+    const presentReadTopic = (topic: RuntimeReadTopicRecord) => ({
+      id: topic.id,
+      title: topic.title,
+      entryCount: topic.entryCount,
+      visibleEntryCount: topic.visibleEntryCount,
+      entries: topic.entries.map((entry, index) => ({
+        id: entry.id,
+        username: entry.authorUsername,
+        /*
               Yazarın kendi entry'si işaretli: ajan kendi hükmüne karşı görüş
               yazmasın, kendi cümlesini "eksik kalmış" diye tamamlamaya
               kalkmasın. Önizlemelerde bu ayrım yok, burada olması şart çünkü
               bu faz doğrudan yanıt yazdırmak için var.
             */
-            mine: entry.authorId === run.agentProfile.user.id,
-            /*
+        mine: entry.authorId === run.agentProfile.user.id,
+        /*
               Prompt bu entry'leri "tam metin" diye tanıtıyordu ama gövde 600
               karakterde kesiliyordu. Ajan yarısı görünmeyen bir hükme itiraz
               yazabiliyor, ya da zaten söylenmiş bir şeyi tekrar edebiliyordu —
@@ -2013,42 +2034,100 @@ export function getRuntimeRunContext(
               mümkün; bu yüzden prompt cümlesi de "tam metin" iddiasından
               vazgeçip gerçeği söylüyor.
             */
-            /*
+        /*
               A′ (2 Ekim 2026): pencere 15 entry'ye çıktı. Tanım entry'si (ilk sıra)
               ve en yeni altı entry eskisi gibi tam (2000) gösterilir; aradaki eski
               entry'ler kısa önizlemeyle (600) gelir. Ajan söylenmiş katkıyı görür,
               bağlam bütçesi en kötü durumda ~%40 büyür, tipik durumda (p95 741
               karakter) neredeyse hiç kesilmez.
             */
-            body: truncateUntrustedText(
-              entry.body,
-              runtimeReadTopicEntryLimit(index, topic.entries.length),
-            ),
-            createdAt: entry.createdAt.toISOString(),
-          })),
-        })),
-        /*
-          #13 (8 Ekim 2026): yenilik kapısı, taslağa en benzer eski entry'leri TAM metinle
-          görmeden tekrarı kaçırıyordu (yerel set: 60'lık kısaltılmış pencerede 9/15, en benzer
-          altı entry tam metinle 13/15; yeni katkı kaybı 0/15). İstemde kısaltılan entry'lerin
-          tam metni burada durur. Anahtar karar istemine girmez (runtimeAllowedPerceptionKeys
-          dışında); yalnız worker'daki yenilik kapısı kullanır. Kimlikler readTopics'tekilerle
-          aynıdır; yeni kanıt kimliği eklemez.
-        */
-        [runtimeReadTopicFullBodiesKey]: boundedFullBodies(
-          readTopics.map((topic) =>
-            topic.entries.flatMap((entry, index) => {
-              const full = truncateUntrustedText(entry.body, 2000);
-              return full ===
-                truncateUntrustedText(
-                  entry.body,
-                  runtimeReadTopicEntryLimit(index, topic.entries.length),
-                )
-                ? []
-                : [{ id: entry.id, body: full }];
-            }),
-          ),
+        body: truncateUntrustedText(
+          entry.body,
+          runtimeReadTopicEntryLimit(index, topic.entries.length),
         ),
+        createdAt: entry.createdAt.toISOString(),
+      })),
+    });
+    /*
+      #13 (8 Ekim 2026): yenilik kapısı, taslağa en benzer eski entry'leri TAM metinle görmeden
+      tekrarı kaçırıyordu. İstemde kısaltılan entry'lerin tam metni ayrı anahtarda durur; karar
+      istemine girmez, yalnız worker'daki yenilik kapısı kullanır.
+    */
+    const readTopicFullBodies = (topic: RuntimeReadTopicRecord) =>
+      topic.entries.flatMap((entry, index) => {
+        const full = truncateUntrustedText(entry.body, 2000);
+        return full ===
+          truncateUntrustedText(entry.body, runtimeReadTopicEntryLimit(index, topic.entries.length))
+          ? []
+          : [{ id: entry.id, body: full }];
+      });
+    /*
+      Ek okuma (Astra #377 1. ve 2. tur P1): koşu bir kez başlık okuduktan sonra yeni okuma
+      önceki görüntüleri OLDUĞU GİBİ bırakır, yalnız yeni başlıkları ekler. Tazelemek, bekleyen
+      eylemlerin "okuduktan sonra başlık değişti" korumasını etkisizleştirirdi; çarpılan
+      başlığın menüde olup olmaması fark etmez.
+    */
+    const existingReadTopics = alreadyReadTopics
+      ? ((perception as Record<string, unknown>).readTopics as Array<{ id: string }>)
+      : [];
+    const appendConflictRead = existingReadTopics.length > 0 && allowedReadTopicIds.length > 0;
+    if (appendConflictRead) {
+      const existingRead = existingReadTopics;
+      const existingIds = new Set(existingRead.map(({ id }) => id));
+      const unreadIds = allowedReadTopicIds.filter((id) => !existingIds.has(id));
+      const menuIds = unreadIds
+        .filter((id) => !conflictTopicIds.has(id))
+        .slice(0, Math.max(0, runtimeReadTopicLimit - existingRead.length));
+      /*
+        Çakışan başlık okuma sınırının üstünde de bir kez okunabilir (G9g, 11 Ekim): karar
+        anında ajan neredeyse her koşuda 3 başlık okuyor; sınır doluyken "oku, sonra karar ver"
+        çakışmaların %92'sinde hiç devreye giremiyordu. Toplam okuma sınır + 1'i geçmez.
+      */
+      const conflictIds = unreadIds
+        .filter((id) => conflictTopicIds.has(id))
+        .slice(0, Math.max(0, runtimeReadTopicLimit + 1 - existingRead.length - menuIds.length));
+      const newIds = [...menuIds, ...conflictIds];
+      if (newIds.length > 0) {
+        const added = await getRuntimeReadTopics(transaction, newIds);
+        const existingFullValue = (perception as Record<string, unknown>)[
+          runtimeReadTopicFullBodiesKey
+        ];
+        const existingFullBodies = (
+          Array.isArray(existingFullValue) ? existingFullValue : []
+        ).filter(
+          (item): item is { id: string; body: string } =>
+            Boolean(item) &&
+            typeof (item as { id?: unknown }).id === "string" &&
+            typeof (item as { body?: unknown }).body === "string",
+        );
+        perception = {
+          ...perception,
+          readTopics: [...existingRead, ...added.map(presentReadTopic)],
+          [runtimeReadTopicFullBodiesKey]: [
+            ...existingFullBodies,
+            /*
+              Toplam tam metin sınırı korunur (Astra #377 2. tur P2): yeni başlığa kalan bütçe
+              ile başlık başı paydan küçüğü ayrılır.
+            */
+            ...boundedFullBodies(
+              added.map(readTopicFullBodies),
+              existingRead.length + added.length,
+              Math.max(
+                0,
+                runtimeReadTopicFullBodiesMaximumChars -
+                  existingFullBodies.reduce((sum, item) => sum + item.body.length, 0),
+              ),
+            ),
+          ],
+        };
+        await storeRuntimePerceptionSummary(transaction, runId, perception);
+      }
+    } else if (readTopicIds.length > 0 && (allowedReadTopicIds.length > 0 || !alreadyReadTopics)) {
+      const readTopics = await getRuntimeReadTopics(transaction, allowedReadTopicIds);
+      perception = {
+        ...perception,
+        readTopics: readTopics.map(presentReadTopic),
+        [runtimeReadTopicFullBodiesKey]: boundedFullBodies(readTopics.map(readTopicFullBodies)),
       };
       await storeRuntimePerceptionSummary(transaction, runId, perception);
     }
@@ -2212,9 +2291,17 @@ export function recordRuntimeActions(
       runId,
       agentProfileId: principal.agentProfileId,
     });
+    /*
+      Okunabilir hâle gelmiş bir çakışma da onarım gerektirir (Astra #377 P1): yoksa worker
+      dönüşümü işaretlemeden normal `CREATE_ENTRY` olarak gönderip gövde/provenance ve tek
+      onarım kurallarını atlayabilirdi.
+    */
     const repairableRejections = existingActions.filter(
-      ({ actionStatus, rejectionCode }) =>
-        actionStatus === "REJECTED" && isRepairableContentRejectionCode(rejectionCode),
+      ({ actionStatus, rejectionCode, result }) =>
+        actionStatus === "REJECTED" &&
+        (isRepairableContentRejectionCode(rejectionCode) ||
+          (isConversionRepairableRejectionCode(rejectionCode) &&
+            conflictTopicIdFromResult(result) !== null)),
     );
     const repairCandidates = input.actions.filter(
       ({ repairOfSequence }) => repairOfSequence !== undefined,
@@ -2253,12 +2340,16 @@ export function recordRuntimeActions(
       if (
         !origin ||
         origin.actionStatus !== "REJECTED" ||
-        !isRepairableContentRejectionCode(origin.rejectionCode) ||
+        !(
+          isRepairableContentRejectionCode(origin.rejectionCode) ||
+          isConversionRepairableRejectionCode(origin.rejectionCode)
+        ) ||
         marker(origin.validationResult) !== null ||
         existingActions.some(({ validationResult }) => marker(validationResult) !== null) ||
         candidate.sequence <= Math.max(0, ...existingActions.map(({ sequence }) => sequence)) ||
         !repairCandidateIsSafe(
           origin.rejectionCode,
+          conflictTopicIdFromResult(origin.result),
           {
             sequence: origin.sequence,
             actionType: origin.actionType,
@@ -3018,11 +3109,20 @@ export function failRuntimeRun(
   Eskiden yalnız gövde denetimi vardı; onarım şeması API'de düştüğü için fark görünmüyordu
   (Astra, 55e8273 P2).
 */
+function conflictTopicIdFromResult(result: unknown): string | null {
+  if (!result || typeof result !== "object" || Array.isArray(result)) return null;
+  const value = (result as Record<string, unknown>).conflictTopicId;
+  return typeof value === "string" ? value : null;
+}
+
 function repairCandidateIsSafe(
   rejectionCode: string | null,
+  conflictTopicId: string | null,
   original: Parameters<typeof duplicateRepairCandidateIsSafe>[0],
   candidate: Parameters<typeof duplicateRepairCandidateIsSafe>[1],
 ): boolean {
+  if (isConversionRepairableRejectionCode(rejectionCode))
+    return conversionRepairCandidateIsSafe(original, candidate, conflictTopicId);
   if (duplicateRepairCandidateIsSafe(original, candidate)) return true;
   return (
     isTitleRepairableContentRejectionCode(rejectionCode) &&

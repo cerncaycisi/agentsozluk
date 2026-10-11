@@ -45,6 +45,8 @@ import {
   isRepairableContentRejectionCode,
   isTitleRepairableContentRejectionCode,
   titleRepairCandidateIsSafe,
+  conversionRepairCandidateIsSafe,
+  isConversionRepairableRejectionCode,
 } from "@/modules/agents/domain/action-policy";
 import { sourceFetchTargetLimit } from "@/modules/agents/domain/runtime-controls";
 import { browsableTopicMenu, type BrowsableTopic } from "@/modules/agents/domain/runtime-browse";
@@ -796,6 +798,39 @@ function safeContentRepairCandidate(
     ? titleRepairCandidateIsSafe(originalAction, repaired)
     : duplicateRepairCandidateIsSafe(originalAction, repaired);
   return safe ? repaired : null;
+}
+
+/*
+  "Oku, sonra karar ver" (10 Ekim 2026): dolu başlığa çarpıp `TOPIC_EXISTS_UNREAD` alan
+  yeni-başlık önerisi, sunucunun ret kaydına yazdığı başlığa aynı gövdeyle `CREATE_ENTRY` olarak
+  bir kez yeniden önerilir. Gövde ve provenance değişmez; sunucu aynı kuralı yeniden denetler.
+*/
+function conversionRepairCandidate(
+  originalAction: RuntimeDecision["actions"][number],
+  conflictTopicId: string,
+  sequence: number,
+): (RuntimeDecision["actions"][number] & { repairOfSequence: number }) | null {
+  if (originalAction.actionType !== "CREATE_TOPIC_WITH_ENTRY") return null;
+  const body = originalAction.input.body;
+  if (typeof body !== "string") return null;
+  const converted = {
+    ...originalAction,
+    sequence,
+    repairOfSequence: originalAction.sequence,
+    actionType: "CREATE_ENTRY" as const,
+    targetType: "TOPIC" as const,
+    targetId: conflictTopicId,
+    input: { topicId: conflictTopicId, body },
+  } as RuntimeDecision["actions"][number] & { repairOfSequence: number };
+  return conversionRepairCandidateIsSafe(originalAction, converted, conflictTopicId)
+    ? converted
+    : null;
+}
+
+function conflictTopicIdOf(result: unknown): string | null {
+  if (!result || typeof result !== "object" || Array.isArray(result)) return null;
+  const value = (result as Record<string, unknown>).conflictTopicId;
+  return typeof value === "string" ? value : null;
 }
 
 export function buildRuntimePrompt(context: RuntimeContext): string {
@@ -2236,6 +2271,124 @@ export class AgentRuntimeWorker {
         );
         executedActions.push(...execution.actions);
         deadline.throwIfStopped();
+        /*
+          "Oku, sonra karar ver" (10 Ekim 2026): yeni-başlık önerisi dolu bir başlığa çarptıysa
+          sunucu o başlığı ret kaydına yazar. Worker başlığı (önceki okumalarla birlikte) okur,
+          taslağı yenilik kapısından geçirir ve geçerse aynı gövdeyi oraya entry olarak bir kez
+          önerir. Okuma sınırı doluysa ya da yenilik kapısı vazgeçerse hiçbir şey yazılmaz.
+          Koşu başına tek onarım hakkını kullanır.
+        */
+        const conflictRejection = execution.actions.find(
+          ({ actionStatus, rejectionCode }) =>
+            actionStatus === "REJECTED" && isConversionRepairableRejectionCode(rejectionCode),
+        );
+        const conflictTopicId = conflictRejection
+          ? conflictTopicIdOf(conflictRejection.result)
+          : null;
+        if (conflictTopicId && !contentRepairAttempted && noveltyProvider) {
+          const readIds = recordArray(context.perception.readTopics)
+            .map(({ id }) => id)
+            .filter((id): id is string => typeof id === "string");
+          const converted = conversionRepairCandidate(
+            originalAction,
+            conflictTopicId,
+            nextSequence,
+          );
+          // Sunucu çakışan başlığa okuma sınırının üstünde bir kez yer açar (G9g, 11 Ekim).
+          if (
+            !converted ||
+            readIds.includes(conflictTopicId) ||
+            readIds.length > runtimeReadTopicLimit
+          ) {
+            this.#options.onSafeEvent?.({ level: "info", code: "READ_THEN_DECIDE_SKIPPED", runId });
+          } else {
+            // Onarım hakkı yalnız dönüşüm gerçekten denenince tüketilir (Astra #377 P2).
+            contentRepairAttempted = true;
+            try {
+              currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
+              context = await this.#options.controlPlane.context(
+                credential,
+                this.#options.workerId,
+                runId,
+                leaseToken,
+                deadline.requestOptions(),
+                [...readIds, conflictTopicId],
+              );
+              const noveltyCandidate = runtimeNoveltyCandidates(
+                { ...decision, actions: [converted] },
+                context.perception,
+              )[0];
+              if (!noveltyCandidate) {
+                this.#options.onSafeEvent?.({
+                  level: "info",
+                  code: "READ_THEN_DECIDE_SKIPPED",
+                  runId,
+                });
+              } else if ((await checkNovelty(noveltyCandidate, true)) !== "YAYIMLA") {
+                /*
+                  Yalnız açık "YAYIMLA" yazdırır (Astra #377 P1): ilk karar bu başlığı hiç
+                  görmemişti; denetim hata verir ya da süre kalmazsa kör yazım olurdu.
+                */
+                this.#options.onSafeEvent?.({
+                  level: "info",
+                  code: "READ_THEN_DECIDE_NOVELTY_DROPPED",
+                  runId,
+                });
+              } else {
+                nextSequence += 1;
+                await this.#options.controlPlane.recordActions(
+                  credential,
+                  this.#options.workerId,
+                  runId,
+                  leaseToken,
+                  [actionForControlPlane(converted)],
+                  repairLifePayload(decision, converted),
+                  deadline.requestOptions(),
+                );
+                await enterPhase("EXECUTING");
+                const convertedExecution = await this.#options.controlPlane.executeActions(
+                  credential,
+                  this.#options.workerId,
+                  runId,
+                  leaseToken,
+                  [converted.sequence],
+                  deadline.requestOptions(),
+                );
+                executedActions.push(...convertedExecution.actions);
+                const succeeded = convertedExecution.actions.some(
+                  ({ actionStatus }) => actionStatus === "SUCCEEDED",
+                );
+                if (succeeded) successfullyRepairedSequences.add(originalAction.sequence);
+                this.#options.onSafeEvent?.({
+                  level: "info",
+                  code: succeeded ? "READ_THEN_DECIDE_WRITTEN" : "READ_THEN_DECIDE_STILL_REJECTED",
+                  runId,
+                });
+              }
+            } catch (rawConversionError) {
+              const conversionError = deadline.normalizeError(rawConversionError);
+              if (
+                conversionError instanceof RuntimeProviderCancelledError ||
+                conversionError instanceof RuntimeProviderTimeoutError ||
+                deadline.signal.aborted
+              )
+                throw conversionError;
+              if (
+                conversionError instanceof RuntimeControlPlaneError &&
+                recoverableContentRepairControlPlaneCodes.has(conversionError.code)
+              ) {
+                this.#options.onSafeEvent?.({
+                  level: "error",
+                  code: "READ_THEN_DECIDE_CONTROL_PLANE_REJECTED",
+                  runId,
+                });
+                continue;
+              }
+              throw conversionError;
+            }
+            deadline.throwIfStopped();
+          }
+        }
         const repairableRejection = execution.actions.find(
           ({ actionStatus, rejectionCode }) =>
             actionStatus === "REJECTED" && isRepairableContentRejectionCode(rejectionCode),

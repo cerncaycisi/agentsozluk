@@ -774,6 +774,54 @@ export function duplicateRepairCandidateIsSafe(
 }
 
 /*
+  DÖNÜŞTÜRME ONARIMI — "oku, sonra karar ver" (10 Ekim 2026).
+
+  Dolu bir başlığa çarpan `CREATE_TOPIC_WITH_ENTRY` önerisi `TOPIC_EXISTS_UNREAD` ile reddedilir
+  ve sunucu çarpılan başlığı ret kaydına yazar. Worker o başlığı okuyup yenilik denetiminden
+  geçirdikten sonra aynı gövdeyi o başlığa `CREATE_ENTRY` olarak bir kez önerebilir. Canlı
+  ölçüm (7–10 Ekim): kaynaklı katkının 330'u bu retle atılıyor, yalnız 22'si var olan başlığa
+  yazılıyordu; her kaynak yeni, tek entry'li bir başlık doğuruyordu.
+
+  Güvenlik: hedef yalnız sunucunun kendi ret kaydındaki başlık olabilir; gövde ve provenance
+  birebir aynı kalır (içerik değiştirilmez); girdi yalnız `topicId` ve `body` taşır. Yürütmede
+  okunmuş başlık ve tekrar kontrolleri yine çalışır.
+*/
+export const conversionRepairableRejectionCodes = new Set(["TOPIC_EXISTS_UNREAD"]);
+
+export function isConversionRepairableRejectionCode(code: string | null | undefined): boolean {
+  return typeof code === "string" && conversionRepairableRejectionCodes.has(code);
+}
+
+export function conversionRepairCandidateIsSafe(
+  original: RepairActionCandidate,
+  candidate: RepairActionCandidate,
+  conflictTopicId: string | null,
+): boolean {
+  if (
+    !conflictTopicId ||
+    original.actionType !== "CREATE_TOPIC_WITH_ENTRY" ||
+    candidate.actionType !== "CREATE_ENTRY" ||
+    candidate.repairOfSequence !== original.sequence ||
+    candidate.sequence <= original.sequence ||
+    candidate.targetType !== "TOPIC" ||
+    candidate.targetId !== conflictTopicId ||
+    stableJson(candidate.provenance) !== stableJson(original.provenance)
+  )
+    return false;
+  const originalBody = original.input.body;
+  const candidateBody = candidate.input.body;
+  if (
+    typeof originalBody !== "string" ||
+    typeof candidateBody !== "string" ||
+    candidateBody !== originalBody
+  )
+    return false;
+  const candidateRest = { ...candidate.input };
+  delete candidateRest.body;
+  return stableJson(candidateRest) === stableJson({ topicId: conflictTopicId });
+}
+
+/*
   Başlık onarımının güvenlik kontrolü. `duplicateRepairCandidateIsSafe` gövde
   dışındaki HER alanın birebir aynı kalmasını şart koşuyor; başlık onarımı tam
   olarak o şartı bozmak zorunda. Mevcut kontrolü gevşetmek yerine ayrı bir

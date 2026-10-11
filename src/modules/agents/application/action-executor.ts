@@ -55,6 +55,8 @@ import {
   findRuntimeRelationshipTarget,
   getRuntimeGlobalSettings,
   countAgentTopicsCreatedSince,
+  findRunActionConflictTopicId,
+  listRunConflictTopicIds,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
@@ -108,6 +110,10 @@ import {
 } from "@/modules/interactions";
 import { createTopicWithFirstEntry, resolveCanonicalTopicProposal } from "@/modules/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import {
+  presentedSourceItems,
+  presentedSourceTextNamesTopic,
+} from "@/modules/agents/domain/conflict-source-binding";
 import { appendOutboxEvent, type OutboxEventInput } from "@/modules/outbox";
 import {
   guardProductionRolloutRuntimeMutation,
@@ -687,6 +693,12 @@ class RuntimeActionRejectionError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    /**
+     * Retle birlikte eylem sonucuna yazılan güvenli kimlikler. `conflictTopicId`, dolu
+     * başlığa çarpan önerinin hangi başlığa çözüldüğünü söyler; sunucu bu koşunun yalnız
+     * bu başlığı okumasına izin verir ("oku, sonra karar ver").
+     */
+    readonly details: { conflictTopicId?: string } = {},
   ) {
     super(message);
     this.name = "RuntimeActionRejectionError";
@@ -703,6 +715,7 @@ async function performAction(
     topic: { id: string; title: string },
   ) => Promise<void>,
   newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>,
+  editTopicGuard?: (transaction: DatabaseExecutor, topicId: string) => Promise<void>,
 ): Promise<{
   result: InputJsonValue;
   entryId?: string;
@@ -759,6 +772,7 @@ async function performAction(
           body: requiredString(input.body, "body"),
         },
         entryId,
+        editTopicGuard ? { topicGuard: editTopicGuard } : {},
       );
       return { result: { entryId: updated.id, topicId: updated.topicId } };
     }
@@ -1522,15 +1536,44 @@ export async function executeRuntimeAction(
                 görülen başlığa giden yoktu; kural meşru yazımı kesmiyor. Koşunun ürettiği
                 hedefler için muafiyet yok (Sol 59c7d48 P2).
               */
+              /*
+                Kanonik yönlendirme çakışma başlığına hiç yazamaz (Sol #377 P2, 10. tur): başlığın
+                görünür entry'leri sonradan gizlense bile önceden kaydedilmiş öneri ya da onun
+                onarımı oraya gitmez. Gerçek dönüşüm her zaman CREATE_ENTRY'dir.
+              */
+              if ((await listRunConflictTopicIds(guardTransaction, runId)).has(topic.id))
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+                  "Bu başlık bu koşuda yeni-başlık önerisiyle çakıştı; oraya yalnız o önerinin işaretli dönüşümü yazabilir.",
+                );
               if ((await countRuntimeVisibleTopicEntries(guardTransaction, topic.id)) === 0) return;
               if (runtimeReadTopicIds(actionRecord.run.perceptionSummary).has(topic.id))
                 throw new RuntimeActionRejectionError(
                   "TOPIC_EXISTS_WRITE_AS_ENTRY",
                   "Anayasa Madde 16: Önerilen başlık bu koşuda okuduğun başlıklardan biri ve entry taşıyor; yeni başlık olarak yazılamaz. Okuduğun entry'lere yeni bir şey ekleyeceksen o başlığa entry olarak yaz.",
                 );
+              /*
+                "Oku, sonra karar ver" bağı (Astra #377 P1): çarpılan başlık yalnız şu durumda
+                okunabilir hâle gelir: öneri kaynaklı, başlığın adı atıf yapılan ve koşuya sunulmuş
+                kaynak öğesinin metninde geçiyor ve koşuda daha önce böyle bir çakışma yok. Hedefi
+                worker'ın keyfî ad seçimi değil, sunucunun gösterdiği kaynak metni bağlar. Canlı
+                ölçüm (7–10 Ekim): 339 çakışmanın 280'inde ad kaynak metninde geçiyordu.
+              */
+              const provenance = parsed.data.provenance;
+              const sourceBound =
+                provenance &&
+                ["TRUSTED_SOURCE", "PROBATION_SOURCE", "MULTIPLE_SOURCES"].includes(
+                  provenance.evidenceType,
+                ) &&
+                (await listRunConflictTopicIds(guardTransaction, runId)).size === 0 &&
+                presentedSourceTextNamesTopic(
+                  presentedSourceItems(actionRecord.run.perceptionSummary, provenance.evidenceIds),
+                  topic.title,
+                );
               throw new RuntimeActionRejectionError(
                 "TOPIC_EXISTS_UNREAD",
                 "Anayasa Madde 16: Önerilen başlık sözlükte zaten var ve görünür entry'ler taşıyor; bu koşuda okunmadığı için entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir tanım, örnek, karşılaştırma, çekince veya görüş ekleyeceksen yaz.",
+                sourceBound ? { conflictTopicId: topic.id } : {},
               );
             }
           : undefined;
@@ -1541,6 +1584,32 @@ export async function executeRuntimeAction(
         başarılı `CREATE_ENTRY`'nin tamamı okunan başlığa yazılmıştı. Kontrol entry'nin
         yazılacağı başlığın kilidi altında; createEntry aynı kilidi aynı işlemde yeniden alır.
       */
+      /*
+        Bu koşunun okunabilir çakışma başlığına yalnız işaretli dönüşüm yazar (Astra #377 2. tur,
+        Sol 1. tur P1): çakışmadan önce kaydedilmiş işaretsiz bir entry ya da kendi entry'sini
+        düzenleme, başlık okunduktan sonra yürütülürse dönüşümün gövde/provenance eşitliği ve
+        tek onarım sınırı atlanırdı.
+      */
+      const conflictWriteTopicId =
+        parsed.data.actionType === "CREATE_ENTRY" ? resolvedTarget.topicId : null;
+      /*
+        Muafiyet yalnız gerçek dönüşüme (Sol #377 8. tur P1): onarım, bu başlığa çakışmayı
+        kaydeden eylemin onarımı olmalı. Başka bir eylemin genel içerik onarımı çakışan başlığa
+        gövde/provenance eşitliği aranmadan yazamaz.
+      */
+      const repairOf = repairValidationMarker(actionRecord.validationResult).repairOfSequence;
+      if (
+        conflictWriteTopicId &&
+        (await listRunConflictTopicIds(transaction, runId)).has(conflictWriteTopicId) &&
+        (repairOf === undefined ||
+          (await findRunActionConflictTopicId(transaction, runId, repairOf)) !==
+            conflictWriteTopicId)
+      )
+        return rejectAction(transaction, principal, actionRecord, {
+          code: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+          reason:
+            "Bu başlık bu koşuda yeni-başlık önerisiyle çakıştı; oraya yalnız o önerinin işaretli dönüşümü yazabilir.",
+        });
       if (parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId) {
         await lockTopicState(transaction, resolvedTarget.topicId);
         const snapshot = runtimeReadTopicSnapshot(
@@ -1606,6 +1675,22 @@ export async function executeRuntimeAction(
                 );
             }
           : undefined;
+      /*
+        Düzenleme çakışma başlığına hiç yazamaz (Sol #377 P1, 9. tur): dönüşüm her zaman
+        CREATE_ENTRY'dir, bu yüzden işaretli bir düzenleme onarımı da muaf değildir. Denetim
+        düzenleme servisinin kendi kilitleri altında, entry'nin güncel başlığıyla yapılır; böylece
+        denetimden sonra taşıma yarışı kalmaz ve yeni bir kilit sırası eklenmez (Sol 3. tur P2).
+      */
+      const editTopicGuard =
+        parsed.data.actionType === "EDIT_OWN_ENTRY"
+          ? async (guardTransaction: DatabaseExecutor, topicId: string) => {
+              if ((await listRunConflictTopicIds(guardTransaction, runId)).has(topicId))
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+                  "Bu başlık bu koşuda yeni-başlık önerisiyle çakıştı; oraya yalnız o önerinin işaretli dönüşümü yazabilir.",
+                );
+            }
+          : undefined;
       const execution = await performAction(
         transaction,
         principal,
@@ -1613,6 +1698,7 @@ export async function executeRuntimeAction(
         resolvedTarget,
         blindTopicGuard,
         newTopicGuard,
+        editTopicGuard,
       );
       if (traversedLinkedTopicId)
         await appendRuntimeEvent(transaction, {
@@ -1736,7 +1822,15 @@ export async function executeRuntimeAction(
     await dependencies.beforeFallback?.();
     const rejection =
       error instanceof AppError || error instanceof RuntimeActionRejectionError
-        ? { status: "REJECTED" as const, code: error.code, reason: error.message }
+        ? {
+            status: "REJECTED" as const,
+            code: error.code,
+            reason: error.message,
+            conflictTopicId:
+              error instanceof RuntimeActionRejectionError
+                ? error.details.conflictTopicId
+                : undefined,
+          }
         : {
             status: "FAILED" as const,
             code: "ACTION_EXECUTION_FAILED",
@@ -1773,6 +1867,17 @@ export async function executeRuntimeAction(
       // A concurrent replay may have reached a terminal state while the failed
       // execution transaction was rolling back. Never downgrade that result.
       if (terminalStatuses.has(action.actionStatus)) return runtimeActionResult(action);
+      /*
+        Koşu başına tek çakışma hakkı ret kaydı yazılırken koşu kilidi altında yeniden denetlenir
+        (Sol #377 7. tur): yürütme transaction'ı geri alınmışken başka bir eylem araya girip
+        kendi çakışmasını yazmış olabilir.
+      */
+      const conflictTopicId =
+        "conflictTopicId" in rejection &&
+        rejection.conflictTopicId &&
+        (await listRunConflictTopicIds(transaction, runId)).size === 0
+          ? rejection.conflictTopicId
+          : null;
       const updated = await updateRuntimeActionStatus(transaction, action.id, {
         actionStatus: rejection.status,
         validationResult: validationWithRepairMarker(action, {
@@ -1781,6 +1886,7 @@ export async function executeRuntimeAction(
         }),
         rejectionCode: rejection.code,
         rejectionReason: rejection.reason,
+        ...(conflictTopicId ? { result: { conflictTopicId } } : {}),
       });
       await appendActionStatusLifeEvent(
         transaction,

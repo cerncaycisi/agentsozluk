@@ -7778,6 +7778,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       7 Ekim 2026: kanonik eşleşme hâlâ var olan "Elma"yı bulur, ama başlık entry taşıdığı ve
       bu koşuda okunmadığı için yeni-başlık yoluyla yazılmaz (yenilik denetimi atlanırdı).
     */
+    // Kaynaksız öneri çakışmayı okunabilir yapmaz (Astra #377 P1): ret kaydı başlık taşımaz.
     expect(canonicalRouted).toMatchObject({
       actionStatus: "REJECTED",
       rejectionCode: "TOPIC_EXISTS_UNREAD",
@@ -8676,6 +8677,651 @@ describe("internal agent runtime API with PostgreSQL", () => {
       await secondClient.$disconnect();
     }
     expect(await integrationDatabase.topic.count()).toBe(topicCountBefore);
+  });
+
+  async function readThenDecideSetup(
+    sourceText: string,
+    extraActions: (
+      populatedId: string,
+      body: string,
+      provenance: Record<string, unknown>,
+      ownEntryId: string | null,
+    ) => Array<Record<string, unknown>> = () => [],
+    options: {
+      ownEntryInPopulated?: boolean;
+      extraEarlierReads?: number;
+      executeFirst?: boolean;
+    } = {},
+  ) {
+    const fixture = await createFixture();
+    const source = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        url: "https://kavram-kaynak.test/feed",
+        normalizedDomain: "kavram-kaynak.test",
+        sourceType: "HTML",
+        status: "TRUSTED",
+        topics: ["kavram"],
+        trustScore: 0.9,
+        interestScore: 0.8,
+        noveltyScore: 0.7,
+        usefulnessScore: 0.8,
+        addedByOrigin: "INTEGRATION_TEST",
+      },
+    });
+    const item = await integrationDatabase.agentSourceItem.create({
+      data: {
+        sourceId: source.id,
+        canonicalUrl: "https://kavram-kaynak.test/haber",
+        title: "Kavram haberi",
+        fetchedAt: new Date(),
+        contentHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+        safeText: sourceText,
+        topics: ["kavram"],
+      },
+    });
+    await integrationDatabase.agentSource.deleteMany({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        normalizedDomain: { not: "kavram-kaynak.test" },
+      },
+    });
+    const earlier = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "Önceden okunan başlık",
+        entryBody: "Önceden okunan başlığın ilk entry'si, ayrı ve bağımsız bir tanım metni.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const workerId = "read-then-decide-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: { allowSourceReading: true },
+    });
+    const extraEarlier = [];
+    for (let index = 0; index < (options.extraEarlierReads ?? 0); index += 1)
+      extraEarlier.push(
+        await createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
+          title: `Önceden okunan ek başlık ${index}`,
+          entryBody: `Önceden okunan ek başlığın ilk entry'si, ayrı bir tanım metni ${index}.`,
+        }),
+      );
+    const first = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      earlier.topic.id,
+      ...extraEarlier.map(({ topic }) => topic.id),
+    ]);
+    expect(first.perception.sourceItems).toEqual(
+      expect.arrayContaining([expect.objectContaining({ itemId: item.id })]),
+    );
+    // Başlıklar dondurulmuş menüden SONRA açılır; menü dışında kalırlar.
+    const populated = await integrationDatabase.topic.create({
+      data: {
+        title: "Dolu kavram",
+        normalizedTitle: "dolu kavram",
+        slug: "dolu-kavram",
+        createdById: fixture.admin.id,
+        entryCount: 1,
+      },
+    });
+    await integrationDatabase.entry.create({
+      data: {
+        topicId: populated.id,
+        authorId: fixture.admin.id,
+        body: "Dolu kavramın ilk entry'si, kavramı genel hatlarıyla tanımlayan ayrı bir metin.",
+        normalizedBody: "dolu kavramın ilk entry'si",
+        origin: "WEB",
+      },
+    });
+    const ownEntry = options.ownEntryInPopulated
+      ? await integrationDatabase.entry.create({
+          data: {
+            topicId: populated.id,
+            authorId: fixture.created.agent.user.id,
+            body: "Ajanın bu başlığa daha önce yazdığı, kavramı başka yönden anlatan entry.",
+            normalizedBody: "ajanın bu başlığa daha önce yazdığı",
+            origin: "AGENT",
+          },
+        })
+      : null;
+    const provenance = {
+      evidenceType: "TRUSTED_SOURCE" as const,
+      evidenceIds: [item.id],
+      shortRationale: "Kaynak öğesi kavramdaki yeni gelişmeyi aktarıyor.",
+    };
+    const body =
+      "Kavrama gündelik hayattan somut bir örnek ekleyen, bağımsız okunabilen ve yeterince uzun bir açıklama.";
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Kavrama yeni bir örnek ekleniyor.",
+            input: { title: "Dolu kavram", body },
+            provenance,
+          },
+          ...extraActions(populated.id, body, provenance, ownEntry?.id ?? null),
+        ],
+      }),
+    );
+    const rejected =
+      options.executeFirst === false
+        ? null
+        : await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+            workerId,
+            sequence: 1,
+          });
+    return {
+      fixture,
+      runId,
+      workerId,
+      writePrincipal,
+      readPrincipal,
+      populated,
+      earlier,
+      extraEarlier,
+      provenance,
+      body,
+      rejected,
+    };
+  }
+
+  it("lets a run read the populated topic its sourced proposal hit and write there once (oku, sonra karar ver)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+    );
+    const { fixture, runId, workerId, writePrincipal, readPrincipal, populated, earlier } = setup;
+    expect(setup.rejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: { conflictTopicId: populated.id },
+    });
+    const outsider = await integrationDatabase.topic.create({
+      data: {
+        title: "Menü dışı başlık",
+        normalizedTitle: "menü dışı başlık",
+        slug: "menu-disi-baslik",
+        createdById: fixture.admin.id,
+      },
+    });
+    // Önceden okunan başlığa sonradan gelen entry, ek okumada görüntüye girmemeli.
+    await createEntry(integrationDatabase, adminActor(fixture.admin.id), earlier.topic.id, {
+      body: "Önceden okunan başlığa okumadan sonra eklenen ve görüntüde olmaması gereken entry.",
+    });
+    const reread = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      earlier.topic.id,
+      populated.id,
+      outsider.id,
+    ]);
+    const readTopics = (
+      reread.perception as { readTopics?: Array<{ id: string; entries: unknown[] }> }
+    ).readTopics!;
+    expect(readTopics.map(({ id }) => id)).toEqual([earlier.topic.id, populated.id]);
+    expect(readTopics[0]!.entries).toHaveLength(1);
+
+    const record = (
+      input: Record<string, unknown>,
+      targetId: string,
+      sequence: number,
+      repair = true,
+    ) =>
+      recordRuntimeActions(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeActionsSchema.parse({
+          workerId,
+          actions: [
+            {
+              sequence,
+              ...(repair ? { repairOfSequence: 1 } : {}),
+              actionType: "CREATE_ENTRY",
+              safeReason: "Okunan başlığa aynı katkı entry olarak yazılıyor.",
+              targetType: "TOPIC",
+              targetId,
+              input,
+              provenance: setup.provenance,
+            },
+          ],
+        }),
+      );
+    // İşaretsiz kaçış kapalı: okunabilir çakışmadan sonra yalnız işaretli onarım kaydedilir.
+    await expect(
+      record({ topicId: populated.id, body: `${setup.body} Ek.` }, populated.id, 2, false),
+    ).rejects.toMatchObject({ code: "AGENT_DUPLICATE_REPAIR_REQUIRED" });
+    await expect(
+      record({ topicId: outsider.id, body: setup.body }, outsider.id, 2),
+    ).rejects.toMatchObject({ code: "AGENT_DUPLICATE_REPAIR_INVALID" });
+    await expect(
+      record({ topicId: populated.id, body: `${setup.body} Ek cümle.` }, populated.id, 2),
+    ).rejects.toMatchObject({ code: "AGENT_DUPLICATE_REPAIR_INVALID" });
+    const topicCountBefore = await integrationDatabase.topic.count();
+    await record({ topicId: populated.id, body: setup.body }, populated.id, 2);
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 2 }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED", rejectionCode: null });
+    expect(await integrationDatabase.topic.count()).toBe(topicCountBefore);
+    expect(
+      await integrationDatabase.entry.count({ where: { topicId: populated.id, status: "ACTIVE" } }),
+    ).toBe(2);
+  });
+
+  it("lets the hit topic be read once beyond the normal read limit and nothing else (G9g)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      () => [],
+      { extraEarlierReads: 2 },
+    );
+    const { fixture, runId, workerId, writePrincipal, readPrincipal, populated, earlier } = setup;
+    const alreadyRead = [earlier.topic.id, ...setup.extraEarlier.map(({ topic }) => topic.id)];
+    expect(alreadyRead).toHaveLength(3);
+    expect(setup.rejected).toMatchObject({
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: { conflictTopicId: populated.id },
+    });
+    const late = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "Sonradan açılan menü dışı başlık",
+        entryBody: "Sonradan açılan ve okunmaması gereken başlığın ilk entry metni burada.",
+      },
+    );
+    const reread = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      ...alreadyRead,
+      populated.id,
+      late.topic.id,
+    ]);
+    const readIds = (
+      (reread.perception as { readTopics?: Array<{ id: string }> }).readTopics ?? []
+    ).map(({ id }) => id);
+    expect(readIds).toEqual([...alreadyRead, populated.id]);
+    // Ek hak tek sefer: dördüncü okumadan sonra hiçbir başlık eklenmez.
+    const again = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      ...alreadyRead,
+      populated.id,
+      late.topic.id,
+    ]);
+    expect(
+      ((again.perception as { readTopics?: Array<{ id: string }> }).readTopics ?? []).map(
+        ({ id }) => id,
+      ),
+    ).toEqual([...alreadyRead, populated.id]);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 2,
+            repairOfSequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Okunan başlığa aynı katkı entry olarak yazılıyor.",
+            targetType: "TOPIC",
+            targetId: populated.id,
+            input: { topicId: populated.id, body: setup.body },
+            provenance: setup.provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 2 }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+  });
+
+  it("records a single run conflict even when two rejections interleave before their fallback writes (Sol #377 7. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (_populatedId, body, provenance) => [
+        {
+          sequence: 2,
+          actionType: "CREATE_TOPIC_WITH_ENTRY",
+          safeReason: "Aynı kavrama ikinci bir öneri.",
+          input: { title: "Dolu kavram", body: `${body} İkinci bir açıdan.` },
+          provenance,
+        },
+      ],
+      { executeFirst: false },
+    );
+    const { runId, workerId, writePrincipal, populated } = setup;
+    // 1. eylemin ret kaydı yazılmadan önce 2. eylem baştan sona yürür.
+    const first = await executeRuntimeAction(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      { workerId, sequence: 1 },
+      {
+        beforeFallback: async () => {
+          await expect(
+            executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+              workerId,
+              sequence: 2,
+            }),
+          ).resolves.toMatchObject({
+            rejectionCode: "TOPIC_EXISTS_UNREAD",
+            result: { conflictTopicId: populated.id },
+          });
+        },
+      },
+    );
+    expect(first).toMatchObject({ rejectionCode: "TOPIC_EXISTS_UNREAD" });
+    const withConflict = await integrationDatabase.agentAction.findMany({
+      where: { runId, result: { path: ["conflictTopicId"], not: Prisma.AnyNull } },
+      select: { sequence: true },
+    });
+    expect(withConflict).toEqual([{ sequence: 2 }]);
+  });
+
+  it("does not let another action's content repair write into the conflict topic (Sol #377 8. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (populatedId, _body, provenance) => [
+        {
+          sequence: 2,
+          actionType: "CREATE_ENTRY",
+          safeReason: "Kavrama başka bir katkı.",
+          targetType: "TOPIC",
+          targetId: populatedId,
+          input: {
+            topicId: populatedId,
+            body: "Bu entry kavramın gündelik kullanımına dair ayrı bir gözlem ekliyor ve uzun.",
+          },
+          provenance,
+        },
+      ],
+    );
+    const { runId, workerId, writePrincipal, readPrincipal, populated, earlier } = setup;
+    expect(setup.rejected).toMatchObject({ result: { conflictTopicId: populated.id } });
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      earlier.topic.id,
+      populated.id,
+    ]);
+    const second = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 2,
+    });
+    expect(second).toMatchObject({ actionStatus: "REJECTED" });
+    expect(second.rejectionCode).not.toBe("TOPIC_CONFLICT_REQUIRES_CONVERSION");
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 3,
+            repairOfSequence: 2,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Kendinden söz etmeyen onarım.",
+            targetType: "TOPIC",
+            targetId: populated.id,
+            input: {
+              topicId: populated.id,
+              body: "Kavramın gündelik kullanımına dair ayrı ve kendi başına okunabilen bir gözlem.",
+            },
+            provenance: setup.provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 3 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
+  });
+
+  it("rejects an unmarked entry recorded before the conflict once the topic is readable (Astra #377 2. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (populatedId, body, provenance) => [
+        {
+          sequence: 2,
+          actionType: "CREATE_ENTRY",
+          safeReason: "Önceden kaydedilen işaretsiz entry.",
+          targetType: "TOPIC",
+          targetId: populatedId,
+          input: { topicId: populatedId, body: `${body} Önceden kaydedilmiş farklı gövde.` },
+          provenance,
+        },
+      ],
+    );
+    expect(setup.rejected).toMatchObject({
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: { conflictTopicId: setup.populated.id },
+    });
+    await getRuntimeRunContext(
+      integrationDatabase,
+      setup.readPrincipal,
+      setup.runId,
+      setup.workerId,
+      [setup.earlier.topic.id, setup.populated.id],
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, setup.writePrincipal, setup.runId, {
+        workerId: setup.workerId,
+        sequence: 2,
+      }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
+    expect(
+      await integrationDatabase.entry.count({
+        where: { topicId: setup.populated.id, status: "ACTIVE" },
+      }),
+    ).toBe(1);
+  });
+
+  it("rejects an unmarked edit of the agent's own entry in the conflict topic (Sol #377)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (_populatedId, _body, provenance, ownEntryId) => [
+        {
+          sequence: 2,
+          actionType: "EDIT_OWN_ENTRY",
+          safeReason: "Önceden kaydedilen işaretsiz düzenleme.",
+          targetType: "ENTRY",
+          targetId: ownEntryId,
+          input: {
+            entryId: ownEntryId,
+            body: "Ajanın kendi entry'sini çakışmadan önce kaydedilmiş bambaşka bir gövdeyle değiştirmesi.",
+          },
+          provenance,
+        },
+      ],
+      { ownEntryInPopulated: true },
+    );
+    expect(setup.rejected).toMatchObject({
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: { conflictTopicId: setup.populated.id },
+    });
+    await getRuntimeRunContext(
+      integrationDatabase,
+      setup.readPrincipal,
+      setup.runId,
+      setup.workerId,
+      [setup.earlier.topic.id, setup.populated.id],
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, setup.writePrincipal, setup.runId, {
+        workerId: setup.workerId,
+        sequence: 2,
+      }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
+  });
+
+  it("rejects a marked edit repair in the conflict topic too, since conversion is never an edit (Sol #377 9. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (_populatedId, _body, provenance, ownEntryId) => [
+        {
+          sequence: 2,
+          actionType: "EDIT_OWN_ENTRY",
+          safeReason: "Kendinden söz eden düzenleme.",
+          targetType: "ENTRY",
+          targetId: ownEntryId,
+          input: {
+            entryId: ownEntryId,
+            body: "Bu entry kavramı başka yönden anlatıyor ve gündelik kullanımına bir gözlem ekliyor.",
+          },
+          provenance,
+        },
+      ],
+      { ownEntryInPopulated: true },
+    );
+    const { runId, workerId, writePrincipal, readPrincipal, populated, earlier } = setup;
+    expect(setup.rejected).toMatchObject({ result: { conflictTopicId: populated.id } });
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      earlier.topic.id,
+      populated.id,
+    ]);
+    const edit = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 2,
+    });
+    expect(edit).toMatchObject({ actionStatus: "REJECTED" });
+    const ownEntryId = (
+      await integrationDatabase.entry.findFirstOrThrow({
+        where: { topicId: populated.id, authorId: setup.fixture.created.agent.user.id },
+        select: { id: true },
+      })
+    ).id;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 3,
+            repairOfSequence: 2,
+            actionType: "EDIT_OWN_ENTRY",
+            safeReason: "Kendinden söz etmeyen düzenleme onarımı.",
+            targetType: "ENTRY",
+            targetId: ownEntryId,
+            input: {
+              entryId: ownEntryId,
+              body: "Kavramı başka yönden anlatan ve gündelik kullanımına bir gözlem ekleyen metin.",
+            },
+            provenance: setup.provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 3 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
+  });
+
+  it("does not let a new-topic repair reach the conflict topic once its entries are hidden (Sol #377 10. tur)", async () => {
+    const setup = await readThenDecideSetup(
+      "Dolu kavram üzerine yeni bir gelişme; kavramın gündelik kullanımına dair ayrıntılar.",
+      (_populatedId, _body, provenance) => [
+        {
+          sequence: 2,
+          actionType: "CREATE_TOPIC_WITH_ENTRY",
+          safeReason: "Aynı kavrama kendinden söz eden ikinci öneri.",
+          input: {
+            title: "Dolu kavram",
+            body: "Bu entry kavramın gündelik kullanımına dair ayrı bir gözlem ekliyor ve uzun.",
+          },
+          provenance,
+        },
+      ],
+    );
+    const { runId, workerId, writePrincipal, populated } = setup;
+    expect(setup.rejected).toMatchObject({ result: { conflictTopicId: populated.id } });
+    const second = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 2,
+    });
+    expect(second).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "CONSTITUTION_ENTRY_SELF_META",
+    });
+    await integrationDatabase.entry.updateMany({
+      where: { topicId: populated.id },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 3,
+            repairOfSequence: 2,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Kendinden söz etmeyen onarım.",
+            input: {
+              title: "Dolu kavram",
+              body: "Kavramın gündelik kullanımına dair ayrı ve kendi başına okunabilen bir gözlem.",
+            },
+            provenance: setup.provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 3 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CONFLICT_REQUIRES_CONVERSION",
+    });
+    expect(
+      await integrationDatabase.entry.count({ where: { topicId: populated.id, status: "ACTIVE" } }),
+    ).toBe(0);
+  });
+
+  it("does not make a hit topic readable when its name is not in the cited source text", async () => {
+    const setup = await readThenDecideSetup(
+      "Bambaşka bir konudaki gelişme; önerilen başlığın adı bu metinde hiç geçmiyor.",
+    );
+    expect(setup.rejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      result: null,
+    });
+    const reread = await getRuntimeRunContext(
+      integrationDatabase,
+      setup.readPrincipal,
+      setup.runId,
+      setup.workerId,
+      [setup.earlier.topic.id, setup.populated.id],
+    );
+    expect(
+      ((reread.perception as { readTopics?: Array<{ id: string }> }).readTopics ?? []).map(
+        ({ id }) => id,
+      ),
+    ).not.toContain(setup.populated.id);
   });
 
   it("rejects ambiguous CREATE_ENTRY targets and uses one canonical topic for policy and write", async () => {

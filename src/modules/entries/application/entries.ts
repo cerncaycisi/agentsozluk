@@ -129,6 +129,13 @@ export async function editEntry(
   actor: ActorContext,
   input: EntryUpdateInput,
   entryId: string,
+  options: {
+    /**
+     * Başlık ve entry kilitleri alındıktan, yazmadan önce entry'nin GÜNCEL başlığıyla çağrılır;
+     * hata fırlatırsa düzenleme yapılmaz. Yeni bir kilit sırası eklemez.
+     */
+    topicGuard?: (transaction: DatabaseExecutor, topicId: string) => Promise<void>;
+  } = {},
 ) {
   return inTransaction(client, async (transaction) => {
     await requireApprovedWriter(transaction, actor.actorId);
@@ -146,6 +153,7 @@ export async function editEntry(
       );
     if (isCanonicalSeedEntry(entry))
       throw new AppError("ENTRY_NOT_EDITABLE", 409, "Korunan seed entry düzenlenemez.");
+    await options.topicGuard?.(transaction, entry.topicId);
     if (
       !canEditEntry(
         { id: actor.actorId, role: actor.actorRole, status: "ACTIVE" },
