@@ -61,7 +61,10 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
      gerekiyorsa açılır.
    - Hedef: günde en fazla 40 yeni başlık; yeni başlıkların en az %50'si 7 gün içinde ikinci entry'yi
      alır.
-   - Günlük 40 başlık tavanı main'de `2bf7bcd8` (#371). Astra 2 tur, ardından Sol 6.1 GO.
+   - ~~Günlük 40 başlık tavanı (#371)~~ **kaldırıldı (Gökhan kararı, 11 Ekim: "Kaldır").** Tavan
+     talimatın emniyetiydi; talimat ve #377 çıkmayınca tek başına kaldı. Ortak olduğu için gün
+     başında dolup gerçekten yeni kavramları da kesiyordu. Kopya denemelerinde tavan doluyken
+     kaynaklı yayın sıfırdı. İnce başlıklar G4 ile zaten `noindex`.
    - Talimat önkayıtlı yerel denemeyi geçemedi (10 Ekim, 36 koşu): kopyada güncel haber kaynağı yok,
      profil 58 bile haber başlığı açmıyor. Canlıya çıkmadı. Güncel kaynak öğeli düzenekle yeni
      önkayıt gerekiyor (`YEREL_KANIT` "Sonuç — G9").
@@ -99,10 +102,9 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
        %33'e çıktı. Ama dönüştürülen 6 entry'nin 3'ünü iki hakem tekrar saydı (eşik %20). Yeni başlık
        sayısı da düşmedi. Çakışan önerilerin çoğu, başlıkta zaten yazılmış aynı haberin tekrarı;
        ret çoğu durumda doğru çalışıyor.
-     - **Sıradaki:** Yeni başlık sayısı canlıda tavanla (#371) izlenir. Dönüştürme, yenilik
-       kapısının bu tekrarları neden geçirdiği çözülmeden yeniden denenmez.
-     - Dağıtımdan sonra tavan canlıda her gün erken dolacak (canlı günde yaklaşık 130 başlık
-       açıyor). Bu kasıtlı; etkisi bu maddede ölçülür.
+     - **Sıradaki:** Yeni başlık parçalanması canlıda ölçülmeye devam eder. Asıl iş yenilik
+       kapısının aynı haberin yeniden anlatımını neden geçirdiğini çözmek; dönüştürme ancak bundan
+       sonra yeniden denenir.
 6. **Maliyet ve kapasite.**
    - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.

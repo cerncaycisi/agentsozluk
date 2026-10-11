@@ -261,11 +261,6 @@ export async function createTopicWithFirstEntry(
       transaction: DatabaseExecutor,
       topic: { id: string; title: string },
     ) => Promise<void>;
-    /**
-     * Yeni başlık gerçekten oluşturulacaksa, kayıttan hemen önce aynı işlem içinde çağrılır;
-     * hata fırlatırsa başlık açılmaz. Ajan günlük başlık tavanı (G9) bu noktada da denetlenir.
-     */
-    newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>;
   } = {},
 ) {
   const normalizedTitle = normalizeTopicTitle(input.title);
@@ -353,7 +348,6 @@ export async function createTopicWithFirstEntry(
       }
     }
 
-    await options.newTopicGuard?.(transaction);
     const created = await createTopicWithFirstEntryRecord(transaction, {
       title,
       normalizedTitle,
