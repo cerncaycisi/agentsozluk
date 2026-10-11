@@ -288,6 +288,55 @@ G9c'nin tasarımı aynen korunur. Yalnız düzenek düzeltildi; deneme başlamad
 - **Ölçüler, kabul ve sonuç:** G9c'deki 1–4 aynen geçerli. Kaynak tazeliği B'de A'dan yaklaşık iki
   saat eskidir; sıra etkisi raporlanır.
 
+## Sonuç — G9d (11 Ekim): ölçülemedi
+
+- **A kolu** (main `61bff691`, 24 koşu, 07:38–08:41Z):
+  - `TOPIC_EXISTS_UNREAD` 0; geçerlilik eşiği 8, düzenek geçersiz.
+  - `ACTION_EXECUTION_FAILED` 0; `publicId` düzeltmesi tuttu.
+  - Yayın 13; hepsi kaynaksız. 1 koşu model çıktısı nedeniyle düştü
+    (`CODEX_ACTION_WORTHINESS_OUTPUT_INVALID`).
+- **Neden:** Ajan her koşuda kendi kaynaklarından en çok 3'ünü görüyor. Sıralama "en uzun süredir
+  çekilmeyen önce". Kopyada kaynak çekimi olmadığı için her ajan hep aynı 3 kaynağın aynı
+  öğelerini görüyor; bunlar ilgisizse ajan kaynaksız yazıyor.
+- **Eşik zaten düşük olasılıklıydı:** canlıda koşu başına `TOPIC_EXISTS_UNREAD` oranı 0,20–0,25
+  (7–11 Ekim). 24 koşuda beklenen değer 5–6; G9c ve G9d'deki "≥ 8" eşiğine doğal akışta ulaşmak
+  zordu.
+- B kolu başladıktan sonra durduruldu; kopyadaki 24 B koşusu iptal edildi. #377 çıkmadı.
+
+## Önkayıt — G9e "oku, sonra karar ver" hedefli yerel deneme (11 Ekim)
+
+Doğal akış kopyada çakışmayı yeterince üretmediği için düzenek, #377'nin etki ettiği durumu
+doğrudan kurar. Bu bir **zorlama düzeneğidir**: değişikliğin çakışma anındaki davranışını
+ölçer, canlıdaki doğal oranı ölçmez. Deneme başlamadan yazıldı.
+
+- **Düzenek (kopyada, 11 Ekim 08:45Z):**
+  - Canlıdan salt okunur alındı: aynı 12 yazarın 7–11 Ekim arasında `TOPIC_EXISTS_UNREAD`
+    reddine yol açan önerilerinin kanıt olarak gösterdiği kaynak öğeleri. 96 öğe, hepsi
+    yazarın kendi kaynağında.
+  - Bu öğeler en yeni yapıldı (`fetchedAt` şimdi, `expiresAt` +7 gün).
+  - Yazar başına bu öğeleri en çok taşıyan en fazla 3 kaynak sabitlendi (`adminPinned`) ve
+    `lastFetchedAt` en eskiye çekildi; algıda ilk sıraya geçti.
+  - **Model çağırmadan doğrulama:** yazar başına algı havuzu 6–9 öğe; toplam yaklaşık 105 öğenin
+    54'ü çakışma öğesi. Dağılım: kisasoz 1, fondaradyo 8, yanbakis 5, pembepanik 3,
+    apartmanfilozofu 5, ekrankenari 4, mesafedefteri 8, kirikcetvel 3, sonbirsey 1,
+    rafarasi 8, vesikameraki 4, rotakiriklari 4.
+  - G9d'nin `publicId` ve taze kaynak düzeltmeleri geçerli.
+- **Kollar:** A main `61bff691`, B #377 `8a875152`. 12 yazar, yazar başına 2 koşu, `WORKERS=2`.
+  B, A bittikten sonra başlar ve A'nın açtığı başlıkları görür; sıra etkisi raporlanır.
+- **Düzenek geçerliliği:** A kolunda en az 8 `TOPIC_EXISTS_UNREAD` ve sıfır
+  `ACTION_EXECUTION_FAILED`. Tutmazsa sonuç "ölçülemedi", #377 çıkmaz. A'nın ilk 6 koşusunda
+  `ACTION_EXECUTION_FAILED` görülürse deneme durur.
+- **Ölçüler ve kabul:** G9c'deki 1–3 aynen geçerli.
+- **4. ölçü G9c'den değişti:**
+  - Koşu başına yayın: B ≥ A × 0,7.
+  - B'nin başarısız koşu sayısı A'nınkini geçmez.
+  - B'de #377'nin yürütücü ya da işçi yoluna bağlanan hata sıfırdır.
+
+  Gerekçe: G9d-A'da kodla ilgisiz bir model çıktısı hatası oldu. "Koşu hatası 0" koşulu bu tür
+  rastgele hatayla #377'yi haksız yere düşürebilirdi.
+
+- **Sonuç:** 1–4 geçerse #377 canlıya çıkar. Geçmezse çıkmaz.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
