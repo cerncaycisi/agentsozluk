@@ -660,7 +660,17 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         { workerId, leaseToken, sequences },
         undefined,
         undefined,
-        options,
+        {
+          ...options,
+          idempotencyKey: randomUUID(),
+          /*
+            Yanıt zaman aşımıyla kaybolsa da sunucu yazıyı commit etmiş olabilir
+            (ör. kilitlenme sonrası yeniden deneme). Aynı anahtarla tek tekrar,
+            sunucudaki idempotency kilidinde ilk isteğin bitmesini bekleyip gerçek
+            sonucu döndürür; işçi başarılı eylemi FAILED sanmaz (Sol #379).
+          */
+          retryTransportFailureOnce: true,
+        },
       ),
     );
   }
