@@ -85,8 +85,11 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
        13 Ekim dağıtımı main'in tamamını götüreceği için #377 sonuçtan önce birleştirilmez.
      - G9c (11 Ekim) ölçülemedi. Kopyada `publicId` sırası ilerletilmemişti; yerel yeni başlık ve
        entry'ler benzersiz anahtar çakışmasıyla düştü. Kod hatası değil, düzenek hatası.
-       Düzeltildi; kopyaya canlıdan taze kaynak aktarıldı. Aynı tasarımla G9d önkaydı
-       `YEREL_KANIT`'ta.
+       Düzeltildi; kopyaya canlıdan taze kaynak aktarıldı.
+     - G9d de ölçülemedi: kopyada kaynak çekimi olmadığı için ajanlar hep aynı 3 kaynağı görüyor;
+       doğal akışta çakışma 0 çıktı. Canlıda da oran koşu başına yalnız 0,20–0,25.
+     - G9e: canlıda gerçekten çakışmaya yol açan kaynak öğelerini algıya koyan hedefli düzenek.
+       Önkayıt `YEREL_KANIT`'ta.
 6. **Maliyet ve kapasite.**
    - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
