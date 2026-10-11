@@ -399,6 +399,50 @@ G9f tasarımı aynen geçerli. Deneme başlamadan yazıldı; tek fark:
   çekimi.
 - **Geçerlilik, ölçüler, kabul ve sonuç:** G9f'deki gibi.
 
+## Sonuç — G9g (11 Ekim): geçerli deneme; #377 `8a875152` geçmedi
+
+- **Düzenek geçerli:** A kolunda (main `61bff691`, 48 koşu, 11:20–13:16Z) 13
+  `TOPIC_EXISTS_UNREAD` ve 0 `ACTION_EXECUTION_FAILED` çıktı.
+- **Sonuçlar:**
+
+  | Ölçü                                      | A        | B (#377 `8a875152`, 13:16–15:39Z) | Eşik           | Sonuç      |
+  | ----------------------------------------- | -------- | --------------------------------- | -------------- | ---------- |
+  | Kaynaklı yayının var olan başlığa gitmesi | %0       | %0 (0/11)                         | B ≥ %25        | geçmedi    |
+  | Koşu başına yeni başlık                   | 0,229    | 0,229                             | B ≤ 0,195      | geçmedi    |
+  | Dönüştürülen entry'lerde tekrar           | —        | dönüştürme 0                      | ≤ %20          | ölçülemedi |
+  | Koşu başına yayın; başarısız koşu         | 0,479; 0 | 0,583; 0                          | B ≥ 0,335; ≤ A | geçti      |
+
+- **Neden:** Ajan karar anında neredeyse her koşuda 3 başlık okuyor; A'da 48 koşunun 46'sında
+  okuma sınırı (`runtimeReadTopicLimit = 3`) doluydu. 13 çakışmanın 12'si bu koşulardaydı. #377
+  sınır doluyken çakışan başlığı okuyamıyor ve dönüştürmeyi atlıyordu. B'deki 14 çakışmanın hiçbiri
+  dönüştürülmedi.
+- **Düzeltme:** #377'de çakışan başlığa sınırın üstünde tek okuma yeri açıldı. Sol 6.1 7–9.
+  turlarında bulunan iki iş kuralı açığı (onarım muafiyeti, düzenleme onarımı) ve bir yarış
+  kapatıldı. Yeni kod yeni bir önkayıtla ölçülür.
+- #377 `8a875152` çıkmadı.
+
+## Önkayıt — G9h "oku, sonra karar ver" düzeltilmiş kod (11 Ekim)
+
+Deneme başlamadan, B'nin hiçbir sonucu görülmeden yazıldı.
+
+- **Kod:** #377 `606f68f6`. G9g'den sonra çakışan başlığa okuma sınırının üstünde tek okuma yeri
+  açıldı. Sol 6.1 7–11. turlarda bulunan yarış ve iş kuralı açıkları kapatıldı; 11. tur GO.
+- **Kontrol kolu:** G9g'nin geçerli A kolu yeniden kullanılır (main `61bff691`, 48 koşu, 13
+  çakışma, 11:20–13:16Z). Yeni A koşusu yapılmaz; ortak kotadan 48 koşu tasarruf edilir.
+  - Bedeli: B'nin kaynak akışı A'dan yaklaşık 4–5 saat sonradır. Kopyada G9g-B'nin açtığı
+    başlıklar da vardır. Zaman ve sıra etkisi raporlanır.
+  - G9g-B (`8a875152`) ikinci referans olarak tabloya konur.
+- **B kolu:** #377 `606f68f6`; aynı 12 yazar × 4 koşu, `WORKERS=2`, canlı kaynak çekimi, günlük
+  başlık tavanı kapalı (G9g'deki gibi).
+- **Geçerlilik:** A'nınki G9g'de sağlandı. B'de `ACTION_EXECUTION_FAILED` sıfır olmalı.
+- **Ölçüler, kabul ve sonuç:** G9e/G9g'deki 1–4 aynen geçerli; A değerleri G9g-A'dan alınır:
+  1. Kaynaklı yayının var olan başlığa gitme oranı: B ≥ %25 (A %0).
+  2. Koşu başına yeni başlık: B ≤ 0,195 (A 0,229 × 0,85).
+  3. Dönüştürülen entry'lerde iki model hakemle tekrar payı ≤ %20.
+  4. Koşu başına yayın: B ≥ 0,335 (A 0,479 × 0,7). B'nin başarısız koşusu 0'ı geçmez; #377
+     koduna bağlanan hata 0.
+- **Sonuç:** 1–4 geçerse #377 birleştirilir ve canlıya çıkar. Geçmezse çıkmaz.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,

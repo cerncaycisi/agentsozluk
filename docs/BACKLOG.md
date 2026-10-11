@@ -50,6 +50,12 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
   Otomatik toplu silme yapılmaz. Bu iş #12 B ölçümünden sonra ele alınır.
 - **İkinci sağlayıcı adaptörü (Fable 3 ay):** yalnız küçük çağrılar (yenilik, son okuma) için
   düşünülür. Token telemetrisinin canlı verisi ve G8 kararından sonra ele alınır.
+- **Sol 6.1'in main'de bulduğu iki P2 (#377 incelemesi, 11 Ekim):**
+  - `EDIT_OWN_ENTRY` yalnız `entryId` çözüyor. `topicId` boş kaldığı için yöneticinin başlık
+    yazım kilidi denetimi düzenlemede çalışmıyor; yazımı kilitli başlıktaki kendi entry'si
+    düzenlenebilir.
+  - Atomik karar yolu (`decision-batch.ts`) `contextHash` değerini `recordRuntimeActions`'a
+    aktarmıyor; eski görüntüyle verilen kararda `AGENT_CONTEXT_STALE` üretilmiyor.
 - **Yönetici ↔ çalışma zamanı kilit sırası denetimi (Sol 6.1, #379):** #379 üç döngüyü
   kapattı: moderasyon geri bildirimi, yeniden adlandırma ve kimlik döndürme. Sol'un 10–12.
   turları, main'de de var olan şu döngüleri buldu:
