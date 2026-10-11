@@ -192,6 +192,8 @@ interface RuntimeHttpRequestOptions extends RuntimeRequestOptions {
   idempotencyKey?: string;
   maximumTimeoutMs?: number;
   retryTransportFailureOnce?: boolean;
+  /** Tekrardan sonra gelen şema dışı yanıt da sonucu bilinmeyen sayılsın diye burada doğrulanır. */
+  responseSchema?: z.ZodType;
 }
 
 export class RuntimeControlPlaneError extends Error {
@@ -460,7 +462,15 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
       const code = envelope.error?.code ?? `HTTP_${response.status}`;
       throw new RuntimeControlPlaneError(code, afterLostResponse);
     }
-    return envelope.data;
+    if (!options?.responseSchema) return envelope.data;
+    try {
+      return options.responseSchema.parse(envelope.data);
+    } catch (error) {
+      // İlk yanıt kaybolduysa bozuk tekrar yanıtı, ilk isteğin commit edip etmediğini söylemez.
+      if (afterLostResponse)
+        throw new RuntimeControlPlaneError("CONTROL_PLANE_RESPONSE_INVALID", true);
+      throw error;
+    }
   }
 
   async lease(credential: string, workerId: string): Promise<RuntimeLease> {
@@ -692,6 +702,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         undefined,
         {
           ...options,
+          responseSchema: actionsResponseSchema,
           idempotencyKey: randomUUID(),
           /*
             Yanıt zaman aşımıyla kaybolsa da sunucu yazıyı commit etmiş olabilir

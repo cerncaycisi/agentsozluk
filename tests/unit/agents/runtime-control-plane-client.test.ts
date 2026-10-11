@@ -436,6 +436,26 @@ describe("runtime control-plane HTTP contract", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("keeps the lost-response uncertainty when the replay answers with an off-schema body", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("connection closed"))
+      .mockResolvedValueOnce(jsonResponse({ data: {} }))
+      .mockResolvedValueOnce(jsonResponse({ data: {} }));
+    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
+
+    const lost = await client
+      .executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1])
+      .catch((error: unknown) => error);
+    expect(lost).toMatchObject({ code: "CONTROL_PLANE_RESPONSE_INVALID", afterLostResponse: true });
+    expect(isControlPlaneOutcomeUnknown(lost)).toBe(true);
+
+    const plain = await client
+      .executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1])
+      .catch((error: unknown) => error);
+    expect(isControlPlaneOutcomeUnknown(plain)).toBe(false);
+  });
+
   it("recovers a committed lease after its first response is lost by replaying the same key", async () => {
     const runId = randomUUID();
     const startedAt = new Date().toISOString();

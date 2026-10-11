@@ -2422,6 +2422,8 @@ export class AgentRuntimeWorker {
                       code: "CONTENT_REPAIR_CONTROL_PLANE_REJECTED",
                       runId,
                     });
+                    // Yutulan hata sonraki adımların taşıma hatasını "yürütme" sanmasın (Sol #379).
+                    executeInFlight = false;
                     continue;
                   }
                   throw repairSubmissionError;
