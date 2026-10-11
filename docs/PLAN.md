@@ -75,9 +75,18 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
 
      Parçalanmanın ana nedeni bu ret: var olan başlığa katkı atılıyor, yalnız yeni varlıklar geçiyor.
 
-   - **Sıradaki iş — "oku, sonra karar ver":** dolu başlığa çarpan öneri reddedilmez. Ajan o başlığın
+   - **"Oku, sonra karar ver" (#377):** dolu başlığa çarpan öneri reddedilmez. Ajan o başlığın
      entry'lerini görür; yenilik kapısından (#350) geçerse oraya `CREATE_ENTRY` olarak yazar. Kör
-     tekrar koruması korunur. Önkayıt, yerel deneme ve hakem incelemesiyle yapılacak.
+     tekrar koruması korunur.
+     - Hakem: Astra 2 tur, ardından Sol 6.1 6 tur; 6. tur GO (`8a875152`, 11 Ekim).
+     - 5. turun tek engeli main'de zaten var olan yürütücü ↔ moderasyon kilitlenmesiydi. #379 ile
+          kapandı (`61bff691`): moderasyon ajan kilitlerini beklemiyor, geri çekilip yeniden deniyor.
+     - **Birleştirme G9c'yi bekliyor.** Önkayıta göre #377 ancak yerel deneme geçerse canlıya çıkar.
+       13 Ekim dağıtımı main'in tamamını götüreceği için #377 sonuçtan önce birleştirilmez.
+     - G9c (11 Ekim) ölçülemedi. Kopyada `publicId` sırası ilerletilmemişti; yerel yeni başlık ve
+       entry'ler benzersiz anahtar çakışmasıyla düştü. Kod hatası değil, düzenek hatası.
+       Düzeltildi; kopyaya canlıdan taze kaynak aktarıldı. Aynı tasarımla G9d önkaydı
+       `YEREL_KANIT`'ta.
 6. **Maliyet ve kapasite.**
    - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.

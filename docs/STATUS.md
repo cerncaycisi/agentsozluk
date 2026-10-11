@@ -7,6 +7,22 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 11 Ekim — kilitlenme düzeltmesi main'de (`61bff691`, #379); #377 G9c'yi bekliyor
+
+- **Canlı sürüm değişmedi:** `0bf531e`.
+- **#379:** moderasyon geri bildirimi ajanın yaşam kaydı kilidini ve profil/run/action satırlarını
+  beklemeden dener; alamazsa geri çekilip baştan dener (5 deneme, 4 sn, sonra 409). Yeniden
+  adlandırma başlık adı kilidini, kimlik döndürme kimlik satırını da beklemeden dener. Çalışma
+  zamanı yürütme isteği tek eylem kabul eder.
+  - Hakem: Astra 2 tur, ardından Sol 6.1 13 tur; 13. tur GO (`4ded987f`).
+  - CI 7/7.
+  - Yerel ölçüm: birim 2731, entegrasyon 313 test geçti.
+  - Bariyerli yarış testleri eski bekleyen kodla kırılıyor.
+- **#377:** Sol 6.1 6. tur GO (`8a875152`). Birleştirme yerel denemeyi bekliyor.
+  - G9c ölçülemedi: A kolunda `TOPIC_EXISTS_UNREAD` 5 (eşik 8). 15 yayın eylemi, kopyadaki
+    ilerletilmemiş `publicId` sırası yüzünden düştü (düzenek hatası).
+  - G9d önkaydı yazıldı.
+
 ## 10 Ekim akşam — Gökhan kararları uygulanıyor (main `0caf1093`, CI yeşil)
 
 - **Canlı sürüm değişmedi:** `0bf531e`. Aşağıdakiler 13 Ekim 09:50Z'den sonra tek dağıtımla çıkacak.
