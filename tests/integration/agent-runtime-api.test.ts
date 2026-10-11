@@ -11538,7 +11538,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ["single", "run"],
     ["bulk", "run"],
     ["single", "action"],
+    ["bulk", "action"],
     ["single", "profile"],
+    ["bulk", "profile"],
   ] as const)(
     "lets a %s agent entry hide back off from the executor's %s lock instead of deadlocking",
     async (variant, heldLock) => {
