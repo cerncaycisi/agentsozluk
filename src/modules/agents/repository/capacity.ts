@@ -5,7 +5,6 @@ import {
   type CircuitBreakerConfig,
 } from "@/modules/agents/domain/circuit-breaker";
 import { runtimeFingerprint } from "@/modules/agents/domain/capacity";
-import { isRuntimeErrorRun } from "@/modules/agents/domain/runtime-controls";
 import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
 
 /**
@@ -455,7 +454,7 @@ export async function getRuntimeOperationalMetrics(
         finishedAt: { gte: breakerCutoff, lte: input.now },
         runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "TIMED_OUT"] },
       },
-      select: { runStatus: true, errorCode: true },
+      select: { runStatus: true },
     }),
     transaction.agentRun.findMany({
       where: {
@@ -606,7 +605,9 @@ export async function getRuntimeOperationalMetrics(
     (busyByWindowMinutes.get(minutes) ?? 0) / denominator(minutes);
   return {
     terminalRunsInErrorWindow: terminalRuns.length,
-    failedRunsInErrorWindow: terminalRuns.filter(isRuntimeErrorRun).length,
+    failedRunsInErrorWindow: terminalRuns.filter(({ runStatus }) =>
+      ["FAILED", "TIMED_OUT"].includes(runStatus),
+    ).length,
     consecutiveCodexFailures: countConsecutiveCodexFailures(
       latestTerminalRuns.map((run) => {
         const reachedProvider = runReachedProvider(run.usageMetadata);

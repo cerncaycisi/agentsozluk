@@ -1,4 +1,4 @@
-import { inDeadlockRetryingTransaction, inTransaction } from "@/lib/db/transaction";
+import { inLockConflictRetryingTransaction, inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
@@ -200,7 +200,7 @@ async function setEntryVisibilityWithAuthorization(
   input: ModerationReasonInput,
   authorization: "CONSTITUTIONAL" | "AGENT_CONTENT_ADMIN",
 ) {
-  return inDeadlockRetryingTransaction(client, async (transaction) => {
+  return inLockConflictRetryingTransaction(client, async (transaction) => {
     let relation: { reportId?: string; decisionId?: string } = {};
     if (authorization === "AGENT_CONTENT_ADMIN") {
       requireModerator(await findModerationActor(transaction, actor.actorId), actor, {
@@ -316,7 +316,7 @@ export async function setTopicVisibility(
   hidden: boolean,
   input: ModerationReasonInput,
 ) {
-  return inDeadlockRetryingTransaction(client, async (transaction) => {
+  return inLockConflictRetryingTransaction(client, async (transaction) => {
     const relation = await requireContentActionPermission(transaction, actor, {
       ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
       targetType: "TOPIC",
@@ -363,7 +363,7 @@ export async function renameTopic(
 ) {
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
   const normalizedTitle = normalizeTopicTitle(title);
-  return inDeadlockRetryingTransaction(client, async (transaction) => {
+  return inLockConflictRetryingTransaction(client, async (transaction) => {
     const relation = await requireContentActionPermission(transaction, actor, {
       ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
       targetType: "TOPIC",

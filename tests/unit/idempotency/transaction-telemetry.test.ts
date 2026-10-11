@@ -152,36 +152,43 @@ describe("transaction süresi telemetrisi", () => {
     });
   });
 
-  it("kilitlenmeyle yeniden denenen her denemeyi ayrı kaydeder", async () => {
+  it("kilit çakışmasıyla yeniden denenen her denemeyi ayrı kaydeder", async () => {
     const { withIdempotencyLock } = await import("@/modules/idempotency/repository/idempotency");
     const kilitlenme = new Prisma.PrismaClientKnownRequestError("deadlock detected", {
       code: "P2010",
       clientVersion: Prisma.prismaVersion.client,
       meta: { code: "40P01" },
     });
-    let cagri = 0;
-    const tx = { $executeRaw: vi.fn(async () => 1) };
-    const istemci = {
-      $transaction: vi.fn(async (cb: Callback) => {
-        cagri += 1;
-        saat.simdi += 20;
-        const sonuc = await cb(tx);
-        if (cagri === 1) {
-          saat.simdi += 2_500;
-          throw kilitlenme;
-        }
-        saat.simdi += 10;
-        return sonuc;
-      }),
+    const ilkDenemesiKilitlenen = () => {
+      let cagri = 0;
+      const tx = { $executeRaw: vi.fn(async () => 1) };
+      return {
+        $transaction: vi.fn(async (cb: Callback) => {
+          cagri += 1;
+          saat.simdi += 20;
+          const sonuc = await cb(tx);
+          if (cagri === 1) {
+            saat.simdi += 2_500;
+            throw kilitlenme;
+          }
+          saat.simdi += 10;
+          return sonuc;
+        }),
+      };
     };
+    const moderasyon = ilkDenemesiKilitlenen();
     await expect(
-      withIdempotencyLock(istemci as never, "kapsam", async () => "tamam", {
-        label: "runtime.lease",
-      }),
+      withIdempotencyLock(
+        moderasyon as never,
+        "kapsam",
+        async () => "tamam",
+        { label: "moderation" },
+        true,
+      ),
     ).resolves.toBe("tamam");
     const kayitlar = logMock.info.mock.calls.map(([kayit]) => kayit);
     expect(kayitlar).toHaveLength(2);
-    // Yavaş, kilitlenen deneme alarmın okuduğu activeMs ile görünür kalır.
+    // Yavaş, kilitlenen deneme activeMs ile görünür kalır.
     expect(kayitlar[0]).toMatchObject({ outcome: "failed", acquireMs: 20, activeMs: 2_500 });
     expect(kayitlar[0]).not.toHaveProperty("attempt");
     expect(kayitlar[1]).toMatchObject({
@@ -190,58 +197,16 @@ describe("transaction süresi telemetrisi", () => {
       acquireMs: 20,
       activeMs: 10,
     });
-  });
 
-  it("yeni denemeyi varsayılan bütçeye değil istek son anına göre başlatır", async () => {
-    const { withIdempotencyLock } = await import("@/modules/idempotency/repository/idempotency");
-    const kilitlenme = new Prisma.PrismaClientKnownRequestError("deadlock detected", {
-      code: "P2010",
-      clientVersion: Prisma.prismaVersion.client,
-      meta: { code: "40P01" },
-    });
-    const tx = { $executeRaw: vi.fn(async () => 1) };
-    const ilkDenemesiKilitlenen = (ilkMs: number) => {
-      let cagri = 0;
-      return {
-        $transaction: vi.fn(async (cb: Callback) => {
-          cagri += 1;
-          const sonuc = await cb(tx);
-          if (cagri === 1) {
-            saat.simdi += ilkMs;
-            throw kilitlenme;
-          }
-          return sonuc;
-        }),
-      };
-    };
-    // En kötü deneme 2 + 5 sn: son an 20 sn sonraysa 13 sn'ye dek yeni deneme başlar.
-    // Varsayılan 4 sn bütçe 4,2 sn'de biten denemeyi yeniden denemezdi.
-    const genis = ilkDenemesiKilitlenen(4_200);
-    await expect(
-      withIdempotencyLock(
-        genis as never,
-        "kapsam",
-        async () => "tamam",
-        { label: "runtime.lease" },
-        saat.simdi + 20_000,
-      ),
-    ).resolves.toBe("tamam");
-    expect(genis.$transaction).toHaveBeenCalledTimes(2);
-
-    // Son an 9 sn sonraysa yeni deneme 2 sn'ye dek başlar; varsayılan bütçe 2,5 sn'de
-    // biten denemeyi yeniden denerdi.
+    // Ajan çalışma zamanı (varsayılan) yeniden denemez: işçinin süre sınırı korunur.
     logMock.info.mockReset();
-    const dar = ilkDenemesiKilitlenen(2_500);
+    const calismaZamani = ilkDenemesiKilitlenen();
     await expect(
-      withIdempotencyLock(
-        dar as never,
-        "kapsam",
-        async () => "tamam",
-        { label: "runtime.lease" },
-        saat.simdi + 9_000,
-      ),
+      withIdempotencyLock(calismaZamani as never, "kapsam", async () => "tamam", {
+        label: "runtime.lease",
+      }),
     ).rejects.toBe(kilitlenme);
-    expect(dar.$transaction).toHaveBeenCalledTimes(1);
+    expect(calismaZamani.$transaction).toHaveBeenCalledTimes(1);
     expect(logMock.info.mock.calls.map(([kayit]) => kayit)).toEqual([
       expect.objectContaining({ outcome: "failed", activeMs: 2_500 }),
     ]);

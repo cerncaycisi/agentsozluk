@@ -192,16 +192,10 @@ interface RuntimeHttpRequestOptions extends RuntimeRequestOptions {
   idempotencyKey?: string;
   maximumTimeoutMs?: number;
   retryTransportFailureOnce?: boolean;
-  /** Tekrardan sonra gelen şema dışı yanıt da sonucu bilinmeyen sayılsın diye burada doğrulanır. */
-  responseSchema?: z.ZodType;
 }
 
 export class RuntimeControlPlaneError extends Error {
-  constructor(
-    public readonly code: string,
-    /** İlk yanıt taşımada kaybolduktan sonra aynı anahtarlı tekrar başarısız oldu. */
-    public readonly afterLostResponse = false,
-  ) {
+  constructor(public readonly code: string) {
     super(`Runtime control plane request failed: ${code}`);
     this.name = "RuntimeControlPlaneError";
   }
@@ -356,8 +350,7 @@ async function boundedJsonEnvelope(response: Response): Promise<Envelope> {
     if (done) break;
     received += value.byteLength;
     if (received > MAXIMUM_CONTROL_PLANE_RESPONSE_BYTES) {
-      // İptal hatası boyut hatasını taşıma hatasına çevirip tekrar tetiklememeli (Sol #379).
-      await reader.cancel().catch(() => undefined);
+      await reader.cancel();
       throw new RuntimeControlPlaneError("CONTROL_PLANE_RESPONSE_TOO_LARGE");
     }
     chunks.push(value);
@@ -375,15 +368,7 @@ async function boundedJsonEnvelope(response: Response): Promise<Envelope> {
   }
 }
 
-/** İsteğin sunucuda commit edilip edilmediği bilinmiyor: yanıt taşımada kayboldu. */
-export function isControlPlaneOutcomeUnknown(error: unknown): boolean {
-  return (
-    isRetryableTransportError(error) ||
-    (error instanceof RuntimeControlPlaneError && error.afterLostResponse)
-  );
-}
-
-export function isRetryableTransportError(error: unknown): boolean {
+function isRetryableTransportError(error: unknown): boolean {
   return (
     error instanceof TypeError ||
     (error instanceof DOMException && ["AbortError", "TimeoutError"].includes(error.name))
@@ -433,44 +418,19 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         signal: options?.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal,
       });
     };
-    // Yanıt gövdesi okunurken kopan bağlantı da taşıma hatasıdır; tekrar onu da kapsar (Sol #379).
-    const attempt = async () => {
-      const response = await request();
-      return { response, envelope: await boundedJsonEnvelope(response) };
-    };
-    /*
-      İlk yanıt kaybolduysa sunucu yazmış olabilir; tekrarın hata yanıtı bunu
-      çürütmez (ör. tekrar hız sınırına takılır). Hata bu belirsizliği taşır (Sol #379).
-    */
-    let afterLostResponse = false;
-    let outcome: Awaited<ReturnType<typeof attempt>>;
+    let response: Response;
     try {
-      outcome = await attempt();
+      response = await request();
     } catch (error) {
       if (!options?.retryTransportFailureOnce || !isRetryableTransportError(error)) throw error;
-      afterLostResponse = true;
-      try {
-        outcome = await attempt();
-      } catch (replayError) {
-        if (replayError instanceof RuntimeControlPlaneError)
-          throw new RuntimeControlPlaneError(replayError.code, true);
-        throw replayError;
-      }
+      response = await request();
     }
-    const { response, envelope } = outcome;
+    const envelope = await boundedJsonEnvelope(response);
     if (!response.ok) {
       const code = envelope.error?.code ?? `HTTP_${response.status}`;
-      throw new RuntimeControlPlaneError(code, afterLostResponse);
+      throw new RuntimeControlPlaneError(code);
     }
-    if (!options?.responseSchema) return envelope.data;
-    try {
-      return options.responseSchema.parse(envelope.data);
-    } catch (error) {
-      // İlk yanıt kaybolduysa bozuk tekrar yanıtı, ilk isteğin commit edip etmediğini söylemez.
-      if (afterLostResponse)
-        throw new RuntimeControlPlaneError("CONTROL_PLANE_RESPONSE_INVALID", true);
-      throw error;
-    }
+    return envelope.data;
   }
 
   async lease(credential: string, workerId: string): Promise<RuntimeLease> {
@@ -700,18 +660,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         { workerId, leaseToken, sequences },
         undefined,
         undefined,
-        {
-          ...options,
-          responseSchema: actionsResponseSchema,
-          idempotencyKey: randomUUID(),
-          /*
-            Yanıt zaman aşımıyla kaybolsa da sunucu yazıyı commit etmiş olabilir
-            (ör. kilitlenme sonrası yeniden deneme). Aynı anahtarla tek tekrar,
-            sunucudaki idempotency kilidinde ilk isteğin bitmesini bekleyip gerçek
-            sonucu döndürür; işçi başarılı eylemi FAILED sanmaz (Sol #379).
-          */
-          retryTransportFailureOnce: true,
-        },
+        options,
       ),
     );
   }

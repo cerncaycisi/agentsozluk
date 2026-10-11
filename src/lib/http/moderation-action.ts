@@ -43,7 +43,12 @@ export function runModerationAction<T>(
     );
     return idempotentResponse(
       request,
-      { actorId: session.userId, route: request.nextUrl.pathname, requestBody: input },
+      {
+        actorId: session.userId,
+        route: request.nextUrl.pathname,
+        requestBody: input,
+        retryOnLockConflict: true,
+      },
       async (client) => success(await action(client, actor, input), context),
       async (client) => {
         await authorizeModerationCommand(client, actor, authorizationOptions);

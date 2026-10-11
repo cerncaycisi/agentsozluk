@@ -24,8 +24,6 @@ import {
 } from "@/modules/agents/repository/runtime";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import { lockAgentLifeLedger } from "@/modules/agents/repository/life-ledger";
-import { executeIdempotently } from "@/modules/idempotency/application/idempotency";
-import type { JsonValue } from "@/modules/idempotency/domain/idempotency";
 import { lockTopicState } from "@/modules/topics/repository/topics";
 import { setAgentEntryVisibility } from "@/modules/moderation/application/actions";
 import { randomUUID } from "node:crypto";
@@ -2076,221 +2074,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseReadiness();
       await secondClient.$disconnect();
     }
-  });
-
-  it("re-runs a deadlock-aborted action instead of recording a failed fallback", async () => {
-    const fixture = await createFixture();
-    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
-    const writePrincipal = await runtimePrincipal(fixture.credential, "runtime:write");
-    const workerId = "deadlock-retry";
-    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
-      workerId,
-      leaseSeconds: 60,
-    });
-    const runId = leased.run!.id;
-    const topic = await createTopicWithFirstEntry(
-      integrationDatabase,
-      adminActor(fixture.admin.id),
-      {
-        title: `deadlock retry ${randomUUID()}`,
-        entryBody: "İnsan entry içeriği kilitlenme sonrası yeniden denemeyi doğrular.",
-      },
-    );
-    await getRuntimeRunContext(
-      integrationDatabase,
-      await runtimePrincipal(fixture.credential, "runtime:read"),
-      runId,
-      workerId,
-    );
-    const body = `Deadlock retry action ${randomUUID()}.`;
-    await recordRuntimeActions(
-      integrationDatabase,
-      writePrincipal,
-      runId,
-      runtimeActionsSchema.parse({
-        workerId,
-        actions: [
-          {
-            sequence: 1,
-            actionType: "CREATE_ENTRY",
-            safeReason: "The first attempt is aborted as a PostgreSQL deadlock victim.",
-            targetType: "TOPIC",
-            targetId: topic.topic.id,
-            input: { topicId: topic.topic.id, body },
-            provenance: {
-              evidenceType: "PLATFORM_EVENT",
-              evidenceIds: [runId],
-              shortRationale: "Controlled integration run is visible platform evidence.",
-            },
-          },
-        ],
-      }),
-    );
-    await markPresentedEntryTargetRead(runId, 1);
-    let attempts = 0;
-    let fallbacks = 0;
-    const deadlock = new Prisma.PrismaClientKnownRequestError("deadlock detected", {
-      code: "P2010",
-      clientVersion: Prisma.prismaVersion.client,
-      meta: { code: "40P01" },
-    });
-    await expect(
-      executeRuntimeActionApplication(
-        integrationDatabase,
-        writePrincipal,
-        runId,
-        { workerId, leaseToken: leased.run!.leaseToken, sequence: 1 },
-        {
-          requireLifeLedger: false,
-          afterPublicWriteSettingsLocked: async () => {
-            attempts += 1;
-            if (attempts === 1) throw deadlock;
-          },
-          beforeFallback: async () => {
-            fallbacks += 1;
-          },
-        },
-      ),
-    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
-    expect({ attempts, fallbacks }).toEqual({ attempts: 2, fallbacks: 0 });
-    expect(await integrationDatabase.entry.count({ where: { body } })).toBe(1);
-
-    // İşçi her zaman Idempotency-Key gönderir: yürütücü dış transaction'ın içinde çalışır.
-    // Kilitlenme ret kaydına dönüşmeden dış transaction'a çıkar ve iş baştan yapılır.
-    const nestedBody = `Nested deadlock retry action ${randomUUID()}.`;
-    await recordRuntimeActions(
-      integrationDatabase,
-      writePrincipal,
-      runId,
-      runtimeActionsSchema.parse({
-        workerId,
-        actions: [
-          {
-            sequence: 2,
-            actionType: "CREATE_ENTRY",
-            safeReason: "The idempotent outer transaction re-runs the aborted attempt.",
-            targetType: "TOPIC",
-            targetId: topic.topic.id,
-            input: { topicId: topic.topic.id, body: nestedBody },
-            provenance: {
-              evidenceType: "PLATFORM_EVENT",
-              evidenceIds: [runId],
-              shortRationale: "Controlled integration run is visible platform evidence.",
-            },
-          },
-        ],
-      }),
-    );
-    await markPresentedEntryTargetRead(runId, 2);
-    attempts = 0;
-    const nested = await executeIdempotently(
-      integrationDatabase,
-      {
-        actorId: fixture.created.agent.user.id,
-        route: `/api/v1/internal/agent-runtime/runs/${runId}/actions/execute`,
-        key: randomUUID(),
-        requestBody: { sequence: 2 },
-      },
-      async (transaction) => ({
-        status: 200,
-        body: (await executeRuntimeActionApplication(
-          transaction,
-          writePrincipal,
-          runId,
-          { workerId, leaseToken: leased.run!.leaseToken, sequence: 2 },
-          {
-            requireLifeLedger: false,
-            afterPublicWriteSettingsLocked: async () => {
-              attempts += 1;
-              if (attempts === 1) throw deadlock;
-            },
-            beforeFallback: async () => {
-              fallbacks += 1;
-            },
-          },
-        )) as unknown as JsonValue,
-      }),
-    );
-    expect(nested.body).toMatchObject({ actionStatus: "SUCCEEDED" });
-    expect({ attempts, fallbacks }).toEqual({ attempts: 2, fallbacks: 0 });
-    expect(await integrationDatabase.entry.count({ where: { body: nestedBody } })).toBe(1);
-
-    // Gerçek kilitlenme: moderasyon sırası (başlık → yaşam kaydı) yürütücüyü kurban seçtirir.
-    const cycleBody = `Real deadlock retry action ${randomUUID()}.`;
-    await recordRuntimeActions(
-      integrationDatabase,
-      writePrincipal,
-      runId,
-      runtimeActionsSchema.parse({
-        workerId,
-        actions: [
-          {
-            sequence: 3,
-            actionType: "CREATE_ENTRY",
-            safeReason: "PostgreSQL aborts this action in a real lock cycle.",
-            targetType: "TOPIC",
-            targetId: topic.topic.id,
-            input: { topicId: topic.topic.id, body: cycleBody },
-            provenance: {
-              evidenceType: "PLATFORM_EVENT",
-              evidenceIds: [runId],
-              shortRationale: "Controlled integration run is visible platform evidence.",
-            },
-          },
-        ],
-      }),
-    );
-    await markPresentedEntryTargetRead(runId, 3);
-    const deadlocksBefore = await databaseDeadlockCount();
-    let execution: Promise<{ body: JsonValue }> | undefined;
-    fallbacks = 0;
-    await integrationDatabase.$transaction(
-      async (transaction) => {
-        await lockTopicState(transaction, topic.topic.id);
-        execution = executeIdempotently(
-          integrationDatabase,
-          {
-            actorId: fixture.created.agent.user.id,
-            route: `/api/v1/internal/agent-runtime/runs/${runId}/actions/execute`,
-            key: randomUUID(),
-            requestBody: { sequence: 3 },
-          },
-          async (outer) => ({
-            status: 200,
-            body: (await executeRuntimeActionApplication(
-              outer,
-              writePrincipal,
-              runId,
-              { workerId, leaseToken: leased.run!.leaseToken, sequence: 3 },
-              {
-                requireLifeLedger: false,
-                beforeFallback: async () => {
-                  fallbacks += 1;
-                },
-              },
-            )) as unknown as JsonValue,
-          }),
-        );
-        execution.catch(() => undefined);
-        // Yürütücü yaşam kaydını alıp başlık kilidinde beklemeye başlayana dek.
-        for (let attempt = 0; ; attempt += 1) {
-          const [lockWaits] = await integrationDatabase.$queryRaw<Array<{ waiting: bigint }>>`
-            SELECT count(*) AS waiting FROM pg_locks
-            WHERE locktype = 'advisory' AND NOT granted AND database = (
-              SELECT oid FROM pg_database WHERE datname = current_database()
-            )`;
-          if (lockWaits!.waiting > 0n) break;
-          if (attempt > 200) throw new Error("executor never waited for the topic lock");
-          await new Promise((resolve) => setTimeout(resolve, 10));
-        }
-        await lockAgentLifeLedger(transaction, fixture.created.agent.profile.id);
-      },
-      { timeout: 15_000 },
-    );
-    await expect(execution).resolves.toMatchObject({ body: { actionStatus: "SUCCEEDED" } });
-    expect(await databaseDeadlockCount()).toBeGreaterThan(deadlocksBefore);
-    expect(fallbacks).toBe(0);
-    expect(await integrationDatabase.entry.count({ where: { body: cycleBody } })).toBe(1);
   });
 
   it("does not let the public-write kill switch return ahead of an old-snapshot action commit", async () => {
@@ -11694,12 +11477,16 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toBe(100);
   });
 
-  it.each(["single", "bulk"] as const)(
-    "retries a %s agent entry hide that PostgreSQL aborts in an executor-order lock cycle",
-    async (variant) => {
+  it.each([
+    ["single", "life"],
+    ["bulk", "life"],
+    ["single", "run"],
+  ] as const)(
+    "lets a %s agent entry hide back off from the executor's %s lock instead of deadlocking",
+    async (variant, heldLock) => {
       const fixture = await createFixture();
       const generated = await createRuntimeAgentEntries(fixture, [
-        "Kilitlenmede iptal edilen moderasyon işlemi baştan denenip tamamlanmalıdır.",
+        "Moderasyon ajanın kilidini beklemez; geri çekilip yeniden dener.",
       ]);
       const entryId = generated.content[0]!.entryId;
       const profileId = fixture.created.agent.profile.id;
@@ -11709,15 +11496,23 @@ describe("internal agent runtime API with PostgreSQL", () => {
       });
       const deadlocksBefore = await databaseDeadlockCount();
       const feedback = {
-        reason: "Kilitlenme sonrası yeniden deneme bu gizlemeyi tamamlamalıdır.",
+        reason: "Ajan kilidi boşalınca bu gizleme tamamlanmalıdır.",
         behaviorReasonCode: "REPETITIVE" as const,
         editorNote: "Aynı çekirdek katkıyı yeni bir değer eklemeden tekrarlama.",
       };
       let moderation: Promise<unknown> | undefined;
-      // Yürütücünün sırası: önce ajan yaşam kaydı, sonra başlık. Moderasyon tersini alır.
+      /*
+        Yürütücünün sırası: önce yaşam kaydı (ya da run satırı), sonra başlık. Moderasyon
+        başlığı alıp ajan kilidini BEKLESEYDİ bu transaction başlıkta beklerken döngü kurulur
+        ve PostgreSQL birini iptal ederdi. Moderasyon beklemeden vazgeçtiği için ikisi de biter.
+      */
       await integrationDatabase.$transaction(
         async (transaction) => {
-          await lockAgentLifeLedger(transaction, profileId);
+          if (heldLock === "life") await lockAgentLifeLedger(transaction, profileId);
+          else
+            await transaction.$queryRaw`
+              SELECT 1 FROM "agent_runs" WHERE "id" = ${generated.runId}::uuid FOR UPDATE
+            `;
           moderation =
             variant === "single"
               ? setAgentEntryVisibility(
@@ -11734,25 +11529,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
                   { ...feedback, entryIds: [entryId], confirmation: "HIDE_AGENT_CONTENT" },
                 );
           moderation.catch(() => undefined);
-          // Moderasyon başlık kilidini alıp yaşam kaydı kilidinde beklemeye başlayana dek.
-          for (let attempt = 0; ; attempt += 1) {
-            const [lockWaits] = await integrationDatabase.$queryRaw<Array<{ waiting: bigint }>>`
-              SELECT count(*) AS waiting FROM pg_locks
-              WHERE locktype = 'advisory' AND NOT granted AND database = (
-                SELECT oid FROM pg_database WHERE datname = current_database()
-              )`;
-            if (lockWaits!.waiting > 0n) break;
-            if (attempt > 200) throw new Error("moderation never waited for the life lock");
-            await new Promise((resolve) => setTimeout(resolve, 10));
-          }
-          // Döngüyü kapatır; önce bekleyen moderasyon kurban seçilir.
+          // Moderasyon en az bir kez ajan kilidine çarpıp geri çekilsin.
+          await new Promise((resolve) => setTimeout(resolve, 300));
           await lockTopicState(transaction, topicId);
         },
         { timeout: 15_000 },
       );
       await expect(moderation).resolves.toBeDefined();
-      const deadlocksAfter = await databaseDeadlockCount();
-      expect(deadlocksAfter).toBeGreaterThan(deadlocksBefore);
+      expect(await databaseDeadlockCount()).toBe(deadlocksBefore);
       expect(
         await integrationDatabase.entry.findUniqueOrThrow({
           where: { id: entryId },
@@ -11771,6 +11555,45 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ).toBe(1);
     },
   );
+
+  it("answers 409 without writing when the executor keeps the agent lock past the retry budget", async () => {
+    const fixture = await createFixture();
+    const generated = await createRuntimeAgentEntries(fixture, [
+      "Ajan kilidi uzun süre tutulursa moderasyon hiçbir şey yazmadan vazgeçer.",
+    ]);
+    const entryId = generated.content[0]!.entryId;
+    const profileId = fixture.created.agent.profile.id;
+    let outcome: unknown;
+    await integrationDatabase.$transaction(
+      async (transaction) => {
+        await lockAgentLifeLedger(transaction, profileId);
+        outcome = await setAgentEntryVisibility(
+          integrationDatabase,
+          adminActor(fixture.admin.id),
+          entryId,
+          true,
+          {
+            reason: "Ajan kilidi boşalmadığı için bu gizleme reddedilmelidir.",
+            behaviorReasonCode: "REPETITIVE",
+            editorNote: "Aynı çekirdek katkıyı yeni bir değer eklemeden tekrarlama.",
+          },
+        ).catch((error: unknown) => error);
+      },
+      { timeout: 15_000 },
+    );
+    expect(outcome).toMatchObject({ code: "AGENT_PROFILE_STATE_CONFLICT", status: 409 });
+    expect(
+      await integrationDatabase.entry.findUniqueOrThrow({
+        where: { id: entryId },
+        select: { status: true },
+      }),
+    ).toEqual({ status: "ACTIVE" });
+    expect(
+      await integrationDatabase.moderationAction.count({
+        where: { actionType: "ENTRY_HIDDEN", targetId: entryId },
+      }),
+    ).toBe(0);
+  });
 
   it("bulk hides and restores only provenance-backed agent entries while preserving counters", async () => {
     const fixture = await createFixture();

@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { retryOnDeadlock } from "@/lib/db/transaction";
+import { retryOnLockConflict } from "@/lib/db/transaction";
 import { logger, safeErrorCode } from "@/lib/logging/logger";
 import type { JsonValue } from "@/modules/idempotency/domain/idempotency";
 
@@ -34,7 +34,6 @@ export interface StoredIdempotencyResponse {
   Callback hiç başlamadıysa `acquireMs` ve `activeMs` null'dır.
 */
 const PRISMA_VARSAYILAN_TIMEOUT_MS = 5_000;
-const PRISMA_VARSAYILAN_MAX_WAIT_MS = 2_000;
 
 export function withIdempotencyLock<T>(
   client: PrismaClient,
@@ -42,20 +41,13 @@ export function withIdempotencyLock<T>(
   work: (transaction: Prisma.TransactionClient) => Promise<T>,
   telemetry?: { label: string },
   /**
-    İsteğin yanıtlanması gereken son an (`performance.now()` ölçeği). Kilitlenme
-    sonrası yeni deneme ancak en kötü süreli bir deneme (bağlantı bekleme + Prisma
-    transaction sınırı) bu anı aşmadan bitebilecekse başlar (Sol #379).
+    Yalnız moderasyon ve yönetici istekleri açar: kilit çakışmasında transaction
+    hiçbir şey yazmamış olur ve iş baştan çalıştırılır. Ajan çalışma zamanı
+    rotaları açmaz; işçinin süre sınırı ve sonuç belirsizliği doğmaz (#379).
+    Telemetri her denemeyi ayrı kaydeder (Astra #379).
   */
-  requestDeadline?: number,
+  retryOnLockConflictEnabled = false,
 ): Promise<T> {
-  /*
-    Idempotent yazının bütün etkisi bu transaction'dadır; kilitlenme iptalinde
-    (40P01) hiçbir şey yazılmamış olur ve iş baştan çalıştırılabilir. Ajan
-    yürütücüsü ile moderasyon farklı sırayla kilit alabildiği için bu yol
-    kilitlenmeyi kullanıcıya hata olarak göstermez (#379). Telemetri her denemeyi
-    ayrı kaydeder; kilitlenen yavaş deneme sonraki hızlı denemenin arkasına
-    gizlenmez (Astra #379).
-  */
   let deneme = 0;
   const tekDeneme = () => {
     deneme += 1;
@@ -103,15 +95,7 @@ export function withIdempotencyLock<T>(
       }
     })();
   };
-  return retryOnDeadlock(
-    tekDeneme,
-    requestDeadline === undefined
-      ? {}
-      : {
-          retryUntil:
-            requestDeadline - PRISMA_VARSAYILAN_MAX_WAIT_MS - PRISMA_VARSAYILAN_TIMEOUT_MS,
-        },
-  );
+  return retryOnLockConflictEnabled ? retryOnLockConflict(tekDeneme) : tekDeneme();
 }
 
 export async function findIdempotencyRecord(

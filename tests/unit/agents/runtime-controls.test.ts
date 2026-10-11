@@ -8,8 +8,6 @@ import {
   runtimeRunAllowedInOperatingMode,
   societyFlowEnabled,
   sourceFetchTargetLimit,
-  isRuntimeErrorRun,
-  RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE,
   terminalizeInterruptedRuntimeRun,
 } from "@/modules/agents/domain/runtime-controls";
 
@@ -181,43 +179,5 @@ describe("global agent runtime controls", () => {
         succeededActions: 1,
       }).outcome,
     ).toBe("FAILED");
-  });
-
-  it("keeps committed effects of an outcome-unknown execution as PARTIAL", () => {
-    const empty = {
-      succeededActions: 0,
-      committedMemoryEpisodes: 0,
-      recordedSourceResults: 0,
-      proposedActions: 1,
-      rejectedActions: 0,
-    };
-    expect(
-      terminalizeInterruptedRuntimeRun(
-        "FAILED",
-        { ...empty, succeededActions: 1 },
-        RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE,
-      ).outcome,
-    ).toBe("PARTIAL");
-    expect(
-      terminalizeInterruptedRuntimeRun("FAILED", empty, RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE)
-        .outcome,
-    ).toBe("FAILED");
-    expect(
-      terminalizeInterruptedRuntimeRun(
-        "FAILED",
-        { ...empty, succeededActions: 1 },
-        "CONTROL_PLANE_ACTION_EXECUTION_FAILED",
-      ).outcome,
-    ).toBe("FAILED");
-  });
-
-  it("counts an outcome-unknown PARTIAL run as a runtime error", () => {
-    expect(isRuntimeErrorRun({ runStatus: "FAILED", errorCode: "CODEX_TIMEOUT" })).toBe(true);
-    expect(isRuntimeErrorRun({ runStatus: "TIMED_OUT", errorCode: "RUNTIME_TIMEOUT" })).toBe(true);
-    expect(
-      isRuntimeErrorRun({ runStatus: "PARTIAL", errorCode: RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE }),
-    ).toBe(true);
-    expect(isRuntimeErrorRun({ runStatus: "PARTIAL", errorCode: "WORKER_CANCELLED" })).toBe(false);
-    expect(isRuntimeErrorRun({ runStatus: "SUCCEEDED", errorCode: null })).toBe(false);
   });
 });

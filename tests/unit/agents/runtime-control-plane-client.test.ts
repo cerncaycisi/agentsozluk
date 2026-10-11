@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
   canonicalRuntimeControlPlaneBaseUrl,
-  isControlPlaneOutcomeUnknown,
   RuntimeControlPlaneHttpClient,
 } from "@/runtime/control-plane-client";
 import type { RuntimeControlPlaneError } from "@/runtime/control-plane-client";
@@ -334,126 +333,6 @@ describe("runtime control-plane HTTP contract", () => {
     const secondHeaders = fetchMock.mock.calls[1]![1]?.headers as Record<string, string>;
     expect(firstHeaders["idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/u);
     expect(secondHeaders["idempotency-key"]).toBe(firstHeaders["idempotency-key"]);
-  });
-
-  it("replays a timed-out action execution with the same key to learn its committed result", async () => {
-    const runId = randomUUID();
-    const committed = {
-      data: {
-        actions: [
-          {
-            id: randomUUID(),
-            sequence: 1,
-            actionType: "CREATE_ENTRY",
-            actionStatus: "SUCCEEDED",
-            rejectionCode: null,
-          },
-        ],
-      },
-    };
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockRejectedValueOnce(new DOMException("request timed out", "TimeoutError"))
-      .mockResolvedValueOnce(jsonResponse(committed));
-    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
-
-    const execution = await client.executeActions(
-      "credential",
-      "worker-one",
-      runId,
-      LEASE_TOKEN,
-      [1],
-    );
-
-    expect(execution.actions[0]).toMatchObject({ sequence: 1, actionStatus: "SUCCEEDED" });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const firstHeaders = fetchMock.mock.calls[0]![1]?.headers as Record<string, string>;
-    const secondHeaders = fetchMock.mock.calls[1]![1]?.headers as Record<string, string>;
-    expect(firstHeaders["idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/u);
-    expect(secondHeaders["idempotency-key"]).toBe(firstHeaders["idempotency-key"]);
-    expect(fetchMock.mock.calls[1]![1]?.body).toBe(fetchMock.mock.calls[0]![1]?.body);
-  });
-
-  it("replays an action execution whose response body is lost after the headers arrive", async () => {
-    const committed = {
-      data: {
-        actions: [
-          {
-            id: randomUUID(),
-            sequence: 1,
-            actionType: "CREATE_ENTRY",
-            actionStatus: "SUCCEEDED",
-            rejectionCode: null,
-          },
-        ],
-      },
-    };
-    const brokenBody = new Response(
-      new ReadableStream({
-        start(controller) {
-          controller.error(new DOMException("body timed out", "TimeoutError"));
-        },
-      }),
-      { status: 200, headers: { "content-type": "application/json" } },
-    );
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(brokenBody)
-      .mockResolvedValueOnce(jsonResponse(committed));
-    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
-
-    await expect(
-      client.executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1]),
-    ).resolves.toMatchObject({ actions: [{ sequence: 1, actionStatus: "SUCCEEDED" }] });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const firstHeaders = fetchMock.mock.calls[0]![1]?.headers as Record<string, string>;
-    const secondHeaders = fetchMock.mock.calls[1]![1]?.headers as Record<string, string>;
-    expect(secondHeaders["idempotency-key"]).toBe(firstHeaders["idempotency-key"]);
-  });
-
-  it("keeps the lost-response uncertainty when the same-key replay returns an HTTP error", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockRejectedValueOnce(new TypeError("connection closed"))
-      .mockResolvedValueOnce(jsonResponse({ error: { code: "INTERNAL_ERROR", message: "x" } }, 500))
-      .mockResolvedValueOnce(
-        jsonResponse({ error: { code: "INTERNAL_ERROR", message: "x" } }, 500),
-      );
-    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
-
-    const lost = await client
-      .executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1])
-      .catch((error: unknown) => error);
-    expect(lost).toMatchObject({ code: "INTERNAL_ERROR", afterLostResponse: true });
-    expect(isControlPlaneOutcomeUnknown(lost)).toBe(true);
-
-    // İlk yanıt kaybolmadıysa sunucunun hatası kesindir.
-    const plain = await client
-      .executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1])
-      .catch((error: unknown) => error);
-    expect(plain).toMatchObject({ code: "INTERNAL_ERROR", afterLostResponse: false });
-    expect(isControlPlaneOutcomeUnknown(plain)).toBe(false);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-  });
-
-  it("keeps the lost-response uncertainty when the replay answers with an off-schema body", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockRejectedValueOnce(new TypeError("connection closed"))
-      .mockResolvedValueOnce(jsonResponse({ data: {} }))
-      .mockResolvedValueOnce(jsonResponse({ data: {} }));
-    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
-
-    const lost = await client
-      .executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1])
-      .catch((error: unknown) => error);
-    expect(lost).toMatchObject({ code: "CONTROL_PLANE_RESPONSE_INVALID", afterLostResponse: true });
-    expect(isControlPlaneOutcomeUnknown(lost)).toBe(true);
-
-    const plain = await client
-      .executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1])
-      .catch((error: unknown) => error);
-    expect(isControlPlaneOutcomeUnknown(plain)).toBe(false);
   });
 
   it("recovers a committed lease after its first response is lost by replaying the same key", async () => {

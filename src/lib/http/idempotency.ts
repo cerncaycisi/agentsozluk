@@ -13,7 +13,7 @@ export async function idempotentResponse(
     route: string;
     requestBody: unknown;
     telemetryLabel?: string;
-    requestDeadline?: number;
+    retryOnLockConflict?: boolean;
   },
   execute: (client: DatabaseExecutor) => Promise<NextResponse>,
   preflight?: (client: DatabaseExecutor) => Promise<void>,

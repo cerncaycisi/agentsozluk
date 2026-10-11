@@ -1,42 +1,33 @@
 import { performance } from "node:perf_hooks";
-import { isDeadlockError } from "@/lib/db/errors";
+import { isRetryableLockConflict } from "@/lib/db/errors";
 import type { DatabaseClient, DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 
 export interface TransactionOptions {
   /**
-    PostgreSQL kilitlenmede (40P01) işlemlerden birini iptal eder. İptal edilen
-    transaction hiçbir şey yazmamış olur; işi baştan çalıştırmak güvenlidir.
-    Yalnız tüm etkisi transaction içinde kalan işler bu seçeneği açar.
+    Kilit çakışmasında (kilitlenme iptali `40P01` ya da moderasyonun beklemeden
+    vazgeçtiği ajan kilidi) transaction hiçbir şey yazmamış olur; işi baştan
+    çalıştırmak güvenlidir. Yalnız tüm etkisi transaction içinde kalan ve süre
+    sınırı olmayan insan istekleri (moderasyon) bunu açar; ajan yürütücüsü açmaz (#379).
   */
-  retryOnDeadlock?: boolean;
+  retryOnLockConflict?: boolean;
 }
 
-export const DEADLOCK_RETRY_ATTEMPTS = 3;
-/** Çağıran bir sınır vermezse yeni deneme ilk denemenin başından en geç bu kadar sonra başlar. */
-export const DEADLOCK_RETRY_BUDGET_MS = 4_000;
+export const LOCK_CONFLICT_RETRY_ATTEMPTS = 5;
+/** Yeni deneme ilk denemenin başından en geç bu kadar sonra başlar. */
+export const LOCK_CONFLICT_RETRY_BUDGET_MS = 4_000;
 
-export interface DeadlockRetryOptions {
-  /**
-    `performance.now()` ölçeğinde an: bundan sonra yeni deneme başlamaz. Süre sınırı
-    olan istekler (işçi 15 sn) bunu istek başından hesaplar (Sol #379).
-  */
-  retryUntil?: number;
-  now?: () => number;
-}
-
-export async function retryOnDeadlock<T>(
+export async function retryOnLockConflict<T>(
   run: () => Promise<T>,
-  options: DeadlockRetryOptions = {},
+  now: () => number = () => performance.now(),
 ): Promise<T> {
-  const now = options.now ?? (() => performance.now());
-  const retryUntil = options.retryUntil ?? now() + DEADLOCK_RETRY_BUDGET_MS;
+  const retryUntil = now() + LOCK_CONFLICT_RETRY_BUDGET_MS;
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await run();
     } catch (error) {
-      if (attempt >= DEADLOCK_RETRY_ATTEMPTS || !isDeadlockError(error)) throw error;
-      // İki kurban aynı anda yeniden girip yine çakışmasın diye kısa, rastgele bekleme.
-      await new Promise((resolve) => setTimeout(resolve, 20 + Math.random() * 80 * attempt));
+      if (attempt >= LOCK_CONFLICT_RETRY_ATTEMPTS || !isRetryableLockConflict(error)) throw error;
+      // Ajanın kısa transaction'ı bitsin; aynı anda yeniden girilmesin diye rastgele.
+      await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 150 * attempt));
       // Sınır beklemeden sonra denetlenir; yeni deneme hiçbir zaman sınırdan sonra başlamaz.
       if (now() >= retryUntil) throw error;
     }
@@ -59,16 +50,16 @@ export function inTransaction<T>(
     */
     const run = () =>
       (client as DatabaseClient).$transaction(work, { timeout: 15_000, maxWait: 5_000 });
-    return options.retryOnDeadlock ? retryOnDeadlock(run) : run();
+    return options.retryOnLockConflict ? retryOnLockConflict(run) : run();
   }
   // İç içe çağrıda yeniden deneme en dıştaki transaction'ın işidir.
   return work(client as TransactionClient);
 }
 
-/** Kilitlenme iptalinde baştan denenen transaction; bkz. `TransactionOptions`. */
-export function inDeadlockRetryingTransaction<T>(
+/** Kilit çakışmasında baştan denenen transaction; bkz. `TransactionOptions`. */
+export function inLockConflictRetryingTransaction<T>(
   client: DatabaseExecutor,
   work: (transaction: TransactionClient) => Promise<T>,
 ): Promise<T> {
-  return inTransaction(client, work, { retryOnDeadlock: true });
+  return inTransaction(client, work, { retryOnLockConflict: true });
 }

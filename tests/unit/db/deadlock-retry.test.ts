@@ -1,11 +1,16 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
-import { isDeadlockError } from "@/lib/db/errors";
 import {
-  DEADLOCK_RETRY_ATTEMPTS,
-  DEADLOCK_RETRY_BUDGET_MS,
-  inDeadlockRetryingTransaction,
-  retryOnDeadlock,
+  isDeadlockError,
+  isLockNotAvailableError,
+  isRetryableLockConflict,
+  TransientLockConflictError,
+} from "@/lib/db/errors";
+import {
+  inLockConflictRetryingTransaction,
+  LOCK_CONFLICT_RETRY_ATTEMPTS,
+  LOCK_CONFLICT_RETRY_BUDGET_MS,
+  retryOnLockConflict,
 } from "@/lib/db/transaction";
 import type { DatabaseExecutor } from "@/lib/db/types";
 
@@ -17,76 +22,79 @@ function knownError(code: string, meta?: Record<string, unknown>) {
   });
 }
 
-describe("deadlock retry", () => {
-  it("recognizes only PostgreSQL deadlock aborts", () => {
+describe("lock conflict retry", () => {
+  it("recognizes deadlock aborts, NOWAIT failures and the moderation busy signal", () => {
     expect(isDeadlockError(knownError("P2034"))).toBe(true);
     expect(isDeadlockError(knownError("P2010", { code: "40P01" }))).toBe(true);
     expect(isDeadlockError(knownError("P2010", { code: "25P02" }))).toBe(false);
-    expect(isDeadlockError(knownError("P2002"))).toBe(false);
     expect(isDeadlockError(new Error("deadlock detected"))).toBe(false);
+    expect(isLockNotAvailableError(knownError("P2010", { code: "55P03" }))).toBe(true);
+    expect(isLockNotAvailableError(knownError("P2010", { code: "40P01" }))).toBe(false);
+    expect(isRetryableLockConflict(new TransientLockConflictError())).toBe(true);
+    expect(isRetryableLockConflict(knownError("P2034"))).toBe(true);
+    // NOWAIT hatası transaction'ı iptal eder; yazıcı onu meşgul sinyaline çevirmeden tekrar edilmez.
+    expect(isRetryableLockConflict(knownError("P2010", { code: "55P03" }))).toBe(false);
+    expect(isRetryableLockConflict(knownError("P2002"))).toBe(false);
+    expect(new TransientLockConflictError()).toMatchObject({
+      code: "AGENT_PROFILE_STATE_CONFLICT",
+      status: 409,
+    });
   });
 
-  it("re-runs a deadlock victim and stops at the attempt limit", async () => {
-    const deadlock = knownError("P2010", { code: "40P01" });
-    const recovers = vi.fn().mockRejectedValueOnce(deadlock).mockResolvedValueOnce("ok");
-    await expect(retryOnDeadlock(recovers)).resolves.toBe("ok");
+  it("re-runs a busy or deadlocked attempt and stops at the attempt limit", async () => {
+    const busy = new TransientLockConflictError();
+    const recovers = vi.fn().mockRejectedValueOnce(busy).mockResolvedValueOnce("ok");
+    await expect(retryOnLockConflict(recovers)).resolves.toBe("ok");
     expect(recovers).toHaveBeenCalledTimes(2);
 
-    const keepsFailing = vi.fn().mockRejectedValue(deadlock);
-    await expect(retryOnDeadlock(keepsFailing)).rejects.toBe(deadlock);
-    expect(keepsFailing).toHaveBeenCalledTimes(DEADLOCK_RETRY_ATTEMPTS);
+    const clock = 0;
+    const keepsFailing = vi.fn().mockRejectedValue(knownError("P2034"));
+    await expect(retryOnLockConflict(keepsFailing, () => clock)).rejects.toMatchObject({
+      code: "P2034",
+    });
+    expect(keepsFailing).toHaveBeenCalledTimes(LOCK_CONFLICT_RETRY_ATTEMPTS);
   });
 
-  it("starts no new attempt after the retry limit, checked after the backoff", async () => {
-    const deadlock = knownError("P2034");
+  it("starts no new attempt once the budget is spent, checked after the backoff", async () => {
+    const busy = new TransientLockConflictError();
     let clock = 0;
-    const now = () => clock;
     const slow = vi.fn(async () => {
-      clock += DEADLOCK_RETRY_BUDGET_MS;
-      throw deadlock;
+      clock += LOCK_CONFLICT_RETRY_BUDGET_MS;
+      throw busy;
     });
-    await expect(retryOnDeadlock(slow, { now })).rejects.toBe(deadlock);
+    await expect(retryOnLockConflict(slow, () => clock)).rejects.toBe(busy);
     expect(slow).toHaveBeenCalledTimes(1);
 
-    // Sınırın hemen altında biten deneme: bekleme sınırı aşırınca yeni deneme başlamaz.
     clock = 0;
     const almost = vi.fn(async () => {
-      clock += DEADLOCK_RETRY_BUDGET_MS - 1;
-      throw deadlock;
+      clock += LOCK_CONFLICT_RETRY_BUDGET_MS - 1;
+      throw busy;
     });
     vi.useFakeTimers();
     try {
       const base = Date.now();
-      const pending = retryOnDeadlock(almost, { now: () => clock + Date.now() - base });
-      const outcome = expect(pending).rejects.toBe(deadlock);
-      await vi.advanceTimersByTimeAsync(200);
+      const pending = retryOnLockConflict(almost, () => clock + Date.now() - base);
+      const outcome = expect(pending).rejects.toBe(busy);
+      await vi.advanceTimersByTimeAsync(1_000);
       await outcome;
     } finally {
       vi.useRealTimers();
     }
     expect(almost).toHaveBeenCalledTimes(1);
-
-    clock = 0;
-    const fast = vi.fn(async () => {
-      clock += 100;
-      throw deadlock;
-    });
-    await expect(retryOnDeadlock(fast, { now, retryUntil: 150 })).rejects.toBe(deadlock);
-    expect(fast).toHaveBeenCalledTimes(2);
   });
 
   it("does not re-run other failures", async () => {
     const conflict = knownError("P2002");
     const work = vi.fn().mockRejectedValue(conflict);
-    await expect(retryOnDeadlock(work)).rejects.toBe(conflict);
+    await expect(retryOnLockConflict(work)).rejects.toBe(conflict);
     expect(work).toHaveBeenCalledTimes(1);
   });
 
   it("leaves a nested transaction's retry to the outermost transaction", async () => {
-    const deadlock = knownError("P2034");
+    const busy = new TransientLockConflictError();
     const nested = {} as DatabaseExecutor;
-    const work = vi.fn().mockRejectedValue(deadlock);
-    await expect(inDeadlockRetryingTransaction(nested, work)).rejects.toBe(deadlock);
+    const work = vi.fn().mockRejectedValue(busy);
+    await expect(inLockConflictRetryingTransaction(nested, work)).rejects.toBe(busy);
     expect(work).toHaveBeenCalledTimes(1);
   });
 });

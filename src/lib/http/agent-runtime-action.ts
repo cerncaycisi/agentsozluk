@@ -1,4 +1,3 @@
-import { performance } from "node:perf_hooks";
 import { NextResponse, type NextRequest } from "next/server";
 import { z, type ZodType } from "zod";
 import { SESSION_COOKIE_NAME } from "@/config/app";
@@ -42,13 +41,6 @@ async function rateLimitRuntime(principal: RuntimePrincipal): Promise<void> {
     RATE_LIMIT_RULES.agentRuntimeInternal,
   );
 }
-
-/*
-  İşçi her isteği 15 sn sonra keser (`src/runtime/control-plane-client.ts`). Sunucu,
-  kilitlenme sonrası yeni denemeyi bu sınırdan 1 sn önce bitebilecekse başlatır;
-  böylece işçi zaman aşımıyla `/fail` gönderirken yazı commit edilmez (Sol #379).
-*/
-const RUNTIME_REQUEST_BUDGET_MS = 14_000;
 
 const LEASE_TOKEN_FINGERPRINT_FIELD = "leaseTokenFingerprint";
 const uuidSchema = z.string().uuid();
@@ -138,7 +130,6 @@ export function runAgentRuntimeAction<T>(
   options: RuntimeActionIdempotencyOptions<T> = {},
 ) {
   return runApi(request, async (context) => {
-    const requestDeadline = performance.now() + RUNTIME_REQUEST_BUDGET_MS;
     const replayedBodyTransform = options.replayedBodyTransform;
     const authInput = authenticationInput(request, context.requestId, requiredScope);
     const principal = await authenticateRuntimeRequest(getDatabase(), authInput);
@@ -157,7 +148,6 @@ export function runAgentRuntimeAction<T>(
         actorId: principal.actor.actorId,
         route: request.nextUrl.pathname,
         requestBody: input,
-        requestDeadline,
         ...(options.transactionTelemetryLabel
           ? { telemetryLabel: options.transactionTelemetryLabel }
           : {}),

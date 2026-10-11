@@ -127,38 +127,18 @@ export interface RuntimeEffectMetrics {
   rejectedActions: number;
 }
 
-/*
-  İşçi eylem yürütme isteğinin yanıtını (aynı anahtarlı tekrarla birlikte) taşıma
-  hatasıyla kaybettiğinde sonucu bilemez: sunucu yazıyı commit etmiş olabilir.
-  Bu kodla gelen FAILED, kalıcı etki varsa iptal/zaman aşımı gibi PARTIAL olur;
-  yayımlanmış entry'si olan koşu FAILED görünmez (Sol #379).
-*/
-export const RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE = "CONTROL_PLANE_ACTION_OUTCOME_UNKNOWN";
-
-/**
-  Hata oranı kesicisinin saydığı teknik arızalar. Sonucu bilinmeyen yürütme,
-  kalıcı etkisi korunsun diye PARTIAL kapansa da arızadır (Sol #379).
-*/
-export function isRuntimeErrorRun(run: { runStatus: string; errorCode: string | null }): boolean {
-  return (
-    ["FAILED", "TIMED_OUT"].includes(run.runStatus) ||
-    run.errorCode === RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE
-  );
-}
-
 export function terminalizeInterruptedRuntimeRun(
   requestedOutcome: "FAILED" | "CANCELLED" | "TIMED_OUT",
   measuredMetrics: RuntimeEffectMetrics,
-  errorCode?: string,
 ) {
   const hasPersistedEffects =
     measuredMetrics.succeededActions > 0 ||
     measuredMetrics.committedMemoryEpisodes > 0 ||
     measuredMetrics.recordedSourceResults > 0;
-  const interrupted =
-    ["CANCELLED", "TIMED_OUT"].includes(requestedOutcome) ||
-    (requestedOutcome === "FAILED" && errorCode === RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE);
-  const outcome = interrupted && hasPersistedEffects ? ("PARTIAL" as const) : requestedOutcome;
+  const outcome =
+    ["CANCELLED", "TIMED_OUT"].includes(requestedOutcome) && hasPersistedEffects
+      ? ("PARTIAL" as const)
+      : requestedOutcome;
   return {
     outcome,
     safeRunSummary:

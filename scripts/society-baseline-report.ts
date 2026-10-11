@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { getDatabase } from "@/lib/db/client";
-import { isRuntimeErrorRun } from "@/modules/agents/domain/runtime-controls";
 import {
   EPOCH_2_FROM,
   EPOCH_2_TO,
@@ -864,9 +863,6 @@ async function main(): Promise<void> {
     }
     const failedOrTimedOutNaturalRuns =
       (naturalRunStatusCounts.get("FAILED") ?? 0) + (naturalRunStatusCounts.get("TIMED_OUT") ?? 0);
-    // Gate 10 "doğal teknik hata": durum sayımına ek olarak, kalıcı etkisi korunsun diye
-    // PARTIAL kapanan sonucu bilinmeyen yürütmeyi de sayar (kesiciyle aynı yardımcı, #379).
-    const technicalErrorNaturalRuns = terminalNaturalRuns.filter(isRuntimeErrorRun).length;
     const episodeDistributionByAgent = distributeEpisodeActions(
       [...coverageCohort],
       terminalNaturalRuns.map((run) => ({
@@ -1442,10 +1438,6 @@ async function main(): Promise<void> {
       `natural_runs.cancelled_without_safe_reason=${cancelledRunsWithoutSafeReason}`,
       `natural_runs.failed_or_timed_out_rate=${formatRatio(
         failedOrTimedOutNaturalRuns,
-        terminalNaturalRuns.length,
-      )}`,
-      `natural_runs.technical_error_rate=${formatRatio(
-        technicalErrorNaturalRuns,
         terminalNaturalRuns.length,
       )}`,
       `natural_runs.zero_action=${zeroActionRuns}`,

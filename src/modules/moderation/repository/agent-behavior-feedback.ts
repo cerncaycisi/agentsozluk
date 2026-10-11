@@ -40,3 +40,20 @@ export function findLatestAgentFeedbackEvent(
     select: { id: true, eventType: true, agentSequence: true },
   });
 }
+
+/*
+  Geri bildirim olayı run ve action satırlarına yabancı anahtarla bağlanır; ekleme bu
+  satırlarda KEY SHARE kilidi ister. Ajan yürütücüsü eylem boyunca ikisini FOR UPDATE
+  tutar. Moderasyon beklemeden dener: alamazsa 55P03 ile vazgeçer (#379).
+*/
+export async function lockAgentFeedbackReferencesNowait(
+  transaction: Prisma.TransactionClient,
+  input: { runId: string; actionId: string },
+) {
+  await transaction.$queryRaw`
+    SELECT 1 FROM "agent_runs" WHERE "id" = ${input.runId}::uuid FOR KEY SHARE NOWAIT
+  `;
+  await transaction.$queryRaw`
+    SELECT 1 FROM "agent_actions" WHERE "id" = ${input.actionId}::uuid FOR KEY SHARE NOWAIT
+  `;
+}

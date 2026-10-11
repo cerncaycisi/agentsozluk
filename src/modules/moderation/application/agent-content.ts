@@ -1,5 +1,5 @@
-import { isDeadlockError } from "@/lib/db/errors";
-import { inDeadlockRetryingTransaction, inTransaction } from "@/lib/db/transaction";
+import { isRetryableLockConflict } from "@/lib/db/errors";
+import { inLockConflictRetryingTransaction, inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { agentContentBulkTargetLimit } from "@/modules/moderation/domain/agent-content-limits";
@@ -163,7 +163,7 @@ export async function bulkSetAgentContentVisibility(
   if (input.confirmation !== expected)
     throw new AppError("VALIDATION_ERROR", 422, "Bulk işlem için açık confirmation gereklidir.");
   // Başarılı entry etkileri ve toplu makbuz aynı commit içinde kalır.
-  return inDeadlockRetryingTransaction(client, async (transaction) => {
+  return inLockConflictRetryingTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     const selected = await resolveAgentContentRecords(transaction, input, new Date());
     if (selected.length > agentContentBulkTargetLimit)
@@ -213,8 +213,8 @@ export async function bulkSetAgentContentVisibility(
           agentProfileId: record.agentProfileId,
         });
       } catch (error) {
-        // Kilitlenme öğe hatası sayılmaz: toplu transaction baştan denenir (#379).
-        if (isDeadlockError(error)) throw error;
+        // Kilit çakışması öğe hatası sayılmaz: toplu transaction baştan denenir (#379).
+        if (isRetryableLockConflict(error)) throw error;
         failed.push({ entryId, ...failure(error) });
       }
     }

@@ -97,8 +97,6 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("lifecycle_window.");
     expect(baseline).toContain("natural_runs.single_action=");
     expect(baseline).toContain("natural_runs.failed_or_timed_out_rate=");
-    expect(baseline).toContain("natural_runs.technical_error_rate=");
-    expect(baseline).toContain("terminalNaturalRuns.filter(isRuntimeErrorRun)");
     expect(baseline).toContain("natural_runs.cancelled=");
     expect(baseline).toContain("natural_runs.partial_without_safe_reason=");
     expect(baseline).toContain("usageMetadata: true");
