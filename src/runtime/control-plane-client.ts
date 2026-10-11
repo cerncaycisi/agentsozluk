@@ -195,7 +195,11 @@ interface RuntimeHttpRequestOptions extends RuntimeRequestOptions {
 }
 
 export class RuntimeControlPlaneError extends Error {
-  constructor(public readonly code: string) {
+  constructor(
+    public readonly code: string,
+    /** İlk yanıt taşımada kaybolduktan sonra aynı anahtarlı tekrar başarısız oldu. */
+    public readonly afterLostResponse = false,
+  ) {
     super(`Runtime control plane request failed: ${code}`);
     this.name = "RuntimeControlPlaneError";
   }
@@ -369,6 +373,14 @@ async function boundedJsonEnvelope(response: Response): Promise<Envelope> {
   }
 }
 
+/** İsteğin sunucuda commit edilip edilmediği bilinmiyor: yanıt taşımada kayboldu. */
+export function isControlPlaneOutcomeUnknown(error: unknown): boolean {
+  return (
+    isRetryableTransportError(error) ||
+    (error instanceof RuntimeControlPlaneError && error.afterLostResponse)
+  );
+}
+
 export function isRetryableTransportError(error: unknown): boolean {
   return (
     error instanceof TypeError ||
@@ -424,17 +436,29 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
       const response = await request();
       return { response, envelope: await boundedJsonEnvelope(response) };
     };
+    /*
+      İlk yanıt kaybolduysa sunucu yazmış olabilir; tekrarın hata yanıtı bunu
+      çürütmez (ör. tekrar hız sınırına takılır). Hata bu belirsizliği taşır (Sol #379).
+    */
+    let afterLostResponse = false;
     let outcome: Awaited<ReturnType<typeof attempt>>;
     try {
       outcome = await attempt();
     } catch (error) {
       if (!options?.retryTransportFailureOnce || !isRetryableTransportError(error)) throw error;
-      outcome = await attempt();
+      afterLostResponse = true;
+      try {
+        outcome = await attempt();
+      } catch (replayError) {
+        if (replayError instanceof RuntimeControlPlaneError)
+          throw new RuntimeControlPlaneError(replayError.code, true);
+        throw replayError;
+      }
     }
     const { response, envelope } = outcome;
     if (!response.ok) {
       const code = envelope.error?.code ?? `HTTP_${response.status}`;
-      throw new RuntimeControlPlaneError(code);
+      throw new RuntimeControlPlaneError(code, afterLostResponse);
     }
     return envelope.data;
   }

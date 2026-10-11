@@ -2451,6 +2451,7 @@ describe("long-lived agent runtime worker", () => {
   it.each([
     [new TypeError("fetch failed"), "CONTROL_PLANE_ACTION_OUTCOME_UNKNOWN"],
     [new DOMException("request timed out", "TimeoutError"), "CONTROL_PLANE_ACTION_OUTCOME_UNKNOWN"],
+    [new RuntimeControlPlaneError("INTERNAL_ERROR", true), "CONTROL_PLANE_ACTION_OUTCOME_UNKNOWN"],
     [new RuntimeControlPlaneError("ACTION_REJECTED"), "CONTROL_PLANE_ACTION_EXECUTION_FAILED"],
   ])(
     "reports a lost execution response as outcome-unknown, not a plain failure (%s)",

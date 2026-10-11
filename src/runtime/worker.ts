@@ -23,7 +23,7 @@ import type {
   RuntimeLifeEventsBatch,
 } from "@/runtime/control-plane-client";
 import {
-  isRetryableTransportError,
+  isControlPlaneOutcomeUnknown,
   RuntimeControlPlaneError,
 } from "@/runtime/control-plane-client";
 import {
@@ -2548,7 +2548,7 @@ export class AgentRuntimeWorker {
             : {
                 outcome: "FAILED",
                 // Yürütme yanıtı taşımada kaybolduysa sunucu yazmış olabilir (Sol #379).
-                ...(executeInFlight && isRetryableTransportError(rawError)
+                ...(executeInFlight && isControlPlaneOutcomeUnknown(rawError)
                   ? runtimeWorkerFailures.actionOutcomeUnknown
                   : currentFailure),
               };

@@ -8,6 +8,7 @@ import {
   runtimeRunAllowedInOperatingMode,
   societyFlowEnabled,
   sourceFetchTargetLimit,
+  isRuntimeErrorRun,
   RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE,
   terminalizeInterruptedRuntimeRun,
 } from "@/modules/agents/domain/runtime-controls";
@@ -208,5 +209,15 @@ describe("global agent runtime controls", () => {
         "CONTROL_PLANE_ACTION_EXECUTION_FAILED",
       ).outcome,
     ).toBe("FAILED");
+  });
+
+  it("counts an outcome-unknown PARTIAL run as a runtime error", () => {
+    expect(isRuntimeErrorRun({ runStatus: "FAILED", errorCode: "CODEX_TIMEOUT" })).toBe(true);
+    expect(isRuntimeErrorRun({ runStatus: "TIMED_OUT", errorCode: "RUNTIME_TIMEOUT" })).toBe(true);
+    expect(
+      isRuntimeErrorRun({ runStatus: "PARTIAL", errorCode: RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE }),
+    ).toBe(true);
+    expect(isRuntimeErrorRun({ runStatus: "PARTIAL", errorCode: "WORKER_CANCELLED" })).toBe(false);
+    expect(isRuntimeErrorRun({ runStatus: "SUCCEEDED", errorCode: null })).toBe(false);
   });
 });

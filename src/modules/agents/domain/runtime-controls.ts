@@ -135,6 +135,17 @@ export interface RuntimeEffectMetrics {
 */
 export const RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE = "CONTROL_PLANE_ACTION_OUTCOME_UNKNOWN";
 
+/**
+  Hata oranı kesicisinin saydığı teknik arızalar. Sonucu bilinmeyen yürütme,
+  kalıcı etkisi korunsun diye PARTIAL kapansa da arızadır (Sol #379).
+*/
+export function isRuntimeErrorRun(run: { runStatus: string; errorCode: string | null }): boolean {
+  return (
+    ["FAILED", "TIMED_OUT"].includes(run.runStatus) ||
+    run.errorCode === RUNTIME_ACTION_OUTCOME_UNKNOWN_CODE
+  );
+}
+
 export function terminalizeInterruptedRuntimeRun(
   requestedOutcome: "FAILED" | "CANCELLED" | "TIMED_OUT",
   measuredMetrics: RuntimeEffectMetrics,

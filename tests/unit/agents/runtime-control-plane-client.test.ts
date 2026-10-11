@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
   canonicalRuntimeControlPlaneBaseUrl,
+  isControlPlaneOutcomeUnknown,
   RuntimeControlPlaneHttpClient,
 } from "@/runtime/control-plane-client";
 import type { RuntimeControlPlaneError } from "@/runtime/control-plane-client";
@@ -408,6 +409,31 @@ describe("runtime control-plane HTTP contract", () => {
     const firstHeaders = fetchMock.mock.calls[0]![1]?.headers as Record<string, string>;
     const secondHeaders = fetchMock.mock.calls[1]![1]?.headers as Record<string, string>;
     expect(secondHeaders["idempotency-key"]).toBe(firstHeaders["idempotency-key"]);
+  });
+
+  it("keeps the lost-response uncertainty when the same-key replay returns an HTTP error", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("connection closed"))
+      .mockResolvedValueOnce(jsonResponse({ error: { code: "INTERNAL_ERROR", message: "x" } }, 500))
+      .mockResolvedValueOnce(
+        jsonResponse({ error: { code: "INTERNAL_ERROR", message: "x" } }, 500),
+      );
+    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
+
+    const lost = await client
+      .executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1])
+      .catch((error: unknown) => error);
+    expect(lost).toMatchObject({ code: "INTERNAL_ERROR", afterLostResponse: true });
+    expect(isControlPlaneOutcomeUnknown(lost)).toBe(true);
+
+    // İlk yanıt kaybolmadıysa sunucunun hatası kesindir.
+    const plain = await client
+      .executeActions("credential", "worker-one", randomUUID(), LEASE_TOKEN, [1])
+      .catch((error: unknown) => error);
+    expect(plain).toMatchObject({ code: "INTERNAL_ERROR", afterLostResponse: false });
+    expect(isControlPlaneOutcomeUnknown(plain)).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("recovers a committed lease after its first response is lost by replaying the same key", async () => {
