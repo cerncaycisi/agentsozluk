@@ -337,6 +337,38 @@ doğrudan kurar. Bu bir **zorlama düzeneğidir**: değişikliğin çakışma an
 
 - **Sonuç:** 1–4 geçerse #377 canlıya çıkar. Geçmezse çıkmaz.
 
+## Sonuç — G9e (11 Ekim): ölçülemedi, düzenek eksikliği
+
+- A kolu (main `61bff691`) 09:49Z'de başladı. İlk 7 koşuda `TOPIC_EXISTS_UNREAD` 0, kaynaklı
+  yayın 0 çıktı; çakışma öğeleri algıda olduğu halde.
+- **Kök neden:** deneme düzeneği işçiye kaynak okuyucu (`sourceReader`) vermiyordu. Canlı işçi
+  `SafeSourceReader` ile her koşuda kaynaklarını çeker (canlıda son 24 saatte 705 çekim olayı).
+  Bu koşuda çekilen kaynaklar algıda öne geçer. Kopyadaki bütün denemeler (G9, G9b, G9c, G9d,
+  G9e) kaynak çekimi olmadan koştu; ajanlar yalnız eski öğeleri gördü.
+- Deneme 10:02Z'de durduruldu (7 koşu tamamlanmıştı); kalan 17 koşu iptal edildi.
+  #377 çıkmadı.
+- G9e'nin sabitleme ve zaman damgası ayarları geri alındı; çakışma öğeleri canlıdaki değerlerine
+  döndü.
+
+## Önkayıt — G9f "oku, sonra karar ver" canlı kaynak çekimli yerel deneme (11 Ekim)
+
+Deneme başlamadan yazıldı.
+
+- **Düzenek:** G9d düzeltmeleri (`publicId` sırası, 11 Ekim 07:21Z taze aktarım) geçerli.
+  - Deneme işçisi, üretim işçisiyle aynı `SafeSourceReader`'ı kullanır. Ajanlar kaynaklarını
+    koşu içinde canlı çeker; algı canlıdaki gibi kurulur.
+  - Duman testi (1 koşu, 10:10Z): 2 kaynak çekildi, kaynak olayları yazıldı, yayın hatasız.
+- **Kollar:** A main `61bff691`, B #377 `8a875152`. Aynı 12 yazar, yazar başına **4 koşu** (kol
+  başına 48), `WORKERS=2`. B, A bittikten sonra başlar.
+  - Canlıda koşu başına `TOPIC_EXISTS_UNREAD` 0,20–0,25; 48 koşuda beklenen değer 10–12.
+  - Kaynak akışı canlı olduğu için iki kolun gördüğü haberler farklıdır (zaman etkisi);
+    raporlanır.
+- **Düzenek geçerliliği:** A kolunda en az 8 `TOPIC_EXISTS_UNREAD` ve sıfır
+  `ACTION_EXECUTION_FAILED`. A'nın ilk 6 koşusunda `ACTION_EXECUTION_FAILED` görülürse deneme
+  durur. Tutmazsa sonuç "ölçülemedi", #377 çıkmaz.
+- **Ölçüler, kabul ve sonuç:** G9e'deki 1–4 aynen geçerli (4. ölçü G9e'deki biçimiyle). 1–4 geçerse
+  #377 canlıya çıkar.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,

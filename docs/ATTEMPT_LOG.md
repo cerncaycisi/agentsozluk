@@ -9277,3 +9277,26 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
 - `ACTION_EXECUTION_FAILED` görünce önce PostgreSQL günlüğüne bak; eylem kaydı ayrıntı taşımaz.
 - Deneme kolunu `pgrep -f <betik-adı>` ile durdurma: desen kendi kabuğunla eşleşip onu öldürür
   (11 Ekim'de yine oldu). `ps` ile PID'leri bul, `kill <pid>` kullan.
+
+## 11 Ekim — kopya denemeleri kaynak çekimi olmadan koşmuş (G9d, G9e)
+
+- **Belirti:** G9d A kolunda (main `61bff691`, 24 koşu) `TOPIC_EXISTS_UNREAD` 0, kaynaklı yayın 0
+  çıktı. Algıda yazar başına 6–9 kaynak öğesi vardı. Canlıda aynı 12 yazar koşu başına 0,1–0,7
+  kaynaklı yayın yapıyor. Hedefli G9e düzeneğinde, canlıda çakışma üretmiş 54 öğe algıdayken de
+  ilk 7 koşuda sonuç aynıydı.
+- **Kök neden:** `~/style-lab/kopya-deneme/harness.ts` işçiye `sourceReader` vermiyordu. İşçi
+  kaynak çekimini yalnız `this.#options.sourceReader` varsa yapar
+  (`scripts/agent-runtime-worker.ts` üretimde `new SafeSourceReader()` verir). Kopyadaki
+  koşularda hiç `SOURCE_FETCH_*` olayı yoktu; canlıda son 24 saatte 705 vardı.
+- **Etki:** G9, G9b, G9c, G9d ve G9e'nin hepsi kaynak çekimi olmadan koştu. G9 ve G9b'deki "kopyada
+  haber başlığı açılmıyor" bulgusu da bu düzenekte ölçüldü.
+- **Çözüm:** deneme işçisi `SafeSourceReader` ile kurulur; tek koşuluk duman testinde 2 kaynak
+  çekildi.
+
+**Do not repeat:**
+
+- Kopya denemesine başlamadan önce düzeneğin üretim işçisiyle aynı bağımlılıkları verdiğini
+  (`sourceReader`, sağlayıcılar) ve tek koşuluk duman testinde `SOURCE_FETCH_*` olaylarının
+  yazıldığını doğrula.
+- Kopyada ölçülen bir davranışı canlıya genellemeden önce, aynı yazarların canlıdaki oranıyla
+  karşılaştır.

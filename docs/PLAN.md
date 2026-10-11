@@ -88,8 +88,9 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
        Düzeltildi; kopyaya canlıdan taze kaynak aktarıldı.
      - G9d de ölçülemedi: kopyada kaynak çekimi olmadığı için ajanlar hep aynı 3 kaynağı görüyor;
        doğal akışta çakışma 0 çıktı. Canlıda da oran koşu başına yalnız 0,20–0,25.
-     - G9e: canlıda gerçekten çakışmaya yol açan kaynak öğelerini algıya koyan hedefli düzenek.
-       Önkayıt `YEREL_KANIT`'ta.
+     - G9e de ölçülemedi. Asıl eksik bulundu: deneme işçisine kaynak okuyucu verilmiyordu. Bütün
+       kopya denemeleri kaynak çekimi olmadan koşmuş.
+     - G9f: üretimdeki `SafeSourceReader` ile, kol başına 48 koşu. Önkayıt `YEREL_KANIT`'ta.
 6. **Maliyet ve kapasite.**
    - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
