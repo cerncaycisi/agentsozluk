@@ -41,55 +41,62 @@ export function withIdempotencyLock<T>(
   work: (transaction: Prisma.TransactionClient) => Promise<T>,
   telemetry?: { label: string },
 ): Promise<T> {
-  let callbackBasi: number | undefined;
   /*
     Idempotent yazının bütün etkisi bu transaction'dadır; kilitlenme iptalinde
     (40P01) hiçbir şey yazılmamış olur ve iş baştan çalıştırılabilir. Ajan
     yürütücüsü ile moderasyon farklı sırayla kilit alabildiği için bu yol
-    kilitlenmeyi kullanıcıya hata olarak göstermez (#379).
+    kilitlenmeyi kullanıcıya hata olarak göstermez (#379). Telemetri her denemeyi
+    ayrı kaydeder; kilitlenen yavaş deneme sonraki hızlı denemenin arkasına
+    gizlenmez (Astra #379).
   */
-  const calistir = () =>
-    retryOnDeadlock(() =>
+  let deneme = 0;
+  const tekDeneme = () => {
+    deneme += 1;
+    let callbackBasi: number | undefined;
+    const calistir = () =>
       client.$transaction(async (transaction) => {
         if (telemetry) callbackBasi = performance.now();
         await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${scope}, 0))`;
         return work(transaction);
-      }),
-    );
-  if (!telemetry) return calistir();
+      });
+    if (!telemetry) return calistir();
 
-  const baslangic = performance.now();
-  return (async () => {
-    let sonuc: "committed" | "failed" = "failed";
-    let yakalananHata: unknown;
-    try {
-      const deger = await calistir();
-      sonuc = "committed";
-      return deger;
-    } catch (error) {
-      yakalananHata = error;
-      throw error;
-    } finally {
-      const bitis = performance.now();
+    const denemeNo = deneme;
+    const baslangic = performance.now();
+    return (async () => {
+      let sonuc: "committed" | "failed" = "failed";
+      let yakalananHata: unknown;
       try {
-        // Hata kodu da korumalı blokta okunur: tuhaf bir hata nesnesi (ör. iptal
-        // edilmiş Proxy) okunurken fırlatsa bile asıl hata aynen yukarı çıkar.
-        const hataKodu = sonuc === "failed" ? safeErrorCode(yakalananHata) : undefined;
-        logger.info({
-          event: "db.transaction.duration",
-          label: telemetry.label,
-          outcome: sonuc,
-          ...(hataKodu ? { errorCode: hataKodu } : {}),
-          totalMs: Math.round(bitis - baslangic),
-          acquireMs: callbackBasi === undefined ? null : Math.round(callbackBasi - baslangic),
-          activeMs: callbackBasi === undefined ? null : Math.round(bitis - callbackBasi),
-          timeoutMs: PRISMA_VARSAYILAN_TIMEOUT_MS,
-        });
-      } catch {
-        // Telemetri asıl sonucu asla değiştirmez.
+        const deger = await calistir();
+        sonuc = "committed";
+        return deger;
+      } catch (error) {
+        yakalananHata = error;
+        throw error;
+      } finally {
+        const bitis = performance.now();
+        try {
+          // Hata kodu da korumalı blokta okunur: tuhaf bir hata nesnesi (ör. iptal
+          // edilmiş Proxy) okunurken fırlatsa bile asıl hata aynen yukarı çıkar.
+          const hataKodu = sonuc === "failed" ? safeErrorCode(yakalananHata) : undefined;
+          logger.info({
+            event: "db.transaction.duration",
+            label: telemetry.label,
+            outcome: sonuc,
+            ...(hataKodu ? { errorCode: hataKodu } : {}),
+            ...(denemeNo > 1 ? { attempt: denemeNo } : {}),
+            totalMs: Math.round(bitis - baslangic),
+            acquireMs: callbackBasi === undefined ? null : Math.round(callbackBasi - baslangic),
+            activeMs: callbackBasi === undefined ? null : Math.round(bitis - callbackBasi),
+            timeoutMs: PRISMA_VARSAYILAN_TIMEOUT_MS,
+          });
+        } catch {
+          // Telemetri asıl sonucu asla değiştirmez.
+        }
       }
-    }
-  })();
+    })();
+  };
+  return retryOnDeadlock(tekDeneme);
 }
 
 export async function findIdempotencyRecord(

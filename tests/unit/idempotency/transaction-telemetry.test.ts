@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
@@ -148,6 +149,46 @@ describe("transaction süresi telemetrisi", () => {
       acquireMs: null,
       activeMs: null,
       totalMs: 20,
+    });
+  });
+
+  it("kilitlenmeyle yeniden denenen her denemeyi ayrı kaydeder", async () => {
+    const { withIdempotencyLock } = await import("@/modules/idempotency/repository/idempotency");
+    const kilitlenme = new Prisma.PrismaClientKnownRequestError("deadlock detected", {
+      code: "P2010",
+      clientVersion: Prisma.prismaVersion.client,
+      meta: { code: "40P01" },
+    });
+    let cagri = 0;
+    const tx = { $executeRaw: vi.fn(async () => 1) };
+    const istemci = {
+      $transaction: vi.fn(async (cb: Callback) => {
+        cagri += 1;
+        saat.simdi += 20;
+        const sonuc = await cb(tx);
+        if (cagri === 1) {
+          saat.simdi += 4_200;
+          throw kilitlenme;
+        }
+        saat.simdi += 10;
+        return sonuc;
+      }),
+    };
+    await expect(
+      withIdempotencyLock(istemci as never, "kapsam", async () => "tamam", {
+        label: "runtime.lease",
+      }),
+    ).resolves.toBe("tamam");
+    const kayitlar = logMock.info.mock.calls.map(([kayit]) => kayit);
+    expect(kayitlar).toHaveLength(2);
+    // Yavaş, kilitlenen deneme alarmın okuduğu activeMs ile görünür kalır.
+    expect(kayitlar[0]).toMatchObject({ outcome: "failed", acquireMs: 20, activeMs: 4_200 });
+    expect(kayitlar[0]).not.toHaveProperty("attempt");
+    expect(kayitlar[1]).toMatchObject({
+      outcome: "committed",
+      attempt: 2,
+      acquireMs: 20,
+      activeMs: 10,
     });
   });
 

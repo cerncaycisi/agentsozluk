@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { isDeadlockError } from "@/lib/db/errors";
 import {
   DEADLOCK_RETRY_ATTEMPTS,
+  DEADLOCK_RETRY_BUDGET_MS,
   inDeadlockRetryingTransaction,
   retryOnDeadlock,
 } from "@/lib/db/transaction";
@@ -34,6 +35,25 @@ describe("deadlock retry", () => {
     const keepsFailing = vi.fn().mockRejectedValue(deadlock);
     await expect(retryOnDeadlock(keepsFailing)).rejects.toBe(deadlock);
     expect(keepsFailing).toHaveBeenCalledTimes(DEADLOCK_RETRY_ATTEMPTS);
+  });
+
+  it("starts no new attempt once the time budget is spent", async () => {
+    const deadlock = knownError("P2034");
+    let clock = 0;
+    const slow = vi.fn(async () => {
+      clock += DEADLOCK_RETRY_BUDGET_MS;
+      throw deadlock;
+    });
+    await expect(retryOnDeadlock(slow, () => clock)).rejects.toBe(deadlock);
+    expect(slow).toHaveBeenCalledTimes(1);
+
+    clock = 0;
+    const fastThenSlow = vi.fn(async () => {
+      clock += DEADLOCK_RETRY_BUDGET_MS / 2;
+      throw deadlock;
+    });
+    await expect(retryOnDeadlock(fastThenSlow, () => clock)).rejects.toBe(deadlock);
+    expect(fastThenSlow).toHaveBeenCalledTimes(2);
   });
 
   it("does not re-run other failures", async () => {

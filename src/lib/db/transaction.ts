@@ -11,13 +11,29 @@ export interface TransactionOptions {
 }
 
 export const DEADLOCK_RETRY_ATTEMPTS = 3;
+/*
+  Yeni deneme yalnız ilk denemenin başından bu süre geçmeden başlar. İşçi
+  isteği 15 sn ile sınırlı; idempotent yolda son deneme en çok 2 sn bağlantı
+  bekleyip 5 sn sürebildiği için en kötü toplam ~11,3 sn kalır (Astra #379).
+  Süre aşılırsa kilitlenme hatası olduğu gibi yukarı çıkar.
+*/
+export const DEADLOCK_RETRY_BUDGET_MS = 4_000;
 
-export async function retryOnDeadlock<T>(run: () => Promise<T>): Promise<T> {
+export async function retryOnDeadlock<T>(
+  run: () => Promise<T>,
+  now: () => number = () => performance.now(),
+): Promise<T> {
+  const start = now();
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await run();
     } catch (error) {
-      if (attempt >= DEADLOCK_RETRY_ATTEMPTS || !isDeadlockError(error)) throw error;
+      if (
+        attempt >= DEADLOCK_RETRY_ATTEMPTS ||
+        now() - start >= DEADLOCK_RETRY_BUDGET_MS ||
+        !isDeadlockError(error)
+      )
+        throw error;
       // İki kurban aynı anda yeniden girip yine çakışmasın diye kısa, rastgele bekleme.
       await new Promise((resolve) => setTimeout(resolve, 20 + Math.random() * 80 * attempt));
     }

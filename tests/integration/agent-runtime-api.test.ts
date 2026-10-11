@@ -2214,6 +2214,83 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(nested.body).toMatchObject({ actionStatus: "SUCCEEDED" });
     expect({ attempts, fallbacks }).toEqual({ attempts: 2, fallbacks: 0 });
     expect(await integrationDatabase.entry.count({ where: { body: nestedBody } })).toBe(1);
+
+    // Gerçek kilitlenme: moderasyon sırası (başlık → yaşam kaydı) yürütücüyü kurban seçtirir.
+    const cycleBody = `Real deadlock retry action ${randomUUID()}.`;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 3,
+            actionType: "CREATE_ENTRY",
+            safeReason: "PostgreSQL aborts this action in a real lock cycle.",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: { topicId: topic.topic.id, body: cycleBody },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Controlled integration run is visible platform evidence.",
+            },
+          },
+        ],
+      }),
+    );
+    await markPresentedEntryTargetRead(runId, 3);
+    const deadlocksBefore = await databaseDeadlockCount();
+    let execution: Promise<{ body: JsonValue }> | undefined;
+    fallbacks = 0;
+    await integrationDatabase.$transaction(
+      async (transaction) => {
+        await lockTopicState(transaction, topic.topic.id);
+        execution = executeIdempotently(
+          integrationDatabase,
+          {
+            actorId: fixture.created.agent.user.id,
+            route: `/api/v1/internal/agent-runtime/runs/${runId}/actions/execute`,
+            key: randomUUID(),
+            requestBody: { sequence: 3 },
+          },
+          async (outer) => ({
+            status: 200,
+            body: (await executeRuntimeActionApplication(
+              outer,
+              writePrincipal,
+              runId,
+              { workerId, leaseToken: leased.run!.leaseToken, sequence: 3 },
+              {
+                requireLifeLedger: false,
+                beforeFallback: async () => {
+                  fallbacks += 1;
+                },
+              },
+            )) as unknown as JsonValue,
+          }),
+        );
+        execution.catch(() => undefined);
+        // Yürütücü yaşam kaydını alıp başlık kilidinde beklemeye başlayana dek.
+        for (let attempt = 0; ; attempt += 1) {
+          const [lockWaits] = await integrationDatabase.$queryRaw<Array<{ waiting: bigint }>>`
+            SELECT count(*) AS waiting FROM pg_locks
+            WHERE locktype = 'advisory' AND NOT granted AND database = (
+              SELECT oid FROM pg_database WHERE datname = current_database()
+            )`;
+          if (lockWaits!.waiting > 0n) break;
+          if (attempt > 200) throw new Error("executor never waited for the topic lock");
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        await lockAgentLifeLedger(transaction, fixture.created.agent.profile.id);
+      },
+      { timeout: 15_000 },
+    );
+    await expect(execution).resolves.toMatchObject({ body: { actionStatus: "SUCCEEDED" } });
+    expect(await databaseDeadlockCount()).toBeGreaterThan(deadlocksBefore);
+    expect(fallbacks).toBe(0);
+    expect(await integrationDatabase.entry.count({ where: { body: cycleBody } })).toBe(1);
   });
 
   it("does not let the public-write kill switch return ahead of an old-snapshot action commit", async () => {
