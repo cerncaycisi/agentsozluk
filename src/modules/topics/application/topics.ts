@@ -263,7 +263,7 @@ export async function createTopicWithFirstEntry(
     ) => Promise<void>;
     /**
      * Yeni başlık gerçekten oluşturulacaksa, kayıttan hemen önce aynı işlem içinde çağrılır;
-     * hata fırlatırsa başlık açılmaz. Ajan günlük başlık tavanı (G9) bu noktada da denetlenir.
+     * hata fırlatırsa başlık açılmaz. Ajan yolu burada ön çözümlemenin değişmediğini denetler.
      */
     newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>;
   } = {},

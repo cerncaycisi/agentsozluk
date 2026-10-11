@@ -1,7 +1,3 @@
-import {
-  agentTopicCreationCapReached,
-  istanbulDayStart,
-} from "@/modules/agents/domain/topic-creation-cap";
 import { inTransaction } from "@/lib/db/transaction";
 import type {
   DatabaseExecutor,
@@ -54,7 +50,6 @@ import {
   findRuntimeReplyTarget,
   findRuntimeRelationshipTarget,
   getRuntimeGlobalSettings,
-  countAgentTopicsCreatedSince,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
@@ -1174,20 +1169,6 @@ export async function executeRuntimeAction(
             code: issue.code,
             reason: issue.reason,
           });
-        /*
-          Günlük tavan (G9) yalnız gerçekten yeni başlık açılacak bu dalda uygulanır: kanonik
-          çözümleme var olan bir başlığa yönlendiriyorsa yeni başlık açılmaz ve entry yazılır
-          (Astra, #371). Sayım global ajan ayarı kilidinden sonra, yazmayla aynı transaction'da.
-        */
-        if (
-          agentTopicCreationCapReached(
-            await countAgentTopicsCreatedSince(transaction, istanbulDayStart(now)),
-          )
-        )
-          return rejectAction(transaction, principal, actionRecord, {
-            code: "TOPIC_CREATION_DISABLED",
-            reason: "Bugünkü yeni başlık tavanı doldu; var olan bir başlığa yazabilirsin.",
-          });
       }
       /*
         §4.3 (Sol hakem turu): kanıtı snapshot'a bağlamak yetmiyordu, ACTION
@@ -1582,27 +1563,18 @@ export async function executeRuntimeAction(
           });
       }
       /*
-        Günlük tavan yeni başlık kaydından hemen önce de denetlenir (Astra #371 2. tur): ön
-        çözümleme var olan bir başlık bulduysa ve o başlık yazmadan önce gizlenirse servis yeni
-        başlık açardı ve tavan atlanırdı. Ön çözümleme var olan başlık bulduğu hâlde yeni başlık
-        açılacaksa çözümleme değişmiştir; yazma yerine reddedilir.
+        Ön çözümleme var olan bir başlık bulduysa ve o başlık yazmadan önce gizlenirse servis
+        yeni başlık açardı; o zaman yeni başlık anayasa denetimi de atlanmış olurdu (Astra #371
+        2. tur). Çözümleme değiştiyse yazma yerine reddedilir. Günlük tavan 11 Ekim'de
+        kaldırıldı (Gökhan kararı); bu koruma tavandan bağımsızdır (Astra #389).
       */
       const newTopicGuard =
         parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY"
-          ? async (guardTransaction: DatabaseExecutor) => {
+          ? async () => {
               if (canonicalTopicProposal)
                 throw new RuntimeActionRejectionError(
                   "TOPIC_RESOLUTION_CHANGED",
                   "Önerilen başlığın çözümlendiği kayıt doğrulama ile yazma arasında değişti; başlık açılmadı. Başlığı yeniden okuyup tekrar değerlendir.",
-                );
-              if (
-                agentTopicCreationCapReached(
-                  await countAgentTopicsCreatedSince(guardTransaction, istanbulDayStart(now)),
-                )
-              )
-                throw new RuntimeActionRejectionError(
-                  "TOPIC_CREATION_DISABLED",
-                  "Bugünkü yeni başlık tavanı doldu; var olan bir başlığa yazabilirsin.",
                 );
             }
           : undefined;
