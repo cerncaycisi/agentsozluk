@@ -92,7 +92,9 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
        kopya denemeleri kaynak çekimi olmadan koşmuş.
      - G9f de ölçülemedi. G9d–G9f'nin asıl nedeni main'deki günlük 40 başlık tavanıydı: aktarılan
        canlı başlıklar tavanı doldurmuştu ve yeni başlık önerisi kapalıydı.
-     - G9g: tavan iki kolda eşit kapalı, canlı kaynak, kol başına 48 koşu. Önkayıt `YEREL_KANIT`'ta.
+     - G9g (11 Ekim) geçerli bir deneme oldu, #377 geçmedi: dönüştürme 0. Ajanlar karar anında
+       okuma sınırını (3 başlık) doldurduğu için #377 çakışan başlığı okuyamıyordu. Düzeltme
+       #377'de (`606f68f6`, Sol 6.1 11. tur GO); G9h önkaydıyla ölçülüyor.
      - Dağıtımdan sonra tavan canlıda her gün erken dolacak (canlı günde yaklaşık 130 başlık
        açıyor). Bu kasıtlı; etkisi bu maddede ölçülür.
 6. **Maliyet ve kapasite.**
