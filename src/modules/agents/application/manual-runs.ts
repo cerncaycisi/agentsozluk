@@ -701,8 +701,13 @@ export function cancelAgentRun(
     const snapshot = await findAgentRunForCommand(transaction, runId);
     if (!snapshot) throw new AppError("AGENT_RUN_NOT_FOUND", 404, "Agent run bulunamadı.");
     await lockAgentProfile(transaction, snapshot.agentProfileId);
-    await lockRuntimeRunForLeaseMutation(transaction, runId);
+    /*
+      Ayar kilidi koşu satırından önce: zamanlayıcı ayar kilidini tutup temizlediği
+      koşu satırını günceller. Ters sıra döngü kurar ve PostgreSQL zamanlayıcıyı
+      kurban seçebilir (Sol #379; main'de de vardı).
+    */
     await lockAgentSettings(transaction);
+    await lockRuntimeRunForLeaseMutation(transaction, runId);
     const run = await findAgentRunForCommand(transaction, runId);
     if (!run) throw new AppError("AGENT_RUN_NOT_FOUND", 404, "Agent run bulunamadı.");
     if (!["QUEUED", "RUNNING"].includes(run.runStatus))
