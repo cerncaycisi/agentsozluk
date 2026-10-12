@@ -510,6 +510,58 @@ describe("karagöz kurulumu", () => {
     expect(await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 })).toEqual([]);
   });
 
+  it("bir yönü seed, öbür yönü açık rapor yüzünden raporlanamayan çift sınırı tüketmez (Sol, 12 Ekim, 8. tur)", async () => {
+    const admin = await createUser("yon_admin", "HUMAN", "ADMIN");
+    const agent = await createUser("yon_ajan", "AGENT", "USER");
+    const now = new Date("2026-10-12T12:00:00.000Z");
+    const a = await createTopic(
+      "devir-teslim tutanağı",
+      agent.id,
+      new Date(Date.UTC(2026, 9, 11, 1)),
+      1,
+    );
+    const b = await createTopic(
+      "devir teslim tutanağı",
+      agent.id,
+      new Date(Date.UTC(2026, 9, 11, 2)),
+      1,
+    );
+    await integrationDatabase.entry.create({
+      data: {
+        topicId: b.id,
+        authorId: admin.id,
+        body: "Korunan seed entry, birleştirmeyi engeller ve yeterince uzundur.",
+        normalizedBody: "korunan seed entry birleştirmeyi engeller ve yeterince uzundur",
+        origin: "SEED",
+      },
+    });
+    const karagoz = await ensureKaragoz(integrationDatabase, actor(admin.id));
+    await integrationDatabase.report.create({
+      data: {
+        reporterId: karagoz.actorId,
+        targetType: "TOPIC",
+        targetId: a.id,
+        reason: "TOPIC_CANONICALIZATION_REQUEST",
+        evidence: { suggestedTitle: "başka başlık" },
+        details: "karagöz: deneme.",
+      },
+    });
+    const y1 = await createTopic(
+      "buzdolabı kapağını açık tutmak",
+      agent.id,
+      new Date(Date.UTC(2026, 9, 11, 3)),
+      2,
+    );
+    const y2 = await createTopic(
+      "buzdolabının kapağını açık tutmak",
+      agent.id,
+      new Date(Date.UTC(2026, 9, 11, 4)),
+      1,
+    );
+    const pairs = await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6, limit: 1 });
+    expect(pairs).toEqual([expect.objectContaining({ newerId: y2.id, olderId: y1.id })]);
+  });
+
   it("önerilen başlık birleştiyse birleştiği başlığa çözülür (Sol, 12 Ekim, 7. tur)", async () => {
     const agent = await createUser("cozum_ajan", "AGENT", "USER");
     const b = await createTopic("toplantı notu almak", agent.id, new Date(), 3);

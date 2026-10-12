@@ -83,38 +83,40 @@ export async function findDuplicateTopicPairs(
           OR (report."targetId" = older.id AND report."evidence"->>'suggestedTitle' = newer.title)
         )
     )
-    -- İki başlıkta da korunan seed entry varsa hiçbiri birleştirilemez (Sol, 12 Ekim).
-    AND NOT (
-      EXISTS (SELECT 1 FROM "entries" AS seed WHERE seed."topicId" = newer.id AND seed."origin" = 'SEED')
-      AND EXISTS (SELECT 1 FROM "entries" AS seed WHERE seed."topicId" = older.id AND seed."origin" = 'SEED')
-    )
     /*
-      İki başlığın da karagözün açtığı açık kopya raporu varsa çift bugün raporlanamaz (raporlayan
-      + hedef başına tek açık rapor); sınırı tüketmesin diye atlanır, rapor kararı verilince
-      yeniden taranır. Başkalarının raporları karagözü engellemez (Sol, 12 Ekim).
+      Çift ancak en az bir yönde raporlanabiliyorsa taranır (Sol, 12 Ekim): kaynak olacak başlıkta
+      korunan seed entry olmamalı (birleştirilemez) ve karagözün açık kopya raporu olmamalı
+      (raporlayan + hedef başına tek açık rapor). Raporlanamayan çift sınırı tüketmez; rapor
+      kararı verilince yeniden taranır. Başkalarının raporları karagözü engellemez.
     */
-    AND NOT (
-      EXISTS (
-        SELECT 1 FROM "reports" AS open_newer
-        WHERE open_newer."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
-          AND open_newer."targetType" = 'TOPIC'
-          AND open_newer."status" = 'OPEN'
-          AND open_newer."reporterId" IN (
-            SELECT reporter.id FROM "users" AS reporter
-            WHERE reporter."usernameNormalized" = ${input.reporterUsername}
-          )
-          AND open_newer."targetId" = newer.id
+    AND (
+      (
+        NOT EXISTS (SELECT 1 FROM "entries" AS seed WHERE seed."topicId" = newer.id AND seed."origin" = 'SEED')
+        AND NOT EXISTS (
+          SELECT 1 FROM "reports" AS open_report
+          WHERE open_report."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
+            AND open_report."targetType" = 'TOPIC'
+            AND open_report."status" = 'OPEN'
+            AND open_report."targetId" = newer.id
+            AND open_report."reporterId" IN (
+              SELECT reporter.id FROM "users" AS reporter
+              WHERE reporter."usernameNormalized" = ${input.reporterUsername}
+            )
+        )
       )
-      AND EXISTS (
-        SELECT 1 FROM "reports" AS open_older
-        WHERE open_older."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
-          AND open_older."targetType" = 'TOPIC'
-          AND open_older."status" = 'OPEN'
-          AND open_older."reporterId" IN (
-            SELECT reporter.id FROM "users" AS reporter
-            WHERE reporter."usernameNormalized" = ${input.reporterUsername}
-          )
-          AND open_older."targetId" = older.id
+      OR (
+        NOT EXISTS (SELECT 1 FROM "entries" AS seed WHERE seed."topicId" = older.id AND seed."origin" = 'SEED')
+        AND NOT EXISTS (
+          SELECT 1 FROM "reports" AS open_report
+          WHERE open_report."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
+            AND open_report."targetType" = 'TOPIC'
+            AND open_report."status" = 'OPEN'
+            AND open_report."targetId" = older.id
+            AND open_report."reporterId" IN (
+              SELECT reporter.id FROM "users" AS reporter
+              WHERE reporter."usernameNormalized" = ${input.reporterUsername}
+            )
+        )
       )
     )
     ORDER BY pairs.similarity DESC, newer.id, older.id
