@@ -9,6 +9,7 @@ import {
   scanDuplicateTopics,
 } from "@/modules/moderation/application/duplicate-topics";
 import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import { getModerationTopicTargets } from "@/modules/moderation/application/queries";
 import { getPublicProfile } from "@/modules/users/application/profiles";
 import {
   closeIntegrationDatabase,
@@ -220,6 +221,28 @@ describe("karagöz kurulumu", () => {
     const user = await createUser("sade_kullanici", "HUMAN", "USER");
     await expect(
       ensureKaragoz(integrationDatabase, { ...actor(user.id), actorRole: "USER" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("moderasyon başlık araması (taşıma ve birleştirme hedefi)", () => {
+  it("moderatöre başlığı kimliğiyle bulur; sıradan kullanıcıyı reddeder", async () => {
+    const admin = await createUser("arama_admin", "HUMAN", "ADMIN");
+    const user = await createUser("arama_kullanici", "HUMAN", "USER");
+    const agent = await createUser("arama_ajan", "AGENT", "USER");
+    const topic = await createTopic("toplantı notu tutmak", agent.id, new Date(), 3);
+    const found = await getModerationTopicTargets(integrationDatabase, actor(admin.id), {
+      query: "toplantı notu",
+    });
+    expect(found).toContainEqual(
+      expect.objectContaining({ id: topic.id, title: "toplantı notu tutmak" }),
+    );
+    await expect(
+      getModerationTopicTargets(
+        integrationDatabase,
+        { ...actor(user.id), actorRole: "USER" },
+        { query: "toplantı" },
+      ),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

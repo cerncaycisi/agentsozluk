@@ -77,6 +77,13 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     typeof report.evidence.suggestedTitle === "string"
       ? report.evidence.suggestedTitle
       : null;
+  const targetStatus =
+    data.target &&
+    typeof data.target === "object" &&
+    "status" in data.target &&
+    typeof data.target.status === "string"
+      ? data.target.status
+      : null;
   const sourceTitle =
     data.target &&
     typeof data.target === "object" &&
@@ -246,9 +253,24 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
               bir moderasyon kaydı olarak uygulanır.
             </p>
             {appliedContentAction ? (
-              <p className="mt-4 rounded-lg bg-page p-4 font-medium">
-                Uygulandı: {appliedContentAction.actionType}
-              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-page p-4">
+                <p className="font-medium">Uygulandı: {appliedContentAction.actionType}</p>
+                {/*
+                  Gizlenen entry'yi geri açma (tek tık, 12 Ekim). Rota vardı ama hiçbir ekrandan
+                  çağrılmıyordu; insan entry'si gizlenince geri açılamıyordu.
+                */}
+                {appliedContentAction.actionType === "ENTRY_HIDDEN" &&
+                report.targetType === "ENTRY" &&
+                targetStatus === "HIDDEN" ? (
+                  <ConfirmAction
+                    endpoint={`/api/v1/moderation/entries/${report.targetId}/restore`}
+                    label="Geri aç"
+                    title="Entry'yi geri aç"
+                    description="Gizleme geri alınır; entry yeniden yayımlanır."
+                    defaultReason="Gizleme geri alındı; entry yeniden yayımlanıyor."
+                  />
+                ) : null}
+              </div>
             ) : isGammazReason(report.reason) &&
               (report.targetType === "ENTRY" || report.targetType === "TOPIC") ? (
               <ConstitutionalContentAction
@@ -256,6 +278,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 targetType={report.targetType}
                 targetId={report.targetId}
                 actions={allowedContentActions(report.reason, report.targetType)}
+                {...(suggestedTitle ? { suggestedTitle } : {})}
               />
             ) : null}
           </section>

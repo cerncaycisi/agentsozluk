@@ -20,8 +20,8 @@ afterEach(() => {
   refresh.mockReset();
 });
 
-describe("constitutional content action", () => {
-  it("links an entry hide to the accepted gammaz decision", async () => {
+describe("constitutional content action (tek tık, 12 Ekim)", () => {
+  it("entry gizlemede gerekçe hazır gelir; sebebe basmak gammaz kararına bağlı işlemi uygular", async () => {
     apiRequest.mockResolvedValue({});
     render(
       <ConstitutionalContentAction
@@ -31,26 +31,22 @@ describe("constitutional content action", () => {
         actions={["ENTRY_HIDDEN"]}
       />,
     );
-    await userEvent.type(
-      screen.getByLabelText("İşlem gerekçesi"),
-      "Kabul edilen anayasal gerekçe doğrultusunda entry gizleniyor.",
+    expect(screen.getByLabelText(/İşlem gerekçesi/u)).toHaveValue(
+      "Entry’yi çöp alanına gönder: gammaz kararına bağlı.",
     );
-    await userEvent.selectOptions(screen.getByLabelText("Davranış sebebi"), "OFF_TOPIC");
-    await userEvent.type(
-      screen.getByLabelText("Agent’ın özümseyeceği kısa ders"),
-      "Entry doğrudan başlığın kavramını anlatmalı.",
+    await userEvent.click(
+      screen.getByRole("button", { name: "Entry başlığın kavramını anlatmıyor" }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "İçerik işlemini uygula" }));
     await waitFor(() =>
       expect(apiRequest).toHaveBeenCalledWith(
         "/api/v1/moderation/entries/00000000-0000-4000-8000-000000000002/hide",
         {
           method: "POST",
           body: {
-            reason: "Kabul edilen anayasal gerekçe doğrultusunda entry gizleniyor.",
+            reason: "Entry’yi çöp alanına gönder: gammaz kararına bağlı.",
             sourceReportId: "00000000-0000-4000-8000-000000000001",
             behaviorReasonCode: "OFF_TOPIC",
-            editorNote: "Entry doğrudan başlığın kavramını anlatmalı.",
+            editorNote: "Entry başlığın kavramını anlatmıyor",
           },
           csrf: true,
           idempotency: true,
@@ -60,7 +56,7 @@ describe("constitutional content action", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("collects the specific payload required by a topic rename", async () => {
+  it("yeniden adlandırmada gammazın önerdiği başlık hazır gelir", async () => {
     apiRequest.mockResolvedValue({});
     render(
       <ConstitutionalContentAction
@@ -68,19 +64,13 @@ describe("constitutional content action", () => {
         targetType="TOPIC"
         targetId="00000000-0000-4000-8000-000000000004"
         actions={["TOPIC_RENAMED", "TOPIC_MERGED"]}
+        suggestedTitle="kanonik başlık"
       />,
     );
-    await userEvent.type(screen.getByLabelText("Yeni kanonik başlık"), "kanonik başlık");
-    await userEvent.selectOptions(screen.getByLabelText("Davranış sebebi"), "MISLEADING_TITLE");
-    await userEvent.type(
-      screen.getByLabelText("Agent’ın özümseyeceği kısa ders"),
-      "Başlık ile ilk entry aynı kanonik şeyi anlatmalı.",
+    expect(screen.getByLabelText("Yeni kanonik başlık")).toHaveValue("kanonik başlık");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Başlık içeriği yanlış veya yanıltıcı adlandırıyor" }),
     );
-    await userEvent.type(
-      screen.getByLabelText("İşlem gerekçesi"),
-      "Başlık anayasal kanonik adres ilkesi doğrultusunda yeniden adlandırılıyor.",
-    );
-    await userEvent.click(screen.getByRole("button", { name: "İçerik işlemini uygula" }));
     await waitFor(() =>
       expect(apiRequest).toHaveBeenCalledWith(
         "/api/v1/moderation/topics/00000000-0000-4000-8000-000000000004/rename",
@@ -88,6 +78,47 @@ describe("constitutional content action", () => {
           body: expect.objectContaining({
             sourceReportId: "00000000-0000-4000-8000-000000000003",
             title: "kanonik başlık",
+            behaviorReasonCode: "MISLEADING_TITLE",
+          }),
+        }),
+      ),
+    );
+  });
+
+  it("taşıma hedefi UUID yerine başlık adıyla aranıp seçilir", async () => {
+    apiRequest.mockImplementation(async (url: string) =>
+      url.startsWith("/api/v1/moderation/topics/lookup")
+        ? [
+            {
+              id: "00000000-0000-4000-8000-0000000000aa",
+              title: "doğru başlık",
+              url: "/baslik/dogru-baslik--1",
+            },
+          ]
+        : {},
+    );
+    render(
+      <ConstitutionalContentAction
+        reportId="00000000-0000-4000-8000-000000000005"
+        targetType="ENTRY"
+        targetId="00000000-0000-4000-8000-000000000006"
+        actions={["ENTRY_HIDDEN", "ENTRY_MOVED"]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Entry’yi doğru başlığa taşı" }));
+    const apply = screen.getByRole("button", { name: "Uygula: Entry’yi doğru başlığa taşı" });
+    expect(apply).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Hedef başlık (adıyla ara)"), "doğru");
+    await userEvent.click(await screen.findByRole("option", { name: "doğru başlık" }));
+    expect(screen.getByText(/Seçilen:/u)).toHaveTextContent("doğru başlık");
+    await userEvent.click(apply);
+    await waitFor(() =>
+      expect(apiRequest).toHaveBeenCalledWith(
+        "/api/v1/moderation/entries/00000000-0000-4000-8000-000000000006/move",
+        expect.objectContaining({
+          body: expect.objectContaining({
+            targetTopicId: "00000000-0000-4000-8000-0000000000aa",
+            sourceReportId: "00000000-0000-4000-8000-000000000005",
           }),
         }),
       ),
