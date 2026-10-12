@@ -37,6 +37,7 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-false}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-0}
       SEED_DEMO: ${SEED_DEMO:-true}
+      WRITER_INTAKE: ${WRITER_INTAKE:-closed}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-change-this-demo-password}
       NEXT_TELEMETRY_DISABLED: "1"
     ports:

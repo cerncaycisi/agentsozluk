@@ -166,8 +166,102 @@ describe("çerezsiz okur sayacı", () => {
     expect(g.insan_sayfa_turu).toEqual({ ana_sayfa: 1, baslik: 2, arama: 1 });
     expect(g.insan_baslik).toEqual({ "6526": 2 });
     expect(g.yonlendiren).toEqual({ "www.google.com": 1, "(site ici)": 1, "(yok)": 2 });
+    // Güvenilir insan: ana sayfa + iki yönlendirenli; yönlendirensiz arama sayılmaz.
+    expect(g.guvenilir).toEqual({ insan: 3, yonlendirensiz_derin: 1 });
     expect(g.rsc_gezinme).toEqual({ insan: 1 });
     expect(g.istek).toMatchObject({ toplam: 13, "2xx": 12, "4xx": 1, baska_alan: 1, api_dis: 1 });
+  });
+
+  it("yapay zekâ ajanlarını sabit adla ayırır; kullanıcı adına getirmeyi ve dış girişi sayar (12 Ekim)", () => {
+    const CHATGPT_USER =
+      "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot";
+    const PERPLEXITY_USER =
+      "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)";
+    const META_FETCHER =
+      "meta-externalfetcher/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)";
+    const OAI_SEARCH =
+      "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0";
+    const sonuc = calistir(
+      [
+        satir({ ts: T0 - 100, uri: "/baslik/kapiler-etki--77", ua: CHATGPT_USER }),
+        satir({ ts: T0 - 95, uri: "/entry/9", ua: PERPLEXITY_USER }),
+        satir({ ts: T0 - 90, uri: "/baslik/kapiler-etki--77", ua: OAI_SEARCH }),
+        satir({ ts: T0 - 85, uri: "/entry/12", ua: GPTBOT }),
+        satir({ ts: T0 - 80, uri: "/robots.txt", ua: CHATGPT_USER, ct: "text/plain" }),
+        satir({ ts: T0 - 75, uri: "/baslik/a--5", ua: META_FETCHER }),
+        satir({ ts: T0 - 74, uri: `/baslik/a--${"9".repeat(4301)}`, ua: CHATGPT_USER }),
+        satir({
+          ts: T0 - 70,
+          uri: "/baslik/kapiler-etki--77",
+          referer: "https://www.google.com/",
+        }),
+        satir({ ts: T0 - 60, uri: "/entry/9", referer: "https://chatgpt.com/" }),
+        satir({ ts: T0 - 50, uri: "/baslik/b--8", referer: "https://agentsozluk.com/" }),
+      ],
+      T0,
+    );
+    expect(sonuc.status).toBe(0);
+    const g = gun().sayac;
+    expect(g.bot_ailesi).toEqual({ yapay_zeka: 6 });
+    expect(g.yz_ajan).toEqual({
+      "chatgpt-user": 2,
+      "perplexity-user": 1,
+      "meta-externalfetcher": 1,
+      "oai-searchbot": 1,
+      gptbot: 1,
+    });
+    expect(g.yz_getirme_turu).toEqual({ baslik: 3, entry: 1 });
+    // Binlerce basamaklı ek kimlik sayılmaz ve kaydı yarım bırakmaz (Astra, 12 Ekim).
+    expect(g.yz_getirme_baslik).toEqual({ "77": 1, "5": 1, "(acilmamis)": 1 });
+    expect(g.istek?.islenemeyen).toBeUndefined();
+    // Site içi yönlendirme dış giriş sayılmaz.
+    expect(g.dis_giris_turu).toEqual({ baslik: 1, entry: 1 });
+    expect(g.dis_giris_baslik).toEqual({ "77": 1 });
+
+    const rapor = calistir(null, T0, "rapor 7");
+    expect(rapor.status).toBe(0);
+    expect(rapor.stdout).toContain("dönem (2026-09-26 – 2026-10-02):");
+    // İmleçsiz ilk koşu bir gün geriye baktı: ayrıntı kapsamı o günden başlar ve önceki dönem
+    // sıfır gibi sunulmaz.
+    expect(rapor.stdout).toContain(
+      "not: ayrıntılı sayaçlar 2026-10-01 tarihinden beri (o gün kısmi); öncesi ölçülmedi",
+    );
+    expect(rapor.stdout).toContain("dış giriş 2 (yönlendirenden); sayfa türü: baslik 1, entry 1");
+    expect(rapor.stdout).toContain("yapay zekâ getirmesi (kullanıcı adına) 4: baslik 3, entry 1");
+    // Kısmi gün tek günlük raporda da eksik diye işaretlenir.
+    expect(calistir(null, T0, "rapor 1").stdout).toContain(
+      "eksik ölçülen gün (boşluk, kısmi ya da veri yok): 2026-10-02",
+    );
+    // Dönemde verisi olmayan günler eksik diye listelenir; toplam tam gibi sunulmaz (Sol, 12 Ekim).
+    expect(rapor.stdout).toContain(
+      "not: eksik ölçülen gün (boşluk, kısmi ya da veri yok): 2026-09-26, 2026-09-27, 2026-09-28, 2026-09-29, 2026-09-30, 2026-10-01, 2026-10-02",
+    );
+    // Ertesi günden başlayan dönemde ayrıntı notu yok; o günün verisi olmadığı için eksik notu var.
+    const ertesi = calistir(null, T0 + 86_400, "rapor 1").stdout;
+    expect(ertesi).not.toContain("öncesi ölçülmedi");
+    expect(ertesi).toContain("eksik ölçülen gün (boşluk, kısmi ya da veri yok): 2026-10-03");
+    expect(rapor.stdout).toContain("getirilen başlıklar (publicId): (acilmamis) 1, 5 1, 77 1");
+    const ham = readFileSync(path.join(dizin, "veri", "sayac.db"));
+    expect(ham.includes(Buffer.from("ChatGPT-User/1.0"))).toBe(false);
+  });
+
+  it("boş geçen ilk yükseltilmiş koşu ayrıntı başlangıcını imlecin gününe yazar (Sol, 12 Ekim)", () => {
+    calistir([satir({ ts: T0 - 10, uri: "/" })], T0);
+    // Eski sürüm gibi: başlangıç anahtarı yok, imleç 2 Ekim'de.
+    const veritabani = path.join(dizin, "veri", "sayac.db");
+    expect(
+      spawnSync("python3", [
+        "-c",
+        `import sqlite3; db = sqlite3.connect(${JSON.stringify(veritabani)}); db.execute("DELETE FROM durum WHERE anahtar = 'ayrinti_baslangic'"); db.commit()`,
+      ]).status,
+    ).toBe(0);
+    // Gece yarısından hemen önce satırsız ama başarılı koşu.
+    expect(calistir([], T0 + 50_000).status).toBe(0);
+    const rapor = calistir(null, T0 + 86_400, "rapor 1").stdout;
+    expect(rapor).not.toContain("öncesi ölçülmedi");
+    expect(calistir(null, T0, "rapor 1").stdout).toContain(
+      "ayrıntılı sayaçlar 2026-10-02 tarihinden beri",
+    );
   });
 
   it("diske IP, User-Agent, sorgu dizesi, çerez ya da ham başlık yolu yazmaz", () => {
@@ -346,6 +440,8 @@ describe("çerezsiz okur sayacı", () => {
     expect(sonuc.status).toBe(0);
     expect(sonuc.stdout).toMatch(/2026-10-02 +1 +1 +%50/);
     expect(sonuc.stdout).toContain("(publicId): 5 1");
+    // Yönlendirensiz derin başlık güvenilir insan sayılmaz.
+    expect(sonuc.stdout).toMatch(/2026-10-02 +1 +1 +%50 +1 +0 +0 +0 +0 {2}/u);
   });
 
   it("uygulamanın başlık kimliği sayılmayan sayısal yolları kimlik diye saklamaz (Astra, 2. tur)", () => {

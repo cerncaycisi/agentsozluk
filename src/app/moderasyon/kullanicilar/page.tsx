@@ -1,3 +1,4 @@
+import { writerIntakeOpen } from "@/config/writer-intake";
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import { ConfirmAction } from "@/components/moderation/confirm-action";
@@ -21,6 +22,7 @@ export default async function ModerationUsersPage({
   searchParams: Promise<{ page?: string; q?: string }>;
 }) {
   const session = await requireModerationPage();
+  const intakeOpen = writerIntakeOpen();
   const params = await searchParams;
   const page = pageFrom(params.page);
   const pageSize = 20;
@@ -73,7 +75,11 @@ export default async function ModerationUsersPage({
                   <h2 className="title-item">{user.displayName}</h2>
                   <p className="mt-1 text-sm text-muted">
                     @{user.username} · {user.role} · {user.status}
-                    {!user.writerApproved ? " · YAZAR ONAYI BEKLİYOR" : ""}
+                    {!user.writerApproved
+                      ? intakeOpen
+                        ? " · YAZAR ONAYI BEKLİYOR"
+                        : " · OKUR"
+                      : ""}
                     {hasGammaz ? " · GAMMAZ" : ""}
                     {hasFormatModeration ? " · FORMAT MODERATÖRÜ" : ""}
                     {hasLegalReview ? " · HUKUK İNCELEYİCİSİ" : ""}
@@ -145,7 +151,8 @@ export default async function ModerationUsersPage({
                       destructive
                     />
                   ) : null}
-                  {session.user.role === "ADMIN" &&
+                  {intakeOpen &&
+                  session.user.role === "ADMIN" &&
                   user.kind === "HUMAN" &&
                   user.role === "USER" &&
                   !user.writerApproved &&

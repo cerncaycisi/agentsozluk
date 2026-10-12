@@ -252,10 +252,15 @@ export const runtimeExecuteActionsSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
     leaseToken: runtimeLeaseTokenSchema,
+    /*
+      Bir yürütme isteği tek eylem: bütün sequence'ler aynı transaction'da kilit
+      biriktirir ve moderasyonla döngü kurabilir. İşçi zaten her istekte tek eylem
+      gönderiyor (Sol #379).
+    */
     sequences: z
       .array(z.number().int().positive())
       .min(1)
-      .max(50)
+      .max(1)
       .refine(
         (values) => new Set(values).size === values.length,
         "Sequence değerleri benzersiz olmalıdır.",
@@ -413,6 +418,14 @@ const codexIntervalSchema = z
     setupMs: z.number().int().min(0).max(86_400_000).optional(),
     inspectMs: z.number().int().min(0).max(86_400_000).optional(),
     modelMs: z.number().int().min(0).max(86_400_000).optional(),
+    /*
+      Y6 (7 Ekim): Codex `exec --json` `turn.completed.usage` sayıları. Eski worker ve
+      `--json` desteklemeyen CLI için isteğe bağlı; eksik değer sıfır sayılmaz.
+    */
+    inputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
+    cachedInputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
+    outputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
+    reasoningOutputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
   })
   .strict()
   .refine(

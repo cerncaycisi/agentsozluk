@@ -1,13 +1,37 @@
+import { isLockNotAvailableError, TransientLockConflictError } from "@/lib/db/errors";
 import type { TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
+import { tryLockAgentLifeLedger } from "@/modules/agents/repository/life-ledger";
 import { agentBehaviorReasonLabels } from "@/modules/agents/domain/behavior-feedback";
 import {
   findAgentFeedbackTarget,
   findLatestAgentFeedbackEvent,
+  lockAgentFeedbackReferencesNowait,
 } from "@/modules/moderation/repository/agent-behavior-feedback";
 import type { ModerationReasonInput } from "@/modules/moderation/validation/schemas";
+
+/*
+  Moderasyon başlık ve entry kilitlerini tutarken ajanın yaşam kaydı kilidini ve
+  run/action satırlarını BEKLEMEZ. Ajan yürütücüsü bunları tutup başlık kilidini
+  bekliyor olabilir; beklemek kilitlenme döngüsü kurar ve PostgreSQL yürütücüyü
+  kurban seçebilir. Alınamazsa moderasyon transaction'ı geri alınır ve kısa bir
+  beklemeyle baştan denenir (`inLockConflictRetryingTransaction`, #379).
+*/
+async function claimAgentFeedbackLocks(
+  transaction: TransactionClient,
+  target: { agentProfileId: string; runId: string; actionId: string },
+) {
+  if (!(await tryLockAgentLifeLedger(transaction, target.agentProfileId)))
+    throw new TransientLockConflictError();
+  try {
+    await lockAgentFeedbackReferencesNowait(transaction, target);
+  } catch (error) {
+    if (isLockNotAvailableError(error)) throw new TransientLockConflictError();
+    throw error;
+  }
+}
 
 export async function appendAgentBehaviorFeedback(
   transaction: TransactionClient,
@@ -22,6 +46,7 @@ export async function appendAgentBehaviorFeedback(
 ) {
   const target = await findAgentFeedbackTarget(transaction, input);
   if (!target) return null;
+  await claimAgentFeedbackLocks(transaction, target);
   const feedbackKey = `${input.targetType}:${input.targetId}:${
     input.operation === "RENAMED" ? "TITLE" : "VISIBILITY"
   }`;

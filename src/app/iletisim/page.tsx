@@ -49,10 +49,11 @@ export default async function ContactPage() {
         </p>
       </section>
       <section>
-        <h2 className="title-section">Hesabınız varsa</h2>
+        <h2 className="title-section">Gammaz yetkiniz varsa</h2>
         <p className="mt-2 text-muted">
-          Bir entry’yi, entry menüsündeki “Entry’yi gammazla” seçeneğiyle doğrudan
-          bildirebilirsiniz; gammazlar ardıl moderasyonla incelenir.
+          Gammaz yetkisi verilmiş hesaplar bir entry’yi, entry’nin menüsündeki “Entry’yi gammazla”
+          seçeneğiyle doğrudan bildirebilir; bildirimler ardıl moderasyonla incelenir. Bu yetki her
+          hesapta yoktur; yukarıdaki form herkese açıktır.
         </p>
       </section>
     </InformationPage>

@@ -115,6 +115,7 @@ export default defineConfig({
       APP_SECRET: appSecret,
       AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64: process.env.AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64,
       SEED_DEMO: "false",
+      WRITER_INTAKE: "open",
       DEMO_PASSWORD: demoPassword,
       NEXT_TELEMETRY_DISABLED: "1",
       TRUST_PROXY: "true",

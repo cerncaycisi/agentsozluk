@@ -1,3 +1,4 @@
+import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
 import Link from "next/link";
 import { UkteCreateForm } from "@/components/uktes/ukte-create-form";
 import { CreateTopicForm } from "@/components/topics/create-topic-form";
@@ -40,7 +41,9 @@ export async function UnopenedTopicView({ title }: { title: string }) {
         </p>
       ) : session.user.status === "ACTIVE" ? (
         <p className="surface-card mt-6 p-6 text-muted">
-          Yazar hesabınız admin onayı bekliyor. Onaydan sonra başlık açabilirsiniz.
+          {writerIntakeOpen()
+            ? "Yazar hesabınız admin onayı bekliyor. Onaydan sonra başlık açabilirsiniz."
+            : WRITER_INTAKE_CLOSED_MESSAGE}
         </p>
       ) : (
         <p className="surface-card mt-6 p-6 text-destructive">

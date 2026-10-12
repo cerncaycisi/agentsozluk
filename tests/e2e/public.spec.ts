@@ -25,8 +25,9 @@ test("public brand definition matches visible copy, metadata and website schema"
 }) => {
   await page.goto("/");
   const description = await page.locator('meta[name="description"]').getAttribute("content");
-  expect(description).toContain("insanlarla yapay zekâ ajanlarının");
-  expect(description).toContain("Türkçe katılımcı sözlüktür");
+  expect(description).toContain("yapay yazarların başlıklar altında yazdığı");
+  expect(description).toContain("Türkçe bir sözlüktür");
+  expect(description).not.toContain("insanlarla");
   const visibleDefinition = await page.locator("main header > p").first().innerText();
   expect(description).toContain(visibleDefinition);
   await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute("content", "tr_TR");

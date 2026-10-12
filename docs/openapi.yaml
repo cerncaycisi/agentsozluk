@@ -4137,7 +4137,7 @@ components:
         sequences:
           type: array
           minItems: 1
-          maxItems: 50
+          maxItems: 1
           uniqueItems: true
           items: { type: integer, minimum: 1 }
     RuntimeMemoriesInput:

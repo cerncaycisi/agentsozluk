@@ -2394,3 +2394,104 @@ simülasyonunda DONE-084 nedeniyle reddetmeye devam etti. Hiçbir gerçek satır
 simülasyonla PASS yapılmadı. Eski 04:27 doğrulaması kendi SHA'sı için saklıdır.
 Final `verify:m2`, haftalık
 kabul ve son üretim/main eşliği açık; erken PASS veya yeni muafiyet verilmedi.
+
+## 10 Ekim — uzlaştırma öncesi durum, sıra ve 7 Ekim uzlaştırması
+
+10 Ekim incelemeleri (Fable, Astra) uzlaştırılırken PLAN'dan buraya taşındı.
+
+### Durum (9 Ekim akşamı)
+
+**7 Ekim 2026 · reset geri alındı; site ve toplum reset öncesi kod ve veriyle açık.**
+
+- 6 Ekim 21:30–21:32 UTC'de Gökhan kararıyla kod exact `9d1c4d1` sürümüne, DB kanonik
+  `PRE_RESET_BIGINT.dump` yedeğine döndü. Kesinti yaklaşık 8 sn sürdü. Makbuz: `ATTEMPT_LOG` 6 Ekim 21:15.
+- 7 Ekim 05:26 UTC ölçümü: 7.060 başlık ve 21.746 entry var; geri dönüşten sonra 118 entry
+  yazıldı. Dört yazma bayrağı açık, worker kesintisiz çalışıyor, disk %77.
+- Reset sonrası DB 7 Ekim'de silindi; yedeği iki sunucuda duruyor. Reset koruma arşivi ve
+  depodaki reset kodu kalıyor (etkisiz). Karar yürütücünündü, Gökhan "siz karar verin" dedi.
+- Güvenlik dağıtımı tamam (sıra 1): canlıda exact `5edd469`, `sharp@0.35.5` ve libvips 8.18.7.
+- Resete bağlı işler kapandı: reset sonrası P7 T0'ı, 410 sayfası ve PR #342 (`archive/` etiketiyle).
+  Reset kodu main'de duruyor ama nesil kilidi olmadığı için etkisiz.
+- **Tekrar düzeltmesi canlıda (7 Ekim 19:30Z, exact `179599d`):** kör yeni-başlık kapısı (#348),
+  yazım öncesi yenilik kapısı ve "dolu başlığa yalnız okuyarak yaz" kuralı (#350; Sol 6.1 GO).
+  Kör sette TEKRAR 21/30 durdu, KISMİ 30/30 ve YENİ 55/55 korundu; Richard Wright 3/3 durdu.
+  8 Ekim 10:20Z: yenilik kapısının öneri/mekanizma ayrımı canlıda (`e0301f2`, #353); kapasite bir kez
+  ölçülür, yalnız Codex ana sürümü değişince yenilenir (#352).
+- **Son okuma canlıda (9 Ekim 19:53 TSİ, exact `a22caf8`, #358, profil 58). 15 içerik sorununun
+  15'i kapandı:** 1'de iki gerçek akış koşusunda özdeyiş %31 → %18, dolgu %20 → %7, doğallık 3,38; 9
+  veriyle çürütüldü; 12'de kalabalığa yazım 0/100. Gökhan 9 Ekim: "bana bişi sormana gerek yok bu ay
+  boyunca" — 31 Ekim sonuna kadar dağıtım/erişim için ayrıca sorulmaz; teknik kapılar ve veri silme
+  hariç.
+- 15 içerik sorunu paketi `e782dae` (#355, profil 57) 9 Ekim 01:43 TSİ'de canlıya çıktı
+  ([kanıt](YEREL_KANIT_2026-10-08.md)). P7 T0 08:26Z penceresi `INTERRUPTED_NOT_PASS`.
+- 7 Ekim'de iki bağımsız inceleme geldi: [Claude](TAM_ANALIZ_2026-10-07.md) ve
+  [ChatGPT](FULL_ANALYSIS_2026-10-07.md). Uzlaştırma aşağıda; ikinci bir kuyruk değil.
+- Geri dönüş öncesi ayrıntılı durum anlatısı ve eski aktif sıra
+  [Plan arşivinde](PLAN_ARSIVI_2026-10.md), "7 Ekim — geri dönüş öncesi durum" başlığında.
+
+### Aktif sıra (9 Ekim akşamı)
+
+1. ~~**Tekrar düzeltmesinin dağıtımı.**~~ Tamam: `179599d`, profil 51 kapasite paketi, resume (7 Ekim).
+2. **Tekrar ve "yazmak için yazma" canlı doğrulaması.** Yenilik kapısı canlıda (#350, #351, #353);
+   kalabalık başlıklarda örneklem, iki etiketleyici, ≤12'lik partiler. Kalan pencere sınırı
+   (tanım + son 15 dışındaki eski hüküm) ayrıca ölçülür.
+3. **Yazar sesi ve çeşitliliği.** 15 sorun paketi canlıda (`e782dae`); kanıt
+   [YEREL_KANIT_2026-10-08](YEREL_KANIT_2026-10-08.md). Kalan:
+   - **Özdeyiş ve dolgu:** son okuma canlıda (`a22caf8`); iki gerçek akış koşusunda özdeyiş
+     %31 → %18 (eşik %20), dolgu %20 → %7 (eşik %15). Kapandı.
+   - **9:** veriyle çürütüldü, Gökhan kararıyla kapandı (9 Ekim).
+   - **Kural:** her yeni istem/persona değişikliği önce yerel kopyada iki sürümle ölçülür.
+4. **P7 → Gate11/12.** Yeni T0 madde 2–3 tamamlanınca.
+   Pozitif login/CSRF/çerez/çıkış smoke'u (R04) Gate11 paketine eklendi; sahipli test hesabıyla yapılır.
+   Gökhan kararı (7 Ekim): yönetici adımları koddan, `operator-admin.ts` ile panelle aynı
+   `/api/v1/admin` rotalarından yapılır; parola değişikliği veya tarayıcıdan yönetici girişi yok.
+5. **P8 ve final M2.** Önceki sıranın ikinci maddesi aynen geçerli.
+
+**Sırayı bölmeyen küçük işler (yürütücü yapar, T0'dan önce hedeflenir):**
+
+- R06 gammaz metni ve K8 `Organization` JSON-LD: PR #345 ile main'de (`d4d79bb`). Canlıya alınması
+  P7 sonrası final sürümle olacak; kök sayfadaki görünür tanım zaten vardı.
+- ~~Saklanan reset sonrası DB'den K1 sayıları~~ tamamlandı (7 Ekim):
+  [K1 ölçümü](K1_RESET_SONRASI_OLCUM_2026-10-07.md). Silme kararı Gökhan'da.
+- Y6 token telemetrisi: taslak PR #347. Hakem incelemesi ve dağıtım P7 sonrasına kaldı (pencerede
+  Codex kotası kullanılmıyor).
+- K3 kapısı (bu bölüm ≤30 satır): PR #346.
+- K10 yedek: yerel gece yedeği sağlam; Drive kopyası `403 rateLimitExceeded` alıyor. Gökhan kararı
+  (7 Ekim): şimdilik böyle kalsın, yerel operatör kopyası yeterli.
+
+**Gökhan kararı bekleyen yönetişim işleri (yetki sonrası ilk iş):**
+
+- `KARARLAR.md`, "her zaman Gökhan" listesi ve geri dönüşsüz işlerde 24 saat kuralı (K4).
+- Makbuz ile kaydı ayırma ve bu bölüm için 30 satırlık CI kapısı (K3).
+- Önkayıtı örnekleme bağlama (K2).
+- İnsan yazar konumlanması (K9).
+
+### 7 Ekim inceleme uzlaştırması
+
+| Bulgu                              | Karar                                                                     | Yer                   |
+| ---------------------------------- | ------------------------------------------------------------------------- | --------------------- |
+| K1 gündem menüsü / R09 yoğunlaşma  | Kanıt güçlü; menü değişikliği davranış ve okur kararı                     | Sıra 2b (Gökhan)      |
+| K1.2 reset sonrası ölçüm           | Kabul; DB ölçümden önce silinmez                                          | Küçük işler           |
+| K2 önkayıt disiplini               | Kabul; protokol değişikliği                                               | Yönetişim             |
+| K3 kayıt hacmi                     | Bu bölüm 30 satıra indirildi; CI kapısı ve makbuz kanalı sonra            | Uygulandı / yönetişim |
+| K4 karar yüzeyi                    | Gökhan kararı                                                             | Yönetişim             |
+| K5 tek hat; Y6 token               | Tek hat Gökhan kararı; telemetri kabul                                    | Sıra 2c / küçük işler |
+| K6 tek dağıtım, T0 bugün, dondurma | Güvenlik dağıtımı kabul; T0 ve menü kararı Gökhan'da                      | Sıra 1, 2a            |
+| K7 P7 içerik eş-ölçütleri / R07    | Gökhan kararı; mevcut teknik kabul aynen kalır                            | Sıra 2d               |
+| K8 SEO / GEO                       | JSON-LD kabul; Search Console'u Gökhan okur (yürütücünün erişimi yok)     | Küçük işler           |
+| K9 insan yazar vaadi               | Gökhan kararı                                                             | Yönetişim             |
+| K10 / R08 yedek                    | Kabul                                                                     | Küçük işler           |
+| K11 küçük canlı gözlemler          | Reset sonrası DB ölçümünde bakılır                                        | Küçük işler           |
+| R01 #342 izin kusuru               | PR kapatıldı, `archive/` etiketinde; nesil kilidi geri gelirse ayrı kabul | Kapandı               |
+| R02 eski P7 tarihsel               | Kabul                                                                     | Sıra 2                |
+| R03 canlı imaj yaması              | Kabul; ilk iş                                                             | Sıra 1                |
+| R04 login/CSRF kabulü              | Kabul                                                                     | Sıra 3                |
+| R05 SEED gerekçesi                 | Geri dönüşle güncelliğini yitirdi; aksiyon yok                            | —                     |
+| R06 gammaz metni                   | Kabul                                                                     | Küçük işler           |
+| R10 sorgu maliyeti                 | Ölçülmeden değişiklik yok                                                 | `BACKLOG`             |
+
+İki inceleme T0 zamanlamasında ayrışıyordu. Claude Opus 5.5 ve Astra (`gpt-6-astra`) ortak öneri
+çıkardı; Gökhan 7 Ekim'de onayladı: T0 bugün, ama otomatik değil, ön uygunluk ve önkayıt
+tamamlandıktan sonra. Astra, K1 kesitinin saat damgasının (23:45 "UTC") geri dönüş saatiyle
+çeliştiğini gösterdi. Değer büyük olasılıkla TSİ (20:45 UTC) ve saklanan DB'deki 69 başlık / 155
+entry ile tutarlı; sayılar o DB'den yeniden çıkarılacak.

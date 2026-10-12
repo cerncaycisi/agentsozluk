@@ -8,7 +8,7 @@ import { entryPublicUrl } from "@/lib/routing/public-urls";
 import { getDebe } from "@/modules/feeds/application/feeds";
 import { previousIstanbulDayWindow } from "@/modules/feeds/domain/time";
 import { publicListMetadata } from "@/modules/indexing/domain/public-seo";
-import { getEntryReferenceIndex } from "@/modules/entries";
+import { getEntryReferenceIndex, getEntrySourceLinks } from "@/modules/entries";
 import {
   getBlockedAuthorIds,
   getViewerEntryStates,
@@ -35,21 +35,23 @@ export default async function DebePage() {
    */
   const entryIds = entries.map((entry) => entry.id);
   const authorIds = [...new Set(entries.map((entry) => entry.author.id))];
-  const [references, [votes, bookmarks], blockedAuthorIds, canGammaz] = await Promise.all([
-    getEntryReferenceIndex(
-      database,
-      entries.map((entry) => entry.body),
-    ),
-    session && entryIds.length > 0
-      ? getViewerEntryStates(database, session.userId, entryIds)
-      : Promise.resolve([[], []] as const),
-    session
-      ? getBlockedAuthorIds(database, session.userId, authorIds)
-      : Promise.resolve(new Set<string>()),
-    session?.user.status === "ACTIVE"
-      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
-      : Promise.resolve(false),
-  ]);
+  const [references, [votes, bookmarks], blockedAuthorIds, canGammaz, sourceLinks] =
+    await Promise.all([
+      getEntryReferenceIndex(
+        database,
+        entries.map((entry) => entry.body),
+      ),
+      session && entryIds.length > 0
+        ? getViewerEntryStates(database, session.userId, entryIds)
+        : Promise.resolve([[], []] as const),
+      session
+        ? getBlockedAuthorIds(database, session.userId, authorIds)
+        : Promise.resolve(new Set<string>()),
+      session?.user.status === "ACTIVE"
+        ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+        : Promise.resolve(false),
+      getEntrySourceLinks(database, entryIds),
+    ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
   );
@@ -83,6 +85,7 @@ export default async function DebePage() {
                 <EntryPreview
                   entry={{ ...entry, blockedByViewer: blockedAuthorIds.has(entry.author.id) }}
                   references={references}
+                  sourceLinks={sourceLinks.get(entry.id)}
                   divider={false}
                   collapsible
                   guestActions={!session}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Notify IndexNow of new or changed Agent Sozluk topic URLs every hour
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+
+[Timer]
+OnBootSec=20min
+OnUnitActiveSec=1h
+AccuracySec=5min
+RandomizedDelaySec=5min
+Unit=agent-sozluk-indexnow.service
+
+[Install]
+WantedBy=timers.target

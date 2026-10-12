@@ -34,6 +34,19 @@ export interface RuntimeProviderRequest {
  * Ayrıştırma davranışı değiştirmiyor, yalnız neyin ne kadar sürdüğünü
  * söylüyor.
  */
+/**
+ * Codex `exec --json` olay akışındaki `turn.completed.usage` sayıları. Yalnız sayılar
+ * taşınır; olay akışındaki model içeriği okunmaz, saklanmaz.
+ */
+export interface RuntimeProviderTokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  /** CLI bildirmediyse yoktur; sıfır sayılmaz. */
+  cachedInputTokens?: number;
+  /** CLI bildirmediyse yoktur; sıfır sayılmaz. */
+  reasoningOutputTokens?: number;
+}
+
 export interface RuntimeProviderAttemptDiagnostics {
   /** Çağrı başlangıcından süreç doğana kadar (dizin, şema, CLI denetimi). */
   setupMs: number;
@@ -42,6 +55,8 @@ export interface RuntimeProviderAttemptDiagnostics {
   /** Süreç doğduktan çıktı toplanana kadar — modelin gerçek payı. */
   modelMs: number;
   hostMetrics?: RuntimeProviderHostMetrics;
+  /** CLI `--json` destekliyorsa ve tur tamamlandıysa; eksik değer sıfır sayılmaz. */
+  tokenUsage?: RuntimeProviderTokenUsage;
 }
 
 /*

@@ -9,6 +9,8 @@ bu betik o kayıttan GÜNLÜK TOPLU sayaç çıkarır. GA4/Hotjar kararı deği�
 İNSAN KİMDİR: bot desenine uymayan `Mozilla/` User-Agent'ı VE `Sec-Fetch-Mode`
 başlığı olan istek. Başlıksız "tarayıcılar" `taklit_tarayici` bot ailesine
 gider: üretimde 2 Ekim'de "insan" görünen görüntülemelerin %97'si böyleydi.
+Talep göstergesi için ayrıca "güvenilir insan" sayılır: yönlendireni olan ya da ana sayfa
+görüntülemesi (10 Ekim; taklitçi tarayıcı yönlendirensiz derin sayfa okuyordu).
 İnsan için sayfa görüntüleme = belge gezinmesi (`Sec-Fetch-Dest: document`,
 prefetch değil) ve 200 HTML ya da 304.
 
@@ -72,6 +74,30 @@ BOT_AILELERI = [
     ("sosyal", r"facebookexternalhit|facebookcatalog|twitterbot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|pinterest|redditbot|skypeuripreview|mastodon"),
     ("arac", r"curl|wget|python|httpx|aiohttp|go-http-client|java/|okhttp|axios|node-fetch|undici|libwww|scrapy|headlesschrome|phantomjs|lighthouse|pingdom|uptime|monitor"),
 ]
+# Yapay zekâ botlarının ayrıntısı (12 Ekim, PLAN sıra 4b). Aile sayımı aynen kalır; burada yalnız
+# sabit adlar saklanır, User-Agent metni değil. "getirme" = kullanıcı bir cevap motoruna soru
+# sorduğunda o an sayfayı getiren ajan: atıf sinyali. "arama" = cevap motorunun dizin tarayıcısı,
+# "egitim" = model eğitimi için tarayıcı. Sıra önemli: `-user` adları genel adlardan önce gelir.
+YZ_AJANLARI = [
+    ("chatgpt-user", "getirme", r"chatgpt-user"),
+    ("perplexity-user", "getirme", r"perplexity-user"),
+    ("claude-user", "getirme", r"claude-user"),
+    ("mistralai-user", "getirme", r"mistralai-user"),
+    ("duckassistbot", "getirme", r"duckassistbot"),
+    ("oai-searchbot", "arama", r"oai-searchbot"),
+    ("claude-searchbot", "arama", r"claude-searchbot"),
+    ("perplexitybot", "arama", r"perplexitybot"),
+    ("youbot", "arama", r"youbot"),
+    ("gptbot", "egitim", r"gptbot"),
+    ("claudebot", "egitim", r"claudebot|anthropic"),
+    ("ccbot", "egitim", r"ccbot"),
+    ("bytespider", "egitim", r"bytespider"),
+    ("meta-externalfetcher", "getirme", r"meta-externalfetcher"),
+    ("meta-externalagent", "egitim", r"meta-externalagent"),
+    ("amazonbot", "egitim", r"amazonbot"),
+    ("applebot-extended", "egitim", r"applebot-extended"),
+]
+YZ_DESENLERI = [(ad, tur, re.compile(desen, re.I)) for ad, tur, desen in YZ_AJANLARI]
 BOT_GENEL = re.compile(r"bot|crawl|spider|slurp|scrape|fetch|preview|archive", re.I)
 BOT_DESENLERI = [(ad, re.compile(desen, re.I)) for ad, desen in BOT_AILELERI]
 
@@ -128,6 +154,22 @@ def bot_ailesi(ua: str) -> str | None:
     if not ua.startswith("Mozilla/"):
         return "diger"
     return None
+
+
+def yz_ajani(ua: str) -> tuple[str, str]:
+    """Yapay zekâ ailesindeki botun sabit adı ve türü; tanınmayan ad `diger`."""
+    for ad, tur, desen in YZ_DESENLERI:
+        if desen.search(ua):
+            return ad, tur
+    return "diger", "diger"
+
+
+def baslik_kimligi(yol: str) -> str:
+    kimlik = BASLIK_KIMLIGI.match(yol)
+    # Uzunluk sınırı önce: binlerce basamaklı ek `int()` sınırına takılıp kaydı yarım bırakmasın.
+    if kimlik and len(kimlik.group(2)) <= 16 and int(kimlik.group(2)) <= GUVENLI_TAMSAYI:
+        return kimlik.group(2)
+    return "(acilmamis)"
 
 
 def sayfa_turu(yol: str) -> str:
@@ -202,7 +244,8 @@ class Toplayici:
             return
 
         h = istek.get("headers") if isinstance(istek.get("headers"), dict) else {}
-        aile = bot_ailesi(" ".join(basliklar(h, "User-Agent")))
+        ua = " ".join(basliklar(h, "User-Agent"))
+        aile = bot_ailesi(ua)
         if aile is None and not basliklar(h, "Sec-Fetch-Mode"):
             aile = "taklit_tarayici"
         uri = istek.get("uri") if isinstance(istek.get("uri"), str) else "/"
@@ -225,6 +268,13 @@ class Toplayici:
             if durum == 200 and html:
                 self.artir(gun, "sayfa", "bot")
                 self.artir(gun, "bot_ailesi", aile)
+                if aile == "yapay_zeka":
+                    ad, tur = yz_ajani(ua)
+                    self.artir(gun, "yz_ajan", ad)
+                    if tur == "getirme":
+                        self.artir(gun, "yz_getirme_turu", sayfa_turu(yol))
+                        if yol.startswith("/baslik/"):
+                            self.artir(gun, "yz_getirme_baslik", baslik_kimligi(yol))
             return
         # İnsan: yalnız belge gezinmesi. Prefetch ve gömülü istekler sayılmaz;
         # 304'te Content-Type yoktur (Astra, 2 Ekim).
@@ -236,12 +286,20 @@ class Toplayici:
         self.artir(gun, "sayfa", "insan")
         self.artir(gun, "insan_sayfa_turu", sayfa_turu(yol))
         if yol.startswith("/baslik/"):
-            kimlik = BASLIK_KIMLIGI.match(yol)
-            if kimlik and int(kimlik.group(2)) <= GUVENLI_TAMSAYI:
-                self.artir(gun, "insan_baslik", kimlik.group(2))
-            else:
-                self.artir(gun, "insan_baslik", "(acilmamis)")
-        self.artir(gun, "yonlendiren", yonlendiren_sinifi(" ".join(basliklar(h, "Referer"))))
+            self.artir(gun, "insan_baslik", baslik_kimligi(yol))
+        yonlendiren = yonlendiren_sinifi(" ".join(basliklar(h, "Referer")))
+        self.artir(gun, "yonlendiren", yonlendiren)
+        if not yonlendiren.startswith("("):
+            # Dış giriş: arama motorundan ya da başka siteden gelen okurun indiği sayfa (12 Ekim).
+            self.artir(gun, "dis_giris_turu", sayfa_turu(yol))
+            if yol.startswith("/baslik/"):
+                self.artir(gun, "dis_giris_baslik", baslik_kimligi(yol))
+        # Güvenilir insan: yönlendireni olan ya da ana sayfa görüntülemesi. 4-8 Ekim'de tarayıcı
+        # başlıklarını taklit eden bir tarayıcı günde binlerce yönlendirensiz derin sayfa okudu ve
+        # "insan" sayıldı (5 Ekim: 7.891 görüntülemenin 7.877'si yönlendirensiz). Eski sayım aynen
+        # kalır; bu sayaç talep göstergesi içindir (PLAN sıra 4, 10 Ekim).
+        guvenilir = yonlendiren != "(yok)" or sayfa_turu(yol) == "ana_sayfa"
+        self.artir(gun, "guvenilir", "insan" if guvenilir else "yonlendirensiz_derin")
 
 
 def baglan() -> sqlite3.Connection:
@@ -402,6 +460,13 @@ def topla() -> int:
                 "INSERT INTO gun (gun, bosluk) VALUES (?, 1) ON CONFLICT (gun) DO UPDATE SET bosluk = 1",
                 (gun,),
             )
+        # Ayrıntılı sayaçların (yapay zekâ ajanı, dış giriş) başladığı gün; 12 Ekim'de eklendi.
+        # Bu koşu imleçten (imleçsizse pencere başından) sonrasını saydı; kapsam o andan başlar,
+        # satır gelmese de (Sol, 12 Ekim). Önceki günler bu alanları taşımaz; o gün kısmidir.
+        db.execute(
+            "INSERT OR IGNORE INTO durum VALUES ('ayrinti_baslangic', ?)",
+            (gun_adi(imlec if imlec is not None else bas),),
+        )
         if son is not None:
             # repr kayıpsızdır: float(repr(x)) == x (Astra, 2 Ekim).
             db.execute("INSERT OR REPLACE INTO durum VALUES ('imlec', ?)", (repr(son),))
@@ -426,7 +491,7 @@ def rapor(gun_sayisi: int) -> int:
     def al(gun: str, alan: str) -> dict[str, int]:
         return dict(db.execute("SELECT anahtar, adet FROM sayac WHERE gun = ? AND alan = ?", (gun, alan)))
 
-    print("gün        insan  bot   bot payı  başlık  ana  arama  dış yönl.  not")
+    print("gün        insan  bot   bot payı  başlık  ana  arama  dış yönl.  güv. insan  not")
     for i in range(gun_sayisi - 1, -1, -1):
         ad = (bugun - timedelta(days=i)).isoformat()
         bilgi = db.execute("SELECT kismi, bosluk FROM gun WHERE gun = ?", (ad,)).fetchone()
@@ -437,7 +502,15 @@ def rapor(gun_sayisi: int) -> int:
         insan, bot = sayfa.get("insan", 0), sayfa.get("bot", 0)
         pay = f"%{round(100 * bot / (insan + bot))}" if insan + bot else "-"
         turler = al(ad, "insan_sayfa_turu")
-        dis = sum(v for k, v in al(ad, "yonlendiren").items() if not k.startswith("("))
+        yonlendirenler = al(ad, "yonlendiren")
+        dis = sum(v for k, v in yonlendirenler.items() if not k.startswith("("))
+        guvenilir_sayaci = al(ad, "guvenilir")
+        if not guvenilir_sayaci:
+            # Sayaç 10 Ekim'de eklendi; önceki günler için üst sınır yaklaşığı (~).
+            yaklasik = sum(v for k, v in yonlendirenler.items() if k != "(yok)")
+            guv = f"~{yaklasik + turler.get('ana_sayfa', 0)}"
+        else:
+            guv = str(guvenilir_sayaci.get("insan", 0))
         notlar = []
         if bilgi and bilgi[1]:
             notlar.append("boşluk")
@@ -445,7 +518,8 @@ def rapor(gun_sayisi: int) -> int:
             notlar.append("kısmi")
         print(
             f"{ad}  {insan:5d}  {bot:5d}  {pay:>8}  {turler.get('baslik', 0):6d}  "
-            f"{turler.get('ana_sayfa', 0):3d}  {turler.get('arama', 0):5d}  {dis:9d}  {' '.join(notlar)}"
+            f"{turler.get('ana_sayfa', 0):3d}  {turler.get('arama', 0):5d}  {dis:9d}  {guv:>10}  "
+            f"{' '.join(notlar)}"
         )
     ad = bugun.isoformat()
 
@@ -456,6 +530,54 @@ def rapor(gun_sayisi: int) -> int:
     print("\nbugün bot aileleri:", ilk_on("bot_ailesi"))
     print("bugün yönlendirenler:", ilk_on("yonlendiren"))
     print("bugün en çok okunan başlıklar (publicId):", ilk_on("insan_baslik"))
+    print("bugün yapay zekâ ajanları:", ilk_on("yz_ajan"))
+
+    # Dönem toplamı: talep stratejisinin haftalık ölçüsü (PLAN sıra 4b, 12 Ekim).
+    bas = (bugun - timedelta(days=gun_sayisi - 1)).isoformat()
+
+    def donem(alan: str) -> dict[str, int]:
+        return dict(
+            db.execute(
+                "SELECT anahtar, SUM(adet) FROM sayac WHERE gun >= ? AND gun <= ? AND alan = ?"
+                " GROUP BY anahtar",
+                (bas, ad, alan),
+            )
+        )
+
+    def sirala(sayac: dict[str, int], adet: int = 10) -> str:
+        sirali = sorted(sayac.items(), key=lambda kv: (-kv[1], kv[0]))[:adet]
+        return ", ".join(f"{k} {v}" for k, v in sirali) or "-"
+
+    giris = donem("dis_giris_turu")
+    getirme = donem("yz_getirme_turu")
+    dis_toplam = sum(v for k, v in donem("yonlendiren").items() if not k.startswith("("))
+    baslangic = durum_al(db, "ayrinti_baslangic")
+    print(f"\ndönem ({bas} – {ad}):")
+    if baslangic is None or baslangic >= bas:
+        # Eksik kapsam sıfır gibi sunulmaz; başlangıç günü de kısmidir (Astra, 12 Ekim, 2. tur).
+        print(
+            f"  not: ayrıntılı sayaçlar {baslangic or '(henüz yok)'} tarihinden beri (o gün kısmi);"
+            " öncesi ölçülmedi"
+        )
+    # Boşluklu, kısmi ya da verisiz gün dönem toplamını eksik bırakır; tam gibi sunulmaz (Sol, 12 Ekim).
+    durumlar = {
+        r[0]: (r[1], r[2])
+        for r in db.execute(
+            "SELECT gun, kismi, bosluk FROM gun WHERE gun >= ? AND gun <= ?", (bas, ad)
+        )
+    }
+    eksik = [
+        g
+        for g in gunler_arasi(bas, ad)
+        if g not in durumlar or durumlar[g][0] or durumlar[g][1]
+    ]
+    if eksik:
+        print("  not: eksik ölçülen gün (boşluk, kısmi ya da veri yok):", ", ".join(eksik))
+    print(f"  dış giriş {dis_toplam} (yönlendirenden); sayfa türü:", sirala(giris))
+    print("  dış giriş başlıkları (publicId):", sirala(donem("dis_giris_baslik")))
+    print(f"  yapay zekâ getirmesi (kullanıcı adına) {sum(getirme.values())}:", sirala(getirme))
+    print("  getirilen başlıklar (publicId):", sirala(donem("yz_getirme_baslik")))
+    print("  yapay zekâ ajanları:", sirala(donem("yz_ajan"), 20))
     return 0
 
 

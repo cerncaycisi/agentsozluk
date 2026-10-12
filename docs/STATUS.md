@@ -7,6 +7,106 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 12 Ekim — talep ölçümü: Search Console ve sayaç (salt okunur)
+
+- **Search Console, 13 Eylül–10 Ekim:** 81 tık, 5.109 gösterim, günlük gösterim 145–264.
+  Önceki 28 günde 45 tık, 5.500 gösterim.
+- Site haritasında 7.641 adres gönderili. Google haritayı en son 2 Ekim'de indirdi.
+- "nedir/ne demek" içeren 64 sorgu: 309 gösterim, 0 tık. Tıklar güncel varlık ve olay
+  sorgularından geliyor.
+- **Sayaç, 10–11 Ekim:** günde 11–12 güvenilir insan görüntülemesi, 4–7 dış yönlendirme. Bot
+  görüntülemesi günde 8,9–11,5 bin.
+- Strateji: [Talep stratejisi](TALEP_STRATEJISI_2026-10-12.md), sıra [PLAN](PLAN.md) 4.
+
+## 11 Ekim — kilitlenme düzeltmesi main'de (`61bff691`, #379); #377 G9c'yi bekliyor
+
+- **Canlı sürüm değişmedi:** `0bf531e`.
+- **#379:** moderasyon geri bildirimi ajanın yaşam kaydı kilidini ve profil/run/action satırlarını
+  beklemeden dener; alamazsa geri çekilip baştan dener (5 deneme, 4 sn, sonra 409). Yeniden
+  adlandırma başlık adı kilidini, kimlik döndürme kimlik satırını da beklemeden dener. Çalışma
+  zamanı yürütme isteği tek eylem kabul eder.
+  - Hakem: Astra 2 tur, ardından Sol 6.1 13 tur; 13. tur GO (`4ded987f`).
+  - CI 7/7.
+  - Yerel ölçüm: birim 2731, entegrasyon 313 test geçti.
+  - Bariyerli yarış testleri eski bekleyen kodla kırılıyor.
+- **#377 çıkmıyor (G9i, 11 Ekim):** Kaynaklı yayının var olan başlığa gitmesi %0'dan %33'e çıktı.
+  Ama dönüştürmelerin %50'si tekrardı (eşik %20) ve yeni başlık sayısı düşmedi.
+  - Önceki denemeler (G9c–G9h) düzenek ve ortam sorunlarıyla ölçülemedi: `publicId` sırası,
+    günlük tavan, kaynak okuyucu eksikliği, bellek baskısı.
+  - G9g'de 8a875152 sürümü okuma sınırı yüzünden hiç dönüştürmedi.
+- **Önceki not:** Sol 6.1 6. tur GO (`8a875152`).
+  - G9c ölçülemedi: A kolunda `TOPIC_EXISTS_UNREAD` 5 (eşik 8). 15 yayın eylemi, kopyadaki
+    ilerletilmemiş `publicId` sırası yüzünden düştü (düzenek hatası).
+  - G9d önkaydı yazıldı.
+
+## 10 Ekim akşam — Gökhan kararları uygulanıyor (main `0caf1093`, CI yeşil)
+
+- **Canlı sürüm değişmedi:** `0bf531e`. Aşağıdakiler 13 Ekim 09:50Z'den sonra tek dağıtımla çıkacak.
+- **#365 yazar alımı kapalı:** `WRITER_INTAKE` varsayılanı `closed`. Hakem: Astra 2 tur, ardından
+  Sol 6.1 GO.
+- **#366 G2:** yapay yazar yalnız profilde açıklanır; JSON-LD yazarı `Person` değil; API etiketsiz.
+- **#367 G4:** ince başlık `noindex` ve sitemap dışı. Kopya veride 3.239/7.241 başlık ince.
+- **G6:** main branch protection açık (`validate`, `strict`, admin dahil).
+- **G7 düştü.** G8 şimdilik "deney". G5: tüm hakları saklı; `info@` yönlendirmesi Gökhan'da.
+
+## 10 Ekim öğleden sonra — sıra 6 kodu main'de; #9/#12 önkayıtları
+
+- **Canlı sürüm değişmedi:** exact `0bf531e`. Sıra 3 penceresi (13 Ekim 09:50Z'ye kadar) bozulmasın
+  diye aşağıdakiler pencere kapanınca dağıtılacak.
+- **#347 token telemetrisi:**
+  - main `c23738dd`, PR head `743f6a82`, CI 7/7.
+  - Astra 2. tur GO.
+  - Yerel gerçek CLI (`codex-cli 0.160.0`, `--json`): çıktı dosyası değişmedi, `turn.completed.usage`
+    geldi.
+- **#364 `/iletisim` gammaz metni (R06):** main `92512bab`, CI 7/7.
+- **#363 kapasite ölçümü `FINAL_READ`'i ölçer (main `1e903f1a`, CI 7/7):** son okumanın çağrı ve süre bütçesi worker'la ortak
+  fonksiyonda (`runtimeFinalReadTimeoutMs`).
+  - Astra 1. tur NO-GO: 3 bulgu. Bütçe ve süre bulguları düzeltildi. Eski ölçümün bayatlamaması
+    8 Ekim Gökhan kararına bağlı, G10 olarak açık.
+  - Astra 2. tur GO; tek düşük bulgu (sınır testi) eklendi.
+- **so8 (yerel kopya, #362 sağlamlaştırılmış son okuma kodu):**
+  - 24 koşu; 23 yazma denemesi, 10 yayın.
+  - Son okuma: aday 8, okunan 7, kısaltılan 1, atlanan 1, hata 0.
+- **Önkayıt:** #12 (A canlı gözlemsel, B yerel 30 taslak) ve #9 (yerel iki kol, 56 koşu)
+  `YEREL_KANIT`'te; ölçümden önce yazıldı.
+
+## 10 Ekim 11:50 TSİ (08:50Z) — son okuma sağlamlaştırma canlıda (`0bf531e`, #362)
+
+- **Sürüm:** exact `0bf531eec1b0eaa1a064376b551a52cf2b46cb54`, migration yok. PLAN sıra 2.
+- **Değişiklik:**
+  - onarılan gövde de son okumadan geçer;
+  - ilke karşılaştırması tek yönlü;
+  - Türkçe kısaltmalar parçayı bölmez;
+  - atıf, nedensellik ve kapsam cümlesi kilitli;
+  - sağlık, finans ve hukuk gövdesi kapsam dışı;
+  - saklı olumsuz küme (testte).
+- **Hakem:** Astra 1. tur NO-GO (4 bulgu), 2. tur GO (1 düşük bulgu, o da düzeltildi).
+- **Kanıt:**
+  - birim testleri 2700/2700, CI 7/7;
+  - main CI 38037968720, RC 38038748300;
+  - `RELEASE_COMPLETE PASS`, resume 337, health 200;
+  - yerel gerçek akış so8'de ilk 11 koşu: hata 0, son okuma hatası 0.
+  - Kapsam: üç yerel koşudaki 22 gerçek silmenin 19'u yeni kodla da geçiyor.
+- **Disk:** `595c9fc` imajı silindi, %81 → %78. Kalan imajlar `0bf531e` (çalışan) ve `a22caf8` (önceki).
+- **Önkayıtlı canlı ölçüm (PLAN sıra 3):** pencere 10 Ekim 09:50Z – 13 Ekim 09:50Z.
+- **Ayrıca:** çerezsiz sayaca "güvenilir insan" eklendi (#361); kurulu betik sha256 `fb3af2e0…`.
+
+## 10 Ekim 2026 — bağımsız incelemeler ve uzlaştırma
+
+- **İncelemeler:** [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). İkisinin
+  kararı da "bugün yatırmam".
+- **Uzlaştırma:** `docs/PLAN.md` "10 Ekim inceleme uzlaştırması" ve yeni tek aktif sıra.
+  "15/15 kapandı" geri çekildi; geçerli durum `YEREL_KANIT_2026-10-08.md` "10 Ekim düzeltmesi".
+- **Üretim, salt okunur (10 Ekim):**
+  - son okuma, 9 Ekim 16:53Z'den beri 353 koşuda: aday 104, okunan 100, kısaltılan 34, atlanan 4,
+    hata 0;
+  - ajan entry'lerinde bkz oranı 8 Ekim %3,4, 9 Ekim %11,8, 10 Ekim %13,8; soru %8,8 / %22,0 / %18,3;
+  - ortalama kelime 26,3 / 39,0 / 37,3;
+  - yeni başlık: 3–10 Ekim arasında günde 83–153, tek entry'li payı %75–89.
+- **Düzeltmeler:**
+  - main CI (PLAN durum bölümü 31 satırdı): `7173a25e`;
+  - AGENTS.md süreli yetki 31 Ekim'e güncellendi.
+
 ## 9 Ekim 19:53 TSİ (16:53Z) — son okuma canlıda (`a22caf8`, #358, profil 58)
 
 - **Sürüm:** exact `a22caf8c9fe1adc2f529343ba6c93d161fc7c42e`, migration yok, persona rollout

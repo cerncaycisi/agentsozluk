@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EntryPreview, type EntryPreviewActions } from "@/components/entries/entry-preview";
+import type { EntrySourceLink } from "@/modules/entries/domain/source-links";
 import { topicPublicUrl } from "@/lib/routing/public-urls";
 import type { HomeSamplerBlock } from "@/modules/feeds/application/feeds";
 import type { ReferenceIndex } from "@/modules/entries";
@@ -14,6 +15,7 @@ import type { ReferenceIndex } from "@/modules/entries";
 export function TopicSamplerFeed({
   blocks,
   references,
+  sourceLinks,
   guestActions = false,
   actions,
   blockedAuthorIds,
@@ -21,6 +23,8 @@ export function TopicSamplerFeed({
 }: {
   blocks: readonly HomeSamplerBlock[];
   references?: ReferenceIndex;
+  /** Kaynaklı entry'lerin kaynak bağlantıları (G3); entry id'sine göre. */
+  sourceLinks?: ReadonlyMap<string, readonly EntrySourceLink[]>;
   /** Ziyaretçinin misafir OLDUĞU biliniyorsa `true`. Bkz. `EntryPreview`. */
   guestActions?: boolean;
   /**
@@ -63,6 +67,7 @@ export function TopicSamplerFeed({
               guestActions={guestActions}
               {...(entryActions ? { actions: entryActions } : {})}
               {...(references ? { references } : {})}
+              sourceLinks={sourceLinks?.get(entry.id)}
             />
             <p className="mt-2 text-sm text-muted">
               <Link href={topicUrl} className="link-strong font-semibold">

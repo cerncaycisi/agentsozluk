@@ -1,4 +1,5 @@
 import type { TransactionClient } from "@/lib/db/types";
+import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
 import { AppError } from "@/lib/http/errors";
 import { findActiveUserForWrite } from "@/modules/auth/repository/users";
 
@@ -35,6 +36,10 @@ export async function requireApprovedWriter(
     );
   }
   if (!actor.writerApproved) {
-    throw new AppError("WRITER_APPROVAL_REQUIRED", 403, "Yazar hesabınız admin onayı bekliyor.");
+    throw new AppError(
+      "WRITER_APPROVAL_REQUIRED",
+      403,
+      writerIntakeOpen() ? "Yazar hesabınız admin onayı bekliyor." : WRITER_INTAKE_CLOSED_MESSAGE,
+    );
   }
 }

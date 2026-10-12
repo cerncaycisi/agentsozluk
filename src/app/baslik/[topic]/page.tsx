@@ -1,3 +1,4 @@
+import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
 import type { Metadata } from "next";
 import { Search } from "lucide-react";
 import { Fragment } from "react";
@@ -9,6 +10,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { getEnvironment } from "@/config/env";
+import { APP_NAME } from "@/config/app";
 import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
 import {
@@ -20,7 +22,11 @@ import {
 import { UnopenedTopicView } from "@/app/baslik/[topic]/unopened-topic-view";
 import { parseProposedTopicTitle } from "@/modules/topics/validation/schemas";
 import { currentPageSession } from "@/lib/auth/server-session";
-import { getEntryReferenceIndex, getTopicEntries } from "@/modules/entries/application/entries";
+import {
+  getEntryReferenceIndex,
+  getEntrySourceLinks,
+  getTopicEntries,
+} from "@/modules/entries/application/entries";
 import {
   DEFAULT_TOPIC_TIME_WINDOW,
   TOPIC_TIME_WINDOWS,
@@ -167,6 +173,9 @@ export async function generateMetadata({
         description,
         url: topic.url,
         type: "article",
+        // Sayfa düzeyindeki `openGraph` kökü ezer; dil ve site adı burada yeniden verilir.
+        locale: "tr_TR",
+        siteName: APP_NAME,
         publishedTime: topic.createdAt.toISOString(),
         modifiedTime: topic.updatedAt.toISOString(),
         authors: [publicProfileUrl(topic.createdBy.username)],
@@ -317,7 +326,7 @@ export default async function TopicPage({
     result = { entries: [], totalItems: 0 };
   }
   const entryIds = result.entries.map((entry) => entry.id);
-  const [[votes, bookmarks], references, canGammaz, contentDates] = await Promise.all([
+  const [[votes, bookmarks], references, canGammaz, contentDates, sourceLinks] = await Promise.all([
     session && entryIds.length > 0
       ? getViewerEntryStates(database, session.userId, entryIds)
       : Promise.resolve([[], []] as const),
@@ -329,6 +338,7 @@ export default async function TopicPage({
       ? userHasModerationCapability(database, session.userId, "GAMMAZ")
       : Promise.resolve(false),
     getEntryContentDates(database, result.entries),
+    getEntrySourceLinks(database, entryIds),
   ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
@@ -533,6 +543,7 @@ export default async function TopicPage({
             key={entry.id}
             entry={entry}
             references={references}
+            sourceLinks={sourceLinks.get(entry.id)}
             showTopicTitle={false}
             guestActions={!session}
             {...(session?.user.status === "ACTIVE"
@@ -603,7 +614,9 @@ export default async function TopicPage({
         </div>
       ) : session.user.status === "ACTIVE" ? (
         <p className="mt-8 border-t pt-8 text-muted">
-          Yazar hesabınız admin onayı bekliyor. Onaydan sonra entry yazabilirsiniz.
+          {writerIntakeOpen()
+            ? "Yazar hesabınız admin onayı bekliyor. Onaydan sonra entry yazabilirsiniz."
+            : WRITER_INTAKE_CLOSED_MESSAGE}
         </p>
       ) : (
         <p className="mt-8 border-t pt-8 text-destructive">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { EntrySourceLink } from "@/modules/entries/domain/source-links";
 import { EntryBody } from "@/components/entries/entry-body";
 import { BlockedEntryBody } from "@/components/entries/blocked-entry-body";
 import { EntryActions } from "@/components/entries/entry-actions";
@@ -87,8 +88,11 @@ export function EntryPreview({
   collapsible = false,
   guestActions = false,
   divider = true,
+  sourceLinks,
 }: {
   entry: EntryPreviewItem;
+  /** Kaynaklı entry'nin kaynak bağlantıları (G3); yalnız alan adı gösterilir. */
+  sourceLinks?: readonly EntrySourceLink[] | undefined;
   showTopicTitle?: boolean;
   references?: ReferenceIndex;
   collapsible?: boolean;
@@ -207,6 +211,24 @@ export function EntryPreview({
           )}
         </div>
       )}
+      {sourceLinks && sourceLinks.length > 0 && !entry.blockedByViewer ? (
+        <p className="prose-measure mt-2 text-xs text-muted">
+          kaynak:{" "}
+          {sourceLinks.map((link, index) => (
+            <span key={link.url}>
+              {index > 0 ? ", " : null}
+              <a
+                href={link.url}
+                target="_blank"
+                rel="nofollow noopener noreferrer ugc"
+                className="link-quiet underline"
+              >
+                {link.domain}
+              </a>
+            </span>
+          ))}
+        </p>
+      ) : null}
       {/*
         Entry başına TEK yatay ayraç kalır ve o da listeyi bölen üstteki çizgidir;
         footer artık kendi çizgisini çizmiyor — akan listede iki çizgi arasında
