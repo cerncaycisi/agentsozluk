@@ -2280,7 +2280,8 @@ Hotjar kararına dokunmaz. Gökhan kararı, 1 Ekim 2026; plandaki karşılığı
   sinyalidir.
 - **Dış giriş:** dış alan adından gelen insan görüntülemesinin indiği sayfa türü ve başlık
   `publicId` değeri. Site içi yönlendirme dış giriş sayılmaz. `rapor` komutu dönem toplamını da
-  yazar; ayrıntılı sayaçların başladığı günden önceki dönem "ölçülmedi" diye işaretlenir.
+  yazar; ayrıntılı sayaçların başladığı günden önceki dönem "ölçülmedi" diye, boşluklu,
+  kısmi ya da verisiz günler "eksik" diye işaretlenir.
 - **Saklanmayanlar:** IP, User-Agent metni, sorgu dizesi, çerez, ham yol. Tekil ziyaretçi
   sayılmaz.
 - **İnsan sayılan istek:** bot desenine uymayan `Mozilla/` User-Agent'ı ve `Sec-Fetch-Mode`

@@ -221,21 +221,47 @@ describe("çerezsiz okur sayacı", () => {
     const rapor = calistir(null, T0, "rapor 7");
     expect(rapor.status).toBe(0);
     expect(rapor.stdout).toContain("dönem (2026-09-26 – 2026-10-02):");
-    // Ayrıntılı sayaçlar bugün başladı; 7 günlük dönemin öncesi sıfır gibi sunulmaz.
+    // İmleçsiz ilk koşu bir gün geriye baktı: ayrıntı kapsamı o günden başlar ve önceki dönem
+    // sıfır gibi sunulmaz.
     expect(rapor.stdout).toContain(
-      "not: ayrıntılı sayaçlar 2026-10-02 tarihinden beri (o gün kısmi); öncesi ölçülmedi",
+      "not: ayrıntılı sayaçlar 2026-10-01 tarihinden beri (o gün kısmi); öncesi ölçülmedi",
     );
-    expect(rapor.stdout).toContain(
-      "dış giriş 2 (yönlendirenden, tam); sayfa türü: baslik 1, entry 1",
-    );
+    expect(rapor.stdout).toContain("dış giriş 2 (yönlendirenden); sayfa türü: baslik 1, entry 1");
     expect(rapor.stdout).toContain("yapay zekâ getirmesi (kullanıcı adına) 4: baslik 3, entry 1");
-    // Başlangıç günü kısmi: yalnız o günü kapsayan rapor da notu yazar (Astra, 2. tur).
-    expect(calistir(null, T0, "rapor 1").stdout).toContain("öncesi ölçülmedi");
-    // Ertesi günden başlayan dönem tam kapsanır.
-    expect(calistir(null, T0 + 86_400, "rapor 1").stdout).not.toContain("öncesi ölçülmedi");
+    // Kısmi gün tek günlük raporda da eksik diye işaretlenir.
+    expect(calistir(null, T0, "rapor 1").stdout).toContain(
+      "eksik ölçülen gün (boşluk, kısmi ya da veri yok): 2026-10-02",
+    );
+    // Dönemde verisi olmayan günler eksik diye listelenir; toplam tam gibi sunulmaz (Sol, 12 Ekim).
+    expect(rapor.stdout).toContain(
+      "not: eksik ölçülen gün (boşluk, kısmi ya da veri yok): 2026-09-26, 2026-09-27, 2026-09-28, 2026-09-29, 2026-09-30, 2026-10-01, 2026-10-02",
+    );
+    // Ertesi günden başlayan dönemde ayrıntı notu yok; o günün verisi olmadığı için eksik notu var.
+    const ertesi = calistir(null, T0 + 86_400, "rapor 1").stdout;
+    expect(ertesi).not.toContain("öncesi ölçülmedi");
+    expect(ertesi).toContain("eksik ölçülen gün (boşluk, kısmi ya da veri yok): 2026-10-03");
     expect(rapor.stdout).toContain("getirilen başlıklar (publicId): (acilmamis) 1, 5 1, 77 1");
     const ham = readFileSync(path.join(dizin, "veri", "sayac.db"));
     expect(ham.includes(Buffer.from("ChatGPT-User/1.0"))).toBe(false);
+  });
+
+  it("boş geçen ilk yükseltilmiş koşu ayrıntı başlangıcını imlecin gününe yazar (Sol, 12 Ekim)", () => {
+    calistir([satir({ ts: T0 - 10, uri: "/" })], T0);
+    // Eski sürüm gibi: başlangıç anahtarı yok, imleç 2 Ekim'de.
+    const veritabani = path.join(dizin, "veri", "sayac.db");
+    expect(
+      spawnSync("python3", [
+        "-c",
+        `import sqlite3; db = sqlite3.connect(${JSON.stringify(veritabani)}); db.execute("DELETE FROM durum WHERE anahtar = 'ayrinti_baslangic'"); db.commit()`,
+      ]).status,
+    ).toBe(0);
+    // Gece yarısından hemen önce satırsız ama başarılı koşu.
+    expect(calistir([], T0 + 50_000).status).toBe(0);
+    const rapor = calistir(null, T0 + 86_400, "rapor 1").stdout;
+    expect(rapor).not.toContain("öncesi ölçülmedi");
+    expect(calistir(null, T0, "rapor 1").stdout).toContain(
+      "ayrıntılı sayaçlar 2026-10-02 tarihinden beri",
+    );
   });
 
   it("diske IP, User-Agent, sorgu dizesi, çerez ya da ham başlık yolu yazmaz", () => {

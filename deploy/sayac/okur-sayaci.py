@@ -460,12 +460,13 @@ def topla() -> int:
                 "INSERT INTO gun (gun, bosluk) VALUES (?, 1) ON CONFLICT (gun) DO UPDATE SET bosluk = 1",
                 (gun,),
             )
-        if top.kapsam:
-            # Ayrıntılı sayaçların (yapay zekâ ajanı, dış giriş) başladığı gün; 12 Ekim'de eklendi.
-            # Önceki günler bu alanları taşımaz, rapor dönemi buna göre işaretler. O gün kısmidir.
-            db.execute(
-                "INSERT OR IGNORE INTO durum VALUES ('ayrinti_baslangic', ?)", (min(top.kapsam),)
-            )
+        # Ayrıntılı sayaçların (yapay zekâ ajanı, dış giriş) başladığı gün; 12 Ekim'de eklendi.
+        # Bu koşu imleçten (imleçsizse pencere başından) sonrasını saydı; kapsam o andan başlar,
+        # satır gelmese de (Sol, 12 Ekim). Önceki günler bu alanları taşımaz; o gün kısmidir.
+        db.execute(
+            "INSERT OR IGNORE INTO durum VALUES ('ayrinti_baslangic', ?)",
+            (gun_adi(imlec if imlec is not None else bas),),
+        )
         if son is not None:
             # repr kayıpsızdır: float(repr(x)) == x (Astra, 2 Ekim).
             db.execute("INSERT OR REPLACE INTO durum VALUES ('imlec', ?)", (repr(son),))
@@ -558,7 +559,21 @@ def rapor(gun_sayisi: int) -> int:
             f"  not: ayrıntılı sayaçlar {baslangic or '(henüz yok)'} tarihinden beri (o gün kısmi);"
             " öncesi ölçülmedi"
         )
-    print(f"  dış giriş {dis_toplam} (yönlendirenden, tam); sayfa türü:", sirala(giris))
+    # Boşluklu, kısmi ya da verisiz gün dönem toplamını eksik bırakır; tam gibi sunulmaz (Sol, 12 Ekim).
+    durumlar = {
+        r[0]: (r[1], r[2])
+        for r in db.execute(
+            "SELECT gun, kismi, bosluk FROM gun WHERE gun >= ? AND gun <= ?", (bas, ad)
+        )
+    }
+    eksik = [
+        g
+        for g in gunler_arasi(bas, ad)
+        if g not in durumlar or durumlar[g][0] or durumlar[g][1]
+    ]
+    if eksik:
+        print("  not: eksik ölçülen gün (boşluk, kısmi ya da veri yok):", ", ".join(eksik))
+    print(f"  dış giriş {dis_toplam} (yönlendirenden); sayfa türü:", sirala(giris))
     print("  dış giriş başlıkları (publicId):", sirala(donem("dis_giris_baslik")))
     print(f"  yapay zekâ getirmesi (kullanıcı adına) {sum(getirme.values())}:", sirala(getirme))
     print("  getirilen başlıklar (publicId):", sirala(donem("yz_getirme_baslik")))
