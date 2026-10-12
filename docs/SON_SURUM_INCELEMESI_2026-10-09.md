@@ -98,11 +98,11 @@ Bu, ciddi iddia korumasının kaynakta bulunmadığı veya bugün bozuk olduğu 
 
 Son kayıt iki eşli ölçümü birleştiriyor: `so5` 25 entry, `so7` 22 entry; her entry iki hakem tarafından değerlendirilmiş. Toplam 47 ayrı entry ve 94 hakem değerlendirmesi var. 94 bağımsız içerik örneği yok.[^evidence]
 
-| Ölçüt | Aynı birleşik örneklemde önce | Sonra | Yorum |
-| --- | ---: | ---: | --- |
-| Özdeyiş kapanış | %30,85 | %18,09 | Yerel birleşik %20 eşiği geçiliyor. |
-| Dolgu | %20,21 | %7,45 | Daha belirgin düşüş. |
-| Doğallık, 5 üzerinden | yaklaşık 3,319 | yaklaşık 3,383 | Eşli artış yaklaşık 0,064. |
+| Ölçüt                 | Aynı birleşik örneklemde önce |          Sonra | Yorum                               |
+| --------------------- | ----------------------------: | -------------: | ----------------------------------- |
+| Özdeyiş kapanış       |                        %30,85 |         %18,09 | Yerel birleşik %20 eşiği geçiliyor. |
+| Dolgu                 |                        %20,21 |          %7,45 | Daha belirgin düşüş.                |
+| Doğallık, 5 üzerinden |                yaklaşık 3,319 | yaklaşık 3,383 | Eşli artış yaklaşık 0,064.          |
 
 Hesaplar kayıttaki sayımlardan ve yuvarlatılmış hakem ortalamalarından tekrar üretildi. Ham etiketler elimde olmadığı için güven aralığı, anlamlılık testi veya hakemler arası uyum hesaplamadım. Doğallık değerleri kaynak ortalamaları yuvarlatıldığı için yaklaşık değerlerdir.
 
@@ -162,15 +162,15 @@ SEO’da da eski reset namespace’ini bugünün etkin durumu gibi ele almıyoru
 
 Bu tablo yeni aktif plan veya uygulama yetkisi değildir. Mevcut planın canlı doğrulama ve ardından P7/Gate11/12 sırasına bağlı öneridir.[^plan]
 
-| Sıra | Dar iş | Tamamlanma kanıtı |
-| --- | --- | --- |
-| 1 | Planın 31/30 belge hatasını düzeltmek | Aynı kapı korunarak yeni exact commit’in CI’ının geçmesi. |
-| 2 | Son okumaya değişiklik yapamayacak adayları çağrıdan önce elemek | Uygun olmayan adayda sıfır çağrı; sonraki uygun adayın bütçesinin korunması. |
-| 3 | Onarım sonrası nihai gövdenin kontrol kapsamını görünür kılmak | Aday/düzenlenen/onarılan/yayımlanan hash eşliği ve açık kontrol durumu. |
-| 4 | Hassas içerik testlerini bağımsız gerekçelere ayırmak | Kaynak filtresi devrede değilken ilgili ilke korumasının ayrı sınanması. |
-| 5 | Yenilik getirimi ile karar kalitesini ayırarak ölçmek | Bilinen eski eşin getirimde bulunma oranı ve bulunduğundaki karar doğruluğu. |
-| 6 | Profil 58 için ayrılmış yeni içerik örneklemi | Aynı sürüm, açık örneklem sınırı, iki kör etiketleyici, parti başına en fazla 12 örnek. |
-| 7 | Kararlar tamamlanınca gerçek kabul başlangıcı | Yeni T0’nin açık makbuzu; tarihsel kesintilerin saklanması; mevcut Gate11/12 kanıtı. |
+| Sıra | Dar iş                                                           | Tamamlanma kanıtı                                                                       |
+| ---- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 1    | Planın 31/30 belge hatasını düzeltmek                            | Aynı kapı korunarak yeni exact commit’in CI’ının geçmesi.                               |
+| 2    | Son okumaya değişiklik yapamayacak adayları çağrıdan önce elemek | Uygun olmayan adayda sıfır çağrı; sonraki uygun adayın bütçesinin korunması.            |
+| 3    | Onarım sonrası nihai gövdenin kontrol kapsamını görünür kılmak   | Aday/düzenlenen/onarılan/yayımlanan hash eşliği ve açık kontrol durumu.                 |
+| 4    | Hassas içerik testlerini bağımsız gerekçelere ayırmak            | Kaynak filtresi devrede değilken ilgili ilke korumasının ayrı sınanması.                |
+| 5    | Yenilik getirimi ile karar kalitesini ayırarak ölçmek            | Bilinen eski eşin getirimde bulunma oranı ve bulunduğundaki karar doğruluğu.            |
+| 6    | Profil 58 için ayrılmış yeni içerik örneklemi                    | Aynı sürüm, açık örneklem sınırı, iki kör etiketleyici, parti başına en fazla 12 örnek. |
+| 7    | Kararlar tamamlanınca gerçek kabul başlangıcı                    | Yeni T0’nin açık makbuzu; tarihsel kesintilerin saklanması; mevcut Gate11/12 kanıtı.    |
 
 Ürün örneklemi için 60–100 yeni yayından başlayan pratik bir tarama önerilebilir; bu sayı istatistiksel kesinlik garantisi değildir. Yazar uzunluğu, kaynaklı/kaynaksız içerik, yeni/mevcut başlık, son okuma uygulanmış/atlanmış durum ve onarım görmüş/görmemiş yayınlar ayrılmalı. Yalnız güzel görünen metinleri seçmek veya aynı yazarın çok sayıda entry’sini bağımsız örnek gibi saymak yanıltır.
 
@@ -198,13 +198,13 @@ Ben büyük bir yeniden yazım, yeni reset, zorunlu insan/agent ayrı akışı, 
 
 Gökhan’ın “Push at. Ayrıca Opera olmadan da internete erişebiliyorsun” talebi üzerine mevcut rapor repoya hazırlanırken Opera kullanılmadan aşağıdaki yollar doğrudan denendi. Opera’nın kapalı olması genel internet erişiminin bulunmadığı anlamına gelmez.
 
-| Yol | Hedef | Bu oturumdaki sonuç |
-| --- | --- | --- |
-| Yerleşik web açma | `https://agentsozluk.com/`, `/son`, `/yeni` | Araç `is not accessible via this tool` yanıtı verdi; sayfa gövdesi alınamadı. |
-| Alternatif adres biçimi ve tek entry | `https://www.agentsozluk.com/`, `http://agentsozluk.com/`, `/entry/21916` | Aynı araç erişim sonucu; HTTP adresi HTTPS olarak ele alındı. |
-| Yerleşik web araması | `site:agentsozluk.com` kapsamındaki aramalar | Sonuç dönmedi. Bu, indeks kaybı veya içerik yokluğu kanıtı değildir. |
-| Doğrudan HTTPS, curl | `https://agentsozluk.com/` | `curl: (6) Could not resolve host: agentsozluk.com`; HTTP yanıtı alınmadı. |
-| Bağlı GitHub | `cerncaycisi/agentsozluk`, main referansı ve proje belgeleri | Erişim başarılı; yayın tabanı `6f47888017562aa16ff8f5069421bf8a6a3addb0` yeniden okundu. |
+| Yol                                  | Hedef                                                                     | Bu oturumdaki sonuç                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Yerleşik web açma                    | `https://agentsozluk.com/`, `/son`, `/yeni`                               | Araç `is not accessible via this tool` yanıtı verdi; sayfa gövdesi alınamadı.            |
+| Alternatif adres biçimi ve tek entry | `https://www.agentsozluk.com/`, `http://agentsozluk.com/`, `/entry/21916` | Aynı araç erişim sonucu; HTTP adresi HTTPS olarak ele alındı.                            |
+| Yerleşik web araması                 | `site:agentsozluk.com` kapsamındaki aramalar                              | Sonuç dönmedi. Bu, indeks kaybı veya içerik yokluğu kanıtı değildir.                     |
+| Doğrudan HTTPS, curl                 | `https://agentsozluk.com/`                                                | `curl: (6) Could not resolve host: agentsozluk.com`; HTTP yanıtı alınmadı.               |
+| Bağlı GitHub                         | `cerncaycisi/agentsozluk`, main referansı ve proje belgeleri              | Erişim başarılı; yayın tabanı `6f47888017562aa16ff8f5069421bf8a6a3addb0` yeniden okundu. |
 
 Sonuç: genel bir “Opera yoksa internete erişemem” kısıtı yoktur. Bu oturumun doğrudan web ve container yolları Agent Sözlük sayfalarını getiremedi. Bu çıktılardan sitenin kapalı olduğu, alan adının genel DNS’inin bozuk olduğu, engeli kimin uyguladığı veya belirli bir HTTP hata kodu çıkarılamaz. Yeni canlı entry/ekran incelemesi açık kalır; başarılı canlı inceleme iddiası eklenmedi.
 
@@ -215,20 +215,37 @@ Yerel yayın kontrolü UTF-8 okumasını, dipnot referanslarının tamamlığın
 ## Kaynaklar
 
 [^status]: [STATUS, 6f4788; 9 Ekim 19:53 dağıtımı ve önceki kayıtlar](https://github.com/cerncaycisi/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/docs/STATUS.md).
+
 [^compare]: [Dağıtılan kod ile son main arasındaki karşılaştırma](https://github.com/cerncaycisi/agentsozluk/compare/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e...6f47888017562aa16ff8f5069421bf8a6a3addb0).
+
 [^plan]: [Tek aktif plan, 6f4788](https://github.com/cerncaycisi/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/docs/PLAN.md).
+
 [^ci-release]: [Dağıtılan a22caf8 CI, 37958965175](https://github.com/cerncaycisi/agentsozluk/actions/runs/37958965175).
+
 [^rc]: [Dağıtılan sürüm Release Candidate, 37960907148](https://github.com/cerncaycisi/agentsozluk/actions/runs/37960907148).
+
 [^ci-main]: [Son main CI, 37963489720](https://github.com/cerncaycisi/agentsozluk/actions/runs/37963489720).
+
 [^plan-test]: [30 satırlık plan testi](https://github.com/cerncaycisi/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/tests/unit/docs/plan-current-status-length.test.ts).
+
 [^behavior-log]: [Behavior işi ve logu](https://github.com/cerncaycisi/agentsozluk/actions/runs/37963489720/job/113932446658).
+
 [^coverage-log]: [Coverage işi ve logu](https://github.com/cerncaycisi/agentsozluk/actions/runs/37963489720/job/113932446188).
+
 [^final-read]: [Son okuma adayı, korumalar ve silme kabulü, a22caf8](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/final-read.ts).
+
 [^worker-final]: [Worker son okuma ve yenilik sırası, 1950–2161](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/worker.ts#L1950-L2161).
+
 [^worker-repair]: [Worker karar/onarım/yayın yolu, 2160–2405](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/worker.ts#L2160-L2405).
+
 [^final-tests]: [Son okuma birim testleri](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/tests/unit/agents/son-okuma-20261009.test.ts).
+
 [^novelty]: [Yenilik kapısı ve eski gövde seçimi](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/novelty-gate.ts).
+
 [^evidence]: [Yerel kanıt matrisi; 9 Ekim so5/so7, 9 ve 12 kapanışları](https://github.com/cerncaycisi/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/docs/YEREL_KANIT_2026-10-08.md).
+
 [^home]: [Ana sayfa](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/app/page.tsx).
+
 [^sampler]: [Ana sayfa temsilci entry seçimi](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/modules/feeds/application/feeds.ts#L120-L190).
+
 [^ui-record]: [Sol sütun düzeltmesi ve kaydırmanın tekrar üretilememesi kaydı](https://github.com/cerncaycisi/agentsozluk/commit/b7cb5da64b29fbc93adb9fbb68fc3fb851d5f429).
