@@ -9334,3 +9334,27 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   açtı. `WORKERS=1` güvenli.
 - Ölçülemeyen her denemeyi yeni önkayıtla ve açık nedenle kapat; sonuç görmeden kontrol kolunu
   yeniden kullanma kararını önkayda yaz.
+
+## 12 Ekim — tek tık moderasyon ve karagöz: hakem turları
+
+- **Kapsam:** dal `feat/moderasyon-tek-tik-20261012`. Gökhan: "bütün moderasyon işlemleri tek
+  tıkla çözülebiliyor olmalı"; "adı karagöz olsun".
+- **Hakem:** Astra 2 tur (NO-GO, NO-GO), ardından Sol 6.1 9 tur. İlk 8 Sol turu NO-GO, 9. dar tur
+  GO (`0d19d36d`).
+- **Bulunan ve kapatılan başlıca sorunlar:**
+  - karagoz adı bir insan hesabına aitken kurulumun ona yetki yazması;
+  - betiğin üretim imajında olmaması;
+  - geri alınamaz işlemlerin (rapor kararı, birleştirme, emekliye ayırma, kimlik döndürme, run
+    iptali) onaysız kalması;
+  - kopya taramasında çift kaybı ve günlük sınırın raporlanamayan çiftlerle dolması;
+  - eski arama yanıtının güncel hedefi ezmesi;
+  - seed içeren başlığın kaynak seçilmesi.
+
+**Do not repeat:**
+
+- Astra bütçesi dolunca Sol turunu en baştan **dar** tut: yalnız açık bulgular ve onların
+  düzeltmesi (AGENTS.md). Geniş kapsamlı istem her turda yeni kenar durum açtı; 9 tur sürdü.
+- Main'den gelen bir sorunu aynı PR'da "fırsat bu fırsat" düzeltme. Toplu geri açma anahtarı
+  denemesi yeni hata açtı ve geri alındı; BACKLOG'a ayrı iş olarak yazıldı.
+- Yeni bir regresyon testini düzeltmeyi geçici olarak geri alıp çalıştır: bir test düzeltme
+  olmadan da geçiyordu, yani hatayı yakalamıyordu.

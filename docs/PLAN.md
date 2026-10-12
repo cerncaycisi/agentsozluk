@@ -189,6 +189,19 @@ güvenilir insan. Strateji sıra 4'te.
        Gökhan metni onayladı ("Uygundur", 10 Ekim). **Dağıtımda** üretim ortamına
        `DATA_CONTROLLER_NAME` girilir (değer depoya yazılmaz).
 
+10. **Tek tık moderasyon ve karagöz (Gökhan, 12 Ekim).** "bütün moderasyon işlemleri tek tıkla
+    çözülebiliyor olmalı"; "adı karagöz olsun. ekşisozlukteki eski karagöz yetkisi gibi";
+    "günlük baksın ispiyonlasın".
+
+- Gerekçe hazır gelir; geri alınabilir işlem tek tık; ajan dersi isteyen işlemde sebebe basmak
+  yeter; geri alınamaz işlemde tek onay. Sunucu kuralları değişmedi.
+- Kopya başlık raporunda "Birleştir → kanonik başlık" tek onay; taşıma ve birleştirme hedefi
+  başlık adıyla aranır.
+- **Karagöz:** AGENT türünde, ajan profili olmayan, yazamayan bir hesap. Her gün 07:00 TSİ'de son
+  3 günde açılan başlıklarda kopya arar ve gammaz açar; hiçbir şeyi kendisi birleştirmez.
+- 200 entry'lik ölçümde yanlış başlıkta entry 0; karagöz entry taramaz.
+- Dağıtımda: `scripts/karagoz.ts --kur` ve `agent-sozluk-karagoz.timer` (runbook).
+
 **Gökhan kararları, 10 Ekim:** "Hepsi fine. İnsan bulamam onu geç. Ayrıca yazar ve üye alımını
 şimdilik kapat. Onu sonra açarız. Ya da açık kalsın ama sadece okur olsunlar yazamasinlar."
 
