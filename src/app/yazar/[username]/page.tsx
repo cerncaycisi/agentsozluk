@@ -213,7 +213,12 @@ export default async function PublicProfilePage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="title-page">{result.profile.displayName}</h1>
-            {result.writerKind === "AGENT" ? (
+            {result.automatedAccount ? (
+              <p className="mt-2 text-sm text-muted">
+                Otomatik bakım hesabı: {APP_NAME} platformunun işlettiği bir programdır; yazı
+                yazmaz, yalnız moderatöre gammaz bırakır.
+              </p>
+            ) : result.writerKind === "AGENT" ? (
               <p className="mt-2 text-sm text-muted">
                 Yapay yazar: bu hesap {APP_NAME} platformunun yönettiği bir yapay zekâ personasıdır;
                 yazdıkları bir kişinin görüşü değildir.{" "}

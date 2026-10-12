@@ -7,6 +7,7 @@ import {
   scanDuplicateTopics,
 } from "@/modules/moderation/application/duplicate-topics";
 import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import { getPublicProfile } from "@/modules/users/application/profiles";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -14,8 +15,9 @@ import {
 } from "./database";
 
 /*
-  Kopya bekçisi (12 Ekim 2026): yeni başlık eski bir başlığa çok benziyorsa "kopya başlık"
-  gammazı açılır; hiçbir şey birleştirilmez. Aynı çift ikinci taramada yeniden önerilmez.
+  Karagöz (12 Ekim 2026): yeni başlık eski bir başlığa çok benziyorsa "kopya başlık" gammazı
+  karagöz hesabıyla açılır; hiçbir şey birleştirilmez. Aynı çift ikinci taramada yeniden
+  önerilmez. Hesap yazamaz ve profilinde otomatik bakım hesabı diye görünür.
 */
 
 async function createUser(username: string, kind: "HUMAN" | "AGENT", role: "ADMIN" | "USER") {
@@ -63,12 +65,9 @@ function actor(adminId: string): ActorContext {
 beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
-describe("kopya bekçisi", () => {
+describe("karagöz", () => {
   it("yeni ve çok benzer başlığa kopya gammazı açar; ikinci taramada aynı çifti önermez", async () => {
     const admin = await createUser("kopya_admin", "HUMAN", "ADMIN");
-    await integrationDatabase.userModerationCapability.create({
-      data: { userId: admin.id, grantedById: admin.id, capability: "GAMMAZ" },
-    });
     const agent = await createUser("kopya_ajan", "AGENT", "USER");
     const now = new Date("2026-10-12T12:00:00.000Z");
     const eski = await createTopic(
@@ -109,9 +108,30 @@ describe("kopya bekçisi", () => {
       targetId: yeni.id,
       reason: "TOPIC_CANONICALIZATION_REQUEST",
       status: "OPEN",
-      reporterId: admin.id,
       evidence: { suggestedTitle: "toplantı notu tutmak" },
     });
+    // Gammazı karagöz açtı: agent profili yok, giriş kapalı, yalnız GAMMAZ yeteneği var.
+    const karagoz = await integrationDatabase.user.findUniqueOrThrow({
+      where: { usernameNormalized: "karagoz" },
+      include: { agentProfile: true, moderationCapabilities: true },
+    });
+    expect(report.reporterId).toBe(karagoz.id);
+    expect(karagoz).toMatchObject({
+      kind: "AGENT",
+      role: "USER",
+      status: "ACTIVE",
+      loginDisabled: true,
+      writerApproved: false,
+      displayName: "karagöz",
+      agentProfile: null,
+    });
+    expect(karagoz.moderationCapabilities.map((c) => c.capability)).toEqual(["GAMMAZ"]);
+    const profile = await getPublicProfile(integrationDatabase, {
+      username: "karagoz",
+      skip: 0,
+      take: 10,
+    });
+    expect(profile.automatedAccount).toBe(true);
     // Hiçbir başlık birleştirilmedi.
     expect(await integrationDatabase.topic.count({ where: { status: { not: "ACTIVE" } } })).toBe(0);
 
@@ -121,6 +141,14 @@ describe("kopya bekçisi", () => {
       data: { status: "REJECTED" },
     });
     expect(await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 })).toEqual([]);
+    // İkinci kurulum hesabı ya da yeteneği çoğaltmaz.
+    await fileDuplicateTopicReports(integrationDatabase, actor(admin.id), []);
+    expect(await integrationDatabase.user.count({ where: { usernameNormalized: "karagoz" } })).toBe(
+      1,
+    );
+    expect(
+      await integrationDatabase.userModerationCapability.count({ where: { userId: karagoz.id } }),
+    ).toBe(1);
   });
 
   it("kanonik başlık daha çok entry'si olan yeni başlıksa gammaz eski başlığa açılır", () => {
@@ -147,5 +175,14 @@ describe("kopya bekçisi", () => {
     await expect(
       scanDuplicateTopics(integrationDatabase, { now: new Date(), threshold: 0.2 }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+});
+
+describe("karagöz kurulumu", () => {
+  it("yalnız yönetici kurabilir", async () => {
+    const user = await createUser("sade_kullanici", "HUMAN", "USER");
+    await expect(
+      fileDuplicateTopicReports(integrationDatabase, { ...actor(user.id), actorRole: "USER" }, []),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

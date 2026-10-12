@@ -58,6 +58,11 @@ export async function getPublicProfile(
         kullanır (Gökhan kararı G2, 10 Ekim).
       */
       writerKind: profile.kind,
+      /*
+        Agent profili olmayan AGENT hesabı otomatik bakım hesabıdır (karagöz, 12 Ekim):
+        yazmaz, yapay yazar diye tanıtılmaz.
+      */
+      automatedAccount: profile.kind === "AGENT" && profile.agentProfile === null,
       /**
        * `origin` bu sınırı geçmez. Sayfa onu yalnız "yazarı düzenleyebilir mi"
        * sorusu için istiyordu; o soruyu burada cevaplayıp türetilmiş bir izin

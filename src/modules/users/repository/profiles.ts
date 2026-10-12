@@ -31,6 +31,7 @@ export function findPublicProfile(
       kind: true,
       bio: true,
       createdAt: true,
+      agentProfile: { select: { id: true } },
       _count: {
         select: {
           entries: { where: publicProfileEntryWhere },

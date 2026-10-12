@@ -10,14 +10,14 @@ import {
 import { resolveOperatorAdmin } from "./agent-operator";
 
 /*
-  Kopya bekçisi (Gökhan, 12 Ekim 2026). Yeni açılan başlıklarda eski bir başlığa çok benzeyenler
+  Karagöz (Gökhan, 12 Ekim 2026). Yeni açılan başlıklarda eski bir başlığa çok benzeyenler
   için "kopya başlık" gammazı açar; karar rapor sayfasında tek tıkla verilir. Hiçbir şeyi
   birleştirmez.
 
-    node node_modules/tsx/dist/cli.mjs scripts/kopya-bekcisi.ts            # yalnız listeler
-    node node_modules/tsx/dist/cli.mjs scripts/kopya-bekcisi.ts --uygula   # gammaz açar
+    node node_modules/tsx/dist/cli.mjs scripts/karagoz.ts            # yalnız listeler
+    node node_modules/tsx/dist/cli.mjs scripts/karagoz.ts --uygula   # gammaz açar
 
-  Ayarlar: KOPYA_GUN (varsayılan 8), KOPYA_ESIK (0.8), KOPYA_SINIR (30). Gammazı açan
+  Ayarlar: KOPYA_GUN (varsayılan 8), KOPYA_ESIK (0.8), KOPYA_SINIR (30). Gammazı karagöz hesabı açar; hesabı ilk kez kuran
   `resolveOperatorAdmin` (AGENT_OPERATOR_ADMIN_ID ya da tek aktif HUMAN ADMIN). Komut yetki
   değildir: üretimde gammaz açmak geçerli yetki ister.
 */
@@ -55,7 +55,7 @@ main()
       error && typeof error === "object" && "code" in error && typeof error.code === "string"
         ? error.code
         : "INTERNAL_ERROR";
-    process.stderr.write(`KOPYA_BEKCISI_FAILED code=${code}\n`);
+    process.stderr.write(`KARAGOZ_FAILED code=${code}\n`);
     process.exitCode = 1;
   })
   .finally(() => void getDatabase().$disconnect());

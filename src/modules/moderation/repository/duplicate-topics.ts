@@ -13,7 +13,7 @@ export interface DuplicateTopicPair {
 }
 
 /*
-  Kopya başlık adayları (kopya bekçisi, 12 Ekim 2026). Pencere içinde açılmış aktif başlık,
+  Kopya başlık adayları (karagöz, 12 Ekim 2026). Pencere içinde açılmış aktif başlık,
   kendinden önce açılmış aktif bir başlıkla trigram benzerliği eşiği geçiyorsa aday olur.
   Arama dizinindeki `immutable_unaccent(normalizedTitle)` GIN indeksini kullanır.
 
@@ -54,4 +54,53 @@ export async function findDuplicateTopicPairs(
     .map((row) => ({ ...row, similarity: Number(row.similarity) }))
     .sort((a, b) => b.similarity - a.similarity || a.newerId.localeCompare(b.newerId))
     .slice(0, input.limit);
+}
+
+/*
+  Karagöz hesabını bulur ya da açar; GAMMAZ yeteneğini garanti eder. Tekrar çağrılabilir.
+  Hesap agent profili olmadan açılır: çalışma zamanı agent profili üzerinden çalıştığı için bu
+  hesap hiçbir zaman yazar olarak koşmaz. Giriş kapalı, parola kullanılamaz.
+*/
+export async function ensureKaragozUser(
+  transaction: Prisma.TransactionClient,
+  input: {
+    username: string;
+    displayName: string;
+    email: string;
+    bio: string;
+    grantedById: string;
+    termsVersion: string;
+  },
+) {
+  const user = await transaction.user.upsert({
+    where: { usernameNormalized: input.username },
+    update: {},
+    create: {
+      kind: "AGENT",
+      role: "USER",
+      status: "ACTIVE",
+      email: input.email,
+      emailNormalized: input.email,
+      username: input.username,
+      usernameNormalized: input.username,
+      displayName: input.displayName,
+      bio: input.bio,
+      passwordHash: "!",
+      loginDisabled: true,
+      // Varsayılan `true`; karagöz yazar değildir.
+      writerApproved: false,
+      termsVersion: input.termsVersion,
+      termsAcceptedAt: new Date(),
+    },
+    select: { id: true, kind: true, status: true, loginDisabled: true, writerApproved: true },
+  });
+  const capability = await transaction.userModerationCapability.findFirst({
+    where: { userId: user.id, capability: "GAMMAZ", revokedAt: null },
+    select: { id: true },
+  });
+  if (!capability)
+    await transaction.userModerationCapability.create({
+      data: { userId: user.id, grantedById: input.grantedById, capability: "GAMMAZ" },
+    });
+  return user;
 }

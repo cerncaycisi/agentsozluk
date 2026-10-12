@@ -4,13 +4,17 @@ import { AppError } from "@/lib/http/errors";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { createReport } from "@/modules/moderation/application/reports";
 import { reportCreateSchema } from "@/modules/moderation/validation/schemas";
+import { randomUUID } from "node:crypto";
+import { getEnvironment } from "@/config/env";
+import { KARAGOZ } from "@/modules/moderation/domain/karagoz";
 import {
+  ensureKaragozUser,
   findDuplicateTopicPairs,
   type DuplicateTopicPair,
 } from "@/modules/moderation/repository/duplicate-topics";
 
 /*
-  KOPYA BEKÇİSİ (Gökhan, 12 Ekim 2026: "bir agent yaz, o tarasın server'da. sonra gammazlasın").
+  KARAGÖZ — kopya başlık taraması (Gökhan, 12 Ekim 2026: "bir agent yaz, o tarasın server'da. sonra gammazlasın").
 
   Yeni açılan başlıklardan eski bir başlığa çok benzeyenler için "kopya başlık" gammazı açılır.
   Karar ve birleştirme insanda kalır: rapor sayfasında tek tıkla birleştir ya da "aynı değil".
@@ -51,11 +55,43 @@ export async function scanDuplicateTopics(
   );
 }
 
+/*
+  Gammazı operatör değil karagöz hesabı açar (Gökhan, 12 Ekim). Operatör yalnız hesabı
+  ilk kez açarken GAMMAZ yeteneğini veren kişi olarak kaydedilir; bunun için aktif ADMIN olmalı.
+*/
+export async function ensureKaragoz(client: DatabaseExecutor, operator: ActorContext) {
+  if (operator.actorKind !== "HUMAN" || operator.actorRole !== "ADMIN")
+    throw new AppError("FORBIDDEN", 403, "Karagözü yalnız yönetici kurabilir.");
+  const watcher = await inTransaction(client, (transaction) =>
+    ensureKaragozUser(transaction, {
+      ...KARAGOZ,
+      grantedById: operator.actorId,
+      termsVersion: getEnvironment().TERMS_VERSION,
+    }),
+  );
+  if (
+    watcher.kind !== "AGENT" ||
+    watcher.status !== "ACTIVE" ||
+    !watcher.loginDisabled ||
+    watcher.writerApproved
+  )
+    throw new AppError("FORBIDDEN", 403, "Karagöz hesabı beklenen durumda değil.");
+  const actor: ActorContext = {
+    actorId: watcher.id,
+    actorKind: "AGENT",
+    actorRole: "USER",
+    requestId: randomUUID(),
+    origin: "AGENT",
+  };
+  return actor;
+}
+
 export async function fileDuplicateTopicReports(
   client: DatabaseExecutor,
-  actor: ActorContext,
+  operator: ActorContext,
   pairs: DuplicateTopicPair[],
 ) {
+  const actor = await ensureKaragoz(client, operator);
   const filed: Array<{ reportId: string; sourceTitle: string; canonicalTitle: string }> = [];
   const failed: Array<{ sourceTitle: string; code: string }> = [];
   for (const pair of pairs) {
@@ -66,7 +102,7 @@ export async function fileDuplicateTopicReports(
       targetId: plan.sourceId,
       reason: "TOPIC_CANONICALIZATION_REQUEST",
       evidence: { suggestedTitle: plan.canonicalTitle },
-      details: `Kopya bekçisi: başlık benzerliği ${pair.similarity.toFixed(2).replace(".", ",")}.`,
+      details: `karagöz: başlık benzerliği ${pair.similarity.toFixed(2).replace(".", ",")}.`,
     });
     if (!input.success) {
       failed.push({ sourceTitle: plan.sourceTitle, code: "VALIDATION_ERROR" });
