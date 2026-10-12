@@ -263,6 +263,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                   çağrılmıyordu; insan entry'si gizlenince geri açılamıyordu.
                 */}
                 {appliedContentAction.actionType === "ENTRY_HIDDEN" &&
+                data.viewerCanFormat &&
                 report.targetType === "ENTRY" &&
                 targetStatus === "HIDDEN" ? (
                   <ConfirmAction

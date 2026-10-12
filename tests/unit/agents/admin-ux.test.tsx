@@ -10,6 +10,7 @@ import {
   AgentCreateForm,
   AgentCredentialRotateForm,
   AgentLifecycleForm,
+  AgentRunCommands,
   AgentPersonaEditForm,
   AgentQuickRunActions,
   BulkAgentRunForm,
@@ -323,6 +324,10 @@ describe("agent admin UX contracts", () => {
     render(<AgentCredentialRotateForm agentId={agentId} />);
     await user.click(screen.getByRole("button", { name: "Credential döndür" }));
     expect(confirm).toHaveBeenCalledTimes(2);
+    cleanup();
+    render(<AgentRunCommands runId="run-1" status="QUEUED" />);
+    await user.click(screen.getByRole("button", { name: /iptal/iu }));
+    expect(confirm).toHaveBeenCalledTimes(3);
     expect(mocks.apiRequest).not.toHaveBeenCalled();
     confirm.mockRestore();
   });

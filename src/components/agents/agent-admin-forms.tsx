@@ -837,6 +837,8 @@ export function AgentRunCommands({ runId, status }: { runId: string; status: str
   const canRetry = ["FAILED", "TIMED_OUT", "CANCELLED", "PARTIAL"].includes(status);
   if (!canCancel && !canRetry) return null;
   const command = async (action: "cancel" | "retry") => {
+    // İptal geri alınamaz (retry yeni run açar, eskisini geri getirmez): tek onay (Sol, 12 Ekim).
+    if (action === "cancel" && !window.confirm("Run iptal edilsin mi? Geri alınamaz.")) return;
     setPending(true);
     setMessage(undefined);
     try {
