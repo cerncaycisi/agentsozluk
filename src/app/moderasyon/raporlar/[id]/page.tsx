@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ConfirmAction } from "@/components/moderation/confirm-action";
 import { ConstitutionalContentAction } from "@/components/moderation/constitutional-content-action";
+import { ReportCanonicalMerge } from "@/components/moderation/report-canonical-merge";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { getDatabase } from "@/lib/db/client";
 import { formatIstanbulTimestamp } from "@/lib/format/time";
@@ -10,6 +11,8 @@ import { AppError } from "@/lib/http/errors";
 import { pageUuidFrom } from "@/lib/http/page-params";
 import { requireModerationPage } from "@/lib/auth/server-session";
 import { actorFromSession } from "@/modules/auth/domain/actor";
+import { topicPublicUrl } from "@/lib/routing/public-urls";
+import { resolveCanonicalTopicProposal } from "@/modules/topics/application/topics";
 import { getModerationReport } from "@/modules/moderation/application/reports";
 import {
   gammazDecisionLabel,
@@ -61,6 +64,43 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
           action.actionType !== "GAMMAZ_REASON_REJECTED",
       )
     : null;
+  /*
+    Kopya başlık raporu (TOPIC_CANONICALIZATION_REQUEST): önerilen başlık sunucuda var olan
+    aktif bir başlığa çözülürse birleştirme tek tıkla sunulur (Gökhan, 12 Ekim 2026).
+  */
+  const suggestedTitle =
+    report.reason === "TOPIC_CANONICALIZATION_REQUEST" &&
+    report.targetType === "TOPIC" &&
+    report.evidence &&
+    typeof report.evidence === "object" &&
+    "suggestedTitle" in report.evidence &&
+    typeof report.evidence.suggestedTitle === "string"
+      ? report.evidence.suggestedTitle
+      : null;
+  const sourceTitle =
+    data.target &&
+    typeof data.target === "object" &&
+    "title" in data.target &&
+    typeof data.target.title === "string"
+      ? data.target.title
+      : null;
+  const mergeOpen =
+    report.status === "OPEN" ||
+    (report.decision?.outcome === "ACCEPTED" && appliedContentAction === undefined);
+  const canonicalMatch =
+    suggestedTitle && sourceTitle && mergeOpen
+      ? await resolveCanonicalTopicProposal(getDatabase(), suggestedTitle)
+      : null;
+  const canonical =
+    canonicalMatch &&
+    canonicalMatch.topic.status === "ACTIVE" &&
+    canonicalMatch.topic.id !== report.targetId
+      ? {
+          id: canonicalMatch.topic.id,
+          title: canonicalMatch.topic.title,
+          url: topicPublicUrl(canonicalMatch.topic),
+        }
+      : null;
   return (
     <ModerationLayout
       title="Gammaz detayı"
@@ -143,7 +183,38 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             {JSON.stringify(data.target, null, 2)}
           </pre>
         </section>
-        {report.status === "OPEN" ? (
+        {canonical && sourceTitle ? (
+          <section className="surface-card p-6">
+            <h2 className="title-section">Kopya başlık</h2>
+            <p className="mt-2 text-muted">
+              “{sourceTitle}” →{" "}
+              <a href={canonical.url} className="underline">
+                {canonical.title}
+              </a>
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <ReportCanonicalMerge
+                reportId={report.id}
+                reportOpen={report.status === "OPEN"}
+                sourceTopicId={report.targetId}
+                sourceTitle={sourceTitle}
+                canonical={canonical}
+              />
+              {report.status === "OPEN" ? (
+                <ConfirmAction
+                  endpoint={`/api/v1/moderation/reports/${report.id}/reject`}
+                  label="Aynı değil, reddet"
+                  title="Kopya gammazını reddet"
+                  description="İki başlık ayrı kavram; ikisi de kalır."
+                  fieldName="resolutionNote"
+                  destructive
+                  defaultReason="İki başlık ayrı kavram; birleştirilmedi."
+                />
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+        {report.status === "OPEN" && !canonical ? (
           <section className="surface-card p-6">
             <h2 className="title-section">Gammaz gerekçesi kararı</h2>
             <div className="mt-4 flex flex-wrap gap-3">
