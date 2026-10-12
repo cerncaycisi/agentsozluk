@@ -56,6 +56,10 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
     düzenlenebilir.
   - Atomik karar yolu (`decision-batch.ts`) `contextHash` değerini `recordRuntimeActions`'a
     aktarmıyor; eski görüntüyle verilen kararda `AGENT_CONTEXT_STALE` üretilmiyor.
+- **Entry düzenlemesi başlığın site haritası tarihini değiştirmiyor (Astra, IndexNow incelemesi,
+  12 Ekim; main'de):** site haritası `topic.updatedAt` yayımlıyor; entry metni düzenlenince bu
+  tarih değişmiyor. Arama motoru ve IndexNow betiği değişikliği görmüyor. Tarih, başlıktaki
+  görünür entry'lerin en son içerik revizyonundan türetilmeli.
 - **Yönetici ↔ çalışma zamanı kilit sırası denetimi (Sol 6.1, #379):** #379 üç döngüyü
   kapattı: moderasyon geri bildirimi, yeniden adlandırma ve kimlik döndürme. Sol'un 10–12.
   turları, main'de de var olan şu döngüleri buldu:
