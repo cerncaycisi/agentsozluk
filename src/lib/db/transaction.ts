@@ -1,8 +1,49 @@
+import { performance } from "node:perf_hooks";
+import { isRetryableLockConflict, TransientLockConflictError } from "@/lib/db/errors";
 import type { DatabaseClient, DatabaseExecutor, TransactionClient } from "@/lib/db/types";
+
+export interface TransactionOptions {
+  /**
+    Kilit çakışmasında (kilitlenme iptali `40P01` ya da moderasyonun beklemeden
+    vazgeçtiği ajan kilidi) transaction hiçbir şey yazmamış olur; işi baştan
+    çalıştırmak güvenlidir. Yalnız tüm etkisi transaction içinde kalan ve süre
+    sınırı olmayan insan istekleri (moderasyon) bunu açar; ajan yürütücüsü açmaz (#379).
+  */
+  retryOnLockConflict?: boolean;
+}
+
+export const LOCK_CONFLICT_RETRY_ATTEMPTS = 5;
+/** Yeni deneme ilk denemenin başından en geç bu kadar sonra başlar. */
+export const LOCK_CONFLICT_RETRY_BUDGET_MS = 4_000;
+
+function asLockConflict(error: unknown): unknown {
+  return error instanceof TransientLockConflictError ? error : new TransientLockConflictError();
+}
+
+export async function retryOnLockConflict<T>(
+  run: () => Promise<T>,
+  now: () => number = () => performance.now(),
+): Promise<T> {
+  const retryUntil = now() + LOCK_CONFLICT_RETRY_BUDGET_MS;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      if (!isRetryableLockConflict(error)) throw error;
+      // Tükenen kilit çakışması kullanıcıya 500 değil, yeniden denenebilir 409 olarak görünür.
+      if (attempt >= LOCK_CONFLICT_RETRY_ATTEMPTS) throw asLockConflict(error);
+      // Ajanın kısa transaction'ı bitsin; aynı anda yeniden girilmesin diye rastgele.
+      await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 150 * attempt));
+      // Sınır beklemeden sonra denetlenir; yeni deneme hiçbir zaman sınırdan sonra başlamaz.
+      if (now() >= retryUntil) throw asLockConflict(error);
+    }
+  }
+}
 
 export function inTransaction<T>(
   client: DatabaseExecutor,
   work: (transaction: TransactionClient) => Promise<T>,
+  options: TransactionOptions = {},
 ): Promise<T> {
   if ("$transaction" in client && typeof client.$transaction === "function") {
     /*
@@ -13,7 +54,18 @@ export function inTransaction<T>(
       başarısız oldu. Tavanı yükseltmek yalnız gerçekten yavaşlayan
       transaction'ları kurtarır; hızlı olanların süresini değiştirmez.
     */
-    return (client as DatabaseClient).$transaction(work, { timeout: 15_000, maxWait: 5_000 });
+    const run = () =>
+      (client as DatabaseClient).$transaction(work, { timeout: 15_000, maxWait: 5_000 });
+    return options.retryOnLockConflict ? retryOnLockConflict(run) : run();
   }
+  // İç içe çağrıda yeniden deneme en dıştaki transaction'ın işidir.
   return work(client as TransactionClient);
+}
+
+/** Kilit çakışmasında baştan denenen transaction; bkz. `TransactionOptions`. */
+export function inLockConflictRetryingTransaction<T>(
+  client: DatabaseExecutor,
+  work: (transaction: TransactionClient) => Promise<T>,
+): Promise<T> {
+  return inTransaction(client, work, { retryOnLockConflict: true });
 }

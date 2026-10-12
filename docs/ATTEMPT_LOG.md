@@ -870,7 +870,7 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
   reader tek denemede 20 öğe okudu. Web aracı `Unsupported content-type:
 text/xml` verdi; parser kısıtı kaynak erişim arızası sayılmadı.
 - Yerel Docker kontrolü `Cannot connect to the Docker daemon at
-unix:///Users/gokhannihalgul/.colima/ayakizi/docker.sock. Is the docker daemon
+unix:///Users/<yerel-kullanici>/.colima/ayakizi/docker.sock. Is the docker daemon
 running?` verdi. Komşu Colima ortamı başlatılmadı. Mevcut loopback
   PostgreSQL 16.14 ve pg_dump/pg_restore 16.14 doğrulandı.
 - İlk yerel prova seed'i Zod `invalid_type` / `Invalid input: expected string,
@@ -9120,3 +9120,217 @@ kurar. Yerel kanıt `docs/YEREL_KANIT_2026-10-08.md`.
 - Silme yapan bir ajan adımında "ilke kontrolü önce/sonra aynı" toplu boole ile yetinme; cümle bazında
   karşılaştır ve ciddi iddia işaretli gövdeyi hiç kısaltma.
 - Hakem turunda "gerçekçi tetikleyici" çerçevesi ver; yoksa biçim oyunları sonsuz tur üretir.
+
+## 10 Ekim — main CI kırmızıydı; incelemeler uzlaştırıldı
+
+**Hata.** 9 Ekim belge commit'i (`6f478880`) PLAN "Şu an neredeyiz" bölümünü 31 satıra çıkardı. K3
+kapısı (`tests/unit/docs/plan-current-status-length.test.ts`) main CI'yi kırdı ve bu durum yaklaşık
+yedi saat sürdü. İki bağımsız inceleme de bunu buldu.
+
+**Neden.** Belge-yalnız commit doğrudan main'e itilmeden önce `tests/unit/docs` koşulmadı.
+
+**Düzeltme.** `7173a25e` ile bölüm 30 satıra indi. 10 Ekim uzlaştırmasında bölüm yeniden yazıldı
+(25 satır); eski anlatı `PLAN_ARSIVI_2026-10.md` dosyasına taşındı.
+
+**Do not repeat:** `docs/PLAN.md` değişikliğini main'e itmeden önce
+`npx vitest run tests/unit/docs` koş.
+
+## 10 Ekim 11:50 TSİ — son okuma sağlamlaştırma canlıda (#362, `0bf531e`); sayaç güncellendi (#361)
+
+**Son okuma (PLAN sıra 2):**
+
+- Astra 1. tur NO-GO, dört bulgu:
+  - hassas alan sözcükleri çekimli biçimde kaçıyordu ("aşının", kiracı, anapara);
+  - atıf ve kapsam çekimleri kaçıyordu ("söyledi", "yalnızca … sınırlı");
+  - "hisse" kökü "hissettiriyor"u eliyordu;
+  - kısaltma paragraf sınırını yutuyordu.
+- Kök tabanlı eşleşmeyle düzeltildi. Astra 2. tur GO; tek düşük bulgu, ses düşmesi ("söyl-üyor"),
+  de düzeltildi.
+- Onarım yolundaki son okuma gerçek akışta henüz tetiklenmedi; bunun için worker testi eklendi.
+
+**Akış:**
+
+1. PR CI 7/7, `--match-head-commit 14735a0b`.
+2. Main CI 38037968720, RC 38038748300.
+3. `--pause-society-flow` (336), `RELEASE_COMPLETE PASS`, resume 337.
+4. İmaj temizliği: `595c9fc`, +1,72 GB, %81 → %78.
+
+**Sayaç (#361):** kurulu betik `e7cc2441…` yerine `fb3af2e0…` oldu (`sudo install`, sha256
+doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
+
+**Do not repeat:**
+
+- Dağıtım logunu `cut -c1-200` ile kırpma: `free_bytes` sayısı yarıda kesilip disk dolu sanıldı.
+- Sözcük listesi kilitlerinde Türkçe çekim ve ses düşmesi için kök + her ek eşleşmesi kullan; kelime
+  sınırlı tam kelime yetmez.
+
+## 10 Ekim öğleden sonra — #347 ve #364 main'de, #363 kapasite `FINAL_READ`
+
+- **#347:** dal, #362'den önceki main'e dayanıyordu. `worker.ts` değişikliği nedeniyle merge öncesi
+  yeniden temellendirildi; çakışma yok. Yeni head `743f6a82` CI 7/7 → `c23738dd`.
+  Dağıtılmadı, sıra 3 penceresi korunuyor.
+- **#363:** Astra 1. tur NO-GO, gerçekçi tetikleyicilerle:
+  - onarım + AW + iki aday durumunda worker 1, ölçüm 2 son okuma yapıyordu;
+  - 110 sn bütçede worker son okumayı atlıyor, ölçüm 30 sn'lik çağrı başlatıyordu.
+
+  Kural `runtimeFinalReadTimeoutMs` olarak çıkarıldı; worker ve ölçüm aynı fonksiyonu kullanıyor. 2. tur GO.
+
+- **Yerel tam birim testi:** `verify-m2-e2e-isolation.test.ts` 4 test düşüyor. Neden: sunucuda
+  Node 24.21.0 var, test `verify:m2 requires Node.js 22` diyor. Aynı hata main'de de çıkıyor;
+  CI Node 22 ile geçiyor.
+
+**Do not repeat:**
+
+- Uzun süre bekleyen PR'ı merge etmeden önce main'e göre yeniden temellendir ve CI'ı yeni head'de
+  bekle.
+- Yerelde `verify-m2-e2e-isolation` düşmesini gerileme sanma; Node sürümüne bak.
+- Kapasite tazeliğini kodla değiştirmeden önce 8 Ekim Gökhan kararını oku (`capacity.ts` yorumu,
+  G10).
+
+## 10 Ekim akşam — yazar alımı (#365), G2 (#366), G4 (#367), branch protection, repo temizliği
+
+- **#365 (yazar alımı kapalı):**
+  - Astra 1. tur NO-GO: Compose aktarımı eksikti (orta); açıkken kaydedilmiş onayın tekrarı
+    kapalıyken 200 dönüyordu (düşük).
+  - Astra 2. tur NO-GO: kapı rate limit'ten önce çalışıyordu, 429 sözleşmesi bozuluyordu (orta).
+    Kapı `commandGate` ile yetki denetiminden sonra, tekrar oynatmadan önce çalışıyor.
+  - Sol 6.1 dar tur GO. Main `fdfd56b4`.
+- **#366 (G2):** ilk CI'da `public-metadata-serialization` ve `user-follows` düştü. Sebep: profil
+  API'sine `kind` eklenmişti; bu, M2-DONE-010'u bozuyordu. Hesap türü `profile` dışında
+  `writerKind` olarak yalnız sayfaya taşındı; M2-SEO-002 satırı G2 ile uzlaştırıldı.
+- **#367 (G4):** yerel tüm entegrasyon paketi 499 geçti. Düşen 15 test (reset, O3 geri yükleme,
+  giriş hız sınırı) değişmemiş main'de de aynı şekilde düşüyor; yerel ortamdan kaynaklanıyor.
+- **Kural ihlali:** #367, #366'nın hemen ardından `mergeStateStatus` "UNKNOWN" iken birleştirildi.
+  AGENTS.md belirsiz durumda birleştirmeyi yasaklıyor. Birleşik main CI (`0caf1093`) yeşil çıktı.
+  Aynı gün branch protection açıldı (`validate` zorunlu, `strict`, admin dahil).
+- **Repo temizliği:**
+  - Sır taraması temiz.
+  - Belgelerdeki yerel kullanıcı adı çıkarıldı (`fc483271`).
+  - 19 uzak dal silindi; 16'sı `archive/` etiketinde.
+  - E-posta git geçmişinde 199 commit'te duruyor; geçmiş yeniden yazılmadı.
+- **Yerel test ortamı:**
+  - Sunucunun varsayılan Node'u 24. `verify-m2-e2e-isolation` testi Node 22.23.1
+    (`~/.local/node22`) ile 4/4 geçiyor.
+  - Yerel entegrasyon testleri ayrı test veritabanında koşar (`agent_sozluk_test`, port 55432).
+
+**Do not repeat:**
+
+- `mergeStateStatus` UNKNOWN ya da BEHIND iken birleştirme. Bir PR birleşince sıradaki PR'ın
+  durumunu yeniden oku.
+- Public serializer'a alan eklemeden önce M2-DONE-010 ve meta veri tarayıcısını kontrol et.
+- Yerel tam testi Node 22 ile koş.
+
+## 11 Ekim — yürütücü ↔ moderasyon kilitlenmesi (#379, main `61bff691`)
+
+- **Başlangıç:** Sol 6.1, #377'nin 5. turunda main'de var olan bir döngü buldu. Yürütücü önce yaşam
+  kaydı (`agent-life`), sonra başlık kilidini alıyor. Moderasyon geri bildirimi ise başlık ve entry
+  kilidinden sonra `agent-life` kilidini **bekliyor**. PostgreSQL birini `40P01` ile iptal ediyor.
+- **Denenen ve bırakılan yollar:**
+  1. _Kilit sırasını değiştirmek_ (moderasyon `agent-life`'ı önce alsın). Astra 1. tur NO-GO:
+     yeniden adlandırmada yeni döngü açtı; toplu gizleme, run FK ve hedef değişimi döngüleri
+     kaldı.
+  2. _Kurbanı iki tarafta da baştan denemek._ Astra 2. tur ve Sol 1–7. turlar: yürütücü tarafında
+     yeniden deneme işçinin 15 sn HTTP sınırını aşabiliyordu. İşçi tarafı tekrar ve "sonuç
+     bilinmiyor" sınıflaması eklendi; her turda yeni kenar durumu çıktı (yanıt gövdesi kaybı,
+     tekrarın hata yanıtı, şema dışı yanıt, devre kesici sayımı, rapor metriği, normalizasyon).
+     Katman tümüyle kaldırıldı.
+  3. _Koşu iptalinin kilit sırasını değiştirmek_ (Sol 11. tur, main'de de var). Sol 12. tur: çapraz
+     ajan heartbeat/context ile main'de olmayan yeni bir döngü açtı. Geri alındı; `BACKLOG`'daki
+     kilit sırası denetimine bırakıldı.
+- **Çalışan çözüm:** insan tarafı (moderasyon, yönetici) ajan kilidini **beklemez**.
+  - Kilitler `pg_try_advisory_xact_lock` ve `FOR KEY SHARE NOWAIT` ile denenir; alınamazsa
+    transaction geri alınır, kısa beklemeyle baştan denenir, sonunda 409 döner.
+  - Ajan yürütücüsü değişmedi; kurban seçilemiyor.
+  - Bariyerli yarış testleri, beklemeden denenen yardımcıların geri çekilmesini sayaçla izler; eski
+    bekleyen kodla kırılır.
+
+**Do not repeat:**
+
+- Ajan çalışma zamanı yoluna yeniden deneme koyma. İşçinin süre sınırı ve kaybolan yanıt, sonu
+  gelmeyen bir belirsizlik katmanı açar. Döngüyü, süre sınırı olmayan insan tarafının geri
+  çekilmesiyle kır.
+- Tek bir kilit sırasını değiştirmeden önce o kilidi alan bütün yolları tabloya dök; heartbeat ve
+  context sahipliği kilitlerden sonra doğruluyor.
+- Hakeme kapsamı açık ver ("bu PR'ın döngüleri" + "main'de de var, ayrı listele"); "yönetici ↔
+  çalışma zamanı döngüleri" gibi geniş bir çerçeve her turda yeni ve bağımsız bir eski döngü getirir.
+- Yarış testinde sabit bekleme (`setTimeout(300)`) kullanma; geri çekilmeyi ya da bekleyen kilidi
+  gözleyen bariyer kur.
+
+## 11 Ekim — G9c yerel deneme ölçülemedi (kopya `publicId` sırası)
+
+- **Ortam:** yerel kopya `agent_sozluk_replica`. A kolu main `61bff691`, 24 koşu, 05:18–07:14Z.
+- **Hata:** 15 yayın eylemi `ACTION_EXECUTION_FAILED` ile düştü. Eylem kaydında ayrıntı yok.
+- **Kök neden:** canlıdan aktarılan başlık ve entry'ler `publicId` taşıyordu; yerel
+  `topics_public_id_seq` (7.280, en büyük 7.615) ve `entries_public_id_seq` (22.272, en büyük
+  23.104) geride kalmıştı. Yeni satırlar `entries_publicId_key` ve `topics_publicId_key`
+  çakışmasıyla düştü. PostgreSQL günlüğünde 10 + 5 hata vardı; düşen eylem sayısıyla aynı.
+- **Teşhis yolu:** yürütücünün catch bloğuna geçici çıktı eklendi (deneme worktree'sinde, depoya
+  girmedi). İki koşuda yalnız beklenen `TOPIC_EXISTS_UNREAD` görüldü. Ardından PostgreSQL günlüğü
+  (`~/.local/pg16/log`) zaman aralığına göre tarandı.
+- **Çözüm:** iki sıra `setval` ile en büyük değere ilerletildi. Kopyaya canlıdan salt okunur taze
+  kaynak, başlık ve entry aktarıldı; bunlar da `publicId`'siz eklendi, sıralar yeniden ilerletildi.
+
+**Do not repeat:**
+
+- Kopyaya canlıdan satır aktardıktan sonra `publicId` sıralarını ilerlet. Ya da aktarırken
+  `publicId` sütununu dışarıda bırak.
+- `ACTION_EXECUTION_FAILED` görünce önce PostgreSQL günlüğüne bak; eylem kaydı ayrıntı taşımaz.
+- Deneme kolunu `pgrep -f <betik-adı>` ile durdurma: desen kendi kabuğunla eşleşip onu öldürür
+  (11 Ekim'de yine oldu). `ps` ile PID'leri bul, `kill <pid>` kullan.
+
+## 11 Ekim — kopya denemeleri kaynak çekimi olmadan koşmuş (G9d, G9e)
+
+- **Belirti:** G9d A kolunda (main `61bff691`, 24 koşu) `TOPIC_EXISTS_UNREAD` 0, kaynaklı yayın 0
+  çıktı. Algıda yazar başına 6–9 kaynak öğesi vardı. Canlıda aynı 12 yazar koşu başına 0,1–0,7
+  kaynaklı yayın yapıyor. Hedefli G9e düzeneğinde, canlıda çakışma üretmiş 54 öğe algıdayken de
+  ilk 7 koşuda sonuç aynıydı.
+- **Kök neden:** `~/style-lab/kopya-deneme/harness.ts` işçiye `sourceReader` vermiyordu. İşçi
+  kaynak çekimini yalnız `this.#options.sourceReader` varsa yapar
+  (`scripts/agent-runtime-worker.ts` üretimde `new SafeSourceReader()` verir). Kopyadaki
+  koşularda hiç `SOURCE_FETCH_*` olayı yoktu; canlıda son 24 saatte 705 vardı.
+- **Etki:** G9, G9b, G9c, G9d ve G9e'nin hepsi kaynak çekimi olmadan koştu. G9 ve G9b'deki "kopyada
+  haber başlığı açılmıyor" bulgusu da bu düzenekte ölçüldü.
+- **Düzeltme (aynı gün, G9f):** G9d, G9e ve G9f'deki sıfır çakışmanın asıl nedeni main'deki günlük
+  40 başlık tavanıydı (#371). 07:21Z aktarımı kopyada bugünün ajan başlığı sayısını 42'ye çıkardı;
+  bağlam yeni başlık önerisini kapattı. Tavan iki kolda kapatılınca 4 koşuda 2 çakışma geldi.
+- **Çözüm:** deneme işçisi `SafeSourceReader` ile kurulur; tek koşuluk duman testinde 2 kaynak
+  çekildi.
+
+**Do not repeat:**
+
+- Kopya denemesine başlamadan önce düzeneğin üretim işçisiyle aynı bağımlılıkları verdiğini
+  (`sourceReader`, sağlayıcılar) ve tek koşuluk duman testinde `SOURCE_FETCH_*` olaylarının
+  yazıldığını doğrula.
+- Kopyada ölçülen bir davranışı canlıya genellemeden önce, aynı yazarların canlıdaki oranıyla
+  karşılaştır.
+- Kopyaya canlıdan bugünün satırlarını aktarınca main'deki günlük sayaçların (başlık tavanı) dolup
+  dolmadığını kontrol et.
+- Yeni bir deneme turuna başlamadan, birkaç koşuluk duman testinde ölçülecek olayın (burada
+  `TOPIC_EXISTS_UNREAD`) gerçekten oluştuğunu gör.
+
+## 11 Ekim — "oku, sonra karar ver" (#377) yerel denemeleri G9c–G9i: çıkmıyor
+
+- **Ortam:** yerel kopya `agent_sozluk_replica`. Kontrol main `61bff691`, aday #377
+  (`8a875152`, sonra `606f68f6`).
+- **Sıra:**
+  - G9c: `publicId` sırası yüzünden ölçülemedi.
+  - G9d, G9e, G9f: günlük başlık tavanı dolu olduğu için ölçülemedi (G9e'de kaynak okuyucu da
+    eksikti).
+  - G9g geçerli bir deneme oldu; #377 okuma sınırı yüzünden hiç dönüştürmedi.
+  - G9h: bellek ve G/Ç baskısıyla kesildi.
+  - G9i geçerli bir deneme oldu; #377 geçmedi.
+- **Sonuç (G9i):**
+  - Kaynaklı yayının var olan başlığa gitmesi %0'dan %33'e çıktı.
+  - Dönüştürülen 6 entry'nin 3'ü iki hakemce tekrar sayıldı; eşik %20.
+  - Yeni başlık sayısı düşmedi; bu ölçü baştan yanlış kurulmuştu.
+- **Kök neden:** çakışmaların çoğu, başlıkta zaten yazılmış aynı haberin tekrarı. Ret çoğu durumda
+  doğru çalışıyor.
+
+**Do not repeat:**
+
+- Bir düzeltmenin hedef ölçüsünü yazmadan önce mekanizmanın o ölçüyü gerçekten değiştirebileceğini
+  kontrol et. Burada çakışmalar zaten başlık açmıyordu.
+- Yerel deneme düzeneğinde bellek baskısını izle: 3,7 GB sunucuda iki işçi × iki şerit takas
+  açtı. `WORKERS=1` güvenli.
+- Ölçülemeyen her denemeyi yeni önkayıtla ve açık nedenle kapat; sonuç görmeden kontrol kolunu
+  yeniden kullanma kararını önkayda yaz.

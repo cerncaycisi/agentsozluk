@@ -2678,7 +2678,7 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   migrations with exact safe output `Error: Schema engine error:`. The cleanup trap removed the
   database and its closing existence count was zero. Root cause was the socket query-string URL
   form; the documented Homebrew PostgreSQL TCP form
-  `postgresql://gokhannihalgul@127.0.0.1:5432/<unique_test_db>` applied all 18 migrations. Do not
+  `postgresql://<yerel-kullanici>@127.0.0.1:5432/<unique_test_db>` applied all 18 migrations. Do not
   retry the socket query-string form for Prisma integration tests in this workspace.
 - Final local evidence passed 53 agent unit files / 343 tests, 54 focused
   prompt/renderer/report/guidance tests, two focused PostgreSQL integration scenarios, formatting,
@@ -3030,7 +3030,7 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   `postgresql://localhost:5432/...` without the verified local PostgreSQL role. Prisma stopped
   before product assertions with `User was denied access on the database (not available)`, making
   all 60 selected tests appear failed. This repeated the existing 2026-07-22 environment trap.
-  The scratch database was removed; `postgresql://gokhannihalgul@localhost:5432/...` was verified
+  The scratch database was removed; `postgresql://<yerel-kullanici>@localhost:5432/...` was verified
   read-only and the corrected moderation suite passed `60/60`. Do not omit the verified local role
   from Prisma scratch URLs and never classify a database-reset denial as a product regression.
 - The first full integration run passed `189/195`. Four failures showed that the new constitutional
@@ -3587,7 +3587,7 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   `postgres` role and stopped before migration or tests with Prisma `Schema engine error`.
   Direct `psql` separation exposed the safe root cause:
   `FATAL: role "postgres" does not exist`; the local server's verified role is
-  `gokhannihalgul`. Prisma schema validation itself passed.
+  `<yerel-kullanici>`. Prisma schema validation itself passed.
 - Resolution: use the already documented role-explicit isolated test DSN for this machine, apply
   the candidate migration only to `agent_sozluk_test`, and then rerun the focused integration
   file. This failure is environment/fixture evidence, not a code regression.
@@ -3680,7 +3680,7 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   every direct integration command must use the role-explicit, allowlisted disposable `_test`
   database flow already recorded in this ledger.
 - Verified resolution: Homebrew PostgreSQL `16.14` reported verified local role
-  `gokhannihalgul`; unique database `agentsz_free_decision_20260730a_test` received all 24
+  `<yerel-kullanici>`; unique database `agentsz_free_decision_20260730a_test` received all 24
   migrations. The first focused subset passed four files / `80/80`; the complete agent PostgreSQL
   package then passed 11 files / `122/122`. Cleanup traps dropped both scratch databases and their
   closing catalog counts were zero. Focused UI/detail tests passed `18/18`; all agent unit tests
@@ -4739,7 +4739,7 @@ BLOCKED / 0 FAIL`.
 - Diagnostic environment stop: an initial integration coverage command omitted
   `TEST_DATABASE_URL` and failed before its suite with exact error
   `Integration tests requires TEST_DATABASE_URL.` The existing local PostgreSQL 16 listener and
-  role `gokhannihalgul` were then verified; the canonical allowlisted `agent_sozluk_test` database
+  role `<yerel-kullanici>` were then verified; the canonical allowlisted `agent_sozluk_test` database
   was used. This was an invocation error, not a product failure. Do not repeat: pass the verified
   local test URL explicitly for any direct integration/coverage invocation.
 - Coverage result: complete host runtime plus ten critical route adapters entered the configured
@@ -6377,7 +6377,7 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Ortam false start: ilk test URL'si var olmayan `agent_sozluk` rolünü kullandığı için, ikinci URL
   de kullanıcıyı açıkça taşımadığı için ürün assertion'ından önce exact
   `User was denied access on the database (not available)` ile durdu. Salt-okunur kontrol yerel
-  `gokhannihalgul` rolünün CONNECT/USAGE/TRUNCATE yetkisini doğruladı; explicit allowlisted test URL
+  `<yerel-kullanici>` rolünün CONNECT/USAGE/TRUNCATE yetkisini doğruladı; explicit allowlisted test URL
   ile aynı vaka geçti. Rol, şema veya veri elle değiştirilmedi.
 - Build false start: ilk `pnpm build` derleme/type aşamasını geçti, fakat yerel `DATABASE_URL`,
   `APP_URL`, `APP_SECRET` unset olduğu için `/kurallar` prerender exact Zod validation ile durdu.

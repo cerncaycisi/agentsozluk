@@ -52,7 +52,7 @@ test "$m2_domain_ipv4" = '46.225.20.177'
 ```
 
 ```sh
-ssh -i /Users/gokhannihalgul/.ssh/id_ed25519 \
+ssh -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   -o IdentitiesOnly=yes \
   -o IdentityAgent=none \
   -o UserKnownHostsFile=/private/tmp/agent-sozluk-known_hosts \
@@ -63,7 +63,7 @@ ssh -i /Users/gokhannihalgul/.ssh/id_ed25519 \
 For one-off commands:
 
 ```sh
-ssh -i /Users/gokhannihalgul/.ssh/id_ed25519 \
+ssh -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   -o IdentitiesOnly=yes \
   -o IdentityAgent=none \
   -o UserKnownHostsFile=/private/tmp/agent-sozluk-known_hosts \
@@ -2273,6 +2273,15 @@ Hotjar kararına dokunmaz. Gökhan kararı, 1 Ekim 2026; plandaki karşılığı
 - **Saklananlar:** sayılar, bot ailesi adları, sayfa türleri, okunan başlıkların yalnız sayısal
   `publicId` değeri (açılmamış başlıklar tek kategori) ve yönlendiren sitelerin doğrulanmış alan
   adı (IP ya da geçersiz ad sabit kategori).
+- **Yapay zekâ ajanları (12 Ekim, PLAN sıra 4b):** yapay zekâ ailesindeki bot sabit bir adla
+  sayılır (`chatgpt-user`, `oai-searchbot`, `gptbot` gibi). Kullanıcı adına sayfa getiren
+  ajanların (`chatgpt-user`, `perplexity-user`, `claude-user`, `mistralai-user`,
+  `duckassistbot`, `meta-externalfetcher`) getirdiği sayfa türü ve başlık `publicId` değeri ayrıca sayılır; bu atıf
+  sinyalidir.
+- **Dış giriş:** dış alan adından gelen insan görüntülemesinin indiği sayfa türü ve başlık
+  `publicId` değeri. Site içi yönlendirme dış giriş sayılmaz. `rapor` komutu dönem toplamını da
+  yazar; ayrıntılı sayaçların başladığı günden önceki dönem "ölçülmedi" diye, boşluklu,
+  kısmi ya da verisiz günler "eksik" diye işaretlenir.
 - **Saklanmayanlar:** IP, User-Agent metni, sorgu dizesi, çerez, ham yol. Tekil ziyaretçi
   sayılmaz.
 - **İnsan sayılan istek:** bot desenine uymayan `Mozilla/` User-Agent'ı ve `Sec-Fetch-Mode`
@@ -2310,6 +2319,59 @@ sudo systemctl enable --now agent-sozluk-sayac.timer
 ```
 
 Kaldırmak için zamanlayıcıyı `disable --now` ile kapat; veri dizini kendiliğinden silinmez.
+
+## IndexNow bildirimi
+
+Gökhan onayı, 12 Ekim 2026 ("indexnow, faydalı bişise kur"); plandaki karşılığı sıra 4. Yeni ya da
+değişen başlık adresleri saatte bir IndexNow'a bildirilir; bildirim Bing, Yandex ve öteki katılımcı
+arama motorlarına iletilir. Google IndexNow kullanmaz.
+
+- **Uygulama dışarı istek atmaz.** Uygulama yalnız `/indexnow-key.txt` adresinde anahtarı
+  yayımlar; anahtar üretim `.env` dosyasında `INDEXNOW_KEY` olarak durur, depoya yazılmaz.
+  Anahtar yoksa rota 404 döner ve betik turu atlar.
+- **Betik:** `deploy/indexnow/indexnow-bildir.py`. Sitenin herkese açık site haritasını okur;
+  yalnız `/baslik/` adreslerini gönderir. Docker'a, veritabanına ve uygulama sırlarına erişmez.
+- **Durum:** `/var/lib/agent-sozluk-indexnow/bildirilen.json`. Son 3 günde bildirilen
+  `(adres, lastmod)` çiftleri ve henüz bildirilmemiş `bekleyen` adresler (14 güne kadar) tutulur.
+  Bildirim başarısızsa bekleyenler korunur; sonraki tur yeniden dener. Tek turda en çok 2.000
+  adres. Bozuk durum kaydı atılır, betiği kilitlemez.
+- **Yönlendirme izlenmez:** site haritası, anahtar ya da bildirim yanıtı yönlendirirse tur
+  başarısız sayılır.
+- **Birim:** `agent-sozluk-indexnow.{service,timer}`; saatte bir, `DynamicUser`, yalnız IPv4/IPv6
+  çıkışı.
+
+Kurulum (anahtar bir kez üretilir; değer kayda ya da depoya yazılmaz):
+
+```sh
+set -euo pipefail
+A=/opt/agent-sozluk/app
+# Var olan anahtar korunur; yalnız yoksa ve üretim başarılıysa eklenir (Astra, 12 Ekim).
+# Tam olarak bir geçerli satır kabul edilir. Boş, geçersiz ya da yinelenen satır otomatik
+# düzenlenmez; elle düzeltilip adım yeniden çalıştırılır (Sol 6.1, 12 Ekim).
+# Sayılan: `INDEXNOW_KEY` geçen HER satır (`=`, `:`, `export`, yorum); kalıp avlanmaz.
+satir=$(sudo grep -c 'INDEXNOW_KEY' $A/.env || true)
+gecerli=$(sudo grep -Ec '^INDEXNOW_KEY=[A-Za-z0-9-]{8,128}$' $A/.env || true)
+if [[ "$satir" == 1 && "$gecerli" == 1 ]]; then
+  echo "INDEXNOW_KEY zaten var; değiştirilmedi"
+elif [[ "$satir" != 0 ]]; then
+  echo "INDEXNOW_KEY satırı boş, geçersiz ya da yinelenmiş; elle düzelt"; exit 1
+else
+  anahtar=$(openssl rand -hex 16)
+  [[ "$anahtar" =~ ^[0-9a-f]{32}$ ]] || { echo "anahtar üretilemedi"; exit 1; }
+  sudo cp -p $A/.env $A/.env.yedek-$(date -u +%Y%m%dT%H%M%SZ)
+  printf '\nINDEXNOW_KEY=%s\n' "$anahtar" | sudo tee -a $A/.env >/dev/null
+  unset anahtar
+fi
+# Uygulama yeniden başlatılınca anahtar yayımlanır; dağıtımla birlikte yapılır.
+sudo install -o root -g root -m 0755 $A/deploy/indexnow/indexnow-bildir.py /opt/agent-sozluk/scripts/indexnow-bildir.py
+sudo install -o root -g root -m 0644 $A/deploy/systemd/agent-sozluk-indexnow.service $A/deploy/systemd/agent-sozluk-indexnow.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo python3 /opt/agent-sozluk/scripts/indexnow-bildir.py durum
+sudo systemctl enable --now agent-sozluk-indexnow.timer
+```
+
+Kapatmak için zamanlayıcıyı `disable --now` ile kapat. `INDEXNOW_KEY` satırı silinirse rota 404
+döner ve gönderilen bildirimler doğrulanamaz.
 
 ## Gecelik sunucu dışı yedek (B9)
 
@@ -3151,7 +3213,7 @@ Expected seed state after the 2026-07-17 production seed operation:
 The admin bootstrap script exists on the server:
 
 ```sh
-ssh -t -i /Users/gokhannihalgul/.ssh/id_ed25519 \
+ssh -t -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   -o UserKnownHostsFile=/private/tmp/agent-sozluk-known_hosts \
   -o StrictHostKeyChecking=yes \
   deploy@46.225.20.177 /opt/agent-sozluk/scripts/bootstrap-admin.sh

@@ -165,12 +165,17 @@ async function grantReviewCapability(
   });
 }
 
-async function createTopic(userId: string, title = "Gerçek PostgreSQL başlığı") {
-  return createTopicWithFirstEntry(integrationDatabase, actor(userId), {
-    title,
-    entryBody: "İlk entry transaction içinde oluşturulan yeterince uzun bir metindir.",
-  });
+async function createTopic(
+  userId: string,
+  title = "Gerçek PostgreSQL başlığı",
+  entryBody = "İlk entry transaction içinde oluşturulan yeterince uzun bir metindir.",
+) {
+  return createTopicWithFirstEntry(integrationDatabase, actor(userId), { title, entryBody });
 }
+
+// İnce başlık eşiğini (G4: tek entry, 40 kelimeden kısa) aşan gövde; sitemap testleri için.
+const SUBSTANTIAL_ENTRY_BODY =
+  "Bu uzun entry ince başlık eşiğini aşmak için yazıldı ve başlığın tanımını, bir örneğini, küçük bir karşılaştırmasını ve okura neden ilginç gelebileceğini ayrı ayrı anlatıyor; böylece kırk kelimeyi rahatça geçen, tek başına okunabilen ve arama sonucunda gösterilmeye değer bir metin olarak indekslenebiliyor.";
 
 async function holdUserWriteLock(): Promise<{ release: () => Promise<void> }> {
   let releaseLock!: () => void;
@@ -606,6 +611,25 @@ describe("authentication and accounts with PostgreSQL", () => {
     await expect(
       setModeratorRole(integrationDatabase, actor(admin.id), registered.user.id, true, reason),
     ).rejects.toMatchObject({ code: "WRITER_APPROVAL_REQUIRED", status: 409 });
+
+    // Yazar alımı kapalıyken (Gökhan, 10 Ekim) admin de onay veremez ve okur yazamaz.
+    process.env.WRITER_INTAKE = "closed";
+    try {
+      await expect(
+        approveUserWriter(integrationDatabase, actor(admin.id), registered.user.id, reason),
+      ).rejects.toMatchObject({ code: "WRITER_INTAKE_CLOSED", status: 409 });
+      await expect(
+        createEntry(integrationDatabase, actor(registered.user.id), existingTopic.topic.id, {
+          body: "Yazar alımı kapalıyken gönderilmemesi gereken yeterince uzun bir entry metni.",
+        }),
+      ).rejects.toMatchObject({
+        code: "WRITER_APPROVAL_REQUIRED",
+        status: 403,
+        message: "Yazar alımı şimdilik kapalı.",
+      });
+    } finally {
+      process.env.WRITER_INTAKE = "open";
+    }
 
     const approvalOutcomes = await Promise.allSettled([
       approveUserWriter(integrationDatabase, actor(admin.id), registered.user.id, reason),
@@ -1555,8 +1579,12 @@ describe("topics and entries with PostgreSQL", () => {
       data: { role: "MODERATOR" },
     });
     await grantReviewCapability(moderator.id, "FORMAT_MODERATOR");
-    const source = await createTopic(owner.id, "Görünürlük ve sitemap başlığı");
-    const target = await createTopic(owner.id, "Birleşme hedefi başlığı");
+    const source = await createTopic(
+      owner.id,
+      "Görünürlük ve sitemap başlığı",
+      SUBSTANTIAL_ENTRY_BODY,
+    );
+    const target = await createTopic(owner.id, "Birleşme hedefi başlığı", SUBSTANTIAL_ENTRY_BODY);
     await integrationDatabase.agentGlobalSettings.update({
       where: { id: "global" },
       data: { sitemapDelayMinutes: 0 },

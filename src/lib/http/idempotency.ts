@@ -8,7 +8,13 @@ export { canonicalRequestHash } from "@/modules/idempotency/domain/idempotency";
 
 export async function idempotentResponse(
   request: Request,
-  input: { actorId: string; route: string; requestBody: unknown; telemetryLabel?: string },
+  input: {
+    actorId: string;
+    route: string;
+    requestBody: unknown;
+    telemetryLabel?: string;
+    retryOnLockConflict?: boolean;
+  },
   execute: (client: DatabaseExecutor) => Promise<NextResponse>,
   preflight?: (client: DatabaseExecutor) => Promise<void>,
   storedBodyTransform?: (body: JsonValue) => JsonValue,

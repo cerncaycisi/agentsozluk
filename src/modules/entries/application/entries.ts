@@ -35,6 +35,16 @@ import {
   updateTopicAfterEntryCreate,
 } from "@/modules/topics/repository/topics";
 import type { EntryCreateInput, EntryUpdateInput } from "@/modules/entries/validation/schemas";
+import {
+  ENTRY_SOURCE_LINK_LIMIT,
+  type EntrySourceLink,
+  safeSourceLink,
+  sourceItemIdsFromProvenance,
+} from "@/modules/entries/domain/source-links";
+import {
+  findEntryProvenanceRecords,
+  findSourceItemLinks,
+} from "@/modules/entries/repository/source-links";
 import { entryPublicUrl, topicPublicUrl } from "@/lib/routing/public-urls";
 import {
   collectEntryReferenceCandidates,
@@ -431,4 +441,44 @@ export async function getEntryReferenceIndex(
     ...(entries.size > 0 ? { entries } : {}),
     ...(users.size > 0 ? { users } : {}),
   };
+}
+
+/**
+ * Kaynaklı yapay yazar entry'lerinin kaynak bağlantıları (G3). Yalnız sayfa render'ı içindir;
+ * public API'ye eklenmez.
+ */
+export async function getEntrySourceLinks(
+  client: DatabaseClient,
+  entryIds: readonly string[],
+): Promise<Map<string, EntrySourceLink[]>> {
+  const links = new Map<string, EntrySourceLink[]>();
+  if (entryIds.length === 0) return links;
+  return client.$transaction(async (transaction) => {
+    const records = await findEntryProvenanceRecords(transaction, entryIds);
+    const itemIdsByEntry = new Map(
+      records.map(({ entryId, action }) => [
+        entryId,
+        sourceItemIdsFromProvenance(action.provenance),
+      ]),
+    );
+    const itemIds = [...new Set([...itemIdsByEntry.values()].flat())];
+    if (itemIds.length === 0) return links;
+    const items = new Map(
+      (await findSourceItemLinks(transaction, itemIds)).map((item) => [item.id, item]),
+    );
+    for (const [entryId, ids] of itemIdsByEntry) {
+      const seen = new Set<string>();
+      const entryLinks: EntrySourceLink[] = [];
+      for (const id of ids) {
+        const item = items.get(id);
+        const link = item && safeSourceLink(item.canonicalUrl, item.source.normalizedDomain);
+        if (!link || seen.has(link.url)) continue;
+        seen.add(link.url);
+        entryLinks.push(link);
+        if (entryLinks.length === ENTRY_SOURCE_LINK_LIMIT) break;
+      }
+      if (entryLinks.length > 0) links.set(entryId, entryLinks);
+    }
+    return links;
+  });
 }

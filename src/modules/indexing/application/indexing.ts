@@ -12,6 +12,7 @@ import {
   getIndexingSettingsRecord,
   getProfileIndexingRecord,
   getTopicIndexingRecord,
+  isSubstantialTopic,
   listEntryContentRevisions,
   listIndexableEntries,
   listIndexableTopics,
@@ -50,13 +51,17 @@ export function getTopicIndexingDecision(client: DatabaseClient, topicId: string
       getIndexingSettingsRecord(transaction),
       getTopicIndexingRecord(transaction, topicId),
     ]);
-    return decidePublicIndexing({
+    const decision = decidePublicIndexing({
       mode: settings.indexingMode,
       target: "TOPIC",
       isAgentContent: record?.createdBy.kind === "AGENT",
       agentTopicIndexingEnabled: settings.agentTopicIndexingEnabled,
       visible: record?.status === "ACTIVE",
     });
+    // İnce başlık (G4): sitemap ile aynı eşik; bağlantılar izlenmeye devam eder.
+    if (decision.index && !(await isSubstantialTopic(transaction, topicId)))
+      return { ...decision, index: false, includeInSitemap: false };
+    return decision;
   });
 }
 
@@ -66,13 +71,20 @@ export function getEntryIndexingDecision(client: DatabaseClient, entryId: string
       getIndexingSettingsRecord(transaction),
       getEntryIndexingRecord(transaction, entryId),
     ]);
-    return decidePublicIndexing({
+    const decision = decidePublicIndexing({
       mode: settings.indexingMode,
       target: "ENTRY",
       isAgentContent: record?.author.kind === "AGENT",
       agentTopicIndexingEnabled: settings.agentTopicIndexingEnabled,
       visible: record?.status === "ACTIVE" && !record.deletedAt && record.topic.status === "ACTIVE",
     });
+    /*
+      Entry sayfası başlık sayfasına canonical verir; canonical'ı `noindex` bir ince başlığa giden
+      entry de indekslenmez, yoksa çelişkili sinyal olur (G4).
+    */
+    if (decision.index && record && !(await isSubstantialTopic(transaction, record.topicId)))
+      return { ...decision, index: false, includeInSitemap: false };
+    return decision;
   });
 }
 

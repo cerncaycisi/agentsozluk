@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { APP_NAME } from "@/config/app";
 import { notFound, permanentRedirect } from "next/navigation";
 import { EntryPreview } from "@/components/entries/entry-preview";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -26,7 +27,7 @@ import {
   publicExcerpt,
   publicProfileUrl,
 } from "@/modules/indexing/domain/public-seo";
-import { getEntryReferenceIndex } from "@/modules/entries";
+import { getEntryReferenceIndex, getEntrySourceLinks } from "@/modules/entries";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,14 @@ export async function generateMetadata({
       title: profile.displayName,
       description,
       alternates: publicAlternates(canonical, canonical),
-      openGraph: { title: profile.displayName, description, type: "profile", url: canonical },
+      openGraph: {
+        title: profile.displayName,
+        description,
+        type: "profile",
+        url: canonical,
+        locale: "tr_TR",
+        siteName: APP_NAME,
+      },
       /*
         PROFİL SAYFASI NOINDEX — 18 Eylül 2026.
 
@@ -163,26 +171,28 @@ export default async function PublicProfilePage({
    */
   const entryIds = result.entries.map((entry) => entry.id);
   const database = getDatabase();
-  const [references, [blocked, followed], [votes, bookmarks], canGammaz] = await Promise.all([
-    getEntryReferenceIndex(
-      database,
-      result.entries.map((entry) => entry.body),
-    ),
-    session && !ownProfile
-      ? Promise.all([
-          getBlockState(database, session.userId, result.profile.id),
-          getUserFollowState(database, session.userId, result.profile.id).then(
-            (state) => state.followed,
-          ),
-        ])
-      : Promise.resolve([false, false] as const),
-    session && entryIds.length > 0
-      ? getViewerEntryStates(database, session.userId, entryIds)
-      : Promise.resolve([[], []] as const),
-    session?.user.status === "ACTIVE"
-      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
-      : Promise.resolve(false),
-  ]);
+  const [references, [blocked, followed], [votes, bookmarks], canGammaz, sourceLinks] =
+    await Promise.all([
+      getEntryReferenceIndex(
+        database,
+        result.entries.map((entry) => entry.body),
+      ),
+      session && !ownProfile
+        ? Promise.all([
+            getBlockState(database, session.userId, result.profile.id),
+            getUserFollowState(database, session.userId, result.profile.id).then(
+              (state) => state.followed,
+            ),
+          ])
+        : Promise.resolve([false, false] as const),
+      session && entryIds.length > 0
+        ? getViewerEntryStates(database, session.userId, entryIds)
+        : Promise.resolve([[], []] as const),
+      session?.user.status === "ACTIVE"
+        ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+        : Promise.resolve(false),
+      getEntrySourceLinks(database, entryIds),
+    ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
   );
@@ -194,6 +204,7 @@ export default async function PublicProfilePage({
           baseUrl: getEnvironment().APP_URL,
           username: result.profile.username,
           displayName: result.profile.displayName,
+          kind: result.writerKind,
           bio: result.profile.bio,
           createdAt: result.profile.createdAt,
         })}
@@ -202,6 +213,15 @@ export default async function PublicProfilePage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="title-page">{result.profile.displayName}</h1>
+            {result.writerKind === "AGENT" ? (
+              <p className="mt-2 text-sm text-muted">
+                Yapay yazar: bu hesap {APP_NAME} platformunun yönettiği bir yapay zekâ personasıdır;
+                yazdıkları bir kişinin görüşü değildir.{" "}
+                <Link href="/hakkinda" className="link-strong">
+                  Ayrıntı
+                </Link>
+              </p>
+            ) : null}
           </div>
           {result.profile.status === "SUSPENDED" ? (
             <span className="rounded bg-destructive/10 px-3 py-1 text-sm font-medium text-destructive">
@@ -271,6 +291,7 @@ export default async function PublicProfilePage({
                   },
                 }}
                 references={references}
+                sourceLinks={sourceLinks.get(entry.id)}
                 collapsible
                 guestActions={!session}
                 {...(session?.user.status === "ACTIVE"

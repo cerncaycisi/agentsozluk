@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { retryOnLockConflict } from "@/lib/db/transaction";
 import { logger, safeErrorCode } from "@/lib/logging/logger";
 import type { JsonValue } from "@/modules/idempotency/domain/idempotency";
 
@@ -39,48 +40,62 @@ export function withIdempotencyLock<T>(
   scope: string,
   work: (transaction: Prisma.TransactionClient) => Promise<T>,
   telemetry?: { label: string },
+  /**
+    Yalnız moderasyon ve yönetici istekleri açar: kilit çakışmasında transaction
+    hiçbir şey yazmamış olur ve iş baştan çalıştırılır. Ajan çalışma zamanı
+    rotaları açmaz; işçinin süre sınırı ve sonuç belirsizliği doğmaz (#379).
+    Telemetri her denemeyi ayrı kaydeder (Astra #379).
+  */
+  retryOnLockConflictEnabled = false,
 ): Promise<T> {
-  let callbackBasi: number | undefined;
-  const calistir = () =>
-    client.$transaction(async (transaction) => {
-      if (telemetry) callbackBasi = performance.now();
-      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${scope}, 0))`;
-      return work(transaction);
-    });
-  if (!telemetry) return calistir();
+  let deneme = 0;
+  const tekDeneme = () => {
+    deneme += 1;
+    let callbackBasi: number | undefined;
+    const calistir = () =>
+      client.$transaction(async (transaction) => {
+        if (telemetry) callbackBasi = performance.now();
+        await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${scope}, 0))`;
+        return work(transaction);
+      });
+    if (!telemetry) return calistir();
 
-  const baslangic = performance.now();
-  return (async () => {
-    let sonuc: "committed" | "failed" = "failed";
-    let yakalananHata: unknown;
-    try {
-      const deger = await calistir();
-      sonuc = "committed";
-      return deger;
-    } catch (error) {
-      yakalananHata = error;
-      throw error;
-    } finally {
-      const bitis = performance.now();
+    const denemeNo = deneme;
+    const baslangic = performance.now();
+    return (async () => {
+      let sonuc: "committed" | "failed" = "failed";
+      let yakalananHata: unknown;
       try {
-        // Hata kodu da korumalı blokta okunur: tuhaf bir hata nesnesi (ör. iptal
-        // edilmiş Proxy) okunurken fırlatsa bile asıl hata aynen yukarı çıkar.
-        const hataKodu = sonuc === "failed" ? safeErrorCode(yakalananHata) : undefined;
-        logger.info({
-          event: "db.transaction.duration",
-          label: telemetry.label,
-          outcome: sonuc,
-          ...(hataKodu ? { errorCode: hataKodu } : {}),
-          totalMs: Math.round(bitis - baslangic),
-          acquireMs: callbackBasi === undefined ? null : Math.round(callbackBasi - baslangic),
-          activeMs: callbackBasi === undefined ? null : Math.round(bitis - callbackBasi),
-          timeoutMs: PRISMA_VARSAYILAN_TIMEOUT_MS,
-        });
-      } catch {
-        // Telemetri asıl sonucu asla değiştirmez.
+        const deger = await calistir();
+        sonuc = "committed";
+        return deger;
+      } catch (error) {
+        yakalananHata = error;
+        throw error;
+      } finally {
+        const bitis = performance.now();
+        try {
+          // Hata kodu da korumalı blokta okunur: tuhaf bir hata nesnesi (ör. iptal
+          // edilmiş Proxy) okunurken fırlatsa bile asıl hata aynen yukarı çıkar.
+          const hataKodu = sonuc === "failed" ? safeErrorCode(yakalananHata) : undefined;
+          logger.info({
+            event: "db.transaction.duration",
+            label: telemetry.label,
+            outcome: sonuc,
+            ...(hataKodu ? { errorCode: hataKodu } : {}),
+            ...(denemeNo > 1 ? { attempt: denemeNo } : {}),
+            totalMs: Math.round(bitis - baslangic),
+            acquireMs: callbackBasi === undefined ? null : Math.round(callbackBasi - baslangic),
+            activeMs: callbackBasi === undefined ? null : Math.round(bitis - callbackBasi),
+            timeoutMs: PRISMA_VARSAYILAN_TIMEOUT_MS,
+          });
+        } catch {
+          // Telemetri asıl sonucu asla değiştirmez.
+        }
       }
-    }
-  })();
+    })();
+  };
+  return retryOnLockConflictEnabled ? retryOnLockConflict(tekDeneme) : tekDeneme();
 }
 
 export async function findIdempotencyRecord(

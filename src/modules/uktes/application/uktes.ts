@@ -1,3 +1,4 @@
+import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
@@ -31,7 +32,11 @@ async function requireUkteActor(tx: TransactionClient, actor: ActorContext, acce
   if (access === "ADMIN" && user.role !== "ADMIN")
     throw new AppError("FORBIDDEN", 403, "Bu işlem için yetkiniz yok.");
   if (access === "WRITE" && !user.writerApproved)
-    throw new AppError("WRITER_APPROVAL_REQUIRED", 403, "Yazar hesabınız admin onayı bekliyor.");
+    throw new AppError(
+      "WRITER_APPROVAL_REQUIRED",
+      403,
+      writerIntakeOpen() ? "Yazar hesabınız admin onayı bekliyor." : WRITER_INTAKE_CLOSED_MESSAGE,
+    );
   return user;
 }
 export const authorizeUkteAction = (db: DatabaseExecutor, actor: ActorContext, access: Access) =>

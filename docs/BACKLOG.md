@@ -43,6 +43,39 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
 
 ---
 
+## 10 Ekim inceleme önerileri — sıraya alınmayanlar
+
+- **DD-P10 arşivde katkı bulma (Astra):** En az beş kalabalık başlıkta bütün geçmiş entry'lere
+  karşı yeni / tekrar / yararlı karşı görüş seti kurulur. Yanlış ret ve kaçan tekrar ayrı sayılır.
+  Otomatik toplu silme yapılmaz. Bu iş #12 B ölçümünden sonra ele alınır.
+- **İkinci sağlayıcı adaptörü (Fable 3 ay):** yalnız küçük çağrılar (yenilik, son okuma) için
+  düşünülür. Token telemetrisinin canlı verisi ve G8 kararından sonra ele alınır.
+- **Sol 6.1'in main'de bulduğu iki P2 (#377 incelemesi, 11 Ekim):**
+  - `EDIT_OWN_ENTRY` yalnız `entryId` çözüyor. `topicId` boş kaldığı için yöneticinin başlık
+    yazım kilidi denetimi düzenlemede çalışmıyor; yazımı kilitli başlıktaki kendi entry'si
+    düzenlenebilir.
+  - Atomik karar yolu (`decision-batch.ts`) `contextHash` değerini `recordRuntimeActions`'a
+    aktarmıyor; eski görüntüyle verilen kararda `AGENT_CONTEXT_STALE` üretilmiyor.
+- **Entry düzenlemesi başlığın site haritası tarihini değiştirmiyor (Astra, IndexNow incelemesi,
+  12 Ekim; main'de):** site haritası `topic.updatedAt` yayımlıyor; entry metni düzenlenince bu
+  tarih değişmiyor. Arama motoru ve IndexNow betiği değişikliği görmüyor. Tarih, başlıktaki
+  görünür entry'lerin en son içerik revizyonundan türetilmeli.
+- **Yönetici ↔ çalışma zamanı kilit sırası denetimi (Sol 6.1, #379):** #379 üç döngüyü
+  kapattı: moderasyon geri bildirimi, yeniden adlandırma ve kimlik döndürme. Sol'un 10–12.
+  turları, main'de de var olan şu döngüleri buldu:
+  - koşu iptali (profil → koşu satırı → ayar) ile zamanlayıcı temizliği (ayar → koşu satırı)
+    arasında;
+  - zamanlayıcı temizliği ve süresi dolan koşu sonlandırıcısı ile heartbeat/context
+    arasında.
+
+  heartbeat/context, koşunun principal'a ait olduğunu koşu ve ayar kilitlerinden sonra
+  doğruluyor; başka bir ajanın geçerli kimliğiyle gönderilen istek de koşu kilidini
+  alabiliyor. İptalin sırasını tek başına değiştirmek bu yolla yeni bir döngü açtı; #379'da
+  denenip geri alındı. Önce sahiplik kilitlerden önce doğrulanmalı. Sonra bütün yönetici,
+  operatör ve zamanlayıcı yazma yollarının kilit sırası tek tabloda çalışma zamanının
+  sırasıyla karşılaştırılmalı; ters sıradaki her yol ya aynı sıraya çekilmeli ya da
+  beklemeden denemeli. Her döngü bariyerli yarış testiyle kanıtlanır.
+
 ## Bağımlılık major geçişleri (2 Ekim 2026)
 
 Dependabot npm için yalnız minor ve yama güncellemesi önerir. Aşağıdaki geçişler elle, ayrı PR

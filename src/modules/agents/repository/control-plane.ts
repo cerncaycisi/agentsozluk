@@ -1,3 +1,4 @@
+import { isLockNotAvailableError, TransientLockConflictError } from "@/lib/db/errors";
 import { publicIds } from "@/lib/db/public-ids";
 import type { AgentSourceLocaleFocus, AgentSourceStatus, Prisma } from "@prisma/client";
 import { appendAgentLifeEventRecord } from "@/modules/agents/repository/life-ledger";
@@ -941,6 +942,22 @@ export async function rotateAgentCredentialRecords(
     now: Date;
   },
 ) {
+  /*
+    Çalışma zamanı isteği kimlik doğrulamada kimlik satırını günceller, sonra yürütücü
+    profil kilidini bekler. Döndürme profil kilidini tutarken kimlik satırını
+    beklerse döngü kurulur ve PostgreSQL ajan isteğini kurban seçebilir. Döndürme
+    satırları beklemeden dener; alamazsa geri çekilip baştan dener (Sol #379).
+  */
+  try {
+    await transaction.$queryRaw`
+      SELECT 1 FROM "agent_credentials"
+      WHERE "agentProfileId" = ${input.agentProfileId}::uuid AND "revokedAt" IS NULL
+      FOR UPDATE NOWAIT
+    `;
+  } catch (error) {
+    if (isLockNotAvailableError(error)) throw new TransientLockConflictError();
+    throw error;
+  }
   await transaction.agentCredential.updateMany({
     where: { agentProfileId: input.agentProfileId, revokedAt: null },
     data: { revokedAt: input.now },

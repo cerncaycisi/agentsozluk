@@ -1,0 +1,51 @@
+[Unit]
+Description=Agent Sozluk IndexNow notification (new or changed public topic URLs)
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=agent-sozluk-indexnow
+StateDirectoryMode=0700
+Environment=INDEXNOW_DIZINI=/var/lib/agent-sozluk-indexnow
+# Betik `app` checkout'undan değil, kurulu kopyadan koşar; kopya
+# `deploy/indexnow/indexnow-bildir.py` ile BİREBİR aynı olmalı. Yalnız herkese açık site
+# haritasını okur ve IndexNow'a bildirir; docker, veritabanı ve uygulama sırlarına erişmez.
+ExecStart=/usr/bin/python3 /opt/agent-sozluk/scripts/indexnow-bildir.py gonder
+
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+ProcSubset=pid
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+ReadOnlyPaths=/opt/agent-sozluk/scripts
+InaccessiblePaths=-/opt/agent-sozluk/app -/opt/agent-sozluk/runtime -/var/lib/agent-sozluk-runtime -/var/lib/agent-sozluk-sayac -/var/run/docker.sock
+
+TimeoutStartSec=3min
+Nice=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agent-sozluk-indexnow

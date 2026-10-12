@@ -66,6 +66,18 @@ export async function lockAgentLifeLedger(
   await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
 }
 
+/** Beklemeden dener; ajan yürütücüsü tutuyorsa false döner (#379). */
+export async function tryLockAgentLifeLedger(
+  transaction: TransactionClient,
+  agentProfileId: string,
+): Promise<boolean> {
+  const key = `agent-life:${agentProfileId}`;
+  const [row] = await transaction.$queryRaw<Array<{ locked: boolean }>>`
+    SELECT pg_try_advisory_xact_lock(hashtextextended(${key}, 0)) AS locked
+  `;
+  return row?.locked === true;
+}
+
 export async function appendAgentLifeEventRecord(
   transaction: TransactionClient,
   input: AppendAgentLifeEventInput,

@@ -85,14 +85,13 @@ describe("son okuma parçaları", () => {
     const units = runtimeFinalReadUnits(body);
     expect(units).toHaveLength(2);
     expect(applyRuntimeFinalRead(body, units, [2])).toBeNull();
-    expect(applyRuntimeFinalRead(body, units, [2], { lastUnitOnly: true })).toBeNull();
   });
 
   it("başka bir ciddi iddia varken yeni açılan çekincesiz iddiayı fark eder", () => {
     const body =
       "Mahkemenin kararı, belediye ihalesindeki rüşvet ilişkisini açığa çıkaran denetim raporunun nasıl işlendiğini ve kamu kaynaklarının kontrolünde hangi kurumsal boşlukların bulunduğunu gösteren bir örnek. Şirket müdürü kamu görevlisine rüşvet verdi; ancak bu iddia henüz doğrulanmadı.";
     const units = runtimeFinalReadUnits(body);
-    expect(applyRuntimeFinalRead(body, units, [units.length], { lastUnitOnly: true })).toBeNull();
+    expect(applyRuntimeFinalRead(body, units, [units.length])).toBeNull();
   });
 
   it("yeni başlıkta başlık anayasasını ve kapanış tekrarını önce/sonra karşılaştırır", () => {
@@ -235,26 +234,21 @@ describe("son okuma adayları", () => {
     ]);
   });
 
-  it("kaynaklı entry'yi son okumaya almaz; yalnız son parça kipi yine sayı ve atıfı korur", () => {
-    const head =
-      "Düzenli kahve tüketimi kalp hastalığına bağlı ölüm riskini azaltıyor ve bu etki, beslenme alışkanlıklarının uzun vadeli sağlık sonuçlarıyla bağlantısını araştıran çalışmada belirgin biçimde görünüyor.";
+  it("kaynaklı entry'yi son okumaya almaz", () => {
     const sourced = {
       actions: [
         {
           sequence: 1,
           actionType: "CREATE_ENTRY",
-          input: { topicId: "t1", body: `${head} Bu ilişki tek başına nedensellik kanıtı değil.` },
+          input: {
+            topicId: "t1",
+            body: "bankanın yeni finansman programı üretim ve ticaret ekosistemini destekleyecek çözümleri çeşitlendirme çerçevesinde anlatılıyor ve ayrıntı vermiyor. tutar verilmeden etkisini hesaplamak mümkün değil.",
+          },
           provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: [], shortRationale: "x" },
         },
       ],
     } as unknown as RuntimeDecision;
     expect(runtimeFinalReadCandidates(sourced, {})).toEqual([]);
-    for (const tail of ["toplam 111 trilyon dolar.", "bakanlığa göre plan hazır."]) {
-      const body = `${head} ${tail}`;
-      expect(
-        applyRuntimeFinalRead(body, runtimeFinalReadUnits(body), [2], { lastUnitOnly: true }),
-      ).toBeNull();
-    }
   });
 
   it("alıntı sınırı belirsiz gövdeyi son okumaya almaz, çok satırlı alıntıyı bölmez", () => {

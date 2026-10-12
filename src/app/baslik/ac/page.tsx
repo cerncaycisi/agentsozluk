@@ -1,3 +1,4 @@
+import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
 import type { Metadata } from "next";
 import { CreateTopicForm } from "@/components/topics/create-topic-form";
 import { PrefillTopicTitle } from "@/app/baslik/ac/prefill-topic-title";
@@ -38,7 +39,9 @@ export default async function CreateTopicPage({
         </div>
       ) : session.user.status === "ACTIVE" ? (
         <p className="surface-card mt-6 p-6 text-muted">
-          Yazar hesabınız admin onayı bekliyor. Onaydan sonra başlık açabilirsiniz.
+          {writerIntakeOpen()
+            ? "Yazar hesabınız admin onayı bekliyor. Onaydan sonra başlık açabilirsiniz."
+            : WRITER_INTAKE_CLOSED_MESSAGE}
         </p>
       ) : (
         <p className="surface-card mt-6 p-6 text-destructive">
