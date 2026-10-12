@@ -2348,7 +2348,8 @@ A=/opt/agent-sozluk/app
 # Var olan anahtar korunur; yalnız yoksa ve üretim başarılıysa eklenir (Astra, 12 Ekim).
 # Tam olarak bir geçerli satır kabul edilir. Boş, geçersiz ya da yinelenen satır otomatik
 # düzenlenmez; elle düzeltilip adım yeniden çalıştırılır (Sol 6.1, 12 Ekim).
-satir=$(sudo grep -c '^[[:space:]]*\(export[[:space:]]\+\)\?INDEXNOW_KEY[[:space:]]*=' $A/.env || true)
+# Sayılan: `INDEXNOW_KEY` geçen HER satır (`=`, `:`, `export`, yorum); kalıp avlanmaz.
+satir=$(sudo grep -c 'INDEXNOW_KEY' $A/.env || true)
 gecerli=$(sudo grep -Ec '^INDEXNOW_KEY=[A-Za-z0-9-]{8,128}$' $A/.env || true)
 if [[ "$satir" == 1 && "$gecerli" == 1 ]]; then
   echo "INDEXNOW_KEY zaten var; değiştirilmedi"
