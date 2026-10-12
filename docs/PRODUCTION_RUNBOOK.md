@@ -2320,6 +2320,40 @@ sudo systemctl enable --now agent-sozluk-sayac.timer
 
 Kaldırmak için zamanlayıcıyı `disable --now` ile kapat; veri dizini kendiliğinden silinmez.
 
+## IndexNow bildirimi
+
+Gökhan onayı, 12 Ekim 2026 ("indexnow, faydalı bişise kur"); plandaki karşılığı sıra 4. Yeni ya da
+değişen başlık adresleri saatte bir IndexNow'a bildirilir; bildirim Bing, Yandex ve öteki katılımcı
+arama motorlarına iletilir. Google IndexNow kullanmaz.
+
+- **Uygulama dışarı istek atmaz.** Uygulama yalnız `/indexnow-key.txt` adresinde anahtarı
+  yayımlar; anahtar üretim `.env` dosyasında `INDEXNOW_KEY` olarak durur, depoya yazılmaz.
+  Anahtar yoksa rota 404 döner ve betik turu atlar.
+- **Betik:** `deploy/indexnow/indexnow-bildir.py`. Sitenin herkese açık site haritasını okur;
+  yalnız `/baslik/` adreslerini gönderir. Docker'a, veritabanına ve uygulama sırlarına erişmez.
+- **Durum:** son 3 günde bildirilen `(adres, lastmod)` çiftleri
+  `/var/lib/agent-sozluk-indexnow/bildirilen.json` dosyasında. Bildirim başarısızsa durum
+  yazılmaz; sonraki tur yeniden dener. Tek turda en çok 2.000 adres.
+- **Birim:** `agent-sozluk-indexnow.{service,timer}`; saatte bir, `DynamicUser`, yalnız IPv4/IPv6
+  çıkışı.
+
+Kurulum (anahtar bir kez üretilir; değer kayda ya da depoya yazılmaz):
+
+```sh
+A=/opt/agent-sozluk/app
+sudo cp -p $A/.env $A/.env.yedek-$(date -u +%Y%m%dT%H%M%SZ)
+printf '\nINDEXNOW_KEY=%s\n' "$(openssl rand -hex 16)" | sudo tee -a $A/.env >/dev/null
+# Uygulama yeniden başlatılınca anahtar yayımlanır; dağıtımla birlikte yapılır.
+sudo install -o root -g root -m 0755 $A/deploy/indexnow/indexnow-bildir.py /opt/agent-sozluk/scripts/indexnow-bildir.py
+sudo install -o root -g root -m 0644 $A/deploy/systemd/agent-sozluk-indexnow.service $A/deploy/systemd/agent-sozluk-indexnow.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo python3 /opt/agent-sozluk/scripts/indexnow-bildir.py durum
+sudo systemctl enable --now agent-sozluk-indexnow.timer
+```
+
+Kapatmak için zamanlayıcıyı `disable --now` ile kapat. `INDEXNOW_KEY` satırı silinirse rota 404
+döner ve gönderilen bildirimler doğrulanamaz.
+
 ## Gecelik sunucu dışı yedek (B9)
 
 Karar: Gökhan, 24 Eylül 2026 ("mantıklıysa ok"). Kişisel operatör sunucusu her gece

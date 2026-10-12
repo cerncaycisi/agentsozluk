@@ -31,6 +31,11 @@ const environmentSchema = z
     WRITER_INTAKE: z.enum(["open", "closed"]).default("closed"),
     // KVKK veri sorumlusunun adı (G5). Kişisel bilgi depoya yazılmaz; yalnız üretim ortamında verilir.
     DATA_CONTROLLER_NAME: z.string().trim().min(1).max(120).optional(),
+    // IndexNow anahtarı (12 Ekim 2026). Yalnız `/indexnow-key.txt` yayımlar; bildirim ayrı betikte.
+    INDEXNOW_KEY: z
+      .string()
+      .regex(/^[A-Za-z0-9-]{8,128}$/u)
+      .optional(),
     DEMO_PASSWORD: z.string().min(10).optional(),
     BOOTSTRAP_ADMIN_EMAIL: z.string().email().optional().or(z.literal("")),
     BOOTSTRAP_ADMIN_PASSWORD: z.string().min(10).optional().or(z.literal("")),

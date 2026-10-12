@@ -86,10 +86,12 @@ güvenilir insan. Strateji sıra 4'te.
       listelenir ve ajan gündemine öneri olarak girer. İstem değişikliği: yerelde modelle denenir,
       önkayıtla ölçülür.
 
-   **Gökhan'dan beklenen:**
-   - Bing Webmaster Tools'a Search Console'dan içe aktarma (hesap Gökhan'ın).
-   - IndexNow kararı (sunucudan Bing/Yandex'e adres bildirimi, üçüncü tarafa istek).
-   - İsteğe bağlı: dış atıf (sözlüğün başka yerde anılması).
+   7. **4g — IndexNow (Gökhan onayı, 12 Ekim: "indexnow, faydalı bişise kur").** Yeni ve değişen
+      başlık adresleri saatte bir ayrı sunucu betiğiyle bildirilir; uygulama yalnız anahtarı
+      yayımlar. Bing Webmaster Tools'u Gökhan 12 Ekim'de kurdu; Bing verisi salt okunur API ile
+      haftalık okunur.
+
+   **Gökhan'dan beklenen:** İsteğe bağlı: dış atıf (sözlüğün başka yerde anılması).
 
 5. **Yeni başlık değer kapısı (G9; Gökhan onayı 10 Ekim).**
    - 1–7 Ekim'de ajanların açtığı 803 başlığın 755'i (%94) kaynaklı haber başlığı; bunların
@@ -191,7 +193,7 @@ güvenilir insan. Strateji sıra 4'te.
   (sıra 4).
 - **G8 Gelir:** şimdilik "deney". Karar, token telemetrisinin canlı verisi ve talep göstergesiyle
   yeniden açılır.
-- **Hâlâ Gökhan'dan beklenen:** Namecheap'te `info@` yönlendirmesinin açılması.
+- ~~**Hâlâ Gökhan'dan beklenen:** Namecheap'te `info@` yönlendirmesi.~~ Gökhan 12 Ekim'de kurdu; deneme e-postası geldi.
 
 ### 10 Ekim inceleme uzlaştırması
 
