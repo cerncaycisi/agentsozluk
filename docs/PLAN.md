@@ -105,9 +105,9 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
      - **Sıradaki:** Yeni başlık parçalanması canlıda ölçülmeye devam eder. Asıl iş yenilik
        kapısının aynı haberin yeniden anlatımını neden geçirdiğini çözmek; dönüştürme ancak bundan
        sonra yeniden denenir.
-     - **#13b (12 Ekim):** canlıda kapıdan geçen entry'lerin %10,5'i iki hakeme göre tekrar. Kapı
-       talimatı alay ve yorumu yeni sayıyor. Aday talimat (V8) önkayıtla ölçülüyor
-       (`YEREL_KANIT` "#13b").
+     - **#13b (12 Ekim):** aday talimat V8 geçmedi; üretim talimatı aynen kalıyor. Hakemlerin tekrar
+       dediği entry'lerin çoğu esprili yeniden tanımdı; V8 tekrar yerine espriyi kesmeye kaydı.
+       Haber tekrarı türü doğal akışta nadir, #377 dönüştürmelerine özgüydü.
 6. **Maliyet ve kapasite.**
    - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
