@@ -27,7 +27,7 @@ export interface DuplicateTopicPair {
 */
 export async function findDuplicateTopicPairs(
   transaction: Prisma.TransactionClient,
-  input: { since: Date; threshold: number; limit: number },
+  input: { since: Date; threshold: number; limit: number; reporterUsername: string },
 ): Promise<DuplicateTopicPair[]> {
   await transaction.$executeRaw`SELECT set_config('pg_trgm.similarity_threshold', ${String(input.threshold)}, true)`;
   const rows = await transaction.$queryRaw<DuplicateTopicPair[]>(Prisma.sql`
@@ -78,8 +78,9 @@ export async function findDuplicateTopicPairs(
         )
     )
     /*
-      İki başlığın da açık kopya raporu varsa çift bugün raporlanamaz (hedef başına tek açık
-      rapor); sınırı tüketmesin diye atlanır, rapor kararı verilince yeniden taranır (Sol, 12 Ekim).
+      İki başlığın da karagözün açtığı açık kopya raporu varsa çift bugün raporlanamaz (raporlayan
+      + hedef başına tek açık rapor); sınırı tüketmesin diye atlanır, rapor kararı verilince
+      yeniden taranır. Başkalarının raporları karagözü engellemez (Sol, 12 Ekim).
     */
     AND NOT (
       EXISTS (
@@ -87,6 +88,10 @@ export async function findDuplicateTopicPairs(
         WHERE open_newer."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
           AND open_newer."targetType" = 'TOPIC'
           AND open_newer."status" = 'OPEN'
+          AND open_newer."reporterId" IN (
+            SELECT reporter.id FROM "users" AS reporter
+            WHERE reporter."usernameNormalized" = ${input.reporterUsername}
+          )
           AND open_newer."targetId" = newer.id
       )
       AND EXISTS (
@@ -94,6 +99,10 @@ export async function findDuplicateTopicPairs(
         WHERE open_older."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
           AND open_older."targetType" = 'TOPIC'
           AND open_older."status" = 'OPEN'
+          AND open_older."reporterId" IN (
+            SELECT reporter.id FROM "users" AS reporter
+            WHERE reporter."usernameNormalized" = ${input.reporterUsername}
+          )
           AND open_older."targetId" = older.id
       )
     )

@@ -388,6 +388,39 @@ describe("karagöz kurulumu", () => {
     expect(pairs).toEqual([expect.objectContaining({ newerId: y2.id, olderId: y1.id })]);
   });
 
+  it("başka bir kullanıcının açık raporları karagözü susturmaz (Sol, 12 Ekim, 3. tur)", async () => {
+    const admin = await createUser("baska_admin", "HUMAN", "ADMIN");
+    const insan = await createUser("gammazci_insan", "HUMAN", "USER");
+    const agent = await createUser("baska_ajan", "AGENT", "USER");
+    const now = new Date("2026-10-12T12:00:00.000Z");
+    const a = await createTopic(
+      "toplantı notu tutmak",
+      agent.id,
+      new Date("2026-10-11T00:00:00.000Z"),
+      2,
+    );
+    const c = await createTopic(
+      "toplantı notunu tutmak",
+      agent.id,
+      new Date("2026-10-12T00:00:00.000Z"),
+      1,
+    );
+    for (const target of [a, c])
+      await integrationDatabase.report.create({
+        data: {
+          reporterId: insan.id,
+          targetType: "TOPIC",
+          targetId: target.id,
+          reason: "TOPIC_CANONICALIZATION_REQUEST",
+          evidence: { suggestedTitle: "ilgisiz başlık" },
+          details: "insan gammazı: deneme.",
+        },
+      });
+    await ensureKaragoz(integrationDatabase, actor(admin.id));
+    const pairs = await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 });
+    expect(pairs).toEqual([expect.objectContaining({ newerId: c.id, olderId: a.id })]);
+  });
+
   it("yalnız yönetici kurabilir", async () => {
     const user = await createUser("sade_kullanici", "HUMAN", "USER");
     await expect(

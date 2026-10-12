@@ -54,6 +54,7 @@ export async function scanDuplicateTopics(
       since: new Date(input.now.getTime() - days * 86_400_000),
       threshold,
       limit,
+      reporterUsername: KARAGOZ.username,
     }),
   );
 }
