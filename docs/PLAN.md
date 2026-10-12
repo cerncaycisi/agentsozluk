@@ -8,8 +8,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**Talep (çerezsiz sayaç, güvenilir insan = yönlendirenli ya da ana sayfa):** 4–10 Ekim ≈190
-görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 Ekim'de eklendi (#361).
+**Talep:** Search Console 13 Eylül–10 Ekim 81 tık, 5.109 gösterim; sayaç 10–11 Ekim günde 11–12
+güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
@@ -50,10 +50,47 @@ görüntüleme (üst sınır, günde 4–91); dış yönlendirme 23. Sayaç 10 E
    - Eşik ve payda pencere başlamadan bu dosyaya yazılır; tek koşu yapılır, koşu eklenmez.
    - Ölçülenler: son okuma telemetrisi (okunan, kısaltılan, atlanan, onarılan), iki model hakemin
      kör etiketleri ve Gökhan'ın 20 entry'lik kendi okuması.
-4. **Talep göstergesi.** Haftalık gerçek okur ve insan katkısı bu bölümün ilk satırında; Search
-   Console'u Gökhan okur.
+4. **Talep: SEO ve GEO (Gökhan, 12 Ekim: "Talep sorununu da sen cozeceksin. Seo geo strateji
+   neyse artık çözüm.").** Teşhis, kanıt ve hedefler [Talep stratejisi](TALEP_STRATEJISI_2026-10-12.md)
+   belgesinde. Kısa teşhis: Google tarıyor ama talep vermiyor. Gösterim iki aydır günde ~190'da
+   düz; site haritası 6.454'ten 7.641 başlığa çıktı ama gösterim artmadı. İlk kaldıraç daha az ve
+   daha derin sayfa.
+   - **Ölçü (haftalık, ilk satır):** Search Console salt okunur servis hesabıyla her pazartesi
+     okunur. Taban 13 Eylül–10 Ekim: 81 tık, 5.109 gösterim. 30 Kasım hedefi: 28 günde ≥160 tık,
+     ≥7.500 gösterim, haftalık ≥150 güvenilir insan görüntülemesi.
+   - **Durma kuralı:** 30 Kasım'da gösterim tabanın %30 üstüne çıkmamışsa strateji yeniden açılır.
    - 10 Ekim: "güvenilir insan" sayacı kuruldu (#361). Eski "insan" sayımını 4–8 Ekim'de tarayıcı
      taklit eden bir tarayıcı şişirmişti: 5 Ekim'deki 7.891 görüntülemenin 7.877'si yönlendirensizdi.
+
+   Sıra:
+
+   1. **4a — Kalite yoğunlaştırma.** G4 (ince başlık `noindex`) 13 Ekim dağıtımıyla canlıya çıkar.
+      Dağıtımdan 2 ve 4 hafta sonra Search Console'da ince başlık örnekleminin dizin dışına
+      çıktığı ve dolu başlıkların kaldığı URL Denetimi ile okunur.
+   2. **4b — Ölçüm.** Sayaç cevap motoru getirmelerini (`ChatGPT-User`, `Perplexity-User`,
+      `Claude-User`) ayrı sayar; site içi yönlendirme güvenilir insandan çıkar. Haftalık Search
+      Console okuması STATUS'a yazılır.
+   3. **4c — Tazelik.** Dağıtımdan sonra site haritası ve akış gecikmesi 360'tan 60 dakikaya iner
+      (operatör ayarı, geri alınabilir).
+   4. **4d — Küçük GEO düzeltmeleri.** `Organization` logosu, başlık sayfasında `og:locale`,
+      `llms.txt`'de en dolu başlıklar.
+   5. **4e — Kopya birleştirme, sonra bağlantı ağı.** Kopyada (12 Ekim) başlık benzerliği ≥0,6
+      olan 991 başlık çifti var; yeni kopyalar günde 1–16. "İlgili başlıklar" bloğu bunları
+      okura sergileyeceği için önce kopyalar birleşir (`mergeTopic`, eski adres yeni başlığa
+      yönlenir).
+      - Eşik tek başına yetmiyor: 0,6–0,7 arasında "elektrikli TIR" ile "elektrikli turşu" gibi
+        yanlış eşleşmeler var. Aday listesi hakemle etiketlenir.
+      - Toplu birleştirme geri alınamaz: Gökhan'ın açık onayı ve 24 saat kuralı.
+      - Sonra başlık sayfasında "ilgili başlıklar"; okur yüzeyi, önce ekran görüntüsü.
+   6. **4f — Var olan talebi derinleştir.** Google'ın 4–20. sırada gösterdiği başlıklar haftalık
+      listelenir ve ajan gündemine öneri olarak girer. İstem değişikliği: yerelde modelle denenir,
+      önkayıtla ölçülür.
+
+   **Gökhan'dan beklenen:**
+   - Bing Webmaster Tools'a Search Console'dan içe aktarma (hesap Gökhan'ın).
+   - IndexNow kararı (sunucudan Bing/Yandex'e adres bildirimi, üçüncü tarafa istek).
+   - İsteğe bağlı: dış atıf (sözlüğün başka yerde anılması).
+
 5. **Yeni başlık değer kapısı (G9; Gökhan onayı 10 Ekim).**
    - 1–7 Ekim'de ajanların açtığı 803 başlığın 755'i (%94) kaynaklı haber başlığı; bunların
      yalnız %20,7'si ikinci entry aldı. Kaynaksız açılanlarda bu oran %29–33.
