@@ -4,6 +4,7 @@ import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
   duplicateReportPlan,
   ensureKaragoz,
+  resolveSuggestedCanonicalTopic,
   fileDuplicateTopicReports,
   resolveKaragozActor,
   scanDuplicateTopics,
@@ -174,6 +175,8 @@ describe("karagöz", () => {
         olderTitle: "Galaxy Buds",
         olderEntryCount: 1,
         olderCreatedAt: new Date(),
+        newerHasSeed: false,
+        olderHasSeed: false,
         similarity: 0.8,
       }),
     ).toEqual({
@@ -462,6 +465,77 @@ describe("karagöz kurulumu", () => {
     const now = new Date("2026-10-12T12:00:00.000Z");
     const pairs = await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 });
     expect(pairs).toContainEqual(expect.objectContaining({ newerId: b.id, olderId: c.id }));
+  });
+
+  it("seed entry taşıyan başlık kaynak olmaz; ikisinde de seed varsa çift elenir (Sol, 12 Ekim, 7. tur)", () => {
+    const base = {
+      newerId: "yeni",
+      newerTitle: "toplantı notunu tutmak",
+      newerEntryCount: 4,
+      newerCreatedAt: new Date(),
+      olderId: "eski",
+      olderTitle: "toplantı notu tutmak",
+      olderEntryCount: 1,
+      olderCreatedAt: new Date(),
+      similarity: 0.8,
+    };
+    // Sayıya göre eski kaynak olurdu; eski seed taşıyor, yeni kaynak olur.
+    expect(duplicateReportPlan({ ...base, newerHasSeed: false, olderHasSeed: true }).sourceId).toBe(
+      "yeni",
+    );
+    expect(duplicateReportPlan({ ...base, newerHasSeed: true, olderHasSeed: false }).sourceId).toBe(
+      "eski",
+    );
+  });
+
+  it("iki tarafında seed olan çift taranmaz", async () => {
+    const admin = await createUser("seed_admin", "HUMAN", "ADMIN");
+    const agent = await createUser("seed_ajan", "AGENT", "USER");
+    const now = new Date("2026-10-12T12:00:00.000Z");
+    for (const [title, gun] of [
+      ["toplantı notu tutmak", 10],
+      ["toplantı notunu tutmak", 11],
+    ] as const) {
+      const topic = await createTopic(title, agent.id, new Date(Date.UTC(2026, 9, gun)), 1);
+      await integrationDatabase.entry.create({
+        data: {
+          topicId: topic.id,
+          authorId: admin.id,
+          body: "Korunan seed entry, birleştirmeyi engeller ve yeterince uzundur.",
+          normalizedBody: "korunan seed entry birleştirmeyi engeller ve yeterince uzundur",
+          origin: "SEED",
+        },
+      });
+    }
+    expect(await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 })).toEqual([]);
+  });
+
+  it("önerilen başlık birleştiyse birleştiği başlığa çözülür (Sol, 12 Ekim, 7. tur)", async () => {
+    const agent = await createUser("cozum_ajan", "AGENT", "USER");
+    const b = await createTopic("toplantı notu almak", agent.id, new Date(), 3);
+    const a = await createTopic("toplantı notu tutmak", agent.id, new Date(), 1);
+    await integrationDatabase.topic.update({
+      where: { id: a.id },
+      data: { status: "MERGED", mergedIntoId: b.id },
+    });
+    expect(
+      await resolveSuggestedCanonicalTopic(integrationDatabase, "toplantı notu tutmak"),
+    ).toEqual(expect.objectContaining({ id: b.id, title: "toplantı notu almak" }));
+  });
+
+  it("kurulum yetki verirken denetim izi bırakır (Sol, 12 Ekim, 7. tur)", async () => {
+    const admin = await createUser("iz_admin", "HUMAN", "ADMIN");
+    await ensureKaragoz(integrationDatabase, actor(admin.id));
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: { action: "user.capability_granted", actorId: admin.id },
+      }),
+    ).toBe(1);
+    expect(
+      await integrationDatabase.moderationAction.count({
+        where: { actionType: "CAPABILITY_GRANTED", moderatorId: admin.id },
+      }),
+    ).toBe(1);
   });
 
   it("yalnız yönetici kurabilir", async () => {

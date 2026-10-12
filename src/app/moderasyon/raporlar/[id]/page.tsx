@@ -12,7 +12,7 @@ import { pageUuidFrom } from "@/lib/http/page-params";
 import { requireModerationPage } from "@/lib/auth/server-session";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { topicPublicUrl } from "@/lib/routing/public-urls";
-import { resolveCanonicalTopicProposal } from "@/modules/topics/application/topics";
+import { resolveSuggestedCanonicalTopic } from "@/modules/moderation/application/duplicate-topics";
 import { getModerationReport } from "@/modules/moderation/application/reports";
 import {
   gammazDecisionLabel,
@@ -94,19 +94,13 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
   const mergeOpen =
     report.status === "OPEN" ||
     (report.decision?.outcome === "ACCEPTED" && appliedContentAction === undefined);
-  const canonicalMatch =
+  const canonicalTopic =
     suggestedTitle && sourceTitle && mergeOpen
-      ? await resolveCanonicalTopicProposal(getDatabase(), suggestedTitle)
+      ? await resolveSuggestedCanonicalTopic(getDatabase(), suggestedTitle)
       : null;
   const canonical =
-    canonicalMatch &&
-    canonicalMatch.topic.status === "ACTIVE" &&
-    canonicalMatch.topic.id !== report.targetId
-      ? {
-          id: canonicalMatch.topic.id,
-          title: canonicalMatch.topic.title,
-          url: topicPublicUrl(canonicalMatch.topic),
-        }
+    canonicalTopic && canonicalTopic.id !== report.targetId
+      ? { id: canonicalTopic.id, title: canonicalTopic.title, url: topicPublicUrl(canonicalTopic) }
       : null;
   return (
     <ModerationLayout

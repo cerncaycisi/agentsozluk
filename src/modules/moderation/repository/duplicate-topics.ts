@@ -9,6 +9,8 @@ export interface DuplicateTopicPair {
   olderTitle: string;
   olderEntryCount: number;
   olderCreatedAt: Date;
+  newerHasSeed: boolean;
+  olderHasSeed: boolean;
   similarity: number;
 }
 
@@ -66,6 +68,8 @@ export async function findDuplicateTopicPairs(
       newer."createdAt" AS "newerCreatedAt",
       older.id AS "olderId", older.title AS "olderTitle", older."entryCount" AS "olderEntryCount",
       older."createdAt" AS "olderCreatedAt",
+      EXISTS (SELECT 1 FROM "entries" AS seed WHERE seed."topicId" = newer.id AND seed."origin" = 'SEED') AS "newerHasSeed",
+      EXISTS (SELECT 1 FROM "entries" AS seed WHERE seed."topicId" = older.id AND seed."origin" = 'SEED') AS "olderHasSeed",
       pairs.similarity
     FROM pairs
     JOIN "topics" AS newer ON newer.id = pairs.newer_id
@@ -78,6 +82,11 @@ export async function findDuplicateTopicPairs(
           (report."targetId" = newer.id AND report."evidence"->>'suggestedTitle' = older.title)
           OR (report."targetId" = older.id AND report."evidence"->>'suggestedTitle' = newer.title)
         )
+    )
+    -- İki başlıkta da korunan seed entry varsa hiçbiri birleştirilemez (Sol, 12 Ekim).
+    AND NOT (
+      EXISTS (SELECT 1 FROM "entries" AS seed WHERE seed."topicId" = newer.id AND seed."origin" = 'SEED')
+      AND EXISTS (SELECT 1 FROM "entries" AS seed WHERE seed."topicId" = older.id AND seed."origin" = 'SEED')
     )
     /*
       İki başlığın da karagözün açtığı açık kopya raporu varsa çift bugün raporlanamaz (raporlayan
@@ -177,5 +186,12 @@ export function findKaragozUser(transaction: Prisma.TransactionClient, username:
         take: 1,
       },
     },
+  });
+}
+
+export function findTopicMergeTarget(transaction: Prisma.TransactionClient, topicId: string) {
+  return transaction.topic.findUnique({
+    where: { id: topicId },
+    select: { id: true, publicId: true, slug: true, title: true, status: true, mergedIntoId: true },
   });
 }

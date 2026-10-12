@@ -4,13 +4,18 @@ import { AppError } from "@/lib/http/errors";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { createReport } from "@/modules/moderation/application/reports";
 import { findModerationActor } from "@/modules/moderation/repository/actions";
+import { appendAuditLog } from "@/modules/audit";
+import { appendModerationAction } from "@/modules/moderation/repository/history";
+import { appendOutboxEvent } from "@/modules/outbox";
 import { reportCreateSchema } from "@/modules/moderation/validation/schemas";
+import { resolveCanonicalTopicProposal } from "@/modules/topics/application/topics";
 import { randomUUID } from "node:crypto";
 import { getEnvironment } from "@/config/env";
 import { KARAGOZ } from "@/modules/moderation/domain/karagoz";
 import {
   createKaragozUser,
   findKaragozUser,
+  findTopicMergeTarget,
   grantKaragozGammaz,
   findDuplicateTopicPairs,
   type DuplicateTopicPair,
@@ -31,7 +36,15 @@ import {
 export const DUPLICATE_SCAN_DEFAULTS = { days: 3, threshold: 0.8, limit: 30 } as const;
 
 export function duplicateReportPlan(pair: DuplicateTopicPair) {
-  const newerIsCanonical = pair.newerEntryCount > pair.olderEntryCount;
+  /*
+    Korunan seed entry içeren başlık birleştirilemez (mergeTopic ENTRY_NOT_EDITABLE); kaynak
+    olamaz, kanonik olur (Sol, 12 Ekim). İkisinde de seed varsa çift taramada elenir.
+  */
+  const newerIsCanonical = pair.newerHasSeed
+    ? true
+    : pair.olderHasSeed
+      ? false
+      : pair.newerEntryCount > pair.olderEntryCount;
   return newerIsCanonical
     ? { sourceId: pair.olderId, sourceTitle: pair.olderTitle, canonicalTitle: pair.newerTitle }
     : { sourceId: pair.newerId, sourceTitle: pair.newerTitle, canonicalTitle: pair.olderTitle };
@@ -89,8 +102,45 @@ export async function ensureKaragoz(client: DatabaseExecutor, operator: ActorCon
           termsVersion: getEnvironment().TERMS_VERSION,
         })
       ).id;
-    if (!existing || existing.moderationCapabilities.length === 0)
-      await grantKaragozGammaz(transaction, { userId, grantedById: operator.actorId });
+    if (!existing || existing.moderationCapabilities.length === 0) {
+      const record = await grantKaragozGammaz(transaction, {
+        userId,
+        grantedById: operator.actorId,
+      });
+      // Normal yetenek verme akışıyla aynı denetim izi (Sol, 12 Ekim).
+      const reason = "Karagöz kurulumu: kopya başlık gammazı için GAMMAZ yeteneği.";
+      await appendModerationAction(transaction, {
+        moderatorId: operator.actorId,
+        actionType: "CAPABILITY_GRANTED",
+        targetType: "USER",
+        targetId: userId,
+        reason,
+        metadata: {
+          actorKind: operator.actorKind,
+          capability: "GAMMAZ",
+          reason,
+          before: { active: false },
+          after: { active: true },
+        },
+      });
+      await appendAuditLog(transaction, {
+        actorId: operator.actorId,
+        action: "user.capability_granted",
+        entityType: "UserModerationCapability",
+        entityId: record.id,
+        requestId: operator.requestId,
+        metadata: { capability: "GAMMAZ", targetUserId: userId, active: true },
+      });
+      await appendOutboxEvent(transaction, {
+        eventType: "user.capability_granted",
+        aggregateType: "UserModerationCapability",
+        aggregateId: record.id,
+        actorId: operator.actorId,
+        actorKind: operator.actorKind,
+        requestId: operator.requestId,
+        payload: { capability: "GAMMAZ", targetUserId: userId, active: true },
+      });
+    }
     return userId;
   });
   return karagozActor(karagozId);
@@ -188,6 +238,8 @@ async function fileFlipped(
   pair: DuplicateTopicPair,
   plan: ReturnType<typeof duplicateReportPlan>,
 ) {
+  // Ters yönün kaynağı seed taşıyorsa birleştirilemez; ters rapor açılmaz.
+  if (plan.sourceId === pair.newerId ? pair.olderHasSeed : pair.newerHasSeed) return null;
   const other =
     plan.sourceId === pair.newerId
       ? { sourceId: pair.olderId, sourceTitle: pair.olderTitle, canonicalTitle: pair.newerTitle }
@@ -206,4 +258,25 @@ async function fileFlipped(
   } catch {
     return null;
   }
+}
+
+/*
+  Kopya raporundaki önerilen başlığı aktif bir başlığa çözer. Önerilen başlık sonradan başka bir
+  başlığa birleştiyse birleştiği başlık döner (en çok 5 adım); aktif değilse null (Sol, 12 Ekim).
+*/
+export async function resolveSuggestedCanonicalTopic(client: DatabaseExecutor, title: string) {
+  const match = await resolveCanonicalTopicProposal(client, title);
+  if (!match) return null;
+  return inTransaction(client, async (transaction) => {
+    let topic = await findTopicMergeTarget(transaction, match.topic.id);
+    for (
+      let step = 0;
+      topic && topic.status === "MERGED" && topic.mergedIntoId && step < 5;
+      step += 1
+    )
+      topic = await findTopicMergeTarget(transaction, topic.mergedIntoId);
+    return topic && topic.status === "ACTIVE"
+      ? { id: topic.id, title: topic.title, publicId: Number(topic.publicId), slug: topic.slug }
+      : null;
+  });
 }
