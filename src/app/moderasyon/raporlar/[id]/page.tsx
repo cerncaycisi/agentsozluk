@@ -153,6 +153,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 title="Gammaz gerekçesini kabul et"
                 description="Gammaz gerekçesinin doğru olduğunu kaydedin. İçerik işlemi ayrıca uygulanır."
                 fieldName="resolutionNote"
+                defaultReason="Gammaz gerekçesi yerinde bulundu."
               />
               <ConfirmAction
                 endpoint={`/api/v1/moderation/reports/${report.id}/reject`}
@@ -161,6 +162,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 description="Seçilen gerekçenin neden doğrulanmadığını kaydedin."
                 fieldName="resolutionNote"
                 destructive
+                defaultReason="Gammaz gerekçesi yerinde bulunmadı."
               />
             </div>
           </section>

@@ -162,6 +162,7 @@ export default async function ModerationUsersPage({
                       label="Yazarlığı onayla"
                       title="Yazar hesabını onayla"
                       description="Kullanıcı onaydan sonra başlık açabilecek ve entry yazabilecek."
+                      irreversible
                     />
                   ) : null}
                   {user.status === "ACTIVE" &&

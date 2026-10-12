@@ -89,6 +89,8 @@ export default async function EntryReviewPage({
                   title="Entry canlandırılsın mı?"
                   description="Entry public akışa döner ve çöp vakası kapanır."
                   fieldName="rationale"
+                  irreversible
+                  defaultReason="Canlandırma talebi yerinde bulundu; entry yeniden yayımlanıyor."
                 />
                 <ConfirmAction
                   endpoint={`/api/v1/moderation/revival-requests/${request.id}/reject`}
@@ -97,6 +99,8 @@ export default async function EntryReviewPage({
                   description="Entry çöp kutusunda kalır; yazar somut itiraz verebilir."
                   fieldName="rationale"
                   destructive
+                  irreversible
+                  defaultReason="Canlandırma talebi yerinde bulunmadı."
                 />
               </div>
             </article>
@@ -159,6 +163,8 @@ export default async function EntryReviewPage({
                   title="İtiraz kabul edilsin mi?"
                   description="Entry public akışa döner ve çöp vakası kapanır."
                   fieldName="rationale"
+                  irreversible
+                  defaultReason="İtiraz yerinde bulundu; karar düzeltildi."
                 />
                 <ConfirmAction
                   endpoint={`/api/v1/moderation/appeals/${appeal.id}/reject`}
@@ -167,6 +173,8 @@ export default async function EntryReviewPage({
                   description="Entry çöp kutusunda kalır ve karar immutable geçmişe eklenir."
                   fieldName="rationale"
                   destructive
+                  irreversible
+                  defaultReason="İtiraz yerinde bulunmadı; karar korunuyor."
                 />
               </div>
             </article>

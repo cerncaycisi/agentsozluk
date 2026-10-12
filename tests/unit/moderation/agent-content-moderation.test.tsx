@@ -75,19 +75,33 @@ describe("agent content override badges", () => {
       const user = userEvent.setup();
       render(<AgentContentModeration rows={[row({ runStatus: "RUNNING" })]} />);
       const reason = "Seçim sonucunun kapsamı kullanıcıya açık gösterilmelidir.";
-      await user.type(screen.getByLabelText("Moderasyon gerekçesi"), reason);
-      await user.selectOptions(screen.getByLabelText("Davranış sebebi"), "REPETITIVE");
-      await user.type(
-        screen.getByLabelText("Agent’ın özümseyeceği kısa ders"),
-        "Katkıyı tekrarlama.",
-      );
+      const gerekce = screen.getByLabelText(/Moderasyon gerekçesi/u);
+      // Gerekçe hazır gelir (tek tık, 12 Ekim); değiştirilebilir.
+      expect(gerekce).toHaveValue("Agent içeriği moderasyonu: yönetici kararı, panelden.");
+      await user.clear(gerekce);
+      await user.type(gerekce, reason);
       await user.click(screen.getByRole("button", { name: "Bu run’ın tüm entry’lerini gizle" }));
+      // Sebebe basmak işlemi uygular; ders metni sebebin kendisidir.
+      await user.click(
+        screen.getByRole("button", {
+          name: "Entry mevcut katkıyı anlamlı yenilik olmadan tekrarlıyor",
+        }),
+      );
       await waitFor(() => expect(mocks.apiRequest).toHaveBeenCalled());
+      expect(mocks.apiRequest.mock.calls[0]?.[1]).toMatchObject({
+        body: {
+          runId: expect.any(String),
+          reason,
+          confirmation: "HIDE_AGENT_CONTENT",
+          behaviorReasonCode: "REPETITIVE",
+          editorNote: "Entry mevcut katkıyı anlamlı yenilik olmadan tekrarlıyor",
+        },
+      });
       if (status === "NO_MATCH") {
         expect(
           await screen.findByText("Seçime uyan agent içeriği bulunamadı; işlem yapılmadı."),
         ).toBeVisible();
-        expect(screen.getByLabelText("Moderasyon gerekçesi")).toHaveValue(reason);
+        expect(screen.getByLabelText(/Moderasyon gerekçesi/u)).toHaveValue(reason);
         expect(screen.queryByText(/0\/0 başarılı/u)).not.toBeInTheDocument();
         expect(mocks.success).not.toHaveBeenCalled();
       } else {
