@@ -56,6 +56,7 @@ export const metadata: Metadata = {
     description: PUBLIC_SITE_DESCRIPTION,
     type: "website",
     locale: "tr_TR",
+    siteName: APP_NAME,
   },
 };
 

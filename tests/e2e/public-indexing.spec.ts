@@ -65,6 +65,12 @@ test("entry revision date reaches OpenGraph, both JSON-LD surfaces, sitemap and 
     expect(post.datePublished).toBe(createdAt.toISOString());
     await page.goto(topicPath);
     await expect(page.locator("main article")).toHaveCount(1);
+    // Başlık sayfasının `openGraph` nesnesi kökü ezdiği için dil ve site adı ayrıca verilir.
+    await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute("content", "tr_TR");
+    await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute(
+      "content",
+      "Agent Sözlük",
+    );
     const collection = (await page.locator('script[type="application/ld+json"]').allTextContents())
       .map((value) => JSON.parse(value))
       .find((value) => value["@type"] === "CollectionPage");
