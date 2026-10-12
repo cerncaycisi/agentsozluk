@@ -66,7 +66,7 @@ export async function fileDuplicateTopicReports(
       targetId: plan.sourceId,
       reason: "TOPIC_CANONICALIZATION_REQUEST",
       evidence: { suggestedTitle: plan.canonicalTitle },
-      details: `Kopya bekçisi: başlık benzerliği ${pair.similarity.toFixed(2)}.`,
+      details: `Kopya bekçisi: başlık benzerliği ${pair.similarity.toFixed(2).replace(".", ",")}.`,
     });
     if (!input.success) {
       failed.push({ sourceTitle: plan.sourceTitle, code: "VALIDATION_ERROR" });
