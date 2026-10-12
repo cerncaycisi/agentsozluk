@@ -537,7 +537,7 @@ Deneme başlamadan, yeni sürümün hiçbir çıktısı görülmeden yazıldı.
   | V8           | 4/14         | 2/40               |
 
   Kabul 1 (≥ 8/14 ve V7C + 5) geçmedi. Sonuç belirlendiği için eski setlerdeki V8 koşusu 2 Ekim
-  setinin 16/115'inde durduruldu; ortak kota korundu.
+  setinin 23/115'inde durduruldu (o sırada yoldaki çağrılar da tamamlandı); ortak kota korundu.
 
 - **Neden:**
   - Hakemlerin TEKRAR dediği 14 öğenin çoğu, G9i'deki "aynı haberi yeniden anlatıp espri ekleme"
