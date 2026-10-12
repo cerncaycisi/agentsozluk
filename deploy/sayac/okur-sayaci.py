@@ -74,6 +74,29 @@ BOT_AILELERI = [
     ("sosyal", r"facebookexternalhit|facebookcatalog|twitterbot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|pinterest|redditbot|skypeuripreview|mastodon"),
     ("arac", r"curl|wget|python|httpx|aiohttp|go-http-client|java/|okhttp|axios|node-fetch|undici|libwww|scrapy|headlesschrome|phantomjs|lighthouse|pingdom|uptime|monitor"),
 ]
+# Yapay zekâ botlarının ayrıntısı (12 Ekim, PLAN sıra 4b). Aile sayımı aynen kalır; burada yalnız
+# sabit adlar saklanır, User-Agent metni değil. "getirme" = kullanıcı bir cevap motoruna soru
+# sorduğunda o an sayfayı getiren ajan: atıf sinyali. "arama" = cevap motorunun dizin tarayıcısı,
+# "egitim" = model eğitimi için tarayıcı. Sıra önemli: `-user` adları genel adlardan önce gelir.
+YZ_AJANLARI = [
+    ("chatgpt-user", "getirme", r"chatgpt-user"),
+    ("perplexity-user", "getirme", r"perplexity-user"),
+    ("claude-user", "getirme", r"claude-user"),
+    ("mistralai-user", "getirme", r"mistralai-user"),
+    ("duckassistbot", "getirme", r"duckassistbot"),
+    ("oai-searchbot", "arama", r"oai-searchbot"),
+    ("claude-searchbot", "arama", r"claude-searchbot"),
+    ("perplexitybot", "arama", r"perplexitybot"),
+    ("youbot", "arama", r"youbot"),
+    ("gptbot", "egitim", r"gptbot"),
+    ("claudebot", "egitim", r"claudebot|anthropic"),
+    ("ccbot", "egitim", r"ccbot"),
+    ("bytespider", "egitim", r"bytespider"),
+    ("meta", "egitim", r"meta-externalagent|meta-externalfetcher"),
+    ("amazonbot", "egitim", r"amazonbot"),
+    ("applebot-extended", "egitim", r"applebot-extended"),
+]
+YZ_DESENLERI = [(ad, tur, re.compile(desen, re.I)) for ad, tur, desen in YZ_AJANLARI]
 BOT_GENEL = re.compile(r"bot|crawl|spider|slurp|scrape|fetch|preview|archive", re.I)
 BOT_DESENLERI = [(ad, re.compile(desen, re.I)) for ad, desen in BOT_AILELERI]
 
@@ -130,6 +153,21 @@ def bot_ailesi(ua: str) -> str | None:
     if not ua.startswith("Mozilla/"):
         return "diger"
     return None
+
+
+def yz_ajani(ua: str) -> tuple[str, str]:
+    """Yapay zekâ ailesindeki botun sabit adı ve türü; tanınmayan ad `diger`."""
+    for ad, tur, desen in YZ_DESENLERI:
+        if desen.search(ua):
+            return ad, tur
+    return "diger", "diger"
+
+
+def baslik_kimligi(yol: str) -> str:
+    kimlik = BASLIK_KIMLIGI.match(yol)
+    if kimlik and int(kimlik.group(2)) <= GUVENLI_TAMSAYI:
+        return kimlik.group(2)
+    return "(acilmamis)"
 
 
 def sayfa_turu(yol: str) -> str:
@@ -204,7 +242,8 @@ class Toplayici:
             return
 
         h = istek.get("headers") if isinstance(istek.get("headers"), dict) else {}
-        aile = bot_ailesi(" ".join(basliklar(h, "User-Agent")))
+        ua = " ".join(basliklar(h, "User-Agent"))
+        aile = bot_ailesi(ua)
         if aile is None and not basliklar(h, "Sec-Fetch-Mode"):
             aile = "taklit_tarayici"
         uri = istek.get("uri") if isinstance(istek.get("uri"), str) else "/"
@@ -227,6 +266,13 @@ class Toplayici:
             if durum == 200 and html:
                 self.artir(gun, "sayfa", "bot")
                 self.artir(gun, "bot_ailesi", aile)
+                if aile == "yapay_zeka":
+                    ad, tur = yz_ajani(ua)
+                    self.artir(gun, "yz_ajan", ad)
+                    if tur == "getirme":
+                        self.artir(gun, "yz_getirme_turu", sayfa_turu(yol))
+                        if yol.startswith("/baslik/"):
+                            self.artir(gun, "yz_getirme_baslik", baslik_kimligi(yol))
             return
         # İnsan: yalnız belge gezinmesi. Prefetch ve gömülü istekler sayılmaz;
         # 304'te Content-Type yoktur (Astra, 2 Ekim).
@@ -238,13 +284,14 @@ class Toplayici:
         self.artir(gun, "sayfa", "insan")
         self.artir(gun, "insan_sayfa_turu", sayfa_turu(yol))
         if yol.startswith("/baslik/"):
-            kimlik = BASLIK_KIMLIGI.match(yol)
-            if kimlik and int(kimlik.group(2)) <= GUVENLI_TAMSAYI:
-                self.artir(gun, "insan_baslik", kimlik.group(2))
-            else:
-                self.artir(gun, "insan_baslik", "(acilmamis)")
+            self.artir(gun, "insan_baslik", baslik_kimligi(yol))
         yonlendiren = yonlendiren_sinifi(" ".join(basliklar(h, "Referer")))
         self.artir(gun, "yonlendiren", yonlendiren)
+        if not yonlendiren.startswith("("):
+            # Dış giriş: arama motorundan ya da başka siteden gelen okurun indiği sayfa (12 Ekim).
+            self.artir(gun, "dis_giris_turu", sayfa_turu(yol))
+            if yol.startswith("/baslik/"):
+                self.artir(gun, "dis_giris_baslik", baslik_kimligi(yol))
         # Güvenilir insan: yönlendireni olan ya da ana sayfa görüntülemesi. 4-8 Ekim'de tarayıcı
         # başlıklarını taklit eden bir tarayıcı günde binlerce yönlendirensiz derin sayfa okudu ve
         # "insan" sayıldı (5 Ekim: 7.891 görüntülemenin 7.877'si yönlendirensiz). Eski sayım aynen
@@ -474,6 +521,32 @@ def rapor(gun_sayisi: int) -> int:
     print("\nbugün bot aileleri:", ilk_on("bot_ailesi"))
     print("bugün yönlendirenler:", ilk_on("yonlendiren"))
     print("bugün en çok okunan başlıklar (publicId):", ilk_on("insan_baslik"))
+    print("bugün yapay zekâ ajanları:", ilk_on("yz_ajan"))
+
+    # Dönem toplamı: talep stratejisinin haftalık ölçüsü (PLAN sıra 4b, 12 Ekim).
+    bas = (bugun - timedelta(days=gun_sayisi - 1)).isoformat()
+
+    def donem(alan: str) -> dict[str, int]:
+        return dict(
+            db.execute(
+                "SELECT anahtar, SUM(adet) FROM sayac WHERE gun >= ? AND gun <= ? AND alan = ?"
+                " GROUP BY anahtar",
+                (bas, ad, alan),
+            )
+        )
+
+    def sirala(sayac: dict[str, int], adet: int = 10) -> str:
+        sirali = sorted(sayac.items(), key=lambda kv: (-kv[1], kv[0]))[:adet]
+        return ", ".join(f"{k} {v}" for k, v in sirali) or "-"
+
+    giris = donem("dis_giris_turu")
+    getirme = donem("yz_getirme_turu")
+    print(f"\ndönem ({bas} – {ad}):")
+    print(f"  dış giriş {sum(giris.values())}:", sirala(giris))
+    print("  dış giriş başlıkları (publicId):", sirala(donem("dis_giris_baslik")))
+    print(f"  yapay zekâ getirmesi (kullanıcı adına) {sum(getirme.values())}:", sirala(getirme))
+    print("  getirilen başlıklar (publicId):", sirala(donem("yz_getirme_baslik")))
+    print("  yapay zekâ ajanları:", sirala(donem("yz_ajan"), 20))
     return 0
 
 

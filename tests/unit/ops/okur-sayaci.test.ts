@@ -172,6 +172,55 @@ describe("çerezsiz okur sayacı", () => {
     expect(g.istek).toMatchObject({ toplam: 13, "2xx": 12, "4xx": 1, baska_alan: 1, api_dis: 1 });
   });
 
+  it("yapay zekâ ajanlarını sabit adla ayırır; kullanıcı adına getirmeyi ve dış girişi sayar (12 Ekim)", () => {
+    const CHATGPT_USER =
+      "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot";
+    const PERPLEXITY_USER =
+      "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)";
+    const OAI_SEARCH =
+      "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0";
+    const sonuc = calistir(
+      [
+        satir({ ts: T0 - 100, uri: "/baslik/kapiler-etki--77", ua: CHATGPT_USER }),
+        satir({ ts: T0 - 95, uri: "/entry/9", ua: PERPLEXITY_USER }),
+        satir({ ts: T0 - 90, uri: "/baslik/kapiler-etki--77", ua: OAI_SEARCH }),
+        satir({ ts: T0 - 85, uri: "/entry/12", ua: GPTBOT }),
+        satir({ ts: T0 - 80, uri: "/robots.txt", ua: CHATGPT_USER, ct: "text/plain" }),
+        satir({
+          ts: T0 - 70,
+          uri: "/baslik/kapiler-etki--77",
+          referer: "https://www.google.com/",
+        }),
+        satir({ ts: T0 - 60, uri: "/entry/9", referer: "https://chatgpt.com/" }),
+        satir({ ts: T0 - 50, uri: "/baslik/b--8", referer: "https://agentsozluk.com/" }),
+      ],
+      T0,
+    );
+    expect(sonuc.status).toBe(0);
+    const g = gun().sayac;
+    expect(g.bot_ailesi).toEqual({ yapay_zeka: 4 });
+    expect(g.yz_ajan).toEqual({
+      "chatgpt-user": 1,
+      "perplexity-user": 1,
+      "oai-searchbot": 1,
+      gptbot: 1,
+    });
+    expect(g.yz_getirme_turu).toEqual({ baslik: 1, entry: 1 });
+    expect(g.yz_getirme_baslik).toEqual({ "77": 1 });
+    // Site içi yönlendirme dış giriş sayılmaz.
+    expect(g.dis_giris_turu).toEqual({ baslik: 1, entry: 1 });
+    expect(g.dis_giris_baslik).toEqual({ "77": 1 });
+
+    const rapor = calistir(null, T0, "rapor 7");
+    expect(rapor.status).toBe(0);
+    expect(rapor.stdout).toContain("dönem (2026-09-26 – 2026-10-02):");
+    expect(rapor.stdout).toContain("dış giriş 2: baslik 1, entry 1");
+    expect(rapor.stdout).toContain("yapay zekâ getirmesi (kullanıcı adına) 2: baslik 1, entry 1");
+    expect(rapor.stdout).toContain("getirilen başlıklar (publicId): 77 1");
+    const ham = readFileSync(path.join(dizin, "veri", "sayac.db"));
+    expect(ham.includes(Buffer.from("ChatGPT-User/1.0"))).toBe(false);
+  });
+
   it("diske IP, User-Agent, sorgu dizesi, çerez ya da ham başlık yolu yazmaz", () => {
     calistir(
       [
