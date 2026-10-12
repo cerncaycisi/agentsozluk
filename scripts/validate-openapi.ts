@@ -155,6 +155,7 @@ const expectedQueryParameters: Record<string, string[]> = {
     "to",
   ],
   "GET /api/v1/moderation/users": ["page", "pageSize", "q"],
+  "GET /api/v1/moderation/topics/lookup": ["q"],
   "GET /api/v1/moderation/revival-requests": ["page", "pageSize"],
   "GET /api/v1/moderation/appeals": ["page", "pageSize"],
   "GET /api/v1/moderation/audit": [

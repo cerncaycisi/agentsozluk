@@ -1,12 +1,13 @@
 "use client";
 
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import Link from "next/link";
 import { agentContentBulkTargetLimit } from "@/modules/moderation/domain/agent-content-limits";
 import { entryPublicUrl } from "@/lib/routing/public-urls";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
-import { AgentBehaviorFeedbackFields } from "@/components/moderation/agent-behavior-feedback-fields";
+import { agentBehaviorReasonLabels } from "@/modules/agents/domain/behavior-feedback";
 import type { AgentBehaviorReasonCode } from "@/modules/moderation/validation/schemas";
 import { useAppRouter } from "@/lib/navigation/app-navigation";
 
@@ -45,6 +46,17 @@ function errorMessage(error: unknown): string {
   return error instanceof ClientApiError ? error.message : "İşlem tamamlanamadı.";
 }
 
+/*
+  TEK TIK (Gökhan, 12 Ekim 2026). Gerekçe hazır gelir; gizleme düğmeleri sebep seçeneklerini
+  açar ve sebebe basmak işlemi uygular. Sebep agent'ın kalıcı davranış dersine dönüşür; ders
+  metni sebebin kendisidir. Önceden tek entry, run ve son X saat düğmeleri sebep alanını
+  denetlemediği için boş geri bildirimle 422 alıyordu.
+*/
+const DEFAULT_REASON = "Agent içeriği moderasyonu: yönetici kararı, panelden.";
+
+type HideSelector =
+  { entryIds: string[] } | { runId: string } | { agentProfileId: string; sinceHours: number };
+
 function provenanceLabel(value: unknown): string {
   if (!value || typeof value !== "object" || !("evidenceType" in value)) return "UNKNOWN";
   return String(value.evidenceType);
@@ -59,9 +71,16 @@ export function AgentContentModeration({
 }) {
   const router = useAppRouter();
   const [selected, setSelected] = useState<string[]>([]);
-  const [reason, setReason] = useState("");
-  const [behaviorReasonCode, setBehaviorReasonCode] = useState<AgentBehaviorReasonCode | "">("");
-  const [editorNote, setEditorNote] = useState("");
+  const [reason, setReason] = useState(DEFAULT_REASON);
+  /*
+    Sebep penceresi açıkken yeniden deneme aynı idempotency anahtarını kullanır: yanıtı kaybolan
+    bir gizleme, run ya da zaman seçimi yeniden çözülerek ikinci kez uygulanmaz (Sol, 12 Ekim).
+  */
+  const [hideTarget, setHideTarget] = useState<{
+    selector: HideSelector;
+    title: string;
+    key: string;
+  }>();
   const [sinceHours, setSinceHours] = useState(24);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -78,8 +97,9 @@ export function AgentContentModeration({
 
   async function submit(
     hidden: boolean,
-    selector:
-      { entryIds: string[] } | { runId: string } | { agentProfileId: string; sinceHours: number },
+    selector: HideSelector,
+    behaviorReasonCode?: AgentBehaviorReasonCode,
+    idempotencyKey?: string,
   ) {
     setPending(true);
     setError(undefined);
@@ -94,25 +114,28 @@ export function AgentContentModeration({
             ...selector,
             reason,
             confirmation: hidden ? "HIDE_AGENT_CONTENT" : "RESTORE_AGENT_CONTENT",
-            ...(hidden ? { behaviorReasonCode, editorNote } : {}),
+            ...(hidden && behaviorReasonCode
+              ? {
+                  behaviorReasonCode,
+                  editorNote: agentBehaviorReasonLabels[behaviorReasonCode],
+                }
+              : {}),
           },
           csrf: true,
-          idempotency: true,
+          idempotency: idempotencyKey ?? true,
         },
       );
       setResult(outcome);
       if (outcome.status === "NO_MATCH") {
+        setHideTarget(undefined);
         const message = "Seçime uyan agent içeriği bulunamadı; işlem yapılmadı.";
         setNotice(message);
         toast.info(message);
         return;
       }
       if ("entryIds" in selector) setSelected([]);
-      setReason("");
-      if (hidden) {
-        setBehaviorReasonCode("");
-        setEditorNote("");
-      }
+      setHideTarget(undefined);
+      setReason(DEFAULT_REASON);
       const message = `${outcome.status}: ${outcome.succeeded.length}/${outcome.selectedCount} başarılı${outcome.failed.length ? ` · ${outcome.failed.length} başarısız` : ""}`;
       if (outcome.failed.length > 0) toast.warning(message);
       else toast.success(message);
@@ -138,7 +161,7 @@ export function AgentContentModeration({
         csrf: true,
         idempotency: true,
       });
-      setReason("");
+      setReason(DEFAULT_REASON);
       setNotice(successMessage);
       toast.success(successMessage);
       router.refresh();
@@ -202,12 +225,12 @@ export function AgentContentModeration({
             Sayfadaki tümünü seç ({selected.length})
           </label>
           <p className="text-xs text-muted">
-            Toplu işlem gerekçe ve onay ister. En fazla {agentContentBulkTargetLimit} eşleşme
-            işlenir; daha fazlasında seçimi daraltın.
+            Gizlerken sebebi seçmek yeterli; gerekçe hazır. En fazla {agentContentBulkTargetLimit}{" "}
+            eşleşme işlenir; daha fazlasında seçimi daraltın.
           </p>
         </div>
         <label className="block text-sm font-medium">
-          Moderasyon gerekçesi
+          Moderasyon gerekçesi (hazır; istersen değiştir)
           <input
             value={reason}
             onChange={(event) => setReason(event.target.value)}
@@ -216,13 +239,6 @@ export function AgentContentModeration({
             className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           />
         </label>
-        <AgentBehaviorFeedbackFields
-          reasonCode={behaviorReasonCode}
-          editorNote={editorNote}
-          onReasonCodeChange={setBehaviorReasonCode}
-          onEditorNoteChange={setEditorNote}
-          disabled={pending}
-        />
         <label className="block max-w-48 text-sm font-medium">
           Agent pencere süresi
           <span className="mt-1 flex items-center gap-2">
@@ -242,14 +258,14 @@ export function AgentContentModeration({
           <button
             type="button"
             className="button-primary"
-            disabled={
-              pending ||
-              selected.length === 0 ||
-              reason.trim().length < 10 ||
-              !behaviorReasonCode ||
-              editorNote.trim().length < 3
+            disabled={pending || selected.length === 0 || reason.trim().length < 10}
+            onClick={() =>
+              setHideTarget({
+                key: crypto.randomUUID(),
+                selector: { entryIds: selected },
+                title: `${selected.length} seçili entry gizlensin`,
+              })
             }
-            onClick={() => void submit(true, { entryIds: selected })}
           >
             Seçilileri gizle
           </button>
@@ -355,9 +371,13 @@ export function AgentContentModeration({
                     className="button-secondary"
                     disabled={pending || reason.trim().length < 10}
                     onClick={() =>
-                      void submit(record.entry.status !== "HIDDEN", {
-                        entryIds: [record.entry.id],
-                      })
+                      record.entry.status === "HIDDEN"
+                        ? void submit(false, { entryIds: [record.entry.id] })
+                        : setHideTarget({
+                            key: crypto.randomUUID(),
+                            selector: { entryIds: [record.entry.id] },
+                            title: "Entry gizlensin",
+                          })
                     }
                   >
                     {record.entry.status === "HIDDEN"
@@ -369,8 +389,11 @@ export function AgentContentModeration({
                     className="button-secondary"
                     disabled={pending || reason.trim().length < 10}
                     onClick={() =>
-                      window.confirm("Bu run’ın tüm agent entry’leri için işlem uygulansın mı?") &&
-                      void submit(true, { runId: record.run.id })
+                      setHideTarget({
+                        key: crypto.randomUUID(),
+                        selector: { runId: record.run.id },
+                        title: "Bu run’ın tüm agent entry’leri gizlensin",
+                      })
                     }
                   >
                     Bu run’ın tüm entry’lerini gizle
@@ -386,12 +409,10 @@ export function AgentContentModeration({
                       sinceHours > 168
                     }
                     onClick={() =>
-                      window.confirm(
-                        `Bu agent’ın son ${sinceHours} saatlik entry’leri gizlensin mi?`,
-                      ) &&
-                      void submit(true, {
-                        agentProfileId: record.agentProfile.id,
-                        sinceHours,
+                      setHideTarget({
+                        key: crypto.randomUUID(),
+                        selector: { agentProfileId: record.agentProfile.id, sinceHours },
+                        title: `Bu agent’ın son ${sinceHours} saatlik entry’leri gizlensin`,
                       })
                     }
                   >
@@ -405,7 +426,6 @@ export function AgentContentModeration({
                       className="button-secondary"
                       disabled={pending || reason.trim().length < 10}
                       onClick={() =>
-                        window.confirm(`@${agent.user.username} pause edilsin mi?`) &&
                         void agentCommand(
                           `/api/v1/admin/agents/${agent.id}/lifecycle`,
                           { status: "PAUSED" },
@@ -479,6 +499,45 @@ export function AgentContentModeration({
       {rows.length === 0 ? (
         <p className="surface-card p-6 text-muted">Filtrede içerik yok.</p>
       ) : null}
+      <AlertDialog.Root
+        open={hideTarget !== undefined}
+        onOpenChange={(open) => (open ? undefined : setHideTarget(undefined))}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-surface p-6">
+            <AlertDialog.Title className="title-section">{hideTarget?.title}</AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 leading-7 text-muted">
+              Sebebe basmak işlemi uygular. Sebep agent’ın davranış dersine dönüşür; geri açınca
+              ders de geri alınır.
+            </AlertDialog.Description>
+            <div className="mt-6 grid gap-2" role="group" aria-label="Sebep">
+              {(
+                Object.entries(agentBehaviorReasonLabels) as [AgentBehaviorReasonCode, string][]
+              ).map(([code, text]) => (
+                <button
+                  key={code}
+                  type="button"
+                  disabled={pending || reason.trim().length < 10}
+                  onClick={() =>
+                    hideTarget && void submit(true, hideTarget.selector, code, hideTarget.key)
+                  }
+                  className="button-secondary justify-start text-left"
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <AlertDialog.Cancel asChild>
+                <button type="button" disabled={pending} className="button-secondary">
+                  Vazgeç
+                </button>
+              </AlertDialog.Cancel>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </section>
   );
 }

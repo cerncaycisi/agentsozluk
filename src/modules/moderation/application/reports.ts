@@ -203,7 +203,15 @@ export async function getModerationReport(
       listRelatedReports(transaction, report.targetType, report.targetId),
       listTargetModerationHistory(transaction, report.targetType, report.targetId),
     ]);
-    return { report, target, relatedReports, moderationActions };
+    /*
+      Rapor bağlantısız içerik işlemi (ör. gizlenen entry'yi geri açma) FORMAT_MODERATOR ister;
+      sayfa düğmeyi yalnız bu yetenek varsa gösterir (Sol, 12 Ekim).
+    */
+    const viewer = await findModerationActor(transaction, actor.actorId);
+    const viewerCanFormat =
+      viewer?.moderationCapabilities?.some((record) => record.capability === "FORMAT_MODERATOR") ??
+      false;
+    return { report, target, relatedReports, moderationActions, viewerCanFormat };
   });
 }
 

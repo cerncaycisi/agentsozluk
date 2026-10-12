@@ -73,6 +73,7 @@ COPY --chown=nextjs:nodejs scripts/operator-cli-environment.ts ./scripts/operato
 COPY --chown=nextjs:nodejs scripts/rollout-persona-prompts.ts ./scripts/rollout-persona-prompts.ts
 COPY --chown=nextjs:nodejs scripts/rollout-persona-prompts-helpers.ts ./scripts/rollout-persona-prompts-helpers.ts
 COPY --chown=nextjs:nodejs scripts/operator-cli-stderr-logs.ts ./scripts/operator-cli-stderr-logs.ts
+COPY --chown=nextjs:nodejs scripts/karagoz.ts ./scripts/karagoz.ts
 COPY --chown=nextjs:nodejs --chmod=755 scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

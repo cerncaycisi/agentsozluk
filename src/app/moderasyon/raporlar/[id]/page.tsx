@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ConfirmAction } from "@/components/moderation/confirm-action";
 import { ConstitutionalContentAction } from "@/components/moderation/constitutional-content-action";
+import { ReportCanonicalMerge } from "@/components/moderation/report-canonical-merge";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { getDatabase } from "@/lib/db/client";
 import { formatIstanbulTimestamp } from "@/lib/format/time";
@@ -10,6 +11,8 @@ import { AppError } from "@/lib/http/errors";
 import { pageUuidFrom } from "@/lib/http/page-params";
 import { requireModerationPage } from "@/lib/auth/server-session";
 import { actorFromSession } from "@/modules/auth/domain/actor";
+import { topicPublicUrl } from "@/lib/routing/public-urls";
+import { resolveSuggestedCanonicalTopic } from "@/modules/moderation/application/duplicate-topics";
 import { getModerationReport } from "@/modules/moderation/application/reports";
 import {
   gammazDecisionLabel,
@@ -61,6 +64,44 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
           action.actionType !== "GAMMAZ_REASON_REJECTED",
       )
     : null;
+  /*
+    Kopya başlık raporu (TOPIC_CANONICALIZATION_REQUEST): önerilen başlık sunucuda var olan
+    aktif bir başlığa çözülürse birleştirme tek tıkla sunulur (Gökhan, 12 Ekim 2026).
+  */
+  const suggestedTitle =
+    report.reason === "TOPIC_CANONICALIZATION_REQUEST" &&
+    report.targetType === "TOPIC" &&
+    report.evidence &&
+    typeof report.evidence === "object" &&
+    "suggestedTitle" in report.evidence &&
+    typeof report.evidence.suggestedTitle === "string"
+      ? report.evidence.suggestedTitle
+      : null;
+  const targetStatus =
+    data.target &&
+    typeof data.target === "object" &&
+    "status" in data.target &&
+    typeof data.target.status === "string"
+      ? data.target.status
+      : null;
+  const sourceTitle =
+    data.target &&
+    typeof data.target === "object" &&
+    "title" in data.target &&
+    typeof data.target.title === "string"
+      ? data.target.title
+      : null;
+  const mergeOpen =
+    report.status === "OPEN" ||
+    (report.decision?.outcome === "ACCEPTED" && appliedContentAction === undefined);
+  const canonicalTopic =
+    suggestedTitle && sourceTitle && mergeOpen
+      ? await resolveSuggestedCanonicalTopic(getDatabase(), suggestedTitle)
+      : null;
+  const canonical =
+    canonicalTopic && canonicalTopic.id !== report.targetId
+      ? { id: canonicalTopic.id, title: canonicalTopic.title, url: topicPublicUrl(canonicalTopic) }
+      : null;
   return (
     <ModerationLayout
       title="Gammaz detayı"
@@ -143,7 +184,39 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             {JSON.stringify(data.target, null, 2)}
           </pre>
         </section>
-        {report.status === "OPEN" ? (
+        {canonical && sourceTitle ? (
+          <section className="surface-card p-6">
+            <h2 className="title-section">Kopya başlık</h2>
+            <p className="mt-2 text-muted">
+              “{sourceTitle}” →{" "}
+              <a href={canonical.url} className="underline">
+                {canonical.title}
+              </a>
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <ReportCanonicalMerge
+                reportId={report.id}
+                reportOpen={report.status === "OPEN"}
+                sourceTopicId={report.targetId}
+                sourceTitle={sourceTitle}
+                canonical={canonical}
+              />
+              {report.status === "OPEN" ? (
+                <ConfirmAction
+                  endpoint={`/api/v1/moderation/reports/${report.id}/reject`}
+                  label="Aynı değil, reddet"
+                  title="Kopya gammazını reddet"
+                  description="İki başlık ayrı kavram; ikisi de kalır."
+                  fieldName="resolutionNote"
+                  destructive
+                  irreversible
+                  defaultReason="İki başlık ayrı kavram; birleştirilmedi."
+                />
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+        {report.status === "OPEN" && !canonical ? (
           <section className="surface-card p-6">
             <h2 className="title-section">Gammaz gerekçesi kararı</h2>
             <div className="mt-4 flex flex-wrap gap-3">
@@ -153,6 +226,8 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 title="Gammaz gerekçesini kabul et"
                 description="Gammaz gerekçesinin doğru olduğunu kaydedin. İçerik işlemi ayrıca uygulanır."
                 fieldName="resolutionNote"
+                irreversible
+                defaultReason="Gammaz gerekçesi yerinde bulundu."
               />
               <ConfirmAction
                 endpoint={`/api/v1/moderation/reports/${report.id}/reject`}
@@ -161,6 +236,8 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 description="Seçilen gerekçenin neden doğrulanmadığını kaydedin."
                 fieldName="resolutionNote"
                 destructive
+                irreversible
+                defaultReason="Gammaz gerekçesi yerinde bulunmadı."
               />
             </div>
           </section>
@@ -173,9 +250,25 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
               bir moderasyon kaydı olarak uygulanır.
             </p>
             {appliedContentAction ? (
-              <p className="mt-4 rounded-lg bg-page p-4 font-medium">
-                Uygulandı: {appliedContentAction.actionType}
-              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-page p-4">
+                <p className="font-medium">Uygulandı: {appliedContentAction.actionType}</p>
+                {/*
+                  Gizlenen entry'yi geri açma (tek tık, 12 Ekim). Rota vardı ama hiçbir ekrandan
+                  çağrılmıyordu; insan entry'si gizlenince geri açılamıyordu.
+                */}
+                {appliedContentAction.actionType === "ENTRY_HIDDEN" &&
+                data.viewerCanFormat &&
+                report.targetType === "ENTRY" &&
+                targetStatus === "HIDDEN" ? (
+                  <ConfirmAction
+                    endpoint={`/api/v1/moderation/entries/${report.targetId}/restore`}
+                    label="Geri aç"
+                    title="Entry'yi geri aç"
+                    description="Gizleme geri alınır; entry yeniden yayımlanır."
+                    defaultReason="Gizleme geri alındı; entry yeniden yayımlanıyor."
+                  />
+                ) : null}
+              </div>
             ) : isGammazReason(report.reason) &&
               (report.targetType === "ENTRY" || report.targetType === "TOPIC") ? (
               <ConstitutionalContentAction
@@ -183,6 +276,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 targetType={report.targetType}
                 targetId={report.targetId}
                 actions={allowedContentActions(report.reason, report.targetType)}
+                {...(suggestedTitle ? { suggestedTitle } : {})}
               />
             ) : null}
           </section>

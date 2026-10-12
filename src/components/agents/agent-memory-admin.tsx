@@ -31,7 +31,7 @@ function MemoryCommandForm({
   const inputId = useId();
   const confirmationId = useId();
   const descriptionId = useId();
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Hafıza işlemi: yönetici kararı, panelden.");
   const [confirmed, setConfirmed] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -53,7 +53,6 @@ function MemoryCommandForm({
             csrf: true,
             idempotency: true,
           });
-          setReason("");
           setConfirmed(false);
           const message = "İşlem kaydedildi.";
           setMessage(message);

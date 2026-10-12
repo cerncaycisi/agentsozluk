@@ -38,7 +38,9 @@ function successMessage(message: string): string {
 export function AgentLifecycleForm({ agentId, current }: { agentId: string; current: Lifecycle }) {
   const router = useAppRouter();
   const [status, setStatus] = useState<Lifecycle>(transitions[current][0] ?? current);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState(
+    "Agent yaşam durumu değişikliği: yönetici kararı, panelden.",
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   useEffect(() => {
@@ -51,6 +53,12 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
       className="grid gap-3 sm:grid-cols-[180px_1fr_auto]"
       onSubmit={async (event) => {
         event.preventDefault();
+        // Emekliye ayırma geri alınamaz: tek onay (tek tık, 12 Ekim; Astra).
+        if (
+          status === "RETIRED" &&
+          !window.confirm("Agent emekliye ayrılsın mı? Bu durumdan geri dönüş yok.")
+        )
+          return;
         setPending(true);
         setError(undefined);
         try {
@@ -61,7 +69,6 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
             idempotency: true,
           });
           toast.success(`Agent lifecycle ${status} olarak güncellendi.`);
-          setReason("");
           router.refresh();
         } catch (submitError) {
           setError(errorMessage(submitError));
@@ -114,7 +121,7 @@ export function AgentLifecycleQuickAction({
 }) {
   const router = useAppRouter();
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Agent durumu değişikliği: yönetici kararı, panelden.");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const target = current === "ACTIVE" ? "PAUSED" : "ACTIVE";
@@ -126,7 +133,6 @@ export function AgentLifecycleQuickAction({
       onOpenChange={(next) => {
         setOpen(next);
         if (!next) {
-          setReason("");
           setError(undefined);
         }
       }}
@@ -161,7 +167,6 @@ export function AgentLifecycleQuickAction({
                 toast.success(`@${username} ${target} durumuna geçirildi.`);
                 onChanged?.(target);
                 setOpen(false);
-                setReason("");
                 router.refresh();
               } catch (submitError) {
                 setError(errorMessage(submitError));
@@ -204,7 +209,7 @@ export function AgentLifecycleQuickAction({
 }
 
 export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Kimlik bilgisi döndürme: yönetici kararı, panelden.");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<{
@@ -216,6 +221,9 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
       className="space-y-3"
       onSubmit={async (event) => {
         event.preventDefault();
+        // Döndürme mevcut kimlik bilgilerini iptal eder; geri alınamaz: tek onay.
+        if (!window.confirm("Kimlik bilgisi döndürülsün mü? Mevcut kimlik bilgileri iptal edilir."))
+          return;
         setPending(true);
         setError(undefined);
         setResult(undefined);
@@ -231,7 +239,6 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
           });
           toast.success("Runtime credential güvenli biçimde döndürüldü.");
           setResult(rotation);
-          setReason("");
         } catch (submitError) {
           setError(errorMessage(submitError));
         } finally {
@@ -823,13 +830,15 @@ export function BulkAgentRunForm({
 
 export function AgentRunCommands({ runId, status }: { runId: string; status: string }) {
   const router = useAppRouter();
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Çalışma komutu: yönetici kararı, panelden.");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
   const canCancel = ["QUEUED", "RUNNING"].includes(status);
   const canRetry = ["FAILED", "TIMED_OUT", "CANCELLED", "PARTIAL"].includes(status);
   if (!canCancel && !canRetry) return null;
   const command = async (action: "cancel" | "retry") => {
+    // İptal geri alınamaz (retry yeni run açar, eskisini geri getirmez): tek onay (Sol, 12 Ekim).
+    if (action === "cancel" && !window.confirm("Run iptal edilsin mi? Geri alınamaz.")) return;
     setPending(true);
     setMessage(undefined);
     try {
@@ -839,7 +848,6 @@ export function AgentRunCommands({ runId, status }: { runId: string; status: str
         csrf: true,
         idempotency: true,
       });
-      setReason("");
       setMessage(successMessage(action === "cancel" ? "İptal işlendi." : "Retry kuyruğa alındı."));
       router.refresh();
     } catch (submitError) {
@@ -905,7 +913,7 @@ export function RuntimeControlForm({
   runtimeOperatingMode,
 }: RuntimeControlFormProps) {
   const router = useAppRouter();
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Toplum çalışması komutu: yönetici kararı, panelden.");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
   const command = societyFlowEnabled ? "pause" : "resume";
@@ -971,7 +979,6 @@ export function RuntimeControlForm({
               csrf: true,
               idempotency: true,
             });
-            setReason("");
             setMessage(
               successMessage(
                 societyFlowEnabled
@@ -1696,7 +1703,7 @@ export function PersonaRollbackForm({
 }) {
   const router = useAppRouter();
   const [version, setVersion] = useState(versions[0] ?? 1);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Persona geri alma: yönetici kararı, panelden.");
   const [error, setError] = useState<string>();
   return (
     <form
@@ -1711,7 +1718,6 @@ export function PersonaRollbackForm({
             csrf: true,
             idempotency: true,
           });
-          setReason("");
           toast.success(`Persona v${version} temel alınarak yeni rollback sürümü oluşturuldu.`);
           router.refresh();
         } catch (submitError) {
@@ -1794,7 +1800,9 @@ export function GlobalAgentSettingsForm({
     ),
   );
   const [pending, setPending] = useState(false);
-  const [changeReason, setChangeReason] = useState("");
+  const [changeReason, setChangeReason] = useState(
+    "Agent ayarları değişikliği: yönetici kararı, panelden.",
+  );
   const [message, setMessage] = useState<string>();
   return (
     <form
@@ -1817,7 +1825,6 @@ export function GlobalAgentSettingsForm({
             idempotency: true,
           });
           setMessage(successMessage("Ayarlar kaydedildi ve audit kaydı oluşturuldu."));
-          setChangeReason("");
           router.refresh();
         } catch (submitError) {
           setMessage(errorMessage(submitError));

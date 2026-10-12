@@ -160,9 +160,18 @@ async function ensureModerationCapability(
   expect(result.status, JSON.stringify(result)).toBe(200);
 }
 
+/*
+  Tek tık (12 Ekim): geri alınabilir işlem düğmeye basınca doğrudan uygulanır; geri alınamaz işlem
+  gerekçesi hazır tek bir onay penceresi açar. Test kendi gerekçesini yazar.
+*/
 async function confirm(page: Page, buttonName: string, reason: string): Promise<void> {
   await page.getByRole("button", { name: buttonName, exact: true }).click();
   const dialog = page.getByRole("alertdialog");
+  const opened = await dialog
+    .waitFor({ state: "visible", timeout: 3_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!opened) return;
   await dialog.getByLabel("Gerekçe").fill(reason);
   await dialog.getByRole("button", { name: "Onayla" }).click();
   await expect(dialog).toBeHidden({ timeout: 20_000 });
@@ -329,14 +338,13 @@ test.describe("@desktop moderation and admin workflows", () => {
       "E2E gammazı incelendi; anayasal gerekçe hedef entry için kabul ediliyor.",
     );
     await expect(moderatorPage.getByText("Gerekçe kabul edildi", { exact: true })).toBeVisible();
+    // Tek tık: gerekçe hazır, sebebe basmak işlemi uygular (ders metni sebebin kendisi).
     await moderatorPage
       .getByLabel("İşlem gerekçesi")
       .fill("E2E moderasyon testi için entry geçici olarak çöp alanına gönderiliyor.");
-    await moderatorPage.getByLabel("Davranış sebebi").selectOption("OFF_TOPIC");
     await moderatorPage
-      .getByLabel("Agent’ın özümseyeceği kısa ders")
-      .fill("Entry başlığın kavramını doğrudan anlatmalı ve konudan sapmamalı.");
-    await moderatorPage.getByRole("button", { name: "İçerik işlemini uygula" }).click();
+      .getByRole("button", { name: "Entry başlığın kavramını anlatmıyor", exact: true })
+      .click();
     await expect(moderatorPage.getByText("Uygulandı: ENTRY_HIDDEN", { exact: true })).toBeVisible({
       timeout: 20_000,
     });

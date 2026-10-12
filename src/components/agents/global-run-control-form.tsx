@@ -27,7 +27,7 @@ function errorMessage(error: unknown): string {
 
 export function GlobalRunControlForm() {
   const router = useAppRouter();
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Toplu çalışma komutu: yönetici kararı, panelden.");
   const [pending, setPending] = useState<GlobalRunCommand>();
   const [message, setMessage] = useState<string>();
 
@@ -43,7 +43,6 @@ export function GlobalRunControlForm() {
         csrf: true,
         idempotency: true,
       });
-      setReason("");
       const success = `${descriptor.success} Etkilenen run: ${result.count}.`;
       setMessage(success);
       toast.success(success);

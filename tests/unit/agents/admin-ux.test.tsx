@@ -8,7 +8,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AgentCreateForm,
+  AgentCredentialRotateForm,
   AgentLifecycleForm,
+  AgentRunCommands,
   AgentPersonaEditForm,
   AgentQuickRunActions,
   BulkAgentRunForm,
@@ -286,6 +288,7 @@ describe("agent admin UX contracts", () => {
     const user = userEvent.setup();
     render(<PersonaRollbackForm agentId={agentId} versions={[3, 2, 1]} />);
 
+    await user.clear(screen.getByLabelText("Rollback gerekçesi"));
     await user.type(
       screen.getByLabelText("Rollback gerekçesi"),
       "Önceki güvenli persona davranışına kontrollü dönüş.",
@@ -307,6 +310,26 @@ describe("agent admin UX contracts", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       "Persona v3 temel alınarak yeni rollback sürümü oluşturuldu.",
     );
+  });
+
+  it("emekliye ayırma ve kimlik döndürme geri alınamaz: onay olmadan istek gitmez (Astra, 12 Ekim)", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    mocks.apiRequest.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<AgentLifecycleForm agentId={agentId} current="PAUSED" />);
+    await user.selectOptions(screen.getByLabelText("Yeni durum"), "RETIRED");
+    await user.click(screen.getByRole("button", { name: /Durumu/u }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    cleanup();
+    render(<AgentCredentialRotateForm agentId={agentId} />);
+    await user.click(screen.getByRole("button", { name: "Credential döndür" }));
+    expect(confirm).toHaveBeenCalledTimes(2);
+    cleanup();
+    render(<AgentRunCommands runId="run-1" status="QUEUED" />);
+    await user.click(screen.getByRole("button", { name: /iptal/iu }));
+    expect(confirm).toHaveBeenCalledTimes(3);
+    expect(mocks.apiRequest).not.toHaveBeenCalled();
+    confirm.mockRestore();
   });
 
   it("refreshes lifecycle transition options when the server prop changes", async () => {

@@ -21,7 +21,7 @@ export function UkteActions({
   const router = useAppRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Ukte görünürlüğü: yönetici kararı.");
   async function act(kind: "withdraw" | "visibility") {
     setBusy(true);
     setError(undefined);
