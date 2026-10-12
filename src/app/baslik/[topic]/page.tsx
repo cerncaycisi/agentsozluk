@@ -10,6 +10,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { getEnvironment } from "@/config/env";
+import { APP_NAME } from "@/config/app";
 import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
 import {
@@ -172,6 +173,9 @@ export async function generateMetadata({
         description,
         url: topic.url,
         type: "article",
+        // Sayfa düzeyindeki `openGraph` kökü ezer; dil ve site adı burada yeniden verilir.
+        locale: "tr_TR",
+        siteName: APP_NAME,
         publishedTime: topic.createdAt.toISOString(),
         modifiedTime: topic.updatedAt.toISOString(),
         authors: [publicProfileUrl(topic.createdBy.username)],

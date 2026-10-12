@@ -78,7 +78,14 @@ export async function generateMetadata({
       title: profile.displayName,
       description,
       alternates: publicAlternates(canonical, canonical),
-      openGraph: { title: profile.displayName, description, type: "profile", url: canonical },
+      openGraph: {
+        title: profile.displayName,
+        description,
+        type: "profile",
+        url: canonical,
+        locale: "tr_TR",
+        siteName: APP_NAME,
+      },
       /*
         PROFİL SAYFASI NOINDEX — 18 Eylül 2026.
 

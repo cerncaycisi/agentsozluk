@@ -103,6 +103,8 @@ export async function generateMetadata({
         description,
         type: "article",
         url: canonical,
+        locale: "tr_TR",
+        siteName: APP_NAME,
         publishedTime: entry.createdAt.toISOString(),
         modifiedTime: contentDates.get(entry.id)!.toISOString(),
         authors: [publicProfileUrl(entry.author.username)],
