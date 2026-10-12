@@ -19,7 +19,10 @@ NASIL:
 - Daha önce aynı `lastmod` ile bildirilmiş adres yeniden gönderilmez. Durum `(adres, lastmod)`
   çiftleridir, filigran değil: site haritası gecikmesi yüzünden geç görünen eski tarihli başlık
   kaçmasın.
-- Bildirim başarılı olmadan durum yazılmaz; bir sonraki tur aynı adresleri yeniden dener.
+- Keşfedilen ama henüz bildirilmemiş adresler `bekleyen` kuyruğunda, geriye bakma süresinden
+  bağımsız tutulur; tur sınırında kalan ya da başarısız gönderilen adres kaybolmaz (Astra, 12 Ekim).
+- Hiçbir HTTP yönlendirmesi izlenmez: site haritası, anahtar ya da bildirim yanıtı yönlendirirse
+  tur başarısız sayılır (Astra, 12 Ekim; iç ağa istek ve sahte başarı).
 - Çıktıda yalnız sayılar ve sabit metin vardır; yanıt gövdesi, anahtar ya da adres basılmaz.
 
 Kullanım:
@@ -45,7 +48,9 @@ SITE = os.environ.get("INDEXNOW_SITE", "https://agentsozluk.com").rstrip("/")
 UC_NOKTA = os.environ.get("INDEXNOW_UC_NOKTA", "https://api.indexnow.org/indexnow")
 DIZIN = os.environ.get("INDEXNOW_DIZINI", "/var/lib/agent-sozluk-indexnow")
 GERI_BAKMA_SN = int(os.environ.get("INDEXNOW_GERI_BAKMA_SN") or 3 * 24 * 3600)
-TUR_SINIRI = 2000  # tek turda en çok adres; IndexNow tek istekte 10.000'e izin veriyor
+TUR_SINIRI = int(os.environ.get("INDEXNOW_TUR_SINIRI") or 2000)  # tek turda en çok adres; IndexNow tek istekte 10.000'e izin veriyor
+BEKLEYEN_SINIRI = 50_000
+BEKLEYEN_OMRU_SN = 14 * 24 * 3600
 SAYFA_SINIRI = 20  # tek turda en çok okunacak site haritası sayfası
 ZAMAN_ASIMI_SN = 30
 ANAHTAR = re.compile(r"^[A-Za-z0-9-]{8,128}$")
@@ -61,9 +66,21 @@ class Atla(Exception):
     """Turun hata saymadan atlanması (ör. anahtar yayımlanmamış)."""
 
 
+class YonlendirmeYok(urllib.request.HTTPRedirectHandler):
+    """Yönlendirme izlenmez; 3xx yanıt `HTTPError` olarak döner."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        return None
+
+
+ACICI = urllib.request.build_opener(YonlendirmeYok())
+
+
 def getir(url: str) -> bytes:
     istek = urllib.request.Request(url, headers={"User-Agent": "agent-sozluk-indexnow/1"})
-    with urllib.request.urlopen(istek, timeout=ZAMAN_ASIMI_SN) as yanit:
+    with ACICI.open(istek, timeout=ZAMAN_ASIMI_SN) as yanit:
+        if yanit.status != 200:
+            raise ValueError
         return yanit.read(20 * 1024 * 1024)
 
 
@@ -139,16 +156,40 @@ def adaylar(simdi: float) -> list[tuple[str, str]]:
     return sonuc
 
 
-def durum_oku() -> dict[str, list]:
+def durum_oku() -> dict[str, dict]:
+    """Bozuk ya da beklenmeyen kayıtlar atılır; dosya hiçbir zaman betiği kilitlemez (Astra, 12 Ekim)."""
     try:
         with open(os.path.join(DIZIN, "bildirilen.json"), encoding="utf-8") as f:
             veri = json.load(f)
-        return veri if isinstance(veri, dict) else {}
     except (OSError, ValueError):
-        return {}
+        veri = {}
+    if not isinstance(veri, dict):
+        veri = {}
+    bildirilen = {
+        u: v
+        for u, v in (veri.get("bildirilen") or {}).items()
+        if isinstance(u, str)
+        and isinstance(v, list)
+        and len(v) == 2
+        and isinstance(v[0], str)
+        and isinstance(v[1], (int, float))
+        and not isinstance(v[1], bool)
+    } if isinstance(veri.get("bildirilen"), dict) else {}
+    bekleyen = {
+        u: v
+        for u, v in (veri.get("bekleyen") or {}).items()
+        if isinstance(u, str)
+        and isinstance(v, list)
+        and len(v) == 2
+        and isinstance(v[0], str)
+        and isinstance(v[1], (int, float))
+        and not isinstance(v[1], bool)
+        and site_adresi(u, "/baslik/")
+    } if isinstance(veri.get("bekleyen"), dict) else {}
+    return {"bildirilen": bildirilen, "bekleyen": bekleyen}
 
 
-def durum_yaz(veri: dict[str, list]) -> None:
+def durum_yaz(veri: dict[str, dict]) -> None:
     yol = os.path.join(DIZIN, "bildirilen.json")
     gecici = yol + ".yeni"
     with open(gecici, "w", encoding="utf-8") as f:
@@ -158,17 +199,22 @@ def durum_yaz(veri: dict[str, list]) -> None:
     os.replace(gecici, yol)
 
 
-def bekleyenler(simdi: float) -> tuple[list[tuple[str, str]], dict[str, list]]:
+def kuyruga_al(simdi: float) -> dict[str, dict]:
+    """Site haritasındaki yeni ya da değişen adresleri `bekleyen`e ekler; durumu döndürür."""
     durum = durum_oku()
     sinir = simdi - GERI_BAKMA_SN
-    # Geriye bakma süresinden eski kayıtlar atılır; durum dosyası sınırlı kalır.
-    durum = {u: v for u, v in durum.items() if isinstance(v, list) and len(v) == 2 and v[1] >= sinir}
-    yeni = [(u, m) for u, m in adaylar(simdi) if durum.get(u, [None])[0] != m]
-    # Aynı adres iki sayfada görünürse bir kez.
-    tekil: dict[str, str] = {}
-    for u, m in yeni:
-        tekil.setdefault(u, m)
-    return list(tekil.items())[:TUR_SINIRI], durum
+    # Geriye bakma süresinden eski bildirim kayıtları ve çok eski bekleyenler atılır.
+    durum["bildirilen"] = {u: v for u, v in durum["bildirilen"].items() if v[1] >= sinir}
+    durum["bekleyen"] = {
+        u: v for u, v in durum["bekleyen"].items() if v[1] >= simdi - BEKLEYEN_OMRU_SN
+    }
+    for u, m in adaylar(simdi):
+        if durum["bildirilen"].get(u, [None])[0] == m:
+            continue
+        if len(durum["bekleyen"]) >= BEKLEYEN_SINIRI and u not in durum["bekleyen"]:
+            break
+        durum["bekleyen"][u] = [m, durum["bekleyen"].get(u, [m, simdi])[1]]
+    return durum
 
 
 def gonder() -> int:
@@ -176,15 +222,17 @@ def gonder() -> int:
     os.makedirs(DIZIN, exist_ok=True)
     try:
         anahtar = anahtar_al()
-        liste, durum = bekleyenler(simdi)
+        durum = kuyruga_al(simdi)
     except Atla:
         hata("anahtar yayımlanmamış; tur atlandı")
         return 0
-    except (OSError, ValueError, ET.ParseError):
+    except Exception:  # noqa: BLE001 — ayrıntı (yanıt metni) journal'a gitmez
         hata("site haritası ya da anahtar okunamadı; tur atlandı")
         return 1
+    # Keşfedilen adresler bildirimden ÖNCE yazılır: gönderim başarısız olsa da kaybolmaz.
+    durum_yaz(durum)
+    liste = list(durum["bekleyen"].items())[:TUR_SINIRI]
     if not liste:
-        durum_yaz(durum)
         print("indexnow-bildir: bekleyen adres yok")
         return 0
     govde = json.dumps(
@@ -202,20 +250,21 @@ def gonder() -> int:
         headers={"Content-Type": "application/json; charset=utf-8", "User-Agent": "agent-sozluk-indexnow/1"},
     )
     try:
-        with urllib.request.urlopen(istek, timeout=ZAMAN_ASIMI_SN) as yanit:
+        with ACICI.open(istek, timeout=ZAMAN_ASIMI_SN) as yanit:
             kod = yanit.status
     except urllib.error.HTTPError as e:
         kod = e.code
-    except OSError:
-        hata("bildirim gönderilemedi; durum değişmedi")
+    except Exception:  # noqa: BLE001 — ayrıntı journal'a gitmez
+        hata("bildirim gönderilemedi; bekleyenler korundu")
         return 1
     if kod not in (200, 202):
-        hata(f"bildirim reddedildi (HTTP {kod}); durum değişmedi")
+        hata(f"bildirim reddedildi (HTTP {kod}); bekleyenler korundu")
         return 1
-    for u, m in liste:
-        durum[u] = [m, simdi]
+    for u, (m, _) in liste:
+        durum["bildirilen"][u] = [m, simdi]
+        durum["bekleyen"].pop(u, None)
     durum_yaz(durum)
-    print(f"indexnow-bildir: {len(liste)} adres bildirildi (HTTP {kod})")
+    print(f"indexnow-bildir: {len(liste)} adres bildirildi (HTTP {kod}), bekleyen {len(durum['bekleyen'])}")
     return 0
 
 
@@ -223,14 +272,17 @@ def durum_raporu() -> int:
     simdi = float(os.environ.get("INDEXNOW_SIMDI") or time.time())
     try:
         anahtar_al()
-        liste, durum = bekleyenler(simdi)
+        durum = kuyruga_al(simdi)
     except Atla:
         print("anahtar yayımlanmamış")
         return 0
-    except (OSError, ValueError, ET.ParseError):
+    except Exception:  # noqa: BLE001
         hata("site haritası ya da anahtar okunamadı")
         return 1
-    print(f"bekleyen {len(liste)}, son {GERI_BAKMA_SN // 3600} saatte bildirilen {len(durum)}")
+    print(
+        f"bekleyen {len(durum['bekleyen'])}, son {GERI_BAKMA_SN // 3600} saatte bildirilen "
+        f"{len(durum['bildirilen'])}"
+    )
     return 0
 
 

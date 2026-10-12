@@ -23,6 +23,11 @@ describe("IndexNow anahtar dosyası", () => {
     expect(yanit.status).toBe(404);
   });
 
+  it("boş anahtar verilmemiş sayılır; uygulama açılışı bozulmaz", async () => {
+    const GET = await rota("");
+    expect(GET().status).toBe(404);
+  });
+
   it("anahtarı düz metin olarak yayımlar", async () => {
     const GET = await rota("a1b2c3d4e5f60718");
     const yanit = GET();

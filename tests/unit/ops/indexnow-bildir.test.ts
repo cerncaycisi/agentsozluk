@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -21,6 +21,8 @@ interface Kurulum {
   sayfalar: Array<Array<{ loc: string; lastmod: string }>>;
   dizinEk?: string[];
   postKodu: number;
+  haritaYonlendir?: boolean;
+  postYonlendir?: boolean;
 }
 
 let dizin: string;
@@ -51,12 +53,18 @@ beforeEach(async () => {
     const yol = istek.url ?? "/";
     if (istek.method === "POST" && yol === "/indexnow") {
       postlar.push(JSON.parse(await govde(istek)) as Record<string, unknown>);
-      yanit.writeHead(kurulum.postKodu).end();
+      if (kurulum.postYonlendir)
+        yanit.writeHead(302, { Location: `${kok}/indexnow-key.txt` }).end();
+      else yanit.writeHead(kurulum.postKodu).end();
       return;
     }
     if (yol === "/indexnow-key.txt") {
       if (typeof kurulum.anahtar === "number") yanit.writeHead(kurulum.anahtar).end();
       else yanit.writeHead(200, { "Content-Type": "text/plain" }).end(kurulum.anahtar);
+      return;
+    }
+    if (yol === "/sitemap.xml" && kurulum.haritaYonlendir) {
+      yanit.writeHead(302, { Location: "http://169.254.169.254/latest/meta-data/" }).end();
       return;
     }
     if (yol === "/sitemap.xml") {
@@ -92,7 +100,7 @@ afterEach(async () => {
   rmSync(dizin, { recursive: true, force: true });
 });
 
-function calistir(komut = "gonder", simdi = SIMDI) {
+function calistir(komut = "gonder", simdi = SIMDI, ek: Record<string, string> = {}) {
   return new Promise<{ status: number | null; stdout: string; stderr: string }>((coz) => {
     const surec = spawn("python3", [BETIK, komut], {
       env: {
@@ -102,6 +110,7 @@ function calistir(komut = "gonder", simdi = SIMDI) {
         INDEXNOW_UC_NOKTA: `${kok}/indexnow`,
         INDEXNOW_DIZINI: path.join(dizin, "durum"),
         INDEXNOW_SIMDI: String(simdi),
+        ...ek,
       },
     });
     let stdout = "";
@@ -174,11 +183,60 @@ describe("IndexNow bildirimi", () => {
     kurulum.postKodu = 422;
     const red = await calistir();
     expect(red.status).toBe(1);
-    expect(red.stderr).toContain("bildirim reddedildi (HTTP 422); durum değişmedi");
+    expect(red.stderr).toContain("bildirim reddedildi (HTTP 422); bekleyenler korundu");
     kurulum.postKodu = 202;
     const tekrar = await calistir("gonder", SIMDI + 60);
     expect(tekrar.stdout).toContain("1 adres bildirildi (HTTP 202)");
     expect(postlar).toHaveLength(2);
+  });
+
+  it("yönlendirme izlenmez: site haritası yönlendirirse istek gitmez, bildirim yönlendirirse başarı sayılmaz (Astra, 12 Ekim)", async () => {
+    kurulum.sayfalar = [[{ loc: `${kok}/baslik/a--2`, lastmod: saatOnce(1) }]];
+    kurulum.haritaYonlendir = true;
+    const harita = await calistir();
+    expect(harita.status).toBe(1);
+    expect(postlar).toHaveLength(0);
+
+    kurulum.haritaYonlendir = false;
+    kurulum.postYonlendir = true;
+    const post = await calistir("gonder", SIMDI + 60);
+    expect(post.status).toBe(1);
+    expect(post.stderr).toContain("bildirim reddedildi (HTTP 302); bekleyenler korundu");
+    kurulum.postYonlendir = false;
+    const tekrar = await calistir("gonder", SIMDI + 120);
+    expect(tekrar.stdout).toContain("1 adres bildirildi");
+    expect(postlar).toHaveLength(2);
+  });
+
+  it("tur sınırında kalan adres geriye bakma süresi geçse de kaybolmaz (Astra, 12 Ekim)", async () => {
+    kurulum.sayfalar = [
+      [
+        { loc: `${kok}/baslik/a--3`, lastmod: saatOnce(70) },
+        { loc: `${kok}/baslik/b--2`, lastmod: saatOnce(71) },
+        { loc: `${kok}/baslik/c--1`, lastmod: saatOnce(71.5) },
+      ],
+    ];
+    const ilk = await calistir("gonder", SIMDI, { INDEXNOW_TUR_SINIRI: "2" });
+    expect(ilk.stdout).toContain("2 adres bildirildi (HTTP 200), bekleyen 1");
+    // Bir saat sonra üçüncü adres artık site haritası penceresinin dışında; yine de gönderilir.
+    const ikinci = await calistir("gonder", SIMDI + 3600, { INDEXNOW_TUR_SINIRI: "2" });
+    expect(ikinci.stdout).toContain("1 adres bildirildi (HTTP 200), bekleyen 0");
+    expect(postlar[1]?.urlList).toEqual([`${kok}/baslik/c--1`]);
+  });
+
+  it("bozuk durum kaydı atılır, betiği kilitlemez (Astra, 12 Ekim)", async () => {
+    mkdirSync(path.join(dizin, "durum"), { recursive: true });
+    writeFileSync(
+      path.join(dizin, "durum", "bildirilen.json"),
+      JSON.stringify({
+        bildirilen: { [`${kok}/baslik/a--2`]: ["2026-10-12T00:00:00Z", null] },
+        bekleyen: { "https://baska.example/baslik/x--1": ["2026-10-12T00:00:00Z", SIMDI] },
+      }),
+    );
+    kurulum.sayfalar = [[{ loc: `${kok}/baslik/a--2`, lastmod: saatOnce(1) }]];
+    const sonuc = await calistir();
+    expect(sonuc.status).toBe(0);
+    expect(postlar[0]?.urlList).toEqual([`${kok}/baslik/a--2`]);
   });
 
   it("anahtar yayımlanmamışsa hiçbir şey göndermeden turu atlar", async () => {

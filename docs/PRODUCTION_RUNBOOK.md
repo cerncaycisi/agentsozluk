@@ -2331,18 +2331,30 @@ arama motorlarına iletilir. Google IndexNow kullanmaz.
   Anahtar yoksa rota 404 döner ve betik turu atlar.
 - **Betik:** `deploy/indexnow/indexnow-bildir.py`. Sitenin herkese açık site haritasını okur;
   yalnız `/baslik/` adreslerini gönderir. Docker'a, veritabanına ve uygulama sırlarına erişmez.
-- **Durum:** son 3 günde bildirilen `(adres, lastmod)` çiftleri
-  `/var/lib/agent-sozluk-indexnow/bildirilen.json` dosyasında. Bildirim başarısızsa durum
-  yazılmaz; sonraki tur yeniden dener. Tek turda en çok 2.000 adres.
+- **Durum:** `/var/lib/agent-sozluk-indexnow/bildirilen.json`. Son 3 günde bildirilen
+  `(adres, lastmod)` çiftleri ve henüz bildirilmemiş `bekleyen` adresler (14 güne kadar) tutulur.
+  Bildirim başarısızsa bekleyenler korunur; sonraki tur yeniden dener. Tek turda en çok 2.000
+  adres. Bozuk durum kaydı atılır, betiği kilitlemez.
+- **Yönlendirme izlenmez:** site haritası, anahtar ya da bildirim yanıtı yönlendirirse tur
+  başarısız sayılır.
 - **Birim:** `agent-sozluk-indexnow.{service,timer}`; saatte bir, `DynamicUser`, yalnız IPv4/IPv6
   çıkışı.
 
 Kurulum (anahtar bir kez üretilir; değer kayda ya da depoya yazılmaz):
 
 ```sh
+set -euo pipefail
 A=/opt/agent-sozluk/app
-sudo cp -p $A/.env $A/.env.yedek-$(date -u +%Y%m%dT%H%M%SZ)
-printf '\nINDEXNOW_KEY=%s\n' "$(openssl rand -hex 16)" | sudo tee -a $A/.env >/dev/null
+# Var olan anahtar korunur; yalnız yoksa ve üretim başarılıysa eklenir (Astra, 12 Ekim).
+if sudo grep -q '^INDEXNOW_KEY=' $A/.env; then
+  echo "INDEXNOW_KEY zaten var; değiştirilmedi"
+else
+  anahtar=$(openssl rand -hex 16)
+  [[ "$anahtar" =~ ^[0-9a-f]{32}$ ]] || { echo "anahtar üretilemedi"; exit 1; }
+  sudo cp -p $A/.env $A/.env.yedek-$(date -u +%Y%m%dT%H%M%SZ)
+  printf '\nINDEXNOW_KEY=%s\n' "$anahtar" | sudo tee -a $A/.env >/dev/null
+  unset anahtar
+fi
 # Uygulama yeniden başlatılınca anahtar yayımlanır; dağıtımla birlikte yapılır.
 sudo install -o root -g root -m 0755 $A/deploy/indexnow/indexnow-bildir.py /opt/agent-sozluk/scripts/indexnow-bildir.py
 sudo install -o root -g root -m 0644 $A/deploy/systemd/agent-sozluk-indexnow.service $A/deploy/systemd/agent-sozluk-indexnow.timer /etc/systemd/system/
