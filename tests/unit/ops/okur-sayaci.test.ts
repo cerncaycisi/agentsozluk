@@ -229,8 +229,10 @@ describe("çerezsiz okur sayacı", () => {
       "dış giriş 2 (yönlendirenden, tam); sayfa türü: baslik 1, entry 1",
     );
     expect(rapor.stdout).toContain("yapay zekâ getirmesi (kullanıcı adına) 4: baslik 3, entry 1");
-    const tekGun = calistir(null, T0, "rapor 1");
-    expect(tekGun.stdout).not.toContain("öncesi ölçülmedi");
+    // Başlangıç günü kısmi: yalnız o günü kapsayan rapor da notu yazar (Astra, 2. tur).
+    expect(calistir(null, T0, "rapor 1").stdout).toContain("öncesi ölçülmedi");
+    // Ertesi günden başlayan dönem tam kapsanır.
+    expect(calistir(null, T0 + 86_400, "rapor 1").stdout).not.toContain("öncesi ölçülmedi");
     expect(rapor.stdout).toContain("getirilen başlıklar (publicId): (acilmamis) 1, 5 1, 77 1");
     const ham = readFileSync(path.join(dizin, "veri", "sayac.db"));
     expect(ham.includes(Buffer.from("ChatGPT-User/1.0"))).toBe(false);

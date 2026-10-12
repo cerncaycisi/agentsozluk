@@ -552,8 +552,8 @@ def rapor(gun_sayisi: int) -> int:
     dis_toplam = sum(v for k, v in donem("yonlendiren").items() if not k.startswith("("))
     baslangic = durum_al(db, "ayrinti_baslangic")
     print(f"\ndönem ({bas} – {ad}):")
-    if baslangic is None or baslangic > bas:
-        # Eksik kapsam sıfır gibi sunulmaz (Astra, 12 Ekim).
+    if baslangic is None or baslangic >= bas:
+        # Eksik kapsam sıfır gibi sunulmaz; başlangıç günü de kısmidir (Astra, 12 Ekim, 2. tur).
         print(
             f"  not: ayrıntılı sayaçlar {baslangic or '(henüz yok)'} tarihinden beri (o gün kısmi);"
             " öncesi ölçülmedi"
