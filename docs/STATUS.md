@@ -7,6 +7,17 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 12 Ekim — talep ölçümü: Search Console ve sayaç (salt okunur)
+
+- **Search Console, 13 Eylül–10 Ekim:** 81 tık, 5.109 gösterim, günlük gösterim 145–264.
+  Önceki 28 günde 45 tık, 5.500 gösterim.
+- Site haritasında 7.641 adres gönderili. Google haritayı en son 2 Ekim'de indirdi.
+- "nedir/ne demek" içeren 64 sorgu: 309 gösterim, 0 tık. Tıklar güncel varlık ve olay
+  sorgularından geliyor.
+- **Sayaç, 10–11 Ekim:** günde 11–12 güvenilir insan görüntülemesi, 4–7 dış yönlendirme. Bot
+  görüntülemesi günde 8,9–11,5 bin.
+- Strateji: [Talep stratejisi](TALEP_STRATEJISI_2026-10-12.md), sıra [PLAN](PLAN.md) 4.
+
 ## 11 Ekim — kilitlenme düzeltmesi main'de (`61bff691`, #379); #377 G9c'yi bekliyor
 
 - **Canlı sürüm değişmedi:** `0bf531e`.
