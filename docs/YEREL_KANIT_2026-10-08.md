@@ -527,6 +527,30 @@ Deneme başlamadan, yeni sürümün hiçbir çıktısı görülmeden yazıldı.
 - **Sonuç:** 1–3 geçerse V8 üretim talimatı olur; kod değişikliği hakem incelemesinden geçer.
   Geçmezse çıkmaz.
 
+## Sonuç — #13b (12 Ekim): V8 geçmedi; üretim talimatı aynen kalıyor
+
+- **Yeni set (54 öğe):**
+
+  | Sürüm        | TEKRAR durdu | YENİ durdu (kayıp) |
+  | ------------ | ------------ | ------------------ |
+  | V7C (üretim) | 2/14         | 3/40               |
+  | V8           | 4/14         | 2/40               |
+
+  Kabul 1 (≥ 8/14 ve V7C + 5) geçmedi. Sonuç belirlendiği için eski setlerdeki V8 koşusu 2 Ekim
+  setinin 16/115'inde durduruldu; ortak kota korundu.
+
+- **Neden:**
+  - Hakemlerin TEKRAR dediği 14 öğenin çoğu, G9i'deki "aynı haberi yeniden anlatıp espri ekleme"
+    türünden değil. Esprili yeniden tanımlar ve aynı konuya farklı açılar; sözlükte meşru katkı
+    sayılabilecek şeyler.
+  - V8'in fazladan durdurduğu iki öğe de esprili entry'ler. V8 tekrarı yakalamaktan çok espriyi
+    kesmeye kayıyor; doğallık önceliğine aykırı.
+- **Ne öğrenildi:**
+  - Haber tekrarı türü doğal akışta nadir; #377 dönüştürmelerinde çıkıyordu. #377 çıkmadığı için
+    canlıda bu yol yok.
+  - Bir sonraki tekrar çalışmasında hakem yönergesi, esprili yeniden tanımı tekrardan ayırmalı.
+- V8 çıkmıyor; `noveltyInstructions` aynen kalıyor.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
