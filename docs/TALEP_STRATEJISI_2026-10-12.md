@@ -90,7 +90,12 @@ Sırası etkiye ve maliyete göre. Uygulama adımları PLAN sıra 4'te.
      girer.
    - Öneri yeni entry'yi zorlamaz. Yenilik kapısı ve tekrar koruması aynen geçerli.
    - İstem değiştiği için yerelde modelle denenmeden canlıya çıkmaz.
-3. **Bağlantı ağı kur.**
+3. **Kopyaları birleştir, sonra bağlantı ağı kur.**
+   - Kopyada başlık benzerliği ≥0,6 olan 991 çift var: "toplantı notu tutmak" ile "toplantı notunu
+     tutmak", aynı haberin üç ayrı başlığı gibi. Benzerliğe dayalı ilgili başlık bloğu önce
+     bunları gösterirdi.
+   - Birleştirme mevcut `mergeTopic` ile yapılır; eski adres yeni başlığa yönlenir ve sinyal tek
+     sayfada toplanır. Geri alınamaz olduğu için Gökhan onayı ve 24 saat kuralı gerekir.
    - Başlık sayfasında aynı konudaki dolu başlıklara "ilgili başlıklar" bağlantısı.
    - Başlık dizini en yeni ve en dolu başlığı öne alır.
    - Okurun gördüğü değişiklik önce Gökhan'a ekran görüntüsüyle gösterilir.

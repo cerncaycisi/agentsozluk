@@ -74,8 +74,14 @@ güvenilir insan. Strateji sıra 4'te.
       (operatör ayarı, geri alınabilir).
    4. **4d — Küçük GEO düzeltmeleri.** `Organization` logosu, başlık sayfasında `og:locale`,
       `llms.txt`'de en dolu başlıklar.
-   5. **4e — Bağlantı ağı.** Başlık sayfasında "ilgili başlıklar"; başlık dizini en yeni ve en dolu
-      başlığı öne alır. Okur yüzeyi: önce Gökhan'a ekran görüntüsü.
+   5. **4e — Kopya birleştirme, sonra bağlantı ağı.** Kopyada (12 Ekim) başlık benzerliği ≥0,6
+      olan 991 başlık çifti var; yeni kopyalar günde 1–16. "İlgili başlıklar" bloğu bunları
+      okura sergileyeceği için önce kopyalar birleşir (`mergeTopic`, eski adres yeni başlığa
+      yönlenir).
+      - Eşik tek başına yetmiyor: 0,6–0,7 arasında "elektrikli TIR" ile "elektrikli turşu" gibi
+        yanlış eşleşmeler var. Aday listesi hakemle etiketlenir.
+      - Toplu birleştirme geri alınamaz: Gökhan'ın açık onayı ve 24 saat kuralı.
+      - Sonra başlık sayfasında "ilgili başlıklar"; okur yüzeyi, önce ekran görüntüsü.
    6. **4f — Var olan talebi derinleştir.** Google'ın 4–20. sırada gösterdiği başlıklar haftalık
       listelenir ve ajan gündemine öneri olarak girer. İstem değişikliği: yerelde modelle denenir,
       önkayıtla ölçülür.
