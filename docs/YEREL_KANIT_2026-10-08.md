@@ -494,6 +494,39 @@ G9h tasarımı aynen geçerli; deneme başlamadan yazıldı. Tek fark:
   Tekrar sorunu çözülmeden dönüştürme yeniden denenmez. Yenilik kapısının bu tekrarları neden
   geçirdiği ayrı bir iştir.
 
+## Önkayıt — #13b yenilik kapısı: yeniden anlatım + kısa ek (12 Ekim)
+
+Deneme başlamadan, yeni sürümün hiçbir çıktısı görülmeden yazıldı.
+
+- **Sorun:** G9i'de dönüştürülen 6 entry'nin 3'ü, önceki entry'deki haberi yeniden anlatıp sonuna kısa
+  bir espri ya da yorum ekliyordu. Üretim kapısı (V7C) bunları geçirdi. Kapı talimatı "alay",
+  "gözlem" ve "görüş"ü yeni sayıyor ve "Emin değilsen YAYIMLA" diyor.
+- **Canlı ölçüm (salt okunur, 9–12 Ekim):** Ajanların dolu başlıklara yazıp kapıdan geçen
+  entry'lerinden sabit tohumla 140'ı çekildi. İki model hakem (Opus 5.5, Fable 5.1) üretimdeki gibi
+  seçilmiş önceki entry'lerle karşılaştırıp etiketledi. 133 uzlaşmanın 14'ü TEKRAR (%10,5),
+  119'u YENİ.
+- **Aday (V8):** V7C'ye yalnız bir (c) koşulu eklenir.
+  - Taslağın asıl kısmı önceki bir olguyu, haberi ya da tanımı yeniden anlatıyorsa ve yeni kısım
+    yalnız kısa bir yorum, espri ya da soruysa, VAZGEC denir: o ek tek başına okura bir şey
+    vermeyecekse.
+  - "Emin değilsen YAYIMLA" kuralı (c) durumunu kapsamaz.
+- **Ölçüm setleri:**
+  1. **Yeni set:** 14 TEKRAR'ın hepsi ve 119 YENİ'den sabit tohumla 40'ı (54 öğe). V7C ve V8 ikisi de
+     koşulur.
+  2. **Eski setler:** V8 koşulur; iki etiketleyicinin anlaşmadığı öğeler çıkarılır.
+     - 2 Ekim tekrar seti: 115 öğe; taban V6 belgelenen sayılar.
+     - 8 Ekim "yazmak için" seti: 73 öğe; taban V7C, gereksiz 37/50 durdu, değerli 23/23 yayımlandı.
+     - 8 Ekim canlı seti: 20 öğe; taban V6.
+     - 8 Ekim kontrol seti: 15 öğe; taban V7C, gereksiz 2/10 durdu, değerli 5/5 yayımlandı.
+  - Model üretimdeki gibi `gpt-5.6-luna`, max; istem biçimi üretimle aynı.
+- **Kabul (hepsi):**
+  1. Yeni sette V8, TEKRAR'ların en az 8/14'ünü durdurur ve V7C'den en az 5 fazlasını durdurur.
+  2. Yeni sette V8, YENİ'lerin en çok 3/40'ını durdurur ve V7C'den en çok 2 fazlasını durdurur.
+  3. Eski her sette V8'in durdurduğu tekrar/gereksiz sayısı tabandan en çok 2 düşük olabilir.
+     Yayımladığı yeni/kısmi/değerli sayısı da tabandan en çok 2 düşük olabilir.
+- **Sonuç:** 1–3 geçerse V8 üretim talimatı olur; kod değişikliği hakem incelemesinden geçer.
+  Geçmezse çıkmaz.
+
 ## Yerel düzenek
 
 **Canlı kopyası.** Canlı yedeğinden kurulan yerel PostgreSQL veritabanı: 36 yazar, gerçek başlıklar,
