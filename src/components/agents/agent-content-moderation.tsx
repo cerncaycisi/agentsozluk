@@ -4,7 +4,7 @@ import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import Link from "next/link";
 import { agentContentBulkTargetLimit } from "@/modules/moderation/domain/agent-content-limits";
 import { entryPublicUrl } from "@/lib/routing/public-urls";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { agentBehaviorReasonLabels } from "@/modules/agents/domain/behavior-feedback";
@@ -73,19 +73,6 @@ export function AgentContentModeration({
   const [selected, setSelected] = useState<string[]>([]);
   const [reason, setReason] = useState(DEFAULT_REASON);
   /*
-    Geri açma da aynı seçim için yeniden denemede aynı anahtarı kullanır; başarıdan sonra anahtar
-    düşer ve aynı seçim yeniden bir komut olur (Sol, 12 Ekim).
-  */
-  const restoreKeys = useRef(new Map<string, string>());
-  const restoreKey = (entryIds: string[]) => {
-    const name = [...entryIds].sort().join(",");
-    const existing = restoreKeys.current.get(name);
-    if (existing) return { name, key: existing };
-    const key = crypto.randomUUID();
-    restoreKeys.current.set(name, key);
-    return { name, key };
-  };
-  /*
     Sebep penceresi açıkken yeniden deneme aynı idempotency anahtarını kullanır: yanıtı kaybolan
     bir gizleme, run ya da zaman seçimi yeniden çözülerek ikinci kez uygulanmaz (Sol, 12 Ekim).
   */
@@ -113,7 +100,6 @@ export function AgentContentModeration({
     selector: HideSelector,
     behaviorReasonCode?: AgentBehaviorReasonCode,
     idempotencyKey?: string,
-    restoreKeyName?: string,
   ) {
     setPending(true);
     setError(undefined);
@@ -140,7 +126,6 @@ export function AgentContentModeration({
         },
       );
       setResult(outcome);
-      if (restoreKeyName) restoreKeys.current.delete(restoreKeyName);
       if (outcome.status === "NO_MATCH") {
         setHideTarget(undefined);
         const message = "Seçime uyan agent içeriği bulunamadı; işlem yapılmadı.";
@@ -288,10 +273,7 @@ export function AgentContentModeration({
             type="button"
             className="button-secondary"
             disabled={pending || selected.length === 0 || reason.trim().length < 10}
-            onClick={() => {
-              const { name, key } = restoreKey(selected);
-              void submit(false, { entryIds: selected }, undefined, key, name);
-            }}
+            onClick={() => void submit(false, { entryIds: selected })}
           >
             Seçilileri geri aç
           </button>
@@ -390,16 +372,7 @@ export function AgentContentModeration({
                     disabled={pending || reason.trim().length < 10}
                     onClick={() =>
                       record.entry.status === "HIDDEN"
-                        ? (() => {
-                            const { name, key } = restoreKey([record.entry.id]);
-                            void submit(
-                              false,
-                              { entryIds: [record.entry.id] },
-                              undefined,
-                              key,
-                              name,
-                            );
-                          })()
+                        ? void submit(false, { entryIds: [record.entry.id] })
                         : setHideTarget({
                             key: crypto.randomUUID(),
                             selector: { entryIds: [record.entry.id] },

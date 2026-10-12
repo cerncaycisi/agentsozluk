@@ -60,6 +60,11 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
   12 Ekim; main'de):** site haritası `topic.updatedAt` yayımlıyor; entry metni düzenlenince bu
   tarih değişmiyor. Arama motoru ve IndexNow betiği değişikliği görmüyor. Tarih, başlıktaki
   görünür entry'lerin en son içerik revizyonundan türetilmeli.
+- **Toplu "geri aç" yeniden denemesi yeni idempotency anahtarı üretiyor (Sol 6.1, tek tık incelemesi,
+  12 Ekim; main'de):** yanıtı kaybolan bir geri açma yeniden denenirse yeni komut olarak işlenir.
+  Seçime bağlı sabit anahtar denendi; araya giren gizleme ve seçim sırası yüzünden eski yanıtı
+  oynatma ve `IDEMPOTENCY_CONFLICT` sorunları çıkardığı için geri alındı. Doğru çözüm, komutun
+  sonucu belirsiz kaldığında sunucudan durumu sorup kullanıcıya göstermek.
 - **Yönetici ↔ çalışma zamanı kilit sırası denetimi (Sol 6.1, #379):** #379 üç döngüyü
   kapattı: moderasyon geri bildirimi, yeniden adlandırma ve kimlik döndürme. Sol'un 10–12.
   turları, main'de de var olan şu döngüleri buldu:
