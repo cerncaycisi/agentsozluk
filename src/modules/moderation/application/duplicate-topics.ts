@@ -9,6 +9,7 @@ import { getEnvironment } from "@/config/env";
 import { KARAGOZ } from "@/modules/moderation/domain/karagoz";
 import {
   ensureKaragozUser,
+  findKaragozUser,
   findDuplicateTopicPairs,
   type DuplicateTopicPair,
 } from "@/modules/moderation/repository/duplicate-topics";
@@ -24,7 +25,8 @@ import {
   Kanonik başlık: daha çok entry'si olan; eşitse daha önce açılan. Gammaz kanonik olmayana açılır
   ve `suggestedTitle` kanonik başlığın adıdır; rapor sayfası adı başlığa çözer.
 */
-export const DUPLICATE_SCAN_DEFAULTS = { days: 8, threshold: 0.8, limit: 30 } as const;
+// Günlük çalışır (Gökhan: "günlük baksın ispiyonlasın"); 3 günlük pencere atlanan bir günü örter.
+export const DUPLICATE_SCAN_DEFAULTS = { days: 3, threshold: 0.8, limit: 30 } as const;
 
 export function duplicateReportPlan(pair: DuplicateTopicPair) {
   const newerIsCanonical = pair.newerEntryCount > pair.olderEntryCount;
@@ -86,12 +88,42 @@ export async function ensureKaragoz(client: DatabaseExecutor, operator: ActorCon
   return actor;
 }
 
+/*
+  Günlük çalışma yönetici kimliği istemez: kurulu karagöz hesabı aranır ve beklenen durumdaysa
+  gammaz onunla açılır. Hesap yoksa ya da bozulduysa çalışma durur; kurulum `ensureKaragoz`.
+*/
+export async function resolveKaragozActor(client: DatabaseExecutor): Promise<ActorContext> {
+  const karagoz = await inTransaction(client, (transaction) =>
+    findKaragozUser(transaction, KARAGOZ.username),
+  );
+  if (
+    !karagoz ||
+    karagoz.kind !== "AGENT" ||
+    karagoz.status !== "ACTIVE" ||
+    !karagoz.loginDisabled ||
+    karagoz.writerApproved ||
+    karagoz.agentProfile !== null ||
+    karagoz.moderationCapabilities.length === 0
+  )
+    throw new AppError(
+      "FORBIDDEN",
+      403,
+      "Karagöz hesabı kurulu değil ya da beklenen durumda değil.",
+    );
+  return {
+    actorId: karagoz.id,
+    actorKind: "AGENT",
+    actorRole: "USER",
+    requestId: randomUUID(),
+    origin: "AGENT",
+  };
+}
+
 export async function fileDuplicateTopicReports(
   client: DatabaseExecutor,
-  operator: ActorContext,
+  actor: ActorContext,
   pairs: DuplicateTopicPair[],
 ) {
-  const actor = await ensureKaragoz(client, operator);
   const filed: Array<{ reportId: string; sourceTitle: string; canonicalTitle: string }> = [];
   const failed: Array<{ sourceTitle: string; code: string }> = [];
   for (const pair of pairs) {

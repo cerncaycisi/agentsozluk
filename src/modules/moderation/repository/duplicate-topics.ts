@@ -104,3 +104,22 @@ export async function ensureKaragozUser(
     });
   return user;
 }
+
+export function findKaragozUser(transaction: Prisma.TransactionClient, username: string) {
+  return transaction.user.findUnique({
+    where: { usernameNormalized: username },
+    select: {
+      id: true,
+      kind: true,
+      status: true,
+      loginDisabled: true,
+      writerApproved: true,
+      agentProfile: { select: { id: true } },
+      moderationCapabilities: {
+        where: { capability: "GAMMAZ", revokedAt: null },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+}

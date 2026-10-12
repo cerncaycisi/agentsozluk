@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Agent Sozluk karagoz duplicate-topic scan daily (07:00 Europe/Istanbul)
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 UTC
+Persistent=true
+RandomizedDelaySec=10min
+Unit=agent-sozluk-karagoz.service
+
+[Install]
+WantedBy=timers.target

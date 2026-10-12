@@ -3,7 +3,9 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
   duplicateReportPlan,
+  ensureKaragoz,
   fileDuplicateTopicReports,
+  resolveKaragozActor,
   scanDuplicateTopics,
 } from "@/modules/moderation/application/duplicate-topics";
 import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
@@ -97,7 +99,16 @@ describe("karagöz", () => {
       canonicalTitle: "toplantı notu tutmak",
     });
 
-    const result = await fileDuplicateTopicReports(integrationDatabase, actor(admin.id), pairs);
+    // Kurulmadan günlük çalışma durur.
+    await expect(resolveKaragozActor(integrationDatabase)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await ensureKaragoz(integrationDatabase, actor(admin.id));
+    const result = await fileDuplicateTopicReports(
+      integrationDatabase,
+      await resolveKaragozActor(integrationDatabase),
+      pairs,
+    );
     expect(result.failed).toEqual([]);
     expect(result.filed).toHaveLength(1);
     const report = await integrationDatabase.report.findUniqueOrThrow({
@@ -142,7 +153,7 @@ describe("karagöz", () => {
     });
     expect(await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 })).toEqual([]);
     // İkinci kurulum hesabı ya da yeteneği çoğaltmaz.
-    await fileDuplicateTopicReports(integrationDatabase, actor(admin.id), []);
+    await ensureKaragoz(integrationDatabase, actor(admin.id));
     expect(await integrationDatabase.user.count({ where: { usernameNormalized: "karagoz" } })).toBe(
       1,
     );
@@ -179,10 +190,36 @@ describe("karagöz", () => {
 });
 
 describe("karagöz kurulumu", () => {
+  it("yazar onayı verilmiş ya da yeteneği alınmış karagöz günlük çalışmayı durdurur", async () => {
+    const admin = await createUser("kur_admin", "HUMAN", "ADMIN");
+    await ensureKaragoz(integrationDatabase, actor(admin.id));
+    await integrationDatabase.user.update({
+      where: { usernameNormalized: "karagoz" },
+      data: { writerApproved: true },
+    });
+    await expect(resolveKaragozActor(integrationDatabase)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await integrationDatabase.user.update({
+      where: { usernameNormalized: "karagoz" },
+      data: { writerApproved: false },
+    });
+    await integrationDatabase.userModerationCapability.updateMany({
+      data: {
+        revokedAt: new Date(),
+        revokedById: admin.id,
+        revocationReason: "Deneme: yetki alındı.",
+      },
+    });
+    await expect(resolveKaragozActor(integrationDatabase)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
   it("yalnız yönetici kurabilir", async () => {
     const user = await createUser("sade_kullanici", "HUMAN", "USER");
     await expect(
-      fileDuplicateTopicReports(integrationDatabase, { ...actor(user.id), actorRole: "USER" }, []),
+      ensureKaragoz(integrationDatabase, { ...actor(user.id), actorRole: "USER" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
