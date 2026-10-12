@@ -8,11 +8,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**Talep:**
-
-- **Search Console, 13 Eylül–10 Ekim:** 81 tık, 5.109 gösterim; önceki 28 günde 45 tık.
-- **Çerezsiz sayaç, 10–11 Ekim:** günde 11–12 güvenilir insan görüntülemesi.
-- Strateji ve hedefler sıra 4'te.
+**Talep:** Search Console 13 Eylül–10 Ekim 81 tık, 5.109 gösterim; sayaç 10–11 Ekim günde 11–12
+güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
