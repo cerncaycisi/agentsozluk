@@ -44,6 +44,7 @@
     "agent:rollout-prompts": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/rollout-persona-prompts.ts",
     "agent:seed": "tsx scripts/agent-seed.ts",
     "agent:status": "tsx scripts/agent-codex-status.ts",
+    "agent:kopya-bekcisi": "tsx scripts/kopya-bekcisi.ts",
     "agent:capacity": "tsx scripts/agent-capability.ts capacity",
     "agent:concurrency-test": "tsx scripts/agent-capability.ts concurrency",
     "operator:admin": "tsx scripts/operator-admin.ts",
