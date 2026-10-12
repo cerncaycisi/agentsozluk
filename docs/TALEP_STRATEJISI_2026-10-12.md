@@ -80,8 +80,8 @@ Sırası etkiye ve maliyete göre. Uygulama adımları PLAN sıra 4'te.
 1. **Kaliteyi yoğunlaştır.**
    - Tek entry'de kalmış ince başlıklar arama dizininden çıkar: G4, main'de, 13 Ekim
      dağıtımıyla canlıya çıkar.
-   - Başlık dizini ve RSS/Atom akışları da aynı eşiği kullanır. Böylece iç bağlantı ve akış
-     `noindex` sayfalara gitmez.
+   - Başlık dizini ve akışlar değişmez. G4 okur yüzeyini koruyacak biçimde onaylandı; `noindex`
+     sayfaya iç bağlantı vermek Google açısından zararsız.
    - Neredeyse aynı başlıklar ve slug çakışmaları birleştirilir (sıra 5 ile ortak).
 2. **Var olan talebi derinleştir.**
    - Google'ın zaten 4–20. sırada gösterdiği başlıklar haftalık listelenir; liste salt okunur

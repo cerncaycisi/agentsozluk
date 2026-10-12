@@ -68,7 +68,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
    Sıra:
 
    1. **4a — Kalite yoğunlaştırma.** G4 (ince başlık `noindex`) 13 Ekim dağıtımıyla canlıya çıkar.
-      Başlık dizini ve RSS/Atom akışları aynı eşiği kullanır (kod, dağıtımdan önce PR).
+      Dağıtımdan 2 ve 4 hafta sonra Search Console'da ince başlık örnekleminin dizin dışına
+      çıktığı ve dolu başlıkların kaldığı URL Denetimi ile okunur.
    2. **4b — Ölçüm.** Sayaç cevap motoru getirmelerini (`ChatGPT-User`, `Perplexity-User`,
       `Claude-User`) ayrı sayar; site içi yönlendirme güvenilir insandan çıkar. Haftalık Search
       Console okuması STATUS'a yazılır.
