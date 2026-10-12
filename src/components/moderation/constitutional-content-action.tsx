@@ -27,6 +27,12 @@ function endpointFor(
   return `/api/v1/moderation/topics/${targetId}/hide`;
 }
 
+const IRREVERSIBLE_ACTIONS = new Set<ConstitutionalContentAction>([
+  "ENTRY_MOVED",
+  "TOPIC_MERGED",
+  "TOPIC_RENAMED",
+]);
+
 interface TopicTarget {
   id: string;
   title: string;
@@ -91,6 +97,12 @@ export function ConstitutionalContentAction({
   };
 
   const apply = async (behavior?: AgentBehaviorReasonCode) => {
+    // Geri alınamaz işlemde tek onay (taşıma, birleştirme, yeniden adlandırma için geri rota yok).
+    if (
+      IRREVERSIBLE_ACTIONS.has(action) &&
+      !window.confirm(`${ACTION_LABELS[action]}: geri alınamaz. Uygulansın mı?`)
+    )
+      return;
     setPending(true);
     setError(undefined);
     try {

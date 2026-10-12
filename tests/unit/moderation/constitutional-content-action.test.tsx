@@ -16,6 +16,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   apiRequest.mockReset();
   refresh.mockReset();
 });
@@ -58,6 +59,7 @@ describe("constitutional content action (tek tık, 12 Ekim)", () => {
 
   it("yeniden adlandırmada gammazın önerdiği başlık hazır gelir", async () => {
     apiRequest.mockResolvedValue({});
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     render(
       <ConstitutionalContentAction
         reportId="00000000-0000-4000-8000-000000000003"
@@ -86,6 +88,7 @@ describe("constitutional content action (tek tık, 12 Ekim)", () => {
   });
 
   it("taşıma hedefi UUID yerine başlık adıyla aranıp seçilir", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
     apiRequest.mockImplementation(async (url: string) =>
       url.startsWith("/api/v1/moderation/topics/lookup")
         ? [
@@ -111,6 +114,13 @@ describe("constitutional content action (tek tık, 12 Ekim)", () => {
     await userEvent.type(screen.getByLabelText("Hedef başlık (adıyla ara)"), "doğru");
     await userEvent.click(await screen.findByRole("option", { name: "doğru başlık" }));
     expect(screen.getByText(/Seçilen:/u)).toHaveTextContent("doğru başlık");
+    // Geri alınamaz işlem tek onay ister; vazgeçilirse hiçbir şey gönderilmez.
+    await userEvent.click(apply);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(apiRequest).not.toHaveBeenCalledWith(
+      expect.stringContaining("/move"),
+      expect.anything(),
+    );
     await userEvent.click(apply);
     await waitFor(() =>
       expect(apiRequest).toHaveBeenCalledWith(

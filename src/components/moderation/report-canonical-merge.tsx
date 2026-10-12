@@ -34,23 +34,31 @@ export function ReportCanonicalMerge({
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  /*
+    Yeniden deneme (Astra, 12 Ekim): kabul adımı geçip birleştirme düşerse ikinci denemede kabul
+    tekrar gönderilmez; iki adımın idempotency anahtarı da denemeler boyunca aynı kalır.
+  */
+  const [resolved, setResolved] = useState(!reportOpen);
+  const [keys] = useState(() => ({ resolve: crypto.randomUUID(), merge: crypto.randomUUID() }));
   const reasonTooShort = Array.from(reason.trim()).length < 10;
   const merge = async () => {
     setPending(true);
     setError(undefined);
     try {
-      if (reportOpen)
+      if (!resolved) {
         await apiRequest(`/api/v1/moderation/reports/${reportId}/resolve`, {
           method: "POST",
           body: { resolutionNote: "Kopya başlık gammazı yerinde bulundu." },
           csrf: true,
-          idempotency: true,
+          idempotency: keys.resolve,
         });
+        setResolved(true);
+      }
       await apiRequest(`/api/v1/moderation/topics/${sourceTopicId}/merge`, {
         method: "POST",
         body: { reason: reason.trim(), targetTopicId: canonical.id, sourceReportId: reportId },
         csrf: true,
-        idempotency: true,
+        idempotency: keys.merge,
       });
       setOpen(false);
       router.refresh();

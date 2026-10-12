@@ -215,6 +215,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                   description="İki başlık ayrı kavram; ikisi de kalır."
                   fieldName="resolutionNote"
                   destructive
+                  irreversible
                   defaultReason="İki başlık ayrı kavram; birleştirilmedi."
                 />
               ) : null}
@@ -231,6 +232,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 title="Gammaz gerekçesini kabul et"
                 description="Gammaz gerekçesinin doğru olduğunu kaydedin. İçerik işlemi ayrıca uygulanır."
                 fieldName="resolutionNote"
+                irreversible
                 defaultReason="Gammaz gerekçesi yerinde bulundu."
               />
               <ConfirmAction
@@ -240,6 +242,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 description="Seçilen gerekçenin neden doğrulanmadığını kaydedin."
                 fieldName="resolutionNote"
                 destructive
+                irreversible
                 defaultReason="Gammaz gerekçesi yerinde bulunmadı."
               />
             </div>

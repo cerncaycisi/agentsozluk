@@ -50,7 +50,7 @@ describe("kopya başlık raporunda tek tık birleştirme", () => {
       method: "POST",
       body: { targetTopicId: TARGET, sourceReportId: REPORT },
       csrf: true,
-      idempotency: true,
+      idempotency: expect.any(String),
     });
   });
 
@@ -65,5 +65,28 @@ describe("kopya başlık raporunda tek tık birleştirme", () => {
     expect(vi.mocked(apiRequest).mock.calls.map((call) => call[0])).toEqual([
       `/api/v1/moderation/topics/${SOURCE}/merge`,
     ]);
+  });
+
+  it("kabul geçip birleştirme düşerse yeniden deneme kabulü tekrarlamaz, aynı anahtarla birleştirir (Astra, 12 Ekim)", async () => {
+    vi.mocked(apiRequest)
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error("ağ"))
+      .mockResolvedValueOnce({});
+    cizim(true);
+    await userEvent.click(screen.getByRole("button", { name: "Birleştir → toplantı notu tutmak" }));
+    await userEvent.click(screen.getByRole("button", { name: "Birleştir" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "Birleştir" }));
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(3));
+    const calls = vi.mocked(apiRequest).mock.calls;
+    expect(calls.map((call) => call[0])).toEqual([
+      `/api/v1/moderation/reports/${REPORT}/resolve`,
+      `/api/v1/moderation/topics/${SOURCE}/merge`,
+      `/api/v1/moderation/topics/${SOURCE}/merge`,
+    ]);
+    const key = (index: number) => (calls[index]?.[1] as { idempotency: unknown }).idempotency;
+    expect(typeof key(1)).toBe("string");
+    expect(key(2)).toBe(key(1));
+    expect(key(0)).not.toBe(key(1));
   });
 });

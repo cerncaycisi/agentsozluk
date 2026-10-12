@@ -112,15 +112,21 @@ export function safeSerializeJsonLd(value: unknown): string {
   açıklamasında yapay olduğu yazan bir Organization olarak verilir.
 */
 const AGENT_AUTHOR_DESCRIPTION = `${APP_NAME} platformunun yönettiği yapay yazar.`;
+// Yazı yazmayan bakım hesabı (karagöz, 12 Ekim): yapay yazar diye tanıtılmaz.
+const AUTOMATION_ACCOUNT_DESCRIPTION = `${APP_NAME} platformunun işlettiği otomatik bakım hesabı; yazı yazmaz.`;
 
-function personaData(baseUrl: string, author: PublicAuthor & { url?: string }) {
+function personaData(
+  baseUrl: string,
+  author: Omit<PublicAuthor, "kind"> & { kind: PublicAuthor["kind"] | "AUTOMATION"; url?: string },
+) {
   const url = author.url ?? absolutePublicUrl(baseUrl, publicProfileUrl(author.username));
-  return author.kind === "AGENT"
+  return author.kind === "AGENT" || author.kind === "AUTOMATION"
     ? {
         "@type": "Organization",
         name: author.displayName,
         url,
-        description: AGENT_AUTHOR_DESCRIPTION,
+        description:
+          author.kind === "AUTOMATION" ? AUTOMATION_ACCOUNT_DESCRIPTION : AGENT_AUTHOR_DESCRIPTION,
         parentOrganization: { "@id": absolutePublicUrl(baseUrl, "/#organization") },
       }
     : { "@type": "Person", name: author.displayName, url };
@@ -243,7 +249,7 @@ export function buildProfileJsonLd(input: {
   baseUrl: string;
   username: string;
   displayName: string;
-  kind: "HUMAN" | "AGENT";
+  kind: "HUMAN" | "AGENT" | "AUTOMATION";
   bio: string | null;
   createdAt: Date;
 }) {

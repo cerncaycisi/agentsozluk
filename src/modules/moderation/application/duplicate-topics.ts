@@ -8,8 +8,9 @@ import { randomUUID } from "node:crypto";
 import { getEnvironment } from "@/config/env";
 import { KARAGOZ } from "@/modules/moderation/domain/karagoz";
 import {
-  ensureKaragozUser,
+  createKaragozUser,
   findKaragozUser,
+  grantKaragozGammaz,
   findDuplicateTopicPairs,
   type DuplicateTopicPair,
 } from "@/modules/moderation/repository/duplicate-topics";
@@ -64,28 +65,48 @@ export async function scanDuplicateTopics(
 export async function ensureKaragoz(client: DatabaseExecutor, operator: ActorContext) {
   if (operator.actorKind !== "HUMAN" || operator.actorRole !== "ADMIN")
     throw new AppError("FORBIDDEN", 403, "Karagözü yalnız yönetici kurabilir.");
-  const watcher = await inTransaction(client, (transaction) =>
-    ensureKaragozUser(transaction, {
-      ...KARAGOZ,
-      grantedById: operator.actorId,
-      termsVersion: getEnvironment().TERMS_VERSION,
-    }),
+  const karagozId = await inTransaction(client, async (transaction) => {
+    const existing = await findKaragozUser(transaction, KARAGOZ.username);
+    // Var olan hesap önce denetlenir; beklenen karagöz değilse hiçbir şey yazılmaz.
+    if (existing && !isValidKaragoz(existing, { requireCapability: false }))
+      throw new AppError("FORBIDDEN", 403, "Karagöz kullanıcı adı başka bir hesaba ait.");
+    const userId =
+      existing?.id ??
+      (
+        await createKaragozUser(transaction, {
+          ...KARAGOZ,
+          termsVersion: getEnvironment().TERMS_VERSION,
+        })
+      ).id;
+    if (!existing || existing.moderationCapabilities.length === 0)
+      await grantKaragozGammaz(transaction, { userId, grantedById: operator.actorId });
+    return userId;
+  });
+  return karagozActor(karagozId);
+}
+
+function isValidKaragoz(
+  user: NonNullable<Awaited<ReturnType<typeof findKaragozUser>>>,
+  options: { requireCapability: boolean },
+) {
+  return (
+    user.kind === "AGENT" &&
+    user.status === "ACTIVE" &&
+    user.loginDisabled &&
+    !user.writerApproved &&
+    user.agentProfile === null &&
+    (!options.requireCapability || user.moderationCapabilities.length > 0)
   );
-  if (
-    watcher.kind !== "AGENT" ||
-    watcher.status !== "ACTIVE" ||
-    !watcher.loginDisabled ||
-    watcher.writerApproved
-  )
-    throw new AppError("FORBIDDEN", 403, "Karagöz hesabı beklenen durumda değil.");
-  const actor: ActorContext = {
-    actorId: watcher.id,
+}
+
+function karagozActor(actorId: string): ActorContext {
+  return {
+    actorId,
     actorKind: "AGENT",
     actorRole: "USER",
     requestId: randomUUID(),
     origin: "AGENT",
   };
-  return actor;
 }
 
 /*
@@ -96,27 +117,13 @@ export async function resolveKaragozActor(client: DatabaseExecutor): Promise<Act
   const karagoz = await inTransaction(client, (transaction) =>
     findKaragozUser(transaction, KARAGOZ.username),
   );
-  if (
-    !karagoz ||
-    karagoz.kind !== "AGENT" ||
-    karagoz.status !== "ACTIVE" ||
-    !karagoz.loginDisabled ||
-    karagoz.writerApproved ||
-    karagoz.agentProfile !== null ||
-    karagoz.moderationCapabilities.length === 0
-  )
+  if (!karagoz || !isValidKaragoz(karagoz, { requireCapability: true }))
     throw new AppError(
       "FORBIDDEN",
       403,
       "Karagöz hesabı kurulu değil ya da beklenen durumda değil.",
     );
-  return {
-    actorId: karagoz.id,
-    actorKind: "AGENT",
-    actorRole: "USER",
-    requestId: randomUUID(),
-    origin: "AGENT",
-  };
+  return karagozActor(karagoz.id);
 }
 
 export async function fileDuplicateTopicReports(

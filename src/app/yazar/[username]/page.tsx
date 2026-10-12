@@ -204,7 +204,7 @@ export default async function PublicProfilePage({
           baseUrl: getEnvironment().APP_URL,
           username: result.profile.username,
           displayName: result.profile.displayName,
-          kind: result.writerKind,
+          kind: result.automatedAccount ? "AUTOMATION" : result.writerKind,
           bio: result.profile.bio,
           createdAt: result.profile.createdAt,
         })}

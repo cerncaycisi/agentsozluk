@@ -217,6 +217,54 @@ describe("karagöz kurulumu", () => {
     });
   });
 
+  it("karagoz adı başka bir hesaba aitse kurulum hiçbir yetki yazmadan durur (Astra, 12 Ekim)", async () => {
+    const admin = await createUser("cakisma_admin", "HUMAN", "ADMIN");
+    const insan = await createUser("karagoz", "HUMAN", "USER");
+    await expect(ensureKaragoz(integrationDatabase, actor(admin.id))).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(
+      await integrationDatabase.userModerationCapability.count({ where: { userId: insan.id } }),
+    ).toBe(0);
+    await expect(resolveKaragozActor(integrationDatabase)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("başka bir çiftin reddedilmiş raporu yeni gerçek kopyayı susturmaz (Astra, 12 Ekim)", async () => {
+    const admin = await createUser("cift_admin", "HUMAN", "ADMIN");
+    const agent = await createUser("cift_ajan", "AGENT", "USER");
+    const now = new Date("2026-10-12T12:00:00.000Z");
+    const a = await createTopic(
+      "kapı önünde ayakkabı bırakmak",
+      agent.id,
+      new Date("2026-10-11T00:00:00.000Z"),
+    );
+    const b = await createTopic(
+      "kapı önüne ayakkabı bırakmak",
+      agent.id,
+      new Date("2026-10-01T00:00:00.000Z"),
+      4,
+    );
+    const karagoz = await ensureKaragoz(integrationDatabase, actor(admin.id));
+    const ilk = await fileDuplicateTopicReports(
+      integrationDatabase,
+      karagoz,
+      await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 }),
+    );
+    expect(ilk.filed.map((f) => f.sourceTitle)).toEqual([a.title]);
+    await integrationDatabase.report.updateMany({ data: { status: "REJECTED" } });
+    // A'nın başka bir kopyası açılır: A–B reddedildi diye A–C susturulmaz.
+    const c = await createTopic(
+      "kapının önünde ayakkabı bırakmak",
+      agent.id,
+      new Date("2026-10-12T06:00:00.000Z"),
+    );
+    const pairs = await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 });
+    expect(pairs.some((pair) => pair.newerId === c.id)).toBe(true);
+    expect(pairs.some((pair) => pair.newerId === a.id && pair.olderId === b.id)).toBe(false);
+  });
+
   it("yalnız yönetici kurabilir", async () => {
     const user = await createUser("sade_kullanici", "HUMAN", "USER");
     await expect(

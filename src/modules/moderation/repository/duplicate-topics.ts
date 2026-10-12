@@ -17,8 +17,9 @@ export interface DuplicateTopicPair {
   kendinden önce açılmış aktif bir başlıkla trigram benzerliği eşiği geçiyorsa aday olur.
   Arama dizinindeki `immutable_unaccent(normalizedTitle)` GIN indeksini kullanır.
 
-  Daha önce bu çiftlerden biri için kopya raporu açıldıysa (açık, kabul ya da ret) çift yeniden
-  önerilmez: reddedilen "aynı değil" kararı her taramada geri gelmesin.
+  Aynı çift (hedef başlık + önerilen başlık) için daha önce kopya raporu açıldıysa (açık, kabul ya
+  da ret) çift yeniden önerilmez: reddedilen "aynı değil" kararı her taramada geri gelmesin. Başka
+  bir çiftin raporu bu çifti susturmaz (Astra, 12 Ekim).
 */
 export async function findDuplicateTopicPairs(
   transaction: Prisma.TransactionClient,
@@ -45,7 +46,10 @@ export async function findDuplicateTopicPairs(
         SELECT 1 FROM "reports" AS report
         WHERE report."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
           AND report."targetType" = 'TOPIC'
-          AND report."targetId" IN (newer.id, older.id)
+          AND (
+            (report."targetId" = newer.id AND report."evidence"->>'suggestedTitle' = older.title)
+            OR (report."targetId" = older.id AND report."evidence"->>'suggestedTitle' = newer.title)
+          )
       )
     ORDER BY newer.id, similarity DESC, older."createdAt" ASC
     LIMIT ${input.limit * 4}
@@ -57,25 +61,23 @@ export async function findDuplicateTopicPairs(
 }
 
 /*
-  Karagöz hesabını bulur ya da açar; GAMMAZ yeteneğini garanti eder. Tekrar çağrılabilir.
-  Hesap agent profili olmadan açılır: çalışma zamanı agent profili üzerinden çalıştığı için bu
-  hesap hiçbir zaman yazar olarak koşmaz. Giriş kapalı, parola kullanılamaz.
+  Karagöz hesabını açar. Yalnız hesap yokken çağrılır; var olan hesabın denetimi ve yetki
+  verme aynı işlemde uygulama katmanında yapılır (Astra, 12 Ekim: var olan bir insan hesabı
+  `karagoz` adını taşıyorsa ona yetki yazılmamalı). Agent profili olmadan açılır: çalışma
+  zamanı agent profili üzerinden çalıştığı için bu hesap hiçbir zaman yazar olarak koşmaz.
 */
-export async function ensureKaragozUser(
+export function createKaragozUser(
   transaction: Prisma.TransactionClient,
   input: {
     username: string;
     displayName: string;
     email: string;
     bio: string;
-    grantedById: string;
     termsVersion: string;
   },
 ) {
-  const user = await transaction.user.upsert({
-    where: { usernameNormalized: input.username },
-    update: {},
-    create: {
+  return transaction.user.create({
+    data: {
       kind: "AGENT",
       role: "USER",
       status: "ACTIVE",
@@ -92,17 +94,17 @@ export async function ensureKaragozUser(
       termsVersion: input.termsVersion,
       termsAcceptedAt: new Date(),
     },
-    select: { id: true, kind: true, status: true, loginDisabled: true, writerApproved: true },
-  });
-  const capability = await transaction.userModerationCapability.findFirst({
-    where: { userId: user.id, capability: "GAMMAZ", revokedAt: null },
     select: { id: true },
   });
-  if (!capability)
-    await transaction.userModerationCapability.create({
-      data: { userId: user.id, grantedById: input.grantedById, capability: "GAMMAZ" },
-    });
-  return user;
+}
+
+export function grantKaragozGammaz(
+  transaction: Prisma.TransactionClient,
+  input: { userId: string; grantedById: string },
+) {
+  return transaction.userModerationCapability.create({
+    data: { userId: input.userId, grantedById: input.grantedById, capability: "GAMMAZ" },
+  });
 }
 
 export function findKaragozUser(transaction: Prisma.TransactionClient, username: string) {
