@@ -213,7 +213,7 @@ describe("çerezsiz okur sayacı", () => {
     expect(g.yz_getirme_turu).toEqual({ baslik: 3, entry: 1 });
     // Binlerce basamaklı ek kimlik sayılmaz ve kaydı yarım bırakmaz (Astra, 12 Ekim).
     expect(g.yz_getirme_baslik).toEqual({ "77": 1, "5": 1, "(acilmamis)": 1 });
-    expect(g.istek.islenemeyen).toBeUndefined();
+    expect(g.istek?.islenemeyen).toBeUndefined();
     // Site içi yönlendirme dış giriş sayılmaz.
     expect(g.dis_giris_turu).toEqual({ baslik: 1, entry: 1 });
     expect(g.dis_giris_baslik).toEqual({ "77": 1 });
