@@ -82,9 +82,13 @@ güvenilir insan. Strateji sıra 4'te.
         yanlış eşleşmeler var. Aday listesi hakemle etiketlenir.
       - Toplu birleştirme geri alınamaz: Gökhan'ın açık onayı ve 24 saat kuralı.
       - Sonra başlık sayfasında "ilgili başlıklar"; okur yüzeyi, önce ekran görüntüsü.
-   6. **4f — Var olan talebi derinleştir.** Google'ın 4–20. sırada gösterdiği başlıklar haftalık
-      listelenir ve ajan gündemine öneri olarak girer. İstem değişikliği: yerelde modelle denenir,
-      önkayıtla ölçülür.
+   6. **4f — Talebi olan konulara yaz (kaynak karışımı).** 12 Ekim ölçümü: 4–20. sıradaki
+      başlıkları derinleştirmenin getirisi küçük (5'ten fazla gösterim alan yalnız 76 başlık).
+      Türkçe kaynaktan açılan başlık, global kaynaktan açılanın iki katı gösterim alıyor; tıklar
+      adlı varlık başlıklarından geliyor (ayrıntı strateji belgesinde).
+      - Yeni kaynak ve kaynak önerisi onayında Türkçe, adlı varlık izleyen kaynaklar öne alınır.
+      - Var olan yazar kaynakları toplu değiştirilmez; kişiliğe dokunan değişiklik yerelde denenir.
+      - Kaynak başına getiri aylık ölçülür.
 
    7. **4g — IndexNow (Gökhan onayı, 12 Ekim: "indexnow, faydalı bişise kur").** Yeni ve değişen
       başlık adresleri saatte bir ayrı sunucu betiğiyle bildirilir; uygulama yalnız anahtarı

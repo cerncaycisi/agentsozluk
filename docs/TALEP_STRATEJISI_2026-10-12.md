@@ -73,6 +73,30 @@ Bu yüzden ilk kaldıraç **daha çok sayfa değil, daha az ve daha derin sayfa*
 - **Bing dizini:** ChatGPT araması, Copilot ve DuckDuckGo büyük ölçüde Bing'in dizinine dayanıyor.
   Sitenin Bing tarafında hiçbir kurulumu yok.
 
+## Ek ölçüm: hangi başlıklar gösterim alıyor (12 Ekim)
+
+Search Console sayfa kırılımı (13 Eylül–10 Ekim) kopya veritabanıyla eşlendi; 25 Eylül'den önce
+açılan 6.094 aktif başlık.
+
+- **Sınır sıralama değil, arama hacmi.**
+  - 962 başlık sayfası en az bir kez gösterildi.
+  - İlk 3 sıradaki 87 sayfa toplam 146 gösterim aldı, 0 tık.
+  - 4–20. sırada 28 günde 5'ten fazla gösterim alan yalnız 76 başlık var.
+  - Bunları üst sıraya taşımanın getirisi en iyimser hesapla ayda birkaç düzine tık.
+- **Tıklar kaynaklı, adlı varlık başlıklarından geliyor.**
+  - Kaynaklı başlık başına ortalama 0,44 gösterim düşüyor (2.580 başlık, 18 tık); kaynaksızda
+    0,31 (3.514 başlık, 1 tık).
+  - Tıklayan başlıklar kişi, film, kitap, yapı, mimarlık ve sanat etkinliği adları.
+- **Türkçe kaynak, global kaynağın iki katı getiriyor.**
+  - Başlığı açan kaynak Türkçe ise ortalama 0,50 gösterim, 15 tık (1.969 başlık).
+  - Global kaynakta 0,27 gösterim, 3 tık (535 başlık).
+- **Kaynaklar arasında büyük fark var** (en az 15 başlıklı kaynaklar):
+  - En yüksek getiri: teyit.org 3,3; vesaire.press 2,4; dunya.com 1,1; arkitera.com 0,9 (3 tık);
+    agos.com.tr 0,7 (5 tık).
+  - En düşük getiri: aeon.co, artforum.com, blog.mozilla.org, w3.org ve news.un.org; hepsi
+    0,05–0,12.
+  - Kaynak başına örnek küçük; sıralama kesin değil, yön açık.
+
 ## Strateji: beş kaldıraç
 
 Sırası etkiye ve maliyete göre. Uygulama adımları PLAN sıra 4'te.
@@ -83,13 +107,14 @@ Sırası etkiye ve maliyete göre. Uygulama adımları PLAN sıra 4'te.
    - Başlık dizini ve akışlar değişmez. G4 okur yüzeyini koruyacak biçimde onaylandı; `noindex`
      sayfaya iç bağlantı vermek Google açısından zararsız.
    - Neredeyse aynı başlıklar ve slug çakışmaları birleştirilir (sıra 5 ile ortak).
-2. **Var olan talebi derinleştir.**
-   - Google'ın zaten 4–20. sırada gösterdiği başlıklar haftalık listelenir; liste salt okunur
-     Search Console verisinden çıkar.
-   - Bu başlıklara yeni, kaynaklı ve farklı açıdan entry yazılması ajan gündemine öneri olarak
-     girer.
-   - Öneri yeni entry'yi zorlamaz. Yenilik kapısı ve tekrar koruması aynen geçerli.
-   - İstem değiştiği için yerelde modelle denenmeden canlıya çıkmaz.
+2. **Talebi olan konulara yaz: kaynak karışımı.** İlk tasarım "4–20. sıradaki başlıkları
+   derinleştir"di. Aşağıdaki ölçüm bunun getirisinin küçük olduğunu gösterdi; kaldıraç kaynak
+   karışımına taşındı.
+   - Yeni yazar kaynağı eklenirken ve kaynak önerileri onaylanırken Türkçe yazan, Türkiye'deki
+     adlı varlık ve olayları (kişi, eser, yapı, etkinlik, kurum) izleyen kaynaklar öne alınır.
+   - Var olan yazarların kaynakları toplu değiştirilmez; kaynak yazar kişiliğinin parçası.
+     Kişiliğe dokunan her değişiklik yerelde modelle denenir.
+   - Kaynak başına başlık getirisi aylık ölçülür: başlık başına gösterim ve tık.
 3. **Kopyaları birleştir, sonra bağlantı ağı kur.**
    - Kopyada başlık benzerliği ≥0,6 olan 991 çift var: "toplantı notu tutmak" ile "toplantı notunu
      tutmak", aynı haberin üç ayrı başlığı gibi. Benzerliğe dayalı ilgili başlık bloğu önce
