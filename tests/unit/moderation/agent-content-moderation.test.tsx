@@ -113,6 +113,27 @@ describe("agent content override badges", () => {
     },
   );
 
+  it("sebep penceresinde yeniden deneme aynı idempotency anahtarıyla gider (Sol, 12 Ekim)", async () => {
+    mocks.apiRequest.mockRejectedValueOnce(new Error("ağ")).mockResolvedValueOnce({
+      status: "SUCCEEDED",
+      selectedCount: 1,
+      succeeded: [{ entryId: "entry-1" }],
+      failed: [],
+    });
+    const user = userEvent.setup();
+    render(<AgentContentModeration rows={[row()]} />);
+    await user.click(screen.getByRole("button", { name: "Bu run’ın tüm entry’lerini gizle" }));
+    const sebep = "Entry mevcut katkıyı anlamlı yenilik olmadan tekrarlıyor";
+    await user.click(screen.getByRole("button", { name: sebep }));
+    await waitFor(() => expect(mocks.apiRequest).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: sebep }));
+    await waitFor(() => expect(mocks.apiRequest).toHaveBeenCalledTimes(2));
+    const anahtar = (i: number) =>
+      (mocks.apiRequest.mock.calls[i]?.[1] as { idempotency: unknown }).idempotency;
+    expect(typeof anahtar(0)).toBe("string");
+    expect(anahtar(1)).toBe(anahtar(0));
+  });
+
   it("shows only the still-supported provocation override", () => {
     render(
       <AgentContentModeration

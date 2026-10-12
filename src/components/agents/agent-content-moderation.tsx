@@ -72,7 +72,15 @@ export function AgentContentModeration({
   const router = useAppRouter();
   const [selected, setSelected] = useState<string[]>([]);
   const [reason, setReason] = useState(DEFAULT_REASON);
-  const [hideTarget, setHideTarget] = useState<{ selector: HideSelector; title: string }>();
+  /*
+    Sebep penceresi açıkken yeniden deneme aynı idempotency anahtarını kullanır: yanıtı kaybolan
+    bir gizleme, run ya da zaman seçimi yeniden çözülerek ikinci kez uygulanmaz (Sol, 12 Ekim).
+  */
+  const [hideTarget, setHideTarget] = useState<{
+    selector: HideSelector;
+    title: string;
+    key: string;
+  }>();
   const [sinceHours, setSinceHours] = useState(24);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -91,6 +99,7 @@ export function AgentContentModeration({
     hidden: boolean,
     selector: HideSelector,
     behaviorReasonCode?: AgentBehaviorReasonCode,
+    idempotencyKey?: string,
   ) {
     setPending(true);
     setError(undefined);
@@ -113,7 +122,7 @@ export function AgentContentModeration({
               : {}),
           },
           csrf: true,
-          idempotency: true,
+          idempotency: idempotencyKey ?? true,
         },
       );
       setResult(outcome);
@@ -252,6 +261,7 @@ export function AgentContentModeration({
             disabled={pending || selected.length === 0 || reason.trim().length < 10}
             onClick={() =>
               setHideTarget({
+                key: crypto.randomUUID(),
                 selector: { entryIds: selected },
                 title: `${selected.length} seçili entry gizlensin`,
               })
@@ -364,6 +374,7 @@ export function AgentContentModeration({
                       record.entry.status === "HIDDEN"
                         ? void submit(false, { entryIds: [record.entry.id] })
                         : setHideTarget({
+                            key: crypto.randomUUID(),
                             selector: { entryIds: [record.entry.id] },
                             title: "Entry gizlensin",
                           })
@@ -379,6 +390,7 @@ export function AgentContentModeration({
                     disabled={pending || reason.trim().length < 10}
                     onClick={() =>
                       setHideTarget({
+                        key: crypto.randomUUID(),
                         selector: { runId: record.run.id },
                         title: "Bu run’ın tüm agent entry’leri gizlensin",
                       })
@@ -398,6 +410,7 @@ export function AgentContentModeration({
                     }
                     onClick={() =>
                       setHideTarget({
+                        key: crypto.randomUUID(),
                         selector: { agentProfileId: record.agentProfile.id, sinceHours },
                         title: `Bu agent’ın son ${sinceHours} saatlik entry’leri gizlensin`,
                       })
@@ -506,7 +519,9 @@ export function AgentContentModeration({
                   key={code}
                   type="button"
                   disabled={pending || reason.trim().length < 10}
-                  onClick={() => hideTarget && void submit(true, hideTarget.selector, code)}
+                  onClick={() =>
+                    hideTarget && void submit(true, hideTarget.selector, code, hideTarget.key)
+                  }
                   className="button-secondary justify-start text-left"
                 >
                   {text}

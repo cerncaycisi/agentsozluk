@@ -80,14 +80,23 @@ export function ConstitutionalContentAction({
       setOptions([]);
       return;
     }
+    // Sorgu değişince eski isteğin yanıtı yok sayılır; güncel listeyi ezemez (Sol, 12 Ekim).
+    let current = true;
     const timer = setTimeout(() => {
       void apiRequest<TopicTarget[]>(
         `/api/v1/moderation/topics/lookup?q=${encodeURIComponent(query.trim())}`,
       )
-        .then((found) => setOptions(found.filter((topic) => topic.id !== targetId)))
-        .catch(() => setOptions([]));
+        .then((found) => {
+          if (current) setOptions(found.filter((topic) => topic.id !== targetId));
+        })
+        .catch(() => {
+          if (current) setOptions([]);
+        });
     }, 250);
-    return () => clearTimeout(timer);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
   }, [needsTargetTopic, query, targetId]);
 
   const chooseAction = (next: ConstitutionalContentAction) => {
@@ -100,7 +109,11 @@ export function ConstitutionalContentAction({
     // Geri alınamaz işlemde tek onay (taşıma, birleştirme, yeniden adlandırma için geri rota yok).
     if (
       IRREVERSIBLE_ACTIONS.has(action) &&
-      !window.confirm(`${ACTION_LABELS[action]}: geri alınamaz. Uygulansın mı?`)
+      !window.confirm(
+        `${ACTION_LABELS[action]}${needsTargetTopic && target ? ` → “${target.title}”` : ""}${
+          needsTitle ? ` → “${title.trim()}”` : ""
+        }: geri alınamaz. Uygulansın mı?`,
+      )
     )
       return;
     setPending(true);

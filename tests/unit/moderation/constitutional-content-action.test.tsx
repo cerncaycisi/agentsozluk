@@ -134,4 +134,39 @@ describe("constitutional content action (tek tık, 12 Ekim)", () => {
       ),
     );
   });
+
+  it("geç gelen eski arama yanıtı güncel sonuçları ezmez (Sol, 12 Ekim)", async () => {
+    let eskiyiBitir: (value: unknown) => void = () => undefined;
+    apiRequest.mockImplementation((url: string) => {
+      if (url.includes("q=eski"))
+        return new Promise((resolve) => {
+          eskiyiBitir = resolve;
+        });
+      if (url.includes("q=guncel"))
+        return Promise.resolve([
+          { id: "00000000-0000-4000-8000-0000000000bb", title: "güncel başlık", url: "/b--2" },
+        ]);
+      return Promise.resolve({});
+    });
+    render(
+      <ConstitutionalContentAction
+        reportId="00000000-0000-4000-8000-000000000007"
+        targetType="ENTRY"
+        targetId="00000000-0000-4000-8000-000000000008"
+        actions={["ENTRY_MOVED"]}
+      />,
+    );
+    const kutu = screen.getByLabelText("Hedef başlık (adıyla ara)");
+    await userEvent.type(kutu, "eski");
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("q=eski")));
+    await userEvent.clear(kutu);
+    await userEvent.type(kutu, "guncel");
+    expect(await screen.findByRole("option", { name: "güncel başlık" })).toBeInTheDocument();
+    eskiyiBitir([
+      { id: "00000000-0000-4000-8000-0000000000cc", title: "eski başlık", url: "/b--3" },
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByRole("option", { name: "eski başlık" })).toBeNull();
+    expect(screen.getByRole("option", { name: "güncel başlık" })).toBeInTheDocument();
+  });
 });
