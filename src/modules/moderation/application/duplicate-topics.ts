@@ -151,11 +151,48 @@ export async function fileDuplicateTopicReports(
       const report = await createReport(client, actor, input.data);
       filed.push({ reportId: report.id, ...plan });
     } catch (error) {
-      failed.push({
-        sourceTitle: plan.sourceTitle,
-        code: error instanceof AppError ? error.code : "INTERNAL_ERROR",
-      });
+      /*
+        Kaynak başlığın zaten açık bir karagöz raporu varsa (A→B bekliyor) A→C kaybolmasın:
+        aynı çift ters yönde (C→A) raporlanır. İkisinin de açık raporu varsa sonraki taramada
+        yeniden denenir (Astra, 12 Ekim, 2. tur).
+      */
+      const flipped =
+        error instanceof AppError && error.code === "REPORT_ALREADY_OPEN"
+          ? await fileFlipped(client, actor, pair, plan)
+          : null;
+      if (flipped) filed.push(flipped);
+      else
+        failed.push({
+          sourceTitle: plan.sourceTitle,
+          code: error instanceof AppError ? error.code : "INTERNAL_ERROR",
+        });
     }
   }
   return { filed, failed };
+}
+
+async function fileFlipped(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  pair: DuplicateTopicPair,
+  plan: ReturnType<typeof duplicateReportPlan>,
+) {
+  const other =
+    plan.sourceId === pair.newerId
+      ? { sourceId: pair.olderId, sourceTitle: pair.olderTitle, canonicalTitle: pair.newerTitle }
+      : { sourceId: pair.newerId, sourceTitle: pair.newerTitle, canonicalTitle: pair.olderTitle };
+  const input = reportCreateSchema.safeParse({
+    targetType: "TOPIC",
+    targetId: other.sourceId,
+    reason: "TOPIC_CANONICALIZATION_REQUEST",
+    evidence: { suggestedTitle: other.canonicalTitle },
+    details: `karagöz: başlık benzerliği ${pair.similarity.toFixed(2).replace(".", ",")}.`,
+  });
+  if (!input.success) return null;
+  try {
+    const report = await createReport(client, actor, input.data);
+    return { reportId: report.id, ...other };
+  } catch {
+    return null;
+  }
 }

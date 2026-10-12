@@ -265,6 +265,46 @@ describe("karagöz kurulumu", () => {
     expect(pairs.some((pair) => pair.newerId === a.id && pair.olderId === b.id)).toBe(false);
   });
 
+  it("kaynak başlığın açık raporu varken yeni kopya ters yönde raporlanır (Astra, 12 Ekim, 2. tur)", async () => {
+    const admin = await createUser("acik_admin", "HUMAN", "ADMIN");
+    const agent = await createUser("acik_ajan", "AGENT", "USER");
+    const now = new Date("2026-10-12T12:00:00.000Z");
+    const a = await createTopic(
+      "kapı önünde ayakkabı bırakmak",
+      agent.id,
+      new Date("2026-10-11T00:00:00.000Z"),
+      1,
+    );
+    await createTopic(
+      "kapı önüne ayakkabı bırakmak",
+      agent.id,
+      new Date("2026-10-01T00:00:00.000Z"),
+      4,
+    );
+    const karagoz = await ensureKaragoz(integrationDatabase, actor(admin.id));
+    await fileDuplicateTopicReports(
+      integrationDatabase,
+      karagoz,
+      await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 }),
+    );
+    // A→B açık. A'nın yeni kopyası C (2 entry) açılır: A kaynak olurdu, açık raporu var.
+    const c = await createTopic(
+      "kapının önünde ayakkabı bırakmak",
+      agent.id,
+      new Date("2026-10-12T06:00:00.000Z"),
+      2,
+    );
+    const pairs = (await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 })).filter(
+      (pair) => pair.newerId === c.id && pair.olderId === a.id,
+    );
+    expect(pairs).toHaveLength(1);
+    const result = await fileDuplicateTopicReports(integrationDatabase, karagoz, pairs);
+    expect(result.failed).toEqual([]);
+    expect(result.filed).toEqual([
+      expect.objectContaining({ sourceId: c.id, canonicalTitle: a.title }),
+    ]);
+  });
+
   it("yalnız yönetici kurabilir", async () => {
     const user = await createUser("sade_kullanici", "HUMAN", "USER");
     await expect(

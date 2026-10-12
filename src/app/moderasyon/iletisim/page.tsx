@@ -106,6 +106,7 @@ export default async function ContactMessagesPage({
                       title="İleti ele alındı"
                       description="Ne yaptığınızı kısaca yazın; kayıt moderasyon geçmişinde kalır."
                       fieldName="note"
+                      irreversible
                       defaultReason="İleti okundu ve ele alındı."
                     />
                   </div>

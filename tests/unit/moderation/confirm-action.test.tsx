@@ -101,4 +101,29 @@ describe("moderasyon onay penceresi", () => {
       },
     });
   });
+
+  it("gizle → geri aç geçişinde gerekçe yeni işleme göre yenilenir (Astra, 12 Ekim)", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({});
+    const { rerender } = render(
+      <ConfirmAction
+        endpoint="/api/v1/admin/seed-entries/x/suppress"
+        label="Public’ten gizle"
+        title="Seed entry’yi gizle"
+        description="Gizlenir."
+      />,
+    );
+    rerender(
+      <ConfirmAction
+        endpoint="/api/v1/admin/seed-entries/x/restore"
+        label="Geri aç"
+        title="Seed entry’yi geri aç"
+        description="Açılır."
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Geri aç" }));
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(apiRequest).mock.calls[0]?.[1]).toMatchObject({
+      body: { reason: "Seed entry’yi geri aç: yönetici kararı, panelden." },
+    });
+  });
 });

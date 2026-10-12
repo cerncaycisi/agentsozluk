@@ -8,6 +8,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AgentCreateForm,
+  AgentCredentialRotateForm,
   AgentLifecycleForm,
   AgentPersonaEditForm,
   AgentQuickRunActions,
@@ -308,6 +309,22 @@ describe("agent admin UX contracts", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       "Persona v3 temel alınarak yeni rollback sürümü oluşturuldu.",
     );
+  });
+
+  it("emekliye ayırma ve kimlik döndürme geri alınamaz: onay olmadan istek gitmez (Astra, 12 Ekim)", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    mocks.apiRequest.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<AgentLifecycleForm agentId={agentId} current="PAUSED" />);
+    await user.selectOptions(screen.getByLabelText("Yeni durum"), "RETIRED");
+    await user.click(screen.getByRole("button", { name: /Durumu/u }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    cleanup();
+    render(<AgentCredentialRotateForm agentId={agentId} />);
+    await user.click(screen.getByRole("button", { name: "Credential döndür" }));
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(mocks.apiRequest).not.toHaveBeenCalled();
+    confirm.mockRestore();
   });
 
   it("refreshes lifecycle transition options when the server prop changes", async () => {

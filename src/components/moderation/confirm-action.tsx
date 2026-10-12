@@ -1,7 +1,7 @@
 "use client";
 
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { agentBehaviorReasonLabels } from "@/modules/agents/domain/behavior-feedback";
 import type { AgentBehaviorReasonCode } from "@/modules/moderation/validation/schemas";
@@ -45,6 +45,11 @@ export function ConfirmAction({
   const initialReason = defaultReason ?? `${title}: yönetici kararı, panelden.`;
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState(initialReason);
+  /*
+    Aynı bileşen yenilemeden sonra ters işleme dönebilir (gizle → geri aç). Gerekçe yeni işleme
+    göre yeniden üretilir; önceki işlemin gerekçesi kayda geçmez (Astra, 12 Ekim).
+  */
+  useEffect(() => setReason(initialReason), [initialReason]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   /*

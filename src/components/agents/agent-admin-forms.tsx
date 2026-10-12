@@ -53,6 +53,12 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
       className="grid gap-3 sm:grid-cols-[180px_1fr_auto]"
       onSubmit={async (event) => {
         event.preventDefault();
+        // Emekliye ayırma geri alınamaz: tek onay (tek tık, 12 Ekim; Astra).
+        if (
+          status === "RETIRED" &&
+          !window.confirm("Agent emekliye ayrılsın mı? Bu durumdan geri dönüş yok.")
+        )
+          return;
         setPending(true);
         setError(undefined);
         try {
@@ -215,6 +221,9 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
       className="space-y-3"
       onSubmit={async (event) => {
         event.preventDefault();
+        // Döndürme mevcut kimlik bilgilerini iptal eder; geri alınamaz: tek onay.
+        if (!window.confirm("Kimlik bilgisi döndürülsün mü? Mevcut kimlik bilgileri iptal edilir."))
+          return;
         setPending(true);
         setError(undefined);
         setResult(undefined);
