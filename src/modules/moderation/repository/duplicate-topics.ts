@@ -35,7 +35,9 @@ export async function findDuplicateTopicPairs(
       SELECT topic.id FROM "topics" AS topic
       WHERE topic."status" = 'ACTIVE' AND topic."createdAt" >= ${input.since}
       UNION
-      SELECT report."targetId" FROM "reports" AS report
+      -- Kararı verilmiş raporun başlığı; birleştiyse birleştiği başlık (Sol, 12 Ekim).
+      SELECT COALESCE(reported."mergedIntoId", reported.id) FROM "reports" AS report
+      JOIN "topics" AS reported ON reported.id = report."targetId"
       WHERE report."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
         AND report."targetType" = 'TOPIC'
         AND report."handledAt" >= ${input.since}

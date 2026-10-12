@@ -3,6 +3,7 @@ import type { DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { createReport } from "@/modules/moderation/application/reports";
+import { findModerationActor } from "@/modules/moderation/repository/actions";
 import { reportCreateSchema } from "@/modules/moderation/validation/schemas";
 import { randomUUID } from "node:crypto";
 import { getEnvironment } from "@/config/env";
@@ -67,6 +68,15 @@ export async function ensureKaragoz(client: DatabaseExecutor, operator: ActorCon
   if (operator.actorKind !== "HUMAN" || operator.actorRole !== "ADMIN")
     throw new AppError("FORBIDDEN", 403, "Karagözü yalnız yönetici kurabilir.");
   const karagozId = await inTransaction(client, async (transaction) => {
+    // Operatörün güncel durumu kilitlenip yeniden okunur; eski ADMIN bağlamına güvenilmez (Sol, 12 Ekim).
+    const principal = await findModerationActor(transaction, operator.actorId);
+    if (
+      !principal ||
+      principal.kind !== "HUMAN" ||
+      principal.role !== "ADMIN" ||
+      principal.status !== "ACTIVE"
+    )
+      throw new AppError("FORBIDDEN", 403, "Karagözü yalnız aktif yönetici kurabilir.");
     const existing = await findKaragozUser(transaction, KARAGOZ.username);
     // Var olan hesap önce denetlenir; beklenen karagöz değilse hiçbir şey yazılmaz.
     if (existing && !isValidKaragoz(existing, { requireCapability: false }))

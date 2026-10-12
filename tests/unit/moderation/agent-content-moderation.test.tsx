@@ -134,6 +134,27 @@ describe("agent content override badges", () => {
     expect(anahtar(1)).toBe(anahtar(0));
   });
 
+  it("geri açmada yeniden deneme aynı anahtarla gider; başarıdan sonra yeni komut olur (Sol, 12 Ekim)", async () => {
+    mocks.apiRequest
+      .mockRejectedValueOnce(new Error("ağ"))
+      .mockResolvedValue({ status: "SUCCEEDED", selectedCount: 1, succeeded: [{}], failed: [] });
+    const user = userEvent.setup();
+    render(
+      <AgentContentModeration rows={[{ ...row(), entry: { ...row().entry, status: "HIDDEN" } }]} />,
+    );
+    const geriAc = screen.getByRole("button", { name: "Tek entry’yi geri aç" });
+    await user.click(geriAc);
+    await waitFor(() => expect(mocks.apiRequest).toHaveBeenCalledTimes(1));
+    await user.click(geriAc);
+    await waitFor(() => expect(mocks.apiRequest).toHaveBeenCalledTimes(2));
+    await user.click(geriAc);
+    await waitFor(() => expect(mocks.apiRequest).toHaveBeenCalledTimes(3));
+    const anahtar = (i: number) =>
+      (mocks.apiRequest.mock.calls[i]?.[1] as { idempotency: unknown }).idempotency;
+    expect(anahtar(1)).toBe(anahtar(0));
+    expect(anahtar(2)).not.toBe(anahtar(1));
+  });
+
   it("shows only the still-supported provocation override", () => {
     render(
       <AgentContentModeration

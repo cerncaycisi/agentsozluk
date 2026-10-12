@@ -421,6 +421,49 @@ describe("karagöz kurulumu", () => {
     expect(pairs).toEqual([expect.objectContaining({ newerId: c.id, olderId: a.id })]);
   });
 
+  it("kurulum operatörün güncel durumunu yeniden okur (Sol, 12 Ekim, 5. tur)", async () => {
+    const admin = await createUser("eski_admin", "HUMAN", "ADMIN");
+    await integrationDatabase.user.update({
+      where: { id: admin.id },
+      data: { status: "SUSPENDED" },
+    });
+    await expect(ensureKaragoz(integrationDatabase, actor(admin.id))).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(await integrationDatabase.user.count({ where: { usernameNormalized: "karagoz" } })).toBe(
+      0,
+    );
+  });
+
+  it("birleşen raporun hedef başlığı yeniden taranır (Sol, 12 Ekim, 5. tur)", async () => {
+    const admin = await createUser("hedef_admin", "HUMAN", "ADMIN");
+    const agent = await createUser("hedef_ajan", "AGENT", "USER");
+    const old = (gun: number) => new Date(Date.UTC(2026, 8, gun));
+    const c = await createTopic("toplantı notu tutmak", agent.id, old(1), 4);
+    const b = await createTopic("toplantı notunu tutmak", agent.id, old(2), 1);
+    const a = await createTopic("toplantı notları tutmak", agent.id, old(3), 1);
+    await integrationDatabase.topic.update({
+      where: { id: a.id },
+      data: { status: "MERGED", mergedIntoId: c.id },
+    });
+    const karagoz = await ensureKaragoz(integrationDatabase, actor(admin.id));
+    await integrationDatabase.report.create({
+      data: {
+        reporterId: karagoz.actorId,
+        targetType: "TOPIC",
+        targetId: a.id,
+        reason: "TOPIC_CANONICALIZATION_REQUEST",
+        evidence: { suggestedTitle: c.title },
+        details: "karagöz: deneme.",
+        status: "RESOLVED",
+        handledAt: new Date("2026-10-11T00:00:00.000Z"),
+      },
+    });
+    const now = new Date("2026-10-12T12:00:00.000Z");
+    const pairs = await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 });
+    expect(pairs).toContainEqual(expect.objectContaining({ newerId: b.id, olderId: c.id }));
+  });
+
   it("yalnız yönetici kurabilir", async () => {
     const user = await createUser("sade_kullanici", "HUMAN", "USER");
     await expect(
