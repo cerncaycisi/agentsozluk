@@ -239,6 +239,41 @@ describe("IndexNow bildirimi", () => {
     expect(postlar[0]?.urlList).toEqual([`${kok}/baslik/a--2`]);
   });
 
+  it("site haritasının bir sayfası okunamazsa bulunanlar korunur ve gönderilir (Astra, 2. tur)", async () => {
+    kurulum.sayfalar = [
+      [{ loc: `${kok}/baslik/a--3`, lastmod: saatOnce(71.5) }],
+      [{ loc: `${kok}/baslik/b--2`, lastmod: saatOnce(71.6) }],
+    ];
+    // 1.xml yoksa sunucu 404 döner: ikinci sayfa okunamaz.
+    const ikinci = kurulum.sayfalar[1]!;
+    kurulum.sayfalar.length = 1;
+    kurulum.dizinEk = [`${kok}/sitemaps/topics/1.xml`];
+    const sonuc = await calistir();
+    expect(sonuc.status).toBe(1);
+    expect(sonuc.stderr).toContain(
+      "site haritası tam okunamadı; bulunanlar ve bekleyenler gönderilecek",
+    );
+    expect(postlar[0]?.urlList).toEqual([`${kok}/baslik/a--3`]);
+    kurulum.sayfalar.push(ikinci);
+    kurulum.dizinEk = [];
+    const tekrar = await calistir("gonder", SIMDI + 60);
+    expect(tekrar.status).toBe(0);
+    expect(postlar[1]?.urlList).toEqual([`${kok}/baslik/b--2`]);
+  });
+
+  it("UTF-8'e yazılamayan durum kaydı atılır (Astra, 2. tur)", async () => {
+    mkdirSync(path.join(dizin, "durum"), { recursive: true });
+    writeFileSync(
+      path.join(dizin, "durum", "bildirilen.json"),
+      `{"bildirilen": {"${kok}/baslik/a--2": ["\\ud800", ${SIMDI}]}, "bekleyen": {"${kok}/baslik/\\ud800--9": ["x", ${SIMDI}]}}`,
+    );
+    kurulum.sayfalar = [[{ loc: `${kok}/baslik/a--2`, lastmod: saatOnce(1) }]];
+    const ilk = await calistir();
+    expect(ilk.status).toBe(0);
+    expect(postlar[0]?.urlList).toEqual([`${kok}/baslik/a--2`]);
+    expect((await calistir("gonder", SIMDI + 60)).status).toBe(0);
+  });
+
   it("anahtar yayımlanmamışsa hiçbir şey göndermeden turu atlar", async () => {
     kurulum.anahtar = 404;
     kurulum.sayfalar = [[{ loc: `${kok}/baslik/a--2`, lastmod: saatOnce(1) }]];

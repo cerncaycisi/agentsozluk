@@ -126,8 +126,12 @@ def sayfa_no(adres: str) -> int:
     return int(eslesme.group(1)) if eslesme else 0
 
 
-def adaylar(simdi: float) -> list[tuple[str, str]]:
-    """Geriye bakma süresi içindeki başlık adresleri ve `lastmod` değerleri."""
+def adaylar(simdi: float, sonuc: list[tuple[str, str]]) -> None:
+    """Geriye bakma süresi içindeki başlık adreslerini ve `lastmod` değerlerini `sonuc`a ekler.
+
+    Sayfa sayfa ekler: bir sayfa okunamazsa o ana kadar bulunanlar çağırana kalır, istisna
+    yine de yükselir (Astra, 12 Ekim, 2. tur).
+    """
     sinir = simdi - GERI_BAKMA_SN
     dizin = ET.fromstring(getir(f"{SITE}/sitemap.xml"))
     sayfalar = [
@@ -137,7 +141,6 @@ def adaylar(simdi: float) -> list[tuple[str, str]]:
     ]
     # Başlık sayfaları `lastmod` azalan sırada: 0, 1, 2… (sayısal sıra).
     sayfalar.sort(key=sayfa_no)
-    sonuc: list[tuple[str, str]] = []
     for sayfa in sayfalar[:SAYFA_SINIRI]:
         kok = ET.fromstring(getir(sayfa))
         eski_goruldu = False
@@ -153,7 +156,17 @@ def adaylar(simdi: float) -> list[tuple[str, str]]:
             sonuc.append((loc, lastmod))
         if eski_goruldu:
             break
-    return sonuc
+
+
+def gecerli_metin(deger: object) -> bool:
+    """UTF-8'e yazılabilen metin; yalnız vekil karakter içeren JSON dizesi elenir (Astra, 2. tur)."""
+    if not isinstance(deger, str):
+        return False
+    try:
+        deger.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
 
 
 def durum_oku() -> dict[str, dict]:
@@ -168,20 +181,20 @@ def durum_oku() -> dict[str, dict]:
     bildirilen = {
         u: v
         for u, v in (veri.get("bildirilen") or {}).items()
-        if isinstance(u, str)
+        if gecerli_metin(u)
         and isinstance(v, list)
         and len(v) == 2
-        and isinstance(v[0], str)
+        and gecerli_metin(v[0])
         and isinstance(v[1], (int, float))
         and not isinstance(v[1], bool)
     } if isinstance(veri.get("bildirilen"), dict) else {}
     bekleyen = {
         u: v
         for u, v in (veri.get("bekleyen") or {}).items()
-        if isinstance(u, str)
+        if gecerli_metin(u)
         and isinstance(v, list)
         and len(v) == 2
-        and isinstance(v[0], str)
+        and gecerli_metin(v[0])
         and isinstance(v[1], (int, float))
         and not isinstance(v[1], bool)
         and site_adresi(u, "/baslik/")
@@ -199,8 +212,12 @@ def durum_yaz(veri: dict[str, dict]) -> None:
     os.replace(gecici, yol)
 
 
-def kuyruga_al(simdi: float) -> dict[str, dict]:
-    """Site haritasındaki yeni ya da değişen adresleri `bekleyen`e ekler; durumu döndürür."""
+def kuyruga_al(simdi: float) -> tuple[dict[str, dict], bool]:
+    """Site haritasındaki yeni ya da değişen adresleri `bekleyen`e ekler.
+
+    Durumu ve taramanın tam olup olmadığını döndürür. Tarama yarıda kalsa da bulunan adresler ve
+    var olan bekleyenler korunur; gönderim taramadan bağımsızdır (Astra, 2. tur).
+    """
     durum = durum_oku()
     sinir = simdi - GERI_BAKMA_SN
     # Geriye bakma süresinden eski bildirim kayıtları ve çok eski bekleyenler atılır.
@@ -208,13 +225,19 @@ def kuyruga_al(simdi: float) -> dict[str, dict]:
     durum["bekleyen"] = {
         u: v for u, v in durum["bekleyen"].items() if v[1] >= simdi - BEKLEYEN_OMRU_SN
     }
-    for u, m in adaylar(simdi):
+    bulunan: list[tuple[str, str]] = []
+    try:
+        adaylar(simdi, bulunan)
+        tam = True
+    except Exception:  # noqa: BLE001 — ayrıntı journal'a gitmez
+        tam = False
+    for u, m in bulunan:
         if durum["bildirilen"].get(u, [None])[0] == m:
             continue
         if len(durum["bekleyen"]) >= BEKLEYEN_SINIRI and u not in durum["bekleyen"]:
             break
         durum["bekleyen"][u] = [m, durum["bekleyen"].get(u, [m, simdi])[1]]
-    return durum
+    return durum, tam
 
 
 def gonder() -> int:
@@ -222,19 +245,22 @@ def gonder() -> int:
     os.makedirs(DIZIN, exist_ok=True)
     try:
         anahtar = anahtar_al()
-        durum = kuyruga_al(simdi)
     except Atla:
         hata("anahtar yayımlanmamış; tur atlandı")
         return 0
     except Exception:  # noqa: BLE001 — ayrıntı (yanıt metni) journal'a gitmez
-        hata("site haritası ya da anahtar okunamadı; tur atlandı")
+        hata("anahtar okunamadı; tur atlandı")
         return 1
+    durum, tam = kuyruga_al(simdi)
+    if not tam:
+        hata("site haritası tam okunamadı; bulunanlar ve bekleyenler gönderilecek")
+    cikis = 0 if tam else 1
     # Keşfedilen adresler bildirimden ÖNCE yazılır: gönderim başarısız olsa da kaybolmaz.
     durum_yaz(durum)
     liste = list(durum["bekleyen"].items())[:TUR_SINIRI]
     if not liste:
         print("indexnow-bildir: bekleyen adres yok")
-        return 0
+        return cikis
     govde = json.dumps(
         {
             "host": urlsplit(SITE).hostname,
@@ -265,25 +291,27 @@ def gonder() -> int:
         durum["bekleyen"].pop(u, None)
     durum_yaz(durum)
     print(f"indexnow-bildir: {len(liste)} adres bildirildi (HTTP {kod}), bekleyen {len(durum['bekleyen'])}")
-    return 0
+    return cikis
 
 
 def durum_raporu() -> int:
     simdi = float(os.environ.get("INDEXNOW_SIMDI") or time.time())
     try:
         anahtar_al()
-        durum = kuyruga_al(simdi)
     except Atla:
         print("anahtar yayımlanmamış")
         return 0
     except Exception:  # noqa: BLE001
-        hata("site haritası ya da anahtar okunamadı")
+        hata("anahtar okunamadı")
         return 1
+    durum, tam = kuyruga_al(simdi)
+    if not tam:
+        hata("site haritası tam okunamadı")
     print(
         f"bekleyen {len(durum['bekleyen'])}, son {GERI_BAKMA_SN // 3600} saatte bildirilen "
         f"{len(durum['bildirilen'])}"
     )
-    return 0
+    return 0 if tam else 1
 
 
 def main(argv: list[str]) -> int:

@@ -2346,8 +2346,11 @@ Kurulum (anahtar bir kez üretilir; değer kayda ya da depoya yazılmaz):
 set -euo pipefail
 A=/opt/agent-sozluk/app
 # Var olan anahtar korunur; yalnız yoksa ve üretim başarılıysa eklenir (Astra, 12 Ekim).
-if sudo grep -q '^INDEXNOW_KEY=' $A/.env; then
+if sudo grep -Eq '^INDEXNOW_KEY=[A-Za-z0-9-]{8,128}$' $A/.env; then
   echo "INDEXNOW_KEY zaten var; değiştirilmedi"
+elif sudo grep -q '^INDEXNOW_KEY=' $A/.env; then
+  # Boş ya da geçersiz satır: otomatik düzenlenmez; satır elle silinip adım yeniden çalıştırılır.
+  echo "INDEXNOW_KEY satırı boş ya da geçersiz; elle düzelt"; exit 1
 else
   anahtar=$(openssl rand -hex 16)
   [[ "$anahtar" =~ ^[0-9a-f]{32}$ ]] || { echo "anahtar üretilemedi"; exit 1; }
