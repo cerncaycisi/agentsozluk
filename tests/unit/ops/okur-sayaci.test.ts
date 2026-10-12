@@ -177,6 +177,8 @@ describe("çerezsiz okur sayacı", () => {
       "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot";
     const PERPLEXITY_USER =
       "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)";
+    const META_FETCHER =
+      "meta-externalfetcher/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)";
     const OAI_SEARCH =
       "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0";
     const sonuc = calistir(
@@ -186,6 +188,8 @@ describe("çerezsiz okur sayacı", () => {
         satir({ ts: T0 - 90, uri: "/baslik/kapiler-etki--77", ua: OAI_SEARCH }),
         satir({ ts: T0 - 85, uri: "/entry/12", ua: GPTBOT }),
         satir({ ts: T0 - 80, uri: "/robots.txt", ua: CHATGPT_USER, ct: "text/plain" }),
+        satir({ ts: T0 - 75, uri: "/baslik/a--5", ua: META_FETCHER }),
+        satir({ ts: T0 - 74, uri: `/baslik/a--${"9".repeat(4301)}`, ua: CHATGPT_USER }),
         satir({
           ts: T0 - 70,
           uri: "/baslik/kapiler-etki--77",
@@ -198,15 +202,18 @@ describe("çerezsiz okur sayacı", () => {
     );
     expect(sonuc.status).toBe(0);
     const g = gun().sayac;
-    expect(g.bot_ailesi).toEqual({ yapay_zeka: 4 });
+    expect(g.bot_ailesi).toEqual({ yapay_zeka: 6 });
     expect(g.yz_ajan).toEqual({
-      "chatgpt-user": 1,
+      "chatgpt-user": 2,
       "perplexity-user": 1,
+      "meta-externalfetcher": 1,
       "oai-searchbot": 1,
       gptbot: 1,
     });
-    expect(g.yz_getirme_turu).toEqual({ baslik: 1, entry: 1 });
-    expect(g.yz_getirme_baslik).toEqual({ "77": 1 });
+    expect(g.yz_getirme_turu).toEqual({ baslik: 3, entry: 1 });
+    // Binlerce basamaklı ek kimlik sayılmaz ve kaydı yarım bırakmaz (Astra, 12 Ekim).
+    expect(g.yz_getirme_baslik).toEqual({ "77": 1, "5": 1, "(acilmamis)": 1 });
+    expect(g.istek.islenemeyen).toBeUndefined();
     // Site içi yönlendirme dış giriş sayılmaz.
     expect(g.dis_giris_turu).toEqual({ baslik: 1, entry: 1 });
     expect(g.dis_giris_baslik).toEqual({ "77": 1 });
@@ -214,9 +221,17 @@ describe("çerezsiz okur sayacı", () => {
     const rapor = calistir(null, T0, "rapor 7");
     expect(rapor.status).toBe(0);
     expect(rapor.stdout).toContain("dönem (2026-09-26 – 2026-10-02):");
-    expect(rapor.stdout).toContain("dış giriş 2: baslik 1, entry 1");
-    expect(rapor.stdout).toContain("yapay zekâ getirmesi (kullanıcı adına) 2: baslik 1, entry 1");
-    expect(rapor.stdout).toContain("getirilen başlıklar (publicId): 77 1");
+    // Ayrıntılı sayaçlar bugün başladı; 7 günlük dönemin öncesi sıfır gibi sunulmaz.
+    expect(rapor.stdout).toContain(
+      "not: ayrıntılı sayaçlar 2026-10-02 tarihinden beri (o gün kısmi); öncesi ölçülmedi",
+    );
+    expect(rapor.stdout).toContain(
+      "dış giriş 2 (yönlendirenden, tam); sayfa türü: baslik 1, entry 1",
+    );
+    expect(rapor.stdout).toContain("yapay zekâ getirmesi (kullanıcı adına) 4: baslik 3, entry 1");
+    const tekGun = calistir(null, T0, "rapor 1");
+    expect(tekGun.stdout).not.toContain("öncesi ölçülmedi");
+    expect(rapor.stdout).toContain("getirilen başlıklar (publicId): (acilmamis) 1, 5 1, 77 1");
     const ham = readFileSync(path.join(dizin, "veri", "sayac.db"));
     expect(ham.includes(Buffer.from("ChatGPT-User/1.0"))).toBe(false);
   });

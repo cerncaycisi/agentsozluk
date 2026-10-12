@@ -2276,11 +2276,11 @@ Hotjar kararına dokunmaz. Gökhan kararı, 1 Ekim 2026; plandaki karşılığı
 - **Yapay zekâ ajanları (12 Ekim, PLAN sıra 4b):** yapay zekâ ailesindeki bot sabit bir adla
   sayılır (`chatgpt-user`, `oai-searchbot`, `gptbot` gibi). Kullanıcı adına sayfa getiren
   ajanların (`chatgpt-user`, `perplexity-user`, `claude-user`, `mistralai-user`,
-  `duckassistbot`) getirdiği sayfa türü ve başlık `publicId` değeri ayrıca sayılır; bu atıf
+  `duckassistbot`, `meta-externalfetcher`) getirdiği sayfa türü ve başlık `publicId` değeri ayrıca sayılır; bu atıf
   sinyalidir.
 - **Dış giriş:** dış alan adından gelen insan görüntülemesinin indiği sayfa türü ve başlık
   `publicId` değeri. Site içi yönlendirme dış giriş sayılmaz. `rapor` komutu dönem toplamını da
-  yazar.
+  yazar; ayrıntılı sayaçların başladığı günden önceki dönem "ölçülmedi" diye işaretlenir.
 - **Saklanmayanlar:** IP, User-Agent metni, sorgu dizesi, çerez, ham yol. Tekil ziyaretçi
   sayılmaz.
 - **İnsan sayılan istek:** bot desenine uymayan `Mozilla/` User-Agent'ı ve `Sec-Fetch-Mode`

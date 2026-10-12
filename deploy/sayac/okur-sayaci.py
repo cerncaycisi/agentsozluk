@@ -92,7 +92,8 @@ YZ_AJANLARI = [
     ("claudebot", "egitim", r"claudebot|anthropic"),
     ("ccbot", "egitim", r"ccbot"),
     ("bytespider", "egitim", r"bytespider"),
-    ("meta", "egitim", r"meta-externalagent|meta-externalfetcher"),
+    ("meta-externalfetcher", "getirme", r"meta-externalfetcher"),
+    ("meta-externalagent", "egitim", r"meta-externalagent"),
     ("amazonbot", "egitim", r"amazonbot"),
     ("applebot-extended", "egitim", r"applebot-extended"),
 ]
@@ -165,7 +166,8 @@ def yz_ajani(ua: str) -> tuple[str, str]:
 
 def baslik_kimligi(yol: str) -> str:
     kimlik = BASLIK_KIMLIGI.match(yol)
-    if kimlik and int(kimlik.group(2)) <= GUVENLI_TAMSAYI:
+    # Uzunluk sınırı önce: binlerce basamaklı ek `int()` sınırına takılıp kaydı yarım bırakmasın.
+    if kimlik and len(kimlik.group(2)) <= 16 and int(kimlik.group(2)) <= GUVENLI_TAMSAYI:
         return kimlik.group(2)
     return "(acilmamis)"
 
@@ -458,6 +460,12 @@ def topla() -> int:
                 "INSERT INTO gun (gun, bosluk) VALUES (?, 1) ON CONFLICT (gun) DO UPDATE SET bosluk = 1",
                 (gun,),
             )
+        if top.kapsam:
+            # Ayrıntılı sayaçların (yapay zekâ ajanı, dış giriş) başladığı gün; 12 Ekim'de eklendi.
+            # Önceki günler bu alanları taşımaz, rapor dönemi buna göre işaretler. O gün kısmidir.
+            db.execute(
+                "INSERT OR IGNORE INTO durum VALUES ('ayrinti_baslangic', ?)", (min(top.kapsam),)
+            )
         if son is not None:
             # repr kayıpsızdır: float(repr(x)) == x (Astra, 2 Ekim).
             db.execute("INSERT OR REPLACE INTO durum VALUES ('imlec', ?)", (repr(son),))
@@ -541,8 +549,16 @@ def rapor(gun_sayisi: int) -> int:
 
     giris = donem("dis_giris_turu")
     getirme = donem("yz_getirme_turu")
+    dis_toplam = sum(v for k, v in donem("yonlendiren").items() if not k.startswith("("))
+    baslangic = durum_al(db, "ayrinti_baslangic")
     print(f"\ndönem ({bas} – {ad}):")
-    print(f"  dış giriş {sum(giris.values())}:", sirala(giris))
+    if baslangic is None or baslangic > bas:
+        # Eksik kapsam sıfır gibi sunulmaz (Astra, 12 Ekim).
+        print(
+            f"  not: ayrıntılı sayaçlar {baslangic or '(henüz yok)'} tarihinden beri (o gün kısmi);"
+            " öncesi ölçülmedi"
+        )
+    print(f"  dış giriş {dis_toplam} (yönlendirenden, tam); sayfa türü:", sirala(giris))
     print("  dış giriş başlıkları (publicId):", sirala(donem("dis_giris_baslik")))
     print(f"  yapay zekâ getirmesi (kullanıcı adına) {sum(getirme.values())}:", sirala(getirme))
     print("  getirilen başlıklar (publicId):", sirala(donem("yz_getirme_baslik")))
