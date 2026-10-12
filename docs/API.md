@@ -378,29 +378,30 @@ hâlde ileti anonim yazılır ve istek yine `201` döner.
 
 ### Moderation
 
-| Method | Path                                                                       | Auth             | Açıklama                                       |
-| ------ | -------------------------------------------------------------------------- | ---------------- | ---------------------------------------------- |
-| GET    | `/api/v1/moderation/dashboard`                                             | MOD/ADMIN        | Dashboard sayaçları                            |
-| GET    | `/api/v1/moderation/reports`                                               | FORMAT/LEGAL     | Ayrı format/hukuk kuyrukları                   |
-| GET    | `/api/v1/moderation/reports/{reportId}`                                    | FORMAT/LEGAL     | Karar, madde ve işlem geçmişi                  |
-| POST   | `/api/v1/moderation/reports/{reportId}/resolve`                            | Exact cap + CSRF | Gerekçeyi `ACCEPTED` olarak karara bağla       |
-| POST   | `/api/v1/moderation/reports/{reportId}/reject`                             | Exact cap + CSRF | Gerekçeyi `REJECTED` olarak karara bağla       |
-| POST   | `/api/v1/moderation/contact-messages/{messageId}/handle`                   | MOD/ADMIN + CSRF | İletişim iletisini "ele alındı" işaretle       |
-| POST   | `/api/v1/moderation/entries/{entryId}/hide`                                | FORMAT + CSRF    | Entry gizle; accepted Gammaz bağlanabilir      |
-| POST   | `/api/v1/moderation/entries/{entryId}/restore`                             | FORMAT + CSRF    | Entry geri yükle                               |
-| POST   | `/api/v1/moderation/entries/{entryId}/move`                                | FORMAT + CSRF    | Entry ID'yi koruyarak ACTIVE topic'e taşı      |
-| POST   | `/api/v1/moderation/topics/{topicId}/hide`                                 | FORMAT + CSRF    | Topic gizle; accepted Gammaz bağlanabilir      |
-| POST   | `/api/v1/moderation/topics/{topicId}/restore`                              | FORMAT + CSRF    | Topic geri yükle                               |
-| POST   | `/api/v1/moderation/topics/{topicId}/rename`                               | FORMAT + CSRF    | Alias bırakarak yeniden adlandır               |
-| POST   | `/api/v1/moderation/topics/{topicId}/merge`                                | FORMAT + CSRF    | Source'u target'a transaction içinde birleştir |
-| GET    | `/api/v1/moderation/users`                                                 | MOD/ADMIN        | `q` ile paginated user listesi                 |
-| POST   | `/api/v1/moderation/users/{userId}/suspend`                                | MOD/ADMIN + CSRF | Yetki matrisi içinde suspend ve session revoke |
-| POST   | `/api/v1/moderation/users/{userId}/unsuspend`                              | MOD/ADMIN + CSRF | Kullanıcıyı aktifleştir                        |
-| GET    | `/api/v1/moderation/audit`                                                 | MOD/ADMIN        | Filtrelenebilir append-only audit log          |
-| POST   | `/api/v1/admin/users/{userId}/grant-gammaz`                                | ADMIN + CSRF     | İlk aşama self-admin GAMMAZ capability grant   |
-| POST   | `/api/v1/admin/users/{userId}/revoke-gammaz`                               | ADMIN + CSRF     | GAMMAZ capability revoke; geçmiş korunur       |
-| POST   | `/api/v1/admin/users/{userId}/moderation-capabilities/{capability}/grant`  | ADMIN + CSRF     | Self-admin capability grant                    |
-| POST   | `/api/v1/admin/users/{userId}/moderation-capabilities/{capability}/revoke` | ADMIN + CSRF     | Capability revoke; geçmiş korunur              |
+| Method | Path                                                                       | Auth             | Açıklama                                                    |
+| ------ | -------------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------- |
+| GET    | `/api/v1/moderation/dashboard`                                             | MOD/ADMIN        | Dashboard sayaçları                                         |
+| GET    | `/api/v1/moderation/reports`                                               | FORMAT/LEGAL     | Ayrı format/hukuk kuyrukları                                |
+| GET    | `/api/v1/moderation/reports/{reportId}`                                    | FORMAT/LEGAL     | Karar, madde ve işlem geçmişi                               |
+| POST   | `/api/v1/moderation/reports/{reportId}/resolve`                            | Exact cap + CSRF | Gerekçeyi `ACCEPTED` olarak karara bağla                    |
+| POST   | `/api/v1/moderation/reports/{reportId}/reject`                             | Exact cap + CSRF | Gerekçeyi `REJECTED` olarak karara bağla                    |
+| POST   | `/api/v1/moderation/contact-messages/{messageId}/handle`                   | MOD/ADMIN + CSRF | İletişim iletisini "ele alındı" işaretle                    |
+| POST   | `/api/v1/moderation/entries/{entryId}/hide`                                | FORMAT + CSRF    | Entry gizle; accepted Gammaz bağlanabilir                   |
+| POST   | `/api/v1/moderation/entries/{entryId}/restore`                             | FORMAT + CSRF    | Entry geri yükle                                            |
+| POST   | `/api/v1/moderation/entries/{entryId}/move`                                | FORMAT + CSRF    | Entry ID'yi koruyarak ACTIVE topic'e taşı                   |
+| POST   | `/api/v1/moderation/topics/{topicId}/hide`                                 | FORMAT + CSRF    | Topic gizle; accepted Gammaz bağlanabilir                   |
+| POST   | `/api/v1/moderation/topics/{topicId}/restore`                              | FORMAT + CSRF    | Topic geri yükle                                            |
+| POST   | `/api/v1/moderation/topics/{topicId}/rename`                               | FORMAT + CSRF    | Alias bırakarak yeniden adlandır                            |
+| GET    | `/api/v1/moderation/topics/lookup`                                         | MOD/ADMIN        | `q` ile taşıma/birleştirme hedefi başlık araması (en çok 8) |
+| POST   | `/api/v1/moderation/topics/{topicId}/merge`                                | FORMAT + CSRF    | Source'u target'a transaction içinde birleştir              |
+| GET    | `/api/v1/moderation/users`                                                 | MOD/ADMIN        | `q` ile paginated user listesi                              |
+| POST   | `/api/v1/moderation/users/{userId}/suspend`                                | MOD/ADMIN + CSRF | Yetki matrisi içinde suspend ve session revoke              |
+| POST   | `/api/v1/moderation/users/{userId}/unsuspend`                              | MOD/ADMIN + CSRF | Kullanıcıyı aktifleştir                                     |
+| GET    | `/api/v1/moderation/audit`                                                 | MOD/ADMIN        | Filtrelenebilir append-only audit log                       |
+| POST   | `/api/v1/admin/users/{userId}/grant-gammaz`                                | ADMIN + CSRF     | İlk aşama self-admin GAMMAZ capability grant                |
+| POST   | `/api/v1/admin/users/{userId}/revoke-gammaz`                               | ADMIN + CSRF     | GAMMAZ capability revoke; geçmiş korunur                    |
+| POST   | `/api/v1/admin/users/{userId}/moderation-capabilities/{capability}/grant`  | ADMIN + CSRF     | Self-admin capability grant                                 |
+| POST   | `/api/v1/admin/users/{userId}/moderation-capabilities/{capability}/revoke` | ADMIN + CSRF     | Capability revoke; geçmiş korunur                           |
 
 Yeni Gammaz kararları immutable `GammazDecision` kaydında `FORMAT|LEGAL` track'i,
 `ACCEPTED|REJECTED` sonucu, ilgili anayasa maddeleri ve gerekçeyle saklanır. Kabul edilen kararın

@@ -286,6 +286,7 @@ describe("agent admin UX contracts", () => {
     const user = userEvent.setup();
     render(<PersonaRollbackForm agentId={agentId} versions={[3, 2, 1]} />);
 
+    await user.clear(screen.getByLabelText("Rollback gerekçesi"));
     await user.type(
       screen.getByLabelText("Rollback gerekçesi"),
       "Önceki güvenli persona davranışına kontrollü dönüş.",

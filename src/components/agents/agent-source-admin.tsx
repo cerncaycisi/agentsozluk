@@ -101,7 +101,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
   const [interestScore, setInterestScore] = useState(source.interestScore);
   const [noveltyScore, setNoveltyScore] = useState(source.noveltyScore);
   const [usefulnessScore, setUsefulnessScore] = useState(source.usefulnessScore);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Kaynak değişikliği: yönetici kararı, panelden.");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
@@ -122,7 +122,6 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
       });
       setNotice(message);
       toast.success(message);
-      setReason("");
       router.refresh();
     } catch (submitError) {
       const message = errorMessage(submitError);

@@ -51,6 +51,8 @@ describe("global runtime settings controls", () => {
     mocks.apiRequest.mockResolvedValue({ settingsVersion: 8 });
     render(<GlobalRuntimeSettingsForm initial={initial} />);
 
+    // Gerekçe hazır gelir (tek tık, 12 Ekim); test kendi gerekçesini yazar.
+    await userEvent.clear(screen.getByLabelText("Genel ayar değişikliği gerekçesi"));
     await userEvent.type(
       screen.getByLabelText("Genel ayar değişikliği gerekçesi"),
       "Public write bakım penceresi için durduruluyor.",
@@ -78,6 +80,8 @@ describe("global runtime settings controls", () => {
   it("renders structured source and circuit-breaker controls and submits strict data", async () => {
     mocks.apiRequest.mockResolvedValue({ settingsVersion: 8 });
     render(<GlobalRuntimeSettingsForm initial={initial} />);
+    // Gerekçe hazır gelir (tek tık, 12 Ekim); test kendi gerekçesini yazar.
+    await userEvent.clear(screen.getByLabelText("Genel ayar değişikliği gerekçesi"));
     await userEvent.type(
       screen.getByLabelText("Genel ayar değişikliği gerekçesi"),
       "Kaynak ve breaker sınırları ölçüme göre güncelleniyor.",

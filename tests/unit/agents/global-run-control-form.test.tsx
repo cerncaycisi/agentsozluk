@@ -38,6 +38,9 @@ describe("global run controls", () => {
       name: "Kuyruktaki yazma run’larını iptal et",
     });
     const stop = screen.getByRole("button", { name: "Çalışan run’ları kontrollü durdur" });
+    // Gerekçe hazır gelir (tek tık, 12 Ekim); boşaltılınca iki düğme de kapanır.
+    expect(cancel).toBeEnabled();
+    await userEvent.clear(screen.getByLabelText("İşlem gerekçesi"));
     expect(cancel).toBeDisabled();
     expect(stop).toBeDisabled();
 
@@ -62,6 +65,8 @@ describe("global run controls", () => {
       ),
     );
 
+    // Başarıdan sonra gerekçe kutuda kalır; yeni gerekçe için temizlenir.
+    await userEvent.clear(screen.getByLabelText("İşlem gerekçesi"));
     await userEvent.type(
       screen.getByLabelText("İşlem gerekçesi"),
       "Kontrollü active run graceful stop müdahalesi.",

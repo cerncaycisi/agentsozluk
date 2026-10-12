@@ -21,7 +21,9 @@ function errorMessage(error: unknown): string {
 export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeSettings }) {
   const router = useAppRouter();
   const [settings, setSettings] = useState(initial);
-  const [changeReason, setChangeReason] = useState("");
+  const [changeReason, setChangeReason] = useState(
+    "Çalışma ayarı değişikliği: yönetici kararı, panelden.",
+  );
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
 
@@ -49,7 +51,6 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
         ...patch,
         settingsVersion: result.settingsVersion,
       }));
-      setChangeReason("");
       setMessage(success);
       toast.success(success);
       router.refresh();
