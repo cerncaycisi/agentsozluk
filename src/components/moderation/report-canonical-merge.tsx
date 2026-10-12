@@ -1,7 +1,7 @@
 "use client";
 
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { useAppRouter } from "@/lib/navigation/app-navigation";
 
@@ -40,18 +40,33 @@ export function ReportCanonicalMerge({
   */
   const [resolved, setResolved] = useState(!reportOpen);
   const [keys] = useState(() => ({ resolve: crypto.randomUUID(), merge: crypto.randomUUID() }));
+  // Rapor başka bir sekmede kabul edildiyse yenilenen sayfa bunu bildirir (Sol, 12 Ekim).
+  useEffect(() => {
+    if (!reportOpen) setResolved(true);
+  }, [reportOpen]);
   const reasonTooShort = Array.from(reason.trim()).length < 10;
   const merge = async () => {
     setPending(true);
     setError(undefined);
     try {
       if (!resolved) {
-        await apiRequest(`/api/v1/moderation/reports/${reportId}/resolve`, {
-          method: "POST",
-          body: { resolutionNote: "Kopya başlık gammazı yerinde bulundu." },
-          csrf: true,
-          idempotency: keys.resolve,
-        });
+        try {
+          await apiRequest(`/api/v1/moderation/reports/${reportId}/resolve`, {
+            method: "POST",
+            body: { resolutionNote: "Kopya başlık gammazı yerinde bulundu." },
+            csrf: true,
+            idempotency: keys.resolve,
+          });
+        } catch (resolveError) {
+          /*
+            Rapor zaten sonuçlandırılmışsa (başka sekme) birleştirme denenir; sunucu yalnız kabul
+            edilmiş karara bağlı birleştirmeye izin verir, reddedilmişse birleştirme düşer.
+          */
+          if (!(
+            resolveError instanceof ClientApiError && resolveError.code === "REPORT_ALREADY_OPEN"
+          ))
+            throw resolveError;
+        }
         setResolved(true);
       }
       await apiRequest(`/api/v1/moderation/topics/${sourceTopicId}/merge`, {

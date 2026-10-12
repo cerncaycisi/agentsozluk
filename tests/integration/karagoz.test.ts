@@ -364,6 +364,30 @@ describe("karagöz kurulumu", () => {
     expect(result.filed.length + result.failed.length).toBe(pairs.length);
   });
 
+  it("raporlanamayan çiftler günlük sınırı tüketmez; bağımsız kopya taramaya girer (Sol, 12 Ekim, 2. tur)", async () => {
+    const admin = await createUser("sinir_admin", "HUMAN", "ADMIN");
+    const agent = await createUser("sinir_ajan", "AGENT", "USER");
+    const now = new Date("2026-10-12T12:00:00.000Z");
+    const gun = (saat: number) => new Date(Date.UTC(2026, 9, 11, saat));
+    // Birbirine çok benzeyen küme.
+    await createTopic("şarj kablosunu belli açıda tutmak", agent.id, gun(1), 3);
+    await createTopic("şarj kablosunu belli açıyla tutmak", agent.id, gun(2), 1);
+    await createTopic("şarj kablosunu belirli açıda tutmak", agent.id, gun(3), 1);
+    await createTopic("şarj kablosunu belirli açıyla tutmak", agent.id, gun(4), 1);
+    const karagoz = await ensureKaragoz(integrationDatabase, actor(admin.id));
+    for (let tur = 0; tur < 4; tur += 1)
+      await fileDuplicateTopicReports(
+        integrationDatabase,
+        karagoz,
+        await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6, limit: 30 }),
+      );
+    // Kümede raporlanabilir çift kalmadıktan sonra bağımsız, daha az benzer çift görünür.
+    const y1 = await createTopic("buzdolabı kapağını açık tutmak", agent.id, gun(5), 2);
+    const y2 = await createTopic("buzdolabının kapağını açık tutmak", agent.id, gun(6), 1);
+    const pairs = await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6, limit: 1 });
+    expect(pairs).toEqual([expect.objectContaining({ newerId: y2.id, olderId: y1.id })]);
+  });
+
   it("yalnız yönetici kurabilir", async () => {
     const user = await createUser("sade_kullanici", "HUMAN", "USER");
     await expect(

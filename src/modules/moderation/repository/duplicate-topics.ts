@@ -77,6 +77,26 @@ export async function findDuplicateTopicPairs(
           OR (report."targetId" = older.id AND report."evidence"->>'suggestedTitle' = newer.title)
         )
     )
+    /*
+      İki başlığın da açık kopya raporu varsa çift bugün raporlanamaz (hedef başına tek açık
+      rapor); sınırı tüketmesin diye atlanır, rapor kararı verilince yeniden taranır (Sol, 12 Ekim).
+    */
+    AND NOT (
+      EXISTS (
+        SELECT 1 FROM "reports" AS open_newer
+        WHERE open_newer."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
+          AND open_newer."targetType" = 'TOPIC'
+          AND open_newer."status" = 'OPEN'
+          AND open_newer."targetId" = newer.id
+      )
+      AND EXISTS (
+        SELECT 1 FROM "reports" AS open_older
+        WHERE open_older."reason" = 'TOPIC_CANONICALIZATION_REQUEST'
+          AND open_older."targetType" = 'TOPIC'
+          AND open_older."status" = 'OPEN'
+          AND open_older."targetId" = older.id
+      )
+    )
     ORDER BY pairs.similarity DESC, newer.id, older.id
     LIMIT ${input.limit}
   `);

@@ -4,12 +4,19 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ReportCanonicalMerge } from "@/components/moderation/report-canonical-merge";
-import { apiRequest } from "@/lib/http/client";
+import { apiRequest, ClientApiError } from "@/lib/http/client";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/http/client", () => ({
   apiRequest: vi.fn(),
-  ClientApiError: class ClientApiError extends Error {},
+  ClientApiError: class ClientApiError extends Error {
+    constructor(
+      message: string,
+      public readonly code = "",
+    ) {
+      super(message);
+    }
+  },
 }));
 
 afterEach(() => {
@@ -88,5 +95,46 @@ describe("kopya başlık raporunda tek tık birleştirme", () => {
     expect(typeof key(1)).toBe("string");
     expect(key(2)).toBe(key(1));
     expect(key(0)).not.toBe(key(1));
+  });
+
+  it("rapor başka sekmede kabul edildiyse birleştirmeye geçer (Sol, 12 Ekim)", async () => {
+    const zatenKarar = new ClientApiError("sonuçlandırılmış", "REPORT_ALREADY_OPEN");
+    vi.mocked(apiRequest).mockRejectedValueOnce(zatenKarar).mockResolvedValueOnce({});
+    cizim(true);
+    await userEvent.click(screen.getByRole("button", { name: "Birleştir → toplantı notu tutmak" }));
+    await userEvent.click(screen.getByRole("button", { name: "Birleştir" }));
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(apiRequest).mock.calls.map((call) => call[0])).toEqual([
+      `/api/v1/moderation/reports/${REPORT}/resolve`,
+      `/api/v1/moderation/topics/${SOURCE}/merge`,
+    ]);
+  });
+
+  it("yenilenen sayfa raporun kabul edildiğini bildirirse kabul adımı atlanır", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({});
+    const { rerender } = render(
+      <ReportCanonicalMerge
+        reportId={REPORT}
+        reportOpen
+        sourceTopicId={SOURCE}
+        sourceTitle="toplantı notunu tutmak"
+        canonical={{ id: TARGET, title: "toplantı notu tutmak", url: "/baslik/toplanti--1" }}
+      />,
+    );
+    rerender(
+      <ReportCanonicalMerge
+        reportId={REPORT}
+        reportOpen={false}
+        sourceTopicId={SOURCE}
+        sourceTitle="toplantı notunu tutmak"
+        canonical={{ id: TARGET, title: "toplantı notu tutmak", url: "/baslik/toplanti--1" }}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Birleştir → toplantı notu tutmak" }));
+    await userEvent.click(screen.getByRole("button", { name: "Birleştir" }));
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(apiRequest).mock.calls[0]?.[0]).toBe(
+      `/api/v1/moderation/topics/${SOURCE}/merge`,
+    );
   });
 });
