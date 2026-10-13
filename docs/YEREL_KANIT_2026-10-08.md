@@ -139,6 +139,23 @@ sonra 59). Hakem uyumu: özdeyişte 0,89, dolguda 0,88.
   Beşi birden geçerse V2 koda girer, hakem incelemesinden sonra dağıtılır ve canlıda yeni önkayıtla
   ölçülür. Biri geçmezse V2 çıkmaz.
 
+### Geri çekildi (13 Ekim, ölçüm yapılmadan)
+
+Test setine dokunulmadı; Codex çağrısı yapılmadı. Geliştirme setinde hakemin dolgu dediği 80
+parça Opus 5.5 ile alıntılanıp türlerine ayrıldı ve canlı son okuma koduyla silinebilirlikleri
+denendi:
+
+- Sonra döneminde 39 parça var. 21'i kodla kilitli: 9 retorik soru, 4 eksik bilgi, 3 öğüt,
+  2 açılış tanımı ve diğerleri. 18'ini kod silmeye izin veriyor ama model bırakmış: tekrar,
+  öğüt, özdeyiş.
+- V2'nin hedeflediği eksik bilgi parçası 39'un 6'sı; bunların 4'ü doğruluk ve anlam kilidine
+  takılıyor. Kilitler Sol 6.1 ve Astra incelemelerinden geliyor. V2 eşiği geçemezdi.
+- Son okumayı daha agresif yapmak Gökhan'ın beğendiği cümleleri de siler. Örneğin kör okumada
+  4,5 alan 8 numaradaki özdeyiş ve soru kapanışını hakemler dolgu saydı.
+- **Sıradaki hedef Gökhan'ın kendi itirazları:** okurun bilmediği kaynak erişimine gönderme
+  ("görünür bilgide", "kısa aktarımda ikisi de görünmüyor") ve aynı başlıktaki bir önceki entry'ye
+  benzerlik. İlki yazar isteminde ele alınır, yeni önkayıtla.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
