@@ -2402,10 +2402,12 @@ else
   unset anahtar
 fi
 # Uygulama yeniden başlatılınca anahtar yayımlanır; dağıtımla birlikte yapılır.
-sudo install -o root -g root -m 0755 $A/deploy/indexnow/indexnow-bildir.py /opt/agent-sozluk/scripts/indexnow-bildir.py
+# DynamicUser /opt/agent-sozluk'a (750) giremez; kurulu kopya herkesin okuyabildiği yerde.
+sudo install -d -o root -g root -m 0755 /usr/local/lib/agent-sozluk
+sudo install -o root -g root -m 0755 $A/deploy/indexnow/indexnow-bildir.py /usr/local/lib/agent-sozluk/indexnow-bildir.py
 sudo install -o root -g root -m 0644 $A/deploy/systemd/agent-sozluk-indexnow.service $A/deploy/systemd/agent-sozluk-indexnow.timer /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo python3 /opt/agent-sozluk/scripts/indexnow-bildir.py durum
+sudo python3 /usr/local/lib/agent-sozluk/indexnow-bildir.py durum
 sudo systemctl enable --now agent-sozluk-indexnow.timer
 ```
 
