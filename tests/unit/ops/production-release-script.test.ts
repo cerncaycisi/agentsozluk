@@ -119,10 +119,10 @@ printf 'PASSED\\n'`,
   it("requires an exact approval receipt and all production identity pins", () => {
     expect(wrapper).toContain("AGENT_SOZLUK_PRODUCTION_APPROVED_SHA");
     expect(wrapper).toContain("EXACT_APPROVAL_RECEIPT_REQUIRED");
-    expect(wrapper).toContain("46.225.20.177");
+    expect(wrapper).toContain("51.161.103.223");
     expect(wrapper).toContain("agent-sozluk-prod");
     expect(wrapper).toContain("agentsozluk.com");
-    expect(wrapper).toContain("SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI");
+    expect(wrapper).toContain("SHA256:TY1sLsDfbJh/Ejup3/IC9URZsSsbLayMcS668urVAeg");
     expect(wrapper).toContain("StrictHostKeyChecking=yes");
     expect(wrapper).toContain("IdentitiesOnly=yes");
     expect(wrapper).toContain("IdentityAgent=none");

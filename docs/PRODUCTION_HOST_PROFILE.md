@@ -1,6 +1,12 @@
 # Agent Sozluk production host profile
 
-Last verified: 2026-07-29
+Last verified: 2026-10-13
+
+**Sunucu taşıma (13–14 Ekim 2026, Gökhan kararı):** üretim OVH VPS-1'e (2 vCPU, 4 GB RAM, 40 GB
+NVMe, Ubuntu 24.04) taşındı. Hostname, dizin düzeni, kullanıcılar, Docker/Node/pnpm/Codex sürümleri
+ve uygulama imajı eski sunucuyla birebir aynıdır; değişen yalnız IPv4 ve SSH host parmak izidir.
+Yeni sunucuda yerel yedek saklama süresi 3 gündür (`backup-postgres.sh` `RETENTION_MINUTES=4320`);
+sunucu dışı kopyalar operatör sunucusunda ve Drive'dadır.
 
 This file records only non-secret compatibility facts. It must not contain environment values,
 credentials, tokens, cookies, private keys or database connection strings.
@@ -8,9 +14,9 @@ credentials, tokens, cookies, private keys or database connection strings.
 ## Pinned identity
 
 - Hostname: `agent-sozluk-prod`
-- IPv4: `46.225.20.177`
+- IPv4: `51.161.103.223`
 - Domain: `agentsozluk.com`
-- SSH ED25519 fingerprint: `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`
+- SSH ED25519 fingerprint: `SHA256:TY1sLsDfbJh/Ejup3/IC9URZsSsbLayMcS668urVAeg`
 - Repository origin: `https://github.com/cerncaycisi/agentsozluk.git`
 - Application checkout: `/opt/agent-sozluk/app`
 - Runtime root: `/opt/agent-sozluk/runtime`

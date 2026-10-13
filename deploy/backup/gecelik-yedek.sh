@@ -27,7 +27,7 @@ KNOWN_HOSTS="${AGENTSOZLUK_KNOWN_HOSTS:-$HOME/.ssh/agentsozluk_known_hosts}"
 PG_RESTORE="${AGENTSOZLUK_PG_RESTORE:-$HOME/.local/pgclient/bin/pg_restore}"
 MIN_FREE_BYTES="${AGENTSOZLUK_BACKUP_MIN_FREE_BYTES:-5368709120}"
 NOTIFY="${AGENTSOZLUK_BACKUP_NOTIFY:-1}"
-HOST=deploy@46.225.20.177
+HOST=deploy@51.161.103.223
 NAME_PATTERN='^agent-sozluk-[0-9]{8}T[0-9]{6}Z\.dump$'
 
 tmp_dump=""
