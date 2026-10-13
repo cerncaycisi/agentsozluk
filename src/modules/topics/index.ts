@@ -1,5 +1,6 @@
 export {
   createTopicWithFirstEntry,
+  getDensestIndexableTopics,
   getSitemapTopicCount,
   getSitemapTopics,
   getTopic,
