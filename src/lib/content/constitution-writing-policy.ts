@@ -3,6 +3,7 @@ export interface ConstitutionalWritingIssue {
     | "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE"
     | "CONSTITUTION_ENTRY_SELF_META"
     | "CONSTITUTION_ENTRY_TOPIC_META"
+    | "CONSTITUTION_ENTRY_QUESTION_ONLY"
     | "CONSTITUTION_TOPIC_FORUM_PROMPT"
     | "CONSTITUTION_TOPIC_DIRECT_ADDRESS"
     | "CONSTITUTION_TOPIC_QUESTION_ANSWER"
@@ -11,7 +12,7 @@ export interface ConstitutionalWritingIssue {
     | "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT"
     | "CONSTITUTION_TOPIC_UNESTABLISHED_PAIR"
     | "CONSTITUTION_TOPIC_SUBJECT_MISMATCH";
-  article: 14 | 15 | 27 | 30 | 31 | 32 | 36;
+  article: 13 | 14 | 15 | 27 | 30 | 31 | 32 | 36;
   reason: string;
 }
 
@@ -95,7 +96,31 @@ export function constitutionalEntryWritingIssue(body: string): ConstitutionalWri
       reason:
         "Anayasa Madde 14: Entry kavramı anlatmalı; başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatamaz.",
     };
+  if (onlyQuestions(body))
+    return {
+      code: "CONSTITUTION_ENTRY_QUESTION_ONLY",
+      article: 13,
+      reason:
+        "Anayasa Madde 13 (format gerekçe 1): Entry yalnız soru cümlelerinden oluşuyor; tanım, devam, örnek, alıntı veya bkz işlevi taşımıyor.",
+    };
   return null;
+}
+
+/*
+  Gökhan, 13 Ekim (entry 23884): "tanım tanım devamı örnek alıntı veya bkz değil". Bütün cümleleri
+  soru olan gövde hiçbir entry işlevi taşımaz. Soru cümlesi kurmak yasak değildir; soru bir gözlem,
+  tanım ya da kanaatle birlikte gelirse entry geçerlidir. Bkz ya da alıntı taşıyan gövde bu kurala
+  girmez: işlevi orada aranır.
+*/
+function onlyQuestions(body: string): boolean {
+  if (/\(bkz:|\[\[|["“«‘]/u.test(body)) return false;
+  const sentences = body
+    .normalize("NFKC")
+    .trim()
+    .split(/(?<=[.!?…;])\s+/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => /[\p{L}\p{N}]/u.test(sentence));
+  return sentences.length > 0 && sentences.every((sentence) => /\?[!?]*$/u.test(sentence));
 }
 
 // Madde 32'nin kendi testi: "haber sitesinin manşeti ertesi gün değişse bile bu

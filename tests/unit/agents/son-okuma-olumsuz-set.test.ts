@@ -114,6 +114,13 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     expect(candidateFor(`${head}. kütüphane biraz da hafıza odasıdır.`)).toHaveLength(1);
   });
 
+  // 13 Ekim: silme geriye yalnız soru bırakamaz (format gerekçe 1, ilke karşılaştırması).
+  it("geriye yalnız soru bırakan silme yapılmaz", () => {
+    const question =
+      "eski fabrika binası kütüphane olunca makine dairesi okuma salonuna, tavan vinçleri de mahallenin hafızasına mı dönüşüyor, yoksa yalnız dekor mu oluyor?";
+    expect(trimmed(`${question} kütüphane biraz da kendi geçmişinin okurudur.`)).toBeNull();
+  });
+
   it("sağlık, finans ve hukuk gövdesi hiç aday olmaz", () => {
     for (const body of [
       "Düzenli kahve tüketimi kalp hastalığına bağlı ölüm riskini azaltıyor ve bu etki uzun vadeli beslenme alışkanlıklarıyla birlikte görülüyor. Bu ilişki tek başına kanıt değil.",

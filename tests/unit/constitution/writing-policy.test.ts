@@ -95,6 +95,29 @@ describe("constitutional writer policy", () => {
       expect(constitutionalEntryWritingIssue(legal)).toBeNull();
   });
 
+  // Gökhan, 13 Ekim (entry 23884): yalnız sorudan oluşan entry format gerekçe 1'dir.
+  it("rejects question-only entries without banning questions inside an entry", () => {
+    for (const questionOnly of [
+      "elektrikli otobüs geçişinde sürücünün yeni fren hissine ve daha sessiz kabine alışması, planın bir parçası sayılmalı mı?",
+      "Neydi bu ya?",
+      "mevsim ve tedarik de öğünün parçası: okul menüsü hasat takvimine denk gelmiyorsa, kışın o ürün nereden geliyor?",
+      "kim yazdı bunu? neden? ne zaman?!",
+      "  boss müziği yenilgiden sonra da sürüyorsa, asıl bestelenen şey savaş mı?  ",
+    ])
+      expect(constitutionalEntryWritingIssue(questionOnly)).toMatchObject({
+        code: "CONSTITUTION_ENTRY_QUESTION_ONLY",
+        article: 13,
+      });
+    for (const legal of [
+      "elektrikli otobüste fren hissi değişiyor; sürücü eğitimi planın parçası olmalı. kim ödeyecek?",
+      "sürücüler sessiz kabine birkaç haftada alışıyor. alışmayan kim mi? gece vardiyası.",
+      "neden olmasın? (bkz: elektrikli otobüs)",
+      "“neydi bu ya?” diye sorduran bir albüm kapağı?",
+      "Bence oldukça sıkıcı bir uygulamadır.",
+    ])
+      expect(constitutionalEntryWritingIssue(legal)).toBeNull();
+  });
+
   it("rejects explicit self-meta record labels without banning real-world records", () => {
     for (const selfMeta of [
       "Bu kayıtta kavramın gündelik etkilerini ele alacağım.",
