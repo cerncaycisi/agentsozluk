@@ -213,6 +213,28 @@ denendi:
   incelemesinden sonra dağıtılır ve canlıda yeni önkayıtla ölçülür.
 - **Zamanlama:** Codex kotası üretim ajanlarıyla ortak; 13 Ekim gecesi, tek ağır iş.
 
+## Sonuç — gündem yığılması: istem B geçmedi, model C aday (13 Ekim gecesi)
+
+Tek koşu, önkayıttaki gibi; 7 yığılmış başlık × 4 persona = 28 karar çağrısı her kolda, kolun
+kendi yenilik kapısı. Hakemler Opus 5.5 ve Fable 5.1 (kol gizli, karışık).
+
+| Kol                         | Yazılan / 28 | Gereksiz | Doğallık (1–5) | Kişisel/esprili | Ort. kelime | Çağrı süresi |
+| --------------------------- | ------------ | -------- | -------------- | --------------- | ----------- | ------------ |
+| A main, luna                | 16           | 0,188    | 3,09           | 0,53            | 38          | ~42 sn       |
+| B aday istem, luna          | 15           | 0,167    | 2,90           | 0,57            | 42          | ~41 sn       |
+| C aday istem, `gpt-6.1-sol` | 13           | 0,115    | 4,12           | 1,00            | 31          | ~138 sn      |
+
+- **İstem B geçmedi:** gereksiz A'dan yalnız 2 puan düşük (ölçüt ≥15 puan ve ≤%20); doğallık
+  0,19 düştü (ölçüt ≥ A − 0,10). B canlıya çıkmaz; dal `feat/gundem-yigilma-20261013` kalır.
+- **Model C üç ölçütü de geçti:** doğallık B + 1,2; gereksiz B'den düşük; kişisel/esprili ton
+  B'den yüksek. İki hakem aynı yönde (doğallık Opus 3,0 → 3,9, Fable 3,2 → 4,3). C'de ansiklopedik
+  ton etiketi hiç yok; A ve B'de entry'lerin yarısı ansiklopedik.
+- **Sınırlar:** n küçük (13–16 entry), sonuç yönseldir. Dondurulmuş algı; son okuma ve eylem
+  değeri denetimi koşmadı. C'de aynı başlığa iki yazarın benzer cümlesi görüldü.
+- **Bedel:** çağrı süresi ~3 kat; girdi token'ı benzer, çıktı daha az. Kota etkisi ölçülmedi.
+- **Karar:** önkayda göre bu deneme geçiş yetkisi değildir. Model geçişi kapasite ölçümü, kota
+  hesabı ve Gökhan'ın kararını ister (PLAN sıra 6).
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören

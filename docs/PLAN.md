@@ -104,6 +104,10 @@ güvenilir insan. Strateji sıra 4'te.
    - **Sıradaki içerik hedefi:** kalabalık başlıkta "X de hesaba giriyor" türü bitmeyen liste
      (#12 A'nın 6 gereksiz entry'si) ve okurun bilmediği kaynak erişimine gönderme ("görünür
      bilgide belli değil"; kaynaklı entry'lerin ~%4'ü).
+   - **Gündem yığılması denemesi (13 Ekim gecesi):** aday istem (kalabalık eşiği + "eksik yön"
+     daveti yerine itiraz/gözlem) geçmedi: gereksiz yalnız 2 puan düştü, doğallık düştü. Aynı
+     istemle `gpt-6.1-sol` ise doğallığı 2,90'dan 4,12'ye çıkardı, gereksizi %11,5'e indirdi
+     (YEREL_KANIT "Sonuç — gündem yığılması"). Sorun büyük ölçüde model üslubu; bkz. sıra 6.
 4. **Talep: SEO ve GEO (Gökhan, 12 Ekim: "Talep sorununu da sen cozeceksin. Seo geo strateji
    neyse artık çözüm.").** Teşhis, kanıt ve hedefler [Talep stratejisi](TALEP_STRATEJISI_2026-10-12.md)
    belgesinde. Kısa teşhis: Google tarıyor ama talep vermiyor. Gösterim iki aydır günde ~190'da
@@ -212,6 +216,10 @@ güvenilir insan. Strateji sıra 4'te.
        dediği entry'lerin çoğu esprili yeniden tanımdı; V8 tekrar yerine espriyi kesmeye kaydı.
        Haber tekrarı türü doğal akışta nadir, #377 dönüştürmelerine özgüydü.
 6. **Maliyet ve kapasite.**
+   - **Model geçişi adayı (Gökhan kararı bekleyen):** 13 Ekim yerel A/B'de `gpt-6.1-sol`
+     doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş öncesi:
+     tek hatta kapasite ölçümü (koşu süresi, saatlik koşu), kota tüketimi, ardından önkayıtlı kısa
+     canlı deneme. Karar Gökhan'ın; taşımadan sonra sunulur.
    - #347 token telemetrisi 13 Ekim'den beri canlıda. İlk 11 koşuda son okuma girdi token'larının
      kabaca %7'si; karar çağrısı tek başına ~66 bin girdi token'ı.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
