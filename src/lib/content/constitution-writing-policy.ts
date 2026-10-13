@@ -99,7 +99,7 @@ export function constitutionalEntryWritingIssue(
       reason:
         "Anayasa Madde 14: Entry kavramı anlatmalı; başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatamaz.",
     };
-  if (onlyQuestions(body) && !questionCategoryTitle(options.topicTitle))
+  if (singleQuestionEntry(body) && !questionCategoryTitle(options.topicTitle))
     return {
       code: "CONSTITUTION_ENTRY_QUESTION_ONLY",
       article: 13,
@@ -110,75 +110,47 @@ export function constitutionalEntryWritingIssue(
 }
 
 /*
-  Gökhan, 13 Ekim (entry 23884): "tanım tanım devamı örnek alıntı veya bkz değil". Kapsam dar ve
-  bilinçlidir: soru işaretiyle biten cümlelerden başka bir şey taşımayan gövde. Soru işaretsiz
-  "Neydi bu ya" gibi ihlaller bu kuralın dışında kalır; onları yazım talimatı ve moderasyon taşır.
+  Gökhan, 13 Ekim (entry 23884): "tanım tanım devamı örnek alıntı veya bkz değil". Kapsam bilinçli
+  olarak dardır: gövde TEK bir soru cümlesidir — soru işaretiyle biter, içinde başka cümle sınırı
+  ya da satır sonu yoktur. Canlıdaki vakaların hepsi bu biçimde. Çok cümleli ihlaller ("Dr.
+  kimdi?" gibi) ve soru işaretsiz "Neydi bu ya" bu kuralın dışında kalır; onları yazım talimatı ve
+  moderasyon taşır. Cümle bölmeye dayalı genişletmeler her hakem turunda yeni yanlış ret ve kaçak
+  açtı (Astra 2 tur, Sol 6.1 1 tur, 13 Ekim).
 
-  - Soru cümlesi kurmak yasak değildir; soru bir gözlem, tanım ya da kanaatle birlikte gelirse
-    entry geçerlidir.
-  - Geçerli bkz ya da kapanmış alıntı taşıyan gövde bu kurala girmez (renderer'ın kuralı, büyük/küçük
-    harf duyarsız). Kapanmamış işaret muafiyet sağlamaz (Astra, 13 Ekim).
-  - Başlık soruları bir kategori olarak adlandırıyorsa ("açık uçlu soru örnekleri") soru, o
-    kategorinin örneğidir (Madde 9); kural uygulanmaz.
-  - Cümle sınırı: terminal işaretten sonra (kapanış parantezi ya da tırnağıyla) boşluk ya da büyük
-    harf, ya da satır sonu. tek başına "Dr.", "3." gibi kısaltma ya da sıra sayısı cümle sayılmaz; sondaki emoji,
-    parantez ve tırnak cümlenin bitişini değiştirmez.
+  - Geçerli bkz (hedef harf taşır ya da #1 ve üstü) ya da kapanmış alıntı taşıyan gövde kurala
+    girmez.
+  - Başlık soruları kategori olarak adlandırıyorsa ("açık uçlu soru örnekleri") soru, kategorinin
+    örneğidir (Madde 9).
 */
-/*
-  Geçerli bkz: hedef ya harf taşır ya da sıfırdan büyük entry numarasıdır ("#0" ve boş hedef
-  renderer'da bağlantı olmaz). Alıntı: kapanmış çift, yönlü ya da tek kıvrık tırnak.
-*/
-const validFunctionSpan =
-  /\[\[[^\]\n]*\p{L}[^\]\n]*\]\]|\(bkz:\s*(?:#[1-9]\d*|[^)\n]*\p{L}[^)\n]*)\s*\)|“[^”\n]+”|"[^"\n]+"|«[^»\n]+»|‘[^’\n]+’/iu;
-const abbreviationEnd =
-  /(?:^|[\s(])(?:dr|prof|doç|yrd|av|müh|sn|no|nr|st|vb|vs|vd|örn|bkz|mah|cad|sok|ltd|şti)\.$/iu;
-const ordinalOnly = /^\(?\p{N}+\.$/u;
+const bkzSpan = /\(bkz:([^)\n]{1,100})\)/giu;
+const quoteSpan = /“[^”\n]{1,500}”|"[^"\n]{1,500}"|«[^»\n]{1,500}»|‘[^’\n]{1,500}’/u;
 
 function questionCategoryTitle(title: string | undefined): boolean {
   if (!title) return false;
   // Tam sözcük: "soru", "sorular", "soruları", "sorusu" — "sorun", "sorumluluk", "soruşturma" değil.
-  return /(?:^|[^\p{L}])soru(?:lar|ları|su|ları)?(?![\p{L}])/u.test(
-    title.toLocaleLowerCase("tr-TR"),
-  );
+  return /(?:^|[^\p{L}])soru(?:lar|ları|su)?(?![\p{L}])/u.test(title.toLocaleLowerCase("tr-TR"));
 }
 
-function questionSentences(body: string): string[] {
-  /*
-    Sınır: terminal işaret (ve kapanış parantezi/tırnağı) ardından boşluk ya da satır sonu. Boşluksuz
-    "yoruyor.Kim" ancak noktadan önce en az üç harflik bir sözcük varsa ve parça URL değilse bölünür
-    ("Dr.Ali", "https://Example.COM" bölünmez). Kısaltmayla biten parça sonrakiyle birleşir. Tek
-    başına sıra sayısı ("3. sırada") cümle değildir; sorudan sonra gelirse cevaptır ("Kaç kişi? 3.").
-  */
-  const pieces = body
-    .normalize("NFKC")
-    .trim()
-    .split(/(?<=[.!?…;]["'”’»)\]]*)\s+|(?<=(?:^|\s)[^\s:/]*\p{Ll}{3}[.!?…;])(?=\p{Lu})|\n+/u)
-    .map((piece) => piece.trim())
-    .filter(Boolean);
-  const sentences: string[] = [];
-  for (const piece of pieces) {
-    const previous = sentences.at(-1);
-    if (previous !== undefined && abbreviationEnd.test(previous))
-      sentences[sentences.length - 1] = `${previous} ${piece}`;
-    else sentences.push(piece);
+function hasEntryFunctionSpan(body: string): boolean {
+  if (quoteSpan.test(body) || /\[\[[^\]\n]{0,100}\p{L}[^\]\n]{0,100}\]\]/u.test(body)) return true;
+  for (const match of body.matchAll(bkzSpan)) {
+    const target = match[1]!.trim();
+    if (/^#[1-9]\d{0,12}$/u.test(target) || /\p{L}/u.test(target)) return true;
   }
-  return sentences.filter(
-    (sentence, index) =>
-      (/\p{L}/u.test(sentence) || /\p{N}/u.test(sentence)) &&
-      !(ordinalOnly.test(sentence) && !/\?["'”’»)\]]*$/u.test(sentences[index - 1] ?? "")),
-  );
+  return false;
 }
 
-function onlyQuestions(body: string): boolean {
-  if (validFunctionSpan.test(body)) return false;
-  const sentences = questionSentences(body);
-  return (
-    sentences.length > 0 &&
-    sentences.every((sentence) => {
-      const bare = sentence.replace(/[^\p{L}\p{N}.!?…;]+$/u, "");
-      return /\?[!?…]*$/u.test(bare);
-    })
-  );
+function singleQuestionEntry(body: string): boolean {
+  const text = body.normalize("NFKC").trim();
+  if (text.length === 0 || text.length > 2000 || /\n/u.test(text)) return false;
+  // Sondaki emoji, parantez ve tırnak cümlenin bitişini değiştirmez.
+  const bare = text.replace(/[^\p{L}\p{N}.!?…;]+$/u, "");
+  const ending = /\?[!?]*$/u.exec(bare);
+  if (!ending) return false;
+  const inner = bare.slice(0, ending.index);
+  // İçeride başka bir cümle sınırı varsa (terminal işaret + isteğe bağlı kapanış + boşluk) tek soru değildir.
+  if (/[.!?…;]["'”’»)\]]*\s/u.test(inner)) return false;
+  return /\p{L}/u.test(inner) && !hasEntryFunctionSpan(text);
 }
 
 // Madde 32'nin kendi testi: "haber sitesinin manşeti ertesi gün değişse bile bu

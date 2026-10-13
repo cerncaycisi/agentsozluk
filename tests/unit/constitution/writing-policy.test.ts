@@ -95,72 +95,64 @@ describe("constitutional writer policy", () => {
       expect(constitutionalEntryWritingIssue(legal)).toBeNull();
   });
 
-  // Gökhan, 13 Ekim (entry 23884): yalnız sorudan oluşan entry format gerekçe 1'dir.
-  it("rejects question-only entries without banning questions inside an entry", () => {
-    for (const questionOnly of [
+  // Gökhan, 13 Ekim (entry 23884): tek soru cümlesinden oluşan entry format gerekçe 1'dir.
+  it("rejects single-question entries and keeps the rule deliberately narrow", () => {
+    const Q = "CONSTITUTION_ENTRY_QUESTION_ONLY";
+    for (const single of [
       "elektrikli otobüs geçişinde sürücünün yeni fren hissine ve daha sessiz kabine alışması, planın bir parçası sayılmalı mı?",
       "Neydi bu ya?",
       "mevsim ve tedarik de öğünün parçası: okul menüsü hasat takvimine denk gelmiyorsa, kışın o ürün nereden geliyor?",
-      "kim yazdı bunu? neden? ne zaman?!",
       "  boss müziği yenilgiden sonra da sürüyorsa, asıl bestelenen şey savaş mı?  ",
-    ])
-      expect(constitutionalEntryWritingIssue(questionOnly)).toMatchObject({
-        code: "CONSTITUTION_ENTRY_QUESTION_ONLY",
-        article: 13,
-      });
-    for (const legal of [
-      "elektrikli otobüste fren hissi değişiyor; sürücü eğitimi planın parçası olmalı. kim ödeyecek?",
-      "sürücüler sessiz kabine birkaç haftada alışıyor. alışmayan kim mi? gece vardiyası.",
-      "neden olmasın? (bkz: elektrikli otobüs)",
-      "“neydi bu ya?” diye sorduran bir albüm kapağı?",
-      "Bence oldukça sıkıcı bir uygulamadır.",
-      // Astra 13 Ekim: gözlem parantezde, boşluksuz ya da satır sonuyla ayrılmış olabilir.
-      "(Sessiz kabin sürücüyü yoruyor.) Kim fark ediyor?",
-      "Sessiz kabin sürücüyü yoruyor.Kim fark ediyor?",
-      "Sessiz kabin sürücüyü yoruyor\nKim fark ediyor?",
-      "Bunu bilen yok. Kim bilir?",
-      "(BKZ: elektrikli otobüs) Neydi bu ya?",
-      "ne mi? hiç.",
-      // Astra 2. tur: sayısal cevap, kapalı tek kıvrık tırnak, geçerli entry bkz'si.
-      "Kaç kişi geldi? 3.",
-      "Pi yaklaşık kaçtır? 3.14.",
-      "‘Neydi bu ya?’",
-      "(bkz: #123) neydi?",
-    ])
-      expect(constitutionalEntryWritingIssue(legal)).toBeNull();
-    // Kısaltma, sıra sayısı, sondaki parantez/emoji ve kapanmamış işaret kuralı atlatmaz.
-    for (const evasion of [
-      "Dr. kimdi?",
-      "3. sırada kim var?",
       "(Neydi bu ya?)",
       "Neydi bu ya?🤔",
+      "Neydi bu ya?!",
+      "Ankara'da Dr.Ali kimdi?",
+      "https://Example.COM neden açılmıyor?",
+      "www.example.COM neden açılmıyor?",
       "Neydi bu [[ ya?",
       "Neydi bu ya (bkz:?",
       "“Neydi bu ya?",
-      // Astra 2. tur.
-      "Ankara'da Dr.Ali kimdi?",
-      "Ankara'da Dr. Ali kimdi?",
-      "https://Example.COM neden açılmıyor?",
       "(BKZ: ) Neydi bu ya?",
       "(BKZ: #0) Neydi bu ya?",
     ])
-      expect(constitutionalEntryWritingIssue(evasion)?.code).toBe(
-        "CONSTITUTION_ENTRY_QUESTION_ONLY",
-      );
+      expect(constitutionalEntryWritingIssue(single)).toMatchObject({ code: Q, article: 13 });
+    for (const legal of [
+      "elektrikli otobüste fren hissi değişiyor; sürücü eğitimi planın parçası olmalı. kim ödeyecek?",
+      "sürücüler sessiz kabine birkaç haftada alışıyor. alışmayan kim mi? gece vardiyası.",
+      "(Sessiz kabin sürücüyü yoruyor.) Kim fark ediyor?",
+      "Sessiz kabin sürücüyü yoruyor\nKim fark ediyor?",
+      "Bunu bilen yok. Kim bilir?",
+      "Onu gördüm vs. Kim görmedi?",
+      "ne mi? hiç.",
+      "Kaç kişi geldi? 3.",
+      "Kaç kişi geldi?! 3.",
+      "neden olmasın? (bkz: elektrikli otobüs)",
+      "(BKZ: elektrikli otobüs) Neydi bu ya?",
+      "(bkz: #123) neydi?",
+      "“neydi bu ya?” diye sorduran bir albüm kapağı?",
+      "‘Neydi bu ya?’",
+      "Bence oldukça sıkıcı bir uygulamadır.",
+    ])
+      expect(constitutionalEntryWritingIssue(legal)).toBeNull();
+    // Kapsam dışı (bilinçli): çok cümleli ihlaller moderasyona kalır.
+    for (const outOfScope of ["Dr. kimdi?", "3. sırada kim var?", "kim yazdı? neden?"])
+      expect(constitutionalEntryWritingIssue(outOfScope)).toBeNull();
     // Madde 9: soruları kategori olarak adlandıran başlıkta soru, kategorinin örneğidir.
-    expect(
-      constitutionalEntryWritingIssue("Hangi renkleri seversin?", {
-        topicTitle: "açık uçlu soru örnekleri",
-      }),
-    ).toBeNull();
-    for (const topicTitle of ["renkler", "sorumluluk", "sorun çözme", "soruşturma"])
-      expect(
-        constitutionalEntryWritingIssue("Hangi renkleri seversin?", { topicTitle })?.code,
-      ).toBe("CONSTITUTION_ENTRY_QUESTION_ONLY");
-    for (const topicTitle of ["mülakat soruları", "sorular"])
+    for (const topicTitle of ["açık uçlu soru örnekleri", "mülakat soruları", "sorular"])
       expect(
         constitutionalEntryWritingIssue("Hangi renkleri seversin?", { topicTitle }),
       ).toBeNull();
+    for (const topicTitle of ["renkler", "sorumluluk", "sorun çözme", "soruşturma"])
+      expect(
+        constitutionalEntryWritingIssue("Hangi renkleri seversin?", { topicTitle })?.code,
+      ).toBe(Q);
+  });
+
+  it("checks a long adversarial body in bounded time", () => {
+    const started = performance.now();
+    constitutionalEntryWritingIssue(`${"(bkz: ".repeat(400)}Kim geldi?`);
+    constitutionalEntryWritingIssue(`${"“a ".repeat(1000)}Kim geldi?`);
+    expect(performance.now() - started).toBeLessThan(100);
   });
 
   it("rejects explicit self-meta record labels without banning real-world records", () => {
