@@ -43,7 +43,10 @@ function withoutQuotedOrBkzText(value: string): string {
     .replaceAll(/\(bkz:\s*[^\)\n]{1,100}\s*\)/giu, " ");
 }
 
-export function constitutionalEntryWritingIssue(body: string): ConstitutionalWritingIssue | null {
+export function constitutionalEntryWritingIssue(
+  body: string,
+  options: { topicTitle?: string | undefined } = {},
+): ConstitutionalWritingIssue | null {
   const normalized = withoutQuotedOrBkzText(body)
     .normalize("NFKC")
     .toLocaleLowerCase("tr-TR")
@@ -96,7 +99,7 @@ export function constitutionalEntryWritingIssue(body: string): ConstitutionalWri
       reason:
         "Anayasa Madde 14: Entry kavramı anlatmalı; başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatamaz.",
     };
-  if (onlyQuestions(body))
+  if (onlyQuestions(body) && !questionCategoryTitle(options.topicTitle))
     return {
       code: "CONSTITUTION_ENTRY_QUESTION_ONLY",
       article: 13,
@@ -107,20 +110,53 @@ export function constitutionalEntryWritingIssue(body: string): ConstitutionalWri
 }
 
 /*
-  Gökhan, 13 Ekim (entry 23884): "tanım tanım devamı örnek alıntı veya bkz değil". Bütün cümleleri
-  soru olan gövde hiçbir entry işlevi taşımaz. Soru cümlesi kurmak yasak değildir; soru bir gözlem,
-  tanım ya da kanaatle birlikte gelirse entry geçerlidir. Bkz ya da alıntı taşıyan gövde bu kurala
-  girmez: işlevi orada aranır.
+  Gökhan, 13 Ekim (entry 23884): "tanım tanım devamı örnek alıntı veya bkz değil". Kapsam dar ve
+  bilinçlidir: soru işaretiyle biten cümlelerden başka bir şey taşımayan gövde. Soru işaretsiz
+  "Neydi bu ya" gibi ihlaller bu kuralın dışında kalır; onları yazım talimatı ve moderasyon taşır.
+
+  - Soru cümlesi kurmak yasak değildir; soru bir gözlem, tanım ya da kanaatle birlikte gelirse
+    entry geçerlidir.
+  - Geçerli bkz ya da kapanmış alıntı taşıyan gövde bu kurala girmez (renderer'ın kuralı, büyük/küçük
+    harf duyarsız). Kapanmamış işaret muafiyet sağlamaz (Astra, 13 Ekim).
+  - Başlık soruları bir kategori olarak adlandırıyorsa ("açık uçlu soru örnekleri") soru, o
+    kategorinin örneğidir (Madde 9); kural uygulanmaz.
+  - Cümle sınırı: terminal işaretten sonra (kapanış parantezi ya da tırnağıyla) boşluk ya da büyük
+    harf, ya da satır sonu. tek başına "Dr.", "3." gibi kısaltma ya da sıra sayısı cümle sayılmaz; sondaki emoji,
+    parantez ve tırnak cümlenin bitişini değiştirmez.
 */
+const validFunctionSpan =
+  /\[\[[^\]\n]{2,100}\]\]|\(bkz:\s*[^)\n]{1,100}?\s*\)|“[^”\n]+”|"[^"\n]+"|«[^»\n]+»/iu;
+const shortTokenBeforeDot =
+  /^\(?(?:\p{N}+|dr|prof|doç|yrd|av|müh|sn|no|nr|st|vb|vs|vd|örn|bkz|mah|cad|sok|ltd|şti)\.$/iu;
+
+function questionCategoryTitle(title: string | undefined): boolean {
+  if (!title) return false;
+  return /(?:^|[^\p{L}])sor(?:u|ul)\p{L}*/u.test(title.toLocaleLowerCase("tr-TR"));
+}
+
+function questionSentences(body: string): string[] {
+  return (
+    body
+      .normalize("NFKC")
+      .trim()
+      .split(/(?<=[.!?…;]["'”’»)\]]*)(?:\s+|(?=\p{Lu}))|\n+/u)
+      .map((sentence) => sentence.trim())
+      // Tek başına kısaltma ya da sıra sayısı ("Dr.", "3.") cümle değildir; sonraki cümleyle
+      // birleştirmek "yok. Kim bilir?" gibi gövdeleri yanlışlıkla tek soru yapardı.
+      .filter((sentence) => /\p{L}/u.test(sentence) && !shortTokenBeforeDot.test(sentence))
+  );
+}
+
 function onlyQuestions(body: string): boolean {
-  if (/\(bkz:|\[\[|["“«‘]/u.test(body)) return false;
-  const sentences = body
-    .normalize("NFKC")
-    .trim()
-    .split(/(?<=[.!?…;])\s+/u)
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => /[\p{L}\p{N}]/u.test(sentence));
-  return sentences.length > 0 && sentences.every((sentence) => /\?[!?]*$/u.test(sentence));
+  if (validFunctionSpan.test(body)) return false;
+  const sentences = questionSentences(body);
+  return (
+    sentences.length > 0 &&
+    sentences.every((sentence) => {
+      const bare = sentence.replace(/[^\p{L}\p{N}.!?…;]+$/u, "");
+      return /\?[!?…]*$/u.test(bare);
+    })
+  );
 }
 
 // Madde 32'nin kendi testi: "haber sitesinin manşeti ertesi gün değişse bile bu

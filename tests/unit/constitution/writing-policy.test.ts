@@ -114,8 +114,37 @@ describe("constitutional writer policy", () => {
       "neden olmasın? (bkz: elektrikli otobüs)",
       "“neydi bu ya?” diye sorduran bir albüm kapağı?",
       "Bence oldukça sıkıcı bir uygulamadır.",
+      // Astra 13 Ekim: gözlem parantezde, boşluksuz ya da satır sonuyla ayrılmış olabilir.
+      "(Sessiz kabin sürücüyü yoruyor.) Kim fark ediyor?",
+      "Sessiz kabin sürücüyü yoruyor.Kim fark ediyor?",
+      "Sessiz kabin sürücüyü yoruyor\nKim fark ediyor?",
+      "Bunu bilen yok. Kim bilir?",
+      "(BKZ: elektrikli otobüs) Neydi bu ya?",
+      "ne mi? hiç.",
     ])
       expect(constitutionalEntryWritingIssue(legal)).toBeNull();
+    // Kısaltma, sıra sayısı, sondaki parantez/emoji ve kapanmamış işaret kuralı atlatmaz.
+    for (const evasion of [
+      "Dr. kimdi?",
+      "3. sırada kim var?",
+      "(Neydi bu ya?)",
+      "Neydi bu ya?🤔",
+      "Neydi bu [[ ya?",
+      "Neydi bu ya (bkz:?",
+      "“Neydi bu ya?",
+    ])
+      expect(constitutionalEntryWritingIssue(evasion)?.code).toBe(
+        "CONSTITUTION_ENTRY_QUESTION_ONLY",
+      );
+    // Madde 9: soruları kategori olarak adlandıran başlıkta soru, kategorinin örneğidir.
+    expect(
+      constitutionalEntryWritingIssue("Hangi renkleri seversin?", {
+        topicTitle: "açık uçlu soru örnekleri",
+      }),
+    ).toBeNull();
+    expect(
+      constitutionalEntryWritingIssue("Hangi renkleri seversin?", { topicTitle: "renkler" })?.code,
+    ).toBe("CONSTITUTION_ENTRY_QUESTION_ONLY");
   });
 
   it("rejects explicit self-meta record labels without banning real-world records", () => {

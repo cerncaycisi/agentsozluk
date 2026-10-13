@@ -119,6 +119,8 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     const question =
       "eski fabrika binası kütüphane olunca makine dairesi okuma salonuna, tavan vinçleri de mahallenin hafızasına mı dönüşüyor, yoksa yalnız dekor mu oluyor?";
     expect(trimmed(`${question} kütüphane biraz da kendi geçmişinin okurudur.`)).toBeNull();
+    // Astra: parantezli soru da aynı korumayı alır.
+    expect(trimmed(`(${question}) kütüphane biraz da kendi geçmişinin okurudur.`)).toBeNull();
   });
 
   it("sağlık, finans ve hukuk gövdesi hiç aday olmaz", () => {
