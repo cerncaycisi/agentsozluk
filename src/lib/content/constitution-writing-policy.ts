@@ -129,36 +129,40 @@ function questionCategoryTitle(title: string | undefined): boolean {
 }
 
 /*
-  Kapanmış bir çift: açılıştan sonra aynı satırda kapanış. İlk kapanışsız açılıştan sonra aynı türde
-  kapanış aranmaz (sonrakiler de kapanamaz); tarama doğrusaldır (Sol 6.1, 13 Ekim).
+  Kapanmış bir çift: açılıştan sonra aynı satırda kapanış ve koşulu sağlayan içerik. Satır satır,
+  ilk eşleşmede durarak ve ilk kapanışsız açılıştan sonra o satırı bırakarak taranır; toplam süre
+  doğrusaldır (Sol 6.1, 13 Ekim).
 */
-function closedSpans(text: string, open: string, close: string): string[] {
-  const spans: string[] = [];
-  let start = text.indexOf(open);
-  while (start !== -1) {
-    const from = start + open.length;
-    const end = text.indexOf(close, from);
-    if (end === -1) break;
-    const newline = text.indexOf("\n", from);
-    if (newline === -1 || end < newline) spans.push(text.slice(from, end));
-    start = text.indexOf(open, end + close.length);
+function hasClosedSpan(
+  text: string,
+  open: string,
+  close: string,
+  accept: (span: string) => boolean,
+): boolean {
+  for (const line of text.split("\n")) {
+    let start = line.indexOf(open);
+    while (start !== -1) {
+      const from = start + open.length;
+      const end = line.indexOf(close, from);
+      if (end === -1) break;
+      if (accept(line.slice(from, end))) return true;
+      start = line.indexOf(open, end + close.length);
+    }
   }
-  return spans;
+  return false;
 }
 
-function hasEntryFunctionSpan(body: string): boolean {
-  const lower = body.toLocaleLowerCase("tr-TR");
-  if (
-    [
-      ["“", "”"],
-      ['"', '"'],
-      ["«", "»"],
-      ["‘", "’"],
-    ].some(([open, close]) => closedSpans(body, open!, close!).some((span) => span.length > 0))
-  )
+function hasEntryFunctionSpan(text: string): boolean {
+  const quotes: Array<[string, string]> = [
+    ["“", "”"],
+    ['"', '"'],
+    ["«", "»"],
+    ["‘", "’"],
+  ];
+  if (quotes.some(([open, close]) => hasClosedSpan(text, open, close, (span) => span.length > 0)))
     return true;
-  if (closedSpans(body, "[[", "]]").some((span) => /\p{L}/u.test(span))) return true;
-  return closedSpans(lower, "(bkz:", ")").some((span) => {
+  if (hasClosedSpan(text, "[[", "]]", (span) => /\p{L}/u.test(span))) return true;
+  return hasClosedSpan(text.toLocaleLowerCase("tr-TR"), "(bkz:", ")", (span) => {
     const target = span.trim();
     return /^#[1-9]\d*$/u.test(target) || /\p{L}/u.test(target);
   });
@@ -171,15 +175,12 @@ const closer = new Set(['"', "'", "”", "’", "»", ")", "]"]);
 /*
   Regex yerine tek geçişli tarama (Sol 6.1, 13 Ekim): sondaki emoji/parantez/tırnak atılır, son
   terminal işaret dizisi "?" içermelidir; ondan önce "terminal + kapanış* + boşluk" ya da satır sonu
-  görülürse gövde tek cümle değildir. Uzunluk sınırı yoktur; süre doğrusaldır.
+  görülürse gövde tek cümle değildir. Her konum bir kez ziyaret edilir; uzunluk sınırı yoktur.
+  Muafiyet de aynı normalize metne bakar ("＂…＂", "（ｂｋｚ： …）").
 */
 function singleQuestionEntry(body: string): boolean {
-  const chars = [
-    ...body
-      .normalize("NFKC")
-      .replace(/\p{N}\uFE0F?\u20E3/gu, "")
-      .trim(),
-  ];
+  const normalized = body.normalize("NFKC");
+  const chars = [...normalized.replace(/\p{N}\uFE0F?\u20E3/gu, "").trim()];
   let end = chars.length;
   while (
     end > 0 &&
@@ -200,8 +201,9 @@ function singleQuestionEntry(body: string): boolean {
     let next = index + 1;
     while (next < tail && (terminal.has(chars[next]!) || closer.has(chars[next]!))) next += 1;
     if (next < tail && /\s/u.test(chars[next]!)) return false;
+    index = next - 1;
   }
-  return sawLetter && !hasEntryFunctionSpan(body);
+  return sawLetter && !hasEntryFunctionSpan(normalized);
 }
 
 // Madde 32'nin kendi testi: "haber sitesinin manşeti ertesi gün değişse bile bu

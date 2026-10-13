@@ -137,6 +137,10 @@ describe("constitutional writer policy", () => {
       // Sol 6.1: uzun kapanmış alıntı ve bol boşluklu geçerli bkz muaftır.
       `“${"kentlerin geleceğini düşünmek ".repeat(20)}gerekmiyor mu?”`,
       `(BKZ: ${" ".repeat(100)}elma) Neydi bu ya?`,
+      // Sol 6.1 3. tur: muafiyet normalize metne bakar.
+      "＂Neydi bu ya?＂",
+      "（ｂｋｚ： ｅｌｍａ） Neydi bu ya?",
+      "［［elma］］ Neydi bu ya?",
       "Bence oldukça sıkıcı bir uygulamadır.",
     ])
       expect(constitutionalEntryWritingIssue(legal)).toBeNull();
@@ -165,6 +169,8 @@ describe("constitutional writer policy", () => {
       `Kim geldi${"?!".repeat(4990)}`,
       `${"a".repeat(9990)}?`,
       `${"« ".repeat(4900)}Kim geldi?`,
+      `Neydi${"?!".repeat(4000)}bu ya?`,
+      `${"“a”".repeat(3330)}Kim geldi?`,
     ])
       constitutionalEntryWritingIssue(body);
     expect(performance.now() - started).toBeLessThan(200);
