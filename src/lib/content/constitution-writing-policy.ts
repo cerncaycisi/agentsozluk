@@ -122,35 +122,86 @@ export function constitutionalEntryWritingIssue(
   - Başlık soruları kategori olarak adlandırıyorsa ("açık uçlu soru örnekleri") soru, kategorinin
     örneğidir (Madde 9).
 */
-const bkzSpan = /\(bkz:([^)\n]{1,100})\)/giu;
-const quoteSpan = /“[^”\n]{1,500}”|"[^"\n]{1,500}"|«[^»\n]{1,500}»|‘[^’\n]{1,500}’/u;
-
 function questionCategoryTitle(title: string | undefined): boolean {
   if (!title) return false;
   // Tam sözcük: "soru", "sorular", "soruları", "sorusu" — "sorun", "sorumluluk", "soruşturma" değil.
   return /(?:^|[^\p{L}])soru(?:lar|ları|su)?(?![\p{L}])/u.test(title.toLocaleLowerCase("tr-TR"));
 }
 
-function hasEntryFunctionSpan(body: string): boolean {
-  if (quoteSpan.test(body) || /\[\[[^\]\n]{0,100}\p{L}[^\]\n]{0,100}\]\]/u.test(body)) return true;
-  for (const match of body.matchAll(bkzSpan)) {
-    const target = match[1]!.trim();
-    if (/^#[1-9]\d{0,12}$/u.test(target) || /\p{L}/u.test(target)) return true;
+/*
+  Kapanmış bir çift: açılıştan sonra aynı satırda kapanış. İlk kapanışsız açılıştan sonra aynı türde
+  kapanış aranmaz (sonrakiler de kapanamaz); tarama doğrusaldır (Sol 6.1, 13 Ekim).
+*/
+function closedSpans(text: string, open: string, close: string): string[] {
+  const spans: string[] = [];
+  let start = text.indexOf(open);
+  while (start !== -1) {
+    const from = start + open.length;
+    const end = text.indexOf(close, from);
+    if (end === -1) break;
+    const newline = text.indexOf("\n", from);
+    if (newline === -1 || end < newline) spans.push(text.slice(from, end));
+    start = text.indexOf(open, end + close.length);
   }
-  return false;
+  return spans;
 }
 
+function hasEntryFunctionSpan(body: string): boolean {
+  const lower = body.toLocaleLowerCase("tr-TR");
+  if (
+    [
+      ["“", "”"],
+      ['"', '"'],
+      ["«", "»"],
+      ["‘", "’"],
+    ].some(([open, close]) => closedSpans(body, open!, close!).some((span) => span.length > 0))
+  )
+    return true;
+  if (closedSpans(body, "[[", "]]").some((span) => /\p{L}/u.test(span))) return true;
+  return closedSpans(lower, "(bkz:", ")").some((span) => {
+    const target = span.trim();
+    return /^#[1-9]\d*$/u.test(target) || /\p{L}/u.test(target);
+  });
+}
+
+const letter = /\p{L}/u;
+const terminal = new Set([".", "!", "?", "…", ";"]);
+const closer = new Set(['"', "'", "”", "’", "»", ")", "]"]);
+
+/*
+  Regex yerine tek geçişli tarama (Sol 6.1, 13 Ekim): sondaki emoji/parantez/tırnak atılır, son
+  terminal işaret dizisi "?" içermelidir; ondan önce "terminal + kapanış* + boşluk" ya da satır sonu
+  görülürse gövde tek cümle değildir. Uzunluk sınırı yoktur; süre doğrusaldır.
+*/
 function singleQuestionEntry(body: string): boolean {
-  const text = body.normalize("NFKC").trim();
-  if (text.length === 0 || text.length > 2000 || /\n/u.test(text)) return false;
-  // Sondaki emoji, parantez ve tırnak cümlenin bitişini değiştirmez.
-  const bare = text.replace(/[^\p{L}\p{N}.!?…;]+$/u, "");
-  const ending = /\?[!?]*$/u.exec(bare);
-  if (!ending) return false;
-  const inner = bare.slice(0, ending.index);
-  // İçeride başka bir cümle sınırı varsa (terminal işaret + isteğe bağlı kapanış + boşluk) tek soru değildir.
-  if (/[.!?…;]["'”’»)\]]*\s/u.test(inner)) return false;
-  return /\p{L}/u.test(inner) && !hasEntryFunctionSpan(text);
+  const chars = [
+    ...body
+      .normalize("NFKC")
+      .replace(/\p{N}\uFE0F?\u20E3/gu, "")
+      .trim(),
+  ];
+  let end = chars.length;
+  while (
+    end > 0 &&
+    !letter.test(chars[end - 1]!) &&
+    !/\p{N}/u.test(chars[end - 1]!) &&
+    !terminal.has(chars[end - 1]!)
+  )
+    end -= 1;
+  let tail = end;
+  while (tail > 0 && terminal.has(chars[tail - 1]!)) tail -= 1;
+  if (tail === end || !chars.slice(tail, end).includes("?")) return false;
+  let sawLetter = false;
+  for (let index = 0; index < tail; index += 1) {
+    const char = chars[index]!;
+    if (char === "\n") return false;
+    if (letter.test(char)) sawLetter = true;
+    if (!terminal.has(char)) continue;
+    let next = index + 1;
+    while (next < tail && (terminal.has(chars[next]!) || closer.has(chars[next]!))) next += 1;
+    if (next < tail && /\s/u.test(chars[next]!)) return false;
+  }
+  return sawLetter && !hasEntryFunctionSpan(body);
 }
 
 // Madde 32'nin kendi testi: "haber sitesinin manşeti ertesi gün değişse bile bu

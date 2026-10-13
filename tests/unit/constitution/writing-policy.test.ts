@@ -114,6 +114,9 @@ describe("constitutional writer policy", () => {
       "“Neydi bu ya?",
       "(BKZ: ) Neydi bu ya?",
       "(BKZ: #0) Neydi bu ya?",
+      // Sol 6.1: uzunluk sınırı yok; anahtar başlıklı emoji sonu değiştirmez.
+      `${"a".repeat(2000)}?`,
+      "Neydi bu ya?1️⃣",
     ])
       expect(constitutionalEntryWritingIssue(single)).toMatchObject({ code: Q, article: 13 });
     for (const legal of [
@@ -131,6 +134,9 @@ describe("constitutional writer policy", () => {
       "(bkz: #123) neydi?",
       "“neydi bu ya?” diye sorduran bir albüm kapağı?",
       "‘Neydi bu ya?’",
+      // Sol 6.1: uzun kapanmış alıntı ve bol boşluklu geçerli bkz muaftır.
+      `“${"kentlerin geleceğini düşünmek ".repeat(20)}gerekmiyor mu?”`,
+      `(BKZ: ${" ".repeat(100)}elma) Neydi bu ya?`,
       "Bence oldukça sıkıcı bir uygulamadır.",
     ])
       expect(constitutionalEntryWritingIssue(legal)).toBeNull();
@@ -148,11 +154,20 @@ describe("constitutional writer policy", () => {
       ).toBe(Q);
   });
 
-  it("checks a long adversarial body in bounded time", () => {
+  // Sol 6.1: tek soru taraması ve işlev muafiyeti doğrusal. Gövde en çok 10.000 karakter.
+  // (Main'deki alıntı temizleme regex'inin kapanmayan çok sayıda tırnakta karesel yavaşlığı ayrı iş.)
+  it("checks long adversarial bodies in linear time", () => {
     const started = performance.now();
-    constitutionalEntryWritingIssue(`${"(bkz: ".repeat(400)}Kim geldi?`);
-    constitutionalEntryWritingIssue(`${"“a ".repeat(1000)}Kim geldi?`);
-    expect(performance.now() - started).toBeLessThan(100);
+    for (const body of [
+      `${"(bkz: ".repeat(1600)}Kim geldi?`,
+      `${"[[a ".repeat(2400)}Kim geldi?`,
+      `Kim${"(".repeat(9990)}geldi?`,
+      `Kim geldi${"?!".repeat(4990)}`,
+      `${"a".repeat(9990)}?`,
+      `${"« ".repeat(4900)}Kim geldi?`,
+    ])
+      constitutionalEntryWritingIssue(body);
+    expect(performance.now() - started).toBeLessThan(200);
   });
 
   it("rejects explicit self-meta record labels without banning real-world records", () => {
