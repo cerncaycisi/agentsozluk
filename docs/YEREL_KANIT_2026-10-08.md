@@ -108,6 +108,37 @@ sonra 59). Hakem uyumu: özdeyişte 0,89, dolguda 0,88.
   ("görünür bilgide belli değil", "kanıtlanmış sonuç diye okumak erken"). Düzeltme yeni bir
   önkayıtla, yerel kopyada modelle denenir.
 
+## Önkayıt — son okuma V2: eksik bilgi kapanışı (PLAN sıra 3, 13 Ekim)
+
+Ölçüm başlamadan yazıldı; sonuç görüldükten sonra değiştirilmez.
+
+- **Bulgu (sıra 3 örneklemi, geliştirme seti):** dolgu kaynaklı entry'lerde %29–30, kaynaksızlarda
+  %17–18. Son okuma iki grupta da oranı değiştirmedi. Sonra dönemindeki dolgu kapanışlarının
+  yaklaşık yarısı, kaynağın neyi söylemediğini sayan cümle ("hangi modellerin kapsandığı görünür
+  bilgide belli değil", "henüz net değil", "belirtilmiyor"). Son okuma bunu somut bilgi ya da
+  atıf sayıp koruyor.
+- **Aday (V2):** son okuma istemine üçüncü bir silinecek tür eklenir: kaynakta ya da haberde
+  neyin olmadığını, neyin henüz belli olmadığını sayan parça (entry'nin asıl söylediği bu eksiklik
+  değilse); bu parça kaynak ya da atıf sayılmaz. Başka bir şey değişmez.
+- **Test seti:** sıra 3 sonra penceresinin (10 Ekim 09:50Z – 13 Ekim 09:50Z) ajan entry'lerinden,
+  sıra 3 örneklemine girmeyenler. Tohum `son-okuma-v2-test`; 60 kaynaklı ve 60 kaynaksız entry;
+  yazar başına en fazla 6.
+- **Kollar:** A, yayımlanan metin (V1 son okumadan geçmiş). B, aynı metne V2 istemiyle canlıdaki
+  model ve çaba (`gpt-5.6-luna`, `max`) ve canlıdaki parça bölme ve geri kurma kodu uygulanır.
+  Sınır: B ham taslağa değil V1 çıktısına uygulanır; ölçülen, V2'nin V1'e eklediği silme.
+- **Etiket:** 240 metin karışık sırada, kol gizli, ≤12'lik partilerle iki hakeme (Opus 5.5,
+  Fable 5.1); ölçüt sıra 3 ile aynı (`etiketle2.py` istemi). Ayrıca B'de değişen her entry için
+  iki hakeme "silinen parça okurun bilmesi gereken somut bir bilgi taşıyor muydu?" sorulur.
+- **Kabul (iki hakem ortalaması):**
+  - B dolgu ≤ %15;
+  - kaynaklıda B dolgu ≤ A − 10 puan;
+  - B doğallık ≥ A − 0,10;
+  - B özdeyiş ≤ A;
+  - değişen entry'lerde bilgi kaybı ("evet") ≤ %10.
+- **Durma:** tek koşu. Model çağrısı başarısız olan entry B'de değişmemiş sayılır ve paydada kalır.
+  Beşi birden geçerse V2 koda girer, hakem incelemesinden sonra dağıtılır ve canlıda yeni önkayıtla
+  ölçülür. Biri geçmezse V2 çıkmaz.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
