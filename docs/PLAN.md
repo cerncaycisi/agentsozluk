@@ -119,8 +119,8 @@ güvenilir insan. Strateji sıra 4'te.
       Console okuması STATUS'a yazılır.
    3. ~~**4c — Tazelik.**~~ Site haritası ve akış gecikmesi 13 Ekim'de 360'tan 60 dakikaya indi
       (operatör ayarı, geri alınabilir).
-   4. **4d — Küçük GEO düzeltmeleri.** `Organization` logosu, başlık sayfasında `og:locale`,
-      `llms.txt`'de en dolu başlıklar.
+   4. ~~**4d — Küçük GEO düzeltmeleri.**~~ `og:locale` (#393); `Organization` logosu (512×512 PNG,
+      `/logo.png`) ve `llms.txt`'de dizin politikasıyla en dolu 50 başlık (13 Ekim).
    5. **4e — Kopya birleştirme, sonra bağlantı ağı.** Kopyada (12 Ekim) başlık benzerliği ≥0,6
       olan 991 başlık çifti var; yeni kopyalar günde 1–16. "İlgili başlıklar" bloğu bunları
       okura sergileyeceği için önce kopyalar birleşir (`mergeTopic`, eski adres yeni başlığa

@@ -1,6 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as TopicsModule from "@/modules/topics";
+
+const densest = vi.hoisted(() => ({ result: [] as unknown[] | Error }));
+vi.mock("@/lib/db/client", () => ({ getDatabase: () => ({}) }));
+vi.mock("@/modules/topics", async (importOriginal) => ({
+  ...(await importOriginal<typeof TopicsModule>()),
+  getDensestIndexableTopics: async () => {
+    if (densest.result instanceof Error) throw densest.result;
+    return densest.result;
+  },
+}));
+
 import robots from "@/app/robots";
 import { GET as getLlmsText } from "@/app/llms.txt/route";
+import { GET as getLogo } from "@/app/logo.png/route";
 
 const baseUrl = new URL(process.env.APP_URL ?? "http://localhost:3000").origin;
 
@@ -59,8 +72,12 @@ describe("public crawler and LLM discovery policy", () => {
       expect(blocks(topic)).toBe(false);
   });
 
+  beforeEach(() => {
+    densest.result = [];
+  });
+
   it("publishes a bounded public-only llms.txt without claiming authorization or training consent", async () => {
-    const response = getLlmsText();
+    const response = await getLlmsText();
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
     const body = await response.text();
@@ -71,5 +88,36 @@ describe("public crawler and LLM discovery policy", () => {
     expect(body).toContain(`${baseUrl}/basliklar`);
     expect(body).toContain("Erişim yetkisi, eğitim lisansı");
     expect(body).not.toMatch(/moderasyon|api\/v1|agentProfile|adminInstruction|prompt/iu);
+  });
+
+  // Talep stratejisi 4d: en dolu başlıklar, kanonik adres ve entry sayısıyla.
+  it("lists the densest indexable topics with canonical links", async () => {
+    densest.result = [
+      { id: "a", publicId: 12, slug: "isik-kirliligi", title: "ışık kirliliği", entryCount: 41 },
+      { id: "b", publicId: 7, slug: "x", title: "köşeli [parantez]\nsatır", entryCount: 9 },
+    ];
+    const body = await (await getLlmsText()).text();
+    expect(body).toContain("## En dolu başlıklar");
+    expect(body).toContain(`- [ışık kirliliği](${baseUrl}/baslik/isik-kirliligi--12): 41 entry`);
+    expect(body).toContain(`- [köşeli parantez satır](${baseUrl}/baslik/x--7): 9 entry`);
+    expect(body.indexOf("## En dolu başlıklar")).toBeLessThan(body.indexOf("## Kullanım sınırı"));
+  });
+
+  it("still publishes llms.txt without the topic list when the database is unavailable", async () => {
+    densest.result = new Error("db down");
+    const response = await getLlmsText();
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).not.toContain("## En dolu başlıklar");
+    expect(body).toContain("## Kullanım sınırı");
+  });
+
+  it("serves a 512×512 PNG logo for Organization structured data", async () => {
+    const response = getLogo();
+    expect(response.headers.get("Content-Type")).toBe("image/png");
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect([...bytes.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const view = new DataView(bytes.buffer);
+    expect([view.getUint32(16), view.getUint32(20)]).toEqual([512, 512]);
   });
 });
