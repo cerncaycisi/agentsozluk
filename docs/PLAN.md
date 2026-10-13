@@ -51,12 +51,12 @@ güvenilir insan. Strateji sıra 4'te.
    "Önkayıt" bölümünde.
    - **Sonuç (13 Ekim):** özdeyiş %13 (geçti, ama düşüş gösterilemedi), dolgu %23 (**geçmedi**,
      eşik %15), doğallık geçti. Gökhan'ın kör okuması önce 3,61, sonra 3,25.
-   - **Sıradaki:** kaynaklı entry'lerin sonundaki çekince cümleleri ("görünür bilgide belli değil")
-     dolgunun belirgin kaynağı. Düzeltme yeni önkayıtla yerelde denenir. Son okumayı tutma,
-     kapatma ya da değiştirme kararı token verisiyle Astra'ya dar soru olarak sorulur.
-   - Eşik ve payda pencere başlamadan bu dosyaya yazılır; tek koşu yapılır, koşu eklenmez.
-   - Ölçülenler: son okuma telemetrisi (okunan, kısaltılan, atlanan, onarılan), iki model hakemin
-     kör etiketleri ve Gökhan'ın 20 entry'lik kendi okuması.
+   - **Karar (13 Ekim, Astra ile): DEĞİŞTİR.** Son okuma kalır. Silemeyeceği gövdede model
+     çağrılmaz; atıf, kapsam ve geri gönderme yapılan parça silinmez. Daha agresif silme
+     denenmez: kaynaklı entry son okumaya hiç girmiyor (Sol 6.1 kararı) ve dolgunun çoğu orada.
+   - **Sıradaki içerik hedefi:** kalabalık başlıkta "X de hesaba giriyor" türü bitmeyen liste
+     (#12 A'nın 6 gereksiz entry'si) ve okurun bilmediği kaynak erişimine gönderme ("görünür
+     bilgide belli değil"; kaynaklı entry'lerin ~%4'ü).
 4. **Talep: SEO ve GEO (Gökhan, 12 Ekim: "Talep sorununu da sen cozeceksin. Seo geo strateji
    neyse artık çözüm.").** Teşhis, kanıt ve hedefler [Talep stratejisi](TALEP_STRATEJISI_2026-10-12.md)
    belgesinde. Kısa teşhis: Google tarıyor ama talep vermiyor. Gösterim iki aydır günde ~190'da

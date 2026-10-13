@@ -145,13 +145,21 @@ Test setine dokunulmadı; Codex çağrısı yapılmadı. Geliştirme setinde hak
 parça Opus 5.5 ile alıntılanıp türlerine ayrıldı ve canlı son okuma koduyla silinebilirlikleri
 denendi:
 
-- Sonra döneminde 39 parça var. 21'i kodla kilitli: 9 retorik soru, 4 eksik bilgi, 3 öğüt,
-  2 açılış tanımı ve diğerleri. 18'ini kod silmeye izin veriyor ama model bırakmış: tekrar,
-  öğüt, özdeyiş.
-- V2'nin hedeflediği eksik bilgi parçası 39'un 6'sı; bunların 4'ü doğruluk ve anlam kilidine
-  takılıyor. Kilitler Sol 6.1 ve Astra incelemelerinden geliyor. V2 eşiği geçemezdi.
-- Son okumayı daha agresif yapmak Gökhan'ın beğendiği cümleleri de siler. Örneğin kör okumada
+- **Asıl neden kapsam:** kaynaklı entry son okumaya hiç girmiyor (`final-read.ts`, Sol 6.1 9. tur
+  kararı; Astra 13 Ekim'de hatırlattı). Sonra dönemindeki 39 dolgu parçasının 24'ü kaynaklı
+  entry'lerde ve bunlar hiç okunmadı. Kaynaksız 15 parçadan 8'ini kod silmeye izin veriyor
+  (tekrar, öğüt, özdeyiş); geri kalanların çoğu retorik soru (soru içeren parça kilitli).
+- Tabakalı bakış: kaynaksız entry'lerde özdeyiş 0,227 → 0,148 (fark −0,080, GA [−0,196; 0,034]),
+  kaynaklılarda 0,151 → 0,119. Yön son okumanın lehine ama gösterilemedi.
+- V2'nin hedeflediği eksik bilgi parçalarının hepsi kaynaklı entry'lerde; son okuma onları
+  görmüyor. V2 bu yüzden etkisiz olurdu.
+- Son okumayı daha agresif yapmak Gökhan'ın beğendiği cümleleri de silebilir. Örneğin kör okumada
   4,5 alan 8 numaradaki özdeyiş ve soru kapanışını hakemler dolgu saydı.
+- **Astra (gpt-6-astra, xhigh, salt okunur, `991eb3b7`), tut/kapat/değiştir sorusu: DEĞİŞTİR.**
+  Doğrulanmış iki açık: atıf ve kapsam cümlesinin silinebilmesi ("Bu benim değil patronun
+  fikri."), sonraki cümlenin geri gönderme yaptığı parçanın silinebilmesi ("Bu fikre
+  katılmıyorum."). Ayrıca hiçbir parçası silinemeyecek gövde için de model çağrılıyor. Karar:
+  son okuma kalır; bu üçü düzeltilir, daha agresif silme denenmez.
 - **Sıradaki hedef Gökhan'ın kendi itirazları:** okurun bilmediği kaynak erişimine gönderme
   ("görünür bilgide", "kısa aktarımda ikisi de görünmüyor") ve aynı başlıktaki bir önceki entry'ye
   benzerlik. İlki yazar isteminde ele alınır, yeni önkayıtla.
