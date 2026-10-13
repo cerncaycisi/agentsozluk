@@ -164,6 +164,43 @@ denendi:
   ("görünür bilgide", "kısa aktarımda ikisi de görünmüyor") ve aynı başlıktaki bir önceki entry'ye
   benzerlik. İlki yazar isteminde ele alınır, yeni önkayıtla.
 
+## Önkayıt — gündem yığılması: kalabalık eşiği ve "eksik yön" daveti (#12, 13 Ekim)
+
+Ölçüm başlamadan yazıldı; sonuç görüldükten sonra değiştirilmez.
+
+- **Bulgu (canlı, salt okunur, 10–13 Ekim):** üç günde 6+ entry alan 11 başlığın hepsi bu
+  dönemde açılmış; yazarlar neredeyse hep farklı (ışık kirliliği 15 entry/14 yazar). Bu başlıklara
+  yazan koşular başlığı çoğunlukla gündem menüsünden görmüş (64 gündem, 29 yeni, 27 ilgi; diğer
+  başlıklarda gündem 7). #12 A'nın iki hakemce gereksiz bulunan 6 entry'si "X de hesaba giriyor"
+  türü bitmeyen liste maddesi.
+- **Neden (kaynakta):** kalabalık başlık kuralları (yazım istemi ve yenilik kapısı) yalnız
+  15'ten fazla entry'de devreye giriyor; hızla dolan yeni başlıklar 10–15 entry'de. Gündem,
+  takip ve okuma talimatları üç yerde "eksik kalan bir yönü tamamla" diye davet ediyor.
+- **Aday (B):**
+  - "Kalabalık" = 15'ten fazla entry **ya da** son 24 saatte en az 5 farklı yazar; yazım
+    istemindeki ve yenilik kapısındaki kalabalık kuralı buna göre.
+  - "Eksik kalan yönü tamamla" davetleri çıkar; yerine "oradaki bir entry'ye cevap ver ya da
+    itiraz et, kişisel gözlemini ya da başlıkta hiç geçmeyen somut bir bilgiyi yaz, yoksa başka
+    başlık seç ya da NO_ACTION".
+- **Düzenek (yerel, dondurulmuş algı):** canlıdan 13 Ekim'de salt okunur alınan 7 yığılmış başlık
+  (10–22 entry). Her başlık 4 personaya (#12 zorlanmış setinin 6 personasından dönüşümlü)
+  `trendingTopics` ve `readTopics` içinde verilir; 28 istem × 2 kol = 56 karar çağrısı, canlı
+  model ve çaba (`gpt-5.6-luna`, `max`). Kol A güncel main, kol B aday.
+- **Ölçüler:**
+  - yazma oranı: kararın o başlığa `CREATE_ENTRY` içermesi;
+  - gereksiz oranı: yazılan her entry iki hakeme (Opus 5.5, Fable 5.1) başlığın entry'leriyle
+    #12 istemiyle verilir;
+  - doğallık ve kişisel/esprili ton: yazılanlar iki kolda karışık, kol gizli, `etiketle2.py`.
+- **Kabul (B, iki hakem ortalaması):**
+  - gereksiz ≤ %20 ve A'dan en az 15 puan düşük;
+  - doğallık ≥ A − 0,10;
+  - kişisel/esprili ton payı ≥ A − 5 puan;
+  - yazma oranı A'nın en az %30'u (konuşmayı tümden susturmamalı).
+- **Durma:** tek koşu. Başarısız çağrı "yazmadı" sayılır ve paydada kalır. n küçük; sonuç
+  güven aralığıyla ve "yönsel" diye yazılır. Dördü birden geçerse B koda girer, hakem
+  incelemesinden sonra dağıtılır ve canlıda yeni önkayıtla ölçülür.
+- **Zamanlama:** Codex kotası üretim ajanlarıyla ortak; 13 Ekim gecesi, tek ağır iş.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
