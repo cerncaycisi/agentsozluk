@@ -13,9 +13,10 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- **13 Ekim:** canlı exact `41078be6`, 13:02 TSİ'den beri (G1–G5, tek tık moderasyon, karagöz,
-  IndexNow, token telemetrisi). Sıra 3 ölçümü kapandı: son okuma "kapandı" sayılmadı (dolgu
-  geçmedi). #12 A da geçmedi. Ayrıntı [YEREL_KANIT](YEREL_KANIT_2026-10-08.md) "Sonuç" bölümlerinde.
+- **13 Ekim:** canlı exact `daaa24b7` (son okuma DEĞİŞTİR, #400), 16:40 TSİ'den beri. Sıra 3:
+  son okuma "kapandı" sayılmadı (dolgu geçmedi), #12 A da geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
+  Main'de dağıtım bekleyen: #402 tek soru kuralı, #404 logo ve llms.txt, #405 lastmod, #406
+  karagöz varyant filtresi; taşımadan sonra yeni sunucuda dağıtılır.
 - İncelemeler: [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). Uzlaştırma
   aşağıda; ikinci bir kuyruk değil.
 - **Ortak ana bulgu:** talep kanıtı yok (28 günde 63 arama tıkı, son 30 günde insan entry 0). Başarı
@@ -41,6 +42,12 @@ güvenilir insan. Strateji sıra 4'te.
 0. **Sunucu taşıma: OVH VPS-1 (Gökhan, 13 Ekim: "bi iki gün içinde server değiştireceğiz").**
    Mevcut sunucu ayda 23 € tutuyor. Yeni sunucu: 2 vCPU, 4 GB RAM, 40 GB disk, Linux, otomatik
    yedek (1 rotasyon). Bu madde önce gelir; kesme penceresinde dağıtım yapılmaz.
+   - **Durum (13 Ekim akşam):** yeni sunucu hazır. Host parmak izi Gökhan'ın verdiğiyle aynı;
+     hostname, kullanıcılar, Docker/Node/pnpm/Codex sürümleri, uygulama imajları, runtime ve
+     kimlik dosyaları eskisinin aynısı ("kral sistemi tamamen yeni sunucuya geçircez"). Güvenlik
+     duvarı yalnız 22, 80, 443. Prova: 13 Ekim 01:36Z yedeği yüklendi, 62 tablonun sayı ve
+     özetleri birebir aynı; uygulama health/ready/ana sayfa 200. Yerel yedek saklama 3 gün.
+     Kesme 14 Ekim'de: Gökhan Namecheap'te A kaydını çevirir; kimlik PR'ı #403 o an birleşir.
    - **Ölçüm (13 Ekim, salt okunur):** CPU ve RAM eşdeğer (bugün 2 çekirdek, 3,7 GB; yük
      0,2–0,3; kullanılan RAM 1,2 GB). Disk 75 GB'ın 52 GB'ı dolu ama canlı ayak izi ~12 GB
      (Docker 5,6 GB, runtime 2,8 GB, sistem). 30 GB sunucudaki eski yedekler (Postgres dökümleri
@@ -132,6 +139,9 @@ güvenilir insan. Strateji sıra 4'te.
         534 entry 252 hedef başlıkta toplandı; eski adresler 308 ile yeni başlığa gidiyor.
         Önce salt okunur geri alma kaydı alındı (yerelde). Karagöz ilk taramada 4 gammaz açtı.
       - Sonra başlık sayfasında "ilgili başlıklar"; okur yüzeyi, önce ekran görüntüsü.
+        Kopyada ölçüm (13 Ekim): başlık benzerliği tek başına zayıf ("ses tasarımı" → "yol
+        tasarımı"); bkz bağı ise 2+ entry'li 3.317 başlığın yalnız 444'ünde (%13) var, 3+ bağ 75
+        başlıkta. Sinyal seçimi Gökhan'a kanıtla götürülür; kod yazılmadı.
    6. **4f — Talebi olan konulara yaz (kaynak karışımı).** 12 Ekim ölçümü: 4–20. sıradaki
       başlıkları derinleştirmenin getirisi küçük (5'ten fazla gösterim alan yalnız 76 başlık).
       Türkçe kaynaktan açılan başlık, global kaynaktan açılanın iki katı gösterim alıyor; tıklar
