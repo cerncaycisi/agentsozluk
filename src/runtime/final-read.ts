@@ -221,21 +221,18 @@ function containsVeracityHedge(text: string): boolean {
   silinince dar bir iddia genel hükme dönüşüyordu.
 */
 const meaningGuard =
-  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlatti|açikla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sinirli|kapsamaz|kapsamiyor|her durumda|herkes için değil|fiki?r|görüş|kanaat|benim değil|(?:yalniz|yalnizca|sadece|salt)(?![\p{L}])[^.!?;]{0,400}?(?:için|içindir)(?![\p{L}]))/u;
+  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlattı|açıkla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsamıyor|her durumda|herkes için değil|fiki?r|görüş|kanaat|benim değil|(?:yaln[ıi]z(?:ca)?|sadece|salt)(?![\p{L}])[^.!?;]*?[ıi]ç[ıi]n(?:d[ıi]r)?(?![\p{L}]))/u;
 
 /*
-  Büyük/küçük harf ve ı/i katlaması (Astra, 13 Ekim): "BU YALNIZ DÜZ METIN DOSYALARI IÇIN." Türkçe
-  küçültmede "ıçın", varsayılanda "yalniz" oluyor ve tek varyant bütün kalıbı eşleştiremiyordu.
-  Kalıplar bu yüzden ı yerine i ile yazılır; varsayılan küçültmenin İ'ye eklediği nokta atılır.
+  "BU YALNIZ DÜZ METIN DOSYALARI IÇIN." (Astra, 13 Ekim): Türkçe küçültme "ıçın", varsayılan
+  "yalniz" verir; kapsam kalıbı bu iki sözcükte ı/i'yi birlikte kabul eder. Bütün kalıbı katlamak
+  "sinirli"yi "sınırlı", "fıkra"yı "fikir" sanıyordu (Sol 6.1). Aralık sınırsızdır: parça zaten
+  cümle sonunda biter.
 */
-function foldedVariants(text: string): string[] {
-  return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].map((lower) =>
-    lower.replaceAll("\u0307", "").replaceAll("ı", "i"),
-  );
-}
-
 function containsMeaningGuard(text: string): boolean {
-  return foldedVariants(text).some((folded) => meaningGuard.test(folded));
+  return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
+    meaningGuard.test(lower),
+  );
 }
 
 function lockedUnit(text: string): boolean {
@@ -254,12 +251,14 @@ function lockedUnit(text: string): boolean {
   karşı çıktığı önermeyi kaybediyor, önceki tanıma itiraz ediyormuş gibi okunuyordu.
 */
 const backReferenceStart =
-  /^[\s"'“”‘’«»(]*(?:bu|bunu|buna|bunda|bundan|bunun|bunlar\p{L}*|şu|şunu|şuna|şunda|şundan|şunun|şunlar\p{L}*|o|onu|ona|onda|ondan|onun|onlar\p{L}*|öyle|böyle|şöyle|ama|ancak|fakat|lakin|çünkü|yani|oysa|halbuki|dolayisiyla|üstelik|yine de|tersine|aksine)(?![\p{L}\p{N}])/u;
+  /^[\s"'“”‘’«»(]*(?:bu|bunu|buna|bunda|bundan|bunun|bunlar\p{L}*|şu|şunu|şuna|şunda|şundan|şunun|şunlar\p{L}*|o|onu|ona|onda|ondan|onun|onlar\p{L}*|öyle|böyle|şöyle|ama|ancak|fakat|lakin|çünkü|yani|oysa|halbuki|dolayısıyla|üstelik|yine de|tersine|aksine)(?![\p{L}\p{N}])/u;
 
 function boundToNext(units: readonly RuntimeFinalReadUnit[], index: number): boolean {
   const next = units[index + 1]?.text;
   if (next === undefined) return false;
-  return foldedVariants(next).some((folded) => backReferenceStart.test(folded));
+  return [next.toLocaleLowerCase("tr-TR"), next.toLowerCase()].some((lower) =>
+    backReferenceStart.test(lower),
+  );
 }
 
 function removableUnit(units: readonly RuntimeFinalReadUnit[], index: number): boolean {

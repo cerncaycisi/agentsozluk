@@ -186,6 +186,26 @@ describe("son okuma saklı olumsuz küme: asıl hedef hâlâ silinebilir", () =>
       expect(trimmed(`${head}. ${tail}`)?.body).toBe(`${head}.`);
     });
 
+  // Sol 6.1: kapsam aralığı sınırsız; uzunluk kapısını geçen uzun gövdede de korunur.
+  it("çok uzun kapsam nitelemesi de silinmez", () => {
+    const longHead = `${head}, ${head}, ${head}`;
+    const body = `${longHead}. bu yalnız ${"eski ".repeat(90)}düz metin dosyaları için.`;
+    expect(trimmed(body)).toBeNull();
+    // Kontrol: aynı uzunlukta kapsamsız kuyruk silinebilir.
+    expect(trimmed(`${longHead}. bu ${"eski ".repeat(90)}düz metin dosyalarıdır.`)?.body).toBe(
+      `${longHead}.`,
+    );
+  });
+
+  // Sol 6.1: ı/i katlaması "sinirli"yi "sınırlı", "fıkra"yı "fikir" sanıyordu.
+  for (const [name, tail] of [
+    ["sinirli ≠ sınırlı", "kütüphane biraz da sinirli şehrin sessiz odasıdır."],
+    ["fıkra ≠ fikir", "kütüphane biraz da şehrin uzun fıkrasıdır."],
+  ])
+    it(`kilit yanlış pozitifi yok: ${name}`, () => {
+      expect(trimmed(`${head}. ${tail}`)?.body).toBe(`${head}.`);
+    });
+
   it("tekrar eden kapanışı silen, yani düzelten silme kabul edilir", () => {
     const body = `${head}. mekân tek başına kültür yaratmaz.`;
     const result = applyRuntimeFinalRead(body, runtimeFinalReadUnits(body), [2], {
