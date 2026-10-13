@@ -121,6 +121,13 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     expect(trimmed(`${question} kütüphane biraz da kendi geçmişinin okurudur.`)).toBeNull();
     // Astra: parantezli soru da aynı korumayı alır.
     expect(trimmed(`(${question}) kütüphane biraz da kendi geçmişinin okurudur.`)).toBeNull();
+    // Astra 2. tur: "sorunları" başlığı soru kategorisi değildir.
+    const body = `${question} kütüphane biraz da kendi geçmişinin okurudur.`;
+    expect(
+      applyRuntimeFinalRead(body, runtimeFinalReadUnits(body), [2], {
+        topicTitle: "fabrika dönüşümünün sorunları",
+      }),
+    ).toBeNull();
   });
 
   it("sağlık, finans ve hukuk gövdesi hiç aday olmaz", () => {

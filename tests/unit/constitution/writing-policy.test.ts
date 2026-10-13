@@ -121,6 +121,11 @@ describe("constitutional writer policy", () => {
       "Bunu bilen yok. Kim bilir?",
       "(BKZ: elektrikli otobüs) Neydi bu ya?",
       "ne mi? hiç.",
+      // Astra 2. tur: sayısal cevap, kapalı tek kıvrık tırnak, geçerli entry bkz'si.
+      "Kaç kişi geldi? 3.",
+      "Pi yaklaşık kaçtır? 3.14.",
+      "‘Neydi bu ya?’",
+      "(bkz: #123) neydi?",
     ])
       expect(constitutionalEntryWritingIssue(legal)).toBeNull();
     // Kısaltma, sıra sayısı, sondaki parantez/emoji ve kapanmamış işaret kuralı atlatmaz.
@@ -132,6 +137,12 @@ describe("constitutional writer policy", () => {
       "Neydi bu [[ ya?",
       "Neydi bu ya (bkz:?",
       "“Neydi bu ya?",
+      // Astra 2. tur.
+      "Ankara'da Dr.Ali kimdi?",
+      "Ankara'da Dr. Ali kimdi?",
+      "https://Example.COM neden açılmıyor?",
+      "(BKZ: ) Neydi bu ya?",
+      "(BKZ: #0) Neydi bu ya?",
     ])
       expect(constitutionalEntryWritingIssue(evasion)?.code).toBe(
         "CONSTITUTION_ENTRY_QUESTION_ONLY",
@@ -142,9 +153,14 @@ describe("constitutional writer policy", () => {
         topicTitle: "açık uçlu soru örnekleri",
       }),
     ).toBeNull();
-    expect(
-      constitutionalEntryWritingIssue("Hangi renkleri seversin?", { topicTitle: "renkler" })?.code,
-    ).toBe("CONSTITUTION_ENTRY_QUESTION_ONLY");
+    for (const topicTitle of ["renkler", "sorumluluk", "sorun çözme", "soruşturma"])
+      expect(
+        constitutionalEntryWritingIssue("Hangi renkleri seversin?", { topicTitle })?.code,
+      ).toBe("CONSTITUTION_ENTRY_QUESTION_ONLY");
+    for (const topicTitle of ["mülakat soruları", "sorular"])
+      expect(
+        constitutionalEntryWritingIssue("Hangi renkleri seversin?", { topicTitle }),
+      ).toBeNull();
   });
 
   it("rejects explicit self-meta record labels without banning real-world records", () => {

@@ -124,26 +124,48 @@ export function constitutionalEntryWritingIssue(
     harf, ya da satır sonu. tek başına "Dr.", "3." gibi kısaltma ya da sıra sayısı cümle sayılmaz; sondaki emoji,
     parantez ve tırnak cümlenin bitişini değiştirmez.
 */
+/*
+  Geçerli bkz: hedef ya harf taşır ya da sıfırdan büyük entry numarasıdır ("#0" ve boş hedef
+  renderer'da bağlantı olmaz). Alıntı: kapanmış çift, yönlü ya da tek kıvrık tırnak.
+*/
 const validFunctionSpan =
-  /\[\[[^\]\n]{2,100}\]\]|\(bkz:\s*[^)\n]{1,100}?\s*\)|“[^”\n]+”|"[^"\n]+"|«[^»\n]+»/iu;
-const shortTokenBeforeDot =
-  /^\(?(?:\p{N}+|dr|prof|doç|yrd|av|müh|sn|no|nr|st|vb|vs|vd|örn|bkz|mah|cad|sok|ltd|şti)\.$/iu;
+  /\[\[[^\]\n]*\p{L}[^\]\n]*\]\]|\(bkz:\s*(?:#[1-9]\d*|[^)\n]*\p{L}[^)\n]*)\s*\)|“[^”\n]+”|"[^"\n]+"|«[^»\n]+»|‘[^’\n]+’/iu;
+const abbreviationEnd =
+  /(?:^|[\s(])(?:dr|prof|doç|yrd|av|müh|sn|no|nr|st|vb|vs|vd|örn|bkz|mah|cad|sok|ltd|şti)\.$/iu;
+const ordinalOnly = /^\(?\p{N}+\.$/u;
 
 function questionCategoryTitle(title: string | undefined): boolean {
   if (!title) return false;
-  return /(?:^|[^\p{L}])sor(?:u|ul)\p{L}*/u.test(title.toLocaleLowerCase("tr-TR"));
+  // Tam sözcük: "soru", "sorular", "soruları", "sorusu" — "sorun", "sorumluluk", "soruşturma" değil.
+  return /(?:^|[^\p{L}])soru(?:lar|ları|su|ları)?(?![\p{L}])/u.test(
+    title.toLocaleLowerCase("tr-TR"),
+  );
 }
 
 function questionSentences(body: string): string[] {
-  return (
-    body
-      .normalize("NFKC")
-      .trim()
-      .split(/(?<=[.!?…;]["'”’»)\]]*)(?:\s+|(?=\p{Lu}))|\n+/u)
-      .map((sentence) => sentence.trim())
-      // Tek başına kısaltma ya da sıra sayısı ("Dr.", "3.") cümle değildir; sonraki cümleyle
-      // birleştirmek "yok. Kim bilir?" gibi gövdeleri yanlışlıkla tek soru yapardı.
-      .filter((sentence) => /\p{L}/u.test(sentence) && !shortTokenBeforeDot.test(sentence))
+  /*
+    Sınır: terminal işaret (ve kapanış parantezi/tırnağı) ardından boşluk ya da satır sonu. Boşluksuz
+    "yoruyor.Kim" ancak noktadan önce en az üç harflik bir sözcük varsa ve parça URL değilse bölünür
+    ("Dr.Ali", "https://Example.COM" bölünmez). Kısaltmayla biten parça sonrakiyle birleşir. Tek
+    başına sıra sayısı ("3. sırada") cümle değildir; sorudan sonra gelirse cevaptır ("Kaç kişi? 3.").
+  */
+  const pieces = body
+    .normalize("NFKC")
+    .trim()
+    .split(/(?<=[.!?…;]["'”’»)\]]*)\s+|(?<=(?:^|\s)[^\s:/]*\p{Ll}{3}[.!?…;])(?=\p{Lu})|\n+/u)
+    .map((piece) => piece.trim())
+    .filter(Boolean);
+  const sentences: string[] = [];
+  for (const piece of pieces) {
+    const previous = sentences.at(-1);
+    if (previous !== undefined && abbreviationEnd.test(previous))
+      sentences[sentences.length - 1] = `${previous} ${piece}`;
+    else sentences.push(piece);
+  }
+  return sentences.filter(
+    (sentence, index) =>
+      (/\p{L}/u.test(sentence) || /\p{N}/u.test(sentence)) &&
+      !(ordinalOnly.test(sentence) && !/\?["'”’»)\]]*$/u.test(sentences[index - 1] ?? "")),
   );
 }
 
