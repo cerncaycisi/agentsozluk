@@ -65,6 +65,18 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
   Seçime bağlı sabit anahtar denendi; araya giren gizleme ve seçim sırası yüzünden eski yanıtı
   oynatma ve `IDEMPOTENCY_CONFLICT` sorunları çıkardığı için geri alındı. Doğru çözüm, komutun
   sonucu belirsiz kaldığında sunucudan durumu sorup kullanıcıya göstermek.
+- **Karagöz öneri kalitesi (13 Ekim, ilk canlı tarama, 4 rapor):**
+  - Ters yön raporu (kaynağın açık raporu varsa) genel başlığı özel başlığa birleştirmeyi
+    önerebiliyor: "Yaşayan Gezegen Raporu" → "2026 Yaşayan Gezegen Raporu".
+  - Tek harfle ayrılan model adları kopya sayılıyor: "CMF Speaker M" ↔ "CMF Speaker S" (0,80).
+  - Beklenen benzersizlik çakışması (`REPORT_ALREADY_OPEN` yolu) Prisma hata günlüğüne de düşüyor;
+    servis başarılı bitiyor ama günlük yanıltıcı.
+  - Raporlar panelde reddedilebilir; düzeltme ölçümle (yanlış pozitif oranı) yapılır.
+- **CI'da kararsız test: `tests/integration/great-reset-namespace.test.ts` (12–13 Ekim):** kodla
+  ilgisiz olarak arada bir `OTHER_DATABASE_CONNECTIONS` ya da `agent_sources` üzerinde 55P03 kilit
+  hatasıyla düşüyor. Yalnız belge değiştiren bir commit'te (`f52949c5`) de düştü; yeniden koşu
+  geçiyor. Test, aynı veritabanındaki başka bağlantıların kapanmasını beklemeli ya da kendine
+  ayrı veritabanı almalı.
 - **Yönetici ↔ çalışma zamanı kilit sırası denetimi (Sol 6.1, #379):** #379 üç döngüyü
   kapattı: moderasyon geri bildirimi, yeniden adlandırma ve kimlik döndürme. Sol'un 10–12.
   turları, main'de de var olan şu döngüleri buldu:
