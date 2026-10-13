@@ -62,6 +62,8 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     ["atıf: fikirleri", "bunlar patronun fikirleri."],
     ["atıf: büyük harf", "BUNLAR PATRONUN FİKİRLERİ."],
     ["atıf: ASCII büyük harf", "BUNLAR PATRONUN FIKIRLERI."],
+    ["atıf: karışık I/İ", "BUNLAR PATRONUN FİKIRLERİ."],
+    ["atıf: karışık İ/I", "BUNLAR PATRONUN FIKİRLERİ."],
     [
       "kapsam: uzun niteleme",
       "bu yalnız eski düzenleyicide hazırlanmış, satır sonları tek biçimli, karakter kodlaması önceden belirlenmiş düz metin dosyaları için.",
@@ -85,6 +87,8 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
       "'Bu' da tartışılır.",
       "şundan hiç emin değilim.",
       "ŞUNDAN hiç emin değilim.",
+      "DOLAYISİYLA odalar boş kalıyor.",
+      "DOLAYISIYLA odalar boş kalıyor.",
     ])
       expect(trimmed(`${head}. az eşya her zaman daha çok huzur demektir. ${next}`)).toBeNull();
     // Bağı kuran parça silinebilir; geri gönderilen parça kalır.
@@ -201,6 +205,7 @@ describe("son okuma saklı olumsuz küme: asıl hedef hâlâ silinebilir", () =>
   for (const [name, tail] of [
     ["sinirli ≠ sınırlı", "kütüphane biraz da sinirli şehrin sessiz odasıdır."],
     ["fıkra ≠ fikir", "kütüphane biraz da şehrin uzun fıkrasıdır."],
+    ["FIKRA ≠ fikir", "KÜTÜPHANE BİRAZ DA ŞEHRİN UZUN FIKRASIDIR."],
   ])
     it(`kilit yanlış pozitifi yok: ${name}`, () => {
       expect(trimmed(`${head}. ${tail}`)?.body).toBe(`${head}.`);

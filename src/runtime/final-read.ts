@@ -221,18 +221,21 @@ function containsVeracityHedge(text: string): boolean {
   silinince dar bir iddia genel hükme dönüşüyordu.
 */
 const meaningGuard =
-  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlattı|açıkla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsamıyor|her durumda|herkes için değil|fiki?r|görüş|kanaat|benim değil|(?:yaln[ıi]z(?:ca)?|sadece|salt)(?![\p{L}])[^.!?;]*?[ıi]ç[ıi]n(?:d[ıi]r)?(?![\p{L}]))/u;
+  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlatt[ıi]|aç[ıi]kla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsam[ıi]yor|her durumda|herkes için değil|fik(?:[ıi]r|r(?![aâ]))|görüş|kanaat|benim değil|(?:yaln[ıi]z(?:ca)?|sadece|salt)(?![\p{L}])[^.!?;]*?[ıi]ç[ıi]n(?:d[ıi]r)?(?![\p{L}]))/u;
 
 /*
-  "BU YALNIZ DÜZ METIN DOSYALARI IÇIN." (Astra, 13 Ekim): Türkçe küçültme "ıçın", varsayılan
-  "yalniz" verir; kapsam kalıbı bu iki sözcükte ı/i'yi birlikte kabul eder. Bütün kalıbı katlamak
-  "sinirli"yi "sınırlı", "fıkra"yı "fikir" sanıyordu (Sol 6.1). Aralık sınırsızdır: parça zaten
-  cümle sonunda biter.
+  Büyük harf yazımı (Astra ve Sol 6.1, 13 Ekim): "BU YALNIZ DÜZ METIN DOSYALARI IÇIN.",
+  "FİKIRLERİ", "DOLAYISİYLA". Metin Türkçe küçültmeyle ve varsayılan küçültmeyle (İ'nin bıraktığı
+  nokta atılır) iki kez denenir; kalıplarda ı geçen yerler ı/i'yi birlikte kabul eder. Bütün metni
+  katlamak "sinirli"yi "sınırlı" sanıyordu; "sınırlı" bu yüzden birebir kalır, "fikir" kalıbı
+  "fıkra"yı dışlar. Kapsam aralığı sınırsızdır: parça zaten cümle sonunda biter.
 */
+function lowercaseVariants(text: string): string[] {
+  return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase().replaceAll("\u0307", "")];
+}
+
 function containsMeaningGuard(text: string): boolean {
-  return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
-    meaningGuard.test(lower),
-  );
+  return lowercaseVariants(text).some((lower) => meaningGuard.test(lower));
 }
 
 function lockedUnit(text: string): boolean {
@@ -251,14 +254,12 @@ function lockedUnit(text: string): boolean {
   karşı çıktığı önermeyi kaybediyor, önceki tanıma itiraz ediyormuş gibi okunuyordu.
 */
 const backReferenceStart =
-  /^[\s"'“”‘’«»(]*(?:bu|bunu|buna|bunda|bundan|bunun|bunlar\p{L}*|şu|şunu|şuna|şunda|şundan|şunun|şunlar\p{L}*|o|onu|ona|onda|ondan|onun|onlar\p{L}*|öyle|böyle|şöyle|ama|ancak|fakat|lakin|çünkü|yani|oysa|halbuki|dolayısıyla|üstelik|yine de|tersine|aksine)(?![\p{L}\p{N}])/u;
+  /^[\s"'“”‘’«»(]*(?:bu|bunu|buna|bunda|bundan|bunun|bunlar\p{L}*|şu|şunu|şuna|şunda|şundan|şunun|şunlar\p{L}*|o|onu|ona|onda|ondan|onun|onlar\p{L}*|öyle|böyle|şöyle|ama|ancak|fakat|lakin|çünkü|yani|oysa|halbuki|dolay[ıi]s[ıi]yla|üstelik|yine de|tersine|aksine)(?![\p{L}\p{N}])/u;
 
 function boundToNext(units: readonly RuntimeFinalReadUnit[], index: number): boolean {
   const next = units[index + 1]?.text;
   if (next === undefined) return false;
-  return [next.toLocaleLowerCase("tr-TR"), next.toLowerCase()].some((lower) =>
-    backReferenceStart.test(lower),
-  );
+  return lowercaseVariants(next).some((lower) => backReferenceStart.test(lower));
 }
 
 function removableUnit(units: readonly RuntimeFinalReadUnit[], index: number): boolean {
