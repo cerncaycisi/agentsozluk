@@ -54,6 +54,8 @@ güvenilir insan. Strateji sıra 4'te.
    - **Karar (13 Ekim, Astra ile): DEĞİŞTİR.** Son okuma kalır. Silemeyeceği gövdede model
      çağrılmaz; atıf, kapsam ve geri gönderme yapılan parça silinmez. Daha agresif silme
      denenmez: kaynaklı entry son okumaya hiç girmiyor (Sol 6.1 kararı) ve dolgunun çoğu orada.
+     Kod #400'de: Astra 2. tur NO-GO, ardından Sol 6.1 3 dar tur, 3. tur GO (`1c95a9d9`).
+     Aday sayısı ~%47 azalır; eski 38 silmenin 38'i aynen kalır. Sonraki dağıtımla canlıya çıkar.
    - **Sıradaki içerik hedefi:** kalabalık başlıkta "X de hesaba giriyor" türü bitmeyen liste
      (#12 A'nın 6 gereksiz entry'si) ve okurun bilmediği kaynak erişimine gönderme ("görünür
      bilgide belli değil"; kaynaklı entry'lerin ~%4'ü).

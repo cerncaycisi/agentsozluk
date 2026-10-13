@@ -53,11 +53,66 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     ["atıf: şimdiki zaman (ses düşmesi)", "bunu koruma uzmanı ayşe demir söylüyor."],
     ["atıf: diyor", "koruma uzmanı ayşe demir de aynısını diyor."],
     ["kapsam: yalnızca … sınırlı", "bu yorum yalnızca hafta içi açık olan salonla sınırlı."],
+    // Astra, 13 Ekim: görüşün sahibi ve kapsam sözcük listesinde yoktu.
+    ["atıf: benim değil", "bu benim değil patronun fikri."],
+    ["atıf: görüş", "mahalle derneğinin görüşü de böyle."],
+    ["kapsam: yalnız … için", "bu yalnız düz metin dosyaları için."],
+    ["kapsam: sadece … için", "sadece hafta sonu gelen ziyaretçiler için."],
+    // Astra 2. tur: çekim, uzun niteleme ve büyük harf varyantları.
+    ["atıf: fikirleri", "bunlar patronun fikirleri."],
+    ["atıf: büyük harf", "BUNLAR PATRONUN FİKİRLERİ."],
+    ["atıf: ASCII büyük harf", "BUNLAR PATRONUN FIKIRLERI."],
+    ["atıf: karışık I/İ", "BUNLAR PATRONUN FİKIRLERİ."],
+    ["atıf: karışık İ/I", "BUNLAR PATRONUN FIKİRLERİ."],
+    [
+      "kapsam: uzun niteleme",
+      "bu yalnız eski düzenleyicide hazırlanmış, satır sonları tek biçimli, karakter kodlaması önceden belirlenmiş düz metin dosyaları için.",
+    ],
+    ["kapsam: ASCII büyük harf", "BU YALNIZ DÜZ METIN DOSYALARI IÇIN."],
+    ["kapsam: yalnızca büyük harf", "BU YALNIZCA DÜZ METİN DOSYALARI İÇİN."],
   ];
   for (const [name, tail] of protectedTails)
     it(name, () => {
       expect(trimmed(`${head}. ${tail}`)).toBeNull();
     });
+
+  // Astra, 13 Ekim: sonraki parça geri gönderme yapıyorsa itirazın konusu silinmemeli.
+  it("sonraki parçanın geri gönderme yaptığı parça silinmez", () => {
+    for (const next of [
+      "bu fikre katılmıyorum.",
+      "ama ben katılmıyorum.",
+      "öyle olsa salonlar boş kalmazdı.",
+      "“bu” da tartışılır.",
+      "Buna itiraz eden de çok.",
+      "'Bu' da tartışılır.",
+      "şundan hiç emin değilim.",
+      "ŞUNDAN hiç emin değilim.",
+      "DOLAYISİYLA odalar boş kalıyor.",
+      "DOLAYISIYLA odalar boş kalıyor.",
+    ])
+      expect(trimmed(`${head}. az eşya her zaman daha çok huzur demektir. ${next}`)).toBeNull();
+    // Bağı kuran parça silinebilir; geri gönderilen parça kalır.
+    expect(
+      trimmed(`${head}. az eşya her zaman daha çok huzur demektir. bu fikre katılmıyorum.`, [3]),
+    ).toBeNull();
+    expect(
+      trimmed(`${head}. kütüphane biraz da hafıza odasıdır. bodrumdaki depo hâlâ kapalı.`)?.body,
+    ).toBe(`${head}. bodrumdaki depo hâlâ kapalı.`);
+  });
+
+  it("hiçbir silmenin kabul edilemeyeceği gövde aday olmaz", () => {
+    // Tek silinebilir aday soru (kilitli).
+    expect(candidateFor(`${head}. peki vinçler sökülürse ne kalır?`)).toEqual([]);
+    // Silinebilir parça var ama silince 20 kelimeden az kalıyor.
+    expect(candidateFor("kütüphane güzel olmuş. bina biraz da kendi geçmişinin okurudur.")).toEqual(
+      [],
+    );
+    // Silinebilir parça sonraki parçaya bağlı, diğerleri kilitli.
+    expect(
+      candidateFor(`${head}. az eşya her zaman daha çok huzur demektir. bu fikre katılmıyorum?`),
+    ).toEqual([]);
+    expect(candidateFor(`${head}. kütüphane biraz da hafıza odasıdır.`)).toHaveLength(1);
+  });
 
   it("sağlık, finans ve hukuk gövdesi hiç aday olmaz", () => {
     for (const body of [
@@ -132,6 +187,27 @@ describe("son okuma saklı olumsuz küme: asıl hedef hâlâ silinebilir", () =>
   ];
   for (const [name, tail] of removableTails)
     it(name, () => {
+      expect(trimmed(`${head}. ${tail}`)?.body).toBe(`${head}.`);
+    });
+
+  // Sol 6.1: kapsam aralığı sınırsız; uzunluk kapısını geçen uzun gövdede de korunur.
+  it("çok uzun kapsam nitelemesi de silinmez", () => {
+    const longHead = `${head}, ${head}, ${head}`;
+    const body = `${longHead}. bu yalnız ${"eski ".repeat(90)}düz metin dosyaları için.`;
+    expect(trimmed(body)).toBeNull();
+    // Kontrol: aynı uzunlukta kapsamsız kuyruk silinebilir.
+    expect(trimmed(`${longHead}. bu ${"eski ".repeat(90)}düz metin dosyalarıdır.`)?.body).toBe(
+      `${longHead}.`,
+    );
+  });
+
+  // Sol 6.1: ı/i katlaması "sinirli"yi "sınırlı", "fıkra"yı "fikir" sanıyordu.
+  for (const [name, tail] of [
+    ["sinirli ≠ sınırlı", "kütüphane biraz da sinirli şehrin sessiz odasıdır."],
+    ["fıkra ≠ fikir", "kütüphane biraz da şehrin uzun fıkrasıdır."],
+    ["FIKRA ≠ fikir", "KÜTÜPHANE BİRAZ DA ŞEHRİN UZUN FIKRASIDIR."],
+  ])
+    it(`kilit yanlış pozitifi yok: ${name}`, () => {
       expect(trimmed(`${head}. ${tail}`)?.body).toBe(`${head}.`);
     });
 

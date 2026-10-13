@@ -206,13 +206,16 @@ describe("son okuma parçaları", () => {
 });
 
 describe("son okuma adayları", () => {
+  // Ön elemeyi geçmesi için silmeden sonra 20 kelime kalmalı (Astra, 13 Ekim).
+  const uzun =
+    "eski fabrika binasının kütüphaneye dönüşmesi, makine dairesinin okuma salonu olarak kullanılması ve tavan vinçlerinin yerinde bırakılmasıyla birlikte mahallenin hafızasını da taşıyor.";
   const decision = {
     actions: [
-      { sequence: 1, actionType: "CREATE_ENTRY", input: { topicId: "t1", body: "bir. iki." } },
+      { sequence: 1, actionType: "CREATE_ENTRY", input: { topicId: "t1", body: `${uzun} iki.` } },
       {
         sequence: 2,
         actionType: "CREATE_TOPIC_WITH_ENTRY",
-        input: { title: "yeni başlık", body: "üç. dört." },
+        input: { title: "yeni başlık", body: `${uzun} dört.` },
       },
       { sequence: 3, actionType: "CREATE_ENTRY", input: { topicId: "t1", body: "tek cümle." } },
       { sequence: 4, actionType: "VOTE_UP", input: { entryId: "e1", value: 1 } },
@@ -257,22 +260,26 @@ describe("son okuma adayları", () => {
         actions: [{ sequence: 1, actionType: "CREATE_ENTRY", input: { topicId: "t1", body } }],
       }) as unknown as RuntimeDecision;
     for (const body of [
-      "giriş cümlesi burada. “kapanmamış alıntı. sonra gelen cümle.",
-      "giriş cümlesi burada. ‘işe giderken kitapları aldım. parayı vermedim.’ dedi.",
-      'giriş cümlesi burada. "tek tırnak. ikinci cümle.',
-      "giriş cümlesi burada. ”eski sözün sonu. “sistem parayı aldı. geri ödemeyi yapmadı.",
-      "giriş cümlesi burada. » ters açılış. « sonra gelen cümle.",
-      "giriş cümlesi burada. “dış “iç” alıntı” bitti.",
-      '"önsöz “alıntı başladı." giriş cümlesi burada. son alıntı bitti.”',
-      'giriş cümlesi burada. “dış "iç" alıntı” bitti.',
+      `${uzun} “kapanmamış alıntı. sonra gelen cümle.`,
+      `${uzun} ‘işe giderken kitapları aldım. parayı vermedim.’ dedi.`,
+      `${uzun} "tek tırnak. ikinci cümle.`,
+      `${uzun} ”eski sözün sonu. “sistem parayı aldı. geri ödemeyi yapmadı.`,
+      `${uzun} » ters açılış. « sonra gelen cümle.`,
+      `${uzun} “dış “iç” alıntı” bitti.`,
+      `"önsöz “alıntı başladı." ${uzun} son alıntı bitti.”`,
+      `${uzun} “dış "iç" alıntı” bitti.`,
     ])
       expect(runtimeFinalReadCandidates(decisionFor(body), {})).toEqual([]);
-    const multiline = 'giriş cümlesi burada. "kitapları aldım.\n parayı vermedim." dedi.';
+    // Kontrol: aynı uzunlukta alıntısız gövde adaydır; yukarıdakileri reddeden alıntı kuralıdır.
+    expect(runtimeFinalReadCandidates(decisionFor(`${uzun} sonra gelen cümle.`), {})).toHaveLength(
+      1,
+    );
+    const multiline = `${uzun} "kitapları aldım.\n parayı vermedim." sonra sustu.`;
     const [candidate] = runtimeFinalReadCandidates(decisionFor(multiline), {});
     expect(candidate?.units.map(({ text }) => text)).toEqual([
-      "giriş cümlesi burada.",
+      uzun,
       '"kitapları aldım.\n parayı vermedim."',
-      "dedi.",
+      "sonra sustu.",
     ]);
   });
 
@@ -289,7 +296,7 @@ describe("son okuma adayları", () => {
     const prompt = buildFinalReadPrompt(candidate!);
     expect(prompt).toContain("Yalnız silebilirsin");
     expect(prompt).toContain(
-      "<UNTRUSTED_CONTENT>\nBaşlık: okunan başlık\nParçalar:\n1. bir.\n2. iki.",
+      `<UNTRUSTED_CONTENT>\nBaşlık: okunan başlık\nParçalar:\n1. ${uzun}\n2. iki.`,
     );
   });
 });
