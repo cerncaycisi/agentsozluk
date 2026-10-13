@@ -9412,3 +9412,26 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
 **Do not repeat:**
 
 - Toplu birleştirmeyi canlıda yeniden çözümlemeden ve zincir kontrolü yapmadan başlatma.
+
+## 13 Ekim — son okuma "DEĞİŞTİR" (#400)
+
+- **Karar:** Astra (gpt-6-astra, xhigh, salt okunur, `991eb3b7`) tut/kapat/değiştir sorusuna
+  DEĞİŞTİR dedi. Son okuma kalır; sonuçsuz çağrı kesilir; atıf, kapsam ve geri gönderme korunur.
+- **Hakem turları:** Astra 2. tur (`aa196913`) NO-GO: "fikirleri", 80 karakteri aşan kapsam, ASCII
+  büyük harf, tırnaklı 'Bu'. Ardından Sol 6.1 (gpt-6.1-sol, xhigh) 3 dar tur:
+  1. `c6015303` NO-GO: 400 karakter sınırı; ı→i katlaması "sinirli"yi ve "fıkra"yı kilitliyordu.
+  2. `8f355923` NO-GO: karışık I/İ yazımı (FİKIRLERİ, DOLAYISİYLA, FIKRASIDIR).
+  3. `1c95a9d9` GO.
+- **Ölçüm:** eski yerel denemelerdeki 50 model kararından kabul edilen 38 silmenin 38'i aynen kalıyor.
+  Sıra 3 havuzundaki 743 kaynaksız gövdede aday sayısı 649'dan 343'e iniyor.
+- **Bilinçli kabul:** "sınırlı"nın noktalı İ ile yazımı ("SİNİRLİ") "sinirli" ile aynı harfler;
+  kilitlenmez.
+
+**Do not repeat:**
+
+- Türkçe kalıp eşleşmesinde bütün metni ı→i katlama: farklı sözcükleri çakıştırıyor (sınırlı ↔
+  sinirli, fıkra ↔ fikir). Yalnız çakışmasız sözcüklerde `[ıi]` sınıfı kullan.
+- Yeni kilit eklerken eski yerel model kararlarını yeniden uygula: aşırı kilitlemeyi ("aynı" ile
+  başlayan cümle) bu yakaladı.
+- Bir regresyon testini düzeltmeden önceki kodda koştur: uzun kapsam testi ilk hâlinde uzunluk
+  kapısı yüzünden zaten `null` dönüyordu, hatayı yakalamıyordu.
