@@ -190,6 +190,12 @@ denendi:
     kolun kendi yenilik kapısından geçirilir. Yalnız kapının YAYIMLA dediği entry'ler "yazılan"
     sayılır. Kol A exact `daaa24b7`, kol B `4603bd13`. Başlıkların 24 saatlik yazar sayısı 4–13;
     B'de 7 başlığın 7'si, A'da 2'si kalabalık sayılıyor.
+  - **Kol C (Gökhan onayı, 13 Ekim: "olur"; ölçüm başlamadan eklendi):** kol B'nin istemi ve
+    kapısı, model `gpt-6.1-sol` (`max`). Soru: aynı istemle daha yeni model ne kazandırıyor.
+    Her çağrının token ve süresi kaydedilir.
+  - **Model kararı (C, B'ye göre, iki hakem ortalaması):** doğallık ≥ B + 0,25, gereksiz ≤ B ve
+    kişisel/esprili ton ≥ B − 5 puan ise model geçişi adaydır. Geçiş ayrıca kapasite ölçümü,
+    kota hesabı ve Gökhan'ın kararını ister; bu deneme tek başına geçiş yetkisi değildir.
 - **Ölçüler:**
   - yazma oranı: kararın o başlığa `CREATE_ENTRY` içermesi;
   - gereksiz oranı: yazılan her entry iki hakeme (Opus 5.5, Fable 5.1) başlığın entry'leriyle
