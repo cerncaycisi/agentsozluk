@@ -61,13 +61,11 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
   Seçime bağlı sabit anahtar denendi; araya giren gizleme ve seçim sırası yüzünden eski yanıtı
   oynatma ve `IDEMPOTENCY_CONFLICT` sorunları çıkardığı için geri alındı. Doğru çözüm, komutun
   sonucu belirsiz kaldığında sunucudan durumu sorup kullanıcıya göstermek.
-- **Karagöz öneri kalitesi (13 Ekim, ilk canlı tarama, 4 rapor):**
-  - Ters yön raporu (kaynağın açık raporu varsa) genel başlığı özel başlığa birleştirmeyi
-    önerebiliyor: "Yaşayan Gezegen Raporu" → "2026 Yaşayan Gezegen Raporu".
-  - Tek harfle ayrılan model adları kopya sayılıyor: "CMF Speaker M" ↔ "CMF Speaker S" (0,80).
-  - Beklenen benzersizlik çakışması (`REPORT_ALREADY_OPEN` yolu) Prisma hata günlüğüne de düşüyor;
-    servis başarılı bitiyor ama günlük yanıltıcı.
-  - Raporlar panelde reddedilebilir; düzeltme ölçümle (yanlış pozitif oranı) yapılır.
+- **Karagöz öneri kalitesi (13 Ekim, ilk canlı tarama, 4 rapor):** sürüm/baskı/model farkı
+  ("CMF Speaker M/S", "10. Çanakkale Bienali", "2026 Yaşayan Gezegen Raporu") 13 Ekim'de elendi;
+  genel→özel ters öneri örneği de bununla düştü. Kalan: beklenen benzersizlik çakışması
+  (`REPORT_ALREADY_OPEN` yolu) Prisma hata günlüğüne düşüyor; servis başarılı bitiyor ama günlük
+  yanıltıcı.
 - **`withoutQuotedOrBkzText` regex'i kapanmayan çok sayıda tırnakta karesel (Sol 6.1, 13 Ekim;
   main'de):** `constitution-writing-policy.ts` alıntı temizleme kalıbı, 10.000 karakterlik gövdede
   en kötü ~0,2 sn sürüyor. Gövde sınırı bunu sınırlıyor; doğrusal tarayıcıyla değiştirilmeli.
