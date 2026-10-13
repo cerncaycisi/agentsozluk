@@ -148,6 +148,13 @@ export function buildOrganizationJsonLd(baseUrl: string) {
     "@id": absolutePublicUrl(baseUrl, "/#organization"),
     name: APP_NAME,
     url: absolutePublicUrl(baseUrl, "/"),
+    // Talep stratejisi 4d: Google en az 112×112 raster logo ister; /logo.png 512×512.
+    logo: {
+      "@type": "ImageObject",
+      url: absolutePublicUrl(baseUrl, "/logo.png"),
+      width: 512,
+      height: 512,
+    },
     description: PUBLIC_SITE_DESCRIPTION,
   };
 }

@@ -344,6 +344,34 @@ export async function listTopicDirectoryPage(
   return rows.map(({ _count, ...topic }) => ({ ...topic, entryCount: _count.entries }));
 }
 
+/*
+  En dolu başlıklar (llms.txt, talep stratejisi 4d): dizinle aynı politika. Sıralama Prisma'nın
+  ilişki sayımıyla (gizli entry dahil) yapılır, liste görünür entry sayısıyla yeniden sıralanır.
+*/
+export async function listDensestTopicDirectory(
+  transaction: Prisma.TransactionClient,
+  policy: Prisma.TopicWhereInput,
+  take: number,
+) {
+  const rows = await publicIds(
+    transaction.topic.findMany({
+      where: topicDirectoryWhere(policy),
+      select: {
+        id: true,
+        publicId: true,
+        slug: true,
+        title: true,
+        _count: { select: { entries: { where: visibleEntryWhere } } },
+      },
+      orderBy: [{ entries: { _count: "desc" } }, { publicId: "asc" }],
+      take,
+    }),
+  );
+  return rows
+    .map(({ _count, ...topic }) => ({ ...topic, entryCount: _count.entries }))
+    .sort((left, right) => right.entryCount - left.entryCount || left.publicId - right.publicId);
+}
+
 export function countTopicDirectory(
   transaction: Prisma.TransactionClient,
   policy: Prisma.TopicWhereInput,

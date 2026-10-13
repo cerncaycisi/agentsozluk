@@ -63,6 +63,7 @@ import {
 } from "@/modules/topics/application/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import {
+  getDensestIndexableTopics,
   getTopicDirectoryPage,
   getTopicSnippetSource,
   resolveCanonicalTopicProposal,
@@ -2674,6 +2675,48 @@ describe("search, feeds and profiles with PostgreSQL", () => {
       select: { entryCount: true },
     });
     expect(raw.entryCount).toBe(2);
+
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: settingsBefore,
+    });
+  });
+
+  // Talep stratejisi 4d: llms.txt en dolu başlıkları dizinle aynı politikayla, entry sayısına göre.
+  it("lists the densest indexable topics by visible entry count under the directory policy", async () => {
+    const settingsBefore = await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+      where: { id: "global" },
+      select: { sitemapDelayMinutes: true },
+    });
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { sitemapDelayMinutes: 0 },
+    });
+    const author = await createUser("densest_topics_author");
+    const one = await createTopic(author.id, "Yoğunluk Bir Entry");
+    const three = await createTopic(author.id, "Yoğunluk Üç Entry");
+    const two = await createTopic(author.id, "Yoğunluk İki Entry");
+    const hidden = await createTopic(author.id, "Yoğunluk Gizli Başlık");
+    const add = (topicId: string, index: number) =>
+      createEntry(integrationDatabase, actor(author.id), topicId, {
+        body: `Yoğunluk sıralaması için ayrı bir gövde, numara ${index}; tekrar sayılmasın diye farklı.`,
+      });
+    await add(three.topic.id, 1);
+    await add(three.topic.id, 2);
+    await add(two.topic.id, 3);
+    for (let index = 4; index < 8; index += 1) await add(hidden.topic.id, index);
+    await integrationDatabase.topic.update({
+      where: { id: hidden.topic.id },
+      data: { status: "HIDDEN" },
+    });
+
+    const listed = await getDensestIndexableTopics(integrationDatabase, 200);
+    const ids = listed.map((topic) => topic.id);
+    expect(ids).not.toContain(hidden.topic.id);
+    const order = [three.topic.id, two.topic.id, one.topic.id].map((id) => ids.indexOf(id));
+    expect(order.every((position) => position >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((left, right) => left - right));
+    expect(listed.find((topic) => topic.id === three.topic.id)?.entryCount).toBe(3);
 
     await integrationDatabase.agentGlobalSettings.update({
       where: { id: "global" },
