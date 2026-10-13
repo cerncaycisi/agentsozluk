@@ -235,6 +235,19 @@ kendi yenilik kapısı. Hakemler Opus 5.5 ve Fable 5.1 (kol gizli, karışık).
 - **Karar:** önkayda göre bu deneme geçiş yetkisi değildir. Model geçişi kapasite ölçümü, kota
   hesabı ve Gökhan'ın kararını ister (PLAN sıra 6).
 
+## Önkayıt — gpt-6.1-sol düşük çaba (Gökhan, 13 Ekim: "bu modeli medium ve lowda testleyelim")
+
+Ölçüm başlamadan yazıldı. Düzenek "gündem yığılması" denemesinin aynısıdır: aynı 28 istem (aday
+istem B, `288685b8`), aynı yenilik kapısı adımı. Yeni kollar: **D** `gpt-6.1-sol` `medium`,
+**E** `gpt-6.1-sol` `low`. Kıyas için A, B ve C'nin yazdıkları da bu turda beş kolla birlikte,
+karışık ve kol gizli olarak iki hakeme (Opus 5.5, Fable 5.1) yeniden etiketletilir.
+
+- **"C ile aynı kalite" ölçütü (her kol için ayrı):** doğallık ≥ C − 0,25; gereksiz ≤ C + 5 puan;
+  kişisel/esprili ton ≥ C − 10 puan.
+- Ölçütü geçen en düşük çaba, model adayı olarak sıra 6'ya yazılır; çağrı süresi ve token
+  ayrıca raporlanır. Bu deneme de tek başına geçiş yetkisi değildir.
+- Tek koşu; başarısız çağrı "yazmadı" sayılır. n küçük, sonuç yönseldir.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
