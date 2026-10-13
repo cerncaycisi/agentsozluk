@@ -1004,6 +1004,9 @@ export function buildNoveltyPrompt(candidate: RuntimeNoveltyCandidate): string {
     ...(candidate.totalEntryCount !== undefined
       ? [`Başlıktaki önceki entry sayısı: ${candidate.totalEntryCount}`]
       : []),
+    ...(candidate.uniqueAuthorCount24h !== undefined
+      ? [`Son 24 saatte bu başlığa yazan farklı yazar sayısı: ${candidate.uniqueAuthorCount24h}`]
+      : []),
     "",
     "Önceki entry'ler:",
     ...candidate.previousEntries.map(

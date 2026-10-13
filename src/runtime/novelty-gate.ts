@@ -37,6 +37,8 @@ export type RuntimeNoveltyCandidate = {
   draft: string;
   /** Başlıktaki görünür entry sayısı (kalabalık ölçüsü); okumada yoksa verilmez. */
   totalEntryCount?: number;
+  /** Gündemdeyse son 24 saatte yazan farklı yazar sayısı (yığılma ölçüsü); değilse verilmez. */
+  uniqueAuthorCount24h?: number;
 };
 
 /*
@@ -91,6 +93,16 @@ export function runtimeNoveltyCandidates(
     if (item && typeof item.id === "string" && typeof item.body === "string")
       fullBodies.set(item.id, item.body);
   }
+  /*
+    Gündem yığılması (13 Ekim): hızla dolan yeni başlıklar 10–15 entry'de kalırken 14 farklı
+    yazar alıyordu; kalabalık kuralı yalnız 15'ten fazla entry'de devreye giriyordu.
+  */
+  const trendingAuthors = new Map<string, number>();
+  for (const value of Array.isArray(perception.trendingTopics) ? perception.trendingTopics : []) {
+    const item = record(value);
+    if (item && typeof item.id === "string" && typeof item.uniqueAuthorCount24h === "number")
+      trendingAuthors.set(item.id, item.uniqueAuthorCount24h);
+  }
   const topics = new Map<string, Record<string, unknown>>();
   for (const value of readTopics) {
     const topic = record(value);
@@ -143,6 +155,9 @@ export function runtimeNoveltyCandidates(
             draft,
             ...(typeof topic.visibleEntryCount === "number"
               ? { totalEntryCount: topic.visibleEntryCount }
+              : {}),
+            ...(trendingAuthors.has(topicId)
+              ? { uniqueAuthorCount24h: trendingAuthors.get(topicId)! }
               : {}),
           },
         ];
