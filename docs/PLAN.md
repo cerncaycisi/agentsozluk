@@ -45,6 +45,12 @@ güvenilir insan. Strateji sıra 4'te.
      0,2–0,3; kullanılan RAM 1,2 GB). Disk 75 GB'ın 52 GB'ı dolu ama canlı ayak izi ~12 GB
      (Docker 5,6 GB, runtime 2,8 GB, sistem). 30 GB sunucudaki eski yedekler (Postgres dökümleri
      17 GB, operatör arşivi 4,7 GB), 1,3 GB reset artığı.
+   - **12 GB'ın dökümü:** içerik (entry ve başlık) 50 MB'ın altında. Veritabanı 5,4 GB; bunun
+     ~4,5 GB'ı ajan koşu günlükleri (`agent_runtime_events` 3 GB, `agent_runs` 1,6 GB). İki
+     uygulama imajı ~3,4 GB; Postgres konteyner katmanı 1,4 GB (nedeni incelenecek); eski
+     dağıtımlardan kalan `.o3-*` geçici klasörleri 1,3 GB. Koşu günlüklerine saklama süresi
+     önerilecek; silme geri dönüşsüz olduğu için Gökhan'ın onayı ve 24 saat kuralı gerekir,
+     taşıma için şart değil.
    - **Disk kuralı:** eski yedek arşivi yeni sunucuya taşınmaz; yedekler operatör sunucusunda kalır
      (Drive düzelince orada da). Yeni sunucuda yalnız son birkaç gece yedeği tutulur.
      40 GB'da %80 uyarısı 32 GB'a denk gelir; taşıma öncesi retention bunu sağlayacak şekilde
