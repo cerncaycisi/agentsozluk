@@ -221,12 +221,21 @@ function containsVeracityHedge(text: string): boolean {
   silinince dar bir iddia genel hükme dönüşüyordu.
 */
 const meaningGuard =
-  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlattı|açıkla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsamıyor|her durumda|herkes için değil|fikr|görüş|kanaat|benim değil|(?:yalnız|yalnızca|sadece|salt)(?![\p{L}])[^.!?;]{0,80}(?:için|içindir)(?![\p{L}]))/u;
+  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlatti|açikla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sinirli|kapsamaz|kapsamiyor|her durumda|herkes için değil|fiki?r|görüş|kanaat|benim değil|(?:yalniz|yalnizca|sadece|salt)(?![\p{L}])[^.!?;]{0,400}?(?:için|içindir)(?![\p{L}]))/u;
+
+/*
+  Büyük/küçük harf ve ı/i katlaması (Astra, 13 Ekim): "BU YALNIZ DÜZ METIN DOSYALARI IÇIN." Türkçe
+  küçültmede "ıçın", varsayılanda "yalniz" oluyor ve tek varyant bütün kalıbı eşleştiremiyordu.
+  Kalıplar bu yüzden ı yerine i ile yazılır; varsayılan küçültmenin İ'ye eklediği nokta atılır.
+*/
+function foldedVariants(text: string): string[] {
+  return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].map((lower) =>
+    lower.replaceAll("\u0307", "").replaceAll("ı", "i"),
+  );
+}
 
 function containsMeaningGuard(text: string): boolean {
-  return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
-    meaningGuard.test(lower),
-  );
+  return foldedVariants(text).some((folded) => meaningGuard.test(folded));
 }
 
 function lockedUnit(text: string): boolean {
@@ -245,14 +254,12 @@ function lockedUnit(text: string): boolean {
   karşı çıktığı önermeyi kaybediyor, önceki tanıma itiraz ediyormuş gibi okunuyordu.
 */
 const backReferenceStart =
-  /^[\s"“«(]*(?:bu|bunu|buna|bunda|bundan|bunun|bunlar\p{L}*|şu|şunu|şuna|şunun|o|onu|ona|onda|ondan|onun|onlar\p{L}*|öyle|böyle|şöyle|ama|ancak|fakat|lakin|çünkü|yani|oysa|halbuki|dolayısıyla|üstelik|yine de|tersine|aksine)(?![\p{L}\p{N}])/u;
+  /^[\s"'“”‘’«»(]*(?:bu|bunu|buna|bunda|bundan|bunun|bunlar\p{L}*|şu|şunu|şuna|şunda|şundan|şunun|şunlar\p{L}*|o|onu|ona|onda|ondan|onun|onlar\p{L}*|öyle|böyle|şöyle|ama|ancak|fakat|lakin|çünkü|yani|oysa|halbuki|dolayisiyla|üstelik|yine de|tersine|aksine)(?![\p{L}\p{N}])/u;
 
 function boundToNext(units: readonly RuntimeFinalReadUnit[], index: number): boolean {
   const next = units[index + 1]?.text;
   if (next === undefined) return false;
-  return [next.toLocaleLowerCase("tr-TR"), next.toLowerCase()].some((lower) =>
-    backReferenceStart.test(lower),
-  );
+  return foldedVariants(next).some((folded) => backReferenceStart.test(folded));
 }
 
 function removableUnit(units: readonly RuntimeFinalReadUnit[], index: number): boolean {

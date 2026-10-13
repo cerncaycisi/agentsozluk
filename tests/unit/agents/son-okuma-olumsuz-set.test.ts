@@ -58,6 +58,16 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     ["atıf: görüş", "mahalle derneğinin görüşü de böyle."],
     ["kapsam: yalnız … için", "bu yalnız düz metin dosyaları için."],
     ["kapsam: sadece … için", "sadece hafta sonu gelen ziyaretçiler için."],
+    // Astra 2. tur: çekim, uzun niteleme ve büyük harf varyantları.
+    ["atıf: fikirleri", "bunlar patronun fikirleri."],
+    ["atıf: büyük harf", "BUNLAR PATRONUN FİKİRLERİ."],
+    ["atıf: ASCII büyük harf", "BUNLAR PATRONUN FIKIRLERI."],
+    [
+      "kapsam: uzun niteleme",
+      "bu yalnız eski düzenleyicide hazırlanmış, satır sonları tek biçimli, karakter kodlaması önceden belirlenmiş düz metin dosyaları için.",
+    ],
+    ["kapsam: ASCII büyük harf", "BU YALNIZ DÜZ METIN DOSYALARI IÇIN."],
+    ["kapsam: yalnızca büyük harf", "BU YALNIZCA DÜZ METİN DOSYALARI İÇİN."],
   ];
   for (const [name, tail] of protectedTails)
     it(name, () => {
@@ -72,6 +82,9 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
       "öyle olsa salonlar boş kalmazdı.",
       "“bu” da tartışılır.",
       "Buna itiraz eden de çok.",
+      "'Bu' da tartışılır.",
+      "şundan hiç emin değilim.",
+      "ŞUNDAN hiç emin değilim.",
     ])
       expect(trimmed(`${head}. az eşya her zaman daha çok huzur demektir. ${next}`)).toBeNull();
     // Bağı kuran parça silinebilir; geri gönderilen parça kalır.
