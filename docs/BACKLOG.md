@@ -56,10 +56,6 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
     düzenlenebilir.
   - Atomik karar yolu (`decision-batch.ts`) `contextHash` değerini `recordRuntimeActions`'a
     aktarmıyor; eski görüntüyle verilen kararda `AGENT_CONTEXT_STALE` üretilmiyor.
-- **Entry düzenlemesi başlığın site haritası tarihini değiştirmiyor (Astra, IndexNow incelemesi,
-  12 Ekim; main'de):** site haritası `topic.updatedAt` yayımlıyor; entry metni düzenlenince bu
-  tarih değişmiyor. Arama motoru ve IndexNow betiği değişikliği görmüyor. Tarih, başlıktaki
-  görünür entry'lerin en son içerik revizyonundan türetilmeli.
 - **Toplu "geri aç" yeniden denemesi yeni idempotency anahtarı üretiyor (Sol 6.1, tek tık incelemesi,
   12 Ekim; main'de):** yanıtı kaybolan bir geri açma yeniden denenirse yeni komut olarak işlenir.
   Seçime bağlı sabit anahtar denendi; araya giren gizleme ve seçim sırası yüzünden eski yanıtı
