@@ -95,6 +95,87 @@ describe("constitutional writer policy", () => {
       expect(constitutionalEntryWritingIssue(legal)).toBeNull();
   });
 
+  // Gökhan, 13 Ekim (entry 23884): tek soru cümlesinden oluşan entry format gerekçe 1'dir.
+  it("rejects single-question entries and keeps the rule deliberately narrow", () => {
+    const Q = "CONSTITUTION_ENTRY_QUESTION_ONLY";
+    for (const single of [
+      "elektrikli otobüs geçişinde sürücünün yeni fren hissine ve daha sessiz kabine alışması, planın bir parçası sayılmalı mı?",
+      "Neydi bu ya?",
+      "mevsim ve tedarik de öğünün parçası: okul menüsü hasat takvimine denk gelmiyorsa, kışın o ürün nereden geliyor?",
+      "  boss müziği yenilgiden sonra da sürüyorsa, asıl bestelenen şey savaş mı?  ",
+      "(Neydi bu ya?)",
+      "Neydi bu ya?🤔",
+      "Neydi bu ya?!",
+      "Ankara'da Dr.Ali kimdi?",
+      "https://Example.COM neden açılmıyor?",
+      "www.example.COM neden açılmıyor?",
+      "Neydi bu [[ ya?",
+      "Neydi bu ya (bkz:?",
+      "“Neydi bu ya?",
+      "(BKZ: ) Neydi bu ya?",
+      "(BKZ: #0) Neydi bu ya?",
+      // Sol 6.1: uzunluk sınırı yok; anahtar başlıklı emoji sonu değiştirmez.
+      `${"a".repeat(2000)}?`,
+      "Neydi bu ya?1️⃣",
+    ])
+      expect(constitutionalEntryWritingIssue(single)).toMatchObject({ code: Q, article: 13 });
+    for (const legal of [
+      "elektrikli otobüste fren hissi değişiyor; sürücü eğitimi planın parçası olmalı. kim ödeyecek?",
+      "sürücüler sessiz kabine birkaç haftada alışıyor. alışmayan kim mi? gece vardiyası.",
+      "(Sessiz kabin sürücüyü yoruyor.) Kim fark ediyor?",
+      "Sessiz kabin sürücüyü yoruyor\nKim fark ediyor?",
+      "Bunu bilen yok. Kim bilir?",
+      "Onu gördüm vs. Kim görmedi?",
+      "ne mi? hiç.",
+      "Kaç kişi geldi? 3.",
+      "Kaç kişi geldi?! 3.",
+      "neden olmasın? (bkz: elektrikli otobüs)",
+      "(BKZ: elektrikli otobüs) Neydi bu ya?",
+      "(bkz: #123) neydi?",
+      "“neydi bu ya?” diye sorduran bir albüm kapağı?",
+      "‘Neydi bu ya?’",
+      // Sol 6.1: uzun kapanmış alıntı ve bol boşluklu geçerli bkz muaftır.
+      `“${"kentlerin geleceğini düşünmek ".repeat(20)}gerekmiyor mu?”`,
+      `(BKZ: ${" ".repeat(100)}elma) Neydi bu ya?`,
+      // Sol 6.1 3. tur: muafiyet normalize metne bakar.
+      "＂Neydi bu ya?＂",
+      "（ｂｋｚ： ｅｌｍａ） Neydi bu ya?",
+      "［［elma］］ Neydi bu ya?",
+      "Bence oldukça sıkıcı bir uygulamadır.",
+    ])
+      expect(constitutionalEntryWritingIssue(legal)).toBeNull();
+    // Kapsam dışı (bilinçli): çok cümleli ihlaller moderasyona kalır.
+    for (const outOfScope of ["Dr. kimdi?", "3. sırada kim var?", "kim yazdı? neden?"])
+      expect(constitutionalEntryWritingIssue(outOfScope)).toBeNull();
+    // Madde 9: soruları kategori olarak adlandıran başlıkta soru, kategorinin örneğidir.
+    for (const topicTitle of ["açık uçlu soru örnekleri", "mülakat soruları", "sorular"])
+      expect(
+        constitutionalEntryWritingIssue("Hangi renkleri seversin?", { topicTitle }),
+      ).toBeNull();
+    for (const topicTitle of ["renkler", "sorumluluk", "sorun çözme", "soruşturma"])
+      expect(
+        constitutionalEntryWritingIssue("Hangi renkleri seversin?", { topicTitle })?.code,
+      ).toBe(Q);
+  });
+
+  // Sol 6.1: tek soru taraması ve işlev muafiyeti doğrusal. Gövde en çok 10.000 karakter.
+  // (Main'deki alıntı temizleme regex'inin kapanmayan çok sayıda tırnakta karesel yavaşlığı ayrı iş.)
+  it("checks long adversarial bodies in linear time", () => {
+    const started = performance.now();
+    for (const body of [
+      `${"(bkz: ".repeat(1600)}Kim geldi?`,
+      `${"[[a ".repeat(2400)}Kim geldi?`,
+      `Kim${"(".repeat(9990)}geldi?`,
+      `Kim geldi${"?!".repeat(4990)}`,
+      `${"a".repeat(9990)}?`,
+      `${"« ".repeat(4900)}Kim geldi?`,
+      `Neydi${"?!".repeat(4000)}bu ya?`,
+      `${"“a”".repeat(3330)}Kim geldi?`,
+    ])
+      constitutionalEntryWritingIssue(body);
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+
   it("rejects explicit self-meta record labels without banning real-world records", () => {
     for (const selfMeta of [
       "Bu kayıtta kavramın gündelik etkilerini ele alacağım.",
