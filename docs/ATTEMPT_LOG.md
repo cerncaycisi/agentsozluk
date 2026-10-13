@@ -9358,3 +9358,57 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   denemesi yeni hata açtı ve geri alındı; BACKLOG'a ayrı iş olarak yazıldı.
 - Yeni bir regresyon testini düzeltmeyi geçici olarak geri alıp çalıştır: bir test düzeltme
   olmadan da geçiyordu, yani hatayı yakalamıyordu.
+
+## 13 Ekim — dağıtım `41078be6`, kurulumlar ve sürüm temizliği
+
+- **Kapsam:** main exact `41078be6439cb61eb51157a21b8e75b1d0e5bd1c` (#397 dahil). Yetki: AGENTS.md
+  süreli istisna (31 Ekim). Sıra 3 penceresi 09:50Z'de kapandıktan sonra.
+- **Dağıtım:** `deploy-production-no-migration.sh --pause-society-flow`. Drain 3. denemede boşaldı.
+  `RELEASE_VERIFY PASS` (health 200, ready 200, worker active) ve `RELEASE_COMPLETE PASS`;
+  konteyner 10:02Z'de başladı. Toplum akışı resume edildi (settingsVersion 339); yeni worker altında
+  SUCCEEDED koşu ve yayımlanan entry görüldü.
+- **Ayar:** `sitemapDelayMinutes` 360'tan 60'a indi (operatör komutu, settingsVersion 340).
+- **Üretim `.env`:** önce tarihli yedek alındı. `DATA_CONTROLLER_NAME` ve `INDEXNOW_KEY` eklendi;
+  değerler basılmadı, depoya yazılmadı.
+- **Kurulumlar:** okur sayacı (sha256 main ile aynı), karagöz (`--kur` ve günlük zamanlayıcı),
+  IndexNow (saatlik zamanlayıcı).
+- **Duman:** `/indexnow-key.txt` 200; `/yazar/karagoz` "Otomatik bakım hesabı" gösteriyor; başlık
+  sayfasında `og:locale` var; ince başlıkta `noindex` var.
+- **IndexNow ilk koşu, iki hata:**
+  1. `Permission denied`: `DynamicUser` birimi `/opt/agent-sozluk` altındaki betiği okuyamıyordu.
+     Betik `/usr/local/lib/agent-sozluk/` altına taşındı (#398).
+  2. İlk gönderim HTTP 403 döndü: arama motoru anahtar dosyasını henüz doğrulamamıştı. Birkaç dakika
+     sonra tek adreslik elle gönderim 200 döndü; yeniden koşuda 413 adres 200 ile gönderildi.
+- **Sürüm temizliği (Gökhan, 13 Ekim: "Eski sürümleri niye sakliyoruz ki..." → "Yes pls. Sonrası
+  icin de böyle devam edelim otomatik"):**
+  - Önce bir önceki sürüm imajı `a22caf8` silindi (+1,6 GiB).
+  - Sonra 21 runtime sürüm klasöründen 19'u silindi. Kalanlar: çalışan `41078be6` ve bir önceki
+    `0bf531ee`. Kök disk %81'den %72'ye indi (15 GB'tan 21 GB boş alana).
+  - Volume listesi ve konteyner listesi öncesi ve sonrası aynı. Uygulama `/api/health` 200, site 200.
+  - Bundan sonra her dağıtım `--cleanup` ile yapılır.
+
+**Do not repeat:**
+
+- Bir önceki sürümü "en yeni `previous-runtime` dosyası" diye arama: `find -newer` bayat bir durum
+  dosyasını (a22caf8) seçti; doğrulama adımı durdurdu ve hiçbir şey silinmedi. Doğru kaynak,
+  çalışan sürümün `.release-op-<sha>/previous-runtime` dosyası.
+- `DynamicUser` birimine `/opt/agent-sozluk` altından betik verme; birim oraya erişemez.
+- IndexNow anahtarı yeni yayımlandıysa ilk 403'ü kalıcı hata sayma; doğrulama birkaç dakika sürüyor.
+
+## 13 Ekim — kopya başlık birleştirme (PLAN 4e)
+
+- **Onay:** Gökhan 12 Ekim 10:42Z ("1 fine"); 24 saat kuralı gereği 13 Ekim 10:42:30Z'de başladı.
+- **Önce:** 13 Ekim gece yedeği başarılı (bu sunucuda). Canlıda salt okunur yeniden çözümleme:
+  296 adaydan 294'ü geçti, 2'si "başlık değişmiş" diye atlandı. Plan zincirsiz (hiçbir kaynak başka
+  satırın hedefi değil). Salt okunur geri alma kaydı: 296 kaynak başlık, 534 entry kimliği, 35 takip
+  (yerelde, 600 izinli; depoya girmez).
+- **Uygulama:** `operator-admin` ile `POST /api/v1/moderation/topics/<id>/merge`, satır başına sabit
+  idempotency anahtarı, 3 sn aralık. 294/294 HTTP 200, yaklaşık 24 dakika (10:42Z–11:06Z).
+- **Doğrulama:** 294 kaynak `MERGED` ve içlerinde entry yok; 252 hedef `ACTIVE`. Örnek eski adresler
+  308 ile hedef başlığa gidiyor.
+- **Karagöz:** ardından servis bir kez çalıştırıldı, 4 rapor açıldı (`failed` boş). Öneri kalitesi
+  notları BACKLOG'da.
+
+**Do not repeat:**
+
+- Toplu birleştirmeyi canlıda yeniden çözümlemeden ve zincir kontrolü yapmadan başlatma.

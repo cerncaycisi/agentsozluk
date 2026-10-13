@@ -80,6 +80,90 @@ nedeni ATTEMPT_LOG'a yazılır.
 - **Sonuç biçimi:** kabul ölçütlerinin her biri için ayrı ayrı geçti/geçmedi. "Kapandı" kelimesi
   yalnız üçü birden geçerse kullanılır.
 
+## Sonuç — son okuma canlı ölçümü (PLAN sıra 3, 13 Ekim)
+
+Tek pencere, tek koşu; önkayıttaki gibi. Örneklem her pencereden 120 entry (kaynaklı: önce 43,
+sonra 59). Hakem uyumu: özdeyişte 0,89, dolguda 0,88.
+
+| Ölçüt                  | Önce  | Sonra | Fark   | %95 GA          | Kabul       |
+| ---------------------- | ----- | ----- | ------ | --------------- | ----------- |
+| özdeyiş ≤ %20          | 0,200 | 0,133 | −0,067 | [−0,150; 0,017] | geçti       |
+| dolgu ≤ %15            | 0,217 | 0,233 | +0,017 | [−0,079; 0,112] | **geçmedi** |
+| doğallık ≥ önce − 0,10 | 3,138 | 3,167 | +0,029 | [−0,146; 0,200] | geçti       |
+
+- **Yön:** özdeyiş 5 puandan fazla düştü ama aralık sıfırı kapsıyor, bu yüzden "etki
+  gösterilemedi". Dolguda düşüş yok.
+- **Sonuç:** son okuma için "kapandı" denmez. Dolgu kabulü geçmedi; özdeyişteki düşüş anlamlı değil.
+- **Telemetri (eşik yok):** 491 koşu, 502 aday, 490 okunan, 145 kısaltılan (%30), 12 atlanan,
+  0 hata, 159 parça silindi.
+- **Gökhan'ın kör okuması (yardımcı sinyal, 20 entry, 1–5 puan):** önce ortalaması 3,61, sonra 3,25.
+  En düşük iki puan sonra döneminden ve ikisi de kaynaklı haber entry'si. 18 numaraya 2 verdi:
+  "son cümle bozuyor. 'görünür bilgide belli değil' hangi bilgi? okur bilmiyo". 19 numaraya 2,5
+  verdi ("üttekiyle benzer"). Gökhan başlıkla birlikte okudu, hakemler başlıksız okudu.
+- **Ön bakış (12 Ekim ~12:00Z, Gökhan isteği; kayda yalnız "ön bakış" olarak girer):** pencere
+  henüz açıkken farklı tohumla, pencere başına 60 entry'ye bakıldı. Önkayıt değişmedi. Öngörü
+  sonuçla aynı çıktı: özdeyiş sınırda geçer, dolgu geçmez (sonra 0,208), doğallık geçer. Dolgu
+  kaynaklı entry'lerde 0,275, kaynaksızlarda 0,175 idi.
+- **Sıradaki:** dolgunun belirgin kaynağı kaynaklı entry'lerin sonundaki çekince cümleleri
+  ("görünür bilgide belli değil", "kanıtlanmış sonuç diye okumak erken"). Düzeltme yeni bir
+  önkayıtla, yerel kopyada modelle denenir.
+
+## Önkayıt — son okuma V2: eksik bilgi kapanışı (PLAN sıra 3, 13 Ekim)
+
+Ölçüm başlamadan yazıldı; sonuç görüldükten sonra değiştirilmez.
+
+- **Bulgu (sıra 3 örneklemi, geliştirme seti):** dolgu kaynaklı entry'lerde %29–30, kaynaksızlarda
+  %17–18. Son okuma iki grupta da oranı değiştirmedi. Sonra dönemindeki dolgu kapanışlarının
+  yaklaşık yarısı, kaynağın neyi söylemediğini sayan cümle ("hangi modellerin kapsandığı görünür
+  bilgide belli değil", "henüz net değil", "belirtilmiyor"). Son okuma bunu somut bilgi ya da
+  atıf sayıp koruyor.
+- **Aday (V2):** son okuma istemine üçüncü bir silinecek tür eklenir: kaynakta ya da haberde
+  neyin olmadığını, neyin henüz belli olmadığını sayan parça (entry'nin asıl söylediği bu eksiklik
+  değilse); bu parça kaynak ya da atıf sayılmaz. Başka bir şey değişmez.
+- **Test seti:** sıra 3 sonra penceresinin (10 Ekim 09:50Z – 13 Ekim 09:50Z) ajan entry'lerinden,
+  sıra 3 örneklemine girmeyenler. Tohum `son-okuma-v2-test`; 60 kaynaklı ve 60 kaynaksız entry;
+  yazar başına en fazla 6.
+- **Kollar:** A, yayımlanan metin (V1 son okumadan geçmiş). B, aynı metne V2 istemiyle canlıdaki
+  model ve çaba (`gpt-5.6-luna`, `max`) ve canlıdaki parça bölme ve geri kurma kodu uygulanır.
+  Sınır: B ham taslağa değil V1 çıktısına uygulanır; ölçülen, V2'nin V1'e eklediği silme.
+- **Etiket:** 240 metin karışık sırada, kol gizli, ≤12'lik partilerle iki hakeme (Opus 5.5,
+  Fable 5.1); ölçüt sıra 3 ile aynı (`etiketle2.py` istemi). Ayrıca B'de değişen her entry için
+  iki hakeme "silinen parça okurun bilmesi gereken somut bir bilgi taşıyor muydu?" sorulur.
+- **Kabul (iki hakem ortalaması):**
+  - B dolgu ≤ %15;
+  - kaynaklıda B dolgu ≤ A − 10 puan;
+  - B doğallık ≥ A − 0,10;
+  - B özdeyiş ≤ A;
+  - değişen entry'lerde bilgi kaybı ("evet") ≤ %10.
+- **Durma:** tek koşu. Model çağrısı başarısız olan entry B'de değişmemiş sayılır ve paydada kalır.
+  Beşi birden geçerse V2 koda girer, hakem incelemesinden sonra dağıtılır ve canlıda yeni önkayıtla
+  ölçülür. Biri geçmezse V2 çıkmaz.
+
+### Geri çekildi (13 Ekim, ölçüm yapılmadan)
+
+Test setine dokunulmadı; Codex çağrısı yapılmadı. Geliştirme setinde hakemin dolgu dediği 80
+parça Opus 5.5 ile alıntılanıp türlerine ayrıldı ve canlı son okuma koduyla silinebilirlikleri
+denendi:
+
+- **Asıl neden kapsam:** kaynaklı entry son okumaya hiç girmiyor (`final-read.ts`, Sol 6.1 9. tur
+  kararı; Astra 13 Ekim'de hatırlattı). Sonra dönemindeki 39 dolgu parçasının 24'ü kaynaklı
+  entry'lerde ve bunlar hiç okunmadı. Kaynaksız 15 parçadan 8'ini kod silmeye izin veriyor
+  (tekrar, öğüt, özdeyiş); geri kalanların çoğu retorik soru (soru içeren parça kilitli).
+- Tabakalı bakış: kaynaksız entry'lerde özdeyiş 0,227 → 0,148 (fark −0,080, GA [−0,196; 0,034]),
+  kaynaklılarda 0,151 → 0,119. Yön son okumanın lehine ama gösterilemedi.
+- V2'nin hedeflediği eksik bilgi parçalarının hepsi kaynaklı entry'lerde; son okuma onları
+  görmüyor. V2 bu yüzden etkisiz olurdu.
+- Son okumayı daha agresif yapmak Gökhan'ın beğendiği cümleleri de silebilir. Örneğin kör okumada
+  4,5 alan 8 numaradaki özdeyiş ve soru kapanışını hakemler dolgu saydı.
+- **Astra (gpt-6-astra, xhigh, salt okunur, `991eb3b7`), tut/kapat/değiştir sorusu: DEĞİŞTİR.**
+  Doğrulanmış iki açık: atıf ve kapsam cümlesinin silinebilmesi ("Bu benim değil patronun
+  fikri."), sonraki cümlenin geri gönderme yaptığı parçanın silinebilmesi ("Bu fikre
+  katılmıyorum."). Ayrıca hiçbir parçası silinemeyecek gövde için de model çağrılıyor. Karar:
+  son okuma kalır; bu üçü düzeltilir, daha agresif silme denenmez.
+- **Sıradaki hedef Gökhan'ın kendi itirazları:** okurun bilmediği kaynak erişimine gönderme
+  ("görünür bilgide", "kısa aktarımda ikisi de görünmüyor") ve aynı başlıktaki bir önceki entry'ye
+  benzerlik. İlki yazar isteminde ele alınır, yeni önkayıtla.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
@@ -111,6 +195,17 @@ yazar oraya yazdığında katkı gereksiz mi; yazmadığında değerli bir katk�
   - Zamanlama: sıra 3 penceresi kapandıktan sonra; aynı anda tek ağır iş.
 - **Kapanış:** A ve B'nin kabul ölçütleri birlikte geçerse "#12 kapandı" denir. Biri geçmezse #12
   açık kalır ve düzeltme yeni bir önkayıtla ölçülür.
+
+## Sonuç — #12 A (13 Ekim): geçmedi, #12 açık
+
+- Pencere ve sürüm önkayıttaki gibi (exact `0bf531e`, 10 Ekim 09:50Z – 13 Ekim 09:50Z), tek koşu.
+- **Maruziyet:** `entryCount ≥ 15` okunan başlık 1.114 kez. Aynı koşuda o başlığa yayımlanan entry
+  34; yazma oranı %3,1.
+- **Etiket (Opus 5.5, Fable 5.1):** 25 entry'ye ikisi de "değerli", 6'sına ikisi de "gereksiz" dedi,
+  3'ünde ayrıştılar; belirsiz 0.
+- **Gereksiz ortalaması %22,1** (Wilson %95 [%11,4; %38,4]). Eşik %20; **A geçmedi.**
+- Kapanış A ve B'nin birlikte geçmesini istediği için #12 B'nin sonucundan bağımsız olarak açık
+  kalır. Düzeltme yeni bir önkayıtla ölçülür.
 
 ## Önkayıt — #9 gündem maruziyeti ve ilgi yakınsaması (PLAN sıra 1, 10 Ekim)
 
