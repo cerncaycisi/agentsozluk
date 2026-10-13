@@ -25,8 +25,9 @@ import type { RuntimeDecision } from "@/runtime/output";
   3,56 → 3,56 (docs/YEREL_KANIT_2026-10-08.md).
 
   Korumalar deterministiktir: ilk parça, soru, bağlantı, alıntı, URL, doğruluk çekincesi, atıf,
-  nedensellik ve kapsam sınırı taşıyan parça silinmez; kaynaklı, ciddi iddialı ve sağlık/finans/hukuk
-  gövdesi hiç kısaltılmaz; bütün
+  nedensellik ve kapsam sınırı taşıyan parça ve sonraki parçanın geri gönderme yaptığı parça
+  silinmez; kaynaklı, ciddi iddialı ve sağlık/finans/hukuk gövdesi hiç kısaltılmaz, hiçbir silmenin
+  kabul edilemeyeceği gövde için model çağrılmaz; bütün
   parçalar silinemez; kalan metin özgün gövdenin yarısından ve 20 kelimeden kısa olamaz. Hata, geçersiz çıktı
   ya da yetersiz süre gövdeyi olduğu gibi bırakır ve sayılır.
 */
@@ -214,8 +215,13 @@ function containsVeracityHedge(text: string): boolean {
   Bu parçalar silinmez. "Tek başına kanıt değildir" türü genel dolgu kilitlenmez; o, son okumanın
   asıl hedefidir.
 */
+/*
+  Görüşün sahibi ve kapsam sözcük listesinde de olmalı (Astra, 13 Ekim): "Bu benim değil patronun
+  fikri." silinince patronun görüşü yazarın hükmüne, "Bu yalnız düz metin dosyaları için."
+  silinince dar bir iddia genel hükme dönüşüyordu.
+*/
 const meaningGuard =
-  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlattı|açıkla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsamıyor|her durumda|herkes için değil)/u;
+  /(?:^|[^\p{L}])(?:savun|söyl|diyor|diyen|dedi|belirt|aktar|anlattı|açıkla|göre(?![\p{L}])|diye düşün|nedensel|neden-sonuç|korelasyon|ilişkisel|geçerli|genelle|istisna|sınırlı|kapsamaz|kapsamıyor|her durumda|herkes için değil|fikr|görüş|kanaat|benim değil|(?:yalnız|yalnızca|sadece|salt)(?![\p{L}])[^.!?;]{0,80}(?:için|içindir)(?![\p{L}]))/u;
 
 function containsMeaningGuard(text: string): boolean {
   return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
@@ -231,6 +237,52 @@ function lockedUnit(text: string): boolean {
     containsVeracityHedge(text) ||
     containsMeaningGuard(text)
   );
+}
+
+/*
+  Sonraki parça geri gönderme ya da bağlaçla başlıyorsa bu parça silinmez (Astra, 13 Ekim): "Az eşya
+  her zaman daha çok huzur demektir. Bu fikre katılmıyorum." gövdesinden ilki silinince itiraz
+  karşı çıktığı önermeyi kaybediyor, önceki tanıma itiraz ediyormuş gibi okunuyordu.
+*/
+const backReferenceStart =
+  /^[\s"“«(]*(?:bu|bunu|buna|bunda|bundan|bunun|bunlar\p{L}*|şu|şunu|şuna|şunun|o|onu|ona|onda|ondan|onun|onlar\p{L}*|öyle|böyle|şöyle|ama|ancak|fakat|lakin|çünkü|yani|oysa|halbuki|dolayısıyla|üstelik|yine de|tersine|aksine)(?![\p{L}\p{N}])/u;
+
+function boundToNext(units: readonly RuntimeFinalReadUnit[], index: number): boolean {
+  const next = units[index + 1]?.text;
+  if (next === undefined) return false;
+  return [next.toLocaleLowerCase("tr-TR"), next.toLowerCase()].some((lower) =>
+    backReferenceStart.test(lower),
+  );
+}
+
+function removableUnit(units: readonly RuntimeFinalReadUnit[], index: number): boolean {
+  return index >= 1 && !lockedUnit(units[index]!.text) && !boundToNext(units, index);
+}
+
+function keptTextPassesLength(body: string, text: string): boolean {
+  return (
+    text.length * 2 >= body.length &&
+    text.split(/\s+/u).filter(Boolean).length >= runtimeFinalReadMinKeptWords
+  );
+}
+
+/*
+  Hiçbir silme kabul edilemeyecek gövdede model çağrılmaz (Astra, 13 Ekim): silinebilir parça yoksa
+  ya da en kısa silinebilir parçayı tek başına silmek bile uzunluk korumasını bozuyorsa her yanıt
+  `null` olur. Daha fazla parça silmek kalan metni yalnız kısaltır.
+*/
+function anyRemovalPossible(body: string, units: readonly RuntimeFinalReadUnit[]): boolean {
+  return units.some((_, index) => {
+    if (!removableUnit(units, index)) return false;
+    const kept = units
+      .filter((__, other) => other !== index)
+      .map(({ text, separator }, position, all) =>
+        position < all.length - 1 ? text + separator : text,
+      )
+      .join("")
+      .trimEnd();
+    return keptTextPassesLength(body, kept);
+  });
 }
 
 /*
@@ -261,7 +313,7 @@ export function applyRuntimeFinalRead(
 ): { body: string; removedUnitCount: number } | null {
   const remove = new Set(
     deleteNumbers.filter(
-      (number) => number >= 2 && number <= units.length && !lockedUnit(units[number - 1]!.text),
+      (number) => number >= 2 && number <= units.length && removableUnit(units, number - 1),
     ),
   );
   if (remove.size === 0 || remove.size >= units.length) return null;
@@ -271,8 +323,7 @@ export function applyRuntimeFinalRead(
     .join("")
     .trimEnd();
   if (text.endsWith(";") || text.endsWith(",")) text = `${text.slice(0, -1)}.`;
-  if (text.length * 2 < body.length) return null;
-  if (text.split(/\s+/u).filter(Boolean).length < runtimeFinalReadMinKeptWords) return null;
+  if (!keptTextPassesLength(body, text)) return null;
   if (!policyPreserved(body, text, context)) return null;
   return { body: text, removedUnitCount: remove.size };
 }
@@ -357,7 +408,7 @@ export function runtimeFinalReadCandidates(
     )
       return [];
     const units = runtimeFinalReadUnits(body);
-    return units.length < 2
+    return units.length < 2 || !anyRemovalPossible(body, units)
       ? []
       : [
           {

@@ -53,11 +53,49 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     ["atıf: şimdiki zaman (ses düşmesi)", "bunu koruma uzmanı ayşe demir söylüyor."],
     ["atıf: diyor", "koruma uzmanı ayşe demir de aynısını diyor."],
     ["kapsam: yalnızca … sınırlı", "bu yorum yalnızca hafta içi açık olan salonla sınırlı."],
+    // Astra, 13 Ekim: görüşün sahibi ve kapsam sözcük listesinde yoktu.
+    ["atıf: benim değil", "bu benim değil patronun fikri."],
+    ["atıf: görüş", "mahalle derneğinin görüşü de böyle."],
+    ["kapsam: yalnız … için", "bu yalnız düz metin dosyaları için."],
+    ["kapsam: sadece … için", "sadece hafta sonu gelen ziyaretçiler için."],
   ];
   for (const [name, tail] of protectedTails)
     it(name, () => {
       expect(trimmed(`${head}. ${tail}`)).toBeNull();
     });
+
+  // Astra, 13 Ekim: sonraki parça geri gönderme yapıyorsa itirazın konusu silinmemeli.
+  it("sonraki parçanın geri gönderme yaptığı parça silinmez", () => {
+    for (const next of [
+      "bu fikre katılmıyorum.",
+      "ama ben katılmıyorum.",
+      "öyle olsa salonlar boş kalmazdı.",
+      "“bu” da tartışılır.",
+      "Buna itiraz eden de çok.",
+    ])
+      expect(trimmed(`${head}. az eşya her zaman daha çok huzur demektir. ${next}`)).toBeNull();
+    // Bağı kuran parça silinebilir; geri gönderilen parça kalır.
+    expect(
+      trimmed(`${head}. az eşya her zaman daha çok huzur demektir. bu fikre katılmıyorum.`, [3]),
+    ).toBeNull();
+    expect(
+      trimmed(`${head}. kütüphane biraz da hafıza odasıdır. bodrumdaki depo hâlâ kapalı.`)?.body,
+    ).toBe(`${head}. bodrumdaki depo hâlâ kapalı.`);
+  });
+
+  it("hiçbir silmenin kabul edilemeyeceği gövde aday olmaz", () => {
+    // Tek silinebilir aday soru (kilitli).
+    expect(candidateFor(`${head}. peki vinçler sökülürse ne kalır?`)).toEqual([]);
+    // Silinebilir parça var ama silince 20 kelimeden az kalıyor.
+    expect(candidateFor("kütüphane güzel olmuş. bina biraz da kendi geçmişinin okurudur.")).toEqual(
+      [],
+    );
+    // Silinebilir parça sonraki parçaya bağlı, diğerleri kilitli.
+    expect(
+      candidateFor(`${head}. az eşya her zaman daha çok huzur demektir. bu fikre katılmıyorum?`),
+    ).toEqual([]);
+    expect(candidateFor(`${head}. kütüphane biraz da hafıza odasıdır.`)).toHaveLength(1);
+  });
 
   it("sağlık, finans ve hukuk gövdesi hiç aday olmaz", () => {
     for (const body of [
