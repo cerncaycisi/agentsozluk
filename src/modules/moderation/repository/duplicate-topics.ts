@@ -29,7 +29,13 @@ export interface DuplicateTopicPair {
 */
 export async function findDuplicateTopicPairs(
   transaction: Prisma.TransactionClient,
-  input: { since: Date; threshold: number; limit: number; reporterUsername: string },
+  input: {
+    since: Date;
+    threshold: number;
+    limit: number;
+    offset?: number;
+    reporterUsername: string;
+  },
 ): Promise<DuplicateTopicPair[]> {
   await transaction.$executeRaw`SELECT set_config('pg_trgm.similarity_threshold', ${String(input.threshold)}, true)`;
   const rows = await transaction.$queryRaw<DuplicateTopicPair[]>(Prisma.sql`
@@ -121,6 +127,7 @@ export async function findDuplicateTopicPairs(
     )
     ORDER BY pairs.similarity DESC, newer.id, older.id
     LIMIT ${input.limit}
+    OFFSET ${input.offset ?? 0}
   `);
   return rows.map((row) => ({ ...row, similarity: Number(row.similarity) }));
 }

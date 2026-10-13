@@ -11,7 +11,7 @@ import { reportCreateSchema } from "@/modules/moderation/validation/schemas";
 import { resolveCanonicalTopicProposal } from "@/modules/topics/application/topics";
 import { randomUUID } from "node:crypto";
 import { getEnvironment } from "@/config/env";
-import { KARAGOZ } from "@/modules/moderation/domain/karagoz";
+import { differsOnlyByVariantToken, KARAGOZ } from "@/modules/moderation/domain/karagoz";
 import {
   createKaragozUser,
   findKaragozUser,
@@ -63,14 +63,27 @@ export async function scanDuplicateTopics(
     !(limit >= 1 && limit <= 100)
   )
     throw new AppError("VALIDATION_ERROR", 422, "Kopya taraması ayarı geçersiz.");
-  return inTransaction(client, (transaction) =>
-    findDuplicateTopicPairs(transaction, {
-      since: new Date(input.now.getTime() - days * 86_400_000),
-      threshold,
-      limit,
-      reporterUsername: KARAGOZ.username,
-    }),
-  );
+  /*
+    Sürüm/model farkı olan çiftler elenir (differsOnlyByVariantToken). Elenen çiftler günlük sınırı
+    tüketmesin diye sınır dolana kadar sonraki sayfa okunur; en çok 10 sayfa.
+  */
+  return inTransaction(client, async (transaction) => {
+    const kept: DuplicateTopicPair[] = [];
+    for (let page = 0; page < 10 && kept.length < limit; page += 1) {
+      const rows = await findDuplicateTopicPairs(transaction, {
+        since: new Date(input.now.getTime() - days * 86_400_000),
+        threshold,
+        limit,
+        offset: page * limit,
+        reporterUsername: KARAGOZ.username,
+      });
+      kept.push(
+        ...rows.filter((pair) => !differsOnlyByVariantToken(pair.newerTitle, pair.olderTitle)),
+      );
+      if (rows.length < limit) break;
+    }
+    return kept.slice(0, limit);
+  });
 }
 
 /*
