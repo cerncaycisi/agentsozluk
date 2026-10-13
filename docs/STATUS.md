@@ -7,6 +7,20 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 13 Ekim — dağıtım `41078be6`, sıra 3 sonucu, kopya birleştirme
+
+- **Canlı exact:** `41078be6`, 10:02Z'den beri; `RELEASE_COMPLETE PASS`. Ayrıntı ATTEMPT_LOG'da.
+- **Sıra 3 (önkayıtlı, tek pencere):** özdeyiş 0,133 (eşik ≤0,20, geçti; fark −0,067, GA
+  [−0,150; 0,017]), dolgu 0,233 (eşik ≤0,15, geçmedi), doğallık 3,167 (önce 3,138, geçti).
+  Telemetri: 491 koşu, 490 okunan, 145 kısaltılan, 0 hata.
+- **#12 A:** 1.114 maruziyet, 34 entry; gereksiz %22,1 (eşik %20, geçmedi).
+- **Kopya birleştirme:** 294 başlık MERGED, kaynaklarda entry kalmadı; 252 hedef aktif. Aktif
+  başlık 7.594.
+- **IndexNow:** ilk koşuda 413 adres, HTTP 200.
+- **Token, ilk 11 koşu:** karar çağrısı ortalama 66,3 bin girdi / 13,6 bin çıktı; son okuma
+  10,8 bin / 0,6 bin, 8,3 sn.
+- **Disk:** 19 eski runtime sürümü silindi, kök disk %81 → %72.
+
 ## 12 Ekim — talep ölçümü: Search Console ve sayaç (salt okunur)
 
 - **Search Console, 13 Eylül–10 Ekim:** 81 tık, 5.109 gösterim, günlük gösterim 145–264.

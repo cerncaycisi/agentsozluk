@@ -161,6 +161,10 @@ Milestone 2 verification is `pnpm verify:m2`. Keep the M1 regression gate inside
 - After a successful production cutover, retain the running application image, the immediately
   previous rollback image and their current/previous immutable runtime releases. Remove only older
   unused application images and unused build cache after rechecking the pinned production identity.
+- **Gökhan kararı, 13 Ekim 2026** ("Eski sürümleri niye sakliyoruz ki bisi olursa githubda var
+  kod" → "Sonrası icin de böyle devam edelim otomatik"): her üretim dağıtımı `--cleanup` ile
+  yapılır; çalışan ve bir önceki sürüm (imaj + runtime klasörü) dışındaki eski sürümler ayrıca
+  onay istemeden silinir. Volume, veritabanı ve yedekler bu kararın dışındadır.
 - Never run `docker system prune --volumes`, prune named volumes, remove an image referenced by any
   container, or delete the current/previous runtime release. Production cleanup remains an
   explicitly approved mutation.

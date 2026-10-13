@@ -80,6 +80,34 @@ nedeni ATTEMPT_LOG'a yazılır.
 - **Sonuç biçimi:** kabul ölçütlerinin her biri için ayrı ayrı geçti/geçmedi. "Kapandı" kelimesi
   yalnız üçü birden geçerse kullanılır.
 
+## Sonuç — son okuma canlı ölçümü (PLAN sıra 3, 13 Ekim)
+
+Tek pencere, tek koşu; önkayıttaki gibi. Örneklem her pencereden 120 entry (kaynaklı: önce 43,
+sonra 59). Hakem uyumu: özdeyişte 0,89, dolguda 0,88.
+
+| Ölçüt                  | Önce  | Sonra | Fark   | %95 GA          | Kabul       |
+| ---------------------- | ----- | ----- | ------ | --------------- | ----------- |
+| özdeyiş ≤ %20          | 0,200 | 0,133 | −0,067 | [−0,150; 0,017] | geçti       |
+| dolgu ≤ %15            | 0,217 | 0,233 | +0,017 | [−0,079; 0,112] | **geçmedi** |
+| doğallık ≥ önce − 0,10 | 3,138 | 3,167 | +0,029 | [−0,146; 0,200] | geçti       |
+
+- **Yön:** özdeyiş 5 puandan fazla düştü ama aralık sıfırı kapsıyor, bu yüzden "etki
+  gösterilemedi". Dolguda düşüş yok.
+- **Sonuç:** son okuma için "kapandı" denmez. Dolgu kabulü geçmedi; özdeyişteki düşüş anlamlı değil.
+- **Telemetri (eşik yok):** 491 koşu, 502 aday, 490 okunan, 145 kısaltılan (%30), 12 atlanan,
+  0 hata, 159 parça silindi.
+- **Gökhan'ın kör okuması (yardımcı sinyal, 20 entry, 1–5 puan):** önce ortalaması 3,61, sonra 3,25.
+  En düşük iki puan sonra döneminden ve ikisi de kaynaklı haber entry'si. 18 numaraya 2 verdi:
+  "son cümle bozuyor. 'görünür bilgide belli değil' hangi bilgi? okur bilmiyo". 19 numaraya 2,5
+  verdi ("üttekiyle benzer"). Gökhan başlıkla birlikte okudu, hakemler başlıksız okudu.
+- **Ön bakış (12 Ekim ~12:00Z, Gökhan isteği; kayda yalnız "ön bakış" olarak girer):** pencere
+  henüz açıkken farklı tohumla, pencere başına 60 entry'ye bakıldı. Önkayıt değişmedi. Öngörü
+  sonuçla aynı çıktı: özdeyiş sınırda geçer, dolgu geçmez (sonra 0,208), doğallık geçer. Dolgu
+  kaynaklı entry'lerde 0,275, kaynaksızlarda 0,175 idi.
+- **Sıradaki:** dolgunun belirgin kaynağı kaynaklı entry'lerin sonundaki çekince cümleleri
+  ("görünür bilgide belli değil", "kanıtlanmış sonuç diye okumak erken"). Düzeltme yeni bir
+  önkayıtla, yerel kopyada modelle denenir.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
@@ -111,6 +139,17 @@ yazar oraya yazdığında katkı gereksiz mi; yazmadığında değerli bir katk�
   - Zamanlama: sıra 3 penceresi kapandıktan sonra; aynı anda tek ağır iş.
 - **Kapanış:** A ve B'nin kabul ölçütleri birlikte geçerse "#12 kapandı" denir. Biri geçmezse #12
   açık kalır ve düzeltme yeni bir önkayıtla ölçülür.
+
+## Sonuç — #12 A (13 Ekim): geçmedi, #12 açık
+
+- Pencere ve sürüm önkayıttaki gibi (exact `0bf531e`, 10 Ekim 09:50Z – 13 Ekim 09:50Z), tek koşu.
+- **Maruziyet:** `entryCount ≥ 15` okunan başlık 1.114 kez. Aynı koşuda o başlığa yayımlanan entry
+  34; yazma oranı %3,1.
+- **Etiket (Opus 5.5, Fable 5.1):** 25 entry'ye ikisi de "değerli", 6'sına ikisi de "gereksiz" dedi,
+  3'ünde ayrıştılar; belirsiz 0.
+- **Gereksiz ortalaması %22,1** (Wilson %95 [%11,4; %38,4]). Eşik %20; **A geçmedi.**
+- Kapanış A ve B'nin birlikte geçmesini istediği için #12 B'nin sonucundan bağımsız olarak açık
+  kalır. Düzeltme yeni bir önkayıtla ölçülür.
 
 ## Önkayıt — #9 gündem maruziyeti ve ilgi yakınsaması (PLAN sıra 1, 10 Ekim)
 

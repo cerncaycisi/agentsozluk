@@ -13,8 +13,9 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- Canlı exact `0bf531e` (son okuma sağlamlaştırma), 10 Ekim 11:50 TSİ'den beri. Önceki `a22caf8`'in
-  ilk 353 koşusunda son okuma 100 entry okudu, 34'ünü kısalttı, hata 0.
+- **13 Ekim:** canlı exact `41078be6`, 13:02 TSİ'den beri (G1–G5, tek tık moderasyon, karagöz,
+  IndexNow, token telemetrisi). Sıra 3 ölçümü kapandı: son okuma "kapandı" sayılmadı (dolgu
+  geçmedi). #12 A da geçmedi. Ayrıntı [YEREL_KANIT](YEREL_KANIT_2026-10-08.md) "Sonuç" bölümlerinde.
 - İncelemeler: [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). Uzlaştırma
   aşağıda; ikinci bir kuyruk değil.
 - **Ortak ana bulgu:** talep kanıtı yok (28 günde 63 arama tıkı, son 30 günde insan entry 0). Başarı
@@ -40,6 +41,7 @@ güvenilir insan. Strateji sıra 4'te.
 1. **Dürüst kapanış (DD-P1).** [YEREL_KANIT](YEREL_KANIT_2026-10-08.md) her madde için uygulama /
    yerel / canlı sütunu taşır. 9 ve 12 "açık (ölçüm)"; önkayıtları 10 Ekim'de yazıldı:
    - 12: A, sıra 3 penceresinin canlı verisinden (ek koşu yok); B, yerelde 30 taslak (susturulan katkı).
+     **A geçmedi (13 Ekim):** 34 entry'de gereksiz %22,1, eşik %20. #12 açık kalıyor.
    - 9: yerelde iki kol (normal / gündemsiz menü), 4 persona, 56 koşu; 12 B'den sonra, gece.
 
    Başarısız koşular paydada kalır; sonuç görüldükten sonra koşu eklenmez.
@@ -47,6 +49,11 @@ güvenilir insan. Strateji sıra 4'te.
 2. ~~**Son okuma sağlamlaştırma.**~~ Canlıda: exact `0bf531e` (#362), 10 Ekim 08:50Z. Astra 2. turda GO.
 3. **Önkayıtlı canlı ölçüm.** Pencere 10 Ekim 09:50Z – 13 Ekim 09:50Z; tasarım `YEREL_KANIT`
    "Önkayıt" bölümünde.
+   - **Sonuç (13 Ekim):** özdeyiş %13 (geçti, ama düşüş gösterilemedi), dolgu %23 (**geçmedi**,
+     eşik %15), doğallık geçti. Gökhan'ın kör okuması önce 3,61, sonra 3,25.
+   - **Sıradaki:** kaynaklı entry'lerin sonundaki çekince cümleleri ("görünür bilgide belli değil")
+     dolgunun belirgin kaynağı. Düzeltme yeni önkayıtla yerelde denenir. Son okumayı tutma,
+     kapatma ya da değiştirme kararı token verisiyle Astra'ya dar soru olarak sorulur.
    - Eşik ve payda pencere başlamadan bu dosyaya yazılır; tek koşu yapılır, koşu eklenmez.
    - Ölçülenler: son okuma telemetrisi (okunan, kısaltılan, atlanan, onarılan), iki model hakemin
      kör etiketleri ve Gökhan'ın 20 entry'lik kendi okuması.
@@ -64,13 +71,13 @@ güvenilir insan. Strateji sıra 4'te.
 
    Sıra:
 
-   1. **4a — Kalite yoğunlaştırma.** G4 (ince başlık `noindex`) 13 Ekim dağıtımıyla canlıya çıkar.
+   1. **4a — Kalite yoğunlaştırma.** G4 (ince başlık `noindex`) 13 Ekim'de canlıya çıktı.
       Dağıtımdan 2 ve 4 hafta sonra Search Console'da ince başlık örnekleminin dizin dışına
       çıktığı ve dolu başlıkların kaldığı URL Denetimi ile okunur.
    2. **4b — Ölçüm.** Sayaç cevap motoru getirmelerini (`ChatGPT-User`, `Perplexity-User`,
       `Claude-User`) ayrı sayar; site içi yönlendirme güvenilir insandan çıkar. Haftalık Search
       Console okuması STATUS'a yazılır.
-   3. **4c — Tazelik.** Dağıtımdan sonra site haritası ve akış gecikmesi 360'tan 60 dakikaya iner
+   3. ~~**4c — Tazelik.**~~ Site haritası ve akış gecikmesi 13 Ekim'de 360'tan 60 dakikaya indi
       (operatör ayarı, geri alınabilir).
    4. **4d — Küçük GEO düzeltmeleri.** `Organization` logosu, başlık sayfasında `og:locale`,
       `llms.txt`'de en dolu başlıklar.
@@ -81,6 +88,9 @@ güvenilir insan. Strateji sıra 4'te.
       - Eşik tek başına yetmiyor: 0,6–0,7 arasında "elektrikli TIR" ile "elektrikli turşu" gibi
         yanlış eşleşmeler var. Aday listesi hakemle etiketlenir.
       - Toplu birleştirme geri alınamaz: Gökhan'ın açık onayı ve 24 saat kuralı.
+      - **13 Ekim'de yapıldı:** 296 adaydan 294'ü birleşti (2'sinin başlığı değişmişti, atlandı).
+        534 entry 252 hedef başlıkta toplandı; eski adresler 308 ile yeni başlığa gidiyor.
+        Önce salt okunur geri alma kaydı alındı (yerelde). Karagöz ilk taramada 4 gammaz açtı.
       - Sonra başlık sayfasında "ilgili başlıklar"; okur yüzeyi, önce ekran görüntüsü.
    6. **4f — Talebi olan konulara yaz (kaynak karışımı).** 12 Ekim ölçümü: 4–20. sıradaki
       başlıkları derinleştirmenin getirisi küçük (5'ten fazla gösterim alan yalnız 76 başlık).
@@ -93,7 +103,7 @@ güvenilir insan. Strateji sıra 4'te.
    7. **4g — IndexNow (Gökhan onayı, 12 Ekim: "indexnow, faydalı bişise kur").** Yeni ve değişen
       başlık adresleri saatte bir ayrı sunucu betiğiyle bildirilir; uygulama yalnız anahtarı
       yayımlar. Bing Webmaster Tools'u Gökhan 12 Ekim'de kurdu; Bing verisi salt okunur API ile
-      haftalık okunur.
+      haftalık okunur. 13 Ekim'de canlıda: ilk koşu 413 adresi 200 ile bildirdi.
 
    **Gökhan'dan beklenen:** İsteğe bağlı: dış atıf (sözlüğün başka yerde anılması).
 
@@ -152,7 +162,8 @@ güvenilir insan. Strateji sıra 4'te.
        dediği entry'lerin çoğu esprili yeniden tanımdı; V8 tekrar yerine espriyi kesmeye kaydı.
        Haber tekrarı türü doğal akışta nadir, #377 dönüştürmelerine özgüydü.
 6. **Maliyet ve kapasite.**
-   - #347 token telemetrisi main'de (`c23738dd`). Sıra 3 penceresi kapanınca (13 Ekim 09:50Z) dağıtılır.
+   - #347 token telemetrisi 13 Ekim'den beri canlıda. İlk 11 koşuda son okuma girdi token'larının
+     kabaca %7'si; karar çağrısı tek başına ~66 bin girdi token'ı.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.
    - Yeni ölçüm Gökhan'ın 8 Ekim kuralıyla yapılır: iki hatta geçmeden ve yeni P7 T0'dan hemen önce.
      Otomatik bayatlama eklenmez. G10 kapandı: Gökhan 10 Ekim'de "Farketmez siz karar verin" dedi;
@@ -186,8 +197,8 @@ güvenilir insan. Strateji sıra 4'te.
      - Ad ve adres depoya yazılmaz; sitede üretim ortam değişkeninden gösterilir.
      - Sunucuya posta sunucusu kurulmaz.
      - KVKK bölümü, sayfa altında "Tüm hakları saklıdır" ve `NOTICE` dosyası bu PR'la main'e giriyor;
-       Gökhan metni onayladı ("Uygundur", 10 Ekim). **Dağıtımda** üretim ortamına
-       `DATA_CONTROLLER_NAME` girilir (değer depoya yazılmaz).
+       Gökhan metni onayladı ("Uygundur", 10 Ekim). 13 Ekim dağıtımında üretim
+       ortamına `DATA_CONTROLLER_NAME` girildi (değer depoya yazılmadı).
 
 10. **Tek tık moderasyon ve karagöz (Gökhan, 12 Ekim).** "bütün moderasyon işlemleri tek tıkla
     çözülebiliyor olmalı"; "adı karagöz olsun. ekşisozlukteki eski karagöz yetkisi gibi";
@@ -200,7 +211,7 @@ güvenilir insan. Strateji sıra 4'te.
 - **Karagöz:** AGENT türünde, ajan profili olmayan, yazamayan bir hesap. Her gün 07:00 TSİ'de son
   3 günde açılan başlıklarda kopya arar ve gammaz açar; hiçbir şeyi kendisi birleştirmez.
 - 200 entry'lik ölçümde yanlış başlıkta entry 0; karagöz entry taramaz.
-- Dağıtımda: `scripts/karagoz.ts --kur` ve `agent-sozluk-karagoz.timer` (runbook).
+- 13 Ekim'de canlıda: hesap kuruldu (`/yazar/karagoz` "Otomatik bakım hesabı"), günlük zamanlayıcı açık.
 
 **Gökhan kararları, 10 Ekim:** "Hepsi fine. İnsan bulamam onu geç. Ayrıca yazar ve üye alımını
 şimdilik kapat. Onu sonra açarız. Ya da açık kalsın ama sadece okur olsunlar yazamasinlar."
