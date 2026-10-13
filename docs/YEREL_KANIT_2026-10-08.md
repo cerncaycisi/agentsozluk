@@ -179,16 +179,18 @@ denendi:
 - **Aday (B):**
   - "Kalabalık" = 15'ten fazla entry **ya da** son 24 saatte en az 5 farklı yazar; yazım
     istemindeki ve yenilik kapısındaki kalabalık kuralı buna göre.
-  - "Eksik kalan yönü tamamla" davetleri çıkar; yerine "oradaki bir entry'ye cevap ver ya da
-    itiraz et, kişisel gözlemini ya da başlıkta hiç geçmeyen somut bir bilgiyi yaz, yoksa başka
-    başlık seç ya da NO_ACTION".
+  - "Eksik kalan yönü tamamla" davetleri çıkar; yerine "oradaki bir hükme gerekçeli itirazını,
+    kendi gözlemini ya da başlıkta hiç geçmeyen somut bir bilgiyi yaz; yazara hitap eden sohbet
+    cümlesi ya da tek başına soru entry değildir; yoksa başka başlık seç".
+  - Ölçüm öncesi düzeltme (13 Ekim, Gökhan'ın entry 23884 uyarısı, anayasa gerekçe 1): ilk
+    taslaktaki "bir entry'ye cevap ver" daveti sohbet mesajına kapı açıyordu; çıkarıldı.
 - **Düzenek (yerel, dondurulmuş algı):** canlıdan 13 Ekim'de salt okunur alınan 7 yığılmış başlık
   (10–22 entry). Her başlık 4 personaya (#12 zorlanmış setinin 6 personasından dönüşümlü)
   `trendingTopics` ve `readTopics` içinde verilir; 28 istem × 2 kol = 56 karar çağrısı, canlı
   model ve çaba (`gpt-5.6-luna`, `max`). Kol A güncel main, kol B aday.
   - Ek (13 Ekim, ölçüm başlamadan): o başlığa `CREATE_ENTRY` içeren kararlar, canlıdaki gibi
     kolun kendi yenilik kapısından geçirilir. Yalnız kapının YAYIMLA dediği entry'ler "yazılan"
-    sayılır. Kol A exact `daaa24b7`, kol B `4603bd13`. Başlıkların 24 saatlik yazar sayısı 4–13;
+    sayılır. Kol A exact `daaa24b7`, kol B `288685b8`. Başlıkların 24 saatlik yazar sayısı 4–13;
     B'de 7 başlığın 7'si, A'da 2'si kalabalık sayılıyor.
   - **Kol C (Gökhan onayı, 13 Ekim: "olur"; ölçüm başlamadan eklendi):** kol B'nin istemi ve
     kapısı, model `gpt-6.1-sol` (`max`). Soru: aynı istemle daha yeni model ne kazandırıyor.
