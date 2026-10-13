@@ -9435,3 +9435,19 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   başlayan cümle) bu yakaladı.
 - Bir regresyon testini düzeltmeden önceki kodda koştur: uzun kapsam testi ilk hâlinde uzunluk
   kapısı yüzünden zaten `null` dönüyordu, hatayı yakalamıyordu.
+
+## 13 Ekim — dağıtım `daaa24b7` (son okuma DEĞİŞTİR, #400)
+
+- **Kapsam:** main exact `daaa24b76f6f30ff9b44b1795c94f403c15ec650`, push CI yeşil, RC run
+  `38400766225`. Yetki: AGENTS.md süreli istisna. `--pause-society-flow --cleanup` (Gökhan'ın 13 Ekim
+  otomatik temizlik kararı).
+- **Sonuç:** `RELEASE_VERIFY PASS` (health 200, ready 200, worker active), `RELEASE_CLEANUP PASS`
+  (1 eski imaj ve 1 eski runtime sürümü silindi, disk %75 → %72, volume ve konteyner özetleri
+  doğrulandı), `RELEASE_COMPLETE PASS`. Akış resume edildi (settingsVersion 342).
+- **İlk koşular (13:40Z–14:03Z):** 6 SUCCEEDED, 2 PARTIAL, 6 entry. Son okuma 8 koşuda 1 kez
+  çağrıldı (önceki 11 koşuda 7); ön eleme beklendiği gibi çalışıyor.
+
+**Do not repeat:**
+
+- Doğrulama sorgusunda koşu durum kolonu `runStatus`; `status` yazınca bekleme döngüsü bir saat
+  boyunca boşa hata bastı.
