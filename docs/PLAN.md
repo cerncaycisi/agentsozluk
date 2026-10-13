@@ -220,6 +220,9 @@ güvenilir insan. Strateji sıra 4'te.
      doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş öncesi:
      tek hatta kapasite ölçümü (koşu süresi, saatlik koşu), kota tüketimi, ardından önkayıtlı kısa
      canlı deneme. Karar Gökhan'ın; taşımadan sonra sunulur.
+     13 Ekim gecesi medium/low: sol medium karar başına 40 sn ve 1,7 bin çıktı token'ıyla (luna max
+     68 sn, 9,6 bin) aynı kalite bandında, ama çok daha az yazıyor (28 koşunun 20'sinde yalnız
+     oy/takip). Aday sol medium; canlı denemede entry hacmi ayrıca ölçülür.
    - #347 token telemetrisi 13 Ekim'den beri canlıda. İlk 11 koşuda son okuma girdi token'larının
      kabaca %7'si; karar çağrısı tek başına ~66 bin girdi token'ı.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.

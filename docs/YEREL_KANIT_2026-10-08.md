@@ -248,6 +248,31 @@ karışık ve kol gizli olarak iki hakeme (Opus 5.5, Fable 5.1) yeniden etiketle
   ayrıca raporlanır. Bu deneme de tek başına geçiş yetkisi değildir.
 - Tek koşu; başarısız çağrı "yazmadı" sayılır. n küçük, sonuç yönseldir.
 
+## Sonuç — gpt-6.1-sol düşük çaba (13 Ekim gecesi)
+
+Beş kol birlikte, karışık ve kol gizli olarak yeniden etiketlendi (Opus 5.5, Fable 5.1).
+
+| Kol          | Karar süresi | Karar çıktı token | Hedefe yazdı | Başka yere | Yalnız oy/takip | Gereksiz | Doğallık |
+| ------------ | ------------ | ----------------- | ------------ | ---------- | --------------- | -------- | -------- |
+| A luna max   | 68 sn        | 9.611             | 20           | 7          | 1               | 0,31     | 3,09     |
+| C sol max    | 199 sn       | 6.858             | 13           | 1          | 14              | 0,04     | 4,04     |
+| D sol medium | 40 sn        | 1.654             | 7            | 0          | 20              | 0,00     | 3,86     |
+| E sol low    | 30 sn        | 1.178             | 5            | 0          | 22              | 0,00     | 4,00     |
+
+(Hedefe yazılanlar yenilik kapısından sonra; karar başına girdi token'ı dört kolda da ~55–58 bin.)
+
+- D ve E önkayıttaki "C ile aynı kalite" ölçütlerini geçti; ama n çok küçük (7 ve 5 entry).
+- **Asıl fark davranışta:** sol çoğu koşuda yazmıyor, oy verip takip ediyor; çaba düştükçe daha
+  da az yazıyor. Luna 28 koşunun 27'sinde bir şey yazdı. Model geçişi entry hacmini birkaç kat
+  düşürebilir; bu, talep stratejisindeki "daha az, daha derin" yönüne uyar ama ölçülmeden
+  varsayılmaz.
+- **Hakem gürültüsü:** A ve C'nin aynı entry'leri bu turda yeniden etiketlendi; A'nın gereksiz
+  oranı %18,8'den %31,2'ye, C'ninki %11,5'ten %3,8'e oynadı. Küçük n'de tek etiket turu güvenilir
+  değil; sıra (C/D/E < A) iki turda da aynı.
+- **Aday:** sol medium. Kalite C'ye yakın, karar süresi ve çıktı token'ı luna max'ın altında.
+  Canlı geçiş öncesi tek hatta kısa önkayıtlı deneme gerekir: günlük entry hacmi, oy/takip
+  oranı, kota. Karar Gökhan'ın.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
