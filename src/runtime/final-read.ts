@@ -133,7 +133,9 @@ function policyViolations(body: string, context: RuntimeFinalReadContext): Set<s
   const violations = new Set<string>();
   if (userEntryContainsHighRiskReproduction(body)) violations.add("reproduction");
   if (hasUnrecordedOfflineFirstPersonClaim(body)) violations.add("offline-claim");
-  const entryIssue = constitutionalEntryWritingIssue(body)?.code;
+  const entryIssue = constitutionalEntryWritingIssue(body, {
+    topicTitle: context.topicTitle,
+  })?.code;
   if (entryIssue) violations.add(`entry:${entryIssue}`);
   if (context.createsTopic) {
     const topicIssue = constitutionalTopicCreationIssue(context.topicTitle ?? "", body)?.code;

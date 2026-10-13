@@ -149,6 +149,25 @@ interface Rejection {
   reason: string;
 }
 
+/*
+  Yazım anında başlığın adı: koşunun algısındaki başlık listelerinden (okunan, gündem, yeni…).
+  "Açık uçlu soru örnekleri" gibi başlıkta soru entry'si kategorinin örneğidir (Madde 9).
+  Bulunamazsa ad verilmez ve kural katı uygulanır.
+*/
+function perceptionTopicTitle(perceptionSummary: unknown, topicId: unknown): string | undefined {
+  if (typeof topicId !== "string" || !perceptionSummary || typeof perceptionSummary !== "object")
+    return undefined;
+  for (const value of Object.values(perceptionSummary as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    for (const item of value) {
+      if (!item || typeof item !== "object") continue;
+      const topic = item as Record<string, unknown>;
+      if (topic.id === topicId && typeof topic.title === "string") return topic.title;
+    }
+  }
+  return undefined;
+}
+
 function runtimeActionResult(action: {
   id: string;
   sequence: number;
@@ -1129,7 +1148,12 @@ export async function executeRuntimeAction(
           reason: "Kaynak adayı bu koşunun perception snapshot'ında sunulmadı.",
         });
       if (contentActions.has(parsed.data.actionType) && parsed.data.input.body) {
-        const issue = constitutionalEntryWritingIssue(parsed.data.input.body);
+        const issue = constitutionalEntryWritingIssue(parsed.data.input.body, {
+          topicTitle:
+            parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY"
+              ? parsed.data.input.title
+              : perceptionTopicTitle(actionRecord.run.perceptionSummary, parsed.data.input.topicId),
+        });
         if (issue)
           return rejectAction(transaction, principal, actionRecord, {
             code: issue.code,
