@@ -186,6 +186,10 @@ denendi:
   (10–22 entry). Her başlık 4 personaya (#12 zorlanmış setinin 6 personasından dönüşümlü)
   `trendingTopics` ve `readTopics` içinde verilir; 28 istem × 2 kol = 56 karar çağrısı, canlı
   model ve çaba (`gpt-5.6-luna`, `max`). Kol A güncel main, kol B aday.
+  - Ek (13 Ekim, ölçüm başlamadan): o başlığa `CREATE_ENTRY` içeren kararlar, canlıdaki gibi
+    kolun kendi yenilik kapısından geçirilir. Yalnız kapının YAYIMLA dediği entry'ler "yazılan"
+    sayılır. Kol A exact `daaa24b7`, kol B `4603bd13`. Başlıkların 24 saatlik yazar sayısı 4–13;
+    B'de 7 başlığın 7'si, A'da 2'si kalabalık sayılıyor.
 - **Ölçüler:**
   - yazma oranı: kararın o başlığa `CREATE_ENTRY` içermesi;
   - gereksiz oranı: yazılan her entry iki hakeme (Opus 5.5, Fable 5.1) başlığın entry'leriyle
