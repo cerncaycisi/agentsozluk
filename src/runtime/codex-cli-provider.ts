@@ -26,11 +26,33 @@ interface CodexCliProviderOptions {
   credentialFile: string;
   runtimeHome: string;
   workRoot: string;
+  /** Model profili; verilmezse `luna-max` (üretimin kanıtlanmış varsayılanı). */
+  codexProfile?: AgentRuntimeCodexProfileName;
   spawnProcess?: typeof spawn;
 }
 
 export const AGENT_RUNTIME_CODEX_MODEL = "gpt-5.6-luna";
 export const AGENT_RUNTIME_CODEX_REASONING_EFFORT = "max" as const;
+
+/*
+  Model profilleri (14 Ekim 2026, Gökhan: "bu modeli medium ve lowda testleyelim"; yerel A/B
+  YEREL_KANIT "Sonuç — gpt-6.1-sol düşük çaba"). Yalnız bu kapalı listeden seçilir; serbest model
+  adı kabul edilmez. Geri dönüş: profili `luna-max` yapıp worker'ı yeniden başlatmak.
+*/
+export const AGENT_RUNTIME_CODEX_PROFILES = {
+  "luna-max": {
+    model: AGENT_RUNTIME_CODEX_MODEL,
+    reasoningEffort: AGENT_RUNTIME_CODEX_REASONING_EFFORT,
+  },
+  "sol-medium": { model: "gpt-6.1-sol", reasoningEffort: "medium" },
+} as const;
+export type AgentRuntimeCodexProfileName = keyof typeof AGENT_RUNTIME_CODEX_PROFILES;
+export const agentRuntimeCodexProfileNames = Object.keys(AGENT_RUNTIME_CODEX_PROFILES) as [
+  AgentRuntimeCodexProfileName,
+  ...AgentRuntimeCodexProfileName[],
+];
+type AgentRuntimeCodexReasoningEffort =
+  (typeof AGENT_RUNTIME_CODEX_PROFILES)[AgentRuntimeCodexProfileName]["reasoningEffort"];
 
 export const RETAINED_RUNTIME_WORK_FILES = ["output.json", "output.schema.json"] as const;
 const maximumActiveRunAndCleanupGraceMs = 25 * 60 * 1000;
@@ -443,9 +465,11 @@ async function persistSafeRetainedRuntimeOutput(
 
 export class CodexCliProvider implements RuntimeProvider {
   readonly #options: CodexCliProviderOptions;
+  readonly #profile: (typeof AGENT_RUNTIME_CODEX_PROFILES)[AgentRuntimeCodexProfileName];
 
   constructor(options: CodexCliProviderOptions) {
     this.#options = options;
+    this.#profile = AGENT_RUNTIME_CODEX_PROFILES[options.codexProfile ?? "luna-max"];
   }
 
   async #inspectCommand(args: string[], timeoutMs: number, signal?: AbortSignal): Promise<string> {
@@ -484,7 +508,7 @@ export class CodexCliProvider implements RuntimeProvider {
     supportsStructuredOutput: boolean;
     supportsJsonEvents: boolean;
     model: string;
-    reasoningEffort: typeof AGENT_RUNTIME_CODEX_REASONING_EFFORT;
+    reasoningEffort: AgentRuntimeCodexReasoningEffort;
   }> {
     const [version, topLevelHelp, execHelp] = await Promise.all([
       this.#inspectCommand(["--version"], timeoutMs, signal),
@@ -495,8 +519,8 @@ export class CodexCliProvider implements RuntimeProvider {
       throw new AppError("INTERNAL_ERROR", 500, "Codex CLI yardım çıktısı incelenemedi.");
     return {
       version,
-      model: AGENT_RUNTIME_CODEX_MODEL,
-      reasoningEffort: AGENT_RUNTIME_CODEX_REASONING_EFFORT,
+      model: this.#profile.model,
+      reasoningEffort: this.#profile.reasoningEffort,
       supportsStructuredOutput:
         execHelp.includes("--output-schema") && execHelp.includes("--output-last-message"),
       // Token telemetrisi (Y6) yalnız olay akışını destekleyen CLI'da açılır.
@@ -509,7 +533,7 @@ export class CodexCliProvider implements RuntimeProvider {
     supportsStructuredOutput: boolean;
     supportsJsonEvents: boolean;
     model: string;
-    reasoningEffort: typeof AGENT_RUNTIME_CODEX_REASONING_EFFORT;
+    reasoningEffort: AgentRuntimeCodexReasoningEffort;
   }> {
     await mkdir(this.#options.workRoot, { recursive: true, mode: 0o700 });
     // A worker restart must also sweep leftovers; otherwise the final retained run
@@ -583,9 +607,9 @@ export class CodexCliProvider implements RuntimeProvider {
         "--ask-for-approval",
         "never",
         "--model",
-        AGENT_RUNTIME_CODEX_MODEL,
+        this.#profile.model,
         "-c",
-        `model_reasoning_effort="${AGENT_RUNTIME_CODEX_REASONING_EFFORT}"`,
+        `model_reasoning_effort="${this.#profile.reasoningEffort}"`,
         /*
           Modelin shell/dosya okuma aracını kapat. 31 Ağustos ölçümü: araç
           açıkken prompt injection (rol-değiştirme) ile model, sandbox'ta

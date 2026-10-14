@@ -9530,3 +9530,17 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   dosyada biter. `-n` sunucu adından önce gelmeli.
 - `pgrep`/`pkill -f` desenini kendi komut satırında geçirme; `[a]rsivle` gibi kendi kendine
   eşleşmeyen desen ya da PID kullan.
+
+## 14 Ekim — Codex model profili (#412)
+
+- **Kapsam:** `AGENT_RUNTIME_CODEX_PROFILE` kapalı listesi (`luna-max` varsayılan, `sol-medium`);
+  worker, kapasite ve durum komutları aynı ayarı okur. Canlı deneme önkaydı YEREL_KANIT'ta.
+- **Hakem:** Astra (gpt-6-astra, xhigh) 2 tur: 1. tur NO-GO (başarısız koşunun kolu, kapasite/durum
+  komutları, geçişte aynı runId, TIMED_OUT, hakem birleştirme); 2. tur GO (`b0e08f70`).
+- **Bilinen sınır:** kapasite kanıtı modele bağlı değil (BACKLOG); deneyde S blokları luna ile
+  ölçülmüş kanıtla iki hatta koşar.
+
+**Do not repeat:**
+
+- Deney kolunu sonuç telemetrisinden okuma; başarısız koşularda alan boş kalabilir. Zaman bloğu ve
+  geçişte duraklatma + boşaltma kullan.
