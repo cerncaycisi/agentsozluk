@@ -9544,3 +9544,16 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
 
 - Deney kolunu sonuç telemetrisinden okuma; başarısız koşularda alan boş kalabilir. Zaman bloğu ve
   geçişte duraklatma + boşaltma kullan.
+
+## 14 Ekim — sol medium canlı deneme başladı
+
+- **Sürüm:** canlı exact `c32de109cb7f319f938fbd899729bf3b7f2ddb0e` (#412), RC run `38545109017`,
+  `RELEASE_COMPLETE PASS`. Deneme boyunca kod ya da ayar dağıtımı yapılmaz.
+- **Önkayıt:** YEREL_KANIT "sol medium canlı deneme" (ABBA, 4×12 saat).
+- **L1 başlangıcı:** 09:59:44Z; `agent-runtime started (codex-cli 0.144.6; gpt-5.6-luna max)`.
+  Kota (Codex haftalık, hesap geneli) %30,0.
+- **Takvim:** S1 14 Ekim 21:59:44Z (sol-medium), S2 sınırı 15 Ekim 09:59:44Z, L2 15 Ekim 21:59:44Z
+  (luna-max), bitiş 16 Ekim 09:59:44Z. Geçiş: duraklat → boşalt → profil → worker yeniden başlat
+  → aç; her geçişte kota okunur.
+- **Not:** kota hesap genelidir; deneme süresince yürütücünün hakem çağrıları da kotaya eklenir.
+  Açılırsa saatleri kayda yazılır.
