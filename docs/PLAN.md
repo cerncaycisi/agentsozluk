@@ -39,9 +39,9 @@ güvenilir insan. Strateji sıra 4'te.
 ### Tek aktif sıra
 
 0. ~~**Sunucu taşıma: OVH VPS-1.**~~ 14 Ekim 07:01Z DNS çevrildi; ayrıntı ATTEMPT_LOG "14 Ekim —
-   üretim OVH VPS-1'e taşındı". Eski sunucu durduruldu, veri silinmedi. **Gökhan'dan beklenen:**
-   eski sunucu hesabını silmek (Gökhan önerdi, 14 Ekim). 24 saat kuralı ve silmeden önce eski
-   sunucuda özgün veri kalmadığının (operatör arşivi 4,7 GB, reset artığı 1,3 GB) kontrolü.
+   üretim OVH VPS-1'e taşındı". Eski sunucunun 98 yedek dosyası (32,4 GB) ve taşıma anı dökümü
+   MD5 doğrulamasıyla Drive'a arşivlendi; Gökhan eski sunucuyu 14 Ekim'de sildi ("yedekle ve sil.
+   beklemeye gerek yok").
 
 1. **Dürüst kapanış (DD-P1).** [YEREL_KANIT](YEREL_KANIT_2026-10-08.md) her madde için uygulama /
    yerel / canlı sütunu taşır. 9 ve 12 "açık (ölçüm)"; önkayıtları 10 Ekim'de yazıldı:
