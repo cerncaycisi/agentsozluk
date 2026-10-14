@@ -23,10 +23,27 @@ const databaseUrl = new URL(
 );
 databaseUrl.searchParams.set("connection_limit", "1");
 const db = new PrismaClient({ datasourceUrl: databaseUrl.href });
+/*
+  Kararsızlık (12–14 Ekim, CI'da OTHER_DATABASE_CONNECTIONS): fixture havuzu kapatıldıktan hemen
+  sonra sunucu tarafı oturum bir süre `pg_stat_activity`'de kalabiliyor; autovacuum da aynı
+  veritabanına bağlanabilir. Kapı bunu doğru olarak engel sayar. Test, sınamadan önce kendi
+  bağlantısından başka oturum kalmayana kadar en çok 15 sn bekler; kapının kendisi değişmez.
+*/
+async function waitForSoleConnection() {
+  for (let attempt = 0; attempt < 150; attempt += 1) {
+    const [row] = await db.$queryRaw<{ count: number }[]>`
+      SELECT count(*)::int AS count FROM pg_stat_activity
+      WHERE datname = current_database() AND pid <> pg_backend_pid()`;
+    if (row?.count === 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("OTHER_DATABASE_CONNECTIONS_DID_NOT_CLEAR");
+}
 beforeEach(async () => {
   await db.$disconnect();
   await resetIntegrationDatabase();
   await closeIntegrationDatabase();
+  await waitForSoleConnection();
 });
 afterAll(async () => {
   await db.$disconnect();

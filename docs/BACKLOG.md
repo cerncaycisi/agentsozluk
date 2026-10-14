@@ -72,11 +72,6 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
 - **Kapasite kanıtına model kimliği (Astra, 14 Ekim):** kapasite ölçümü yalnız Codex ana
   sürümünü karşılaştırıyor; model ya da çaba değişince eski kanıt geçerli sayılıyor. Kalıcı model
   geçişinden önce ölçüm `model` ve `reasoningEffort`'u kaydetmeli, tazelik bunları karşılaştırmalı.
-- **CI'da kararsız test: `tests/integration/great-reset-namespace.test.ts` (12–13 Ekim):** kodla
-  ilgisiz olarak arada bir `OTHER_DATABASE_CONNECTIONS` ya da `agent_sources` üzerinde 55P03 kilit
-  hatasıyla düşüyor. Yalnız belge değiştiren bir commit'te (`f52949c5`) de düştü; yeniden koşu
-  geçiyor. Test, aynı veritabanındaki başka bağlantıların kapanmasını beklemeli ya da kendine
-  ayrı veritabanı almalı.
 - **Yönetici ↔ çalışma zamanı kilit sırası denetimi (Sol 6.1, #379):** #379 üç döngüyü
   kapattı: moderasyon geri bildirimi, yeniden adlandırma ve kimlik döndürme. Sol'un 10–12.
   turları, main'de de var olan şu döngüleri buldu:
