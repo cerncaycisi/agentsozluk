@@ -478,4 +478,19 @@ describe("Codex token telemetry (Y6)", () => {
       "sol-medium": { model: "gpt-6.1-sol", reasoningEffort: "medium" },
     });
   });
+
+  // Astra, 14 Ekim: kapasite ve durum komutları worker ile aynı profili kullanır.
+  it("makes every runtime CLI entry point honor the same codex profile setting", () => {
+    for (const script of [
+      "scripts/agent-runtime-worker.ts",
+      "scripts/agent-capability.ts",
+      "scripts/agent-codex-status.ts",
+    ]) {
+      const text = readFileSync(script, "utf8");
+      expect(text, script).toContain(
+        'AGENT_RUNTIME_CODEX_PROFILE: z.enum(agentRuntimeCodexProfileNames).default("luna-max")',
+      );
+      expect(text, script).toContain("codexProfile: environment.AGENT_RUNTIME_CODEX_PROFILE");
+    }
+  });
 });

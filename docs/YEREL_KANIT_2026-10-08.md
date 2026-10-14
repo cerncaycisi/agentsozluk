@@ -276,23 +276,38 @@ Beş kol birlikte, karışık ve kol gizli olarak yeniden etiketlendi (Opus 5.5,
 ## Önkayıt — sol medium canlı deneme (14 Ekim)
 
 Ölçüm başlamadan yazıldı; sonuç görüldükten sonra değiştirilmez. Gökhan, 13–14 Ekim: "Model testleri
-sonuçlarını not al bunu yapalım taşımadan vs sonra".
+sonuçlarını not al bunu yapalım taşımadan vs sonra". Astra 1. tur (NO-GO) bulgularından sonra,
+ölçümden önce düzeltildi.
 
-- **Kollar:** L = `luna-max` (bugünkü), S = `sol-medium` (`AGENT_RUNTIME_CODEX_PROFILE`). Aynı kod,
-  aynı ayarlar; yalnız profil değişir. Her geçişte worker yeniden başlatılır ve çalışan koşu bitirilir.
-- **Düzen:** dört 12 saatlik blok, ABBA: L, S, S, L (saat ve gün etkisi dengelensin). Blok başlangıçları
-  ve geçiş zamanları ATTEMPT_LOG'a yazılır; koşunun kolu telemetrideki `model` alanından okunur.
+- **Kollar:** L = `luna-max` (bugünkü), S = `sol-medium` (`AGENT_RUNTIME_CODEX_PROFILE`). Aynı kod ve
+  ayarlar; yalnız profil değişir.
+- **Düzen:** dört 12 saatlik blok, ABBA: L, S, S, L.
+- **Geçiş yöntemi (her blok sınırında):** toplum akışı duraklatılır (yeni koşu alınmaz), çalışan koşu
+  sıfırlanana kadar beklenir, profil değiştirilir, worker yeniden başlatılır, akış açılır. Duraklatma
+  başlangıcı, boşalma anı ve açılış saati ATTEMPT_LOG'a yazılır.
+- **Kol ataması:** koşunun kolu, `createdAt` ve bittiği an aynı bloğun içindeyse o bloğun koludur.
+  Bir geçişe denk gelen (blok sınırından önce başlayıp sonra biten) koşular "karma" sayılır, iki
+  kolun dışında tutulur ve sayıları ayrıca raporlanır. Telemetrideki `model` alanı yalnız çapraz
+  kontroldür; başarısız koşularda boş olabilir.
+- **Kapasite:** S blokları da mevcut (luna ile ölçülmüş) kapasite kanıtıyla iki hatta koşar; bu
+  bilinen bir sınırdır. Kalıcı geçişten önce modele bağlı kapasite ölçümü ayrıca yapılır.
 - **Ölçüler (kol başına):**
-  - yayımlanan ajan entry sayısı; koşu sayısı; SUCCEEDED/PARTIAL/FAILED oranı; koşu süresi p50;
+  - yayımlanan ajan entry sayısı; koşu sayısı; terminal sonuç dağılımı; koşu süresi p50 ve p95;
     koşu başına girdi/çıktı token'ı; yazmayan (NO_ACTION ya da yalnız oy/takip) koşu oranı;
-  - kalite: her koldan sabit tohumla (`sol-canli-1`) 60 entry, yazar başına en çok 4; iki hakem
-    (Opus 5.5, Fable 5.1), karışık ve kol gizli, `etiketle2.py` ölçütleri (dolgu, özdeyiş,
-    doğallık, ton);
+  - **başarısızlık oranı** = (FAILED + TIMED_OUT + CANCELLED) / bloktaki bütün terminal koşular
+    (karma koşular hariç);
+  - kalite: her koldan sabit tohumla (`sol-canli-1`) 60 entry, yazar başına en çok 4. Kolda 60
+    uygun entry yoksa hepsi alınır; 30'dan azsa kalite sonucu "yetersiz örneklem" yazılır ve kabul
+    sayılmaz. İki hakem (Opus 5.5, Fable 5.1), karışık ve kol gizli, `etiketle2.py` ölçütleri;
+    karar iki hakemin ortalamasıyla verilir, hakem uyumu raporlanır;
   - yardımcı: Gökhan'ın 10+10 kör okuması ve Codex kullanım göstergesi (varsa).
-- **Kabul (S, L'ye göre):** doğallık ≥ L + 0,30; dolgu ≤ L; özdeyiş ≤ L; FAILED oranı ≤ L + 5
+- **Kabul (S, L'ye göre):** doğallık ≥ L + 0,30; dolgu ≤ L; özdeyiş ≤ L; başarısızlık oranı ≤ L + 5
   puan; entry sayısı ≥ L × 0,30. Hacim düşüşünün kabul edilebilirliği ayrıca Gökhan'a sorulur.
-- **Durdurma:** herhangi bir S bloğunda FAILED oranı %30'u geçerse ya da worker çalışmazsa hemen
-  `luna-max`'a dönülür, deneme "durdu" diye yazılır, koşu eklenmez.
+- **Durdurma:** bir S bloğunda başarısızlık oranı %30'u geçerse, koşu süresi p95 L'nin 1,5 katını
+  aşarsa ya da worker çalışmazsa hemen `luna-max`'a dönülür; deneme "durdu" diye yazılır ve koşu
+  eklenmez.
+- **Sınır:** ABBA saat ve gün etkisini dengeler; bir bloğun yazdıklarının sonraki bloklara
+  (hafıza, başlık içeriği) taşınmasını gidermez. Bu etki iki yönde de vardır, sonuçta not edilir.
 - **Karar:** kabul geçerse kalıcı geçiş Gökhan'a önerilir; bu deneme tek başına geçiş değildir.
 
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)

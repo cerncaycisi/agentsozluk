@@ -2,7 +2,7 @@ import { chmod, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { runtimeCapabilityMeasurementSchema } from "../src/modules/agents/validation/capacity-schemas";
-import { CodexCliProvider } from "../src/runtime/codex-cli-provider";
+import { agentRuntimeCodexProfileNames, CodexCliProvider } from "../src/runtime/codex-cli-provider";
 import {
   type CapabilityBenchmarkOptions,
   runCapacityBenchmark,
@@ -17,6 +17,7 @@ const environmentSchema = z
   .object({
     CODEX_EXECUTABLE: z.string().min(1).default("/usr/local/bin/codex"),
     CODEX_SANDBOX_EXECUTABLE: z.string().min(1).default("/usr/bin/bwrap"),
+    AGENT_RUNTIME_CODEX_PROFILE: z.enum(agentRuntimeCodexProfileNames).default("luna-max"),
     AGENT_RUNTIME_CREDENTIAL_FILE: z
       .string()
       .min(1)
@@ -46,6 +47,8 @@ async function main(): Promise<void> {
     credentialFile: environment.AGENT_RUNTIME_CREDENTIAL_FILE,
     runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
     workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
+    // Worker ile aynı profil (Astra, 14 Ekim): ölçüm ve durum, çalışan modelin kanıtı olmalı.
+    codexProfile: environment.AGENT_RUNTIME_CODEX_PROFILE,
   });
   const outputPaths = [
     environment.AGENT_RUNTIME_CAPABILITY_OUTPUT,

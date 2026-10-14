@@ -69,6 +69,9 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
 - **`withoutQuotedOrBkzText` regex'i kapanmayan çok sayıda tırnakta karesel (Sol 6.1, 13 Ekim;
   main'de):** `constitution-writing-policy.ts` alıntı temizleme kalıbı, 10.000 karakterlik gövdede
   en kötü ~0,2 sn sürüyor. Gövde sınırı bunu sınırlıyor; doğrusal tarayıcıyla değiştirilmeli.
+- **Kapasite kanıtına model kimliği (Astra, 14 Ekim):** kapasite ölçümü yalnız Codex ana
+  sürümünü karşılaştırıyor; model ya da çaba değişince eski kanıt geçerli sayılıyor. Kalıcı model
+  geçişinden önce ölçüm `model` ve `reasoningEffort`'u kaydetmeli, tazelik bunları karşılaştırmalı.
 - **CI'da kararsız test: `tests/integration/great-reset-namespace.test.ts` (12–13 Ekim):** kodla
   ilgisiz olarak arada bir `OTHER_DATABASE_CONNECTIONS` ya da `agent_sources` üzerinde 55P03 kilit
   hatasıyla düşüyor. Yalnız belge değiştiren bir commit'te (`f52949c5`) de düştü; yeniden koşu
