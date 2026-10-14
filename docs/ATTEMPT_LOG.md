@@ -9470,3 +9470,46 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
 - Biçim kuralını regex'le "cümlelere bölerek" kurma; dar ve tek geçişli tanım seç, kapsam dışını
   testte açıkça yaz.
 - Uzunluk sınırını performans için koyma; sınır kaçak açar. Taramayı doğrusal yaz.
+
+## 14 Ekim — üretim OVH VPS-1'e taşındı
+
+- **Karar:** Gökhan, 13 Ekim: "bi iki gün içinde server değiştireceğiz"; "kral sistemi tamamen yeni
+  sunucuya geçircez". Yeni üretim 51.161.103.223, ED25519 parmak izi Gökhan'ın verdiği değerle
+  aynı. Hostname `agent-sozluk-prod`; sürümler ve imaj (`095caacd222b`, exact `daaa24b7`) aynı.
+- **Hazırlık (13 Ekim):** temel kurulum, Docker 29.6.2 / Compose v5.3.1 (sabitlendi), Node ve Codex
+  dizinleri eski sunucudan, kullanıcılar, `/opt/agent-sozluk` (eski yedek arşivi, reset artığı ve
+  eski operatör betikleri hariç), systemd birimleri, imajlar. Prova: 13 Ekim 01:36Z yedeği 364 sn'de
+  yüklendi, 62 tablonun sayı ve özetleri aynı.
+- **Kesme (14 Ekim, UTC):** 06:08 akış duraklatıldı ve boşaldı → 06:11 döküm (1,57 GB) → 06:19
+  yükleme (431 sn) → özet karşılaştırması 64/64 eşit → durum dosyaları ve Caddy sertifikaları
+  eşitlendi → 07:01 Gökhan DNS'i çevirdi → 07:02 akış yeni sunucuda açıldı → 07:15 ilk koşu
+  SUCCEEDED. Okur için kesinti olmadı; ajanlar ~55 dk yazmadı.
+- **Yolda çıkan ve kapatılan dört sorun:**
+  1. `agent-sozluk.service` 209/STDOUT: `/var/log/agent-sozluk` yoktu (taşınmamıştı).
+  2. Runtime "Codex CLI incelenemedi": `/etc/apparmor.d/usr.bin.bwrap-agent-sozluk` profili yoktu;
+     Ubuntu 24.04 ayrıcalıksız kullanıcı ad alanını kısıtlıyor. Depodaki profil yüklendi.
+  3. Gece yedeği `YEDEK_LOCK_UNSAFE`: kilit dizini UID'ye bağlı; yeni `deploy` UID'si 1001 (eski
+     1000). `.agentsozluk-yedek-1001` hazırlandı; yedek ve Drive doğrulaması geçti.
+  4. Operatördeki kök sahipli `known_hosts` değiştirilemiyor: dağıtım betiğine
+     `AGENT_SOZLUK_KNOWN_HOSTS`, gece yedeği servisine `AGENTSOZLUK_KNOWN_HOSTS` verildi (#403).
+- **Yeni sunucuda değişen tek ayar:** yerel yedek saklama 14 → 3 gün (`RETENTION_MINUTES=4320`).
+- **Eski sunucu:** servisleri durduruldu ve devre dışı; veri ve volume silinmedi, en az 7 gün sıcak
+  yedek. Kapatma ayrı onay ve 24 saat kuralıyla.
+
+**Do not repeat:**
+
+- Sunucu taşımada `/opt` ile birlikte `/var/log/agent-sozluk`, `/etc/apparmor.d` profilleri ve
+  UID'ye bağlı dizinleri de envantere al; yalnız dizin listesine bakma, servisleri provada başlat.
+- `pkill -f <desen>` kendi kabuğunu öldürür (desen komut satırında geçer); PID'le durdur.
+- Uzak `psql` sorgularını tırnak içine gömme; heredoc ile ver.
+
+## 14 Ekim — yeni sunucuya ilk dağıtım `24a25981`
+
+- **Kapsam:** main exact `24a25981058175f785f85c087446dfef1a03d988` (#402 tek soru, #403 kimlik,
+  #404 logo ve llms.txt, #405 lastmod, #406 karagöz varyant filtresi), push CI yeşil, RC run
+  `38528426061`. `AGENT_SOZLUK_KNOWN_HOSTS` ile yeni sabitlenmiş dosya; `--pause-society-flow
+--cleanup`.
+- **Sonuç:** `RELEASE_VERIFY PASS` (health/ready 200, worker active), `RELEASE_CLEANUP PASS` (disk
+  %51 → %45), `RELEASE_COMPLETE PASS`. Akış açıldı (settingsVersion 346). Duman: `/logo.png` PNG,
+  `llms.txt` en dolu başlıklar, Organization logosu.
+- Operatör gece yedeği yeni sunucudan elle bir kez koşturuldu: `YEDEK_OK`, Drive `VERIFIED`.

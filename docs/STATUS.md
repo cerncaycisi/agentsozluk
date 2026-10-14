@@ -7,6 +7,14 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 14 Ekim — OVH VPS-1'e taşıma ve ilk dağıtım
+
+- **Kesme:** 06:08Z duraklatma → 06:11Z döküm 1,57 GB → 06:19Z yükleme 431 sn → 64/64 özet eşit
+  → 07:01Z DNS → 07:02Z akış açık → 07:15Z ilk koşu SUCCEEDED. Okur kesintisi yok.
+- **Canlı exact `24a25981`** yeni sunucuda: `RELEASE_COMPLETE PASS`, disk %45.
+- **Gece yedeği:** yeni sunucudan `YEDEK_OK` 814 MB, 60 tablo, Drive doğrulandı.
+- **Eski sunucu:** servisler devre dışı, volume'lar duruyor; 07:32Z'de son 5 dakikada 4 istek.
+
 ## 13 Ekim akşam — son okuma DEĞİŞTİR canlıda, tek soru, GEO, sunucu taşıma hazırlığı
 
 - **Canlı exact:** `daaa24b7` (#400), `RELEASE_COMPLETE PASS` ve `RELEASE_CLEANUP PASS`. İlk 8

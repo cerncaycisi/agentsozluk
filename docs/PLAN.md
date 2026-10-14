@@ -13,10 +13,9 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- **13 Ekim:** canlı exact `daaa24b7` (son okuma DEĞİŞTİR, #400), 16:40 TSİ'den beri. Sıra 3:
-  son okuma "kapandı" sayılmadı (dolgu geçmedi), #12 A da geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
-  Main'de dağıtım bekleyen: #402 tek soru kuralı, #404 logo ve llms.txt, #405 lastmod, #406
-  karagöz varyant filtresi; taşımadan sonra yeni sunucuda dağıtılır.
+- **14 Ekim:** üretim OVH VPS-1'e taşındı (51.161.103.223; sıra 0 bitti). Canlı exact `24a25981`
+  (#402 tek soru, #404 logo/llms.txt, #405 lastmod, #406 karagöz filtresi). Sıra 3: son okuma
+  "kapandı" sayılmadı, #12 A geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
 - İncelemeler: [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). Uzlaştırma
   aşağıda; ikinci bir kuyruk değil.
 - **Ortak ana bulgu:** talep kanıtı yok (28 günde 63 arama tıkı, son 30 günde insan entry 0). Başarı
@@ -39,49 +38,10 @@ güvenilir insan. Strateji sıra 4'te.
 
 ### Tek aktif sıra
 
-0. **Sunucu taşıma: OVH VPS-1 (Gökhan, 13 Ekim: "bi iki gün içinde server değiştireceğiz").**
-   Mevcut sunucu ayda 23 € tutuyor. Yeni sunucu: 2 vCPU, 4 GB RAM, 40 GB disk, Linux, otomatik
-   yedek (1 rotasyon). Bu madde önce gelir; kesme penceresinde dağıtım yapılmaz.
-   - **Durum (13 Ekim akşam):** yeni sunucu hazır. Host parmak izi Gökhan'ın verdiğiyle aynı;
-     hostname, kullanıcılar, Docker/Node/pnpm/Codex sürümleri, uygulama imajları, runtime ve
-     kimlik dosyaları eskisinin aynısı ("kral sistemi tamamen yeni sunucuya geçircez"). Güvenlik
-     duvarı yalnız 22, 80, 443. Prova: 13 Ekim 01:36Z yedeği yüklendi, 62 tablonun sayı ve
-     özetleri birebir aynı; uygulama health/ready/ana sayfa 200. Yerel yedek saklama 3 gün.
-     Kesme 14 Ekim'de: Gökhan Namecheap'te A kaydını çevirir; kimlik PR'ı #403 o an birleşir.
-   - **Ölçüm (13 Ekim, salt okunur):** CPU ve RAM eşdeğer (bugün 2 çekirdek, 3,7 GB; yük
-     0,2–0,3; kullanılan RAM 1,2 GB). Disk 75 GB'ın 52 GB'ı dolu ama canlı ayak izi ~12 GB
-     (Docker 5,6 GB, runtime 2,8 GB, sistem). 30 GB sunucudaki eski yedekler (Postgres dökümleri
-     17 GB, operatör arşivi 4,7 GB), 1,3 GB reset artığı.
-   - **12 GB'ın dökümü:** içerik (entry ve başlık) 50 MB'ın altında. Veritabanı 5,4 GB; bunun
-     ~4,5 GB'ı ajan koşu günlükleri (`agent_runtime_events` 3 GB, `agent_runs` 1,6 GB). İki
-     uygulama imajı ~3,4 GB; Postgres konteyner katmanı 1,4 GB (nedeni incelenecek); eski
-     dağıtımlardan kalan `.o3-*` geçici klasörleri 1,3 GB. Koşu günlüklerine saklama süresi
-     önerilecek; silme geri dönüşsüz olduğu için Gökhan'ın onayı ve 24 saat kuralı gerekir,
-     taşıma için şart değil.
-   - **Disk kuralı:** eski yedek arşivi yeni sunucuya taşınmaz; yedekler operatör sunucusunda kalır
-     (Drive düzelince orada da). Yeni sunucuda yalnız son birkaç gece yedeği tutulur.
-     40 GB'da %80 uyarısı 32 GB'a denk gelir; taşıma öncesi retention bunu sağlayacak şekilde
-     ayarlanır.
-   - **Gökhan'dan beklenen:**
-     1. yeni sunucunun IP'si ve ilk erişim: dağıtım anahtarının açık kısmı eklenir; anahtar
-        kopyalanmaz;
-     2. Namecheap'te DNS A kaydının yeni IP'ye çevrilmesi (kesme anında);
-     3. yeni sunucuda Codex CLI girişi (hesap kimliği kopyalanmaz, kendisi giriş yapar);
-     4. yeni sunucunun host anahtarı parmak izinin onayı.
-   - **Adımlar:**
-     1. **Hazırlık:** sistem güncelleme, güvenlik duvarı, Docker, `deploy` kullanıcısı, `/opt/agent-sozluk`
-        düzeni, `.env` (değerler basılmaz), systemd birimleri (runtime, yedek, alarm, bakım,
-        sayaç, IndexNow, karagöz).
-     2. **Paralel kurulum:** exact main artifact'ı boş veritabanıyla duman testi; eski sunucu
-        canlıda kalır.
-     3. **Kesme penceresi:** toplum akışı duraklatılır ve drain edilir; son `pg_dump`; yeni
-        sunucuda restore; tablo sayıları ve son entry kimliği iki tarafta karşılaştırılır; DNS
-        çevrilir; TLS ve duman testi; akış açılır.
-     4. **Sonra:** eski sunucu en az 7 gün sıcak yedek olarak açık kalır. Kapatma geri dönüşsüzdür:
-        Gökhan'ın açık onayı ve 24 saat kuralı.
-   - **Depo:** `AGENTS.md`'deki "mevcut üretim sunucusu" kapsamı, host pin, `PRODUCTION_RUNBOOK`,
-     `PRODUCTION_HOST_PROFILE` ve dağıtım betiklerindeki adres kesme anında yeni sunucuya
-     güncellenir.
+0. ~~**Sunucu taşıma: OVH VPS-1.**~~ 14 Ekim 07:01Z DNS çevrildi; ayrıntı ATTEMPT_LOG "14 Ekim —
+   üretim OVH VPS-1'e taşındı". Eski sunucu durduruldu, veri silinmedi. **Gökhan'dan beklenen:**
+   eski sunucu hesabını silmek (Gökhan önerdi, 14 Ekim). 24 saat kuralı ve silmeden önce eski
+   sunucuda özgün veri kalmadığının (operatör arşivi 4,7 GB, reset artığı 1,3 GB) kontrolü.
 
 1. **Dürüst kapanış (DD-P1).** [YEREL_KANIT](YEREL_KANIT_2026-10-08.md) her madde için uygulama /
    yerel / canlı sütunu taşır. 9 ve 12 "açık (ölçüm)"; önkayıtları 10 Ekim'de yazıldı:
