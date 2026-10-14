@@ -162,6 +162,7 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
       [
         "AGENT_RUNTIME_BASE_URL",
         "AGENT_RUNTIME_CODEX_HOME",
+        "AGENT_RUNTIME_CODEX_PROFILE",
         "AGENT_RUNTIME_CREDENTIAL_FILE",
         "AGENT_RUNTIME_ENROLLMENT_KEY_FILE",
         "AGENT_RUNTIME_POLL_MS",
@@ -178,6 +179,7 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     expect(environment).toMatchObject({
       AGENT_RUNTIME_BASE_URL: "http://127.0.0.1:3000",
       AGENT_RUNTIME_CODEX_HOME: "/opt/agent-sozluk/runtime/codex-home",
+      AGENT_RUNTIME_CODEX_PROFILE: "luna-max",
       AGENT_RUNTIME_CREDENTIAL_FILE: "/var/lib/agent-sozluk-runtime/credentials.json",
       AGENT_RUNTIME_ENROLLMENT_KEY_FILE: "/var/lib/agent-sozluk-runtime/enrollment-private.pem",
       AGENT_RUNTIME_PROCESSING_LANES: "2",

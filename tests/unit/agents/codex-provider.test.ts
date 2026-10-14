@@ -9,6 +9,7 @@ import type { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { monitorHostProcess } from "@/runtime/host-metrics";
 import {
+  AGENT_RUNTIME_CODEX_PROFILES,
   CodexCliProvider,
   safeCodexFailure,
   sanitizeRetainedRuntimeOutput,
@@ -81,7 +82,9 @@ describe("Codex CLI provider security contract", () => {
     expect(source).toMatch(/const args = \[\s*"--ask-for-approval",\s*"never"/u);
     expect(source).toContain('AGENT_RUNTIME_CODEX_MODEL = "gpt-5.6-luna"');
     expect(source).toContain('AGENT_RUNTIME_CODEX_REASONING_EFFORT = "max"');
-    expect(source).toContain('`model_reasoning_effort="${AGENT_RUNTIME_CODEX_REASONING_EFFORT}"`');
+    // 14 Ekim: model ve çaba kapalı profil listesinden gelir; varsayılan luna max.
+    expect(source).toContain('`model_reasoning_effort="${this.#profile.reasoningEffort}"`');
+    expect(source).toContain('options.codexProfile ?? "luna-max"');
     /*
       Model shell/dosya okuma aracı KAPALI olmalı. 31 Ağustos ölçümü: araç
       açıkken prompt injection ile auth.json 8'de 1 sızıyordu, kapalıyken 0/8.
@@ -394,7 +397,7 @@ describe("Codex token telemetry (Y6)", () => {
     ).toEqual({ inputTokens: 20, outputTokens: 10 });
   });
 
-  async function invokeWithHelp(execHelp: string) {
+  async function invokeWithHelp(execHelp: string, codexProfile?: "luna-max" | "sol-medium") {
     const root = await mkdtemp(path.join(tmpdir(), "agent-sozluk-provider-tokens-"));
     temporaryRoots.push(root);
     const decisionArguments: string[][] = [];
@@ -423,6 +426,7 @@ describe("Codex token telemetry (Y6)", () => {
       credentialFile: "/var/lib/agent-sozluk-runtime/credentials.json",
       runtimeHome: path.join(root, "home"),
       workRoot: path.join(root, "work"),
+      ...(codexProfile ? { codexProfile } : {}),
       spawnProcess: spawnMock as unknown as typeof spawn,
     });
     const result = await provider.invoke({
@@ -450,5 +454,28 @@ describe("Codex token telemetry (Y6)", () => {
     expect(legacy.decisionArguments[0]).not.toContain("--json");
     // --json yokken stdout'taki olay biçimli metin ölçüm sayılmaz (Astra, 10 Ekim).
     expect(legacy.result.diagnostics?.tokenUsage).toBeUndefined();
+  });
+
+  // 14 Ekim: model denemesi için kapalı profil; varsayılan değişmez.
+  it("passes the selected closed-list model profile to Codex and reports it", async () => {
+    const help = "--output-schema --output-last-message\n      --json\n";
+    const defaults = await invokeWithHelp(help);
+    const flags = (args: string[]) => [
+      args[args.indexOf("--model") + 1],
+      args[args.indexOf("-c") + 1],
+    ];
+    expect(flags(defaults.decisionArguments[0]!)).toEqual([
+      "gpt-5.6-luna",
+      'model_reasoning_effort="max"',
+    ]);
+    const sol = await invokeWithHelp(help, "sol-medium");
+    expect(flags(sol.decisionArguments[0]!)).toEqual([
+      "gpt-6.1-sol",
+      'model_reasoning_effort="medium"',
+    ]);
+    expect(AGENT_RUNTIME_CODEX_PROFILES).toEqual({
+      "luna-max": { model: "gpt-5.6-luna", reasoningEffort: "max" },
+      "sol-medium": { model: "gpt-6.1-sol", reasoningEffort: "medium" },
+    });
   });
 });

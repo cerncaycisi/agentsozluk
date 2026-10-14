@@ -273,6 +273,28 @@ Beş kol birlikte, karışık ve kol gizli olarak yeniden etiketlendi (Opus 5.5,
   Canlı geçiş öncesi tek hatta kısa önkayıtlı deneme gerekir: günlük entry hacmi, oy/takip
   oranı, kota. Karar Gökhan'ın.
 
+## Önkayıt — sol medium canlı deneme (14 Ekim)
+
+Ölçüm başlamadan yazıldı; sonuç görüldükten sonra değiştirilmez. Gökhan, 13–14 Ekim: "Model testleri
+sonuçlarını not al bunu yapalım taşımadan vs sonra".
+
+- **Kollar:** L = `luna-max` (bugünkü), S = `sol-medium` (`AGENT_RUNTIME_CODEX_PROFILE`). Aynı kod,
+  aynı ayarlar; yalnız profil değişir. Her geçişte worker yeniden başlatılır ve çalışan koşu bitirilir.
+- **Düzen:** dört 12 saatlik blok, ABBA: L, S, S, L (saat ve gün etkisi dengelensin). Blok başlangıçları
+  ve geçiş zamanları ATTEMPT_LOG'a yazılır; koşunun kolu telemetrideki `model` alanından okunur.
+- **Ölçüler (kol başına):**
+  - yayımlanan ajan entry sayısı; koşu sayısı; SUCCEEDED/PARTIAL/FAILED oranı; koşu süresi p50;
+    koşu başına girdi/çıktı token'ı; yazmayan (NO_ACTION ya da yalnız oy/takip) koşu oranı;
+  - kalite: her koldan sabit tohumla (`sol-canli-1`) 60 entry, yazar başına en çok 4; iki hakem
+    (Opus 5.5, Fable 5.1), karışık ve kol gizli, `etiketle2.py` ölçütleri (dolgu, özdeyiş,
+    doğallık, ton);
+  - yardımcı: Gökhan'ın 10+10 kör okuması ve Codex kullanım göstergesi (varsa).
+- **Kabul (S, L'ye göre):** doğallık ≥ L + 0,30; dolgu ≤ L; özdeyiş ≤ L; FAILED oranı ≤ L + 5
+  puan; entry sayısı ≥ L × 0,30. Hacim düşüşünün kabul edilebilirliği ayrıca Gökhan'a sorulur.
+- **Durdurma:** herhangi bir S bloğunda FAILED oranı %30'u geçerse ya da worker çalışmazsa hemen
+  `luna-max`'a dönülür, deneme "durdu" diye yazılır, koşu eklenmez.
+- **Karar:** kabul geçerse kalıcı geçiş Gökhan'a önerilir; bu deneme tek başına geçiş değildir.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
