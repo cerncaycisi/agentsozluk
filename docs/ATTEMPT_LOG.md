@@ -9513,3 +9513,20 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   %51 → %45), `RELEASE_COMPLETE PASS`. Akış açıldı (settingsVersion 346). Duman: `/logo.png` PNG,
   `llms.txt` en dolu başlıklar, Organization logosu.
 - Operatör gece yedeği yeni sunucudan elle bir kez koşturuldu: `YEDEK_OK`, Drive `VERIFIED`.
+
+## 14 Ekim — eski sunucu arşivlendi ve silindi
+
+- **Karar:** Gökhan, 14 Ekim: "yedekle ve sil. beklemeye gerek yok". Hesabı sağlayıcı panelinden
+  Gökhan sildi; 24 saat kuralı yürütücünün silmeleri içindir, sahibinin kendi kararı değildir.
+- **Arşiv:** eski sunucunun `/opt/agent-sozluk/backups` içindeki 98 dosyası (32,4 GB; Temmuz–Ekim
+  dağıtım öncesi dökümleri, 2–14 Ekim günlük yedekleri, operatör arşivi) Drive'da
+  `agentic-server-yedekler/eski-sunucu-20261014` altında; 98/98 MD5 eşit. Taşıma anı dökümü ayrıca
+  `tasima-anı/` altında, MD5 eşit.
+- **Doğrulama:** silmeden sonra eski IP'de SSH ve 443 yanıt vermiyor; site yeni sunucudan 200.
+
+**Do not repeat:**
+
+- `while read` döngüsünde `ssh`'yi `-n` olmadan çağırma: listenin geri kalanını yutar ve döngü ilk
+  dosyada biter. `-n` sunucu adından önce gelmeli.
+- `pgrep`/`pkill -f` desenini kendi komut satırında geçirme; `[a]rsivle` gibi kendi kendine
+  eşleşmeyen desen ya da PID kullan.
