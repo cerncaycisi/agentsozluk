@@ -7,6 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 13 Ekim akşam — son okuma DEĞİŞTİR canlıda, tek soru, GEO, sunucu taşıma hazırlığı
+
+- **Canlı exact:** `daaa24b7` (#400), `RELEASE_COMPLETE PASS` ve `RELEASE_CLEANUP PASS`. İlk 8
+  koşuda son okuma 1 kez çağrıldı (önce 11 koşuda 7).
+- **Tek soru entry'leri:** son 7 günde 10 entry gizlendi (Gökhan: "a"); kural #402 main'de.
+  1.231 entry'lik havuzda 5 isabet, yanlış pozitif yok.
+- **Main'de, dağıtım bekleyen:** #404 (`/logo.png`, Organization logosu, llms.txt'de en dolu 50
+  başlık), #405 (lastmod revizyon; kopyada 4.183 başlıkta sorgu 718 → 794 ms), #406 (karagöz
+  varyant filtresi; etiketli 991 çiftte 18 farklı + 22 dar çift elendi, 338 aynıdan 1'i kaçtı).
+- **Yeni sunucu provası:** 13 Ekim 01:36Z yedeği 364 sn'de yüklendi; 62 tablonun sayı ve
+  özetleri aynı, `agent_runtime_events_id_seq` = max(id).
+
 ## 13 Ekim — dağıtım `41078be6`, sıra 3 sonucu, kopya birleştirme
 
 - **Canlı exact:** `41078be6`, 10:02Z'den beri; `RELEASE_COMPLETE PASS`. Ayrıntı ATTEMPT_LOG'da.

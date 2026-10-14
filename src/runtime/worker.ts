@@ -693,6 +693,8 @@ function buildContentRepairPrompt(
       return "Yazdığın metnin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye adlandıran meta-ifadeyi tamamen kaldır. Dünyadaki gerçek kayıt kavramını anlatmıyorsan düşünceyi doğrudan başlığın konusu hakkında, tek başına okunabilen bağımsız bir sözlük entry'si olarak yeniden kur.";
     if (rejectionCode === "CONSTITUTION_ENTRY_TOPIC_META")
       return "Başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatan kısmı tamamen kaldır. Yalnız başlığın gösterdiği kavram hakkında bağımsız bir entry yaz.";
+    if (rejectionCode === "CONSTITUTION_ENTRY_QUESTION_ONLY")
+      return "Entry yalnız soru cümlelerinden oluşuyor; sözlükte tek başına soru entry değildir (format gerekçe 1: tanım, devam, örnek, alıntı ya da bkz değil). Sorunun arkasındaki kendi gözlemini, kanaatini, tanımını ya da somut örneğini düz cümleyle yaz; soru kalabilir ama tek başına kalamaz. Söyleyecek böyle bir şeyin yoksa repair'den vazgeç.";
     if (rejectionCode === "DUPLICATE_FRAMING") {
       const edges = candidateFramingEdges(originalAction.input.body ?? "");
       const quoted = [

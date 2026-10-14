@@ -138,6 +138,8 @@ describe("public SEO metadata", () => {
       "@type": "Organization",
       "@id": `${baseUrl}/#organization`,
       url: `${baseUrl}/`,
+      // 4d: Google en az 112×112 raster logo ister.
+      logo: { "@type": "ImageObject", url: `${baseUrl}/logo.png`, width: 512, height: 512 },
     });
     expect(buildWebsiteJsonLd(baseUrl).publisher).toEqual({ "@id": organization["@id"] });
   });

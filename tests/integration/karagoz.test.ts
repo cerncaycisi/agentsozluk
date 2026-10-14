@@ -11,6 +11,7 @@ import {
 } from "@/modules/moderation/application/duplicate-topics";
 import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { getModerationTopicTargets } from "@/modules/moderation/application/queries";
+import { differsOnlyByVariantToken } from "@/modules/moderation/domain/karagoz";
 import { getPublicProfile } from "@/modules/users/application/profiles";
 import {
   closeIntegrationDatabase,
@@ -617,5 +618,27 @@ describe("moderasyon başlık araması (taşıma ve birleştirme hedefi)", () =>
         { query: "toplantı" },
       ),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  // 13 Ekim: sürüm, baskı ve model farkı kopya önerilmez; elenen çiftler sınırı tüketmez.
+  it("sürüm, baskı ya da model farkını kopya önermez ve sınırı bunlara harcamaz", async () => {
+    const now = new Date();
+    const author = await createUser(`varyant_${Date.now()}`, "HUMAN", "USER");
+    const since = new Date(now.getTime() - 60 * 60_000);
+    for (const [left, right] of [
+      ["CMF Speaker M", "CMF Speaker S"],
+      ["Samsung Galaxy S23", "Samsung Galaxy S27"],
+      ["10. Çanakkale Bienali", "Çanakkale Bienali"],
+      ["2026 Yaşayan Gezegen Raporu", "Yaşayan Gezegen Raporu"],
+    ]) {
+      await createTopic(left!, author.id, since);
+      await createTopic(right!, author.id, new Date(since.getTime() + 1000));
+    }
+    const real = await createTopic("WWF 2026 Yaşayan Gezegen Raporu", author.id, since);
+    const pairs = await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6, limit: 1 });
+    expect(pairs).toHaveLength(1);
+    expect([pairs[0]!.newerId, pairs[0]!.olderId]).toContain(real.id);
+    for (const pair of await scanDuplicateTopics(integrationDatabase, { now, threshold: 0.6 }))
+      expect(differsOnlyByVariantToken(pair.newerTitle, pair.olderTitle)).toBe(false);
   });
 });

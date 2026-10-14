@@ -3,6 +3,7 @@ export interface ConstitutionalWritingIssue {
     | "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE"
     | "CONSTITUTION_ENTRY_SELF_META"
     | "CONSTITUTION_ENTRY_TOPIC_META"
+    | "CONSTITUTION_ENTRY_QUESTION_ONLY"
     | "CONSTITUTION_TOPIC_FORUM_PROMPT"
     | "CONSTITUTION_TOPIC_DIRECT_ADDRESS"
     | "CONSTITUTION_TOPIC_QUESTION_ANSWER"
@@ -11,7 +12,7 @@ export interface ConstitutionalWritingIssue {
     | "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT"
     | "CONSTITUTION_TOPIC_UNESTABLISHED_PAIR"
     | "CONSTITUTION_TOPIC_SUBJECT_MISMATCH";
-  article: 14 | 15 | 27 | 30 | 31 | 32 | 36;
+  article: 13 | 14 | 15 | 27 | 30 | 31 | 32 | 36;
   reason: string;
 }
 
@@ -42,7 +43,10 @@ function withoutQuotedOrBkzText(value: string): string {
     .replaceAll(/\(bkz:\s*[^\)\n]{1,100}\s*\)/giu, " ");
 }
 
-export function constitutionalEntryWritingIssue(body: string): ConstitutionalWritingIssue | null {
+export function constitutionalEntryWritingIssue(
+  body: string,
+  options: { topicTitle?: string | undefined } = {},
+): ConstitutionalWritingIssue | null {
   const normalized = withoutQuotedOrBkzText(body)
     .normalize("NFKC")
     .toLocaleLowerCase("tr-TR")
@@ -95,7 +99,111 @@ export function constitutionalEntryWritingIssue(body: string): ConstitutionalWri
       reason:
         "Anayasa Madde 14: Entry kavramı anlatmalı; başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatamaz.",
     };
+  if (singleQuestionEntry(body) && !questionCategoryTitle(options.topicTitle))
+    return {
+      code: "CONSTITUTION_ENTRY_QUESTION_ONLY",
+      article: 13,
+      reason:
+        "Anayasa Madde 13 (format gerekçe 1): Entry yalnız soru cümlelerinden oluşuyor; tanım, devam, örnek, alıntı veya bkz işlevi taşımıyor.",
+    };
   return null;
+}
+
+/*
+  Gökhan, 13 Ekim (entry 23884): "tanım tanım devamı örnek alıntı veya bkz değil". Kapsam bilinçli
+  olarak dardır: gövde TEK bir soru cümlesidir — soru işaretiyle biter, içinde başka cümle sınırı
+  ya da satır sonu yoktur. Canlıdaki vakaların hepsi bu biçimde. Çok cümleli ihlaller ("Dr.
+  kimdi?" gibi) ve soru işaretsiz "Neydi bu ya" bu kuralın dışında kalır; onları yazım talimatı ve
+  moderasyon taşır. Cümle bölmeye dayalı genişletmeler her hakem turunda yeni yanlış ret ve kaçak
+  açtı (Astra 2 tur, Sol 6.1 1 tur, 13 Ekim).
+
+  - Geçerli bkz (hedef harf taşır ya da #1 ve üstü) ya da kapanmış alıntı taşıyan gövde kurala
+    girmez.
+  - Başlık soruları kategori olarak adlandırıyorsa ("açık uçlu soru örnekleri") soru, kategorinin
+    örneğidir (Madde 9).
+*/
+function questionCategoryTitle(title: string | undefined): boolean {
+  if (!title) return false;
+  // Tam sözcük: "soru", "sorular", "soruları", "sorusu" — "sorun", "sorumluluk", "soruşturma" değil.
+  return /(?:^|[^\p{L}])soru(?:lar|ları|su)?(?![\p{L}])/u.test(title.toLocaleLowerCase("tr-TR"));
+}
+
+/*
+  Kapanmış bir çift: açılıştan sonra aynı satırda kapanış ve koşulu sağlayan içerik. Satır satır,
+  ilk eşleşmede durarak ve ilk kapanışsız açılıştan sonra o satırı bırakarak taranır; toplam süre
+  doğrusaldır (Sol 6.1, 13 Ekim).
+*/
+function hasClosedSpan(
+  text: string,
+  open: string,
+  close: string,
+  accept: (span: string) => boolean,
+): boolean {
+  for (const line of text.split("\n")) {
+    let start = line.indexOf(open);
+    while (start !== -1) {
+      const from = start + open.length;
+      const end = line.indexOf(close, from);
+      if (end === -1) break;
+      if (accept(line.slice(from, end))) return true;
+      start = line.indexOf(open, end + close.length);
+    }
+  }
+  return false;
+}
+
+function hasEntryFunctionSpan(text: string): boolean {
+  const quotes: Array<[string, string]> = [
+    ["“", "”"],
+    ['"', '"'],
+    ["«", "»"],
+    ["‘", "’"],
+  ];
+  if (quotes.some(([open, close]) => hasClosedSpan(text, open, close, (span) => span.length > 0)))
+    return true;
+  if (hasClosedSpan(text, "[[", "]]", (span) => /\p{L}/u.test(span))) return true;
+  return hasClosedSpan(text.toLocaleLowerCase("tr-TR"), "(bkz:", ")", (span) => {
+    const target = span.trim();
+    return /^#[1-9]\d*$/u.test(target) || /\p{L}/u.test(target);
+  });
+}
+
+const letter = /\p{L}/u;
+const terminal = new Set([".", "!", "?", "…", ";"]);
+const closer = new Set(['"', "'", "”", "’", "»", ")", "]"]);
+
+/*
+  Regex yerine tek geçişli tarama (Sol 6.1, 13 Ekim): sondaki emoji/parantez/tırnak atılır, son
+  terminal işaret dizisi "?" içermelidir; ondan önce "terminal + kapanış* + boşluk" ya da satır sonu
+  görülürse gövde tek cümle değildir. Her konum bir kez ziyaret edilir; uzunluk sınırı yoktur.
+  Muafiyet de aynı normalize metne bakar ("＂…＂", "（ｂｋｚ： …）").
+*/
+function singleQuestionEntry(body: string): boolean {
+  const normalized = body.normalize("NFKC");
+  const chars = [...normalized.replace(/\p{N}\uFE0F?\u20E3/gu, "").trim()];
+  let end = chars.length;
+  while (
+    end > 0 &&
+    !letter.test(chars[end - 1]!) &&
+    !/\p{N}/u.test(chars[end - 1]!) &&
+    !terminal.has(chars[end - 1]!)
+  )
+    end -= 1;
+  let tail = end;
+  while (tail > 0 && terminal.has(chars[tail - 1]!)) tail -= 1;
+  if (tail === end || !chars.slice(tail, end).includes("?")) return false;
+  let sawLetter = false;
+  for (let index = 0; index < tail; index += 1) {
+    const char = chars[index]!;
+    if (char === "\n") return false;
+    if (letter.test(char)) sawLetter = true;
+    if (!terminal.has(char)) continue;
+    let next = index + 1;
+    while (next < tail && (terminal.has(chars[next]!) || closer.has(chars[next]!))) next += 1;
+    if (next < tail && /\s/u.test(chars[next]!)) return false;
+    index = next - 1;
+  }
+  return sawLetter && !hasEntryFunctionSpan(normalized);
 }
 
 // Madde 32'nin kendi testi: "haber sitesinin manşeti ertesi gün değişse bile bu

@@ -56,22 +56,19 @@ Son otorite güncellemesi: 3 Ekim 2026; tarihsel gövde kendi ölçüm tarihleri
     düzenlenebilir.
   - Atomik karar yolu (`decision-batch.ts`) `contextHash` değerini `recordRuntimeActions`'a
     aktarmıyor; eski görüntüyle verilen kararda `AGENT_CONTEXT_STALE` üretilmiyor.
-- **Entry düzenlemesi başlığın site haritası tarihini değiştirmiyor (Astra, IndexNow incelemesi,
-  12 Ekim; main'de):** site haritası `topic.updatedAt` yayımlıyor; entry metni düzenlenince bu
-  tarih değişmiyor. Arama motoru ve IndexNow betiği değişikliği görmüyor. Tarih, başlıktaki
-  görünür entry'lerin en son içerik revizyonundan türetilmeli.
 - **Toplu "geri aç" yeniden denemesi yeni idempotency anahtarı üretiyor (Sol 6.1, tek tık incelemesi,
   12 Ekim; main'de):** yanıtı kaybolan bir geri açma yeniden denenirse yeni komut olarak işlenir.
   Seçime bağlı sabit anahtar denendi; araya giren gizleme ve seçim sırası yüzünden eski yanıtı
   oynatma ve `IDEMPOTENCY_CONFLICT` sorunları çıkardığı için geri alındı. Doğru çözüm, komutun
   sonucu belirsiz kaldığında sunucudan durumu sorup kullanıcıya göstermek.
-- **Karagöz öneri kalitesi (13 Ekim, ilk canlı tarama, 4 rapor):**
-  - Ters yön raporu (kaynağın açık raporu varsa) genel başlığı özel başlığa birleştirmeyi
-    önerebiliyor: "Yaşayan Gezegen Raporu" → "2026 Yaşayan Gezegen Raporu".
-  - Tek harfle ayrılan model adları kopya sayılıyor: "CMF Speaker M" ↔ "CMF Speaker S" (0,80).
-  - Beklenen benzersizlik çakışması (`REPORT_ALREADY_OPEN` yolu) Prisma hata günlüğüne de düşüyor;
-    servis başarılı bitiyor ama günlük yanıltıcı.
-  - Raporlar panelde reddedilebilir; düzeltme ölçümle (yanlış pozitif oranı) yapılır.
+- **Karagöz öneri kalitesi (13 Ekim, ilk canlı tarama, 4 rapor):** sürüm/baskı/model farkı
+  ("CMF Speaker M/S", "10. Çanakkale Bienali", "2026 Yaşayan Gezegen Raporu") 13 Ekim'de elendi;
+  genel→özel ters öneri örneği de bununla düştü. Kalan: beklenen benzersizlik çakışması
+  (`REPORT_ALREADY_OPEN` yolu) Prisma hata günlüğüne düşüyor; servis başarılı bitiyor ama günlük
+  yanıltıcı.
+- **`withoutQuotedOrBkzText` regex'i kapanmayan çok sayıda tırnakta karesel (Sol 6.1, 13 Ekim;
+  main'de):** `constitution-writing-policy.ts` alıntı temizleme kalıbı, 10.000 karakterlik gövdede
+  en kötü ~0,2 sn sürüyor. Gövde sınırı bunu sınırlıyor; doğrusal tarayıcıyla değiştirilmeli.
 - **CI'da kararsız test: `tests/integration/great-reset-namespace.test.ts` (12–13 Ekim):** kodla
   ilgisiz olarak arada bir `OTHER_DATABASE_CONNECTIONS` ya da `agent_sources` üzerinde 55P03 kilit
   hatasıyla düşüyor. Yalnız belge değiştiren bir commit'te (`f52949c5`) de düştü; yeniden koşu

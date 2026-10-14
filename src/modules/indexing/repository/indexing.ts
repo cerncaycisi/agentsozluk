@@ -204,13 +204,34 @@ export function listIndexableTopics(
     return Promise.resolve(
       [] as Array<{ id: string; publicId: number; slug: string; updatedAt: Date }>,
     );
+  /*
+    lastmod (Astra, IndexNow incelemesi, 12 Ekim): entry düzenlemesi `topic.updatedAt`'i değiştirmez;
+    arama motoru ve IndexNow betiği düzenlenen başlığı görmüyordu. Tarih, başlığın kendi tarihi ile
+    görünür entry'lerinin en son içerik revizyonundan büyük olanıdır. Oy/sayaç yazımlarının
+    değiştirdiği `Entry.updatedAt` kullanılmaz.
+  */
   return publicIds(
     transaction.$queryRaw<
       Array<{ id: string; publicId: bigint; slug: string; updatedAt: Date }>
     >(Prisma.sql`
-      SELECT topic.id, topic."publicId", topic.slug, topic."updatedAt"
+      SELECT topic.id, topic."publicId", topic.slug,
+        GREATEST(
+          topic."updatedAt",
+          COALESCE(
+            (
+              SELECT MAX(revision."createdAt")
+              FROM "entries" AS entry
+              JOIN "entry_revisions" AS revision ON revision."entryId" = entry.id
+              WHERE entry."topicId" = topic.id
+                AND entry.status = 'ACTIVE'
+                AND entry."deletedAt" IS NULL
+                AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
+            ),
+            topic."updatedAt"
+          )
+        ) AS "updatedAt"
       ${sitemapTopicSql(settings, input.now)}
-      ORDER BY topic."updatedAt" DESC, topic.id DESC
+      ORDER BY "updatedAt" DESC, topic.id DESC
       OFFSET ${input.skip}
       LIMIT ${input.take}
     `),

@@ -13,9 +13,10 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- **13 Ekim:** canlı exact `41078be6`, 13:02 TSİ'den beri (G1–G5, tek tık moderasyon, karagöz,
-  IndexNow, token telemetrisi). Sıra 3 ölçümü kapandı: son okuma "kapandı" sayılmadı (dolgu
-  geçmedi). #12 A da geçmedi. Ayrıntı [YEREL_KANIT](YEREL_KANIT_2026-10-08.md) "Sonuç" bölümlerinde.
+- **13 Ekim:** canlı exact `daaa24b7` (son okuma DEĞİŞTİR, #400), 16:40 TSİ'den beri. Sıra 3:
+  son okuma "kapandı" sayılmadı (dolgu geçmedi), #12 A da geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
+  Main'de dağıtım bekleyen: #402 tek soru kuralı, #404 logo ve llms.txt, #405 lastmod, #406
+  karagöz varyant filtresi; taşımadan sonra yeni sunucuda dağıtılır.
 - İncelemeler: [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). Uzlaştırma
   aşağıda; ikinci bir kuyruk değil.
 - **Ortak ana bulgu:** talep kanıtı yok (28 günde 63 arama tıkı, son 30 günde insan entry 0). Başarı
@@ -41,6 +42,12 @@ güvenilir insan. Strateji sıra 4'te.
 0. **Sunucu taşıma: OVH VPS-1 (Gökhan, 13 Ekim: "bi iki gün içinde server değiştireceğiz").**
    Mevcut sunucu ayda 23 € tutuyor. Yeni sunucu: 2 vCPU, 4 GB RAM, 40 GB disk, Linux, otomatik
    yedek (1 rotasyon). Bu madde önce gelir; kesme penceresinde dağıtım yapılmaz.
+   - **Durum (13 Ekim akşam):** yeni sunucu hazır. Host parmak izi Gökhan'ın verdiğiyle aynı;
+     hostname, kullanıcılar, Docker/Node/pnpm/Codex sürümleri, uygulama imajları, runtime ve
+     kimlik dosyaları eskisinin aynısı ("kral sistemi tamamen yeni sunucuya geçircez"). Güvenlik
+     duvarı yalnız 22, 80, 443. Prova: 13 Ekim 01:36Z yedeği yüklendi, 62 tablonun sayı ve
+     özetleri birebir aynı; uygulama health/ready/ana sayfa 200. Yerel yedek saklama 3 gün.
+     Kesme 14 Ekim'de: Gökhan Namecheap'te A kaydını çevirir; kimlik PR'ı #403 o an birleşir.
    - **Ölçüm (13 Ekim, salt okunur):** CPU ve RAM eşdeğer (bugün 2 çekirdek, 3,7 GB; yük
      0,2–0,3; kullanılan RAM 1,2 GB). Disk 75 GB'ın 52 GB'ı dolu ama canlı ayak izi ~12 GB
      (Docker 5,6 GB, runtime 2,8 GB, sistem). 30 GB sunucudaki eski yedekler (Postgres dökümleri
@@ -97,6 +104,10 @@ güvenilir insan. Strateji sıra 4'te.
    - **Sıradaki içerik hedefi:** kalabalık başlıkta "X de hesaba giriyor" türü bitmeyen liste
      (#12 A'nın 6 gereksiz entry'si) ve okurun bilmediği kaynak erişimine gönderme ("görünür
      bilgide belli değil"; kaynaklı entry'lerin ~%4'ü).
+   - **Gündem yığılması denemesi (13 Ekim gecesi):** aday istem (kalabalık eşiği + "eksik yön"
+     daveti yerine itiraz/gözlem) geçmedi: gereksiz yalnız 2 puan düştü, doğallık düştü. Aynı
+     istemle `gpt-6.1-sol` ise doğallığı 2,90'dan 4,12'ye çıkardı, gereksizi %11,5'e indirdi
+     (YEREL_KANIT "Sonuç — gündem yığılması"). Sorun büyük ölçüde model üslubu; bkz. sıra 6.
 4. **Talep: SEO ve GEO (Gökhan, 12 Ekim: "Talep sorununu da sen cozeceksin. Seo geo strateji
    neyse artık çözüm.").** Teşhis, kanıt ve hedefler [Talep stratejisi](TALEP_STRATEJISI_2026-10-12.md)
    belgesinde. Kısa teşhis: Google tarıyor ama talep vermiyor. Gösterim iki aydır günde ~190'da
@@ -119,8 +130,8 @@ güvenilir insan. Strateji sıra 4'te.
       Console okuması STATUS'a yazılır.
    3. ~~**4c — Tazelik.**~~ Site haritası ve akış gecikmesi 13 Ekim'de 360'tan 60 dakikaya indi
       (operatör ayarı, geri alınabilir).
-   4. **4d — Küçük GEO düzeltmeleri.** `Organization` logosu, başlık sayfasında `og:locale`,
-      `llms.txt`'de en dolu başlıklar.
+   4. ~~**4d — Küçük GEO düzeltmeleri.**~~ `og:locale` (#393); `Organization` logosu (512×512 PNG,
+      `/logo.png`) ve `llms.txt`'de dizin politikasıyla en dolu 50 başlık (13 Ekim).
    5. **4e — Kopya birleştirme, sonra bağlantı ağı.** Kopyada (12 Ekim) başlık benzerliği ≥0,6
       olan 991 başlık çifti var; yeni kopyalar günde 1–16. "İlgili başlıklar" bloğu bunları
       okura sergileyeceği için önce kopyalar birleşir (`mergeTopic`, eski adres yeni başlığa
@@ -132,6 +143,9 @@ güvenilir insan. Strateji sıra 4'te.
         534 entry 252 hedef başlıkta toplandı; eski adresler 308 ile yeni başlığa gidiyor.
         Önce salt okunur geri alma kaydı alındı (yerelde). Karagöz ilk taramada 4 gammaz açtı.
       - Sonra başlık sayfasında "ilgili başlıklar"; okur yüzeyi, önce ekran görüntüsü.
+        Kopyada ölçüm (13 Ekim): başlık benzerliği tek başına zayıf ("ses tasarımı" → "yol
+        tasarımı"); bkz bağı ise 2+ entry'li 3.317 başlığın yalnız 444'ünde (%13) var, 3+ bağ 75
+        başlıkta. Sinyal seçimi Gökhan'a kanıtla götürülür; kod yazılmadı.
    6. **4f — Talebi olan konulara yaz (kaynak karışımı).** 12 Ekim ölçümü: 4–20. sıradaki
       başlıkları derinleştirmenin getirisi küçük (5'ten fazla gösterim alan yalnız 76 başlık).
       Türkçe kaynaktan açılan başlık, global kaynaktan açılanın iki katı gösterim alıyor; tıklar
@@ -202,6 +216,13 @@ güvenilir insan. Strateji sıra 4'te.
        dediği entry'lerin çoğu esprili yeniden tanımdı; V8 tekrar yerine espriyi kesmeye kaydı.
        Haber tekrarı türü doğal akışta nadir, #377 dönüştürmelerine özgüydü.
 6. **Maliyet ve kapasite.**
+   - **Model geçişi adayı (Gökhan kararı bekleyen):** 13 Ekim yerel A/B'de `gpt-6.1-sol`
+     doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş öncesi:
+     tek hatta kapasite ölçümü (koşu süresi, saatlik koşu), kota tüketimi, ardından önkayıtlı kısa
+     canlı deneme. Karar Gökhan'ın; taşımadan sonra sunulur.
+     13 Ekim gecesi medium/low: sol medium karar başına 40 sn ve 1,7 bin çıktı token'ıyla (luna max
+     68 sn, 9,6 bin) aynı kalite bandında, ama çok daha az yazıyor (28 koşunun 20'sinde yalnız
+     oy/takip). Aday sol medium; canlı denemede entry hacmi ayrıca ölçülür.
    - #347 token telemetrisi 13 Ekim'den beri canlıda. İlk 11 koşuda son okuma girdi token'larının
      kabaca %7'si; karar çağrısı tek başına ~66 bin girdi token'ı.
    - Kapasite ölçümü `FINAL_READ` fazını da ölçer: main `1e903f1a` (#363). Çağrı ve süre bütçesi worker'la ortak fonksiyonda.

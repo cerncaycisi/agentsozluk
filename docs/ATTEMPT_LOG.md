@@ -9451,3 +9451,22 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
 
 - Doğrulama sorgusunda koşu durum kolonu `runStatus`; `status` yazınca bekleme döngüsü bir saat
   boyunca boşa hata bastı.
+
+## 13 Ekim — yalnız soru entry kuralı (#402)
+
+- **Kapsam:** Gökhan (entry 23884): "tanım tanım devamı örnek alıntı veya bkz değil". Son 7 günde
+  10 tek soru entry'si geri alınabilir biçimde gizlendi (Gökhan: "a"). Kod: tek soru cümlesinden
+  oluşan entry `CONSTITUTION_ENTRY_QUESTION_ONLY` (Madde 13) ile reddedilir ve onarılabilir.
+- **Hakem:** Astra 2 tur (NO-GO, NO-GO), ardından Sol 6.1 4 dar tur (NO-GO ×3, 4. tur GO,
+  `ae5437d6`).
+- **Seyir:** cümle bölmeye dayalı ilk tasarım her turda yeni yanlış ret ve kaçak açtı (kısaltma,
+  URL, sayısal cevap, kategori başlığı, tırnak, bkz). Sol 1. turdan sonra kural tek soru cümlesine
+  daraltıldı. Kalan turlar karesel tarama ve normalizasyon tutarlılığı içindi.
+- **Ölçüm:** sıra 3 havuzundaki 1.231 entry'de 5 isabet; hepsi gizlenen tek soru entry'leri,
+  yanlış pozitif yok.
+
+**Do not repeat:**
+
+- Biçim kuralını regex'le "cümlelere bölerek" kurma; dar ve tek geçişli tanım seç, kapsam dışını
+  testte açıkça yaz.
+- Uzunluk sınırını performans için koyma; sınır kaçak açar. Taramayı doğrusal yaz.

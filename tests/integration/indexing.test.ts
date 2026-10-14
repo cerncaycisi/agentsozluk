@@ -489,6 +489,74 @@ describe("indexing policy with PostgreSQL", () => {
     ).toEqual([topic.id]);
   });
 
+  // Astra (IndexNow incelemesi, 12 Ekim): entry düzenlemesi başlığın lastmod'unu ilerletmeli.
+  it("advances a topic's sitemap lastmod when a visible entry is revised", async () => {
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const human = await createUser("HUMAN", "lastmod");
+    const createdAt = new Date(now.getTime() - 7 * 60 * 60_000);
+    const topic = await integrationDatabase.topic.create({
+      data: {
+        title: "Lastmod revision topic",
+        normalizedTitle: "lastmod revision topic",
+        slug: "lastmod-revision-topic",
+        createdById: human.id,
+        createdAt,
+      },
+    });
+    const addEntry = (body: string) =>
+      integrationDatabase.entry.create({
+        data: {
+          topicId: topic.id,
+          authorId: human.id,
+          body,
+          normalizedBody: body.toLocaleLowerCase("tr-TR"),
+          origin: "WEB",
+          createdAt,
+        },
+      });
+    const first = await addEntry(
+      "İlk görünür entry, lastmod sınaması için yeterince uzun bir gövde.",
+    );
+    const second = await addEntry("İkinci görünür entry; başlığı ince olmaktan çıkarır.");
+    const lastmodOf = async () =>
+      (await getSitemapTopics(integrationDatabase, { page: 0, pageSize: 50, now })).find(
+        ({ id }) => id === topic.id,
+      )?.updatedAt;
+    const { updatedAt: topicUpdatedAt } = await integrationDatabase.topic.findUniqueOrThrow({
+      where: { id: topic.id },
+      select: { updatedAt: true },
+    });
+    expect(await lastmodOf()).toEqual(topicUpdatedAt);
+
+    const revisedAt = new Date(topicUpdatedAt.getTime() + 60 * 60_000);
+    await integrationDatabase.entryRevision.create({
+      data: {
+        entryId: first.id,
+        body: "düzenlenmiş gövde",
+        editedById: human.id,
+        createdAt: revisedAt,
+      },
+    });
+    expect(await lastmodOf()).toEqual(revisedAt);
+
+    // Gizli entry'nin revizyonu herkese açık tarihi ilerletmez.
+    await integrationDatabase.entry.update({
+      where: { id: second.id },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    await integrationDatabase.entryRevision.create({
+      data: {
+        entryId: second.id,
+        body: "gizli düzenleme",
+        editedById: human.id,
+        createdAt: new Date(revisedAt.getTime() + 60 * 60_000),
+      },
+    });
+    await addEntry("Üçüncü görünür entry; başlık iki görünür entry'yle dolu kalsın.");
+    const after = await lastmodOf();
+    expect(after?.getTime()).toBeLessThan(revisedAt.getTime() + 60 * 60_000);
+  });
+
   it("counts today's sitemap additions on the Europe/Istanbul date boundary", async () => {
     const admin = await createUser("HUMAN", "timezone");
     const now = new Date("2026-07-18T22:00:00.000Z");

@@ -24,6 +24,7 @@ import {
   getPublicTopicEntrySummary,
   getTopicSnippetEntry,
   isFollowingTopic,
+  listDensestTopicDirectory,
   listTopicDirectoryPage,
   lockTopicState,
   lockTopicTitles,
@@ -144,6 +145,18 @@ export async function getTopicDirectoryPage(
       dynamicIndexingDisabled: policy.dynamicIndexingDisabled,
     };
   });
+}
+
+/**
+ * En dolu indekslenebilir başlıklar (llms.txt, talep stratejisi 4d). Dizin ve site haritasıyla aynı
+ * politika: indeksleme kapalıysa boş liste.
+ */
+export async function getDensestIndexableTopics(client: DatabaseClient, limit: number) {
+  const policy = await getIndexableTopicPolicy(client);
+  if (policy.dynamicIndexingDisabled) return [];
+  return inTransaction(client, (transaction) =>
+    listDensestTopicDirectory(transaction, policy.where, Math.max(1, Math.min(200, limit))),
+  );
 }
 
 /** Başlık sayfasının meta description'ı için en yüksek puanlı görünür entry. */
