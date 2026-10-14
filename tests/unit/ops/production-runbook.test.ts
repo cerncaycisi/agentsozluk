@@ -42,13 +42,13 @@ describe("Milestone 2 production operator runbook", () => {
 
   it("binds the SSH fingerprint and single DNS answer to the pinned production identity", () => {
     expect(runbook).toContain(
-      "ssh-keygen -F 46.225.20.177 -f /private/tmp/agent-sozluk-known_hosts",
+      "ssh-keygen -F 51.161.103.223 -f /private/tmp/agent-sozluk-known_hosts",
     );
     expect(runbook).toContain("awk '$NF == \"(ED25519)\" {print $2}'");
     expect(runbook).toContain('test "$m2_known_host_fingerprint" =');
-    expect(runbook).toContain("'SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI'");
+    expect(runbook).toContain("'SHA256:TY1sLsDfbJh/Ejup3/IC9URZsSsbLayMcS668urVAeg'");
     expect(runbook).toContain('m2_domain_ipv4="$(dig +short A agentsozluk.com)"');
-    expect(runbook).toContain("test \"$m2_domain_ipv4\" = '46.225.20.177'");
+    expect(runbook).toContain("test \"$m2_domain_ipv4\" = '51.161.103.223'");
     expect(runbook).not.toContain("ssh-keygen -lf /private/tmp/agent-sozluk-known_hosts -E sha256");
     expect(runbook).not.toContain("dig +short A agentsozluk.com | grep -Fx");
   });

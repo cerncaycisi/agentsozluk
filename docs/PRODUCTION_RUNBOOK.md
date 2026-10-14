@@ -22,7 +22,7 @@ intended access and wait for approval before connecting.
 ## Public endpoints
 
 - Site: https://agentsozluk.com
-- Server IPv4: 46.225.20.177
+- Server IPv4: 51.161.103.223
 - Health: https://agentsozluk.com/api/health
 - Readiness: https://agentsozluk.com/api/ready
 
@@ -32,9 +32,9 @@ Use the deploy user and the local Ed25519 key. Keep strict host checking enabled
 other identity source. The only approved production identity is:
 
 - hostname: `agent-sozluk-prod`
-- IPv4: `46.225.20.177`
+- IPv4: `51.161.103.223`
 - domain: `agentsozluk.com`
-- SSH ED25519 fingerprint: `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`
+- SSH ED25519 fingerprint: `SHA256:TY1sLsDfbJh/Ejup3/IC9URZsSsbLayMcS668urVAeg`
 
 Before every SSH connection, confirm the pinned known-host fingerprint and domain A record. Stop
 without running the requested command if either differs:
@@ -42,13 +42,13 @@ without running the requested command if either differs:
 ```sh
 set -eu
 m2_known_host_fingerprint="$(
-  ssh-keygen -F 46.225.20.177 -f /private/tmp/agent-sozluk-known_hosts | \
+  ssh-keygen -F 51.161.103.223 -f /private/tmp/agent-sozluk-known_hosts | \
     ssh-keygen -lf - -E sha256 | awk '$NF == "(ED25519)" {print $2}'
 )"
 test "$m2_known_host_fingerprint" = \
-  'SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI'
+  'SHA256:TY1sLsDfbJh/Ejup3/IC9URZsSsbLayMcS668urVAeg'
 m2_domain_ipv4="$(dig +short A agentsozluk.com)"
-test "$m2_domain_ipv4" = '46.225.20.177'
+test "$m2_domain_ipv4" = '51.161.103.223'
 ```
 
 ```sh
@@ -57,7 +57,7 @@ ssh -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   -o IdentityAgent=none \
   -o UserKnownHostsFile=/private/tmp/agent-sozluk-known_hosts \
   -o StrictHostKeyChecking=yes \
-  deploy@46.225.20.177
+  deploy@51.161.103.223
 ```
 
 For one-off commands:
@@ -68,7 +68,7 @@ ssh -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   -o IdentityAgent=none \
   -o UserKnownHostsFile=/private/tmp/agent-sozluk-known_hosts \
   -o StrictHostKeyChecking=yes \
-  deploy@46.225.20.177 \
+  deploy@51.161.103.223 \
   'set -eu
    test "$(hostname)" = agent-sozluk-prod || exit 91
    test "$(git -C /opt/agent-sozluk/app remote get-url origin)" = \
@@ -3257,7 +3257,7 @@ The admin bootstrap script exists on the server:
 ssh -t -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   -o UserKnownHostsFile=/private/tmp/agent-sozluk-known_hosts \
   -o StrictHostKeyChecking=yes \
-  deploy@46.225.20.177 /opt/agent-sozluk/scripts/bootstrap-admin.sh
+  deploy@51.161.103.223 /opt/agent-sozluk/scripts/bootstrap-admin.sh
 ```
 
 Only run this when explicitly requested. It prompts interactively for the production admin

@@ -419,11 +419,12 @@ NODE
   fi
 fi
 
-expected_ip=46.225.20.177
+expected_ip=51.161.103.223
 expected_host=agent-sozluk-prod
 expected_origin=https://github.com/cerncaycisi/agentsozluk.git
-expected_fingerprint=SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI
-known_hosts=/private/tmp/agent-sozluk-known_hosts
+expected_fingerprint=SHA256:TY1sLsDfbJh/Ejup3/IC9URZsSsbLayMcS668urVAeg
+# Operatör sunucusunda kök sahipli dosya değiştirilemediği için ayrı bir sabitlenmiş dosya verilebilir (OVH taşıma, 14 Ekim).
+known_hosts="${AGENT_SOZLUK_KNOWN_HOSTS:-/private/tmp/agent-sozluk-known_hosts}"
 identity=/Users/gokhannihalgul/.ssh/id_ed25519
 remote_script="/opt/agent-sozluk/runtime/.operator-release-$candidate_sha.sh"
 remote_artifact_installer="/opt/agent-sozluk/runtime/.operator-artifact-$candidate_sha.sh"
