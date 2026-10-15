@@ -9576,8 +9576,22 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   yoklaması luna-max (57 sn) ve sol-medium (27 sn) ile geçti.
 - **Yan bulgu:** shell kapalıyken `0.144.6` modele exec, web, MCP ve alt ajan araçları sundu ve
   bunları yürüttü. Ayrıntı CODEX_CREDENTIAL_EXPOSURE "15 Ekim" bölümünde.
-- **Düzeltme:** üç katman — kapatma bayrakları, her çağrıdan önce `features list` doğrulaması,
-  `CODEX_TOOL_ITEM`. Astra 1. tur NO-GO verdi; bulguları kapatıldı (bkz PR).
+- **Düzeltme (#415):**
+  - kapatma bayrakları ve 0.160.0'dan itibaren alt ajan sınırı;
+  - her çağrıdan önce `features list` doğrulaması;
+  - `CODEX_TOOL_ITEM` ve `CODEX_EVENT_STREAM_INVALID`;
+  - worker'da her fazda ihlal kilidi.
+- **Hakem (#415):**
+  - Astra (`gpt-6-astra`, xhigh), 2 tur:
+    - `6aed9707` NO-GO (6 bulgu);
+    - `48d51aa6` NO-GO (8 bulgu; worker'ın fail-open fazları ihlali yutuyordu).
+  - Ardından Sol 6.1 (`gpt-6.1-sol`, xhigh), dar turlar:
+    - `4ba3b707` NO-GO (5 açık);
+    - `38922f6b` NO-GO (3 açık);
+    - `a25fbb4e` NO-GO. Kod bulguları kapandı, yalnız operatör betiğinde süre açığı kaldı.
+    - 4. tur NO-GO: uzak süre, SSH gecikmesini saymıyordu.
+    - 5. tur **GO**: betik düzeltmesi, depo aynı SHA `a25fbb4e`.
+  - Operatör betikleri depo dışında: `gecis.sh`, `cli-gecis.sh`, `izle.sh`, `duraklat.sh`.
   - `unified_exec=false`, `0.160.0`'da etkisiz; doğrulama bunu yakaladı ve özellik listeden çıktı.
   - `multi_agent=false` alt ajanı kapatmıyor.
   - `agents.max_concurrent_threads_per_session=1`, `0.144.6`'da yapılandırma hatası veriyor.
