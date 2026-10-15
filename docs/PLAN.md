@@ -182,8 +182,9 @@ güvenilir insan. Strateji sıra 4'te.
      "Sonuç — sol medium canlı deneme".
      Gökhan 14 Ekim'de deneme yönetimini ve geçiş kararını Claude + Astra'ya bıraktı: "ok siz yönetin
      astra ile beraber". Sıradaki adımlar:
-     - model araçlarını kapat ve doğrula (#415; kanıt betiği makbuzu dağıtımdan sonra);
-     - üretim CLI'ını `0.160.0` yap, luna ile doğrula (otomatik geri dönüşlü izleme);
+     - ~~model araçlarını kapat ve doğrula~~ #415 canlıda (`8c202afd`), kanıt betiği 8/8 temiz;
+     - ~~üretim CLI'ını `0.160.0` yap~~ 15 Ekim 10:29Z; luna p50/p95 ilk 12 saatte L1 ile
+       karşılaştırılır (otomatik geri dönüşlü izleme);
      - sol'u üretim CLI'ında tek koşuyla dene;
      - sol-medium ile tek hatta kapasite ölçümü ve kota okuması yap;
      - yeni önkayıtla denemeyi yeniden başlat.

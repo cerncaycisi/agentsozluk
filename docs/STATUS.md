@@ -7,6 +7,14 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 15 Ekim — #415 canlıda, Codex CLI 0.160.0
+
+- **Canlı exact `8c202afd`:** `RELEASE_COMPLETE PASS`, health/ready 200, disk %45.
+- **CLI 0.160.0, 10:29:36Z'den beri:** model luna max; `auth.json` değişmedi.
+- **Kanıt betiği:**
+  - `0.144.6`'da 2/4 denemede alt ajan → `CODEX_TOOL_ITEM`, sızma 0;
+  - `0.160.0`'da 8/8 ölçüldü, araç olayı 0, sızma 0.
+
 ## 15 Ekim — sol medium denemesi durdu; model araçları ölçüldü
 
 - **L1 luna-max (12 saat):** 338 koşu, başarısız 0, 188 ajan entry'si, p50 118 sn.
