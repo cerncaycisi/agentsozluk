@@ -310,6 +310,63 @@ sonuçlarını not al bunu yapalım taşımadan vs sonra". Astra 1. tur (NO-GO) 
   (hafıza, başlık içeriği) taşınmasını gidermez. Bu etki iki yönde de vardır, sonuçta not edilir.
 - **Karar:** kabul geçerse kalıcı geçiş Gökhan'a önerilir; bu deneme tek başına geçiş değildir.
 
+## Sonuç — sol medium canlı deneme (15 Ekim): DURDU, kol karşılaştırması yok
+
+- **L1 (luna-max, 14 Ekim 09:59Z–21:59Z):** 338 koşu, başarısız 0, 188 ajan entry'si, koşu süresi
+  p50 118 sn. Koşu başına yaklaşık 104 bin girdi ve 15,4 bin çıktı token'ı.
+- **S1 (sol-medium, 14 Ekim 22:01Z–15 Ekim 06:30Z):** 49 koşunun 49'u `FAILED`
+  (`CODEX_DECISION_FAILED`), ajan entry'si 0. İlk dört normal koşudan sonra devre kesici açıldı.
+  Kalan koşular devre kesici yoklamaları ve gece hafıza işleriydi.
+- **Neden:** üretimdeki Codex CLI `0.144.6` ChatGPT hesabıyla `gpt-6.1-sol` modelini reddediyor
+  ("model is not supported when using Codex with a ChatGPT account"). Yerel A/B CLI `0.160.0` ile
+  yapılmıştı, sürüm farkı kontrol edilmedi. Üretimde aynı istemle yeniden üretildi.
+- **Durdurma kuralı** (başarısızlık > %30) uygulandı: 15 Ekim 06:31Z'de `luna-max`'a dönüldü. Devre
+  kesici yoklamaları başarılı oldu, ertelenen gece işleri (hafıza toparlama, kaynak yenileme) önce
+  boşaldı. Takvim betiği başarısızlığı izlemediği için bu durum yaklaşık 8,5 saat fark edilmedi.
+- **Hüküm:** S1 bir model ölçümü değil, kurulum hatası. Kol karşılaştırması yapılmaz ve bu önkayıt
+  kapanır. Yeniden deneme yeni bir önkayıtla yapılır.
+- **Yeniden deneme kapıları** (Astra 1. tur sonrası, 15 Ekim):
+  1. **Araç kapatma sözleşmesi** canlıda olmalı (`CODEX_TOOL_DISABLE_ARGUMENTS`, bkz
+     CODEX_CREDENTIAL_EXPOSURE "15 Ekim"). Dağıtımdan sonra `codex-tool-canary.ts` makbuzu alınır.
+  2. **CLI geçişi** ayrı bir adımdır: önce `luna-max` ile `0.144.6` → `0.160.0`.
+     - Geçiş sırası: duraklat → boşalt → `current` bağı → worker yeniden başlat → başlangıç
+       satırında sürüm doğrula → aç.
+     - Başlangıç satırında sürüm doğrulanamazsa akış kapalı kalır.
+     - Geri dönüş aynı yoldan eski bağa yapılır.
+  3. **Kimlik durumu:** `auth.json` en son 6 Ekim'de değişmiş. 15 Ekim'deki `0.160.0` yoklamaları
+     ve canary koşuları onu değiştirmedi; ardından `0.144.6` worker'ı başarıyla koştu.
+     - Geçişten önce ve sonra yalnız değişiklik zamanı ve boyut kaydedilir, içerik kaydedilmez.
+     - Geri dönüşten sonra eski CLI çalışmazsa akış duraklatılır. Yeniden giriş Gökhan'ın işidir
+       (Gate 3). Eski dosyayı körlemesine geri yüklemek çözüm sayılmaz.
+  4. **Koruma:** geçiş izleme betiği şu durumlarda `luna-max`'a döner:
+     - ilk 5 terminal koşuda üçüncü başarısızlık görüldüğü an (60 sn yoklama);
+     - blok boyunca 10 ve üstü koşuda başarısızlık %30'u geçerse;
+     - geçişten 20 dakika sonra terminal koşu yoksa;
+     - son terminal koşudan beri 30 dakika geçtiyse.
+
+     Geri dönüş başarısız olursa akış duraklatılır ve Gökhan'a bildirim gider. Başarısızlık
+     `FAILED`, `TIMED_OUT` ve `CANCELLED`'dır. p95 kuralı (L'nin 1,5 katı) blok ortasında ve sonunda
+     elle okunur.
+
+  5. **Sol ön koşulu:** profil değişmeden önce `sol-medium`, üretim CLI'ında ve üretim sandbox'ında
+     tek yoklamayla denenir. Bu, 15 Ekim'de `0.160.0` ile geçti.
+  6. **Kapasite** (kanonik sıra PLAN sıra 6: önce tek hatta kapasite ölçümü ve kota, sonra canlı
+     deneme):
+     - CLI major değişmediği için (`0` → `0`) kapasite kanıtı kendiliğinden bayatlamıyor
+       (`capabilityFreshness`). Bu, geçiş kapısının yerini tutmaz.
+     - CLI geçişi (luna) için ilk 12 saatte luna p50/p95, L1 ile karşılaştırılır. Bu yalnız CLI
+       geçişinin gözlemidir; sol kapasite ölçümü sayılmaz.
+     - Sol yeniden denemesinden **önce** `sol-medium` ile tek hatta kapasite ölçümü (koşu süresi,
+       saatlik koşu) ve kota okuması yapılır. Ölçümün yöntemi ve kapasite kaydına etkisi (kanıt
+       modele bağlı değil, BACKLOG) yeni önkayıtta yazılır.
+  7. **Alt ajan:** `multi_agent=false` alt ajanı kapatmıyor. `0.160.0`'dan itibaren
+     `agents.max_concurrent_threads_per_session=1` sürüme bağlı olarak verilir (`0.144.6` bu
+     anahtarı reddediyor). CLI geçişi bu kodun canlıda olmasından sonra yapılır.
+- **Ön koşul ölçümü (15 Ekim):**
+  - CLI `0.160.0` üretime eskisinin yanına kuruldu. Kaynak resmî paket, SHA-256 doğrulandı.
+  - Üretim sandbox'ında durum yoklaması `luna-max` (57 sn) ve `sol-medium` (27 sn) ile geçti.
+  - Bu sırada model araçları bulgusu çıktı.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören

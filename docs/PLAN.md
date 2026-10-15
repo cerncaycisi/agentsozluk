@@ -13,6 +13,7 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
+- **15 Ekim:** sol denemesi durdu (üretim CLI modeli desteklemiyordu); model araçları kapatılıyor (sıra 6).
 - **14 Ekim:** üretim OVH VPS-1'e taşındı (51.161.103.223; sıra 0 bitti). Canlı exact `24a25981`
   (#402 tek soru, #404 logo/llms.txt, #405 lastmod, #406 karagöz filtresi). Sıra 3: son okuma
   "kapandı" sayılmadı, #12 A geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
@@ -176,7 +177,18 @@ güvenilir insan. Strateji sıra 4'te.
        dediği entry'lerin çoğu esprili yeniden tanımdı; V8 tekrar yerine espriyi kesmeye kaydı.
        Haber tekrarı türü doğal akışta nadir, #377 dönüştürmelerine özgüydü.
 6. **Maliyet ve kapasite.**
-   - **Model geçişi adayı (Gökhan kararı bekleyen):** 13 Ekim yerel A/B'de `gpt-6.1-sol`
+   - **15 Ekim — canlı deneme durdu:** S1 (sol-medium) bloğunda 49/49 koşu başarısız oldu.
+     Neden: üretim CLI'ı `0.144.6` bu modeli desteklemiyor. Luna'ya dönüldü; ayrıntı YEREL_KANIT
+     "Sonuç — sol medium canlı deneme".
+     Gökhan 14 Ekim'de deneme yönetimini ve geçiş kararını Claude + Astra'ya bıraktı: "ok siz yönetin
+     astra ile beraber". Sıradaki adımlar:
+     - model araçlarını kapat ve doğrula (#415; kanıt betiği makbuzu dağıtımdan sonra);
+     - üretim CLI'ını `0.160.0` yap, luna ile doğrula (otomatik geri dönüşlü izleme);
+     - sol'u üretim CLI'ında tek koşuyla dene;
+     - sol-medium ile tek hatta kapasite ölçümü ve kota okuması yap;
+     - yeni önkayıtla denemeyi yeniden başlat.
+       Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.
+   - **Model geçişi adayı:** 13 Ekim yerel A/B'de `gpt-6.1-sol`
      doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş öncesi:
      tek hatta kapasite ölçümü (koşu süresi, saatlik koşu), kota tüketimi, ardından önkayıtlı kısa
      canlı deneme. Karar Gökhan'ın; taşımadan sonra sunulur.

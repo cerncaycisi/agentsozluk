@@ -9557,3 +9557,54 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   → aç; her geçişte kota okunur.
 - **Not:** kota hesap genelidir; deneme süresince yürütücünün hakem çağrıları da kotaya eklenir.
   Açılırsa saatleri kayda yazılır.
+
+## 15 Ekim — sol medium S1 bloğu çöktü, deneme durdu
+
+- **Ortam:** canlı exact `c32de109` (#412), profil `sol-medium`. Üretimdeki Codex CLI `0.144.6`.
+- **Hata:** 14 Ekim 22:03Z ile 15 Ekim 06:21Z arasında 49 koşunun 49'u `FAILED`
+  (`CODEX_DECISION_FAILED`, stderr boş). Ajan entry'si 0. Dördüncü normal koşudan sonra devre
+  kesici açıldı.
+- **Kök neden:** CLI `0.144.6` ChatGPT hesabıyla `gpt-6.1-sol` modelini reddediyor. Yerel A/B CLI
+  `0.160.0` ile yapılmıştı; sürüm farkı geçişten önce denetlenmedi. Takvim betiği yalnız geçiş
+  yapıyordu, başarısızlığı izlemiyordu.
+- **Çözüm:** 06:30:43Z'de duraklat → boşalt → `luna-max` → yeniden başlat → aç (06:31:11Z,
+  settingsVersion 352). Takvim betiği durduruldu. Devre kesici yoklamaları geçti; ertelenen gece
+  hafıza ve kaynak işleri önce boşaldı.
+- **CLI 0.160.0:** resmî paket (`codex-package-x86_64-unknown-linux-musl.tar.gz`, SHA256SUMS ile
+  doğrulandı, ikili SHA-256 `12eb3e81…2aad`) `/opt/codex/packages/standalone/releases/` altına
+  eskisinin yanına kuruldu. `current` bağı hâlâ `0.144.6`'yı gösteriyor. Üretim sandbox'ında durum
+  yoklaması luna-max (57 sn) ve sol-medium (27 sn) ile geçti.
+- **Yan bulgu:** shell kapalıyken `0.144.6` modele exec, web, MCP ve alt ajan araçları sundu ve
+  bunları yürüttü. Ayrıntı CODEX_CREDENTIAL_EXPOSURE "15 Ekim" bölümünde.
+- **Düzeltme (#415):**
+  - kapatma bayrakları ve 0.160.0'dan itibaren alt ajan sınırı;
+  - her çağrıdan önce `features list` doğrulaması;
+  - `CODEX_TOOL_ITEM` ve `CODEX_EVENT_STREAM_INVALID`;
+  - worker'da her fazda ihlal kilidi.
+- **Hakem (#415):**
+  - Astra (`gpt-6-astra`, xhigh), 2 tur:
+    - `6aed9707` NO-GO (6 bulgu);
+    - `48d51aa6` NO-GO (8 bulgu; worker'ın fail-open fazları ihlali yutuyordu).
+  - Ardından Sol 6.1 (`gpt-6.1-sol`, xhigh), dar turlar:
+    - `4ba3b707` NO-GO (5 açık);
+    - `38922f6b` NO-GO (3 açık);
+    - `a25fbb4e` NO-GO. Kod bulguları kapandı, yalnız operatör betiğinde süre açığı kaldı.
+    - 4. tur NO-GO: uzak süre, SSH gecikmesini saymıyordu.
+    - 5. tur **GO**: betik düzeltmesi, depo aynı SHA `a25fbb4e`.
+  - Operatör betikleri depo dışında: `gecis.sh`, `cli-gecis.sh`, `izle.sh`, `duraklat.sh`.
+  - `unified_exec=false`, `0.160.0`'da etkisiz; doğrulama bunu yakaladı ve özellik listeden çıktı.
+  - `multi_agent=false` alt ajanı kapatmıyor.
+  - `agents.max_concurrent_threads_per_session=1`, `0.144.6`'da yapılandırma hatası veriyor.
+
+**Do not repeat:**
+
+- Profil ya da model geçişinden önce aynı modeli üretim CLI'ında ve üretim sandbox'ında tek koşuyla
+  dene. Yerel CLI sürümü kanıt değildir.
+- Geçiş betiği yalnız saat tutmasın, terminal sonuçları da izlesin ve eşik aşılınca kendiliğinden
+  geri dönsün.
+- Araç kapatmayı "shell kapalı" diye tek bayrağa bağlama. Her CLI sürümünde modelin gördüğü araç
+  listesini ve gerçek araç olaylarını ölç.
+- `-c` ile verilen bir ayarın etkisini varsayma. CLI bilinmeyen anahtarı sessizce yok sayıyor ve
+  bazı özellikler kapanmıyor. Etkiyi `features list` ile oku.
+- "Secret" adlı canary dosyasında model okumayı reddediyor; bu yetenek değil, ret ölçer. Masum ad
+  kullan.

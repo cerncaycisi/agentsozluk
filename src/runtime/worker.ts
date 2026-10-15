@@ -1317,6 +1317,22 @@ function measuredExecution(execution: RuntimeExecution) {
   };
 }
 
+/*
+  Araç kapatma sözleşmesi ihlali (Sol 6.1 1. tur): araç öğesi görüldü (`CODEX_TOOL_ITEM`), olay
+  akışı okunamadı (`CODEX_EVENT_STREAM_INVALID`) ya da başka bir hata (zaman aşımı, iptal) taşıdığı
+  tanılamada araç öğesi sayılmış.
+*/
+function isToolContractViolation(error: unknown): boolean {
+  if (
+    error instanceof RuntimeProviderExecutionError &&
+    (error.safeCode === "CODEX_TOOL_ITEM" || error.safeCode === "CODEX_EVENT_STREAM_INVALID")
+  )
+    return true;
+  const diagnostics = (error as { diagnostics?: RuntimeProviderAttemptDiagnostics } | null)
+    ?.diagnostics;
+  return (diagnostics?.itemCounts?.toolItems ?? 0) > 0;
+}
+
 export class AgentRuntimeWorker {
   readonly #options: RuntimeWorkerOptions;
   readonly #processingLanes: number;
@@ -1463,6 +1479,9 @@ export class AgentRuntimeWorker {
       cachedInputTokens?: number;
       outputTokens?: number;
       reasoningOutputTokens?: number;
+      errorItems?: number;
+      toolItems?: number;
+      unknownItems?: number;
     }> = [];
     const codexInvocationErrors = new Set<unknown>();
     /* Düşen çağrının host metriği; başarısızlık kaydına bu yazılır. */
@@ -1474,6 +1493,16 @@ export class AgentRuntimeWorker {
       medyanı 101 sn — hangi fazın pahalı olduğunu bilmeden hiçbir iyileştirme
       hedeflenemez.
     */
+    /*
+      15 Ekim araç kapatma sözleşmesi (Astra 2. tur): `CODEX_TOOL_ITEM` hangi fazda olursa olsun
+      koşuyu düşürür. Fail-open fazlar (gezinme, yenilik, son okuma, içerik onarımı) bu hatayı
+      yeniden fırlatır; ayrıca eylem kaydı, yürütme ve tamamlama öncesinde koşu içinde görülmüş bir
+      ihlal varsa işlem yapılmaz.
+    */
+    let toolContractViolation: unknown;
+    const assertToolContract = () => {
+      if (toolContractViolation !== undefined) throw toolContractViolation;
+    };
     const invokeCodex = async (
       request: Parameters<RuntimeProvider["invoke"]>[0],
       phase: RuntimeCodexPhase,
@@ -1512,6 +1541,9 @@ export class AgentRuntimeWorker {
         return result;
       } catch (error) {
         codexInvocationErrors.add(error);
+        // Ham hata üzerinde: normalizasyon ve faz yakalayıcıları tanılamayı taşımayabilir.
+        if (toolContractViolation === undefined && isToolContractViolation(error))
+          toolContractViolation = error;
         if (
           error instanceof RuntimeProviderTimeoutError ||
           error instanceof RuntimeProviderCancelledError
@@ -1545,6 +1577,7 @@ export class AgentRuntimeWorker {
             : {}),
           // Y6: yalnız CLI'nin bildirdiği sayılar; eksikse alan yazılmaz, sıfır sayılmaz.
           ...(diagnostics?.tokenUsage ? { ...diagnostics.tokenUsage } : {}),
+          ...(diagnostics?.itemCounts ? { ...diagnostics.itemCounts } : {}),
         });
       }
     };
@@ -1815,7 +1848,11 @@ export class AgentRuntimeWorker {
           }
         } catch (rawBrowseError) {
           const browseError = deadline.normalizeError(rawBrowseError);
-          if (browseError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+          if (
+            browseError instanceof RuntimeProviderCancelledError ||
+            toolContractViolation !== undefined ||
+            deadline.signal.aborted
+          )
             throw browseError;
           /*
             Timeout ile diğer hataları ayır: tek bir `BROWSE_SKIPPED` kodu
@@ -2067,7 +2104,11 @@ export class AgentRuntimeWorker {
           return verdict.karar;
         } catch (rawNoveltyError) {
           const noveltyError = deadline.normalizeError(rawNoveltyError);
-          if (noveltyError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+          if (
+            noveltyError instanceof RuntimeProviderCancelledError ||
+            toolContractViolation !== undefined ||
+            deadline.signal.aborted
+          )
             throw noveltyError;
           /*
             Çağrı hatası ya da geçersiz çıktı taslağı susturmaz ("emin değilsen YAYIMLA");
@@ -2153,7 +2194,11 @@ export class AgentRuntimeWorker {
             }
           } catch (rawFinalReadError) {
             const finalReadError = deadline.normalizeError(rawFinalReadError);
-            if (finalReadError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+            if (
+              finalReadError instanceof RuntimeProviderCancelledError ||
+              toolContractViolation !== undefined ||
+              deadline.signal.aborted
+            )
               throw finalReadError;
             stats.failedOpenCount += 1;
             this.#options.onSafeEvent?.({ level: "error", code: "FINAL_READ_FAILED_OPEN", runId });
@@ -2203,6 +2248,7 @@ export class AgentRuntimeWorker {
       const consolidationRun = isMemoryConsolidationRun(context);
       const personaReflectionRun = isPersonaReflectionRun(context);
       currentFailure = runtimeWorkerFailures.actionRecord;
+      assertToolContract();
       await this.#options.controlPlane.recordActions(
         credential,
         this.#options.workerId,
@@ -2228,6 +2274,7 @@ export class AgentRuntimeWorker {
         currentFailure = runtimeWorkerFailures.actionExecution;
         await heartbeat();
         deadline.throwIfStopped();
+        assertToolContract();
         const execution = await this.#options.controlPlane.executeActions(
           credential,
           this.#options.workerId,
@@ -2273,7 +2320,11 @@ export class AgentRuntimeWorker {
             );
           } catch (rawRepairError) {
             const repairError = deadline.normalizeError(rawRepairError);
-            if (repairError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+            if (
+              repairError instanceof RuntimeProviderCancelledError ||
+              toolContractViolation !== undefined ||
+              deadline.signal.aborted
+            )
               throw repairError;
             this.#options.onSafeEvent?.({
               level: "error",
@@ -2353,6 +2404,7 @@ export class AgentRuntimeWorker {
                 nextSequence += 1;
                 try {
                   currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
+                  assertToolContract();
                   await this.#options.controlPlane.recordActions(
                     credential,
                     this.#options.workerId,
@@ -2364,6 +2416,7 @@ export class AgentRuntimeWorker {
                   );
                   currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
                   await enterPhase("EXECUTING");
+                  assertToolContract();
                   const repairedExecution = await this.#options.controlPlane.executeActions(
                     credential,
                     this.#options.workerId,
@@ -2450,6 +2503,7 @@ export class AgentRuntimeWorker {
       const completionOutcome =
         measured.rejected.length > 0 || sourceRefreshErrorCode ? "PARTIAL" : "SUCCEEDED";
       currentFailure = runtimeWorkerFailures.completion;
+      assertToolContract();
       await this.#options.controlPlane.complete(
         credential,
         this.#options.workerId,

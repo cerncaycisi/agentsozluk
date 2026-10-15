@@ -57,6 +57,8 @@ export interface RuntimeProviderAttemptDiagnostics {
   hostMetrics?: RuntimeProviderHostMetrics;
   /** CLI `--json` destekliyorsa ve tur tamamlandıysa; eksik değer sıfır sayılmaz. */
   tokenUsage?: RuntimeProviderTokenUsage;
+  /** Yalnız `--json` ile: araç, hata ve bilinmeyen öğe sayıları; içerik taşımaz. */
+  itemCounts?: { errorItems: number; toolItems: number; unknownItems: number };
 }
 
 /*

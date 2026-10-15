@@ -5114,6 +5114,102 @@ describe("runtime novelty gate", () => {
     expect(completion.usageMetadata.novelty).toMatchObject({ checkedCount: 0, failedOpenCount: 1 });
   });
 
+  // 15 Ekim araç kapatma sözleşmesi (Astra 2. tur, Sol 6.1 1. tur): fail-open faz ihlali yutmaz.
+  it.each([
+    [
+      "a tool item",
+      () =>
+        new RuntimeProviderExecutionError("CODEX_TOOL_ITEM", {
+          setupMs: 1,
+          inspectMs: 1,
+          modelMs: 1,
+          itemCounts: { errorItems: 0, toolItems: 1, unknownItems: 0 },
+        }),
+      '"providerSafeCode":"CODEX_TOOL_ITEM"',
+    ],
+    [
+      "an unreadable event stream",
+      () =>
+        new RuntimeProviderExecutionError("CODEX_EVENT_STREAM_INVALID", {
+          setupMs: 1,
+          inspectMs: 1,
+          modelMs: 1,
+          itemCounts: { errorItems: 0, toolItems: 0, unknownItems: 0 },
+        }),
+      '"providerSafeCode":"CODEX_EVENT_STREAM_INVALID"',
+    ],
+    [
+      "a timeout after a tool item",
+      () =>
+        new RuntimeProviderTimeoutError({
+          setupMs: 1,
+          inspectMs: 1,
+          modelMs: 1,
+          itemCounts: { errorItems: 0, toolItems: 1, unknownItems: 0 },
+        }),
+      '"phase":"NOVELTY"',
+    ],
+  ])(
+    "fails the run instead of publishing when the novelty call reports %s",
+    async (_label, violation, marker) => {
+      const runId = randomUUID();
+      const topicId = randomUUID();
+      const plane = controlPlane(runId);
+      const context = fixtureContext(runId);
+      context.perception.readTopics = [
+        noveltyReadTopic(topicId, [{ username: "ayse", body: "Native Son 1940'ta yayımlandı." }]),
+      ];
+      plane.context = vi.fn().mockResolvedValue(context);
+      const provider: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: vi.fn().mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: canonicalNormalOutput("Aday üretildi.", {
+            actions: [noveltyEntryAction(topicId, "Wright'ın sürgünü romanlarına yön verdi.")],
+          }),
+        }),
+      };
+      const reviewer: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: vi
+          .fn()
+          .mockResolvedValueOnce({
+            provider: "codex-cli",
+            version: "test",
+            durationMs: 3,
+            output: {
+              verdict: "ACT",
+              confidence: 0.7,
+              evaluations: [{ sequence: 1, decision: "ACCEPT", safeReason: "Katkı adayı." }],
+              selectedSequences: [1],
+              safeReason: "Aday uygulanabilir.",
+            },
+          })
+          .mockRejectedValueOnce(violation()),
+      };
+      const events: string[] = [];
+      const worker = new AgentRuntimeWorker({
+        workerId: "novelty-worker",
+        credentials: [`agt_${"w".repeat(43)}`],
+        controlPlane: plane,
+        provider,
+        actionWorthinessProvider: reviewer,
+        onSafeEvent: ({ code }) => events.push(code),
+      });
+
+      await worker.runOnce();
+      expect(events).not.toContain("NOVELTY_CHECK_FAILED_OPEN");
+      expect(plane.recordActions).not.toHaveBeenCalled();
+      expect(plane.executeActions).not.toHaveBeenCalled();
+      expect(plane.complete).not.toHaveBeenCalled();
+      expect(plane.fail).toHaveBeenCalledTimes(1);
+      const failure = JSON.stringify(vi.mocked(plane.fail).mock.calls[0]);
+      expect(failure).toContain(marker);
+    },
+  );
+
   it("selects only entries written into a read topic that already has entries", () => {
     const populated = randomUUID();
     const empty = randomUUID();

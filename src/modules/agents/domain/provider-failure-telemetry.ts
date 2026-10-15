@@ -12,6 +12,10 @@ export const runtimeProviderExecutionSafeCodes = [
   "CODEX_EXEC_FAILED_NO_STDERR",
   "CODEX_EXEC_FAILED",
   "CODEX_OUTPUT_INVALID",
+  // 15 Ekim: araç kapatma sözleşmesine rağmen dış etkili bir araç öğesi görüldü.
+  "CODEX_TOOL_ITEM",
+  // 15 Ekim: olay satırı okunamadı; araç denetimi yapılamadığı için çağrı düşer.
+  "CODEX_EVENT_STREAM_INVALID",
 ] as const;
 
 export type RuntimeProviderExecutionSafeCode = (typeof runtimeProviderExecutionSafeCodes)[number];
