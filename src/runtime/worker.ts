@@ -1317,8 +1317,20 @@ function measuredExecution(execution: RuntimeExecution) {
   };
 }
 
-function isToolContractViolation(error: unknown): error is RuntimeProviderExecutionError {
-  return error instanceof RuntimeProviderExecutionError && error.safeCode === "CODEX_TOOL_ITEM";
+/*
+  Araç kapatma sözleşmesi ihlali (Sol 6.1 1. tur): araç öğesi görüldü (`CODEX_TOOL_ITEM`), olay
+  akışı okunamadı (`CODEX_EVENT_STREAM_INVALID`) ya da başka bir hata (zaman aşımı, iptal) taşıdığı
+  tanılamada araç öğesi sayılmış.
+*/
+function isToolContractViolation(error: unknown): boolean {
+  if (
+    error instanceof RuntimeProviderExecutionError &&
+    (error.safeCode === "CODEX_TOOL_ITEM" || error.safeCode === "CODEX_EVENT_STREAM_INVALID")
+  )
+    return true;
+  const diagnostics = (error as { diagnostics?: RuntimeProviderAttemptDiagnostics } | null)
+    ?.diagnostics;
+  return (diagnostics?.itemCounts?.toolItems ?? 0) > 0;
 }
 
 export class AgentRuntimeWorker {
@@ -1487,9 +1499,9 @@ export class AgentRuntimeWorker {
       yeniden fırlatır; ayrıca eylem kaydı, yürütme ve tamamlama öncesinde koşu içinde görülmüş bir
       ihlal varsa işlem yapılmaz.
     */
-    let toolContractViolation: RuntimeProviderExecutionError | undefined;
+    let toolContractViolation: unknown;
     const assertToolContract = () => {
-      if (toolContractViolation) throw toolContractViolation;
+      if (toolContractViolation !== undefined) throw toolContractViolation;
     };
     const invokeCodex = async (
       request: Parameters<RuntimeProvider["invoke"]>[0],
@@ -1529,6 +1541,9 @@ export class AgentRuntimeWorker {
         return result;
       } catch (error) {
         codexInvocationErrors.add(error);
+        // Ham hata üzerinde: normalizasyon ve faz yakalayıcıları tanılamayı taşımayabilir.
+        if (toolContractViolation === undefined && isToolContractViolation(error))
+          toolContractViolation = error;
         if (
           error instanceof RuntimeProviderTimeoutError ||
           error instanceof RuntimeProviderCancelledError
@@ -1537,7 +1552,6 @@ export class AgentRuntimeWorker {
           diagnostics = error.diagnostics ?? diagnostics;
         } else if (error instanceof RuntimeProviderExecutionError) {
           diagnostics = error.diagnostics ?? diagnostics;
-          if (isToolContractViolation(error)) toolContractViolation = error;
           // TypeScript tipi tek başına wire güvenlik sınırı değildir.
           if (isRuntimeProviderExecutionSafeCode(error.safeCode)) providerSafeCode = error.safeCode;
         }
@@ -1836,7 +1850,7 @@ export class AgentRuntimeWorker {
           const browseError = deadline.normalizeError(rawBrowseError);
           if (
             browseError instanceof RuntimeProviderCancelledError ||
-            isToolContractViolation(browseError) ||
+            toolContractViolation !== undefined ||
             deadline.signal.aborted
           )
             throw browseError;
@@ -2092,7 +2106,7 @@ export class AgentRuntimeWorker {
           const noveltyError = deadline.normalizeError(rawNoveltyError);
           if (
             noveltyError instanceof RuntimeProviderCancelledError ||
-            isToolContractViolation(noveltyError) ||
+            toolContractViolation !== undefined ||
             deadline.signal.aborted
           )
             throw noveltyError;
@@ -2182,7 +2196,7 @@ export class AgentRuntimeWorker {
             const finalReadError = deadline.normalizeError(rawFinalReadError);
             if (
               finalReadError instanceof RuntimeProviderCancelledError ||
-              isToolContractViolation(finalReadError) ||
+              toolContractViolation !== undefined ||
               deadline.signal.aborted
             )
               throw finalReadError;
@@ -2308,7 +2322,7 @@ export class AgentRuntimeWorker {
             const repairError = deadline.normalizeError(rawRepairError);
             if (
               repairError instanceof RuntimeProviderCancelledError ||
-              isToolContractViolation(repairError) ||
+              toolContractViolation !== undefined ||
               deadline.signal.aborted
             )
               throw repairError;

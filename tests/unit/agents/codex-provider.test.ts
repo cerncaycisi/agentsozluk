@@ -592,6 +592,14 @@ describe("Codex token telemetry (Y6)", () => {
     await expect(
       invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [huge]),
     ).rejects.toMatchObject({ safeCode: "CODEX_EVENT_STREAM_INVALID" });
+    // Sınır parçalanmadan bağımsız: son parçada biten 1,1 MB'lık zararsız satır da okunmaz.
+    const longBenign = JSON.stringify({
+      type: "item.completed",
+      item: { id: "a1", type: "agent_message", text: "y".repeat(1_100_000) },
+    });
+    await expect(
+      invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [longBenign]),
+    ).rejects.toMatchObject({ safeCode: "CODEX_EVENT_STREAM_INVALID" });
     // Kimliksiz yalnız başlangıç olayı da ihlaldir.
     await expect(
       invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [

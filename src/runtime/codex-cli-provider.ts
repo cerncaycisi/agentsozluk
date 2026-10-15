@@ -546,7 +546,9 @@ function collect(
         pendingEvent += chunk.toString("utf8");
         let newline = pendingEvent.indexOf("\n");
         while (newline >= 0) {
-          readEvent(pendingEvent.slice(0, newline));
+          // Satır sınırı parçalanmadan bağımsız (Sol 6.1 1. tur): uzun tam satır da okunmaz.
+          if (newline > MAX_PENDING_EVENT_CHARS) eventStreamOverflow = true;
+          else readEvent(pendingEvent.slice(0, newline));
           pendingEvent = pendingEvent.slice(newline + 1);
           newline = pendingEvent.indexOf("\n");
         }
@@ -562,7 +564,10 @@ function collect(
     child.on("error", (error) => finish(() => reject(error)));
     child.on("close", (exitCode, exitSignal) =>
       finish(() => {
-        if (parseJsonEvents) readEvent(pendingEvent);
+        if (parseJsonEvents) {
+          if (pendingEvent.length > MAX_PENDING_EVENT_CHARS) eventStreamOverflow = true;
+          else readEvent(pendingEvent);
+        }
         pendingEvent = "";
         resolve({
           exitCode,

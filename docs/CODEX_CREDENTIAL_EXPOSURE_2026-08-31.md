@@ -201,12 +201,16 @@ sonrası):
    `CODEX_TOOL_ITEM` ile düşer. Bu öğeler `command_execution`, `file_change`, `mcp_tool_call`,
    `collab_tool_call`, `web_search` ve `image_generation`.
    - Tek bir başlangıç olayı yeter.
-   - Sınırı aşan, okunamayan olay satırı "araç yok" sayılmaz, `CODEX_EVENT_STREAM_INVALID` ile
-     düşer.
+   - 1 MiB sınırını aşan olay satırı "araç yok" sayılmaz, `CODEX_EVENT_STREAM_INVALID` ile düşer.
+     Sınır, satırın boruda nasıl parçalandığından bağımsızdır.
    - Hata ve bilinmeyen öğeler yalnız sayılır; sayılar Codex aralık telemetrisine yazılır.
-4. **Worker:** `CODEX_TOOL_ITEM` hangi fazda olursa olsun koşuyu düşürür. Gezinme, yenilik, son
-   okuma ve içerik onarımı bu hatayı yutmaz. Eylem kaydı, yürütme ve tamamlama öncesinde, koşu
-   içinde görülmüş bir ihlal yeniden denetlenir.
+4. **Worker:** sözleşme ihlali hangi fazda olursa olsun koşuyu düşürür. İhlal şunlardan biridir:
+   - `CODEX_TOOL_ITEM`;
+   - `CODEX_EVENT_STREAM_INVALID`;
+   - araç öğesi sayılmış bir zaman aşımı ya da iptal.
+
+   Gezinme, yenilik, son okuma ve içerik onarımı ihlali yutmaz. Eylem kaydı, yürütme ve tamamlama
+   öncesinde, koşu içinde görülmüş bir ihlal yeniden denetlenir.
 
 Dağıtım sırası: release betiği worker'ı durdurup önce uygulamayı günceller. Yeni worker'ın
 gönderdiği alanları eski uygulama kabul etmez; yeni worker açıkken yalnız uygulamayı geri almak
