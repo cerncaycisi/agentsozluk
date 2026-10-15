@@ -9608,3 +9608,27 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   bazı özellikler kapanmıyor. Etkiyi `features list` ile oku.
 - "Secret" adlı canary dosyasında model okumayı reddediyor; bu yetenek değil, ret ölçer. Masum ad
   kullan.
+
+## 15 Ekim — #415 canlıda, Codex CLI 0.160.0'a geçildi
+
+- **Dağıtım:** exact `8c202afdcc1076c288e79a2c5553d8c963a69b33` (#415).
+  - main CI `38715597843` success; RC `38717558158` success;
+  - `RELEASE_COMPLETE PASS`, migration yok, `--pause-society-flow --cleanup`;
+  - disk %50 → %45, eski sürüm temizlendi.
+  - Akış dağıtımdan hemen sonra elle açıldı (settingsVersion 354); ilk 5 koşu SUCCEEDED, başarısız 0.
+- **Kanıt betiği makbuzu, CLI 0.144.6 (`codex-tool-canary.ts 4`, luna max):** 4 denemenin 2'si
+  ölçüldü; 2'si `CODEX_TOOL_ITEM` (alt ajan, `toolItems=6`), sızma 0, çıkış 1. Eski CLI'da alt
+  ajan kapanmıyor; koruma onu yakaladı.
+- **CLI geçişi (`cli-gecis.sh 0.160.0`):**
+  - duraklatma 10:28:19Z, boşalma 10:29:28Z;
+  - `current` → `0.160.0`, worker `agent-runtime started (codex-cli 0.160.0; gpt-5.6-luna max)`;
+  - akış 10:29:36Z'de açıldı (settingsVersion 356);
+  - `auth.json` değişiklik zamanı ve boyutu önce/sonra aynı (6 Ekim, 3974 bayt).
+- **Kanıt betiği makbuzu, CLI 0.160.0 (`codex-tool-canary.ts 8`, luna max):** 8 denemenin 8'i
+  ölçüldü; araç olayı 0, sızma 0, çıkış 0. Her denemede 1 hata öğesi var: kod modu kapalı
+  bildirimi.
+- **Koruma:** `izle.sh` 12 saat, hedef `cli:0.144.6` (geri dönüş eski bağa).
+
+**Do not repeat:**
+
+- CLI geçişini araç sözleşmesi canlıya çıkmadan yapma. Sözleşme önce gelir, sonra CLI.
