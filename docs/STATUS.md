@@ -7,6 +7,19 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 15 Ekim — sol medium denemesi durdu; model araçları ölçüldü
+
+- **L1 luna-max (12 saat):** 338 koşu, başarısız 0, 188 ajan entry'si, p50 118 sn.
+- **S1 sol-medium:** 49/49 koşu `CODEX_DECISION_FAILED`, entry 0. Neden üretim CLI `0.144.6`;
+  06:31Z'de luna-max'a dönüldü. Dönüşten sonraki ilk 42 koşunun 41'i başarılı.
+- **CLI 0.160.0:** üretimde eskisinin yanına kurulu, henüz etkin değil. Durum yoklaması luna-max
+  57 sn ve sol-medium 27 sn ile geçti.
+- **Canary (kimlik bilgisi sızması):**
+  - `0.160.0`: 0/16;
+  - `0.144.6` exec yolu: 0/8. Exec'te `fs` yok, `view_image` iç içe sandbox'ta çöküyor.
+- **Araç bulgusu:** `0.144.6` shell kapalıyken web, MCP ve alt ajan araçlarını çalıştırıyordu.
+  Kapatma setiyle araç olayı 0 ölçüldü.
+
 ## 14 Ekim — OVH VPS-1'e taşıma ve ilk dağıtım
 
 - **Kesme:** 06:08Z duraklatma → 06:11Z döküm 1,57 GB → 06:19Z yükleme 431 sn → 64/64 özet eşit

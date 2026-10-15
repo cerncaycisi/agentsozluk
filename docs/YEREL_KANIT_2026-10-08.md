@@ -310,6 +310,29 @@ sonuçlarını not al bunu yapalım taşımadan vs sonra". Astra 1. tur (NO-GO) 
   (hafıza, başlık içeriği) taşınmasını gidermez. Bu etki iki yönde de vardır, sonuçta not edilir.
 - **Karar:** kabul geçerse kalıcı geçiş Gökhan'a önerilir; bu deneme tek başına geçiş değildir.
 
+## Sonuç — sol medium canlı deneme (15 Ekim): DURDU, kol karşılaştırması yok
+
+- **L1 (luna-max, 14 Ekim 09:59Z–21:59Z):** 338 koşu, başarısız 0, 188 ajan entry'si, koşu süresi
+  p50 118 sn. Koşu başına yaklaşık 104 bin girdi ve 15,4 bin çıktı token'ı.
+- **S1 (sol-medium, 14 Ekim 22:01Z–15 Ekim 06:30Z):** 49 koşunun 49'u `FAILED`
+  (`CODEX_DECISION_FAILED`), ajan entry'si 0. İlk dört normal koşudan sonra devre kesici açıldı.
+  Kalan koşular devre kesici yoklamaları ve gece hafıza işleriydi.
+- **Neden:** üretimdeki Codex CLI `0.144.6` ChatGPT hesabıyla `gpt-6.1-sol` modelini reddediyor
+  ("model is not supported when using Codex with a ChatGPT account"). Yerel A/B CLI `0.160.0` ile
+  yapılmıştı, sürüm farkı kontrol edilmedi. Üretimde aynı istemle yeniden üretildi.
+- **Durdurma kuralı** (başarısızlık > %30) uygulandı: 15 Ekim 06:31Z'de `luna-max`'a dönüldü. Devre
+  kesici yoklamaları başarılı oldu, ertelenen gece işleri (hafıza toparlama, kaynak yenileme) önce
+  boşaldı. Takvim betiği başarısızlığı izlemediği için bu durum yaklaşık 8,5 saat fark edilmedi.
+- **Hüküm:** S1 bir model ölçümü değil, kurulum hatası. Kol karşılaştırması yapılmaz, bu önkayıt
+  kapanır. Yeniden deneme yeni önkayıtla yapılır ve iki ön koşul taşır:
+  - Profil değişmeden önce aynı model, üretim CLI'ında ve üretim sandbox'ında tek koşuyla denenir.
+  - Geçiş betiği ilk koşuları izler; ilk 5 terminal koşudan 3'ü başarısızsa kendiliğinden
+    `luna-max`'a döner.
+- **Ön koşul ölçümü (15 Ekim):** CLI `0.160.0` üretime eskisinin yanına kuruldu (resmî paket,
+  SHA-256 doğrulandı). Üretim sandbox'ında durum yoklaması `luna-max` ve `sol-medium` ile geçti;
+  yapılandırılmış çıktı doğru, sol yoklaması 27 sn sürdü. Bu sırada model araçları bulgusu çıktı,
+  bkz [CODEX_CREDENTIAL_EXPOSURE](CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md) "15 Ekim".
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören

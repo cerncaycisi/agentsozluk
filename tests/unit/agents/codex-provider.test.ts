@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { monitorHostProcess } from "@/runtime/host-metrics";
 import {
   AGENT_RUNTIME_CODEX_PROFILES,
+  CODEX_TOOL_DISABLE_ARGUMENTS,
   CodexCliProvider,
   safeCodexFailure,
   sanitizeRetainedRuntimeOutput,
@@ -91,6 +92,7 @@ describe("Codex CLI provider security contract", () => {
       Bu satır kaldırılırsa güvenlik açığı geri gelir; docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md
     */
     expect(source).toContain('"features.shell_tool=false"');
+    expect(source).toContain("...CODEX_TOOL_DISABLE_ARGUMENTS,");
     /*
       Host geneli okuma KAPALI olmalı. `--ro-bind / /` sandbox içindeki model
       aracına `/etc`, `/home` ve host'un bütün sırlarını açıyordu (31 Ağustos
@@ -473,6 +475,22 @@ describe("Codex token telemetry (Y6)", () => {
       "gpt-6.1-sol",
       'model_reasoning_effort="medium"',
     ]);
+    /*
+      15 Ekim: modele araç verilmez (web, uygulama/MCP, alt ajan, kod modu). Ölçüm ve gerekçe
+      CODEX_TOOL_DISABLE_ARGUMENTS yanında; bayraklar `exec` alt komutundan önce, global konumda.
+    */
+    const decision = defaults.decisionArguments[0]!;
+    const globalFlags = decision.slice(0, decision.indexOf("exec"));
+    for (const setting of [
+      "features.shell_tool=false",
+      "features.apps=false",
+      "features.multi_agent=false",
+      "features.code_mode_host=false",
+      'web_search="disabled"',
+    ]) {
+      expect(globalFlags[globalFlags.indexOf(setting) - 1]).toBe("-c");
+    }
+    expect(CODEX_TOOL_DISABLE_ARGUMENTS.filter((value) => value === "-c")).toHaveLength(11);
     expect(AGENT_RUNTIME_CODEX_PROFILES).toEqual({
       "luna-max": { model: "gpt-5.6-luna", reasoningEffort: "max" },
       "sol-medium": { model: "gpt-6.1-sol", reasoningEffort: "medium" },

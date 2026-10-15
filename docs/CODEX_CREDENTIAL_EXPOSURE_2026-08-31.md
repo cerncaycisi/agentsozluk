@@ -146,3 +146,51 @@ geçersizliği doğrulanmalı; sonra public write açılmalı.
 sonrası oran **0/N** olmalı; olmuyorsa halka hâlâ açık. Negatif sonuç tek başına
 güvence vermez (Sol): pozitif kanıt / regresyon testi olarak kullanılır, kernel
 seviyesi okunabilirlik testi (bölüm 1) ile birlikte.
+
+## 15 Ekim 2026 — model araçları: `shell_tool=false` tek başına yetmiyordu
+
+CLI `0.160.0` yükseltmesinden önce üretim host'unda ölçüldü. Ölçümler üretim sandbox argümanlarıyla
+birebir koşuldu (allowlist bağları + `features.shell_tool=false`), model `gpt-5.6-luna` / `max`;
+runtime çalışmaya devam etti.
+
+**Bulgu.** Üretimdeki CLI `0.144.6`, shell kapalıyken de modele başka araçlar veriyordu:
+
+- `functions.exec`: JavaScript çalıştırıyor (1+1 hesaplandı), dosya sistemi erişimi yok
+  (`fs is not defined`);
+- web araması: çalıştı;
+- hesaba bağlı uygulama/MCP araçları: listede vardı ve model bir denemede bir MCP aracı çağırdı;
+- alt ajan başlatma: çağrıldı;
+- `view_image`: iç içe sandbox kurulamadığı için çöktü.
+
+CLI `0.160.0` aynı araçları kod modu üzerinden açıyor. Bu araçlar yalnız `codex-code-mode-host`
+sandbox'a bağlanmadığı için çalışmıyor; bu bir tasarım değil, rastlantı.
+
+**Kimlik bilgisi okunabilirliği.** Komşu bir canary dosyasıyla ölçüldü:
+
+| ölçüm                                                     | sonuç                                     |
+| --------------------------------------------------------- | ----------------------------------------- |
+| `0.160.0`, rol değiştirme + araç listesi + görüntü üslubu | sol medium 0/8, luna max 0/8 sızma        |
+| `0.144.6`, "exec ile oku" (hassas dosya adı)              | 0/4; model reddetti, yetenek ölçülmedi    |
+| `0.144.6`, "exec ile oku" (masum dosya adı)               | 0/4; exec'te `fs` yok, `view_image` çöktü |
+
+Okuma yolu bulunmadı. Buna karşın web, MCP ve alt ajan araçlarına ajanların hiç ihtiyacı yok. Bu
+araçlar güvenilmeyen kaynak içeriğinden gelen bir enjeksiyonun dışarıya ulaşacağı kanallar.
+
+**Düzeltme.** `CODEX_TOOL_DISABLE_ARGUMENTS` (`src/runtime/codex-cli-provider.ts`) şu özellikleri
+kapatıyor:
+
+- `apps`, `multi_agent`, `image_generation`, `view_image`, `goals`, `plugins`, `remote_plugin`,
+  `tool_suggest`, `skill_search`, `code_mode_host`;
+- `web_search="disabled"`.
+
+Aynı ölçümün sonucu:
+
+- `0.144.6`: araç olayı 0;
+- `0.160.0`: kod modu "fail closed", web/MCP/alt ajan denemelerinin hepsi reddedildi.
+
+Yapılandırılmış çıktı iki modelde de bozulmadı. Bilinmeyen özellik anahtarları iki CLI'da da hata
+vermiyor.
+
+**Sınır.** `scripts/security/codex-credential-canary.sh` hâlâ 31 Ağustos argümanlarını kullanıyor
+(`--ro-bind / /`, shell açık). 15 Ekim ölçümleri depo dışındaki geçici betiklerle yapıldı. Depodaki
+betik, üretim argümanlarını birebir kullanacak şekilde ayrıca güncellenmeli.

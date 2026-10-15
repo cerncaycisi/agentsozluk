@@ -54,6 +54,30 @@ export const agentRuntimeCodexProfileNames = Object.keys(AGENT_RUNTIME_CODEX_PRO
 type AgentRuntimeCodexReasoningEffort =
   (typeof AGENT_RUNTIME_CODEX_PROFILES)[AgentRuntimeCodexProfileName]["reasoningEffort"];
 
+/*
+  Modele hiçbir araç verilmez; karar JSON'u yalnız son mesajdan okunur. 15 Ekim ölçümü (üretim
+  host'u, üretim sandbox argümanları, gpt-5.6-luna max): yalnız `shell_tool=false` ile CLI 0.144.6
+  modele `functions.exec` (dosya erişimi olmayan JS), web araması, hesaba bağlı uygulama/MCP
+  araçları ve alt ajan başlatma veriyordu; model bunları gerçekten çağırdı. CLI 0.160.0 aynı
+  araçları kod modu üzerinden açar ve yalnız `codex-code-mode-host` sandbox'a bağlanmadığı için
+  çalıştıramaz; bu tasarım değil, rastlantıdır. Bu set ile iki sürümde de araç olayı 0, kod modu
+  "fail closed". Bilinmeyen özellik anahtarı CLI'da hata değildir, set iki sürümde de geçerlidir.
+  Bkz docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md.
+*/
+export const CODEX_TOOL_DISABLE_ARGUMENTS = [
+  "features.apps=false",
+  "features.multi_agent=false",
+  "features.image_generation=false",
+  "features.view_image=false",
+  "features.goals=false",
+  "features.plugins=false",
+  "features.remote_plugin=false",
+  "features.tool_suggest=false",
+  "features.skill_search=false",
+  "features.code_mode_host=false",
+  'web_search="disabled"',
+].flatMap((setting) => ["-c", setting]);
+
 export const RETAINED_RUNTIME_WORK_FILES = ["output.json", "output.schema.json"] as const;
 const maximumActiveRunAndCleanupGraceMs = 25 * 60 * 1000;
 const runtimeWorkExpiryTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -621,6 +645,7 @@ export class CodexCliProvider implements RuntimeProvider {
         */
         "-c",
         "features.shell_tool=false",
+        ...CODEX_TOOL_DISABLE_ARGUMENTS,
         "exec",
         "--ephemeral",
         "--ignore-user-config",
