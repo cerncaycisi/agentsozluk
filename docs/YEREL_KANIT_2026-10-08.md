@@ -350,10 +350,18 @@ sonuçlarını not al bunu yapalım taşımadan vs sonra". Astra 1. tur (NO-GO) 
 
   5. **Sol ön koşulu:** profil değişmeden önce `sol-medium`, üretim CLI'ında ve üretim sandbox'ında
      tek yoklamayla denenir. Bu, 15 Ekim'de `0.160.0` ile geçti.
-  6. **Kapasite:** CLI major değişmediği için (`0` → `0`) kapasite kanıtı kendiliğinden bayatlamıyor
-     (`capabilityFreshness`). Tek bir durum yoklaması kapasite kanıtı sayılmaz.
-     - CLI geçişinden sonraki ilk 12 saatte luna p50/p95, L1 ile karşılaştırılır.
-     - Kalıcı sol geçişinden önce modele bağlı kapasite ölçümü ayrı bir kapıdır (BACKLOG).
+  6. **Kapasite** (kanonik sıra PLAN sıra 6: önce tek hatta kapasite ölçümü ve kota, sonra canlı
+     deneme):
+     - CLI major değişmediği için (`0` → `0`) kapasite kanıtı kendiliğinden bayatlamıyor
+       (`capabilityFreshness`). Bu, geçiş kapısının yerini tutmaz.
+     - CLI geçişi (luna) için ilk 12 saatte luna p50/p95, L1 ile karşılaştırılır. Bu yalnız CLI
+       geçişinin gözlemidir; sol kapasite ölçümü sayılmaz.
+     - Sol yeniden denemesinden **önce** `sol-medium` ile tek hatta kapasite ölçümü (koşu süresi,
+       saatlik koşu) ve kota okuması yapılır. Ölçümün yöntemi ve kapasite kaydına etkisi (kanıt
+       modele bağlı değil, BACKLOG) yeni önkayıtta yazılır.
+  7. **Alt ajan:** `multi_agent=false` alt ajanı kapatmıyor. `0.160.0`'dan itibaren
+     `agents.max_concurrent_threads_per_session=1` sürüme bağlı olarak verilir (`0.144.6` bu
+     anahtarı reddediyor). CLI geçişi bu kodun canlıda olmasından sonra yapılır.
 - **Ön koşul ölçümü (15 Ekim):**
   - CLI `0.160.0` üretime eskisinin yanına kuruldu. Kaynak resmî paket, SHA-256 doğrulandı.
   - Üretim sandbox'ında durum yoklaması `luna-max` (57 sn) ve `sol-medium` (27 sn) ile geçti.

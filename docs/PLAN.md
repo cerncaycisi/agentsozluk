@@ -182,11 +182,12 @@ güvenilir insan. Strateji sıra 4'te.
      "Sonuç — sol medium canlı deneme".
      Gökhan 14 Ekim'de deneme yönetimini ve geçiş kararını Claude + Astra'ya bıraktı: "ok siz yönetin
      astra ile beraber". Sıradaki adımlar:
-     - model araçlarını kapat (`CODEX_TOOL_DISABLE_ARGUMENTS`);
-     - üretim CLI'ını `0.160.0` yap, luna ile doğrula;
+     - model araçlarını kapat ve doğrula (#415; kanıt betiği makbuzu dağıtımdan sonra);
+     - üretim CLI'ını `0.160.0` yap, luna ile doğrula (otomatik geri dönüşlü izleme);
      - sol'u üretim CLI'ında tek koşuyla dene;
-     - otomatik geri dönüşlü geçiş betiği yaz;
+     - sol-medium ile tek hatta kapasite ölçümü ve kota okuması yap;
      - yeni önkayıtla denemeyi yeniden başlat.
+       Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.
    - **Model geçişi adayı:** 13 Ekim yerel A/B'de `gpt-6.1-sol`
      doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş öncesi:
      tek hatta kapasite ölçümü (koşu süresi, saatlik koşu), kota tüketimi, ardından önkayıtlı kısa

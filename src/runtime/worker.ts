@@ -1317,6 +1317,10 @@ function measuredExecution(execution: RuntimeExecution) {
   };
 }
 
+function isToolContractViolation(error: unknown): error is RuntimeProviderExecutionError {
+  return error instanceof RuntimeProviderExecutionError && error.safeCode === "CODEX_TOOL_ITEM";
+}
+
 export class AgentRuntimeWorker {
   readonly #options: RuntimeWorkerOptions;
   readonly #processingLanes: number;
@@ -1477,6 +1481,16 @@ export class AgentRuntimeWorker {
       medyanı 101 sn — hangi fazın pahalı olduğunu bilmeden hiçbir iyileştirme
       hedeflenemez.
     */
+    /*
+      15 Ekim araç kapatma sözleşmesi (Astra 2. tur): `CODEX_TOOL_ITEM` hangi fazda olursa olsun
+      koşuyu düşürür. Fail-open fazlar (gezinme, yenilik, son okuma, içerik onarımı) bu hatayı
+      yeniden fırlatır; ayrıca eylem kaydı, yürütme ve tamamlama öncesinde koşu içinde görülmüş bir
+      ihlal varsa işlem yapılmaz.
+    */
+    let toolContractViolation: RuntimeProviderExecutionError | undefined;
+    const assertToolContract = () => {
+      if (toolContractViolation) throw toolContractViolation;
+    };
     const invokeCodex = async (
       request: Parameters<RuntimeProvider["invoke"]>[0],
       phase: RuntimeCodexPhase,
@@ -1523,6 +1537,7 @@ export class AgentRuntimeWorker {
           diagnostics = error.diagnostics ?? diagnostics;
         } else if (error instanceof RuntimeProviderExecutionError) {
           diagnostics = error.diagnostics ?? diagnostics;
+          if (isToolContractViolation(error)) toolContractViolation = error;
           // TypeScript tipi tek başına wire güvenlik sınırı değildir.
           if (isRuntimeProviderExecutionSafeCode(error.safeCode)) providerSafeCode = error.safeCode;
         }
@@ -1819,7 +1834,11 @@ export class AgentRuntimeWorker {
           }
         } catch (rawBrowseError) {
           const browseError = deadline.normalizeError(rawBrowseError);
-          if (browseError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+          if (
+            browseError instanceof RuntimeProviderCancelledError ||
+            isToolContractViolation(browseError) ||
+            deadline.signal.aborted
+          )
             throw browseError;
           /*
             Timeout ile diğer hataları ayır: tek bir `BROWSE_SKIPPED` kodu
@@ -2071,7 +2090,11 @@ export class AgentRuntimeWorker {
           return verdict.karar;
         } catch (rawNoveltyError) {
           const noveltyError = deadline.normalizeError(rawNoveltyError);
-          if (noveltyError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+          if (
+            noveltyError instanceof RuntimeProviderCancelledError ||
+            isToolContractViolation(noveltyError) ||
+            deadline.signal.aborted
+          )
             throw noveltyError;
           /*
             Çağrı hatası ya da geçersiz çıktı taslağı susturmaz ("emin değilsen YAYIMLA");
@@ -2157,7 +2180,11 @@ export class AgentRuntimeWorker {
             }
           } catch (rawFinalReadError) {
             const finalReadError = deadline.normalizeError(rawFinalReadError);
-            if (finalReadError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+            if (
+              finalReadError instanceof RuntimeProviderCancelledError ||
+              isToolContractViolation(finalReadError) ||
+              deadline.signal.aborted
+            )
               throw finalReadError;
             stats.failedOpenCount += 1;
             this.#options.onSafeEvent?.({ level: "error", code: "FINAL_READ_FAILED_OPEN", runId });
@@ -2207,6 +2234,7 @@ export class AgentRuntimeWorker {
       const consolidationRun = isMemoryConsolidationRun(context);
       const personaReflectionRun = isPersonaReflectionRun(context);
       currentFailure = runtimeWorkerFailures.actionRecord;
+      assertToolContract();
       await this.#options.controlPlane.recordActions(
         credential,
         this.#options.workerId,
@@ -2232,6 +2260,7 @@ export class AgentRuntimeWorker {
         currentFailure = runtimeWorkerFailures.actionExecution;
         await heartbeat();
         deadline.throwIfStopped();
+        assertToolContract();
         const execution = await this.#options.controlPlane.executeActions(
           credential,
           this.#options.workerId,
@@ -2277,7 +2306,11 @@ export class AgentRuntimeWorker {
             );
           } catch (rawRepairError) {
             const repairError = deadline.normalizeError(rawRepairError);
-            if (repairError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+            if (
+              repairError instanceof RuntimeProviderCancelledError ||
+              isToolContractViolation(repairError) ||
+              deadline.signal.aborted
+            )
               throw repairError;
             this.#options.onSafeEvent?.({
               level: "error",
@@ -2357,6 +2390,7 @@ export class AgentRuntimeWorker {
                 nextSequence += 1;
                 try {
                   currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
+                  assertToolContract();
                   await this.#options.controlPlane.recordActions(
                     credential,
                     this.#options.workerId,
@@ -2368,6 +2402,7 @@ export class AgentRuntimeWorker {
                   );
                   currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
                   await enterPhase("EXECUTING");
+                  assertToolContract();
                   const repairedExecution = await this.#options.controlPlane.executeActions(
                     credential,
                     this.#options.workerId,
@@ -2454,6 +2489,7 @@ export class AgentRuntimeWorker {
       const completionOutcome =
         measured.rejected.length > 0 || sourceRefreshErrorCode ? "PARTIAL" : "SUCCEEDED";
       currentFailure = runtimeWorkerFailures.completion;
+      assertToolContract();
       await this.#options.controlPlane.complete(
         credential,
         this.#options.workerId,

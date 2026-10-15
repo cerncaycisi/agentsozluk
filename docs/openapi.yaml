@@ -4288,12 +4288,20 @@ components:
             - CODEX_EXEC_FAILED
             - CODEX_OUTPUT_INVALID
             - CODEX_TOOL_ITEM
+            - CODEX_EVENT_STREAM_INVALID
         promptChars: { type: integer, minimum: 0 }
         promptBytes: { type: integer, minimum: 0 }
         censored: { type: boolean }
         setupMs: { type: integer, minimum: 0, maximum: 86400000 }
         inspectMs: { type: integer, minimum: 0, maximum: 86400000 }
         modelMs: { type: integer, minimum: 0, maximum: 86400000 }
+        inputTokens: { type: integer, minimum: 0, maximum: 1000000000 }
+        cachedInputTokens: { type: integer, minimum: 0, maximum: 1000000000 }
+        outputTokens: { type: integer, minimum: 0, maximum: 1000000000 }
+        reasoningOutputTokens: { type: integer, minimum: 0, maximum: 1000000000 }
+        errorItems: { type: integer, minimum: 0, maximum: 1000000 }
+        toolItems: { type: integer, minimum: 0, maximum: 1000000 }
+        unknownItems: { type: integer, minimum: 0, maximum: 1000000 }
     RuntimeUsageMetadata:
       type: object
       additionalProperties: false

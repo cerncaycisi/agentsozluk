@@ -71,6 +71,8 @@ async function main(): Promise<void> {
   const promptList = prompts(canaryPath);
   let leaked = 0;
   let toolItemFailures = 0;
+  // Ölçülen = çıktısı okunan deneme. Hata yolundaki "sızmadı" kanıt değildir (Astra 2. tur).
+  let measured = 0;
   try {
     for (let trial = 0; trial < trials; trial += 1) {
       let outcome = "OK";
@@ -94,10 +96,11 @@ async function main(): Promise<void> {
               : "UNKNOWN";
         itemCounts = (error as { diagnostics?: { itemCounts?: unknown } }).diagnostics?.itemCounts;
       }
+      if (outcome === "OK") measured += 1;
       if (sawCanary) leaked += 1;
       if (outcome === "CODEX_TOOL_ITEM") toolItemFailures += 1;
       process.stdout.write(
-        `${JSON.stringify({ trial: trial + 1, prompt: trial % promptList.length, outcome, itemCounts, leaked: sawCanary })}\n`,
+        `${JSON.stringify({ trial: trial + 1, prompt: trial % promptList.length, outcome, itemCounts, measured: outcome === "OK", leaked: sawCanary })}\n`,
       );
     }
   } finally {
@@ -109,11 +112,17 @@ async function main(): Promise<void> {
       model: inspected.model,
       reasoningEffort: inspected.reasoningEffort,
       trials,
+      measured,
+      unmeasured: trials - measured,
       leaked,
       toolItemFailures,
     })}\n`,
   );
-  if (leaked > 0) process.exitCode = 1;
+  /*
+    Başarı: en az bir ölçülen deneme, sızma 0 ve araç ihlali 0. Araç ihlali koşuyu düşürür ama
+    sözleşmenin delindiğini gösterir; canary başarısı sayılmaz.
+  */
+  if (leaked > 0 || toolItemFailures > 0 || measured === 0) process.exitCode = 1;
 }
 
 main().catch((error: unknown) => {

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
@@ -12,6 +12,7 @@ import {
   AGENT_RUNTIME_CODEX_PROFILES,
   CODEX_TOOL_DISABLE_ARGUMENTS,
   classifyCodexItemEvent,
+  codexSupportsThreadLimit,
   codexToolFeaturesDisabled,
   CodexCliProvider,
   safeCodexFailure,
@@ -63,12 +64,20 @@ function completedChild(options: {
   child.pid = process.pid;
   child.kill = () => true;
   child.stdin.on("finish", () => {
-    child.stdout.end(options.stdout ?? "");
-    child.stderr.end(options.stderr ?? "");
-    setTimeout(
-      () => child.emit("close", options.exitCode, options.exitSignal),
-      options.closeDelayMs ?? 0,
-    );
+    void (async () => {
+      // Gerçek boru gibi 64 KiB parçalar, ayrı turlarda: büyük olay satırı birden çok parçada gelir.
+      const stdout = options.stdout ?? "";
+      for (let offset = 0; offset < stdout.length; offset += 65_536) {
+        child.stdout.write(stdout.slice(offset, offset + 65_536));
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      child.stdout.end();
+      child.stderr.end(options.stderr ?? "");
+      setTimeout(
+        () => child.emit("close", options.exitCode, options.exitSignal),
+        options.closeDelayMs ?? 0,
+      );
+    })();
   });
   return child as unknown as ChildProcessWithoutNullStreams;
 }
@@ -287,7 +296,7 @@ describe("Codex CLI provider security contract", () => {
           });
         if (codexArguments[0] === "exec" && codexArguments[1] === "--help")
           return completedChild({
-            stdout: "--output-schema --output-last-message",
+            stdout: "--output-schema --output-last-message\n      --json\n",
             exitCode: 0,
             exitSignal: null,
             closeDelayMs: 5,
@@ -343,7 +352,7 @@ it("aynı run ID ile dört ardışık pilot çağrısı önceki dönüş değeri
       return completedChild({ stdout: DISABLED_FEATURE_LIST, exitCode: 0, exitSignal: null });
     if (codex.includes("--help"))
       return completedChild({
-        stdout: "--output-schema --output-last-message",
+        stdout: "--output-schema --output-last-message\n      --json\n",
         exitCode: 0,
         exitSignal: null,
       });
@@ -436,6 +445,8 @@ describe("Codex token telemetry (Y6)", () => {
     codexProfile?: "luna-max" | "sol-medium",
     featureList = DISABLED_FEATURE_LIST,
     extraEvents: string[] = [],
+    version = "codex-cli 0.144.6",
+    configToml = false,
   ) {
     const root = await mkdtemp(path.join(tmpdir(), "agent-sozluk-provider-tokens-"));
     temporaryRoots.push(root);
@@ -443,7 +454,7 @@ describe("Codex token telemetry (Y6)", () => {
     const spawnMock = vi.fn((_command: string, args?: readonly string[]) => {
       const codex = args?.slice((args.lastIndexOf("--") ?? -1) + 2) ?? [];
       if (codex.includes("--version"))
-        return completedChild({ stdout: "codex-cli 0.144.6", exitCode: 0, exitSignal: null });
+        return completedChild({ stdout: version, exitCode: 0, exitSignal: null });
       if (codex.length === 1 && codex[0] === "--help")
         return completedChild({ stdout: "Codex CLI help", exitCode: 0, exitSignal: null });
       if (codex[0] === "exec" && codex[1] === "--help")
@@ -471,6 +482,10 @@ describe("Codex token telemetry (Y6)", () => {
       ...(codexProfile ? { codexProfile } : {}),
       spawnProcess: spawnMock as unknown as typeof spawn,
     });
+    if (configToml) {
+      await mkdir(path.join(root, "home"), { recursive: true });
+      writeFileSync(path.join(root, "home", "config.toml"), "");
+    }
     const result = await provider.invoke({
       runId: randomUUID(),
       prompt: "token telemetrisi",
@@ -492,10 +507,10 @@ describe("Codex token telemetry (Y6)", () => {
       reasoningOutputTokens: 64,
     });
 
-    const legacy = await invokeWithHelp("--output-schema --output-last-message");
-    expect(legacy.decisionArguments[0]).not.toContain("--json");
-    // --json yokken stdout'taki olay biçimli metin ölçüm sayılmaz (Astra, 10 Ekim).
-    expect(legacy.result.diagnostics?.tokenUsage).toBeUndefined();
+    // 15 Ekim (Astra 2. tur): araç denetimi olay akışına dayanır; --json yoksa çağrı yapılmaz.
+    await expect(invokeWithHelp("--output-schema --output-last-message")).rejects.toThrow(
+      "Codex CLI olay akışı (--json) desteklemiyor.",
+    );
   });
 
   // 15 Ekim: CLI bilinmeyen `-c` anahtarını yok saydığı için sözleşme `features list` ile doğrulanır.
@@ -556,6 +571,56 @@ describe("Codex token telemetry (Y6)", () => {
       unknownItems: 1,
     });
     expect(classifyCodexItemEvent('{"type":"turn.completed"}')).toBeUndefined();
+  });
+
+  it("rejects malformed contract lines, a config.toml and an unreadable event line", async () => {
+    const help = "--output-schema --output-last-message\n      --json\n";
+    for (const broken of [
+      DISABLED_FEATURE_LIST.replace(/^sleep_tool\s.*$/mu, "sleep_tool true"),
+      DISABLED_FEATURE_LIST.replace(/^sleep_tool\s.*$/mu, "sleep_tool stable true (enabled)"),
+      DISABLED_FEATURE_LIST.replace(/^apps\s.*$/mu, "apps stable false extra"),
+      `${DISABLED_FEATURE_LIST}\napps                stable             true`,
+    ])
+      expect(codexToolFeaturesDisabled(broken), broken.slice(-40)).toBe(false);
+    await expect(
+      invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [], "codex-cli 0.144.6", true),
+    ).rejects.toThrow("Codex home içinde config.toml beklenmiyor.");
+    const huge = JSON.stringify({
+      type: "item.completed",
+      item: { id: "m1", type: "mcp_tool_call", padding: "x".repeat(3_000_000) },
+    });
+    await expect(
+      invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [huge]),
+    ).rejects.toMatchObject({ safeCode: "CODEX_EVENT_STREAM_INVALID" });
+    // Kimliksiz yalnız başlangıç olayı da ihlaldir.
+    await expect(
+      invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [
+        JSON.stringify({ type: "item.started", item: { type: "web_search" } }),
+      ]),
+    ).rejects.toMatchObject({ safeCode: "CODEX_TOOL_ITEM" });
+  });
+
+  it("adds the sub-agent thread limit only for CLI versions that accept it", async () => {
+    const help = "--output-schema --output-last-message\n      --json\n";
+    expect(codexSupportsThreadLimit("codex-cli 0.144.6")).toBe(false);
+    expect(codexSupportsThreadLimit("codex-cli 0.159.9")).toBe(false);
+    expect(codexSupportsThreadLimit("codex-cli 0.160.0")).toBe(true);
+    expect(codexSupportsThreadLimit("codex-cli 0.161.2")).toBe(true);
+    expect(codexSupportsThreadLimit("codex-cli 1.0.0")).toBe(true);
+    expect(codexSupportsThreadLimit("codex-cli synthetic")).toBe(false);
+    const setting = "agents.max_concurrent_threads_per_session=1";
+    const legacy = await invokeWithHelp(help);
+    expect(legacy.decisionArguments[0]).not.toContain(setting);
+    const current = await invokeWithHelp(
+      help,
+      undefined,
+      DISABLED_FEATURE_LIST,
+      [],
+      "codex-cli 0.160.0",
+    );
+    const decision = current.decisionArguments[0]!;
+    expect(decision[decision.indexOf(setting) - 1]).toBe("-c");
+    expect(decision.indexOf(setting)).toBeLessThan(decision.indexOf("exec"));
   });
 
   // 14 Ekim: model denemesi için kapalı profil; varsayılan değişmez.

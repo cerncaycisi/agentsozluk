@@ -178,23 +178,39 @@ Okuma yolu bulunmadı. Ancak `fs` olmaması bütün dosya yollarının yokluğun
 varlık ölçümüdür. Web, MCP ve alt ajan araçlarına ajanların ihtiyacı yok. Güvenilmeyen kaynak
 içeriğinden gelen bir enjeksiyon bu araçlardan dışarıya ulaşabilir.
 
-**Düzeltme, üç katman** (`src/runtime/codex-cli-provider.ts`, Astra 1. tur sonrası):
+**Düzeltme** (`src/runtime/codex-cli-provider.ts`, `src/runtime/worker.ts`; Astra 1. ve 2. tur
+sonrası):
 
 1. **Kapatma bayrakları:** `CODEX_TOOL_DISABLE_ARGUMENTS`.
    - Zorunlu: `shell_tool`, `apps`, `multi_agent`, `image_generation`, `goals`, `plugins`,
      `remote_plugin`, `tool_suggest`, `code_mode_host`.
    - İsteğe bağlı (`0.144.6`'da yok): `view_image`, `skill_search`, `sleep_tool`.
    - Ayrıca `web_search="disabled"`.
-2. **Her çağrıdan önce doğrulama:** aynı bayraklarla `features list` okunur. Zorunlu özellik yoksa
-   ya da açıksa çağrı yapılmaz. CLI bilinmeyen `-c` anahtarını sessizce yok saydığı için bu
-   doğrulama gerekli.
-   - Gerçek çıktıyla sınandı: `0.144.6` ve `0.160.0` geçiyor.
-   - İlk denemede `unified_exec=false`, `0.160.0`'da etkisiz çıktı ve doğrulama bunu yakaladı.
-     `unified_exec` shell aracının iç uygulaması olduğu için listeden çıkarıldı.
-3. **Çalışma sırasında yakalama:** `exec --json` olayında dış etkili araç öğesi görülürse koşu
+   - `0.160.0` ve sonrasında `agents.max_concurrent_threads_per_session=1` (alt ajan); daha eski ya
+     da tanınmayan sürüme gönderilmez.
+2. **Her çağrıdan önce doğrulama:** aynı bayraklarla `features list` okunur.
+   - Zorunlu özellik yoksa, açıksa ya da sözleşmedeki bir özelliğin satırı beklenen biçimde değilse
+     çağrı yapılmaz. CLI bilinmeyen `-c` anahtarını sessizce yok saydığı için bu gerekli.
+   - Gerçek çıktıyla sınandı: `0.144.6` ve `0.160.0` geçiyor. İlk denemede `unified_exec=false`,
+     `0.160.0`'da etkisiz çıktı ve doğrulama yakaladı. `unified_exec` shell aracının iç uygulaması
+     olduğu için listeden çıkarıldı.
+   - `CODEX_HOME/config.toml` varsa çağrı yapılmaz: `features list` onu okur, karar çağrısı
+     `--ignore-user-config` ile okumaz. 15 Ekim'de üretimde bu dosya yok.
+   - `--json` olay akışı zorunlu; desteklemeyen CLI ile çağrı yapılmaz.
+3. **Çalışma sırasında yakalama:** `exec --json` olayında dış etkili araç öğesi görülürse çağrı
    `CODEX_TOOL_ITEM` ile düşer. Bu öğeler `command_execution`, `file_change`, `mcp_tool_call`,
-   `collab_tool_call`, `web_search` ve `image_generation`. Hata ve bilinmeyen öğeler yalnız
-   sayılır; sayılar Codex aralık telemetrisine yazılır.
+   `collab_tool_call`, `web_search` ve `image_generation`.
+   - Tek bir başlangıç olayı yeter.
+   - Sınırı aşan, okunamayan olay satırı "araç yok" sayılmaz, `CODEX_EVENT_STREAM_INVALID` ile
+     düşer.
+   - Hata ve bilinmeyen öğeler yalnız sayılır; sayılar Codex aralık telemetrisine yazılır.
+4. **Worker:** `CODEX_TOOL_ITEM` hangi fazda olursa olsun koşuyu düşürür. Gezinme, yenilik, son
+   okuma ve içerik onarımı bu hatayı yutmaz. Eylem kaydı, yürütme ve tamamlama öncesinde, koşu
+   içinde görülmüş bir ihlal yeniden denetlenir.
+
+Dağıtım sırası: release betiği worker'ı durdurup önce uygulamayı günceller. Yeni worker'ın
+gönderdiği alanları eski uygulama kabul etmez; yeni worker açıkken yalnız uygulamayı geri almak
+güvenli değildir.
 
 **Kapatma setiyle ölçüm** (tek deneme, araç listesi + exec/web/MCP/alt ajan denemesi):
 
@@ -207,14 +223,14 @@ içeriğinden gelen bir enjeksiyon bu araçlardan dışarıya ulaşabilir.
   - sol, alt ajan başlattığını yazdı. Yerel `0.160.0`'da alt ajan başlatma olay vermiyor, bekleme
     adımı `collab_tool_call` olarak görünüyor.
   - Yerelde `agents.max_concurrent_threads_per_session=1` alt ajanı engelledi. `0.144.6` bu
-    anahtarı reddettiği için (`agents` tablosu orada başka biçimde) ayar CLI geçişinden sonraya
-    kaldı.
+    anahtarı reddediyor (`agents` tablosu orada başka biçimde); bu yüzden ayar sürüme bağlı.
 - Yapılandırılmış çıktı iki modelde de bozulmadı.
 
 **Açık sınırlar:**
 
 - `0.160.0`'da bekleme adımı olmadan başlatılan bir alt ajan olay vermeyebilir. Alt ajan aynı
-  süreçte ve aynı sandbox'ta çalışır; dışarıya yeni bir kapı açmaz ama kota harcar. İş parçacığı
-  sınırı `0.160.0` geçişinden sonra eklenecek.
+  süreçte ve aynı sandbox'ta çalışır; dışarıya yeni bir kapı açmaz ama kota harcar. Sürüme bağlı
+  iş parçacığı sınırı bunu `0.160.0`'da engelliyor (yerel ölçüm). Üretimdeki etkisi CLI
+  geçişinden sonra kanıt betiğiyle ölçülecek.
 - Kanıt betiği `scripts/security/codex-tool-canary.ts`, üretim provider'ını aynen kullanıyor.
   İlk üretim makbuzu dağıtımdan sonra alınacak.

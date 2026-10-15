@@ -99,17 +99,49 @@ export const CODEX_TOOL_DISABLE_ARGUMENTS = [
   'web_search="disabled"',
 ].flatMap((setting) => ["-c", setting]);
 
-/** `codex features list` çıktısı kapatma sözleşmesini sağlıyor mu. */
+/**
+ * `codex features list` çıktısı kapatma sözleşmesini sağlıyor mu. Sözleşmedeki bir özelliğin adı
+ * satırda geçiyor ama satır beklenen biçimde değilse sonuç ret olur (Astra 2. tur); yalnız gerçekten
+ * listede olmayan isteğe bağlı özellik yok sayılır.
+ */
 export function codexToolFeaturesDisabled(featureList: string): boolean {
+  const contract = new Set<string>([
+    ...CODEX_TOOL_FEATURES_REQUIRED,
+    ...CODEX_TOOL_FEATURES_OPTIONAL,
+  ]);
   const enabled = new Map<string, boolean>();
-  for (const line of featureList.split("\n")) {
-    const match = line.trim().match(/^([a-z0-9_]+)\s.*\s(true|false)$/u);
-    if (match) enabled.set(match[1]!, match[2] === "true");
+  for (const rawLine of featureList.split("\n")) {
+    const line = rawLine.trim();
+    const name = line.split(/\s+/u, 1)[0] ?? "";
+    if (!contract.has(name)) continue;
+    const match = line.match(/^([a-z0-9_]+)\s+[a-z][a-z ]*?\s+(true|false)$/u);
+    if (!match || enabled.has(name)) return false;
+    enabled.set(name, match[2] === "true");
   }
   return (
     CODEX_TOOL_FEATURES_REQUIRED.every((feature) => enabled.get(feature) === false) &&
     CODEX_TOOL_FEATURES_OPTIONAL.every((feature) => enabled.get(feature) !== true)
   );
+}
+
+/*
+  Alt ajan: `multi_agent=false` alt ajan araçlarını kapatmıyor (15 Ekim ölçümü). CLI 0.160.0'da
+  `agents.max_concurrent_threads_per_session=1` alt ajan başlatmayı engelledi; 0.144.6 bu anahtarı
+  yapılandırma hatasıyla reddediyor. Bu yüzden ayar sürüme bağlı verilir: tanınmayan ya da
+  `0.160.0`'dan eski sürüme gönderilmez.
+*/
+const CODEX_THREAD_LIMIT_MINIMUM_VERSION = [0, 160, 0] as const;
+export const CODEX_THREAD_LIMIT_ARGUMENTS = ["-c", "agents.max_concurrent_threads_per_session=1"];
+
+export function codexSupportsThreadLimit(version: string): boolean {
+  const match = version.match(/(?:^|\s)(\d+)\.(\d+)\.(\d+)(?:\s|$|-)/u);
+  if (!match) return false;
+  const parsed = [Number(match[1]), Number(match[2]), Number(match[3])];
+  for (let index = 0; index < 3; index += 1) {
+    if (parsed[index]! !== CODEX_THREAD_LIMIT_MINIMUM_VERSION[index])
+      return parsed[index]! > CODEX_THREAD_LIMIT_MINIMUM_VERSION[index]!;
+  }
+  return true;
 }
 
 /*
@@ -443,6 +475,7 @@ function collect(
   cancelled: boolean;
   tokenUsage?: RuntimeProviderTokenUsage;
   itemCounts?: CodexItemCounts;
+  eventStreamOverflow: boolean;
 }> {
   return new Promise((resolve, reject) => {
     let stderr = "";
@@ -450,15 +483,20 @@ function collect(
     let tokenUsage: RuntimeProviderTokenUsage | undefined;
     const itemCounts: CodexItemCounts = { errorItems: 0, toolItems: 0, unknownItems: 0 };
     const seenToolItems = new Set<string>();
+    let toolSeen = false;
+    let eventStreamOverflow = false;
     const readEvent = (line: string) => {
       tokenUsage = parseCodexTurnUsage(line) ?? tokenUsage;
       const item = classifyCodexItemEvent(line);
       if (!item) return;
       if (item.kind === "tool") {
-        // Aynı araç öğesi önce `started`, sonra `completed` gelir; bir kez sayılır.
+        // Güvenlik kararı sayıdan bağımsız: tek bir araç olayı (başlangıç ya da bitiş) yeter.
+        toolSeen = true;
+        // Sayı telemetridir: aynı kimlikli `started`/`completed` bir kez; kimliksiz yalnız bitiş.
         if (item.id) {
           if (seenToolItems.has(item.id)) return;
-          if (seenToolItems.size < MAX_TRACKED_TOOL_ITEMS) seenToolItems.add(item.id);
+          if (seenToolItems.size >= MAX_TRACKED_TOOL_ITEMS) return;
+          seenToolItems.add(item.id);
         } else if (!item.completed) return;
         itemCounts.toolItems += 1;
       } else if (item.completed && item.kind === "error") itemCounts.errorItems += 1;
@@ -512,7 +550,14 @@ function collect(
           pendingEvent = pendingEvent.slice(newline + 1);
           newline = pendingEvent.indexOf("\n");
         }
-        if (pendingEvent.length > MAX_PENDING_EVENT_CHARS) pendingEvent = "";
+        /*
+          Sınırı aşan satır okunamaz; okunamayan olay "araç yok" sayılmaz (Astra 2. tur). Satır
+          atılır ve çağrı `CODEX_EVENT_STREAM_INVALID` ile düşer.
+        */
+        if (pendingEvent.length > MAX_PENDING_EVENT_CHARS) {
+          pendingEvent = "";
+          eventStreamOverflow = true;
+        }
       });
     child.on("error", (error) => finish(() => reject(error)));
     child.on("close", (exitCode, exitSignal) =>
@@ -526,7 +571,15 @@ function collect(
           timedOut,
           cancelled,
           ...(tokenUsage ? { tokenUsage } : {}),
-          ...(parseJsonEvents ? { itemCounts } : {}),
+          ...(parseJsonEvents
+            ? {
+                itemCounts: {
+                  ...itemCounts,
+                  toolItems: Math.max(itemCounts.toolItems, toolSeen ? 1 : 0),
+                },
+              }
+            : {}),
+          eventStreamOverflow,
         });
       }),
     );
@@ -654,6 +707,13 @@ export class CodexCliProvider implements RuntimeProvider {
       throw new AppError("INTERNAL_ERROR", 500, "Codex CLI yardım çıktısı incelenemedi.");
     if (!codexToolFeaturesDisabled(featureList))
       throw new AppError("INTERNAL_ERROR", 500, "Codex CLI araç kapatma sözleşmesi doğrulanamadı.");
+    /*
+      `features list` CODEX_HOME/config.toml'u okur, karar çağrısı ise `--ignore-user-config` ile
+      okumaz. Dosya varsa doğrulanan yapılandırma çalışanla aynı olmayabilir; çağrı yapılmaz.
+      15 Ekim'de üretimde bu dosya yok.
+    */
+    if (fs.existsSync(path.join(this.#options.runtimeHome, "config.toml")))
+      throw new AppError("INTERNAL_ERROR", 500, "Codex home içinde config.toml beklenmiyor.");
     return {
       version,
       model: this.#profile.model,
@@ -742,6 +802,10 @@ export class CodexCliProvider implements RuntimeProvider {
       if (!inspected.supportsStructuredOutput) {
         throw new AppError("INTERNAL_ERROR", 500, "Codex CLI structured output desteklemiyor.");
       }
+      // Araç denetimi olay akışına dayanır; olay akışı olmayan CLI ile çağrı yapılmaz (Astra 2. tur).
+      if (!inspected.supportsJsonEvents) {
+        throw new AppError("INTERNAL_ERROR", 500, "Codex CLI olay akışı (--json) desteklemiyor.");
+      }
       const args = [
         "--ask-for-approval",
         "never",
@@ -751,13 +815,14 @@ export class CodexCliProvider implements RuntimeProvider {
         `model_reasoning_effort="${this.#profile.reasoningEffort}"`,
         // Araç kapatma sözleşmesi; `exec`'ten önce, global konumda.
         ...CODEX_TOOL_DISABLE_ARGUMENTS,
+        ...(codexSupportsThreadLimit(inspected.version) ? CODEX_THREAD_LIMIT_ARGUMENTS : []),
         "exec",
         "--ephemeral",
         "--ignore-user-config",
         "--ignore-rules",
         "--skip-git-repo-check",
-        // Y6: olay akışı yalnız token sayıları için okunur; karar çıktısı yine dosyadan gelir.
-        ...(inspected.supportsJsonEvents ? ["--json"] : []),
+        // Olay akışı token sayıları ve araç denetimi için okunur; karar çıktısı dosyadan gelir.
+        "--json",
         "--sandbox",
         "read-only",
         "--output-schema",
@@ -783,7 +848,7 @@ export class CodexCliProvider implements RuntimeProvider {
         remainingMs(),
         request.signal,
         this.#options.spawnProcess === undefined,
-        inspected.supportsJsonEvents,
+        true,
       );
       tokenUsage = result.tokenUsage;
       itemCounts = result.itemCounts;
@@ -805,6 +870,10 @@ export class CodexCliProvider implements RuntimeProvider {
       if ((itemCounts?.toolItems ?? 0) > 0) {
         retainedErrorCode = "CODEX_TOOL_ITEM";
         throw new RuntimeProviderExecutionError("CODEX_TOOL_ITEM", diagnostics());
+      }
+      if (result.eventStreamOverflow) {
+        retainedErrorCode = "CODEX_EVENT_STREAM_INVALID";
+        throw new RuntimeProviderExecutionError("CODEX_EVENT_STREAM_INVALID", diagnostics());
       }
       if (result.exitCode !== 0 || result.exitSignal !== null) {
         const safeCode = safeCodexFailure(result.stderr, result.exitSignal);
