@@ -50,6 +50,10 @@ function completedChild(options: {
   exitCode: number | null;
   exitSignal: NodeJS.Signals | null;
   closeDelayMs?: number;
+  /** Bayt parçaları: çok baytlı karakter parça sınırında bölünebilir. */
+  chunkBytes?: number;
+  /** Süreç kendiliğinden kapanmaz; yalnız sinyalle kapanır (zaman aşımı). */
+  closeOnKillOnly?: boolean;
 }): ChildProcessWithoutNullStreams {
   const child = new EventEmitter() as EventEmitter & {
     stdin: PassThrough;
@@ -62,15 +66,20 @@ function completedChild(options: {
   child.stdout = new PassThrough();
   child.stderr = new PassThrough();
   child.pid = process.pid;
-  child.kill = () => true;
+  child.kill = () => {
+    if (options.closeOnKillOnly) setImmediate(() => child.emit("close", null, "SIGTERM"));
+    return true;
+  };
   child.stdin.on("finish", () => {
     void (async () => {
-      // Gerçek boru gibi 64 KiB parçalar, ayrı turlarda: büyük olay satırı birden çok parçada gelir.
-      const stdout = options.stdout ?? "";
-      for (let offset = 0; offset < stdout.length; offset += 65_536) {
-        child.stdout.write(stdout.slice(offset, offset + 65_536));
+      // Gerçek boru gibi parçalar, ayrı turlarda: büyük olay satırı birden çok parçada gelir.
+      const stdout = Buffer.from(options.stdout ?? "", "utf8");
+      const size = options.chunkBytes ?? 65_536;
+      for (let offset = 0; offset < stdout.length; offset += size) {
+        child.stdout.write(stdout.subarray(offset, offset + size));
         await new Promise((resolve) => setImmediate(resolve));
       }
+      if (options.closeOnKillOnly) return;
       child.stdout.end();
       child.stderr.end(options.stderr ?? "");
       setTimeout(
@@ -447,6 +456,7 @@ describe("Codex token telemetry (Y6)", () => {
     extraEvents: string[] = [],
     version = "codex-cli 0.144.6",
     configToml = false,
+    decisionChild: { chunkBytes?: number; closeOnKillOnly?: boolean; timeoutMs?: number } = {},
   ) {
     const root = await mkdtemp(path.join(tmpdir(), "agent-sozluk-provider-tokens-"));
     temporaryRoots.push(root);
@@ -471,7 +481,13 @@ describe("Codex token telemetry (Y6)", () => {
         ...extraEvents,
         usageLine,
       ].join("\n");
-      return completedChild({ stdout: events, exitCode: 0, exitSignal: null });
+      return completedChild({
+        stdout: events,
+        exitCode: 0,
+        exitSignal: null,
+        ...(decisionChild.chunkBytes ? { chunkBytes: decisionChild.chunkBytes } : {}),
+        ...(decisionChild.closeOnKillOnly ? { closeOnKillOnly: true } : {}),
+      });
     });
     const provider = new CodexCliProvider({
       executable: "/usr/bin/false",
@@ -490,7 +506,7 @@ describe("Codex token telemetry (Y6)", () => {
       runId: randomUUID(),
       prompt: "token telemetrisi",
       outputSchema: { type: "object" },
-      timeoutMs: 10_000,
+      timeoutMs: decisionChild.timeoutMs ?? 10_000,
       debugRetentionHours: 0,
     });
     return { result, decisionArguments };
@@ -600,6 +616,36 @@ describe("Codex token telemetry (Y6)", () => {
     await expect(
       invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [longBenign]),
     ).rejects.toMatchObject({ safeCode: "CODEX_EVENT_STREAM_INVALID" });
+    // Taşma ardından zaman aşımı: sözleşme ihlali önce gelir (Sol 6.1 2. tur).
+    await expect(
+      invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [huge], "codex-cli 0.144.6", false, {
+        closeOnKillOnly: true,
+        timeoutMs: 1_500,
+      }),
+    ).rejects.toMatchObject({ safeCode: "CODEX_EVENT_STREAM_INVALID" });
+    // Çok baytlı karakter parça sınırında bölünse de sınırın altındaki satır okunur.
+    const base = JSON.stringify({
+      type: "item.completed",
+      item: { id: "a2", type: "agent_message", text: "" },
+    }).length;
+    const nearLimit = JSON.stringify({
+      type: "item.completed",
+      item: { id: "a2", type: "agent_message", text: "ç".repeat(1_048_576 - 10 - base) },
+    });
+    const split = await invokeWithHelp(
+      help,
+      undefined,
+      DISABLED_FEATURE_LIST,
+      [nearLimit],
+      "codex-cli 0.144.6",
+      false,
+      { chunkBytes: 32_767 },
+    );
+    expect(split.result.diagnostics?.itemCounts).toEqual({
+      errorItems: 0,
+      toolItems: 0,
+      unknownItems: 0,
+    });
     // Kimliksiz yalnız başlangıç olayı da ihlaldir.
     await expect(
       invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [

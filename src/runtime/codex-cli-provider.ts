@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import fs from "node:fs";
 import { chmod, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { StringDecoder } from "node:string_decoder";
 import { AppError } from "@/lib/http/errors";
 import type {
   RuntimeProvider,
@@ -485,6 +486,7 @@ function collect(
     const seenToolItems = new Set<string>();
     let toolSeen = false;
     let eventStreamOverflow = false;
+    const stdoutDecoder = new StringDecoder("utf8");
     const readEvent = (line: string) => {
       tokenUsage = parseCodexTurnUsage(line) ?? tokenUsage;
       const item = classifyCodexItemEvent(line);
@@ -543,7 +545,8 @@ function collect(
     if (!parseJsonEvents) child.stdout.resume();
     else
       child.stdout.on("data", (chunk: Buffer) => {
-        pendingEvent += chunk.toString("utf8");
+        // Çok baytlı karakter parça sınırında bölünebilir; uzunluk parçalanmadan bağımsız olmalı.
+        pendingEvent += stdoutDecoder.write(chunk);
         let newline = pendingEvent.indexOf("\n");
         while (newline >= 0) {
           // Satır sınırı parçalanmadan bağımsız (Sol 6.1 1. tur): uzun tam satır da okunmaz.
@@ -565,6 +568,7 @@ function collect(
     child.on("close", (exitCode, exitSignal) =>
       finish(() => {
         if (parseJsonEvents) {
+          pendingEvent += stdoutDecoder.end();
           if (pendingEvent.length > MAX_PENDING_EVENT_CHARS) eventStreamOverflow = true;
           else readEvent(pendingEvent);
         }
@@ -866,11 +870,10 @@ export class CodexCliProvider implements RuntimeProvider {
         anındaki yük kaydedilmiyordu.
       */
       hostMetrics = await monitor.stop();
-      if (result.cancelled) throw new RuntimeProviderCancelledError(diagnostics());
-      if (result.timedOut) throw new RuntimeProviderTimeoutError(diagnostics());
       /*
-        Araç kapatma sözleşmesinin ihlali, çıkış kodundan bağımsız olarak koşuyu düşürür: dış etkili
-        bir araç çalıştıysa modelin son mesajı o aracın getirdiği içerikle kurulmuş olabilir.
+        Araç kapatma sözleşmesinin ihlali çıkış kodundan, iptalden ve zaman aşımından ÖNCE gelir
+        (Sol 6.1 2. tur): dış etkili bir araç çalıştıysa ya da olay akışı okunamadıysa çağrının
+        sonucu ne olursa olsun koşu düşmeli; zaman aşımı fail-open fazlarda yutulabilir.
       */
       if ((itemCounts?.toolItems ?? 0) > 0) {
         retainedErrorCode = "CODEX_TOOL_ITEM";
@@ -880,6 +883,8 @@ export class CodexCliProvider implements RuntimeProvider {
         retainedErrorCode = "CODEX_EVENT_STREAM_INVALID";
         throw new RuntimeProviderExecutionError("CODEX_EVENT_STREAM_INVALID", diagnostics());
       }
+      if (result.cancelled) throw new RuntimeProviderCancelledError(diagnostics());
+      if (result.timedOut) throw new RuntimeProviderTimeoutError(diagnostics());
       if (result.exitCode !== 0 || result.exitSignal !== null) {
         const safeCode = safeCodexFailure(result.stderr, result.exitSignal);
         retainedErrorCode = safeCode;
