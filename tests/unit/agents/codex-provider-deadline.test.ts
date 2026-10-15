@@ -51,7 +51,7 @@ describe("Codex CLI provider absolute deadline", () => {
       (...spawnArguments: [command: string, arguments_?: readonly string[], options?: unknown]) => {
         void spawnArguments;
         inspectionProcessCount += 1;
-        if (inspectionProcessCount === 3) inspectionStartedResolve?.();
+        if (inspectionProcessCount === 4) inspectionStartedResolve?.();
         return hangingChild(killSignals);
       },
     );
@@ -78,10 +78,10 @@ describe("Codex CLI provider absolute deadline", () => {
     const rejection = expect(invocation).rejects.toBeInstanceOf(RuntimeProviderTimeoutError);
 
     await inspectionStarted;
-    expect(spawnProcess).toHaveBeenCalledTimes(3);
+    expect(spawnProcess).toHaveBeenCalledTimes(4);
     await vi.advanceTimersByTimeAsync(25);
     await rejection;
-    expect(killSignals).toEqual(["SIGTERM", "SIGTERM", "SIGTERM"]);
+    expect(killSignals).toEqual(["SIGTERM", "SIGTERM", "SIGTERM", "SIGTERM"]);
     for (const [command, rawArguments, rawOptions] of spawnMock.mock.calls) {
       const arguments_ = rawArguments as readonly string[];
       const options = rawOptions as {

@@ -55,28 +55,116 @@ type AgentRuntimeCodexReasoningEffort =
   (typeof AGENT_RUNTIME_CODEX_PROFILES)[AgentRuntimeCodexProfileName]["reasoningEffort"];
 
 /*
-  Modele hiçbir araç verilmez; karar JSON'u yalnız son mesajdan okunur. 15 Ekim ölçümü (üretim
-  host'u, üretim sandbox argümanları, gpt-5.6-luna max): yalnız `shell_tool=false` ile CLI 0.144.6
-  modele `functions.exec` (dosya erişimi olmayan JS), web araması, hesaba bağlı uygulama/MCP
-  araçları ve alt ajan başlatma veriyordu; model bunları gerçekten çağırdı. CLI 0.160.0 aynı
-  araçları kod modu üzerinden açar ve yalnız `codex-code-mode-host` sandbox'a bağlanmadığı için
-  çalıştıramaz; bu tasarım değil, rastlantıdır. Bu set ile iki sürümde de araç olayı 0, kod modu
-  "fail closed". Bilinmeyen özellik anahtarı CLI'da hata değildir, set iki sürümde de geçerlidir.
+  Araç kapatma sözleşmesi (15 Ekim). Ajan kararı yalnız son mesajdan okunur; modelin bir araca
+  ihtiyacı yok. 15 Ekim ölçümü (üretim host'u, üretim sandbox argümanları, gpt-5.6-luna max):
+  yalnız `shell_tool=false` ile CLI 0.144.6 modele `functions.exec` (dosya erişimi olmayan JS), web
+  araması, hesaba bağlı uygulama/MCP araçları ve alt ajan başlatma sundu; model bunları çağırdı.
+  CLI 0.160.0 aynı araçları kod modu üzerinden sunuyor; ölçümde kod modu yardımcı ikilisi
+  sandbox'ta olmadığı için çağrılar yürütülemedi.
+
+  Üç katman (Astra 1. tur, 15 Ekim):
+  1. Aşağıdaki özellikler global `-c` bayraklarıyla kapatılır; web araması ayrıca kapatılır.
+  2. Her çağrıdan önce `features list` aynı bayraklarla okunur. Zorunlu özellik listede yoksa ya da
+     açıksa çağrı yapılmaz: CLI bilinmeyen `-c` anahtarını sessizce yok saydığı için yazım hatası
+     ya da kaldırılmış bir ad ancak böyle yakalanır. İsteğe bağlı özellikler CLI 0.144.6'da yok;
+     varsa kapalı olmaları gerekir.
+  3. Çağrı sırasında dış etkili bir araç öğesi görülürse koşu `CODEX_TOOL_ITEM` ile düşer.
+
+  `unified_exec` listede değil: CLI 0.160.0'da `-c` ile kapanmıyor (shell aracının iç
+  uygulaması). Shell aracının kendisi `shell_tool=false` ile kapalı; ölçümde modelin araç
+  listesinde shell/komut aracı yoktu.
+
   Bkz docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md.
 */
+export const CODEX_TOOL_FEATURES_REQUIRED = [
+  /*
+    31 Ağustos ölçümü: shell aracı açıkken prompt injection (rol değiştirme) ile model sandbox'ta
+    görünür auth.json'ı okuyup çıktıya taşıyordu, 8'de 1. Araç kapalıyken 0/8.
+  */
+  "shell_tool",
+  "apps",
+  "multi_agent",
+  "image_generation",
+  "goals",
+  "plugins",
+  "remote_plugin",
+  "tool_suggest",
+  "code_mode_host",
+] as const;
+export const CODEX_TOOL_FEATURES_OPTIONAL = ["view_image", "skill_search", "sleep_tool"] as const;
 export const CODEX_TOOL_DISABLE_ARGUMENTS = [
-  "features.apps=false",
-  "features.multi_agent=false",
-  "features.image_generation=false",
-  "features.view_image=false",
-  "features.goals=false",
-  "features.plugins=false",
-  "features.remote_plugin=false",
-  "features.tool_suggest=false",
-  "features.skill_search=false",
-  "features.code_mode_host=false",
+  ...[...CODEX_TOOL_FEATURES_REQUIRED, ...CODEX_TOOL_FEATURES_OPTIONAL].map(
+    (feature) => `features.${feature}=false`,
+  ),
   'web_search="disabled"',
 ].flatMap((setting) => ["-c", setting]);
+
+/** `codex features list` çıktısı kapatma sözleşmesini sağlıyor mu. */
+export function codexToolFeaturesDisabled(featureList: string): boolean {
+  const enabled = new Map<string, boolean>();
+  for (const line of featureList.split("\n")) {
+    const match = line.trim().match(/^([a-z0-9_]+)\s.*\s(true|false)$/u);
+    if (match) enabled.set(match[1]!, match[2] === "true");
+  }
+  return (
+    CODEX_TOOL_FEATURES_REQUIRED.every((feature) => enabled.get(feature) === false) &&
+    CODEX_TOOL_FEATURES_OPTIONAL.every((feature) => enabled.get(feature) !== true)
+  );
+}
+
+/*
+  `codex exec --json` öğe türleri. Dış etkili araç öğesi koşuyu düşürür; bilinmeyen tür yalnız
+  sayılır, çünkü yeni bir CLI'nın zararsız bir türü bütün koşuları düşürmemeli. CLI geçişini
+  izleme betiği korur.
+*/
+const CODEX_BENIGN_ITEM_TYPES = new Set(["agent_message", "reasoning", "todo_list"]);
+const CODEX_TOOL_ITEM_TYPES = new Set([
+  "command_execution",
+  "file_change",
+  "mcp_tool_call",
+  "collab_tool_call",
+  "web_search",
+  "image_generation",
+]);
+const MAX_TRACKED_TOOL_ITEMS = 1_000;
+
+export interface CodexItemCounts {
+  errorItems: number;
+  toolItems: number;
+  unknownItems: number;
+}
+
+/**
+ * Bir olay satırını sınıflar. Yalnız `item.started` ve `item.completed` satırları ayrıştırılır;
+ * öğenin türü ve kimliği dışında hiçbir alan okunmaz ve tutulmaz.
+ */
+export function classifyCodexItemEvent(
+  line: string,
+): { kind: "error" | "tool" | "unknown" | "benign"; id?: string; completed: boolean } | undefined {
+  if (!line.includes('"item.completed"') && !line.includes('"item.started"')) return undefined;
+  let event: unknown;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+  if (!event || typeof event !== "object") return undefined;
+  const { type, item } = event as { type?: unknown; item?: unknown };
+  if ((type !== "item.completed" && type !== "item.started") || !item || typeof item !== "object")
+    return undefined;
+  const { type: itemType, id } = item as { type?: unknown; id?: unknown };
+  const safeId = typeof id === "string" && id.length <= 200 ? id : undefined;
+  const completed = type === "item.completed";
+  if (typeof itemType !== "string") return { kind: "unknown", completed };
+  const kind = CODEX_TOOL_ITEM_TYPES.has(itemType)
+    ? "tool"
+    : itemType === "error"
+      ? "error"
+      : CODEX_BENIGN_ITEM_TYPES.has(itemType)
+        ? "benign"
+        : "unknown";
+  return { kind, ...(safeId ? { id: safeId } : {}), completed };
+}
 
 export const RETAINED_RUNTIME_WORK_FILES = ["output.json", "output.schema.json"] as const;
 const maximumActiveRunAndCleanupGraceMs = 25 * 60 * 1000;
@@ -354,11 +442,28 @@ function collect(
   timedOut: boolean;
   cancelled: boolean;
   tokenUsage?: RuntimeProviderTokenUsage;
+  itemCounts?: CodexItemCounts;
 }> {
   return new Promise((resolve, reject) => {
     let stderr = "";
     let pendingEvent = "";
     let tokenUsage: RuntimeProviderTokenUsage | undefined;
+    const itemCounts: CodexItemCounts = { errorItems: 0, toolItems: 0, unknownItems: 0 };
+    const seenToolItems = new Set<string>();
+    const readEvent = (line: string) => {
+      tokenUsage = parseCodexTurnUsage(line) ?? tokenUsage;
+      const item = classifyCodexItemEvent(line);
+      if (!item) return;
+      if (item.kind === "tool") {
+        // Aynı araç öğesi önce `started`, sonra `completed` gelir; bir kez sayılır.
+        if (item.id) {
+          if (seenToolItems.has(item.id)) return;
+          if (seenToolItems.size < MAX_TRACKED_TOOL_ITEMS) seenToolItems.add(item.id);
+        } else if (!item.completed) return;
+        itemCounts.toolItems += 1;
+      } else if (item.completed && item.kind === "error") itemCounts.errorItems += 1;
+      else if (item.completed && item.kind === "unknown") itemCounts.unknownItems += 1;
+    };
     let settled = false;
     let timedOut = false;
     let cancelled = false;
@@ -403,7 +508,7 @@ function collect(
         pendingEvent += chunk.toString("utf8");
         let newline = pendingEvent.indexOf("\n");
         while (newline >= 0) {
-          tokenUsage = parseCodexTurnUsage(pendingEvent.slice(0, newline)) ?? tokenUsage;
+          readEvent(pendingEvent.slice(0, newline));
           pendingEvent = pendingEvent.slice(newline + 1);
           newline = pendingEvent.indexOf("\n");
         }
@@ -412,7 +517,7 @@ function collect(
     child.on("error", (error) => finish(() => reject(error)));
     child.on("close", (exitCode, exitSignal) =>
       finish(() => {
-        if (parseJsonEvents) tokenUsage = parseCodexTurnUsage(pendingEvent) ?? tokenUsage;
+        if (parseJsonEvents) readEvent(pendingEvent);
         pendingEvent = "";
         resolve({
           exitCode,
@@ -421,6 +526,7 @@ function collect(
           timedOut,
           cancelled,
           ...(tokenUsage ? { tokenUsage } : {}),
+          ...(parseJsonEvents ? { itemCounts } : {}),
         });
       }),
     );
@@ -534,13 +640,20 @@ export class CodexCliProvider implements RuntimeProvider {
     model: string;
     reasoningEffort: AgentRuntimeCodexReasoningEffort;
   }> {
-    const [version, topLevelHelp, execHelp] = await Promise.all([
+    const [version, topLevelHelp, execHelp, featureList] = await Promise.all([
       this.#inspectCommand(["--version"], timeoutMs, signal),
       this.#inspectCommand(["--help"], timeoutMs, signal),
       this.#inspectCommand(["exec", "--help"], timeoutMs, signal),
+      this.#inspectCommand(
+        [...CODEX_TOOL_DISABLE_ARGUMENTS, "features", "list"],
+        timeoutMs,
+        signal,
+      ),
     ]);
     if (topLevelHelp.length === 0)
       throw new AppError("INTERNAL_ERROR", 500, "Codex CLI yardım çıktısı incelenemedi.");
+    if (!codexToolFeaturesDisabled(featureList))
+      throw new AppError("INTERNAL_ERROR", 500, "Codex CLI araç kapatma sözleşmesi doğrulanamadı.");
     return {
       version,
       model: this.#profile.model,
@@ -588,12 +701,14 @@ export class CodexCliProvider implements RuntimeProvider {
     let modelStartedAtMs = 0;
     let hostMetrics: RuntimeProviderHostMetrics | undefined;
     let tokenUsage: RuntimeProviderTokenUsage | undefined;
+    let itemCounts: CodexItemCounts | undefined;
     const diagnostics = (): RuntimeProviderAttemptDiagnostics => ({
       setupMs,
       inspectMs,
       modelMs: modelStartedAtMs === 0 ? 0 : Math.max(0, Date.now() - modelStartedAtMs),
       ...(hostMetrics ? { hostMetrics } : {}),
       ...(tokenUsage ? { tokenUsage } : {}),
+      ...(itemCounts ? { itemCounts } : {}),
     });
     const remainingMs = (): number => {
       if (request.signal?.aborted) throw new RuntimeProviderCancelledError(diagnostics());
@@ -634,17 +749,7 @@ export class CodexCliProvider implements RuntimeProvider {
         this.#profile.model,
         "-c",
         `model_reasoning_effort="${this.#profile.reasoningEffort}"`,
-        /*
-          Modelin shell/dosya okuma aracını kapat. 31 Ağustos ölçümü: araç
-          açıkken prompt injection (rol-değiştirme) ile model, sandbox'ta
-          görünür auth.json'ı okuyup çıktıya taşıyordu — 8'de 1. Araç kapalıyken
-          0/8, karar JSON'u aynen üretiliyor: ajanların dosya okumaya ihtiyacı
-          yok, okuyacakları her şey zaten prompt'ta. `--disable shell_tool` ile
-          eşdeğer ama `-c` global konumda olduğu için CLI sürümleri arası
-          taşınabilir. Bkz docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md
-        */
-        "-c",
-        "features.shell_tool=false",
+        // Araç kapatma sözleşmesi; `exec`'ten önce, global konumda.
         ...CODEX_TOOL_DISABLE_ARGUMENTS,
         "exec",
         "--ephemeral",
@@ -681,6 +786,7 @@ export class CodexCliProvider implements RuntimeProvider {
         inspected.supportsJsonEvents,
       );
       tokenUsage = result.tokenUsage;
+      itemCounts = result.itemCounts;
       /*
         Host metriği hata yolunda da taşınmalı. Eskiden burada toplanıyor ama
         hemen ardından atılan exception'a iliştirilmiyordu; worker da
@@ -692,6 +798,14 @@ export class CodexCliProvider implements RuntimeProvider {
       hostMetrics = await monitor.stop();
       if (result.cancelled) throw new RuntimeProviderCancelledError(diagnostics());
       if (result.timedOut) throw new RuntimeProviderTimeoutError(diagnostics());
+      /*
+        Araç kapatma sözleşmesinin ihlali, çıkış kodundan bağımsız olarak koşuyu düşürür: dış etkili
+        bir araç çalıştıysa modelin son mesajı o aracın getirdiği içerikle kurulmuş olabilir.
+      */
+      if ((itemCounts?.toolItems ?? 0) > 0) {
+        retainedErrorCode = "CODEX_TOOL_ITEM";
+        throw new RuntimeProviderExecutionError("CODEX_TOOL_ITEM", diagnostics());
+      }
       if (result.exitCode !== 0 || result.exitSignal !== null) {
         const safeCode = safeCodexFailure(result.stderr, result.exitSignal);
         retainedErrorCode = safeCode;

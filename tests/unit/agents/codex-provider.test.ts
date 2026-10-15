@@ -11,6 +11,8 @@ import { monitorHostProcess } from "@/runtime/host-metrics";
 import {
   AGENT_RUNTIME_CODEX_PROFILES,
   CODEX_TOOL_DISABLE_ARGUMENTS,
+  classifyCodexItemEvent,
+  codexToolFeaturesDisabled,
   CodexCliProvider,
   safeCodexFailure,
   sanitizeRetainedRuntimeOutput,
@@ -19,6 +21,27 @@ import {
 import { RuntimeProviderExecutionError } from "@/runtime/provider";
 
 const temporaryRoots: string[] = [];
+
+/* Kapatma sözleşmesini sağlayan `codex features list` çıktısı (CLI 0.160.0 biçimi). */
+const DISABLED_FEATURE_LIST = [
+  "apply_patch_freeform                     removed            false",
+  ...[
+    "shell_tool",
+    "apps",
+    "multi_agent",
+    "image_generation",
+    "goals",
+    "plugins",
+    "remote_plugin",
+    "tool_suggest",
+    "code_mode_host",
+    "view_image",
+    "skill_search",
+    "sleep_tool",
+  ].map((feature) => `${feature.padEnd(41)}stable             false`),
+].join("\n");
+const isFeatureList = (codex: readonly string[]) =>
+  codex.at(-2) === "features" && codex.at(-1) === "list";
 
 function completedChild(options: {
   stdout?: string;
@@ -91,7 +114,7 @@ describe("Codex CLI provider security contract", () => {
       açıkken prompt injection ile auth.json 8'de 1 sızıyordu, kapalıyken 0/8.
       Bu satır kaldırılırsa güvenlik açığı geri gelir; docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md
     */
-    expect(source).toContain('"features.shell_tool=false"');
+    expect(source).toContain('  "shell_tool",');
     expect(source).toContain("...CODEX_TOOL_DISABLE_ARGUMENTS,");
     /*
       Host geneli okuma KAPALI olmalı. `--ro-bind / /` sandbox içindeki model
@@ -269,6 +292,13 @@ describe("Codex CLI provider security contract", () => {
             exitSignal: null,
             closeDelayMs: 5,
           });
+        if (isFeatureList(codexArguments))
+          return completedChild({
+            stdout: DISABLED_FEATURE_LIST,
+            exitCode: 0,
+            exitSignal: null,
+            closeDelayMs: 5,
+          });
         return completedChild(termination);
       });
       const provider = new CodexCliProvider({
@@ -294,7 +324,7 @@ describe("Codex CLI provider security contract", () => {
 
       expect(rejection).toBeInstanceOf(RuntimeProviderExecutionError);
       expect(rejection).toMatchObject({ safeCode: termination.safeCode });
-      expect(spawnMock).toHaveBeenCalledTimes(4);
+      expect(spawnMock).toHaveBeenCalledTimes(5);
       expect(JSON.stringify(rejection)).not.toMatch(/RAW_SIGNAL_STDERR_MUST_NOT_LEAK|SIGKILL|73/u);
     }
     expect(source).not.toContain("code ?? 1");
@@ -309,6 +339,8 @@ it("aynı run ID ile dört ardışık pilot çağrısı önceki dönüş değeri
     const codex = args?.slice((args.lastIndexOf("--") ?? -1) + 2) ?? [];
     if (codex.includes("--version"))
       return completedChild({ stdout: "codex-cli synthetic", exitCode: 0, exitSignal: null });
+    if (isFeatureList(codex))
+      return completedChild({ stdout: DISABLED_FEATURE_LIST, exitCode: 0, exitSignal: null });
     if (codex.includes("--help"))
       return completedChild({
         stdout: "--output-schema --output-last-message",
@@ -399,7 +431,12 @@ describe("Codex token telemetry (Y6)", () => {
     ).toEqual({ inputTokens: 20, outputTokens: 10 });
   });
 
-  async function invokeWithHelp(execHelp: string, codexProfile?: "luna-max" | "sol-medium") {
+  async function invokeWithHelp(
+    execHelp: string,
+    codexProfile?: "luna-max" | "sol-medium",
+    featureList = DISABLED_FEATURE_LIST,
+    extraEvents: string[] = [],
+  ) {
     const root = await mkdtemp(path.join(tmpdir(), "agent-sozluk-provider-tokens-"));
     temporaryRoots.push(root);
     const decisionArguments: string[][] = [];
@@ -411,6 +448,8 @@ describe("Codex token telemetry (Y6)", () => {
         return completedChild({ stdout: "Codex CLI help", exitCode: 0, exitSignal: null });
       if (codex[0] === "exec" && codex[1] === "--help")
         return completedChild({ stdout: execHelp, exitCode: 0, exitSignal: null });
+      if (isFeatureList(codex))
+        return completedChild({ stdout: featureList, exitCode: 0, exitSignal: null });
       decisionArguments.push([...codex]);
       const outputPath = codex[codex.indexOf("--output-last-message") + 1]!;
       writeFileSync(outputPath, JSON.stringify({ ok: true }), { mode: 0o600 });
@@ -418,6 +457,7 @@ describe("Codex token telemetry (Y6)", () => {
       const events = [
         JSON.stringify({ type: "thread.started", thread_id: "t" }),
         JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "{}" } }),
+        ...extraEvents,
         usageLine,
       ].join("\n");
       return completedChild({ stdout: events, exitCode: 0, exitSignal: null });
@@ -458,6 +498,66 @@ describe("Codex token telemetry (Y6)", () => {
     expect(legacy.result.diagnostics?.tokenUsage).toBeUndefined();
   });
 
+  // 15 Ekim: CLI bilinmeyen `-c` anahtarını yok saydığı için sözleşme `features list` ile doğrulanır.
+  it("refuses to call Codex when the CLI does not confirm the tool-disable contract", async () => {
+    const help = "--output-schema --output-last-message\n      --json\n";
+    const legacy = DISABLED_FEATURE_LIST.split("\n")
+      .filter((line) => !/^(view_image|skill_search|sleep_tool)\s/u.test(line))
+      .join("\n");
+    expect(codexToolFeaturesDisabled(legacy)).toBe(true);
+    const missingRequired = DISABLED_FEATURE_LIST.split("\n")
+      .filter((line) => !line.startsWith("apps "))
+      .join("\n");
+    const optionalEnabled = DISABLED_FEATURE_LIST.replace(
+      /^(view_image\s+stable\s+)false$/mu,
+      "$1true",
+    );
+    const requiredEnabled = DISABLED_FEATURE_LIST.replace(
+      /^(code_mode_host\s+stable\s+)false$/mu,
+      "$1true",
+    );
+    for (const featureList of ["", missingRequired, optionalEnabled, requiredEnabled]) {
+      expect(codexToolFeaturesDisabled(featureList)).toBe(false);
+      await expect(invokeWithHelp(help, undefined, featureList)).rejects.toThrow(
+        "Codex CLI araç kapatma sözleşmesi doğrulanamadı.",
+      );
+    }
+    const ok = await invokeWithHelp(help, undefined, legacy);
+    expect(ok.decisionArguments).toHaveLength(1);
+  });
+
+  it("fails closed on an external tool item and only counts error or unknown items", async () => {
+    const help = "--output-schema --output-last-message\n      --json\n";
+    const item = (type: string, item: Record<string, unknown>) => JSON.stringify({ type, item });
+    for (const toolType of [
+      "web_search",
+      "mcp_tool_call",
+      "collab_tool_call",
+      "command_execution",
+    ]) {
+      await expect(
+        invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [
+          item("item.started", { id: "t1", type: toolType }),
+          item("item.completed", { id: "t1", type: toolType }),
+        ]),
+      ).rejects.toMatchObject({
+        safeCode: "CODEX_TOOL_ITEM",
+        diagnostics: { itemCounts: { errorItems: 0, toolItems: 1, unknownItems: 0 } },
+      });
+    }
+    const tolerated = await invokeWithHelp(help, undefined, DISABLED_FEATURE_LIST, [
+      item("item.completed", { id: "e1", type: "error", message: "Code Mode is unavailable" }),
+      item("item.completed", { id: "r1", type: "reasoning", text: "..." }),
+      item("item.completed", { id: "u1", type: "future_item" }),
+    ]);
+    expect(tolerated.result.diagnostics?.itemCounts).toEqual({
+      errorItems: 1,
+      toolItems: 0,
+      unknownItems: 1,
+    });
+    expect(classifyCodexItemEvent('{"type":"turn.completed"}')).toBeUndefined();
+  });
+
   // 14 Ekim: model denemesi için kapalı profil; varsayılan değişmez.
   it("passes the selected closed-list model profile to Codex and reports it", async () => {
     const help = "--output-schema --output-last-message\n      --json\n";
@@ -476,21 +576,45 @@ describe("Codex token telemetry (Y6)", () => {
       'model_reasoning_effort="medium"',
     ]);
     /*
-      15 Ekim: modele araç verilmez (web, uygulama/MCP, alt ajan, kod modu). Ölçüm ve gerekçe
-      CODEX_TOOL_DISABLE_ARGUMENTS yanında; bayraklar `exec` alt komutundan önce, global konumda.
+      15 Ekim araç kapatma sözleşmesi (Astra 1. tur): beklenen liste sabitten BAĞIMSIZ yazılır.
+      Her iki profilde her çift `exec`'ten önce, tam olarak bir kez ve çelişen başka değer olmadan
+      bulunmalı; yazım hatası, silme ya da `exec` sonrasına taşıma testi düşürür.
     */
-    const decision = defaults.decisionArguments[0]!;
-    const globalFlags = decision.slice(0, decision.indexOf("exec"));
-    for (const setting of [
+    const expectedToolSettings = [
       "features.shell_tool=false",
       "features.apps=false",
       "features.multi_agent=false",
+      "features.image_generation=false",
+      "features.goals=false",
+      "features.plugins=false",
+      "features.remote_plugin=false",
+      "features.tool_suggest=false",
       "features.code_mode_host=false",
+      "features.view_image=false",
+      "features.skill_search=false",
+      "features.sleep_tool=false",
       'web_search="disabled"',
-    ]) {
-      expect(globalFlags[globalFlags.indexOf(setting) - 1]).toBe("-c");
+    ];
+    for (const decision of [defaults.decisionArguments[0]!, sol.decisionArguments[0]!]) {
+      const execIndex = decision.indexOf("exec");
+      const settings = decision.flatMap((value, index) =>
+        decision[index - 1] === "-c" ? [{ value, index }] : [],
+      );
+      for (const expected of expectedToolSettings) {
+        const matches = settings.filter(({ value }) => value === expected);
+        expect(matches, expected).toHaveLength(1);
+        expect(matches[0]!.index, expected).toBeLessThan(execIndex);
+        const key = expected.slice(0, expected.indexOf("="));
+        expect(
+          settings.filter(({ value }) => value.startsWith(`${key}=`)),
+          `${key} tek değer`,
+        ).toHaveLength(1);
+      }
+      expect(decision.slice(execIndex).includes("-c")).toBe(false);
     }
-    expect(CODEX_TOOL_DISABLE_ARGUMENTS.filter((value) => value === "-c")).toHaveLength(11);
+    expect(CODEX_TOOL_DISABLE_ARGUMENTS).toEqual(
+      expectedToolSettings.flatMap((setting) => ["-c", setting]),
+    );
     expect(AGENT_RUNTIME_CODEX_PROFILES).toEqual({
       "luna-max": { model: "gpt-5.6-luna", reasoningEffort: "max" },
       "sol-medium": { model: "gpt-6.1-sol", reasoningEffort: "medium" },

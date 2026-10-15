@@ -426,6 +426,10 @@ const codexIntervalSchema = z
     cachedInputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
     outputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
     reasoningOutputTokens: z.number().int().min(0).max(1_000_000_000).optional(),
+    /* 15 Ekim: `exec --json` öğe sayıları (araç kapatma sözleşmesi); eski worker için isteğe bağlı. */
+    errorItems: z.number().int().min(0).max(1_000_000).optional(),
+    toolItems: z.number().int().min(0).max(1_000_000).optional(),
+    unknownItems: z.number().int().min(0).max(1_000_000).optional(),
   })
   .strict()
   .refine(

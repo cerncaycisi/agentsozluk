@@ -4287,6 +4287,7 @@ components:
             - CODEX_EXEC_FAILED_NO_STDERR
             - CODEX_EXEC_FAILED
             - CODEX_OUTPUT_INVALID
+            - CODEX_TOOL_ITEM
         promptChars: { type: integer, minimum: 0 }
         promptBytes: { type: integer, minimum: 0 }
         censored: { type: boolean }

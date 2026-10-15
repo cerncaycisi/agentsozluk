@@ -323,15 +323,41 @@ sonuçlarını not al bunu yapalım taşımadan vs sonra". Astra 1. tur (NO-GO) 
 - **Durdurma kuralı** (başarısızlık > %30) uygulandı: 15 Ekim 06:31Z'de `luna-max`'a dönüldü. Devre
   kesici yoklamaları başarılı oldu, ertelenen gece işleri (hafıza toparlama, kaynak yenileme) önce
   boşaldı. Takvim betiği başarısızlığı izlemediği için bu durum yaklaşık 8,5 saat fark edilmedi.
-- **Hüküm:** S1 bir model ölçümü değil, kurulum hatası. Kol karşılaştırması yapılmaz, bu önkayıt
-  kapanır. Yeniden deneme yeni önkayıtla yapılır ve iki ön koşul taşır:
-  - Profil değişmeden önce aynı model, üretim CLI'ında ve üretim sandbox'ında tek koşuyla denenir.
-  - Geçiş betiği ilk koşuları izler; ilk 5 terminal koşudan 3'ü başarısızsa kendiliğinden
-    `luna-max`'a döner.
-- **Ön koşul ölçümü (15 Ekim):** CLI `0.160.0` üretime eskisinin yanına kuruldu (resmî paket,
-  SHA-256 doğrulandı). Üretim sandbox'ında durum yoklaması `luna-max` ve `sol-medium` ile geçti;
-  yapılandırılmış çıktı doğru, sol yoklaması 27 sn sürdü. Bu sırada model araçları bulgusu çıktı,
-  bkz [CODEX_CREDENTIAL_EXPOSURE](CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md) "15 Ekim".
+- **Hüküm:** S1 bir model ölçümü değil, kurulum hatası. Kol karşılaştırması yapılmaz ve bu önkayıt
+  kapanır. Yeniden deneme yeni bir önkayıtla yapılır.
+- **Yeniden deneme kapıları** (Astra 1. tur sonrası, 15 Ekim):
+  1. **Araç kapatma sözleşmesi** canlıda olmalı (`CODEX_TOOL_DISABLE_ARGUMENTS`, bkz
+     CODEX_CREDENTIAL_EXPOSURE "15 Ekim"). Dağıtımdan sonra `codex-tool-canary.ts` makbuzu alınır.
+  2. **CLI geçişi** ayrı bir adımdır: önce `luna-max` ile `0.144.6` → `0.160.0`.
+     - Geçiş sırası: duraklat → boşalt → `current` bağı → worker yeniden başlat → başlangıç
+       satırında sürüm doğrula → aç.
+     - Başlangıç satırında sürüm doğrulanamazsa akış kapalı kalır.
+     - Geri dönüş aynı yoldan eski bağa yapılır.
+  3. **Kimlik durumu:** `auth.json` en son 6 Ekim'de değişmiş. 15 Ekim'deki `0.160.0` yoklamaları
+     ve canary koşuları onu değiştirmedi; ardından `0.144.6` worker'ı başarıyla koştu.
+     - Geçişten önce ve sonra yalnız değişiklik zamanı ve boyut kaydedilir, içerik kaydedilmez.
+     - Geri dönüşten sonra eski CLI çalışmazsa akış duraklatılır. Yeniden giriş Gökhan'ın işidir
+       (Gate 3). Eski dosyayı körlemesine geri yüklemek çözüm sayılmaz.
+  4. **Koruma:** geçiş izleme betiği şu durumlarda `luna-max`'a döner:
+     - ilk 5 terminal koşuda üçüncü başarısızlık görüldüğü an (60 sn yoklama);
+     - blok boyunca 10 ve üstü koşuda başarısızlık %30'u geçerse;
+     - geçişten 20 dakika sonra terminal koşu yoksa;
+     - son terminal koşudan beri 30 dakika geçtiyse.
+
+     Geri dönüş başarısız olursa akış duraklatılır ve Gökhan'a bildirim gider. Başarısızlık
+     `FAILED`, `TIMED_OUT` ve `CANCELLED`'dır. p95 kuralı (L'nin 1,5 katı) blok ortasında ve sonunda
+     elle okunur.
+
+  5. **Sol ön koşulu:** profil değişmeden önce `sol-medium`, üretim CLI'ında ve üretim sandbox'ında
+     tek yoklamayla denenir. Bu, 15 Ekim'de `0.160.0` ile geçti.
+  6. **Kapasite:** CLI major değişmediği için (`0` → `0`) kapasite kanıtı kendiliğinden bayatlamıyor
+     (`capabilityFreshness`). Tek bir durum yoklaması kapasite kanıtı sayılmaz.
+     - CLI geçişinden sonraki ilk 12 saatte luna p50/p95, L1 ile karşılaştırılır.
+     - Kalıcı sol geçişinden önce modele bağlı kapasite ölçümü ayrı bir kapıdır (BACKLOG).
+- **Ön koşul ölçümü (15 Ekim):**
+  - CLI `0.160.0` üretime eskisinin yanına kuruldu. Kaynak resmî paket, SHA-256 doğrulandı.
+  - Üretim sandbox'ında durum yoklaması `luna-max` (57 sn) ve `sol-medium` (27 sn) ile geçti.
+  - Bu sırada model araçları bulgusu çıktı.
 
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 

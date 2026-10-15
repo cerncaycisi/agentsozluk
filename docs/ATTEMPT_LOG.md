@@ -9574,9 +9574,13 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   doğrulandı, ikili SHA-256 `12eb3e81…2aad`) `/opt/codex/packages/standalone/releases/` altına
   eskisinin yanına kuruldu. `current` bağı hâlâ `0.144.6`'yı gösteriyor. Üretim sandbox'ında durum
   yoklaması luna-max (57 sn) ve sol-medium (27 sn) ile geçti.
-- **Yan bulgu:** shell kapalıyken de model web, MCP/uygulama, alt ajan ve exec araçlarını
-  görüyordu. Ayrıntı CODEX_CREDENTIAL_EXPOSURE "15 Ekim" bölümünde; düzeltme
-  `CODEX_TOOL_DISABLE_ARGUMENTS`.
+- **Yan bulgu:** shell kapalıyken `0.144.6` modele exec, web, MCP ve alt ajan araçları sundu ve
+  bunları yürüttü. Ayrıntı CODEX_CREDENTIAL_EXPOSURE "15 Ekim" bölümünde.
+- **Düzeltme:** üç katman — kapatma bayrakları, her çağrıdan önce `features list` doğrulaması,
+  `CODEX_TOOL_ITEM`. Astra 1. tur NO-GO verdi; bulguları kapatıldı (bkz PR).
+  - `unified_exec=false`, `0.160.0`'da etkisiz; doğrulama bunu yakaladı ve özellik listeden çıktı.
+  - `multi_agent=false` alt ajanı kapatmıyor.
+  - `agents.max_concurrent_threads_per_session=1`, `0.144.6`'da yapılandırma hatası veriyor.
 
 **Do not repeat:**
 
@@ -9586,3 +9590,7 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
   geri dönsün.
 - Araç kapatmayı "shell kapalı" diye tek bayrağa bağlama. Her CLI sürümünde modelin gördüğü araç
   listesini ve gerçek araç olaylarını ölç.
+- `-c` ile verilen bir ayarın etkisini varsayma. CLI bilinmeyen anahtarı sessizce yok sayıyor ve
+  bazı özellikler kapanmıyor. Etkiyi `features list` ile oku.
+- "Secret" adlı canary dosyasında model okumayı reddediyor; bu yetenek değil, ret ölçer. Masum ad
+  kullan.
