@@ -9663,3 +9663,17 @@ Pencere 15 Ekim 10:29:36Z – 22:29:36Z, exact `8c202afd`, luna max, salt okunur
 
 **Do not repeat:** Uzak betiği SSH stdin'iyle yazıp arka planda başlatırken yazma adımını `&`
 zincirine koyma. Dosyanın dolu ve sözdiziminin geçerli olduğunu başlatmadan önce doğrula.
+
+## 16 Ekim — sol yeniden deneme korumaları, üretim testleri
+
+- **Astra 1. tur** (`c2b375d2`) NO-GO, **2. tur** (`bf193cde`) NO-GO. Bulgular: luna dönüşü
+  başarısızken sol açık kalabiliyordu; yerel süreç ölürse sol'un üretimde kapanma garantisi
+  yoktu; süresi dolmuş korumadan sonra sol açılabiliyordu; kota okuması koruma döngüsünü
+  bekletiyordu; tek hat ve kota başlangıç kapısı değildi; kapasite kapısı belgelerde
+  uzlaştırılmamıştı.
+- **Düzeltmeler:** depo dışı operatör betikleri; ayrıntı YEREL_KANIT "Önkayıt — sol medium yeniden
+  deneme".
+- **Üretim testleri:**
+  - Sol izni yokken `gecis.sh sol-medium` çalıştırıldı. Sonuç `SOL_REDDEDILDI: SOL_IZNI_YOK`, akış
+    luna ile açıldı (359 → 360, duraklama 2 dakika); tek hat kapısı `codexConcurrency=1` ile geçti.
+  - Süre sonu zamanlayıcısı elle tetiklendi: önce izni sildi, profil luna olduğu için işlem yapmadı.

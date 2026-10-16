@@ -196,9 +196,11 @@ güvenilir insan. Strateji sıra 4'te.
        16 Ekim; S1, L1, L2, S2).
        Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.
    - **Model geçişi adayı:** 13 Ekim yerel A/B'de `gpt-6.1-sol`
-     doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş öncesi:
-     tek hatta kapasite ölçümü (koşu süresi, saatlik koşu), kota tüketimi, ardından önkayıtlı kısa
-     canlı deneme. Karar Gökhan'ın; taşımadan sonra sunulur.
+     doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş kapısı
+     16 Ekim'de iki aşamaya ayrıldı (Astra 16 Ekim 1–2. tur): önce senaryo kapasitesi ve kota
+     okuması (yapıldı), sonra uçtan uca koşu süresi ve saatlik koşu korumalı S1'in kendisinde.
+     Önceki "önce koşu süresi/saatlik koşu, sonra deneme" önkoşulu yürürlükten kalktı. Karar
+     Claude + Astra'nın (Gökhan, 14 Ekim: "ok siz yönetin astra ile beraber").
      13 Ekim gecesi medium/low: sol medium karar başına 40 sn ve 1,7 bin çıktı token'ıyla (luna max
      68 sn, 9,6 bin) aynı kalite bandında, ama çok daha az yazıyor (28 koşunun 20'sinde yalnız
      oy/takip). Aday sol medium; canlı denemede entry hacmi ayrıca ölçülür.

@@ -356,9 +356,11 @@ sonuçlarını not al bunu yapalım taşımadan vs sonra". Astra 1. tur (NO-GO) 
        (`capabilityFreshness`). Bu, geçiş kapısının yerini tutmaz.
      - CLI geçişi (luna) için ilk 12 saatte luna p50/p95, L1 ile karşılaştırılır. Bu yalnız CLI
        geçişinin gözlemidir; sol kapasite ölçümü sayılmaz.
-     - Sol yeniden denemesinden **önce** `sol-medium` ile tek hatta kapasite ölçümü (koşu süresi,
-       saatlik koşu) ve kota okuması yapılır. Ölçümün yöntemi ve kapasite kaydına etkisi (kanıt
-       modele bağlı değil, BACKLOG) yeni önkayıtta yazılır.
+     - ~~Sol yeniden denemesinden önce `sol-medium` ile tek hatta kapasite ölçümü (koşu süresi,
+       saatlik koşu) ve kota okuması yapılır.~~ **16 Ekim'de yürürlükten kalktı.** Yerine iki
+       aşamalı kapı geldi: senaryo kapasitesi ve kota okuması yapıldı ("Ölçüm — sol medium tek hat
+       senaryo kapasitesi"); uçtan uca koşu süresi ve saatlik koşu korumalı S1'in kendisinde
+       ölçülür ("Önkayıt — sol medium yeniden deneme").
   7. **Alt ajan:** `multi_agent=false` alt ajanı kapatmıyor. `0.160.0`'dan itibaren
      `agents.max_concurrent_threads_per_session=1` sürüme bağlı olarak verilir (`0.144.6` bu
      anahtarı reddediyor). CLI geçişi bu kodun canlıda olmasından sonra yapılır.
@@ -415,7 +417,13 @@ gerekmiyor (8 Ekim kuralı). Duraklama 05:32:47Z–05:44:52Z (ayar sürümü 357
   - Sunucudaki geçişler aynı kilidi (`flock`) paylaşır, iki geçiş aynı anda koşmaz.
   - Her luna dönüşü doğrulanır. Başarısızsa bir kez daha denenir, o da olmazsa akış doğrulanarak
     duraklatılır ve Gökhan'a bildirim gider.
-  - L blok sınırı 10 dakikadan fazla kaçarsa deneme durur.
+  - L blok sınırı 10 dakikadan fazla kaçarsa (uykudan uyanınca yeniden denetlenir) deneme durur.
+  - **Sol izni:** süre sonu koruması kurulurken sunucuya mutlak bitiş yazılır; zamanlayıcı
+    tetiklenince ilk iş olarak silinir. Sol'a geçiş ve sol profiliyle her açılış, kilit altında bu
+    izni denetler. İzin yoksa, dolmuşsa ya da 11 saatten az kaldıysa sol açılmaz.
+  - **S başlangıç kapısı:** kota okunmalı ve %70'in altında olmalı; akış duraklatılmışken
+    `codexConcurrency=1` doğrulanmalı. Geçmezse sol açılmaz, luna devam eder.
+  - Acil luna dönüşünde kota okunmaz; önce duraklatılır. Kota izleyicide ayrı süreçte okunur.
 - **Kol ataması ve süre:** bir bloğun koşuları, `startedAt` değeri bloğun açılışı (resume) ile bir
   sonraki geçişin duraklatma başlangıcı arasında olan bütün terminal koşulardır. Koşu süresi
   `finishedAt − startedAt`. Duraklatmadan sonra yeni koşu başlamaz ve
@@ -442,9 +450,10 @@ gerekmiyor (8 Ekim kuralı). Duraklama 05:32:47Z–05:44:52Z (ayar sürümü 357
 
   Kota %85'te Gökhan'a bildirim gider. Durursa deneme "durdu" yazılır ve koşu eklenmez.
 
-- **Kota bütçesi:** gerçek koşu maliyeti bilinmiyor (yukarıdaki ölçüm çözünürlüğü yetmiyor). En kötü
-  üst sınır (senaryo başına 0,1 puan × saatte ~27 koşu × 12 saat ≈ 32 puan/S bloğu) iki S bloğuyla
-  %85'i aşabilir. Bu yüzden bütçe tahminle değil, %70 ve 25 puan kurallarıyla sınırlanır.
+- **Kota bütçesi:** gerçek koşu maliyeti bilinmiyor (yukarıdaki ölçüm çözünürlüğü yetmiyor). Bir
+  karşı örnek: senaryo maliyetini (en çok 0,1 puan) gerçek koşuya eşitlersek saatte ~27 koşu × 12
+  saat ≈ 32 puan/S bloğu eder ve iki S bloğu %85'i aşabilir. Bu, gerçek tüketimin üst sınırı
+  değildir. Bütçe tahminle değil, %70 ve 25 puan kurallarıyla sınırlanır.
 - **Sınır:** blokların yazdıkları sonraki bloklara (hafıza, başlık içeriği) taşınır; iki yönde de
   vardır, sonuçta not edilir. 13 Ekim yerel denemede sol medium çok daha az yazdı (28 koşunun 20'si
   yalnız oy/takip); hacim kabul eşiği bunun için var.
