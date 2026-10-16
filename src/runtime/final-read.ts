@@ -94,7 +94,7 @@ const protectedSpan =
 */
 const quoteLike = /["“”«»'‘’]/gu;
 
-function quotesUnambiguous(body: string): boolean {
+export function quotesUnambiguous(body: string): boolean {
   if (body.includes("‘")) return false;
   /*
     Sunucu ilke denetimi NFKC uygular: tam genişlikli ＂ orada " olur ve alıntı sayılır (Sol 6.1).
@@ -154,6 +154,11 @@ function policyViolations(body: string, context: RuntimeFinalReadContext): Set<s
 function policyPreserved(before: string, after: string, context: RuntimeFinalReadContext): boolean {
   const previous = policyViolations(before, context);
   return [...policyViolations(after, context)].every((violation) => previous.has(violation));
+}
+
+/** Gövdedeki korunan aralıkların metni (bağlantı, alıntı, URL); karma yazım koruması da kullanır. */
+export function runtimeProtectedSpans(body: string): string[] {
+  return [...body.matchAll(protectedSpan)].map((match) => match[0]);
 }
 
 function protectedRanges(body: string): Array<[number, number]> {
@@ -301,7 +306,7 @@ function anyRemovalPossible(body: string, units: readonly RuntimeFinalReadUnit[]
 const sensitiveDomain =
   /(?:^|[^\p{L}])(?:sağlık|hastal|hastane|hasta(?!n\p{L}*\s+(?:taraftar|seyirci))|tedavi|ilaç|kanser|kalp|diyabet|tansiyon|aşı(?!r)|bağışıklı|enfeksiyon|virüs|bakteri|ameliyat|semptom|doktor|hekim|teşhis|tanı(?:sı|sını|ya|da|nın|\s|$)|doz(?:u|a|lar|aj|\s|$)|beslenme|diyet|takviye|vitamin|gebelik|hamile|ruh sağlı|depresyon|intihar|psikiyatr|ölüm riski|yatırım|borsa|hisse(?!t)|hissedar|kripto|faiz|kredi|borç|vergi|emeklilik|sigorta|anapara|döviz|altın fiyat|hukuk|dava|mahkeme|avukat|kanun|yasal|suç|ceza|tahliye|kiracı|icra|haciz|tazminat|sözleşme)/u;
 
-function inSensitiveDomain(text: string): boolean {
+export function inSensitiveDomain(text: string): boolean {
   return [text.toLocaleLowerCase("tr-TR"), text.toLowerCase()].some((lower) =>
     sensitiveDomain.test(lower),
   );
@@ -365,17 +370,22 @@ const runtimeFinalReadSourceProvenance = new Set([
   "MULTIPLE_SOURCES",
 ]);
 
-/** Yayıma gidecek entry gövdeleri: iki ya da daha fazla parçası olan yeni entry'ler. */
-export function runtimeFinalReadCandidates(
+/** Son okuma ile karma yazımın (`src/runtime/voice-rewrite.ts`) ortak aday alanları. */
+export type RuntimeEditableEntry = Pick<
+  RuntimeFinalReadCandidate,
+  "sequence" | "topicTitle" | "body" | "createsTopic" | "topicOtherBodies"
+>;
+
+/**
+ * Yayımlanmadan önce yeniden ele alınabilecek yeni entry gövdeleri. Kaynaklı, alıntı sınırı
+ * belirsiz, ciddi iddialı ve sağlık/finans/hukuk gövdeleri dışarıda kalır; son okuma ve karma
+ * yazım aynı uygunluk kuralını kullanır.
+ */
+export function runtimeEditableEntries(
   decision: RuntimeDecision,
   perception: Record<string, unknown>,
-): RuntimeFinalReadCandidate[] {
+): RuntimeEditableEntry[] {
   const topicTitles = runtimeFinalReadTopicTitles(perception);
-  const ownRecentBodies = (
-    Array.isArray(perception.ownRecentEntries) ? perception.ownRecentEntries : []
-  )
-    .map((entry) => record(entry)?.body)
-    .filter((body): body is string => typeof body === "string");
   const readTopics = (Array.isArray(perception.readTopics) ? perception.readTopics : [])
     .map(record)
     .filter((topic): topic is Record<string, unknown> => topic !== null);
@@ -416,20 +426,33 @@ export function runtimeFinalReadCandidates(
       (typeof title === "string" && inSensitiveDomain(title))
     )
       return [];
-    const units = runtimeFinalReadUnits(body);
-    return units.length < 2 || !anyRemovalPossible(body, units)
+    return [
+      {
+        sequence: action.sequence,
+        topicTitle: typeof title === "string" ? title : "",
+        body,
+        createsTopic: action.actionType === "CREATE_TOPIC_WITH_ENTRY",
+        topicOtherBodies: topicOtherBodies(action.input.topicId),
+      },
+    ];
+  });
+}
+
+/** Yayıma gidecek entry gövdeleri: iki ya da daha fazla parçası olan yeni entry'ler. */
+export function runtimeFinalReadCandidates(
+  decision: RuntimeDecision,
+  perception: Record<string, unknown>,
+): RuntimeFinalReadCandidate[] {
+  const ownRecentBodies = (
+    Array.isArray(perception.ownRecentEntries) ? perception.ownRecentEntries : []
+  )
+    .map((entry) => record(entry)?.body)
+    .filter((body): body is string => typeof body === "string");
+  return runtimeEditableEntries(decision, perception).flatMap((entry) => {
+    const units = runtimeFinalReadUnits(entry.body);
+    return units.length < 2 || !anyRemovalPossible(entry.body, units)
       ? []
-      : [
-          {
-            sequence: action.sequence,
-            topicTitle: typeof title === "string" ? title : "",
-            body,
-            units,
-            createsTopic: action.actionType === "CREATE_TOPIC_WITH_ENTRY",
-            ownRecentBodies,
-            topicOtherBodies: topicOtherBodies(action.input.topicId),
-          },
-        ];
+      : [{ ...entry, units, ownRecentBodies }];
   });
 }
 

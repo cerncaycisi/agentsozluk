@@ -106,6 +106,23 @@ import {
   type RuntimeFinalReadCandidate,
 } from "@/runtime/final-read";
 import {
+  applyRuntimeVoiceBodies,
+  runtimeVoiceCallLimit,
+  runtimeVoiceCandidates,
+  runtimeVoiceFidelityAccepted,
+  runtimeVoiceFidelityJsonSchema,
+  runtimeVoiceFidelitySchema,
+  runtimeVoiceInstructions,
+  runtimeVoicePersonaSections,
+  runtimeVoiceRewriteIssue,
+  runtimeVoiceRewriteJsonSchema,
+  runtimeVoiceRewriteSchema,
+  runtimeVoiceTopicEntryChars,
+  runtimeVoiceWordCount,
+  runtimeVoiceWritingGuide,
+  type RuntimeVoiceCandidate,
+} from "@/runtime/voice-rewrite";
+import {
   applyRuntimeActionWorthinessVerdict,
   parseRuntimeActionWorthinessVerdict,
   runtimeActionWorthinessVerdictJsonSchema,
@@ -120,6 +137,11 @@ export interface RuntimeWorkerOptions {
   controlPlane: RuntimeControlPlane;
   provider: RuntimeProvider;
   actionWorthinessProvider?: RuntimeProvider;
+  /*
+    Karma yazım sağlayıcısı (`src/runtime/voice-rewrite.ts`). Yoksa faz kapalıdır; sadakat
+    denetimi `actionWorthinessProvider` ile yapılır, o da yoksa faz yine kapalıdır.
+  */
+  voiceProvider?: RuntimeProvider;
   sourceReader?: Pick<SafeSourceReader, "read">;
   heartbeatIntervalMs?: number;
   pollIntervalMs?: number;
@@ -991,6 +1013,40 @@ export function runtimeFinalReadTimeoutMs(input: {
     : timeoutMs;
 }
 
+/* Karma yazım çağrılarının tavanı; alt sınır ve yürütme payı yenilikle aynıdır. */
+const RUNTIME_VOICE_MAX_TIMEOUT_MS = 60_000;
+
+/*
+  Karma yazımdan sonra içerik onarımına ve onarılan gövdenin yenilik denetimine ayrılan çağrı
+  sayısı. Karma yazım çağrı bütçesini bunlardan önce tüketmez.
+*/
+export const RUNTIME_VOICE_RESERVED_CALLS = 2;
+
+/**
+ * Karma yazım çağrısının süre sınırı; çağrı yapılmayacaksa `null`. `pendingCalls` bu gövde için
+ * kalan çağrı sayısıdır: yeniden yazımdan önce 2 (yazım + sadakat), sadakatten önce 1. İki çağrı
+ * birlikte sığmıyorsa yeniden yazım hiç başlamaz; özgün gövde yayımlanır.
+ */
+export function runtimeVoiceTimeoutMs(input: {
+  index: number;
+  invocationsSoFar: number;
+  remainingMs: number;
+  pendingCalls: 1 | 2;
+}): number | null {
+  const timeoutMs = Math.min(
+    RUNTIME_VOICE_MAX_TIMEOUT_MS,
+    input.remainingMs -
+      RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
+      (input.pendingCalls - 1) * RUNTIME_NOVELTY_MIN_TIMEOUT_MS,
+  );
+  return input.index >= runtimeVoiceCallLimit ||
+    input.invocationsSoFar + input.pendingCalls >
+      runtimeCodexInvocationLimit - RUNTIME_VOICE_RESERVED_CALLS ||
+    timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS
+    ? null
+    : timeoutMs;
+}
+
 // Plain-text bağlam: etiket kapatan karakter veri içinden gelemesin.
 function noveltyText(value: string): string {
   return value.split(/\s+/u).join(" ").trim().replaceAll("<", "‹").replaceAll(">", "›");
@@ -1027,6 +1083,66 @@ export function buildFinalReadPrompt(candidate: RuntimeFinalReadCandidate): stri
     `Başlık: ${noveltyText(candidate.topicTitle)}`,
     "Parçalar:",
     ...candidate.units.map(({ text }, index) => `${index + 1}. ${noveltyText(text)}`),
+    runtimePromptScaffold.untrustedClosing,
+  ].join("\n");
+}
+
+/*
+  Karma yazım istemi: yerelde doğrulanan "istem 2" sırası (persona, yazım rehberi, başlık, son
+  entry'ler, taslak). Persona ve rehber güvenilir metindir; başlık, entry'ler ve taslak ayrı
+  güvenilmeyen bloklardadır ve blok kapatan karakter taşıyamaz.
+*/
+export function buildVoicePrompt(
+  candidate: RuntimeVoiceCandidate,
+  personaSections: string,
+  writingGuide: string,
+): string {
+  const topicEntries = candidate.topicOtherBodies.map(
+    (body) => `- ${Array.from(noveltyText(body)).slice(0, runtimeVoiceTopicEntryChars).join("")}`,
+  );
+  return [
+    runtimeVoiceInstructions.opening,
+    "",
+    personaSections,
+    "",
+    writingGuide,
+    "",
+    runtimeVoiceInstructions.titleHeading,
+    runtimePromptScaffold.untrustedOpening,
+    `"${noveltyText(candidate.topicTitle)}"`,
+    runtimePromptScaffold.untrustedClosing,
+    ...(topicEntries.length > 0
+      ? [
+          "",
+          runtimeVoiceInstructions.topicEntriesHeading,
+          runtimePromptScaffold.untrustedOpening,
+          ...topicEntries,
+          runtimePromptScaffold.untrustedClosing,
+        ]
+      : []),
+    "",
+    runtimeVoiceInstructions.draftHeading,
+    runtimeVoiceInstructions.draft,
+    runtimeVoiceInstructions.rules(runtimeVoiceWordCount(candidate.body)),
+    runtimePromptScaffold.untrustedOpening,
+    `Taslak: ${noveltyText(candidate.body)}`,
+    runtimePromptScaffold.untrustedClosing,
+    "",
+    ...runtimeVoiceInstructions.closing,
+  ].join("\n");
+}
+
+/** Sadakat denetimi: yeniden yazım taslağa olgu ekliyor ya da kanaati değiştiriyor mu. */
+export function buildVoiceFidelityPrompt(draft: string, rewrite: string): string {
+  return [
+    ...runtimeVoiceInstructions.fidelity,
+    "",
+    runtimePromptScaffold.untrustedOpening,
+    "Taslak:",
+    noveltyText(draft),
+    "",
+    "Yeniden yazım:",
+    noveltyText(rewrite),
     runtimePromptScaffold.untrustedClosing,
   ].join("\n");
 }
@@ -1495,9 +1611,9 @@ export class AgentRuntimeWorker {
     */
     /*
       15 Ekim araç kapatma sözleşmesi (Astra 2. tur): `CODEX_TOOL_ITEM` hangi fazda olursa olsun
-      koşuyu düşürür. Fail-open fazlar (gezinme, yenilik, son okuma, içerik onarımı) bu hatayı
-      yeniden fırlatır; ayrıca eylem kaydı, yürütme ve tamamlama öncesinde koşu içinde görülmüş bir
-      ihlal varsa işlem yapılmaz.
+      koşuyu düşürür. Fail-open fazlar (gezinme, yenilik, son okuma, karma yazım, içerik onarımı)
+      bu hatayı yeniden fırlatır; ayrıca eylem kaydı, yürütme ve tamamlama öncesinde koşu içinde
+      görülmüş bir ihlal varsa işlem yapılmaz.
     */
     let toolContractViolation: unknown;
     const assertToolContract = () => {
@@ -1613,6 +1729,15 @@ export class AgentRuntimeWorker {
       checkedCount: number;
       editedCount: number;
       removedUnitCount: number;
+      failedOpenCount: number;
+      skippedCount: number;
+    } | null = null;
+    /* Karma yazımın ne yaptığı — bkz `runtime-schemas.ts`, `voice`. */
+    let voice: {
+      candidateCount: number;
+      rewrittenCount: number;
+      guardRejectedCount: number;
+      fidelityRejectedCount: number;
       failedOpenCount: number;
       skippedCount: number;
     } | null = null;
@@ -2241,12 +2366,141 @@ export class AgentRuntimeWorker {
           this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
         }
       }
+      const consolidationRun = isMemoryConsolidationRun(context);
+      const personaReflectionRun = isPersonaReflectionRun(context);
+      /*
+        Karma yazım (`src/runtime/voice-rewrite.ts`): yenilik kapısından sağ çıkan her yeni entry
+        gövdesi yayımlanmadan hemen önce personanın sesiyle bir kez yeniden yazılır. Yenilikten
+        SONRA çalışır: kapı taslağın katkısına karar verir; yeniden yazım yeni bilgi ekleyemediği
+        için o hükmü geçersiz kılmaz. Sadakat denetimi yenilik sağlayıcısıyla (luna) yapılır.
+        Koruma, sadakat, hata ya da süre engelinde özgün gövde yayımlanır ve sayılır. İçerik
+        onarımının ürettiği gövde bu fazdan geçmez.
+      */
+      const voiceProvider =
+        noveltyProvider && !consolidationRun && !personaReflectionRun
+          ? this.#options.voiceProvider
+          : undefined;
+      const voiceCandidates =
+        voiceProvider && noveltyProvider
+          ? runtimeVoiceCandidates(decision, context.perception)
+          : [];
+      if (voiceProvider && noveltyProvider && voiceCandidates.length > 0) {
+        await enterPhase("VALIDATING");
+        const stats = (voice ??= {
+          candidateCount: 0,
+          rewrittenCount: 0,
+          guardRejectedCount: 0,
+          fidelityRejectedCount: 0,
+          failedOpenCount: 0,
+          skippedCount: 0,
+        });
+        const personaSections = runtimeVoicePersonaSections(context.persona.renderedPrompt);
+        const bodies = new Map<number, string>();
+        for (const [index, candidate] of voiceCandidates.entries()) {
+          stats.candidateCount += 1;
+          await heartbeat();
+          deadline.throwIfStopped();
+          const timeoutMs =
+            personaSections === null
+              ? null
+              : runtimeVoiceTimeoutMs({
+                  index,
+                  invocationsSoFar: codexIntervals.length,
+                  remainingMs: deadline.remainingMs(),
+                  pendingCalls: 2,
+                });
+          if (personaSections === null || timeoutMs === null) {
+            stats.skippedCount += 1;
+            continue;
+          }
+          try {
+            const voiceResult = await invokeCodex(
+              {
+                runId,
+                prompt: buildVoicePrompt(candidate, personaSections, runtimeVoiceWritingGuide),
+                outputSchema: runtimeVoiceRewriteJsonSchema,
+                timeoutMs,
+                debugRetentionHours: context.run.debugRetentionHours,
+                signal: deadline.signal,
+              },
+              "VOICE",
+              voiceProvider,
+            );
+            /*
+              Yalnız süre toplanır: kullanım kaydındaki model ve sürüm koşunun ana modelini
+              göstermeye devam eder; karma yazım çağrısı `VOICE` aralığından ayırt edilir.
+            */
+            providerResult = {
+              ...providerResult,
+              durationMs: providerResult.durationMs + voiceResult.durationMs,
+            };
+            const rewrite = runtimeVoiceRewriteSchema.parse(voiceResult.output).body.trim();
+            if (runtimeVoiceRewriteIssue(candidate.body, rewrite, candidate) !== null) {
+              stats.guardRejectedCount += 1;
+              this.#options.onSafeEvent?.({ level: "info", code: "VOICE_GUARD_REJECTED", runId });
+              continue;
+            }
+            await heartbeat();
+            deadline.throwIfStopped();
+            const checkTimeoutMs = runtimeVoiceTimeoutMs({
+              index,
+              invocationsSoFar: codexIntervals.length,
+              remainingMs: deadline.remainingMs(),
+              pendingCalls: 1,
+            });
+            if (checkTimeoutMs === null) {
+              stats.skippedCount += 1;
+              continue;
+            }
+            const checkResult = await invokeCodex(
+              {
+                runId,
+                prompt: buildVoiceFidelityPrompt(candidate.body, rewrite),
+                outputSchema: runtimeVoiceFidelityJsonSchema,
+                timeoutMs: checkTimeoutMs,
+                debugRetentionHours: context.run.debugRetentionHours,
+                signal: deadline.signal,
+              },
+              "VOICE_CHECK",
+              noveltyProvider,
+            );
+            providerResult = {
+              ...checkResult,
+              durationMs: providerResult.durationMs + checkResult.durationMs,
+            };
+            const verdict = runtimeVoiceFidelitySchema.parse(checkResult.output);
+            if (!runtimeVoiceFidelityAccepted(verdict)) {
+              stats.fidelityRejectedCount += 1;
+              this.#options.onSafeEvent?.({
+                level: "info",
+                code: "VOICE_FIDELITY_REJECTED",
+                runId,
+              });
+              continue;
+            }
+            bodies.set(candidate.sequence, rewrite);
+            stats.rewrittenCount += 1;
+          } catch (rawVoiceError) {
+            const voiceError = deadline.normalizeError(rawVoiceError);
+            if (
+              voiceError instanceof RuntimeProviderCancelledError ||
+              toolContractViolation !== undefined ||
+              deadline.signal.aborted
+            )
+              throw voiceError;
+            stats.failedOpenCount += 1;
+            this.#options.onSafeEvent?.({ level: "error", code: "VOICE_FAILED_OPEN", runId });
+          }
+        }
+        if (bodies.size > 0) {
+          decision = applyRuntimeVoiceBodies(decision, bodies);
+          this.#options.onSafeEvent?.({ level: "info", code: "VOICE_REWRITTEN", runId });
+        }
+      }
       ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(
         decision,
         new Set(perceptionEvidence.sourceItemIds),
       ));
-      const consolidationRun = isMemoryConsolidationRun(context);
-      const personaReflectionRun = isPersonaReflectionRun(context);
       currentFailure = runtimeWorkerFailures.actionRecord;
       assertToolContract();
       await this.#options.controlPlane.recordActions(
@@ -2296,7 +2550,12 @@ export class AgentRuntimeWorker {
           kalite kaybı hem deney karıştırıcısıydı (Sol hakem turu).
         */
         const decisionPhaseCalls = codexIntervals.filter(
-          ({ phase }) => phase !== "BROWSE" && phase !== "NOVELTY" && phase !== "FINAL_READ",
+          ({ phase }) =>
+            phase !== "BROWSE" &&
+            phase !== "NOVELTY" &&
+            phase !== "FINAL_READ" &&
+            phase !== "VOICE" &&
+            phase !== "VOICE_CHECK",
         ).length;
         if (repairableRejection && !contentRepairAttempted && decisionPhaseCalls < 3) {
           contentRepairAttempted = true;
@@ -2539,6 +2798,7 @@ export class AgentRuntimeWorker {
             ...(actionWorthiness ? { actionWorthiness } : {}),
             ...(novelty ? { novelty } : {}),
             ...(finalRead ? { finalRead } : {}),
+            ...(voice ? { voice } : {}),
             ...providerResult.hostMetrics,
           },
           performanceMetrics: {
@@ -2623,6 +2883,7 @@ export class AgentRuntimeWorker {
               ...(actionWorthiness ? { actionWorthiness } : {}),
               ...(novelty ? { novelty } : {}),
               ...(finalRead ? { finalRead } : {}),
+              ...(voice ? { voice } : {}),
               /*
                 Başarısızlık kaydına DÜŞEN çağrının host metriği yazılmalı.
                 Eskiden `providerResult?.hostMetrics` yazılıyordu — o bir

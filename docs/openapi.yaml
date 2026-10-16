@@ -4270,6 +4270,8 @@ components:
               CONTENT_REPAIR,
               NOVELTY,
               FINAL_READ,
+              VOICE,
+              VOICE_CHECK,
             ]
         providerSafeCode:
           type: string
@@ -4422,6 +4424,24 @@ components:
             - skippedCount
           additionalProperties: false
           description: Son okumanın aday, okunan, kısaltılan, silinen parça ve okunmadan geçen sayıları.
+        voice:
+          type: object
+          properties:
+            candidateCount: { type: integer, minimum: 0, maximum: 100 }
+            rewrittenCount: { type: integer, minimum: 0, maximum: 100 }
+            guardRejectedCount: { type: integer, minimum: 0, maximum: 100 }
+            fidelityRejectedCount: { type: integer, minimum: 0, maximum: 100 }
+            failedOpenCount: { type: integer, minimum: 0, maximum: 100 }
+            skippedCount: { type: integer, minimum: 0, maximum: 100 }
+          required:
+            - candidateCount
+            - rewrittenCount
+            - guardRejectedCount
+            - fidelityRejectedCount
+            - failedOpenCount
+            - skippedCount
+          additionalProperties: false
+          description: Karma yazımın aday, yeniden yazılan, korumanın ve sadakat denetiminin reddettiği, düşüp özgün kalan ve atlanan sayıları.
         browseExperiment:
           type: object
           properties:

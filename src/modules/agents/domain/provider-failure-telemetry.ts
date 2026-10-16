@@ -45,6 +45,12 @@ export const runtimeCodexPhases = [
   "NOVELTY",
   // Yayım öncesi yalnız silen son okuma; koşu başına en fazla `runtimeFinalReadCallLimit`.
   "FINAL_READ",
+  /*
+    Karma yazım (16 Ekim): yayım öncesi sesle yeniden yazım ve onun sadakat denetimi; koşu başına
+    en fazla `runtimeVoiceCallLimit` gövde, gövde başına iki çağrı.
+  */
+  "VOICE",
+  "VOICE_CHECK",
 ] as const;
 export type RuntimeCodexPhase = (typeof runtimeCodexPhases)[number];
 

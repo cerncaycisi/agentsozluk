@@ -367,6 +367,9 @@ const safeRunSummarySchema = z
 
   8 (7 Ekim 2026): yenilik kapısı AW sonrası en fazla iki, içerik onarımından sonra bir
   çağrı ekler; içerik onarım kapısı bunları saymaz.
+
+  16 Ekim: karma yazım (gövde başına iki çağrı) sınırı büyütmez; yalnız içerik onarımına ve onun
+  yenilik denetimine iki çağrı bıraktıktan sonra kalan bütçeyi kullanır, sığmazsa atlanır.
 */
 export const runtimeCodexInvocationLimit = 8;
 
@@ -518,6 +521,23 @@ export const usageMetadataSchema = z
         checkedCount: z.number().int().min(0).max(100),
         editedCount: z.number().int().min(0).max(100),
         removedUnitCount: z.number().int().min(0).max(1000),
+        failedOpenCount: z.number().int().min(0).max(100),
+        skippedCount: z.number().int().min(0).max(100),
+      })
+      .strict()
+      .optional(),
+    /*
+      Karma yazımın ne yaptığı (16 Ekim 2026). rewritten: yeniden yazılan gövde; guardRejected:
+      deterministik koruma reddetti; fidelityRejected: sadakat çağrısı ekleme ya da anlam
+      değişikliği gördü. failedOpen ve skipped son okumadaki gibi; reddedilen ya da düşen her
+      durumda özgün gövde yayımlanır. Kimlik veya metin tutulmaz.
+    */
+    voice: z
+      .object({
+        candidateCount: z.number().int().min(0).max(100),
+        rewrittenCount: z.number().int().min(0).max(100),
+        guardRejectedCount: z.number().int().min(0).max(100),
+        fidelityRejectedCount: z.number().int().min(0).max(100),
         failedOpenCount: z.number().int().min(0).max(100),
         skippedCount: z.number().int().min(0).max(100),
       })

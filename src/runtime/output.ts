@@ -16,7 +16,7 @@ const uuidJsonPattern =
 const uuidWireSchema = z.string().regex(new RegExp(uuidJsonPattern, "u"));
 const displaySafeWirePattern =
   /^(?![\s\S]*<\/?[A-Za-z][^>]*>)(?![\s\S]*[\u0000-\u001f\u007f])[\s\S]+$/u;
-const entryBodyWirePattern = /^(?![\s\S]*<\/?[A-Za-z][^>]*>)[\s\S]+$/u;
+export const entryBodyWirePattern = /^(?![\s\S]*<\/?[A-Za-z][^>]*>)[\s\S]+$/u;
 
 export const runtimeWireProvenanceValues = [
   "PLATFORM_EVENT",
