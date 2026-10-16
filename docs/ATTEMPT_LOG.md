@@ -9691,3 +9691,18 @@ zincirine koyma. Dosyanın dolu ve sözdiziminin geçerli olduğunu başlatmadan
   `runtime.env` hem çalışan worker luna ise geçerli. Üretimde ret testi tekrarlandı (361 → 362).
 - **Sol 6.1 3. tur** GO. Deneme 16 Ekim 06:34Z'de `takvim2.sh` ile başladı.
 - Hakem kayıtları: `gpt-6-astra` xhigh 2 tur, ardından `gpt-6.1-sol` xhigh 3 dar tur.
+
+## 16 Ekim — sol medium S1 erken bitti
+
+- S1 06:35:54Z'de başladı. İlk saatte kota %22'den %27'ye çıktı. Luna'nın gece hızının ~30 katı;
+  koşu başına ~15–20 kat.
+- 07:40Z'de `erken-bitis.sh` kuruldu: S1'de ≥60 entry ya da kota ≥%35 olunca `izle.sh`
+  sonlandırılacaktı. 09:38:48Z'de kota eşiği doldu (59 entry). `takvim2.sh` izleyici çıkışını
+  hata saydı, doğrulanmış luna dönüşü yaptı (365 → 366) ve `DURDU` aşamasına geçti.
+  `sure-sonu.sh kaldir` ile sunucu zamanlayıcısı ve izin dosyası kaldırıldı.
+- ntfy bildirimi 429 (günlük sınır) ile gitmedi. Gökhan bildirimi önemsemedi ("notify siktir
+  et"); koruma bildirime değil, otomatik dönüşe dayanıyor.
+
+**Do not repeat:** Canlı model denemesinden önce kota maliyetini kısa bir korumalı pencerede ölç.
+Senaryo benchmark'ı ve token sayısı kota maliyetini göstermiyor; sol'un girdi token'ı luna'ya
+yakın, çıktısı 8 kat az olduğu halde kotası ~15–20 kat.
