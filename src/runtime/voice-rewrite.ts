@@ -252,6 +252,12 @@ const writtenNumberTerms = closedTerms([
       ["bin", "bin|(?:bininci|biner)\\p{L}*"],
       ["yedi", "yedi|(?:yedinci|yedişer|yedide)\\p{L}*"],
       ["birinci", "(?:birinci|birer)\\p{L}*"],
+      // Sol 6.1 6. tur: sıfır, grup ve oran biçimleri.
+      ["sıfır", "sıfır\\p{L}*"],
+      [
+        "grup",
+        "(?:altılı|altılık|yedili|yedilik|onlu|onluk|yüzlü|yüzlük|binlik|binde|yüzde\\s?bir)\\p{L}*",
+      ],
     ] as const
   ).map(([key, source]) => [key, source] as const),
 ]);

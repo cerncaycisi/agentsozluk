@@ -196,6 +196,10 @@ describe("karma yazım adayları", () => {
       "sessiz vagon isteyenler altıncı sırada kalmış, yemekli vagoncular da onları izlemiş.",
     ],
     [
+      "grup sayısı",
+      "sessiz vagon yolcuları altılı gruplara ayrılmış, yemekli vagon yolcuları yedili gruplarda beklemiş.",
+    ],
+    [
       "çekimli sıra sayısı",
       "sessiz vagon kuyruğundaki altıncıya yer bulunmuş, yemekli vagon kuyruğundaki yedinciye bilet kalmamış.",
     ],
@@ -499,6 +503,17 @@ describe("karma yazım koruması", () => {
         "sessiz vagon kuyruğundaki altıncıya yer bulunmuş, yemekli vagona bilet kalmamış.",
       ),
     ).toBe("NEW_NUMBER");
+    for (const [draftText, rewriteText] of [
+      [
+        "sessiz vagonda gürültü şikâyeti düşük kalmış, yemekli vagonda ise herkes yüksek sesle konuşmuş.",
+        "sessiz vagonda gürültü şikâyeti sıfır, yemekli vagonda herkes yüksek sesle konuşmuş.",
+      ],
+      [
+        "sessiz vagonda gürültü şikâyeti düşük oranda kalmış, yemekli vagonda herkes yüksek sesle konuşmuş.",
+        "sessiz vagonda gürültü şikâyeti binde bir kalmış, yemekli vagonda herkes yüksek sesle konuşmuş.",
+      ],
+    ] as const)
+      expect(runtimeVoiceRewriteIssue(draftText, rewriteText)).toBe("NEW_NUMBER");
     // Sol 6.1 3. tur: sayısız taslağa çekimli yazıyla sayı eklenmesi reddedilir.
     expect(
       runtimeVoiceRewriteIssue(
