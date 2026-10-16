@@ -9677,3 +9677,11 @@ zincirine koyma. Dosyanın dolu ve sözdiziminin geçerli olduğunu başlatmadan
   - Sol izni yokken `gecis.sh sol-medium` çalıştırıldı. Sonuç `SOL_REDDEDILDI: SOL_IZNI_YOK`, akış
     luna ile açıldı (359 → 360, duraklama 2 dakika); tek hat kapısı `codexConcurrency=1` ile geçti.
   - Süre sonu zamanlayıcısı elle tetiklendi: önce izni sildi, profil luna olduğu için işlem yapmadı.
+- **Sol 6.1 1. tur** (`ee0b3d53`) NO-GO. Astra'nın 3 bulgusu kapandı, 4'ü açık kaldı:
+  - ret yolu, dosyadaki profile güvenip çalışan sol worker'ını açabiliyordu;
+  - kota kapısı sol açılmadan önce bağlayıcı değildi;
+  - art arda iki kota hatası 70 dakika kuralından kaçabiliyordu;
+  - başarısız `sleep` S2'yi erken başlatabiliyordu.
+
+  Dördü düzeltildi. Üretim testi: süre sonu zamanlayıcısı çalışan worker'ın luna olduğunu
+  doğruladı ve işlem yapmadı.

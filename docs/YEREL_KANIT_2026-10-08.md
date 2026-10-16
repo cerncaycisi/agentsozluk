@@ -421,8 +421,10 @@ gerekmiyor (8 Ekim kuralı). Duraklama 05:32:47Z–05:44:52Z (ayar sürümü 357
   - **Sol izni:** süre sonu koruması kurulurken sunucuya mutlak bitiş yazılır; zamanlayıcı
     tetiklenince ilk iş olarak silinir. Sol'a geçiş ve sol profiliyle her açılış, kilit altında bu
     izni denetler. İzin yoksa, dolmuşsa ya da 11 saatten az kaldıysa sol açılmaz.
-  - **S başlangıç kapısı:** kota okunmalı ve %70'in altında olmalı; akış duraklatılmışken
-    `codexConcurrency=1` doğrulanmalı. Geçmezse sol açılmaz, luna devam eder.
+  - **S başlangıç kapısı:** akış doğrulanarak duraklatılır ve boşaltılır; akış kapalıyken kota
+    okunur ve %70'in altında olmalı; hemen ardından geçiş `codexConcurrency=1` ve sol iznini
+    denetler. Geçmezse sol açılmaz. Luna ancak çalışan worker'ın açılış satırı luna doğrulanırsa
+    yeniden açılır; doğrulanamazsa akış kapalı kalır.
   - Acil luna dönüşünde kota okunmaz; önce duraklatılır. Kota izleyicide ayrı süreçte okunur.
 - **Kol ataması ve süre:** bir bloğun koşuları, `startedAt` değeri bloğun açılışı (resume) ile bir
   sonraki geçişin duraklatma başlangıcı arasında olan bütün terminal koşulardır. Koşu süresi
