@@ -327,7 +327,8 @@ const hedgeTerms: readonly ClosedTerm[] = closedTerms(
       "bana göre",
       "diye biliyorum",
       "gibi görünüyor",
-      "\\p{L}+[ae]bil(?:ir|irler|irmiş)",
+      // Olasılık kipinin bütün çekimleri (Sol 6.1 1. tur: "gecikebilirdi", "gecikebileceği").
+      "\\p{L}+[ae]bil(?:ir|iyor|ece|ecek|eceğ)\\p{L}*",
     ] as const
   ).map((term) => [term, term] as const),
 );
@@ -389,6 +390,14 @@ function numericClaims(text: string): Set<string> {
   return exactSourceNumericClaims(normalized);
 }
 
+/*
+  Yüzde işaretinin sayısı değişemez: yazıyla sayıda da kişi sayısı yüzdeye dönmesin ("üç kişi" →
+  "yüzde üç", Sol 6.1 1. tur) ve yüzde düşmesin.
+*/
+function percentMarkerCount(text: string): number {
+  return normalizedText(text).match(/%|(?<![\p{L}\p{N}])yüzde(?![\p{L}\p{N}])/gu)?.length ?? 0;
+}
+
 function sameSpans(left: readonly string[], right: readonly string[]): boolean {
   const leftSet = new Set(left);
   const rightSet = new Set(right);
@@ -438,7 +447,8 @@ export function runtimeVoiceRewriteIssue(
   if (
     (rewrite.normalize("NFKC").match(/\d+/gu) ?? []).some((digits) => !draftDigits.has(digits)) ||
     [...numericClaims(rewrite)].some((claim) => !draftClaims.has(claim)) ||
-    newClosedTerm(draft, rewrite, writtenNumberTerms)
+    newClosedTerm(draft, rewrite, writtenNumberTerms) ||
+    percentMarkerCount(rewrite) !== percentMarkerCount(draft)
   )
     return "NEW_NUMBER";
   if (newClosedTerm(draft, rewrite, timeTerms)) return "NEW_TIME";

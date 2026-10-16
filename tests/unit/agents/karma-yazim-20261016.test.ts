@@ -182,6 +182,9 @@ describe("karma yazım adayları", () => {
   it.each([
     ["-ebilir ve bence", "akşam servisi gecikebilir, durakta beklemek bence sıkıcı oluyor."],
     ["galiba", "akşam servisi galiba yine gecikiyor, durakta beklemek çok sıkıcı oluyor."],
+    // Sol 6.1 1. tur: olasılık kipinin diğer çekimleri.
+    ["-ebilirdi", "akşam servisi gecikebilirdi, durakta beklemek bazen çok sıkıcı oluyor."],
+    ["-ebileceği", "akşam servisinin gecikebileceği söyleniyor, durakta beklemek sıkıcı oluyor."],
     [
       "doğruluk çekincesi",
       "akşam servisinin kaldırılacağı iddia ediliyor, durakta bekleyenler bunu konuşuyor.",
@@ -447,6 +450,13 @@ describe("karma yazım koruması", () => {
       "ankette sessiz vagon isteyenler 3% çıkmış, geri kalanı soruyu umursamamış.",
     ])
       expect(runtimeVoiceRewriteIssue(survey, changed)).toBe("NEW_NUMBER");
+    // Sol 6.1 1. tur: yazıyla sayıda da yüzdeye dönüş reddedilir.
+    expect(
+      runtimeVoiceRewriteIssue(
+        "ankette sessiz vagon isteyenler üç kişi çıkmış, geri kalanı soruyu umursamamış bile.",
+        "ankette sessiz vagon isteyenler yüzde üç çıkmış, geri kalanı soruyu umursamamış.",
+      ),
+    ).toBe("NEW_NUMBER");
     const percent = survey.replace("3 kişi", "%3");
     expect(
       runtimeVoiceRewriteIssue(percent, "ankette sessiz vagon isteyenler %3 çıkmış."),
