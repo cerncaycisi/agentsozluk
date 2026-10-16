@@ -451,7 +451,7 @@ describe("Codex token telemetry (Y6)", () => {
 
   async function invokeWithHelp(
     execHelp: string,
-    codexProfile?: "luna-max" | "sol-medium",
+    codexProfile?: "luna-max" | "sol-medium" | "sol6-medium" | "terra-medium",
     featureList = DISABLED_FEATURE_LIST,
     extraEvents: string[] = [],
     version = "codex-cli 0.144.6",
@@ -694,6 +694,16 @@ describe("Codex token telemetry (Y6)", () => {
       "gpt-6.1-sol",
       'model_reasoning_effort="medium"',
     ]);
+    const sol6 = await invokeWithHelp(help, "sol6-medium");
+    expect(flags(sol6.decisionArguments[0]!)).toEqual([
+      "gpt-6-sol",
+      'model_reasoning_effort="medium"',
+    ]);
+    const terra = await invokeWithHelp(help, "terra-medium");
+    expect(flags(terra.decisionArguments[0]!)).toEqual([
+      "gpt-5.6-terra",
+      'model_reasoning_effort="medium"',
+    ]);
     /*
       15 Ekim araç kapatma sözleşmesi (Astra 1. tur): beklenen liste sabitten BAĞIMSIZ yazılır.
       Her iki profilde her çift `exec`'ten önce, tam olarak bir kez ve çelişen başka değer olmadan
@@ -714,7 +724,12 @@ describe("Codex token telemetry (Y6)", () => {
       "features.sleep_tool=false",
       'web_search="disabled"',
     ];
-    for (const decision of [defaults.decisionArguments[0]!, sol.decisionArguments[0]!]) {
+    for (const decision of [
+      defaults.decisionArguments[0]!,
+      sol.decisionArguments[0]!,
+      sol6.decisionArguments[0]!,
+      terra.decisionArguments[0]!,
+    ]) {
       const execIndex = decision.indexOf("exec");
       const settings = decision.flatMap((value, index) =>
         decision[index - 1] === "-c" ? [{ value, index }] : [],
@@ -737,6 +752,8 @@ describe("Codex token telemetry (Y6)", () => {
     expect(AGENT_RUNTIME_CODEX_PROFILES).toEqual({
       "luna-max": { model: "gpt-5.6-luna", reasoningEffort: "max" },
       "sol-medium": { model: "gpt-6.1-sol", reasoningEffort: "medium" },
+      "sol6-medium": { model: "gpt-6-sol", reasoningEffort: "medium" },
+      "terra-medium": { model: "gpt-5.6-terra", reasoningEffort: "medium" },
     });
   });
 
