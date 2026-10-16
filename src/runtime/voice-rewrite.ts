@@ -252,11 +252,11 @@ const writtenNumberTerms = closedTerms([
       ["bin", "bin|(?:bininci|biner)\\p{L}*"],
       ["yedi", "yedi|(?:yedinci|yedişer|yedide)\\p{L}*"],
       ["birinci", "(?:birinci|birer)\\p{L}*"],
-      // Sol 6.1 6. tur: sıfır, grup ve oran biçimleri.
+      // Sol 6.1 6.–7. tur: sıfır, grup ve oran biçimleri; -lık ekinde k → ğ yumuşaması ("binliğe").
       ["sıfır", "sıfır\\p{L}*"],
       [
         "grup",
-        "(?:altılı|altılık|yedili|yedilik|onlu|onluk|yüzlü|yüzlük|binlik|binde|yüzde\\s?bir)\\p{L}*",
+        "(?:altılı|altılı[kğ]|yedili|yedili[kğ]|onlu|onlu[kğ]|yüzlü|yüzlü[kğ]|binli[kğ]|binde|yüzde\\s?bir)\\p{L}*",
       ],
     ] as const
   ).map(([key, source]) => [key, source] as const),

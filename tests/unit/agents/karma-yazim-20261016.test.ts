@@ -512,6 +512,10 @@ describe("karma yazım koruması", () => {
         "sessiz vagonda gürültü şikâyeti düşük oranda kalmış, yemekli vagonda herkes yüksek sesle konuşmuş.",
         "sessiz vagonda gürültü şikâyeti binde bir kalmış, yemekli vagonda herkes yüksek sesle konuşmuş.",
       ],
+      [
+        "gişede sıra numarası epey ilerlemiş, bekleyenlerin yüzü asılmış ve görevli molaya çıkmış.",
+        "gişede sıra numarası binliğe dayanmış, bekleyenlerin yüzü asılmış, görevli molada.",
+      ],
     ] as const)
       expect(runtimeVoiceRewriteIssue(draftText, rewriteText)).toBe("NEW_NUMBER");
     // Sol 6.1 3. tur: sayısız taslağa çekimli yazıyla sayı eklenmesi reddedilir.
