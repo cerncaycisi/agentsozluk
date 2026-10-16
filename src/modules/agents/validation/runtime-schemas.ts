@@ -368,10 +368,12 @@ const safeRunSummarySchema = z
   8 (7 Ekim 2026): yenilik kapısı AW sonrası en fazla iki, içerik onarımından sonra bir
   çağrı ekler; içerik onarım kapısı bunları saymaz.
 
-  16 Ekim: karma yazım (gövde başına iki çağrı) sınırı büyütmez; yalnız içerik onarımına ve onun
-  yenilik denetimine iki çağrı bıraktıktan sonra kalan bütçeyi kullanır, sığmazsa atlanır.
+  12 (16 Ekim 2026): karma yazım gövde başına iki çağrı (en çok iki gövde) ekler. Tipik koşu
+  zaten beş çağrı yaptığı için 8 sınırında faz neredeyse hiç çalışmıyordu. Faz yine içerik
+  onarımına ve onun yenilik denetimine iki çağrı bıraktıktan sonra kalan bütçeyi kullanır,
+  sığmazsa atlanır. Uygulama ve worker aynı sürümle dağıtılır; sunucu şeması da bu sabiti kullanır.
 */
-export const runtimeCodexInvocationLimit = 8;
+export const runtimeCodexInvocationLimit = 12;
 
 /*
   Ajanın gezinme fazında okumak için seçebileceği başlık sayısı. TEK KAYNAK:
