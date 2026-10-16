@@ -51,6 +51,7 @@ export const AGENT_RUNTIME_CODEX_PROFILES = {
   "sol-medium": { model: "gpt-6.1-sol", reasoningEffort: "medium" },
   "sol6-medium": { model: "gpt-6-sol", reasoningEffort: "medium" },
   "terra-medium": { model: "gpt-5.6-terra", reasoningEffort: "medium" },
+  "sol56-medium": { model: "gpt-5.6-sol", reasoningEffort: "medium" },
 } as const;
 export type AgentRuntimeCodexProfileName = keyof typeof AGENT_RUNTIME_CODEX_PROFILES;
 export const agentRuntimeCodexProfileNames = Object.keys(AGENT_RUNTIME_CODEX_PROFILES) as [
