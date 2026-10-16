@@ -13,8 +13,8 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- **15–16 Ekim:** sol denemesi kurulum hatasıyla durdu; araçlar kapatıldı (#415), CLI `0.160.0`
-  kabul, sol yeniden denemesi 16 Ekim 06:35Z'de başladı (sıra 6).
+- **16 Ekim:** sol kalitede önde ama pahalı (6.1 ~15–20 kat, `gpt-6-sol` ~6 kat); ucuz modeller
+  kaliteyi vermiyor. Luna'dayız; sıradaki karma yazım (sıra 6).
 - **14 Ekim:** üretim OVH VPS-1'e taşındı (51.161.103.223; sıra 0 bitti). Canlı exact `24a25981`
   (#402 tek soru, #404 logo/llms.txt, #405 lastmod, #406 karagöz filtresi). Sıra 3: son okuma
   "kapandı" sayılmadı, #12 A geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
@@ -190,8 +190,14 @@ güvenilir insan. Strateji sıra 4'te.
        56 sn; kota farkı %1 çözünürlükte 0–2 puan;
      - uçtan uca koşu süresi ve saatlik koşu S1'in kendisinde ölçülür (otomatik p95, tek hat ve
        kota durdurması; Astra 16 Ekim 1. tur);
-     - yeni önkayıtla deneme 16 Ekim 06:35Z'de başladı (YEREL_KANIT "Önkayıt — sol medium
-       yeniden deneme", 16 Ekim; S1, L1, L2, S2).
+     - ~~yeni önkayıtla deneme~~ 16 Ekim 06:35Z–09:39Z: kalite önde, maliyet tam geçişe izin
+       vermiyor; erken bitti (YEREL_KANIT "Sonuç — sol medium yeniden deneme");
+     - ~~ucuz model taraması~~ 16 Ekim: `gpt-6-sol` kalitede en yakın ama canlıda luna'nın ~6
+       katı (durdu); `gpt-5.6-sol`, terra, `gpt-6-luna` kaliteyi vermiyor;
+     - ~~karma yazım yerel kanıtı~~ 16 Ekim: `gpt-6-sol` ile doğallık +0,33–0,38, tahmini
+       haftada ~20 puan; 26'da 2 olgu eklemesi (YEREL_KANIT "Sonuç — karma yazım").
+     - **Karma yazım (Gökhan kararı, 16 Ekim: haftalık ~20 puan kota "olur"):** yazım fazı +
+       sadakat denetimi kodlanır, yerelde kanıtlanır, sonra korumalı canlı ölçüm.
        Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.
    - **Model geçişi adayı:** 13 Ekim yerel A/B'de `gpt-6.1-sol`
      doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş kapısı

@@ -9691,3 +9691,41 @@ zincirine koyma. Dosyanın dolu ve sözdiziminin geçerli olduğunu başlatmadan
   `runtime.env` hem çalışan worker luna ise geçerli. Üretimde ret testi tekrarlandı (361 → 362).
 - **Sol 6.1 3. tur** GO. Deneme 16 Ekim 06:34Z'de `takvim2.sh` ile başladı.
 - Hakem kayıtları: `gpt-6-astra` xhigh 2 tur, ardından `gpt-6.1-sol` xhigh 3 dar tur.
+
+## 16 Ekim — sol medium S1 erken bitti
+
+- S1 06:35:54Z'de başladı. İlk saatte kota %22'den %27'ye çıktı. Luna'nın gece hızının ~30 katı;
+  koşu başına ~15–20 kat.
+- 07:40Z'de `erken-bitis.sh` kuruldu: S1'de ≥60 entry ya da kota ≥%35 olunca `izle.sh`
+  sonlandırılacaktı. 09:38:48Z'de kota eşiği doldu (59 entry). `takvim2.sh` izleyici çıkışını
+  hata saydı, doğrulanmış luna dönüşü yaptı (365 → 366) ve `DURDU` aşamasına geçti.
+  `sure-sonu.sh kaldir` ile sunucu zamanlayıcısı ve izin dosyası kaldırıldı.
+- ntfy bildirimi 429 (günlük sınır) ile gitmedi. Gökhan bildirimi önemsemedi ("notify siktir
+  et"); koruma bildirime değil, otomatik dönüşe dayanıyor.
+
+**Do not repeat:** Canlı model denemesinden önce kota maliyetini kısa bir korumalı pencerede ölç.
+Senaryo benchmark'ı ve token sayısı kota maliyetini göstermiyor; sol'un girdi token'ı luna'ya
+yakın, çıktısı 8 kat az olduğu halde kotası ~15–20 kat.
+
+## 16 Ekim — #418 canlıda, gpt-6-sol kota ölçümü başladı
+
+- **Dağıtım:** exact `8c723e414e1184b680bff2793aaf068a593a6fc1` (#418, `sol6-medium` ve
+  `terra-medium` profilleri). Main CI `38894398250` success, RC `38896197419` success.
+  `--pause-society-flow --cleanup`, migration yok; `RELEASE_COMPLETE PASS`, smoke 200, disk
+  %51 → %46.
+- **Alarm betiği:** dağıtım `RELEASE_WARN installed alarm script differs from candidate` verdi.
+  Kurulu `/opt/agent-sozluk/scripts/canlilik-alarmi.sh` 2 Ekim sürümüydü ve 8 Ekim kararına aykırı
+  olarak kapasite bayatlama uyarısı üretecekti. Aday sürüm kuruldu (eski dosya
+  `.yedek-20261002`), iki özet eşit.
+- **Yoklama:** `gpt-6-sol` medium ve `gpt-5.6-terra` medium üretim CLI'ında ve sandbox'ında
+  `turn.completed` ile çalıştı.
+- **Kota ölçümü:** `olcum-profil.sh sol6-medium 3 3`, açılış 11:59:57Z (368), başlangıç kotası
+  %38. Önkayıt YEREL_KANIT "Önkayıt — `gpt-6-sol` medium canlı kota ölçümü".
+
+**Do not repeat:** `RELEASE_WARN installed alarm script differs` uyarısını geçme; kurulu alarm
+betiği dağıtımla güncellenmiyor, elle karşılaştırıp kur.
+
+- **gpt-6-sol ölçümü** 14:00:29Z'de kota +3 eşiğiyle durdu; luna dönüşü doğrulandı (370). 88 koşu,
+  0 başarısız. Ayrıntı YEREL_KANIT "Sonuç — `gpt-6-sol` medium canlı kota ölçümü".
+- **#420** (`sol56-medium`) Astra 1. tur GO, birleşti; yerel taramada kalite ölçütünü geçmediği
+  için dağıtılmadı.

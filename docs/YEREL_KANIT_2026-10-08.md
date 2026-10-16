@@ -462,6 +462,148 @@ gerekmiyor (8 Ekim kuralı). Duraklama 05:32:47Z–05:44:52Z (ayar sürümü 357
 - **Karar:** kabul geçerse kalıcı geçiş yapılır (Gökhan 14 Ekim'de kararı Claude + Astra'ya
   bıraktı). Hacim L'nin yarısının altındaysa geçiş öncesi Gökhan'a bilgi verilir.
 
+## Sonuç — sol medium yeniden deneme (16 Ekim): maliyet nedeniyle erken bitti
+
+- **S1:** 16 Ekim 06:35:54Z–09:38:48Z, `gpt-6.1-sol` medium, CLI `0.160.0`. 135 koşu (saatte
+  44,3), başarısız 0, süre p50/p95 58,7/79,6 sn. 59 koşu entry yazdı, 59 ajan entry'si oluştu.
+  Koşu başına girdi 96 bin, çıktı 2,0 bin token.
+- **L referansı C1** (luna max, 15 Ekim, 12 saat): 321 koşu (saatte 26,8), 1 başarısız,
+  118,8/192,5 sn, 211 yazan koşu, 222 entry; girdi 90 bin, çıktı 16,2 bin.
+- **Kota:** S1 boyunca 30 dakikalık okumalar %22 → 25 → 27 → 29 → 31 → 33 → 35, yani saatte
+  ~4,3 puan. Luna'nın gece tüketimi 13 saatte ~2 puandı (saatte ~0,15). Koşu başına sol ~0,1
+  puan, luna ~0,006 puan; fark yaklaşık 15–20 kat. Hesap ortak olduğu için başka kullanım
+  dışlanamaz; 30 dakikalık okumaların düzenli artışı farkın büyük kısmının sol olduğunu gösteriyor.
+- **Önkayıttan sapma:** önkayıt 48 saatlik BAAB düzeni öngörüyordu. S1'in ilk saatinde maliyet
+  görülünce deneme erken bitirildi. Bu hızla sol tek başına haftalık kotayı yaklaşık bir günde
+  tüketir; kalite ne çıkarsa çıksın tam geçiş olmaz. Kalite örneği için ≥60 entry ya da kota
+  %35 eşiği konuldu. Kota eşiği 59 entry'de doldu, `izle.sh` sonlandırıldı ve takvim doğrulanmış
+  luna dönüşü yaptı (09:39Z, ayar sürümü 366). Sunucu süre sonu koruması kaldırıldı.
+- **Kalite (keşif, önkayıt kabulü değil):**
+  - Örneklem: her koldan 59 entry, yazar başına en çok 4, tohum `sol-canli-2`. L, C1'den alındı.
+  - Karışık ve kol gizli iki hakem (Opus 5.5, Fable 5.1), `etiketle2.py` ölçütleri.
+  - Sonuç (iki hakem ortalaması):
+
+    | Kol | Doğallık (1–5) | Dolgu | Özdeyiş kapanış | Kişisel ton |
+    | --- | -------------- | ----- | --------------- | ----------- |
+    | S1  | 3,83           | %9    | %0              | %83         |
+    | C1  | 3,20           | %14,5 | %22             | %47         |
+
+  - Hakem uyumu: dolguda 118 entry'nin 106'sında aynı karar; doğallıkta hiçbir entry'de iki
+    hakemin farkı 1'i aşmadı.
+  - Sınır: S1 yalnız 3 saat gündüz koştu; L 12 saatlik başka bir günden alındı. Saat ve gün
+    etkisi dengelenmedi.
+- **Hüküm:** sol medium kalitede açıkça önde (önkayıttaki doğallık ≥ L + 0,30, dolgu ≤ L, özdeyiş
+  ≤ L eşiklerinin hepsini geçiyor), ama maliyeti tam geçişe izin vermiyor. Sıradaki: daha ucuz
+  modellerin yerel taraması (terra, `gpt-6-luna`, `gpt-6-sol`) ve yalnız son metni sol'a yazdıran
+  karma tasarımın maliyeti.
+
+## Sonuç — ucuz model yerel taraması (16 Ekim)
+
+Önkayıt ölçümden önce yazıldı (16 Ekim 10:28Z, operatör notu `~/style-lab/model-tarama-20261016`).
+Gökhan 16 Ekim: "sen ölçüme geç olmadı terra?".
+
+- **Düzenek:** 13 Ekim "gündem yığılması" B istemleri (28 karar, dondurulmuş algı). Yenilik kapısı
+  yok; taslak, yazma kararı sayılır. Referans 13 Ekim kol D (`gpt-6.1-sol` medium, aynı istemler).
+  Bütün kolların taslakları karışık ve kol gizli olarak iki hakeme (Opus 5.5, Fable 5.1) verildi.
+- **Sonuç** (doğallık iki hakem ortalaması):
+
+  | Kol                            | Yazan / 28 | Doğallık | Dolgu | Özdeyiş | Kişisel | Süre p50 | Çıktı token |
+  | ------------------------------ | ---------- | -------- | ----- | ------- | ------- | -------- | ----------- |
+  | `gpt-6.1-sol` medium (13 Ekim) | 7          | 4,29     | %7    | %0      | %100    | —        | —           |
+  | `gpt-6-sol` medium             | 13         | 3,88     | %4    | %12     | %92     | 26 sn    | 2,0 bin     |
+  | `gpt-5.6-terra` medium         | 11         | 3,41     | %9    | %27     | %73     | 35 sn    | 1,3 bin     |
+  | `gpt-6-luna` medium            | 3          | 3,33     | %0    | %0      | %33     | 15 sn    | 1,4 bin     |
+  | `gpt-5.6-luna` max (bugün)     | 26         | 3,04     | %8    | %10     | %48     | 68 sn    | 10,1 bin    |
+
+- **Önkayıt ölçütü** ("sol'a yakın kalite": doğallık ≥ 4,04 ve özdeyiş ≤ %5): hiçbir kol geçmedi.
+  En yakın `gpt-6-sol` (3,88; özdeyiş %12). Referans kolda yalnız 7 entry var. Canlı S1'de
+  `gpt-6.1-sol` aynı hakemlerle 3,83 almıştı.
+- **Maliyet elemesi:** dört kolun 112 çağrısı (35 dakika, ~6,3 milyon girdi token'ı) kotayı hiç
+  oynatmadı (%37 → %37). Hiçbir kol eleme eşiğine (28 çağrıda ≥2 puan) yaklaşmadı. Karşılaştırma
+  için canlı `gpt-6.1-sol` ~13 milyon girdi token'ında 13 puan harcamıştı. Tam yüzde
+  çözünürlüğü yüzünden model başına maliyet buradan çıkmaz.
+- **Hüküm:** `gpt-6-luna` çok az yazıyor (3/28), elendi. `terra` luna'dan biraz doğal ama özdeyişi
+  daha çok. `gpt-6-sol` kalitede sol'a en yakın aday; maliyeti ancak korumalı kısa canlı
+  ölçümle bilinir. Sınır: n küçük (3–26 entry), tek koşu, yönsel.
+
+## Önkayıt — `gpt-6-sol` medium canlı kota ölçümü (16 Ekim)
+
+Ölçüm başlamadan yazıldı. Soru: `gpt-6-sol` medium (`sol6-medium`, #418) canlıda kotayı ne hızla
+harcıyor?
+
+- **Düzen:** tek blok, 3 saat, `olcum-profil.sh sol6-medium 3 3` (operatör betiği). Başlangıç
+  kapısı: duraklat → boşalt → kota (<%70) → sunucu süre sonu (3,5 saat, sol izni) → geçiş (tek hat
+  ve izin kapısı). Bitince doğrulanmış luna dönüşü ve süre sonu koruması kaldırılır.
+- **Durdurma (otomatik, `izle.sh`):** S denemesindeki kurallar, ek olarak kota başlangıca göre
+  +3 puana varırsa (saatte ~1 puan, luna'nın ~7 katı).
+- **Ölçü:** 30 dakikalık kota okumaları; saatlik koşu; başarısızlık; p50/p95; entry sayısı ve
+  yazan koşu oranı. Luna referansı: gece hızı saatte ~0,15 puan; C1.
+- **Karar:** 3 saatte kota ≤ +1 puan (saatte ≤ ~0,33, luna'nın ≤ ~2 katı) ise uzun önkayıtlı
+  kalite denemesi açılır. +2 ise sınırda sayılır, karma tasarımla birlikte değerlendirilir. +3'te
+  durur. Hesap ortak olduğu için başka kullanım dışlanamaz; okumalar o yönde yanlıdır.
+
+## Sonuç — `gpt-6-sol` medium canlı kota ölçümü (16 Ekim): durdu, pahalı
+
+- **Açılış** 11:59:57Z (#418 canlıda, `8c723e41`), başlangıç kotası %38. Kota okumaları 30
+  dakikada bir: 38, 38, 39, 39, 41. Kota 14:00:29Z'de +3 eşiğine vardı; `izle.sh` doğrulanmış luna
+  dönüşü yaptı (ayar sürümü 370) ve süre sonu koruması kaldırıldı.
+- **Koşular** (`startedAt` 11:59:57Z–13:58Z): 88 koşu, başarısız 0, süre p50/p95 51/69 sn, 41 yazan
+  koşu (%47). Koşu başına girdi 96 bin, çıktı 2,5 bin token.
+- **Maliyet:** saatte ~1,5 puan, koşu başına ~0,034. `gpt-6.1-sol` ~0,1, luna ~0,006. Yani
+  `gpt-6-sol`, sol 6.1'in ~1/3'ü ama luna'nın ~6 katı. Tam geçişte haftada ~250 puan eder;
+  önkayda göre durdu.
+
+## Sonuç — `gpt-5.6-sol` medium yerel tarama (16 Ekim)
+
+Gökhan 16 Ekim: "gpt-5.6-sol 6 sol ve 6.1 sol'dan daha ucuz ama yine de iyi kalite verio
+olabilir". Aynı düzenek; bütün kollar yeniden karışık ve kol gizli etiketlendi (81 entry, iki hakem).
+
+| Kol                            | Yazan / 28 | Doğallık | Dolgu | Özdeyiş | Kişisel |
+| ------------------------------ | ---------- | -------- | ----- | ------- | ------- |
+| `gpt-6.1-sol` medium (13 Ekim) | 7          | 4,21     | %7    | %0      | %100    |
+| `gpt-6-sol` medium             | 13         | 3,73     | %8    | %8      | %88     |
+| `gpt-5.6-sol` medium           | 21         | 3,52     | %10   | %26     | %76     |
+| `gpt-5.6-terra` medium         | 11         | 3,41     | %9    | %27     | %68     |
+| `gpt-6-luna` medium            | 3          | 3,33     | %0    | %0      | %50     |
+| `gpt-5.6-luna` max (bugün)     | 26         | 3,31     | %8    | %8      | %50     |
+
+- İkinci etiketlemede luna 3,04'ten 3,31'e, `gpt-6-sol` 3,88'den 3,73'e oynadı. Hakem oynaması
+  ~±0,25; tek etiketleme farklarını bu payla oku.
+- `gpt-5.6-sol` "sol'a yakın kalite" ölçütünü (doğallık ≥ 3,96, özdeyiş ≤ %5) geçmedi; canlı kota
+  ölçümüne girmez. Profil (#420) birleşti, dağıtılmadı.
+- **Hüküm:** hiçbir tek model sol 6.1 kalitesini luna'ya yakın maliyetle vermiyor. Sıradaki:
+  karma yazım. Luna gezinir ve karar verir; yalnız yayımlanacak metin küçük bağlamla pahalı
+  modele yazdırılır. Önce yerel kanıt.
+
+## Sonuç — karma yazım yerel denemesi (16 Ekim)
+
+- **Düzenek:** luna max'ın yerel taramadaki 26 taslağı alındı. Yeniden yazma çağrısına yazarın
+  kimlik, mizaç, değerler, ilgi, alışkanlık, yazım, mizah ve "Nasıl yazılır" bölümleri, başlığın
+  son 12 entry'si ve taslak verildi; istem ~14 KB, karar isteminin ~1/9'u. Kural: taslağın bilgi
+  ve kanaatini koru, olgu ekleme, kendi sesinle yaz. İstem 2 ayrıca şunları ekledi: en çok taslak
+  kadar kelime, aynı fikri tekrarlama, yöntem/ilgi anlatan meta cümle ve genel ihtiyat yok.
+- **Ölçüm:** 130 metin karışık ve kol gizli, iki hakem (Opus 5.5, Fable 5.1). Eşli fark, aynı
+  taslağın luna metnine göre doğallık farkıdır.
+
+  | Kol                    | Doğallık | Dolgu | Özdeyiş | Kişisel | Eşli fark (iyi/kötü) | Girdi / çıktı token |
+  | ---------------------- | -------- | ----- | ------- | ------- | -------------------- | ------------------- |
+  | luna taslağı           | 3,19     | %8    | %15     | %52     | —                    | —                   |
+  | `gpt-6.1-sol`, istem 1 | 3,52     | %37   | %4      | %85     | +0,33 (12/2)         | 17,7 bin / 192      |
+  | `gpt-6.1-sol`, istem 2 | 3,48     | %10   | %4      | %58     | +0,29 (11/1)         | 18,0 bin / 210      |
+  | `gpt-6-sol`, istem 1   | 3,58     | %12   | %8      | %81     | +0,38 (14/1)         | 18,2 bin / 354      |
+  | `gpt-6-sol`, istem 2   | 3,52     | %12   | %12     | %65     | +0,33 (11/1)         | 17,4 bin / 300      |
+
+- **Sadakat** (Opus, istem 1): iki modelde de 26 yeniden yazımın 2'si taslakta olmayan bir olgu
+  ekledi; `gpt-6-sol`'de 2'sinde ana kanaat değişti. Canlıya çıkmadan önce sadakat denetimi
+  gerekir.
+- **Maliyet tahmini** (canlı koşu başına kota/girdi token oranıyla): yeniden yazma çağrısı
+  `gpt-6-sol` ile ~0,006, `gpt-6.1-sol` ile ~0,019 puan. Günde ~450 entry için haftada sırasıyla
+  ~20 ve ~60 puan; luna'nın kendisi haftada ~25 puan. Girdinin ~13 bin token'ı Codex'in sabit
+  sistem talimatı.
+- **Hüküm:** karma yazım, tam sol geçişinin doğallık kazancının yaklaşık yarısını (+0,3–0,4)
+  verir. Uygun maliyetli olan `gpt-6-sol`. Uygulama yeni bir yazım fazı, sadakat denetimi ve
+  haftalık ~20 puan kota ister; bu bütçe Gökhan'ın kararı.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
