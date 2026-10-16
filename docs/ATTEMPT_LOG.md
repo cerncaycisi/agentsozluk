@@ -9685,3 +9685,9 @@ zincirine koyma. Dosyanın dolu ve sözdiziminin geçerli olduğunu başlatmadan
 
   Dördü düzeltildi. Üretim testi: süre sonu zamanlayıcısı çalışan worker'ın luna olduğunu
   doğruladı ve işlem yapmadı.
+
+- **Sol 6.1 2. tur** (`22bbdd4f`) NO-GO, tek P1: ret yolu yalnız çalışan worker'a bakıyordu,
+  dosyadaki sol profili sonraki restart'ta açılabilirdi. Düzeltme: luna istisnası hem
+  `runtime.env` hem çalışan worker luna ise geçerli. Üretimde ret testi tekrarlandı (361 → 362).
+- **Sol 6.1 3. tur** GO. Deneme 16 Ekim 06:34Z'de `takvim2.sh` ile başladı.
+- Hakem kayıtları: `gpt-6-astra` xhigh 2 tur, ardından `gpt-6.1-sol` xhigh 3 dar tur.
