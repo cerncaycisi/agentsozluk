@@ -724,7 +724,12 @@ describe("Codex token telemetry (Y6)", () => {
       "features.sleep_tool=false",
       'web_search="disabled"',
     ];
-    for (const decision of [defaults.decisionArguments[0]!, sol.decisionArguments[0]!]) {
+    for (const decision of [
+      defaults.decisionArguments[0]!,
+      sol.decisionArguments[0]!,
+      sol6.decisionArguments[0]!,
+      terra.decisionArguments[0]!,
+    ]) {
       const execIndex = decision.indexOf("exec");
       const settings = decision.flatMap((value, index) =>
         decision[index - 1] === "-c" ? [{ value, index }] : [],
