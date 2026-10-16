@@ -136,6 +136,29 @@ describe("karma yazım adayları", () => {
     ]);
     expect(runtimeVoiceCandidates(decision, {})).toEqual([]);
   });
+
+  // Yeniden yazım ilk parçayı da değiştirir: tek cümlelik gövdedeki atıf da gövdeyi dışarıda bırakır.
+  it("ilk ve tek parçası atıf taşıyan gövdeyi almaz, düz gövdeyi alır", () => {
+    const decision = decisionFor([
+      {
+        sequence: 1,
+        actionType: "CREATE_ENTRY",
+        input: {
+          topicId: "t1",
+          body: "patronun dediğine göre toplantıların yarısını e-postaya çevirmek ekibin bütün haftasını rahatlatır.",
+        },
+      },
+      {
+        sequence: 2,
+        actionType: "CREATE_ENTRY",
+        input: {
+          topicId: "t1",
+          body: "dosya adlarını tarih önekiyle tutmak sıralamayı kendiliğinden düzeltiyor ve aramayı kolaylaştırıyor.",
+        },
+      },
+    ]);
+    expect(runtimeVoiceCandidates(decision, {}).map(({ sequence }) => sequence)).toEqual([2]);
+  });
 });
 
 describe("karma yazım istemi", () => {
