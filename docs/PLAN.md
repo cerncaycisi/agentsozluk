@@ -196,8 +196,8 @@ güvenilir insan. Strateji sıra 4'te.
        katı (durdu); `gpt-5.6-sol`, terra, `gpt-6-luna` kaliteyi vermiyor;
      - ~~karma yazım yerel kanıtı~~ 16 Ekim: `gpt-6-sol` ile doğallık +0,33–0,38, tahmini
        haftada ~20 puan; 26'da 2 olgu eklemesi (YEREL_KANIT "Sonuç — karma yazım").
-     - **Gökhan kararı bekleyen:** karma yazım için haftalık ~20 puan kota ayrılsın mı? Evetse
-       yazım fazı + sadakat denetimi kodlanır, yerelde kanıtlanır, sonra korumalı canlı ölçüm.
+     - **Karma yazım (Gökhan kararı, 16 Ekim: haftalık ~20 puan kota "olur"):** yazım fazı +
+       sadakat denetimi kodlanır, yerelde kanıtlanır, sonra korumalı canlı ölçüm.
        Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.
    - **Model geçişi adayı:** 13 Ekim yerel A/B'de `gpt-6.1-sol`
      doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş kapısı
