@@ -205,10 +205,10 @@ function newClosedTerm(draft: string, rewrite: string, terms: readonly ClosedTer
 /*
   Yazıyla sayı ve ölçek (Astra 1. tur): "bir" çok yaygın olduğu için listede yok. "on", "yüz",
   "altı", "bin" ve "yedi" zamir, yüz, alt, binmek ve yemek çekimleriyle çakıştığı için yalnız çıplak
-  hâliyle sayılır; diğerleri sayı eklerini alabilir ("üçte", "ikinci", "dörde").
+  hâliyle sayılır; diğerleri her eki alır ("üçte", "ikinci", "üçüne"; Sol 6.1 3. tur: birleşik
+  ekler tek ek listesinden kaçıyordu). "ikiz", "üçgen", "beşik" gibi fazla eşleşmeler yalnız
+  kapsamı daraltır.
 */
-const numeralSuffix =
-  "(?:de|da|te|ta|den|dan|ten|tan|e|a|ye|ya|i|ı|u|ü|yi|yı|yu|yü|si|sı|su|sü|nin|nın|nun|nün|inci|ıncı|uncu|üncü|nci|ncı|ncu|ncü|er|ar|şer|şar|lik|lık|luk|lük|li|lı|lu|lü)?";
 const writtenNumberTerms = closedTerms([
   ...(
     [
@@ -238,7 +238,7 @@ const writtenNumberTerms = closedTerms([
       "binlerce",
       "milyonlarca",
     ] as const
-  ).map((word) => [word, `(?:${word})${numeralSuffix}`] as const),
+  ).map((word) => [word, `(?:${word})\\p{L}*`] as const),
   ...(["on", "yüz", "altı", "bin", "yedi"] as const).map((word) => [word, word] as const),
 ]);
 

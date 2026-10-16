@@ -186,6 +186,11 @@ describe("karma yazım adayları", () => {
       "yazıyla sayı ve yüzde",
       "ankette sessiz vagon isteyenler üç kişi çıkmış, yemekli vagon isteyenler yüzde beş olmuş.",
     ],
+    // Sol 6.1 3. tur: birleşik çekimli yazıyla sayı.
+    [
+      "çekimli yazıyla sayı",
+      "sessiz vagon isteyenlerin üçüne yer bulunmuş, yemekli vagon isteyenlerin beşine bilet kalmamış.",
+    ],
   ])("%s taşıyan taslağı aday yapmaz", (_label, body) => {
     expect(runtimeVoiceDraftNumeric(body)).toBe(true);
     const decision = decisionFor([
@@ -469,6 +474,13 @@ describe("karma yazım koruması", () => {
       "ankette sessiz vagon isteyenler 3% çıkmış, geri kalanı soruyu umursamamış.",
     ])
       expect(runtimeVoiceRewriteIssue(survey, changed)).toBe("NEW_NUMBER");
+    // Sol 6.1 3. tur: sayısız taslağa çekimli yazıyla sayı eklenmesi reddedilir.
+    expect(
+      runtimeVoiceRewriteIssue(
+        "sessiz vagon isteyenlere yer bulunmuş, yemekli vagon isteyenlere ise bilet kalmamış.",
+        "sessiz vagon isteyenlerin üçüne yer bulunmuş, yemekli vagona bilet kalmamış.",
+      ),
+    ).toBe("NEW_NUMBER");
     // Sol 6.1 1. tur: yazıyla sayıda da yüzdeye dönüş reddedilir.
     expect(
       runtimeVoiceRewriteIssue(
