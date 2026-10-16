@@ -9632,3 +9632,62 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
 **Do not repeat:**
 
 - CLI geçişini araç sözleşmesi canlıya çıkmadan yapma. Sözleşme önce gelir, sonra CLI.
+
+## 16 Ekim — CLI 0.160.0 luna gözlemi kapandı (12 saat)
+
+Pencere 15 Ekim 10:29:36Z – 22:29:36Z, exact `8c202afd`, luna max, salt okunur ölçüm
+(`olcum.sql` blok tanımıyla, koşunun başı ve sonu aynı blokta).
+
+| Blok           | Koşu | Başarısız | Entry yazan koşu | Ajan entry'si | p50 / p95 (sn) | Girdi / çıktı token (ort.) |
+| -------------- | ---- | --------- | ---------------- | ------------- | -------------- | -------------------------- |
+| L1 (`0.144.6`) | 338  | 0         | 181              | 188           | 118 / 191      | 104 bin / 15,4 bin         |
+| C1 (`0.160.0`) | 321  | 1         | 211              | 222           | 122 / 197      | 90 bin / 16,2 bin          |
+
+- Tek başarısızlık `CODEX_DECISION_PROVENANCE_INVALID` (normal uyanış, 12:50Z); model çıktısı
+  doğrulamasıdır, CLI ya da sandbox hatası değil.
+- p95 L1'in 1,03 katı (kural 1,5). `izle.sh` geri dönüş yapmadı; 22:30Z'de "izleme bitti".
+- **Hüküm:** CLI `0.160.0` luna için kabul. `0.144.6` geri dönüş için kurulu kalır.
+
+## 16 Ekim — sol medium tek hat kapasite ölçümü
+
+- Exact `8c202afd`, CLI `0.160.0`. Akış 05:32:47Z'de duraklatıldı (357) ve 05:34:42Z'de boşaldı.
+  Codex süreci yoktu.
+- `agent:capacity`, `AGENT_RUNTIME_CODEX_PROFILE=sol-medium`, soğuk ve ılık 10'ar senaryo:
+  20/20 başarılı, p95 43 ve 56 sn. Kapasite kaydına POST yok.
+- Akış 05:44:52Z'de uzak betiğin `EXIT` tuzağıyla açıldı (358).
+- Ayrıntı: YEREL_KANIT "Ölçüm — sol medium tek hat kapasitesi".
+- **İlk başlatma boş koştu:** uzak komut `cat > f && … && setsid nohup bash f &` biçimindeydi.
+  `&` bütün `&&` zincirini arka plana atıyor. Etkileşimsiz bash da arka plan işinin stdin'ini
+  `/dev/null`'a bağlıyor, bu yüzden betik dosyası boş yazıldı ve hiçbir şey koşmadı. Duraklatma
+  olmamıştı. Düzeltme: önce `cat`, `bash -n` ve içerik denetimi; yalnız son komut arka plana.
+
+**Do not repeat:** Uzak betiği SSH stdin'iyle yazıp arka planda başlatırken yazma adımını `&`
+zincirine koyma. Dosyanın dolu ve sözdiziminin geçerli olduğunu başlatmadan önce doğrula.
+
+## 16 Ekim — sol yeniden deneme korumaları, üretim testleri
+
+- **Astra 1. tur** (`c2b375d2`) NO-GO, **2. tur** (`bf193cde`) NO-GO. Bulgular: luna dönüşü
+  başarısızken sol açık kalabiliyordu; yerel süreç ölürse sol'un üretimde kapanma garantisi
+  yoktu; süresi dolmuş korumadan sonra sol açılabiliyordu; kota okuması koruma döngüsünü
+  bekletiyordu; tek hat ve kota başlangıç kapısı değildi; kapasite kapısı belgelerde
+  uzlaştırılmamıştı.
+- **Düzeltmeler:** depo dışı operatör betikleri; ayrıntı YEREL_KANIT "Önkayıt — sol medium yeniden
+  deneme".
+- **Üretim testleri:**
+  - Sol izni yokken `gecis.sh sol-medium` çalıştırıldı. Sonuç `SOL_REDDEDILDI: SOL_IZNI_YOK`, akış
+    luna ile açıldı (359 → 360, duraklama 2 dakika); tek hat kapısı `codexConcurrency=1` ile geçti.
+  - Süre sonu zamanlayıcısı elle tetiklendi: önce izni sildi, profil luna olduğu için işlem yapmadı.
+- **Sol 6.1 1. tur** (`ee0b3d53`) NO-GO. Astra'nın 3 bulgusu kapandı, 4'ü açık kaldı:
+  - ret yolu, dosyadaki profile güvenip çalışan sol worker'ını açabiliyordu;
+  - kota kapısı sol açılmadan önce bağlayıcı değildi;
+  - art arda iki kota hatası 70 dakika kuralından kaçabiliyordu;
+  - başarısız `sleep` S2'yi erken başlatabiliyordu.
+
+  Dördü düzeltildi. Üretim testi: süre sonu zamanlayıcısı çalışan worker'ın luna olduğunu
+  doğruladı ve işlem yapmadı.
+
+- **Sol 6.1 2. tur** (`22bbdd4f`) NO-GO, tek P1: ret yolu yalnız çalışan worker'a bakıyordu,
+  dosyadaki sol profili sonraki restart'ta açılabilirdi. Düzeltme: luna istisnası hem
+  `runtime.env` hem çalışan worker luna ise geçerli. Üretimde ret testi tekrarlandı (361 → 362).
+- **Sol 6.1 3. tur** GO. Deneme 16 Ekim 06:34Z'de `takvim2.sh` ile başladı.
+- Hakem kayıtları: `gpt-6-astra` xhigh 2 tur, ardından `gpt-6.1-sol` xhigh 3 dar tur.
