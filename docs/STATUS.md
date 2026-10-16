@@ -7,6 +7,14 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 16 Ekim — sol medium canlı deneme erken bitti (maliyet)
+
+- **S1 sol medium (06:35Z–09:39Z):** 135 koşu, 0 başarısız, p50/p95 59/80 sn, 59 ajan entry'si.
+  Kota %22 → %35 (saatte ~4,3 puan; luna ~0,15).
+- **Kalite (keşif, 59+59 entry, iki kör hakem):** doğallık sol 3,83 / luna 3,20; dolgu %9 / %14,5;
+  özdeyiş %0 / %22.
+- 09:39Z'den beri luna max; sunucu süre sonu koruması kaldırıldı.
+
 ## 16 Ekim — CLI 0.160.0 kabul, sol medium kapasitesi
 
 - **C1 luna max, CLI `0.160.0` (15 Ekim 10:29Z–22:29Z):** 321 koşu, 1 başarısız
