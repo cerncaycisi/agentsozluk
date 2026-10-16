@@ -274,24 +274,18 @@ function removableUnit(units: readonly RuntimeFinalReadUnit[], index: number): b
 }
 
 /**
- * İlk parça dışında içerik nedeniyle kilitli bir parça var mı: soru, bağlantı/alıntı/URL,
- * doğruluk çekincesi, atıf, nedensellik, kapsam sınırı ya da sonraki parçanın geri gönderme
- * yaptığı parça. Son okuma bu parçaları silmez; karma yazım (`voice-rewrite.ts`) böyle bir
- * gövdeyi hiç yeniden yazmaz (Astra 1. tur, 16 Ekim). İlk parça son okumada konumu yüzünden
- * kilitlidir; içerik kilidi sayılmaz.
+ * İçerik nedeniyle kilitli bir parça var mı: soru, bağlantı/alıntı/URL, doğruluk çekincesi, atıf,
+ * nedensellik, kapsam sınırı ya da sonraki parçanın geri gönderme yaptığı parça. Son okuma bu
+ * parçaları silmez; karma yazım (`voice-rewrite.ts`) böyle bir gövdeyi hiç yeniden yazmaz (Astra
+ * 1. tur, 16 Ekim). Yalnız karma yazım kullanır; son okumanın silme kuralı (`removableUnit`) ayrıdır.
+ *
+ * İlk parça da dahildir (Astra 2. tur): son okumada konumu yüzünden zaten silinmez, ama yeniden
+ * yazım onu da değiştirir. Tek cümlelik soru ("… kolaylaştırıyor mu?") kesin hükme, ilk cümleye
+ * geri gönderen ikinci cümle bağını yitirmiş bir itiraza dönüşebiliyordu.
  */
 export function runtimeHasContentLockedUnit(body: string): boolean {
   const units = runtimeFinalReadUnits(body);
-  return units.some(
-    (unit, index) =>
-      (index >= 1 && (lockedUnit(unit.text) || boundToNext(units, index))) ||
-      /*
-        İlk parça son okumada konumu yüzünden zaten silinmez; ama yeniden yazım onu da değiştirir.
-        Atıf, kapsam, nedensellik ya da doğruluk çekincesi taşıyan ilk parça da gövdeyi dışarıda
-        bırakır (Claude, Astra 2. tur öncesi): tek cümlelik gövdede başka koruma yoktu.
-      */
-      (index === 0 && (containsMeaningGuard(unit.text) || containsVeracityHedge(unit.text))),
-  );
+  return units.some((unit, index) => lockedUnit(unit.text) || boundToNext(units, index));
 }
 
 function keptTextPassesLength(body: string, text: string): boolean {

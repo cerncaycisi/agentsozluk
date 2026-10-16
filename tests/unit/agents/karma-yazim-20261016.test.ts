@@ -7,6 +7,7 @@ import { runtimePromptScaffold } from "@/runtime/prompt-profile";
 import {
   applyRuntimeVoiceBodies,
   runtimeVoiceCandidates,
+  runtimeVoiceDraftHedged,
   runtimeVoiceFidelityAccepted,
   runtimeVoiceFidelitySchema,
   runtimeVoicePersonaSections,
@@ -98,7 +99,7 @@ describe("karma yazım adayları", () => {
         actionType: "CREATE_ENTRY",
         input: {
           topicId: "t1",
-          body: "anons ritmi bütün uyarıları aynı aciliyette okutuyor bence.",
+          body: "anons ritmi bütün uyarıları aynı aciliyette okutuyor işte.",
         },
       },
     ]);
@@ -158,6 +159,39 @@ describe("karma yazım adayları", () => {
       },
     ]);
     expect(runtimeVoiceCandidates(decision, {}).map(({ sequence }) => sequence)).toEqual([2]);
+  });
+
+  // Astra 2. tur: ilk parçaya da sorunun ve geri göndermenin içerik kilidi uygulanır.
+  it.each([
+    [
+      "soru",
+      "gece hattında bütün durak isimlerini aynı tonda okumak yolcunun işini kolaylaştırıyor mu?",
+    ],
+    [
+      "ilk parçaya geri gönderme",
+      "gece hattında bütün durak isimleri aynı tonda okunuyor ve yolcu ineceği yeri kaçırıyor. bunu ilk kez geçen kış fark ettim.",
+    ],
+  ])("ilk parçası %s kilidi taşıyan gövdeyi almaz", (_label, body) => {
+    const decision = decisionFor([
+      { sequence: 1, actionType: "CREATE_ENTRY", input: { topicId: "t1", body } },
+    ]);
+    expect(runtimeVoiceCandidates(decision, {})).toEqual([]);
+  });
+
+  // Astra 2. tur: ihtiyat ya da kanaat işareti taşıyan taslak hiç yeniden yazılmaz.
+  it.each([
+    ["-ebilir ve bence", "akşam servisi gecikebilir, durakta beklemek bence sıkıcı oluyor."],
+    ["galiba", "akşam servisi galiba yine gecikiyor, durakta beklemek çok sıkıcı oluyor."],
+    [
+      "doğruluk çekincesi",
+      "akşam servisinin kaldırılacağı iddia ediliyor, durakta bekleyenler bunu konuşuyor.",
+    ],
+  ])("%s taşıyan taslağı aday yapmaz", (_label, body) => {
+    expect(runtimeVoiceDraftHedged(body)).toBe(true);
+    const decision = decisionFor([
+      { sequence: 1, actionType: "CREATE_ENTRY", input: { topicId: "t1", body } },
+    ]);
+    expect(runtimeVoiceCandidates(decision, {})).toEqual([]);
   });
 });
 
@@ -334,6 +368,10 @@ describe("karma yazım koruması", () => {
   it("boş, etiketli, uzun ve çok kısa metni reddeder", () => {
     expect(runtimeVoiceRewriteIssue(draft, "  \n ")).toBe("EMPTY");
     expect(runtimeVoiceRewriteIssue(draft, `${rewrite} <b>vurgu</b>`)).toBe("MARKUP");
+    // Astra 2. tur: ASCII desen geçiriyor, sunucunun eylem kaydı şeması reddediyor.
+    expect(runtimeVoiceRewriteIssue(draft, rewrite.replace("durak adı", "<ſ>durak adı</ſ>"))).toBe(
+      "SERVER_SCHEMA",
+    );
     expect(runtimeVoiceRewriteIssue(draft, `${draft} bir kelime`)).toBe("LONGER");
     // Taslak 24 kelime: alt sınır ceil(0,4 × 24) = 10.
     expect(runtimeVoiceRewriteIssue(draft, "anons ritmi bütün uyarıları aynı yapıyor.")).toBe(
@@ -398,6 +436,29 @@ describe("karma yazım koruması", () => {
     ).toBe("NEW_NUMBER");
   });
 
+  // Astra 2. tur: Türkçe önek yüzde sayının kimliğine katılır.
+  it("kişi sayısının yüzdeye çevrilmesini reddeder", () => {
+    const survey =
+      "ankette sessiz vagon isteyenler 3 kişi çıkmış, geri kalanı soruyu umursamamış bile.";
+    for (const changed of [
+      "ankette sessiz vagon isteyenler %3 çıkmış, geri kalanı soruyu umursamamış.",
+      "ankette sessiz vagon isteyenler % 3 çıkmış, geri kalanı soruyu umursamamış.",
+      "ankette sessiz vagon isteyenler yüzde 3 çıkmış, geri kalanı umursamamış.",
+      "ankette sessiz vagon isteyenler 3% çıkmış, geri kalanı soruyu umursamamış.",
+    ])
+      expect(runtimeVoiceRewriteIssue(survey, changed)).toBe("NEW_NUMBER");
+    const percent = survey.replace("3 kişi", "%3");
+    expect(
+      runtimeVoiceRewriteIssue(percent, "ankette sessiz vagon isteyenler %3 çıkmış."),
+    ).toBeNull();
+    expect(
+      runtimeVoiceRewriteIssue(
+        percent,
+        "ankette sessiz vagon isteyenler yüzde 3 çıkmış, geri kalanı umursamamış.",
+      ),
+    ).toBeNull();
+  });
+
   const clock =
     "duvar saatinin tik takı gece sessizliğinde fazla duyuluyor, yatak odasına asılınca uyumak zorlaşabilir bence.";
   const clockRewrite =
@@ -456,6 +517,19 @@ describe("karma yazım koruması", () => {
         "duvar saatinin tik takı geçen hafta fazla duyuluyordu; uyumak zorlaşabilir bence.",
       ),
     ).toBe("NEW_TIME");
+    // Astra 2. tur: her zaman ifadesi kendi anahtarıdır; yön ya da dönem değişikliği yenidir.
+    const lastWeek =
+      "geçen hafta duvar saatinin tik takı gece fazla duyuldu, yatak odasında uyumak zorlaştı.";
+    for (const changed of ["gelecek hafta", "önümüzdeki ay", "önceki yıl"])
+      expect(runtimeVoiceRewriteIssue(lastWeek, lastWeek.replace("geçen hafta", changed))).toBe(
+        "NEW_TIME",
+      );
+    expect(
+      runtimeVoiceRewriteIssue(
+        lastWeek,
+        "geçen haftaki gece duvar saatinin tik takı fazla duyuldu, uyumak zorlaştı.",
+      ),
+    ).toBeNull();
     // "dünya" zaman ifadesi değildir.
     expect(
       runtimeVoiceRewriteIssue(

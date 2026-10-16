@@ -9,6 +9,7 @@ import {
   textContainsUncertaintyFrame,
 } from "@/modules/agents/domain/action-policy";
 import { exactSourceNumericClaims } from "@/modules/agents/domain/source-numbers";
+import { runtimeActionInputSchema } from "@/modules/agents/validation/runtime-schemas";
 import {
   applyRuntimeFinalReadBodies,
   inSensitiveDomain,
@@ -31,13 +32,14 @@ import { runtimePromptScaffold } from "@/runtime/prompt-profile";
   korumalar daha sıkıdır ve her belirsizlik ÖZGÜN gövdeye döner:
 
   - aday kuralı son okumayla aynıdır (kaynaklı, ciddi iddialı, alıntısı belirsiz ve
-    sağlık/finans/hukuk gövdesi girmez); ayrıca 8 kelimeden kısa gövde ve ilk parça dışında son
-    okumanın içerik kilidini (atıf, çekince, kapsam, nedensellik, geri gönderme, soru,
-    bağlantı/alıntı) taşıyan gövde girmez;
+    sağlık/finans/hukuk gövdesi girmez); ayrıca 8 kelimeden kısa gövde, herhangi bir parçasında
+    son okumanın içerik kilidini (atıf, çekince, kapsam, nedensellik, geri gönderme, soru,
+    bağlantı/alıntı) taşıyan gövde ve gündelik ihtiyat/kanaat işareti ("bence", "-ebilir")
+    taşıyan gövde girmez;
   - deterministik koruma: taslaktan uzun ya da çok kısa metin, kaybolan ya da eklenen bağlantı,
-    alıntı ve adres, taslakta olmayan sayı (rakam, ölçek, yazıyla), zaman ifadesi, ad, kesinlik
-    değişikliği, hassas alan, anayasa ihlali, ciddi iddia işareti ve yeni çevrimdışı birinci tekil
-    deneyim reddedilir;
+    alıntı ve adres, sunucu gövde şemasını geçmeyen metin, taslakta olmayan sayı (rakam, ölçek,
+    yazıyla), zaman ifadesi, ad, yeni mutlaklık işareti, hassas alan, anayasa ihlali, ciddi iddia
+    işareti ve yeni çevrimdışı birinci tekil deneyim reddedilir;
   - koruma geçen metin ayrı bir sadakat çağrısına (luna) gider; yalnız "ekleme YOK, anlam
     KORUNDU" kabul edilir;
   - yeniden yazılan gövde ardından yenilik kapısından geçer: kapı yayımlanacak metne bakar.
@@ -127,7 +129,8 @@ export function runtimeVoiceCandidates(
     .filter(
       ({ body }) =>
         runtimeVoiceWordCount(body) >= runtimeVoiceMinDraftWords &&
-        !runtimeHasContentLockedUnit(body),
+        !runtimeHasContentLockedUnit(body) &&
+        !runtimeVoiceDraftHedged(body),
     )
     .map((entry) => ({
       ...entry,
@@ -152,6 +155,7 @@ export function runtimeVoicePersonaSections(renderedPrompt: string): string | nu
 export type RuntimeVoiceGuardCode =
   | "EMPTY"
   | "MARKUP"
+  | "SERVER_SCHEMA"
   | "LONGER"
   | "TOO_SHORT"
   | "PROTECTED_SPAN"
@@ -239,8 +243,13 @@ const writtenNumberTerms = closedTerms([
 
 /*
   Göreli ve takvim zamanı (Astra 1. tur). Dört haneli yıl sayı korumasındadır. "dün" ayrı ek
-  listesi taşır: genel ek listesi "dünya"yı da eşlerdi.
+  listesi taşır: genel ek listesi "dünya"yı da eşlerdi. Her ifade kendi anlamsal anahtarıdır
+  (Astra 2. tur): "geçen hafta" taslakta varken "gelecek hafta" ya da "önümüzdeki ay" yenidir.
+  Eşanlamlılar ("yıl"/"sene") ayrı sayılır; bu yalnız fazladan ret üretir.
 */
+const relativeTimePhrases = (["geçen", "bu", "gelecek", "önümüzdeki", "önceki"] as const).flatMap(
+  (when) => (["hafta", "ay", "yıl", "sene"] as const).map((unit) => `${when} ${unit}`),
+);
 const timeSuffix =
   "(?:ki|kü|ku|kı|da|de|ta|te|dan|den|tan|ten|a|e|ya|ye|ı|i|u|ü|yı|yi|ın|in|un|ün|nın|nin|nun|nün|sı|si|su|sü|nda|nde|ndan|nden|daki|deki|taki|teki|ndaki|ndeki)?";
 const timeTerms = closedTerms([
@@ -249,8 +258,11 @@ const timeTerms = closedTerms([
     [
       "bugün",
       "yarın",
-      "(?:geçen|bu|gelecek|önümüzdeki|önceki) (?:hafta|ay|yıl|sene)",
-      "(?:önceki|evvelki|öbür|geçen) gün",
+      ...relativeTimePhrases,
+      "önceki gün",
+      "evvelki gün",
+      "öbür gün",
+      "geçen gün",
       "geçenlerde",
       "ocak",
       "şubat",
@@ -297,10 +309,11 @@ const absoluteTerms = closedTerms(
 
 /*
   Taslağın ihtiyat ya da kanaat işareti. Sunucunun çekince sözlüğü ("iddia", "doğrulanmadı"…)
-  "gelebilir", "galiba", "bence" gibi gündelik ihtiyatı görmez; taslakta biri varken yeniden
-  yazımda hiçbiri kalmıyorsa kesinlik düzeyi değişmiştir.
+  "gelebilir", "galiba", "bence" gibi gündelik ihtiyatı görmez. Böyle bir işaret taşıyan taslak
+  hiç yeniden yazılmaz (Astra 2. tur): gövdenin bir yerinde kalan "bence", başka bir önermenin
+  ihtiyatının ("gecikebilir" → "gecikiyor") kaybını gizliyordu.
 */
-const hedgeTerms = closedTerms(
+const hedgeTerms: readonly ClosedTerm[] = closedTerms(
   (
     [
       "belki",
@@ -318,6 +331,11 @@ const hedgeTerms = closedTerms(
     ] as const
   ).map((term) => [term, term] as const),
 );
+
+/** Taslakta doğruluk çekincesi ya da gündelik ihtiyat/kanaat işareti var mı; varsa aday değildir. */
+export function runtimeVoiceDraftHedged(body: string): boolean {
+  return textContainsUncertaintyFrame(body) || closedTermsIn(body, hedgeTerms).size > 0;
+}
 
 function tokenCore(token: string): string {
   return token.replaceAll(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
@@ -358,9 +376,17 @@ function newNameToken(draft: string, rewrite: string, topicTitle: string): boole
   return false;
 }
 
-/* Sayısal iddia: değer, ölçek ve yüzde birlikte ("3 kişi" ≠ "3 milyon kişi", "1 ve 2" ≠ "1.2"). */
+/*
+  Sayısal iddia: değer, ölçek ve yüzde birlikte ("3 kişi" ≠ "3 milyon kişi", "1 ve 2" ≠ "1.2").
+  Ortak yardımcı yalnız sayıdan SONRAKİ "%" işaretini tanır; Türkçe önek yüzde ("%3", "yüzde 3")
+  burada sona taşınır (Astra 2. tur: "3 kişi" → "%3" geçiyordu). Diğer çağıranlar etkilenmez.
+*/
+const numberSource = "[-+]?[0-9]+(?:[.,][0-9]+)*";
 function numericClaims(text: string): Set<string> {
-  return exactSourceNumericClaims(normalizedText(text.replaceAll(/https?:\/\/\S+/giu, " ")));
+  const normalized = normalizedText(text.replaceAll(/https?:\/\/\S+/giu, " "))
+    .replaceAll(new RegExp(`%\\s?(${numberSource})`, "gu"), "$1%")
+    .replaceAll(new RegExp(`(?<![\\p{L}\\p{N}])yüzde\\s(${numberSource})`, "gu"), "$1%");
+  return exactSourceNumericClaims(normalized);
 }
 
 function sameSpans(left: readonly string[], right: readonly string[]): boolean {
@@ -384,6 +410,12 @@ export function runtimeVoiceRewriteIssue(
   if (rewrite.trim().length === 0) return "EMPTY";
   // Sunucu HTML etiketi taşıyan gövdeyi kayıtta reddeder; ret bütün koşuyu düşürürdü.
   if (!entryBodyWirePattern.test(rewrite)) return "MARKUP";
+  /*
+    Sunucunun eylem kaydındaki gövde doğrulaması aynen uygulanır (Astra 2. tur): ASCII desen
+    "<ſ>" etiketini geçiriyor, sunucunun büyük/küçük harf duyarsız deseni reddediyordu; kayıt
+    reddi koşuyu özgün gövdeye dönmeden düşürürdü.
+  */
+  if (!runtimeActionInputSchema.safeParse({ body: rewrite }).success) return "SERVER_SCHEMA";
   const draftWords = runtimeVoiceWordCount(draft);
   const rewriteWords = runtimeVoiceWordCount(rewrite);
   if (rewriteWords > draftWords) return "LONGER";
