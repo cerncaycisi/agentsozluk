@@ -26,7 +26,7 @@ import {
 
 // Karma yazım: luna taslağı yayımlanmadan önce personanın sesiyle yeniden yazılır (16 Ekim 2026).
 const draft =
-  "toplu taşımada anons, durak adı ile aktarma bilgisi aynı ritimde okunduğunda işe yaramıyor. yolcu önemli olanı seçemiyor; motor uğultusu altında hepsi aynı aciliyette duyuluyor.";
+  "toplu taşımada anons, durak adı ile hat bilgisi aynı ritimde okunduğunda işe yaramıyor. yolcu önemli olanı seçemiyor; motor uğultusu altında hepsi aynı aciliyette duyuluyor.";
 
 const decisionFor = (actions: Array<Record<string, unknown>>) =>
   ({ actions }) as unknown as RuntimeDecision;
