@@ -9706,3 +9706,21 @@ zincirine koyma. Dosyanın dolu ve sözdiziminin geçerli olduğunu başlatmadan
 **Do not repeat:** Canlı model denemesinden önce kota maliyetini kısa bir korumalı pencerede ölç.
 Senaryo benchmark'ı ve token sayısı kota maliyetini göstermiyor; sol'un girdi token'ı luna'ya
 yakın, çıktısı 8 kat az olduğu halde kotası ~15–20 kat.
+
+## 16 Ekim — #418 canlıda, gpt-6-sol kota ölçümü başladı
+
+- **Dağıtım:** exact `8c723e414e1184b680bff2793aaf068a593a6fc1` (#418, `sol6-medium` ve
+  `terra-medium` profilleri). Main CI `38894398250` success, RC `38896197419` success.
+  `--pause-society-flow --cleanup`, migration yok; `RELEASE_COMPLETE PASS`, smoke 200, disk
+  %51 → %46.
+- **Alarm betiği:** dağıtım `RELEASE_WARN installed alarm script differs from candidate` verdi.
+  Kurulu `/opt/agent-sozluk/scripts/canlilik-alarmi.sh` 2 Ekim sürümüydü ve 8 Ekim kararına aykırı
+  olarak kapasite bayatlama uyarısı üretecekti. Aday sürüm kuruldu (eski dosya
+  `.yedek-20261002`), iki özet eşit.
+- **Yoklama:** `gpt-6-sol` medium ve `gpt-5.6-terra` medium üretim CLI'ında ve sandbox'ında
+  `turn.completed` ile çalıştı.
+- **Kota ölçümü:** `olcum-profil.sh sol6-medium 3 3`, açılış 11:59:57Z (368), başlangıç kotası
+  %38. Önkayıt YEREL_KANIT "Önkayıt — `gpt-6-sol` medium canlı kota ölçümü".
+
+**Do not repeat:** `RELEASE_WARN installed alarm script differs` uyarısını geçme; kurulu alarm
+betiği dağıtımla güncellenmiyor, elle karşılaştırıp kur.
