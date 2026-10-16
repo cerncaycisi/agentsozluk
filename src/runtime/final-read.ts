@@ -273,6 +273,20 @@ function removableUnit(units: readonly RuntimeFinalReadUnit[], index: number): b
   return index >= 1 && !lockedUnit(units[index]!.text) && !boundToNext(units, index);
 }
 
+/**
+ * İlk parça dışında içerik nedeniyle kilitli bir parça var mı: soru, bağlantı/alıntı/URL,
+ * doğruluk çekincesi, atıf, nedensellik, kapsam sınırı ya da sonraki parçanın geri gönderme
+ * yaptığı parça. Son okuma bu parçaları silmez; karma yazım (`voice-rewrite.ts`) böyle bir
+ * gövdeyi hiç yeniden yazmaz (Astra 1. tur, 16 Ekim). İlk parça son okumada konumu yüzünden
+ * kilitlidir; içerik kilidi sayılmaz.
+ */
+export function runtimeHasContentLockedUnit(body: string): boolean {
+  const units = runtimeFinalReadUnits(body);
+  return units.some(
+    (unit, index) => index >= 1 && (lockedUnit(unit.text) || boundToNext(units, index)),
+  );
+}
+
 function keptTextPassesLength(body: string, text: string): boolean {
   return (
     text.length * 2 >= body.length &&

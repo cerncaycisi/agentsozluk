@@ -5314,9 +5314,13 @@ describe("runtime karma yazım", () => {
   });
   const persona = seedPersonaSchema.parse(originalPersonaPack.personas[0]);
 
+  const yayimla = result({ karar: "YAYIMLA" });
+  const faithful = result({ ekleme: "YOK", anlam: "KORUNDU" });
+
+  /* Gözden geçirici sırası: AW, (sadakat), yenilik. Hata nesnesi o çağrıyı düşürür. */
   function setup(options: {
     voice?: RuntimeProvider["invoke"];
-    reviewerTail?: Array<ReturnType<typeof result>>;
+    reviewer?: Array<ReturnType<typeof result> | Error>;
     renderedPrompt?: string;
   }) {
     const runId = randomUUID();
@@ -5339,11 +5343,10 @@ describe("runtime karma yazım", () => {
         ),
       ),
     };
-    const reviewerInvoke = vi
-      .fn()
-      .mockResolvedValueOnce(actAll)
-      .mockResolvedValueOnce(result({ karar: "YAYIMLA" }));
-    for (const next of options.reviewerTail ?? []) reviewerInvoke.mockResolvedValueOnce(next);
+    const reviewerInvoke = vi.fn().mockResolvedValueOnce(actAll);
+    for (const next of options.reviewer ?? [yayimla])
+      if (next instanceof Error) reviewerInvoke.mockRejectedValueOnce(next);
+      else reviewerInvoke.mockResolvedValueOnce(next);
     const reviewer: RuntimeProvider = { inspect: vi.fn(), invoke: reviewerInvoke };
     const voiceProvider: RuntimeProvider | undefined = options.voice
       ? { inspect: vi.fn(), invoke: vi.fn(options.voice) }
@@ -5355,7 +5358,7 @@ describe("runtime karma yazım", () => {
       controlPlane: plane,
       provider,
       actionWorthinessProvider: reviewer,
-      ...(voiceProvider ? { voiceProvider } : {}),
+      ...(voiceProvider ? { voice: { provider: voiceProvider, profile: "sol6-medium" } } : {}),
       onSafeEvent: ({ code }) => events.push(code),
     });
     const recordedBody = () =>
@@ -5373,7 +5376,7 @@ describe("runtime karma yazım", () => {
   it("rewrites the body when the guard and the fidelity check accept it", async () => {
     const run = setup({
       voice: async () => result({ body: `  ${rewrite}\n` }, 7),
-      reviewerTail: [result({ ekleme: "YOK", anlam: "KORUNDU" })],
+      reviewer: [faithful, yayimla],
     });
 
     await expect(run.worker.runOnce()).resolves.toBe(1);
@@ -5382,12 +5385,13 @@ describe("runtime karma yazım", () => {
     expect(voiceRequest.prompt).toContain("Kurallar: en çok 12 kelime");
     expect(voiceRequest.prompt).toContain(`Taslak: ${draft}`);
     expect(voiceRequest.timeoutMs).toBeLessThanOrEqual(60_000);
-    const checkRequest = vi.mocked(run.reviewer.invoke).mock.calls[2]![0];
+    const checkRequest = vi.mocked(run.reviewer.invoke).mock.calls[1]![0];
     expect(checkRequest.prompt).toContain(`Taslak:\n${draft}\n\nYeniden yazım:\n${rewrite}\n`);
     expect(run.recordedBody()).toBe(rewrite);
     expect(run.events).toContain("VOICE_REWRITTEN");
     const usage = usageMetadataSchema.parse(run.completionUsage());
     expect(usage.voice).toEqual({
+      profile: "sol6-medium",
       candidateCount: 1,
       rewrittenCount: 1,
       guardRejectedCount: 0,
@@ -5395,25 +5399,46 @@ describe("runtime karma yazım", () => {
       failedOpenCount: 0,
       skippedCount: 0,
     });
+    // Son okuma (bu gövdede aday yok) → karma yazım → yenilik.
     expect(usage.codexIntervals?.map(({ phase }) => phase)).toEqual([
       "DECISION",
       "ACTION_WORTHINESS",
-      "NOVELTY",
       "VOICE",
       "VOICE_CHECK",
+      "NOVELTY",
     ]);
     // Süreler toplanır.
-    expect(usage.durationMs).toBe(5 + 2 + 2 + 7 + 2);
+    expect(usage.durationMs).toBe(5 + 2 + 7 + 2 + 2);
+  });
+
+  // Astra 1. tur: yenilik kapısı yayımlanacak metne, yani yeniden yazılmış gövdeye bakar.
+  it("runs the novelty gate on the rewritten body and drops it on a repeat", async () => {
+    const run = setup({
+      voice: async () => result({ body: rewrite }),
+      reviewer: [faithful, result({ karar: "VAZGEC" })],
+    });
+
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    const noveltyRequest = vi.mocked(run.reviewer.invoke).mock.calls[2]![0];
+    expect(noveltyRequest.prompt).toContain(`Taslağın:\n${rewrite}\n`);
+    expect(noveltyRequest.prompt).not.toContain(draft);
+    expect(run.events).toContain("NOVELTY_DRAFT_DROPPED");
+    expect(vi.mocked(run.plane.recordActions).mock.calls[0]![4]).toEqual([
+      expect.objectContaining({ actionType: "NO_ACTION" }),
+    ]);
   });
 
   it("keeps the original body when the fidelity check sees an addition", async () => {
     const run = setup({
       voice: async () => result({ body: rewrite }),
-      reviewerTail: [result({ ekleme: "VAR", anlam: "KORUNDU" })],
+      reviewer: [result({ ekleme: "VAR", anlam: "KORUNDU" }), yayimla],
     });
 
     await expect(run.worker.runOnce()).resolves.toBe(1);
     expect(run.recordedBody()).toBe(draft);
+    expect(vi.mocked(run.reviewer.invoke).mock.calls[2]![0].prompt).toContain(
+      `Taslağın:\n${draft}\n`,
+    );
     expect(run.events).toContain("VOICE_FIDELITY_REJECTED");
     expect(run.completionUsage().voice).toMatchObject({
       rewrittenCount: 0,
@@ -5464,6 +5489,7 @@ describe("runtime karma yazım", () => {
     expect(noPersona.voiceProvider!.invoke).not.toHaveBeenCalled();
     expect(noPersona.recordedBody()).toBe(draft);
     expect(noPersona.completionUsage().voice).toMatchObject({
+      profile: "sol6-medium",
       candidateCount: 1,
       skippedCount: 1,
     });
@@ -5512,15 +5538,17 @@ describe("runtime karma yazım", () => {
   );
 
   it("fails the run when the fidelity call reports a tool item", async () => {
-    const run = setup({ voice: async () => result({ body: rewrite }) });
-    vi.mocked(run.reviewer.invoke).mockRejectedValueOnce(
-      new RuntimeProviderExecutionError("CODEX_TOOL_ITEM", {
-        setupMs: 1,
-        inspectMs: 1,
-        modelMs: 1,
-        itemCounts: { errorItems: 0, toolItems: 1, unknownItems: 0 },
-      }),
-    );
+    const run = setup({
+      voice: async () => result({ body: rewrite }),
+      reviewer: [
+        new RuntimeProviderExecutionError("CODEX_TOOL_ITEM", {
+          setupMs: 1,
+          inspectMs: 1,
+          modelMs: 1,
+          itemCounts: { errorItems: 0, toolItems: 1, unknownItems: 0 },
+        }),
+      ],
+    });
 
     await run.worker.runOnce();
     expect(run.events).not.toContain("VOICE_FAILED_OPEN");

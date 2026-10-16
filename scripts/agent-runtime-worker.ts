@@ -137,7 +137,9 @@ async function main(): Promise<void> {
     stochasticScheduling: { controlPlane },
     provider,
     actionWorthinessProvider: provider,
-    ...(voiceProvider ? { voiceProvider } : {}),
+    ...(voiceProvider && environment.AGENT_RUNTIME_VOICE_PROFILE
+      ? { voice: { provider: voiceProvider, profile: environment.AGENT_RUNTIME_VOICE_PROFILE } }
+      : {}),
     sourceReader: new SafeSourceReader(),
     pollIntervalMs: environment.AGENT_RUNTIME_POLL_MS,
     processingLanes: environment.AGENT_RUNTIME_PROCESSING_LANES,

@@ -62,7 +62,7 @@ import {
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
 import {
-  runtimeCodexInvocationLimit,
+  runtimeCodexInvocationBudget,
   runtimeFastStateSchema,
   runtimeReadTopicLimit,
   type RuntimeCodexPhase,
@@ -122,6 +122,7 @@ import {
   runtimeVoiceWritingGuide,
   type RuntimeVoiceCandidate,
 } from "@/runtime/voice-rewrite";
+import type { AgentRuntimeCodexProfileName } from "@/runtime/codex-profiles";
 import {
   applyRuntimeActionWorthinessVerdict,
   parseRuntimeActionWorthinessVerdict,
@@ -138,10 +139,11 @@ export interface RuntimeWorkerOptions {
   provider: RuntimeProvider;
   actionWorthinessProvider?: RuntimeProvider;
   /*
-    Karma yazım sağlayıcısı (`src/runtime/voice-rewrite.ts`). Yoksa faz kapalıdır; sadakat
-    denetimi `actionWorthinessProvider` ile yapılır, o da yoksa faz yine kapalıdır.
+    Karma yazım (`src/runtime/voice-rewrite.ts`): sağlayıcı ve onun kapalı profil adı; ad koşu
+    telemetrisine (`voice.profile`) yazılır. Yoksa faz kapalıdır ve çağrı bütçesi eski 8'dir;
+    sadakat denetimi `actionWorthinessProvider` ile yapılır, o da yoksa faz yine kapalıdır.
   */
-  voiceProvider?: RuntimeProvider;
+  voice?: { provider: RuntimeProvider; profile: AgentRuntimeCodexProfileName };
   sourceReader?: Pick<SafeSourceReader, "read">;
   heartbeatIntervalMs?: number;
   pollIntervalMs?: number;
@@ -992,10 +994,13 @@ export const RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS = runtimeNoveltyCallLimit + 
 /**
  * Son okuma çağrısının süre sınırı; çağrı yapılmayacaksa `null`. Worker ve kapasite ölçümü aynı
  * kuralı kullanır, ölçüm canlıdan fazla ya da uzun çağrı saymaz (Astra, PR #363).
+ * `invocationLimit` koşunun etkin çağrı bütçesidir (`runtimeCodexInvocationBudget`): karma yazım
+ * kapalıyken eski 8 kalır, kapalı fazın son okuması bayt bayt eskisi gibidir (Astra, 16 Ekim).
  */
 export function runtimeFinalReadTimeoutMs(input: {
   index: number;
   invocationsSoFar: number;
+  invocationLimit: number;
   reservedCalls: number;
   remainingMs: number;
   pendingNoveltyCalls: number;
@@ -1007,7 +1012,7 @@ export function runtimeFinalReadTimeoutMs(input: {
       input.pendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
   );
   return input.index >= runtimeFinalReadCallLimit ||
-    input.invocationsSoFar >= runtimeCodexInvocationLimit - input.reservedCalls ||
+    input.invocationsSoFar >= input.invocationLimit - input.reservedCalls ||
     timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS
     ? null
     : timeoutMs;
@@ -1018,30 +1023,34 @@ const RUNTIME_VOICE_MAX_TIMEOUT_MS = 60_000;
 
 /*
   Karma yazımdan sonra içerik onarımına ve onarılan gövdenin yenilik denetimine ayrılan çağrı
-  sayısı. Karma yazım çağrı bütçesini bunlardan önce tüketmez.
+  sayısı. Bekleyen ana yenilik denetimleri bunun üstüne ayrıca ayrılır.
 */
 export const RUNTIME_VOICE_RESERVED_CALLS = 2;
 
 /**
  * Karma yazım çağrısının süre sınırı; çağrı yapılmayacaksa `null`. `pendingCalls` bu gövde için
  * kalan çağrı sayısıdır: yeniden yazımdan önce 2 (yazım + sadakat), sadakatten önce 1. İki çağrı
- * birlikte sığmıyorsa yeniden yazım hiç başlamaz; özgün gövde yayımlanır.
+ * birlikte sığmıyorsa yeniden yazım hiç başlamaz; özgün gövde yayımlanır. Sonra gelecek yenilik
+ * denetimlerine (`pendingNoveltyCalls`) hem çağrı hem son okumadaki gibi süre payı bırakılır.
  */
 export function runtimeVoiceTimeoutMs(input: {
   index: number;
   invocationsSoFar: number;
+  invocationLimit: number;
   remainingMs: number;
   pendingCalls: 1 | 2;
+  pendingNoveltyCalls: number;
 }): number | null {
   const timeoutMs = Math.min(
     RUNTIME_VOICE_MAX_TIMEOUT_MS,
     input.remainingMs -
       RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
-      (input.pendingCalls - 1) * RUNTIME_NOVELTY_MIN_TIMEOUT_MS,
+      (input.pendingCalls - 1) * RUNTIME_NOVELTY_MIN_TIMEOUT_MS -
+      input.pendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS,
   );
   return input.index >= runtimeVoiceCallLimit ||
     input.invocationsSoFar + input.pendingCalls >
-      runtimeCodexInvocationLimit - RUNTIME_VOICE_RESERVED_CALLS ||
+      input.invocationLimit - RUNTIME_VOICE_RESERVED_CALLS - input.pendingNoveltyCalls ||
     timeoutMs < RUNTIME_NOVELTY_MIN_TIMEOUT_MS
     ? null
     : timeoutMs;
@@ -1619,6 +1628,11 @@ export class AgentRuntimeWorker {
     const assertToolContract = () => {
       if (toolContractViolation !== undefined) throw toolContractViolation;
     };
+    /*
+      Etkin çağrı bütçesi: karma yazım sağlayıcısı yoksa eski 8, varsa wire tavanı 12. Kapalı fazda
+      son okuma, yenilik ve onarım bütçesi 12'ye çıkıştan önceki davranışla aynıdır (Astra, 16 Ekim).
+    */
+    const invocationLimit = runtimeCodexInvocationBudget(this.#options.voice !== undefined);
     const invokeCodex = async (
       request: Parameters<RuntimeProvider["invoke"]>[0],
       phase: RuntimeCodexPhase,
@@ -1627,9 +1641,9 @@ export class AgentRuntimeWorker {
       /*
         Bütçe sunucu sözleşmesinden okunuyor. Sabit olarak yazmak 28 Ağustos'ta
         worker'ı öldürdü: buradaki 4 ile şemadaki 3 ayrıştı, dört çağrı kullanan
-        koşunun `/fail` gövdesi 422 aldı ve süreç düştü.
+        koşunun `/fail` gövdesi 422 aldı ve süreç düştü. Etkin bütçe wire tavanını aşmaz.
       */
-      if (codexIntervals.length >= runtimeCodexInvocationLimit)
+      if (codexIntervals.length >= invocationLimit)
         throw new Error("CODEX_INVOCATION_LIMIT_EXCEEDED");
       // Çağrıya verilen metnin boyutu; içerik ve token tahmini kaydedilmez.
       const promptChars = request.prompt.length;
@@ -1734,6 +1748,7 @@ export class AgentRuntimeWorker {
     } | null = null;
     /* Karma yazımın ne yaptığı — bkz `runtime-schemas.ts`, `voice`. */
     let voice: {
+      profile: AgentRuntimeCodexProfileName;
       candidateCount: number;
       rewrittenCount: number;
       guardRejectedCount: number;
@@ -2279,6 +2294,7 @@ export class AgentRuntimeWorker {
           const timeoutMs = runtimeFinalReadTimeoutMs({
             index,
             invocationsSoFar: codexIntervals.length,
+            invocationLimit,
             reservedCalls: options.reservedCalls,
             remainingMs: deadline.remainingMs(),
             pendingNoveltyCalls: options.pendingNoveltyCalls,
@@ -2346,47 +2362,34 @@ export class AgentRuntimeWorker {
           runtimeNoveltyCandidates(decision, context.perception).length,
         ),
       });
-      const noveltyCandidates = noveltyProvider
-        ? runtimeNoveltyCandidates(decision, context.perception)
-        : [];
-      if (noveltyCandidates.length > 0) {
-        await enterPhase("VALIDATING");
-        const dropped = new Set<number>();
-        for (const [index, candidate] of noveltyCandidates.entries())
-          if (
-            (await checkNovelty(
-              candidate,
-              index < runtimeNoveltyCallLimit,
-              Math.max(0, Math.min(runtimeNoveltyCallLimit, noveltyCandidates.length) - index - 1),
-            )) === "VAZGEC"
-          )
-            dropped.add(candidate.sequence);
-        if (dropped.size > 0) {
-          decision = applyRuntimeNoveltyDrops(decision, dropped);
-          this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
-        }
-      }
       const consolidationRun = isMemoryConsolidationRun(context);
       const personaReflectionRun = isPersonaReflectionRun(context);
       /*
-        Karma yazım (`src/runtime/voice-rewrite.ts`): yenilik kapısından sağ çıkan her yeni entry
-        gövdesi yayımlanmadan hemen önce personanın sesiyle bir kez yeniden yazılır. Yenilikten
-        SONRA çalışır: kapı taslağın katkısına karar verir; yeniden yazım yeni bilgi ekleyemediği
-        için o hükmü geçersiz kılmaz. Sadakat denetimi yenilik sağlayıcısıyla (luna) yapılır.
-        Koruma, sadakat, hata ya da süre engelinde özgün gövde yayımlanır ve sayılır. İçerik
-        onarımının ürettiği gövde bu fazdan geçmez.
+        Karma yazım (`src/runtime/voice-rewrite.ts`): son okumadan sonra her yeni entry gövdesi
+        personanın sesiyle bir kez yeniden yazılır. Yenilik kapısından ÖNCE çalışır: kapı
+        yayımlanacak metne bakmalı; yeniden yazım taslağın katkısını taşıyan ayrıntıyı silip
+        gövdeyi tekrara çevirebiliyordu (Astra 1. tur, 16 Ekim). Sadakat denetimi yenilik
+        sağlayıcısıyla (luna) yapılır. Bekleyen yenilik denetimlerine ve içerik onarımına çağrı ve
+        süre bırakılır. Koruma, sadakat, hata ya da süre engelinde özgün gövde kalır ve sayılır.
+        İçerik onarımının ürettiği gövde bu fazdan geçmez.
       */
-      const voiceProvider =
+      const voiceOption =
         noveltyProvider && !consolidationRun && !personaReflectionRun
-          ? this.#options.voiceProvider
+          ? this.#options.voice
           : undefined;
+      const voiceProvider = voiceOption?.provider;
       const voiceCandidates =
         voiceProvider && noveltyProvider
           ? runtimeVoiceCandidates(decision, context.perception)
           : [];
-      if (voiceProvider && noveltyProvider && voiceCandidates.length > 0) {
+      if (voiceOption && voiceProvider && noveltyProvider && voiceCandidates.length > 0) {
         await enterPhase("VALIDATING");
+        const pendingNoveltyCalls = Math.min(
+          runtimeNoveltyCallLimit,
+          runtimeNoveltyCandidates(decision, context.perception).length,
+        );
         const stats = (voice ??= {
+          profile: voiceOption.profile,
           candidateCount: 0,
           rewrittenCount: 0,
           guardRejectedCount: 0,
@@ -2406,8 +2409,10 @@ export class AgentRuntimeWorker {
               : runtimeVoiceTimeoutMs({
                   index,
                   invocationsSoFar: codexIntervals.length,
+                  invocationLimit,
                   remainingMs: deadline.remainingMs(),
                   pendingCalls: 2,
+                  pendingNoveltyCalls,
                 });
           if (personaSections === null || timeoutMs === null) {
             stats.skippedCount += 1;
@@ -2445,8 +2450,10 @@ export class AgentRuntimeWorker {
             const checkTimeoutMs = runtimeVoiceTimeoutMs({
               index,
               invocationsSoFar: codexIntervals.length,
+              invocationLimit,
               remainingMs: deadline.remainingMs(),
               pendingCalls: 1,
+              pendingNoveltyCalls,
             });
             if (checkTimeoutMs === null) {
               stats.skippedCount += 1;
@@ -2495,6 +2502,26 @@ export class AgentRuntimeWorker {
         if (bodies.size > 0) {
           decision = applyRuntimeVoiceBodies(decision, bodies);
           this.#options.onSafeEvent?.({ level: "info", code: "VOICE_REWRITTEN", runId });
+        }
+      }
+      const noveltyCandidates = noveltyProvider
+        ? runtimeNoveltyCandidates(decision, context.perception)
+        : [];
+      if (noveltyCandidates.length > 0) {
+        await enterPhase("VALIDATING");
+        const dropped = new Set<number>();
+        for (const [index, candidate] of noveltyCandidates.entries())
+          if (
+            (await checkNovelty(
+              candidate,
+              index < runtimeNoveltyCallLimit,
+              Math.max(0, Math.min(runtimeNoveltyCallLimit, noveltyCandidates.length) - index - 1),
+            )) === "VAZGEC"
+          )
+            dropped.add(candidate.sequence);
+        if (dropped.size > 0) {
+          decision = applyRuntimeNoveltyDrops(decision, dropped);
+          this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
         }
       }
       ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(

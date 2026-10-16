@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import type { RuntimeCapabilityMeasurementInput } from "@/modules/agents/validation/capacity-schemas";
 import { runtimeCapabilityMeasurementSchema } from "@/modules/agents/validation/capacity-schemas";
+import { runtimeCodexInvocationBudget } from "@/modules/agents/validation/runtime-schemas";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { renderPersonaPrompt } from "@/modules/agents/personas/prompt-renderer";
 import { seedPersonaPackSchema } from "@/modules/agents/personas/schema";
@@ -289,6 +290,8 @@ async function invokeBenchmarkDecision(
     const finalReadTimeoutMs = runtimeFinalReadTimeoutMs({
       index,
       invocationsSoFar: invocations,
+      // Ölçülen yol karma yazımsız worker'dır; etkin bütçesi de odur.
+      invocationLimit: runtimeCodexInvocationBudget(false),
       reservedCalls: RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS,
       remainingMs: timeoutMs - combined.durationMs,
       pendingNoveltyCalls,
@@ -326,6 +329,11 @@ async function invokeBenchmarkDecision(
     if (trimmed) finalReadBodies.set(candidate.sequence, trimmed.body);
   }
   if (finalReadBodies.size > 0) reviewed = applyRuntimeFinalReadBodies(reviewed, finalReadBodies);
+  /*
+    Karma yazım (`VOICE`/`VOICE_CHECK`, worker'da son okuma ile yenilik arasında) bilerek ölçülmez.
+    8 Ekim kuralı: tek hatta talimat ya da model değişince kapasite yeniden ölçülmez; karma yazımın
+    maliyeti canlıda korumalı kota ölçümüyle ölçülür. Bu çalıştırıcı fazın kapalı olduğu yolu ölçer.
+  */
   const noveltyCandidates = runtimeNoveltyCandidates(reviewed, context.perception).slice(
     0,
     runtimeNoveltyCallLimit,

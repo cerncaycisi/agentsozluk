@@ -20,6 +20,10 @@ import {
 } from "@/runtime/provider";
 import { monitorHostProcess } from "@/runtime/host-metrics";
 import { parseRuntimeDecisionOutput } from "@/runtime/output";
+import {
+  agentRuntimeCodexProfileNames,
+  type AgentRuntimeCodexProfileName,
+} from "@/runtime/codex-profiles";
 
 interface CodexCliProviderOptions {
   executable: string;
@@ -52,12 +56,11 @@ export const AGENT_RUNTIME_CODEX_PROFILES = {
   "sol6-medium": { model: "gpt-6-sol", reasoningEffort: "medium" },
   "terra-medium": { model: "gpt-5.6-terra", reasoningEffort: "medium" },
   "sol56-medium": { model: "gpt-5.6-sol", reasoningEffort: "medium" },
-} as const;
-export type AgentRuntimeCodexProfileName = keyof typeof AGENT_RUNTIME_CODEX_PROFILES;
-export const agentRuntimeCodexProfileNames = Object.keys(AGENT_RUNTIME_CODEX_PROFILES) as [
+} as const satisfies Record<
   AgentRuntimeCodexProfileName,
-  ...AgentRuntimeCodexProfileName[],
-];
+  { model: string; reasoningEffort: string }
+>;
+export { agentRuntimeCodexProfileNames, type AgentRuntimeCodexProfileName };
 type AgentRuntimeCodexReasoningEffort =
   (typeof AGENT_RUNTIME_CODEX_PROFILES)[AgentRuntimeCodexProfileName]["reasoningEffort"];
 

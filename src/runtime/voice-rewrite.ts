@@ -6,11 +6,15 @@ import {
 import {
   hasUnrecordedOfflineFirstPersonClaim,
   textContainsSeriousClaimMarker,
+  textContainsUncertaintyFrame,
 } from "@/modules/agents/domain/action-policy";
+import { exactSourceNumericClaims } from "@/modules/agents/domain/source-numbers";
 import {
   applyRuntimeFinalReadBodies,
+  inSensitiveDomain,
   quotesUnambiguous,
   runtimeEditableEntries,
+  runtimeHasContentLockedUnit,
   runtimeProtectedSpans,
   type RuntimeEditableEntry,
 } from "@/runtime/final-read";
@@ -27,12 +31,16 @@ import { runtimePromptScaffold } from "@/runtime/prompt-profile";
   korumalar daha sıkıdır ve her belirsizlik ÖZGÜN gövdeye döner:
 
   - aday kuralı son okumayla aynıdır (kaynaklı, ciddi iddialı, alıntısı belirsiz ve
-    sağlık/finans/hukuk gövdesi girmez), ayrıca 8 kelimeden kısa gövde girmez;
+    sağlık/finans/hukuk gövdesi girmez); ayrıca 8 kelimeden kısa gövde ve ilk parça dışında son
+    okumanın içerik kilidini (atıf, çekince, kapsam, nedensellik, geri gönderme, soru,
+    bağlantı/alıntı) taşıyan gövde girmez;
   - deterministik koruma: taslaktan uzun ya da çok kısa metin, kaybolan ya da eklenen bağlantı,
-    alıntı ve adres, taslakta olmayan rakam, anayasa ihlali, ciddi iddia işareti ve yeni
-    çevrimdışı birinci tekil deneyim reddedilir;
+    alıntı ve adres, taslakta olmayan sayı (rakam, ölçek, yazıyla), zaman ifadesi, ad, kesinlik
+    değişikliği, hassas alan, anayasa ihlali, ciddi iddia işareti ve yeni çevrimdışı birinci tekil
+    deneyim reddedilir;
   - koruma geçen metin ayrı bir sadakat çağrısına (luna) gider; yalnız "ekleme YOK, anlam
-    KORUNDU" kabul edilir.
+    KORUNDU" kabul edilir;
+  - yeniden yazılan gövde ardından yenilik kapısından geçer: kapı yayımlanacak metne bakar.
 
   Hata, geçersiz çıktı ya da yetersiz süre gövdeyi olduğu gibi bırakır ve sayılır.
 */
@@ -70,9 +78,9 @@ export function runtimeVoiceFidelityAccepted(verdict: RuntimeVoiceFidelityVerdic
 
 /*
   İstem metinleri yerelde doğrulanan "istem 2" ile aynıdır (style-lab, model taraması 16 Ekim).
-  Prompt profil hash'ine bilerek girmez: faz yalnız `AGENT_RUNTIME_VOICE_PROFILE` ile açılır ve
-  hash değişirse kapasite kanıtı kapalı fazla da geçersiz olurdu. Fazın çalıştığı koşu,
-  telemetrideki `voice` sayaçları ve `VOICE` aralıklarıyla ayırt edilir.
+  Prompt profil hash'ine girmez: faz yalnız `AGENT_RUNTIME_VOICE_PROFILE` ile açılır ve kapalı
+  fazın kimliği değişmemelidir. Ses isteminin ve modelinin kimliğini koşu kaydındaki
+  `voice.profile` ile `VOICE`/`VOICE_CHECK` faz aralıkları taşır.
 */
 export const runtimeVoiceInstructions = {
   opening: "Bir Türkçe sözlükte (ekşi sözlük benzeri) aşağıdaki yazar olarak bir entry yazacaksın.",
@@ -116,7 +124,11 @@ export function runtimeVoiceCandidates(
   perception: Record<string, unknown>,
 ): RuntimeVoiceCandidate[] {
   return runtimeEditableEntries(decision, perception)
-    .filter(({ body }) => runtimeVoiceWordCount(body) >= runtimeVoiceMinDraftWords)
+    .filter(
+      ({ body }) =>
+        runtimeVoiceWordCount(body) >= runtimeVoiceMinDraftWords &&
+        !runtimeHasContentLockedUnit(body),
+    )
     .map((entry) => ({
       ...entry,
       topicOtherBodies: entry.topicOtherBodies.slice(-runtimeVoiceTopicEntryLimit),
@@ -144,9 +156,212 @@ export type RuntimeVoiceGuardCode =
   | "TOO_SHORT"
   | "PROTECTED_SPAN"
   | "NEW_NUMBER"
+  | "NEW_TIME"
+  | "NEW_NAME"
+  | "CERTAINTY"
+  | "SENSITIVE"
   | "CONSTITUTION"
   | "SERIOUS_CLAIM"
   | "OFFLINE_CLAIM";
+
+function normalizedText(text: string): string {
+  return text.normalize("NFKC").toLocaleLowerCase("tr-TR").replaceAll(/\s+/gu, " ").trim();
+}
+
+/* Türkçe küçültme ve varsayılan küçültme (İ'nin bıraktığı nokta atılır); büyük harfli yazım da yakalanır. */
+function lowercaseVariants(text: string): string[] {
+  const nfkc = text.normalize("NFKC").replaceAll(/\s+/gu, " ");
+  return [nfkc.toLocaleLowerCase("tr-TR"), nfkc.toLowerCase().replaceAll("̇", "")];
+}
+
+type ClosedTerm = readonly [key: string, pattern: RegExp];
+
+function closedTerms(entries: ReadonlyArray<readonly [string, string]>): ClosedTerm[] {
+  return entries.map(([key, source]) => [
+    key,
+    new RegExp(`(?<![\\p{L}\\p{N}])(?:${source})(?![\\p{L}\\p{N}])`, "u"),
+  ]);
+}
+
+function closedTermsIn(text: string, terms: readonly ClosedTerm[]): Set<string> {
+  const variants = lowercaseVariants(text);
+  return new Set(
+    terms
+      .filter(([, pattern]) => variants.some((variant) => pattern.test(variant)))
+      .map(([key]) => key),
+  );
+}
+
+function newClosedTerm(draft: string, rewrite: string, terms: readonly ClosedTerm[]): boolean {
+  const known = closedTermsIn(draft, terms);
+  return [...closedTermsIn(rewrite, terms)].some((key) => !known.has(key));
+}
+
+/*
+  Yazıyla sayı ve ölçek (Astra 1. tur): "bir" çok yaygın olduğu için listede yok. "on", "yüz",
+  "altı", "bin" ve "yedi" zamir, yüz, alt, binmek ve yemek çekimleriyle çakıştığı için yalnız çıplak
+  hâliyle sayılır; diğerleri sayı eklerini alabilir ("üçte", "ikinci", "dörde").
+*/
+const numeralSuffix =
+  "(?:de|da|te|ta|den|dan|ten|tan|e|a|ye|ya|i|ı|u|ü|yi|yı|yu|yü|si|sı|su|sü|nin|nın|nun|nün|inci|ıncı|uncu|üncü|nci|ncı|ncu|ncü|er|ar|şer|şar|lik|lık|luk|lük|li|lı|lu|lü)?";
+const writtenNumberTerms = closedTerms([
+  ...(
+    [
+      "iki",
+      "üç",
+      "dört|dörd",
+      "beş",
+      "sekiz",
+      "dokuz",
+      "yirmi",
+      "otuz",
+      "kırk",
+      "elli",
+      "altmış",
+      "yetmiş",
+      "seksen",
+      "doksan",
+      "milyon",
+      "milyar",
+      "trilyon",
+      "yarım",
+      "çeyrek",
+      "buçuk",
+      "düzine",
+      "onlarca",
+      "yüzlerce",
+      "binlerce",
+      "milyonlarca",
+    ] as const
+  ).map((word) => [word, `(?:${word})${numeralSuffix}`] as const),
+  ...(["on", "yüz", "altı", "bin", "yedi"] as const).map((word) => [word, word] as const),
+]);
+
+/*
+  Göreli ve takvim zamanı (Astra 1. tur). Dört haneli yıl sayı korumasındadır. "dün" ayrı ek
+  listesi taşır: genel ek listesi "dünya"yı da eşlerdi.
+*/
+const timeSuffix =
+  "(?:ki|kü|ku|kı|da|de|ta|te|dan|den|tan|ten|a|e|ya|ye|ı|i|u|ü|yı|yi|ın|in|un|ün|nın|nin|nun|nün|sı|si|su|sü|nda|nde|ndan|nden|daki|deki|taki|teki|ndaki|ndeki)?";
+const timeTerms = closedTerms([
+  ["dün", "dün(?:kü|den|e|ü)?"],
+  ...(
+    [
+      "bugün",
+      "yarın",
+      "(?:geçen|bu|gelecek|önümüzdeki|önceki) (?:hafta|ay|yıl|sene)",
+      "(?:önceki|evvelki|öbür|geçen) gün",
+      "geçenlerde",
+      "ocak",
+      "şubat",
+      "mart",
+      "nisan",
+      "mayıs",
+      "haziran",
+      "temmuz",
+      "ağustos",
+      "eylül",
+      "ekim",
+      "kasım",
+      "aralık",
+      "pazartesi",
+      "salı",
+      "çarşamba",
+      "perşembe",
+      "cuma",
+      "cumartesi",
+      "pazar",
+      "yüzyıl",
+      "asır|asr",
+    ] as const
+  ).map((term) => [term, `(?:${term})${timeSuffix}`] as const),
+]);
+
+/* Yeni mutlaklık işaretleri: taslağın ölçülü hükmünü kesin olguya çevirir. */
+const absoluteTerms = closedTerms(
+  (
+    [
+      "kesinlikle",
+      "mutlaka",
+      "her zaman",
+      "asla",
+      "hiçbir zaman",
+      "hiç şüphesiz",
+      "şüphesiz",
+      "kanıtlanmış(?:tır)?",
+      "kesin olarak",
+      "tartışmasız(?:dır)?",
+    ] as const
+  ).map((term) => [term, term] as const),
+);
+
+/*
+  Taslağın ihtiyat ya da kanaat işareti. Sunucunun çekince sözlüğü ("iddia", "doğrulanmadı"…)
+  "gelebilir", "galiba", "bence" gibi gündelik ihtiyatı görmez; taslakta biri varken yeniden
+  yazımda hiçbiri kalmıyorsa kesinlik düzeyi değişmiştir.
+*/
+const hedgeTerms = closedTerms(
+  (
+    [
+      "belki",
+      "galiba",
+      "sanırım",
+      "muhtemelen",
+      "herhalde",
+      "olasılıkla",
+      "ihtimal(?:le|i)?",
+      "bence",
+      "bana göre",
+      "diye biliyorum",
+      "gibi görünüyor",
+      "\\p{L}+[ae]bil(?:ir|irler|irmiş)",
+    ] as const
+  ).map((term) => [term, term] as const),
+);
+
+function tokenCore(token: string): string {
+  return token.replaceAll(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+}
+
+function tokenBase(token: string): string {
+  return (tokenCore(token).split(/['’]/u)[0] ?? "").toLocaleLowerCase("tr-TR");
+}
+
+/*
+  Yeni ad (Astra 1. tur): taslakta (ya da başlıkta) kökü olmayan bir kısaltma (en az iki büyük
+  harf: "İETT"), cümle başı dışında büyük harfle başlayan bir sözcük ya da kesmeyle çekimlenmiş bir
+  özel ad ("kadıköy'ün"). Sözlük yazımı küçük harflidir; küçük harfle ve eksiz yazılan yeni özel
+  ad bu korumayla YAKALANMAZ, onu sadakat çağrısı denetler.
+*/
+function newNameToken(draft: string, rewrite: string, topicTitle: string): boolean {
+  const known = new Set(
+    `${draft} ${topicTitle}`
+      .normalize("NFKC")
+      .split(/\s+/u)
+      .flatMap((token) => [tokenBase(token), tokenCore(token).toLocaleLowerCase("tr-TR")]),
+  );
+  const text = rewrite.normalize("NFKC");
+  for (const match of text.matchAll(/\S+/gu)) {
+    const core = tokenCore(match[0]);
+    const base = tokenBase(match[0]);
+    if (!/\p{L}/u.test(base) || /\p{N}/u.test(base) || known.has(base)) continue;
+    const letters = core.replaceAll(/[^\p{L}]/gu, "");
+    const abbreviation =
+      letters.length >= 2 &&
+      letters === letters.toLocaleUpperCase("tr-TR") &&
+      letters !== letters.toLocaleLowerCase("tr-TR");
+    const first = core[0] ?? "";
+    const capitalised = first !== first.toLocaleLowerCase("tr-TR");
+    const sentenceStart = /(?:^|[.!?…:]["'”’»)\]]*)\s*$/u.test(text.slice(0, match.index));
+    if (abbreviation || (capitalised && !sentenceStart) || /['’]/u.test(core)) return true;
+  }
+  return false;
+}
+
+/* Sayısal iddia: değer, ölçek ve yüzde birlikte ("3 kişi" ≠ "3 milyon kişi", "1 ve 2" ≠ "1.2"). */
+function numericClaims(text: string): Set<string> {
+  return exactSourceNumericClaims(normalizedText(text.replaceAll(/https?:\/\/\S+/giu, " ")));
+}
 
 function sameSpans(left: readonly string[], right: readonly string[]): boolean {
   const leftSet = new Set(left);
@@ -182,10 +397,32 @@ export function runtimeVoiceRewriteIssue(
     !sameSpans(runtimeProtectedSpans(draft), runtimeProtectedSpans(rewrite))
   )
     return "PROTECTED_SPAN";
-  // Yerelde reddedilen iki yeniden yazımdan biri taslakta olmayan bir sayı ekliyordu.
-  const draftNumbers = new Set(draft.match(/\d+/gu) ?? []);
-  if ((rewrite.match(/\d+/gu) ?? []).some((number) => !draftNumbers.has(number)))
+  /*
+    Yerelde reddedilen iki yeniden yazımdan biri taslakta olmayan bir sayı ekliyordu. Rakam
+    dizileri, ölçekli sayısal iddialar ve yazıyla sayılar ayrı ayrı taslağın alt kümesi olmalı.
+  */
+  const draftDigits = new Set(draft.normalize("NFKC").match(/\d+/gu) ?? []);
+  const draftClaims = numericClaims(draft);
+  if (
+    (rewrite.normalize("NFKC").match(/\d+/gu) ?? []).some((digits) => !draftDigits.has(digits)) ||
+    [...numericClaims(rewrite)].some((claim) => !draftClaims.has(claim)) ||
+    newClosedTerm(draft, rewrite, writtenNumberTerms)
+  )
     return "NEW_NUMBER";
+  if (newClosedTerm(draft, rewrite, timeTerms)) return "NEW_TIME";
+  if (newNameToken(draft, rewrite, context.topicTitle ?? "")) return "NEW_NAME";
+  if (
+    (textContainsUncertaintyFrame(draft) && !textContainsUncertaintyFrame(rewrite)) ||
+    (closedTermsIn(draft, hedgeTerms).size > 0 && closedTermsIn(rewrite, hedgeTerms).size === 0) ||
+    newClosedTerm(draft, rewrite, absoluteTerms)
+  )
+    return "CERTAINTY";
+  // Aday kuralı hassas gövdeyi dışlar; çıktı da o alana giremez (Astra 1. tur).
+  if (
+    inSensitiveDomain(rewrite) ||
+    (context.topicTitle !== undefined && inSensitiveDomain(context.topicTitle))
+  )
+    return "SENSITIVE";
   if (
     constitutionalEntryWritingIssue(rewrite, { topicTitle: context.topicTitle }) ||
     (context.createsTopic && constitutionalTopicCreationIssue(context.topicTitle ?? "", rewrite))

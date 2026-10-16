@@ -19,7 +19,10 @@ import {
   buildVoicePrompt,
   runtimeVoiceTimeoutMs,
 } from "@/runtime/worker";
-import { runtimeCodexInvocationLimit } from "@/modules/agents/validation/runtime-schemas";
+import {
+  runtimeCodexInvocationBudget,
+  runtimeCodexInvocationLimit,
+} from "@/modules/agents/validation/runtime-schemas";
 
 // Karma yazım: luna taslağı yayımlanmadan önce personanın sesiyle yeniden yazılır (16 Ekim 2026).
 const draft =
@@ -109,6 +112,27 @@ describe("karma yazım adayları", () => {
         actionType: "CREATE_TOPIC_WITH_ENTRY",
         input: { title: "kira sözleşmesi", body: draft },
       },
+    ]);
+    expect(runtimeVoiceCandidates(decision, {})).toEqual([]);
+  });
+
+  // Astra 1. tur: son okumanın içerik kilidi (atıf, kapsam…) taşıyan gövde yeniden yazılmaz.
+  it.each([
+    [
+      "kapsam sınırı",
+      "dosya adlarını tarih önekiyle tutmak sıralamayı kendiliğinden düzeltiyor. Bu yalnız düz metin dosyaları için.",
+    ],
+    [
+      "atıf",
+      "toplantıların yarısını e-postaya çevirmek ekibin bütün haftasını rahatlatır. Bu benim değil patronun fikri.",
+    ],
+    [
+      "geri gönderme",
+      "az eşya her zaman daha çok huzur demektir, rafları boşaltınca ev nefes alır. kitaplar ise başka. Bunu taşınırken anladım.",
+    ],
+  ])("ilk parça dışında %s kilidi taşıyan gövdeyi almaz", (_label, body) => {
+    const decision = decisionFor([
+      { sequence: 1, actionType: "CREATE_ENTRY", input: { topicId: "t1", body } },
     ]);
     expect(runtimeVoiceCandidates(decision, {})).toEqual([]);
   });
@@ -203,7 +227,13 @@ describe("karma yazım istemi", () => {
   });
 
   it("iki çağrı birlikte sığmıyorsa yeniden yazımı başlatmaz", () => {
-    const base = { index: 0, invocationsSoFar: 4, remainingMs: 300_000 } as const;
+    const base = {
+      index: 0,
+      invocationsSoFar: 4,
+      invocationLimit: runtimeCodexInvocationBudget(true),
+      remainingMs: 300_000,
+      pendingNoveltyCalls: 0,
+    } as const;
     expect(runtimeVoiceTimeoutMs({ ...base, pendingCalls: 2 })).toBe(60_000);
     expect(runtimeVoiceTimeoutMs({ ...base, pendingCalls: 2, index: 2 })).toBeNull();
     // İçerik onarımına ve onun yenilik denetimine iki çağrı kalır.
@@ -221,10 +251,52 @@ describe("karma yazım istemi", () => {
         invocationsSoFar: runtimeCodexInvocationLimit - 3,
       }),
     ).toBe(60_000);
-    // Yürütme payı 30 sn, sadakat çağrısının alt sınırı 20 sn.
+    // Bekleyen yenilik denetimlerine de çağrı ayrılır.
+    expect(
+      runtimeVoiceTimeoutMs({
+        ...base,
+        pendingCalls: 2,
+        invocationsSoFar: runtimeCodexInvocationLimit - 6,
+        pendingNoveltyCalls: 2,
+      }),
+    ).toBe(60_000);
+    expect(
+      runtimeVoiceTimeoutMs({
+        ...base,
+        pendingCalls: 2,
+        invocationsSoFar: runtimeCodexInvocationLimit - 5,
+        pendingNoveltyCalls: 2,
+      }),
+    ).toBeNull();
+    // Etkin bütçe verilen sınırdır: kapalı fazın 8'i ile aynı girdi atlanır.
+    expect(
+      runtimeVoiceTimeoutMs({
+        ...base,
+        pendingCalls: 2,
+        invocationsSoFar: 5,
+        invocationLimit: runtimeCodexInvocationBudget(false),
+      }),
+    ).toBeNull();
+    // Yürütme payı 30 sn, sadakat çağrısının alt sınırı 20 sn, her yenilik denetimine 40 sn.
     expect(runtimeVoiceTimeoutMs({ ...base, pendingCalls: 2, remainingMs: 80_000 })).toBe(30_000);
     expect(runtimeVoiceTimeoutMs({ ...base, pendingCalls: 2, remainingMs: 69_999 })).toBeNull();
     expect(runtimeVoiceTimeoutMs({ ...base, pendingCalls: 1, remainingMs: 50_000 })).toBe(20_000);
+    expect(
+      runtimeVoiceTimeoutMs({
+        ...base,
+        pendingCalls: 2,
+        remainingMs: 150_000,
+        pendingNoveltyCalls: 2,
+      }),
+    ).toBe(20_000);
+    expect(
+      runtimeVoiceTimeoutMs({
+        ...base,
+        pendingCalls: 2,
+        remainingMs: 149_999,
+        pendingNoveltyCalls: 2,
+      }),
+    ).toBeNull();
   });
 });
 
@@ -284,6 +356,175 @@ describe("karma yazım koruması", () => {
     ).toBeNull();
     expect(runtimeVoiceRewriteIssue(numbered, rewrite.replace("motor", "341 hattında motor"))).toBe(
       "NEW_NUMBER",
+    );
+  });
+
+  // Astra 1. tur karşı örnekleri: korumadan geçen olgu değişiklikleri.
+  it("ölçeği ya da biçimi değişen sayısal iddiayı reddeder", () => {
+    expect(
+      runtimeVoiceRewriteIssue(
+        "gece hattında son otobüste 3 kişi kalıyor, şoför yine de bütün durakları tek tek anons ediyor.",
+        "gece hattında son otobüste 3 milyon kişi kalıyor, şoför bütün durakları tek tek anons ediyor.",
+      ),
+    ).toBe("NEW_NUMBER");
+    expect(
+      runtimeVoiceRewriteIssue(
+        "istasyonda 1 ve 2 numaralı peronlar aynı anonsu paylaşıyor, yolcu hangi trenin geldiğini çıkaramıyor.",
+        "istasyonda 1.2 numaralı peron aynı anonsu paylaşıyor, yolcu hangi trenin geldiğini çıkaramıyor.",
+      ),
+    ).toBe("NEW_NUMBER");
+  });
+
+  const clock =
+    "duvar saatinin tik takı gece sessizliğinde fazla duyuluyor, yatak odasına asılınca uyumak zorlaşabilir bence.";
+  const clockRewrite =
+    "duvar saatinin tik takı gece fazla duyuluyor; yatak odasında uyumak zorlaşabilir bence.";
+
+  it("yazıyla yeni sayıyı reddeder, 'bir' ve zamiri saymaz", () => {
+    expect(runtimeVoiceRewriteIssue(clock, clockRewrite)).toBeNull();
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı gece üç kat fazla duyuluyor; uyumak zorlaşabilir bence.",
+      ),
+    ).toBe("NEW_NUMBER");
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı gece saat üçte fazla duyuluyor; uyumak zorlaşabilir bence.",
+      ),
+    ).toBe("NEW_NUMBER");
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı gece binlerce kez duyuluyor; uyumak zorlaşabilir bence.",
+      ),
+    ).toBe("NEW_NUMBER");
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı gece bir hayli fazla duyuluyor; uyumak zorlaşabilir bence.",
+      ),
+    ).toBeNull();
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı gece fazla duyuluyor; onu yatak odasına asınca uyumak zorlaşabilir bence.",
+      ),
+    ).toBeNull();
+  });
+
+  it("yeni zaman ifadesini reddeder", () => {
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "dün gece duvar saatinin tik takı fazla duyuldu; yatak odasında uyumak zorlaşabilir bence.",
+      ),
+    ).toBe("NEW_TIME");
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı pazartesi gecesi fazla duyuluyor; uyumak zorlaşabilir bence.",
+      ),
+    ).toBe("NEW_TIME");
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı geçen hafta fazla duyuluyordu; uyumak zorlaşabilir bence.",
+      ),
+    ).toBe("NEW_TIME");
+    // "dünya" zaman ifadesi değildir.
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı gece bütün dünyayı bastırıyor; uyumak zorlaşabilir bence.",
+      ),
+    ).toBeNull();
+  });
+
+  it("yeni kısaltma, cümle içi büyük harfli ve kesmeyle çekimli adı reddeder", () => {
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "İETT otobüsündeki gibi duvar saatinin tik takı gece fazla duyuluyor; uyumak zorlaşabilir bence.",
+      ),
+    ).toBe("NEW_NAME");
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı gece Kadıköy sessizliğinde fazla duyuluyor; uyumak zorlaşabilir bence.",
+      ),
+    ).toBe("NEW_NAME");
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı kadıköy'de gece fazla duyuluyor; uyumak zorlaşabilir bence.",
+      ),
+    ).toBe("NEW_NAME");
+    // Cümle başındaki büyük harf ad sayılmaz; taslaktaki ad büyük harfle yazılabilir.
+    expect(
+      runtimeVoiceRewriteIssue(clock, `Duvar ${clockRewrite.slice("duvar ".length)}`),
+    ).toBeNull();
+    expect(
+      runtimeVoiceRewriteIssue(
+        `${clock.slice(0, -1)} kadıköy'de.`,
+        `${clockRewrite.slice(0, -1)} Kadıköy'de.`,
+      ),
+    ).toBeNull();
+    // Başlıktaki ad yeni değildir.
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "Vitra duvar saatinin tik takı gece fazla duyuluyor; uyumak zorlaşabilir bence.",
+        { topicTitle: "vitra duvar saati" },
+      ),
+    ).toBeNull();
+  });
+
+  it("çekincenin kaybını ve yeni mutlaklığı reddeder", () => {
+    const late =
+      "akşam servisi biraz gecikebilir, durakta beklerken anons ekranına bakmak işe yarıyor.";
+    expect(
+      runtimeVoiceRewriteIssue(
+        late,
+        "akşam servisi kesinlikle gecikiyor, durakta anons ekranına bakmak işe yarıyor.",
+      ),
+    ).toBe("CERTAINTY");
+    expect(
+      runtimeVoiceRewriteIssue(
+        late,
+        "akşam servisi gecikiyor, durakta beklerken anons ekranına bakmak işe yarıyor.",
+      ),
+    ).toBe("CERTAINTY");
+    expect(
+      runtimeVoiceRewriteIssue(
+        late,
+        "akşam servisi gecikebilir, durakta anons ekranına bakmak her zaman işe yarıyor.",
+      ),
+    ).toBe("CERTAINTY");
+    expect(
+      runtimeVoiceRewriteIssue(
+        late,
+        "akşam servisi gecikebilir, durakta anons ekranına bakmak işe yarıyor.",
+      ),
+    ).toBeNull();
+    expect(
+      runtimeVoiceRewriteIssue(
+        "yeni hattın gece seferlerinin kaldırılacağı iddia ediliyor, duraklarda henüz bir duyuru yok.",
+        "yeni hattın gece seferleri kaldırılıyor, duraklarda henüz bir duyuru yok.",
+      ),
+    ).toBe("CERTAINTY");
+  });
+
+  it("hassas alana giren yeniden yazımı reddeder", () => {
+    expect(
+      runtimeVoiceRewriteIssue(
+        clock,
+        "duvar saatinin tik takı gece fazla duyuluyor; yatak odasında depresyona yol açabilir bence.",
+      ),
+    ).toBe("SENSITIVE");
+    expect(runtimeVoiceRewriteIssue(clock, clockRewrite, { topicTitle: "kira sözleşmesi" })).toBe(
+      "SENSITIVE",
     );
   });
 
