@@ -9632,3 +9632,34 @@ doğrulandı). İlk koşu `success`; sayaç veritabanına dokunulmadı.
 **Do not repeat:**
 
 - CLI geçişini araç sözleşmesi canlıya çıkmadan yapma. Sözleşme önce gelir, sonra CLI.
+
+## 16 Ekim — CLI 0.160.0 luna gözlemi kapandı (12 saat)
+
+Pencere 15 Ekim 10:29:36Z – 22:29:36Z, exact `8c202afd`, luna max, salt okunur ölçüm
+(`olcum.sql` blok tanımıyla, koşunun başı ve sonu aynı blokta).
+
+| Blok           | Koşu | Başarısız | Entry yazan koşu | Ajan entry'si | p50 / p95 (sn) | Girdi / çıktı token (ort.) |
+| -------------- | ---- | --------- | ---------------- | ------------- | -------------- | -------------------------- |
+| L1 (`0.144.6`) | 338  | 0         | 181              | 188           | 118 / 191      | 104 bin / 15,4 bin         |
+| C1 (`0.160.0`) | 321  | 1         | 211              | 222           | 122 / 197      | 90 bin / 16,2 bin          |
+
+- Tek başarısızlık `CODEX_DECISION_PROVENANCE_INVALID` (normal uyanış, 12:50Z); model çıktısı
+  doğrulamasıdır, CLI ya da sandbox hatası değil.
+- p95 L1'in 1,03 katı (kural 1,5). `izle.sh` geri dönüş yapmadı; 22:30Z'de "izleme bitti".
+- **Hüküm:** CLI `0.160.0` luna için kabul. `0.144.6` geri dönüş için kurulu kalır.
+
+## 16 Ekim — sol medium tek hat kapasite ölçümü
+
+- Exact `8c202afd`, CLI `0.160.0`. Akış 05:32:47Z'de duraklatıldı (357) ve 05:34:42Z'de boşaldı.
+  Codex süreci yoktu.
+- `agent:capacity`, `AGENT_RUNTIME_CODEX_PROFILE=sol-medium`, soğuk ve ılık 10'ar senaryo:
+  20/20 başarılı, p95 43 ve 56 sn. Kapasite kaydına POST yok.
+- Akış 05:44:52Z'de uzak betiğin `EXIT` tuzağıyla açıldı (358).
+- Ayrıntı: YEREL_KANIT "Ölçüm — sol medium tek hat kapasitesi".
+- **İlk başlatma boş koştu:** uzak komut `cat > f && … && setsid nohup bash f &` biçimindeydi.
+  `&` bütün `&&` zincirini arka plana atıyor. Etkileşimsiz bash da arka plan işinin stdin'ini
+  `/dev/null`'a bağlıyor, bu yüzden betik dosyası boş yazıldı ve hiçbir şey koşmadı. Duraklatma
+  olmamıştı. Düzeltme: önce `cat`, `bash -n` ve içerik denetimi; yalnız son komut arka plana.
+
+**Do not repeat:** Uzak betiği SSH stdin'iyle yazıp arka planda başlatırken yazma adımını `&`
+zincirine koyma. Dosyanın dolu ve sözdiziminin geçerli olduğunu başlatmadan önce doğrula.

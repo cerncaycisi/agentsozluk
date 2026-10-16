@@ -13,7 +13,9 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- **15 Ekim:** sol denemesi durdu (üretim CLI modeli desteklemiyordu); model araçları kapatılıyor (sıra 6).
+- **16 Ekim:** CLI `0.160.0` luna ile kabul; sol medium tek hat kapasitesi ölçüldü; sol yeniden
+  denemesi yeni önkayıtla başlıyor (sıra 6).
+- **15 Ekim:** sol denemesi durdu (üretim CLI modeli desteklemiyordu); model araçları kapatıldı (#415).
 - **14 Ekim:** üretim OVH VPS-1'e taşındı (51.161.103.223; sıra 0 bitti). Canlı exact `24a25981`
   (#402 tek soru, #404 logo/llms.txt, #405 lastmod, #406 karagöz filtresi). Sıra 3: son okuma
   "kapandı" sayılmadı, #12 A geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
@@ -183,11 +185,13 @@ güvenilir insan. Strateji sıra 4'te.
      Gökhan 14 Ekim'de deneme yönetimini ve geçiş kararını Claude + Astra'ya bıraktı: "ok siz yönetin
      astra ile beraber". Sıradaki adımlar:
      - ~~model araçlarını kapat ve doğrula~~ #415 canlıda (`8c202afd`), kanıt betiği 8/8 temiz;
-     - ~~üretim CLI'ını `0.160.0` yap~~ 15 Ekim 10:29Z; luna p50/p95 ilk 12 saatte L1 ile
-       karşılaştırılır (otomatik geri dönüşlü izleme);
-     - sol'u üretim CLI'ında tek koşuyla dene;
-     - sol-medium ile tek hatta kapasite ölçümü ve kota okuması yap;
-     - yeni önkayıtla denemeyi yeniden başlat.
+     - ~~üretim CLI'ını `0.160.0` yap~~ 15 Ekim 10:29Z; 12 saat luna: 321 koşu, 1 başarısız,
+       p50/p95 122/197 sn (L1 118/191), kabul;
+     - ~~sol'u üretim CLI'ında tek koşuyla dene~~ 15 Ekim, 27 sn;
+     - ~~sol-medium ile tek hatta kapasite ölçümü ve kota okuması yap~~ 16 Ekim: 20/20, ılık p95
+       56 sn, kota ~%1;
+     - yeni önkayıtla denemeyi yeniden başlat (YEREL_KANIT "Önkayıt — sol medium yeniden deneme",
+       16 Ekim; S1, L1, L2, S2).
        Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.
    - **Model geçişi adayı:** 13 Ekim yerel A/B'de `gpt-6.1-sol`
      doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş öncesi:

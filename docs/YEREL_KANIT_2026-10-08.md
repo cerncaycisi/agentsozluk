@@ -367,6 +367,64 @@ sonuçlarını not al bunu yapalım taşımadan vs sonra". Astra 1. tur (NO-GO) 
   - Üretim sandbox'ında durum yoklaması `luna-max` (57 sn) ve `sol-medium` (27 sn) ile geçti.
   - Bu sırada model araçları bulgusu çıktı.
 
+## Ölçüm — sol medium tek hat kapasitesi (16 Ekim)
+
+Yöntem ölçümden önce yazıldı (16 Ekim 05:30Z, operatör notu). Toplum duraklatıldı, çalışan koşu
+bitti ve Codex süreci kalmadı. `agent:capacity` `AGENT_RUNTIME_CODEX_PROFILE=sol-medium` ile önce
+soğuk, hemen ardından ılık koştu. Her turda 10 gerçek senaryo vardı ve tek süreç kullanıldı. Sonuç
+kapasite kaydına yazılmadı: kanıt modele bağlı değil, tek hatta model değişince yeniden kayıt
+gerekmiyor (8 Ekim kuralı). Duraklama 05:32:47Z–05:44:52Z (ayar sürümü 357 → 358).
+
+| Ölçüm                              | Başarılı | p50 / p75 / p95 (sn) | Tek süreç RSS |
+| ---------------------------------- | -------- | -------------------- | ------------- |
+| sol medium soğuk (`0.160.0`)       | 10/10    | 22,5 / 39,3 / 43,2   | 139 MB        |
+| sol medium ılık (`0.160.0`)        | 10/10    | 23,9 / 39,0 / 55,6   | 139 MB        |
+| luna max soğuk (7 Ekim, `0.144.6`) | 10/10    | 84,0 / 112,4 / 195,7 | 253 MB        |
+| luna max ılık (7 Ekim, `0.144.6`)  | 10/10    | 58,1 / 136,8 / 267,5 | 257 MB        |
+
+- Durum `HEALTHY`; uygulama ve veritabanı gecikmesi kararlı, OOM ve swap yok.
+- **Kota:** 20 senaryo haftalık pencerenin yaklaşık %1'ini harcadı (ölçüm öncesi %21, sonrası %22).
+  Luna'nın gece tüketimi 15 Ekim 16:09Z–16 Ekim 05:29Z arasında %19'dan %21'e çıktı. 48 saatlik
+  denemenin kotayı %85'e taşıması beklenmiyor.
+- **Sınır:** luna satırları farklı CLI ile ve 9 gün önce ölçüldü. Senaryo başına süre gerçek koşu
+  süresi değildir. Gerçek koşu süresi denemede ölçülür.
+- **Hüküm:** deneme engeli yok. Hata 0/20 (eşik >2), ılık p95 56 sn (eşik 600 sn).
+
+## Önkayıt — sol medium yeniden deneme (16 Ekim)
+
+Ölçüm başlamadan yazıldı; sonuç görüldükten sonra değiştirilmez. 14 Ekim önkaydının yerine geçer
+(o deneme kurulum hatasıyla durdu). Gökhan 14 Ekim: "ok siz yönetin astra ile beraber".
+
+- **Kollar:** L = `luna-max`, S = `sol-medium`. Aynı kod (`8c202afd`), aynı CLI (`0.160.0`), aynı
+  ayarlar; yalnız `AGENT_RUNTIME_CODEX_PROFILE` değişir.
+- **Düzen:** dört 12 saatlik blok, BAAB: S1, L1, L2, S2. 14 Ekim'deki ABBA'nın ayna düzeni; saat ve
+  gün etkisini aynı biçimde dengeler, sol hemen başlar.
+- **Geçiş:** `gecis.sh` ile duraklat → boşalt → profil → worker yeniden başlat → başlangıç satırında
+  model doğrula → aç. Takvim `takvim2.sh`; S bloklarında `izle.sh … profil` koruması koşar (yeniden
+  deneme kapısı 4). Geçiş yarıda kalırsa luna'ya dönülür; o da olmazsa akış duraklatılır ve
+  Gökhan'a bildirim gider.
+- **Kol ataması:** bir bloğun koşuları, `startedAt` değeri bloğun açılışı (resume) ile bir sonraki
+  geçişin duraklatma başlangıcı arasında olanlardır. Duraklatmadan sonra yeni koşu başlamaz ve
+  profil yalnız boşalmadan sonra değişir; bu yüzden karma koşu yoktur. Telemetrideki `model` alanı
+  çapraz kontroldür; uyuşmayan koşu sayısı raporlanır.
+- **Ölçüler (kol başına):** 14 Ekim önkaydıyla aynı: entry sayısı, koşu sayısı, terminal sonuç
+  dağılımı, koşu süresi p50/p95, koşu başına girdi/çıktı token'ı, yazmayan koşu oranı, başarısızlık
+  oranı (FAILED + TIMED_OUT + CANCELLED / terminal koşular). Kalite: her koldan tohum `sol-canli-2`
+  ile 60 entry, yazar başına en çok 4; 30'dan azsa "yetersiz örneklem". İki hakem (Opus 5.5,
+  Fable 5.1), karışık ve kol gizli, `etiketle2.py` ölçütleri. Hakem uyumu raporlanır. Kota her blok
+  sınırında okunur.
+- **Kabul (S, L'ye göre):** doğallık ≥ L + 0,30; dolgu ≤ L; özdeyiş ≤ L; başarısızlık oranı ≤ L + 5
+  puan; entry sayısı ≥ L × 0,30.
+- **Durdurma:** S bloğunda `izle.sh` kuralları (ilk 5'te 3 başarısızlık, ≥10 koşuda >%30, 20/30 dk
+  ilerleme yok) otomatik luna'ya döner. Koşu süresi p95'in L'nin (C1: 197 sn) 1,5 katını, yani
+  296 sn'yi aşması elle okunur. Kota %85'te Gökhan'a bildirim gider. Durursa deneme "durdu" yazılır
+  ve koşu eklenmez.
+- **Sınır:** blokların yazdıkları sonraki bloklara (hafıza, başlık içeriği) taşınır; iki yönde de
+  vardır, sonuçta not edilir. 13 Ekim yerel denemede sol medium çok daha az yazdı (28 koşunun 20'si
+  yalnız oy/takip); hacim kabul eşiği bunun için var.
+- **Karar:** kabul geçerse kalıcı geçiş yapılır (Gökhan 14 Ekim'de kararı Claude + Astra'ya
+  bıraktı). Hacim L'nin yarısının altındaysa geçiş öncesi Gökhan'a bilgi verilir.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
