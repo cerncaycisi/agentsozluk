@@ -229,9 +229,9 @@ const writtenNumberTerms = closedTerms([
       "milyon",
       "milyar",
       "trilyon",
-      "yarım",
-      "çeyrek",
-      "buçuk",
+      "yarı",
+      "çeyrek|çeyreğ",
+      "buçuk|buçuğ",
       "düzine",
       "onlarca",
       "yüzlerce",
@@ -239,7 +239,20 @@ const writtenNumberTerms = closedTerms([
       "milyonlarca",
     ] as const
   ).map((word) => [word, `(?:${word})\\p{L}*`] as const),
-  ...(["on", "yüz", "altı", "bin", "yedi"] as const).map((word) => [word, word] as const),
+  /*
+    Çıplak-yalnız sayıların güvenli ek biçimleri (Sol 6.1 4. tur): sıra, üleştirme ve bölüm.
+    "yüzer", "onar", "biner" fiil çekimleriyle çakışır; yalnız fazladan ret üretir.
+  */
+  ...(
+    [
+      ["on", "on|onuncu|onar|onda"],
+      ["yüz", "yüz|yüzüncü|yüzer"],
+      ["altı", "altı|altıncı|altışar|altıda"],
+      ["bin", "bin|bininci|biner"],
+      ["yedi", "yedi|yedinci|yedişer|yedide"],
+      ["birinci", "birinci|birer"],
+    ] as const
+  ).map(([key, source]) => [key, source] as const),
 ]);
 
 /*

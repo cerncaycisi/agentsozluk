@@ -186,6 +186,15 @@ describe("karma yazım adayları", () => {
       "yazıyla sayı ve yüzde",
       "ankette sessiz vagon isteyenler üç kişi çıkmış, yemekli vagon isteyenler yüzde beş olmuş.",
     ],
+    // Sol 6.1 4. tur: kökü değişen sayılar.
+    [
+      "kökü değişen sayı",
+      "sessiz vagon isteyenlerin çeyreğine yer bulunmuş, yemekli vagon isteyenlerin yarısına bilet kalmamış.",
+    ],
+    [
+      "sıra sayısı",
+      "sessiz vagon isteyenler altıncı sırada kalmış, yemekli vagoncular da onları izlemiş.",
+    ],
     // Sol 6.1 3. tur: birleşik çekimli yazıyla sayı.
     [
       "çekimli yazıyla sayı",
@@ -474,6 +483,12 @@ describe("karma yazım koruması", () => {
       "ankette sessiz vagon isteyenler 3% çıkmış, geri kalanı soruyu umursamamış.",
     ])
       expect(runtimeVoiceRewriteIssue(survey, changed)).toBe("NEW_NUMBER");
+    expect(
+      runtimeVoiceRewriteIssue(
+        "sessiz vagon isteyenlere yer bulunmuş, yemekli vagon isteyenlere ise bilet kalmamış.",
+        "sessiz vagon isteyenlerin çeyreğine yer bulunmuş, yemekli vagona bilet kalmamış.",
+      ),
+    ).toBe("NEW_NUMBER");
     // Sol 6.1 3. tur: sayısız taslağa çekimli yazıyla sayı eklenmesi reddedilir.
     expect(
       runtimeVoiceRewriteIssue(
