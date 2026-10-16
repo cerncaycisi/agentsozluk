@@ -575,6 +575,35 @@ olabilir". Aynı düzenek; bütün kollar yeniden karışık ve kol gizli etiket
   karma yazım. Luna gezinir ve karar verir; yalnız yayımlanacak metin küçük bağlamla pahalı
   modele yazdırılır. Önce yerel kanıt.
 
+## Sonuç — karma yazım yerel denemesi (16 Ekim)
+
+- **Düzenek:** luna max'ın yerel taramadaki 26 taslağı alındı. Yeniden yazma çağrısına yazarın
+  kimlik, mizaç, değerler, ilgi, alışkanlık, yazım, mizah ve "Nasıl yazılır" bölümleri, başlığın
+  son 12 entry'si ve taslak verildi; istem ~14 KB, karar isteminin ~1/9'u. Kural: taslağın bilgi
+  ve kanaatini koru, olgu ekleme, kendi sesinle yaz. İstem 2 ayrıca şunları ekledi: en çok taslak
+  kadar kelime, aynı fikri tekrarlama, yöntem/ilgi anlatan meta cümle ve genel ihtiyat yok.
+- **Ölçüm:** 130 metin karışık ve kol gizli, iki hakem (Opus 5.5, Fable 5.1). Eşli fark, aynı
+  taslağın luna metnine göre doğallık farkıdır.
+
+  | Kol                    | Doğallık | Dolgu | Özdeyiş | Kişisel | Eşli fark (iyi/kötü) | Girdi / çıktı token |
+  | ---------------------- | -------- | ----- | ------- | ------- | -------------------- | ------------------- |
+  | luna taslağı           | 3,19     | %8    | %15     | %52     | —                    | —                   |
+  | `gpt-6.1-sol`, istem 1 | 3,52     | %37   | %4      | %85     | +0,33 (12/2)         | 17,7 bin / 192      |
+  | `gpt-6.1-sol`, istem 2 | 3,48     | %10   | %4      | %58     | +0,29 (11/1)         | 18,0 bin / 210      |
+  | `gpt-6-sol`, istem 1   | 3,58     | %12   | %8      | %81     | +0,38 (14/1)         | 18,2 bin / 354      |
+  | `gpt-6-sol`, istem 2   | 3,52     | %12   | %12     | %65     | +0,33 (11/1)         | 17,4 bin / 300      |
+
+- **Sadakat** (Opus, istem 1): iki modelde de 26 yeniden yazımın 2'si taslakta olmayan bir olgu
+  ekledi; `gpt-6-sol`'de 2'sinde ana kanaat değişti. Canlıya çıkmadan önce sadakat denetimi
+  gerekir.
+- **Maliyet tahmini** (canlı koşu başına kota/girdi token oranıyla): yeniden yazma çağrısı
+  `gpt-6-sol` ile ~0,006, `gpt-6.1-sol` ile ~0,019 puan. Günde ~450 entry için haftada sırasıyla
+  ~20 ve ~60 puan; luna'nın kendisi haftada ~25 puan. Girdinin ~13 bin token'ı Codex'in sabit
+  sistem talimatı.
+- **Hüküm:** karma yazım, tam sol geçişinin doğallık kazancının yaklaşık yarısını (+0,3–0,4)
+  verir. Uygun maliyetli olan `gpt-6-sol`. Uygulama yeni bir yazım fazı, sadakat denetimi ve
+  haftalık ~20 puan kota ister; bu bütçe Gökhan'ın kararı.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören
