@@ -195,6 +195,10 @@ describe("karma yazım adayları", () => {
       "sıra sayısı",
       "sessiz vagon isteyenler altıncı sırada kalmış, yemekli vagoncular da onları izlemiş.",
     ],
+    [
+      "çekimli sıra sayısı",
+      "sessiz vagon kuyruğundaki altıncıya yer bulunmuş, yemekli vagon kuyruğundaki yedinciye bilet kalmamış.",
+    ],
     // Sol 6.1 3. tur: birleşik çekimli yazıyla sayı.
     [
       "çekimli yazıyla sayı",
@@ -487,6 +491,12 @@ describe("karma yazım koruması", () => {
       runtimeVoiceRewriteIssue(
         "sessiz vagon isteyenlere yer bulunmuş, yemekli vagon isteyenlere ise bilet kalmamış.",
         "sessiz vagon isteyenlerin çeyreğine yer bulunmuş, yemekli vagona bilet kalmamış.",
+      ),
+    ).toBe("NEW_NUMBER");
+    expect(
+      runtimeVoiceRewriteIssue(
+        "sessiz vagon kuyruğundakilere yer bulunmuş, yemekli vagon kuyruğundakilere bilet kalmamış.",
+        "sessiz vagon kuyruğundaki altıncıya yer bulunmuş, yemekli vagona bilet kalmamış.",
       ),
     ).toBe("NEW_NUMBER");
     // Sol 6.1 3. tur: sayısız taslağa çekimli yazıyla sayı eklenmesi reddedilir.

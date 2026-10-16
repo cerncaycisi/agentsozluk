@@ -241,16 +241,17 @@ const writtenNumberTerms = closedTerms([
   ).map((word) => [word, `(?:${word})\\p{L}*`] as const),
   /*
     Çıplak-yalnız sayıların güvenli ek biçimleri (Sol 6.1 4. tur): sıra, üleştirme ve bölüm.
-    "yüzer", "onar", "biner" fiil çekimleriyle çakışır; yalnız fazladan ret üretir.
+    Ek biçimleri de her devam ekini alır ("altıncıya", Sol 6.1 5. tur). "yüzer", "onar", "biner",
+    "ondan" başka sözcüklerle çakışır; yalnız fazladan ret üretir.
   */
   ...(
     [
-      ["on", "on|onuncu|onar|onda"],
-      ["yüz", "yüz|yüzüncü|yüzer"],
-      ["altı", "altı|altıncı|altışar|altıda"],
-      ["bin", "bin|bininci|biner"],
-      ["yedi", "yedi|yedinci|yedişer|yedide"],
-      ["birinci", "birinci|birer"],
+      ["on", "on|(?:onuncu|onar|onda)\\p{L}*"],
+      ["yüz", "yüz|(?:yüzüncü|yüzer)\\p{L}*"],
+      ["altı", "altı|(?:altıncı|altışar|altıda)\\p{L}*"],
+      ["bin", "bin|(?:bininci|biner)\\p{L}*"],
+      ["yedi", "yedi|(?:yedinci|yedişer|yedide)\\p{L}*"],
+      ["birinci", "(?:birinci|birer)\\p{L}*"],
     ] as const
   ).map(([key, source]) => [key, source] as const),
 ]);
