@@ -542,6 +542,39 @@ harcıyor?
   kalite denemesi açılır. +2 ise sınırda sayılır, karma tasarımla birlikte değerlendirilir. +3'te
   durur. Hesap ortak olduğu için başka kullanım dışlanamaz; okumalar o yönde yanlıdır.
 
+## Sonuç — `gpt-6-sol` medium canlı kota ölçümü (16 Ekim): durdu, pahalı
+
+- **Açılış** 11:59:57Z (#418 canlıda, `8c723e41`), başlangıç kotası %38. Kota okumaları 30
+  dakikada bir: 38, 38, 39, 39, 41. Kota 14:00:29Z'de +3 eşiğine vardı; `izle.sh` doğrulanmış luna
+  dönüşü yaptı (ayar sürümü 370) ve süre sonu koruması kaldırıldı.
+- **Koşular** (`startedAt` 11:59:57Z–13:58Z): 88 koşu, başarısız 0, süre p50/p95 51/69 sn, 41 yazan
+  koşu (%47). Koşu başına girdi 96 bin, çıktı 2,5 bin token.
+- **Maliyet:** saatte ~1,5 puan, koşu başına ~0,034. `gpt-6.1-sol` ~0,1, luna ~0,006. Yani
+  `gpt-6-sol`, sol 6.1'in ~1/3'ü ama luna'nın ~6 katı. Tam geçişte haftada ~250 puan eder;
+  önkayda göre durdu.
+
+## Sonuç — `gpt-5.6-sol` medium yerel tarama (16 Ekim)
+
+Gökhan 16 Ekim: "gpt-5.6-sol 6 sol ve 6.1 sol'dan daha ucuz ama yine de iyi kalite verio
+olabilir". Aynı düzenek; bütün kollar yeniden karışık ve kol gizli etiketlendi (81 entry, iki hakem).
+
+| Kol                            | Yazan / 28 | Doğallık | Dolgu | Özdeyiş | Kişisel |
+| ------------------------------ | ---------- | -------- | ----- | ------- | ------- |
+| `gpt-6.1-sol` medium (13 Ekim) | 7          | 4,21     | %7    | %0      | %100    |
+| `gpt-6-sol` medium             | 13         | 3,73     | %8    | %8      | %88     |
+| `gpt-5.6-sol` medium           | 21         | 3,52     | %10   | %26     | %76     |
+| `gpt-5.6-terra` medium         | 11         | 3,41     | %9    | %27     | %68     |
+| `gpt-6-luna` medium            | 3          | 3,33     | %0    | %0      | %50     |
+| `gpt-5.6-luna` max (bugün)     | 26         | 3,31     | %8    | %8      | %50     |
+
+- İkinci etiketlemede luna 3,04'ten 3,31'e, `gpt-6-sol` 3,88'den 3,73'e oynadı. Hakem oynaması
+  ~±0,25; tek etiketleme farklarını bu payla oku.
+- `gpt-5.6-sol` "sol'a yakın kalite" ölçütünü (doğallık ≥ 3,96, özdeyiş ≤ %5) geçmedi; canlı kota
+  ölçümüne girmez. Profil (#420) birleşti, dağıtılmadı.
+- **Hüküm:** hiçbir tek model sol 6.1 kalitesini luna'ya yakın maliyetle vermiyor. Sıradaki:
+  karma yazım. Luna gezinir ve karar verir; yalnız yayımlanacak metin küçük bağlamla pahalı
+  modele yazdırılır. Önce yerel kanıt.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören

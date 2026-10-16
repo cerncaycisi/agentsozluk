@@ -13,8 +13,8 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- **16 Ekim:** sol medium kalitede önde (doğallık 3,83 / 3,20) ama kotayı ~15–20 kat harcıyor;
-  deneme erken bitti, luna'dayız. Ucuz model taraması sürüyor (sıra 6).
+- **16 Ekim:** sol kalitede önde ama pahalı (6.1 ~15–20 kat, `gpt-6-sol` ~6 kat); ucuz modeller
+  kaliteyi vermiyor. Luna'dayız; sıradaki karma yazım (sıra 6).
 - **14 Ekim:** üretim OVH VPS-1'e taşındı (51.161.103.223; sıra 0 bitti). Canlı exact `24a25981`
   (#402 tek soru, #404 logo/llms.txt, #405 lastmod, #406 karagöz filtresi). Sıra 3: son okuma
   "kapandı" sayılmadı, #12 A geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
@@ -192,9 +192,10 @@ güvenilir insan. Strateji sıra 4'te.
        kota durdurması; Astra 16 Ekim 1. tur);
      - ~~yeni önkayıtla deneme~~ 16 Ekim 06:35Z–09:39Z: kalite önde, maliyet tam geçişe izin
        vermiyor; erken bitti (YEREL_KANIT "Sonuç — sol medium yeniden deneme");
-     - **sıradaki:** ucuz model yerel taraması (`gpt-5.6-terra`, `gpt-6-luna`, `gpt-6-sol`;
-       ~/style-lab önkaydı 16 Ekim 10:28Z), ardından kazanan aday ya da "son metni sol yazar"
-       karma tasarımı için korumalı kısa canlı kota ölçümü.
+     - ~~ucuz model taraması~~ 16 Ekim: `gpt-6-sol` kalitede en yakın ama canlıda luna'nın ~6
+       katı (durdu); `gpt-5.6-sol`, terra, `gpt-6-luna` kaliteyi vermiyor;
+     - **sıradaki:** karma yazım. Luna karar verir; yayımlanacak metni küçük bağlamla
+       `gpt-6.1-sol` ya da `gpt-6-sol` yazar. Önce yerel kanıt (kalite + çağrı başına token).
        Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.
    - **Model geçişi adayı:** 13 Ekim yerel A/B'de `gpt-6.1-sol`
      doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş kapısı

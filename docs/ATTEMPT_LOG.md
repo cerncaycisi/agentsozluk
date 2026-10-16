@@ -9724,3 +9724,8 @@ yakın, çıktısı 8 kat az olduğu halde kotası ~15–20 kat.
 
 **Do not repeat:** `RELEASE_WARN installed alarm script differs` uyarısını geçme; kurulu alarm
 betiği dağıtımla güncellenmiyor, elle karşılaştırıp kur.
+
+- **gpt-6-sol ölçümü** 14:00:29Z'de kota +3 eşiğiyle durdu; luna dönüşü doğrulandı (370). 88 koşu,
+  0 başarısız. Ayrıntı YEREL_KANIT "Sonuç — `gpt-6-sol` medium canlı kota ölçümü".
+- **#420** (`sol56-medium`) Astra 1. tur GO, birleşti; yerel taramada kalite ölçütünü geçmediği
+  için dağıtılmadı.
