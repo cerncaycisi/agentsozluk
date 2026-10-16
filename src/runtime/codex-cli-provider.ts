@@ -39,6 +39,9 @@ export const AGENT_RUNTIME_CODEX_REASONING_EFFORT = "max" as const;
   Model profilleri (14 Ekim 2026, Gökhan: "bu modeli medium ve lowda testleyelim"; yerel A/B
   YEREL_KANIT "Sonuç — gpt-6.1-sol düşük çaba"). Yalnız bu kapalı listeden seçilir; serbest model
   adı kabul edilmez. Geri dönüş: profili `luna-max` yapıp worker'ı yeniden başlatmak.
+  16 Ekim: `gpt-6.1-sol` kotayı luna'nın ~15–20 katı harcadı (YEREL_KANIT "Sonuç — sol medium
+  yeniden deneme"); daha ucuz adaylar yerel taramada (YEREL_KANIT "Sonuç — ucuz model yerel
+  taraması") eklendi, canlı kota ölçümü için.
 */
 export const AGENT_RUNTIME_CODEX_PROFILES = {
   "luna-max": {
@@ -46,6 +49,8 @@ export const AGENT_RUNTIME_CODEX_PROFILES = {
     reasoningEffort: AGENT_RUNTIME_CODEX_REASONING_EFFORT,
   },
   "sol-medium": { model: "gpt-6.1-sol", reasoningEffort: "medium" },
+  "sol6-medium": { model: "gpt-6-sol", reasoningEffort: "medium" },
+  "terra-medium": { model: "gpt-5.6-terra", reasoningEffort: "medium" },
 } as const;
 export type AgentRuntimeCodexProfileName = keyof typeof AGENT_RUNTIME_CODEX_PROFILES;
 export const agentRuntimeCodexProfileNames = Object.keys(AGENT_RUNTIME_CODEX_PROFILES) as [
