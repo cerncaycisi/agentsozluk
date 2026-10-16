@@ -188,8 +188,10 @@ güvenilir insan. Strateji sıra 4'te.
      - ~~üretim CLI'ını `0.160.0` yap~~ 15 Ekim 10:29Z; 12 saat luna: 321 koşu, 1 başarısız,
        p50/p95 122/197 sn (L1 118/191), kabul;
      - ~~sol'u üretim CLI'ında tek koşuyla dene~~ 15 Ekim, 27 sn;
-     - ~~sol-medium ile tek hatta kapasite ölçümü ve kota okuması yap~~ 16 Ekim: 20/20, ılık p95
-       56 sn, kota ~%1;
+     - ~~sol-medium ile tek hatta senaryo kapasitesi ve kota okuması~~ 16 Ekim: 20/20, ılık p95
+       56 sn; kota farkı %1 çözünürlükte 0–2 puan;
+     - uçtan uca koşu süresi ve saatlik koşu S1'in kendisinde ölçülür (otomatik p95, tek hat ve
+       kota durdurması; Astra 16 Ekim 1. tur);
      - yeni önkayıtla denemeyi yeniden başlat (YEREL_KANIT "Önkayıt — sol medium yeniden deneme",
        16 Ekim; S1, L1, L2, S2).
        Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.

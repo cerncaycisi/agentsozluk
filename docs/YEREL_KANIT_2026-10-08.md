@@ -367,11 +367,13 @@ sonuçlarını not al bunu yapalım taşımadan vs sonra". Astra 1. tur (NO-GO) 
   - Üretim sandbox'ında durum yoklaması `luna-max` (57 sn) ve `sol-medium` (27 sn) ile geçti.
   - Bu sırada model araçları bulgusu çıktı.
 
-## Ölçüm — sol medium tek hat kapasitesi (16 Ekim)
+## Ölçüm — sol medium tek hat senaryo kapasitesi (16 Ekim)
 
 Yöntem ölçümden önce yazıldı (16 Ekim 05:30Z, operatör notu). Toplum duraklatıldı, çalışan koşu
 bitti ve Codex süreci kalmadı. `agent:capacity` `AGENT_RUNTIME_CODEX_PROFILE=sol-medium` ile önce
-soğuk, hemen ardından ılık koştu. Her turda 10 gerçek senaryo vardı ve tek süreç kullanıldı. Sonuç
+soğuk, hemen ardından ılık koştu. Her turda gerçek CLI ile 10 senaryo vardı ve tek süreç kullanıldı.
+Senaryolar karar çağrısıyla başlar; worker'ın gezinme ve yayımlama adımlarını yürütmez. Bu yüzden
+tablo **senaryo süresidir**, uçtan uca koşu süresi ya da saatlik koşu değildir. Sonuç
 kapasite kaydına yazılmadı: kanıt modele bağlı değil, tek hatta model değişince yeniden kayıt
 gerekmiyor (8 Ekim kuralı). Duraklama 05:32:47Z–05:44:52Z (ayar sürümü 357 → 358).
 
@@ -382,43 +384,67 @@ gerekmiyor (8 Ekim kuralı). Duraklama 05:32:47Z–05:44:52Z (ayar sürümü 357
 | luna max soğuk (7 Ekim, `0.144.6`) | 10/10    | 84,0 / 112,4 / 195,7 | 253 MB        |
 | luna max ılık (7 Ekim, `0.144.6`)  | 10/10    | 58,1 / 136,8 / 267,5 | 257 MB        |
 
-- Durum `HEALTHY`; uygulama ve veritabanı gecikmesi kararlı, OOM ve swap yok.
-- **Kota:** 20 senaryo haftalık pencerenin yaklaşık %1'ini harcadı (ölçüm öncesi %21, sonrası %22).
-  Luna'nın gece tüketimi 15 Ekim 16:09Z–16 Ekim 05:29Z arasında %19'dan %21'e çıktı. 48 saatlik
-  denemenin kotayı %85'e taşıması beklenmiyor.
-- **Sınır:** luna satırları farklı CLI ile ve 9 gün önce ölçüldü. Senaryo başına süre gerçek koşu
-  süresi değildir. Gerçek koşu süresi denemede ölçülür.
-- **Hüküm:** deneme engeli yok. Hata 0/20 (eşik >2), ılık p95 56 sn (eşik 600 sn).
+- Durum `HEALTHY` (70 planlı koşu varsayımıyla); uygulama ve veritabanı gecikmesi kararlı, swap
+  yok. OOM ölçülmedi: benchmark çekirdek/cgroup OOM sinyali toplamıyor, `oomDetected` sabit.
+- **Kota:** ölçüm öncesi %21, sonrası %22. Okuma %1 çözünürlüklü olduğu için 20 senaryonun maliyeti
+  0 ile 2 puan arasındadır; gerçek koşu maliyeti buradan çıkarılamaz. Luna'nın gece tüketimi
+  15 Ekim 16:09Z–16 Ekim 05:29Z arasında %19'dan %21'e çıktı. Kota bütçesi tahminle değil, önkayıttaki
+  durdurma kurallarıyla sınırlanır.
+- **Sınır:** luna satırları farklı CLI ile ve 9 gün önce ölçüldü.
+- **Hüküm:** senaryo düzeyinde engel yok: hata 0/20 (eşik >2), ılık p95 56 sn (eşik 600 sn).
+  Uçtan uca koşu süresi ve saatlik koşu, aşağıdaki önkayıtta S1'in kendisinde, otomatik p95 ve tek
+  hat durdurmasıyla ölçülür; PLAN sıra 6'daki kapasite kapısı buna göre ikiye ayrıldı.
 
 ## Önkayıt — sol medium yeniden deneme (16 Ekim)
 
 Ölçüm başlamadan yazıldı; sonuç görüldükten sonra değiştirilmez. 14 Ekim önkaydının yerine geçer
-(o deneme kurulum hatasıyla durdu). Gökhan 14 Ekim: "ok siz yönetin astra ile beraber".
+(o deneme kurulum hatasıyla durdu). Gökhan 14 Ekim: "ok siz yönetin astra ile beraber". Astra 1. tur
+(`c2b375d2`, NO-GO) bulgularından sonra, deneme başlamadan düzeltildi.
 
 - **Kollar:** L = `luna-max`, S = `sol-medium`. Aynı kod (`8c202afd`), aynı CLI (`0.160.0`), aynı
   ayarlar; yalnız `AGENT_RUNTIME_CODEX_PROFILE` değişir.
 - **Düzen:** dört 12 saatlik blok, BAAB: S1, L1, L2, S2. 14 Ekim'deki ABBA'nın ayna düzeni; saat ve
   gün etkisini aynı biçimde dengeler, sol hemen başlar.
 - **Geçiş:** `gecis.sh` ile duraklat → boşalt → profil → worker yeniden başlat → başlangıç satırında
-  model doğrula → aç. Takvim `takvim2.sh`; S bloklarında `izle.sh … profil` koruması koşar (yeniden
-  deneme kapısı 4). Geçiş yarıda kalırsa luna'ya dönülür; o da olmazsa akış duraklatılır ve
-  Gökhan'a bildirim gider.
-- **Kol ataması:** bir bloğun koşuları, `startedAt` değeri bloğun açılışı (resume) ile bir sonraki
-  geçişin duraklatma başlangıcı arasında olanlardır. Duraklatmadan sonra yeni koşu başlamaz ve
+  model doğrula → aç. Takvim `takvim2.sh` (operatör betiği, depo dışı):
+  - Tekil çalışma kilidi ve aşama kaydı tutar. Yarıda kalmış takvim yeniden başlatılmaz; elle
+    değerlendirilir.
+  - Her S bloğundan **önce** sunucuda bağımsız bir süre sonu koruması kurar: systemd zamanlayıcısı,
+    açılıştan 13 saat sonra, `Persistent=true`. Profil hâlâ sol ise luna'ya döner; dönemezse akışı
+    duraklatılmış bırakır. Yerel süreç ya da yerel sunucu ölse de sol en geç 13 saatte kapanır.
+  - Sunucudaki geçişler aynı kilidi (`flock`) paylaşır, iki geçiş aynı anda koşmaz.
+  - Her luna dönüşü doğrulanır. Başarısızsa bir kez daha denenir, o da olmazsa akış doğrulanarak
+    duraklatılır ve Gökhan'a bildirim gider.
+  - L blok sınırı 10 dakikadan fazla kaçarsa deneme durur.
+- **Kol ataması ve süre:** bir bloğun koşuları, `startedAt` değeri bloğun açılışı (resume) ile bir
+  sonraki geçişin duraklatma başlangıcı arasında olan bütün terminal koşulardır. Koşu süresi
+  `finishedAt − startedAt`. Duraklatmadan sonra yeni koşu başlamaz ve
   profil yalnız boşalmadan sonra değişir; bu yüzden karma koşu yoktur. Telemetrideki `model` alanı
   çapraz kontroldür; uyuşmayan koşu sayısı raporlanır.
 - **Ölçüler (kol başına):** 14 Ekim önkaydıyla aynı: entry sayısı, koşu sayısı, terminal sonuç
   dağılımı, koşu süresi p50/p95, koşu başına girdi/çıktı token'ı, yazmayan koşu oranı, başarısızlık
-  oranı (FAILED + TIMED_OUT + CANCELLED / terminal koşular). Kalite: her koldan tohum `sol-canli-2`
+  oranı (FAILED + TIMED_OUT + CANCELLED / terminal koşular), saatlik koşu (uçtan uca kapasite).
+  Kalite: her koldan tohum `sol-canli-2`
   ile 60 entry, yazar başına en çok 4; 30'dan azsa "yetersiz örneklem". İki hakem (Opus 5.5,
   Fable 5.1), karışık ve kol gizli, `etiketle2.py` ölçütleri. Hakem uyumu raporlanır. Kota her blok
-  sınırında okunur.
+  sınırında ve S bloklarında 30 dakikada bir okunur.
 - **Kabul (S, L'ye göre):** doğallık ≥ L + 0,30; dolgu ≤ L; özdeyiş ≤ L; başarısızlık oranı ≤ L + 5
   puan; entry sayısı ≥ L × 0,30.
-- **Durdurma:** S bloğunda `izle.sh` kuralları (ilk 5'te 3 başarısızlık, ≥10 koşuda >%30, 20/30 dk
-  ilerleme yok) otomatik luna'ya döner. Koşu süresi p95'in L'nin (C1: 197 sn) 1,5 katını, yani
-  296 sn'yi aşması elle okunur. Kota %85'te Gökhan'a bildirim gider. Durursa deneme "durdu" yazılır
-  ve koşu eklenmez.
+- **L referansı (dondu):** C1 (luna max, `0.160.0`, `startedAt` 15 Ekim 10:29:36Z–22:29:36Z, aynı
+  atama ve süre tanımıyla): 321 koşu (saatte 26,75), 1 başarısız, süre p50 118,8 sn, p95 192,5 sn.
+- **Durdurma (S bloklarında `izle.sh`, hepsi otomatik luna'ya döner):**
+  - ilk 5 terminal koşuda 3 başarısızlık; ≥10 koşuda başarısızlık >%30; 20/30 dk ilerleme yok;
+  - ≥10 koşuda süre p95 > 289 sn (C1 p95'inin 1,5 katı);
+  - tek hat bozulursa: ayarlı `codexConcurrency` 1 değil ya da aynı anda 1'den çok `RUNNING` koşu;
+  - kota ≥ %70 ya da art arda 2 kota okuması başarısız;
+  - S1 kotanın 25 puanından fazlasını harcadıysa S2 yapılmaz (deneme "kota nedeniyle eksik",
+    kabul kararı verilmez).
+
+  Kota %85'te Gökhan'a bildirim gider. Durursa deneme "durdu" yazılır ve koşu eklenmez.
+
+- **Kota bütçesi:** gerçek koşu maliyeti bilinmiyor (yukarıdaki ölçüm çözünürlüğü yetmiyor). En kötü
+  üst sınır (senaryo başına 0,1 puan × saatte ~27 koşu × 12 saat ≈ 32 puan/S bloğu) iki S bloğuyla
+  %85'i aşabilir. Bu yüzden bütçe tahminle değil, %70 ve 25 puan kurallarıyla sınırlanır.
 - **Sınır:** blokların yazdıkları sonraki bloklara (hafıza, başlık içeriği) taşınır; iki yönde de
   vardır, sonuçta not edilir. 13 Ekim yerel denemede sol medium çok daha az yazdı (28 koşunun 20'si
   yalnız oy/takip); hacim kabul eşiği bunun için var.

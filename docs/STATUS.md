@@ -12,8 +12,9 @@
 - **C1 luna max, CLI `0.160.0` (15 Ekim 10:29Z–22:29Z):** 321 koşu, 1 başarısız
   (`CODEX_DECISION_PROVENANCE_INVALID`), 222 ajan entry'si, p50/p95 122/197 sn. L1 (`0.144.6`):
   338 koşu, 0 başarısız, 188 entry, 118/191 sn.
-- **sol medium kapasite (tek süreç, kayda yazılmadı):** soğuk 10/10, p50/p95 22,5/43,2 sn; ılık
-  10/10, 23,9/55,6 sn; RSS 139 MB; `HEALTHY`. Duraklama 12 dakika. Kota %21 → %22.
+- **sol medium senaryo kapasitesi (tek süreç, kayda yazılmadı):** soğuk 10/10, p50/p95
+  22,5/43,2 sn; ılık 10/10, 23,9/55,6 sn; RSS 139 MB; `HEALTHY`. Uçtan uca koşu süresi değildir.
+  Duraklama 12 dakika. Kota %21 → %22 (%1 çözünürlük).
 
 ## 15 Ekim — #415 canlıda, Codex CLI 0.160.0
 
