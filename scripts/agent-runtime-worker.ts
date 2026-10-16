@@ -32,6 +32,11 @@ const workerEnvironmentSchema = z
     CODEX_SANDBOX_EXECUTABLE: z.string().min(1),
     // Kapalı liste; varsayılan üretimin kanıtlanmış profili (14 Ekim, model denemesi).
     AGENT_RUNTIME_CODEX_PROFILE: z.enum(agentRuntimeCodexProfileNames).default("luna-max"),
+    /*
+      Karma yazım profili (16 Ekim; `src/runtime/voice-rewrite.ts`). Boşsa faz kapalıdır ve
+      üretim davranışı değişmez. Geri dönüş: değişkeni silip worker'ı yeniden başlatmak.
+    */
+    AGENT_RUNTIME_VOICE_PROFILE: z.enum(agentRuntimeCodexProfileNames).optional(),
     AGENT_RUNTIME_POLL_MS: z.coerce.number().int().min(1000).max(60_000).default(5000),
     AGENT_RUNTIME_PROCESSING_LANES: z.coerce
       .number()
@@ -81,6 +86,26 @@ async function main(): Promise<void> {
   process.stdout.write(
     `agent-runtime started (${capability.version}; ${capability.model} ${capability.reasoningEffort})\n`,
   );
+  // Aynı CLI, sandbox, kimlik ve dizinler; yalnız model profili farklı. Çağrılar koşu içinde sıralı.
+  const voiceProvider = environment.AGENT_RUNTIME_VOICE_PROFILE
+    ? new CodexCliProvider({
+        executable: environment.CODEX_EXECUTABLE,
+        sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
+        credentialFile,
+        runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
+        workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
+        codexProfile: environment.AGENT_RUNTIME_VOICE_PROFILE,
+      })
+    : undefined;
+  if (voiceProvider) {
+    const voiceCapability = await voiceProvider.inspect();
+    if (!voiceCapability.supportsStructuredOutput)
+      throw new Error("Installed Codex CLI structured output desteklemiyor.");
+    // Ayrı satır: başlangıç satırının biçimi dağıtım betiklerince okunuyor.
+    process.stdout.write(
+      `agent-runtime voice rewrite enabled (${voiceCapability.model} ${voiceCapability.reasoningEffort})\n`,
+    );
+  }
   const controlPlane = new RuntimeControlPlaneHttpClient(environment.AGENT_RUNTIME_BASE_URL);
   const credentialRoster = environment.AGENT_RUNTIME_ENROLLMENT_KEY_FILE
     ? new RuntimeCredentialRosterLoader({
@@ -112,6 +137,9 @@ async function main(): Promise<void> {
     stochasticScheduling: { controlPlane },
     provider,
     actionWorthinessProvider: provider,
+    ...(voiceProvider && environment.AGENT_RUNTIME_VOICE_PROFILE
+      ? { voice: { provider: voiceProvider, profile: environment.AGENT_RUNTIME_VOICE_PROFILE } }
+      : {}),
     sourceReader: new SafeSourceReader(),
     pollIntervalMs: environment.AGENT_RUNTIME_POLL_MS,
     processingLanes: environment.AGENT_RUNTIME_PROCESSING_LANES,

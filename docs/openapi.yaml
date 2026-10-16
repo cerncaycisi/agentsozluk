@@ -4270,6 +4270,8 @@ components:
               CONTENT_REPAIR,
               NOVELTY,
               FINAL_READ,
+              VOICE,
+              VOICE_CHECK,
             ]
         providerSafeCode:
           type: string
@@ -4315,7 +4317,7 @@ components:
         codexIntervals:
           type: array
           minItems: 1
-          maxItems: 8
+          maxItems: 12
           items: { $ref: "#/components/schemas/RuntimeCodexInterval" }
         model: { type: string, minLength: 1, maxLength: 200 }
         promptProfileHash: { type: string, pattern: "^[a-f0-9]{64}$" }
@@ -4422,6 +4424,28 @@ components:
             - skippedCount
           additionalProperties: false
           description: Son okumanın aday, okunan, kısaltılan, silinen parça ve okunmadan geçen sayıları.
+        voice:
+          type: object
+          properties:
+            profile:
+              type: string
+              enum: [luna-max, sol-medium, sol6-medium, terra-medium, sol56-medium]
+            candidateCount: { type: integer, minimum: 0, maximum: 100 }
+            rewrittenCount: { type: integer, minimum: 0, maximum: 100 }
+            guardRejectedCount: { type: integer, minimum: 0, maximum: 100 }
+            fidelityRejectedCount: { type: integer, minimum: 0, maximum: 100 }
+            failedOpenCount: { type: integer, minimum: 0, maximum: 100 }
+            skippedCount: { type: integer, minimum: 0, maximum: 100 }
+          required:
+            - profile
+            - candidateCount
+            - rewrittenCount
+            - guardRejectedCount
+            - fidelityRejectedCount
+            - failedOpenCount
+            - skippedCount
+          additionalProperties: false
+          description: Karma yazımın profil adı ile aday, yeniden yazılan, korumanın ve sadakat denetiminin reddettiği, düşüp özgün kalan ve atlanan sayıları.
         browseExperiment:
           type: object
           properties:

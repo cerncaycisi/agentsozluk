@@ -17,6 +17,10 @@ import {
   runtimeFinalReadTimeoutMs,
 } from "@/runtime/worker";
 import { runtimeNoveltyVerdictJsonSchema } from "@/runtime/novelty-gate";
+import {
+  runtimeCodexInvocationBudget,
+  runtimeCodexInvocationLimit,
+} from "@/modules/agents/validation/runtime-schemas";
 import { parseRuntimeDecisionOutput } from "@/runtime/output";
 import {
   type RuntimeProvider,
@@ -543,6 +547,7 @@ describe("Codex capability benchmark harness", () => {
         runtimeFinalReadTimeoutMs({
           index: 0,
           invocationsSoFar: 2,
+          invocationLimit: runtimeCodexInvocationBudget(false),
           reservedCalls: RUNTIME_FINAL_READ_MAIN_RESERVED_CALLS,
           remainingMs,
           pendingNoveltyCalls: 2,
@@ -554,6 +559,23 @@ describe("Codex capability benchmark harness", () => {
       expect(budget(1_000_000, { index: 2 })).toBeNull();
       expect(budget(1_000_000, { invocationsSoFar: 3 })).toBe(90_000);
       expect(budget(1_000_000, { invocationsSoFar: 4 })).toBeNull();
+    });
+
+    // Astra 1. tur (16 Ekim): wire tavanı 12'ye çıktı; karma yazım kapalıyken bütçe eski 8 kalır.
+    it("keeps the pre-voice final-read budget when the voice phase is off", () => {
+      const budget = (voiceEnabled: boolean) =>
+        runtimeFinalReadTimeoutMs({
+          index: 0,
+          invocationsSoFar: 4,
+          invocationLimit: runtimeCodexInvocationBudget(voiceEnabled),
+          reservedCalls: 4,
+          remainingMs: 1_000_000,
+          pendingNoveltyCalls: 0,
+        });
+      expect(runtimeCodexInvocationBudget(false)).toBe(8);
+      expect(runtimeCodexInvocationBudget(true)).toBe(runtimeCodexInvocationLimit);
+      expect(budget(false)).toBeNull();
+      expect(budget(true)).toBe(90_000);
     });
 
     it("skips the final read when the remaining run time is reserved for execution", async () => {

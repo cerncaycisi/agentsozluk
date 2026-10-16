@@ -7,6 +7,7 @@ import { z } from "zod";
 import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
 import { weeklyPersonaEvolutionDeltaSchema } from "@/modules/agents/domain/persona-evolution";
 import { operatorReasonSchema } from "@/modules/agents/validation/schemas";
+import { agentRuntimeCodexProfileNames } from "@/runtime/codex-profiles";
 
 export const runtimeWorkerIdSchema = z
   .string()
@@ -367,8 +368,26 @@ const safeRunSummarySchema = z
 
   8 (7 Ekim 2026): yenilik kapısı AW sonrası en fazla iki, içerik onarımından sonra bir
   çağrı ekler; içerik onarım kapısı bunları saymaz.
+
+  12 (16 Ekim 2026): karma yazım gövde başına iki çağrı (en çok iki gövde) ekler. Tipik koşu
+  zaten beş çağrı yaptığı için 8 sınırında faz neredeyse hiç çalışmıyordu. Faz yine bekleyen
+  yenilik denetimlerine, içerik onarımına ve onun yenilik denetimine çağrı bıraktıktan sonra
+  kalan bütçeyi kullanır, sığmazsa atlanır. Uygulama ve worker aynı sürümle dağıtılır; sunucu
+  şeması da bu sabiti kullanır.
+
+  Bu sabit wire TAVANIDIR. Worker'ın etkin bütçesi karma yazım kapalıyken eski 8'dir
+  (`runtimeCodexInvocationBudget`): kapalı fazda son okuma ve onarım bütçesi bayt bayt eski
+  davranıştır (Astra 1. tur, 16 Ekim).
 */
-export const runtimeCodexInvocationLimit = 8;
+export const runtimeCodexInvocationLimit = 12;
+
+/** Karma yazım kapalıyken worker'ın etkin çağrı bütçesi (12'ye çıkmadan önceki sınır). */
+export const runtimeCodexInvocationLimitWithoutVoice = 8;
+
+/** Worker'ın koşu başına etkin Codex çağrı bütçesi; wire tavanını hiçbir zaman aşmaz. */
+export function runtimeCodexInvocationBudget(voiceEnabled: boolean): number {
+  return voiceEnabled ? runtimeCodexInvocationLimit : runtimeCodexInvocationLimitWithoutVoice;
+}
 
 /*
   Ajanın gezinme fazında okumak için seçebileceği başlık sayısı. TEK KAYNAK:
@@ -518,6 +537,25 @@ export const usageMetadataSchema = z
         checkedCount: z.number().int().min(0).max(100),
         editedCount: z.number().int().min(0).max(100),
         removedUnitCount: z.number().int().min(0).max(1000),
+        failedOpenCount: z.number().int().min(0).max(100),
+        skippedCount: z.number().int().min(0).max(100),
+      })
+      .strict()
+      .optional(),
+    /*
+      Karma yazımın ne yaptığı (16 Ekim 2026). rewritten: yeniden yazılan gövde; guardRejected:
+      deterministik koruma reddetti; fidelityRejected: sadakat çağrısı ekleme ya da anlam
+      değişikliği gördü. failedOpen ve skipped son okumadaki gibi; reddedilen ya da düşen her
+      durumda özgün gövde yayımlanır. Kimlik veya metin tutulmaz. profile: karma yazım modelinin
+      kapalı profil adı; ses isteminin kimliği bu ad ve `VOICE` aralıklarıyla taşınır.
+    */
+    voice: z
+      .object({
+        profile: z.enum(agentRuntimeCodexProfileNames),
+        candidateCount: z.number().int().min(0).max(100),
+        rewrittenCount: z.number().int().min(0).max(100),
+        guardRejectedCount: z.number().int().min(0).max(100),
+        fidelityRejectedCount: z.number().int().min(0).max(100),
         failedOpenCount: z.number().int().min(0).max(100),
         skippedCount: z.number().int().min(0).max(100),
       })
