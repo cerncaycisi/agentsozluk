@@ -8,6 +8,7 @@ import {
   applyRuntimeVoiceBodies,
   runtimeVoiceCandidates,
   runtimeVoiceDraftHedged,
+  runtimeVoiceDraftNumeric,
   runtimeVoiceFidelityAccepted,
   runtimeVoiceFidelitySchema,
   runtimeVoicePersonaSections,
@@ -178,6 +179,21 @@ describe("karma yazım adayları", () => {
     expect(runtimeVoiceCandidates(decision, {})).toEqual([]);
   });
 
+  // Sol 6.1 2. tur: sayı taşıyan taslak hiç yeniden yazılmaz (cümleler arası yer değiştirme).
+  it.each([
+    ["rakam", "ankette sessiz vagon isteyenler 3 kişi çıkmış, geri kalanı umursamamış bile."],
+    [
+      "yazıyla sayı ve yüzde",
+      "ankette sessiz vagon isteyenler üç kişi çıkmış, yemekli vagon isteyenler yüzde beş olmuş.",
+    ],
+  ])("%s taşıyan taslağı aday yapmaz", (_label, body) => {
+    expect(runtimeVoiceDraftNumeric(body)).toBe(true);
+    const decision = decisionFor([
+      { sequence: 1, actionType: "CREATE_ENTRY", input: { topicId: "t1", body } },
+    ]);
+    expect(runtimeVoiceCandidates(decision, {})).toEqual([]);
+  });
+
   // Astra 2. tur: ihtiyat ya da kanaat işareti taşıyan taslak hiç yeniden yazılmaz.
   it.each([
     ["-ebilir ve bence", "akşam servisi gecikebilir, durakta beklemek bence sıkıcı oluyor."],
@@ -185,6 +201,9 @@ describe("karma yazım adayları", () => {
     // Sol 6.1 1. tur: olasılık kipinin diğer çekimleri.
     ["-ebilirdi", "akşam servisi gecikebilirdi, durakta beklemek bazen çok sıkıcı oluyor."],
     ["-ebileceği", "akşam servisinin gecikebileceği söyleniyor, durakta beklemek sıkıcı oluyor."],
+    // Sol 6.1 2. tur: karşı-olgusal yeterlilik.
+    ["-ebilseydi", "akşam servisi gelebilseydi, durakta bekleyenler eve daha rahat dönerdi."],
+    ["-seydi", "akşam servisi gelseydi, durakta bekleyenler eve daha rahat dönerdi bence de."],
     [
       "doğruluk çekincesi",
       "akşam servisinin kaldırılacağı iddia ediliyor, durakta bekleyenler bunu konuşuyor.",

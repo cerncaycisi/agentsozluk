@@ -130,7 +130,8 @@ export function runtimeVoiceCandidates(
       ({ body }) =>
         runtimeVoiceWordCount(body) >= runtimeVoiceMinDraftWords &&
         !runtimeHasContentLockedUnit(body) &&
-        !runtimeVoiceDraftHedged(body),
+        !runtimeVoiceDraftHedged(body) &&
+        !runtimeVoiceDraftNumeric(body),
     )
     .map((entry) => ({
       ...entry,
@@ -327,11 +328,31 @@ const hedgeTerms: readonly ClosedTerm[] = closedTerms(
       "bana göre",
       "diye biliyorum",
       "gibi görünüyor",
-      // Olasılık kipinin bütün çekimleri (Sol 6.1 1. tur: "gecikebilirdi", "gecikebileceği").
-      "\\p{L}+[ae]bil(?:ir|iyor|ece|ecek|eceğ)\\p{L}*",
+      /*
+        Kip sınıfı topluca (Sol 6.1 1.–2. tur, çekim çekim kaçıyordu): olasılık/yeterliliğin her
+        biçimi ("-ebilir", "-ebilirdi", "-ebileceği", "-ebilseydi"), karşı-olgusal "-seydi/-saydı"
+        ve geniş zamanlı koşul "-ırsa/-erse". Fazla eleme yalnız kapsamı daraltır.
+      */
+      "\\p{L}+[ae]bil\\p{L}*",
+      "\\p{L}+s[ae]y(?:d[ıi]|m[ıi]ş)\\p{L}*",
+      "\\p{L}+[aeıiuü]rs[ae]",
     ] as const
   ).map((term) => [term, term] as const),
 );
+
+/*
+  Sayı taşıyan taslak hiç yeniden yazılmaz (Sol 6.1 2. tur): rakam, yazıyla sayı ya da yüzde.
+  Toplam işaret sayısı korunsa da sayılar cümleler arasında yer değiştirebiliyordu ("üç kişi …
+  yüzde beş" → "yüzde üç … beş kişi"). Aday olmayan sayısız taslağın yeniden yazımında sayı
+  çıkması da `NEW_NUMBER` ile reddedilir.
+*/
+export function runtimeVoiceDraftNumeric(body: string): boolean {
+  return (
+    /\p{N}/u.test(body.normalize("NFKC")) ||
+    percentMarkerCount(body) > 0 ||
+    closedTermsIn(body, writtenNumberTerms).size > 0
+  );
+}
 
 /** Taslakta doğruluk çekincesi ya da gündelik ihtiyat/kanaat işareti var mı; varsa aday değildir. */
 export function runtimeVoiceDraftHedged(body: string): boolean {
