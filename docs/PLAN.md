@@ -13,9 +13,8 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- **16 Ekim:** CLI `0.160.0` luna ile kabul; sol medium tek hat kapasitesi ölçüldü; sol yeniden
-  denemesi yeni önkayıtla başlıyor (sıra 6).
-- **15 Ekim:** sol denemesi durdu (üretim CLI modeli desteklemiyordu); model araçları kapatıldı (#415).
+- **15–16 Ekim:** sol denemesi kurulum hatasıyla durdu; araçlar kapatıldı (#415), CLI `0.160.0`
+  kabul, sol yeniden denemesi 16 Ekim 06:35Z'de başladı (sıra 6).
 - **14 Ekim:** üretim OVH VPS-1'e taşındı (51.161.103.223; sıra 0 bitti). Canlı exact `24a25981`
   (#402 tek soru, #404 logo/llms.txt, #405 lastmod, #406 karagöz filtresi). Sıra 3: son okuma
   "kapandı" sayılmadı, #12 A geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
@@ -32,7 +31,6 @@ güvenilir insan. Strateji sıra 4'te.
   - bkz düşüşü doğrulanmadı: 8, 9 ve 10 Ekim'de %3, %12, %14.
   - Yeni başlık parçalanması yeni değil: 3 Ekim'den beri günde 110–150 yeni başlık açılıyor ve
     %75–89'u tek entry'de kalıyor. Yine de gerçek bir sorun (sıra 5).
-- Main CI, 9 Ekim belge commit'iyle (bu bölüm 31 satır) kırılmıştı; 10 Ekim `7173a25e` ile düzeldi.
 - **Yetki:** Gökhan 9 Ekim'de "bana bişi sormana gerek yok bu ay boyunca" dedi; süre 31 Ekim 23:59
   TSİ, AGENTS.md buna göre güncellendi. Teknik kapılar, veri silme ve aşağıdaki Gökhan kararları
   kapsam dışı.
@@ -192,8 +190,8 @@ güvenilir insan. Strateji sıra 4'te.
        56 sn; kota farkı %1 çözünürlükte 0–2 puan;
      - uçtan uca koşu süresi ve saatlik koşu S1'in kendisinde ölçülür (otomatik p95, tek hat ve
        kota durdurması; Astra 16 Ekim 1. tur);
-     - yeni önkayıtla denemeyi yeniden başlat (YEREL_KANIT "Önkayıt — sol medium yeniden deneme",
-       16 Ekim; S1, L1, L2, S2).
+     - yeni önkayıtla deneme 16 Ekim 06:35Z'de başladı (YEREL_KANIT "Önkayıt — sol medium
+       yeniden deneme", 16 Ekim; S1, L1, L2, S2).
        Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.
    - **Model geçişi adayı:** 13 Ekim yerel A/B'de `gpt-6.1-sol`
      doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş kapısı
