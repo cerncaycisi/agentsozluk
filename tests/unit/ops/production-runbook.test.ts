@@ -502,3 +502,56 @@ describe("Milestone 2 production operator runbook", () => {
     expect(runbook).not.toMatch(/\bprintenv\b/gu);
   });
 });
+
+// 17 Ekim 2026 (Astra bulgu 7): genel "`.release-op-<sha>` sil" tarifi migration beklenti
+// dosyasını da sildi (`EXPECTATION_UNREADABLE`). Kurtarma tek, aşamaya bağlı akıştadır.
+describe("migration'lı dağıtım hata sonrası kurtarma", () => {
+  const failureModes = runbook.slice(
+    runbook.indexOf("## Deploy-day failure modes"),
+    runbook.indexOf("## Operator scripts"),
+  );
+  const a5 = runbook.slice(
+    runbook.indexOf("### Migration'lı sürüm (A5, yalnız ek yapan)"),
+    runbook.indexOf("### Gate 8: deploy, additive migration and V1 preservation"),
+  );
+  const recovery = a5.slice(a5.indexOf("**Hata sonrası kurtarma (aşamaya göre"));
+  const recoveryProse = recovery.replace(/\s+/gu, " ");
+
+  it("genel silme tarifi yok; deploy-day maddesi tek akışa yönlendirir", () => {
+    expect(failureModes).not.toMatch(/Fix: delete `[^`]*\.release-op-<sha>`/u);
+    expect(failureModes).toContain("**Hata sonrası kurtarma (aşamaya göre)**");
+    expect(failureModes).toContain("EXPECTATION_UNREADABLE");
+    expect(recovery.length).toBeGreaterThan(0);
+  });
+
+  it("her aşama için tutulacak ve silinecek durumu söyler", () => {
+    for (const phase of [
+      "`none` (işaret yok)",
+      "`planned`, `image-verified`",
+      "`frozen`, `backup-verified`, `rehearsed`",
+      "`migrating`, `migrated`, `post-verified`",
+      "`writers-may-run`, `traffic-open`, `worker-allowed`",
+      "`cutover-done`",
+    ])
+      expect(recovery).toContain(phase);
+    expect(recoveryProse).toContain(
+      "migration işareti varken `.release-op-<sha>` asla tek başına silinmez",
+    );
+    expect(recoveryProse).toContain("işaret + kilit + durum dizini, **üçü birlikte**");
+    expect(recoveryProse).toContain("**Dağıtım başladıktan sonra ayar değişmez**");
+    expect(recoveryProse).toContain("`--pause-society-flow`");
+  });
+
+  it("üçlü temizlik dondurma başlamamışken ve geçmişte migration yokken yapılır", () => {
+    expect(recoveryProse).toContain("**yalnız** `identity`, `phase`, `state-dir` var");
+    expect(recoveryProse).toContain("`boot-id`/`frozen-deadline` yok");
+    expect(recoveryProse).toContain('"Elle kilit temizliği"nin beş koşulu');
+    expect(recovery).toMatch(/_prisma_migrations\\" WHERE migration_name IN/u);
+    const marker = recovery.indexOf("find /opt/agent-sozluk/runtime/.migration-operation -xdev");
+    const state = recovery.indexOf("find /opt/agent-sozluk/runtime/.release-op-<sha> -xdev");
+    const lock = recovery.indexOf("find /opt/agent-sozluk/runtime/.release-lock -xdev");
+    expect(marker).toBeGreaterThan(-1);
+    expect(state).toBeGreaterThan(marker);
+    expect(lock).toBeGreaterThan(state);
+  });
+});

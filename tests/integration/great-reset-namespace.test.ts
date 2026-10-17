@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetScope } from "@/modules/maintenance/domain/great-reset-production-guard";
 import { greatResetInspection as inspect } from "@/modules/maintenance/repository/great-reset";
 import { resetContentManifest } from "@/modules/maintenance/repository/great-reset-manifest";
@@ -28,7 +28,44 @@ const db = new PrismaClient({ datasourceUrl: databaseUrl.href });
   sonra sunucu tarafı oturum bir süre `pg_stat_activity`'de kalabiliyor; autovacuum da aynı
   veritabanına bağlanabilir. Kapı bunu doğru olarak engel sayar. Test, sınamadan önce kendi
   bağlantısından başka oturum kalmayana kadar en çok 15 sn bekler; kapının kendisi değişmez.
+
+  Kök neden (17 Ekim 2026, CI 39037517482 1. deneme): bekleme yetmedi; ilk test yine
+  GREAT_RESET_PRECONDITIONS_FAILED aldı. Aynı saniyede (13:45:57.817 UTC) PostgreSQL logunda
+  bir autovacuum işçisi `skipping analyze of "entries"/"topics"/"users"/"agent_global_settings"
+  … --- lock not available` yazdı: işçi, önizleme geçtikten SONRA veritabanına bağlanmış ve
+  testin ACCESS EXCLUSIVE kilitlerine çarpmıştı; kilitlerden sonraki engel denetimi onu
+  OTHER_DATABASE_CONNECTIONS saydı. Önceki 55P03 çeşidi (kilit NOWAIT, `agent_sources`) aynı
+  işçinin önce davranmasıdır. autovacuum başlatıcısı iş olmasa bile her `autovacuum_naptime`'da
+  veritabanına işçi gönderir; bekleme ya da tablo düzeyi `autovacuum_enabled` bu yarışı
+  kapatmaz. Bu yüzden dosya boyunca SAHİPLİ test kümesinde autovacuum kapatılır (yalnız
+  süper kullanıcı; CI'da `postgres`) ve sonunda önceki değer geri yüklenir. Kapı ve
+  beklenen sonuç değişmez.
 */
+let restoreAutovacuum: (() => Promise<void>) | undefined;
+async function pauseAutovacuum() {
+  const [row] = await db.$queryRaw<
+    { superuser: string; setting: string; source: string; sourcefile: string | null }[]
+  >`SELECT current_setting('is_superuser') AS superuser, setting, source, sourcefile
+    FROM pg_settings WHERE name = 'autovacuum'`;
+  if (row?.superuser !== "on") throw new Error("AUTOVACUUM_CONTROL_REQUIRES_SUPERUSER");
+  if (row.setting === "off") return;
+  // `ALTER SYSTEM` ile verilmiş "on" geri yazılır; yoksa yalnız bu testin satırı kaldırılır.
+  const explicit = row.source === "configuration file" && row.sourcefile?.endsWith(".auto.conf");
+  await db.$executeRaw`ALTER SYSTEM SET autovacuum = off`;
+  restoreAutovacuum = async () => {
+    if (explicit) await db.$executeRaw`ALTER SYSTEM SET autovacuum = on`;
+    else await db.$executeRaw`ALTER SYSTEM RESET autovacuum`;
+    await db.$queryRaw`SELECT pg_reload_conf()`;
+  };
+  await db.$queryRaw`SELECT pg_reload_conf()`;
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const [current] = await db.$queryRaw<{ setting: string }[]>`
+      SELECT current_setting('autovacuum') AS setting`;
+    if (current?.setting === "off") return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("AUTOVACUUM_DID_NOT_PAUSE");
+}
 async function waitForSoleConnection() {
   for (let attempt = 0; attempt < 150; attempt += 1) {
     const [row] = await db.$queryRaw<{ count: number }[]>`
@@ -39,6 +76,7 @@ async function waitForSoleConnection() {
   }
   throw new Error("OTHER_DATABASE_CONNECTIONS_DID_NOT_CLEAR");
 }
+beforeAll(pauseAutovacuum);
 beforeEach(async () => {
   await db.$disconnect();
   await resetIntegrationDatabase();
@@ -46,6 +84,7 @@ beforeEach(async () => {
   await waitForSoleConnection();
 });
 afterAll(async () => {
+  await restoreAutovacuum?.();
   await db.$disconnect();
   await closeIntegrationDatabase();
 });

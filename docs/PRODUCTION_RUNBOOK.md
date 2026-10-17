@@ -598,6 +598,93 @@ history, credentials, content or database volumes. Disable/stop also requires ex
 sudo systemctl disable --now agent-sozluk-maintenance.timer
 ```
 
+## Sunucu içi gece yedeği, canlılık alarmı ve OnFailure bildirimi (kurulum)
+
+17 Ekim 2026'da eklendi. 15–17 Ekim'de `agent-sozluk-backup.service` üç gece
+`status=226/NAMESPACE` ile betik hiç başlamadan düştü: `/opt/agent-sozluk/backups/postgres`
+OVH taşımasında oluşturulmamıştı ve birim bu dizini `ReadWritePaths` ile istiyordu. Alarm da
+bildirmedi (sunucudaki kopya 2 Ekim'den kalmaydı; ntfy günlük sınırı 429 bildirimleri yuttu).
+Bu bölüm sunucu kurulumu ya da taşıması için tek kaynaktır. Kurulum üretim mutasyonudur ve
+onay kuralına tabidir.
+
+Kurulu dosyalar ve depodaki kaynakları:
+
+| Kurulu yol                                              | Depo kaynağı                               |
+| ------------------------------------------------------- | ------------------------------------------ |
+| `/opt/agent-sozluk/scripts/backup-postgres.sh`          | `deploy/backup/backup-postgres.sh`         |
+| `/opt/agent-sozluk/scripts/canlilik-alarmi.sh`          | `deploy/alarm/canlilik-alarmi.sh`          |
+| `/etc/systemd/system/agent-sozluk-*.service`, `*.timer` | `deploy/systemd/` içindeki aynı adlı dosya |
+
+**1. Dizinler önce.** Birimler `ProtectSystem=strict` ile koşar; yazdıkları dizini kendileri
+oluşturamaz. Yedek biriminin `ReadWritePaths=` yolları `-` önekli: eksik dizin artık
+`226/NAMESPACE` ile sessizce düşmez, birim başlar ve `backup-postgres.sh` eksik dizini adıyla
+söyleyip 1 ile çıkar (`ERROR: directory is unsafe or missing: …`), `OnFailure=` bildirir. Bu bir
+kurulum hatasıdır; dizini birim içinde root yetkisiyle oluşturan bir adım bilerek yok.
+
+```sh
+sudo install -d -o deploy -g deploy -m 0700 /opt/agent-sozluk/backups /opt/agent-sozluk/backups/postgres
+sudo install -d -o deploy -g deploy -m 0700 /opt/agent-sozluk/runtime/state
+sudo install -d -o deploy -g deploy -m 0750 /var/log/agent-sozluk
+```
+
+`StandardOutput=append:/var/log/agent-sozluk/backup.log` dizini eksikse birim `209/STDOUT` ile
+düşer; `-` öneki bunu kapsamaz.
+
+**2. Betikler ve birimler.** Depo kökünden, exact sürümün checkout'unda:
+
+```sh
+sudo install -o deploy -g deploy -m 0755 deploy/backup/backup-postgres.sh /opt/agent-sozluk/scripts/backup-postgres.sh
+sudo install -o deploy -g deploy -m 0755 deploy/alarm/canlilik-alarmi.sh /opt/agent-sozluk/scripts/canlilik-alarmi.sh
+for unit in agent-sozluk-bildirim@.service agent-sozluk-backup.service agent-sozluk-backup.timer \
+  agent-sozluk-alarm.service agent-sozluk-alarm.timer; do
+  sudo install -o root -g root -m 0644 "deploy/systemd/$unit" "/etc/systemd/system/$unit"
+done
+sudo systemd-analyze verify agent-sozluk-bildirim@.service agent-sozluk-backup.service agent-sozluk-alarm.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now agent-sozluk-backup.timer agent-sozluk-alarm.timer
+```
+
+Diğer oneshot birimler (`ilgili`, `karagoz`, `indexnow`, `sayac`, `maintenance`,
+`agent-sozluk.service`) da `OnFailure=agent-sozluk-bildirim@%n.service` taşır; değiştiklerinde
+kendi bölümlerindeki komutla yeniden kurulur. `agent-sozluk-bildirim@.service` kurulu değilse
+`OnFailure=` yalnız journal'a "unit not found" yazar; bu yüzden ilk kurulan odur.
+
+**3. Bildirim yolu.** `agent-sozluk-bildirim@<birim>.service` alarmla aynı yoldan gider
+(`canlilik-alarmi.sh --bildir <birim>`, `/etc/agent-sozluk-alarm.env` içindeki ntfy konusu);
+ikinci bir dış kanal yok. Aynı birim için 6 saatte en çok bir bildirim gider. Hata gönderimden önce
+`/var/lib/agent-sozluk-alarm/son-birim-hatasi` dosyasına yazılır; gönderim başarısızsa bildirim
+birimi de başarısız kalır ve `son-bildirim-hatasi` (an, kaynak, curl çıkışı) güncellenir. ntfy
+sınırı dolduğunda bu iki dosya ve `systemctl --failed` son kanıttır:
+
+```sh
+systemctl --failed 'agent-sozluk-*'
+sudo cat /var/lib/agent-sozluk-alarm/son-birim-hatasi /var/lib/agent-sozluk-alarm/son-bildirim-hatasi
+```
+
+**4. Alarm körlüğü.** Alarm betiği kendi alt kontrollerinden biri işini yapamazsa (sağlık özeti
+okunamadı ya da bozuk, lease logu okunamadı, alt kontrol süre aşımı, bildirim gönderilemedi) 3 ile
+çıkar; birim başarısız görünür (`SuccessExitStatus=0 2`) ve OnFailure çalışır. İşletim kontrolü
+`backup` 26 sa, `ilgili` 26 sa, `sayac` 2 sa, `indexnow` 3 sa, `karagoz` 26 sa içinde son başarılı
+koşu (`systemctl show` `Result` ve `ExecMainExitTimestamp`) arar; eksik, başarısız ya da eski
+koşuyu bildirir. Bilerek kurulmayan birim `/etc/agent-sozluk-alarm.env` içinde
+`ALARM_BIRIMLER=` ile listeden çıkarılır. Aynı kontrol migration disk marjını
+(boş − (3 × `pg_database_size` + 1 GiB)) journal'a `ALARM_DISK_MARJI` satırıyla basar ve 2 GiB'in
+altında günde bir düşük öncelikli uyarı gönderir; dağıtımı engellemez, kapı
+`production-migration-phase.sh` içinde aynen kalır.
+
+**5. İlk gece doğrulaması.** "Elle bir kez koştu" kalıcı birimin çalıştığını göstermez. Kurulumdan
+sonraki ilk zamanlanmış koşunun sonucunu okuyun:
+
+```sh
+systemctl show agent-sozluk-backup.service -p Result -p ExecMainStatus -p ExecMainExitTimestamp
+systemctl list-timers 'agent-sozluk-*'
+```
+
+Her dağıtım sonunda `production-release-remote.sh` kurulu kopyaları adayla karşılaştırır
+(`RELEASE_HOST_DRIFT <yol>`) ve kurulu birimlerin eksik `ReadWritePaths` dizinlerini
+(`RELEASE_HOST_MISSING_DIR <yol>`) listeler; bu satırlar dağıtımı durdurmaz ama makbuza yazılır
+ve bu bölümle giderilir.
+
 ## Deploy-day failure modes — read before every deploy
 
 Recorded 2026-08-20 after a deploy that took **five attempts**, and a **33-minute outage**
@@ -657,9 +744,13 @@ script is trustworthy in that respect — a failed attempt does not corrupt prod
 3. **Changing settings mid-deploy locks the deploy.** `assert_state_fingerprints`
    compares against the settings fingerprint captured on the first attempt. If you pause
    the flow _after_ starting the deploy, the fingerprint changes and every later attempt
-   fails at line 200. Fix: delete `/opt/agent-sozluk/runtime/.release-op-<sha>` — the
-   script's own logic re-captures when no settings hash exists. **Correct order: pause
-   first, then start the deploy.**
+   fails in `assert_state_fingerprints`. **Correct order: pause first, then start the
+   deploy; do not change settings (resume included) until `RELEASE_COMPLETE PASS`.**
+   Recovery is phase-dependent: follow the single flow in "Migration'lı sürüm (A5)" →
+   **Hata sonrası kurtarma (aşamaya göre)**. Do not delete
+   `/opt/agent-sozluk/runtime/.release-op-<sha>` on its own: on 17 October 2026 that
+   removed the migration expectation file the marker still depended on and the next
+   attempt failed with `EXPECTATION_UNREADABLE`.
 
 4. **A ghost run locks drain forever.** When a reboot cuts a running agent mid-flight the
    row stays `RUNNING`, its lease expires, and nothing exists to finish it. The runtime
@@ -1616,8 +1707,9 @@ doğrulanamazsa kilit kalır:
    hiçbir süreç yoktur (root torunları da aynı scope'u gösterir).
 4. `docker ps -a --filter name=^a5-` boş; `pg_stat_activity`'de `application_name` `a5-` ile başlayan
    backend yok.
-5. Kilit sahibi (`owner`) ve varsa `.migration-operation/identity` kayda geçirilir. İşaret
-   KALDIRILMAZ: yarım kalmış bir migration operasyonu varken kilidi temizlemek, yalnız aynı SHA ve
+5. Kilit sahibi (`owner`) ve varsa `.migration-operation/identity` kayda geçirilir. İşaret bu
+   temizlikle KALDIRILMAZ (tek istisna aşağıdaki kurtarma akışında, dondurma hiç başlamamış
+   `planned`/`image-verified` durumu): yarım kalmış bir migration operasyonu varken kilidi temizlemek, yalnız aynı SHA ve
    aynı listeyle yeniden koşuya (kaldığı aşamadan devam) izin verir; migration'sız mod ya da başka
    bir SHA/liste `MIGRATION_OPERATION_INCOMPLETE` ile durur. Aşaması `cutover-done` olan işaret
    tamamlanmış bir operasyondur; sonraki koşu (migration'sız dahil) onu kendisi kaldırır.
@@ -1625,6 +1717,77 @@ doğrulanamazsa kilit kalır:
 Her koşu yeni bir operasyon kimliği üretir; bu yüzden hata sonrası yeniden koşu, ancak yukarıdaki
 elle temizlikten sonra mümkündür. Prod şeması değişmeden önceki bir hatada betik eski sürümü açıp
 aşamayı `image-verified`'e geri aldığından yeniden koşu dondurmayı baştan kurar.
+
+**Hata sonrası kurtarma (aşamaya göre; 17 Ekim 2026).** Başarısız dağıtımdan sonra
+`.release-op-<sha>` için tek kurtarma akışı budur; deploy-day "failure modes" listesi buraya
+yönlendirir. Üç durum birbirine bağlıdır:
+
+- **Kilit:** `/opt/agent-sozluk/runtime/.release-lock/owner` (`<sha>:<op-id>`).
+- **İşaret:** `/opt/agent-sozluk/runtime/.migration-operation/` — `identity`
+  (`[profil|]<sha>|<liste-özeti>`), `phase`, `state-dir`; dondurma başladıysa ayrıca `boot-id`
+  ve `frozen-deadline`.
+- **Durum dizini:** `/opt/agent-sozluk/runtime/.release-op-<sha>/` — `baseline-*`,
+  `settings-hash`, `settings-profile`, `lifecycle-hash`, `previous-image-id`, `previous-runtime`,
+  `candidate-image-*`, `volume-hash` ve `migration/` (`expectation.json`, `pending`, `approved`,
+  `existing-index-names`, katalog kanıtları, varsa `ambiguous-prisma-history`).
+
+İşaret varken yeniden giriş planlamayı atlar ve `migration/` dosyalarını durum dizininden okur.
+Bu yüzden **migration işareti varken `.release-op-<sha>` asla tek başına silinmez**; silinirse
+`capture_initial_state` temeli yeniden yakalar ama `expectation.json` yoktur ve koşu
+`EXPECTATION_UNREADABLE` ile durur (17 Ekim, 3. deneme). **Dağıtım başladıktan sonra ayar
+değişmez** (akışı açmak dahil): `assert_state_fingerprints` ilk denemenin ayar ve yaşam döngüsü
+özetini bekler. Akış dağıtımdan ÖNCE duraklatılır (`--pause-society-flow`); kurtarma sırasında
+da duraklatılmış kalır, yalnız `RELEASE_COMPLETE PASS` sonrası açılır.
+
+Önce okunur (hiçbir şey silinmeden), çıktılar makbuza yazılır:
+
+```bash
+cat /opt/agent-sozluk/runtime/.release-lock/owner
+cat /opt/agent-sozluk/runtime/.migration-operation/phase 2>/dev/null || echo none
+ls -A /opt/agent-sozluk/runtime/.migration-operation 2>/dev/null
+cat /opt/agent-sozluk/runtime/.migration-operation/identity /opt/agent-sozluk/runtime/.migration-operation/state-dir 2>/dev/null
+ls -A /opt/agent-sozluk/runtime/.release-op-<sha>/migration 2>/dev/null
+test -e /opt/agent-sozluk/runtime/.migration-hold && echo hold-var
+```
+
+| Aşama (`phase`)                                                     | Üretim şeması                     | Tut                                                                           | Silinebilir                                                                                                                | Sonraki adım                                                                                                                                                                               |
+| ------------------------------------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `none` (işaret yok)                                                 | değişmedi                         | önceki imaj ve runtime release                                                | kilit (5 koşulla); durum dizini YALNIZ çalışan app imajı `previous-image-id` ve `runtime/current` = `previous-runtime` ise | Aynı SHA ile yeniden koşu. Kesim başladıysa durum dizini silinmez: yeniden yakalama adayı "önceki" sanır ve `--cleanup` gerçek önceki imajı siler.                                         |
+| `planned`, `image-verified` (yalnız `identity`/`phase`/`state-dir`) | değişmedi, dondurma hiç başlamadı | —                                                                             | işaret + kilit + durum dizini, **üçü birlikte** ve aşağıdaki denetimlerden sonra                                           | Ya aynı SHA ve listeyle kilit temizliğinden sonra yeniden koşu (devam eder; durum dizini şart), ya da üçünü birlikte kaldırıp baştan (ayar değiştiyse tek yol budur).                      |
+| `image-verified` + `boot-id`/`frozen-deadline` (geri sarılmış)      | değişmedi                         | işaret, durum dizini, hold, `backups/…-pre-<sha12>.dump`                      | kilit (5 koşulla)                                                                                                          | Betik eski sürümü açıp aşamayı geri aldı (`RELEASE_MIGRATION_PHASE image-verified (rewound after reopen)`). Aynı SHA ve listeyle yeniden koşu dondurmayı baştan kurar. Hold ayrı karardır. |
+| `frozen`, `backup-verified`, `rehearsed`                            | değişmedi                         | her şey (işaret, durum dizini, hold, yedek)                                   | yalnız kilit (5 koşulla)                                                                                                   | Bu aşamada kalmışsa geri açma başarısız ya da süreç öldü; site kapalı olabilir. Aynı boot'ta aynı SHA/listeyle yeniden koşu ya da "Elle geri dönüş".                                       |
+| `migrating`, `migrated`, `post-verified`                            | değişmiş olabilir                 | her şey                                                                       | hiçbir şey; kilit de Gökhan kararından sonra                                                                               | Site kapalı kalır, `migrate` tekrarlanmaz, `ambiguous-prisma-history` okunur, karar Gökhan'ındır (yukarıdaki "Hata durumları").                                                            |
+| `writers-may-run`, `traffic-open`, `worker-allowed`                 | değişti, yeni sürüm yazabilir     | her şey; `previous-image-id`/`previous-runtime` elle geri dönüşün tek kaynağı | yalnız kilit (5 koşulla)                                                                                                   | Aynı SHA ve listeyle yeniden koşu kaldığı yerden sürer ya da "Elle geri dönüş".                                                                                                            |
+| `cutover-done`                                                      | tamam                             | durum dizini (`migration/` kanıtı)                                            | kilit (5 koşulla); işareti sonraki koşu kendisi kaldırır                                                                   | Yalnız temizlik (`--cleanup`) yarım kaldıysa migration'sız yeniden koşu.                                                                                                                   |
+
+`planned`/`image-verified` için üçünü birlikte kaldırmadan önce HEPSİ doğrulanır; biri
+doğrulanamazsa hiçbir şey silinmez:
+
+1. Akış duraklatılmış (`scripts/agent-society-flow.ts status`, deploy-day madde 2) ve
+   yukarıdaki "Elle kilit temizliği"nin beş koşulu geçiyor.
+2. `phase` `planned` ya da `image-verified`; işaret dizininde **yalnız** `identity`, `phase`,
+   `state-dir` var (`boot-id`/`frozen-deadline` yok = dondurma hiç başlamadı); `identity` bu
+   SHA'yı, `state-dir` tam olarak `/opt/agent-sozluk/runtime/.release-op-<sha>` yolunu gösteriyor.
+3. `.migration-hold` yok; Caddy ve app çalışıyor, iç ve dış `health`/`ready` 200.
+4. `_prisma_migrations` onaylı adların hiçbirini içermiyor ve bitmemiş kayıt yok:
+
+   ```bash
+   docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml \
+     exec -T db psql -XAtq -U agent_sozluk -d agent_sozluk -c \
+     "SELECT count(*) FROM \"_prisma_migrations\" WHERE migration_name IN ('<ad1>','<ad2>') OR finished_at IS NULL;"
+   ```
+
+   Sonuç `0` olmalı; yeni tabloların hiçbiri yok (`SELECT to_regclass('public.<tablo>')` boş).
+
+5. Çalışan app imajı `previous-image-id`, `runtime/current` `previous-runtime` ile aynı.
+
+Sonra, aynı oturumda ve bu sırayla: `find /opt/agent-sozluk/runtime/.migration-operation -xdev
+-depth -delete` → `find /opt/agent-sozluk/runtime/.release-op-<sha> -xdev -depth -delete` →
+`find /opt/agent-sozluk/runtime/.release-lock -xdev -depth -delete`. Üç yolun yokluğu yeniden
+okunur ve makbuza yazılır. Disk yetmediği için duran bir koşuda (`DISK_HEADROOM_COMBINED`) önce
+yer açılır; eksik dizin gibi sunucu kurulum hatalarında önce kurulum düzeltilir, sonra yeniden
+koşulur. Bu tablonun dışında kalan bir durumda (ör. kesim başlamışken ayar değişti) hiçbir şey
+silinmez; somut durum Gökhan'a götürülür.
 
 **Elle geri dönüş (imaj).** Veritabanı restore edilmez; yeni tablolar kalır. Sıra: `compose stop
 caddy` → audited global pause ve configured maksimum koşu timeout'u +120sn içinde
@@ -2382,6 +2545,10 @@ kör ölçümde iki sinyalin birlikte önerdiği çiftler %91–100 ilgiliydi; t
   artırır. Kaynak ve hedef ayrıca aktif ve birleşmemiş olmalı; BKZ bağının kendi entry'si
   (`sourceEntryId`) görünür ve kaynak başlıkta olmalı. Düşen bağlar bir sonraki gece hesabında
   temiz veriden yeniden kurulur.
+- **Yaş sınırı (17 Ekim 2026, Astra bulgu 5):** `computedAt` 72 saatten
+  (`RELATED_TOPIC_MAX_AGE_HOURS`) eskiyse bağ gösterilmez. Gece işi durursa bayat bağlar süresiz
+  kalmaz; blok kalkar, satırlar silinmez ve bir sonraki başarılı hesapla geri gelir. İşin
+  düştüğünü `OnFailure=` bildirimi ve alarmın 26 saatlik son-başarılı-koşu kontrolü söyler.
 - **Tek hesap:** hesap transaction'ın başında danışma kilidi alır (liste modu dahil). Kilit
   başkasındaysa liste modu beklemeden `{"status":"ALREADY_RUNNING"}` basar ve 0 ile çıkar.
   `--uygula` 60 sn arayla 10 kez yeniden dener; kilit hâlâ alınamazsa aynı satırı basar ve 75
@@ -2559,7 +2726,11 @@ mevcut `~/.local/bin/rclone` ile yalnız yeni `.dump`, `.dump.sha256` ve `.meta`
 `gdrive:agentic-server-yedekler/agentsozluk-backups` hedefine kopyalanır. Üç dosyalı
 manifest ile `copy` için900sn, ardından `check --one-way` için300sn bütçe vardır.
 Drive’da silme veya saklama sayısı uygulanmaz. `DRIVE_FAIL` yerel başarılı yedeği
-geçersiz yapmaz; yerel döndürme devam eder ve `YEDEK_OK drive=...` sonucu yazar.
+geçersiz yapmaz ve yerel döndürme devam eder; ama 17 Ekim 2026'dan beri sonuç başarı
+sayılmaz (Astra bulgu 6): betik `YEDEK_OK_YEREL … drive=UPLOAD_FAILED|CHECK_FAILED|SETUP_FAILED`
+yazar, bildirim gönderir ve 3 ile çıkar; kullanıcı birimi başarısız görünür. Tam başarısızlık
+(`YEDEK_FAIL`) 1 ile çıkar. Bildirim gönderilemezse `YEDEK_NOTIFY_FAIL exit=<n>` journal'a düşer;
+çıkış kodu değişmez. Yalnız `YEDEK_OK … drive=VERIFIED` (çıkış 0) tam başarıdır.
 Kullanıcı servisi `TimeoutStartSec=100min`; timer saati ve10dakika rastgele payı aynı.
 İlk gerçek14:54 çalışması yerelde PASS, Drive upload403 `RATE_LIMIT_EXCEEDED`;
 check çalışmadı. Dolayısıyla kurulum başarılı, bulut doğrulaması henüz yok.

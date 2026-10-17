@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily Agent Sozluk PostgreSQL backup at 03:30 Europe/Istanbul
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Europe/Istanbul
+Persistent=true
+AccuracySec=1min
+RandomizedDelaySec=0
+Unit=agent-sozluk-backup.service
+
+[Install]
+WantedBy=timers.target

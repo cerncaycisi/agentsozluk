@@ -14,6 +14,7 @@ import {
   listRelatedTopicWorkspaceTopics,
   prepareRelatedTopicWorkspace,
   RELATED_TOPIC_ADVISORY_LOCK_KEY,
+  RELATED_TOPIC_MAX_AGE_HOURS,
 } from "@/modules/topics/repository/related-topics";
 import {
   closeIntegrationDatabase,
@@ -500,6 +501,36 @@ describe("ilgili başlıklar sayfa okuması", () => {
       link(topics.ikiSinyal),
     ]);
     expect(await getRelatedTopicLinks(integrationDatabase, topics.yalnizBaslik.id)).toEqual([]);
+  });
+
+  /*
+    Yaş sınırı (17 Ekim 2026; Astra bulgu 5): gece işi durursa eski bağlar süresiz kalmasın.
+    Hesap anı geri alınır; test entry'leri Ekim başında yazıldığından parmak izi aynı kalır,
+    düşüşün tek nedeni yaştır.
+  */
+  it(`hesap ${RELATED_TOPIC_MAX_AGE_HOURS} saatten eskiyse bağ gösterilmez`, async () => {
+    expect(RELATED_TOPIC_MAX_AGE_HOURS).toBe(72);
+    const { topics } = await seededAndComputed();
+    const age = async (hours: number) => {
+      await integrationDatabase.topicRelatedLink.updateMany({
+        data: { computedAt: new Date(Date.now() - hours * 3_600_000) },
+      });
+      return getRelatedTopicLinks(integrationDatabase, topics.kaynak.id);
+    };
+    expect(await age(RELATED_TOPIC_MAX_AGE_HOURS - 1)).toEqual([
+      link(topics.sehir),
+      link(topics.toplu),
+      link(topics.ikiSinyal),
+    ]);
+    expect(await age(RELATED_TOPIC_MAX_AGE_HOURS + 1)).toEqual([]);
+    // Satırlar silinmez; bir sonraki gece hesabı tabloyu yeniden yazınca blok geri gelir.
+    expect(await storedLinks(topics.kaynak.id)).toHaveLength(3);
+    await compute(true);
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
+      link(topics.toplu),
+      link(topics.ikiSinyal),
+    ]);
   });
 
   it.each(["gizlenen", "silinen"] as const)(

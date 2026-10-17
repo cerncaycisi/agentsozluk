@@ -5,7 +5,8 @@
 # (`agentsozluk-yedek.timer`). Üretime YALNIZ yedek anahtarıyla bağlanır; o anahtarın
 # üretimdeki zorunlu komutu `uretim-yedek-komutu.sh`'tir, başka bir şey çalıştıramaz.
 #
-# KABUL: çıkış 0, stderr'de SNAPSHOT_OK/DUMP_DONE/META_DONE, en az 40 tablo satırı ve
+# ÇIKIŞ: 0 = yerel + Drive doğrulandı; 3 = yalnız yerel (Drive yok); 1 = başarısız.
+# KABUL: stderr'de SNAPSHOT_OK/DUMP_DONE/META_DONE, en az 40 tablo satırı ve
 # `pg_restore --list` ve bütün veri bloklarının decode kontrolü geçmeli. Ancak o zaman
 # geçici dosya kalıcı adına yayımlanır. Son
 # ${KEEP} kopya kalır. Decode SQL'i DB'ye uygulamaz; tam geri yükleme provası
@@ -36,10 +37,18 @@ manifest=""
 final=""
 stage="baslangic"
 
+# Bildirim hatası sessiz kalmaz (17 Ekim 2026): ntfy günlük sınırı (429) uyarıları yutuyordu.
+# Hata stderr'e (journal) `YEDEK_NOTIFY_FAIL` olarak düşer ve sıfır dışı döner; çağıran çıkış
+# kodunu zaten başarısız seçtiği için bildirim hatası sonucu değiştirmez.
 notify() {
+  local r=0
   if [[ "$NOTIFY" = 1 ]]; then
-    "$HOME/ping.sh" "Agent Sözlük yedek" "$1" >/dev/null 2>&1 || true
+    "$HOME/ping.sh" "Agent Sözlük yedek" "$1" >/dev/null || r=$?
+    if ((r != 0)); then
+      echo "YEDEK_NOTIFY_FAIL exit=$r" >&2
+    fi
   fi
+  return "$r"
 }
 
 fail() {
@@ -50,7 +59,7 @@ fail() {
   if [[ -n "${final:-}" && ! -e "$final" ]]; then
     rm -f -- "$final.sha256" "${final%.dump}.meta" 2>/dev/null || true
   fi
-  notify "Gecelik yedek başarısız: $1"
+  notify "Gecelik yedek başarısız: $1" || true
   exit 1
 }
 
@@ -173,4 +182,13 @@ for ((i = 0; i < excess; i++)); do
   rm -f -- "$old" "$old.sha256" "${old%.dump}.meta" || fail ROTATION_DELETE
   removed=$((removed + 1))
 done
-echo "YEDEK_OK file=${final##*/} bytes=$bytes tables=$tables kept=$((${#others[@]} + 1 - removed)) drive=$drive_status"
+receipt="file=${final##*/} bytes=$bytes tables=$tables kept=$((${#others[@]} + 1 - removed)) drive=$drive_status"
+# Drive kopyası yoksa iş yarımdır (17 Ekim 2026, Astra bulgu 6): yerel kopya ve döndürme
+# korunur ama sonuç başarı sayılmaz. Ayrı makbuz satırı ve ayrı çıkış kodu (3): birim
+# başarısız görünür, bildirim gider; tam başarısızlıktan (1) ayırt edilir.
+if [[ "$drive_status" != VERIFIED ]]; then
+  echo "YEDEK_OK_YEREL $receipt"
+  notify "Gecelik yedek yalnız yerelde: Drive kopyası $drive_status (${final##*/})" || true
+  exit 3
+fi
+echo "YEDEK_OK $receipt"

@@ -396,6 +396,7 @@ export interface RelatedTopicLinkRecord {
  *   ya da SIGNAL) gösterilmez; hesaptan sonra eklenen entry'ler sayılmaz. Aynı küme G4 inceliğini
  *   de sabitler.
  * - BKZ bağının kaynak entry'si hâlâ görünür ve kaynak başlıkta; bilinmiyorsa bağ gösterilmez.
+ * - Hesap `RELATED_TOPIC_MAX_AGE_HOURS` saatten eski değil (gece işi durursa bayat bağ kalmaz).
  *
  * Tek sorgu: bağlar `(topicId, rank)` indeksinden; her parmak izi `entries(topicId, status, …)`
  * indeksinin `topicId = … AND status = 'ACTIVE'` aralığından okunur. Düşen bağ bir sonraki gece
@@ -413,6 +414,16 @@ export function findRelatedTopicLinks(
   );
 }
 
+/*
+  YAŞ SINIRI (17 Ekim 2026; Astra bulgu 5). Bağlar gece hesabının anlık görüntüsüdür
+  ve tablo yalnız bir sonraki başarılı hesapta değişir. Gece işi durursa (birim düşer, zamanlayıcı
+  kurulmaz, kilit hep tutulur) eski bağlar süresiz okurun önünde kalırdı. Hesap anı (`computedAt`,
+  veritabanı saati) bu süreden eskiyse bağ gösterilmez; blok sessizce kalkar. 72 saat: iki gece
+  kaçırılsa da blok durur, üçüncüsünde kalkar; işin düştüğünü `OnFailure=` bildirimi ve alarmın
+  26 saatlik son-başarılı-koşu kontrolü ayrıca söyler.
+*/
+export const RELATED_TOPIC_MAX_AGE_HOURS = 72;
+
 /** Okuma sorgusu; EXPLAIN denetimi için ayrıca dışa açık. */
 export function relatedTopicLinksReadSql(topicId: string, limit: number): Prisma.Sql {
   return Prisma.sql`
@@ -421,6 +432,7 @@ export function relatedTopicLinksReadSql(topicId: string, limit: number): Prisma
     JOIN "topics" AS source ON source.id = link."topicId"
     JOIN "topics" AS target ON target.id = link."relatedTopicId"
     WHERE link."topicId" = ${topicId}::uuid
+      AND link."computedAt" >= now() - make_interval(hours => ${RELATED_TOPIC_MAX_AGE_HOURS}::integer)
       AND source."status" = 'ACTIVE'
       AND source."mergedIntoId" IS NULL
       AND target."status" = 'ACTIVE'
