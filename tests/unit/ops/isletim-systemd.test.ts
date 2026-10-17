@@ -59,6 +59,9 @@ describe("OnFailure bildirimi", () => {
       /^Environment=ALARM_DURUM_DOSYASI=\/var\/lib\/agent-sozluk-alarm\/durum$/mu,
     );
     expect(service).toMatch(/^ProtectSystem=strict$/mu);
+    // Disk doluyken bastırma kaydı tmpfs'e düşer; açılışa kadar korunur (Astra 1. tur).
+    expect(service).toMatch(/^RuntimeDirectory=agent-sozluk-bildirim$/mu);
+    expect(service).toMatch(/^RuntimeDirectoryPreserve=yes$/mu);
     expect(service).toMatch(/^NoNewPrivileges=yes$/mu);
     expect(service).toMatch(/^CapabilityBoundingSet=$/mu);
     expect(service).toContain("-/run/docker.sock");

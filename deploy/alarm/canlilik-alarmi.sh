@@ -132,6 +132,10 @@ COMMIT;
 PSQL
 }
 
+# Durum yazılamıyorsa bildirim GÖNDERİLMEZ (Astra 1. tur, 17 Ekim): gönderilip kaydedilemeyen
+# bildirim her 15 dakikada yeniden giderdi. Gönderimden önce önceki durum aynen geri yazılarak
+# yazılabilirlik kanıtlanır; yazılamazsa koşu körlükle (3) biter ve `OnFailure=` bildirimi
+# (kendi /run yedek kaydıyla, 6 saatte bir) haber verir.
 canlilik_kontrol() {
   local cikti kosu_yas entry_yas esik_sn simdi onceki_hal onceki_an
   cikti="$(canlilik_sorgu | grep -E '^[0-9]+ ' | head -1)"
@@ -141,9 +145,14 @@ canlilik_kontrol() {
   # Sorgu başarısızsa bu da bir arıza sinyalidir; sessiz kalmak en kötü seçenek.
   if [[ -z "$cikti" ]]; then
     if [[ "$onceki_hal" != "sorgu-hatasi" ]] || (( simdi - onceki_an > SESSIZLIK_SN )); then
-      bildir "Agent Sözlük: veritabanı sorgulanamıyor" urgent rotating_light \
-        "Canlılık sorgusu başarısız. Veritabanı, docker ya da compose erişimi bozuk olabilir. $(date -u '+%Y-%m-%d %H:%M UTC')" \
-        && echo "sorgu-hatasi $simdi" >"$DURUM" || KORLUK=1
+      if ! atomik_yaz "$DURUM" "$onceki_hal $onceki_an"; then
+        hata_yaz "canlılık durumu yazılamıyor; bildirim gönderilmedi"; KORLUK=1
+      elif bildir "Agent Sözlük: veritabanı sorgulanamıyor" urgent rotating_light \
+        "Canlılık sorgusu başarısız. Veritabanı, docker ya da compose erişimi bozuk olabilir. $(date -u '+%Y-%m-%d %H:%M UTC')"; then
+        atomik_yaz "$DURUM" "sorgu-hatasi $simdi" || KORLUK=1
+      else
+        KORLUK=1
+      fi
     fi
     return 1
   fi
@@ -153,23 +162,31 @@ canlilik_kontrol() {
 
   if (( kosu_yas > esik_sn )); then
     if [[ "$onceki_hal" != "alarm" ]] || (( simdi - onceki_an > SESSIZLIK_SN )); then
-      bildir "Agent Sözlük sessiz: $(( kosu_yas / 60 )) dk koşu yok" urgent rotating_light \
+      if ! atomik_yaz "$DURUM" "$onceki_hal $onceki_an"; then
+        hata_yaz "canlılık durumu yazılamıyor; bildirim gönderilmedi"; KORLUK=1
+      elif bildir "Agent Sözlük sessiz: $(( kosu_yas / 60 )) dk koşu yok" urgent rotating_light \
 "Worker $(( kosu_yas / 60 )) dakikadır koşu almadı (eşik ${ESIK_DK} dk).
 Son entry: ${entry_yas} sn önce.
 Site ayakta olabilir ve /api/health 200 dönebilir; bu alarm onu ölçmüyor.
-Bak: systemctl status agent-sozluk-runtime" \
-        && echo "alarm $simdi" >"$DURUM" || KORLUK=1
+Bak: systemctl status agent-sozluk-runtime"; then
+        atomik_yaz "$DURUM" "alarm $simdi" || KORLUK=1
+      else
+        KORLUK=1
+      fi
     fi
     return 2
   fi
 
   # Arızadan çıkış da haber değeri taşır; gönderilemezse bir sonraki koşu dener.
   if [[ "$onceki_hal" == "alarm" || "$onceki_hal" == "sorgu-hatasi" ]]; then
+    if ! atomik_yaz "$DURUM" "$onceki_hal $onceki_an"; then
+      hata_yaz "canlılık durumu yazılamıyor; bildirim gönderilmedi"; KORLUK=1; return 0
+    fi
     bildir "Agent Sözlük tekrar üretiyor" default white_check_mark \
       "Son koşu ${kosu_yas} sn önce alındı, son entry ${entry_yas} sn önce. $(date -u '+%Y-%m-%d %H:%M UTC')" \
       || { KORLUK=1; return 0; }
   fi
-  echo "temiz $simdi" >"$DURUM"
+  atomik_yaz "$DURUM" "temiz $simdi" || KORLUK=1
   return 0
 }
 
@@ -718,16 +735,21 @@ saglik_kontrol() {
   # Bildirilmeden geçip giden sorun da bir kez söylenir.
   if [[ "$hal" != "$bildirilen" || "$arada" != - ]]; then gerek=1
   elif [[ "$hal" != temiz ]] && (( simdi - onceki_an > tekrar_sn )); then gerek=1; fi
+  # Durum yazılamazsa koşu başarısızdır (3). Gönderim yalnız ön kayıt kalıcıysa yapılır:
+  # kaydedilemeyen bildirim her 15 dakikada yeniden giderdi (Astra 1. tur, 17 Ekim). O durumda
+  # haberi `OnFailure=` bildirimi taşır.
   if (( ! gerek )); then
     if [[ "$yeni_gorulen" != "$gorulen" ]]; then
-      atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" || true
+      atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" || return 3
     fi
     return 0
   fi
 
   # Gönderim yarıda kalırsa görülenler kaybolmasın: önce kaydet.
-  local on_yazim=0
-  atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" && on_yazim=1
+  if ! atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen"; then
+    hata_yaz "sağlık durumu yazılamıyor; bildirim gönderilmedi"
+    return 3
+  fi
 
   if [[ "$hal" == temiz ]]; then
     baslik="Agent Sözlük sağlık: düzeldi"; oncelik=default
@@ -747,12 +769,12 @@ Arada görülen, bildirimi doğrulanamayan: ${arada}."
   if bildir "$baslik" "$oncelik" warning "${govde}
 $(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
     # Yazılamazsa sonraki mesaj bu sorunu "bildirimi doğrulanamayan" diye anar;
-    # gönderildiğini kanıtlayan kayıt olmadan daha fazlası söylenemez.
-    atomik_yaz "$SAGLIK_DURUM" "$hal $simdi -" || true
+    # gönderildiğini kanıtlayan kayıt olmadan daha fazlası söylenemez. Yeniden gönderim de
+    # yine ancak ön kayıt yazılabilirse olur.
+    atomik_yaz "$SAGLIK_DURUM" "$hal $simdi -" || return 3
   else
     hata_yaz "sağlık bildirimi gönderilemedi"
-    # Ön kayıt başarısızsa bir kez daha dene; `bildirilen` değişmez.
-    (( on_yazim )) || atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" || true
+    # Ön kayıt yerinde; `bildirilen` değişmez, sonraki koşu yeniden dener.
     return 3
   fi
   return 0
@@ -764,14 +786,15 @@ $(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
 # çalıştığını göstermiyordu. systemd yalnız okunur (`systemctl show`); veritabanından
 # yalnız `pg_database_size` okunur.
 
-# Çıktı: sorun başına bir satır, ilk sözcük anahtar (birim kısa adı). Bir birimin
-# durumu okunamazsa 1 döner (körlük); okunanların sorunları yine basılır.
+# Çıktı: sorun başına bir satır, ilk sözcük anahtar (birim kısa adı). Durumu okunamayan birim
+# için `? <ad>`, systemd hiç okunamazsa `? *` basılır ve 1 döner (körlük); okunanların sorunları
+# yine basılır. Çağıran, okunamayan birimin önceki sorununu "düzeldi" saymaz.
 birim_sorunlari() {
   local simdi acilis girdi ad saat birim cikti k v load active result durum cikis_an azami yas hata=0
   simdi="${ALARM_SIMDI:-$(date +%s)}"
   acilis="$(timeout 5 systemctl show --timestamp=unix -p UserspaceTimestamp --value 2>/dev/null)"
   acilis="${acilis#@}"
-  if [[ ! "$acilis" =~ ^[0-9]+$ ]]; then hata_yaz "açılış zamanı okunamadı"; return 1; fi
+  if [[ ! "$acilis" =~ ^[0-9]+$ ]]; then hata_yaz "açılış zamanı okunamadı"; echo "? *"; return 1; fi
   for girdi in $ISLETIM_BIRIMLER; do
     ad="${girdi%%:*}"; saat="${girdi#*:}"
     if [[ ! "$ad" =~ ^[a-z][a-z0-9-]{0,30}$ || ! "$saat" =~ ^[1-9][0-9]{0,3}$ ]]; then
@@ -780,7 +803,7 @@ birim_sorunlari() {
     birim="agent-sozluk-${ad}.service"
     if ! cikti="$(timeout 5 systemctl show --timestamp=unix -p LoadState -p ActiveState \
         -p Result -p ExecMainStatus -p ExecMainExitTimestamp "$birim" 2>/dev/null)"; then
-      hata_yaz "${birim} durumu okunamadı"; hata=1; continue
+      hata_yaz "${birim} durumu okunamadı"; echo "? $ad"; hata=1; continue
     fi
     load=""; active=""; result=""; durum=""; cikis_an=""
     while IFS='=' read -r k v; do
@@ -791,7 +814,7 @@ birim_sorunlari() {
     done <<<"$cikti"
     azami=$(( saat * 3600 ))
     if [[ "$load" == not-found ]]; then echo "$ad kurulu değil (${birim})"; continue; fi
-    if [[ "$load" != loaded ]]; then hata_yaz "${birim} LoadState tanınmadı"; hata=1; continue; fi
+    if [[ "$load" != loaded ]]; then hata_yaz "${birim} LoadState tanınmadı"; echo "? $ad"; hata=1; continue; fi
     # Şu an koşuyor: sonucu bir sonraki kontrolde. Takılırsa TimeoutStartSec düşürür.
     [[ "$active" == activating ]] && continue
     if [[ "$active" == failed || "$result" != success ]]; then
@@ -835,47 +858,111 @@ disk_marji() {
 
 gib() { awk -v b="$1" 'BEGIN { printf "%.2f", b / 1073741824 }'; }
 
-# Durum satırı: `bildirilen an` — son BAŞARIYLA gönderilen sorun anahtarları
-# (virgüllü, sıralı) ya da `temiz`. Gönderilemeyen bildirim durumu değiştirmez.
+# Anahtar kümeleri (birim kısa adları ve `disk`): virgüllü, sıralı, tekrarsız; boşsa `-`.
+ik_kume() { # argümanlardaki kümelerin birleşimi
+  local k
+  k="$(printf '%s\n' "$@" | tr ',' '\n' | grep -Ev '^(-|temiz|)$' | LC_ALL=C sort -u | paste -sd, -)"
+  echo "${k:--}"
+}
+ik_fark() { # $1 − $2
+  local k
+  k="$(comm -23 <(tr ',' '\n' <<<"$1" | grep -Ev '^(-|temiz|)$' | LC_ALL=C sort -u) \
+    <(tr ',' '\n' <<<"$2" | grep -Ev '^(-|temiz|)$' | LC_ALL=C sort -u) | paste -sd, -)"
+  echo "${k:--}"
+}
+ik_icinde() { [[ ",$2," == *",$1,"* ]]; } # $1 anahtar, $2 küme
+
+# Durum satırı: `bildirilen an gorulen` — sağlık kontrolüyle aynı model (Astra 1. tur, 17 Ekim):
+#  bildirilen son BAŞARIYLA gönderilen bildirimin anahtar kümesi ya da `temiz`
+#  an         o gönderimin anı
+#  gorulen    son başarılı gönderimden beri görülen bütün sorunlar ya da `-`
+# Gönderilemeyen (ör. ntfy 429) bildirimde görülen sorun `gorulen`de kalır; sorun sonraki koşuda
+# düzelmiş olsa da "arada görülen" diye bir kez söylenir. Okunamayan birimin ya da ölçülemeyen
+# disk marjının önceki sorunu "düzeldi" sayılmaz, "doğrulanamıyor" diye taşınır; koşu yine 3 ile
+# biter. Gönderim yalnız ön kayıt kalıcıysa yapılır (yazılamayan durum sınırsız tekrar üretmesin).
 isletim_kontrol() {
-  local simdi cikti satirlar=() satir anahtarlar hal bildirilen an korluk=0 tekrar_sn
-  local bos gerek marj baslik oncelik govde
+  local simdi cikti satirlar=() satir hal bildirilen an gorulen korluk=0 tekrar_sn
+  local bos gerek marj baslik oncelik govde bilinmeyen=() anahtar onceki disk_bilinmiyor=0
+  local yeni_gorulen duzelen arada gonder=0
   simdi="${ALARM_SIMDI:-$(date +%s)}"
   cikti="$(birim_sorunlari)" || korluk=1
-  [[ -n "$cikti" ]] && mapfile -t satirlar <<<"$cikti"
+  while IFS= read -r satir; do
+    [[ -z "$satir" ]] && continue
+    if [[ "$satir" == "? "* ]]; then bilinmeyen+=("${satir#? }"); else satirlar+=("$satir"); fi
+  done <<<"$cikti"
   if read -r bos gerek marj < <(disk_marji) && [[ "$marj" =~ ^-?[0-9]+$ ]]; then
     echo "ALARM_DISK_MARJI bos=${bos} gerek=${gerek} marj=${marj}"
     if (( marj < DISK_MARJ_ESIK )); then
       satirlar+=("disk migration marjı $(gib "$marj") GiB: boş $(gib "$bos") GiB, gereken 3 × DB + 1 GiB = $(gib "$gerek") GiB (uyarı eşiği $(gib "$DISK_MARJ_ESIK") GiB; dağıtımı engellemez)")
     fi
   else
-    hata_yaz "disk marjı ölçülemedi"; korluk=1
+    hata_yaz "disk marjı ölçülemedi"; korluk=1; disk_bilinmiyor=1
   fi
-  anahtarlar="$(for satir in "${satirlar[@]}"; do echo "${satir%% *}"; done | LC_ALL=C sort -u | paste -sd, -)"
-  hal="${anahtarlar:-temiz}"
-  read -r bildirilen an 2>/dev/null <"$ISLETIM_DURUM" || true
+
+  read -r bildirilen an gorulen 2>/dev/null <"$ISLETIM_DURUM" || true
   if [[ ! "${bildirilen:-}" =~ ^(temiz|[a-z0-9,-]{1,300})$ ]] \
-     || [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > simdi )); then
-    bildirilen=temiz; an=0
+     || [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > simdi )) \
+     || [[ ! "${gorulen:--}" =~ ^[a-z0-9,-]{1,300}$ ]]; then
+    bildirilen=temiz; an=0; gorulen=-
   fi
+  gorulen="${gorulen:--}"
+
+  # Okunamayan kaynağın önceki sorunu sürüyor sayılır.
+  for onceki in $(tr ',' ' ' <<<"$(ik_kume "$bildirilen" "$gorulen")"); do
+    [[ "$onceki" == - ]] && continue
+    if [[ "$onceki" == disk ]]; then
+      (( disk_bilinmiyor )) && satirlar+=("disk önceki ölçümde sorunluydu; şu an ölçülemiyor")
+      continue
+    fi
+    for anahtar in "${bilinmeyen[@]}"; do
+      if [[ "$anahtar" == '*' || "$anahtar" == "$onceki" ]]; then
+        satirlar+=("$onceki önceki ölçümde sorunluydu; şu an okunamıyor"); break
+      fi
+    done
+  done
+
+  hal="$(ik_kume "$(for satir in "${satirlar[@]}"; do echo "${satir%% *}"; done)")"
+  [[ "$hal" == - ]] && hal=temiz
+  yeni_gorulen="$(ik_kume "$gorulen" "$(ik_fark "$hal" "$bildirilen")")"
+  duzelen="$(ik_fark "$bildirilen" "$hal")"
+  arada="$(ik_fark "$(ik_fark "$yeni_gorulen" "$bildirilen")" "$hal")"
   # Yalnız disk marjı düşükse günde bir hatırlatma yeter.
   if [[ "$hal" == disk ]]; then tekrar_sn=86400; else tekrar_sn="$SESSIZLIK_SN"; fi
-  if [[ "$hal" != "$bildirilen" ]] || { [[ "$hal" != temiz ]] && (( simdi - an > tekrar_sn )); }; then
-    if [[ "$hal" == temiz ]]; then
-      baslik="Agent Sözlük işletim: düzeldi"; oncelik=default
-      govde="Önceki sorun (${bildirilen}) artık görünmüyor."
-    else
-      baslik="Agent Sözlük işletim: ${hal}"; oncelik=high
-      [[ "$hal" == disk ]] && oncelik=low
-      govde="$(printf '%s\n' "${satirlar[@]}")
+  if [[ "$hal" != "$bildirilen" || "$arada" != - ]]; then gonder=1
+  elif [[ "$hal" != temiz ]] && (( simdi - an > tekrar_sn )); then gonder=1; fi
+
+  if (( ! gonder )); then
+    if [[ "$yeni_gorulen" != "$gorulen" ]]; then
+      atomik_yaz "$ISLETIM_DURUM" "$bildirilen $an $yeni_gorulen" || korluk=1
+    fi
+    (( korluk )) && return 3
+    return 0
+  fi
+
+  # Ön kayıt: gönderim yarıda kalsa ya da ntfy reddetse de görülen sorun kaybolmaz.
+  if ! atomik_yaz "$ISLETIM_DURUM" "$bildirilen $an $yeni_gorulen"; then
+    hata_yaz "işletim durumu yazılamıyor; bildirim gönderilmedi"
+    return 3
+  fi
+  if [[ "$hal" == temiz ]]; then
+    baslik="Agent Sözlük işletim: düzeldi"; oncelik=default
+    govde="Önceki sorun ($(ik_kume "$duzelen" "$arada")) artık görünmüyor."
+  else
+    baslik="Agent Sözlük işletim: ${hal}"; oncelik=high
+    [[ "$hal" == disk ]] && oncelik=low
+    govde="$(printf '%s\n' "${satirlar[@]}")"
+    [[ "$duzelen" != - ]] && govde="${govde}
+Düzelen: ${duzelen}."
+    govde="${govde}
 Bak: systemctl list-timers 'agent-sozluk-*'; systemctl --failed"
-    fi
-    if bildir "$baslik" "$oncelik" warning "${govde}
+  fi
+  [[ "$arada" != - ]] && govde="${govde}
+Arada görülen, bildirimi doğrulanamayan: ${arada}."
+  if bildir "$baslik" "$oncelik" warning "${govde}
 $(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
-      atomik_yaz "$ISLETIM_DURUM" "$hal $simdi" || korluk=1
-    else
-      korluk=1
-    fi
+    atomik_yaz "$ISLETIM_DURUM" "$hal $simdi -" || korluk=1
+  else
+    korluk=1
   fi
   (( korluk )) && return 3
   return 0
@@ -887,27 +974,56 @@ $(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
 # Aynı birim için 6 saat içinde ikinci bildirim gönderilmez (beş dakikalık bakım
 # birimi bozulursa telefon her beş dakikada bir çalmasın; ntfy günlük sınırı da
 # böyle tükenmiştir). Gönderilemezse 3 döner: bildirim birimi de başarısız görünür.
+#
+# Bastırma kaydı `an gitti|bekliyor` (Astra 1. tur, 17 Ekim): gönderimden önce `bekliyor` yazılır,
+# gönderim ancak bu kayıt kalıcıysa yapılır; başarıdan sonra `gitti`. Böylece yazılamayan kayıt
+# sınırsız tekrar üretmez. Durum dizini (/var/lib) yazılamıyorsa (ör. disk dolu) kayıt birimin
+# kendi `RuntimeDirectory`'sine (tmpfs, `RuntimeDirectoryPreserve=yes`) düşer; ikisi de
+# yazılamıyorsa bildirim gönderilmez ve birim başarısız kalır (`systemctl --failed`).
+BILDIRIM_YEDEK_DIZINI="${ALARM_BILDIRIM_YEDEK_DIZINI:-/run/agent-sozluk-bildirim}"
+
+bastirma_oku() { # $1 dosya → "an hal" (geçersizse "0 yok")
+  local an hal
+  read -r an hal 2>/dev/null <"$1" || true
+  [[ "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || { echo "0 yok"; return; }
+  [[ "${hal:-}" =~ ^(gitti|bekliyor)$ ]] || hal=gitti
+  echo "$an $hal"
+}
+
 birim_bildir() {
-  local birim="$1" simdi dosya an
+  local birim="$1" simdi dosya yedek an hal kayit=""
   if [[ ! "$birim" =~ ^[A-Za-z0-9@._:-]{1,128}$ ]]; then
     hata_yaz "--bildir: geçersiz birim adı"; return 64
   fi
   simdi="${ALARM_SIMDI:-$(date +%s)}"
   atomik_yaz "${DURUM_DIZINI}/son-birim-hatasi" "$simdi $birim" || true
   dosya="${DURUM_DIZINI}/bildirim-${birim}"
-  an=""; read -r an 2>/dev/null <"$dosya" || true
-  if [[ "$an" =~ ^(0|[1-9][0-9]{0,11})$ ]] && (( an <= simdi && simdi - an <= SESSIZLIK_SN )); then
-    echo "agent-sozluk-alarm: ${birim} için bildirim $(( (simdi - an) / 60 )) dk önce gitti; tekrarı bastırıldı"
-    return 0
+  yedek="${BILDIRIM_YEDEK_DIZINI}/bildirim-${birim}"
+  for kayit in "$dosya" "$yedek"; do
+    read -r an hal <<<"$(bastirma_oku "$kayit")"
+    if [[ "$hal" == gitti ]] && (( an <= simdi && simdi - an <= SESSIZLIK_SN )); then
+      echo "agent-sozluk-alarm: ${birim} için bildirim $(( (simdi - an) / 60 )) dk önce gitti; tekrarı bastırıldı"
+      return 0
+    fi
+  done
+  if atomik_yaz "$dosya" "$simdi bekliyor"; then
+    kayit="$dosya"
+  elif atomik_yaz "$yedek" "$simdi bekliyor"; then
+    kayit="$yedek"; hata_yaz "durum dizini yazılamıyor; bastırma kaydı ${BILDIRIM_YEDEK_DIZINI} içinde"
+  else
+    hata_yaz "bastırma kaydı yazılamadı; ${birim} bildirimi gönderilmedi"
+    return 3
   fi
-  if bildir "Agent Sözlük: ${birim} başarısız" high warning \
+  if ! bildir "Agent Sözlük: ${birim} başarısız" high warning \
 "systemd birimi başarısız oldu ($(date -u '+%Y-%m-%d %H:%M UTC')).
 Bak: systemctl status ${birim}; journalctl -u ${birim} -n 50
 Aynı birim için 6 saat yeniden bildirilmez."; then
-    atomik_yaz "$dosya" "$simdi" || return 3
-    return 0
+    return 3
   fi
-  return 3
+  atomik_yaz "$kayit" "$simdi gitti" || return 3
+  # Yedek kayıtla gönderildi: bildirim gitti ama durum dizini sorunu sürüyor.
+  [[ "$kayit" == "$yedek" ]] && return 3
+  return 0
 }
 
 # Alt kontrol kendi süre sınırında, ayrı süreçte. Süre aşımı ya da sıfır dışı

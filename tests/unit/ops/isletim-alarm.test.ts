@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -60,6 +61,7 @@ function calistir(kip: string[], ortam: Record<string, string> = {}) {
       ALARM_NTFY_SUNUCU: "https://ntfy.example",
       ALARM_DURUM_DOSYASI: path.join(dizin, "durum", "durum"),
       ALARM_DISK_YOLU: "/sahte",
+      ALARM_BILDIRIM_YEDEK_DIZINI: path.join(dizin, "run"),
       ALARM_SIMDI: String(T),
       SAHTE_DIZIN: dizin,
       SAHTE_ACILIS: String(T - 100 * 3600),
@@ -68,8 +70,11 @@ function calistir(kip: string[], ortam: Record<string, string> = {}) {
       ...ortam,
     },
   });
+  // Durum dosyası yerine dizin konan (yazılamayan durum) testlerde boş okunur.
   const oku = (ad: string) =>
-    existsSync(path.join(dizin, ad)) ? readFileSync(path.join(dizin, ad), "utf8") : "";
+    existsSync(path.join(dizin, ad)) && statSync(path.join(dizin, ad)).isFile()
+      ? readFileSync(path.join(dizin, ad), "utf8")
+      : "";
   const bildirimler = oku("curl.log").split("\n---\n").filter(Boolean);
   rmSync(path.join(dizin, "curl.log"), { force: true });
   return {
@@ -151,7 +156,7 @@ describe("işletim kontrolü: son başarılı koşunun yaşı", () => {
     expect(ilk.bildirimler[0]).toContain("Title: Agent Sözlük işletim: backup");
     expect(ilk.bildirimler[0]).toContain("Priority: high");
     expect(ilk.bildirimler[0]).toContain("backup son koşu başarısız (Result=exit-code, çıkış 226)");
-    expect(ilk.durum).toBe(`backup ${T}`);
+    expect(ilk.durum).toBe(`backup ${T} -`);
     expect(
       calistir(["--yalniz-isletim"], { ...YALNIZ_YEDEK, ALARM_SIMDI: String(T + 900) }).bildirimler,
     ).toEqual([]);
@@ -256,17 +261,91 @@ describe("işletim kontrolü: migration disk marjı", () => {
 });
 
 describe("işletim kontrolü: bildirim gönderilemezse", () => {
-  it("3 döner, durumu yazmaz ve son-bildirim-hatasi dosyasına kaydeder", () => {
+  it("3 döner, görüleni teslim edilmedi diye saklar ve son-bildirim-hatasi dosyasına kaydeder", () => {
     hepsiSaglam();
     birim("backup", { Result: "exit-code", ActiveState: "failed" });
     const sonuc = calistir(["--yalniz-isletim"], { SAHTE_CURL_HATA: "1" });
     expect(sonuc.status).toBe(3);
-    expect(sonuc.durum).toBe("");
+    // bildirilen değişmedi; görülen sorun bekliyor.
+    expect(sonuc.durum).toBe("temiz 0 backup");
     expect(sonuc.oku(path.join("durum", "son-bildirim-hatasi"))).toMatch(
       /^\d+ yalniz-isletim 22\n$/u,
     );
     // Sonraki koşu yeniden dener.
     expect(calistir(["--yalniz-isletim"]).bildirimler).toHaveLength(1);
+  });
+
+  // Astra 1. tur (17 Ekim): ntfy 429 iken görülen ve sonraki koşuya kadar düzelen arıza kaybolmaz.
+  it("gönderilemeyen arıza sonraki koşuda düzelmiş olsa da 'arada görülen' diye bir kez söylenir", () => {
+    hepsiSaglam();
+    birim("backup", { Result: "exit-code", ActiveState: "failed" });
+    expect(calistir(["--yalniz-isletim"], { SAHTE_CURL_HATA: "1" }).status).toBe(3);
+    birim("backup", {});
+    const sonraki = calistir(["--yalniz-isletim"], { ALARM_SIMDI: String(T + 900) });
+    expect(sonraki.status, sonraki.stderr).toBe(0);
+    expect(sonraki.bildirimler).toHaveLength(1);
+    expect(sonraki.bildirimler[0]).toContain("Title: Agent Sözlük işletim: düzeldi");
+    expect(sonraki.bildirimler[0]).toContain("Arada görülen, bildirimi doğrulanamayan: backup.");
+    expect(sonraki.durum).toBe(`temiz ${T + 900} -`);
+    expect(calistir(["--yalniz-isletim"], { ALARM_SIMDI: String(T + 1800) }).bildirimler).toEqual(
+      [],
+    );
+  });
+
+  it("durum yazılamıyorsa bildirim göndermez (sınırsız tekrar yok) ve 3 döner", () => {
+    hepsiSaglam();
+    birim("backup", { Result: "exit-code", ActiveState: "failed" });
+    mkdirSync(path.join(dizin, "durum", "durum-isletim"), { recursive: true });
+    const sonuc = calistir(["--yalniz-isletim"]);
+    expect(sonuc.status).toBe(3);
+    expect(sonuc.bildirimler).toEqual([]);
+    expect(sonuc.stderr).toContain("işletim durumu yazılamıyor; bildirim gönderilmedi");
+  });
+});
+
+// Astra 1. tur (17 Ekim): okunamayan kaynak "düzeldi" üretmez, önceki durumu korur.
+describe("işletim kontrolü: okunamayan kaynak önceki arızayı silmez", () => {
+  function onceArizaBildirildi() {
+    hepsiSaglam();
+    birim("backup", { Result: "exit-code", ActiveState: "failed" });
+    const ilk = calistir(["--yalniz-isletim"]);
+    expect(ilk.bildirimler).toHaveLength(1);
+    expect(ilk.durum).toBe(`backup ${T} -`);
+  }
+
+  it("systemd hiç okunamazsa düzeldi göndermez, durumu değiştirmez ve 3 döner", () => {
+    onceArizaBildirildi();
+    const sonuc = calistir(["--yalniz-isletim"], {
+      SAHTE_SYSTEMCTL_HATA: "1",
+      ALARM_SIMDI: String(T + 900),
+    });
+    expect(sonuc.status).toBe(3);
+    expect(sonuc.bildirimler).toEqual([]);
+    expect(sonuc.durum).toBe(`backup ${T} -`);
+  });
+
+  it("tek birim okunamazsa yalnız onun önceki arızası taşınır; hatırlatma 'okunamıyor' der", () => {
+    onceArizaBildirildi();
+    birim("backup", { LoadState: "garip" });
+    const sonuc = calistir(["--yalniz-isletim"], { ALARM_SIMDI: String(T + 6 * 3600 + 1) });
+    expect(sonuc.status).toBe(3);
+    expect(sonuc.bildirimler).toHaveLength(1);
+    expect(sonuc.bildirimler[0]).toContain("Title: Agent Sözlük işletim: backup");
+    expect(sonuc.bildirimler[0]).toContain("backup önceki ölçümde sorunluydu; şu an okunamıyor");
+    expect(sonuc.bildirimler[0]).not.toContain("düzeldi");
+  });
+
+  it("disk marjı ölçülemezse önceki disk uyarısı düzeldi sayılmaz", () => {
+    hepsiSaglam();
+    const dusuk = { SAHTE_BOS_KIB: String((17.5 * GIB) / 1024) };
+    expect(calistir(["--yalniz-isletim"], dusuk).durum).toBe(`disk ${T} -`);
+    const sonuc = calistir(["--yalniz-isletim"], {
+      SAHTE_DF_HATA: "1",
+      ALARM_SIMDI: String(T + 900),
+    });
+    expect(sonuc.status).toBe(3);
+    expect(sonuc.bildirimler).toEqual([]);
+    expect(sonuc.durum).toBe(`disk ${T} -`);
   });
 });
 
@@ -300,6 +379,28 @@ describe("--bildir (agent-sozluk-bildirim@.service)", () => {
     expect(
       calistir(["--bildir", birimAdi], { ALARM_SIMDI: String(T + 60) }).bildirimler,
     ).toHaveLength(1);
+  });
+
+  // Astra 1. tur (17 Ekim): kayıt kalıcı değilse gönderim yapılmaz; /var/lib yazılamıyorsa
+  // bastırma kaydı birimin /run dizinine düşer ve tekrar yine 6 saat bastırılır.
+  it("durum dizini yazılamıyorsa /run yedek kaydıyla bir kez gönderir ve 3 döner", () => {
+    mkdirSync(path.join(dizin, "durum", `bildirim-${birimAdi}`), { recursive: true });
+    mkdirSync(path.join(dizin, "run"));
+    const ilk = calistir(["--bildir", birimAdi]);
+    expect(ilk.status).toBe(3);
+    expect(ilk.bildirimler).toHaveLength(1);
+    expect(ilk.oku(path.join("run", `bildirim-${birimAdi}`))).toBe(`${T} gitti\n`);
+    const tekrar = calistir(["--bildir", birimAdi], { ALARM_SIMDI: String(T + 900) });
+    expect(tekrar.status).toBe(0);
+    expect(tekrar.bildirimler).toEqual([]);
+  });
+
+  it("hiçbir bastırma kaydı yazılamıyorsa göndermez ve 3 döner", () => {
+    mkdirSync(path.join(dizin, "durum", `bildirim-${birimAdi}`), { recursive: true });
+    const sonuc = calistir(["--bildir", birimAdi]);
+    expect(sonuc.status).toBe(3);
+    expect(sonuc.bildirimler).toEqual([]);
+    expect(sonuc.stderr).toContain("bastırma kaydı yazılamadı");
   });
 
   it("geçersiz birim adını reddeder", () => {

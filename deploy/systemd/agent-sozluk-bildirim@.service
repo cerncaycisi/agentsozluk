@@ -15,6 +15,11 @@ User=deploy
 Group=deploy
 StateDirectory=agent-sozluk-alarm
 StateDirectoryMode=0700
+# /var/lib yazılamıyorsa (ör. disk dolu) 6 saatlik bastırma kaydı buraya düşer: tmpfs, açılışa
+# kadar korunur. Kayıt kalıcı değilse bildirim hiç gönderilmez (sınırsız tekrar olmasın).
+RuntimeDirectory=agent-sozluk-bildirim
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
 Environment=ALARM_DURUM_DOSYASI=/var/lib/agent-sozluk-alarm/durum
 EnvironmentFile=/etc/agent-sozluk-alarm.env
 ExecStart=/opt/agent-sozluk/scripts/canlilik-alarmi.sh --bildir %i

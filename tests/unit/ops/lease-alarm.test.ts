@@ -1029,6 +1029,19 @@ describe("lease kontrolü canlılık alarmını bozamaz (Sol, 21 Eylül)", () =>
     expect(calistir([], { canlilik: "9999 120" }).bildirimler).toHaveLength(1);
   });
 
+  // Astra 1. tur (17 Ekim): kaydedilemeyen bildirim her 15 dakikada yeniden giderdi.
+  it("canlılık durumu yazılamıyorsa bildirim göndermez ve 3 döner", () => {
+    mkdirSync(path.join(dizin, "durum", "durum"), { recursive: true });
+    const alarm = calistir([], { canlilik: "9999 120" });
+    expect(alarm.status).toBe(3);
+    expect(alarm.bildirimler).toEqual([]);
+    expect(alarm.stderr).toContain("canlılık durumu yazılamıyor; bildirim gönderilmedi");
+    // Temiz koşuda da temiz durumu yazılamıyorsa koşu başarısızdır.
+    const temiz = calistir([]);
+    expect(temiz.status).toBe(3);
+    expect(temiz.stderr).toContain("durum yazılamadı");
+  });
+
   it("gönderilemeyen lease bildirimi canlılık temizken de 3 döner", () => {
     const sonuc = calistir([kayit(4500)], { curlHata: true });
     expect(sonuc.status).toBe(3);

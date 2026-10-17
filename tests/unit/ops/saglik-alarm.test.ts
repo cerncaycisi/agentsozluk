@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -48,8 +49,11 @@ function calistir(ozet: string, simdi = 1_800_000_000, ekOrtam: Record<string, s
       },
     },
   );
+  // Durum dosyası yerine dizin konan (yazılamayan durum) testlerde boş okunur.
   const oku = (ad: string) =>
-    existsSync(path.join(dizin, ad)) ? readFileSync(path.join(dizin, ad), "utf8") : "";
+    existsSync(path.join(dizin, ad)) && statSync(path.join(dizin, ad)).isFile()
+      ? readFileSync(path.join(dizin, ad), "utf8")
+      : "";
   const bildirimler = oku("curl.log").split("\n---\n").filter(Boolean);
   rmSync(path.join(dizin, "curl.log"), { force: true });
   return {
@@ -164,6 +168,15 @@ describe("sağlık özeti", () => {
     expect(duzeldi.bildirimler[0]).toContain("Title: Agent Sözlük sağlık: düzeldi");
     expect(duzeldi.durum).toMatch(/^temiz /);
     expect(calistir(SAGLAM, t + 1800).bildirimler).toEqual([]);
+  });
+
+  // Astra 1. tur (17 Ekim): durum yazılamazsa koşu başarısızdır ve bildirim sınırsız tekrarlanmaz.
+  it("durum yazılamıyorsa bildirim göndermez ve 3 döner", () => {
+    mkdirSync(path.join(dizin, "durum", "durum-saglik"), { recursive: true });
+    const sonuc = calistir("SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000");
+    expect(sonuc.status).toBe(3);
+    expect(sonuc.bildirimler).toEqual([]);
+    expect(sonuc.stderr).toContain("sağlık durumu yazılamıyor; bildirim gönderilmedi");
   });
 
   it("gönderim başarısızsa teslim edilmedi diye yazar; sonraki koşu yeniden dener", () => {

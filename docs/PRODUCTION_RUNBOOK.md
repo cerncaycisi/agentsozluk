@@ -654,7 +654,10 @@ kendi bölümlerindeki komutla yeniden kurulur. `agent-sozluk-bildirim@.service`
 ikinci bir dış kanal yok. Aynı birim için 6 saatte en çok bir bildirim gider. Hata gönderimden önce
 `/var/lib/agent-sozluk-alarm/son-birim-hatasi` dosyasına yazılır; gönderim başarısızsa bildirim
 birimi de başarısız kalır ve `son-bildirim-hatasi` (an, kaynak, curl çıkışı) güncellenir. ntfy
-sınırı dolduğunda bu iki dosya ve `systemctl --failed` son kanıttır:
+sınırı dolduğunda bu iki dosya ve `systemctl --failed` son kanıttır. Bastırma kaydı gönderimden
+önce yazılır; yazılamazsa bildirim gönderilmez (sınırsız tekrar olmasın). `/var/lib`
+yazılamıyorsa (ör. disk dolu) kayıt birimin `/run/agent-sozluk-bildirim` dizinine düşer; o da
+yazılamıyorsa yalnız `systemctl --failed` kalır:
 
 ```sh
 systemctl --failed 'agent-sozluk-*'
@@ -666,7 +669,11 @@ okunamadı ya da bozuk, lease logu okunamadı, alt kontrol süre aşımı, bildi
 çıkar; birim başarısız görünür (`SuccessExitStatus=0 2`) ve OnFailure çalışır. İşletim kontrolü
 `backup` 26 sa, `ilgili` 26 sa, `sayac` 2 sa, `indexnow` 3 sa, `karagoz` 26 sa içinde son başarılı
 koşu (`systemctl show` `Result` ve `ExecMainExitTimestamp`) arar; eksik, başarısız ya da eski
-koşuyu bildirir. Bilerek kurulmayan birim `/etc/agent-sozluk-alarm.env` içinde
+koşuyu bildirir. Okunamayan birimin ya da ölçülemeyen disk marjının önceki sorunu "düzeldi"
+sayılmaz; "okunamıyor" diye taşınır ve koşu 3 ile biter. Gönderilemeyen bildirimin sorunu durumda
+"görülen" olarak kalır ve sonraki koşuda (düzelmiş olsa da "arada görülen" diye) söylenir.
+Canlılık, sağlık ve işletim kontrolleri durum dosyasını yazamazsa bildirim göndermez ve 3 ile
+çıkar; haberi OnFailure bildirimi taşır. Bilerek kurulmayan birim `/etc/agent-sozluk-alarm.env` içinde
 `ALARM_BIRIMLER=` ile listeden çıkarılır. Aynı kontrol migration disk marjını
 (boş − (3 × `pg_database_size` + 1 GiB)) journal'a `ALARM_DISK_MARJI` satırıyla basar ve 2 GiB'in
 altında günde bir düşük öncelikli uyarı gönderir; dağıtımı engellemez, kapı
