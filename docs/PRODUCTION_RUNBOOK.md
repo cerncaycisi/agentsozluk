@@ -2359,6 +2359,46 @@ sudo systemctl enable --now agent-sozluk-karagoz.timer
 Günlük çalışma yönetici kimliği istemez. Karagöz hesabı yoksa, yazar onayı verilmişse ya da GAMMAZ
 yeteneği alınmışsa çalışma `FORBIDDEN` ile durur ve hiçbir rapor açmaz.
 
+## İlgili başlıklar (gece hesabı)
+
+Gökhan kararı, 17 Ekim 2026: "Yalnız emin olunanlar". Başlık sayfasında sayfalamanın altında en
+çok üç "ilgili başlıklar" bağlantısı gösterilir; liste boşsa blok hiç çizilmez. Bağlantı = yazarın
+kendi bkz'si (uygun bir başlığa) ∪ (başlık benzerliği ilk 3 ∩ içerik benzerliği ilk 3). Üretimdeki
+kör ölçümde iki sinyalin birlikte önerdiği çiftler %91–100 ilgiliydi; tek sinyal %30–52'de kaldı.
+
+- **Uygun başlık:** aktif, birleşmemiş ve G4'e göre ince olmayan başlık. Hem kaynak hem hedef
+  aynı kümeden gelir; noindex ince sayfaya bağlantı verilmez. Sayfa okurken hedefin hâlâ aktif ve
+  birleşmemiş olduğunu yeniden denetler.
+- **Tablo:** `topic_related_links` (migration `20261017120000_topic_related_links`, yalnız ek
+  yapan; A5 denetçisinden geçer). Gece işi tabloyu tek transaction'da siler ve yeniden yazar;
+  bir adım düşerse önceki küme kalır.
+- **Sınırlar:** tek ifade 300 sn, transaction 13 dk, systemd 15 dk; kaynaklar 250'lik partilerle.
+  Yerel ölçek denemesi (17 Ekim, PGlite/wasm, 7.600 sentetik başlık, 38.000 entry): toplam
+  265 sn (hazırlık 29, başlık sinyali 170, içerik sinyali 64, bkz 1); üretim ölçümü değildir.
+  Çıktı tek JSON satırı: `sourceTopics`, `topicsWithLinks`, `bkzLinks`, `signalLinks`,
+  `totalLinks`, `durationMs`. Hata `ILGILI_FAILED code=…` ile 1 çıkış kodudur.
+- **Robots, noindex ve site haritası değişmez.** Bağlantılar düz iç bağlantıdır.
+
+Çalıştırma app konteynerinde. **Zamanlayıcı, Gökhan blok ekran görüntüsünü onaylamadan
+kurulmaz ve açılmaz.** Onaya kadar yalnız liste modu çalışır; tablo boş kaldıkça sayfada blok
+görünmez.
+
+```bash
+m2_compose=(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml)
+# yalnız hesaplar, yazmaz; --ornek=10 on kaynak başlığı ve bağlantılarını adıyla basar
+"${m2_compose[@]}" exec -T app node node_modules/tsx/dist/cli.mjs scripts/ilgili-basliklar.ts --ornek=10 </dev/null
+# Gökhan onayından sonra: bir kez elle yaz, sonra gece zamanlayıcısı (06:30 TSİ)
+"${m2_compose[@]}" exec -T app node node_modules/tsx/dist/cli.mjs scripts/ilgili-basliklar.ts --uygula </dev/null
+A=/opt/agent-sozluk/app
+sudo install -o root -g root -m 0644 $A/deploy/systemd/agent-sozluk-ilgili.service $A/deploy/systemd/agent-sozluk-ilgili.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now agent-sozluk-ilgili.timer
+```
+
+Geri almak için zamanlayıcıyı `disable --now` ile kapat; tabloda kalan son küme sayfada görünmeye
+devam eder. Bloğu sayfadan kaldırmak tablonun boşaltılmasını ister: tablo türetilmiş veridir ve
+bir sonraki `--uygula` yeniden kurar, ama boşaltma yine de onaylı bir üretim yazımıdır.
+
 ## IndexNow bildirimi
 
 Gökhan onayı, 12 Ekim 2026 ("indexnow, faydalı bişise kur"); plandaki karşılığı sıra 4. Yeni ya da

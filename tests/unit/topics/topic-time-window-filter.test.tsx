@@ -64,6 +64,9 @@ vi.mock("@/modules/topics/application/topics", () => ({
   getTopicSnippetSource: async () => ({ body: "snippet kaynağı entry gövdesi" }),
   resolveUnopenedTopicRoute: vi.fn(),
 }));
+vi.mock("@/modules/topics/application/related-topics", () => ({
+  getRelatedTopicLinks: async () => [],
+}));
 vi.mock("@/modules/indexing", () => ({
   getEntryContentDates: async (_client: unknown, entries: Array<{ id: string; createdAt: Date }>) =>
     new Map(entries.map((entry) => [entry.id, entry.createdAt])),

@@ -106,7 +106,14 @@ güvenilir insan. Strateji sıra 4'te.
       - Sonra başlık sayfasında "ilgili başlıklar"; okur yüzeyi, önce ekran görüntüsü.
         Kopyada ölçüm (13 Ekim): başlık benzerliği tek başına zayıf ("ses tasarımı" → "yol
         tasarımı"); bkz bağı ise 2+ entry'li 3.317 başlığın yalnız 444'ünde (%13) var, 3+ bağ 75
-        başlıkta. Sinyal seçimi Gökhan'a kanıtla götürülür; kod yazılmadı.
+        başlıkta.
+      - **17 Ekim, Gökhan kararı: "Yalnız emin olunanlar".** Üretimde 20 dolu başlık, 109 aday
+        çift, iki kör hakem: başlık benzerliği tek başına %30–33, içerik benzerliği %45–52, ikisinin
+        birlikte önerdiği çiftler %91–100 ilgili. Bağlantı = yazarın bkz'si ∪ (başlık ilk 3 ∩ içerik
+        ilk 3), en çok üç; yoksa blok yok. Kod `feat/ilgili-basliklar-20261017` dalında: yalnız ek
+        yapan `topic_related_links` migration'ı, gece işi `scripts/ilgili-basliklar.ts` ve
+        `agent-sozluk-ilgili.{service,timer}` (kurulmadı). Sırada: hakem incelemesi, PR, Gökhan'a
+        ekran görüntüsü; zamanlayıcı onaydan sonra açılır.
    6. **4f — Talebi olan konulara yaz (kaynak karışımı).** 12 Ekim ölçümü: 4–20. sıradaki
       başlıkları derinleştirmenin getirisi küçük (5'ten fazla gösterim alan yalnız 76 başlık).
       Türkçe kaynaktan açılan başlık, global kaynaktan açılanın iki katı gösterim alıyor; tıklar
