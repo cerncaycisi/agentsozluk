@@ -107,15 +107,12 @@ export async function computeRelatedTopicLinks(
       if (!(await tryLockRelatedTopicComputation(transaction)))
         return { status: "ALREADY_RUNNING" };
       await limitRelatedTopicStatements(transaction);
-      /*
-        computedAt veritabanının transaction başlangıç saatidir; okuma bunu entry'lerin
-        silinme/gizlenme/bastırılma zamanlarıyla karşılaştırır. Hesabın hiçbir ifadesi bu
-        andan önceki bir görüntüyü okumaz; sonradan gelen değişiklik bağı düşürür.
-      */
+      // Yalnız operasyon kaydı; tazelik denetimi parmak iziyledir (bkz. repository).
       const computedAt = await currentTransactionTime(transaction);
       const topicCount = await prepareRelatedTopicWorkspace(transaction);
       const topics = await listRelatedTopicWorkspaceTopics(transaction);
       const titles = new Map(topics.map((topic) => [topic.id, topic.title] as const));
+      const fingerprints = new Map(topics.map((topic) => [topic.id, topic.fingerprint] as const));
       const isEligible = (topicId: string) => titles.has(topicId);
       const plans = new Map<string, PlannedRelatedTopicLink[]>();
       for (let index = 0; index < topics.length; index += batchSize) {
@@ -144,7 +141,7 @@ export async function computeRelatedTopicLinks(
         }
       }
       const written = input.apply
-        ? await replaceRelatedTopicLinks(transaction, plans, computedAt)
+        ? await replaceRelatedTopicLinks(transaction, plans, fingerprints, computedAt)
         : 0;
       return {
         status: "OK",
@@ -156,8 +153,49 @@ export async function computeRelatedTopicLinks(
         plans,
       };
     },
-    { timeout: RELATED_TOPIC_TRANSACTION_TIMEOUT_MS, maxWait: 10_000 },
+    {
+      timeout: RELATED_TOPIC_TRANSACTION_TIMEOUT_MS,
+      maxWait: 10_000,
+      /*
+        Tek snapshot (Astra, 17 Ekim, 2. tur): vektörler, parmak izleri ve bkz gövdeleri aynı
+        görüntüden okunur. READ COMMITTED'da her ifade yeni snapshot alır; iki ifade arasında
+        commit eden moderasyon, izi saklanmış ama başka metinden türemiş bağ bırakabilirdi.
+        Tabloya yalnız bu hesap yazar ve danışma kilidi ikincisini dışlar; serileştirme hatası
+        beklenmez.
+      */
+      isolationLevel: "RepeatableRead",
+    },
   );
+}
+
+/** Uygula modunda kilit çakışmasında yeniden deneme (Astra, 17 Ekim, 2. tur). */
+export const RELATED_TOPIC_LOCK_RETRIES = 10;
+export const RELATED_TOPIC_LOCK_RETRY_DELAY_MS = 60_000;
+
+/**
+ * Uygula modunda kilit başkasındaysa `retries` kez `delayMs` bekleyip yeniden dener; liste
+ * modu beklemez. Son sonuç ve deneme sayısı döner; kilit hâlâ alınamadıysa sonuç
+ * `ALREADY_RUNNING`'dir ve betik bunu başarısızlık sayar.
+ */
+export async function computeRelatedTopicLinksWithRetry(
+  client: DatabaseClient,
+  input: { apply: boolean; batchSize?: number },
+  options: {
+    retries?: number;
+    delayMs?: number;
+    sleep?: (milliseconds: number) => Promise<void>;
+  } = {},
+): Promise<{ result: RelatedTopicComputationResult; attempts: number }> {
+  const retries = input.apply ? (options.retries ?? RELATED_TOPIC_LOCK_RETRIES) : 0;
+  const delayMs = options.delayMs ?? RELATED_TOPIC_LOCK_RETRY_DELAY_MS;
+  const sleep =
+    options.sleep ??
+    ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+  for (let attempt = 1; ; attempt += 1) {
+    const result = await computeRelatedTopicLinks(client, input);
+    if (result.status === "OK" || attempt > retries) return { result, attempts: attempt };
+    await sleep(delayMs);
+  }
 }
 
 export interface RelatedTopicLink {

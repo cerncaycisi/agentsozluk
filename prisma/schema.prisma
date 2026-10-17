@@ -1670,17 +1670,21 @@ enum TopicRelatedLinkSource {
 }
 
 model TopicRelatedLink {
-  id             String                 @id @db.Uuid
-  topicId        String                 @db.Uuid
-  relatedTopicId String                 @db.Uuid
-  rank           Int
-  source         TopicRelatedLinkSource
-  computedAt     DateTime               @default(now()) @db.Timestamptz(3)
+  id                String                 @id @db.Uuid
+  topicId           String                 @db.Uuid
+  relatedTopicId    String                 @db.Uuid
+  rank              Int
+  source            TopicRelatedLinkSource
+  computedAt        DateTime               @default(now()) @db.Timestamptz(3)
   // Yalnız BKZ: bağı kuran entry. Okuma anında hâlâ görünür olmalı; yoksa bağ gösterilmez.
-  sourceEntryId  String?                @db.Uuid
-  topic          Topic                  @relation("TopicRelatedLinkSource", fields: [topicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  relatedTopic   Topic                  @relation("TopicRelatedLinkTarget", fields: [relatedTopicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  sourceEntry    Entry?                 @relation(fields: [sourceEntryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  sourceEntryId     String?                @db.Uuid
+  // Hesap snapshot'ında kaynak ve hedefin görünür entry parmak izi; okuma yeniden hesaplar,
+  // fark varsa bağ gösterilmez (Astra, 17 Ekim, 2. tur).
+  sourceFingerprint String
+  targetFingerprint String
+  topic             Topic                  @relation("TopicRelatedLinkSource", fields: [topicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  relatedTopic      Topic                  @relation("TopicRelatedLinkTarget", fields: [relatedTopicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sourceEntry       Entry?                 @relation(fields: [sourceEntryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@unique([topicId, relatedTopicId])
   @@index([topicId, rank])

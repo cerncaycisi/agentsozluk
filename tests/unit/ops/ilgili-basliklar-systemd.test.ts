@@ -30,15 +30,17 @@ describe("ilgili başlıklar gece birimi", () => {
     expect(body).toMatch(/^User=deploy$/mu);
     expect(body).toMatch(/^Group=deploy$/mu);
     expect(body).toContain(
-      "ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app timeout -k 30 840 node node_modules/tsx/dist/cli.mjs scripts/ilgili-basliklar.ts --uygula",
+      "ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app timeout -k 30 1620 node node_modules/tsx/dist/cli.mjs scripts/ilgili-basliklar.ts --uygula",
     );
     expect(body).toMatch(/^RuntimeDirectory=agent-sozluk-ilgili$/mu);
     expect(body).toMatch(/^Environment=DOCKER_CONFIG=\/run\/agent-sozluk-ilgili$/mu);
     expect(body).toMatch(/^RestrictAddressFamilies=AF_UNIX$/mu);
     expect(body).toMatch(/^IPAddressDeny=any$/mu);
-    expect(body).toMatch(/^TimeoutStartSec=15min$/mu);
-    // Konteynerdeki süreç systemd sınırından önce ölür: 840 + 30 sn < 15 dk.
-    expect(840 + 30).toBeLessThan(15 * 60);
+    expect(body).toMatch(/^TimeoutStartSec=30min$/mu);
+    // Konteynerdeki süreç systemd sınırından önce ölür: 1620 + 30 sn < 30 dk; içine kilit
+    // beklemesi (10 × 60 sn) ve 13 dakikalık hesap transaction'ı sığar.
+    expect(1620 + 30).toBeLessThan(30 * 60);
+    expect(10 * 60 + 13 * 60).toBeLessThan(1620);
     expect(body).toMatch(/^Nice=15$/mu);
     expect(body).toMatch(/^SyslogIdentifier=agent-sozluk-ilgili$/mu);
     expect(service).not.toMatch(/(?:DATABASE_URL=|APP_SECRET=|PASSWORD=|TOKEN=)/u);
@@ -73,6 +75,9 @@ describe("ilgili başlıklar gece birimi", () => {
     expect(script).toContain('process.argv.includes("--uygula")');
     expect(script).toContain("--ornek=");
     expect(script).toContain('status: "ALREADY_RUNNING"');
+    // Uygula modunda kilit yeniden denemelerden sonra da alınamazsa birim başarısız görünür.
+    expect(script).toContain("const ALREADY_RUNNING_EXIT_CODE = 75;");
+    expect(script).toContain("if (apply) process.exitCode = ALREADY_RUNNING_EXIT_CODE;");
   });
 
   it("runbook kurulumu karagöz'ün yanında ve onay kapısıyla anlatır", () => {
@@ -89,6 +94,10 @@ describe("ilgili başlıklar gece birimi", () => {
     expect(text).toContain("20261017120000_topic_related_links");
     expect(text).toContain("Robots, noindex ve site haritası değişmez.");
     expect(text).toContain('{"status":"ALREADY_RUNNING"}');
+    const prose = text.replace(/\s+/gu, " ");
+    expect(prose).toContain("`--uygula` 60 sn arayla 10 kez yeniden dener");
+    expect(prose).toContain("75 (EX_TEMPFAIL) ile çıkar");
+    expect(prose).toContain("`timeout -k 30 1620`");
   });
 
   it("geri alma sırası: zamanlayıcı, servis, süreç ve kilit denetimi, ancak sonra boşaltma", () => {

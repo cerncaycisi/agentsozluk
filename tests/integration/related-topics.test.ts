@@ -26,8 +26,9 @@ import {
   içerikçe benzeyenler, bkz hedefleri ve uygun olmayan (ince, birleşmiş, gizli) başlıklar. İçerik
   sinyali df ≤ N'nin %5'i şartı taşıdığı için küme 80 dolgu başlıkla büyütülür.
 
-  Okuma anı denetimleri (Astra, 17 Ekim, 1. tur): hesaptan sonra silinen, gizlenen, düzenlenen
-  ya da bastırılan entry ve incelen başlık bağı düşürür.
+  Okuma anı denetimleri (Astra, 17 Ekim, 1. ve 2. tur): kaynak ya da hedefin görünür entry
+  parmak izi hesaptakinden farklıysa (silme, gizleme, bastırma, düzenleme, incelme) bağ düşer.
+  "[iki bağlantı]" testleri ikinci bir veritabanı bağlantısı ister; yalnız gerçek PostgreSQL'de.
 */
 
 let authorId = "";
@@ -316,7 +317,7 @@ describe("ilgili başlıklar gece hesabı", () => {
     yazmadan "zaten çalışıyor" döner. Tek oturumlu PGlite'ta danışma kilidi aynı oturuma yeniden
     verildiği için bu test yalnız gerçek PostgreSQL'de (CI) anlamlıdır.
   */
-  it("başka bir hesap kilidi tutarken ALREADY_RUNNING döner ve tabloya dokunmaz", async () => {
+  it("[iki bağlantı] başka bir hesap kilidi tutarken ALREADY_RUNNING döner ve tabloya dokunmaz", async () => {
     await seed();
     await compute(true);
     const before = await integrationDatabase.topicRelatedLink.findMany({ orderBy: { id: "asc" } });
@@ -472,7 +473,35 @@ describe("ilgili başlıklar sayfa okuması", () => {
     ]);
   });
 
-  it("bkz entry'si hesaptan sonra düzenlenirse ya da bilinmiyorsa yalnız o BKZ bağı düşer", async () => {
+  it("hedefte bir entry gövdesi hesaptan sonra düzenlenirse yalnız o hedefe giden SIGNAL düşer", async () => {
+    const { topics } = await seededAndComputed();
+    await integrationDatabase.entry.update({
+      where: { id: topics.ikiSinyal.entryIds[0]! },
+      data: {
+        body: "Batarya kapasitesi artık başka bir ölçüyle anlatılıyor.",
+        normalizedBody: "batarya kapasitesi artık başka bir ölçüyle anlatılıyor",
+      },
+    });
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
+      link(topics.toplu),
+    ]);
+  });
+
+  it("kaynakta bir entry gövdesi hesaptan sonra düzenlenirse SIGNAL dahil bütün bağlar düşer", async () => {
+    const { topics } = await seededAndComputed();
+    // bkz'leri taşımayan bir düzenleme bile metni değiştirir; sinyal o metinden türemiş olabilir.
+    await integrationDatabase.entry.update({
+      where: { id: topics.kaynak.entryIds[0]! },
+      data: {
+        body: "Elektrikli araçlarda menzil hesabı değişti. (bkz: şehir içi ulaşım)",
+        normalizedBody: "elektrikli araçlarda menzil hesabı değişti",
+      },
+    });
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([]);
+  });
+
+  it("gövdeyi değiştirmeyen revizyon kaydı bağı düşürmez; kaynak entry'si bilinmeyen BKZ düşer", async () => {
     const { topics, after } = await seededAndComputed();
     await integrationDatabase.entryRevision.create({
       data: {
@@ -483,6 +512,7 @@ describe("ilgili başlıklar sayfa okuması", () => {
       },
     });
     expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
       link(topics.toplu),
       link(topics.ikiSinyal),
     ]);
@@ -491,13 +521,14 @@ describe("ilgili başlıklar sayfa okuması", () => {
       data: { sourceEntryId: null },
     });
     expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
       link(topics.ikiSinyal),
     ]);
   });
 
   /*
-    İncelme kuralı tek başına: silinme zamanı hesaptan ÖNCEYE alınır ki "hesaptan sonra değişti"
-    kuralı devreye girmesin ve yalnız G4 denetimi sınansın.
+    İncelme parmak izine de yansır; silinme zamanı hesaptan ÖNCEYE alınsa bile (zaman damgasına
+    bakılmaz) bağ düşer.
   */
   it("hedef incelince bağı gösterilmez", async () => {
     const { topics, before } = await seededAndComputed();
@@ -519,5 +550,41 @@ describe("ilgili başlıklar sayfa okuması", () => {
       data: { status: "DELETED", deletedAt: before },
     });
     expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([]);
+  });
+
+  /*
+    İki bağlantılı (Astra, 17 Ekim, 2. tur): moderasyon transaction'ı entry'yi gizler ama commit
+    etmez; hesap başka bağlantıda koşar ve entry'yi görünür görür; gizleme sonra commit eder.
+    Zaman damgası bunu kaçırıyordu; parmak izi yakalar. Tek oturumlu PGlite'ta açık transaction
+    öteki bağlantıyı beklettiği için yalnız gerçek PostgreSQL'de (CI) koşar.
+  */
+  it("[iki bağlantı] hesapla çakışan ve sonra commit eden gizleme bağı düşürür", async () => {
+    const topics = await seed();
+    const moderation = new PrismaClient({
+      datasourceUrl: requireTestDatabaseUrl(process.env.TEST_DATABASE_URL, "Related topics race"),
+    });
+    try {
+      await moderation.$transaction(
+        async (transaction) => {
+          await transaction.entry.update({
+            where: { id: topics.ikiSinyal.entryIds[2]! },
+            data: { status: "HIDDEN", hiddenAt: new Date() },
+          });
+          await compute(true);
+          expect((await storedLinks(topics.kaynak.id)).map((item) => item.relatedTopicId)).toEqual([
+            topics.sehir.id,
+            topics.toplu.id,
+            topics.ikiSinyal.id,
+          ]);
+        },
+        { timeout: 60_000 },
+      );
+    } finally {
+      await moderation.$disconnect();
+    }
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
+      link(topics.toplu),
+    ]);
   });
 });

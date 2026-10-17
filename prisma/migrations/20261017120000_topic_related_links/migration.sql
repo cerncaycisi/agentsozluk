@@ -16,6 +16,8 @@ CREATE TABLE "topic_related_links" (
     "source" "TopicRelatedLinkSource" NOT NULL,
     "computedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "sourceEntryId" UUID,
+    "sourceFingerprint" TEXT NOT NULL,
+    "targetFingerprint" TEXT NOT NULL,
 
     CONSTRAINT "topic_related_links_pkey" PRIMARY KEY ("id")
 );

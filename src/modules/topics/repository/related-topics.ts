@@ -23,7 +23,8 @@ import type {
     sözcüklerden tf·ln(N/df)'e göre ilk 12'sinin OR'u. Öteki başlıklar `ts_rank_cd(vec, q, 1)`
     ile sıralanır; en az iki farklı ortak sorgu sözcüğü şartı; ilk 3.
 
-  Hesap tek transaction'da, `ON COMMIT DROP` geçici tablolarla yapılır: belge vektörleri bir
+  Hesap tek REPEATABLE READ transaction'da, `ON COMMIT DROP` geçici tablolarla yapılır: belge
+  vektörleri, parmak izleri ve bkz gövdeleri aynı snapshot'tan okunur; belge vektörleri bir
   kez kurulur, kaynaklar partiler hâlinde işlenir. Her ifade `statement_timeout` ile sınırlıdır.
   Kalıcı tabloya yalnız `replaceRelatedTopicLinks` yazar.
 */
@@ -35,6 +36,27 @@ const visibleEntrySql = (alias: Prisma.Sql) => Prisma.sql`${alias}."status" = 'A
   AND ${alias}."deletedAt" IS NULL
   AND ${alias}."hiddenAt" IS NULL
   AND ${publiclyVisibleEntrySql(alias)}`;
+
+/*
+  BAŞLIK PARMAK İZİ (Astra, 17 Ekim, 2. tur). Bir başlığın görünür entry kümesinin ve
+  gövdelerinin özeti: md5(string_agg(id || ':' || md5(gövde), ',' ORDER BY id)). Hesap bunu
+  vektörlerle aynı snapshot'ta (REPEATABLE READ) bağın iki ucu için saklar; okuma aynı ifadeyle
+  yeniden hesaplar ve fark varsa bağı göstermez. Zaman damgası karşılaştırması, hesapla çakışan
+  ve hesap snapshot'ından sonra commit eden moderasyonu kaçırıyordu; parmak izi commit sırasından
+  bağımsızdır. Silme, gizleme, seed bastırma, düzenleme ve yeni entry hepsi izi değiştirir.
+
+  Görünür entry kümesi aynıysa G4 (ince başlık) kararı da aynıdır: `substantialTopicSql` yalnız
+  bu kümeye ve gövdelere bakar (ACTIVE entry'de `hiddenAt` her zaman boş). Okuma bu yüzden
+  inceliği ayrıca saymaz.
+
+  Hiç görünür entry'si olmayan başlıkta ifade NULL verir; NULL hiçbir saklı ize eşit olmaz.
+*/
+const topicFingerprintSql = (topicId: Prisma.Sql) => Prisma.sql`(
+  SELECT md5(string_agg(fingerprint_entry.id::text || ':' || md5(fingerprint_entry.body), ',' ORDER BY fingerprint_entry.id))
+  FROM "entries" AS fingerprint_entry
+  WHERE fingerprint_entry."topicId" = ${topicId}
+    AND ${visibleEntrySql(Prisma.sql`fingerprint_entry`)}
+)`;
 
 export async function limitRelatedTopicStatements(
   transaction: Prisma.TransactionClient,
@@ -65,18 +87,20 @@ export async function prepareRelatedTopicWorkspace(
     CREATE TEMP TABLE ilgili_hedef (
       id uuid PRIMARY KEY,
       title text NOT NULL,
-      vec tsvector NOT NULL
+      vec tsvector NOT NULL,
+      fingerprint text NOT NULL
     ) ON COMMIT DROP
   `;
   await transaction.$executeRaw(Prisma.sql`
-    INSERT INTO ilgili_hedef (id, title, vec)
+    INSERT INTO ilgili_hedef (id, title, vec, fingerprint)
     SELECT topic.id, topic.title,
       setweight(to_tsvector('turkish', topic.title), 'A')
         || to_tsvector('turkish', coalesce((
           SELECT left(string_agg(entry.body, ' ' ORDER BY entry."createdAt", entry.id), ${RELATED_TOPIC_BODY_CHAR_LIMIT}::integer)
           FROM "entries" AS entry
           WHERE entry."topicId" = topic.id AND ${visibleEntrySql(Prisma.sql`entry`)}
-        ), ''))
+        ), '')),
+      ${topicFingerprintSql(Prisma.sql`topic.id`)}
     FROM "topics" AS topic
     WHERE topic."status" = 'ACTIVE'
       AND topic."mergedIntoId" IS NULL
@@ -147,9 +171,9 @@ export async function prepareRelatedTopicWorkspace(
 
 export function listRelatedTopicWorkspaceTopics(
   transaction: Prisma.TransactionClient,
-): Promise<Array<{ id: string; title: string }>> {
-  return transaction.$queryRaw<Array<{ id: string; title: string }>>`
-    SELECT id::text AS id, title FROM ilgili_hedef ORDER BY id
+): Promise<Array<{ id: string; title: string; fingerprint: string }>> {
+  return transaction.$queryRaw<Array<{ id: string; title: string; fingerprint: string }>>`
+    SELECT id::text AS id, title, fingerprint FROM ilgili_hedef ORDER BY id
   `;
 }
 
@@ -306,8 +330,14 @@ export function findReferencedTopics(
 export async function replaceRelatedTopicLinks(
   transaction: Prisma.TransactionClient,
   plans: ReadonlyMap<string, readonly PlannedRelatedTopicLink[]>,
+  fingerprints: ReadonlyMap<string, string>,
   computedAt: Date,
 ): Promise<number> {
+  const fingerprint = (topicId: string) => {
+    const value = fingerprints.get(topicId);
+    if (!value) throw new Error("RELATED_TOPIC_FINGERPRINT_MISSING");
+    return value;
+  };
   await transaction.topicRelatedLink.deleteMany({});
   const rows: Prisma.TopicRelatedLinkCreateManyInput[] = [];
   for (const [topicId, links] of plans) {
@@ -319,6 +349,8 @@ export async function replaceRelatedTopicLinks(
         rank: link.rank,
         sourceEntryId: link.sourceEntryId,
         source: link.source,
+        sourceFingerprint: fingerprint(topicId),
+        targetFingerprint: fingerprint(link.relatedTopicId),
         computedAt,
       });
     }
@@ -340,23 +372,19 @@ export interface RelatedTopicLinkRecord {
   source: RelatedTopicLinkSource;
 }
 
-const eligibleTopicSql = (topic: Prisma.Sql) => Prisma.sql`${topic}."status" = 'ACTIVE'
-  AND ${topic}."mergedIntoId" IS NULL
-  AND ${substantialTopicSql(topic)}`;
-
 /**
  * Sayfa okuması: sıralı en çok `limit` bağlantı. Gece hesabı bir anlık görüntüdür; okuma anında
- * yeniden denetlenir (Astra, 17 Ekim, 1. tur):
+ * yeniden denetlenir (Astra, 17 Ekim, 1. ve 2. tur):
  *
- * - Kaynak ve hedef hâlâ uygun: aktif, birleşmemiş, G4'e göre ince değil.
- * - BKZ bağının kaynak entry'si hâlâ görünür, kaynak başlıkta ve hesaptan sonra düzenlenmemiş;
- *   entry'si bilinmeyen BKZ bağı gösterilmez.
- * - Hesaptan sonra kaynak ya da hedef başlıkta bir entry silindi, gizlendi ya da seed görünürlüğü
- *   bastırıldıysa bağ (BKZ ya da SIGNAL) gösterilmez: sinyal artık görünmeyen metinden türemiş
- *   olabilir. Bağ bir sonraki gece hesabında temiz veriden yeniden kurulur.
+ * - Kaynak ve hedef hâlâ aktif ve birleşmemiş.
+ * - Kaynak ve hedefin parmak izi hesaptakiyle aynı (bkz. `topicFingerprintSql`): hesaptan sonra
+ *   iki uçta görünür entry kümesi ya da bir gövde değiştiyse bağ (BKZ ya da SIGNAL) gösterilmez.
+ *   Aynı küme G4 inceliğini de sabitler.
+ * - BKZ bağının kaynak entry'si hâlâ görünür ve kaynak başlıkta; bilinmiyorsa bağ gösterilmez.
  *
- * Tek sorgu: bağlar `(topicId, rank)` indeksinden, entry denetimleri `entries(topicId, …)`
- * indeksinden; en çok dört başlığın entry'lerine bakılır.
+ * Tek sorgu: bağlar `(topicId, rank)` indeksinden; her parmak izi `entries(topicId, status, …)`
+ * indeksinin `topicId = … AND status = 'ACTIVE'` aralığından okunur. Düşen bağ bir sonraki gece
+ * hesabında temiz veriden yeniden kurulur.
  */
 export function findRelatedTopicLinks(
   transaction: Prisma.TransactionClient,
@@ -366,48 +394,37 @@ export function findRelatedTopicLinks(
   return publicIds(
     transaction.$queryRaw<
       Array<{ title: string; slug: string; publicId: bigint; source: RelatedTopicLinkSource }>
-    >(Prisma.sql`
-      SELECT target.title, target.slug, target."publicId", link."source"
-      FROM "topic_related_links" AS link
-      JOIN "topics" AS source ON source.id = link."topicId"
-      JOIN "topics" AS target ON target.id = link."relatedTopicId"
-      WHERE link."topicId" = ${topicId}::uuid
-        AND ${eligibleTopicSql(Prisma.sql`source`)}
-        AND ${eligibleTopicSql(Prisma.sql`target`)}
-        AND (
-          link."source" = 'SIGNAL'
-          OR EXISTS (
-            SELECT 1
-            FROM "entries" AS bkz_entry
-            WHERE bkz_entry.id = link."sourceEntryId"
-              AND bkz_entry."topicId" = link."topicId"
-              AND ${visibleEntrySql(Prisma.sql`bkz_entry`)}
-              AND NOT EXISTS (
-                SELECT 1
-                FROM "entry_revisions" AS revision
-                WHERE revision."entryId" = bkz_entry.id
-                  AND revision."createdAt" > link."computedAt"
-              )
-          )
-        )
-        AND NOT EXISTS (
-          SELECT 1
-          FROM "entries" AS changed
-          WHERE changed."topicId" IN (link."topicId", link."relatedTopicId")
-            AND (changed."deletedAt" > link."computedAt" OR changed."hiddenAt" > link."computedAt")
-        )
-        AND NOT EXISTS (
-          SELECT 1
-          FROM "seed_entry_visibility" AS suppression
-          JOIN "entries" AS suppressed_entry ON suppressed_entry.id = suppression."entryId"
-          WHERE suppressed_entry."topicId" IN (link."topicId", link."relatedTopicId")
-            AND suppression."suppressed" = true
-            AND suppression."updatedAt" > link."computedAt"
-        )
-      ORDER BY link."rank"
-      LIMIT ${limit}
-    `),
+    >(relatedTopicLinksReadSql(topicId, limit)),
   );
+}
+
+/** Okuma sorgusu; EXPLAIN denetimi için ayrıca dışa açık. */
+export function relatedTopicLinksReadSql(topicId: string, limit: number): Prisma.Sql {
+  return Prisma.sql`
+    SELECT target.title, target.slug, target."publicId", link."source"
+    FROM "topic_related_links" AS link
+    JOIN "topics" AS source ON source.id = link."topicId"
+    JOIN "topics" AS target ON target.id = link."relatedTopicId"
+    WHERE link."topicId" = ${topicId}::uuid
+      AND source."status" = 'ACTIVE'
+      AND source."mergedIntoId" IS NULL
+      AND target."status" = 'ACTIVE'
+      AND target."mergedIntoId" IS NULL
+      AND (
+        link."source" = 'SIGNAL'
+        OR EXISTS (
+          SELECT 1
+          FROM "entries" AS bkz_entry
+          WHERE bkz_entry.id = link."sourceEntryId"
+            AND bkz_entry."topicId" = link."topicId"
+            AND ${visibleEntrySql(Prisma.sql`bkz_entry`)}
+        )
+      )
+      AND link."sourceFingerprint" = ${topicFingerprintSql(Prisma.sql`link."topicId"`)}
+      AND link."targetFingerprint" = ${topicFingerprintSql(Prisma.sql`link."relatedTopicId"`)}
+    ORDER BY link."rank"
+    LIMIT ${limit}
+  `;
 }
 
 /**

@@ -73,7 +73,17 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
     const beklenti = JSON.parse(result.stdout);
     expect(beklenti.types).toEqual({ TopicRelatedLinkSource: ["BKZ", "SIGNAL"] });
     expect(beklenti.tables.topic_related_links).toEqual({
-      columns: ["computedAt", "id", "rank", "relatedTopicId", "source", "sourceEntryId", "topicId"],
+      columns: [
+        "computedAt",
+        "id",
+        "rank",
+        "relatedTopicId",
+        "source",
+        "sourceEntryId",
+        "sourceFingerprint",
+        "targetFingerprint",
+        "topicId",
+      ],
       primaryKey: ["id"],
       checkConstraints: 0,
       uniqueConstraints: 0,

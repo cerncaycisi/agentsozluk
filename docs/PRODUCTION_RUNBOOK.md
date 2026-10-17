@@ -2368,26 +2368,34 @@ kör ölçümde iki sinyalin birlikte önerdiği çiftler %91–100 ilgiliydi; t
 
 - **Uygun başlık:** aktif, birleşmemiş ve G4'e göre ince olmayan başlık. Hem kaynak hem hedef
   aynı kümeden gelir; noindex ince sayfaya bağlantı verilmez.
-- **Okuma anı denetimi (Astra, 17 Ekim, 1. tur):** sayfa her okumada kaynak ve hedefin hâlâ
-  uygun olduğunu denetler. Hesaptan (`computedAt`, veritabanının transaction başlangıç saati)
-  sonra kaynak ya da hedef başlıkta bir entry silinmiş, gizlenmiş ya da seed görünürlüğü
-  bastırılmışsa o bağ gösterilmez. BKZ bağı ayrıca kendi entry'sini (`sourceEntryId`) taşır; o
-  entry görünür değilse, hesaptan sonra düzenlendiyse ya da bilinmiyorsa bağ gösterilmez. Düşen
-  bağlar bir sonraki gece hesabında temiz veriden yeniden kurulur.
+- **Okuma anı denetimi (Astra, 17 Ekim, 1. ve 2. tur):** hesap tek REPEATABLE READ
+  snapshot'ında her uygun başlığın görünür entry parmak izini alır:
+  `md5(string_agg(id || ':' || md5(gövde), ',' ORDER BY id))`. Bağ, kaynağın ve hedefin izini
+  (`sourceFingerprint`, `targetFingerprint`) saklar. Sayfa her okumada iki izi aynı ifadeyle
+  yeniden hesaplar; kaynak ya da hedefte bir entry silinmiş, gizlenmiş, seed görünürlüğü
+  bastırılmış, düzenlenmiş ya da yeni eklenmişse bağ (BKZ ya da SIGNAL) gösterilmez. İz commit
+  sırasından bağımsızdır: hesapla çakışan moderasyon da yakalanır. Aynı görünür küme G4 kararını
+  da sabitler. Kaynak ve hedef ayrıca aktif ve birleşmemiş olmalı; BKZ bağının kendi entry'si
+  (`sourceEntryId`) görünür ve kaynak başlıkta olmalı. Düşen bağlar bir sonraki gece hesabında
+  temiz veriden yeniden kurulur. `computedAt` yalnız operasyon kaydıdır.
 - **Tek hesap:** hesap transaction'ın başında danışma kilidi alır (liste modu dahil). Kilit
-  başkasındaysa hiçbir şey okumadan ve yazmadan `{"status":"ALREADY_RUNNING"}` basar, çıkış kodu
-  0'dır. Başarılı hesapta `status` `OK`'dir.
+  başkasındaysa liste modu beklemeden `{"status":"ALREADY_RUNNING"}` basar ve 0 ile çıkar.
+  `--uygula` 60 sn arayla 10 kez yeniden dener; kilit hâlâ alınamazsa aynı satırı basar ve 75
+  (EX_TEMPFAIL) ile çıkar, gece birimi başarısız görünür. Hiçbir durumda bir şey yazılmaz. Gece
+  yenilemesi yalnız `mode=uygula,status=OK` satırıyla başarılı sayılır.
 - **Tablo:** `topic_related_links` (migration `20261017120000_topic_related_links`, yalnız ek
   yapan; A5 denetçisinden geçer). Gece işi tabloyu tek transaction'da siler ve yeniden yazar;
   bir adım düşerse önceki küme kalır.
-- **Sınırlar:** tek ifade 300 sn, transaction 13 dk, konteynerdeki süreç `timeout -k 30 840`
-  (14 dk, sonra 30 sn içinde KILL), systemd 15 dk; kaynaklar 250'lik partilerle. systemd yalnız
+- **Sınırlar:** tek ifade 300 sn, transaction 13 dk, kilit çakışmasında en çok 10 × 60 sn
+  bekleme, konteynerdeki süreç `timeout -k 30 1620` (27 dk, sonra 30 sn içinde KILL), systemd
+  30 dk; kaynaklar 250'lik partilerle. systemd yalnız
   `docker compose exec` istemcisini öldürebilir; konteynerdeki Node süreci kendi `timeout`'uyla
   sınırlıdır ve süreç ölünce açık transaction geri alınır.
   Yerel ölçek denemesi (17 Ekim, PGlite/wasm, 7.600 sentetik başlık, 38.000 entry): toplam
   265 sn (hazırlık 29, başlık sinyali 170, içerik sinyali 64, bkz 1); üretim ölçümü değildir.
-  Çıktı tek JSON satırı: `status`, `sourceTopics`, `topicsWithLinks`, `bkzLinks`, `signalLinks`,
-  `totalLinks`, `durationMs`. Hata `ILGILI_FAILED code=…` ile 1 çıkış kodudur.
+  Çıktı tek JSON satırı: `mode`, `status`, `attempts`, `sourceTopics`, `topicsWithLinks`,
+  `bkzLinks`, `signalLinks`, `totalLinks`, `durationMs`. Hata `ILGILI_FAILED code=…` ile 1 çıkış
+  kodudur; uygula modunda kilit alınamazsa 75.
 - **Robots, noindex ve site haritası değişmez.** Bağlantılar düz iç bağlantıdır.
 
 Çalıştırma app konteynerinde. **Zamanlayıcı, Gökhan blok ekran görüntüsünü onaylamadan
