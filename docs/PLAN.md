@@ -8,34 +8,39 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**Talep:** Search Console 13 Eylül–10 Ekim 81 tık, 5.109 gösterim; sayaç 10–11 Ekim günde 11–12
-güvenilir insan. Strateji sıra 4'te.
+**17 Ekim 2026 · iki bağımsız inceleme ([Fable](TAM_ANALIZ_2026-10-17.md),
+[Astra](FULL_ANALYSIS_2026-10-17.md)); ikisinin hükmü de "yön değiştir".** Emek metne gitti, okur
+gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" iki hafta önceliklidir.
 
-**10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
+- **Canlı exact `d7812525`:** karma yazım (#421, kapsam %8–10) ve ilgili başlıklar (#423, 1.843
+  başlık, gece 03:30Z).
+- **Talep:** Search Console 17 Eylül–14 Ekim 94 tık, 5.476 gösterim (önceki 28 gün 53 / 5.540).
+  Sayacın "güvenilir insan"ı sayfa görüntülemesidir ve site içi yönlendirmeyi de sayıyor.
+- **Gökhan kararları (17 Ekim):** hakem kuralı aynen kalır; karma yazım ölçülür, doğallık
+  ≥ +0,3 ve dolgu artmamışsa kalır, yoksa kapanır, 2. sürüm yok; dış dağıtım şimdilik yok, yerine
+  odaklı içerik denemesi; yalnız kaynaktan açılan haber başlıklarına günlük tavan.
+- **Yetki:** 31 Ekim 23:59 TSİ'ye kadar (AGENTS.md). Teknik kapılar, veri silme ve "Gökhan kararı
+  bekleyen" maddeler kapsam dışı.
+- 10 Ekim durum anlatısı [Plan arşivinde](PLAN_ARSIVI_2026-10.md), "17 Ekim'de arşivlenen".
 
-- **16–17 Ekim:** sol tam geçiş için pahalı; karma yazım (#421) canlıda ve açık: luna yazar,
-  uygun entry'leri `gpt-6-sol` yeniden yazar. Kapsam %10; sırada kalite ve kapsam (sıra 6).
-- **14 Ekim:** üretim OVH VPS-1'e taşındı (51.161.103.223; sıra 0 bitti). Canlı exact `24a25981`
-  (#402 tek soru, #404 logo/llms.txt, #405 lastmod, #406 karagöz filtresi). Sıra 3: son okuma
-  "kapandı" sayılmadı, #12 A geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
-- İncelemeler: [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). Uzlaştırma
-  aşağıda; ikinci bir kuyruk değil.
-- **Ortak ana bulgu:** talep kanıtı yok (28 günde 63 arama tıkı, son 30 günde insan entry 0). Başarı
-  ölçütü üretilen entry'den geri gelen okura taşınıyor (sıra 4).
-- **"15/15 kapandı" dili ölçümden hızlıydı.** 9 ve 12 başka bir ölçüyle kapandı; 1, eşiği geçemeyen
-  koşuya ikinci koşu eklenerek kapandı. Kapanış uygulama / yerel / canlı diye ayrılıyor (sıra 1).
-- **Son okuma canlıda önkayıtlı ölçümle doğrulanmadı.** Fable'ın kör ölçümünde özdeyiş ve dolgu
-  önce/sonra aynı, Astra'da dolgu %20; anlam koruması için yeniden üretilmiş karşı örnekler var
-  (sıra 2–3).
-- **Kendi doğrulamam (üretim, salt okunur):**
-  - bkz düşüşü doğrulanmadı: 8, 9 ve 10 Ekim'de %3, %12, %14.
-  - Yeni başlık parçalanması yeni değil: 3 Ekim'den beri günde 110–150 yeni başlık açılıyor ve
-    %75–89'u tek entry'de kalıyor. Yine de gerçek bir sorun (sıra 5).
-- **Yetki:** Gökhan 9 Ekim'de "bana bişi sormana gerek yok bu ay boyunca" dedi; süre 31 Ekim 23:59
-  TSİ, AGENTS.md buna göre güncellendi. Teknik kapılar, veri silme ve aşağıdaki Gökhan kararları
-  kapsam dışı.
-- Önceki durum anlatısı ve 7 Ekim uzlaştırması [Plan arşivinde](PLAN_ARSIVI_2026-10.md), "10 Ekim"
-  başlığında.
+### 17 Ekim sırası (iki hafta)
+
+1. **İşletim körlüğü (onay gerektirmez):** alarm kendi sorgu/bildirim hatasını başarı saymaz;
+   sunucu yedek birimi depoya ve `OnFailure=` bildirimine; Drive hatası ayrı alarm; yedek, sayaç
+   ve ilgili başlık işi için son başarılı koşu yaşı; dağıtım sonu kurulu host kopyalarının hash
+   envanteri; runbook'ta aşamaya bağlı tek migration kurtarma akışı; kararsız
+   `great-reset-namespace` testi; migration disk marjı; ilgili başlıklarda hesap yaşı sınırı;
+   Codex CLI geri dönüşünde canary şartı.
+2. **Talep ölçümü:** sayaç tanımı düzeltilip sürümlenir (site içi/geçersiz yönlendiren ayrı);
+   "insan", "görüntüleme", "dış giriş" ve "cevap motoru getirmesi" ayrı raporlanır.
+3. **Karma yazım hükmü:** ≥30 yeniden yazımın özgün taslakla kör eşli ölçümü (doğallık, dolgu,
+   katkı, sadakat); karar Gökhan'ın kuralıyla.
+4. **Haber başlığı tavanı:** kaynaktan açılan haber başlıklarına günlük sınır; ölçü 7 günde ikinci
+   entry alan başlık oranı.
+5. **Odaklı içerik denemesi:** organik sinyali olan 10–15 başlık, bir–iki konu kümesi; başarı
+   farklı katkı ve organik giriş, entry sayısı değil.
+
+Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez.
 
 ### Tek aktif sıra
 
