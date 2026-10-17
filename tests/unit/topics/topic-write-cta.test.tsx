@@ -14,6 +14,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const currentPageSession = vi.hoisted(() => vi.fn());
 const getTopicByPublicId = vi.hoisted(() => vi.fn());
+const getRelatedTopicLinks = vi.hoisted(() => vi.fn(async () => [] as unknown[]));
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("next/navigation", () => ({
@@ -47,6 +48,7 @@ vi.mock("@/modules/moderation/application/capabilities", () => ({
   userHasModerationCapability: async () => false,
 }));
 vi.mock("@/modules/topics/application/topics", () => ({ getTopicByPublicId, getTopic: vi.fn() }));
+vi.mock("@/modules/topics/application/related-topics", () => ({ getRelatedTopicLinks }));
 vi.mock("@/modules/indexing", () => ({
   getEntryContentDates: async (_client: unknown, entries: Array<{ id: string; createdAt: Date }>) =>
     new Map(entries.map((entry) => [entry.id, entry.createdAt])),
@@ -167,5 +169,49 @@ describe("başlık sayfası yazma CTA'sı", () => {
     expect(markup).not.toContain(PENDING_TEXT);
     expect(markup).not.toContain(SUSPENDED_TEXT);
     expect(markup).not.toContain("/giris?next=");
+  });
+});
+
+/*
+  İlgili başlıklar (Gökhan kararı, 17 Ekim 2026): blok sayfalama ile yazma alanı arasında,
+  liste boşsa hiç yok; gizlenmiş başlıkta yükleyici hiç çağrılmaz.
+*/
+describe("başlık sayfası ilgili başlıklar bloğu", () => {
+  const links = [
+    { title: "elektrikli araç şarjı", url: "/baslik/elektrikli-arac-sarji--7" },
+    { title: "batarya ömrü", url: "/baslik/batarya-omru--8" },
+  ];
+
+  it("yükleyici bağlantı döndürünce yazma alanından önce gösterir", async () => {
+    getRelatedTopicLinks.mockResolvedValueOnce(links);
+    const markup = await renderTopicPage("ACTIVE", guest);
+    expect(getRelatedTopicLinks).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "00000000-0000-4000-8000-000000000001",
+    );
+    expect(markup).toContain(">ilgili başlıklar</h2>");
+    expect(markup).toContain('href="/baslik/elektrikli-arac-sarji--7"');
+    expect(markup).toContain('href="/baslik/batarya-omru--8"');
+    expect(markup.indexOf("ilgili başlıklar")).toBeLessThan(markup.indexOf(GUEST_TEXT));
+  });
+
+  it("onaylı yazarda da composer'dan önce durur", async () => {
+    getRelatedTopicLinks.mockResolvedValueOnce(links);
+    const markup = await renderTopicPage("ACTIVE", approvedWriter);
+    expect(markup.indexOf("ilgili başlıklar")).toBeGreaterThan(-1);
+    expect(markup.indexOf("ilgili başlıklar")).toBeLessThan(markup.indexOf(COMPOSER));
+  });
+
+  it("liste boşsa blok yok", async () => {
+    getRelatedTopicLinks.mockResolvedValueOnce([]);
+    const markup = await renderTopicPage("ACTIVE", guest);
+    expect(markup).not.toContain("ilgili başlıklar");
+  });
+
+  it("gizlenmiş başlıkta yükleyici çağrılmaz, blok yok", async () => {
+    getRelatedTopicLinks.mockClear();
+    const markup = await renderTopicPage("HIDDEN", approvedWriter);
+    expect(getRelatedTopicLinks).not.toHaveBeenCalled();
+    expect(markup).not.toContain("ilgili başlıklar");
   });
 });

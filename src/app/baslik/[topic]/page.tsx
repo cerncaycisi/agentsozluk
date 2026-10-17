@@ -54,8 +54,10 @@ import {
   publicExcerpt,
   robotsForPaginatedView,
 } from "@/modules/indexing/domain/public-seo";
+import { getRelatedTopicLinks } from "@/modules/topics/application/related-topics";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
 import { TopicOverflowMenu } from "@/components/topics/topic-overflow-menu";
+import { TopicRelatedLinks } from "@/components/topics/topic-related-links";
 import { TopicShareMenu } from "@/components/topics/topic-share-menu";
 import { TopicWindowMenu } from "@/components/topics/topic-window-menu";
 import {
@@ -326,20 +328,23 @@ export default async function TopicPage({
     result = { entries: [], totalItems: 0 };
   }
   const entryIds = result.entries.map((entry) => entry.id);
-  const [[votes, bookmarks], references, canGammaz, contentDates, sourceLinks] = await Promise.all([
-    session && entryIds.length > 0
-      ? getViewerEntryStates(database, session.userId, entryIds)
-      : Promise.resolve([[], []] as const),
-    getEntryReferenceIndex(
-      database,
-      result.entries.map((entry) => entry.body),
-    ),
-    session?.user.status === "ACTIVE"
-      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
-      : Promise.resolve(false),
-    getEntryContentDates(database, result.entries),
-    getEntrySourceLinks(database, entryIds),
-  ]);
+  const [[votes, bookmarks], references, canGammaz, contentDates, sourceLinks, relatedLinks] =
+    await Promise.all([
+      session && entryIds.length > 0
+        ? getViewerEntryStates(database, session.userId, entryIds)
+        : Promise.resolve([[], []] as const),
+      getEntryReferenceIndex(
+        database,
+        result.entries.map((entry) => entry.body),
+      ),
+      session?.user.status === "ACTIVE"
+        ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+        : Promise.resolve(false),
+      getEntryContentDates(database, result.entries),
+      getEntrySourceLinks(database, entryIds),
+      // Gizlenmiş başlıkta (yalnız moderasyon görür) okur bloğu yok; bkz. TopicRelatedLinks.
+      topic.status === "ACTIVE" ? getRelatedTopicLinks(database, topicId) : Promise.resolve([]),
+    ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
   );
@@ -589,6 +594,12 @@ export default async function TopicPage({
           })
         }
       />
+      {/*
+        İlgili başlıklar (Gökhan kararı, 17 Ekim 2026: "Yalnız emin olunanlar"): sayfalama ile
+        yazma alanı arasında, liste boşsa hiç yok. Liste gece hesaplanır; robots, noindex ve site
+        haritası davranışı değişmez.
+      */}
+      <TopicRelatedLinks links={relatedLinks} />
       {topic.status !== "ACTIVE" ? null : session?.user.status === "ACTIVE" &&
         session.user.writerApproved ? (
         <CreateEntryForm topicId={topicId} />

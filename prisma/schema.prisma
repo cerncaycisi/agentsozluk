@@ -379,6 +379,8 @@ model Topic {
   appeals         EntryAppeal[]
   follows         TopicFollow[]
   agentWriteLock  AgentTopicWriteLock?
+  relatedLinks    TopicRelatedLink[]   @relation("TopicRelatedLinkSource")
+  relatedFrom     TopicRelatedLink[]   @relation("TopicRelatedLinkTarget")
 
   @@index([status, lastEntryAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
@@ -426,6 +428,7 @@ model Entry {
   bookmarks         EntryBookmark[]
   agentContent      AgentContentRecord?
   seedVisibility    SeedEntryVisibility?
+  relatedTopicLinks TopicRelatedLink[]
 
   @@index([topicId, status, createdAt])
   @@index([topicId, status, score(sort: Desc), createdAt])
@@ -1655,4 +1658,37 @@ model GreatResetExposureEvent {
   commit        GreatResetCommit @relation(fields: [operationId], references: [operationId], onDelete: Restrict, onUpdate: Restrict)
 
   @@map("great_reset_exposure_events")
+}
+
+// İlgili başlıklar (Gökhan kararı, 17 Ekim 2026: "Yalnız emin olunanlar"). Gece işi
+// `scripts/ilgili-basliklar.ts --uygula` tabloyu tek transaction'da baştan yazar. Kimlik
+// istemci tarafında üretilir; additive migration denetçisi `gen_random_uuid()` varsayılanını
+// kabul etmez.
+enum TopicRelatedLinkSource {
+  BKZ
+  SIGNAL
+}
+
+model TopicRelatedLink {
+  id                String                 @id @db.Uuid
+  topicId           String                 @db.Uuid
+  relatedTopicId    String                 @db.Uuid
+  rank              Int
+  source            TopicRelatedLinkSource
+  computedAt        DateTime               @default(now()) @db.Timestamptz(3)
+  // Yalnız BKZ: bağı kuran entry. Okuma anında hâlâ görünür olmalı; yoksa bağ gösterilmez.
+  sourceEntryId     String?                @db.Uuid
+  // Hesap snapshot'ında kaynak ve hedefin görünür entry parmak izi; okuma yeniden hesaplar,
+  // fark varsa bağ gösterilmez (Astra, 17 Ekim, 2. tur).
+  sourceFingerprint String
+  targetFingerprint String
+  topic             Topic                  @relation("TopicRelatedLinkSource", fields: [topicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  relatedTopic      Topic                  @relation("TopicRelatedLinkTarget", fields: [relatedTopicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sourceEntry       Entry?                 @relation(fields: [sourceEntryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([topicId, relatedTopicId])
+  @@index([topicId, rank])
+  @@index([relatedTopicId])
+  @@index([sourceEntryId])
+  @@map("topic_related_links")
 }

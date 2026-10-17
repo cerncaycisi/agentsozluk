@@ -57,6 +57,8 @@ export const greatResetClearedModels = [
   "agentTopicWriteLock",
   // Açık okur istekleri sözlük içeriğiyle birlikte temizlenir.
   "ukteRequest",
+  // İlgili başlık bağları başlıklardan türer ve gece yeniden hesaplanır (17 Ekim 2026).
+  "topicRelatedLink",
   // İçeriğin kendisi
   "entry",
   "topicAlias",

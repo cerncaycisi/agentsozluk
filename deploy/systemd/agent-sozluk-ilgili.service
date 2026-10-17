@@ -1,0 +1,53 @@
+[Unit]
+Description=Agent Sozluk ilgili basliklar: nightly related-topic links, replaces the table atomically
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/agent-sozluk/app
+RuntimeDirectory=agent-sozluk-ilgili
+RuntimeDirectoryMode=0700
+Environment=DOCKER_CONFIG=/run/agent-sozluk-ilgili
+# Gökhan kararı, 17 Ekim 2026 ("Yalnız emin olunanlar"). Tabloyu tek transaction'da siler ve
+# yeniden yazar; hata olursa önceki küme kalır. Yönetici kimliği istemez, içerik değiştirmez.
+# systemd yalnız `docker compose exec` istemcisini öldürebilir; konteynerdeki süreç kendi
+# `timeout`'uyla 27 dakikada (30 sn sonra KILL) biter, böylece systemd'nin 30 dakikasından önce
+# ölür ve açık transaction geri alınır (Astra, 17 Ekim, 1. tur). Bütçe: kilit çakışmasında en
+# çok 10 × 60 sn bekleme + 13 dakikalık hesap transaction'ı (Astra, 17 Ekim, 2. tur). Kilit
+# hâlâ alınamazsa betik 75 ile çıkar ve birim başarısız görünür.
+ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app timeout -k 30 1620 node node_modules/tsx/dist/cli.mjs scripts/ilgili-basliklar.ts --uygula
+
+UMask=0027
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+# Yalnız docker soketi; dışarıya ağ yok.
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+SystemCallArchitectures=native
+ReadOnlyPaths=/opt/agent-sozluk/app /opt/agent-sozluk/runtime/compose.production.yaml
+InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/work
+
+TimeoutStartSec=30min
+Nice=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agent-sozluk-ilgili

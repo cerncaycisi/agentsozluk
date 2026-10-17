@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Agent Sozluk related-topic links nightly (06:30 Europe/Istanbul)
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+RandomizedDelaySec=10min
+Unit=agent-sozluk-ilgili.service
+
+[Install]
+WantedBy=timers.target

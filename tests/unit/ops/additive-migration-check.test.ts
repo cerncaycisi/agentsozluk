@@ -63,6 +63,79 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
     });
   });
 
+  it("ilgili başlıklar migration'ını olduğu gibi kabul eder (17 Ekim 2026)", () => {
+    const sql = readFileSync(
+      path.join(root, "prisma/migrations/20261017120000_topic_related_links/migration.sql"),
+      "utf8",
+    );
+    const result = check(sql);
+    expect(result.status, result.stderr).toBe(0);
+    const beklenti = JSON.parse(result.stdout);
+    expect(beklenti.types).toEqual({ TopicRelatedLinkSource: ["BKZ", "SIGNAL"] });
+    expect(beklenti.tables.topic_related_links).toEqual({
+      columns: [
+        "computedAt",
+        "id",
+        "rank",
+        "relatedTopicId",
+        "source",
+        "sourceEntryId",
+        "sourceFingerprint",
+        "targetFingerprint",
+        "topicId",
+      ],
+      primaryKey: ["id"],
+      checkConstraints: 0,
+      uniqueConstraints: 0,
+      foreignKeys: [
+        {
+          column: "relatedTopicId",
+          referencedTable: "topics",
+          referencedColumn: "id",
+          onDelete: "CASCADE",
+          onUpdate: "CASCADE",
+        },
+        {
+          column: "sourceEntryId",
+          referencedTable: "entries",
+          referencedColumn: "id",
+          onDelete: "SET NULL",
+          onUpdate: "CASCADE",
+        },
+        {
+          column: "topicId",
+          referencedTable: "topics",
+          referencedColumn: "id",
+          onDelete: "CASCADE",
+          onUpdate: "CASCADE",
+        },
+      ],
+    });
+    expect(beklenti.existingTableIndexes).toEqual({});
+    expect(beklenti.indexes).toEqual({
+      topic_related_links_relatedTopicId_idx: {
+        table: "topic_related_links",
+        unique: false,
+        columns: ["relatedTopicId"],
+      },
+      topic_related_links_sourceEntryId_idx: {
+        table: "topic_related_links",
+        unique: false,
+        columns: ["sourceEntryId"],
+      },
+      topic_related_links_topicId_rank_idx: {
+        table: "topic_related_links",
+        unique: false,
+        columns: ["topicId", "rank"],
+      },
+      topic_related_links_topicId_relatedTopicId_key: {
+        table: "topic_related_links",
+        unique: true,
+        columns: ["topicId", "relatedTopicId"],
+      },
+    });
+  });
+
   it("mevcut tabloya benzersiz olmayan düz indeksi kabul eder ve ayrıca bildirir", () => {
     const result = check('CREATE INDEX "agent_runs_finishedAt_idx" ON "agent_runs"("finishedAt");');
     expect(result.status, result.stderr).toBe(0);
