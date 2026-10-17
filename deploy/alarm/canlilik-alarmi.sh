@@ -27,6 +27,20 @@
 # kontrolü `timeout` ile sınırlı AYRI bir alt süreçte koşar; takılsa, çökse ya
 # da durum dosyası bozuk olsa bile canlılık sonucu çoktan verilmiştir ve
 # betiğin çıkış kodu canlılığınkidir.
+#
+# KÖRLÜK BAŞARI SAYILMAZ (17 Ekim 2026; Astra bulgu 5, Fable P1-1/P1-2): 15–17
+# Ekim'de sunucu içi yedek üç gece `226/NAMESPACE` ile düştü ve kimse görmedi;
+# ntfy günlük sınırı (429) bildirimleri yuttu. Alt kontrollerden biri kendi işini
+# yapamazsa (sorgu/log okunamadı, biçim bozuk, süre aşımı, durum yazılamadı) ya da
+# gönderilmesi gereken bir bildirim gönderilemezse betik 0/2 yerine 3 ile çıkar:
+# systemd birimi başarısız görür ve `OnFailure=` bildirim birimi çalışır. Durum
+# dosyalarının anlamı değişmedi; gönderilemeyen bildirim yine "gönderildi"
+# sayılmaz ve sonraki koşu yeniden dener. Her gönderim hatası ayrıca
+# `son-bildirim-hatasi` dosyasına (an kaynak curl-çıkışı) yazılır.
+#
+# KİPLER: (yok) timer koşusu · `--kesim-oncesi` dağıtım taraması ·
+# `--bildir <birim>` başka bir birimin `OnFailure=` bildirimi
+# (`agent-sozluk-bildirim@.service`) · `--yalniz-*` alt süreçler.
 set -uo pipefail
 
 ESIK_DK="${ALARM_ESIK_DK:-90}"           # bu kadar dakika koşu alınmazsa alarm
@@ -43,8 +57,8 @@ LEASE_ILK_PENCERE_SN=900     # imleç yokken (ilk koşu) geriye bakılan süre
 LEASE_ORTUSME_SN=60          # docker tarafında imleçten bu kadar geriden oku
 LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-50}"       # sn; log 25 + kimlik 5+5 + gönderim 10
 CANLILIK_ZAMAN_ASIMI="${ALARM_CANLILIK_ZAMAN_ASIMI:-30}" # sn; docker/exec takılırsa
-# En kötü duvar saati: canlılık 30+5 + curl 20 + lease 50+5 + sağlık 40+5 = 155 sn;
-# birimin TimeoutStartSec=3min sınırının altında.
+# En kötü duvar saati: canlılık 30+5 + curl 20 + lease 50+5 + sağlık 40+5 +
+# işletim 25+5 = 185 sn; birimin TimeoutStartSec=4min sınırının altında.
 SAGLIK_ZAMAN_ASIMI="${ALARM_SAGLIK_ZAMAN_ASIMI:-40}"     # sn; sorgu 25 + gönderim 10 + pay
 SAGLIK_CODEX_HATA_ADET="${ALARM_SAGLIK_CODEX_HATA_ADET:-3}" # 60 dk'da bu kadar Codex hatası + 0 başarı
 SAGLIK_RET_ORANI_YUZDE="${ALARM_SAGLIK_RET_ORANI_YUZDE:-20}" # 24 sa entry ret oranı eşiği
@@ -55,17 +69,36 @@ LEASE_IMLEC="${DURUM}-lease-imlec"
 LEASE_MAKBUZ="${DURUM}-lease-kesim"
 LEASE_KILIT="${DURUM}-lease.kilit"
 LEASE_YAVAS="${DURUM}-lease-yavas"
+ISLETIM_DURUM="${DURUM}-isletim"
+ISLETIM_ZAMAN_ASIMI="${ALARM_ISLETIM_ZAMAN_ASIMI:-25}"   # sn; systemctl 6×5 en kötü + psql 15
+# Son BAŞARILI koşunun azami yaşı (saat). Kurulu olmayan birim de sorundur; bilerek
+# kurulmamış bir birim `/etc/agent-sozluk-alarm.env` içinde listeden çıkarılır.
+ISLETIM_BIRIMLER="${ALARM_BIRIMLER:-backup:26 ilgili:26 sayac:2 indexnow:3 karagoz:26}"
+# Migration disk marjı: boş − (3 × DB + 1 GiB). Bu eşiğin altı yalnız uyarıdır.
+DISK_MARJ_ESIK="${ALARM_DISK_MARJ_ESIK:-2147483648}"
+DISK_YOLU="${ALARM_DISK_YOLU:-/opt/agent-sozluk}"
+DURUM_DIZINI="$(dirname "$DURUM")"
+BILDIRIM_HATASI="${DURUM_DIZINI}/son-bildirim-hatasi"
+KAYNAK="${1:-ana}"; KAYNAK="${KAYNAK#--}"
+KORLUK=0 # ana akış: bir alt kontrol ya da bildirim kendi işini yapamadı
 APP=/opt/agent-sozluk/app
 RUNTIME=/opt/agent-sozluk/runtime
 
-mkdir -p "$(dirname "$DURUM")" 2>/dev/null || true
+mkdir -p "$DURUM_DIZINI" 2>/dev/null || true
 
 # Başarısızsa sıfır dışı döner; çağıran durumu YALNIZ başarıda yazar, yoksa
-# gönderilemeyen bir alarm "gönderildi" sayılıp 6 saat bastırılırdı.
+# gönderilemeyen bir alarm "gönderildi" sayılıp 6 saat bastırılırdı. Hata
+# sessiz kalmaz: journal'a ve `son-bildirim-hatasi` dosyasına yazılır (17 Ekim).
 bildir() { # $1 baslik, $2 oncelik, $3 etiket, $4 govde, $5 azami sn (20)
+  local r=0
   curl -sS --fail -m "${5:-20}" \
     -H "Title: $1" -H "Priority: $2" -H "Tags: $3" \
-    -d "$4" "$SUNUCU/$KONU" >/dev/null
+    -d "$4" "$SUNUCU/$KONU" >/dev/null || r=$?
+  if (( r != 0 )); then
+    hata_yaz "bildirim gönderilemedi (kaynak ${KAYNAK}, curl çıkış ${r})"
+    atomik_yaz "$BILDIRIM_HATASI" "$(date +%s) ${KAYNAK} ${r}" || true
+  fi
+  return "$r"
 }
 
 # Durum dosyasını okur; bozuk ya da tanınmayan içerik `temiz 0` sayılır.
@@ -110,7 +143,7 @@ canlilik_kontrol() {
     if [[ "$onceki_hal" != "sorgu-hatasi" ]] || (( simdi - onceki_an > SESSIZLIK_SN )); then
       bildir "Agent Sözlük: veritabanı sorgulanamıyor" urgent rotating_light \
         "Canlılık sorgusu başarısız. Veritabanı, docker ya da compose erişimi bozuk olabilir. $(date -u '+%Y-%m-%d %H:%M UTC')" \
-        && echo "sorgu-hatasi $simdi" >"$DURUM"
+        && echo "sorgu-hatasi $simdi" >"$DURUM" || KORLUK=1
     fi
     return 1
   fi
@@ -125,7 +158,7 @@ canlilik_kontrol() {
 Son entry: ${entry_yas} sn önce.
 Site ayakta olabilir ve /api/health 200 dönebilir; bu alarm onu ölçmüyor.
 Bak: systemctl status agent-sozluk-runtime" \
-        && echo "alarm $simdi" >"$DURUM"
+        && echo "alarm $simdi" >"$DURUM" || KORLUK=1
     fi
     return 2
   fi
@@ -134,7 +167,7 @@ Bak: systemctl status agent-sozluk-runtime" \
   if [[ "$onceki_hal" == "alarm" || "$onceki_hal" == "sorgu-hatasi" ]]; then
     bildir "Agent Sözlük tekrar üretiyor" default white_check_mark \
       "Son koşu ${kosu_yas} sn önce alındı, son entry ${entry_yas} sn önce. $(date -u '+%Y-%m-%d %H:%M UTC')" \
-      || return 0
+      || { KORLUK=1; return 0; }
   fi
   echo "temiz $simdi" >"$DURUM"
   return 0
@@ -200,7 +233,7 @@ lease_kontrol() {
   if ! exec {kfd}>>"$LEASE_KILIT"; then
     hata_yaz "lease kilit dosyası açılamadı"
     (( KESIM )) && return 1
-    return 0
+    return 3
   fi
   if ! flock -w "$bekle" "$kfd"; then
     hata_yaz "lease kilidi ${bekle} sn içinde alınamadı; bu tur atlandı"
@@ -223,7 +256,7 @@ lease_kontrol_kilitli() {
   local kimlik makbuz_kimlik makbuz_ms bosluk="" basari=0 gecmis yeni_yavas="" yavas_yaz="" tohum=0
   local islenemedi=0 gdosya=""
   local olusma olusma_ms
-  local hal an teslim en_kotu olcum baslik oncelik etiket durum_yazildi
+  local hal an teslim en_kotu olcum baslik oncelik etiket durum_yazildi gonderilemedi=0
   # ALARM_SIMDI (sn) yalnız testler içindir; üretimde tanımlı değildir.
   if [[ -n "${ALARM_SIMDI:-}" ]]; then simdi_ms=$(( ALARM_SIMDI * 1000 )); else simdi_ms="$(date +%s%3N)"; fi
   simdi=$(( simdi_ms / 1000 ))
@@ -491,6 +524,8 @@ ${govde}"
     fi
     if bildir "$baslik" "$oncelik" "$etiket" "$govde" 10; then
       teslim=1; en_kotu=temiz; an="$simdi"
+    else
+      gonderilemedi=1
     fi
   fi
   # İmleç YALNIZ durum kalıcılaştıysa ilerler: yoksa bulunan karar hem durumda
@@ -515,6 +550,9 @@ ${govde}"
     (( basari )) && atomik_yaz "$LEASE_MAKBUZ" "$kimlik $simdi_ms" && return 0
     return 1
   fi
+  # Timer kipi (17 Ekim): log okunamadı, ayrıştırılamadı, durum/imleç yazılamadı ya da
+  # bildirim gönderilemediyse lease izlenmiyor demektir; ana akış birimi başarısız gösterir.
+  if (( ! basari || gonderilemedi )); then return 3; fi
   return 0
 }
 
@@ -529,8 +567,9 @@ ${govde}"
 #  - kapasite:  kapasite ölçüm kaydı yok (8 Ekim: ölçüm yaşla ya da talimatla bayatlamaz;
 #               Codex ana sürümü değişirse etkin hat düşer ve `hat` bildirir)
 #  - ret:       son 24 sa entry eylemlerinin ret oranı eşiğin üstünde
-# Yalnız okur. Kendi alt sürecinde koşar; başarısızlığı yalnız journal'a düşer
-# (veritabanı arızasını canlılık zaten bildirir) ve çıkış kodunu etkilemez.
+# Yalnız okur. Kendi alt sürecinde koşar; özet okunamaz, biçimi bozuk ya da
+# bildirim gönderilemezse journal'a yazar ve 3 döner: ana akış birimi başarısız
+# gösterir (17 Ekim; önceden 0 dönüyordu ve sağlık körlüğü görünmüyordu).
 saglik_sorgu() {
   timeout --kill-after=5 "$((SAGLIK_ZAMAN_ASIMI - 15))" \
     docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
@@ -616,13 +655,13 @@ saglik_kontrol() {
   local ayar etkin karar_ayar neden kalan sorunlar=() satirlar=() hal tekrar_sn yuzde gerek
   local hat_bilinmiyor=0
   cikti="$(saglik_sorgu | grep -E '^SAGLIK ' | head -1)"
-  if [[ -z "$cikti" ]]; then hata_yaz "sağlık özeti okunamadı"; return 0; fi
+  if [[ -z "$cikti" ]]; then hata_yaz "sağlık özeti okunamadı"; return 3; fi
   read -r etiket codex_hata basarili ret basari ayar etkin karar_ayar neden kalan <<<"$cikti"
   local sayi='^(0|[1-9][0-9]{0,11})$' isaretli='^-?(0|[1-9][0-9]{0,11})$'
   if [[ ! "$codex_hata" =~ $sayi || ! "$basarili" =~ $sayi || ! "$ret" =~ $sayi \
         || ! "$basari" =~ $sayi || ! "$neden" =~ ^[A-Za-z_]{1,40}$ \
         || ! "$kalan" =~ ^(yok|-?(0|[1-9][0-9]{0,11}))$ ]]; then
-    hata_yaz "sağlık özeti biçimi tanınmadı"; return 0
+    hata_yaz "sağlık özeti biçimi tanınmadı"; return 3
   fi
 
   if (( codex_hata >= SAGLIK_CODEX_HATA_ADET && basarili == 0 )); then
@@ -714,18 +753,182 @@ $(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
     hata_yaz "sağlık bildirimi gönderilemedi"
     # Ön kayıt başarısızsa bir kez daha dene; `bildirilen` değişmez.
     (( on_yazim )) || atomik_yaz "$SAGLIK_DURUM" "$bildirilen $onceki_an $yeni_gorulen" || true
+    return 3
   fi
   return 0
 }
 
-if [[ "${1:-}" == "--yalniz-saglik" ]]; then
-  saglik_kontrol
-  exit 0
-fi
-if [[ "${1:-}" == "--yalniz-lease" ]]; then
-  lease_kontrol
-  exit 0
-fi
+# ---------------------------------------------------------- işletim (17 Ekim)
+# Bakım işlerinin SON BAŞARILI koşusunun yaşı ve migration disk marjı. 15–17 Ekim'de
+# sunucu içi yedek üç gece başlamadan düştü; "timer var" ve "elle bir kez koştu"
+# çalıştığını göstermiyordu. systemd yalnız okunur (`systemctl show`); veritabanından
+# yalnız `pg_database_size` okunur.
+
+# Çıktı: sorun başına bir satır, ilk sözcük anahtar (birim kısa adı). Bir birimin
+# durumu okunamazsa 1 döner (körlük); okunanların sorunları yine basılır.
+birim_sorunlari() {
+  local simdi acilis girdi ad saat birim cikti k v load active result durum cikis_an azami yas hata=0
+  simdi="${ALARM_SIMDI:-$(date +%s)}"
+  acilis="$(timeout 5 systemctl show --timestamp=unix -p UserspaceTimestamp --value 2>/dev/null)"
+  acilis="${acilis#@}"
+  if [[ ! "$acilis" =~ ^[0-9]+$ ]]; then hata_yaz "açılış zamanı okunamadı"; return 1; fi
+  for girdi in $ISLETIM_BIRIMLER; do
+    ad="${girdi%%:*}"; saat="${girdi#*:}"
+    if [[ ! "$ad" =~ ^[a-z][a-z0-9-]{0,30}$ || ! "$saat" =~ ^[1-9][0-9]{0,3}$ ]]; then
+      hata_yaz "ALARM_BIRIMLER girdisi geçersiz: ${girdi}"; hata=1; continue
+    fi
+    birim="agent-sozluk-${ad}.service"
+    if ! cikti="$(timeout 5 systemctl show --timestamp=unix -p LoadState -p ActiveState \
+        -p Result -p ExecMainStatus -p ExecMainExitTimestamp "$birim" 2>/dev/null)"; then
+      hata_yaz "${birim} durumu okunamadı"; hata=1; continue
+    fi
+    load=""; active=""; result=""; durum=""; cikis_an=""
+    while IFS='=' read -r k v; do
+      case "$k" in
+        LoadState) load="$v" ;; ActiveState) active="$v" ;; Result) result="$v" ;;
+        ExecMainStatus) durum="$v" ;; ExecMainExitTimestamp) cikis_an="${v#@}" ;;
+      esac
+    done <<<"$cikti"
+    azami=$(( saat * 3600 ))
+    if [[ "$load" == not-found ]]; then echo "$ad kurulu değil (${birim})"; continue; fi
+    if [[ "$load" != loaded ]]; then hata_yaz "${birim} LoadState tanınmadı"; hata=1; continue; fi
+    # Şu an koşuyor: sonucu bir sonraki kontrolde. Takılırsa TimeoutStartSec düşürür.
+    [[ "$active" == activating ]] && continue
+    if [[ "$active" == failed || "$result" != success ]]; then
+      echo "$ad son koşu başarısız (Result=${result:-?}, çıkış ${durum:-?})"; continue
+    fi
+    if [[ "$cikis_an" =~ ^[0-9]+$ ]]; then
+      yas=$(( simdi - cikis_an ))
+      (( yas > azami )) && echo "$ad son başarılı koşu $(( yas / 3600 )) sa önce (sınır ${saat} sa)"
+    elif (( simdi - acilis > azami )); then
+      # Açılıştan beri hiç koşmamış: açılış sınırdan eskiyse bu da kaçırılmış koşudur.
+      echo "$ad açılıştan beri $(( (simdi - acilis) / 3600 )) sa başarılı koşu yok (sınır ${saat} sa)"
+    fi
+  done
+  return "$hata"
+}
+
+disk_sorgu() {
+  timeout --kill-after=5 15 \
+    docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
+    exec -T db psql -X -tA -P pager=off -U agent_sozluk -d agent_sozluk 2>/dev/null <<'PSQL'
+BEGIN TRANSACTION READ ONLY;
+SET LOCAL statement_timeout='10s';
+-- disk-marji
+SELECT 'DB ' || pg_database_size(current_database());
+COMMIT;
+PSQL
+}
+
+# Çıktı: "bos gerek marj" (bayt). Migration kapısıyla aynı hesap: aynı dosya
+# sisteminde dump + restore kopyası için 3 × DB + 1 GiB
+# (scripts/production-migration-phase.sh `assert_disk_budget`). Kapı gevşetilmez;
+# bu yalnız yaklaşan sınırı önceden görünür kılar (Astra bulgu 8).
+disk_marji() {
+  local db bos gerek
+  db="$(disk_sorgu | grep -E '^DB [0-9]+$' | head -1)"; db="${db#DB }"
+  bos="$(df -Pk "$DISK_YOLU" 2>/dev/null | awk 'NR == 2 { print $4 }')"
+  [[ "$db" =~ ^[0-9]{1,15}$ && "$bos" =~ ^[0-9]{1,15}$ ]] || return 1
+  bos=$(( bos * 1024 )); gerek=$(( 3 * db + 1073741824 ))
+  echo "$bos $gerek $(( bos - gerek ))"
+}
+
+gib() { awk -v b="$1" 'BEGIN { printf "%.2f", b / 1073741824 }'; }
+
+# Durum satırı: `bildirilen an` — son BAŞARIYLA gönderilen sorun anahtarları
+# (virgüllü, sıralı) ya da `temiz`. Gönderilemeyen bildirim durumu değiştirmez.
+isletim_kontrol() {
+  local simdi cikti satirlar=() satir anahtarlar hal bildirilen an korluk=0 tekrar_sn
+  local bos gerek marj baslik oncelik govde
+  simdi="${ALARM_SIMDI:-$(date +%s)}"
+  cikti="$(birim_sorunlari)" || korluk=1
+  [[ -n "$cikti" ]] && mapfile -t satirlar <<<"$cikti"
+  if read -r bos gerek marj < <(disk_marji) && [[ "$marj" =~ ^-?[0-9]+$ ]]; then
+    echo "ALARM_DISK_MARJI bos=${bos} gerek=${gerek} marj=${marj}"
+    if (( marj < DISK_MARJ_ESIK )); then
+      satirlar+=("disk migration marjı $(gib "$marj") GiB: boş $(gib "$bos") GiB, gereken 3 × DB + 1 GiB = $(gib "$gerek") GiB (uyarı eşiği $(gib "$DISK_MARJ_ESIK") GiB; dağıtımı engellemez)")
+    fi
+  else
+    hata_yaz "disk marjı ölçülemedi"; korluk=1
+  fi
+  anahtarlar="$(for satir in "${satirlar[@]}"; do echo "${satir%% *}"; done | LC_ALL=C sort -u | paste -sd, -)"
+  hal="${anahtarlar:-temiz}"
+  read -r bildirilen an 2>/dev/null <"$ISLETIM_DURUM" || true
+  if [[ ! "${bildirilen:-}" =~ ^(temiz|[a-z0-9,-]{1,300})$ ]] \
+     || [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > simdi )); then
+    bildirilen=temiz; an=0
+  fi
+  # Yalnız disk marjı düşükse günde bir hatırlatma yeter.
+  if [[ "$hal" == disk ]]; then tekrar_sn=86400; else tekrar_sn="$SESSIZLIK_SN"; fi
+  if [[ "$hal" != "$bildirilen" ]] || { [[ "$hal" != temiz ]] && (( simdi - an > tekrar_sn )); }; then
+    if [[ "$hal" == temiz ]]; then
+      baslik="Agent Sözlük işletim: düzeldi"; oncelik=default
+      govde="Önceki sorun (${bildirilen}) artık görünmüyor."
+    else
+      baslik="Agent Sözlük işletim: ${hal}"; oncelik=high
+      [[ "$hal" == disk ]] && oncelik=low
+      govde="$(printf '%s\n' "${satirlar[@]}")
+Bak: systemctl list-timers 'agent-sozluk-*'; systemctl --failed"
+    fi
+    if bildir "$baslik" "$oncelik" warning "${govde}
+$(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
+      atomik_yaz "$ISLETIM_DURUM" "$hal $simdi" || korluk=1
+    else
+      korluk=1
+    fi
+  fi
+  (( korluk )) && return 3
+  return 0
+}
+
+# ------------------------------------------------- OnFailure bildirimi (17 Ekim)
+# `agent-sozluk-bildirim@<birim>.service` çağırır. Hata gönderimden ÖNCE
+# `son-birim-hatasi` dosyasına yazılır: gönderim başarısız olsa da kayıt kalır.
+# Aynı birim için 6 saat içinde ikinci bildirim gönderilmez (beş dakikalık bakım
+# birimi bozulursa telefon her beş dakikada bir çalmasın; ntfy günlük sınırı da
+# böyle tükenmiştir). Gönderilemezse 3 döner: bildirim birimi de başarısız görünür.
+birim_bildir() {
+  local birim="$1" simdi dosya an
+  if [[ ! "$birim" =~ ^[A-Za-z0-9@._:-]{1,128}$ ]]; then
+    hata_yaz "--bildir: geçersiz birim adı"; return 64
+  fi
+  simdi="${ALARM_SIMDI:-$(date +%s)}"
+  atomik_yaz "${DURUM_DIZINI}/son-birim-hatasi" "$simdi $birim" || true
+  dosya="${DURUM_DIZINI}/bildirim-${birim}"
+  an=""; read -r an 2>/dev/null <"$dosya" || true
+  if [[ "$an" =~ ^(0|[1-9][0-9]{0,11})$ ]] && (( an <= simdi && simdi - an <= SESSIZLIK_SN )); then
+    echo "agent-sozluk-alarm: ${birim} için bildirim $(( (simdi - an) / 60 )) dk önce gitti; tekrarı bastırıldı"
+    return 0
+  fi
+  if bildir "Agent Sözlük: ${birim} başarısız" high warning \
+"systemd birimi başarısız oldu ($(date -u '+%Y-%m-%d %H:%M UTC')).
+Bak: systemctl status ${birim}; journalctl -u ${birim} -n 50
+Aynı birim için 6 saat yeniden bildirilmez."; then
+    atomik_yaz "$dosya" "$simdi" || return 3
+    return 0
+  fi
+  return 3
+}
+
+# Alt kontrol kendi süre sınırında, ayrı süreçte. Süre aşımı ya da sıfır dışı
+# çıkış körlüktür: canlılık sonucu korunur ama birim başarısız görünür.
+alt_kontrol() { # $1 ad, $2 süre (sn), $3 kip
+  local r
+  timeout --kill-after=5 "$2" "$BASH" "$0" "$3"
+  r=$?
+  if (( r == 124 || r == 137 )); then
+    hata_yaz "$1 kontrolü $2 sn içinde bitmedi"; KORLUK=1
+  elif (( r != 0 )); then
+    hata_yaz "$1 kontrolü işini yapamadı (çıkış $r)"; KORLUK=1
+  fi
+}
+
+case "${1:-}" in
+  --yalniz-saglik) saglik_kontrol; exit $? ;;
+  --yalniz-lease) lease_kontrol; exit $? ;;
+  --yalniz-isletim) isletim_kontrol; exit $? ;;
+  --bildir) birim_bildir "${2:-}"; exit $? ;;
+esac
 if (( KESIM )); then
   # Dağıtım betiği çağırır; sonucu çıkış koduyla söyler (0 = makbuz yazıldı).
   lease_kontrol
@@ -734,8 +937,13 @@ fi
 
 canlilik_kontrol
 kod=$?
-timeout --kill-after=5 "$LEASE_ZAMAN_ASIMI" "$BASH" "$0" --yalniz-lease || true
+alt_kontrol lease "$LEASE_ZAMAN_ASIMI" --yalniz-lease
 if [[ "${ALARM_SAGLIK_KAPALI:-}" != 1 ]]; then
-  timeout --kill-after=5 "$SAGLIK_ZAMAN_ASIMI" "$BASH" "$0" --yalniz-saglik || true
+  alt_kontrol "sağlık" "$SAGLIK_ZAMAN_ASIMI" --yalniz-saglik
 fi
+if [[ "${ALARM_ISLETIM_KAPALI:-}" != 1 ]]; then
+  alt_kontrol "işletim" "$ISLETIM_ZAMAN_ASIMI" --yalniz-isletim
+fi
+# 1 (veritabanı sorgulanamıyor) zaten başarısızdır; 0 ve 2 körlükte 3 olur.
+if (( KORLUK )) && (( kod == 0 || kod == 2 )); then kod=3; fi
 exit "$kod"
