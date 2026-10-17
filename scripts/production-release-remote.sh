@@ -977,10 +977,17 @@ verify_release
 publish_boot_tag
 if test "$migration_mode" != no-migration; then
   set_phase cutover-done
-  find "$runtime_root/.migration-operation" -xdev -depth -delete
 fi
 if test "$cleanup_requested" = cleanup; then cleanup_images; fi
 # Uyarıdır: envanterin kendi hatası da sürümü geri çevirmez, ama sessiz de kalmaz.
 host_inventory || printf 'RELEASE_WARN host inventory incomplete\n' >&2
+# İşaret EN SON kalkar (Astra 1. tur, 17 Ekim): `cutover-done` sonrası temizlik düşerse işaret
+# `cutover-done` olarak kalır ve aynı SHA + aynı migration listesiyle yeniden koşu migration fazını
+# atlayıp (`cutover-done` girişi boş geçer) doğrulama ve temizliği tekrarlar. Önceden işaret
+# temizlikten önce siliniyordu: düşen temizlik `none` gibi görünüyor, migration'sız yeniden koşu
+# da başlangıç kaydındaki eski migration kümesi yüzünden `MIGRATION_SET_CHANGED` ile duruyordu.
+if test "$migration_mode" != no-migration; then
+  find "$runtime_root/.migration-operation" -xdev -depth -delete
+fi
 printf 'RELEASE_COMPLETE PASS sha=%s cleanup=%s migrations=%s\n' \
   "$candidate_sha" "$cleanup_requested" "$migration_mode"

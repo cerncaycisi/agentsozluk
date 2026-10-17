@@ -535,6 +535,22 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
     ]);
   });
 
+  // Astra 1. tur (17 Ekim): işaret temizlikten önce siliniyordu; düşen temizlik `none` görünüyor ve
+  // migration'sız yeniden koşu MIGRATION_SET_CHANGED ile duruyordu.
+  it("migration işareti temizlik ve envanterden sonra, tamam satırından hemen önce kalkar", () => {
+    const tail = remote.slice(remote.indexOf("\ncutover\nverify_release\n"));
+    const phase = tail.indexOf("set_phase cutover-done");
+    const cleanup = tail.indexOf("cleanup_images; fi");
+    const inventory = tail.indexOf("host_inventory ||");
+    const marker = tail.indexOf('find "$runtime_root/.migration-operation" -xdev -depth -delete');
+    const complete = tail.indexOf("RELEASE_COMPLETE PASS");
+    expect(phase).toBeGreaterThan(-1);
+    expect(phase).toBeLessThan(cleanup);
+    expect(cleanup).toBeLessThan(inventory);
+    expect(inventory).toBeLessThan(marker);
+    expect(marker).toBeLessThan(complete);
+  });
+
   it("başarılı sürümden sonra, tamam satırından önce ve uyarı olarak çağrılır", () => {
     const tail = remote.slice(remote.indexOf("\ncutover\nverify_release\n"));
     expect(tail.indexOf("cleanup_images; fi")).toBeLessThan(tail.indexOf("host_inventory ||"));

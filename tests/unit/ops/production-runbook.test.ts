@@ -526,7 +526,7 @@ describe("migration'lı dağıtım hata sonrası kurtarma", () => {
 
   it("her aşama için tutulacak ve silinecek durumu söyler", () => {
     for (const phase of [
-      "`none` (işaret yok)",
+      "`none`, durum dizininde `migration/` yok",
       "`planned`, `image-verified`",
       "`frozen`, `backup-verified`, `rehearsed`",
       "`migrating`, `migrated`, `post-verified`",
@@ -540,6 +540,22 @@ describe("migration'lı dağıtım hata sonrası kurtarma", () => {
     expect(recoveryProse).toContain("işaret + kilit + durum dizini, **üçü birlikte**");
     expect(recoveryProse).toContain("**Dağıtım başladıktan sonra ayar değişmez**");
     expect(recoveryProse).toContain("`--pause-society-flow`");
+  });
+
+  // Astra 1. tur (17 Ekim): `cutover-done` için migration'sız yeniden koşu MIGRATION_SET_CHANGED
+  // ile durur; devam yolu aynı liste ya da elle tamamlamadır.
+  it("cutover-done ve migration kanıtlı none için yürütülebilir devam yolu verir", () => {
+    expect(recovery).toContain("`none`, durum dizininde `migration/` var");
+    expect(recoveryProse).toContain("Aynı SHA ve **aynı** migration bayrağıyla");
+    expect(recoveryProse).toContain("Migration'sız mod kullanılmaz (`MIGRATION_SET_CHANGED`");
+    expect(recoveryProse).toContain("`SETTINGS_PROFILE_CHANGED`");
+    expect(recoveryProse).toContain("**Yeniden koşu yok**");
+    const manual = recoveryProse.slice(recoveryProse.indexOf("**Elle tamamlama:"));
+    expect(manual).toContain("`.release-op-<sha>/candidate-image-id`");
+    expect(manual).toContain("`finished_at IS NULL` kayıt sayısı 0");
+    expect(manual).toContain("İşaret yalnız `phase` = `cutover-done` ise kaldırılır");
+    expect(manual).toContain("Temizlik yeniden koşuyla yapılmaz");
+    expect(manual).toContain("beş koşuluyla");
   });
 
   it("üçlü temizlik dondurma başlamamışken ve geçmişte migration yokken yapılır", () => {
