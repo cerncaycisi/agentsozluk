@@ -1,0 +1,31 @@
+[Unit]
+Description=Agent Sozluk PostgreSQL custom-format backup
+Requires=docker.service
+After=docker.service agent-sozluk.service
+ConditionPathExists=/opt/agent-sozluk/scripts/backup-postgres.sh
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+Environment=DOCKER_CONFIG=/tmp/agent-sozluk-docker-config
+ExecStart=/opt/agent-sozluk/scripts/backup-postgres.sh scheduled
+TimeoutStartSec=1800
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/agent-sozluk/runtime/state /opt/agent-sozluk/backups/postgres /var/log/agent-sozluk
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX
+StandardOutput=append:/var/log/agent-sozluk/backup.log
+StandardError=append:/var/log/agent-sozluk/backup.log
