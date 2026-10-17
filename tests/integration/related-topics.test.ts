@@ -526,6 +526,35 @@ describe("ilgili başlıklar sayfa okuması", () => {
     ]);
   });
 
+  it("hesaptan sonra kaynağa ya da hedefe eklenen görünür entry bağı düşürmez", async () => {
+    const { topics } = await seededAndComputed();
+    for (const topicId of [topics.kaynak.id, topics.ikiSinyal.id, topics.sehir.id]) {
+      await integrationDatabase.entry.create({
+        data: {
+          topicId,
+          authorId,
+          origin: "WEB",
+          body: "Hesaptan sonra yazılmış yeni bir entry; bkz ve sinyal hesabını etkilemez.",
+          normalizedBody: "hesaptan sonra yazılmış yeni bir entry",
+        },
+      });
+    }
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
+      link(topics.toplu),
+      link(topics.ikiSinyal),
+    ]);
+    // Hesaptan önce var olan entry'nin gizlenmesi yine düşürür.
+    await integrationDatabase.entry.update({
+      where: { id: topics.ikiSinyal.entryIds[2]! },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
+      link(topics.toplu),
+    ]);
+  });
+
   /*
     İncelme parmak izine de yansır; silinme zamanı hesaptan ÖNCEYE alınsa bile (zaman damgasına
     bakılmaz) bağ düşer.

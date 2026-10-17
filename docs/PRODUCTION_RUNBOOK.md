@@ -2371,13 +2371,17 @@ kör ölçümde iki sinyalin birlikte önerdiği çiftler %91–100 ilgiliydi; t
 - **Okuma anı denetimi (Astra, 17 Ekim, 1. ve 2. tur):** hesap tek REPEATABLE READ
   snapshot'ında her uygun başlığın görünür entry parmak izini alır:
   `md5(string_agg(id || ':' || md5(gövde), ',' ORDER BY id))`. Bağ, kaynağın ve hedefin izini
-  (`sourceFingerprint`, `targetFingerprint`) saklar. Sayfa her okumada iki izi aynı ifadeyle
-  yeniden hesaplar; kaynak ya da hedefte bir entry silinmiş, gizlenmiş, seed görünürlüğü
-  bastırılmış, düzenlenmiş ya da yeni eklenmişse bağ (BKZ ya da SIGNAL) gösterilmez. İz commit
-  sırasından bağımsızdır: hesapla çakışan moderasyon da yakalanır. Aynı görünür küme G4 kararını
-  da sabitler. Kaynak ve hedef ayrıca aktif ve birleşmemiş olmalı; BKZ bağının kendi entry'si
+  (`sourceFingerprint`, `targetFingerprint`) ve hesabın `now()` anını (`computedAt`) saklar.
+  Sayfa her okumada iki izi aynı ifadeyle, yalnız `createdAt <= computedAt` olan görünür
+  entry'lerden yeniden hesaplar. Hesaptan önce var olan bir entry silinmiş, gizlenmiş, seed
+  görünürlüğü bastırılmış ya da düzenlenmişse bağ (BKZ ya da SIGNAL) gösterilmez. Hesaptan sonra
+  eklenen entry bağı düşürmez: ekleme gizli içerik sızdıramaz ve hareketli başlık bloğunu gün boyu
+  kaybetmez. Snapshot'tan sonra commit eden ya da sonradan yeniden görünür olan eski entry ise
+  izi tutturmaz ve bağı düşürür (tutucu yön). İz commit sırasından bağımsızdır: hesapla çakışan
+  moderasyon da yakalanır. Aynı görünür küme G4 kararını da sabitler; ekleme yalnız içeriği
+  artırır. Kaynak ve hedef ayrıca aktif ve birleşmemiş olmalı; BKZ bağının kendi entry'si
   (`sourceEntryId`) görünür ve kaynak başlıkta olmalı. Düşen bağlar bir sonraki gece hesabında
-  temiz veriden yeniden kurulur. `computedAt` yalnız operasyon kaydıdır.
+  temiz veriden yeniden kurulur.
 - **Tek hesap:** hesap transaction'ın başında danışma kilidi alır (liste modu dahil). Kilit
   başkasındaysa liste modu beklemeden `{"status":"ALREADY_RUNNING"}` basar ve 0 ile çıkar.
   `--uygula` 60 sn arayla 10 kez yeniden dener; kilit hâlâ alınamazsa aynı satırı basar ve 75

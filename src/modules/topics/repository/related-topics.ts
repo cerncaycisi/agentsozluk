@@ -43,19 +43,33 @@ const visibleEntrySql = (alias: Prisma.Sql) => Prisma.sql`${alias}."status" = 'A
   vektörlerle aynı snapshot'ta (REPEATABLE READ) bağın iki ucu için saklar; okuma aynı ifadeyle
   yeniden hesaplar ve fark varsa bağı göstermez. Zaman damgası karşılaştırması, hesapla çakışan
   ve hesap snapshot'ından sonra commit eden moderasyonu kaçırıyordu; parmak izi commit sırasından
-  bağımsızdır. Silme, gizleme, seed bastırma, düzenleme ve yeni entry hepsi izi değiştirir.
+  bağımsızdır.
 
-  Görünür entry kümesi aynıysa G4 (ince başlık) kararı da aynıdır: `substantialTopicSql` yalnız
-  bu kümeye ve gövdelere bakar (ACTIVE entry'de `hiddenAt` her zaman boş). Okuma bu yüzden
-  inceliği ayrıca saymaz.
+  YENİ ENTRY BAĞI DÜŞÜRMEZ (koordinatör kararı, 17 Ekim). Okuma izi yalnız `createdAt <=
+  computedAt` olan görünür entry'lerden alır (`computedAt` hesap transaction'ının `now()`'ı).
+  Ekleme gizli içerik sızdıramaz; hareketli başlık da bloğunu gün boyu kaybetmez. Sonuçlar:
+  - Hesaptan önce var olan bir entry'nin silinmesi, gizlenmesi, seed görünürlüğünün bastırılması
+    ya da gövdesinin düzenlenmesi izi değiştirir; bağ düşer.
+  - `computedAt`'ten önce açılıp hesap snapshot'ından sonra commit eden ya da sonradan yeniden
+    görünür olan bir entry yalnız okumada görünür; iz tutmaz ve bağ düşer. Bu tutucu yöndür,
+    hiçbir zaman sızıntı değildir. Uygulama ile veritabanı saati arasındaki küçük kayma da yalnız
+    bu yönde (bağ düşer) etki eder.
+  - `computedAt`'ten sonra eklenen görünür entry'ler okumada sayılmaz; bağ kalır.
+
+  G4 (ince başlık): okuma izi hesaptakine eşitse hesap anındaki görünür küme ve gövdeler aynen
+  duruyordur; o küme hesapta inceliği geçmişti (`substantialTopicSql` yalnız bu kümeye ve
+  gövdelere bakar; ACTIVE entry'de `hiddenAt` her zaman boş). Sonradan eklenen entry'ler yalnız
+  içeriği artırır, inceliği geri getiremez; çıkarma ise izi değiştirir. Okuma bu yüzden inceliği
+  ayrıca saymaz.
 
   Hiç görünür entry'si olmayan başlıkta ifade NULL verir; NULL hiçbir saklı ize eşit olmaz.
 */
-const topicFingerprintSql = (topicId: Prisma.Sql) => Prisma.sql`(
+const topicFingerprintSql = (topicId: Prisma.Sql, createdNoLaterThan?: Prisma.Sql) => Prisma.sql`(
   SELECT md5(string_agg(fingerprint_entry.id::text || ':' || md5(fingerprint_entry.body), ',' ORDER BY fingerprint_entry.id))
   FROM "entries" AS fingerprint_entry
   WHERE fingerprint_entry."topicId" = ${topicId}
     AND ${visibleEntrySql(Prisma.sql`fingerprint_entry`)}
+    ${createdNoLaterThan ? Prisma.sql`AND fingerprint_entry."createdAt" <= ${createdNoLaterThan}` : Prisma.empty}
 )`;
 
 export async function limitRelatedTopicStatements(
@@ -377,9 +391,10 @@ export interface RelatedTopicLinkRecord {
  * yeniden denetlenir (Astra, 17 Ekim, 1. ve 2. tur):
  *
  * - Kaynak ve hedef hâlâ aktif ve birleşmemiş.
- * - Kaynak ve hedefin parmak izi hesaptakiyle aynı (bkz. `topicFingerprintSql`): hesaptan sonra
- *   iki uçta görünür entry kümesi ya da bir gövde değiştiyse bağ (BKZ ya da SIGNAL) gösterilmez.
- *   Aynı küme G4 inceliğini de sabitler.
+ * - Kaynak ve hedefin parmak izi hesaptakiyle aynı (bkz. `topicFingerprintSql`): hesaptan önce
+ *   var olan görünür entry'lerden biri silindi, gizlendi, bastırıldı ya da düzenlendiyse bağ (BKZ
+ *   ya da SIGNAL) gösterilmez; hesaptan sonra eklenen entry'ler sayılmaz. Aynı küme G4 inceliğini
+ *   de sabitler.
  * - BKZ bağının kaynak entry'si hâlâ görünür ve kaynak başlıkta; bilinmiyorsa bağ gösterilmez.
  *
  * Tek sorgu: bağlar `(topicId, rank)` indeksinden; her parmak izi `entries(topicId, status, …)`
@@ -420,8 +435,8 @@ export function relatedTopicLinksReadSql(topicId: string, limit: number): Prisma
             AND ${visibleEntrySql(Prisma.sql`bkz_entry`)}
         )
       )
-      AND link."sourceFingerprint" = ${topicFingerprintSql(Prisma.sql`link."topicId"`)}
-      AND link."targetFingerprint" = ${topicFingerprintSql(Prisma.sql`link."relatedTopicId"`)}
+      AND link."sourceFingerprint" = ${topicFingerprintSql(Prisma.sql`link."topicId"`, Prisma.sql`link."computedAt"`)}
+      AND link."targetFingerprint" = ${topicFingerprintSql(Prisma.sql`link."relatedTopicId"`, Prisma.sql`link."computedAt"`)}
     ORDER BY link."rank"
     LIMIT ${limit}
   `;
