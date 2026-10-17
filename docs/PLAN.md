@@ -104,9 +104,12 @@ güvenilir insan. Strateji sıra 4'te.
         534 entry 252 hedef başlıkta toplandı; eski adresler 308 ile yeni başlığa gidiyor.
         Önce salt okunur geri alma kaydı alındı (yerelde). Karagöz ilk taramada 4 gammaz açtı.
       - Sonra başlık sayfasında "ilgili başlıklar"; okur yüzeyi, önce ekran görüntüsü.
-        Kopyada ölçüm (13 Ekim): başlık benzerliği tek başına zayıf ("ses tasarımı" → "yol
-        tasarımı"); bkz bağı ise 2+ entry'li 3.317 başlığın yalnız 444'ünde (%13) var, 3+ bağ 75
-        başlıkta. Sinyal seçimi Gökhan'a kanıtla götürülür; kod yazılmadı.
+        **17 Ekim sinyal ölçümü** (20 dolu başlık, 109 aday çift, iki kör hakem, uyum 100/109):
+        başlık benzerliği %30–33 isabet, içerik benzerliği (Türkçe tam metin, ayırt edici
+        sözcük) %45–52, ikisinin ortak önerisi %91–100 ama başlıkların ~%40'ında.
+        **Gökhan kararı (17 Ekim): "Yalnız emin olunanlar"** — ortak öneri + yazarın bkz bağı,
+        en çok 3; öneri yoksa blok yok. Gece hesaplanan ek tablo; canlıdan önce ekran görüntüsü.
+
    6. **4f — Talebi olan konulara yaz (kaynak karışımı).** 12 Ekim ölçümü: 4–20. sıradaki
       başlıkları derinleştirmenin getirisi küçük (5'ten fazla gösterim alan yalnız 76 başlık).
       Türkçe kaynaktan açılan başlık, global kaynaktan açılanın iki katı gösterim alıyor; tıklar
