@@ -31,7 +31,13 @@ trap cleanup EXIT
 for command_name in awk chmod date df docker find flock id mv rm sha256sum stat; do
   command -v "${command_name}" >/dev/null 2>&1 || die "required command is missing: ${command_name}"
 done
-[[ -d "${BACKUP_DIR}" && ! -L "${BACKUP_DIR}" ]] || die "backup directory is unsafe or missing: ${BACKUP_DIR}"
+# 17 Ekim 2026: birim `ReadWritePaths=-…` ile eksik dizinde de başlar; eksik dizin burada
+# adıyla ve kurulum komutuyla düşer (önceden `226/NAMESPACE` ile betik hiç başlamıyordu).
+# `ProtectSystem=strict` altında betik dizini kendisi oluşturamaz; kurulum runbook'ta.
+for required_dir in "${BACKUP_DIR}" "${RUNTIME_DIR}/state"; do
+  [[ -d "${required_dir}" && ! -L "${required_dir}" ]] \
+    || die "directory is unsafe or missing: ${required_dir} (see PRODUCTION_RUNBOOK.md, Sunucu içi gece yedeği)"
+done
 [[ -f "${COMPOSE_FILE}" && ! -L "${COMPOSE_FILE}" ]] || die "regular Compose file is missing: ${COMPOSE_FILE}"
 [[ -f "${ENV_FILE}" && ! -L "${ENV_FILE}" ]] || die "regular environment file is missing: ${ENV_FILE}"
 

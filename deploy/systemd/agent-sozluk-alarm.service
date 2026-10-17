@@ -3,6 +3,8 @@ Description=Agent Sozluk liveness alarm (is work being produced?)
 Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
 Requires=docker.service
 After=docker.service
+# Başarısızlık sessiz kalmasın (17 Ekim): ortak bildirim birimi, birim başına 6 saatte bir.
+OnFailure=agent-sozluk-bildirim@%n.service
 
 [Service]
 Type=oneshot
@@ -23,7 +25,9 @@ EnvironmentFile=/etc/agent-sozluk-alarm.env
 ExecStart=/opt/agent-sozluk/scripts/canlilik-alarmi.sh
 
 # Betik 2 ile çıkarsa bu bir ALARM'dır, birim hatası değil; systemd'nin
-# başarısız sayması gereksiz ikinci bir gürültü üretirdi.
+# başarısız sayması gereksiz ikinci bir gürültü üretirdi. 1 (veritabanı
+# sorgulanamıyor) ve 3 (alarmın kendi körlüğü: alt kontrol okuyamadı, süre aşımı ya
+# da bildirim gönderilemedi; 17 Ekim) başarısızdır ve OnFailure bildirimi çalışır.
 SuccessExitStatus=0 2
 
 UMask=0077
@@ -50,7 +54,8 @@ SystemCallArchitectures=native
 ReadOnlyPaths=/opt/agent-sozluk/app /opt/agent-sozluk/runtime/compose.production.yaml /opt/agent-sozluk/scripts
 InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/work
 
-TimeoutStartSec=3min
+# 4 dk: alt kontrollerin en kötü toplamı 185 sn (betiğin başındaki hesap).
+TimeoutStartSec=4min
 Nice=10
 StandardOutput=journal
 StandardError=journal
