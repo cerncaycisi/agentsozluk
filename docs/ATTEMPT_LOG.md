@@ -9820,6 +9820,10 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
   kalkar); `ALTER SYSTEM` yalnız ad sonekine güveniyordu (artık açık küme sahipliği şartı);
   envanter `agent-sozluk.service`'i kaçırıyordu; yedek betiğinde üretim adresi, ölçüm betiğinde
   kişisel e-posta vardı.
+- **Astra 2. tur:** `c76d2c1f` NO-GO, 3 × P2 (koşan birim ve geçersiz eşik sahte "düzeldi";
+  canlılıkta gönderilemeyen kesinti kayboluyordu; `migration/` dizini tamamlanma kanıtı
+  sayılıyordu). Düzeltildi: `? <ad>` taşıma, canlılıkta `gorulen` alanı, `migration/cutover-done`
+  kanıt dosyası ve işaretten önce düşen planlama satırı. Astra bütçesi doldu; sonraki tur Sol 6.1.
 
 **Do not repeat:**
 
