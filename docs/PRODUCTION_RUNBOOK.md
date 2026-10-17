@@ -2545,6 +2545,10 @@ kör ölçümde iki sinyalin birlikte önerdiği çiftler %91–100 ilgiliydi; t
   artırır. Kaynak ve hedef ayrıca aktif ve birleşmemiş olmalı; BKZ bağının kendi entry'si
   (`sourceEntryId`) görünür ve kaynak başlıkta olmalı. Düşen bağlar bir sonraki gece hesabında
   temiz veriden yeniden kurulur.
+- **Yaş sınırı (17 Ekim 2026, Astra bulgu 5):** `computedAt` 72 saatten
+  (`RELATED_TOPIC_MAX_AGE_HOURS`) eskiyse bağ gösterilmez. Gece işi durursa bayat bağlar süresiz
+  kalmaz; blok kalkar, satırlar silinmez ve bir sonraki başarılı hesapla geri gelir. İşin
+  düştüğünü `OnFailure=` bildirimi ve alarmın 26 saatlik son-başarılı-koşu kontrolü söyler.
 - **Tek hesap:** hesap transaction'ın başında danışma kilidi alır (liste modu dahil). Kilit
   başkasındaysa liste modu beklemeden `{"status":"ALREADY_RUNNING"}` basar ve 0 ile çıkar.
   `--uygula` 60 sn arayla 10 kez yeniden dener; kilit hâlâ alınamazsa aynı satırı basar ve 75
