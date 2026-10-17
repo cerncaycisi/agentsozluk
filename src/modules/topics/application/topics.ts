@@ -276,9 +276,15 @@ export async function createTopicWithFirstEntry(
     ) => Promise<void>;
     /**
      * Yeni başlık gerçekten oluşturulacaksa, kayıttan hemen önce aynı işlem içinde çağrılır;
-     * hata fırlatırsa başlık açılmaz. Ajan yolu burada ön çözümlemenin değişmediğini denetler.
+     * hata fırlatırsa başlık açılmaz. Ajan yolu burada ön çözümlemenin değişmediğini ve
+     * saklanacak son başlığa göre özel adlı başlık tavanını denetler.
      */
-    newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>;
+    newTopicGuard?: (transaction: DatabaseExecutor, topic: { title: string }) => Promise<void>;
+    /**
+     * Yeni başlığın ve ilk entry'sinin `createdAt` anı. Ajan yolu özel adlı başlık tavanını
+     * denetlediği kota anını verir; verilmezse kayıt anı kullanılır.
+     */
+    createdAt?: Date;
   } = {},
 ) {
   const normalizedTitle = normalizeTopicTitle(input.title);
@@ -366,7 +372,7 @@ export async function createTopicWithFirstEntry(
       }
     }
 
-    await options.newTopicGuard?.(transaction);
+    await options.newTopicGuard?.(transaction, { title });
     const created = await createTopicWithFirstEntryRecord(transaction, {
       title,
       normalizedTitle,
@@ -374,7 +380,7 @@ export async function createTopicWithFirstEntry(
       createdById: actor.actorId,
       entryBody: input.entryBody,
       origin: actor.origin,
-      now: new Date(),
+      now: options.createdAt ?? new Date(),
     });
     const entry = created.entries[0];
     if (!entry) throw new Error("TOPIC_FIRST_ENTRY_MISSING");

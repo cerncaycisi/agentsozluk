@@ -33,7 +33,7 @@ const contextSchema = z
     actionFeedback: z
       .array(
         fields(
-          "actionCreatedAt actionId actionType channel eventKey executionStatus expiresAt observedAt policyVersion reason resultRecordedAt runId semanticAssessment",
+          "actionCreatedAt actionId actionType channel eventKey executionStatus expiresAt observedAt policyVersion quotaDay reason resultRecordedAt runId semanticAssessment",
         ),
       )
       .optional(),

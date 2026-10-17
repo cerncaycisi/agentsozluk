@@ -119,6 +119,8 @@ export function createTopicWithFirstEntryRecord(
         slug: input.slug,
         createdById: input.createdById,
         entryCount: 1,
+        // Başlık ve ilk entry aynı anı taşır; veritabanı varsayılanı transaction başını yazardı.
+        createdAt: input.now,
         lastEntryAt: input.now,
         entries: {
           create: {

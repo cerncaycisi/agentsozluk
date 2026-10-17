@@ -18,9 +18,17 @@ import type { RuntimePurposeChange } from "@/modules/agents/validation/purpose-s
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import {
+  countAgentProperNounTopicsCreatedSince,
   getRuntimeReadTopics,
   listRuntimeInterestTopicCandidates,
 } from "@/modules/agents/repository/runtime";
+import {
+  AGENT_DAILY_PROPER_NOUN_TOPIC_CAP,
+  PROPER_NOUN_TOPIC_CAP_REASON,
+  isProperNounTopicTitle,
+  istanbulQuotaDay,
+  istanbulDayStart,
+} from "@/modules/agents/domain/topic-creation-cap";
 import { appendRuntimeEvent, lockAgentProfile } from "@/modules/agents/repository/control-plane";
 import { lockAgentLifeLedger } from "@/modules/agents/repository/life-ledger";
 import { lockTopicState } from "@/modules/topics/repository/topics";
@@ -8464,6 +8472,244 @@ describe("internal agent runtime API with PostgreSQL", () => {
       await secondClient.$disconnect();
     }
     expect(await integrationDatabase.topic.count()).toBe(topicCountBefore);
+  });
+
+  describe("günlük özel adlı yeni başlık tavanı (Gökhan kararı, 17 Ekim)", () => {
+    async function seedAgentProperNounTopicsToday(agentUserId: string, count: number) {
+      await integrationDatabase.topic.createMany({
+        data: Array.from({ length: count }, (_, index) => ({
+          title: `Özel Ad Tavanı ${index}`,
+          normalizedTitle: `özel ad tavanı ${index}`,
+          slug: `ozel-ad-tavani-${index}`,
+          createdById: agentUserId,
+        })),
+      });
+    }
+
+    async function executeNewTopicProposal(
+      fixture: Awaited<ReturnType<typeof createFixture>>,
+      workerId: string,
+      input: { title: string; body: string },
+      dependencies?: Parameters<typeof executeRuntimeAction>[4],
+    ) {
+      const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+      const writePrincipal = await runtimePrincipal(fixture.credential);
+      const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+        workerId,
+        leaseSeconds: 60,
+      });
+      const runId = leased.run!.id;
+      await getRuntimeRunContext(
+        integrationDatabase,
+        await runtimePrincipal(fixture.credential, "runtime:read"),
+        runId,
+        workerId,
+      );
+      await recordRuntimeActions(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeActionsSchema.parse({
+          workerId,
+          actions: [
+            {
+              sequence: 1,
+              actionType: "CREATE_TOPIC_WITH_ENTRY",
+              safeReason: "Kalıcı bir adres için ilk entry.",
+              input,
+              provenance: {
+                evidenceType: "PLATFORM_EVENT" as const,
+                evidenceIds: [runId],
+                shortRationale: "Runtime run görünür ve doğrulanabilir platform kanıtıdır.",
+              },
+            },
+          ],
+        }),
+      );
+      return executeRuntimeAction(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        { workerId, sequence: 1 },
+        dependencies,
+      );
+    }
+
+    it("counts only agent-created proper-noun topics of the Istanbul day, matching the domain rule", async () => {
+      const fixture = await createFixture();
+      const since = istanbulDayStart(new Date());
+      const before = await countAgentProperNounTopicsCreatedSince(integrationDatabase, since);
+      // Yalnız Türkçe büyük harf taşıyan başlıklar SQL tarafının Unicode farkındalığını sınar.
+      const agentTodayTitles = [
+        "İstinye Park",
+        "Şile Feneri",
+        "Çorlu",
+        "Ömer Seyfettin",
+        "Ünye",
+        "The Wayfinder",
+        "Türkşeker",
+        "2026 Yaşayan Gezegen Raporu",
+        "ışık şöleni",
+        "çöğüş",
+        "tesis yönetimi",
+        "petrol arzı",
+        "iş garantisi",
+        "2026 mimarlık haftası",
+        // Unicode `Lt` başlık harfi: libc `[[:upper:]]` sayabilir, alan kuralı saymaz.
+        "ᾈλφα",
+      ];
+      await integrationDatabase.topic.createMany({
+        data: [
+          ...agentTodayTitles.map((title, index) => ({
+            title,
+            normalizedTitle: normalizeTopicTitle(title),
+            slug: `ozel-ad-sayim-${index}`,
+            createdById: fixture.created.agent.user.id,
+          })),
+          {
+            title: "Dünkü Özel Ad",
+            normalizedTitle: "dünkü özel ad",
+            slug: "dunku-ozel-ad",
+            createdById: fixture.created.agent.user.id,
+            createdAt: new Date(since.getTime() - 60_000),
+          },
+          {
+            title: "İnsanın Özel Adı",
+            normalizedTitle: "insanın özel adı",
+            slug: "insanin-ozel-adi",
+            createdById: fixture.admin.id,
+          },
+        ],
+      });
+      const expected = agentTodayTitles.filter(isProperNounTopicTitle).length;
+      expect(expected).toBe(8);
+      expect(await countAgentProperNounTopicsCreatedSince(integrationDatabase, since)).toBe(
+        before + expected,
+      );
+    });
+
+    it("rejects a new proper-noun topic once the daily cap is reached without failing the run", async () => {
+      const fixture = await createFixture();
+      await seedAgentProperNounTopicsToday(
+        fixture.created.agent.user.id,
+        AGENT_DAILY_PROPER_NOUN_TOPIC_CAP,
+      );
+      const topicCountBefore = await integrationDatabase.topic.count();
+      const rejected = await executeNewTopicProposal(fixture, "proper-noun-cap-worker", {
+        title: "Field Care Node",
+        body: "Field Care Node, Spika Mimarlık tarafından Urban Toilets yarışması için tasarlanan ve mansiyon alan projedir.",
+      });
+      expect(rejected).toMatchObject({
+        actionStatus: "REJECTED",
+        rejectionCode: "TOPIC_CREATION_DISABLED",
+        rejectionReason: PROPER_NOUN_TOPIC_CAP_REASON,
+      });
+      // Alt neden ve kota günü sonraki koşunun sonuç kartı için saklanır (Astra tavan 1. tur P2).
+      const stored = await integrationDatabase.agentAction.findUniqueOrThrow({
+        where: { id: rejected.id },
+        select: { validationResult: true },
+      });
+      expect(stored.validationResult).toMatchObject({
+        valid: false,
+        code: "TOPIC_CREATION_DISABLED",
+        rejectionDetail: {
+          subReason: "PROPER_NOUN_DAILY_CAP",
+          quotaDay: istanbulQuotaDay(new Date()),
+        },
+      });
+      expect(await integrationDatabase.topic.count()).toBe(topicCountBefore);
+    });
+
+    it("records the new topic on the same Istanbul day the cap was checked for", async () => {
+      /*
+        Astra tavan 1. tur P2: transaction İstanbul gece yarısından önce başlayıp denetim sonra
+        yapılırsa veritabanı varsayılanı başlığı önceki güne yazardı. Kota anı kilit altında
+        seçilir ve başlık ile ilk entry bu anı taşır. Burada kota anı bir sonraki İstanbul
+        gününün ilk milisaniyesidir; bugünkü dolu tavan o günü bağlamaz.
+      */
+      const fixture = await createFixture();
+      await seedAgentProperNounTopicsToday(
+        fixture.created.agent.user.id,
+        AGENT_DAILY_PROPER_NOUN_TOPIC_CAP,
+      );
+      const nextDayStart = new Date(istanbulDayStart(new Date()).getTime() + 24 * 60 * 60 * 1000);
+      await expect(
+        executeNewTopicProposal(
+          fixture,
+          "proper-noun-midnight-worker",
+          {
+            title: "Gece Yarısı Fuarı",
+            body: "Gece Yarısı Fuarı, İstanbul'da gece yarısı açılan ve sabaha kadar süren bir kitap fuarıdır.",
+          },
+          { topicQuotaClock: () => nextDayStart },
+        ),
+      ).resolves.toMatchObject({ actionStatus: "SUCCEEDED", rejectionCode: null });
+      const created = await integrationDatabase.topic.findFirstOrThrow({
+        where: { title: "Gece Yarısı Fuarı" },
+        select: { createdAt: true, entries: { select: { createdAt: true } } },
+      });
+      expect(created.createdAt.toISOString()).toBe(nextDayStart.toISOString());
+      expect(created.entries.map(({ createdAt }) => createdAt.toISOString())).toEqual([
+        nextDayStart.toISOString(),
+      ]);
+      expect(await countAgentProperNounTopicsCreatedSince(integrationDatabase, nextDayStart)).toBe(
+        1,
+      );
+    });
+
+    it("still opens a lowercase concept topic when the proper-noun cap is full", async () => {
+      const fixture = await createFixture();
+      await seedAgentProperNounTopicsToday(
+        fixture.created.agent.user.id,
+        AGENT_DAILY_PROPER_NOUN_TOPIC_CAP,
+      );
+      await expect(
+        executeNewTopicProposal(fixture, "concept-after-cap-worker", {
+          title: "tesis yönetimi",
+          body: "Tesis yönetimi, bir binanın bakımını, enerji kullanımını ve ortak alan hizmetlerini tek elden planlama işidir.",
+        }),
+      ).resolves.toMatchObject({
+        actionStatus: "SUCCEEDED",
+        rejectionCode: null,
+        result: { topicResolution: "CREATED" },
+      });
+      expect(
+        await integrationDatabase.topic.count({ where: { normalizedTitle: "tesis yönetimi" } }),
+      ).toBe(1);
+    });
+
+    it("routes a capped proper-noun proposal to the existing topic instead of rejecting it", async () => {
+      const fixture = await createFixture();
+      await seedAgentProperNounTopicsToday(
+        fixture.created.agent.user.id,
+        AGENT_DAILY_PROPER_NOUN_TOPIC_CAP,
+      );
+      const existing = await integrationDatabase.topic.create({
+        data: {
+          title: "Türkşeker",
+          normalizedTitle: "türkşeker",
+          slug: "turkseker",
+          createdById: fixture.admin.id,
+        },
+      });
+      const topicCountBefore = await integrationDatabase.topic.count();
+      await expect(
+        executeNewTopicProposal(fixture, "proper-noun-existing-worker", {
+          title: "Türkşeker",
+          body: "Türkşeker, Türkiye'de pancar şekeri üreten fabrikaları işleten kamu kuruluşudur.",
+        }),
+      ).resolves.toMatchObject({
+        actionStatus: "SUCCEEDED",
+        rejectionCode: null,
+        result: { topicResolution: "EXISTING" },
+      });
+      expect(await integrationDatabase.topic.count()).toBe(topicCountBefore);
+      expect(
+        await integrationDatabase.entry.count({
+          where: { topicId: existing.id, status: "ACTIVE" },
+        }),
+      ).toBe(1);
+    });
   });
 
   it("accepts a title repair after a transient-incident rejection and writes the canonical topic", async () => {
