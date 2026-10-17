@@ -7,6 +7,14 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 17 Ekim öğleden sonra — ilgili başlıklar canlıda (tablo boş), sunucu yedeği düzeldi
+
+- **#423 canlıda:** exact `d7812525`, migration `20261017120000_topic_related_links` A5 ile;
+  `RELEASE_COMPLETE PASS`. Tablo boş, blok görünmüyor; gece işi kurulmadı (Gökhan onayı bekliyor).
+- **Liste kipi:** 4.630 uygun başlığın 1.841'inde (%40) bağ; 2.473 bağ (572 bkz, 1.901 ortak sinyal).
+- **Sunucu içi gece yedeği:** 15–17 Ekim koşmamıştı (dizin yok); düzeltildi, 1,68 GB elle alındı.
+  Sunucu dışı yedek her gece başarılı.
+
 ## 17 Ekim — karma yazım canlıda
 
 - **#421 canlıda:** exact `35e5a320`, `RELEASE_COMPLETE PASS`, disk %51 → %46. Karma yazım 16 Ekim

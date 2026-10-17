@@ -9749,3 +9749,40 @@ betiği dağıtımla güncellenmiyor, elle karşılaştırıp kur.
 **Do not repeat:** Sözcük listesi korumasında her turda bir çekim yamalamak hakem turlarını ve
 kotayı yiyor (Sol 6.1 5 tur yalnız sayı biçimi). Riskli sınıfı (sayı, kip) baştan aday dışı
 bırak.
+
+## 17 Ekim — sunucu içi gece yedeği 15–17 Ekim'de koşmadı; #423 migration'lı dağıtım
+
+- **Bulgu:** `agent-sozluk-backup.service` 15, 16 ve 17 Ekim 00:30Z'de
+  `status=226/NAMESPACE` ile başlamadan düştü. Neden: `/opt/agent-sozluk/backups/postgres` OVH
+  sunucusunda hiç oluşturulmamıştı (taşımada eksik kaldı); birim `ReadWritePaths` ile bu dizini
+  istiyor. Alarm bildirmedi (ntfy günlük sınırı).
+- **Veri kaybı riski yok:** operatör sunucusundaki sunucu dışı gece yedeği her gece başarılı
+  (15, 16, 17 Ekim `YEDEK_OK … drive=VERIFIED`, son 864 MB).
+- **Düzeltme:** `install -d -o deploy -g deploy -m 0700` ile dizinler oluşturuldu; servis elle
+  koştu: `agent-sozluk-postgres-20261017T105652Z-scheduled.dump` 1,68 GB + sha256, `Result=success`.
+- **#423 dağıtımı** exact `d78125259e48fd9678a0e908b60bf4e177079edf`, migration
+  `20261017120000_topic_related_links`, RC `39026209773`. Beş deneme:
+  1. `image-verified` sonrası `install: cannot change permissions of '/opt/agent-sozluk/backups'`
+     (aynı eksik dizin). Site açık kaldı; akış elle yeniden açıldı (374).
+  2. `assert_state_fingerprints` (ayar parmak izi): akışı deploy başladıktan sonra açmıştım.
+  3. `EXPECTATION_UNREADABLE`: runbook'un genel tarifiyle `.release-op-<sha>` silindi; migration
+     işaretinin beklenti dosyası da oradaydı.
+  4. `DISK_HEADROOM_COMBINED`: gereken 3 × 5,52 + 1 = 17,56 GiB, boş 16,94 (elle alınan yedek
+     1,6 GB). Gökhan kararı (17 Ekim): iki sürüm önceki imaj `8c723e41` silindi → 18,53 GiB.
+  5. Akış önce duraklatıldı, kilit, işaret (`image-verified`, yalnız `identity/phase/state-dir`)
+     ve durum dizini beş koşul doğrulanarak temizlendi; `frozen → backup-verified → rehearsed →
+migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik disk %58 → %57.
+     Her ara denemede üretim şeması değişmedi (`_prisma_migrations` 0, tablo yok), site 200.
+- **Sonrası:** akış açıldı (378); worker `d7812525`, luna max + karma yazım. Liste kipi
+  (`--ornek=40`): 4.630 kaynak başlığın 1.841'inde bağ, 2.473 bağ (572 BKZ, 1.901 SIGNAL),
+  3 dk 26 sn. Tablo doldurulmadı; Gökhan'a ekran görüntüsü gösterildi.
+
+**Do not repeat:**
+
+- Sunucu taşımadan sonra her systemd biriminin `ReadWritePaths` dizinlerini ve ilk gece koşusunu
+  doğrula; "elle bir kez koştu" kalıcı birimin çalıştığını göstermez.
+- Migration'lı dağıtım başladıktan sonra ayar değiştirme (akışı açma dahil). Hata sonrası
+  `.release-op-<sha>` silinecekse önce migration işaretinin aşamasını ve dosyalarını oku;
+  `image-verified` öncesi işaret de birlikte kaldırılmalı.
+- Migration'lı dağıtımdan önce `3 × DB + 1 GiB` boş alanı elle ölç; sunucu içi yedek bu bütçeden
+  yer.
