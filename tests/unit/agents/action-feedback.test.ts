@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { projectActionFeedback } from "@/modules/agents/domain/action-feedback";
+import {
+  projectActionFeedback,
+  refreshFrozenActionFeedback,
+} from "@/modules/agents/domain/action-feedback";
 
 const now = new Date("2026-10-03T12:00:00Z");
 const result = {
@@ -79,5 +82,96 @@ describe("execution feedback is not a quality judgment", () => {
       null,
       null,
     ]);
+  });
+});
+
+describe("proper-noun daily cap feedback (Astra tavan 1. tur P2)", () => {
+  const capNow = new Date("2026-10-17T12:00:00Z");
+  const capRejection = {
+    ...result,
+    actionType: "CREATE_TOPIC_WITH_ENTRY" as const,
+    actionStatus: "REJECTED",
+    rejectionCode: "TOPIC_CREATION_DISABLED",
+    createdAt: new Date("2026-10-17T10:00:00Z"),
+    updatedAt: new Date("2026-10-17T10:00:01Z"),
+  };
+  const detail = (quotaDay: string) => ({
+    valid: false,
+    code: "TOPIC_CREATION_DISABLED",
+    rejectionDetail: { subReason: "PROPER_NOUN_DAILY_CAP", quotaDay },
+  });
+
+  it("explains today's cap with a safe reason and the quota day", () => {
+    const [card] = projectActionFeedback(
+      [{ ...capRejection, validationResult: detail("2026-10-17") }],
+      capNow,
+    );
+    expect(card).toMatchObject({
+      executionStatus: "REJECTED",
+      reason: "PROPER_NOUN_DAILY_CAP_USE_EXISTING_OR_CONCEPT",
+      quotaDay: "2026-10-17",
+      semanticAssessment: "NOT_EVALUATED",
+    });
+    expect(JSON.stringify(card)).not.toContain("TOPIC_CREATION_DISABLED");
+  });
+
+  it("keeps yesterday's cap neutral once the Istanbul day has turned", () => {
+    // 17 Ekim 21:00Z = 18 Ekim 00:00 TSİ; dünkü tavan artık geçerli değil.
+    const [card] = projectActionFeedback(
+      [{ ...capRejection, validationResult: detail("2026-10-17") }],
+      new Date("2026-10-17T21:00:00Z"),
+    );
+    expect(card).toMatchObject({ reason: null });
+    expect(card).not.toHaveProperty("quotaDay");
+  });
+
+  it("keeps the global topic-creation switch neutral", () => {
+    const [card] = projectActionFeedback(
+      [{ ...capRejection, validationResult: { valid: false, code: "TOPIC_CREATION_DISABLED" } }],
+      capNow,
+    );
+    expect(card).toMatchObject({ reason: null });
+    expect(card).not.toHaveProperty("quotaDay");
+  });
+
+  it("ignores a cap detail on any other rejection code", () => {
+    const [card] = projectActionFeedback(
+      [
+        {
+          ...capRejection,
+          rejectionCode: "PRIVATE_FAILURE_DETAIL",
+          validationResult: detail("2026-10-17"),
+        },
+      ],
+      capNow,
+    );
+    expect(card).toMatchObject({ reason: null });
+    expect(card).not.toHaveProperty("quotaDay");
+  });
+
+  it("neutralises a frozen cap card when the same run crosses Istanbul midnight", () => {
+    // Astra tavan 2. tur P2: 23:59:30 TSİ'de donan kart 00:00:30 TSİ'de yeniden sunulur.
+    const frozen = projectActionFeedback(
+      [{ ...capRejection, validationResult: detail("2026-10-17") }],
+      new Date("2026-10-17T20:59:30Z"),
+    );
+    expect(frozen[0]).toMatchObject({ quotaDay: "2026-10-17" });
+    const sameDay = refreshFrozenActionFeedback(frozen, new Date("2026-10-17T20:59:50Z"));
+    expect(sameDay).toEqual(frozen);
+    const nextDay = refreshFrozenActionFeedback(frozen, new Date("2026-10-17T21:00:30Z"));
+    const neutral: Record<string, unknown> = { ...frozen[0], reason: null };
+    delete neutral.quotaDay;
+    expect(nextDay).toEqual([neutral]);
+  });
+
+  it("leaves other frozen cards and malformed values untouched", () => {
+    const other = projectActionFeedback(
+      [{ ...capRejection, rejectionCode: "TOPIC_EXISTS_UNREAD" }],
+      capNow,
+    );
+    const later = new Date("2026-10-18T12:00:00Z");
+    expect(refreshFrozenActionFeedback(other, later)).toEqual(other);
+    expect(refreshFrozenActionFeedback(undefined, later)).toBeUndefined();
+    expect(refreshFrozenActionFeedback([null, "x"], later)).toEqual([null, "x"]);
   });
 });

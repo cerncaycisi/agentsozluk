@@ -1,3 +1,10 @@
+import {
+  PROPER_NOUN_TOPIC_CAP_REASON,
+  agentProperNounTopicCapReached,
+  isProperNounTopicTitle,
+  istanbulDayStart,
+  properNounCapRejectionDetail,
+} from "@/modules/agents/domain/topic-creation-cap";
 import { inTransaction } from "@/lib/db/transaction";
 import type {
   DatabaseExecutor,
@@ -50,6 +57,7 @@ import {
   findRuntimeReplyTarget,
   findRuntimeRelationshipTarget,
   getRuntimeGlobalSettings,
+  countAgentProperNounTopicsCreatedSince,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
@@ -125,6 +133,8 @@ interface ActionExecutionDependencies {
   beforeFallback?: () => Promise<void>;
   /** Test seam entered after a new-topic proposal was resolved, before any write. */
   afterCanonicalTopicResolved?: () => Promise<void>;
+  /** Test seam for the proper-noun topic quota instant chosen under the global settings lock. */
+  topicQuotaClock?: () => Date;
 }
 
 export async function assertPublicWriteReadiness(
@@ -147,6 +157,16 @@ export async function assertPublicWriteReadiness(
 interface Rejection {
   code: string;
   reason: string;
+  /** Güvenli alt neden; `validationResult.rejectionDetail` içinde saklanır. */
+  detail?: InputJsonObject;
+}
+
+function rejectionValidation(rejection: { code: string; detail?: InputJsonObject | undefined }) {
+  return {
+    valid: false,
+    code: rejection.code,
+    ...(rejection.detail ? { rejectionDetail: rejection.detail } : {}),
+  };
 }
 
 /*
@@ -622,10 +642,7 @@ async function rejectAction(
 ) {
   const result = await updateRuntimeActionStatus(transaction, action.id, {
     actionStatus: "REJECTED",
-    validationResult: validationWithRepairMarker(action, {
-      valid: false,
-      code: rejection.code,
-    }),
+    validationResult: validationWithRepairMarker(action, rejectionValidation(rejection)),
     rejectionCode: rejection.code,
     rejectionReason: rejection.reason,
   });
@@ -701,6 +718,7 @@ class RuntimeActionRejectionError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    readonly detail?: InputJsonObject,
   ) {
     super(message);
     this.name = "RuntimeActionRejectionError";
@@ -716,7 +734,8 @@ async function performAction(
     transaction: DatabaseExecutor,
     topic: { id: string; title: string },
   ) => Promise<void>,
-  newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>,
+  newTopicGuard?: (transaction: DatabaseExecutor, topic: { title: string }) => Promise<void>,
+  topicCreatedAt?: Date,
 ): Promise<{
   result: InputJsonValue;
   entryId?: string;
@@ -753,6 +772,7 @@ async function performAction(
           canonicalConflictStrategy: "ADD_ENTRY",
           ...(existingTopicGuard ? { existingTopicGuard } : {}),
           ...(newTopicGuard ? { newTopicGuard } : {}),
+          ...(topicCreatedAt ? { createdAt: topicCreatedAt } : {}),
         },
       );
       return {
@@ -1089,6 +1109,13 @@ export async function executeRuntimeAction(
           });
       }
       const settings = await getRuntimeGlobalSettings(transaction);
+      /*
+        Özel adlı başlık tavanının tek kota anı (Astra tavan 1. tur P2). Global ajan ayarı kilidi
+        alındıktan sonra seçilir; hem gün başı sayımı hem yeni başlığın ve ilk entry'sinin açık
+        `createdAt` değeri budur. Böylece İstanbul gece yarısı transaction başı ile denetim arasına
+        düşse de denetlenen gün ile kaydın düştüğü gün aynı kalır.
+      */
+      const topicQuotaAt = dependencies.topicQuotaClock?.() ?? new Date();
       // Yalnız zaten kiralanmış kaynak işinin etkisiz kapanışı. Süre/OFF yeni lease'i
       // durdurur; devam eden işin NO_ACTION sonucunu teknik ret haline getirmez.
       const preparedSourceNoAction =
@@ -1192,6 +1219,27 @@ export async function executeRuntimeAction(
           return rejectAction(transaction, principal, actionRecord, {
             code: issue.code,
             reason: issue.reason,
+          });
+        /*
+          Özel adlı başlık tavanı (Gökhan kararı, 17 Ekim) yalnız gerçekten yeni başlık açılacak
+          bu dalda uygulanır: kanonik çözümleme var olan bir başlığa yönlendiriyorsa yeni başlık
+          açılmaz ve entry yazılır. Sayım global ajan ayarı kilidinden sonra, yazmayla aynı
+          transaction'da. Kod onarılabilir değildir; içerik onarımı bu redde döngüye girmez.
+          Alt neden ve kota günü sonraki koşunun sonuç kartına gider.
+        */
+        if (
+          isProperNounTopicTitle(parsed.data.input.title) &&
+          agentProperNounTopicCapReached(
+            await countAgentProperNounTopicsCreatedSince(
+              transaction,
+              istanbulDayStart(topicQuotaAt),
+            ),
+          )
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "TOPIC_CREATION_DISABLED",
+            reason: PROPER_NOUN_TOPIC_CAP_REASON,
+            detail: { ...properNounCapRejectionDetail(topicQuotaAt) },
           });
       }
       /*
@@ -1589,16 +1637,31 @@ export async function executeRuntimeAction(
       /*
         Ön çözümleme var olan bir başlık bulduysa ve o başlık yazmadan önce gizlenirse servis
         yeni başlık açardı; o zaman yeni başlık anayasa denetimi de atlanmış olurdu (Astra #371
-        2. tur). Çözümleme değiştiyse yazma yerine reddedilir. Günlük tavan 11 Ekim'de
-        kaldırıldı (Gökhan kararı); bu koruma tavandan bağımsızdır (Astra #389).
+        2. tur). Çözümleme değiştiyse yazma yerine reddedilir; bu koruma tavandan bağımsızdır
+        (Astra #389). Özel adlı başlık tavanı kayıttan hemen önce, saklanacak son başlıkla
+        bir kez daha denetlenir: ön denetimden sonra açılan başlıklar da sayılır.
       */
       const newTopicGuard =
         parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY"
-          ? async () => {
+          ? async (guardTransaction: DatabaseExecutor, topic: { title: string }) => {
               if (canonicalTopicProposal)
                 throw new RuntimeActionRejectionError(
                   "TOPIC_RESOLUTION_CHANGED",
                   "Önerilen başlığın çözümlendiği kayıt doğrulama ile yazma arasında değişti; başlık açılmadı. Başlığı yeniden okuyup tekrar değerlendir.",
+                );
+              if (
+                isProperNounTopicTitle(topic.title) &&
+                agentProperNounTopicCapReached(
+                  await countAgentProperNounTopicsCreatedSince(
+                    guardTransaction,
+                    istanbulDayStart(topicQuotaAt),
+                  ),
+                )
+              )
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_CREATION_DISABLED",
+                  PROPER_NOUN_TOPIC_CAP_REASON,
+                  { ...properNounCapRejectionDetail(topicQuotaAt) },
                 );
             }
           : undefined;
@@ -1609,6 +1672,7 @@ export async function executeRuntimeAction(
         resolvedTarget,
         blindTopicGuard,
         newTopicGuard,
+        topicQuotaAt,
       );
       if (traversedLinkedTopicId)
         await appendRuntimeEvent(transaction, {
@@ -1731,13 +1795,20 @@ export async function executeRuntimeAction(
     if (!started) throw error;
     await dependencies.beforeFallback?.();
     const rejection =
-      error instanceof AppError || error instanceof RuntimeActionRejectionError
-        ? { status: "REJECTED" as const, code: error.code, reason: error.message }
-        : {
-            status: "FAILED" as const,
-            code: "ACTION_EXECUTION_FAILED",
-            reason: "Action güvenli biçimde tamamlanamadı.",
-          };
+      error instanceof RuntimeActionRejectionError
+        ? {
+            status: "REJECTED" as const,
+            code: error.code,
+            reason: error.message,
+            detail: error.detail,
+          }
+        : error instanceof AppError
+          ? { status: "REJECTED" as const, code: error.code, reason: error.message }
+          : {
+              status: "FAILED" as const,
+              code: "ACTION_EXECUTION_FAILED",
+              reason: "Action güvenli biçimde tamamlanamadı.",
+            };
     return inTransaction(client, async (transaction) => {
       await lockRuntimeAgent(transaction, principal.agentProfileId);
       await lockRuntimeRunForLeaseMutation(transaction, runId);
@@ -1771,10 +1842,7 @@ export async function executeRuntimeAction(
       if (terminalStatuses.has(action.actionStatus)) return runtimeActionResult(action);
       const updated = await updateRuntimeActionStatus(transaction, action.id, {
         actionStatus: rejection.status,
-        validationResult: validationWithRepairMarker(action, {
-          valid: false,
-          code: rejection.code,
-        }),
+        validationResult: validationWithRepairMarker(action, rejectionValidation(rejection)),
         rejectionCode: rejection.code,
         rejectionReason: rejection.reason,
       });

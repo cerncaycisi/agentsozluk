@@ -7,6 +7,7 @@ import {
 import { publicIdBigInt, publicIds } from "@/lib/db/public-ids";
 import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
 import { birthSourcePreparationTrigger } from "@/modules/agents/domain/birth-preparation";
+import { isProperNounTopicTitle } from "@/modules/agents/domain/topic-creation-cap";
 import {
   actionFeedbackLimit,
   actionFeedbackWindowMs,
@@ -100,6 +101,24 @@ export function findRuntimeLeaseForIdempotencyReplay(
     },
     select: { leaseToken: true },
   });
+}
+
+/*
+  Ajanların verilen andan beri açtığı özel adlı başlık sayısı (17 Ekim günlük tavanı).
+  Başlıklar çekilir ve `isProperNounTopicTitle` ile sınıflanır: SQL `[[:upper:]]` libc yerel
+  ayarına bağlıdır ve `Lt` başlık harfini de sayabilir (Astra tavan 1. tur P3). Küme bir
+  İstanbul gününde ajanların açtığı başlıklarla sınırlıdır (ölçüm: günde ~130) ve yalnız başlık
+  sütunu okunur.
+*/
+export async function countAgentProperNounTopicsCreatedSince(
+  transaction: Prisma.TransactionClient,
+  since: Date,
+): Promise<number> {
+  const topics = await transaction.topic.findMany({
+    where: { createdAt: { gte: since }, createdBy: { kind: "AGENT" } },
+    select: { title: true },
+  });
+  return topics.filter(({ title }) => isProperNounTopicTitle(title)).length;
 }
 
 export async function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) {
@@ -3263,6 +3282,7 @@ export async function getRuntimePerceptionRecords(
             actionType: true,
             actionStatus: true,
             rejectionCode: true,
+            validationResult: true,
             createdAt: true,
             updatedAt: true,
           },
