@@ -896,15 +896,19 @@ host_inventory() {
     host_inventory_compare "$installed" "$prefix$installed" "$candidate"
   done
   # Adaydaki her birim kurulu olmalı; kurulu ama depoda olmayan birim de farktır.
-  for candidate in "$app_root"/deploy/systemd/agent-sozluk-*.service \
+  # `agent-sozluk.service` (compose birimi) `agent-sozluk-*` kalıbına uymaz; ayrıca sayılır.
+  for candidate in "$app_root"/deploy/systemd/agent-sozluk.service \
+                   "$app_root"/deploy/systemd/agent-sozluk-*.service \
                    "$app_root"/deploy/systemd/agent-sozluk-*.timer; do
     test -f "$candidate" || continue
     name="${candidate##*/}"
     units=$((units + 1))
     host_inventory_compare "$host_unit_dir/$name" "$prefix$host_unit_dir/$name" "$candidate"
   done
-  for unit in "$prefix$host_unit_dir"/agent-sozluk-*.service \
+  for unit in "$prefix$host_unit_dir"/agent-sozluk.service \
+              "$prefix$host_unit_dir"/agent-sozluk-*.service \
               "$prefix$host_unit_dir"/agent-sozluk-*.timer \
+              "$prefix$host_unit_dir"/agent-sozluk.service.d \
               "$prefix$host_unit_dir"/agent-sozluk-*.d; do
     test -e "$unit" || test -L "$unit" || continue
     name="${unit##*/}"
@@ -919,7 +923,8 @@ host_inventory() {
   done
   # Kurulu servislerin yazma dizinleri: eksikse systemd birimi betik başlamadan düşürür
   # (`226/NAMESPACE`, `-` önekiyle betiğin kendi hatası; `append:` için `209/STDOUT`).
-  for unit in "$prefix$host_unit_dir"/agent-sozluk-*.service; do
+  for unit in "$prefix$host_unit_dir"/agent-sozluk.service \
+              "$prefix$host_unit_dir"/agent-sozluk-*.service; do
     test -f "$unit" && test -r "$unit" || continue
     while IFS= read -r line || test -n "$line"; do
       dirs=()

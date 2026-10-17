@@ -510,6 +510,31 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
     expect(result.stderr).not.toContain("ERR_TRAP");
   });
 
+  // Astra 1. tur (17 Ekim): `agent-sozluk.service` ve drop-in'i `agent-sozluk-*` kalıbına uymuyordu.
+  it("compose birimi agent-sozluk.service ve drop-in'i de taranır", () => {
+    const result = inventory((host, app) => {
+      mkdirSync(path.join(host, "opt/agent-sozluk/backups/postgres"), { recursive: true });
+      writeFileSync(
+        path.join(app, "deploy/systemd/agent-sozluk.service"),
+        "[Service]\nStandardOutput=append:/var/log/agent-sozluk/service.log\n",
+      );
+      writeFileSync(
+        path.join(host, "etc/systemd/system/agent-sozluk.service"),
+        "[Service]\nStandardOutput=append:/var/log/agent-sozluk/service.log\n# eski\n",
+      );
+      mkdirSync(path.join(host, "etc/systemd/system/agent-sozluk.service.d"));
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const lines = result.stdout.split("\n").filter((line) => line.startsWith("RELEASE_HOST_"));
+    expect(lines).toEqual([
+      "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk.service differs",
+      "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk.service.d drop-in",
+      "RELEASE_HOST_MISSING_DIR /var/log/agent-sozluk agent-sozluk.service",
+      "RELEASE_HOST_MISSING_DIR /var/log/agent-sozluk agent-sozluk-backup.service",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=2 missing_dirs=2",
+    ]);
+  });
+
   it("başarılı sürümden sonra, tamam satırından önce ve uyarı olarak çağrılır", () => {
     const tail = remote.slice(remote.indexOf("\ncutover\nverify_release\n"));
     expect(tail.indexOf("cleanup_images; fi")).toBeLessThan(tail.indexOf("host_inventory ||"));
