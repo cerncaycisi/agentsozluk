@@ -2774,6 +2774,12 @@ ssh-keygen -t ed25519 -N '' -C agentsozluk-yedek -f ~/.ssh/agentsozluk_backup
 # pg_restore: PGDG postgresql-client-16 16.14 + Debian libpq5, dpkg-deb -x ile ~/.local/pgclient
 # altına; ~/.local/pgclient/bin/pg_restore LD_LIBRARY_PATH'i ayarlayan sarmalayıcıdır.
 install -D -m 0755 deploy/backup/gecelik-yedek.sh ~/.local/share/agentsozluk-yedek/gecelik-yedek.sh
+# Üretim hedefi depoda değil (depo herkese açık, 17 Ekim 2026): `kullanıcı@adres` tek satır.
+# Ortamdaki AGENTSOZLUK_BACKUP_HOST önce gelir; ayar dosyası yolu AGENTSOZLUK_BACKUP_HOST_FILE.
+# Yoksa betik indirmeden önce `YEDEK_FAIL code=HOST_UNSET` ile düşer ve bildirim dener.
+install -d -m 0700 ~/.config/agentsozluk-yedek
+printf '%s\n' 'deploy@<üretim-adresi>' > ~/.config/agentsozluk-yedek/hedef
+chmod 0600 ~/.config/agentsozluk-yedek/hedef
 install -D -m 0644 deploy/backup/agentsozluk-yedek.service ~/.config/systemd/user/agentsozluk-yedek.service
 install -D -m 0644 deploy/backup/agentsozluk-yedek.timer ~/.config/systemd/user/agentsozluk-yedek.timer
 systemctl --user daemon-reload

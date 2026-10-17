@@ -28,7 +28,10 @@ KNOWN_HOSTS="${AGENTSOZLUK_KNOWN_HOSTS:-$HOME/.ssh/agentsozluk_known_hosts}"
 PG_RESTORE="${AGENTSOZLUK_PG_RESTORE:-$HOME/.local/pgclient/bin/pg_restore}"
 MIN_FREE_BYTES="${AGENTSOZLUK_BACKUP_MIN_FREE_BYTES:-5368709120}"
 NOTIFY="${AGENTSOZLUK_BACKUP_NOTIFY:-1}"
-HOST=deploy@51.161.103.223
+# Üretim hedefi (`kullanıcı@adres`) depoda tutulmaz: depo herkese açık (17 Ekim 2026). Önce
+# ortamdaki AGENTSOZLUK_BACKUP_HOST, yoksa operatörün izlenmeyen ayar dosyasının ilk satırı.
+HOST_FILE="${AGENTSOZLUK_BACKUP_HOST_FILE:-$HOME/.config/agentsozluk-yedek/hedef}"
+HOST="${AGENTSOZLUK_BACKUP_HOST:-}"
 NAME_PATTERN='^agent-sozluk-[0-9]{8}T[0-9]{6}Z\.dump$'
 
 tmp_dump=""
@@ -70,6 +73,11 @@ stage="ayarlar"
 [[ "$NOTIFY" =~ ^[01]$ ]] || { NOTIFY=1; fail NOTIFY_INVALID; }
 [[ "$KEEP" =~ ^[1-9][0-9]?$ ]] || fail KEEP_INVALID
 [[ "$MIN_FREE_BYTES" =~ ^[0-9]+$ ]] || fail MIN_FREE_INVALID
+if [[ -z "$HOST" && -f "$HOST_FILE" ]]; then
+  IFS= read -r HOST <"$HOST_FILE" || [[ -n "$HOST" ]] || fail HOST_FILE_UNREADABLE
+fi
+[[ -n "$HOST" ]] || fail HOST_UNSET
+[[ "$HOST" =~ ^[a-z_][a-z0-9_-]{0,31}@[A-Za-z0-9.:-]{1,253}$ ]] || fail HOST_INVALID
 install -d -m 0700 "$DIR" || fail DIR_UNAVAILABLE
 
 stage="kilit"

@@ -4,7 +4,7 @@
 #   su - deploy
 #   cd /opt/agent-sozluk/app
 #   git fetch origin tag olcum
-#   git show olcum:scripts/olcum.sh | bash
+#   git show olcum:scripts/olcum.sh | OLCUM_GIT_EMAIL='<commit-adresi>' bash
 # Veritabanında YALNIZ okur (her sorgu READ ONLY transaction + 20 sn sınır).
 # Yazdığı tek şey /home/deploy altındaki sonuç dosyasıdır; onu
 # claude/nerde-kalmisiz-ugoh1y dalına push etmeyi dener, olmazsa dosya kalır.
@@ -17,6 +17,12 @@ fi
 if [ "$(id -un)" != deploy ]; then
   echo "deploy kullanicisi gerekli. Once: su - deploy"
   exit 92
+fi
+# Depo herkese açık: commit e-postası dosyada tutulmaz (17 Ekim 2026). Koşudan önce verilir:
+#   OLCUM_GIT_EMAIL='<adres>' bash …
+if [ -z "${OLCUM_GIT_EMAIL:-}" ]; then
+  echo "OLCUM_GIT_EMAIL gerekli (olcum commit e-postasi; depoda tutulmaz) — durduruldu."
+  exit 93
 fi
 
 app=/opt/agent-sozluk/app
@@ -325,7 +331,7 @@ export GIT_TERMINAL_PROMPT=0
   mkdir -p docs/ham &&
   cp "$out" "docs/ham/OLCUM_HAM_$ts.md" &&
   git add "docs/ham/OLCUM_HAM_$ts.md" &&
-  git -c user.name="deploy-olcum" -c user.email="gokhannihalgul@gmail.com" \
+  git -c user.name="deploy-olcum" -c user.email="$OLCUM_GIT_EMAIL" \
     commit -q -m "docs: uretim olcum ham ciktisi $ts (salt okunur, konsol kosumu)
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>

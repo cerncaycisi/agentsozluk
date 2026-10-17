@@ -41,6 +41,7 @@ function sandbox(
     driveUploadExit?: number;
     driveCheckExit?: number;
     missingRclone?: boolean;
+    host?: string | null;
   } = {},
 ) {
   const root = mkdtempSync(path.join(tmpdir(), "yedek-"));
@@ -99,6 +100,10 @@ esac`,
         AGENTSOZLUK_RCLONE: path.join(bin, "rclone"),
         AGENTSOZLUK_BACKUP_MIN_FREE_BYTES: "1",
         ...(options.notify === undefined ? {} : { AGENTSOZLUK_BACKUP_NOTIFY: options.notify }),
+        // Üretim hedefi depoda değil (17 Ekim 2026): testte örnek alan adı.
+        ...(options.host === null
+          ? {}
+          : { AGENTSOZLUK_BACKUP_HOST: options.host ?? "deploy@uretim.example" }),
       },
     });
   return { root, backups, run };
@@ -123,6 +128,30 @@ describe("gecelik sunucu dışı yedek", () => {
     expect(args).toContain("StrictHostKeyChecking=yes");
     expect(args).toContain("BatchMode=yes");
     expect(args).toContain(path.join(root, "key"));
+    expect(args).toContain("deploy@uretim.example yedek");
+  });
+
+  // Depo herkese açık: üretim adresi betikte değil, ortamda ya da izlenmeyen ayar dosyasında.
+  it("üretim hedefi yoksa indirmeden önce yüksek sesle düşer", () => {
+    const { root, run } = sandbox({ host: null });
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("YEDEK_FAIL code=HOST_UNSET");
+    expect(existsSync(path.join(root, "ssh-args"))).toBe(false);
+    expect(readFileSync(path.join(root, "pings"), "utf8")).toContain("HOST_UNSET");
+  });
+
+  it("üretim hedefini ayar dosyasından okur, biçimsizini reddeder", () => {
+    const { root, run } = sandbox({ host: null });
+    mkdirSync(path.join(root, ".config", "agentsozluk-yedek"), { recursive: true });
+    const file = path.join(root, ".config", "agentsozluk-yedek", "hedef");
+    writeFileSync(file, "deploy@dosyadan.example\n");
+    expect(run().status).toBe(0);
+    expect(readFileSync(path.join(root, "ssh-args"), "utf8")).toContain("deploy@dosyadan.example");
+    writeFileSync(file, "deploy@kotu adres; id\n");
+    const bad = run();
+    expect(bad.status).toBe(1);
+    expect(bad.stderr).toContain("YEDEK_FAIL code=HOST_INVALID");
   });
 
   it("son 3 kopyayı tutar, en eskileri siler", () => {
