@@ -9812,7 +9812,7 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
 
 ## 17 Ekim — işletim körlüğü dalı, Astra 1. tur NO-GO
 
-- **İncelenen:** `5c14d60d` (PR #427), hakem Astra (koordinatörün aktardığı salt okunur tur).
+- **İncelenen:** `5c14d60d` (PR #427), hakem Astra (`gpt-6-astra`, `model_reasoning_effort=xhigh`, `--sandbox read-only`).
   Hüküm NO-GO; altı P2, bir P3.
 - **Düzeltilen:** işletim kontrolü okunamayan kaynakta "düzeldi" gönderiyordu; ntfy reddedince
   görülen arıza kayboluyordu; durum yazım hataları yutuluyordu; `cutover-done` sonrası temizlik
