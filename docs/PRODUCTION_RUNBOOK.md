@@ -2367,15 +2367,26 @@ kendi bkz'si (uygun bir başlığa) ∪ (başlık benzerliği ilk 3 ∩ içerik 
 kör ölçümde iki sinyalin birlikte önerdiği çiftler %91–100 ilgiliydi; tek sinyal %30–52'de kaldı.
 
 - **Uygun başlık:** aktif, birleşmemiş ve G4'e göre ince olmayan başlık. Hem kaynak hem hedef
-  aynı kümeden gelir; noindex ince sayfaya bağlantı verilmez. Sayfa okurken hedefin hâlâ aktif ve
-  birleşmemiş olduğunu yeniden denetler.
+  aynı kümeden gelir; noindex ince sayfaya bağlantı verilmez.
+- **Okuma anı denetimi (Astra, 17 Ekim, 1. tur):** sayfa her okumada kaynak ve hedefin hâlâ
+  uygun olduğunu denetler. Hesaptan (`computedAt`, veritabanının transaction başlangıç saati)
+  sonra kaynak ya da hedef başlıkta bir entry silinmiş, gizlenmiş ya da seed görünürlüğü
+  bastırılmışsa o bağ gösterilmez. BKZ bağı ayrıca kendi entry'sini (`sourceEntryId`) taşır; o
+  entry görünür değilse, hesaptan sonra düzenlendiyse ya da bilinmiyorsa bağ gösterilmez. Düşen
+  bağlar bir sonraki gece hesabında temiz veriden yeniden kurulur.
+- **Tek hesap:** hesap transaction'ın başında danışma kilidi alır (liste modu dahil). Kilit
+  başkasındaysa hiçbir şey okumadan ve yazmadan `{"status":"ALREADY_RUNNING"}` basar, çıkış kodu
+  0'dır. Başarılı hesapta `status` `OK`'dir.
 - **Tablo:** `topic_related_links` (migration `20261017120000_topic_related_links`, yalnız ek
   yapan; A5 denetçisinden geçer). Gece işi tabloyu tek transaction'da siler ve yeniden yazar;
   bir adım düşerse önceki küme kalır.
-- **Sınırlar:** tek ifade 300 sn, transaction 13 dk, systemd 15 dk; kaynaklar 250'lik partilerle.
+- **Sınırlar:** tek ifade 300 sn, transaction 13 dk, konteynerdeki süreç `timeout -k 30 840`
+  (14 dk, sonra 30 sn içinde KILL), systemd 15 dk; kaynaklar 250'lik partilerle. systemd yalnız
+  `docker compose exec` istemcisini öldürebilir; konteynerdeki Node süreci kendi `timeout`'uyla
+  sınırlıdır ve süreç ölünce açık transaction geri alınır.
   Yerel ölçek denemesi (17 Ekim, PGlite/wasm, 7.600 sentetik başlık, 38.000 entry): toplam
   265 sn (hazırlık 29, başlık sinyali 170, içerik sinyali 64, bkz 1); üretim ölçümü değildir.
-  Çıktı tek JSON satırı: `sourceTopics`, `topicsWithLinks`, `bkzLinks`, `signalLinks`,
+  Çıktı tek JSON satırı: `status`, `sourceTopics`, `topicsWithLinks`, `bkzLinks`, `signalLinks`,
   `totalLinks`, `durationMs`. Hata `ILGILI_FAILED code=…` ile 1 çıkış kodudur.
 - **Robots, noindex ve site haritası değişmez.** Bağlantılar düz iç bağlantıdır.
 
@@ -2395,9 +2406,25 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now agent-sozluk-ilgili.timer
 ```
 
-Geri almak için zamanlayıcıyı `disable --now` ile kapat; tabloda kalan son küme sayfada görünmeye
-devam eder. Bloğu sayfadan kaldırmak tablonun boşaltılmasını ister: tablo türetilmiş veridir ve
-bir sonraki `--uygula` yeniden kurar, ama boşaltma yine de onaylı bir üretim yazımıdır.
+**Geri alma sırası.** Zamanlayıcıyı kapatmak başlamış bir hesabı durdurmaz; çalışan hesap
+sonradan commit ederek tabloyu yeniden doldurabilir. Bu yüzden sıra şudur:
+
+1. Zamanlayıcıyı kapat: `sudo systemctl disable --now agent-sozluk-ilgili.timer`.
+2. Servisi durdur: `sudo systemctl stop agent-sozluk-ilgili.service`; `systemctl is-active
+agent-sozluk-ilgili.service` `inactive` (ya da `failed`) demeli.
+3. App konteynerinde çalışan hesap kalmadığını ve veritabanında kilidin boş olduğunu doğrula
+   (elle başlatılmış bir koşu da yakalanır). İkisi de `0` basmalı; değilse bekle ya da süreci
+   sonlandırıp yeniden denetle:
+
+   ```bash
+   "${m2_compose[@]}" exec -T app sh -c 'ps -o args | grep -c "[i]lgili-basliklar"'
+   "${m2_compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 -U agent_sozluk -d agent_sozluk \
+     -c "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND classid = 0 AND objid = 2026101701 AND objsubid = 1;"
+   ```
+
+4. Ancak bundan sonra tabloyu boşalt. Tablo türetilmiş veridir ve bir sonraki `--uygula` yeniden
+   kurar, ama boşaltma yine de onaylı bir üretim yazımıdır. Boşaltılana kadar tabloda kalan son
+   küme (okuma anı denetimlerinden geçenler) sayfada görünmeye devam eder.
 
 ## IndexNow bildirimi
 

@@ -8,9 +8,11 @@ import {
   RELATED_TOPIC_SIGNAL_TOP,
   summarizeRelatedTopicPlan,
   type PlannedRelatedTopicLink,
+  type RelatedTopicBkzTarget,
   type RelatedTopicPlanSummary,
 } from "@/modules/topics/domain/related-topics";
 import {
+  currentTransactionTime,
   findContentSignalTop,
   findReferencedTopics,
   findRelatedTopicLinks,
@@ -20,6 +22,7 @@ import {
   listRelatedTopicWorkspaceTopics,
   prepareRelatedTopicWorkspace,
   replaceRelatedTopicLinks,
+  tryLockRelatedTopicComputation,
 } from "@/modules/topics/repository/related-topics";
 
 /*
@@ -40,6 +43,7 @@ export interface RelatedTopicComputation {
   summary: RelatedTopicPlanSummary;
   applied: boolean;
   written: number;
+  computedAt: Date;
   /** Uygun başlıkların adı; yalnız operatör örneği için (başlıklar zaten herkese açık). */
   titles: ReadonlyMap<string, string>;
   plans: ReadonlyMap<string, readonly PlannedRelatedTopicLink[]>;
@@ -58,21 +62,17 @@ function groupIds(rows: ReadonlyArray<{ topicId: string; relatedTopicId: string 
 async function resolveBkzTargets(
   transaction: TransactionClient,
   sourceIds: readonly string[],
-): Promise<Map<string, string[]>> {
-  const bodiesByTopic = new Map<string, string[]>();
-  for (const row of await listReferenceEntryBodies(transaction, sourceIds)) {
-    const bodies = bodiesByTopic.get(row.topicId);
-    if (bodies) bodies.push(row.body);
-    else bodiesByTopic.set(row.topicId, [row.body]);
-  }
-  // Başlık başına normalize başlık adları, entry'lerde ilk geçiş sırasıyla.
-  const titlesByTopic = new Map<string, string[]>();
+): Promise<Map<string, RelatedTopicBkzTarget[]>> {
+  // Başlık başına normalize başlık adları ve ilk geçtikleri entry, yazılış sırasıyla.
+  const titlesByTopic = new Map<string, Map<string, string>>();
   const allTitles = new Set<string>();
-  for (const [topicId, bodies] of bodiesByTopic) {
-    const titles = [...collectEntryReferenceCandidates(bodies).topics];
-    if (titles.length === 0) continue;
-    titlesByTopic.set(topicId, titles);
-    for (const title of titles) allTitles.add(title);
+  for (const row of await listReferenceEntryBodies(transaction, sourceIds)) {
+    let titles = titlesByTopic.get(row.topicId);
+    for (const title of collectEntryReferenceCandidates([row.body]).topics) {
+      if (!titles) titlesByTopic.set(row.topicId, (titles = new Map()));
+      if (!titles.has(title)) titles.set(title, row.id);
+      allTitles.add(title);
+    }
   }
   if (allTitles.size === 0) return new Map();
   // `getEntryReferenceIndex` ile aynı eşleme: kendi adı ya da takma adı.
@@ -81,25 +81,38 @@ async function resolveBkzTargets(
     if (allTitles.has(topic.normalizedTitle)) topicByTitle.set(topic.normalizedTitle, topic.id);
     for (const alias of topic.aliases) topicByTitle.set(alias.normalizedTitle, topic.id);
   }
-  const targets = new Map<string, string[]>();
+  const targets = new Map<string, RelatedTopicBkzTarget[]>();
   for (const [topicId, titles] of titlesByTopic) {
-    const ids = titles.flatMap((title) => {
+    const resolved = [...titles].flatMap(([title, entryId]) => {
       const id = topicByTitle.get(title);
-      return id ? [id] : [];
+      return id ? [{ topicId: id, entryId }] : [];
     });
-    if (ids.length > 0) targets.set(topicId, ids);
+    if (resolved.length > 0) targets.set(topicId, resolved);
   }
   return targets;
 }
 
+/** Başka bir hesap kilidi tutuyorsa hiçbir şey okunmaz ve yazılmaz. */
+export type RelatedTopicComputationResult =
+  ({ status: "OK" } & RelatedTopicComputation) | { status: "ALREADY_RUNNING" };
+
 export async function computeRelatedTopicLinks(
   client: DatabaseClient,
-  input: { apply: boolean; now: Date; batchSize?: number },
-): Promise<RelatedTopicComputation> {
+  input: { apply: boolean; batchSize?: number },
+): Promise<RelatedTopicComputationResult> {
   const batchSize = input.batchSize ?? RELATED_TOPIC_BATCH_SIZE;
   return client.$transaction(
-    async (transaction) => {
+    async (transaction): Promise<RelatedTopicComputationResult> => {
+      // Liste modu da kilidi alır: pahalı hazırlık iki kez koşmasın.
+      if (!(await tryLockRelatedTopicComputation(transaction)))
+        return { status: "ALREADY_RUNNING" };
       await limitRelatedTopicStatements(transaction);
+      /*
+        computedAt veritabanının transaction başlangıç saatidir; okuma bunu entry'lerin
+        silinme/gizlenme/bastırılma zamanlarıyla karşılaştırır. Hesabın hiçbir ifadesi bu
+        andan önceki bir görüntüyü okumaz; sonradan gelen değişiklik bağı düşürür.
+      */
+      const computedAt = await currentTransactionTime(transaction);
       const topicCount = await prepareRelatedTopicWorkspace(transaction);
       const topics = await listRelatedTopicWorkspaceTopics(transaction);
       const titles = new Map(topics.map((topic) => [topic.id, topic.title] as const));
@@ -121,7 +134,7 @@ export async function computeRelatedTopicLinks(
           const links = planRelatedTopicLinks(
             {
               topicId,
-              bkzTargetIds: bkzTargets.get(topicId) ?? [],
+              bkzTargets: bkzTargets.get(topicId) ?? [],
               titleSignalIds: titleTop.get(topicId) ?? [],
               contentSignalIds: contentTop.get(topicId) ?? [],
             },
@@ -131,12 +144,14 @@ export async function computeRelatedTopicLinks(
         }
       }
       const written = input.apply
-        ? await replaceRelatedTopicLinks(transaction, plans, input.now)
+        ? await replaceRelatedTopicLinks(transaction, plans, computedAt)
         : 0;
       return {
+        status: "OK",
         summary: summarizeRelatedTopicPlan(topicCount, plans),
         applied: input.apply,
         written,
+        computedAt,
         titles,
         plans,
       };

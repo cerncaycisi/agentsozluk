@@ -14,7 +14,10 @@ RuntimeDirectoryMode=0700
 Environment=DOCKER_CONFIG=/run/agent-sozluk-ilgili
 # Gökhan kararı, 17 Ekim 2026 ("Yalnız emin olunanlar"). Tabloyu tek transaction'da siler ve
 # yeniden yazar; hata olursa önceki küme kalır. Yönetici kimliği istemez, içerik değiştirmez.
-ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app node node_modules/tsx/dist/cli.mjs scripts/ilgili-basliklar.ts --uygula
+# systemd yalnız `docker compose exec` istemcisini öldürebilir; konteynerdeki süreç kendi
+# `timeout`'uyla 14 dakikada (30 sn sonra KILL) biter, böylece systemd'nin 15 dakikasından önce
+# ölür ve açık transaction geri alınır (Astra, 17 Ekim, 1. tur).
+ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app timeout -k 30 840 node node_modules/tsx/dist/cli.mjs scripts/ilgili-basliklar.ts --uygula
 
 UMask=0027
 NoNewPrivileges=yes

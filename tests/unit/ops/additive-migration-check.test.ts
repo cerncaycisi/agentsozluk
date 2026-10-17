@@ -73,7 +73,7 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
     const beklenti = JSON.parse(result.stdout);
     expect(beklenti.types).toEqual({ TopicRelatedLinkSource: ["BKZ", "SIGNAL"] });
     expect(beklenti.tables.topic_related_links).toEqual({
-      columns: ["computedAt", "id", "rank", "relatedTopicId", "source", "topicId"],
+      columns: ["computedAt", "id", "rank", "relatedTopicId", "source", "sourceEntryId", "topicId"],
       primaryKey: ["id"],
       checkConstraints: 0,
       uniqueConstraints: 0,
@@ -83,6 +83,13 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
           referencedTable: "topics",
           referencedColumn: "id",
           onDelete: "CASCADE",
+          onUpdate: "CASCADE",
+        },
+        {
+          column: "sourceEntryId",
+          referencedTable: "entries",
+          referencedColumn: "id",
+          onDelete: "SET NULL",
           onUpdate: "CASCADE",
         },
         {
@@ -100,6 +107,11 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
         table: "topic_related_links",
         unique: false,
         columns: ["relatedTopicId"],
+      },
+      topic_related_links_sourceEntryId_idx: {
+        table: "topic_related_links",
+        unique: false,
+        columns: ["sourceEntryId"],
       },
       topic_related_links_topicId_rank_idx: {
         table: "topic_related_links",

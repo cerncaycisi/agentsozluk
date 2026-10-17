@@ -1,3 +1,5 @@
+import { PrismaClient } from "@prisma/client";
+import { requireTestDatabaseUrl } from "../../scripts/test-database-safety";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { DatabaseClient } from "@/lib/db/types";
 import {
@@ -10,6 +12,7 @@ import {
   limitRelatedTopicStatements,
   listRelatedTopicWorkspaceTopics,
   prepareRelatedTopicWorkspace,
+  RELATED_TOPIC_ADVISORY_LOCK_KEY,
 } from "@/modules/topics/repository/related-topics";
 import {
   closeIntegrationDatabase,
@@ -22,6 +25,9 @@ import {
   bir kaynak başlık, ona hem başlıkça hem içerikçe benzeyen bir başlık, yalnız başlıkça ve yalnız
   içerikçe benzeyenler, bkz hedefleri ve uygun olmayan (ince, birleşmiş, gizli) başlıklar. İçerik
   sinyali df ≤ N'nin %5'i şartı taşıdığı için küme 80 dolgu başlıkla büyütülür.
+
+  Okuma anı denetimleri (Astra, 17 Ekim, 1. tur): hesaptan sonra silinen, gizlenen, düzenlenen
+  ya da bastırılan entry ve incelen başlık bağı düşürür.
 */
 
 let authorId = "";
@@ -63,8 +69,9 @@ async function createTopic(
       },
     });
   }
+  const entryIds: string[] = [];
   for (const body of bodies) {
-    await integrationDatabase.entry.create({
+    const entry = await integrationDatabase.entry.create({
       data: {
         topicId: topic.id,
         authorId,
@@ -74,15 +81,17 @@ async function createTopic(
         createdAt: nextDate(),
       },
     });
+    entryIds.push(entry.id);
   }
-  return topic;
+  return Object.assign(topic, { entryIds });
 }
 
 async function seed() {
   const author = await integrationDatabase.user.create({
     data: {
       kind: "HUMAN",
-      role: "USER",
+      // Seed görünürlüğünü yalnız etkin insan yönetici bastırabilir (veritabanı tetikleyicisi).
+      role: "ADMIN",
       status: "ACTIVE",
       email: "ilgili@ilgili.test",
       emailNormalized: "ilgili@ilgili.test",
@@ -104,9 +113,11 @@ async function seed() {
     // Silinmiş entry'deki bkz sayılmaz; sayılsaydı ilk bağlantı "menzil kaygısı" olurdu.
     { deletedBodies: ["Eski not. (bkz: menzil kaygısı)"] },
   );
+  // Üç entry: biri gizlenince başlık ince kalmaz; okuma kuralları ayrı ayrı sınanabilir.
   const ikiSinyal = await createTopic("elektrikli araç bataryası", [
     "Batarya kapasitesi kilovat saat ile ölçülür, menzil buna bağlıdır.",
     "Batarya ısısı kışın düşer, şarj istasyonu yakınsa sorun olmaz.",
+    "Uzun yolda mola vermek gerekir.",
   ]);
   const yalnizBaslik = await createTopic("elektrikli süpürge", [
     "Süpürge halı tozunu çeker.",
@@ -160,13 +171,26 @@ async function seed() {
   return { kaynak, ikiSinyal, yalnizBaslik, yalnizIcerik, sehir, toplu, ince, birlesmis, gizli };
 }
 
+async function compute(apply: boolean, client: DatabaseClient = integrationDatabase) {
+  const result = await computeRelatedTopicLinks(client, { apply });
+  if (result.status !== "OK") throw new Error(`beklenmeyen sonuç: ${result.status}`);
+  return result;
+}
+
 async function storedLinks(topicId: string) {
   return integrationDatabase.topicRelatedLink.findMany({
     where: { topicId },
     orderBy: { rank: "asc" },
-    select: { relatedTopicId: true, rank: true, source: true },
+    select: { relatedTopicId: true, rank: true, source: true, sourceEntryId: true },
   });
 }
+
+const url = (topic: { slug: string; publicId: bigint }) =>
+  `/baslik/${topic.slug}--${topic.publicId}`;
+const link = (topic: { title: string; slug: string; publicId: bigint }) => ({
+  title: topic.title,
+  url: url(topic),
+});
 
 beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
@@ -174,9 +198,8 @@ afterAll(closeIntegrationDatabase);
 describe("ilgili başlıklar gece hesabı", () => {
   it("bkz ∪ (A ∩ C) kuralını uygun başlıklarla uygular ve tabloyu yazar", async () => {
     const topics = await seed();
-    const now = new Date("2026-10-17T03:30:00.000Z");
 
-    const dry = await computeRelatedTopicLinks(integrationDatabase, { apply: false, now });
+    const dry = await compute(false);
     expect(dry.applied).toBe(false);
     expect(dry.written).toBe(0);
     expect(await integrationDatabase.topicRelatedLink.count()).toBe(0);
@@ -187,43 +210,53 @@ describe("ilgili başlıklar gece hesabı", () => {
 
     const plan = dry.plans.get(topics.kaynak.id);
     expect(plan).toEqual([
-      // bkz'ler ilk geçiş sırasıyla; takma ad bkz'si de çözülür. İnce, çözülemeyen ve silinmiş
-      // entry'deki bkz girmez.
-      { relatedTopicId: topics.sehir.id, rank: 1, source: "BKZ" },
-      { relatedTopicId: topics.toplu.id, rank: 2, source: "BKZ" },
+      // bkz'ler ilk geçiş sırasıyla ve ilk geçtikleri entry'yle; takma ad bkz'si de çözülür.
+      // İnce, çözülemeyen ve silinmiş entry'deki bkz girmez.
+      {
+        relatedTopicId: topics.sehir.id,
+        rank: 1,
+        source: "BKZ",
+        sourceEntryId: topics.kaynak.entryIds[0],
+      },
+      {
+        relatedTopicId: topics.toplu.id,
+        rank: 2,
+        source: "BKZ",
+        sourceEntryId: topics.kaynak.entryIds[1],
+      },
       // Yalnız iki sinyalin birlikte önerdiği başlık; "elektrikli süpürge" (yalnız A) ve
       // "menzil kaygısı" (yalnız C) girmez.
-      { relatedTopicId: topics.ikiSinyal.id, rank: 3, source: "SIGNAL" },
+      { relatedTopicId: topics.ikiSinyal.id, rank: 3, source: "SIGNAL", sourceEntryId: null },
     ]);
     // Ters yönde de kesişim: "menzil kaygısı" bu kez başlıkça da ilk üçte ("…sı" trigramları;
     // benzerliği sıfırdan büyük aday az), içerikçe de; bu yüzden girer.
     expect(dry.plans.get(topics.ikiSinyal.id)).toEqual([
-      { relatedTopicId: topics.kaynak.id, rank: 1, source: "SIGNAL" },
-      { relatedTopicId: topics.yalnizIcerik.id, rank: 2, source: "SIGNAL" },
+      { relatedTopicId: topics.kaynak.id, rank: 1, source: "SIGNAL", sourceEntryId: null },
+      { relatedTopicId: topics.yalnizIcerik.id, rank: 2, source: "SIGNAL", sourceEntryId: null },
     ]);
-    const linked = new Set([...dry.plans.values()].flat().map((link) => link.relatedTopicId));
+    const linked = new Set([...dry.plans.values()].flat().map((item) => item.relatedTopicId));
     for (const id of [topics.ince.id, topics.birlesmis.id, topics.gizli.id])
       expect(linked.has(id)).toBe(false);
     for (const [topicId, links] of dry.plans) {
       expect(links.length).toBeLessThanOrEqual(3);
-      expect(links.map((link) => link.relatedTopicId)).not.toContain(topicId);
+      expect(links.map((item) => item.relatedTopicId)).not.toContain(topicId);
     }
 
-    const applied = await computeRelatedTopicLinks(integrationDatabase, { apply: true, now });
+    const applied = await compute(true);
     expect(applied.written).toBe(applied.summary.totalLinks);
     expect(applied.summary).toEqual(dry.summary);
     expect(await storedLinks(topics.kaynak.id)).toEqual(plan);
+    // computedAt veritabanının transaction başlangıç saatidir; bütün satırlarda aynı.
     expect(
-      await integrationDatabase.topicRelatedLink.count({ where: { computedAt: { not: now } } }),
+      await integrationDatabase.topicRelatedLink.count({
+        where: { computedAt: { not: applied.computedAt } },
+      }),
     ).toBe(0);
   });
 
   it("yeniden yazım eski kümeyi tamamen değiştirir; düşen yazım önceki kümeyi bırakır", async () => {
     const topics = await seed();
-    await computeRelatedTopicLinks(integrationDatabase, {
-      apply: true,
-      now: new Date("2026-10-17T03:30:00.000Z"),
-    });
+    await compute(true);
     const before = await integrationDatabase.topicRelatedLink.findMany({ orderBy: { id: "asc" } });
     expect(before.length).toBeGreaterThan(0);
 
@@ -253,9 +286,9 @@ describe("ilgili başlıklar gece hesabı", () => {
           );
       },
     }) as DatabaseClient;
-    await expect(
-      computeRelatedTopicLinks(failing, { apply: true, now: new Date("2026-10-18T03:30:00Z") }),
-    ).rejects.toMatchObject({ code: "TEST_FAILURE" });
+    await expect(computeRelatedTopicLinks(failing, { apply: true })).rejects.toMatchObject({
+      code: "TEST_FAILURE",
+    });
     expect(await integrationDatabase.topicRelatedLink.findMany({ orderBy: { id: "asc" } })).toEqual(
       before,
     );
@@ -265,16 +298,52 @@ describe("ilgili başlıklar gece hesabı", () => {
       where: { id: topics.ikiSinyal.id },
       data: { status: "HIDDEN" },
     });
-    const now = new Date("2026-10-19T03:30:00.000Z");
-    await computeRelatedTopicLinks(integrationDatabase, { apply: true, now });
-    expect(await storedLinks(topics.kaynak.id)).toEqual([
-      { relatedTopicId: topics.sehir.id, rank: 1, source: "BKZ" },
-      { relatedTopicId: topics.toplu.id, rank: 2, source: "BKZ" },
+    const again = await compute(true);
+    expect((await storedLinks(topics.kaynak.id)).map((item) => item.relatedTopicId)).toEqual([
+      topics.sehir.id,
+      topics.toplu.id,
     ]);
     expect(await storedLinks(topics.ikiSinyal.id)).toEqual([]);
     expect(
-      await integrationDatabase.topicRelatedLink.count({ where: { computedAt: { not: now } } }),
+      await integrationDatabase.topicRelatedLink.count({
+        where: { computedAt: { not: again.computedAt } },
+      }),
     ).toBe(0);
+  });
+
+  /*
+    İki bağlantılı gerçek eşzamanlılık: ikinci istemci kilidi tutarken hesap hiçbir şey okumadan ve
+    yazmadan "zaten çalışıyor" döner. Tek oturumlu PGlite'ta danışma kilidi aynı oturuma yeniden
+    verildiği için bu test yalnız gerçek PostgreSQL'de (CI) anlamlıdır.
+  */
+  it("başka bir hesap kilidi tutarken ALREADY_RUNNING döner ve tabloya dokunmaz", async () => {
+    await seed();
+    await compute(true);
+    const before = await integrationDatabase.topicRelatedLink.findMany({ orderBy: { id: "asc" } });
+    const holder = new PrismaClient({
+      datasourceUrl: requireTestDatabaseUrl(process.env.TEST_DATABASE_URL, "Related topics lock"),
+    });
+    try {
+      await holder.$transaction(
+        async (transaction) => {
+          await transaction.$executeRaw`SELECT pg_advisory_xact_lock(${RELATED_TOPIC_ADVISORY_LOCK_KEY}::bigint)`;
+          for (const apply of [false, true])
+            expect(await computeRelatedTopicLinks(integrationDatabase, { apply })).toEqual({
+              status: "ALREADY_RUNNING",
+            });
+        },
+        { timeout: 60_000 },
+      );
+    } finally {
+      await holder.$disconnect();
+    }
+    expect(await integrationDatabase.topicRelatedLink.findMany({ orderBy: { id: "asc" } })).toEqual(
+      before,
+    );
+    // Kilit transaction'la bırakılır; sonraki hesap normal koşar.
+    expect((await computeRelatedTopicLinks(integrationDatabase, { apply: false })).status).toBe(
+      "OK",
+    );
   });
 });
 
@@ -310,20 +379,24 @@ describe("başlık sinyali (A)", () => {
 });
 
 describe("ilgili başlıklar sayfa okuması", () => {
-  it("sıralı bağlantıları verir; okuma anında gizlenen ya da birleşen hedefi atlar", async () => {
+  async function seededAndComputed(
+    beforeCompute: (topics: Awaited<ReturnType<typeof seed>>) => Promise<void> = async () => {},
+  ) {
     const topics = await seed();
-    await computeRelatedTopicLinks(integrationDatabase, {
-      apply: true,
-      now: new Date("2026-10-17T03:30:00.000Z"),
-    });
-    const url = (topic: { slug: string; publicId: bigint }) =>
-      `/baslik/${topic.slug}--${topic.publicId}`;
+    await beforeCompute(topics);
+    const result = await compute(true);
     expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
-      { title: "şehir içi ulaşım", url: url(topics.sehir) },
-      { title: "otobüs hatları", url: url(topics.toplu) },
-      { title: "elektrikli araç bataryası", url: url(topics.ikiSinyal) },
+      link(topics.sehir),
+      link(topics.toplu),
+      link(topics.ikiSinyal),
     ]);
+    const after = new Date(result.computedAt.getTime() + 1_000);
+    const before = new Date(result.computedAt.getTime() - 60_000);
+    return { topics, after, before };
+  }
 
+  it("okuma anında gizlenen ya da birleşen hedefi atlar", async () => {
+    const { topics } = await seededAndComputed();
     await integrationDatabase.topic.update({
       where: { id: topics.sehir.id },
       data: { status: "HIDDEN" },
@@ -333,8 +406,118 @@ describe("ilgili başlıklar sayfa okuması", () => {
       data: { status: "MERGED", mergedIntoId: topics.ikiSinyal.id },
     });
     expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
-      { title: "elektrikli araç bataryası", url: url(topics.ikiSinyal) },
+      link(topics.ikiSinyal),
     ]);
     expect(await getRelatedTopicLinks(integrationDatabase, topics.yalnizBaslik.id)).toEqual([]);
+  });
+
+  it.each(["gizlenen", "silinen"] as const)(
+    "bkz entry'si hesaptan sonra %s kaynak başlıkta hiçbir bağ kalmaz",
+    async (kind) => {
+      const { topics, after } = await seededAndComputed();
+      await integrationDatabase.entry.update({
+        where: { id: topics.kaynak.entryIds[0]! },
+        data:
+          kind === "gizlenen"
+            ? { status: "HIDDEN", hiddenAt: after }
+            : { status: "DELETED", deletedAt: after },
+      });
+      // Kaynak başlıkta görünürlük değişti: bkz'si gizlenen bağ ve aynı metinden türemiş olabilecek
+      // öteki bağlar bir sonraki hesaba kadar gösterilmez.
+      expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([]);
+    },
+  );
+
+  it("hedefte bir entry hesaptan sonra gizlenirse yalnız o hedefe giden SIGNAL düşer", async () => {
+    const { topics, after } = await seededAndComputed();
+    await integrationDatabase.entry.update({
+      where: { id: topics.ikiSinyal.entryIds[2]! },
+      data: { status: "HIDDEN", hiddenAt: after },
+    });
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
+      link(topics.toplu),
+    ]);
+    // Aynı değişiklik ters yönde, kaynağı o başlık olan bağları da düşürür.
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.ikiSinyal.id)).toEqual([]);
+  });
+
+  it("hedefte seed görünürlüğü hesaptan sonra bastırılırsa SIGNAL düşer", async () => {
+    let seedEntryId = "";
+    const { topics } = await seededAndComputed(async (seeded) => {
+      // Seed görünürlüğü yalnız SEED kökenli (değişmez) entry'ye bağlanabilir.
+      const seedEntry = await integrationDatabase.entry.create({
+        data: {
+          topicId: seeded.ikiSinyal.id,
+          authorId,
+          origin: "SEED",
+          body: "Uzun yolculuk planı önceden yapılır.",
+          normalizedBody: "uzun yolculuk planı önceden yapılır",
+          createdAt: nextDate(),
+        },
+      });
+      seedEntryId = seedEntry.id;
+    });
+    await integrationDatabase.seedEntryVisibility.create({
+      data: {
+        entryId: seedEntryId,
+        suppressed: true,
+        suppressionReason: "entegrasyon testi bastırması",
+        suppressedById: authorId,
+      },
+    });
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
+      link(topics.toplu),
+    ]);
+  });
+
+  it("bkz entry'si hesaptan sonra düzenlenirse ya da bilinmiyorsa yalnız o BKZ bağı düşer", async () => {
+    const { topics, after } = await seededAndComputed();
+    await integrationDatabase.entryRevision.create({
+      data: {
+        entryId: topics.kaynak.entryIds[0]!,
+        body: "eski gövde",
+        editedById: authorId,
+        createdAt: after,
+      },
+    });
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.toplu),
+      link(topics.ikiSinyal),
+    ]);
+    await integrationDatabase.topicRelatedLink.updateMany({
+      where: { topicId: topics.kaynak.id, relatedTopicId: topics.toplu.id },
+      data: { sourceEntryId: null },
+    });
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.ikiSinyal),
+    ]);
+  });
+
+  /*
+    İncelme kuralı tek başına: silinme zamanı hesaptan ÖNCEYE alınır ki "hesaptan sonra değişti"
+    kuralı devreye girmesin ve yalnız G4 denetimi sınansın.
+  */
+  it("hedef incelince bağı gösterilmez", async () => {
+    const { topics, before } = await seededAndComputed();
+    await integrationDatabase.entry.updateMany({
+      where: { id: { in: topics.ikiSinyal.entryIds.slice(0, 2) } },
+      data: { status: "DELETED", deletedAt: before },
+    });
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([
+      link(topics.sehir),
+      link(topics.toplu),
+    ]);
+  });
+
+  it("kaynak incelince blok tamamen kalkar", async () => {
+    const { topics, before } = await seededAndComputed();
+    // İlk entry (şehir bkz'si) görünür kalır; kaynak tek kısa entry'ye düşer.
+    await integrationDatabase.entry.update({
+      where: { id: topics.kaynak.entryIds[1]! },
+      data: { status: "DELETED", deletedAt: before },
+    });
+    expect(await getRelatedTopicLinks(integrationDatabase, topics.kaynak.id)).toEqual([]);
   });
 });

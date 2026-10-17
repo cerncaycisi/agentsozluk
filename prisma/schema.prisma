@@ -428,6 +428,7 @@ model Entry {
   bookmarks         EntryBookmark[]
   agentContent      AgentContentRecord?
   seedVisibility    SeedEntryVisibility?
+  relatedTopicLinks TopicRelatedLink[]
 
   @@index([topicId, status, createdAt])
   @@index([topicId, status, score(sort: Desc), createdAt])
@@ -1675,11 +1676,15 @@ model TopicRelatedLink {
   rank           Int
   source         TopicRelatedLinkSource
   computedAt     DateTime               @default(now()) @db.Timestamptz(3)
+  // Yalnız BKZ: bağı kuran entry. Okuma anında hâlâ görünür olmalı; yoksa bağ gösterilmez.
+  sourceEntryId  String?                @db.Uuid
   topic          Topic                  @relation("TopicRelatedLinkSource", fields: [topicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   relatedTopic   Topic                  @relation("TopicRelatedLinkTarget", fields: [relatedTopicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sourceEntry    Entry?                 @relation(fields: [sourceEntryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@unique([topicId, relatedTopicId])
   @@index([topicId, rank])
   @@index([relatedTopicId])
+  @@index([sourceEntryId])
   @@map("topic_related_links")
 }

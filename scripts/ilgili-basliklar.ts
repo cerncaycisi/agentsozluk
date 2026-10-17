@@ -17,6 +17,10 @@ import { computeRelatedTopicLinks } from "@/modules/topics/application/related-t
   ve bağlantılarını ad olarak basar; başlık adları zaten herkese açık. `--uygula` tabloyu tek
   transaction'da siler ve yeniden yazar; hata olursa önceki küme kalır. Hata `ILGILI_FAILED
   code=…` ile ve 1 çıkış koduyla biter.
+
+  Aynı anda tek hesap koşar (danışma kilidi, liste modu dahil). Kilit başka bir hesaptaysa çıktı
+  `{"status":"ALREADY_RUNNING"}` satırıdır ve çıkış kodu 0'dır: hiçbir şey okunmadı ve yazılmadı.
+  Başarılı hesapta `status` alanı `OK`'dir.
 */
 
 function sampleCount(): number {
@@ -32,8 +36,15 @@ async function main() {
   const apply = process.argv.includes("--uygula");
   const ornek = sampleCount();
   const started = performance.now();
-  const result = await computeRelatedTopicLinks(getDatabase(), { apply, now: new Date() });
+  const result = await computeRelatedTopicLinks(getDatabase(), { apply });
   const durationMs = Math.round(performance.now() - started);
+  if (result.status === "ALREADY_RUNNING") {
+    // Başka bir hesap kilidi tutuyor: hiçbir şey okunmadı ve yazılmadı. Hata değildir (çıkış 0).
+    process.stdout.write(
+      `${JSON.stringify({ mode: apply ? "uygula" : "liste", status: "ALREADY_RUNNING", durationMs })}\n`,
+    );
+    return;
+  }
   const samples = [...result.plans].slice(0, ornek).map(([topicId, links]) => ({
     baslik: result.titles.get(topicId) ?? null,
     ilgili: links.map((link) => ({
@@ -44,6 +55,7 @@ async function main() {
   process.stdout.write(
     `${JSON.stringify({
       mode: apply ? "uygula" : "liste",
+      status: "OK",
       ...result.summary,
       ...(apply ? { written: result.written } : {}),
       durationMs,

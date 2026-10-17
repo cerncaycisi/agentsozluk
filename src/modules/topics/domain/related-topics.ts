@@ -20,10 +20,16 @@ export const RELATED_TOPIC_SIGNAL_TOP = 3;
 
 export type RelatedTopicLinkSource = "BKZ" | "SIGNAL";
 
+export interface RelatedTopicBkzTarget {
+  topicId: string;
+  /** bkz'nin ilk geçtiği görünür entry; okuma anında hâlâ görünür olmalı (Astra, 17 Ekim). */
+  entryId: string;
+}
+
 export interface RelatedTopicCandidates {
   topicId: string;
   /** Yazarların bkz bağlarının çözüldüğü başlıklar, entry'lerde ilk geçiş sırasıyla. */
-  bkzTargetIds: readonly string[];
+  bkzTargets: readonly RelatedTopicBkzTarget[];
   /** A: başlık trigram benzerliği sırasıyla en benzer başlıklar. */
   titleSignalIds: readonly string[];
   /** C: içerik benzerliği (`ts_rank_cd`) sırasıyla en benzer başlıklar. */
@@ -35,6 +41,8 @@ export interface PlannedRelatedTopicLink {
   /** 1'den başlar; sayfa bu sırayla gösterir. */
   rank: number;
   source: RelatedTopicLinkSource;
+  /** Yalnız BKZ'de dolu: bağı kuran entry. */
+  sourceEntryId: string | null;
 }
 
 export function planRelatedTopicLinks(
@@ -43,16 +51,20 @@ export function planRelatedTopicLinks(
 ): PlannedRelatedTopicLink[] {
   const seen = new Set<string>([candidates.topicId]);
   const links: PlannedRelatedTopicLink[] = [];
-  const add = (relatedTopicId: string, source: RelatedTopicLinkSource) => {
+  const add = (
+    relatedTopicId: string,
+    source: RelatedTopicLinkSource,
+    sourceEntryId: string | null,
+  ) => {
     if (links.length >= RELATED_TOPIC_LIMIT) return;
     if (seen.has(relatedTopicId) || !isEligible(relatedTopicId)) return;
     seen.add(relatedTopicId);
-    links.push({ relatedTopicId, rank: links.length + 1, source });
+    links.push({ relatedTopicId, rank: links.length + 1, source, sourceEntryId });
   };
-  for (const id of candidates.bkzTargetIds) add(id, "BKZ");
+  for (const target of candidates.bkzTargets) add(target.topicId, "BKZ", target.entryId);
   const titleTop = new Set(candidates.titleSignalIds.slice(0, RELATED_TOPIC_SIGNAL_TOP));
   for (const id of candidates.contentSignalIds.slice(0, RELATED_TOPIC_SIGNAL_TOP)) {
-    if (titleTop.has(id)) add(id, "SIGNAL");
+    if (titleTop.has(id)) add(id, "SIGNAL", null);
   }
   return links;
 }

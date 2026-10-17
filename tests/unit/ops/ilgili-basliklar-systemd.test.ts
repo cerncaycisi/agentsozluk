@@ -16,6 +16,7 @@ const karagozService = read("deploy/systemd/agent-sozluk-karagoz.service");
 const dockerfile = read("Dockerfile");
 const runbook = read("docs/PRODUCTION_RUNBOOK.md");
 const script = read("scripts/ilgili-basliklar.ts");
+const repository = read("src/modules/topics/repository/related-topics.ts");
 
 function section(unit: string, name: string): string {
   const parts = unit.split(/^\[(\w+)\]$/mu);
@@ -29,13 +30,15 @@ describe("ilgili başlıklar gece birimi", () => {
     expect(body).toMatch(/^User=deploy$/mu);
     expect(body).toMatch(/^Group=deploy$/mu);
     expect(body).toContain(
-      "ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app node node_modules/tsx/dist/cli.mjs scripts/ilgili-basliklar.ts --uygula",
+      "ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app timeout -k 30 840 node node_modules/tsx/dist/cli.mjs scripts/ilgili-basliklar.ts --uygula",
     );
     expect(body).toMatch(/^RuntimeDirectory=agent-sozluk-ilgili$/mu);
     expect(body).toMatch(/^Environment=DOCKER_CONFIG=\/run\/agent-sozluk-ilgili$/mu);
     expect(body).toMatch(/^RestrictAddressFamilies=AF_UNIX$/mu);
     expect(body).toMatch(/^IPAddressDeny=any$/mu);
     expect(body).toMatch(/^TimeoutStartSec=15min$/mu);
+    // Konteynerdeki süreç systemd sınırından önce ölür: 840 + 30 sn < 15 dk.
+    expect(840 + 30).toBeLessThan(15 * 60);
     expect(body).toMatch(/^Nice=15$/mu);
     expect(body).toMatch(/^SyslogIdentifier=agent-sozluk-ilgili$/mu);
     expect(service).not.toMatch(/(?:DATABASE_URL=|APP_SECRET=|PASSWORD=|TOKEN=)/u);
@@ -69,6 +72,7 @@ describe("ilgili başlıklar gece birimi", () => {
     expect(script).toContain("ILGILI_FAILED code=");
     expect(script).toContain('process.argv.includes("--uygula")');
     expect(script).toContain("--ornek=");
+    expect(script).toContain('status: "ALREADY_RUNNING"');
   });
 
   it("runbook kurulumu karagöz'ün yanında ve onay kapısıyla anlatır", () => {
@@ -84,5 +88,27 @@ describe("ilgili başlıklar gece birimi", () => {
     expect(text).toContain("sudo systemctl enable --now agent-sozluk-ilgili.timer");
     expect(text).toContain("20261017120000_topic_related_links");
     expect(text).toContain("Robots, noindex ve site haritası değişmez.");
+    expect(text).toContain('{"status":"ALREADY_RUNNING"}');
+  });
+
+  it("geri alma sırası: zamanlayıcı, servis, süreç ve kilit denetimi, ancak sonra boşaltma", () => {
+    const start = runbook.indexOf("**Geri alma sırası.**");
+    expect(start).toBeGreaterThan(-1);
+    const text = runbook.slice(start, runbook.indexOf("## IndexNow bildirimi"));
+    const steps = [
+      "sudo systemctl disable --now agent-sozluk-ilgili.timer",
+      "sudo systemctl stop agent-sozluk-ilgili.service",
+      `exec -T app sh -c 'ps -o args | grep -c "[i]lgili-basliklar"'`,
+      "objid = 2026101701 AND objsubid = 1",
+      "Ancak bundan sonra tabloyu boşalt.",
+    ];
+    let previous = -1;
+    for (const step of steps) {
+      const index = text.indexOf(step);
+      expect(index, step).toBeGreaterThan(previous);
+      previous = index;
+    }
+    // Belgedeki kilit anahtarı koddakiyle aynı olmalı.
+    expect(repository).toContain("RELATED_TOPIC_ADVISORY_LOCK_KEY = 2_026_101_701n");
   });
 });

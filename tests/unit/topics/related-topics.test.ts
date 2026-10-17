@@ -13,6 +13,8 @@ const eligible = (ids: string[]) => {
   const set = new Set(ids);
   return (id: string) => set.has(id);
 };
+// Her bkz hedefi, ilk geçtiği entry'yle birlikte gelir.
+const bkz = (...ids: string[]) => ids.map((topicId) => ({ topicId, entryId: `e-${topicId}` }));
 const all = eligible(["k", "a", "b", "c", "d", "e", "f", "g"]);
 
 describe("planRelatedTopicLinks", () => {
@@ -21,15 +23,15 @@ describe("planRelatedTopicLinks", () => {
       planRelatedTopicLinks(
         {
           topicId: "k",
-          bkzTargetIds: [],
+          bkzTargets: [],
           titleSignalIds: ["a", "b", "c"],
           contentSignalIds: ["c", "d", "a"],
         },
         all,
       ),
     ).toEqual([
-      { relatedTopicId: "c", rank: 1, source: "SIGNAL" },
-      { relatedTopicId: "a", rank: 2, source: "SIGNAL" },
+      { relatedTopicId: "c", rank: 1, source: "SIGNAL", sourceEntryId: null },
+      { relatedTopicId: "a", rank: 2, source: "SIGNAL", sourceEntryId: null },
     ]);
   });
 
@@ -38,7 +40,7 @@ describe("planRelatedTopicLinks", () => {
       planRelatedTopicLinks(
         {
           topicId: "k",
-          bkzTargetIds: [],
+          bkzTargets: [],
           titleSignalIds: ["a", "b"],
           contentSignalIds: ["c", "d"],
         },
@@ -52,7 +54,7 @@ describe("planRelatedTopicLinks", () => {
       planRelatedTopicLinks(
         {
           topicId: "k",
-          bkzTargetIds: [],
+          bkzTargets: [],
           titleSignalIds: ["a", "b", "c", "d"],
           contentSignalIds: ["e", "f", "g", "d"],
         },
@@ -66,16 +68,16 @@ describe("planRelatedTopicLinks", () => {
       planRelatedTopicLinks(
         {
           topicId: "k",
-          bkzTargetIds: ["d", "a", "d"],
+          bkzTargets: bkz("d", "a", "d"),
           titleSignalIds: ["a", "b", "c"],
           contentSignalIds: ["a", "b", "c"],
         },
         all,
       ),
     ).toEqual([
-      { relatedTopicId: "d", rank: 1, source: "BKZ" },
-      { relatedTopicId: "a", rank: 2, source: "BKZ" },
-      { relatedTopicId: "b", rank: 3, source: "SIGNAL" },
+      { relatedTopicId: "d", rank: 1, source: "BKZ", sourceEntryId: "e-d" },
+      { relatedTopicId: "a", rank: 2, source: "BKZ", sourceEntryId: "e-a" },
+      { relatedTopicId: "b", rank: 3, source: "SIGNAL", sourceEntryId: null },
     ]);
   });
 
@@ -83,7 +85,7 @@ describe("planRelatedTopicLinks", () => {
     const links = planRelatedTopicLinks(
       {
         topicId: "k",
-        bkzTargetIds: ["a", "b", "c", "d", "e"],
+        bkzTargets: bkz("a", "b", "c", "d", "e"),
         titleSignalIds: ["f"],
         contentSignalIds: ["f"],
       },
@@ -98,15 +100,15 @@ describe("planRelatedTopicLinks", () => {
       planRelatedTopicLinks(
         {
           topicId: "k",
-          bkzTargetIds: ["k", "ince", "a"],
+          bkzTargets: bkz("k", "ince", "a"),
           titleSignalIds: ["k", "birlesmis", "b"],
           contentSignalIds: ["birlesmis", "k", "b"],
         },
         eligible(["k", "a", "b"]),
       ),
     ).toEqual([
-      { relatedTopicId: "a", rank: 1, source: "BKZ" },
-      { relatedTopicId: "b", rank: 2, source: "SIGNAL" },
+      { relatedTopicId: "a", rank: 1, source: "BKZ", sourceEntryId: "e-a" },
+      { relatedTopicId: "b", rank: 2, source: "SIGNAL", sourceEntryId: null },
     ]);
   });
 });
@@ -117,7 +119,7 @@ describe("summarizeRelatedTopicPlan", () => {
       [
         "k",
         planRelatedTopicLinks(
-          { topicId: "k", bkzTargetIds: ["a"], titleSignalIds: ["b"], contentSignalIds: ["b"] },
+          { topicId: "k", bkzTargets: bkz("a"), titleSignalIds: ["b"], contentSignalIds: ["b"] },
           all,
         ),
       ],
@@ -125,7 +127,7 @@ describe("summarizeRelatedTopicPlan", () => {
       [
         "a",
         planRelatedTopicLinks(
-          { topicId: "a", bkzTargetIds: [], titleSignalIds: ["c"], contentSignalIds: ["c"] },
+          { topicId: "a", bkzTargets: [], titleSignalIds: ["c"], contentSignalIds: ["c"] },
           all,
         ),
       ],

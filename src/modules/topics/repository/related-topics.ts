@@ -46,6 +46,14 @@ export async function limitRelatedTopicStatements(
   await transaction.$executeRaw`SET LOCAL work_mem = '64MB'`;
 }
 
+/** Transaction'ın başlangıç anı (veritabanı saati); hesabın `computedAt` değeri. */
+export async function currentTransactionTime(transaction: Prisma.TransactionClient): Promise<Date> {
+  const rows = await transaction.$queryRaw<Array<{ now: Date }>>`SELECT now() AS now`;
+  const now = rows[0]?.now;
+  if (!(now instanceof Date)) throw new Error("RELATED_TOPIC_CLOCK_UNAVAILABLE");
+  return now;
+}
+
 /**
  * Uygun başlıkları, belge vektörlerini ve sözcük tablolarını geçici tablolara kurar.
  * Geçici tablolar transaction bitince düşer; kalıcı hiçbir şey yazılmaz.
@@ -249,7 +257,7 @@ export function findContentSignalTop(
 export function listReferenceEntryBodies(
   transaction: Prisma.TransactionClient,
   sourceIds: readonly string[],
-): Promise<Array<{ topicId: string; body: string }>> {
+): Promise<Array<{ id: string; topicId: string; body: string }>> {
   return transaction.entry.findMany({
     where: {
       topicId: { in: [...sourceIds] },
@@ -260,7 +268,7 @@ export function listReferenceEntryBodies(
       OR: [{ body: { contains: "(bkz:", mode: "insensitive" } }, { body: { contains: "[[" } }],
     },
     orderBy: [{ topicId: "asc" }, { createdAt: "asc" }, { id: "asc" }],
-    select: { topicId: true, body: true },
+    select: { id: true, topicId: true, body: true },
   });
 }
 
@@ -309,6 +317,7 @@ export async function replaceRelatedTopicLinks(
         topicId,
         relatedTopicId: link.relatedTopicId,
         rank: link.rank,
+        sourceEntryId: link.sourceEntryId,
         source: link.source,
         computedAt,
       });
@@ -331,10 +340,23 @@ export interface RelatedTopicLinkRecord {
   source: RelatedTopicLinkSource;
 }
 
+const eligibleTopicSql = (topic: Prisma.Sql) => Prisma.sql`${topic}."status" = 'ACTIVE'
+  AND ${topic}."mergedIntoId" IS NULL
+  AND ${substantialTopicSql(topic)}`;
+
 /**
- * Sayfa okuması: sıralı en çok `limit` bağlantı. Hedefin hâlâ aktif ve birleşmemiş olduğu okuma
- * anında yeniden denetlenir; gece hesabından sonra gizlenen ya da birleşen başlık görünmez.
- * `(topicId, rank)` indeksiyle tek sorgu.
+ * Sayfa okuması: sıralı en çok `limit` bağlantı. Gece hesabı bir anlık görüntüdür; okuma anında
+ * yeniden denetlenir (Astra, 17 Ekim, 1. tur):
+ *
+ * - Kaynak ve hedef hâlâ uygun: aktif, birleşmemiş, G4'e göre ince değil.
+ * - BKZ bağının kaynak entry'si hâlâ görünür, kaynak başlıkta ve hesaptan sonra düzenlenmemiş;
+ *   entry'si bilinmeyen BKZ bağı gösterilmez.
+ * - Hesaptan sonra kaynak ya da hedef başlıkta bir entry silindi, gizlendi ya da seed görünürlüğü
+ *   bastırıldıysa bağ (BKZ ya da SIGNAL) gösterilmez: sinyal artık görünmeyen metinden türemiş
+ *   olabilir. Bağ bir sonraki gece hesabında temiz veriden yeniden kurulur.
+ *
+ * Tek sorgu: bağlar `(topicId, rank)` indeksinden, entry denetimleri `entries(topicId, …)`
+ * indeksinden; en çok dört başlığın entry'lerine bakılır.
  */
 export function findRelatedTopicLinks(
   transaction: Prisma.TransactionClient,
@@ -342,24 +364,64 @@ export function findRelatedTopicLinks(
   limit: number,
 ): Promise<RelatedTopicLinkRecord[]> {
   return publicIds(
-    transaction.topicRelatedLink.findMany({
-      where: {
-        topicId,
-        relatedTopic: { status: "ACTIVE", mergedIntoId: null },
-      },
-      orderBy: { rank: "asc" },
-      take: limit,
-      select: {
-        source: true,
-        relatedTopic: { select: { title: true, slug: true, publicId: true } },
-      },
-    }),
-  ).then((rows) =>
-    rows.map((row) => ({
-      title: row.relatedTopic.title,
-      slug: row.relatedTopic.slug,
-      publicId: row.relatedTopic.publicId,
-      source: row.source,
-    })),
+    transaction.$queryRaw<
+      Array<{ title: string; slug: string; publicId: bigint; source: RelatedTopicLinkSource }>
+    >(Prisma.sql`
+      SELECT target.title, target.slug, target."publicId", link."source"
+      FROM "topic_related_links" AS link
+      JOIN "topics" AS source ON source.id = link."topicId"
+      JOIN "topics" AS target ON target.id = link."relatedTopicId"
+      WHERE link."topicId" = ${topicId}::uuid
+        AND ${eligibleTopicSql(Prisma.sql`source`)}
+        AND ${eligibleTopicSql(Prisma.sql`target`)}
+        AND (
+          link."source" = 'SIGNAL'
+          OR EXISTS (
+            SELECT 1
+            FROM "entries" AS bkz_entry
+            WHERE bkz_entry.id = link."sourceEntryId"
+              AND bkz_entry."topicId" = link."topicId"
+              AND ${visibleEntrySql(Prisma.sql`bkz_entry`)}
+              AND NOT EXISTS (
+                SELECT 1
+                FROM "entry_revisions" AS revision
+                WHERE revision."entryId" = bkz_entry.id
+                  AND revision."createdAt" > link."computedAt"
+              )
+          )
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "entries" AS changed
+          WHERE changed."topicId" IN (link."topicId", link."relatedTopicId")
+            AND (changed."deletedAt" > link."computedAt" OR changed."hiddenAt" > link."computedAt")
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "seed_entry_visibility" AS suppression
+          JOIN "entries" AS suppressed_entry ON suppressed_entry.id = suppression."entryId"
+          WHERE suppressed_entry."topicId" IN (link."topicId", link."relatedTopicId")
+            AND suppression."suppressed" = true
+            AND suppression."updatedAt" > link."computedAt"
+        )
+      ORDER BY link."rank"
+      LIMIT ${limit}
+    `),
   );
+}
+
+/**
+ * Gece hesabının karşılıklı dışlaması (Astra, 17 Ekim, 1. tur): iki hesap aynı anda tabloyu
+ * silip yazarsa iki sonucun birleşimi kalabilir. Transaction'a bağlı danışma kilidi; transaction
+ * bitince kendiliğinden bırakılır. Anahtar sabit ve yalnız bu iş için.
+ */
+export const RELATED_TOPIC_ADVISORY_LOCK_KEY = 2_026_101_701n;
+
+export async function tryLockRelatedTopicComputation(
+  transaction: Prisma.TransactionClient,
+): Promise<boolean> {
+  const rows = await transaction.$queryRaw<Array<{ acquired: boolean }>>`
+    SELECT pg_try_advisory_xact_lock(${RELATED_TOPIC_ADVISORY_LOCK_KEY}::bigint) AS acquired
+  `;
+  return rows[0]?.acquired === true;
 }
