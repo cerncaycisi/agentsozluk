@@ -72,6 +72,8 @@ function ortam(secenek: Secenek): NodeJS.ProcessEnv {
     ALARM_CANLILIK_ZAMAN_ASIMI: "2",
     // Sağlık özeti ayrı dosyada sınanıyor (saglik-alarm.test.ts).
     ALARM_SAGLIK_KAPALI: "1",
+    // İşletim kontrolü (birim yaşı, disk marjı) ayrı dosyada (isletim-alarm.test.ts).
+    ALARM_ISLETIM_KAPALI: "1",
     SAHTE_DIZIN: dizin,
     SAHTE_CANLILIK: secenek.canlilik ?? "60 120",
     SAHTE_LOGS_HATA: secenek.logsHata ? "1" : "",
@@ -359,9 +361,11 @@ describe("lease süresi alarmı", () => {
     expect(calistir([]).bildirimler).toEqual([]);
   });
 
-  it("log okunamıyorsa bunu ayrıca bildirir; sessiz kalmaz", () => {
-    const { status, bildirimler } = calistir([kayit(800)], { logsHata: true });
-    expect(status).toBe(0);
+  // 17 Ekim: lease izlenemiyorsa birim başarısız görünür (3); bildirim yine gider.
+  it("log okunamıyorsa bunu ayrıca bildirir; sessiz kalmaz ve birimi başarısız gösterir", () => {
+    const { status, bildirimler, stderr } = calistir([kayit(800)], { logsHata: true });
+    expect(status).toBe(3);
+    expect(stderr).toContain("lease kontrolü işini yapamadı (çıkış 3)");
     expect(bildirimler).toHaveLength(1);
     expect(bildirimler[0]).toContain("lease logu okunamıyor");
   });
@@ -459,7 +463,7 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
   it("imleç yazılamazsa sessiz kalmaz, journal'a yazar", () => {
     mkdirSync(path.join(dizin, "durum", "durum-lease-imlec"), { recursive: true });
     const { status, stderr } = calistir([kayit(800)], {});
-    expect(status).toBe(0);
+    expect(status).toBe(3);
     expect(stderr).toContain("durum-lease-imlec yazılamadı");
   });
 
@@ -961,14 +965,15 @@ describe("lease kontrolü canlılık alarmını bozamaz (Sol, 21 Eylül)", () =>
     expect(bildirimler[0]).toContain("veritabanı sorgulanamıyor");
   });
 
-  it("takılan log okuması zaman aşımıyla kesilir, canlılık sonucu korunur", () => {
+  // Canlılık alarmı gitti; lease süre aşımı körlüktür, birim 2 yerine 3 ile başarısız görünür.
+  it("takılan log okuması zaman aşımıyla kesilir, canlılık bildirimi korunur", () => {
     const baslangic = Date.now();
     const { status, bildirimler } = calistir([kayit(4500)], {
       canlilik: "9999 120",
       logsAsili: true,
     });
     expect(Date.now() - baslangic).toBeLessThan(15_000);
-    expect(status).toBe(2);
+    expect(status).toBe(3);
     expect(bildirimler).toHaveLength(1);
     expect(bildirimler[0]).toContain("koşu yok");
   });
@@ -1011,6 +1016,23 @@ describe("lease kontrolü canlılık alarmını bozamaz (Sol, 21 Eylül)", () =>
     const tekrar = calistir([], { canlilik }).bildirimler;
     expect(tekrar).toHaveLength(1);
     expect(tekrar[0]).toContain(metin);
+  });
+
+  it("gönderilemeyen canlılık bildirimi birimi başarısız gösterir ve hata dosyasına yazılır", () => {
+    const sonuc = calistir([], { canlilik: "9999 120", curlHata: true });
+    expect(sonuc.status).toBe(3);
+    expect(sonuc.stderr).toContain("bildirim gönderilemedi (kaynak ana, curl çıkış 22)");
+    expect(readFileSync(path.join(dizin, "durum", "son-bildirim-hatasi"), "utf8")).toMatch(
+      /^\d+ ana 22\n$/u,
+    );
+    // Durum yazılmadı: sonraki koşu yeniden dener (bastırma yok).
+    expect(calistir([], { canlilik: "9999 120" }).bildirimler).toHaveLength(1);
+  });
+
+  it("gönderilemeyen lease bildirimi canlılık temizken de 3 döner", () => {
+    const sonuc = calistir([kayit(4500)], { curlHata: true });
+    expect(sonuc.status).toBe(3);
+    expect(sonuc.stderr).toContain("kaynak yalniz-lease");
   });
 
   it("gönderilemeyen düzelme bildirimi sonraki koşuda yeniden denenir", () => {

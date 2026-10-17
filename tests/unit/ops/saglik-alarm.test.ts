@@ -169,14 +169,17 @@ describe("sağlık özeti", () => {
   it("gönderim başarısızsa teslim edilmedi diye yazar; sonraki koşu yeniden dener", () => {
     const t = 1_800_000_000;
     const ozet = "SAGLIK 5 0 3 40 2 2 2 EVIDENCE_FRESH 900000";
-    expect(calistir(ozet, t, { SAHTE_CURL_HATA: "1" }).durum).toBe(`temiz 0 codex`);
+    const hata = calistir(ozet, t, { SAHTE_CURL_HATA: "1" });
+    expect(hata.durum).toBe(`temiz 0 codex`);
+    expect(hata.status).toBe(3);
     expect(calistir(ozet, t + 900).bildirimler).toHaveLength(1);
   });
 
-  it("sorgu başarısız ya da bozuksa bildirim atmaz, journal'a yazar ve 0 döner", () => {
+  // 17 Ekim (Astra bulgu 5): okunamayan özet körlüktür; 0 değil 3 döner.
+  it("sorgu başarısız ya da bozuksa bildirim atmaz, journal'a yazar ve 3 döner", () => {
     for (const ozet of ["", "SAGLIK x 0 0 0 2 2 2 EVIDENCE_FRESH 1", "SAGLIK 1 2 3"]) {
       const sonuc = calistir(ozet);
-      expect(sonuc.status).toBe(0);
+      expect(sonuc.status).toBe(3);
       expect(sonuc.bildirimler).toEqual([]);
       expect(sonuc.stderr).toContain("agent-sozluk-alarm: sağlık özeti");
     }
