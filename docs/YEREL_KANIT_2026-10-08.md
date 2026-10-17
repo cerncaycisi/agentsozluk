@@ -333,6 +333,16 @@ sonuçlarını not al bunu yapalım taşımadan vs sonra". Astra 1. tur (NO-GO) 
        satırında sürüm doğrula → aç.
      - Başlangıç satırında sürüm doğrulanamazsa akış kapalı kalır.
      - Geri dönüş aynı yoldan eski bağa yapılır.
+     - **Geri dönüş canary şartı (17 Ekim 2026, Fable P3-10):** `0.144.6`'ya (ya da araç
+       sözleşmesi o sürümde ölçülmemiş herhangi bir CLI'a) dönülmeden önce
+       `scripts/security/codex-tool-canary.ts` o CLI ile (`CODEX_EXECUTABLE` o sürüme, üretim
+       kimliği ve ortamıyla) koşar; son özet satırında `version` hedef sürüm, `toolItemFailures: 0`,
+       `leaked: 0` ve `measured` en az 1 olmalı (betik çıkış 0). `0.144.6` 15 Ekim'de 4 denemenin 2'sinde alt ajan aracını
+       yürüttü (`CODEX_TOOL_ITEM`, ATTEMPT_LOG "15 Ekim — #415 canlıda"); bu yüzden şart
+       bugün o sürüme geri dönüşü kapatır. Canary geçmezse geri dönüş yapılmaz; akış duraklatılmış
+       kalır ve durum Gökhan'a götürülür. Otomatik geri dönüş yapan izleme betikleri de hedefi
+       `0.144.6` olan CLI geri dönüşü kurmaz; model profili geri dönüşü (`luna-max`) bundan
+       bağımsızdır.
   3. **Kimlik durumu:** `auth.json` en son 6 Ekim'de değişmiş. 15 Ekim'deki `0.160.0` yoklamaları
      ve canary koşuları onu değiştirmedi; ardından `0.144.6` worker'ı başarıyla koştu.
      - Geçişten önce ve sonra yalnız değişiklik zamanı ve boyut kaydedilir, içerik kaydedilmez.
