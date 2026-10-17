@@ -105,10 +105,10 @@ bildir() { # $1 baslik, $2 oncelik, $3 etiket, $4 govde, $5 azami sn (20)
 # Zaman damgası baştaki sıfırsız bir tamsayı olmalı ve gelecekte olmamalı:
 # `0009` Bash'te geçersiz sekizlik sayıdır, gelecekteki bir an ise tekrar
 # bildirimini süresiz bastırırdı (Sol, ikinci tur). $1 dosya, $2 izinli
-# haller (| ile), $3 şimdi. Çıktı: "hal an".
+# haller (| ile), $3 şimdi. Çıktı: "hal an" (varsa üçüncü alanı çağıran ayrıca okur).
 durum_oku() {
   local hal an
-  read -r hal an 2>/dev/null <"$1" || true
+  read -r hal an _ 2>/dev/null <"$1" || true
   [[ "${hal:-}" =~ ^($2)$ ]] || hal=temiz
   if [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > ${3:-0} )); then
     hal=temiz; an=0
@@ -132,27 +132,44 @@ COMMIT;
 PSQL
 }
 
-# Durum yazılamıyorsa bildirim GÖNDERİLMEZ (Astra 1. tur, 17 Ekim): gönderilip kaydedilemeyen
-# bildirim her 15 dakikada yeniden giderdi. Gönderimden önce önceki durum aynen geri yazılarak
-# yazılabilirlik kanıtlanır; yazılamazsa koşu körlükle (3) biter ve `OnFailure=` bildirimi
-# (kendi /run yedek kaydıyla, 6 saatte bir) haber verir.
+# Durum satırı: `hal an gorulen` (üçüncü alan Astra 2. tur, 17 Ekim). `hal an` son BAŞARIYLA
+# gönderilen bildirim; `gorulen` gönderilemeyen (ör. ntfy 429) arızalar (`alarm`,
+# `sorgu-hatasi`, ikisi virgüllü ya da `-`). Gönderimden önce görülen arıza kaydedilir: bildirim
+# gitmese ve sonraki koşu temiz olsa da "tekrar üretiyor" iletisi onu "arada görülen" diye söyler.
+# Durum yazılamıyorsa bildirim GÖNDERİLMEZ (Astra 1. tur): gönderilip kaydedilemeyen bildirim
+# her 15 dakikada yeniden giderdi; koşu körlükle (3) biter ve `OnFailure=` bildirimi (kendi /run
+# yedek kaydıyla, 6 saatte bir) haber verir.
+canlilik_gorulen() { # $1 önceki görülen, $2 eklenen → sabit sırayla küme
+  local k cikti=()
+  for k in alarm sorgu-hatasi; do [[ ",$1,$2," == *",$k,"* ]] && cikti+=("$k"); done
+  if (( ${#cikti[@]} == 0 )); then echo -; else (IFS=,; echo "${cikti[*]}"); fi
+}
+
+# $1 yeni hal, $2 başlık, $3 gövde. Önce görüleni kaydeder, sonra gönderir.
+canlilik_ariza_bildir() {
+  if ! atomik_yaz "$DURUM" "$onceki_hal $onceki_an $(canlilik_gorulen "$gorulen" "$1")"; then
+    hata_yaz "canlılık durumu yazılamıyor; bildirim gönderilmedi"; KORLUK=1; return
+  fi
+  if bildir "$2" urgent rotating_light "$3"; then
+    atomik_yaz "$DURUM" "$1 $simdi -" || KORLUK=1
+  else
+    KORLUK=1
+  fi
+}
+
 canlilik_kontrol() {
-  local cikti kosu_yas entry_yas esik_sn simdi onceki_hal onceki_an
+  local cikti kosu_yas entry_yas esik_sn simdi onceki_hal onceki_an gorulen arada govde
   cikti="$(canlilik_sorgu | grep -E '^[0-9]+ ' | head -1)"
   simdi="$(date +%s)"
   read -r onceki_hal onceki_an <<<"$(durum_oku "$DURUM" 'temiz|alarm|sorgu-hatasi' "$simdi")"
+  gorulen=""; read -r _ _ gorulen 2>/dev/null <"$DURUM" || true
+  [[ "${gorulen:-}" =~ ^(alarm|sorgu-hatasi|alarm,sorgu-hatasi)$ ]] || gorulen=-
 
   # Sorgu başarısızsa bu da bir arıza sinyalidir; sessiz kalmak en kötü seçenek.
   if [[ -z "$cikti" ]]; then
     if [[ "$onceki_hal" != "sorgu-hatasi" ]] || (( simdi - onceki_an > SESSIZLIK_SN )); then
-      if ! atomik_yaz "$DURUM" "$onceki_hal $onceki_an"; then
-        hata_yaz "canlılık durumu yazılamıyor; bildirim gönderilmedi"; KORLUK=1
-      elif bildir "Agent Sözlük: veritabanı sorgulanamıyor" urgent rotating_light \
-        "Canlılık sorgusu başarısız. Veritabanı, docker ya da compose erişimi bozuk olabilir. $(date -u '+%Y-%m-%d %H:%M UTC')"; then
-        atomik_yaz "$DURUM" "sorgu-hatasi $simdi" || KORLUK=1
-      else
-        KORLUK=1
-      fi
+      canlilik_ariza_bildir sorgu-hatasi "Agent Sözlük: veritabanı sorgulanamıyor" \
+        "Canlılık sorgusu başarısız. Veritabanı, docker ya da compose erişimi bozuk olabilir. $(date -u '+%Y-%m-%d %H:%M UTC')"
     fi
     return 1
   fi
@@ -162,31 +179,30 @@ canlilik_kontrol() {
 
   if (( kosu_yas > esik_sn )); then
     if [[ "$onceki_hal" != "alarm" ]] || (( simdi - onceki_an > SESSIZLIK_SN )); then
-      if ! atomik_yaz "$DURUM" "$onceki_hal $onceki_an"; then
-        hata_yaz "canlılık durumu yazılamıyor; bildirim gönderilmedi"; KORLUK=1
-      elif bildir "Agent Sözlük sessiz: $(( kosu_yas / 60 )) dk koşu yok" urgent rotating_light \
+      canlilik_ariza_bildir alarm "Agent Sözlük sessiz: $(( kosu_yas / 60 )) dk koşu yok" \
 "Worker $(( kosu_yas / 60 )) dakikadır koşu almadı (eşik ${ESIK_DK} dk).
 Son entry: ${entry_yas} sn önce.
 Site ayakta olabilir ve /api/health 200 dönebilir; bu alarm onu ölçmüyor.
-Bak: systemctl status agent-sozluk-runtime"; then
-        atomik_yaz "$DURUM" "alarm $simdi" || KORLUK=1
-      else
-        KORLUK=1
-      fi
+Bak: systemctl status agent-sozluk-runtime"
     fi
     return 2
   fi
 
-  # Arızadan çıkış da haber değeri taşır; gönderilemezse bir sonraki koşu dener.
-  if [[ "$onceki_hal" == "alarm" || "$onceki_hal" == "sorgu-hatasi" ]]; then
-    if ! atomik_yaz "$DURUM" "$onceki_hal $onceki_an"; then
+  # Arızadan çıkış da haber değeri taşır; gönderilemezse bir sonraki koşu dener. Bildirilen
+  # arıza yoksa da gönderilemeyen (arada görülen) arıza bir kez söylenir.
+  arada="$(canlilik_gorulen "${gorulen//$onceki_hal/}" "")"
+  if [[ "$onceki_hal" == "alarm" || "$onceki_hal" == "sorgu-hatasi" || "$arada" != - ]]; then
+    if ! atomik_yaz "$DURUM" "$onceki_hal $onceki_an $gorulen"; then
       hata_yaz "canlılık durumu yazılamıyor; bildirim gönderilmedi"; KORLUK=1; return 0
     fi
+    govde="Son koşu ${kosu_yas} sn önce alındı, son entry ${entry_yas} sn önce."
+    [[ "$arada" != - ]] && govde="${govde}
+Arada görülen, bildirimi doğrulanamayan: ${arada}."
     bildir "Agent Sözlük tekrar üretiyor" default white_check_mark \
-      "Son koşu ${kosu_yas} sn önce alındı, son entry ${entry_yas} sn önce. $(date -u '+%Y-%m-%d %H:%M UTC')" \
+      "${govde} $(date -u '+%Y-%m-%d %H:%M UTC')" \
       || { KORLUK=1; return 0; }
   fi
-  atomik_yaz "$DURUM" "temiz $simdi" || KORLUK=1
+  atomik_yaz "$DURUM" "temiz $simdi -" || KORLUK=1
   return 0
 }
 
@@ -786,9 +802,10 @@ $(date -u '+%Y-%m-%d %H:%M UTC')" 10; then
 # çalıştığını göstermiyordu. systemd yalnız okunur (`systemctl show`); veritabanından
 # yalnız `pg_database_size` okunur.
 
-# Çıktı: sorun başına bir satır, ilk sözcük anahtar (birim kısa adı). Durumu okunamayan birim
-# için `? <ad>`, systemd hiç okunamazsa `? *` basılır ve 1 döner (körlük); okunanların sorunları
-# yine basılır. Çağıran, okunamayan birimin önceki sorununu "düzeldi" saymaz.
+# Çıktı: sorun başına bir satır, ilk sözcük anahtar (birim kısa adı). Sonucu bilinmeyen birim
+# (okunamıyor, şu an koşuyor ya da ayarı geçersiz) için `? <ad>`, hiçbiri bilinemiyorsa `? *`
+# basılır; okuma ve ayar hatasında 1 döner (körlük). Çağıran, sonucu bilinmeyen birimin önceki
+# sorununu "düzeldi" saymaz.
 birim_sorunlari() {
   local simdi acilis girdi ad saat birim cikti k v load active result durum cikis_an azami yas hata=0
   simdi="${ALARM_SIMDI:-$(date +%s)}"
@@ -798,7 +815,11 @@ birim_sorunlari() {
   for girdi in $ISLETIM_BIRIMLER; do
     ad="${girdi%%:*}"; saat="${girdi#*:}"
     if [[ ! "$ad" =~ ^[a-z][a-z0-9-]{0,30}$ || ! "$saat" =~ ^[1-9][0-9]{0,3}$ ]]; then
-      hata_yaz "ALARM_BIRIMLER girdisi geçersiz: ${girdi}"; hata=1; continue
+      # Geçersiz ayar önceki arızayı silmez (Astra 2. tur): ad tanınıyorsa o birimin, yoksa
+      # bütün birimlerin önceki durumu taşınır.
+      hata_yaz "ALARM_BIRIMLER girdisi geçersiz: ${girdi}"
+      if [[ "$ad" =~ ^[a-z][a-z0-9-]{0,30}$ ]]; then echo "? $ad"; else echo "? *"; fi
+      hata=1; continue
     fi
     birim="agent-sozluk-${ad}.service"
     if ! cikti="$(timeout 5 systemctl show --timestamp=unix -p LoadState -p ActiveState \
@@ -815,8 +836,9 @@ birim_sorunlari() {
     azami=$(( saat * 3600 ))
     if [[ "$load" == not-found ]]; then echo "$ad kurulu değil (${birim})"; continue; fi
     if [[ "$load" != loaded ]]; then hata_yaz "${birim} LoadState tanınmadı"; echo "? $ad"; hata=1; continue; fi
-    # Şu an koşuyor: sonucu bir sonraki kontrolde. Takılırsa TimeoutStartSec düşürür.
-    [[ "$active" == activating ]] && continue
+    # Şu an koşuyor: sonucu bir sonraki kontrolde. Takılırsa TimeoutStartSec düşürür. Önceki
+    # arızası başarılı sonuç görülene kadar sürer (Astra 2. tur): körlük değildir, `hata` yok.
+    if [[ "$active" == activating ]]; then echo "? $ad"; continue; fi
     if [[ "$active" == failed || "$result" != success ]]; then
       echo "$ad son koşu başarısız (Result=${result:-?}, çıkış ${durum:-?})"; continue
     fi
@@ -916,7 +938,7 @@ isletim_kontrol() {
     fi
     for anahtar in "${bilinmeyen[@]}"; do
       if [[ "$anahtar" == '*' || "$anahtar" == "$onceki" ]]; then
-        satirlar+=("$onceki önceki ölçümde sorunluydu; şu an okunamıyor"); break
+        satirlar+=("$onceki önceki ölçümde sorunluydu; başarılı sonuç henüz görülmedi (okunamıyor, koşuyor ya da ayar geçersiz)"); break
       fi
     done
   done

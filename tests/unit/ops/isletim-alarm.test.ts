@@ -331,8 +331,39 @@ describe("işletim kontrolü: okunamayan kaynak önceki arızayı silmez", () =>
     expect(sonuc.status).toBe(3);
     expect(sonuc.bildirimler).toHaveLength(1);
     expect(sonuc.bildirimler[0]).toContain("Title: Agent Sözlük işletim: backup");
-    expect(sonuc.bildirimler[0]).toContain("backup önceki ölçümde sorunluydu; şu an okunamıyor");
+    expect(sonuc.bildirimler[0]).toContain(
+      "backup önceki ölçümde sorunluydu; başarılı sonuç henüz görülmedi",
+    );
     expect(sonuc.bildirimler[0]).not.toContain("düzeldi");
+  });
+
+  // Astra 2. tur (17 Ekim): koşan birim ve geçersiz ayar da sahte "düzeldi" üretiyordu.
+  it("arızalı birim şu an koşuyorsa başarılı sonuç görülene kadar arıza sürer", () => {
+    onceArizaBildirildi();
+    birim("backup", { ActiveState: "activating", Result: "exit-code", ExecMainExitTimestamp: "" });
+    const kosuyor = calistir(["--yalniz-isletim"], { ALARM_SIMDI: String(T + 900) });
+    // Koşmak körlük değildir: 0 döner, bildirim yok, durum aynı.
+    expect(kosuyor.status, kosuyor.stderr).toBe(0);
+    expect(kosuyor.bildirimler).toEqual([]);
+    expect(kosuyor.durum).toBe(`backup ${T} -`);
+    birim("backup", { ExecMainExitTimestamp: `@${T + 1000}` });
+    const basarili = calistir(["--yalniz-isletim"], { ALARM_SIMDI: String(T + 1800) });
+    expect(basarili.bildirimler).toHaveLength(1);
+    expect(basarili.bildirimler[0]).toContain("işletim: düzeldi");
+  });
+
+  it("geçersiz eşik (backup:x) önceki arızayı silmez; düzeldi göndermez ve 3 döner", () => {
+    onceArizaBildirildi();
+    birim("backup", {});
+    for (const liste of ["backup:x", "Kotu;ad:26"]) {
+      const sonuc = calistir(["--yalniz-isletim"], {
+        ALARM_BIRIMLER: liste,
+        ALARM_SIMDI: String(T + 900),
+      });
+      expect(sonuc.status).toBe(3);
+      expect(sonuc.bildirimler).toEqual([]);
+      expect(sonuc.durum).toBe(`backup ${T} -`);
+    }
   });
 
   it("disk marjı ölçülemezse önceki disk uyarısı düzeldi sayılmaz", () => {

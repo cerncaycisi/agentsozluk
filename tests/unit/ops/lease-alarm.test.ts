@@ -1029,6 +1029,25 @@ describe("lease kontrolü canlılık alarmını bozamaz (Sol, 21 Eylül)", () =>
     expect(calistir([], { canlilik: "9999 120" }).bildirimler).toHaveLength(1);
   });
 
+  // Astra 2. tur (17 Ekim): ntfy her gönderimi (OnFailure dahil) reddederse görülen kesinti
+  // kaydedilmiyor, sonraki temiz koşu sessizce `temiz` yazıyordu.
+  it("gönderilemeyen kesinti sonraki temiz koşuda 'arada görülen' diye bildirilir", () => {
+    const ilk = calistir([], { canlilik: "9999 120", curlHata: true });
+    expect(ilk.status).toBe(3);
+    expect(ilk.bildirimler).toEqual([]);
+    expect(readFileSync(path.join(dizin, "durum", "durum"), "utf8")).toMatch(
+      /^temiz \d+ alarm\n$/u,
+    );
+    const temiz = calistir([]);
+    expect(temiz.status, temiz.stderr).toBe(0);
+    expect(temiz.bildirimler).toHaveLength(1);
+    expect(temiz.bildirimler[0]).toContain("tekrar üretiyor");
+    expect(temiz.bildirimler[0]).toContain("Arada görülen, bildirimi doğrulanamayan: alarm.");
+    expect(readFileSync(path.join(dizin, "durum", "durum"), "utf8")).toMatch(/^temiz \d+ -\n$/u);
+    // Söylendi: bir sonraki temiz koşu sessiz.
+    expect(calistir([]).bildirimler).toEqual([]);
+  });
+
   // Astra 1. tur (17 Ekim): kaydedilemeyen bildirim her 15 dakikada yeniden giderdi.
   it("canlılık durumu yazılamıyorsa bildirim göndermez ve 3 döner", () => {
     mkdirSync(path.join(dizin, "durum", "durum"), { recursive: true });
