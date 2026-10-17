@@ -2495,3 +2495,34 @@ kabul ve son üretim/main eşliği açık; erken PASS veya yeni muafiyet verilme
 tamamlandıktan sonra. Astra, K1 kesitinin saat damgasının (23:45 "UTC") geri dönüş saatiyle
 çeliştiğini gösterdi. Değer büyük olasılıkla TSİ (20:45 UTC) ve saklanan DB'deki 69 başlık / 155
 entry ile tutarlı; sayılar o DB'den yeniden çıkarılacak.
+
+## 17 Ekim'de arşivlenen "Şu an neredeyiz" (10–16 Ekim)
+
+**Talep:** Search Console 13 Eylül–10 Ekim 81 tık, 5.109 gösterim; sayaç 10–11 Ekim günde 11–12
+güvenilir insan. Strateji sıra 4'te.
+
+**10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
+
+- **16–17 Ekim:** sol tam geçiş için pahalı; karma yazım (#421) canlıda ve açık: luna yazar,
+  uygun entry'leri `gpt-6-sol` yeniden yazar. Kapsam %10; sırada kalite ve kapsam (sıra 6).
+- **14 Ekim:** üretim OVH VPS-1'e taşındı (51.161.103.223; sıra 0 bitti). Canlı exact `24a25981`
+  (#402 tek soru, #404 logo/llms.txt, #405 lastmod, #406 karagöz filtresi). Sıra 3: son okuma
+  "kapandı" sayılmadı, #12 A geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
+- İncelemeler: [Fable](TAM_ANALIZ_2026-10-10.md) ve [Astra](FULL_ANALYSIS_2026-10-10.md). Uzlaştırma
+  aşağıda; ikinci bir kuyruk değil.
+- **Ortak ana bulgu:** talep kanıtı yok (28 günde 63 arama tıkı, son 30 günde insan entry 0). Başarı
+  ölçütü üretilen entry'den geri gelen okura taşınıyor (sıra 4).
+- **"15/15 kapandı" dili ölçümden hızlıydı.** 9 ve 12 başka bir ölçüyle kapandı; 1, eşiği geçemeyen
+  koşuya ikinci koşu eklenerek kapandı. Kapanış uygulama / yerel / canlı diye ayrılıyor (sıra 1).
+- **Son okuma canlıda önkayıtlı ölçümle doğrulanmadı.** Fable'ın kör ölçümünde özdeyiş ve dolgu
+  önce/sonra aynı, Astra'da dolgu %20; anlam koruması için yeniden üretilmiş karşı örnekler var
+  (sıra 2–3).
+- **Kendi doğrulamam (üretim, salt okunur):**
+  - bkz düşüşü doğrulanmadı: 8, 9 ve 10 Ekim'de %3, %12, %14.
+  - Yeni başlık parçalanması yeni değil: 3 Ekim'den beri günde 110–150 yeni başlık açılıyor ve
+    %75–89'u tek entry'de kalıyor. Yine de gerçek bir sorun (sıra 5).
+- **Yetki:** Gökhan 9 Ekim'de "bana bişi sormana gerek yok bu ay boyunca" dedi; süre 31 Ekim 23:59
+  TSİ, AGENTS.md buna göre güncellendi. Teknik kapılar, veri silme ve aşağıdaki Gökhan kararları
+  kapsam dışı.
+- Önceki durum anlatısı ve 7 Ekim uzlaştırması [Plan arşivinde](PLAN_ARSIVI_2026-10.md), "10 Ekim"
+  başlığında.
