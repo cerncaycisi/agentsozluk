@@ -14,7 +14,7 @@ import { loadResetGoneIndex } from "@/modules/maintenance/repository/reset-gone"
 import { getResetGoneDecision } from "@/modules/maintenance/application/reset-gone";
 import type { DatabaseClient } from "@/lib/db/types";
 import { closeIntegrationDatabase, resetIntegrationDatabase } from "./database";
-import { requireTestDatabaseUrl } from "../../scripts/test-database-safety";
+import { isTestDatabaseName, requireTestDatabaseUrl } from "../../scripts/test-database-safety";
 
 // Mutation kapısı diğer idle backend'leri de reddeder. Fixture havuzu ayrı kapanır;
 // çekirdek, üretim yürütücüsündeki gibi tek bağlantıyla sınanır.
@@ -35,14 +35,38 @@ const db = new PrismaClient({ datasourceUrl: databaseUrl.href });
   … --- lock not available` yazdı: işçi, önizleme geçtikten SONRA veritabanına bağlanmış ve
   testin ACCESS EXCLUSIVE kilitlerine çarpmıştı; kilitlerden sonraki engel denetimi onu
   OTHER_DATABASE_CONNECTIONS saydı. Önceki 55P03 çeşidi (kilit NOWAIT, `agent_sources`) aynı
-  işçinin önce davranmasıdır. autovacuum başlatıcısı iş olmasa bile her `autovacuum_naptime`'da
-  veritabanına işçi gönderir; bekleme ya da tablo düzeyi `autovacuum_enabled` bu yarışı
-  kapatmaz. Bu yüzden dosya boyunca SAHİPLİ test kümesinde autovacuum kapatılır (yalnız
-  süper kullanıcı; CI'da `postgres`) ve sonunda önceki değer geri yüklenir. Kapı ve
-  beklenen sonuç değişmez.
+  işçinin önce davranmasıdır.
+
+  Neden küme düzeyi (Astra 1. tur, 17 Ekim): `autovacuum` yalnız postgresql.conf/`ALTER SYSTEM`
+  ile değişir; veritabanı ya da rol düzeyinde ayarlanamaz. Tablo düzeyi
+  `autovacuum_enabled = false` işçinin BAĞLANMASINI önlemez: başlatıcı her `autovacuum_naptime`'da
+  istatistiği olan her veritabanına bir işçi gönderir; işçi bağlanır, `pg_class`'ı (ayarlanamayan
+  sistem katalogları dahil) tarar, iş yoksa çıkar. O kısa bağlantı da kapının saydığı başka
+  oturumdur. Deterministik tek yol küme genelinde kapatmaktır.
+
+  `ALTER SYSTEM` bütün kümeyi etkiler ve süreç çökerse kalıcı kalır. Bu yüzden yalnız açıkça
+  bu teste ayrılmış kümede çalışır: `TEST_DATABASE_CLUSTER_OWNED=1` (yalnız CI'nın geçici
+  Postgres servis konteynerinde verilir), süper kullanıcı ve kümede `postgres` dışında yalnız test
+  adlı veritabanları. Biri eksikse test açık hatayla reddeder; kapatma yapılmaz, test atlanmaz.
+  Sonunda önceki değer geri yüklenir.
 */
 let restoreAutovacuum: (() => Promise<void>) | undefined;
 async function pauseAutovacuum() {
+  if (process.env.TEST_DATABASE_CLUSTER_OWNED !== "1")
+    throw new Error(
+      "AUTOVACUUM_CONTROL_REFUSED: TEST_DATABASE_CLUSTER_OWNED=1 yok. Bu test autovacuum'u küme " +
+        "genelinde (ALTER SYSTEM) kapatır; yalnız bu teste ayrılmış geçici kümede çalıştırın.",
+    );
+  const databases = await db.$queryRaw<{ name: string }[]>`
+    SELECT datname AS name FROM pg_database WHERE NOT datistemplate ORDER BY datname`;
+  const foreign = databases
+    .map(({ name }) => name)
+    .filter((name) => name !== "postgres" && !isTestDatabaseName(name));
+  if (foreign.length)
+    throw new Error(
+      `AUTOVACUUM_CONTROL_REFUSED: kümede test dışı veritabanı var (${foreign.join(", ")}); ` +
+        "ALTER SYSTEM onları da etkilerdi.",
+    );
   const [row] = await db.$queryRaw<
     { superuser: string; setting: string; source: string; sourcefile: string | null }[]
   >`SELECT current_setting('is_superuser') AS superuser, setting, source, sourcefile

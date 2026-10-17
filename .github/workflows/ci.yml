@@ -27,6 +27,9 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      # Geçici servis konteyneri yalnız testlere ait: great-reset-namespace testi
+      # autovacuum'u küme genelinde kapatabilir (bkz. o testin yorumu).
+      TEST_DATABASE_CLUSTER_OWNED: "1"
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -116,6 +119,9 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      # Geçici servis konteyneri yalnız testlere ait: great-reset-namespace testi
+      # autovacuum'u küme genelinde kapatabilir (bkz. o testin yorumu).
+      TEST_DATABASE_CLUSTER_OWNED: "1"
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -158,6 +164,9 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      # Geçici servis konteyneri yalnız testlere ait: great-reset-namespace testi
+      # autovacuum'u küme genelinde kapatabilir (bkz. o testin yorumu).
+      TEST_DATABASE_CLUSTER_OWNED: "1"
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -203,6 +212,9 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      # Geçici servis konteyneri yalnız testlere ait: great-reset-namespace testi
+      # autovacuum'u küme genelinde kapatabilir (bkz. o testin yorumu).
+      TEST_DATABASE_CLUSTER_OWNED: "1"
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -252,6 +264,9 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      # Geçici servis konteyneri yalnız testlere ait: great-reset-namespace testi
+      # autovacuum'u küme genelinde kapatabilir (bkz. o testin yorumu).
+      TEST_DATABASE_CLUSTER_OWNED: "1"
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -296,6 +311,9 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      # Geçici servis konteyneri yalnız testlere ait: great-reset-namespace testi
+      # autovacuum'u küme genelinde kapatabilir (bkz. o testin yorumu).
+      TEST_DATABASE_CLUSTER_OWNED: "1"
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
