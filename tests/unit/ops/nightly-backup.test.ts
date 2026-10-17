@@ -164,11 +164,22 @@ describe("gecelik sunucu dışı yedek", () => {
           writeFileSync(path.join(backups, stem + suffix), "eski");
       }
       const result = run();
-      expect(result.status, result.stderr).toBe(0);
+      // 17 Ekim (Astra bulgu 6): Drive kopyası yoksa yerel kopya ve döndürme korunur ama sonuç
+      // başarı sayılmaz: ayrı makbuz, bildirim ve ayrı çıkış kodu (3).
+      expect(result.status, result.stderr).toBe(status === "VERIFIED" ? 0 : 3);
       expect(result.stdout).toContain(`drive=${status}`);
       expect(result.stdout).toContain("kept=3");
       expect(result.stderr).not.toContain("YEDEK_FAIL");
-      if (status !== "VERIFIED") expect(result.stderr).toContain("localBackupAccepted=true");
+      const pings = path.join(root, "pings");
+      if (status === "VERIFIED") {
+        expect(result.stdout).toMatch(/^YEDEK_OK file=/mu);
+        expect(existsSync(pings)).toBe(false);
+      } else {
+        expect(result.stderr).toContain("localBackupAccepted=true");
+        expect(result.stdout).toMatch(/^YEDEK_OK_YEREL file=\S+ .* drive=/mu);
+        expect(result.stdout).not.toMatch(/^YEDEK_OK file=/mu);
+        expect(readFileSync(pings, "utf8")).toContain(`Drive kopyası ${status}`);
+      }
       const callFile = path.join(root, "drive-calls");
       const calls = existsSync(callFile) ? readFileSync(callFile, "utf8").trim().split("\n") : [];
       expect(calls).toHaveLength(count);
@@ -199,6 +210,22 @@ describe("gecelik sunucu dışı yedek", () => {
       expect(readdirSync(backups).some((name) => name.startsWith(".drive-files."))).toBe(false);
     },
   );
+
+  it("bildirim gönderilemezse sessiz kalmaz; çıkış kodu değişmez", () => {
+    const { root, run } = sandbox({ driveUploadExit: 1 });
+    writeFileSync(path.join(root, "ping.sh"), "#!/usr/bin/env bash\nexit 7\n");
+    chmodSync(path.join(root, "ping.sh"), 0o755);
+    const result = run();
+    expect(result.status).toBe(3);
+    expect(result.stderr).toContain("YEDEK_NOTIFY_FAIL exit=7");
+    const failed = sandbox({ sshExit: 255 });
+    writeFileSync(path.join(failed.root, "ping.sh"), "#!/usr/bin/env bash\nexit 7\n");
+    chmodSync(path.join(failed.root, "ping.sh"), 0o755);
+    const hata = failed.run();
+    expect(hata.status).toBe(1);
+    expect(hata.stderr).toContain("YEDEK_FAIL code=SSH_OR_DUMP");
+    expect(hata.stderr).toContain("YEDEK_NOTIFY_FAIL exit=7");
+  });
 
   it("yerel yedek reddedilirse Drive'a kopyalamaz", () => {
     const { root, run } = sandbox({ sshExit: 255 });
