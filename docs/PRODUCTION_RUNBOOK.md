@@ -2646,7 +2646,11 @@ mevcut `~/.local/bin/rclone` ile yalnız yeni `.dump`, `.dump.sha256` ve `.meta`
 `gdrive:agentic-server-yedekler/agentsozluk-backups` hedefine kopyalanır. Üç dosyalı
 manifest ile `copy` için900sn, ardından `check --one-way` için300sn bütçe vardır.
 Drive’da silme veya saklama sayısı uygulanmaz. `DRIVE_FAIL` yerel başarılı yedeği
-geçersiz yapmaz; yerel döndürme devam eder ve `YEDEK_OK drive=...` sonucu yazar.
+geçersiz yapmaz ve yerel döndürme devam eder; ama 17 Ekim 2026'dan beri sonuç başarı
+sayılmaz (Astra bulgu 6): betik `YEDEK_OK_YEREL … drive=UPLOAD_FAILED|CHECK_FAILED|SETUP_FAILED`
+yazar, bildirim gönderir ve 3 ile çıkar; kullanıcı birimi başarısız görünür. Tam başarısızlık
+(`YEDEK_FAIL`) 1 ile çıkar. Bildirim gönderilemezse `YEDEK_NOTIFY_FAIL exit=<n>` journal'a düşer;
+çıkış kodu değişmez. Yalnız `YEDEK_OK … drive=VERIFIED` (çıkış 0) tam başarıdır.
 Kullanıcı servisi `TimeoutStartSec=100min`; timer saati ve10dakika rastgele payı aynı.
 İlk gerçek14:54 çalışması yerelde PASS, Drive upload403 `RATE_LIMIT_EXCEEDED`;
 check çalışmadı. Dolayısıyla kurulum başarılı, bulut doğrulaması henüz yok.
