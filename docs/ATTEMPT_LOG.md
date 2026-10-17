@@ -9809,3 +9809,19 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
 
 - Kararsız DB testinde önce servis konteynerinin Postgres logunu oku (`gh run view --log-failed`
   sonunda); bekleme eklemek kök nedeni gizler.
+
+## 17 Ekim — işletim körlüğü dalı, Astra 1. tur NO-GO
+
+- **İncelenen:** `5c14d60d` (PR #427), hakem Astra (koordinatörün aktardığı salt okunur tur).
+  Hüküm NO-GO; altı P2, bir P3.
+- **Düzeltilen:** işletim kontrolü okunamayan kaynakta "düzeldi" gönderiyordu; ntfy reddedince
+  görülen arıza kayboluyordu; durum yazım hataları yutuluyordu; `cutover-done` sonrası temizlik
+  düşerse migration'sız yeniden koşu `MIGRATION_SET_CHANGED` ile duruyordu (işaret artık en son
+  kalkar); `ALTER SYSTEM` yalnız ad sonekine güveniyordu (artık açık küme sahipliği şartı);
+  envanter `agent-sozluk.service`'i kaçırıyordu; yedek betiğinde üretim adresi, ölçüm betiğinde
+  kişisel e-posta vardı.
+
+**Do not repeat:**
+
+- Alarmda "okuyamadım"ı "sorun yok"tan ayır; durum yazımı ve gönderim hatasını aynı koşuda
+  sessizce geçme.

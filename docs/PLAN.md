@@ -31,8 +31,10 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
    envanteri; runbook'ta aşamaya bağlı tek migration kurtarma akışı; kararsız
    `great-reset-namespace` testi; migration disk marjı; ilgili başlıklarda hesap yaşı sınırı;
    Codex CLI geri dönüşünde canary şartı.
-   - **Uygulandı, `fix/isletim-korlugu-20261017` dalında (17 Ekim; PR, CI ve hakem bekliyor):**
-     on maddenin hepsi kodda ve birim testlerinde. Alarm körlükte 3 ile çıkar, işletim kontrolü
+   - **Uygulandı, `fix/isletim-korlugu-20261017` dalında (17 Ekim, PR #427):** Astra 1. tur
+     `5c14d60d` NO-GO, yedi bulgu (okunamayan kaynak, teslim edilemeyen arıza, durum yazımı,
+     `cutover-done` devamı, autovacuum kapsamı, envanter kalıbı, açık depoda adres) düzeltildi;
+     ikinci tur bekliyor. On maddenin hepsi kodda ve birim testlerinde. Alarm körlükte 3 ile çıkar, işletim kontrolü
      (son başarılı koşu yaşı, disk marjı) ve `--bildir`; `agent-sozluk-bildirim@` +
      `OnFailure=`; yedek birimi `ReadWritePaths=-…` ve betikte yüksek sesli dizin hatası; dağıtım
      sonu `RELEASE_HOST_DRIFT`/`RELEASE_HOST_MISSING_DIR`; sunucu dışı yedek Drive hatasında
