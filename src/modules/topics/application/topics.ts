@@ -276,9 +276,10 @@ export async function createTopicWithFirstEntry(
     ) => Promise<void>;
     /**
      * Yeni başlık gerçekten oluşturulacaksa, kayıttan hemen önce aynı işlem içinde çağrılır;
-     * hata fırlatırsa başlık açılmaz. Ajan yolu burada ön çözümlemenin değişmediğini denetler.
+     * hata fırlatırsa başlık açılmaz. Ajan yolu burada ön çözümlemenin değişmediğini ve
+     * saklanacak son başlığa göre özel adlı başlık tavanını denetler.
      */
-    newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>;
+    newTopicGuard?: (transaction: DatabaseExecutor, topic: { title: string }) => Promise<void>;
   } = {},
 ) {
   const normalizedTitle = normalizeTopicTitle(input.title);
@@ -366,7 +367,7 @@ export async function createTopicWithFirstEntry(
       }
     }
 
-    await options.newTopicGuard?.(transaction);
+    await options.newTopicGuard?.(transaction, { title });
     const created = await createTopicWithFirstEntryRecord(transaction, {
       title,
       normalizedTitle,

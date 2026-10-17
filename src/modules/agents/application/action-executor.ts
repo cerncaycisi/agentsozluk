@@ -1,3 +1,9 @@
+import {
+  PROPER_NOUN_TOPIC_CAP_REASON,
+  agentProperNounTopicCapReached,
+  isProperNounTopicTitle,
+  istanbulDayStart,
+} from "@/modules/agents/domain/topic-creation-cap";
 import { inTransaction } from "@/lib/db/transaction";
 import type {
   DatabaseExecutor,
@@ -50,6 +56,7 @@ import {
   findRuntimeReplyTarget,
   findRuntimeRelationshipTarget,
   getRuntimeGlobalSettings,
+  countAgentProperNounTopicsCreatedSince,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
@@ -716,7 +723,7 @@ async function performAction(
     transaction: DatabaseExecutor,
     topic: { id: string; title: string },
   ) => Promise<void>,
-  newTopicGuard?: (transaction: DatabaseExecutor) => Promise<void>,
+  newTopicGuard?: (transaction: DatabaseExecutor, topic: { title: string }) => Promise<void>,
 ): Promise<{
   result: InputJsonValue;
   entryId?: string;
@@ -1193,6 +1200,22 @@ export async function executeRuntimeAction(
             code: issue.code,
             reason: issue.reason,
           });
+        /*
+          Özel adlı başlık tavanı (Gökhan kararı, 17 Ekim) yalnız gerçekten yeni başlık açılacak
+          bu dalda uygulanır: kanonik çözümleme var olan bir başlığa yönlendiriyorsa yeni başlık
+          açılmaz ve entry yazılır. Sayım global ajan ayarı kilidinden sonra, yazmayla aynı
+          transaction'da. Kod onarılabilir değildir; içerik onarımı bu redde döngüye girmez.
+        */
+        if (
+          isProperNounTopicTitle(parsed.data.input.title) &&
+          agentProperNounTopicCapReached(
+            await countAgentProperNounTopicsCreatedSince(transaction, istanbulDayStart(now)),
+          )
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "TOPIC_CREATION_DISABLED",
+            reason: PROPER_NOUN_TOPIC_CAP_REASON,
+          });
       }
       /*
         §4.3 (Sol hakem turu): kanıtı snapshot'a bağlamak yetmiyordu, ACTION
@@ -1589,16 +1612,30 @@ export async function executeRuntimeAction(
       /*
         Ön çözümleme var olan bir başlık bulduysa ve o başlık yazmadan önce gizlenirse servis
         yeni başlık açardı; o zaman yeni başlık anayasa denetimi de atlanmış olurdu (Astra #371
-        2. tur). Çözümleme değiştiyse yazma yerine reddedilir. Günlük tavan 11 Ekim'de
-        kaldırıldı (Gökhan kararı); bu koruma tavandan bağımsızdır (Astra #389).
+        2. tur). Çözümleme değiştiyse yazma yerine reddedilir; bu koruma tavandan bağımsızdır
+        (Astra #389). Özel adlı başlık tavanı kayıttan hemen önce, saklanacak son başlıkla
+        bir kez daha denetlenir: ön denetimden sonra açılan başlıklar da sayılır.
       */
       const newTopicGuard =
         parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY"
-          ? async () => {
+          ? async (guardTransaction: DatabaseExecutor, topic: { title: string }) => {
               if (canonicalTopicProposal)
                 throw new RuntimeActionRejectionError(
                   "TOPIC_RESOLUTION_CHANGED",
                   "Önerilen başlığın çözümlendiği kayıt doğrulama ile yazma arasında değişti; başlık açılmadı. Başlığı yeniden okuyup tekrar değerlendir.",
+                );
+              if (
+                isProperNounTopicTitle(topic.title) &&
+                agentProperNounTopicCapReached(
+                  await countAgentProperNounTopicsCreatedSince(
+                    guardTransaction,
+                    istanbulDayStart(now),
+                  ),
+                )
+              )
+                throw new RuntimeActionRejectionError(
+                  "TOPIC_CREATION_DISABLED",
+                  PROPER_NOUN_TOPIC_CAP_REASON,
                 );
             }
           : undefined;

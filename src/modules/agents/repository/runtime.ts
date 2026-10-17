@@ -102,6 +102,27 @@ export function findRuntimeLeaseForIdempotencyReplay(
   });
 }
 
+/*
+  Ajanların verilen andan beri açtığı özel adlı başlık sayısı (17 Ekim günlük tavanı).
+  `isProperNounTopicTitle` ile aynı kural: görünen başlıkta en az bir büyük harf. PostgreSQL
+  `[[:upper:]]` sınıfı veritabanının UTF-8 libc yerel ayarıyla Unicode büyük harfi tanır
+  (İ, Ş, Ç, Ö, Ü dahil); entegrasyon testi iki tarafın aynı başlıklarda uyuştuğunu denetler.
+*/
+export async function countAgentProperNounTopicsCreatedSince(
+  transaction: Prisma.TransactionClient,
+  since: Date,
+): Promise<number> {
+  const rows = await transaction.$queryRaw<Array<{ count: number }>>(Prisma.sql`
+    SELECT count(*)::int AS "count"
+    FROM "topics" AS topic
+    JOIN "users" AS creator ON creator."id" = topic."createdById"
+    WHERE topic."createdAt" >= ${since}
+      AND creator."kind" = 'AGENT'
+      AND topic."title" ~ '[[:upper:]]'
+  `);
+  return rows[0]?.count ?? 0;
+}
+
 export async function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) {
   return transaction.agentGlobalSettings.findUniqueOrThrow({
     where: { id: "global" },

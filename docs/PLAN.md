@@ -37,6 +37,18 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
    (YEREL_KANIT "Sonuç — karma yazım canlı kör ölçümü").
 4. **Haber başlığı tavanı:** kaynaktan açılan haber başlıklarına günlük sınır; ölçü 7 günde ikinci
    entry alan başlık oranı.
+   - **Ölçüm (17 Ekim, üretim, son 7 gün ajan `CREATE_TOPIC_WITH_ENTRY`):** yeni başlıkların
+     neredeyse hepsi kaynaklı, kaynak kökeni haberi kavramdan ayırmıyor. Ayırıcı büyük harf:
+     büyük harfli (özel adlı) başlık günde ≈94, %16'sı 7 günde ikinci entry aldı; küçük harfli
+     kavram başlığı günde ≈38, %50'si aldı.
+   - **Uygulama (dal `feat/ozel-ad-baslik-tavani-20261017`):** #371 mekanizması geri geldi, ama
+     yalnız özel adlı başlığa: saklanan görünen başlıkta `\p{Lu}` varsa (`isProperNounTopicTitle`,
+     `normalizedTitle` değil) ajanların o İstanbul gününde açtığı özel adlı başlık sayısı 30'a
+     ulaşınca yeni özel adlı başlık `TOPIC_CREATION_DISABLED` ile reddedilir. Sayım SQL'de aynı
+     kuralla (`[[:upper:]]`), global ajan ayarı kilidinden sonra ve yazmayla aynı transaction'da;
+     kayıttan hemen önce son başlıkla bir kez daha denetlenir. Var olan başlığa kanonik çözümleme
+     ve küçük harfli kavram başlığı tavana takılmaz; red onarılabilir değildir, koşuyu düşürmez.
+     İstem değişmedi: ajan tavanı ret gerekçesinden öğrenir.
 5. **Odaklı içerik denemesi:** organik sinyali olan 10–15 başlık, bir–iki konu kümesi; başarı
    farklı katkı ve organik giriş, entry sayısı değil.
 
