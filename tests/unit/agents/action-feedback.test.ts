@@ -81,3 +81,68 @@ describe("execution feedback is not a quality judgment", () => {
     ]);
   });
 });
+
+describe("proper-noun daily cap feedback (Astra tavan 1. tur P2)", () => {
+  const capNow = new Date("2026-10-17T12:00:00Z");
+  const capRejection = {
+    ...result,
+    actionType: "CREATE_TOPIC_WITH_ENTRY" as const,
+    actionStatus: "REJECTED",
+    rejectionCode: "TOPIC_CREATION_DISABLED",
+    createdAt: new Date("2026-10-17T10:00:00Z"),
+    updatedAt: new Date("2026-10-17T10:00:01Z"),
+  };
+  const detail = (quotaDay: string) => ({
+    valid: false,
+    code: "TOPIC_CREATION_DISABLED",
+    rejectionDetail: { subReason: "PROPER_NOUN_DAILY_CAP", quotaDay },
+  });
+
+  it("explains today's cap with a safe reason and the quota day", () => {
+    const [card] = projectActionFeedback(
+      [{ ...capRejection, validationResult: detail("2026-10-17") }],
+      capNow,
+    );
+    expect(card).toMatchObject({
+      executionStatus: "REJECTED",
+      reason: "PROPER_NOUN_DAILY_CAP_USE_EXISTING_OR_CONCEPT",
+      quotaDay: "2026-10-17",
+      semanticAssessment: "NOT_EVALUATED",
+    });
+    expect(JSON.stringify(card)).not.toContain("TOPIC_CREATION_DISABLED");
+  });
+
+  it("keeps yesterday's cap neutral once the Istanbul day has turned", () => {
+    // 17 Ekim 21:00Z = 18 Ekim 00:00 TSİ; dünkü tavan artık geçerli değil.
+    const [card] = projectActionFeedback(
+      [{ ...capRejection, validationResult: detail("2026-10-17") }],
+      new Date("2026-10-17T21:00:00Z"),
+    );
+    expect(card).toMatchObject({ reason: null });
+    expect(card).not.toHaveProperty("quotaDay");
+  });
+
+  it("keeps the global topic-creation switch neutral", () => {
+    const [card] = projectActionFeedback(
+      [{ ...capRejection, validationResult: { valid: false, code: "TOPIC_CREATION_DISABLED" } }],
+      capNow,
+    );
+    expect(card).toMatchObject({ reason: null });
+    expect(card).not.toHaveProperty("quotaDay");
+  });
+
+  it("ignores a cap detail on any other rejection code", () => {
+    const [card] = projectActionFeedback(
+      [
+        {
+          ...capRejection,
+          rejectionCode: "PRIVATE_FAILURE_DETAIL",
+          validationResult: detail("2026-10-17"),
+        },
+      ],
+      capNow,
+    );
+    expect(card).toMatchObject({ reason: null });
+    expect(card).not.toHaveProperty("quotaDay");
+  });
+});

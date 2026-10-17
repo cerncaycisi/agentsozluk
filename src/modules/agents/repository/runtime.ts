@@ -7,6 +7,7 @@ import {
 import { publicIdBigInt, publicIds } from "@/lib/db/public-ids";
 import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
 import { birthSourcePreparationTrigger } from "@/modules/agents/domain/birth-preparation";
+import { isProperNounTopicTitle } from "@/modules/agents/domain/topic-creation-cap";
 import {
   actionFeedbackLimit,
   actionFeedbackWindowMs,
@@ -104,23 +105,20 @@ export function findRuntimeLeaseForIdempotencyReplay(
 
 /*
   Ajanların verilen andan beri açtığı özel adlı başlık sayısı (17 Ekim günlük tavanı).
-  `isProperNounTopicTitle` ile aynı kural: görünen başlıkta en az bir büyük harf. PostgreSQL
-  `[[:upper:]]` sınıfı veritabanının UTF-8 libc yerel ayarıyla Unicode büyük harfi tanır
-  (İ, Ş, Ç, Ö, Ü dahil); entegrasyon testi iki tarafın aynı başlıklarda uyuştuğunu denetler.
+  Başlıklar çekilir ve `isProperNounTopicTitle` ile sınıflanır: SQL `[[:upper:]]` libc yerel
+  ayarına bağlıdır ve `Lt` başlık harfini de sayabilir (Astra tavan 1. tur P3). Küme bir
+  İstanbul gününde ajanların açtığı başlıklarla sınırlıdır (ölçüm: günde ~130) ve yalnız başlık
+  sütunu okunur.
 */
 export async function countAgentProperNounTopicsCreatedSince(
   transaction: Prisma.TransactionClient,
   since: Date,
 ): Promise<number> {
-  const rows = await transaction.$queryRaw<Array<{ count: number }>>(Prisma.sql`
-    SELECT count(*)::int AS "count"
-    FROM "topics" AS topic
-    JOIN "users" AS creator ON creator."id" = topic."createdById"
-    WHERE topic."createdAt" >= ${since}
-      AND creator."kind" = 'AGENT'
-      AND topic."title" ~ '[[:upper:]]'
-  `);
-  return rows[0]?.count ?? 0;
+  const topics = await transaction.topic.findMany({
+    where: { createdAt: { gte: since }, createdBy: { kind: "AGENT" } },
+    select: { title: true },
+  });
+  return topics.filter(({ title }) => isProperNounTopicTitle(title)).length;
 }
 
 export async function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) {
@@ -3284,6 +3282,7 @@ export async function getRuntimePerceptionRecords(
             actionType: true,
             actionStatus: true,
             rejectionCode: true,
+            validationResult: true,
             createdAt: true,
             updatedAt: true,
           },

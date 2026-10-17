@@ -5,6 +5,9 @@ import {
   agentProperNounTopicCapReached,
   isProperNounTopicTitle,
   istanbulDayStart,
+  istanbulQuotaDay,
+  properNounCapRejectionDetail,
+  readProperNounCapRejectionDetail,
 } from "@/modules/agents/domain/topic-creation-cap";
 import {
   isRepairableContentRejectionCode,
@@ -34,6 +37,34 @@ describe("günlük özel adlı yeni başlık tavanı (17 Ekim)", () => {
     // Tam genişlikli "Ａ" NFKC ile "A" olur; saklanan başlık da büyük harf taşır.
     expect(isProperNounTopicTitle("Ａbc")).toBe(true);
     expect(isProperNounTopicTitle("ａbc")).toBe(false);
+  });
+
+  it("does not count a Unicode titlecase (Lt) letter as uppercase", () => {
+    // Astra tavan 1. tur P3: libc `[[:upper:]]` "ᾈ" harfini sayabilir; alan kuralı yalnız Lu.
+    expect(isProperNounTopicTitle("ᾈλφα")).toBe(false);
+  });
+
+  it("names the Istanbul quota day across both midnights", () => {
+    expect(istanbulQuotaDay(new Date("2026-10-17T20:59:59.999Z"))).toBe("2026-10-17");
+    expect(istanbulQuotaDay(new Date("2026-10-17T21:00:00.000Z"))).toBe("2026-10-18");
+    expect(istanbulQuotaDay(new Date("2026-10-18T00:30:00.000Z"))).toBe("2026-10-18");
+  });
+
+  it("stores and reads back only a well-formed cap detail", () => {
+    const detail = properNounCapRejectionDetail(new Date("2026-10-17T12:00:00Z"));
+    expect(detail).toEqual({ subReason: "PROPER_NOUN_DAILY_CAP", quotaDay: "2026-10-17" });
+    expect(readProperNounCapRejectionDetail({ valid: false, rejectionDetail: detail })).toEqual(
+      detail,
+    );
+    for (const validationResult of [
+      null,
+      "PROPER_NOUN_DAILY_CAP",
+      { valid: false },
+      { rejectionDetail: { subReason: "OTHER", quotaDay: "2026-10-17" } },
+      { rejectionDetail: { subReason: "PROPER_NOUN_DAILY_CAP", quotaDay: "17.10.2026" } },
+      { rejectionDetail: { subReason: "PROPER_NOUN_DAILY_CAP", quotaDay: 20261017 } },
+    ])
+      expect(readProperNounCapRejectionDetail(validationResult)).toBeNull();
   });
 
   it("starts the day at Istanbul midnight", () => {

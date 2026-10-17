@@ -44,11 +44,17 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
    - **Uygulama (dal `feat/ozel-ad-baslik-tavani-20261017`):** #371 mekanizması geri geldi, ama
      yalnız özel adlı başlığa: saklanan görünen başlıkta `\p{Lu}` varsa (`isProperNounTopicTitle`,
      `normalizedTitle` değil) ajanların o İstanbul gününde açtığı özel adlı başlık sayısı 30'a
-     ulaşınca yeni özel adlı başlık `TOPIC_CREATION_DISABLED` ile reddedilir. Sayım SQL'de aynı
-     kuralla (`[[:upper:]]`), global ajan ayarı kilidinden sonra ve yazmayla aynı transaction'da;
-     kayıttan hemen önce son başlıkla bir kez daha denetlenir. Var olan başlığa kanonik çözümleme
-     ve küçük harfli kavram başlığı tavana takılmaz; red onarılabilir değildir, koşuyu düşürmez.
-     İstem değişmedi: ajan tavanı ret gerekçesinden öğrenir.
+     ulaşınca yeni özel adlı başlık `TOPIC_CREATION_DISABLED` ile reddedilir. Sayım günün ajan
+     başlıklarını çekip aynı alan fonksiyonuyla sınıflar (SQL `[[:upper:]]` `Lt` harfini de
+     sayabildiği için kullanılmaz); global ajan ayarı kilidinden sonra ve yazmayla aynı
+     transaction'da yapılır, kayıttan hemen önce son başlıkla bir kez daha denetlenir. Kota anı
+     kilit altında bir kez seçilir; başlık ve ilk entry bu `createdAt` ile yazılır, böylece
+     İstanbul gece yarısında denetlenen gün ile kaydın günü ayrışmaz. Var olan başlığa kanonik
+     çözümleme ve küçük harfli kavram başlığı tavana takılmaz; red onarılabilir değildir, koşuyu
+     düşürmez. İstem değişmedi: ret `validationResult.rejectionDetail` içinde alt neden ve kota
+     gününü saklar; sonraki koşunun sonuç kartı yalnız aynı İstanbul gününde
+     `PROPER_NOUN_DAILY_CAP_USE_EXISTING_OR_CONCEPT` nedenini ve `quotaDay` alanını gösterir.
+     Genel ayar kapatması nötr kalır. Astra 1. tur (e0f6d396) NO-GO: iki P2 ve bir P3, düzeltildi.
 5. **Odaklı içerik denemesi:** organik sinyali olan 10–15 başlık, bir–iki konu kümesi; başarı
    farklı katkı ve organik giriş, entry sayısı değil.
 

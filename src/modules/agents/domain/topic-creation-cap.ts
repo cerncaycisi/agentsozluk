@@ -23,7 +23,9 @@ export const AGENT_DAILY_PROPER_NOUN_TOPIC_CAP = 30;
   Saklanan başlık büyük/küçük harfi korur (yalnız NFKC + boşluk sadeleştirmesi); kıyas anahtarı
   `normalizedTitle` ise tr-TR küçük harfe indirilir. Sınıflama bu yüzden görünen başlıkta yapılır.
   NFKC harf büyüklüğünü değiştirmez; burada yalnız saklanan biçimle aynı girdiye bakmak için var.
-  SQL karşılığı `countAgentProperNounTopicsCreatedSince` içindedir; ikisi birlikte değişmelidir.
+  Yalnız `Lu`: başlık harfi (`Lt`, örn. "ᾈ") sayılmaz. Günlük sayım da başlıkları çekip bu
+  fonksiyonla sınıflar; SQL `[[:upper:]]` libc'ye göre `Lt`'yi de sayabildiği için kullanılmaz
+  (Astra tavan 1. tur P3).
 */
 const uppercaseLetterPattern = /\p{Lu}/u;
 
@@ -42,3 +44,41 @@ export function agentProperNounTopicCapReached(createdToday: number): boolean {
 
 export const PROPER_NOUN_TOPIC_CAP_REASON =
   "Bugünkü özel adlı yeni başlık tavanı doldu; bu konuya var olan bir başlıkta yaz ya da kavram başlığı aç.";
+
+/*
+  Ret kodu `TOPIC_CREATION_DISABLED` genel ayar kapatmasıyla ortak kalır (güvenli kod sözleşmesi);
+  tavanı ayıran alt neden ve kota günü eylemin `validationResult.rejectionDetail` alanında saklanır.
+  Sonraki koşunun sonuç kartı bunu yalnız kota günü bugünün İstanbul günüyse gösterir (Astra
+  tavan 1. tur P2): dünkü tavan bugün geçerli değildir.
+*/
+export const PROPER_NOUN_DAILY_CAP_SUB_REASON = "PROPER_NOUN_DAILY_CAP";
+
+export interface ProperNounCapRejectionDetail {
+  subReason: typeof PROPER_NOUN_DAILY_CAP_SUB_REASON;
+  /** İstanbul takvim günü, `YYYY-MM-DD`. */
+  quotaDay: string;
+}
+
+/** Kota anının İstanbul takvim günü (`YYYY-MM-DD`). */
+export function istanbulQuotaDay(at: Date): string {
+  return istanbulLocalDate(at).toISOString().slice(0, 10);
+}
+
+export function properNounCapRejectionDetail(quotaAt: Date): ProperNounCapRejectionDetail {
+  return { subReason: PROPER_NOUN_DAILY_CAP_SUB_REASON, quotaDay: istanbulQuotaDay(quotaAt) };
+}
+
+const quotaDayPattern = /^\d{4}-\d{2}-\d{2}$/u;
+
+/** Saklanmış doğrulama sonucundan tavan ayrıntısını okur; biçim tutmazsa `null`. */
+export function readProperNounCapRejectionDetail(
+  validationResult: unknown,
+): ProperNounCapRejectionDetail | null {
+  if (typeof validationResult !== "object" || validationResult === null) return null;
+  const detail = (validationResult as { rejectionDetail?: unknown }).rejectionDetail;
+  if (typeof detail !== "object" || detail === null) return null;
+  const { subReason, quotaDay } = detail as { subReason?: unknown; quotaDay?: unknown };
+  if (subReason !== PROPER_NOUN_DAILY_CAP_SUB_REASON) return null;
+  if (typeof quotaDay !== "string" || !quotaDayPattern.test(quotaDay)) return null;
+  return { subReason, quotaDay };
+}
