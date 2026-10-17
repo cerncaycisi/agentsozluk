@@ -545,7 +545,19 @@ describe("migration'lı dağıtım hata sonrası kurtarma", () => {
   // Astra 1. tur (17 Ekim): `cutover-done` için migration'sız yeniden koşu MIGRATION_SET_CHANGED
   // ile durur; devam yolu aynı liste ya da elle tamamlamadır.
   it("cutover-done ve migration kanıtlı none için yürütülebilir devam yolu verir", () => {
-    expect(recovery).toContain("`none`, durum dizininde `migration/` var");
+    expect(recovery).toContain("`none`, `migration/cutover-done` var");
+    // Astra 2. tur (17 Ekim): `migration/` dizini tamamlanma kanıtı değildir; işaretten önce
+    // düşen planlama da onu bırakır.
+    expect(recovery).toContain("`none`, `migration/` var ama `migration/cutover-done` yok");
+    expect(recoveryProse).toContain("İşaret yazılmadan önce düşen planlama");
+    expect(recoveryProse).toContain(
+      "çalışan app imajı `previous-image-id`, `runtime/current` `previous-runtime`",
+    );
+    expect(recoveryProse).toContain("aynı SHA + aynı listeyle yeniden koşu");
+    expect(recoveryProse).toContain("Tamamlanma kanıtı `cutover-done` dosyasıdır");
+    expect(recoveryProse).toContain(
+      "yalnız aşağıdaki 1. ve 2. adımın olumlu kanıtıyla kabul edilir",
+    );
     expect(recoveryProse).toContain("Aynı SHA ve **aynı** migration bayrağıyla");
     expect(recoveryProse).toContain("Migration'sız mod kullanılmaz (`MIGRATION_SET_CHANGED`");
     expect(recoveryProse).toContain("`SETTINGS_PROFILE_CHANGED`");

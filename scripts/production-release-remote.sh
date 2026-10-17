@@ -977,6 +977,10 @@ verify_release
 publish_boot_tag
 if test "$migration_mode" != no-migration; then
   set_phase cutover-done
+  # Tamamlanma kanıtı (Astra 2. tur, 17 Ekim): `migration/` dizini planlamanın ilk adımında
+  # açılır; işaret yazılmadan düşen planlama da `migration/` bırakır. Dizinin varlığı değil bu
+  # dosya "migration uygulandı ve kesim bitti" der (runbook kurtarma tablosu).
+  printf '%s\n' "$candidate_sha" >"$state_dir/migration/cutover-done"
 fi
 if test "$cleanup_requested" = cleanup; then cleanup_images; fi
 # Uyarıdır: envanterin kendi hatası da sürümü geri çevirmez, ama sessiz de kalmaz.

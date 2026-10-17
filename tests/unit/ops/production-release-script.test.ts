@@ -549,6 +549,10 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
     expect(cleanup).toBeLessThan(inventory);
     expect(inventory).toBeLessThan(marker);
     expect(marker).toBeLessThan(complete);
+    // Tamamlanma kanıtı dosyası `cutover-done` aşamasıyla ve işaret kalkmadan yazılır.
+    const evidence = tail.indexOf('>"$state_dir/migration/cutover-done"');
+    expect(evidence).toBeGreaterThan(phase);
+    expect(evidence).toBeLessThan(cleanup);
   });
 
   it("başarılı sürümden sonra, tamam satırından önce ve uyarı olarak çağrılır", () => {
