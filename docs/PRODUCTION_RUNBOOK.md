@@ -744,9 +744,13 @@ script is trustworthy in that respect — a failed attempt does not corrupt prod
 3. **Changing settings mid-deploy locks the deploy.** `assert_state_fingerprints`
    compares against the settings fingerprint captured on the first attempt. If you pause
    the flow _after_ starting the deploy, the fingerprint changes and every later attempt
-   fails at line 200. Fix: delete `/opt/agent-sozluk/runtime/.release-op-<sha>` — the
-   script's own logic re-captures when no settings hash exists. **Correct order: pause
-   first, then start the deploy.**
+   fails in `assert_state_fingerprints`. **Correct order: pause first, then start the
+   deploy; do not change settings (resume included) until `RELEASE_COMPLETE PASS`.**
+   Recovery is phase-dependent: follow the single flow in "Migration'lı sürüm (A5)" →
+   **Hata sonrası kurtarma (aşamaya göre)**. Do not delete
+   `/opt/agent-sozluk/runtime/.release-op-<sha>` on its own: on 17 October 2026 that
+   removed the migration expectation file the marker still depended on and the next
+   attempt failed with `EXPECTATION_UNREADABLE`.
 
 4. **A ghost run locks drain forever.** When a reboot cuts a running agent mid-flight the
    row stays `RUNNING`, its lease expires, and nothing exists to finish it. The runtime
@@ -1703,8 +1707,9 @@ doğrulanamazsa kilit kalır:
    hiçbir süreç yoktur (root torunları da aynı scope'u gösterir).
 4. `docker ps -a --filter name=^a5-` boş; `pg_stat_activity`'de `application_name` `a5-` ile başlayan
    backend yok.
-5. Kilit sahibi (`owner`) ve varsa `.migration-operation/identity` kayda geçirilir. İşaret
-   KALDIRILMAZ: yarım kalmış bir migration operasyonu varken kilidi temizlemek, yalnız aynı SHA ve
+5. Kilit sahibi (`owner`) ve varsa `.migration-operation/identity` kayda geçirilir. İşaret bu
+   temizlikle KALDIRILMAZ (tek istisna aşağıdaki kurtarma akışında, dondurma hiç başlamamış
+   `planned`/`image-verified` durumu): yarım kalmış bir migration operasyonu varken kilidi temizlemek, yalnız aynı SHA ve
    aynı listeyle yeniden koşuya (kaldığı aşamadan devam) izin verir; migration'sız mod ya da başka
    bir SHA/liste `MIGRATION_OPERATION_INCOMPLETE` ile durur. Aşaması `cutover-done` olan işaret
    tamamlanmış bir operasyondur; sonraki koşu (migration'sız dahil) onu kendisi kaldırır.
@@ -1712,6 +1717,77 @@ doğrulanamazsa kilit kalır:
 Her koşu yeni bir operasyon kimliği üretir; bu yüzden hata sonrası yeniden koşu, ancak yukarıdaki
 elle temizlikten sonra mümkündür. Prod şeması değişmeden önceki bir hatada betik eski sürümü açıp
 aşamayı `image-verified`'e geri aldığından yeniden koşu dondurmayı baştan kurar.
+
+**Hata sonrası kurtarma (aşamaya göre; 17 Ekim 2026).** Başarısız dağıtımdan sonra
+`.release-op-<sha>` için tek kurtarma akışı budur; deploy-day "failure modes" listesi buraya
+yönlendirir. Üç durum birbirine bağlıdır:
+
+- **Kilit:** `/opt/agent-sozluk/runtime/.release-lock/owner` (`<sha>:<op-id>`).
+- **İşaret:** `/opt/agent-sozluk/runtime/.migration-operation/` — `identity`
+  (`[profil|]<sha>|<liste-özeti>`), `phase`, `state-dir`; dondurma başladıysa ayrıca `boot-id`
+  ve `frozen-deadline`.
+- **Durum dizini:** `/opt/agent-sozluk/runtime/.release-op-<sha>/` — `baseline-*`,
+  `settings-hash`, `settings-profile`, `lifecycle-hash`, `previous-image-id`, `previous-runtime`,
+  `candidate-image-*`, `volume-hash` ve `migration/` (`expectation.json`, `pending`, `approved`,
+  `existing-index-names`, katalog kanıtları, varsa `ambiguous-prisma-history`).
+
+İşaret varken yeniden giriş planlamayı atlar ve `migration/` dosyalarını durum dizininden okur.
+Bu yüzden **migration işareti varken `.release-op-<sha>` asla tek başına silinmez**; silinirse
+`capture_initial_state` temeli yeniden yakalar ama `expectation.json` yoktur ve koşu
+`EXPECTATION_UNREADABLE` ile durur (17 Ekim, 3. deneme). **Dağıtım başladıktan sonra ayar
+değişmez** (akışı açmak dahil): `assert_state_fingerprints` ilk denemenin ayar ve yaşam döngüsü
+özetini bekler. Akış dağıtımdan ÖNCE duraklatılır (`--pause-society-flow`); kurtarma sırasında
+da duraklatılmış kalır, yalnız `RELEASE_COMPLETE PASS` sonrası açılır.
+
+Önce okunur (hiçbir şey silinmeden), çıktılar makbuza yazılır:
+
+```bash
+cat /opt/agent-sozluk/runtime/.release-lock/owner
+cat /opt/agent-sozluk/runtime/.migration-operation/phase 2>/dev/null || echo none
+ls -A /opt/agent-sozluk/runtime/.migration-operation 2>/dev/null
+cat /opt/agent-sozluk/runtime/.migration-operation/identity /opt/agent-sozluk/runtime/.migration-operation/state-dir 2>/dev/null
+ls -A /opt/agent-sozluk/runtime/.release-op-<sha>/migration 2>/dev/null
+test -e /opt/agent-sozluk/runtime/.migration-hold && echo hold-var
+```
+
+| Aşama (`phase`)                                                     | Üretim şeması                     | Tut                                                                           | Silinebilir                                                                                                                | Sonraki adım                                                                                                                                                                               |
+| ------------------------------------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `none` (işaret yok)                                                 | değişmedi                         | önceki imaj ve runtime release                                                | kilit (5 koşulla); durum dizini YALNIZ çalışan app imajı `previous-image-id` ve `runtime/current` = `previous-runtime` ise | Aynı SHA ile yeniden koşu. Kesim başladıysa durum dizini silinmez: yeniden yakalama adayı "önceki" sanır ve `--cleanup` gerçek önceki imajı siler.                                         |
+| `planned`, `image-verified` (yalnız `identity`/`phase`/`state-dir`) | değişmedi, dondurma hiç başlamadı | —                                                                             | işaret + kilit + durum dizini, **üçü birlikte** ve aşağıdaki denetimlerden sonra                                           | Ya aynı SHA ve listeyle kilit temizliğinden sonra yeniden koşu (devam eder; durum dizini şart), ya da üçünü birlikte kaldırıp baştan (ayar değiştiyse tek yol budur).                      |
+| `image-verified` + `boot-id`/`frozen-deadline` (geri sarılmış)      | değişmedi                         | işaret, durum dizini, hold, `backups/…-pre-<sha12>.dump`                      | kilit (5 koşulla)                                                                                                          | Betik eski sürümü açıp aşamayı geri aldı (`RELEASE_MIGRATION_PHASE image-verified (rewound after reopen)`). Aynı SHA ve listeyle yeniden koşu dondurmayı baştan kurar. Hold ayrı karardır. |
+| `frozen`, `backup-verified`, `rehearsed`                            | değişmedi                         | her şey (işaret, durum dizini, hold, yedek)                                   | yalnız kilit (5 koşulla)                                                                                                   | Bu aşamada kalmışsa geri açma başarısız ya da süreç öldü; site kapalı olabilir. Aynı boot'ta aynı SHA/listeyle yeniden koşu ya da "Elle geri dönüş".                                       |
+| `migrating`, `migrated`, `post-verified`                            | değişmiş olabilir                 | her şey                                                                       | hiçbir şey; kilit de Gökhan kararından sonra                                                                               | Site kapalı kalır, `migrate` tekrarlanmaz, `ambiguous-prisma-history` okunur, karar Gökhan'ındır (yukarıdaki "Hata durumları").                                                            |
+| `writers-may-run`, `traffic-open`, `worker-allowed`                 | değişti, yeni sürüm yazabilir     | her şey; `previous-image-id`/`previous-runtime` elle geri dönüşün tek kaynağı | yalnız kilit (5 koşulla)                                                                                                   | Aynı SHA ve listeyle yeniden koşu kaldığı yerden sürer ya da "Elle geri dönüş".                                                                                                            |
+| `cutover-done`                                                      | tamam                             | durum dizini (`migration/` kanıtı)                                            | kilit (5 koşulla); işareti sonraki koşu kendisi kaldırır                                                                   | Yalnız temizlik (`--cleanup`) yarım kaldıysa migration'sız yeniden koşu.                                                                                                                   |
+
+`planned`/`image-verified` için üçünü birlikte kaldırmadan önce HEPSİ doğrulanır; biri
+doğrulanamazsa hiçbir şey silinmez:
+
+1. Akış duraklatılmış (`scripts/agent-society-flow.ts status`, deploy-day madde 2) ve
+   yukarıdaki "Elle kilit temizliği"nin beş koşulu geçiyor.
+2. `phase` `planned` ya da `image-verified`; işaret dizininde **yalnız** `identity`, `phase`,
+   `state-dir` var (`boot-id`/`frozen-deadline` yok = dondurma hiç başlamadı); `identity` bu
+   SHA'yı, `state-dir` tam olarak `/opt/agent-sozluk/runtime/.release-op-<sha>` yolunu gösteriyor.
+3. `.migration-hold` yok; Caddy ve app çalışıyor, iç ve dış `health`/`ready` 200.
+4. `_prisma_migrations` onaylı adların hiçbirini içermiyor ve bitmemiş kayıt yok:
+
+   ```bash
+   docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml \
+     exec -T db psql -XAtq -U agent_sozluk -d agent_sozluk -c \
+     "SELECT count(*) FROM \"_prisma_migrations\" WHERE migration_name IN ('<ad1>','<ad2>') OR finished_at IS NULL;"
+   ```
+
+   Sonuç `0` olmalı; yeni tabloların hiçbiri yok (`SELECT to_regclass('public.<tablo>')` boş).
+
+5. Çalışan app imajı `previous-image-id`, `runtime/current` `previous-runtime` ile aynı.
+
+Sonra, aynı oturumda ve bu sırayla: `find /opt/agent-sozluk/runtime/.migration-operation -xdev
+-depth -delete` → `find /opt/agent-sozluk/runtime/.release-op-<sha> -xdev -depth -delete` →
+`find /opt/agent-sozluk/runtime/.release-lock -xdev -depth -delete`. Üç yolun yokluğu yeniden
+okunur ve makbuza yazılır. Disk yetmediği için duran bir koşuda (`DISK_HEADROOM_COMBINED`) önce
+yer açılır; eksik dizin gibi sunucu kurulum hatalarında önce kurulum düzeltilir, sonra yeniden
+koşulur. Bu tablonun dışında kalan bir durumda (ör. kesim başlamışken ayar değişti) hiçbir şey
+silinmez; somut durum Gökhan'a götürülür.
 
 **Elle geri dönüş (imaj).** Veritabanı restore edilmez; yeni tablolar kalır. Sıra: `compose stop
 caddy` → audited global pause ve configured maksimum koşu timeout'u +120sn içinde
