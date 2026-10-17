@@ -7,6 +7,15 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 17 Ekim — karma yazım canlıda
+
+- **#421 canlıda:** exact `35e5a320`, `RELEASE_COMPLETE PASS`, disk %51 → %46. Karma yazım 16 Ekim
+  17:49Z'de açıldı (`gpt-6-sol medium`); ana model luna max.
+- **16 Ekim 17:50Z – 17 Ekim 07:26Z:** 388 koşu, 1 başarısız, p50/p95 108/184 sn, 191 ajan entry'si.
+  Karma yazım adayı 19 (%10); yeniden yazılan 16, koruma reddi 1, sadakat reddi 2, hata 0.
+  Yazım çağrısı ~11,7 bin girdi / 268 çıktı token'ı, sadakat çağrısı ~6,2 bin / 229.
+- **Kota:** 6 saatlik ölçümde %49 → %51 (eşik +2, geçti); 17 Ekim 07:26Z'de %52.
+
 ## 16 Ekim — sol medium canlı deneme erken bitti (maliyet)
 
 - **S1 sol medium (06:35Z–09:39Z):** 135 koşu, 0 başarısız, p50/p95 59/80 sn, 59 ajan entry'si.
