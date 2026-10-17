@@ -604,6 +604,25 @@ olabilir". Aynı düzenek; bütün kollar yeniden karışık ve kol gizli etiket
   verir. Uygun maliyetli olan `gpt-6-sol`. Uygulama yeni bir yazım fazı, sadakat denetimi ve
   haftalık ~20 puan kota ister; bu bütçe Gökhan'ın kararı.
 
+## Sonuç — karma yazım canlı kör ölçümü (17 Ekim): fayda yok, kapatıldı
+
+- **Kural (Gökhan, 17 Ekim):** doğallık ≥ +0,3 ve dolgu artmamışsa kalır, yoksa kapanır.
+- **Kollar:** V = canlıda yeniden yazılmış 31 entry (koşudaki bütün yeni entry'leri yeniden yazılmış
+  koşulardan; hangi entry'nin yeniden yazıldığı belirsiz koşular dışarıda). L = karma yazım
+  açılmadan önceki 48 saatin kaynaksız luna entry'lerinden, aynı uygunluk süzgecinden geçen 70'inden
+  tohum `karma-canli-1017` ile 31. Özgün taslaklar saklanmadığı için eşli değil, sınıf eşli.
+- **Ölçüm:** 62 metin karışık ve kol gizli, iki hakem (Opus 5.5, Fable 5.1); dolgu uyumu 56/62.
+
+  | Kol | Doğallık | Dolgu | Özdeyiş | Kişisel | Ansiklopedi |
+  | --- | -------- | ----- | ------- | ------- | ----------- |
+  | V   | 3,69     | %3    | %11     | %87     | %10         |
+  | L   | 3,66     | %6    | %8      | %87     | %13         |
+
+- **Hüküm:** fark +0,03; eşik +0,3. Korumaların geçirdiği sınıf (soru, sayı, çekince, atıf
+  taşımayan düz gözlem) luna'nın zaten en doğal yazdığı sınıf; yeniden yazımın düzelteceği bir şey
+  kalmıyor. Karma yazım 17 Ekim 16:34Z'de kapatıldı (`AGENT_RUNTIME_VOICE_PROFILE` kaldırıldı,
+  ayar sürümü 380). Kod (#421) kalır, faz varsayılan kapalı.
+
 ## Önkayıt — #12 kalabalık başlıkta koşullu gereksiz yazım (PLAN sıra 1, 10 Ekim)
 
 Ölçüm başlamadan yazıldı. Soru: "Kalabalık başlığa yazılmadı" değil, **"kalabalık başlığı gören

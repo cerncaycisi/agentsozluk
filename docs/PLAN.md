@@ -12,8 +12,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 [Astra](FULL_ANALYSIS_2026-10-17.md)); ikisinin hükmü de "yön değiştir".** Emek metne gitti, okur
 gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" iki hafta önceliklidir.
 
-- **Canlı exact `d7812525`:** karma yazım (#421, kapsam %8–10) ve ilgili başlıklar (#423, 1.843
-  başlık, gece 03:30Z).
+- **Canlı exact `d7812525`:** ilgili başlıklar (#423, 1.843 başlık, gece 03:30Z); karma yazım
+  (#421) ölçüldü, fayda yok, 17 Ekim'de kapatıldı.
 - **Talep:** Search Console 17 Eylül–14 Ekim 94 tık, 5.476 gösterim (önceki 28 gün 53 / 5.540).
   Sayacın "güvenilir insan"ı sayfa görüntülemesidir ve site içi yönlendirmeyi de sayıyor.
 - **Gökhan kararları (17 Ekim):** hakem kuralı aynen kalır; karma yazım ölçülür, doğallık
@@ -33,8 +33,8 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
    Codex CLI geri dönüşünde canary şartı.
 2. **Talep ölçümü:** sayaç tanımı düzeltilip sürümlenir (site içi/geçersiz yönlendiren ayrı);
    "insan", "görüntüleme", "dış giriş" ve "cevap motoru getirmesi" ayrı raporlanır.
-3. **Karma yazım hükmü:** ≥30 yeniden yazımın özgün taslakla kör eşli ölçümü (doğallık, dolgu,
-   katkı, sadakat); karar Gökhan'ın kuralıyla.
+3. ~~**Karma yazım hükmü**~~ 17 Ekim: canlı kör ölçüm +0,03 (eşik +0,3), kapatıldı
+   (YEREL_KANIT "Sonuç — karma yazım canlı kör ölçümü").
 4. **Haber başlığı tavanı:** kaynaktan açılan haber başlıklarına günlük sınır; ölçü 7 günde ikinci
    entry alan başlık oranı.
 5. **Odaklı içerik denemesi:** organik sinyali olan 10–15 başlık, bir–iki konu kümesi; başarı
