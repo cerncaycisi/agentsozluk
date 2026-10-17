@@ -46,6 +46,22 @@ function currentProperNounCap(record: ActionFeedbackRecord, now: Date) {
   return detail && detail.quotaDay === istanbulQuotaDay(now) ? detail : null;
 }
 
+/*
+  Donmuş perception aynı koşunun sonraki bağlam isteğinde yeniden sunulur; koşu İstanbul gece
+  yarısını aşarsa dünkü tavan kartı yeni günde geçerli değildir (Astra tavan 2. tur P2). Kart
+  yalnız daralır: neden nötrleşir ve kota günü düşer, başka alan değişmez.
+*/
+export function refreshFrozenActionFeedback(cards: unknown, now: Date): unknown {
+  if (!Array.isArray(cards)) return cards;
+  const today = istanbulQuotaDay(now);
+  return cards.map((card: unknown) => {
+    if (typeof card !== "object" || card === null) return card;
+    const { quotaDay, ...rest } = card as Record<string, unknown>;
+    if (rest.reason !== properNounDailyCapReason || quotaDay === today) return card;
+    return { ...rest, reason: null };
+  });
+}
+
 export function projectActionFeedback(records: readonly ActionFeedbackRecord[], now: Date) {
   return records
     .flatMap((record) => {

@@ -152,6 +152,7 @@ import {
   actionFeedbackLimit,
   actionFeedbackKey,
   projectActionFeedback,
+  refreshFrozenActionFeedback,
 } from "@/modules/agents/domain/action-feedback";
 import {
   runtimeFastStateSchema,
@@ -1890,6 +1891,14 @@ export function getRuntimeRunContext(
           ),
           purposeTopics: filterIds(perception.purposeTopics, visibleIds),
           [authorFeedbackKey]: feedback,
+          ...(actionFeedbackKey in perception
+            ? {
+                [actionFeedbackKey]: refreshFrozenActionFeedback(
+                  perception[actionFeedbackKey],
+                  now,
+                ),
+              }
+            : {}),
         };
         await storeRuntimePerceptionSummary(transaction, runId, perception);
       } else if (reflectionWithFeedback) {

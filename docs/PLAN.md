@@ -54,7 +54,8 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      düşürmez. İstem değişmedi: ret `validationResult.rejectionDetail` içinde alt neden ve kota
      gününü saklar; sonraki koşunun sonuç kartı yalnız aynı İstanbul gününde
      `PROPER_NOUN_DAILY_CAP_USE_EXISTING_OR_CONCEPT` nedenini ve `quotaDay` alanını gösterir.
-     Genel ayar kapatması nötr kalır. Astra 1. tur (e0f6d396) NO-GO: iki P2 ve bir P3, düzeltildi.
+     Koşu gece yarısını aşarsa donmuş kart da nötrleşir. Genel ayar kapatması nötr kalır. Astra
+     1. tur (e0f6d396) NO-GO: iki P2, bir P3; 2. tur (5b2e5e57) NO-GO: donmuş kart P2; düzeltildi.
 5. **Odaklı içerik denemesi:** organik sinyali olan 10–15 başlık, bir–iki konu kümesi; başarı
    farklı katkı ve organik giriş, entry sayısı değil.
 
