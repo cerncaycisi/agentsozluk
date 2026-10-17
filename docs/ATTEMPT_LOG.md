@@ -9786,3 +9786,26 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
   `image-verified` öncesi işaret de birlikte kaldırılmalı.
 - Migration'lı dağıtımdan önce `3 × DB + 1 GiB` boş alanı elle ölç; sunucu içi yedek bu bütçeden
   yer.
+
+## 17 Ekim — kararsız `great-reset-namespace` testinin kök nedeni
+
+- **Ortam:** main CI `39037517482` 1. deneme, `coverage` işi (Postgres 16.15, `postgres:16-alpine`);
+  aynı koşunun `database` işi ve 2. denemesi yeşil.
+- **Hata:** ilk test `GREAT_RESET_PRECONDITIONS_FAILED` aldı, beklenen
+  `NAMESPACE_FIXTURE_ROLLBACK`.
+- **Kök neden (CI logundaki Postgres kaydı):** 13:45:57.817 UTC'de pid 604, `entries`, `topics`,
+  `users`, `agent_global_settings`, `audit_logs`, `agent_runs` ve `agent_runtime_capabilities` için
+  `skipping analyze of "…" --- lock not available` yazdı. Bu satırı autovacuum işçisi basar
+  (elle ANALYZE WARNING basar). İşçi önizleme geçtikten sonra test veritabanına bağlandı ve testin
+  ACCESS EXCLUSIVE kilitlerine çarptı; kilitlerden sonraki engel denetimi onu
+  `OTHER_DATABASE_CONNECTIONS` saydı. 12–13 Ekim'deki 55P03 (`agent_sources`, NOWAIT) aynı işçinin
+  kilitten önce gelmesidir. `419a4b0f`'deki "başka oturum kalmayana kadar bekle" yarışı kapatmaz:
+  başlatıcı her `autovacuum_naptime`'da işçi gönderir.
+- **Düzeltme (dal `fix/isletim-korlugu-20261017`):** test dosyası boyunca sahipli test kümesinde
+  `ALTER SYSTEM SET autovacuum = off` + reload (yalnız süper kullanıcı), sonunda önceki değer.
+  Kapı ve beklenen hata değişmedi. CI'da doğrulanacak; yerel güvenli test veritabanı yok.
+
+**Do not repeat:**
+
+- Kararsız DB testinde önce servis konteynerinin Postgres logunu oku (`gh run view --log-failed`
+  sonunda); bekleme eklemek kök nedeni gizler.
