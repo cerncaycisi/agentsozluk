@@ -171,11 +171,64 @@ export async function computeRelatedTopicLinks(
 /** Uygula modunda kilit çakışmasında yeniden deneme (Astra, 17 Ekim, 2. tur). */
 export const RELATED_TOPIC_LOCK_RETRIES = 10;
 export const RELATED_TOPIC_LOCK_RETRY_DELAY_MS = 60_000;
+/**
+ * Yeniden denemelerin toplam süre bütçesi: 10 × 60 sn bekleme + bir tam hesap transaction'ı
+ * (13 dk) + 1 dk pay = 24 dk. Yeni deneme ancak bekleme ve tam bir hesap bu bütçeye sığıyorsa
+ * başlar; konteynerdeki `timeout -k 30 1620` (27 dk) hiçbir zaman devreye girmez.
+ */
+export const RELATED_TOPIC_RETRY_BUDGET_MS = 24 * 60_000;
+
+/** Kilit devri çatışması yeniden denemelerden sonra da sürdü; hiçbir şey yazılmadı. */
+export interface RelatedTopicConflictExhausted {
+  status: "CONFLICT_RETRY_EXHAUSTED";
+}
+
+export type RelatedTopicRunResult = RelatedTopicComputationResult | RelatedTopicConflictExhausted;
+
+function errorField(value: unknown, key: string): unknown {
+  return value && typeof value === "object" && key in value
+    ? (value as Record<string, unknown>)[key]
+    : undefined;
+}
+
+/*
+  KİLİT DEVRİ ÇATIŞMASI (Sol 6.1, 17 Ekim, 1. tur). Kilit sorgusu REPEATABLE READ snapshot'ını
+  alır; önceki hesap tam o sırada commit edip kilidi bırakırsa bu hesap kilidi alır ama
+  snapshot'ı önceki yazımdan eskidir. Tabloyu silerken serileştirme hatası (40001, Prisma
+  P2034) ya da boş görünen tabloya aynı çifti eklerken benzersizlik hatası (23505, Prisma P2002,
+  yalnız `topic_related_links`) çıkar. Transaction geri alınır, önceki küme kalır; bütün hesap
+  yeni snapshot'la yeniden denenebilir. Başka her hata olduğu gibi yükselir.
+*/
+export function isRelatedTopicLockHandoffConflict(error: unknown): boolean {
+  const code = errorField(error, "code");
+  const meta = errorField(error, "meta");
+  if (code === "P2034") return true;
+  // Prisma'nın kodsuz sardığı serileştirme hatası: PostgreSQL 40001 metni.
+  if (String(errorField(error, "message") ?? "").includes("could not serialize access"))
+    return true;
+  if (code === "P2002")
+    return (
+      errorField(meta, "modelName") === "TopicRelatedLink" ||
+      String(errorField(meta, "target") ?? "").includes("topic_related_links")
+    );
+  if (code === "P2010") {
+    const sqlState = errorField(meta, "code");
+    if (sqlState === "40001") return true;
+    return (
+      sqlState === "23505" &&
+      String(errorField(meta, "message") ?? "").includes("topic_related_links")
+    );
+  }
+  return false;
+}
 
 /**
- * Uygula modunda kilit başkasındaysa `retries` kez `delayMs` bekleyip yeniden dener; liste
- * modu beklemez. Son sonuç ve deneme sayısı döner; kilit hâlâ alınamadıysa sonuç
- * `ALREADY_RUNNING`'dir ve betik bunu başarısızlık sayar.
+ * Uygula modunda iki durumda bütün hesabı yeni snapshot'la yeniden dener; ikisi aynı bütçeyi
+ * paylaşır (en çok `retries` yeniden deneme, aralarında `delayMs`, toplam `budgetMs`):
+ * kilit başkasında (`ALREADY_RUNNING`) ya da kilit devri çatışması. Liste modu beklemez ve
+ * çatışmayı yeniden denemez. Bütçe bitince son durum döner: `ALREADY_RUNNING` ya da
+ * `CONFLICT_RETRY_EXHAUSTED`; betik ikisini de başarısızlık sayar (çıkış 75). Hiçbir başarısız
+ * denemede tabloya bir şey yazılmamıştır.
  */
 export async function computeRelatedTopicLinksWithRetry(
   client: DatabaseClient,
@@ -183,19 +236,41 @@ export async function computeRelatedTopicLinksWithRetry(
   options: {
     retries?: number;
     delayMs?: number;
+    budgetMs?: number;
     sleep?: (milliseconds: number) => Promise<void>;
+    now?: () => number;
   } = {},
-): Promise<{ result: RelatedTopicComputationResult; attempts: number }> {
+): Promise<{ result: RelatedTopicRunResult; attempts: number }> {
   const retries = input.apply ? (options.retries ?? RELATED_TOPIC_LOCK_RETRIES) : 0;
   const delayMs = options.delayMs ?? RELATED_TOPIC_LOCK_RETRY_DELAY_MS;
+  const budgetMs = options.budgetMs ?? RELATED_TOPIC_RETRY_BUDGET_MS;
+  const now = options.now ?? Date.now;
   const sleep =
     options.sleep ??
     ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+  const started = now();
   for (let attempt = 1; ; attempt += 1) {
-    const result = await computeRelatedTopicLinks(client, input);
-    if (result.status === "OK" || attempt > retries) return { result, attempts: attempt };
+    let result: RelatedTopicRunResult;
+    try {
+      result = await computeRelatedTopicLinks(client, input);
+    } catch (error) {
+      if (!input.apply || !isRelatedTopicLockHandoffConflict(error)) throw error;
+      result = { status: "CONFLICT_RETRY_EXHAUSTED" };
+    }
+    if (result.status === "OK") return { result, attempts: attempt };
+    const fitsBudget = now() - started + delayMs + RELATED_TOPIC_TRANSACTION_TIMEOUT_MS <= budgetMs;
+    if (attempt > retries || !fitsBudget) return { result, attempts: attempt };
     await sleep(delayMs);
   }
+}
+
+/** Betiğin çıkış kodu: başarı 0; uygula modunda yazılamadıysa 75 (EX_TEMPFAIL). */
+export const RELATED_TOPIC_TEMPFAIL_EXIT_CODE = 75;
+
+export function relatedTopicExitCode(result: RelatedTopicRunResult, apply: boolean): number {
+  if (result.status === "OK") return 0;
+  if (result.status === "ALREADY_RUNNING" && !apply) return 0;
+  return RELATED_TOPIC_TEMPFAIL_EXIT_CODE;
 }
 
 export interface RelatedTopicLink {

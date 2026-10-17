@@ -2385,13 +2385,21 @@ kör ölçümde iki sinyalin birlikte önerdiği çiftler %91–100 ilgiliydi; t
 - **Tek hesap:** hesap transaction'ın başında danışma kilidi alır (liste modu dahil). Kilit
   başkasındaysa liste modu beklemeden `{"status":"ALREADY_RUNNING"}` basar ve 0 ile çıkar.
   `--uygula` 60 sn arayla 10 kez yeniden dener; kilit hâlâ alınamazsa aynı satırı basar ve 75
-  (EX_TEMPFAIL) ile çıkar, gece birimi başarısız görünür. Hiçbir durumda bir şey yazılmaz. Gece
-  yenilemesi yalnız `mode=uygula,status=OK` satırıyla başarılı sayılır.
+  (EX_TEMPFAIL) ile çıkar, gece birimi başarısız görünür.
+- **Kilit devri çatışması (Sol 6.1, 17 Ekim):** kilit sorgusu snapshot'ı alırken önceki hesap
+  commit edip kilidi bırakırsa yeni hesabın snapshot'ı eski kalır; tabloyu silerken serileştirme
+  hatası (40001/P2034) ya da aynı çifti eklerken `topic_related_links` benzersizlik hatası
+  (23505/P2002) çıkar. `--uygula` bunu bütün hesabı yeni snapshot'la yeniden deneyerek aşar.
+  Kilit beklemesiyle aynı bütçeyi paylaşır: en çok 10 yeniden deneme, 60 sn ara, toplam 24 dk
+  (yeni deneme ancak bekleme ve tam bir 13 dakikalık hesap bütçeye sığıyorsa başlar). Çatışma
+  sürerse `{"status":"CONFLICT_RETRY_EXHAUSTED"}` basar ve 75 ile çıkar. Başarısız hiçbir
+  denemede bir şey yazılmaz; önceki küme kalır. Gece yenilemesi yalnız `mode=uygula,status=OK`
+  satırıyla başarılı sayılır.
 - **Tablo:** `topic_related_links` (migration `20261017120000_topic_related_links`, yalnız ek
   yapan; A5 denetçisinden geçer). Gece işi tabloyu tek transaction'da siler ve yeniden yazar;
   bir adım düşerse önceki küme kalır.
-- **Sınırlar:** tek ifade 300 sn, transaction 13 dk, kilit çakışmasında en çok 10 × 60 sn
-  bekleme, konteynerdeki süreç `timeout -k 30 1620` (27 dk, sonra 30 sn içinde KILL), systemd
+- **Sınırlar:** tek ifade 300 sn, transaction 13 dk, yeniden deneme bütçesi 24 dk (en çok
+  10 × 60 sn bekleme), konteynerdeki süreç `timeout -k 30 1620` (27 dk, sonra 30 sn içinde KILL), systemd
   30 dk; kaynaklar 250'lik partilerle. systemd yalnız
   `docker compose exec` istemcisini öldürebilir; konteynerdeki Node süreci kendi `timeout`'uyla
   sınırlıdır ve süreç ölünce açık transaction geri alınır.

@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { DatabaseClient } from "@/lib/db/types";
 import {
   computeRelatedTopicLinks,
+  computeRelatedTopicLinksWithRetry,
   getRelatedTopicLinks,
 } from "@/modules/topics/application/related-topics";
 import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
@@ -317,6 +318,95 @@ describe("ilgili başlıklar gece hesabı", () => {
     yazmadan "zaten çalışıyor" döner. Tek oturumlu PGlite'ta danışma kilidi aynı oturuma yeniden
     verildiği için bu test yalnız gerçek PostgreSQL'de (CI) anlamlıdır.
   */
+  /*
+    Kilit devri çatışması (Sol 6.1, 17 Ekim). Asıl sıra — kilit sorgusu snapshot'ı alır, önceki
+    hesap commit edip kilidi bırakır, aynı sorgu kilidi alır — tek bir SQL ifadesinin içinde
+    mikrosaniyeler arasında olur; dışarıdan belirlenimci olarak zorlanamaz. Test aynı sonucu
+    belirlenimci kurar: hesabın snapshot'ı alındıktan sonra, tabloyu silmeden hemen önce ikinci
+    bir bağlantı tablodaki bir satırı değiştirip commit eder ("önceki hesabın yazımı"). Silme
+    gerçek PostgreSQL'de 40001 ile düşer; bütün hesap yeni snapshot'la yeniden denenir ve yazar.
+    Birim testi P2034 ve P2002 dallarını ayrıca sınar.
+  */
+  it("[iki bağlantı] snapshot'tan sonra commit eden yazım çatışması yeni snapshot'la yeniden denenir", async () => {
+    await seed();
+    await compute(true);
+    const before = await integrationDatabase.topicRelatedLink.findMany({ orderBy: { id: "asc" } });
+    const other = new PrismaClient({
+      datasourceUrl: requireTestDatabaseUrl(
+        process.env.TEST_DATABASE_URL,
+        "Related topics handoff",
+      ),
+    });
+    let interfered = 0;
+    const racing = new Proxy(integrationDatabase, {
+      get(target, property, receiver) {
+        if (property !== "$transaction") return Reflect.get(target, property, receiver);
+        return (work: (transaction: unknown) => Promise<unknown>, options: unknown) =>
+          target.$transaction(
+            (transaction) =>
+              work(
+                new Proxy(transaction, {
+                  get(inner, key) {
+                    if (key === "topicRelatedLink")
+                      return {
+                        deleteMany: async (args: object) => {
+                          if (interfered === 0) {
+                            interfered += 1;
+                            await other.topicRelatedLink.update({
+                              where: { id: before[0]!.id },
+                              data: { rank: before[0]!.rank },
+                            });
+                          }
+                          return inner.topicRelatedLink.deleteMany(args);
+                        },
+                        createMany: (args: { data: object[] }) =>
+                          inner.topicRelatedLink.createMany(
+                            args as Parameters<typeof inner.topicRelatedLink.createMany>[0],
+                          ),
+                      };
+                    const value = Reflect.get(inner, key) as unknown;
+                    return typeof value === "function" ? value.bind(inner) : value;
+                  },
+                }),
+              ),
+            options as { timeout: number },
+          );
+      },
+    }) as DatabaseClient;
+    try {
+      const outcome = await computeRelatedTopicLinksWithRetry(
+        racing,
+        { apply: true },
+        { sleep: async () => {} },
+      );
+      expect(interfered).toBe(1);
+      expect(outcome.result.status).toBe("OK");
+      expect(outcome.attempts).toBe(2);
+    } finally {
+      await other.$disconnect();
+    }
+    const after = await integrationDatabase.topicRelatedLink.findMany({ orderBy: { id: "asc" } });
+    expect(
+      after.map(({ topicId, relatedTopicId, rank, source }) => ({
+        topicId,
+        relatedTopicId,
+        rank,
+        source,
+      })),
+    ).toEqual(
+      expect.arrayContaining(
+        before.map(({ topicId, relatedTopicId, rank, source }) => ({
+          topicId,
+          relatedTopicId,
+          rank,
+          source,
+        })),
+      ),
+    );
+    expect(after).toHaveLength(before.length);
+    expect(after.some((row) => before.some((old) => old.id === row.id))).toBe(false);
+  });
+
   it("[iki bağlantı] başka bir hesap kilidi tutarken ALREADY_RUNNING döner ve tabloya dokunmaz", async () => {
     await seed();
     await compute(true);

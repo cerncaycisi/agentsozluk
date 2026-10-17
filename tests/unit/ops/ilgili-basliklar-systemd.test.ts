@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  RELATED_TOPIC_LOCK_RETRIES,
+  RELATED_TOPIC_LOCK_RETRY_DELAY_MS,
+  RELATED_TOPIC_RETRY_BUDGET_MS,
+  RELATED_TOPIC_TRANSACTION_TIMEOUT_MS,
+} from "@/modules/topics/application/related-topics";
 
 /*
   İlgili başlıklar gece işi (Gökhan kararı, 17 Ekim 2026). Birim karagöz'le aynı kalıpta:
@@ -37,10 +43,15 @@ describe("ilgili başlıklar gece birimi", () => {
     expect(body).toMatch(/^RestrictAddressFamilies=AF_UNIX$/mu);
     expect(body).toMatch(/^IPAddressDeny=any$/mu);
     expect(body).toMatch(/^TimeoutStartSec=30min$/mu);
-    // Konteynerdeki süreç systemd sınırından önce ölür: 1620 + 30 sn < 30 dk; içine kilit
-    // beklemesi (10 × 60 sn) ve 13 dakikalık hesap transaction'ı sığar.
+    // Konteynerdeki süreç systemd sınırından önce ölür: 1620 + 30 sn < 30 dk. Yeniden deneme
+    // bütçesi (24 dk) 10 × 60 sn beklemeyi ve son tam hesabı (13 dk) içerir ve 1620 sn'ye sığar.
     expect(1620 + 30).toBeLessThan(30 * 60);
-    expect(10 * 60 + 13 * 60).toBeLessThan(1620);
+    expect(RELATED_TOPIC_RETRY_BUDGET_MS / 1000).toBeLessThan(1620);
+    expect(
+      (RELATED_TOPIC_LOCK_RETRIES - 1) * RELATED_TOPIC_LOCK_RETRY_DELAY_MS +
+        RELATED_TOPIC_LOCK_RETRY_DELAY_MS +
+        RELATED_TOPIC_TRANSACTION_TIMEOUT_MS,
+    ).toBeLessThanOrEqual(RELATED_TOPIC_RETRY_BUDGET_MS);
     expect(body).toMatch(/^Nice=15$/mu);
     expect(body).toMatch(/^SyslogIdentifier=agent-sozluk-ilgili$/mu);
     expect(service).not.toMatch(/(?:DATABASE_URL=|APP_SECRET=|PASSWORD=|TOKEN=)/u);
@@ -74,10 +85,10 @@ describe("ilgili başlıklar gece birimi", () => {
     expect(script).toContain("ILGILI_FAILED code=");
     expect(script).toContain('process.argv.includes("--uygula")');
     expect(script).toContain("--ornek=");
-    expect(script).toContain('status: "ALREADY_RUNNING"');
-    // Uygula modunda kilit yeniden denemelerden sonra da alınamazsa birim başarısız görünür.
-    expect(script).toContain("const ALREADY_RUNNING_EXIT_CODE = 75;");
-    expect(script).toContain("if (apply) process.exitCode = ALREADY_RUNNING_EXIT_CODE;");
+    // Uygula modunda yazılamazsa (kilit ya da çatışma) birim başarısız görünür.
+    expect(script).toContain("status: result.status");
+    expect(script).toContain("process.exitCode = relatedTopicExitCode(result, apply);");
+    expect(script).toContain('{"status":"CONFLICT_RETRY_EXHAUSTED"}');
   });
 
   it("runbook kurulumu karagöz'ün yanında ve onay kapısıyla anlatır", () => {
@@ -98,6 +109,7 @@ describe("ilgili başlıklar gece birimi", () => {
     expect(prose).toContain("`--uygula` 60 sn arayla 10 kez yeniden dener");
     expect(prose).toContain("75 (EX_TEMPFAIL) ile çıkar");
     expect(prose).toContain("`timeout -k 30 1620`");
+    expect(prose).toContain('`{"status":"CONFLICT_RETRY_EXHAUSTED"}` basar ve 75 ile çıkar');
   });
 
   it("geri alma sırası: zamanlayıcı, servis, süreç ve kilit denetimi, ancak sonra boşaltma", () => {
