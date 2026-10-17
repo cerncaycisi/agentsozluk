@@ -9729,3 +9729,23 @@ betiği dağıtımla güncellenmiyor, elle karşılaştırıp kur.
   0 başarısız. Ayrıntı YEREL_KANIT "Sonuç — `gpt-6-sol` medium canlı kota ölçümü".
 - **#420** (`sol56-medium`) Astra 1. tur GO, birleşti; yerel taramada kalite ölçütünü geçmediği
   için dağıtılmadı.
+
+## 16–17 Ekim — #421 karma yazım canlıda
+
+- **Hakem:** Astra 2 tur (`3b8c0bed` NO-GO 6 × P2; `4c26e72f` NO-GO 5 × P2), ardından dar Sol 6.1
+  8 tur. Bulgular olgu ekleme sınıflarıydı: yazıyla, çekimli, kökü değişen ve oran sayıları;
+  yüzde; göreli zaman; kip ve çekince; ilk parçanın kilitleri; sunucu kayıt şeması. 8. tur GO
+  (`638142d9`).
+- **Dağıtım:** exact `35e5a32030ef78b25c0d2ef495570e63459a58ba` (#421). Main CI `38938800774`, RC
+  `38941175187` success. `--pause-society-flow --cleanup`, migration yok, `RELEASE_COMPLETE PASS`.
+  Faz varsayılan kapalı; etkin çağrı bütçesi kapalıyken 8.
+- **Açma:** operatör betiği `ses-gecis.sh sol6-medium`. Pause, boşalma, `runtime.env`, restart;
+  `agent-runtime voice rewrite enabled (gpt-6-sol medium)` satırı doğrulandı. Resume 372, 17:49:55Z.
+- **Ölçüm:** `izle.sh … ses` 6 saat, `KOTA_ESIK=53` (başlangıç %49). Kota 49 → 51, durdurma yok;
+  23:50Z'de izleme bitti, faz açık bırakıldı. Ayrıntı STATUS "17 Ekim".
+- **Not:** başlangıç kotası %49'du, saat 15:40Z'de %44'tü. Aradaki artışın çoğu xhigh hakem
+  turlarıydı (10 tur).
+
+**Do not repeat:** Sözcük listesi korumasında her turda bir çekim yamalamak hakem turlarını ve
+kotayı yiyor (Sol 6.1 5 tur yalnız sayı biçimi). Riskli sınıfı (sayı, kip) baştan aday dışı
+bırak.

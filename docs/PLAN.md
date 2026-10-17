@@ -13,8 +13,8 @@ güvenilir insan. Strateji sıra 4'te.
 
 **10 Ekim 2026 · iki bağımsız yatırım öncesi inceleme geldi; ikisinin kararı da "bugün yatırmam".**
 
-- **16 Ekim:** sol kalitede önde ama pahalı (6.1 ~15–20 kat, `gpt-6-sol` ~6 kat); ucuz modeller
-  kaliteyi vermiyor. Luna'dayız; sıradaki karma yazım (sıra 6).
+- **16–17 Ekim:** sol tam geçiş için pahalı; karma yazım (#421) canlıda ve açık: luna yazar,
+  uygun entry'leri `gpt-6-sol` yeniden yazar. Kapsam %10; sırada kalite ve kapsam (sıra 6).
 - **14 Ekim:** üretim OVH VPS-1'e taşındı (51.161.103.223; sıra 0 bitti). Canlı exact `24a25981`
   (#402 tek soru, #404 logo/llms.txt, #405 lastmod, #406 karagöz filtresi). Sıra 3: son okuma
   "kapandı" sayılmadı, #12 A geçmedi ([YEREL_KANIT](YEREL_KANIT_2026-10-08.md)).
@@ -196,8 +196,11 @@ güvenilir insan. Strateji sıra 4'te.
        katı (durdu); `gpt-5.6-sol`, terra, `gpt-6-luna` kaliteyi vermiyor;
      - ~~karma yazım yerel kanıtı~~ 16 Ekim: `gpt-6-sol` ile doğallık +0,33–0,38, tahmini
        haftada ~20 puan; 26'da 2 olgu eklemesi (YEREL_KANIT "Sonuç — karma yazım").
-     - **Karma yazım (Gökhan kararı, 16 Ekim: haftalık ~20 puan kota "olur"):** yazım fazı +
-       sadakat denetimi kodlanır, yerelde kanıtlanır, sonra korumalı canlı ölçüm.
+     - ~~**Karma yazım (Gökhan kararı, 16 Ekim: haftalık ~20 puan kota "olur")**~~ #421
+       canlıda (`35e5a320`), 16 Ekim 17:49Z'den beri `AGENT_RUNTIME_VOICE_PROFILE=sol6-medium`;
+       6 saatlik ölçüm kota +2 ile geçti, açık kaldı.
+     - **sıradaki:** ≥30 yeniden yazılmış entry'de kör kalite ölçümü; kapsamı daraltan
+       kilitlerin canlı veriyle sayımı ve güvenle gevşetilebilenler için 2. sürüm.
        Kapılar YEREL_KANIT "Sonuç — sol medium canlı deneme (15 Ekim)" altında.
    - **Model geçişi adayı:** 13 Ekim yerel A/B'de `gpt-6.1-sol`
      doğallıkta luna'yı açık farkla geçti (4,12 / 3,09) ama çağrı süresi ~3 kat. Geçiş kapısı
