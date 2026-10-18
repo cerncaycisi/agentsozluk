@@ -45,7 +45,7 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
    - **Kalan:** alarm ortam dosyası (Gökhan kararı); ilk gece koşularını okumak.
 2. **Talep ölçümü:** sayaç tanımı düzeltilip sürümlenir (site içi/geçersiz yönlendiren ayrı);
    "insan", "görüntüleme", "dış giriş" ve "cevap motoru getirmesi" ayrı raporlanır.
-   - **Uygulandı, `feat/sayac-tanim-v2-20261018` dalında (18 Ekim):** güvenilir görüntüleme v2 =
+   - **Canlıda (18 Ekim, PR #429, main `36b1b81c`; sunucu kopyası 09:26Z):** güvenilir görüntüleme v2 =
      insan belge gezinmesi ve (doğrulanmış dış alan adı ya da yönlendirensiz ana sayfa); site içi
      (`www.`/alt alan dahil), IP ve geçersiz yönlendiren sayılmaz. v2 ayrı `guvenilir_v2` alanında;
      ilk koşu `tanim_v2_baslangic` gününü yazar, önceki günler v1, o gün kısmi; rapor sürümü her
@@ -57,9 +57,16 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      parametresi. Astra 2. tur (0531dd5e) NO-GO: üç P2, iki P3 düzeltildi (satırsız ilk koşu
      imleç kaybı sayılmaz; açık ülke uzantısı listesi; otorite ve köşeli ayraç doğrulaması;
      taşan punycode; site içi kararı doğrulamadan sonra). Astra bütçesi doldu.
-   - **Kalan:** gerekirse dar Sol 6.1 turu ve birleştirme; birleştirmeden sonra sunucudaki kurulu betik runbook "Çerezsiz
-     okur sayacı" bölümündeki yükseltme adımıyla yenilenir. v1 tabanı (~80/hafta) v2 ile karşılaştırılmaz;
-     sıra 4'teki haftalık hedef v2'nin ilk tam haftasından sonra yeniden okunur.
+     Sol 6.1 2 tur (`3fc25895` NO-GO: elle Google listesi gerçek alanları dışlıyordu, resmi
+     `supported_domains` listesine geçildi; `69929c93` GO).
+   - **Kurulum:** sunucuda betik değiştirildi (eski kopya ve `sayac.db` yedeği
+     `/var/backups/agent-sozluk-sayac-20261018`), ilk `topla` `Result=success`, `tanim_v2_baslangic`
+     18 Ekim. Aynı gün insan görüntülemesi 1.963'e sıçradı (önceki günler 9–104; 1.576
+     yönlendirensiz, 382 site içi): dağıtık tarayıcı taklitçisi (07–08Z
+     ~1.700 istek, 1.436 farklı /16 ağ, dönüşümlü eski Chrome 99–107); v1 bunun 313'ünü "güvenilir"
+     sayardı.
+   - **Kalan:** v1 tabanı (~80/hafta) v2 ile karşılaştırılmaz; sıra 4'teki haftalık hedef v2'nin
+     ilk tam haftasından (19–25 Ekim) sonra yeniden okunur.
 3. ~~**Karma yazım hükmü**~~ 17 Ekim: canlı kör ölçüm +0,03 (eşik +0,3), kapatıldı
    (YEREL_KANIT "Sonuç — karma yazım canlı kör ölçümü").
 4. **Haber başlığı tavanı:** kaynaktan açılan haber başlıklarına günlük sınır; ölçü 7 günde ikinci
@@ -87,6 +94,18 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
         30'u özel adlı (tavan doldu), 1 ret.
 5. **Odaklı içerik denemesi:** organik sinyali olan 10–15 başlık, bir–iki konu kümesi; başarı
    farklı katkı ve organik giriş, entry sayısı değil.
+   - **Tasarım (18 Ekim):** ajanları sabit başlık listesine yönlendiren hazır araç yok (ajan yalnız
+     o koşuda gösterilen başlığa yazabiliyor; yönetici listeyi seçemiyor). En küçük çözüm
+     "süreli odak listesi": seçili 6–10 yazarın normal koşularında okuma menüsüne en çok bir odak
+     başlığı; ek koşu ve istem değişikliği yok. Adaylar: mimarlık/yapı mirası 7 çift, sinema 6
+     çift; her çiftte hedefi önceden yazılı kura seçer (13 hedef, 13 kontrol). Taban sayılar çok
+     küçük (hedef 111 gösterim / 2 tık, kontrol 148 / 3; 13 Eylül–10 Ekim); sonuç en fazla yönsel.
+     Taslak operatör sunucusunda; önkayıt başlarken depoya alınır.
+   - **Gökhan kararları (18 Ekim):** odak listesi kodu iki haftalık sıranın **sonrasına
+     ertelendi** (31 Ekim sonrası); deneme **iki kümeyle** (mimarlık + sinema; sinemada izlenim
+     uydurma riski hakem ölçütüne eklenir); bu denemenin **salt okunur ölçüm okumaları** (üretim
+     sorgusu ve Search Console) için **30 Kasım 2026'ya kadar şimdiden onay**. Dağıtım, yazma ya da
+     başka erişim bu onaya dahil değildir.
 
 Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez.
 

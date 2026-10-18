@@ -9881,3 +9881,22 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
 **Do not repeat:**
 
 - Envanterde "yok" ile "göremiyorum"u ayır; `test -e` aranamayan dizinde de yanlış döner.
+
+## 18 Ekim — okur sayacı v2 canlıda (#429, sunucu kopyası)
+
+- **Hakem:** Astra 2 tur (`2c296691` NO-GO 3 × P2 + 2 × P3; `0531dd5e` NO-GO 3 × P2 + 2 × P3),
+  Sol 6.1 2 tur (`3fc25895` NO-GO 1 × P2, `69929c93` GO). Birleşme main `36b1b81c`.
+- **Kurulum:** dağıtım gerekmedi (betik sunucuda ayrı kurulur). `git show 36b1b81c:` ile alınan
+  betik sha256 `e171c731…568d` olarak kopyalandı, `install -o root -g root -m 0755`, kurulu
+  özet eşit. Önce eski betik ve `sayac.db` (SQLite `backup` API) `/var/backups/agent-sozluk-sayac-20261018`
+  altına alındı. `systemctl start agent-sozluk-sayac.service` `Result=success`; `rapor 7` 18 Ekim
+  satırında "tanım geçişi (v2 kısmi, v1 313 ayrı)".
+- **Gözlem:** 18 Ekim insan görüntülemesi 1.963 (12–17 Ekim 9–104). 1.576 yönlendirensiz, 382
+  site içi, 5 Google. Kaynak: 07–08Z arası ~1.700 belge isteği, 1.436 farklı /16 ağ,
+  dönüşümlü eski Chrome sürümleri (99–107), `Sec-Fetch` başlıkları taklit: dağıtık taklitçi tarayıcı
+  (yalnız toplu sayım okundu, IP/UA saklanmadı).
+
+**Do not repeat:**
+
+- Sunucudaki betiği kurarken kaynak olarak sunucunun `app` checkout'una güvenme; dağıtım
+  olmadıysa o eski SHA'dadır. Exact main blob'unu kopyala ve özeti karşılaştır.

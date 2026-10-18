@@ -7,6 +7,15 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 18 Ekim öğle — okur sayacı v2 canlıda
+
+- **Sayaç v2** (#429): güvenilir görüntüleme yalnız dış alan adından ya da yönlendirensiz ana
+  sayfadan; v2 18 Ekim'den beri, önceki günler v1 ve toplanmaz.
+- **12–17 Ekim (v1):** günlük insan görüntülemesi 99, 104, 23 (boşluk), 9, 17, 14; v1 güvenilir
+  19, 26, 8, 9, 15, 12; dış giriş 29 (hepsi arama motoru); cevap motoru getirmesi 0.
+- **18 Ekim (kısmi):** insan görüntülemesi 1.963 (1.576 yönlendirensiz, 382 site içi); 07–08Z dağıtık
+  taklitçi tarayıcı (1.436 farklı /16 ağ, eski Chrome 99–107), insan değil.
+
 ## 18 Ekim — işletim düzeltmeleri ve özel adlı başlık tavanı canlıda
 
 - **Canlı exact `b9dc4002`** (#427 + #426). #426 17 Ekim 20:29Z'de `aeb54585` ile çıktı.
