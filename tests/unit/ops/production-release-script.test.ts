@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -398,5 +398,200 @@ printf 'PASSED\\n'`,
       );
       expect(dondur.indexOf(': >"$migration_hold"')).toBeLessThan(dondur.indexOf("stop caddy"));
     });
+  });
+});
+
+// 17 Ekim 2026 (Astra bulgu 9, Fable P1-2): sunucudaki alarm 2 Ekim'den kalmaydı ve yedek
+// biriminin dizini yoktu; dağıtım makbuzu ikisini de göstermiyordu.
+describe("dağıtım sonu sunucu envanteri", () => {
+  const start = remote.indexOf("host_inventory_files=(");
+  const end = remote.indexOf('\nif test ! -f "$state_dir/baseline-complete"');
+  const definition = remote.slice(start, end);
+
+  function inventory(setup: (host: string, app: string) => void) {
+    const directory = mkdtempSync(path.join(tmpdir(), "release-host-inventory-"));
+    const host = path.join(directory, "host");
+    const app = path.join(directory, "app");
+    try {
+      for (const dir of [
+        "etc/systemd/system",
+        "opt/agent-sozluk/scripts",
+        "usr/local/lib/agent-sozluk",
+        "opt/agent-sozluk/runtime/state",
+      ])
+        mkdirSync(path.join(host, dir), { recursive: true });
+      for (const dir of [
+        "deploy/systemd",
+        "deploy/alarm",
+        "deploy/backup",
+        "deploy/sayac",
+        "deploy/indexnow",
+      ])
+        mkdirSync(path.join(app, dir), { recursive: true });
+      const pairs: Array<[string, string]> = [
+        ["opt/agent-sozluk/scripts/canlilik-alarmi.sh", "deploy/alarm/canlilik-alarmi.sh"],
+        ["opt/agent-sozluk/scripts/backup-postgres.sh", "deploy/backup/backup-postgres.sh"],
+        ["opt/agent-sozluk/scripts/okur-sayaci.py", "deploy/sayac/okur-sayaci.py"],
+        ["opt/agent-sozluk/scripts/uretim-yedek-komutu.sh", "deploy/backup/uretim-yedek-komutu.sh"],
+        ["usr/local/lib/agent-sozluk/indexnow-bildir.py", "deploy/indexnow/indexnow-bildir.py"],
+      ];
+      for (const [installed, candidate] of pairs) {
+        writeFileSync(path.join(host, installed), `${candidate}\n`);
+        writeFileSync(path.join(app, candidate), `${candidate}\n`);
+      }
+      const unit =
+        "[Service]\nReadWritePaths=-/opt/agent-sozluk/runtime/state -/opt/agent-sozluk/backups/postgres\n" +
+        "StandardOutput=append:/var/log/agent-sozluk/backup.log";
+      for (const root of [
+        path.join(host, "etc/systemd/system"),
+        path.join(app, "deploy/systemd"),
+      ]) {
+        writeFileSync(path.join(root, "agent-sozluk-backup.service"), unit);
+        writeFileSync(path.join(root, "agent-sozluk-backup.timer"), "[Timer]\n");
+      }
+      setup(host, app);
+      return spawnSync(
+        "bash",
+        [
+          "-c",
+          `set -Eeuo pipefail
+trap 'echo ERR_TRAP >&2; exit 99' ERR
+app_root='${app}'
+${definition}
+host_inventory '${host}'
+printf 'RELEASE_COMPLETE PASS\\n'`,
+        ],
+        { encoding: "utf8", timeout: 10_000 },
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
+
+  it("aynı kopyalarda yalnız eksik dizinleri listeler; sürümü durdurmaz", () => {
+    const result = inventory(() => undefined);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).not.toContain("RELEASE_HOST_DRIFT");
+    expect(result.stdout).toContain(
+      "RELEASE_HOST_MISSING_DIR /opt/agent-sozluk/backups/postgres agent-sozluk-backup.service",
+    );
+    expect(result.stdout).toContain(
+      "RELEASE_HOST_MISSING_DIR /var/log/agent-sozluk agent-sozluk-backup.service",
+    );
+    expect(result.stdout).not.toContain("MISSING_DIR /opt/agent-sozluk/runtime/state");
+    expect(result.stdout).toContain(
+      "RELEASE_HOST_INVENTORY files=5 units=2 drift=0 missing_dirs=2 missing_files=0",
+    );
+    expect(result.stderr).toContain(
+      "RELEASE_WARN host inventory: drift=0 missing_dirs=2 missing_files=0",
+    );
+    expect(result.stdout).toContain("RELEASE_COMPLETE PASS");
+  });
+
+  it("fark, eksik kurulum, depoda olmayan birim ve drop-in başına bir satır basar", () => {
+    const result = inventory((host, app) => {
+      mkdirSync(path.join(host, "opt/agent-sozluk/backups/postgres"), { recursive: true });
+      mkdirSync(path.join(host, "var/log/agent-sozluk"), { recursive: true });
+      writeFileSync(path.join(host, "opt/agent-sozluk/scripts/canlilik-alarmi.sh"), "eski\n");
+      rmSync(path.join(host, "usr/local/lib/agent-sozluk/indexnow-bildir.py"));
+      writeFileSync(path.join(app, "deploy/systemd/agent-sozluk-bildirim@.service"), "[Unit]\n");
+      writeFileSync(path.join(host, "etc/systemd/system/agent-sozluk-eski.service"), "[Unit]\n");
+      mkdirSync(path.join(host, "etc/systemd/system/agent-sozluk-backup.service.d"));
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const lines = result.stdout.split("\n").filter((line) => line.startsWith("RELEASE_HOST_"));
+    expect(lines).toEqual([
+      "RELEASE_HOST_DRIFT /opt/agent-sozluk/scripts/canlilik-alarmi.sh differs",
+      "RELEASE_HOST_DRIFT /usr/local/lib/agent-sozluk/indexnow-bildir.py not-installed",
+      "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk-bildirim@.service not-installed",
+      "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk-eski.service unversioned",
+      "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk-backup.service.d drop-in",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=5 missing_dirs=0 missing_files=0",
+    ]);
+    expect(result.stderr).toContain(
+      "RELEASE_WARN host inventory: drift=5 missing_dirs=0 missing_files=0",
+    );
+    expect(result.stderr).not.toContain("ERR_TRAP");
+  });
+
+  // Astra 1. tur (17 Ekim): `agent-sozluk.service` ve drop-in'i `agent-sozluk-*` kalıbına uymuyordu.
+  it("compose birimi agent-sozluk.service ve drop-in'i de taranır", () => {
+    const result = inventory((host, app) => {
+      mkdirSync(path.join(host, "opt/agent-sozluk/backups/postgres"), { recursive: true });
+      writeFileSync(
+        path.join(app, "deploy/systemd/agent-sozluk.service"),
+        "[Service]\nStandardOutput=append:/var/log/agent-sozluk/service.log\n",
+      );
+      writeFileSync(
+        path.join(host, "etc/systemd/system/agent-sozluk.service"),
+        "[Service]\nStandardOutput=append:/var/log/agent-sozluk/service.log\n# eski\n",
+      );
+      mkdirSync(path.join(host, "etc/systemd/system/agent-sozluk.service.d"));
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const lines = result.stdout.split("\n").filter((line) => line.startsWith("RELEASE_HOST_"));
+    expect(lines).toEqual([
+      "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk.service differs",
+      "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk.service.d drop-in",
+      "RELEASE_HOST_MISSING_DIR /var/log/agent-sozluk agent-sozluk.service",
+      "RELEASE_HOST_MISSING_DIR /var/log/agent-sozluk agent-sozluk-backup.service",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=2 missing_dirs=2 missing_files=0",
+    ]);
+  });
+
+  // 18 Ekim: taşımada `/etc/agent-sozluk-alarm.env` aktarılmadı, alarm dört gün başlamadı.
+  it("zorunlu eksik EnvironmentFile dosyasını listeler, isteğe bağlıyı geçer", () => {
+    const result = inventory((host, app) => {
+      mkdirSync(path.join(host, "opt/agent-sozluk/backups/postgres"), { recursive: true });
+      mkdirSync(path.join(host, "var/log/agent-sozluk"), { recursive: true });
+      mkdirSync(path.join(host, "etc"), { recursive: true });
+      writeFileSync(path.join(host, "etc/var-olan.env"), "");
+      const alarm =
+        "[Service]\nEnvironmentFile=/etc/agent-sozluk-alarm.env\n" +
+        "EnvironmentFile=-/etc/istege-bagli.env\nEnvironmentFile=/etc/var-olan.env\n";
+      writeFileSync(path.join(app, "deploy/systemd/agent-sozluk-alarm.service"), alarm);
+      writeFileSync(path.join(host, "etc/systemd/system/agent-sozluk-alarm.service"), alarm);
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const lines = result.stdout.split("\n").filter((line) => line.startsWith("RELEASE_HOST_"));
+    expect(lines).toEqual([
+      "RELEASE_HOST_MISSING_FILE /etc/agent-sozluk-alarm.env agent-sozluk-alarm.service",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=0 missing_dirs=0 missing_files=1",
+    ]);
+    expect(result.stderr).toContain(
+      "RELEASE_WARN host inventory: drift=0 missing_dirs=0 missing_files=1",
+    );
+    expect(result.stdout).toContain("RELEASE_COMPLETE PASS");
+  });
+
+  // Astra 1. tur (17 Ekim): işaret temizlikten önce siliniyordu; düşen temizlik `none` görünüyor ve
+  // migration'sız yeniden koşu MIGRATION_SET_CHANGED ile duruyordu.
+  it("migration işareti temizlik ve envanterden sonra, tamam satırından hemen önce kalkar", () => {
+    const tail = remote.slice(remote.indexOf("\ncutover\nverify_release\n"));
+    const phase = tail.indexOf("set_phase cutover-done");
+    const cleanup = tail.indexOf("cleanup_images; fi");
+    const inventory = tail.indexOf("host_inventory ||");
+    const marker = tail.indexOf('find "$runtime_root/.migration-operation" -xdev -depth -delete');
+    const complete = tail.indexOf("RELEASE_COMPLETE PASS");
+    expect(phase).toBeGreaterThan(-1);
+    expect(phase).toBeLessThan(cleanup);
+    expect(cleanup).toBeLessThan(inventory);
+    expect(inventory).toBeLessThan(marker);
+    expect(marker).toBeLessThan(complete);
+    // Tamamlanma kanıtı dosyası `cutover-done` aşamasıyla ve işaret kalkmadan yazılır.
+    const evidence = tail.indexOf('>"$state_dir/migration/cutover-done"');
+    expect(evidence).toBeGreaterThan(phase);
+    expect(evidence).toBeLessThan(cleanup);
+  });
+
+  it("başarılı sürümden sonra, tamam satırından önce ve uyarı olarak çağrılır", () => {
+    const tail = remote.slice(remote.indexOf("\ncutover\nverify_release\n"));
+    expect(tail.indexOf("cleanup_images; fi")).toBeLessThan(tail.indexOf("host_inventory ||"));
+    expect(tail.indexOf("host_inventory ||")).toBeLessThan(tail.indexOf("RELEASE_COMPLETE PASS"));
+    expect(remote).toContain(
+      "host_inventory || printf 'RELEASE_WARN host inventory incomplete\\n' >&2",
+    );
+    // Kesim öncesi alarm farkı uyarısı aynı kalır.
+    expect(remote).toContain("RELEASE_WARN installed alarm script differs from candidate");
   });
 });

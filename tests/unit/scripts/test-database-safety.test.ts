@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { requireTestDatabaseUrl } from "../../../scripts/test-database-safety";
+import { isTestDatabaseName, requireTestDatabaseUrl } from "../../../scripts/test-database-safety";
 
 describe("destructive test database guard", () => {
   it("accepts only PostgreSQL database names dedicated to tests", () => {
@@ -55,5 +55,13 @@ describe("çok parçalı yol", () => {
   it("tek parçalı geçerli adresi kabul eder", () => {
     const url = "postgresql://u:p@localhost:5432/agent_sozluk_m1_test";
     expect(requireTestDatabaseUrl(url, "Unit test")).toBe(url);
+  });
+
+  // Küme sahipliği denetimi (great-reset-namespace, ALTER SYSTEM) aynı ad kuralını kullanır.
+  it("isTestDatabaseName yalnız test adlarını kabul eder", () => {
+    for (const name of ["test", "agent_sozluk_test", "o3_source_ab12_test", "x-test"])
+      expect(isTestDatabaseName(name)).toBe(true);
+    for (const name of ["agent_sozluk", "postgres", "testing", "agent_sozluk_test_copy"])
+      expect(isTestDatabaseName(name)).toBe(false);
   });
 });

@@ -9786,3 +9786,73 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
   `image-verified` öncesi işaret de birlikte kaldırılmalı.
 - Migration'lı dağıtımdan önce `3 × DB + 1 GiB` boş alanı elle ölç; sunucu içi yedek bu bütçeden
   yer.
+
+## 17 Ekim — kararsız `great-reset-namespace` testinin kök nedeni
+
+- **Ortam:** main CI `39037517482` 1. deneme, `coverage` işi (Postgres 16.15, `postgres:16-alpine`);
+  aynı koşunun `database` işi ve 2. denemesi yeşil.
+- **Hata:** ilk test `GREAT_RESET_PRECONDITIONS_FAILED` aldı, beklenen
+  `NAMESPACE_FIXTURE_ROLLBACK`.
+- **Kök neden (CI logundaki Postgres kaydı):** 13:45:57.817 UTC'de pid 604, `entries`, `topics`,
+  `users`, `agent_global_settings`, `audit_logs`, `agent_runs` ve `agent_runtime_capabilities` için
+  `skipping analyze of "…" --- lock not available` yazdı. Bu satırı autovacuum işçisi basar
+  (elle ANALYZE WARNING basar). İşçi önizleme geçtikten sonra test veritabanına bağlandı ve testin
+  ACCESS EXCLUSIVE kilitlerine çarptı; kilitlerden sonraki engel denetimi onu
+  `OTHER_DATABASE_CONNECTIONS` saydı. 12–13 Ekim'deki 55P03 (`agent_sources`, NOWAIT) aynı işçinin
+  kilitten önce gelmesidir. `419a4b0f`'deki "başka oturum kalmayana kadar bekle" yarışı kapatmaz:
+  başlatıcı her `autovacuum_naptime`'da işçi gönderir.
+- **Düzeltme (dal `fix/isletim-korlugu-20261017`):** test dosyası boyunca sahipli test kümesinde
+  `ALTER SYSTEM SET autovacuum = off` + reload (yalnız süper kullanıcı), sonunda önceki değer.
+  Kapı ve beklenen hata değişmedi. CI'da doğrulanacak; yerel güvenli test veritabanı yok.
+
+**Do not repeat:**
+
+- Kararsız DB testinde önce servis konteynerinin Postgres logunu oku (`gh run view --log-failed`
+  sonunda); bekleme eklemek kök nedeni gizler.
+
+## 17 Ekim — işletim körlüğü dalı, Astra 1. tur NO-GO
+
+- **İncelenen:** `5c14d60d` (PR #427), hakem Astra (`gpt-6-astra`, `model_reasoning_effort=xhigh`, `--sandbox read-only`).
+  Hüküm NO-GO; altı P2, bir P3.
+- **Düzeltilen:** işletim kontrolü okunamayan kaynakta "düzeldi" gönderiyordu; ntfy reddedince
+  görülen arıza kayboluyordu; durum yazım hataları yutuluyordu; `cutover-done` sonrası temizlik
+  düşerse migration'sız yeniden koşu `MIGRATION_SET_CHANGED` ile duruyordu (işaret artık en son
+  kalkar); `ALTER SYSTEM` yalnız ad sonekine güveniyordu (artık açık küme sahipliği şartı);
+  envanter `agent-sozluk.service`'i kaçırıyordu; yedek betiğinde üretim adresi, ölçüm betiğinde
+  kişisel e-posta vardı.
+- **Astra 2. tur:** `c76d2c1f` NO-GO, 3 × P2 (koşan birim ve geçersiz eşik sahte "düzeldi";
+  canlılıkta gönderilemeyen kesinti kayboluyordu; `migration/` dizini tamamlanma kanıtı
+  sayılıyordu). Düzeltildi: `? <ad>` taşıma, canlılıkta `gorulen` alanı, `migration/cutover-done`
+  kanıt dosyası ve işaretten önce düşen planlama satırı. Astra bütçesi doldu; sonraki tur Sol 6.1.
+- **Sol 6.1 1. tur** (`gpt-6.1-sol`, xhigh, salt okunur): `70c73594` NO-GO, 1 × P2. Canlılıkta
+  iletilemeyen kesintiden sonra başka türden bir bildirim (ör. sorgu hatası) başarıyla gidince
+  `gorulen` kaydı tümüyle siliniyordu. Düzeltildi: iletilemeyen diğer arıza gövdeye eklenir, ancak
+  böyle iletilince kayıttan düşer.
+
+**Do not repeat:**
+
+- Alarmda "okuyamadım"ı "sorun yok"tan ayır; durum yazımı ve gönderim hatasını aynı koşuda
+  sessizce geçme.
+
+## 17 Ekim — #426 özel adlı başlık tavanı canlıda; ana canlılık alarmı 14 Ekim'den beri ölü
+
+- **Hakem:** Astra 2 tur (`e0f6d396` NO-GO 2 × P2 + P3; `5b2e5e57` NO-GO 1 × P2, donmuş kart),
+  dar Sol 6.1 1 tur GO (`06181e4f`).
+- **Dağıtım:** exact `aeb5458550e382de068f8abdd94bda24a5bda490` (#426). Main CI `39063305636`,
+  RC `39064510652` success (ilk RC `39063325764` CI bitmeden başlatıldığı için "Verify exact
+  candidate" adımında düştü). Yetki: AGENTS.md süreli istisna, PLAN 17 Ekim sırası 4. madde.
+  `--pause-society-flow --cleanup`, migration yok; `RELEASE_COMPLETE PASS`, smoke 200, disk
+  %61 → %56. Resume 382; ardından 1 SUCCEEDED + 3 PARTIAL koşu, 4 eylem SUCCEEDED.
+- **Resume tuzağı:** uzaktan `test -z "$(pgrep -f 'agent-society-flow.ts pause')"` kendi
+  `bash -c` komut satırını eşleştirip `set -e` ile sessizce çıktı. Kalıp `[p]ause` ile düzeltildi.
+- **Alarm bulgusu:** dağıtım sonrası `agent-sozluk-alarm.service` `Result=resources`. Neden:
+  `EnvironmentFile=/etc/agent-sozluk-alarm.env` (ntfy konusu) 14 Ekim OVH taşımasında yeni
+  sunucuya hiç aktarılmamış. Ana canlılık/sağlık alarmı 14 Ekim'den beri başlamıyor; durum
+  dosyaları 14 Ekim'de donuk. Eski konu hiçbir yerde kayıtlı değil; hangi konunun kullanılacağı
+  Gökhan kararı (18 Ekim: "Ntfy deferred şu an").
+
+**Do not repeat:**
+
+- RC'yi main CI bitmeden başlatma; "Verify exact candidate" başarılı push CI arar.
+- Uzak `pgrep -f` kalıbını köşeli parantezle yaz; kendi komut satırını eşleştirir.
+- Sunucu taşımasında `/etc` altındaki birim ortam dosyalarını (`EnvironmentFile=`) envantere al.

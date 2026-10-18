@@ -1,0 +1,40 @@
+[Unit]
+Description=Agent Sozluk production Compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/opt/agent-sozluk/runtime/compose.production.yaml
+ConditionPathExists=/opt/agent-sozluk/app/.env
+# Başarısızlık sessiz kalmasın (17 Ekim): ortak bildirim birimi, birim başına 6 saatte bir.
+OnFailure=agent-sozluk-bildirim@%n.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/agent-sozluk/app
+Environment=APP_IMAGE=agent-sozluk:production
+Environment=DOCKER_CONFIG=/tmp/agent-sozluk-docker-config
+ExecStartPre=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml config --quiet
+ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml up -d --no-build --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml down --timeout 60
+TimeoutStartSec=300
+TimeoutStopSec=120
+UMask=0027
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX
+StandardOutput=append:/var/log/agent-sozluk/service.log
+StandardError=append:/var/log/agent-sozluk/service.log
+
+[Install]
+WantedBy=multi-user.target

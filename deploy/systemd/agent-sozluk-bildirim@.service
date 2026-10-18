@@ -1,0 +1,54 @@
+[Unit]
+Description=Agent Sozluk failure notification for %i
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+# 17 Ekim 2026 (Fable P1-1, Astra bulgu 5): 15–17 Ekim'de sunucu içi yedek üç gece
+# `226/NAMESPACE` ile düştü ve kimse görmedi. Her oneshot birim `OnFailure=` ile bunu çağırır.
+# Bildirim alarmla AYNI yoldan gider (`canlilik-alarmi.sh --bildir`); ikinci bir dış kanal yok
+# (Gökhan kararı bekliyor). Aynı birim için 6 saatte en çok bir bildirim. Hata, gönderimden
+# önce `/var/lib/agent-sozluk-alarm/son-birim-hatasi` dosyasına yazılır; gönderilemezse bu
+# birim de başarısız kalır (`systemctl --failed`) ve `son-bildirim-hatasi` güncellenir.
+# Bu birimde OnFailure= BİLEREK yok: kendi hatasını bildirmeye çalışması döngü olurdu.
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+StateDirectory=agent-sozluk-alarm
+StateDirectoryMode=0700
+# /var/lib yazılamıyorsa (ör. disk dolu) 6 saatlik bastırma kaydı buraya düşer: tmpfs, açılışa
+# kadar korunur. Kayıt kalıcı değilse bildirim hiç gönderilmez (sınırsız tekrar olmasın).
+RuntimeDirectory=agent-sozluk-bildirim
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+Environment=ALARM_DURUM_DOSYASI=/var/lib/agent-sozluk-alarm/durum
+EnvironmentFile=/etc/agent-sozluk-alarm.env
+ExecStart=/opt/agent-sozluk/scripts/canlilik-alarmi.sh --bildir %i
+
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+# ntfy'ye ulaşmak için ağ; docker ve veritabanına erişmez.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+ReadOnlyPaths=/opt/agent-sozluk/scripts
+InaccessiblePaths=-/opt/agent-sozluk/app -/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/work -/run/docker.sock -/var/run/docker.sock
+
+TimeoutStartSec=1min
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agent-sozluk-bildirim

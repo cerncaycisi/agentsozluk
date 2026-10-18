@@ -31,6 +31,19 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
    envanteri; runbook'ta aşamaya bağlı tek migration kurtarma akışı; kararsız
    `great-reset-namespace` testi; migration disk marjı; ilgili başlıklarda hesap yaşı sınırı;
    Codex CLI geri dönüşünde canary şartı.
+   - **Uygulandı, `fix/isletim-korlugu-20261017` dalında (17 Ekim, PR #427):** Astra 1. tur
+     `5c14d60d` NO-GO, yedi bulgu (okunamayan kaynak, teslim edilemeyen arıza, durum yazımı,
+     `cutover-done` devamı, autovacuum kapsamı, envanter kalıbı, açık depoda adres) düzeltildi;
+     ikinci tur bekliyor. On maddenin hepsi kodda ve birim testlerinde. Alarm körlükte 3 ile çıkar, işletim kontrolü
+     (son başarılı koşu yaşı, disk marjı) ve `--bildir`; `agent-sozluk-bildirim@` +
+     `OnFailure=`; yedek birimi `ReadWritePaths=-…` ve betikte yüksek sesli dizin hatası; dağıtım
+     sonu `RELEASE_HOST_DRIFT`/`RELEASE_HOST_MISSING_DIR`; sunucu dışı yedek Drive hatasında
+     `YEDEK_OK_YEREL` ve çıkış 3; runbook'ta aşamaya bağlı kurtarma; kararsız testin kök nedeni
+     autovacuum işçisi (CI logu), dosya boyunca autovacuum kapalı; ilgili bağlarda 72 saat; CLI
+     geri dönüş canary şartı (YEREL_KANIT).
+   - **Kalan:** entegrasyon testleri yalnız CI'da; birleştirmeden sonra sunucudaki birimler,
+     alarm ve yedek betikleri runbook "Sunucu içi gece yedeği…" bölümüyle yeniden kurulur ve ilk
+     gece koşusu okunur; operatör sunucusundaki `gecelik-yedek.sh` güncellenir.
 2. **Talep ölçümü:** sayaç tanımı düzeltilip sürümlenir (site içi/geçersiz yönlendiren ayrı);
    "insan", "görüntüleme", "dış giriş" ve "cevap motoru getirmesi" ayrı raporlanır.
 3. ~~**Karma yazım hükmü**~~ 17 Ekim: canlı kör ölçüm +0,03 (eşik +0,3), kapatıldı

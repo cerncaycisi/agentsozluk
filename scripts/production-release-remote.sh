@@ -843,6 +843,131 @@ cleanup_images() {
     "$container_hash_after"
 }
 
+# Sunucu envanteri (17 Ekim 2026; Astra bulgu 9, Fable P1-2). Dağıtım yalnız uygulamayı ve
+# runtime birimini taşır; alarm, yedek, sayaç betikleri ve öteki systemd birimleri elle kurulur.
+# 15–17 Ekim'de sunucudaki alarm 2 Ekim'den kalmaydı ve yedek biriminin `ReadWritePaths` dizini
+# yoktu; ikisi de dağıtım makbuzunda görünmüyordu. Başarılı sürümden sonra kurulu kopyaların
+# sha256'sı aday depo kopyalarıyla karşılaştırılır: fark başına bir `RELEASE_HOST_DRIFT <yol>
+# <neden>`, kurulu birimlerin eksik yazma/log dizinleri için `RELEASE_HOST_MISSING_DIR <yol>
+# <birim>`, zorunlu (`-` öneksiz) eksik `EnvironmentFile=` için `RELEASE_HOST_MISSING_FILE <yol>
+# <birim>` (14 Ekim taşımasında `/etc/agent-sozluk-alarm.env` aktarılmadı; alarm 14–18 Ekim
+# `Result=resources` ile hiç başlamadı) ve tek özet satırı basılır. Dağıtımı DURDURMAZ (yalnız `RELEASE_WARN`); satırlar
+# makbuza yazılır ve runbook'un kurulum bölümüyle giderilir. Hiçbir şey kurmaz ya da değiştirmez.
+# Kurulu yol | aday yol ($app_root'a göre). Birimler ayrıca dizinden taranır.
+host_inventory_files=(
+  '/opt/agent-sozluk/scripts/canlilik-alarmi.sh|deploy/alarm/canlilik-alarmi.sh'
+  '/opt/agent-sozluk/scripts/backup-postgres.sh|deploy/backup/backup-postgres.sh'
+  '/opt/agent-sozluk/scripts/okur-sayaci.py|deploy/sayac/okur-sayaci.py'
+  '/opt/agent-sozluk/scripts/uretim-yedek-komutu.sh|deploy/backup/uretim-yedek-komutu.sh'
+  '/usr/local/lib/agent-sozluk/indexnow-bildir.py|deploy/indexnow/indexnow-bildir.py'
+)
+host_unit_dir=/etc/systemd/system
+
+host_inventory_hash() {
+  if test -f "$1" && test ! -L "$1" && test -r "$1"; then sha256sum <"$1"; else return 1; fi
+}
+
+# $1 gösterilen kurulu yol, $2 gerçek kurulu yol, $3 aday. Çağıranın `drift` sayacını artırır.
+host_inventory_compare() {
+  local reason='' installed_hash candidate_hash
+  if test ! -e "$2" && test ! -L "$2"; then
+    reason=not-installed
+  elif ! installed_hash="$(host_inventory_hash "$2")"; then
+    reason=unreadable
+  elif ! candidate_hash="$(host_inventory_hash "$3")"; then
+    reason=candidate-missing
+  elif test "$installed_hash" != "$candidate_hash"; then
+    reason=differs
+  fi
+  if test -n "$reason"; then
+    printf 'RELEASE_HOST_DRIFT %s %s\n' "$1" "$reason"
+    drift=$((drift + 1))
+  fi
+  return 0
+}
+
+# $1: yalnız testler için kök önek (üretimde boş). Okunamayan dosya da farktır: sessiz geçilmez.
+host_inventory() {
+  local prefix="${1:-}" record installed candidate name unit line value path dir
+  local files=0 units=0 drift=0 missing=0 missing_files=0
+  local -a dirs
+  for record in "${host_inventory_files[@]}"; do
+    installed="${record%%|*}"
+    candidate="$app_root/${record#*|}"
+    files=$((files + 1))
+    host_inventory_compare "$installed" "$prefix$installed" "$candidate"
+  done
+  # Adaydaki her birim kurulu olmalı; kurulu ama depoda olmayan birim de farktır.
+  # `agent-sozluk.service` (compose birimi) `agent-sozluk-*` kalıbına uymaz; ayrıca sayılır.
+  for candidate in "$app_root"/deploy/systemd/agent-sozluk.service \
+                   "$app_root"/deploy/systemd/agent-sozluk-*.service \
+                   "$app_root"/deploy/systemd/agent-sozluk-*.timer; do
+    test -f "$candidate" || continue
+    name="${candidate##*/}"
+    units=$((units + 1))
+    host_inventory_compare "$host_unit_dir/$name" "$prefix$host_unit_dir/$name" "$candidate"
+  done
+  for unit in "$prefix$host_unit_dir"/agent-sozluk.service \
+              "$prefix$host_unit_dir"/agent-sozluk-*.service \
+              "$prefix$host_unit_dir"/agent-sozluk-*.timer \
+              "$prefix$host_unit_dir"/agent-sozluk.service.d \
+              "$prefix$host_unit_dir"/agent-sozluk-*.d; do
+    test -e "$unit" || test -L "$unit" || continue
+    name="${unit##*/}"
+    if [[ "$name" == *.d ]]; then
+      # Drop-in depodaki birimi sessizce ezer.
+      printf 'RELEASE_HOST_DRIFT %s drop-in\n' "$host_unit_dir/$name"
+      drift=$((drift + 1))
+    elif test ! -e "$app_root/deploy/systemd/$name"; then
+      printf 'RELEASE_HOST_DRIFT %s unversioned\n' "$host_unit_dir/$name"
+      drift=$((drift + 1))
+    fi
+  done
+  # Kurulu servislerin yazma dizinleri: eksikse systemd birimi betik başlamadan düşürür
+  # (`226/NAMESPACE`, `-` önekiyle betiğin kendi hatası; `append:` için `209/STDOUT`).
+  for unit in "$prefix$host_unit_dir"/agent-sozluk.service \
+              "$prefix$host_unit_dir"/agent-sozluk-*.service; do
+    test -f "$unit" && test -r "$unit" || continue
+    while IFS= read -r line || test -n "$line"; do
+      dirs=()
+      case "$line" in
+        EnvironmentFile=/*)
+          # Yalnız varlık: dosya root 0600 olabilir, içerik okunmaz. `-` önekli isteğe bağlıdır.
+          path="${line#EnvironmentFile=}"
+          if [[ "$path" != *%* ]] && test ! -e "$prefix$path"; then
+            printf 'RELEASE_HOST_MISSING_FILE %s %s\n' "$path" "${unit##*/}"
+            missing_files=$((missing_files + 1))
+          fi
+          ;;
+        ReadWritePaths=*)
+          read -r -a dirs <<<"${line#ReadWritePaths=}"
+          ;;
+        StandardOutput=append:/* | StandardOutput=file:/* | StandardOutput=truncate:/* | \
+        StandardError=append:/* | StandardError=file:/* | StandardError=truncate:/*)
+          value="${line#*=}"; value="${value#*:}"
+          dirs=("${value%/*}")
+          ;;
+      esac
+      for path in "${dirs[@]}"; do
+        dir="${path#[-+]}"
+        dir="${dir#[-+]}"
+        [[ "$dir" == /* && "$dir" != *%* ]] || continue
+        if test ! -d "$prefix$dir"; then
+          printf 'RELEASE_HOST_MISSING_DIR %s %s\n' "$dir" "${unit##*/}"
+          missing=$((missing + 1))
+        fi
+      done
+    done <"$unit"
+  done
+  printf 'RELEASE_HOST_INVENTORY files=%s units=%s drift=%s missing_dirs=%s missing_files=%s\n' \
+    "$files" "$units" "$drift" "$missing" "$missing_files"
+  if test "$drift" != 0 || test "$missing" != 0 || test "$missing_files" != 0; then
+    printf 'RELEASE_WARN host inventory: drift=%s missing_dirs=%s missing_files=%s (see runbook, Sunucu içi gece yedeği)\n' \
+      "$drift" "$missing" "$missing_files" >&2
+  fi
+  return 0
+}
+
 if test ! -f "$state_dir/baseline-complete"; then
   capture_initial_state
 else
@@ -862,8 +987,21 @@ verify_release
 publish_boot_tag
 if test "$migration_mode" != no-migration; then
   set_phase cutover-done
-  find "$runtime_root/.migration-operation" -xdev -depth -delete
+  # Tamamlanma kanıtı (Astra 2. tur, 17 Ekim): `migration/` dizini planlamanın ilk adımında
+  # açılır; işaret yazılmadan düşen planlama da `migration/` bırakır. Dizinin varlığı değil bu
+  # dosya "migration uygulandı ve kesim bitti" der (runbook kurtarma tablosu).
+  printf '%s\n' "$candidate_sha" >"$state_dir/migration/cutover-done"
 fi
 if test "$cleanup_requested" = cleanup; then cleanup_images; fi
+# Uyarıdır: envanterin kendi hatası da sürümü geri çevirmez, ama sessiz de kalmaz.
+host_inventory || printf 'RELEASE_WARN host inventory incomplete\n' >&2
+# İşaret EN SON kalkar (Astra 1. tur, 17 Ekim): `cutover-done` sonrası temizlik düşerse işaret
+# `cutover-done` olarak kalır ve aynı SHA + aynı migration listesiyle yeniden koşu migration fazını
+# atlayıp (`cutover-done` girişi boş geçer) doğrulama ve temizliği tekrarlar. Önceden işaret
+# temizlikten önce siliniyordu: düşen temizlik `none` gibi görünüyor, migration'sız yeniden koşu
+# da başlangıç kaydındaki eski migration kümesi yüzünden `MIGRATION_SET_CHANGED` ile duruyordu.
+if test "$migration_mode" != no-migration; then
+  find "$runtime_root/.migration-operation" -xdev -depth -delete
+fi
 printf 'RELEASE_COMPLETE PASS sha=%s cleanup=%s migrations=%s\n' \
   "$candidate_sha" "$cleanup_requested" "$migration_mode"

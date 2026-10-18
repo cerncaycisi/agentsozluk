@@ -502,3 +502,84 @@ describe("Milestone 2 production operator runbook", () => {
     expect(runbook).not.toMatch(/\bprintenv\b/gu);
   });
 });
+
+// 17 Ekim 2026 (Astra bulgu 7): genel "`.release-op-<sha>` sil" tarifi migration beklenti
+// dosyasını da sildi (`EXPECTATION_UNREADABLE`). Kurtarma tek, aşamaya bağlı akıştadır.
+describe("migration'lı dağıtım hata sonrası kurtarma", () => {
+  const failureModes = runbook.slice(
+    runbook.indexOf("## Deploy-day failure modes"),
+    runbook.indexOf("## Operator scripts"),
+  );
+  const a5 = runbook.slice(
+    runbook.indexOf("### Migration'lı sürüm (A5, yalnız ek yapan)"),
+    runbook.indexOf("### Gate 8: deploy, additive migration and V1 preservation"),
+  );
+  const recovery = a5.slice(a5.indexOf("**Hata sonrası kurtarma (aşamaya göre"));
+  const recoveryProse = recovery.replace(/\s+/gu, " ");
+
+  it("genel silme tarifi yok; deploy-day maddesi tek akışa yönlendirir", () => {
+    expect(failureModes).not.toMatch(/Fix: delete `[^`]*\.release-op-<sha>`/u);
+    expect(failureModes).toContain("**Hata sonrası kurtarma (aşamaya göre)**");
+    expect(failureModes).toContain("EXPECTATION_UNREADABLE");
+    expect(recovery.length).toBeGreaterThan(0);
+  });
+
+  it("her aşama için tutulacak ve silinecek durumu söyler", () => {
+    for (const phase of [
+      "`none`, durum dizininde `migration/` yok",
+      "`planned`, `image-verified`",
+      "`frozen`, `backup-verified`, `rehearsed`",
+      "`migrating`, `migrated`, `post-verified`",
+      "`writers-may-run`, `traffic-open`, `worker-allowed`",
+      "`cutover-done`",
+    ])
+      expect(recovery).toContain(phase);
+    expect(recoveryProse).toContain(
+      "migration işareti varken `.release-op-<sha>` asla tek başına silinmez",
+    );
+    expect(recoveryProse).toContain("işaret + kilit + durum dizini, **üçü birlikte**");
+    expect(recoveryProse).toContain("**Dağıtım başladıktan sonra ayar değişmez**");
+    expect(recoveryProse).toContain("`--pause-society-flow`");
+  });
+
+  // Astra 1. tur (17 Ekim): `cutover-done` için migration'sız yeniden koşu MIGRATION_SET_CHANGED
+  // ile durur; devam yolu aynı liste ya da elle tamamlamadır.
+  it("cutover-done ve migration kanıtlı none için yürütülebilir devam yolu verir", () => {
+    expect(recovery).toContain("`none`, `migration/cutover-done` var");
+    // Astra 2. tur (17 Ekim): `migration/` dizini tamamlanma kanıtı değildir; işaretten önce
+    // düşen planlama da onu bırakır.
+    expect(recovery).toContain("`none`, `migration/` var ama `migration/cutover-done` yok");
+    expect(recoveryProse).toContain("İşaret yazılmadan önce düşen planlama");
+    expect(recoveryProse).toContain(
+      "çalışan app imajı `previous-image-id`, `runtime/current` `previous-runtime`",
+    );
+    expect(recoveryProse).toContain("aynı SHA + aynı listeyle yeniden koşu");
+    expect(recoveryProse).toContain("Tamamlanma kanıtı `cutover-done` dosyasıdır");
+    expect(recoveryProse).toContain(
+      "yalnız aşağıdaki 1. ve 2. adımın olumlu kanıtıyla kabul edilir",
+    );
+    expect(recoveryProse).toContain("Aynı SHA ve **aynı** migration bayrağıyla");
+    expect(recoveryProse).toContain("Migration'sız mod kullanılmaz (`MIGRATION_SET_CHANGED`");
+    expect(recoveryProse).toContain("`SETTINGS_PROFILE_CHANGED`");
+    expect(recoveryProse).toContain("**Yeniden koşu yok**");
+    const manual = recoveryProse.slice(recoveryProse.indexOf("**Elle tamamlama:"));
+    expect(manual).toContain("`.release-op-<sha>/candidate-image-id`");
+    expect(manual).toContain("`finished_at IS NULL` kayıt sayısı 0");
+    expect(manual).toContain("İşaret yalnız `phase` = `cutover-done` ise kaldırılır");
+    expect(manual).toContain("Temizlik yeniden koşuyla yapılmaz");
+    expect(manual).toContain("beş koşuluyla");
+  });
+
+  it("üçlü temizlik dondurma başlamamışken ve geçmişte migration yokken yapılır", () => {
+    expect(recoveryProse).toContain("**yalnız** `identity`, `phase`, `state-dir` var");
+    expect(recoveryProse).toContain("`boot-id`/`frozen-deadline` yok");
+    expect(recoveryProse).toContain('"Elle kilit temizliği"nin beş koşulu');
+    expect(recovery).toMatch(/_prisma_migrations\\" WHERE migration_name IN/u);
+    const marker = recovery.indexOf("find /opt/agent-sozluk/runtime/.migration-operation -xdev");
+    const state = recovery.indexOf("find /opt/agent-sozluk/runtime/.release-op-<sha> -xdev");
+    const lock = recovery.indexOf("find /opt/agent-sozluk/runtime/.release-lock -xdev");
+    expect(marker).toBeGreaterThan(-1);
+    expect(state).toBeGreaterThan(marker);
+    expect(lock).toBeGreaterThan(state);
+  });
+});

@@ -1,5 +1,10 @@
 const safeTestDatabaseName = /(?:^|[_-])test$/iu;
 
+/** Adı `test` olan ya da `_test`/`-test` ile biten veritabanı; küme sahipliği denetimi de kullanır. */
+export function isTestDatabaseName(name: string): boolean {
+  return safeTestDatabaseName.test(name);
+}
+
 export function requireTestDatabaseUrl(value: string | undefined, caller: string): string {
   if (!value) throw new Error(`${caller} requires TEST_DATABASE_URL.`);
 
