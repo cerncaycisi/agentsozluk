@@ -890,9 +890,11 @@ host_inventory_compare() {
 # eksik); üst dizin aranamıyorsa (ör. `/etc/agent-sozluk` root:agent-runtime 0750) 1: yokluk
 # kanıtlanamaz. 18 Ekim ilk koşusunda çalışan runtime'ın `runtime.env` dosyası bu yüzden yanlışlıkla
 # "eksik" göründü.
+# Çözülemeyen sembolik bağ (kopuk ya da hedefi aranamıyor) da kanıtlanamaz: 1 (Sol 6.1, 18 Ekim).
 host_inventory_absent() {
   local parent="$1"
-  test -e "$1" || test -L "$1" && return 2
+  test -e "$1" && return 2
+  test -L "$1" && return 1
   while :; do
     parent="${parent%/*}"
     test -n "$parent" || parent=/
@@ -900,6 +902,7 @@ host_inventory_absent() {
       test -x "$parent" && return 0
       return 1
     fi
+    test -L "$parent" && return 1
     test "$parent" != / || return 1
   done
 }

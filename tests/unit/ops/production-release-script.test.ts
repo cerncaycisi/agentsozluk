@@ -1,5 +1,13 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -587,6 +595,32 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
       "RELEASE_HOST_MISSING_FILE /etc/bosluklu.env agent-sozluk-runtime.service",
       "RELEASE_HOST_UNVERIFIED /etc/kapali/durum agent-sozluk-runtime.service",
       "RELEASE_HOST_INVENTORY files=5 units=3 drift=0 missing_dirs=0 missing_files=1 unverified=2",
+    ]);
+  });
+
+  // Sol 6.1 (18 Ekim): kopuk bağ sessizce geçiliyordu; aranamayan hedefe giden üst dizin bağı
+  // yanlışlıkla "eksik" çıkıyordu.
+  it("çözülemeyen sembolik bağı ve bağlı üst dizini doğrulanamadı sayar", () => {
+    const result = inventory((host, app) => {
+      mkdirSync(path.join(host, "opt/agent-sozluk/backups/postgres"), { recursive: true });
+      mkdirSync(path.join(host, "var/log/agent-sozluk"), { recursive: true });
+      mkdirSync(path.join(host, "etc"), { recursive: true });
+      mkdirSync(path.join(host, "gizli/hedef"), { recursive: true });
+      writeFileSync(path.join(host, "gizli/hedef/runtime.env"), "");
+      symlinkSync(path.join(host, "yok.env"), path.join(host, "etc/kopuk.env"));
+      symlinkSync(path.join(host, "gizli/hedef"), path.join(host, "etc/bagli"));
+      chmodSync(path.join(host, "gizli"), 0o000);
+      const runtime =
+        "[Service]\nEnvironmentFile=/etc/kopuk.env\nEnvironmentFile=/etc/bagli/runtime.env\n";
+      writeFileSync(path.join(app, "deploy/systemd/agent-sozluk-runtime.service"), runtime);
+      writeFileSync(path.join(host, "etc/systemd/system/agent-sozluk-runtime.service"), runtime);
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const lines = result.stdout.split("\n").filter((line) => line.startsWith("RELEASE_HOST_"));
+    expect(lines).toEqual([
+      "RELEASE_HOST_UNVERIFIED /etc/kopuk.env agent-sozluk-runtime.service",
+      "RELEASE_HOST_UNVERIFIED /etc/bagli/runtime.env agent-sozluk-runtime.service",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=0 missing_dirs=0 missing_files=0 unverified=2",
     ]);
   });
 
