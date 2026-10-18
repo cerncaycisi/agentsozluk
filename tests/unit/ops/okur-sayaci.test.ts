@@ -742,15 +742,18 @@ INSERT INTO sayac VALUES
         "https://www.google.de/",
         "https://yandex.com.tr/",
         "https://www.google.co.uk/",
+        // Genel `com.xx` biçimi kabul edilmez (Astra, 2. tur).
+        "https://google.com.us/",
+        "https://yandex.com.uk/",
       ].map((referer, i) => satir({ ts: T0 - 40 + i, uri: "/baslik/a--1", referer })),
       T0,
     );
     expect(gun().ozet.dis_giris).toEqual({
-      toplam: 6,
+      toplam: 8,
       arama_motoru: 4,
       cevap_motoru: 0,
       sosyal: 0,
-      diger: 2,
+      diger: 4,
     });
   });
 
@@ -818,5 +821,39 @@ INSERT INTO sayac VALUES
     expect(calistir([...kayit, satir({ ts: ertesi + 100 })], ertesi + 3600).status).toBe(0);
     expect(gun("2026-10-03").ozet.insan_goruntuleme).toBe(1);
     expect(gun().ozet.insan_goruntuleme).toBe(3);
+  });
+  it("otorite, köşeli ayraç, taşan punycode ve site içi doğrulaması (Astra, 18 Ekim, 2. tur)", () => {
+    const sonuc = calistir(
+      [
+        "https://[v1.google.com]/",
+        "https://agentsozluk.com\\@google.com/",
+        `https://xn--${"9".repeat(32)}a.com/`,
+        "https://.agentsozluk.com./",
+        "https://xn--a.agentsozluk.com./",
+        "http://[2001:db8::7]/",
+        "https://www.agentsozluk.com./",
+      ].map((referer, i) => satir({ ts: T0 - 40 + i, uri: "/baslik/a--1", referer })),
+      T0,
+    );
+    expect(sonuc.status).toBe(0);
+    expect(sonuc.stderr).toBe("");
+    const g = gun().sayac;
+    // Her istek eksiksiz sınıflandı: taşan punycode da yarım kalmadı.
+    expect(g.istek?.islenemeyen).toBeUndefined();
+    expect(g.yonlendiren).toEqual({ "(gecersiz)": 5, "(ip)": 1, "(site ici)": 1 });
+    expect(g.guvenilir_v2).toEqual({ hayir: 7 });
+  });
+
+  it("satırsız ilk koşudan sonra gelen trafik eksiksiz sayılır (Astra, 18 Ekim, 2. tur)", () => {
+    expect(calistir([], T0).status).toBe(0);
+    expect(gun().kismi).toBe(1);
+    const sonuc = calistir(
+      [satir({ ts: T0 + 100, uri: "/" }), satir({ ts: T0 + 200, uri: "/baslik/a--1" })],
+      T0 + 3600,
+    );
+    expect(sonuc.status).toBe(0);
+    expect(sonuc.stderr).not.toContain("imleç yok");
+    expect(gun().ozet.insan_goruntuleme).toBe(2);
+    expect(gun().bosluk).toBe(0);
   });
 });

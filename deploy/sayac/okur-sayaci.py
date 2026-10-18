@@ -37,9 +37,10 @@ sonrasını AKIŞLA okur. Sayaçlar ve imleç tek SQLite işleminde yazılır: k
 yarıda kalırsa hiçbiri yazılmaz, hiçbir istek iki kez sayılmaz (Astra, 2 Ekim).
 İmleçle ilk satır arasında 15 dakikadan uzun boşluk varsa ya da Caddy
 konteyneri değiştiyse arada kalan BÜTÜN günler `bosluk` olarak işaretlenir.
-Dolu veritabanında imleç yok ya da bozuksa kayıt yeniden sayılmaz: imleç şimdiye konur, son
+Dolu veritabanında (en az bir sayılmış satır) imleç yok ya da bozuksa kayıt yeniden sayılmaz: imleç şimdiye konur, son
 veri gününden bugüne kadar günler `bosluk` olur (18 Ekim; çift sayım yerine görünür eksik).
-Yönlendiren yalnız http(s), geçerli kapı ve çözülebilen punycode ile alan adı sayılır; alan
+Yönlendiren yalnız http(s), RFC 3986 otoritesi, geçerli kapı ve çözülebilen punycode ile alan
+adı sayılır (köşeli ayraçlı ad yalnız IPv6); site içi kararı doğrulamadan sonra verilir. Alan
 adları küçük harfe çevrilir, sondaki tek nokta atılır.
 
 Kullanım:
@@ -155,10 +156,12 @@ DIS_KAYNAKLAR = [
     (
         "arama_motoru",
         re.compile(
-            # Ülke uzantısı yalnız `com`, `com.xx`, `co.xx` ya da iki harf: `google.foo.de` gibi
-            # başkasının alanındaki ad eşleşmez (Astra, 18 Ekim).
-            r"(^|\.)(google\.(com|com\.[a-z]{2}|co\.[a-z]{2}|[a-z]{2})|bing\.com"
-            r"|yandex\.(com|com\.[a-z]{2}|[a-z]{2})"
+            # Ülke uzantısı açık listeyle: `com`, iki harfli ülke alanı ya da bilinen ikinci düzey
+            # biçimler. `google.foo.de`, `google.com.us` gibi başkasının alanı eşleşmez (Astra, 18
+            # Ekim, 2. tur). İki harfli ülke alanında ad doğrudan kayıtlıdır, araya etiket girmez.
+            r"(^|\.)(google\.(com|[a-z]{2}|com\.(tr|au|br|mx|ar|sg|hk|tw|ua|eg|sa|pk|ng|co|vn|ph|my)"
+            r"|co\.(uk|jp|in|kr|za|id|th|nz|il))|bing\.com"
+            r"|yandex\.(com|ru|kz|by|ua|uz|az|com\.(tr|am|ge)|co\.il)"
             r"|ya\.ru|duckduckgo\.com|yahoo\.com|ecosia\.org|search\.brave\.com|startpage\.com"
             r"|qwant\.com|baidu\.com|naver\.com|seznam\.cz|kagi\.com|petalsearch\.com)$"
         ),
@@ -240,7 +243,8 @@ def idna_gecerli(alan: str) -> bool:
         if etiket.startswith("xn--"):
             try:
                 etiket.encode("ascii").decode("idna")
-            except (UnicodeError, ValueError):
+            except (UnicodeError, ValueError, OverflowError):
+                # Çok büyük punycode değeri OverflowError verir (Astra, 18 Ekim, 2. tur).
                 return False
     return True
 
@@ -258,6 +262,18 @@ def yonlendiren_sinifi(ref: str) -> str:
         return "(gecersiz)"
     if parca.scheme.lower() not in ("http", "https") or kapi == 0 or not alan:
         return "(gecersiz)"
+    # Otorite yalnız RFC 3986 karakterleri taşır: ters bölü (`site\@google.com`) tarayıcıda başka
+    # ayrıştırılır. Köşeli ayraçlı ad yalnız IPv6 olabilir; `[v1.google.com]` alan adı değildir
+    # (Astra, 18 Ekim, 2. tur).
+    if re.search(r"[^A-Za-z0-9._~%!$&'()*+,;=:@\[\]-]", parca.netloc):
+        return "(gecersiz)"
+    sunucu = parca.netloc.rpartition("@")[2]
+    if sunucu.startswith("["):
+        try:
+            ipaddress.IPv6Address(sunucu[1:].partition("]")[0])
+        except ValueError:
+            return "(gecersiz)"
+        return "(ip)"
     try:
         ipaddress.ip_address(alan)
         return "(ip)"
@@ -266,10 +282,11 @@ def yonlendiren_sinifi(ref: str) -> str:
     # inet_aton yazımları: 1–4 parça, her biri ondalık, sekizlik ya da 0x onaltılık.
     if re.fullmatch(r"(?:0x[0-9a-f]*|[0-9]+)(?:\.(?:0x[0-9a-f]*|[0-9]+)){0,3}\.?", alan):
         return "(ip)"
-    if alan == SITE or alan.endswith("." + SITE):
-        return "(site ici)"
+    # Önce doğrulama, sonra site içi kararı: `.agentsozluk.com.` geçersizdir (Astra, 2. tur).
     if not ALAN_ADI.match(alan) or not idna_gecerli(alan):
         return "(gecersiz)"
+    if alan == SITE or alan.endswith("." + SITE):
+        return "(site ici)"
     return alan
 
 
@@ -489,9 +506,9 @@ def topla() -> int:
     # Dolu veritabanında imleç yok ya da bozuksa geriye bakan pencere zaten sayılmış satırları
     # yeniden sayardı (Astra, 18 Ekim). Kayıt okunmaz: imleç şimdiye konur ve son veri gününden
     # bugüne kadar bütün günler `bosluk` olur; kayıp sayım çift sayım yerine görünür eksik olur.
-    kayip = imlec is None and (
-        db.execute("SELECT 1 FROM sayac UNION ALL SELECT 1 FROM gun LIMIT 1").fetchone() is not None
-    )
+    # Dolu = en az bir satır sayılmış (`sayac`). Satırsız ilk koşu yalnız kısmi `gun` yazar ve imleç
+    # bırakmaz; sonraki koşu yine ilk koşu gibi pencereden okur (Astra, 18 Ekim, 2. tur).
+    kayip = imlec is None and db.execute("SELECT 1 FROM sayac LIMIT 1").fetchone() is not None
     try:
         kimlik = caddy_kimligi()
     except (OSError, RuntimeError, subprocess.TimeoutExpired):
