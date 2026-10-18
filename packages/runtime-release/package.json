@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@node-rs/argon2": "2.2.1",
+    "@node-rs/argon2": "2.2.2",
     "@prisma/client": "6.19.3",
     "dotenv": "17.4.2",
     "linkify-it": "6.1.0",
     "prisma": "6.19.3",
     "tsx": "4.23.15",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   }
 }
