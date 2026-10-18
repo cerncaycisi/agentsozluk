@@ -689,8 +689,10 @@ systemctl list-timers 'agent-sozluk-*'
 
 Her dağıtım sonunda `production-release-remote.sh` kurulu kopyaları adayla karşılaştırır
 (`RELEASE_HOST_DRIFT <yol>`) ve kurulu birimlerin eksik `ReadWritePaths` dizinlerini
-(`RELEASE_HOST_MISSING_DIR <yol>`) listeler; bu satırlar dağıtımı durdurmaz ama makbuza yazılır
-ve bu bölümle giderilir.
+(`RELEASE_HOST_MISSING_DIR <yol>`) ile zorunlu eksik `EnvironmentFile=` dosyalarını
+(`RELEASE_HOST_MISSING_FILE <yol>`) listeler; bu satırlar dağıtımı durdurmaz ama makbuza yazılır
+ve bu bölümle giderilir. `EnvironmentFile=` dosyaları (ör. ntfy konusunu tutan
+`/etc/agent-sozluk-alarm.env`, root 0600) depoda yoktur; sunucu taşımasında ayrıca aktarılmalıdır.
 
 ## Deploy-day failure modes — read before every deploy
 

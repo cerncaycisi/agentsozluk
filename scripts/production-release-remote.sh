@@ -849,7 +849,9 @@ cleanup_images() {
 # yoktu; ikisi de dağıtım makbuzunda görünmüyordu. Başarılı sürümden sonra kurulu kopyaların
 # sha256'sı aday depo kopyalarıyla karşılaştırılır: fark başına bir `RELEASE_HOST_DRIFT <yol>
 # <neden>`, kurulu birimlerin eksik yazma/log dizinleri için `RELEASE_HOST_MISSING_DIR <yol>
-# <birim>` ve tek özet satırı basılır. Dağıtımı DURDURMAZ (yalnız `RELEASE_WARN`); satırlar
+# <birim>`, zorunlu (`-` öneksiz) eksik `EnvironmentFile=` için `RELEASE_HOST_MISSING_FILE <yol>
+# <birim>` (14 Ekim taşımasında `/etc/agent-sozluk-alarm.env` aktarılmadı; alarm 14–18 Ekim
+# `Result=resources` ile hiç başlamadı) ve tek özet satırı basılır. Dağıtımı DURDURMAZ (yalnız `RELEASE_WARN`); satırlar
 # makbuza yazılır ve runbook'un kurulum bölümüyle giderilir. Hiçbir şey kurmaz ya da değiştirmez.
 # Kurulu yol | aday yol ($app_root'a göre). Birimler ayrıca dizinden taranır.
 host_inventory_files=(
@@ -887,7 +889,7 @@ host_inventory_compare() {
 # $1: yalnız testler için kök önek (üretimde boş). Okunamayan dosya da farktır: sessiz geçilmez.
 host_inventory() {
   local prefix="${1:-}" record installed candidate name unit line value path dir
-  local files=0 units=0 drift=0 missing=0
+  local files=0 units=0 drift=0 missing=0 missing_files=0
   local -a dirs
   for record in "${host_inventory_files[@]}"; do
     installed="${record%%|*}"
@@ -929,6 +931,14 @@ host_inventory() {
     while IFS= read -r line || test -n "$line"; do
       dirs=()
       case "$line" in
+        EnvironmentFile=/*)
+          # Yalnız varlık: dosya root 0600 olabilir, içerik okunmaz. `-` önekli isteğe bağlıdır.
+          path="${line#EnvironmentFile=}"
+          if [[ "$path" != *%* ]] && test ! -e "$prefix$path"; then
+            printf 'RELEASE_HOST_MISSING_FILE %s %s\n' "$path" "${unit##*/}"
+            missing_files=$((missing_files + 1))
+          fi
+          ;;
         ReadWritePaths=*)
           read -r -a dirs <<<"${line#ReadWritePaths=}"
           ;;
@@ -949,11 +959,11 @@ host_inventory() {
       done
     done <"$unit"
   done
-  printf 'RELEASE_HOST_INVENTORY files=%s units=%s drift=%s missing_dirs=%s\n' \
-    "$files" "$units" "$drift" "$missing"
-  if test "$drift" != 0 || test "$missing" != 0; then
-    printf 'RELEASE_WARN host inventory: drift=%s missing_dirs=%s (see runbook, Sunucu içi gece yedeği)\n' \
-      "$drift" "$missing" >&2
+  printf 'RELEASE_HOST_INVENTORY files=%s units=%s drift=%s missing_dirs=%s missing_files=%s\n' \
+    "$files" "$units" "$drift" "$missing" "$missing_files"
+  if test "$drift" != 0 || test "$missing" != 0 || test "$missing_files" != 0; then
+    printf 'RELEASE_WARN host inventory: drift=%s missing_dirs=%s missing_files=%s (see runbook, Sunucu içi gece yedeği)\n' \
+      "$drift" "$missing" "$missing_files" >&2
   fi
   return 0
 }

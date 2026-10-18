@@ -480,9 +480,11 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
     );
     expect(result.stdout).not.toContain("MISSING_DIR /opt/agent-sozluk/runtime/state");
     expect(result.stdout).toContain(
-      "RELEASE_HOST_INVENTORY files=5 units=2 drift=0 missing_dirs=2",
+      "RELEASE_HOST_INVENTORY files=5 units=2 drift=0 missing_dirs=2 missing_files=0",
     );
-    expect(result.stderr).toContain("RELEASE_WARN host inventory: drift=0 missing_dirs=2");
+    expect(result.stderr).toContain(
+      "RELEASE_WARN host inventory: drift=0 missing_dirs=2 missing_files=0",
+    );
     expect(result.stdout).toContain("RELEASE_COMPLETE PASS");
   });
 
@@ -504,9 +506,11 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
       "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk-bildirim@.service not-installed",
       "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk-eski.service unversioned",
       "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk-backup.service.d drop-in",
-      "RELEASE_HOST_INVENTORY files=5 units=3 drift=5 missing_dirs=0",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=5 missing_dirs=0 missing_files=0",
     ]);
-    expect(result.stderr).toContain("RELEASE_WARN host inventory: drift=5 missing_dirs=0");
+    expect(result.stderr).toContain(
+      "RELEASE_WARN host inventory: drift=5 missing_dirs=0 missing_files=0",
+    );
     expect(result.stderr).not.toContain("ERR_TRAP");
   });
 
@@ -531,8 +535,33 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
       "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk.service.d drop-in",
       "RELEASE_HOST_MISSING_DIR /var/log/agent-sozluk agent-sozluk.service",
       "RELEASE_HOST_MISSING_DIR /var/log/agent-sozluk agent-sozluk-backup.service",
-      "RELEASE_HOST_INVENTORY files=5 units=3 drift=2 missing_dirs=2",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=2 missing_dirs=2 missing_files=0",
     ]);
+  });
+
+  // 18 Ekim: taşımada `/etc/agent-sozluk-alarm.env` aktarılmadı, alarm dört gün başlamadı.
+  it("zorunlu eksik EnvironmentFile dosyasını listeler, isteğe bağlıyı geçer", () => {
+    const result = inventory((host, app) => {
+      mkdirSync(path.join(host, "opt/agent-sozluk/backups/postgres"), { recursive: true });
+      mkdirSync(path.join(host, "var/log/agent-sozluk"), { recursive: true });
+      mkdirSync(path.join(host, "etc"), { recursive: true });
+      writeFileSync(path.join(host, "etc/var-olan.env"), "");
+      const alarm =
+        "[Service]\nEnvironmentFile=/etc/agent-sozluk-alarm.env\n" +
+        "EnvironmentFile=-/etc/istege-bagli.env\nEnvironmentFile=/etc/var-olan.env\n";
+      writeFileSync(path.join(app, "deploy/systemd/agent-sozluk-alarm.service"), alarm);
+      writeFileSync(path.join(host, "etc/systemd/system/agent-sozluk-alarm.service"), alarm);
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const lines = result.stdout.split("\n").filter((line) => line.startsWith("RELEASE_HOST_"));
+    expect(lines).toEqual([
+      "RELEASE_HOST_MISSING_FILE /etc/agent-sozluk-alarm.env agent-sozluk-alarm.service",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=0 missing_dirs=0 missing_files=1",
+    ]);
+    expect(result.stderr).toContain(
+      "RELEASE_WARN host inventory: drift=0 missing_dirs=0 missing_files=1",
+    );
+    expect(result.stdout).toContain("RELEASE_COMPLETE PASS");
   });
 
   // Astra 1. tur (17 Ekim): işaret temizlikten önce siliniyordu; düşen temizlik `none` görünüyor ve
