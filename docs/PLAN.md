@@ -15,7 +15,8 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
 - **Canlı exact `d7812525`:** ilgili başlıklar (#423, 1.843 başlık, gece 03:30Z); karma yazım
   (#421) ölçüldü, fayda yok, 17 Ekim'de kapatıldı.
 - **Talep:** Search Console 17 Eylül–14 Ekim 94 tık, 5.476 gösterim (önceki 28 gün 53 / 5.540).
-  Sayacın "güvenilir insan"ı sayfa görüntülemesidir ve site içi yönlendirmeyi de sayıyor.
+  Sayacın "güvenilir" sayısı kişi değil görüntülemedir; v1 site içi yönlendirmeyi de sayıyordu,
+  v2 tanımı dalda (sıra 2), kurulana kadar canlı sayı v1'dir.
 - **Gökhan kararları (17 Ekim):** hakem kuralı aynen kalır; karma yazım ölçülür, doğallık
   ≥ +0,3 ve dolgu artmamışsa kalır, yoksa kapanır, 2. sürüm yok; dış dağıtım şimdilik yok, yerine
   odaklı içerik denemesi; yalnız kaynaktan açılan haber başlıklarına günlük tavan.
@@ -46,6 +47,15 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      gece koşusu okunur; operatör sunucusundaki `gecelik-yedek.sh` güncellenir.
 2. **Talep ölçümü:** sayaç tanımı düzeltilip sürümlenir (site içi/geçersiz yönlendiren ayrı);
    "insan", "görüntüleme", "dış giriş" ve "cevap motoru getirmesi" ayrı raporlanır.
+   - **Uygulandı, `feat/sayac-tanim-v2-20261018` dalında (18 Ekim):** güvenilir görüntüleme v2 =
+     insan belge gezinmesi ve (doğrulanmış dış alan adı ya da yönlendirensiz ana sayfa); site içi
+     (`www.`/alt alan dahil), IP ve geçersiz yönlendiren sayılmaz. v2 ayrı `guvenilir_v2` alanında;
+     ilk koşu `tanim_v2_baslangic` gününü yazar, önceki günler v1, o gün kısmi; rapor sürümü her
+     satırda yazar, v1 ile v2'yi toplamaz. Rapor ve `gun` JSON'u insan görüntüleme, site içi
+     gezinme, dış giriş (arama/cevap motoru/sosyal/diğer) ve cevap motoru getirmesini ayrı verir.
+   - **Kalan:** inceleme ve PR; birleştirmeden sonra sunucudaki kurulu betik runbook "Çerezsiz
+     okur sayacı" bölümündeki yükseltme adımıyla yenilenir. v1 tabanı (~80/hafta) v2 ile karşılaştırılmaz;
+     sıra 4'teki haftalık hedef v2'nin ilk tam haftasından sonra yeniden okunur.
 3. ~~**Karma yazım hükmü**~~ 17 Ekim: canlı kör ölçüm +0,03 (eşik +0,3), kapatıldı
    (YEREL_KANIT "Sonuç — karma yazım canlı kör ölçümü").
 4. **Haber başlığı tavanı:** kaynaktan açılan haber başlıklarına günlük sınır; ölçü 7 günde ikinci
@@ -113,9 +123,10 @@ Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu i
    daha derin sayfa.
    - **Ölçü (haftalık, ilk satır):** Search Console salt okunur servis hesabıyla her pazartesi
      okunur. Taban 13 Eylül–10 Ekim: 81 tık, 5.109 gösterim. 30 Kasım hedefi: 28 günde ≥160 tık,
-     ≥7.500 gösterim, haftalık ≥150 güvenilir insan görüntülemesi.
+     ≥7.500 gösterim, haftalık ≥150 güvenilir görüntüleme (v1 tanımıyla konmuştu; v2 için bkz.
+     17 Ekim sırası 2).
    - **Durma kuralı:** 30 Kasım'da gösterim tabanın %30 üstüne çıkmamışsa strateji yeniden açılır.
-   - 10 Ekim: "güvenilir insan" sayacı kuruldu (#361). Eski "insan" sayımını 4–8 Ekim'de tarayıcı
+   - 10 Ekim: "güvenilir insan" sayacı (v1) kuruldu (#361). Eski "insan" sayımını 4–8 Ekim'de tarayıcı
      taklit eden bir tarayıcı şişirmişti: 5 Ekim'deki 7.891 görüntülemenin 7.877'si yönlendirensizdi.
 
    Sıra:
@@ -124,8 +135,8 @@ Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu i
       Dağıtımdan 2 ve 4 hafta sonra Search Console'da ince başlık örnekleminin dizin dışına
       çıktığı ve dolu başlıkların kaldığı URL Denetimi ile okunur.
    2. **4b — Ölçüm.** Sayaç cevap motoru getirmelerini (`ChatGPT-User`, `Perplexity-User`,
-      `Claude-User`) ayrı sayar; site içi yönlendirme güvenilir insandan çıkar. Haftalık Search
-      Console okuması STATUS'a yazılır.
+      `Claude-User`) ayrı sayar; site içi yönlendirme güvenilir görüntülemeden çıkar (v2, 17 Ekim
+      sırası 2). Haftalık Search Console okuması STATUS'a yazılır.
    3. ~~**4c — Tazelik.**~~ Site haritası ve akış gecikmesi 13 Ekim'de 360'tan 60 dakikaya indi
       (operatör ayarı, geri alınabilir).
    4. ~~**4d — Küçük GEO düzeltmeleri.**~~ `og:locale` (#393); `Organization` logosu (512×512 PNG,
