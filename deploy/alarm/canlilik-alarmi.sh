@@ -145,12 +145,18 @@ canlilik_gorulen() { # $1 önceki görülen, $2 eklenen → sabit sırayla küme
   if (( ${#cikti[@]} == 0 )); then echo -; else (IFS=,; echo "${cikti[*]}"); fi
 }
 
-# $1 yeni hal, $2 başlık, $3 gövde. Önce görüleni kaydeder, sonra gönderir.
+# $1 yeni hal, $2 başlık, $3 gövde. Önce görüleni kaydeder, sonra gönderir. Daha önce
+# iletilemeyen başka tür arıza (ör. `alarm` görülmüşken şimdi `sorgu-hatasi`) gövdeye eklenir;
+# ancak böyle iletildiyse kayıttan düşer (Sol 6.1, 18 Ekim: başarılı başka bildirim kaydı siliyordu).
 canlilik_ariza_bildir() {
+  local kalan govde="$3"
+  kalan="$(canlilik_gorulen "${gorulen//$1/}" "")"
+  [[ "$kalan" != - ]] && govde="${govde}
+Arada görülen, bildirimi doğrulanamayan: ${kalan}."
   if ! atomik_yaz "$DURUM" "$onceki_hal $onceki_an $(canlilik_gorulen "$gorulen" "$1")"; then
     hata_yaz "canlılık durumu yazılamıyor; bildirim gönderilmedi"; KORLUK=1; return
   fi
-  if bildir "$2" urgent rotating_light "$3"; then
+  if bildir "$2" urgent rotating_light "$govde"; then
     atomik_yaz "$DURUM" "$1 $simdi -" || KORLUK=1
   else
     KORLUK=1

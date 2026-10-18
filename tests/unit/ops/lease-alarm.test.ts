@@ -1048,6 +1048,33 @@ describe("lease kontrolü canlılık alarmını bozamaz (Sol, 21 Eylül)", () =>
     expect(calistir([]).bildirimler).toEqual([]);
   });
 
+  // Sol 6.1 (18 Ekim): iletilemeyen kesintiden sonra başka türden bir bildirim gidince kayıt
+  // tümüyle siliniyor, kesinti hiç söylenmiyordu.
+  it("başka türden başarılı bildirim iletilemeyen kesintiyi taşır, sessizce silmez", () => {
+    expect(calistir([], { canlilik: "9999 120", curlHata: true }).status).toBe(3);
+    const sorgu = calistir([], { canlilik: "" });
+    expect(sorgu.bildirimler).toHaveLength(1);
+    expect(sorgu.bildirimler[0]).toContain("sorgulanamıyor");
+    expect(sorgu.bildirimler[0]).toContain("Arada görülen, bildirimi doğrulanamayan: alarm.");
+    expect(readFileSync(path.join(dizin, "durum", "durum"), "utf8")).toMatch(
+      /^sorgu-hatasi \d+ -\n$/u,
+    );
+  });
+
+  it("başka türden bildirim de iletilemezse iki kesinti de kayıtta kalır", () => {
+    expect(calistir([], { canlilik: "9999 120", curlHata: true }).status).toBe(3);
+    // Sorgu hatası kendi koduyla (1) biter; systemd için o da başarısızlıktır.
+    expect(calistir([], { canlilik: "", curlHata: true }).status).toBe(1);
+    expect(readFileSync(path.join(dizin, "durum", "durum"), "utf8")).toMatch(
+      /^temiz \d+ alarm,sorgu-hatasi\n$/u,
+    );
+    const temiz = calistir([]);
+    expect(temiz.bildirimler).toHaveLength(1);
+    expect(temiz.bildirimler[0]).toContain(
+      "Arada görülen, bildirimi doğrulanamayan: alarm,sorgu-hatasi.",
+    );
+  });
+
   // Astra 1. tur (17 Ekim): kaydedilemeyen bildirim her 15 dakikada yeniden giderdi.
   it("canlılık durumu yazılamıyorsa bildirim göndermez ve 3 döner", () => {
     mkdirSync(path.join(dizin, "durum", "durum"), { recursive: true });
