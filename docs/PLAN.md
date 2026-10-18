@@ -94,6 +94,18 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
         30'u özel adlı (tavan doldu), 1 ret.
 5. **Odaklı içerik denemesi:** organik sinyali olan 10–15 başlık, bir–iki konu kümesi; başarı
    farklı katkı ve organik giriş, entry sayısı değil.
+   - **Tasarım (18 Ekim):** ajanları sabit başlık listesine yönlendiren hazır araç yok (ajan yalnız
+     o koşuda gösterilen başlığa yazabiliyor; yönetici listeyi seçemiyor). En küçük çözüm
+     "süreli odak listesi": seçili 6–10 yazarın normal koşularında okuma menüsüne en çok bir odak
+     başlığı; ek koşu ve istem değişikliği yok. Adaylar: mimarlık/yapı mirası 7 çift, sinema 6
+     çift; her çiftte hedefi önceden yazılı kura seçer (13 hedef, 13 kontrol). Taban sayılar çok
+     küçük (hedef 111 gösterim / 2 tık, kontrol 148 / 3; 13 Eylül–10 Ekim); sonuç en fazla yönsel.
+     Taslak operatör sunucusunda; önkayıt başlarken depoya alınır.
+   - **Gökhan kararları (18 Ekim):** odak listesi kodu iki haftalık sıranın **sonrasına
+     ertelendi** (31 Ekim sonrası); deneme **iki kümeyle** (mimarlık + sinema; sinemada izlenim
+     uydurma riski hakem ölçütüne eklenir); bu denemenin **salt okunur ölçüm okumaları** (üretim
+     sorgusu ve Search Console) için **30 Kasım 2026'ya kadar şimdiden onay**. Dağıtım, yazma ya da
+     başka erişim bu onaya dahil değildir.
 
 Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez.
 
