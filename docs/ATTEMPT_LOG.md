@@ -9856,3 +9856,28 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
 - RC'yi main CI bitmeden başlatma; "Verify exact candidate" başarılı push CI arar.
 - Uzak `pgrep -f` kalıbını köşeli parantezle yaz; kendi komut satırını eşleştirir.
 - Sunucu taşımasında `/etc` altındaki birim ortam dosyalarını (`EnvironmentFile=`) envantere al.
+
+## 18 Ekim — #427 işletim düzeltmeleri canlıda, sunucu birimleri kuruldu
+
+- **Hakem:** Astra 2 tur (`5c14d60d`, `c76d2c1f` NO-GO), Sol 6.1 2 tur (`70c73594` NO-GO 1 × P2,
+  `10e1920c` GO, bir P3: `EnvironmentFile = /yol` boşluklu biçimi; takip PR'ında kapatıldı).
+- **Dağıtım:** exact `b9dc4002c8f3025de404f845b0459cf38027911e`. Main CI `39107379631`, RC
+  `39108267145` success. `--pause-society-flow --cleanup`, migration yok; `RELEASE_COMPLETE PASS`,
+  disk %64 → %59. Resume 384.
+- **Envanterin ilk koşusu:** 14 `RELEASE_HOST_DRIFT` (kurulmamış yeni birimler ve sunucudaki üç
+  drop-in), `RELEASE_HOST_MISSING_FILE /etc/agent-sozluk-alarm.env` (doğru) ve
+  `/etc/agent-sozluk/runtime.env` (YANLIŞ: dizin root:agent-runtime 0750, `deploy` aranamıyor,
+  runtime çalışıyor). Takip PR'ında `RELEASE_HOST_UNVERIFIED` ayrıldı.
+- **Sunucu kurulumu:** runbook bölümüyle, `/opt/agent-sozluk/app` exact `b9dc4002` checkout'undan.
+  Alarm ve yedek betikleri (var olan sahiplik/izinler korundu), `agent-sozluk-bildirim@.service`
+  ve sekiz birim; `systemd-analyze verify` temiz, `daemon-reload`; çalışan servis yeniden
+  başlatılmadı. Eski kopyalar `/var/backups/agent-sozluk-host-20261018` (10 dosya). Hepsi depo
+  kopyasıyla `cmp` eşit.
+- **Operatör sunucusu:** `gecelik-yedek.sh` yeni sürüm (eski `.yedek-20261018`); hedef
+  `~/.config/agentsozluk-yedek/hedef` (0600). İlk gece koşusu 19 Ekim 01:30Z.
+- **Doğrulanan:** sunucu içi gece yedeği 18 Ekim 00:30Z zamanlanmış koşuda `Result=success`
+  (dizin düzeltmesinden sonra ilk gece). Alarm hâlâ `Result=resources` (ortam dosyası yok).
+
+**Do not repeat:**
+
+- Envanterde "yok" ile "göremiyorum"u ayır; `test -e` aranamayan dizinde de yanlış döner.

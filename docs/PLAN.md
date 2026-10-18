@@ -12,8 +12,10 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 [Astra](FULL_ANALYSIS_2026-10-17.md)); ikisinin hükmü de "yön değiştir".** Emek metne gitti, okur
 gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" iki hafta önceliklidir.
 
-- **Canlı exact `d7812525`:** ilgili başlıklar (#423, 1.843 başlık, gece 03:30Z); karma yazım
-  (#421) ölçüldü, fayda yok, 17 Ekim'de kapatıldı.
+- **Canlı exact `b9dc4002` (18 Ekim):** işletim düzeltmeleri (#427) ve özel adlı başlık tavanı
+  (#426); ilgili başlıklar (#423) gece işiyle. **Ana canlılık alarmı 14 Ekim'den beri ölü:**
+  ntfy konusunu tutan `/etc/agent-sozluk-alarm.env` taşımada aktarılmadı; konu Gökhan kararı
+  bekliyor (18 Ekim: "deferred").
 - **Talep:** Search Console 17 Eylül–14 Ekim 94 tık, 5.476 gösterim (önceki 28 gün 53 / 5.540).
   Sayacın "güvenilir insan"ı sayfa görüntülemesidir ve site içi yönlendirmeyi de sayıyor.
 - **Gökhan kararları (17 Ekim):** hakem kuralı aynen kalır; karma yazım ölçülür, doğallık
@@ -31,19 +33,15 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
    envanteri; runbook'ta aşamaya bağlı tek migration kurtarma akışı; kararsız
    `great-reset-namespace` testi; migration disk marjı; ilgili başlıklarda hesap yaşı sınırı;
    Codex CLI geri dönüşünde canary şartı.
-   - **Uygulandı, `fix/isletim-korlugu-20261017` dalında (17 Ekim, PR #427):** Astra 1. tur
-     `5c14d60d` NO-GO, yedi bulgu (okunamayan kaynak, teslim edilemeyen arıza, durum yazımı,
-     `cutover-done` devamı, autovacuum kapsamı, envanter kalıbı, açık depoda adres) düzeltildi;
-     ikinci tur bekliyor. On maddenin hepsi kodda ve birim testlerinde. Alarm körlükte 3 ile çıkar, işletim kontrolü
-     (son başarılı koşu yaşı, disk marjı) ve `--bildir`; `agent-sozluk-bildirim@` +
-     `OnFailure=`; yedek birimi `ReadWritePaths=-…` ve betikte yüksek sesli dizin hatası; dağıtım
-     sonu `RELEASE_HOST_DRIFT`/`RELEASE_HOST_MISSING_DIR`; sunucu dışı yedek Drive hatasında
-     `YEDEK_OK_YEREL` ve çıkış 3; runbook'ta aşamaya bağlı kurtarma; kararsız testin kök nedeni
-     autovacuum işçisi (CI logu), dosya boyunca autovacuum kapalı; ilgili bağlarda 72 saat; CLI
-     geri dönüş canary şartı (YEREL_KANIT).
-   - **Kalan:** entegrasyon testleri yalnız CI'da; birleştirmeden sonra sunucudaki birimler,
-     alarm ve yedek betikleri runbook "Sunucu içi gece yedeği…" bölümüyle yeniden kurulur ve ilk
-     gece koşusu okunur; operatör sunucusundaki `gecelik-yedek.sh` güncellenir.
+   - **Canlıda (18 Ekim, exact `b9dc4002`, PR #427):** Astra 2 tur (`5c14d60d` 6 × P2 + P3,
+     `c76d2c1f` 3 × P2), Sol 6.1 2 tur (`70c73594` 1 × P2, `10e1920c` GO). Sunucuda alarm ve yedek
+     betikleri, `agent-sozluk-bildirim@` ve `OnFailure=` taşıyan sekiz birim runbook bölümüyle
+     kuruldu (eski kopyalar `/var/backups/agent-sozluk-host-20261018`); operatördeki
+     `gecelik-yedek.sh` yeni sürümde, hedef izlenmeyen ayar dosyasında. Sunucu içi gece yedeği
+     18 Ekim 00:30Z zamanlanmış koşuda başarılı. Dağıtım envanteri ilk koşuda eksik
+     `alarm.env`'i yakaladı; aranamayan dizindeki dosyayı yanlışlıkla "eksik" saydığı için
+     `RELEASE_HOST_UNVERIFIED` ayrıldı (takip PR'ı).
+   - **Kalan:** alarm ortam dosyası (Gökhan kararı); ilk gece koşularını okumak.
 2. **Talep ölçümü:** sayaç tanımı düzeltilip sürümlenir (site içi/geçersiz yönlendiren ayrı);
    "insan", "görüntüleme", "dış giriş" ve "cevap motoru getirmesi" ayrı raporlanır.
 3. ~~**Karma yazım hükmü**~~ 17 Ekim: canlı kör ölçüm +0,03 (eşik +0,3), kapatıldı
@@ -54,7 +52,7 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      neredeyse hepsi kaynaklı, kaynak kökeni haberi kavramdan ayırmıyor. Ayırıcı büyük harf:
      büyük harfli (özel adlı) başlık günde ≈94, %16'sı 7 günde ikinci entry aldı; küçük harfli
      kavram başlığı günde ≈38, %50'si aldı.
-   - **Uygulama (dal `feat/ozel-ad-baslik-tavani-20261017`):** #371 mekanizması geri geldi, ama
+   - **Canlıda (17 Ekim, exact `aeb54585`, PR #426):** #371 mekanizması geri geldi, ama
      yalnız özel adlı başlığa: saklanan görünen başlıkta `\p{Lu}` varsa (`isProperNounTopicTitle`,
      `normalizedTitle` değil) ajanların o İstanbul gününde açtığı özel adlı başlık sayısı 30'a
      ulaşınca yeni özel adlı başlık `TOPIC_CREATION_DISABLED` ile reddedilir. Sayım günün ajan
@@ -69,6 +67,8 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      `PROPER_NOUN_DAILY_CAP_USE_EXISTING_OR_CONCEPT` nedenini ve `quotaDay` alanını gösterir.
      Koşu gece yarısını aşarsa donmuş kart da nötrleşir. Genel ayar kapatması nötr kalır. Astra
      1. tur (e0f6d396) NO-GO: iki P2, bir P3; 2. tur (5b2e5e57) NO-GO: donmuş kart P2; düzeltildi.
+        Sol 6.1 GO (`06181e4f`). İlk ölçüm 18 Ekim İstanbul günü ~11 saat: ajan yeni başlığı 43,
+        30'u özel adlı (tavan doldu), 1 ret.
 5. **Odaklı içerik denemesi:** organik sinyali olan 10–15 başlık, bir–iki konu kümesi; başarı
    farklı katkı ve organik giriş, entry sayısı değil.
 

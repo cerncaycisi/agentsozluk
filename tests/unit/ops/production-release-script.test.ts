@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -464,6 +464,7 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
         { encoding: "utf8", timeout: 10_000 },
       );
     } finally {
+      spawnSync("chmod", ["-R", "u+rwx", directory]);
       rmSync(directory, { recursive: true, force: true });
     }
   }
@@ -480,7 +481,7 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
     );
     expect(result.stdout).not.toContain("MISSING_DIR /opt/agent-sozluk/runtime/state");
     expect(result.stdout).toContain(
-      "RELEASE_HOST_INVENTORY files=5 units=2 drift=0 missing_dirs=2 missing_files=0",
+      "RELEASE_HOST_INVENTORY files=5 units=2 drift=0 missing_dirs=2 missing_files=0 unverified=0",
     );
     expect(result.stderr).toContain(
       "RELEASE_WARN host inventory: drift=0 missing_dirs=2 missing_files=0",
@@ -506,7 +507,7 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
       "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk-bildirim@.service not-installed",
       "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk-eski.service unversioned",
       "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk-backup.service.d drop-in",
-      "RELEASE_HOST_INVENTORY files=5 units=3 drift=5 missing_dirs=0 missing_files=0",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=5 missing_dirs=0 missing_files=0 unverified=0",
     ]);
     expect(result.stderr).toContain(
       "RELEASE_WARN host inventory: drift=5 missing_dirs=0 missing_files=0",
@@ -535,7 +536,7 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
       "RELEASE_HOST_DRIFT /etc/systemd/system/agent-sozluk.service.d drop-in",
       "RELEASE_HOST_MISSING_DIR /var/log/agent-sozluk agent-sozluk.service",
       "RELEASE_HOST_MISSING_DIR /var/log/agent-sozluk agent-sozluk-backup.service",
-      "RELEASE_HOST_INVENTORY files=5 units=3 drift=2 missing_dirs=2 missing_files=0",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=2 missing_dirs=2 missing_files=0 unverified=0",
     ]);
   });
 
@@ -556,12 +557,37 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
     const lines = result.stdout.split("\n").filter((line) => line.startsWith("RELEASE_HOST_"));
     expect(lines).toEqual([
       "RELEASE_HOST_MISSING_FILE /etc/agent-sozluk-alarm.env agent-sozluk-alarm.service",
-      "RELEASE_HOST_INVENTORY files=5 units=3 drift=0 missing_dirs=0 missing_files=1",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=0 missing_dirs=0 missing_files=1 unverified=0",
     ]);
     expect(result.stderr).toContain(
       "RELEASE_WARN host inventory: drift=0 missing_dirs=0 missing_files=1",
     );
     expect(result.stdout).toContain("RELEASE_COMPLETE PASS");
+  });
+
+  // 18 Ekim ilk canlı koşu: aranamayan `/etc/agent-sozluk` altındaki çalışan runtime'ın dosyası
+  // "eksik" göründü. Sol 6.1 2. tur P3: `EnvironmentFile = /yol` biçimi atlanıyordu.
+  it("aranamayan üst dizindeki dosyayı eksik saymaz, boşluklu anahtarı da okur", () => {
+    const result = inventory((host, app) => {
+      mkdirSync(path.join(host, "opt/agent-sozluk/backups/postgres"), { recursive: true });
+      mkdirSync(path.join(host, "var/log/agent-sozluk"), { recursive: true });
+      mkdirSync(path.join(host, "etc/kapali"), { recursive: true });
+      writeFileSync(path.join(host, "etc/kapali/runtime.env"), "");
+      chmodSync(path.join(host, "etc/kapali"), 0o000);
+      const runtime =
+        "[Service]\nEnvironmentFile=/etc/kapali/runtime.env\n" +
+        "EnvironmentFile = /etc/bosluklu.env\nReadWritePaths=/etc/kapali/durum\n";
+      writeFileSync(path.join(app, "deploy/systemd/agent-sozluk-runtime.service"), runtime);
+      writeFileSync(path.join(host, "etc/systemd/system/agent-sozluk-runtime.service"), runtime);
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const lines = result.stdout.split("\n").filter((line) => line.startsWith("RELEASE_HOST_"));
+    expect(lines).toEqual([
+      "RELEASE_HOST_UNVERIFIED /etc/kapali/runtime.env agent-sozluk-runtime.service",
+      "RELEASE_HOST_MISSING_FILE /etc/bosluklu.env agent-sozluk-runtime.service",
+      "RELEASE_HOST_UNVERIFIED /etc/kapali/durum agent-sozluk-runtime.service",
+      "RELEASE_HOST_INVENTORY files=5 units=3 drift=0 missing_dirs=0 missing_files=1 unverified=2",
+    ]);
   });
 
   // Astra 1. tur (17 Ekim): işaret temizlikten önce siliniyordu; düşen temizlik `none` görünüyor ve
