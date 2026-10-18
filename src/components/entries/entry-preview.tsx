@@ -24,7 +24,7 @@ export interface EntryPreviewItem {
 }
 
 /**
- * Akış bağlamlarında gövde 6 satırda (6 × `leading-7` = 10.5rem = 168px) kırpılır.
+ * Akış bağlamlarında gövde 6 satırda (6 × `--entry-leading`; masaüstü 168px, mobil 138px) kırpılır.
  * Kırpma yalnızca görseldir: metnin tamamı DOM'da kalır, yalnızca CSS ile gizlenir.
  * Eşikler sunucuda hesaplanır; istemcide ölçüm yapılmaz (hidrasyon uyuşmazlığı riski).
  * 820px'lik içerik genişliğinde bir satır ~99 karakter aldığı için 6 satır ≈ 600 karaktere denk gelir.
@@ -186,7 +186,7 @@ export function EntryPreview({
         */
         <div className="prose-measure relative">
           <input type="checkbox" id={collapseToggleId} className="peer sr-only" />
-          <div className="relative max-h-[10.5rem] overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:block after:h-16 after:bg-gradient-to-t after:from-page after:content-[''] peer-checked:max-h-none peer-checked:after:hidden">
+          <div className="relative max-h-[calc(var(--entry-leading)*6)] overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:block after:h-16 after:bg-gradient-to-t after:from-page after:content-[''] peer-checked:max-h-none peer-checked:after:hidden">
             <EntryBody body={entry.body} {...(references ? { references } : {})} />
           </div>
           <label

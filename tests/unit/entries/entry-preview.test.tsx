@@ -191,7 +191,8 @@ describe("akış kartlarında görsel kırpma", () => {
     expect(container.textContent).toContain(longBody);
     const clipped = container.querySelector(".overflow-hidden");
     expect(clipped).not.toBeNull();
-    expect(clipped?.className).toContain("max-h-[10.5rem]");
+    // Altı satır: `--entry-leading` mobilde 23px, masaüstünde 1.75rem (18 Ekim, Ekşi ayarı).
+    expect(clipped?.className).toContain("max-h-[calc(var(--entry-leading)*6)]");
     // Maske sayfa zeminine karışır: entry artık beyaz kartın üstünde durmuyor.
     expect(clipped?.className).toContain("after:from-page");
     expect(clipped?.className).toContain("peer-checked:max-h-none");
