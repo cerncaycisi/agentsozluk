@@ -9824,8 +9824,35 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
   canlılıkta gönderilemeyen kesinti kayboluyordu; `migration/` dizini tamamlanma kanıtı
   sayılıyordu). Düzeltildi: `? <ad>` taşıma, canlılıkta `gorulen` alanı, `migration/cutover-done`
   kanıt dosyası ve işaretten önce düşen planlama satırı. Astra bütçesi doldu; sonraki tur Sol 6.1.
+- **Sol 6.1 1. tur** (`gpt-6.1-sol`, xhigh, salt okunur): `70c73594` NO-GO, 1 × P2. Canlılıkta
+  iletilemeyen kesintiden sonra başka türden bir bildirim (ör. sorgu hatası) başarıyla gidince
+  `gorulen` kaydı tümüyle siliniyordu. Düzeltildi: iletilemeyen diğer arıza gövdeye eklenir, ancak
+  böyle iletilince kayıttan düşer.
 
 **Do not repeat:**
 
 - Alarmda "okuyamadım"ı "sorun yok"tan ayır; durum yazımı ve gönderim hatasını aynı koşuda
   sessizce geçme.
+
+## 17 Ekim — #426 özel adlı başlık tavanı canlıda; ana canlılık alarmı 14 Ekim'den beri ölü
+
+- **Hakem:** Astra 2 tur (`e0f6d396` NO-GO 2 × P2 + P3; `5b2e5e57` NO-GO 1 × P2, donmuş kart),
+  dar Sol 6.1 1 tur GO (`06181e4f`).
+- **Dağıtım:** exact `aeb5458550e382de068f8abdd94bda24a5bda490` (#426). Main CI `39063305636`,
+  RC `39064510652` success (ilk RC `39063325764` CI bitmeden başlatıldığı için "Verify exact
+  candidate" adımında düştü). Yetki: AGENTS.md süreli istisna, PLAN 17 Ekim sırası 4. madde.
+  `--pause-society-flow --cleanup`, migration yok; `RELEASE_COMPLETE PASS`, smoke 200, disk
+  %61 → %56. Resume 382; ardından 1 SUCCEEDED + 3 PARTIAL koşu, 4 eylem SUCCEEDED.
+- **Resume tuzağı:** uzaktan `test -z "$(pgrep -f 'agent-society-flow.ts pause')"` kendi
+  `bash -c` komut satırını eşleştirip `set -e` ile sessizce çıktı. Kalıp `[p]ause` ile düzeltildi.
+- **Alarm bulgusu:** dağıtım sonrası `agent-sozluk-alarm.service` `Result=resources`. Neden:
+  `EnvironmentFile=/etc/agent-sozluk-alarm.env` (ntfy konusu) 14 Ekim OVH taşımasında yeni
+  sunucuya hiç aktarılmamış. Ana canlılık/sağlık alarmı 14 Ekim'den beri başlamıyor; durum
+  dosyaları 14 Ekim'de donuk. Eski konu hiçbir yerde kayıtlı değil; hangi konunun kullanılacağı
+  Gökhan kararı (18 Ekim: "Ntfy deferred şu an").
+
+**Do not repeat:**
+
+- RC'yi main CI bitmeden başlatma; "Verify exact candidate" başarılı push CI arar.
+- Uzak `pgrep -f` kalıbını köşeli parantezle yaz; kendi komut satırını eşleştirir.
+- Sunucu taşımasında `/etc` altındaki birim ortam dosyalarını (`EnvironmentFile=`) envantere al.
