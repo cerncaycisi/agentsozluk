@@ -53,7 +53,11 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      ilk koşu `tanim_v2_baslangic` gününü yazar, önceki günler v1, o gün kısmi; rapor sürümü her
      satırda yazar, v1 ile v2'yi toplamaz. Rapor ve `gun` JSON'u insan görüntüleme, site içi
      gezinme, dış giriş (arama/cevap motoru/sosyal/diğer) ve cevap motoru getirmesini ayrı verir.
-   - **Kalan:** inceleme ve PR; birleştirmeden sonra sunucudaki kurulu betik runbook "Çerezsiz
+   - **Astra 1. tur (2c296691, PR #429) NO-GO:** üç P2, iki P3 düzeltildi: yönlendirende şema,
+     kapı ve punycode doğrulaması; arama motoru ülke uzantısı; dolu veritabanında imleç kaybı
+     yeniden saymaz, bugüne kadar `bosluk` işaretler; sondaki nokta ve büyük harf; gerçek `_rsc`
+     parametresi.
+   - **Kalan:** Astra 2. tur ve birleştirme; birleştirmeden sonra sunucudaki kurulu betik runbook "Çerezsiz
      okur sayacı" bölümündeki yükseltme adımıyla yenilenir. v1 tabanı (~80/hafta) v2 ile karşılaştırılmaz;
      sıra 4'teki haftalık hedef v2'nin ilk tam haftasından sonra yeniden okunur.
 3. ~~**Karma yazım hükmü**~~ 17 Ekim: canlı kör ölçüm +0,03 (eşik +0,3), kapatıldı

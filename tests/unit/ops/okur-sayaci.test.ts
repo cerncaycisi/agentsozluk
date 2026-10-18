@@ -709,4 +709,114 @@ INSERT INTO sayac VALUES
     expect(ertesi).not.toContain("tanım geçişi");
     expect(ertesi).not.toContain("(v1, eski tanım");
   });
+  it("geçersiz şema, kapı ve punycode yönlendireni geçersizdir; v2'de güvenilir sayılmaz (Astra, 18 Ekim)", () => {
+    const sonuc = calistir(
+      [
+        "https://www.google.com:garbage/",
+        "https://www.google.com:99999/",
+        "https://www.google.com:0/",
+        "javascript://google.com/",
+        "ftp://www.google.com/",
+        "https://xn--a.com/",
+        "https://www.google.com:443/",
+        "https://xn--bcher-kva.example/",
+      ].map((referer, i) => satir({ ts: T0 - 40 + i, uri: "/baslik/a--1", referer })),
+      T0,
+    );
+    expect(sonuc.status).toBe(0);
+    const g = gun();
+    expect(g.sayac.yonlendiren).toEqual({
+      "(gecersiz)": 6,
+      "www.google.com": 1,
+      "xn--bcher-kva.example": 1,
+    });
+    expect(g.sayac.guvenilir_v2).toEqual({ evet: 2, hayir: 6 });
+  });
+
+  it("arama motoru yalnız gerçek ülke uzantısında tanınır; başkasının alt alanı diğerdir (Astra, 18 Ekim)", () => {
+    calistir(
+      [
+        "https://google.foo.de/",
+        "https://yandex.foo.de/",
+        "https://www.google.com.tr/",
+        "https://www.google.de/",
+        "https://yandex.com.tr/",
+        "https://www.google.co.uk/",
+      ].map((referer, i) => satir({ ts: T0 - 40 + i, uri: "/baslik/a--1", referer })),
+      T0,
+    );
+    expect(gun().ozet.dis_giris).toEqual({
+      toplam: 6,
+      arama_motoru: 4,
+      cevap_motoru: 0,
+      sosyal: 0,
+      diger: 2,
+    });
+  });
+
+  it("sondaki noktalı ve büyük harfli alan adı normalleşir (Astra, 18 Ekim)", () => {
+    calistir(
+      [
+        satir({ ts: T0 - 40, host: "AGENTSOZLUK.COM" }),
+        satir({ ts: T0 - 39, host: "agentsozluk.com.:443" }),
+        satir({ ts: T0 - 38, uri: "/baslik/a--1", referer: "https://agentsozluk.com./" }),
+        satir({ ts: T0 - 37, uri: "/baslik/a--1", referer: "https://WWW.GOOGLE.COM./ara" }),
+        satir({ ts: T0 - 36, host: "agentsozluk.com.ornek.example" }),
+      ],
+      T0,
+    );
+    const g = gun().sayac;
+    expect(g.sayfa).toEqual({ insan: 4 });
+    expect(g.istek?.baska_alan).toBe(1);
+    expect(g.yonlendiren).toEqual({ "(yok)": 2, "(site ici)": 1, "www.google.com": 1 });
+  });
+
+  it("yalnız gerçek `_rsc` sorgu parametresi istemci içi gezinmedir (Astra, 18 Ekim)", () => {
+    calistir(
+      [
+        satir({ ts: T0 - 40, uri: "/?campaign=hello_rsc=1" }),
+        satir({ ts: T0 - 39, uri: "/baslik/x?_rsc=abc" }),
+        satir({ ts: T0 - 38, uri: "/?a=1&_rsc=" }),
+      ],
+      T0,
+    );
+    const g = gun().sayac;
+    expect(g.sayfa).toEqual({ insan: 1 });
+    expect(g.insan_sayfa_turu).toEqual({ ana_sayfa: 1 });
+    expect(g.rsc_gezinme).toEqual({ insan: 2 });
+  });
+
+  it("dolu veritabanında imleç kaybı yeniden saymaz; şimdiden boşlukla başlar (Astra, 18 Ekim)", () => {
+    const veritabani = path.join(dizin, "veri", "sayac.db");
+    const kayit = [
+      satir({ ts: T0 - 300, uri: "/" }),
+      satir({ ts: T0 - 200, uri: "/baslik/a--1", referer: "https://www.google.com/" }),
+      satir({ ts: T0 - 100, uri: "/baslik/a--1" }),
+    ];
+    expect(calistir(kayit, T0).status).toBe(0);
+    expect(gun().ozet.insan_goruntuleme).toBe(3);
+    const ertesi = T0 + 86_400;
+    for (const bozuk of [
+      "DELETE FROM durum WHERE anahtar = 'imlec'",
+      "UPDATE durum SET deger = 'bozuk' WHERE anahtar = 'imlec'",
+    ]) {
+      sql(veritabani, bozuk);
+      const sonuc = calistir(kayit, T0 + 3600);
+      expect(sonuc.status).toBe(0);
+      expect(sonuc.stderr).toContain("imleç yok ya da bozuk");
+      // Eski satırlar ikinci kez sayılmadı; gün eksik diye işaretlendi; imleç şimdiye kondu.
+      expect(gun().ozet.insan_goruntuleme).toBe(3);
+      expect(gun().bosluk).toBe(1);
+      expect(Number(durumOku(veritabani, "imlec"))).toBe(T0 + 3600);
+    }
+    // Sonraki koşu imleçten sonrasını olağan biçimde sayar; aradaki günler boşluktur.
+    sql(veritabani, "UPDATE gun SET bosluk = 0");
+    sql(veritabani, "DELETE FROM durum WHERE anahtar = 'imlec'");
+    expect(calistir([], ertesi).status).toBe(0);
+    expect(gun("2026-10-02").bosluk).toBe(1);
+    expect(gun("2026-10-03").bosluk).toBe(1);
+    expect(calistir([...kayit, satir({ ts: ertesi + 100 })], ertesi + 3600).status).toBe(0);
+    expect(gun("2026-10-03").ozet.insan_goruntuleme).toBe(1);
+    expect(gun().ozet.insan_goruntuleme).toBe(3);
+  });
 });

@@ -2503,7 +2503,12 @@ Hotjar kararına dokunmaz. Gökhan kararı, 1 Ekim 2026; plandaki karşılığı
   `agent-sozluk-sayac.timer` saatte bir çalışır ve imleçten sonrasını akış hâlinde okur. Sayaçlar
   ve imleç tek SQLite işleminde yazılır; yarıda kalan koşu hiçbir şey yazmaz. 15 dakikadan uzun
   boşluk olursa ya da Caddy konteyneri değişirse arada kalan bütün günler `bosluk` olarak
-  işaretlenir.
+  işaretlenir. Dolu veritabanında imleç kaybolur ya da bozulursa kayıt yeniden sayılmaz: betik
+  journal'a "imleç yok ya da bozuk" yazar, imleci şimdiye koyar ve son veri gününden bugüne kadar
+  günleri `bosluk` işaretler (18 Ekim).
+- **Yönlendiren doğrulaması:** yalnız `http`/`https`, geçerli kapı (1–65535) ve çözülebilen
+  punycode etiketli ad alan adı sayılır; öteki her biçim `(gecersiz)` kategorisine iner. Alan
+  adı ve `Host` küçük harfe çevrilir, sondaki tek nokta atılır.
 - **Kurulu kopyalar:** `/opt/agent-sozluk/scripts/okur-sayaci.py`,
   `/etc/systemd/system/agent-sozluk-sayac.{service,timer}`. Veri
   `/var/lib/agent-sozluk-sayac/sayac.db` dosyasında (SQLite); 400 günden eski günler silinir. Birimin ağ erişimi yok,

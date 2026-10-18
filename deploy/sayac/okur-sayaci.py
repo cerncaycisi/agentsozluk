@@ -37,6 +37,10 @@ sonrasını AKIŞLA okur. Sayaçlar ve imleç tek SQLite işleminde yazılır: k
 yarıda kalırsa hiçbiri yazılmaz, hiçbir istek iki kez sayılmaz (Astra, 2 Ekim).
 İmleçle ilk satır arasında 15 dakikadan uzun boşluk varsa ya da Caddy
 konteyneri değiştiyse arada kalan BÜTÜN günler `bosluk` olarak işaretlenir.
+Dolu veritabanında imleç yok ya da bozuksa kayıt yeniden sayılmaz: imleç şimdiye konur, son
+veri gününden bugüne kadar günler `bosluk` olur (18 Ekim; çift sayım yerine görünür eksik).
+Yönlendiren yalnız http(s), geçerli kapı ve çözülebilen punycode ile alan adı sayılır; alan
+adları küçük harfe çevrilir, sondaki tek nokta atılır.
 
 Kullanım:
   okur-sayaci.py topla           # timer çağırır
@@ -58,10 +62,10 @@ import sys
 import threading
 import time
 from datetime import date, datetime, timedelta, timezone
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 DIZIN = os.environ.get("SAYAC_DIZINI", "/var/lib/agent-sozluk-sayac")
-SITE = os.environ.get("SAYAC_SITE", "agentsozluk.com")
+SITE = os.environ.get("SAYAC_SITE", "agentsozluk.com").lower().rstrip(".")
 COMPOSE = [
     "docker",
     "compose",
@@ -151,7 +155,10 @@ DIS_KAYNAKLAR = [
     (
         "arama_motoru",
         re.compile(
-            r"(^|\.)(google\.[a-z]{2,3}(\.[a-z]{2})?|bing\.com|yandex\.[a-z]{2,3}(\.[a-z]{2})?"
+            # Ülke uzantısı yalnız `com`, `com.xx`, `co.xx` ya da iki harf: `google.foo.de` gibi
+            # başkasının alanındaki ad eşleşmez (Astra, 18 Ekim).
+            r"(^|\.)(google\.(com|com\.[a-z]{2}|co\.[a-z]{2}|[a-z]{2})|bing\.com"
+            r"|yandex\.(com|com\.[a-z]{2}|[a-z]{2})"
             r"|ya\.ru|duckduckgo\.com|yahoo\.com|ecosia\.org|search\.brave\.com|startpage\.com"
             r"|qwant\.com|baidu\.com|naver\.com|seznam\.cz|kagi\.com|petalsearch\.com)$"
         ),
@@ -221,14 +228,35 @@ def sayfa_turu(yol: str) -> str:
     return "diger"
 
 
+def alan_normal(alan: str) -> str:
+    """Küçük harf ve tek sondaki nokta atılmış ad: `AGENTSOZLUK.COM.` → `agentsozluk.com`."""
+    alan = alan.lower()
+    return alan[:-1] if alan.endswith(".") else alan
+
+
+def idna_gecerli(alan: str) -> bool:
+    """`xn--` etiketleri gerçekten çözülebilen punycode olmalı (`xn--a.com` geçersiz)."""
+    for etiket in alan.split("."):
+        if etiket.startswith("xn--"):
+            try:
+                etiket.encode("ascii").decode("idna")
+            except (UnicodeError, ValueError):
+                return False
+    return True
+
+
 def yonlendiren_sinifi(ref: str) -> str:
     if not ref:
         return "(yok)"
+    # Yalnız http(s) ve geçerli kapı: `javascript://`, `:garbage`, `:99999`, `:0` geçersizdir; aksi
+    # hâlde v2'de dış alan adı gibi güvenilir sayılırdı (Astra, 18 Ekim).
     try:
-        alan = (urlsplit(ref).hostname or "").lower()
+        parca = urlsplit(ref)
+        kapi = parca.port
+        alan = alan_normal(parca.hostname or "")
     except ValueError:
         return "(gecersiz)"
-    if not alan:
+    if parca.scheme.lower() not in ("http", "https") or kapi == 0 or not alan:
         return "(gecersiz)"
     try:
         ipaddress.ip_address(alan)
@@ -240,7 +268,7 @@ def yonlendiren_sinifi(ref: str) -> str:
         return "(ip)"
     if alan == SITE or alan.endswith("." + SITE):
         return "(site ici)"
-    if not ALAN_ADI.match(alan):
+    if not ALAN_ADI.match(alan) or not idna_gecerli(alan):
         return "(gecersiz)"
     return alan
 
@@ -289,7 +317,7 @@ class Toplayici:
         if 100 <= durum <= 599:
             self.artir(gun, "istek", f"{durum // 100}xx")
         host = istek.get("host")
-        if not isinstance(host, str) or host.split(":")[0] != SITE:
+        if not isinstance(host, str) or alan_normal(host.split(":")[0]) != SITE:
             self.artir(gun, "istek", "baska_alan")
             return
 
@@ -300,14 +328,17 @@ class Toplayici:
             aile = "taklit_tarayici"
         uri = istek.get("uri") if isinstance(istek.get("uri"), str) else "/"
         try:
-            yol = urlsplit(uri).path or "/"
+            parca = urlsplit(uri)
+            yol = parca.path or "/"
+            # Gerçek `_rsc` parametresi; `?kampanya=x_rsc=1` gibi değer içi metin sayılmaz.
+            rsc_sorgu = any(ad == "_rsc" for ad, _ in parse_qsl(parca.query, keep_blank_values=True))
         except ValueError:
             return
         if yol.startswith("/api/"):
             self.artir(gun, "istek", "api_dis")
         if istek.get("method") != "GET" or durum not in (200, 304):
             return
-        if basliklar(h, "Rsc") or "_rsc=" in uri:
+        if basliklar(h, "Rsc") or rsc_sorgu:
             # İstemci içi gezinme ya da önyükleme; sayfa görüntüleme sayılmaz.
             self.artir(gun, "rsc_gezinme", "bot" if aile else "insan")
             return
@@ -455,24 +486,34 @@ def topla() -> int:
     simdi = float(os.environ.get("SAYAC_SIMDI") or time.time())
     db = baglan()
     imlec = imlec_al(db, simdi)
+    # Dolu veritabanında imleç yok ya da bozuksa geriye bakan pencere zaten sayılmış satırları
+    # yeniden sayardı (Astra, 18 Ekim). Kayıt okunmaz: imleç şimdiye konur ve son veri gününden
+    # bugüne kadar bütün günler `bosluk` olur; kayıp sayım çift sayım yerine görünür eksik olur.
+    kayip = imlec is None and (
+        db.execute("SELECT 1 FROM sayac UNION ALL SELECT 1 FROM gun LIMIT 1").fetchone() is not None
+    )
     try:
         kimlik = caddy_kimligi()
     except (OSError, RuntimeError, subprocess.TimeoutExpired):
         hata("caddy konteyneri bulunamadı")
         return 1
-    bas = (imlec if imlec is not None else simdi - ILK_PENCERE_SN) - ORTUSME_SN
     top = Toplayici()
-    try:
-        son = kayitlari_isle(bas, imlec, simdi, top)
-    except (OSError, RuntimeError, TimeoutError, subprocess.TimeoutExpired):
-        hata("kayıt okunamadı; imleç ilerlemedi")
-        return 1
+    if kayip:
+        hata("imleç yok ya da bozuk; dolu veritabanı yeniden sayılmadı, şimdiden boşlukla başlandı")
+        bas = son = simdi
+    else:
+        bas = (imlec if imlec is not None else simdi - ILK_PENCERE_SN) - ORTUSME_SN
+        try:
+            son = kayitlari_isle(bas, imlec, simdi, top)
+        except (OSError, RuntimeError, TimeoutError, subprocess.TimeoutExpired):
+            hata("kayıt okunamadı; imleç ilerlemedi")
+            return 1
 
     bosluk_gunleri: list[str] = []
     # İmleçsiz ilk koşu: kaydın elde kalan kısmı günün başını kapsamayabilir;
     # pencerenin başladığı gün (ve ilk kayda kadar olanlar) kısmi sayılır.
     kismi_gunler: list[str] = []
-    if imlec is None:
+    if imlec is None and not kayip:
         # Örtüşme penceresinde gece yarısından önceki kayıt da sayılmış olabilir
         # (Astra, 3. tur): aralık sayılan en erken günden başlar.
         uclar = sorted([bas, top.ilk_ts if top.ilk_ts is not None else simdi])
@@ -486,6 +527,15 @@ def topla() -> int:
         if kopuk:
             bitis = ilk if ilk is not None else simdi
             bosluk_gunleri = gunler_arasi(gun_adi(imlec), gun_adi(bitis))
+    if kayip:
+        bugun = gun_adi(simdi)
+        son_veri = db.execute(
+            "SELECT max(g) FROM (SELECT max(gun) AS g FROM gun UNION ALL SELECT max(gun) FROM sayac)"
+        ).fetchone()[0]
+        en_eski = (datetime.fromtimestamp(simdi, timezone.utc) - timedelta(days=SAKLAMA_GUN)).strftime(
+            "%Y-%m-%d"
+        )
+        bosluk_gunleri = gunler_arasi(min(max(son_veri, en_eski), bugun), bugun)
 
     db.execute("BEGIN IMMEDIATE")
     try:
