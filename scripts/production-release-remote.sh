@@ -886,10 +886,31 @@ host_inventory_compare() {
   return 0
 }
 
+# $1 tam yol. Yol yoksa ve en yakın var olan üst dizin `deploy` için aranabilirse 0 (gerçekten
+# eksik); üst dizin aranamıyorsa (ör. `/etc/agent-sozluk` root:agent-runtime 0750) 1: yokluk
+# kanıtlanamaz. 18 Ekim ilk koşusunda çalışan runtime'ın `runtime.env` dosyası bu yüzden yanlışlıkla
+# "eksik" göründü.
+# Çözülemeyen sembolik bağ (kopuk ya da hedefi aranamıyor) da kanıtlanamaz: 1 (Sol 6.1, 18 Ekim).
+host_inventory_absent() {
+  local parent="$1"
+  test -e "$1" && return 2
+  test -L "$1" && return 1
+  while :; do
+    parent="${parent%/*}"
+    test -n "$parent" || parent=/
+    if test -d "$parent"; then
+      test -x "$parent" && return 0
+      return 1
+    fi
+    test -L "$parent" && return 1
+    test "$parent" != / || return 1
+  done
+}
+
 # $1: yalnız testler için kök önek (üretimde boş). Okunamayan dosya da farktır: sessiz geçilmez.
 host_inventory() {
   local prefix="${1:-}" record installed candidate name unit line value path dir
-  local files=0 units=0 drift=0 missing=0 missing_files=0
+  local files=0 units=0 drift=0 missing=0 missing_files=0 unverified=0 state
   local -a dirs
   for record in "${host_inventory_files[@]}"; do
     installed="${record%%|*}"
@@ -930,13 +951,24 @@ host_inventory() {
     test -f "$unit" && test -r "$unit" || continue
     while IFS= read -r line || test -n "$line"; do
       dirs=()
+      # systemd `Anahtar = değer` biçimini de kabul eder (Sol 6.1 2. tur P3).
+      # Satır sonu boşluğu da yola katılmaz (Sol 6.1 2. tur P3).
+      if [[ "$line" =~ ^([A-Za-z]+)[[:space:]]*=[[:space:]]*(.*[^[:space:]])[[:space:]]*$ ]]; then
+        line="${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
+      fi
       case "$line" in
         EnvironmentFile=/*)
           # Yalnız varlık: dosya root 0600 olabilir, içerik okunmaz. `-` önekli isteğe bağlıdır.
           path="${line#EnvironmentFile=}"
-          if [[ "$path" != *%* ]] && test ! -e "$prefix$path"; then
-            printf 'RELEASE_HOST_MISSING_FILE %s %s\n' "$path" "${unit##*/}"
-            missing_files=$((missing_files + 1))
+          if [[ "$path" != *%* ]]; then
+            state=0; host_inventory_absent "$prefix$path" || state=$?
+            if test "$state" = 0; then
+              printf 'RELEASE_HOST_MISSING_FILE %s %s\n' "$path" "${unit##*/}"
+              missing_files=$((missing_files + 1))
+            elif test "$state" = 1; then
+              printf 'RELEASE_HOST_UNVERIFIED %s %s\n' "$path" "${unit##*/}"
+              unverified=$((unverified + 1))
+            fi
           fi
           ;;
         ReadWritePaths=*)
@@ -952,15 +984,20 @@ host_inventory() {
         dir="${path#[-+]}"
         dir="${dir#[-+]}"
         [[ "$dir" == /* && "$dir" != *%* ]] || continue
-        if test ! -d "$prefix$dir"; then
+        test -d "$prefix$dir" && continue
+        state=0; host_inventory_absent "$prefix$dir" || state=$?
+        if test "$state" = 1; then
+          printf 'RELEASE_HOST_UNVERIFIED %s %s\n' "$dir" "${unit##*/}"
+          unverified=$((unverified + 1))
+        else
           printf 'RELEASE_HOST_MISSING_DIR %s %s\n' "$dir" "${unit##*/}"
           missing=$((missing + 1))
         fi
       done
     done <"$unit"
   done
-  printf 'RELEASE_HOST_INVENTORY files=%s units=%s drift=%s missing_dirs=%s missing_files=%s\n' \
-    "$files" "$units" "$drift" "$missing" "$missing_files"
+  printf 'RELEASE_HOST_INVENTORY files=%s units=%s drift=%s missing_dirs=%s missing_files=%s unverified=%s\n' \
+    "$files" "$units" "$drift" "$missing" "$missing_files" "$unverified"
   if test "$drift" != 0 || test "$missing" != 0 || test "$missing_files" != 0; then
     printf 'RELEASE_WARN host inventory: drift=%s missing_dirs=%s missing_files=%s (see runbook, Sunucu içi gece yedeği)\n' \
       "$drift" "$missing" "$missing_files" >&2
