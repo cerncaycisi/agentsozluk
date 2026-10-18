@@ -281,6 +281,11 @@ html {
   scroll-margin-top: 7rem;
 }
 
+/* Yazı ölçeği: masaüstünde 1, mobilde 15/17 (aşağıdaki medya sorgusu ve tailwind.config.ts). */
+:root {
+  --type-scale: 1;
+}
+
 body {
   /* Entry gövdesinin satır aralığı; akış önizlemesinin 6 satırlık kırpması da bunu kullanır. */
   --entry-leading: 1.75rem;
@@ -288,7 +293,7 @@ body {
   background: rgb(var(--page));
   color: rgb(var(--ink));
   font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: 17px;
+  font-size: calc(17px * var(--type-scale));
   line-height: 1.55;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -299,11 +304,21 @@ body {
   satır uzunluğu için seçilmişti; telefonda satır zaten kısa. Canlı CSS ölçümü: Ekşi entry
   16px/24px Source Sans Pro, Normal Sözlük 17px/24px Source Sans Pro. IBM Plex'in küçük harfleri
   Source Sans'tan ~%6 iri olduğu için 15px/23px Plex, görünen boyutta Ekşi'nin 16px'ine denk.
+  Bütün yazı aynı oranla küçülür (`--type-scale`, 15/17); yalnız gövde küçülünce geri kalan
+  metin ve ikonlar ona göre iri kalıyordu (Gökhan, 18 Ekim akşamı).
 */
 @media (max-width: 639px) {
+  :root {
+    --type-scale: 0.882353;
+  }
+
   body {
     --entry-leading: 23px;
-    font-size: 15px;
+  }
+
+  /* lucide ikonları `size` ile piksel alır; metinle aynı oranda küçülsün. */
+  svg.lucide {
+    zoom: var(--type-scale);
   }
 }
 
@@ -721,11 +736,11 @@ main#ana-icerik:focus-visible {
    * değil boyut, renk ve boşlukla kuruluyor.
    */
   .title-page {
-    @apply text-[1.375rem] font-semibold leading-tight tracking-[-0.011em] sm:text-[1.6rem];
+    @apply text-[calc(1.5rem*var(--type-scale))] font-semibold leading-tight tracking-[-0.011em] sm:text-[1.6rem];
   }
 
   .title-section {
-    @apply text-[1.15rem] font-semibold leading-snug;
+    @apply text-[calc(1.15rem*var(--type-scale))] font-semibold leading-snug;
   }
 
   .title-item {
