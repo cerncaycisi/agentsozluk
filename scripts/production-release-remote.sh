@@ -952,7 +952,8 @@ host_inventory() {
     while IFS= read -r line || test -n "$line"; do
       dirs=()
       # systemd `Anahtar = değer` biçimini de kabul eder (Sol 6.1 2. tur P3).
-      if [[ "$line" =~ ^([A-Za-z]+)[[:space:]]*=[[:space:]]*(.*)$ ]]; then
+      # Satır sonu boşluğu da yola katılmaz (Sol 6.1 2. tur P3).
+      if [[ "$line" =~ ^([A-Za-z]+)[[:space:]]*=[[:space:]]*(.*[^[:space:]])[[:space:]]*$ ]]; then
         line="${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
       fi
       case "$line" in

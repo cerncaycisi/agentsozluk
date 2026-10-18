@@ -581,10 +581,12 @@ printf 'RELEASE_COMPLETE PASS\\n'`,
       mkdirSync(path.join(host, "var/log/agent-sozluk"), { recursive: true });
       mkdirSync(path.join(host, "etc/kapali"), { recursive: true });
       writeFileSync(path.join(host, "etc/kapali/runtime.env"), "");
+      writeFileSync(path.join(host, "etc/var.env"), "");
       chmodSync(path.join(host, "etc/kapali"), 0o000);
       const runtime =
         "[Service]\nEnvironmentFile=/etc/kapali/runtime.env\n" +
-        "EnvironmentFile = /etc/bosluklu.env\nReadWritePaths=/etc/kapali/durum\n";
+        "EnvironmentFile = /etc/bosluklu.env  \nEnvironmentFile=/etc/var.env \t\n" +
+        "ReadWritePaths=/etc/kapali/durum\n";
       writeFileSync(path.join(app, "deploy/systemd/agent-sozluk-runtime.service"), runtime);
       writeFileSync(path.join(host, "etc/systemd/system/agent-sozluk-runtime.service"), runtime);
     });
