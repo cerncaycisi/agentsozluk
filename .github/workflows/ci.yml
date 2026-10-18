@@ -293,6 +293,17 @@ jobs:
       - name: End-to-end tests
         run: pnpm test:e2e
 
+      # Mobil yazı ölçeği ekran görüntüleri (18 Ekim 2026): sunucuda tarayıcı yok, görsel kontrol
+      # buradan indirilir.
+      - name: Upload mobile type screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mobil-yazi
+          path: test-results/mobil-yazi/
+          if-no-files-found: ignore
+          retention-days: 3
+
       - name: Upload Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

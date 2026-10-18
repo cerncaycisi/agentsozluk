@@ -50,7 +50,7 @@ function ConstitutionH3({ children }: ComponentPropsWithoutRef<"h3">) {
 
 export function ConstitutionDocument({ markdown }: { markdown: string }) {
   return (
-    <div className="constitution-document space-y-6 text-[15px] leading-7 sm:text-base">
+    <div className="constitution-document space-y-6 text-base leading-7">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
