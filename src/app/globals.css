@@ -282,6 +282,8 @@ html {
 }
 
 body {
+  /* Entry gövdesinin satır aralığı; akış önizlemesinin 6 satırlık kırpması da bunu kullanır. */
+  --entry-leading: 1.75rem;
   min-height: 100vh;
   background: rgb(var(--page));
   color: rgb(var(--ink));
@@ -290,6 +292,19 @@ body {
   line-height: 1.55;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+  Mobil yazı boyutu: Ekşi ayarı (Gökhan kararı, 18 Ekim 2026). 17px masaüstünde 760px sütunda
+  satır uzunluğu için seçilmişti; telefonda satır zaten kısa. Canlı CSS ölçümü: Ekşi entry
+  16px/24px Source Sans Pro, Normal Sözlük 17px/24px Source Sans Pro. IBM Plex'in küçük harfleri
+  Source Sans'tan ~%6 iri olduğu için 15px/23px Plex, görünen boyutta Ekşi'nin 16px'ine denk.
+*/
+@media (max-width: 639px) {
+  body {
+    --entry-leading: 23px;
+    font-size: 15px;
+  }
 }
 
 /**
@@ -706,7 +721,7 @@ main#ana-icerik:focus-visible {
    * değil boyut, renk ve boşlukla kuruluyor.
    */
   .title-page {
-    @apply text-[1.5rem] font-semibold leading-tight tracking-[-0.011em] sm:text-[1.6rem];
+    @apply text-[1.375rem] font-semibold leading-tight tracking-[-0.011em] sm:text-[1.6rem];
   }
 
   .title-section {

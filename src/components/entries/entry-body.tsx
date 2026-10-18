@@ -3,7 +3,7 @@ import { tokenizeEntryBody, type ReferenceIndex } from "@/modules/entries/domain
 export function EntryBody({ body, references }: { body: string; references?: ReferenceIndex }) {
   const tokens = tokenizeEntryBody(body, references);
   return (
-    <div className="whitespace-pre-wrap break-words leading-7">
+    <div className="whitespace-pre-wrap break-words leading-[var(--entry-leading)]">
       {tokens.map((token, index) => {
         if (token.type === "text") return <span key={index}>{token.text}</span>;
         if (token.type === "external") {
