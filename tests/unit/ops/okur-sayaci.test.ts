@@ -745,12 +745,17 @@ INSERT INTO sayac VALUES
         // Genel `com.xx` biçimi kabul edilmez (Astra, 2. tur).
         "https://google.com.us/",
         "https://yandex.com.uk/",
+        // Resmi Google listesindeki alanlar (Sol 6.1, 18 Ekim: elle liste bunları dışlıyordu).
+        "https://www.google.com.bd/",
+        "https://google.com.np/",
+        "https://www.google.lk/",
+        "https://google.co.ke/",
       ].map((referer, i) => satir({ ts: T0 - 40 + i, uri: "/baslik/a--1", referer })),
       T0,
     );
     expect(gun().ozet.dis_giris).toEqual({
-      toplam: 8,
-      arama_motoru: 4,
+      toplam: 12,
+      arama_motoru: 8,
       cevap_motoru: 0,
       sosyal: 0,
       diger: 4,

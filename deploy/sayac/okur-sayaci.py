@@ -156,11 +156,22 @@ DIS_KAYNAKLAR = [
     (
         "arama_motoru",
         re.compile(
-            # Ülke uzantısı açık listeyle: `com`, iki harfli ülke alanı ya da bilinen ikinci düzey
-            # biçimler. `google.foo.de`, `google.com.us` gibi başkasının alanı eşleşmez (Astra, 18
-            # Ekim, 2. tur). İki harfli ülke alanında ad doğrudan kayıtlıdır, araya etiket girmez.
-            r"(^|\.)(google\.(com|[a-z]{2}|com\.(tr|au|br|mx|ar|sg|hk|tw|ua|eg|sa|pk|ng|co|vn|ph|my)"
-            r"|co\.(uk|jp|in|kr|za|id|th|nz|il))|bing\.com"
+            # Google alanları Google'ın resmi listesidir (https://www.google.com/supported_domains,
+            # 18 Ekim 2026, 187 alan). `google.foo.de`, `google.com.us` gibi başkasının alanı eşleşmez
+            # (Astra 2. tur); elle seçilen liste `google.com.bd` gibi gerçek alanları dışlıyordu (Sol 6.1).
+            r"(^|\.)(google\.(?:"
+            r"ad|ae|al|am|as|at|az|ba|be|bf|bg|bi|bj|bs|bt|by|ca|cat|cd|cf|cg|ch|ci|cl|cm|cn|"
+            r"com|cv|cz|de|dj|dk|dm|dz|ee|es|fi|fm|fr|ga|ge|gg|gl|gm|gr|gy|hn|hr|ht|hu|ie|im|"
+            r"iq|is|it|je|jo|kg|ki|kz|la|li|lk|lt|lu|lv|md|me|mg|mk|ml|mn|mu|mv|mw|ne|nl|no|nr|"
+            r"nu|pl|pn|ps|pt|ro|rs|ru|rw|sc|se|sh|si|sk|sm|sn|so|sr|st|td|tg|tl|tm|tn|to|tt|vu|"
+            r"ws"
+            r"|com\.(?:"
+            r"af|ag|ar|au|bd|bh|bn|bo|br|bz|co|cu|cy|do|ec|eg|et|fj|gh|gi|gt|hk|jm|kh|kw|lb|ly|"
+            r"mm|mt|mx|my|na|ng|ni|np|om|pa|pe|pg|ph|pk|pr|py|qa|sa|sb|sg|sl|sv|tj|tr|tw|ua|uy|"
+            r"vc|vn"
+            r")|co\.(?:"
+            r"ao|bw|ck|cr|id|il|in|jp|ke|kr|ls|ma|mz|nz|th|tz|ug|uk|uz|ve|vi|za|zm|zw"
+            r"))|bing\.com"
             r"|yandex\.(com|ru|kz|by|ua|uz|az|com\.(tr|am|ge)|co\.il)"
             r"|ya\.ru|duckduckgo\.com|yahoo\.com|ecosia\.org|search\.brave\.com|startpage\.com"
             r"|qwant\.com|baidu\.com|naver\.com|seznam\.cz|kagi\.com|petalsearch\.com)$"
