@@ -2479,7 +2479,21 @@ Hotjar kararına dokunmaz. Gökhan kararı, 1 Ekim 2026; plandaki karşılığı
 - **Dış giriş:** dış alan adından gelen insan görüntülemesinin indiği sayfa türü ve başlık
   `publicId` değeri. Site içi yönlendirme dış giriş sayılmaz. `rapor` komutu dönem toplamını da
   yazar; ayrıntılı sayaçların başladığı günden önceki dönem "ölçülmedi" diye, boşluklu,
-  kısmi ya da verisiz günler "eksik" diye işaretlenir.
+  kısmi ya da verisiz günler "eksik" diye işaretlenir. Dış giriş rapor anında saklanan alan
+  adından arama motoru, cevap motoru (`chatgpt.com`, `perplexity.ai`, `gemini.google.com`,
+  `copilot.microsoft.com`, `claude.ai` gibi), sosyal ve diğer diye ayrılır; eski günlerde de
+  çalışır.
+- **Güvenilir görüntüleme, sürümlü (18 Ekim):** talep göstergesi. v2: insan belge gezinmesi ve
+  yönlendiren doğrulanmış dış alan adı ya da yönlendirensiz ana sayfa. Site içi (sitenin kendisi,
+  `www.` ve alt alanları), IP biçimli ve geçersiz yönlendiren sayılmaz. v1 (10–18 Ekim, `guvenilir`
+  alanı) bunları da sayıyordu; v2 `guvenilir_v2` alanına yazılır. Yeni betiğin ilk `topla` koşusu
+  `durum.tanim_v2_baslangic` anahtarını bir kez yazar. O günden önceki günler v1'dir, o gün v2
+  için kısmidir. Rapor her günün sütununda sürümü yazar (`v1`, `v1~` yaklaşık, `v2`), geçiş
+  gününde v1 sayısını ayrı gösterir ve dönemde v1 ile v2'yi toplamaz.
+- **Ayrı satırlar:** rapor ve `gun` JSON'unun `ozet` alanı insan görüntüleme, güvenilir
+  görüntüleme, site içi gezinme (iç yönlendirenli belge gezinmesi; istemci içi RSC gezinmesi
+  dahil değil), dış giriş ve cevap motoru getirmesini (kullanıcı adına sayfa getiren yapay zekâ
+  botu; insan sayılmaz) ayrı verir. Bütün sayılar görüntülemedir; kişi ya da ziyaretçi değildir.
 - **Saklanmayanlar:** IP, User-Agent metni, sorgu dizesi, çerez, ham yol. Tekil ziyaretçi
   sayılmaz.
 - **İnsan sayılan istek:** bot desenine uymayan `Mozilla/` User-Agent'ı ve `Sec-Fetch-Mode`
@@ -2491,7 +2505,14 @@ Hotjar kararına dokunmaz. Gökhan kararı, 1 Ekim 2026; plandaki karşılığı
   `agent-sozluk-sayac.timer` saatte bir çalışır ve imleçten sonrasını akış hâlinde okur. Sayaçlar
   ve imleç tek SQLite işleminde yazılır; yarıda kalan koşu hiçbir şey yazmaz. 15 dakikadan uzun
   boşluk olursa ya da Caddy konteyneri değişirse arada kalan bütün günler `bosluk` olarak
-  işaretlenir.
+  işaretlenir. Dolu veritabanında (en az bir sayılmış satır) imleç kaybolur ya da bozulursa kayıt yeniden sayılmaz: betik
+  journal'a "imleç yok ya da bozuk" yazar, imleci şimdiye koyar ve son veri gününden bugüne kadar
+  günleri `bosluk` işaretler (18 Ekim).
+- **Yönlendiren doğrulaması:** yalnız `http`/`https`, RFC 3986 otorite karakterleri (ters bölü
+  yok), geçerli kapı (1–65535) ve çözülebilen punycode etiketli ad alan adı sayılır; köşeli
+  ayraçlı ad yalnız IPv6 olarak `(ip)` olur. Öteki her biçim `(gecersiz)` kategorisine iner; site
+  içi kararı doğrulamadan sonra verilir. Alan adı ve `Host` küçük harfe çevrilir, sondaki tek
+  nokta atılır. Google ve Yandex ülke uzantıları açık listeyle tanınır.
 - **Kurulu kopyalar:** `/opt/agent-sozluk/scripts/okur-sayaci.py`,
   `/etc/systemd/system/agent-sozluk-sayac.{service,timer}`. Veri
   `/var/lib/agent-sozluk-sayac/sayac.db` dosyasında (SQLite); 400 günden eski günler silinir. Birimin ağ erişimi yok,
@@ -2515,6 +2536,16 @@ sudo install -o root -g root -m 0644 $A/deploy/systemd/agent-sozluk-sayac.servic
 sudo systemctl daemon-reload
 sudo systemctl enable --now agent-sozluk-sayac.timer
 ```
+
+**v2 tanımına yükseltme (18 Ekim dalı birleştikten sonra, bir kez):** yalnız betik değişti;
+birim dosyaları aynı. Üretim erişimi geçerli yetkiyle yapılır. Kurulu kopya yukarıdaki ilk
+`install` satırıyla main'deki betikle değiştirilir ve sha256 depodakiyle karşılaştırılır.
+Veritabanı için ayrı adım yok: şema değişmez, eski sayaçlar silinmez. Bir sonraki saatlik
+`topla` koşusu (ya da `sudo systemctl start agent-sozluk-sayac.service`) v2 sayımına başlar ve
+`tanim_v2_baslangic` anahtarını yazar; yeniden koşu bu değeri değiştirmez. Doğrulama: `rapor 7`
+çıktısında kurulum gününün "tanım geçişi" notu ve sonraki günlerin `v2` sütunu görünür.
+Kurulu kopya yenilenmeden yapılan dağıtım, dağıtım sonu envanterinde bu dosya için
+`RELEASE_HOST_DRIFT` verir.
 
 Kaldırmak için zamanlayıcıyı `disable --now` ile kapat; veri dizini kendiliğinden silinmez.
 
