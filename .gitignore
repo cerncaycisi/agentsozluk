@@ -23,3 +23,7 @@ prisma/dev.db*
 # tasarım mockup'ları — commit edilmez
 .design-mockup/
 public/_design-*
+
+# Python bayt kodu (sayaç testleri üretir)
+__pycache__/
+*.pyc
