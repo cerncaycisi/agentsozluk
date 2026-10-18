@@ -25,7 +25,10 @@ const config: Config = {
       ).map(([name, size, leading]) => [
         name,
         [
-          `calc(${size}rem * var(--type-scale))`,
+          // `xs` mobilde 11px'in altına inmez: kaynak bağlantıları ve sayaç uyarısı bu boyutta (Fable).
+          name === "xs"
+            ? `max(11px, calc(${size}rem * var(--type-scale)))`
+            : `calc(${size}rem * var(--type-scale))`,
           { lineHeight: `calc(${leading}rem * var(--type-scale))` },
         ],
       ]),

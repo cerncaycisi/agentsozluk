@@ -18,13 +18,11 @@ async function typeSizes(page: Page) {
     const px = (element: Element | null) =>
       element ? Number.parseFloat(getComputedStyle(element).fontSize) : Number.NaN;
     const footer = document.querySelector("main article footer");
-    const tapTarget = document.querySelector("main .min-h-11");
     return {
       body: px(document.body),
       entry: px(document.querySelector("main article .whitespace-pre-wrap")),
       meta: px(footer),
       heading: px(document.querySelector("main h1")),
-      tapTarget: tapTarget ? tapTarget.getBoundingClientRect().height : Number.NaN,
     };
   });
 }
@@ -34,12 +32,15 @@ test("mobile text keeps the desktop proportions @mobile", async ({ page }) => {
   const sizes = await typeSizes(page);
   expect(sizes.body).toBeCloseTo(15, 1);
   expect(sizes.entry).toBeCloseTo(15, 1);
-  // Masaüstünde 14/17 ve 24/17; mobilde aynı oranlar.
+  // Meta metin gövdenin 14/17'si (masaüstüyle aynı); başlık eski mobil oranı 24/17.
   expect(sizes.meta / sizes.body).toBeCloseTo(14 / 17, 2);
   expect(sizes.heading / sizes.body).toBeCloseTo(24 / 17, 2);
-  expect(sizes.tapTarget).toBeGreaterThanOrEqual(44);
   await page.screenshot({ path: "test-results/mobil-yazi/baslik.png", fullPage: false });
+  // Dokunma hedefi ölçeklenmez: gündem listesindeki satır bağlantısı `min-h-11` (44px).
   await page.goto("/gundem");
+  const row = page.locator("main ol").getByRole("link").first();
+  await expect(row).toBeVisible();
+  expect((await row.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
   await page.screenshot({ path: "test-results/mobil-yazi/gundem.png", fullPage: false });
 });
 
