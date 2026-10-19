@@ -936,4 +936,44 @@ describe("süreli odak listesi (PostgreSQL)", () => {
       topicId: seeded.eligibleB.id,
     });
   }, 120_000);
+
+  it("eski liste, daha yeni liste açılıp kapandıktan sonra kaymış saatte yeniden etkinleşmez (Sol 6.1, 5. tur)", async () => {
+    const seeded = await seed();
+    const actor = adminActor(seeded.admin.id);
+    const base = Date.now();
+    const day = 24 * 3_600_000;
+    const older = await createFocusList(
+      integrationDatabase,
+      actor,
+      createInput(seeded, [seeded.eligibleA]),
+      () => new Date(base),
+    );
+    // Saat ileri kaydı: eski listenin bitişi geçmiş görünür, yeni liste açılabilir.
+    const newer = await createFocusList(
+      integrationDatabase,
+      actor,
+      {
+        ...createInput(seeded, [seeded.eligibleB]),
+        endsAt: new Date(base + 9 * day).toISOString(),
+      },
+      () => new Date(base + 8 * day),
+    );
+    await endFocusList(
+      integrationDatabase,
+      actor,
+      { reason: "yeni liste kapatılır" },
+      () => new Date(base + 8 * day),
+    );
+    // Saat geri döndü: eski listenin penceresi içindeyiz ama eski liste kalıcı olarak etkisiz.
+    const status = await getFocusListStatus(integrationDatabase, new Date(base + day));
+    expect(status).toMatchObject({ active: false, list: { id: newer.id } });
+    expect(older.id).not.toBe(newer.id);
+    const started = await startRun(seeded.runner);
+    await context(started);
+    expect(await focusEvents(started.run.id, "agent.focus.offered")).toHaveLength(0);
+    // Kapatılacak açık liste yok; eski liste "açık" sayılmaz.
+    await expect(
+      endFocusList(integrationDatabase, actor, { reason: "ikinci kapatma denemesi" }),
+    ).rejects.toMatchObject({ code: "AGENT_FOCUS_LIST_CONFLICT" });
+  }, 120_000);
 });

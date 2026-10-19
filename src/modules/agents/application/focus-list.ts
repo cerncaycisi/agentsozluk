@@ -16,7 +16,6 @@ import {
   focusTopicWrittenEventType,
   focusWindowError,
   focusWriteBlocked,
-  isFocusListActive,
   selectFocusTopic,
 } from "@/modules/agents/domain/focus-list";
 import { appendRuntimeEvent, lockAgentSettings } from "@/modules/agents/repository/control-plane";
@@ -26,7 +25,6 @@ import {
   endFocusListRecord,
   findActiveFocusListRecord,
   findFocusAgentsByUsernames,
-  findFocusListRecordById,
   findFocusTopicTitle,
   findFocusTopicsByPublicIds,
   findLatestFocusListRecord,
@@ -283,8 +281,9 @@ export async function runtimeFocusWriteGuard(
     focusListId: offer.focusListId,
     topicId: input.topicId,
   };
-  const list = await findFocusListRecordById(transaction, offer.focusListId);
-  if (!list || !isFocusListActive(list, clock())) return { ...offered, enforced: false };
+  // Yalnız en son liste etkin olabilir; sunumu eski bir listeden gelen yazım yalnız atfedilir.
+  const list = await findActiveFocusListRecord(transaction, clock());
+  if (!list || list.id !== offer.focusListId) return { ...offered, enforced: false };
   const counts = await countFocusTopicWrites(transaction, {
     topicId: input.topicId,
     authorId: input.authorId,

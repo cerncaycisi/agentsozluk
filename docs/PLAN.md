@@ -138,7 +138,12 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
    - **Sol 6.1 4. tur (`20929561`) NO-GO:** iki P2 (saat geri gitmesi) düzeltildi: kapanış
      olayı yalnız liste kimliğiyle eşlenir (zaman süzgeci yok); "en son açılan" olay tablosunun
      BIGINT kimliğiyle (ayar kilidi sırası) seçilir; açık liste denetimi bütün açılışları tarar.
-   - **Kalan:** Sol 6.1 dar 5. tur, yerel kopyada deneme ve ilk taslakların Gökhan'a
+   - **Sol 6.1 5. tur (`10b0b672`) NO-GO:** iki P2 (saat kayması: tarama sınırı eski açık listeyi
+     gizleyebiliyordu; yeni liste kapanınca penceresi saate uyan eski liste geri geliyordu).
+     Anlam sadeleşti: **yalnız en son açılan liste (en büyük olay kimliği) açık ya da etkin
+     olabilir**; eskiler saatten bağımsız kalıcı olarak etkisiz. Okuma `ORDER BY id DESC LIMIT 1`
+     ve o kimliğin kapanış olayı; tarama sınırı yok.
+   - **Kalan:** Sol 6.1 dar 6. tur, yerel kopyada deneme ve ilk taslakların Gökhan'a
      gösterilmesi, T0 uygunluk okuması, dağıtım; liste T0'da operatörce açılır.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")

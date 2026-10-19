@@ -28,8 +28,8 @@ import { substantialTopicSql } from "@/modules/indexing/repository/indexing";
   zaman ajan profiline bağlıdır ve `agent.focus*` adını hiç kullanamaz, sorgular üçünü birden
   süzer.
 
-  Okuma ve sıralama aşağıda ("SAATTEN BAĞIMSIZ OKUMA"). Tek açık liste kuralı oluşturma ve
-  kapatmada ayar kilidi altında, bütün açılış olayları taranarak korunur.
+  Okuma ve sıralama aşağıda ("YALNIZ EN SON LİSTE"). Tek açık liste kuralı oluşturma ve
+  kapatmada ayar kilidi altında korunur.
 
   Telemetri de aynı tablodadır (`agent.focus.offered`, `agent.focus.read`,
   `agent.focus.written`, `origin=RUNTIME_FOCUS_LIST`).
@@ -90,103 +90,76 @@ function parseCreatedEvent(metadata: unknown) {
 }
 
 /*
-  SAATTEN BAĞIMSIZ OKUMA (Sol 6.1, 4. tur). Duvar saati geri gidebilir; bu yüzden:
-  - Kapanış olayı liste kimliğiyle eşlenir, zaman süzgeci yoktur: saat geri gitse de başarılı
-    bir kapatma görünmez kalıp listeyi yeniden etkinleştiremez.
+  YALNIZ EN SON LİSTE (Sol 6.1, 4. ve 5. tur). Duvar saati geri gidebilir; bu yüzden:
   - "En son açılan" `agent_runtime_events.id` (BIGINT kimlik) ile seçilir. Açılış ayar kilidi
     altında yazılır ve kilit commit'e kadar tutulur; sonraki açılış ancak öncekinin commit'inden
     sonra satır ekler ve daha büyük kimlik alır. Kimlik bu yüzden kilit sırasıyla monotondur.
-  - Açık liste denetimi "en sonuncuya" dayanmaz: kapanış olayı olmayan ve bitişi gelmemiş HER
-    açılış olayı sayılır.
-  Listeler seyrektir (ayda birkaç); bütün açılış ve kapanış olayları
-  `agent_runtime_events_type_occurred_id_idx` indeksinin `eventType` önekiyle okunur. Üst sınır
-  güvenlik içindir.
+  - YALNIZ en son açılan liste açık ya da etkin olabilir. Daha yeni bir liste açıldığı anda
+    eskisi saatten bağımsız olarak kalıcı biçimde etkisizdir; tarama sınırı ya da eski bir
+    pencerenin geri gelmesi söz konusu değildir.
+  - Kapanış olayı yalnız liste kimliğiyle eşlenir, zaman süzgeci yoktur: saat geri gitse de
+    başarılı bir kapatma görünmez kalıp listeyi yeniden etkinleştiremez.
+  Okuma iki küçük sorgudur: en son açılış olayı (`eventType` + `ORDER BY id DESC LIMIT 1`) ve o
+  kimliğin kapanış olayları.
 */
-const focusListEventScanLimit = 500;
-
-async function loadFocusLists(transaction: Prisma.TransactionClient): Promise<FocusListRecord[]> {
-  const [createdEvents, endedEvents] = await Promise.all([
-    transaction.agentRuntimeEvent.findMany({
-      where: listEventWhere(focusListCreatedEventType),
-      orderBy: { id: "desc" },
-      take: focusListEventScanLimit,
-      select: { metadata: true },
-    }),
-    transaction.agentRuntimeEvent.findMany({
-      where: listEventWhere(focusListEndedEventType),
-      orderBy: { id: "desc" },
-      take: focusListEventScanLimit,
-      select: { metadata: true },
-    }),
-  ]);
-  const endings = new Map<string, Record<string, unknown>>();
-  for (const { metadata } of endedEvents) {
-    const record = metadataRecord(metadata);
-    const id = record ? stringField(record, "focusListId") : null;
-    // Herhangi bir geçerli kapanış listeyi kapatır; ilk görülen (en yeni) kaydedilir.
-    if (
-      record?.origin === focusListEventOrigin &&
-      id &&
-      dateField(record, "endedAt") &&
-      !endings.has(id)
-    )
-      endings.set(id, record);
-  }
-  const seen = new Set<string>();
-  return createdEvents.flatMap(({ metadata }) => {
-    const created = parseCreatedEvent(metadata);
-    if (!created || seen.has(created.id)) return [];
-    seen.add(created.id);
-    const ending = endings.get(created.id);
-    return [
-      {
-        ...created,
-        endedAt: ending ? dateField(ending, "endedAt") : null,
-        endedById: ending ? stringField(ending, "endedById") : null,
-        endReason: ending ? stringField(ending, "endReason") : null,
-      },
-    ];
-  });
-}
-
-const isOpen = (list: FocusListRecord, now: Date) =>
-  list.endedAt === null && list.endsAt.getTime() > now.getTime();
-
-/** Durum komutu için en son açılan liste (etkin olmasa da); kimlik sırasıyla. */
-export async function findLatestFocusListRecord(
+async function withEnding(
   transaction: Prisma.TransactionClient,
-): Promise<FocusListRecord | null> {
-  return (await loadFocusLists(transaction))[0] ?? null;
+  created: NonNullable<ReturnType<typeof parseCreatedEvent>>,
+): Promise<FocusListRecord> {
+  const endings = await transaction.agentRuntimeEvent.findMany({
+    where: {
+      ...listEventWhere(focusListEndedEventType),
+      metadata: { path: ["focusListId"], equals: created.id },
+    },
+    orderBy: { id: "asc" },
+    select: { metadata: true },
+  });
+  const ending = endings
+    .map(({ metadata }) => metadataRecord(metadata))
+    .find((record) => record?.origin === focusListEventOrigin && dateField(record, "endedAt"));
+  return {
+    ...created,
+    endedAt: ending ? dateField(ending, "endedAt") : null,
+    endedById: ending ? stringField(ending, "endedById") : null,
+    endReason: ending ? stringField(ending, "endReason") : null,
+  };
 }
 
 /*
-  Açık liste: kapanış olayı yok ve bitişi gelmemiş; başlangıcı henüz gelmemiş olsa da (Sol 6.1,
-  1. tur). Bütün açılışlar taranır; birden fazla varsa en son açılanı döner.
+  En son açılan liste (etkin olmasa da). En son açılış olayı bozuksa ya da kaynağı yanlışsa
+  liste yok sayılır (kapalı yön); daha eski bir listeye geri düşülmez.
 */
+export async function findLatestFocusListRecord(
+  transaction: Prisma.TransactionClient,
+): Promise<FocusListRecord | null> {
+  const latest = await transaction.agentRuntimeEvent.findFirst({
+    where: listEventWhere(focusListCreatedEventType),
+    orderBy: { id: "desc" },
+    select: { metadata: true },
+  });
+  const created = latest ? parseCreatedEvent(latest.metadata) : null;
+  return created ? withEnding(transaction, created) : null;
+}
+
+const isOpen = (list: FocusListRecord, now: Date) =>
+  list.endedAt === null && now.getTime() < list.endsAt.getTime();
+
+/** Açık liste: en son liste, kapanışı yok ve bitişi gelmemiş (başlamamış olsa da). */
 export async function findOpenFocusListRecord(
   transaction: Prisma.TransactionClient,
   now: Date,
 ): Promise<FocusListRecord | null> {
-  return (await loadFocusLists(transaction)).find((list) => isOpen(list, now)) ?? null;
+  const list = await findLatestFocusListRecord(transaction);
+  return list && isOpen(list, now) ? list : null;
 }
 
-/** Şu an etkin liste (açık ve pencere başlamış); en son açılan. */
+/** Etkin liste: açık en son liste ve pencere başlamış. */
 export async function findActiveFocusListRecord(
   transaction: Prisma.TransactionClient,
   now: Date,
 ): Promise<FocusListRecord | null> {
-  return (
-    (await loadFocusLists(transaction)).find(
-      (list) => isOpen(list, now) && list.startsAt.getTime() <= now.getTime(),
-    ) ?? null
-  );
-}
-
-export async function findFocusListRecordById(
-  transaction: Prisma.TransactionClient,
-  id: string,
-): Promise<FocusListRecord | null> {
-  return (await loadFocusLists(transaction)).find((list) => list.id === id) ?? null;
+  const list = await findOpenFocusListRecord(transaction, now);
+  return list && list.startsAt.getTime() <= now.getTime() ? list : null;
 }
 
 /** Açılış olayını yazar; çağıran ayar kilidini tutar ve açık liste olmadığını denetlemiştir. */
