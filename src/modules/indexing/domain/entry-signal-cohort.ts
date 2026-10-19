@@ -10,10 +10,12 @@ import { paginatedCanonical } from "./public-seo";
   `(bkz: #N)` ve site içi arama. Search Console'da entry adreslerinin tıklama payı
   %75 → %64 → %46 düşüyor ama Google bazı entry'lerde canonical ipucunu reddediyor.
 
-  Karar: noindex ya da 301 YOK. Kohorttaki başlıkların entry'leri için bu sinyaller
-  entry'nin başlıktaki asıl yerine (`başlık?page=N#entry-N`) döner. Okurun gördüğü
-  tarih bağlantısı, paylaş bağlantısı, canonical, sitemap, robots ve noindex
-  DEĞİŞMEZ (okur yüzeyi kuralı; tarih bağlantısı ayrı Gökhan kararı ister).
+  Karar: noindex ya da 301 YOK. Kohorttaki başlıkların entry'leri için yalnız JSON-LD
+  `@id`/`url` entry'nin başlıktaki asıl yerine (`başlık?page=N#entry-N`) döner.
+  Okurun tıkladığı her bağlantı (tarih, paylaş, DEBE, bkz, arama), RSS/Atom, canonical,
+  sitemap, robots ve noindex DEĞİŞMEZ. İlk sürüm DEBE/bkz/arama/akışı da değiştiriyordu;
+  Sol 6.1 1. tur NO-GO (19 Ekim): okur yüzeyiydiler, oturumlu okuru yanlış sayfaya
+  gönderiyorlardı ve akışta saklanan `?page=N` moderasyon sonrası 404'e düşebiliyordu.
 
   Kohort: başlık `publicId` çift = deney, tek = kontrol. Aynı 28 günlük pencerede
   iki grup karşılaştırılabilsin diye.
@@ -23,7 +25,7 @@ import { paginatedCanonical } from "./public-seo";
     10 puan daha hızlı düşer.
   - Koruma: deney kohortunun toplam tıklaması (entry + başlık) kontrole göre
     %25'ten fazla düşerse deney kapatılır.
-  Kapatma: aşağıdaki sabit `false` yapılır; tüm yüzeyler eski `/entry/N`'ye döner.
+  Kapatma: aşağıdaki sabit `false` yapılır; JSON-LD eski `/entry/N`'ye döner.
 */
 export const ENTRY_SIGNAL_COHORT_ENABLED = true;
 
@@ -49,7 +51,7 @@ export function topicEntryLocationUrl(input: {
 }
 
 /**
- * Makineye dönük entry bağlantısı (JSON-LD, akış bağlantısı, DEBE, bkz, arama).
+ * Makineye dönük entry bağlantısı (yalnız JSON-LD `@id`/`url`).
  * Deney kohortunda başlıktaki yer, kontrolde `/entry/N`. Sayfa bilinmiyorsa
  * (`null`) yanlış sayfaya çapa vermek yerine `/entry/N`'ye düşülür.
  */

@@ -13,7 +13,6 @@ import {
   withEntryCounters,
 } from "@/modules/entries/domain/entry";
 import {
-  findEntryTopicLocations,
   getEntryTopicPageNumber,
   findVisibleEntryReferences,
   createEntryRecord,
@@ -46,8 +45,7 @@ import {
   findEntryProvenanceRecords,
   findSourceItemLinks,
 } from "@/modules/entries/repository/source-links";
-import { topicPublicUrl } from "@/lib/routing/public-urls";
-import { entrySignalCohort, entrySignalUrl } from "@/modules/indexing/domain/entry-signal-cohort";
+import { entryPublicUrl, topicPublicUrl } from "@/lib/routing/public-urls";
 import {
   collectEntryReferenceCandidates,
   type ReferenceIndex,
@@ -312,27 +310,6 @@ export function getEntryTopicPage(
   );
 }
 
-/**
- * Birden çok entry'nin başlık sayfasındaki yeri, tek sorguda (entry sinyal kohortu).
- * Kural `getEntryTopicPage` ile aynı; liste yüzeyleri entry başına sorgu açmasın diye var.
- */
-export function getEntryTopicLocations(
-  client: DatabaseExecutor,
-  entryIds: readonly string[],
-  pageSize = DEFAULT_PAGE_SIZE,
-) {
-  if (entryIds.length === 0)
-    return Promise.resolve(
-      new Map<
-        string,
-        { publicId: number; topic: { slug: string; publicId: number }; page: number }
-      >(),
-    );
-  return inTransaction(client, (transaction) =>
-    findEntryTopicLocations(transaction, entryIds, pageSize),
-  );
-}
-
 export function getEntry(client: DatabaseClient, entryId: string, viewer: EntryViewer | null) {
   return getEntryRecord(client, { id: entryId }, viewer);
 }
@@ -442,23 +419,13 @@ export async function getEntryReferenceIndex(
   if (candidates.topics.size === 0 && candidates.entries.size === 0 && candidates.users.size === 0)
     return {};
 
-  const { resolved, locations } = await client.$transaction(async (transaction) => {
-    const resolved = await findVisibleEntryReferences(transaction, {
+  const resolved = await client.$transaction((transaction) =>
+    findVisibleEntryReferences(transaction, {
       normalizedTopicTitles: [...candidates.topics],
       entryPublicIds: [...candidates.entries],
       usernames: [...candidates.users],
-    });
-    // Entry sinyal kohortu: yalnız deney kohortundaki başlıkların entry'leri için sayfa
-    // hesaplanır; kontrol kohortu ve kapalı deney ek sorgu açmaz.
-    const treatmentIds = resolved.entries
-      .filter((entry) => entrySignalCohort(entry.topic.publicId) === "treatment")
-      .map((entry) => entry.id);
-    const locations =
-      treatmentIds.length > 0
-        ? await findEntryTopicLocations(transaction, treatmentIds, DEFAULT_PAGE_SIZE)
-        : new Map<string, { page: number }>();
-    return { resolved, locations };
-  });
+    }),
+  );
   const topics = new Map<string, string>();
   for (const topic of resolved.topics) {
     const url = topicPublicUrl(topic);
@@ -466,13 +433,7 @@ export async function getEntryReferenceIndex(
     for (const alias of topic.aliases) topics.set(alias.normalizedTitle, url);
   }
   const entries = new Map(
-    resolved.entries.map(
-      (entry) =>
-        [
-          entry.publicId,
-          entrySignalUrl({ topic: entry.topic, entry, page: locations.get(entry.id)?.page }),
-        ] as const,
-    ),
+    resolved.entries.map((entry) => [entry.publicId, entryPublicUrl(entry)] as const),
   );
   const users = new Set(resolved.users.map((user) => user.usernameNormalized));
   return {

@@ -2,8 +2,6 @@ import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseClient, DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
-import { getEntryTopicLocations } from "@/modules/entries/application/entries";
-import { entrySignalCohort } from "@/modules/indexing/domain/entry-signal-cohort";
 import { decidePublicIndexing } from "@/modules/indexing/domain/policy";
 import {
   countIndexableEntries,
@@ -185,19 +183,7 @@ export function getSyndicationEntries(
       ...(input.authorId ? { authorId: input.authorId } : {}),
     });
     const dates = await entryContentDates(transaction, entries);
-    // Entry sinyal kohortu: deney başlıklarındaki entry'lerin akış `link`'i başlıktaki yere
-    // gider; sayfa numaraları tek sorguda gelir. `guid`/`id` değişmez (bkz. syndication.ts).
-    const locations = await getEntryTopicLocations(
-      transaction,
-      entries
-        .filter((entry) => entrySignalCohort(entry.topic.publicId) === "treatment")
-        .map((entry) => entry.id),
-    );
-    return entries.map((entry) => ({
-      ...entry,
-      updatedAt: dates.get(entry.id)!,
-      topicPage: locations.get(entry.id)?.page ?? null,
-    }));
+    return entries.map((entry) => ({ ...entry, updatedAt: dates.get(entry.id)! }));
   });
 }
 

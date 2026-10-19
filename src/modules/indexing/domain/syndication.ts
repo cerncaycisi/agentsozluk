@@ -1,7 +1,6 @@
 import { APP_NAME } from "@/config/app";
 import { escapeXml } from "@/lib/http/xml";
 import { entryPublicUrl, topicPublicUrl } from "@/lib/routing/public-urls";
-import { entrySignalUrl } from "./entry-signal-cohort";
 import { absolutePublicUrl, publicExcerpt, publicProfileUrl } from "./public-seo";
 
 export interface SyndicationEntry {
@@ -18,8 +17,6 @@ export interface SyndicationEntry {
     username: string;
     displayName: string;
   };
-  /** Entry'nin başlık sayfası (entry sinyal kohortu); bilinmiyorsa `/entry/N`'ye düşülür. */
-  topicPage?: number | null;
 }
 
 export interface SyndicationFeed {
@@ -32,25 +29,8 @@ export interface SyndicationFeed {
   generatedAt: Date;
 }
 
-/*
-  Öğe KİMLİĞİ ile öğe BAĞLANTISI ayrı — entry sinyal kohortu, 19 Ekim 2026.
-
-  RSS `guid` ve Atom `id` okuyucunun "bu öğeyi gördüm mü" anahtarıdır. Değişirse
-  her okuyucu son 50 entry'yi yeni öğe sanıp yeniden gösterir. Sayfa numarası da
-  kalıcı değil (bastırılan seed entry sayfa sınırını kaydırabilir), kimlik ona
-  bağlanamaz. Bu yüzden kimlik her kohortta kalıcı
-  `/entry/N` kalır (`isPermaLink="true"` hâlâ doğru: adres açılıyor). Yalnız
-  `link`, deney kohortunda entry'nin başlıktaki asıl yerine gider.
-*/
-function entryIdentity(baseUrl: string, entry: SyndicationEntry): string {
+function entryUrl(baseUrl: string, entry: SyndicationEntry): string {
   return absolutePublicUrl(baseUrl, entryPublicUrl(entry));
-}
-
-function entryLink(baseUrl: string, entry: SyndicationEntry): string {
-  return absolutePublicUrl(
-    baseUrl,
-    entrySignalUrl({ topic: entry.topic, entry, page: entry.topicPage }),
-  );
 }
 
 function authorName(entry: SyndicationEntry): string {
@@ -71,12 +51,13 @@ export function buildRssFeed(baseUrl: string, feed: SyndicationFeed): string {
   const selfUrl = absolutePublicUrl(baseUrl, feed.rssPath);
   const items = feed.entries
     .map((entry) => {
+      const url = entryUrl(baseUrl, entry);
       const topicUrl = absolutePublicUrl(baseUrl, topicPublicUrl(entry.topic));
       return [
         "<item>",
         `<title>${escapeXml(entry.topic.title)}</title>`,
-        `<link>${escapeXml(entryLink(baseUrl, entry))}</link>`,
-        `<guid isPermaLink="true">${escapeXml(entryIdentity(baseUrl, entry))}</guid>`,
+        `<link>${escapeXml(url)}</link>`,
+        `<guid isPermaLink="true">${escapeXml(url)}</guid>`,
         `<pubDate>${entry.createdAt.toUTCString()}</pubDate>`,
         `<dc:creator>${escapeXml(authorName(entry))}</dc:creator>`,
         `<category domain="${escapeXml(topicUrl)}">${escapeXml(entry.topic.title)}</category>`,
@@ -107,11 +88,12 @@ export function buildAtomFeed(baseUrl: string, feed: SyndicationFeed): string {
   const selfUrl = absolutePublicUrl(baseUrl, feed.atomPath);
   const entries = feed.entries
     .map((entry) => {
+      const url = entryUrl(baseUrl, entry);
       return [
         "<entry>",
         `<title>${escapeXml(entry.topic.title)}</title>`,
-        `<id>${escapeXml(entryIdentity(baseUrl, entry))}</id>`,
-        `<link href="${escapeXml(entryLink(baseUrl, entry))}" rel="alternate" type="text/html" />`,
+        `<id>${escapeXml(url)}</id>`,
+        `<link href="${escapeXml(url)}" rel="alternate" type="text/html" />`,
         `<published>${entry.createdAt.toISOString()}</published>`,
         `<updated>${entry.updatedAt.toISOString()}</updated>`,
         "<author>",

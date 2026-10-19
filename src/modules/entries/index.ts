@@ -6,7 +6,6 @@ export {
   getEntryReferenceIndex,
   getEntrySourceLinks,
   getEntryRevisions,
-  getEntryTopicLocations,
   getTopicEntries,
   type EntryViewer,
 } from "@/modules/entries/application/entries";

@@ -15,7 +15,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const currentPageSession = vi.hoisted(() => vi.fn());
 const getTopicByPublicId = vi.hoisted(() => vi.fn());
 const getTopicEntries = vi.hoisted(() => vi.fn());
-const getEntryTopicLocations = vi.hoisted(() => vi.fn(async () => new Map()));
 const buildTopicJsonLd = vi.hoisted(() => vi.fn(() => ({})));
 const robotsForPaginatedView = vi.hoisted(() =>
   vi.fn((base: { index: boolean; follow: boolean }, hasFacetParameters: boolean) => ({
@@ -51,7 +50,6 @@ vi.mock("@/lib/auth/server-session", () => ({ currentPageSession }));
 vi.mock("@/modules/entries/application/entries", () => ({
   getEntryReferenceIndex: async () => new Map(),
   getEntrySourceLinks: async () => new Map(),
-  getEntryTopicLocations,
   getTopicEntries,
 }));
 vi.mock("@/modules/interactions/application/interactions", () => ({
@@ -415,24 +413,28 @@ describe("başlık sayfası JSON-LD entry kimliği (deney kohortu)", () => {
     return calls[0]?.[0].entries.map((entry) => entry.url) ?? [];
   }
 
-  it("anonim varsayılan görünümde bu sayfanın numarasını kullanır, ek sorgu açmaz", async () => {
+  it("anonim varsayılan görünümde bu sayfanın numarasını kullanır", async () => {
     getTopicEntries.mockResolvedValue({ entries: [entryFixture], totalItems: 30 });
     await renderTopicPage({ page: "2" });
 
     expect(jsonLdEntryUrls()).toEqual([`${TOPIC_URL}?page=2#entry-501`]);
-    expect(getEntryTopicLocations).not.toHaveBeenCalled();
   });
 
-  it("sıralanmış görünümde sayfa kaydığı için yeri tek sorguda yeniden hesaplar", async () => {
+  it("sıralanmış görünümde sıra kaydığı için /entry/N kalır", async () => {
     getTopicEntries.mockResolvedValue({ entries: [entryFixture], totalItems: 30 });
-    getEntryTopicLocations.mockResolvedValueOnce(
-      new Map([
-        [entryFixture.id, { publicId: 501, topic: { slug: "test-baslik", publicId: 42 }, page: 1 }],
-      ]),
-    );
     await renderTopicPage({ sort: "newest", page: "2" });
 
-    expect(getEntryTopicLocations).toHaveBeenCalledTimes(1);
-    expect(jsonLdEntryUrls()).toEqual([`${TOPIC_URL}#entry-501`]);
+    expect(jsonLdEntryUrls()).toEqual(["/entry/501"]);
+  });
+
+  it("oturumlu görünümde (moderatör gizlenmişleri de görür) /entry/N kalır", async () => {
+    currentPageSession.mockResolvedValue({
+      userId: "00000000-0000-4000-8000-000000000009",
+      user: { role: "MODERATOR", status: "ACTIVE" },
+    });
+    getTopicEntries.mockResolvedValue({ entries: [entryFixture], totalItems: 30 });
+    await renderTopicPage({ page: "2" });
+
+    expect(jsonLdEntryUrls()).toEqual(["/entry/501"]);
   });
 });

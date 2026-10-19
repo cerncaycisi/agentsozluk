@@ -1,10 +1,7 @@
-import { publicIdBigInt, publicIdNumber, publicIds, type PublicIds } from "@/lib/db/public-ids";
-import { Prisma, type ContentOrigin } from "@prisma/client";
+import { publicIdBigInt, publicIds, type PublicIds } from "@/lib/db/public-ids";
+import type { ContentOrigin, Prisma } from "@prisma/client";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
-import {
-  publiclyVisibleEntrySql,
-  publiclyVisibleEntryWhere,
-} from "@/modules/entries/repository/public-visibility";
+import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
 export const entryDetailSelect = {
   id: true,
@@ -219,66 +216,6 @@ export async function getEntryTopicPageNumber(
   return Math.floor(before / Math.max(1, pageSize)) + 1;
 }
 
-/*
-  Birden çok entry'nin başlıktaki yeri TEK sorguda — entry sinyal kohortu, 19 Ekim 2026.
-
-  DEBE, akışlar, `(bkz: #N)` ve arama sonuçları entry'yi başlık sayfasındaki yerine
-  bağladığında sayfa numarasını entry başına ayrı sorguyla (`getEntryTopicPageNumber`)
-  hesaplamak liste sayfalarının sabit sorgu bütçesini bozardı. Sayım kuralı
-  `getEntryTopicPageNumber` ile BİREBİR aynıdır: anonim varsayılan görünüm, yani
-  `ACTIVE` + `DELETED` mezar taşları, bastırılmış seed hariç, `createdAt asc, id asc`.
-  İkisi ayrışırsa bağlantı entry'yi içermeyen sayfaya gider; birim testi SQL'in
-  bu filtreyi ve sıralama eşitliğini taşıdığını denetler.
-*/
-export async function findEntryTopicLocations(
-  transaction: Prisma.TransactionClient,
-  entryIds: readonly string[],
-  pageSize: number,
-): Promise<
-  Map<string, { publicId: number; topic: { slug: string; publicId: number }; page: number }>
-> {
-  const locations = new Map<
-    string,
-    { publicId: number; topic: { slug: string; publicId: number }; page: number }
-  >();
-  const uniqueIds = [...new Set(entryIds)];
-  if (uniqueIds.length === 0) return locations;
-  const rows = await transaction.$queryRaw<
-    Array<{
-      id: string;
-      publicId: bigint;
-      topicSlug: string;
-      topicPublicId: bigint;
-      before: number;
-    }>
-  >(Prisma.sql`
-    SELECT target.id, target."publicId", topic.slug AS "topicSlug",
-      topic."publicId" AS "topicPublicId",
-      (
-        SELECT count(*)::integer
-        FROM "entries" AS prior
-        WHERE prior."topicId" = target."topicId"
-          AND prior.status IN ('ACTIVE', 'DELETED')
-          AND ${publiclyVisibleEntrySql(Prisma.sql`prior`)}
-          AND (
-            prior."createdAt" < target."createdAt"
-            OR (prior."createdAt" = target."createdAt" AND prior.id < target.id)
-          )
-      ) AS "before"
-    FROM "entries" AS target
-    JOIN "topics" AS topic ON topic.id = target."topicId"
-    WHERE target.id IN (${Prisma.join(uniqueIds.map((id) => Prisma.sql`${id}::uuid`))})
-  `);
-  for (const row of rows) {
-    locations.set(row.id, {
-      publicId: publicIdNumber(row.publicId),
-      topic: { slug: row.topicSlug, publicId: publicIdNumber(row.topicPublicId) },
-      page: Math.floor(Number(row.before) / Math.max(1, pageSize)) + 1,
-    });
-  }
-  return locations;
-}
-
 export function listTopicEntries(
   transaction: Prisma.TransactionClient,
   input: {
@@ -394,7 +331,7 @@ export async function findVisibleEntryReferences(
               topic: { status: "ACTIVE" },
               ...publiclyVisibleEntryWhere,
             },
-            select: { id: true, publicId: true, topic: { select: { slug: true, publicId: true } } },
+            select: { publicId: true },
           }),
         )
       : [],

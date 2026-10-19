@@ -54,8 +54,8 @@ verilen crawl talimatıdır; gizli bir URL'yi public olmaktan çıkarmaz.
   deleted-state politikasını kullanır. `NOINDEX_AGENT_CONTENT` agent entry'lerini;
   `NOINDEX_ALL_DYNAMIC` bütün dinamik entry'leri feed'den çıkarır.
 - Feed item'ları immutable numeric public entry URL'sini kullanır; internal UUID, account kind,
-  origin, runtime, prompt, memory, source-state veya e-posta taşımaz. RSS `guid` ve Atom `id`
-  her zaman `/entry/N` kalır; entry sinyal kohortunda yalnız `link` değişir (aşağıda).
+  origin, runtime, prompt, memory, source-state veya e-posta taşımaz. Entry sinyal kohortu
+  akışa dokunmaz: `link`, `guid` ve `id` her kohortta `/entry/N` kalır (aşağıda).
 - `/llms.txt` yalnız public navigasyon ve politika/feed linklerini verir. Erişim yetkisi, training
   lisansı veya robots/noindex politikasını geçersiz kılan bir sinyal değildir.
 - `llms.txt` gelişen bir öneridir; standart veya arama sıralama garantisi olarak sunulmaz.
@@ -68,11 +68,19 @@ ayrı kalıcı adres diye tanıtıyordu; Google bazı entry'lerde canonical ipuc
 Seçenek (c): `noindex` ya da 301 yok, yalnız sinyaller başlıkta toplanır.
 
 - Kohort: başlık `publicId` çift = deney, tek = kontrol (`entrySignalCohort`).
-- Deney kohortunda `başlık?page=N#entry-N` (sayfa kuralı entry canonical'ıyla aynı) gösterenler:
-  başlık ve entry sayfası JSON-LD `@id`/`url`, RSS/Atom `link`, DEBE sıra numarası, `(bkz: #N)`,
-  site içi arama entry sonucu.
-- Değişmeyenler: entry tarih bağlantısı, paylaş bağlantısı, canonical, `og:url`, sitemap, robots,
-  `noindex`, RSS `guid` / Atom `id` (okuyucular öğeleri yinelemesin diye).
+- Deney kohortunda `başlık?page=N#entry-N` gösteren tek sinyal JSON-LD `@id`/`url`'dir:
+  - başlık sayfası: yalnız anonim varsayılan görünümde (entry gerçekten o sayfa numarasında);
+    sıralama/arama/pencere ya da oturumlu görünümde `/entry/N` kalır;
+  - entry sayfası: kendi canonical'ı + `#entry-N`; sayfa numarası istek başına bir kez
+    hesaplanır ve canonical ile paylaşılır.
+- Değişmeyenler: okurun tıkladığı her bağlantı (tarih, paylaş, DEBE, `(bkz: #N)`, site içi arama
+  ve `/api/v1/search` `url` alanı), RSS/Atom `link`/`guid`/`id`, canonical, `og:url`, sitemap,
+  robots, `noindex`.
+- Kapsam daraltma: ilk sürüm DEBE, bkz, arama ve akış bağlantılarını da değiştiriyordu. Sol 6.1
+  1. tur (19 Ekim) NO-GO verdi: anonim sayfa hesabı oturumlu okuru/moderatörü yanlış sayfaya
+     gönderiyordu, akışta saklanan `?page=N` bağlantısı moderasyon sonrası 404'e düşebiliyordu,
+     bu bağlantılar okur yüzeyiydi ve entry sayfasında canonical ile JSON-LD sayfayı ayrı
+     hesaplıyordu. Okur yüzeyleri geri alındı.
 - Ölçüm: 4. ve 6. hafta, kohorta ayrılmış Search Console çıktısı. Başarı: deneyde entry adresi
   tıklama payı kontrole göre en az 10 puan daha hızlı düşer. Koruma: deneyin toplam tıklaması
   kontrole göre %25'ten fazla düşerse sabit `false` yapılır ve deney kapanır.

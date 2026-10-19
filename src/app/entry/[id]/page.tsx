@@ -54,6 +54,21 @@ const getCachedContentDates = cache((entry: Parameters<typeof getEntryContentDat
   getEntryContentDates(getDatabase(), [entry]),
 );
 
+/*
+  Entry'nin başlıktaki sayfası istek başına BİR kez hesaplanır — entry sinyal kohortu,
+  19 Ekim 2026 (Sol 6.1 1. tur P3). Canonical (`generateMetadata`) ile deney kohortundaki
+  JSON-LD `@id`/`url` aynı sayıyı kullanmalı; iki ayrı sorgu arada yazılan/silinen bir
+  entry yüzünden farklı sayfa verebilirdi. Anahtar ilkel değerlerdir (`cache()` nesneyi
+  referansla karşılaştırır, metadata ile gövde farklı entry nesnesi taşıyabilir).
+*/
+const getCachedTopicPage = cache((entryId: string, topicId: string, createdAtMs: number) =>
+  getEntryTopicPage(getDatabase(), { id: entryId, topicId, createdAt: new Date(createdAtMs) }),
+);
+
+function topicPageFor(entry: { id: string; topicId: string; createdAt: Date }) {
+  return getCachedTopicPage(entry.id, entry.topicId, entry.createdAt.getTime());
+}
+
 function anonymousEntryFor(reference: NonNullable<ReturnType<typeof parseEntryRouteReference>>) {
   return reference.kind === "public"
     ? getAnonymousEntry("public", String(reference.publicId))
@@ -91,7 +106,7 @@ export async function generateMetadata({
       Sayfa erişilebilir kalıyor (dışarıdan verilmiş linkler kırılmasın), yalnız
       sıralama sinyali başlıkta toplanıyor.
     */
-    const topicPage = await getEntryTopicPage(getDatabase(), entry);
+    const topicPage = await topicPageFor(entry);
     const canonical = paginatedCanonical(topicPublicUrl(entry.topic), topicPage);
     const title = `${entry.topic.title} · ${entry.author.displayName}`;
     const description = publicExcerpt(entry.body);
@@ -143,11 +158,12 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
   /*
     Entry sinyal kohortu (bkz. `entry-signal-cohort.ts`): deney kohortunda bu sayfanın
     JSON-LD `@id`/`url`'i kendi canonical'ıyla (başlığın doğru sayfası) aynı yeri,
-    `#entry-N` çapasıyla gösterir. Kontrol kohortunda eskisi gibi `/entry/N`.
+    `#entry-N` çapasıyla gösterir; sayfa numarası canonical'la aynı önbellekten gelir.
+    Kontrol kohortunda eskisi gibi `/entry/N`.
   */
   const signalPage =
     entrySignalCohort(entry.topic.publicId) === "treatment"
-      ? getEntryTopicPage(database, entry)
+      ? topicPageFor(entry)
       : Promise.resolve(null);
   const [[votes, bookmarks], references, canGammaz, contentDates, sourceLinks, topicPage] =
     await Promise.all([
