@@ -2588,16 +2588,24 @@ m2_compose=(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-s
 
 - `create` uygun olmayan başlığı (`reason=FOCUS_TOPIC_INELIGIBLE`), etkin olmayan ya da ajan
   olmayan yazarı (`reason=FOCUS_AGENT_INVALID`), 14 günü aşan pencereyi ve ikinci etkin listeyi
-  (`AGENT_FOCUS_LIST_CONFLICT`) reddeder; hiçbir şey yazmaz.
+  (`AGENT_FOCUS_LIST_CONFLICT`) reddeder; hiçbir şey yazmaz. Saat ayar kilidinden sonra okunur
+  ve tekillik başlangıçtan bağımsız denetlenir (kapatılmamış, bitişi gelmemiş her liste sayılır).
+  Süresi geçmiş ajan yazma kilidi başlığı uygunsuz yapmaz.
+- **Yazım anı denetimi:** bu koşuda sunulan etkin odak başlığına yeni entry yazılırken başlık
+  kilidi altında yeniden sayılır; pencerede 2 ajan entry'si dolmuşsa ya da yazar bu başlığa
+  pencerede zaten yazdıysa `FOCUS_TOPIC_CAP_REACHED` ile onarılamaz biçimde reddedilir. Odak
+  dışındaki yazımlar etkilenmez.
 - **`end` anında geçerlidir:** bundan sonra kurulan hiçbir algı odak başlığı görmez. Algısı zaten
   dondurulmuş, o an çalışan koşu menüsündeki başlığı korur; yeni koşu açılmaz, koşu iptal edilmez.
   Süre dolunca liste kendiliğinden etkisizleşir. Satır silinmez; `endedAt`, `endedById`,
   `endReason` yazılır.
 - Açma ve kapatma `audit_logs` (`agent.focus_list.created` / `agent.focus_list.ended`) ve
-  `agent_runtime_events` satırı yazar. Koşu telemetrisi `agent.focus.offered` ve
-  `agent.focus.read` olaylarıdır (yük yalnız `focusListId`, `topicId`); yazıldı sayısı
-  `agent_content_records` ile koşuya bağlanır. Salt okunur ölçüm `status` ile ya da bu iki olay
-  türü üzerinden SQL ile yapılır.
+  `agent_runtime_events` satırı yazar. Koşu telemetrisi `agent.focus.offered`,
+  `agent.focus.read` (yalnız algıya gerçekten giren başlık) ve `agent.focus.written` (yayım
+  anında, aynı transaction'da; `entryId` dahil, entry sonradan taşınsa da değişmez) olaylarıdır;
+  yük yalnız `origin=RUNTIME_FOCUS_LIST`, `focusListId`, `topicId`. `agent.focus*` ad alanı
+  sunucuya aittir: worker bu önekle olay gönderemez, sayımda yalnız kaynaklı olaylar geçer. Salt
+  okunur ölçüm `status` ile ya da bu olay türleri üzerinden SQL ile yapılır.
 - Çıktı yalnız liste kimliği, başlık publicId'leri, ajan kullanıcı adları ve sayılardır; hata
   `FOCUS_LIST_FAIL code=<kod>` satırıyla biter. Komutun varlığı yetki değildir: listeyi üretimde
   açmak ya da kapatmak geçerli yetki ister; aktör `bootstrap_admin`, kimlik basılmaz.

@@ -2012,8 +2012,14 @@ export function getRuntimeRunContext(
     */
     const alreadyReadTopics = Array.isArray((perception as Record<string, unknown>).readTopics);
     if (readTopicIds.length > 0 && (allowedReadTopicIds.length > 0 || !alreadyReadTopics)) {
-      await recordRuntimeFocusTopicRead(transaction, run, allowedReadTopicIds, now);
       const readTopics = await getRuntimeReadTopics(transaction, allowedReadTopicIds);
+      // Yalnız gerçekten okunup algıya giren başlık "okundu" sayılır (Sol 6.1, 1. tur).
+      await recordRuntimeFocusTopicRead(
+        transaction,
+        run,
+        readTopics.map(({ id }) => id),
+        now,
+      );
       perception = {
         ...perception,
         readTopics: readTopics.map((topic) => ({

@@ -35,6 +35,35 @@ export const focusRunTriggers: ReadonlySet<string> = new Set(["STOCHASTIC_TICK",
 /** Telemetri olay türleri; yükte yalnız kimlik ve kod bulunur. */
 export const focusTopicOfferedEventType = "agent.focus.offered";
 export const focusTopicReadEventType = "agent.focus.read";
+export const focusTopicWrittenEventType = "agent.focus.written";
+/** Sunucuya ait olay ad alanı; worker bu önekle olay yazamaz (Sol 6.1, 1. tur). */
+export const focusEventNamespace = "agent.focus";
+/** Telemetri olaylarının kaynağı; sayımda yalnız bu kaynaklı olaylar geçerlidir. */
+export const focusEventOrigin = "RUNTIME_FOCUS_LIST";
+/** Yazım anında odak tavanı ya da aynı yazar kuralı aşılırsa ret kodu (onarılamaz). */
+export const focusTopicWriteRejectionCode = "FOCUS_TOPIC_CAP_REACHED";
+
+/** Worker'ın gönderdiği olay türü sunucunun odak ad alanına giriyor mu. */
+export function isReservedFocusEventType(eventType: string): boolean {
+  const normalized = eventType.trim().toLowerCase();
+  return (
+    normalized === focusEventNamespace ||
+    normalized.startsWith(`${focusEventNamespace}.`) ||
+    normalized.startsWith(`${focusEventNamespace}_`)
+  );
+}
+
+/*
+  Yazım anı denetimi (Sol 6.1, 1. tur): seçimdeki 2 entry tavanı ve "aynı yazar ikinci kez
+  yazmaz" kuralı, odak başlığını gören tek bir koşunun iki entry yayımlamasını engellemiyordu.
+  Bu koşuda sunulan etkin odak başlığına yazılırken, başlık kilidi altında yeniden sayılır.
+*/
+export function focusWriteBlocked(input: {
+  agentEntriesSinceStart: number;
+  authorWroteSinceStart: boolean;
+}): boolean {
+  return input.agentEntriesSinceStart >= focusTopicAgentEntryCap || input.authorWroteSinceStart;
+}
 export const focusListCreatedEventType = "agent.focus_list.created";
 export const focusListEndedEventType = "agent.focus_list.ended";
 

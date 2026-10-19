@@ -9,7 +9,9 @@ import {
   focusOfferCooldownMs,
   focusRunEligible,
   focusWindowError,
+  focusWriteBlocked,
   isFocusListActive,
+  isReservedFocusEventType,
   selectFocusTopic,
   withFocusTopic,
   type FocusListWindow,
@@ -18,6 +20,7 @@ import {
 } from "@/modules/agents/domain/focus-list";
 import { browsableTopicMenu, interestTopicLimit } from "@/modules/agents/domain/runtime-browse";
 import { focusListCreateSchema } from "@/modules/agents/validation/focus-list-schemas";
+import { runtimeEventsSchema } from "@/modules/agents/validation/runtime-schemas";
 import { focusFailureCode, readFocusListInput } from "../../../scripts/agent-focus";
 
 /*
@@ -279,3 +282,36 @@ function valid() {
     reason: "odakli deneme T0 acilisi",
   };
 }
+
+describe("odak yazım ve olay ad alanı (Sol 6.1, 1. tur)", () => {
+  it("pencerede 2 ajan entry'si ya da yazarın önceki yazımı yeni yazımı engeller", () => {
+    expect(focusWriteBlocked({ agentEntriesSinceStart: 0, authorWroteSinceStart: false })).toBe(
+      false,
+    );
+    expect(focusWriteBlocked({ agentEntriesSinceStart: 1, authorWroteSinceStart: false })).toBe(
+      false,
+    );
+    expect(focusWriteBlocked({ agentEntriesSinceStart: 2, authorWroteSinceStart: false })).toBe(
+      true,
+    );
+    expect(focusWriteBlocked({ agentEntriesSinceStart: 1, authorWroteSinceStart: true })).toBe(
+      true,
+    );
+  });
+
+  it("worker agent.focus.* olaylarını gönderemez", () => {
+    const event = (eventType: string) =>
+      runtimeEventsSchema.safeParse({
+        workerId: "focus-worker",
+        leaseToken: "f".repeat(43),
+        events: [{ eventType, safeMessage: "deneme" }],
+      }).success;
+    expect(event("agent.focus.read")).toBe(false);
+    expect(event(" AGENT.FOCUS.WRITTEN ")).toBe(false);
+    expect(event("agent.focus_list.created")).toBe(false);
+    expect(event("agent.focus")).toBe(false);
+    expect(event("agent.focused.other")).toBe(true);
+    expect(isReservedFocusEventType("agent.focus.offered")).toBe(true);
+    expect(isReservedFocusEventType("run.started")).toBe(false);
+  });
+});

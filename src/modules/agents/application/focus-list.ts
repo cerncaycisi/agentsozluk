@@ -9,20 +9,28 @@ import {
   focusListCreatedEventType,
   focusListEndedEventType,
   focusRunEligible,
+  focusEventOrigin,
   focusTopicOfferedEventType,
   focusTopicReadEventType,
+  focusTopicWriteRejectionCode,
+  focusTopicWrittenEventType,
   focusWindowError,
+  focusWriteBlocked,
+  isFocusListActive,
   selectFocusTopic,
 } from "@/modules/agents/domain/focus-list";
 import { appendRuntimeEvent, lockAgentSettings } from "@/modules/agents/repository/control-plane";
 import {
+  countFocusTopicWrites,
   createFocusListRecord,
   endFocusListRecord,
   findActiveFocusListRecord,
   findFocusAgentsByUsernames,
+  findFocusListRecordById,
   findFocusTopicTitle,
   findFocusTopicsByPublicIds,
   findLatestFocusListRecord,
+  findOpenFocusListRecord,
   findRunFocusOffer,
   focusListReport,
   isEligibleFocusTopic,
@@ -45,18 +53,24 @@ export async function createFocusList(
   client: DatabaseExecutor,
   actor: ActorContext,
   input: FocusListCreateInput,
-  now: Date = new Date(),
+  clock: () => Date = () => new Date(),
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
-    if (await findActiveFocusListRecord(transaction, now))
+    /*
+      Saat kilitlerden SONRA okunur ve tekillik başlangıçtan bağımsız denetlenir (Sol 6.1,
+      1. tur): kilitten önce alınan `now`, eşzamanlı ikinci oluşturmanın daha geç başlangıçlı
+      listesini görmüyordu ve iki etkin liste kalabiliyordu.
+    */
+    const now = clock();
+    if (await findOpenFocusListRecord(transaction, now))
       throw new AppError("AGENT_FOCUS_LIST_CONFLICT", 409, "Etkin bir odak listesi zaten var.");
     const endsAt = new Date(input.endsAt);
     const windowError = focusWindowError(now, endsAt);
     if (windowError) throw invalid("Odak penceresi geçersiz.", { reason: windowError });
 
-    const topics = await findFocusTopicsByPublicIds(transaction, input.topics);
+    const topics = await findFocusTopicsByPublicIds(transaction, input.topics, now);
     const byPublicId = new Map(topics.map((topic) => [topic.publicId.toString(), topic]));
     const ineligible = input.topics.map(String).filter((publicId) => {
       const topic = byPublicId.get(publicId);
@@ -126,12 +140,13 @@ export async function endFocusList(
   client: DatabaseExecutor,
   actor: ActorContext,
   input: { reason: string },
-  now: Date = new Date(),
+  clock: () => Date = () => new Date(),
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
-    const active = await findActiveFocusListRecord(transaction, now);
+    const now = clock();
+    const active = await findOpenFocusListRecord(transaction, now);
     if (!active)
       throw new AppError("AGENT_FOCUS_LIST_CONFLICT", 409, "Kapatılacak etkin odak listesi yok.");
     await endFocusListRecord(transaction, {
@@ -164,7 +179,7 @@ export async function getFocusListStatus(client: DatabaseExecutor, now: Date = n
   return inTransaction(client, async (transaction) => {
     const list = await findLatestFocusListRecord(transaction);
     if (!list) return null;
-    const report = await focusListReport(transaction, list);
+    const report = await focusListReport(transaction, list, now);
     return {
       list,
       active: list.endedAt === null && list.startsAt <= now && now < list.endsAt,
@@ -204,6 +219,7 @@ export async function pickRuntimeFocusTopic(
     list,
     agentProfileId: run.agentProfileId,
     agentUserId: run.agentUserId,
+    now,
   });
   const topicId = selectFocusTopic(list, context, states);
   if (!topicId) return null;
@@ -215,13 +231,16 @@ export async function pickRuntimeFocusTopic(
     eventType: focusTopicOfferedEventType,
     subject: { type: "TOPIC", id: topic.id },
     safeMessage: "Süreli odak listesinden bir başlık okuma menüsüne eklendi.",
-    metadata: { origin: "RUNTIME_FOCUS_LIST", focusListId: list.id, topicId: topic.id },
+    metadata: { origin: focusEventOrigin, focusListId: list.id, topicId: topic.id },
     occurredAt: now,
   });
   return topic;
 }
 
-/** Ajan sunulan odak başlığını okumayı seçtiyse bir kez `agent.focus.read` yazar. */
+/*
+  Ajan sunulan odak başlığını gerçekten okuduysa bir kez `agent.focus.read` yazar. Çağıran
+  yalnız `readTopics` içine gerçekten dönen başlık kimliklerini verir (Sol 6.1, 1. tur).
+*/
 export async function recordRuntimeFocusTopicRead(
   transaction: TransactionClient,
   run: { id: string; agentProfileId: string },
@@ -238,10 +257,75 @@ export async function recordRuntimeFocusTopicRead(
     subject: { type: "TOPIC", id: offer.topicId },
     safeMessage: "Ajan süreli odak başlığını okumayı seçti.",
     metadata: {
-      origin: "RUNTIME_FOCUS_LIST",
+      origin: focusEventOrigin,
       focusListId: offer.focusListId,
       topicId: offer.topicId,
     },
     occurredAt: now,
+  });
+}
+
+/*
+  YAZIM ANI ODAK DENETİMİ (Sol 6.1, 1. tur). Yalnız bu koşuda sunulmuş ve hâlâ etkin listedeki
+  odak başlığına yeni entry yazılırken çalışır; öteki yazımlar etkilenmez. Çağıran başlık
+  kilidini (`lockTopicState`) tutar, böylece eşzamanlı iki yazım aynı sayımı göremez. Pencerede
+  2 ajan entry'si dolmuşsa ya da yazar bu başlığa pencere içinde zaten yazdıysa onarılamaz bir
+  retle (`FOCUS_TOPIC_CAP_REACHED`) durur. Geçerse sunum bilgisini döner; yazım sonrası
+  `recordRuntimeFocusTopicWritten` değişmez kaydı yazar.
+*/
+export async function runtimeFocusWriteGuard(
+  transaction: TransactionClient,
+  input: { runId: string; authorId: string; topicId: string; now: Date },
+): Promise<
+  | { status: "NOT_FOCUS" }
+  | { status: "REJECTED"; code: string; reason: string }
+  | { status: "ALLOWED"; focusListId: string; topicId: string }
+> {
+  const offer = await findRunFocusOffer(transaction, input.runId);
+  if (!offer || offer.topicId !== input.topicId) return { status: "NOT_FOCUS" };
+  const list = await findFocusListRecordById(transaction, offer.focusListId);
+  if (!list || !isFocusListActive(list, input.now)) return { status: "NOT_FOCUS" };
+  const counts = await countFocusTopicWrites(transaction, {
+    topicId: input.topicId,
+    authorId: input.authorId,
+    since: list.startsAt,
+  });
+  if (focusWriteBlocked(counts))
+    return {
+      status: "REJECTED",
+      code: focusTopicWriteRejectionCode,
+      reason:
+        "Bu odak başlığı süreli pencerede yeterince yeni ajan entry'si aldı ya da sen bu başlığa bu pencerede zaten yazdın; entry yazılmadı.",
+    };
+  return { status: "ALLOWED", focusListId: list.id, topicId: input.topicId };
+}
+
+/** Odak başlığına yayımlanan entry için değişmez `agent.focus.written` kaydı. */
+export async function recordRuntimeFocusTopicWritten(
+  transaction: TransactionClient,
+  input: {
+    runId: string;
+    actionId: string;
+    agentProfileId: string;
+    focusListId: string;
+    topicId: string;
+    entryId: string;
+    now: Date;
+  },
+): Promise<void> {
+  await appendRuntimeEvent(transaction, {
+    agentProfileId: input.agentProfileId,
+    runId: input.runId,
+    actionId: input.actionId,
+    eventType: focusTopicWrittenEventType,
+    subject: { type: "TOPIC", id: input.topicId },
+    safeMessage: "Ajan süreli odak başlığına entry yayımladı.",
+    metadata: {
+      origin: focusEventOrigin,
+      focusListId: input.focusListId,
+      topicId: input.topicId,
+      entryId: input.entryId,
+    },
+    occurredAt: input.now,
   });
 }

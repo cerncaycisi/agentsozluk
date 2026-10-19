@@ -117,9 +117,14 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      Aynı yazara 3 gün içinde aynı başlık yok; pencerede 2 ajan entry'si alan, yazarın zaten
      yazdığı, gizli/birleşmiş/kilitli ya da G4'e göre ince başlık atlanır. İstem, persona, kapılar
      ve koşu sayısı değişmez. Telemetri: `agent.focus.offered` / `agent.focus.read` olayları;
-     `status` başlık başına sunuldu/okundu/yazıldı/pas sayar. **Kalan:** Sol 6.1 hakemi (koşu
-     mekanizması), yerel kopyada deneme ve ilk taslakların Gökhan'a gösterilmesi, T0 uygunluk
-     okuması, dağıtım; liste T0'da operatörce açılır.
+     `status` başlık başına sunuldu/okundu/yazıldı/pas sayar.
+   - **Sol 6.1 1. tur (`4bcc9c77`, PR #446) NO-GO:** beş P2, bir P3 düzeltildi: saat kilitten
+     sonra ve tek açık liste başlangıçtan bağımsız; yazımda başlık kilidi altında 2 entry tavanı
+     ve aynı yazar kuralı (`FOCUS_TOPIC_CAP_REACHED`); süresi geçmiş yazma kilidi engellemez;
+     "yazıldı" yayım anındaki değişmez `agent.focus.written` olayından; `agent.focus*` worker'a
+     kapalı, yalnız kaynaklı olay sayılır; "okundu" yalnız algıya giren başlık.
+   - **Kalan:** Sol 6.1 dar 2. tur, yerel kopyada deneme ve ilk taslakların Gökhan'a
+     gösterilmesi, T0 uygunluk okuması, dağıtım; liste T0'da operatörce açılır.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 

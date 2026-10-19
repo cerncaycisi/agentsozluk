@@ -6,9 +6,12 @@ import {
   createAgentSchema,
   createFocusList,
   endFocusList,
+  executeRuntimeAction,
   focusListCreateSchema,
   getFocusListStatus,
   getRuntimeRunContext,
+  recordRuntimeActions,
+  runtimeActionsSchema,
 } from "@/modules/agents";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
@@ -357,7 +360,8 @@ describe("süreli odak listesi (PostgreSQL)", () => {
     await context(third);
     expect(await focusEvents(third.run.id, "agent.focus.offered")).toHaveLength(0);
 
-    // İkinci koşu odak başlığına yazmış olsun: yazıldı sayısı içerik kaydından gelir.
+    // Yazım olayı olmadan eklenen içerik kaydı "yazıldı" sayılmaz; sayım yayım anındaki
+    // değişmez `agent.focus.written` olayından gelir (Sol 6.1, 1. tur).
     const secondTopicId = focusIds.find((id) => id !== offered[0])!;
     const entry = await integrationDatabase.entry.create({
       data: {
@@ -395,8 +399,8 @@ describe("süreli odak listesi (PostgreSQL)", () => {
       agentEntriesSinceStart: 1,
       offered: 1,
       read: 0,
-      written: 1,
-      passed: 0,
+      written: 0,
+      passed: 1,
     });
     const firstTopic = status!.topics.find(({ topicId }) => topicId === offered[0])!;
     expect(firstTopic).toMatchObject({ offered: 1, read: 1, written: 0, passed: 1, pending: 0 });
@@ -441,4 +445,198 @@ describe("süreli odak listesi (PostgreSQL)", () => {
       "agent.focus_list.ended",
     ]);
   }, 120_000);
+
+  it("eşzamanlı iki oluşturmadan yalnız biri açılır (Sol 6.1, 1. tur)", async () => {
+    const seeded = await seed();
+    const actor = adminActor(seeded.admin.id);
+    const results = await Promise.allSettled([
+      createFocusList(integrationDatabase, actor, createInput(seeded, [seeded.eligibleA])),
+      createFocusList(integrationDatabase, actor, createInput(seeded, [seeded.eligibleB])),
+    ]);
+    expect(results.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find(({ status }) => status === "rejected") as PromiseRejectedResult;
+    expect(rejected.reason).toMatchObject({ code: "AGENT_FOCUS_LIST_CONFLICT" });
+    expect(await integrationDatabase.agentFocusList.count({ where: { endedAt: null } })).toBe(1);
+  }, 120_000);
+
+  it("süresi geçmiş yazma kilidi engellemez, etkin kilit engeller (Sol 6.1, 1. tur)", async () => {
+    const seeded = await seed();
+    const actor = adminActor(seeded.admin.id);
+    await integrationDatabase.agentTopicWriteLock.create({
+      data: {
+        topicId: seeded.eligibleA.id,
+        reason: "süresi geçmiş test kilidi",
+        createdById: seeded.admin.id,
+        expiresAt: new Date(Date.now() - 60_000),
+      },
+    });
+    await integrationDatabase.agentTopicWriteLock.create({
+      data: {
+        topicId: seeded.eligibleB.id,
+        reason: "etkin test kilidi",
+        createdById: seeded.admin.id,
+        expiresAt: new Date(Date.now() + 3_600_000),
+      },
+    });
+    await expect(
+      createFocusList(integrationDatabase, actor, createInput(seeded, [seeded.eligibleB])),
+    ).rejects.toMatchObject({
+      details: {
+        reason: "FOCUS_TOPIC_INELIGIBLE",
+        publicIds: [seeded.eligibleB.publicId.toString()],
+      },
+    });
+    const list = await createFocusList(
+      integrationDatabase,
+      actor,
+      createInput(seeded, [seeded.eligibleA]),
+    );
+    expect(list.topicIds).toEqual([seeded.eligibleA.id]);
+  }, 120_000);
+
+  it("yazımda tavan ve aynı yazar kuralı yeniden denetlenir; okuma ve yazım değişmez kayıttır", async () => {
+    const seeded = await seed();
+    const actor = adminActor(seeded.admin.id);
+    const extra = await createTopic("üçüncü odak testi", [longBody]);
+    const focusIds = [seeded.eligibleA.id, seeded.eligibleB.id, extra.id];
+    await createFocusList(
+      integrationDatabase,
+      actor,
+      createInput(seeded, [seeded.eligibleA, seeded.eligibleB, extra]),
+    );
+    const offeredTopic = async (started: Awaited<ReturnType<typeof startRun>>) => {
+      await context(started);
+      const [offer] = await focusEvents(started.run.id, "agent.focus.offered");
+      return (offer!.metadata as { topicId: string }).topicId;
+    };
+    const writeTwice = async (
+      started: Awaited<ReturnType<typeof startRun>>,
+      topicId: string,
+      bodies: [string, string],
+    ) => {
+      await recordRuntimeActions(
+        integrationDatabase,
+        started.principal,
+        started.run.id,
+        runtimeActionsSchema.parse({
+          workerId,
+          leaseToken,
+          actions: bodies.map((body, index) => ({
+            sequence: index + 1,
+            actionType: "CREATE_ENTRY" as const,
+            safeReason: "Okunan odak başlığına yeni bir ayrıntı eklenir.",
+            targetType: "TOPIC" as const,
+            targetId: topicId,
+            input: { topicId, body },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT" as const,
+              evidenceIds: [started.run.id],
+              shortRationale: "Runtime run odak başlığı yazımı için görünür kanıttır.",
+            },
+          })),
+        }),
+      );
+      const execute = (sequence: number) =>
+        executeRuntimeAction(
+          integrationDatabase,
+          started.principal,
+          started.run.id,
+          { workerId, leaseToken, sequence },
+          { requireLifeLedger: false },
+        );
+      return [await execute(1), await execute(2)];
+    };
+
+    // 1. koşu: sahte worker "okundu" olayı gerçek okumayı bastırmaz; ikinci yazım reddedilir.
+    const first = await startRun(seeded.runner);
+    const firstTopic = await offeredTopic(first);
+    await integrationDatabase.agentRuntimeEvent.create({
+      data: {
+        agentProfileId: seeded.runner.id,
+        runId: first.run.id,
+        eventType: "agent.focus.read",
+        safeMessage: "worker kaynaklı sahte okuma",
+        metadata: { phase: "forged" },
+      },
+    });
+    await context(first, [firstTopic]);
+    const reads = await focusEvents(first.run.id, "agent.focus.read");
+    expect(reads.filter(({ metadata }) => (metadata as { origin?: string }).origin)).toHaveLength(
+      1,
+    );
+    const [succeeded, rejected] = await writeTwice(first, firstTopic, [
+      "Kibrit fabrikasının kültür merkezine dönüşmesinde eski üretim hattının mekâna nasıl çevrildiği belirleyici olmuş.",
+      "Benzer bir dönüşüm eski bir santralde de görülmüş; orada makine dairesi müze olarak korunmuş.",
+    ]);
+    expect(succeeded).toMatchObject({ actionStatus: "SUCCEEDED" });
+    expect(rejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "FOCUS_TOPIC_CAP_REACHED",
+    });
+    const written = await focusEvents(first.run.id, "agent.focus.written");
+    expect(written).toHaveLength(1);
+    const writtenEntryId = (written[0]!.metadata as { entryId: string }).entryId;
+    await finishRun(first);
+
+    // 2. koşu: sunumdan sonra başka ajanlar 2 entry yazdıysa yazım reddedilir.
+    const second = await startRun(seeded.runner);
+    const secondTopic = await offeredTopic(second);
+    expect(secondTopic).not.toBe(firstTopic);
+    const fillerUsers = await integrationDatabase.user.findMany({
+      where: { username: { in: seeded.fillers.slice(0, 2) } },
+      select: { id: true },
+    });
+    for (const [index, user] of fillerUsers.entries())
+      await integrationDatabase.entry.create({
+        data: {
+          topicId: secondTopic,
+          authorId: user.id,
+          origin: "AGENT",
+          body: `başka ajanın odak entry'si ${index}`,
+          normalizedBody: `başka ajanın odak entry'si ${index}`,
+        },
+      });
+    await context(second, [secondTopic]);
+    const [capped] = await writeTwice(second, secondTopic, [
+      "Festival programındaki restorasyon seçkisi bu yıl yetmişlerin yerli filmlerine ağırlık vermiş.",
+      "Seçkinin ölçütü kopyaların durumuymuş; bozuk negatifler programdan çıkarılmış.",
+    ]);
+    expect(capped).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "FOCUS_TOPIC_CAP_REACHED",
+    });
+    expect(await focusEvents(second.run.id, "agent.focus.written")).toHaveLength(0);
+    await finishRun(second);
+
+    // 3. koşu: okuma anında gizlenen başlık algıya girmez, "okundu" sayılmaz.
+    const third = await startRun(seeded.runner);
+    const thirdTopic = await offeredTopic(third);
+    expect(focusIds).toContain(thirdTopic);
+    await integrationDatabase.topic.update({
+      where: { id: thirdTopic },
+      data: { status: "HIDDEN" },
+    });
+    await context(third, [thirdTopic]);
+    expect(await focusEvents(third.run.id, "agent.focus.read")).toHaveLength(0);
+    await finishRun(third);
+
+    // Entry sonradan başka başlığa taşınsa da yazım geçmişi değişmez.
+    await integrationDatabase.entry.update({
+      where: { id: writtenEntryId },
+      data: { topicId: seeded.control.id },
+    });
+    const status = await getFocusListStatus(integrationDatabase);
+    expect(status!.topics.find(({ topicId }) => topicId === firstTopic)).toMatchObject({
+      offered: 1,
+      read: 1,
+      written: 1,
+      passed: 0,
+      pending: 0,
+    });
+    expect(status!.topics.find(({ topicId }) => topicId === secondTopic)).toMatchObject({
+      offered: 1,
+      written: 0,
+      passed: 1,
+    });
+  }, 240_000);
 });

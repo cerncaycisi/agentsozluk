@@ -1,8 +1,10 @@
 import { Prisma } from "@prisma/client";
 import {
   focusIdArray,
+  focusEventOrigin,
   focusTopicOfferedEventType,
   focusTopicReadEventType,
+  focusTopicWrittenEventType,
   type FocusListWindow,
   type FocusTopicState,
 } from "@/modules/agents/domain/focus-list";
@@ -47,6 +49,34 @@ export async function findActiveFocusListRecord(
   const row = await transaction.agentFocusList.findFirst({
     where: { endedAt: null, startsAt: { lte: now }, endsAt: { gt: now } },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    select: focusListSelect,
+  });
+  return row ? toFocusList(row) : null;
+}
+
+/*
+  Açık liste: kapatılmamış ve bitişi gelmemiş; başlangıcı henüz gelmemiş olsa da (Sol 6.1,
+  1. tur). "Tek etkin liste" kuralı bu kümeye göre denetlenir, böylece başlangıç saati
+  farklı iki liste aynı anda açık kalamaz.
+*/
+export async function findOpenFocusListRecord(
+  transaction: Prisma.TransactionClient,
+  now: Date,
+): Promise<FocusListRecord | null> {
+  const row = await transaction.agentFocusList.findFirst({
+    where: { endedAt: null, endsAt: { gt: now } },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    select: focusListSelect,
+  });
+  return row ? toFocusList(row) : null;
+}
+
+export async function findFocusListRecordById(
+  transaction: Prisma.TransactionClient,
+  id: string,
+): Promise<FocusListRecord | null> {
+  const row = await transaction.agentFocusList.findUnique({
+    where: { id },
     select: focusListSelect,
   });
   return row ? toFocusList(row) : null;
@@ -106,14 +136,16 @@ export interface FocusTopicEligibilityRow {
 
 /*
   Uygunluk: aktif, birleşmemiş, ajan yazımına kilitsiz ve G4'e göre ince olmayan başlık.
-  `substantialTopicSql` sitemap ve ilgili başlıklarla aynı eşiktir.
+  `substantialTopicSql` sitemap ve ilgili başlıklarla aynı eşiktir. Kilit koşulu
+  `findActiveRuntimeTopicWriteLock` ile aynıdır: süresi geçmiş kilit engellemez (Sol 6.1).
 */
-const eligibilitySelect = Prisma.sql`
+const eligibilitySelect = (now: Date) => Prisma.sql`
   SELECT topic."id", topic."publicId", topic."status"::text AS "status",
     (topic."mergedIntoId" IS NOT NULL) AS "merged",
     EXISTS (
       SELECT 1 FROM "agent_topic_write_locks" AS write_lock
       WHERE write_lock."topicId" = topic."id"
+        AND (write_lock."expiresAt" IS NULL OR write_lock."expiresAt" > ${now})
     ) AS "locked",
     ${substantialTopicSql(Prisma.sql`topic`)} AS "substantial"
   FROM "topics" AS topic`;
@@ -125,18 +157,23 @@ export function isEligibleFocusTopic(row: FocusTopicEligibilityRow): boolean {
 export function findFocusTopicsByPublicIds(
   transaction: Prisma.TransactionClient,
   publicIds: readonly bigint[],
+  now: Date,
 ) {
   if (publicIds.length === 0) return Promise.resolve([] as FocusTopicEligibilityRow[]);
   return transaction.$queryRaw<FocusTopicEligibilityRow[]>`
-    ${eligibilitySelect}
+    ${eligibilitySelect(now)}
     WHERE topic."publicId" = ANY(${[...publicIds]}::bigint[])
   `;
 }
 
-function findFocusTopicsByIds(transaction: Prisma.TransactionClient, ids: readonly string[]) {
+function findFocusTopicsByIds(
+  transaction: Prisma.TransactionClient,
+  ids: readonly string[],
+  now: Date,
+) {
   if (ids.length === 0) return Promise.resolve([] as FocusTopicEligibilityRow[]);
   return transaction.$queryRaw<FocusTopicEligibilityRow[]>`
-    ${eligibilitySelect}
+    ${eligibilitySelect(now)}
     WHERE topic."id" = ANY(${[...ids]}::uuid[])
   `;
 }
@@ -180,11 +217,11 @@ function metadataString(metadata: unknown, key: string): string | null {
 /** Seçim için her liste başlığının durumu; bu yazara göre. */
 export async function loadFocusTopicStates(
   transaction: Prisma.TransactionClient,
-  input: { list: FocusListWindow; agentProfileId: string; agentUserId: string },
+  input: { list: FocusListWindow; agentProfileId: string; agentUserId: string; now: Date },
 ): Promise<FocusTopicState[]> {
   const { list } = input;
   const [eligibility, agentEntries, ownEntries, offers] = await Promise.all([
-    findFocusTopicsByIds(transaction, list.topicIds),
+    findFocusTopicsByIds(transaction, list.topicIds, input.now),
     countAgentEntriesSince(transaction, list.topicIds, list.startsAt),
     transaction.entry.findMany({
       where: {
@@ -205,10 +242,14 @@ export async function loadFocusTopicStates(
       select: { metadata: true, occurredAt: true },
     }),
   ]);
+  // Yalnız sunucunun yazdığı (kaynaklı) olaylar sayılır.
+  const serverOffers = offers.filter(
+    ({ metadata }) => metadataString(metadata, "origin") === focusEventOrigin,
+  );
   const eligibleIds = new Set(eligibility.filter(isEligibleFocusTopic).map(({ id }) => id));
   const written = new Set(ownEntries.map(({ topicId }) => topicId));
   const lastOffered = new Map<string, Date>();
-  for (const offer of offers) {
+  for (const offer of serverOffers) {
     const topicId = metadataString(offer.metadata, "topicId");
     if (!topicId) continue;
     const previous = lastOffered.get(topicId);
@@ -230,21 +271,53 @@ export function findFocusTopicTitle(transaction: Prisma.TransactionClient, topic
   });
 }
 
-/** Bu koşuda sunulan odak başlığı (varsa) ve okuma kaydı yazılmış mı. */
+/*
+  Bu koşuda sunulan odak başlığı (varsa) ve okuma kaydı yazılmış mı. Yalnız sunucu kaynaklı
+  olaylar sayılır ve okuma kaydı aynı liste/başlıkla eşleşmelidir: worker'ın gönderdiği olay
+  sahte "okundu" ile gerçek kaydı bastıramaz (Sol 6.1, 1. tur).
+*/
 export async function findRunFocusOffer(transaction: Prisma.TransactionClient, runId: string) {
   const events = await transaction.agentRuntimeEvent.findMany({
     where: { runId, eventType: { in: [focusTopicOfferedEventType, focusTopicReadEventType] } },
+    orderBy: { id: "asc" },
     select: { eventType: true, metadata: true },
   });
-  const offer = events.find(({ eventType }) => eventType === focusTopicOfferedEventType);
+  const fromServer = events.filter(
+    ({ metadata }) => metadataString(metadata, "origin") === focusEventOrigin,
+  );
+  const offer = fromServer.find(({ eventType }) => eventType === focusTopicOfferedEventType);
   const focusListId = metadataString(offer?.metadata, "focusListId");
   const topicId = metadataString(offer?.metadata, "topicId");
   if (!focusListId || !topicId) return null;
   return {
     focusListId,
     topicId,
-    readRecorded: events.some(({ eventType }) => eventType === focusTopicReadEventType),
+    readRecorded: fromServer.some(
+      ({ eventType, metadata }) =>
+        eventType === focusTopicReadEventType &&
+        metadataString(metadata, "focusListId") === focusListId &&
+        metadataString(metadata, "topicId") === topicId,
+    ),
   };
+}
+
+/*
+  Yazım anı odak denetimi için sayım: pencere başından beri başlığa yazılan ajan entry'si ve
+  yazarın pencere içinde o başlıkta entry'si olup olmadığı. Çağıran başlık kilidini tutar.
+*/
+export async function countFocusTopicWrites(
+  transaction: Prisma.TransactionClient,
+  input: { topicId: string; authorId: string; since: Date },
+) {
+  const [agentEntriesSinceStart, authorEntries] = await Promise.all([
+    transaction.entry.count({
+      where: { topicId: input.topicId, createdAt: { gte: input.since }, author: { kind: "AGENT" } },
+    }),
+    transaction.entry.count({
+      where: { topicId: input.topicId, createdAt: { gte: input.since }, authorId: input.authorId },
+    }),
+  ]);
+  return { agentEntriesSinceStart, authorWroteSinceStart: authorEntries > 0 };
 }
 
 export interface FocusTopicReportRow {
@@ -261,50 +334,52 @@ export interface FocusTopicReportRow {
 
 /*
   Durum raporu: her liste başlığı için sunulma, okunma, yazılma ve pas sayısı. Yazıldı =
-  odak başlığını gören koşu o başlığa entry yayımladı (`agent_content_records`). Pas = koşu
-  bitti ve o başlığa entry yok. Bekleyen = koşu henüz bitmedi.
+  odak başlığını gören koşu o başlığa entry yayımladı; yayım anında aynı transaction'da yazılan
+  değişmez `agent.focus.written` olayından sayılır (entry sonradan taşınsa da tarih değişmez,
+  Sol 6.1, 1. tur). Pas = koşu bitti ve yazım olayı yok. Bekleyen = koşu henüz bitmedi. Yalnız
+  sunucu kaynaklı olaylar sayılır.
 */
 export async function focusListReport(
   transaction: Prisma.TransactionClient,
   list: FocusListRecord,
+  now: Date,
 ): Promise<{ topics: FocusTopicReportRow[]; agentUsernames: string[] }> {
   const events = await transaction.agentRuntimeEvent.findMany({
     where: {
-      eventType: { in: [focusTopicOfferedEventType, focusTopicReadEventType] },
+      eventType: {
+        in: [focusTopicOfferedEventType, focusTopicReadEventType, focusTopicWrittenEventType],
+      },
       occurredAt: { gte: list.startsAt },
       metadata: { path: ["focusListId"], equals: list.id },
     },
     select: { eventType: true, runId: true, metadata: true },
   });
-  const offers = events.flatMap((event) => {
-    const topicId = metadataString(event.metadata, "topicId");
-    return event.eventType === focusTopicOfferedEventType && event.runId && topicId
-      ? [{ runId: event.runId, topicId }]
-      : [];
-  });
-  const readKeys = new Set(
+  const keyed = (eventType: string) =>
     events.flatMap((event) => {
       const topicId = metadataString(event.metadata, "topicId");
-      return event.eventType === focusTopicReadEventType && event.runId && topicId
-        ? [`${event.runId}:${topicId}`]
+      return event.eventType === eventType &&
+        event.runId &&
+        topicId &&
+        metadataString(event.metadata, "origin") === focusEventOrigin
+        ? [{ runId: event.runId, topicId }]
         : [];
-    }),
+    });
+  const offers = keyed(focusTopicOfferedEventType);
+  const readKeys = new Set(
+    keyed(focusTopicReadEventType).map(({ runId, topicId }) => `${runId}:${topicId}`),
+  );
+  const writtenKeys = new Set(
+    keyed(focusTopicWrittenEventType).map(({ runId, topicId }) => `${runId}:${topicId}`),
   );
   const runIds = [...new Set(offers.map(({ runId }) => runId))];
-  const [runs, contents, eligibility, agentEntries, agents] = await Promise.all([
+  const [runs, eligibility, agentEntries, agents] = await Promise.all([
     runIds.length > 0
       ? transaction.agentRun.findMany({
           where: { id: { in: runIds } },
           select: { id: true, finishedAt: true },
         })
       : Promise.resolve([]),
-    runIds.length > 0
-      ? transaction.agentContentRecord.findMany({
-          where: { runId: { in: runIds } },
-          select: { runId: true, entry: { select: { topicId: true } } },
-        })
-      : Promise.resolve([]),
-    findFocusTopicsByIds(transaction, list.topicIds),
+    findFocusTopicsByIds(transaction, list.topicIds, now),
     countAgentEntriesSince(transaction, list.topicIds, list.startsAt),
     transaction.agentProfile.findMany({
       where: { id: { in: [...list.agentProfileIds] } },
@@ -312,11 +387,10 @@ export async function focusListReport(
     }),
   ]);
   const finished = new Set(runs.filter(({ finishedAt }) => finishedAt).map(({ id }) => id));
-  const writtenKeys = new Set(contents.map(({ runId, entry }) => `${runId}:${entry.topicId}`));
   const eligibilityById = new Map(eligibility.map((row) => [row.id, row]));
   const topics = list.topicIds.map((topicId) => {
     const own = offers.filter((offer) => offer.topicId === topicId);
-    const written = own.filter(({ runId }) => writtenKeys.has(`${runId}:${topicId}`)).length;
+    const isWritten = ({ runId }: { runId: string }) => writtenKeys.has(`${runId}:${topicId}`);
     const row = eligibilityById.get(topicId);
     return {
       topicId,
@@ -325,11 +399,9 @@ export async function focusListReport(
       agentEntriesSinceStart: agentEntries.get(topicId) ?? 0,
       offered: own.length,
       read: own.filter(({ runId }) => readKeys.has(`${runId}:${topicId}`)).length,
-      written,
-      passed: own.filter(
-        ({ runId }) => finished.has(runId) && !writtenKeys.has(`${runId}:${topicId}`),
-      ).length,
-      pending: own.filter(({ runId }) => !finished.has(runId)).length,
+      written: own.filter(isWritten).length,
+      passed: own.filter((offer) => finished.has(offer.runId) && !isWritten(offer)).length,
+      pending: own.filter((offer) => !finished.has(offer.runId) && !isWritten(offer)).length,
     };
   });
   return {
