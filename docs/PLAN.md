@@ -13,9 +13,9 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" iki hafta önceliklidir.
 
 - **Canlı exact `b9dc4002` (18 Ekim):** işletim düzeltmeleri (#427) ve özel adlı başlık tavanı
-  (#426); ilgili başlıklar (#423) gece işiyle. **Ana canlılık alarmı 14 Ekim'den beri ölü:**
-  ntfy konusunu tutan `/etc/agent-sozluk-alarm.env` taşımada aktarılmadı; konu Gökhan kararı
-  bekliyor (18 Ekim: "deferred").
+  (#426); ilgili başlıklar (#423) gece işiyle. **Uyarı kanalı T3 sohbeti (Gökhan, 19 Ekim: "notify yok. sen beni burdan
+  uyarırsın"):** ntfy kullanılmaz; üretim `agent-sozluk-alarm.timer` kapatıldı, saatlik T3 görevi
+  operatör sunucusundan salt okunur sağlık kontrolü yapıp sorunları sohbete yazar.
 - **Talep:** Search Console 17 Eylül–14 Ekim 94 tık, 5.476 gösterim (önceki 28 gün 53 / 5.540).
   Sayacın "güvenilir" sayısı kişi değil görüntülemedir; v1 site içi yönlendirmeyi de sayıyordu,
   v2 tanımı dalda (sıra 2), kurulana kadar canlı sayı v1'dir.

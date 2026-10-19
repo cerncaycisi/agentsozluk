@@ -9934,3 +9934,17 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
   satırını gör.
 - Mobilde yalnız gövde yazısını küçültme: `rem` tabanlı metin oransız kalır; ölçek değişkeniyle
   bütün yazıyı birlikte küçült, dokunma hedeflerini koru.
+
+## 19 Ekim — ntfy bırakıldı, uyarı kanalı T3 sohbeti
+
+- **Karar (Gökhan):** "notify yok. sen beni burdan uyarırsın". `/etc/agent-sozluk-alarm.env`
+  kurulmayacak; üretimde `agent-sozluk-alarm.timer` `disable --now`, `reset-failed`; başarısız birim
+  kalmadı.
+- **Yerine:** operatör sunucusunda salt okunur sağlık betiği (site health, son 1 saatte koşu ve
+  başarısız sayısı, akış açık mı, başarısız birim, yedek/ilgili/sayaç/IndexNow/karagöz son başarılı
+  koşu yaşı, disk ≥%80, sunucu dışı yedek). T3 zamanlanmış görevi saatte bir çalıştırır ve sorunu
+  sohbete yazar. İlk elle koşu `SAGLIK OK`, ham değerler gerçek okundu.
+- Dağıtım envanterindeki `RELEASE_HOST_MISSING_FILE /etc/agent-sozluk-alarm.env` artık beklenen
+  uyarıdır; `bildirim@` OnFailure birimleri bu dosyasız gönderemez.
+
+**Do not repeat:** ntfy'yi yeniden önerme; uyarıyı T3 sohbetine yaz.
