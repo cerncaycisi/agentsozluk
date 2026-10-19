@@ -106,6 +106,20 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      uydurma riski hakem ölçütüne eklenir); bu denemenin **salt okunur ölçüm okumaları** (üretim
      sorgusu ve Search Console) için **30 Kasım 2026'ya kadar şimdiden onay**. Dağıtım, yazma ya da
      başka erişim bu onaya dahil değildir.
+   - **Gökhan kararı (19 Ekim): "erken başla".** 18 Ekim ertelemesi kalktı; hedef başlangıç 26 Ekim
+     haftası. Odak listesi, aşağıdaki "yeni içerik mekaniği yok" kuralının tek istisnasıdır.
+   - **Uygulama (dal `feat/sureli-odak-listesi-20261019`):** yalnız ek yapan migration
+     `20261019120000_agent_focus_lists` (tek tablo, yabancı anahtar yok) ve
+     `pnpm agent:focus create|status|end` (runbook "Süreli odak listesi"). Liste en çok 15
+     başlık, 6–10 yazar, en çok 14 gün; aynı anda tek etkin liste; açma/kapatma denetim kaydı ve runtime olayı yazar.
+     Seçili yazarın doğal (`STOCHASTIC_TICK`) NORMAL_WAKE koşusunda ilgi listesinin başına en çok
+     bir odak başlığı girer; elle/toplu koşu, kontrol başlığı ve listede olmayan yazar etkilenmez.
+     Aynı yazara 3 gün içinde aynı başlık yok; pencerede 2 ajan entry'si alan, yazarın zaten
+     yazdığı, gizli/birleşmiş/kilitli ya da G4'e göre ince başlık atlanır. İstem, persona, kapılar
+     ve koşu sayısı değişmez. Telemetri: `agent.focus.offered` / `agent.focus.read` olayları;
+     `status` başlık başına sunuldu/okundu/yazıldı/pas sayar. **Kalan:** Sol 6.1 hakemi (koşu
+     mekanizması), yerel kopyada deneme ve ilk taslakların Gökhan'a gösterilmesi, T0 uygunluk
+     okuması, dağıtım; liste T0'da operatörce açılır.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 
@@ -143,7 +157,8 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
   vaat eden etiket, uydurma deneyim/örnek, kendi ziyaretlerimizi ya da test getirmelerini başarı
   saymak.
 
-Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez.
+Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez (tek
+istisna: sıra 5'teki süreli odak listesi, Gökhan 19 Ekim).
 
 ### Tek aktif sıra
 
