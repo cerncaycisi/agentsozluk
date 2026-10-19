@@ -119,6 +119,11 @@ import {
   selectPersonalInterestTopics,
 } from "@/modules/agents/domain/runtime-browse";
 import { createInterestScorer } from "@/modules/agents/domain/interest-matching";
+import { withFocusTopic } from "@/modules/agents/domain/focus-list";
+import {
+  pickRuntimeFocusTopic,
+  recordRuntimeFocusTopicRead,
+} from "@/modules/agents/application/focus-list";
 import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
 import {
   assertSourceScoreWeeklyBudget,
@@ -296,6 +301,7 @@ function boundedPerceptionSnapshot(
   now: Date,
   purposeContext: Awaited<ReturnType<typeof runtimePurposeContext>>,
   feedback: AuthorFeedbackCard[],
+  focusTopic: { id: string; title: string } | null = null,
 ) {
   const persona = seedPersonaSchema.parse(run.personaVersion.persona);
   const followedTopicIdSet = new Set(records.followedTopicIds);
@@ -457,13 +463,21 @@ function boundedPerceptionSnapshot(
     persona.interests,
     run.id,
   );
-  const interestTopics = [
-    ...personalInterestTopics,
-    ...selectInterestTopics(
-      { recentEntries: selectedEntries, topicChoiceSignals, linkedTopics, newTopics },
-      persona.interests,
-    ).filter(({ id }) => !personalInterestTopics.some((topic) => topic.id === id)),
-  ].slice(0, interestTopicLimit);
+  /*
+    Süreli odak listesi (19 Ekim 2026): seçili yazarın doğal koşusunda en çok bir odak başlığı
+    ilgi listesinin başına girer; menüde sıradan bir "ilgi" öğesidir. Liste yoksa dizi aynıdır.
+  */
+  const interestTopics = withFocusTopic(
+    [
+      ...personalInterestTopics,
+      ...selectInterestTopics(
+        { recentEntries: selectedEntries, topicChoiceSignals, linkedTopics, newTopics },
+        persona.interests,
+      ).filter(({ id }) => !personalInterestTopics.some((topic) => topic.id === id)),
+    ].slice(0, interestTopicLimit),
+    focusTopic,
+    interestTopicLimit,
+  );
   const snapshot = {
     observedAt: now.toISOString(),
     limits: {
@@ -1936,12 +1950,27 @@ export function getRuntimeRunContext(
           publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
         includeActionFeedback: run.runType === "NORMAL_WAKE",
       });
+      // Yalnız ilk kurulumda seçilir; dondurulmuş algı yeniden seçim yapmaz.
+      const focusTopic = publicWriteEnabled
+        ? await pickRuntimeFocusTopic(
+            transaction,
+            {
+              id: run.id,
+              agentProfileId: run.agentProfileId,
+              agentUserId: run.agentProfile.user.id,
+              runType: run.runType,
+              trigger: run.trigger,
+            },
+            now,
+          )
+        : null;
       const builtPerception = boundedPerceptionSnapshot(
         run,
         perceptionRecords,
         now,
         purposes,
         feedback,
+        focusTopic,
       );
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);
       perception = builtPerception;
@@ -1983,6 +2012,7 @@ export function getRuntimeRunContext(
     */
     const alreadyReadTopics = Array.isArray((perception as Record<string, unknown>).readTopics);
     if (readTopicIds.length > 0 && (allowedReadTopicIds.length > 0 || !alreadyReadTopics)) {
+      await recordRuntimeFocusTopicRead(transaction, run, allowedReadTopicIds, now);
       const readTopics = await getRuntimeReadTopics(transaction, allowedReadTopicIds);
       perception = {
         ...perception,

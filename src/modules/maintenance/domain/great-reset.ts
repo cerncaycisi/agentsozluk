@@ -59,6 +59,8 @@ export const greatResetClearedModels = [
   "ukteRequest",
   // İlgili başlık bağları başlıklardan türer ve gece yeniden hesaplanır (17 Ekim 2026).
   "topicRelatedLink",
+  // Süreli odak listesi başlık ve profil kimlikleri taşır; sözlükle birlikte temizlenir (19 Ekim 2026).
+  "agentFocusList",
   // İçeriğin kendisi
   "entry",
   "topicAlias",

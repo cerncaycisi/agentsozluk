@@ -136,6 +136,45 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
     });
   });
 
+  it("süreli odak listesi migration'ını olduğu gibi kabul eder (19 Ekim 2026)", () => {
+    const sql = readFileSync(
+      path.join(root, "prisma/migrations/20261019120000_agent_focus_lists/migration.sql"),
+      "utf8",
+    );
+    const result = check(sql);
+    expect(result.status, result.stderr).toBe(0);
+    const beklenti = JSON.parse(result.stdout);
+    expect(beklenti.types).toEqual({});
+    expect(beklenti.tables.agent_focus_lists).toEqual({
+      columns: [
+        "agentProfileIds",
+        "createdAt",
+        "createdById",
+        "endReason",
+        "endedAt",
+        "endedById",
+        "endsAt",
+        "id",
+        "label",
+        "reason",
+        "startsAt",
+        "topicIds",
+      ],
+      primaryKey: ["id"],
+      checkConstraints: 0,
+      uniqueConstraints: 0,
+      foreignKeys: [],
+    });
+    expect(beklenti.existingTableIndexes).toEqual({});
+    expect(beklenti.indexes).toEqual({
+      agent_focus_lists_endsAt_idx: {
+        table: "agent_focus_lists",
+        unique: false,
+        columns: ["endsAt"],
+      },
+    });
+  });
+
   it("mevcut tabloya benzersiz olmayan düz indeksi kabul eder ve ayrıca bildirir", () => {
     const result = check('CREATE INDEX "agent_runs_finishedAt_idx" ON "agent_runs"("finishedAt");');
     expect(result.status, result.stderr).toBe(0);

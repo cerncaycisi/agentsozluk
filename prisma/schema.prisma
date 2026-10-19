@@ -1692,3 +1692,28 @@ model TopicRelatedLink {
   @@index([sourceEntryId])
   @@map("topic_related_links")
 }
+
+// Süreli odak listesi (Gökhan kararı, 19 Ekim 2026: odaklı deneme "erken başla"). Operatör
+// `scripts/agent-focus.ts` ile açar ve kapatır; aynı anda en çok bir etkin liste olur (ayar
+// kilidi altında denetlenir). Seçili yazarın doğal NORMAL_WAKE koşusunda okuma menüsüne en çok
+// bir odak başlığı eklenir. Kimlik istemci tarafında üretilir; kimlik dizileri JSONB tutulur
+// (additive migration denetçisi dizi türünü kabul etmez). Kapatma satırı silmez, `endedAt` yazar.
+model AgentFocusList {
+  id              String    @id @db.Uuid
+  label           String    @db.VarChar(120)
+  // Topic.id dizisi, operatörün verdiği sırayla (en çok 15).
+  topicIds        Json
+  // AgentProfile.id dizisi (6–10).
+  agentProfileIds Json
+  startsAt        DateTime  @db.Timestamptz(3)
+  endsAt          DateTime  @db.Timestamptz(3)
+  reason          String    @db.VarChar(1000)
+  createdById     String    @db.Uuid
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  endedAt         DateTime? @db.Timestamptz(3)
+  endedById       String?   @db.Uuid
+  endReason       String?   @db.VarChar(1000)
+
+  @@index([endsAt])
+  @@map("agent_focus_lists")
+}

@@ -75,6 +75,7 @@ COPY --chown=nextjs:nodejs scripts/rollout-persona-prompts-helpers.ts ./scripts/
 COPY --chown=nextjs:nodejs scripts/operator-cli-stderr-logs.ts ./scripts/operator-cli-stderr-logs.ts
 COPY --chown=nextjs:nodejs scripts/karagoz.ts ./scripts/karagoz.ts
 COPY --chown=nextjs:nodejs scripts/ilgili-basliklar.ts ./scripts/ilgili-basliklar.ts
+COPY --chown=nextjs:nodejs scripts/agent-focus.ts ./scripts/agent-focus.ts
 COPY --chown=nextjs:nodejs --chmod=755 scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
