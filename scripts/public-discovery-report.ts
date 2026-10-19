@@ -357,7 +357,9 @@ async function optionalFetch(
 function validateRobots(body: string, issues: PublicDiscoveryIssue[]): void {
   const groups = parseRobots(body);
   for (const agent of RETRIEVAL_AGENTS) {
-    const group = groups.find(({ agents }) => agents.includes(agent));
+    const group = groups.find(({ agents }) =>
+      agents.some((name) => name.toLowerCase() === agent.toLowerCase()),
+    );
     if (
       !group ||
       !group.allow.includes("/") ||
@@ -368,12 +370,14 @@ function validateRobots(body: string, issues: PublicDiscoveryIssue[]): void {
   }
   /*
     Eğitim botları 19 Ekim'den beri açık (Gökhan: "Eğitime aç"); özel yollar ve facet israfı
-    kapalı kalmalı. Ajanın bütün grupları birleştirilir: tek `Allow` izni yalnız `/` olabilir
+    kapalı kalmalı. Ajanın bütün grupları, adı büyük/küçük harf duyarsız eşleşerek birleştirilir: tek `Allow` izni yalnız `/` olabilir
     (eşit uzunlukta `Allow` `Disallow`'u yener, RFC 9309) ve bütün kapalı yollar yerinde olmalı
     (Sol 6.1, 19 Ekim).
   */
   for (const agent of TRAINING_AGENTS) {
-    const matching = groups.filter(({ agents }) => agents.includes(agent));
+    const matching = groups.filter(({ agents }) =>
+      agents.some((name) => name.toLowerCase() === agent.toLowerCase()),
+    );
     const allow = matching.flatMap((group) => group.allow);
     const disallow = matching.flatMap((group) => group.disallow);
     if (

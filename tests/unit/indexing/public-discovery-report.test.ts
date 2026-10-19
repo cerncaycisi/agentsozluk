@@ -196,12 +196,16 @@ describe("public discovery baseline report", () => {
   it.each([
     ["an extra Allow that reopens a private path", "Allow: /api\n"],
     ["a missing facet disallow", null],
+    // Sol 6.1 2. tur: UA eşleşmesi harf duyarsızdır (RFC 9309), ayrı küçük harfli grup birleşir.
+    ["a lowercase duplicate group reopening a private path", "LOWERCASE"],
   ])("flags a training crawler group with %s", async (_label, extra) => {
     const values = fixtures();
     let body = robotsText();
-    body = extra
-      ? body.replace("User-agent: GPTBot\nAllow: /\n", `User-agent: GPTBot\nAllow: /\n${extra}`)
-      : body.replace(/(User-agent: GPTBot\n[\s\S]*?)Disallow: \/\*window=\n/u, "$1");
+    if (extra === "LOWERCASE") body = `${body}\nUser-agent: gptbot\nAllow: /api\n`;
+    else
+      body = extra
+        ? body.replace("User-agent: GPTBot\nAllow: /\n", `User-agent: GPTBot\nAllow: /\n${extra}`)
+        : body.replace(/(User-agent: GPTBot\n[\s\S]*?)Disallow: \/\*window=\n/u, "$1");
     values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, body, "text/plain"));
     const report = await runPublicDiscoveryBaseline(
       { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
