@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -302,6 +303,14 @@ describe("Codex CLI provider security contract", () => {
         exitSignal: null,
         safeCode: "CODEX_UPSTREAM_UNAVAILABLE",
       },
+      // Yeniden deneme iletileri bütçeyi doldursa da turu bitiren neden önce sınıflanır.
+      {
+        stdout: `${'{"type":"error","message":"Reconnecting... connection refused"}\n'.repeat(80)}{"type":"turn.failed","error":{"message":"You have hit your usage limit"}}\n`,
+        stderr: "",
+        exitCode: 1,
+        exitSignal: null,
+        safeCode: "CODEX_RATE_LIMITED",
+      },
       {
         stdout: '{"type":"error","message":"RAW_SIGNAL_STDERR_MUST_NOT_LEAK"}\n',
         stderr: "",
@@ -369,6 +378,10 @@ describe("Codex CLI provider security contract", () => {
       expect(rejection).toMatchObject({ safeCode: termination.safeCode });
       expect(spawnMock).toHaveBeenCalledTimes(5);
       expect(JSON.stringify(rejection)).not.toMatch(/RAW_SIGNAL_STDERR_MUST_NOT_LEAK|SIGKILL|73/u);
+      // Gizli (enumerable olmayan) alanlar, ileti ve yığın da dahil (Fable, 19 Ekim).
+      expect(inspect(rejection, { showHidden: true, depth: 10 })).not.toMatch(
+        /RAW_SIGNAL_STDERR_MUST_NOT_LEAK|usage limit|stream disconnected/u,
+      );
     }
     expect(source).not.toContain("code ?? 1");
   });
@@ -616,13 +629,15 @@ describe("Codex token telemetry (Y6)", () => {
     expect(codexStreamFailureText('{"type":"item.completed","item":{"type":"error"}}')).toBe(
       undefined,
     );
-    expect(codexStreamFailureText('{"type":"error","message":"429 Too Many Requests"}')).toBe(
-      "429 Too Many Requests",
-    );
+    expect(codexStreamFailureText('{"type":"error","message":"429 Too Many Requests"}')).toEqual({
+      text: "429 Too Many Requests",
+      terminal: false,
+    });
     expect(codexStreamFailureText('{"type":"turn.failed"}')).toBeUndefined();
-    expect(codexStreamFailureText('{"type":"turn.failed","error":{"message":"boom"}}')).toBe(
-      "boom",
-    );
+    expect(codexStreamFailureText('{"type":"turn.failed","error":{"message":"boom"}}')).toEqual({
+      text: "boom",
+      terminal: true,
+    });
     expect(codexStreamFailureText(`{"type":"error","message":"${"a".repeat(5000)}"}`)?.length).toBe(
       4096,
     );

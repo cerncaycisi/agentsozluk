@@ -216,7 +216,9 @@ export function classifyCodexItemEvent(
 */
 const MAX_STREAM_FAILURE_CHARS = 4_096;
 
-export function codexStreamFailureText(line: string): string | undefined {
+export function codexStreamFailureText(
+  line: string,
+): { text: string; terminal: boolean } | undefined {
   if (!line.includes('"error"') && !line.includes('"turn.failed"')) return undefined;
   let event: unknown;
   try {
@@ -232,7 +234,9 @@ export function codexStreamFailureText(line: string): string | undefined {
       : type === "turn.failed" && error && typeof error === "object"
         ? (error as { message?: unknown }).message
         : undefined;
-  return typeof text === "string" ? text.slice(0, MAX_STREAM_FAILURE_CHARS) : undefined;
+  return typeof text === "string"
+    ? { text: text.slice(0, MAX_STREAM_FAILURE_CHARS), terminal: type === "turn.failed" }
+    : undefined;
 }
 
 export const RETAINED_RUNTIME_WORK_FILES = ["output.json", "output.schema.json"] as const;
@@ -518,6 +522,7 @@ function collect(
   return new Promise((resolve, reject) => {
     let stderr = "";
     let streamFailure = "";
+    let terminalFailure = "";
     let pendingEvent = "";
     let tokenUsage: RuntimeProviderTokenUsage | undefined;
     const itemCounts: CodexItemCounts = { errorItems: 0, toolItems: 0, unknownItems: 0 };
@@ -528,8 +533,13 @@ function collect(
     const readEvent = (line: string) => {
       tokenUsage = parseCodexTurnUsage(line) ?? tokenUsage;
       const failure = codexStreamFailureText(line);
-      if (failure && streamFailure.length < MAX_STREAM_FAILURE_CHARS)
-        streamFailure += `${failure}\n`.slice(0, MAX_STREAM_FAILURE_CHARS - streamFailure.length);
+      // Turu bitiren `turn.failed` önce sınıflanır; öncesindeki yeniden deneme iletileri bütçeyi tüketmesin.
+      if (failure?.terminal) terminalFailure = failure.text;
+      else if (failure && streamFailure.length < MAX_STREAM_FAILURE_CHARS)
+        streamFailure += `${failure.text}\n`.slice(
+          0,
+          MAX_STREAM_FAILURE_CHARS - streamFailure.length,
+        );
       const item = classifyCodexItemEvent(line);
       if (!item) return;
       if (item.kind === "tool") {
@@ -630,7 +640,7 @@ function collect(
               }
             : {}),
           eventStreamOverflow,
-          streamFailure,
+          streamFailure: [terminalFailure, streamFailure].filter(Boolean).join("\n"),
         });
       }),
     );
@@ -664,7 +674,11 @@ export function safeCodexFailure(
   }
   if (/rate limit|usage limit|quota exceeded|too many requests/iu.test(stderr))
     return "CODEX_RATE_LIMITED";
-  if (/stream disconnected|error sending request|connection (failed|refused|closed)/iu.test(stderr))
+  if (
+    /stream disconnected|error sending request|connection (failed|refused|closed)|overloaded|at capacity|capacity unavailable/iu.test(
+      stderr,
+    )
+  )
     return "CODEX_UPSTREAM_UNAVAILABLE";
   if (stderr.length === 0) return "CODEX_EXEC_FAILED_NO_STDERR";
   return "CODEX_EXEC_FAILED";
