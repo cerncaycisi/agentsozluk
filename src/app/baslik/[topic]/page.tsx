@@ -14,7 +14,6 @@ import { APP_NAME } from "@/config/app";
 import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
 import {
-  entryPublicUrl,
   parseTopicRouteReference,
   parseUnopenedTopicSegment,
   unopenedTopicUrl,
@@ -25,8 +24,10 @@ import { currentPageSession } from "@/lib/auth/server-session";
 import {
   getEntryReferenceIndex,
   getEntrySourceLinks,
+  getEntryTopicLocations,
   getTopicEntries,
 } from "@/modules/entries/application/entries";
+import { entrySignalCohort, entrySignalUrl } from "@/modules/indexing/domain/entry-signal-cohort";
 import {
   DEFAULT_TOPIC_TIME_WINDOW,
   TOPIC_TIME_WINDOWS,
@@ -328,23 +329,46 @@ export default async function TopicPage({
     result = { entries: [], totalItems: 0 };
   }
   const entryIds = result.entries.map((entry) => entry.id);
-  const [[votes, bookmarks], references, canGammaz, contentDates, sourceLinks, relatedLinks] =
-    await Promise.all([
-      session && entryIds.length > 0
-        ? getViewerEntryStates(database, session.userId, entryIds)
-        : Promise.resolve([[], []] as const),
-      getEntryReferenceIndex(
-        database,
-        result.entries.map((entry) => entry.body),
-      ),
-      session?.user.status === "ACTIVE"
-        ? userHasModerationCapability(database, session.userId, "GAMMAZ")
-        : Promise.resolve(false),
-      getEntryContentDates(database, result.entries),
-      getEntrySourceLinks(database, entryIds),
-      // Gizlenmiş başlıkta (yalnız moderasyon görür) okur bloğu yok; bkz. TopicRelatedLinks.
-      topic.status === "ACTIVE" ? getRelatedTopicLinks(database, topicId) : Promise.resolve([]),
-    ]);
+  /*
+    Entry sinyal kohortu (bkz. `entry-signal-cohort.ts`): deney kohortunda JSON-LD
+    `@id`/`url` entry'nin başlıktaki asıl yeridir. Anonim varsayılan görünümde (Google'ın
+    gördüğü, canonical sıralama) bu sayfanın numarası zaten doğrudur. Sıralama/arama/
+    pencere ya da oturumlu görünümde (moderatör gizlenmişleri de görür) sayfa kayar;
+    o zaman yer tek sorguda yeniden hesaplanır.
+  */
+  const canonicalOrderView = !viewer && !(query.q || query.sort || query.index || query.window);
+  const signalLocationsNeeded =
+    entrySignalCohort(topic.publicId) === "treatment" && !canonicalOrderView;
+  const [
+    [votes, bookmarks],
+    references,
+    canGammaz,
+    contentDates,
+    sourceLinks,
+    relatedLinks,
+    signalLocations,
+  ] = await Promise.all([
+    session && entryIds.length > 0
+      ? getViewerEntryStates(database, session.userId, entryIds)
+      : Promise.resolve([[], []] as const),
+    getEntryReferenceIndex(
+      database,
+      result.entries.map((entry) => entry.body),
+    ),
+    session?.user.status === "ACTIVE"
+      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+      : Promise.resolve(false),
+    getEntryContentDates(database, result.entries),
+    getEntrySourceLinks(database, entryIds),
+    // Gizlenmiş başlıkta (yalnız moderasyon görür) okur bloğu yok; bkz. TopicRelatedLinks.
+    topic.status === "ACTIVE" ? getRelatedTopicLinks(database, topicId) : Promise.resolve([]),
+    signalLocationsNeeded
+      ? getEntryTopicLocations(
+          database,
+          result.entries.filter((entry) => entry.status === "ACTIVE").map((entry) => entry.id),
+        )
+      : Promise.resolve(null),
+  ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
   );
@@ -379,7 +403,11 @@ export default async function TopicPage({
           entries: result.entries
             .filter((entry) => entry.status === "ACTIVE")
             .map((entry) => ({
-              url: entryPublicUrl(entry),
+              url: entrySignalUrl({
+                topic,
+                entry,
+                page: signalLocations ? signalLocations.get(entry.id)?.page : page,
+              }),
               body: entry.body,
               createdAt: entry.createdAt,
               updatedAt: contentDates.get(entry.id)!,

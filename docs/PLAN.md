@@ -123,6 +123,10 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
      başlık etiketi/açıklama denemesi, 10 eşleşmiş kontrol; önce Gökhan'a önizleme.
   2. 26 Ekim–1 Kasım: entry/başlık bölünmesi (20 adreste canonical, G4, harita, JSON-LD
      tutarlılığı); talep alan sayfalara elle doğrulanmış 10–20 iç bağlantı (önizlemeli).
+     Entry sinyal kohortu kodlandı (19 Ekim, seçenek (c), `feat/entry-sinyal-kohortu-20261019`):
+     çift `publicId`'li başlıklarda JSON-LD, RSS/Atom `link`, DEBE, bkz ve arama bağlantısı
+     `başlık?page=N#entry-N`'ye gider; tarih/paylaş bağlantısı, canonical, sitemap ve `guid`
+     değişmez. Ölçüm 4. ve 6. hafta; ölçüt ve kapatma `SEO_GEO_CRAWLER_POLICY.md`'de.
   3. **Odak denemesi öne çekildi (Gökhan, 19 Ekim: "erken başla"):** süreli odak listesi kodu bu
      hafta, Sol 6.1 + yerel deneme, başlangıç 26 Ekim haftası.
   4. 16–22 Kasım: yalnız işe yarayanı genişletme; 30 Kasım karar (büyüt / sürdür / kapat).

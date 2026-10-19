@@ -15,6 +15,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const currentPageSession = vi.hoisted(() => vi.fn());
 const getTopicByPublicId = vi.hoisted(() => vi.fn());
 const getTopicEntries = vi.hoisted(() => vi.fn());
+const getEntryTopicLocations = vi.hoisted(() => vi.fn(async () => new Map()));
+const buildTopicJsonLd = vi.hoisted(() => vi.fn(() => ({})));
 const robotsForPaginatedView = vi.hoisted(() =>
   vi.fn((base: { index: boolean; follow: boolean }, hasFacetParameters: boolean) => ({
     index: base.index && !hasFacetParameters,
@@ -49,6 +51,7 @@ vi.mock("@/lib/auth/server-session", () => ({ currentPageSession }));
 vi.mock("@/modules/entries/application/entries", () => ({
   getEntryReferenceIndex: async () => new Map(),
   getEntrySourceLinks: async () => new Map(),
+  getEntryTopicLocations,
   getTopicEntries,
 }));
 vi.mock("@/modules/interactions/application/interactions", () => ({
@@ -74,7 +77,7 @@ vi.mock("@/modules/indexing", () => ({
 }));
 vi.mock("@/modules/indexing/domain/public-seo", () => ({
   absolutePublicUrl: (baseUrl: string, path: string) => new URL(path, baseUrl).toString(),
-  buildTopicJsonLd: () => ({}),
+  buildTopicJsonLd,
   publicAlternates: () => ({}),
   publicExcerpt: (value: string) => value,
   publicProfileUrl: () => "/",
@@ -388,5 +391,48 @@ describe("başlık sayfası zaman penceresi robots davranışı", () => {
   it("facet ile birlikte gelen sayfalama yine facet sayılır", async () => {
     expect(await robotsFlagFor({ page: "2", sort: "newest" })).toBe(true);
     expect(await robotsFlagFor({ page: "2", window: "24h" })).toBe(true);
+  });
+});
+
+/*
+  Entry sinyal kohortu (19 Ekim 2026): fixture başlığın `publicId`'si 42 (çift), yani
+  deney kohortu. JSON-LD entry kimliği başlıktaki asıl yerdir.
+*/
+describe("başlık sayfası JSON-LD entry kimliği (deney kohortu)", () => {
+  const entryFixture = {
+    id: "00000000-0000-4000-8000-000000000501",
+    publicId: 501,
+    status: "ACTIVE" as const,
+    body: "entry gövdesi",
+    createdAt: new Date(0),
+    author: { id: "00000000-0000-4000-8000-000000000002", username: "ali", displayName: "Ali" },
+  };
+
+  function jsonLdEntryUrls(): string[] {
+    const calls = buildTopicJsonLd.mock.calls as unknown as Array<
+      [{ entries: Array<{ url: string }> }]
+    >;
+    return calls[0]?.[0].entries.map((entry) => entry.url) ?? [];
+  }
+
+  it("anonim varsayılan görünümde bu sayfanın numarasını kullanır, ek sorgu açmaz", async () => {
+    getTopicEntries.mockResolvedValue({ entries: [entryFixture], totalItems: 30 });
+    await renderTopicPage({ page: "2" });
+
+    expect(jsonLdEntryUrls()).toEqual([`${TOPIC_URL}?page=2#entry-501`]);
+    expect(getEntryTopicLocations).not.toHaveBeenCalled();
+  });
+
+  it("sıralanmış görünümde sayfa kaydığı için yeri tek sorguda yeniden hesaplar", async () => {
+    getTopicEntries.mockResolvedValue({ entries: [entryFixture], totalItems: 30 });
+    getEntryTopicLocations.mockResolvedValueOnce(
+      new Map([
+        [entryFixture.id, { publicId: 501, topic: { slug: "test-baslik", publicId: 42 }, page: 1 }],
+      ]),
+    );
+    await renderTopicPage({ sort: "newest", page: "2" });
+
+    expect(getEntryTopicLocations).toHaveBeenCalledTimes(1);
+    expect(jsonLdEntryUrls()).toEqual([`${TOPIC_URL}#entry-501`]);
   });
 });

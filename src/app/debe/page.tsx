@@ -4,11 +4,15 @@ import { EntryPreview } from "@/components/entries/entry-preview";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { formatIstanbulDate } from "@/lib/format/time";
-import { entryPublicUrl } from "@/lib/routing/public-urls";
 import { getDebe } from "@/modules/feeds/application/feeds";
 import { previousIstanbulDayWindow } from "@/modules/feeds/domain/time";
 import { publicListMetadata } from "@/modules/indexing/domain/public-seo";
-import { getEntryReferenceIndex, getEntrySourceLinks } from "@/modules/entries";
+import {
+  getEntryReferenceIndex,
+  getEntrySourceLinks,
+  getEntryTopicLocations,
+} from "@/modules/entries";
+import { entrySignalCohort, entrySignalUrl } from "@/modules/indexing/domain/entry-signal-cohort";
 import {
   getBlockedAuthorIds,
   getViewerEntryStates,
@@ -31,11 +35,16 @@ export default async function DebePage() {
   /**
    * Sayfa başına sabit sorgu bütçesi: entry listesi + referans indeksi + (oturumluysa)
    * oy/favori durumları, engellenen yazarlar ve gammaz yetkisi. Hepsi sayfadaki bütün
-   * entry/yazar id'lerini tek seferde alır; entry başına sorgu açılmaz.
+   * entry/yazar id'lerini tek seferde alır; entry başına sorgu açılmaz. Entry sinyal
+   * kohortunun (`entry-signal-cohort.ts`) deney başlıklarındaki entry'lerin başlıktaki yeri
+   * de tek sorguda gelir; sıra numarası bağlantısı oraya gider.
    */
   const entryIds = entries.map((entry) => entry.id);
   const authorIds = [...new Set(entries.map((entry) => entry.author.id))];
-  const [references, [votes, bookmarks], blockedAuthorIds, canGammaz, sourceLinks] =
+  const signalEntryIds = entries
+    .filter((entry) => entrySignalCohort(entry.topic.publicId) === "treatment")
+    .map((entry) => entry.id);
+  const [references, [votes, bookmarks], blockedAuthorIds, canGammaz, sourceLinks, locations] =
     await Promise.all([
       getEntryReferenceIndex(
         database,
@@ -51,6 +60,7 @@ export default async function DebePage() {
         ? userHasModerationCapability(database, session.userId, "GAMMAZ")
         : Promise.resolve(false),
       getEntrySourceLinks(database, entryIds),
+      getEntryTopicLocations(database, signalEntryIds),
     ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
@@ -75,7 +85,11 @@ export default async function DebePage() {
           {entries.map((entry, index) => (
             <li key={entry.id} className="border-t py-4 sm:flex sm:items-start sm:gap-3">
               <Link
-                href={entryPublicUrl(entry)}
+                href={entrySignalUrl({
+                  topic: entry.topic,
+                  entry,
+                  page: locations.get(entry.id)?.page,
+                })}
                 aria-label={`DEBE ${index + 1}. sıradaki entry’ye git`}
                 className="text-accent-contrast mb-1 inline-flex min-h-6 min-w-6 items-center justify-center text-sm font-semibold hover:underline sm:mb-0 sm:shrink-0"
               >

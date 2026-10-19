@@ -39,6 +39,7 @@ vi.mock("@/lib/auth/server-session", () => ({ currentPageSession }));
 vi.mock("@/modules/entries/application/entries", () => ({
   getEntryReferenceIndex: async () => new Map(),
   getEntrySourceLinks: async () => new Map(),
+  getEntryTopicLocations: async () => new Map(),
   getTopicEntries: async () => ({ entries: [], totalItems: 0 }),
 }));
 vi.mock("@/modules/interactions/application/interactions", () => ({

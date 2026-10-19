@@ -28,6 +28,7 @@ import {
   publicProfileUrl,
   paginatedCanonical,
 } from "@/modules/indexing/domain/public-seo";
+import { entrySignalCohort, entrySignalUrl } from "@/modules/indexing/domain/entry-signal-cohort";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
 import Link from "next/link";
@@ -139,17 +140,28 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
     permanentRedirect(topicPublicUrl(entry.canonicalTopic));
   if (reference.kind === "legacy") permanentRedirect(entryPublicUrl(entry));
   const database = getDatabase();
-  const [[votes, bookmarks], references, canGammaz, contentDates, sourceLinks] = await Promise.all([
-    session
-      ? getViewerEntryStates(database, session.userId, [entry.id])
-      : Promise.resolve([[], []] as const),
-    getEntryReferenceIndex(database, [entry.body]),
-    session?.user.status === "ACTIVE"
-      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
-      : Promise.resolve(false),
-    viewer ? getEntryContentDates(database, [entry]) : getCachedContentDates(entry),
-    getEntrySourceLinks(database, [entry.id]),
-  ]);
+  /*
+    Entry sinyal kohortu (bkz. `entry-signal-cohort.ts`): deney kohortunda bu sayfanın
+    JSON-LD `@id`/`url`'i kendi canonical'ıyla (başlığın doğru sayfası) aynı yeri,
+    `#entry-N` çapasıyla gösterir. Kontrol kohortunda eskisi gibi `/entry/N`.
+  */
+  const signalPage =
+    entrySignalCohort(entry.topic.publicId) === "treatment"
+      ? getEntryTopicPage(database, entry)
+      : Promise.resolve(null);
+  const [[votes, bookmarks], references, canGammaz, contentDates, sourceLinks, topicPage] =
+    await Promise.all([
+      session
+        ? getViewerEntryStates(database, session.userId, [entry.id])
+        : Promise.resolve([[], []] as const),
+      getEntryReferenceIndex(database, [entry.body]),
+      session?.user.status === "ACTIVE"
+        ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+        : Promise.resolve(false),
+      viewer ? getEntryContentDates(database, [entry]) : getCachedContentDates(entry),
+      getEntrySourceLinks(database, [entry.id]),
+      signalPage,
+    ]);
   const vote = votes[0];
   const bookmark = bookmarks[0];
   const topicAnchor = topicEntryAnchorUrl({ topic: entry.topic, entry });
@@ -158,7 +170,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
       <JsonLd
         data={buildEntryJsonLd({
           baseUrl: getEnvironment().APP_URL,
-          url: entryPublicUrl(entry),
+          url: entrySignalUrl({ topic: entry.topic, entry, page: topicPage }),
           topicUrl: topicPublicUrl(entry.topic),
           topicTitle: entry.topic.title,
           body: entry.body,
