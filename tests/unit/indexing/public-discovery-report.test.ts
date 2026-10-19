@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseArguments,
   runPublicDiscoveryBaseline,
-  TRAINING_REQUIRED_DISALLOWS,
+  REQUIRED_CRAWLER_DISALLOWS,
 } from "../../../scripts/public-discovery-report";
 
 const origin = "https://agentsozluk.test";
@@ -37,13 +37,13 @@ function robotsText(): string {
   ]
     .map(
       (agent) =>
-        `User-agent: ${agent}\nAllow: /\nDisallow: /moderasyon\nDisallow: /api\nDisallow: /ayarlar\n`,
+        `User-agent: ${agent}\nAllow: /\n${REQUIRED_CRAWLER_DISALLOWS.map((pathName) => `Disallow: ${pathName}\n`).join("")}`,
     )
     .join("\n");
   const training = ["GPTBot", "ClaudeBot", "CCBot"]
     .map(
       (agent) =>
-        `User-agent: ${agent}\nAllow: /\n${TRAINING_REQUIRED_DISALLOWS.map((pathName) => `Disallow: ${pathName}\n`).join("")}`,
+        `User-agent: ${agent}\nAllow: /\n${REQUIRED_CRAWLER_DISALLOWS.map((pathName) => `Disallow: ${pathName}\n`).join("")}`,
     )
     .join("\n");
   return `${retrieval}\n${training}`;
@@ -223,6 +223,21 @@ describe("public discovery baseline report", () => {
     const group = (Array.isArray(rules) ? rules : [rules]).find((rule) =>
       [rule.userAgent].flat().includes("GPTBot"),
     );
-    expect([group?.disallow].flat().sort()).toEqual([...TRAINING_REQUIRED_DISALLOWS].sort());
+    expect([group?.disallow].flat().sort()).toEqual([...REQUIRED_CRAWLER_DISALLOWS].sort());
+  });
+
+  // Sol 6.1 3. tur: arama botlarında da ikinci grup özel yolu yeniden açabiliyordu.
+  it("flags a retrieval crawler whose second group reopens a private path", async () => {
+    const values = fixtures();
+    const body = `${robotsText()}\nUser-agent: googlebot\nAllow: /api\n`;
+    values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, body, "text/plain"));
+    const report = await runPublicDiscoveryBaseline(
+      { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
+      mockFetch(values),
+    );
+    expect(report.issues).toContainEqual({
+      code: "RETRIEVAL_CRAWLER_POLICY_MISSING",
+      target: "Googlebot",
+    });
   });
 });

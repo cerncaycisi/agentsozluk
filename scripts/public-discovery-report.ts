@@ -28,8 +28,8 @@ const RETRIEVAL_AGENTS = [
   "Google-Extended",
 ] as const;
 const TRAINING_AGENTS = ["GPTBot", "ClaudeBot", "CCBot"] as const;
-/** `src/app/robots.ts` kapalı yollarıyla aynı; test ikisinin ayrışmasını yakalar. */
-export const TRAINING_REQUIRED_DISALLOWS = [
+/** Arama ve eğitim botları için `src/app/robots.ts` kapalı yollarıyla aynı; test ayrışmayı yakalar. */
+export const REQUIRED_CRAWLER_DISALLOWS = [
   "/ayarlar",
   "/moderasyon",
   "/api",
@@ -354,41 +354,35 @@ async function optionalFetch(
   }
 }
 
+/*
+  Bir ajanın etkin kuralları: adı büyük/küçük harf duyarsız eşleşen BÜTÜN gruplar birleşir
+  (RFC 9309). Tek `Allow` izni yalnız `/` olabilir — eşit uzunlukta `Allow`, `Disallow`'u yener —
+  ve `src/app/robots.ts`'in bütün kapalı yolları yerinde olmalı (Sol 6.1, 19 Ekim, 2. ve 3. tur).
+*/
+function crawlerPolicyHolds(groups: RobotsGroup[], agent: string): boolean {
+  const matching = groups.filter(({ agents }) =>
+    agents.some((name) => name.toLowerCase() === agent.toLowerCase()),
+  );
+  const allow = matching.flatMap((group) => group.allow);
+  const disallow = matching.flatMap((group) => group.disallow);
+  return (
+    matching.length > 0 &&
+    !disallow.includes("/") &&
+    allow.includes("/") &&
+    allow.every((pathName) => pathName === "/") &&
+    REQUIRED_CRAWLER_DISALLOWS.every((pathName) => disallow.includes(pathName))
+  );
+}
+
 function validateRobots(body: string, issues: PublicDiscoveryIssue[]): void {
   const groups = parseRobots(body);
-  for (const agent of RETRIEVAL_AGENTS) {
-    const group = groups.find(({ agents }) =>
-      agents.some((name) => name.toLowerCase() === agent.toLowerCase()),
-    );
-    if (
-      !group ||
-      !group.allow.includes("/") ||
-      !["/moderasyon", "/api", "/ayarlar"].every((pathName) => group.disallow.includes(pathName))
-    ) {
+  for (const agent of RETRIEVAL_AGENTS)
+    if (!crawlerPolicyHolds(groups, agent))
       issues.push({ code: "RETRIEVAL_CRAWLER_POLICY_MISSING", target: agent });
-    }
-  }
-  /*
-    Eğitim botları 19 Ekim'den beri açık (Gökhan: "Eğitime aç"); özel yollar ve facet israfı
-    kapalı kalmalı. Ajanın bütün grupları, adı büyük/küçük harf duyarsız eşleşerek birleştirilir: tek `Allow` izni yalnız `/` olabilir
-    (eşit uzunlukta `Allow` `Disallow`'u yener, RFC 9309) ve bütün kapalı yollar yerinde olmalı
-    (Sol 6.1, 19 Ekim).
-  */
-  for (const agent of TRAINING_AGENTS) {
-    const matching = groups.filter(({ agents }) =>
-      agents.some((name) => name.toLowerCase() === agent.toLowerCase()),
-    );
-    const allow = matching.flatMap((group) => group.allow);
-    const disallow = matching.flatMap((group) => group.disallow);
-    if (
-      matching.length === 0 ||
-      disallow.includes("/") ||
-      allow.some((pathName) => pathName !== "/") ||
-      !allow.includes("/") ||
-      !TRAINING_REQUIRED_DISALLOWS.every((pathName) => disallow.includes(pathName))
-    )
+  // Eğitim botları 19 Ekim'den beri açık (Gökhan: "Eğitime aç"); aynı kurallar geçerli.
+  for (const agent of TRAINING_AGENTS)
+    if (!crawlerPolicyHolds(groups, agent))
       issues.push({ code: "TRAINING_CRAWLER_POLICY_MISSING", target: agent });
-  }
 }
 
 function feedEntryUrls(body: string, format: "rss" | "atom"): string[] {
