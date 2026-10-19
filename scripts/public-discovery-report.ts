@@ -351,9 +351,15 @@ function validateRobots(body: string, issues: PublicDiscoveryIssue[]): void {
       issues.push({ code: "RETRIEVAL_CRAWLER_POLICY_MISSING", target: agent });
     }
   }
+  // Eğitim botları 19 Ekim'den beri açık (Gökhan: "Eğitime aç"); özel yollar yine kapalı olmalı.
   for (const agent of TRAINING_AGENTS) {
     const group = groups.find(({ agents }) => agents.includes(agent));
-    if (!group?.disallow.includes("/"))
+    if (
+      !group ||
+      group.disallow.includes("/") ||
+      !group.allow.includes("/") ||
+      !["/moderasyon", "/api", "/ayarlar"].every((pathName) => group.disallow.includes(pathName))
+    )
       issues.push({ code: "TRAINING_CRAWLER_POLICY_MISSING", target: agent });
   }
 }

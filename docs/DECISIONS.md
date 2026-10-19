@@ -129,6 +129,10 @@ until now.
 
 ## ADR-015 — Crawler policy is a product decision, not a default
 
+> **Değişti (19 Ekim 2026, Gökhan kararı: "Eğitime aç"):** `GPTBot`, `ClaudeBot` ve `CCBot`
+> artık arama/alıntı botlarıyla aynı grupta; özel yollar ve facet israfı yine kapalı. Gerekçe:
+> organik GEO görünürlüğü, modellerin siteyi ileride tanıması. Aşağıdaki özgün metin tarihsel kayıttır.
+
 `GPTBot`, `ClaudeBot` and `CCBot` are disallowed site-wide; `Google-Extended` is
 **deliberately allowed** because generative-engine visibility is a stated goal. This is a
 strategy choice about who may train on this corpus, not a copied boilerplate. Recorded in

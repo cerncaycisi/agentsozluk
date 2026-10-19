@@ -40,7 +40,10 @@ function robotsText(): string {
     )
     .join("\n");
   const training = ["GPTBot", "ClaudeBot", "CCBot"]
-    .map((agent) => `User-agent: ${agent}\nDisallow: /\n`)
+    .map(
+      (agent) =>
+        `User-agent: ${agent}\nAllow: /\nDisallow: /moderasyon\nDisallow: /api\nDisallow: /ayarlar\n`,
+    )
     .join("\n");
   return `${retrieval}\n${training}`;
 }
@@ -170,6 +173,24 @@ describe("public discovery baseline report", () => {
     expect(report.issues).toContainEqual({
       code: "CANONICAL_SAMPLE_FAILED",
       target: "/entry/2",
+    });
+  });
+
+  // 19 Ekim (Gökhan: "Eğitime aç"): eğitim botunu tamamen kapatan robots.txt artık sorun.
+  it("flags a training crawler that is still blocked site-wide", async () => {
+    const values = fixtures();
+    const blocked = `${robotsText()}\nUser-agent: CCBot\nDisallow: /\n`.replace(
+      /User-agent: CCBot\nAllow: \/\nDisallow: \/moderasyon\nDisallow: \/api\nDisallow: \/ayarlar\n/u,
+      "",
+    );
+    values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, blocked, "text/plain"));
+    const report = await runPublicDiscoveryBaseline(
+      { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
+      mockFetch(values),
+    );
+    expect(report.issues).toContainEqual({
+      code: "TRAINING_CRAWLER_POLICY_MISSING",
+      target: "CCBot",
     });
   });
 });
