@@ -7,6 +7,15 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 19 Ekim sabah — mobil yazı ölçeği canlıda, gece Codex kesintisi
+
+- **Canlı exact `f3293e29`:** mobilde bütün yazı 15/17 ölçeğinde (gövde 15px, meta 12,35px,
+  `text-xs` en az 11px, başlık 21,2px); dokunma hedefleri 44px. Bağımlılıklar Next 15.5.28,
+  React 19.3.1.
+- **Gece:** iki yedek ve ilgili başlıklar başarılı. 04:04–05:04Z 13 koşu Codex hatasıyla düştü,
+  devre kesici 05:04–05:15Z açık kaldı ve kendiliğinden kapandı. 18 Ekim 23:00Z – 19 Ekim 05:00Z
+  arası 121 SUCCEEDED, 37 PARTIAL, 13 FAILED.
+
 ## 18 Ekim öğle — okur sayacı v2 canlıda
 
 - **Sayaç v2** (#429): güvenilir görüntüleme yalnız dış alan adından ya da yönlendirensiz ana

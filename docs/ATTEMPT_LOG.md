@@ -9900,3 +9900,37 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
 
 - Sunucudaki betiği kurarken kaynak olarak sunucunun `app` checkout'una güvenme; dağıtım
   olmadıysa o eski SHA'dadır. Exact main blob'unu kopyala ve özeti karşılaştır.
+
+## 18–19 Ekim — bağımlılıklar, mobil yazı ölçeği, akış yeniden açma hatası, Codex kesintisi
+
+- **Dağıtımlar** (hepsi `--pause-society-flow --cleanup`, migration yok, `RELEASE_COMPLETE PASS`,
+  disk %64 → %59):
+  - `c48e222e` (#432, #384 + #385 bağımlılıkları; Astra tedarik zinciri GO). CI `39128583314`,
+    RC `39129772194`. Resume 386.
+  - `fd9b618d` (#436, mobilde gövde 15px / 23px, Gökhan "Ekşi ayarı"). CI `39151875498`, RC
+    `39153167581`. Resume 388.
+  - `19942ebb` (#437, #434 + #435 bağımlılıkları; Astra GO, P3 postcss override 8.5.30 ile
+    kapandı). CI `39154300783`, RC `39155446219`.
+  - `f3293e29` (#438, bütün yazı `--type-scale` 15/17; Fable 2 tur, 1. tur NO-GO: e2e testi
+    tohum veride kesin düşecekti, anayasa metni orantısız, `text-xs` 10,6px; 2. tur GO). CI
+    `39166474018`, RC `39167730154`. Resume 392.
+- **Akış yeniden açma hatası (19942ebb):** `AGENT_FLOW_REASON` içinde 40 karakterlik tam SHA,
+  operatör gerekçesi şemasının "opak token" kuralına (≥24 kesintisiz harf/rakam) takıldı;
+  betik `SOCIETY_FLOW_FAIL code=INTERNAL_ERROR` bastı, akış 18:55–18:59:35Z kapalı kaldı. Kısa
+  SHA ile yeniden açıldı (390).
+- **Gece (19 Ekim):** sunucu içi yedek 00:34Z `Result=success`; operatördeki yeni
+  `gecelik-yedek.sh` ilk zamanlanmış koşusu 01:36Z `YEDEK_OK … drive=VERIFIED` (900 MB); ilgili
+  başlıklar 03:35Z `success`.
+- **Codex kesintisi:** 04:04–05:04Z arasında 13 koşu FAILED (6 `CODEX_DECISION_FAILED`, 6
+  `CODEX_ACTION_WORTHINESS_FAILED`, 1 onarım). Telemetrideki `providerSafeCode` hepsinde
+  `CODEX_EXEC_FAILED_NO_STDERR`, çağrılar 3–8 sn'de bitmiş. Devre kesici 05:04:45Z açıldı
+  (`CONSECUTIVE_CODEX_FAILURES`, `RUNTIME_ERROR_RATE`), 05:15:40Z yarı açık deneme başarılı,
+  kapandı. Kota sorunu görünmüyor (5 sa pencerede %10). Kök neden belirlenemedi: Codex CLI hatayı
+  stderr'e değil `--json` olay akışına yazıyor; #439 akıştaki hatayı da güvenli koda sınıflar.
+
+**Do not repeat:**
+
+- Operatör gerekçesinde tam SHA kullanma (8–12 karakter); resume sonrası `runtimeEnabled=true`
+  satırını gör.
+- Mobilde yalnız gövde yazısını küçültme: `rem` tabanlı metin oransız kalır; ölçek değişkeniyle
+  bütün yazıyı birlikte küçült, dokunma hedeflerini koru.
