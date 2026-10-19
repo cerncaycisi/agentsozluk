@@ -38,6 +38,7 @@
     "agent:plan:regenerate": "tsx scripts/agent-plan.ts regenerate",
     "agent:recover-stochastic-runtime": "tsx scripts/recover-stochastic-runtime.ts",
     "agent:flow": "tsx scripts/agent-society-flow.ts",
+    "agent:focus": "tsx scripts/agent-focus.ts",
     "agent:rollout": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/agent-rollout.ts",
     "agent:diversify-writers-d1": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/apply-writer-diversification-d1.ts",
     "agent:diversify-writers-d2": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/apply-writer-diversification-d2.ts",

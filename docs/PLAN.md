@@ -109,6 +109,42 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      uydurma riski hakem ölçütüne eklenir); bu denemenin **salt okunur ölçüm okumaları** (üretim
      sorgusu ve Search Console) için **30 Kasım 2026'ya kadar şimdiden onay**. Dağıtım, yazma ya da
      başka erişim bu onaya dahil değildir.
+   - **Gökhan kararı (19 Ekim): "erken başla".** 18 Ekim ertelemesi kalktı; hedef başlangıç 26 Ekim
+     haftası. Odak listesi, aşağıdaki "yeni içerik mekaniği yok" kuralının tek istisnasıdır.
+   - **Uygulama (dal `feat/sureli-odak-listesi-20261019`):**
+     `pnpm agent:focus create|status|end` (runbook "Süreli odak listesi"). Liste en çok 15
+     başlık, 6–10 yazar, en çok 14 gün; aynı anda tek etkin liste; açma/kapatma denetim kaydı ve liste olayı yazar.
+     Seçili yazarın doğal (`STOCHASTIC_TICK`) NORMAL_WAKE koşusunda ilgi listesinin başına en çok
+     bir odak başlığı girer; elle/toplu koşu, kontrol başlığı ve listede olmayan yazar etkilenmez.
+     Aynı yazara 3 gün içinde aynı başlık yok; pencerede 2 ajan entry'si alan, yazarın zaten
+     yazdığı, gizli/birleşmiş/kilitli ya da G4'e göre ince başlık atlanır. İstem, persona, kapılar
+     ve koşu sayısı değişmez. Telemetri: `agent.focus.offered` / `agent.focus.read` olayları;
+     `status` başlık başına sunuldu/okundu/yazıldı/pas sayar.
+   - **Sol 6.1 1. tur (`4bcc9c77`, PR #446) NO-GO:** beş P2, bir P3 düzeltildi: saat kilitten
+     sonra ve tek açık liste başlangıçtan bağımsız; yazımda başlık kilidi altında 2 entry tavanı
+     ve aynı yazar kuralı (`FOCUS_TOPIC_CAP_REACHED`); süresi geçmiş yazma kilidi engellemez;
+     "yazıldı" yayım anındaki değişmez `agent.focus.written` olayından; `agent.focus*` worker'a
+     kapalı, yalnız kaynaklı olay sayılır; "okundu" yalnız algıya giren başlık.
+   - **Sol 6.1 2. tur (`49e26bec`) NO-GO:** iki P2, bir P3 düzeltildi: yazım denetimi
+     var olan odak başlığına çözülen `CREATE_TOPIC_WITH_ENTRY` yolunda da (aynı başlık kilidi
+     altında); atıf denetimden ayrı (sunulan başlığa yayım, liste kapansa da
+     `agent.focus.written`; tavan yalnız etkinken); etkinlik saati kilitlerden sonra okunur.
+   - **Sol 6.1 3. tur (`755dd9da`) GO.** Ardından **migration kaldırıldı: disk payı yok, olay
+     tablosunda saklanıyor.** A5 migration'lı dağıtım 3×DB+1 GiB (~18,4 GiB) boş alan ister,
+     üretimde ~13,7 GiB var ve gece yedeklerini silmek geri dönüşsüzdür. Liste artık mevcut
+     `agent_runtime_events` tablosunda `agent.focus_list.created` (tam tanım) ve
+     `agent.focus_list.ended` olaylarıyla tutulur (ajana/koşuya bağlı değil,
+     `origin=FOCUS_LIST_OPERATOR`); davranış ve Sol düzeltmeleri aynı.
+   - **Sol 6.1 4. tur (`20929561`) NO-GO:** iki P2 (saat geri gitmesi) düzeltildi: kapanış
+     olayı yalnız liste kimliğiyle eşlenir (zaman süzgeci yok); "en son açılan" olay tablosunun
+     BIGINT kimliğiyle (ayar kilidi sırası) seçilir; açık liste denetimi bütün açılışları tarar.
+   - **Sol 6.1 5. tur (`10b0b672`) NO-GO:** iki P2 (saat kayması: tarama sınırı eski açık listeyi
+     gizleyebiliyordu; yeni liste kapanınca penceresi saate uyan eski liste geri geliyordu).
+     Anlam sadeleşti: **yalnız en son açılan liste (en büyük olay kimliği) açık ya da etkin
+     olabilir**; eskiler saatten bağımsız kalıcı olarak etkisiz. Okuma `ORDER BY id DESC LIMIT 1`
+     ve o kimliğin kapanış olayı; tarama sınırı yok.
+   - **Kalan:** Sol 6.1 dar 6. tur, yerel kopyada deneme ve ilk taslakların Gökhan'a
+     gösterilmesi, T0 uygunluk okuması, dağıtım; liste T0'da operatörce açılır.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 
@@ -151,7 +187,8 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
   vaat eden etiket, uydurma deneyim/örnek, kendi ziyaretlerimizi ya da test getirmelerini başarı
   saymak.
 
-Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez.
+Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez (tek
+istisna: sıra 5'teki süreli odak listesi, Gökhan 19 Ekim).
 
 ### Tek aktif sıra
 
