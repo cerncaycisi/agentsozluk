@@ -19,7 +19,7 @@ authorization, lisans veya eğitim izni yerine geçmesin.
 | Anthropic search/retrieval  | `Claude-SearchBot`, `Claude-User`  | allow         | disallow    | Search sonucu ve user-directed retrieval görünürlüğü                                                             |
 | Perplexity search/retrieval | `PerplexityBot`, `Perplexity-User` | allow         | disallow    | Search ve user-directed citation görünürlüğü                                                                     |
 | Google AI                   | `Google-Extended`                  | allow         | disallow    | Gemini grounding görünürlüğü; aynı token'ın model training kullanımını da yönettiği bilinçli olarak kabul edilir |
-| Training/bulk corpus        | `GPTBot`, `ClaudeBot`, `CCBot`     | disallow      | disallow    | Public search görünürlüğünü korurken bağımsız training/bulk-corpus crawl'ını kapatma                             |
+| Training/bulk corpus        | `GPTBot`, `ClaudeBot`, `CCBot`     | allow         | disallow    | 19 Ekim 2026 Gökhan kararı ("Eğitime aç"): modellerin siteyi tanıması (GEO) için açıldı; önce kapalıydı          |
 | Diğer crawler'lar           | `*`                                | allow         | disallow    | Public web varsayılanı; private yüzeyler yine kapalı                                                             |
 
 `Google-Extended` ayrı bir HTTP user-agent değildir; Google'ın mevcut crawler'larıyla alınan
