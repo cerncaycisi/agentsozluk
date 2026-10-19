@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -12,6 +13,7 @@ import {
   AGENT_RUNTIME_CODEX_PROFILES,
   CODEX_TOOL_DISABLE_ARGUMENTS,
   classifyCodexItemEvent,
+  codexStreamFailureText,
   codexSupportsThreadLimit,
   codexToolFeaturesDisabled,
   CodexCliProvider,
@@ -284,6 +286,38 @@ describe("Codex CLI provider security contract", () => {
         exitSignal: null,
         safeCode: "CODEX_EXEC_FAILED_NO_STDERR",
       },
+      // 19 Ekim: hata stderr'e değil `--json` olay akışına yazılıyordu.
+      {
+        stdout:
+          '{"type":"turn.started"}\n{"type":"turn.failed","error":{"message":"You have hit your usage limit RAW_SIGNAL_STDERR_MUST_NOT_LEAK"}}\n',
+        stderr: "",
+        exitCode: 1,
+        exitSignal: null,
+        safeCode: "CODEX_RATE_LIMITED",
+      },
+      {
+        stdout:
+          '{"type":"error","message":"stream disconnected before completion RAW_SIGNAL_STDERR_MUST_NOT_LEAK"}\n',
+        stderr: "",
+        exitCode: 1,
+        exitSignal: null,
+        safeCode: "CODEX_UPSTREAM_UNAVAILABLE",
+      },
+      // Yeniden deneme iletileri 4 KiB bütçeyi doldurur (200 × 35 karakter); turu bitiren neden yine kırpılmaz.
+      {
+        stdout: `${'{"type":"error","message":"Reconnecting... connection refused"}\n'.repeat(200)}{"type":"turn.failed","error":{"message":"You have hit your usage limit"}}\n`,
+        stderr: "",
+        exitCode: 1,
+        exitSignal: null,
+        safeCode: "CODEX_RATE_LIMITED",
+      },
+      {
+        stdout: '{"type":"error","message":"RAW_SIGNAL_STDERR_MUST_NOT_LEAK"}\n',
+        stderr: "",
+        exitCode: 1,
+        exitSignal: null,
+        safeCode: "CODEX_EXEC_FAILED",
+      },
     ] as const) {
       const root = await mkdtemp(path.join(tmpdir(), "agent-sozluk-provider-termination-"));
       temporaryRoots.push(root);
@@ -344,6 +378,10 @@ describe("Codex CLI provider security contract", () => {
       expect(rejection).toMatchObject({ safeCode: termination.safeCode });
       expect(spawnMock).toHaveBeenCalledTimes(5);
       expect(JSON.stringify(rejection)).not.toMatch(/RAW_SIGNAL_STDERR_MUST_NOT_LEAK|SIGKILL|73/u);
+      // Gizli (enumerable olmayan) alanlar, ileti ve yığın da dahil (Fable, 19 Ekim).
+      expect(inspect(rejection, { showHidden: true, depth: 10 })).not.toMatch(
+        /RAW_SIGNAL_STDERR_MUST_NOT_LEAK|usage limit|stream disconnected/u,
+      );
     }
     expect(source).not.toContain("code ?? 1");
   });
@@ -587,6 +625,22 @@ describe("Codex token telemetry (Y6)", () => {
       unknownItems: 1,
     });
     expect(classifyCodexItemEvent('{"type":"turn.completed"}')).toBeUndefined();
+    expect(codexStreamFailureText('{"type":"turn.completed"}')).toBeUndefined();
+    expect(codexStreamFailureText('{"type":"item.completed","item":{"type":"error"}}')).toBe(
+      undefined,
+    );
+    expect(codexStreamFailureText('{"type":"error","message":"429 Too Many Requests"}')).toEqual({
+      text: "429 Too Many Requests",
+      terminal: false,
+    });
+    expect(codexStreamFailureText('{"type":"turn.failed"}')).toBeUndefined();
+    expect(codexStreamFailureText('{"type":"turn.failed","error":{"message":"boom"}}')).toEqual({
+      text: "boom",
+      terminal: true,
+    });
+    expect(
+      codexStreamFailureText(`{"type":"error","message":"${"a".repeat(5000)}"}`)?.text.length,
+    ).toBe(4096);
   });
 
   it("rejects malformed contract lines, a config.toml and an unreadable event line", async () => {
