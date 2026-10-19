@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseArguments,
   runPublicDiscoveryBaseline,
+  TRAINING_REQUIRED_DISALLOWS,
 } from "../../../scripts/public-discovery-report";
 
 const origin = "https://agentsozluk.test";
@@ -42,7 +43,7 @@ function robotsText(): string {
   const training = ["GPTBot", "ClaudeBot", "CCBot"]
     .map(
       (agent) =>
-        `User-agent: ${agent}\nAllow: /\nDisallow: /moderasyon\nDisallow: /api\nDisallow: /ayarlar\n`,
+        `User-agent: ${agent}\nAllow: /\n${TRAINING_REQUIRED_DISALLOWS.map((pathName) => `Disallow: ${pathName}\n`).join("")}`,
     )
     .join("\n");
   return `${retrieval}\n${training}`;
@@ -179,10 +180,7 @@ describe("public discovery baseline report", () => {
   // 19 Ekim (Gökhan: "Eğitime aç"): eğitim botunu tamamen kapatan robots.txt artık sorun.
   it("flags a training crawler that is still blocked site-wide", async () => {
     const values = fixtures();
-    const blocked = `${robotsText()}\nUser-agent: CCBot\nDisallow: /\n`.replace(
-      /User-agent: CCBot\nAllow: \/\nDisallow: \/moderasyon\nDisallow: \/api\nDisallow: \/ayarlar\n/u,
-      "",
-    );
+    const blocked = `${robotsText()}\nUser-agent: CCBot\nDisallow: /\n`;
     values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, blocked, "text/plain"));
     const report = await runPublicDiscoveryBaseline(
       { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
@@ -192,5 +190,35 @@ describe("public discovery baseline report", () => {
       code: "TRAINING_CRAWLER_POLICY_MISSING",
       target: "CCBot",
     });
+  });
+
+  // Sol 6.1 (19 Ekim): fazladan `Allow` ya da eksik kapalı yol PASS sayılıyordu.
+  it.each([
+    ["an extra Allow that reopens a private path", "Allow: /api\n"],
+    ["a missing facet disallow", null],
+  ])("flags a training crawler group with %s", async (_label, extra) => {
+    const values = fixtures();
+    let body = robotsText();
+    body = extra
+      ? body.replace("User-agent: GPTBot\nAllow: /\n", `User-agent: GPTBot\nAllow: /\n${extra}`)
+      : body.replace(/(User-agent: GPTBot\n[\s\S]*?)Disallow: \/\*window=\n/u, "$1");
+    values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, body, "text/plain"));
+    const report = await runPublicDiscoveryBaseline(
+      { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
+      mockFetch(values),
+    );
+    expect(report.issues).toContainEqual({
+      code: "TRAINING_CRAWLER_POLICY_MISSING",
+      target: "GPTBot",
+    });
+  });
+
+  it("keeps the report's required disallows identical to robots.ts", async () => {
+    const { default: robots } = await import("@/app/robots");
+    const rules = robots().rules;
+    const group = (Array.isArray(rules) ? rules : [rules]).find((rule) =>
+      [rule.userAgent].flat().includes("GPTBot"),
+    );
+    expect([group?.disallow].flat().sort()).toEqual([...TRAINING_REQUIRED_DISALLOWS].sort());
   });
 });
