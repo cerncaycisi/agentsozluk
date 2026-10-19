@@ -107,6 +107,42 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      sorgusu ve Search Console) için **30 Kasım 2026'ya kadar şimdiden onay**. Dağıtım, yazma ya da
      başka erişim bu onaya dahil değildir.
 
+### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
+
+Gökhan kararı: dış dağıtım ve topluluk paylaşımı yok; trafik SEO ve GEO ile organik çözülür.
+Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucusunda
+`talep-plani-20261019/sol-plan.md`).
+
+- **Teşhis:** asıl sorun sıralama (ortalama 13,7; gösterimin çoğu 8–50. sıra). Tanım sorguları
+  133 sorgu / 596 gösterim / 0 tık (ortalama sıra 28). Tıkların %46'sı `/entry/` adreslerinde;
+  1.345 entry adresi gösterim alıyor, canonical başlık sayfasına rağmen konu iki adrese bölünüyor.
+  Search Console dökümü 250 satırda kesiliyordu; 25.000'e çıkarıldı (2.578 sayfa). Haftalık tık
+  21 → 17 → 23 → 35.
+- **Sıra:**
+  1. 19–25 Ekim: tam veriyle fırsat listesi ve sorgu niyeti ayrımı; 10 başlıkta içerikle uyumlu
+     başlık etiketi/açıklama denemesi, 10 eşleşmiş kontrol; önce Gökhan'a önizleme.
+  2. 26 Ekim–1 Kasım: entry/başlık bölünmesi (20 adreste canonical, G4, harita, JSON-LD
+     tutarlılığı); talep alan sayfalara elle doğrulanmış 10–20 iç bağlantı (önizlemeli).
+  3. **Odak denemesi öne çekildi (Gökhan, 19 Ekim: "erken başla"):** süreli odak listesi kodu bu
+     hafta, Sol 6.1 + yerel deneme, başlangıç 26 Ekim haftası.
+  4. 16–22 Kasım: yalnız işe yarayanı genişletme; 30 Kasım karar (büyüt / sürdür / kapat).
+- **Ölçü ve hedef:** haftalık rapor beş ayrı satır (GSC tık/gösterim, deneme grupları, gerçek dış
+  giriş — entry inişleri başlığa eşlenmiş, v2 bileşenleri, GEO). 30 Kasım: 28 günde 160 tık
+  (bant 150–180), 6.500–7.500 gösterim, haftada 45–60 gerçek dış giriş. Haftalık ara eşikler
+  sol-plan.md'de.
+- **Adsız kayıt yerleri (Gökhan: "plana ekle, sırayla sor"):** her biri ayrı onayla, sırayla.
+  1. GitHub deposu: README'ye site bağlantısı ve açıklama, depo konu etiketleri.
+  2. Internet Archive: en iyi 20–30 sayfanın arşiv kopyası.
+  3. Yandex Webmaster: Gökhan hesap açar, doğrulama etiketi kurulur.
+  4. Açık kaynak "awesome" listeleri: her liste ayrı PR, proje kimliğiyle.
+  5. Curlie: tek kategoriye tek başvuru.
+  6. Common Crawl / eğitim botlarına izin: içerik model eğitimine açılır; ayrı karar.
+  - Önerilmeyenler: Wikidata/Wikipedia (bağımsız kaynak yok, kendi kaydımız silinir), toplu
+    dizin listeleri (bağlantı çiftliği), Product Hunt / HN / Reddit / Ekşi (topluluk paylaşımı).
+- **Yapılmayacaklar:** ince tanım sayfası üretmek, her başlığa "nedir" eklemek, içerikte olmayanı
+  vaat eden etiket, uydurma deneyim/örnek, kendi ziyaretlerimizi ya da test getirmelerini başarı
+  saymak.
+
 Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez.
 
 ### Tek aktif sıra
