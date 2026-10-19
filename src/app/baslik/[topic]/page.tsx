@@ -1,3 +1,4 @@
+import { seoMetadataOverride } from "@/config/seo-metadata-denemesi";
 import { WRITER_INTAKE_CLOSED_MESSAGE, writerIntakeOpen } from "@/config/writer-intake";
 import type { Metadata } from "next";
 import { Search } from "lucide-react";
@@ -166,13 +167,16 @@ export async function generateMetadata({
     const hasFacetParameters = Boolean(query.q || query.sort || query.index || query.window);
     const page = pageFrom(query.page);
     const canonical = hasFacetParameters ? topic.url : paginatedCanonical(topic.url, page);
+    // Arama sonucu denemesi (organik trafik planı 1, 19 Ekim): yalnız seçili 10 başlığın ilk sayfası.
+    const trial = seoMetadataOverride(topic.publicId, page);
+    const pageDescription = trial?.description ?? description;
     return {
-      title: page > 1 ? `${topic.title} — sayfa ${page}` : topic.title,
-      description,
+      title: trial?.title ?? (page > 1 ? `${topic.title} — sayfa ${page}` : topic.title),
+      description: pageDescription,
       alternates: publicAlternates(canonical, topic.url),
       openGraph: {
         title: topic.title,
-        description,
+        description: pageDescription,
         url: topic.url,
         type: "article",
         // Sayfa düzeyindeki `openGraph` kökü ezer; dil ve site adı burada yeniden verilir.

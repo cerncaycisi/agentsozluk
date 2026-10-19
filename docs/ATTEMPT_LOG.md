@@ -9948,3 +9948,47 @@ migrated → post-verified → cutover-done`, `RELEASE_COMPLETE PASS`, temizlik 
   uyarıdır; `bildirim@` OnFailure birimleri bu dosyasız gönderemez.
 
 **Do not repeat:** ntfy'yi yeniden önerme; uyarıyı T3 sohbetine yaz.
+
+## 19 Ekim — yarım kalan #448 dağıtımı tamamlandı, ajan akışı açıldı
+
+- **Yetki:** Gökhan bu sohbette "Sen aç" dedi. Mevcut sürüm
+  `ede47942762abd06f038dfdc9b08e9b6e0938a82`; aynı sürümün migration'sız kurtarması ve
+  ardından mevcut uygulama servisiyle `resume`. Yeni kod veya migration yok.
+- **Bulgu:** #448 dağıtımının operatör çıktısı `[killed]` ile bitmiş; uzak kayıt
+  `RELEASE_BOOT_TAG PASS` sonrasında kesilmiş, `RELEASE_COMPLETE PASS` yoktu. Akış
+  16:57:24Z'de `runtimeEnabled=false`, `settingsVersion=397` olmuş; son koşu
+  16:57:42Z'de bitmiş. App ve `agent-sozluk-runtime.service` sağlıklı, exact aday sürümdeydi.
+  Komutun neden öldürüldüğü belirlenmedi. Claude oturum kotası sonraki sağlık okumalarını
+  da engelledi; kota mesajı tek başına komutun öldürülme nedenini kanıtlamaz.
+- **Kurtarma:** CI `39285590705` ve release candidate `39288293277` aynı exact SHA için
+  `completed/success`. Migration/hold yok; eski operasyondan çalışan süreç kalmamıştı.
+  Sahiplik ve oturum incelemesi sonrası eski kilit kaldırıldı; sudo PAM include zincirinde
+  `pam_systemd` bulunmadığı ayrıca kaynakla doğrulandı. İlk PAM aramasında sunucuda
+  `rg` bulunmadı; yalnız `/etc/pam.d/sudo` ve özyinelemeli include dosyalarını okuyan
+  Python doğrulaması kullanıldı. Durum dizini ve önceki sürüm korundu. Depo sarmalayıcısı aynı
+  SHA/artifact ile `--pause-society-flow --cleanup` kullanılarak yeniden koştu;
+  imaj ve runtime yeniden kullanıldı, `pause changed=false`, `RELEASE_COMPLETE PASS`.
+- **Temizlik:** yalnız eski kullanılmayan uygulama imajları/runtime'lar ve 24 saatten eski
+  kullanılmayan build cache filtresi. Silinen imaj 0, runtime 1; boş alan
+  14.330.376.192 → 14.680.993.792 bayt (+350.617.600), doluluk %65 → %64.
+  Volume ve konteyner imaj özetleri aynı, aday/önceki imaj ve runtime korundu;
+  worker `active/running`, health/ready/search 200. Envanter üç mevcut systemd drop-in farkı,
+  karar gereği eksik iki alarm ortam dosyası referansı ve okunamayan runtime ortam dosyası
+  uyarısını verdi; dağıtım sonucu PASS.
+- **Açma:** 19:33:09Z'de `resume changed=true runtimeEnabled=true settingsVersion=398`;
+  doğrudan DB okuması aynı sonucu doğruladı. Ham kurtarma çıktısı
+  operatörde `/tmp/agentsozluk-resume-20261019-release.log` içinde. İlk yeni koşu
+  19:33:48.501Z'de başladı, 19:34:56.460Z'de `SUCCEEDED` bitti; tetikleyici
+  `STOCHASTIC_TICK`, hata yok. İkinci doğal koşu 19:35:16.388Z'de başladı.
+
+**Do not repeat:** SSH bağlantısının kapanmasını ya da `RELEASE_VERIFY PASS` sonucunu dağıtımın
+tamamlandığı sayma; `RELEASE_COMPLETE PASS`, kilidin bırakılması ve açık akışın DB doğrulaması
+ayrı kapılardır. Saatlik kontrol aynı sağlayıcının kotasına takıldığında çalışmış varsayma.
+
+- **Yerel makbuz doğrulaması:** format ve lint geçti. Paylaşılan yerel `node_modules` içindeki
+  eski üretilmiş Prisma Client, `topicRelatedLink` içermediği için typecheck `TS2339`/`TS2724`
+  verdi; dağıtılan exact SHA'nın CI'ı başarılıdır, makbuzda yalnız Markdown değişti.
+  Diğer işlerin istemcisini değiştirmemek için ayrı worktree'de denenen offline kurulum
+  `ERR_PNPM_NO_OFFLINE_TARBALL` ile durdu (`@hookform/resolvers@5.9.1` önbellekte yok).
+  Kod veya tip kontrolü gevşetilmedi; makbuz PR'ının CI'ı yerel typecheck yerine başarılı
+  sayılmaz, ayrıca doğrulanmalıdır. Aynı paylaşılan eski istemciyle typecheck'i tekrarlama.
