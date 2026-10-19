@@ -43,12 +43,13 @@ describe("robots.txt sitemap", () => {
 */
 describe("streaming metadata ile robots politikası", () => {
   it("robots.txt'te izin verilen her crawler bloklayıcı metadata alır", async () => {
-    const { SEARCH_AND_CITATION_CRAWLERS } = await import("@/config/crawlers");
+    const { SEARCH_AND_CITATION_CRAWLERS, TRAINING_CRAWLERS } = await import("@/config/crawlers");
     const { default: nextConfig } = await import("../../../next.config");
     const pattern = nextConfig.htmlLimitedBots;
 
     expect(pattern, "htmlLimitedBots ayarlanmış olmalı").toBeInstanceOf(RegExp);
-    for (const crawler of SEARCH_AND_CITATION_CRAWLERS)
+    // Eğitim botları da JS çalıştırmaz (19 Ekim'den beri izinli; Sol 6.1 P3).
+    for (const crawler of [...SEARCH_AND_CITATION_CRAWLERS, ...TRAINING_CRAWLERS])
       expect(pattern!.test(crawler), crawler).toBe(true);
   });
 

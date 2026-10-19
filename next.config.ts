@@ -3,6 +3,7 @@ import path from "node:path";
 import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
 import {
   ADDITIONAL_HTML_LIMITED_CRAWLERS,
+  TRAINING_CRAWLERS,
   SEARCH_AND_CITATION_CRAWLERS,
 } from "./src/config/crawlers";
 
@@ -50,6 +51,7 @@ const htmlLimitedBots = new RegExp(
     HTML_LIMITED_BOT_UA_RE.source,
     ...SEARCH_AND_CITATION_CRAWLERS,
     ...ADDITIONAL_HTML_LIMITED_CRAWLERS,
+    ...TRAINING_CRAWLERS,
   ].join("|"),
   "i",
 );
