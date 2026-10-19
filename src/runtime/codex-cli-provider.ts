@@ -208,6 +208,33 @@ export function classifyCodexItemEvent(
   return { kind, ...(safeId ? { id: safeId } : {}), completed };
 }
 
+/*
+  Codex CLI `exec --json` başarısızlığı stderr'e değil olay akışına yazabiliyor (`error`,
+  `turn.failed`). 19 Ekim 04:04–05:04Z'de 13 koşu `CODEX_EXEC_FAILED_NO_STDERR` ile düştü ve
+  kota sınırı mı, servis kesintisi mi ayırt edilemedi. Mesaj yalnız `safeCodexFailure`
+  sınıflandırması için okunur; hiçbir yere yazılmaz, yalnız güvenli kod taşınır.
+*/
+const MAX_STREAM_FAILURE_CHARS = 4_096;
+
+export function codexStreamFailureText(line: string): string | undefined {
+  if (!line.includes('"error"') && !line.includes('"turn.failed"')) return undefined;
+  let event: unknown;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+  if (!event || typeof event !== "object") return undefined;
+  const { type, message, error } = event as { type?: unknown; message?: unknown; error?: unknown };
+  const text =
+    type === "error"
+      ? message
+      : type === "turn.failed" && error && typeof error === "object"
+        ? (error as { message?: unknown }).message
+        : undefined;
+  return typeof text === "string" ? text.slice(0, MAX_STREAM_FAILURE_CHARS) : undefined;
+}
+
 export const RETAINED_RUNTIME_WORK_FILES = ["output.json", "output.schema.json"] as const;
 const maximumActiveRunAndCleanupGraceMs = 25 * 60 * 1000;
 const runtimeWorkExpiryTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -486,9 +513,11 @@ function collect(
   tokenUsage?: RuntimeProviderTokenUsage;
   itemCounts?: CodexItemCounts;
   eventStreamOverflow: boolean;
+  streamFailure: string;
 }> {
   return new Promise((resolve, reject) => {
     let stderr = "";
+    let streamFailure = "";
     let pendingEvent = "";
     let tokenUsage: RuntimeProviderTokenUsage | undefined;
     const itemCounts: CodexItemCounts = { errorItems: 0, toolItems: 0, unknownItems: 0 };
@@ -498,6 +527,9 @@ function collect(
     const stdoutDecoder = new StringDecoder("utf8");
     const readEvent = (line: string) => {
       tokenUsage = parseCodexTurnUsage(line) ?? tokenUsage;
+      const failure = codexStreamFailureText(line);
+      if (failure && streamFailure.length < MAX_STREAM_FAILURE_CHARS)
+        streamFailure += `${failure}\n`.slice(0, MAX_STREAM_FAILURE_CHARS - streamFailure.length);
       const item = classifyCodexItemEvent(line);
       if (!item) return;
       if (item.kind === "tool") {
@@ -598,6 +630,7 @@ function collect(
               }
             : {}),
           eventStreamOverflow,
+          streamFailure,
         });
       }),
     );
@@ -895,7 +928,10 @@ export class CodexCliProvider implements RuntimeProvider {
       if (result.cancelled) throw new RuntimeProviderCancelledError(diagnostics());
       if (result.timedOut) throw new RuntimeProviderTimeoutError(diagnostics());
       if (result.exitCode !== 0 || result.exitSignal !== null) {
-        const safeCode = safeCodexFailure(result.stderr, result.exitSignal);
+        const safeCode = safeCodexFailure(
+          [result.stderr, result.streamFailure].filter((text) => text.length > 0).join("\n"),
+          result.exitSignal,
+        );
         retainedErrorCode = safeCode;
         throw new RuntimeProviderExecutionError(safeCode, diagnostics());
       }

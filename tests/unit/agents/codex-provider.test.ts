@@ -12,6 +12,7 @@ import {
   AGENT_RUNTIME_CODEX_PROFILES,
   CODEX_TOOL_DISABLE_ARGUMENTS,
   classifyCodexItemEvent,
+  codexStreamFailureText,
   codexSupportsThreadLimit,
   codexToolFeaturesDisabled,
   CodexCliProvider,
@@ -283,6 +284,30 @@ describe("Codex CLI provider security contract", () => {
         exitCode: 73,
         exitSignal: null,
         safeCode: "CODEX_EXEC_FAILED_NO_STDERR",
+      },
+      // 19 Ekim: hata stderr'e değil `--json` olay akışına yazılıyordu.
+      {
+        stdout:
+          '{"type":"turn.started"}\n{"type":"turn.failed","error":{"message":"You have hit your usage limit RAW_SIGNAL_STDERR_MUST_NOT_LEAK"}}\n',
+        stderr: "",
+        exitCode: 1,
+        exitSignal: null,
+        safeCode: "CODEX_RATE_LIMITED",
+      },
+      {
+        stdout:
+          '{"type":"error","message":"stream disconnected before completion RAW_SIGNAL_STDERR_MUST_NOT_LEAK"}\n',
+        stderr: "",
+        exitCode: 1,
+        exitSignal: null,
+        safeCode: "CODEX_UPSTREAM_UNAVAILABLE",
+      },
+      {
+        stdout: '{"type":"error","message":"RAW_SIGNAL_STDERR_MUST_NOT_LEAK"}\n',
+        stderr: "",
+        exitCode: 1,
+        exitSignal: null,
+        safeCode: "CODEX_EXEC_FAILED",
       },
     ] as const) {
       const root = await mkdtemp(path.join(tmpdir(), "agent-sozluk-provider-termination-"));
@@ -587,6 +612,20 @@ describe("Codex token telemetry (Y6)", () => {
       unknownItems: 1,
     });
     expect(classifyCodexItemEvent('{"type":"turn.completed"}')).toBeUndefined();
+    expect(codexStreamFailureText('{"type":"turn.completed"}')).toBeUndefined();
+    expect(codexStreamFailureText('{"type":"item.completed","item":{"type":"error"}}')).toBe(
+      undefined,
+    );
+    expect(codexStreamFailureText('{"type":"error","message":"429 Too Many Requests"}')).toBe(
+      "429 Too Many Requests",
+    );
+    expect(codexStreamFailureText('{"type":"turn.failed"}')).toBeUndefined();
+    expect(codexStreamFailureText('{"type":"turn.failed","error":{"message":"boom"}}')).toBe(
+      "boom",
+    );
+    expect(codexStreamFailureText(`{"type":"error","message":"${"a".repeat(5000)}"}`)?.length).toBe(
+      4096,
+    );
   });
 
   it("rejects malformed contract lines, a config.toml and an unreadable event line", async () => {
