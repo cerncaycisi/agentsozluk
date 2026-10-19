@@ -638,9 +638,9 @@ describe("Codex token telemetry (Y6)", () => {
       text: "boom",
       terminal: true,
     });
-    expect(codexStreamFailureText(`{"type":"error","message":"${"a".repeat(5000)}"}`)?.length).toBe(
-      4096,
-    );
+    expect(
+      codexStreamFailureText(`{"type":"error","message":"${"a".repeat(5000)}"}`)?.text.length,
+    ).toBe(4096);
   });
 
   it("rejects malformed contract lines, a config.toml and an unreadable event line", async () => {
