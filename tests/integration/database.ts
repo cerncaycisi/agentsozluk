@@ -13,7 +13,6 @@ export async function resetIntegrationDatabase(): Promise<void> {
     integrationDatabase.$executeRaw`
     TRUNCATE TABLE
       "ukte_requests",
-      "agent_focus_lists",
       "agent_birth_candidates",
       "agent_runtime_events",
       "agent_runtime_credential_sync",

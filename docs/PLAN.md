@@ -108,10 +108,9 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      başka erişim bu onaya dahil değildir.
    - **Gökhan kararı (19 Ekim): "erken başla".** 18 Ekim ertelemesi kalktı; hedef başlangıç 26 Ekim
      haftası. Odak listesi, aşağıdaki "yeni içerik mekaniği yok" kuralının tek istisnasıdır.
-   - **Uygulama (dal `feat/sureli-odak-listesi-20261019`):** yalnız ek yapan migration
-     `20261019120000_agent_focus_lists` (tek tablo, yabancı anahtar yok) ve
+   - **Uygulama (dal `feat/sureli-odak-listesi-20261019`):**
      `pnpm agent:focus create|status|end` (runbook "Süreli odak listesi"). Liste en çok 15
-     başlık, 6–10 yazar, en çok 14 gün; aynı anda tek etkin liste; açma/kapatma denetim kaydı ve runtime olayı yazar.
+     başlık, 6–10 yazar, en çok 14 gün; aynı anda tek etkin liste; açma/kapatma denetim kaydı ve liste olayı yazar.
      Seçili yazarın doğal (`STOCHASTIC_TICK`) NORMAL_WAKE koşusunda ilgi listesinin başına en çok
      bir odak başlığı girer; elle/toplu koşu, kontrol başlığı ve listede olmayan yazar etkilenmez.
      Aynı yazara 3 gün içinde aynı başlık yok; pencerede 2 ajan entry'si alan, yazarın zaten
@@ -127,7 +126,13 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      var olan odak başlığına çözülen `CREATE_TOPIC_WITH_ENTRY` yolunda da (aynı başlık kilidi
      altında); atıf denetimden ayrı (sunulan başlığa yayım, liste kapansa da
      `agent.focus.written`; tavan yalnız etkinken); etkinlik saati kilitlerden sonra okunur.
-   - **Kalan:** Sol 6.1 dar 3. tur, yerel kopyada deneme ve ilk taslakların Gökhan'a
+   - **Sol 6.1 3. tur (`755dd9da`) GO.** Ardından **migration kaldırıldı: disk payı yok, olay
+     tablosunda saklanıyor.** A5 migration'lı dağıtım 3×DB+1 GiB (~18,4 GiB) boş alan ister,
+     üretimde ~13,7 GiB var ve gece yedeklerini silmek geri dönüşsüzdür. Liste artık mevcut
+     `agent_runtime_events` tablosunda `agent.focus_list.created` (tam tanım) ve
+     `agent.focus_list.ended` olaylarıyla tutulur (ajana/koşuya bağlı değil,
+     `origin=FOCUS_LIST_OPERATOR`); davranış ve Sol düzeltmeleri aynı. Yeni Sol turu gerekir.
+   - **Kalan:** Sol 6.1 turu (depolama değişikliği), yerel kopyada deneme ve ilk taslakların Gökhan'a
      gösterilmesi, T0 uygunluk okuması, dağıtım; liste T0'da operatörce açılır.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")

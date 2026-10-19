@@ -222,6 +222,13 @@ function interestIds(perception: Record<string, unknown>): string[] {
   return Array.isArray(topics) ? topics.map((topic) => (topic as { id: string }).id) : [];
 }
 
+function listCreatedEvents() {
+  return integrationDatabase.agentRuntimeEvent.findMany({
+    where: { eventType: "agent.focus_list.created" },
+    select: { id: true },
+  });
+}
+
 function focusEvents(runId: string, eventType: string) {
   return integrationDatabase.agentRuntimeEvent.findMany({
     where: { runId, eventType },
@@ -275,7 +282,7 @@ describe("süreli odak listesi (PostgreSQL)", () => {
         agents: [...seeded.fillers, "olmayan_yazar"],
       }),
     ).rejects.toMatchObject({ details: { reason: "FOCUS_AGENT_INVALID" } });
-    expect(await integrationDatabase.agentFocusList.count()).toBe(0);
+    expect(await listCreatedEvents()).toHaveLength(0);
 
     const list = await createFocusList(
       integrationDatabase,
@@ -431,11 +438,36 @@ describe("süreli odak listesi (PostgreSQL)", () => {
 
     const status = await getFocusListStatus(integrationDatabase);
     expect(status?.active).toBe(false);
-    const row = await integrationDatabase.agentFocusList.findUniqueOrThrow({
-      where: { id: list.id },
+    expect(status!.list).toMatchObject({
+      id: list.id,
+      endedById: seeded.admin.id,
+      endReason: "odak listesi erken kapatma testi",
     });
-    expect(row.endedById).toBe(seeded.admin.id);
-    expect(row.endReason).toBe("odak listesi erken kapatma testi");
+    // Liste ayrı tabloda değil: açılış ve kapanış, ajana/koşuya bağlı olmayan iki olaydır.
+    const listEvents = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: { eventType: { startsWith: "agent.focus_list." } },
+      orderBy: { id: "asc" },
+      select: { eventType: true, agentProfileId: true, runId: true, metadata: true },
+    });
+    expect(listEvents).toEqual([
+      expect.objectContaining({
+        eventType: "agent.focus_list.created",
+        agentProfileId: null,
+        runId: null,
+        metadata: expect.objectContaining({
+          origin: "FOCUS_LIST_OPERATOR",
+          focusListId: list.id,
+          topicIds: [seeded.eligibleA.id],
+          createdById: seeded.admin.id,
+        }),
+      }),
+      expect.objectContaining({
+        eventType: "agent.focus_list.ended",
+        agentProfileId: null,
+        runId: null,
+        metadata: expect.objectContaining({ focusListId: list.id, endedById: seeded.admin.id }),
+      }),
+    ]);
     const actions = await integrationDatabase.auditLog.findMany({
       where: { entityType: "AgentFocusList" },
       orderBy: { createdAt: "asc" },
@@ -457,7 +489,7 @@ describe("süreli odak listesi (PostgreSQL)", () => {
     expect(results.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
     const rejected = results.find(({ status }) => status === "rejected") as PromiseRejectedResult;
     expect(rejected.reason).toMatchObject({ code: "AGENT_FOCUS_LIST_CONFLICT" });
-    expect(await integrationDatabase.agentFocusList.count({ where: { endedAt: null } })).toBe(1);
+    expect(await listCreatedEvents()).toHaveLength(1);
   }, 120_000);
 
   it("süresi geçmiş yazma kilidi engellemez, etkin kilit engeller (Sol 6.1, 1. tur)", async () => {
@@ -792,5 +824,44 @@ describe("süreli odak listesi (PostgreSQL)", () => {
       focusListId: list.id,
       enforced: false,
     });
+  }, 120_000);
+
+  it("ajana bağlı ya da kaynaksız sahte liste olayı etkin liste sayılmaz", async () => {
+    const seeded = await seed();
+    const forged = (extra: Record<string, unknown>) => ({
+      eventType: "agent.focus_list.created",
+      safeMessage: "sahte liste",
+      metadata: {
+        origin: "FOCUS_LIST_OPERATOR",
+        focusListId: randomUUID(),
+        label: "sahte",
+        topicIds: [seeded.eligibleA.id],
+        agentProfileIds: [seeded.runner.id],
+        startsAt: new Date(Date.now() - 60_000).toISOString(),
+        endsAt: new Date(Date.now() + 3_600_000).toISOString(),
+        createdAt: new Date(Date.now() - 60_000).toISOString(),
+      },
+      ...extra,
+    });
+    // Worker olayı her zaman ajan profiline bağlıdır; kaynaksız satır da yok sayılır.
+    await integrationDatabase.agentRuntimeEvent.create({
+      data: forged({ agentProfileId: seeded.runner.id }),
+    });
+    const noOrigin = forged({});
+    await integrationDatabase.agentRuntimeEvent.create({
+      data: { ...noOrigin, metadata: { ...noOrigin.metadata, origin: "WORKER" } },
+    });
+    expect(await getFocusListStatus(integrationDatabase)).toBeNull();
+    const started = await startRun(seeded.runner);
+    await context(started);
+    expect(await focusEvents(started.run.id, "agent.focus.offered")).toHaveLength(0);
+    // Gerçek liste yine açılabilir: sahte olay "açık liste" sayılmaz.
+    await expect(
+      createFocusList(
+        integrationDatabase,
+        adminActor(seeded.admin.id),
+        createInput(seeded, [seeded.eligibleA]),
+      ),
+    ).resolves.toMatchObject({ topicIds: [seeded.eligibleA.id] });
   }, 120_000);
 });

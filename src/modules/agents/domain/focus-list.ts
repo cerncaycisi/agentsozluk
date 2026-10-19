@@ -38,6 +38,8 @@ export const focusTopicReadEventType = "agent.focus.read";
 export const focusTopicWrittenEventType = "agent.focus.written";
 /** Sunucuya ait olay ad alanı; worker bu önekle olay yazamaz (Sol 6.1, 1. tur). */
 export const focusEventNamespace = "agent.focus";
+/** Liste açılış/kapanış olaylarının kaynağı (operatör servisi; `agent_runtime_events`). */
+export const focusListEventOrigin = "FOCUS_LIST_OPERATOR";
 /** Telemetri olaylarının kaynağı; sayımda yalnız bu kaynaklı olaylar geçerlidir. */
 export const focusEventOrigin = "RUNTIME_FOCUS_LIST";
 /** Yazım anında odak tavanı ya da aynı yazar kuralı aşılırsa ret kodu (onarılamaz). */

@@ -40,8 +40,9 @@ import type { FocusListCreateInput } from "@/modules/agents/validation/focus-lis
 
 /*
   Süreli odak listesi uygulama servisi (Gökhan kararı, 19 Ekim 2026). Oluşturma ve kapatma
-  yalnız aktif HUMAN ADMIN ile, ayar kilidi altında yapılır; denetim kaydı ve runtime olayı
-  aynı transaction'dadır. Kapatma anında geçerlidir: sonraki koşunun algısı listeyi görmez.
+  yalnız aktif HUMAN ADMIN ile, ayar kilidi altında yapılır; liste olayı
+  (`agent.focus_list.created|ended`, `agent_runtime_events`) ve denetim kaydı aynı
+  transaction'dadır. Kapatma anında geçerlidir: sonraki koşunun algısı listeyi görmez.
   Zaten dondurulmuş bir algı geri alınmaz (o koşuda menüde kalır).
 */
 
@@ -108,7 +109,6 @@ export async function createFocusList(
       ),
       startsAt: now,
       endsAt,
-      reason: input.reason,
       createdById: actor.actorId,
     });
     const summary = {
@@ -126,12 +126,7 @@ export async function createFocusList(
       requestId: actor.requestId,
       metadata: { actorKind: actor.actorKind, label: list.label, reason: input.reason, ...summary },
     });
-    await appendRuntimeEvent(transaction, {
-      eventType: focusListCreatedEventType,
-      safeMessage: "Süreli odak listesi operatör tarafından açıldı.",
-      metadata: summary,
-      occurredAt: now,
-    });
+    // Liste tanımının kendisi `agent.focus_list.created` olayıdır (createFocusListRecord).
     return list;
   });
 }
@@ -163,12 +158,6 @@ export async function endFocusList(
       entityId: active.id,
       requestId: actor.requestId,
       metadata: { actorKind: actor.actorKind, reason: input.reason, ...summary },
-    });
-    await appendRuntimeEvent(transaction, {
-      eventType: focusListEndedEventType,
-      safeMessage: "Süreli odak listesi operatör tarafından erken kapatıldı.",
-      metadata: summary,
-      occurredAt: now,
     });
     return { ...active, endedAt: now };
   });
