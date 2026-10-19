@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseArguments,
   runPublicDiscoveryBaseline,
+  REQUIRED_CRAWLER_DISALLOWS,
 } from "../../../scripts/public-discovery-report";
 
 const origin = "https://agentsozluk.test";
@@ -36,11 +37,14 @@ function robotsText(): string {
   ]
     .map(
       (agent) =>
-        `User-agent: ${agent}\nAllow: /\nDisallow: /moderasyon\nDisallow: /api\nDisallow: /ayarlar\n`,
+        `User-agent: ${agent}\nAllow: /\n${REQUIRED_CRAWLER_DISALLOWS.map((pathName) => `Disallow: ${pathName}\n`).join("")}`,
     )
     .join("\n");
   const training = ["GPTBot", "ClaudeBot", "CCBot"]
-    .map((agent) => `User-agent: ${agent}\nDisallow: /\n`)
+    .map(
+      (agent) =>
+        `User-agent: ${agent}\nAllow: /\n${REQUIRED_CRAWLER_DISALLOWS.map((pathName) => `Disallow: ${pathName}\n`).join("")}`,
+    )
     .join("\n");
   return `${retrieval}\n${training}`;
 }
@@ -170,6 +174,88 @@ describe("public discovery baseline report", () => {
     expect(report.issues).toContainEqual({
       code: "CANONICAL_SAMPLE_FAILED",
       target: "/entry/2",
+    });
+  });
+
+  // 19 Ekim (Gökhan: "Eğitime aç"): eğitim botunu tamamen kapatan robots.txt artık sorun.
+  it("flags a training crawler that is still blocked site-wide", async () => {
+    const values = fixtures();
+    const blocked = `${robotsText()}\nUser-agent: CCBot\nDisallow: /\n`;
+    values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, blocked, "text/plain"));
+    const report = await runPublicDiscoveryBaseline(
+      { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
+      mockFetch(values),
+    );
+    expect(report.issues).toContainEqual({
+      code: "TRAINING_CRAWLER_POLICY_MISSING",
+      target: "CCBot",
+    });
+  });
+
+  // Sol 6.1 (19 Ekim): fazladan `Allow` ya da eksik kapalı yol PASS sayılıyordu.
+  it.each([
+    ["an extra Allow that reopens a private path", "Allow: /api\n"],
+    ["a missing facet disallow", null],
+    // Sol 6.1 2. tur: UA eşleşmesi harf duyarsızdır (RFC 9309), ayrı küçük harfli grup birleşir.
+    ["a lowercase duplicate group reopening a private path", "LOWERCASE"],
+  ])("flags a training crawler group with %s", async (_label, extra) => {
+    const values = fixtures();
+    let body = robotsText();
+    if (extra === "LOWERCASE") body = `${body}\nUser-agent: gptbot\nAllow: /api\n`;
+    else
+      body = extra
+        ? body.replace("User-agent: GPTBot\nAllow: /\n", `User-agent: GPTBot\nAllow: /\n${extra}`)
+        : body.replace(/(User-agent: GPTBot\n[\s\S]*?)Disallow: \/\*window=\n/u, "$1");
+    values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, body, "text/plain"));
+    const report = await runPublicDiscoveryBaseline(
+      { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
+      mockFetch(values),
+    );
+    expect(report.issues).toContainEqual({
+      code: "TRAINING_CRAWLER_POLICY_MISSING",
+      target: "GPTBot",
+    });
+  });
+
+  it("keeps the report's required disallows identical to robots.ts", async () => {
+    const { default: robots } = await import("@/app/robots");
+    const rules = robots().rules;
+    const group = (Array.isArray(rules) ? rules : [rules]).find((rule) =>
+      [rule.userAgent].flat().includes("GPTBot"),
+    );
+    expect([group?.disallow].flat().sort()).toEqual([...REQUIRED_CRAWLER_DISALLOWS].sort());
+  });
+
+  // Sol 6.1 3. tur: arama botlarında da ikinci grup özel yolu yeniden açabiliyordu.
+  it("flags a retrieval crawler whose second group reopens a private path", async () => {
+    const values = fixtures();
+    const body = `${robotsText()}\nUser-agent: googlebot\nAllow: /api\n`;
+    values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, body, "text/plain"));
+    const report = await runPublicDiscoveryBaseline(
+      { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
+      mockFetch(values),
+    );
+    expect(report.issues).toContainEqual({
+      code: "RETRIEVAL_CRAWLER_POLICY_MISSING",
+      target: "Googlebot",
+    });
+  });
+
+  // Sol 6.1 4. tur: yorum ya da boş satır grubu bitirmez; ayrılan `Allow` hâlâ Googlebot'undur.
+  it.each([
+    ["a comment line", "User-agent: Googlebot\n# açıklama\nAllow: /api\n\n"],
+    ["a blank line", "User-agent: Googlebot\n\nAllow: /api\n\n"],
+  ])("does not let %s split a group that reopens a private path", async (_label, prefix) => {
+    const values = fixtures();
+    const body = `${prefix}${robotsText()}`;
+    values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, body, "text/plain"));
+    const report = await runPublicDiscoveryBaseline(
+      { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
+      mockFetch(values),
+    );
+    expect(report.issues).toContainEqual({
+      code: "RETRIEVAL_CRAWLER_POLICY_MISSING",
+      target: "Googlebot",
     });
   });
 });

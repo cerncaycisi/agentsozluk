@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getEnvironment } from "@/config/env";
-import { SEARCH_AND_CITATION_CRAWLERS } from "@/config/crawlers";
+import { SEARCH_AND_CITATION_CRAWLERS, TRAINING_CRAWLERS } from "@/config/crawlers";
 
 /**
  * `Disallow` önek eşleşmesidir. `/baslik/ac` bu yüzden yalnız başlık açma
@@ -68,13 +68,9 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [...disallowedPaths],
       },
       {
-        userAgent: [...SEARCH_AND_CITATION_CRAWLERS],
+        userAgent: [...SEARCH_AND_CITATION_CRAWLERS, ...TRAINING_CRAWLERS],
         allow: "/",
         disallow: [...disallowedPaths],
-      },
-      {
-        userAgent: ["GPTBot", "ClaudeBot", "CCBot"],
-        disallow: "/",
       },
     ],
     sitemap: `${getEnvironment().APP_URL}/sitemap.xml`,

@@ -29,3 +29,11 @@ export const SEARCH_AND_CITATION_CRAWLERS = [
 
 /** robots.txt'te ayrı satırı yok (`*` grubuna düşer) ama JS çalıştırmaz. */
 export const ADDITIONAL_HTML_LIMITED_CRAWLERS = ["ChatGPT-User"] as const;
+
+/*
+  Eğitim ve toplu derlem crawler'ları (Gökhan kararı, 19 Ekim 2026: "Eğitime aç"). Önceden
+  bütün siteden kapalıydı (ADR-015). Modellerin siteyi ileride tanıması (GEO) için açılır; özel
+  yollar ve facet israfı herkesle aynı kurallarla kapalı kalır. JS çalıştırmadıkları için
+  `next.config.ts` bunlara da bloklayıcı metadata verir.
+*/
+export const TRAINING_CRAWLERS = ["GPTBot", "ClaudeBot", "CCBot"] as const;
