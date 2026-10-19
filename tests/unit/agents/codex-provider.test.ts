@@ -303,9 +303,9 @@ describe("Codex CLI provider security contract", () => {
         exitSignal: null,
         safeCode: "CODEX_UPSTREAM_UNAVAILABLE",
       },
-      // Yeniden deneme iletileri bütçeyi doldursa da turu bitiren neden önce sınıflanır.
+      // Yeniden deneme iletileri 4 KiB bütçeyi doldurur (200 × 35 karakter); turu bitiren neden yine kırpılmaz.
       {
-        stdout: `${'{"type":"error","message":"Reconnecting... connection refused"}\n'.repeat(80)}{"type":"turn.failed","error":{"message":"You have hit your usage limit"}}\n`,
+        stdout: `${'{"type":"error","message":"Reconnecting... connection refused"}\n'.repeat(200)}{"type":"turn.failed","error":{"message":"You have hit your usage limit"}}\n`,
         stderr: "",
         exitCode: 1,
         exitSignal: null,

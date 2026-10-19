@@ -533,7 +533,7 @@ function collect(
     const readEvent = (line: string) => {
       tokenUsage = parseCodexTurnUsage(line) ?? tokenUsage;
       const failure = codexStreamFailureText(line);
-      // Turu bitiren `turn.failed` önce sınıflanır; öncesindeki yeniden deneme iletileri bütçeyi tüketmesin.
+      // Turu bitiren `turn.failed` ayrı tutulur: öncesindeki yeniden deneme iletileri bütçeyi doldurup onu kırpmasın.
       if (failure?.terminal) terminalFailure = failure.text;
       else if (failure && streamFailure.length < MAX_STREAM_FAILURE_CHARS)
         streamFailure += `${failure.text}\n`.slice(
