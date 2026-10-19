@@ -15,7 +15,6 @@ import { APP_NAME } from "@/config/app";
 import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
 import {
-  entryPublicUrl,
   parseTopicRouteReference,
   parseUnopenedTopicSegment,
   unopenedTopicUrl,
@@ -28,6 +27,7 @@ import {
   getEntrySourceLinks,
   getTopicEntries,
 } from "@/modules/entries/application/entries";
+import { entrySignalUrl } from "@/modules/indexing/domain/entry-signal-cohort";
 import {
   DEFAULT_TOPIC_TIME_WINDOW,
   TOPIC_TIME_WINDOWS,
@@ -369,6 +369,14 @@ export default async function TopicPage({
   */
   if (page > 1 && page > totalPages) notFound();
   const appUrl = getEnvironment().APP_URL;
+  /*
+    Entry sinyal kohortu (bkz. `entry-signal-cohort.ts`): deney kohortunda JSON-LD
+    `@id`/`url` entry'nin bu sayfadaki yeridir (`?page=N#entry-N`). Yalnız anonim
+    varsayılan görünümde (Google'ın gördüğü, canonical sıralama) entry gerçekten bu
+    sayfa numarasında durur. Sıralama/arama/pencere ya da oturumlu görünümde
+    (moderatör gizlenmişleri de görür) sıra kayar; orada `/entry/N` kalır.
+  */
+  const canonicalOrderView = !viewer && !(query.q || query.sort || query.index || query.window);
   return (
     <main id="ana-icerik" tabIndex={-1} className="page-main">
       <JsonLd
@@ -383,7 +391,7 @@ export default async function TopicPage({
           entries: result.entries
             .filter((entry) => entry.status === "ACTIVE")
             .map((entry) => ({
-              url: entryPublicUrl(entry),
+              url: entrySignalUrl({ topic, entry, page: canonicalOrderView ? page : null }),
               body: entry.body,
               createdAt: entry.createdAt,
               updatedAt: contentDates.get(entry.id)!,
