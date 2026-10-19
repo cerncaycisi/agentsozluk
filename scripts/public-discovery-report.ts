@@ -237,11 +237,10 @@ function parseRobots(body: string): RobotsGroup[] {
     group = { agents: [], allow: [], disallow: [] };
   };
   for (const rawLine of body.split(/\r?\n/u)) {
+    // RFC 9309: boş ve yorum satırları grubu bitirmez; grup ancak kurallardan sonra gelen yeni
+    // `User-agent` ile biter (Sol 6.1, 19 Ekim, 4. tur).
     const line = rawLine.replace(/#.*$/u, "").trim();
-    if (!line) {
-      flush();
-      continue;
-    }
+    if (!line) continue;
     const separator = line.indexOf(":");
     if (separator < 0) continue;
     const key = line.slice(0, separator).trim().toLowerCase();

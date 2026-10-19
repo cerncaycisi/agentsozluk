@@ -240,4 +240,22 @@ describe("public discovery baseline report", () => {
       target: "Googlebot",
     });
   });
+
+  // Sol 6.1 4. tur: yorum ya da boş satır grubu bitirmez; ayrılan `Allow` hâlâ Googlebot'undur.
+  it.each([
+    ["a comment line", "User-agent: Googlebot\n# açıklama\nAllow: /api\n\n"],
+    ["a blank line", "User-agent: Googlebot\n\nAllow: /api\n\n"],
+  ])("does not let %s split a group that reopens a private path", async (_label, prefix) => {
+    const values = fixtures();
+    const body = `${prefix}${robotsText()}`;
+    values.set(`${origin}/robots.txt`, document(`${origin}/robots.txt`, body, "text/plain"));
+    const report = await runPublicDiscoveryBaseline(
+      { baseUrl: new URL(origin), sampleSize: 100, timeoutMs: 1_000 },
+      mockFetch(values),
+    );
+    expect(report.issues).toContainEqual({
+      code: "RETRIEVAL_CRAWLER_POLICY_MISSING",
+      target: "Googlebot",
+    });
+  });
 });
