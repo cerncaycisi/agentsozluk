@@ -87,11 +87,11 @@ olmadan uzatılamaz. Tur bütçesi ve tek ağır iş kuralı değişmedi.
 - Hakem yürütücüden farklı model olmalıdır. Aynı modelin ayrı oturumu farklı modelden
   peer review sayılmaz.
   - Yürütücü **Astra** olduğunda hakem **Fable veya Opus 5**'tir.
-  - Yürütücü **Claude** olduğunda ilk hakem **Astra**'dır:
-    `codex exec --model gpt-6-astra -c model_reasoning_effort="xhigh" --sandbox read-only`.
-    Aynı işte 2 Astra turu dolduktan sonra gerekirse hakem **Sol 6.1** olur:
+  - Yürütücü **Claude** olduğunda hakem **Sol 6.1**'dir:
     `codex exec --model gpt-6.1-sol -c model_reasoning_effort="xhigh" --sandbox read-only`.
-    _(Gökhan kararı, 6 Ekim 2026: "astra max iki, sonrasında gerekirse sol 6.1".)_
+    _(Gökhan kararı, 19 Ekim 2026: "bundan sonra astra yerine sol 6.1 kullanıyosun".
+    Bu tarihten önceki Astra turları kayıtta Astra olarak kalır.)_
+    _(Eski kural, 6 Ekim 2026: "astra max iki, sonrasında gerekirse sol 6.1".)_
     _(Gökhan kararı, 23 Eylül 2026: "astra senin peer'ın", Sol kuralı kaldırıldı. Kural
     aynı: hakem yürütücüden farklı model olmalı. 18–23 Eylül arası Sol turları kaydında
     Sol olarak, 18 Eylül öncesi turlar Astra olarak kalır.)_
@@ -102,12 +102,12 @@ olmadan uzatılamaz. Tur bütçesi ve tek ağır iş kuralı değişmedi.
   vermemelidir. Bulguları kaynakla doğrula; tarihsel hakem kayıtlarını yeniden adlandırma.
 - Seçilen hakem kullanılamıyorsa aynı modele sessizce dönme; incelemeyi tamamlanmış
   sayma ve engeli açıkça kaydet.
-- Tur bütçesi: iş başına en fazla 2 Astra turu _(Gökhan kararı, 25 Eylül 2026)_. Astra ve Sol
-  turları üretim ajanlarıyla aynı Codex kotasını harcar. Astra bütçesi dolunca, inceleme
-  gerçekten gerekiyorsa yalnız açık bulguların düzeltmesine dar bir Sol 6.1 turu yapılır
-  _(Gökhan kararı, 6 Ekim 2026)_. Sol 6.1 turlarında sayı sınırı yoktur _(Gökhan kararı,
-  6 Ekim 2026: "Sol sınırsız")_. Yürütücü Sol ise bu yol kapalıdır; o durumda Astra bütçesi
-  dolunca kalan bulguları tasarım sorusu olarak Gökhan'a götür. Geçici muafiyet yalnız Gökhan'ın açık kararıyla verilir
+- Tur bütçesi: Sol 6.1 turlarında sayı sınırı yoktur _(Gökhan kararı, 6 Ekim 2026: "Sol
+  sınırsız")_; Sol turları üretim ajanlarıyla aynı Codex kotasını harcar, ilk turdan sonra
+  yalnız açık bulguların düzeltmesine dar tur yapılır. Gökhan Codex hakem turlarını geçici
+  kapatırsa (ör. 18–19 Ekim) hakem Fable olur. Yürütücü Sol ise hakem Fable veya Opus 5'tir;
+  kalan bulgular tasarım sorusuysa Gökhan'a götür. _(Eski kural: iş başına 2 Astra turu, 25 Eylül;
+  19 Ekim'de Sol 6.1 ile değiştirildi.)_ Geçici muafiyet yalnız Gökhan'ın açık kararıyla verilir
   ve bitiş tarihiyle `docs/PLAN.md`'nin "Şu an neredeyiz" bölümüne yazılır.
 
 ## External action boundary
