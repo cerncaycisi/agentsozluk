@@ -1639,24 +1639,38 @@ export async function executeRuntimeAction(
           });
       }
       /*
-        Süreli odak listesi (Sol 6.1, 1. tur): bu koşuda sunulan etkin odak başlığına yazımda
-        2 entry tavanı ve "aynı yazar ikinci kez yazmaz" kuralı başlık kilidi altında yeniden
-        sayılır. Odak dışındaki yazımlar için `NOT_FOCUS` döner ve hiçbir şey değişmez.
+        Süreli odak listesi (Sol 6.1, 1. ve 2. tur): entry'nin gerçekten yazılacağı başlık bu
+        koşuda sunulan odak başlığıysa, o başlığın kilidi altında 2 entry tavanı ve "aynı yazar
+        ikinci kez yazmaz" kuralı yeniden sayılır (liste etkinken). Her yayım yolu aynı
+        denetimden geçer: `CREATE_ENTRY` burada, `CREATE_TOPIC_WITH_ENTRY`'nin var olan başlığa
+        çözülen yolu `existingTopicGuard` içinde. Odak dışındaki yazımlar etkilenmez.
       */
-      const focusWrite =
-        parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId
-          ? await runtimeFocusWriteGuard(transaction, {
-              runId,
-              authorId: principal.actor.actorId,
-              topicId: resolvedTarget.topicId,
-              now,
-            })
-          : ({ status: "NOT_FOCUS" } as const);
-      if (focusWrite.status === "REJECTED")
-        return rejectAction(transaction, principal, actionRecord, {
-          code: focusWrite.code,
-          reason: focusWrite.reason,
+      let focusWrite: Awaited<ReturnType<typeof runtimeFocusWriteGuard>> = {
+        status: "NOT_FOCUS",
+      };
+      const guardFocusWrite = async (topicId: string) => {
+        focusWrite = await runtimeFocusWriteGuard(transaction, {
+          runId,
+          authorId: principal.actor.actorId,
+          topicId,
         });
+        if (focusWrite.status === "REJECTED")
+          throw new RuntimeActionRejectionError(focusWrite.code, focusWrite.reason);
+      };
+      if (parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId) {
+        // Başlık kilidi yukarıda alındı; saat denetimin içinde, kilitten sonra okunur.
+        const decision = await runtimeFocusWriteGuard(transaction, {
+          runId,
+          authorId: principal.actor.actorId,
+          topicId: resolvedTarget.topicId,
+        });
+        if (decision.status === "REJECTED")
+          return rejectAction(transaction, principal, actionRecord, {
+            code: decision.code,
+            reason: decision.reason,
+          });
+        focusWrite = decision;
+      }
       /*
         Ön çözümleme var olan bir başlık bulduysa ve o başlık yazmadan önce gizlenirse servis
         yeni başlık açardı; o zaman yeni başlık anayasa denetimi de atlanmış olurdu (Astra #371
@@ -1688,15 +1702,23 @@ export async function executeRuntimeAction(
                 );
             }
           : undefined;
+      const existingTopicGuard = blindTopicGuard
+        ? async (guardTransaction: DatabaseExecutor, topic: { id: string; title: string }) => {
+            await blindTopicGuard(guardTransaction, topic);
+            // Çözülen başlığın kilidi `guardExistingTopic` içinde alınmıştır.
+            await guardFocusWrite(topic.id);
+          }
+        : undefined;
       const execution = await performAction(
         transaction,
         principal,
         parsed.data,
         resolvedTarget,
-        blindTopicGuard,
+        existingTopicGuard,
         newTopicGuard,
         topicQuotaAt,
       );
+      const focusOutcome = focusWrite as Awaited<ReturnType<typeof runtimeFocusWriteGuard>>;
       if (traversedLinkedTopicId)
         await appendRuntimeEvent(transaction, {
           agentProfileId: principal.agentProfileId,
@@ -1751,16 +1773,16 @@ export async function executeRuntimeAction(
           createdAt: now,
         });
       if (
-        focusWrite.status === "ALLOWED" &&
+        focusOutcome.status === "OFFERED" &&
         execution.entryId &&
-        executionTopicId === focusWrite.topicId
+        executionTopicId === focusOutcome.topicId
       )
         await recordRuntimeFocusTopicWritten(transaction, {
           runId,
           actionId: actionRecord.id,
           agentProfileId: principal.agentProfileId,
-          focusListId: focusWrite.focusListId,
-          topicId: focusWrite.topicId,
+          focusListId: focusOutcome.focusListId,
+          topicId: focusOutcome.topicId,
           entryId: execution.entryId,
           now,
         });

@@ -123,7 +123,11 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      ve aynı yazar kuralı (`FOCUS_TOPIC_CAP_REACHED`); süresi geçmiş yazma kilidi engellemez;
      "yazıldı" yayım anındaki değişmez `agent.focus.written` olayından; `agent.focus*` worker'a
      kapalı, yalnız kaynaklı olay sayılır; "okundu" yalnız algıya giren başlık.
-   - **Kalan:** Sol 6.1 dar 2. tur, yerel kopyada deneme ve ilk taslakların Gökhan'a
+   - **Sol 6.1 2. tur (`49e26bec`) NO-GO:** iki P2, bir P3 düzeltildi: yazım denetimi
+     var olan odak başlığına çözülen `CREATE_TOPIC_WITH_ENTRY` yolunda da (aynı başlık kilidi
+     altında); atıf denetimden ayrı (sunulan başlığa yayım, liste kapansa da
+     `agent.focus.written`; tavan yalnız etkinken); etkinlik saati kilitlerden sonra okunur.
+   - **Kalan:** Sol 6.1 dar 3. tur, yerel kopyada deneme ve ilk taslakların Gökhan'a
      gösterilmesi, T0 uygunluk okuması, dağıtım; liste T0'da operatörce açılır.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")

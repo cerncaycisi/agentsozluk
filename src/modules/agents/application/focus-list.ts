@@ -270,21 +270,32 @@ export async function recordRuntimeFocusTopicRead(
   odak başlığına yeni entry yazılırken çalışır; öteki yazımlar etkilenmez. Çağıran başlık
   kilidini (`lockTopicState`) tutar, böylece eşzamanlı iki yazım aynı sayımı göremez. Pencerede
   2 ajan entry'si dolmuşsa ya da yazar bu başlığa pencere içinde zaten yazdıysa onarılamaz bir
-  retle (`FOCUS_TOPIC_CAP_REACHED`) durur. Geçerse sunum bilgisini döner; yazım sonrası
-  `recordRuntimeFocusTopicWritten` değişmez kaydı yazar.
+  retle (`FOCUS_TOPIC_CAP_REACHED`) durur.
+
+  Sol 6.1 2. tur: atıf denetimden ayrıdır. Bu koşuya bu başlık sunulduysa liste kapanmış ya
+  da süresi dolmuş olsa da `OFFERED` döner ve yayım sonrası `recordRuntimeFocusTopicWritten`
+  değişmez kaydı yazar (dondurulmuş algıdan gelen yazım "pas" sayılmaz); tavan yalnız liste
+  etkinken uygulanır. Etkinlik saati çağıranın ayar ve başlık kilitlerinden SONRA burada
+  okunur; kilit beklerken pencere kapanırsa denetim kapanmış pencereye göre yapılır.
 */
 export async function runtimeFocusWriteGuard(
   transaction: TransactionClient,
-  input: { runId: string; authorId: string; topicId: string; now: Date },
+  input: { runId: string; authorId: string; topicId: string },
+  clock: () => Date = () => new Date(),
 ): Promise<
   | { status: "NOT_FOCUS" }
   | { status: "REJECTED"; code: string; reason: string }
-  | { status: "ALLOWED"; focusListId: string; topicId: string }
+  | { status: "OFFERED"; focusListId: string; topicId: string; enforced: boolean }
 > {
   const offer = await findRunFocusOffer(transaction, input.runId);
   if (!offer || offer.topicId !== input.topicId) return { status: "NOT_FOCUS" };
+  const offered = {
+    status: "OFFERED" as const,
+    focusListId: offer.focusListId,
+    topicId: input.topicId,
+  };
   const list = await findFocusListRecordById(transaction, offer.focusListId);
-  if (!list || !isFocusListActive(list, input.now)) return { status: "NOT_FOCUS" };
+  if (!list || !isFocusListActive(list, clock())) return { ...offered, enforced: false };
   const counts = await countFocusTopicWrites(transaction, {
     topicId: input.topicId,
     authorId: input.authorId,
@@ -297,7 +308,7 @@ export async function runtimeFocusWriteGuard(
       reason:
         "Bu odak başlığı süreli pencerede yeterince yeni ajan entry'si aldı ya da sen bu başlığa bu pencerede zaten yazdın; entry yazılmadı.",
     };
-  return { status: "ALLOWED", focusListId: list.id, topicId: input.topicId };
+  return { ...offered, enforced: true };
 }
 
 /** Odak başlığına yayımlanan entry için değişmez `agent.focus.written` kaydı. */

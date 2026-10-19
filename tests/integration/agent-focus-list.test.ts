@@ -12,6 +12,7 @@ import {
   getRuntimeRunContext,
   recordRuntimeActions,
   runtimeActionsSchema,
+  runtimeFocusWriteGuard,
 } from "@/modules/agents";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
@@ -639,4 +640,157 @@ describe("süreli odak listesi (PostgreSQL)", () => {
       passed: 1,
     });
   }, 240_000);
+
+  it("kapatılan listede sunulmuş başlığa yazım 'yazıldı' sayılır; yeni-başlık yolu da denetlenir (Sol 6.1, 2. tur)", async () => {
+    const seeded = await seed();
+    const actor = adminActor(seeded.admin.id);
+    await createFocusList(
+      integrationDatabase,
+      actor,
+      createInput(seeded, [seeded.eligibleA, seeded.eligibleB]),
+    );
+    const provenance = (runId: string) => ({
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run odak başlığı yazımı için görünür kanıttır.",
+    });
+    const run = async (
+      started: Awaited<ReturnType<typeof startRun>>,
+      action: Record<string, unknown>,
+    ) => {
+      await recordRuntimeActions(
+        integrationDatabase,
+        started.principal,
+        started.run.id,
+        runtimeActionsSchema.parse({
+          workerId,
+          leaseToken,
+          actions: [{ sequence: 1, provenance: provenance(started.run.id), ...action }],
+        }),
+      );
+      return executeRuntimeAction(
+        integrationDatabase,
+        started.principal,
+        started.run.id,
+        { workerId, leaseToken, sequence: 1 },
+        { requireLifeLedger: false },
+      );
+    };
+    const offeredTopic = async (started: Awaited<ReturnType<typeof startRun>>) => {
+      await context(started);
+      const [offer] = await focusEvents(started.run.id, "agent.focus.offered");
+      return (offer!.metadata as { topicId: string }).topicId;
+    };
+
+    // Yeni-başlık yolu: görünür entry'leri gizlenmiş odak başlığına çözülen öneri tavana takılır.
+    const first = await startRun(seeded.runner);
+    const firstTopic = await offeredTopic(first);
+    await context(first, [firstTopic]);
+    const fillerUsers = await integrationDatabase.user.findMany({
+      where: { username: { in: seeded.fillers.slice(0, 2) } },
+      select: { id: true },
+    });
+    for (const [index, user] of fillerUsers.entries())
+      await integrationDatabase.entry.create({
+        data: {
+          topicId: firstTopic,
+          authorId: user.id,
+          origin: "AGENT",
+          body: `başka ajanın gizlenecek entry'si ${index}`,
+          normalizedBody: `başka ajanın gizlenecek entry'si ${index}`,
+        },
+      });
+    await integrationDatabase.entry.updateMany({
+      where: { topicId: firstTopic },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    const entriesBefore = await integrationDatabase.entry.count({ where: { topicId: firstTopic } });
+    const topicRow = await integrationDatabase.topic.findUniqueOrThrow({
+      where: { id: firstTopic },
+      select: { title: true },
+    });
+    const viaNewTopic = await run(first, {
+      actionType: "CREATE_TOPIC_WITH_ENTRY",
+      safeReason: "Başlık adıyla yeni başlık önerisi var olan odak başlığına çözülür.",
+      input: {
+        title: topicRow.title,
+        body: "Eski fabrika yapısının kültür merkezine çevrilmesinde ölçek kararı belirleyici olmuş.",
+      },
+    });
+    expect(viaNewTopic).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "FOCUS_TOPIC_CAP_REACHED",
+    });
+    expect(await integrationDatabase.entry.count({ where: { topicId: firstTopic } })).toBe(
+      entriesBefore,
+    );
+    await finishRun(first);
+
+    // Atıf: sunumdan sonra liste kapanır; dondurulmuş algıdan yazım yine "yazıldı" sayılır.
+    const second = await startRun(seeded.runner);
+    const secondTopic = await offeredTopic(second);
+    expect(secondTopic).not.toBe(firstTopic);
+    await context(second, [secondTopic]);
+    await endFocusList(integrationDatabase, actor, { reason: "odak listesi kapatma atıf testi" });
+    const afterEnd = await run(second, {
+      actionType: "CREATE_ENTRY",
+      safeReason: "Okunan odak başlığına yeni bir ayrıntı eklenir.",
+      targetType: "TOPIC",
+      targetId: secondTopic,
+      input: {
+        topicId: secondTopic,
+        body: "Festival seçkisindeki restorasyon kopyaları bu yıl ilk kez özgün oranlarıyla gösterilmiş.",
+      },
+    });
+    expect(afterEnd).toMatchObject({ actionStatus: "SUCCEEDED" });
+    const written = await focusEvents(second.run.id, "agent.focus.written");
+    expect(written).toHaveLength(1);
+    await finishRun(second);
+    const status = await getFocusListStatus(integrationDatabase);
+    expect(status?.active).toBe(false);
+    expect(status!.topics.find(({ topicId }) => topicId === secondTopic)).toMatchObject({
+      offered: 1,
+      read: 1,
+      written: 1,
+      passed: 0,
+    });
+    expect(status!.topics.find(({ topicId }) => topicId === firstTopic)).toMatchObject({
+      offered: 1,
+      written: 0,
+      passed: 1,
+    });
+  }, 240_000);
+
+  it("yazım denetimi etkinlik saatini kilitlerden sonra kendisi okur (Sol 6.1, 2. tur)", async () => {
+    const seeded = await seed();
+    const list = await createFocusList(
+      integrationDatabase,
+      adminActor(seeded.admin.id),
+      createInput(seeded, [seeded.eligibleA]),
+    );
+    const started = await startRun(seeded.runner);
+    await context(started);
+    const guard = (clock: () => Date) =>
+      integrationDatabase.$transaction((transaction) =>
+        runtimeFocusWriteGuard(
+          transaction,
+          {
+            runId: started.run.id,
+            authorId: seeded.runner.user.id,
+            topicId: seeded.eligibleA.id,
+          },
+          clock,
+        ),
+      );
+    await expect(guard(() => new Date())).resolves.toMatchObject({
+      status: "OFFERED",
+      enforced: true,
+    });
+    // Kilit beklerken pencere kapandıysa tavan uygulanmaz ama atıf korunur.
+    await expect(guard(() => new Date(list.endsAt.getTime() + 1))).resolves.toMatchObject({
+      status: "OFFERED",
+      focusListId: list.id,
+      enforced: false,
+    });
+  }, 120_000);
 });
