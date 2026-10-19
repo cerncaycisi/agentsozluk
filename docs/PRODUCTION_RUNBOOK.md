@@ -2563,8 +2563,11 @@ Migration yoktur (disk payı yok): liste mevcut, yalnız eklenen `agent_runtime_
 saklanır. `agent.focus_list.created` listenin tam tanımını (kimlik, etiket, başlık ve profil
 kimlikleri, başlangıç/bitiş, açan ve açılış anı), `agent.focus_list.ended` kimlik, kapatan, kapanış
 anı ve gerekçeyi taşır; ikisi de ajana ve koşuya bağlı değildir ve `origin=FOCUS_LIST_OPERATOR`
-taşır. Etkin liste = en son açılış olayı, kapanış olayı yoksa ve bitişi gelmediyse. Okuma
-`agent_runtime_events_type_occurred_id_idx` indeksiyle yapılır. Migration'sız dağıtım yolu yeterlidir.
+taşır. Açık liste = kapanış olayı olmayan ve bitişi gelmemiş açılış (bütün açılışlar taranır);
+etkin liste = açık ve başlamış olanların en son açılanı. Sıra duvar saatine değil olay
+tablosunun BIGINT kimliğine (ayar kilidi altında yazım sırası) göredir; kapanış olayı yalnız liste
+kimliğiyle eşlenir, saat geri gitse de kapatılan liste yeniden etkinleşmez. Okuma
+`agent_runtime_events_type_occurred_id_idx` indeksinin `eventType` önekiyle yapılır. Migration'sız dağıtım yolu yeterlidir.
 
 Liste dosyası (başlık publicId ya da `slug--publicId`; yazar kullanıcı adı; bitiş ISO zamanı):
 

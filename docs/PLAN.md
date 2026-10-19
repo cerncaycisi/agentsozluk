@@ -131,8 +131,11 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      üretimde ~13,7 GiB var ve gece yedeklerini silmek geri dönüşsüzdür. Liste artık mevcut
      `agent_runtime_events` tablosunda `agent.focus_list.created` (tam tanım) ve
      `agent.focus_list.ended` olaylarıyla tutulur (ajana/koşuya bağlı değil,
-     `origin=FOCUS_LIST_OPERATOR`); davranış ve Sol düzeltmeleri aynı. Yeni Sol turu gerekir.
-   - **Kalan:** Sol 6.1 turu (depolama değişikliği), yerel kopyada deneme ve ilk taslakların Gökhan'a
+     `origin=FOCUS_LIST_OPERATOR`); davranış ve Sol düzeltmeleri aynı.
+   - **Sol 6.1 4. tur (`20929561`) NO-GO:** iki P2 (saat geri gitmesi) düzeltildi: kapanış
+     olayı yalnız liste kimliğiyle eşlenir (zaman süzgeci yok); "en son açılan" olay tablosunun
+     BIGINT kimliğiyle (ayar kilidi sırası) seçilir; açık liste denetimi bütün açılışları tarar.
+   - **Kalan:** Sol 6.1 dar 5. tur, yerel kopyada deneme ve ilk taslakların Gökhan'a
      gösterilmesi, T0 uygunluk okuması, dağıtım; liste T0'da operatörce açılır.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")

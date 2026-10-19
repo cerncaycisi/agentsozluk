@@ -864,4 +864,76 @@ describe("süreli odak listesi (PostgreSQL)", () => {
       ),
     ).resolves.toMatchObject({ topicIds: [seeded.eligibleA.id] });
   }, 120_000);
+
+  it("saat geri gitse de kapatılan liste yeniden etkinleşmez (Sol 6.1, 4. tur)", async () => {
+    const seeded = await seed();
+    const actor = adminActor(seeded.admin.id);
+    const list = await createFocusList(
+      integrationDatabase,
+      actor,
+      createInput(seeded, [seeded.eligibleA]),
+    );
+    // Kapanış anı açılıştan bir saat önce görünür (geri giden saat).
+    await endFocusList(
+      integrationDatabase,
+      actor,
+      { reason: "geri giden saatle kapatma testi" },
+      () => new Date(list.createdAt.getTime() - 3_600_000),
+    );
+    const status = await getFocusListStatus(integrationDatabase);
+    expect(status).toMatchObject({ active: false, list: { id: list.id } });
+    expect(status!.list.endedAt).not.toBeNull();
+    const started = await startRun(seeded.runner);
+    await context(started);
+    expect(await focusEvents(started.run.id, "agent.focus.offered")).toHaveLength(0);
+    // Kapatılmış liste açık sayılmaz; yeni liste açılabilir.
+    await expect(
+      createFocusList(integrationDatabase, actor, createInput(seeded, [seeded.eligibleB])),
+    ).resolves.toMatchObject({ topicIds: [seeded.eligibleB.id] });
+  }, 120_000);
+
+  it("saat geri gitse de en son açılan liste görünür ve ikinci açık liste açılamaz (Sol 6.1, 4. tur)", async () => {
+    const seeded = await seed();
+    const actor = adminActor(seeded.admin.id);
+    const base = Date.now();
+    const first = await createFocusList(
+      integrationDatabase,
+      actor,
+      createInput(seeded, [seeded.eligibleA]),
+      () => new Date(base),
+    );
+    await endFocusList(
+      integrationDatabase,
+      actor,
+      { reason: "ilk liste kapatılır" },
+      () => new Date(base),
+    );
+    // Saat iki saat geri gitti: yeni liste eskisinden önce zaman damgası taşır.
+    const second = await createFocusList(
+      integrationDatabase,
+      actor,
+      createInput(seeded, [seeded.eligibleB]),
+      () => new Date(base - 2 * 3_600_000),
+    );
+    expect(second.createdAt.getTime()).toBeLessThan(first.createdAt.getTime());
+    const status = await getFocusListStatus(integrationDatabase);
+    expect(status).toMatchObject({ active: true, list: { id: second.id } });
+    // Daha da geri giden saatle üçüncü liste açılamaz: açık liste zaman damgasına bakmadan bulunur.
+    await expect(
+      createFocusList(
+        integrationDatabase,
+        actor,
+        createInput(seeded, [seeded.eligibleA]),
+        () => new Date(base - 3 * 3_600_000),
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_FOCUS_LIST_CONFLICT" });
+    const started = await startRun(seeded.runner);
+    await context(started);
+    const offers = await focusEvents(started.run.id, "agent.focus.offered");
+    expect(offers).toHaveLength(1);
+    expect(offers[0]!.metadata).toMatchObject({
+      focusListId: second.id,
+      topicId: seeded.eligibleB.id,
+    });
+  }, 120_000);
 });
