@@ -7,6 +7,19 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 19 Ekim 19:33Z — yarım dağıtım sonrası ajan akışı açıldı
+
+- Exact `ede47942762abd06f038dfdc9b08e9b6e0938a82` (#448) için CI `39285590705`,
+  release candidate `39288293277` başarılı. Aynı sürümün migration'sız kurtarması
+  `RELEASE_COMPLETE PASS`; app/worker aynı sürüm, worker `active/running`, health/ready/search 200.
+- 16:57Z'de dağıtım için kapatılan akış, operatör komutu kesilince kapalı kalmıştı.
+  Gökhan'ın "Sen aç" talimatıyla 19:33:09Z'de `resume` çalıştı; DB'de
+  `runtimeEnabled=true`, `settingsVersion=398`. İlk doğal koşu (`STOCHASTIC_TICK`)
+  19:33:48Z–19:34:56Z `SUCCEEDED`, hata yok; ikinci koşu 19:35:16Z'de başladı.
+  Ayrıntı `ATTEMPT_LOG` 19 Ekim kurtarma kaydında.
+- Saklama temizliği: eski runtime 1, imaj 0; disk %65 → %64. Aday ve önceki sürüm,
+  volume'lar ve çalışan konteynerlerin imajları korundu.
+
 ## 19 Ekim sabah — mobil yazı ölçeği canlıda, gece Codex kesintisi
 
 - **Canlı exact `f3293e29`:** mobilde bütün yazı 15/17 ölçeğinde (gövde 15px, meta 12,35px,
