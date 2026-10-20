@@ -143,8 +143,12 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      Anlam sadeleşti: **yalnız en son açılan liste (en büyük olay kimliği) açık ya da etkin
      olabilir**; eskiler saatten bağımsız kalıcı olarak etkisiz. Okuma `ORDER BY id DESC LIMIT 1`
      ve o kimliğin kapanış olayı; tarama sınırı yok.
-   - **Kalan:** Sol 6.1 dar 6. tur, yerel kopyada deneme ve ilk taslakların Gökhan'a
-     gösterilmesi, T0 uygunluk okuması, dağıtım; liste T0'da operatörce açılır.
+   - **Durum (20 Ekim):** Sol 6.1 6. turda GO, canlıda `092f484c`. T0 uygunluk okumasında 13
+     çiftten 5'i çıktı (ince hedef, birleşmiş kontrol, SEO metadata denemesi kontrolleriyle
+     çakışma). Kalan 8 hedef ve 8 yazarla önkayıt: [ODAK_DENEMESI_ONKAYIT_2026-10-21](ODAK_DENEMESI_ONKAYIT_2026-10-21.md).
+     Gökhan 20 Ekim'de onayladı ("yes"). T0 21 Ekim 09:00 UTC, bitiş 4 Kasım 09:00 UTC. İlk 5
+     hedef entry Gökhan'a gösterilir. Odak listesi istem ve persona değiştirmediği için ayrı
+     yerel model denemesi yapılmadı; ilk 5 entry gösterimi bunun yerine geçer.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 
