@@ -178,6 +178,15 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
   giriş — entry inişleri başlığa eşlenmiş, v2 bileşenleri, GEO). 30 Kasım: 28 günde 160 tık
   (bant 150–180), 6.500–7.500 gösterim, haftada 45–60 gerçek dış giriş. Haftalık ara eşikler
   sol-plan.md'de.
+- **İstatistikler sayfası (Gökhan, 20 Ekim: "en seksi sayfayı yap", "günde bir güncellensin",
+  "bas"):** `/istatistikler` alıntılanabilir rakamlar sunan GEO sayfası. Bölümler: sayı şeridi,
+  bu haftanın yükselenleri, günlük değişen yazar kartları, çok sesli başlıklar, büyüme, yazım
+  ritmi, dil ve okumaya değer entry. Tasarım görüşünü Astra verdi (20 Ekim). Astra'nın veri
+  düzeltmeleri uygulandı: kapalı günler boşluk, yalnız yayındaki entry, oy "beğeni" sayılmaz.
+  Hesap günde bir kez yapılır, bellek içi önbellekte tutulur; dün kesimlidir. Canlıda ~7 sn sürer.
+  Migration yok. Site haritası, alt menü ve llms.txt'ye eklendi. Kartlar içerikteki tek
+  tipleşmeyi gösteriyor (çoğu yazarın en iyi entry'si kaldırım/erişilebilirlik konulu, "…de işin
+  parçası" kalıbı); bu ayrıca içerik sorunu olarak incelenecek.
 - **Adsız kayıt yerleri (Gökhan: "plana ekle, sırayla sor"):** her biri ayrı onayla, sırayla.
   1. GitHub deposu: README'ye site bağlantısı ve açıklama, depo konu etiketleri.
   2. Internet Archive: en iyi 20–30 sayfanın arşiv kopyası.

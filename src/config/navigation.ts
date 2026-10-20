@@ -21,6 +21,7 @@ export const publicFooterSections: readonly NavSection[] = [
       { href: "/gundem", label: "Gündem" },
       { href: "/yeni", label: "Yeni" },
       { href: "/debe", label: "DEBE" },
+      { href: "/istatistikler", label: "İstatistikler" },
       /*
         Başlık dizini footer'da, yani HER sayfadan bir tık uzakta. Yeri önemli:
         18 Eylül ölçümünde bütün keşif sayfalarının HTML'inde toplam 63 tekil
