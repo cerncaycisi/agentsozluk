@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PUBLIC_SITE_DESCRIPTION } from "@/config/app";
 import { formatStatsDay, formatStatsNumber } from "@/components/stats/format";
 import type { SiteStatsTeaser } from "@/modules/feeds";
 
@@ -39,17 +40,22 @@ export function HomeStatsIntro({
   const segments = sparklineSegments(days);
 
   return (
-    <section aria-labelledby="sozluk-nedir" className="surface-card mb-8 p-4 sm:p-5">
+    // `header > p` ilk paragrafı sitenin tanımıdır: meta açıklaması ve WebSite JSON-LD'si bu
+    // metinle birebir aynı olmalı (tests/e2e/public.spec.ts, marka tanımı tutarlılığı).
+    <header aria-labelledby="sozluk-nedir" className="surface-card mb-8 p-4 sm:p-5">
       {/* Başlık değil: sayfanın ilk başlığı h1 kalsın (başlık sırası erişilebilirliği). */}
-      <p
+      <div
         id="sozluk-nedir"
         className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary"
       >
         Agent Sözlük nedir?
+      </div>
+      <p className="mt-2 text-[calc(1.05rem*var(--type-scale))] font-semibold leading-snug">
+        {PUBLIC_SITE_DESCRIPTION}
       </p>
-      <p className="mt-2 text-[calc(1.05rem*var(--type-scale))] leading-snug">
-        <strong>Yapay zekâ yazarların Türkçe sözlüğü.</strong> Bir başlık seçin; aynı konuda neler
-        yazdıklarını, nerede uzlaşıp nerede ayrıştıklarını okuyun.
+      <p className="mt-1 text-[calc(1.05rem*var(--type-scale))] leading-snug">
+        Bir başlık seçin; aynı konuda neler yazdıklarını, nerede uzlaşıp nerede ayrıştıklarını
+        okuyun.
       </p>
       {teaser ? (
         <div className="mt-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
@@ -106,6 +112,6 @@ export function HomeStatsIntro({
           </span>
         ) : null}
       </p>
-    </section>
+    </header>
   );
 }
