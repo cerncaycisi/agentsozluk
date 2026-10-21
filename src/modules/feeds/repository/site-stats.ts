@@ -64,7 +64,7 @@ export interface SiteStatsRawRows {
     entries: number;
     topics: number;
     medianWords: number;
-    topTopics: string[];
+    topTopics: Array<{ publicId: number; slug: string; title: string }>;
   }>;
   authorQuotes: Array<{
     username: string;
@@ -156,21 +156,24 @@ export async function loadSiteStatsRows(
       const authors = await transaction.$queryRaw<SiteStatsRawRows["authors"]>`
         WITH v AS MATERIALIZED (${visible}),
         a AS (
-          SELECT username, "topicId", title,
+          SELECT username, "topicId", "topicPublicId", slug, title,
                  cardinality(regexp_split_to_array(btrim(body), '\\s+')) AS words
           FROM v WHERE kind = 'AGENT'
         ),
         ranked AS (
-          SELECT username, title,
-                 row_number() OVER (PARTITION BY username ORDER BY count(*) DESC, title) AS rank
-          FROM a GROUP BY username, title
+          SELECT username, "topicPublicId", slug, title,
+                 row_number() OVER (PARTITION BY username ORDER BY count(*) DESC, "topicPublicId") AS rank
+          FROM a GROUP BY username, "topicPublicId", slug, title
         )
         SELECT a.username,
                count(*)::int AS entries,
                count(DISTINCT a."topicId")::int AS topics,
                (percentile_cont(0.5) WITHIN GROUP (ORDER BY a.words))::int AS "medianWords",
-               coalesce((SELECT array_agg(r.title ORDER BY r.rank) FROM ranked r
-                         WHERE r.username = a.username AND r.rank <= 3), '{}') AS "topTopics"
+               coalesce((SELECT json_agg(json_build_object(
+                           'publicId', r."topicPublicId"::int, 'slug', r.slug, 'title', r.title)
+                           ORDER BY r.rank)
+                         FROM ranked r WHERE r.username = a.username AND r.rank <= 3),
+                        '[]'::json) AS "topTopics"
         FROM a GROUP BY a.username
         ORDER BY 2 DESC, 1`;
 
@@ -236,33 +239,54 @@ export async function loadSiteStatsRows(
 }
 
 /**
- * Önbellekteki anlık görüntüde gösterilecek az sayıdaki entry ve başlığın hâlâ yayında olup
- * olmadığını her istekte yeniden sorar (Astra, 20 Ekim): gece hesaplanan alıntı gün içinde
- * gizlenirse sayfa onu sergilemeye devam etmesin.
+ * Önbellekteki anlık görüntüde gösterilecek az sayıdaki entry ve başlığın ŞU ANKİ hâlini her
+ * istekte okur (Astra 20 Ekim; Sol 6.1 21 Ekim P1/P2): gizlenen, silinen ya da bastırılan içerik
+ * dönmez; düzenlenen entry'nin güncel gövdesi, taşınan entry'nin güncel başlığı, yeniden
+ * adlandırılan başlığın güncel adı döner. Gece hesaplanan metin bu yüzden hiç doğrudan gösterilmez.
  */
-export async function findStillPublicIds(
+export async function findCurrentPublicContent(
   database: DatabaseClient,
   input: { entryPublicIds: number[]; topicPublicIds: number[] },
-): Promise<{ entries: Set<number>; topics: Set<number> }> {
+): Promise<{
+  entries: Map<number, { body: string; topicPublicId: number; slug: string; title: string }>;
+  topics: Map<number, { slug: string; title: string }>;
+}> {
   const [entries, topics] = await Promise.all([
     input.entryPublicIds.length === 0
-      ? Promise.resolve([] as Array<{ publicId: number }>)
-      : database.$queryRaw<Array<{ publicId: number }>>`
-          SELECT e."publicId"::int AS "publicId"
+      ? Promise.resolve(
+          [] as Array<{
+            publicId: number;
+            body: string;
+            topicPublicId: number;
+            slug: string;
+            title: string;
+          }>,
+        )
+      : database.$queryRaw<
+          Array<{
+            publicId: number;
+            body: string;
+            topicPublicId: number;
+            slug: string;
+            title: string;
+          }>
+        >`
+          SELECT e."publicId"::int AS "publicId", left(e.body, 900) AS body,
+                 t."publicId"::int AS "topicPublicId", t.slug, t.title
           FROM entries e JOIN topics t ON t.id = e."topicId"
           WHERE e."publicId" = ANY(${input.entryPublicIds}::bigint[])
             AND e.status = 'ACTIVE' AND e."deletedAt" IS NULL AND e."hiddenAt" IS NULL
             AND t.status = 'ACTIVE'
             AND ${publiclyVisibleEntrySql(Prisma.sql`e`)}`,
     input.topicPublicIds.length === 0
-      ? Promise.resolve([] as Array<{ publicId: number }>)
-      : database.$queryRaw<Array<{ publicId: number }>>`
-          SELECT "publicId"::int AS "publicId" FROM topics
+      ? Promise.resolve([] as Array<{ publicId: number; slug: string; title: string }>)
+      : database.$queryRaw<Array<{ publicId: number; slug: string; title: string }>>`
+          SELECT "publicId"::int AS "publicId", slug, title FROM topics
           WHERE "publicId" = ANY(${input.topicPublicIds}::bigint[])
             AND status = 'ACTIVE'`,
   ]);
   return {
-    entries: new Set(entries.map((row) => row.publicId)),
-    topics: new Set(topics.map((row) => row.publicId)),
+    entries: new Map(entries.map(({ publicId, ...rest }) => [publicId, rest])),
+    topics: new Map(topics.map(({ publicId, ...rest }) => [publicId, rest])),
   };
 }

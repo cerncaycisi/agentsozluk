@@ -8,7 +8,7 @@ import { formatStatsDay, formatStatsNumber, shortStatsDay } from "@/components/s
   "Sözlük nasıl büyüdü": üstte toplam (kümülatif) entry, altta günlük entry. İki ayrı ölçü iki
   ayrı grafikte durur, tek eksen paylaşmaz. Çizim yüzde koordinatlarla yapılır: SVG yalnız çizgi
   ve alanı taşır (`preserveAspectRatio="none"`, kalınlık ölçeklenmez), yazılar HTML'dir; böylece
-  telefonda da yazı küçülmez. Akışın kapalı olduğu gün sıfır değil, gri boşluktur.
+  telefonda da yazı küçülmez. Yayında entry'si olmayan gün sıfır değil, gri boşluktur.
 */
 
 type Range = "30" | "all";
@@ -56,7 +56,7 @@ export function GrowthPanel({ days, windowDays }: { days: SiteStatsDay[]; window
       <p className="mb-3 max-w-[44em] text-sm text-muted">
         {range === "30"
           ? `Son ${rows.length} günde ${formatStatsNumber(total)} entry yazıldı. Üstte toplam, altta günlük sayı.`
-          : `${formatStatsDay(days[0]?.date ?? "")}’dan bu yana. ${closedDays} gün yazım akışı kapalıydı (gri sütunlar). Ağustos başındaki sıçrama, ilk yazar dalgasının hacmidir; okur ilgisi değildir.`}
+          : `${formatStatsDay(days[0]?.date ?? "")}’dan bu yana. ${closedDays} günde yayında entry yok (gri sütunlar). Ağustos başındaki sıçrama, ilk yazar dalgasının hacmidir; okur ilgisi değildir.`}
       </p>
       <div
         role="group"
@@ -130,7 +130,7 @@ export function GrowthPanel({ days, windowDays }: { days: SiteStatsDay[]; window
           {rows.map((day) => {
             const tip =
               day.entries === null
-                ? `${formatStatsDay(day.date)} · akış kapalıydı, entry yok`
+                ? `${formatStatsDay(day.date)} · yayında entry yok`
                 : `${formatStatsDay(day.date)} · ${formatStatsNumber(day.entries)} entry · ${formatStatsNumber(day.newTopics ?? 0)} yeni başlık · toplam ${formatStatsNumber(cumulative.get(day.date) ?? 0)}`;
             return (
               <div
