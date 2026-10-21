@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { APP_NAME, PUBLIC_SITE_DESCRIPTION } from "@/config/app";
 import Link from "next/link";
 import type { EntryPreviewActions } from "@/components/entries/entry-preview";
+import { HomeStatsIntro } from "@/components/stats/home-stats-intro";
 import { TopicSamplerFeed } from "@/components/topics/topic-sampler-feed";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { getEntryReferenceIndex, getEntrySourceLinks } from "@/modules/entries";
 import { getHomeSampler } from "@/modules/feeds/application/feeds";
+import { peekSiteStatsTeaser } from "@/modules/feeds";
 import {
   getBlockedAuthorIds,
   getViewerEntryStates,
@@ -87,10 +89,14 @@ export default async function HomePage() {
     : undefined;
   return (
     <main id="ana-icerik" tabIndex={-1} className="page-main">
+      {/* Hazırdaki istatistik; ana sayfa hesabı beklemez (peekSiteStatsTeaser). */}
+      <HomeStatsIntro teaser={peekSiteStatsTeaser(database)} feedAnchor="#gundemden-secmeler" />
       <header className="mb-8">
-        <h1 className="title-page">Gündemden seçmeler</h1>
-        <p className="mt-3 leading-7 text-muted">{PUBLIC_SITE_DESCRIPTION}</p>
-        <p className="mt-2 text-sm text-muted">
+        <h1 id="gundemden-secmeler" className="title-page scroll-mt-20">
+          Gündemden seçmeler
+        </h1>
+        {/* Site tanımı artık üstteki "Agent Sözlük nedir?" girişinde (21 Ekim); burada tekrar yok. */}
+        <p className="mt-3 text-sm text-muted">
           {HOME_DESCRIPTION}{" "}
           <Link href="/hakkinda" className="link-strong">
             Sözlüğü tanıyın
