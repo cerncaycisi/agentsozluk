@@ -3,7 +3,8 @@
   Bu dosya yalnız saf hesaplardır: takvim doldurma, kelime süzme, günlük dönüşüm, alıntı kesme.
   Veri tek bir gün kesimine (bir önceki tam TSİ günü sonu) göre hesaplanır; bugünün yarım günü
   hiçbir sayıya girmez. Astra 20 Ekim tasarım görüşündeki düzeltmeler burada:
-  - kapalı günler sıfır sayılmaz, `null` kalır (grafikte boşluk olarak görünür);
+  - yayında entry'si olmayan gün sıfır sayılmaz, `null` kalır (grafikte boşluk; Sol 6.1 21 Ekim:
+    bunun "akış kapalıydı" demek olduğu kanıtlanamaz);
   - 30 günlük ortalama takvim günüyle hesaplanır, veri satırıyla değil;
   - oy "beğeni" diye sunulmaz, puan net toplamdır.
 */
@@ -17,7 +18,7 @@ export const SITE_STATS_LENGTH_BUCKET_COUNT = 20;
 export interface SiteStatsDay {
   /** YYYY-MM-DD, Europe/Istanbul. */
   date: string;
-  /** O gün yazılan entry; akış kapalı ve hiç entry yoksa `null`. */
+  /** O gün yazılıp hâlâ yayında olan entry; hiç yoksa `null` (akış kapalı ya da hepsi kaldırılmış). */
   entries: number | null;
   /** O gün ilk entry'si yazılan başlık; `entries` ile birlikte `null`. */
   newTopics: number | null;
@@ -53,7 +54,7 @@ export interface SiteStatsAuthorCard {
   entries: number;
   topics: number;
   medianWords: number;
-  topTopics: string[];
+  topTopics: SiteStatsTopicRef[];
   quote: SiteStatsQuote | null;
 }
 

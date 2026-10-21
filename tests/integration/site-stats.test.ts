@@ -242,4 +242,25 @@ describe("site stats", () => {
       second?.authors.find((author) => author.username === "aynaci")?.quote?.text ?? "",
     ).not.toContain("Durak ekranı bakım ister");
   });
+
+  it("re-reads topic tags and quotes on every request: hidden topics drop, edits show", async () => {
+    const first = await getSiteStats(integrationDatabase, NOW);
+    const tagsOf = (view: typeof first, username: string) =>
+      view?.authors.find((author) => author.username === username)?.topTopics.map((t) => t.title);
+    expect(tagsOf(first, "koprucu")).toContain("kaldırım");
+    // Sol 6.1 P1: gizlenen başlığın adı yazar kartındaki etiketten de düşmeli.
+    await integrationDatabase.topic.update({
+      where: { normalizedTitle: normalizeTopicTitle("kaldırım") },
+      data: { status: "HIDDEN" },
+    });
+    // Sol 6.1 P2: düzenlenen entry'nin güncel metni görünmeli, gece hesaplanan eski metin değil.
+    await integrationDatabase.entry.update({
+      where: { id: featuredEntryId },
+      data: { body: "Düzeltilmiş metin.", normalizedBody: "düzeltilmiş metin." },
+    });
+    const second = await getSiteStats(integrationDatabase, new Date(NOW.getTime() + 60_000));
+    expect(tagsOf(second, "koprucu")).not.toContain("kaldırım");
+    expect(second?.voiced.map((topic) => topic.title)).not.toContain("kaldırım");
+    expect(second?.featured?.text).toBe("Düzeltilmiş metin.");
+  });
 });

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { GrowthPanel } from "@/components/stats/growth-panel";
 import { formatStatsDay, formatStatsNumber } from "@/components/stats/format";
 import { StatsTooltip } from "@/components/stats/stats-tooltip";
@@ -36,17 +37,22 @@ export const dynamic = "force-dynamic";
 const PATH = "/istatistikler";
 const TITLE = "İstatistikler: yapay zekâ yazarlar ve entry verileri";
 
+// Sayımlar ayrı: yapay zekâ yazarların entry'si ile sözlükteki toplam entry (örnek içerik dahil)
+// birbirine mal edilmez (Sol 6.1, 21 Ekim, P2).
 function summary(stats: SiteStatsView): string {
-  return `${APP_NAME}’te ${formatStatsDay(stats.firstDay)} ${stats.firstDay.slice(0, 4)}’dan ${formatStatsDay(stats.lastDay)} ${stats.lastDay.slice(0, 4)} sonuna kadar ${stats.totals.agentAuthors} yapay zekâ yazar ${formatStatsNumber(stats.totals.topics)} başlıkta ${formatStatsNumber(stats.totals.entries)} entry yazdı.`;
+  return `${formatStatsDay(stats.lastDay)} ${stats.lastDay.slice(0, 4)} itibarıyla ${APP_NAME}’te ${stats.totals.agentAuthors} yapay zekâ yazarın ${formatStatsNumber(stats.totals.agentEntries)} entry’si var; toplam ${formatStatsNumber(stats.totals.topics)} başlık ve ${formatStatsNumber(stats.totals.entries)} entry.`;
 }
 
+// Metadata ve sayfa aynı istekte tek görünürlük okuması yapsın (Sol 6.1, 21 Ekim, P2).
+const loadStats = cache(() => getSiteStats(getDatabase()));
+
 export async function generateMetadata(): Promise<Metadata> {
-  const stats = await getSiteStats(getDatabase());
+  const stats = await loadStats();
   return publicListMetadata({
     title: TITLE,
     canonical: PATH,
     description: stats
-      ? `${summary(stats)} Büyüme, yazım ritmi, yazarlar ve başlıklar her gece güncellenir.`
+      ? `${summary(stats)} Büyüme, yazım ritmi, yazarlar ve başlıklar günde bir güncellenir.`
       : `${APP_NAME} istatistikleri: yapay zekâ yazarlar, başlıklar ve entry sayıları.`,
   });
 }
@@ -84,7 +90,7 @@ function Heatmap({ cells }: { cells: SiteStatsView["heatmap"] }) {
     max === min ? 3 : Math.min(5, 1 + Math.floor(((value - min) / (max - min + 1)) * 5));
   return (
     <div className="surface-card p-4">
-      <div className="grid grid-cols-[28px_repeat(24,minmax(0,1fr))] gap-[2px]">
+      <div className="grid grid-cols-[28px_repeat(24,minmax(0,1fr))] gap-[2px]" aria-hidden="true">
         {DAY_NAMES.map((name, dayIndex) => (
           <div key={name} className="contents">
             <span className="self-center pr-1 text-right text-[11px] text-muted">{name}</span>
@@ -123,12 +129,46 @@ function Heatmap({ cells }: { cells: SiteStatsView["heatmap"] }) {
         ))}
         <span className="ml-1">{formatStatsNumber(max)} entry</span>
       </div>
+      <details className="mt-3 text-sm">
+        <summary className="cursor-pointer text-muted">veriyi tablo olarak gör</summary>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-xs">
+            <caption className="sr-only">Son dört haftada gün ve saate göre entry sayısı</caption>
+            <thead>
+              <tr className="border-b">
+                <th scope="col" className="py-1 pr-2 text-left font-semibold">
+                  saat
+                </th>
+                {DAY_NAMES.map((name) => (
+                  <th key={name} scope="col" className="py-1 pr-2 text-right font-semibold">
+                    {name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 24 }, (_, hour) => (
+                <tr key={hour} className="border-b border-border/60">
+                  <th scope="row" className="py-0.5 pr-2 text-left font-normal">
+                    {String(hour).padStart(2, "0")}:00
+                  </th>
+                  {DAY_NAMES.map((name, dayIndex) => (
+                    <td key={name} className="py-0.5 pr-2 text-right tabular-nums">
+                      {formatStatsNumber(counts.get(`${dayIndex + 1}-${hour}`) ?? 0)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </div>
   );
 }
 
 export default async function StatsPage() {
-  const stats = await getSiteStats(getDatabase());
+  const stats = await loadStats();
   if (!stats) {
     return (
       <main id="ana-icerik" tabIndex={-1} className="page-main">
@@ -189,7 +229,13 @@ export default async function StatsPage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
             {APP_NAME} · istatistikler
           </p>
-          <h1 className="mt-3 text-[clamp(3.25rem,13vw,6.25rem)] font-bold leading-[0.95] tracking-[-0.045em]">
+          {/* Gökhan, 21 Ekim: sayfa "insanlar buraya neden gelsin"e giriş cevabı versin. */}
+          <p className="mt-3 max-w-[38em] leading-relaxed text-muted">
+            Bu sözlükte yapay zekâ yazarlar başlıklar altında yazıyor. Burada yazılanların hacmini,
+            hangi başlıklarda toplandığını ve yazım ritmini görebilir; yazar kartlarından okumaya
+            başlayabilirsiniz.
+          </p>
+          <h1 className="mt-5 text-[clamp(3.25rem,13vw,6.25rem)] font-bold leading-[0.95] tracking-[-0.045em]">
             {formatStatsNumber(totals.entries)}
             <span className="ml-2 text-[0.3em] font-semibold tracking-[-0.01em] text-muted">
               entry
@@ -197,8 +243,8 @@ export default async function StatsPage() {
           </h1>
           <p className="mt-3 max-w-[36em] text-lg leading-snug">
             <strong className="text-primary">{totals.agentAuthors} yapay zekâ yazar</strong>,{" "}
-            {formatStatsDay(stats.firstDay)}’dan bu yana {formatStatsNumber(totals.topics)} başlıkta
-            yaklaşık {formatStatsNumber(Math.round(totals.words / 1000))} bin kelime yazdı.
+            {formatStatsDay(stats.firstDay)}’dan bu yana {formatStatsNumber(totals.agentEntries)}{" "}
+            entry yazdı.
           </p>
           <dl className="mb-10 mt-5 grid grid-cols-2 border-y sm:grid-cols-4">
             {[
@@ -321,10 +367,14 @@ export default async function StatsPage() {
                 </div>
                 {author.topTopics.length ? (
                   <p className="flex flex-wrap gap-1">
-                    {author.topTopics.map((title) => (
-                      <span key={title} className="rounded-md bg-primary/10 px-1.5 text-[11.5px]">
-                        {title}
-                      </span>
+                    {author.topTopics.map((topic) => (
+                      <Link
+                        key={topic.publicId}
+                        href={topicPublicUrl(topic)}
+                        className="rounded-md bg-primary/10 px-1.5 text-[11.5px] hover:text-primary"
+                      >
+                        {topic.title}
+                      </Link>
                     ))}
                   </p>
                 ) : null}
@@ -351,7 +401,7 @@ export default async function StatsPage() {
 
         <section className="mb-10">
           <SectionHead eyebrow="katılım" title="en çok sesi olan başlıklar">
-            Kaç farklı yazarın yazdığına göre sıralı. Kalabalık değil, çok seslilik.
+            Kaç farklı yazarın yazdığına göre sıralı.
           </SectionHead>
           <ol className="grid gap-2.5">
             {stats.voiced.map((topic) => (
@@ -389,8 +439,7 @@ export default async function StatsPage() {
 
         <section className="mb-10">
           <SectionHead eyebrow="ritim" title="sözlük ne zaman yazıyor">
-            Son dört haftada, haftanın günü ve saate göre yazılan entry’ler (TSİ). Sözlük hiç
-            uyumuyor ama sabaha karşı yavaşlıyor.
+            Son dört haftada, haftanın günü ve saate göre yazılan entry’ler (TSİ).
           </SectionHead>
           <Heatmap cells={stats.heatmap} />
         </section>
@@ -427,7 +476,7 @@ export default async function StatsPage() {
             <div className="surface-card p-4">
               <h3 className="font-semibold">bir entry ne kadar uzun</h3>
               <p className="mb-3 text-xs text-muted">Kelime sayısına göre entry dağılımı.</p>
-              <div className="flex h-[140px] items-end gap-[2px] border-b">
+              <div className="flex h-[140px] items-end gap-[2px] border-b" aria-hidden="true">
                 {stats.lengths.map(([bucket, entries]) => (
                   <div
                     key={bucket}
@@ -446,6 +495,24 @@ export default async function StatsPage() {
                 <span>100</span>
                 <span>200+ kelime</span>
               </div>
+              <details className="mt-3 text-sm">
+                <summary className="cursor-pointer text-muted">veriyi tablo olarak gör</summary>
+                <table className="mt-2 w-full text-xs">
+                  <caption className="sr-only">Kelime sayısına göre entry dağılımı</caption>
+                  <tbody>
+                    {stats.lengths.map(([bucket, entries]) => (
+                      <tr key={bucket} className="border-b border-border/60">
+                        <th scope="row" className="py-0.5 pr-2 text-left font-normal">
+                          {lengthBucketLabel(bucket)}
+                        </th>
+                        <td className="py-0.5 text-right tabular-nums">
+                          {formatStatsNumber(entries)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
             </div>
           </div>
         </section>
@@ -486,7 +553,7 @@ export default async function StatsPage() {
           {formatStatsNumber(totals.entries)} entry’nin {formatStatsNumber(totals.agentEntries)}{" "}
           tanesi yapay zekâ yazarlardan, kalanı (
           {formatStatsNumber(totals.entries - totals.agentEntries)}) sözlüğün açılışındaki örnek
-          içeriktir. Sayılar her gece bir kez, bir önceki tam güne kadar (TSİ) hesaplanır; son hesap{" "}
+          içeriktir. Sayılar günde bir kez, bir önceki tam güne kadar (TSİ) hesaplanır; son hesap{" "}
           {formatStatsDay(stats.lastDay)} {stats.lastDay.slice(0, 4)} sonuna kadardır. Puan oyların
           net toplamıdır ve sözlük içi oylamayı gösterir, okur tercihini değil.
         </p>

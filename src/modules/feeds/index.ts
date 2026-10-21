@@ -17,7 +17,12 @@ export {
 } from "@/modules/feeds/domain/feed";
 export { calculateTrendScore, type TrendMetrics } from "@/modules/feeds/domain/trending";
 export { topicFeedSchema } from "@/modules/feeds/validation/schemas";
-export { getSiteStats, type SiteStatsView } from "@/modules/feeds/application/site-stats";
+export {
+  getSiteStats,
+  peekSiteStatsTeaser,
+  type SiteStatsTeaser,
+  type SiteStatsView,
+} from "@/modules/feeds/application/site-stats";
 export {
   lengthBucketLabel,
   rotateDaily,
