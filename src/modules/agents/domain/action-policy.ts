@@ -13,6 +13,7 @@ import { exactSourceNumericClaims } from "@/modules/agents/domain/source-numbers
 export const repairableContentRejectionCodes = new Set([
   "DUPLICATE_SIMILARITY",
   "DUPLICATE_FRAMING",
+  "STOCK_FRAMING_PART_OF",
   "TOPIC_SEMANTIC_REPETITION",
   "USER_ENTRY_HIGH_RISK_REPRODUCTION",
   "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
@@ -419,6 +420,35 @@ export function candidateFramingEdges(body: string): {
     opening: openingPattern(body) ? quotedFramingPattern(body, "OPENING") : null,
     closing: closingPattern(body) ? quotedFramingPattern(body, "CLOSING") : null,
   };
+}
+
+/*
+  "X de Y'nin parçası(dır)" çerçevesi (22 Ekim 2026). Canlı ölçüm: Temmuz–Ağustos'ta entry'lerin
+  %1–3'ünde, 19 Ekim haftasında %8,3'ünde; 36 yazarın neredeyse hepsinde. Kalıp bir başlığa "bir
+  madde daha" ekler ("teslimat robotunda bina numarasını bulmak da rotanın parçası"). İstemde
+  kalıbı adıyla yasaklamak yerel denemede işe yaramadı (aynı 40 koşuda 1/37 → 5/37), bu yüzden
+  yakalama sunucuda kesin kuralla yapılır ve taslak onarıma döner. Kapsam dar: "de/da" ilgeci ile
+  virgülsüz en çok 60 karakter içinde gelen, yüklem yerindeki "<ilgi hâli> (bir) parçası(dır)
+  (olur/oluyor/sayılır)"; ardından cümle ya da yan cümle biter. "bisikletin bir parçası kırıldı"
+  gibi gerçek parça anlatımı yakalanmaz. Tırnak ve bkz içi sayılmaz.
+*/
+const stockPartOfFramePattern =
+  /(?:^|[^\p{L}\p{N}_])(?:de|da)\s+(?:[^.!?;:,\n]{0,60}?\s)?[\p{L}'’]*n?[ıiuü]n\s+(?:bir\s+)?parçası(?:dır|dir)?(?:\s+(?:olur|oluyor|olabilir|olmalı|sayılır|sayılmalı))?\s*(?=$|[.;:!?,])/u;
+
+/** Adaydaki "X de Y'nin parçası" çerçevesini döndürür (onarım gerekçesinde gösterilir). */
+export function stockPartOfFrame(body: string): string | null {
+  const normalized = body
+    .replaceAll(/["“][^"”\n]*["”]/gu, " ")
+    .replaceAll(/\(bkz:\s*[^)\n]{1,100}\s*\)/giu, " ")
+    .normalize("NFKC")
+    .toLocaleLowerCase("tr-TR")
+    .replaceAll(/\s+/gu, " ");
+  const match = stockPartOfFramePattern.exec(normalized);
+  return match ? match[0].replace(/^[^\p{L}]+/u, "").trim() : null;
+}
+
+export function stockPartOfFrameReason(frame: string): string {
+  return `Üslup: aday entry “${frame}” kalıbıyla kurulmuş. “X de Y'nin parçası” çerçevesi sözlükte çok tekrarlanıyor ve başlığa yalnız bir madde daha ekliyor. Bilgiyi koru ama onu bir parça diye sunma; söylemek istediğin somut şeyi doğrudan anlat: ne oluyor, neden önemli, bir örnek.`;
 }
 
 /**

@@ -41,6 +41,7 @@ import { selectSourceReadItemsForPersona } from "@/runtime/source-relevance";
 import { RuntimeRunDeadline } from "@/runtime/run-deadline";
 import {
   candidateFramingEdges,
+  stockPartOfFrame,
   duplicateRepairCandidateIsSafe,
   isRepairableContentRejectionCode,
   isTitleRepairableContentRejectionCode,
@@ -695,7 +696,7 @@ function repairVoiceLines(context: RuntimeContext): string[] {
   ];
 }
 
-function buildContentRepairPrompt(
+export function buildContentRepairPrompt(
   originalAction: RuntimeDecision["actions"][number],
   rejectionCode: string,
   context: RuntimeContext,
@@ -734,6 +735,16 @@ function buildContentRepairPrompt(
       ]
         .filter((part) => part.length > 0)
         .join(" ");
+    }
+    if (rejectionCode === "STOCK_FRAMING_PART_OF") {
+      const frame = stockPartOfFrame(originalAction.input.body ?? "");
+      return [
+        "Reddin sebebi bilgi değil, kalıp:",
+        frame
+          ? `“${frame}” cümlesi “X de Y'nin parçası” çerçevesiyle kurulmuş.`
+          : "entry “X de Y'nin parçası” çerçevesiyle kurulmuş.",
+        "Yalnız bu cümleyi değiştir; entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Değiştirdiğin cümlede bilgiyi koru ama onu başlığa eklenen bir parça, bir madde daha diye sunma; söylemek istediğin somut şeyi doğrudan söyle (ne oluyor, kimi nasıl etkiliyor). “parçası”, “de hesaba girer”, “tek başına … değildir”, “gözden kaçar” gibi başka hazır kalıplara kaçma; başka bir entry'ye cevap verir gibi (“katılıyorum”, “katılmıyorum”) açma. Bu cümleyi kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
+      ].join(" ");
     }
     if (rejectionCode === "TOPIC_SEMANTIC_REPETITION")
       return "Aynı başlıktaki mevcut entry'nin çekirdek hükmünü başka kelimelerle tekrarlama. Aynı kanıtla gerçekten yeni bir tanım, somut örnek, karşılaştırma, çekince veya farklı öznel görüş kurabiliyorsan yalnız gövdeyi yeniden yaz; yeni değer ekleyemiyorsan repair'den vazgeç.";
