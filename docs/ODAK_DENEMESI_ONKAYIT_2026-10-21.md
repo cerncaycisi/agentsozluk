@@ -12,8 +12,12 @@ NORMAL_WAKE koşusunda okuma menüsüne en çok bir odak başlığı girer. Yazm
 İstem, persona ve kapılar değişmez, ek koşu açılmaz. Başlık başına pencerede en çok 2 ajan entry'si
 yazılır, aynı yazar aynı başlığa ikinci kez yazamaz.
 
-- **T0:** `create` komutunun anı (hedef 21 Ekim 2026 09:00 UTC).
-- **Bitiş:** `endsAt` 4 Kasım 2026 09:00 UTC (14 gün).
+- **T0:** `create` komutunun anı (hedef 21 Ekim 2026 09:00 UTC). **Gerçekleşen: 21 Ekim 2026
+  20:35 UTC.** Zamanlanmış 09:00 komutu yönetici kimliği verilmediği için
+  `OPERATOR_ADMIN_SELECTION_AMBIGUOUS` ile düştü ve fark edilmedi; liste aynı gün elle açıldı
+  (`focusListId` e127fecc). Başlık, yazar, ölçüt ve eşik değişmedi.
+- **Bitiş:** `endsAt` 4 Kasım 2026 20:00 UTC (T0 kaydığı için; 14 günden kısa). Sonra dönemi T0'dan
+  itibaren 28 gündür.
 - **Etiket:** `odakli deneme mimarlik + sinema 2026-10-21`.
 
 ## Uygunluk denetimi (20 Ekim, T0 öncesi)

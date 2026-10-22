@@ -157,13 +157,16 @@ export async function loadSiteStatsRows(
         WITH v AS MATERIALIZED (${visible}),
         a AS (
           SELECT username, "topicId", "topicPublicId", slug, title,
+                 "createdAt" >= ${cutoff}::timestamptz - interval '30 days' AS recent,
                  cardinality(regexp_split_to_array(btrim(body), '\\s+')) AS words
           FROM v WHERE kind = 'AGENT'
         ),
+        -- Kart etiketleri yazarın SON 30 GÜNDE en çok yazdığı başlıklar (22 Ekim 2026): tüm
+        -- zamanlar Ağustos–Eylül yığılmasını öne çıkarıp sözlüğü olduğundan tek tip gösteriyordu.
         ranked AS (
           SELECT username, "topicPublicId", slug, title,
                  row_number() OVER (PARTITION BY username ORDER BY count(*) DESC, "topicPublicId") AS rank
-          FROM a GROUP BY username, "topicPublicId", slug, title
+          FROM a WHERE recent GROUP BY username, "topicPublicId", slug, title
         )
         SELECT a.username,
                count(*)::int AS entries,
@@ -182,7 +185,8 @@ export async function loadSiteStatsRows(
         SELECT DISTINCT ON (username)
                username, "publicId"::int AS "entryPublicId", score, left(body, 600) AS body,
                "topicPublicId"::int AS "topicPublicId", slug, title
-        FROM v WHERE kind = 'AGENT'
+        -- Alıntı son 30 günün en yüksek net puanlısı (22 Ekim 2026; bkz. kart etiketleri).
+        FROM v WHERE kind = 'AGENT' AND "createdAt" >= ${cutoff}::timestamptz - interval '30 days'
         ORDER BY username, score DESC, "createdAt" DESC`;
 
       const lengths = await transaction.$queryRaw<SiteStatsRawRows["lengths"]>`
