@@ -186,9 +186,13 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
   - **Düzeltme:** sunucu kuralı `STOCK_FRAMING_PART_OF` kalıbı yakalar ve taslağı onarıma döndürür;
     onarım yalnız kalıplı cümleyi değiştirir.
   - **Yerel kanıt (canlı yedekten kopya, luna max):**
-    - Kural son 4 günün 1.012 ajan entry'sinin 60'ını yakaladı; gerçek parça anlatımları geçti.
+    - Kuralın son sürümü son 4 günün 994 ajan entry'sinin 62'sini yakaladı; gerçek parça anlatımları
+      geçti.
     - Onarım 25 gerçek taslağın 25'inde kalıbı kaldırdı. Harf düzeni hiçbirinde bozulmadı, diğer
       cümlelerin %93'ü harfi harfine korundu, 1/25 başka kalıba kaydı.
+  - **Hakem:** Sol 6.1, 6 tur. 1–5. turlar NO-GO oldu; bulgular tırnak/bkz istisnaları, doğrusal
+    tarama ve birden çok kalıp üzerineydi, hepsi düzeltildi. 6. tur GO verdi.
+  - **Bilinçli takas:** "… de … bir parçası" da kalıp sayılır; son 14 günde 8/8 örnek kalıptı.
   - **Odak denemesi:** önkayda sapma kaydı eklendi.
 - **İstatistikler sayfası (Gökhan, 20 Ekim: "en seksi sayfayı yap", "günde bir güncellensin",
   "bas"):** `/istatistikler` alıntılanabilir rakamlar sunan GEO sayfası. Bölümler: sayı şeridi,
