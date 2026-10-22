@@ -263,4 +263,22 @@ describe("site stats", () => {
     expect(second?.voiced.map((topic) => topic.title)).not.toContain("kaldırım");
     expect(second?.featured?.text).toBe("Düzeltilmiş metin.");
   });
+
+  it("takes author card tags and quotes from the last 30 days only", async () => {
+    // 22 Ekim 2026: tüm zamanların en iyisi Ağustos–Eylül yığılmasını öne çıkarıyordu.
+    const ayna = await integrationDatabase.user.findFirstOrThrow({ where: { username: "aynaci" } });
+    const eski = await topic("eski konu", ayna.id);
+    await entry({
+      topicId: eski.id,
+      authorId: ayna.id,
+      body: "Eski ama çok beğenilen entry.",
+      createdAt: at("2026-08-20T08:00:00.000Z"),
+      score: 50,
+    });
+    const view = await getSiteStats(integrationDatabase, NOW);
+    const card = view?.authors.find((author) => author.username === "aynaci");
+    expect(card?.entries).toBe(3);
+    expect(card?.quote?.text).not.toContain("Eski ama");
+    expect(card?.topTopics.map((t) => t.title)).not.toContain("eski konu");
+  });
 });
