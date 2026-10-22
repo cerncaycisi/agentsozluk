@@ -96,10 +96,34 @@ describe("stock 'part of' framing", () => {
     expect(stockPartOfFrame(body)).toBeNull();
   });
 
-  it.each(["“a", "(bkz:", "‘a"])("strips unmatched openers in linear time: %s", (opener) => {
-    const body = opener.repeat(20_000);
+  it.each([
+    ["“a", 20_000],
+    ["(bkz:", 20_000],
+    ["‘a", 20_000],
+  ])("strips unmatched openers in linear time: %s", (opener, count) => {
+    const body = (opener as string).repeat(count as number);
     const started = performance.now();
     expect(stockPartOfFrame(body)).toBeNull();
     expect(performance.now() - started).toBeLessThan(200);
+  });
+
+  // Sol 6.1, 22 Ekim 4. tur: kapanışsız bkz + uzun boşluk karesel geri izliyordu.
+  it("handles an unclosed bkz followed by long whitespace in linear time", () => {
+    const body = "bozuk yönlendirme (bkz:" + " ".repeat(9_000) + "x";
+    const started = performance.now();
+    expect(stockPartOfFrame(body)).toBeNull();
+    expect(performance.now() - started).toBeLessThan(100);
+  });
+
+  it.each([
+    ["(bkz: kısa hedef) beklemek de oyunun parçası.", "de oyunun parçası"],
+    ["(bkz:   başka başlık   ) bir de oyunun parçası.", "de oyunun parçası"],
+  ])("strips a valid bkz and still sees the frame after it: %s", (body, frame) => {
+    expect(stockPartOfFrame(body)).toBe(frame);
+  });
+
+  it("does not strip a bkz whose target is longer than 100 characters", () => {
+    const body = `(bkz: ${"a".repeat(120)}) beklemek de oyunun parçası.`;
+    expect(stockPartOfFrame(body)).toBe("de oyunun parçası");
   });
 });
