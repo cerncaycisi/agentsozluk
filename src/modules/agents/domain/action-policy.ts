@@ -433,38 +433,54 @@ export function candidateFramingEdges(body: string): {
   gibi gerçek parça anlatımı yakalanmaz. Tırnak ve bkz içi sayılmaz.
 */
 const stockPartOfFramePattern =
-  /(?:^|[^\p{L}\p{N}_])(?:de|da)\s+(?:[^.!?;:,()\n]{0,60}?\s)?[\p{L}'’]*n?[ıiuü]n\s+parçası(?:dır|dir)?(?:\s+(?:olur|oluyor|olabilir|olmalı|sayılır|sayılmalı))?\s*(?=$|[.;:!?,()])/gu;
+  /(?:^|[^\p{L}\p{N}_])(?:de|da)\s+(?:[^.!?;:,()\n]{0,60}?\s)?[\p{L}'’]*n?[ıiuü]n\s+(?:\p{L}+\s+)?(?:bir\s+)?parçası(?:dır|dir)?(?:\s+(?:olur|oluyor|olabilir|olmalı|sayılır|sayılmalı))?\s*(?=$|[.;:!?,()])/gu;
 
-const quotePairs: Readonly<Record<string, string>> = { "“": "”", '"': '"', "‘": "’" };
+const isLetter = (char: string | undefined) => char !== undefined && /\p{L}/u.test(char);
 
 /*
-  Tırnak ve bkz içini doğrusal bir taramayla boşlukla değiştirir (Sol 6.1, 22 Ekim: düzenli ifadeyle
-  kapanışı olmayan açılışlar karesel tarama yapıyordu). Satır atlayan alıntı da tırnak içidir.
-  Kapanışı olmayan tırnaktan sonrası olduğu gibi kalır.
+  Tırnak ve bkz içini tek geçişte, doğrusal sürede boşlukla değiştirir (Sol 6.1, 22 Ekim, 1. ve 2.
+  tur). Her kapanış türü için "bu konumdan sonraki ilk geçerli kapanış" sağdan sola bir kez
+  hesaplanır; böylece kapanışı olmayan açılışlar yeniden tarama yapmaz.
+  - Çift tırnak (“…”, "…"): satır atlasa da alıntıdır.
+  - Tek tırnak (‘…’, '…'): Türkçede aynı işaret kesme işaretidir ("Ankara’nın"). Açılış önünde harf
+    olmayan, kapanış ardında harf olmayan işaret sayılır.
+  - bkz: büyük/küçük harf duyarsız "(bkz:", satır atlamadan en çok 100 karakter, ")" ile biter;
+    sitedeki bkz çözümleyicisiyle aynı sınırlar.
 */
 function withoutQuotedSpans(value: string): string {
+  const length = value.length;
+  const nextIndex = (accept: (index: number) => boolean) => {
+    const next = new Int32Array(length + 1).fill(-1);
+    for (let index = length - 1; index >= 0; index -= 1)
+      next[index] = accept(index) ? index : next[index + 1]!;
+    return next;
+  };
+  const nextCurlyDouble = nextIndex((i) => value[i] === "”");
+  const nextStraightDouble = nextIndex((i) => value[i] === '"');
+  const nextSingleClose = nextIndex(
+    (i) => (value[i] === "’" || value[i] === "'") && !isLetter(value[i + 1]),
+  );
+  const nextParen = nextIndex((i) => value[i] === ")");
+  const nextNewline = nextIndex((i) => value[i] === "\n");
   let out = "";
   let index = 0;
-  while (index < value.length) {
+  while (index < length) {
     const char = value[index]!;
-    const close = quotePairs[char];
-    if (close !== undefined) {
-      const closeAt = value.indexOf(close, index + 1);
-      if (closeAt === -1) {
-        out += value.slice(index);
-        break;
-      }
+    let closeAt = -1;
+    if (char === "“") closeAt = nextCurlyDouble[index + 1]!;
+    else if (char === '"') closeAt = nextStraightDouble[index + 1]!;
+    else if ((char === "‘" || char === "'") && !isLetter(value[index - 1]))
+      closeAt = nextSingleClose[index + 1]!;
+    else if (char === "(" && value.slice(index, index + 5).toLocaleLowerCase("tr-TR") === "(bkz:") {
+      const paren = nextParen[index]!;
+      const newline = nextNewline[index]!;
+      if (paren !== -1 && paren - index <= 110 && (newline === -1 || newline > paren))
+        closeAt = paren;
+    }
+    if (closeAt !== -1) {
       out += " ";
       index = closeAt + 1;
       continue;
-    }
-    if (value.startsWith("(bkz:", index) || value.startsWith("(Bkz:", index)) {
-      const closeAt = value.indexOf(")", index);
-      if (closeAt !== -1 && closeAt - index <= 110) {
-        out += " ";
-        index = closeAt + 1;
-        continue;
-      }
     }
     out += char;
     index += 1;
@@ -474,8 +490,10 @@ function withoutQuotedSpans(value: string): string {
 
 /**
  * Adaydaki bütün "X de Y'nin parçası" çerçeveleri (onarım hepsini birlikte düzeltsin diye; Sol 6.1,
- * 22 Ekim). "<ilgi hâli> bir parçası" kapsam dışıdır: "krank mili de motorun bir parçasıdır" gerçek
- * parça ilişkisidir; kalıp ise "bir" almadan kurulur.
+ * 22 Ekim). "(sıfat) bir parçası" da kalıptır: yerel kopyada son 14 günde "… de … bir parçası"
+ * biçiminin 8 örneğinin 8'i kalıptı ("sürecin sıradan bir parçası"). Bilinçli takas: "krank mili
+ * de motorun bir parçasıdır" gibi gerçek parça tanımı da yakalanır; korpusta görülmedi ve bedeli
+ * tek bir onarım turudur.
  */
 export function stockPartOfFrames(body: string): string[] {
   const normalized = withoutQuotedSpans(body)

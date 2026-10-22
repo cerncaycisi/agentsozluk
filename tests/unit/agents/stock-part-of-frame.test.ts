@@ -34,6 +34,13 @@ describe("stock 'part of' framing", () => {
     // Sol 6.1, 22 Ekim P3: parantez kalıbı denetimden kaçırmamalı.
     ["(beklemek de oyunun parçası).", "de oyunun parçası"],
     ["beklemek de oyunun parçası (süre böyle uzuyor).", "de oyunun parçası"],
+    // Sol 6.1, 22 Ekim 2. tur: "bir parçası" da kalıp; araya sıfat girebilir.
+    ["beklemek de oyunun bir parçasıdır.", "de oyunun bir parçasıdır"],
+    [
+      "görüntüleri denetlemek de bu sürecin sıradan bir parçası.",
+      "de bu sürecin sıradan bir parçası",
+    ],
+    ["(BKZ beklemek) de oyunun parçası.", "de oyunun parçası"],
   ])("catches %s", (body, frame) => {
     expect(stockPartOfFrame(body)).toBe(frame);
   });
@@ -46,8 +53,10 @@ describe("stock 'part of' framing", () => {
     "oyunun parçası olmak da bir tercih.",
     "(bkz: işin de bir parçası) güzel başlık.",
     // Sol 6.1, 22 Ekim: gerçek parça tanımı ve tek tırnaklı / satır atlayan alıntı.
-    "krank mili de motorun bir parçasıdır.",
     "‘beklemek de oyunun parçası.’ sözünü kullanmış.",
+    "‘Ankara’nın yollarında beklemek de yolculuğun parçası.’ demiş.",
+    "'beklemek de oyunun parçası.' demiş.",
+    "(BKZ: beklemek de oyunun parçası) diye başlık var.",
     "şöyle demiş: “beklemek de oyunun\nparçası.” bence abartı.",
   ])("leaves real 'part' talk alone: %s", (body) => {
     expect(stockPartOfFrame(body)).toBeNull();
@@ -64,8 +73,14 @@ describe("stock 'part of' framing", () => {
     );
   });
 
-  it("strips unmatched quotes in linear time", () => {
-    const body = "“a".repeat(20_000);
+  it("does not treat a bkz that spans a line break as a reference", () => {
+    expect(stockPartOfFrame("(bkz: başka başlık\nbeklemek de oyunun parçası.)")).toBe(
+      "de oyunun parçası",
+    );
+  });
+
+  it.each(["“a", "(bkz:", "‘a"])("strips unmatched openers in linear time: %s", (opener) => {
+    const body = opener.repeat(20_000);
     const started = performance.now();
     expect(stockPartOfFrame(body)).toBeNull();
     expect(performance.now() - started).toBeLessThan(200);
