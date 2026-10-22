@@ -85,6 +85,8 @@ import {
   hasUnrecordedOfflineFirstPersonClaim,
   repeatedEntryFraming,
   repeatedEntryFramingReason,
+  stockPartOfFrame,
+  stockPartOfFrameReason,
   seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
   topicSemanticRepetition,
@@ -1471,6 +1473,12 @@ export async function executeRuntimeAction(
             return rejectAction(transaction, principal, actionRecord, {
               code: "DUPLICATE_FRAMING",
               reason: repeatedEntryFramingReason(repeatedFraming),
+            });
+          const partOfFrame = stockPartOfFrame(candidateBody);
+          if (partOfFrame)
+            return rejectAction(transaction, principal, actionRecord, {
+              code: "STOCK_FRAMING_PART_OF",
+              reason: stockPartOfFrameReason(partOfFrame),
             });
           /*
             Kendi geçmişi önce bakılıyor. İkisi de tetiklenebiliyorsa yazara daha

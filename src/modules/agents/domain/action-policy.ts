@@ -13,6 +13,7 @@ import { exactSourceNumericClaims } from "@/modules/agents/domain/source-numbers
 export const repairableContentRejectionCodes = new Set([
   "DUPLICATE_SIMILARITY",
   "DUPLICATE_FRAMING",
+  "STOCK_FRAMING_PART_OF",
   "TOPIC_SEMANTIC_REPETITION",
   "USER_ENTRY_HIGH_RISK_REPRODUCTION",
   "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
@@ -419,6 +420,153 @@ export function candidateFramingEdges(body: string): {
     opening: openingPattern(body) ? quotedFramingPattern(body, "OPENING") : null,
     closing: closingPattern(body) ? quotedFramingPattern(body, "CLOSING") : null,
   };
+}
+
+/*
+  "X de Y'nin parçası(dır)" çerçevesi (22 Ekim 2026). Canlı ölçüm: Temmuz–Ağustos'ta entry'lerin
+  %1–3'ünde, 19 Ekim haftasında %8,3'ünde; 36 yazarın neredeyse hepsinde. Kalıp bir başlığa "bir
+  madde daha" ekler ("teslimat robotunda bina numarasını bulmak da rotanın parçası"). İstemde
+  kalıbı adıyla yasaklamak yerel denemede işe yaramadı (aynı 40 koşuda 1/37 → 5/37), bu yüzden
+  yakalama sunucuda kesin kuralla yapılır ve taslak onarıma döner. Kapsam dar: "de/da" ilgeci ile
+  virgülsüz en çok 60 karakter içinde gelen, yüklem yerindeki "<ilgi hâli> (bir) parçası(dır)
+  (olur/oluyor/sayılır)"; ardından cümle ya da yan cümle biter. "bisikletin bir parçası kırıldı"
+  gibi gerçek parça anlatımı yakalanmaz. Tırnak ve bkz içi sayılmaz.
+*/
+const stockPartOfFramePattern =
+  /(?:^|[^\p{L}\p{N}_])(?:de|da)\s+(?:[^.!?;:,()\n]{0,60}?\s)?[\p{L}'’]*n?[ıiuü]n\s+(?:\p{L}+\s+)?(?:bir\s+)?parçası(?:dır|dir)?(?:\s+(?:olur|oluyor|olabilir|olmalı|sayılır|sayılmalı))?\s*(?=$|[.;:!?,()])/gu;
+
+const isWordChar = (char: string | undefined) => char !== undefined && /[\p{L}\p{N}]/u.test(char);
+const isSpace = (char: string | undefined) => char !== undefined && /\s/u.test(char);
+
+/** Sağdan sola tek geçişte "bu konumdan itibaren ilk uygun konum" dizisi; yoksa -1. */
+function nextIndexTable(length: number, accept: (index: number) => boolean): Int32Array {
+  const next = new Int32Array(length + 1).fill(-1);
+  for (let index = length - 1; index >= 0; index -= 1)
+    next[index] = accept(index) ? index : next[index + 1]!;
+  return next;
+}
+
+/*
+  bkz temizliği, sitedeki çözümleyicinin (entries/domain/renderer.ts) kuralıyla aynı: "(bkz:" (harf
+  duyarsız), boşluk/satır sonu, 1–100 KOD NOKTASI hedef (")" ve satır sonu içermez), boşluk/satır
+  sonu, ")". Renderer deseni `u` bayraklı olduğu için uzunluk kod noktasıyla sayılır (Sol 6.1, 5.
+  tur: emoji iki UTF-16 birimi sayılıyordu). Düzenli ifade yerine doğrusal tarama (4. tur: kapanışsız
+  uzun boşlukta karesel geri izleme).
+*/
+function withoutBkzReferences(value: string): string {
+  const chars = Array.from(value);
+  const length = chars.length;
+  const nextNonSpace = nextIndexTable(length, (i) => !isSpace(chars[i]));
+  const nextTargetEnd = nextIndexTable(length, (i) => chars[i] === ")" || chars[i] === "\n");
+  const at = (next: Int32Array, index: number) => (index > length ? -1 : next[index]!);
+  const closeOf = (open: number): number => {
+    const start = at(nextNonSpace, open + 5);
+    if (start === -1) return -1;
+    const end = at(nextTargetEnd, start);
+    if (end === -1 || end === start) return -1;
+    // Hedef (sondaki boşluk hariç) en çok 100 kod noktası: 100'den sonrası yalnız boşluk olmalı.
+    if (end - start > 100) {
+      const afterLimit = at(nextNonSpace, start + 100);
+      if (afterLimit !== -1 && afterLimit < end) return -1;
+    }
+    if (chars[end] === ")") return end;
+    const close = at(nextNonSpace, end);
+    return close !== -1 && chars[close] === ")" ? close : -1;
+  };
+  let out = "";
+  let index = 0;
+  while (index < length) {
+    if (
+      chars[index] === "(" &&
+      chars
+        .slice(index, index + 5)
+        .join("")
+        .toLocaleLowerCase("tr-TR") === "(bkz:"
+    ) {
+      const close = closeOf(index);
+      if (close !== -1) {
+        out += " ";
+        index = close + 1;
+        continue;
+      }
+    }
+    out += chars[index];
+    index += 1;
+  }
+  return out;
+}
+
+/*
+  Tırnak içini doğrusal sürede boşlukla değiştirir; bkz'ler önceden temizlenmiş olmalı (Sol 6.1,
+  5. tur: bkz içindeki kesme işareti dış alıntıyı kapatıyordu).
+  - Çift tırnak (“…”, "…"): satır atlasa da alıntıdır.
+  - Tek tırnak: Türkçede aynı işaret kesme işaretidir ("Ankara’nın", "1980'den", "Guns N' Roses").
+    Açılış önünde harf/rakam olmayan, kapanış ardında harf/rakam olmayan ve AYNI TÜR (‘ ile ’,
+    ' ile ') işaret sayılır.
+*/
+function withoutQuotes(value: string): string {
+  const length = value.length;
+  const nextCurlyDouble = nextIndexTable(length, (i) => value[i] === "”");
+  const nextStraightDouble = nextIndexTable(length, (i) => value[i] === '"');
+  const nextCurlySingle = nextIndexTable(
+    length,
+    (i) => value[i] === "’" && !isWordChar(value[i + 1]),
+  );
+  const nextStraightSingle = nextIndexTable(
+    length,
+    (i) => value[i] === "'" && !isWordChar(value[i + 1]),
+  );
+  const at = (next: Int32Array, index: number) => (index > length ? -1 : next[index]!);
+  let out = "";
+  let index = 0;
+  while (index < length) {
+    const char = value[index]!;
+    let closeAt = -1;
+    if (char === "“") closeAt = at(nextCurlyDouble, index + 1);
+    else if (char === '"') closeAt = at(nextStraightDouble, index + 1);
+    else if (char === "‘" && !isWordChar(value[index - 1]))
+      closeAt = at(nextCurlySingle, index + 1);
+    else if (char === "'" && !isWordChar(value[index - 1]))
+      closeAt = at(nextStraightSingle, index + 1);
+    if (closeAt !== -1) {
+      out += " ";
+      index = closeAt + 1;
+      continue;
+    }
+    out += char;
+    index += 1;
+  }
+  return out;
+}
+
+function withoutQuotedSpans(value: string): string {
+  return withoutQuotes(withoutBkzReferences(value));
+}
+
+/**
+ * Adaydaki bütün "X de Y'nin parçası" çerçeveleri (onarım hepsini birlikte düzeltsin diye; Sol 6.1,
+ * 22 Ekim). "(sıfat) bir parçası" da kalıptır: yerel kopyada son 14 günde "… de … bir parçası"
+ * biçiminin 8 örneğinin 8'i kalıptı ("sürecin sıradan bir parçası"). Bilinçli takas: "krank mili
+ * de motorun bir parçasıdır" gibi gerçek parça tanımı da yakalanır; korpusta görülmedi ve bedeli
+ * tek bir onarım turudur.
+ */
+export function stockPartOfFrames(body: string): string[] {
+  const normalized = withoutQuotedSpans(body)
+    .normalize("NFKC")
+    .toLocaleLowerCase("tr-TR")
+    .replaceAll(/\s+/gu, " ");
+  return [...normalized.matchAll(stockPartOfFramePattern)].map((match) =>
+    match[0].replace(/^[^\p{L}]+/u, "").trim(),
+  );
+}
+
+/** İlk çerçeve (red gerekçesinde gösterilir). */
+export function stockPartOfFrame(body: string): string | null {
+  return stockPartOfFrames(body)[0] ?? null;
+}
+
+export function stockPartOfFrameReason(frame: string): string {
+  return `Üslup: aday entry “${frame}” kalıbıyla kurulmuş. “X de Y'nin parçası” çerçevesi sözlükte çok tekrarlanıyor ve başlığa yalnız bir madde daha ekliyor. Bilgiyi koru ama onu bir parça diye sunma; söylemek istediğin somut şeyi doğrudan anlat: ne oluyor, neden önemli, bir örnek.`;
 }
 
 /**

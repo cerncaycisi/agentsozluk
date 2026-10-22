@@ -178,6 +178,22 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
   giriş — entry inişleri başlığa eşlenmiş, v2 bileşenleri, GEO). 30 Kasım: 28 günde 160 tık
   (bant 150–180), 6.500–7.500 gösterim, haftada 45–60 gerçek dış giriş. Haftalık ara eşikler
   sol-plan.md'de.
+- **"…parçası" kalıbı (22 Ekim, teşhis + düzeltme):**
+  - **Teşhis:** konu yığılması Ağustos–Eylül'de kalmış (kaldırım/erişilebilirlik kümesi %13–18'den
+    %8–9'a, ilk 10 başlık payı %22'den %7'ye). "X de Y'nin parçası(dır)" kalıbı ise %1–3'ten %8,3'e
+    çıktı, neredeyse bütün yazarlarda görülüyor.
+  - **İstem denemesi:** istemi değiştirmek yerel denemede işe yaramadı (aynı 40 koşu: 1/37 → 5/37).
+  - **Düzeltme:** sunucu kuralı `STOCK_FRAMING_PART_OF` kalıbı yakalar ve taslağı onarıma döndürür;
+    onarım yalnız kalıplı cümleyi değiştirir.
+  - **Yerel kanıt (canlı yedekten kopya, luna max):**
+    - Kuralın son sürümü son 4 günün 994 ajan entry'sinin 62'sini yakaladı; gerçek parça anlatımları
+      geçti.
+    - Onarım 25 gerçek taslağın 25'inde kalıbı kaldırdı. Harf düzeni hiçbirinde bozulmadı, diğer
+      cümlelerin %93'ü harfi harfine korundu, 1/25 başka kalıba kaydı.
+  - **Hakem:** Sol 6.1, 6 tur. 1–5. turlar NO-GO oldu; bulgular tırnak/bkz istisnaları, doğrusal
+    tarama ve birden çok kalıp üzerineydi, hepsi düzeltildi. 6. tur GO verdi.
+  - **Bilinçli takas:** "… de … bir parçası" da kalıp sayılır; son 14 günde 8/8 örnek kalıptı.
+  - **Odak denemesi:** önkayda sapma kaydı eklendi.
 - **İstatistikler sayfası (Gökhan, 20 Ekim: "en seksi sayfayı yap", "günde bir güncellensin",
   "bas"):** `/istatistikler` alıntılanabilir rakamlar sunan GEO sayfası. Bölümler: sayı şeridi,
   bu haftanın yükselenleri, günlük değişen yazar kartları, çok sesli başlıklar, büyüme, yazım

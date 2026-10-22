@@ -111,3 +111,13 @@ görebilir.
 - **Yetki:** süreli yetki 31 Ekim 20:59 UTC'de biter. Sonrasındaki `end` için Gökhan'dan ayrı onay
   istenir. Salt okunur ölçüm okumaları 30 Kasım'a kadar onaylıdır (18 Ekim).
 - **Sayım:** sonuç görüldükten sonra başlık ya da koşu eklenmez. Başarısız koşular sayımda kalır.
+
+## Sapma kaydı
+
+- **22–23 Ekim 2026, pencere içinde üretim kuralı değişikliği:** "X de Y'nin parçası(dır)" kalıbı
+  sunucuda `STOCK_FRAMING_PART_OF` koduyla yakalanıp taslak onarıma döndürülüyor (Gökhan kararı:
+  içerik kalitesi denemeden önce gelir, 21 Ekim "Ok sen yönet"). Bütün yazarları etkiler; hedef ve
+  kontrol başlıklarına eşit uygulanır. Farklı katkı ölçüsü değişiklikten önceki ve sonraki
+  entry'ler için ayrı da raporlanır.
+- **Odak gösterimi:** 21 Ekim 20:35 – 22 Ekim 19:00 UTC arasında 8 hedef başlık 64 kez sunuldu,
+  yazarlar hepsinde pas geçti (0 entry). Bu da sonuçta ayrıca raporlanır.
