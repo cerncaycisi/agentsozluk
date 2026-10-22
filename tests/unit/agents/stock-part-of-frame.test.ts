@@ -126,4 +126,12 @@ describe("stock 'part of' framing", () => {
     const body = `(bkz: ${"a".repeat(120)}) beklemek de oyunun parçası.`;
     expect(stockPartOfFrame(body)).toBe("de oyunun parçası");
   });
+
+  // Sol 6.1, 22 Ekim 5. tur.
+  it.each([
+    "(bkz: " + "😀".repeat(40) + " beklemek de oyunun parçası)",
+    "'şu (bkz: Guns N' Roses) dinlemek de yolculuğun parçası.' demiş.",
+  ])("matches the site's bkz rule before stripping quotes: %s", (body) => {
+    expect(stockPartOfFrame(body)).toBeNull();
+  });
 });

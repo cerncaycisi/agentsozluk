@@ -438,47 +438,85 @@ const stockPartOfFramePattern =
 const isWordChar = (char: string | undefined) => char !== undefined && /[\p{L}\p{N}]/u.test(char);
 const isSpace = (char: string | undefined) => char !== undefined && /\s/u.test(char);
 
+/** Sağdan sola tek geçişte "bu konumdan itibaren ilk uygun konum" dizisi; yoksa -1. */
+function nextIndexTable(length: number, accept: (index: number) => boolean): Int32Array {
+  const next = new Int32Array(length + 1).fill(-1);
+  for (let index = length - 1; index >= 0; index -= 1)
+    next[index] = accept(index) ? index : next[index + 1]!;
+  return next;
+}
+
 /*
-  Tırnak ve bkz içini doğrusal sürede boşlukla değiştirir (Sol 6.1, 22 Ekim, 1.–4. tur). Her
-  "sonraki X" konumu sağdan sola bir kez hesaplanır; hiçbir açılış metni yeniden taramaz.
-  - bkz: sitedeki çözümleyicinin (entries/domain/renderer.ts) kuralıyla aynı: "(bkz:" (harf
-    duyarsız), ardından boşluk/satır sonu, 1–100 karakterlik hedef (")" ve satır sonu içermez),
-    ardından boşluk/satır sonu ve ")". Düzenli ifadeyle yapılınca kapanışsız uzun boşlukta karesel
-    geri izleme oluyordu (4. tur).
+  bkz temizliği, sitedeki çözümleyicinin (entries/domain/renderer.ts) kuralıyla aynı: "(bkz:" (harf
+  duyarsız), boşluk/satır sonu, 1–100 KOD NOKTASI hedef (")" ve satır sonu içermez), boşluk/satır
+  sonu, ")". Renderer deseni `u` bayraklı olduğu için uzunluk kod noktasıyla sayılır (Sol 6.1, 5.
+  tur: emoji iki UTF-16 birimi sayılıyordu). Düzenli ifade yerine doğrusal tarama (4. tur: kapanışsız
+  uzun boşlukta karesel geri izleme).
+*/
+function withoutBkzReferences(value: string): string {
+  const chars = Array.from(value);
+  const length = chars.length;
+  const nextNonSpace = nextIndexTable(length, (i) => !isSpace(chars[i]));
+  const nextTargetEnd = nextIndexTable(length, (i) => chars[i] === ")" || chars[i] === "\n");
+  const at = (next: Int32Array, index: number) => (index > length ? -1 : next[index]!);
+  const closeOf = (open: number): number => {
+    const start = at(nextNonSpace, open + 5);
+    if (start === -1) return -1;
+    const end = at(nextTargetEnd, start);
+    if (end === -1 || end === start) return -1;
+    // Hedef (sondaki boşluk hariç) en çok 100 kod noktası: 100'den sonrası yalnız boşluk olmalı.
+    if (end - start > 100) {
+      const afterLimit = at(nextNonSpace, start + 100);
+      if (afterLimit !== -1 && afterLimit < end) return -1;
+    }
+    if (chars[end] === ")") return end;
+    const close = at(nextNonSpace, end);
+    return close !== -1 && chars[close] === ")" ? close : -1;
+  };
+  let out = "";
+  let index = 0;
+  while (index < length) {
+    if (
+      chars[index] === "(" &&
+      chars
+        .slice(index, index + 5)
+        .join("")
+        .toLocaleLowerCase("tr-TR") === "(bkz:"
+    ) {
+      const close = closeOf(index);
+      if (close !== -1) {
+        out += " ";
+        index = close + 1;
+        continue;
+      }
+    }
+    out += chars[index];
+    index += 1;
+  }
+  return out;
+}
+
+/*
+  Tırnak içini doğrusal sürede boşlukla değiştirir; bkz'ler önceden temizlenmiş olmalı (Sol 6.1,
+  5. tur: bkz içindeki kesme işareti dış alıntıyı kapatıyordu).
   - Çift tırnak (“…”, "…"): satır atlasa da alıntıdır.
   - Tek tırnak: Türkçede aynı işaret kesme işaretidir ("Ankara’nın", "1980'den", "Guns N' Roses").
     Açılış önünde harf/rakam olmayan, kapanış ardında harf/rakam olmayan ve AYNI TÜR (‘ ile ’,
     ' ile ') işaret sayılır.
 */
-function withoutQuotedSpans(value: string): string {
+function withoutQuotes(value: string): string {
   const length = value.length;
-  const nextIndex = (accept: (index: number) => boolean) => {
-    const next = new Int32Array(length + 1).fill(-1);
-    for (let index = length - 1; index >= 0; index -= 1)
-      next[index] = accept(index) ? index : next[index + 1]!;
-    return next;
-  };
-  const nextCurlyDouble = nextIndex((i) => value[i] === "”");
-  const nextStraightDouble = nextIndex((i) => value[i] === '"');
-  const nextCurlySingle = nextIndex((i) => value[i] === "’" && !isWordChar(value[i + 1]));
-  const nextStraightSingle = nextIndex((i) => value[i] === "'" && !isWordChar(value[i + 1]));
-  const nextNonSpace = nextIndex((i) => !isSpace(value[i]));
-  const nextTargetEnd = nextIndex((i) => value[i] === ")" || value[i] === "\n");
+  const nextCurlyDouble = nextIndexTable(length, (i) => value[i] === "”");
+  const nextStraightDouble = nextIndexTable(length, (i) => value[i] === '"');
+  const nextCurlySingle = nextIndexTable(
+    length,
+    (i) => value[i] === "’" && !isWordChar(value[i + 1]),
+  );
+  const nextStraightSingle = nextIndexTable(
+    length,
+    (i) => value[i] === "'" && !isWordChar(value[i + 1]),
+  );
   const at = (next: Int32Array, index: number) => (index > length ? -1 : next[index]!);
-  const bkzClose = (open: number): number => {
-    const start = at(nextNonSpace, open + 5);
-    if (start === -1) return -1;
-    const end = at(nextTargetEnd, start);
-    if (end === -1 || end === start) return -1;
-    // Hedef (sondaki boşluk hariç) en çok 100 karakter: 100. karakterden sonrası yalnız boşluk olmalı.
-    if (end - start > 100) {
-      const afterLimit = at(nextNonSpace, start + 100);
-      if (afterLimit !== -1 && afterLimit < end) return -1;
-    }
-    if (value[end] === ")") return end;
-    const close = at(nextNonSpace, end);
-    return close !== -1 && value[close] === ")" ? close : -1;
-  };
   let out = "";
   let index = 0;
   while (index < length) {
@@ -490,8 +528,6 @@ function withoutQuotedSpans(value: string): string {
       closeAt = at(nextCurlySingle, index + 1);
     else if (char === "'" && !isWordChar(value[index - 1]))
       closeAt = at(nextStraightSingle, index + 1);
-    else if (char === "(" && value.slice(index, index + 5).toLocaleLowerCase("tr-TR") === "(bkz:")
-      closeAt = bkzClose(index);
     if (closeAt !== -1) {
       out += " ";
       index = closeAt + 1;
@@ -501,6 +537,10 @@ function withoutQuotedSpans(value: string): string {
     index += 1;
   }
   return out;
+}
+
+function withoutQuotedSpans(value: string): string {
+  return withoutQuotes(withoutBkzReferences(value));
 }
 
 /**
