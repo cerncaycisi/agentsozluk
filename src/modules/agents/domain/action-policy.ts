@@ -433,18 +433,63 @@ export function candidateFramingEdges(body: string): {
   gibi gerçek parça anlatımı yakalanmaz. Tırnak ve bkz içi sayılmaz.
 */
 const stockPartOfFramePattern =
-  /(?:^|[^\p{L}\p{N}_])(?:de|da)\s+(?:[^.!?;:,\n]{0,60}?\s)?[\p{L}'’]*n?[ıiuü]n\s+(?:bir\s+)?parçası(?:dır|dir)?(?:\s+(?:olur|oluyor|olabilir|olmalı|sayılır|sayılmalı))?\s*(?=$|[.;:!?,])/u;
+  /(?:^|[^\p{L}\p{N}_])(?:de|da)\s+(?:[^.!?;:,()\n]{0,60}?\s)?[\p{L}'’]*n?[ıiuü]n\s+parçası(?:dır|dir)?(?:\s+(?:olur|oluyor|olabilir|olmalı|sayılır|sayılmalı))?\s*(?=$|[.;:!?,()])/gu;
 
-/** Adaydaki "X de Y'nin parçası" çerçevesini döndürür (onarım gerekçesinde gösterilir). */
-export function stockPartOfFrame(body: string): string | null {
-  const normalized = body
-    .replaceAll(/["“][^"”\n]*["”]/gu, " ")
-    .replaceAll(/\(bkz:\s*[^)\n]{1,100}\s*\)/giu, " ")
+const quotePairs: Readonly<Record<string, string>> = { "“": "”", '"': '"', "‘": "’" };
+
+/*
+  Tırnak ve bkz içini doğrusal bir taramayla boşlukla değiştirir (Sol 6.1, 22 Ekim: düzenli ifadeyle
+  kapanışı olmayan açılışlar karesel tarama yapıyordu). Satır atlayan alıntı da tırnak içidir.
+  Kapanışı olmayan tırnaktan sonrası olduğu gibi kalır.
+*/
+function withoutQuotedSpans(value: string): string {
+  let out = "";
+  let index = 0;
+  while (index < value.length) {
+    const char = value[index]!;
+    const close = quotePairs[char];
+    if (close !== undefined) {
+      const closeAt = value.indexOf(close, index + 1);
+      if (closeAt === -1) {
+        out += value.slice(index);
+        break;
+      }
+      out += " ";
+      index = closeAt + 1;
+      continue;
+    }
+    if (value.startsWith("(bkz:", index) || value.startsWith("(Bkz:", index)) {
+      const closeAt = value.indexOf(")", index);
+      if (closeAt !== -1 && closeAt - index <= 110) {
+        out += " ";
+        index = closeAt + 1;
+        continue;
+      }
+    }
+    out += char;
+    index += 1;
+  }
+  return out;
+}
+
+/**
+ * Adaydaki bütün "X de Y'nin parçası" çerçeveleri (onarım hepsini birlikte düzeltsin diye; Sol 6.1,
+ * 22 Ekim). "<ilgi hâli> bir parçası" kapsam dışıdır: "krank mili de motorun bir parçasıdır" gerçek
+ * parça ilişkisidir; kalıp ise "bir" almadan kurulur.
+ */
+export function stockPartOfFrames(body: string): string[] {
+  const normalized = withoutQuotedSpans(body)
     .normalize("NFKC")
     .toLocaleLowerCase("tr-TR")
     .replaceAll(/\s+/gu, " ");
-  const match = stockPartOfFramePattern.exec(normalized);
-  return match ? match[0].replace(/^[^\p{L}]+/u, "").trim() : null;
+  return [...normalized.matchAll(stockPartOfFramePattern)].map((match) =>
+    match[0].replace(/^[^\p{L}]+/u, "").trim(),
+  );
+}
+
+/** İlk çerçeve (red gerekçesinde gösterilir). */
+export function stockPartOfFrame(body: string): string | null {
+  return stockPartOfFrames(body)[0] ?? null;
 }
 
 export function stockPartOfFrameReason(frame: string): string {

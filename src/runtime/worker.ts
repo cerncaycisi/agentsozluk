@@ -41,7 +41,7 @@ import { selectSourceReadItemsForPersona } from "@/runtime/source-relevance";
 import { RuntimeRunDeadline } from "@/runtime/run-deadline";
 import {
   candidateFramingEdges,
-  stockPartOfFrame,
+  stockPartOfFrames,
   duplicateRepairCandidateIsSafe,
   isRepairableContentRejectionCode,
   isTitleRepairableContentRejectionCode,
@@ -737,13 +737,13 @@ export function buildContentRepairPrompt(
         .join(" ");
     }
     if (rejectionCode === "STOCK_FRAMING_PART_OF") {
-      const frame = stockPartOfFrame(originalAction.input.body ?? "");
+      const frames = stockPartOfFrames(originalAction.input.body ?? "");
       return [
         "Reddin sebebi bilgi değil, kalıp:",
-        frame
-          ? `“${frame}” cümlesi “X de Y'nin parçası” çerçevesiyle kurulmuş.`
+        frames.length > 0
+          ? `${frames.map((frame) => `“${frame}”`).join(", ")} ${frames.length > 1 ? "cümleleri" : "cümlesi"} “X de Y'nin parçası” çerçevesiyle kurulmuş.`
           : "entry “X de Y'nin parçası” çerçevesiyle kurulmuş.",
-        "Yalnız bu cümleyi değiştir; entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Değiştirdiğin cümlede bilgiyi koru ama onu başlığa eklenen bir parça, bir madde daha diye sunma; söylemek istediğin somut şeyi doğrudan söyle (ne oluyor, kimi nasıl etkiliyor). “parçası”, “de hesaba girer”, “tek başına … değildir”, “gözden kaçar” gibi başka hazır kalıplara kaçma; başka bir entry'ye cevap verir gibi (“katılıyorum”, “katılmıyorum”) açma. Bu cümleyi kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
+        "Yalnız bu kalıbı taşıyan cümleleri değiştir (birden fazlaysa hepsini); entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Değiştirdiğin cümlede bilgiyi koru ama onu başlığa eklenen bir parça, bir madde daha diye sunma; söylemek istediğin somut şeyi doğrudan söyle (ne oluyor, kimi nasıl etkiliyor). “parçası”, “de hesaba girer”, “tek başına … değildir”, “gözden kaçar” gibi başka hazır kalıplara kaçma; başka bir entry'ye cevap verir gibi (“katılıyorum”, “katılmıyorum”) açma. Bu cümleleri kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
       ].join(" ");
     }
     if (rejectionCode === "TOPIC_SEMANTIC_REPETITION")

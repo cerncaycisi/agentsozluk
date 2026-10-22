@@ -3,6 +3,7 @@ import {
   isRepairableContentRejectionCode,
   stockPartOfFrame,
   stockPartOfFrameReason,
+  stockPartOfFrames,
 } from "@/modules/agents/domain/action-policy";
 
 /*
@@ -30,6 +31,9 @@ describe("stock 'part of' framing", () => {
     ],
     ["veri dosyasını kaydetmek de dersin parçası olmalı.", "de dersin parçası olmalı"],
     ["yağmur da şehrin parçası sayılır.", "da şehrin parçası sayılır"],
+    // Sol 6.1, 22 Ekim P3: parantez kalıbı denetimden kaçırmamalı.
+    ["(beklemek de oyunun parçası).", "de oyunun parçası"],
+    ["beklemek de oyunun parçası (süre böyle uzuyor).", "de oyunun parçası"],
   ])("catches %s", (body, frame) => {
     expect(stockPartOfFrame(body)).toBe(frame);
   });
@@ -41,6 +45,10 @@ describe("stock 'part of' framing", () => {
     '"Bu da işin parçası" diye bir laf var ama bence saçma.',
     "oyunun parçası olmak da bir tercih.",
     "(bkz: işin de bir parçası) güzel başlık.",
+    // Sol 6.1, 22 Ekim: gerçek parça tanımı ve tek tırnaklı / satır atlayan alıntı.
+    "krank mili de motorun bir parçasıdır.",
+    "‘beklemek de oyunun parçası.’ sözünü kullanmış.",
+    "şöyle demiş: “beklemek de oyunun\nparçası.” bence abartı.",
   ])("leaves real 'part' talk alone: %s", (body) => {
     expect(stockPartOfFrame(body)).toBeNull();
   });
@@ -48,5 +56,18 @@ describe("stock 'part of' framing", () => {
   it("is repairable and the reason quotes the frame", () => {
     expect(isRepairableContentRejectionCode("STOCK_FRAMING_PART_OF")).toBe(true);
     expect(stockPartOfFrameReason("da rotanın parçası")).toContain("“da rotanın parçası”");
+  });
+
+  it("returns every frame so one repair can fix them all", () => {
+    expect(stockPartOfFrames("beklemek de oyunun parçası. yürümek de yolculuğun parçası.")).toEqual(
+      ["de oyunun parçası", "de yolculuğun parçası"],
+    );
+  });
+
+  it("strips unmatched quotes in linear time", () => {
+    const body = "“a".repeat(20_000);
+    const started = performance.now();
+    expect(stockPartOfFrame(body)).toBeNull();
+    expect(performance.now() - started).toBeLessThan(200);
   });
 });
