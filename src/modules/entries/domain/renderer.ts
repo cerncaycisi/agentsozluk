@@ -2,6 +2,7 @@ import { linkifyit, type Match } from "linkify-it";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { publicProfileUrl } from "@/modules/indexing/domain/public-seo";
 import { parseUnopenedTopicSegment, unopenedTopicUrl } from "@/lib/routing/public-urls";
+import { traditionalBkzSource } from "@/modules/entries/domain/bkz-pattern";
 
 export type EntryToken =
   | { type: "text"; text: string }
@@ -24,8 +25,10 @@ export interface EntryReferenceCandidates {
 }
 
 const linkify = linkifyit({ fuzzyEmail: false, fuzzyLink: false });
-const referencePattern =
-  /\[\[([^\]\n]{2,100})\]\]|@([a-z0-9_]{3,30})|\(bkz:\s*([^\)\n]{1,100}?)\s*\)/giu;
+const referencePattern = new RegExp(
+  String.raw`\[\[([^\]\n]{2,100})\]\]|@([a-z0-9_]{3,30})|` + traditionalBkzSource,
+  "giu",
+);
 
 type ReferenceMatch = RegExpExecArray & {
   1: string | undefined;

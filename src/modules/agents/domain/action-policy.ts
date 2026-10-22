@@ -7,6 +7,7 @@ import {
   wordStart,
 } from "@/lib/text/word-boundary";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
+import { traditionalBkzSource } from "@/modules/entries/domain/bkz-pattern";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { exactSourceNumericClaims } from "@/modules/agents/domain/source-numbers";
 
@@ -435,19 +436,22 @@ export function candidateFramingEdges(body: string): {
 const stockPartOfFramePattern =
   /(?:^|[^\p{L}\p{N}_])(?:de|da)\s+(?:[^.!?;:,()\n]{0,60}?\s)?[\p{L}'’]*n?[ıiuü]n\s+(?:\p{L}+\s+)?(?:bir\s+)?parçası(?:dır|dir)?(?:\s+(?:olur|oluyor|olabilir|olmalı|sayılır|sayılmalı))?\s*(?=$|[.;:!?,()])/gu;
 
-const isLetter = (char: string | undefined) => char !== undefined && /\p{L}/u.test(char);
+const isWordChar = (char: string | undefined) => char !== undefined && /[\p{L}\p{N}]/u.test(char);
+const traditionalBkzPattern = new RegExp(traditionalBkzSource, "giu");
 
 /*
-  Tırnak ve bkz içini tek geçişte, doğrusal sürede boşlukla değiştirir (Sol 6.1, 22 Ekim, 1. ve 2.
-  tur). Her kapanış türü için "bu konumdan sonraki ilk geçerli kapanış" sağdan sola bir kez
-  hesaplanır; böylece kapanışı olmayan açılışlar yeniden tarama yapmaz.
+  Tırnak ve bkz içini doğrusal sürede boşlukla değiştirir (Sol 6.1, 22 Ekim, 1.–3. tur).
+  - bkz: sitedeki çözümleyicinin aynı deseni (`traditionalBkzSource`); geçerli bağlantı sayılan
+    her şey burada da sayılır. Desen hedefi 100 karakterle sınırlar, tarama doğrusaldır.
   - Çift tırnak (“…”, "…"): satır atlasa da alıntıdır.
-  - Tek tırnak (‘…’, '…'): Türkçede aynı işaret kesme işaretidir ("Ankara’nın"). Açılış önünde harf
-    olmayan, kapanış ardında harf olmayan işaret sayılır.
-  - bkz: büyük/küçük harf duyarsız "(bkz:", satır atlamadan en çok 100 karakter, ")" ile biter;
-    sitedeki bkz çözümleyicisiyle aynı sınırlar.
+  - Tek tırnak: Türkçede aynı işaret kesme işaretidir ("Ankara’nın", "1980'den", "Guns N' Roses").
+    Açılış önünde harf/rakam olmayan, kapanış ardında harf/rakam olmayan ve AYNI TÜR (‘ ile ’,
+    ' ile ') işaret sayılır.
+  Her kapanış türü için "bu konumdan sonraki ilk geçerli kapanış" sağdan sola bir kez hesaplanır;
+  kapanışı olmayan açılışlar yeniden tarama yapmaz.
 */
-function withoutQuotedSpans(value: string): string {
+function withoutQuotedSpans(raw: string): string {
+  const value = raw.replace(traditionalBkzPattern, " ");
   const length = value.length;
   const nextIndex = (accept: (index: number) => boolean) => {
     const next = new Int32Array(length + 1).fill(-1);
@@ -457,11 +461,8 @@ function withoutQuotedSpans(value: string): string {
   };
   const nextCurlyDouble = nextIndex((i) => value[i] === "”");
   const nextStraightDouble = nextIndex((i) => value[i] === '"');
-  const nextSingleClose = nextIndex(
-    (i) => (value[i] === "’" || value[i] === "'") && !isLetter(value[i + 1]),
-  );
-  const nextParen = nextIndex((i) => value[i] === ")");
-  const nextNewline = nextIndex((i) => value[i] === "\n");
+  const nextCurlySingle = nextIndex((i) => value[i] === "’" && !isWordChar(value[i + 1]));
+  const nextStraightSingle = nextIndex((i) => value[i] === "'" && !isWordChar(value[i + 1]));
   let out = "";
   let index = 0;
   while (index < length) {
@@ -469,14 +470,9 @@ function withoutQuotedSpans(value: string): string {
     let closeAt = -1;
     if (char === "“") closeAt = nextCurlyDouble[index + 1]!;
     else if (char === '"') closeAt = nextStraightDouble[index + 1]!;
-    else if ((char === "‘" || char === "'") && !isLetter(value[index - 1]))
-      closeAt = nextSingleClose[index + 1]!;
-    else if (char === "(" && value.slice(index, index + 5).toLocaleLowerCase("tr-TR") === "(bkz:") {
-      const paren = nextParen[index]!;
-      const newline = nextNewline[index]!;
-      if (paren !== -1 && paren - index <= 110 && (newline === -1 || newline > paren))
-        closeAt = paren;
-    }
+    else if (char === "‘" && !isWordChar(value[index - 1])) closeAt = nextCurlySingle[index + 1]!;
+    else if (char === "'" && !isWordChar(value[index - 1]))
+      closeAt = nextStraightSingle[index + 1]!;
     if (closeAt !== -1) {
       out += " ";
       index = closeAt + 1;

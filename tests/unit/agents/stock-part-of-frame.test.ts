@@ -73,10 +73,27 @@ describe("stock 'part of' framing", () => {
     );
   });
 
-  it("does not treat a bkz that spans a line break as a reference", () => {
+  it("does not treat a bkz that spans a line break inside the target as a reference", () => {
     expect(stockPartOfFrame("(bkz: başka başlık\nbeklemek de oyunun parçası.)")).toBe(
       "de oyunun parçası",
     );
+  });
+
+  // Sol 6.1, 22 Ekim 3. tur.
+  it.each([
+    [
+      "1980'den söz açıldı; beklemek de oyunun parçası. sonra 'başka bir söz' eklendi.",
+      "de oyunun parçası",
+    ],
+  ])("keeps apostrophes after digits from opening a quote: %s", (body, frame) => {
+    expect(stockPartOfFrame(body)).toBe(frame);
+  });
+
+  it.each([
+    "‘Guns N' Roses dinlemek de yolculuğun parçası.’ demiş.",
+    "(bkz:\nbeklemek de oyunun parçası)",
+  ])("treats the site's own quote and bkz forms as quoted: %s", (body) => {
+    expect(stockPartOfFrame(body)).toBeNull();
   });
 
   it.each(["“a", "(bkz:", "‘a"])("strips unmatched openers in linear time: %s", (opener) => {
