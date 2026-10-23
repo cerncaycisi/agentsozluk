@@ -108,8 +108,9 @@ görebilir.
   (tek ara bakış). Karagöz ya da moderasyon uydurma olgu işaretlerse, Gökhan bir entry'yi
   beğenmezse ya da Codex kotası uyarısı gelirse liste `end` ile kapatılır.
 - **Okur yüzeyi:** canlıdaki ilk 5 hedef entry Gökhan'a gösterilir.
-- **Yetki:** süreli yetki 31 Ekim 20:59 UTC'de biter. Sonrasındaki `end` için Gökhan'dan ayrı onay
-  istenir. Salt okunur ölçüm okumaları 30 Kasım'a kadar onaylıdır (18 Ekim).
+- **Yetki:** süreli yetki 30 Kasım 20:59 UTC'de biter (22 Ekim uzatması; önceki bitiş 31 Ekim).
+  Sonrasındaki `end` için Gökhan'dan ayrı onay istenir. Salt okunur ölçüm okumaları 30 Kasım'a
+  kadar onaylıdır (18 Ekim).
 - **Sayım:** sonuç görüldükten sonra başlık ya da koşu eklenmez. Başarısız koşular sayımda kalır.
 
 ## Sapma kaydı
@@ -119,5 +120,29 @@ görebilir.
   içerik kalitesi denemeden önce gelir, 21 Ekim "Ok sen yönet"). Bütün yazarları etkiler; hedef ve
   kontrol başlıklarına eşit uygulanır. Farklı katkı ölçüsü değişiklikten önceki ve sonraki
   entry'ler için ayrı da raporlanır.
-- **Odak gösterimi:** 21 Ekim 20:35 – 22 Ekim 19:00 UTC arasında 8 hedef başlık 64 kez sunuldu,
-  yazarlar hepsinde pas geçti (0 entry). Bu da sonuçta ayrıca raporlanır.
+- **Odak gösterimi:** 21 Ekim 20:35 – 22 Ekim 19:00 UTC arasında 36 koşuda 64 ham `offered`
+  olayı yazıldı (8 yazar × 8 başlığın her çifti bir kez). 23 Ekim'de bunların 28'inin hayalet
+  olduğu anlaşıldı (aşağıdaki madde): yazarın okuma seçimine ulaşan etkin sunum 36'dır. 2
+  doğrulanmış okuma, 0 entry. Önceki "64 kez sunuldu, hepsinde pas" ifadesi bu yüzden yanlıştı.
+- **23 Ekim 2026, bulunan mekanizma hatası ve düzeltmesi:** Koşu kaynak okuduktan sonra algı
+  temizlenip yeniden kuruluyor, yeniden kurulumda ikinci bir odak başlığı seçilip ikinci
+  `agent.focus.offered` yazılıyordu. Üretimde 36 sunumlu koşunun 28'inde iki sunum vardı. İlk
+  sunum yazarın okuma seçimine hiç ulaşmadan 3 günlük beklemeye girdi; okuma ve yazım atfı ile
+  yazım tavanı yalnız ilk sunuma bakıyordu. Hata Sol 6.1 incelemesiyle bulundu, üretim
+  olaylarıyla doğrulandı. Tespit anında 0 entry ve 2 okuma biliniyordu; kör katkı
+  değerlendirmesi ve organik giriş sonucu henüz değerlendirilmemişti.
+  - **Düzeltme:** koşuda sunum varsa yeni seçim ve yeni olay yok; liste hâlâ aynı ve başlık
+    ACTIVE ise aynı başlık yeniden kullanılır, değilse odak eklenmez. Başlık, yazar, bekleme
+    süresi, istem, menü yerleşimi, T0, bitiş, ölçüt ve eşik değişmedi. Düzeltme, toplum akışı
+    duraklatılıp çift sunumlu eski koşular bittikten sonra canlıya çıkar.
+  - **Ölçüm:** tarihsel etkin sunum koşu başına son `offered` olayıdır; modele ulaşmamış
+    başarısız koşu sunum sayılmaz ama sayımdan da çıkarılmaz. Ham `offered` sayısı (`status`
+    çıktısı) düzeltme öncesi için etkin sunum değildir. Hayalet sunumların başlattığı
+    beklemeler üretim verisinde düzeltilmedi; her çift kendi son sunumundan 72 saat sonra
+    yeniden uygun olur. Ölçü 1'in tam pencere hükmü özgün tanımıyla verilir; düzeltme öncesi
+    ve sonrası ayrımı ek rapordur. Ölçü 2'nin tarihi ve eşikleri değişmez, mekanizma kusuru
+    yorumda belirtilir.
+  - **Karar:** Claude ve Sol 6.1 ortak kararı (Gökhan, 23 Ekim: "ortak karar verin").
+    Düzeltme yeni sunumlar başlamadan (24 Ekim ~20:40 UTC) canlıya çıkamazsa liste bilinen
+    hatayla sürdürülmez, teknik arıza gerekçesiyle `end` ile kapatılır; bu, düşük katkı
+    nedeniyle erken hüküm değildir. Takvim için test, hakem ya da dağıtım kapısı atlanmaz.

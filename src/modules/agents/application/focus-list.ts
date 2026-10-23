@@ -177,7 +177,8 @@ export async function getFocusListStatus(client: DatabaseExecutor, now: Date = n
 
 /*
   Algı kurulurken çağrılır (yalnız ilk kurulum; dondurulmuş algı yeniden seçilmez). Uygun
-  koşuda en çok bir başlık döner ve `agent.focus.offered` olayı aynı transaction'da yazılır.
+  koşuda en çok bir başlık döner ve `agent.focus.offered` olayı aynı transaction'da yazılır;
+  algı yeniden kurulursa aynı sunum yeniden kullanılır.
   Çağıran, `getRuntimeRunContext` ayar kilidini zaten tutar; liste oluşturma ve kapatma ile
   sıralanır.
 */
@@ -194,6 +195,18 @@ export async function pickRuntimeFocusTopic(
 ): Promise<{ id: string; title: string } | null> {
   if (run.runType !== "NORMAL_WAKE") return null;
   const list = await findActiveFocusListRecord(transaction, now);
+  /*
+    Koşu başına tek sunum (23 Ekim 2026, Sol 6.1 ile ortak karar). Kaynak sonucu kaydedilince
+    algı temizlenip yeniden kuruluyor; eskiden bu ikinci kurulum yeni bir başlık seçip ikinci
+    `offered` yazıyordu. İlk sunum modele okuma seçiminde hiç gösterilmeden 3 günlük beklemeye
+    giriyor, okuma ve yazım atfı da gösterilen başlığı kaçırıyordu. Bu koşuda zaten sunum varsa
+    yeni seçim ve yeni olay yok: liste hâlâ etkinse aynı başlık döner, değilse menüye odak girmez.
+  */
+  const existing = await findRunFocusOffer(transaction, run.id);
+  if (existing) {
+    if (!list || list.id !== existing.focusListId) return null;
+    return findFocusTopicTitle(transaction, existing.topicId);
+  }
   const context = {
     agentProfileId: run.agentProfileId,
     runType: run.runType,
