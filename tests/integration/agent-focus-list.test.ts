@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { AppError } from "@/lib/http/errors";
 import {
@@ -413,6 +414,124 @@ describe("süreli odak listesi (PostgreSQL)", () => {
     const firstTopic = status!.topics.find(({ topicId }) => topicId === offered[0])!;
     expect(firstTopic).toMatchObject({ offered: 1, read: 1, written: 0, passed: 1, pending: 0 });
     expect(status!.agentUsernames).toContain(seeded.runner.user.username);
+  }, 180_000);
+
+  it("algı yeniden kurulsa da koşu başına tek sunum; okuma ve yazım aynı başlığa bağlanır (23 Ekim)", async () => {
+    const seeded = await seed();
+    const actor = adminActor(seeded.admin.id);
+    const focusIds = [seeded.eligibleA.id, seeded.eligibleB.id];
+    await createFocusList(
+      integrationDatabase,
+      actor,
+      createInput(seeded, [seeded.eligibleA, seeded.eligibleB]),
+    );
+    // Kaynak sonucu kaydı algıyı temizler (repository/runtime.ts); worker bağlamı yeniden ister.
+    const clearPerception = (runId: string) =>
+      integrationDatabase.agentRun.update({
+        where: { id: runId },
+        data: { perceptionSummary: Prisma.DbNull },
+      });
+
+    const started = await startRun(seeded.runner);
+    await context(started);
+    const firstOffered = interestIds(await storedPerception(started.run.id)).filter((id) =>
+      focusIds.includes(id),
+    );
+    expect(firstOffered).toHaveLength(1);
+    await clearPerception(started.run.id);
+    await context(started);
+    const rebuilt = await storedPerception(started.run.id);
+    expect(interestIds(rebuilt).filter((id) => focusIds.includes(id))).toEqual(firstOffered);
+    expect(await focusEvents(started.run.id, "agent.focus.offered")).toHaveLength(1);
+
+    await context(started, [firstOffered[0]!]);
+    expect(await focusEvents(started.run.id, "agent.focus.read")).toHaveLength(1);
+    await expect(
+      runtimeFocusWriteGuard(integrationDatabase, {
+        runId: started.run.id,
+        authorId: seeded.runner.user.id,
+        topicId: firstOffered[0]!,
+      }),
+    ).resolves.toMatchObject({ status: "OFFERED", topicId: firstOffered[0], enforced: true });
+    // Tavan dolunca yeniden kurulmuş koşuda da yazım reddedilir (Sol 6.1, ortak karar K3).
+    for (const body of ["tavan entry bir", "tavan entry iki"])
+      await integrationDatabase.entry.create({
+        data: {
+          topicId: firstOffered[0]!,
+          authorId: seeded.outsider.user.id,
+          origin: "AGENT",
+          body,
+          normalizedBody: body,
+        },
+      });
+    await expect(
+      runtimeFocusWriteGuard(integrationDatabase, {
+        runId: started.run.id,
+        authorId: seeded.runner.user.id,
+        topicId: firstOffered[0]!,
+      }),
+    ).resolves.toMatchObject({ status: "REJECTED", code: "FOCUS_TOPIC_CAP_REACHED" });
+
+    // Başlık koşu sırasında G4'e göre inceleşirse yeniden kurulumda odak eklenmez (Sol 6.1, P2).
+    const visible = await integrationDatabase.entry.findMany({
+      where: { topicId: firstOffered[0]!, status: "ACTIVE" },
+      select: { id: true },
+    });
+    await integrationDatabase.entry.updateMany({
+      where: { id: { in: visible.map(({ id }) => id) } },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    await clearPerception(started.run.id);
+    await context(started);
+    expect(
+      interestIds(await storedPerception(started.run.id)).filter((id) => focusIds.includes(id)),
+    ).toHaveLength(0);
+    expect(await focusEvents(started.run.id, "agent.focus.offered")).toHaveLength(1);
+    await integrationDatabase.entry.updateMany({
+      where: { id: { in: visible.map(({ id }) => id) } },
+      data: { status: "ACTIVE", hiddenAt: null },
+    });
+
+    // Başlık ACTIVE değilse yeniden kurulumda başka aday seçilmez.
+    await integrationDatabase.topic.update({
+      where: { id: firstOffered[0]! },
+      data: { status: "HIDDEN" },
+    });
+    await clearPerception(started.run.id);
+    await context(started);
+    expect(
+      interestIds(await storedPerception(started.run.id)).filter((id) => focusIds.includes(id)),
+    ).toHaveLength(0);
+    expect(await focusEvents(started.run.id, "agent.focus.offered")).toHaveLength(1);
+    await integrationDatabase.topic.update({
+      where: { id: firstOffered[0]! },
+      data: { status: "ACTIVE" },
+    });
+
+    // Koşu sürerken liste kapanırsa yeniden kurulumda odak yok, yeni sunum da yok.
+    await endFocusList(integrationDatabase, actor, { reason: "koşu içinde kapatma testi" });
+    await clearPerception(started.run.id);
+    await context(started);
+    expect(
+      interestIds(await storedPerception(started.run.id)).filter((id) => focusIds.includes(id)),
+    ).toHaveLength(0);
+    expect(await focusEvents(started.run.id, "agent.focus.offered")).toHaveLength(1);
+    // Kapalı listede atıf korunur, tavan uygulanmaz.
+    await expect(
+      runtimeFocusWriteGuard(integrationDatabase, {
+        runId: started.run.id,
+        authorId: seeded.runner.user.id,
+        topicId: firstOffered[0]!,
+      }),
+    ).resolves.toMatchObject({ status: "OFFERED", enforced: false });
+    // Yeni liste açılsa da aynı koşu yeni sunum almaz (liste değişti).
+    await createFocusList(integrationDatabase, actor, createInput(seeded, [seeded.eligibleB]));
+    await clearPerception(started.run.id);
+    await context(started);
+    expect(
+      interestIds(await storedPerception(started.run.id)).filter((id) => focusIds.includes(id)),
+    ).toHaveLength(0);
+    expect(await focusEvents(started.run.id, "agent.focus.offered")).toHaveLength(1);
   }, 180_000);
 
   it("kapatma anında geçerlidir ve denetlenir", async () => {

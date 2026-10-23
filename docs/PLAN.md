@@ -149,6 +149,12 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      Gökhan 20 Ekim'de onayladı ("yes"). T0 21 Ekim 09:00 UTC, bitiş 4 Kasım 09:00 UTC. İlk 5
      hedef entry Gökhan'a gösterilir. Odak listesi istem ve persona değiştirmediği için ayrı
      yerel model denemesi yapılmadı; ilk 5 entry gösterimi bunun yerine geçer.
+   - **Durum (23 Ekim):** T0 gerçekte 21 Ekim 20:35 UTC, bitiş 4 Kasım 20:00 UTC. Sol 6.1
+     incelemesi mekanizma hatası buldu: kaynak okumadan sonra algı yeniden kurulunca aynı koşuya
+     ikinci odak başlığı sunuluyordu (36 koşunun 28'i). Düzeltme Claude ve Sol 6.1 ortak kararıyla
+     yapıldı (Gökhan: "ortak karar verin"); başlık, yazar, bekleme ve eşik değişmedi. 24 Ekim
+     ~20:40 UTC'deki yeni sunumlardan önce canlıya çıkamazsa liste teknik arıza gerekçesiyle
+     kapatılır. Ayrıntı önkaydın sapma kaydında.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 

@@ -266,7 +266,7 @@ export function findFocusTopicsByPublicIds(
   `;
 }
 
-function findFocusTopicsByIds(
+export function findFocusTopicsByIds(
   transaction: Prisma.TransactionClient,
   ids: readonly string[],
   now: Date,
