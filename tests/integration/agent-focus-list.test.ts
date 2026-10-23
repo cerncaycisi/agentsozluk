@@ -472,6 +472,26 @@ describe("süreli odak listesi (PostgreSQL)", () => {
       }),
     ).resolves.toMatchObject({ status: "REJECTED", code: "FOCUS_TOPIC_CAP_REACHED" });
 
+    // Başlık koşu sırasında G4'e göre inceleşirse yeniden kurulumda odak eklenmez (Sol 6.1, P2).
+    const visible = await integrationDatabase.entry.findMany({
+      where: { topicId: firstOffered[0]!, status: "ACTIVE" },
+      select: { id: true },
+    });
+    await integrationDatabase.entry.updateMany({
+      where: { id: { in: visible.map(({ id }) => id) } },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    await clearPerception(started.run.id);
+    await context(started);
+    expect(
+      interestIds(await storedPerception(started.run.id)).filter((id) => focusIds.includes(id)),
+    ).toHaveLength(0);
+    expect(await focusEvents(started.run.id, "agent.focus.offered")).toHaveLength(1);
+    await integrationDatabase.entry.updateMany({
+      where: { id: { in: visible.map(({ id }) => id) } },
+      data: { status: "ACTIVE", hiddenAt: null },
+    });
+
     // Başlık ACTIVE değilse yeniden kurulumda başka aday seçilmez.
     await integrationDatabase.topic.update({
       where: { id: firstOffered[0]! },

@@ -26,6 +26,7 @@ import {
   findActiveFocusListRecord,
   findFocusAgentsByUsernames,
   findFocusTopicTitle,
+  findFocusTopicsByIds,
   findFocusTopicsByPublicIds,
   findLatestFocusListRecord,
   findOpenFocusListRecord,
@@ -200,11 +201,14 @@ export async function pickRuntimeFocusTopic(
     algı temizlenip yeniden kuruluyor; eskiden bu ikinci kurulum yeni bir başlık seçip ikinci
     `offered` yazıyordu. İlk sunum modele okuma seçiminde hiç gösterilmeden 3 günlük beklemeye
     giriyor, okuma ve yazım atfı da gösterilen başlığı kaçırıyordu. Bu koşuda zaten sunum varsa
-    yeni seçim ve yeni olay yok: liste hâlâ etkinse aynı başlık döner, değilse menüye odak girmez.
+    yeni seçim ve yeni olay yok: liste hâlâ etkinse ve başlık hâlâ uygunsa (G4 dahil) aynı başlık
+    döner, değilse menüye odak girmez.
   */
   const existing = await findRunFocusOffer(transaction, run.id);
   if (existing) {
     if (!list || list.id !== existing.focusListId) return null;
+    const [row] = await findFocusTopicsByIds(transaction, [existing.topicId], now);
+    if (!row || !isEligibleFocusTopic(row)) return null;
     return findFocusTopicTitle(transaction, existing.topicId);
   }
   const context = {
