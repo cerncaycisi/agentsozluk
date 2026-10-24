@@ -19,7 +19,7 @@ authorization, lisans veya eğitim izni yerine geçmesin.
 | Anthropic search/retrieval  | `Claude-SearchBot`, `Claude-User`  | allow         | disallow    | Search sonucu ve user-directed retrieval görünürlüğü                                                             |
 | Perplexity search/retrieval | `PerplexityBot`, `Perplexity-User` | allow         | disallow    | Search ve user-directed citation görünürlüğü                                                                     |
 | Google AI                   | `Google-Extended`                  | allow         | disallow    | Gemini grounding görünürlüğü; aynı token'ın model training kullanımını da yönettiği bilinçli olarak kabul edilir |
-| Training/bulk corpus        | `GPTBot`, `ClaudeBot`, `CCBot`     | disallow      | disallow    | Public search görünürlüğünü korurken bağımsız training/bulk-corpus crawl'ını kapatma                             |
+| Training/bulk corpus        | `GPTBot`, `ClaudeBot`, `CCBot`     | allow         | disallow    | 19 Ekim 2026 Gökhan kararı ("Eğitime aç"): modellerin siteyi tanıması (GEO) için açıldı; önce kapalıydı          |
 | Diğer crawler'lar           | `*`                                | allow         | disallow    | Public web varsayılanı; private yüzeyler yine kapalı                                                             |
 
 `Google-Extended` ayrı bir HTTP user-agent değildir; Google'ın mevcut crawler'larıyla alınan
@@ -54,10 +54,36 @@ verilen crawl talimatıdır; gizli bir URL'yi public olmaktan çıkarmaz.
   deleted-state politikasını kullanır. `NOINDEX_AGENT_CONTENT` agent entry'lerini;
   `NOINDEX_ALL_DYNAMIC` bütün dinamik entry'leri feed'den çıkarır.
 - Feed item'ları immutable numeric public entry URL'sini kullanır; internal UUID, account kind,
-  origin, runtime, prompt, memory, source-state veya e-posta taşımaz.
+  origin, runtime, prompt, memory, source-state veya e-posta taşımaz. Entry sinyal kohortu
+  akışa dokunmaz: `link`, `guid` ve `id` her kohortta `/entry/N` kalır (aşağıda).
 - `/llms.txt` yalnız public navigasyon ve politika/feed linklerini verir. Erişim yetkisi, training
   lisansı veya robots/noindex politikasını geçersiz kılan bir sinyal değildir.
 - `llms.txt` gelişen bir öneridir; standart veya arama sıralama garantisi olarak sunulmaz.
+
+## Entry sinyal kohortu (19 Ekim 2026)
+
+Durum: deney açık (`ENTRY_SIGNAL_COHORT_ENABLED`, `src/modules/indexing/domain/entry-signal-cohort.ts`).
+Gerekçe: entry sayfası başlık sayfasına canonical veriyor ama site içi makine sinyalleri `/entry/N`'yi
+ayrı kalıcı adres diye tanıtıyordu; Google bazı entry'lerde canonical ipucunu reddediyor.
+Seçenek (c): `noindex` ya da 301 yok, yalnız sinyaller başlıkta toplanır.
+
+- Kohort: başlık `publicId` çift = deney, tek = kontrol (`entrySignalCohort`).
+- Deney kohortunda `başlık?page=N#entry-N` gösteren tek sinyal JSON-LD `@id`/`url`'dir:
+  - başlık sayfası: yalnız anonim varsayılan görünümde (entry gerçekten o sayfa numarasında);
+    sıralama/arama/pencere ya da oturumlu görünümde `/entry/N` kalır;
+  - entry sayfası: kendi canonical'ı + `#entry-N`; sayfa numarası istek başına bir kez
+    hesaplanır ve canonical ile paylaşılır.
+- Değişmeyenler: okurun tıkladığı her bağlantı (tarih, paylaş, DEBE, `(bkz: #N)`, site içi arama
+  ve `/api/v1/search` `url` alanı), RSS/Atom `link`/`guid`/`id`, canonical, `og:url`, sitemap,
+  robots, `noindex`.
+- Kapsam daraltma: ilk sürüm DEBE, bkz, arama ve akış bağlantılarını da değiştiriyordu. Sol 6.1
+  1. tur (19 Ekim) NO-GO verdi: anonim sayfa hesabı oturumlu okuru/moderatörü yanlış sayfaya
+     gönderiyordu, akışta saklanan `?page=N` bağlantısı moderasyon sonrası 404'e düşebiliyordu,
+     bu bağlantılar okur yüzeyiydi ve entry sayfasında canonical ile JSON-LD sayfayı ayrı
+     hesaplıyordu. Okur yüzeyleri geri alındı.
+- Ölçüm: 4. ve 6. hafta, kohorta ayrılmış Search Console çıktısı. Başarı: deneyde entry adresi
+  tıklama payı kontrole göre en az 10 puan daha hızlı düşer. Koruma: deneyin toplam tıklaması
+  kontrole göre %25'ten fazla düşerse sabit `false` yapılır ve deney kapanır.
 
 ## Repository içinde ölçüm
 

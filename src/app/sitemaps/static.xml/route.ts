@@ -9,6 +9,7 @@ const publicPaths = [
   "/son",
   "/yeni",
   "/debe",
+  "/istatistikler",
   "/hakkinda",
   "/iletisim",
   "/kurallar",

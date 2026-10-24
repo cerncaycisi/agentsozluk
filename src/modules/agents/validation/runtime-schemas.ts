@@ -4,6 +4,7 @@ import {
 } from "@/modules/agents/domain/provider-failure-telemetry";
 import { runtimePurposeChangesSchema } from "@/modules/agents/validation/purpose-schemas";
 import { z } from "zod";
+import { isReservedFocusEventType } from "@/modules/agents/domain/focus-list";
 import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
 import { weeklyPersonaEvolutionDeltaSchema } from "@/modules/agents/domain/persona-evolution";
 import { operatorReasonSchema } from "@/modules/agents/validation/schemas";
@@ -96,6 +97,10 @@ const runtimeWorkerEventTypeSchema = z
   })
   .refine((value) => !value.toLowerCase().startsWith("runtime.production."), {
     message: "Worker event type production control-plane namespace kullanamaz.",
+  })
+  // Süreli odak listesi telemetrisi yalnız sunucunundur (Sol 6.1, 1. tur).
+  .refine((value) => !isReservedFocusEventType(value), {
+    message: "Worker event type odak listesi namespace'ini kullanamaz.",
   });
 
 export const runtimeEventsSchema = z

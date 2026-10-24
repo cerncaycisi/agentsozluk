@@ -21,6 +21,10 @@ import {
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { lockTopicState } from "@/modules/topics/repository/topics";
 import {
+  recordRuntimeFocusTopicWritten,
+  runtimeFocusWriteGuard,
+} from "@/modules/agents/application/focus-list";
+import {
   agentSourceProposalOrigin,
   runtimeSourceSuggestionLimits,
 } from "@/modules/agents/domain/runtime-source-proposal";
@@ -81,6 +85,8 @@ import {
   hasUnrecordedOfflineFirstPersonClaim,
   repeatedEntryFraming,
   repeatedEntryFramingReason,
+  stockPartOfFrame,
+  stockPartOfFrameReason,
   seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
   topicSemanticRepetition,
@@ -1468,6 +1474,12 @@ export async function executeRuntimeAction(
               code: "DUPLICATE_FRAMING",
               reason: repeatedEntryFramingReason(repeatedFraming),
             });
+          const partOfFrame = stockPartOfFrame(candidateBody);
+          if (partOfFrame)
+            return rejectAction(transaction, principal, actionRecord, {
+              code: "STOCK_FRAMING_PART_OF",
+              reason: stockPartOfFrameReason(partOfFrame),
+            });
           /*
             Kendi geçmişi önce bakılıyor. İkisi de tetiklenebiliyorsa yazara daha
             uygulanabilir olanı söylenmeli: kendi yazdığını tekrar ettiğini bilmek,
@@ -1635,6 +1647,39 @@ export async function executeRuntimeAction(
           });
       }
       /*
+        Süreli odak listesi (Sol 6.1, 1. ve 2. tur): entry'nin gerçekten yazılacağı başlık bu
+        koşuda sunulan odak başlığıysa, o başlığın kilidi altında 2 entry tavanı ve "aynı yazar
+        ikinci kez yazmaz" kuralı yeniden sayılır (liste etkinken). Her yayım yolu aynı
+        denetimden geçer: `CREATE_ENTRY` burada, `CREATE_TOPIC_WITH_ENTRY`'nin var olan başlığa
+        çözülen yolu `existingTopicGuard` içinde. Odak dışındaki yazımlar etkilenmez.
+      */
+      let focusWrite: Awaited<ReturnType<typeof runtimeFocusWriteGuard>> = {
+        status: "NOT_FOCUS",
+      };
+      const guardFocusWrite = async (topicId: string) => {
+        focusWrite = await runtimeFocusWriteGuard(transaction, {
+          runId,
+          authorId: principal.actor.actorId,
+          topicId,
+        });
+        if (focusWrite.status === "REJECTED")
+          throw new RuntimeActionRejectionError(focusWrite.code, focusWrite.reason);
+      };
+      if (parsed.data.actionType === "CREATE_ENTRY" && resolvedTarget.topicId) {
+        // Başlık kilidi yukarıda alındı; saat denetimin içinde, kilitten sonra okunur.
+        const decision = await runtimeFocusWriteGuard(transaction, {
+          runId,
+          authorId: principal.actor.actorId,
+          topicId: resolvedTarget.topicId,
+        });
+        if (decision.status === "REJECTED")
+          return rejectAction(transaction, principal, actionRecord, {
+            code: decision.code,
+            reason: decision.reason,
+          });
+        focusWrite = decision;
+      }
+      /*
         Ön çözümleme var olan bir başlık bulduysa ve o başlık yazmadan önce gizlenirse servis
         yeni başlık açardı; o zaman yeni başlık anayasa denetimi de atlanmış olurdu (Astra #371
         2. tur). Çözümleme değiştiyse yazma yerine reddedilir; bu koruma tavandan bağımsızdır
@@ -1665,15 +1710,23 @@ export async function executeRuntimeAction(
                 );
             }
           : undefined;
+      const existingTopicGuard = blindTopicGuard
+        ? async (guardTransaction: DatabaseExecutor, topic: { id: string; title: string }) => {
+            await blindTopicGuard(guardTransaction, topic);
+            // Çözülen başlığın kilidi `guardExistingTopic` içinde alınmıştır.
+            await guardFocusWrite(topic.id);
+          }
+        : undefined;
       const execution = await performAction(
         transaction,
         principal,
         parsed.data,
         resolvedTarget,
-        blindTopicGuard,
+        existingTopicGuard,
         newTopicGuard,
         topicQuotaAt,
       );
+      const focusOutcome = focusWrite as Awaited<ReturnType<typeof runtimeFocusWriteGuard>>;
       if (traversedLinkedTopicId)
         await appendRuntimeEvent(transaction, {
           agentProfileId: principal.agentProfileId,
@@ -1726,6 +1779,20 @@ export async function executeRuntimeAction(
           runId,
           actionId: actionRecord.id,
           createdAt: now,
+        });
+      if (
+        focusOutcome.status === "OFFERED" &&
+        execution.entryId &&
+        executionTopicId === focusOutcome.topicId
+      )
+        await recordRuntimeFocusTopicWritten(transaction, {
+          runId,
+          actionId: actionRecord.id,
+          agentProfileId: principal.agentProfileId,
+          focusListId: focusOutcome.focusListId,
+          topicId: focusOutcome.topicId,
+          entryId: execution.entryId,
+          now,
         });
       const actionProvenance = parsed.data.provenance ?? {
         evidenceType: "PLATFORM_EVENT" as const,

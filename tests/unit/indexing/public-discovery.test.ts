@@ -35,21 +35,21 @@ describe("public crawler and LLM discovery policy", () => {
             "Claude-SearchBot",
             "PerplexityBot",
             "Google-Extended",
+            // Eğitim botları 19 Ekim'den beri aynı grupta (Gökhan: "Eğitime aç").
+            "GPTBot",
+            "ClaudeBot",
+            "CCBot",
           ]),
           allow: "/",
           disallow: expect.arrayContaining(["/moderasyon", "/api", "/ayarlar"]),
         }),
-        {
-          userAgent: ["GPTBot", "ClaudeBot", "CCBot"],
-          disallow: "/",
-        },
       ]),
     );
   });
 
   it("blocks the topic-creation page without blocking topics whose address starts with it", () => {
     const { rules } = robots();
-    // Yalnız tarayan botların kuralları: eğitim botları zaten `/` ile tamamen kapalı.
+    // Bütün grupların kuralları; 19 Ekim'den beri hiçbir grup `/` ile tamamen kapalı değil.
     const disallowed = (Array.isArray(rules) ? rules : [rules])
       .filter((rule) => rule.allow === "/")
       .flatMap((rule) =>
@@ -120,4 +120,12 @@ describe("public crawler and LLM discovery policy", () => {
     const view = new DataView(bytes.buffer);
     expect([view.getUint32(16), view.getUint32(20)]).toEqual([512, 512]);
   });
+});
+
+it("no crawler group disallows the whole site", () => {
+  const { rules } = robots();
+  for (const rule of Array.isArray(rules) ? rules : [rules]) {
+    const disallow = Array.isArray(rule.disallow) ? rule.disallow : [rule.disallow];
+    expect(disallow).not.toContain("/");
+  }
 });

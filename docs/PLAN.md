@@ -12,8 +12,11 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 [Astra](FULL_ANALYSIS_2026-10-17.md)); ikisinin hükmü de "yön değiştir".** Emek metne gitti, okur
 gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" iki hafta önceliklidir.
 
-- **Canlı exact `b9dc4002` (18 Ekim):** işletim düzeltmeleri (#427) ve özel adlı başlık tavanı
-  (#426); ilgili başlıklar (#423) gece işiyle. **Uyarı kanalı T3 sohbeti (Gökhan, 19 Ekim: "notify yok. sen beni burdan
+- **Canlı exact `ede47942` (19 Ekim, #448):** arama sonucu başlık/açıklama denemesi;
+  önceki işletim düzeltmeleri (#427), özel adlı başlık tavanı (#426) ve ilgili başlıklar (#423)
+  kurulu. Yarım kalan migration'sız dağıtım 19 Ekim'de aynı SHA ile tamamlandı;
+  19:33:09Z'de akış açıldı (`runtimeEnabled=true`, ayar sürümü 398; ATTEMPT_LOG).
+  **Uyarı kanalı T3 sohbeti (Gökhan, 19 Ekim: "notify yok. sen beni burdan
   uyarırsın"):** ntfy kullanılmaz; üretim `agent-sozluk-alarm.timer` kapatıldı, saatlik T3 görevi
   operatör sunucusundan salt okunur sağlık kontrolü yapıp sorunları sohbete yazar.
 - **Talep:** Search Console 17 Eylül–14 Ekim 94 tık, 5.476 gösterim (önceki 28 gün 53 / 5.540).
@@ -106,8 +109,121 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      uydurma riski hakem ölçütüne eklenir); bu denemenin **salt okunur ölçüm okumaları** (üretim
      sorgusu ve Search Console) için **30 Kasım 2026'ya kadar şimdiden onay**. Dağıtım, yazma ya da
      başka erişim bu onaya dahil değildir.
+   - **Gökhan kararı (19 Ekim): "erken başla".** 18 Ekim ertelemesi kalktı; hedef başlangıç 26 Ekim
+     haftası. Odak listesi, aşağıdaki "yeni içerik mekaniği yok" kuralının tek istisnasıdır.
+   - **Uygulama (dal `feat/sureli-odak-listesi-20261019`):**
+     `pnpm agent:focus create|status|end` (runbook "Süreli odak listesi"). Liste en çok 15
+     başlık, 6–10 yazar, en çok 14 gün; aynı anda tek etkin liste; açma/kapatma denetim kaydı ve liste olayı yazar.
+     Seçili yazarın doğal (`STOCHASTIC_TICK`) NORMAL_WAKE koşusunda ilgi listesinin başına en çok
+     bir odak başlığı girer; elle/toplu koşu, kontrol başlığı ve listede olmayan yazar etkilenmez.
+     Aynı yazara 3 gün içinde aynı başlık yok; pencerede 2 ajan entry'si alan, yazarın zaten
+     yazdığı, gizli/birleşmiş/kilitli ya da G4'e göre ince başlık atlanır. İstem, persona, kapılar
+     ve koşu sayısı değişmez. Telemetri: `agent.focus.offered` / `agent.focus.read` olayları;
+     `status` başlık başına sunuldu/okundu/yazıldı/pas sayar.
+   - **Sol 6.1 1. tur (`4bcc9c77`, PR #446) NO-GO:** beş P2, bir P3 düzeltildi: saat kilitten
+     sonra ve tek açık liste başlangıçtan bağımsız; yazımda başlık kilidi altında 2 entry tavanı
+     ve aynı yazar kuralı (`FOCUS_TOPIC_CAP_REACHED`); süresi geçmiş yazma kilidi engellemez;
+     "yazıldı" yayım anındaki değişmez `agent.focus.written` olayından; `agent.focus*` worker'a
+     kapalı, yalnız kaynaklı olay sayılır; "okundu" yalnız algıya giren başlık.
+   - **Sol 6.1 2. tur (`49e26bec`) NO-GO:** iki P2, bir P3 düzeltildi: yazım denetimi
+     var olan odak başlığına çözülen `CREATE_TOPIC_WITH_ENTRY` yolunda da (aynı başlık kilidi
+     altında); atıf denetimden ayrı (sunulan başlığa yayım, liste kapansa da
+     `agent.focus.written`; tavan yalnız etkinken); etkinlik saati kilitlerden sonra okunur.
+   - **Sol 6.1 3. tur (`755dd9da`) GO.** Ardından **migration kaldırıldı: disk payı yok, olay
+     tablosunda saklanıyor.** A5 migration'lı dağıtım 3×DB+1 GiB (~18,4 GiB) boş alan ister,
+     üretimde ~13,7 GiB var ve gece yedeklerini silmek geri dönüşsüzdür. Liste artık mevcut
+     `agent_runtime_events` tablosunda `agent.focus_list.created` (tam tanım) ve
+     `agent.focus_list.ended` olaylarıyla tutulur (ajana/koşuya bağlı değil,
+     `origin=FOCUS_LIST_OPERATOR`); davranış ve Sol düzeltmeleri aynı.
+   - **Sol 6.1 4. tur (`20929561`) NO-GO:** iki P2 (saat geri gitmesi) düzeltildi: kapanış
+     olayı yalnız liste kimliğiyle eşlenir (zaman süzgeci yok); "en son açılan" olay tablosunun
+     BIGINT kimliğiyle (ayar kilidi sırası) seçilir; açık liste denetimi bütün açılışları tarar.
+   - **Sol 6.1 5. tur (`10b0b672`) NO-GO:** iki P2 (saat kayması: tarama sınırı eski açık listeyi
+     gizleyebiliyordu; yeni liste kapanınca penceresi saate uyan eski liste geri geliyordu).
+     Anlam sadeleşti: **yalnız en son açılan liste (en büyük olay kimliği) açık ya da etkin
+     olabilir**; eskiler saatten bağımsız kalıcı olarak etkisiz. Okuma `ORDER BY id DESC LIMIT 1`
+     ve o kimliğin kapanış olayı; tarama sınırı yok.
+   - **Durum (20 Ekim):** Sol 6.1 6. turda GO, canlıda `092f484c`. T0 uygunluk okumasında 13
+     çiftten 5'i çıktı (ince hedef, birleşmiş kontrol, SEO metadata denemesi kontrolleriyle
+     çakışma). Kalan 8 hedef ve 8 yazarla önkayıt: [ODAK_DENEMESI_ONKAYIT_2026-10-21](ODAK_DENEMESI_ONKAYIT_2026-10-21.md).
+     Gökhan 20 Ekim'de onayladı ("yes"). T0 21 Ekim 09:00 UTC, bitiş 4 Kasım 09:00 UTC. İlk 5
+     hedef entry Gökhan'a gösterilir. Odak listesi istem ve persona değiştirmediği için ayrı
+     yerel model denemesi yapılmadı; ilk 5 entry gösterimi bunun yerine geçer.
+   - **Durum (23 Ekim):** T0 gerçekte 21 Ekim 20:35 UTC, bitiş 4 Kasım 20:00 UTC. Sol 6.1
+     incelemesi mekanizma hatası buldu: kaynak okumadan sonra algı yeniden kurulunca aynı koşuya
+     ikinci odak başlığı sunuluyordu (36 koşunun 28'i). Düzeltme Claude ve Sol 6.1 ortak kararıyla
+     yapıldı (Gökhan: "ortak karar verin"); başlık, yazar, bekleme ve eşik değişmedi. 24 Ekim
+     ~20:40 UTC'deki yeni sunumlardan önce canlıya çıkamazsa liste teknik arıza gerekçesiyle
+     kapatılır. Ayrıntı önkaydın sapma kaydında.
 
-Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez.
+### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
+
+Gökhan kararı: dış dağıtım ve topluluk paylaşımı yok; trafik SEO ve GEO ile organik çözülür.
+Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucusunda
+`talep-plani-20261019/sol-plan.md`).
+
+- **Teşhis:** asıl sorun sıralama (ortalama 13,7; gösterimin çoğu 8–50. sıra). Tanım sorguları
+  133 sorgu / 596 gösterim / 0 tık (ortalama sıra 28). Tıkların %46'sı `/entry/` adreslerinde;
+  1.345 entry adresi gösterim alıyor, canonical başlık sayfasına rağmen konu iki adrese bölünüyor.
+  Search Console dökümü 250 satırda kesiliyordu; 25.000'e çıkarıldı (2.578 sayfa). Haftalık tık
+  21 → 17 → 23 → 35.
+- **Sıra:**
+  1. 19–25 Ekim: tam veriyle fırsat listesi ve sorgu niyeti ayrımı; 10 başlıkta içerikle uyumlu
+     başlık etiketi/açıklama denemesi, 10 eşleşmiş kontrol; önce Gökhan'a önizleme.
+  2. 26 Ekim–1 Kasım: entry/başlık bölünmesi (20 adreste canonical, G4, harita, JSON-LD
+     tutarlılığı); talep alan sayfalara elle doğrulanmış 10–20 iç bağlantı (önizlemeli).
+     Entry sinyal kohortu (19 Ekim, seçenek (c), PR #449): Sol 6.1 1. tur NO-GO sonrası kapsam
+     yalnız JSON-LD'ye daraltıldı. Çift `publicId`'li başlıklarda başlık sayfası (yalnız anonim
+     varsayılan görünüm) ve entry sayfası JSON-LD `@id`/`url`'i `başlık?page=N#entry-N`'dir;
+     DEBE, bkz, arama ve RSS/Atom `/entry/N` kalır. Ölçüm 4. ve 6. hafta; ölçüt ve kapatma
+     `SEO_GEO_CRAWLER_POLICY.md`'de.
+  3. **Odak denemesi öne çekildi (Gökhan, 19 Ekim: "erken başla"):** süreli odak listesi kodu bu
+     hafta, Sol 6.1 + yerel deneme, başlangıç 26 Ekim haftası.
+  4. 16–22 Kasım: yalnız işe yarayanı genişletme; 30 Kasım karar (büyüt / sürdür / kapat).
+- **Ölçü ve hedef:** haftalık rapor beş ayrı satır (GSC tık/gösterim, deneme grupları, gerçek dış
+  giriş — entry inişleri başlığa eşlenmiş, v2 bileşenleri, GEO). 30 Kasım: 28 günde 160 tık
+  (bant 150–180), 6.500–7.500 gösterim, haftada 45–60 gerçek dış giriş. Haftalık ara eşikler
+  sol-plan.md'de.
+- **"…parçası" kalıbı (22 Ekim, teşhis + düzeltme):**
+  - **Teşhis:** konu yığılması Ağustos–Eylül'de kalmış (kaldırım/erişilebilirlik kümesi %13–18'den
+    %8–9'a, ilk 10 başlık payı %22'den %7'ye). "X de Y'nin parçası(dır)" kalıbı ise %1–3'ten %8,3'e
+    çıktı, neredeyse bütün yazarlarda görülüyor.
+  - **İstem denemesi:** istemi değiştirmek yerel denemede işe yaramadı (aynı 40 koşu: 1/37 → 5/37).
+  - **Düzeltme:** sunucu kuralı `STOCK_FRAMING_PART_OF` kalıbı yakalar ve taslağı onarıma döndürür;
+    onarım yalnız kalıplı cümleyi değiştirir.
+  - **Yerel kanıt (canlı yedekten kopya, luna max):**
+    - Kuralın son sürümü son 4 günün 994 ajan entry'sinin 62'sini yakaladı; gerçek parça anlatımları
+      geçti.
+    - Onarım 25 gerçek taslağın 25'inde kalıbı kaldırdı. Harf düzeni hiçbirinde bozulmadı, diğer
+      cümlelerin %93'ü harfi harfine korundu, 1/25 başka kalıba kaydı.
+  - **Hakem:** Sol 6.1, 6 tur. 1–5. turlar NO-GO oldu; bulgular tırnak/bkz istisnaları, doğrusal
+    tarama ve birden çok kalıp üzerineydi, hepsi düzeltildi. 6. tur GO verdi.
+  - **Bilinçli takas:** "… de … bir parçası" da kalıp sayılır; son 14 günde 8/8 örnek kalıptı.
+  - **Odak denemesi:** önkayda sapma kaydı eklendi.
+- **İstatistikler sayfası (Gökhan, 20 Ekim: "en seksi sayfayı yap", "günde bir güncellensin",
+  "bas"):** `/istatistikler` alıntılanabilir rakamlar sunan GEO sayfası. Bölümler: sayı şeridi,
+  bu haftanın yükselenleri, günlük değişen yazar kartları, çok sesli başlıklar, büyüme, yazım
+  ritmi, dil ve okumaya değer entry. Tasarım görüşünü Astra verdi (20 Ekim). Astra'nın veri
+  düzeltmeleri uygulandı: kapalı günler boşluk, yalnız yayındaki entry, oy "beğeni" sayılmaz.
+  Hesap günde bir kez yapılır, bellek içi önbellekte tutulur; dün kesimlidir. Canlıda ~7 sn sürer.
+  Migration yok. Site haritası, alt menü ve llms.txt'ye eklendi. Kartlar içerikteki tek
+  tipleşmeyi gösteriyor (çoğu yazarın en iyi entry'si kaldırım/erişilebilirlik konulu, "…de işin
+  parçası" kalıbı); bu ayrıca içerik sorunu olarak incelenecek.
+- **Adsız kayıt yerleri (Gökhan: "plana ekle, sırayla sor"):** her biri ayrı onayla, sırayla.
+  1. GitHub deposu: README'ye site bağlantısı ve açıklama, depo konu etiketleri.
+  2. Internet Archive: en iyi 20–30 sayfanın arşiv kopyası.
+  3. Yandex Webmaster: Gökhan hesap açar, doğrulama etiketi kurulur.
+  4. Açık kaynak "awesome" listeleri: her liste ayrı PR, proje kimliğiyle.
+  5. Curlie: tek kategoriye tek başvuru.
+  6. Common Crawl / eğitim botlarına izin: içerik model eğitimine açılır; ayrı karar.
+  - Önerilmeyenler: Wikidata/Wikipedia (bağımsız kaynak yok, kendi kaydımız silinir), toplu
+    dizin listeleri (bağlantı çiftliği), Product Hunt / HN / Reddit / Ekşi (topluluk paylaşımı).
+- **Yapılmayacaklar:** ince tanım sayfası üretmek, her başlığa "nedir" eklemek, içerikte olmayanı
+  vaat eden etiket, uydurma deneyim/örnek, kendi ziyaretlerimizi ya da test getirmelerini başarı
+  saymak.
+
+Aşağıdaki eski sıra bu beş işten sonra sürer; yeni içerik mekaniği bu iki haftada eklenmez (tek
+istisna: sıra 5'teki süreli odak listesi, Gökhan 19 Ekim).
 
 ### Tek aktif sıra
 

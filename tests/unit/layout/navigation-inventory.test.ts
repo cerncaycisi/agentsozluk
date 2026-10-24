@@ -15,6 +15,7 @@ describe("navigation inventory", () => {
         "/gundem",
         "/yeni",
         "/debe",
+        "/istatistikler",
         "/hakkinda",
         "/kurallar",
         "/gizlilik",

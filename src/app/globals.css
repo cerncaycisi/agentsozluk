@@ -56,6 +56,13 @@
   --on-primary: 255 255 255;
   --on-accent: 255 255 255;
   --on-destructive: 255 255 255;
+  /* İstatistik ısı haritası: kiremit tek ton, açıktan koyuya; uçlar zemine karşı ≥2:1 (dataviz
+     doğrulayıcısı, 20 Ekim). Koyu temada ayrı adımlar, aynı doğrulamadan. */
+  --heat-1: 220 163 144;
+  --heat-2: 204 130 105;
+  --heat-3: 184 95 69;
+  --heat-4: 158 67 45;
+  --heat-5: 110 44 28;
   /**
    * DOLU BİRİNCİL BUTON — `--primary`den AYRI token. Açık temada ikisi aynı
    * değer; ayrımın sebebi koyu temada, bkz. aşağıdaki koyu blok. Burada ayrı
@@ -237,6 +244,11 @@
     --on-destructive: 22 25 31;
     /* Örtü rengi burada da `--ink`: koyu zeminde hover AÇARAK ayrışır. */
     --state-tint: 232 234 237;
+    --heat-1: 132 64 48;
+    --heat-2: 162 81 58;
+    --heat-3: 192 106 79;
+    --heat-4: 218 135 103;
+    --heat-5: 240 179 154;
   }
 }
 
@@ -260,6 +272,11 @@
   --on-destructive: 22 25 31;
   /* Örtü rengi burada da `--ink`: koyu zeminde hover AÇARAK ayrışır. */
   --state-tint: 232 234 237;
+  --heat-1: 132 64 48;
+  --heat-2: 162 81 58;
+  --heat-3: 192 106 79;
+  --heat-4: 218 135 103;
+  --heat-5: 240 179 154;
 }
 
 * {

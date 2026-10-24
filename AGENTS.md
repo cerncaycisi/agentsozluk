@@ -65,7 +65,8 @@
 
 Gökhan’ın 3 Ekim sohbet talimatı: “Ok çalışmaya başlayın. Bi durum olmadıkça durmayin? 2 hafta full yetki, deploy durdurma her şey dahil”.
 Gökhan 9 Ekim’de süreyi açık sohbet talimatıyla uzattı: “bana bişi sormana gerek yok bu ay boyunca”.
-Bu istisna 31 Ekim 2026 20:59 UTC’de (31 Ekim 23:59 TSİ) kendiliğinden geçersiz olur; sonrasında bu bölüm
+Gökhan 22 Ekim’de süreyi yeniden uzattı: “Uzattim. Çalış.”; bitiş 30 Kasım olarak soruldu, “Doğrudur” dedi.
+Bu istisna 30 Kasım 2026 20:59 UTC’de (30 Kasım 23:59 TSİ) kendiliğinden geçersiz olur; sonrasında bu bölüm
 silinmelidir. Kayıt başlangıcı 3 Ekim 2026 19:50 UTC. Kapsam, `a4676c781f22a1ac7e32fdd9927ff52d045fd684`
 sürümündeki `docs/PLAN.md` iki haftalık teslimidir. 9 Ekim uzatmasında kapsam, güncel `docs/PLAN.md`
 tek aktif sırasıdır; aynı dosyada "Gökhan kararı bekleyen" ya da "Gökhan'dan beklenen" diye işaretli maddeler kapsam dışıdır. Bu kapsamda Agent Sözlük geliştirme, üretim okuma, release artifact,
