@@ -719,7 +719,9 @@ export function SiteShell({
             }
             className="absolute inset-y-0 left-0 w-[min(88vw,340px)] overflow-y-auto border-r bg-surface"
           >
-            <div className="sticky top-0 flex items-center justify-between border-b bg-surface p-4">
+            {/* z-10: liste satırları `relative`; z-index'siz yapışkan başlığın üstüne boyanıyordu
+                (mobilde kaydırınca başlık ve satırlar üst üste, Gökhan 24 Ekim). */}
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-surface p-4">
               <div>
                 <h2 className="font-semibold">{indexLabel(indexFeed)}</h2>
                 <div className="flex items-center gap-2">
