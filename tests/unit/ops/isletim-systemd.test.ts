@@ -174,7 +174,7 @@ describe("sunucu içi gece yedeği birimi", () => {
   it("döküm yazım sınırına konteyner içinde ulaşırsa üretici sonlandırılır ve betik durur", () => {
     const cap = block("dump-cap");
     expect(cap).toContain('kill -TERM "$dump_pid"');
-    const dumpWith = (producer: string, limit: number) => {
+    const dumpWith = (producer: string, limit: number, receiverBytes?: number) => {
       const dir = mkdtempSync(path.join(tmpdir(), "yedek-sinir-"));
       try {
         // Sahte pg_dump PATH'te; sahte docker, `sh -c …` kısmını konteyner yerine yerelde koşar.
@@ -185,7 +185,10 @@ describe("sunucu içi gece yedeği birimi", () => {
             `export PATH=${JSON.stringify(dir)}:"$PATH"`,
             'die() { printf "DIE %s" "$*"; exit 1; }',
             // Üretimdeki busybox sh yerine bash: CI'daki eski dash `pipefail`/`wait` farkı yaratmasın.
-            'docker() { while [ "$1" != sh ]; do shift; done; shift; bash "$@"; }',
+            receiverBytes === undefined
+              ? 'docker() { while [ "$1" != sh ]; do shift; done; shift; bash "$@"; }'
+              : // Alıcı akışı erken kapatır (kopan docker akışı).
+                `docker() { while [ "$1" != sh ]; do shift; done; shift; bash "$@" | head -c ${receiverBytes}; }`,
             "ENV_FILE=/dev/null COMPOSE_FILE=/dev/null",
             `PART_FILE=${JSON.stringify(part)}`,
             `output_limit_bytes=${limit}`,
@@ -209,6 +212,8 @@ describe("sunucu içi gece yedeği birimi", () => {
     const started = Date.now();
     expect(dumpWith("head -c 10000 /dev/zero; exec sleep 30", 10_000)).toMatch(/^DIE /u);
     expect(Date.now() - started).toBeLessThan(10_000);
+    // Alıcı akışı yarıda koparsa eksik dosya başarılı sayılmaz (Sol 6.1, 6. tur).
+    expect(dumpWith("head -c 16000 /dev/zero", 100_000, 4096)).toMatch(/^DIE /u);
     // Döküm hatası kesilmeden de yakalanır.
     expect(dumpWith("head -c 100 /dev/zero; exit 3", 10_000)).toMatch(/^DIE /u);
   }, 30_000);

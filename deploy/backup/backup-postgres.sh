@@ -104,16 +104,20 @@ rm -f -- "${PART_FILE}" "${CHECKSUM_PART}"
 # Yazım sınırı konteynerin İÇİNDE uygulanır (Sol 6.1, 3–5. tur). `pg_dump` bir FIFO'ya yazar,
 # `head` sınıra kadar okur, kopyalanan bayt sayılır. Yalnız sınıra ulaşıldıysa `pg_dump` açıkça
 # sonlandırılır (SIGPIPE'a güvenilmez; sınırdan sonra sorgu beklerken bloklanabilir); sınır
-# altındaki EOF'ta kapanışını bitirmesi beklenir, başarılı döküm öldürülmez. Komutun çıkış kodu `pg_dump`ınkidir; sonlandırma ya da
+# altındaki EOF'ta kapanışını bitirmesi beklenir, başarılı döküm öldürülmez. Aktarım borusunun
+# herhangi bir adımı hata verirse (ör. alıcı akışı kopar, `tee` SIGPIPE alır) döküm sonlandırılır
+# ve komut başarısız çıkar; eksik dosya başarılı sayılmaz (Sol 6.1, 6. tur). Komutun çıkış kodu `pg_dump`ınkidir; sonlandırma ya da
 # döküm hatası komutu başarısız kılar. Tam sınıra denk gelen boyut ayrıca reddedilir. EXIT
 # temizliği yarım dosyayı siler; disk rezervin altına inmez.
 dump_in_container='fifo=$(mktemp -u) && mkfifo -m 600 "$fifo" || exit 90
 trap '"'"'rm -f "$fifo"'"'"' EXIT
 pg_dump --format=custom --no-owner --no-acl -U agent_sozluk -d agent_sozluk >"$fifo" &
 dump_pid=$!
+set -o pipefail
 exec 3>&1
-copied=$(head -c "$1" <"$fifo" | tee /dev/fd/3 | wc -c)
-if [ "$copied" -ge "$1" ]; then kill -TERM "$dump_pid" 2>/dev/null; fi
+stop() { kill -TERM "$dump_pid" 2>/dev/null; wait "$dump_pid"; exit "$1"; }
+copied=$(head -c "$1" <"$fifo" | tee /dev/fd/3 | wc -c) || stop 92
+[ "$copied" -lt "$1" ] || stop 93
 wait "$dump_pid"'
 if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
   sh -c "${dump_in_container}" sh "${output_limit_bytes}" >"${PART_FILE}"; then
