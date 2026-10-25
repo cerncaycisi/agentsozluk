@@ -9992,3 +9992,25 @@ ayrı kapılardır. Saatlik kontrol aynı sağlayıcının kotasına takıldığ
   `ERR_PNPM_NO_OFFLINE_TARBALL` ile durdu (`@hookform/resolvers@5.9.1` önbellekte yok).
   Kod veya tip kontrolü gevşetilmedi; makbuz PR'ının CI'ı yerel typecheck yerine başarılı
   sayılmaz, ayrıca doğrulanmalıdır. Aynı paylaşılan eski istemciyle typecheck'i tekrarlama.
+
+## 2026-10-25 — sunucu içi gece yedeği boş yer eşiğiyle düştü; alarm birimleri kapatıldı
+
+- **Hata:** 25 Ekim 00:30:13Z `agent-sozluk-backup.service` 1 saniyede `Result=exit-code`
+  ile bitti. Güvenli hata `insufficient backup space: 13381480448 bytes available,
+  13668284462 required`. Kök neden: eşik ham `pg_database_size` değerinin 2 katıydı
+  (6.835.960.855 bayt); sıkıştırılmış döküm ~1,9 GB. Sunucu dışı Drive yedeği ayrı kanaldan
+  01:43Z'de doğrulanarak alındı.
+- **Düzeltme:** PR #459 (`289afc7e`, Gökhan onayı "1 onay"). Eşik saklanan en büyük dökümün 2
+  katı; döküm konteyner içinde rezervi (max 2 GiB, dosya sisteminin %10'u) koruyan sınırla
+  kesilir; konteynerin bildirdiği bayt sayısı alınan dosyayla karşılaştırılır. Sol 6.1 yedi tur,
+  son tur GO. Dağıtım host betiklerini kurmadığı için betik runbook komutuyla elle kuruldu
+  (sha256 `176273ba…31538d1`), birim 09:12Z'de elle koşturuldu: `Result=success`, döküm
+  1.952.019.090 bayt. Bildirim birimi `Result=resources` (alarm ortam dosyası yok) ile düşmüştü;
+  `reset-failed` sonrası saatlik sağlık `SAGLIK OK`.
+- **Alarm kapatma (Gökhan, 25 Ekim: "Kapat"):** alarm birimi, zamanlayıcısı ve
+  `agent-sozluk-bildirim@.service` depodan kaldırıldı, oneshot birimlerden `OnFailure=` silindi.
+  Uyarılar T3 sohbetindeki saatlik sağlık kontrolünden gelir.
+
+**Do not repeat:** dağıtım `RELEASE_COMPLETE PASS` verse de `/opt/agent-sozluk/scripts/`
+altındaki host betiklerini güncellemez; `RELEASE_HOST_DRIFT … differs` satırını görünce runbook
+kurulum komutunu çalıştır ve sha256'yı doğrula. Disk eşiğini ham veritabanı boyutuna bağlama.

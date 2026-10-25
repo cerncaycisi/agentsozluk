@@ -5,8 +5,6 @@ After=docker.service network-online.target
 Wants=network-online.target
 ConditionPathExists=/opt/agent-sozluk/runtime/compose.production.yaml
 ConditionPathExists=/opt/agent-sozluk/app/.env
-# Başarısızlık sessiz kalmasın (17 Ekim): ortak bildirim birimi, birim başına 6 saatte bir.
-OnFailure=agent-sozluk-bildirim@%n.service
 
 [Service]
 Type=oneshot
