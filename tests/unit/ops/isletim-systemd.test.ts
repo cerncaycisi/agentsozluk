@@ -200,6 +200,8 @@ describe("sunucu içi gece yedeği birimi", () => {
       }
     };
     expect(dumpWith("head -c 5000 /dev/zero", 10_000)).toBe("OK 5000");
+    // Çıktıyı kapatıp kapanışını sürdüren başarılı döküm öldürülmez (Sol 6.1, 5. tur).
+    expect(dumpWith("head -c 5000 /dev/zero; exec 1>&-; exec sleep 0.2", 10_000)).toBe("OK 5000");
     // Sonsuz üretici: sınırda sonlandırılmasaydı test hiç bitmezdi.
     expect(dumpWith("cat /dev/zero", 10_000)).toMatch(/^DIE /u);
     expect(dumpWith("head -c 10000 /dev/zero", 10_000)).toMatch(/^DIE /u);
