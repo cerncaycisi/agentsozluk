@@ -13,6 +13,7 @@ MIN_BACKUP_BYTES=1024
 RETENTION_MINUTES=4320  # 13 Ekim: yeni 40 GB disk, 3 gün (sunucu dışında operatör + Drive kopyaları var)
 MAX_DISK_USAGE_PERCENT=85
 MIN_FREE_BYTES=1073741824
+MIN_RESERVE_BYTES=2147483648  # döküm sonrası diskte en az kalacak; ayrıca dosya sisteminin %10'u
 PART_FILE=
 CHECKSUM_PART=
 
@@ -28,7 +29,7 @@ cleanup() {
 trap cleanup EXIT
 
 [[ ${EUID} -ne 0 && $(id -un) == deploy ]] || die 'run as deploy, not root'
-for command_name in awk chmod date df docker find flock id mv rm sha256sum stat; do
+for command_name in awk chmod date df docker find flock head id mv rm sha256sum stat; do
   command -v "${command_name}" >/dev/null 2>&1 || die "required command is missing: ${command_name}"
 done
 # 17 Ekim 2026: birim `ReadWritePaths=-…` ile eksik dizinde de başlar; eksik dizin burada
@@ -53,8 +54,8 @@ docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
   pg_isready -q -U agent_sozluk -d agent_sozluk \
   >/dev/null 2>&1 || die 'agent_sozluk PostgreSQL database is not ready'
 
-read -r disk_usage_percent available_kib < <(df -Pk "${BACKUP_DIR}" | awk 'NR==2 {gsub(/%/, "", $5); print $5, $4}')
-[[ ${disk_usage_percent} =~ ^[0-9]+$ && ${available_kib} =~ ^[0-9]+$ ]] \
+read -r disk_usage_percent available_kib total_kib < <(df -Pk "${BACKUP_DIR}" | awk 'NR==2 {gsub(/%/, "", $5); print $5, $4, $2}')
+[[ ${disk_usage_percent} =~ ^[0-9]+$ && ${available_kib} =~ ^[0-9]+$ && ${total_kib} =~ ^[0-9]+$ ]] \
   || die 'could not validate backup filesystem capacity'
 (( disk_usage_percent < MAX_DISK_USAGE_PERCENT )) \
   || die "backup filesystem usage is ${disk_usage_percent}%; limit is below ${MAX_DISK_USAGE_PERCENT}%"
@@ -65,23 +66,29 @@ database_bytes=$(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ex
 available_bytes=$(( available_kib * 1024 ))
 # BEGIN required-free
 # 25 Ekim 2026: eşik ham veritabanı boyutunun 2 katıydı; veritabanı 6,8 GB'a çıkınca 13,4 GB boş
-# yer yetmedi ve yedek hiç başlamadı, oysa sıkıştırılmış döküm ~1,9 GB. Eşik artık saklanan en
-# büyük dökümün 2 katı (büyüme payıyla); önceki döküm yoksa eski temkinli kural geçerli.
+# yer yetmedi ve yedek hiç başlamadı, oysa sıkıştırılmış döküm ~1,9 GB. Beklenen boyut artık
+# saklanan en büyük geçerli döküm (yoksa veritabanı boyutu); başlamak için 2 katı gerekir.
+# Sol 6.1: geçmiş boyut büyümeyi öngöremez, bu yüzden döküm ayrıca yazım sınırıyla kesilir
+# (aşağıda `head -c`): disk, döküm ne kadar büyürse büyüsün rezervin altına inmez. Liste komut
+# ikamesiyle alınır; `find` yarıda hata verirse `set -e` betiği durdurur (eksik liste yok).
+dump_listing=$(find "${BACKUP_DIR}" -maxdepth 1 -type f -name 'agent-sozluk-postgres-*.dump' -printf '%s\t%f\n')
 largest_backup_bytes=0
-while IFS= read -r -d '' existing_dump; do
-  [[ ${existing_dump##*/} =~ ^agent-sozluk-postgres-[0-9]{8}T[0-9]{6}Z-[a-z0-9][a-z0-9-]{0,31}\.dump$ ]] || continue
-  existing_bytes=$(stat -c '%s' "${existing_dump}")
+while IFS=$'\t' read -r existing_bytes existing_name; do
+  [[ ${existing_bytes} =~ ^[0-9]+$ ]] || continue
+  [[ ${existing_name} =~ ^agent-sozluk-postgres-[0-9]{8}T[0-9]{6}Z-[a-z0-9][a-z0-9-]{0,31}\.dump$ ]] || continue
+  (( existing_bytes >= MIN_BACKUP_BYTES )) || continue
   if (( existing_bytes > largest_backup_bytes )); then largest_backup_bytes=${existing_bytes}; fi
-done < <(find "${BACKUP_DIR}" -maxdepth 1 -type f -name 'agent-sozluk-postgres-*.dump' -print0)
-if (( largest_backup_bytes >= MIN_BACKUP_BYTES )); then
-  required_free_bytes=$(( largest_backup_bytes * 2 ))
-else
-  required_free_bytes=$(( database_bytes * 2 ))
-fi
+done <<<"${dump_listing}"
+expected_backup_bytes=${largest_backup_bytes}
+(( expected_backup_bytes > 0 )) || expected_backup_bytes=${database_bytes}
+required_free_bytes=$(( expected_backup_bytes * 2 ))
 (( required_free_bytes >= MIN_FREE_BYTES )) || required_free_bytes=${MIN_FREE_BYTES}
+reserve_bytes=$(( total_kib * 1024 / 10 ))
+(( reserve_bytes >= MIN_RESERVE_BYTES )) || reserve_bytes=${MIN_RESERVE_BYTES}
+output_limit_bytes=$(( available_bytes - reserve_bytes ))
 # END required-free
-(( available_bytes >= required_free_bytes )) \
-  || die "insufficient backup space: ${available_bytes} bytes available, ${required_free_bytes} required"
+(( available_bytes >= required_free_bytes && output_limit_bytes >= required_free_bytes )) \
+  || die "insufficient backup space: ${available_bytes} bytes available, ${reserve_bytes} reserved, ${required_free_bytes} required"
 
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 base_name="agent-sozluk-postgres-${stamp}-${reason}.dump"
@@ -93,12 +100,20 @@ CHECKSUM_PART=${checksum_file}.part
 [[ ! -e "${final_file}" && ! -e "${checksum_file}" ]] || die 'backup target already exists; refusing overwrite'
 rm -f -- "${PART_FILE}" "${CHECKSUM_PART}"
 
-docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
+# BEGIN dump-cap
+# Yazım sınırı: sınıra ulaşan döküm kesilir; boru hattı hatası ya da boyut denetimi betiği
+# durdurur, EXIT temizliği yarım dosyayı siler. Disk rezervin altına inmez.
+if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
   pg_dump --format=custom --no-owner --no-acl -U agent_sozluk -d agent_sozluk \
-  >"${PART_FILE}"
+  | head -c "${output_limit_bytes}" >"${PART_FILE}"; then
+  die "pg_dump failed or reached the output limit (${output_limit_bytes} bytes)"
+fi
 chmod 0600 "${PART_FILE}"
 
 backup_bytes=$(stat -c '%s' "${PART_FILE}")
+(( backup_bytes < output_limit_bytes )) \
+  || die "backup reached the output limit (${output_limit_bytes} bytes); disk reserve protected"
+# END dump-cap
 (( backup_bytes >= MIN_BACKUP_BYTES )) || die "backup is unexpectedly small (${backup_bytes} bytes)"
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
   pg_restore --list <"${PART_FILE}" >/dev/null \

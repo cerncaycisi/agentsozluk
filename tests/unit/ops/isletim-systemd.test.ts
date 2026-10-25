@@ -103,52 +103,102 @@ describe("sunucu içi gece yedeği birimi", () => {
   /*
     25 Ekim 2026: boş yer eşiği ham veritabanı boyutunun 2 katıydı ve 6,8 GB'lık veritabanında
     yedek hiç başlamadı. Eşik artık saklanan en büyük geçerli dökümün 2 katı; döküm yoksa eski
-    kural. Blok, betikteki işaretler arasından alınıp sahte bir yedek dizininde çalıştırılır.
+    kural. Sol 6.1: döküm ayrıca rezervi koruyan bir yazım sınırıyla kesilir ve dosya listesi
+    yarıda hata verirse betik durur. Bloklar betikteki işaretler arasından alınıp sahte bir yedek
+    dizininde ve sahte `docker` ile çalıştırılır.
   */
-  it("boş yer eşiği saklanan en büyük dökümün 2 katıdır; döküm yoksa veritabanının 2 katı", () => {
-    const begin = script.indexOf("# BEGIN required-free");
-    const end = script.indexOf("# END required-free");
+  const block = (name: string) => {
+    const begin = script.indexOf(`# BEGIN ${name}`);
+    const end = script.indexOf(`# END ${name}`);
     expect(begin).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(begin);
-    const block = script.slice(begin, end);
-    const required = (files: Record<string, number>, databaseBytes: number) => {
+    return script.slice(begin, end);
+  };
+  const runBash = (lines: string[]) =>
+    execFileSync("bash", ["-c", ["set -Eeuo pipefail", ...lines].join("\n")], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  const dump = (stamp: string) => `agent-sozluk-postgres-${stamp}-scheduled.dump`;
+
+  it("boş yer eşiği saklanan en büyük dökümün 2 katıdır; döküm yoksa veritabanının 2 katı", () => {
+    const sizing = block("required-free");
+    const measure = (
+      files: Record<string, number>,
+      databaseBytes: number,
+      backupDir?: string,
+    ): { required: number; reserve: number; limit: number } => {
       const dir = mkdtempSync(path.join(tmpdir(), "yedek-esik-"));
       try {
         for (const [name, size] of Object.entries(files))
           writeFileSync(path.join(dir, name), Buffer.alloc(size));
-        const program = [
-          "set -Eeuo pipefail",
-          `BACKUP_DIR=${JSON.stringify(dir)}`,
+        const output = runBash([
+          `BACKUP_DIR=${JSON.stringify(backupDir ?? dir)}`,
           "MIN_BACKUP_BYTES=1024",
           "MIN_FREE_BYTES=4096",
+          "MIN_RESERVE_BYTES=1000",
           `database_bytes=${databaseBytes}`,
-          block,
-          'printf "%s" "${required_free_bytes}"',
-        ].join("\n");
-        return Number(execFileSync("bash", ["-c", program], { encoding: "utf8" }));
+          "available_bytes=100000",
+          "total_kib=200",
+          sizing,
+          'printf "%s %s %s" "${required_free_bytes}" "${reserve_bytes}" "${output_limit_bytes}"',
+        ]);
+        const [required, reserve, limit] = output.split(" ").map(Number);
+        return { required: required!, reserve: reserve!, limit: limit! };
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     };
-    const dump = (stamp: string) => `agent-sozluk-postgres-${stamp}-scheduled.dump`;
     // En büyük geçerli döküm belirler; veritabanı boyutu artık eşiği şişirmez.
     expect(
-      required({ [dump("20261023T003001Z")]: 3000, [dump("20261024T003001Z")]: 5000 }, 900_000),
-    ).toBe(10_000);
+      measure({ [dump("20261023T003001Z")]: 3000, [dump("20261024T003001Z")]: 5000 }, 900_000),
+    ).toEqual({ required: 10_000, reserve: 20_480, limit: 79_520 });
     // Geçersiz adlar, yarım dosyalar ve 1 KiB altı dökümler sayılmaz.
     expect(
-      required(
+      measure(
         {
           [`${dump("20261024T003001Z")}.part`]: 50_000,
           "agent-sozluk-20261017T124604Z-pre-d78125259e48.dump": 60_000,
           [dump("20261022T003001Z")]: 100,
         },
         9000,
-      ),
+      ).required,
     ).toBe(18_000);
     // Hiç döküm yoksa eski temkinli kural; alt sınır MIN_FREE_BYTES.
-    expect(required({}, 9000)).toBe(18_000);
-    expect(required({}, 100)).toBe(4096);
+    expect(measure({}, 9000).required).toBe(18_000);
+    expect(measure({}, 100).required).toBe(4096);
+    // Liste alınamazsa betik eksik listeyle sürmez, durur.
+    expect(() => measure({}, 9000, "/olmayan/yedek/dizini")).toThrow();
+  });
+
+  it("döküm yazım sınırına ulaşırsa yarıda kesilir ve betik durur", () => {
+    const cap = block("dump-cap");
+    const dumpWith = (dumpBytes: number, limit: number) => {
+      const dir = mkdtempSync(path.join(tmpdir(), "yedek-sinir-"));
+      try {
+        const part = path.join(dir, "x.dump.part");
+        try {
+          const output = runBash([
+            'die() { printf "DIE %s" "$*"; exit 1; }',
+            // Sahte docker: istenen boyutta döküm üretir.
+            `docker() { head -c ${dumpBytes} /dev/zero; }`,
+            "ENV_FILE=/dev/null COMPOSE_FILE=/dev/null",
+            `PART_FILE=${JSON.stringify(part)}`,
+            `output_limit_bytes=${limit}`,
+            cap,
+            'printf "OK %s" "${backup_bytes}"',
+          ]);
+          return output;
+        } catch (error) {
+          return String((error as { stdout?: string }).stdout ?? "");
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    };
+    expect(dumpWith(5000, 10_000)).toBe("OK 5000");
+    expect(dumpWith(20_000, 10_000)).toMatch(/^DIE /u);
+    expect(dumpWith(10_000, 10_000)).toMatch(/^DIE /u);
   });
 
   it("zamanlayıcı her gece ve kaçırılanı telafi eder", () => {
