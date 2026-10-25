@@ -171,9 +171,9 @@ describe("sunucu içi gece yedeği birimi", () => {
     expect(() => measure({}, 9000, "/olmayan/yedek/dizini")).toThrow();
   });
 
-  it("döküm yazım sınırına konteyner içinde ulaşırsa üretici ölür ve betik durur", () => {
+  it("döküm yazım sınırına konteyner içinde ulaşırsa üretici sonlandırılır ve betik durur", () => {
     const cap = block("dump-cap");
-    expect(cap).toContain("set -o pipefail; pg_dump");
+    expect(cap).toContain('kill -TERM "$dump_pid"');
     const dumpWith = (producer: string, limit: number) => {
       const dir = mkdtempSync(path.join(tmpdir(), "yedek-sinir-"));
       try {
@@ -184,7 +184,8 @@ describe("sunucu içi gece yedeği birimi", () => {
           return runBash([
             `export PATH=${JSON.stringify(dir)}:"$PATH"`,
             'die() { printf "DIE %s" "$*"; exit 1; }',
-            'docker() { while [ "$1" != sh ]; do shift; done; "$@"; }',
+            // Üretimdeki busybox sh yerine bash: CI'daki eski dash `pipefail`/`wait` farkı yaratmasın.
+            'docker() { while [ "$1" != sh ]; do shift; done; shift; bash "$@"; }',
             "ENV_FILE=/dev/null COMPOSE_FILE=/dev/null",
             `PART_FILE=${JSON.stringify(part)}`,
             `output_limit_bytes=${limit}`,
@@ -199,9 +200,13 @@ describe("sunucu içi gece yedeği birimi", () => {
       }
     };
     expect(dumpWith("head -c 5000 /dev/zero", 10_000)).toBe("OK 5000");
-    // Sonsuz üretici: sınırda SIGPIPE ile ölmeseydi test hiç bitmezdi.
+    // Sonsuz üretici: sınırda sonlandırılmasaydı test hiç bitmezdi.
     expect(dumpWith("cat /dev/zero", 10_000)).toMatch(/^DIE /u);
     expect(dumpWith("head -c 10000 /dev/zero", 10_000)).toMatch(/^DIE /u);
+    // Sınırda yazıp bekleyen üretici de (ör. sorgu bekleyen pg_dump) sonlandırılır.
+    const started = Date.now();
+    expect(dumpWith("head -c 10000 /dev/zero; exec sleep 30", 10_000)).toMatch(/^DIE /u);
+    expect(Date.now() - started).toBeLessThan(10_000);
     // Döküm hatası kesilmeden de yakalanır.
     expect(dumpWith("head -c 100 /dev/zero; exit 3", 10_000)).toMatch(/^DIE /u);
   }, 30_000);

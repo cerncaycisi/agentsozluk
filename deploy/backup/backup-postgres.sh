@@ -101,14 +101,21 @@ CHECKSUM_PART=${checksum_file}.part
 rm -f -- "${PART_FILE}" "${CHECKSUM_PART}"
 
 # BEGIN dump-cap
-# Yazım sınırı konteynerin İÇİNDE uygulanır (Sol 6.1, 3. tur): `head` sınırda çıkınca aynı
-# borudaki `pg_dump` SIGPIPE ile ölür, snapshot ve kilitler bırakılır; sınır host tarafında
-# olsaydı Docker exec konteynerdeki dökümü sürdürebilirdi. `pipefail` ile döküm hatası ya da
-# kesilme komutu başarısız kılar; tam sınıra denk gelen boyut ayrıca reddedilir. EXIT temizliği
-# yarım dosyayı siler; disk rezervin altına inmez.
+# Yazım sınırı konteynerin İÇİNDE uygulanır (Sol 6.1, 3–4. tur). `pg_dump` bir FIFO'ya yazar,
+# `head` sınıra kadar okur. `head` bitince `pg_dump` hâlâ yaşıyorsa sınıra ulaşılmıştır:
+# açıkça sonlandırılır ve çıkışı beklenir (yalnız SIGPIPE'a güvenilmez; `pg_dump` sınırdan
+# sonra sorgu beklerken bloklanabilir). Komutun çıkış kodu `pg_dump`ınkidir; sonlandırma ya da
+# döküm hatası komutu başarısız kılar. Tam sınıra denk gelen boyut ayrıca reddedilir. EXIT
+# temizliği yarım dosyayı siler; disk rezervin altına inmez.
+dump_in_container='fifo=$(mktemp -u) && mkfifo -m 600 "$fifo" || exit 90
+trap '"'"'rm -f "$fifo"'"'"' EXIT
+pg_dump --format=custom --no-owner --no-acl -U agent_sozluk -d agent_sozluk >"$fifo" &
+dump_pid=$!
+head -c "$1" <"$fifo"
+kill -TERM "$dump_pid" 2>/dev/null
+wait "$dump_pid"'
 if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
-  sh -c 'set -o pipefail; pg_dump --format=custom --no-owner --no-acl -U agent_sozluk -d agent_sozluk | head -c "$1"' \
-  sh "${output_limit_bytes}" >"${PART_FILE}"; then
+  sh -c "${dump_in_container}" sh "${output_limit_bytes}" >"${PART_FILE}"; then
   die "pg_dump failed or reached the output limit (${output_limit_bytes} bytes)"
 fi
 chmod 0600 "${PART_FILE}"
