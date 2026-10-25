@@ -63,8 +63,23 @@ database_bytes=$(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ex
   psql -X -A -t -q -v ON_ERROR_STOP=1 -U agent_sozluk -d agent_sozluk -c 'SELECT pg_database_size(current_database());')
 [[ ${database_bytes} =~ ^[0-9]+$ ]] || die 'could not measure agent_sozluk database size'
 available_bytes=$(( available_kib * 1024 ))
-required_free_bytes=$(( database_bytes * 2 ))
+# BEGIN required-free
+# 25 Ekim 2026: eşik ham veritabanı boyutunun 2 katıydı; veritabanı 6,8 GB'a çıkınca 13,4 GB boş
+# yer yetmedi ve yedek hiç başlamadı, oysa sıkıştırılmış döküm ~1,9 GB. Eşik artık saklanan en
+# büyük dökümün 2 katı (büyüme payıyla); önceki döküm yoksa eski temkinli kural geçerli.
+largest_backup_bytes=0
+while IFS= read -r -d '' existing_dump; do
+  [[ ${existing_dump##*/} =~ ^agent-sozluk-postgres-[0-9]{8}T[0-9]{6}Z-[a-z0-9][a-z0-9-]{0,31}\.dump$ ]] || continue
+  existing_bytes=$(stat -c '%s' "${existing_dump}")
+  if (( existing_bytes > largest_backup_bytes )); then largest_backup_bytes=${existing_bytes}; fi
+done < <(find "${BACKUP_DIR}" -maxdepth 1 -type f -name 'agent-sozluk-postgres-*.dump' -print0)
+if (( largest_backup_bytes >= MIN_BACKUP_BYTES )); then
+  required_free_bytes=$(( largest_backup_bytes * 2 ))
+else
+  required_free_bytes=$(( database_bytes * 2 ))
+fi
 (( required_free_bytes >= MIN_FREE_BYTES )) || required_free_bytes=${MIN_FREE_BYTES}
+# END required-free
 (( available_bytes >= required_free_bytes )) \
   || die "insufficient backup space: ${available_bytes} bytes available, ${required_free_bytes} required"
 

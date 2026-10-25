@@ -1,4 +1,6 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -96,6 +98,57 @@ describe("sunucu içi gece yedeği birimi", () => {
     expect(script).toContain('for required_dir in "${BACKUP_DIR}" "${RUNTIME_DIR}/state"; do');
     expect(script).toContain("directory is unsafe or missing: ${required_dir}");
     expect(statSync(path.join(root, "deploy/backup/backup-postgres.sh")).mode & 0o111).not.toBe(0);
+  });
+
+  /*
+    25 Ekim 2026: boş yer eşiği ham veritabanı boyutunun 2 katıydı ve 6,8 GB'lık veritabanında
+    yedek hiç başlamadı. Eşik artık saklanan en büyük geçerli dökümün 2 katı; döküm yoksa eski
+    kural. Blok, betikteki işaretler arasından alınıp sahte bir yedek dizininde çalıştırılır.
+  */
+  it("boş yer eşiği saklanan en büyük dökümün 2 katıdır; döküm yoksa veritabanının 2 katı", () => {
+    const begin = script.indexOf("# BEGIN required-free");
+    const end = script.indexOf("# END required-free");
+    expect(begin).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(begin);
+    const block = script.slice(begin, end);
+    const required = (files: Record<string, number>, databaseBytes: number) => {
+      const dir = mkdtempSync(path.join(tmpdir(), "yedek-esik-"));
+      try {
+        for (const [name, size] of Object.entries(files))
+          writeFileSync(path.join(dir, name), Buffer.alloc(size));
+        const program = [
+          "set -Eeuo pipefail",
+          `BACKUP_DIR=${JSON.stringify(dir)}`,
+          "MIN_BACKUP_BYTES=1024",
+          "MIN_FREE_BYTES=4096",
+          `database_bytes=${databaseBytes}`,
+          block,
+          'printf "%s" "${required_free_bytes}"',
+        ].join("\n");
+        return Number(execFileSync("bash", ["-c", program], { encoding: "utf8" }));
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    };
+    const dump = (stamp: string) => `agent-sozluk-postgres-${stamp}-scheduled.dump`;
+    // En büyük geçerli döküm belirler; veritabanı boyutu artık eşiği şişirmez.
+    expect(
+      required({ [dump("20261023T003001Z")]: 3000, [dump("20261024T003001Z")]: 5000 }, 900_000),
+    ).toBe(10_000);
+    // Geçersiz adlar, yarım dosyalar ve 1 KiB altı dökümler sayılmaz.
+    expect(
+      required(
+        {
+          [`${dump("20261024T003001Z")}.part`]: 50_000,
+          "agent-sozluk-20261017T124604Z-pre-d78125259e48.dump": 60_000,
+          [dump("20261022T003001Z")]: 100,
+        },
+        9000,
+      ),
+    ).toBe(18_000);
+    // Hiç döküm yoksa eski temkinli kural; alt sınır MIN_FREE_BYTES.
+    expect(required({}, 9000)).toBe(18_000);
+    expect(required({}, 100)).toBe(4096);
   });
 
   it("zamanlayıcı her gece ve kaçırılanı telafi eder", () => {
