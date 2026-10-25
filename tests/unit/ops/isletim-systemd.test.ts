@@ -171,24 +171,26 @@ describe("sunucu içi gece yedeği birimi", () => {
     expect(() => measure({}, 9000, "/olmayan/yedek/dizini")).toThrow();
   });
 
-  it("döküm yazım sınırına ulaşırsa yarıda kesilir ve betik durur", () => {
+  it("döküm yazım sınırına konteyner içinde ulaşırsa üretici ölür ve betik durur", () => {
     const cap = block("dump-cap");
-    const dumpWith = (dumpBytes: number, limit: number) => {
+    expect(cap).toContain("set -o pipefail; pg_dump");
+    const dumpWith = (producer: string, limit: number) => {
       const dir = mkdtempSync(path.join(tmpdir(), "yedek-sinir-"));
       try {
+        // Sahte pg_dump PATH'te; sahte docker, `sh -c …` kısmını konteyner yerine yerelde koşar.
+        writeFileSync(path.join(dir, "pg_dump"), `#!/bin/sh\n${producer}\n`, { mode: 0o755 });
         const part = path.join(dir, "x.dump.part");
         try {
-          const output = runBash([
+          return runBash([
+            `export PATH=${JSON.stringify(dir)}:"$PATH"`,
             'die() { printf "DIE %s" "$*"; exit 1; }',
-            // Sahte docker: istenen boyutta döküm üretir.
-            `docker() { head -c ${dumpBytes} /dev/zero; }`,
+            'docker() { while [ "$1" != sh ]; do shift; done; "$@"; }',
             "ENV_FILE=/dev/null COMPOSE_FILE=/dev/null",
             `PART_FILE=${JSON.stringify(part)}`,
             `output_limit_bytes=${limit}`,
             cap,
             'printf "OK %s" "${backup_bytes}"',
           ]);
-          return output;
         } catch (error) {
           return String((error as { stdout?: string }).stdout ?? "");
         }
@@ -196,10 +198,13 @@ describe("sunucu içi gece yedeği birimi", () => {
         rmSync(dir, { recursive: true, force: true });
       }
     };
-    expect(dumpWith(5000, 10_000)).toBe("OK 5000");
-    expect(dumpWith(20_000, 10_000)).toMatch(/^DIE /u);
-    expect(dumpWith(10_000, 10_000)).toMatch(/^DIE /u);
-  });
+    expect(dumpWith("head -c 5000 /dev/zero", 10_000)).toBe("OK 5000");
+    // Sonsuz üretici: sınırda SIGPIPE ile ölmeseydi test hiç bitmezdi.
+    expect(dumpWith("cat /dev/zero", 10_000)).toMatch(/^DIE /u);
+    expect(dumpWith("head -c 10000 /dev/zero", 10_000)).toMatch(/^DIE /u);
+    // Döküm hatası kesilmeden de yakalanır.
+    expect(dumpWith("head -c 100 /dev/zero; exit 3", 10_000)).toMatch(/^DIE /u);
+  }, 30_000);
 
   it("zamanlayıcı her gece ve kaçırılanı telafi eder", () => {
     const body = section(timer, "Timer");

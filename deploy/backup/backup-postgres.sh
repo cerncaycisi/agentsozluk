@@ -29,7 +29,7 @@ cleanup() {
 trap cleanup EXIT
 
 [[ ${EUID} -ne 0 && $(id -un) == deploy ]] || die 'run as deploy, not root'
-for command_name in awk chmod date df docker find flock head id mv rm sha256sum stat; do
+for command_name in awk chmod date df docker find flock id mv rm sha256sum stat; do
   command -v "${command_name}" >/dev/null 2>&1 || die "required command is missing: ${command_name}"
 done
 # 17 Ekim 2026: birim `ReadWritePaths=-…` ile eksik dizinde de başlar; eksik dizin burada
@@ -101,11 +101,14 @@ CHECKSUM_PART=${checksum_file}.part
 rm -f -- "${PART_FILE}" "${CHECKSUM_PART}"
 
 # BEGIN dump-cap
-# Yazım sınırı: sınıra ulaşan döküm kesilir; boru hattı hatası ya da boyut denetimi betiği
-# durdurur, EXIT temizliği yarım dosyayı siler. Disk rezervin altına inmez.
+# Yazım sınırı konteynerin İÇİNDE uygulanır (Sol 6.1, 3. tur): `head` sınırda çıkınca aynı
+# borudaki `pg_dump` SIGPIPE ile ölür, snapshot ve kilitler bırakılır; sınır host tarafında
+# olsaydı Docker exec konteynerdeki dökümü sürdürebilirdi. `pipefail` ile döküm hatası ya da
+# kesilme komutu başarısız kılar; tam sınıra denk gelen boyut ayrıca reddedilir. EXIT temizliği
+# yarım dosyayı siler; disk rezervin altına inmez.
 if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
-  pg_dump --format=custom --no-owner --no-acl -U agent_sozluk -d agent_sozluk \
-  | head -c "${output_limit_bytes}" >"${PART_FILE}"; then
+  sh -c 'set -o pipefail; pg_dump --format=custom --no-owner --no-acl -U agent_sozluk -d agent_sozluk | head -c "$1"' \
+  sh "${output_limit_bytes}" >"${PART_FILE}"; then
   die "pg_dump failed or reached the output limit (${output_limit_bytes} bytes)"
 fi
 chmod 0600 "${PART_FILE}"
