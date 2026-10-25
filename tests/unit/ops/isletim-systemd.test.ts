@@ -191,6 +191,7 @@ describe("sunucu içi gece yedeği birimi", () => {
                 `docker() { while [ "$1" != sh ]; do shift; done; shift; bash "$@" | head -c ${receiverBytes}; }`,
             "ENV_FILE=/dev/null COMPOSE_FILE=/dev/null",
             `PART_FILE=${JSON.stringify(part)}`,
+            "STDERR_PART=",
             `output_limit_bytes=${limit}`,
             cap,
             'printf "OK %s" "${backup_bytes}"',
@@ -214,6 +215,9 @@ describe("sunucu içi gece yedeği birimi", () => {
     expect(Date.now() - started).toBeLessThan(10_000);
     // Alıcı akışı yarıda koparsa eksik dosya başarılı sayılmaz (Sol 6.1, 6. tur).
     expect(dumpWith("head -c 16000 /dev/zero", 100_000, 4096)).toMatch(/^DIE /u);
+    // Boru tamponuna sığıp sessizce kaybolan son parça da (SIGPIPE yok) yakalanır (7. tur).
+    for (let run = 0; run < 5; run += 1)
+      expect(dumpWith("head -c 5000 /dev/zero", 100_000, 4096)).toMatch(/^DIE /u);
     // Döküm hatası kesilmeden de yakalanır.
     expect(dumpWith("head -c 100 /dev/zero; exit 3", 10_000)).toMatch(/^DIE /u);
   }, 30_000);

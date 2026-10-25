@@ -16,6 +16,7 @@ MIN_FREE_BYTES=1073741824
 MIN_RESERVE_BYTES=2147483648  # döküm sonrası diskte en az kalacak; ayrıca dosya sisteminin %10'u
 PART_FILE=
 CHECKSUM_PART=
+STDERR_PART=
 
 die() {
   printf 'ERROR: %s\n' "$*" >&2
@@ -25,11 +26,12 @@ die() {
 cleanup() {
   [[ -z "${PART_FILE}" ]] || rm -f -- "${PART_FILE}"
   [[ -z "${CHECKSUM_PART}" ]] || rm -f -- "${CHECKSUM_PART}"
+  [[ -z "${STDERR_PART}" ]] || rm -f -- "${STDERR_PART}"
 }
 trap cleanup EXIT
 
 [[ ${EUID} -ne 0 && $(id -un) == deploy ]] || die 'run as deploy, not root'
-for command_name in awk chmod date df docker find flock id mv rm sha256sum stat; do
+for command_name in awk chmod date df docker find flock grep id mv rm sed sha256sum stat; do
   command -v "${command_name}" >/dev/null 2>&1 || die "required command is missing: ${command_name}"
 done
 # 17 Ekim 2026: birim `ReadWritePaths=-…` ile eksik dizinde de başlar; eksik dizin burada
@@ -101,14 +103,14 @@ CHECKSUM_PART=${checksum_file}.part
 rm -f -- "${PART_FILE}" "${CHECKSUM_PART}"
 
 # BEGIN dump-cap
-# Yazım sınırı konteynerin İÇİNDE uygulanır (Sol 6.1, 3–5. tur). `pg_dump` bir FIFO'ya yazar,
-# `head` sınıra kadar okur, kopyalanan bayt sayılır. Yalnız sınıra ulaşıldıysa `pg_dump` açıkça
-# sonlandırılır (SIGPIPE'a güvenilmez; sınırdan sonra sorgu beklerken bloklanabilir); sınır
-# altındaki EOF'ta kapanışını bitirmesi beklenir, başarılı döküm öldürülmez. Aktarım borusunun
-# herhangi bir adımı hata verirse (ör. alıcı akışı kopar, `tee` SIGPIPE alır) döküm sonlandırılır
-# ve komut başarısız çıkar; eksik dosya başarılı sayılmaz (Sol 6.1, 6. tur). Komutun çıkış kodu `pg_dump`ınkidir; sonlandırma ya da
-# döküm hatası komutu başarısız kılar. Tam sınıra denk gelen boyut ayrıca reddedilir. EXIT
-# temizliği yarım dosyayı siler; disk rezervin altına inmez.
+# Yazım sınırı konteynerin İÇİNDE uygulanır (Sol 6.1, 3–7. tur). `pg_dump` bir FIFO'ya yazar,
+# `head` sınıra kadar okur, kopyalanan bayt sayılır.
+# - Yalnız sınıra ulaşıldıysa `pg_dump` açıkça sonlandırılır (SIGPIPE'a güvenilmez; sınırdan
+#   sonra sorgu beklerken bloklanabilir). Sınır altındaki EOF'ta kapanışı beklenir.
+# - Aktarım borusunun herhangi bir adımı hata verirse döküm sonlandırılır, komut başarısız çıkar.
+# - Başarıda konteyner gönderdiği bayt sayısını stderr'e yazar; host aldığı dosyanın boyutunu
+#   bununla karşılaştırır. Boru tamponuna sığıp kaybolan son parça da böylece yakalanır.
+# - Tam sınıra denk gelen boyut ayrıca reddedilir. EXIT temizliği yarım dosyaları siler.
 dump_in_container='fifo=$(mktemp -u) && mkfifo -m 600 "$fifo" || exit 90
 trap '"'"'rm -f "$fifo"'"'"' EXIT
 pg_dump --format=custom --no-owner --no-acl -U agent_sozluk -d agent_sozluk >"$fifo" &
@@ -117,15 +119,24 @@ set -o pipefail
 exec 3>&1
 stop() { kill -TERM "$dump_pid" 2>/dev/null; wait "$dump_pid"; exit "$1"; }
 copied=$(head -c "$1" <"$fifo" | tee /dev/fd/3 | wc -c) || stop 92
+copied=$((copied))
 [ "$copied" -lt "$1" ] || stop 93
-wait "$dump_pid"'
+wait "$dump_pid" || exit "$?"
+printf "AGENT_SOZLUK_DUMP_BYTES=%s\n" "$copied" >&2'
+STDERR_PART=${PART_FILE}.stderr
 if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
-  sh -c "${dump_in_container}" sh "${output_limit_bytes}" >"${PART_FILE}"; then
+  sh -c "${dump_in_container}" sh "${output_limit_bytes}" >"${PART_FILE}" 2>"${STDERR_PART}"; then
+  grep -v '^AGENT_SOZLUK_DUMP_BYTES=' "${STDERR_PART}" >&2 || true
   die "pg_dump failed or reached the output limit (${output_limit_bytes} bytes)"
 fi
+grep -v '^AGENT_SOZLUK_DUMP_BYTES=' "${STDERR_PART}" >&2 || true
+sent_bytes=$(sed -n 's/^AGENT_SOZLUK_DUMP_BYTES=\([0-9][0-9]*\)$/\1/p' "${STDERR_PART}")
 chmod 0600 "${PART_FILE}"
 
 backup_bytes=$(stat -c '%s' "${PART_FILE}")
+[[ ${sent_bytes} =~ ^[0-9]+$ ]] || die 'container did not report the dump size'
+(( backup_bytes == sent_bytes )) \
+  || die "backup transfer incomplete: received ${backup_bytes} of ${sent_bytes} bytes"
 (( backup_bytes < output_limit_bytes )) \
   || die "backup reached the output limit (${output_limit_bytes} bytes); disk reserve protected"
 # END dump-cap
