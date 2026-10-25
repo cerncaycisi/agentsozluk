@@ -9997,7 +9997,7 @@ ayrı kapılardır. Saatlik kontrol aynı sağlayıcının kotasına takıldığ
 
 - **Hata:** 25 Ekim 00:30:13Z `agent-sozluk-backup.service` 1 saniyede `Result=exit-code`
   ile bitti. Güvenli hata `insufficient backup space: 13381480448 bytes available,
-  13668284462 required`. Kök neden: eşik ham `pg_database_size` değerinin 2 katıydı
+13668284462 required`. Kök neden: eşik ham `pg_database_size` değerinin 2 katıydı
   (6.835.960.855 bayt); sıkıştırılmış döküm ~1,9 GB. Sunucu dışı Drive yedeği ayrı kanaldan
   01:43Z'de doğrulanarak alındı.
 - **Düzeltme:** PR #459 (`289afc7e`, Gökhan onayı "1 onay"). Eşik saklanan en büyük dökümün 2
