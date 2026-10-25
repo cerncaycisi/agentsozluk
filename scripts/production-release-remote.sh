@@ -525,7 +525,11 @@ write_no_migration_override() {
 pre_cutover_lease_scan() {
   local candidate_alarm="$app_root/deploy/alarm/canlilik-alarmi.sh"
   local installed_alarm=/opt/agent-sozluk/scripts/canlilik-alarmi.sh
-  systemctl cat agent-sozluk-alarm.service >/dev/null 2>&1 || return 0
+  # 25 Ekim 2026: alarm birimleri kapatıldı; atlama makbuzda görünür (Sol 6.1).
+  if ! systemctl cat agent-sozluk-alarm.service >/dev/null 2>&1; then
+    printf 'RELEASE_LEASE_SCAN_SKIPPED alarm-unit-absent\n'
+    return 0
+  fi
   # 120 sn: timer taraması sürüyorsa kilidi 55 sn'ye kadar bekler, sonra tarar.
   if timeout 120 bash "$candidate_alarm" --kesim-oncesi </dev/null; then
     printf 'RELEASE_LEASE_SCAN_OK\n'

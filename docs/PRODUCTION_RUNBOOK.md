@@ -612,15 +612,19 @@ oneshot birimler artık `OnFailure=` taşımaz. 14 Ekim taşımasında `/etc/age
 aktarılmadığı için bu birimler hiç çalışmıyordu (`Result=resources`). Uyarılar 19 Ekim'den beri
 T3 sohbetindeki saatlik sağlık kontrolünden gelir; kontrol başarısız `agent-sozluk*` birimlerini
 listeler. `canlilik-alarmi.sh` depoda ve sunucuda kalır ama kullanılmaz: dağıtımın kesim öncesi
-lease taraması (`pre_cutover_lease_scan`) yalnız `agent-sozluk-alarm.service` kuruluysa çalışır,
-birim kaldırılınca kendiliğinden atlanır. Sunucudan kaldırma (bir kez):
+lease taraması (`pre_cutover_lease_scan`) yalnız `agent-sozluk-alarm.service` kuruluysa çalışır;
+birim yoksa makbuza `RELEASE_LEASE_SCAN_SKIPPED alarm-unit-absent` yazar. Kararın sonucu: uzun
+`runtime.lease` transaction süreleri (lease alarmı, 2,5/4 sn eşikleri) artık hiçbir yerde
+izlenmez; saatlik kontrol yalnız koşu sayısı, başarısız koşu ve son koşu yaşına bakar. Alarm
+zamanlayıcısı 14 Ekim taşımasından beri zaten çalışmıyordu. Sunucudan kaldırma (bir kez; yalnız
+kaldırılan birimlerin hata durumu sıfırlanır, ötekilerin kanıtı korunur):
 
 ```sh
 sudo systemctl disable --now agent-sozluk-alarm.timer || true
 sudo rm -f /etc/systemd/system/agent-sozluk-alarm.service /etc/systemd/system/agent-sozluk-alarm.timer \
   /etc/systemd/system/agent-sozluk-bildirim@.service
 sudo systemctl daemon-reload
-sudo systemctl reset-failed 'agent-sozluk-*'
+sudo systemctl reset-failed agent-sozluk-alarm.service agent-sozluk-alarm.timer 'agent-sozluk-bildirim@*' || true
 ```
 
 Kurulu dosyalar ve depodaki kaynakları:
@@ -2672,7 +2676,8 @@ kör ölçümde iki sinyalin birlikte önerdiği çiftler %91–100 ilgiliydi; t
 - **Yaş sınırı (17 Ekim 2026, Astra bulgu 5):** `computedAt` 72 saatten
   (`RELATED_TOPIC_MAX_AGE_HOURS`) eskiyse bağ gösterilmez. Gece işi durursa bayat bağlar süresiz
   kalmaz; blok kalkar, satırlar silinmez ve bir sonraki başarılı hesapla geri gelir. İşin
-  düştüğünü `OnFailure=` bildirimi ve alarmın 26 saatlik son-başarılı-koşu kontrolü söyler.
+  düştüğünü saatlik sağlık kontrolünün başarısız birim listesi ve 26 saatlik son-başarılı-koşu
+  kontrolü söyler (alarm ve `OnFailure=` bildirimi 25 Ekim'de kapatıldı).
 - **Tek hesap:** hesap transaction'ın başında danışma kilidi alır (liste modu dahil). Kilit
   başkasındaysa liste modu beklemeden `{"status":"ALREADY_RUNNING"}` basar ve 0 ile çıkar.
   `--uygula` 60 sn arayla 10 kez yeniden dener; kilit hâlâ alınamazsa aynı satırı basar ve 75
