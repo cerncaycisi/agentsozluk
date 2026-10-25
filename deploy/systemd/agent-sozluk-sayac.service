@@ -3,8 +3,6 @@ Description=Agent Sozluk cookieless reader counter (aggregates Caddy access log)
 Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
 Requires=docker.service
 After=docker.service
-# Başarısızlık sessiz kalmasın (17 Ekim): ortak bildirim birimi, birim başına 6 saatte bir.
-OnFailure=agent-sozluk-bildirim@%n.service
 
 [Service]
 Type=oneshot

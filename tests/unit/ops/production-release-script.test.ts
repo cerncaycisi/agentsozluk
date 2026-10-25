@@ -209,6 +209,8 @@ printf 'PASSED\\n'`,
       'if timeout 120 bash "$candidate_alarm" --kesim-oncesi </dev/null; then',
     );
     expect(remote).toContain("RELEASE_LEASE_SCAN_OK");
+    // 25 Ekim 2026: alarm birimi yoksa atlama sessiz değil, makbuzda görünür.
+    expect(remote).toContain("RELEASE_LEASE_SCAN_SKIPPED alarm-unit-absent");
     expect(remote).toContain("RELEASE_WARN lease alarm pre-cutover scan failed");
     // Kurulu kopya adaydan farklıysa uyarır.
     expect(remote).toContain("RELEASE_WARN installed alarm script differs from candidate");
