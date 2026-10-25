@@ -83,7 +83,7 @@
     "verify:m1": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/verify-m1.ts"
   },
   "dependencies": {
-    "@hookform/resolvers": "5.9.1",
+    "@hookform/resolvers": "5.9.2",
     "@node-rs/argon2": "2.2.2",
     "@prisma/client": "6.19.3",
     "@radix-ui/react-alert-dialog": "1.2.1",
@@ -94,7 +94,7 @@
     "date-fns": "4.4.0",
     "dotenv": "17.4.2",
     "linkify-it": "6.1.0",
-    "lucide-react": "1.57.0",
+    "lucide-react": "1.61.0",
     "next": "15.5.28",
     "pino": "10.4.0",
     "prisma": "6.19.3",
