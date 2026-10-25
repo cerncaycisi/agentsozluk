@@ -1,4 +1,6 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -97,6 +99,128 @@ describe("sunucu içi gece yedeği birimi", () => {
     expect(script).toContain("directory is unsafe or missing: ${required_dir}");
     expect(statSync(path.join(root, "deploy/backup/backup-postgres.sh")).mode & 0o111).not.toBe(0);
   });
+
+  /*
+    25 Ekim 2026: boş yer eşiği ham veritabanı boyutunun 2 katıydı ve 6,8 GB'lık veritabanında
+    yedek hiç başlamadı. Eşik artık saklanan en büyük geçerli dökümün 2 katı; döküm yoksa eski
+    kural. Sol 6.1: döküm ayrıca rezervi koruyan bir yazım sınırıyla kesilir ve dosya listesi
+    yarıda hata verirse betik durur. Bloklar betikteki işaretler arasından alınıp sahte bir yedek
+    dizininde ve sahte `docker` ile çalıştırılır.
+  */
+  const block = (name: string) => {
+    const begin = script.indexOf(`# BEGIN ${name}`);
+    const end = script.indexOf(`# END ${name}`);
+    expect(begin).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(begin);
+    return script.slice(begin, end);
+  };
+  const runBash = (lines: string[]) =>
+    execFileSync("bash", ["-c", ["set -Eeuo pipefail", ...lines].join("\n")], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  const dump = (stamp: string) => `agent-sozluk-postgres-${stamp}-scheduled.dump`;
+
+  it("boş yer eşiği saklanan en büyük dökümün 2 katıdır; döküm yoksa veritabanının 2 katı", () => {
+    const sizing = block("required-free");
+    const measure = (
+      files: Record<string, number>,
+      databaseBytes: number,
+      backupDir?: string,
+    ): { required: number; reserve: number; limit: number } => {
+      const dir = mkdtempSync(path.join(tmpdir(), "yedek-esik-"));
+      try {
+        for (const [name, size] of Object.entries(files))
+          writeFileSync(path.join(dir, name), Buffer.alloc(size));
+        const output = runBash([
+          `BACKUP_DIR=${JSON.stringify(backupDir ?? dir)}`,
+          "MIN_BACKUP_BYTES=1024",
+          "MIN_FREE_BYTES=4096",
+          "MIN_RESERVE_BYTES=1000",
+          `database_bytes=${databaseBytes}`,
+          "available_bytes=100000",
+          "total_kib=200",
+          sizing,
+          'printf "%s %s %s" "${required_free_bytes}" "${reserve_bytes}" "${output_limit_bytes}"',
+        ]);
+        const [required, reserve, limit] = output.split(" ").map(Number);
+        return { required: required!, reserve: reserve!, limit: limit! };
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    };
+    // En büyük geçerli döküm belirler; veritabanı boyutu artık eşiği şişirmez.
+    expect(
+      measure({ [dump("20261023T003001Z")]: 3000, [dump("20261024T003001Z")]: 5000 }, 900_000),
+    ).toEqual({ required: 10_000, reserve: 20_480, limit: 79_520 });
+    // Geçersiz adlar, yarım dosyalar ve 1 KiB altı dökümler sayılmaz.
+    expect(
+      measure(
+        {
+          [`${dump("20261024T003001Z")}.part`]: 50_000,
+          "agent-sozluk-20261017T124604Z-pre-d78125259e48.dump": 60_000,
+          [dump("20261022T003001Z")]: 100,
+        },
+        9000,
+      ).required,
+    ).toBe(18_000);
+    // Hiç döküm yoksa eski temkinli kural; alt sınır MIN_FREE_BYTES.
+    expect(measure({}, 9000).required).toBe(18_000);
+    expect(measure({}, 100).required).toBe(4096);
+    // Liste alınamazsa betik eksik listeyle sürmez, durur.
+    expect(() => measure({}, 9000, "/olmayan/yedek/dizini")).toThrow();
+  });
+
+  it("döküm yazım sınırına konteyner içinde ulaşırsa üretici sonlandırılır ve betik durur", () => {
+    const cap = block("dump-cap");
+    expect(cap).toContain('kill -TERM "$dump_pid"');
+    const dumpWith = (producer: string, limit: number, receiverBytes?: number) => {
+      const dir = mkdtempSync(path.join(tmpdir(), "yedek-sinir-"));
+      try {
+        // Sahte pg_dump PATH'te; sahte docker, `sh -c …` kısmını konteyner yerine yerelde koşar.
+        writeFileSync(path.join(dir, "pg_dump"), `#!/bin/sh\n${producer}\n`, { mode: 0o755 });
+        const part = path.join(dir, "x.dump.part");
+        try {
+          return runBash([
+            `export PATH=${JSON.stringify(dir)}:"$PATH"`,
+            'die() { printf "DIE %s" "$*"; exit 1; }',
+            // Üretimdeki busybox sh yerine bash: CI'daki eski dash `pipefail`/`wait` farkı yaratmasın.
+            receiverBytes === undefined
+              ? 'docker() { while [ "$1" != sh ]; do shift; done; shift; bash "$@"; }'
+              : // Alıcı akışı erken kapatır (kopan docker akışı).
+                `docker() { while [ "$1" != sh ]; do shift; done; shift; bash "$@" | head -c ${receiverBytes}; }`,
+            "ENV_FILE=/dev/null COMPOSE_FILE=/dev/null",
+            `PART_FILE=${JSON.stringify(part)}`,
+            "STDERR_PART=",
+            `output_limit_bytes=${limit}`,
+            cap,
+            'printf "OK %s" "${backup_bytes}"',
+          ]);
+        } catch (error) {
+          return String((error as { stdout?: string }).stdout ?? "");
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    };
+    expect(dumpWith("head -c 5000 /dev/zero", 10_000)).toBe("OK 5000");
+    // Çıktıyı kapatıp kapanışını sürdüren başarılı döküm öldürülmez (Sol 6.1, 5. tur).
+    expect(dumpWith("head -c 5000 /dev/zero; exec 1>&-; exec sleep 0.2", 10_000)).toBe("OK 5000");
+    // Sonsuz üretici: sınırda sonlandırılmasaydı test hiç bitmezdi.
+    expect(dumpWith("cat /dev/zero", 10_000)).toMatch(/^DIE /u);
+    expect(dumpWith("head -c 10000 /dev/zero", 10_000)).toMatch(/^DIE /u);
+    // Sınırda yazıp bekleyen üretici de (ör. sorgu bekleyen pg_dump) sonlandırılır.
+    const started = Date.now();
+    expect(dumpWith("head -c 10000 /dev/zero; exec sleep 30", 10_000)).toMatch(/^DIE /u);
+    expect(Date.now() - started).toBeLessThan(10_000);
+    // Alıcı akışı yarıda koparsa eksik dosya başarılı sayılmaz (Sol 6.1, 6. tur).
+    expect(dumpWith("head -c 16000 /dev/zero", 100_000, 4096)).toMatch(/^DIE /u);
+    // Boru tamponuna sığıp sessizce kaybolan son parça da (SIGPIPE yok) yakalanır (7. tur).
+    for (let run = 0; run < 5; run += 1)
+      expect(dumpWith("head -c 5000 /dev/zero", 100_000, 4096)).toMatch(/^DIE /u);
+    // Döküm hatası kesilmeden de yakalanır.
+    expect(dumpWith("head -c 100 /dev/zero; exit 3", 10_000)).toMatch(/^DIE /u);
+  }, 30_000);
 
   it("zamanlayıcı her gece ve kaçırılanı telafi eder", () => {
     const body = section(timer, "Timer");
