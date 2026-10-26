@@ -26,10 +26,25 @@ const oneshots = units.filter(
     /^Type=oneshot$/mu.test(section(read(`deploy/systemd/${name}`), "Service")),
 );
 
-describe("OnFailure bildirimi", () => {
-  it("beklenen bütün oneshot birimler listede", () => {
+/*
+  25 Ekim 2026, Gökhan: "Kapat". Alarm birimi, zamanlayıcısı ve ortak bildirim birimi kaldırıldı:
+  14 Ekim taşımasında `/etc/agent-sozluk-alarm.env` aktarılmadığından hiçbiri çalışmıyordu
+  (`Result=resources`) ve uyarılar 19 Ekim'den beri T3 sohbetindeki saatlik sağlık kontrolünden
+  geliyor; kontrol düşen `agent-sozluk*` birimlerini zaten listeliyor. `canlilik-alarmi.sh`
+  depoda kalıyor ama kullanılmıyor; dağıtımın kesim öncesi taraması alarm birimi yoksa atlanır.
+*/
+describe("alarm ve bildirim birimleri kapalı", () => {
+  it("alarm ve bildirim birimleri depoda yok", () => {
     for (const name of [
       "agent-sozluk-alarm.service",
+      "agent-sozluk-alarm.timer",
+      "agent-sozluk-bildirim@.service",
+    ])
+      expect(readdirSync(systemdDir)).not.toContain(name);
+  });
+
+  it("beklenen oneshot birimler var ve hiçbiri OnFailure taşımaz", () => {
+    for (const name of [
       "agent-sozluk-backup.service",
       "agent-sozluk-ilgili.service",
       "agent-sozluk-indexnow.service",
@@ -39,44 +54,7 @@ describe("OnFailure bildirimi", () => {
       "agent-sozluk.service",
     ])
       expect(oneshots).toContain(name);
-  });
-
-  it.each(oneshots)("%s başarısızlığını ortak bildirim birimine bağlar", (name) => {
-    const unit = section(read(`deploy/systemd/${name}`), "Unit");
-    expect(unit).toMatch(/^OnFailure=agent-sozluk-bildirim@%n\.service$/mu);
-  });
-
-  it("bildirim birimi alarmın yolunu kullanır, OnFailure taşımaz ve ağ dışında yetki istemez", () => {
-    const unit = read("deploy/systemd/agent-sozluk-bildirim@.service");
-    expect(unit).not.toMatch(/^OnFailure=/mu);
-    const service = section(unit, "Service");
-    expect(service).toMatch(/^Type=oneshot$/mu);
-    expect(service).toMatch(/^User=deploy$/mu);
-    expect(service).toMatch(
-      /^ExecStart=\/opt\/agent-sozluk\/scripts\/canlilik-alarmi\.sh --bildir %i$/mu,
-    );
-    expect(service).toMatch(/^EnvironmentFile=\/etc\/agent-sozluk-alarm\.env$/mu);
-    expect(service).toMatch(/^StateDirectory=agent-sozluk-alarm$/mu);
-    expect(service).toMatch(
-      /^Environment=ALARM_DURUM_DOSYASI=\/var\/lib\/agent-sozluk-alarm\/durum$/mu,
-    );
-    expect(service).toMatch(/^ProtectSystem=strict$/mu);
-    // Disk doluyken bastırma kaydı tmpfs'e düşer; açılışa kadar korunur (Astra 1. tur).
-    expect(service).toMatch(/^RuntimeDirectory=agent-sozluk-bildirim$/mu);
-    expect(service).toMatch(/^RuntimeDirectoryPreserve=yes$/mu);
-    expect(service).toMatch(/^NoNewPrivileges=yes$/mu);
-    expect(service).toMatch(/^CapabilityBoundingSet=$/mu);
-    expect(service).toContain("-/run/docker.sock");
-    expect(service).toContain("-/opt/agent-sozluk/app");
-  });
-
-  it("alarm birimi körlükte (3) başarısız olur; süre sınırı alt kontrollere yeter", () => {
-    const service = section(read("deploy/systemd/agent-sozluk-alarm.service"), "Service");
-    expect(service).toMatch(/^SuccessExitStatus=0 2$/mu);
-    expect(service).toMatch(/^TimeoutStartSec=4min$/mu);
-    const script = read("deploy/alarm/canlilik-alarmi.sh");
-    expect(script).toContain("işletim 25+5 = 185 sn; birimin TimeoutStartSec=4min");
-    expect(185).toBeLessThan(4 * 60);
+    for (const name of units) expect(read(`deploy/systemd/${name}`)).not.toMatch(/^OnFailure=/mu);
   });
 });
 
@@ -231,7 +209,7 @@ describe("sunucu içi gece yedeği birimi", () => {
 
   it("runbook kurulumu ReadWritePaths dizinlerini birimden önce oluşturur", () => {
     const runbook = read("docs/PRODUCTION_RUNBOOK.md");
-    const start = runbook.indexOf("## Sunucu içi gece yedeği, canlılık alarmı ve OnFailure");
+    const start = runbook.indexOf("## Sunucu içi gece yedeği ve kapatılan alarm birimleri");
     expect(start).toBeGreaterThan(-1);
     const kurulum = runbook.slice(start, runbook.indexOf("\n## ", start + 1));
     const dizinler = section(service, "Service")
@@ -241,6 +219,8 @@ describe("sunucu içi gece yedeği birimi", () => {
     for (const dizin of dizinler)
       expect(kurulum).toMatch(new RegExp(`install -d [^\\n]*${dizin}`, "u"));
     expect(kurulum.indexOf("install -d")).toBeLessThan(kurulum.indexOf("systemctl enable --now"));
-    expect(kurulum).toContain("agent-sozluk-bildirim@.service");
+    // Kapatılan birimler kurulmaz, yalnız kaldırma adımında geçer.
+    expect(kurulum).not.toMatch(/for unit in [^\n]*(alarm|bildirim)/u);
+    expect(kurulum).toContain("sudo systemctl disable --now agent-sozluk-alarm.timer");
   });
 });
