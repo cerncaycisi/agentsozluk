@@ -45,7 +45,9 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      18 Ekim 00:30Z zamanlanmış koşuda başarılı. Dağıtım envanteri ilk koşuda eksik
      `alarm.env`'i yakaladı; aranamayan dizindeki dosyayı yanlışlıkla "eksik" saydığı için
      `RELEASE_HOST_UNVERIFIED` ayrıldı (takip PR'ı).
-   - **Kalan:** alarm ortam dosyası (Gökhan kararı); ilk gece koşularını okumak.
+   - **Kapandı (25 Ekim, Gökhan: "Kapat"):** alarm ortam dosyası hiç aktarılmadığı için alarm,
+     zamanlayıcısı, `agent-sozluk-bildirim@` ve `OnFailure=` satırları kaldırıldı; uyarılar
+     saatlik T3 sağlık kontrolünden gelir. Lease süresi alarmı da böylece izlenmez (runbook).
 2. **Talep ölçümü:** sayaç tanımı düzeltilip sürümlenir (site içi/geçersiz yönlendiren ayrı);
    "insan", "görüntüleme", "dış giriş" ve "cevap motoru getirmesi" ayrı raporlanır.
    - **Canlıda (18 Ekim, PR #429, main `36b1b81c`; sunucu kopyası 09:26Z):** güvenilir görüntüleme v2 =

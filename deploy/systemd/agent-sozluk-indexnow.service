@@ -3,8 +3,6 @@ Description=Agent Sozluk IndexNow notification (new or changed public topic URLs
 Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
 After=network-online.target
 Wants=network-online.target
-# Başarısızlık sessiz kalmasın (17 Ekim): ortak bildirim birimi, birim başına 6 saatte bir.
-OnFailure=agent-sozluk-bildirim@%n.service
 
 [Service]
 Type=oneshot
