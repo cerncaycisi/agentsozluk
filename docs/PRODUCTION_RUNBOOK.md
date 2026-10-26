@@ -598,14 +598,34 @@ history, credentials, content or database volumes. Disable/stop also requires ex
 sudo systemctl disable --now agent-sozluk-maintenance.timer
 ```
 
-## Sunucu içi gece yedeği, canlılık alarmı ve OnFailure bildirimi (kurulum)
+## Sunucu içi gece yedeği ve kapatılan alarm birimleri (kurulum)
 
 17 Ekim 2026'da eklendi. 15–17 Ekim'de `agent-sozluk-backup.service` üç gece
 `status=226/NAMESPACE` ile betik hiç başlamadan düştü: `/opt/agent-sozluk/backups/postgres`
-OVH taşımasında oluşturulmamıştı ve birim bu dizini `ReadWritePaths` ile istiyordu. Alarm da
-bildirmedi (sunucudaki kopya 2 Ekim'den kalmaydı; ntfy günlük sınırı 429 bildirimleri yuttu).
-Bu bölüm sunucu kurulumu ya da taşıması için tek kaynaktır. Kurulum üretim mutasyonudur ve
-onay kuralına tabidir.
+OVH taşımasında oluşturulmamıştı ve birim bu dizini `ReadWritePaths` ile istiyordu. Bu bölüm
+sunucu kurulumu ya da taşıması için tek kaynaktır. Kurulum üretim mutasyonudur ve onay kuralına
+tabidir.
+
+**Alarm ve bildirim birimleri kapalı (25 Ekim 2026, Gökhan: "Kapat").** `agent-sozluk-alarm`
+birimi ve zamanlayıcısı ile ortak bildirim birimi `agent-sozluk-bildirim@.service` kaldırıldı;
+oneshot birimler artık `OnFailure=` taşımaz. 14 Ekim taşımasında `/etc/agent-sozluk-alarm.env`
+aktarılmadığı için bu birimler hiç çalışmıyordu (`Result=resources`). Uyarılar 19 Ekim'den beri
+T3 sohbetindeki saatlik sağlık kontrolünden gelir; kontrol başarısız `agent-sozluk*` birimlerini
+listeler. `canlilik-alarmi.sh` depoda ve sunucuda kalır ama kullanılmaz: dağıtımın kesim öncesi
+lease taraması (`pre_cutover_lease_scan`) yalnız `agent-sozluk-alarm.service` kuruluysa çalışır;
+birim yoksa makbuza `RELEASE_LEASE_SCAN_SKIPPED alarm-unit-absent` yazar. Kararın sonucu: uzun
+`runtime.lease` transaction süreleri (lease alarmı, 2,5/4 sn eşikleri) artık hiçbir yerde
+izlenmez; saatlik kontrol yalnız koşu sayısı, başarısız koşu ve son koşu yaşına bakar. Alarm
+zamanlayıcısı 14 Ekim taşımasından beri zaten çalışmıyordu. Sunucudan kaldırma (bir kez; yalnız
+kaldırılan birimlerin hata durumu sıfırlanır, ötekilerin kanıtı korunur):
+
+```sh
+sudo systemctl disable --now agent-sozluk-alarm.timer || true
+sudo rm -f /etc/systemd/system/agent-sozluk-alarm.service /etc/systemd/system/agent-sozluk-alarm.timer \
+  /etc/systemd/system/agent-sozluk-bildirim@.service
+sudo systemctl daemon-reload
+sudo systemctl reset-failed agent-sozluk-alarm.service agent-sozluk-alarm.timer 'agent-sozluk-bildirim@*' || true
+```
 
 Kurulu dosyalar ve depodaki kaynakları:
 
@@ -618,8 +638,9 @@ Kurulu dosyalar ve depodaki kaynakları:
 **1. Dizinler önce.** Birimler `ProtectSystem=strict` ile koşar; yazdıkları dizini kendileri
 oluşturamaz. Yedek biriminin `ReadWritePaths=` yolları `-` önekli: eksik dizin artık
 `226/NAMESPACE` ile sessizce düşmez, birim başlar ve `backup-postgres.sh` eksik dizini adıyla
-söyleyip 1 ile çıkar (`ERROR: directory is unsafe or missing: …`), `OnFailure=` bildirir. Bu bir
-kurulum hatasıdır; dizini birim içinde root yetkisiyle oluşturan bir adım bilerek yok.
+söyleyip 1 ile çıkar (`ERROR: directory is unsafe or missing: …`); saatlik sağlık kontrolü düşen
+birimi görür. Bu bir kurulum hatasıdır; dizini birim içinde root yetkisiyle oluşturan bir adım
+bilerek yok.
 
 ```sh
 sudo install -d -o deploy -g deploy -m 0700 /opt/agent-sozluk/backups /opt/agent-sozluk/backups/postgres
@@ -630,54 +651,22 @@ sudo install -d -o deploy -g deploy -m 0750 /var/log/agent-sozluk
 `StandardOutput=append:/var/log/agent-sozluk/backup.log` dizini eksikse birim `209/STDOUT` ile
 düşer; `-` öneki bunu kapsamaz.
 
-**2. Betikler ve birimler.** Depo kökünden, exact sürümün checkout'unda:
+**2. Betikler ve birimler.** Depo kökünden, exact sürümün checkout'unda. Dağıtım bu dosyaları
+kurmaz; yalnız farkı `RELEASE_HOST_DRIFT` ile raporlar:
 
 ```sh
 sudo install -o deploy -g deploy -m 0755 deploy/backup/backup-postgres.sh /opt/agent-sozluk/scripts/backup-postgres.sh
 sudo install -o deploy -g deploy -m 0755 deploy/alarm/canlilik-alarmi.sh /opt/agent-sozluk/scripts/canlilik-alarmi.sh
-for unit in agent-sozluk-bildirim@.service agent-sozluk-backup.service agent-sozluk-backup.timer \
-  agent-sozluk-alarm.service agent-sozluk-alarm.timer; do
+for unit in agent-sozluk-backup.service agent-sozluk-backup.timer; do
   sudo install -o root -g root -m 0644 "deploy/systemd/$unit" "/etc/systemd/system/$unit"
 done
-sudo systemd-analyze verify agent-sozluk-bildirim@.service agent-sozluk-backup.service agent-sozluk-alarm.service
+sudo systemd-analyze verify agent-sozluk-backup.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now agent-sozluk-backup.timer agent-sozluk-alarm.timer
+sudo systemctl enable --now agent-sozluk-backup.timer
 ```
 
 Diğer oneshot birimler (`ilgili`, `karagoz`, `indexnow`, `sayac`, `maintenance`,
-`agent-sozluk.service`) da `OnFailure=agent-sozluk-bildirim@%n.service` taşır; değiştiklerinde
-kendi bölümlerindeki komutla yeniden kurulur. `agent-sozluk-bildirim@.service` kurulu değilse
-`OnFailure=` yalnız journal'a "unit not found" yazar; bu yüzden ilk kurulan odur.
-
-**3. Bildirim yolu.** `agent-sozluk-bildirim@<birim>.service` alarmla aynı yoldan gider
-(`canlilik-alarmi.sh --bildir <birim>`, `/etc/agent-sozluk-alarm.env` içindeki ntfy konusu);
-ikinci bir dış kanal yok. Aynı birim için 6 saatte en çok bir bildirim gider. Hata gönderimden önce
-`/var/lib/agent-sozluk-alarm/son-birim-hatasi` dosyasına yazılır; gönderim başarısızsa bildirim
-birimi de başarısız kalır ve `son-bildirim-hatasi` (an, kaynak, curl çıkışı) güncellenir. ntfy
-sınırı dolduğunda bu iki dosya ve `systemctl --failed` son kanıttır. Bastırma kaydı gönderimden
-önce yazılır; yazılamazsa bildirim gönderilmez (sınırsız tekrar olmasın). `/var/lib`
-yazılamıyorsa (ör. disk dolu) kayıt birimin `/run/agent-sozluk-bildirim` dizinine düşer; o da
-yazılamıyorsa yalnız `systemctl --failed` kalır:
-
-```sh
-systemctl --failed 'agent-sozluk-*'
-sudo cat /var/lib/agent-sozluk-alarm/son-birim-hatasi /var/lib/agent-sozluk-alarm/son-bildirim-hatasi
-```
-
-**4. Alarm körlüğü.** Alarm betiği kendi alt kontrollerinden biri işini yapamazsa (sağlık özeti
-okunamadı ya da bozuk, lease logu okunamadı, alt kontrol süre aşımı, bildirim gönderilemedi) 3 ile
-çıkar; birim başarısız görünür (`SuccessExitStatus=0 2`) ve OnFailure çalışır. İşletim kontrolü
-`backup` 26 sa, `ilgili` 26 sa, `sayac` 2 sa, `indexnow` 3 sa, `karagoz` 26 sa içinde son başarılı
-koşu (`systemctl show` `Result` ve `ExecMainExitTimestamp`) arar; eksik, başarısız ya da eski
-koşuyu bildirir. Okunamayan birimin ya da ölçülemeyen disk marjının önceki sorunu "düzeldi"
-sayılmaz; "okunamıyor" diye taşınır ve koşu 3 ile biter. Gönderilemeyen bildirimin sorunu durumda
-"görülen" olarak kalır ve sonraki koşuda (düzelmiş olsa da "arada görülen" diye) söylenir.
-Canlılık, sağlık ve işletim kontrolleri durum dosyasını yazamazsa bildirim göndermez ve 3 ile
-çıkar; haberi OnFailure bildirimi taşır. Bilerek kurulmayan birim `/etc/agent-sozluk-alarm.env` içinde
-`ALARM_BIRIMLER=` ile listeden çıkarılır. Aynı kontrol migration disk marjını
-(boş − (3 × `pg_database_size` + 1 GiB)) journal'a `ALARM_DISK_MARJI` satırıyla basar ve 2 GiB'in
-altında günde bir düşük öncelikli uyarı gönderir; dağıtımı engellemez, kapı
-`production-migration-phase.sh` içinde aynen kalır.
+`agent-sozluk.service`) değiştiklerinde kendi bölümlerindeki komutla yeniden kurulur.
 
 **5. İlk gece doğrulaması.** "Elle bir kez koştu" kalıcı birimin çalıştığını göstermez. Kurulumdan
 sonraki ilk zamanlanmış koşunun sonucunu okuyun:
@@ -693,8 +682,8 @@ Her dağıtım sonunda `production-release-remote.sh` kurulu kopyaları adayla k
 (`RELEASE_HOST_MISSING_FILE <yol>`) listeler. `deploy` kullanıcısının aranamadığı bir üst dizinin
 altındaki yol (ör. `/etc/agent-sozluk/runtime.env`) "eksik" sayılmaz, `RELEASE_HOST_UNVERIFIED
 <yol>` olarak ayrı yazılır; gerekiyorsa `sudo test -e` ile bakın. Bu satırlar dağıtımı durdurmaz ama makbuza yazılır
-ve bu bölümle giderilir. `EnvironmentFile=` dosyaları (ör. ntfy konusunu tutan
-`/etc/agent-sozluk-alarm.env`, root 0600) depoda yoktur; sunucu taşımasında ayrıca aktarılmalıdır.
+ve bu bölümle giderilir. `EnvironmentFile=` dosyaları depoda yoktur; sunucu taşımasında ayrıca
+aktarılmalıdır.
 
 ## Deploy-day failure modes — read before every deploy
 
@@ -2687,7 +2676,8 @@ kör ölçümde iki sinyalin birlikte önerdiği çiftler %91–100 ilgiliydi; t
 - **Yaş sınırı (17 Ekim 2026, Astra bulgu 5):** `computedAt` 72 saatten
   (`RELATED_TOPIC_MAX_AGE_HOURS`) eskiyse bağ gösterilmez. Gece işi durursa bayat bağlar süresiz
   kalmaz; blok kalkar, satırlar silinmez ve bir sonraki başarılı hesapla geri gelir. İşin
-  düştüğünü `OnFailure=` bildirimi ve alarmın 26 saatlik son-başarılı-koşu kontrolü söyler.
+  düştüğünü saatlik sağlık kontrolünün başarısız birim listesi ve 26 saatlik son-başarılı-koşu
+  kontrolü söyler (alarm ve `OnFailure=` bildirimi 25 Ekim'de kapatıldı).
 - **Tek hesap:** hesap transaction'ın başında danışma kilidi alır (liste modu dahil). Kilit
   başkasındaysa liste modu beklemeden `{"status":"ALREADY_RUNNING"}` basar ve 0 ile çıkar.
   `--uygula` 60 sn arayla 10 kez yeniden dener; kilit hâlâ alınamazsa aynı satırı basar ve 75
