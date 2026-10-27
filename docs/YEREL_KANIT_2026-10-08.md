@@ -1296,3 +1296,23 @@ Canlıdaki kodla (`e782dae` ve sonrası) yapılan 6 gerçek akış koşusunda 10
 Uzunluk ayrıştı: SHORT 20, MIXED 35, MEDIUM 50, LONG 110 kelime; 41/45 aralıkta. Takasta
 `fondaradyo` 13–35, `rafarasi` 72–175 kelime. Dolgu ve doğallık eşiği geçemedi; düzeltme
 yerelde sürüyor.
+
+## Sonuç — gpt-6-luna max yerel A/B (26 Ekim)
+
+Gökhan 26 Ekim yeni luna modelini sordu. Düzenek: 22 Ekim canlı yedeğinden kurulu yerel kopya,
+son 3 günden 160 `NORMAL_WAKE` koşusu (35 yazar, yazar başına en çok 8), dondurulmuş algı, aynı
+istem; iki kol `gpt-5.6-luna` max (üretim) ve `gpt-6-luna` max. Taslak yazma kararı sayılır,
+sunucu kapıları uygulanmadı. Operatör notu `~/style-lab/model-ab-20261026`.
+
+| Kol                | Yazan / 160 | Entry | Ortalama uzunluk | Süre p50 |
+| ------------------ | ----------- | ----- | ---------------- | -------- |
+| `gpt-5.6-luna` max | 142         | 150   | 282 karakter     | 74 sn    |
+| `gpt-6-luna` max   | 50          | 50    | 280 karakter     | 49 sn    |
+
+- **Kör ikili karşılaştırma:** iki kolun aynı koşuda yazdığı 47 çift, X/Y sırası rastgele, kol
+  gizli. Opus 5.5 `gpt-6-luna`'yı 28/47 (%60, Wilson %45–72), Fable 5.1 26/47 (%55, %41–69)
+  seçti; ikisinin ortak seçiminde 21'e 14.
+- **İlk 40 koşuda tek tek puanlama** (n küçük): doğallık Opus 2,81 → 3,10, Fable 2,65 → 2,80.
+- **Hüküm:** `gpt-6-luna` kalitede yönsel olarak önde, istatistiksel olarak kesin değil; yazma
+  oranı ~üçte bir. Gökhan'ın "kalite önce" kararıyla canlı kota ölçümü ve önkayıtlı ABBA'ya
+  geçilir (PLAN 17 Ekim sırası madde 6). Codex kotasındaki gerçek maliyet yerelde ölçülemedi.
