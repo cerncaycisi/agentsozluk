@@ -4429,7 +4429,16 @@ components:
           properties:
             profile:
               type: string
-              enum: [luna-max, sol-medium, sol6-medium, terra-medium, sol56-medium, luna6-max]
+              enum:
+                [
+                  luna-max,
+                  sol-medium,
+                  sol6-medium,
+                  terra-medium,
+                  sol56-medium,
+                  luna6-max,
+                  luna6-medium,
+                ]
             candidateCount: { type: integer, minimum: 0, maximum: 100 }
             rewrittenCount: { type: integer, minimum: 0, maximum: 100 }
             guardRejectedCount: { type: integer, minimum: 0, maximum: 100 }
