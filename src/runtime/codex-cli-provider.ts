@@ -62,6 +62,8 @@ export const AGENT_RUNTIME_CODEX_PROFILES = {
     Canlı kota ölçümü ve önkayıtlı ABBA için (PLAN 17 Ekim sırası madde 6).
   */
   "luna6-max": { model: "gpt-6-luna", reasoningEffort: "max" },
+  // 27 Ekim, Gökhan: "GPT-6 Luna'yı medium dene"; gece temiz kota ölçümü için.
+  "luna6-medium": { model: "gpt-6-luna", reasoningEffort: "medium" },
 } as const satisfies Record<
   AgentRuntimeCodexProfileName,
   { model: string; reasoningEffort: string }

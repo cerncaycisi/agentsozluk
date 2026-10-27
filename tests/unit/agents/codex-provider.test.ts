@@ -490,7 +490,13 @@ describe("Codex token telemetry (Y6)", () => {
   async function invokeWithHelp(
     execHelp: string,
     codexProfile?:
-      "luna-max" | "sol-medium" | "sol6-medium" | "terra-medium" | "sol56-medium" | "luna6-max",
+      | "luna-max"
+      | "sol-medium"
+      | "sol6-medium"
+      | "terra-medium"
+      | "sol56-medium"
+      | "luna6-max"
+      | "luna6-medium",
     featureList = DISABLED_FEATURE_LIST,
     extraEvents: string[] = [],
     version = "codex-cli 0.144.6",
@@ -769,6 +775,11 @@ describe("Codex token telemetry (Y6)", () => {
       "gpt-6-luna",
       'model_reasoning_effort="max"',
     ]);
+    const luna6Medium = await invokeWithHelp(help, "luna6-medium");
+    expect(flags(luna6Medium.decisionArguments[0]!)).toEqual([
+      "gpt-6-luna",
+      'model_reasoning_effort="medium"',
+    ]);
     /*
       15 Ekim araç kapatma sözleşmesi (Astra 1. tur): beklenen liste sabitten BAĞIMSIZ yazılır.
       Her iki profilde her çift `exec`'ten önce, tam olarak bir kez ve çelişen başka değer olmadan
@@ -796,6 +807,7 @@ describe("Codex token telemetry (Y6)", () => {
       terra.decisionArguments[0]!,
       sol56.decisionArguments[0]!,
       luna6.decisionArguments[0]!,
+      luna6Medium.decisionArguments[0]!,
     ]) {
       const execIndex = decision.indexOf("exec");
       const settings = decision.flatMap((value, index) =>
@@ -823,6 +835,7 @@ describe("Codex token telemetry (Y6)", () => {
       "terra-medium": { model: "gpt-5.6-terra", reasoningEffort: "medium" },
       "sol56-medium": { model: "gpt-5.6-sol", reasoningEffort: "medium" },
       "luna6-max": { model: "gpt-6-luna", reasoningEffort: "max" },
+      "luna6-medium": { model: "gpt-6-luna", reasoningEffort: "medium" },
     });
   });
 

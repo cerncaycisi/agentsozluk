@@ -11,6 +11,7 @@ export const agentRuntimeCodexProfileNames = [
   "terra-medium",
   "sol56-medium",
   "luna6-max",
+  "luna6-medium",
 ] as const;
 
 export type AgentRuntimeCodexProfileName = (typeof agentRuntimeCodexProfileNames)[number];
