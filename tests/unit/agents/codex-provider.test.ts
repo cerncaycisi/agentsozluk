@@ -795,6 +795,7 @@ describe("Codex token telemetry (Y6)", () => {
       sol6.decisionArguments[0]!,
       terra.decisionArguments[0]!,
       sol56.decisionArguments[0]!,
+      luna6.decisionArguments[0]!,
     ]) {
       const execIndex = decision.indexOf("exec");
       const settings = decision.flatMap((value, index) =>
