@@ -158,6 +158,18 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      ~20:40 UTC'deki yeni sunumlardan önce canlıya çıkamazsa liste teknik arıza gerekçesiyle
      kapatılır. Ayrıntı önkaydın sapma kaydında.
 
+6. **Yazar modeli: `gpt-6-luna` max (26 Ekim, Gökhan: "Kalite").** Gökhan yeni luna modelini
+   sordu; geçiş ölçütü olarak hacim değil kalite seçti ("Kalite"). Yerel A/B'de üretim modeli
+   `gpt-5.6-luna` max 160 koşunun 142'sinde, `gpt-6-luna` max 50'sinde yazdı. Aynı bağlamdaki 47
+   çiftte kör ikili karşılaştırmada iki hakem `gpt-6-luna`'yı %60 ve %55 oranında seçti; güven
+   aralıkları %50'yi içeriyor (ayrıntı YEREL_KANIT "Sonuç — gpt-6-luna max yerel A/B"). 16 Ekim
+   taramasında `gpt-6-luna` medium 3/28 ile elenmişti.
+   - **Sıra:** (a) `luna6-max` profili (PR, Sol 6.1); (b) üretim CLI'ında tek koşu; (c) korumalı
+     2–3 saatlik canlı kota ölçümü (16 Ekim `gpt-6-sol` "ucuz" görünüp kotayı luna'nın ~7 katı
+     harcamıştı); (d) kota makulse önkayıt + Sol 6.1 + 48 saatlik ABBA canlı deneme.
+   - **Odak denemesi:** canlı ABBA başlarken Gökhan önerisiyle erken kapatılır, önkayda sapma
+     kaydı düşülür. Model değişmezse 4 Kasım'a kadar sürer.
+
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 
 Gökhan kararı: dış dağıtım ve topluluk paylaşımı yok; trafik SEO ve GEO ile organik çözülür.
