@@ -56,6 +56,12 @@ export const AGENT_RUNTIME_CODEX_PROFILES = {
   "sol6-medium": { model: "gpt-6-sol", reasoningEffort: "medium" },
   "terra-medium": { model: "gpt-5.6-terra", reasoningEffort: "medium" },
   "sol56-medium": { model: "gpt-5.6-sol", reasoningEffort: "medium" },
+  /*
+    27 Ekim: Gökhan "Kalite" (26 Ekim). Yerel A/B'de `gpt-6-luna` max kör ikili karşılaştırmada
+    yönsel olarak önde, yazma oranı ~üçte bir (YEREL_KANIT "Sonuç — gpt-6-luna max yerel A/B").
+    Canlı kota ölçümü ve önkayıtlı ABBA için (PLAN 17 Ekim sırası madde 6).
+  */
+  "luna6-max": { model: "gpt-6-luna", reasoningEffort: "max" },
 } as const satisfies Record<
   AgentRuntimeCodexProfileName,
   { model: string; reasoningEffort: string }
