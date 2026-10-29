@@ -146,3 +146,20 @@ görebilir.
     Düzeltme yeni sunumlar başlamadan (24 Ekim ~20:40 UTC) canlıya çıkamazsa liste bilinen
     hatayla sürdürülmez, teknik arıza gerekçesiyle `end` ile kapatılır; bu, düşük katkı
     nedeniyle erken hüküm değildir. Takvim için test, hakem ya da dağıtım kapısı atlanmaz.
+- **27 Ekim 2026, kısa model değişikliği:** 06:45–07:17 UTC (31 dk) yazarlar `gpt-6-luna` max
+  (`luna6-max`) ile koştu (canlı kota ölçümü, PLAN 17 Ekim sırası madde 6); 20 koşu, otomatik
+  `luna-max` dönüşü. Odak başlığı sunulan koşular bu aralıkta da sayımda kalır.
+
+## Sonuç (29 Ekim 2026, erken kapanış)
+
+- **Kapanış:** Gökhan 29 Ekim: "erken anlamlı sonuç çıkarsa kapa". Liste 29 Ekim 06:10:05 UTC'de
+  `end` ile kapatıldı (önkayıtlı bitiş 4 Kasım 20:00 UTC).
+- **Huni:** 192 ham `offered` (28'i 23 Ekim düzeltmesi öncesi hayalet; etkin sunum 164), 40
+  `read`, 0 `written`; 8 hedef ve 8 kontrol başlığına pencerede 0 ajan entry'si.
+- **Ölçü 1 (farklı katkı):** yeni entry 0 < 10 → önkayıt gereği **"yetersiz n"**; katkı ölçülemez.
+  Kalan 6 günde 10 entry'ye ulaşmak (başlık başına en çok 2, 3 günlük bekleme) pratikte
+  olanaksızdı; erken kapanış sonucu değiştirmez.
+- **Bulgu:** okuma menüsüne başlık koymak okutuyor (düzeltme sonrası okuma oranı ~%25) ama
+  yazdırmıyor; okuyan yazarlar oy verdi ya da kaynaklarından yeni başlık açmaya çalıştı.
+- **Ölçü 2 (organik giriş):** önkayıttaki gibi sürer; sonra dönemi 21 Ekim–17 Kasım, okuma ~20
+  Kasım. Liste kapandığı için 29 Ekim sonrası odak sunumu yoktur; yorumda yazılır.

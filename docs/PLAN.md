@@ -157,6 +157,9 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      yapıldı (Gökhan: "ortak karar verin"); başlık, yazar, bekleme ve eşik değişmedi. 24 Ekim
      ~20:40 UTC'deki yeni sunumlardan önce canlıya çıkamazsa liste teknik arıza gerekçesiyle
      kapatılır. Ayrıntı önkaydın sapma kaydında.
+   - **Sonuç (29 Ekim, erken kapanış; Gökhan: "erken anlamlı sonuç çıkarsa kapa"):** 164 etkin
+     sunum, 40 okuma, 0 entry → Ölçü 1 "yetersiz n". Menüye başlık koymak okutuyor ama yazdırmıyor.
+     Ölçü 2 (organik giriş) ~20 Kasım'da okunur. Ayrıntı önkaydın sonuç bölümünde.
 
 6. **Yazar modeli: `gpt-6-luna` max (26 Ekim, Gökhan: "Kalite").** Gökhan yeni luna modelini
    sordu; geçiş ölçütü olarak hacim değil kalite seçti ("Kalite"). Yerel A/B'de üretim modeli
@@ -167,8 +170,11 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
    - **Sıra:** (a) `luna6-max` profili (PR, Sol 6.1); (b) üretim CLI'ında tek koşu; (c) korumalı
      2–3 saatlik canlı kota ölçümü (16 Ekim `gpt-6-sol` "ucuz" görünüp kotayı luna'nın ~7 katı
      harcamıştı); (d) kota makulse önkayıt + Sol 6.1 + 48 saatlik ABBA canlı deneme.
-   - **Odak denemesi:** canlı ABBA başlarken Gökhan önerisiyle erken kapatılır, önkayda sapma
-     kaydı düşülür. Model değişmezse 4 Kasım'a kadar sürer.
+   - **27 Ekim canlı kota ölçümü geçersiz:** `luna6-max` 31 dakikada +9 puan gösterdi ama Gökhan'ın
+     eş zamanlı Codex kullanımı aynı hesabı tüketiyordu (`luna-max`'e dönükken de saatte ~14 puan).
+     Yeniden ölçüm Gökhan'ın Codex'i boştayken: 3 Kasım 02:00–06:00 TSİ, `luna6-medium` (#466) ve
+     `luna6-max`, aralarda `luna-max` taban blokları; kota kapısı <%85.
+   - **Odak denemesi 29 Ekim'de erken kapandı** (aşağıda madde 5).
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 
@@ -184,7 +190,13 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
 - **Sıra:**
   1. 19–25 Ekim: tam veriyle fırsat listesi ve sorgu niyeti ayrımı; 10 başlıkta içerikle uyumlu
      başlık etiketi/açıklama denemesi, 10 eşleşmiş kontrol; önce Gökhan'a önizleme.
-  2. 26 Ekim–1 Kasım: entry/başlık bölünmesi (20 adreste canonical, G4, harita, JSON-LD
+  2. **İç bağlantı kısmı kapandı (29 Ekim, Gökhan: "Uygun"):** 5–15. sıradaki 12 talep sayfasının
+     (denemelerdeki başlıklar hariç) adı başka entry'lerde neredeyse hiç geçmiyor; sayfalar tekil
+     etkinlik/film/marka adları. Elle bağlantı ilişkiyi zorlardı. Kaldıraç tıklanma oranı: metadata
+     denemesi 14. gün okuması 2 Kasım, olumluysa 5–15. sıradaki sayfalara genişletilir. Çıkan tek
+     somut iş kopya birleştirme: "Son Yankesici" (5908) → "Son Yankesici (Noah Segan filmi)" (5867),
+     Gökhan onayı 29 Ekim 06:07 UTC, 24 saat kuralıyla en erken 30 Ekim 06:07 UTC.
+     Önceki metin: 26 Ekim–1 Kasım: entry/başlık bölünmesi (20 adreste canonical, G4, harita, JSON-LD
      tutarlılığı); talep alan sayfalara elle doğrulanmış 10–20 iç bağlantı (önizlemeli).
      Entry sinyal kohortu (19 Ekim, seçenek (c), PR #449): Sol 6.1 1. tur NO-GO sonrası kapsam
      yalnız JSON-LD'ye daraltıldı. Çift `publicId`'li başlıklarda başlık sayfası (yalnız anonim
