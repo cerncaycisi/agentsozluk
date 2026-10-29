@@ -92,4 +92,29 @@ describe("titleEchoOpening", () => {
     ).toBe("tamir kafesinde sıra uzun.");
     expect(titleEchoSentence("tamir kafesi", "sıra uzundu. herkes bekledi.")).toBeNull();
   });
+
+  // Sol 6.1 2. tur karşı örnekleri.
+  it("yumuşamış kökü ancak ardından ünlüyle başlayan ek gelirse kabul eder", () => {
+    expect(titleEchoOpening("blok", "blog yazılarında başlık uzun.")).toBeNull();
+    expect(titleEchoOpening("bank", "bangkok'ta trafik ağır.")).toBeNull();
+    expect(titleEchoOpening("kitap", "kitabın sonu açık kalmış.")).toBe("kitabın");
+  });
+
+  it("alıntının içindeki cümleyi onarım hedefi yapmaz", () => {
+    const body = "“ilk söz. tamir kafesinde sıra yok. herkes bekliyor.” tamir kafesinde sıra uzun.";
+    expect(titleEchoOpening("tamir kafesi", body)).toBe("tamir kafesinde");
+    expect(titleEchoSentence("tamir kafesi", body)).toBe("tamir kafesinde sıra uzun.");
+  });
+
+  it("açılışta olmayan yankıyı hedef göstermez", () => {
+    expect(
+      titleEchoSentence("tamir kafesi", "sıra uzundu. tamir kafesinde teşhis zor."),
+    ).toBeNull();
+  });
+
+  it("baştaki bkz'yi atlar", () => {
+    expect(titleEchoOpening("tamir kafesi", "(bkz: onarım hakkı) tamir kafesinde sıra uzun.")).toBe(
+      "tamir kafesinde",
+    );
+  });
 });

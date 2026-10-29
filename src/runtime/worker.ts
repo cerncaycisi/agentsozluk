@@ -705,6 +705,24 @@ function repairTargetTopicTitle(
   originalAction: RuntimeDecision["actions"][number],
   context: RuntimeContext,
 ): string | null {
+  /*
+    Sol 6.1 2. tur: düzenlemede `targetId` entry kimliğidir; başlık, algıdaki entry kaydının
+    `topic` alanından okunur.
+  */
+  if (originalAction.actionType === "EDIT_OWN_ENTRY") {
+    const entryId = originalAction.targetId ?? null;
+    if (!entryId) return null;
+    for (const record of [
+      ...recordArray(context.perception.ownRecentEntries),
+      ...recordArray(context.perception.recentEntries),
+    ]) {
+      if (stringField(record, "id") !== entryId) continue;
+      const topic = record.topic;
+      if (topic && typeof topic === "object" && !Array.isArray(topic))
+        return stringField(topic as Record<string, unknown>, "title");
+    }
+    return null;
+  }
   const topicId =
     typeof originalAction.input.topicId === "string"
       ? originalAction.input.topicId
@@ -756,24 +774,24 @@ export function buildContentRepairPrompt(
         .join(" ");
     }
     if (rejectionCode === "STOCK_FRAMING_PART_OF") {
-      const frames = stockPartOfFrames(originalAction.input.body ?? "");
+      const body = originalAction.input.body ?? "";
+      const frames = stockPartOfFrames(body);
+      const title = repairTargetTopicTitle(originalAction, context);
+      const echo = title ? titleEchoSentence(title, body) : null;
+      /*
+        Sol 6.1 1–2. tur: aynı entry başlığı da tekrar ederek açılıyorsa tek onarım ikisini
+        birlikte düzeltmeli. Değiştirilecek cümlelerin BİRLEŞİMİ tek listede verilir; geri
+        kalanı harfi harfine korunur.
+      */
       return [
         "Reddin sebebi bilgi değil, kalıp:",
         frames.length > 0
           ? `${frames.map((frame) => `“${frame}”`).join(", ")} ${frames.length > 1 ? "cümleleri" : "cümlesi"} “X de Y'nin parçası” çerçevesiyle kurulmuş.`
           : "entry “X de Y'nin parçası” çerçevesiyle kurulmuş.",
-        /*
-          Sol 6.1 1. tur P2: aynı entry başlığı da tekrar ederek açılıyorsa tek onarım ikisini
-          birlikte düzeltmeli; yoksa onarılan metin başlık yankısı kapısında yeniden düşer.
-        */
-        (() => {
-          const title = repairTargetTopicTitle(originalAction, context);
-          const echo = title ? titleEchoSentence(title, originalAction.input.body ?? "") : null;
-          return echo
-            ? `Ayrıca “${echo}” cümlesi başlığı tekrar ederek açılıyor; onu da başlığın kelimeleriyle ya da çekimli hâliyle başlamayacak biçimde değiştir.`
-            : "";
-        })(),
-        "Yalnız bu kalıbı taşıyan cümleleri değiştir (birden fazlaysa hepsini); entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Değiştirdiğin cümlede bilgiyi koru ama onu başlığa eklenen bir parça, bir madde daha diye sunma; söylemek istediğin somut şeyi doğrudan söyle (ne oluyor, kimi nasıl etkiliyor). “parçası”, “de hesaba girer”, “tek başına … değildir”, “gözden kaçar” gibi başka hazır kalıplara kaçma; başka bir entry'ye cevap verir gibi (“katılıyorum”, “katılmıyorum”) açma. Bu cümleleri kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
+        echo
+          ? `Ayrıca entry başlığı tekrar ederek açılıyor (“${echo}”); bu açılış cümlesi de değişecekler arasında, yeni hâli başlığın kelimeleriyle ya da çekimli hâliyle başlamasın.`
+          : "",
+        "Yalnız bu kalıpları taşıyan cümleleri değiştir (birden fazlaysa hepsini); entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Değiştirdiğin cümlede bilgiyi koru ama onu başlığa eklenen bir parça, bir madde daha diye sunma; söylemek istediğin somut şeyi doğrudan söyle (ne oluyor, kimi nasıl etkiliyor). “parçası”, “de hesaba girer”, “tek başına … değildir”, “gözden kaçar” gibi başka hazır kalıplara kaçma; başka bir entry'ye cevap verir gibi (“katılıyorum”, “katılmıyorum”) açma. Bu cümleleri kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
       ]
         .filter((part) => part.length > 0)
         .join(" ");
