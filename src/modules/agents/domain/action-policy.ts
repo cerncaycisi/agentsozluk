@@ -617,47 +617,51 @@ function echoesInflected(bodyWord: string, titleWord: string): boolean {
 
 const leadingQuoteClosers: Record<string, string> = { "“": "”", '"': '"', "‘": "’", "'": "'" };
 
+/*
+  Renderer'ın (src/modules/entries/domain/renderer.ts) tanıdığı bkz biçimi: tek satır, en çok
+  100 karakter. Sol 6.1 4. tur: renderer'ın bağlantı saymadığı "(bkz: …\n…)" düz metindir;
+  sınırlı tekrar kapanışsız "(bkz:" yığınında taramayı doğrusal tutar.
+*/
+const titleEchoSeeAlso = /\(bkz:\s*[^)\n]{1,100}?\s*\)/giu;
+
 const letterOrDigit = /[\p{L}\p{N}]/u;
 
 /*
-  Alıntının kapanışı. Sol 6.1 3. tur: tek tırnak ve ’ kesme işareti de olabilir ("Ankara’nın");
-  iki harf arasındaki işaret kapanış sayılmaz.
+  Alıntının kapanışı: ardından harf gelmeyen ilk kapanış işareti. Sol 6.1 3.–4. tur: ’ ve '
+  kesme işareti de olabilir ("Ankara’nın") ya da kapanışa ek gelebilir ("‘tamir kafesi’ni");
+  iki harf arasındaki işaret ikisinden hangisi olduğu ayırt edilemediği için kapanış sayılmaz.
 */
 function quoteCloseIndex(text: string, closer: string, from: number): number {
   for (
     let close = text.indexOf(closer, from);
     close !== -1;
     close = text.indexOf(closer, close + 1)
-  ) {
-    const apostrophe =
-      (closer === "’" || closer === "'") &&
-      letterOrDigit.test(text[close - 1] ?? "") &&
-      letterOrDigit.test(text[close + 1] ?? "");
-    if (!apostrophe) return close;
-  }
+  )
+    if (!letterOrDigit.test(text[close + 1] ?? "")) return close;
   return -1;
 }
 
 /*
-  Açılışın başladığı yer (Sol 6.1 2. tur): baştaki boşluk/noktalama, bkz ve tırnaklı alıntı
-  atlanır. Hem tespit hem onarım hedefi aynı noktadan okur; alıntının İÇİNDEKİ cümle hedef olmaz.
-  Sol 6.1 3. tur: tarama kod noktasıyla ilerler; emoji (iki UTF-16 birimi) taramayı durdurmaz.
+  Açılışın başladığı yer: baştaki harf/rakam olmayan her şey (boşluk, noktalama, emoji ve
+  birleştiricileri), bkz ve tırnaklı alıntı atlanır. Hem tespit hem onarım hedefi aynı noktadan
+  okur; alıntının İÇİNDEKİ cümle hedef olmaz. Kapanışı bulunamayan alıntıda açılış belirsizdir:
+  null döner ve yankı aranmaz (gereksiz onarım, kaçan yankıdan pahalıdır).
 */
-function openingStart(text: string): number {
+function openingStart(text: string): number | null {
   let index = 0;
   while (index < text.length) {
     const char = String.fromCodePoint(text.codePointAt(index)!);
-    if (!/[\s\p{P}\p{S}]/u.test(char)) break;
-    if (text.slice(index, index + 5).toLocaleLowerCase("tr-TR") === "(bkz:") {
-      const close = text.indexOf(")", index);
-      if (close === -1) return index;
-      index = close + 1;
+    if (letterOrDigit.test(char)) break;
+    titleEchoSeeAlso.lastIndex = index;
+    const seeAlso = titleEchoSeeAlso.exec(text);
+    if (seeAlso?.index === index) {
+      index += seeAlso[0].length;
       continue;
     }
     const closer = leadingQuoteClosers[char];
     if (closer) {
       const close = quoteCloseIndex(text, closer, index + 1);
-      if (close === -1) return index + 1;
+      if (close === -1) return null;
       index = close + 1;
       continue;
     }
@@ -666,8 +670,18 @@ function openingStart(text: string): number {
   return index;
 }
 
-/** Açılış kelimelerinin arasına giren bkz de sayılmaz ("tamir (bkz: onarım) kafesinde"). */
-const inlineSeeAlso = /\(bkz:[^)]*\)/giu;
+/*
+  Açılıştan sonraki metin; bkz'ler aynı uzunlukta boşlukla örtülür ki kelime karşılaştırması
+  ("tamir (bkz: onarım) kafesinde") ve cümle sonu araması ("(bkz: dr. caligari)") aynı konumları
+  kullansın.
+*/
+function titleEchoRest(body: string): { rest: string; masked: string } | null {
+  const normalized = body.normalize("NFKC");
+  const start = openingStart(normalized);
+  if (start === null) return null;
+  const rest = normalized.slice(start);
+  return { rest, masked: rest.replace(titleEchoSeeAlso, (match) => " ".repeat(match.length)) };
+}
 
 /** Adayın açılışı başlığı tekrar ediyorsa, tekrar eden açılış kelimeleri; yoksa null. */
 export function titleEchoOpening(title: string, body: string): string | null {
@@ -678,10 +692,9 @@ export function titleEchoOpening(title: string, body: string): string | null {
   // Tek ve kısa kelimeli başlıkta ("su", "çay") yankı ile sıradan açılış ayrılamaz.
   if (span === 1 && last.length < 4) return null;
   // Sol 6.1 1. tur P3: tam genişlikli tırnaklar tanınsın diye önce NFKC.
-  const normalized = body.normalize("NFKC");
-  const bodyWords = titleEchoWords(
-    normalized.slice(openingStart(normalized)).replaceAll(inlineSeeAlso, " "),
-  ).slice(0, span);
+  const opening = titleEchoRest(body);
+  if (!opening) return null;
+  const bodyWords = titleEchoWords(opening.masked).slice(0, span);
   if (bodyWords.length < span) return null;
   for (let index = 0; index < span - 1; index += 1)
     if (bodyWords[index] !== titleWords[index]) return null;
@@ -692,9 +705,8 @@ export function titleEchoOpening(title: string, body: string): string | null {
 /** Onarımın değiştireceği cümle: açılıştaki (alıntı ve bkz sonrası) ilk cümle. */
 export function titleEchoSentence(title: string, body: string): string | null {
   if (!titleEchoOpening(title, body)) return null;
-  const normalized = body.normalize("NFKC");
-  const rest = normalized.slice(openingStart(normalized));
-  const end = rest.search(/[.!?…](?=\s|$)/u);
+  const { rest, masked } = titleEchoRest(body)!;
+  const end = masked.search(/[.!?…](?=\s|$)/u);
   return (end === -1 ? rest : rest.slice(0, end + 1)).trim();
 }
 

@@ -138,4 +138,47 @@ describe("titleEchoOpening", () => {
       "tamir kafesinde",
     );
   });
+
+  it("eki alan ya da kapanmayan alıntıda açılışı belirsiz sayar", () => {
+    expect(
+      titleEchoOpening("tamir kafesi", "‘tamir kafesi’ni ilk kez komşudan duydum."),
+    ).toBeNull();
+    expect(
+      titleEchoOpening("tamir kafesi", "'tamir kafesi'ni ilk kez komşudan duydum."),
+    ).toBeNull();
+    expect(titleEchoOpening("tamir kafesi", "“tamir kafesinde sıra uzun.")).toBeNull();
+  });
+
+  it("birleşik emojileri de atlar", () => {
+    expect(
+      titleEchoOpening("tamir kafesi", "👩‍🔧 “tamir kafesi” lafını komşudan duydum."),
+    ).toBeNull();
+    expect(
+      titleEchoOpening("tamir kafesi", "🛠️ “tamir kafesi” lafını komşudan duydum."),
+    ).toBeNull();
+    expect(titleEchoSentence("tamir kafesi", "👩‍🔧 tamir kafesinde sıra uzun. herkes bekler.")).toBe(
+      "tamir kafesinde sıra uzun.",
+    );
+  });
+
+  it("bkz içindeki noktayı cümle sonu saymaz", () => {
+    const body = "tamir (bkz: dr. caligari) kafesinde sıra uzun. herkes bekler.";
+    expect(titleEchoOpening("tamir kafesi", body)).toBe("tamir kafesinde");
+    expect(titleEchoSentence("tamir kafesi", body)).toBe(
+      "tamir (bkz: dr. caligari) kafesinde sıra uzun.",
+    );
+  });
+
+  it("renderer'ın bağlantı saymadığı çok satırlı bkz'yi düz metin sayar", () => {
+    expect(
+      titleEchoOpening("tamir kafesi", "tamir (bkz: onarım\nhakkı) kafesinde sıra uzun."),
+    ).toBeNull();
+  });
+
+  it("kapanışsız bkz yığınında doğrusal kalır", () => {
+    const body = ("tamir " + "(bkz:".repeat(2000)).slice(0, 10000);
+    const started = performance.now();
+    expect(titleEchoOpening("tamir kafesi", body)).toBeNull();
+    expect(performance.now() - started).toBeLessThan(50);
+  });
 });
