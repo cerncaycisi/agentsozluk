@@ -617,33 +617,57 @@ function echoesInflected(bodyWord: string, titleWord: string): boolean {
 
 const leadingQuoteClosers: Record<string, string> = { "“": "”", '"': '"', "‘": "’", "'": "'" };
 
+const letterOrDigit = /[\p{L}\p{N}]/u;
+
+/*
+  Alıntının kapanışı. Sol 6.1 3. tur: tek tırnak ve ’ kesme işareti de olabilir ("Ankara’nın");
+  iki harf arasındaki işaret kapanış sayılmaz.
+*/
+function quoteCloseIndex(text: string, closer: string, from: number): number {
+  for (
+    let close = text.indexOf(closer, from);
+    close !== -1;
+    close = text.indexOf(closer, close + 1)
+  ) {
+    const apostrophe =
+      (closer === "’" || closer === "'") &&
+      letterOrDigit.test(text[close - 1] ?? "") &&
+      letterOrDigit.test(text[close + 1] ?? "");
+    if (!apostrophe) return close;
+  }
+  return -1;
+}
+
 /*
   Açılışın başladığı yer (Sol 6.1 2. tur): baştaki boşluk/noktalama, bkz ve tırnaklı alıntı
   atlanır. Hem tespit hem onarım hedefi aynı noktadan okur; alıntının İÇİNDEKİ cümle hedef olmaz.
+  Sol 6.1 3. tur: tarama kod noktasıyla ilerler; emoji (iki UTF-16 birimi) taramayı durdurmaz.
 */
 function openingStart(text: string): number {
   let index = 0;
-  for (;;) {
-    while (index < text.length && /[\s\p{P}\p{S}]/u.test(text[index]!)) {
-      const char = text[index]!;
-      if (text.slice(index, index + 5).toLocaleLowerCase("tr-TR") === "(bkz:") {
-        const close = text.indexOf(")", index);
-        if (close === -1) return index;
-        index = close + 1;
-        continue;
-      }
-      const closer = leadingQuoteClosers[char];
-      if (closer) {
-        const close = text.indexOf(closer, index + 1);
-        if (close === -1) return index + 1;
-        index = close + 1;
-        continue;
-      }
-      index += 1;
+  while (index < text.length) {
+    const char = String.fromCodePoint(text.codePointAt(index)!);
+    if (!/[\s\p{P}\p{S}]/u.test(char)) break;
+    if (text.slice(index, index + 5).toLocaleLowerCase("tr-TR") === "(bkz:") {
+      const close = text.indexOf(")", index);
+      if (close === -1) return index;
+      index = close + 1;
+      continue;
     }
-    return index;
+    const closer = leadingQuoteClosers[char];
+    if (closer) {
+      const close = quoteCloseIndex(text, closer, index + 1);
+      if (close === -1) return index + 1;
+      index = close + 1;
+      continue;
+    }
+    index += char.length;
   }
+  return index;
 }
+
+/** Açılış kelimelerinin arasına giren bkz de sayılmaz ("tamir (bkz: onarım) kafesinde"). */
+const inlineSeeAlso = /\(bkz:[^)]*\)/giu;
 
 /** Adayın açılışı başlığı tekrar ediyorsa, tekrar eden açılış kelimeleri; yoksa null. */
 export function titleEchoOpening(title: string, body: string): string | null {
@@ -655,7 +679,9 @@ export function titleEchoOpening(title: string, body: string): string | null {
   if (span === 1 && last.length < 4) return null;
   // Sol 6.1 1. tur P3: tam genişlikli tırnaklar tanınsın diye önce NFKC.
   const normalized = body.normalize("NFKC");
-  const bodyWords = titleEchoWords(normalized.slice(openingStart(normalized))).slice(0, span);
+  const bodyWords = titleEchoWords(
+    normalized.slice(openingStart(normalized)).replaceAll(inlineSeeAlso, " "),
+  ).slice(0, span);
   if (bodyWords.length < span) return null;
   for (let index = 0; index < span - 1; index += 1)
     if (bodyWords[index] !== titleWords[index]) return null;

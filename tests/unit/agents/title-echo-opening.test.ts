@@ -117,4 +117,25 @@ describe("titleEchoOpening", () => {
       "tamir kafesinde",
     );
   });
+
+  it("alıntıdaki kesme işaretini kapanış saymaz", () => {
+    const body = "‘Ankara’nın yolları taşlı.’ tamir kafesinde sıra uzun.";
+    expect(titleEchoOpening("tamir kafesi", body)).toBe("tamir kafesinde");
+    expect(titleEchoSentence("tamir kafesi", body)).toBe("tamir kafesinde sıra uzun.");
+  });
+
+  it("baştaki emojiden sonra gelen alıntıyı da yankı saymaz", () => {
+    expect(
+      titleEchoOpening("tamir kafesi", "🙂 “tamir kafesi” lafını komşudan duydum."),
+    ).toBeNull();
+    expect(titleEchoOpening("tamir kafesi", "🙂 tamir kafesinde sıra uzun.")).toBe(
+      "tamir kafesinde",
+    );
+  });
+
+  it("açılış kelimeleri arasındaki bkz'yi de atlar", () => {
+    expect(titleEchoOpening("tamir kafesi", "tamir (bkz: onarım hakkı) kafesinde sıra uzun.")).toBe(
+      "tamir kafesinde",
+    );
+  });
 });
