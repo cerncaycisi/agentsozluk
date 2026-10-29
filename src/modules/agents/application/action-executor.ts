@@ -87,6 +87,8 @@ import {
   repeatedEntryFramingReason,
   stockPartOfFrame,
   stockPartOfFrameReason,
+  titleEchoOpening,
+  titleEchoOpeningReason,
   seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
   topicSemanticRepetition,
@@ -1479,6 +1481,19 @@ export async function executeRuntimeAction(
             return rejectAction(transaction, principal, actionRecord, {
               code: "STOCK_FRAMING_PART_OF",
               reason: stockPartOfFrameReason(partOfFrame),
+            });
+          // Yalnız başlıkta görünür başka entry varsa (ilk entry tanımla açılabilir; 29 Ekim).
+          const titleEcho =
+            topicNoveltyContext &&
+            topicNoveltyContext.otherAuthorBodies.length +
+              topicNoveltyContext.ownPreviousBodies.length >
+              0
+              ? titleEchoOpening(topicNoveltyContext.title, candidateBody)
+              : null;
+          if (titleEcho)
+            return rejectAction(transaction, principal, actionRecord, {
+              code: "STOCK_FRAMING_TITLE_ECHO",
+              reason: titleEchoOpeningReason(titleEcho),
             });
           /*
             Kendi geçmişi önce bakılıyor. İkisi de tetiklenebiliyorsa yazara daha

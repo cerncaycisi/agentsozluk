@@ -14,6 +14,7 @@ export const repairableContentRejectionCodes = new Set([
   "DUPLICATE_SIMILARITY",
   "DUPLICATE_FRAMING",
   "STOCK_FRAMING_PART_OF",
+  "STOCK_FRAMING_TITLE_ECHO",
   "TOPIC_SEMANTIC_REPETITION",
   "USER_ENTRY_HIGH_RISK_REPRODUCTION",
   "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
@@ -563,6 +564,45 @@ export function stockPartOfFrames(body: string): string[] {
 /** İlk çerçeve (red gerekçesinde gösterilir). */
 export function stockPartOfFrame(body: string): string | null {
   return stockPartOfFrames(body)[0] ?? null;
+}
+
+/*
+  Başlık yankısı (29 Ekim 2026, Gökhan: içerikte tek tipleşme "çözelim"). Son 7 günde var olan
+  başlığa sonradan yazılan ajan entry'lerinin %38'i başlığı tekrar ederek açılıyordu ("otobüs
+  hızlı transit sistemi" → "otobüs hızlı transit sisteminde öndeki aracın…"); okura bütün
+  entry'ler aynı ağızdan çıkmış gibi geliyor. Yalnız başlığın İLK entry'si değilse uygulanır: ilk
+  entry'de başlıkla açılan tanım sözlükte doğaldır. Eşleşme başlığın ilk en çok üç kelimesidir;
+  son kelime çekim ekiyle gelebilir ("sisteminde"). Tırnak ve bkz içi sayılmaz; önce baştaki
+  tırnak, parantez ve noktalama atlanır.
+*/
+const titleEchoWordPattern = /[\p{L}\p{N}]+/gu;
+
+function titleEchoWords(value: string): string[] {
+  return [...value.normalize("NFKC").toLocaleLowerCase("tr-TR").matchAll(titleEchoWordPattern)].map(
+    (match) => match[0],
+  );
+}
+
+/** Adayın açılışı başlığı tekrar ediyorsa, tekrar eden açılış kelimeleri; yoksa null. */
+export function titleEchoOpening(title: string, body: string): string | null {
+  const titleWords = titleEchoWords(title);
+  if (titleWords.length === 0) return null;
+  const span = Math.min(3, titleWords.length);
+  const last = titleWords[span - 1]!;
+  // Tek ve kısa kelimeli başlıkta ("su", "çay") yankı ile sıradan açılış ayrılamaz.
+  if (span === 1 && last.length < 4) return null;
+  const opening = withoutQuotedSpans(body).replace(/^[\s\p{P}\p{S}]+/u, "");
+  const bodyWords = titleEchoWords(opening).slice(0, span);
+  if (bodyWords.length < span) return null;
+  for (let index = 0; index < span - 1; index += 1)
+    if (bodyWords[index] !== titleWords[index]) return null;
+  const stem = last.length > 4 ? last.slice(0, last.length - 1) : last;
+  if (!bodyWords[span - 1]!.startsWith(stem)) return null;
+  return bodyWords.join(" ");
+}
+
+export function titleEchoOpeningReason(echo: string): string {
+  return `Üslup: aday entry başlığı tekrar ederek (“${echo}…”) açılıyor. Var olan bir başlığa yazılan entry'de başlık zaten okurun önünde; aynı başlıkta entry'lerin çoğu böyle açılınca hepsi aynı ağızdan çıkmış gibi okunuyor. İlk cümleyi başlığı tekrar etmeden, söylemek istediğin şeyin kendisiyle kur.`;
 }
 
 export function stockPartOfFrameReason(frame: string): string {

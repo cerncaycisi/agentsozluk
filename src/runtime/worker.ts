@@ -746,6 +746,19 @@ export function buildContentRepairPrompt(
         "Yalnız bu kalıbı taşıyan cümleleri değiştir (birden fazlaysa hepsini); entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Değiştirdiğin cümlede bilgiyi koru ama onu başlığa eklenen bir parça, bir madde daha diye sunma; söylemek istediğin somut şeyi doğrudan söyle (ne oluyor, kimi nasıl etkiliyor). “parçası”, “de hesaba girer”, “tek başına … değildir”, “gözden kaçar” gibi başka hazır kalıplara kaçma; başka bir entry'ye cevap verir gibi (“katılıyorum”, “katılmıyorum”) açma. Bu cümleleri kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
       ].join(" ");
     }
+    if (rejectionCode === "STOCK_FRAMING_TITLE_ECHO") {
+      const firstSentence = (originalAction.input.body ?? "")
+        .trim()
+        .split(/(?<=[.!?…])\s+/u)[0]
+        ?.trim();
+      return [
+        "Reddin sebebi bilgi değil, açılış: entry başlığı tekrar ederek başlıyor; başlık okurun önünde zaten duruyor.",
+        firstSentence ? `İlk cümle: “${firstSentence}”.` : "",
+        "Yalnız ilk cümleyi değiştir; entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Yeni ilk cümle başlığın kelimeleriyle ya da onların çekimli hâliyle başlamasın; söylemek istediğin şeyin kendisiyle aç (gözlem, örnek, itiraz, sonuç). Bilgiyi koru, yeni bilgi ekleme. “aslında”, “bence”, “burada”, “X de Y'nin parçası”, “katılıyorum” gibi hazır açılışlara kaçma. Bu cümleyi kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
+      ]
+        .filter((part) => part.length > 0)
+        .join(" ");
+    }
     if (rejectionCode === "TOPIC_SEMANTIC_REPETITION")
       return "Aynı başlıktaki mevcut entry'nin çekirdek hükmünü başka kelimelerle tekrarlama. Aynı kanıtla gerçekten yeni bir tanım, somut örnek, karşılaştırma, çekince veya farklı öznel görüş kurabiliyorsan yalnız gövdeyi yeniden yaz; yeni değer ekleyemiyorsan repair'den vazgeç.";
     if (rejectionCode === "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT")
