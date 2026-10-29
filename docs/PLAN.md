@@ -8,6 +8,30 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+**29 Ekim 2026 · güncel durum ve takvim.** Gökhan (29 Ekim): "planı her zaman güncel tut; ben
+bakmasam da tetikte ol, yönet, çalış, benim dememi bekleme". Bu bölüm her iş bitince güncellenir.
+
+- **Canlı exact `55c9d312` (29 Ekim 10:29Z, #468):** başlık yankısı kuralı
+  (`STOCK_FRAMING_TITLE_ECHO`, aşağıda sıra 7). Üretim yazar modeli `gpt-5.6-luna` max.
+- **İzleme:** saatlik sağlık kontrolü operatör sunucusunda yerel zamanlayıcıyla çalışır ve yalnız
+  kayda yazar (Gökhan 29 Ekim: "." bildirimleri kaldırıldı). T3 sohbetine günde iki yönetim turu
+  düşer (06:30 ve 18:00 UTC): sağlık kaydını okur, vadesi gelen işi yürütür, bu planı günceller.
+- **Takvim (vadesi gelen iş):**
+  - **30 Ekim 06:07Z sonrası:** "Son Yankesici" kopya birleştirmesi (organik trafik sıra 2):
+    iki başlık ve entry'leri yeniden doğrulanır, geri alma kaydı (entry → başlık) alınır,
+    operatör yoluyla birleştirilir.
+  - **31 Ekim–1 Kasım:** başlık yankısı canlı ölçümü: sonradan yazılan entry'lerde yankı oranı
+    (önce %38,1), onarım sayısı ve onarılanların yayım oranı.
+  - **Ara iş:** tek tipleşme 2. adım, bkz etiket tekrarı (sıra 7).
+  - **2 Kasım:** haftalık rapor (Search Console, metadata denemesi 14. gün okuması, sayaç v2).
+    Metadata denemesi olumluysa 5–15. sıradaki sayfalara genişletme önerisi.
+  - **2 Kasım 23:00Z (3 Kasım 02:00–06:00 TSİ):** `gpt-6-luna` gece kota ölçümü (sıra 6),
+    3 Kasım sabahı sonuç ve kör puanlama.
+  - **4 Kasım:** haftalık Codex kotası sıfırlanır.
+  - **~20 Kasım:** odak denemesi Ölçü 2 (organik giriş) okuması.
+  - **30 Kasım:** organik trafik kararı; süreli yetkinin sonu (20:59Z).
+- **Gökhan'dan beklenen:** Curlie başvurusu (metin hazır; Gökhan gönderecek).
+
 **17 Ekim 2026 · iki bağımsız inceleme ([Fable](TAM_ANALIZ_2026-10-17.md),
 [Astra](FULL_ANALYSIS_2026-10-17.md)); ikisinin hükmü de "yön değiştir".** Emek metne gitti, okur
 gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" iki hafta önceliklidir.
@@ -25,7 +49,7 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
 - **Gökhan kararları (17 Ekim):** hakem kuralı aynen kalır; karma yazım ölçülür, doğallık
   ≥ +0,3 ve dolgu artmamışsa kalır, yoksa kapanır, 2. sürüm yok; dış dağıtım şimdilik yok, yerine
   odaklı içerik denemesi; yalnız kaynaktan açılan haber başlıklarına günlük tavan.
-- **Yetki:** 31 Ekim 23:59 TSİ'ye kadar (AGENTS.md). Teknik kapılar, veri silme ve "Gökhan kararı
+- **Yetki:** 30 Kasım 23:59 TSİ'ye kadar (AGENTS.md, 22 Ekim uzatması). Teknik kapılar, veri silme ve "Gökhan kararı
   bekleyen" maddeler kapsam dışı.
 - 10 Ekim durum anlatısı [Plan arşivinde](PLAN_ARSIVI_2026-10.md), "17 Ekim'de arşivlenen".
 
@@ -175,6 +199,18 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      Yeniden ölçüm Gökhan'ın Codex'i boştayken: 3 Kasım 02:00–06:00 TSİ, `luna6-medium` (#466) ve
      `luna6-max`, aralarda `luna-max` taban blokları; kota kapısı <%85.
    - **Odak denemesi 29 Ekim'de erken kapandı** (aşağıda madde 5).
+
+7. **İçerik tek tipleşmesi (Gökhan, 29 Ekim: "çözelim").** Teşhis (son 7 gün): entry'lerin %45'i
+   başlığı tekrar ederek açılıyor (sonradan yazılanlarda %38), %34'ü bakım/erişim/görünürlük
+   merceğinden bakıyor, bkz etiketleri tekrar ediyor.
+   - **Adım 1, canlıda (29 Ekim 10:29Z, exact `55c9d312`, PR #468):** var olan başlığa sonradan
+     yazılan entry başlığı tekrar ederek açılırsa `STOCK_FRAMING_TITLE_ECHO` onarılabilir reddi;
+     onarım yalnız yankılı açılış cümlesini değiştirir. Başlığın ilk entry'si muaf. Korpus:
+     1599 sonraki entry'nin 610'u (%38,1). Yerel onarım (luna max, 25 taslak): 25/25 onarıldı,
+     yankı 0/25, diğer cümleler korundu. Sol 6.1 8 tur (1–7 NO-GO, bulgular düzeltildi; 8. tur
+     `586799ec` GO). İlk 10 saatte 59 yankı reddi. Canlı ölçüm 31 Ekim–1 Kasım.
+   - **Adım 2:** bkz etiket tekrarına sınır (sıradaki geliştirme).
+   - **Adım 3:** mercek/persona çeşitliliği; okur yüzeyini etkilediği için örnekler önce Gökhan'a.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 
