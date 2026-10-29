@@ -87,6 +87,8 @@ import {
   repeatedEntryFramingReason,
   stockPartOfFrame,
   stockPartOfFrameReason,
+  titleEchoOpening,
+  titleEchoOpeningReason,
   seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
   topicSemanticRepetition,
@@ -1479,6 +1481,39 @@ export async function executeRuntimeAction(
             return rejectAction(transaction, principal, actionRecord, {
               code: "STOCK_FRAMING_PART_OF",
               reason: stockPartOfFrameReason(partOfFrame),
+            });
+          /*
+            Başlık yankısı (29 Ekim). Yalnız başlıkta görünür başka entry varsa uygulanır (ilk
+            entry tanımla açılabilir). Sol 6.1 1. tur: yalnız CREATE_ENTRY ve EDIT_OWN_ENTRY;
+            dolu başlığa çözülen CREATE_TOPIC_WITH_ENTRY aşağıdaki mevcut başlık kapısında
+            zaten reddedilir, onarıma sokmak kotayı boşa harcar. Düzenlemenin başlığı hedef
+            entry'den çözülür, düzenlenen entry sayıma girmez.
+          */
+          const echoContext =
+            parsed.data.actionType === "CREATE_ENTRY"
+              ? topicNoveltyContext
+              : parsed.data.actionType === "EDIT_OWN_ENTRY" && excludeEntryId
+                ? await transaction.entry
+                    .findUnique({ where: { id: excludeEntryId }, select: { topicId: true } })
+                    .then((edited) =>
+                      edited
+                        ? getRuntimeTopicNoveltyContext(transaction, {
+                            topicId: edited.topicId,
+                            authorId: principal.actor.actorId,
+                            excludeEntryId,
+                          })
+                        : null,
+                    )
+                : null;
+          const titleEcho =
+            echoContext &&
+            echoContext.otherAuthorBodies.length + echoContext.ownPreviousBodies.length > 0
+              ? titleEchoOpening(echoContext.title, candidateBody)
+              : null;
+          if (titleEcho)
+            return rejectAction(transaction, principal, actionRecord, {
+              code: "STOCK_FRAMING_TITLE_ECHO",
+              reason: titleEchoOpeningReason(titleEcho),
             });
           /*
             Kendi geçmişi önce bakılıyor. İkisi de tetiklenebiliyorsa yazara daha

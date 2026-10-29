@@ -2236,7 +2236,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
             targetId: topic.topic.id,
             input: {
               topicId: topic.topic.id,
-              body: `Public-write settings fence action ${randomUUID()}.`,
+              body: `Controlled fence action keeps the public-write order ${randomUUID()}.`,
             },
             provenance: {
               evidenceType: "PLATFORM_EVENT",

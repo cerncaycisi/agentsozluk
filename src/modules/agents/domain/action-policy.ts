@@ -14,6 +14,7 @@ export const repairableContentRejectionCodes = new Set([
   "DUPLICATE_SIMILARITY",
   "DUPLICATE_FRAMING",
   "STOCK_FRAMING_PART_OF",
+  "STOCK_FRAMING_TITLE_ECHO",
   "TOPIC_SEMANTIC_REPETITION",
   "USER_ENTRY_HIGH_RISK_REPRODUCTION",
   "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
@@ -563,6 +564,210 @@ export function stockPartOfFrames(body: string): string[] {
 /** İlk çerçeve (red gerekçesinde gösterilir). */
 export function stockPartOfFrame(body: string): string | null {
   return stockPartOfFrames(body)[0] ?? null;
+}
+
+/*
+  Başlık yankısı (29 Ekim 2026, Gökhan: içerikte tek tipleşme "çözelim"). Son 7 günde var olan
+  başlığa sonradan yazılan ajan entry'lerinin %38'i başlığı tekrar ederek açılıyordu ("otobüs
+  hızlı transit sistemi" → "otobüs hızlı transit sisteminde öndeki aracın…"); okura bütün
+  entry'ler aynı ağızdan çıkmış gibi geliyor. Yalnız başlığın İLK entry'si değilse uygulanır: ilk
+  entry'de başlıkla açılan tanım sözlükte doğaldır. Eşleşme başlığın ilk en çok üç kelimesidir;
+  son kelime çekim ekiyle gelebilir ("sisteminde"). Tırnak ve bkz içi sayılmaz; önce baştaki
+  tırnak, parantez ve noktalama atlanır.
+*/
+/*
+  Sol 6.1 1. tur (29 Ekim): kesme ekli kelime tek kelimedir ("web'de"); karşılaştırma kesmeden
+  önceki köke yapılır. Son kelime ya aynen ya da başlık kelimesiyle başlayan çekimli biçimdir;
+  son ünsüz yumuşaması (ağaç → ağacın, renk → rengi) ayrıca kabul edilir. Harf kırpma yok:
+  "karar" → "karanlık", "hayat" → "hayal" yankı sayılmaz.
+*/
+const titleEchoWordPattern = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)?/gu;
+
+function titleEchoWords(value: string): string[] {
+  return [...value.toLocaleLowerCase("tr-TR").matchAll(titleEchoWordPattern)].map(
+    (match) => match[0].split(/['’]/u)[0]!,
+  );
+}
+
+const softenedFinal: Record<string, string[]> = {
+  p: ["b"],
+  ç: ["c"],
+  t: ["d"],
+  k: ["ğ", "g"],
+  g: ["ğ"],
+};
+
+const vowelInitial = /^[aeıioöuüâîû]/u;
+
+/*
+  Son kelime ya başlık kelimesiyle aynen başlar (sisteminde, kafesi'nde) ya da son ünsüzü
+  yumuşamış kökle başlar VE ardından ünlüyle başlayan bir ek gelir (ağacın, rengi). Sol 6.1 2.
+  tur: ek şartı olmadan "blok" → "blog", "bank" → "bangkok" yankı sayılıyordu. Bilinçli boşluk:
+  ünlü düşmesi (burun → burnu, vakit → vakti) aranmaz; "kalem" → "kalmak" gibi yanlış
+  eşleşmeleri ayırmak bu kuralın kapsamını aşar.
+*/
+function echoesInflected(bodyWord: string, titleWord: string): boolean {
+  if (bodyWord.startsWith(titleWord)) return true;
+  const last = titleWord.at(-1) ?? "";
+  return (softenedFinal[last] ?? []).some((soft) => {
+    const stem = titleWord.slice(0, -1) + soft;
+    return bodyWord.startsWith(stem) && vowelInitial.test(bodyWord.slice(stem.length));
+  });
+}
+
+const leadingQuoteClosers: Record<string, string> = { "“": "”", '"': '"', "‘": "’", "'": "'" };
+
+/*
+  Bkz tanıma renderer'daki (src/modules/entries/domain/renderer.ts) `\(bkz:\s*([^\)\n]{1,100}?)\s*\)`
+  ile birebir aynı sonucu verir (Sol 6.1 4.–6. tur: yaklaşık desen iki yönde ayrışıyordu), ama
+  geri izleyen regex yerine elle ve doğrusal okunur: "(bkz:" sonrası ilk ")" kapanıştır; aradaki
+  metin baştan ve sondan boşluk kırpılınca satır sonu içermeyen en çok 100 kod noktası olmalıdır.
+*/
+const seeAlsoOpen = /\(bkz:/giu;
+
+/** Kapanıştan önceki son boşluk olmayan konum; kapanış başına bir kez hesaplanır (Sol 6.1 7. tur). */
+function lastNonSpaceBefore(text: string, close: number): number {
+  let last = close - 1;
+  while (last >= 0 && /\s/u.test(text[last]!)) last -= 1;
+  return last;
+}
+
+function isSeeAlsoSpan(text: string, open: number, close: number, last: number): boolean {
+  let first = open + 5;
+  while (first < close && /\s/u.test(text[first]!)) first += 1;
+  // Yalnız boşluk: renderer çekirdeğe satır sonu olmayan tek boşluğu da alır.
+  if (first === close) return /[^\n]/u.test(text.slice(open + 5, close));
+  if (last - first + 1 > 200) return false;
+  const core = text.slice(first, last + 1);
+  return !core.includes("\n") && [...core].length <= 100;
+}
+
+function seeAlsoEndAt(text: string, index: number): number | null {
+  if (text.slice(index, index + 5).toLowerCase() !== "(bkz:") return null;
+  const close = text.indexOf(")", index + 5);
+  if (close === -1) return null;
+  return isSeeAlsoSpan(text, index, close, lastNonSpaceBefore(text, close)) ? close + 1 : null;
+}
+
+/** Renderer'ın bağlantı saydığı bkz'leri aynı uzunlukta \0 ile örter (PostgreSQL metninde \0 yoktur). */
+function maskSeeAlso(text: string): string {
+  let masked = "";
+  let copied = 0;
+  let close = -1;
+  let last = -1;
+  seeAlsoOpen.lastIndex = 0;
+  for (let match = seeAlsoOpen.exec(text); match; match = seeAlsoOpen.exec(text)) {
+    const open = match.index;
+    if (close < open + 5) {
+      close = text.indexOf(")", open + 5);
+      if (close === -1) break;
+      last = lastNonSpaceBefore(text, close);
+    }
+    if (!isSeeAlsoSpan(text, open, close, last)) continue;
+    masked += text.slice(copied, open) + "\0".repeat(close + 1 - open);
+    copied = close + 1;
+    seeAlsoOpen.lastIndex = copied;
+  }
+  return masked + text.slice(copied);
+}
+
+const letterOrDigit = /[\p{L}\p{N}]/u;
+
+/*
+  Alıntının kapanışı: ardından harf gelmeyen ilk kapanış işareti. Sol 6.1 3.–4. tur: ’ ve '
+  kesme işareti de olabilir ("Ankara’nın") ya da kapanışa ek gelebilir ("‘tamir kafesi’ni");
+  iki harf arasındaki işaret ikisinden hangisi olduğu ayırt edilemediği için kapanış sayılmaz.
+*/
+function quoteCloseIndex(text: string, closer: string, from: number): number {
+  for (
+    let close = text.indexOf(closer, from);
+    close !== -1;
+    close = text.indexOf(closer, close + 1)
+  )
+    if (!letterOrDigit.test(text[close + 1] ?? "")) return close;
+  return -1;
+}
+
+/*
+  Açılışın başladığı yer: baştaki harf/rakam olmayan her şey (boşluk, noktalama, emoji ve
+  birleştiricileri), bkz ve tırnaklı alıntı atlanır. Hem tespit hem onarım hedefi aynı noktadan
+  okur; alıntının İÇİNDEKİ cümle hedef olmaz. Kapanışı bulunamayan alıntıda açılış belirsizdir:
+  null döner ve yankı aranmaz (gereksiz onarım, kaçan yankıdan pahalıdır).
+*/
+function openingStart(text: string): number | null {
+  let index = 0;
+  while (index < text.length) {
+    const char = String.fromCodePoint(text.codePointAt(index)!);
+    if (letterOrDigit.test(char)) break;
+    const seeAlsoEnd = seeAlsoEndAt(text, index);
+    if (seeAlsoEnd !== null) {
+      index = seeAlsoEnd;
+      continue;
+    }
+    const closer = leadingQuoteClosers[char];
+    if (closer) {
+      const close = quoteCloseIndex(text, closer, index + 1);
+      if (close === -1) return null;
+      index = close + 1;
+      continue;
+    }
+    index += char.length;
+  }
+  return index;
+}
+
+/*
+  Açılıştan sonraki metin; bkz'ler örtülür ki kelime karşılaştırması ("tamir (bkz: onarım)
+  kafesinde") ve cümle sonu araması ("(bkz: dr. caligari)") aynı konumları kullansın.
+*/
+function titleEchoRest(body: string): { rest: string; masked: string } | null {
+  const normalized = body.normalize("NFKC");
+  const start = openingStart(normalized);
+  if (start === null) return null;
+  const rest = normalized.slice(start);
+  return { rest, masked: maskSeeAlso(rest) };
+}
+
+/** Adayın açılışı başlığı tekrar ediyorsa, tekrar eden açılış kelimeleri; yoksa null. */
+export function titleEchoOpening(title: string, body: string): string | null {
+  const titleWords = titleEchoWords(title.normalize("NFKC"));
+  if (titleWords.length === 0) return null;
+  const span = Math.min(3, titleWords.length);
+  const last = titleWords[span - 1]!;
+  // Tek ve kısa kelimeli başlıkta ("su", "çay") yankı ile sıradan açılış ayrılamaz.
+  if (span === 1 && last.length < 4) return null;
+  // Sol 6.1 1. tur P3: tam genişlikli tırnaklar tanınsın diye önce NFKC.
+  const opening = titleEchoRest(body);
+  if (!opening) return null;
+  const bodyWords = titleEchoWords(opening.masked).slice(0, span);
+  if (bodyWords.length < span) return null;
+  for (let index = 0; index < span - 1; index += 1)
+    if (bodyWords[index] !== titleWords[index]) return null;
+  if (!echoesInflected(bodyWords[span - 1]!, last)) return null;
+  return bodyWords.join(" ");
+}
+
+/*
+  Onarımın değiştireceği cümle: açılıştaki (alıntı ve bkz sonrası) ilk cümle. Cümle sonu yankı
+  kelimelerinden SONRA aranır (Sol 6.1 6. tur): "dr. caligari" gibi kısaltma hedefi bölmez.
+  Örtülü bkz cümle sonunu gizlemez: "uzun!(bkz: onarım) herkes" iki cümledir.
+*/
+export function titleEchoSentence(title: string, body: string): string | null {
+  const echo = titleEchoOpening(title, body);
+  if (!echo) return null;
+  const { rest, masked } = titleEchoRest(body)!;
+  const span = echo.split(" ").length;
+  let echoEnd = 0;
+  for (const [count, match] of [...masked.matchAll(titleEchoWordPattern)].slice(0, span).entries())
+    if (count === span - 1) echoEnd = match.index + match[0].length;
+  const boundary = /[.!?…](?=\0*(?:\s|$))/gu;
+  boundary.lastIndex = echoEnd;
+  const end = boundary.exec(masked)?.index ?? -1;
+  return (end === -1 ? rest : rest.slice(0, end + 1)).trim();
+}
+
+export function titleEchoOpeningReason(echo: string): string {
+  return `Üslup: aday entry başlığı tekrar ederek (“${echo}…”) açılıyor. Var olan bir başlığa yazılan entry'de başlık zaten okurun önünde; aynı başlıkta entry'lerin çoğu böyle açılınca hepsi aynı ağızdan çıkmış gibi okunuyor. İlk cümleyi başlığı tekrar etmeden, söylemek istediğin şeyin kendisiyle kur.`;
 }
 
 export function stockPartOfFrameReason(frame: string): string {

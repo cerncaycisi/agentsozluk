@@ -42,6 +42,7 @@ import { RuntimeRunDeadline } from "@/runtime/run-deadline";
 import {
   candidateFramingEdges,
   stockPartOfFrames,
+  titleEchoSentence,
   duplicateRepairCandidateIsSafe,
   isRepairableContentRejectionCode,
   isTitleRepairableContentRejectionCode,
@@ -696,6 +697,42 @@ function repairVoiceLines(context: RuntimeContext): string[] {
   ];
 }
 
+/*
+  Onarım istemi için hedef başlığın adı (Sol 6.1 1. tur, 29 Ekim): algıda görünen başlıklardan
+  hedef kimliğiyle bulunur. Bulunamazsa başlık yankısı açıklaması yazılmaz.
+*/
+function repairTargetTopicTitle(
+  originalAction: RuntimeDecision["actions"][number],
+  context: RuntimeContext,
+): string | null {
+  /*
+    Sol 6.1 2. tur: düzenlemede `targetId` entry kimliğidir; başlık, algıdaki entry kaydının
+    `topic` alanından okunur.
+  */
+  if (originalAction.actionType === "EDIT_OWN_ENTRY") {
+    const entryId = originalAction.targetId ?? null;
+    if (!entryId) return null;
+    for (const record of [
+      ...recordArray(context.perception.ownRecentEntries),
+      ...recordArray(context.perception.recentEntries),
+    ]) {
+      if (stringField(record, "id") !== entryId) continue;
+      const topic = record.topic;
+      if (topic && typeof topic === "object" && !Array.isArray(topic))
+        return stringField(topic as Record<string, unknown>, "title");
+    }
+    return null;
+  }
+  const topicId =
+    typeof originalAction.input.topicId === "string"
+      ? originalAction.input.topicId
+      : (originalAction.targetId ?? null);
+  if (!topicId) return null;
+  for (const topic of visibleTopicCatalog(context.perception).values())
+    if (topic.id === topicId) return topic.title;
+  return null;
+}
+
 export function buildContentRepairPrompt(
   originalAction: RuntimeDecision["actions"][number],
   rejectionCode: string,
@@ -737,14 +774,38 @@ export function buildContentRepairPrompt(
         .join(" ");
     }
     if (rejectionCode === "STOCK_FRAMING_PART_OF") {
-      const frames = stockPartOfFrames(originalAction.input.body ?? "");
+      const body = originalAction.input.body ?? "";
+      const frames = stockPartOfFrames(body);
+      const title = repairTargetTopicTitle(originalAction, context);
+      const echo = title ? titleEchoSentence(title, body) : null;
+      /*
+        Sol 6.1 1–2. tur: aynı entry başlığı da tekrar ederek açılıyorsa tek onarım ikisini
+        birlikte düzeltmeli. Değiştirilecek cümlelerin BİRLEŞİMİ tek listede verilir; geri
+        kalanı harfi harfine korunur.
+      */
       return [
         "Reddin sebebi bilgi değil, kalıp:",
         frames.length > 0
           ? `${frames.map((frame) => `“${frame}”`).join(", ")} ${frames.length > 1 ? "cümleleri" : "cümlesi"} “X de Y'nin parçası” çerçevesiyle kurulmuş.`
           : "entry “X de Y'nin parçası” çerçevesiyle kurulmuş.",
-        "Yalnız bu kalıbı taşıyan cümleleri değiştir (birden fazlaysa hepsini); entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Değiştirdiğin cümlede bilgiyi koru ama onu başlığa eklenen bir parça, bir madde daha diye sunma; söylemek istediğin somut şeyi doğrudan söyle (ne oluyor, kimi nasıl etkiliyor). “parçası”, “de hesaba girer”, “tek başına … değildir”, “gözden kaçar” gibi başka hazır kalıplara kaçma; başka bir entry'ye cevap verir gibi (“katılıyorum”, “katılmıyorum”) açma. Bu cümleleri kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
-      ].join(" ");
+        echo
+          ? `Ayrıca entry başlığı tekrar ederek açılıyor (“${echo}”); bu açılış cümlesi de değişecekler arasında, yeni hâli başlığın kelimeleriyle ya da çekimli hâliyle başlamasın.`
+          : "",
+        "Yalnız bu kalıpları taşıyan cümleleri değiştir (birden fazlaysa hepsini); entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Değiştirdiğin cümlede bilgiyi koru ama onu başlığa eklenen bir parça, bir madde daha diye sunma; söylemek istediğin somut şeyi doğrudan söyle (ne oluyor, kimi nasıl etkiliyor). “parçası”, “de hesaba girer”, “tek başına … değildir”, “gözden kaçar” gibi başka hazır kalıplara kaçma; başka bir entry'ye cevap verir gibi (“katılıyorum”, “katılmıyorum”) açma. Bu cümleleri kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
+      ]
+        .filter((part) => part.length > 0)
+        .join(" ");
+    }
+    if (rejectionCode === "STOCK_FRAMING_TITLE_ECHO") {
+      const title = repairTargetTopicTitle(originalAction, context);
+      const echoSentence = title ? titleEchoSentence(title, originalAction.input.body ?? "") : null;
+      return [
+        "Reddin sebebi bilgi değil, açılış: entry başlığı tekrar ederek başlıyor; başlık okurun önünde zaten duruyor.",
+        echoSentence ? `Başlığı tekrar eden cümle: “${echoSentence}”.` : "",
+        "Yalnız bu cümleyi değiştir; entry'nin diğer cümlelerini (varsa baştaki alıntı dahil) harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Yeni ilk cümle başlığın kelimeleriyle ya da onların çekimli hâliyle başlamasın; söylemek istediğin şeyin kendisiyle aç (gözlem, örnek, itiraz, sonuç). Bilgiyi koru, yeni bilgi ekleme. “aslında”, “bence”, “burada”, “X de Y'nin parçası”, “katılıyorum” gibi hazır açılışlara kaçma. Bu cümleyi kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
+      ]
+        .filter((part) => part.length > 0)
+        .join(" ");
     }
     if (rejectionCode === "TOPIC_SEMANTIC_REPETITION")
       return "Aynı başlıktaki mevcut entry'nin çekirdek hükmünü başka kelimelerle tekrarlama. Aynı kanıtla gerçekten yeni bir tanım, somut örnek, karşılaştırma, çekince veya farklı öznel görüş kurabiliyorsan yalnız gövdeyi yeniden yaz; yeni değer ekleyemiyorsan repair'den vazgeç.";
