@@ -10037,3 +10037,17 @@ sha=55c9d312494a745e3c4620fe86920507b8a28b2c cleanup=cleanup migrations=no-migra
 **Do not repeat:** dağıtım betiğini başlatmadan önce ana kopya main'de olmalı (betik artık
 kendisi geçiyor). Ajan kapısı ekleyen değişiklikte entegrasyon testlerinin sabit metinlerinin
 yeni kurala takılıp takılmadığını yerelde ara.
+
+## 2026-10-29 — CI `ubuntu-latest` 26.04'e geçti; yedek/geri yükleme testleri kırıldı
+
+- **Hata:** belge PR'ı #469'da (`c953c2a5`) `database`/`coverage` işlerinde
+  `pg_restore: error: could not execute query: ERROR:  unrecognized configuration parameter
+"transaction_timeout"`; `a5-phase-sql`, `nightly-backup-format`, `owned-backup-restore`,
+  `reviewed-migration-profile` testleri düştü. 09:31Z'deki yeşil koşu `Image: ubuntu-24.04`,
+  21:01Z'deki kırmızı koşu `Image: ubuntu-26.04`. Kök neden: yeni imajın PostgreSQL istemcisi
+  PG16 servisinin tanımadığı ayarı dökümüne yazıyor. Kod değişmedi.
+- **Düzeltme:** `ci.yml` ve iki üretim duman/ölçüm iş akışında `runs-on: ubuntu-24.04`
+  (`release-candidate.yml` zaten sabitti).
+
+**Do not repeat:** iş akışlarında `ubuntu-latest` kullanma; imaj yükseltmesi PG istemci sürümüyle
+birlikte ayrı PR'da yapılır.

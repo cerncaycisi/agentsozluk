@@ -21,7 +21,9 @@ concurrency:
 # geçiyor. 10, en pahalı senaryonun iki katı.
 jobs:
   quality:
-    runs-on: ubuntu-latest
+    # ubuntu-latest 29 Ekim 2026'da 26.04'e geçti; yeni pg_dump/pg_restore PG16 servisiyle
+    # uyumsuz (transaction_timeout). İmaj release-candidate.yml gibi sabit tutulur.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       NODE_ENV: test
@@ -99,7 +101,7 @@ jobs:
         run: pnpm requirements:m2:check:development
 
   behavior:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
       postgres:
@@ -144,7 +146,7 @@ jobs:
         run: pnpm test:agent-simulation
 
   database:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
       postgres:
@@ -189,7 +191,7 @@ jobs:
         run: pnpm agent:verify-life-ledger
 
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # 5 Ekim: 308 dosya geçti; V8 raporu tamamlanmadan 15dk job limiti iptal etti.
     # 8 Ekim: main'de adım 15-15,5dk sürüyordu; PR #354'ün testleriyle 16dk adım sınırı aşıldı.
     # Job24dk/adım20dk; testlerin timeout ayarı ve coverage eşikleri aynı kalır.
@@ -244,7 +246,7 @@ jobs:
           retention-days: 1
 
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       postgres:
@@ -316,7 +318,7 @@ jobs:
           retention-days: 1
 
   container:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       NODE_ENV: test
@@ -364,7 +366,7 @@ jobs:
   validate:
     if: always()
     needs: [quality, behavior, database, coverage, browser, container]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
       - name: Require every parallel gate

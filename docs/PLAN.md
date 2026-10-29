@@ -8,50 +8,26 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**29 Ekim 2026 · güncel durum ve takvim.** Gökhan (29 Ekim): "planı her zaman güncel tut; ben
-bakmasam da tetikte ol, yönet, çalış, benim dememi bekleme". Bu bölüm her iş bitince güncellenir.
+**29 Ekim 2026.** Gökhan: "planı her zaman güncel tut; ben bakmasam da tetikte ol, yönet, çalış,
+benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
+[Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `55c9d312` (29 Ekim 10:29Z, #468):** başlık yankısı kuralı
-  (`STOCK_FRAMING_TITLE_ECHO`, aşağıda sıra 7). Üretim yazar modeli `gpt-5.6-luna` max.
-- **İzleme:** saatlik sağlık kontrolü operatör sunucusunda yerel zamanlayıcıyla çalışır ve yalnız
-  kayda yazar (Gökhan 29 Ekim: "." bildirimleri kaldırıldı). T3 sohbetine günde iki yönetim turu
-  düşer (06:30 ve 18:00 UTC): sağlık kaydını okur, vadesi gelen işi yürütür, bu planı günceller.
-- **Takvim (vadesi gelen iş):**
-  - **30 Ekim 06:07Z sonrası:** "Son Yankesici" kopya birleştirmesi (organik trafik sıra 2):
-    iki başlık ve entry'leri yeniden doğrulanır, geri alma kaydı (entry → başlık) alınır,
-    operatör yoluyla birleştirilir.
-  - **31 Ekim–1 Kasım:** başlık yankısı canlı ölçümü: sonradan yazılan entry'lerde yankı oranı
-    (önce %38,1), onarım sayısı ve onarılanların yayım oranı.
-  - **Ara iş:** tek tipleşme 2. adım, bkz etiket tekrarı (sıra 7).
-  - **2 Kasım:** haftalık rapor (Search Console, metadata denemesi 14. gün okuması, sayaç v2).
-    Metadata denemesi olumluysa 5–15. sıradaki sayfalara genişletme önerisi.
-  - **2 Kasım 23:00Z (3 Kasım 02:00–06:00 TSİ):** `gpt-6-luna` gece kota ölçümü (sıra 6),
-    3 Kasım sabahı sonuç ve kör puanlama.
-  - **4 Kasım:** haftalık Codex kotası sıfırlanır.
-  - **~20 Kasım:** odak denemesi Ölçü 2 (organik giriş) okuması.
-  - **30 Kasım:** organik trafik kararı; süreli yetkinin sonu (20:59Z).
-- **Gökhan'dan beklenen:** Curlie başvurusu (metin hazır; Gökhan gönderecek).
-
-**17 Ekim 2026 · iki bağımsız inceleme ([Fable](TAM_ANALIZ_2026-10-17.md),
-[Astra](FULL_ANALYSIS_2026-10-17.md)); ikisinin hükmü de "yön değiştir".** Emek metne gitti, okur
-gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" iki hafta önceliklidir.
-
-- **Canlı exact `ede47942` (19 Ekim, #448):** arama sonucu başlık/açıklama denemesi;
-  önceki işletim düzeltmeleri (#427), özel adlı başlık tavanı (#426) ve ilgili başlıklar (#423)
-  kurulu. Yarım kalan migration'sız dağıtım 19 Ekim'de aynı SHA ile tamamlandı;
-  19:33:09Z'de akış açıldı (`runtimeEnabled=true`, ayar sürümü 398; ATTEMPT_LOG).
-  **Uyarı kanalı T3 sohbeti (Gökhan, 19 Ekim: "notify yok. sen beni burdan
-  uyarırsın"):** ntfy kullanılmaz; üretim `agent-sozluk-alarm.timer` kapatıldı, saatlik T3 görevi
-  operatör sunucusundan salt okunur sağlık kontrolü yapıp sorunları sohbete yazar.
-- **Talep:** Search Console 17 Eylül–14 Ekim 94 tık, 5.476 gösterim (önceki 28 gün 53 / 5.540).
-  Sayacın "güvenilir" sayısı kişi değil görüntülemedir; v1 site içi yönlendirmeyi de sayıyordu,
-  v2 tanımı dalda (sıra 2), kurulana kadar canlı sayı v1'dir.
-- **Gökhan kararları (17 Ekim):** hakem kuralı aynen kalır; karma yazım ölçülür, doğallık
-  ≥ +0,3 ve dolgu artmamışsa kalır, yoksa kapanır, 2. sürüm yok; dış dağıtım şimdilik yok, yerine
-  odaklı içerik denemesi; yalnız kaynaktan açılan haber başlıklarına günlük tavan.
-- **Yetki:** 30 Kasım 23:59 TSİ'ye kadar (AGENTS.md, 22 Ekim uzatması). Teknik kapılar, veri silme ve "Gökhan kararı
-  bekleyen" maddeler kapsam dışı.
-- 10 Ekim durum anlatısı [Plan arşivinde](PLAN_ARSIVI_2026-10.md), "17 Ekim'de arşivlenen".
+- **Canlı exact `55c9d312` (29 Ekim 10:29Z, #468):** başlık yankısı kuralı (sıra 7). Yazar modeli
+  `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ'ye kadar (AGENTS.md); teknik kapılar, veri silme
+  ve "Gökhan kararı bekleyen" maddeler kapsam dışı.
+- **İzleme:** saatlik sağlık kontrolü operatör sunucusunda yerel zamanlayıcıyla yalnız kayda yazar
+  ("." bildirimleri kaldırıldı, 29 Ekim). T3 sohbetine günde iki yönetim turu (06:30 ve 18:00
+  UTC): sağlık kaydını okur, vadesi gelen işi yürütür, bu planı günceller.
+- **Takvim:**
+  - 30 Ekim 06:07Z sonrası: "Son Yankesici" kopya birleştirmesi (organik trafik sıra 2); önce
+    doğrulama ve geri alma kaydı.
+  - 31 Ekim–1 Kasım: başlık yankısı canlı ölçümü (önce %38,1; onarım ve yayım oranı).
+  - Ara iş: tek tipleşme 2. adım, bkz etiket tekrarı (sıra 7).
+  - 2 Kasım: haftalık rapor (GSC, metadata denemesi 14. gün, sayaç v2); olumluysa 5–15. sıra
+    sayfalara genişletme önerisi.
+  - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü (sıra 6); 3 Kasım sabahı sonuç ve kör puan.
+  - ~20 Kasım: odak denemesi Ölçü 2. 30 Kasım: organik trafik kararı, süreli yetkinin sonu.
+- **Gökhan'dan beklenen:** Curlie başvurusu (metin hazır).
 
 ### 17 Ekim sırası (iki hafta)
 
