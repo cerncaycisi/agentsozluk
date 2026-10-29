@@ -618,11 +618,13 @@ function echoesInflected(bodyWord: string, titleWord: string): boolean {
 const leadingQuoteClosers: Record<string, string> = { "“": "”", '"': '"', "‘": "’", "'": "'" };
 
 /*
-  Renderer'ın (src/modules/entries/domain/renderer.ts) tanıdığı bkz biçimi: tek satır, en çok
-  100 karakter. Sol 6.1 4. tur: renderer'ın bağlantı saymadığı "(bkz: …\n…)" düz metindir;
-  sınırlı tekrar kapanışsız "(bkz:" yığınında taramayı doğrusal tutar.
+  Renderer'ın (src/modules/entries/domain/renderer.ts) tanıdığı bkz biçimine yakın: tek satır,
+  kısa. Sol 6.1 4. tur: renderer'ın bağlantı saymadığı "(bkz: …\n…)" düz metindir. Sol 6.1 5.
+  tur: iç içe niceleyici yok (uzun boşlukta geri izleme karesel oluyordu); açılış taraması
+  yalnız bulunduğu konumda dener (sticky), kalan metni her karakterde yeniden taramaz.
 */
-const titleEchoSeeAlso = /\(bkz:\s*[^)\n]{1,100}?\s*\)/giu;
+const titleEchoSeeAlso = /\(bkz:[^)\n]{1,200}\)/giu;
+const titleEchoSeeAlsoHere = /\(bkz:[^)\n]{1,200}\)/iuy;
 
 const letterOrDigit = /[\p{L}\p{N}]/u;
 
@@ -652,9 +654,9 @@ function openingStart(text: string): number | null {
   while (index < text.length) {
     const char = String.fromCodePoint(text.codePointAt(index)!);
     if (letterOrDigit.test(char)) break;
-    titleEchoSeeAlso.lastIndex = index;
-    const seeAlso = titleEchoSeeAlso.exec(text);
-    if (seeAlso?.index === index) {
+    titleEchoSeeAlsoHere.lastIndex = index;
+    const seeAlso = titleEchoSeeAlsoHere.exec(text);
+    if (seeAlso) {
       index += seeAlso[0].length;
       continue;
     }
@@ -671,16 +673,17 @@ function openingStart(text: string): number | null {
 }
 
 /*
-  Açılıştan sonraki metin; bkz'ler aynı uzunlukta boşlukla örtülür ki kelime karşılaştırması
+  Açılıştan sonraki metin; bkz'ler aynı uzunlukta "_" ile örtülür ki kelime karşılaştırması
   ("tamir (bkz: onarım) kafesinde") ve cümle sonu araması ("(bkz: dr. caligari)") aynı konumları
-  kullansın.
+  kullansın. Sol 6.1 5. tur: örtü boşluk değildir; "dr.(bkz: …) caligari" içinde noktadan sonra
+  sahte cümle sonu oluşmaz.
 */
 function titleEchoRest(body: string): { rest: string; masked: string } | null {
   const normalized = body.normalize("NFKC");
   const start = openingStart(normalized);
   if (start === null) return null;
   const rest = normalized.slice(start);
-  return { rest, masked: rest.replace(titleEchoSeeAlso, (match) => " ".repeat(match.length)) };
+  return { rest, masked: rest.replace(titleEchoSeeAlso, (match) => "_".repeat(match.length)) };
 }
 
 /** Adayın açılışı başlığı tekrar ediyorsa, tekrar eden açılış kelimeleri; yoksa null. */

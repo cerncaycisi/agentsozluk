@@ -181,4 +181,24 @@ describe("titleEchoOpening", () => {
     expect(titleEchoOpening("tamir kafesi", body)).toBeNull();
     expect(performance.now() - started).toBeLessThan(50);
   });
+
+  it("uzun boşluklu ya da noktalamalı bkz yığınında da doğrusal kalır", () => {
+    for (const body of [
+      "tamir (bkz:" + " ".repeat(8000) + "x",
+      "—".repeat(800) + "tamir " + "(bkz:".repeat(800),
+    ]) {
+      const started = performance.now();
+      titleEchoOpening("tamir kafesi", body);
+      titleEchoSentence("tamir kafesi", body);
+      expect(performance.now() - started).toBeLessThan(50);
+    }
+  });
+
+  it("bkz örtüsü sahte cümle sonu üretmez", () => {
+    const body = "dr.(bkz: doktor) caligari'nin muayenehanesi dışavurumcu bir film. herkes bilir.";
+    expect(titleEchoOpening("dr. caligari", body)).toBe("dr caligari");
+    expect(titleEchoSentence("dr. caligari", body)).toBe(
+      "dr.(bkz: doktor) caligari'nin muayenehanesi dışavurumcu bir film.",
+    );
+  });
 });
