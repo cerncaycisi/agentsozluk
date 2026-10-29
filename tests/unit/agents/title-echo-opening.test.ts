@@ -186,6 +186,7 @@ describe("titleEchoOpening", () => {
     for (const body of [
       "tamir (bkz:" + " ".repeat(8000) + "x",
       "—".repeat(800) + "tamir " + "(bkz:".repeat(800),
+      "tamir " + "(bkz:".repeat(1200) + "x" + " ".repeat(3600) + ") kafesinde sıra uzun.",
     ]) {
       const started = performance.now();
       titleEchoOpening("tamir kafesi", body);

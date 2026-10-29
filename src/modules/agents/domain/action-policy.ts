@@ -625,13 +625,18 @@ const leadingQuoteClosers: Record<string, string> = { "“": "”", '"': '"', "�
 */
 const seeAlsoOpen = /\(bkz:/giu;
 
-function isSeeAlsoSpan(text: string, open: number, close: number): boolean {
+/** Kapanıştan önceki son boşluk olmayan konum; kapanış başına bir kez hesaplanır (Sol 6.1 7. tur). */
+function lastNonSpaceBefore(text: string, close: number): number {
+  let last = close - 1;
+  while (last >= 0 && /\s/u.test(text[last]!)) last -= 1;
+  return last;
+}
+
+function isSeeAlsoSpan(text: string, open: number, close: number, last: number): boolean {
   let first = open + 5;
   while (first < close && /\s/u.test(text[first]!)) first += 1;
-  let last = close - 1;
-  while (last >= first && /\s/u.test(text[last]!)) last -= 1;
   // Yalnız boşluk: renderer çekirdeğe satır sonu olmayan tek boşluğu da alır.
-  if (last < first) return /[^\n]/u.test(text.slice(open + 5, close));
+  if (first === close) return /[^\n]/u.test(text.slice(open + 5, close));
   if (last - first + 1 > 200) return false;
   const core = text.slice(first, last + 1);
   return !core.includes("\n") && [...core].length <= 100;
@@ -640,7 +645,8 @@ function isSeeAlsoSpan(text: string, open: number, close: number): boolean {
 function seeAlsoEndAt(text: string, index: number): number | null {
   if (text.slice(index, index + 5).toLowerCase() !== "(bkz:") return null;
   const close = text.indexOf(")", index + 5);
-  return close !== -1 && isSeeAlsoSpan(text, index, close) ? close + 1 : null;
+  if (close === -1) return null;
+  return isSeeAlsoSpan(text, index, close, lastNonSpaceBefore(text, close)) ? close + 1 : null;
 }
 
 /** Renderer'ın bağlantı saydığı bkz'leri aynı uzunlukta \0 ile örter (PostgreSQL metninde \0 yoktur). */
@@ -648,12 +654,16 @@ function maskSeeAlso(text: string): string {
   let masked = "";
   let copied = 0;
   let close = -1;
+  let last = -1;
   seeAlsoOpen.lastIndex = 0;
   for (let match = seeAlsoOpen.exec(text); match; match = seeAlsoOpen.exec(text)) {
     const open = match.index;
-    if (close < open + 5) close = text.indexOf(")", open + 5);
-    if (close === -1) break;
-    if (!isSeeAlsoSpan(text, open, close)) continue;
+    if (close < open + 5) {
+      close = text.indexOf(")", open + 5);
+      if (close === -1) break;
+      last = lastNonSpaceBefore(text, close);
+    }
+    if (!isSeeAlsoSpan(text, open, close, last)) continue;
     masked += text.slice(copied, open) + "\0".repeat(close + 1 - open);
     copied = close + 1;
     seeAlsoOpen.lastIndex = copied;
