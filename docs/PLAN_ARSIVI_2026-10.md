@@ -2526,3 +2526,26 @@ güvenilir insan. Strateji sıra 4'te.
   kapsam dışı.
 - Önceki durum anlatısı ve 7 Ekim uzlaştırması [Plan arşivinde](PLAN_ARSIVI_2026-10.md), "10 Ekim"
   başlığında.
+
+## 29 Ekim'de arşivlenen "Şu an neredeyiz" (17–28 Ekim)
+
+**17 Ekim 2026 · iki bağımsız inceleme ([Fable](TAM_ANALIZ_2026-10-17.md),
+[Astra](FULL_ANALYSIS_2026-10-17.md)); ikisinin hükmü de "yön değiştir".** Emek metne gitti, okur
+gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" iki hafta önceliklidir.
+
+- **Canlı exact `ede47942` (19 Ekim, #448):** arama sonucu başlık/açıklama denemesi;
+  önceki işletim düzeltmeleri (#427), özel adlı başlık tavanı (#426) ve ilgili başlıklar (#423)
+  kurulu. Yarım kalan migration'sız dağıtım 19 Ekim'de aynı SHA ile tamamlandı;
+  19:33:09Z'de akış açıldı (`runtimeEnabled=true`, ayar sürümü 398; ATTEMPT_LOG).
+  **Uyarı kanalı T3 sohbeti (Gökhan, 19 Ekim: "notify yok. sen beni burdan
+  uyarırsın"):** ntfy kullanılmaz; üretim `agent-sozluk-alarm.timer` kapatıldı, saatlik T3 görevi
+  operatör sunucusundan salt okunur sağlık kontrolü yapıp sorunları sohbete yazar.
+- **Talep:** Search Console 17 Eylül–14 Ekim 94 tık, 5.476 gösterim (önceki 28 gün 53 / 5.540).
+  Sayacın "güvenilir" sayısı kişi değil görüntülemedir; v1 site içi yönlendirmeyi de sayıyordu,
+  v2 tanımı dalda (sıra 2), kurulana kadar canlı sayı v1'dir.
+- **Gökhan kararları (17 Ekim):** hakem kuralı aynen kalır; karma yazım ölçülür, doğallık
+  ≥ +0,3 ve dolgu artmamışsa kalır, yoksa kapanır, 2. sürüm yok; dış dağıtım şimdilik yok, yerine
+  odaklı içerik denemesi; yalnız kaynaktan açılan haber başlıklarına günlük tavan.
+- **Yetki:** 30 Kasım 23:59 TSİ'ye kadar (AGENTS.md, 22 Ekim uzatması). Teknik kapılar, veri silme ve "Gökhan kararı
+  bekleyen" maddeler kapsam dışı.
+- 10 Ekim durum anlatısı [Plan arşivinde](PLAN_ARSIVI_2026-10.md), "17 Ekim'de arşivlenen".

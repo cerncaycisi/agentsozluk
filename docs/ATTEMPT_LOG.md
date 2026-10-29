@@ -10014,3 +10014,40 @@ ayrı kapılardır. Saatlik kontrol aynı sağlayıcının kotasına takıldığ
 **Do not repeat:** dağıtım `RELEASE_COMPLETE PASS` verse de `/opt/agent-sozluk/scripts/`
 altındaki host betiklerini güncellemez; `RELEASE_HOST_DRIFT … differs` satırını görünce runbook
 kurulum komutunu çalıştır ve sha256'yı doğrula. Disk eşiğini ham veritabanı boyutuna bağlama.
+
+## 2026-10-29 — başlık yankısı dağıtımı: CI test metni ve dağıtım betiğinde yanlış SHA
+
+- **CI (PR #468, `586799ec`):** `coverage` ve `database` işlerinde
+  `tests/integration/agent-runtime-api.test.ts` "public-write kill switch" testi
+  `actionStatus: 'SUCCEEDED'` beklerken red aldı; ardından gelen test `Hook timed out in 10000ms`
+  ile düştü. Kök neden: test, `public write settings fence …` başlığına `Public-write settings
+fence action …` diye açılan entry yazıyordu; yeni kural bunu doğru biçimde yankı saydı. İkinci
+  hata ilkinin açık bıraktığı kilidin yan etkisi. Düzeltme yalnız test metni (`67f42ee7`); CI yeşil.
+- **Dağıtım betiği (operatör `pr-dagit.sh`):** birleştirmeden sonra ana kopyada `git pull` yapıp
+  `HEAD`'i main sanıyordu; kopya özellik dalında kaldığı için birleştirme commit'i `55c9d312`
+  yerine `67f42ee7` arandı, main CI koşusu bulunamadı ve betik boş kimlikle `gh run view`
+  döngüsünde ~1 saat bekledi. Üretime dokunulmadı. Betik durduruldu, kopya main'e alındı, kalan
+  adımlar `55c9d312` ile sürdürüldü: RC başarılı, `RELEASE_COMPLETE PASS
+sha=55c9d312494a745e3c4620fe86920507b8a28b2c cleanup=cleanup migrations=no-migration`, akış
+  10:29Z'de yeniden açıldı. Betiğe main'e geçiş satırı eklendi.
+- **Yerel test notu:** `.claude/worktrees/` altındaki birleşmiş üç eski çalışma kopyası
+  `vitest` taramasına giriyor ve koşuyu ikiye katlıyordu; temizlendi. Yerel tam birim koşusunda
+  `verify-m2-e2e-isolation` kabuktaki Node 24 nedeniyle kırmızıdır, CI Node 22'dir.
+
+**Do not repeat:** dağıtım betiğini başlatmadan önce ana kopya main'de olmalı (betik artık
+kendisi geçiyor). Ajan kapısı ekleyen değişiklikte entegrasyon testlerinin sabit metinlerinin
+yeni kurala takılıp takılmadığını yerelde ara.
+
+## 2026-10-29 — CI `ubuntu-latest` 26.04'e geçti; yedek/geri yükleme testleri kırıldı
+
+- **Hata:** belge PR'ı #469'da (`c953c2a5`) `database`/`coverage` işlerinde
+  `pg_restore: error: could not execute query: ERROR:  unrecognized configuration parameter
+"transaction_timeout"`; `a5-phase-sql`, `nightly-backup-format`, `owned-backup-restore`,
+  `reviewed-migration-profile` testleri düştü. 09:31Z'deki yeşil koşu `Image: ubuntu-24.04`,
+  21:01Z'deki kırmızı koşu `Image: ubuntu-26.04`. Kök neden: yeni imajın PostgreSQL istemcisi
+  PG16 servisinin tanımadığı ayarı dökümüne yazıyor. Kod değişmedi.
+- **Düzeltme:** `ci.yml` ve iki üretim duman/ölçüm iş akışında `runs-on: ubuntu-24.04`
+  (`release-candidate.yml` zaten sabitti).
+
+**Do not repeat:** iş akışlarında `ubuntu-latest` kullanma; imaj yükseltmesi PG istemci sürümüyle
+birlikte ayrı PR'da yapılır.

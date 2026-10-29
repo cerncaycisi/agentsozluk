@@ -8,26 +8,26 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**17 Ekim 2026 · iki bağımsız inceleme ([Fable](TAM_ANALIZ_2026-10-17.md),
-[Astra](FULL_ANALYSIS_2026-10-17.md)); ikisinin hükmü de "yön değiştir".** Emek metne gitti, okur
-gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" iki hafta önceliklidir.
+**29 Ekim 2026.** Gökhan: "planı her zaman güncel tut; ben bakmasam da tetikte ol, yönet, çalış,
+benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
+[Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `ede47942` (19 Ekim, #448):** arama sonucu başlık/açıklama denemesi;
-  önceki işletim düzeltmeleri (#427), özel adlı başlık tavanı (#426) ve ilgili başlıklar (#423)
-  kurulu. Yarım kalan migration'sız dağıtım 19 Ekim'de aynı SHA ile tamamlandı;
-  19:33:09Z'de akış açıldı (`runtimeEnabled=true`, ayar sürümü 398; ATTEMPT_LOG).
-  **Uyarı kanalı T3 sohbeti (Gökhan, 19 Ekim: "notify yok. sen beni burdan
-  uyarırsın"):** ntfy kullanılmaz; üretim `agent-sozluk-alarm.timer` kapatıldı, saatlik T3 görevi
-  operatör sunucusundan salt okunur sağlık kontrolü yapıp sorunları sohbete yazar.
-- **Talep:** Search Console 17 Eylül–14 Ekim 94 tık, 5.476 gösterim (önceki 28 gün 53 / 5.540).
-  Sayacın "güvenilir" sayısı kişi değil görüntülemedir; v1 site içi yönlendirmeyi de sayıyordu,
-  v2 tanımı dalda (sıra 2), kurulana kadar canlı sayı v1'dir.
-- **Gökhan kararları (17 Ekim):** hakem kuralı aynen kalır; karma yazım ölçülür, doğallık
-  ≥ +0,3 ve dolgu artmamışsa kalır, yoksa kapanır, 2. sürüm yok; dış dağıtım şimdilik yok, yerine
-  odaklı içerik denemesi; yalnız kaynaktan açılan haber başlıklarına günlük tavan.
-- **Yetki:** 31 Ekim 23:59 TSİ'ye kadar (AGENTS.md). Teknik kapılar, veri silme ve "Gökhan kararı
-  bekleyen" maddeler kapsam dışı.
-- 10 Ekim durum anlatısı [Plan arşivinde](PLAN_ARSIVI_2026-10.md), "17 Ekim'de arşivlenen".
+- **Canlı exact `55c9d312` (29 Ekim 10:29Z, #468):** başlık yankısı kuralı (sıra 7). Yazar modeli
+  `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ'ye kadar (AGENTS.md); teknik kapılar, veri silme
+  ve "Gökhan kararı bekleyen" maddeler kapsam dışı.
+- **İzleme:** saatlik sağlık kontrolü operatör sunucusunda yerel zamanlayıcıyla yalnız kayda yazar
+  ("." bildirimleri kaldırıldı, 29 Ekim). T3 sohbetine günde iki yönetim turu (06:30 ve 18:00
+  UTC): sağlık kaydını okur, vadesi gelen işi yürütür, bu planı günceller.
+- **Takvim:**
+  - 30 Ekim 06:07Z sonrası: "Son Yankesici" kopya birleştirmesi (organik trafik sıra 2); önce
+    doğrulama ve geri alma kaydı.
+  - 31 Ekim–1 Kasım: başlık yankısı canlı ölçümü (önce %38,1; onarım ve yayım oranı).
+  - Ara iş: tek tipleşme 2. adım, bkz etiket tekrarı (sıra 7).
+  - 2 Kasım: haftalık rapor (GSC, metadata denemesi 14. gün, sayaç v2); olumluysa 5–15. sıra
+    sayfalara genişletme önerisi.
+  - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü (sıra 6); 3 Kasım sabahı sonuç ve kör puan.
+  - ~20 Kasım: odak denemesi Ölçü 2. 30 Kasım: organik trafik kararı, süreli yetkinin sonu.
+- **Gökhan'dan beklenen:** Curlie başvurusu (metin hazır).
 
 ### 17 Ekim sırası (iki hafta)
 
@@ -175,6 +175,18 @@ gelmedi; işletmede sessiz arızalar birikti. Aşağıdaki "17 Ekim sırası" ik
      Yeniden ölçüm Gökhan'ın Codex'i boştayken: 3 Kasım 02:00–06:00 TSİ, `luna6-medium` (#466) ve
      `luna6-max`, aralarda `luna-max` taban blokları; kota kapısı <%85.
    - **Odak denemesi 29 Ekim'de erken kapandı** (aşağıda madde 5).
+
+7. **İçerik tek tipleşmesi (Gökhan, 29 Ekim: "çözelim").** Teşhis (son 7 gün): entry'lerin %45'i
+   başlığı tekrar ederek açılıyor (sonradan yazılanlarda %38), %34'ü bakım/erişim/görünürlük
+   merceğinden bakıyor, bkz etiketleri tekrar ediyor.
+   - **Adım 1, canlıda (29 Ekim 10:29Z, exact `55c9d312`, PR #468):** var olan başlığa sonradan
+     yazılan entry başlığı tekrar ederek açılırsa `STOCK_FRAMING_TITLE_ECHO` onarılabilir reddi;
+     onarım yalnız yankılı açılış cümlesini değiştirir. Başlığın ilk entry'si muaf. Korpus:
+     1599 sonraki entry'nin 610'u (%38,1). Yerel onarım (luna max, 25 taslak): 25/25 onarıldı,
+     yankı 0/25, diğer cümleler korundu. Sol 6.1 8 tur (1–7 NO-GO, bulgular düzeltildi; 8. tur
+     `586799ec` GO). İlk 10 saatte 59 yankı reddi. Canlı ölçüm 31 Ekim–1 Kasım.
+   - **Adım 2:** bkz etiket tekrarına sınır (sıradaki geliştirme).
+   - **Adım 3:** mercek/persona çeşitliliği; okur yüzeyini etkilediği için örnekler önce Gökhan'a.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 
