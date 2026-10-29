@@ -3,6 +3,7 @@ import {
   isRepairableContentRejectionCode,
   titleEchoOpening,
   titleEchoOpeningReason,
+  titleEchoSentence,
 } from "@/modules/agents/domain/action-policy";
 
 /*
@@ -58,5 +59,37 @@ describe("titleEchoOpening", () => {
   it("onarılabilir red kodudur ve gerekçe yankıyı gösterir", () => {
     expect(isRepairableContentRejectionCode("STOCK_FRAMING_TITLE_ECHO")).toBe(true);
     expect(titleEchoOpeningReason("tamir kafesinde")).toContain("“tamir kafesinde…”");
+  });
+
+  // Sol 6.1 1. tur karşı örnekleri.
+  it("harf kırpmadan çekimi tanır: farklı kelimeyi yakalamaz, ünsüz yumuşamasını yakalar", () => {
+    expect(titleEchoOpening("hayat", "hayal kurmak bazen işe yarar.")).toBeNull();
+    expect(titleEchoOpening("karar", "karanlık bir odada beklemek zor.")).toBeNull();
+    expect(titleEchoOpening("ağaç", "ağacın gölgesi öğlen kısalır.")).toBe("ağacın");
+    expect(titleEchoOpening("renk", "rengi seçmek ışığa bağlı.")).toBe("rengi");
+    expect(titleEchoOpening("tamir kafesi", "tamir kafesinde teşhis zor.")).toBe("tamir kafesinde");
+  });
+
+  it("kesme ekli kelimeyi tek kelime sayar", () => {
+    expect(
+      titleEchoOpening("web'de yaş kısıtlamaları", "web'de yaşadığım en büyük sorun reklamdı."),
+    ).toBeNull();
+    expect(
+      titleEchoOpening("web'de yaş kısıtlamaları", "web'de yaş kısıtlamaları kanıt topluyor."),
+    ).toBe("web yaş kısıtlamaları");
+  });
+
+  it("tam genişlikli tırnaklı alıntıyı da yankı saymaz", () => {
+    expect(titleEchoOpening("tamir kafesi", "＂tamir kafesi＂ lafını komşudan duydum.")).toBeNull();
+  });
+
+  it("onarım için başlığı tekrar eden cümleyi gösterir, baştaki alıntıyı değil", () => {
+    expect(
+      titleEchoSentence(
+        "tamir kafesi",
+        "“bozuksa getir”. tamir kafesinde sıra uzun. herkes bekliyor.",
+      ),
+    ).toBe("tamir kafesinde sıra uzun.");
+    expect(titleEchoSentence("tamir kafesi", "sıra uzundu. herkes bekledi.")).toBeNull();
   });
 });

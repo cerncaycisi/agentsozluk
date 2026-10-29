@@ -575,30 +575,61 @@ export function stockPartOfFrame(body: string): string | null {
   son kelime çekim ekiyle gelebilir ("sisteminde"). Tırnak ve bkz içi sayılmaz; önce baştaki
   tırnak, parantez ve noktalama atlanır.
 */
-const titleEchoWordPattern = /[\p{L}\p{N}]+/gu;
+/*
+  Sol 6.1 1. tur (29 Ekim): kesme ekli kelime tek kelimedir ("web'de"); karşılaştırma kesmeden
+  önceki köke yapılır. Son kelime ya aynen ya da başlık kelimesiyle başlayan çekimli biçimdir;
+  son ünsüz yumuşaması (ağaç → ağacın, renk → rengi) ayrıca kabul edilir. Harf kırpma yok:
+  "karar" → "karanlık", "hayat" → "hayal" yankı sayılmaz.
+*/
+const titleEchoWordPattern = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)?/gu;
 
 function titleEchoWords(value: string): string[] {
-  return [...value.normalize("NFKC").toLocaleLowerCase("tr-TR").matchAll(titleEchoWordPattern)].map(
-    (match) => match[0],
+  return [...value.toLocaleLowerCase("tr-TR").matchAll(titleEchoWordPattern)].map(
+    (match) => match[0].split(/['’]/u)[0]!,
   );
+}
+
+const softenedFinal: Record<string, string[]> = {
+  p: ["b"],
+  ç: ["c"],
+  t: ["d"],
+  k: ["ğ", "g"],
+  g: ["ğ"],
+};
+
+function inflectionStems(word: string): string[] {
+  const last = word.at(-1) ?? "";
+  return [word, ...(softenedFinal[last] ?? []).map((soft) => word.slice(0, -1) + soft)];
 }
 
 /** Adayın açılışı başlığı tekrar ediyorsa, tekrar eden açılış kelimeleri; yoksa null. */
 export function titleEchoOpening(title: string, body: string): string | null {
-  const titleWords = titleEchoWords(title);
+  const titleWords = titleEchoWords(title.normalize("NFKC"));
   if (titleWords.length === 0) return null;
   const span = Math.min(3, titleWords.length);
   const last = titleWords[span - 1]!;
   // Tek ve kısa kelimeli başlıkta ("su", "çay") yankı ile sıradan açılış ayrılamaz.
   if (span === 1 && last.length < 4) return null;
-  const opening = withoutQuotedSpans(body).replace(/^[\s\p{P}\p{S}]+/u, "");
+  // Sol 6.1 1. tur P3: tam genişlikli tırnaklar tanınsın diye önce NFKC, sonra alıntı temizliği.
+  const opening = withoutQuotedSpans(body.normalize("NFKC")).replace(/^[\s\p{P}\p{S}]+/u, "");
   const bodyWords = titleEchoWords(opening).slice(0, span);
   if (bodyWords.length < span) return null;
   for (let index = 0; index < span - 1; index += 1)
     if (bodyWords[index] !== titleWords[index]) return null;
-  const stem = last.length > 4 ? last.slice(0, last.length - 1) : last;
-  if (!bodyWords[span - 1]!.startsWith(stem)) return null;
+  if (!inflectionStems(last).some((stem) => bodyWords[span - 1]!.startsWith(stem))) return null;
   return bodyWords.join(" ");
+}
+
+/*
+  Onarımın değiştireceği cümle (Sol 6.1 1. tur P2): tespit baştaki alıntıyı atladığı için
+  "ilk cümle" her zaman doğru hedef değil. Başlığı tekrar eden İLK cümle gösterilir.
+*/
+export function titleEchoSentence(title: string, body: string): string | null {
+  for (const sentence of body.trim().split(/(?<=[.!?…])\s+/u)) {
+    const trimmed = sentence.trim();
+    if (trimmed.length > 0 && titleEchoOpening(title, trimmed)) return trimmed;
+  }
+  return null;
 }
 
 export function titleEchoOpeningReason(echo: string): string {

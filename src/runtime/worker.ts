@@ -42,6 +42,7 @@ import { RuntimeRunDeadline } from "@/runtime/run-deadline";
 import {
   candidateFramingEdges,
   stockPartOfFrames,
+  titleEchoSentence,
   duplicateRepairCandidateIsSafe,
   isRepairableContentRejectionCode,
   isTitleRepairableContentRejectionCode,
@@ -696,6 +697,24 @@ function repairVoiceLines(context: RuntimeContext): string[] {
   ];
 }
 
+/*
+  Onarım istemi için hedef başlığın adı (Sol 6.1 1. tur, 29 Ekim): algıda görünen başlıklardan
+  hedef kimliğiyle bulunur. Bulunamazsa başlık yankısı açıklaması yazılmaz.
+*/
+function repairTargetTopicTitle(
+  originalAction: RuntimeDecision["actions"][number],
+  context: RuntimeContext,
+): string | null {
+  const topicId =
+    typeof originalAction.input.topicId === "string"
+      ? originalAction.input.topicId
+      : (originalAction.targetId ?? null);
+  if (!topicId) return null;
+  for (const topic of visibleTopicCatalog(context.perception).values())
+    if (topic.id === topicId) return topic.title;
+  return null;
+}
+
 export function buildContentRepairPrompt(
   originalAction: RuntimeDecision["actions"][number],
   rejectionCode: string,
@@ -743,18 +762,29 @@ export function buildContentRepairPrompt(
         frames.length > 0
           ? `${frames.map((frame) => `“${frame}”`).join(", ")} ${frames.length > 1 ? "cümleleri" : "cümlesi"} “X de Y'nin parçası” çerçevesiyle kurulmuş.`
           : "entry “X de Y'nin parçası” çerçevesiyle kurulmuş.",
+        /*
+          Sol 6.1 1. tur P2: aynı entry başlığı da tekrar ederek açılıyorsa tek onarım ikisini
+          birlikte düzeltmeli; yoksa onarılan metin başlık yankısı kapısında yeniden düşer.
+        */
+        (() => {
+          const title = repairTargetTopicTitle(originalAction, context);
+          const echo = title ? titleEchoSentence(title, originalAction.input.body ?? "") : null;
+          return echo
+            ? `Ayrıca “${echo}” cümlesi başlığı tekrar ederek açılıyor; onu da başlığın kelimeleriyle ya da çekimli hâliyle başlamayacak biçimde değiştir.`
+            : "";
+        })(),
         "Yalnız bu kalıbı taşıyan cümleleri değiştir (birden fazlaysa hepsini); entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Değiştirdiğin cümlede bilgiyi koru ama onu başlığa eklenen bir parça, bir madde daha diye sunma; söylemek istediğin somut şeyi doğrudan söyle (ne oluyor, kimi nasıl etkiliyor). “parçası”, “de hesaba girer”, “tek başına … değildir”, “gözden kaçar” gibi başka hazır kalıplara kaçma; başka bir entry'ye cevap verir gibi (“katılıyorum”, “katılmıyorum”) açma. Bu cümleleri kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
-      ].join(" ");
+      ]
+        .filter((part) => part.length > 0)
+        .join(" ");
     }
     if (rejectionCode === "STOCK_FRAMING_TITLE_ECHO") {
-      const firstSentence = (originalAction.input.body ?? "")
-        .trim()
-        .split(/(?<=[.!?…])\s+/u)[0]
-        ?.trim();
+      const title = repairTargetTopicTitle(originalAction, context);
+      const echoSentence = title ? titleEchoSentence(title, originalAction.input.body ?? "") : null;
       return [
         "Reddin sebebi bilgi değil, açılış: entry başlığı tekrar ederek başlıyor; başlık okurun önünde zaten duruyor.",
-        firstSentence ? `İlk cümle: “${firstSentence}”.` : "",
-        "Yalnız ilk cümleyi değiştir; entry'nin diğer cümlelerini harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Yeni ilk cümle başlığın kelimeleriyle ya da onların çekimli hâliyle başlamasın; söylemek istediğin şeyin kendisiyle aç (gözlem, örnek, itiraz, sonuç). Bilgiyi koru, yeni bilgi ekleme. “aslında”, “bence”, “burada”, “X de Y'nin parçası”, “katılıyorum” gibi hazır açılışlara kaçma. Bu cümleyi kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
+        echoSentence ? `Başlığı tekrar eden cümle: “${echoSentence}”.` : "",
+        "Yalnız bu cümleyi değiştir; entry'nin diğer cümlelerini (varsa baştaki alıntı dahil) harfi harfine aynen bırak. Yazım düzenini koru: küçük harfle yazılmışsa küçük harfle devam et. Yeni ilk cümle başlığın kelimeleriyle ya da onların çekimli hâliyle başlamasın; söylemek istediğin şeyin kendisiyle aç (gözlem, örnek, itiraz, sonuç). Bilgiyi koru, yeni bilgi ekleme. “aslında”, “bence”, “burada”, “X de Y'nin parçası”, “katılıyorum” gibi hazır açılışlara kaçma. Bu cümleyi kalıpsız güvenle kuramıyorsan repair'den vazgeç.",
       ]
         .filter((part) => part.length > 0)
         .join(" ");
