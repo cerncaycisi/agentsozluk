@@ -618,13 +618,48 @@ function echoesInflected(bodyWord: string, titleWord: string): boolean {
 const leadingQuoteClosers: Record<string, string> = { "“": "”", '"': '"', "‘": "’", "'": "'" };
 
 /*
-  Renderer'ın (src/modules/entries/domain/renderer.ts) tanıdığı bkz biçimine yakın: tek satır,
-  kısa. Sol 6.1 4. tur: renderer'ın bağlantı saymadığı "(bkz: …\n…)" düz metindir. Sol 6.1 5.
-  tur: iç içe niceleyici yok (uzun boşlukta geri izleme karesel oluyordu); açılış taraması
-  yalnız bulunduğu konumda dener (sticky), kalan metni her karakterde yeniden taramaz.
+  Bkz tanıma renderer'daki (src/modules/entries/domain/renderer.ts) `\(bkz:\s*([^\)\n]{1,100}?)\s*\)`
+  ile birebir aynı sonucu verir (Sol 6.1 4.–6. tur: yaklaşık desen iki yönde ayrışıyordu), ama
+  geri izleyen regex yerine elle ve doğrusal okunur: "(bkz:" sonrası ilk ")" kapanıştır; aradaki
+  metin baştan ve sondan boşluk kırpılınca satır sonu içermeyen en çok 100 kod noktası olmalıdır.
 */
-const titleEchoSeeAlso = /\(bkz:[^)\n]{1,200}\)/giu;
-const titleEchoSeeAlsoHere = /\(bkz:[^)\n]{1,200}\)/iuy;
+const seeAlsoOpen = /\(bkz:/giu;
+
+function isSeeAlsoSpan(text: string, open: number, close: number): boolean {
+  let first = open + 5;
+  while (first < close && /\s/u.test(text[first]!)) first += 1;
+  let last = close - 1;
+  while (last >= first && /\s/u.test(text[last]!)) last -= 1;
+  // Yalnız boşluk: renderer çekirdeğe satır sonu olmayan tek boşluğu da alır.
+  if (last < first) return /[^\n]/u.test(text.slice(open + 5, close));
+  if (last - first + 1 > 200) return false;
+  const core = text.slice(first, last + 1);
+  return !core.includes("\n") && [...core].length <= 100;
+}
+
+function seeAlsoEndAt(text: string, index: number): number | null {
+  if (text.slice(index, index + 5).toLowerCase() !== "(bkz:") return null;
+  const close = text.indexOf(")", index + 5);
+  return close !== -1 && isSeeAlsoSpan(text, index, close) ? close + 1 : null;
+}
+
+/** Renderer'ın bağlantı saydığı bkz'leri aynı uzunlukta \0 ile örter (PostgreSQL metninde \0 yoktur). */
+function maskSeeAlso(text: string): string {
+  let masked = "";
+  let copied = 0;
+  let close = -1;
+  seeAlsoOpen.lastIndex = 0;
+  for (let match = seeAlsoOpen.exec(text); match; match = seeAlsoOpen.exec(text)) {
+    const open = match.index;
+    if (close < open + 5) close = text.indexOf(")", open + 5);
+    if (close === -1) break;
+    if (!isSeeAlsoSpan(text, open, close)) continue;
+    masked += text.slice(copied, open) + "\0".repeat(close + 1 - open);
+    copied = close + 1;
+    seeAlsoOpen.lastIndex = copied;
+  }
+  return masked + text.slice(copied);
+}
 
 const letterOrDigit = /[\p{L}\p{N}]/u;
 
@@ -654,10 +689,9 @@ function openingStart(text: string): number | null {
   while (index < text.length) {
     const char = String.fromCodePoint(text.codePointAt(index)!);
     if (letterOrDigit.test(char)) break;
-    titleEchoSeeAlsoHere.lastIndex = index;
-    const seeAlso = titleEchoSeeAlsoHere.exec(text);
-    if (seeAlso) {
-      index += seeAlso[0].length;
+    const seeAlsoEnd = seeAlsoEndAt(text, index);
+    if (seeAlsoEnd !== null) {
+      index = seeAlsoEnd;
       continue;
     }
     const closer = leadingQuoteClosers[char];
@@ -673,17 +707,15 @@ function openingStart(text: string): number | null {
 }
 
 /*
-  Açılıştan sonraki metin; bkz'ler aynı uzunlukta "_" ile örtülür ki kelime karşılaştırması
-  ("tamir (bkz: onarım) kafesinde") ve cümle sonu araması ("(bkz: dr. caligari)") aynı konumları
-  kullansın. Sol 6.1 5. tur: örtü boşluk değildir; "dr.(bkz: …) caligari" içinde noktadan sonra
-  sahte cümle sonu oluşmaz.
+  Açılıştan sonraki metin; bkz'ler örtülür ki kelime karşılaştırması ("tamir (bkz: onarım)
+  kafesinde") ve cümle sonu araması ("(bkz: dr. caligari)") aynı konumları kullansın.
 */
 function titleEchoRest(body: string): { rest: string; masked: string } | null {
   const normalized = body.normalize("NFKC");
   const start = openingStart(normalized);
   if (start === null) return null;
   const rest = normalized.slice(start);
-  return { rest, masked: rest.replace(titleEchoSeeAlso, (match) => "_".repeat(match.length)) };
+  return { rest, masked: maskSeeAlso(rest) };
 }
 
 /** Adayın açılışı başlığı tekrar ediyorsa, tekrar eden açılış kelimeleri; yoksa null. */
@@ -705,11 +737,22 @@ export function titleEchoOpening(title: string, body: string): string | null {
   return bodyWords.join(" ");
 }
 
-/** Onarımın değiştireceği cümle: açılıştaki (alıntı ve bkz sonrası) ilk cümle. */
+/*
+  Onarımın değiştireceği cümle: açılıştaki (alıntı ve bkz sonrası) ilk cümle. Cümle sonu yankı
+  kelimelerinden SONRA aranır (Sol 6.1 6. tur): "dr. caligari" gibi kısaltma hedefi bölmez.
+  Örtülü bkz cümle sonunu gizlemez: "uzun!(bkz: onarım) herkes" iki cümledir.
+*/
 export function titleEchoSentence(title: string, body: string): string | null {
-  if (!titleEchoOpening(title, body)) return null;
+  const echo = titleEchoOpening(title, body);
+  if (!echo) return null;
   const { rest, masked } = titleEchoRest(body)!;
-  const end = masked.search(/[.!?…](?=\s|$)/u);
+  const span = echo.split(" ").length;
+  let echoEnd = 0;
+  for (const [count, match] of [...masked.matchAll(titleEchoWordPattern)].slice(0, span).entries())
+    if (count === span - 1) echoEnd = match.index + match[0].length;
+  const boundary = /[.!?…](?=\0*(?:\s|$))/gu;
+  boundary.lastIndex = echoEnd;
+  const end = boundary.exec(masked)?.index ?? -1;
   return (end === -1 ? rest : rest.slice(0, end + 1)).trim();
 }
 

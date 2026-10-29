@@ -201,4 +201,20 @@ describe("titleEchoOpening", () => {
       "dr.(bkz: doktor) caligari'nin muayenehanesi dışavurumcu bir film.",
     );
   });
+
+  it("bkz'den önceki cümle sonunu korur", () => {
+    expect(
+      titleEchoSentence("tamir kafesi", "tamir kafesinde sıra uzun!(bkz: onarım) herkes bekler."),
+    ).toBe("tamir kafesinde sıra uzun!");
+  });
+
+  it("bkz sınırlarında renderer ile aynı karar verir", () => {
+    const tooLong = "(bkz:" + "x".repeat(101) + ") tamir kafesinde sıra uzun.";
+    expect(titleEchoOpening("tamir kafesi", tooLong)).toBeNull();
+    const padded = "(bkz:" + " ".repeat(201) + "onarım) tamir kafesinde sıra uzun.";
+    expect(titleEchoOpening("tamir kafesi", padded)).toBe("tamir kafesinde");
+    expect(titleEchoOpening("tamir kafesi", "(bkz:   ) tamir kafesinde sıra uzun.")).toBe(
+      "tamir kafesinde",
+    );
+  });
 });
