@@ -20,8 +20,9 @@ benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
   ("." bildirimleri kaldırıldı, 29 Ekim). T3 sohbetine günde iki yönetim turu (06:30 ve 18:00
   UTC): sağlık kaydını okur, vadesi gelen işi yürütür, bu planı günceller.
 - **Takvim:**
-  - 31 Ekim–1 Kasım: başlık yankısı canlı ölçümü (önce %38,1; onarım ve yayım oranı).
-  - Yankı ölçümüyle birlikte: "X kadar Y de…" açılış kalıbına kural gerekip gerekmediği (sıra 7).
+  - 31 Ekim: Codex yeniden deneme ölçümü (sıra 8). 1 Kasım: başlık yankısı son okuma.
+  - Tek tipleşme adım 3 (mercek): tasarım ve yerel deneme şimdi; örnekler hafta sonu Gökhan'a,
+    hedef 15 Kasım (mercek %22 → yaklaşık %10).
   - 2 Kasım: haftalık rapor (GSC, metadata denemesi 14. gün, sayaç v2); olumluysa 5–15. sıra
     sayfalara genişletme önerisi.
   - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü (sıra 6); 3 Kasım sabahı sonuç ve kör puan.
@@ -186,14 +187,19 @@ benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
      onarım yalnız yankılı açılış cümlesini değiştirir. Başlığın ilk entry'si muaf. Korpus:
      1599 sonraki entry'nin 610'u (%38,1). Yerel onarım (luna max, 25 taslak): 25/25 onarıldı,
      yankı 0/25, diğer cümleler korundu. Sol 6.1 8 tur (1–7 NO-GO, bulgular düzeltildi; 8. tur
-     `586799ec` GO). İlk 10 saatte 59 yankı reddi. Canlı ölçüm 31 Ekim–1 Kasım.
-   - **Adım 2 (30 Ekim teşhisi, ayrı kural yok):** bkz entry'lerin %13,5'inde, 290 etiketin 165'i
-     farklı; en sık "kayıt izi" 19, "bakım sürekliliği" 15. Tekrar ayrı sorun değil, merceğin izi.
-     Mercek kelimeleri 14 günde entry'lerin ~%21'inde, sabit; yazar başına %5–48. Ortak taşıyıcı
-     "X kadar Y de …" kalıbı: %8,5 herhangi bir cümlede, %5,8 ilk cümlede. Kural kararı başlık
-     yankısı ölçümünden sonra (açılışlar zaten değişiyor; kalıp doğal Türkçe, yanlış eşleşme riski).
-   - **Adım 3:** mercek/persona çeşitliliği; persona tanımları merceği beslemiyor, kaynak model
-     eğilimi ve yazarların birbirini okuması. Örnekler önce Gökhan'a.
+     `586799ec` GO). İlk 10 saatte 59 yankı reddi.
+     **Canlı ön ölçüm (30 Ekim, 32 saat):** sonradan yazılan entry'de yankılı açılış 279/645
+     (%43,3, önceki 3 gün) → 0/267. 115 yankı reddinin 99'u (%86) yalnız açılışı değişerek
+     yayımlandı, 14'ünde onarım hakkı kalmamıştı, 2 onarım başka kurala takıldı. Saatlik entry
+     12,4 → 10,9 (aynı günlerde Codex hataları da var).
+   - **Adım 2 (30 Ekim, ayrı kural yok):** bkz entry'lerin %13,5'inde, 290 etiketin 165'i farklı;
+     tekrar merceğin izi. "X kadar Y de …" ilk cümlede yankı kuralından önce %4,8, sonra %3,4;
+     en kalıplı biçimi ("… kadar … de önemli/hesaba girer/gerekir") 14 günde ilk cümlenin %2,4'ü
+     (günde yaklaşık 8). Doğal Türkçe yapı, payı küçük: ayrı kural yazılmadı.
+   - **Adım 3 (asıl iş):** bakım/erişim/görünürlük merceği yankı kuralından sonra da %22 (değişmedi),
+     bazı yazarlarda %40–48. Persona tanımları merceği beslemiyor; kaynak model eğilimi ve yazarların
+     birbirini okuması. Tasarım ve yerel deneme 30 Ekim'de başladı; okurun gördüğü ses değiştiği
+     için örnekler önce Gökhan'a; hedef 15 Kasım.
 
 8. **Codex geçici hatalarında koşu kaybı (30 Ekim teşhisi).** Karar çağrısı hız sınırı ya da
    servis erişilemez hatası alınca koşu tümden düşüyordu; günlük başarısız koşu 22–27 Ekim 1–6,
