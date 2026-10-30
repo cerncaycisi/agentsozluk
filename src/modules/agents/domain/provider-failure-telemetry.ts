@@ -7,6 +7,8 @@ export const runtimeProviderExecutionSafeCodes = [
   "CODEX_SCHEMA_FORMAT_UNSUPPORTED",
   "CODEX_SCHEMA_UNSUPPORTED",
   "CODEX_RATE_LIMITED",
+  // 30 Ekim: kota tükenmesi; geçici hız sınırından ayrı, yeniden denenmez.
+  "CODEX_USAGE_LIMITED",
   "CODEX_UPSTREAM_UNAVAILABLE",
   "CODEX_PROCESS_SIGNALLED",
   "CODEX_EXEC_FAILED_NO_STDERR",

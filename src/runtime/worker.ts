@@ -149,6 +149,8 @@ export interface RuntimeWorkerOptions {
   sourceReader?: Pick<SafeSourceReader, "read">;
   heartbeatIntervalMs?: number;
   pollIntervalMs?: number;
+  /** Codex geçici hatasından sonraki tek yeniden denemenin beklemesi (testlerde 0). */
+  transientCodexRetryDelayMs?: number;
   processingLanes?: number;
   stochasticScheduling?: {
     controlPlane: RuntimeStochasticSchedulerControlPlane;
@@ -165,6 +167,49 @@ export const MAX_RUNTIME_PROCESSING_LANES = 2;
 export const DEFAULT_STOCHASTIC_TICK_MINIMUM_MS = MINIMUM_STOCHASTIC_TICK_DELAY_MS;
 export const DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS = MAXIMUM_STOCHASTIC_TICK_DELAY_MS;
 export const STOCHASTIC_BUSY_RETRY_MS = 60_000;
+
+/*
+  Codex geçici hataları (30 Ekim 2026). Hız sınırı ve servis erişilemez hatası 28 Ekim'den beri
+  günde 20–30 koşuyu ilk karar çağrısında düşürüyordu (haftalık kota doluyken değil; gece de).
+  Koşuyu bitiren üç fazda, koşu başına en çok bir kez, bekleyip aynı çağrı yeniden denenir.
+  Yeniden deneme çağrı bütçesinden ve koşu süresinden yer; ikisi yetmiyorsa denenmez. Kota
+  tükenmesi ayrı koddur (`CODEX_USAGE_LIMITED`) ve yeniden denenmez (Sol 6.1 1. tur).
+*/
+export const DEFAULT_TRANSIENT_CODEX_RETRY_DELAY_MS = 30_000;
+/** Yeniden denemenin anlamlı olması için beklemeden sonra kalması gereken en az süre. */
+export const TRANSIENT_CODEX_RETRY_MIN_CALL_MS = 120_000;
+const transientCodexRetryPhases: ReadonlySet<RuntimeCodexPhase> = new Set([
+  "DECISION",
+  "DECISION_REPAIR",
+  "ACTION_WORTHINESS",
+]);
+const transientCodexSafeCodes: ReadonlySet<RuntimeProviderExecutionSafeCode> = new Set([
+  "CODEX_RATE_LIMITED",
+  "CODEX_UPSTREAM_UNAVAILABLE",
+]);
+
+export function isTransientCodexFailure(error: unknown): boolean {
+  return (
+    error instanceof RuntimeProviderExecutionError &&
+    isRuntimeProviderExecutionSafeCode(error.safeCode) &&
+    transientCodexSafeCodes.has(error.safeCode)
+  );
+}
+
+function waitUnlessAborted(ms: number, signal: AbortSignal): Promise<void> {
+  if (ms <= 0 || signal.aborted) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
 export const BIRTH_SCAN_FAILURE_RETRY_MS = 60 * 60_000;
 
 export function randomStochasticTickDelay(
@@ -1705,7 +1750,8 @@ export class AgentRuntimeWorker {
       son okuma, yenilik ve onarım bütçesi 12'ye çıkıştan önceki davranışla aynıdır (Astra, 16 Ekim).
     */
     const invocationLimit = runtimeCodexInvocationBudget(this.#options.voice !== undefined);
-    const invokeCodex = async (
+    let transientCodexRetryUsed = false;
+    const invokeCodexOnce = async (
       request: Parameters<RuntimeProvider["invoke"]>[0],
       phase: RuntimeCodexPhase,
       provider: RuntimeProvider = this.#options.provider,
@@ -1781,6 +1827,46 @@ export class AgentRuntimeWorker {
           ...(diagnostics?.tokenUsage ? { ...diagnostics.tokenUsage } : {}),
           ...(diagnostics?.itemCounts ? { ...diagnostics.itemCounts } : {}),
         });
+      }
+    };
+    const invokeCodex = async (
+      request: Parameters<RuntimeProvider["invoke"]>[0],
+      phase: RuntimeCodexPhase,
+      provider: RuntimeProvider = this.#options.provider,
+    ): Promise<RuntimeProviderResult> => {
+      try {
+        return await invokeCodexOnce(request, phase, provider);
+      } catch (error) {
+        const delayMs =
+          this.#options.transientCodexRetryDelayMs ?? DEFAULT_TRANSIENT_CODEX_RETRY_DELAY_MS;
+        if (
+          transientCodexRetryUsed ||
+          // Sol 6.1 1. tur: araç sözleşmesi ihlali görülmüş koşuda sağlayıcı yeniden çağrılmaz.
+          toolContractViolation !== undefined ||
+          !transientCodexRetryPhases.has(phase) ||
+          !isTransientCodexFailure(error) ||
+          codexIntervals.length >= invocationLimit
+        )
+          throw error;
+        // Durmuş koşuda `remainingMs` kendi hatasını atar; özgün sınıflandırma korunur.
+        let remainingMs = 0;
+        try {
+          remainingMs = deadline.remainingMs();
+        } catch {
+          throw error;
+        }
+        if (remainingMs < delayMs + TRANSIENT_CODEX_RETRY_MIN_CALL_MS) throw error;
+        transientCodexRetryUsed = true;
+        await waitUnlessAborted(delayMs, deadline.signal);
+        deadline.throwIfStopped();
+        // Sol 6.1 1. tur: kurtarılan koşunun Codex süresine düşen ilk deneme de eklenir.
+        const failedAttemptMs = codexIntervals.at(-1)?.durationMs ?? 0;
+        const result = await invokeCodexOnce(
+          { ...request, timeoutMs: deadline.remainingMs() },
+          phase,
+          provider,
+        );
+        return { ...result, durationMs: result.durationMs + failedAttemptMs };
       }
     };
     let providerResult: RuntimeProviderResult | null = null;
@@ -2648,14 +2734,19 @@ export class AgentRuntimeWorker {
           kural ihlali BROWSE kolunda düzeltilmeden yayımlanıyordu. Bu hem
           kalite kaybı hem deney karıştırıcısıydı (Sol hakem turu).
         */
-        const decisionPhaseCalls = codexIntervals.filter(
-          ({ phase }) =>
-            phase !== "BROWSE" &&
-            phase !== "NOVELTY" &&
-            phase !== "FINAL_READ" &&
-            phase !== "VOICE" &&
-            phase !== "VOICE_CHECK",
-        ).length;
+        /*
+          Geçici hatadan sonraki yeniden deneme de sayılmaz (Sol 6.1, 30 Ekim): kurtarılan koşu
+          hatasız koşuyla aynı onarım hakkını taşır; yeniden deneme sayılan bir fazda olur.
+        */
+        const decisionPhaseCalls =
+          codexIntervals.filter(
+            ({ phase }) =>
+              phase !== "BROWSE" &&
+              phase !== "NOVELTY" &&
+              phase !== "FINAL_READ" &&
+              phase !== "VOICE" &&
+              phase !== "VOICE_CHECK",
+          ).length - (transientCodexRetryUsed ? 1 : 0);
         if (repairableRejection && !contentRepairAttempted && decisionPhaseCalls < 3) {
           contentRepairAttempted = true;
           await enterPhase("VALIDATING");

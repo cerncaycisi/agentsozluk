@@ -198,6 +198,8 @@ export function summarizeProviderFailureCauses(
   unknownTimeoutRuns: number;
   unknownLegacyOrMissingRuns: number;
   rateLimitedRuns: number;
+  /** 30 Ekim: kota tükenmesi geçici hız sınırından ayrı sayılır. */
+  usageLimitedRuns: number;
   upstreamUnavailableRuns: number;
   codes: Array<[RuntimeProviderExecutionSafeCode, number]>;
 } {
@@ -233,6 +235,7 @@ export function summarizeProviderFailureCauses(
     unknownTimeoutRuns,
     unknownLegacyOrMissingRuns,
     rateLimitedRuns: counts.get("CODEX_RATE_LIMITED") ?? 0,
+    usageLimitedRuns: counts.get("CODEX_USAGE_LIMITED") ?? 0,
     upstreamUnavailableRuns: counts.get("CODEX_UPSTREAM_UNAVAILABLE") ?? 0,
     codes: [...counts.entries()].sort(([left], [right]) => left.localeCompare(right)),
   };

@@ -460,22 +460,25 @@ describe("safe provider failure cause coverage", () => {
           "CODEX_UPSTREAM_UNAVAILABLE",
           "PARTIAL",
         ),
+        run("CODEX_DECISION_FAILED", "DECISION", "CODEX_USAGE_LIMITED"),
         run("CODEX_TIMEOUT", undefined, undefined, "TIMED_OUT"),
         run("CODEX_TIMEOUT", undefined, undefined, "PARTIAL"),
         run("CONTROL_PLANE_CONTEXT_FAILED"),
       ]),
     ).toEqual({
-      runs: 5,
-      knownCauseRuns: 3,
+      runs: 6,
+      knownCauseRuns: 4,
       unknownCauseRuns: 2,
       unknownTimeoutRuns: 2,
       unknownLegacyOrMissingRuns: 0,
       rateLimitedRuns: 1,
+      usageLimitedRuns: 1,
       upstreamUnavailableRuns: 1,
       codes: [
         ["CODEX_RATE_LIMITED", 1],
         ["CODEX_SCHEMA_UNSUPPORTED", 1],
         ["CODEX_UPSTREAM_UNAVAILABLE", 1],
+        ["CODEX_USAGE_LIMITED", 1],
       ],
     });
   });
