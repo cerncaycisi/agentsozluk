@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  countOverusedLensEntries,
+  renderEntryAngleReminder,
   renderRuntimeWritingVariation,
   runtimeWritingVariation,
 } from "@/runtime/writing-variation";
@@ -67,6 +69,8 @@ describe("runtime writing variation", () => {
       expect.stringMatching(/^- Form: /u),
       expect.stringMatching(/^Yaklaşım ipucu: .+ Konuya uymuyorsa kendi seçimini yap\.$/u),
       "Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma.",
+      expect.stringMatching(/^Bu entry'nin açısı: .+ görünmez emek açısına kayma\.$/u),
+      expect.stringMatching(/^Bu sözlükte en çok tekrarlanan bakış: /u),
     ]);
   });
 
@@ -203,5 +207,74 @@ describe("kip cümleleri izni kendi içinde geri almamalı", () => {
       .flatMap((render) => render.split("\n"))
       .filter((line) => line.startsWith("- "));
     expect(kipSatirlari.every((line) => line.startsWith("- Form: "))).toBe(true);
+  });
+});
+
+describe("aşırı tekrarlanan bakış (30 Ekim 2026)", () => {
+  const runId = "00000000-0000-4000-8000-000000000301";
+
+  it("bakışın adını her yazara verir", () => {
+    const text = renderRuntimeWritingVariation(runId);
+    expect(text).toContain("Bu sözlükte en çok tekrarlanan bakış");
+    expect(text).not.toContain("bu run'da bu açıyı hiç kullanma");
+  });
+
+  it("kendi son entry'lerinde ağır basan yazara sayısıyla söyler", () => {
+    expect(
+      renderRuntimeWritingVariation(runId, "MIXED", { ownOverusedLens: { count: 3, total: 8 } }),
+    ).toContain("Son 8 entry'nin 3 tanesi bu bakıştan; bu run'da bu açıyı hiç kullanma.");
+    expect(
+      renderRuntimeWritingVariation(runId, "MIXED", { ownOverusedLens: { count: 2, total: 8 } }),
+    ).not.toContain("bu run'da bu açıyı hiç kullanma");
+  });
+
+  it("bakışı kelime kökünden sayar, kelime içinde geçeni saymaz", () => {
+    expect(
+      countOverusedLensEntries([
+        "asansörün bakımı aksarsa istasyon erişilemez olur.",
+        "Görünmez emek burada da var.",
+        "kayıt izi tutulmazsa kimse bilmez.",
+        "simidin tadı fırından çıkınca başka.",
+        "takımın oyunu görünüşte iyi.",
+      ]),
+    ).toBe(3);
+  });
+});
+
+describe("entry açısı ataması (30 Ekim 2026, v2)", () => {
+  const runIds = Array.from(
+    { length: 600 },
+    (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+  );
+
+  it("her run'a tek açı atar ve son hatırlatma aynı açıyı söyler", () => {
+    for (const runId of runIds.slice(0, 50)) {
+      const variation = renderRuntimeWritingVariation(runId, { entryLength: "MEDIUM" });
+      const angle = /Bu entry'nin açısı: (.+)\. Entry'yi/u.exec(variation)?.[1];
+      expect(angle).toBeTruthy();
+      expect(renderEntryAngleReminder(runId, { entryLength: "MEDIUM" })).toContain(
+        `açısı ${angle};`,
+      );
+    }
+  });
+
+  it("açılar dağılır; mizahlı persona mizahı daha sık alır", () => {
+    const count = (humor: number) =>
+      runIds.filter((runId) =>
+        renderRuntimeWritingVariation(runId, {
+          entryLength: "MEDIUM",
+          temperament: { humor },
+        }).includes("komik, absürt ya da ironik yanı"),
+      ).length;
+    const angles = new Set(
+      runIds.map(
+        (runId) =>
+          /Bu entry'nin açısı: (.+?)\. Entry'yi/u.exec(
+            renderRuntimeWritingVariation(runId, { entryLength: "MEDIUM" }),
+          )?.[1],
+      ),
+    );
+    expect(angles.size).toBe(6);
+    expect(count(0.9)).toBeGreaterThan(count(0.1));
   });
 });

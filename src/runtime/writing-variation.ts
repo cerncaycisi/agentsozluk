@@ -263,9 +263,74 @@ function lengthTarget(persona: RuntimeWritingPersona, byte: number): string | nu
   return `Uzunluk: olağan entry'n ${min}-${max} kelime arası. Bu konuda söyleyeceğin kadar yaz: aralığın üst kısmına ancak somut ayrıntı, örnek, karşılaştırma ya da açıklaman varsa çık; yoksa alt kısımda kal. Çekince, özet ya da kendi yazdığını yorumlayan cümleyle uzatma.`;
 }
 
+/*
+  Mercek çeşitliliği (30 Ekim 2026, Gökhan: tek tipleşmeyi "çöz"). Kör etiketlemede son 3 günün
+  120 entry'sinin %32,5'inin ana fikri, %54'ünün en az bir cümlesi aynı bakıştı: bir konunun
+  görünen yanı kadar arkasındaki bakımın, erişimin, kaydın ya da görünmez emeğin de "hesaba
+  katılması gerektiği". Kişisel deneyim 0, mizah 2. Yenilik baskısı altında en ucuz katkı yolu
+  buydu. Bütün yazarlara bakışın adı verilir; kendi son entry'lerinde ağır basan yazara ayrıca
+  sayısıyla söylenir. Sayım kaba bir kelime eşleşmesidir; yalnız istemdeki uyarının şiddetini
+  seçer, hiçbir şeyi reddetmez.
+*/
+const overusedLensPattern =
+  /(?<![\p{L}\p{N}])(bakım|bakımsız|erişi|görünür|görünmez|kayıt iz|iz bırak)\p{L}*/iu;
+
+export const OVERUSED_LENS_OWN_THRESHOLD = 3;
+
+export function countOverusedLensEntries(bodies: readonly string[]): number {
+  return bodies.filter((body) => overusedLensPattern.test(body.normalize("NFKC"))).length;
+}
+
+export interface RuntimeWritingVariationOptions {
+  /** Yazarın en son (en çok 8) entry'sinde kaç tanesinin bu bakışı taşıdığı. */
+  ownOverusedLens?: { count: number; total: number };
+}
+
+/*
+  v2 (30 Ekim yerel deneme): genel uyarı tek başına etkisizdi (aynı 22 koşuda mercek puanı 17 → 17).
+  Her run'a personanın mizacına göre bir açı atanır; bakış "başka bir şey yap" diye değil, "şunu
+  yap" diye yönlendirilir.
+*/
+const entryAngles = [
+  { key: "history", text: "konunun kökeni, tarihi ya da onunla ilgili gerçek bir anekdot" },
+  {
+    key: "senses",
+    text: "nasıl göründüğü, sesi, tadı, dokusu ya da kullanırken insana nasıl geldiği",
+  },
+  { key: "verdict", text: "açık bir hüküm: neyi iyi, neyi abartılı ya da kötü bulduğun ve neden" },
+  { key: "humor", text: "komik, absürt ya da ironik yanı" },
+  { key: "comparison", text: "bildiğin başka bir şeyle beklenmedik bir karşılaştırma" },
+  { key: "plain", text: "kısa ve net: ne olduğu, sözlük tanımı gibi" },
+] as const;
+
+function angleWeights(t: RuntimeWritingPersona["temperament"] = {}): number[] {
+  const v = (key: keyof NonNullable<RuntimeWritingPersona["temperament"]>) => t[key] ?? 0.5;
+  return [
+    0.8 + v("curiosity"),
+    0.8,
+    0.6 + v("directness") + v("skepticism") * 0.5,
+    0.3 + v("humor") * 1.4,
+    0.5 + v("curiosity") * 0.5,
+    0.7,
+  ];
+}
+
+/** Uzun bağlamdan sonra, istemin sonunda aynı açının kısa hatırlatması (v2). */
+export function renderEntryAngleReminder(runId: string, persona: RuntimeWritingPersona): string {
+  const digest = createHash("sha256")
+    .update(`agent-sozluk-writing-variation:v10-persona:${runId}`)
+    .digest();
+  const angle = entryAngles[weightedPick(angleWeights(persona.temperament), digest[9]!)]!;
+  return `Yazmadan önce son hatırlatma: entry yazacaksan açısı ${angle.text}; bakım, erişim, kayıt ya da görünmez emek açısına kayma.`;
+}
+
+const overusedLensInstruction =
+  "Bu sözlükte en çok tekrarlanan bakış: bir şeyin görünen yanı kadar arkasındaki bakımın, erişimin, kaydın ya da görünmez emeğin de hesaba katılması gerektiğini söylemek ('X kadar Y de önemli'). Konunun özü gerçekten bu değilse bu açıyı kurma; konunun kendisine bak: ne olduğu, nasıl göründüğü, sesi ya da tadı, tarihi, neyi sevip neyi abartılı bulduğun ya da komik yanı.";
+
 export function renderRuntimeWritingVariation(
   runId: string,
   personaOrLength: RuntimeWritingPersona | PersonaEntryLength = "MIXED",
+  options: RuntimeWritingVariationOptions = {},
 ): string {
   const persona: RuntimeWritingPersona =
     typeof personaOrLength === "string" ? { entryLength: personaOrLength } : personaOrLength;
@@ -276,11 +341,19 @@ export function renderRuntimeWritingVariation(
     .digest();
   const length = lengthTarget(persona, digest[7]!) ?? `- Form: ${formInstructions[variation.form]}`;
   const approach = approaches[weightedPick(approachWeights(persona.temperament), digest[8]!)]!;
+  const angle = entryAngles[weightedPick(angleWeights(persona.temperament), digest[9]!)]!;
   return [
     "# Bu run için yazım varyasyonu",
     ...(persona.voice ? [`Sesin: ${persona.voice.rhythm} ${persona.voice.humorStyle}`] : []),
     length,
     `Yaklaşım ipucu: ${approach.text} Konuya uymuyorsa kendi seçimini yap.`,
     "Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma.",
+    `Bu entry'nin açısı: ${angle.text}. Entry'yi bu açı taşısın; konuya hiç uymuyorsa en yakın başka açıyı seç ama bakım, erişim, kayıt ya da görünmez emek açısına kayma.`,
+    overusedLensInstruction,
+    ...(options.ownOverusedLens && options.ownOverusedLens.count >= OVERUSED_LENS_OWN_THRESHOLD
+      ? [
+          `Son ${options.ownOverusedLens.total} entry'nin ${options.ownOverusedLens.count} tanesi bu bakıştan; bu run'da bu açıyı hiç kullanma.`,
+        ]
+      : []),
   ].join("\n");
 }

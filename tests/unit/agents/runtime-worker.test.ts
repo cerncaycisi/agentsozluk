@@ -182,6 +182,39 @@ describe("yazar sesi persona bağı (writing-variation v10)", () => {
   });
 });
 
+describe("mercek çeşitliliği istemi (30 Ekim 2026)", () => {
+  const runId = "00000000-0000-4000-8000-000000000002";
+
+  it("açı hatırlatmasını istemin en sonuna koyar; kendi mercek sayısını söyler", () => {
+    const context = fixtureContext(runId);
+    context.perception.ownRecentEntries = [
+      { id: "e1", body: "asansörün bakımı aksarsa istasyon erişilemez olur." },
+      { id: "e2", body: "görünmez emek burada da var." },
+      { id: "e3", body: "kayıt izi tutulmazsa kimse bilmez." },
+      { id: "e4", body: "simidin tadı fırından çıkınca başka." },
+    ];
+    const prompt = buildRuntimePrompt(context);
+    const lines = prompt.split("\n");
+    expect(lines.at(-1)).toMatch(/^Yazmadan önce son hatırlatma: entry yazacaksan açısı /u);
+    expect(prompt).toContain(
+      "Son 4 entry'nin 3 tanesi bu bakıştan; bu run'da bu açıyı hiç kullanma.",
+    );
+  });
+
+  it("az mercekli yazara sayı söylemez; yansıma run'ında açı hatırlatması yoktur", () => {
+    const context = fixtureContext(runId);
+    context.perception.ownRecentEntries = [
+      { id: "e1", body: "simidin tadı fırından çıkınca başka." },
+    ];
+    expect(buildRuntimePrompt(context)).not.toContain("bu run'da bu açıyı hiç kullanma");
+    const reflection = buildRuntimePrompt({
+      ...context,
+      run: { ...context.run, runType: "REFLECTION" },
+    });
+    expect(reflection).not.toContain("Yazmadan önce son hatırlatma");
+  });
+});
+
 describe("kişisel keşif okuma bağlamı", () => {
   it("yakın geçmişi ve yorgunluğu yalnız başlıklar ve sayılarla güvenilmeyen bağlama ekler", () => {
     const context = fixtureContext(randomUUID());
