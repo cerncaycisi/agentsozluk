@@ -2837,6 +2837,7 @@ describe("long-lived agent runtime worker", () => {
         credentials: [`agt_${"v".repeat(43)}`],
         controlPlane: plane,
         provider,
+        transientCodexRetryDelayMs: 0,
       });
 
       await expect(worker.runOnce()).resolves.toBe(1);
@@ -2849,7 +2850,13 @@ describe("long-lived agent runtime worker", () => {
         expect.objectContaining({ outcome: "FAILED", errorCode: "CODEX_DECISION_FAILED" }),
       );
       const payload = vi.mocked(plane.fail).mock.calls[0]?.[4];
+      // Geçici hata bir kez yeniden denenir; ikisi de düşerse iki aralık kaydedilir.
+      expect(provider.invoke).toHaveBeenCalledTimes(2);
       expect(usageMetadataSchema.parse(payload?.usageMetadata).codexIntervals).toEqual([
+        expect.objectContaining({
+          phase: "DECISION",
+          providerSafeCode: "CODEX_UPSTREAM_UNAVAILABLE",
+        }),
         expect.objectContaining({
           phase: "DECISION",
           providerSafeCode: "CODEX_UPSTREAM_UNAVAILABLE",
@@ -2865,6 +2872,135 @@ describe("long-lived agent runtime worker", () => {
         );
     },
   );
+
+  it("recovers an initial decision after one transient Codex failure", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockRejectedValueOnce(new RuntimeProviderExecutionError("CODEX_RATE_LIMITED"))
+        .mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 1,
+          output: canonicalNormalOutput("Geçici hatadan sonra karar."),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "transient-retry-worker",
+      credentials: [`agt_${"t".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      transientCodexRetryDelayMs: 0,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect(plane.fail).not.toHaveBeenCalled();
+    expect(plane.complete).toHaveBeenCalled();
+    const payload = vi.mocked(plane.complete).mock.calls[0]?.[4];
+    const intervals = usageMetadataSchema.parse(payload?.usageMetadata).codexIntervals;
+    expect(intervals?.[0]).toMatchObject({
+      phase: "DECISION",
+      providerSafeCode: "CODEX_RATE_LIMITED",
+    });
+    expect(intervals?.[1]).toMatchObject({ phase: "DECISION" });
+    expect(intervals?.[1]).not.toHaveProperty("providerSafeCode");
+  });
+
+  it.each(["CODEX_EXEC_FAILED", "CODEX_AUTH_REQUIRED", "CODEX_OUTPUT_INVALID"] as const)(
+    "does not retry a non-transient Codex failure (%s)",
+    async (safeCode) => {
+      const runId = randomUUID();
+      const plane = controlPlane(runId);
+      const provider: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: vi.fn().mockRejectedValue(new RuntimeProviderExecutionError(safeCode)),
+      };
+      const worker = new AgentRuntimeWorker({
+        workerId: "non-transient-worker",
+        credentials: [`agt_${"n".repeat(43)}`],
+        controlPlane: plane,
+        provider,
+        transientCodexRetryDelayMs: 0,
+      });
+      await expect(worker.runOnce()).resolves.toBe(1);
+      expect(provider.invoke).toHaveBeenCalledTimes(1);
+      expect(plane.fail).toHaveBeenCalledWith(
+        expect.any(String),
+        "non-transient-worker",
+        runId,
+        LEASE_TOKEN,
+        expect.objectContaining({ errorCode: "CODEX_DECISION_FAILED" }),
+      );
+    },
+  );
+
+  it("uses at most one transient retry per run across phases", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockRejectedValueOnce(new RuntimeProviderExecutionError("CODEX_UPSTREAM_UNAVAILABLE"))
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 1,
+          output: { actions: [{ actionType: "MODERATE_USER" }] },
+        })
+        .mockRejectedValue(new RuntimeProviderExecutionError("CODEX_RATE_LIMITED")),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "single-retry-worker",
+      credentials: [`agt_${"s".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      transientCodexRetryDelayMs: 0,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    // Karar: hata + yeniden deneme; onarım: hata, ikinci yeniden deneme yok.
+    expect(provider.invoke).toHaveBeenCalledTimes(3);
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      "single-retry-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ errorCode: "CODEX_DECISION_REPAIR_FAILED" }),
+    );
+  });
+
+  it("skips the transient retry when the run deadline cannot fit a new call", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockRejectedValue(new RuntimeProviderExecutionError("CODEX_RATE_LIMITED")),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "deadline-retry-worker",
+      credentials: [`agt_${"d".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      // Koşu süresinden uzun bekleme: yeniden deneme sığmaz.
+      transientCodexRetryDelayMs: 24 * 60 * 60_000,
+    });
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(provider.invoke).toHaveBeenCalledTimes(1);
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      "deadline-retry-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ errorCode: "CODEX_DECISION_FAILED" }),
+    );
+  });
 
   it("does not persist a forged typed safe code or raw error message", async () => {
     const plane = controlPlane(randomUUID());
@@ -2900,7 +3036,7 @@ describe("long-lived agent runtime worker", () => {
             durationMs: 1,
             output: { actions: [{ actionType: "MODERATE_USER" }] },
           })
-          .mockRejectedValueOnce(
+          .mockRejectedValue(
             typed
               ? new RuntimeProviderExecutionError("CODEX_RATE_LIMITED")
               : new Error("RAW_REPAIR_DETAIL_MUST_NOT_PERSIST"),
@@ -2911,11 +3047,13 @@ describe("long-lived agent runtime worker", () => {
         credentials: [`agt_${"r".repeat(43)}`],
         controlPlane: plane,
         provider,
+        transientCodexRetryDelayMs: 0,
       });
 
       await expect(worker.runOnce()).resolves.toBe(1);
 
-      expect(provider.invoke).toHaveBeenCalledTimes(2);
+      // Yalnız tipli geçici hata bir kez yeniden denenir.
+      expect(provider.invoke).toHaveBeenCalledTimes(typed ? 3 : 2);
       expect(plane.fail).toHaveBeenCalledWith(
         expect.any(String),
         "decision-repair-failure-worker",
@@ -3004,6 +3142,7 @@ describe("long-lived agent runtime worker", () => {
         controlPlane: plane,
         provider,
         actionWorthinessProvider,
+        transientCodexRetryDelayMs: 0,
       });
 
       await expect(worker.runOnce()).resolves.toBe(1);
@@ -3020,6 +3159,7 @@ describe("long-lived agent runtime worker", () => {
       expect(JSON.stringify(payload)).not.toContain("RAW_WORTHINESS_DETAIL_MUST_NOT_PERSIST");
       const intervals = usageMetadataSchema.parse(payload?.usageMetadata).codexIntervals;
       expect(intervals?.[0]).not.toHaveProperty("providerSafeCode");
+      if (typed) expect(actionWorthinessProvider.invoke).toHaveBeenCalledTimes(2);
       if (typed)
         expect(intervals?.at(-1)).toMatchObject({
           phase: "ACTION_WORTHINESS",
