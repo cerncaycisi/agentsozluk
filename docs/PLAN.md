@@ -19,14 +19,15 @@ benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
   ("." bildirimleri kaldırıldı, 29 Ekim). T3 sohbetine günde iki yönetim turu (06:30 ve 18:00
   UTC): sağlık kaydını okur, vadesi gelen işi yürütür, bu planı günceller.
 - **Takvim:**
-  - 30 Ekim 06:07Z sonrası: "Son Yankesici" kopya birleştirmesi (organik trafik sıra 2); önce
-    doğrulama ve geri alma kaydı.
   - 31 Ekim–1 Kasım: başlık yankısı canlı ölçümü (önce %38,1; onarım ve yayım oranı).
   - Ara iş: tek tipleşme 2. adım, bkz etiket tekrarı (sıra 7).
   - 2 Kasım: haftalık rapor (GSC, metadata denemesi 14. gün, sayaç v2); olumluysa 5–15. sıra
     sayfalara genişletme önerisi.
   - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü (sıra 6); 3 Kasım sabahı sonuç ve kör puan.
   - ~20 Kasım: odak denemesi Ölçü 2. 30 Kasım: organik trafik kararı, süreli yetkinin sonu.
+- **Bitti (30 Ekim 06:33Z):** "Son Yankesici" (5908) → (5867) birleştirildi; eski adres 308.
+- **Açık arıza:** Codex geçici hataları (`CODEX_RATE_LIMITED`, `CODEX_UPSTREAM_UNAVAILABLE`)
+  28 Ekim'den beri günde 20–30 koşuyu (%4–5) düşürüyor; yeniden deneme yok (sıra 8).
 - **Gökhan'dan beklenen:** Curlie başvurusu (metin hazır).
 
 ### 17 Ekim sırası (iki hafta)
@@ -188,6 +189,13 @@ benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
    - **Adım 2:** bkz etiket tekrarına sınır (sıradaki geliştirme).
    - **Adım 3:** mercek/persona çeşitliliği; okur yüzeyini etkilediği için örnekler önce Gökhan'a.
 
+8. **Codex geçici hatalarında koşu kaybı (30 Ekim teşhisi).** Karar çağrısı hız sınırı ya da
+   servis erişilemez hatası alınca koşu tümden düşüyor; günlük başarısız koşu 22–27 Ekim 1–6,
+   28 Ekim 21, 29 Ekim 30, 30 Ekim ilk 6,5 saatte 32. Haftalık kota %38, gece (Gökhan'ın Codex'i
+   boşken) de sürüyor. Öneri: yalnız bu iki güvenli kodda, aynı fazda tek, gecikmeli yeniden
+   deneme; kota tükenmesi (`usage limit`) ayrı tutulur. Koşu mekanizması değiştiği için Sol 6.1
+   gerekir. Sıra: bkz tekrarından sonra; hata oranı artarsa öne alınır.
+
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 
 Gökhan kararı: dış dağıtım ve topluluk paylaşımı yok; trafik SEO ve GEO ile organik çözülür.
@@ -207,7 +215,7 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
      etkinlik/film/marka adları. Elle bağlantı ilişkiyi zorlardı. Kaldıraç tıklanma oranı: metadata
      denemesi 14. gün okuması 2 Kasım, olumluysa 5–15. sıradaki sayfalara genişletilir. Çıkan tek
      somut iş kopya birleştirme: "Son Yankesici" (5908) → "Son Yankesici (Noah Segan filmi)" (5867),
-     Gökhan onayı 29 Ekim 06:07 UTC, 24 saat kuralıyla en erken 30 Ekim 06:07 UTC.
+     Gökhan onayı 29 Ekim 06:07 UTC; **30 Ekim 06:33Z yapıldı** (ATTEMPT_LOG).
      Önceki metin: 26 Ekim–1 Kasım: entry/başlık bölünmesi (20 adreste canonical, G4, harita, JSON-LD
      tutarlılığı); talep alan sayfalara elle doğrulanmış 10–20 iç bağlantı (önizlemeli).
      Entry sinyal kohortu (19 Ekim, seçenek (c), PR #449): Sol 6.1 1. tur NO-GO sonrası kapsam

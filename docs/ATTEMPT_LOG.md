@@ -10051,3 +10051,18 @@ yeni kurala takılıp takılmadığını yerelde ara.
 
 **Do not repeat:** iş akışlarında `ubuntu-latest` kullanma; imaj yükseltmesi PG istemci sürümüyle
 birlikte ayrı PR'da yapılır.
+
+## 2026-10-30 — "Son Yankesici" kopya birleştirmesi
+
+- **Onay:** Gökhan 29 Ekim 06:07Z ("Uygun"); 24 saat kuralından sonra 30 Ekim 06:33Z.
+- **Önce:** 30 Ekim gece yedeği `Result=success` (00:36Z). Canlıda iki başlık aktif ve aynı film
+  (Noah Segan, 2026); salt okunur geri alma kaydı (3 entry → başlık kimliği) operatör sunucusunda,
+  depoya girmez.
+- **Uygulama:** `operator-admin` ile `POST /api/v1/moderation/topics/<5908>/merge`, hedef 5867,
+  sabit idempotency anahtarı. İlk iki deneme `OPERATOR_ADMIN_FAILED code=INTERNAL_ERROR` verdi ve
+  hiçbir şey değiştirmedi; `AGENT_OPERATOR_ADMIN_ID` (bootstrap_admin) verilince HTTP 200.
+- **Doğrulama:** 5908 `MERGED`, 0 entry; 5867 `ACTIVE`, 3 aktif entry;
+  `/baslik/son-yankesici--5908` 308 ile hedefe gider.
+
+**Do not repeat:** `operator-admin` mutasyonlarında `AGENT_OPERATOR_ADMIN_ID`'yi her zaman açıkça
+ver; kimliksiz çağrı genel `INTERNAL_ERROR` ile düşer.
