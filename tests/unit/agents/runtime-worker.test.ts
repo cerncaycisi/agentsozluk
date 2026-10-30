@@ -1669,9 +1669,26 @@ describe("long-lived agent runtime worker", () => {
       repairedRejectionCode: null,
       expectedOutcome: "SUCCEEDED",
     },
+    // Sol 6.1 (30 Ekim): geçici hatadan kurtulan koşu içerik onarım hakkını korur.
+    {
+      label: "semantic repetition after a recovered transient Codex failure",
+      firstRejectionCode: "TOPIC_SEMANTIC_REPETITION",
+      repairedStatus: "SUCCEEDED",
+      repairedRejectionCode: null,
+      expectedOutcome: "SUCCEEDED",
+      transientFirst: true,
+    },
   ])(
     "submits one body-only reconsideration after $label",
-    async ({ firstRejectionCode, repairedStatus, repairedRejectionCode, expectedOutcome }) => {
+    async ({
+      firstRejectionCode,
+      repairedStatus,
+      repairedRejectionCode,
+      expectedOutcome,
+      ...rest
+    }) => {
+      const transientFirst = "transientFirst" in rest && rest.transientFirst === true;
+      const o = transientFirst ? 1 : 0;
       const runId = randomUUID();
       const topicId = randomUUID();
       const plane = controlPlane(runId);
@@ -1742,10 +1759,14 @@ describe("long-lived agent runtime worker", () => {
         sourceProposals: [],
         memoryCandidates: [],
       });
+      const invoke = vi.fn();
+      if (transientFirst)
+        invoke.mockRejectedValueOnce(
+          new RuntimeProviderExecutionError("CODEX_UPSTREAM_UNAVAILABLE"),
+        );
       const provider: RuntimeProvider = {
         inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
-        invoke: vi
-          .fn()
+        invoke: invoke
           .mockResolvedValueOnce({
             provider: "codex-cli",
             version: "test",
@@ -1770,11 +1791,38 @@ describe("long-lived agent runtime worker", () => {
         credentials: [`agt_${"q".repeat(43)}`],
         controlPlane: plane,
         provider,
+        // Sol 6.1 senaryosu: karar + yeniden deneme + eylem değeri üç sayılan çağrıya ulaşır.
+        ...(transientFirst
+          ? {
+              actionWorthinessProvider: {
+                inspect: vi.fn(),
+                invoke: vi.fn().mockResolvedValue({
+                  provider: "codex-cli",
+                  version: "test",
+                  durationMs: 3,
+                  output: {
+                    verdict: "ACT",
+                    confidence: 0.84,
+                    evaluations: [
+                      {
+                        sequence: 1,
+                        decision: "ACCEPT",
+                        safeReason: "Mevcut başlığa bağımsız ve yeni bir katkı ekliyor.",
+                      },
+                    ],
+                    selectedSequences: [1],
+                    safeReason: "Katkı eyleme değer.",
+                  },
+                }),
+              } satisfies RuntimeProvider,
+            }
+          : {}),
+        transientCodexRetryDelayMs: 0,
       });
 
       await expect(worker.runOnce()).resolves.toBe(1);
 
-      expect(provider.invoke).toHaveBeenCalledTimes(2);
+      expect(provider.invoke).toHaveBeenCalledTimes(2 + o);
       expect(plane.recordActions).toHaveBeenCalledTimes(2);
       // Onarım paketi kendi OPTION_SELECTED adımını taşır; eylem ona bağlanır (sunucu bağ ister)
       // (8 Ekim: CONTENT_REPAIR_CONTROL_PLANE_FAILED).
@@ -1847,24 +1895,36 @@ describe("long-lived agent runtime worker", () => {
       const completion = (plane.complete as ReturnType<typeof vi.fn>).mock.calls[0]?.[4] as {
         usageMetadata: { codexIntervals: unknown[] };
       };
-      expect(completion.usageMetadata.codexIntervals).toHaveLength(2);
-      expectPromptTelemetry(completion.usageMetadata, [
-        ["DECISION", vi.mocked(provider.invoke).mock.calls[0]![0]],
-        ["CONTENT_REPAIR", vi.mocked(provider.invoke).mock.calls[1]![0]],
-      ]);
-      expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].outputSchema).toBe(
-        runtimeContentRepairWireJsonSchema,
+      expect(completion.usageMetadata.codexIntervals).toHaveLength(transientFirst ? 4 : 2);
+      expect(
+        (completion.usageMetadata.codexIntervals as { phase: RuntimeCodexPhase }[]).map(
+          ({ phase }) => phase,
+        ),
+      ).toEqual(
+        transientFirst
+          ? ["DECISION", "DECISION", "ACTION_WORTHINESS", "CONTENT_REPAIR"]
+          : ["DECISION", "CONTENT_REPAIR"],
       );
+      if (!transientFirst)
+        expectPromptTelemetry(completion.usageMetadata, [
+          ["DECISION", vi.mocked(provider.invoke).mock.calls[0]![0]],
+          ["CONTENT_REPAIR", vi.mocked(provider.invoke).mock.calls[1]![0]],
+        ]);
+      expect(
+        (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1 + o]?.[0].outputSchema,
+      ).toBe(runtimeContentRepairWireJsonSchema);
       if (firstRejectionCode === "USER_ENTRY_HIGH_RISK_REPRODUCTION")
-        expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+        expect(
+          (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1 + o]?.[0].prompt,
+        ).toContain(
           "Başka entry'den doğrudan alıntıyı, entry/yazar/kullanıcı atfını ve görünür referansı tamamen kaldır.",
         );
       if (firstRejectionCode === "SERIOUS_CLAIM_SOURCE_INSUFFICIENT")
-        expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
-          "Ciddi veya güncel iddiayı kesin gerçek gibi sunma.",
-        );
+        expect(
+          (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1 + o]?.[0].prompt,
+        ).toContain("Ciddi veya güncel iddiayı kesin gerçek gibi sunma.");
       if (firstRejectionCode === "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED") {
-        const repairPrompt = (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0]
+        const repairPrompt = (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1 + o]?.[0]
           .prompt as string;
         expect(repairPrompt).toContain("Kaynaksız doğrudan alıntı biçimini");
         expect(repairPrompt).toContain("kendi sözlerinle bağımsız bir tanım, gözlem veya yorum");
@@ -1873,11 +1933,15 @@ describe("long-lived agent runtime worker", () => {
         );
       }
       if (firstRejectionCode === "CONSTITUTION_ENTRY_SELF_META")
-        expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+        expect(
+          (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1 + o]?.[0].prompt,
+        ).toContain(
           "Yazdığın metnin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye adlandıran meta-ifadeyi tamamen kaldır.",
         );
       if (firstRejectionCode === "TOPIC_SEMANTIC_REPETITION")
-        expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+        expect(
+          (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1 + o]?.[0].prompt,
+        ).toContain(
           "gerçekten yeni bir tanım, somut örnek, karşılaştırma, çekince veya farklı öznel görüş",
         );
     },
@@ -2911,33 +2975,94 @@ describe("long-lived agent runtime worker", () => {
     expect(intervals?.[1]).not.toHaveProperty("providerSafeCode");
   });
 
-  it.each(["CODEX_EXEC_FAILED", "CODEX_AUTH_REQUIRED", "CODEX_OUTPUT_INVALID"] as const)(
-    "does not retry a non-transient Codex failure (%s)",
-    async (safeCode) => {
-      const runId = randomUUID();
-      const plane = controlPlane(runId);
-      const provider: RuntimeProvider = {
-        inspect: vi.fn(),
-        invoke: vi.fn().mockRejectedValue(new RuntimeProviderExecutionError(safeCode)),
-      };
-      const worker = new AgentRuntimeWorker({
-        workerId: "non-transient-worker",
-        credentials: [`agt_${"n".repeat(43)}`],
-        controlPlane: plane,
-        provider,
-        transientCodexRetryDelayMs: 0,
-      });
-      await expect(worker.runOnce()).resolves.toBe(1);
-      expect(provider.invoke).toHaveBeenCalledTimes(1);
-      expect(plane.fail).toHaveBeenCalledWith(
-        expect.any(String),
-        "non-transient-worker",
-        runId,
-        LEASE_TOKEN,
-        expect.objectContaining({ errorCode: "CODEX_DECISION_FAILED" }),
-      );
-    },
-  );
+  it.each([
+    "CODEX_EXEC_FAILED",
+    "CODEX_AUTH_REQUIRED",
+    "CODEX_OUTPUT_INVALID",
+    "CODEX_USAGE_LIMITED",
+  ] as const)("does not retry a non-transient Codex failure (%s)", async (safeCode) => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockRejectedValue(new RuntimeProviderExecutionError(safeCode)),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "non-transient-worker",
+      credentials: [`agt_${"n".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      transientCodexRetryDelayMs: 0,
+    });
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(provider.invoke).toHaveBeenCalledTimes(1);
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      "non-transient-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ errorCode: "CODEX_DECISION_FAILED" }),
+    );
+  });
+
+  it("does not retry after a tool-contract violation reported in diagnostics", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockRejectedValue(
+        new RuntimeProviderExecutionError("CODEX_UPSTREAM_UNAVAILABLE", {
+          setupMs: 1,
+          inspectMs: 1,
+          modelMs: 1,
+          itemCounts: { errorItems: 0, toolItems: 1, unknownItems: 0 },
+        }),
+      ),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "tool-violation-retry-worker",
+      credentials: [`agt_${"x".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      transientCodexRetryDelayMs: 0,
+    });
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(provider.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds the failed attempt to the Codex duration of a recovered run", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockImplementationOnce(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 40));
+          throw new RuntimeProviderExecutionError("CODEX_UPSTREAM_UNAVAILABLE");
+        })
+        .mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: canonicalNormalOutput("Geçici hatadan sonra karar."),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "retry-duration-worker",
+      credentials: [`agt_${"u".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      transientCodexRetryDelayMs: 0,
+    });
+    await expect(worker.runOnce()).resolves.toBe(1);
+    const payload = vi.mocked(plane.complete).mock.calls[0]?.[4];
+    const usage = usageMetadataSchema.parse(payload?.usageMetadata);
+    expect(usage.durationMs).toBeGreaterThanOrEqual(
+      5 + (usage.codexIntervals?.[0]?.durationMs ?? 0),
+    );
+    expect(usage.codexIntervals?.[0]?.durationMs ?? 0).toBeGreaterThanOrEqual(30);
+  });
 
   it("uses at most one transient retry per run across phases", async () => {
     const runId = randomUUID();

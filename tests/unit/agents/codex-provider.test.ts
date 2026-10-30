@@ -293,6 +293,15 @@ describe("Codex CLI provider security contract", () => {
         stderr: "",
         exitCode: 1,
         exitSignal: null,
+        // 30 Ekim: kota tükenmesi geçici hız sınırından ayrı koddur.
+        safeCode: "CODEX_USAGE_LIMITED",
+      },
+      {
+        stdout:
+          '{"type":"turn.failed","error":{"message":"429 Too Many Requests RAW_SIGNAL_STDERR_MUST_NOT_LEAK"}}\n',
+        stderr: "",
+        exitCode: 1,
+        exitSignal: null,
         safeCode: "CODEX_RATE_LIMITED",
       },
       {
@@ -309,7 +318,7 @@ describe("Codex CLI provider security contract", () => {
         stderr: "",
         exitCode: 1,
         exitSignal: null,
-        safeCode: "CODEX_RATE_LIMITED",
+        safeCode: "CODEX_USAGE_LIMITED",
       },
       {
         stdout: '{"type":"error","message":"RAW_SIGNAL_STDERR_MUST_NOT_LEAK"}\n',

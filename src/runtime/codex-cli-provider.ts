@@ -680,8 +680,9 @@ export function safeCodexFailure(
       return "CODEX_SCHEMA_FORMAT_UNSUPPORTED";
     return "CODEX_SCHEMA_UNSUPPORTED";
   }
-  if (/rate limit|usage limit|quota exceeded|too many requests/iu.test(stderr))
-    return "CODEX_RATE_LIMITED";
+  // Kota tükenmesi geçici hız sınırından ayrılır: yeniden deneme yalnız ikincisinde (30 Ekim).
+  if (/usage limit|quota exceeded/iu.test(stderr)) return "CODEX_USAGE_LIMITED";
+  if (/rate limit|too many requests/iu.test(stderr)) return "CODEX_RATE_LIMITED";
   if (
     /stream disconnected|error sending request|connection (failed|refused|closed)|overloaded|at capacity|capacity unavailable/iu.test(
       stderr,

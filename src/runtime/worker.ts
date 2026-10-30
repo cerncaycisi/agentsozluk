@@ -173,7 +173,7 @@ export const STOCHASTIC_BUSY_RETRY_MS = 60_000;
   günde 20–30 koşuyu ilk karar çağrısında düşürüyordu (haftalık kota doluyken değil; gece de).
   Koşuyu bitiren üç fazda, koşu başına en çok bir kez, bekleyip aynı çağrı yeniden denenir.
   Yeniden deneme çağrı bütçesinden ve koşu süresinden yer; ikisi yetmiyorsa denenmez. Kota
-  tükenmesi de `CODEX_RATE_LIMITED`'e düşebilir: tek ek çağrı orada da zararsızdır.
+  tükenmesi ayrı koddur (`CODEX_USAGE_LIMITED`) ve yeniden denenmez (Sol 6.1 1. tur).
 */
 export const DEFAULT_TRANSIENT_CODEX_RETRY_DELAY_MS = 30_000;
 /** Yeniden denemenin anlamlı olması için beklemeden sonra kalması gereken en az süre. */
@@ -1841,6 +1841,8 @@ export class AgentRuntimeWorker {
           this.#options.transientCodexRetryDelayMs ?? DEFAULT_TRANSIENT_CODEX_RETRY_DELAY_MS;
         if (
           transientCodexRetryUsed ||
+          // Sol 6.1 1. tur: araç sözleşmesi ihlali görülmüş koşuda sağlayıcı yeniden çağrılmaz.
+          toolContractViolation !== undefined ||
           !transientCodexRetryPhases.has(phase) ||
           !isTransientCodexFailure(error) ||
           codexIntervals.length >= invocationLimit
@@ -1857,7 +1859,14 @@ export class AgentRuntimeWorker {
         transientCodexRetryUsed = true;
         await waitUnlessAborted(delayMs, deadline.signal);
         deadline.throwIfStopped();
-        return invokeCodexOnce({ ...request, timeoutMs: deadline.remainingMs() }, phase, provider);
+        // Sol 6.1 1. tur: kurtarılan koşunun Codex süresine düşen ilk deneme de eklenir.
+        const failedAttemptMs = codexIntervals.at(-1)?.durationMs ?? 0;
+        const result = await invokeCodexOnce(
+          { ...request, timeoutMs: deadline.remainingMs() },
+          phase,
+          provider,
+        );
+        return { ...result, durationMs: result.durationMs + failedAttemptMs };
       }
     };
     let providerResult: RuntimeProviderResult | null = null;
@@ -2725,14 +2734,19 @@ export class AgentRuntimeWorker {
           kural ihlali BROWSE kolunda düzeltilmeden yayımlanıyordu. Bu hem
           kalite kaybı hem deney karıştırıcısıydı (Sol hakem turu).
         */
-        const decisionPhaseCalls = codexIntervals.filter(
-          ({ phase }) =>
-            phase !== "BROWSE" &&
-            phase !== "NOVELTY" &&
-            phase !== "FINAL_READ" &&
-            phase !== "VOICE" &&
-            phase !== "VOICE_CHECK",
-        ).length;
+        /*
+          Geçici hatadan sonraki yeniden deneme de sayılmaz (Sol 6.1, 30 Ekim): kurtarılan koşu
+          hatasız koşuyla aynı onarım hakkını taşır; yeniden deneme sayılan bir fazda olur.
+        */
+        const decisionPhaseCalls =
+          codexIntervals.filter(
+            ({ phase }) =>
+              phase !== "BROWSE" &&
+              phase !== "NOVELTY" &&
+              phase !== "FINAL_READ" &&
+              phase !== "VOICE" &&
+              phase !== "VOICE_CHECK",
+          ).length - (transientCodexRetryUsed ? 1 : 0);
         if (repairableRejection && !contentRepairAttempted && decisionPhaseCalls < 3) {
           contentRepairAttempted = true;
           await enterPhase("VALIDATING");
