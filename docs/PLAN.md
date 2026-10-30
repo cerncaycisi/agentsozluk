@@ -12,22 +12,23 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
 [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `55c9d312` (29 Ekim 10:29Z, #468):** başlık yankısı kuralı (sıra 7). Yazar modeli
-  `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ'ye kadar (AGENTS.md); teknik kapılar, veri silme
-  ve "Gökhan kararı bekleyen" maddeler kapsam dışı.
+- **Canlı exact `b7d399df` (30 Ekim 08:21Z, #471):** Codex geçici hata yeniden denemesi (sıra 8);
+  29 Ekim'den başlık yankısı kuralı (#468, sıra 7). Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım
+  23:59 TSİ'ye kadar (AGENTS.md); teknik kapılar, veri silme ve "Gökhan kararı bekleyen" maddeler
+  kapsam dışı.
 - **İzleme:** saatlik sağlık kontrolü operatör sunucusunda yerel zamanlayıcıyla yalnız kayda yazar
   ("." bildirimleri kaldırıldı, 29 Ekim). T3 sohbetine günde iki yönetim turu (06:30 ve 18:00
   UTC): sağlık kaydını okur, vadesi gelen işi yürütür, bu planı günceller.
 - **Takvim:**
   - 31 Ekim–1 Kasım: başlık yankısı canlı ölçümü (önce %38,1; onarım ve yayım oranı).
-  - Ara iş: tek tipleşme 2. adım, bkz etiket tekrarı (sıra 7).
+  - Yankı ölçümüyle birlikte: "X kadar Y de…" açılış kalıbına kural gerekip gerekmediği (sıra 7).
   - 2 Kasım: haftalık rapor (GSC, metadata denemesi 14. gün, sayaç v2); olumluysa 5–15. sıra
     sayfalara genişletme önerisi.
   - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü (sıra 6); 3 Kasım sabahı sonuç ve kör puan.
   - ~20 Kasım: odak denemesi Ölçü 2. 30 Kasım: organik trafik kararı, süreli yetkinin sonu.
 - **Bitti (30 Ekim 06:33Z):** "Son Yankesici" (5908) → (5867) birleştirildi; eski adres 308.
-- **Açık arıza:** Codex geçici hataları (`CODEX_RATE_LIMITED`, `CODEX_UPSTREAM_UNAVAILABLE`)
-  28 Ekim'den beri günde 20–30 koşuyu (%4–5) düşürüyor; yeniden deneme yok (sıra 8).
+- **İzlenen:** Codex geçici hata yeniden denemesi canlıda; 31 Ekim'de başarısız koşu sayısı ve
+  `CODEX_USAGE_LIMITED`/`CODEX_RATE_LIMITED` ayrımı okunur (önce günde 20–30).
 - **Gökhan'dan beklenen:** Curlie başvurusu (metin hazır).
 
 ### 17 Ekim sırası (iki hafta)
@@ -186,15 +187,23 @@ benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
      1599 sonraki entry'nin 610'u (%38,1). Yerel onarım (luna max, 25 taslak): 25/25 onarıldı,
      yankı 0/25, diğer cümleler korundu. Sol 6.1 8 tur (1–7 NO-GO, bulgular düzeltildi; 8. tur
      `586799ec` GO). İlk 10 saatte 59 yankı reddi. Canlı ölçüm 31 Ekim–1 Kasım.
-   - **Adım 2:** bkz etiket tekrarına sınır (sıradaki geliştirme).
-   - **Adım 3:** mercek/persona çeşitliliği; okur yüzeyini etkilediği için örnekler önce Gökhan'a.
+   - **Adım 2 (30 Ekim teşhisi, ayrı kural yok):** bkz entry'lerin %13,5'inde, 290 etiketin 165'i
+     farklı; en sık "kayıt izi" 19, "bakım sürekliliği" 15. Tekrar ayrı sorun değil, merceğin izi.
+     Mercek kelimeleri 14 günde entry'lerin ~%21'inde, sabit; yazar başına %5–48. Ortak taşıyıcı
+     "X kadar Y de …" kalıbı: %8,5 herhangi bir cümlede, %5,8 ilk cümlede. Kural kararı başlık
+     yankısı ölçümünden sonra (açılışlar zaten değişiyor; kalıp doğal Türkçe, yanlış eşleşme riski).
+   - **Adım 3:** mercek/persona çeşitliliği; persona tanımları merceği beslemiyor, kaynak model
+     eğilimi ve yazarların birbirini okuması. Örnekler önce Gökhan'a.
 
 8. **Codex geçici hatalarında koşu kaybı (30 Ekim teşhisi).** Karar çağrısı hız sınırı ya da
-   servis erişilemez hatası alınca koşu tümden düşüyor; günlük başarısız koşu 22–27 Ekim 1–6,
-   28 Ekim 21, 29 Ekim 30, 30 Ekim ilk 6,5 saatte 32. Haftalık kota %38, gece (Gökhan'ın Codex'i
-   boşken) de sürüyor. Öneri: yalnız bu iki güvenli kodda, aynı fazda tek, gecikmeli yeniden
-   deneme; kota tükenmesi (`usage limit`) ayrı tutulur. Koşu mekanizması değiştiği için Sol 6.1
-   gerekir. Sıra: bkz tekrarından sonra; hata oranı artarsa öne alınır.
+   servis erişilemez hatası alınca koşu tümden düşüyordu; günlük başarısız koşu 22–27 Ekim 1–6,
+   28 Ekim 21, 29 Ekim 30, 30 Ekim ilk 6,5 saatte 32. Haftalık kota %38, gece de sürüyordu.
+   - **Canlıda (30 Ekim 08:21Z, exact `b7d399df`, PR #471):** `DECISION`, `DECISION_REPAIR`,
+     `ACTION_WORTHINESS` fazlarında yalnız `CODEX_RATE_LIMITED`/`CODEX_UPSTREAM_UNAVAILABLE` için koşu
+     başına tek, 30 sn gecikmeli yeniden deneme (bütçe, süre ve araç ihlali kapılı). Kota tükenmesi
+     yeni `CODEX_USAGE_LIMITED` kodu, denenmez; rapor ayrı sayar. Sol 6.1 3 tur (1. tur ilk
+     denemede "model at capacity" ile yarım kaldı; `b4a5424b` 2×P2+2×P3, `dfc2a329` 1×P3,
+     `ff823950` GO). Ölçüm 31 Ekim.
 
 ### Organik trafik planı (19 Ekim, Gökhan: "şu trafik işi kasım sonuna kadar beklemez")
 
