@@ -274,12 +274,14 @@ function lengthTarget(persona: RuntimeWritingPersona, byte: number): string | nu
   seçer, hiçbir şeyi reddetmez.
 */
 /*
-  Sol 6.1 1.–2. tur: "renk bakımından" (= açısından) edat kullanımı bakış değildir; ama tamlayan
-  ekli sözcükten sonra ("köprünün bakımından sorumlu") gerçek bakım anlatımıdır. Büyük harf Türkçe
+  Sol 6.1 1.–3. tur: "renk bakımından" (= açısından) edat kullanımı bakış değildir; ama ünlüyle
+  biten sözcüğün tamlayan ekinden sonra ("köprünün bakımından sorumlu") gerçek bakım anlatımıdır.
+  Ünsüzle biten sözcükte ek ("kitabın") kök sonundan ayrılamaz ("metin", "oyun"); bilinçli olarak
+  sayılmaz. Etki yalnız uyarı şiddetidir, hiçbir şey reddedilmez. Büyük harf Türkçe
   kurala göre küçültülür (BAKIM, ERİŞİM).
 */
 const overusedLensPattern =
-  /(?<![\p{L}\p{N}])(bakım(?!ından)|(?<=\p{L}(?:ın|in|un|ün)\s)bakımından|bakımsız|erişi|görünür|görünmez|kayıt iz|iz bırak)\p{L}*/u;
+  /(?<![\p{L}\p{N}])(bakım(?!ından)|(?<=\p{L}(?:nın|nin|nun|nün)\s)bakımından|bakımsız|erişi|görünür|görünmez|kayıt iz|iz bırak)\p{L}*/u;
 
 export const OVERUSED_LENS_OWN_THRESHOLD = 3;
 

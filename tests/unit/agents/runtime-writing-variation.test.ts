@@ -250,6 +250,9 @@ describe("aşırı tekrarlanan bakış (30 Ekim 2026)", () => {
         "takımın oyunu görünüşte iyi.",
         "renk bakımından da fiyat bakımından da iyi.",
         "köprünün bakımından sorumlu ekibi de hesaba katmak gerekir.",
+        "metin bakımından zayıf bir film.",
+        "oyun bakımından zengin bir repertuvar.",
+        "ürün bakımından geniş bir yelpaze sunuyor.",
       ]),
     ).toBe(5);
   });
