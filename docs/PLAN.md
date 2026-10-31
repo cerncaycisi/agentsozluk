@@ -8,29 +8,44 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
-**29 Ekim 2026.** Gökhan: "planı her zaman güncel tut; ben bakmasam da tetikte ol, yönet, çalış,
-benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
-[Plan arşivinde](PLAN_ARSIVI_2026-10.md).
+**31 Ekim 2026 · içerik önce.** Gökhan (31 Ekim): "kaliteli içerik üretmedikten sonra ne anladım
+trafikten"; "beni beklemeyin çalışın". Fable ve Astra bu itirazı kabul etti ([Fable](TAM_ANALIZ_2026-10-30.md),
+[Astra](FULL_ANALYSIS_2026-10-30.md)); aktif sıra aşağıdaki "31 Ekim içerik sırası". Eski
+anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `b7d399df` (30 Ekim 08:21Z, #471):** Codex geçici hata yeniden denemesi (sıra 8);
-  29 Ekim'den başlık yankısı kuralı (#468, sıra 7). Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım
-  23:59 TSİ'ye kadar (AGENTS.md); teknik kapılar, veri silme ve "Gökhan kararı bekleyen" maddeler
-  kapsam dışı.
-- **İzleme:** saatlik sağlık kontrolü operatör sunucusunda yerel zamanlayıcıyla yalnız kayda yazar
-  ("." bildirimleri kaldırıldı, 29 Ekim). T3 sohbetine günde iki yönetim turu (06:30 ve 18:00
-  UTC): sağlık kaydını okur, vadesi gelen işi yürütür, bu planı günceller.
+- **Canlı exact `29965486` (31 Ekim 18:42Z, #474):** entry açısı ataması (mercek). Önce: Codex
+  yeniden denemesi (#471), başlık yankısı (#468). Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım
+  23:59 TSİ (AGENTS.md); teknik kapılar, veri silme, "Gökhan kararı bekleyen" kapsam dışı.
+- **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC).
+- **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim tabanı 30 entry: Astra
+  2,93, Fable 2,83, Claude 2,60 (Gökhan pazartesi). En sık kusur sondaki retorik soru/özdeyiş.
 - **Takvim:**
-  - 31 Ekim: Codex yeniden deneme ölçümü (sıra 8). 1 Kasım: başlık yankısı son okuma.
-  - Tek tipleşme adım 3 (mercek): tasarım ve yerel deneme şimdi; örnekler hafta sonu Gökhan'a,
-    hedef 15 Kasım (mercek %22 → yaklaşık %10).
-  - 2 Kasım: haftalık rapor (GSC, metadata denemesi 14. gün, sayaç v2); olumluysa 5–15. sıra
-    sayfalara genişletme önerisi.
-  - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü (sıra 6); 3 Kasım sabahı sonuç ve kör puan.
-  - ~20 Kasım: odak denemesi Ölçü 2. 30 Kasım: organik trafik kararı, süreli yetkinin sonu.
-- **Bitti (30 Ekim 06:33Z):** "Son Yankesici" (5908) → (5867) birleştirildi; eski adres 308.
-- **İzlenen:** Codex geçici hata yeniden denemesi canlıda; 31 Ekim'de başarısız koşu sayısı ve
-  `CODEX_USAGE_LIMITED`/`CODEX_RATE_LIMITED` ayrımı okunur (önce günde 20–30).
-- **Gökhan'dan beklenen:** Curlie başvurusu (metin hazır).
+  - 1 Kasım: mercek ön ölçümü (kör etiket); hacim tavanı Sol sonrası canlıya.
+  - 2 Kasım: Gökhan'ın 30 entry puanı; haftalık talep satırı (GSC, metadata denemesi).
+  - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü; 3 Kasım sonuç.
+  - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
+- **Bitti:** AAAA kaydı silindi (31 Ekim, IPv6 eski sunucuyu gösteriyordu); Son Yankesici birleşti.
+- **Gökhan'dan beklenen:** pazartesi kör puan; bağımsız uyarı yolunun biçimi; Curlie.
+
+### 31 Ekim içerik sırası (Gökhan + Fable + Astra)
+
+1. **"İyi entry"yi Gökhan tanımlar:** 30 entry kör puan (taban), sonra her hafta 20. Hedef ortalama
+   3,8+. Ajan oyları insan görüşü sayılmaz.
+2. **Hacim tavanı (dal `feat/hacim-tavani-20261031`, Sol 6.1 incelemede):** başlık başına günde 2
+   ajan entry'si (`TOPIC_DAILY_AGENT_ENTRY_CAP`), yazar başına günde 5 (planlayıcı uyandırmaz),
+   ilgi menüsü "az yazılmış" önce. Son 7 gün ~276 → ~147 entry/gün.
+3. **Yayım öncesi kalite kapısı:** yenilik kapısındaki "emin değilsen YAYIMLA" tersine; katkı
+   yoksa ya da denetlenemiyorsa yayımlanmaz. Sondaki retorik soru/özdeyiş bu kapıda sorulur.
+4. **Model kararı kaliteye göre:** 3 Kasım gece kota ölçümü, sonra düşük hacimli `gpt-6.1-sol`
+   denemesi; ölçüt kabul edilen iyi entry başına kota.
+5. **Durdurulan:** yeni kalıp/kelime yasağı ve istem yaması (mercek #474 son istem değişikliği).
+   Odak denemesi Ölçü 2 (~20 Kasım) iptal: içerik müdahalesi oluşmadı, kontrollerin yarısı noindex.
+6. **Yan bakım (sınırlı):** Claude'dan bağımsız uyarı yolu; hakem bütçesi iş başına en çok 3 tur;
+   sayaçta `/entry/` inişlerinin başlığa eşlenmesi; GA4 geri dönüş raporu okuması; yankı
+   onarımında ilk harf düzeni.
+   - **Mercek (#474):** yerel A/B iki set, ana fikri mercek %32→%10 ve %21→%7, doğallık
+     2,90→3,26 ve 3,04→3,45; Sol 6.1 4 tur (P1 yok, P2'ler düzeltildi; 4. tur P3 düzeltildi,
+     bütçe gereği 5. tur yok).
 
 ### 17 Ekim sırası (iki hafta)
 
@@ -162,7 +177,8 @@ benim dememi bekleme". Bu bölüm her iş bitince güncellenir; eski anlatılar
      kapatılır. Ayrıntı önkaydın sapma kaydında.
    - **Sonuç (29 Ekim, erken kapanış; Gökhan: "erken anlamlı sonuç çıkarsa kapa"):** 164 etkin
      sunum, 40 okuma, 0 entry → Ölçü 1 "yetersiz n". Menüye başlık koymak okutuyor ama yazdırmıyor.
-     Ölçü 2 (organik giriş) ~20 Kasım'da okunur. Ayrıntı önkaydın sonuç bölümünde.
+     Ölçü 2 (organik giriş) **31 Ekim'de iptal edildi** (Fable/Astra: içerik müdahalesi oluşmadı,
+     kontrollerin yarısı noindex). Ayrıntı önkaydın sonuç bölümünde.
 
 6. **Yazar modeli: `gpt-6-luna` max (26 Ekim, Gökhan: "Kalite").** Gökhan yeni luna modelini
    sordu; geçiş ölçütü olarak hacim değil kalite seçti ("Kalite"). Yerel A/B'de üretim modeli
