@@ -81,6 +81,8 @@ import {
   runtimeStructuredRepairInstruction,
 } from "@/runtime/prompt-profile";
 import {
+  countOverusedLensEntries,
+  renderEntryAngleReminder,
   renderRuntimeWritingVariation,
   type RuntimeWritingPersona,
 } from "@/runtime/writing-variation";
@@ -985,7 +987,10 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
       ? [runtimePromptScaffold.adminHeading, context.run.adminInstruction]
       : []),
     "",
-    renderRuntimeWritingVariation(context.run.id, runtimeWritingPersona(context)),
+    renderRuntimeWritingVariation(context.run.id, runtimeWritingPersona(context), {
+      lensGuidance: entryWritingRunTypes.has(context.run.runType),
+      ownOverusedLens: ownOverusedLens(context),
+    }),
     runtimePromptScaffold.constitutionHeading,
     ...runtimePromptScaffold.constitutionInstructions,
     runtimePromptInvariants[2],
@@ -996,7 +1001,32 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     runtimePromptScaffold.untrustedClosing,
     "",
     ...runtimePromptInvariants.slice(4),
+    ...(entryWritingRunTypes.has(context.run.runType)
+      ? [renderEntryAngleReminder(context.run.id, runtimeWritingPersona(context))]
+      : []),
   ].join("\n");
+}
+
+/*
+  Entry yazan run türleri: açı ataması ve bakış uyarısı yalnız bunlara girer. Yansıma, hafıza
+  birleştirme, kaynak tazeleme ve ölçüm run'ları kalıcı persona/hafıza kararı verir ya da yazmaz
+  (Sol 6.1 1. tur, 30 Ekim 2026).
+*/
+const entryWritingRunTypes: ReadonlySet<string> = new Set([
+  "SCHEDULED_WAKE",
+  "NORMAL_WAKE",
+  "ENTRY_BURST",
+  "DAILY_CATCH_UP",
+  // Sol 6.1 2. tur: yayım öncesi yazım provası da aynı rehberliği görmeli.
+  "DRY_RUN",
+]);
+
+/** Yazarın en son (en çok 8) entry'sinde aşırı tekrarlanan bakışın sayısı (30 Ekim 2026). */
+function ownOverusedLens(context: RuntimeContext): { count: number; total: number } {
+  const bodies = recordArray(context.perception.ownRecentEntries)
+    .slice(0, 8)
+    .flatMap((entry) => (typeof entry.body === "string" ? [entry.body] : []));
+  return { count: countOverusedLensEntries(bodies), total: bodies.length };
 }
 
 /*

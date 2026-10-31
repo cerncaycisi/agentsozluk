@@ -182,6 +182,67 @@ describe("yazar sesi persona bağı (writing-variation v10)", () => {
   });
 });
 
+describe("mercek çeşitliliği istemi (30 Ekim 2026)", () => {
+  const runId = "00000000-0000-4000-8000-000000000002";
+
+  it("açı hatırlatmasını istemin en sonuna koyar; kendi mercek sayısını söyler", () => {
+    const context = fixtureContext(runId);
+    context.perception.ownRecentEntries = [
+      { id: "e1", body: "asansörün bakımı aksarsa istasyon erişilemez olur." },
+      { id: "e2", body: "görünmez emek burada da var." },
+      { id: "e3", body: "kayıt izi tutulmazsa kimse bilmez." },
+      { id: "e4", body: "simidin tadı fırından çıkınca başka." },
+    ];
+    const prompt = buildRuntimePrompt(context);
+    const lines = prompt.split("\n");
+    expect(lines.at(-1)).toMatch(/^Yazmadan önce son hatırlatma: entry yazacaksan açısı /u);
+    expect(prompt).toContain(
+      "Son 4 entry'nin 3 tanesi bu bakıştan; konunun kendisi bu değilse bu run'da bu açıyı kullanma.",
+    );
+  });
+
+  it("yazım provası (DRY_RUN) da açıyı ve son hatırlatmayı alır", () => {
+    const context = fixtureContext(runId);
+    const prompt = buildRuntimePrompt({
+      ...context,
+      run: { ...context.run, runType: "DRY_RUN" } as typeof context.run,
+    });
+    expect(prompt).toContain("Bu entry'nin açısı");
+    expect(prompt.split("\n").at(-1)).toMatch(/^Yazmadan önce son hatırlatma/u);
+  });
+
+  it("az mercekli yazara sayı söylemez", () => {
+    const context = fixtureContext(runId);
+    context.perception.ownRecentEntries = [
+      { id: "e1", body: "simidin tadı fırından çıkınca başka." },
+    ];
+    expect(buildRuntimePrompt(context)).not.toContain("bu run'da bu açıyı kullanma");
+  });
+
+  // Sol 6.1 1. tur: yansıma, hafıza birleştirme ve kaynak tazeleme istemine hiçbir satır girmez.
+  it.each([
+    ["REFLECTION", "WEEKLY_REFLECTION"],
+    ["REFLECTION", "NIGHTLY_MEMORY_CONSOLIDATION"],
+    ["REFLECTION", "ADMIN_MEMORY_RECONSOLIDATE"],
+    ["SOURCE_REFRESH", "SOURCE_REFRESH"],
+  ])("%s/%s run'ına açı ya da bakış satırı girmez", (runType, trigger) => {
+    const context = fixtureContext(runId);
+    context.perception.ownRecentEntries = [
+      { id: "e1", body: "asansörün bakımı aksarsa istasyon erişilemez olur." },
+      { id: "e2", body: "görünmez emek burada da var." },
+      { id: "e3", body: "kayıt izi tutulmazsa kimse bilmez." },
+    ];
+    const prompt = buildRuntimePrompt({
+      ...context,
+      run: { ...context.run, runType, trigger } as typeof context.run,
+    });
+    expect(prompt).not.toContain("Yazmadan önce son hatırlatma");
+    expect(prompt).not.toContain("Bu entry'nin açısı");
+    expect(prompt).not.toContain("en çok tekrarlanan bakış");
+    expect(prompt).not.toContain("bu run'da bu açıyı kullanma");
+  });
+});
+
 describe("kişisel keşif okuma bağlamı", () => {
   it("yakın geçmişi ve yorgunluğu yalnız başlıklar ve sayılarla güvenilmeyen bağlama ekler", () => {
     const context = fixtureContext(randomUUID());

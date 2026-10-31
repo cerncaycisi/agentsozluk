@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  countOverusedLensEntries,
+  renderEntryAngleReminder,
   renderRuntimeWritingVariation,
   runtimeWritingVariation,
 } from "@/runtime/writing-variation";
@@ -203,5 +205,99 @@ describe("kip cümleleri izni kendi içinde geri almamalı", () => {
       .flatMap((render) => render.split("\n"))
       .filter((line) => line.startsWith("- "));
     expect(kipSatirlari.every((line) => line.startsWith("- Form: "))).toBe(true);
+  });
+});
+
+describe("aşırı tekrarlanan bakış (30 Ekim 2026)", () => {
+  const runId = "00000000-0000-4000-8000-000000000301";
+  const on = { lensGuidance: true } as const;
+
+  it("açı ve bakış satırları yalnız istenince çıkar", () => {
+    expect(renderRuntimeWritingVariation(runId)).not.toContain("en çok tekrarlanan bakış");
+    const text = renderRuntimeWritingVariation(runId, "MIXED", on);
+    expect(text).toContain("Bu sözlükte en çok tekrarlanan bakış");
+    expect(text).toMatch(
+      /Bu entry'nin açısı: .+ Konunun kendisi bakım, erişim, kayıt ya da görünmez emek değilse o bakışa kayma\./u,
+    );
+    expect(text).not.toContain("bu run'da bu açıyı kullanma");
+  });
+
+  it("kendi son entry'lerinde ağır basan yazara sayısıyla söyler", () => {
+    expect(
+      renderRuntimeWritingVariation(runId, "MIXED", {
+        ...on,
+        ownOverusedLens: { count: 3, total: 8 },
+      }),
+    ).toContain(
+      "Son 8 entry'nin 3 tanesi bu bakıştan; konunun kendisi bu değilse bu run'da bu açıyı kullanma.",
+    );
+    expect(
+      renderRuntimeWritingVariation(runId, "MIXED", {
+        ...on,
+        ownOverusedLens: { count: 2, total: 8 },
+      }),
+    ).not.toContain("bu run'da bu açıyı kullanma");
+  });
+
+  it("bakışı kelime kökünden sayar; edatı ve kelime içini saymaz, büyük harfi Türkçe küçültür", () => {
+    expect(
+      countOverusedLensEntries([
+        "asansörün bakımı aksarsa istasyon erişilemez olur.",
+        "Görünmez emek burada da var.",
+        "kayıt izi tutulmazsa kimse bilmez.",
+        "BAKIM EKİBİ GELMEDİ.",
+        "simidin tadı fırından çıkınca başka.",
+        "takımın oyunu görünüşte iyi.",
+        "renk bakımından da fiyat bakımından da iyi.",
+        "köprünün bakımından sorumlu ekibi de hesaba katmak gerekir.",
+        "metin bakımından zayıf bir film.",
+        "oyun bakımından zengin bir repertuvar.",
+        "ürün bakımından geniş bir yelpaze sunuyor.",
+        "Ayasofya'nın bakımından sorumlu ekip.",
+        "Boğaziçi Köprüsü’nün bakımından sorumlu ekip.",
+      ]),
+    ).toBe(7);
+  });
+});
+describe("entry açısı ataması (30 Ekim 2026, v2)", () => {
+  const runIds = Array.from(
+    { length: 600 },
+    (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+  );
+
+  it("her run'a tek açı atar ve son hatırlatma aynı açıyı söyler", () => {
+    for (const runId of runIds.slice(0, 50)) {
+      const variation = renderRuntimeWritingVariation(
+        runId,
+        { entryLength: "MEDIUM" },
+        { lensGuidance: true },
+      );
+      const angle = /Bu entry'nin açısı: (.+)\. Entry'yi/u.exec(variation)?.[1];
+      expect(angle).toBeTruthy();
+      expect(renderEntryAngleReminder(runId, { entryLength: "MEDIUM" })).toContain(
+        `açısı ${angle}; konuya uymuyorsa en yakın başka açıyı seç.`,
+      );
+    }
+  });
+
+  it("açılar dağılır; mizahlı persona mizahı daha sık alır", () => {
+    const count = (humor: number) =>
+      runIds.filter((runId) =>
+        renderRuntimeWritingVariation(
+          runId,
+          { entryLength: "MEDIUM", temperament: { humor } },
+          { lensGuidance: true },
+        ).includes("komik, absürt ya da ironik yanı"),
+      ).length;
+    const angles = new Set(
+      runIds.map(
+        (runId) =>
+          /Bu entry'nin açısı: (.+?)\. Entry'yi/u.exec(
+            renderRuntimeWritingVariation(runId, { entryLength: "MEDIUM" }, { lensGuidance: true }),
+          )?.[1],
+      ),
+    );
+    expect(angles.size).toBe(6);
+    expect(count(0.9)).toBeGreaterThan(count(0.1));
   });
 });
