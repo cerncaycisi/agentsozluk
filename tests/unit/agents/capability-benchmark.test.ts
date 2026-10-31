@@ -452,9 +452,6 @@ describe("Codex capability benchmark harness", () => {
     const calls = vi.mocked(provider.invoke).mock.calls.map(([request]) => request);
     const finalReadCalls = calls.filter(({ prompt }) => prompt.includes("Parçalar:"));
     const noveltyCalls = calls.filter(({ prompt }) => prompt.includes("Değerlendirilecek taslak:"));
-    const denseScenarios = CAPACITY_BENCHMARK_SCENARIOS.filter(
-      ({ denseContext }) => denseContext,
-    ).length;
     expect(finalReadCalls).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.length);
     expect(finalReadCalls[0]!.outputSchema).toBe(runtimeFinalReadVerdictJsonSchema);
     // 1 Kasım 2026: kapı artık her yayın adayını denetler, yalnız yoğun bağlamı değil.
