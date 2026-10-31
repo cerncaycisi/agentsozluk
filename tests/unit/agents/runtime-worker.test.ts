@@ -197,21 +197,39 @@ describe("mercek çeşitliliği istemi (30 Ekim 2026)", () => {
     const lines = prompt.split("\n");
     expect(lines.at(-1)).toMatch(/^Yazmadan önce son hatırlatma: entry yazacaksan açısı /u);
     expect(prompt).toContain(
-      "Son 4 entry'nin 3 tanesi bu bakıştan; bu run'da bu açıyı hiç kullanma.",
+      "Son 4 entry'nin 3 tanesi bu bakıştan; konunun kendisi bu değilse bu run'da bu açıyı kullanma.",
     );
   });
 
-  it("az mercekli yazara sayı söylemez; yansıma run'ında açı hatırlatması yoktur", () => {
+  it("az mercekli yazara sayı söylemez", () => {
     const context = fixtureContext(runId);
     context.perception.ownRecentEntries = [
       { id: "e1", body: "simidin tadı fırından çıkınca başka." },
     ];
-    expect(buildRuntimePrompt(context)).not.toContain("bu run'da bu açıyı hiç kullanma");
-    const reflection = buildRuntimePrompt({
+    expect(buildRuntimePrompt(context)).not.toContain("bu run'da bu açıyı kullanma");
+  });
+
+  // Sol 6.1 1. tur: yansıma, hafıza birleştirme ve kaynak tazeleme istemine hiçbir satır girmez.
+  it.each([
+    ["REFLECTION", "WEEKLY_REFLECTION"],
+    ["REFLECTION", "NIGHTLY_MEMORY_CONSOLIDATION"],
+    ["REFLECTION", "ADMIN_MEMORY_RECONSOLIDATE"],
+    ["SOURCE_REFRESH", "SOURCE_REFRESH"],
+  ])("%s/%s run'ına açı ya da bakış satırı girmez", (runType, trigger) => {
+    const context = fixtureContext(runId);
+    context.perception.ownRecentEntries = [
+      { id: "e1", body: "asansörün bakımı aksarsa istasyon erişilemez olur." },
+      { id: "e2", body: "görünmez emek burada da var." },
+      { id: "e3", body: "kayıt izi tutulmazsa kimse bilmez." },
+    ];
+    const prompt = buildRuntimePrompt({
       ...context,
-      run: { ...context.run, runType: "REFLECTION" },
+      run: { ...context.run, runType, trigger } as typeof context.run,
     });
-    expect(reflection).not.toContain("Yazmadan önce son hatırlatma");
+    expect(prompt).not.toContain("Yazmadan önce son hatırlatma");
+    expect(prompt).not.toContain("Bu entry'nin açısı");
+    expect(prompt).not.toContain("en çok tekrarlanan bakış");
+    expect(prompt).not.toContain("bu run'da bu açıyı kullanma");
   });
 });
 

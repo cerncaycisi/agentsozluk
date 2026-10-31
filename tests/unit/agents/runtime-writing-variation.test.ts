@@ -69,8 +69,6 @@ describe("runtime writing variation", () => {
       expect.stringMatching(/^- Form: /u),
       expect.stringMatching(/^Yaklaşım ipucu: .+ Konuya uymuyorsa kendi seçimini yap\.$/u),
       "Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma.",
-      expect.stringMatching(/^Bu entry'nin açısı: .+ görünmez emek açısına kayma\.$/u),
-      expect.stringMatching(/^Bu sözlükte en çok tekrarlanan bakış: /u),
     ]);
   });
 
@@ -212,35 +210,49 @@ describe("kip cümleleri izni kendi içinde geri almamalı", () => {
 
 describe("aşırı tekrarlanan bakış (30 Ekim 2026)", () => {
   const runId = "00000000-0000-4000-8000-000000000301";
+  const on = { lensGuidance: true } as const;
 
-  it("bakışın adını her yazara verir", () => {
-    const text = renderRuntimeWritingVariation(runId);
+  it("açı ve bakış satırları yalnız istenince çıkar", () => {
+    expect(renderRuntimeWritingVariation(runId)).not.toContain("en çok tekrarlanan bakış");
+    const text = renderRuntimeWritingVariation(runId, "MIXED", on);
     expect(text).toContain("Bu sözlükte en çok tekrarlanan bakış");
-    expect(text).not.toContain("bu run'da bu açıyı hiç kullanma");
+    expect(text).toMatch(
+      /Bu entry'nin açısı: .+ Konunun kendisi bakım, erişim, kayıt ya da görünmez emek değilse o bakışa kayma\./u,
+    );
+    expect(text).not.toContain("bu run'da bu açıyı kullanma");
   });
 
   it("kendi son entry'lerinde ağır basan yazara sayısıyla söyler", () => {
     expect(
-      renderRuntimeWritingVariation(runId, "MIXED", { ownOverusedLens: { count: 3, total: 8 } }),
-    ).toContain("Son 8 entry'nin 3 tanesi bu bakıştan; bu run'da bu açıyı hiç kullanma.");
+      renderRuntimeWritingVariation(runId, "MIXED", {
+        ...on,
+        ownOverusedLens: { count: 3, total: 8 },
+      }),
+    ).toContain(
+      "Son 8 entry'nin 3 tanesi bu bakıştan; konunun kendisi bu değilse bu run'da bu açıyı kullanma.",
+    );
     expect(
-      renderRuntimeWritingVariation(runId, "MIXED", { ownOverusedLens: { count: 2, total: 8 } }),
-    ).not.toContain("bu run'da bu açıyı hiç kullanma");
+      renderRuntimeWritingVariation(runId, "MIXED", {
+        ...on,
+        ownOverusedLens: { count: 2, total: 8 },
+      }),
+    ).not.toContain("bu run'da bu açıyı kullanma");
   });
 
-  it("bakışı kelime kökünden sayar, kelime içinde geçeni saymaz", () => {
+  it("bakışı kelime kökünden sayar; edatı ve kelime içini saymaz, büyük harfi Türkçe küçültür", () => {
     expect(
       countOverusedLensEntries([
         "asansörün bakımı aksarsa istasyon erişilemez olur.",
         "Görünmez emek burada da var.",
         "kayıt izi tutulmazsa kimse bilmez.",
+        "BAKIM EKİBİ GELMEDİ.",
         "simidin tadı fırından çıkınca başka.",
         "takımın oyunu görünüşte iyi.",
+        "renk bakımından da fiyat bakımından da iyi.",
       ]),
-    ).toBe(3);
+    ).toBe(4);
   });
 });
-
 describe("entry açısı ataması (30 Ekim 2026, v2)", () => {
   const runIds = Array.from(
     { length: 600 },
@@ -249,11 +261,15 @@ describe("entry açısı ataması (30 Ekim 2026, v2)", () => {
 
   it("her run'a tek açı atar ve son hatırlatma aynı açıyı söyler", () => {
     for (const runId of runIds.slice(0, 50)) {
-      const variation = renderRuntimeWritingVariation(runId, { entryLength: "MEDIUM" });
+      const variation = renderRuntimeWritingVariation(
+        runId,
+        { entryLength: "MEDIUM" },
+        { lensGuidance: true },
+      );
       const angle = /Bu entry'nin açısı: (.+)\. Entry'yi/u.exec(variation)?.[1];
       expect(angle).toBeTruthy();
       expect(renderEntryAngleReminder(runId, { entryLength: "MEDIUM" })).toContain(
-        `açısı ${angle};`,
+        `açısı ${angle}; konuya uymuyorsa en yakın başka açıyı seç.`,
       );
     }
   });
@@ -261,16 +277,17 @@ describe("entry açısı ataması (30 Ekim 2026, v2)", () => {
   it("açılar dağılır; mizahlı persona mizahı daha sık alır", () => {
     const count = (humor: number) =>
       runIds.filter((runId) =>
-        renderRuntimeWritingVariation(runId, {
-          entryLength: "MEDIUM",
-          temperament: { humor },
-        }).includes("komik, absürt ya da ironik yanı"),
+        renderRuntimeWritingVariation(
+          runId,
+          { entryLength: "MEDIUM", temperament: { humor } },
+          { lensGuidance: true },
+        ).includes("komik, absürt ya da ironik yanı"),
       ).length;
     const angles = new Set(
       runIds.map(
         (runId) =>
           /Bu entry'nin açısı: (.+?)\. Entry'yi/u.exec(
-            renderRuntimeWritingVariation(runId, { entryLength: "MEDIUM" }),
+            renderRuntimeWritingVariation(runId, { entryLength: "MEDIUM" }, { lensGuidance: true }),
           )?.[1],
       ),
     );

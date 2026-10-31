@@ -30,7 +30,8 @@ export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
 
   Liste boyları korunuyor: madde eklenmedi, yerinde değiştirildi.
 */
-export const RUNTIME_WRITING_VARIATION_VERSION = 10;
+// 11 (30 Ekim 2026): entry açısı ataması ve aşırı tekrarlanan bakışın adı (seçim tohumu aynı).
+export const RUNTIME_WRITING_VARIATION_VERSION = 11;
 /*
   Seçim tohumu render sürümünden ayrı: sürüm 9 yalnız render'ı değiştirdi (iskelet çıktı), seçim
   aynı. Tohum 8'de kalınca her koşu önceki sürümdeki uzunluk formunu alır; yerel ölçümde
@@ -272,16 +273,24 @@ function lengthTarget(persona: RuntimeWritingPersona, byte: number): string | nu
   sayısıyla söylenir. Sayım kaba bir kelime eşleşmesidir; yalnız istemdeki uyarının şiddetini
   seçer, hiçbir şeyi reddetmez.
 */
+/*
+  Sol 6.1 1. tur: "renk bakımından" (= açısından) edat kullanımı bakış değildir; büyük harf Türkçe
+  kurala göre küçültülür (BAKIM, ERİŞİM).
+*/
 const overusedLensPattern =
-  /(?<![\p{L}\p{N}])(bakım|bakımsız|erişi|görünür|görünmez|kayıt iz|iz bırak)\p{L}*/iu;
+  /(?<![\p{L}\p{N}])(bakım(?!ından)|bakımsız|erişi|görünür|görünmez|kayıt iz|iz bırak)\p{L}*/u;
 
 export const OVERUSED_LENS_OWN_THRESHOLD = 3;
 
 export function countOverusedLensEntries(bodies: readonly string[]): number {
-  return bodies.filter((body) => overusedLensPattern.test(body.normalize("NFKC"))).length;
+  return bodies.filter((body) =>
+    overusedLensPattern.test(body.normalize("NFKC").toLocaleLowerCase("tr-TR")),
+  ).length;
 }
 
 export interface RuntimeWritingVariationOptions {
+  /** Açı ve bakış satırları yalnız entry yazan run türlerinde (Sol 6.1 1. tur). */
+  lensGuidance?: boolean;
   /** Yazarın en son (en çok 8) entry'sinde kaç tanesinin bu bakışı taşıdığı. */
   ownOverusedLens?: { count: number; total: number };
 }
@@ -321,7 +330,7 @@ export function renderEntryAngleReminder(runId: string, persona: RuntimeWritingP
     .update(`agent-sozluk-writing-variation:v10-persona:${runId}`)
     .digest();
   const angle = entryAngles[weightedPick(angleWeights(persona.temperament), digest[9]!)]!;
-  return `Yazmadan önce son hatırlatma: entry yazacaksan açısı ${angle.text}; bakım, erişim, kayıt ya da görünmez emek açısına kayma.`;
+  return `Yazmadan önce son hatırlatma: entry yazacaksan açısı ${angle.text}; konuya uymuyorsa en yakın başka açıyı seç. Konunun kendisi bakım, erişim, kayıt ya da görünmez emek değilse o bakışa kayma.`;
 }
 
 const overusedLensInstruction =
@@ -348,11 +357,16 @@ export function renderRuntimeWritingVariation(
     length,
     `Yaklaşım ipucu: ${approach.text} Konuya uymuyorsa kendi seçimini yap.`,
     "Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma.",
-    `Bu entry'nin açısı: ${angle.text}. Entry'yi bu açı taşısın; konuya hiç uymuyorsa en yakın başka açıyı seç ama bakım, erişim, kayıt ya da görünmez emek açısına kayma.`,
-    overusedLensInstruction,
-    ...(options.ownOverusedLens && options.ownOverusedLens.count >= OVERUSED_LENS_OWN_THRESHOLD
+    ...(options.lensGuidance
       ? [
-          `Son ${options.ownOverusedLens.total} entry'nin ${options.ownOverusedLens.count} tanesi bu bakıştan; bu run'da bu açıyı hiç kullanma.`,
+          `Bu entry'nin açısı: ${angle.text}. Entry'yi bu açı taşısın; konuya hiç uymuyorsa en yakın başka açıyı seç. Konunun kendisi bakım, erişim, kayıt ya da görünmez emek değilse o bakışa kayma.`,
+          overusedLensInstruction,
+          ...(options.ownOverusedLens &&
+          options.ownOverusedLens.count >= OVERUSED_LENS_OWN_THRESHOLD
+            ? [
+                `Son ${options.ownOverusedLens.total} entry'nin ${options.ownOverusedLens.count} tanesi bu bakıştan; konunun kendisi bu değilse bu run'da bu açıyı kullanma.`,
+              ]
+            : []),
         ]
       : []),
   ].join("\n");
