@@ -357,7 +357,7 @@ function identityLengthLine(
   if (identity === "MAKALE")
     return byte % 4 === 0
       ? "Uzunluk: bu sefer kısa tut; konu uzun yazıyı taşımıyorsa birkaç cümle yeter."
-      : "Uzunluk: konu malzeme taşıyorsa uzun yaz; birkaç paragraf, her biri ayrı bir şey anlatsın, aralarında boş satır.";
+      : "Uzunluk: bu sefer uzun yaz: en az üç paragraf, 150–400 kelime; her paragraf ayrı bir şey anlatsın (açıklama, örnek, karşı örnek, sonuç), aralarında boş satır. Bu uzunluk senin olağanın; dolgu değil, konuyu gerçekten açmak. Konu bu kadar malzeme taşımıyorsa başka bir başlık seç ya da yazma.";
   if (identity === "TEK_SATIR")
     return byte % 3 === 0
       ? "Uzunluk: tek kelime ya da kısa bir ad koyma; başlıkla birlikte anlam taşısın."
@@ -368,7 +368,7 @@ function identityLengthLine(
       ? "Uzunluk: bu sefer tek kelime ya da tek satır."
       : pick < 7
         ? "Uzunluk: bu sefer kısa ya da orta; bir paragraf."
-        : "Uzunluk: bu sefer uzun yazabilirsin; konu taşıyorsa birkaç paragraf, aralarında boş satır.";
+        : "Uzunluk: bu sefer uzun yaz: konu taşıyorsa üç dört paragraf, 120–300 kelime, aralarında boş satır.";
   }
   if (identity === "KISA") return "Uzunluk: kısa; birkaç cümle, tek paragraf.";
   return "Uzunluk: bir iki paragraf; konu taşımıyorsa kısa kes.";

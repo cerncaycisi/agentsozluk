@@ -347,7 +347,8 @@ describe("Codex capability benchmark harness", () => {
         .fn()
         .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
       invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
-        if (prompt.includes("Değerlendirilecek taslak:")) return { ...result(200), output: { karar: "YAYIMLA" } };
+        if (prompt.includes("Değerlendirilecek taslak:"))
+          return { ...result(200), output: { karar: "YAYIMLA" } };
         if (prompt.includes("# Final action-worthiness decision"))
           return { ...result(500), output: worthinessOutput() };
         const readTopicId = /"readTopics":\[\{"id":"([0-9a-f-]{36})"/u.exec(prompt)?.[1];
@@ -506,7 +507,8 @@ describe("Codex capability benchmark harness", () => {
           .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
         invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
           if (prompt.includes("Parçalar:")) return { ...result(300), output: { sil: [] } };
-          if (prompt.includes("Değerlendirilecek taslak:")) return { ...result(200), output: { karar: "YAYIMLA" } };
+          if (prompt.includes("Değerlendirilecek taslak:"))
+            return { ...result(200), output: { karar: "YAYIMLA" } };
           if (prompt.includes("# Final action-worthiness decision"))
             return { ...result(options.reviewMs ?? 500), output: twoEntryWorthiness };
           const repaired = prompt.includes(RUNTIME_STRUCTURED_REPAIR_INSTRUCTION);
@@ -664,7 +666,8 @@ describe("Codex capability benchmark harness", () => {
         .fn()
         .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
       invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
-        if (prompt.includes("Değerlendirilecek taslak:")) return { ...result(200), output: { karar: "VAZGEC" } };
+        if (prompt.includes("Değerlendirilecek taslak:"))
+          return { ...result(200), output: { karar: "VAZGEC" } };
         if (prompt.includes("# Final action-worthiness decision"))
           return {
             ...result(500),

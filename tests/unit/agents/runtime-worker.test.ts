@@ -4963,7 +4963,9 @@ describe("runtime novelty gate", () => {
     expect(reviewer.invoke).toHaveBeenCalledTimes(2);
     expect(reviewer.invoke).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        prompt: expect.stringContaining("Değerlendirilecek taslak:\nNative Son 1940 yılında çıktı."),
+        prompt: expect.stringContaining(
+          "Değerlendirilecek taslak:\nNative Son 1940 yılında çıktı.",
+        ),
       }),
     );
     expect(plane.recordActions).toHaveBeenCalledWith(
@@ -5128,7 +5130,9 @@ describe("runtime novelty gate", () => {
     expect(reviewer.invoke).toHaveBeenCalledTimes(3);
     expect(reviewer.invoke).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        prompt: expect.stringContaining("Değerlendirilecek taslak:\nNative Son 1940 yılında yayımlanmıştı."),
+        prompt: expect.stringContaining(
+          "Değerlendirilecek taslak:\nNative Son 1940 yılında yayımlanmıştı.",
+        ),
       }),
     );
     expect(events).toContain("CONTENT_REPAIR_NOVELTY_DROPPED");
@@ -5214,7 +5218,9 @@ describe("runtime novelty gate", () => {
 
     await expect(worker.runOnce()).resolves.toBe(1);
     expect(vi.mocked(reviewer.invoke).mock.calls[1]![0].prompt).toContain("Yalnız silebilirsin");
-    expect(vi.mocked(reviewer.invoke).mock.calls[2]![0].prompt).toContain(`Değerlendirilecek taslak:\n${kept}\n`);
+    expect(vi.mocked(reviewer.invoke).mock.calls[2]![0].prompt).toContain(
+      `Değerlendirilecek taslak:\n${kept}\n`,
+    );
     // Son okumadan sonra gelen onarılabilir ret yine onarılır (Astra, 9 Ekim).
     expect(provider.invoke).toHaveBeenCalledTimes(2);
     expect(plane.executeActions).toHaveBeenCalledTimes(2);
@@ -5302,7 +5308,9 @@ describe("runtime novelty gate", () => {
     await expect(worker.runOnce()).resolves.toBe(1);
     // Onarılan gövde son okumadan geçer; yenilik kapısı ve kayıt kısaltılmış gövdeyi görür.
     expect(vi.mocked(reviewer.invoke).mock.calls[2]![0].prompt).toContain("Yalnız silebilirsin");
-    expect(vi.mocked(reviewer.invoke).mock.calls[3]![0].prompt).toContain(`Değerlendirilecek taslak:\n${kept}\n`);
+    expect(vi.mocked(reviewer.invoke).mock.calls[3]![0].prompt).toContain(
+      `Değerlendirilecek taslak:\n${kept}\n`,
+    );
     const recorded = vi.mocked(plane.recordActions).mock.calls[1]![4] as Array<{
       input: { body: string };
     }>;

@@ -73,7 +73,7 @@ describe("original persona pack", () => {
       // 30 Ekim 2026: yazım varyasyonu 11 (entry açısı). Üretim tek hatta (codexConcurrency=1),
       // doğum kapalı; kapasite kanıtı zaten 21 Ekim'de bayatlamıştı, hat sayısı değişmez.
       // 1 Kasım 2026: profil 59 (içerik kalitesi). Üretim tek hatta; hat sayısı değişmez.
-      profile: "bc6374420307e8b24b0c9536b374b258c7d2274d5ac13a794bbc263b6f436b9d",
+      profile: "6ce7ba0fa0cc80f678cc1fde0f0ac32ee4bcb7e75fafb0ce1d075e985b021015",
     });
   });
 
