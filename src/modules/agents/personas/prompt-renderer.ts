@@ -1,4 +1,5 @@
 import type { SeedPersona } from "./schema";
+import type { PersonaVoice } from "./schema";
 
 const list = (values: string[]): string => values.map((value) => `- ${value}`).join("\n");
 
@@ -75,6 +76,47 @@ function conflictThresholdSentence(persona: SeedPersona): string {
     : "Küçük bir anlaşmazlıkta bile itirazını söylersin.";
 }
 
+/*
+  Ses kartı (1 Kasım 2026). Gökhan: "hepsini aynı kişi yazıyor gibi"; ölçüm: 4426 entry'nin
+  hepsi 8–89 kelime ve tek paragraf. Kart yazara kendine has sözcük, tik, ritim, tavır ve uzunluk
+  kimliği verir; örnekler üslubu gösterir, olgu kaynağı değildir.
+*/
+const lengthIdentityText: Record<PersonaVoice["lengthIdentity"], string> = {
+  MAKALE:
+    "Uzun yazan birisin: malzeme varsa birkaç paragraflık açıklama yazarsın, her paragraf ayrı bir iş görür (açıklama, örnek, karşı örnek, sonuç). Paragrafları boş satırla ayır. Malzeme yoksa kısa yaz; paragraf sayısını doldurmak için uzatma.",
+  TEK_SATIR:
+    "Tek satırcısın: çoğu entry'n tek kelime, bir ad koyma, bir hüküm ya da tek cümle. Açıklamayı alışkanlıkla eklemezsin; 'aynen', 'harika' gibi boş tepki yazmazsın.",
+  KISA: "Kısa yazarsın: çoğu entry'n tek paragraf, birkaç cümle.",
+  ORTA: "Orta uzunlukta yazarsın: bir iki paragraf; konu taşıyorsa uzatır, taşımıyorsa kısa kesersin.",
+  KARMA:
+    "Uzunluğun konuya göre çok değişir: bazen tek kelime, bazen tek cümle, bazen birkaç paragraf. Konu ne istiyorsa onu yaz.",
+};
+
+function voiceLengthSentences(persona: SeedPersona): string[] {
+  const voice = persona.voice!;
+  return [
+    `Olağan entry uzunluğun ${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime, ${voice.paragraphs} paragraf.`,
+    lengthIdentityText[voice.lengthIdentity],
+  ];
+}
+
+function voiceCardSection(voice: PersonaVoice): string[] {
+  return [
+    "",
+    "# Sesin (ses kartı)",
+    "Bu senin kendine has sesin; sözlükteki diğer yazarlardan ayırt edilmeni sağlar. Her entry'de bütün özellikleri sergileme, ama sesin hep tanınsın. Küçük harfle yazarsın.",
+    `Ritim: ${voice.rhythm}`,
+    `Tavır: ${voice.stance}`,
+    `Sevdiğin sözcükler ve kalıplar: ${voice.lexicon.join(", ")}.`,
+    ...(voice.tics.length > 0 ? [`İmza alışkanlıkların: ${voice.tics.join("; ")}.`] : []),
+    `Mizahın: ${voice.humor}.`,
+    `Takıntıların ve bakışın: ${voice.obsessions.join("; ")}.`,
+    `Asla yapmadıkların: ${voice.nevers.join("; ")}.`,
+    "Senin sesinle yazılmış örnekler (yalnız üslup için; içindeki bilgileri kaynak sayma, kopyalama):",
+    ...voice.examples.map(({ baslik, entry }) => `- ${baslik}: ${entry.replaceAll("\n\n", " ¶ ")}`),
+  ];
+}
+
 export function renderPersonaPrompt(persona: SeedPersona): string {
   const interests = [...persona.interests]
     .sort((left, right) => right.weight - left.weight)
@@ -113,12 +155,17 @@ export function renderPersonaPrompt(persona: SeedPersona): string {
     "",
     "# Writing style",
     persona.writing.rhythm,
-    `Olağan entry uzunluğun ${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime. Entry'lerinin çoğu bu aralıkta olsun; tek cümlelik ya da yalnız bkz'den ibaret entry istisnadır, kural değil.`,
+    ...(persona.voice
+      ? voiceLengthSentences(persona)
+      : [
+          `Olağan entry uzunluğun ${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime. Entry'lerinin çoğu bu aralıkta olsun; tek cümlelik ya da yalnız bkz'den ibaret entry istisnadır, kural değil.`,
+        ]),
     "Aşağıdaki yapısal tercihler sabit bir sıra veya her entry'de uygulanacak şablon değildir. Konuya göre farklı bir alt kümesini kullan; açılış, paragraf ritmi, argüman sırası ve kapanışı mekanik biçimde tekrarlama.",
     list(persona.writing.structure),
     "Kaçınılacak yazım kalıpları:",
     list(persona.writing.avoidPatterns),
     "",
+    ...(persona.voice ? voiceCardSection(persona.voice) : []),
     "# Humor and conflict",
     persona.humor.style,
     `Mizahın yöneldiği konular: ${persona.humor.preferredTargets.join("; ")}.`,

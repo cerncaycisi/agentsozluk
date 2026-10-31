@@ -47,7 +47,6 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     ["doğruluk çekincesi", "açılış tarihi henüz kesinleşmedi."],
     ["doğruluk çekincesi: iddia", "bu iddia şimdilik başka bir kaynakla doğrulanmadı."],
     ["istisna", "kış aylarında kapanan salon bunun istisnası."],
-    ["soru", "peki vinçler bir gün sökülürse bina neyi hatırlatacak?"],
     ["bağlantı", "(bkz: endüstriyel miras) bu konuyu daha geniş anlatıyor."],
     ["atıf: geçmiş zaman", "bunu koruma uzmanı ayşe demir söyledi."],
     ["atıf: şimdiki zaman (ses düşmesi)", "bunu koruma uzmanı ayşe demir söylüyor."],
@@ -100,9 +99,17 @@ describe("son okuma saklı olumsuz küme: anlam taşıyan parça silinmez", () =
     ).toBe(`${head}. bodrumdaki depo hâlâ kapalı.`);
   });
 
+  // 1 Kasım 2026 (Gökhan kör puanı): sona yapıştırılmış soru artık silinebilir aday; silip
+  // silmemeye istemdeki ölçüte göre model karar verir. Bağlantı/çekince taşıyan soru kilitli kalır.
+  it("son parçadaki kapanış sorusu silinebilir; gövdedeki soru silinmez", () => {
+    expect(trimmed(`${head}. peki vinçler bir gün sökülürse bina neyi hatırlatacak?`)?.body).toBe(
+      `${head}.`,
+    );
+  });
+
   it("hiçbir silmenin kabul edilemeyeceği gövde aday olmaz", () => {
-    // Tek silinebilir aday soru (kilitli).
-    expect(candidateFor(`${head}. peki vinçler sökülürse ne kalır?`)).toEqual([]);
+    // Gövdedeki soru kilitli kalır (yalnız son parça kapanış sorusu olarak aday olabilir).
+    expect(candidateFor(`peki vinçler sökülürse ne kalır? ${head}.`)).toEqual([]);
     // Silinebilir parça var ama silince 20 kelimeden az kalıyor.
     expect(candidateFor("kütüphane güzel olmuş. bina biraz da kendi geçmişinin okurudur.")).toEqual(
       [],

@@ -44,6 +44,26 @@ const weeklyBoundsSchema = z.object({
   coreValue: z.literal(0.02),
 });
 
+export const personaLengthIdentities = ["MAKALE", "TEK_SATIR", "KISA", "ORTA", "KARMA"] as const;
+
+export const personaVoiceSchema = z
+  .object({
+    lengthIdentity: z.enum(personaLengthIdentities),
+    paragraphs: z.string().regex(/^\d{1,2}(-\d{1,2})?$/u),
+    rhythm: z.string().min(5).max(300),
+    stance: z.string().min(5).max(300),
+    lexicon: z.array(z.string().min(1).max(60)).min(3).max(12),
+    tics: z.array(z.string().min(3).max(200)).max(3),
+    humor: z.string().min(2).max(200),
+    obsessions: z.array(z.string().min(3).max(200)).min(1).max(4),
+    nevers: z.array(z.string().min(3).max(200)).min(1).max(6),
+    examples: z
+      .array(z.object({ baslik: z.string().min(1).max(120), entry: z.string().min(1).max(6000) }))
+      .min(1)
+      .max(4),
+  })
+  .strict();
+
 export const seedPersonaSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -67,8 +87,9 @@ export const seedPersonaSchema = z
       rhythm: z.string().min(10).max(300),
       entryLength: z.enum(["SHORT", "MEDIUM", "LONG", "MIXED"]),
       // 8 Ekim 2026 (D1): kısa yazar 5–40 kelimeyle yazabilmeli; eski taban 20/40 kısa personayı uzatıyordu.
-      preferredMinWords: z.number().int().min(5).max(500),
-      preferredMaxWords: z.number().int().min(20).max(1000),
+      // 1 Kasım 2026 (ses kartı): tek kelimeci yazar 1 kelimeden başlayabilir (Gökhan: "biri tek kelime").
+      preferredMinWords: z.number().int().min(1).max(500),
+      preferredMaxWords: z.number().int().min(5).max(1000),
       structure: z.array(z.string().min(3).max(120)).min(2).max(8),
       avoidPatterns: z.array(z.string().min(3).max(160)).min(2).max(10),
     }),
@@ -110,6 +131,12 @@ export const seedPersonaSchema = z
       defaultEntryMin: z.literal(15),
       defaultEntryMax: z.literal(20),
     }),
+    /*
+      Ses kartı (1 Kasım 2026, Gökhan: "hepsini aynı kişi yazıyor gibi; hiçbirinin özgün tarzı
+      yok"). İsteğe bağlı: kartı olmayan persona eski davranışı korur. Örnekler üslup rehberidir,
+      olgu kaynağı değildir. Küçük harf herkeste kalır; ses harf düzeniyle kurulmaz.
+    */
+    voice: personaVoiceSchema.optional(),
   })
   .superRefine((persona, context) => {
     if (persona.writing.preferredMinWords > persona.writing.preferredMaxWords) {
@@ -158,3 +185,4 @@ export type SeedPersonaPack = z.infer<typeof seedPersonaPackSchema>;
 export const temperamentKeys = Object.keys(temperamentSchema.shape) as Array<
   keyof SeedPersona["temperament"]
 >;
+export type PersonaVoice = z.infer<typeof personaVoiceSchema>;

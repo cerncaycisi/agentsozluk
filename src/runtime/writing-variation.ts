@@ -31,7 +31,8 @@ export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
   Liste boyları korunuyor: madde eklenmedi, yerinde değiştirildi.
 */
 // 11 (30 Ekim 2026): entry açısı ataması ve aşırı tekrarlanan bakışın adı (seçim tohumu aynı).
-export const RUNTIME_WRITING_VARIATION_VERSION = 11;
+// 12 (1 Kasım 2026): ses kartlı yazarda uzunluk kimliği, açı/yaklaşım havuzu yok.
+export const RUNTIME_WRITING_VARIATION_VERSION = 12;
 /*
   Seçim tohumu render sürümünden ayrı: sürüm 9 yalnız render'ı değiştirdi (iskelet çıktı), seçim
   aynı. Tohum 8'de kalınca her koşu önceki sürümdeki uzunluk formunu alır; yerel ölçümde
@@ -198,6 +199,8 @@ export interface RuntimeWritingPersona {
   >;
   /** Personanın kendi ritim ve mizah tarifi; yazma anına yakın hatırlatılır (#4). */
   voice?: { rhythm: string; humorStyle: string };
+  /** Ses kartının uzunluk kimliği (1 Kasım 2026); varsa açı/yaklaşım havuzu yerine kart yönetir. */
+  lengthIdentity?: "MAKALE" | "TEK_SATIR" | "KISA" | "ORTA" | "KARMA";
 }
 
 const approaches = [
@@ -329,6 +332,9 @@ function angleWeights(t: RuntimeWritingPersona["temperament"] = {}): number[] {
 
 /** Uzun bağlamdan sonra, istemin sonunda aynı açının kısa hatırlatması (v2). */
 export function renderEntryAngleReminder(runId: string, persona: RuntimeWritingPersona): string {
+  // Ses kartlı yazara açı atanmaz (1 Kasım 2026); hatırlatma yalnız sondaki soru/özdeyişe dairdir.
+  if (persona.lengthIdentity)
+    return "Yazmadan önce son hatırlatma: ses kartındaki sesinle, başlığın kendisi hakkında ve somut yaz; sona cevap beklemeyen soru ya da özdeyiş ekleme.";
   const digest = createHash("sha256")
     .update(`agent-sozluk-writing-variation:v10-persona:${runId}`)
     .digest();
@@ -338,6 +344,35 @@ export function renderEntryAngleReminder(runId: string, persona: RuntimeWritingP
 
 const overusedLensInstruction =
   "Bu sözlükte en çok tekrarlanan bakış: bir şeyin görünen yanı kadar arkasındaki bakımın, erişimin, kaydın ya da görünmez emeğin de hesaba katılması gerektiğini söylemek ('X kadar Y de önemli'). Konunun özü gerçekten bu değilse bu açıyı kurma; konunun kendisine bak: ne olduğu, nasıl göründüğü, sesi ya da tadı, tarihi, neyi sevip neyi abartılı bulduğun ya da komik yanı.";
+
+/*
+  Uzunluk kimliği (1 Kasım 2026). Ölçüm: 14 günde 4426 entry'nin hepsi 8–89 kelime. Karma yazar
+  koşudan koşuya gerçekten değişir; makaleci uzun, tek satırcı tek satır yazar. Her koşu aynı
+  tohumdan seçer (yeniden oynatma deterministik).
+*/
+function identityLengthLine(
+  identity: NonNullable<RuntimeWritingPersona["lengthIdentity"]>,
+  byte: number,
+): string {
+  if (identity === "MAKALE")
+    return byte % 4 === 0
+      ? "Uzunluk: bu sefer kısa tut; konu uzun yazıyı taşımıyorsa birkaç cümle yeter."
+      : "Uzunluk: konu malzeme taşıyorsa uzun yaz; birkaç paragraf, her biri ayrı bir şey anlatsın, aralarında boş satır.";
+  if (identity === "TEK_SATIR")
+    return byte % 3 === 0
+      ? "Uzunluk: tek kelime ya da kısa bir ad koyma; başlıkla birlikte anlam taşısın."
+      : "Uzunluk: tek satır; tek cümle ya da kısa bir hüküm.";
+  if (identity === "KARMA") {
+    const pick = byte % 10;
+    return pick < 2
+      ? "Uzunluk: bu sefer tek kelime ya da tek satır."
+      : pick < 7
+        ? "Uzunluk: bu sefer kısa ya da orta; bir paragraf."
+        : "Uzunluk: bu sefer uzun yazabilirsin; konu taşıyorsa birkaç paragraf, aralarında boş satır.";
+  }
+  if (identity === "KISA") return "Uzunluk: kısa; birkaç cümle, tek paragraf.";
+  return "Uzunluk: bir iki paragraf; konu taşımıyorsa kısa kes.";
+}
 
 export function renderRuntimeWritingVariation(
   runId: string,
@@ -354,6 +389,18 @@ export function renderRuntimeWritingVariation(
   const length = lengthTarget(persona, digest[7]!) ?? `- Form: ${formInstructions[variation.form]}`;
   const approach = approaches[weightedPick(approachWeights(persona.temperament), digest[8]!)]!;
   const angle = entryAngles[weightedPick(angleWeights(persona.temperament), digest[9]!)]!;
+  /*
+    Ses kartlı yazar (1 Kasım 2026): ortak yaklaşım/açı havuzu herkese her rolü sırayla
+    oynatıyordu (Astra üçüncü tur); kartlı yazarda sesi kart, uzunluğu kimlik belirler.
+  */
+  if (persona.lengthIdentity)
+    return [
+      "# Bu run için yazım varyasyonu",
+      ...(persona.voice ? [`Sesin: ${persona.voice.rhythm} ${persona.voice.humorStyle}`] : []),
+      identityLengthLine(persona.lengthIdentity, digest[7]!),
+      "Ses kartındaki sesinle yaz. Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma; sona cevap beklemeyen soru ya da özdeyiş ekleme.",
+      ...(options.lensGuidance ? [overusedLensInstruction] : []),
+    ].join("\n");
   return [
     "# Bu run için yazım varyasyonu",
     ...(persona.voice ? [`Sesin: ${persona.voice.rhythm} ${persona.voice.humorStyle}`] : []),

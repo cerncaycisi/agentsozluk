@@ -15,11 +15,13 @@ import { runtimeReadTopicFullBodiesKey } from "@/modules/agents/domain/perceptio
   (Richard Wright: "kaydı/kayıtla"). Ayrı ve dar soru 2 Ekim etiketli setinde yayımlanmış
   TEKRAR'ın 21/30'unu durdurdu, KISMI'nin 30/30'unu ve YENI'nin 55/55'ini korudu.
 
-  Hata ya da süre yetmezse taslak YAYIMLANIR (istemdeki "emin değilsen YAYIMLA" ile aynı
-  yön); bu durum ayrı telemetri olayıyla sayılır.
+  1 Kasım 2026 (Gökhan kör puanı, Fable ve Astra üçüncü tur): kapı artık fail-closed. Hata, süre
+  ya da çağrı bütçesi yetmezse taslak YAYIMLANMAZ (denetlenmemiş entry yok); bu durum yine ayrı
+  telemetri olayıyla sayılır. Yeni başlığın ilk entry'si de (`CREATE_TOPIC_WITH_ENTRY`) kapıdan
+  geçer: haber ve tanıtım özetleri en çok oradan geliyordu.
 */
 
-/** Koşu başına en fazla bu kadar yenilik çağrısı; fazlası denetlenmeden geçer ve sayılır. */
+/** Koşu başına en fazla bu kadar yenilik çağrısı; fazlası denetlenemediği için yayımlanmaz. */
 export const runtimeNoveltyCallLimit = 2;
 
 export const runtimeNoveltyVerdictSchema = z
@@ -97,6 +99,13 @@ export function runtimeNoveltyCandidates(
     if (topic && typeof topic.id === "string") topics.set(topic.id, topic);
   }
   return decision.actions.flatMap((action) => {
+    if (action.actionType === "CREATE_TOPIC_WITH_ENTRY") {
+      const title = action.input.title;
+      const body = action.input.body;
+      return typeof title === "string" && typeof body === "string"
+        ? [{ sequence: action.sequence, topicTitle: title, previousEntries: [], draft: body }]
+        : [];
+    }
     if (action.actionType !== "CREATE_ENTRY") return [];
     const topicId = action.input.topicId;
     const draft = action.input.body;
@@ -133,19 +142,17 @@ export function runtimeNoveltyCandidates(
               .slice(0, runtimeNoveltySimilarEntryCount)
               .map(({ entry }) => entry),
           ];
-    return previousEntries.length === 0
-      ? []
-      : [
-          {
-            sequence: action.sequence,
-            topicTitle: topic.title,
-            previousEntries,
-            draft,
-            ...(typeof topic.visibleEntryCount === "number"
-              ? { totalEntryCount: topic.visibleEntryCount }
-              : {}),
-          },
-        ];
+    return [
+      {
+        sequence: action.sequence,
+        topicTitle: topic.title,
+        previousEntries,
+        draft,
+        ...(typeof topic.visibleEntryCount === "number"
+          ? { totalEntryCount: topic.visibleEntryCount }
+          : {}),
+      },
+    ];
   });
 }
 

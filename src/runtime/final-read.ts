@@ -270,7 +270,26 @@ function boundToNext(units: readonly RuntimeFinalReadUnit[], index: number): boo
 }
 
 function removableUnit(units: readonly RuntimeFinalReadUnit[], index: number): boolean {
-  return index >= 1 && !lockedUnit(units[index]!.text) && !boundToNext(units, index);
+  if (index < 1 || boundToNext(units, index)) return false;
+  return closingQuestionUnit(units, index) || !lockedUnit(units[index]!.text);
+}
+
+/*
+  Sona yapıştırılmış soru (1 Kasım 2026, Gökhan kör puanı: soruyla biten 8 entry ortalama 2,4;
+  Fable ve Astra üçüncü tur). Yalnız SON parça, soru işaretiyle bitiyorsa ve bağlantı, alıntı,
+  doğruluk çekincesi ya da anlam koruması taşımıyorsa silinebilir. Gövdedeki gerçek soru kilitli
+  kalır; silip silmemeye istemdeki ölçüte göre model karar verir.
+*/
+function closingQuestionUnit(units: readonly { text: string }[], index: number): boolean {
+  const text = units[index]!.text.trim();
+  return (
+    index === units.length - 1 &&
+    text.endsWith("?") &&
+    protectedRanges(text).length === 0 &&
+    !textContainsUncertaintyFrame(text) &&
+    !containsVeracityHedge(text) &&
+    !containsMeaningGuard(text)
+  );
 }
 
 /**

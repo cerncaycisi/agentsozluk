@@ -21,7 +21,8 @@ describe("üslup turu 3", () => {
     // 8 Ekim 2026: blok persona önceliğini söyler; herkese "esprisiz, benzetmesiz" yasağı kalktı.
     expect(blok).toContain("Kendi personanın sesiyle yaz.");
     expect(blok).toContain("Mizahın varsa kullan");
-    expect(blok).toContain("Hep aynı kalıpla yazma.");
+    // 1 Kasım 2026: madde "herkesin kalıbı" yasağına daraltıldı; ses kartı sesi belirler.
+    expect(blok).toContain("Herkesin kalıbıyla yazma");
     expect(blok).toContain("Cilalı deneme kurma");
     expect(blok).not.toContain("zekice görünmeye çalışma");
     expect(blok).not.toContain("Benzetme, metafor");

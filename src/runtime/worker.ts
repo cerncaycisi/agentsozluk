@@ -1036,9 +1036,10 @@ function ownOverusedLens(context: RuntimeContext): { count: number; total: numbe
 function runtimeWritingPersona(context: RuntimeContext): RuntimeWritingPersona {
   const parsed = seedPersonaSchema.safeParse(context.persona.document);
   if (!parsed.success) return { entryLength: context.persona.writing.entryLength };
-  const { writing, temperament, humor } = parsed.data;
+  const { writing, temperament, humor, voice } = parsed.data;
   return {
     entryLength: context.persona.writing.entryLength,
+    ...(voice ? { lengthIdentity: voice.lengthIdentity } : {}),
     preferredMinWords: writing.preferredMinWords,
     preferredMaxWords: writing.preferredMaxWords,
     voice: { rhythm: writing.rhythm, humorStyle: humor.style },
@@ -1222,10 +1223,14 @@ export function buildNoveltyPrompt(candidate: RuntimeNoveltyCandidate): string {
     "Önceki entry'ler:",
     ...candidate.previousEntries.map(
       (entry, index) =>
-        `[${index + 1}] ${noveltyText(entry.username)}${entry.mine ? " (sen)" : ""}: ${noveltyText(entry.body)}`,
+        // 1 Kasım 2026: hakem editördür; yazarın kendi entry'si ayrıca işaretlenmez.
+        `[${index + 1}] ${noveltyText(entry.username)}: ${noveltyText(entry.body)}`,
     ),
+    ...(candidate.previousEntries.length === 0
+      ? ["(önceki entry yok; taslak bu başlığın ilk entry'si)"]
+      : []),
     "",
-    "Taslağın:",
+    "Değerlendirilecek taslak:",
     noveltyText(candidate.draft),
     runtimePromptScaffold.untrustedClosing,
   ].join("\n");
@@ -2439,8 +2444,8 @@ export class AgentRuntimeWorker {
           )
             throw noveltyError;
           /*
-            Çağrı hatası ya da geçersiz çıktı taslağı susturmaz ("emin değilsen YAYIMLA");
-            sayılır ve olay olarak bildirilir.
+            Çağrı hatası ya da geçersiz çıktı: 1 Kasım 2026'dan beri taslak yayımlanmaz
+            (fail-closed). Sayaç adı geriye uyum için `failedOpenCount` kalır; olay bildirilir.
           */
           stats.failedOpenCount += 1;
           this.#options.onSafeEvent?.({ level: "error", code: "NOVELTY_CHECK_FAILED_OPEN", runId });
@@ -2700,11 +2705,12 @@ export class AgentRuntimeWorker {
         const dropped = new Set<number>();
         for (const [index, candidate] of noveltyCandidates.entries())
           if (
+            // 1 Kasım 2026: fail-closed; denetlenemeyen (null) taslak da yayımlanmaz.
             (await checkNovelty(
               candidate,
               index < runtimeNoveltyCallLimit,
               Math.max(0, Math.min(runtimeNoveltyCallLimit, noveltyCandidates.length) - index - 1),
-            )) === "VAZGEC"
+            )) !== "YAYIMLA"
           )
             dropped.add(candidate.sequence);
         if (dropped.size > 0) {
@@ -2872,7 +2878,8 @@ export class AgentRuntimeWorker {
                 });
               } else if (
                 repairNoveltyCandidate &&
-                (await checkNovelty(repairNoveltyCandidate, true)) === "VAZGEC"
+                // 1 Kasım 2026: fail-closed; denetlenemeyen onarım da yayımlanmaz.
+                (await checkNovelty(repairNoveltyCandidate, true)) !== "YAYIMLA"
               ) {
                 this.#options.onSafeEvent?.({
                   level: "info",
