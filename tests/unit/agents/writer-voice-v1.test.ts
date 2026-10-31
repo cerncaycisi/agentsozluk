@@ -29,6 +29,8 @@ describe("ses kartları V1", () => {
     for (const card of writerVoiceV1Targets)
       for (const { entry } of card.examples) {
         expect(entry).toBe(entry.toLocaleLowerCase("tr-TR"));
+        // Veritabanı entry gövdesine en az 10 karakter şartı koyar (Sol 6.1, 1 Kasım).
+        expect(entry.trim().length).toBeGreaterThanOrEqual(10);
         expect(entry.trim().endsWith("?")).toBe(false);
       }
   });
@@ -70,7 +72,7 @@ describe("ses kartları V1", () => {
     );
     expect(text).not.toContain("Yaklaşım ipucu");
     expect(text).not.toContain("Bu entry'nin açısı");
-    expect(text).toMatch(/Uzunluk: (tek kelime|tek satır)/u);
+    expect(text).toMatch(/Uzunluk: (kısa bir ad koyma|tek satır)/u);
     expect(
       renderEntryAngleReminder(runId, { entryLength: "MIXED", lengthIdentity: "KARMA" }),
     ).toContain("ses kartındaki sesinle");

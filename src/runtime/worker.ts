@@ -151,6 +151,11 @@ export interface RuntimeWorkerOptions {
   sourceReader?: Pick<SafeSourceReader, "read">;
   heartbeatIntervalMs?: number;
   pollIntervalMs?: number;
+  /*
+    Kalite kapısı zorunlu (1 Kasım 2026, Sol 6.1): açıkken `actionWorthinessProvider` verilmeden
+    worker kurulamaz; kapı sağlayıcısı olmadan hiçbir taslak denetimsiz yayımlanmaz.
+  */
+  requireNoveltyGate?: boolean;
   /** Codex geçici hatasından sonraki tek yeniden denemenin beklemesi (testlerde 0). */
   transientCodexRetryDelayMs?: number;
   processingLanes?: number;
@@ -739,8 +744,16 @@ export function repairLifePayload(
 function repairVoiceLines(context: RuntimeContext): string[] {
   const persona = runtimeWritingPersona(context);
   if (!persona.voice) return [];
+  // Sol 6.1 (1 Kasım): ses kartı onarımda da korunur; yoksa onarılan entry eski sese döner.
+  const card = seedPersonaSchema.safeParse(context.persona.document);
+  const voice = card.success ? card.data.voice : undefined;
   return [
-    `Yazarın sesi: ${persona.voice.rhythm} ${persona.voice.humorStyle} Olağan entry uzunluğu ${persona.preferredMinWords}-${persona.preferredMaxWords} kelime. Yeniden yazarken bu sesi koru; ansiklopedi ya da haber diline dönme.`,
+    `Yazarın sesi: ${persona.voice.rhythm} ${persona.voice.humorStyle} Olağan entry uzunluğu ${persona.preferredMinWords}-${persona.preferredMaxWords} kelime. Yeniden yazarken bu sesi koru; kurumsal rapor diline dönme.`,
+    ...(voice
+      ? [
+          `Ses kartı: ritim: ${voice.rhythm}; tavır: ${voice.stance}; sözcükler: ${voice.lexicon.join(", ")}; asla: ${voice.nevers.join("; ")}. Onarırken de bu sesle yaz; küçük harf.`,
+        ]
+      : []),
   ];
 }
 
@@ -1618,6 +1631,8 @@ export class AgentRuntimeWorker {
   #birthScanNotBefore = 0;
 
   constructor(options: RuntimeWorkerOptions) {
+    if (options.requireNoveltyGate && !options.actionWorthinessProvider)
+      throw new Error("RUNTIME_NOVELTY_PROVIDER_REQUIRED");
     if (options.credentials.length === 0)
       throw new Error("En az bir runtime credential gereklidir.");
     const processingLanes = options.processingLanes ?? MAX_RUNTIME_PROCESSING_LANES;
@@ -2402,6 +2417,10 @@ export class AgentRuntimeWorker {
       ): Promise<"YAYIMLA" | "VAZGEC" | null> => {
         const stats = noveltyStats();
         stats.candidateCount += 1;
+        if (!noveltyProvider) {
+          stats.skippedCount += 1;
+          return null;
+        }
         await heartbeat();
         deadline.throwIfStopped();
         const timeoutMs = Math.min(
@@ -2697,24 +2716,31 @@ export class AgentRuntimeWorker {
           this.#options.onSafeEvent?.({ level: "info", code: "VOICE_REWRITTEN", runId });
         }
       }
-      const noveltyCandidates = noveltyProvider
-        ? runtimeNoveltyCandidates(decision, context.perception)
-        : [];
+      /*
+        Sol 6.1 (1 Kasım): kapı sağlayıcısı yoksa yayım da yoktur (fail-closed). Üretim CLI'ı
+        sağlayıcıyı her zaman verir; `requireNoveltyGate` açıkken eksik yapılandırma kurulumda
+        reddedilir.
+      */
+      const noveltyCandidates =
+        noveltyProvider || this.#options.requireNoveltyGate
+          ? runtimeNoveltyCandidates(decision, context.perception)
+          : [];
       if (noveltyCandidates.length > 0) {
         await enterPhase("VALIDATING");
         const dropped = new Set<number>();
-        for (const [index, candidate] of noveltyCandidates.entries())
-          if (
-            // 1 Kasım 2026: fail-closed; denetlenemeyen (null) taslak da yayımlanmaz.
-            (await checkNovelty(
-              candidate,
-              index < runtimeNoveltyCallLimit,
-              Math.max(0, Math.min(runtimeNoveltyCallLimit, noveltyCandidates.length) - index - 1),
-            )) !== "YAYIMLA"
-          )
-            dropped.add(candidate.sequence);
-        if (dropped.size > 0) {
-          decision = applyRuntimeNoveltyDrops(decision, dropped);
+        const unverified = new Set<number>();
+        for (const [index, candidate] of noveltyCandidates.entries()) {
+          // 1 Kasım 2026: fail-closed; denetlenemeyen (null) taslak da yayımlanmaz.
+          const verdict = await checkNovelty(
+            candidate,
+            index < runtimeNoveltyCallLimit,
+            Math.max(0, Math.min(runtimeNoveltyCallLimit, noveltyCandidates.length) - index - 1),
+          );
+          if (verdict === "VAZGEC") dropped.add(candidate.sequence);
+          else if (verdict === null) unverified.add(candidate.sequence);
+        }
+        if (dropped.size > 0 || unverified.size > 0) {
+          decision = applyRuntimeNoveltyDrops(decision, dropped, unverified);
           this.#options.onSafeEvent?.({ level: "info", code: "NOVELTY_DRAFT_DROPPED", runId });
         }
       }
@@ -2864,7 +2890,7 @@ export class AgentRuntimeWorker {
                   ).actions[0]
                 : undefined;
               const repairNoveltyCandidate =
-                finalReadRepair && noveltyProvider
+                finalReadRepair && (noveltyProvider || this.#options.requireNoveltyGate)
                   ? runtimeNoveltyCandidates(
                       { ...decision, actions: [finalReadRepair] },
                       context.perception,

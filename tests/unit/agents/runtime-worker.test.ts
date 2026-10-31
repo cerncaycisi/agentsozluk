@@ -720,7 +720,7 @@ describe("long-lived agent runtime worker", () => {
     };
     const actionWorthinessProvider: RuntimeProvider = {
       inspect: vi.fn(),
-      invoke: vi.fn().mockResolvedValue({
+      invoke: noveltyPassing(vi.fn()).mockResolvedValue({
         provider: "codex-cli",
         version: "test",
         durationMs: 3,
@@ -1857,7 +1857,7 @@ describe("long-lived agent runtime worker", () => {
           ? {
               actionWorthinessProvider: {
                 inspect: vi.fn(),
-                invoke: vi.fn().mockResolvedValue({
+                invoke: noveltyPassing(vi.fn()).mockResolvedValue({
                   provider: "codex-cli",
                   version: "test",
                   durationMs: 3,
@@ -1956,14 +1956,15 @@ describe("long-lived agent runtime worker", () => {
       const completion = (plane.complete as ReturnType<typeof vi.fn>).mock.calls[0]?.[4] as {
         usageMetadata: { codexIntervals: unknown[] };
       };
-      expect(completion.usageMetadata.codexIntervals).toHaveLength(transientFirst ? 4 : 2);
+      // 1 Kasım 2026: kapı sağlayıcısı varken taslak ve onarım yenilik kapısından da geçer.
+      expect(completion.usageMetadata.codexIntervals).toHaveLength(transientFirst ? 6 : 2);
       expect(
         (completion.usageMetadata.codexIntervals as { phase: RuntimeCodexPhase }[]).map(
           ({ phase }) => phase,
         ),
       ).toEqual(
         transientFirst
-          ? ["DECISION", "DECISION", "ACTION_WORTHINESS", "CONTENT_REPAIR"]
+          ? ["DECISION", "DECISION", "ACTION_WORTHINESS", "NOVELTY", "CONTENT_REPAIR", "NOVELTY"]
           : ["DECISION", "CONTENT_REPAIR"],
       );
       if (!transientFirst)
@@ -4889,6 +4890,24 @@ function noveltyDecisionWith(actions: Array<Record<string, unknown>>) {
   return parsed.data;
 }
 
+/*
+  1 Kasım 2026: yenilik kapısı fail-closed ve yeni/okunmamış başlıkları da denetler. AW sahte
+  sağlayıcısı kapı istemine geçerli bir YAYIMLA döndürsün; diğer çağrılar testin kendi değeri.
+*/
+function noveltyPassing(mock: ReturnType<typeof vi.fn>): ReturnType<typeof vi.fn> {
+  const passing = vi.fn(async (request: RuntimeProviderRequest) =>
+    request.prompt.includes("Değerlendirilecek taslak:")
+      ? { provider: "codex-cli", version: "test", durationMs: 1, output: { karar: "YAYIMLA" } }
+      : mock(request),
+  );
+  return Object.assign(passing, {
+    mockResolvedValue: (value: unknown) => {
+      mock.mockResolvedValue(value);
+      return passing;
+    },
+  }) as unknown as ReturnType<typeof vi.fn>;
+}
+
 const noveltyEntryAction = (targetId: string, body: string) => ({
   type: "CREATE_ENTRY",
   targetId,
@@ -5377,6 +5396,37 @@ describe("runtime novelty gate", () => {
     expect(usageMetadataSchema.parse(failure.usageMetadata).novelty).toBeDefined();
   });
 
+  it("refuses to start without a novelty provider when the gate is required (1 Kasım 2026)", () => {
+    expect(
+      () =>
+        new AgentRuntimeWorker({
+          workerId: "gate-required",
+          credentials: [`agt_${"g".repeat(43)}`],
+          controlPlane: controlPlane(randomUUID()),
+          provider: { inspect: vi.fn(), invoke: vi.fn() },
+          requireNoveltyGate: true,
+        }),
+    ).toThrow("RUNTIME_NOVELTY_PROVIDER_REQUIRED");
+  });
+
+  it("marks a technically unverified draft separately from a quality rejection", () => {
+    const decision = noveltyDecisionWith([
+      noveltyEntryAction(randomUUID(), "Birinci taslak."),
+      noveltyEntryAction(randomUUID(), "İkinci taslak."),
+      noveltyEntryAction(randomUUID(), "Üçüncü taslak."),
+    ]);
+    const applied = applyRuntimeNoveltyDrops(decision, new Set([1]), new Set([2]));
+    expect(applied.actions.map(({ sequence }) => sequence)).toEqual([3]);
+    const reasons = JSON.stringify(applied);
+    expect(reasons).toContain("başlığı okuyana yeni bir şey vermediğine karar verdi");
+    expect(reasons).toContain("teknik nedenle");
+    const onlyTechnical = JSON.stringify(
+      applyRuntimeNoveltyDrops(decision, new Set(), new Set([2])),
+    );
+    expect(onlyTechnical).toContain("teknik nedenle");
+    expect(onlyTechnical).not.toContain("yeni bir şey vermediğine");
+  });
+
   it("does not publish the draft when the novelty call fails (fail-closed, 1 Kasım 2026)", async () => {
     const runId = randomUUID();
     const topicId = randomUUID();
@@ -5569,14 +5619,24 @@ describe("runtime novelty gate", () => {
         ],
         draft: "Wright'ın sürgünü romanlarına yön verdi.",
       },
-      // İlk entry de kapıdan geçer; okunmamış başlığı sunucu zaten reddeder.
+      // İlk entry de kapıdan geçer; entry sayısı bilinmeyen okunmamış başlık da (fail-closed).
       expect.objectContaining({
         sequence: 2,
         previousEntries: [],
         draft: "Boş başlığa ilk tanım.",
       }),
+      expect.objectContaining({
+        sequence: 3,
+        previousEntries: [],
+        draft: "Okunmamış başlığa yazı.",
+      }),
     ]);
-    expect(runtimeNoveltyCandidates(decision, {})).toEqual([]);
+    // Dolu olduğu bilinen okunmamış başlık kapıya girmez: sunucu `TOPIC_NOT_READ` ile reddeder.
+    expect(
+      runtimeNoveltyCandidates(decision, {
+        recentEntries: [{ topic: { id: unread, title: "dolu başlık", entryCount: 4 } }],
+      }).map(({ sequence }) => sequence),
+    ).toEqual([1, 2]);
   });
 
   it("removes dropped drafts and becomes NO_ACTION when nothing public remains", () => {

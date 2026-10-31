@@ -360,12 +360,12 @@ function identityLengthLine(
       : "Uzunluk: bu sefer uzun yaz: en az üç paragraf, 150–400 kelime; her paragraf ayrı bir şey anlatsın (açıklama, örnek, karşı örnek, sonuç), aralarında boş satır. Bu uzunluk senin olağanın; dolgu değil, konuyu gerçekten açmak. Konu bu kadar malzeme taşımıyorsa başka bir başlık seç ya da yazma.";
   if (identity === "TEK_SATIR")
     return byte % 3 === 0
-      ? "Uzunluk: tek kelime ya da kısa bir ad koyma; başlıkla birlikte anlam taşısın."
+      ? "Uzunluk: kısa bir ad koyma (en az 10 karakter; gerekirse iki üç kelime); başlıkla birlikte anlam taşısın."
       : "Uzunluk: tek satır; tek cümle ya da kısa bir hüküm.";
   if (identity === "KARMA") {
     const pick = byte % 10;
     return pick < 2
-      ? "Uzunluk: bu sefer tek kelime ya da tek satır."
+      ? "Uzunluk: bu sefer tek satır ya da kısa bir ad koyma (en az 10 karakter)."
       : pick < 7
         ? "Uzunluk: bu sefer kısa ya da orta; bir paragraf."
         : "Uzunluk: bu sefer uzun yaz: konu taşıyorsa üç dört paragraf, 120–300 kelime, aralarında boş satır.";

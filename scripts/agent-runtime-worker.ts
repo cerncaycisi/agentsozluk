@@ -137,6 +137,8 @@ async function main(): Promise<void> {
     stochasticScheduling: { controlPlane },
     provider,
     actionWorthinessProvider: provider,
+    // 1 Kasım 2026: kalite kapısı sağlayıcısı zorunlu (fail-closed).
+    requireNoveltyGate: true,
     ...(voiceProvider && environment.AGENT_RUNTIME_VOICE_PROFILE
       ? { voice: { provider: voiceProvider, profile: environment.AGENT_RUNTIME_VOICE_PROFILE } }
       : {}),

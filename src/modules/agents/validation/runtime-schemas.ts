@@ -518,8 +518,9 @@ export const usageMetadataSchema = z
       .optional(),
     /*
       Yenilik kapısının ne yaptığı (7 Ekim 2026). failedOpen: çağrı hatası ya da geçersiz
-      çıktı; skipped: koşu başına çağrı sınırı ya da süre yetmedi. İkisinde de taslak
-      denetimsiz yayımlanır. Kimlik veya metin tutulmaz.
+      çıktı; skipped: koşu başına çağrı sınırı, süre ya da sağlayıcı yok. 1 Kasım 2026'dan beri
+      ikisinde de taslak YAYIMLANMAZ (fail-closed; ad geriye uyum için korunur). Kimlik veya metin
+      tutulmaz.
     */
     novelty: z
       .object({
