@@ -5425,6 +5425,7 @@ describe("runtime novelty gate", () => {
     );
     expect(onlyTechnical).toContain("teknik nedenle");
     expect(onlyTechnical).not.toContain("yeni bir şey vermediğine");
+    expect(onlyTechnical).not.toContain("değer bulmadı");
   });
 
   it("does not publish the draft when the novelty call fails (fail-closed, 1 Kasım 2026)", async () => {
@@ -5631,12 +5632,12 @@ describe("runtime novelty gate", () => {
         draft: "Okunmamış başlığa yazı.",
       }),
     ]);
-    // Dolu olduğu bilinen okunmamış başlık kapıya girmez: sunucu `TOPIC_NOT_READ` ile reddeder.
+    // Sol 6.1 2. tur: dolu görünen okunmamış başlık da kapıya girer (algı eskiyebilir).
     expect(
       runtimeNoveltyCandidates(decision, {
         recentEntries: [{ topic: { id: unread, title: "dolu başlık", entryCount: 4 } }],
       }).map(({ sequence }) => sequence),
-    ).toEqual([1, 2]);
+    ).toEqual([1, 2, 3]);
   });
 
   it("removes dropped drafts and becomes NO_ACTION when nothing public remains", () => {

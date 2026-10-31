@@ -138,20 +138,20 @@ export function runtimeNoveltyCandidates(
       reddini yalnız dolu başlığa uygular. Ad ve entry sayısı algıdaki listelerden okunur; sayısı
       bilinmeyen başlık da (fail-closed) kapıdan geçer.
     */
-    if (!topic || typeof topic.title !== "string" || !Array.isArray(topic.entries)) {
-      // Dolu ve okunmamış başlığı sunucu zaten reddeder (`TOPIC_NOT_READ`); çağrı harcanmaz.
-      const seen = perceivedTopic(perception, topicId);
-      return seen.entryCount !== null && seen.entryCount > 0
-        ? []
-        : [
-            {
-              sequence: action.sequence,
-              topicTitle: seen.title ?? "(başlık adı bilinmiyor)",
-              previousEntries: [],
-              draft,
-            },
-          ];
-    }
+    if (!topic || typeof topic.title !== "string" || !Array.isArray(topic.entries))
+      /*
+        Sol 6.1 2. tur: okunmamış başlığa her taslak kapıdan geçer. Algıdaki "dolu" bilgisi
+        eskiyebilir (son entry gizlenirse sunucu `TOPIC_NOT_READ` vermez); bedeli, sunucunun zaten
+        reddedeceği taslak için bir kapı çağrısıdır.
+      */
+      return [
+        {
+          sequence: action.sequence,
+          topicTitle: perceivedTopic(perception, topicId).title ?? "(başlık adı bilinmiyor)",
+          previousEntries: [],
+          draft,
+        },
+      ];
     const allEntries = topic.entries.flatMap((value) => {
       const entry = record(value);
       return entry && typeof entry.body === "string"
@@ -235,9 +235,20 @@ export function applyRuntimeNoveltyDrops(
     selectedSequences: keptPublic ? kept : [],
     safeReason,
   };
+  // Sol 6.1 2. tur: çalışma özeti de teknik/kalite/karışık ayrımını izler.
+  const technicalOnly = qualityDrops.length === 0;
+  const mixed = !technicalOnly && unverifiedSequences.size > 0;
   return applyRuntimeActionWorthinessVerdict(decision, verdict, {
     subject: "yenilik kontrolü",
-    selectedSummary: "Yenilik kontrolü okura yeni bir şey vermeyen taslakları çıkardı.",
-    rejectedSummary: "Yenilik kontrolü hiçbir taslağı yayımlamaya değer bulmadı.",
+    selectedSummary: technicalOnly
+      ? "Yenilik kontrolü tamamlanamayan taslakları yayımlamadı."
+      : mixed
+        ? "Yenilik kontrolü yeni bir şey vermeyen ve denetlenemeyen taslakları çıkardı."
+        : "Yenilik kontrolü okura yeni bir şey vermeyen taslakları çıkardı.",
+    rejectedSummary: technicalOnly
+      ? "Yenilik kontrolü teknik nedenle tamamlanamadığı için hiçbir taslak yayımlanmadı."
+      : mixed
+        ? "Yenilik kontrolü taslakların bir kısmını değersiz buldu, kalanını teknik nedenle denetleyemedi; hiçbiri yayımlanmadı."
+        : "Yenilik kontrolü hiçbir taslağı yayımlamaya değer bulmadı.",
   });
 }
