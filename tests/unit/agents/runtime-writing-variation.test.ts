@@ -253,8 +253,10 @@ describe("aşırı tekrarlanan bakış (30 Ekim 2026)", () => {
         "metin bakımından zayıf bir film.",
         "oyun bakımından zengin bir repertuvar.",
         "ürün bakımından geniş bir yelpaze sunuyor.",
+        "Ayasofya'nın bakımından sorumlu ekip.",
+        "Boğaziçi Köprüsü’nün bakımından sorumlu ekip.",
       ]),
-    ).toBe(5);
+    ).toBe(7);
   });
 });
 describe("entry açısı ataması (30 Ekim 2026, v2)", () => {

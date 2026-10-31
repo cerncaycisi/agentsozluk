@@ -281,7 +281,7 @@ function lengthTarget(persona: RuntimeWritingPersona, byte: number): string | nu
   kurala göre küçültülür (BAKIM, ERİŞİM).
 */
 const overusedLensPattern =
-  /(?<![\p{L}\p{N}])(bakım(?!ından)|(?<=\p{L}(?:nın|nin|nun|nün)\s)bakımından|bakımsız|erişi|görünür|görünmez|kayıt iz|iz bırak)\p{L}*/u;
+  /(?<![\p{L}\p{N}])(bakım(?!ından)|(?<=[\p{L}'’](?:nın|nin|nun|nün)\s)bakımından|bakımsız|erişi|görünür|görünmez|kayıt iz|iz bırak)\p{L}*/u;
 
 export const OVERUSED_LENS_OWN_THRESHOLD = 3;
 
