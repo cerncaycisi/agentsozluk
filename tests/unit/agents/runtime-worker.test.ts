@@ -201,6 +201,16 @@ describe("mercek çeşitliliği istemi (30 Ekim 2026)", () => {
     );
   });
 
+  it("yazım provası (DRY_RUN) da açıyı ve son hatırlatmayı alır", () => {
+    const context = fixtureContext(runId);
+    const prompt = buildRuntimePrompt({
+      ...context,
+      run: { ...context.run, runType: "DRY_RUN" } as typeof context.run,
+    });
+    expect(prompt).toContain("Bu entry'nin açısı");
+    expect(prompt.split("\n").at(-1)).toMatch(/^Yazmadan önce son hatırlatma/u);
+  });
+
   it("az mercekli yazara sayı söylemez", () => {
     const context = fixtureContext(runId);
     context.perception.ownRecentEntries = [

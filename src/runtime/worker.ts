@@ -1017,6 +1017,8 @@ const entryWritingRunTypes: ReadonlySet<string> = new Set([
   "NORMAL_WAKE",
   "ENTRY_BURST",
   "DAILY_CATCH_UP",
+  // Sol 6.1 2. tur: yayım öncesi yazım provası da aynı rehberliği görmeli.
+  "DRY_RUN",
 ]);
 
 /** Yazarın en son (en çok 8) entry'sinde aşırı tekrarlanan bakışın sayısı (30 Ekim 2026). */

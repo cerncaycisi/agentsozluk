@@ -249,8 +249,9 @@ describe("aşırı tekrarlanan bakış (30 Ekim 2026)", () => {
         "simidin tadı fırından çıkınca başka.",
         "takımın oyunu görünüşte iyi.",
         "renk bakımından da fiyat bakımından da iyi.",
+        "köprünün bakımından sorumlu ekibi de hesaba katmak gerekir.",
       ]),
-    ).toBe(4);
+    ).toBe(5);
   });
 });
 describe("entry açısı ataması (30 Ekim 2026, v2)", () => {
