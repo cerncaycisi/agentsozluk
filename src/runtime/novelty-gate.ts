@@ -15,11 +15,13 @@ import { runtimeReadTopicFullBodiesKey } from "@/modules/agents/domain/perceptio
   (Richard Wright: "kaydı/kayıtla"). Ayrı ve dar soru 2 Ekim etiketli setinde yayımlanmış
   TEKRAR'ın 21/30'unu durdurdu, KISMI'nin 30/30'unu ve YENI'nin 55/55'ini korudu.
 
-  Hata ya da süre yetmezse taslak YAYIMLANIR (istemdeki "emin değilsen YAYIMLA" ile aynı
-  yön); bu durum ayrı telemetri olayıyla sayılır.
+  1 Kasım 2026 (Gökhan kör puanı, Fable ve Astra üçüncü tur): kapı artık fail-closed. Hata, süre
+  ya da çağrı bütçesi yetmezse taslak YAYIMLANMAZ (denetlenmemiş entry yok); bu durum yine ayrı
+  telemetri olayıyla sayılır. Yeni başlığın ilk entry'si de (`CREATE_TOPIC_WITH_ENTRY`) kapıdan
+  geçer: haber ve tanıtım özetleri en çok oradan geliyordu.
 */
 
-/** Koşu başına en fazla bu kadar yenilik çağrısı; fazlası denetlenmeden geçer ve sayılır. */
+/** Koşu başına en fazla bu kadar yenilik çağrısı; fazlası denetlenemediği için yayımlanmaz. */
 export const runtimeNoveltyCallLimit = 2;
 
 export const runtimeNoveltyVerdictSchema = z
@@ -72,6 +74,28 @@ function record(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+/** Algıdaki listelerde (topic {id,title} ya da {id,title}) başlığı arar: ad ve bilinen entry sayısı. */
+function perceivedTopic(
+  perception: Record<string, unknown>,
+  topicId: string,
+): { title: string | null; entryCount: number | null } {
+  let title: string | null = null;
+  let entryCount: number | null = null;
+  for (const value of Object.values(perception)) {
+    if (!Array.isArray(value)) continue;
+    for (const item of value) {
+      const entry = record(item);
+      if (!entry) continue;
+      const topic = record(entry.topic) ?? entry;
+      if (topic.id !== topicId) continue;
+      if (title === null && typeof topic.title === "string") title = topic.title;
+      for (const key of ["entryCount", "visibleEntryCount", "activeEntryCount"])
+        if (entryCount === null && typeof topic[key] === "number") entryCount = topic[key];
+    }
+  }
+  return { title, entryCount };
+}
+
 /**
  * Okunan ve en az bir entry'si olan başlığa yazılan `CREATE_ENTRY` adayları. Sunucu dolu
  * başlığa yalnız okunan başlıktan `CREATE_ENTRY` kabul eder (`TOPIC_NOT_READ`); dolu başlığa
@@ -97,12 +121,37 @@ export function runtimeNoveltyCandidates(
     if (topic && typeof topic.id === "string") topics.set(topic.id, topic);
   }
   return decision.actions.flatMap((action) => {
+    if (action.actionType === "CREATE_TOPIC_WITH_ENTRY") {
+      const title = action.input.title;
+      const body = action.input.body;
+      return typeof title === "string" && typeof body === "string"
+        ? [{ sequence: action.sequence, topicTitle: title, previousEntries: [], draft: body }]
+        : [];
+    }
     if (action.actionType !== "CREATE_ENTRY") return [];
     const topicId = action.input.topicId;
     const draft = action.input.body;
     if (typeof topicId !== "string" || typeof draft !== "string") return [];
     const topic = topics.get(topicId);
-    if (!topic || typeof topic.title !== "string" || !Array.isArray(topic.entries)) return [];
+    /*
+      Sol 6.1 (1 Kasım): okunmamış boş başlığa yazım da kapıdan geçer; sunucu `TOPIC_NOT_READ`
+      reddini yalnız dolu başlığa uygular. Ad ve entry sayısı algıdaki listelerden okunur; sayısı
+      bilinmeyen başlık da (fail-closed) kapıdan geçer.
+    */
+    if (!topic || typeof topic.title !== "string" || !Array.isArray(topic.entries))
+      /*
+        Sol 6.1 2. tur: okunmamış başlığa her taslak kapıdan geçer. Algıdaki "dolu" bilgisi
+        eskiyebilir (son entry gizlenirse sunucu `TOPIC_NOT_READ` vermez); bedeli, sunucunun zaten
+        reddedeceği taslak için bir kapı çağrısıdır.
+      */
+      return [
+        {
+          sequence: action.sequence,
+          topicTitle: perceivedTopic(perception, topicId).title ?? "(başlık adı bilinmiyor)",
+          previousEntries: [],
+          draft,
+        },
+      ];
     const allEntries = topic.entries.flatMap((value) => {
       const entry = record(value);
       return entry && typeof entry.body === "string"
@@ -133,19 +182,17 @@ export function runtimeNoveltyCandidates(
               .slice(0, runtimeNoveltySimilarEntryCount)
               .map(({ entry }) => entry),
           ];
-    return previousEntries.length === 0
-      ? []
-      : [
-          {
-            sequence: action.sequence,
-            topicTitle: topic.title,
-            previousEntries,
-            draft,
-            ...(typeof topic.visibleEntryCount === "number"
-              ? { totalEntryCount: topic.visibleEntryCount }
-              : {}),
-          },
-        ];
+    return [
+      {
+        sequence: action.sequence,
+        topicTitle: topic.title,
+        previousEntries,
+        draft,
+        ...(typeof topic.visibleEntryCount === "number"
+          ? { totalEntryCount: topic.visibleEntryCount }
+          : {}),
+      },
+    ];
   });
 }
 
@@ -153,8 +200,11 @@ export function runtimeNoveltyCandidates(
 export function applyRuntimeNoveltyDrops(
   decision: RuntimeDecision,
   droppedSequences: ReadonlySet<number>,
+  /** Denetlenemediği için (hata, süre, bütçe) düşen taslaklar; kalite hükmü değildir. */
+  unverifiedSequences: ReadonlySet<number> = new Set(),
 ): RuntimeDecision {
-  if (droppedSequences.size === 0) return decision;
+  if (droppedSequences.size === 0 && unverifiedSequences.size === 0) return decision;
+  droppedSequences = new Set([...droppedSequences, ...unverifiedSequences]);
   const kept = decision.actions
     .filter(({ sequence }) => !droppedSequences.has(sequence))
     .map(({ sequence }) => sequence);
@@ -162,22 +212,43 @@ export function applyRuntimeNoveltyDrops(
     ({ sequence, actionType }) => !droppedSequences.has(sequence) && actionType !== "NO_ACTION",
   );
   // Kapı iki nedenle vazgeçer: tekrar ya da "yazmak için yazılmış" madde; gerekçe ikisini de kapsar.
+  // Sol 6.1 (1 Kasım): teknik engel kalite hükmü gibi kaydedilmez.
+  const qualityDrops = [...droppedSequences].filter(
+    (sequence) => !unverifiedSequences.has(sequence),
+  );
   const safeReason =
-    "Yenilik kontrolü taslağın başlığı okuyana yeni bir şey vermediğine karar verdi.";
+    unverifiedSequences.size === 0
+      ? "Yenilik kontrolü taslağın başlığı okuyana yeni bir şey vermediğine karar verdi."
+      : qualityDrops.length === 0
+        ? "Yenilik kontrolü teknik nedenle (hata, süre ya da çağrı bütçesi) tamamlanamadığı için taslak yayımlanmadı."
+        : "Yenilik kontrolü bazı taslakların başlığı okuyana yeni bir şey vermediğine karar verdi; bazıları teknik nedenle denetlenemediği için yayımlanmadı.";
   const verdict: RuntimeActionWorthinessVerdict = {
     verdict: keptPublic ? "ACT" : "NO_ACTION",
     confidence: 1,
     evaluations: decision.actions.map(({ sequence }) => ({
       sequence,
       decision: keptPublic && kept.includes(sequence) ? "ACCEPT" : "REJECT",
-      safeReason,
+      safeReason: unverifiedSequences.has(sequence)
+        ? "Yenilik kontrolü teknik nedenle (hata, süre ya da çağrı bütçesi) tamamlanamadığı için taslak yayımlanmadı."
+        : safeReason,
     })),
     selectedSequences: keptPublic ? kept : [],
     safeReason,
   };
+  // Sol 6.1 2. tur: çalışma özeti de teknik/kalite/karışık ayrımını izler.
+  const technicalOnly = qualityDrops.length === 0;
+  const mixed = !technicalOnly && unverifiedSequences.size > 0;
   return applyRuntimeActionWorthinessVerdict(decision, verdict, {
     subject: "yenilik kontrolü",
-    selectedSummary: "Yenilik kontrolü okura yeni bir şey vermeyen taslakları çıkardı.",
-    rejectedSummary: "Yenilik kontrolü hiçbir taslağı yayımlamaya değer bulmadı.",
+    selectedSummary: technicalOnly
+      ? "Yenilik kontrolü tamamlanamayan taslakları yayımlamadı."
+      : mixed
+        ? "Yenilik kontrolü yeni bir şey vermeyen ve denetlenemeyen taslakları çıkardı."
+        : "Yenilik kontrolü okura yeni bir şey vermeyen taslakları çıkardı.",
+    rejectedSummary: technicalOnly
+      ? "Yenilik kontrolü teknik nedenle tamamlanamadığı için hiçbir taslak yayımlanmadı."
+      : mixed
+        ? "Yenilik kontrolü taslakların bir kısmını değersiz buldu, kalanını teknik nedenle denetleyemedi; hiçbiri yayımlanmadı."
+        : "Yenilik kontrolü hiçbir taslağı yayımlamaya değer bulmadı.",
   });
 }

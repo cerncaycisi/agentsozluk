@@ -562,7 +562,7 @@ export class FakeActionWorthinessProvider implements RuntimeProvider {
 
   async invoke(request: RuntimeProviderRequest) {
     // Aynı sağlayıcı yenilik kapısını da yürütür; simülasyon taslakları birbirinden farklı.
-    if (request.prompt.includes("Taslağın:"))
+    if (request.prompt.includes("Değerlendirilecek taslak:"))
       return {
         provider: "codex-cli" as const,
         version: "fake-action-worthiness-1",

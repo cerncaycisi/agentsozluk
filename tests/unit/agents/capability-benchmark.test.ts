@@ -308,12 +308,17 @@ describe("Codex capability benchmark harness", () => {
       inspect: vi
         .fn()
         .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
-      invoke: vi.fn().mockImplementation(async ({ prompt }) => ({
-        ...result(prompt.includes("# Final action-worthiness decision") ? 500 : 1000),
-        output: prompt.includes("# Final action-worthiness decision")
-          ? worthinessOutput()
-          : candidateOutput(),
-      })),
+      invoke: vi.fn().mockImplementation(async ({ prompt }) =>
+        // 1 Kasım 2026: her yayın adayı yenilik kapısından da geçer (fail-closed).
+        prompt.includes("Değerlendirilecek taslak:")
+          ? { ...result(0), output: { karar: "YAYIMLA" } }
+          : {
+              ...result(prompt.includes("# Final action-worthiness decision") ? 500 : 1000),
+              output: prompt.includes("# Final action-worthiness decision")
+                ? worthinessOutput()
+                : candidateOutput(),
+            },
+      ),
     };
 
     const measurement = await runCapacityBenchmark(provider, {
@@ -322,7 +327,7 @@ describe("Codex capability benchmark harness", () => {
       plannedContentRuns: 70,
     });
 
-    expect(provider.invoke).toHaveBeenCalledTimes(20);
+    expect(provider.invoke).toHaveBeenCalledTimes(30);
     expect(
       vi
         .mocked(provider.invoke)
@@ -347,7 +352,8 @@ describe("Codex capability benchmark harness", () => {
         .fn()
         .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
       invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
-        if (prompt.includes("Taslağın:")) return { ...result(200), output: { karar: "YAYIMLA" } };
+        if (prompt.includes("Değerlendirilecek taslak:"))
+          return { ...result(200), output: { karar: "YAYIMLA" } };
         if (prompt.includes("# Final action-worthiness decision"))
           return { ...result(500), output: worthinessOutput() };
         const readTopicId = /"readTopics":\[\{"id":"([0-9a-f-]{36})"/u.exec(prompt)?.[1];
@@ -374,15 +380,17 @@ describe("Codex capability benchmark harness", () => {
 
     const noveltyCalls = vi
       .mocked(provider.invoke)
-      .mock.calls.filter(([request]) => request.prompt.includes("Taslağın:"));
+      .mock.calls.filter(([request]) => request.prompt.includes("Değerlendirilecek taslak:"));
     const denseScenarios = CAPACITY_BENCHMARK_SCENARIOS.filter(
       ({ denseContext }) => denseContext,
     ).length;
     expect(denseScenarios).toBeGreaterThan(0);
-    expect(noveltyCalls).toHaveLength(denseScenarios);
+    // 1 Kasım 2026: kapı artık her yayın adayını denetler, yalnız yoğun bağlamı değil.
+    expect(noveltyCalls).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.length);
     expect(noveltyCalls[0]![0].outputSchema).toBe(runtimeNoveltyVerdictJsonSchema);
     expect(measurement.maxDurationMs).toBe(1700);
-    expect(measurement.p50DurationMs).toBe(1500);
+    // Her senaryoda kapı çağrısı süresi de ölçülür (1 Kasım 2026).
+    expect(measurement.p50DurationMs).toBe(1700);
     expect(
       capabilityBenchmarkDiagnosticsSchema
         .parse({
@@ -392,7 +400,7 @@ describe("Codex capability benchmark harness", () => {
           scenarios: diagnostics,
         })
         .scenarios.filter(({ stages }) => stages.at(-1)?.stage === "NOVELTY"),
-    ).toHaveLength(denseScenarios);
+    ).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.length);
   });
 
   it("measures final-read calls after review and checks novelty on the trimmed body", async () => {
@@ -408,7 +416,7 @@ describe("Codex capability benchmark harness", () => {
           order.push("FINAL_READ");
           return { ...result(300), output: { sil: [2] } };
         }
-        if (prompt.includes("Taslağın:")) {
+        if (prompt.includes("Değerlendirilecek taslak:")) {
           order.push("NOVELTY");
           return { ...result(200), output: { karar: "YAYIMLA" } };
         }
@@ -443,18 +451,16 @@ describe("Codex capability benchmark harness", () => {
 
     const calls = vi.mocked(provider.invoke).mock.calls.map(([request]) => request);
     const finalReadCalls = calls.filter(({ prompt }) => prompt.includes("Parçalar:"));
-    const noveltyCalls = calls.filter(({ prompt }) => prompt.includes("Taslağın:"));
-    const denseScenarios = CAPACITY_BENCHMARK_SCENARIOS.filter(
-      ({ denseContext }) => denseContext,
-    ).length;
+    const noveltyCalls = calls.filter(({ prompt }) => prompt.includes("Değerlendirilecek taslak:"));
     expect(finalReadCalls).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.length);
     expect(finalReadCalls[0]!.outputSchema).toBe(runtimeFinalReadVerdictJsonSchema);
-    expect(noveltyCalls).toHaveLength(denseScenarios);
+    // 1 Kasım 2026: kapı artık her yayın adayını denetler, yalnız yoğun bağlamı değil.
+    expect(noveltyCalls).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.length);
     for (const { prompt } of noveltyCalls) expect(prompt).not.toContain(closing);
     expect(order.join(" ")).not.toMatch(/NOVELTY FINAL_READ|ACTION_WORTHINESS NOVELTY/u);
     expect(measurement.failureRate).toBe(0);
     expect(measurement.maxDurationMs).toBe(2000);
-    expect(measurement.p50DurationMs).toBe(1800);
+    expect(measurement.p50DurationMs).toBe(2000);
     expect(
       capabilityBenchmarkDiagnosticsSchema
         .parse({
@@ -465,10 +471,10 @@ describe("Codex capability benchmark harness", () => {
         })
         .scenarios.map(({ stages }) => stages.map(({ stage }) => stage).join(" ")),
     ).toEqual(
-      expect.arrayContaining([
-        "DECISION_PRIMARY ACTION_WORTHINESS FINAL_READ",
-        "DECISION_PRIMARY ACTION_WORTHINESS FINAL_READ NOVELTY",
-      ]),
+      // 1 Kasım 2026: her senaryo son okumadan sonra kapıdan da geçer.
+      CAPACITY_BENCHMARK_SCENARIOS.map(
+        () => "DECISION_PRIMARY ACTION_WORTHINESS FINAL_READ NOVELTY",
+      ),
     );
   });
 
@@ -506,7 +512,8 @@ describe("Codex capability benchmark harness", () => {
           .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
         invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
           if (prompt.includes("Parçalar:")) return { ...result(300), output: { sil: [] } };
-          if (prompt.includes("Taslağın:")) return { ...result(200), output: { karar: "YAYIMLA" } };
+          if (prompt.includes("Değerlendirilecek taslak:"))
+            return { ...result(200), output: { karar: "YAYIMLA" } };
           if (prompt.includes("# Final action-worthiness decision"))
             return { ...result(options.reviewMs ?? 500), output: twoEntryWorthiness };
           const repaired = prompt.includes(RUNTIME_STRUCTURED_REPAIR_INSTRUCTION);
@@ -664,7 +671,8 @@ describe("Codex capability benchmark harness", () => {
         .fn()
         .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
       invoke: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
-        if (prompt.includes("Taslağın:")) return { ...result(200), output: { karar: "VAZGEC" } };
+        if (prompt.includes("Değerlendirilecek taslak:"))
+          return { ...result(200), output: { karar: "VAZGEC" } };
         if (prompt.includes("# Final action-worthiness decision"))
           return {
             ...result(500),
@@ -699,8 +707,8 @@ describe("Codex capability benchmark harness", () => {
     expect(
       vi
         .mocked(provider.invoke)
-        .mock.calls.filter(([request]) => request.prompt.includes("Taslağın:")),
-    ).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.filter(({ denseContext }) => denseContext).length);
+        .mock.calls.filter(([request]) => request.prompt.includes("Değerlendirilecek taslak:")),
+    ).toHaveLength(CAPACITY_BENCHMARK_SCENARIOS.length);
     expect(measurement.failureRate).toBe(0);
   });
 
