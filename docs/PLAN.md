@@ -13,34 +13,36 @@ trafikten"; "beni beklemeyin çalışın". Fable ve Astra bu itirazı kabul etti
 [Astra](FULL_ANALYSIS_2026-10-30.md)); aktif sıra aşağıdaki "31 Ekim içerik sırası". Eski
 anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `29965486` (31 Ekim 18:42Z, #474):** entry açısı ataması (mercek). Önce: Codex
-  yeniden denemesi (#471), başlık yankısı (#468). Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım
-  23:59 TSİ (AGENTS.md); teknik kapılar, veri silme, "Gökhan kararı bekleyen" kapsam dışı.
-- **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC).
-- **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim tabanı 30 entry: Astra
-  2,93, Fable 2,83, Claude 2,60 (Gökhan pazartesi). En sık kusur sondaki retorik soru/özdeyiş.
+- **Canlı exact `939745e9` (1 Kasım 00:12Z, #476):** kalite kapısı fail-closed (katkı yoksa ya da
+  denetlenemiyorsa yayım yok), ses kartları V1 (36 yazar, 00:37Z uygulandı), sondaki boş soru
+  son okumada silinir. Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ (AGENTS.md).
+- **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC). Yeni
+  kapının denetlenemeyen düşürme oranı, günlük yayım hacmi, uzun entry sıklığı, Codex hataları.
+- **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim tabanı 30 entry: Gökhan
+  2,87 (Astra 2,93, Fable 2,83, Claude 2,60). Gökhan: "hepsini aynı kişi yazıyor gibi".
 - **Takvim:**
-  - 1 Kasım: mercek ön ölçümü (kör etiket); hacim tavanı Sol sonrası canlıya.
-  - 2 Kasım: Gökhan'ın 30 entry puanı; haftalık talep satırı (GSC, metadata denemesi).
+  - 2 Kasım: yeni 20 entry kör okuma (kartlı); kapıyı Gökhan puanıyla ayarla; talep satırı.
   - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü; 3 Kasım sonuç.
   - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
-- **Bitti:** AAAA kaydı silindi (31 Ekim, IPv6 eski sunucuyu gösteriyordu); Son Yankesici birleşti.
 - **Gökhan'dan beklenen:** pazartesi kör puan; bağımsız uyarı yolunun biçimi; Curlie.
 
 ### 31 Ekim içerik sırası (Gökhan + Fable + Astra)
 
 1. **"İyi entry"yi Gökhan tanımlar:** 30 entry kör puan (taban), sonra her hafta 20. Hedef ortalama
    3,8+. Ajan oyları insan görüşü sayılmaz.
-2. **Hacim tavanı (dal `feat/hacim-tavani-20261031`, Sol 6.1 incelemede):** başlık başına günde 2
-   ajan entry'si (`TOPIC_DAILY_AGENT_ENTRY_CAP`), yazar başına günde 5 (planlayıcı uyandırmaz),
-   ilgi menüsü "az yazılmış" önce. Son 7 gün ~276 → ~147 entry/gün.
-3. **Yayım öncesi kalite kapısı:** yenilik kapısındaki "emin değilsen YAYIMLA" tersine; katkı
-   yoksa ya da denetlenemiyorsa yayımlanmaz. Sondaki retorik soru/özdeyiş bu kapıda sorulur.
-4. **Model kararı kaliteye göre:** 3 Kasım gece kota ölçümü, sonra düşük hacimli `gpt-6.1-sol`
+2. **Hacim tavanı rafta:** Gökhan sayı tavanını reddetti ("bu niye çok saçma"); hacmi kalite
+   kapısı belirler. Dal `feat/hacim-tavani-20261031` dağıtılmadı.
+3. **Yayım öncesi kalite kapısı — CANLIDA (#476):** editör ölçütü (konuyla ilgisi, somut bilgi ya
+   da gerekçeli görüş, tekrar yok); denetlenemeyen taslak yayımlanmaz. Gökhan'ın 30 puanında düşük
+   11'in 3'ünü durdurur (eski kapı 0), yüksek 8'in 7'sini geçirir.
+4. **Ses kartları V1 — CANLIDA (1 Kasım 00:37Z):** 36 yazara uzunluk kimliği (makale 5, tek satır
+   6, kısa 8, orta 10, karma 7), ritim, tavır, söz dağarcığı, takıntı ve örnek. Yerel A/B: yazar
+   tanınırlığı 18/30 → 26/30, kalite 2,83 → 2,98; doğallık 2,92 → 2,73 izlenecek.
+5. **Model kararı kaliteye göre:** 3 Kasım gece kota ölçümü, sonra düşük hacimli `gpt-6.1-sol`
    denemesi; ölçüt kabul edilen iyi entry başına kota.
-5. **Durdurulan:** yeni kalıp/kelime yasağı ve istem yaması (mercek #474 son istem değişikliği).
+6. **Durdurulan:** yeni kalıp/kelime yasağı (#476 yasak listesi eklemedi; ölçüt ve ses kartıdır).
    Odak denemesi Ölçü 2 (~20 Kasım) iptal: içerik müdahalesi oluşmadı, kontrollerin yarısı noindex.
-6. **Yan bakım (sınırlı):** Claude'dan bağımsız uyarı yolu; hakem bütçesi iş başına en çok 3 tur;
+7. **Yan bakım (sınırlı):** Claude'dan bağımsız uyarı yolu; hakem bütçesi iş başına en çok 3 tur;
    sayaçta `/entry/` inişlerinin başlığa eşlenmesi; GA4 geri dönüş raporu okuması; yankı
    onarımında ilk harf düzeni.
    - **Mercek (#474):** yerel A/B iki set, ana fikri mercek %32→%10 ve %21→%7, doğallık
