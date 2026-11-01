@@ -35,14 +35,20 @@ describe("ses kartları V1", () => {
       }
   });
 
-  it("kartlı yazarın koşu istemi var olan başlığa yazmayı öne alır, kartsız istem değişmez", () => {
-    const line = "yeni başlığı yalnız o şey sözlükte gerçekten yoksa aç";
+  it("başlık seçimi yönlendirmesi yalnız kartlı yazarın yazım koşusuna girer", () => {
+    const line = "Okumadığın dolu başlığa entry yazma";
+    const carded = { entryLength: "MIXED", lengthIdentity: "KISA" } as const;
     expect(
-      renderRuntimeWritingVariation("run-denge", { entryLength: "MIXED", lengthIdentity: "KISA" }),
+      renderRuntimeWritingVariation("run-denge", carded, { topicChoiceGuidance: true }),
     ).toContain(line);
-    expect(renderRuntimeWritingVariation("run-denge", { entryLength: "MIXED" })).not.toContain(
-      line,
-    );
+    expect(renderRuntimeWritingVariation("run-denge", carded)).not.toContain(line);
+    expect(
+      renderRuntimeWritingVariation(
+        "run-denge",
+        { entryLength: "MIXED" },
+        { topicChoiceGuidance: true },
+      ),
+    ).not.toContain(line);
   });
 
   it("uygulama ses kartını ve uzunluğu yazar, başka alana dokunmaz ve idempotenttir", () => {

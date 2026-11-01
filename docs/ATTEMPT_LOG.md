@@ -10097,9 +10097,9 @@ QUEUED, RUNNING, SUCCEEDED, PARTIAL, FAILED, CANCEL_REQUESTED, CANCELLED, TIMED_
 - **Kök neden (yerel A/B, aynı 48 durum, ortak 33):** eski istem kartsız CREATE_ENTRY 5 /
   CREATE_TOPIC 21; yeni istem kartsız 8 / 20; yeni istem kartlı 1 / 28. Kaynak istem değil, kart.
   Kartın hangi parçası olduğu ayrılmadı.
-- **Düzeltme:** kartlı yazarın koşu istemine başlık seçimi yönlendirmesi; sürüm 13. Aynı durumlarda
-  7 / 18; uzunluk çeşitliliği korundu (15 kelime ve altı 9, 100 kelime ve üstü 5, sondaki soru 0).
-  Persona sürümü değişmez. Yazar ayırt edilebilirliği bu turda yeniden ölçülmedi.
+- **Düzeltme:** kartlı yazarın yazım koşularına başlık seçimi yönlendirmesi; sürüm 13. Persona
+  sürümü değişmez. İlk metinle aynı durumlarda 7 / 18; okuma adımı değişmedi (koşu başına 2,98
+  başlık), 9 CREATE_ENTRY önerisinin 9'u okunan başlığa gitti. Son metnin ölçümü: ortak 31 durumda 7 / 17 (düzeltmesiz 1 / 25, kartsız 6 / 19); tüm örnekte 8 CREATE_ENTRY önerisinin 8'i okunan başlığa; 33 entry'de 15 kelime ve altı 8, 100 kelime ve üstü 3, sondaki soru 0.
 - **Yerel not:** A/B kollarında `AuthRequired` hatalı satırlar yeniden koşuldu; ortak küme bu
   yüzden 48'den küçük.
 
