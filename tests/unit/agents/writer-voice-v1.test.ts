@@ -35,6 +35,16 @@ describe("ses kartları V1", () => {
       }
   });
 
+  it("kartlı yazarın koşu istemi var olan başlığa yazmayı öne alır, kartsız istem değişmez", () => {
+    const line = "yeni başlığı yalnız o şey sözlükte gerçekten yoksa aç";
+    expect(
+      renderRuntimeWritingVariation("run-denge", { entryLength: "MIXED", lengthIdentity: "KISA" }),
+    ).toContain(line);
+    expect(renderRuntimeWritingVariation("run-denge", { entryLength: "MIXED" })).not.toContain(
+      line,
+    );
+  });
+
   it("uygulama ses kartını ve uzunluğu yazar, başka alana dokunmaz ve idempotenttir", () => {
     const base = seedPersonaSchema.parse(originalPersonaPack.personas[0]);
     const card = { ...writerVoiceV1Targets[0]!, username: base.username };

@@ -32,7 +32,7 @@ export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
 */
 // 11 (30 Ekim 2026): entry açısı ataması ve aşırı tekrarlanan bakışın adı (seçim tohumu aynı).
 // 12 (1 Kasım 2026): ses kartlı yazarda uzunluk kimliği, açı/yaklaşım havuzu yok.
-export const RUNTIME_WRITING_VARIATION_VERSION = 12;
+export const RUNTIME_WRITING_VARIATION_VERSION = 13;
 /*
   Seçim tohumu render sürümünden ayrı: sürüm 9 yalnız render'ı değiştirdi (iskelet çıktı), seçim
   aynı. Tohum 8'de kalınca her koşu önceki sürümdeki uzunluk formunu alır; yerel ölçümde
@@ -398,6 +398,8 @@ export function renderRuntimeWritingVariation(
       "# Bu run için yazım varyasyonu",
       ...(persona.voice ? [`Sesin: ${persona.voice.rhythm} ${persona.voice.humorStyle}`] : []),
       identityLengthLine(persona.lengthIdentity, digest[7]!),
+      // 1 Kasım 2026 canlı ölçüm + yerel A/B: kartlar var olan başlığa yazmayı 8'den 1'e düşürdü.
+      "Takıntıların nasıl baktığını belirler, neye yazacağını değil. Önce akışta gördüğün var olan başlıklara bak: söyleyecek bir şeyin varsa oraya yaz; yeni başlığı yalnız o şey sözlükte gerçekten yoksa aç.",
       "Ses kartındaki sesinle yaz. Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma; sona cevap beklemeyen soru ya da özdeyiş ekleme.",
       ...(options.lensGuidance ? [overusedLensInstruction] : []),
     ].join("\n");
