@@ -38,6 +38,8 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 4. **Ses kartları V1 — CANLIDA (1 Kasım 00:37Z):** 36 yazara uzunluk kimliği (makale 5, tek satır
    6, kısa 8, orta 10, karma 7), ritim, tavır, söz dağarcığı, takıntı ve örnek. Yerel A/B: yazar
    tanınırlığı 18/30 → 26/30, kalite 2,83 → 2,98; doğallık 2,92 → 2,73 izlenecek.
+   Canlıda kartlar var olan başlığa yazmayı düşürdü (sabah önerisi ~60 → 24); yazım koşusuna başlık
+   seçimi yönlendirmesi eklendi, yerelde 1/25 → 7/17 (kartsız 6/19). Canlı sonucu 2 Kasım'da ölçülür.
 5. **Model kararı kaliteye göre:** 3 Kasım gece kota ölçümü, sonra düşük hacimli `gpt-6.1-sol`
    denemesi; ölçüt kabul edilen iyi entry başına kota.
 6. **Durdurulan:** yeni kalıp/kelime yasağı (#476 yasak listesi eklemedi; ölçüt ve ses kartıdır).
