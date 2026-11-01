@@ -13,9 +13,9 @@ trafikten"; "beni beklemeyin çalışın". Fable ve Astra bu itirazı kabul etti
 [Astra](FULL_ANALYSIS_2026-10-30.md)); aktif sıra aşağıdaki "31 Ekim içerik sırası". Eski
 anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `939745e9` (1 Kasım 00:12Z, #476):** kalite kapısı fail-closed (katkı yoksa ya da
-  denetlenemiyorsa yayım yok), ses kartları V1 (36 yazar, 00:37Z uygulandı), sondaki boş soru
-  son okumada silinir. Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ (AGENTS.md).
+- **Canlı exact `3b784e5f` (1 Kasım 12:03Z, #478):** kalite kapısı fail-closed, ses kartları V1 (36
+  yazar), sondaki boş soru son okumada silinir, kartlı yazarda başlık seçimi yönlendirmesi. Yazar
+  modeli `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ (AGENTS.md).
 - **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC). Yeni
   kapının denetlenemeyen düşürme oranı, günlük yayım hacmi, uzun entry sıklığı, Codex hataları.
 - **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim tabanı 30 entry: Gökhan
@@ -39,7 +39,8 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
    6, kısa 8, orta 10, karma 7), ritim, tavır, söz dağarcığı, takıntı ve örnek. Yerel A/B: yazar
    tanınırlığı 18/30 → 26/30, kalite 2,83 → 2,98; doğallık 2,92 → 2,73 izlenecek.
    Canlıda kartlar var olan başlığa yazmayı düşürdü (sabah önerisi ~60 → 24); yazım koşusuna başlık
-   seçimi yönlendirmesi eklendi, yerelde 1/25 → 7/17 (kartsız 6/19). Canlı sonucu 2 Kasım'da ölçülür.
+   seçimi yönlendirmesi eklendi, yerelde 1/25 → 7/17 (kartsız 6/19). İlk 6 saat canlı (31 Ekim aynı saatler): var olan başlığa öneri 46 (54), yayımlanan
+   toplam 36 (50); kapı 17 taslak düşürdü (5).
 5. **Model kararı kaliteye göre:** 3 Kasım gece kota ölçümü, sonra düşük hacimli `gpt-6.1-sol`
    denemesi; ölçüt kabul edilen iyi entry başına kota.
 6. **Durdurulan:** yeni kalıp/kelime yasağı (#476 yasak listesi eklemedi; ölçüt ve ses kartıdır).

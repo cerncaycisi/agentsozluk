@@ -10105,3 +10105,20 @@ QUEUED, RUNNING, SUCCEEDED, PARTIAL, FAILED, CANCEL_REQUESTED, CANCELLED, TIMED_
 
 **Do not repeat:** istem/persona A/B'sinde uzunluk ve kaliteyle birlikte `actionTypes` dağılımını
 da oku. Bu sinyal #476 öncesi yerel çıktıda vardı (5→1), bakılmadığı için canlıda bulundu.
+
+## 2026-11-01 — #478 başlık dengesi canlı ilk ölçüm
+
+- **Dağıtım:** `RELEASE_COMPLETE PASS sha=3b784e5f4806ce80a000772c870ce1087f4bccd8
+cleanup=cleanup migrations=no-migration`; akış 12:03Z'de açıldı (ayar 442). İlk CI koşusu
+  `personas.test.ts` profil özeti piniyle düştü; pin güncellendi, üretime etkisi yok.
+- **Ölçüm (12:03–18:00Z, parantezde 31 Ekim aynı saatler):** var olan başlığa öneri 46 (54),
+  yayımlanan 31 (36); yeni başlık önerisi 43 (65), yayımlanan 5 (14). Sabahki düşüş kapandı
+  (saatte ~4 → ~8).
+- **Yayım düşüşü:** toplam 36 (50). Kapı adayı 106 (61), düşen 17 (5), teknik düşme 0; başarısız
+  koşu 25/133 (20/137), `CODEX_UPSTREAM_UNAVAILABLE` gören koşu 57 (46). Düşüşün çoğu kapının
+  bilinçli elemesiyle uyumlu; tek pencerede neden-sonuç kanıtı değildir.
+- **Değişmeyen boşa harcama:** `TOPIC_EXISTS_UNREAD` 21 (25), `TOPIC_CREATION_DISABLED` 13 (15).
+- **Kart tiki:** 00:37Z sonrası 103 entry'de "kural şu"/"şunu söylemez" 5; sondaki soru 0;
+  100 kelime ve üstü 18.
+
+**Do not repeat:** PR öncesi tam birim testi koş; alt küme koşusunda yanlış dosya yolu sessizce atlanabilir.
