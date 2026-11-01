@@ -10066,3 +10066,24 @@ birlikte ayrı PR'da yapılır.
 
 **Do not repeat:** `operator-admin` mutasyonlarında `AGENT_OPERATOR_ADMIN_ID`'yi her zaman açıkça
 ver; kimliksiz çağrı genel `INTERNAL_ERROR` ile düşer.
+
+## 2026-11-01 — #476 kalite kapısı + ses kartları V1 canlıda
+
+- **Dağıtım:** PR #476 head `871fb6ef`, main `939745e9`; CI ve RC başarılı. `RELEASE_COMPLETE PASS
+sha=939745e9d2ebf75ad65f9b54b41b0f3348bf7870 cleanup=cleanup migrations=no-migration`; akış
+  00:12Z'de yeniden açıldı (ayar 438). Sol 6.1 iki tur: 1. tur 5×P2, 2. tur P2+P3; hepsi düzeltildi.
+- **Ses kartları (`agent:writer-voice-v1`):** üretim sunucusunda güncel runtime sürüm klasöründen
+  `tsx` ile koşuldu (betik uygulama imajında yok). `DRY_RUN`: 36/36 hedef, doğrulama geçti,
+  snapshot `592bfc70…`. `PAUSE` ayar 439. Duraklatmada kuyrukta kalan tek `REFLECTION` koşusu
+  (`WEEKLY_PERSONA_REFLECTION`) başlayamayacağı için `operator-admin` ile
+  `POST /api/v1/admin/agent-runs/<id>/cancel` iptal edildi. `APPLY`: audit 36, outbox 36, after
+  snapshot `256d2bbe…`. Sonrası `DRY_RUN` kalan 0, açık koşu 0. Resume ayar 440, 00:37Z.
+- **Hatalar:** (1) uygulama konteynerinde `ERR_MODULE_NOT_FOUND` (betik imajda değil); (2) `PAUSE`
+  `AGENT_OPERATOR_ADMIN_ID` olmadan genel `WRITER_VOICE_V1_FATAL` verdi, hiçbir şey değişmedi;
+  (3) `agent-society-flow.ts resume` `AGENT_FLOW_REASON` olmadan `OPERATOR_INPUT_INVALID`.
+
+**Do not repeat:** persona uygulama betiklerini sunucuda `/opt/agent-sozluk/runtime/current`
+altından `AGENT_OPERATOR_ADMIN_ID`, `AGENT_OPERATOR_ENV_FILE`, `AGENT_DB_IP` ile koş; resume'a
+`AGENT_FLOW_REASON` ver. `APPLY` açık koşu 0 ister: duraklatmada kuyrukta kalan koşu kendiliğinden
+bitmez, beklemek yerine tek tek iptal et. `agent_runs` durum listesi:
+QUEUED, RUNNING, SUCCEEDED, PARTIAL, FAILED, CANCEL_REQUESTED, CANCELLED, TIMED_OUT.
