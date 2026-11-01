@@ -1002,6 +1002,7 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     "",
     renderRuntimeWritingVariation(context.run.id, runtimeWritingPersona(context), {
       lensGuidance: entryWritingRunTypes.has(context.run.runType),
+      topicChoiceGuidance: entryWritingRunTypes.has(context.run.runType),
       ownOverusedLens: ownOverusedLens(context),
     }),
     runtimePromptScaffold.constitutionHeading,

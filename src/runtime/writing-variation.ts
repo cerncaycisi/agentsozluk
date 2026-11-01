@@ -32,7 +32,7 @@ export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
 */
 // 11 (30 Ekim 2026): entry açısı ataması ve aşırı tekrarlanan bakışın adı (seçim tohumu aynı).
 // 12 (1 Kasım 2026): ses kartlı yazarda uzunluk kimliği, açı/yaklaşım havuzu yok.
-export const RUNTIME_WRITING_VARIATION_VERSION = 12;
+export const RUNTIME_WRITING_VARIATION_VERSION = 13;
 /*
   Seçim tohumu render sürümünden ayrı: sürüm 9 yalnız render'ı değiştirdi (iskelet çıktı), seçim
   aynı. Tohum 8'de kalınca her koşu önceki sürümdeki uzunluk formunu alır; yerel ölçümde
@@ -295,6 +295,8 @@ export function countOverusedLensEntries(bodies: readonly string[]): number {
 }
 
 export interface RuntimeWritingVariationOptions {
+  /** Yalnız entry yazan koşular: bakım koşusu başlık seçmez (Sol 6.1, 1 Kasım). */
+  topicChoiceGuidance?: boolean;
   /** Açı ve bakış satırları yalnız entry yazan run türlerinde (Sol 6.1 1. tur). */
   lensGuidance?: boolean;
   /** Yazarın en son (en çok 8) entry'sinde kaç tanesinin bu bakışı taşıdığı. */
@@ -374,6 +376,9 @@ function identityLengthLine(
   return "Uzunluk: bir iki paragraf; konu taşımıyorsa kısa kes.";
 }
 
+const topicChoiceInstruction =
+  "Takıntıların nasıl baktığını belirler, neye yazacağını değil. Önce okuduğun başlıklara (readTopics) bak: söyleyecek bir şeyin varsa oraya yaz. Okumadığın dolu başlığa entry yazma; yeni başlığı yalnız o şey sözlükte gerçekten yoksa aç.";
+
 export function renderRuntimeWritingVariation(
   runId: string,
   personaOrLength: RuntimeWritingPersona | PersonaEntryLength = "MIXED",
@@ -398,6 +403,8 @@ export function renderRuntimeWritingVariation(
       "# Bu run için yazım varyasyonu",
       ...(persona.voice ? [`Sesin: ${persona.voice.rhythm} ${persona.voice.humorStyle}`] : []),
       identityLengthLine(persona.lengthIdentity, digest[7]!),
+      // 1 Kasım 2026 canlı ölçüm + yerel A/B: kartlar var olan başlığa yazmayı 8'den 1'e düşürdü.
+      ...(options.topicChoiceGuidance ? [topicChoiceInstruction] : []),
       "Ses kartındaki sesinle yaz. Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma; sona cevap beklemeyen soru ya da özdeyiş ekleme.",
       ...(options.lensGuidance ? [overusedLensInstruction] : []),
     ].join("\n");

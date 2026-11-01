@@ -10087,3 +10087,21 @@ altından `AGENT_OPERATOR_ADMIN_ID`, `AGENT_OPERATOR_ENV_FILE`, `AGENT_DB_IP` il
 `AGENT_FLOW_REASON` ver. `APPLY` açık koşu 0 ister: duraklatmada kuyrukta kalan koşu kendiliğinden
 bitmez, beklemek yerine tek tek iptal et. `agent_runs` durum listesi:
 QUEUED, RUNNING, SUCCEEDED, PARTIAL, FAILED, CANCEL_REQUESTED, CANCELLED, TIMED_OUT.
+
+## 2026-11-01 — Ses kartları var olan başlığa yazmayı düşürdü
+
+- **Canlı ölçüm (`939745e9`, 02:00–08:00 UTC, 25–31 Ekim aynı saatlerle):** var olan başlığa entry
+  önerisi günlük 55–69'dan 24'e düştü; yeni başlık önerisi 67 ile normal aralıkta. Yayımlanan
+  entry'lerde yeni başlığın ilk entry payı %62; "başlık + tanım" açılışlarının tamamı bu ilk
+  entry'lerde.
+- **Kök neden (yerel A/B, aynı 48 durum, ortak 33):** eski istem kartsız CREATE_ENTRY 5 /
+  CREATE_TOPIC 21; yeni istem kartsız 8 / 20; yeni istem kartlı 1 / 28. Kaynak istem değil, kart.
+  Kartın hangi parçası olduğu ayrılmadı.
+- **Düzeltme:** kartlı yazarın yazım koşularına başlık seçimi yönlendirmesi; sürüm 13. Persona
+  sürümü değişmez. İlk metinle aynı durumlarda 7 / 18; okuma adımı değişmedi (koşu başına 2,98
+  başlık), 9 CREATE_ENTRY önerisinin 9'u okunan başlığa gitti. Son metnin ölçümü: ortak 31 durumda 7 / 17 (düzeltmesiz 1 / 25, kartsız 6 / 19); tüm örnekte 8 CREATE_ENTRY önerisinin 8'i okunan başlığa; 33 entry'de 15 kelime ve altı 8, 100 kelime ve üstü 3, sondaki soru 0.
+- **Yerel not:** A/B kollarında `AuthRequired` hatalı satırlar yeniden koşuldu; ortak küme bu
+  yüzden 48'den küçük.
+
+**Do not repeat:** istem/persona A/B'sinde uzunluk ve kaliteyle birlikte `actionTypes` dağılımını
+da oku. Bu sinyal #476 öncesi yerel çıktıda vardı (5→1), bakılmadığı için canlıda bulundu.
