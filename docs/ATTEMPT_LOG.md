@@ -10131,3 +10131,17 @@ cleanup=cleanup migrations=no-migration`; akış 12:03Z'de açıldı (ayar 442).
 - **Yerel deneme (`gpt-5.6-luna` max, kart içeriği bu PR; 36 durum, 32 geçerli, 4'ü hatalı; geçerlilerin bir kısmı entry üretmedi):** 28 entry'de etiketli açılış 0, metin içi
   etiket 0, sondaki soru 0; 22'si 32–71, 6'sı 159–199 kelime. Kör puan alınmadı. Okumada yazarlar
   düzleşmiş ve "kadar ... da" kalıbı görünür: birbirinden ayrımları ölçülmedi.
+
+## 2026-11-02 — Kör okuma 2,85; metadata denemesi genişletilmedi
+
+- **Kör okuma:** `3b784e5f` sonrası 103 entry'den rastgele, yazar başına en çok 1, 20 entry. Gökhan
+  ort 2,85, sapma 1,11 (31 Ekim 2,87, 0,85). Yazar ayrımı: "Biraz". İlk entry 2,8, sonraki 2,9.
+  Açılış etiketli 4 entry ("kural şu", "kapsam", "şu kadarına katılıyorum", "iddia") ort 1,25; kalan
+  16 ort 3,25. Küçük örnek. Etiketler ses kartlarından geliyor.
+- **Sunum hatası:** iki entry elle kopyalanırken harf bozuldu; biri doğru metinle yeniden puanlandı.
+- **Metadata denemesi (19–31 Ekim, önceki 14 gün):** deneme 10 başlık 186→156 gösterim, sıra
+  9,1→6,9, 0 tık; kontrol 137→57, sıra 8,8→8,4, 0 tık. Önkayıtlı eşik yoktu; tık olmadığı için
+  olumlu sayılmadı, 5–15. sıra sayfalarına genişletilmedi. Google verisi 31 Ekim'de bitiyor.
+- **Search Console (4–31 Ekim):** 101 tık, 6.727 gösterim (önceki 28 gün 71, 4.822).
+
+**Do not repeat:** kör okuma metnini dosyadan aynen aktar; deneme başlatırken başarı eşiğini önceden yaz.

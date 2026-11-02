@@ -18,10 +18,10 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
   modeli `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ (AGENTS.md).
 - **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC). Yeni
   kapının denetlenemeyen düşürme oranı, günlük yayım hacmi, uzun entry sıklığı, Codex hataları.
-- **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim tabanı 30 entry: Gökhan
-  2,87 (Astra 2,93, Fable 2,83, Claude 2,60). Gökhan: "hepsini aynı kişi yazıyor gibi".
+- **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim 30 entry 2,87; 2 Kasım 20
+  kartlı entry 2,85 (yükselmedi), yazar ayrımı "Biraz". Etiketle açılan 4 entry 1,25, kalan 16 3,25.
 - **Takvim:**
-  - 2 Kasım: yeni 20 entry kör okuma (kartlı); kapıyı Gökhan puanıyla ayarla; talep satırı.
+  - Sırada: altı kartta açılış etiketi kaldırma (yerel deneme → Sol 6.1 → dağıtım → APPLY).
   - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü; 3 Kasım sonuç.
   - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
 - **Gökhan'dan beklenen:** pazartesi kör puan.
@@ -250,7 +250,8 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
   2. **İç bağlantı kısmı kapandı (29 Ekim, Gökhan: "Uygun"):** 5–15. sıradaki 12 talep sayfasının
      (denemelerdeki başlıklar hariç) adı başka entry'lerde neredeyse hiç geçmiyor; sayfalar tekil
      etkinlik/film/marka adları. Elle bağlantı ilişkiyi zorlardı. Kaldıraç tıklanma oranı: metadata
-     denemesi 14. gün okuması 2 Kasım, olumluysa 5–15. sıradaki sayfalara genişletilir. Çıkan tek
+     denemesi 2 Kasım okuması: iki grupta da 0 tık (deneme sıra 9,1→6,9, kontrol 8,8→8,4); olumlu
+     sayılmadı, genişletilmedi. Çıkan tek
      somut iş kopya birleştirme: "Son Yankesici" (5908) → "Son Yankesici (Noah Segan filmi)" (5867),
      Gökhan onayı 29 Ekim 06:07 UTC; **30 Ekim 06:33Z yapıldı** (ATTEMPT_LOG).
      Önceki metin: 26 Ekim–1 Kasım: entry/başlık bölünmesi (20 adreste canonical, G4, harita, JSON-LD
