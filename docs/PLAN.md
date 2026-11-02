@@ -21,7 +21,7 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 - **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim 30 entry 2,87; 2 Kasım 20
   kartlı entry 2,85 (yükselmedi), yazar ayrımı "Biraz". Etiketle açılan 4 entry 1,25, kalan 16 3,25.
 - **Takvim:**
-  - Sırada: altı kartta açılış etiketi kaldırma (yerel deneme → Sol 6.1 → dağıtım → APPLY).
+  - 3 Kasım 06:30Z turu: #483 dağıt, altı kartı APPLY et (gece ölçümü bozulmasın diye ertelendi).
   - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü; 3 Kasım sonuç.
   - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
 - **Gökhan'dan beklenen:** pazartesi kör puan.
