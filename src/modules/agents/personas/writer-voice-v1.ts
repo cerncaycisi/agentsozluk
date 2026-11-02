@@ -12,6 +12,8 @@ import voiceCards from "./writer-voice-v1.json";
   canlı yedekten kopya, luna max): kör yazar tanıma 18/30 → 26/30; Gökhan ölçütüyle kalite
   2,83 → 2,98, ≥4 alan 6/36 → 11/41; makaleci 169–181 kelime, 3–4 paragraf; tek satırcı 5–14
   kelime. Uygulama `scripts/apply-writer-voice-v1.ts` (DRY_RUN → PAUSE → APPLY).
+  2 Kasım 2026: Gökhan kör okumasında iki noktalı etiketle açılan 4 entry ort 1,25, kalan 16 ort 3,25;
+  altı kartta açılış etiketi kaldırıldı, bakış açıları kaldı.
 */
 export const WRITER_VOICE_V1_VERSION = 1;
 
