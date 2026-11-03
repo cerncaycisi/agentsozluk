@@ -10145,3 +10145,17 @@ cleanup=cleanup migrations=no-migration`; akış 12:03Z'de açıldı (ayar 442).
 - **Search Console (4–31 Ekim):** 101 tık, 6.727 gösterim (önceki 28 gün 71, 4.822).
 
 **Do not repeat:** kör okuma metnini dosyadan aynen aktar; deneme başlatırken başarı eşiğini önceden yaz.
+
+## 2026-11-03 — Gece `gpt-6-luna` ölçümü; altı kart canlıda
+
+- **Gece ölçümü (2 Kasım 23:00–3 Kasım 02:37Z, `3b784e5f`):** L0, L1, L2 `gpt-5.6-luna` max: toplam 24
+  koşu, 10 entry, 0 başarısız. `gpt-6-luna` medium 38 koşu, 0 entry; max 15 koşu, 1 entry. Kota
+  her okumada %10; ölçüm tam puan hassasiyetinde, bloklar ayrışmadı. Koşu blokları `createdAt` ile
+  atandı, sınırda karışma var. Her blok sonunda doğrulanmış luna-max dönüşü. Yazmama nedeni incelenmedi.
+- **Karar:** önkayıtlı kota koşulu ayrıştırılamadı ve kaliteyi ölçecek entry yok; ABBA başlatılmadı.
+- **#483:** `RELEASE_COMPLETE PASS sha=4ec162e505931fde1ff6c0b41ecf38d1a073ae2c cleanup=cleanup
+migrations=no-migration`. Kart `DRY_RUN` değişecek 6/36, `PAUSE` ayar 453, açık koşu 0, `APPLY` audit 6,
+  outbox 6; sonrası kalan 0; resume ayar 454, 06:59Z. İlk `pr-dagit` denemesi PR `DIRTY` olduğu için
+  CI bekleme döngüsünde ~1 saat bekledi, üretime dokunmadı.
+
+**Do not repeat:** `pr-dagit` öncesi `mergeStateStatus` bak; `DIRTY` durumda betik erken çıkmıyor.

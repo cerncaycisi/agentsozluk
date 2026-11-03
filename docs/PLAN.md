@@ -13,16 +13,15 @@ trafikten"; "beni beklemeyin çalışın". Fable ve Astra bu itirazı kabul etti
 [Astra](FULL_ANALYSIS_2026-10-30.md)); aktif sıra aşağıdaki "31 Ekim içerik sırası". Eski
 anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `3b784e5f` (1 Kasım 12:03Z, #478):** kalite kapısı fail-closed, ses kartları V1 (36
-  yazar), sondaki boş soru son okumada silinir, kartlı yazarda başlık seçimi yönlendirmesi. Yazar
-  modeli `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ (AGENTS.md).
+- **Canlı exact `4ec162e5` (3 Kasım 06:59Z, #483):** kalite kapısı fail-closed, ses kartları V1 (36
+  yazar; 6 kartta açılış etiketi kaldırıldı, ayar 454), sondaki boş soru son okumada silinir, başlık
+  seçimi yönlendirmesi. Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ (AGENTS.md).
 - **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC). Yeni
   kapının denetlenemeyen düşürme oranı, günlük yayım hacmi, uzun entry sıklığı, Codex hataları.
 - **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim 30 entry 2,87; 2 Kasım 20
   kartlı entry 2,85 (yükselmedi), yazar ayrımı "Biraz". Etiketle açılan 4 entry 1,25, kalan 16 3,25.
 - **Takvim:**
-  - 3 Kasım 06:30Z turu: #483 dağıt, altı kartı APPLY et (gece ölçümü bozulmasın diye ertelendi).
-  - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü; 3 Kasım sonuç.
+  - Sırada: 2 Kasım'da 4–5 alan entry'lerin ortak yönü; 9 Kasım 20 entry kör okuma.
   - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
 - **Gökhan'dan beklenen:** pazartesi kör puan.
 - **Kapanan (Gökhan, 2 Kasım):** bağımsız uyarı yolu iptal; Curlie rafta; entry alt sınırı 10 karakter kalır.
@@ -42,8 +41,9 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
    Canlıda kartlar var olan başlığa yazmayı düşürdü (sabah önerisi ~60 → 24); yazım koşusuna başlık
    seçimi yönlendirmesi eklendi, yerelde 1/25 → 7/17 (kartsız 6/19). İlk 6 saat canlı (31 Ekim aynı saatler): var olan başlığa öneri 46 (54), yayımlanan
    toplam 36 (50); kapı 17 taslak düşürdü (5).
-5. **Model kararı kaliteye göre:** 3 Kasım gece kota ölçümü, sonra düşük hacimli `gpt-6.1-sol`
-   denemesi; ölçüt kabul edilen iyi entry başına kota.
+5. **Model kararı kaliteye göre:** 3 Kasım gece ölçümü: `gpt-6-luna` medium 38 koşu 0 entry, max 15
+   koşu 1 entry; `gpt-5.6-luna` taban 24 koşu 10 entry; kota üç blokta da %10'da düz (puan
+   hassasiyeti). Yazmadığı için ABBA başlatılmadı, geçiş yok; `gpt-6.1-sol` denemesi de yapılmadı.
 6. **Durdurulan:** yeni kalıp/kelime yasağı (#476 yasak listesi eklemedi; ölçüt ve ses kartıdır).
    Odak denemesi Ölçü 2 (~20 Kasım) iptal: içerik müdahalesi oluşmadı, kontrollerin yarısı noindex.
 7. **Yan bakım (sınırlı):** hakem bütçesi iş başına en çok 3 tur;
