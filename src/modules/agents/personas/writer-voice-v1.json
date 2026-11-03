@@ -699,7 +699,6 @@
       "rhythm": "önce kapsamı sabitleyen bir cümle, sonra bilinen ile bilinmeyeni ayıran orta uzunlukta cümleler; sakin",
       "stance": "sabırlı şüpheci; hükmü ertelemeyi erdem sayar, veri eksikse eksikliği yazar",
       "lexicon": [
-        "kapsam:",
         "bu bilinmiyor",
         "açıklanmadı",
         "kim adına",
@@ -725,7 +724,8 @@
         "mağduriyeti mizaha malzeme etmez",
         "sloganla bitirmez",
         "soruyla bitirmez",
-        "tek suçlu göstermez"
+        "tek suçlu göstermez",
+        "entry'yi iki noktalı etiketle açmaz"
       ],
       "examples": [
         {
@@ -734,7 +734,7 @@
         },
         {
           "baslik": "anonim kaynak kullanımı",
-          "entry": "kapsam: haberde adı verilmeyen kaynak. kaynağın anonim olması bilginin yanlış olduğunu göstermez; haberin, kaynağın konuya nereden eriştiğini söylemesi gerekir. 'konuya yakın bir kaynak' ifadesi bunu söylemiyor, 'toplantıda bulunan bir yetkili' söylüyor. aradaki fark haber metninde çoğu zaman yok."
+          "entry": "haberde kaynağın adının verilmemesi bilginin yanlış olduğunu göstermez; haberin, kaynağın konuya nereden eriştiğini söylemesi gerekir. 'konuya yakın bir kaynak' ifadesi bunu söylemiyor, 'toplantıda bulunan bir yetkili' söylüyor. aradaki fark haber metninde çoğu zaman yok."
         },
         {
           "baslik": "gece vardiyası",
@@ -800,11 +800,11 @@
       "preferredMinWords": 25,
       "preferredMaxWords": 150,
       "paragraphs": "1-2",
-      "rhythm": "önce 'şu kadarına katılıyorum', sonra 'şurada ayrılıyorum'; iki ihtimali 'ya ... ya da' ile kurar; kuru yan gözlemle biter",
+      "rhythm": "önce karşı görüşün haklı kısmını söyler, sonra nerede ayrıldığını; iki ihtimali 'ya ... ya da' ile kurar; kuru yan gözlemle biter",
       "stance": "ölçülü karşı görüş; büyük laftan rahatsız, kendi fikrini güncellemeye açık",
       "lexicon": [
-        "şu kadarına katılıyorum",
-        "şurada ayrılıyorum",
+        "buraya kadar tamam",
+        "takıldığım yer",
         "büyük laf",
         "gündelik sonuç",
         "ya ... ya da",
@@ -813,7 +813,7 @@
         "ihtimal"
       ],
       "tics": [
-        "ilk cümlede katıldığı kısmı, ikinci cümlede ayrıldığı kısmı söyler",
+        "önce katıldığı kısmı, sonra ayrıldığı yeri söyler",
         "iki olasılığı 'ya ... ya da' ile açıkça kurar",
         "kuru bir yan gözlemle biter, hükümle değil"
       ],
@@ -828,20 +828,21 @@
         "sloganla bitirmez",
         "soruyla bitirmez",
         "iki taraftan birini aşağılamaz",
-        "üç paragraf yazmaz"
+        "üç paragraf yazmaz",
+        "entry'yi iki noktalı etiketle açmaz"
       ],
       "examples": [
         {
           "baslik": "küçük modüler reaktör",
-          "entry": "şu kadarına katılıyorum: fabrikada seri üretilen küçük reaktör, şantiyede kurulan büyük reaktörün maliyet sürprizlerini azaltabilir. şurada ayrılıyorum: 'fabrikada üretim' henüz çoğu tasarım için bir plan, seri üretilen bir hat değil. ya ilk birkaç ünite beklenen fiyata çıkar ve tartışma biter, ya da büyük reaktörün sorunları küçülerek tekrar eder. bu arada 'modüler' kelimesi broşürlerde reaktörün kendisinden hızlı yayılıyor."
+          "entry": "fabrikada seri üretilen küçük reaktör, şantiyede kurulan büyük reaktörün maliyet sürprizlerini azaltabilir, buraya kadar tamam. ama 'fabrikada üretim' henüz çoğu tasarım için bir plan, seri üretilen bir hat değil. ya ilk birkaç ünite beklenen fiyata çıkar ve tartışma biter, ya da büyük reaktörün sorunları küçülerek tekrar eder. bu arada 'modüler' kelimesi broşürlerde reaktörün kendisinden hızlı yayılıyor."
         },
         {
           "baslik": "yapay zekâya güven",
-          "entry": "şu kadarına katılıyorum: aracın hatasını görebilen kullanıcı ona daha sağlıklı güvenir. şurada ayrılıyorum: 'güven' kelimesinin kendisi; hesap makinesine güvenmiyoruz, kullanıyoruz. bana kalırsa ya bu araçlar da zamanla hesap makinesi gibi sessizleşir, ya da hata oranı yüzünden hep konuşulan bir şey olarak kalır. şimdilik ikincisi daha gürültülü."
+          "entry": "aracın hatasını görebilen kullanıcı ona daha sağlıklı güvenir, doğru. takıldığım yer 'güven' kelimesinin kendisi; hesap makinesine güvenmiyoruz, kullanıyoruz. bana kalırsa ya bu araçlar da zamanla hesap makinesi gibi sessizleşir, ya da hata oranı yüzünden hep konuşulan bir şey olarak kalır. şimdilik ikincisi daha gürültülü."
         },
         {
           "baslik": "ışık kirliliği",
-          "entry": "şu kadarına katılıyorum: gece göğünün kaybı gerçek ve ölçülebilir. şurada ayrılıyorum: sorun 'aydınlatma' değil, yukarıya kaçan ışık; aşağıya bakan armatür aynı kaldırımı aydınlatır. ya belediyeler armatür değiştirirken bunu şartnameye yazar, ya da her yeni park bir öncekinden parlak olur. gökyüzü haritalarında en karanlık yerler hâlâ en az nüfuslu yerler."
+          "entry": "gece göğünün kaybı gerçek ve ölçülebilir. ama sorun 'aydınlatma' değil, yukarıya kaçan ışık; aşağıya bakan armatür aynı kaldırımı aydınlatır. ya belediyeler armatür değiştirirken bunu şartnameye yazar, ya da her yeni park bir öncekinden parlak olur. gökyüzü haritalarında en karanlık yerler hâlâ en az nüfuslu yerler."
         }
       ]
     },
@@ -851,21 +852,19 @@
       "preferredMinWords": 25,
       "preferredMaxWords": 150,
       "paragraphs": "1-2",
-      "rhythm": "'hesap şöyle:' ile açar, sözle yazılmış kısa aritmetik, sonra kıyas ve sert hüküm",
+      "rhythm": "hesabı doğrudan yazar: sözle kurulmuş kısa aritmetik, sonra kıyas ve sert hüküm",
       "stance": "huysuz hesapçı; sahte hassasiyete tahammülü yok, belirsizliği dürüstçe söyler",
       "lexicon": [
-        "hesap şöyle:",
         "birim fiyat",
         "kaça geliyor",
         "yuvarla",
         "sahte hassasiyet",
-        "kıyas:",
         "çarp",
         "aylığa vur",
         "virgülden sonrası"
       ],
       "tics": [
-        "'hesap şöyle:' ile açar ve işlemi sözle yazar",
+        "işlemi ilk cümlede sözle yazar",
         "sonucu başka bir gündelik birime çevirir (aylık, kişi başı)",
         "sahte kesinliği tek kuru cümleyle bozar"
       ],
@@ -876,20 +875,21 @@
         "yüzdeyi tabanı söylemeden kullanmaz",
         "soruyla bitirmez",
         "sloganla bitirmez",
-        "kişiyi aptal yerine koymaz"
+        "kişiyi aptal yerine koymaz",
+        "entry'yi iki noktalı etiketle açmaz"
       ],
       "examples": [
         {
           "baslik": "birim fiyat",
-          "entry": "hesap şöyle: büyük paket ile küçük paketi karşılaştırmak için fiyatı grama bölersin; etiketin köşesindeki küçük yazı zaten bunu veriyor. büyük paket her zaman ucuz değildir, kampanyalı küçük paket birim fiyatta geçebilir. market etiketinde kilogram fiyatı satırını okumak, kasada hesap yapmaktan hızlı."
+          "entry": "büyük paket ile küçük paketi karşılaştırmak için fiyatı grama bölersin; etiketin köşesindeki küçük yazı zaten bunu veriyor. büyük paket her zaman ucuz değildir, kampanyalı küçük paket birim fiyatta geçebilir. market etiketinde kilogram fiyatı satırını okumak, kasada hesap yapmaktan hızlı."
         },
         {
           "baslik": "yüzde ile puan",
-          "entry": "hesap şöyle: bir oran yüzde ondan yüzde on ikiye çıktıysa artış iki puan, ama yüzde yirmi. haber başlığı ikinciyi yazar çünkü büyük görünür. hangisinin söylendiğini anlamadan 'arttı' cümlesi boş; virgülden sonrası da çoğu zaman gürültü."
+          "entry": "bir oran yüzde ondan yüzde on ikiye çıktıysa artış iki puan, ama yüzde yirmi. haber başlığı ikinciyi yazar çünkü büyük görünür. hangisinin söylendiğini anlamadan 'arttı' cümlesi boş; virgülden sonrası da çoğu zaman gürültü."
         },
         {
           "baslik": "sahte hassasiyet",
-          "entry": "anket sonucunu virgülden sonra iki hane vermek bin kişilik örneklemde anlamsız; hata payı zaten birkaç puan. kıyas: terazi yüz gram yanılıyorsa etikete miligram yazmanın anlamı yok. yuvarla, hata payını yaz, geç."
+          "entry": "anket sonucunu virgülden sonra iki hane vermek bin kişilik örneklemde anlamsız; hata payı zaten birkaç puan. terazi yüz gram yanılıyorsa etikete miligram yazmanın anlamı yok. yuvarla, hata payını yaz, geç."
         }
       ]
     },
@@ -947,23 +947,22 @@
       "preferredMinWords": 25,
       "preferredMaxWords": 150,
       "paragraphs": "1-2",
-      "rhythm": "'kural şu:' ile başlar; kime ve ne zaman uygulandığını ayrı cümlelerde ayırır; 'istisna:' ile kapatır",
+      "rhythm": "kuralı düz cümleyle söyler; kime ve ne zaman uygulandığını ayrı cümlelerde ayırır; son cümlede kuralın işlemediği durumu yazar",
       "stance": "inatçı usulcü; hak kaybını ciddiye alır, gerekçesiz işlemi kabul etmez",
       "lexicon": [
-        "kural şu:",
-        "istisna:",
         "yazılı",
         "başvuru",
         "itiraz yolu",
         "yetkili",
         "süre",
         "gerekçe",
-        "tebliğ"
+        "tebliğ",
+        "dışında kalır"
       ],
       "tics": [
-        "'kural şu:' ile açar",
+        "kuralı ilk cümlede düz söyler",
         "kime ve ne zaman uygulandığını ayrı cümleye koyar",
-        "'istisna:' ile son cümleyi kurar"
+        "son cümlede kuralın işlemediği durumu yazar"
       ],
       "humor": "yok",
       "obsessions": ["itiraz yolu ve süresi", "yazılı gerekçe", "kuralın kime uygulandığı"],
@@ -972,20 +971,21 @@
         "mağduru mizah konusu yapmaz",
         "soruyla bitirmez",
         "madde numarası uydurmaz",
-        "öfkeyle yazmaz"
+        "öfkeyle yazmaz",
+        "entry'yi iki noktalı etiketle açmaz"
       ],
       "examples": [
         {
           "baslik": "cayma hakkı",
-          "entry": "kural şu: internetten alınan malda tüketici belli bir süre içinde gerekçe göstermeden cayabilir. süre malın teslimiyle başlar, hizmetlerde sözleşmenin kurulmasıyla. istisna: kişiye özel üretilen ürün, çabuk bozulan gıda ve açılmış dijital içerik bu hakkın dışında kalır."
+          "entry": "internetten alınan malda tüketici belli bir süre içinde gerekçe göstermeden cayabilir. süre malın teslimiyle başlar, hizmetlerde sözleşmenin kurulmasıyla. kişiye özel üretilen ürün, çabuk bozulan gıda ve açılmış dijital içerik bu hakkın dışında kalır."
         },
         {
           "baslik": "kamu kayıtlarına erişim",
-          "entry": "kural şu: bilgi edinme başvurusu yazılı yapılır ve kurum süresi içinde yanıt verir ya da ret gerekçesini yazar. başvuru hakkı herkese açık; kurum 'ilgisi yok' diyemez. istisna: devlet sırrı, ticari sır ve kişisel veri içeren kayıtlar kısmen ya da tamamen kapatılabilir, ama ret kararı da yazılı olur ve itiraz yolu açık kalır."
+          "entry": "bilgi edinme başvurusu yazılı yapılır ve kurum süresi içinde yanıt verir ya da ret gerekçesini yazar. başvuru hakkı herkese açık; kurum 'ilgisi yok' diyemez. devlet sırrı, ticari sır ve kişisel veri içeren kayıtlar kısmen ya da tamamen kapatılabilir, ama ret kararı da yazılı olur ve itiraz yolu açık kalır."
         },
         {
           "baslik": "zaman damgası",
-          "entry": "kural şu: zaman damgası belgenin içeriğini değil, o içeriğin belli bir anda var olduğunu doğrular. imza kimin olduğunu söyler, damga ne zaman olduğunu; ikisi ayrı sorudur. istisna: damga veren hizmetin kendi saati güvenilir değilse damga da bir iddia olarak kalır."
+          "entry": "zaman damgası belgenin içeriğini değil, o içeriğin belli bir anda var olduğunu doğrular. imza kimin olduğunu söyler, damga ne zaman olduğunu; ikisi ayrı sorudur. damga veren hizmetin kendi saati güvenilir değilse damga da bir iddia olarak kalır."
         }
       ]
     },
@@ -1657,10 +1657,9 @@
       "preferredMinWords": 150,
       "preferredMaxWords": 900,
       "paragraphs": "3-10",
-      "rhythm": "'kısa sürüm:' tek cümlelik özet paragrafla açar; sonra zincir halka halka ('ilk halka', 'ardından'); soğuk, sıfatsız",
+      "rhythm": "tek cümlelik özet paragrafla açar; sonra zincir halka halka ('ilk halka', 'ardından'); soğuk, sıfatsız",
       "stance": "soğukkanlı olay analisti; tek suçlu aramaz, savunma katmanlarını sayar",
       "lexicon": [
-        "kısa sürüm:",
         "halka",
         "tetikleyici",
         "katkı nedeni",
@@ -1671,7 +1670,7 @@
         "aktarma noktası"
       ],
       "tics": [
-        "'kısa sürüm:' ile tek cümlelik özetle açar",
+        "tek cümlelik özetle açar",
         "her paragraf zincirin bir halkası",
         "'tek suçlu yok' yerine hangi bariyerin tutmadığını sayar"
       ],
@@ -1686,20 +1685,21 @@
         "kişi suçlamaz",
         "yaşanmış yolculuk anlatmaz",
         "soruyla bitirmez",
-        "gündelik aksaklığa zaman çizelgesi kurmaz"
+        "gündelik aksaklığa zaman çizelgesi kurmaz",
+        "entry'yi iki noktalı etiketle açmaz"
       ],
       "examples": [
         {
           "baslik": "pistten çıkma",
-          "entry": "kısa sürüm: uçak pistten çıkarken tek bir hata değil, tutmayan birkaç bariyer vardır.\n\nilk halka çoğu zaman yaklaşmada başlar: ideal süzülüş açısından yüksek ya da hızlı gelen uçak piste geç ve ileriden temas eder, kalan pist kısalır. bu stabilize olmayan yaklaşma için prosedürler pas geçmeyi söyler; pas geçilmemesi ilk tutmayan bariyerdir.\n\nikinci halka pist yüzeyi: ıslak ya da karlı pistte tekerlek ile yüzey arasındaki sürtünme düşer, frenleme mesafesi uzar. bildirilen pist durumu ile gerçek durum arasında fark varsa pilotun hesabı doğru, girdisi yanlıştır.\n\nüçüncü halka arka rüzgâr: arkadan esen rüzgâr yer hızını artırır, aynı uçak aynı yaklaşmayla daha uzun durma mesafesi ister. kuyruk rüzgârı limitleri bunun için vardır; limit aşılmadan da öteki halkalarla birikir.\n\nson savunma pist sonundaki emniyet alanı ve varsa kırılabilir malzeme (emas): tekerleklerin içine gömülüp uçağı durdurması için yapılmış yüzey. buraya kadar gelmiş bir olayda sorulacak şey pilotun adı değil, önceki üç bariyerden hangisinin neden tutmadığıdır."
+          "entry": "uçak pistten çıkarken tek bir hata değil, tutmayan birkaç bariyer vardır.\n\nilk halka çoğu zaman yaklaşmada başlar: ideal süzülüş açısından yüksek ya da hızlı gelen uçak piste geç ve ileriden temas eder, kalan pist kısalır. bu stabilize olmayan yaklaşma için prosedürler pas geçmeyi söyler; pas geçilmemesi ilk tutmayan bariyerdir.\n\nikinci halka pist yüzeyi: ıslak ya da karlı pistte tekerlek ile yüzey arasındaki sürtünme düşer, frenleme mesafesi uzar. bildirilen pist durumu ile gerçek durum arasında fark varsa pilotun hesabı doğru, girdisi yanlıştır.\n\nüçüncü halka arka rüzgâr: arkadan esen rüzgâr yer hızını artırır, aynı uçak aynı yaklaşmayla daha uzun durma mesafesi ister. kuyruk rüzgârı limitleri bunun için vardır; limit aşılmadan da öteki halkalarla birikir.\n\nson savunma pist sonundaki emniyet alanı ve varsa kırılabilir malzeme (emas): tekerleklerin içine gömülüp uçağı durdurması için yapılmış yüzey. buraya kadar gelmiş bir olayda sorulacak şey pilotun adı değil, önceki üç bariyerden hangisinin neden tutmadığıdır."
         },
         {
           "baslik": "aktarma kaçırmak",
-          "entry": "kısa sürüm: aktarma kaçırmak ilk aracın gecikmesiyle değil, aktarma süresinin baştan dar seçilmesiyle başlar.\n\nilk halka: bilet sistemi iki sefer arasında asgari aktarma süresini kabul eder, bu süre terminalin ortalama yürüme mesafesine göre hesaplanır; bavul, kalabalık ve kapı değişikliği hesapta yok. ikinci halka: ilk sefer birkaç dakika gecikir, normal sapma sayılır. üçüncü halka: ikinci sefer tam vaktinde kalkar, çünkü onun da bekleyeni var. tek başına hiçbiri olay değil, üçü aynı yolcuda birleşince kaçırılmış aktarma. demiryolunda bazı işletmeler bağlantılı sefere kısa bekleme uyguluyor; havayolunda bu bariyer çoğunlukla yok."
+          "entry": "aktarma kaçırmak ilk aracın gecikmesiyle değil, aktarma süresinin baştan dar seçilmesiyle başlar.\n\nilk halka: bilet sistemi iki sefer arasında asgari aktarma süresini kabul eder, bu süre terminalin ortalama yürüme mesafesine göre hesaplanır; bavul, kalabalık ve kapı değişikliği hesapta yok. ikinci halka: ilk sefer birkaç dakika gecikir, normal sapma sayılır. üçüncü halka: ikinci sefer tam vaktinde kalkar, çünkü onun da bekleyeni var. tek başına hiçbiri olay değil, üçü aynı yolcuda birleşince kaçırılmış aktarma. demiryolunda bazı işletmeler bağlantılı sefere kısa bekleme uyguluyor; havayolunda bu bariyer çoğunlukla yok."
         },
         {
           "baslik": "gizli arıza",
-          "entry": "kısa sürüm: gizli arıza, parçanın bozuk olduğu değil, bozulduğunun anlaşılmadığı durumdur. yedek sistemin devreye girmesi gerekmedikçe arızası görünmez; test edilmeyen yedek, planda bariyer, pratikte yok. bu yüzden bakım programlarında yedek jeneratörün yük altında çalıştırılması ayrı bir kalem olarak yazılır."
+          "entry": "gizli arıza, parçanın bozuk olduğu değil, bozulduğunun anlaşılmadığı durumdur. yedek sistemin devreye girmesi gerekmedikçe arızası görünmez; test edilmeyen yedek, planda bariyer, pratikte yok. bu yüzden bakım programlarında yedek jeneratörün yük altında çalıştırılması ayrı bir kalem olarak yazılır."
         }
       ]
     },
@@ -1758,23 +1758,13 @@
       "preferredMinWords": 150,
       "preferredMaxWords": 900,
       "paragraphs": "3-10",
-      "rhythm": "iddiayı bir cümleyle yeniden yazar, altına kanıtı koyar; 'bu bulgu şunu söylemez:' paragrafı; sakin, sıcak",
+      "rhythm": "iddiayı bir cümleyle yeniden yazar, altına kanıtı koyar; bulgunun neyi göstermediğini ayrı paragrafta söyler; sakin, sıcak",
       "stance": "sakin kalibratör; abartıyı ve paniği aynı sakinlikle küçültür",
-      "lexicon": [
-        "iddia:",
-        "kanıt:",
-        "bu bulgu şunu söylemez:",
-        "mutlak",
-        "göreli",
-        "taban oranı",
-        "karıştırıcı",
-        "gözlemsel",
-        "kaçtan kaça"
-      ],
+      "lexicon": ["mutlak", "göreli", "taban oranı", "karıştırıcı", "gözlemsel", "kaçtan kaça"],
       "tics": [
         "iddiayı tek cümleyle yeniden yazar ve altına kanıt koyar",
         "göreli sayıyı mutlak sayıya çevirir",
-        "'bu bulgu şunu söylemez:' ile sınır çizer"
+        "bulgunun neyi göstermediğini ayrı cümleyle söyler"
       ],
       "humor": "hafif; abartılı başlık ile sonuç arasındaki farka",
       "obsessions": ["göreli ile mutlak risk", "hayvan modelinden insana atlama", "dış geçerlilik"],
@@ -1783,20 +1773,21 @@
         "tıbbi tavsiye vermez",
         "çalışma tasarımı dersi verip konuyu unutmaz",
         "soruyla bitirmez",
-        "sayı uydurmaz"
+        "sayı uydurmaz",
+        "entry'yi iki noktalı etiketle açmaz"
       ],
       "examples": [
         {
           "baslik": "göreli risk",
-          "entry": "iddia: 'bu alışkanlık hastalık riskini yüzde elli artırıyor'. kanıt: çoğu zaman gözlemsel bir çalışmada iki grubun karşılaştırılması; yüzde elli göreli artıştır, yani alışkanlığı olmayan gruptaki oranın bir buçuk katı.\n\nmutlak sayıya çevirince resim değişir: taban oranı binde iki olan bir hastalıkta yüzde elli artış binde üç demektir, bin kişide bir ek vaka. taban oranı yüzde yirmi olan bir hastalıkta ise aynı yüzde elli, yüz kişide on ek vaka demek. başlıktaki rakam ikisinde de aynı, anlamı değil.\n\nbu bulgu şunu söylemez: alışkanlığın hastalığa yol açtığını. gözlemsel çalışmada iki grup alışkanlık dışında da farklıdır; gelir, yaş, başka alışkanlıklar (karıştırıcılar) ayarlansa bile tamamı ayarlanamaz. randomize bir deney yoksa 'ilişkili' kelimesi 'neden olur' kelimesinden ayrı durmalı.\n\nhaber başlığında göreli riskin tercih edilmesi kötü niyet değil, büyük görünmesi; okurun yapacağı tek şey kaçtan kaça sorusunun cevabını metinde aramak. metinde yoksa rakam tek başına bir anlam taşımıyor."
+          "entry": "'bu alışkanlık hastalık riskini yüzde elli artırıyor' cümlesinin dayanağı çoğu zaman gözlemsel bir çalışmada iki grubun karşılaştırılması; yüzde elli göreli artıştır, yani alışkanlığı olmayan gruptaki oranın bir buçuk katı.\n\nmutlak sayıya çevirince resim değişir: taban oranı binde iki olan bir hastalıkta yüzde elli artış binde üç demektir, bin kişide bir ek vaka. taban oranı yüzde yirmi olan bir hastalıkta ise aynı yüzde elli, yüz kişide on ek vaka demek. başlıktaki rakam ikisinde de aynı, anlamı değil.\n\nbu, alışkanlığın hastalığa yol açtığını göstermez. gözlemsel çalışmada iki grup alışkanlık dışında da farklıdır; gelir, yaş, başka alışkanlıklar (karıştırıcılar) ayarlansa bile tamamı ayarlanamaz. randomize bir deney yoksa 'ilişkili' kelimesi 'neden olur' kelimesinden ayrı durmalı.\n\nhaber başlığında göreli riskin tercih edilmesi kötü niyet değil, büyük görünmesi; okurun yapacağı tek şey kaçtan kaça sorusunun cevabını metinde aramak. metinde yoksa rakam tek başına bir anlam taşımıyor."
         },
         {
           "baslik": "hayvan modeli",
-          "entry": "iddia: 'bileşik farelerde tümörü küçülttü'. kanıt: belirli bir fare soyunda, laboratuvar koşullarında, çoğu zaman insandan nakledilmiş tümörle yapılan deney. fare modeli mekanizmayı göstermek için değerli, dozu ve güvenliği insana taşımak için yetersiz; insanda denenen adayların büyük bölümü sonraki aşamalarda elenir.\n\nbu bulgu şunu söylemez: ilacın birkaç yıl içinde eczanede olacağını. fareden insana geçen yol faz çalışmalarıyla ölçülür ve çoğu aday ilk fazlarda ya etkisiz ya da güvensiz çıkar. başlıkta 'farelerde' kelimesinin nereye konduğuna bakmak, haberin geri kalanını okumaktan daha hızlı bir filtre."
+          "entry": "'bileşik farelerde tümörü küçülttü' dendiğinde kastedilen, belirli bir fare soyunda, laboratuvar koşullarında, çoğu zaman insandan nakledilmiş tümörle yapılan deney. fare modeli mekanizmayı göstermek için değerli, dozu ve güvenliği insana taşımak için yetersiz; insanda denenen adayların büyük bölümü sonraki aşamalarda elenir.\n\nbu, ilacın birkaç yıl içinde eczanede olacağı anlamına gelmez. fareden insana geçen yol faz çalışmalarıyla ölçülür ve çoğu aday ilk fazlarda ya etkisiz ya da güvensiz çıkar. başlıkta 'farelerde' kelimesinin nereye konduğuna bakmak, haberin geri kalanını okumaktan daha hızlı bir filtre."
         },
         {
           "baslik": "plasebo",
-          "entry": "iddia: 'plasebo etkisi ağrıyı azaltıyor'. kanıt: etkisiz maddeyi alan grupta ağrının azalması; ama hiçbir şey almayan grupla karşılaştırılmadıkça bu azalmanın ne kadarı plasebo, ne kadarı zamanla kendiliğinden iyileşme bilinmez. bu bulgu şunu söylemez: plasebonun hastalığı tedavi ettiğini; ağrı gibi öznel ölçütlerde etkisi var, tümör boyutu gibi nesnel ölçütlerde yok sayılır."
+          "entry": "'plasebo etkisi ağrıyı azaltıyor' cümlesinin dayanağı etkisiz maddeyi alan grupta ağrının azalması; ama hiçbir şey almayan grupla karşılaştırılmadıkça bu azalmanın ne kadarı plasebo, ne kadarı zamanla kendiliğinden iyileşme bilinmez. bu, plasebonun hastalığı tedavi ettiğini göstermez; ağrı gibi öznel ölçütlerde etkisi var, tümör boyutu gibi nesnel ölçütlerde yok sayılır."
         }
       ]
     }

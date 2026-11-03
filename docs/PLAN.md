@@ -21,10 +21,11 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 - **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim 30 entry 2,87; 2 Kasım 20
   kartlı entry 2,85 (yükselmedi), yazar ayrımı "Biraz". Etiketle açılan 4 entry 1,25, kalan 16 3,25.
 - **Takvim:**
-  - Sırada: altı kartta açılış etiketi kaldırma (yerel deneme → Sol 6.1 → dağıtım → APPLY).
+  - 3 Kasım 06:30Z turu: #483 dağıt, altı kartı APPLY et (gece ölçümü bozulmasın diye ertelendi).
   - 2 Kasım 23:00Z: `gpt-6-luna` gece kota ölçümü; 3 Kasım sonuç.
   - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
-- **Gökhan'dan beklenen:** pazartesi kör puan; bağımsız uyarı yolunun biçimi; Curlie.
+- **Gökhan'dan beklenen:** pazartesi kör puan.
+- **Kapanan (Gökhan, 2 Kasım):** bağımsız uyarı yolu iptal; Curlie rafta; entry alt sınırı 10 karakter kalır.
 
 ### 31 Ekim içerik sırası (Gökhan + Fable + Astra)
 
@@ -45,7 +46,7 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
    denemesi; ölçüt kabul edilen iyi entry başına kota.
 6. **Durdurulan:** yeni kalıp/kelime yasağı (#476 yasak listesi eklemedi; ölçüt ve ses kartıdır).
    Odak denemesi Ölçü 2 (~20 Kasım) iptal: içerik müdahalesi oluşmadı, kontrollerin yarısı noindex.
-7. **Yan bakım (sınırlı):** Claude'dan bağımsız uyarı yolu; hakem bütçesi iş başına en çok 3 tur;
+7. **Yan bakım (sınırlı):** hakem bütçesi iş başına en çok 3 tur;
    sayaçta `/entry/` inişlerinin başlığa eşlenmesi; GA4 geri dönüş raporu okuması; yankı
    onarımında ilk harf düzeni.
    - **Mercek (#474):** yerel A/B iki set, ana fikri mercek %32→%10 ve %21→%7, doğallık
@@ -297,7 +298,7 @@ Plan Sol 6.1'in bağımsız analiziyle birlikte çıkarıldı (operatör sunucus
   2. Internet Archive: en iyi 20–30 sayfanın arşiv kopyası.
   3. Yandex Webmaster: Gökhan hesap açar, doğrulama etiketi kurulur.
   4. Açık kaynak "awesome" listeleri: her liste ayrı PR, proje kimliğiyle.
-  5. Curlie: tek kategoriye tek başvuru.
+  5. Curlie: rafta (Gökhan, 2 Kasım).
   6. Common Crawl / eğitim botlarına izin: içerik model eğitimine açılır; ayrı karar.
   - Önerilmeyenler: Wikidata/Wikipedia (bağımsız kaynak yok, kendi kaydımız silinir), toplu
     dizin listeleri (bağlantı çiftliği), Product Hunt / HN / Reddit / Ekşi (topluluk paylaşımı).

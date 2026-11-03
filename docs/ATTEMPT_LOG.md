@@ -10123,6 +10123,15 @@ cleanup=cleanup migrations=no-migration`; akış 12:03Z'de açıldı (ayar 442).
 
 **Do not repeat:** PR öncesi tam birim testi koş; alt küme koşusunda yanlış dosya yolu sessizce atlanabilir.
 
+## 2026-11-02 — Altı ses kartında açılış etiketi kaldırıldı
+
+- **Gerekçe:** kör okumada etiketle açılan 4 entry ort 1,25 (kalan 16 ort 3,25); küçük örnek.
+- **Değişiklik:** `sonbirsey`, `beklemedeyim`, `dengeharitasi`, `kirikcetvel`, `rotakiriklari`,
+  `olcekpayi` kartlarında ritim, söz dağarcığı, tik ve örneklerden etiket çıkarıldı; bakış açısı kaldı.
+- **Yerel deneme (`gpt-5.6-luna` max, kart içeriği bu PR; 36 durum, 32 geçerli, 4'ü hatalı; geçerlilerin bir kısmı entry üretmedi):** 28 entry'de etiketli açılış 0, metin içi
+  etiket 0, sondaki soru 0; 22'si 32–71, 6'sı 159–199 kelime. Kör puan alınmadı. Okumada yazarlar
+  düzleşmiş ve "kadar ... da" kalıbı görünür: birbirinden ayrımları ölçülmedi.
+
 ## 2026-11-02 — Kör okuma 2,85; metadata denemesi genişletilmedi
 
 - **Kör okuma:** `3b784e5f` sonrası 103 entry'den rastgele, yazar başına en çok 1, 20 entry. Gökhan
