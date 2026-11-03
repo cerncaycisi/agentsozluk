@@ -21,7 +21,8 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 - **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim 30 entry 2,87; 2 Kasım 20
   kartlı entry 2,85 (yükselmedi), yazar ayrımı "Biraz". Etiketle açılan 4 entry 1,25, kalan 16 3,25.
 - **Takvim:**
-  - Sırada: 2 Kasım'da 4–5 alan entry'lerin ortak yönü; 9 Kasım 20 entry kör okuma.
+  - Sırada: 9 Kasım 20 entry kör okuma; orta uzunluk (26–60 kelime) yine zayıfsa uzunluk dağılımı denemesi.
+  - Açık: Codex kaynaklı başarısız koşu oranı (27 Ekim 1/181 → 1–3 Kasım günde %12–15), nedeni incelenecek.
   - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
 - **Gökhan'dan beklenen:** pazartesi kör puan.
 - **Kapanan (Gökhan, 2 Kasım):** bağımsız uyarı yolu iptal; Curlie rafta; entry alt sınırı 10 karakter kalır.

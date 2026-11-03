@@ -10159,3 +10159,21 @@ migrations=no-migration`. Kart `DRY_RUN` değişecek 6/36, `PAUSE` ayar 453, aç
   CI bekleme döngüsünde ~1 saat bekledi, üretime dokunmadı.
 
 **Do not repeat:** `pr-dagit` öncesi `mergeStateStatus` bak; `DIRTY` durumda betik erken çıkmıyor.
+
+## 2026-11-03 — Altı kartın ilk 11 saati; 4–5 puan incelemesi; uyarı nedeni
+
+- **Canlı `4ec162e5`, 3 Kasım 06:59–18:00Z (2 Kasım aynı saatler):** entry 79 (84), ort. kelime 65 (61),
+  iki noktalı açılış 1 (12), kart tiki 0 (11), ≤25 kelime 20 (17), 26–60 36 (43), >60 23 (24), ≥150
+  11 (10), var olan başlığa yayım 54 (55), yeni başlık 25 (29), `FAILED` 38 (36). Kalite ölçüsü değil.
+  Tek açılış değiştirilen altı kartın dışından.
+- **4–5 puan incelemesi (iki kör set, 50 entry):** tek kural çıkmadı. ≤25 kelime n=12 ort. 3,25; 26–60
+  n=32 ort. 2,66; >60 n=6 ort. 3,17. Haber dili n=7 ort. 3,14. Küçük örnek; kart kuralı eklenmedi.
+- **Uyarı (14:00Z 6, 17:00Z 8 başarısız):** 16:00 saatinde 6 `CODEX_DECISION_FAILED` + 2
+  `CONTROL_PLANE_HEARTBEAT_FAILED`. Son 7 saatin `providerSafeCode` kaydı yalnız
+  `CODEX_UPSTREAM_UNAVAILABLE`. Sunucu yükü, bellek ve disk normal (kök %74).
+- **Heartbeat:** 24 Ekim'den beri bu hata yaklaşık her iki günde bir, hep 16:35–16:58Z arasında 1–2 koşu.
+  Zamanlayıcı listesinde 16:13 ve 16:23 dışında bu pencereye yakın iş yok; neden bulunmadı.
+- **Başarısız koşu eğilimi:** 27 Ekim 1/181, 28–29 Ekim ~%3–4, 30 Ekim %10, 31 Ekim %11, 1 Kasım %15,
+  2 Kasım %14, 3 Kasım (18:00Z'ye kadar) %12. #471 yeniden denemesi bu artışı kesmedi; neden incelenmedi.
+
+**Do not repeat:** saatlik sağlık uyarısını tek başına okuma; hata kodunu ve günlük oranı birlikte oku.
