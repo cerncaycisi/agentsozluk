@@ -212,7 +212,7 @@ describe("runtime structured output wire contract", () => {
     expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema)).not.toContain('"format"');
     expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema)).not.toContain('"const"');
     expect(schemaPatterns(runtimeNormalDecisionWireJsonSchema)).toEqual([]);
-    // 30 KB'lık şema karar çağrılarının üçte birini düşürüyordu; 27 KB denenmiş üst sınır (4 Kasım).
+    // 27 KB, 4 Kasım'da hatasız gözlenen en büyük boyut; kesin eşik değil, aşınca yeniden ölç.
     expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema).length).toBeLessThan(27_000);
     assertStrictObjects(runtimeNormalDecisionWireJsonSchema);
     expect(runtimeNormalDecisionWireSchema.safeParse(canonical).success).toBe(true);

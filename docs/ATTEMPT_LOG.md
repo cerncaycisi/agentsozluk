@@ -10177,3 +10177,23 @@ migrations=no-migration`. Kart `DRY_RUN` değişecek 6/36, `PAUSE` ayar 453, aç
   2 Kasım %14, 3 Kasım (18:00Z'ye kadar) %12. #471 yeniden denemesi bu artışı kesmedi; neden incelenmedi.
 
 **Do not repeat:** saatlik sağlık uyarısını tek başına okuma; hata kodunu ve günlük oranı birlikte oku.
+
+## 2026-11-04 — Başarısız koşuların tetikleyicisi: karar şeması
+
+- **Canlı (son 4 gün):** `DECISION` 938/2859 `CODEX_UPSTREAM_UNAVAILABLE`; `BROWSE`, `ACTION_WORTHINESS`, `NOVELTY`
+  3/4945. `NORMAL_WAKE` ~%33 ve `SOURCE_REFRESH` ~%27 aynı şemayı kullanıyor, `REFLECTION` ayrı şemayla 0/215. Oran
+  saate, yazara ve 140–200 KB istem boyutuna göre düz. 27 Ekim'de başladı, 30 Ekim'de arttı; şema o tarihte değişmedi.
+- **Yerel (`gpt-5.6-luna`, CLI 0.163, canlı yedek kopyası, 45 sn sınırlı, eşli):** tam 30,4 KB şema 19/48 (max), high
+  4/16, medium 5/16; hepsi 3–25 sn içinde `Incomplete response returned, reason: max_output_tokens`. Şemasız 0/16,
+  kısıtsız 20,7 KB 0/16, yalnız eylem 21,6 KB 0/16, reflection 14,4 KB 0/16, `pattern`siz 25,5 KB 0/16, yalnız sayı
+  ve desen kısıtlı 22,9 KB 0/16, uzunluksuz 27,1 KB 0/16. Tam koşuda başarılı çağrılar 8–16 bin token üretti.
+- **Düzeltme:** normal karar kablo şemasından `pattern` kalktı; biçimi Zod doğruluyor. Son sürüm (`028f1495`, yorum farkı
+  hariç) 36 tam koşu: 0 çağrı hatası, 34 geçerli; reddedilen 2 koşunun nedeni kaydedilmedi, 6 tekrarında 6/6 geçerli.
+  Eski şemayla yerel 223/223 geçerliydi; `DECISION_REPAIR` izlenecek.
+- **Açık:** üretim CLI 0.160; ham canlı mesaj görülemedi. İkilide `stream disconnected before completion: ` ve
+  `Incomplete response returned` var; canlı eşleşme kanıtlanmadı, kanıtı dağıtım sonrası oran olacak. Neden şemayla bu
+  kadar bağlı, bilinmiyor. Önceki yerel raporlarda bu hatalar yanlışlıkla "MCP AuthRequired" sayıldı.
+- **Hakem:** Sol 6.1 (`gpt-6.1-sol` xhigh, `028f1495`): P0–P2 yok; P3 kesin neden yorumu daraltıldı. 45 `pattern`in
+  Zod karşılığı var. Alternatif `$defs` tekilleştirme (26,1 KB, kısıtlar kalır) denenmedi; `DECISION_REPAIR` artarsa sıradaki aday.
+
+**Do not repeat:** yerel hata mesajının ilk satırına bakıp sınıflandırma; `--json` olaylarındaki gerçek mesajı oku.

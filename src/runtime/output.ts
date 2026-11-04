@@ -389,10 +389,10 @@ function withoutPatterns(value: unknown): unknown {
 }
 
 /*
-  4 Kasım ölçümü: 30 KB'lık şemayla karar çağrılarının üçte biri 4–25 sn içinde `Incomplete response
-  returned, reason: max_output_tokens` ile düşüyordu (yerel 19/48); hata token tavanı değil, başarılı
-  çağrılar 8–16 bin token üretiyor. Kısıt azaltılıp 27 KB ve altına inince 0/96. Biçimi yine
-  `runtimeNormalDecisionWireSchema` doğrular, bu yüzden kablo şemasından yalnız `pattern` çıkar.
+  4 Kasım yerel ölçümü (Codex CLI 0.163): 30 KB'lık şemayla karar çağrılarının 19/48'i 4–25 sn içinde
+  `Incomplete response returned, reason: max_output_tokens` ile düştü. Şema küçültülen kollarda (27 KB
+  ve altı) ilk 45 sn'de bu hata 0/96, `pattern`siz son sürümde tam koşuda 0/42. Kesin neden bilinmiyor.
+  Biçimi `runtimeNormalDecisionWireSchema` doğrular, bu yüzden kablo şemasından yalnız `pattern` çıkar.
 */
 export const runtimeNormalDecisionWireJsonSchema = withoutPatterns(
   codexCompatibleJsonSchema(z.toJSONSchema(runtimeNormalDecisionWireSchema)),
