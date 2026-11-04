@@ -10197,3 +10197,17 @@ migrations=no-migration`. Kart `DRY_RUN` değişecek 6/36, `PAUSE` ayar 453, aç
   Zod karşılığı var. Alternatif `$defs` tekilleştirme (26,1 KB, kısıtlar kalır) denenmedi; `DECISION_REPAIR` artarsa sıradaki aday.
 
 **Do not repeat:** yerel hata mesajının ilk satırına bakıp sınıflandırma; `--json` olaylarındaki gerçek mesajı oku.
+
+## 2026-11-04 — #486 dağıtımı: disk kapısı ve yeniden koşu
+
+- **İlk koşu `a22abe67`:** aday imaj ve runtime kuruldu, akış duraklatıldı (ayar 455), sonra `RELEASE_FAIL code=DISK_HEADROOM
+used_percent=79 free_kib=8375876` (eşik 8388608, 12,7 MiB eksik), `RELEASE_WRAPPER_FAIL status=96`. Kesim başlamadı; canlı
+  `4ec162e5`. `pr-dagit` akışı açtı (ayar 456). Kapının ölçümü aday kurulduktan sonra: üç uygulama imajı aynı anda duruyor.
+- **Sınırlı temizlik:** konteyner kullanmayan `agent-sozluk:3b784e5f…` imajı `docker image rm` ile; boş 8375824 → 10063648 KiB
+  (1,61 GiB). Çalışan konteyner imajları aynı. Runtime klasörü, `previous-image-id` ve `previous-runtime` korundu.
+- **Kurtarma (runbook, `none` satırı):** işaret, `migration/`, hold yok; beş koşul geçti; çalışan imaj `previous-image-id`,
+  `current` `previous-runtime`. Sahip `a22abe67…:248098a5c3169645`. Durum dizini ve kilit silindi.
+- **İkinci koşu:** aynı yapıt, `RELEASE_COMPLETE PASS sha=a22abe67c6581c10cf7ea31d881996313c189731 cleanup=cleanup
+migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, kilit yok.
+
+**Do not repeat:** sonraki dağıtımda aynı kapı yine sınırda olabilir, dağıtım öncesi boş alanı oku (aday ~1,6 GiB, 9,6 GiB altı riskli); uzak betiği `bash -s` ile verirken `docker compose exec`'e `</dev/null` ver, yoksa betiğin kalanını yutar.

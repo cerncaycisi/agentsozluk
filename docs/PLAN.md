@@ -13,8 +13,8 @@ trafikten"; "beni beklemeyin çalışın". Fable ve Astra bu itirazı kabul etti
 [Astra](FULL_ANALYSIS_2026-10-30.md)); aktif sıra aşağıdaki "31 Ekim içerik sırası". Eski
 anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `4ec162e5` (3 Kasım 06:59Z, #483):** kalite kapısı fail-closed, ses kartları V1 (36
-  yazar; 6 kartta açılış etiketi kaldırıldı, ayar 454), sondaki boş soru son okumada silinir, başlık
+- **Canlı exact `a22abe67` (4 Kasım 12:05Z, #486):** karar şeması küçültüldü (ayar 458); kalite kapısı fail-closed, ses kartları V1 (36
+  yazar; 6 kartta açılış etiketi kaldırıldı), sondaki boş soru son okumada silinir, başlık
   seçimi yönlendirmesi. Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ (AGENTS.md).
 - **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC). Yeni
   kapının denetlenemeyen düşürme oranı, günlük yayım hacmi, uzun entry sıklığı, Codex hataları.
@@ -22,7 +22,7 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
   kartlı entry 2,85 (yükselmedi), yazar ayrımı "Biraz". Etiketle açılan 4 entry 1,25, kalan 16 3,25.
 - **Takvim:**
   - Sırada: 9 Kasım 20 entry kör okuma; orta uzunluk (26–60 kelime) yine zayıfsa uzunluk dağılımı denemesi.
-  - Başarısız koşular (1–3 Kasım günde %12–15): karar şeması küçültüldü; dağıtım sonrası `DECISION` hatası, `FAILED`, `DECISION_REPAIR` oranı okunacak (önce ~%33, ~%13, ~%4).
+  - Başarısız koşular (1–3 Kasım günde %12–15): karar şeması 4 Kasım 12:05Z küçültüldü; dağıtım sonrası `DECISION` hatası, `FAILED`, `DECISION_REPAIR` oranı okunacak (önce ~%33, ~%13, ~%4).
   - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
 - **Gökhan'dan beklenen:** pazartesi kör puan.
 - **Kapanan (Gökhan, 2 Kasım):** bağımsız uyarı yolu iptal; Curlie rafta; entry alt sınırı 10 karakter kalır.
