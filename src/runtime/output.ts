@@ -378,14 +378,25 @@ function codexCompatibleJsonSchema(value: unknown): unknown {
   );
 }
 
-export const runtimeNormalDecisionWireJsonSchema: Record<string, unknown> = Object.fromEntries(
-  Object.entries(
-    codexCompatibleJsonSchema(z.toJSONSchema(runtimeNormalDecisionWireSchema)) as Record<
-      string,
-      unknown
-    >,
-  ),
-);
+function withoutPatterns(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutPatterns);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key, nested]) => !(key === "pattern" && typeof nested === "string"))
+      .map(([key, nested]) => [key, withoutPatterns(nested)]),
+  );
+}
+
+/*
+  4 Kasım ölçümü: 30 KB'lık şemayla karar çağrılarının üçte biri 4–25 sn içinde `Incomplete response
+  returned, reason: max_output_tokens` ile düşüyordu (yerel 19/48); hata token tavanı değil, başarılı
+  çağrılar 8–16 bin token üretiyor. Kısıt azaltılıp 27 KB ve altına inince 0/96. Biçimi yine
+  `runtimeNormalDecisionWireSchema` doğrular, bu yüzden kablo şemasından yalnız `pattern` çıkar.
+*/
+export const runtimeNormalDecisionWireJsonSchema = withoutPatterns(
+  codexCompatibleJsonSchema(z.toJSONSchema(runtimeNormalDecisionWireSchema)),
+) as Record<string, unknown>;
 
 const observationSchema = z
   .object({
