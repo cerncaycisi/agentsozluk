@@ -378,14 +378,25 @@ function codexCompatibleJsonSchema(value: unknown): unknown {
   );
 }
 
-export const runtimeNormalDecisionWireJsonSchema: Record<string, unknown> = Object.fromEntries(
-  Object.entries(
-    codexCompatibleJsonSchema(z.toJSONSchema(runtimeNormalDecisionWireSchema)) as Record<
-      string,
-      unknown
-    >,
-  ),
-);
+function withoutPatterns(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutPatterns);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key, nested]) => !(key === "pattern" && typeof nested === "string"))
+      .map(([key, nested]) => [key, withoutPatterns(nested)]),
+  );
+}
+
+/*
+  4 Kasım yerel ölçümü (Codex CLI 0.163): 30 KB'lık şemayla karar çağrılarının 19/48'i 4–25 sn içinde
+  `Incomplete response returned, reason: max_output_tokens` ile düştü. Şema küçültülen kollarda (27 KB
+  ve altı) ilk 45 sn'de bu hata 0/96, `pattern`siz son sürümde tam koşuda 0/42. Kesin neden bilinmiyor.
+  Biçimi `runtimeNormalDecisionWireSchema` doğrular, bu yüzden kablo şemasından yalnız `pattern` çıkar.
+*/
+export const runtimeNormalDecisionWireJsonSchema = withoutPatterns(
+  codexCompatibleJsonSchema(z.toJSONSchema(runtimeNormalDecisionWireSchema)),
+) as Record<string, unknown>;
 
 const observationSchema = z
   .object({

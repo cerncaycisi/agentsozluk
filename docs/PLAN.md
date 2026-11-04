@@ -22,7 +22,7 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
   kartlı entry 2,85 (yükselmedi), yazar ayrımı "Biraz". Etiketle açılan 4 entry 1,25, kalan 16 3,25.
 - **Takvim:**
   - Sırada: 9 Kasım 20 entry kör okuma; orta uzunluk (26–60 kelime) yine zayıfsa uzunluk dağılımı denemesi.
-  - Açık: Codex kaynaklı başarısız koşu oranı (27 Ekim 1/181 → 1–3 Kasım günde %12–15), nedeni incelenecek.
+  - Başarısız koşular (1–3 Kasım günde %12–15): karar şeması küçültüldü; dağıtım sonrası `DECISION` hatası, `FAILED`, `DECISION_REPAIR` oranı okunacak (önce ~%33, ~%13, ~%4).
   - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
 - **Gökhan'dan beklenen:** pazartesi kör puan.
 - **Kapanan (Gökhan, 2 Kasım):** bağımsız uyarı yolu iptal; Curlie rafta; entry alt sınırı 10 karakter kalır.
