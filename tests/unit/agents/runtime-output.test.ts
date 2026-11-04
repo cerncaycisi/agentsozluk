@@ -244,7 +244,6 @@ describe("runtime structured output wire contract", () => {
       properties: {
         items: {
           type: "array",
-          maxItems: 50,
           items: {
             type: "object",
             additionalProperties: false,

@@ -382,8 +382,8 @@ function codexCompatibleJsonSchema(value: unknown): unknown {
   4 Kasım yerel ölçümü (Codex CLI 0.163): tam şemayla karar çağrılarının 19/48'i 4–25 sn içinde
   `Incomplete response returned, reason: max_output_tokens` ile düştü. Bayt sınırı değil: tekrarları
   `$defs`'e toplayan 26,6 KB şemada da 10/36. `pattern` silmek hatayı kesti ama model kimlik alanına
-  başka değer yazdı (canlıda onarım ~%4 → ~%25). Uzunluk ve adet sınırlarını çıkarmak da hatayı
-  kesiyor, desenler kalıyor. Sınırları `runtimeNormalDecisionWireSchema` sunucuda doğrular.
+  başka değer yazdı (canlıda onarım ~%4 → ~%25). Uzunluk ve adet sınırlarını çıkarınca 36 tam koşuda
+  0 hata, 36 geçerli çıktı; desenler kalıyor. Sınırları `runtimeNormalDecisionWireSchema` doğrular.
 */
 const WIRE_DROPPED_LIMITS = new Set(["minLength", "maxLength", "minItems", "maxItems"]);
 function withoutLengthLimits(value: unknown): unknown {
