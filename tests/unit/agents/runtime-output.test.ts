@@ -211,12 +211,16 @@ describe("runtime structured output wire contract", () => {
     expect(runtimeNormalDecisionWireJsonSchema).not.toHaveProperty("$schema");
     expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema)).not.toContain('"format"');
     expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema)).not.toContain('"const"');
-    expect(schemaPatterns(runtimeNormalDecisionWireJsonSchema)).toEqual([]);
-    // 27 KB, 4 Kasım'da hatasız gözlenen en büyük boyut; kesin eşik değil, aşınca yeniden ölç.
-    expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema).length).toBeLessThan(27_000);
+    const patterns = schemaPatterns(runtimeNormalDecisionWireJsonSchema);
+    expect(patterns.length).toBeGreaterThan(0);
+    expect(patterns.some((pattern) => /\(\?(?:[=!]|<[=!])/u.test(pattern))).toBe(false);
+    // Uzunluk sınırlarıyla şema karar çağrılarının üçte birini düşürüyordu (4 Kasım).
+    expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema)).not.toMatch(
+      /"(?:minLength|maxLength|minItems|maxItems)"/u,
+    );
     assertStrictObjects(runtimeNormalDecisionWireJsonSchema);
     expect(runtimeNormalDecisionWireSchema.safeParse(canonical).success).toBe(true);
-    // Kablo şemasında `pattern` yok: kimlik biçimini sunucu doğrular.
+    // Sınırları ve kimlik biçimini sunucu da doğrular.
     expect(
       runtimeNormalDecisionWireSchema.safeParse(
         JSON.parse(JSON.stringify(canonical).replaceAll(topicId, "not-a-uuid")),
@@ -240,7 +244,6 @@ describe("runtime structured output wire contract", () => {
       properties: {
         items: {
           type: "array",
-          maxItems: 50,
           items: {
             type: "object",
             additionalProperties: false,

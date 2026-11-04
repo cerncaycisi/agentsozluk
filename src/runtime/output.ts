@@ -378,23 +378,25 @@ function codexCompatibleJsonSchema(value: unknown): unknown {
   );
 }
 
-function withoutPatterns(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withoutPatterns);
+/*
+  4 Kasım yerel ölçümü (Codex CLI 0.163): tam şemayla karar çağrılarının 19/48'i 4–25 sn içinde
+  `Incomplete response returned, reason: max_output_tokens` ile düştü. Bayt sınırı değil: tekrarları
+  `$defs`'e toplayan 26,6 KB şemada da 10/36. `pattern` silmek hatayı kesti ama model kimlik alanına
+  başka değer yazdı (canlıda onarım ~%4 → ~%25). Uzunluk ve adet sınırlarını çıkarınca 36 tam koşuda
+  0 hata, 36 geçerli çıktı; desenler kalıyor. Sınırları `runtimeNormalDecisionWireSchema` doğrular.
+*/
+const WIRE_DROPPED_LIMITS = new Set(["minLength", "maxLength", "minItems", "maxItems"]);
+function withoutLengthLimits(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutLengthLimits);
   if (!value || typeof value !== "object") return value;
   return Object.fromEntries(
     Object.entries(value)
-      .filter(([key, nested]) => !(key === "pattern" && typeof nested === "string"))
-      .map(([key, nested]) => [key, withoutPatterns(nested)]),
+      .filter(([key, nested]) => !(WIRE_DROPPED_LIMITS.has(key) && typeof nested === "number"))
+      .map(([key, nested]) => [key, withoutLengthLimits(nested)]),
   );
 }
 
-/*
-  4 Kasım yerel ölçümü (Codex CLI 0.163): 30 KB'lık şemayla karar çağrılarının 19/48'i 4–25 sn içinde
-  `Incomplete response returned, reason: max_output_tokens` ile düştü. Şema küçültülen kollarda (27 KB
-  ve altı) ilk 45 sn'de bu hata 0/96, `pattern`siz son sürümde tam koşuda 0/42. Kesin neden bilinmiyor.
-  Biçimi `runtimeNormalDecisionWireSchema` doğrular, bu yüzden kablo şemasından yalnız `pattern` çıkar.
-*/
-export const runtimeNormalDecisionWireJsonSchema = withoutPatterns(
+export const runtimeNormalDecisionWireJsonSchema = withoutLengthLimits(
   codexCompatibleJsonSchema(z.toJSONSchema(runtimeNormalDecisionWireSchema)),
 ) as Record<string, unknown>;
 
