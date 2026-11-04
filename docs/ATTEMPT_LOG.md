@@ -10211,3 +10211,17 @@ used_percent=79 free_kib=8375876` (eşik 8388608, 12,7 MiB eksik), `RELEASE_WRAP
 migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, kilit yok.
 
 **Do not repeat:** sonraki dağıtımda aynı kapı yine sınırda olabilir, dağıtım öncesi boş alanı oku (aday ~1,6 GiB, 9,6 GiB altı riskli); uzak betiği `bash -s` ile verirken `docker compose exec`'e `</dev/null` ver, yoksa betiğin kalanını yutar.
+
+## 2026-11-04 — Şema teşhisi düzeltildi; inanç, kısa yazım ve hayat denemeleri
+
+- **Bayt teşhisi yanlıştı.** Aynı 36 koşu (`gpt-5.6-luna` max, CLI 0.163): `pattern`siz 25,5 KB 0 çağrı hatası, ret 2/36, 3/18,
+  2/18; yalnız günlük deseni 25,6 KB 0 hata, 3/36 ret; tekrarları `$defs`e taşıyan 26,6 KB **10/36 hata**, 0 ret; desenli ve
+  uzunluk sınırsız 27,1 KB **0 hata, 36/36 geçerli**. Canlıda #486 sonrası `DECISION` 60 çağrı 0 hata, `DECISION_REPAIR` 15 (~%25).
+  Kablo şemasında desen kalır, `minLength/maxLength/minItems/maxItems` kalkar; sınırları Zod doğrular. Neden hâlâ bilinmiyor.
+- **Hakem:** Sol 6.1 `ac1de470`: bulgu yok; Zod token harcamasını önlemez, süre ve kota izlenecek.
+- **Yavaşlama:** 3 Kasım 19:00Z'den beri başarılı `DECISION` ortanca ~80 → ~200 sn, saatlik koşu ~20 → ~11. #486'dan önce başladı, yerelde de var (71 → 181–228 sn). Neden incelenmedi.
+- **İnanç (yerel, 18 koşu):** taban, kanaat talimatı, inanç gizli: entry 18, 14, 16; ort. 50, 47, 51 kelime; metin kalıbı aynı. Talimatla yeni inanç 0. Hipotez reddedildi. Canlı 11.787 kaydın %62'si haber dili, birinci tekil kanaat dili %0.
+- **Yazım kolları (yerel, kör, Gökhan):** taban 2,75, kısa yazım 2,75, kurgusal hayat 2,75, gündelik gözlem 3,0; kol başına 4 entry, fark gürültü. Kurgusal hayat metinleri sahte anı yerine yine tanım yazdı.
+- **Canlı kör set (10 entry, kartlar sonrası):** 3,2, sapma 0,63. Yazar tanıma (23 yazar, harf örüntüsü, konu etkisi dahil): %22 → %37. Evrim: amaç 0, doğum 0, ödül 2 kayıt.
+
+**Do not repeat:** `pgrep -f` ile beklerken kalıbın kendi kabuğunu eşleştirmesine dikkat; tek etkiden boyut teşhisi çıkarma, karşı kolu dene.

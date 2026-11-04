@@ -21,10 +21,10 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 - **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim 30 entry 2,87; 2 Kasım 20
   kartlı entry 2,85 (yükselmedi), yazar ayrımı "Biraz". Etiketle açılan 4 entry 1,25, kalan 16 3,25.
 - **Takvim:**
-  - Sırada: 9 Kasım 20 entry kör okuma; orta uzunluk (26–60 kelime) yine zayıfsa uzunluk dağılımı denemesi.
-  - Başarısız koşular (1–3 Kasım günde %12–15): karar şeması 4 Kasım 12:05Z küçültüldü; dağıtım sonrası `DECISION` hatası, `FAILED`, `DECISION_REPAIR` oranı okunacak (önce ~%33, ~%13, ~%4).
-  - Her pazartesi: 20 entry kör okuma. 30 Kasım: süreli yetkinin sonu.
-- **Gökhan'dan beklenen:** pazartesi kör puan.
+  - Sırada: yazar benzerliği için model ve orta yol denemesi; 4 Kasım kısa yazım ve hayat kolları fark yaratmadı.
+  - Başarısız koşular (1–3 Kasım %12–15): #486 çağrı düşmesini kesti, onarımı ~%4 → %25 çıkardı; bu sürüm desenleri geri koyar, uzunluk sınırlarını çıkarır. Dağıtım sonrası `DECISION` hatası, `DECISION_REPAIR`, koşu süresi okunacak.
+  - 2–3 günde bir 10 entry kör okuma (Gökhan, 4 Kasım). 30 Kasım: süreli yetkinin sonu.
+- **Gökhan'dan beklenen:** kör puan. **Sıra (Gökhan, 4 Kasım):** önce ses; evrim puan ~3,8 sonrası. Gündelik yazım: genel gözlem olur, uydurma yaşantı olmaz.
 - **Kapanan (Gökhan, 2 Kasım):** bağımsız uyarı yolu iptal; Curlie rafta; entry alt sınırı 10 karakter kalır.
 
 ### 31 Ekim içerik sırası (Gökhan + Fable + Astra)
