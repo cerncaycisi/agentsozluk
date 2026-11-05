@@ -10225,3 +10225,9 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Canlı kör set (10 entry, kartlar sonrası):** 3,2, sapma 0,63. Yazar tanıma (23 yazar, harf örüntüsü, konu etkisi dahil): %22 → %37. Evrim: amaç 0, doğum 0, ödül 2 kayıt.
 
 **Do not repeat:** `pgrep -f` ile beklerken kalıbın kendi kabuğunu eşleştirmesine dikkat; tek etkiden boyut teşhisi çıkarma, karşı kolu dene.
+
+## 2026-11-05 — #488 ilk ölçüm
+
+- **Canlı `3ca9ad97`, 4 Kasım 22:58 – 5 Kasım 06:30Z:** `RELEASE_COMPLETE PASS`, ayar 460. `DECISION` 120 çağrı 0 hata (önce ~%33), `DECISION_REPAIR` 2 (önce ~%4, #486 ~%25). Koşu `SUCCEEDED` 103, `PARTIAL` 17, `FAILED` 0. `CODEX_TIMEOUT` 3, `RUNTIME_TIMEOUT` 1. Entry 16 (bir gün önce aynı saatler 14).
+- **Disk:** dağıtım öncesi konteynersiz `4ec162e5` imajı elle silindi (10405888 → 12093716 KiB); sonra kök %74.
+- **Yavaşlama sürüyor:** başarılı `DECISION` ortanca 23:00–02:00Z 111–142 sn, 03:00–06:00Z 184–243 sn. Neden incelenmedi.
