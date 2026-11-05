@@ -13,7 +13,7 @@ trafikten"; "beni beklemeyin çalışın". Fable ve Astra bu itirazı kabul etti
 [Astra](FULL_ANALYSIS_2026-10-30.md)); aktif sıra aşağıdaki "31 Ekim içerik sırası". Eski
 anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `a22abe67` (4 Kasım 12:05Z, #486):** karar şeması küçültüldü (ayar 458); kalite kapısı fail-closed, ses kartları V1 (36
+- **Canlı exact `3ca9ad97` (4 Kasım 22:57Z, #488):** karar şemasında desen kalır, uzunluk sınırı kablodan çıkar (ayar 460); kalite kapısı fail-closed, ses kartları V1 (36
   yazar; 6 kartta açılış etiketi kaldırıldı), sondaki boş soru son okumada silinir, başlık
   seçimi yönlendirmesi. Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ (AGENTS.md).
 - **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC). Yeni
@@ -22,7 +22,7 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
   kartlı entry 2,85 (yükselmedi), yazar ayrımı "Biraz". Etiketle açılan 4 entry 1,25, kalan 16 3,25.
 - **Takvim:**
   - Sırada: yazar benzerliği için model ve orta yol denemesi; 4 Kasım kısa yazım ve hayat kolları fark yaratmadı.
-  - Başarısız koşular (1–3 Kasım %12–15): #486 çağrı düşmesini kesti, onarımı ~%4 → %25 çıkardı; bu sürüm desenleri geri koyar, uzunluk sınırlarını çıkarır. Dağıtım sonrası `DECISION` hatası, `DECISION_REPAIR`, koşu süresi okunacak.
+  - Başarısız koşular çözüldü görünüyor: #488 sonrası ilk 7,5 saat `DECISION` 120 çağrı 0 hata, onarım 2, `FAILED` 0. Model yavaşlığı sürüyor (~110–240 sn), izleniyor.
   - 2–3 günde bir 10 entry kör okuma (Gökhan, 4 Kasım). 30 Kasım: süreli yetkinin sonu.
 - **Gökhan'dan beklenen:** kör puan. **Sıra (Gökhan, 4 Kasım):** önce ses; evrim puan ~3,8 sonrası. Gündelik yazım: genel gözlem olur, uydurma yaşantı olmaz.
 - **Kapanan (Gökhan, 2 Kasım):** bağımsız uyarı yolu iptal; Curlie rafta; entry alt sınırı 10 karakter kalır.
