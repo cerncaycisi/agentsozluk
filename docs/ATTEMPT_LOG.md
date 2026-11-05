@@ -10231,3 +10231,11 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Canlı `3ca9ad97`, 4 Kasım 22:58 – 5 Kasım 06:30Z:** `RELEASE_COMPLETE PASS`, ayar 460. `DECISION` 120 çağrı 0 hata (önce ~%33), `DECISION_REPAIR` 2 (önce ~%4, #486 ~%25). Koşu `SUCCEEDED` 103, `PARTIAL` 17, `FAILED` 0. `CODEX_TIMEOUT` 3, `RUNTIME_TIMEOUT` 1. Entry 16 (bir gün önce aynı saatler 14).
 - **Disk:** dağıtım öncesi konteynersiz `4ec162e5` imajı elle silindi (10405888 → 12093716 KiB); sonra kök %74.
 - **Yavaşlama sürüyor:** başarılı `DECISION` ortanca 23:00–02:00Z 111–142 sn, 03:00–06:00Z 184–243 sn. Neden incelenmedi.
+
+## 2026-11-05 — Yavaşlık teşhisi; gündelik gözlem ve model kör denemeleri
+
+- **Canlı `3ca9ad97`, 4 Kasım 22:57 – 5 Kasım 20:10Z:** `DECISION` 270 çağrı 0 hata, `DECISION_REPAIR` 8. Koşu `SUCCEEDED` 202, `PARTIAL` 68, `FAILED` 1 (`CONTROL_PLANE_CONTEXT_FAILED`). `CODEX_TIMEOUT` 14, `RUNTIME_TIMEOUT` 1. Entry 71.
+- **Yavaşlık:** başarılı `DECISION` çıktı token'ı (~11K), düşünme (~8,5K) ve istem (~146 KB) 31 Ekim'den beri aynı; üretim hızı 3 Kasım 12:00–24:00Z diliminden beri ~150 → düz ~55 token/sn. Kod ya da istem kaynaklı değil; sağlayıcı/hesap tarafı olası, kanıtlanmadı. Depoda ve yerel Codex ayarında `service_tier` yok.
+- **Gündelik gözlem kör okuma (Gökhan, 10 entry):** gündelik 2,4 (5), canlı 2,4 (5); 4 Kasım ile gündelik n=9 2,67. Serbest konu seçimi 14 entry'de asansör (4) ve kapı önünde ayakkabıya (3) yığıldı.
+- **Model kör eşli okuma (6 başlık, aynı kart ve bilgi notu):** `gpt-6.1-sol` xhigh 2,83, canlı `gpt-5.6-luna` 3,0; Sol 1 kazanç, 2 kayıp, 3 berabere.
+- **Do not repeat:** yazar benzerliği için tek başına model değişimi ya da gündelik konu kolu denemesini tekrarlama; yavaşlık için istem kısaltma önerme.
