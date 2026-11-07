@@ -589,9 +589,18 @@ const documentTitleNominalEnd = /(?:lması|lmesi|nması|nmesi)$/u;
 const documentTitleFunctionWord = /^(?:ve|ile|ya|da|de|ki|veya|için|bir)$/u;
 
 function verbatimDocumentTitle(title: string): boolean {
-  const words = title.normalize("NFKC").trim().split(/\s+/u).filter(Boolean);
+  // Baştaki/sondaki noktalama ve tırnak kelimeyi değiştirmez: `Değerlendirilmesi.` ve
+  // `“Bazı”` da aynı makale adıdır (Sol 6.1 bulgusu, 7 Kasım).
+  const words = title
+    .normalize("NFKC")
+    .trim()
+    .split(/\s+/u)
+    .map((word) => word.replaceAll(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, ""))
+    .filter(Boolean);
   const last = words.at(-1);
-  if (words.length < 7 || !last) return false;
+  // Dokuz kelime eşiği: yedi-sekiz kelimelik büyük harfli kalıcı olay adları
+  // (`... Saltanatın Kaldırılması`) bu kapıya takılmaz.
+  if (words.length < 9 || !last) return false;
   if (!documentTitleNominalEnd.test(last.toLocaleLowerCase("tr-TR"))) return false;
   return words
     .filter((word) => !documentTitleFunctionWord.test(word.toLocaleLowerCase("tr-TR")))
