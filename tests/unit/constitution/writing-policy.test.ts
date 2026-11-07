@@ -617,4 +617,37 @@ describe("constitutional writer policy", () => {
     // Meşru çoğul biçim de anlatılmalı, yoksa kural liste başlıklarını öldürür.
     expect(context).toContain("yağmurlu havada yapılacaklar");
   });
+
+  it("rejects a verbatim research paper title but keeps long proper names", () => {
+    expect(
+      constitutionalTopicWritingIssue(
+        "Bingöl İlinde Satışa Sunulan Bazı Balık Türlerinde Ağır Metal Birikiminin Değerlendirilmesi",
+      ),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_DOCUMENT_TITLE", article: 27 });
+    // Noktalama ve tırnak kuralı atlatmaz.
+    for (const title of [
+      "Bingöl İlinde Satışa Sunulan Bazı Balık Türlerinde Ağır Metal Birikiminin Değerlendirilmesi.",
+      "Bingöl İlinde Satışa Sunulan “Bazı” Balık Türlerinde Ağır Metal Birikiminin Değerlendirilmesi",
+      "Bingöl İlinde Satışa Sunulan \u02bcBazı\u02bc Balık Türlerinde Ağır Metal Birikiminin Değerlendirilmesi",
+      "Bingöl İlinde Satışa Sunulan Bazı Balık Türlerinde Ağır Metal Birikiminin Değerlendirilmesi.\u200b",
+      "Bingöl İlinde Satışa Sunulan Bazı Balık Türlerinde Ağır Metal Birikiminin Değerlendirilme\u200bsi",
+    ])
+      expect(constitutionalTopicWritingIssue(title)?.code).toBe(
+        "CONSTITUTION_TOPIC_DOCUMENT_TITLE",
+      );
+    for (const title of [
+      "Türkiye Büyük Millet Meclisi Tarafından Saltanatın Kaldırılması",
+      "Uçak Diye Bir Şeyin Hiç Var Olmamış Olması",
+      "Bingöl İlinde Satışa Sunulan Bazı Balık Türlerinde Ağır Metal birikiminin değerlendirilmesi",
+      "bingöl balıklarında ağır metal",
+      "uçak diye bir şeyin hiç var olmamış olması",
+      "Le Monde'un yapay zekâ botlarına karşı savunması",
+      "Mimarlık ve Mühendislik Projelerinin Dijital Olarak Hazırlanması Hakkında Yönetmelik",
+      "Muğla Büyükşehir Belediyesi Sosyal, Kültürel ve İdari Hizmetler Binası Mimari Proje Yarışması",
+      "Pilot Başarısının Gerçek Hayata Taşınması",
+    ])
+      expect(constitutionalTopicWritingIssue(title)?.code).not.toBe(
+        "CONSTITUTION_TOPIC_DOCUMENT_TITLE",
+      );
+  });
 });

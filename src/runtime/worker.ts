@@ -871,6 +871,8 @@ export function buildContentRepairPrompt(
       return "Aynı başlıktaki mevcut entry'nin çekirdek hükmünü başka kelimelerle tekrarlama. Aynı kanıtla gerçekten yeni bir tanım, somut örnek, karşılaştırma, çekince veya farklı öznel görüş kurabiliyorsan yalnız gövdeyi yeniden yaz; yeni değer ekleyemiyorsan repair'den vazgeç.";
     if (rejectionCode === "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT")
       return "Reddin sebebi gövde değil BAŞLIK: açmak istediğin başlık tekil bir vakayı adlandırıyor ve manşet ertesi gün değiştiğinde kavram adı olarak yaşamaz. Anayasa Madde 32'nin çaresini uygula: katkıyı olayın kendisine değil, ilgili kişi, kurum, ülke, takım veya eser adına yaz. Yeni başlığı reddedilen başlığın içindeki kalıcı özel addan türet: kişi, kurum, ülke, takım veya eser adı. Yeni başlık kısa ve kanonik olsun; tarih, yer eki, vaka adı veya niteleme ekleme. Gövdeyi yeni başlığın altında okunacak biçimde koru ya da hafifçe uyarla; vakayı anlatmayı bırakma, yalnız adresini düzelt.";
+    if (rejectionCode === "CONSTITUTION_TOPIC_DOCUMENT_TITLE")
+      return "Reddin sebebi gövde değil BAŞLIK: açmak istediğin başlık bir makale, rapor veya bildirinin adını aynen taşıyor. Konunun kısa sözlük adresini kur: bir ila beş kelime, küçük harf, kaynağın büyük harfli adı ve 'değerlendirilmesi', 'incelenmesi' gibi akademik ekler olmadan. Gövdeyi yeni başlığın altında okunacak biçimde koru ya da hafifçe uyarla; küçük harf düzenini bozma.";
     return "Duplicate veya tekrarlanan çerçeveyi kaldır; aynı kanıtla gerçekten farklı ve bağımsız bir anlatım kur.";
   })();
   const repairsTitle = isTitleRepairableContentRejectionCode(rejectionCode);

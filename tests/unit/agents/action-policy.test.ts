@@ -740,6 +740,7 @@ describe("aynı başlıkta öz-tekrar", () => {
     expect(isTitleRepairableContentRejectionCode("CONSTITUTION_TOPIC_TRANSIENT_INCIDENT")).toBe(
       true,
     );
+    expect(isTitleRepairableContentRejectionCode("CONSTITUTION_TOPIC_DOCUMENT_TITLE")).toBe(true);
     expect(isTitleRepairableContentRejectionCode("DUPLICATE_FRAMING")).toBe(false);
   });
 
