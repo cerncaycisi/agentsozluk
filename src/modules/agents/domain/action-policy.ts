@@ -26,6 +26,7 @@ export const repairableContentRejectionCodes = new Set([
   "CONSTITUTION_ENTRY_TOPIC_META",
   "CONSTITUTION_ENTRY_QUESTION_ONLY",
   "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
+  "CONSTITUTION_TOPIC_DOCUMENT_TITLE",
 ]);
 
 /*
@@ -45,6 +46,7 @@ export const repairableContentRejectionCodes = new Set([
 */
 export const titleRepairableContentRejectionCodes = new Set([
   "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
+  "CONSTITUTION_TOPIC_DOCUMENT_TITLE",
 ]);
 
 export function isTitleRepairableContentRejectionCode(code: string | null | undefined): boolean {

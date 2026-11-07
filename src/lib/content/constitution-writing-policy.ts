@@ -8,6 +8,7 @@ export interface ConstitutionalWritingIssue {
     | "CONSTITUTION_TOPIC_DIRECT_ADDRESS"
     | "CONSTITUTION_TOPIC_QUESTION_ANSWER"
     | "CONSTITUTION_TOPIC_NEWS_HEADLINE"
+    | "CONSTITUTION_TOPIC_DOCUMENT_TITLE"
     | "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT"
     | "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT"
     | "CONSTITUTION_TOPIC_UNESTABLISHED_PAIR"
@@ -575,6 +576,28 @@ function firstEntryFramesHeadlineAsConcept(body: string): boolean {
   return metalinguisticNominalHead.test(firstSentence);
 }
 
+/*
+  Makale, rapor veya bildiri adının başlığa aynen taşınması (Gökhan, 7 Kasım:
+  "Bingöl İlinde Satışa Sunulan Bazı Balık Türlerinde Ağır Metal Birikiminin
+  Değerlendirilmesi"). Ölçüldü (7 Kasım, üretimdeki 9.911 başlık): 8+ kelimelik 80
+  başlığın çoğu meşru özel ad (yarışma, yönetmelik, albüm, bina adı); onları ayıran,
+  akademik adın iş adıyla (`-lması/-nmesi`) bitmesi ve her içerik kelimesinin büyük
+  harfle başlaması. Üçü birlikte tüm üretimde yalnız bu başlığı yakalıyor; küçük harfli
+  `uçak diye bir şeyin hiç var olmamış olması` ve `Le Monde'un ... savunması` geçer.
+*/
+const documentTitleNominalEnd = /(?:lması|lmesi|nması|nmesi)$/u;
+const documentTitleFunctionWord = /^(?:ve|ile|ya|da|de|ki|veya|için|bir)$/u;
+
+function verbatimDocumentTitle(title: string): boolean {
+  const words = title.normalize("NFKC").trim().split(/\s+/u).filter(Boolean);
+  const last = words.at(-1);
+  if (words.length < 7 || !last) return false;
+  if (!documentTitleNominalEnd.test(last.toLocaleLowerCase("tr-TR"))) return false;
+  return words
+    .filter((word) => !documentTitleFunctionWord.test(word.toLocaleLowerCase("tr-TR")))
+    .every((word) => /^\p{Lu}/u.test(word));
+}
+
 function normalizedTopicTitleText(title: string): string {
   return title.normalize("NFKC").toLocaleLowerCase("tr-TR").replaceAll(/\s+/gu, " ").trim();
 }
@@ -615,6 +638,13 @@ export function constitutionalTopicWritingIssue(title: string): ConstitutionalWr
         headline === "BULLETIN"
           ? "Anayasa Madde 32: Haber bülteni önekiyle kurulan geçici manşet yerine kişi, kurum veya kalıcı olay adı kullanılmalıdır."
           : "Anayasa Madde 32: Çekimli haber yüklemiyle biten başlık günlük manşet cümlesidir; kişi, kurum veya kalıcı olay adı kullanılmalıdır.",
+    };
+  if (verbatimDocumentTitle(title))
+    return {
+      code: "CONSTITUTION_TOPIC_DOCUMENT_TITLE",
+      article: 27,
+      reason:
+        "Anayasa Madde 27: Başlık bir makale, rapor veya bildirinin adını aynen taşımamalı; konunun kısa ve kalıcı sözlük adresini küçük harfle kullanın.",
     };
   if (transientIncidentTitle(title, normalized)) {
     const address = suggestedCanonicalAddress(title);
