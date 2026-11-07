@@ -23,6 +23,7 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 - **Takvim:**
   - Yazar benzerliği: 4–5 Kasım kör denemelerinde kısa yazım, kurgusal hayat, gündelik gözlem (2,4 = canlı 2,4) ve Sol 6.1 (eşli 2,83, canlı 3,0) fark yaratmadı; model geçişi yok. Sırada: Gökhan'ın puanlı ~50 entry'siyle kurulan hakemin onun puanını tahmin edip etmediği; ederse çok adaylı seçim.
   - Başarısız koşular çözüldü: #488 sonrası 21 saatte `DECISION` 270 çağrı 0 hata, onarım 8, `FAILED` 1, `CODEX_TIMEOUT` 14. Yavaşlık sağlayıcı hızı: çıktı aynı (~11K token), hız 3 Kasım'dan beri ~150 → ~55 token/sn; istem kısaltmak çözmez, izleniyor.
+  - Makale adı başlık kuralı (Gökhan, 7 Kasım "Düzelt"): 9+ kelimelik, büyük harfli ve `-lması/-nmesi` ile biten başlık `CONSTITUTION_TOPIC_DOCUMENT_TITLE` ile reddedilir, onarım başlığı kısaltır. Bilinen açık: görünmez karakterle başlık onarım kontrolünü atlatma (Sol, önceden var), ayrı iş.
   - 2–3 günde bir 10 entry kör okuma (Gökhan, 4 Kasım). 30 Kasım: süreli yetkinin sonu.
 - **Gökhan'dan beklenen:** kör puan. **Sıra (Gökhan, 4 Kasım):** önce ses; evrim puan ~3,8 sonrası. Gündelik yazım: genel gözlem olur, uydurma yaşantı olmaz.
 - **Kapanan (Gökhan, 2 Kasım):** bağımsız uyarı yolu iptal; Curlie rafta; entry alt sınırı 10 karakter kalır.

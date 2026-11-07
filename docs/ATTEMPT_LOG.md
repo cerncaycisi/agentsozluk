@@ -10239,3 +10239,13 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Gündelik gözlem kör okuma (Gökhan, 10 entry):** gündelik 2,4 (5), canlı 2,4 (5); 4 Kasım ile gündelik n=9 2,67. Serbest konu seçimi 14 entry'de asansör (4) ve kapı önünde ayakkabıya (3) yığıldı.
 - **Model kör eşli okuma (6 başlık, aynı kart ve bilgi notu):** `gpt-6.1-sol` xhigh 2,83, canlı `gpt-5.6-luna` 3,0; Sol 1 kazanç, 2 kayıp, 3 berabere.
 - **Do not repeat:** yazar benzerliği için tek başına model değişimi ya da gündelik konu kolu denemesini tekrarlama; yavaşlık için istem kısaltma önerme.
+
+## 2026-11-07 — Makale adı başlık kuralı
+
+- **Vaka:** Gökhan'ın gösterdiği başlık (publicId 9922) bir makalenin adını büyük harfleriyle aynen taşıyordu; haber manşeti kapıları yakalamadı.
+- **Ölçüm (üretimdeki 9.911 başlık):** 8+ kelimelik 80 başlığın çoğu meşru özel ad (yarışma, yönetmelik, albüm, bina). 9+ kelime, her içerik kelimesi büyük harf ve `-lması/-nmesi` sonu birlikte yalnız bu başlığı yakalıyor.
+- **Değişiklik:** `CONSTITUTION_TOPIC_DOCUMENT_TITLE` (Madde 27), gövde ve başlık onarılabilir kod setlerinde; onarım talimatı kısa, küçük harfli başlık istiyor.
+- **Yerel model denemesi (`gpt-5.6-luna` max):** onarım talimatının son metniyle 3/3 kısa başlık ("balıklarda ağır metal birikimi", "bingöl balıklarında ağır metal birikimi"), gövde küçük harf kaldı. Küçük harf cümlesi eklenmeden önceki 3 denemede gövde büyük harfe çevrilmişti.
+- **Hakem Sol 6.1 (xhigh):** 1. tur `5997d2ae` 2 bulgu (noktalama/tırnakla atlatma, 7 kelimelik kalıcı ad yanlış reddi) → `9d4f9748` (noktalama temizliği, eşik 9). 2. tur U+02BC ve görünmez karakter → `45d67c9c`. 3. tur bu kural için bulgu yok; önceden var olan açık: görünmez karakter (Cf) eklenmiş aynı başlık `titleRepairCandidateIsSafe`'i geçiyor (vaka kuralı), ayrı iş.
+- **Ek bulgu:** "ıcp-ms" gibi Latin kısaltmanın Türkçe küçültmesi 60 günde 1 entry; istem değişikliği yapılmadı.
+- **Do not repeat:** uzun başlık ya da yalnız `-lması` sonuyla genel kural kurma; meşru özel adları ve kalıcı olay adlarını yakalar.
