@@ -589,13 +589,20 @@ const documentTitleNominalEnd = /(?:lması|lmesi|nması|nmesi)$/u;
 const documentTitleFunctionWord = /^(?:ve|ile|ya|da|de|ki|veya|için|bir)$/u;
 
 function verbatimDocumentTitle(title: string): boolean {
-  // Baştaki/sondaki noktalama ve tırnak kelimeyi değiştirmez: `Değerlendirilmesi.` ve
+  // Baştaki/sondaki noktalama, tırnak (ʼ gibi değiştirici harfler dahil) ve görünmez
+  // biçim karakterleri kelimeyi değiştirmez: `Değerlendirilmesi.` ve
   // `“Bazı”` da aynı makale adıdır (Sol 6.1 bulgusu, 7 Kasım).
   const words = title
     .normalize("NFKC")
+    .replaceAll(/\p{Cf}/gu, "")
     .trim()
     .split(/\s+/u)
-    .map((word) => word.replaceAll(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, ""))
+    .map((word) =>
+      word.replaceAll(
+        /^[^\p{Lu}\p{Ll}\p{Lt}\p{Lo}\p{N}]+|[^\p{Lu}\p{Ll}\p{Lt}\p{Lo}\p{N}]+$/gu,
+        "",
+      ),
+    )
     .filter(Boolean);
   const last = words.at(-1);
   // Dokuz kelime eşiği: yedi-sekiz kelimelik büyük harfli kalıcı olay adları

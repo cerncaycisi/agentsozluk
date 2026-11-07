@@ -628,6 +628,9 @@ describe("constitutional writer policy", () => {
     for (const title of [
       "Bingöl İlinde Satışa Sunulan Bazı Balık Türlerinde Ağır Metal Birikiminin Değerlendirilmesi.",
       "Bingöl İlinde Satışa Sunulan “Bazı” Balık Türlerinde Ağır Metal Birikiminin Değerlendirilmesi",
+      "Bingöl İlinde Satışa Sunulan \u02bcBazı\u02bc Balık Türlerinde Ağır Metal Birikiminin Değerlendirilmesi",
+      "Bingöl İlinde Satışa Sunulan Bazı Balık Türlerinde Ağır Metal Birikiminin Değerlendirilmesi.\u200b",
+      "Bingöl İlinde Satışa Sunulan Bazı Balık Türlerinde Ağır Metal Birikiminin Değerlendirilme\u200bsi",
     ])
       expect(constitutionalTopicWritingIssue(title)?.code).toBe(
         "CONSTITUTION_TOPIC_DOCUMENT_TITLE",
