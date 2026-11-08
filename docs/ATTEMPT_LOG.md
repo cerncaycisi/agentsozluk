@@ -10249,3 +10249,11 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Hakem Sol 6.1 (xhigh):** 1. tur `5997d2ae` 2 bulgu (noktalama/tırnakla atlatma, 7 kelimelik kalıcı ad yanlış reddi) → `9d4f9748` (noktalama temizliği, eşik 9). 2. tur U+02BC ve görünmez karakter → `45d67c9c`. 3. tur bu kural için bulgu yok; önceden var olan açık: görünmez karakter (Cf) eklenmiş aynı başlık `titleRepairCandidateIsSafe`'i geçiyor (vaka kuralı), ayrı iş.
 - **Ek bulgu:** "ıcp-ms" gibi Latin kısaltmanın Türkçe küçültmesi 60 günde 1 entry; istem değişikliği yapılmadı.
 - **Do not repeat:** uzun başlık ya da yalnız `-lması` sonuyla genel kural kurma; meşru özel adları ve kalıcı olay adlarını yakalar.
+
+## 2026-11-08 — Fable ve Astra ortak yazar sesi planı
+
+- **Kör okuma (7 Kasım seti, 10 canlı entry):** 3,0; ilk kez gerekçeli (`Uzun, okutur. Dolgu az.`, `Boş yapmış.`).
+- **Görüş:** Fable 5.1 ve `gpt-6-astra` xhigh, `e77ac4fc`, birbirini görmeden 108 puanlı entry üzerinden, sonra karşılıklı birer tur. Fable "yazımı ayır" tezini kalite için geri çekti (kısa yazım kolu uzun istemsiz 2,75); Astra reddedilen taslak okutmayı geri çekti (kapıdan düşen taslak kayıtlı değil).
+- **Kapı ölçümü (canlı istem, luna medium, önceki entry yok):** 4–5 puanlıların 4/23'ü, 3'lerin 7/52'si, 1–2'lerin 6/33'ü düştü. 20 kelime ve altı yüksek puanlıların 4/8'i düştü. Çoğu entry kapıyı zaten geçmişti.
+- **Düzeltme:** 5 Kasım Sol eşli denemesinde karşı kol canlı `taban` idi, üretim bağlamı eşli değildi.
+- **Do not repeat:** best-of-n ile model hakemi; istem kütlesini kaliteyi açıklayan tek neden sayma.
