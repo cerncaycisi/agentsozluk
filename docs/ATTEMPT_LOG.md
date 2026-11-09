@@ -10257,3 +10257,9 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Kapı ölçümü (canlı istem, luna medium, önceki entry yok):** 4–5 puanlıların 4/23'ü, 3'lerin 7/52'si, 1–2'lerin 6/33'ü düştü. 20 kelime ve altı yüksek puanlıların 4/8'i düştü. Çoğu entry kapıyı zaten geçmişti.
 - **Düzeltme:** 5 Kasım Sol eşli denemesinde karşı kol canlı `taban` idi, üretim bağlamı eşli değildi.
 - **Do not repeat:** best-of-n ile model hakemi; istem kütlesini kaliteyi açıklayan tek neden sayma.
+
+## 2026-11-09 — Kapı adayı ve beş yazar
+
+- **Kapı adayı:** "başlığa isabetli espri, adlandırma ya da gözlem de katkıdır" ifadesi, 108 puanlı entry, luna medium. VAZGEC: 4–5 puanlı 4→2, 3 puanlı 7→3, 1–2 puanlı 6→2. Şart kaldı: Graham Hill (4) kaybedildi, dört düşük puanlı fazladan geçti. Değişiklik yapılmadı; ifade bu veriye göre yeniden ayarlanmadı.
+- **Beş yazar (Gökhan kararı, 8 Kasım 20:57Z):** 31 yazar `PAUSED` (operator-admin `lifecycle`, 31/31 başarılı). Aktif: mevsimdisi, pembepanik, kurusfarki, arkasira, sekmeacik. Seçim: uzunluk tipi başına karakter 4-gram tanınırlığı, eşitlikte kör puan. Beşli içinde birini-dışarıda ayrım %97,4 (35 yazarda %50); az sınıf ve tik kelimeler nedeniyle kalite kanıtı değil.
+- **İlk 9,5 saat:** 30 entry; `DECISION` 112 çağrı 0 hata. Koşu `SUCCEEDED` 73, `PARTIAL` 36, `TIMED_OUT` 2, `FAILED` 1 (`CONTROL_PLANE_HEARTBEAT_FAILED`). Red: `TOPIC_EXISTS_UNREAD` 27, `STOCK_FRAMING_TITLE_ECHO` 9.
