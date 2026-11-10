@@ -10271,3 +10271,11 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Yerel model denemesi (`gpt-5.6-luna` max, canlıdan beş yazarın ret alan koşu algısı):** okuma adımında 5 yazardan 2'si başlığı iki denemede de okumayı seçti. Karar adımında başlık okunmamışken aynı adı yeniden önerme: eski istem 8/10, yeni istem 0/10; yeni istemde 7/10 koşu başka entry yazdı.
 - **Hakem Sol 6.1 (xhigh):** 1. tur `6636af11` 1 P1, 4 P2. P2'ler düzeltildi (`d9c2459c`): birleşme hedefi, engelli başlık açanı, sınır sırası, ad kısaltma ve boyut kırpması. P1 (worker kendi önerdiği var olan başlığı sonraki menüye sokabilir) sınırlı kabul: yalnız kendi önerisi, aktif ve entry'li başlık, en çok 3, 7 gün. 2. tur 2 P2: okuma sorgusunda engelli yazar süzgeci yok ve başlık adı kısaltılmıyor; ikisi de önceden var, ayrı iş.
 - **Do not repeat:** karar çıktısı alanı `type`/`targetId`'dir, `actionType`/`topicId` değil; ilk ölçüm bu yüzden geçersizdi.
+
+## 2026-11-10 — #496 dağıtımı: disk kapısı ve yeniden koşu
+
+- **İlk koşu `6dac7dce`:** aday imaj ve runtime kuruldu, akış duraklatıldı (ayar 463), sonra `RELEASE_FAIL code=DISK_HEADROOM used_percent=81 free_kib=7769996`, `RELEASE_WRAPPER_FAIL status=96`. Kesim başlamadı; canlı `e77ac4fc` kaldı, `pr-dagit` akışı açtı (ayar 464). İlk PR CI koşusunda ayrıca biçim hatası ve ilgisiz `rejects oversized bulk moderation…` testinde 5 sn işlem zaman aşımı; ikinci koşu yeşil.
+- **Sınırlı temizlik:** konteyner kullanmayan ve `previous-image-id` olmayan `agent-sozluk:3ca9ad97…` imajı `docker image rm`; boş 7769928 → 9457764 KiB. Çalışan app imajı aynı (`ab585589…`).
+- **Kurtarma (runbook, `none` satırı):** işaret yok, `migration/` yok, hold yok; çalışan imaj `previous-image-id`, `current` `previous-runtime`; pam temiz, tek `deploy` oturumu, `a5-` konteyner/backend yok. Kilit (`6dac7dce…:f1ab62119a5274a7`) ve durum dizini silindi.
+- **İkinci koşu:** aynı yapıt, `RELEASE_COMPLETE PASS sha=6dac7dce4de8412b4a638f0a67b50f1bb0a409af cleanup=cleanup migrations=no-migration`, 19:49Z; ayar 465→466. Sonra kök %76, 9,8 GB boş, kilit yok, health 200; kalan imajlar `6dac7dce` ve `e77ac4fc`.
+- **Do not repeat:** üç uygulama imajı birlikte durunca kapı ~1,6–2 GiB eksik kalıyor; dağıtımdan önce boş alanı oku, 9,6 GiB altındaysa iki sürüm önceki kullanılmayan imajı önce sil.
