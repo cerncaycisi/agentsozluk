@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { activePurposeLimit } from "@/modules/agents/domain/purpose";
 import {
+  existingTopicsToReadKey,
+  existingTopicsToReadLimit,
+} from "@/modules/agents/domain/action-feedback";
+import {
   createInterestScorer,
   type WeightedInterest,
 } from "@/modules/agents/domain/interest-matching";
@@ -120,6 +124,16 @@ export function browsableTopicMenu(perception: unknown): BrowsableTopic[] {
     seen.add(id);
     out.push({ id, title, hint });
   };
+  /*
+    Açmak istediği ama okumadığı için reddedilen var olan başlıklar menünün başında (10 Kasım
+    2026): menü 24'te kesildiğinden sona konsa düşebilirdi; ret kartının "önce oku" dediği
+    başlık okunabilir olmalı.
+  */
+  for (const record of recordArray(source[existingTopicsToReadKey]).slice(
+    0,
+    existingTopicsToReadLimit,
+  ))
+    push(record, "açmak istediğin başlık zaten var");
   for (const record of recordArray(source.purposeTopics).slice(0, activePurposeLimit))
     push(record, "devam eden amaç");
   for (const record of recordArray(source.interestTopics).slice(0, interestTopicLimit))

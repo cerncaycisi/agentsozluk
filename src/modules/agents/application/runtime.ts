@@ -156,6 +156,8 @@ import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behav
 import {
   actionFeedbackLimit,
   actionFeedbackKey,
+  existingTopicsToReadKey,
+  existingTopicsToReadLimit,
   projectActionFeedback,
   refreshFrozenActionFeedback,
 } from "@/modules/agents/domain/action-feedback";
@@ -498,11 +500,13 @@ function boundedPerceptionSnapshot(
       interestTopics: interestTopicLimit,
       behaviorLessons: 5,
       actionFeedback: actionFeedbackLimit,
+      [existingTopicsToReadKey]: existingTopicsToReadLimit,
       authorFeedback: authorFeedbackLimit,
     },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
     [actionFeedbackKey]: projectActionFeedback(records.actionFeedbackRecords, now),
+    [existingTopicsToReadKey]: records.existingTopicsToRead,
     recentEntries: selectedEntries,
     interestTopics,
     trendingTopics,
@@ -619,6 +623,7 @@ function boundedPerceptionSnapshot(
     */ else if (snapshot.sourceCandidates.length > 0) snapshot.sourceCandidates.pop();
     else if (snapshot.authorFeedback.length > 0) snapshot.authorFeedback.pop();
     else if (snapshot.actionFeedback.length > 0) snapshot.actionFeedback.pop();
+    else if (snapshot[existingTopicsToReadKey].length > 0) snapshot[existingTopicsToReadKey].pop();
     else if (snapshot.writerOpenedTopics.length > 0) snapshot.writerOpenedTopics.pop();
     else if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
     else if (snapshot.linkedTopics.length > 0) snapshot.linkedTopics.pop();

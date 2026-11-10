@@ -113,3 +113,36 @@ describe("okuma menüsü", () => {
     expect(menu.filter(({ hint }) => hint === "ilgi")).toHaveLength(8);
   });
 });
+
+/*
+  10 Kasım 2026: okunmadığı için reddedilen var olan başlık sonraki koşunun menüsünün başına
+  girer; menü 24'te kesildiği için sona konsa düşebilirdi.
+*/
+describe("açmak istenen var olan başlık", () => {
+  it("menünün başına girer ve sunucu allowlist'inde de yer alır", () => {
+    const followedTopics = Array.from({ length: 30 }, (_, index) => ({
+      id: `t-${index}`,
+      title: `başlık ${index}`,
+    }));
+    const perception = {
+      existingTopicsToRead: [{ id: "t-var", title: "krassimir terziev" }],
+      followedTopics,
+    };
+    const menu = browsableTopicMenu(perception);
+    expect(menu[0]).toEqual({
+      id: "t-var",
+      title: "krassimir terziev",
+      hint: "açmak istediğin başlık zaten var",
+    });
+    expect(menu).toHaveLength(24);
+    expect(browsableTopicIds(perception).has("t-var")).toBe(true);
+  });
+
+  it("en çok üç başlık alır", () => {
+    const existingTopicsToRead = Array.from({ length: 5 }, (_, index) => ({
+      id: `t-${index}`,
+      title: `başlık ${index}`,
+    }));
+    expect(browsableTopicMenu({ existingTopicsToRead })).toHaveLength(3);
+  });
+});

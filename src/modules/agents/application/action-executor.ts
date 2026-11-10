@@ -1628,9 +1628,15 @@ export async function executeRuntimeAction(
                   "TOPIC_EXISTS_WRITE_AS_ENTRY",
                   "Anayasa Madde 16: Önerilen başlık bu koşuda okuduğun başlıklardan biri ve entry taşıyor; yeni başlık olarak yazılamaz. Okuduğun entry'lere yeni bir şey ekleyeceksen o başlığa entry olarak yaz.",
                 );
+              /*
+                Var olan başlığın kimliği ret ayrıntısında saklanır: sonraki koşu bu başlığı
+                okuma menüsüne koyar (10 Kasım 2026). Menüde olmayan başlık okunamadığı için
+                yazar aynı haberi görünce aynı adı yeniden öneriyordu (bir başlık 8 kez).
+              */
               throw new RuntimeActionRejectionError(
                 "TOPIC_EXISTS_UNREAD",
                 "Anayasa Madde 16: Önerilen başlık sözlükte zaten var ve görünür entry'ler taşıyor; bu koşuda okunmadığı için entry yazılamaz. Başlığı önce oku; mevcut entry'lere yeni bir tanım, örnek, karşılaştırma, çekince veya görüş ekleyeceksen yaz.",
+                { existingTopicId: topic.id },
               );
             }
           : undefined;

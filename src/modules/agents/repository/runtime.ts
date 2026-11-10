@@ -12,6 +12,8 @@ import {
   actionFeedbackLimit,
   actionFeedbackWindowMs,
   actionFeedbackStatuses,
+  existingTopicsToReadLimit,
+  unreadExistingTopicIds,
 } from "@/modules/agents/domain/action-feedback";
 import { Prisma, type AgentRunType } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
@@ -3452,6 +3454,11 @@ export async function getRuntimePerceptionRecords(
     linkedTopics: dictionaryReferences.linkedTopics,
     openTopicReferences: dictionaryReferences.openTopicReferences,
     dictionaryLinkCandidates,
+    existingTopicsToRead: await listExistingTopicsToRead(
+      transaction,
+      unreadExistingTopicIds(actionFeedbackRecords),
+      blockedUserIds,
+    ),
     interestTopicCandidates:
       input.includeTrendingTopics && input.interests && input.interests.length > 0
         ? await listRuntimeInterestTopicCandidates(transaction, {
@@ -3462,6 +3469,57 @@ export async function getRuntimePerceptionRecords(
           })
         : [],
   };
+}
+
+/*
+  Okunmadığı için reddedilen yeni başlık önerilerinin var olan başlıkları (10 Kasım 2026).
+  Sıra ret sırasıdır (en yeni önce). Retten sonra birleşen başlık kanonik hedefine çözülür;
+  yalnız aktif ve engelli kullanıcının açmadığı başlıklar sayılır, üçlük sınır bu süzgeçten
+  sonra uygulanır. Gösterilen ad kısaltılır: normalleştirilmiş uzunluk sınırı görünmez
+  karakterli adı geçirebiliyordu (Sol 6.1, 1. tur P2).
+*/
+const existingTopicTitleLimit = 120;
+const existingTopicMergeDepth = 4;
+
+async function listExistingTopicsToRead(
+  transaction: DatabaseExecutor,
+  topicIds: string[],
+  blockedUserIds: readonly string[],
+) {
+  const out: { id: string; title: string }[] = [];
+  for (const topicId of topicIds) {
+    let topic = await transaction.topic.findUnique({
+      where: { id: topicId },
+      select: { id: true, title: true, status: true, mergedIntoId: true, createdById: true },
+    });
+    for (let depth = 0; topic?.status === "MERGED" && topic.mergedIntoId; depth += 1) {
+      if (depth >= existingTopicMergeDepth) {
+        topic = null;
+        break;
+      }
+      topic = await transaction.topic.findUnique({
+        where: { id: topic.mergedIntoId },
+        select: { id: true, title: true, status: true, mergedIntoId: true, createdById: true },
+      });
+    }
+    if (
+      !topic ||
+      topic.status !== "ACTIVE" ||
+      blockedUserIds.includes(topic.createdById) ||
+      out.some(({ id }) => id === topic!.id)
+    )
+      continue;
+    out.push({ id: topic.id, title: truncateTitle(topic.title) });
+    if (out.length >= existingTopicsToReadLimit) break;
+  }
+  return out;
+}
+
+function truncateTitle(title: string) {
+  const chars = [...title];
+  return chars.length > existingTopicTitleLimit
+    ? `${chars.slice(0, existingTopicTitleLimit).join("")}…`
+    : title;
 }
 
 /*
