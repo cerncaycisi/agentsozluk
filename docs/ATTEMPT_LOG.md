@@ -10271,4 +10271,3 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Yerel model denemesi (`gpt-5.6-luna` max, canlıdan beş yazarın ret alan koşu algısı):** okuma adımında 5 yazardan 2'si başlığı iki denemede de okumayı seçti. Karar adımında başlık okunmamışken aynı adı yeniden önerme: eski istem 8/10, yeni istem 0/10; yeni istemde 7/10 koşu başka entry yazdı.
 - **Hakem Sol 6.1 (xhigh):** 1. tur `6636af11` 1 P1, 4 P2. P2'ler düzeltildi (`d9c2459c`): birleşme hedefi, engelli başlık açanı, sınır sırası, ad kısaltma ve boyut kırpması. P1 (worker kendi önerdiği var olan başlığı sonraki menüye sokabilir) sınırlı kabul: yalnız kendi önerisi, aktif ve entry'li başlık, en çok 3, 7 gün. 2. tur 2 P2: okuma sorgusunda engelli yazar süzgeci yok ve başlık adı kısaltılmıyor; ikisi de önceden var, ayrı iş.
 - **Do not repeat:** karar çıktısı alanı `type`/`targetId`'dir, `actionType`/`topicId` değil; ilk ölçüm bu yüzden geçersizdi.
-
