@@ -156,6 +156,8 @@ import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behav
 import {
   actionFeedbackLimit,
   actionFeedbackKey,
+  existingTopicsToReadKey,
+  existingTopicsToReadLimit,
   projectActionFeedback,
   refreshFrozenActionFeedback,
 } from "@/modules/agents/domain/action-feedback";
@@ -498,11 +500,13 @@ function boundedPerceptionSnapshot(
       interestTopics: interestTopicLimit,
       behaviorLessons: 5,
       actionFeedback: actionFeedbackLimit,
+      [existingTopicsToReadKey]: existingTopicsToReadLimit,
       authorFeedback: authorFeedbackLimit,
     },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
     [actionFeedbackKey]: projectActionFeedback(records.actionFeedbackRecords, now),
+    [existingTopicsToReadKey]: records.existingTopicsToRead,
     recentEntries: selectedEntries,
     interestTopics,
     trendingTopics,

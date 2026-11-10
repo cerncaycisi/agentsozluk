@@ -12,6 +12,7 @@ import {
   actionFeedbackLimit,
   actionFeedbackWindowMs,
   actionFeedbackStatuses,
+  unreadExistingTopicIds,
 } from "@/modules/agents/domain/action-feedback";
 import { Prisma, type AgentRunType } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
@@ -3452,6 +3453,10 @@ export async function getRuntimePerceptionRecords(
     linkedTopics: dictionaryReferences.linkedTopics,
     openTopicReferences: dictionaryReferences.openTopicReferences,
     dictionaryLinkCandidates,
+    existingTopicsToRead: await listExistingTopicsToRead(
+      transaction,
+      unreadExistingTopicIds(actionFeedbackRecords),
+    ),
     interestTopicCandidates:
       input.includeTrendingTopics && input.interests && input.interests.length > 0
         ? await listRuntimeInterestTopicCandidates(transaction, {
@@ -3462,6 +3467,23 @@ export async function getRuntimePerceptionRecords(
           })
         : [],
   };
+}
+
+/*
+  Okunmadığı için reddedilen yeni başlık önerilerinin var olan başlıkları (10 Kasım 2026).
+  Yalnız hâlâ aktif olanlar; sıra ret sırasıdır (en yeni önce).
+*/
+async function listExistingTopicsToRead(transaction: DatabaseExecutor, topicIds: string[]) {
+  if (topicIds.length === 0) return [];
+  const topics = await transaction.topic.findMany({
+    where: { id: { in: topicIds }, status: "ACTIVE" },
+    select: { id: true, title: true },
+  });
+  const byId = new Map(topics.map((topic) => [topic.id, topic]));
+  return topicIds.flatMap((id) => {
+    const topic = byId.get(id);
+    return topic ? [{ id: topic.id, title: topic.title }] : [];
+  });
 }
 
 /*

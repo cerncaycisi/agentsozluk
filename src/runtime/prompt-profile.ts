@@ -2,7 +2,10 @@ import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schem
 import { authorFeedbackKey } from "@/modules/agents/domain/rewards";
 import { purposePerceptionKey } from "@/modules/agents/domain/purpose";
 import { createHash } from "node:crypto";
-import { actionFeedbackKey } from "@/modules/agents/domain/action-feedback";
+import {
+  actionFeedbackKey,
+  existingTopicsToReadKey,
+} from "@/modules/agents/domain/action-feedback";
 import {
   runtimeDecisionJsonSchema,
   runtimeNormalDecisionWireJsonSchema,
@@ -56,6 +59,7 @@ export const runtimeAllowedPerceptionKeys = [
   "previousFastState",
   "behaviorLessons",
   actionFeedbackKey,
+  existingTopicsToReadKey,
   authorFeedbackKey,
   purposePerceptionKey,
   "purposeTopics",
@@ -411,7 +415,7 @@ export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
       // 58 (9 Ekim 2026): son okuma — yayımlamadan önce yalnız parça silen çağrı ve şeması.
       // 59 (1 Kasım 2026): içerik kalitesi — editör kapısı (Gökhan ölçütü, fail-closed, ilk
       // entry), son okumada kapanış sorusu, ses kartı ve uzunluk kimliği, daraltılmış ortak kurallar.
-      profileVersion: 59,
+      profileVersion: 60,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
