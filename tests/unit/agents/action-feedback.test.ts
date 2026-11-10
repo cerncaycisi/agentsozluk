@@ -198,11 +198,12 @@ describe("okunmadığı için reddedilen var olan başlıklar", () => {
     ).toEqual(["t-1", "t-4"]);
   });
 
-  it("en çok üç başlık döndürür", () => {
+  it("üçlük sınırı uygulamaz; sınır erişilebilirlik süzgecinden sonra gelir", () => {
     expect(unreadExistingTopicIds(["a", "b", "c", "d"].map((id) => rejected(id)))).toEqual([
       "a",
       "b",
       "c",
+      "d",
     ]);
   });
 });

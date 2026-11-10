@@ -142,5 +142,6 @@ export function unreadExistingTopicIds(
     const id = (detail as { existingTopicId?: unknown }).existingTopicId;
     if (typeof id === "string" && id.length > 0 && !ids.includes(id)) ids.push(id);
   }
-  return ids.slice(0, existingTopicsToReadLimit);
+  // Üçlük sınır erişilebilirlik süzgecinden SONRA uygulanır (Sol 6.1, 1. tur P2).
+  return ids;
 }

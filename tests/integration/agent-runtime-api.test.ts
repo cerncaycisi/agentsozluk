@@ -7940,20 +7940,42 @@ describe("internal agent runtime API with PostgreSQL", () => {
         entryBody: "bulgar sanatçı krassimir terziev için insanın yazdığı ilk tanım entry'si.",
       },
     );
-    const hidden = await createTopicWithFirstEntry(
-      integrationDatabase,
-      adminActor(fixture.admin.id),
-      {
-        title: "gizlenen başlık",
-        entryBody: "Gizlenecek başlık için insanın yazdığı ilk tanım entry'si.",
-      },
-    );
-    await integrationDatabase.topic.update({
-      where: { id: hidden.topic.id },
+    const extra = async (title: string) =>
+      (
+        await createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
+          title,
+          entryBody: `${title} için insanın yazdığı ilk tanım entry'si.`,
+        })
+      ).topic.id;
+    const hiddenId = await extra("gizlenen başlık");
+    const deletedId = await extra("ikinci gizlenen başlık");
+    const mergedId = await extra("birleşen eski ad");
+    const blockedId = await extra("engelli yazarın başlığı");
+    const laterId = await extra("dördüncü sıradaki başlık");
+    await integrationDatabase.topic.updateMany({
+      where: { id: { in: [hiddenId, deletedId] } },
       data: { status: "HIDDEN" },
     });
+    await integrationDatabase.topic.update({
+      where: { id: mergedId },
+      data: { status: "MERGED", mergedIntoId: existing.topic.id },
+    });
+    const blocked = await createAgent(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      createAgentSchema.parse({ persona: originalPersonaPack.personas[1] }),
+    );
+    await integrationDatabase.topic.update({
+      where: { id: blockedId },
+      data: { createdById: blocked.agent.user.id },
+    });
+    await integrationDatabase.userBlock.create({
+      data: { blockerId: fixture.created.agent.user.id, blockedId: blocked.agent.user.id },
+    });
+    // En yeni önce: gizli, gizli, birleşen (→ var olan), engelli, sonra okunabilir başlık.
+    const rejectedTopicIds = [hiddenId, deletedId, mergedId, blockedId, laterId];
     await integrationDatabase.agentAction.createMany({
-      data: [existing.topic.id, hidden.topic.id].map((topicId, index) => ({
+      data: rejectedTopicIds.map((topicId, index) => ({
         id: randomUUID(),
         agentProfileId: profileId,
         runId: previousRun.id,
@@ -7967,7 +7989,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
           rejectionDetail: { existingTopicId: topicId },
         },
         input: {},
-        createdAt: new Date(now.getTime() - 3_000 + index),
+        createdAt: new Date(now.getTime() - 3_000 - index * 10),
         updatedAt: new Date(now.getTime() - 500),
       })),
     });
@@ -7987,6 +8009,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     );
     expect(context.perception.existingTopicsToRead).toEqual([
       { id: existing.topic.id, title: "krassimir terziev" },
+      { id: laterId, title: "dördüncü sıradaki başlık" },
     ]);
     expect(browsableTopicMenu(context.perception)[0]).toMatchObject({
       id: existing.topic.id,
@@ -7997,7 +8020,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       readPrincipal,
       leased.run!.id,
       workerId,
-      [existing.topic.id, hidden.topic.id],
+      [existing.topic.id, hiddenId],
     );
     expect((read.perception.readTopics as { id: string }[]).map(({ id }) => id)).toEqual([
       existing.topic.id,
