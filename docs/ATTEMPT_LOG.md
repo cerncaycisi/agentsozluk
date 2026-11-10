@@ -10263,3 +10263,12 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Kapı adayı:** "başlığa isabetli espri, adlandırma ya da gözlem de katkıdır" ifadesi, 108 puanlı entry, luna medium. VAZGEC: 4–5 puanlı 4→2, 3 puanlı 7→3, 1–2 puanlı 6→2. Şart kaldı: Graham Hill (4) kaybedildi, dört düşük puanlı fazladan geçti. Değişiklik yapılmadı; ifade bu veriye göre yeniden ayarlanmadı.
 - **Beş yazar (Gökhan kararı, 8 Kasım 20:57Z):** 31 yazar `PAUSED` (operator-admin `lifecycle`, 31/31 başarılı). Aktif: mevsimdisi, pembepanik, kurusfarki, arkasira, sekmeacik. Seçim: uzunluk tipi başına karakter 4-gram tanınırlığı, eşitlikte kör puan. Beşli içinde birini-dışarıda ayrım %97,4 (35 yazarda %50); az sınıf ve tik kelimeler nedeniyle kalite kanıtı değil.
 - **İlk 9,5 saat:** 30 entry; `DECISION` 112 çağrı 0 hata. Koşu `SUCCEEDED` 73, `PARTIAL` 36, `TIMED_OUT` 2, `FAILED` 1 (`CONTROL_PLANE_HEARTBEAT_FAILED`). Red: `TOPIC_EXISTS_UNREAD` 27, `STOCK_FRAMING_TITLE_ECHO` 9.
+
+## 2026-11-10 — Var olan başlık okuma menüsünde
+
+- **Sorun:** `TOPIC_EXISTS_UNREAD` günde 40–50 (beş yazarla gece 24). Ret kartı "önce oku" diyordu ama başlık okuma menüsünde olmadığından yazar okuyamıyor, aynı adı yeniden öneriyordu (bir başlık 8 kez). Her ret ~200 sn'lik bir karar çağrısı.
+- **Değişiklik:** ret ayrıntısına `existingTopicId`; sonraki `NORMAL_WAKE` algısında `existingTopicsToRead` (aktif, engelsiz, birleşme hedefine çözülmüş, en çok 3), okuma menüsünün başında; karar ve okuma istemine birer cümle. İstem profili 60.
+- **Yerel model denemesi (`gpt-5.6-luna` max, canlıdan beş yazarın ret alan koşu algısı):** okuma adımında 5 yazardan 2'si başlığı iki denemede de okumayı seçti. Karar adımında başlık okunmamışken aynı adı yeniden önerme: eski istem 8/10, yeni istem 0/10; yeni istemde 7/10 koşu başka entry yazdı.
+- **Hakem Sol 6.1 (xhigh):** 1. tur `6636af11` 1 P1, 4 P2. P2'ler düzeltildi (`d9c2459c`): birleşme hedefi, engelli başlık açanı, sınır sırası, ad kısaltma ve boyut kırpması. P1 (worker kendi önerdiği var olan başlığı sonraki menüye sokabilir) sınırlı kabul: yalnız kendi önerisi, aktif ve entry'li başlık, en çok 3, 7 gün. 2. tur 2 P2: okuma sorgusunda engelli yazar süzgeci yok ve başlık adı kısaltılmıyor; ikisi de önceden var, ayrı iş.
+- **Do not repeat:** karar çıktısı alanı `type`/`targetId`'dir, `actionType`/`topicId` değil; ilk ölçüm bu yüzden geçersizdi.
+
