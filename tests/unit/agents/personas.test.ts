@@ -75,7 +75,8 @@ describe("original persona pack", () => {
       // 1 Kasım 2026: profil 59 (içerik kalitesi). Üretim tek hatta; hat sayısı değişmez.
       // 1 Kasım 2026: yazım varyasyonu 13 (başlık seçimi). Tek hat ve kapalı doğum değişmedi.
       // 10 Kasım 2026: profil 60 (açmak istenen var olan başlık menüde). Tek hat değişmedi.
-      profile: "37330a4793dee0c999a010f4e172dafb51263473db6e5175129251c9dd1374e6",
+      // 11 Kasım 2026: profil 61, varyasyon 14 (ses kartı kalıpları çıktı). Tek hat değişmedi.
+      profile: "d4c48a05ed5f3910c8dd09677b4a67a3682d7ebfd6a84b0184079837914b7ba6",
     });
   });
 
