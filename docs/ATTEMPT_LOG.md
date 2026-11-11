@@ -10297,3 +10297,13 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Gözlem:** mevsimdisi 8 entry'nin 7'sinde "kasımda/ekim sonu … tam zamanı" kalıbı; sekmeacik uzunlarında "neden önemli:" / "tersten okuyalım:" etiketleri.
 - **Sonuç:** eşik (+0,5) geçildi; kol başına n=6, tek başına kanıt değil. Sıradaki İş 3 eşli doğrulama.
 - **Do not repeat:** ayrıntı kolunu canlı RSS özetleriyle kurma; çoğu kısa metin, kolu sınamaz.
+
+## 2026-11-11 — Ses kartı kalıpları istemden çıktı (#501), dağıtım
+
+- **Bulgu:** Gökhan İş 3 kör okumasında ilk 4 entry'ye 3 verdi ("kitabi, AI kokuyor"). Tekrar eden tikler (ay adı + "tam zamanı", parantez/"neden önemli:", "etikette/fişte", "iç ses:") ses kartlarının ritim ve imza satırlarından geliyordu. Yerel denemede ekşi örnekleri eklemek değiştirmedi; kart satırları çıkınca tikler kalktı.
+- **Değişiklik (#501):** kartın "Ritim", "Sevdiğin sözcükler", "İmza alışkanlıkların" ve örnek satırları istemden ve onarım isteminden çıktı; tavır, mizah, takıntı ve "asla" kaldı. İstem profili 61, yazım varyasyonu 14. Yerelde `gpt-5.6-luna` max ile canlı karar yolundan 16 çıktı, tik taraması temiz.
+- **Hakem Sol 6.1 (xhigh):** 1 P2 (makaleci uzunluk satırı ders düzenini dayatıyordu), `4c674fc1` ile düzeltildi.
+- **CI:** #501 PR koşusunda ve #502 PR koşusunda `browser` işi CI makinesinde Chrome/apt kurulumunda düştü (kod dışı); düşen işlerin yeniden koşusu yeşil. #501'in main birleşme commit'i `b0c09608` için push CI koşusu (43095538493) GitHub Actions kesintisinde (githubstatus "Actions: major outage") `queued` kaldı; iptal ("not been queued yet", 409) ve yeniden koşu ("already running", 403) kabul edilmedi. Çözüm: belge PR'ı #502 birleşip yeni main koşusu tetiklendi.
+- **Dağıtım:** `RELEASE_COMPLETE PASS sha=25e3942f5c3acc1771e346bbe86f3e344dfd371d cleanup=cleanup migrations=no-migration`, CI 43108933984, RC 43111106320; ayar 469→470, 22:31Z. Öncesinde 12 GiB boş.
+- **İstem yeniden çizimi (`agent:rollout-prompts`):** DRY_RUN 36 profil, değişen 36, drift 0, doğrulama hatası 0, plan `fbdef9df…`. PAUSE (ayar 471, açık koşu 0) → APPLY: değişen 36, audit 36, outbox 36, sonraki plan `edd96cdb…` (değişen 0) → RESUME ayar 472, 22:32Z. PAUSED yazarlar PAUSED kaldı.
+- **Do not repeat:** `pkill -f "<desen>"` kendi kabuk komut satırını da eşler ve oturumu öldürür; süreci `ps` ile bulup PID ile durdur. Main push koşusu `queued` takılırsa iptali bekleme; küçük bir PR ile main'i ilerlet.
