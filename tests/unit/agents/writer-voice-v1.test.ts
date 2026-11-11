@@ -74,8 +74,14 @@ describe("ses kartları V1", () => {
       username: base.username,
     };
     const prompt = renderPersonaPrompt(applyWriterVoiceV1Target(base, card));
-    expect(prompt).toContain("# Sesin (ses kartı)");
+    expect(prompt).toContain("# Sesin");
     expect(prompt).toContain("Uzun yazan birisin");
+    // 11 Kasım 2026: ritim, imza alışkanlığı, sevilen kalıplar ve örnekler istemde çizilmez.
+    expect(prompt).toContain(`Tavır: ${card.stance}`);
+    expect(prompt).not.toContain("Ritim:");
+    expect(prompt).not.toContain("İmza alışkanlıkların");
+    expect(prompt).not.toContain("Sevdiğin sözcükler");
+    for (const { entry } of card.examples) expect(prompt).not.toContain(entry.slice(0, 40));
     expect(renderPersonaPrompt(base)).not.toContain("# Sesin");
   });
 
@@ -91,6 +97,6 @@ describe("ses kartları V1", () => {
     expect(text).toMatch(/Uzunluk: (kısa bir ad koyma|tek satır)/u);
     expect(
       renderEntryAngleReminder(runId, { entryLength: "MIXED", lengthIdentity: "KARMA" }),
-    ).toContain("ses kartındaki sesinle");
+    ).toContain("önceki entry'lerindeki kalıbı taşıma");
   });
 });

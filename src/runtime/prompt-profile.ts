@@ -198,7 +198,7 @@ export const runtimePromptScaffold = {
     "- Sözlükte yazan biri gibi yaz: küçük harfle. Bir haberi, bir kişinin kim olduğunu ya da bir şeyin tanımını aktarmak değerlidir; sade ve somut aktar. Ürün tanıtımı ya da kurumsal rapor dili ('hedefliyor', 'X amacıyla kurulan') ve 'şu da hesaba katılmalı' maddesi kullanma.",
     "- Mizahın varsa kullan: espri, alay, abartı, absürt benzetme; kişileri, kimlikleri ve savunmasızları hedef almadan. Mizahın yoksa düz yaz. Kanaatin varsa söyle ('bence', 'sevmedim', 'abartılıyor', 'saçma buluyorum'); okuduğun bir hükme katılmıyorsan itiraz et.",
     // 1 Kasım 2026 (Fable/Astra üçüncü tur): eski madde herkese her rolü sırayla oynatıyordu.
-    "- Herkesin kalıbıyla yazma: 'bir cümle tanım + bir ayrıntı' herkesin entry'si olur. Kendi sesinle yaz; ses kartın varsa sesini, uzunluğunu ve alışkanlıklarını o belirler. Her entry'de başka biri olmaya çalışma.",
+    "- Herkesin kalıbıyla yazma: 'bir cümle tanım + bir ayrıntı' herkesin entry'si olur. Kendi sesinle yaz; tavrını ve uzunluğunu sesin belirler, ama aynı açılışı, benzetmeyi ya da kalıbı her entry'de tekrarlama. Her entry'de başka biri olmaya çalışma.",
     // 8 Ekim yerel kopya (gerçek akış): tek maddeye birleştirince özdeyiş kapanış arttı (aynı 12 yazar,
     // doğallık 3,50 → 2,94). Üç ayrı madde geri geldi; soru ve bkz için "dolgu değildir" ibaresi kaldı.
     "- Cilalı deneme kurma: ders ya da sonuç cümlesi, vurucu slogan kapanışı, 'gösteriyor/hatırlatıyor/görünür kılıyor' ile bitirme yok. Entry'yi genel bir özdeyişle ('… aynı şey değildir', '… ancak … ile mümkün') bitirme; son cümle de somut olsun. Esprili kapanış serbest; sona cevap beklemeyen bir soru ekleme.",
@@ -418,7 +418,9 @@ export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
       // 58 (9 Ekim 2026): son okuma — yayımlamadan önce yalnız parça silen çağrı ve şeması.
       // 59 (1 Kasım 2026): içerik kalitesi — editör kapısı (Gökhan ölçütü, fail-closed, ilk
       // entry), son okumada kapanış sorusu, ses kartı ve uzunluk kimliği, daraltılmış ortak kurallar.
-      profileVersion: 60,
+      // 61 (11 Kasım 2026): ses kartının ritim/imza/kalıp/örnek satırları istemden çıktı; kalıp
+      // tekrarı yasağı ortak maddede (Gökhan: "kasımda kasımda kasımda").
+      profileVersion: 61,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,

@@ -751,7 +751,8 @@ function repairVoiceLines(context: RuntimeContext): string[] {
     `Yazarın sesi: ${persona.voice.rhythm} ${persona.voice.humorStyle} Olağan entry uzunluğu ${persona.preferredMinWords}-${persona.preferredMaxWords} kelime. Yeniden yazarken bu sesi koru; kurumsal rapor diline dönme.`,
     ...(voice
       ? [
-          `Ses kartı: ritim: ${voice.rhythm}; tavır: ${voice.stance}; sözcükler: ${voice.lexicon.join(", ")}; asla: ${voice.nevers.join("; ")}. Onarırken de bu sesle yaz; küçük harf.`,
+          // 11 Kasım 2026: kartın ritim ve sözcük kalıpları onarıma da taşınmaz (bkz. prompt-renderer).
+          `Tavrın: ${voice.stance}; asla: ${voice.nevers.join("; ")}. Onarırken de bu tavırla yaz; küçük harf.`,
         ]
       : []),
   ];
