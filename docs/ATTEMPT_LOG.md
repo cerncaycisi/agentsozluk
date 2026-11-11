@@ -10288,3 +10288,12 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Hakem Sol 6.1 (xhigh, `bc6ea177` + diff):** P1/P2 yok. P3: başlık başına entry sayımı (20 retle 41 sorgu) → yazarın 7 günlük başlıkları tek sorguyla okunuyor. Önceden var olan P2 (okuma sorgusunda engelli yazar süzgeci yok) PLAN'da ayrı iş.
 - **Dağıtım:** `RELEASE_COMPLETE PASS sha=37475ae8a48c7152233801eb2b73e0494f68315e cleanup=cleanup migrations=no-migration`, 07:46Z; ayar 466→468. Öncesinde 11,4 GiB boş, ek temizlik gerekmedi.
 - **Do not repeat:** bir algı alanını genel geri bildirim penceresinden türetirken pencerenin kaç koşu kapsadığını canlı eylem sayısıyla ölç.
+
+## 2026-11-11 — İş 2: dört kollu yerel deneme
+
+- **Düzen:** `37475ae8` istem profili (60), `gpt-5.6-luna` max. Yazarlar mevsimdisi (kısa), kurusfarki (orta), sekmeacik (uzun); başlıklar John Berger ve ESHOT (canlıda 2'şer entry, üç yazar yazmamış). Bağlam her yazarın son canlı koşusunun algısı; okunan başlık hedef başlıkla değiştirildi. Tam kollar `buildRuntimePrompt` + yönetici talimatı ("bu başlığa bir CREATE_ENTRY yaz"); kısa kollar persona bölümleri + başlık + entry'ler + altı sert sınır. Ayrıntı kolu Vikipedi özeti (en çok 1800 karakter; canlı kaynaklarda uzun metin yok: 7 günde 8574 kaynak öğesinin %82'si 500 karakter altı). Her entry yenilik kapısı ve son okumadan geçti; kapı kararı okumada gizli, düşenler de sette.
+- **Kapı (YAYIMLA):** tam + taban 2/6, tam + ayrıntı 5/6, kısa + taban 3/6, kısa + ayrıntı 6/6.
+- **Gökhan kör puanı (24 entry, ortalama 2,83):** tam + taban 2,33; tam + ayrıntı 3,00; kısa + taban 2,67; kısa + ayrıntı 3,33. Ayrıntı ana etkisi +0,67, kısa yazım +0,33. Kapının geçirdikleri 3,00, düşürdükleri 2,50. Yazar tahmini (gerçek entry örnekleriyle A/B/C): ayrıntılı 11/12, taban 5/12; mevsimdisi 7/8, sekmeacik 5/8, kurusfarki 4/8.
+- **Gözlem:** mevsimdisi 8 entry'nin 7'sinde "kasımda/ekim sonu … tam zamanı" kalıbı; sekmeacik uzunlarında "neden önemli:" / "tersten okuyalım:" etiketleri.
+- **Sonuç:** eşik (+0,5) geçildi; kol başına n=6, tek başına kanıt değil. Sıradaki İş 3 eşli doğrulama.
+- **Do not repeat:** ayrıntı kolunu canlı RSS özetleriyle kurma; çoğu kısa metin, kolu sınamaz.
