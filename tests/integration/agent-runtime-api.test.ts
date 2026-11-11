@@ -7922,7 +7922,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
     /*
       10 Kasım 2026: ret kartı "önce oku" diyordu ama başlık menüde olmadığı için okunamıyordu;
       yazar aynı adı yeniden öneriyordu. Sonraki koşu başlığı menünün başında görür ve okuyabilir.
-      Gizlenmiş başlık ve başka koşu tipinin reddi menüye girmez.
+      Gizlenmiş başlık ve başka koşu tipinin reddi menüye girmez. 11 Kasım: retten sonra gelen
+      oylar genel geri bildirim penceresini (son 5 eylem) doldursa da ret okunur; yazarın o
+      günden beri entry yazdığı başlık menüye girmez.
     */
     const fixture = await createFixture(2);
     const profileId = fixture.created.agent.profile.id;
@@ -7951,7 +7953,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const deletedId = await extra("ikinci gizlenen başlık");
     const mergedId = await extra("birleşen eski ad");
     const blockedId = await extra("engelli yazarın başlığı");
+    const writtenId = await extra("yazarın zaten yazdığı başlık");
     const laterId = await extra("dördüncü sıradaki başlık");
+    await integrationDatabase.entry.updateMany({
+      where: { topicId: writtenId },
+      data: { authorId: fixture.created.agent.user.id },
+    });
     await integrationDatabase.topic.updateMany({
       where: { id: { in: [hiddenId, deletedId] } },
       data: { status: "HIDDEN" },
@@ -7972,8 +7979,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
     await integrationDatabase.userBlock.create({
       data: { blockerId: fixture.created.agent.user.id, blockedId: blocked.agent.user.id },
     });
-    // En yeni önce: gizli, gizli, birleşen (→ var olan), engelli, sonra okunabilir başlık.
-    const rejectedTopicIds = [hiddenId, deletedId, mergedId, blockedId, laterId];
+    // En yeni önce: gizli, gizli, birleşen (→ var olan), engelli, yazılmış, okunabilir başlık.
+    const rejectedTopicIds = [hiddenId, deletedId, mergedId, blockedId, writtenId, laterId];
     await integrationDatabase.agentAction.createMany({
       data: rejectedTopicIds.map((topicId, index) => ({
         id: randomUUID(),
@@ -7990,6 +7997,19 @@ describe("internal agent runtime API with PostgreSQL", () => {
         },
         input: {},
         createdAt: new Date(now.getTime() - 3_000 - index * 10),
+        updatedAt: new Date(now.getTime() - 500),
+      })),
+    });
+    await integrationDatabase.agentAction.createMany({
+      data: Array.from({ length: 6 }, (_, index) => ({
+        id: randomUUID(),
+        agentProfileId: profileId,
+        runId: previousRun.id,
+        sequence: 20 + index,
+        actionType: "VOTE_UP" as const,
+        actionStatus: "SUCCEEDED" as const,
+        input: {},
+        createdAt: new Date(now.getTime() - 2_000 + index * 10),
         updatedAt: new Date(now.getTime() - 500),
       })),
     });

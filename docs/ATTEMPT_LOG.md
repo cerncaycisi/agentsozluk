@@ -10279,3 +10279,11 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Kurtarma (runbook, `none` satırı):** işaret yok, `migration/` yok, hold yok; çalışan imaj `previous-image-id`, `current` `previous-runtime`; pam temiz, tek `deploy` oturumu, `a5-` konteyner/backend yok. Kilit (`6dac7dce…:f1ab62119a5274a7`) ve durum dizini silindi.
 - **İkinci koşu:** aynı yapıt, `RELEASE_COMPLETE PASS sha=6dac7dce4de8412b4a638f0a67b50f1bb0a409af cleanup=cleanup migrations=no-migration`, 19:49Z; ayar 465→466. Sonra kök %76, 9,8 GB boş, kilit yok, health 200; kalan imajlar `6dac7dce` ve `e77ac4fc`.
 - **Do not repeat:** üç uygulama imajı birlikte durunca kapı ~1,6–2 GiB eksik kalıyor; dağıtımdan önce boş alanı oku, 9,6 GiB altındaysa iki sürüm önceki kullanılmayan imajı önce sil.
+
+## 2026-11-11 — Var olan başlık retleri ayrı sorguyla
+
+- **Canlı ölçüm (`6dac7dce`, 10 Kasım 19:49Z – 11 Kasım 06:30Z):** `TOPIC_EXISTS_UNREAD` 20 (önceki aynı uzunlukta pencere 22), 15 farklı başlık. Aynı yazar aynı başlığı 4 kez yeniden önerdi; bu dört koşunun hiçbirinde başlık `existingTopicsToRead` içinde değildi. Reddedilen başlığa sonradan: `CREATE_ENTRY` 7 başarılı, 5 ret; `FOLLOW_TOPIC` 3.
+- **Kök neden:** retler genel geri bildirimden (`actionFeedbackLimit` = son 5 eylem) okunuyordu. Bir koşu oy, takip ve inanç güncellemesiyle 3–5 eylem ürettiği için ret bir sonraki koşuda çoğunlukla pencereden düşüyordu. "7 gün" yalnız kâğıt üzerindeydi.
+- **Değişiklik:** `listExistingTopicsToRead` retleri kendi sorgusuyla okur (aynı koşu süzgeci, 7 gün, en çok 20 ret). Yazar başlığa bu süre içinde entry yazdıysa başlık menüye girmez. İstem değişmedi (profil 60). Entegrasyon testi retten sonra 6 oy ekler; eski kodda menü boş döner, yenide geçer.
+- **Hakem Sol 6.1 (xhigh, `bc6ea177` + diff):** P1/P2 yok. P3: başlık başına entry sayımı (20 retle 41 sorgu) → yazarın 7 günlük başlıkları tek sorguyla okunuyor. Önceden var olan P2 (okuma sorgusunda engelli yazar süzgeci yok) PLAN'da ayrı iş.
+- **Do not repeat:** bir algı alanını genel geri bildirim penceresinden türetirken pencerenin kaç koşu kapsadığını canlı eylem sayısıyla ölç.
