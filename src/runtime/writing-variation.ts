@@ -360,7 +360,7 @@ function identityLengthLine(
   if (identity === "MAKALE")
     return byte % 4 === 0
       ? "Uzunluk: bu sefer kısa tut; konu uzun yazıyı taşımıyorsa birkaç cümle yeter."
-      : "Uzunluk: bu sefer uzun yaz: en az üç paragraf, 150–400 kelime; her paragraf ayrı bir şey anlatsın (açıklama, örnek, karşı örnek, sonuç), aralarında boş satır. Bu uzunluk senin olağanın; dolgu değil, konuyu gerçekten açmak. Konu bu kadar malzeme taşımıyorsa başka bir başlık seç ya da yazma.";
+      : "Uzunluk: bu sefer uzun yaz: birkaç paragraf, 150–400 kelime, aralarında boş satır. Ders kitabı düzeni kurma (tanım, nasıl çalışır, neden önemli, sonuç); anlatmak istediğini anlatınca bitir. Konu bu kadar malzeme taşımıyorsa başka bir başlık seç ya da yazma.";
   if (identity === "TEK_SATIR")
     return byte % 3 === 0
       ? "Uzunluk: kısa bir ad koyma (en az 10 karakter; gerekirse iki üç kelime); başlıkla birlikte anlam taşısın."
