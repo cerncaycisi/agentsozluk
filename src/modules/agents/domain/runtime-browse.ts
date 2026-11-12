@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { activePurposeLimit } from "@/modules/agents/domain/purpose";
 import {
   existingTopicsToReadKey,
-  existingTopicsToReadLimit,
+  existingTopicsToReadMenuLimit,
 } from "@/modules/agents/domain/action-feedback";
 import {
   createInterestScorer,
@@ -131,7 +131,7 @@ export function browsableTopicMenu(perception: unknown): BrowsableTopic[] {
   */
   for (const record of recordArray(source[existingTopicsToReadKey]).slice(
     0,
-    existingTopicsToReadLimit,
+    existingTopicsToReadMenuLimit,
   ))
     push(record, "açmak istediğin başlık zaten var");
   for (const record of recordArray(source.purposeTopics).slice(0, activePurposeLimit))

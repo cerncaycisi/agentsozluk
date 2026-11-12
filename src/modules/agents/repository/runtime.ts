@@ -3478,8 +3478,8 @@ export async function getRuntimePerceptionRecords(
 /*
   Okunmadığı için reddedilen yeni başlık önerilerinin var olan başlıkları (10 Kasım 2026).
   Sıra ret sırasıdır (en yeni önce). Retten sonra birleşen başlık kanonik hedefine çözülür;
-  yalnız aktif ve engelli kullanıcının açmadığı başlıklar sayılır, üçlük sınır bu süzgeçten
-  sonra uygulanır. Gösterilen ad kısaltılır: normalleştirilmiş uzunluk sınırı görünmez
+  yalnız aktif ve engelli kullanıcının açmadığı başlıklar sayılır, sınır (en çok 10) bu
+  süzgeçten sonra uygulanır. Gösterilen ad kısaltılır: normalleştirilmiş uzunluk sınırı görünmez
   karakterli adı geçirebiliyordu (Sol 6.1, 1. tur P2).
 */
 const existingTopicTitleLimit = 120;
@@ -3490,7 +3490,7 @@ const existingTopicMergeDepth = 4;
   pencereden düşüyordu; canlıda aynı başlığın ikinci reddinde başlık menüde değildi. Retler
   artık ayrı sorguyla okunur; yazar başlığa o günden beri entry yazdıysa başlık menüye girmez.
 */
-const existingTopicRejectionScanLimit = 20;
+const existingTopicRejectionScanLimit = 40;
 
 async function listExistingTopicsToRead(
   transaction: DatabaseExecutor,
