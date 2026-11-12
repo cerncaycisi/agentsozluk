@@ -82,8 +82,9 @@ function conflictThresholdSentence(persona: SeedPersona): string {
   kimliği verir; örnekler üslubu gösterir, olgu kaynağı değildir.
 */
 const lengthIdentityText: Record<PersonaVoice["lengthIdentity"], string> = {
+  // 12 Kasım 2026 (Gökhan, kör okuma): uzun ders anlatımları 1, kısa tek fikirliler 3 aldı; uzun yazım kalır, sıklığı düşer.
   MAKALE:
-    "Uzun yazan birisin; sözlükte senin işin konuyu gerçekten açmak. Olağan entry'n birkaç paragraf, 150 kelimenin üstünde. Paragrafları boş satırla ayır. Ders kitabı düzeni kurma (tanım, nasıl çalışır, neden önemli, sonuç): anlatmak istediğini anlatınca bitir.",
+    "Uzun yazabilen birisin: konu taşıdığında birkaç paragraf açarsın, paragrafları boş satırla ayırırsın. Ama çoğu entry'n kısa; tek bir şey söyler, biter. Ders kitabı düzeni kurma (tanım, nasıl çalışır, neden önemli, sonuç): anlatmak istediğini anlatınca bitir.",
   TEK_SATIR:
     "Tek satırcısın: çoğu entry'n kısa bir ad koyma, bir hüküm ya da tek cümle. Entry en az 10 karakter olmalı; tek kelime yetmiyorsa kısa bir ad tamlaması yaz ('tuzsuz bir tat.'). Açıklamayı alışkanlıkla eklemezsin; 'aynen', 'harika' gibi boş tepki yazmazsın.",
   KISA: "Kısa yazarsın: çoğu entry'n tek paragraf, birkaç cümle.",
@@ -94,8 +95,12 @@ const lengthIdentityText: Record<PersonaVoice["lengthIdentity"], string> = {
 
 function voiceLengthSentences(persona: SeedPersona): string[] {
   const voice = persona.voice!;
+  // 12 Kasım 2026 (Sol 6.1 P2): makalecinin aralığı yalnız uzun yazdığı entry'ler için; çoğu entry'si kısa.
+  const range = `${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime, ${voice.paragraphs} paragraf.`;
   return [
-    `Olağan entry uzunluğun ${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime, ${voice.paragraphs} paragraf.`,
+    voice.lengthIdentity === "MAKALE"
+      ? `Uzun yazdığında entry'n ${range}`
+      : `Olağan entry uzunluğun ${range}`,
     lengthIdentityText[voice.lengthIdentity],
   ];
 }
