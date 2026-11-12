@@ -75,7 +75,7 @@ describe("ses kartları V1", () => {
     };
     const prompt = renderPersonaPrompt(applyWriterVoiceV1Target(base, card));
     expect(prompt).toContain("# Sesin");
-    expect(prompt).toContain("Uzun yazan birisin");
+    expect(prompt).toContain("Uzun yazabilen birisin");
     // 11 Kasım 2026: ritim, imza alışkanlığı, sevilen kalıplar ve örnekler istemde çizilmez.
     expect(prompt).toContain(`Tavır: ${card.stance}`);
     expect(prompt).not.toContain("Ritim:");

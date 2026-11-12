@@ -76,7 +76,8 @@ describe("original persona pack", () => {
       // 1 Kasım 2026: yazım varyasyonu 13 (başlık seçimi). Tek hat ve kapalı doğum değişmedi.
       // 10 Kasım 2026: profil 60 (açmak istenen var olan başlık menüde). Tek hat değişmedi.
       // 11 Kasım 2026: profil 61, varyasyon 14 (ses kartı kalıpları çıktı). Tek hat değişmedi.
-      profile: "d4c48a05ed5f3910c8dd09677b4a67a3682d7ebfd6a84b0184079837914b7ba6",
+      // 12 Kasım 2026: varyasyon 15 (makalecide ve karmada uzun koşu seyreldi). Tek hat değişmedi.
+      profile: "281655676b4dc375c8638a7bb570b299153c1288559bddda411f6f667d8dd139",
     });
   });
 
