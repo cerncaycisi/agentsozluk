@@ -129,10 +129,9 @@ export function browsableTopicMenu(perception: unknown): BrowsableTopic[] {
     2026): menü 24'te kesildiğinden sona konsa düşebilirdi; ret kartının "önce oku" dediği
     başlık okunabilir olmalı.
   */
-  for (const record of recordArray(source[existingTopicsToReadKey]).slice(
-    0,
-    existingTopicsToReadMenuLimit,
-  ))
+  for (const record of recordArray(source[existingTopicsToReadKey])
+    .filter((record) => record.alreadyWritten !== true)
+    .slice(0, existingTopicsToReadMenuLimit))
     push(record, "açmak istediğin başlık zaten var");
   for (const record of recordArray(source.purposeTopics).slice(0, activePurposeLimit))
     push(record, "devam eden amaç");

@@ -150,4 +150,12 @@ describe("açmak istenen var olan başlık", () => {
       "t-2",
     ]);
   });
+
+  it("yazarın zaten yazdığı başlığı menüye almaz", () => {
+    const existingTopicsToRead = [
+      { id: "t-yazdi", title: "cofacts", alreadyWritten: true },
+      { id: "t-0", title: "başlık 0" },
+    ];
+    expect(browsableTopicMenu({ existingTopicsToRead }).map(({ id }) => id)).toEqual(["t-0"]);
+  });
 });
