@@ -12,6 +12,8 @@ import {
   actionFeedbackLimit,
   actionFeedbackWindowMs,
   actionFeedbackStatuses,
+  existingTopicsToReadLimit,
+  unreadExistingTopicIds,
 } from "@/modules/agents/domain/action-feedback";
 import { Prisma, type AgentRunType } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
@@ -3452,6 +3454,15 @@ export async function getRuntimePerceptionRecords(
     linkedTopics: dictionaryReferences.linkedTopics,
     openTopicReferences: dictionaryReferences.openTopicReferences,
     dictionaryLinkCandidates,
+    existingTopicsToRead: input.includeActionFeedback
+      ? await listExistingTopicsToRead(transaction, {
+          agentProfileId: input.agentProfileId,
+          agentUserId: input.agentUserId,
+          runId: input.runId,
+          now: input.now,
+          blockedUserIds,
+        })
+      : [],
     interestTopicCandidates:
       input.includeTrendingTopics && input.interests && input.interests.length > 0
         ? await listRuntimeInterestTopicCandidates(transaction, {
@@ -3462,6 +3473,102 @@ export async function getRuntimePerceptionRecords(
           })
         : [],
   };
+}
+
+/*
+  Okunmadığı için reddedilen yeni başlık önerilerinin var olan başlıkları (10 Kasım 2026).
+  Sıra ret sırasıdır (en yeni önce). Retten sonra birleşen başlık kanonik hedefine çözülür;
+  yalnız aktif ve engelli kullanıcının açmadığı başlıklar sayılır, üçlük sınır bu süzgeçten
+  sonra uygulanır. Gösterilen ad kısaltılır: normalleştirilmiş uzunluk sınırı görünmez
+  karakterli adı geçirebiliyordu (Sol 6.1, 1. tur P2).
+*/
+const existingTopicTitleLimit = 120;
+const existingTopicMergeDepth = 4;
+/*
+  11 Kasım 2026: retler önce genel geri bildirim kaydından (son 5 eylem) okunuyordu. Bir koşu
+  oy, takip ve inanç güncellemesiyle 3–5 eylem ürettiği için ret bir sonraki koşuda çoğu zaman
+  pencereden düşüyordu; canlıda aynı başlığın ikinci reddinde başlık menüde değildi. Retler
+  artık ayrı sorguyla okunur; yazar başlığa o günden beri entry yazdıysa başlık menüye girmez.
+*/
+const existingTopicRejectionScanLimit = 20;
+
+async function listExistingTopicsToRead(
+  transaction: DatabaseExecutor,
+  input: {
+    agentProfileId: string;
+    agentUserId: string;
+    runId: string;
+    now: Date;
+    blockedUserIds: readonly string[];
+  },
+) {
+  const windowStart = new Date(input.now.getTime() - actionFeedbackWindowMs);
+  const rejections = await transaction.agentAction.findMany({
+    where: {
+      agentProfileId: input.agentProfileId,
+      runId: { not: input.runId },
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_EXISTS_UNREAD",
+      createdAt: { gt: windowStart, lte: input.now },
+      updatedAt: { lte: input.now },
+      run: {
+        agentProfileId: input.agentProfileId,
+        runType: "NORMAL_WAKE",
+        runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIMED_OUT"] },
+        finishedAt: { lte: input.now },
+      },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: existingTopicRejectionScanLimit,
+    select: { actionStatus: true, rejectionCode: true, validationResult: true },
+  });
+  if (rejections.length === 0) return [];
+  // Tek sorgu: başlık başına sayım 20 retle 40'tan fazla sorguya çıkıyordu (Sol 6.1, P3).
+  const writtenTopicIds = new Set(
+    (
+      await transaction.entry.findMany({
+        where: { authorId: input.agentUserId, createdAt: { gt: windowStart, lte: input.now } },
+        distinct: ["topicId"],
+        select: { topicId: true },
+      })
+    ).map(({ topicId }) => topicId),
+  );
+  const blockedUserIds = input.blockedUserIds;
+  const out: { id: string; title: string }[] = [];
+  for (const topicId of unreadExistingTopicIds(rejections)) {
+    let topic = await transaction.topic.findUnique({
+      where: { id: topicId },
+      select: { id: true, title: true, status: true, mergedIntoId: true, createdById: true },
+    });
+    for (let depth = 0; topic?.status === "MERGED" && topic.mergedIntoId; depth += 1) {
+      if (depth >= existingTopicMergeDepth) {
+        topic = null;
+        break;
+      }
+      topic = await transaction.topic.findUnique({
+        where: { id: topic.mergedIntoId },
+        select: { id: true, title: true, status: true, mergedIntoId: true, createdById: true },
+      });
+    }
+    if (
+      !topic ||
+      topic.status !== "ACTIVE" ||
+      blockedUserIds.includes(topic.createdById) ||
+      out.some(({ id }) => id === topic!.id)
+    )
+      continue;
+    if (writtenTopicIds.has(topic.id)) continue;
+    out.push({ id: topic.id, title: truncateTitle(topic.title) });
+    if (out.length >= existingTopicsToReadLimit) break;
+  }
+  return out;
+}
+
+function truncateTitle(title: string) {
+  const chars = [...title];
+  return chars.length > existingTopicTitleLimit
+    ? `${chars.slice(0, existingTopicTitleLimit).join("")}…`
+    : title;
 }
 
 /*

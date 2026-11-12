@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   projectActionFeedback,
   refreshFrozenActionFeedback,
+  unreadExistingTopicIds,
 } from "@/modules/agents/domain/action-feedback";
 
 const now = new Date("2026-10-03T12:00:00Z");
@@ -173,5 +174,36 @@ describe("proper-noun daily cap feedback (Astra tavan 1. tur P2)", () => {
     expect(refreshFrozenActionFeedback(other, later)).toEqual(other);
     expect(refreshFrozenActionFeedback(undefined, later)).toBeUndefined();
     expect(refreshFrozenActionFeedback([null, "x"], later)).toEqual([null, "x"]);
+  });
+});
+
+describe("okunmadığı için reddedilen var olan başlıklar", () => {
+  const rejected = (existingTopicId: unknown, rejectionCode = "TOPIC_EXISTS_UNREAD") => ({
+    actionStatus: "REJECTED",
+    rejectionCode,
+    validationResult: { valid: false, code: rejectionCode, rejectionDetail: { existingTopicId } },
+  });
+
+  it("yalnız TOPIC_EXISTS_UNREAD ret ayrıntısındaki kimliği, tekrarsız ve sırayla alır", () => {
+    expect(
+      unreadExistingTopicIds([
+        rejected("t-1"),
+        rejected("t-1"),
+        rejected("t-2", "TOPIC_EXISTS_WRITE_AS_ENTRY"),
+        { ...rejected("t-3"), actionStatus: "FAILED" },
+        rejected(42),
+        { actionStatus: "REJECTED", rejectionCode: "TOPIC_EXISTS_UNREAD", validationResult: null },
+        rejected("t-4"),
+      ]),
+    ).toEqual(["t-1", "t-4"]);
+  });
+
+  it("üçlük sınırı uygulamaz; sınır erişilebilirlik süzgecinden sonra gelir", () => {
+    expect(unreadExistingTopicIds(["a", "b", "c", "d"].map((id) => rejected(id)))).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
   });
 });

@@ -116,3 +116,32 @@ function actionFeedbackCard(
     observedAt: now.toISOString(),
   };
 }
+
+/*
+  Okunmadığı için reddedilen "yeni başlık" önerilerinin çözüldüğü var olan başlıklar (10 Kasım
+  2026). Ret kartı "önce oku" diyordu ama başlık okuma menüsüne girmediği için yazar okuyamıyor,
+  aynı haberi görünce aynı adı yeniden öneriyordu. Kimlik ret ayrıntısından okunur; en yeni önce.
+*/
+export const existingTopicsToReadKey = "existingTopicsToRead";
+export const existingTopicsToReadLimit = 3;
+
+export function unreadExistingTopicIds(
+  records: readonly Pick<
+    ActionFeedbackRecord,
+    "actionStatus" | "rejectionCode" | "validationResult"
+  >[],
+): string[] {
+  const ids: string[] = [];
+  for (const record of records) {
+    if (record.actionStatus !== "REJECTED" || record.rejectionCode !== "TOPIC_EXISTS_UNREAD")
+      continue;
+    const validation = record.validationResult;
+    if (typeof validation !== "object" || validation === null) continue;
+    const detail = (validation as { rejectionDetail?: unknown }).rejectionDetail;
+    if (typeof detail !== "object" || detail === null) continue;
+    const id = (detail as { existingTopicId?: unknown }).existingTopicId;
+    if (typeof id === "string" && id.length > 0 && !ids.includes(id)) ids.push(id);
+  }
+  // Üçlük sınır erişilebilirlik süzgecinden SONRA uygulanır (Sol 6.1, 1. tur P2).
+  return ids;
+}

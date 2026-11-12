@@ -15,7 +15,7 @@ import {
   changeRewardMode,
 } from "@/modules/agents/application/rewards";
 import type { RuntimePurposeChange } from "@/modules/agents/validation/purpose-schemas";
-import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
+import { browsableTopicIds, browsableTopicMenu } from "@/modules/agents/domain/runtime-browse";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import {
   countAgentProperNounTopicsCreatedSince,
@@ -7903,10 +7903,148 @@ describe("internal agent runtime API with PostgreSQL", () => {
       actionStatus: "REJECTED",
       rejectionCode: "TOPIC_EXISTS_UNREAD",
     });
+    // 10 Kasım 2026: var olan başlığın kimliği sonraki koşunun okuma menüsü için saklanır.
+    expect(
+      await integrationDatabase.agentAction.findFirstOrThrow({
+        where: { runId, sequence: 1 },
+        select: { validationResult: true },
+      }),
+    ).toMatchObject({
+      validationResult: { rejectionDetail: { existingTopicId: existing.topic.id } },
+    });
     expect(await integrationDatabase.entry.count({ where: { topicId: existing.topic.id } })).toBe(
       1,
     );
     expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(0);
+  });
+
+  it("puts an existing topic rejected as unread into the next run's read menu", async () => {
+    /*
+      10 Kasım 2026: ret kartı "önce oku" diyordu ama başlık menüde olmadığı için okunamıyordu;
+      yazar aynı adı yeniden öneriyordu. Sonraki koşu başlığı menünün başında görür ve okuyabilir.
+      Gizlenmiş başlık ve başka koşu tipinin reddi menüye girmez. 11 Kasım: retten sonra gelen
+      oylar genel geri bildirim penceresini (son 5 eylem) doldursa da ret okunur; yazarın o
+      günden beri entry yazdığı başlık menüye girmez.
+    */
+    const fixture = await createFixture(2);
+    const profileId = fixture.created.agent.profile.id;
+    const now = new Date();
+    const previousRun = fixture.runs[1]!;
+    await integrationDatabase.agentRun.update({
+      where: { id: previousRun.id },
+      data: { runStatus: "PARTIAL", finishedAt: new Date(now.getTime() - 1_000) },
+    });
+    const existing = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "krassimir terziev",
+        entryBody: "bulgar sanatçı krassimir terziev için insanın yazdığı ilk tanım entry'si.",
+      },
+    );
+    const extra = async (title: string) =>
+      (
+        await createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
+          title,
+          entryBody: `${title} için insanın yazdığı ilk tanım entry'si.`,
+        })
+      ).topic.id;
+    const hiddenId = await extra("gizlenen başlık");
+    const deletedId = await extra("ikinci gizlenen başlık");
+    const mergedId = await extra("birleşen eski ad");
+    const blockedId = await extra("engelli yazarın başlığı");
+    const writtenId = await extra("yazarın zaten yazdığı başlık");
+    const laterId = await extra("dördüncü sıradaki başlık");
+    await integrationDatabase.entry.updateMany({
+      where: { topicId: writtenId },
+      data: { authorId: fixture.created.agent.user.id },
+    });
+    await integrationDatabase.topic.updateMany({
+      where: { id: { in: [hiddenId, deletedId] } },
+      data: { status: "HIDDEN" },
+    });
+    await integrationDatabase.topic.update({
+      where: { id: mergedId },
+      data: { status: "MERGED", mergedIntoId: existing.topic.id },
+    });
+    const blocked = await createAgent(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      createAgentSchema.parse({ persona: originalPersonaPack.personas[1] }),
+    );
+    await integrationDatabase.topic.update({
+      where: { id: blockedId },
+      data: { createdById: blocked.agent.user.id },
+    });
+    await integrationDatabase.userBlock.create({
+      data: { blockerId: fixture.created.agent.user.id, blockedId: blocked.agent.user.id },
+    });
+    // En yeni önce: gizli, gizli, birleşen (→ var olan), engelli, yazılmış, okunabilir başlık.
+    const rejectedTopicIds = [hiddenId, deletedId, mergedId, blockedId, writtenId, laterId];
+    await integrationDatabase.agentAction.createMany({
+      data: rejectedTopicIds.map((topicId, index) => ({
+        id: randomUUID(),
+        agentProfileId: profileId,
+        runId: previousRun.id,
+        sequence: index + 1,
+        actionType: "CREATE_TOPIC_WITH_ENTRY" as const,
+        actionStatus: "REJECTED" as const,
+        rejectionCode: "TOPIC_EXISTS_UNREAD",
+        validationResult: {
+          valid: false,
+          code: "TOPIC_EXISTS_UNREAD",
+          rejectionDetail: { existingTopicId: topicId },
+        },
+        input: {},
+        createdAt: new Date(now.getTime() - 3_000 - index * 10),
+        updatedAt: new Date(now.getTime() - 500),
+      })),
+    });
+    await integrationDatabase.agentAction.createMany({
+      data: Array.from({ length: 6 }, (_, index) => ({
+        id: randomUUID(),
+        agentProfileId: profileId,
+        runId: previousRun.id,
+        sequence: 20 + index,
+        actionType: "VOTE_UP" as const,
+        actionStatus: "SUCCEEDED" as const,
+        input: {},
+        createdAt: new Date(now.getTime() - 2_000 + index * 10),
+        updatedAt: new Date(now.getTime() - 500),
+      })),
+    });
+    const workerId = "existing-topic-reader";
+    const leased = await leaseRuntimeRun(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:lease"),
+      { workerId, leaseSeconds: 60 },
+    );
+    expect(leased.run!.id).toBe(fixture.runs[0]!.id);
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      leased.run!.id,
+      workerId,
+    );
+    expect(context.perception.existingTopicsToRead).toEqual([
+      { id: existing.topic.id, title: "krassimir terziev" },
+      { id: laterId, title: "dördüncü sıradaki başlık" },
+    ]);
+    expect(browsableTopicMenu(context.perception)[0]).toMatchObject({
+      id: existing.topic.id,
+      hint: "açmak istediğin başlık zaten var",
+    });
+    const read = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      leased.run!.id,
+      workerId,
+      [existing.topic.id, hiddenId],
+    );
+    expect((read.perception.readTopics as { id: string }[]).map(({ id }) => id)).toEqual([
+      existing.topic.id,
+    ]);
   });
 
   it("writes into a populated topic only after the run actually read it", async () => {

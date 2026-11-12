@@ -82,8 +82,9 @@ function conflictThresholdSentence(persona: SeedPersona): string {
   kimliği verir; örnekler üslubu gösterir, olgu kaynağı değildir.
 */
 const lengthIdentityText: Record<PersonaVoice["lengthIdentity"], string> = {
+  // 12 Kasım 2026 (Gökhan, kör okuma): uzun ders anlatımları 1, kısa tek fikirliler 3 aldı; uzun yazım kalır, sıklığı düşer.
   MAKALE:
-    "Uzun yazan birisin; sözlükte senin işin konuyu gerçekten açmak. Olağan entry'n üç ile on paragraf, 150 kelimenin üstünde; her paragraf ayrı bir iş görür (açıklama, örnek, karşı örnek, sonuç). Paragrafları boş satırla ayır. Ortak 'dolgu yok' kuralı seni kısaltmak için değil: uzun yaz ama her paragraf bir şey anlatsın.",
+    "Uzun yazabilen birisin: konu taşıdığında birkaç paragraf açarsın, paragrafları boş satırla ayırırsın. Ama çoğu entry'n kısa; tek bir şey söyler, biter. Ders kitabı düzeni kurma (tanım, nasıl çalışır, neden önemli, sonuç): anlatmak istediğini anlatınca bitir.",
   TEK_SATIR:
     "Tek satırcısın: çoğu entry'n kısa bir ad koyma, bir hüküm ya da tek cümle. Entry en az 10 karakter olmalı; tek kelime yetmiyorsa kısa bir ad tamlaması yaz ('tuzsuz bir tat.'). Açıklamayı alışkanlıkla eklemezsin; 'aynen', 'harika' gibi boş tepki yazmazsın.",
   KISA: "Kısa yazarsın: çoğu entry'n tek paragraf, birkaç cümle.",
@@ -94,26 +95,32 @@ const lengthIdentityText: Record<PersonaVoice["lengthIdentity"], string> = {
 
 function voiceLengthSentences(persona: SeedPersona): string[] {
   const voice = persona.voice!;
+  // 12 Kasım 2026 (Sol 6.1 P2): makalecinin aralığı yalnız uzun yazdığı entry'ler için; çoğu entry'si kısa.
+  const range = `${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime, ${voice.paragraphs} paragraf.`;
   return [
-    `Olağan entry uzunluğun ${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime, ${voice.paragraphs} paragraf.`,
+    voice.lengthIdentity === "MAKALE"
+      ? `Uzun yazdığında entry'n ${range}`
+      : `Olağan entry uzunluğun ${range}`,
     lengthIdentityText[voice.lengthIdentity],
   ];
 }
 
 function voiceCardSection(voice: PersonaVoice): string[] {
+  /*
+    11 Kasım 2026 (Gökhan: "kasımda kasımda kasımda, bunu görmekten bıktım"; "model çok kitabi
+    yazıyo"): ritim, imza alışkanlıkları, sevilen kalıplar ve örnekler artık istemde yok. Model
+    bunları her başlıkta harfiyen uyguluyordu ("kasımda … tam zamanı", "etikette … fişte …",
+    "iç ses:", "neden önemli:", "sınıfta … gibi"). Yerel denemede kartsız yazımda bu kalıplar
+    tamamen kayboldu. Kartın verisi duruyor; yalnız tavır, mizah, bakış ve "asla" çiziliyor.
+  */
   return [
     "",
-    "# Sesin (ses kartı)",
-    "Bu senin kendine has sesin; sözlükteki diğer yazarlardan ayırt edilmeni sağlar. Her entry'de bütün özellikleri sergileme, ama sesin hep tanınsın. Küçük harfle yazarsın.",
-    `Ritim: ${voice.rhythm}`,
+    "# Sesin",
+    "Küçük harfle yazarsın. Aşağıdakiler senin tavrın ve bakışın, kalıp değil: her entry'yi o başlık için yeniden kur; başka entry'lerindeki açılışı, benzetmeyi, etiketi ya da imza sözcüğü taşıma.",
     `Tavır: ${voice.stance}`,
-    `Sevdiğin sözcükler ve kalıplar: ${voice.lexicon.join(", ")}.`,
-    ...(voice.tics.length > 0 ? [`İmza alışkanlıkların: ${voice.tics.join("; ")}.`] : []),
     `Mizahın: ${voice.humor}.`,
     `Takıntıların ve bakışın: ${voice.obsessions.join("; ")}.`,
     `Asla yapmadıkların: ${voice.nevers.join("; ")}.`,
-    "Senin sesinle yazılmış örnekler (yalnız üslup için; içindeki bilgileri kaynak sayma, kopyalama):",
-    ...voice.examples.map(({ baslik, entry }) => `- ${baslik}: ${entry.replaceAll("\n\n", " ¶ ")}`),
   ];
 }
 

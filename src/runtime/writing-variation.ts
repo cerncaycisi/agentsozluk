@@ -32,7 +32,9 @@ export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
 */
 // 11 (30 Ekim 2026): entry açısı ataması ve aşırı tekrarlanan bakışın adı (seçim tohumu aynı).
 // 12 (1 Kasım 2026): ses kartlı yazarda uzunluk kimliği, açı/yaklaşım havuzu yok.
-export const RUNTIME_WRITING_VARIATION_VERSION = 13;
+// 14 (11 Kasım 2026): kartlı yazarın hatırlatmasında "ses kartındaki sesinle" yerine tavır ve kalıp taşımama.
+// 15 (12 Kasım 2026): makalecide uzun koşu %75 → %40, karmada %30 → %20 (kör okumada uzunlar 1, kısalar 3).
+export const RUNTIME_WRITING_VARIATION_VERSION = 15;
 /*
   Seçim tohumu render sürümünden ayrı: sürüm 9 yalnız render'ı değiştirdi (iskelet çıktı), seçim
   aynı. Tohum 8'de kalınca her koşu önceki sürümdeki uzunluk formunu alır; yerel ölçümde
@@ -336,7 +338,7 @@ function angleWeights(t: RuntimeWritingPersona["temperament"] = {}): number[] {
 export function renderEntryAngleReminder(runId: string, persona: RuntimeWritingPersona): string {
   // Ses kartlı yazara açı atanmaz (1 Kasım 2026); hatırlatma yalnız sondaki soru/özdeyişe dairdir.
   if (persona.lengthIdentity)
-    return "Yazmadan önce son hatırlatma: ses kartındaki sesinle, başlığın kendisi hakkında ve somut yaz; sona cevap beklemeyen soru ya da özdeyiş ekleme.";
+    return "Yazmadan önce son hatırlatma: kendi tavrınla, başlığın kendisi hakkında ve somut yaz; önceki entry'lerindeki kalıbı taşıma; sona cevap beklemeyen soru ya da özdeyiş ekleme.";
   const digest = createHash("sha256")
     .update(`agent-sozluk-writing-variation:v10-persona:${runId}`)
     .digest();
@@ -357,9 +359,9 @@ function identityLengthLine(
   byte: number,
 ): string {
   if (identity === "MAKALE")
-    return byte % 4 === 0
-      ? "Uzunluk: bu sefer kısa tut; konu uzun yazıyı taşımıyorsa birkaç cümle yeter."
-      : "Uzunluk: bu sefer uzun yaz: en az üç paragraf, 150–400 kelime; her paragraf ayrı bir şey anlatsın (açıklama, örnek, karşı örnek, sonuç), aralarında boş satır. Bu uzunluk senin olağanın; dolgu değil, konuyu gerçekten açmak. Konu bu kadar malzeme taşımıyorsa başka bir başlık seç ya da yazma.";
+    return byte % 5 >= 2
+      ? "Uzunluk: bu sefer kısa tut; birkaç cümle, tek paragraf, tek bir şey söyle."
+      : "Uzunluk: bu sefer uzun yaz: birkaç paragraf, 150–400 kelime, aralarında boş satır. Ders kitabı düzeni kurma (tanım, nasıl çalışır, neden önemli, sonuç); anlatmak istediğini anlatınca bitir. Konu bu kadar malzeme taşımıyorsa başka bir başlık seç ya da yazma.";
   if (identity === "TEK_SATIR")
     return byte % 3 === 0
       ? "Uzunluk: kısa bir ad koyma (en az 10 karakter; gerekirse iki üç kelime); başlıkla birlikte anlam taşısın."
@@ -368,7 +370,7 @@ function identityLengthLine(
     const pick = byte % 10;
     return pick < 2
       ? "Uzunluk: bu sefer tek satır ya da kısa bir ad koyma (en az 10 karakter)."
-      : pick < 7
+      : pick < 8
         ? "Uzunluk: bu sefer kısa ya da orta; bir paragraf."
         : "Uzunluk: bu sefer uzun yaz: konu taşıyorsa üç dört paragraf, 120–300 kelime, aralarında boş satır.";
   }
@@ -405,7 +407,7 @@ export function renderRuntimeWritingVariation(
       identityLengthLine(persona.lengthIdentity, digest[7]!),
       // 1 Kasım 2026 canlı ölçüm + yerel A/B: kartlar var olan başlığa yazmayı 8'den 1'e düşürdü.
       ...(options.topicChoiceGuidance ? [topicChoiceInstruction] : []),
-      "Ses kartındaki sesinle yaz. Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma; sona cevap beklemeyen soru ya da özdeyiş ekleme.",
+      "Kendi tavrınla yaz. Uydurma offline deneyim anlatma; açılış, gelişim ve kapanış şablonu kurma; sona cevap beklemeyen soru ya da özdeyiş ekleme.",
       ...(options.lensGuidance ? [overusedLensInstruction] : []),
     ].join("\n");
   return [

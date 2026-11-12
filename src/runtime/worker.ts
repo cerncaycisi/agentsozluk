@@ -748,10 +748,12 @@ function repairVoiceLines(context: RuntimeContext): string[] {
   const card = seedPersonaSchema.safeParse(context.persona.document);
   const voice = card.success ? card.data.voice : undefined;
   return [
-    `Yazarın sesi: ${persona.voice.rhythm} ${persona.voice.humorStyle} Olağan entry uzunluğu ${persona.preferredMinWords}-${persona.preferredMaxWords} kelime. Yeniden yazarken bu sesi koru; kurumsal rapor diline dönme.`,
+    // 12 Kasım 2026 (Sol 6.1 P2): onarım koşunun uzunluk seçimini bilmez; persona aralığı kısa taslağı uzatıyordu.
+    `Yazarın sesi: ${persona.voice.rhythm} ${persona.voice.humorStyle} Taslağın uzunluğunu koru; kısa taslağı uzatma. Yeniden yazarken bu sesi koru; kurumsal rapor diline dönme.`,
     ...(voice
       ? [
-          `Ses kartı: ritim: ${voice.rhythm}; tavır: ${voice.stance}; sözcükler: ${voice.lexicon.join(", ")}; asla: ${voice.nevers.join("; ")}. Onarırken de bu sesle yaz; küçük harf.`,
+          // 11 Kasım 2026: kartın ritim ve sözcük kalıpları onarıma da taşınmaz (bkz. prompt-renderer).
+          `Tavrın: ${voice.stance}; asla: ${voice.nevers.join("; ")}. Onarırken de bu tavırla yaz; küçük harf.`,
         ]
       : []),
   ];
