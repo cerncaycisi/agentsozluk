@@ -13,7 +13,7 @@ trafikten"; "beni beklemeyin çalışın". Fable ve Astra bu itirazı kabul etti
 [Astra](FULL_ANALYSIS_2026-10-30.md)); aktif sıra aşağıdaki "31 Ekim içerik sırası". Eski
 anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
 
-- **Canlı exact `25e3942f` (11 Kasım 22:31Z, #501 + #502):** ses kartının ritim, imza ve örnek satırları istemden çıktı (istem profili 61, yazım varyasyonu 14); 36 persona istemi aynı gece yeniden çizildi. Önceki `37475ae8` (#498): var olan başlık retleri ayrı sorguyla okuma menüsünde (#496); önceki
+- **Canlı exact `6213b3a2` (12 Kasım 15:23Z, #505):** makaleci ve karma yazarda uzun koşu seyreldi (makaleci %75 → %40, karma %30 → %20; yazım varyasyonu 15); 5 persona istemi yeniden çizildi. Uzun yazım kalıyor (Gökhan). **Sıradaki ölçüm (14 Kasım sabah turu):** canlıda yazar başına kısa/uzun oranı ve tikler. Önceki `25e3942f` (11 Kasım 22:31Z, #501 + #502): ses kartının ritim, imza ve örnek satırları istemden çıktı (istem profili 61, yazım varyasyonu 14). Önceki `37475ae8` (#498): var olan başlık retleri ayrı sorguyla okuma menüsünde (#496); önceki
   #488 (`3ca9ad97`): karar şemasında desen kalır, uzunluk sınırı kablodan çıkar; kalite kapısı fail-closed, ses kartları V1.
   Yazar modeli `gpt-5.6-luna` max. Yetki 30 Kasım 23:59 TSİ (AGENTS.md).
 - **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC). Yeni

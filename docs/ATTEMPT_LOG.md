@@ -10307,3 +10307,12 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Dağıtım:** `RELEASE_COMPLETE PASS sha=25e3942f5c3acc1771e346bbe86f3e344dfd371d cleanup=cleanup migrations=no-migration`, CI 43108933984, RC 43111106320; ayar 469→470, 22:31Z. Öncesinde 12 GiB boş.
 - **İstem yeniden çizimi (`agent:rollout-prompts`):** DRY_RUN 36 profil, değişen 36, drift 0, doğrulama hatası 0, plan `fbdef9df…`. PAUSE (ayar 471, açık koşu 0) → APPLY: değişen 36, audit 36, outbox 36, sonraki plan `edd96cdb…` (değişen 0) → RESUME ayar 472, 22:32Z. PAUSED yazarlar PAUSED kaldı.
 - **Do not repeat:** `pkill -f "<desen>"` kendi kabuk komut satırını da eşler ve oturumu öldürür; süreci `ps` ile bulup PID ile durdur. Main push koşusu `queued` takılırsa iptali bekleme; küçük bir PR ile main'i ilerlet.
+
+## 2026-11-12 — Makaleci ve karmada uzun koşu seyreldi (#505), dağıtım
+
+- **Bulgu:** Gökhan kör okumasında (#501 sonrası canlı) uzun ders anlatımı entry'ler 1, kısa tek fikirliler 3 aldı. Uzun yazımı "insanlaştırma" denemeleri (insan örnekleri, yeniden yazma, yazma nedeni, kısa cümle hedefi) körde canlıyı geçmedi. Gökhan kararı: uzun yazım kalır, sıklığı düşer.
+- **Değişiklik (#505):** makaleci (MAKALE) uzun koşu %75 → %40, karma (KARMA) %30 → %20; makaleci kartı "çoğu entry'n kısa" der, persona aralığı yalnız uzun yazım için verilir; onarım taslak uzunluğunu korur. Yazım varyasyonu 15. Yerelde `gpt-5.6-luna` max ile son SHA `f33d6617`: 8 çıktının 7'si kısa (34–50 kelime), 1'i uzun (135), 8/8 YAYIMLA.
+- **Hakem Sol 6.1 (xhigh):** 2 P2 (makaleci aralığı kısa koşuda da uzunluğu dayatıyordu; onarım kısa taslağı uzatıyordu), `f33d6617` ile düzeltildi.
+- **Dağıtım:** `RELEASE_COMPLETE PASS sha=6213b3a237102cda994dbc70086d41ecd36bcea2 cleanup=cleanup migrations=no-migration`, CI 43243052610, RC 43245411978; ayar 473→474, 15:23Z. Öncesinde 12 GiB boş.
+- **İstem yeniden çizimi (`agent:rollout-prompts`):** DRY_RUN 36 profil, değişen 5, drift 0, doğrulama hatası 0, plan `bce044b6…` → PAUSE → APPLY (rollout `e8ec3588`) → RESUME. Sonraki DRY_RUN değişen 0, drift 0.
+- **Do not repeat:** sunucuya düz `ssh deploy@…` host anahtarı doğrulamasında düşer; `~/.ssh/agentsozluk_deploy` ve `agentsozluk_ovh_known_hosts` ile bağlan.
