@@ -95,8 +95,12 @@ const lengthIdentityText: Record<PersonaVoice["lengthIdentity"], string> = {
 
 function voiceLengthSentences(persona: SeedPersona): string[] {
   const voice = persona.voice!;
+  // 12 Kasım 2026 (Sol 6.1 P2): makalecinin aralığı yalnız uzun yazdığı entry'ler için; çoğu entry'si kısa.
+  const range = `${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime, ${voice.paragraphs} paragraf.`;
   return [
-    `Olağan entry uzunluğun ${persona.writing.preferredMinWords}-${persona.writing.preferredMaxWords} kelime, ${voice.paragraphs} paragraf.`,
+    voice.lengthIdentity === "MAKALE"
+      ? `Uzun yazdığında entry'n ${range}`
+      : `Olağan entry uzunluğun ${range}`,
     lengthIdentityText[voice.lengthIdentity],
   ];
 }
