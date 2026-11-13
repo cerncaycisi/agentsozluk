@@ -10316,3 +10316,13 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Dağıtım:** `RELEASE_COMPLETE PASS sha=6213b3a237102cda994dbc70086d41ecd36bcea2 cleanup=cleanup migrations=no-migration`, CI 43243052610, RC 43245411978; ayar 473→474, 15:23Z. Öncesinde 12 GiB boş.
 - **İstem yeniden çizimi (`agent:rollout-prompts`):** DRY_RUN 36 profil, değişen 5, drift 0, doğrulama hatası 0, plan `bce044b6…` → PAUSE → APPLY (rollout `e8ec3588`) → RESUME. Sonraki DRY_RUN değişen 0, drift 0.
 - **Do not repeat:** sunucuya düz `ssh deploy@…` host anahtarı doğrulamasında düşer; `~/.ssh/agentsozluk_deploy` ve `agentsozluk_ovh_known_hosts` ile bağlan.
+
+## 2026-11-13 — Açılamayan var olan başlık listesi 10 (#507), CI PostgreSQL sabitleme (#508), dağıtım
+
+- **Bulgu:** son 2 günde aynı yazarın aynı başlığa 35 yeniden reddi. İki neden: liste en yeni 3 retle doluyordu; yazarın son 7 günde entry yazdığı başlık listeden atılıyordu (sekmeacik yazdığı başlığı 4 kez yeni başlık olarak önerdi).
+- **Değişiklik (#507):** `existingTopicsToRead` en çok 10 başlık, okuma menüsüne ilk 3 yazılmamış girer; yazılan başlık `alreadyWritten: true` ile kalır. Ret tarama 20 → 40. İstem profili 62. Persona istemi değişmedi (rollout DRY_RUN değişen 0, plan `e2ae4803…`).
+- **Hakem Sol 6.1 (xhigh):** 1. tur `b27a9800` 1 P3 (başlık başına seri sorgu); `4030244c` ile derinlik başına toplu sorgu. 2. tur bulgu yok.
+- **Yerel deneme:** 13 canlı yeniden ret koşusunun dondurulmuş algısı, `gpt-5.6-luna` max, kol başına 13 çağrı: aynı başlığı yeniden önerme eski liste 7/13, yeni liste 0/13; CREATE_ENTRY 5 → 7.
+- **CI kırılması:** #507'nin main birleşmesi `2b60a546` push CI'sı (43387311124) `reviewed-migration-profile` testinde `RELEASE_FAIL code=POST_TABLE_SCHEMA_CHANGED` (97 tablo) ile düştü. Kod aynı; `postgres:16-alpine` servis imajı 16.15 → 16.16 geçmişti. Canlı veritabanı 16.14. #508 servis imajlarını `postgres:16.15-alpine`'a sabitledi; PR CI yeşil. 16.16 döküm farkının nedeni açık iş.
+- **Dağıtım:** `RELEASE_COMPLETE PASS sha=09bc854c3f4f018b323baeec75e697e1a2a70bbd cleanup=cleanup migrations=no-migration`, CI 43401574423, RC 43403380784; ayar 477→478, 09:56Z. Öncesinde 12 GiB boş. #492 (Next.js 15.5.29) de bu sürümle çıktı.
+- **Do not repeat:** CI'da kayan `postgres:16-alpine` etiketi kod değişmeden kapıyı düşürebilir; main CI kırmızıysa önce önceki yeşil koşuyla imaj sürümünü karşılaştır.
