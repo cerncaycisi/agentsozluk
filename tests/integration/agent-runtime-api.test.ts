@@ -7955,6 +7955,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const blockedId = await extra("engelli yazarın başlığı");
     const writtenId = await extra("yazarın zaten yazdığı başlık");
     const laterId = await extra("dördüncü sıradaki başlık");
+    // 12 Kasım 2026: liste üçle kesilmez; menüye girmeyen eski retler de listede kalır.
+    const olderIds = [
+      await extra("eski ret bir"),
+      await extra("eski ret iki"),
+      await extra("eski ret üç"),
+    ];
     await integrationDatabase.entry.updateMany({
       where: { topicId: writtenId },
       data: { authorId: fixture.created.agent.user.id },
@@ -7980,7 +7986,15 @@ describe("internal agent runtime API with PostgreSQL", () => {
       data: { blockerId: fixture.created.agent.user.id, blockedId: blocked.agent.user.id },
     });
     // En yeni önce: gizli, gizli, birleşen (→ var olan), engelli, yazılmış, okunabilir başlık.
-    const rejectedTopicIds = [hiddenId, deletedId, mergedId, blockedId, writtenId, laterId];
+    const rejectedTopicIds = [
+      hiddenId,
+      deletedId,
+      mergedId,
+      blockedId,
+      writtenId,
+      laterId,
+      ...olderIds,
+    ];
     await integrationDatabase.agentAction.createMany({
       data: rejectedTopicIds.map((topicId, index) => ({
         id: randomUUID(),
@@ -8029,12 +8043,18 @@ describe("internal agent runtime API with PostgreSQL", () => {
     );
     expect(context.perception.existingTopicsToRead).toEqual([
       { id: existing.topic.id, title: "krassimir terziev" },
+      // Yazdığı başlık işaretli kalır: yeniden yeni başlık olarak önerilmesin (12 Kasım 2026).
+      { id: writtenId, title: "yazarın zaten yazdığı başlık", alreadyWritten: true },
       { id: laterId, title: "dördüncü sıradaki başlık" },
+      { id: olderIds[0], title: "eski ret bir" },
+      { id: olderIds[1], title: "eski ret iki" },
+      { id: olderIds[2], title: "eski ret üç" },
     ]);
-    expect(browsableTopicMenu(context.perception)[0]).toMatchObject({
-      id: existing.topic.id,
-      hint: "açmak istediğin başlık zaten var",
-    });
+    expect(
+      browsableTopicMenu(context.perception)
+        .filter(({ hint }) => hint === "açmak istediğin başlık zaten var")
+        .map(({ id }) => id),
+    ).toEqual([existing.topic.id, laterId, olderIds[0]]);
     const read = await getRuntimeRunContext(
       integrationDatabase,
       readPrincipal,

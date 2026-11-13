@@ -123,7 +123,13 @@ function actionFeedbackCard(
   aynı haberi görünce aynı adı yeniden öneriyordu. Kimlik ret ayrıntısından okunur; en yeni önce.
 */
 export const existingTopicsToReadKey = "existingTopicsToRead";
-export const existingTopicsToReadLimit = 3;
+/*
+  12 Kasım 2026: liste son 7 günün en çok 10 başlığını taşır, okuma menüsüne yalnız ilk 3'ü girer.
+  Menü en yeni üç retle doluyordu; çok ret alan yazarda eski başlık listeden düşüyor ve aynı ad
+  yeniden öneriliyordu (22,8 saatte 6 yeniden ret, hiçbiri o koşunun listesinde değildi).
+*/
+export const existingTopicsToReadLimit = 10;
+export const existingTopicsToReadMenuLimit = 3;
 
 export function unreadExistingTopicIds(
   records: readonly Pick<
@@ -142,6 +148,6 @@ export function unreadExistingTopicIds(
     const id = (detail as { existingTopicId?: unknown }).existingTopicId;
     if (typeof id === "string" && id.length > 0 && !ids.includes(id)) ids.push(id);
   }
-  // Üçlük sınır erişilebilirlik süzgecinden SONRA uygulanır (Sol 6.1, 1. tur P2).
+  // Sınır erişilebilirlik süzgecinden SONRA uygulanır (Sol 6.1, 1. tur P2).
   return ids;
 }

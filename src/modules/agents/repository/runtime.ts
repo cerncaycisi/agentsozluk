@@ -3478,8 +3478,8 @@ export async function getRuntimePerceptionRecords(
 /*
   Okunmadığı için reddedilen yeni başlık önerilerinin var olan başlıkları (10 Kasım 2026).
   Sıra ret sırasıdır (en yeni önce). Retten sonra birleşen başlık kanonik hedefine çözülür;
-  yalnız aktif ve engelli kullanıcının açmadığı başlıklar sayılır, üçlük sınır bu süzgeçten
-  sonra uygulanır. Gösterilen ad kısaltılır: normalleştirilmiş uzunluk sınırı görünmez
+  yalnız aktif ve engelli kullanıcının açmadığı başlıklar sayılır, sınır (en çok 10) bu
+  süzgeçten sonra uygulanır. Gösterilen ad kısaltılır: normalleştirilmiş uzunluk sınırı görünmez
   karakterli adı geçirebiliyordu (Sol 6.1, 1. tur P2).
 */
 const existingTopicTitleLimit = 120;
@@ -3488,9 +3488,9 @@ const existingTopicMergeDepth = 4;
   11 Kasım 2026: retler önce genel geri bildirim kaydından (son 5 eylem) okunuyordu. Bir koşu
   oy, takip ve inanç güncellemesiyle 3–5 eylem ürettiği için ret bir sonraki koşuda çoğu zaman
   pencereden düşüyordu; canlıda aynı başlığın ikinci reddinde başlık menüde değildi. Retler
-  artık ayrı sorguyla okunur; yazar başlığa o günden beri entry yazdıysa başlık menüye girmez.
+  artık ayrı sorguyla okunur; yazar başlığa son yedi günde entry yazdıysa başlık menüye girmez.
 */
-const existingTopicRejectionScanLimit = 20;
+const existingTopicRejectionScanLimit = 40;
 
 async function listExistingTopicsToRead(
   transaction: DatabaseExecutor,
@@ -3534,22 +3534,47 @@ async function listExistingTopicsToRead(
     ).map(({ topicId }) => topicId),
   );
   const blockedUserIds = input.blockedUserIds;
-  const out: { id: string; title: string }[] = [];
-  for (const topicId of unreadExistingTopicIds(rejections)) {
-    let topic = await transaction.topic.findUnique({
-      where: { id: topicId },
+  /*
+    12 Kasım 2026 (Sol 6.1 P3): liste 10'a çıkınca başlık başına seri sorgu 40 retle 200'ü
+    geçebiliyordu. Başlıklar ve birleşme hedefleri derinlik başına tek sorguyla okunur.
+  */
+  const topicIds = unreadExistingTopicIds(rejections);
+  type ExistingTopicRow = {
+    id: string;
+    title: string;
+    status: string;
+    mergedIntoId: string | null;
+    createdById: string;
+  };
+  const topics = new Map<string, ExistingTopicRow>();
+  const loadTopics = async (ids: Iterable<string>) => {
+    const missing = [...new Set(ids)].filter((id) => !topics.has(id));
+    if (missing.length === 0) return;
+    for (const row of await transaction.topic.findMany({
+      where: { id: { in: missing } },
       select: { id: true, title: true, status: true, mergedIntoId: true, createdById: true },
-    });
-    for (let depth = 0; topic?.status === "MERGED" && topic.mergedIntoId; depth += 1) {
-      if (depth >= existingTopicMergeDepth) {
-        topic = null;
-        break;
-      }
-      topic = await transaction.topic.findUnique({
-        where: { id: topic.mergedIntoId },
-        select: { id: true, title: true, status: true, mergedIntoId: true, createdById: true },
-      });
+    }))
+      topics.set(row.id, row);
+  };
+  await loadTopics(topicIds);
+  const resolved = new Map<string, ExistingTopicRow | null>(
+    topicIds.map((id) => [id, topics.get(id) ?? null]),
+  );
+  for (let depth = 0; ; depth += 1) {
+    const pending = [...resolved].filter(
+      ([, topic]) => topic?.status === "MERGED" && topic.mergedIntoId,
+    );
+    if (pending.length === 0) break;
+    if (depth >= existingTopicMergeDepth) {
+      for (const [id] of pending) resolved.set(id, null);
+      break;
     }
+    await loadTopics(pending.map(([, topic]) => topic!.mergedIntoId!));
+    for (const [id, topic] of pending) resolved.set(id, topics.get(topic!.mergedIntoId!) ?? null);
+  }
+  const out: { id: string; title: string; alreadyWritten?: true }[] = [];
+  for (const topicId of topicIds) {
+    const topic = resolved.get(topicId) ?? null;
     if (
       !topic ||
       topic.status !== "ACTIVE" ||
@@ -3557,8 +3582,15 @@ async function listExistingTopicsToRead(
       out.some(({ id }) => id === topic!.id)
     )
       continue;
-    if (writtenTopicIds.has(topic.id)) continue;
-    out.push({ id: topic.id, title: truncateTitle(topic.title) });
+    /*
+      12 Kasım 2026: yazdığı başlık listeden düşünce yazar onu yeniden yeni başlık olarak
+      öneriyordu (sekmeacik, yazdığı başlığı 4 kez). Liste başlığı işaretle taşır; menüye girmez.
+    */
+    out.push(
+      writtenTopicIds.has(topic.id)
+        ? { id: topic.id, title: truncateTitle(topic.title), alreadyWritten: true }
+        : { id: topic.id, title: truncateTitle(topic.title) },
+    );
     if (out.length >= existingTopicsToReadLimit) break;
   }
   return out;

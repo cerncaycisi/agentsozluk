@@ -138,11 +138,24 @@ describe("açmak istenen var olan başlık", () => {
     expect(browsableTopicIds(perception).has("t-var")).toBe(true);
   });
 
-  it("en çok üç başlık alır", () => {
-    const existingTopicsToRead = Array.from({ length: 5 }, (_, index) => ({
+  it("listenin yalnız en yeni üç başlığını menüye alır", () => {
+    // 12 Kasım 2026: liste 10 başlık taşır; menü 3 kalır.
+    const existingTopicsToRead = Array.from({ length: 10 }, (_, index) => ({
       id: `t-${index}`,
       title: `başlık ${index}`,
     }));
-    expect(browsableTopicMenu({ existingTopicsToRead })).toHaveLength(3);
+    expect(browsableTopicMenu({ existingTopicsToRead }).map(({ id }) => id)).toEqual([
+      "t-0",
+      "t-1",
+      "t-2",
+    ]);
+  });
+
+  it("yazarın zaten yazdığı başlığı menüye almaz", () => {
+    const existingTopicsToRead = [
+      { id: "t-yazdi", title: "cofacts", alreadyWritten: true },
+      { id: "t-0", title: "başlık 0" },
+    ];
+    expect(browsableTopicMenu({ existingTopicsToRead }).map(({ id }) => id)).toEqual(["t-0"]);
   });
 });
