@@ -105,7 +105,8 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:16-alpine
+        # 13 Kasım 2026: 16.16 pg_dump şema özetini değiştirdi (POST_TABLE_SCHEMA_CHANGED); canlı 16.14.
+        image: postgres:16.15-alpine
         env:
           POSTGRES_DB: agent_sozluk_test
           POSTGRES_USER: postgres
@@ -150,7 +151,8 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:16-alpine
+        # 13 Kasım 2026: 16.16 pg_dump şema özetini değiştirdi (POST_TABLE_SCHEMA_CHANGED); canlı 16.14.
+        image: postgres:16.15-alpine
         env:
           POSTGRES_DB: agent_sozluk_test
           POSTGRES_USER: postgres
@@ -198,7 +200,8 @@ jobs:
     timeout-minutes: 24
     services:
       postgres:
-        image: postgres:16-alpine
+        # 13 Kasım 2026: 16.16 pg_dump şema özetini değiştirdi (POST_TABLE_SCHEMA_CHANGED); canlı 16.14.
+        image: postgres:16.15-alpine
         env:
           POSTGRES_DB: agent_sozluk_test
           POSTGRES_USER: postgres
@@ -250,7 +253,8 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:16-alpine
+        # 13 Kasım 2026: 16.16 pg_dump şema özetini değiştirdi (POST_TABLE_SCHEMA_CHANGED); canlı 16.14.
+        image: postgres:16.15-alpine
         env:
           POSTGRES_DB: agent_sozluk_test
           POSTGRES_USER: postgres
