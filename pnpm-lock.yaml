@@ -13,6 +13,7 @@ overrides:
   sharp: 0.35.5
   fast-uri: 3.1.8
   source-map-js: 1.2.2
+  effect: 3.22.5
 
 importers:
 
@@ -20,7 +21,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: 5.9.2
-        version: 5.9.2(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@3.21.0)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(zod@4.6.7)
+        version: 5.9.2(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@3.22.5)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(zod@4.6.7)
       '@node-rs/argon2':
         specifier: 2.2.2
         version: 2.2.2
@@ -628,7 +629,7 @@ packages:
       class-transformer: '>=0.4.0'
       class-validator: '>=0.12.0'
       computed-types: ^1.0.0
-      effect: ^3.10.3
+      effect: 3.22.5
       fluentvalidation-ts: ^3.0.0
       fp-ts: ^2.7.0
       io-ts: ^2.0.0
@@ -2312,8 +2313,8 @@ packages:
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
 
-  effect@3.21.0:
-    resolution: {integrity: sha512-PPN80qRokCd1f015IANNhrwOnLO7GrrMQfk4/lnZRE/8j7UPWrNNjPV0uBrZutI/nHzernbW+J0hdqQysHiSnQ==}
+  effect@3.22.5:
+    resolution: {integrity: sha512-AdIU4llI19BzhJ4xUBZix7kS8oiYSlCsJ61j3UM3UyJw9ecDrsrrweDFm/Ku1nHbJWMLoynK+1Me4it3Zkmjpw==}
 
   electron-to-chromium@1.5.477:
     resolution: {integrity: sha512-PN++F4zWZoVDGWinxMnSCpVqKhqFOJfLXxdU8bYJKudAEsHL/XKVITOKWVbfMt1r276Mi9RDLU9VHx9uKJ4RMQ==}
@@ -4603,14 +4604,14 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@hookform/resolvers@5.9.2(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@3.21.0)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(zod@4.6.7)':
+  '@hookform/resolvers@5.9.2(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@3.22.5)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(zod@4.6.7)':
     dependencies:
       '@standard-schema/utils': 0.3.0
       react-hook-form: 7.92.0(@types/react@19.3.0)(react@19.3.1)
     optionalDependencies:
       '@standard-schema/spec': 1.1.0
       ajv: 8.20.0
-      effect: 3.21.0
+      effect: 3.22.5
       zod: 4.6.7
 
   '@humanfs/core@0.19.2':
@@ -4890,7 +4891,7 @@ snapshots:
     dependencies:
       c12: 3.1.0(magicast@0.3.5)
       deepmerge-ts: 8.0.0
-      effect: 3.21.0
+      effect: 3.22.5
       empathic: 2.0.0
     transitivePeerDependencies:
       - magicast
@@ -6059,7 +6060,7 @@ snapshots:
 
   eastasianwidth@0.2.0: {}
 
-  effect@3.21.0:
+  effect@3.22.5:
     dependencies:
       '@standard-schema/spec': 1.1.0
       fast-check: 3.23.2
