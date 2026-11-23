@@ -578,6 +578,8 @@ export const usageMetadataSchema = z
     writer: z
       .object({
         profile: z.enum(claudeWriterProfileNames),
+        // Canlı karşılaştırma kolu (23 Kasım): CONTROL'de Claude çağrılmaz, luna taslağı kalır.
+        arm: z.enum(["CLAUDE", "CONTROL"]).optional(),
         candidateCount: z.number().int().min(0).max(100),
         writtenCount: z.number().int().min(0).max(100),
         referenceCount: z.number().int().min(0).max(100),

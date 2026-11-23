@@ -4462,6 +4462,9 @@ components:
             profile:
               type: string
               enum: [sonnet-high, opus-high]
+            arm:
+              type: string
+              enum: [CLAUDE, CONTROL]
             candidateCount: { type: integer, minimum: 0, maximum: 100 }
             writtenCount: { type: integer, minimum: 0, maximum: 100 }
             referenceCount: { type: integer, minimum: 0, maximum: 100 }

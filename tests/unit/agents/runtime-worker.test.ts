@@ -5724,6 +5724,7 @@ describe("runtime Claude yazar", () => {
     renderedPrompt?: string;
     timeoutSeconds?: number;
     allowSourceReading?: boolean;
+    claudeShare?: number;
   }) {
     const runId = randomUUID();
     const topicId = randomUUID();
@@ -5777,7 +5778,15 @@ describe("runtime Claude yazar", () => {
       controlPlane: plane,
       provider,
       actionWorthinessProvider: reviewer,
-      ...(writerProvider ? { writer: { provider: writerProvider, reference } } : {}),
+      ...(writerProvider
+        ? {
+            writer: {
+              provider: writerProvider,
+              reference,
+              ...(options.claudeShare === undefined ? {} : { claudeShare: options.claudeShare }),
+            },
+          }
+        : {}),
       onSafeEvent: ({ code }) => events.push(code),
     });
     const recordedBody = () =>
@@ -5825,6 +5834,7 @@ describe("runtime Claude yazar", () => {
     const usage = usageMetadataSchema.parse(run.completionUsage());
     expect(usage.writer).toEqual({
       profile: "sonnet-high",
+      arm: "CLAUDE",
       candidateCount: 1,
       writtenCount: 1,
       referenceCount: 1,
@@ -5902,6 +5912,23 @@ describe("runtime Claude yazar", () => {
       "# Bilgi notu",
     );
     expect(run.recordedBody()).toBe(written);
+  });
+
+  it("keeps the luna draft on the control arm without calling Claude", async () => {
+    const run = setup({
+      write: async () => ({ output: { body: written }, model: "m", durationMs: 1 }),
+      claudeShare: 0,
+    });
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    expect(run.writerProvider!.write).not.toHaveBeenCalled();
+    expect(run.reference.fetch).not.toHaveBeenCalled();
+    expect(run.recordedBody()).toBe(draft);
+    expect(run.completionUsage().writer).toMatchObject({
+      arm: "CONTROL",
+      candidateCount: 1,
+      writtenCount: 0,
+      skippedCount: 0,
+    });
   });
 
   it("does not run without a writer or without persona sections", async () => {
