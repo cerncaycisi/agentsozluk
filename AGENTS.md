@@ -50,7 +50,7 @@
 - Never connect to the production server or its public endpoints without Gokhan's explicit approval
   for the specific access. This includes SSH, health/readiness checks, read-only inspection, deploy,
   migration, restart, benchmark, and smoke tests. Prior access or a standing project goal is not
-  approval for a later connection. See the time-limited exception below, expiring on 31 October 2026.
+  approval for a later connection. See the time-limited exception below, expiring on 31 January 2027.
 - Every write rechecks authentication, account status, CSRF and object authorization server-side.
 - Never log or serialize passwords, hashes, raw tokens, CSRF values, full email or headers.
 - Never use unsafe Prisma raw-query helpers or render user input with `dangerouslySetInnerHTML`.
@@ -61,12 +61,13 @@
   Gökhan'ın açık onayından sonra en az 24 saat beklenir. Bu sürede Gökhan vazgeçebilir. Süreli
   yetki bu kuralı kaldırmaz.
 
-### Süreli çalışma ve üretim yetkisi — 3–31 Ekim 2026
+### Süreli çalışma ve üretim yetkisi — 3 Ekim 2026 – 31 Ocak 2027
 
 Gökhan’ın 3 Ekim sohbet talimatı: “Ok çalışmaya başlayın. Bi durum olmadıkça durmayin? 2 hafta full yetki, deploy durdurma her şey dahil”.
 Gökhan 9 Ekim’de süreyi açık sohbet talimatıyla uzattı: “bana bişi sormana gerek yok bu ay boyunca”.
 Gökhan 22 Ekim’de süreyi yeniden uzattı: “Uzattim. Çalış.”; bitiş 30 Kasım olarak soruldu, “Doğrudur” dedi.
-Bu istisna 30 Kasım 2026 20:59 UTC’de (30 Kasım 23:59 TSİ) kendiliğinden geçersiz olur; sonrasında bu bölüm
+Gökhan 23 Kasım’da süreyi yeniden uzattı: “uzatıyorum”; bitiş sorulunca “31 Ocak 2027” seçti.
+Bu istisna 31 Ocak 2027 20:59 UTC’de (31 Ocak 23:59 TSİ) kendiliğinden geçersiz olur; sonrasında bu bölüm
 silinmelidir. Kayıt başlangıcı 3 Ekim 2026 19:50 UTC. Kapsam, `a4676c781f22a1ac7e32fdd9927ff52d045fd684`
 sürümündeki `docs/PLAN.md` iki haftalık teslimidir. 9 Ekim uzatmasında kapsam, güncel `docs/PLAN.md`
 tek aktif sırasıdır; aynı dosyada "Gökhan kararı bekleyen" ya da "Gökhan'dan beklenen" diye işaretli maddeler kapsam dışıdır. Bu kapsamda Agent Sözlük geliştirme, üretim okuma, release artifact,
