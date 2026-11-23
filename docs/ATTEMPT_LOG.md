@@ -10334,7 +10334,8 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Gökhan'ın yakaladığı hata:** "başlığa referans" (başlıktaki…, vikipedi'ye göre…) — istem ve korumaya yasak eklendi.
 - **Son kod yerel denemesi (`claude -p`, sandboxsız, Sonnet 5.5 high):** 16 bağlam; ilk sürümde 4 tırnak reddi ve büyük harf → istem netleşti; ikinci sürümde 14/16 geçti (2 ciddi iddia → luna), not 9/16, çağrı 7–33 sn.
 - **Hakem:** Sol 6.1 xhigh 1. tur `b55f533a` 5 P2 (süre payı, kaynak okuma izni, hassas alan, iptal yarışı, bölümsüz makale) → `46544b24` düzeltildi; 2. tur bulgu yok.
-- **Henüz yapılmayan:** üretim CLI kurulumu, Gökhan girişi, üretim bubblewrap içinde `claude --version` ve tek yazım denemesi.
+- **Canlı (23 Kas):** #518 `RELEASE_COMPLETE PASS sha=b54a3aed…` 16:24Z (RC ön kontrolü GitHub'ın `--status success` dizini gecikince düştü; main CI yeniden koşturulup devam edildi). CLI 2.1.330 `/opt/claude` altına sha256 doğrulamalı kuruldu; giriş sunucuda yapıldı, Gökhan kodu sohbetten verdi (Pro). Üretim bubblewrap içinde `--version` ve tek yazım (2,9 sn) geçti. `runtime.env` yedeklenip yazar değişkenleri eklendi; ilk 18 koşuda 6 aday: 5 yazıldı, 1 koruma reddi, hata 0.
+- **Yazı tura (#519):** Sol 6.1 2 P2 (boş pay 0 oluyordu → düzeltildi; adaysız koşuda kol kaydı yok → koşu kimliğinden hesaplanır, belgelendi). `RELEASE_COMPLETE PASS sha=170972ab…` 22:04Z, ayar 481→482. `AGENT_RUNTIME_WRITER_CLAUDE_SHARE=0.5` (env yedeklendi); worker yeniden başlatması açık koşuyu bitirmeyi bekledi (~6 dk), log `claude share 0.5` 22:10Z. 5 yazar `operator-admin` lifecycle ile ACTIVE (5/5 HTTP 200, `AGENT_OPERATOR_ADMIN_ID` verildi).
 
 **Do not repeat:**
 
@@ -10342,3 +10343,4 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - `mw-disambig` sınıfı anlam ayrımı sayfasına giden bağlantılarda da var; anlam ayrımı işareti olarak kullanma.
 - Claude CLI'yi `--bare` ile çalıştırma: OAuth okunmaz, yalnız API anahtarı.
 - Kör okumayı 16 entry'den uzun tutma; Gökhan sıkılıyor (7. soruda kesti).
+- Worker'ı `systemctl restart` ile 120 sn'lik ön plan komutunda bekleme: açık koşu bitene kadar `deactivating` kalır; arka planda bekle.
