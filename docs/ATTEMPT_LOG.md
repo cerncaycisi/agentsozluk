@@ -10342,4 +10342,3 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - `mw-disambig` sınıfı anlam ayrımı sayfasına giden bağlantılarda da var; anlam ayrımı işareti olarak kullanma.
 - Claude CLI'yi `--bare` ile çalıştırma: OAuth okunmaz, yalnız API anahtarı.
 - Kör okumayı 16 entry'den uzun tutma; Gökhan sıkılıyor (7. soruda kesti).
-
