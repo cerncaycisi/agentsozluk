@@ -35,6 +35,8 @@ import { runtimePromptScaffold } from "@/runtime/prompt-profile";
   Canlı karşılaştırma (23 Kasım 2026, Gökhan: "5 yazar claude 5 yazar codex" → yazar yerine koşu
   başına yazı tura, "olur"). Koşu kimliğinin tuzlu özetiyle belirlenir: aynı koşu hep aynı kola
   düşer, gezinme deneyinin (fnv1a) kolundan bağımsızdır. Pay 1 ise her koşu Claude'dur.
+  Kol yalnız aday olan koşunun `writer` kaydına yazılır; bütün koşuların kolu (payda, hata ve
+  yayım oranı için) bu işlevle koşu kimliğinden yeniden hesaplanır (Sol 6.1).
 */
 export const runtimeWriterArms = ["CLAUDE", "CONTROL"] as const;
 export type RuntimeWriterArm = (typeof runtimeWriterArms)[number];
