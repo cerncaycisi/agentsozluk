@@ -17,6 +17,7 @@ import {
   applyRuntimeWriterBodies,
   buildWriterPrompt,
   runtimeWriterBodyIssue,
+  runtimeWriterArm,
   runtimeWriterCandidates,
   runtimeWriterOutputJsonSchema,
 } from "@/runtime/entry-writer";
@@ -176,6 +177,22 @@ describe("Claude yazar istemi ve korumaları", () => {
       "taslak gövde 1 burada duruyor ve yeterince uzun.",
       body,
     ]);
+  });
+});
+
+describe("Claude yazar yazı tura kolu", () => {
+  it("is deterministic, near the share and independent of the browse hash", () => {
+    const ids = Array.from(
+      { length: 2000 },
+      (_, index) => `00000000-0000-4000-8000-${index.toString(16).padStart(12, "0")}`,
+    );
+    const arms = ids.map((id) => runtimeWriterArm(id, 0.5));
+    const claude = arms.filter((arm) => arm === "CLAUDE").length;
+    expect(claude).toBeGreaterThan(900);
+    expect(claude).toBeLessThan(1100);
+    expect(ids.map((id) => runtimeWriterArm(id, 0.5))).toEqual(arms);
+    expect(runtimeWriterArm(ids[0]!, 1)).toBe("CLAUDE");
+    expect(runtimeWriterArm(ids[0]!, 0)).toBe("CONTROL");
   });
 });
 

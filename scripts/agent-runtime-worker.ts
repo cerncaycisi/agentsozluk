@@ -48,6 +48,11 @@ const workerEnvironmentSchema = z
     */
     AGENT_RUNTIME_WRITER_PROFILE: z.enum(claudeWriterProfileNames).optional(),
     AGENT_RUNTIME_WRITER_REFERENCE: z.enum(["none", "wikipedia"]).default("wikipedia"),
+    // Claude'a düşen koşu payı; 0.5 canlı yazı tura karşılaştırması (23 Kasım).
+    AGENT_RUNTIME_WRITER_CLAUDE_SHARE: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.coerce.number().min(0).max(1).default(1),
+    ),
     CLAUDE_EXECUTABLE: z.string().min(1).default("/usr/local/bin/claude"),
     AGENT_RUNTIME_CLAUDE_HOME: z.string().min(1).optional(),
     AGENT_RUNTIME_CLAUDE_WORK_ROOT: z.string().min(1).optional(),
@@ -124,7 +129,9 @@ async function main(): Promise<void> {
     Claude yazar fail-open başlar: CLI ya da sandbox çalışmazsa worker yazarsız (luna) devam eder;
     toplum durmaz. Sonuç ayrı satırda yazılır.
   */
-  let writer: { provider: ClaudeCliProvider; reference?: TopicReferenceFetcher } | undefined;
+  let writer:
+    | { provider: ClaudeCliProvider; reference?: TopicReferenceFetcher; claudeShare: number }
+    | undefined;
   if (environment.AGENT_RUNTIME_WRITER_PROFILE) {
     if (!environment.AGENT_RUNTIME_CLAUDE_HOME || !environment.AGENT_RUNTIME_CLAUDE_WORK_ROOT)
       throw new Error(
@@ -141,12 +148,13 @@ async function main(): Promise<void> {
       const writerCapability = await writerProvider.inspect();
       writer = {
         provider: writerProvider,
+        claudeShare: environment.AGENT_RUNTIME_WRITER_CLAUDE_SHARE,
         ...(environment.AGENT_RUNTIME_WRITER_REFERENCE === "wikipedia"
           ? { reference: new TopicReferenceFetcher(new SafeSourceReader()) }
           : {}),
       };
       process.stdout.write(
-        `agent-runtime writer enabled (claude ${writerCapability.version}; ${environment.AGENT_RUNTIME_WRITER_PROFILE}; reference ${environment.AGENT_RUNTIME_WRITER_REFERENCE})\n`,
+        `agent-runtime writer enabled (claude ${writerCapability.version}; ${environment.AGENT_RUNTIME_WRITER_PROFILE}; reference ${environment.AGENT_RUNTIME_WRITER_REFERENCE}; claude share ${environment.AGENT_RUNTIME_WRITER_CLAUDE_SHARE})\n`,
       );
     } catch (error) {
       const code = error instanceof ClaudeWriterError ? error.safeCode : "CLAUDE_EXEC_FAILED";

@@ -130,7 +130,9 @@ import {
   applyRuntimeWriterBodies,
   buildWriterPrompt,
   runtimeWriterBodyIssue,
+  runtimeWriterArm,
   runtimeWriterCandidates,
+  type RuntimeWriterArm,
   runtimeWriterMaxTimeoutMs,
   runtimeWriterMinTimeoutMs,
   runtimeWriterOutputJsonSchema,
@@ -178,6 +180,8 @@ export interface RuntimeWorkerOptions {
   writer?: {
     provider: EntryWriterProvider;
     reference?: Pick<TopicReferenceFetcher, "fetch">;
+    /** Claude'a düşen koşu payı (0–1, varsayılan 1); kalan koşularda luna taslağı kalır. */
+    claudeShare?: number;
   };
   sourceReader?: Pick<SafeSourceReader, "read">;
   heartbeatIntervalMs?: number;
@@ -2003,6 +2007,7 @@ export class AgentRuntimeWorker {
     /* Claude yazarın ne yaptığı — bkz `runtime-schemas.ts`, `writer`. */
     let writer: {
       profile: ClaudeWriterProfileName;
+      arm: RuntimeWriterArm;
       candidateCount: number;
       writtenCount: number;
       referenceCount: number;
@@ -2627,6 +2632,7 @@ export class AgentRuntimeWorker {
       if (writerOption && writerCandidates.length > 0) {
         const stats = (writer ??= {
           profile: writerOption.provider.profile,
+          arm: runtimeWriterArm(runId, writerOption.claudeShare ?? 1),
           candidateCount: 0,
           writtenCount: 0,
           referenceCount: 0,
@@ -2643,6 +2649,8 @@ export class AgentRuntimeWorker {
         await enterPhase("THINKING");
         for (const candidate of writerCandidates) {
           stats.candidateCount += 1;
+          // Karşılaştırma kolu: aday sayılır, luna taslağı kalır (atlanan sayılmaz).
+          if (stats.arm === "CONTROL") continue;
           await heartbeat();
           deadline.throwIfStopped();
           /*

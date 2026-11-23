@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { constitutionalEntryWritingIssue } from "@/lib/content/constitution-writing-policy";
 import {
@@ -29,6 +30,23 @@ import { runtimePromptScaffold } from "@/runtime/prompt-profile";
   - her hata, süre yetersizliği ya da geçersiz çıktı luna taslağını bırakır ve sayılır.
   Sonra gövde canlıdaki son okuma ve yenilik kapısından geçer; kapılar yayımlanacak metne bakar.
 */
+
+/*
+  Canlı karşılaştırma (23 Kasım 2026, Gökhan: "5 yazar claude 5 yazar codex" → yazar yerine koşu
+  başına yazı tura, "olur"). Koşu kimliğinin tuzlu özetiyle belirlenir: aynı koşu hep aynı kola
+  düşer, gezinme deneyinin (fnv1a) kolundan bağımsızdır. Pay 1 ise her koşu Claude'dur.
+  Kol yalnız aday olan koşunun `writer` kaydına yazılır; bütün koşuların kolu (payda, hata ve
+  yayım oranı için) bu işlevle koşu kimliğinden yeniden hesaplanır (Sol 6.1).
+*/
+export const runtimeWriterArms = ["CLAUDE", "CONTROL"] as const;
+export type RuntimeWriterArm = (typeof runtimeWriterArms)[number];
+
+export function runtimeWriterArm(runId: string, claudeShare: number): RuntimeWriterArm {
+  if (!(claudeShare < 1)) return "CLAUDE";
+  if (!(claudeShare > 0)) return "CONTROL";
+  const digest = createHash("sha256").update(`writer-arm-v1:${runId}`).digest();
+  return digest.readUInt32BE(0) / 2 ** 32 < claudeShare ? "CLAUDE" : "CONTROL";
+}
 
 /** Koşu başına en çok bu kadar gövde Claude'a yazdırılır; fazlası luna taslağıyla kalır. */
 export const runtimeWriterCallLimit = 2;
