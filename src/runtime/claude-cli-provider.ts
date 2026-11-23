@@ -285,6 +285,8 @@ function collect(
       kill();
     };
     signal?.addEventListener("abort", onAbort, { once: true });
+    // Hazırlık sırasında gelmiş iptal olay olarak yeniden tetiklenmez (Sol 6.1, 1. tur).
+    if (signal?.aborted) onAbort();
     child.stdout.on("data", (chunk: Buffer) => {
       stdoutBytes += chunk.byteLength;
       if (stdoutBytes > maximumStdoutBytes) {
@@ -368,6 +370,7 @@ export class ClaudeCliProvider implements EntryWriterProvider {
     );
     await mkdir(workDirectory, { recursive: false, mode: 0o700 });
     try {
+      if (request.signal?.aborted) throw new ClaudeWriterError("CLAUDE_CANCELLED");
       const sandboxed = sandboxedClaudeCommand(
         this.#options,
         claudeCliArguments(this.profile, request.outputSchema),

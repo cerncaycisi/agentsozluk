@@ -96,6 +96,11 @@ describe("Vikipedi başlık bilgisi", () => {
     expect(readHtml).toHaveBeenCalledTimes(8);
   });
 
+  it("keeps the lead of an article without further sections", () => {
+    const html = `<div class="mw-content-ltr mw-parser-output" lang="tr"><section data-mw-section-id="0"><div class="hatnote">not</div><p>${lead}</p></section></div>`;
+    expect(extractWikipediaLead(html)).toBe(lead);
+  });
+
   it("rethrows cancellation", async () => {
     const fetcher = new TopicReferenceFetcher({
       readHtml: vi.fn().mockRejectedValue(new Error("SOURCE_CANCELLED")),
@@ -158,6 +163,7 @@ describe("Claude yazar istemi ve korumaları", () => {
     ["başlıktaki asıl mesele bu değil, kurul üyeliği.", "META_REFERENCE"],
     ["vikipedi'ye göre stanford'da okumuş.", "META_REFERENCE"],
     ["dün sokakta gördüm onu.", "OFFLINE_CLAIM"],
+    ["yatırım için tüm birikimi tek hisseye yatırmak gerekir.", "SENSITIVE"],
   ])("rejects %j as %s", (body, code) => {
     expect(runtimeWriterBodyIssue(body, { topicTitle: "kevin warsh" })).toBe(code);
   });
@@ -288,6 +294,23 @@ describe("Claude CLI sağlayıcısı", () => {
         }),
       ).resolves.toMatchObject({ output: { body: "yazı" }, model: "claude-sonnet-5-5" });
       expect(await readdir(workRoot!)).toEqual([]);
+    });
+
+    it("does not start the process when already cancelled", async () => {
+      const spawnProcess = fakeSpawn("", 0);
+      const writer = await provider(spawnProcess);
+      const controller = new AbortController();
+      controller.abort();
+      await expect(
+        writer.write({
+          runId: "11111111-1111-4111-8111-111111111111",
+          prompt: "p",
+          outputSchema: {},
+          timeoutMs: 1000,
+          signal: controller.signal,
+        }),
+      ).rejects.toMatchObject({ safeCode: "CLAUDE_CANCELLED" });
+      expect(spawnProcess).not.toHaveBeenCalled();
     });
 
     it("maps an error result and a timeout to safe codes", async () => {

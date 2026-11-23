@@ -6,7 +6,7 @@ import {
   textContainsSeriousClaimMarker,
 } from "@/modules/agents/domain/action-policy";
 import { runtimeActionInputSchema } from "@/modules/agents/validation/runtime-schemas";
-import { runtimeEditableEntries } from "@/runtime/final-read";
+import { inSensitiveDomain, runtimeEditableEntries } from "@/runtime/final-read";
 import { entryBodyWirePattern, type RuntimeDecision } from "@/runtime/output";
 import { runtimePromptScaffold } from "@/runtime/prompt-profile";
 
@@ -143,6 +143,7 @@ export type RuntimeWriterGuardCode =
   | "QUOTE"
   | "OFFLINE_CLAIM"
   | "SERIOUS_CLAIM"
+  | "SENSITIVE"
   | "META_REFERENCE";
 
 const metaReferencePattern =
@@ -162,6 +163,8 @@ export function runtimeWriterBodyIssue(
   if (containsDirectQuoteClaim(body)) return "QUOTE";
   if (hasUnrecordedOfflineFirstPersonClaim(body)) return "OFFLINE_CLAIM";
   if (textContainsSeriousClaimMarker(body)) return "SERIOUS_CLAIM";
+  // Aday kuralı taslağa bakar; Claude'un metni de sağlık/finans/hukuk alanına girmemeli (Sol 6.1).
+  if (inSensitiveDomain(body)) return "SENSITIVE";
   if (metaReferencePattern.test(body.normalize("NFKC"))) return "META_REFERENCE";
   return null;
 }

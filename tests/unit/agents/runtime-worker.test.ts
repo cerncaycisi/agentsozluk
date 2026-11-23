@@ -5722,6 +5722,8 @@ describe("runtime Claude yazar", () => {
     write?: EntryWriterProvider["write"];
     reference?: string | null;
     renderedPrompt?: string;
+    timeoutSeconds?: number;
+    allowSourceReading?: boolean;
   }) {
     const runId = randomUUID();
     const topicId = randomUUID();
@@ -5731,6 +5733,17 @@ describe("runtime Claude yazar", () => {
     context.perception.readTopics = [
       noveltyReadTopic(topicId, [{ username: "ayse", body: "Native Son 1940'ta yayımlandı." }]),
     ];
+    if (options.timeoutSeconds)
+      plane.lease = vi.fn().mockResolvedValue({
+        run: {
+          id: runId,
+          timeoutSeconds: options.timeoutSeconds,
+          startedAt: new Date().toISOString(),
+          leaseToken: LEASE_TOKEN,
+        },
+        reason: null,
+      });
+    if (options.allowSourceReading === false) context.run.allowSourceReading = false;
     plane.context = vi.fn().mockResolvedValue(context);
     const provider: RuntimeProvider = {
       inspect: vi.fn(),
@@ -5854,6 +5867,41 @@ describe("runtime Claude yazar", () => {
       writtenCount: 0,
       failureCodes: ["CLAUDE_USAGE_LIMITED"],
     });
+  });
+
+  it("leaves room for the gates after Claude and skips when the run is too short", async () => {
+    const run = setup({
+      write: async () => ({ output: { body: written }, model: "m", durationMs: 1 }),
+      timeoutSeconds: 150,
+    });
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    // Son okuma alt sınırı (20) + bir yenilik payı (40) + yürütme (30) + güvenlik (5) = 95 sn.
+    expect(vi.mocked(run.writerProvider!.write).mock.calls[0]![0].timeoutMs).toBeLessThanOrEqual(
+      55_000,
+    );
+
+    const short = setup({
+      write: async () => ({ output: { body: written }, model: "m", durationMs: 1 }),
+      timeoutSeconds: 120,
+    });
+    await expect(short.worker.runOnce()).resolves.toBe(1);
+    expect(short.writerProvider!.write).not.toHaveBeenCalled();
+    expect(short.recordedBody()).toBe(draft);
+    expect(short.completionUsage().writer).toMatchObject({ skippedCount: 1 });
+  });
+
+  it("does not read the reference when source reading is off", async () => {
+    const run = setup({
+      write: async () => ({ output: { body: written }, model: "m", durationMs: 1 }),
+      reference: "bilgi notu metni burada uzun uzun duruyor.",
+      allowSourceReading: false,
+    });
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    expect(run.reference.fetch).not.toHaveBeenCalled();
+    expect(vi.mocked(run.writerProvider!.write).mock.calls[0]![0].prompt).not.toContain(
+      "# Bilgi notu",
+    );
+    expect(run.recordedBody()).toBe(written);
   });
 
   it("does not run without a writer or without persona sections", async () => {

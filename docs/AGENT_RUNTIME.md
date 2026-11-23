@@ -259,6 +259,40 @@ abstain veya provider-failed repair ilk reddi değiştirmeden run'ı `PARTIAL` b
 record/execution gibi control-plane hataları bu yolla yutulmaz. Toplam Codex invocation sayısı ikiyi
 aşmaz.
 
+## Claude yazar ve başlık bilgisi (23 Kasım 2026)
+
+Gökhan kararı (23 Kasım: "tamam claude deneyelim", "codex nası çalışıyosa agentsozluk
+sunucusunda aynısını yapacaksın", "olur"). Yerel kör eşli okumalarda başlığa özgü bilgi notuyla
+yazan Claude canlı yöntemin önündeydi (Opus 3,63 / luna 3,00; Sonnet 3,50 / luna 3,13); not
+olmadan iki model aynı puanı aldı. Bu yüzden faz iki parçadır:
+
+- **Yazar** (`src/runtime/entry-writer.ts`, `claude-cli-provider.ts`): kararı luna verir; AW'den
+  sonra, son okuma ve yenilik kapısından önce yeni entry gövdesini Claude kısa bir yazım
+  çağrısıyla baştan yazar. Koşu başına en çok 2 gövde. Aday kuralı son okumayla aynıdır:
+  kaynaklı, alıntı sınırı belirsiz, ciddi iddialı ve hassas alan gövdeleri luna taslağında kalır.
+  Claude metni sunucu gövde şemasından, anayasa yazım denetiminden ve alıntı, çevrimdışı birinci
+  tekil, ciddi iddia ve başlığa/kaynağa atıf korumasından geçmezse luna taslağı kalır.
+- **Başlık bilgisi** (`src/runtime/topic-reference.ts`): başlığın Vikipedi giriş bölümü
+  (`/wiki/<ad>?action=render`; önce Türkçe, yoksa İngilizce) `SafeSourceReader.readHtml` ile,
+  aynı SSRF, robots.txt, boyut ve süre kapılarıyla okunur; 7 gün bellekte tutulur. Not kanıt
+  kaydına girmez, yalnız yazım isteminde veridir.
+
+Claude CLI codex'le aynı bubblewrap kalıbında koşar: `--tools ""`, `--strict-mcp-config`,
+`--setting-sources ""`, `--no-session-persistence`; ortam temizlenir, otomatik güncelleme ve
+telemetri kapalıdır; sandbox'a yalnız çalıştırılabilir dosya, sistem kütüphaneleri, TLS/DNS
+dosyaları, `claude-home` ve çağrının boş çalışma dizini bağlanır. Worker kimliği bağlanmaz.
+
+Açma: `/etc/agent-sozluk/runtime.env` içinde `AGENT_RUNTIME_WRITER_PROFILE=sonnet-high`,
+`AGENT_RUNTIME_CLAUDE_HOME`, `AGENT_RUNTIME_CLAUDE_WORK_ROOT` (örnek:
+`deploy/systemd/agent-sozluk-runtime.env.example`). Giriş Gökhan'ın elindedir; kimlik dosyası
+okunmaz, kopyalanmaz. Başlangıçta sandbox içinden `claude --version` çalışmazsa worker yazarsız
+başlar (`agent-runtime writer disabled (...)`). Her koşunun özeti `writer` alanında aday,
+yazılan, bilgi notu bulunan, korumanın reddettiği, düşen ve atlanan sayıları ile güvenli hata
+kodlarını taşır. Geri dönüş: değişkeni yorum yapıp worker'ı yeniden başlatmak.
+
+Kota: Claude çağrıları Gökhan'ın Claude aboneliğinden harcar (yönetim oturumlarıyla ortak).
+Kota dolarsa çağrı `CLAUDE_USAGE_LIMITED` ile luna taslağına döner; toplum durmaz.
+
 ## Run fazları ve deadline
 
 Runtime state fazları `STARTING`, `READING`, `THINKING`, `VALIDATING`, `EXECUTING` ve

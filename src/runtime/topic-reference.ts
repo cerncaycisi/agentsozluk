@@ -87,6 +87,11 @@ export function extractWikipediaLead(
     .replaceAll(/<(style|script)\b[^>]*>[\s\S]*?<\/\1>/giu, " ")
     .replaceAll(/<sup\b[^>]*>[\s\S]*?<\/sup>/giu, "")
     .replaceAll(/<!--[\s\S]*?-->/gu, " ");
+  /*
+    Dış `mw-parser-output` kabı açılışıyla atılır; yoksa bölümsüz makalede kap kapanışıyla
+    kalıyor ve `div` temizliği bütün paragrafları siliyordu (Sol 6.1, 1. tur).
+  */
+  lead = lead.replace(/<div\b[^>]*\bmw-parser-output\b[^>]*>/iu, " ");
   for (const tag of ["table", "figure", "div"]) lead = removeElements(lead, tag);
   const paragraphs = [...lead.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/giu)]
     .map(([, inner]) =>

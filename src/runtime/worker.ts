@@ -144,8 +144,8 @@ import {
 } from "@/runtime/claude-cli-provider";
 import type { TopicReferenceFetcher } from "@/runtime/topic-reference";
 
-/** Claude yazardan sonra son okuma (20 sn), yenilik (2×20 sn) ve yürütme (30 sn) için ayrılan süre. */
-const RUNTIME_WRITER_RESERVED_MS = 90_000;
+/** Claude yazar çağrısından sonra kalan süre hesabındaki güvenlik payı (temizlik, kayıt). */
+const RUNTIME_WRITER_MARGIN_MS = 5_000;
 /** Başlık bilgi notunun (Vikipedi) okunmasına verilen en uzun süre. */
 const RUNTIME_WRITER_REFERENCE_TIMEOUT_MS = 10_000;
 import type { AgentRuntimeCodexProfileName } from "@/runtime/codex-profiles";
@@ -2636,15 +2636,28 @@ export class AgentRuntimeWorker {
           failureCodes: [],
         });
         const bodies = new Map<number, string>();
+        const writerPendingNoveltyCalls = Math.min(
+          runtimeNoveltyCallLimit,
+          runtimeNoveltyCandidates(decision, context.perception).length,
+        );
         await enterPhase("THINKING");
         for (const candidate of writerCandidates) {
           stats.candidateCount += 1;
           await heartbeat();
           deadline.throwIfStopped();
+          /*
+            Claude'dan sonra son okumaya (alt sınır), her bekleyen yenilik denetimine ve yürütmeye
+            yenilik kapısının kendi formülüyle yer kalmalı; yoksa kapı atlanır ve luna taslağı da
+            teknik nedenle düşerdi (Sol 6.1, 1. tur).
+          */
           const writerTimeoutMs = (): number =>
             Math.min(
               runtimeWriterMaxTimeoutMs,
-              deadline.remainingMs() - RUNTIME_WRITER_RESERVED_MS,
+              deadline.remainingMs() -
+                RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
+                writerPendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS -
+                RUNTIME_NOVELTY_MIN_TIMEOUT_MS -
+                RUNTIME_WRITER_MARGIN_MS,
             );
           if (!writerPersonaSections || writerTimeoutMs() < runtimeWriterMinTimeoutMs) {
             stats.skippedCount += 1;
@@ -2652,7 +2665,8 @@ export class AgentRuntimeWorker {
           }
           try {
             let reference: string | null = null;
-            if (writerOption.reference) {
+            // Kaynak okuma izni (koşu + global ayar) kapalıyken dış istek yapılmaz (Sol 6.1, 1. tur).
+            if (writerOption.reference && context.run.allowSourceReading) {
               const found = await writerOption.reference.fetch(candidate.topicTitle, {
                 signal: deadline.signal,
                 timeoutMs: RUNTIME_WRITER_REFERENCE_TIMEOUT_MS,
