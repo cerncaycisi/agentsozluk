@@ -95,6 +95,7 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
 
     expect(directiveValues(service, "ReadWritePaths")).toEqual([
       "/opt/agent-sozluk/runtime/codex-home /opt/agent-sozluk/runtime/work",
+      "-/opt/agent-sozluk/runtime/claude-home -/opt/agent-sozluk/runtime/claude-work",
     ]);
     expect(directiveValues(service, "ReadOnlyPaths")).toEqual([
       "/opt/agent-sozluk/runtime/current /var/lib/agent-sozluk-runtime/credentials.json /var/lib/agent-sozluk-runtime/enrollment-private.pem /etc/agent-sozluk/runtime.env",
