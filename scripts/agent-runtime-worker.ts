@@ -15,6 +15,9 @@ import {
   RUNTIME_PROMPT_PROFILE_HASH,
 } from "../src/runtime/worker";
 import { SafeSourceReader } from "../src/runtime/source-reader";
+import { ClaudeCliProvider, ClaudeWriterError } from "../src/runtime/claude-cli-provider";
+import { claudeWriterProfileNames } from "../src/runtime/claude-writer-profiles";
+import { TopicReferenceFetcher } from "../src/runtime/topic-reference";
 
 const workerEnvironmentSchema = z
   .object({
@@ -37,6 +40,17 @@ const workerEnvironmentSchema = z
       üretim davranışı değişmez. Geri dönüş: değişkeni silip worker'ı yeniden başlatmak.
     */
     AGENT_RUNTIME_VOICE_PROFILE: z.enum(agentRuntimeCodexProfileNames).optional(),
+    /*
+      Claude yazar (23 Kasım; `src/runtime/entry-writer.ts`). Boşsa faz kapalıdır ve üretim
+      davranışı değişmez. Açıkken Claude CLI, Gökhan'ın elle giriş yaptığı izole dizinde
+      (`AGENT_RUNTIME_CLAUDE_HOME`) codex'le aynı sandbox kalıbında koşar. Geri dönüş: değişkeni
+      silip worker'ı yeniden başlatmak.
+    */
+    AGENT_RUNTIME_WRITER_PROFILE: z.enum(claudeWriterProfileNames).optional(),
+    AGENT_RUNTIME_WRITER_REFERENCE: z.enum(["none", "wikipedia"]).default("wikipedia"),
+    CLAUDE_EXECUTABLE: z.string().min(1).default("/usr/local/bin/claude"),
+    AGENT_RUNTIME_CLAUDE_HOME: z.string().min(1).optional(),
+    AGENT_RUNTIME_CLAUDE_WORK_ROOT: z.string().min(1).optional(),
     AGENT_RUNTIME_POLL_MS: z.coerce.number().int().min(1000).max(60_000).default(5000),
     AGENT_RUNTIME_PROCESSING_LANES: z.coerce
       .number()
@@ -106,6 +120,39 @@ async function main(): Promise<void> {
       `agent-runtime voice rewrite enabled (${voiceCapability.model} ${voiceCapability.reasoningEffort})\n`,
     );
   }
+  /*
+    Claude yazar fail-open başlar: CLI ya da sandbox çalışmazsa worker yazarsız (luna) devam eder;
+    toplum durmaz. Sonuç ayrı satırda yazılır.
+  */
+  let writer: { provider: ClaudeCliProvider; reference?: TopicReferenceFetcher } | undefined;
+  if (environment.AGENT_RUNTIME_WRITER_PROFILE) {
+    if (!environment.AGENT_RUNTIME_CLAUDE_HOME || !environment.AGENT_RUNTIME_CLAUDE_WORK_ROOT)
+      throw new Error(
+        "Claude yazar için AGENT_RUNTIME_CLAUDE_HOME ve AGENT_RUNTIME_CLAUDE_WORK_ROOT gerekli.",
+      );
+    const writerProvider = new ClaudeCliProvider({
+      executable: environment.CLAUDE_EXECUTABLE,
+      sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
+      configHome: environment.AGENT_RUNTIME_CLAUDE_HOME,
+      workRoot: environment.AGENT_RUNTIME_CLAUDE_WORK_ROOT,
+      profile: environment.AGENT_RUNTIME_WRITER_PROFILE,
+    });
+    try {
+      const writerCapability = await writerProvider.inspect();
+      writer = {
+        provider: writerProvider,
+        ...(environment.AGENT_RUNTIME_WRITER_REFERENCE === "wikipedia"
+          ? { reference: new TopicReferenceFetcher(new SafeSourceReader()) }
+          : {}),
+      };
+      process.stdout.write(
+        `agent-runtime writer enabled (claude ${writerCapability.version}; ${environment.AGENT_RUNTIME_WRITER_PROFILE}; reference ${environment.AGENT_RUNTIME_WRITER_REFERENCE})\n`,
+      );
+    } catch (error) {
+      const code = error instanceof ClaudeWriterError ? error.safeCode : "CLAUDE_EXEC_FAILED";
+      process.stderr.write(`agent-runtime writer disabled (${code})\n`);
+    }
+  }
   const controlPlane = new RuntimeControlPlaneHttpClient(environment.AGENT_RUNTIME_BASE_URL);
   const credentialRoster = environment.AGENT_RUNTIME_ENROLLMENT_KEY_FILE
     ? new RuntimeCredentialRosterLoader({
@@ -142,6 +189,7 @@ async function main(): Promise<void> {
     ...(voiceProvider && environment.AGENT_RUNTIME_VOICE_PROFILE
       ? { voice: { provider: voiceProvider, profile: environment.AGENT_RUNTIME_VOICE_PROFILE } }
       : {}),
+    ...(writer ? { writer } : {}),
     sourceReader: new SafeSourceReader(),
     pollIntervalMs: environment.AGENT_RUNTIME_POLL_MS,
     processingLanes: environment.AGENT_RUNTIME_PROCESSING_LANES,

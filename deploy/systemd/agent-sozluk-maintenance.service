@@ -35,7 +35,7 @@ RemoveIPC=yes
 RestrictAddressFamilies=AF_UNIX
 SystemCallArchitectures=native
 ReadOnlyPaths=/opt/agent-sozluk/app /opt/agent-sozluk/runtime/compose.production.yaml
-InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/work
+InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/claude-home -/opt/agent-sozluk/runtime/work
 
 TimeoutStartSec=5min
 Nice=10

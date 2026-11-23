@@ -514,7 +514,15 @@ export class SafeSourceReader {
     return { ...response, body: decodedBody };
   }
 
-  async read(value: string, options: SourceReadOptions = {}): Promise<SourceReadItem[]> {
+  /** robots.txt ve içerik sinyali denetiminden geçmiş tek yanıt; `read` ve `readHtml` ortak. */
+  async #fetchWithOriginPolicy(
+    value: string,
+    options: SourceReadOptions,
+  ): Promise<{
+    response: SourceResponse;
+    deadlineAtMs: number;
+    enforceOriginPolicy: (target: URL) => Promise<void>;
+  }> {
     const totalTimeoutMs = Math.min(
       options.timeoutMs ?? MAX_SOURCE_READ_TIMEOUT_MS,
       MAX_SOURCE_READ_TIMEOUT_MS,
@@ -551,6 +559,28 @@ export class SafeSourceReader {
     };
 
     const response = await this.#request(url, deadlineAtMs, options.signal, 0, enforceOriginPolicy);
+    return { response, deadlineAtMs, enforceOriginPolicy };
+  }
+
+  /**
+   * Tek bir HTML sayfasının ham gövdesi (aynı SSRF, robots, boyut ve süre kapıları). Yalnız
+   * çağıranın kendi ayrıştırıcısı olduğunda kullanılır; örn. `topic-reference.ts`.
+   */
+  async readHtml(
+    value: string,
+    options: SourceReadOptions = {},
+  ): Promise<{ url: string; html: string }> {
+    const { response } = await this.#fetchWithOriginPolicy(value, options);
+    const contentType = response.headers["content-type"]?.toLowerCase() ?? "";
+    if (!contentType.includes("html")) throw new Error("SOURCE_CONTENT_TYPE_UNSUPPORTED");
+    return { url: response.url, html: response.body.toString("utf8") };
+  }
+
+  async read(value: string, options: SourceReadOptions = {}): Promise<SourceReadItem[]> {
+    const { response, deadlineAtMs, enforceOriginPolicy } = await this.#fetchWithOriginPolicy(
+      value,
+      options,
+    );
     const contentType = response.headers["content-type"]?.toLowerCase() ?? "";
     const text = response.body.toString("utf8");
     if (contentType.includes("xml") || /<(rss|feed|urlset)\b/iu.test(text.slice(0, 1000)))

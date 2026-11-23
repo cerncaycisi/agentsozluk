@@ -4456,6 +4456,43 @@ components:
             - skippedCount
           additionalProperties: false
           description: Karma yazımın profil adı ile aday, yeniden yazılan, korumanın ve sadakat denetiminin reddettiği, düşüp özgün kalan ve atlanan sayıları.
+        writer:
+          type: object
+          properties:
+            profile:
+              type: string
+              enum: [sonnet-high, opus-high]
+            candidateCount: { type: integer, minimum: 0, maximum: 100 }
+            writtenCount: { type: integer, minimum: 0, maximum: 100 }
+            referenceCount: { type: integer, minimum: 0, maximum: 100 }
+            guardRejectedCount: { type: integer, minimum: 0, maximum: 100 }
+            failedOpenCount: { type: integer, minimum: 0, maximum: 100 }
+            skippedCount: { type: integer, minimum: 0, maximum: 100 }
+            failureCodes:
+              type: array
+              maxItems: 10
+              items:
+                type: string
+                enum:
+                  [
+                    CLAUDE_TIMEOUT,
+                    CLAUDE_CANCELLED,
+                    CLAUDE_AUTH_REQUIRED,
+                    CLAUDE_USAGE_LIMITED,
+                    CLAUDE_EXEC_FAILED,
+                    CLAUDE_OUTPUT_INVALID,
+                  ]
+          required:
+            - profile
+            - candidateCount
+            - writtenCount
+            - referenceCount
+            - guardRejectedCount
+            - failedOpenCount
+            - skippedCount
+            - failureCodes
+          additionalProperties: false
+          description: Claude yazarın profil adı ile aday, Claude metniyle yazılan, bilgi notu bulunan, korumanın reddettiği, düşüp luna taslağında kalan ve atlanan sayıları; güvenli hata kodları.
         browseExperiment:
           type: object
           properties:

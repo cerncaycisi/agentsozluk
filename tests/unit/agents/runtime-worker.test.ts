@@ -7,6 +7,7 @@ import {
   type RuntimeControlPlane,
 } from "@/runtime/control-plane-client";
 import type { RuntimeProvider, RuntimeProviderRequest } from "@/runtime/provider";
+import { ClaudeWriterError, type EntryWriterProvider } from "@/runtime/claude-cli-provider";
 import {
   RuntimeProviderCancelledError,
   RuntimeProviderExecutionError,
@@ -5693,6 +5694,233 @@ describe("runtime novelty gate", () => {
     expect(runtimeNoveltyVerdictSchema.safeParse({ karar: "YAYIMLA", neden: "x" }).success).toBe(
       false,
     );
+  });
+});
+
+// Claude yazar (23 Kasım 2026): AW'den sonra, son okuma ve yenilikten önce; her engelde luna taslağı kalır.
+describe("runtime Claude yazar", () => {
+  const draft =
+    "wright'ın paris yılları ona amerika'yı uzaktan yazma imkânı verdi, mektuplarında bunu anlatır.";
+  const written = "paris'te yazdığı mektuplarda amerika uzaktan daha net görünüyor.";
+  const result = (output: unknown, durationMs = 2) => ({
+    provider: "codex-cli" as const,
+    version: "test",
+    durationMs,
+    output,
+  });
+  const actAll = result({
+    verdict: "ACT",
+    confidence: 0.7,
+    evaluations: [{ sequence: 1, decision: "ACCEPT", safeReason: "Katkı adayı." }],
+    selectedSequences: [1],
+    safeReason: "Aday uygulanabilir.",
+  });
+  const yayimla = result({ karar: "YAYIMLA" });
+  const persona = seedPersonaSchema.parse(originalPersonaPack.personas[0]);
+
+  function setup(options: {
+    write?: EntryWriterProvider["write"];
+    reference?: string | null;
+    renderedPrompt?: string;
+    timeoutSeconds?: number;
+    allowSourceReading?: boolean;
+  }) {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    context.persona.renderedPrompt = options.renderedPrompt ?? renderPersonaPrompt(persona);
+    context.perception.readTopics = [
+      noveltyReadTopic(topicId, [{ username: "ayse", body: "Native Son 1940'ta yayımlandı." }]),
+    ];
+    if (options.timeoutSeconds)
+      plane.lease = vi.fn().mockResolvedValue({
+        run: {
+          id: runId,
+          timeoutSeconds: options.timeoutSeconds,
+          startedAt: new Date().toISOString(),
+          leaseToken: LEASE_TOKEN,
+        },
+        reason: null,
+      });
+    if (options.allowSourceReading === false) context.run.allowSourceReading = false;
+    plane.context = vi.fn().mockResolvedValue(context);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue(
+        result(
+          canonicalNormalOutput("Aday üretildi.", {
+            actions: [noveltyEntryAction(topicId, draft)],
+          }),
+          5,
+        ),
+      ),
+    };
+    const reviewer: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValueOnce(actAll).mockResolvedValue(yayimla),
+    };
+    const writerProvider: EntryWriterProvider | undefined = options.write
+      ? { profile: "sonnet-high", write: vi.fn(options.write) }
+      : undefined;
+    const reference = {
+      fetch: vi.fn(async () =>
+        options.reference
+          ? { lang: "tr" as const, url: "https://tr.wikipedia.org/wiki/x", text: options.reference }
+          : null,
+      ),
+    };
+    const events: string[] = [];
+    const worker = new AgentRuntimeWorker({
+      workerId: "writer-worker",
+      credentials: [`agt_${"w".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      actionWorthinessProvider: reviewer,
+      ...(writerProvider ? { writer: { provider: writerProvider, reference } } : {}),
+      onSafeEvent: ({ code }) => events.push(code),
+    });
+    const recordedBody = () =>
+      (vi.mocked(plane.recordActions).mock.calls[0]![4] as Array<{ input: { body: string } }>)[0]!
+        .input.body;
+    const completionUsage = () =>
+      (vi.mocked(plane.complete).mock.calls[0]![4] as { usageMetadata: Record<string, unknown> })
+        .usageMetadata;
+    return {
+      plane,
+      reviewer,
+      writerProvider,
+      reference,
+      events,
+      worker,
+      recordedBody,
+      completionUsage,
+    };
+  }
+
+  it("replaces the draft with Claude's body and gates the published text", async () => {
+    const run = setup({
+      write: async () => ({
+        output: { body: `  ${written}\n` },
+        model: "claude-sonnet-5-5",
+        durationMs: 9,
+      }),
+      reference: "Richard Wright, Amerikalı yazar. 1946'dan ölümüne kadar Paris'te yaşadı.",
+    });
+
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    const request = vi.mocked(run.writerProvider!.write).mock.calls[0]![0];
+    expect(request.prompt).toContain("# Public identity");
+    expect(request.prompt).toContain("# Bilgi notu");
+    expect(request.prompt).toContain("1946'dan ölümüne kadar Paris'te yaşadı.");
+    expect(request.prompt).toContain("- Native Son 1940'ta yayımlandı.");
+    expect(request.prompt).toContain("başlığa atıf yapma");
+    expect(request.prompt).not.toContain(draft);
+    expect(request.timeoutMs).toBeLessThanOrEqual(120_000);
+    expect(run.reference.fetch).toHaveBeenCalledWith("richard wright", expect.anything());
+    const noveltyRequest = vi.mocked(run.reviewer.invoke).mock.calls[1]![0];
+    expect(noveltyRequest.prompt).toContain(`Değerlendirilecek taslak:\n${written}\n`);
+    expect(run.recordedBody()).toBe(written);
+    expect(run.events).toContain("WRITER_APPLIED");
+    const usage = usageMetadataSchema.parse(run.completionUsage());
+    expect(usage.writer).toEqual({
+      profile: "sonnet-high",
+      candidateCount: 1,
+      writtenCount: 1,
+      referenceCount: 1,
+      guardRejectedCount: 0,
+      failedOpenCount: 0,
+      skippedCount: 0,
+      failureCodes: [],
+    });
+    expect(JSON.stringify(usage)).not.toContain(written);
+  });
+
+  it("keeps the draft when the guard rejects a meta reference or a quote", async () => {
+    for (const body of [
+      "başlıktaki asıl ayrım adın kendisinde; paris mektupları bunu gösteriyor.",
+      'wright paris\'te "amerika uzaktan daha net görünür" diye yazdı.',
+    ]) {
+      const run = setup({ write: async () => ({ output: { body }, model: "m", durationMs: 1 }) });
+      await expect(run.worker.runOnce()).resolves.toBe(1);
+      expect(run.recordedBody()).toBe(draft);
+      expect(run.completionUsage().writer).toMatchObject({
+        guardRejectedCount: 1,
+        writtenCount: 0,
+      });
+    }
+  });
+
+  it("fails open to the draft and records only the safe code", async () => {
+    const run = setup({
+      write: async () => {
+        throw new ClaudeWriterError("CLAUDE_USAGE_LIMITED");
+      },
+    });
+
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    expect(run.recordedBody()).toBe(draft);
+    expect(run.events).toContain("WRITER_FAILED_OPEN");
+    expect(run.plane.complete).toHaveBeenCalledTimes(1);
+    expect(run.completionUsage().writer).toMatchObject({
+      failedOpenCount: 1,
+      writtenCount: 0,
+      failureCodes: ["CLAUDE_USAGE_LIMITED"],
+    });
+  });
+
+  it("leaves room for the gates after Claude and skips when the run is too short", async () => {
+    const run = setup({
+      write: async () => ({ output: { body: written }, model: "m", durationMs: 1 }),
+      timeoutSeconds: 150,
+    });
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    // Son okuma alt sınırı (20) + bir yenilik payı (40) + yürütme (30) + güvenlik (5) = 95 sn.
+    expect(vi.mocked(run.writerProvider!.write).mock.calls[0]![0].timeoutMs).toBeLessThanOrEqual(
+      55_000,
+    );
+
+    const short = setup({
+      write: async () => ({ output: { body: written }, model: "m", durationMs: 1 }),
+      timeoutSeconds: 120,
+    });
+    await expect(short.worker.runOnce()).resolves.toBe(1);
+    expect(short.writerProvider!.write).not.toHaveBeenCalled();
+    expect(short.recordedBody()).toBe(draft);
+    expect(short.completionUsage().writer).toMatchObject({ skippedCount: 1 });
+  });
+
+  it("does not read the reference when source reading is off", async () => {
+    const run = setup({
+      write: async () => ({ output: { body: written }, model: "m", durationMs: 1 }),
+      reference: "bilgi notu metni burada uzun uzun duruyor.",
+      allowSourceReading: false,
+    });
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    expect(run.reference.fetch).not.toHaveBeenCalled();
+    expect(vi.mocked(run.writerProvider!.write).mock.calls[0]![0].prompt).not.toContain(
+      "# Bilgi notu",
+    );
+    expect(run.recordedBody()).toBe(written);
+  });
+
+  it("does not run without a writer or without persona sections", async () => {
+    const off = setup({});
+    await expect(off.worker.runOnce()).resolves.toBe(1);
+    expect(off.recordedBody()).toBe(draft);
+    expect(off.completionUsage().writer).toBeUndefined();
+
+    const noPersona = setup({
+      write: async () => ({ output: { body: written }, model: "m", durationMs: 1 }),
+      renderedPrompt: "Trusted persona prompt.",
+    });
+    await expect(noPersona.worker.runOnce()).resolves.toBe(1);
+    expect(noPersona.writerProvider!.write).not.toHaveBeenCalled();
+    expect(noPersona.recordedBody()).toBe(draft);
+    expect(noPersona.completionUsage().writer).toMatchObject({
+      candidateCount: 1,
+      skippedCount: 1,
+    });
   });
 });
 

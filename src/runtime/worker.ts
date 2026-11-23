@@ -126,6 +126,28 @@ import {
   runtimeVoiceWritingGuide,
   type RuntimeVoiceCandidate,
 } from "@/runtime/voice-rewrite";
+import {
+  applyRuntimeWriterBodies,
+  buildWriterPrompt,
+  runtimeWriterBodyIssue,
+  runtimeWriterCandidates,
+  runtimeWriterMaxTimeoutMs,
+  runtimeWriterMinTimeoutMs,
+  runtimeWriterOutputJsonSchema,
+  runtimeWriterOutputSchema,
+} from "@/runtime/entry-writer";
+import {
+  ClaudeWriterError,
+  type ClaudeWriterProfileName,
+  type ClaudeWriterSafeCode,
+  type EntryWriterProvider,
+} from "@/runtime/claude-cli-provider";
+import type { TopicReferenceFetcher } from "@/runtime/topic-reference";
+
+/** Claude yazar çağrısından sonra kalan süre hesabındaki güvenlik payı (temizlik, kayıt). */
+const RUNTIME_WRITER_MARGIN_MS = 5_000;
+/** Başlık bilgi notunun (Vikipedi) okunmasına verilen en uzun süre. */
+const RUNTIME_WRITER_REFERENCE_TIMEOUT_MS = 10_000;
 import type { AgentRuntimeCodexProfileName } from "@/runtime/codex-profiles";
 import {
   applyRuntimeActionWorthinessVerdict,
@@ -148,6 +170,15 @@ export interface RuntimeWorkerOptions {
     sadakat denetimi `actionWorthinessProvider` ile yapılır, o da yoksa faz yine kapalıdır.
   */
   voice?: { provider: RuntimeProvider; profile: AgentRuntimeCodexProfileName };
+  /*
+    Claude yazar (`src/runtime/entry-writer.ts`, 23 Kasım 2026): yeni entry gövdesini Claude
+    yazar, isteğe bağlı başlık bilgi notuyla (`topic-reference.ts`). Yoksa faz kapalıdır. Açıkken
+    karma yazım fazı çalışmaz: Claude'un gövdesi ikinci kez yeniden yazılmamalı.
+  */
+  writer?: {
+    provider: EntryWriterProvider;
+    reference?: Pick<TopicReferenceFetcher, "fetch">;
+  };
   sourceReader?: Pick<SafeSourceReader, "read">;
   heartbeatIntervalMs?: number;
   pollIntervalMs?: number;
@@ -1969,6 +2000,17 @@ export class AgentRuntimeWorker {
       failedOpenCount: number;
       skippedCount: number;
     } | null = null;
+    /* Claude yazarın ne yaptığı — bkz `runtime-schemas.ts`, `writer`. */
+    let writer: {
+      profile: ClaudeWriterProfileName;
+      candidateCount: number;
+      writtenCount: number;
+      referenceCount: number;
+      guardRejectedCount: number;
+      failedOpenCount: number;
+      skippedCount: number;
+      failureCodes: ClaudeWriterSafeCode[];
+    } | null = null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
@@ -2567,6 +2609,115 @@ export class AgentRuntimeWorker {
         return applyRuntimeFinalReadBodies(target, bodies);
       };
       /*
+        Claude yazar (`src/runtime/entry-writer.ts`): son okumadan ve yenilik kapısından ÖNCE;
+        kapılar yayımlanacak metne bakar. Hata, koruma reddi ya da süre yetersizliğinde luna
+        taslağı kalır ve sayılır. İptal yukarı geçer.
+      */
+      const writerOption =
+        noveltyProvider && !isMemoryConsolidationRun(context) && !isPersonaReflectionRun(context)
+          ? this.#options.writer
+          : undefined;
+      const writerCandidates = writerOption
+        ? runtimeWriterCandidates(decision, context.perception)
+        : [];
+      const writerPersonaSections =
+        writerCandidates.length > 0
+          ? runtimeVoicePersonaSections(context.persona.renderedPrompt)
+          : null;
+      if (writerOption && writerCandidates.length > 0) {
+        const stats = (writer ??= {
+          profile: writerOption.provider.profile,
+          candidateCount: 0,
+          writtenCount: 0,
+          referenceCount: 0,
+          guardRejectedCount: 0,
+          failedOpenCount: 0,
+          skippedCount: 0,
+          failureCodes: [],
+        });
+        const bodies = new Map<number, string>();
+        const writerPendingNoveltyCalls = Math.min(
+          runtimeNoveltyCallLimit,
+          runtimeNoveltyCandidates(decision, context.perception).length,
+        );
+        await enterPhase("THINKING");
+        for (const candidate of writerCandidates) {
+          stats.candidateCount += 1;
+          await heartbeat();
+          deadline.throwIfStopped();
+          /*
+            Claude'dan sonra son okumaya (alt sınır), her bekleyen yenilik denetimine ve yürütmeye
+            yenilik kapısının kendi formülüyle yer kalmalı; yoksa kapı atlanır ve luna taslağı da
+            teknik nedenle düşerdi (Sol 6.1, 1. tur).
+          */
+          const writerTimeoutMs = (): number =>
+            Math.min(
+              runtimeWriterMaxTimeoutMs,
+              deadline.remainingMs() -
+                RUNTIME_NOVELTY_EXECUTION_RESERVE_MS -
+                writerPendingNoveltyCalls * RUNTIME_NOVELTY_CALL_RESERVE_MS -
+                RUNTIME_NOVELTY_MIN_TIMEOUT_MS -
+                RUNTIME_WRITER_MARGIN_MS,
+            );
+          if (!writerPersonaSections || writerTimeoutMs() < runtimeWriterMinTimeoutMs) {
+            stats.skippedCount += 1;
+            continue;
+          }
+          try {
+            let reference: string | null = null;
+            // Kaynak okuma izni (koşu + global ayar) kapalıyken dış istek yapılmaz (Sol 6.1, 1. tur).
+            if (writerOption.reference && context.run.allowSourceReading) {
+              const found = await writerOption.reference.fetch(candidate.topicTitle, {
+                signal: deadline.signal,
+                timeoutMs: RUNTIME_WRITER_REFERENCE_TIMEOUT_MS,
+              });
+              reference = found?.text ?? null;
+              if (reference) stats.referenceCount += 1;
+            }
+            deadline.throwIfStopped();
+            if (writerTimeoutMs() < runtimeWriterMinTimeoutMs) {
+              stats.skippedCount += 1;
+              continue;
+            }
+            const written = await writerOption.provider.write({
+              runId,
+              prompt: buildWriterPrompt(candidate, writerPersonaSections, reference),
+              outputSchema: runtimeWriterOutputJsonSchema,
+              timeoutMs: writerTimeoutMs(),
+              signal: deadline.signal,
+            });
+            const parsed = runtimeWriterOutputSchema.safeParse(written.output);
+            if (!parsed.success) throw new ClaudeWriterError("CLAUDE_OUTPUT_INVALID");
+            const body = parsed.data.body.trim();
+            if (runtimeWriterBodyIssue(body, { topicTitle: candidate.topicTitle }) !== null) {
+              stats.guardRejectedCount += 1;
+              continue;
+            }
+            bodies.set(candidate.sequence, body);
+            stats.writtenCount += 1;
+          } catch (rawWriterError) {
+            if (
+              deadline.signal.aborted ||
+              (rawWriterError instanceof ClaudeWriterError &&
+                rawWriterError.safeCode === "CLAUDE_CANCELLED") ||
+              (rawWriterError instanceof Error && rawWriterError.message === "SOURCE_CANCELLED")
+            )
+              throw deadline.normalizeError(rawWriterError);
+            stats.failedOpenCount += 1;
+            const safeCode =
+              rawWriterError instanceof ClaudeWriterError
+                ? rawWriterError.safeCode
+                : ("CLAUDE_EXEC_FAILED" as const);
+            if (!stats.failureCodes.includes(safeCode)) stats.failureCodes.push(safeCode);
+            this.#options.onSafeEvent?.({ level: "error", code: "WRITER_FAILED_OPEN", runId });
+          }
+        }
+        if (bodies.size > 0) {
+          decision = applyRuntimeWriterBodies(decision, bodies);
+          this.#options.onSafeEvent?.({ level: "info", code: "WRITER_APPLIED", runId });
+        }
+      }
+      /*
         Ana yol: sonra gelen yenilik çağrılarına, içerik onarımına ve onarılan gövdenin yenilik
         denetimine yer kalır. Onarılan gövdenin son okuması yalnız bütçe kalırsa çalışır; ana yolun
         kapsamını daraltmaz. Bekleyen yenilik denetimleri gövdeye değil hedefe bağlıdır; süre payı
@@ -2591,7 +2742,7 @@ export class AgentRuntimeWorker {
         İçerik onarımının ürettiği gövde bu fazdan geçmez.
       */
       const voiceOption =
-        noveltyProvider && !consolidationRun && !personaReflectionRun
+        noveltyProvider && !consolidationRun && !personaReflectionRun && !this.#options.writer
           ? this.#options.voice
           : undefined;
       const voiceProvider = voiceOption?.provider;
@@ -3057,6 +3208,7 @@ export class AgentRuntimeWorker {
             ...(novelty ? { novelty } : {}),
             ...(finalRead ? { finalRead } : {}),
             ...(voice ? { voice } : {}),
+            ...(writer ? { writer } : {}),
             ...providerResult.hostMetrics,
           },
           performanceMetrics: {
@@ -3142,6 +3294,7 @@ export class AgentRuntimeWorker {
               ...(novelty ? { novelty } : {}),
               ...(finalRead ? { finalRead } : {}),
               ...(voice ? { voice } : {}),
+              ...(writer ? { writer } : {}),
               /*
                 Başarısızlık kaydına DÜŞEN çağrının host metriği yazılmalı.
                 Eskiden `providerResult?.hostMetrics` yazılıyordu — o bir

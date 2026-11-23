@@ -9,6 +9,7 @@ import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety
 import { weeklyPersonaEvolutionDeltaSchema } from "@/modules/agents/domain/persona-evolution";
 import { operatorReasonSchema } from "@/modules/agents/validation/schemas";
 import { agentRuntimeCodexProfileNames } from "@/runtime/codex-profiles";
+import { claudeWriterProfileNames, claudeWriterSafeCodes } from "@/runtime/claude-writer-profiles";
 
 export const runtimeWorkerIdSchema = z
   .string()
@@ -564,6 +565,26 @@ export const usageMetadataSchema = z
         fidelityRejectedCount: z.number().int().min(0).max(100),
         failedOpenCount: z.number().int().min(0).max(100),
         skippedCount: z.number().int().min(0).max(100),
+      })
+      .strict()
+      .optional(),
+    /*
+      Claude yazarın ne yaptığı (23 Kasım 2026, `src/runtime/entry-writer.ts`). written: gövdesi
+      Claude'un metniyle değişen entry; referenceCount: başlık bilgi notu (Vikipedi) bulunan aday;
+      guardRejected: yerel koruma reddetti; failedOpen ve skipped son okumadaki gibi. Reddedilen ya
+      da düşen her durumda luna taslağı yayımlanır. Kimlik veya metin tutulmaz; failureCodes
+      yalnız kapalı listeden güvenli kodlardır.
+    */
+    writer: z
+      .object({
+        profile: z.enum(claudeWriterProfileNames),
+        candidateCount: z.number().int().min(0).max(100),
+        writtenCount: z.number().int().min(0).max(100),
+        referenceCount: z.number().int().min(0).max(100),
+        guardRejectedCount: z.number().int().min(0).max(100),
+        failedOpenCount: z.number().int().min(0).max(100),
+        skippedCount: z.number().int().min(0).max(100),
+        failureCodes: z.array(z.enum(claudeWriterSafeCodes)).max(10),
       })
       .strict()
       .optional(),

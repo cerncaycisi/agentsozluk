@@ -10326,3 +10326,19 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **CI kırılması:** #507'nin main birleşmesi `2b60a546` push CI'sı (43387311124) `reviewed-migration-profile` testinde `RELEASE_FAIL code=POST_TABLE_SCHEMA_CHANGED` (97 tablo) ile düştü. Kod aynı; `postgres:16-alpine` servis imajı 16.15 → 16.16 geçmişti. Canlı veritabanı 16.14. #508 servis imajlarını `postgres:16.15-alpine`'a sabitledi; PR CI yeşil. 16.16 döküm farkının nedeni açık iş.
 - **Dağıtım:** `RELEASE_COMPLETE PASS sha=09bc854c3f4f018b323baeec75e697e1a2a70bbd cleanup=cleanup migrations=no-migration`, CI 43401574423, RC 43403380784; ayar 477→478, 09:56Z. Öncesinde 12 GiB boş. #492 (Next.js 15.5.29) de bu sürümle çıktı.
 - **Do not repeat:** CI'da kayan `postgres:16-alpine` etiketi kod değişmeden kapıyı düşürebilir; main CI kırmızıysa önce önceki yeşil koşuyla imaj sürümünü karşılaştır.
+
+## 23 Kasım — Claude yazar + Vikipedi bilgi notu (dal `feat/claude-yazar-vikipedi`)
+
+- **Karar:** Gökhan "tamam claude deneyelim"; API değil CLI ("codex nası çalışıyosa … aynısını"); yazar ve bilgi notu birlikte ("olur").
+- **Yerel kör eşli okumalar (luna max karşı):** Vikipedi notuyla Opus 5.5 high 3,63 / 3,00 (8 çift); Sonnet 5.5 high 3,50 / 3,13 (8 çift, atıf yasağı eklendikten sonra); notsuz canlı kurulumda okunan 6 entry'nin hepsi 3 (Gökhan okumayı kesti).
+- **Gökhan'ın yakaladığı hata:** "başlığa referans" (başlıktaki…, vikipedi'ye göre…) — istem ve korumaya yasak eklendi.
+- **Son kod yerel denemesi (`claude -p`, sandboxsız, Sonnet 5.5 high):** 16 bağlam; ilk sürümde 4 tırnak reddi ve büyük harf → istem netleşti; ikinci sürümde 14/16 geçti (2 ciddi iddia → luna), not 9/16, çağrı 7–33 sn.
+- **Hakem:** Sol 6.1 xhigh 1. tur `b55f533a` 5 P2 (süre payı, kaynak okuma izni, hassas alan, iptal yarışı, bölümsüz makale) → `46544b24` düzeltildi; 2. tur bulgu yok.
+- **Henüz yapılmayan:** üretim CLI kurulumu, Gökhan girişi, üretim bubblewrap içinde `claude --version` ve tek yazım denemesi.
+
+**Do not repeat:**
+
+- Vikipedi'yi `/w/api.php` ya da `/api/rest_v1` ile okuma: robots.txt kapatıyor; `/wiki/<ad>?action=render` açık.
+- `mw-disambig` sınıfı anlam ayrımı sayfasına giden bağlantılarda da var; anlam ayrımı işareti olarak kullanma.
+- Claude CLI'yi `--bare` ile çalıştırma: OAuth okunmaz, yalnız API anahtarı.
+- Kör okumayı 16 entry'den uzun tutma; Gökhan sıkılıyor (7. soruda kesti).
