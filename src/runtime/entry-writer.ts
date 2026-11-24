@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import type { ClaudeWriterGuardCode } from "@/runtime/claude-writer-profiles";
 import { constitutionalEntryWritingIssue } from "@/lib/content/constitution-writing-policy";
 import {
   containsDirectQuoteClaim,
@@ -153,16 +154,7 @@ export function buildWriterPrompt(
   ].join("\n");
 }
 
-export type RuntimeWriterGuardCode =
-  | "EMPTY"
-  | "MARKUP"
-  | "SERVER_SCHEMA"
-  | "CONSTITUTION"
-  | "QUOTE"
-  | "OFFLINE_CLAIM"
-  | "SERIOUS_CLAIM"
-  | "SENSITIVE"
-  | "META_REFERENCE";
+export type RuntimeWriterGuardCode = ClaudeWriterGuardCode;
 
 const metaReferencePattern =
   /(?<![\p{L}\p{N}])(başlıkta|başlıktaki|başlığın|başlığa|vikipedi\p{L}*|wikipedia\p{L}*|bilgi not\p{L}*|kaynakta\p{L}*|kaynağa göre|elimdeki kaynak\p{L}*)(?![\p{L}\p{N}])/iu;

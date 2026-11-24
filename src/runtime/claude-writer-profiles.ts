@@ -26,3 +26,17 @@ export const claudeWriterSafeCodes = [
   "CLAUDE_OUTPUT_INVALID",
 ] as const;
 export type ClaudeWriterSafeCode = (typeof claudeWriterSafeCodes)[number];
+
+/** Yerel korumanın Claude gövdesini reddetme nedenleri (`runtimeWriterBodyIssue`). */
+export const claudeWriterGuardCodes = [
+  "EMPTY",
+  "MARKUP",
+  "SERVER_SCHEMA",
+  "CONSTITUTION",
+  "QUOTE",
+  "OFFLINE_CLAIM",
+  "SERIOUS_CLAIM",
+  "SENSITIVE",
+  "META_REFERENCE",
+] as const;
+export type ClaudeWriterGuardCode = (typeof claudeWriterGuardCodes)[number];
