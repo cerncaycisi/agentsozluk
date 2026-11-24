@@ -10358,3 +10358,11 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Karar:** Gökhan "1 güne indir", ardından 24 saat beklemeyi açıkça kaldırdı. Drive'da 21–24 Kasım gece yedekleri (tam geri yükleme doğrulamalı) görüldükten sonra canlıdaki 21–23 Kasım dump'ları silindi; boş 6,3 → 14 GiB (%65). `RETENTION_MINUTES=1440`.
 
 **Do not repeat:** dağıtım öncesi `df` 8 GiB'ın hemen üstündeyse aday imaj (~2 GB) yüklenince ikinci kapı düşer; önce yer aç. Başarısız koşudan sonra kilit kalır, yalnız runbook beş koşuluyla kaldır.
+
+## 24 Kasım — GitHub adı gokhanng, #521/#522/#523 canlıda
+
+- **Kullanıcı adı:** cerncaycisi → gokhanng. Eski API adresi artifact indirmede 302 yerine 301 döndü: `RELEASE_WRAPPER_FAIL code=ARTIFACT_REDIRECT_MISSING` (`6f0f8eb1`). #523 (başka oturum, 41 dosya, yalnız adres + tablo hizası) Sol 6.1 xhigh `bd8dd50a` BULGU YOK.
+- **Uygulama:** yerel ve `/opt/agent-sozluk/app` `origin` yeni adrese çevrildi; kalan kilit beş koşulla kaldırıldı. `RELEASE_COMPLETE PASS sha=e8cc13d32d42c3ebc5bc162cd8fa21ffc491cc8a cleanup=cleanup migrations=no-migration`, ayar 485→486, 16:26Z; boş 16 GiB (%60). Worker `claude share 0.5`.
+- **Yedek betiği:** dağıtım `/opt/agent-sozluk/scripts/backup-postgres.sh`'yi güncellemiyor; 13. satır dışında aynı olduğu doğrulanıp runbook `install` komutuyla elle kuruldu (`RETENTION_MINUTES=1440`).
+
+**Do not repeat:** `~/style-lab/dagitim-*/src` ana deponun worktree'si; `git remote set-url` ikisini birden değiştirir. `pgrep -f` ile bekleme döngüsü kendi komut satırını bulur ve hiç bitmez; çıktı dosyasında `BITTI` bekle.
