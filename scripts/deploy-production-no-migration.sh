@@ -189,7 +189,7 @@ fi
 
 root="$(git rev-parse --show-toplevel)"
 test "$(git -C "$root" remote get-url origin)" = \
-  https://github.com/cerncaycisi/agentsozluk.git
+  https://github.com/gokhanng/agentsozluk.git
 test "$(git -C "$root" rev-parse HEAD)" = "$candidate_sha"
 test -z "$(git -C "$root" status --porcelain=v1 --untracked-files=all)"
 bash -n "$root/scripts/production-release-remote.sh"
@@ -233,7 +233,7 @@ if test "$build_on_host" = 0; then
   fi
   successful_ci="$(
     CANDIDATE_SHA="$candidate_sha" gh run list \
-      --repo cerncaycisi/agentsozluk \
+      --repo gokhanng/agentsozluk \
       --workflow CI \
       --commit "$candidate_sha" \
       --event push \
@@ -253,7 +253,7 @@ if test "$build_on_host" = 0; then
   }
   artifact_run_receipt="$(
     gh run view "$artifact_run" \
-      --repo cerncaycisi/agentsozluk \
+      --repo gokhanng/agentsozluk \
       --json databaseId,workflowName,event,status,conclusion,headSha
   )"
   ARTIFACT_RUN_RECEIPT="$artifact_run_receipt" \
@@ -276,7 +276,7 @@ NODE
   artifact_api_receipt="$(
     gh api \
       -H 'Accept: application/vnd.github+json' \
-      "repos/cerncaycisi/agentsozluk/actions/runs/$artifact_run/artifacts"
+      "repos/gokhanng/agentsozluk/actions/runs/$artifact_run/artifacts"
   )"
   artifact_metadata="$(
     ARTIFACT_API_RECEIPT="$artifact_api_receipt" \
@@ -333,7 +333,7 @@ NODE
     install -d -m 0700 "$artifact_files"
     gh api \
       -H 'Accept: application/vnd.github+json' \
-      "repos/cerncaycisi/agentsozluk/actions/artifacts/$artifact_id/zip" \
+      "repos/gokhanng/agentsozluk/actions/artifacts/$artifact_id/zip" \
       >"$artifact_zip"
     test "$(wc -c <"$artifact_zip" | tr -d ' ')" = "$artifact_zip_size"
     test "sha256:$(shasum -a 256 "$artifact_zip" | awk '{print $1}')" = \
@@ -421,7 +421,7 @@ fi
 
 expected_ip=51.161.103.223
 expected_host=agent-sozluk-prod
-expected_origin=https://github.com/cerncaycisi/agentsozluk.git
+expected_origin=https://github.com/gokhanng/agentsozluk.git
 expected_fingerprint=SHA256:TY1sLsDfbJh/Ejup3/IC9URZsSsbLayMcS668urVAeg
 # Operatör sunucusunda kök sahipli dosya değiştirilemediği için ayrı bir sabitlenmiş dosya verilebilir (OVH taşıma, 14 Ekim).
 known_hosts="${AGENT_SOZLUK_KNOWN_HOSTS:-/private/tmp/agent-sozluk-known_hosts}"
@@ -555,7 +555,7 @@ if test "$build_on_host" = 0; then
     install -m 0600 /dev/null "$redirect_header_file"
     github_token="$(gh auth token)"
     redirect_status="$({
-      printf 'url = "https://api.github.com/repos/cerncaycisi/agentsozluk/actions/artifacts/%s/zip"\n' \
+      printf 'url = "https://api.github.com/repos/gokhanng/agentsozluk/actions/artifacts/%s/zip"\n' \
         "$artifact_id"
       printf 'header = "Accept: application/vnd.github+json"\n'
       printf 'header = "X-GitHub-Api-Version: 2022-11-28"\n'

@@ -51,7 +51,7 @@ değildir. AW semantik kalite kapısı ve canlı boyut/süre etkisi ayrıca
 ölçülmelidir. Eksik metni taşıyan ilgili oy örneklerinde prompt büyümesi
 beklenir; bu maliyet başka fazı kısmak veya AW'yi atlamakla telafi edilmez.
 Üretim ayarı değiştirilmedi ve dağıtım yapılmadı.
-[PR #125](https://github.com/cerncaycisi/agentsozluk/pull/125) repo teslimi
+[PR #125](https://github.com/gokhanng/agentsozluk/pull/125) repo teslimi
 tamamlandı. Canlı kabul ayrı kapıdır; aşağıdaki makbuzlar bunu ayırır.
 
 ## Hakem ve düzeltme makbuzu
@@ -161,7 +161,7 @@ sonradan yeniden verdiği bir GO değildir. Runtime SHA `0835f28` exact CI
 Son head `07d9f5f62cb6b605e293737f747fe68f1ada0c66`; runtime kaynakları
 hakemin incelediği `0835f28` ile aynı. Format/lint/typecheck, requirements
 3/3 ve son 99/99 odaklı test geçti. Exact PR CI
-[34370069884](https://github.com/cerncaycisi/agentsozluk/actions/runs/34370069884)
+[34370069884](https://github.com/gokhanng/agentsozluk/actions/runs/34370069884)
 **7/7 SUCCESS**: quality, behavior, database, coverage, browser, container,
 validate. Merge öncesi exact head, base, review durumu, bütün kontroller ve
 mergeability yeniden okundu; pending/kırmızı kontrol yoktu.

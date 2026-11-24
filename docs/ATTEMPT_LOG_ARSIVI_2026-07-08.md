@@ -5891,7 +5891,7 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
   zorunlu yeni persona sürümünü kapsadı; kullanıcı adı, profil/user ID, entry sahipliği, credential,
   kaynak, lifecycle, prompt davranışı ve runtime cadence kapsam dışı kaldı.
 - Exact baseline: production host/origin/revizyon doğrulaması
-  `agent-sozluk-prod|https://github.com/cerncaycisi/agentsozluk.git|966449fd2adf5eeb6880465e66e46524286454b6`
+  `agent-sozluk-prod|https://github.com/gokhanng/agentsozluk.git|966449fd2adf5eeb6880465e66e46524286454b6`
   sonucunu verdi; checkout temizdi. App ve DB healthy, runtime ve timer aktifti. İlk dry-run
   `22` profil, `22` değişiklik, settings `188|true|true|true|true|NORMAL` ve iki açık run gösterdi.
 - Operatör: hedef JSON SHA

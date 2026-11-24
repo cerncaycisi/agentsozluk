@@ -874,7 +874,7 @@ değildir; somut yürütücü ve gizli oturum taşıma yolu uygulanmadan önce i
 ## 5 Ekim 10:00 UTC — yeni ana dalın tam geliştirme doğrulaması başarılı
 
 Exact **`dbc88a06c853fbef78ff9ca2f8c3799858ba2f63`** için
-[`37289761730`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37289761730),
+[`37289761730`](https://github.com/gokhanng/agentsozluk/actions/runs/37289761730),
 job111697154899 **SUCCESS**. Tam `verify:m2:development` adımı
 09:25:12–10:00:20 UTC, **35 dakika 8 saniye**; job 36 dakika 23 saniye.
 Girdi, exact main/başarılı push CI, izlenebilirlik, Chrome, tam komut ve son
@@ -918,7 +918,7 @@ belge receipt'i ownbranchte hazırlanır; fullsonuçtan önce commit/push yok.
 
 ## 5 Ekim 09:07 UTC — rol talebi sınırı ana dal teslimi
 
-[#331](https://github.com/cerncaycisi/agentsozluk/pull/331) exact4aed head,
+[#331](https://github.com/gokhanng/agentsozluk/pull/331) exact4aed head,
 CI37286340367 **7/7PASS**. PostgreSQL35dosya/510PASS; değişen topics/entries
 integration dosyası76PASS/skip0. Dört yeni koşulsuz vaka bu dosyada; grant409
 ayırt edicidir, üç context-denial vaka mevcut DB yetkisi/yan-etkisiz ret invariantı.
@@ -1053,7 +1053,7 @@ Bütün geliştirme testleri ilk gerçek tam koşuda geçti. Bu sonuç kodun tes
 paketini doğrular; bir haftalık üretim kabulü ve son canlı kontroller henüz bitmedi.
 
 Exact main `407b79e3a57b3ba19aa40481a0a7b06777229a22`,
-[`37273103171`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37273103171),
+[`37273103171`](https://github.com/gokhanng/agentsozluk/actions/runs/37273103171),
 job111644142823, workflow_dispatch/development **SUCCESS**.
 `verify:m2:development` tam komut06:35:23–07:18:23UTC, **2.580sn/43dk**;
 job06:34:30–07:18:26UTC,2.636sn/43dk56sn. Girdi, exact main/push CI,
@@ -1080,7 +1080,7 @@ DONE-082 ve Gate10/11/12 hâlâ açık. Üretim d829/T0/ayar/model/worker deği�
 Exact main `407b79e3a57b3ba19aa40481a0a7b06777229a22`, push
 CI37271763808 **7/7PASS**. Workflow metadata active/exact source hash, remote
 main/root temiz SHA ve başarılı CI yeniden doğrulanıp tek dispatch yapıldı.
-Actual run[`37273103171`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37273103171),
+Actual run[`37273103171`](https://github.com/gokhanng/agentsozluk/actions/runs/37273103171),
 createdAt06:34:27UTC, workflow_dispatch/development/head407b79e doğrulandı.
 Actions job111644142823 üzerinde girdi/exact main-pushCI/setup/izlenebilirlik/
 Chrome adımlarının tamamı SUCCESS; tam komut06:35:23UTC gerçekten başladı.
@@ -1229,7 +1229,7 @@ Bu kaynak hazırlığı üretim/model çağrısı veya P7/M2 kabulü değildir.
 
 ## 5 Ekim 04:30 UTC — exact CI kapanışı ve ilk yeterli entry ret örneklemi
 
-PR[#329](https://github.com/cerncaycisi/agentsozluk/pull/329) exact head
+PR[#329](https://github.com/gokhanng/agentsozluk/pull/329) exact head
 `5461ec45c21278e801b42f2505f13fac1a4523dd`, CI`37260900294` **7/7 PASS**;
 coverage job15dk41sn/adım15dk01sn. Job20dk/adım16dk sınırları ile testler/eşikler
 korunarak son upload ve validate tamamlandı. 04:05:59UTC squash merge
@@ -5698,9 +5698,9 @@ regression evidence.
 
 ## Milestone 1 initial repository state — 2026-07-16 Europe/Istanbul
 
-- Requested origin in the pasted goal: `https://github.com/cerncaycisi/agent-sozluk`.
-- User-corrected origin: `https://github.com/cerncaycisi/agentsozluk`.
-- Verified origin: `https://github.com/cerncaycisi/agentsozluk.git`.
+- Requested origin in the pasted goal: `https://github.com/gokhanng/agent-sozluk`.
+- User-corrected origin: `https://github.com/gokhanng/agentsozluk`.
+- Verified origin: `https://github.com/gokhanng/agentsozluk.git`.
 - Initial branch: empty repository with no commit and no GitHub default branch.
 - Working branch: `codex/milestone-1`.
 - Main branch last commit SHA: unavailable; the remote repository had zero commits.
@@ -5788,7 +5788,7 @@ Fresh pre-migration backup:
 - `main` was created from foundation commit `6296e1f` with the user's one-time explicit permission.
 - `codex/milestone-1` was pushed at `c397382cc9e0688a9d44112f0a73853b82bc8b15` and tracks
   `origin/codex/milestone-1`.
-- Draft pull request: `https://github.com/cerncaycisi/agentsozluk/pull/1`.
+- Draft pull request: `https://github.com/gokhanng/agentsozluk/pull/1`.
 - Verified PR metadata: title `Milestone 1: Complete Agent Sözlük platform`, base `main`, head
   `codex/milestone-1`, `isDraft=true`.
 - The audited PR body contains the product, architecture, security, verification, demo-account,
@@ -6651,7 +6651,7 @@ silinmedi veya workflowdispatch yapılmadı. Goal aynı/aktif; üretim işlemi0.
 ## 5 Ekim 2026 15:49 UTC — yeni birleşmiş O4 tam geliştirme doğrulaması SUCCESS
 
 Exact **d6ce2ee642269c231d69bf5f1b02bc61bcfd3bb2**, run
-[37329464702](https://github.com/cerncaycisi/agentsozluk/actions/runs/37329464702),
+[37329464702](https://github.com/gokhanng/agentsozluk/actions/runs/37329464702),
 job111828565259 **SUCCESS**. Tam `verify:m2:development` adımı15:03:02–15:47:12UTC,
 **44 dakika10saniye**; son exactmain kapısı SUCCESS. Ana dal komut ve son kapı
 boyunca D6CE'de kaldı; gerçeksonuç ardından root/remote exactD6CE ve temiz ağaç
@@ -6741,7 +6741,7 @@ yerel guard izin listesi genişletilmiyor. Çalışma ayrı worktree'de; canlıy
 hiçbir yeni kaynak veya migration uygulanmadı.
 
 Exact ana dal `ee2f88186e8bc9d9db68c082da2be29c4f47a818` CI
-[37368382698](https://github.com/cerncaycisi/agentsozluk/actions/runs/37368382698)
+[37368382698](https://github.com/gokhanng/agentsozluk/actions/runs/37368382698)
 21:04:08 UTC **7/7 SUCCESS**. İlk denemede behavior/validate runner alamadı;
 aynı SHA `--failed` odaklı tekrarında eksik işler geçti. Başarılı beş işin
 önceki sonuçları korundu; kod/eşik/timeout değiştirilmedi. Belge teslimi canlı
@@ -6801,7 +6801,7 @@ kod incelemesi bekler. Üretimde kaynak/migration/reset değişimi yok.
 ## 5 Ekim 2026 22:06 UTC — resetin BIGINT ön koşulu, CI hatası
 
 Toplum kapalı, production exactD202; reset/silme/açılış henüz yok. İlk kod
-paketi [PR333](https://github.com/cerncaycisi/agentsozluk/pull/333) draft.
+paketi [PR333](https://github.com/gokhanng/agentsozluk/pull/333) draft.
 Exact647 CI37378502073 migration bağımlılığı nedeniyleFAIL; qualityPASS.
 Gerçek PG hatası ve trigger'ı kapatmadan hazırlanan çözüm
 [BIGINT sınır kanıtında](RESET_BIGINT_SINIR_KANITI_2026-10-05.md).
@@ -6844,7 +6844,7 @@ Hiçbiri production reset, reopen, fullsize restore/prova veya yeni168hPASS değ
 
 ## 5 Ekim 23:39 — journal son kod kapıları
 
-Exact828 CI[37388001009](https://github.com/cerncaycisi/agentsozluk/actions/runs/37388001009)
+Exact828 CI[37388001009](https://github.com/gokhanng/agentsozluk/actions/runs/37388001009)
 7/7 SUCCESS; main237 CI37384199827 de SUCCESS. Actual `claude-opus-5-5`
 326.734ms koşullu inceleme: commit/exposure için DB saati, bounded indeks ve
 fullsize ölçüm şartları. İlk iki migration değişmedi; yeni clock migration'ı

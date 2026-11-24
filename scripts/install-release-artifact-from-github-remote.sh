@@ -20,7 +20,7 @@ artifact_digest="${4:?artifact digest required}"
 [[ "$artifact_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
 test "$(hostname)" = agent-sozluk-prod
 test "$(git -C /opt/agent-sozluk/app remote get-url origin)" = \
-  https://github.com/cerncaycisi/agentsozluk.git
+  https://github.com/gokhanng/agentsozluk.git
 test "$(git -C /opt/agent-sozluk/app rev-parse HEAD)" = "$candidate_sha"
 test -z "$(git -C /opt/agent-sozluk/app status --porcelain=v1 --untracked-files=all)"
 

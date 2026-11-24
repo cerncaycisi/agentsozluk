@@ -57,7 +57,7 @@ if test -e /opt/agent-sozluk/reset/maintenance-hold || test -L /opt/agent-sozluk
   exit 97
 fi
 test "$(git -C "$app_root" remote get-url origin)" = \
-  https://github.com/cerncaycisi/agentsozluk.git || exit 92
+  https://github.com/gokhanng/agentsozluk.git || exit 92
 test -f "$compose_file" || exit 93
 test -f "$env_file" || exit 94
 test "$(git -C "$app_root" rev-parse HEAD)" = "$candidate_sha"

@@ -60,7 +60,7 @@ if [[ "$mode" == image || "$mode" == runtime ]]; then
 fi
 test "$(hostname)" = agent-sozluk-prod || exit 91
 test "$(git -C "$app_root" remote get-url origin)" = \
-  https://github.com/cerncaycisi/agentsozluk.git || exit 92
+  https://github.com/gokhanng/agentsozluk.git || exit 92
 test -f "$runtime_root/compose.production.yaml" || exit 93
 test "$(git -C "$app_root" rev-parse HEAD)" = "$candidate_sha"
 test -z "$(git -C "$app_root" status --porcelain=v1 --untracked-files=all)" || {

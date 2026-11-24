@@ -10,9 +10,9 @@ bu dağıtımda yeni runtime kodu veya efor deneyi eklenmedi.
 
 - Tam SHA: `7ebb88753d82c7917a19671dd2d9d2fd3ab3477b`.
   Dağıtım öncesi yerel/uzak main aynı ve çalışma ağacı temizdi.
-  [Exact main CI 34371321067](https://github.com/cerncaycisi/agentsozluk/actions/runs/34371321067)
+  [Exact main CI 34371321067](https://github.com/gokhanng/agentsozluk/actions/runs/34371321067)
   **7/7 SUCCESS**;
-  [bundle 34372292826](https://github.com/cerncaycisi/agentsozluk/actions/runs/34372292826)
+  [bundle 34372292826](https://github.com/gokhanng/agentsozluk/actions/runs/34372292826)
   aynı SHA için SUCCESS. Bu sonuçlar 10 Eylül `08:08:14Z`'de yeniden okundu.
 - Artifact `10112709082`, ZIP **228.432.005 bayt**; digest
   `sha256:1cd0941620131ce2c331ee81a4a4a5845bbe267ac61bde2dd629ad794940a91c`.

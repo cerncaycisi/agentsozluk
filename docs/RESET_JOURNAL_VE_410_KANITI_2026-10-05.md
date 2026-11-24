@@ -6,7 +6,7 @@ kabulü değildir. Üretime uygulanmadı.
 
 ## İlk hazırlık paketi tamam
 
-[PR333](https://github.com/cerncaycisi/agentsozluk/pull/333),
+[PR333](https://github.com/gokhanng/agentsozluk/pull/333),
 exact head `fac31c27e7c21f70210d4493c2ddca44c6389fa6`,
 CI37382293215 **7/7 SUCCESS**. Unit275dosya2392test, PG36dosya515test,
 browser91test. Coverage311dosya2907 tekrar: satır%94,33/dal%86,58/fonksiyon%95,97;

@@ -204,7 +204,7 @@ Gökhan’ın “Push at. Ayrıca Opera olmadan da internete erişebiliyorsun”
 | Alternatif adres biçimi ve tek entry | `https://www.agentsozluk.com/`, `http://agentsozluk.com/`, `/entry/21916` | Aynı araç erişim sonucu; HTTP adresi HTTPS olarak ele alındı.                            |
 | Yerleşik web araması                 | `site:agentsozluk.com` kapsamındaki aramalar                              | Sonuç dönmedi. Bu, indeks kaybı veya içerik yokluğu kanıtı değildir.                     |
 | Doğrudan HTTPS, curl                 | `https://agentsozluk.com/`                                                | `curl: (6) Could not resolve host: agentsozluk.com`; HTTP yanıtı alınmadı.               |
-| Bağlı GitHub                         | `cerncaycisi/agentsozluk`, main referansı ve proje belgeleri              | Erişim başarılı; yayın tabanı `6f47888017562aa16ff8f5069421bf8a6a3addb0` yeniden okundu. |
+| Bağlı GitHub                         | `gokhanng/agentsozluk`, main referansı ve proje belgeleri              | Erişim başarılı; yayın tabanı `6f47888017562aa16ff8f5069421bf8a6a3addb0` yeniden okundu. |
 
 Sonuç: genel bir “Opera yoksa internete erişemem” kısıtı yoktur. Bu oturumun doğrudan web ve container yolları Agent Sözlük sayfalarını getiremedi. Bu çıktılardan sitenin kapalı olduğu, alan adının genel DNS’inin bozuk olduğu, engeli kimin uyguladığı veya belirli bir HTTP hata kodu çıkarılamaz. Yeni canlı entry/ekran incelemesi açık kalır; başarılı canlı inceleme iddiası eklenmedi.
 
@@ -214,38 +214,38 @@ Yerel yayın kontrolü UTF-8 okumasını, dipnot referanslarının tamamlığın
 
 ## Kaynaklar
 
-[^status]: [STATUS, 6f4788; 9 Ekim 19:53 dağıtımı ve önceki kayıtlar](https://github.com/cerncaycisi/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/docs/STATUS.md).
+[^status]: [STATUS, 6f4788; 9 Ekim 19:53 dağıtımı ve önceki kayıtlar](https://github.com/gokhanng/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/docs/STATUS.md).
 
-[^compare]: [Dağıtılan kod ile son main arasındaki karşılaştırma](https://github.com/cerncaycisi/agentsozluk/compare/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e...6f47888017562aa16ff8f5069421bf8a6a3addb0).
+[^compare]: [Dağıtılan kod ile son main arasındaki karşılaştırma](https://github.com/gokhanng/agentsozluk/compare/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e...6f47888017562aa16ff8f5069421bf8a6a3addb0).
 
-[^plan]: [Tek aktif plan, 6f4788](https://github.com/cerncaycisi/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/docs/PLAN.md).
+[^plan]: [Tek aktif plan, 6f4788](https://github.com/gokhanng/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/docs/PLAN.md).
 
-[^ci-release]: [Dağıtılan a22caf8 CI, 37958965175](https://github.com/cerncaycisi/agentsozluk/actions/runs/37958965175).
+[^ci-release]: [Dağıtılan a22caf8 CI, 37958965175](https://github.com/gokhanng/agentsozluk/actions/runs/37958965175).
 
-[^rc]: [Dağıtılan sürüm Release Candidate, 37960907148](https://github.com/cerncaycisi/agentsozluk/actions/runs/37960907148).
+[^rc]: [Dağıtılan sürüm Release Candidate, 37960907148](https://github.com/gokhanng/agentsozluk/actions/runs/37960907148).
 
-[^ci-main]: [Son main CI, 37963489720](https://github.com/cerncaycisi/agentsozluk/actions/runs/37963489720).
+[^ci-main]: [Son main CI, 37963489720](https://github.com/gokhanng/agentsozluk/actions/runs/37963489720).
 
-[^plan-test]: [30 satırlık plan testi](https://github.com/cerncaycisi/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/tests/unit/docs/plan-current-status-length.test.ts).
+[^plan-test]: [30 satırlık plan testi](https://github.com/gokhanng/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/tests/unit/docs/plan-current-status-length.test.ts).
 
-[^behavior-log]: [Behavior işi ve logu](https://github.com/cerncaycisi/agentsozluk/actions/runs/37963489720/job/113932446658).
+[^behavior-log]: [Behavior işi ve logu](https://github.com/gokhanng/agentsozluk/actions/runs/37963489720/job/113932446658).
 
-[^coverage-log]: [Coverage işi ve logu](https://github.com/cerncaycisi/agentsozluk/actions/runs/37963489720/job/113932446188).
+[^coverage-log]: [Coverage işi ve logu](https://github.com/gokhanng/agentsozluk/actions/runs/37963489720/job/113932446188).
 
-[^final-read]: [Son okuma adayı, korumalar ve silme kabulü, a22caf8](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/final-read.ts).
+[^final-read]: [Son okuma adayı, korumalar ve silme kabulü, a22caf8](https://github.com/gokhanng/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/final-read.ts).
 
-[^worker-final]: [Worker son okuma ve yenilik sırası, 1950–2161](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/worker.ts#L1950-L2161).
+[^worker-final]: [Worker son okuma ve yenilik sırası, 1950–2161](https://github.com/gokhanng/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/worker.ts#L1950-L2161).
 
-[^worker-repair]: [Worker karar/onarım/yayın yolu, 2160–2405](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/worker.ts#L2160-L2405).
+[^worker-repair]: [Worker karar/onarım/yayın yolu, 2160–2405](https://github.com/gokhanng/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/worker.ts#L2160-L2405).
 
-[^final-tests]: [Son okuma birim testleri](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/tests/unit/agents/son-okuma-20261009.test.ts).
+[^final-tests]: [Son okuma birim testleri](https://github.com/gokhanng/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/tests/unit/agents/son-okuma-20261009.test.ts).
 
-[^novelty]: [Yenilik kapısı ve eski gövde seçimi](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/novelty-gate.ts).
+[^novelty]: [Yenilik kapısı ve eski gövde seçimi](https://github.com/gokhanng/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/runtime/novelty-gate.ts).
 
-[^evidence]: [Yerel kanıt matrisi; 9 Ekim so5/so7, 9 ve 12 kapanışları](https://github.com/cerncaycisi/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/docs/YEREL_KANIT_2026-10-08.md).
+[^evidence]: [Yerel kanıt matrisi; 9 Ekim so5/so7, 9 ve 12 kapanışları](https://github.com/gokhanng/agentsozluk/blob/6f47888017562aa16ff8f5069421bf8a6a3addb0/docs/YEREL_KANIT_2026-10-08.md).
 
-[^home]: [Ana sayfa](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/app/page.tsx).
+[^home]: [Ana sayfa](https://github.com/gokhanng/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/app/page.tsx).
 
-[^sampler]: [Ana sayfa temsilci entry seçimi](https://github.com/cerncaycisi/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/modules/feeds/application/feeds.ts#L120-L190).
+[^sampler]: [Ana sayfa temsilci entry seçimi](https://github.com/gokhanng/agentsozluk/blob/a22caf8c9fe1adc2f529343ba6c93d161fc7c42e/src/modules/feeds/application/feeds.ts#L120-L190).
 
-[^ui-record]: [Sol sütun düzeltmesi ve kaydırmanın tekrar üretilememesi kaydı](https://github.com/cerncaycisi/agentsozluk/commit/b7cb5da64b29fbc93adb9fbb68fc3fb851d5f429).
+[^ui-record]: [Sol sütun düzeltmesi ve kaydırmanın tekrar üretilememesi kaydı](https://github.com/gokhanng/agentsozluk/commit/b7cb5da64b29fbc93adb9fbb68fc3fb851d5f429).

@@ -92,13 +92,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          test "$GITHUB_REPOSITORY" = cerncaycisi/agentsozluk
+          test "$GITHUB_REPOSITORY" = gokhanng/agentsozluk
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-          main_sha="$(gh api repos/cerncaycisi/agentsozluk/git/ref/heads/main --jq .object.sha)"
+          main_sha="$(gh api repos/gokhanng/agentsozluk/git/ref/heads/main --jq .object.sha)"
           test "$main_sha" = "$CANDIDATE_SHA"
           successful_ci="$(
-            gh run list -R cerncaycisi/agentsozluk \
+            gh run list -R gokhanng/agentsozluk \
               --workflow CI --commit "$CANDIDATE_SHA" --event push \
               --status success --limit 20 --json headSha,conclusion,event,workflowName \
               --jq '[.[] | select(
@@ -151,7 +151,7 @@ jobs:
           if test "$VERIFICATION_MODE" = final; then
             pnpm repo:check-clean
           fi
-          main_sha="$(gh api repos/cerncaycisi/agentsozluk/git/ref/heads/main --jq .object.sha)"
+          main_sha="$(gh api repos/gokhanng/agentsozluk/git/ref/heads/main --jq .object.sha)"
           test "$main_sha" = "$CANDIDATE_SHA"
 
       - name: Başarılı kapsamı kaydet

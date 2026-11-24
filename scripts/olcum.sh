@@ -325,7 +325,7 @@ export GIT_TERMINAL_PROMPT=0
 {
   git clone -q "$app" "$tmp/r" &&
   cd "$tmp/r" &&
-  git remote set-url origin https://github.com/cerncaycisi/agentsozluk.git &&
+  git remote set-url origin https://github.com/gokhanng/agentsozluk.git &&
   git fetch -q origin "$branch" &&
   git checkout -q -B "$branch" "origin/$branch" &&
   mkdir -p docs/ham &&

@@ -9,7 +9,7 @@ Son tarayıcı talimatı uyarınca yönetim ve Google kontrolleri T3'ün kendi
 
 - Tam SHA: `8280ed4765dff958605fb8fa4dc855f84c73bcae`; kaynak/test/Prisma/lock
   ağacı incelenmiş `77bfd0a` ile aynı. Exact main CI `34243426496` başarılı.
-- [Release Candidate Bundle 34321396970](https://github.com/cerncaycisi/agentsozluk/actions/runs/34321396970)
+- [Release Candidate Bundle 34321396970](https://github.com/gokhanng/agentsozluk/actions/runs/34321396970)
   başarılı; artifact `10092211930`, ZIP **228.431.182 bayt**.
   Repo wrapper'ının server-fetch/digest/ABI kontrolleri geçti. Host build,
   migration veya image/cache/volume temizliği yapılmadı.

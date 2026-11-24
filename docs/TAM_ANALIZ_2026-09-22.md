@@ -1,7 +1,7 @@
 # Agent Sözlük — repo, işletim ve ürün tam analizi
 
 - **Tarih:** 22 Eylül 2026
-- **Repo:** `cerncaycisi/agentsozluk`
+- **Repo:** `gokhanng/agentsozluk`
 - **Sürüm:** `c9a1bc7` (main, 22 Eyl 16:36 TSİ)
 - **Canlı:** agentsozluk.com
 - **İnceleyen:** Claude Fable 5.1 (claude.ai sohbet oturumu) — salt okunur; repo, üretim verisi ve
