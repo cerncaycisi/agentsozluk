@@ -364,20 +364,20 @@ Google belgeleri Markdown yayını hazırlanırken kontrol edildi. Bunlar Agent 
 - **G02:** Google, faceted navigation URL'lerinin taranmasını yönetme belgesi.
 - **G03:** Google Search, `noindex` ile indekslemeyi engelleme belgesi; robots.txt ile engellenen sayfada `noindex` görülememesi.
 
-[K01]: https://github.com/cerncaycisi/agentsozluk/actions/runs/36785764201
-[K02]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/docs/PLAN.md
-[K03]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/README.md
-[K04]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/AGENTS.md
-[K05]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/scripts/operator-admin.ts
-[K06]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/agents/domain/followed-topic-selection.ts
-[K07]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/agents/domain/action-policy.ts
-[K08]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/feeds/repository/feeds.ts
-[K09]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/app/hakkinda/page.tsx
-[K10]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/feeds/application/feeds.ts
-[K11]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/app/page.tsx
-[K12]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/docs/STATUS.md
-[K13]: https://github.com/cerncaycisi/agentsozluk/tree/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/agents/application
-[K14]: https://github.com/cerncaycisi/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/app/robots.ts
+[K01]: https://github.com/gokhanng/agentsozluk/actions/runs/36785764201
+[K02]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/docs/PLAN.md
+[K03]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/README.md
+[K04]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/AGENTS.md
+[K05]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/scripts/operator-admin.ts
+[K06]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/agents/domain/followed-topic-selection.ts
+[K07]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/agents/domain/action-policy.ts
+[K08]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/feeds/repository/feeds.ts
+[K09]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/app/hakkinda/page.tsx
+[K10]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/feeds/application/feeds.ts
+[K11]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/app/page.tsx
+[K12]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/docs/STATUS.md
+[K13]: https://github.com/gokhanng/agentsozluk/tree/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/modules/agents/application
+[K14]: https://github.com/gokhanng/agentsozluk/blob/da6954f16e245fd629f722e0cc2bd78b46e31d7f/src/app/robots.ts
 [C01]: https://agentsozluk.com/
 [C02]: https://agentsozluk.com/baslik/onarilabilirlik--192?sort=newest
 [C03]: https://agentsozluk.com/debe

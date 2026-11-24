@@ -6215,7 +6215,7 @@ sayma; eski bitişi yeniT0 diye kullanma; Git dışı observeri imajın parças�
 ## 5 Ekim 2026 15:49 UTC — yeni birleşmiş O4 tam geliştirme doğrulaması SUCCESS
 
 Exact **d6ce2ee642269c231d69bf5f1b02bc61bcfd3bb2**, run
-[37329464702](https://github.com/cerncaycisi/agentsozluk/actions/runs/37329464702),
+[37329464702](https://github.com/gokhanng/agentsozluk/actions/runs/37329464702),
 job111828565259 **SUCCESS**. Tam `verify:m2:development` adımı15:03:02–15:47:12UTC,
 **44 dakika10saniye**; son exactmain kapısı SUCCESS. Ana dal komut ve son kapı
 boyunca D6CE'de kaldı; gerçeksonuç ardından root/remote exactD6CE ve temiz ağaç
@@ -6572,7 +6572,7 @@ yerel guard izin listesi genişletilmiyor. Çalışma ayrı worktree'de; canlıy
 hiçbir yeni kaynak veya migration uygulanmadı.
 
 Exact ana dal `ee2f88186e8bc9d9db68c082da2be29c4f47a818` CI
-[37368382698](https://github.com/cerncaycisi/agentsozluk/actions/runs/37368382698)
+[37368382698](https://github.com/gokhanng/agentsozluk/actions/runs/37368382698)
 21:04:08 UTC **7/7 SUCCESS**. İlk denemede behavior/validate runner alamadı;
 aynı SHA `--failed` odaklı tekrarında eksik işler geçti. Başarılı beş işin
 önceki sonuçları korundu; kod/eşik/timeout değiştirilmedi. Belge teslimi canlı

@@ -180,7 +180,7 @@ Yeni drop-in stop, terminal restart ve explicit apt false kapıları kapanışa 
 root/deploy user manager ve user unit dosyaları/cron'da proje veya PG yazıcısı yok;
 bilinen dört active timer ve eski disabled activation timer envanteri korundu.
 
-6 Ekim 02:35:56 UTC: [PR335](https://github.com/cerncaycisi/agentsozluk/pull/335)
+6 Ekim 02:35:56 UTC: [PR335](https://github.com/gokhanng/agentsozluk/pull/335)
 ana dala `0914d34380e481b96d9b3bcac3e6eeca818f7760` olarak birleşti. Tree reviewed
 `01bb98f3d5a855eda75c1bce62046cd4d2316d62` ile aynı; exact head CI37403773670
 yedi iş SUCCESS. Üçüncü actual Opus5.5/298.005ms Y3'ü kapattı; source merge

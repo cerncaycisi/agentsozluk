@@ -17,7 +17,7 @@ credentials, tokens, cookies, private keys or database connection strings.
 - IPv4: `51.161.103.223`
 - Domain: `agentsozluk.com`
 - SSH ED25519 fingerprint: `SHA256:TY1sLsDfbJh/Ejup3/IC9URZsSsbLayMcS668urVAeg`
-- Repository origin: `https://github.com/cerncaycisi/agentsozluk.git`
+- Repository origin: `https://github.com/gokhanng/agentsozluk.git`
 - Application checkout: `/opt/agent-sozluk/app`
 - Runtime root: `/opt/agent-sozluk/runtime`
 - Production Compose file: `/opt/agent-sozluk/runtime/compose.production.yaml`

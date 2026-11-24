@@ -151,7 +151,7 @@ bu `public`/Prisma kapsamına dahil değildir.
 
 ## Repo teslimi
 
-PR [#126](https://github.com/cerncaycisi/agentsozluk/pull/126), exact head
+PR [#126](https://github.com/gokhanng/agentsozluk/pull/126), exact head
 `00a2cd7a38441075ef7fcdf73f33674a0d483f5f` üzerinde 7/7 CI (`34472034328`) ve Opus 5
 kapanışı sonrasında birleşti: `9b3fc6b371c3fcc83207f5971574614961dff23e`.
 Merge ağacı ile incelenen head ağacı birebir eşit. Uygulama route'ları,

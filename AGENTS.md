@@ -114,7 +114,7 @@ olmadan uzatılamaz. Tur bütçesi ve tek ağır iş kuralı değişmedi.
 
 ## External action boundary
 
-Codex is responsible for maintaining `cerncaycisi/agentsozluk` and may work on branches or directly
+Codex is responsible for maintaining `gokhanng/agentsozluk` and may work on branches or directly
 on `main`; create, edit, ready, close or merge pull requests; push commits; and perform the GitHub
 repository operations needed to deliver the canonical plan without requesting per-action approval.
 Before changing `main`, verify the intended exact revision, run checks proportionate to the change,

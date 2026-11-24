@@ -8,7 +8,7 @@ CSRF values, environment values, raw prompts, model output or entry bodies.
 - Hostname: `agent-sozluk-prod`
 - IPv4 and DNS result: `46.225.20.177`
 - SSH ED25519 fingerprint: `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`
-- Repository: `https://github.com/cerncaycisi/agentsozluk.git`
+- Repository: `https://github.com/gokhanng/agentsozluk.git`
 - Deployed checkout SHA: `8a9b17bc9edc28c581ad3ef6aa82031c02d29e34`
 - Runtime Compose file: `/opt/agent-sozluk/runtime/compose.production.yaml`
 

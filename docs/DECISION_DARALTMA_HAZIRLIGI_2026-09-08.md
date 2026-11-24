@@ -165,7 +165,7 @@ kök Zod hatasında `schemaIssuePaths` içine boş string yazılıyordu, fakat k
 `claude-opus-5`, high, salt okunur; exit 0, `is_error=false`, 25 tur, 0 izin reddi.
 CLI ayrıca Haiku 4.5 kullanımı bildirdi. **Repo / taslak PR için KOŞULLU GO**;
 hakem kodda doğruluk hatası bulmadı. Canlı model kalitesi ve eşleşme kapsamı GO'ya
-dahil değil. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+dahil değil. [Taslak PR #120](https://github.com/gokhanng/agentsozluk/pull/120).
 
 Hakemin koşulları kaynakla doğrulandı ve ayrı yerel değişiklikte kapatılıyor:
 

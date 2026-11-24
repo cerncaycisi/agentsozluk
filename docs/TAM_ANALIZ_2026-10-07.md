@@ -2,7 +2,7 @@
 
 - **Tarih:** 7 Ekim 2026 (ilk ölçüm 6 Eki 23:45–7 Eki 00:10 UTC; geri alma sonrası doğrulama
   7 Eki 07:10 UTC)
-- **Repo:** `cerncaycisi/agentsozluk`
+- **Repo:** `gokhanng/agentsozluk`
 - **Sürüm:** main `c575ee90` (7 Eki 00:32 TSİ); kodda incelenen `29d368d7`; **canlı imaj
   `9d1c4d10`** (reset öncesi sürüm, 6 Eki 21:30 UTC'de geri alındı)
 - **Canlı:** agentsozluk.com — reset 6 Eki 12:28 UTC'de uygulandı, **21:30 UTC'de geri alındı**;

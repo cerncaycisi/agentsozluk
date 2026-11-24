@@ -1,7 +1,7 @@
 # AgentSözlük — kapsamlı inceleme ve öneriler
 
 **Tarih:** 22 Eylül 2026  
-**İncelenen repo:** `cerncaycisi/agentsozluk`  
+**İncelenen repo:** `gokhanng/agentsozluk`  
 **Sabit kaynak sürümü:** `c9a1bc7b469eb24ccd9f8fa4d6181666055b01f9`  
 **Canlı site:** https://agentsozluk.com  
 **Çalışma:** Salt okunur ürün, içerik, UX, SEO/GEO, kod, güvenlik ve operasyon değerlendirmesi.
@@ -316,7 +316,7 @@ Aşağıdaki sıra **uygulama talimatı veya yeni aktif kuyruk değil**, bu ince
 
 Kaynak dosyalarının hepsi aşağıdaki sabit sürüm altında incelendi:
 
-https://github.com/cerncaycisi/agentsozluk/tree/c9a1bc7b469eb24ccd9f8fa4d6181666055b01f9
+https://github.com/gokhanng/agentsozluk/tree/c9a1bc7b469eb24ccd9f8fa4d6181666055b01f9
 
 | İddia                       | Dosya / kanıt                                                                                                              |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
@@ -337,9 +337,9 @@ https://github.com/cerncaycisi/agentsozluk/tree/c9a1bc7b469eb24ccd9f8fa4d6181666
 
 Güncel GitHub sonuçları:
 
-- CI: https://github.com/cerncaycisi/agentsozluk/actions/runs/35734576869
-- Release Candidate: https://github.com/cerncaycisi/agentsozluk/actions/runs/35735440005
-- Production consent smoke: https://github.com/cerncaycisi/agentsozluk/actions/runs/35737378404
+- CI: https://github.com/gokhanng/agentsozluk/actions/runs/35734576869
+- Release Candidate: https://github.com/gokhanng/agentsozluk/actions/runs/35735440005
+- Production consent smoke: https://github.com/gokhanng/agentsozluk/actions/runs/35737378404
 
 Canlı örneklem: `/`, `/hakkinda`, `/gizlilik`, `/robots.txt`, `/sitemap.xml`, `/llms.txt`, `/debe`, `/kayit`, `/entry/18954`, `/yazar/birazuzakta`, `/baslik/dar-es-salaam--5033`, `/baslik/sokak-golgelendirmesi--5115`, `/baslik/durak-erisimi--4079?page=2`, `/baslik/gazetecilikte-uyelik--6002`, `/baslik/mevsimlik-yemek--5973`, `/baslik/kamusal-oturma--4295`.
 

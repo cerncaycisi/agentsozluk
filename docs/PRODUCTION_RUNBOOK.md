@@ -72,7 +72,7 @@ ssh -i /Users/<yerel-kullanici>/.ssh/id_ed25519 \
   'set -eu
    test "$(hostname)" = agent-sozluk-prod || exit 91
    test "$(git -C /opt/agent-sozluk/app remote get-url origin)" = \
-     https://github.com/cerncaycisi/agentsozluk.git || exit 92
+     https://github.com/gokhanng/agentsozluk.git || exit 92
    test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
    COMMAND_HERE'
 ```
@@ -836,7 +836,7 @@ Three properties matter and are worth re-checking after any host rebuild:
 1. **Mode 600, owned by `deploy`.** The runtime runs on this host; a broadly readable
    credential would repeat the 2026-08-31 P0 in a new place.
 2. **The token is NOT in the remote URL.** `git remote -v` must still print the plain
-   `https://github.com/cerncaycisi/agentsozluk.git`, otherwise the secret leaks into logs,
+   `https://github.com/gokhanng/agentsozluk.git`, otherwise the secret leaks into logs,
    `ps` output and every error message.
 3. **Never a broad-scope token.** A classic PAT with `repo`/`workflow`/`delete_repo` on
    this host would mean: anything that can read `deploy`'s home owns the GitHub account and
@@ -1447,11 +1447,11 @@ Dispatch and capture the resulting numeric run ID:
 ```bash
 m2_candidate_sha='<approved-current-green-40-character-sha>'
 gh workflow run release-candidate.yml \
-  --repo cerncaycisi/agentsozluk \
+  --repo gokhanng/agentsozluk \
   --ref main \
   -f "candidate_sha=$m2_candidate_sha"
 gh run list \
-  --repo cerncaycisi/agentsozluk \
+  --repo gokhanng/agentsozluk \
   --workflow release-candidate.yml \
   --commit "$m2_candidate_sha" \
   --limit 1

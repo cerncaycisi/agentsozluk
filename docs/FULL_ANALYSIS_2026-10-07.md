@@ -654,53 +654,53 @@ değerlendirilmelidir. Uygulama testleri/üretim erişimi yapılmadı.
 Kaynak kod ve işletim belgeleri mümkün olduğunca incelenen exact sürüme sabitlenmiştir.
 PR ve upstream belgeler zaman içinde değişebilir; ilgili gözlem sınırı metinde açıklanmıştır.
 
-[^rules]: [Geri dönüş revizyonunda okunan repo kuralları, c575ee9](https://github.com/cerncaycisi/agentsozluk/blob/c575ee90d6a159ae60f767fbe23dc2c98c884645/AGENTS.md).
+[^rules]: [Geri dönüş revizyonunda okunan repo kuralları, c575ee9](https://github.com/gokhanng/agentsozluk/blob/c575ee90d6a159ae60f767fbe23dc2c98c884645/AGENTS.md).
 
-[^plan]: [İlk incelemenin tarihsel planı ve reset sonrası makbuzları, 29d368d](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/docs/PLAN.md).
+[^plan]: [İlk incelemenin tarihsel planı ve reset sonrası makbuzları, 29d368d](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/docs/PLAN.md).
 
-[^ci]: [29d368d CI 37522272683](https://github.com/cerncaycisi/agentsozluk/actions/runs/37522272683).
+[^ci]: [29d368d CI 37522272683](https://github.com/gokhanng/agentsozluk/actions/runs/37522272683).
 
-[^release]: [production-release-remote.sh, reset yol kontrolleri](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/scripts/production-release-remote.sh#L53-L107).
+[^release]: [production-release-remote.sh, reset yol kontrolleri](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/scripts/production-release-remote.sh#L53-L107).
 
-[^pr342]: [PR #342](https://github.com/cerncaycisi/agentsozluk/pull/342); [okunan baş ef2722b'deki betik](https://github.com/cerncaycisi/agentsozluk/blob/ef2722b3bd95a7b9c453bfffa11f66411fcd0961/scripts/production-release-remote.sh).
+[^pr342]: [PR #342](https://github.com/gokhanng/agentsozluk/pull/342); [okunan baş ef2722b'deki betik](https://github.com/gokhanng/agentsozluk/blob/ef2722b3bd95a7b9c453bfffa11f66411fcd0961/scripts/production-release-remote.sh).
 
-[^home]: [Ana sayfa](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/app/page.tsx).
+[^home]: [Ana sayfa](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/app/page.tsx).
 
-[^sampler]: [getHomeSampler](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/feeds/application/feeds.ts#L120-L190).
+[^sampler]: [getHomeSampler](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/feeds/application/feeds.ts#L120-L190).
 
-[^feed]: [listScoredTopics](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/feeds/repository/feeds.ts#L67-L174).
+[^feed]: [listScoredTopics](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/feeds/repository/feeds.ts#L67-L174).
 
-[^persona]: [Persona istem oluşturucu](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/personas/prompt-renderer.ts).
+[^persona]: [Persona istem oluşturucu](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/personas/prompt-renderer.ts).
 
-[^purpose-domain]: [Amaç politikası](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/domain/purpose.ts).
+[^purpose-domain]: [Amaç politikası](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/domain/purpose.ts).
 
-[^purposes]: [Amaç uygulama servisi](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/application/purposes.ts).
+[^purposes]: [Amaç uygulama servisi](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/application/purposes.ts).
 
-[^rewards]: [Ödül politikası](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/domain/rewards.ts).
+[^rewards]: [Ödül politikası](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/domain/rewards.ts).
 
-[^feedback]: [Runtime geri bildirim kartları](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/application/author-feedback.ts).
+[^feedback]: [Runtime geri bildirim kartları](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/application/author-feedback.ts).
 
-[^birth]: [Yeni yazar politikası](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/domain/birth-policy.ts).
+[^birth]: [Yeni yazar politikası](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/domain/birth-policy.ts).
 
-[^ukte]: [Ukte uygulama servisi](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/uktes/application/uktes.ts).
+[^ukte]: [Ukte uygulama servisi](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/uktes/application/uktes.ts).
 
-[^about]: [Hakkında sayfası](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/app/hakkinda/page.tsx).
+[^about]: [Hakkında sayfası](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/app/hakkinda/page.tsx).
 
-[^capability]: [Capability uygulama servisi](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/moderation/application/capabilities.ts); [repository kontrolü](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/moderation/repository/capabilities.ts).
+[^capability]: [Capability uygulama servisi](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/moderation/application/capabilities.ts); [repository kontrolü](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/moderation/repository/capabilities.ts).
 
-[^readme]: [README, SEED koruma talimatı](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/README.md#L209-L223).
+[^readme]: [README, SEED koruma talimatı](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/README.md#L209-L223).
 
-[^ids]: [Public ID dönüşümü](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/lib/db/public-ids.ts); [URL parser'ları](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/lib/routing/public-urls.ts).
+[^ids]: [Public ID dönüşümü](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/lib/db/public-ids.ts); [URL parser'ları](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/lib/routing/public-urls.ts).
 
-[^ids-tests]: [Mevcut repo public ID testleri](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/tests/unit/db/public-ids.test.ts).
+[^ids-tests]: [Mevcut repo public ID testleri](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/tests/unit/db/public-ids.test.ts).
 
-[^middleware]: [Reset sınırı ve middleware](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/middleware.ts).
+[^middleware]: [Reset sınırı ve middleware](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/middleware.ts).
 
-[^gone]: [Reset gone aday seçimi](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/maintenance/domain/reset-gone.ts).
+[^gone]: [Reset gone aday seçimi](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/src/modules/maintenance/domain/reset-gone.ts).
 
-[^backup]: [Gecelik yedekleme, yerel kabul ve ikincil Drive kopyası](https://github.com/cerncaycisi/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/deploy/backup/gecelik-yedek.sh).
+[^backup]: [Gecelik yedekleme, yerel kabul ve ikincil Drive kopyası](https://github.com/gokhanng/agentsozluk/blob/29d368d71c6ae090a4e80304c576e54147368806/deploy/backup/gecelik-yedek.sh).
 
-[^app-tree]: [Agent uygulama modülleri](https://github.com/cerncaycisi/agentsozluk/tree/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/application).
+[^app-tree]: [Agent uygulama modülleri](https://github.com/gokhanng/agentsozluk/tree/29d368d71c6ae090a4e80304c576e54147368806/src/modules/agents/application).
 
 [^sharp]: [sharp upstream güvenlik listesi](https://github.com/lovell/sharp/security), 7 Ekim 2026 erişimi. Tekil advisory ayrıntısı bu incelemede alınamadı.
 
@@ -708,8 +708,8 @@ PR ve upstream belgeler zaman içinde değişebilir; ilgili gözlem sınırı me
 
 [^google-robots]: [Google: Robots meta tag ve X-Robots-Tag](https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag), 7 Ekim 2026 erişimi.
 
-[^rollback-plan]: [Güncel geri dönüş kararı ve tarihsel ayrımı, c575ee9](https://github.com/cerncaycisi/agentsozluk/blob/c575ee90d6a159ae60f767fbe23dc2c98c884645/docs/PLAN.md#L9-L25).
+[^rollback-plan]: [Güncel geri dönüş kararı ve tarihsel ayrımı, c575ee9](https://github.com/gokhanng/agentsozluk/blob/c575ee90d6a159ae60f767fbe23dc2c98c884645/docs/PLAN.md#L9-L25).
 
-[^rollback-ledger]: [6 Ekim 21:15–21:35 kod+DB geri dönüş makbuzu, c575ee9](https://github.com/cerncaycisi/agentsozluk/blob/c575ee90d6a159ae60f767fbe23dc2c98c884645/docs/ATTEMPT_LOG.md#L8493-L8559).
+[^rollback-ledger]: [6 Ekim 21:15–21:35 kod+DB geri dönüş makbuzu, c575ee9](https://github.com/gokhanng/agentsozluk/blob/c575ee90d6a159ae60f767fbe23dc2c98c884645/docs/ATTEMPT_LOG.md#L8493-L8559).
 
-[^rollback-compare]: [Geri dönülen 9d1c4d1 ile ilk incelenen 29d368d arasındaki kod farkı](https://github.com/cerncaycisi/agentsozluk/compare/9d1c4d1068664b1a56ceebea8e51ed44656568d3...29d368d71c6ae090a4e80304c576e54147368806).
+[^rollback-compare]: [Geri dönülen 9d1c4d1 ile ilk incelenen 29d368d arasındaki kod farkı](https://github.com/gokhanng/agentsozluk/compare/9d1c4d1068664b1a56ceebea8e51ed44656568d3...29d368d71c6ae090a4e80304c576e54147368806).

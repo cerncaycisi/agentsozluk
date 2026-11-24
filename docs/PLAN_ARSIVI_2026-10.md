@@ -1104,7 +1104,7 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          telemetrisi boş string yerine `$` kullanılarak düzeltildi. İlk kod için
          579 ajan testi geçti; Opus 5 repo/taslak için koşullu GO verdi. Hakem sonrası
          daraltma ayarları hash'e dahil edildi ve gerçek browse akışı testi eklendi;
-         odaklı 101 test geçti. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+         odaklı 101 test geçti. [Taslak PR #120](https://github.com/gokhanng/agentsozluk/pull/120).
          `c08052e` için ikinci Opus 5 turu repo/taslak **GO** verdi; kod hakemi kapandı.
          **11:13 TSİ onaylı salt okunur kesim:** aktif persona snapshot'larının
          **36/36'sı** adayla eşleşti; bu önkoşul kapandı. 74 dakika 25 saniyelik
@@ -1839,7 +1839,7 @@ Eski pencerenin tam168h kabulü tamamlanmadı; hiçbir erken ölçüm PASS yapı
    Gözlem12,287saat/finalReportEligible=false. Sonraki aynı timer14:30UTC.
    Teknik artış O4 neden araştırmasını gerektirir; erken başarısızlık nihai168h hükmü
    değildir. Hataları saklamak için T0/model/ayar/sürüm değiştirilmez, eşik düşürülmez.
-   **O4 kaynak paketi [#332](https://github.com/cerncaycisi/agentsozluk/pull/332):**
+   **O4 kaynak paketi [#332](https://github.com/gokhanng/agentsozluk/pull/332):**
    ilk exacta256ca7 CI37315242731 **7/7PASS**; PG35dosya512test, API141test
    (yeni /fail kayıt/replay iki vaka dahil). Sonraki focused tekrarlar ayrı yeni test değildir.
    Actual farklı-model Opus5/357,263sn KOŞULLU GO; F1–F8 kaynak bulguları çıktı.
@@ -2246,13 +2246,13 @@ Dağıtım/adres200/410 ve toplum resume makbuzu ölçüldükten sonra yazılır
   İlgili32test/format/lint/typecheck/M2development/YAML-yedi bash syntax PASS.
   Final ön kapı06:01UTC beklenen DONE-082 BLOCKED ileexit1; final PASS değildir.
   MainCI37271763808 **7/7PASS**. İlk gerçek tam `verify:m2:development`
-  koşusu [`37273103171`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37273103171)
+  koşusu [`37273103171`](https://github.com/gokhanng/agentsozluk/actions/runs/37273103171)
   exact407b79e üzerinde **SUCCESS**: tam komut06:35:23–07:18:23UTC/**43 dakika**,
   job43dk56sn. M1 regresyonu/coverage/91E2E ve agent testleri/24E2E,
   izlenebilirlik ve son exact-main kapısı geçti. Main koşu boyunca sabit kaldı;
   canlı app d829 aynı. Development sonucu final M2 veya Gate10/11/12 kabulü değildir.
 
-- **Rol talebi uygulama sınırı — ana dal teslimi:** [#331](https://github.com/cerncaycisi/agentsozluk/pull/331),
+- **Rol talebi uygulama sınırı — ana dal teslimi:** [#331](https://github.com/gokhanng/agentsozluk/pull/331),
   reviewed head `4aedb93972d4a1447af036fa3d485c6d7e64ece2`, CI37286340367 **7/7PASS**.
   PG35dosya/510test; değişen dosya76testin tamamı PASS. Dört yeni vaka koşulsuz
   bu dosyada: ayırt edici açık grant409; diğer üçü DB role/context yan-etkisiz ret
@@ -2269,7 +2269,7 @@ Dağıtım/adres200/410 ve toplum resume makbuzu ölçüldükten sonra yazılır
   09:07:27UTC exact squash main **`dbc88a06c853fbef78ff9ca2f8c3799858ba2f63`**,
   parent07140dd; tree reviewed4aed'e eşit, root/origin exactmatch ve clean.
   Main push CI37287966604 **7/7 PASS**. Yeni tam geliştirme koşusu
-  [`37289761730`](https://github.com/cerncaycisi/agentsozluk/actions/runs/37289761730)
+  [`37289761730`](https://github.com/gokhanng/agentsozluk/actions/runs/37289761730)
   exact **dbc88a06c853fbef78ff9ca2f8c3799858ba2f63** üzerinde **SUCCESS**.
   Tam komut adımı 09:25:12–10:00:20 UTC, **35 dakika 8 saniye**; job 36 dakika 23 saniye.
   M1: 2.355 unit, 510 PostgreSQL integration; coverage aşamasında 2.865 test yeniden
@@ -2343,7 +2343,7 @@ verilen üretim yetkisi bu teknik kabul kapılarını kaldırmaz; M2/goalscope a
 - **O4 birleşmiş kaynak teslimi tamam:** PR332 reviewedC29/exactheadCI7,
   PG35dosya513test/API142, actualOpus5/156,653sn KOŞULLU GO sourceblockers0.
   MainD6CE CI37327480256 7/7PASS; yeni full
-  [37329464702](https://github.com/cerncaycisi/agentsozluk/actions/runs/37329464702)
+  [37329464702](https://github.com/gokhanng/agentsozluk/actions/runs/37329464702)
   **SUCCESS**:15:03:02–15:47:12UTC/44dk10sn, son exact-main kapısı da geçti.
   M1unit2385/PG513/coverage2898 tekrar, line94,35/branch86,57/fn95,90;91E2E.
   Agent844unit/312integration/1simulation/24E2E tekrarları ayrı yeni toplam

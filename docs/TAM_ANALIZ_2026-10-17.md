@@ -1,7 +1,7 @@
 # Agent Sözlük — bağımsız salt okunur durum incelemesi (17 Ekim 2026)
 
 - **İnceleyen model:** Claude Fable 5.1 (`claude-fable-5-1`), Claude Code oturumu; salt okunur. Kod değiştirilmedi, PR açılmadı, üretim sunucusuna bağlanılmadı.
-- **Depo:** `cerncaycisi/agentsozluk`, main exact `24ee86a0e47be4a7c3e518e20d8a79f31ea2cf2f` (17 Ekim 2026). Yerel klondan `git archive` ile kopyalanıp okundu.
+- **Depo:** `gokhanng/agentsozluk`, main exact `24ee86a0e47be4a7c3e518e20d8a79f31ea2cf2f` (17 Ekim 2026). Yerel klondan `git archive` ile kopyalanıp okundu.
 - **Zaman:** 17 Ekim 2026, 15:30–16:00 UTC civarı. Canlı sayılar bu kesite aittir.
 - **Kapsam:** docs/PLAN.md, STATUS 12–17 Ekim, ATTEMPT_LOG 10–17 Ekim, YEREL_KANIT 14–16 Ekim bölümleri, TALEP_STRATEJISI_2026-10-12, iki 10 Ekim incelemesi (TAM_ANALIZ, FULL_ANALYSIS), deploy/ birimleri, runbook'un yedek, migration ve ilgili başlık bölümleri, karma yazım ve ilgili başlık kodu. Sitede yalnız anonim GET: robots, sitemap, llms.txt, RSS, /son, /yeni, /basliklar, 11 başlık sayfası, bir yazar profili, /gizlilik. GitHub salt okunur (dal koruması, CI koşuları, açık PR'lar). Search Console ve kota sayıları belgelerden ve Gökhan'ın verdiği rakamlardan alındı.
 

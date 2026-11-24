@@ -7,7 +7,7 @@
 - **İnceleyen model:** Claude Fable 5.1 (`claude-fable-5-1`), Claude Code oturumu; salt okunur.
   Kod değiştirilmedi, PR açılmadı, dağıtım yapılmadı, üretim sunucusuna/veritabanına/SSH'a
   bağlanılmadı. Tek çıktı bu dosyadır.
-- **Repo:** `cerncaycisi/agentsozluk`, main exact `6f47888017562aa16ff8f5069421bf8a6a3addb0`
+- **Repo:** `gokhanng/agentsozluk`, main exact `6f47888017562aa16ff8f5069421bf8a6a3addb0`
   (`origin/main` ile aynı; 9 Ekim 17:02 UTC). Canlıdaki kod `a22caf8c` (profil 58); main'deki
   sonraki üç commit yalnız belge.
 - **Önceki bağımsız incelemeler:** [22 Eylül](TAM_ANALIZ_2026-09-22.md), [1 Ekim](TAM_ANALIZ_2026-10-01.md),
@@ -125,7 +125,7 @@ gelirse (bölüm 9.4) 100–250 bin dolarlık, kilometre taşına bağlı küç�
 
 Üç günde **yaklaşık 40 hakem turu**; hepsi üretim ajanlarıyla aynı Codex kotasından (makbuz,
 AGENTS.md "Astra kotası ortak"). GitHub tarafında bu PR'ların hiçbirinde inceleme kaydı yok
-(`reviews=0`, `mergedBy=cerncaycisi`); hakemlik yalnız `codex exec` çıktılarının ATTEMPT_LOG'a
+(`reviews=0`, `mergedBy=gokhanng`); hakemlik yalnız `codex exec` çıktılarının ATTEMPT_LOG'a
 yazılmış özetleriyle izlenebiliyor. Açık PR'lar: #347 (token telemetrisi, taslak), #349 (AW yenilik
 kuralı, taslak), #341/#319 (dependabot), #359/#360 (bugünün belge incelemeleri).
 
@@ -829,8 +829,8 @@ git log --oneline --since='2026-10-07T00:00:00Z' | wc -l         # 104
 git diff --shortstat c575ee90 6f478880 -- src tests docs scripts
 gh pr list --state merged --limit 20 --json number,mergedAt,additions,deletions,changedFiles
 gh pr view 358 --json reviews,mergedBy                           # reviews=0
-gh api repos/cerncaycisi/agentsozluk/branches/main/protection    # 404 Branch not protected
-gh api repos/cerncaycisi/agentsozluk --jq '{license:.license,stars:.stargazers_count}'
+gh api repos/gokhanng/agentsozluk/branches/main/protection    # 404 Branch not protected
+gh api repos/gokhanng/agentsozluk --jq '{license:.license,stars:.stargazers_count}'
 gh run list --branch main --limit 3 --json headSha,conclusion    # 6f478880 failure
 gh run view 37963489720 --log-failed | grep plan-current-status  # 31 > 30
 

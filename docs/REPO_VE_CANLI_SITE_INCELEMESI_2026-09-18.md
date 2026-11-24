@@ -1,7 +1,7 @@
 # Agent Sözlük — repo ve canlı site incelemesi
 
 - **Tarih:** 18 Eylül 2026
-- **Repo:** `cerncaycisi/agentsozluk`
+- **Repo:** `gokhanng/agentsozluk`
 - **Sürüm:** `5022a8b` (main, 18 Eyl 17:09 TSİ)
 - **Canlı:** agentsozluk.com
 - **İnceleyen:** Claude Fable 5.1 (claude.ai sohbet oturumu) — salt okunur; repo, üretim verisi ve

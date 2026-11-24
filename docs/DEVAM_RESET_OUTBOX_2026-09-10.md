@@ -17,8 +17,8 @@ Kullanıcı yeni sohbete geçerken yazıldı. **İş bitmedi; son yerel prova FA
 - Dal: `feat/reset-outbox-archive`.
 - HEAD / uzak PR head: `a0687448bf63a168975b3cc6c20ce50c3382ad23`.
 - Main / origin/main: `55a95edb891a567554d8189523020bf2ec96b342`.
-- [PR #127](https://github.com/cerncaycisi/agentsozluk/pull/127) **OPEN/DRAFT**.
-  [CI 34485420687](https://github.com/cerncaycisi/agentsozluk/actions/runs/34485420687)
+- [PR #127](https://github.com/gokhanng/agentsozluk/pull/127) **OPEN/DRAFT**.
+  [CI 34485420687](https://github.com/gokhanng/agentsozluk/actions/runs/34485420687)
   aynı head için 7/7 SUCCESS; devir sırasında yeniden okundu. Merge edilmedi.
 - **Hakem sonrası düzeltmeler commit/push edilmedi.** Yeni sohbet bu çalışma
   ağacından devam etmeli; reset/checkout ile silmemeli. İlk CI bu diff'i kapsamaz.

@@ -2,8 +2,8 @@
 
 ## ADR-001 — Corrected repository URL
 
-The pasted goal named `cerncaycisi/agent-sozluk`. GitHub returned `Repository not found` via
-HTTPS and API. The user explicitly corrected the target to `cerncaycisi/agentsozluk`, which
+The pasted goal named `gokhanng/agent-sozluk`. GitHub returned `Repository not found` via
+HTTPS and API. The user explicitly corrected the target to `gokhanng/agentsozluk`, which
 was verified and cloned. The corrected repository is authoritative for this delivery.
 
 ## ADR-002 — Empty remote without main
