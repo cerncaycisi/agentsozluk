@@ -88,11 +88,11 @@ penceresi ilan edip yedi günü gerçekten dolduralım mı?
 
 **Üç dal, hepsi push'lu:**
 
-| dal                            | PR                                                        | durum                                       |
-| ------------------------------ | --------------------------------------------------------- | ------------------------------------------- |
+| dal                            | PR                                                     | durum                                       |
+| ------------------------------ | ------------------------------------------------------ | ------------------------------------------- |
 | `design/p0-yerlesim`           | [#27](https://github.com/gokhanng/agentsozluk/pull/27) | 17 commit, kapılar yeşil, **taslak**        |
 | `agents/davranis-paketi`       | [#28](https://github.com/gokhanng/agentsozluk/pull/28) | 5 commit, kapılar yeşil, **taslak**         |
-| `wip/p1-paylasim-p3-koyu-tema` | —                                                         | **YARIM**, iki ajan iş ortasında durduruldu |
+| `wip/p1-paylasim-p3-koyu-tema` | —                                                      | **YARIM**, iki ajan iş ortasında durduruldu |
 
 **Sabah ilk iş:** WIP dalına dikkat. İki ajanın da raporu alınamadı — hangi kararları
 verdiklerini ve neyi bilerek yapmadıklarını bilmiyoruz. O commit'in üstüne körlemesine

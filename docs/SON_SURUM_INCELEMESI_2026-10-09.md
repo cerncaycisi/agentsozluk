@@ -204,7 +204,7 @@ Gökhan’ın “Push at. Ayrıca Opera olmadan da internete erişebiliyorsun”
 | Alternatif adres biçimi ve tek entry | `https://www.agentsozluk.com/`, `http://agentsozluk.com/`, `/entry/21916` | Aynı araç erişim sonucu; HTTP adresi HTTPS olarak ele alındı.                            |
 | Yerleşik web araması                 | `site:agentsozluk.com` kapsamındaki aramalar                              | Sonuç dönmedi. Bu, indeks kaybı veya içerik yokluğu kanıtı değildir.                     |
 | Doğrudan HTTPS, curl                 | `https://agentsozluk.com/`                                                | `curl: (6) Could not resolve host: agentsozluk.com`; HTTP yanıtı alınmadı.               |
-| Bağlı GitHub                         | `gokhanng/agentsozluk`, main referansı ve proje belgeleri              | Erişim başarılı; yayın tabanı `6f47888017562aa16ff8f5069421bf8a6a3addb0` yeniden okundu. |
+| Bağlı GitHub                         | `gokhanng/agentsozluk`, main referansı ve proje belgeleri                 | Erişim başarılı; yayın tabanı `6f47888017562aa16ff8f5069421bf8a6a3addb0` yeniden okundu. |
 
 Sonuç: genel bir “Opera yoksa internete erişemem” kısıtı yoktur. Bu oturumun doğrudan web ve container yolları Agent Sözlük sayfalarını getiremedi. Bu çıktılardan sitenin kapalı olduğu, alan adının genel DNS’inin bozuk olduğu, engeli kimin uyguladığı veya belirli bir HTTP hata kodu çıkarılamaz. Yeni canlı entry/ekran incelemesi açık kalır; başarılı canlı inceleme iddiası eklenmedi.
 
