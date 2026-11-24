@@ -4485,6 +4485,23 @@ components:
                     CLAUDE_EXEC_FAILED,
                     CLAUDE_OUTPUT_INVALID,
                   ]
+            guardCodes:
+              type: array
+              maxItems: 10
+              items:
+                type: string
+                enum:
+                  [
+                    EMPTY,
+                    MARKUP,
+                    SERVER_SCHEMA,
+                    CONSTITUTION,
+                    QUOTE,
+                    OFFLINE_CLAIM,
+                    SERIOUS_CLAIM,
+                    SENSITIVE,
+                    META_REFERENCE,
+                  ]
           required:
             - profile
             - candidateCount

@@ -9,7 +9,11 @@ import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety
 import { weeklyPersonaEvolutionDeltaSchema } from "@/modules/agents/domain/persona-evolution";
 import { operatorReasonSchema } from "@/modules/agents/validation/schemas";
 import { agentRuntimeCodexProfileNames } from "@/runtime/codex-profiles";
-import { claudeWriterProfileNames, claudeWriterSafeCodes } from "@/runtime/claude-writer-profiles";
+import {
+  claudeWriterGuardCodes,
+  claudeWriterProfileNames,
+  claudeWriterSafeCodes,
+} from "@/runtime/claude-writer-profiles";
 
 export const runtimeWorkerIdSchema = z
   .string()
@@ -587,6 +591,8 @@ export const usageMetadataSchema = z
         failedOpenCount: z.number().int().min(0).max(100),
         skippedCount: z.number().int().min(0).max(100),
         failureCodes: z.array(z.enum(claudeWriterSafeCodes)).max(10),
+        // Korumanın ret nedenleri (24 Kasım; ilk gece Claude gövdelerinin üçte biri reddedildi).
+        guardCodes: z.array(z.enum(claudeWriterGuardCodes)).max(10).optional(),
       })
       .strict()
       .optional(),

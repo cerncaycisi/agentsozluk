@@ -10344,3 +10344,9 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - Claude CLI'yi `--bare` ile çalıştırma: OAuth okunmaz, yalnız API anahtarı.
 - Kör okumayı 16 entry'den uzun tutma; Gökhan sıkılıyor (7. soruda kesti).
 - Worker'ı `systemctl restart` ile 120 sn'lik ön plan komutunda bekleme: açık koşu bitene kadar `deactivating` kalır; arka planda bekle.
+
+## 24 Kasım — Claude yazar koruma ret nedeni kaydı
+
+- **Bulgu:** yazı turanın ilk 14 saatinde Claude kolu 24 aday: 14 yazıldı, 8 koruma reddi, hata 0; kontrol kolu 23. Ret nedeni kayıtta yoktu.
+- **Değişiklik:** `writer.guardCodes` (isteğe bağlı, kapalı 9 kodluk liste, tekrarsız); eski kayıtlar geçerli kalır.
+- **Hakem:** Sol 6.1 xhigh `f2e2fa0e` BULGU YOK.

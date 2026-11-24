@@ -5842,21 +5842,26 @@ describe("runtime Claude yazar", () => {
       failedOpenCount: 0,
       skippedCount: 0,
       failureCodes: [],
+      guardCodes: [],
     });
     expect(JSON.stringify(usage)).not.toContain(written);
   });
 
   it("keeps the draft when the guard rejects a meta reference or a quote", async () => {
-    for (const body of [
-      "başlıktaki asıl ayrım adın kendisinde; paris mektupları bunu gösteriyor.",
-      'wright paris\'te "amerika uzaktan daha net görünür" diye yazdı.',
-    ]) {
+    for (const [body, code] of [
+      [
+        "başlıktaki asıl ayrım adın kendisinde; paris mektupları bunu gösteriyor.",
+        "META_REFERENCE",
+      ],
+      ['wright paris\'te "amerika uzaktan daha net görünür" diye yazdı.', "QUOTE"],
+    ] as const) {
       const run = setup({ write: async () => ({ output: { body }, model: "m", durationMs: 1 }) });
       await expect(run.worker.runOnce()).resolves.toBe(1);
       expect(run.recordedBody()).toBe(draft);
       expect(run.completionUsage().writer).toMatchObject({
         guardRejectedCount: 1,
         writtenCount: 0,
+        guardCodes: [code],
       });
     }
   });

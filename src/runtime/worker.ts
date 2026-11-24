@@ -145,6 +145,7 @@ import {
   type EntryWriterProvider,
 } from "@/runtime/claude-cli-provider";
 import type { TopicReferenceFetcher } from "@/runtime/topic-reference";
+import type { ClaudeWriterGuardCode } from "@/runtime/claude-writer-profiles";
 
 /** Claude yazar çağrısından sonra kalan süre hesabındaki güvenlik payı (temizlik, kayıt). */
 const RUNTIME_WRITER_MARGIN_MS = 5_000;
@@ -2015,6 +2016,7 @@ export class AgentRuntimeWorker {
       failedOpenCount: number;
       skippedCount: number;
       failureCodes: ClaudeWriterSafeCode[];
+      guardCodes: ClaudeWriterGuardCode[];
     } | null = null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
@@ -2640,6 +2642,7 @@ export class AgentRuntimeWorker {
           failedOpenCount: 0,
           skippedCount: 0,
           failureCodes: [],
+          guardCodes: [],
         });
         const bodies = new Map<number, string>();
         const writerPendingNoveltyCalls = Math.min(
@@ -2697,8 +2700,10 @@ export class AgentRuntimeWorker {
             const parsed = runtimeWriterOutputSchema.safeParse(written.output);
             if (!parsed.success) throw new ClaudeWriterError("CLAUDE_OUTPUT_INVALID");
             const body = parsed.data.body.trim();
-            if (runtimeWriterBodyIssue(body, { topicTitle: candidate.topicTitle }) !== null) {
+            const guardCode = runtimeWriterBodyIssue(body, { topicTitle: candidate.topicTitle });
+            if (guardCode !== null) {
               stats.guardRejectedCount += 1;
+              if (!stats.guardCodes.includes(guardCode)) stats.guardCodes.push(guardCode);
               continue;
             }
             bodies.set(candidate.sequence, body);
