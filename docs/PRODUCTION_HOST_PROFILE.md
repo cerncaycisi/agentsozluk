@@ -5,7 +5,7 @@ Last verified: 2026-10-13
 **Sunucu taşıma (13–14 Ekim 2026, Gökhan kararı):** üretim OVH VPS-1'e (2 vCPU, 4 GB RAM, 40 GB
 NVMe, Ubuntu 24.04) taşındı. Hostname, dizin düzeni, kullanıcılar, Docker/Node/pnpm/Codex sürümleri
 ve uygulama imajı eski sunucuyla birebir aynıdır; değişen yalnız IPv4 ve SSH host parmak izidir.
-Yeni sunucuda yerel yedek saklama süresi 3 gündür (`backup-postgres.sh` `RETENTION_MINUTES=4320`);
+Yerel yedek saklama süresi 24 Kasım 2026'dan beri 1 gündür (`backup-postgres.sh` `RETENTION_MINUTES=1440`, Gökhan "1 güne indir"; önce 3 gün);
 sunucu dışı kopyalar operatör sunucusunda ve Drive'dadır.
 
 This file records only non-secret compatibility facts. It must not contain environment values,

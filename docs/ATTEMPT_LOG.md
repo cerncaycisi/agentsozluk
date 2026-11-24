@@ -10350,3 +10350,11 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Bulgu:** yazı turanın ilk 14 saatinde Claude kolu 24 aday: 14 yazıldı, 8 koruma reddi, hata 0; kontrol kolu 23. Ret nedeni kayıtta yoktu.
 - **Değişiklik:** `writer.guardCodes` (isteğe bağlı, kapalı 9 kodluk liste, tekrarsız); eski kayıtlar geçerli kalır.
 - **Hakem:** Sol 6.1 xhigh `f2e2fa0e` BULGU YOK.
+
+## 24 Kasım — #521 dağıtımı diskte durdu, yerel yedek 1 güne indi
+
+- **Hatalar (`eddd59d6`):** (1) `SERVER_FETCH_FAIL code=ROOT_HEADROOM_LOW` (7,9 GiB; eşik 8 GiB); journal 150 MB'a kırpıldı (+337 MB). (2) Yeniden koşu `RELEASE_LOCKED`: başarısız koşu kilidi bırakmıştı; runbook beş koşulu doğrulanıp kaldırıldı. (3) Aday imaj yüklendikten sonra `RELEASE_FAIL code=DISK_HEADROOM used_percent=84`; kilit yine beş koşulla kaldırıldı. Canlı `170972ab`'de kaldı, akış açıldı.
+- **Kök neden:** canlıda 3 günlük yerel dump (4 dosya, 9,4 GB) + üç imaj (çalışan, önceki, aday).
+- **Karar:** Gökhan "1 güne indir", ardından 24 saat beklemeyi açıkça kaldırdı. Drive'da 21–24 Kasım gece yedekleri (tam geri yükleme doğrulamalı) görüldükten sonra canlıdaki 21–23 Kasım dump'ları silindi; boş 6,3 → 14 GiB (%65). `RETENTION_MINUTES=1440`.
+
+**Do not repeat:** dağıtım öncesi `df` 8 GiB'ın hemen üstündeyse aday imaj (~2 GB) yüklenince ikinci kapı düşer; önce yer aç. Başarısız koşudan sonra kilit kalır, yalnız runbook beş koşuluyla kaldır.
