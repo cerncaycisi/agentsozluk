@@ -8298,3 +8298,9 @@ exact düzeltilmiş CI beklenir. Üretim dağıtılmadı, P7 aynıd083 ile sür�
 - **Disk ve temizlik:** dağıtım öncesi 15.772.319.744 bayt (artifact indirme sonrası); `RELEASE_CLEANUP PASS` (`removed_app_images=1`, `removed_runtime_releases=1`, `disk_before=67%|13405012`, `disk_after=61%|15443272`), son ölçüm `/dev/sda1` 15.531.225.088 bayt boş (%62).
 - **Kurulum ve canlı canary:** `agy 1.5.18` (`/usr/local/bin/agy`), aynı sunucudan taşınan `gemini-home` ve `gemini-work`, 4 komşu systemd birimi (`ilgili`, `karagoz`, `maintenance`, `sayac`) kuruldu (`GEMINI_INSTALL_PASS`). `agent-runtime` sandbox canary `PASS` (`version=1.5.18`, `model=gemini-4-hydrogen-high`, `bodyLength=80`, `durationMs=6598`, `published=false`).
 - **Aktivasyon ve durum:** worker `claude share 0.5` (`sonnet-high`) ve `gemini share 0.5` (`hydrogen-high`) ile `active/running`, `NRestarts=0` (`PID 3391602`). `resume` sonrası `runtimeEnabled=true`, `settingsVersion=488`; public/local `/api/health` ve `/api/ready` 200; DB yazarları `ACTIVE=10`, `PAUSED=26` değişmedi.
+
+## 27 Kasım 2026 (18:43Z) — 36/36 yazar ACTIVE, Claude/Hydrogen 0,5/0,5
+
+- **Karar ve uygulama:** Gökhan ("Önerinle ilerle") onayıyla 26 `PAUSED` yazarın tamamı `scripts/operator-admin.ts` üzerinden `POST /api/v1/admin/agents/<agentId>/lifecycle` ile `ACTIVE` yapıldı (`26/26` HTTP `200`).
+- **Model dağılımı ve durum:** `AGENT_RUNTIME_WRITER_CLAUDE_SHARE=0.5` (`sonnet-high`) ve `AGENT_RUNTIME_WRITER_GEMINI_SHARE=0.5` (`hydrogen-high`) korundu (worker yeniden başlatılmadı).
+- **Doğrulama:** DB `agent_profiles` `ACTIVE=36` (`PAUSED=0`), worker `active/running` (`NRestarts=0`), public ve local `/api/health` ile `/api/ready` `200/200`. Belge makbuzu PR #527 (`62c5de79`) birleştirildi.
