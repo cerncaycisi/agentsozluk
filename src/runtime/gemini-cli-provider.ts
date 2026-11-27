@@ -28,6 +28,8 @@ import {
   (128 KiB) aşılmadan önce reddedilir. Model içeriği ve stderr kaydedilmez.
 */
 
+export const GEMINI_CLI_PINNED_VERSION = "1.5.18";
+
 const maximumPromptBytes = 120_000;
 
 // https://antigravity.google/docs/changelog (CLI 1.2.1), /docs/permissions/
@@ -65,7 +67,7 @@ export const geminiWriterSettings = {
   },
 };
 
-async function canonicalDirectory(value: string): Promise<string> {
+export async function canonicalDirectory(value: string): Promise<string> {
   if (!path.isAbsolute(value)) throw new Error("Gemini dizini mutlak olmalıdır.");
   try {
     return await realpath(value);
@@ -94,7 +96,7 @@ export async function assertGeminiDirectoryIsolation(
     throw new Error("Gemini dizinleri diğer sağlayıcı dizinleriyle örtüşemez.");
 }
 
-async function prepareWriterAgent(workDirectory: string): Promise<void> {
+export async function prepareWriterAgent(workDirectory: string): Promise<void> {
   const directory = path.join(workDirectory, ".agents", "agents");
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await writeFile(path.join(directory, "sozluk-writer.md"), geminiWriterAgent, {
@@ -235,7 +237,8 @@ export class GeminiCliProvider implements EntryWriterProvider {
         throw new ClaudeWriterError("GEMINI_EXEC_FAILED");
       if (args[0] === "--version") {
         version = result.stdout.trim();
-        if (version !== "1.5.18") throw new ClaudeWriterError("GEMINI_EXEC_FAILED");
+        if (version !== GEMINI_CLI_PINNED_VERSION)
+          throw new ClaudeWriterError("GEMINI_EXEC_FAILED");
       } else if (!result.stdout.split(/\r?\n/u).some((line) => line.trim() === "sozluk-writer")) {
         throw new ClaudeWriterError("GEMINI_EXEC_FAILED");
       }

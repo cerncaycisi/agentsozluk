@@ -4314,7 +4314,11 @@ components:
         outputTokens: { type: integer, minimum: 0 }
         cachedInputTokens: { type: integer, minimum: 0 }
         durationMs: { type: integer, minimum: 0, maximum: 86400000 }
-        provider: { type: string, const: codex-cli }
+        provider:
+          type: string
+          enum:
+            - codex-cli
+            - gemini-cli
         codexIntervals:
           type: array
           minItems: 1

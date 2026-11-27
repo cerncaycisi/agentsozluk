@@ -113,8 +113,10 @@ export class RuntimeProviderExecutionError extends Error {
   }
 }
 
+export type RuntimeProviderName = "codex-cli" | "gemini-cli";
+
 export interface RuntimeProviderResult {
-  provider: "codex-cli";
+  provider: RuntimeProviderName;
   version: string;
   model?: string;
   reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
@@ -125,6 +127,7 @@ export interface RuntimeProviderResult {
 }
 
 export interface RuntimeProvider {
+  readonly providerName?: RuntimeProviderName;
   inspect(): Promise<{
     version: string;
     supportsStructuredOutput: boolean;

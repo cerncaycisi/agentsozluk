@@ -3302,7 +3302,10 @@ export class AgentRuntimeWorker {
               durationMs:
                 providerResult?.durationMs ??
                 codexIntervals.reduce((sum, interval) => sum + interval.durationMs, 0),
-              provider: providerResult?.provider ?? ("codex-cli" as const),
+              provider:
+                providerResult?.provider ??
+                this.#options.provider.providerName ??
+                ("codex-cli" as const),
               ...(providerResult
                 ? {
                     codexVersion: providerResult.version,

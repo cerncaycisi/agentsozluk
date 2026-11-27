@@ -3,7 +3,13 @@ import {
   capacityBenchmarkRequest,
   invokeWithStructuredRepair,
 } from "../src/runtime/capability-benchmark";
-import { agentRuntimeCodexProfileNames, CodexCliProvider } from "../src/runtime/codex-cli-provider";
+import { agentRuntimeCodexProfileNames } from "../src/runtime/codex-cli-provider";
+import {
+  buildMainRuntimeProvider,
+  mainRuntimeProviderEnvironmentShape,
+  protectedRuntimeDirectoriesFromEnvironment,
+  validateMainRuntimeProviderEnvironment,
+} from "../src/runtime/main-provider";
 import { parseRuntimeDecisionOutput } from "../src/runtime/output";
 
 const environmentSchema = z
@@ -15,8 +21,9 @@ const environmentSchema = z
       .string()
       .min(1)
       .default("/var/lib/agent-sozluk-runtime/credentials.json"),
-    AGENT_RUNTIME_CODEX_HOME: z.string().min(1),
-    AGENT_RUNTIME_WORK_ROOT: z.string().min(1),
+    ...mainRuntimeProviderEnvironmentShape,
+    AGENT_RUNTIME_CODEX_HOME: z.string().min(1).optional(),
+    AGENT_RUNTIME_WORK_ROOT: z.string().min(1).optional(),
     AGENT_RUNTIME_STATUS_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -24,18 +31,25 @@ const environmentSchema = z
       .max(10 * 60_000)
       .default(3 * 60_000),
   })
+  .superRefine(validateMainRuntimeProviderEnvironment)
   .passthrough();
 
 async function main(): Promise<void> {
   const environment = environmentSchema.parse(process.env);
-  const provider = new CodexCliProvider({
-    executable: environment.CODEX_EXECUTABLE,
+  const provider = buildMainRuntimeProvider({
+    mainProvider: environment.AGENT_RUNTIME_MAIN_PROVIDER,
+    codexExecutable: environment.CODEX_EXECUTABLE,
     sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
     credentialFile: environment.AGENT_RUNTIME_CREDENTIAL_FILE,
-    runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
+    codexHome: environment.AGENT_RUNTIME_CODEX_HOME,
     workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
     // Worker ile aynı profil (Astra, 14 Ekim): ölçüm ve durum, çalışan modelin kanıtı olmalı.
     codexProfile: environment.AGENT_RUNTIME_CODEX_PROFILE,
+    geminiExecutable: environment.GEMINI_EXECUTABLE,
+    geminiHome: environment.AGENT_RUNTIME_GEMINI_HOME,
+    geminiWorkRoot: environment.AGENT_RUNTIME_GEMINI_WORK_ROOT,
+    geminiProfile: environment.AGENT_RUNTIME_GEMINI_MAIN_PROFILE,
+    protectedDirectories: protectedRuntimeDirectoriesFromEnvironment(environment),
   });
   const inspected = await provider.inspect();
   const benchmark = capacityBenchmarkRequest(0);
@@ -49,6 +63,7 @@ async function main(): Promise<void> {
   process.stdout.write(
     `${JSON.stringify({
       executableInspected: true,
+      provider: result.provider,
       version: inspected.version,
       model: inspected.model,
       reasoningEffort: inspected.reasoningEffort,

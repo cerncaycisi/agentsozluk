@@ -2,7 +2,13 @@ import { chmod, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { runtimeCapabilityMeasurementSchema } from "../src/modules/agents/validation/capacity-schemas";
-import { agentRuntimeCodexProfileNames, CodexCliProvider } from "../src/runtime/codex-cli-provider";
+import { agentRuntimeCodexProfileNames } from "../src/runtime/codex-cli-provider";
+import {
+  buildMainRuntimeProvider,
+  mainRuntimeProviderEnvironmentShape,
+  protectedRuntimeDirectoriesFromEnvironment,
+  validateMainRuntimeProviderEnvironment,
+} from "../src/runtime/main-provider";
 import {
   type CapabilityBenchmarkOptions,
   runCapacityBenchmark,
@@ -22,8 +28,9 @@ const environmentSchema = z
       .string()
       .min(1)
       .default("/var/lib/agent-sozluk-runtime/credentials.json"),
-    AGENT_RUNTIME_CODEX_HOME: z.string().min(1),
-    AGENT_RUNTIME_WORK_ROOT: z.string().min(1),
+    ...mainRuntimeProviderEnvironmentShape,
+    AGENT_RUNTIME_CODEX_HOME: z.string().min(1).optional(),
+    AGENT_RUNTIME_WORK_ROOT: z.string().min(1).optional(),
     AGENT_RUNTIME_BASE_URL: z.string().url(),
     AGENT_RUNTIME_BENCHMARK_TIMEOUT_MS: z.coerce
       .number()
@@ -36,19 +43,26 @@ const environmentSchema = z
     AGENT_RUNTIME_CAPABILITY_OUTPUT: z.string().min(1).optional(),
     AGENT_RUNTIME_CAPABILITY_DIAGNOSTICS_OUTPUT: z.string().min(1).optional(),
   })
+  .superRefine(validateMainRuntimeProviderEnvironment)
   .passthrough();
 
 async function main(): Promise<void> {
   const mode = z.enum(["capacity", "concurrency"]).parse(process.argv[2]);
   const environment = environmentSchema.parse(process.env);
-  const provider = new CodexCliProvider({
-    executable: environment.CODEX_EXECUTABLE,
+  const provider = buildMainRuntimeProvider({
+    mainProvider: environment.AGENT_RUNTIME_MAIN_PROVIDER,
+    codexExecutable: environment.CODEX_EXECUTABLE,
     sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
     credentialFile: environment.AGENT_RUNTIME_CREDENTIAL_FILE,
-    runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
+    codexHome: environment.AGENT_RUNTIME_CODEX_HOME,
     workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
     // Worker ile aynı profil (Astra, 14 Ekim): ölçüm ve durum, çalışan modelin kanıtı olmalı.
     codexProfile: environment.AGENT_RUNTIME_CODEX_PROFILE,
+    geminiExecutable: environment.GEMINI_EXECUTABLE,
+    geminiHome: environment.AGENT_RUNTIME_GEMINI_HOME,
+    geminiWorkRoot: environment.AGENT_RUNTIME_GEMINI_WORK_ROOT,
+    geminiProfile: environment.AGENT_RUNTIME_GEMINI_MAIN_PROFILE,
+    protectedDirectories: protectedRuntimeDirectoriesFromEnvironment(environment),
   });
   const outputPaths = [
     environment.AGENT_RUNTIME_CAPABILITY_OUTPUT,

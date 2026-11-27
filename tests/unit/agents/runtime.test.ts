@@ -413,6 +413,12 @@ describe("provider failure telemetry wire privacy", () => {
     expect(usageMetadataSchema.safeParse({ durationMs: 1, provider: "codex-cli" }).success).toBe(
       true,
     );
+    expect(usageMetadataSchema.safeParse({ durationMs: 1, provider: "gemini-cli" }).success).toBe(
+      true,
+    );
+    expect(usageMetadataSchema.safeParse({ durationMs: 1, provider: "other-cli" }).success).toBe(
+      false,
+    );
     for (const providerSafeCode of [undefined, ...runtimeProviderExecutionSafeCodes]) {
       const value = {
         durationMs: 1,
