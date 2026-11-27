@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  recordObservedRuntimeFingerprint,
   resolveEffectiveRuntimeConcurrency,
   type EffectiveRuntimeConcurrencyDependencies,
 } from "@/modules/agents/application/runtime-concurrency";
+import { RUNTIME_FINGERPRINT_OBSERVED_EVENT_TYPE } from "@/modules/agents/repository/capacity";
 import type { RuntimeCapabilityMeasurement } from "@/modules/agents/domain/capacity";
 import { calculateRuntimeCapacity, runtimeFingerprint } from "@/modules/agents/domain/capacity";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
@@ -177,25 +179,107 @@ describe("effective runtime concurrency", () => {
     expect(result.concurrency).toBe(2);
   });
 
-  it("drops to single lane immediately on runtimeCodexVersion CLI switch before any Gemini run finishes", async () => {
+  it("keeps resolver and capacity view aligned without roster sync when worker switches CLI or rolls back", async () => {
     for (const measuredVersion of ["codex-cli 0.160.0", "codex-cli 1.9.0"]) {
-      const dependencies = deps(
-        { ...fresh, codexVersion: measuredVersion },
-        { usageMetadata: { codexVersion: measuredVersion }, finishedAt: now },
-      );
-      const result = await resolveEffectiveRuntimeConcurrency(
+      const capability = { ...fresh, codexVersion: measuredVersion };
+      let latestFingerprint: { usageMetadata: Record<string, unknown>; finishedAt: Date } = {
+        usageMetadata: {
+          codexVersion: measuredVersion,
+          promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+        },
+        finishedAt: now,
+      };
+      const events: Array<{ eventType: string; metadata: unknown; occurredAt: Date }> = [];
+      const appendRuntimeEvent = vi.fn(async (_tx, entry) => {
+        events.push(entry);
+        latestFingerprint = {
+          usageMetadata: entry.metadata as Record<string, unknown>,
+          finishedAt: entry.occurredAt,
+        };
+      });
+      const getLatestRuntimeFingerprintRecord = vi.fn(async () => latestFingerprint);
+      const sharedDeps = {
+        getLatestRuntimeCapability: vi.fn(async () => capability),
+        getLatestRuntimeFingerprintRecord,
+      } as unknown as EffectiveRuntimeConcurrencyDependencies;
+
+      const recordedSwitch = await recordObservedRuntimeFingerprint(
         tx,
-        { configuredConcurrency: 2, now, runtimeCodexVersion: "agy 1.5.18" },
-        dependencies,
+        { workerId: "w1", codexVersion: "agy 1.5.18", now },
+        { getLatestRuntimeFingerprintRecord, appendRuntimeEvent } as never,
       );
-      expect(result).toMatchObject({
+      expect(recordedSwitch).toEqual({ recorded: true, codexVersion: "agy 1.5.18" });
+      expect(events.at(-1)?.eventType).toBe(RUNTIME_FINGERPRINT_OBSERVED_EVENT_TYPE);
+      expect(events.at(-1)?.occurredAt.getTime()).toBeGreaterThan(now.getTime());
+
+      const deduplicated = await recordObservedRuntimeFingerprint(
+        tx,
+        { workerId: "w1", codexVersion: "agy 1.5.18", now },
+        { getLatestRuntimeFingerprintRecord, appendRuntimeEvent } as never,
+      );
+      expect(deduplicated).toEqual({ recorded: false, codexVersion: "agy 1.5.18" });
+      expect(events).toHaveLength(1);
+
+      const applied = await resolveEffectiveRuntimeConcurrency(
+        tx,
+        { configuredConcurrency: 2, now },
+        sharedDeps,
+      );
+      const observedAfterSwitch = runtimeFingerprint(
+        (await getLatestRuntimeFingerprintRecord())?.usageMetadata,
+      );
+      const shown = calculateRuntimeCapacity({
+        capability,
+        configuredConcurrency: 2,
+        degradedMode: false,
+        now,
+        ...(observedAfterSwitch.codexVersion
+          ? { codexVersion: observedAfterSwitch.codexVersion }
+          : {}),
+        promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+      });
+      expect(applied).toMatchObject({
         concurrency: 1,
         configuredConcurrency: 2,
         reason: "EVIDENCE_STALE",
         staleReasons: ["CODEX_MAJOR"],
-        measurementId: fresh.id,
+        measurementId: capability.id,
       });
-      expect(dependencies.getLatestRuntimeFingerprintRecord).not.toHaveBeenCalled();
+      expect(shown.effectiveConcurrency).toBe(1);
+      expect(shown.benchmark?.stale).toBe(true);
+      expect(shown.benchmark?.staleReasons).toEqual(["CODEX_MAJOR"]);
+
+      // Rollback back to Codex at the same timestamp advances occurredAt and restores dual lane in both views.
+      const rollback = await recordObservedRuntimeFingerprint(
+        tx,
+        { workerId: "w1", codexVersion: measuredVersion, now },
+        { getLatestRuntimeFingerprintRecord, appendRuntimeEvent } as never,
+      );
+      expect(rollback).toEqual({ recorded: true, codexVersion: measuredVersion });
+      expect(events).toHaveLength(2);
+      expect(events[1]!.occurredAt.getTime()).toBeGreaterThan(events[0]!.occurredAt.getTime());
+
+      const appliedRollback = await resolveEffectiveRuntimeConcurrency(
+        tx,
+        { configuredConcurrency: 2, now },
+        sharedDeps,
+      );
+      const observedAfterRollback = runtimeFingerprint(
+        (await getLatestRuntimeFingerprintRecord())?.usageMetadata,
+      );
+      const shownRollback = calculateRuntimeCapacity({
+        capability,
+        configuredConcurrency: 2,
+        degradedMode: false,
+        now,
+        ...(observedAfterRollback.codexVersion
+          ? { codexVersion: observedAfterRollback.codexVersion }
+          : {}),
+        promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+      });
+      expect(appliedRollback).toMatchObject({ concurrency: 2, reason: "EVIDENCE_FRESH" });
+      expect(shownRollback.effectiveConcurrency).toBe(2);
+      expect(shownRollback.benchmark?.stale).toBe(false);
     }
   });
 });

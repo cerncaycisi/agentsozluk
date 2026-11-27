@@ -95,8 +95,10 @@ function runReachedProvider(usageMetadata: unknown): boolean | undefined {
   return intervals.length > 0;
 }
 
+export const RUNTIME_FINGERPRINT_OBSERVED_EVENT_TYPE = "runtime.fingerprint.observed";
+
 export async function getLatestRuntimeFingerprintRecord(transaction: Prisma.TransactionClient) {
-  const [run, measurement, workerSync] = await Promise.all([
+  const [run, measurement, observed, workerSync] = await Promise.all([
     transaction.agentRun.findFirst({
       where: { usageMetadata: { not: Prisma.JsonNull }, finishedAt: { not: null } },
       orderBy: [{ finishedAt: "desc" }, { id: "desc" }],
@@ -106,6 +108,11 @@ export async function getLatestRuntimeFingerprintRecord(transaction: Prisma.Tran
       where: { eventType: "agent.capacity.measured" },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: { metadata: true, createdAt: true },
+    }),
+    transaction.agentRuntimeEvent.findFirst({
+      where: { eventType: RUNTIME_FINGERPRINT_OBSERVED_EVENT_TYPE },
+      orderBy: [{ id: "desc" }],
+      select: { metadata: true, occurredAt: true, createdAt: true },
     }),
     transaction.agentRuntimeCredentialSync.findUnique({
       where: { id: "global" },
@@ -119,6 +126,14 @@ export async function getLatestRuntimeFingerprintRecord(transaction: Prisma.Tran
   const measurementRecord = measurement
     ? { usageMetadata: measurement.metadata, finishedAt: measurement.createdAt }
     : null;
+  const observedRecord =
+    observed && runtimeFingerprint(observed.metadata).codexVersion
+      ? {
+          usageMetadata: observed.metadata,
+          finishedAt:
+            observed.occurredAt > observed.createdAt ? observed.occurredAt : observed.createdAt,
+        }
+      : null;
   const workerCodexVersion = workerSync?.codexVersion?.trim();
   const workerSyncRecord = workerCodexVersion
     ? {
@@ -137,6 +152,8 @@ export async function getLatestRuntimeFingerprintRecord(transaction: Prisma.Tran
     latest = fingerprintedRun;
   if (workerSyncRecord && (!latest || workerSyncRecord.finishedAt >= latest.finishedAt))
     latest = workerSyncRecord;
+  if (observedRecord && (!latest || observedRecord.finishedAt >= latest.finishedAt))
+    latest = observedRecord;
   return latest;
 }
 

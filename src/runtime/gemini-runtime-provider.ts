@@ -189,6 +189,190 @@ export function parseGeminiStructuredOutput(response: unknown): unknown {
   }
 }
 
+/**
+ * `rawLine` kırpılmış ama sonuna veri eklenerek geçerli bir JSON nesnesine (`{...}`)
+ * tamamlanabilecek bir önek mi? Kesinlikle bozuk satırları (`{"event":!}`, `not-json`,
+ * geçersiz kaçış, baştaki sıfırlı sayı, fazladan virgül vb.) reddeder.
+ */
+export function isCompletableJsonObjectPrefix(rawLine: string): boolean {
+  const s = rawLine.trimStart();
+  if (s.length === 0 || s[0] !== "{") return false;
+
+  const isWs = (code: number) => code === 0x20 || code === 0x09 || code === 0x0a || code === 0x0d;
+  const isDigit = (code: number) => code >= 0x30 && code <= 0x39;
+  const isHex = (code: number) =>
+    (code >= 0x30 && code <= 0x39) ||
+    (code >= 0x41 && code <= 0x46) ||
+    (code >= 0x61 && code <= 0x66);
+  const simpleEscapes = new Set(['"', "\\", "/", "b", "f", "n", "r", "t"]);
+
+  let i = 1;
+  type ScanOutcome = "COMPLETE" | "TRUNCATED" | "INVALID";
+
+  const scanString = (): ScanOutcome => {
+    i += 1;
+    while (i < s.length) {
+      const code = s.charCodeAt(i);
+      if (code < 0x20) return "INVALID";
+      const ch = s[i]!;
+      if (ch === '"') {
+        i += 1;
+        return "COMPLETE";
+      }
+      if (ch === "\\") {
+        i += 1;
+        if (i >= s.length) return "TRUNCATED";
+        const esc = s[i]!;
+        if (simpleEscapes.has(esc)) {
+          i += 1;
+          continue;
+        }
+        if (esc === "u") {
+          i += 1;
+          for (let h = 0; h < 4; h += 1) {
+            if (i >= s.length) return "TRUNCATED";
+            if (!isHex(s.charCodeAt(i))) return "INVALID";
+            i += 1;
+          }
+          continue;
+        }
+        return "INVALID";
+      }
+      i += 1;
+    }
+    return "TRUNCATED";
+  };
+
+  const scanKeyword = (word: "true" | "false" | "null"): ScanOutcome => {
+    for (let k = 0; k < word.length; k += 1) {
+      if (i >= s.length) return "TRUNCATED";
+      if (s[i] !== word[k]) return "INVALID";
+      i += 1;
+    }
+    return "COMPLETE";
+  };
+
+  const scanNumber = (): ScanOutcome => {
+    if (s[i] === "-") {
+      i += 1;
+      if (i >= s.length) return "TRUNCATED";
+    }
+    const first = s.charCodeAt(i);
+    if (first === 0x30) {
+      i += 1;
+    } else if (first >= 0x31 && first <= 0x39) {
+      i += 1;
+      while (i < s.length && isDigit(s.charCodeAt(i))) i += 1;
+    } else {
+      return "INVALID";
+    }
+    if (i >= s.length) return "TRUNCATED";
+
+    if (s[i] === ".") {
+      i += 1;
+      if (i >= s.length) return "TRUNCATED";
+      if (!isDigit(s.charCodeAt(i))) return "INVALID";
+      i += 1;
+      while (i < s.length && isDigit(s.charCodeAt(i))) i += 1;
+      if (i >= s.length) return "TRUNCATED";
+    }
+
+    if (s[i] === "e" || s[i] === "E") {
+      i += 1;
+      if (i >= s.length) return "TRUNCATED";
+      if (s[i] === "+" || s[i] === "-") {
+        i += 1;
+        if (i >= s.length) return "TRUNCATED";
+      }
+      if (!isDigit(s.charCodeAt(i))) return "INVALID";
+      i += 1;
+      while (i < s.length && isDigit(s.charCodeAt(i))) i += 1;
+      if (i >= s.length) return "TRUNCATED";
+    }
+    return "COMPLETE";
+  };
+
+  const stack: Array<
+    | { kind: "object"; expect: "KEY_OR_END" | "KEY" | "COLON" | "VALUE" | "COMMA_OR_END" }
+    | { kind: "array"; expect: "VALUE_OR_END" | "VALUE" | "COMMA_OR_END" }
+  > = [{ kind: "object", expect: "KEY_OR_END" }];
+
+  while (i < s.length) {
+    while (i < s.length && isWs(s.charCodeAt(i))) i += 1;
+    if (i >= s.length) break;
+    if (stack.length === 0) return false;
+
+    const top = stack[stack.length - 1]!;
+    const ch = s[i]!;
+
+    if (top.kind === "object" && (top.expect === "KEY_OR_END" || top.expect === "KEY")) {
+      if (top.expect === "KEY_OR_END" && ch === "}") {
+        i += 1;
+        stack.pop();
+        continue;
+      }
+      if (ch !== '"') return false;
+      const outcome = scanString();
+      if (outcome === "TRUNCATED") return true;
+      if (outcome === "INVALID") return false;
+      top.expect = "COLON";
+      continue;
+    }
+
+    if (top.kind === "object" && top.expect === "COLON") {
+      if (ch !== ":") return false;
+      i += 1;
+      top.expect = "VALUE";
+      continue;
+    }
+
+    if (top.expect === "COMMA_OR_END") {
+      if (ch === ",") {
+        i += 1;
+        top.expect = top.kind === "object" ? "KEY" : "VALUE";
+        continue;
+      }
+      if ((top.kind === "object" && ch === "}") || (top.kind === "array" && ch === "]")) {
+        i += 1;
+        stack.pop();
+        continue;
+      }
+      return false;
+    }
+
+    if (top.kind === "array" && top.expect === "VALUE_OR_END" && ch === "]") {
+      i += 1;
+      stack.pop();
+      continue;
+    }
+
+    top.expect = "COMMA_OR_END";
+    if (ch === "{") {
+      i += 1;
+      stack.push({ kind: "object", expect: "KEY_OR_END" });
+    } else if (ch === "[") {
+      i += 1;
+      stack.push({ kind: "array", expect: "VALUE_OR_END" });
+    } else if (ch === '"') {
+      const outcome = scanString();
+      if (outcome === "TRUNCATED") return true;
+      if (outcome === "INVALID") return false;
+    } else if (ch === "t" || ch === "f" || ch === "n") {
+      const outcome = scanKeyword(ch === "t" ? "true" : ch === "f" ? "false" : "null");
+      if (outcome === "TRUNCATED") return true;
+      if (outcome === "INVALID") return false;
+    } else if (ch === "-" || isDigit(s.charCodeAt(i))) {
+      const outcome = scanNumber();
+      if (outcome === "TRUNCATED") return true;
+      if (outcome === "INVALID") return false;
+    } else {
+      return false;
+    }
+  }
+
+  return stack.length > 0;
+}
+
 function collectGeminiStream(
   child: ChildProcessWithoutNullStreams,
   stdinPayload: string,
@@ -257,7 +441,8 @@ function collectGeminiStream(
       try {
         parsed = JSON.parse(line);
       } catch {
-        if (!options.allowTruncatedJson) eventStreamInvalid = true;
+        if (!options.allowTruncatedJson || !isCompletableJsonObjectPrefix(rawLine))
+          eventStreamInvalid = true;
         return;
       }
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {

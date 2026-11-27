@@ -15,6 +15,7 @@ import { selectFollowedTopicsForPerception } from "@/modules/agents/domain/follo
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import {
   recordEffectiveConcurrencyDecision,
+  recordObservedRuntimeFingerprint,
   resolveEffectiveRuntimeConcurrency,
 } from "@/modules/agents/application/runtime-concurrency";
 import { checkDatabaseReadiness } from "@/lib/db/readiness";
@@ -1535,6 +1536,12 @@ export async function leaseRuntimeRun(
       return { run: null, reason: "NOT_ACTIVE" };
     const rolloutDate = await pauseExpiredProductionRollout(transaction, principal.actor, now);
     if (rolloutDate.expired) return { run: null, reason: "ERROR_PAUSED" };
+    if (input.codexVersion)
+      await recordObservedRuntimeFingerprint(transaction, {
+        workerId: input.workerId,
+        codexVersion: input.codexVersion,
+        now,
+      });
     if (!settings.runtimeEnabled) return { run: null, reason: "PAUSED" };
     const maintenanceMode = settings.runtimeOperatingMode === "MAINTENANCE";
     const expiredCancellations = await listExpiredCancellationRunsForFinalization(
@@ -1613,7 +1620,6 @@ export async function leaseRuntimeRun(
     const effective = await resolveEffectiveRuntimeConcurrency(transaction, {
       configuredConcurrency: settings.codexConcurrency,
       now,
-      ...(input.codexVersion ? { runtimeCodexVersion: input.codexVersion } : {}),
     });
     await recordEffectiveConcurrencyDecision(transaction, effective, { callPath: "LEASE", now });
     const concurrency = effective.concurrency;

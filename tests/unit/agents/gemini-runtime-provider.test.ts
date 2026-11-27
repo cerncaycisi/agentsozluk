@@ -17,6 +17,7 @@ import {
   GeminiRuntimeProvider,
   buildGeminiStructuredPrompt,
   geminiRuntimeArguments,
+  isCompletableJsonObjectPrefix,
   parseGeminiStreamTokenUsage,
   parseGeminiStructuredOutput,
   safeGeminiRuntimeFailure,
@@ -611,6 +612,81 @@ describe("GeminiRuntimeProvider process handling", () => {
         signal: cancelController.signal,
       }),
     ).rejects.toBeInstanceOf(RuntimeProviderCancelledError);
+  });
+
+  it("distinguishes completable truncated JSON object prefixes from malformed trailing lines", async () => {
+    for (const validPrefix of [
+      "{",
+      '{"event":"step_update","partial":true',
+      '{"event":"step_update","partial":tr',
+      '{"a":"hello \\u00',
+      '{"a":"hello \\\\',
+      '{"a":12.3e-',
+      '{"a":[1,2,',
+      '  {"a":null',
+    ]) {
+      expect(isCompletableJsonObjectPrefix(validPrefix), validPrefix).toBe(true);
+    }
+
+    for (const invalidPrefix of [
+      '{"event":!}',
+      "not-json",
+      '{"a":tx}',
+      '{"a":"bad\\x"}',
+      '{"a":"bad\\ ',
+      '{"a":01}',
+      '{"a":+1}',
+      '{"a":.5}',
+      '{"a":1,}',
+      '{"a":[1,]}',
+      '{"a":1} trailing',
+      '{"a":1}',
+      "[1,2",
+      "123",
+      '"abc"',
+      '{"a":"\u0001',
+    ]) {
+      expect(isCompletableJsonObjectPrefix(invalidPrefix), invalidPrefix).toBe(false);
+    }
+
+    for (const malformedTail of ['{"event":!}', "not-json"]) {
+      const timedOutSpawn = makeSpawn({
+        closeOnKillOnly: true,
+        modelStdout: `${JSON.stringify({ event: "init", init: { agent: "sozluk-writer" } })}\n${malformedTail}`,
+      });
+      const pTimeout = await createProvider({ spawnProcess: timedOutSpawn.spawnMock });
+      await expect(
+        pTimeout.provider.invoke({
+          runId: randomUUID(),
+          prompt: "p",
+          outputSchema: { type: "object" },
+          timeoutMs: 300,
+        }),
+      ).rejects.toMatchObject({
+        name: "RuntimeProviderExecutionError",
+        safeCode: "CODEX_EVENT_STREAM_INVALID",
+      });
+
+      const controller = new AbortController();
+      const cancelledSpawn = makeSpawn({
+        closeOnKillOnly: true,
+        modelStdout: `${JSON.stringify({ event: "init", init: { agent: "sozluk-writer" } })}\n${malformedTail}`,
+        afterStdout: () => controller.abort(),
+      });
+      const pCancel = await createProvider({ spawnProcess: cancelledSpawn.spawnMock });
+      await expect(
+        pCancel.provider.invoke({
+          runId: randomUUID(),
+          prompt: "p",
+          outputSchema: { type: "object" },
+          timeoutMs: 10_000,
+          signal: controller.signal,
+        }),
+      ).rejects.toMatchObject({
+        name: "RuntimeProviderExecutionError",
+        safeCode: "CODEX_EVENT_STREAM_INVALID",
+      });
+    }
   });
 
   it("classifies stream/stderr failures without leaking raw secrets or diagnostics in JSON", async () => {
