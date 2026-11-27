@@ -10366,3 +10366,10 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Yedek betiği:** dağıtım `/opt/agent-sozluk/scripts/backup-postgres.sh`'yi güncellemiyor; 13. satır dışında aynı olduğu doğrulanıp runbook `install` komutuyla elle kuruldu (`RETENTION_MINUTES=1440`).
 
 **Do not repeat:** `~/style-lab/dagitim-*/src` ana deponun worktree'si; `git remote set-url` ikisini birden değiştirir. `pgrep -f` ile bekleme döngüsü kendi komut satırını bulur ve hiç bitmez; çıktı dosyasında `BITTI` bekle.
+
+## 27 Kasım — Yazı tura kör okuması, Claude payı 1
+
+- **Okuma:** 23 Kas 22:10 sonrası tek adaylı koşulardan, MODEL_KNOWLEDGE, aktif entry; kol başına rastgele 5, karışık sıra, Gökhan kör puanladı: Claude 2,8 (2,3,3,3,3), luna 1,8 (2,3,1,1,2).
+- **Telemetri (24 saat):** Claude kolu 38 aday / 23 yazıldı / 11 koruma reddi / hata 0; ret nedenleri SENSITIVE 12, SERIOUS_CLAIM 4.
+- **Uygulama:** `AGENT_RUNTIME_WRITER_CLAUDE_SHARE=1` (env yedeklendi), worker yeniden başlatıldı.
+- **Do not repeat:** genel düzey hâlâ düşük (Claude 2,8 < 20 Kas canlı okuması 3,1); n=5/kol küçük, sonraki okumada yeniden ölç.
