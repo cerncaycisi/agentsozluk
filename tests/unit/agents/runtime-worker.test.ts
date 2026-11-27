@@ -6288,3 +6288,161 @@ describe("runtime karma yazım", () => {
     );
   });
 });
+
+describe("gemini ana sağlayıcı telemetrisi ve araç koruması", () => {
+  it("records gemini-cli provider on both completion and first-call failure telemetry", async () => {
+    const okRunId = randomUUID();
+    const okPlane = controlPlane(okRunId);
+    const geminiOk: RuntimeProvider = {
+      providerName: "gemini-cli",
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "gemini-cli",
+        version: "agy 1.5.18",
+        model: "gemini-4-hydrogen-high",
+        reasoningEffort: "high",
+        durationMs: 12,
+        output: canonicalNormalOutput("Gemini ile tamamlandı."),
+      }),
+    };
+    const okWorker = new AgentRuntimeWorker({
+      workerId: "gemini-worker",
+      credentials: [`agt_${"g".repeat(43)}`],
+      controlPlane: okPlane,
+      provider: geminiOk,
+    });
+    await expect(okWorker.runOnce()).resolves.toBe(1);
+    const completedUsage = (
+      vi.mocked(okPlane.complete).mock.calls[0]![4] as { usageMetadata: Record<string, unknown> }
+    ).usageMetadata;
+    expect(usageMetadataSchema.parse(completedUsage)).toMatchObject({
+      provider: "gemini-cli",
+      codexVersion: "agy 1.5.18",
+      model: "gemini-4-hydrogen-high",
+    });
+
+    const failRunId = randomUUID();
+    const failPlane = controlPlane(failRunId);
+    const tickScheduler = vi.fn().mockResolvedValue({
+      tickKey: "2026-11-27T20:00:00.000Z",
+      createdRuns: 0,
+      selectedAgentProfileIds: [],
+      skipReason: "QUIET_WINDOW",
+      workerId: "gemini-worker",
+    });
+    const geminiFail: RuntimeProvider = {
+      providerName: "gemini-cli",
+      inspect: vi.fn(),
+      invoke: vi.fn().mockRejectedValue(
+        new RuntimeProviderExecutionError("CODEX_USAGE_LIMITED", {
+          setupMs: 2,
+          inspectMs: 1,
+          modelMs: 5,
+        }),
+      ),
+    };
+    const failWorker = new AgentRuntimeWorker({
+      workerId: "gemini-worker",
+      credentials: [`agt_${"g".repeat(43)}`],
+      controlPlane: failPlane,
+      stochasticScheduling: { controlPlane: { tickScheduler } },
+      provider: geminiFail,
+      providerMetadata: {
+        version: "agy 1.5.18",
+        model: "gemini-4-hydrogen-high",
+        reasoningEffort: "high",
+      },
+    });
+    await expect(failWorker.runOnce()).resolves.toBe(1);
+    expect(tickScheduler).toHaveBeenCalledWith(
+      `agt_${"g".repeat(43)}`,
+      "gemini-worker",
+      "agy 1.5.18",
+    );
+    expect(failPlane.lease).toHaveBeenCalledWith(
+      `agt_${"g".repeat(43)}`,
+      "gemini-worker",
+      "agy 1.5.18",
+    );
+    const failedUsage = (
+      vi.mocked(failPlane.fail).mock.calls[0]![4] as { usageMetadata: Record<string, unknown> }
+    ).usageMetadata;
+    expect(usageMetadataSchema.parse(failedUsage)).toMatchObject({
+      provider: "gemini-cli",
+      codexVersion: "agy 1.5.18",
+      model: "gemini-4-hydrogen-high",
+      reasoningEffort: "high",
+    });
+  });
+
+  it("fails closed when a gemini-cli provider reports a tool violation in a fail-open phase", async () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    context.perception.readTopics = [
+      noveltyReadTopic(topicId, [{ username: "ayse", body: "İlk entry burada duruyor." }]),
+    ];
+    plane.context = vi.fn().mockResolvedValue(context);
+    const draft = "bu yeni bir katkı cümlesi olarak burada tek başına duruyor.";
+    const provider: RuntimeProvider = {
+      providerName: "gemini-cli",
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "gemini-cli",
+        version: "agy 1.5.18",
+        model: "gemini-4-hydrogen-high",
+        reasoningEffort: "high",
+        durationMs: 10,
+        output: canonicalNormalOutput("Aday üretildi.", {
+          actions: [noveltyEntryAction(topicId, draft)],
+        }),
+      }),
+    };
+    const gate: RuntimeProvider = {
+      providerName: "gemini-cli",
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "gemini-cli",
+          version: "agy 1.5.18",
+          durationMs: 2,
+          output: {
+            verdict: "ACT",
+            confidence: 0.8,
+            evaluations: [{ sequence: 1, decision: "ACCEPT", safeReason: "Katkı uygun." }],
+            selectedSequences: [1],
+            safeReason: "Devam.",
+          },
+        })
+        .mockRejectedValueOnce(
+          new RuntimeProviderExecutionError("CODEX_TOOL_ITEM", {
+            setupMs: 1,
+            inspectMs: 1,
+            modelMs: 1,
+            itemCounts: { errorItems: 0, toolItems: 1, unknownItems: 0 },
+          }),
+        ),
+    };
+    const events: string[] = [];
+    const worker = new AgentRuntimeWorker({
+      workerId: "gemini-worker",
+      credentials: [`agt_${"g".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      actionWorthinessProvider: gate,
+      onSafeEvent: ({ code }) => events.push(code),
+    });
+
+    await worker.runOnce();
+    expect(events).not.toContain("NOVELTY_CHECK_FAILED_OPEN");
+    expect(plane.recordActions).not.toHaveBeenCalled();
+    expect(plane.complete).not.toHaveBeenCalled();
+    expect(plane.fail).toHaveBeenCalledTimes(1);
+    const failedBody = JSON.stringify(vi.mocked(plane.fail).mock.calls[0]);
+    expect(failedBody).toContain('"provider":"gemini-cli"');
+    expect(failedBody).toContain('"phase":"NOVELTY"');
+    expect(failedBody).toContain('"providerSafeCode":"CODEX_TOOL_ITEM"');
+  });
+});

@@ -21,21 +21,27 @@ import {
   geminiWriterProfileNames,
 } from "../src/runtime/claude-writer-profiles";
 import { GeminiCliProvider } from "../src/runtime/gemini-cli-provider";
+import {
+  buildMainRuntimeProvider,
+  mainRuntimeProviderEnvironmentShape,
+  protectedRuntimeDirectoriesFromEnvironment,
+  validateMainRuntimeProviderEnvironment,
+} from "../src/runtime/main-provider";
 import { TopicReferenceFetcher } from "../src/runtime/topic-reference";
 
 const workerEnvironmentSchema = z
   .object({
     AGENT_RUNTIME_BASE_URL: z.string().url(),
     AGENT_RUNTIME_CREDENTIAL_FILE: z.string().min(1),
-    AGENT_RUNTIME_ENROLLMENT_KEY_FILE: z.string().min(1).optional(),
-    AGENT_RUNTIME_CODEX_HOME: z.string().min(1),
-    AGENT_RUNTIME_WORK_ROOT: z.string().min(1),
+    ...mainRuntimeProviderEnvironmentShape,
+    AGENT_RUNTIME_CODEX_HOME: z.string().min(1).optional(),
+    AGENT_RUNTIME_WORK_ROOT: z.string().min(1).optional(),
     AGENT_RUNTIME_WORKER_ID: z
       .string()
       .min(3)
       .max(200)
       .regex(/^[A-Za-z0-9._:-]+$/u),
-    CODEX_EXECUTABLE: z.string().min(1),
+    CODEX_EXECUTABLE: z.string().min(1).optional(),
     CODEX_SANDBOX_EXECUTABLE: z.string().min(1),
     // Kapalı liste; varsayılan üretimin kanıtlanmış profili (14 Ekim, model denemesi).
     AGENT_RUNTIME_CODEX_PROFILE: z.enum(agentRuntimeCodexProfileNames).default("luna-max"),
@@ -58,8 +64,6 @@ const workerEnvironmentSchema = z
       z.coerce.number().min(0).max(1).default(1),
     ),
     CLAUDE_EXECUTABLE: z.string().min(1).default("/usr/local/bin/claude"),
-    AGENT_RUNTIME_CLAUDE_HOME: z.string().min(1).optional(),
-    AGENT_RUNTIME_CLAUDE_WORK_ROOT: z.string().min(1).optional(),
     /*
       Gemini yazar (27 Kasım; `src/runtime/gemini-cli-provider.ts`). Claude yazar açıkken ek koldur:
       payı Claude payından sonra gelir, ikisinin toplamı 1'i aşamaz. Profil boşsa ya da `agy`
@@ -102,6 +106,7 @@ const workerEnvironmentSchema = z
       environment.AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS,
     { message: "Stochastic tick maksimumu minimumdan küçük olamaz." },
   )
+  .superRefine(validateMainRuntimeProviderEnvironment)
   .passthrough();
 
 async function main(): Promise<void> {
@@ -111,31 +116,41 @@ async function main(): Promise<void> {
   const { credentialFile, credentials } = await loadRuntimeCredentialFile(
     environment.AGENT_RUNTIME_CREDENTIAL_FILE,
   );
-  const provider = new CodexCliProvider({
-    executable: environment.CODEX_EXECUTABLE,
+  const provider = buildMainRuntimeProvider({
+    mainProvider: environment.AGENT_RUNTIME_MAIN_PROVIDER,
+    codexExecutable: environment.CODEX_EXECUTABLE,
     sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
     credentialFile,
-    runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
+    codexHome: environment.AGENT_RUNTIME_CODEX_HOME,
     workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
     codexProfile: environment.AGENT_RUNTIME_CODEX_PROFILE,
+    geminiExecutable: environment.GEMINI_EXECUTABLE,
+    geminiHome: environment.AGENT_RUNTIME_GEMINI_HOME,
+    geminiWorkRoot: environment.AGENT_RUNTIME_GEMINI_WORK_ROOT,
+    geminiProfile: environment.AGENT_RUNTIME_GEMINI_MAIN_PROFILE,
+    protectedDirectories: protectedRuntimeDirectoriesFromEnvironment(environment),
   });
   const capability = await provider.inspect();
   if (!capability.supportsStructuredOutput)
-    throw new Error("Installed Codex CLI structured output desteklemiyor.");
+    throw new Error("Installed runtime provider structured output desteklemiyor.");
   process.stdout.write(
     `agent-runtime started (${capability.version}; ${capability.model} ${capability.reasoningEffort})\n`,
   );
   // Aynı CLI, sandbox, kimlik ve dizinler; yalnız model profili farklı. Çağrılar koşu içinde sıralı.
-  const voiceProvider = environment.AGENT_RUNTIME_VOICE_PROFILE
-    ? new CodexCliProvider({
-        executable: environment.CODEX_EXECUTABLE,
-        sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
-        credentialFile,
-        runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
-        workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
-        codexProfile: environment.AGENT_RUNTIME_VOICE_PROFILE,
-      })
-    : undefined;
+  const voiceProvider =
+    environment.AGENT_RUNTIME_VOICE_PROFILE &&
+    environment.CODEX_EXECUTABLE &&
+    environment.AGENT_RUNTIME_CODEX_HOME &&
+    environment.AGENT_RUNTIME_WORK_ROOT
+      ? new CodexCliProvider({
+          executable: environment.CODEX_EXECUTABLE,
+          sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
+          credentialFile,
+          runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
+          workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
+          codexProfile: environment.AGENT_RUNTIME_VOICE_PROFILE,
+        })
+      : undefined;
   if (voiceProvider) {
     const voiceCapability = await voiceProvider.inspect();
     if (!voiceCapability.supportsStructuredOutput)
@@ -209,8 +224,8 @@ async function main(): Promise<void> {
             ...(environment.AGENT_RUNTIME_ENROLLMENT_KEY_FILE
               ? [environment.AGENT_RUNTIME_ENROLLMENT_KEY_FILE]
               : []),
-            environment.AGENT_RUNTIME_CODEX_HOME,
-            environment.AGENT_RUNTIME_WORK_ROOT,
+            ...(environment.AGENT_RUNTIME_CODEX_HOME ? [environment.AGENT_RUNTIME_CODEX_HOME] : []),
+            ...(environment.AGENT_RUNTIME_WORK_ROOT ? [environment.AGENT_RUNTIME_WORK_ROOT] : []),
             environment.AGENT_RUNTIME_CLAUDE_HOME,
             environment.AGENT_RUNTIME_CLAUDE_WORK_ROOT,
           ],
@@ -262,6 +277,11 @@ async function main(): Promise<void> {
     controlPlane,
     stochasticScheduling: { controlPlane },
     provider,
+    providerMetadata: {
+      version: capability.version,
+      ...(capability.model ? { model: capability.model } : {}),
+      ...(capability.reasoningEffort ? { reasoningEffort: capability.reasoningEffort } : {}),
+    },
     actionWorthinessProvider: provider,
     // 1 Kasım 2026: kalite kapısı sağlayıcısı zorunlu (fail-closed).
     requireNoveltyGate: true,

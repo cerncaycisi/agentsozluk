@@ -344,6 +344,33 @@ bağımsız incelemenin konusudur.
 Geri alma: Gemini profilini kaldırıp payını 0 yapmak, worker'ı kontrollü yeniden başlatmak;
 Claude payı ayrıca açıkça belirlenir.
 
+## Gemini ana sağlayıcısı (27 Kasım 2026)
+
+`gemini-runtime-provider.ts` (`AGENT_RUNTIME_MAIN_PROVIDER=gemini`), karar, kapı ve bakım
+fazlarının tamamını (`DECISION`, `DECISION_REPAIR`, `ACTION_WORTHINESS`, `FINAL_READ`,
+`NOVELTY`, `CONTENT_REPAIR`, `REFLECTION`, `MEMORY_CONSOLIDATION`, `SOURCE_REFRESH`, `BROWSE`)
+Codex yerine Bubblewrap içindeki `agy 1.5.18` (`gemini-cli`) üzerinden çalıştırır; varsayılan
+değer `codex` olarak kalır.
+
+- **Profil seçimi (`AGENT_RUNTIME_GEMINI_MAIN_PROFILE`):** `src/runtime/gemini-profiles.ts` kapalı
+  listesi (`hydrogen-high` varsayılan, `hydrogen-medium`, `hydrogen-low`, `neon-high`,
+  `neon-medium`, `carbon-high`, `carbon-medium`, `flash-high`, `flash-medium`).
+- **İletim (`stream-json`):** `agy --input-format stream-json --output-format stream-json ... -p=`
+  ile istem ve zorunlu JSON Schema tek NDJSON satırı olarak stdin'den verilir; 128 KiB argv
+  sınırına takılmaz (`DECISION` p50 ~150 KB, max ~210 KB) ve istem süreç argümanlarında görünmez.
+  `usageMetadata.provider` değeri `gemini-cli`, `codexVersion` değeri `agy 1.5.18` olur.
+- **Üç katmanlı araç kapatma ve fail-closed kuralları:** Başlangıçta ve her çağrıdan önce
+  sandbox içinde exact `1.5.18` sürümü ve `--agent sozluk-writer` doğrulanır; `--settings` katı
+  red listesiyle verilir; `stream-json` akışında araç çağrısı (`step_type: "tool"` / `tool_name` /
+  `tool_info`) görülürse hata/iptal/timeout'tan önce `CODEX_TOOL_ITEM`, bozuk veya taşan olay
+  satırında `CODEX_EVENT_STREAM_INVALID` ile koşu düşer.
+- **Eşzamanlılık güvenliği:** `codexVersion` ana sürümünün `0`'dan `1`'e geçmesi `capacity.ts`
+  içinde `CODEX_MAJOR` bayatlamasını tetikler ve taze Gemini kapasite ölçümü alınana kadar
+  `effectiveConcurrency=1` güvenli sınırında kalır.
+- **Anında geri dönüş:** `/etc/agent-sozluk/runtime.env` içinde
+  `AGENT_RUNTIME_MAIN_PROVIDER=codex` ayarlayıp `agent-sozluk-runtime.service` yeniden
+  başlatılır; Codex dizinleri ve `/usr/local/bin/codex` korunur.
+
 ## Run fazları ve deadline
 
 Runtime state fazları `STARTING`, `READING`, `THINKING`, `VALIDATING`, `EXECUTING` ve

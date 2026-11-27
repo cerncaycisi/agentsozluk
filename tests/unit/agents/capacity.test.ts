@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   assertDualConcurrencySupported,
   calculateRuntimeCapacity,
@@ -7,6 +7,10 @@ import {
   runtimeFingerprint,
   type RuntimeCapabilityMeasurement,
 } from "@/modules/agents/domain/capacity";
+import {
+  getLatestRuntimeFingerprintRecord,
+  RUNTIME_FINGERPRINT_OBSERVED_EVENT_TYPE,
+} from "@/modules/agents/repository/capacity";
 import { runtimeCapabilityPackageSchema } from "@/modules/agents/validation/capacity-schemas";
 
 const now = new Date("2026-07-17T12:00:00.000Z");
@@ -111,12 +115,169 @@ describe("agent runtime capacity", () => {
       }),
     ).toEqual({ fresh: false, staleReasons: ["CODEX_MAJOR"] });
     expect(
+      capabilityFreshness(
+        { ...capability, codexVersion: "codex-cli 1.9.0" },
+        {
+          now: new Date("2026-08-01T00:00:00.000Z"),
+          codexVersion: "agy 1.5.18",
+          promptProfileHash: "prompt-v2",
+        },
+      ),
+    ).toEqual({ fresh: false, staleReasons: ["CODEX_MAJOR"] });
+    expect(
+      capabilityFreshness(
+        { ...capability, codexVersion: "agy 1.5.18" },
+        {
+          now: new Date("2026-08-01T00:00:00.000Z"),
+          codexVersion: "agy 1.6.0",
+          promptProfileHash: "prompt-v2",
+        },
+      ),
+    ).toEqual({ fresh: true, staleReasons: [] });
+    expect(
       capabilityFreshness(capability, {
         now: new Date("2027-08-01T00:00:00.000Z"),
         codexVersion: capability.codexVersion,
         promptProfileHash: "prompt-v2",
       }),
     ).toEqual({ fresh: true, staleReasons: [] });
+  });
+
+  it("reads newer or equal worker roster telemetry ahead of older Codex runs and ignores null worker versions", async () => {
+    const tRun = new Date("2026-11-27T10:00:00.000Z");
+    const tMeasure = new Date("2026-11-27T11:00:00.000Z");
+    const tSync = new Date("2026-11-27T12:00:00.000Z");
+    const tObserved = new Date("2026-11-27T13:00:00.000Z");
+    const eventMock = (
+      measured: { metadata: Record<string, unknown>; createdAt: Date } | null,
+      observed: {
+        metadata: Record<string, unknown>;
+        occurredAt: Date;
+        createdAt: Date;
+      } | null = null,
+    ) =>
+      vi.fn(async (args?: { where?: { eventType?: string } }) =>
+        args?.where?.eventType === RUNTIME_FINGERPRINT_OBSERVED_EVENT_TYPE ? observed : measured,
+      );
+
+    const fromSync = await getLatestRuntimeFingerprintRecord({
+      agentRun: {
+        findFirst: vi.fn(async () => ({
+          usageMetadata: { codexVersion: "codex-cli 0.160.0" },
+          finishedAt: tRun,
+        })),
+      },
+      agentRuntimeEvent: {
+        findFirst: eventMock({
+          metadata: { codexVersion: "codex-cli 0.160.0", promptProfileHash: "old-hash" },
+          createdAt: tMeasure,
+        }),
+      },
+      agentRuntimeCredentialSync: {
+        findUnique: vi.fn(async () => ({
+          codexVersion: "agy 1.5.18",
+          promptProfileHash: "gemini-hash",
+          syncedAt: tSync,
+        })),
+      },
+    } as never);
+    expect(fromSync).toEqual({
+      usageMetadata: { codexVersion: "agy 1.5.18", promptProfileHash: "gemini-hash" },
+      finishedAt: tSync,
+    });
+
+    const tiePrefersSync = await getLatestRuntimeFingerprintRecord({
+      agentRun: {
+        findFirst: vi.fn(async () => ({
+          usageMetadata: { codexVersion: "codex-cli 0.160.0" },
+          finishedAt: tSync,
+        })),
+      },
+      agentRuntimeEvent: { findFirst: eventMock(null) },
+      agentRuntimeCredentialSync: {
+        findUnique: vi.fn(async () => ({
+          codexVersion: "agy 1.5.18",
+          promptProfileHash: null,
+          syncedAt: tSync,
+        })),
+      },
+    } as never);
+    expect(tiePrefersSync).toEqual({
+      usageMetadata: { codexVersion: "agy 1.5.18" },
+      finishedAt: tSync,
+    });
+
+    const nullSyncIgnored = await getLatestRuntimeFingerprintRecord({
+      agentRun: { findFirst: vi.fn(async () => null) },
+      agentRuntimeEvent: {
+        findFirst: eventMock({
+          metadata: { codexVersion: "codex-cli 0.160.0", promptProfileHash: "hash-1" },
+          createdAt: tMeasure,
+        }),
+      },
+      agentRuntimeCredentialSync: {
+        findUnique: vi.fn(async () => ({
+          codexVersion: null,
+          promptProfileHash: null,
+          syncedAt: tSync,
+        })),
+      },
+    } as never);
+    expect(nullSyncIgnored).toEqual({
+      usageMetadata: { codexVersion: "codex-cli 0.160.0", promptProfileHash: "hash-1" },
+      finishedAt: tMeasure,
+    });
+
+    const fromObservedWithoutRoster = await getLatestRuntimeFingerprintRecord({
+      agentRun: {
+        findFirst: vi.fn(async () => ({
+          usageMetadata: { codexVersion: "codex-cli 0.160.0" },
+          finishedAt: tRun,
+        })),
+      },
+      agentRuntimeEvent: {
+        findFirst: eventMock(
+          {
+            metadata: { codexVersion: "codex-cli 0.160.0", promptProfileHash: "old-hash" },
+            createdAt: tMeasure,
+          },
+          {
+            metadata: { codexVersion: "agy 1.5.18", promptProfileHash: "gemini-hash" },
+            occurredAt: tObserved,
+            createdAt: tSync,
+          },
+        ),
+      },
+      agentRuntimeCredentialSync: {
+        findUnique: vi.fn(async () => null),
+      },
+    } as never);
+    expect(fromObservedWithoutRoster).toEqual({
+      usageMetadata: { codexVersion: "agy 1.5.18", promptProfileHash: "gemini-hash" },
+      finishedAt: tObserved,
+    });
+
+    const newerSyncBeatsObserved = await getLatestRuntimeFingerprintRecord({
+      agentRun: { findFirst: vi.fn(async () => null) },
+      agentRuntimeEvent: {
+        findFirst: eventMock(null, {
+          metadata: { codexVersion: "agy 1.5.18", promptProfileHash: "gemini-hash" },
+          occurredAt: tSync,
+          createdAt: tSync,
+        }),
+      },
+      agentRuntimeCredentialSync: {
+        findUnique: vi.fn(async () => ({
+          codexVersion: "codex-cli 0.160.0",
+          promptProfileHash: "codex-hash",
+          syncedAt: tObserved,
+        })),
+      },
+    } as never);
+    expect(newerSyncBeatsObserved).toEqual({
+      usageMetadata: { codexVersion: "codex-cli 0.160.0", promptProfileHash: "codex-hash" },
+      finishedAt: tObserved,
+    });
   });
 
   it("requires a fresh successful measurement and 800 MB reserve for concurrency 2", () => {

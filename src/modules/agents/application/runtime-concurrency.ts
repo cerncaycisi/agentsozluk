@@ -8,6 +8,7 @@ import {
 import {
   getLatestRuntimeCapability,
   getLatestRuntimeFingerprintRecord,
+  RUNTIME_FINGERPRINT_OBSERVED_EVENT_TYPE,
 } from "@/modules/agents/repository/capacity";
 import {
   appendRuntimeEvent,
@@ -199,6 +200,53 @@ function decisionFingerprint(decision: EffectiveRuntimeConcurrency): string {
  * `lockAgentSettings` ile ayar satırını kilitliyor (`runtime.ts:1363`,
  * `stochastic-scheduler.ts:51`), dolayısıyla iki yol aynı anda kayıt üretemez.
  */
+export interface ObservedFingerprintRecordDependencies {
+  getLatestRuntimeFingerprintRecord: typeof getLatestRuntimeFingerprintRecord;
+  appendRuntimeEvent: typeof appendRuntimeEvent;
+}
+
+const defaultObservedFingerprintDependencies: ObservedFingerprintRecordDependencies = {
+  getLatestRuntimeFingerprintRecord,
+  appendRuntimeEvent,
+};
+
+/**
+ * Roster senkronizasyonu yokken dahi worker'ın `/lease` veya `/scheduler/tick` ile
+ * bildirdiği güncel sağlayıcı sürümünü ortak parmak izi kaynağına yazar.
+ * Yalnız mevcut gözlemlenen parmak izinden farklıysa kayıt üretir (olay taşması yok);
+ * ayar kilidi (`lockAgentSettings`) altında çalışır.
+ */
+export async function recordObservedRuntimeFingerprint(
+  transaction: TransactionClient,
+  input: { workerId: string; codexVersion: string; now: Date },
+  dependencies: ObservedFingerprintRecordDependencies = defaultObservedFingerprintDependencies,
+): Promise<{ recorded: boolean; codexVersion: string }> {
+  const codexVersion = input.codexVersion.trim();
+  if (!codexVersion) return { recorded: false, codexVersion: "" };
+  const current = await dependencies.getLatestRuntimeFingerprintRecord(transaction);
+  const observed = runtimeFingerprint(current?.usageMetadata);
+  if (
+    observed.codexVersion === codexVersion &&
+    observed.promptProfileHash === RUNTIME_PROMPT_PROFILE_HASH
+  )
+    return { recorded: false, codexVersion };
+  const occurredAt =
+    current?.finishedAt && current.finishedAt.getTime() >= input.now.getTime()
+      ? new Date(current.finishedAt.getTime() + 1)
+      : input.now;
+  await dependencies.appendRuntimeEvent(transaction, {
+    eventType: RUNTIME_FINGERPRINT_OBSERVED_EVENT_TYPE,
+    safeMessage: "Çalışan runtime sağlayıcı parmak izi güncellendi.",
+    metadata: {
+      workerId: input.workerId,
+      codexVersion,
+      promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+    },
+    occurredAt,
+  });
+  return { recorded: true, codexVersion };
+}
+
 export async function recordEffectiveConcurrencyDecision(
   transaction: TransactionClient,
   decision: EffectiveRuntimeConcurrency,

@@ -179,6 +179,11 @@ describe("OpenAPI provider telemetry wire alignment", () => {
     );
   });
   it("keeps the safe code and phase dictionaries equal to the runtime contract", () => {
+    const usageSchema = sourceDocument.components?.schemas?.RuntimeUsageMetadata;
+    expect(inlineSchema(usageSchema?.properties?.provider, "provider").enum).toEqual([
+      "codex-cli",
+      "gemini-cli",
+    ]);
     const schema = sourceDocument.components?.schemas?.RuntimeCodexInterval;
     expect(inlineSchema(schema?.properties?.providerSafeCode, "providerSafeCode").enum).toEqual([
       ...runtimeProviderExecutionSafeCodes,

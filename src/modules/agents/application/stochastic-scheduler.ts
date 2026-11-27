@@ -2,6 +2,7 @@ import { birthScanDue } from "@/modules/agents/domain/birth-scheduling";
 import { inTransaction } from "@/lib/db/transaction";
 import {
   recordEffectiveConcurrencyDecision,
+  recordObservedRuntimeFingerprint,
   resolveEffectiveRuntimeConcurrency,
 } from "@/modules/agents/application/runtime-concurrency";
 import type { DatabaseExecutor } from "@/lib/db/types";
@@ -41,7 +42,7 @@ export type StochasticSchedulerSkipReason =
 export function runRuntimeStochasticTick(
   client: DatabaseExecutor,
   principal: RuntimePrincipal,
-  input: { workerId: string },
+  input: { workerId: string; codexVersion?: string | undefined },
   now = new Date(),
 ) {
   return inTransaction(client, async (transaction) => {
@@ -59,6 +60,13 @@ export function runRuntimeStochasticTick(
       now,
     );
     if (rolloutBlock) return rolloutBlock;
+
+    if (input.codexVersion)
+      await recordObservedRuntimeFingerprint(transaction, {
+        workerId: input.workerId,
+        codexVersion: input.codexVersion,
+        now,
+      });
 
     const tickKey = stochasticTickKey(now);
     await lockStochasticSchedulerTick(transaction, tickKey);

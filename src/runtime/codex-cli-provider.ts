@@ -702,7 +702,7 @@ export function sanitizeRetainedRuntimeOutput(output: unknown): Record<string, u
   };
 }
 
-async function persistSafeRetainedRuntimeOutput(
+export async function persistSafeRetainedRuntimeOutput(
   outputPath: string,
   output: unknown,
   errorCode: string,
@@ -721,6 +721,7 @@ async function persistSafeRetainedRuntimeOutput(
 }
 
 export class CodexCliProvider implements RuntimeProvider {
+  readonly providerName = "codex-cli" as const;
   readonly #options: CodexCliProviderOptions;
   readonly #profile: (typeof AGENT_RUNTIME_CODEX_PROFILES)[AgentRuntimeCodexProfileName];
 

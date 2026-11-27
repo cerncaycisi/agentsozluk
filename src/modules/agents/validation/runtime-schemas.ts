@@ -30,6 +30,7 @@ export const runtimeLeaseSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
     leaseSeconds: z.number().int().min(15).max(300).default(60),
+    codexVersion: z.string().trim().min(1).max(200).optional(),
   })
   .strict();
 
@@ -42,6 +43,7 @@ export const runtimeDailyPlanSchema = z
 export const runtimeStochasticTickSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
+    codexVersion: z.string().trim().min(1).max(200).optional(),
   })
   .strict();
 
@@ -472,7 +474,7 @@ export const usageMetadataSchema = z
     outputTokens: z.number().int().min(0).optional(),
     cachedInputTokens: z.number().int().min(0).optional(),
     durationMs: z.number().int().min(0).max(86_400_000),
-    provider: z.literal("codex-cli"),
+    provider: z.enum(["codex-cli", "gemini-cli"]),
     codexVersion: z.string().trim().min(1).max(200).optional(),
     model: z.string().trim().min(1).max(200).optional(),
     reasoningEffort: z.enum(["none", "low", "medium", "high", "xhigh", "max"]).optional(),
