@@ -138,14 +138,13 @@ import {
   runtimeWriterOutputJsonSchema,
   runtimeWriterOutputSchema,
 } from "@/runtime/entry-writer";
-import {
-  ClaudeWriterError,
-  type ClaudeWriterProfileName,
-  type ClaudeWriterSafeCode,
-  type EntryWriterProvider,
-} from "@/runtime/claude-cli-provider";
+import { ClaudeWriterError, type EntryWriterProvider } from "@/runtime/claude-cli-provider";
 import type { TopicReferenceFetcher } from "@/runtime/topic-reference";
-import type { ClaudeWriterGuardCode } from "@/runtime/claude-writer-profiles";
+import type {
+  ClaudeWriterGuardCode,
+  WriterProfileName,
+  WriterSafeCode,
+} from "@/runtime/claude-writer-profiles";
 
 /** Claude yazar çağrısından sonra kalan süre hesabındaki güvenlik payı (temizlik, kayıt). */
 const RUNTIME_WRITER_MARGIN_MS = 5_000;
@@ -183,6 +182,12 @@ export interface RuntimeWorkerOptions {
     reference?: Pick<TopicReferenceFetcher, "fetch">;
     /** Claude'a düşen koşu payı (0–1, varsayılan 1); kalan koşularda luna taslağı kalır. */
     claudeShare?: number;
+    /*
+      Gemini yazar (27 Kasım, `gemini-cli-provider.ts`): Claude payından sonra gelen koşu payı.
+      Sağlayıcı yoksa pay yok sayılır; Claude + Gemini 1'i aşamaz (`runtimeWriterArm`).
+    */
+    gemini?: EntryWriterProvider;
+    geminiShare?: number;
   };
   sourceReader?: Pick<SafeSourceReader, "read">;
   heartbeatIntervalMs?: number;
@@ -2007,7 +2012,7 @@ export class AgentRuntimeWorker {
     } | null = null;
     /* Claude yazarın ne yaptığı — bkz `runtime-schemas.ts`, `writer`. */
     let writer: {
-      profile: ClaudeWriterProfileName;
+      profile: WriterProfileName;
       arm: RuntimeWriterArm;
       candidateCount: number;
       writtenCount: number;
@@ -2015,7 +2020,7 @@ export class AgentRuntimeWorker {
       guardRejectedCount: number;
       failedOpenCount: number;
       skippedCount: number;
-      failureCodes: ClaudeWriterSafeCode[];
+      failureCodes: WriterSafeCode[];
       guardCodes: ClaudeWriterGuardCode[];
     } | null = null;
     let sourceItemsFetched = 0;
@@ -2631,10 +2636,23 @@ export class AgentRuntimeWorker {
         writerCandidates.length > 0
           ? runtimeVoicePersonaSections(context.persona.renderedPrompt)
           : null;
-      if (writerOption && writerCandidates.length > 0) {
+      const writerArm = writerOption
+        ? runtimeWriterArm(
+            runId,
+            writerOption.claudeShare ?? 1,
+            writerOption.gemini ? (writerOption.geminiShare ?? 0) : 0,
+          )
+        : "CONTROL";
+      const writerProvider =
+        writerArm === "GEMINI" && writerOption?.gemini
+          ? writerOption.gemini
+          : writerOption?.provider;
+      const writerFailure = (kind: "OUTPUT_INVALID" | "EXEC_FAILED"): WriterSafeCode =>
+        writerArm === "GEMINI" ? `GEMINI_${kind}` : `CLAUDE_${kind}`;
+      if (writerOption && writerProvider && writerCandidates.length > 0) {
         const stats = (writer ??= {
-          profile: writerOption.provider.profile,
-          arm: runtimeWriterArm(runId, writerOption.claudeShare ?? 1),
+          profile: writerProvider.profile,
+          arm: writerArm,
           candidateCount: 0,
           writtenCount: 0,
           referenceCount: 0,
@@ -2690,7 +2708,7 @@ export class AgentRuntimeWorker {
               stats.skippedCount += 1;
               continue;
             }
-            const written = await writerOption.provider.write({
+            const written = await writerProvider.write({
               runId,
               prompt: buildWriterPrompt(candidate, writerPersonaSections, reference),
               outputSchema: runtimeWriterOutputJsonSchema,
@@ -2698,7 +2716,7 @@ export class AgentRuntimeWorker {
               signal: deadline.signal,
             });
             const parsed = runtimeWriterOutputSchema.safeParse(written.output);
-            if (!parsed.success) throw new ClaudeWriterError("CLAUDE_OUTPUT_INVALID");
+            if (!parsed.success) throw new ClaudeWriterError(writerFailure("OUTPUT_INVALID"));
             const body = parsed.data.body.trim();
             const guardCode = runtimeWriterBodyIssue(body, { topicTitle: candidate.topicTitle });
             if (guardCode !== null) {
@@ -2712,7 +2730,8 @@ export class AgentRuntimeWorker {
             if (
               deadline.signal.aborted ||
               (rawWriterError instanceof ClaudeWriterError &&
-                rawWriterError.safeCode === "CLAUDE_CANCELLED") ||
+                (rawWriterError.safeCode === "CLAUDE_CANCELLED" ||
+                  rawWriterError.safeCode === "GEMINI_CANCELLED")) ||
               (rawWriterError instanceof Error && rawWriterError.message === "SOURCE_CANCELLED")
             )
               throw deadline.normalizeError(rawWriterError);
@@ -2720,7 +2739,7 @@ export class AgentRuntimeWorker {
             const safeCode =
               rawWriterError instanceof ClaudeWriterError
                 ? rawWriterError.safeCode
-                : ("CLAUDE_EXEC_FAILED" as const);
+                : writerFailure("EXEC_FAILED");
             if (!stats.failureCodes.includes(safeCode)) stats.failureCodes.push(safeCode);
             this.#options.onSafeEvent?.({ level: "error", code: "WRITER_FAILED_OPEN", runId });
           }

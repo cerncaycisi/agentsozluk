@@ -16,7 +16,11 @@ import {
 } from "../src/runtime/worker";
 import { SafeSourceReader } from "../src/runtime/source-reader";
 import { ClaudeCliProvider, ClaudeWriterError } from "../src/runtime/claude-cli-provider";
-import { claudeWriterProfileNames } from "../src/runtime/claude-writer-profiles";
+import {
+  claudeWriterProfileNames,
+  geminiWriterProfileNames,
+} from "../src/runtime/claude-writer-profiles";
+import { GeminiCliProvider } from "../src/runtime/gemini-cli-provider";
 import { TopicReferenceFetcher } from "../src/runtime/topic-reference";
 
 const workerEnvironmentSchema = z
@@ -56,6 +60,22 @@ const workerEnvironmentSchema = z
     CLAUDE_EXECUTABLE: z.string().min(1).default("/usr/local/bin/claude"),
     AGENT_RUNTIME_CLAUDE_HOME: z.string().min(1).optional(),
     AGENT_RUNTIME_CLAUDE_WORK_ROOT: z.string().min(1).optional(),
+    /*
+      Gemini yazar (27 Kasım; `src/runtime/gemini-cli-provider.ts`). Claude yazar açıkken ek koldur:
+      payı Claude payından sonra gelir, ikisinin toplamı 1'i aşamaz. Profil boşsa ya da `agy`
+      sandbox'ta açılmazsa Gemini kolu kapalıdır, Claude yazar aynen sürer.
+    */
+    AGENT_RUNTIME_WRITER_GEMINI_PROFILE: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.enum(geminiWriterProfileNames).optional(),
+    ),
+    AGENT_RUNTIME_WRITER_GEMINI_SHARE: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.coerce.number().min(0).max(1).default(0),
+    ),
+    GEMINI_EXECUTABLE: z.string().min(1).default("/usr/local/bin/agy"),
+    AGENT_RUNTIME_GEMINI_HOME: z.string().min(1).optional(),
+    AGENT_RUNTIME_GEMINI_WORK_ROOT: z.string().min(1).optional(),
     AGENT_RUNTIME_POLL_MS: z.coerce.number().int().min(1000).max(60_000).default(5000),
     AGENT_RUNTIME_PROCESSING_LANES: z.coerce
       .number()
@@ -130,7 +150,13 @@ async function main(): Promise<void> {
     toplum durmaz. Sonuç ayrı satırda yazılır.
   */
   let writer:
-    | { provider: ClaudeCliProvider; reference?: TopicReferenceFetcher; claudeShare: number }
+    | {
+        provider: ClaudeCliProvider;
+        reference?: TopicReferenceFetcher;
+        claudeShare: number;
+        gemini?: GeminiCliProvider;
+        geminiShare?: number;
+      }
     | undefined;
   if (environment.AGENT_RUNTIME_WRITER_PROFILE) {
     if (!environment.AGENT_RUNTIME_CLAUDE_HOME || !environment.AGENT_RUNTIME_CLAUDE_WORK_ROOT)
@@ -156,6 +182,51 @@ async function main(): Promise<void> {
       process.stdout.write(
         `agent-runtime writer enabled (claude ${writerCapability.version}; ${environment.AGENT_RUNTIME_WRITER_PROFILE}; reference ${environment.AGENT_RUNTIME_WRITER_REFERENCE}; claude share ${environment.AGENT_RUNTIME_WRITER_CLAUDE_SHARE})\n`,
       );
+      const geminiProfile = environment.AGENT_RUNTIME_WRITER_GEMINI_PROFILE;
+      const geminiHome = environment.AGENT_RUNTIME_GEMINI_HOME;
+      const geminiWorkRoot = environment.AGENT_RUNTIME_GEMINI_WORK_ROOT;
+      // Gemini kolu ek koldur: eksik ayar ya da 1'i aşan pay worker'ı durdurmaz, kolu kapatır.
+      if (
+        geminiProfile &&
+        (!geminiHome ||
+          !geminiWorkRoot ||
+          environment.AGENT_RUNTIME_WRITER_CLAUDE_SHARE +
+            environment.AGENT_RUNTIME_WRITER_GEMINI_SHARE >
+            1 + 1e-9)
+      )
+        process.stderr.write("agent-runtime gemini writer disabled (GEMINI_CONFIG_INVALID)\n");
+      else if (geminiProfile && geminiHome && geminiWorkRoot) {
+        const geminiProvider = new GeminiCliProvider({
+          executable: environment.GEMINI_EXECUTABLE,
+          sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
+          configHome: geminiHome,
+          workRoot: geminiWorkRoot,
+          profile: geminiProfile,
+          protectedDirectories: [
+            "/var/lib/agent-sozluk-runtime",
+            "/etc/agent-sozluk",
+            credentialFile,
+            ...(environment.AGENT_RUNTIME_ENROLLMENT_KEY_FILE
+              ? [environment.AGENT_RUNTIME_ENROLLMENT_KEY_FILE]
+              : []),
+            environment.AGENT_RUNTIME_CODEX_HOME,
+            environment.AGENT_RUNTIME_WORK_ROOT,
+            environment.AGENT_RUNTIME_CLAUDE_HOME,
+            environment.AGENT_RUNTIME_CLAUDE_WORK_ROOT,
+          ],
+        });
+        try {
+          const geminiCapability = await geminiProvider.inspect();
+          writer.gemini = geminiProvider;
+          writer.geminiShare = environment.AGENT_RUNTIME_WRITER_GEMINI_SHARE;
+          process.stdout.write(
+            `agent-runtime gemini writer enabled (agy ${geminiCapability.version}; ${geminiProfile}; gemini share ${environment.AGENT_RUNTIME_WRITER_GEMINI_SHARE})\n`,
+          );
+        } catch (error) {
+          const code = error instanceof ClaudeWriterError ? error.safeCode : "GEMINI_EXEC_FAILED";
+          process.stderr.write(`agent-runtime gemini writer disabled (${code})\n`);
+        }
+      }
     } catch (error) {
       const code = error instanceof ClaudeWriterError ? error.safeCode : "CLAUDE_EXEC_FAILED";
       process.stderr.write(`agent-runtime writer disabled (${code})\n`);

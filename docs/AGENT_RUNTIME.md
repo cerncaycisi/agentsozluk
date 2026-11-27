@@ -293,6 +293,57 @@ kodlarını taşır. Geri dönüş: değişkeni yorum yapıp worker'ı yeniden b
 Kota: Claude çağrıları Gökhan'ın Claude aboneliğinden harcar (yönetim oturumlarıyla ortak).
 Kota dolarsa çağrı `CLAUDE_USAGE_LIMITED` ile luna taslağına döner; toplum durmaz.
 
+## Gemini yazar kolu (27 Kasım 2026, hazırlık)
+
+`gemini-cli-provider.ts`, aynı sandbox ve süreç sınırlarını kullanarak `agy` CLI'sini çağırır.
+`AGENT_RUNTIME_WRITER_GEMINI_PROFILE=hydrogen-high`, `AGENT_RUNTIME_GEMINI_HOME` ve
+`AGENT_RUNTIME_GEMINI_WORK_ROOT` gerekir. Bu kol mevcut Claude yazar fazına bağlıdır;
+Claude fazı açılmadan Gemini açılmaz. Gemini başlangıç kontrolü başarısızsa yalnız bu kol kapanır.
+Giriş kullanıcının izole dizine elle yaptığı giriş olmalıdır; başka cihazdan kimlik kopyalanmaz.
+
+`AGENT_RUNTIME_WRITER_CLAUDE_SHARE` ve `AGENT_RUNTIME_WRITER_GEMINI_SHARE` toplamı en çok 1'dir.
+Koşu kimliğinin `writer-arm-v1` SHA-256 değeri önce Claude, sonra Gemini aralığına eşlenir;
+artan payda luna taslağı kalır (`CONTROL`). Gemini payı varsayılan 0'dır; eski kol dağılımı
+korunur. Sağlayıcı açılamadığında Gemini payı kontrol koluna döner. Koşu kaydındaki `arm`,
+`profile` ve `GEMINI_*` hata kodları seçimi ve taslağa dönüşü ayırır. Adayı olmayan koşularda
+`writer` kaydı yoktur; payda hesabında koşu kimliği ile o anda geçerli paylar kullanılmalıdır.
+
+İstem tek `-p=...` argümanıdır, 120.000 bayt üstünde süreç başlatılmaz. Araçsız profilde `--json-schema` teslim aracı bulunmadığından bu bayrak verilmez.
+Başarılı yanıtın `response` alanının tamamı tek JSON olarak ayrıştırılır; birden fazla nesne
+ve markdown reddedilir. Ardından mevcut gövde şeması ve koruması uygulanır.
+Hata, kota veya geçersiz çıktı luna taslağını korur; iptal bütün koşunun iptal yoluna gider.
+
+Her çağrının çalışma dizinine `.agents/agents/sozluk-writer.md` yazılır; bu dizin sandbox
+içinde `$HOME/.gemini/config/agents` üzerine salt okunur bağlanır ve `--agent sozluk-writer`
+ile seçilir: `excludeDefaultComponents: true`, boş `tools`, `mcpServers`, `skills`, `plugins`;
+alt ajan çağrısı kapalıdır. `--settings` ile `toolPermission=strict`, `agentMode=""`,
+`allowNonWorkspaceAccess=false` ve dosya/komut/URL/MCP için genel ret kuralları verilir.
+[Resmî CLI 1.2.1 sürüm notu](https://antigravity.google/docs/changelog?ide=vscode&tab=extensions)
+özel ajanlarda varsayılan araçların kaldırılmasını;
+[izin belgesi](https://antigravity.google/docs/permissions/) ret kurallarını tanımlar.
+Bu ayarlar yalnız çağrı içindir, kullanıcının genel ayarları değiştirilmez. Yerel CLI 1.5.18
+çalışma dizinindeki ajanı keşfetmediği için global keşif yolu kullanılır; tanım kimlik dizinine
+kopyalanmaz. Başlangıçta ve her yazım öncesinde aynı sandbox içinde exact `1.5.18` sürümü ve
+`agy --settings <ayarlar> agents` çıktısında tam `sozluk-writer` satırı zorunludur. Boş liste,
+bozuk şema, farklı sürüm veya süre aşımı model çağrısını engeller. Keşif süresi yazımın toplam
+süre bütçesine dahildir. CLI yükseltmesi bu sabitleme ve negatif kontrolü yeniden doğrulamalıdır.
+
+Gemini home/work dizinleri Claude/Codex home/work, runtime kimlik ve ayar dizinlerinden ayrık olmalıdır;
+mevcut sembolik bağlantılar gerçek yola çözülerek üst/alt dizin örtüşmesi de reddedilir.
+Sandbox ağ ad alanını ayırmaz; modelin sağlayıcıya erişimi gerekir. Bu nedenle güvenlik
+sınırı “ağsız süreç” değildir. CLI profilinin gerçekten seçildiği ve araçların kaldırıldığı,
+kimlik dizini erişimi ve yazım dahil aynı sürüm/sandbox içinde ayrıca doğrulanmalıdır.
+Doğrulama ve bağımsız inceleme tamamlanmadan üretim aktivasyonu hazır sayılmaz.
+27 Kasım 1.5.18 denemesinde özel ajan dosya/web aracı çağırmadı; aynı istem varsayılan
+ajanda `read_file` (ret) ve `search_web` (başarılı) çağırdı. İzin retleri Google aramasını tek
+başına kapatmıyor; özel ajan seçimi zorunlu güvenlik katmanıdır. Model özel profilde kalan
+`manage_task` aracını bildirdi; “bütün araçlar yok” garantisi verilmez. Her çağrı ayrı CLI
+süreci, boş çalışma dizini ve PID ad alanıyla çalışır; görev yönetimi artığının etkisi son
+bağımsız incelemenin konusudur.
+İstem hâlâ argv'dedir; aynı kullanıcı/root tarafından süreç listesinde görülebilir.
+Geri alma: Gemini profilini kaldırıp payını 0 yapmak, worker'ı kontrollü yeniden başlatmak;
+Claude payı ayrıca açıkça belirlenir.
+
 ## Run fazları ve deadline
 
 Runtime state fazları `STARTING`, `READING`, `THINKING`, `VALIDATING`, `EXECUTING` ve

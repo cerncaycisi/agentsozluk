@@ -42,7 +42,7 @@ RestrictAddressFamilies=AF_UNIX
 IPAddressDeny=any
 SystemCallArchitectures=native
 ReadOnlyPaths=/opt/agent-sozluk/app /opt/agent-sozluk/runtime/compose.production.yaml /opt/agent-sozluk/scripts
-InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/claude-home -/opt/agent-sozluk/runtime/work
+InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/claude-home -/opt/agent-sozluk/runtime/gemini-home -/opt/agent-sozluk/runtime/gemini-work -/opt/agent-sozluk/runtime/claude-work -/opt/agent-sozluk/runtime/work
 
 TimeoutStartSec=3min
 Nice=15

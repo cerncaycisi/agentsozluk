@@ -5725,6 +5725,8 @@ describe("runtime Claude yazar", () => {
     timeoutSeconds?: number;
     allowSourceReading?: boolean;
     claudeShare?: number;
+    gemini?: EntryWriterProvider["write"];
+    geminiShare?: number;
   }) {
     const runId = randomUUID();
     const topicId = randomUUID();
@@ -5764,6 +5766,9 @@ describe("runtime Claude yazar", () => {
     const writerProvider: EntryWriterProvider | undefined = options.write
       ? { profile: "sonnet-high", write: vi.fn(options.write) }
       : undefined;
+    const geminiProvider: EntryWriterProvider | undefined = options.gemini
+      ? { profile: "hydrogen-high", write: vi.fn(options.gemini) }
+      : undefined;
     const reference = {
       fetch: vi.fn(async () =>
         options.reference
@@ -5784,6 +5789,8 @@ describe("runtime Claude yazar", () => {
               provider: writerProvider,
               reference,
               ...(options.claudeShare === undefined ? {} : { claudeShare: options.claudeShare }),
+              ...(geminiProvider ? { gemini: geminiProvider } : {}),
+              ...(options.geminiShare === undefined ? {} : { geminiShare: options.geminiShare }),
             },
           }
         : {}),
@@ -5799,6 +5806,7 @@ describe("runtime Claude yazar", () => {
       plane,
       reviewer,
       writerProvider,
+      geminiProvider,
       reference,
       events,
       worker,
@@ -5934,6 +5942,64 @@ describe("runtime Claude yazar", () => {
       writtenCount: 0,
       skippedCount: 0,
     });
+  });
+
+  it("writes with Gemini on the Gemini arm and records its profile", async () => {
+    const run = setup({
+      write: async () => ({ output: { body: "claude" }, model: "m", durationMs: 1 }),
+      gemini: async () => ({ output: { body: written }, model: "g", durationMs: 1 }),
+      claudeShare: 0,
+      geminiShare: 1,
+    });
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    expect(run.writerProvider!.write).not.toHaveBeenCalled();
+    expect(run.geminiProvider!.write).toHaveBeenCalledTimes(1);
+    expect(run.recordedBody()).toBe(written);
+    expect(run.completionUsage().writer).toMatchObject({
+      profile: "hydrogen-high",
+      arm: "GEMINI",
+      writtenCount: 1,
+    });
+  });
+
+  it("fails open to the draft with a Gemini safe code", async () => {
+    const run = setup({
+      write: async () => ({ output: { body: "claude" }, model: "m", durationMs: 1 }),
+      gemini: async () => {
+        throw new ClaudeWriterError("GEMINI_USAGE_LIMITED");
+      },
+      claudeShare: 0,
+      geminiShare: 1,
+    });
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    expect(run.recordedBody()).toBe(draft);
+    expect(run.completionUsage().writer).toMatchObject({
+      arm: "GEMINI",
+      failedOpenCount: 1,
+      failureCodes: ["GEMINI_USAGE_LIMITED"],
+    });
+
+    const invalid = setup({
+      write: async () => ({ output: { body: "claude" }, model: "m", durationMs: 1 }),
+      gemini: async () => ({ output: { yanlis: 1 }, model: "g", durationMs: 1 }),
+      claudeShare: 0,
+      geminiShare: 1,
+    });
+    await expect(invalid.worker.runOnce()).resolves.toBe(1);
+    expect(invalid.completionUsage().writer).toMatchObject({
+      failureCodes: ["GEMINI_OUTPUT_INVALID"],
+    });
+  });
+
+  it("ignores the Gemini share when no Gemini provider is configured", async () => {
+    const run = setup({
+      write: async () => ({ output: { body: written }, model: "m", durationMs: 1 }),
+      claudeShare: 0,
+      geminiShare: 1,
+    });
+    await expect(run.worker.runOnce()).resolves.toBe(1);
+    expect(run.recordedBody()).toBe(draft);
+    expect(run.completionUsage().writer).toMatchObject({ arm: "CONTROL" });
   });
 
   it("does not run without a writer or without persona sections", async () => {
