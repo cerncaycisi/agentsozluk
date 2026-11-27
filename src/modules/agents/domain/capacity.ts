@@ -69,17 +69,20 @@ export function runtimeFingerprint(usageMetadata: unknown): RuntimeFingerprint {
   };
 }
 
-function majorVersion(version: string): number | null {
-  const match = version.match(/(?:^|\D)(\d+)(?:\.|\D|$)/u);
-  return match?.[1] ? Number(match[1]) : null;
+function runtimeCliMajor(version: string): { cli: string; major: number } | null {
+  const trimmed = version.trim().toLowerCase();
+  const match = trimmed.match(/^(.*?)(\d+)(?:\.|\D|$)/u);
+  if (!match?.[2]) return null;
+  const cli = (match[1] ?? "").replace(/(?:^|\s)v$/u, "").replace(/[\s_-]+$/u, "");
+  return { cli, major: Number(match[2]) };
 }
 
 /*
   Gökhan kararı (8 Ekim 2026): "bi kere ölçelim hep oralarda olsun". Ölçüm aynı sunucunun
-  kapasitesidir; talimat özeti değişince ya da 14 gün geçince bayatlamaz. Yalnız Codex ana
-  sürümü değişirse yeniden ölçülür (farklı CLI farklı süreç ve bellek demektir). `staleAt`
-  geçmiş kayıtlarla uyum için yazılmaya devam eder ama tazeliği belirlemez; `AGE` ve
-  `PROMPT_PROFILE` nedenleri yalnız eski kayıtlarda görülebilir. Eski kural CAP-003/CAP-005.
+  kapasitesidir; talimat özeti değişince ya da 14 gün geçince bayatlamaz. Yalnız CLI
+  veya ana sürümü değişirse yeniden ölçülür (farklı CLI farklı süreç ve bellek demektir).
+  `staleAt` geçmiş kayıtlarla uyum için yazılmaya devam eder ama tazeliği belirlemez; `AGE`
+  ve `PROMPT_PROFILE` nedenleri yalnız eski kayıtlarda görülebilir. Eski kural CAP-003/CAP-005.
 */
 export function capabilityFreshness(
   capability: RuntimeCapabilityMeasurement,
@@ -87,9 +90,14 @@ export function capabilityFreshness(
 ): { fresh: boolean; staleReasons: CapabilityStaleReason[] } {
   const staleReasons: CapabilityStaleReason[] = [];
   if (input.codexVersion !== undefined) {
-    const measuredMajor = majorVersion(capability.codexVersion);
-    const currentMajor = majorVersion(input.codexVersion);
-    if (measuredMajor === null || currentMajor === null || measuredMajor !== currentMajor) {
+    const measured = runtimeCliMajor(capability.codexVersion);
+    const current = runtimeCliMajor(input.codexVersion);
+    if (
+      measured === null ||
+      current === null ||
+      measured.cli !== current.cli ||
+      measured.major !== current.major
+    ) {
       staleReasons.push("CODEX_MAJOR");
     }
   }

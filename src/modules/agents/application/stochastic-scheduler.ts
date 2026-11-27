@@ -41,7 +41,7 @@ export type StochasticSchedulerSkipReason =
 export function runRuntimeStochasticTick(
   client: DatabaseExecutor,
   principal: RuntimePrincipal,
-  input: { workerId: string },
+  input: { workerId: string; codexVersion?: string | undefined },
   now = new Date(),
 ) {
   return inTransaction(client, async (transaction) => {
@@ -115,6 +115,7 @@ export function runRuntimeStochasticTick(
     const effective = await resolveEffectiveRuntimeConcurrency(transaction, {
       configuredConcurrency: snapshot.settings.codexConcurrency,
       now,
+      ...(input.codexVersion ? { runtimeCodexVersion: input.codexVersion } : {}),
     });
     await recordEffectiveConcurrencyDecision(transaction, effective, {
       callPath: "STOCHASTIC_SCHEDULER",

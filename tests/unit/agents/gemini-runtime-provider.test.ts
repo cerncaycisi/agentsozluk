@@ -45,6 +45,7 @@ function completedChild(options: {
   exitSignal: NodeJS.Signals | null;
   chunkBytes?: number;
   closeOnKillOnly?: boolean;
+  afterStdout?: () => void;
   onStdin?: (text: string) => void;
 }): ChildProcessWithoutNullStreams {
   const child = new EventEmitter() as EventEmitter & {
@@ -75,6 +76,7 @@ function completedChild(options: {
         child.stdout.write(stdout.subarray(offset, offset + size));
         await new Promise((resolve) => setImmediate(resolve));
       }
+      options.afterStdout?.();
       if (options.closeOnKillOnly) return;
       child.stdout.end();
       child.stderr.end(options.stderr ?? "");
@@ -278,6 +280,7 @@ describe("GeminiRuntimeProvider process handling", () => {
     exitSignal?: NodeJS.Signals | null;
     chunkBytes?: number;
     closeOnKillOnly?: boolean;
+    afterStdout?: () => void;
     onCall?: (args: string[], stdin: string) => void;
   }) {
     const capturedStdin: string[] = [];
@@ -305,6 +308,7 @@ describe("GeminiRuntimeProvider process handling", () => {
         exitSignal: handlers.exitSignal ?? null,
         ...(handlers.chunkBytes ? { chunkBytes: handlers.chunkBytes } : {}),
         ...(handlers.closeOnKillOnly ? { closeOnKillOnly: true } : {}),
+        ...(handlers.afterStdout ? { afterStdout: handlers.afterStdout } : {}),
         onStdin: (text) => {
           capturedStdin.push(text);
           handlers.onCall?.(args, text);
@@ -540,6 +544,73 @@ describe("GeminiRuntimeProvider process handling", () => {
         timeoutMs: 300,
       }),
     ).rejects.toBeInstanceOf(RuntimeProviderTimeoutError);
+  });
+
+  it("rejects complete trailing tool event without newline on timeout and cancellation", async () => {
+    const trailingToolEvent = [
+      JSON.stringify({ event: "init", init: { agent: "sozluk-writer" } }),
+      JSON.stringify({
+        event: "step_update",
+        step_update: { step_index: 1, step_type: "tool", state: "ACTIVE", tool_name: "read_file" },
+      }),
+    ].join("\n");
+
+    const timedOutSpawn = makeSpawn({
+      closeOnKillOnly: true,
+      modelStdout: trailingToolEvent,
+    });
+    const p1 = await createProvider({ spawnProcess: timedOutSpawn.spawnMock });
+    await expect(
+      p1.provider.invoke({
+        runId: randomUUID(),
+        prompt: "p",
+        outputSchema: { type: "object" },
+        timeoutMs: 300,
+      }),
+    ).rejects.toMatchObject({
+      name: "RuntimeProviderExecutionError",
+      safeCode: "CODEX_TOOL_ITEM",
+      diagnostics: { itemCounts: { toolItems: 1, errorItems: 0, unknownItems: 0 } },
+    });
+
+    const controller = new AbortController();
+    const cancelledSpawn = makeSpawn({
+      closeOnKillOnly: true,
+      modelStdout: trailingToolEvent,
+      afterStdout: () => controller.abort(),
+    });
+    const p2 = await createProvider({ spawnProcess: cancelledSpawn.spawnMock });
+    await expect(
+      p2.provider.invoke({
+        runId: randomUUID(),
+        prompt: "p",
+        outputSchema: { type: "object" },
+        timeoutMs: 10_000,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({
+      name: "RuntimeProviderExecutionError",
+      safeCode: "CODEX_TOOL_ITEM",
+      diagnostics: { itemCounts: { toolItems: 1, errorItems: 0, unknownItems: 0 } },
+    });
+
+    const cancelController = new AbortController();
+    const cancelledPartialSpawn = makeSpawn({
+      closeOnKillOnly: true,
+      modelStdout:
+        '{"event":"init","init":{"agent":"sozluk-writer"}}\n{"event":"step_update","partial":true',
+      afterStdout: () => cancelController.abort(),
+    });
+    const p3 = await createProvider({ spawnProcess: cancelledPartialSpawn.spawnMock });
+    await expect(
+      p3.provider.invoke({
+        runId: randomUUID(),
+        prompt: "p",
+        outputSchema: { type: "object" },
+        timeoutMs: 10_000,
+        signal: cancelController.signal,
+      }),
+    ).rejects.toBeInstanceOf(RuntimeProviderCancelledError);
   });
 
   it("classifies stream/stderr failures without leaking raw secrets or diagnostics in JSON", async () => {

@@ -95,7 +95,7 @@ export interface EffectiveRuntimeConcurrency {
  */
 export async function resolveEffectiveRuntimeConcurrency(
   transaction: TransactionClient,
-  input: { configuredConcurrency: number; now: Date },
+  input: { configuredConcurrency: number; now: Date; runtimeCodexVersion?: string },
   dependencies: EffectiveRuntimeConcurrencyDependencies = defaultDependencies,
 ): Promise<EffectiveRuntimeConcurrency> {
   const configuredConcurrency: 1 | 2 = input.configuredConcurrency === 2 ? 2 : 1;
@@ -111,12 +111,18 @@ export async function resolveEffectiveRuntimeConcurrency(
   const capability = await dependencies.getLatestRuntimeCapability(transaction);
   if (!capability) return { concurrency: 1, reason: "BENCHMARK_MISSING", ...base };
 
-  const fingerprintRecord = await dependencies.getLatestRuntimeFingerprintRecord(transaction);
-  // Görünümle (`application/capacity.ts` → `calculateRuntimeCapacity`) AYNI fingerprint
-  // okuması: iki yol ayrışırsa F02'nin "tek otorite" amacı bozulur. Bu okumanın
-  // `codexVersion` yokken `model` alanına düşmesi ayrı ve devralınan bir zayıflıktır;
-  // burada sessizce farklı davranmak yerine tek yerde ele alınmalıdır.
-  const { codexVersion } = runtimeFingerprint(fingerprintRecord?.usageMetadata);
+  const explicitVersion = input.runtimeCodexVersion?.trim();
+  let codexVersion: string | undefined;
+  if (explicitVersion) {
+    codexVersion = explicitVersion;
+  } else {
+    const fingerprintRecord = await dependencies.getLatestRuntimeFingerprintRecord(transaction);
+    // Görünümle (`application/capacity.ts` → `calculateRuntimeCapacity`) AYNI fingerprint
+    // okuması: iki yol ayrışırsa F02'nin "tek otorite" amacı bozulur. Bu okumanın
+    // `codexVersion` yokken `model` alanına düşmesi ayrı ve devralınan bir zayıflıktır;
+    // burada sessizce farklı davranmak yerine tek yerde ele alınmalıdır.
+    codexVersion = runtimeFingerprint(fingerprintRecord?.usageMetadata).codexVersion;
+  }
   const measured = { measurementId: capability.id, staleAt: capability.staleAt };
   if (codexVersion === undefined)
     return {

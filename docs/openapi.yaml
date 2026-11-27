@@ -3792,6 +3792,7 @@ components:
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
         leaseSeconds: { type: integer, minimum: 15, maximum: 300, default: 60 }
+        codexVersion: { type: string, minLength: 1, maxLength: 200 }
     RuntimeDailyPlanInput:
       type: object
       additionalProperties: false
@@ -3894,6 +3895,7 @@ components:
       required: [workerId]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
+        codexVersion: { type: string, minLength: 1, maxLength: 200 }
     RuntimeCredentialRosterAckInput:
       type: object
       additionalProperties: false

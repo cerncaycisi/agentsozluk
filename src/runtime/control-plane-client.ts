@@ -202,7 +202,7 @@ export class RuntimeControlPlaneError extends Error {
 }
 
 export interface RuntimeControlPlane {
-  lease(credential: string, workerId: string): Promise<RuntimeLease>;
+  lease(credential: string, workerId: string, codexVersion?: string): Promise<RuntimeLease>;
   context(
     credential: string,
     workerId: string,
@@ -292,7 +292,11 @@ export interface RuntimeStochasticSchedulerControlPlane {
     credential: string,
     workerId: string,
   ): Promise<z.infer<typeof birthTickResponseSchema>>;
-  tickScheduler(credential: string, workerId: string): Promise<RuntimeStochasticTickResult>;
+  tickScheduler(
+    credential: string,
+    workerId: string,
+    codexVersion?: string,
+  ): Promise<RuntimeStochasticTickResult>;
 }
 
 interface Envelope {
@@ -433,7 +437,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
     return envelope.data;
   }
 
-  async lease(credential: string, workerId: string): Promise<RuntimeLease> {
+  async lease(credential: string, workerId: string, codexVersion?: string): Promise<RuntimeLease> {
     const idempotencyKey = randomUUID();
     return leaseResponseSchema.parse(
       await this.#request(
@@ -443,6 +447,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         {
           workerId,
           leaseSeconds: 60,
+          ...(codexVersion ? { codexVersion } : {}),
         },
         undefined,
         undefined,
@@ -456,14 +461,18 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
     );
   }
 
-  async tickScheduler(credential: string, workerId: string): Promise<RuntimeStochasticTickResult> {
+  async tickScheduler(
+    credential: string,
+    workerId: string,
+    codexVersion?: string,
+  ): Promise<RuntimeStochasticTickResult> {
     const idempotencyKey = randomUUID();
     return stochasticTickResponseSchema.parse(
       await this.#request(
         credential,
         "POST",
         "/api/v1/internal/agent-runtime/scheduler/tick",
-        { workerId },
+        { workerId, ...(codexVersion ? { codexVersion } : {}) },
         undefined,
         undefined,
         { idempotencyKey, retryTransportFailureOnce: true },

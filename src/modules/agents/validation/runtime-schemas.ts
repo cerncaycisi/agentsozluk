@@ -30,6 +30,7 @@ export const runtimeLeaseSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
     leaseSeconds: z.number().int().min(15).max(300).default(60),
+    codexVersion: z.string().trim().min(1).max(200).optional(),
   })
   .strict();
 
@@ -42,6 +43,7 @@ export const runtimeDailyPlanSchema = z
 export const runtimeStochasticTickSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
+    codexVersion: z.string().trim().min(1).max(200).optional(),
   })
   .strict();
 

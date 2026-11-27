@@ -96,7 +96,7 @@ function runReachedProvider(usageMetadata: unknown): boolean | undefined {
 }
 
 export async function getLatestRuntimeFingerprintRecord(transaction: Prisma.TransactionClient) {
-  const [run, measurement] = await Promise.all([
+  const [run, measurement, workerSync] = await Promise.all([
     transaction.agentRun.findFirst({
       where: { usageMetadata: { not: Prisma.JsonNull }, finishedAt: { not: null } },
       orderBy: [{ finishedAt: "desc" }, { id: "desc" }],
@@ -107,14 +107,37 @@ export async function getLatestRuntimeFingerprintRecord(transaction: Prisma.Tran
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: { metadata: true, createdAt: true },
     }),
+    transaction.agentRuntimeCredentialSync.findUnique({
+      where: { id: "global" },
+      select: { codexVersion: true, promptProfileHash: true, syncedAt: true },
+    }),
   ]);
-  const fingerprintedRun = runtimeFingerprint(run?.usageMetadata).codexVersion ? run : null;
-  if (
-    !measurement ||
-    (fingerprintedRun?.finishedAt && fingerprintedRun.finishedAt >= measurement.createdAt)
-  )
-    return fingerprintedRun;
-  return { usageMetadata: measurement.metadata, finishedAt: measurement.createdAt };
+  const fingerprintedRun =
+    run?.finishedAt && runtimeFingerprint(run.usageMetadata).codexVersion
+      ? { usageMetadata: run.usageMetadata, finishedAt: run.finishedAt }
+      : null;
+  const measurementRecord = measurement
+    ? { usageMetadata: measurement.metadata, finishedAt: measurement.createdAt }
+    : null;
+  const workerCodexVersion = workerSync?.codexVersion?.trim();
+  const workerSyncRecord = workerCodexVersion
+    ? {
+        usageMetadata: {
+          codexVersion: workerCodexVersion,
+          ...(workerSync?.promptProfileHash
+            ? { promptProfileHash: workerSync.promptProfileHash }
+            : {}),
+        } as Prisma.JsonValue,
+        finishedAt: workerSync!.syncedAt,
+      }
+    : null;
+
+  let latest: { usageMetadata: Prisma.JsonValue; finishedAt: Date } | null = measurementRecord;
+  if (fingerprintedRun && (!latest || fingerprintedRun.finishedAt >= latest.finishedAt))
+    latest = fingerprintedRun;
+  if (workerSyncRecord && (!latest || workerSyncRecord.finishedAt >= latest.finishedAt))
+    latest = workerSyncRecord;
+  return latest;
 }
 
 export function createRuntimeCapabilityRecord(

@@ -277,6 +277,11 @@ async function main(): Promise<void> {
     controlPlane,
     stochasticScheduling: { controlPlane },
     provider,
+    providerMetadata: {
+      version: capability.version,
+      ...(capability.model ? { model: capability.model } : {}),
+      ...(capability.reasoningEffort ? { reasoningEffort: capability.reasoningEffort } : {}),
+    },
     actionWorthinessProvider: provider,
     // 1 Kasım 2026: kalite kapısı sağlayıcısı zorunlu (fail-closed).
     requireNoveltyGate: true,

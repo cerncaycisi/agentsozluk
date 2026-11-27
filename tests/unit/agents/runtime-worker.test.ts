@@ -6323,6 +6323,13 @@ describe("gemini ana sağlayıcı telemetrisi ve araç koruması", () => {
 
     const failRunId = randomUUID();
     const failPlane = controlPlane(failRunId);
+    const tickScheduler = vi.fn().mockResolvedValue({
+      tickKey: "2026-11-27T20:00:00.000Z",
+      createdRuns: 0,
+      selectedAgentProfileIds: [],
+      skipReason: "QUIET_WINDOW",
+      workerId: "gemini-worker",
+    });
     const geminiFail: RuntimeProvider = {
       providerName: "gemini-cli",
       inspect: vi.fn(),
@@ -6338,14 +6345,33 @@ describe("gemini ana sağlayıcı telemetrisi ve araç koruması", () => {
       workerId: "gemini-worker",
       credentials: [`agt_${"g".repeat(43)}`],
       controlPlane: failPlane,
+      stochasticScheduling: { controlPlane: { tickScheduler } },
       provider: geminiFail,
+      providerMetadata: {
+        version: "agy 1.5.18",
+        model: "gemini-4-hydrogen-high",
+        reasoningEffort: "high",
+      },
     });
     await expect(failWorker.runOnce()).resolves.toBe(1);
+    expect(tickScheduler).toHaveBeenCalledWith(
+      `agt_${"g".repeat(43)}`,
+      "gemini-worker",
+      "agy 1.5.18",
+    );
+    expect(failPlane.lease).toHaveBeenCalledWith(
+      `agt_${"g".repeat(43)}`,
+      "gemini-worker",
+      "agy 1.5.18",
+    );
     const failedUsage = (
       vi.mocked(failPlane.fail).mock.calls[0]![4] as { usageMetadata: Record<string, unknown> }
     ).usageMetadata;
     expect(usageMetadataSchema.parse(failedUsage)).toMatchObject({
       provider: "gemini-cli",
+      codexVersion: "agy 1.5.18",
+      model: "gemini-4-hydrogen-high",
+      reasoningEffort: "high",
     });
   });
 

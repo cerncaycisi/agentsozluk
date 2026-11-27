@@ -176,4 +176,26 @@ describe("effective runtime concurrency", () => {
     });
     expect(result.concurrency).toBe(2);
   });
+
+  it("drops to single lane immediately on runtimeCodexVersion CLI switch before any Gemini run finishes", async () => {
+    for (const measuredVersion of ["codex-cli 0.160.0", "codex-cli 1.9.0"]) {
+      const dependencies = deps(
+        { ...fresh, codexVersion: measuredVersion },
+        { usageMetadata: { codexVersion: measuredVersion }, finishedAt: now },
+      );
+      const result = await resolveEffectiveRuntimeConcurrency(
+        tx,
+        { configuredConcurrency: 2, now, runtimeCodexVersion: "agy 1.5.18" },
+        dependencies,
+      );
+      expect(result).toMatchObject({
+        concurrency: 1,
+        configuredConcurrency: 2,
+        reason: "EVIDENCE_STALE",
+        staleReasons: ["CODEX_MAJOR"],
+        measurementId: fresh.id,
+      });
+      expect(dependencies.getLatestRuntimeFingerprintRecord).not.toHaveBeenCalled();
+    }
+  });
 });

@@ -165,6 +165,11 @@ export interface RuntimeWorkerOptions {
   loadCredentials?: () => Promise<string[]>;
   controlPlane: RuntimeControlPlane;
   provider: RuntimeProvider;
+  providerMetadata?: {
+    version: string;
+    model?: string;
+    reasoningEffort?: RuntimeProviderResult["reasoningEffort"];
+  };
   actionWorthinessProvider?: RuntimeProvider;
   /*
     Karma yazım (`src/runtime/voice-rewrite.ts`): sağlayıcı ve onun kapalı profil adı; ad koşu
@@ -1700,10 +1705,14 @@ export class AgentRuntimeWorker {
     const now = this.#options.now?.() ?? new Date();
     if (now.getTime() < this.#stochasticTickNotBefore) return;
     try {
-      const result = await scheduling.controlPlane.tickScheduler(
-        credential,
-        this.#options.workerId,
-      );
+      const providerVersion = this.#options.providerMetadata?.version;
+      const result = providerVersion
+        ? await scheduling.controlPlane.tickScheduler(
+            credential,
+            this.#options.workerId,
+            providerVersion,
+          )
+        : await scheduling.controlPlane.tickScheduler(credential, this.#options.workerId);
       const busy = ["CAPACITY_FULL", "QUEUE_NOT_EMPTY", "NO_ELIGIBLE_AGENT"].includes(
         result.skipReason ?? "",
       );
@@ -1748,8 +1757,15 @@ export class AgentRuntimeWorker {
 
   async #processCredential(credential: string): Promise<boolean> {
     let lease;
+    const providerVersion = this.#options.providerMetadata?.version;
     try {
-      lease = await this.#options.controlPlane.lease(credential, this.#options.workerId);
+      lease = providerVersion
+        ? await this.#options.controlPlane.lease(
+            credential,
+            this.#options.workerId,
+            providerVersion,
+          )
+        : await this.#options.controlPlane.lease(credential, this.#options.workerId);
     } catch (error) {
       if (
         error instanceof RuntimeControlPlaneError &&
@@ -3296,6 +3312,15 @@ export class AgentRuntimeWorker {
         yokluğundan atlandıysa ya da koşu erken düştüyse de kolu bilmek
         gerekiyor (ITT).
       */
+      const failureCodexVersion =
+        providerResult?.version ?? this.#options.providerMetadata?.version;
+      const failureModel =
+        providerResult?.model ??
+        providerResult?.version ??
+        this.#options.providerMetadata?.model ??
+        this.#options.providerMetadata?.version;
+      const failureReasoningEffort =
+        providerResult?.reasoningEffort ?? this.#options.providerMetadata?.reasoningEffort;
       const failureUsage =
         codexIntervals.length > 0 || browseExperiment
           ? {
@@ -3306,15 +3331,9 @@ export class AgentRuntimeWorker {
                 providerResult?.provider ??
                 this.#options.provider.providerName ??
                 ("codex-cli" as const),
-              ...(providerResult
-                ? {
-                    codexVersion: providerResult.version,
-                    model: providerResult.model ?? providerResult.version,
-                    ...(providerResult.reasoningEffort
-                      ? { reasoningEffort: providerResult.reasoningEffort }
-                      : {}),
-                  }
-                : {}),
+              ...(failureCodexVersion ? { codexVersion: failureCodexVersion } : {}),
+              ...(failureModel ? { model: failureModel } : {}),
+              ...(failureReasoningEffort ? { reasoningEffort: failureReasoningEffort } : {}),
               promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
               /*
                 Şema `codexIntervals` için `.min(1)` istiyor: boş dizi

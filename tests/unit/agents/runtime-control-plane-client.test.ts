@@ -417,4 +417,43 @@ describe("runtime control-plane HTTP contract", () => {
     const secondHeaders = fetchMock.mock.calls[1]![1]?.headers as Record<string, string>;
     expect(firstHeaders["idempotency-key"]).not.toBe(secondHeaders["idempotency-key"]);
   });
+
+  it("propagates optional codexVersion on lease and scheduler tick while omitting it on legacy calls", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      if (String(input).endsWith("/lease"))
+        return jsonResponse({ data: { run: null, reason: "QUEUE_EMPTY" } });
+      return jsonResponse({
+        data: {
+          tickKey: "2026-11-27T20:00:00.000Z",
+          createdRuns: 0,
+          selectedAgentProfileIds: [],
+          skipReason: "QUIET_WINDOW",
+          workerId: "worker-one",
+        },
+      });
+    });
+    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
+
+    await client.lease("credential", "worker-one", "agy 1.5.18");
+    await client.tickScheduler("planning-credential", "worker-one", "agy 1.5.18");
+    await client.lease("credential", "worker-one");
+    await client.tickScheduler("planning-credential", "worker-one");
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0]![1]?.body))).toEqual({
+      workerId: "worker-one",
+      leaseSeconds: 60,
+      codexVersion: "agy 1.5.18",
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[1]![1]?.body))).toEqual({
+      workerId: "worker-one",
+      codexVersion: "agy 1.5.18",
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[2]![1]?.body))).toEqual({
+      workerId: "worker-one",
+      leaseSeconds: 60,
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[3]![1]?.body))).toEqual({
+      workerId: "worker-one",
+    });
+  });
 });

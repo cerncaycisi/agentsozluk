@@ -250,14 +250,14 @@ function collectGeminiStream(
       if (countWithoutIndex) itemCounts[key] += 1;
     };
 
-    const readEvent = (rawLine: string) => {
+    const readEvent = (rawLine: string, options: { allowTruncatedJson?: boolean } = {}) => {
       const line = rawLine.trim();
       if (line.length === 0) return;
       let parsed: unknown;
       try {
         parsed = JSON.parse(line);
       } catch {
-        eventStreamInvalid = true;
+        if (!options.allowTruncatedJson) eventStreamInvalid = true;
         return;
       }
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -425,8 +425,8 @@ function collectGeminiStream(
         if (!eventStreamOverflow) {
           pendingEvent += stdoutDecoder.end();
           if (pendingEvent.length > MAX_PENDING_EVENT_CHARS) eventStreamOverflow = true;
-          else if (pendingEvent.trim().length > 0 && !timedOut && !cancelled)
-            readEvent(pendingEvent);
+          else if (pendingEvent.trim().length > 0)
+            readEvent(pendingEvent, { allowTruncatedJson: timedOut || cancelled });
         }
         pendingEvent = "";
         resolve({

@@ -1613,6 +1613,7 @@ export async function leaseRuntimeRun(
     const effective = await resolveEffectiveRuntimeConcurrency(transaction, {
       configuredConcurrency: settings.codexConcurrency,
       now,
+      ...(input.codexVersion ? { runtimeCodexVersion: input.codexVersion } : {}),
     });
     await recordEffectiveConcurrencyDecision(transaction, effective, { callPath: "LEASE", now });
     const concurrency = effective.concurrency;
