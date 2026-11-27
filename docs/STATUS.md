@@ -8291,3 +8291,10 @@ exact düzeltilmiş CI beklenir. Üretim dağıtılmadı, P7 aynıd083 ile sür�
 - Gerçek agy 1.5.18 + bubblewrap: özel profil keşfi başarılı; bozuk profil model çağrısından önce güvenli kodla durdu. Aynı sandbox'ta Hydrogen tek turda 6.476 ms içinde JSON gövdesi üretti.
 - Sentetik araç karşılaştırması: özel profil dosya/web çağrısı yapmadı; varsayılan profil dosya okuma ret, Google arama başarılı. Genel `init.tools` listesi iki profilde de aynı; araç kapatma kanıtı tek başına bu liste değildir. `manage_task` artığı model yanıtında bildirildi.
 - Sol 6.1 son dar incelemesi exact `f84c384ee8df54b5f85aea223016e9f5583ab05b` için engelleyici somut bulgu olmadan kod kabulü verdi. Uygulama/worker cutover veya Gemini aktivasyonu yapılmadı; CI ve dağıtım kapıları açık.
+
+## 27 Kasım 2026 — Gemini yazar (#526) canlıda, Claude/Hydrogen 0,5/0,5
+
+- **Exact dağıtım:** `521eb371ac41c875f93528aff4d57fffdc140c7c` (PR #526); Main CI `46044933374` 7/7 `success`, Release Candidate Bundle `46046558959` `success`. Migration yok; `RELEASE_COMPLETE PASS sha=521eb371ac41c875f93528aff4d57fffdc140c7c cleanup=cleanup migrations=no-migration`, geri dönüş sürümü `e8cc13d32d42c3ebc5bc162cd8fa21ffc491cc8a` korunuyor.
+- **Disk ve temizlik:** dağıtım öncesi 15.772.319.744 bayt (artifact indirme sonrası); `RELEASE_CLEANUP PASS` (`removed_app_images=1`, `removed_runtime_releases=1`, `disk_before=67%|13405012`, `disk_after=61%|15443272`), son ölçüm `/dev/sda1` 15.531.225.088 bayt boş (%62).
+- **Kurulum ve canlı canary:** `agy 1.5.18` (`/usr/local/bin/agy`), aynı sunucudan taşınan `gemini-home` ve `gemini-work`, 4 komşu systemd birimi (`ilgili`, `karagoz`, `maintenance`, `sayac`) kuruldu (`GEMINI_INSTALL_PASS`). `agent-runtime` sandbox canary `PASS` (`version=1.5.18`, `model=gemini-4-hydrogen-high`, `bodyLength=80`, `durationMs=6598`, `published=false`).
+- **Aktivasyon ve durum:** worker `claude share 0.5` (`sonnet-high`) ve `gemini share 0.5` (`hydrogen-high`) ile `active/running`, `NRestarts=0` (`PID 3391602`). `resume` sonrası `runtimeEnabled=true`, `settingsVersion=488`; public/local `/api/health` ve `/api/ready` 200; DB yazarları `ACTIVE=10`, `PAUSED=26` değişmedi.
