@@ -39,14 +39,26 @@ import { runtimePromptScaffold } from "@/runtime/prompt-profile";
   Kol yalnız aday olan koşunun `writer` kaydına yazılır; bütün koşuların kolu (payda, hata ve
   yayım oranı için) bu işlevle koşu kimliğinden yeniden hesaplanır (Sol 6.1).
 */
-export const runtimeWriterArms = ["CLAUDE", "CONTROL"] as const;
+export const runtimeWriterArms = ["CLAUDE", "GEMINI", "CONTROL"] as const;
 export type RuntimeWriterArm = (typeof runtimeWriterArms)[number];
 
-export function runtimeWriterArm(runId: string, claudeShare: number): RuntimeWriterArm {
-  if (!(claudeShare < 1)) return "CLAUDE";
-  if (!(claudeShare > 0)) return "CONTROL";
-  const digest = createHash("sha256").update(`writer-arm-v1:${runId}`).digest();
-  return digest.readUInt32BE(0) / 2 ** 32 < claudeShare ? "CLAUDE" : "CONTROL";
+/*
+  Gemini kolu (27 Kasım): aynı özet değeri [0, claude) → CLAUDE, [claude, claude+gemini) →
+  GEMINI, kalan → CONTROL. Gemini payı 0 iken kollar 23 Kasım'daki dağılımın aynısıdır.
+*/
+export function runtimeWriterArm(
+  runId: string,
+  claudeShare: number,
+  geminiShare = 0,
+): RuntimeWriterArm {
+  const claude = Number.isFinite(claudeShare) ? Math.min(Math.max(claudeShare, 0), 1) : 1;
+  const gemini = Number.isFinite(geminiShare) ? Math.min(Math.max(geminiShare, 0), 1 - claude) : 0;
+  if (claude >= 1) return "CLAUDE";
+  if (claude <= 0 && gemini <= 0) return "CONTROL";
+  const value =
+    createHash("sha256").update(`writer-arm-v1:${runId}`).digest().readUInt32BE(0) / 2 ** 32;
+  if (value < claude) return "CLAUDE";
+  return value < claude + gemini ? "GEMINI" : "CONTROL";
 }
 
 /** Koşu başına en çok bu kadar gövde Claude'a yazdırılır; fazlası luna taslağıyla kalır. */

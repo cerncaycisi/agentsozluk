@@ -4461,10 +4461,10 @@ components:
           properties:
             profile:
               type: string
-              enum: [sonnet-high, opus-high]
+              enum: [sonnet-high, opus-high, hydrogen-high, neon-high]
             arm:
               type: string
-              enum: [CLAUDE, CONTROL]
+              enum: [CLAUDE, GEMINI, CONTROL]
             candidateCount: { type: integer, minimum: 0, maximum: 100 }
             writtenCount: { type: integer, minimum: 0, maximum: 100 }
             referenceCount: { type: integer, minimum: 0, maximum: 100 }
@@ -4473,7 +4473,7 @@ components:
             skippedCount: { type: integer, minimum: 0, maximum: 100 }
             failureCodes:
               type: array
-              maxItems: 10
+              maxItems: 12
               items:
                 type: string
                 enum:
@@ -4484,6 +4484,12 @@ components:
                     CLAUDE_USAGE_LIMITED,
                     CLAUDE_EXEC_FAILED,
                     CLAUDE_OUTPUT_INVALID,
+                    GEMINI_TIMEOUT,
+                    GEMINI_CANCELLED,
+                    GEMINI_AUTH_REQUIRED,
+                    GEMINI_USAGE_LIMITED,
+                    GEMINI_EXEC_FAILED,
+                    GEMINI_OUTPUT_INVALID,
                   ]
             guardCodes:
               type: array
@@ -4512,7 +4518,7 @@ components:
             - skippedCount
             - failureCodes
           additionalProperties: false
-          description: Claude yazarın profil adı ile aday, Claude metniyle yazılan, bilgi notu bulunan, korumanın reddettiği, düşüp luna taslağında kalan ve atlanan sayıları; güvenli hata kodları.
+          description: Yazarın (Claude ya da Gemini) profil adı ve kolu ile aday, Claude metniyle yazılan, bilgi notu bulunan, korumanın reddettiği, düşüp luna taslağında kalan ve atlanan sayıları; güvenli hata kodları.
         browseExperiment:
           type: object
           properties:

@@ -6,6 +6,8 @@ import {
   claudeWriterProfiles,
   type ClaudeWriterProfileName,
   type ClaudeWriterSafeCode,
+  type WriterProfileName,
+  type WriterSafeCode,
 } from "@/runtime/claude-writer-profiles";
 
 export {
@@ -14,6 +16,8 @@ export {
   isClaudeWriterProfileName,
   type ClaudeWriterProfileName,
   type ClaudeWriterSafeCode,
+  type WriterProfileName,
+  type WriterSafeCode,
 } from "@/runtime/claude-writer-profiles";
 
 /*
@@ -31,9 +35,10 @@ export {
   kodla döner; çağıran luna taslağıyla devam eder (fail-open). Model içeriği ve stderr kaydedilmez.
 */
 
+/** Yazar sağlayıcılarının (Claude, Gemini) ortak hata türü; yalnız güvenli kod taşır. */
 export class ClaudeWriterError extends Error {
-  constructor(public readonly safeCode: ClaudeWriterSafeCode) {
-    super("Claude yazar çağrısı tamamlanamadı.");
+  constructor(public readonly safeCode: WriterSafeCode) {
+    super("Yazar çağrısı tamamlanamadı.");
     this.name = "ClaudeWriterError";
   }
 }
@@ -53,7 +58,7 @@ export interface ClaudeWriteResult {
 }
 
 export interface EntryWriterProvider {
-  readonly profile: ClaudeWriterProfileName;
+  readonly profile: WriterProfileName;
   write(request: ClaudeWriteRequest): Promise<ClaudeWriteResult>;
 }
 
@@ -122,29 +127,38 @@ export function claudeCliArguments(
   ];
 }
 
-export function sandboxedClaudeCommand(
-  options: Pick<
-    ClaudeCliProviderOptions,
-    "executable" | "sandboxExecutable" | "configHome" | "workRoot"
-  >,
-  claudeArguments: string[],
+export interface WriterSandboxOptions {
+  label: string;
+  executable: string;
+  sandboxExecutable: string;
+  configHome: string;
+  workRoot: string;
+}
+
+/**
+ * Yazar CLI'leri (Claude, Gemini) için ortak bubblewrap komutu: yalnız çalıştırılabilir dosya,
+ * sistem kütüphaneleri, TLS/DNS dosyaları, yapılandırma dizini ve bu çağrının boş çalışma dizini.
+ */
+export function sandboxedWriterCommand(
+  options: WriterSandboxOptions,
+  environment: Record<string, string>,
+  cliArguments: string[],
   workDirectory: string,
 ): { command: string; args: string[] } {
-  for (const [label, value] of [
-    ["Claude executable", options.executable],
-    ["Claude sandbox executable", options.sandboxExecutable],
-    ["Claude config home", options.configHome],
-    ["Claude work root", options.workRoot],
-    ["Claude work directory", workDirectory],
+  const { label } = options;
+  for (const [name, value] of [
+    [`${label} executable`, options.executable],
+    [`${label} sandbox executable`, options.sandboxExecutable],
+    [`${label} config home`, options.configHome],
+    [`${label} work root`, options.workRoot],
+    [`${label} work directory`, workDirectory],
   ] as const)
-    assertAbsolute(label, value);
+    assertAbsolute(name, value);
   if (within(options.configHome, options.workRoot) || within(options.workRoot, options.configHome))
-    throw new Error("Claude yapılandırma dizini work root ile örtüşemez.");
+    throw new Error(`${label} yapılandırma dizini work root ile örtüşemez.`);
   if (!within(options.workRoot, workDirectory) || workDirectory === options.workRoot)
-    throw new Error("Claude work directory work root içinde olmalıdır.");
-  const environment = Object.entries(
-    claudeSandboxEnvironment(options.configHome, workDirectory),
-  ).flatMap(([key, value]) => ["--setenv", key, value]);
+    throw new Error(`${label} work directory work root içinde olmalıdır.`);
+  const setenv = Object.entries(environment).flatMap(([key, value]) => ["--setenv", key, value]);
   return {
     command: options.sandboxExecutable,
     args: [
@@ -155,9 +169,9 @@ export function sandboxedClaudeCommand(
       "--unshare-ipc",
       "--unshare-uts",
       "--clearenv",
-      ...environment,
+      ...setenv,
       /*
-        Claude CLI dinamik bağlı (glibc); codex'ten farklı olarak sistem kütüphaneleri gerekir.
+        Yazar CLI'leri dinamik bağlı (glibc); codex'ten farklı olarak sistem kütüphaneleri gerekir.
         Kütüphane dizinleri yalnız okunur; sır taşımaz. Ağ/TLS/DNS için codex'le aynı üç dosya.
       */
       "--ro-bind",
@@ -203,9 +217,25 @@ export function sandboxedClaudeCommand(
       workDirectory,
       "--",
       options.executable,
-      ...claudeArguments,
+      ...cliArguments,
     ],
   };
+}
+
+export function sandboxedClaudeCommand(
+  options: Pick<
+    ClaudeCliProviderOptions,
+    "executable" | "sandboxExecutable" | "configHome" | "workRoot"
+  >,
+  claudeArguments: string[],
+  workDirectory: string,
+): { command: string; args: string[] } {
+  return sandboxedWriterCommand(
+    { ...options, label: "Claude" },
+    claudeSandboxEnvironment(options.configHome, workDirectory),
+    claudeArguments,
+    workDirectory,
+  );
 }
 
 /** stderr'den yalnız sınıf çıkarılır; metin saklanmaz. */
@@ -246,7 +276,7 @@ export function parseClaudeResult(stdout: string): { output: unknown; model?: st
   };
 }
 
-function collect(
+export function collectWriterProcess(
   child: ChildProcessWithoutNullStreams,
   input: string,
   timeoutMs: number,
@@ -340,7 +370,7 @@ export class ClaudeCliProvider implements EntryWriterProvider {
         env: { NODE_ENV: "production" },
         stdio: ["pipe", "pipe", "pipe"],
       }) as ChildProcessWithoutNullStreams;
-      const result = await collect(
+      const result = await collectWriterProcess(
         child,
         "",
         timeoutMs,
@@ -383,7 +413,7 @@ export class ClaudeCliProvider implements EntryWriterProvider {
         env: { NODE_ENV: "production" },
         stdio: ["pipe", "pipe", "pipe"],
       }) as ChildProcessWithoutNullStreams;
-      const result = await collect(
+      const result = await collectWriterProcess(
         child,
         request.prompt,
         request.timeoutMs,

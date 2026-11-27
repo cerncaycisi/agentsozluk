@@ -11,8 +11,8 @@ import { operatorReasonSchema } from "@/modules/agents/validation/schemas";
 import { agentRuntimeCodexProfileNames } from "@/runtime/codex-profiles";
 import {
   claudeWriterGuardCodes,
-  claudeWriterProfileNames,
-  claudeWriterSafeCodes,
+  writerProfileNames,
+  writerSafeCodes,
 } from "@/runtime/claude-writer-profiles";
 
 export const runtimeWorkerIdSchema = z
@@ -581,16 +581,16 @@ export const usageMetadataSchema = z
     */
     writer: z
       .object({
-        profile: z.enum(claudeWriterProfileNames),
-        // Canlı karşılaştırma kolu (23 Kasım): CONTROL'de Claude çağrılmaz, luna taslağı kalır.
-        arm: z.enum(["CLAUDE", "CONTROL"]).optional(),
+        profile: z.enum(writerProfileNames),
+        // Canlı karşılaştırma kolu (23 Kasım; GEMINI 27 Kasım): CONTROL'de luna taslağı kalır.
+        arm: z.enum(["CLAUDE", "GEMINI", "CONTROL"]).optional(),
         candidateCount: z.number().int().min(0).max(100),
         writtenCount: z.number().int().min(0).max(100),
         referenceCount: z.number().int().min(0).max(100),
         guardRejectedCount: z.number().int().min(0).max(100),
         failedOpenCount: z.number().int().min(0).max(100),
         skippedCount: z.number().int().min(0).max(100),
-        failureCodes: z.array(z.enum(claudeWriterSafeCodes)).max(10),
+        failureCodes: z.array(z.enum(writerSafeCodes)).max(12),
         // Korumanın ret nedenleri (24 Kasım; ilk gece Claude gövdelerinin üçte biri reddedildi).
         guardCodes: z.array(z.enum(claudeWriterGuardCodes)).max(10).optional(),
       })

@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import type { spawn } from "node:child_process";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm, mkdir, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -27,6 +27,15 @@ import {
   wikipediaRenderUrl,
 } from "@/runtime/topic-reference";
 import type { RuntimeDecision } from "@/runtime/output";
+import {
+  GeminiCliProvider,
+  assertGeminiDirectoryIsolation,
+  geminiWriterAgent,
+  geminiWriterSettings,
+  classifyGeminiFailure,
+  geminiCliArguments,
+  parseGeminiResult,
+} from "@/runtime/gemini-cli-provider";
 
 const lead =
   "Kevin Maxwell Warsh (d. 13 Nisan 1970), Federal Rezerv Yönetim Kurulu üyesi ve 17. başkanı olarak görev yapan Amerikalı bir finansçıdır. Daha önce 2006'dan 2011'e kadar da kurul üyesi olarak görev yaptı ve 2008 krizinde piyasalarla bağlantı rolü üstlendi.";
@@ -193,6 +202,229 @@ describe("Claude yazar yazı tura kolu", () => {
     expect(ids.map((id) => runtimeWriterArm(id, 0.5))).toEqual(arms);
     expect(runtimeWriterArm(ids[0]!, 1)).toBe("CLAUDE");
     expect(runtimeWriterArm(ids[0]!, 0)).toBe("CONTROL");
+  });
+
+  it("adds a Gemini arm after the Claude share without moving Claude runs", () => {
+    const ids = Array.from(
+      { length: 3000 },
+      (_, index) => `00000000-0000-4000-8000-${index.toString(16).padStart(12, "0")}`,
+    );
+    const split = ids.map((id) => runtimeWriterArm(id, 0.5, 0.5));
+    const gemini = split.filter((arm) => arm === "GEMINI").length;
+    expect(gemini).toBeGreaterThan(1350);
+    expect(gemini).toBeLessThan(1650);
+    expect(split).not.toContain("CONTROL");
+    ids.forEach((id, index) => {
+      if (runtimeWriterArm(id, 0.5) === "CLAUDE") expect(split[index]).toBe("CLAUDE");
+    });
+    // Toplam 1'i aşarsa Gemini payı kırpılır; Claude payı 1 iken Gemini kolu yoktur.
+    expect(ids.map((id) => runtimeWriterArm(id, 1, 0.5))).not.toContain("GEMINI");
+    expect(new Set(ids.map((id) => runtimeWriterArm(id, 0.8, 0.5)))).toEqual(
+      new Set(["CLAUDE", "GEMINI"]),
+    );
+    expect(ids.map((id) => runtimeWriterArm(id, 0, 1)).every((arm) => arm === "GEMINI")).toBe(true);
+  });
+});
+
+describe("Gemini CLI sağlayıcısı", () => {
+  const options = {
+    executable: "/usr/local/bin/agy",
+    sandboxExecutable: "/usr/bin/bwrap",
+    configHome: "/opt/agent-sozluk/runtime/gemini-home",
+    workRoot: "/opt/agent-sozluk/runtime/gemini-work",
+  };
+
+  it("passes the prompt as one argument without approval-bypass flags", () => {
+    const args = geminiCliArguments("hydrogen-high", "-- istem --model x");
+    expect(args[0]).toBe("-p=-- istem --model x");
+    expect(args[args.indexOf("--model") + 1]).toBe("gemini-4-hydrogen-high");
+    expect(args).toContain("--disable-slash-commands");
+    expect(args).not.toContain("--json-schema");
+    expect(args[args.indexOf("--agent") + 1]).toBe("sozluk-writer");
+    expect(JSON.parse(args[args.indexOf("--settings") + 1]!)).toEqual(geminiWriterSettings);
+    expect(geminiWriterSettings.permissions.deny).toEqual(
+      expect.arrayContaining([
+        "read_file(*)",
+        "write_file(*)",
+        "read_url(*)",
+        "command(*)",
+        "mcp(*)",
+      ]),
+    );
+    expect(geminiWriterAgent).toContain("excludeDefaultComponents: true");
+    expect(geminiWriterAgent).toContain("tools: []");
+    expect(args).not.toContain("--dangerously-skip-permissions");
+    expect(args).not.toContain("--approve-all");
+  });
+
+  it("rejects shared credential roots including symlink aliases and future subdirectories", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "gemini-isolation-"));
+    try {
+      await mkdir(path.join(root, "codex"));
+      await symlink(path.join(root, "codex"), path.join(root, "alias"));
+      await expect(
+        assertGeminiDirectoryIsolation(
+          path.join(root, "alias", "future"),
+          path.join(root, "work"),
+          [path.join(root, "codex")],
+        ),
+      ).rejects.toThrow("örtüşemez");
+      await expect(
+        assertGeminiDirectoryIsolation(root, path.join(root, "work"), []),
+      ).rejects.toThrow("örtüşemez");
+      await expect(
+        assertGeminiDirectoryIsolation(path.join(root, "gemini"), path.join(root, "work"), [
+          path.join(root, "codex"),
+        ]),
+      ).resolves.toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts a complete JSON response and classifies failures", () => {
+    expect(() =>
+      parseGeminiResult(
+        JSON.stringify({ status: "SUCCESS", response: '{"body":"a"}\n{"body":"b"}' }),
+      ),
+    ).toThrow(expect.objectContaining({ safeCode: "GEMINI_OUTPUT_INVALID" }));
+    expect(
+      parseGeminiResult(
+        `jetski: not\n${JSON.stringify({ status: "SUCCESS", response: JSON.stringify({ body: "x" }) })}`,
+      ),
+    ).toEqual({ output: { body: "x" } });
+    expect(() => parseGeminiResult(JSON.stringify({ status: "SUCCESS", response: "" }))).toThrow(
+      expect.objectContaining({ safeCode: "GEMINI_OUTPUT_INVALID" }),
+    );
+    expect(() => parseGeminiResult("yok")).toThrow(ClaudeWriterError);
+    expect(classifyGeminiFailure("Authentication required. Please visit")).toBe(
+      "GEMINI_AUTH_REQUIRED",
+    );
+    expect(classifyGeminiFailure("RESOURCE_EXHAUSTED (code 429)")).toBe("GEMINI_USAGE_LIMITED");
+    expect(classifyGeminiFailure("User location is not supported")).toBe("GEMINI_EXEC_FAILED");
+  });
+
+  describe("process handling", () => {
+    let workRoot: string | undefined;
+    afterEach(async () => {
+      if (workRoot) await rm(workRoot, { recursive: true, force: true });
+      workRoot = undefined;
+    });
+
+    function fakeSpawn(stdout: string, exitCode: number, discovered = true, version = "1.5.18") {
+      return vi.fn((_command: string, args: string[]) => {
+        const child = new EventEmitter() as EventEmitter & Record<string, unknown>;
+        child.stdout = new PassThrough();
+        child.stderr = new PassThrough();
+        child.stdin = new PassThrough();
+        child.pid = undefined;
+        child.kill = vi.fn(() => {
+          setImmediate(() => child.emit("close", null));
+          return true;
+        });
+        setImmediate(() => {
+          (child.stdout as PassThrough).end(
+            args.at(-1) === "--version"
+              ? `${version}\n`
+              : args.includes("agents")
+                ? discovered
+                  ? "sozluk-writer\n"
+                  : ""
+                : stdout,
+          );
+          (child.stderr as PassThrough).end();
+          setImmediate(() =>
+            child.emit(
+              "close",
+              args.includes("agents") || args.at(-1) === "--version" ? 0 : exitCode,
+            ),
+          );
+        });
+        return child;
+      }) as unknown as typeof spawn;
+    }
+
+    async function provider(spawnProcess: typeof spawn) {
+      workRoot = await mkdtemp(path.join(tmpdir(), "gemini-writer-"));
+      return new GeminiCliProvider({
+        ...options,
+        configHome: `${workRoot}-home`,
+        workRoot,
+        spawnProcess,
+      });
+    }
+
+    it("runs agy inside the sandbox with HOME on its config and removes the work directory", async () => {
+      const spawnProcess = fakeSpawn(
+        JSON.stringify({ status: "SUCCESS", response: JSON.stringify({ body: "yazı" }) }),
+        0,
+      );
+      const writer = await provider(spawnProcess);
+      await expect(
+        writer.write({
+          runId: "11111111-1111-4111-8111-111111111111",
+          prompt: "istem",
+          outputSchema: {},
+          timeoutMs: 1000,
+        }),
+      ).resolves.toMatchObject({ output: { body: "yazı" }, model: "gemini-4-hydrogen-high" });
+      const [command, args] = vi.mocked(spawnProcess).mock.calls[2] as unknown as [
+        string,
+        string[],
+      ];
+      expect(command).toBe("/usr/bin/bwrap");
+      expect(args[args.indexOf("HOME") + 1]).toBe(`${workRoot}-home`);
+      expect(args).toContain("-p=istem");
+      const binds = args.flatMap((value, index) =>
+        ["--bind", "--ro-bind", "--ro-bind-try"].includes(value) ? [args[index + 1]] : [],
+      );
+      expect(binds).not.toContain("/bin");
+      expect(binds).not.toContain("/usr/bin");
+      expect(await readdir(workRoot!)).toEqual([]);
+    });
+
+    it("rejects an unverified CLI version before agent discovery or model invocation", async () => {
+      const spawnProcess = fakeSpawn("", 0, true, "1.5.19");
+      const writer = await provider(spawnProcess);
+      await expect(writer.inspect()).rejects.toMatchObject({ safeCode: "GEMINI_EXEC_FAILED" });
+      expect(spawnProcess).toHaveBeenCalledTimes(1);
+      expect(await readdir(workRoot!)).toEqual([]);
+    });
+
+    it("does not invoke the model when agent discovery silently returns an empty list", async () => {
+      const spawnProcess = fakeSpawn("", 0, false);
+      const writer = await provider(spawnProcess);
+      await expect(
+        writer.write({
+          runId: "11111111-1111-4111-8111-111111111111",
+          prompt: "p",
+          outputSchema: {},
+          timeoutMs: 1000,
+        }),
+      ).rejects.toMatchObject({ safeCode: "GEMINI_EXEC_FAILED" });
+      expect(vi.mocked(spawnProcess).mock.calls).toHaveLength(2);
+      expect(JSON.stringify(vi.mocked(spawnProcess).mock.calls)).not.toContain("-p=p");
+      expect(await readdir(workRoot!)).toEqual([]);
+    });
+
+    it("refuses an oversized prompt and an already cancelled call before spawning", async () => {
+      const spawnProcess = fakeSpawn("", 0);
+      const writer = await provider(spawnProcess);
+      const request = {
+        runId: "11111111-1111-4111-8111-111111111111",
+        outputSchema: {},
+        timeoutMs: 1000,
+      };
+      await expect(writer.write({ ...request, prompt: "x".repeat(130_000) })).rejects.toMatchObject(
+        { safeCode: "GEMINI_EXEC_FAILED" },
+      );
+      const controller = new AbortController();
+      controller.abort();
+      await expect(
+        writer.write({ ...request, prompt: "p", signal: controller.signal }),
+      ).rejects.toMatchObject({ safeCode: "GEMINI_CANCELLED" });
+      expect(spawnProcess).not.toHaveBeenCalled();
+    });
   });
 });
 

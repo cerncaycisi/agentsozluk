@@ -17,6 +17,27 @@ export function isClaudeWriterProfileName(value: unknown): value is ClaudeWriter
   return typeof value === "string" && Object.hasOwn(claudeWriterProfiles, value);
 }
 
+/*
+  Gemini yazar (27 Kasım 2026, Gökhan: "gemini modellerine de yazdıralım", "yes"). Antigravity
+  CLI (`agy`) Google hesabıyla giriş yapılmış izole dizinde koşar. Yerel kör eşli okumada aynı 16
+  bağlamda Hydrogen 3,33 / Claude 3,0 / Neon 3,0 (n=3/model); korumadan geçen 14/14/12.
+*/
+export const geminiWriterProfiles = {
+  "hydrogen-high": { model: "gemini-4-hydrogen-high" },
+  "neon-high": { model: "gemini-4-neon-high" },
+} as const;
+export type GeminiWriterProfileName = keyof typeof geminiWriterProfiles;
+export const geminiWriterProfileNames = Object.keys(geminiWriterProfiles) as [
+  GeminiWriterProfileName,
+  ...GeminiWriterProfileName[],
+];
+
+export type WriterProfileName = ClaudeWriterProfileName | GeminiWriterProfileName;
+export const writerProfileNames = [...claudeWriterProfileNames, ...geminiWriterProfileNames] as [
+  WriterProfileName,
+  ...WriterProfileName[],
+];
+
 export const claudeWriterSafeCodes = [
   "CLAUDE_TIMEOUT",
   "CLAUDE_CANCELLED",
@@ -26,6 +47,20 @@ export const claudeWriterSafeCodes = [
   "CLAUDE_OUTPUT_INVALID",
 ] as const;
 export type ClaudeWriterSafeCode = (typeof claudeWriterSafeCodes)[number];
+
+export const geminiWriterSafeCodes = [
+  "GEMINI_TIMEOUT",
+  "GEMINI_CANCELLED",
+  "GEMINI_AUTH_REQUIRED",
+  "GEMINI_USAGE_LIMITED",
+  "GEMINI_EXEC_FAILED",
+  "GEMINI_OUTPUT_INVALID",
+] as const;
+export type GeminiWriterSafeCode = (typeof geminiWriterSafeCodes)[number];
+
+/** Yazar çağrısının güvenli hata kodları (koşu özeti `writer.failureCodes`). */
+export const writerSafeCodes = [...claudeWriterSafeCodes, ...geminiWriterSafeCodes] as const;
+export type WriterSafeCode = (typeof writerSafeCodes)[number];
 
 /** Yerel korumanın Claude gövdesini reddetme nedenleri (`runtimeWriterBodyIssue`). */
 export const claudeWriterGuardCodes = [

@@ -10373,3 +10373,42 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Telemetri (24 saat):** Claude kolu 38 aday / 23 yazıldı / 11 koruma reddi / hata 0; ret nedenleri SENSITIVE 12, SERIOUS_CLAIM 4.
 - **Uygulama:** `AGENT_RUNTIME_WRITER_CLAUDE_SHARE=1` (env yedeklendi), worker yeniden başlatıldı.
 - **Do not repeat:** genel düzey hâlâ düşük (Claude 2,8 < 20 Kas canlı okuması 3,1); n=5/kol küçük, sonraki okumada yeniden ölç.
+
+## 27 Kasım — Gemini yazar devralma ve yerel doğrulama
+
+- **Ortam:** `feat/gemini-yazar`, HEAD `25b5ba552f959feb7fe3762a5954ee8b8f85c831` üzerine henüz commitlenmemiş değişiklikler; yürütücü Astra.
+- **Sonuç:** runtime worker, yazar sağlayıcıları ve systemd kapsamında 190/190 test; `pnpm typecheck` başarılı. Yeni Gemini testindeki iki kullanılmayan sahte süreç parametresi lint uyarısı verdi, kaldırıldı.
+- **Ortam ayrımı:** tam `pnpm format:check` ve `pnpm lint`, önceki oturumdan kalan izlenmeyen `scripts/.lab-koruma.ts` nedeniyle başarısız (biçim ve `no-console`). Bu dosya teslimata eklenmedi veya silinmedi; hata runtime regresyonu sayılmadı.
+- **Kapı:** Opus 5 salt okunur incelemesi istendi; sonuç bekleniyor. Üretim erişimi/dağıtım yapılmadı, tamamlanma iddiası yok.
+- **Do not repeat:** devralınan çalışma ağacında kapsam dışı laboratuvar dosyalarını ürün koduna katma; yerel tam-depo kontrol sonucuyla teslim edilen dosyaların sonucunu ayrı kaydet.
+
+## 27 Kasım — Opus 5 Gemini incelemesi: aktivasyon engeli
+
+- **İncelenen:** HEAD `25b5ba552f959feb7fe3762a5954ee8b8f85c831`; diff SHA256 `60b3a0d38c0164b48ae7f7ec63cd7d19f8007c40d51ce9975cd709c2da11533a`, yeni sağlayıcı SHA256 `65dc722e920a8857e750332441bba0eb42953a49c53db7bfd6854d5b1d810f3a`. Hakem gerçek modeli `claude-opus-5`.
+- **Açık bulgular:** Y1 Google araması kaynak okuma anahtarı dışında; Y2 RW kimlik dizini ve doğrulanmamış araç reddi; Y4 sağlayıcı dizinleri arasında ayrıklık denetimi yok. Y5 istem argv'de görünür; Y7 JSON sarmalı açma gerçek JSON gövdesini değiştirebilir.
+- **Düzeltilen:** Y3 kod yorumundaki doğrulanmış güvenlik iddiası kaldırıldı; Y6 test adı yalnız bayrak sözleşmesini anlatıyor; Y8 komşu servislerde Gemini/Claude çalışma dizinleri erişilemez yapıldı.
+- **Yerel araştırma:** `agy --help` araç kapatma bayrağı sunmuyor, `--settings` sunuyor. İkili dosyada `disableBuiltInTools` adı bulunması bunun oturum ayarı olduğunu veya uygulandığını kanıtlamaz; bu varsayımla ayar eklenmedi. Gerçek model çağrısı ve üretim erişimi yapılmadı.
+- **Kapı:** Gemini aktivasyonu hazır değil; PR/dağıtım yapılmadı. Gereksinim kontrolü 3/3; önceki lint düzeltmesinden sonra yazar testleri 28/28 başarılı.
+- **Do not repeat:** bir başsız araç reddi denemesini tüm dosya/ağ araçları için sert güvenlik sınırı sayma; salt okunur bind kimlik okunmasını tek başına engellemez.
+
+## 27 Kasım — Gemini araç sınırı için belgeli çözüm
+
+- **Kaynak:** Google resmî CLI 1.2.1 sürüm notu, `excludeDefaultComponents: true` özel ajanların varsayılan araçlarını kaldırır. `--settings` oturum izinlerini değiştirebilir; deny kuralları dosya/komut/URL/MCP erişimini kapsar. Kaynak bağlantıları `docs/AGENT_RUNTIME.md` içinde.
+- **Değişiklik:** çağrı başına boş araç listeli özel ajan ve açık ret kuralları; Gemini home/work ile Claude/Codex home/work arasında realpath tabanlı ayrıklık. Sembolik bağlantının henüz oluşmamış alt dizine yönlendirmesi de test edildi.
+- **Kanıt:** 191/191 ilgili test ve typecheck başarılı. Yerel CLI sürümü 1.5.18. Boş HOME altında `agy agent` komutunun sessiz çıkışı araçların kaldırıldığını kanıtlamaz; gerçek model çağrısı yapılmadı.
+- **İkinci hakem:** Opus 5; HEAD `25b5ba552f959feb7fe3762a5954ee8b8f85c831`, diff SHA256 `e5cc714cc7e29f16bc569fb4c19bd7ffa4767231fcfcb6f221a86f01bb752414`, sağlayıcı SHA256 `53d199d972975df9ddcc658718b188d33669ebfeff776d43f369a25831ce75f0`. Sonuç bekleniyor. Üretim aktivasyonu yapılmadı.
+- **Do not repeat:** CLI yardımında bayrak olmaması desteklenmediği anlamına gelmez; resmî özel ajan şeması ve sürüm notlarını da kontrol et. Binary'deki alan adını tek başına kanıt sayma.
+
+## 27 Kasım — İkinci Opus bulgularının düzeltmesi ve gerçek CLI kanıtı
+
+- **Düzeltme:** özel ajan çalışma dizininden keşfedilmiyordu. Çağrıya özel ajan dizini sandbox içinde `$HOME/.gemini/config/agents` üzerine salt okunur bind edildi. Her çağrıda exact CLI 1.5.18 + ajan keşfi zorunlu; kanonik yollar bind edilir. Runtime kimlik/env dizinleri ve yapılandırılan kimlik dosyaları ayrıklık listesine eklendi. Komşu servis koruması 4 testle kapıya girdi.
+- **Yerel pozitif/negatif kontrol:** gerçek bwrap 0.12.0 + agy 1.5.18, boş HOME: sürüm ve `sozluk-writer` keşfi PASS; bozuk frontmatter boş listeye düştü, sağlayıcı `GEMINI_EXEC_FAILED` ile model çağırmadan durdu. İlk probda `agents --settings` bayrak sırası yanlıştı; CLI `flags provided but not defined: -settings` verdi. `--settings ... agents` ile düzeltildi.
+- **Üretim test kapsamı:** 31 Ocak'a kadar plan yetkisi içinde, pin/DNS/hostname/repo/compose doğrulanarak yalnız önceki `/opt/agy-test/home` girişi ve ayrı test dizini kullanıldı. Canlı uygulama/worker ayarları, kullanıcı işleri ve kimlik dosyaları değiştirilmedi. Yeni sağlayıcı bundle'ı `/opt/agy-test/provider-review-20261127.cjs` olarak test edildi; release/cutover değildir.
+- **Gerçek yazım:** ilk iki çağrı `GEMINI_OUTPUT_INVALID`: araç kaldırma CLI'nin `--json-schema` teslim aracını da kaldırıyordu; tek metin dört kez döndü, structured_output yoktu. Bayrak kaldırıldı, response alanının tamamı tek JSON olarak ayrıştırılır; çoklu nesne reddi test edildi. Sonraki Hydrogen çağrısı PASS, tek tur, 6.476 ms, gövde 82 karakter. Eski sarmal açma kaldırıldı.
+- **Araç karşılaştırması:** aynı sentetik dosya okuma + İstanbul hava durumu arama istemi, özel profil ve varsayılan profil; akış formatı yalnız probda kullanıldı. Özel profilde dosya/web çağrısı yok (19 olay), varsayılan profilde `read_file` ret ve `search_web` başarılı (52 olay). `init.tools` iki kolda da 60 öğelik genel liste: modele açılan araç kanıtı olarak kullanılmaz. Özel profil model yanıtı `manage_task` artığını bildirdi; tüm araçlar kaldırılmış sayılmadı. Beş sentetik model çağrısı, içerik kalite deneyi değil.
+- **Doğrulama:** 196/196 ilgili test; typecheck başarılı. Son hakem incelemesi ve CI/dağıtım kapıları açık.
+- **Do not repeat:** global deny kurallarının `search_web`'i kapattığını varsayma; ajan keşfi olmadan modele istem gönderme. Şema teslim aracını kaldırıp `--json-schema` kullanma. Araç envanteri veya model beyanını tek başına güvenlik kanıtı sayma.
+
+- **Son yerel kapılar (27 Kas 17:21 UTC):** 197/197 ilgili test, 3/3 gereksinim kontrolü ve typecheck PASS. İzlenen dosyaların Prettier kontrolü PASS; lint yalnız devralınan izlenmeyen `scripts/.lab-koruma.ts` dışarıda tutularak PASS. Tam-depo kontrolünün bu kapsam dışı dosya hatası ayrıca yukarıda kayıtlıdır; dosya değiştirilmedi/teslimata katılmadı.
+- **CLI sabitlemesi:** yerelde doğrulanan 1.5.18 ikilisinin SHA256 değeri `7c96ad8c944c1a8d195ca34d2041a3d74d5166c96662b52183b748a3c455d52f`. Üretim test ikilisi aynı SHA256 ile doğrulandı. Akış init kaydında özel kol `agent=sozluk-writer`, kontrol kolu `agent=null`; iki kol da `permission=strict`, model Hydrogen.
+- **Kontrol komutu notu:** ignore dosyasını `/tmp` içine taşımak Prettier desenlerinin kökünü değiştirir ve normalde hariç tutulan tarihsel belgeleri taratır. Kanıt için izlenen dosyalar deposunun kendi `.prettierignore` kurallarıyla kontrol edildi; tarihsel belgeler sırf bu hatalı tarama nedeniyle yeniden biçimlendirilmedi.
