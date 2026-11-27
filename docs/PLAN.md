@@ -8,6 +8,8 @@ Bu dosya neyi, hangi sırada ve hangi kapıyla yapacağımızı belirler. Tasar�
 
 ## Şu an neredeyiz
 
+**Hakem istisnası (27 Kasım, kapandı):** Gökhan “Bu iş için Sol 6.1 kullan” dedi; yalnız PR #526 son incelemesinde Astra → Sol 6.1 eşleşmesi uygulandı, aynı gün tamamlandı. Başka işe taşınmaz. [Makbuz](ATTEMPT_LOG.md).
+
 **31 Ekim 2026 · içerik önce.** Gökhan (31 Ekim): "kaliteli içerik üretmedikten sonra ne anladım
 trafikten"; "beni beklemeyin çalışın". Fable ve Astra bu itirazı kabul etti ([Fable](TAM_ANALIZ_2026-10-30.md),
 [Astra](FULL_ANALYSIS_2026-10-30.md)); aktif sıra aşağıdaki "31 Ekim içerik sırası". Eski
@@ -17,20 +19,7 @@ anlatılar [Plan arşivinde](PLAN_ARSIVI_2026-10.md).
   #488 (`3ca9ad97`): karar şemasında desen kalır, uzunluk sınırı kablodan çıkar; kalite kapısı fail-closed, ses kartları V1.
   **Claude yazar + Vikipedi bilgi notu (23 Kasım, Gökhan "tamam claude deneyelim", "codex nası çalışıyosa … aynısını", "olur"):** yerel kör eşli okumalar: Vikipedi notuyla Opus 5.5 3,63 / luna 3,00 (8 çift, 5 önde 2 geride), Sonnet 5.5 3,50 / luna 3,13 (8 çift, 3 önde 0 geride); not olmadan (canlı kurulum, 6 entry okundu) hepsi 3. Bu yüzden yazar ve başlık bilgisi birlikte: kararı luna verir, yeni entry gövdesini Claude Sonnet 5.5 (CLI, codex'le aynı sandbox, araçsız, Gökhan'ın elle girdiği izole dizin) yazar; başlığın Vikipedi girişi bilgi notu (`docs/AGENT_RUNTIME.md` "Claude yazar"). Son kodla yerel deneme: 16 bağlamda 14 gövde korumadan geçti (2 ciddi iddia → luna), 9'unda not bulundu, çağrı 7–33 sn. Sol 6.1 1. tur 5 P2 (düzeltildi), 2. tur (`46544b24`) bulgu yok. **Canlıda:** #518 `b54a3aed` (23 Kas 16:24Z), CLI 2.1.330 + Gökhan girişi (Pro), sandbox denemesi geçti, faz 16:27Z açık; ilk 1,5 saatte 6 adayın 5'i yazıldı, 1 koruma reddi, hata 0. Gökhan "5 yazar claude 5 yazar codex" → koşu başına yazı tura ("olur", "al"): #519 `170972ab` (22:04Z), pay 0,5 (22:10Z); 5 yazar daha ACTIVE (rotakiriklari, gundeliknot, kadrajatesi, yedekparca, rafarasi), toplam 10. 24 Kas: ilk 14 saatte Claude kolu 24 aday / 14 yazıldı / 8 koruma reddi / hata 0; ret nedeni `writer.guardCodes` ile kayıtta (#521, `e8cc13d3` 16:26Z). 25–27 Kas ret nedenleri: SENSITIVE 12, SERIOUS_CLAIM 4 (36 saat). **27 Kas kör okuma (canlı, yazı tura, 5+5):** Claude 2,8, luna 1,8 → pay 1 (27 Kas, env yedekli; kota dolarsa luna taslağı kalır). Sıradaki: kota ve SENSITIVE retlerini izle, gerekirse istemde sağlık/para/hukuk sözcüklerinden kaçınma kuralı (yerel denemeyle); 2–3 gün sonra yeni kör okuma.
   Yazar modeli `gpt-5.6-luna` max. Yetki 31 Ocak 2027 23:59 TSİ (Gökhan, 23 Kasım; AGENTS.md).
-- **27 Kasım devam işi — Gemini yazar:** Gökhan'ın “yes bebiş” onayıyla Hydrogen CLI üçüncü
-  yazar kolu olarak hazırlanıyor; `feat/gemini-yazar`, taban `25b5ba552f959feb7fe3762a5954ee8b8f85c831`.
-  Opus 5 incelemesinde aktivasyon engellendi: `search_web` kaynak okuma anahtarını aşabiliyor,
-  kimlik dizininin korunması doğrulanmamış CLI araç izinlerine dayanıyor. Sert araç kapısı
-  doğrulanmadan aktivasyon yok. Devam düzeltmesi: resmî CLI 1.2.1 belgesindeki
-  `excludeDefaultComponents` ile araçsız özel ajan, oturum ret kuralları ve gerçek yolla
-  sağlayıcı dizini ayrıklığı eklendi. İkinci Opus incelemesi keşif yolu hatasını buldu;
-  global ajan dizinine salt okunur bind, sürüm/keşif ön kontrolü ve kimlik dizini ayrıklığı
-  düzeltildi. Gerçek sandbox keşif/bozuk profil kontrolleri ve Hydrogen yazımı geçti;
-  sentetik karşılaştırmada özel profil dosya/web aracı çağırmadı, varsayılan profil çağırdı.
-  `manage_task` artığı belgelendi. Son hakem, CI ve dağıtım kapıları bekleniyor. Önce sağlayıcı/sandbox ve hata durumunda taslağın korunması doğrulanacak;
-  farklı model hakemliği ve CI ardından dağıtım kapıları uygulanacak. Henüz tamamlandı veya
-  canlıya alındı sayılmaz. Gökhan'ın son talimatı: önce bu işi bitir; bütün yazarları açıp
-  üç model arasında koşu başına rastgele seçim önerisini sonra ele al. Bu ikinci adım henüz uygulanmadı.
+- **Gemini yazar / #526:** exact `f84c384e` için Sol 6.1 kod kabulü ve gerçek sandbox/yazım kontrolleri geçti; CI ve dağıtım bekliyor. Ayrıntı [STATUS](STATUS.md) ve [deneme kaydında](ATTEMPT_LOG.md). Gökhan: önce bunu bitir; bütün yazarlar ve üç modelle rastgele yazım sonra. Henüz etkinleştirilmedi.
 - **İzleme:** saatlik sağlık yerel kayıtta; günde iki T3 yönetim turu (06:30, 18:00 UTC). Yeni
   kapının denetlenemeyen düşürme oranı, günlük yayım hacmi, uzun entry sıklığı, Codex hataları.
 - **Kalite ölçüsü (birincil):** Gökhan'ın haftalık kör okuması. 31 Ekim 30 entry 2,87; 2 Kasım 20

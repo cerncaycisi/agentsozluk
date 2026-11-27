@@ -10412,3 +10412,23 @@ migrations=no-migration`; ayar 457→458, 12:05Z. Sonra kök %74, 10 GiB boş, k
 - **Son yerel kapılar (27 Kas 17:21 UTC):** 197/197 ilgili test, 3/3 gereksinim kontrolü ve typecheck PASS. İzlenen dosyaların Prettier kontrolü PASS; lint yalnız devralınan izlenmeyen `scripts/.lab-koruma.ts` dışarıda tutularak PASS. Tam-depo kontrolünün bu kapsam dışı dosya hatası ayrıca yukarıda kayıtlıdır; dosya değiştirilmedi/teslimata katılmadı.
 - **CLI sabitlemesi:** yerelde doğrulanan 1.5.18 ikilisinin SHA256 değeri `7c96ad8c944c1a8d195ca34d2041a3d74d5166c96662b52183b748a3c455d52f`. Üretim test ikilisi aynı SHA256 ile doğrulandı. Akış init kaydında özel kol `agent=sozluk-writer`, kontrol kolu `agent=null`; iki kol da `permission=strict`, model Hydrogen.
 - **Kontrol komutu notu:** ignore dosyasını `/tmp` içine taşımak Prettier desenlerinin kökünü değiştirir ve normalde hariç tutulan tarihsel belgeleri taratır. Kanıt için izlenen dosyalar deposunun kendi `.prettierignore` kurallarıyla kontrol edildi; tarihsel belgeler sırf bu hatalı tarama nedeniyle yeniden biçimlendirilmedi.
+
+## 27 Kasım — Son hakemde kota ve kullanıcı onaylı Sol 6.1 istisnası
+
+- Exact `f84c384ee8df54b5f85aea223016e9f5583ab05b` için üçüncü Opus 5 çağrısı `Claude API rate limit reached` ile tamamlanamadı; sağlayıcı haftalık sıfırlamayı 29 Kasım 08:00 UTC bildirdi. Kabul verilmiş sayılmadı.
+- Gökhan “Bu iş için Sol 6.1 kullan” diyerek bu işin son incelemesine özel model değişimini onayladı. İstisna PLAN içinde kayıtlıdır; genel eşleşme kuralı değiştirilmedi.
+- PR #526 taslak olarak korunuyor. CI quality başarılı, diğer işler bu kayıt anında bekliyor. Dağıtım/aktivasyon yapılmadı.
+- Do not repeat: kota nedeniyle tamamlanmayan incelemeyi onay veya temiz rapor sayma; açık kullanıcı istisnasını başka işe taşıma.
+
+## 27 Kasım — Sol 6.1 son dar kod kabulü
+
+- **Hakem/commit:** gerçek model `gpt-6.1-sol`; exact `f84c384ee8df54b5f85aea223016e9f5583ab05b`, taban `25b5ba552f959feb7fe3762a5954ee8b8f85c831`. Gökhan'ın bu işe özel istisnasıyla inceleme tamamlandı; istisna kapandı.
+- **Sonuç:** engelleyici somut bulgu yok. B1/B3/B4/B5/B6 düzeltmeleri kaynakta doğrulandı. `search_web` için deny listesinin yeterli olmadığı, özel ajan seçiminin zorunlu olduğu ve kayıtlı CLI karşılaştırması kabul edildi. `manage_task` artığından bu izolasyonda dosya/web/başka süreçlere erişim sağlayan somut yol gösterilemedi; tüm araçlar yok iddiası verilmedi.
+- **Sınır:** hakem yalnız kaynak ve kayıtlı kanıt okudu; yeniden test, model çağrısı veya üretim erişimi yapmadı. Kod kabulü CI, dağıtım ve aktivasyon kapılarının yerine geçmez.
+- **Do not repeat:** önceki yarım Opus çağrısını bu kabulün parçası sayma; gerçek son hakem ve exact kod sürümünü ayrı tut.
+
+## 27 Kasım — PR #526 CI plan özeti sınırı
+
+- Exact `f84c384ee8df54b5f85aea223016e9f5583ab05b`, CI 46041560128: behavior 3.177 test PASS, yalnız `plan-current-status-length` FAIL (`expected 38 to be less than or equal to 30`). Yeni Gemini anlatısı durum özetini gereğinden fazla uzatmıştı; kod/ortam arızası değil.
+- Gemini ve geçici hakem istisnası kısa özetlere indirildi; ayrıntılı kanıt ATTEMPT_LOG/STATUS'ta korundu. Test eşiği değiştirilmedi.
+- Do not repeat: PLAN'ın durum bölümüne uygulama günlüğü ekleme; her yeni durum kaydında 30 satır testini çalıştır.

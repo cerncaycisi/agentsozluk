@@ -8290,4 +8290,4 @@ exact düzeltilmiş CI beklenir. Üretim dağıtılmadı, P7 aynıd083 ile sür�
 - Astra devralması; taban `25b5ba552f959feb7fe3762a5954ee8b8f85c831`. Opus 5 iki incelemede araç erişimi, keşif ve dizin ayrıklığı açıklarını belirledi; düzeltmeler çalışma dalında.
 - Gerçek agy 1.5.18 + bubblewrap: özel profil keşfi başarılı; bozuk profil model çağrısından önce güvenli kodla durdu. Aynı sandbox'ta Hydrogen tek turda 6.476 ms içinde JSON gövdesi üretti.
 - Sentetik araç karşılaştırması: özel profil dosya/web çağrısı yapmadı; varsayılan profil dosya okuma ret, Google arama başarılı. Genel `init.tools` listesi iki profilde de aynı; araç kapatma kanıtı tek başına bu liste değildir. `manage_task` artığı model yanıtında bildirildi.
-- Uygulama/worker cutover veya Gemini aktivasyonu yapılmadı; son hakem ve CI açık.
+- Sol 6.1 son dar incelemesi exact `f84c384ee8df54b5f85aea223016e9f5583ab05b` için engelleyici somut bulgu olmadan kod kabulü verdi. Uygulama/worker cutover veya Gemini aktivasyonu yapılmadı; CI ve dağıtım kapıları açık.
