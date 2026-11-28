@@ -783,6 +783,7 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
         stdio: ["pipe", "pipe", "ignore", opened.lockFd.fd],
       },
     );
+    child.on("error", () => undefined);
     child.stdin?.on("error", () => undefined);
     child.stdout?.on("error", () => undefined);
     const closeParentLockFd = opened.lockFd.close().catch(() => undefined);
@@ -911,6 +912,7 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
       },
       stdio: ["pipe", "pipe", "ignore", opened.lockFd.fd],
     });
+    child.on("error", () => undefined);
     child.stdin?.on("error", () => undefined);
     child.stdout?.on("error", () => undefined);
     const closeParentLockFd = opened.lockFd.close().catch(() => undefined);

@@ -465,4 +465,34 @@ describe("gemini-home-retention", () => {
     expect(result.failedCount).toBeGreaterThanOrEqual(1);
     expect(lstatSync(fifoPath).isFIFO()).toBe(true);
   });
+
+  it("does not emit uncaught spawn error when deadline expires between pre-spawn check and listener registration", async () => {
+    const root = await makeTempDir("gemini-deadline-race-");
+    const home = path.join(root, "gemini-home");
+    await prepareGeminiEphemeralMountPoints(home);
+
+    let ticks = 0;
+    const lock = new FlockGeminiCrossProcessLock({
+      flockPath: path.join(root, "missing-flock-bin"),
+      now: () => (++ticks < 3 ? 0 : 2),
+    });
+
+    const uncaught: unknown[] = [];
+    const onUncaught = (error: unknown) => {
+      uncaught.push(error);
+    };
+    process.on("uncaughtException", onUncaught);
+    try {
+      await expect(
+        lock.acquireShared(home, {
+          deadlineAtMs: 1,
+          onTimeout: () => new Error("DEADLINE_RACE"),
+        }),
+      ).rejects.toThrow("DEADLINE_RACE");
+      await new Promise((r) => setTimeout(r, 30));
+      expect(uncaught).toEqual([]);
+    } finally {
+      process.off("uncaughtException", onUncaught);
+    }
+  });
 });
