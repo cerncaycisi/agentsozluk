@@ -8,9 +8,16 @@
 # ÇIKIŞ: 0 = yerel + Drive doğrulandı; 3 = yalnız yerel (Drive yok); 1 = başarısız.
 # KABUL: stderr'de SNAPSHOT_OK/DUMP_DONE/META_DONE, en az 40 tablo satırı ve
 # `pg_restore --list` ve bütün veri bloklarının decode kontrolü geçmeli. Ancak o zaman
-# geçici dosya kalıcı adına yayımlanır. Son
-# ${KEEP} kopya kalır. Decode SQL'i DB'ye uygulamaz; tam geri yükleme provası
+# geçici dosya kalıcı adına yayımlanır. (KEEP artık kullanılmıyor; aşağıdaki YEREL KOPYA YOK
+# bölümüne bakın.) Decode SQL'i DB'ye uygulamaz; tam geri yükleme provası
 # runbook'taki elle, periyodik adımdır.
+#
+# YEREL KOPYA YOK (Gökhan onayı, 21 Ekim 2026: "Olur"; operatör diski %93 dolunca 21 Ekim
+# yedeği DISK_LOW ile alınamadı). Yedek yalnız doğrulama için geçici olarak buraya iner; Drive
+# kopyası yüklenip `rclone check` ile doğrulanınca bu çalışmanın yerel dosyaları silinir ve
+# döndürme çalışmaz. Drive doğrulanamazsa yerel kopya kalır, döndürme yapılmaz ve
+# çıkış 3 olur. Eski yerel kopyalar bu betikçe silinmez (silmek ayrı onay + 24 saat kuralı).
+# Gerekli boş alan yalnız tek dump + decode payıdır: varsayılan eşik 2,5 GiB (dump ~0,9–1,4 GB).
 #
 # DAYANIKLILIK (Astra, PR #204): tek çalışma kilidi; her çalışmanın kendi benzersiz geçici
 # dosyaları; var olan kalıcı yedeğin üzerine yazılmaz; her hata ve TERM/INT tek yakalayıcıdan
@@ -26,7 +33,9 @@ KEEP="${AGENTSOZLUK_BACKUP_KEEP:-3}"
 KEY="${AGENTSOZLUK_BACKUP_KEY:-$HOME/.ssh/agentsozluk_backup}"
 KNOWN_HOSTS="${AGENTSOZLUK_KNOWN_HOSTS:-$HOME/.ssh/agentsozluk_known_hosts}"
 PG_RESTORE="${AGENTSOZLUK_PG_RESTORE:-$HOME/.local/pgclient/bin/pg_restore}"
-MIN_FREE_BYTES="${AGENTSOZLUK_BACKUP_MIN_FREE_BYTES:-5368709120}"
+MIN_FREE_BYTES="${AGENTSOZLUK_BACKUP_MIN_FREE_BYTES:-2684354560}"
+UPLOAD_TIMEOUT="${AGENTSOZLUK_BACKUP_UPLOAD_TIMEOUT_SEC:-2700}"
+DRIVE_CHUNK_SIZE="${AGENTSOZLUK_BACKUP_DRIVE_CHUNK_SIZE:-32M}"
 NOTIFY="${AGENTSOZLUK_BACKUP_NOTIFY:-1}"
 # Üretim hedefi (`kullanıcı@adres`) depoda tutulmaz: depo herkese açık (17 Ekim 2026). Önce
 # ortamdaki AGENTSOZLUK_BACKUP_HOST, yoksa operatörün izlenmeyen ayar dosyasının ilk satırı.
@@ -73,6 +82,9 @@ stage="ayarlar"
 [[ "$NOTIFY" =~ ^[01]$ ]] || { NOTIFY=1; fail NOTIFY_INVALID; }
 [[ "$KEEP" =~ ^[1-9][0-9]?$ ]] || fail KEEP_INVALID
 [[ "$MIN_FREE_BYTES" =~ ^[0-9]+$ ]] || fail MIN_FREE_INVALID
+[[ "$UPLOAD_TIMEOUT" =~ ^[1-9][0-9]{0,3}$ ]] &&
+  ((UPLOAD_TIMEOUT >= 1 && UPLOAD_TIMEOUT <= 3600)) || fail UPLOAD_TIMEOUT_INVALID
+[[ "$DRIVE_CHUNK_SIZE" =~ ^(8|16|32|64|128)M$ ]] || fail DRIVE_CHUNK_SIZE_INVALID
 if [[ -z "$HOST" && -f "$HOST_FILE" ]]; then
   IFS= read -r HOST <"$HOST_FILE" || [[ -n "$HOST" ]] || fail HOST_FILE_UNREADABLE
 fi
@@ -140,16 +152,30 @@ drive_status="LOCAL_ONLY"
 manifest=""
 if [[ -x "$rclone_bin" ]] && manifest=$(mktemp "$DIR/.drive-files.XXXXXX") &&
   printf '%s\n' "${final##*/}" "${final##*/}.sha256" "$(basename "${final%.dump}.meta")" >"$manifest"; then
-  # Yalnız bu üç dosya; copy/sync-delete yok. Toplam upload bütçesi15 dakika.
-  if timeout --kill-after=15 900 "$rclone_bin" copy "$DIR" "$drive_target" \
+  # Yalnız bu üç dosya; copy/sync-delete yok. Toplam upload bütçesi TimeoutStartSec içinde kalır.
+  if timeout --kill-after=15 "$UPLOAD_TIMEOUT" "$rclone_bin" copy "$DIR" "$drive_target" \
     --files-from-raw "$manifest" --transfers 1 --checkers 2 \
+    --drive-chunk-size "$DRIVE_CHUNK_SIZE" \
     --retries 1 --low-level-retries 3 --contimeout 30s --timeout 2m; then
     # one-way ve üç dosya filtresi, Drive'daki eski yedekleri silmez/sapma saymaz.
     if timeout --kill-after=15 300 "$rclone_bin" check "$DIR" "$drive_target" \
       --files-from-raw "$manifest" --one-way --checkers 2 \
       --retries 1 --low-level-retries 3 --contimeout 30s --timeout 2m; then
-      drive_status="VERIFIED"
-      echo "DRIVE_OK file=${final##*/} files=3 verified=check"
+      # Drive aynı adda birden çok nesneye izin verir; rclone mükerreri "ignoring" ile atlayıp
+      # doğru kopya üzerinden check geçebilir (Sol 6.1, 21 Ekim, P2). Her ad tam bir kez olmalı;
+      # değilse doğrulanmış sayılmaz ve yerel kopya korunur.
+      dup_ok=1
+      while IFS= read -r want; do
+        count=$(timeout --kill-after=15 120 "$rclone_bin" lsf "$drive_target" --files-only \
+          --include "/$want" --contimeout 30s --timeout 2m | grep -cxF -- "$want") || count=-1
+        [[ "$count" == 1 ]] || { dup_ok=0; echo "DRIVE_FAIL stage=unique name=$want count=$count" >&2; }
+      done <"$manifest"
+      if ((dup_ok == 1)); then
+        drive_status="VERIFIED"
+        echo "DRIVE_OK file=${final##*/} files=3 verified=check unique=1"
+      else
+        drive_status="CHECK_FAILED"
+      fi
     else
       drive_exit=$?
       drive_status="CHECK_FAILED"
@@ -169,34 +195,24 @@ if [[ -n "$manifest" ]]; then
   rm -f -- "$manifest" || echo "DRIVE_FAIL stage=manifest_cleanup localBackupAccepted=true" >&2
 fi
 
-stage="dondurme"
-# Bu çalışmanın yedeği listeden baştan çıkarılır: saat geri alınsa bile sayım doğru kalır
-# ve yeni yedek hiçbir koşulda silinmez (Astra P3).
-listing=$(find "$DIR" -maxdepth 1 -type f -name 'agent-sozluk-*.dump' -printf '%f\n') ||
-  fail ROTATION_LIST
-# Süreç ikamesinin çıkış kodu while'a taşınmaz. Kısmi stdout üretip hata veren
-# sort da retention silmelerine girmeden ana kabukta durdurulur.
-sorted_listing=$(printf '%s\n' "$listing" | LC_ALL=C sort) || fail ROTATION_SORT
-others=()
-while IFS= read -r name; do
-  if [[ -n "$name" && "$name" =~ $NAME_PATTERN && "$DIR/$name" != "$final" ]]; then
-    others+=("$name")
+# Drive doğrulandıysa yerel kopyaya gerek yok: bu çalışmanın üç dosyası silinir, döndürme
+# çalışmaz (yeni yerel kopya eklenmedi, eskilere dokunulmaz). Silme hatası Drive başarısını
+# geçersiz kılmaz ama ayrı satırla görünür.
+if [[ "$drive_status" == VERIFIED ]]; then
+  stage="yerel_temizlik"
+  if ! rm -f -- "$final" "$final.sha256" "${final%.dump}.meta"; then
+    # Drive kopyası sağlam ama disk boşalmadı: başarı sayılmaz, sağlık denetimi uyarır (Sol P2).
+    echo "YEDEK_TEMIZLIK_FAIL file=${final##*/} bytes=$bytes tables=$tables drive=VERIFIED"
+    notify "Gecelik yedek Drive'da ama yerel temizlik başarısız (${final##*/})" || true
+    exit 3
   fi
-done <<<"$sorted_listing"
-excess=$((${#others[@]} + 1 - KEEP))
-removed=0
-for ((i = 0; i < excess; i++)); do
-  old="$DIR/${others[$i]}"
-  rm -f -- "$old" "$old.sha256" "${old%.dump}.meta" || fail ROTATION_DELETE
-  removed=$((removed + 1))
-done
-receipt="file=${final##*/} bytes=$bytes tables=$tables kept=$((${#others[@]} + 1 - removed)) drive=$drive_status"
-# Drive kopyası yoksa iş yarımdır (17 Ekim 2026, Astra bulgu 6): yerel kopya ve döndürme
-# korunur ama sonuç başarı sayılmaz. Ayrı makbuz satırı ve ayrı çıkış kodu (3): birim
-# başarısız görünür, bildirim gider; tam başarısızlıktan (1) ayırt edilir.
-if [[ "$drive_status" != VERIFIED ]]; then
-  echo "YEDEK_OK_YEREL $receipt"
-  notify "Gecelik yedek yalnız yerelde: Drive kopyası $drive_status (${final##*/})" || true
-  exit 3
+  echo "YEDEK_OK file=${final##*/} bytes=$bytes tables=$tables local=deleted drive=VERIFIED"
+  exit 0
 fi
-echo "YEDEK_OK $receipt"
+
+# Drive doğrulanamadı: yeni yerel kopya kalır; eski yerel kopyalara DOKUNULMAZ (Sol 6.1, 21 Ekim,
+# P1: eski döndürme, Drive'da olup olmadığını bilmeden en eski kopyayı silebiliyordu). Disk dolarsa
+# sonraki gece DISK_LOW ile görünür; eski kopya silmek ayrı onay + 24 saat kuralı.
+echo "YEDEK_OK_YEREL file=${final##*/} bytes=$bytes tables=$tables local=kept drive=$drive_status"
+notify "Gecelik yedek yalnız yerelde: Drive kopyası $drive_status (${final##*/})" || true
+exit 3
