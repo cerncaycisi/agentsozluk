@@ -128,6 +128,7 @@ async function main(): Promise<void> {
     geminiHome: environment.AGENT_RUNTIME_GEMINI_HOME,
     geminiWorkRoot: environment.AGENT_RUNTIME_GEMINI_WORK_ROOT,
     geminiProfile: environment.AGENT_RUNTIME_GEMINI_MAIN_PROFILE,
+    pruneGeminiHomeState: true,
     protectedDirectories: protectedRuntimeDirectoriesFromEnvironment(environment),
   });
   const capability = await provider.inspect();
@@ -217,6 +218,7 @@ async function main(): Promise<void> {
           configHome: geminiHome,
           workRoot: geminiWorkRoot,
           profile: geminiProfile,
+          pruneHomeState: true,
           protectedDirectories: [
             "/var/lib/agent-sozluk-runtime",
             "/etc/agent-sozluk",

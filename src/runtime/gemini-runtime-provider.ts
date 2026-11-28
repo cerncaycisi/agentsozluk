@@ -20,6 +20,12 @@ import {
   prepareWriterAgent,
 } from "@/runtime/gemini-cli-provider";
 import {
+  defaultGeminiHomeCoordinator,
+  geminiEphemeralTmpfsArgs,
+  prepareGeminiEphemeralMountPoints,
+  type GeminiHomeCoordinator,
+} from "@/runtime/gemini-home-retention";
+import {
   AGENT_RUNTIME_GEMINI_PROFILES,
   type AgentRuntimeGeminiProfileName,
 } from "@/runtime/gemini-profiles";
@@ -70,6 +76,8 @@ export interface GeminiRuntimeProviderOptions {
   workRoot: string;
   protectedDirectories?: string[];
   geminiProfile?: AgentRuntimeGeminiProfileName;
+  pruneHomeState?: boolean;
+  homeCoordinator?: GeminiHomeCoordinator;
   spawnProcess?: typeof spawn;
 }
 
@@ -676,7 +684,7 @@ export class GeminiRuntimeProvider implements RuntimeProvider {
       "/etc/agent-sozluk",
       ...(this.#options.protectedDirectories ?? []),
     ]);
-    await mkdir(path.join(home, ".gemini", "config", "agents"), { recursive: true, mode: 0o700 });
+    await prepareGeminiEphemeralMountPoints(home);
     await mkdir(workRoot, { recursive: true, mode: 0o700 });
     return { home, workRoot };
   }
@@ -704,6 +712,7 @@ export class GeminiRuntimeProvider implements RuntimeProvider {
       "--ro-bind",
       path.join(workDirectory, ".agents", "agents"),
       path.join(paths.home, ".gemini", "config", "agents"),
+      ...geminiEphemeralTmpfsArgs(paths.home),
     );
     return command;
   }
@@ -761,6 +770,10 @@ export class GeminiRuntimeProvider implements RuntimeProvider {
     reasoningEffort: (typeof AGENT_RUNTIME_GEMINI_PROFILES)[AgentRuntimeGeminiProfileName]["reasoningEffort"];
   }> {
     const paths = await this.#canonicalize();
+    const coordinator = this.#options.homeCoordinator ?? defaultGeminiHomeCoordinator;
+    if (this.#options.pruneHomeState) {
+      await coordinator.pruneIfNeeded(paths.home, { force: true });
+    }
     await cleanupExpiredRuntimeWork(paths.workRoot, 24);
     const workDirectory = path.join(
       paths.workRoot,
@@ -769,7 +782,15 @@ export class GeminiRuntimeProvider implements RuntimeProvider {
     await mkdir(workDirectory, { recursive: false, mode: 0o700 });
     try {
       await prepareWriterAgent(workDirectory);
-      const version = await this.#capability(paths, workDirectory, Date.now() + 30_000);
+      const deadlineAtMs = Date.now() + 30_000;
+      const version = await coordinator.withSharedAccess(
+        paths.home,
+        () => this.#capability(paths, workDirectory, deadlineAtMs),
+        {
+          deadlineAtMs,
+          onTimeout: () => new RuntimeProviderTimeoutError(),
+        },
+      );
       return {
         version: `agy ${version}`,
         supportsStructuredOutput: true,
@@ -818,6 +839,7 @@ export class GeminiRuntimeProvider implements RuntimeProvider {
     if (request.signal?.aborted) throw new RuntimeProviderCancelledError(diagnostics());
 
     const paths = await this.#canonicalize();
+    const coordinator = this.#options.homeCoordinator ?? defaultGeminiHomeCoordinator;
     await cleanupExpiredRuntimeWork(paths.workRoot, debugRetentionHours);
     const workDirectory = path.join(
       paths.workRoot,
@@ -836,126 +858,146 @@ export class GeminiRuntimeProvider implements RuntimeProvider {
       });
       await chmod(schemaPath, 0o600);
       await prepareWriterAgent(workDirectory);
-      if (request.signal?.aborted) throw new RuntimeProviderCancelledError(diagnostics());
-
-      const inspectStartedAtMs = Date.now();
-      let cliVersion: string;
-      try {
-        cliVersion = await this.#capability(paths, workDirectory, deadlineAtMs, request.signal);
-      } catch (error) {
-        inspectMs = Date.now() - inspectStartedAtMs;
-        if (error instanceof RuntimeProviderCancelledError) {
-          retainedErrorCode = "CODEX_CANCELLED";
-          throw new RuntimeProviderCancelledError(diagnostics());
-        }
-        if (error instanceof RuntimeProviderTimeoutError) {
-          retainedErrorCode = "CODEX_TIMEOUT";
-          throw new RuntimeProviderTimeoutError(diagnostics());
-        }
-        retainedErrorCode = "CODEX_EXEC_FAILED";
-        throw error;
-      }
-      inspectMs = Date.now() - inspectStartedAtMs;
-
-      const command = this.#command(
-        geminiRuntimeArguments(this.#profileName),
-        paths,
-        workDirectory,
-      );
-      const timeoutForCall = remainingMs();
-      const child = this.#spawn(command, workDirectory);
-      const monitor = monitorHostProcess(child.pid);
-      setupMs = Date.now() - startedAt;
-      modelStartedAtMs = Date.now();
-      let result: Awaited<ReturnType<typeof collectGeminiStream>>;
-      try {
-        result = await collectGeminiStream(
-          child,
-          stdinPayload,
-          timeoutForCall,
-          request.signal,
-          this.#options.spawnProcess === undefined,
-        );
-      } finally {
-        hostMetrics = await monitor.stop();
-      }
-      tokenUsage = result.tokenUsage;
-      itemCounts = result.itemCounts;
-
-      if ((itemCounts.toolItems ?? 0) > 0) {
-        retainedErrorCode = "CODEX_TOOL_ITEM";
-        throw new RuntimeProviderExecutionError("CODEX_TOOL_ITEM", diagnostics());
-      }
-      if (result.eventStreamOverflow || result.eventStreamInvalid) {
-        retainedErrorCode = "CODEX_EVENT_STREAM_INVALID";
-        throw new RuntimeProviderExecutionError("CODEX_EVENT_STREAM_INVALID", diagnostics());
-      }
-      if (result.seenInit && !result.initAgentMatches) {
-        retainedErrorCode = "CODEX_EVENT_STREAM_INVALID";
-        throw new RuntimeProviderExecutionError("CODEX_EVENT_STREAM_INVALID", diagnostics());
-      }
-      if (result.cancelled) {
+      if (request.signal?.aborted) {
         retainedErrorCode = "CODEX_CANCELLED";
         throw new RuntimeProviderCancelledError(diagnostics());
       }
-      if (result.timedOut) {
-        retainedErrorCode = "CODEX_TIMEOUT";
-        throw new RuntimeProviderTimeoutError(diagnostics());
-      }
-      if (result.exitCode !== 0 || result.exitSignal !== null) {
-        const failureText = [
-          result.stderr,
-          result.streamFailure,
-          result.terminalResult?.error ?? "",
-        ]
-          .filter((text) => text.length > 0)
-          .join("\n");
-        const safeCode = safeGeminiRuntimeFailure(failureText, result.exitSignal);
-        retainedErrorCode = safeCode;
-        throw new RuntimeProviderExecutionError(safeCode, diagnostics());
-      }
-      if (!result.seenInit) {
-        retainedErrorCode = "CODEX_EVENT_STREAM_INVALID";
-        throw new RuntimeProviderExecutionError("CODEX_EVENT_STREAM_INVALID", diagnostics());
-      }
-      if (!result.terminalResult) {
-        retainedErrorCode = "CODEX_OUTPUT_INVALID";
-        throw new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID", diagnostics());
-      }
-      if (result.terminalResult.status !== "SUCCESS") {
-        const failureText = [
-          result.terminalResult.error ?? "",
-          result.terminalResult.response ?? "",
-          result.streamFailure,
-          result.stderr,
-        ]
-          .filter((text) => text.trim().length > 0)
-          .join("\n");
-        delete result.terminalResult;
-        const safeCode = safeGeminiRuntimeFailure(failureText);
-        retainedErrorCode = safeCode;
-        throw new RuntimeProviderExecutionError(safeCode, diagnostics());
-      }
-      let output: unknown;
-      try {
-        output = parseGeminiStructuredOutput(result.terminalResult.response);
-        retainedOutput = output;
-      } catch {
-        retainedErrorCode = "CODEX_OUTPUT_INVALID";
-        throw new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID", diagnostics());
-      } finally {
-        delete result.terminalResult;
-      }
-      return {
-        provider: "gemini-cli",
-        version: `agy ${cliVersion}`,
-        model: this.#profile.model,
-        reasoningEffort: this.#profile.reasoningEffort,
-        output,
-        durationMs: Date.now() - startedAt,
-        hostMetrics,
-        diagnostics: diagnostics(),
-      };
+
+      return await coordinator.withSharedAccess(
+        paths.home,
+        async () => {
+          const inspectStartedAtMs = Date.now();
+          let cliVersion: string;
+          try {
+            cliVersion = await this.#capability(paths, workDirectory, deadlineAtMs, request.signal);
+          } catch (error) {
+            inspectMs = Date.now() - inspectStartedAtMs;
+            if (error instanceof RuntimeProviderCancelledError) {
+              retainedErrorCode = "CODEX_CANCELLED";
+              throw new RuntimeProviderCancelledError(diagnostics());
+            }
+            if (error instanceof RuntimeProviderTimeoutError) {
+              retainedErrorCode = "CODEX_TIMEOUT";
+              throw new RuntimeProviderTimeoutError(diagnostics());
+            }
+            retainedErrorCode = "CODEX_EXEC_FAILED";
+            throw error;
+          }
+          inspectMs = Date.now() - inspectStartedAtMs;
+
+          const command = this.#command(
+            geminiRuntimeArguments(this.#profileName),
+            paths,
+            workDirectory,
+          );
+          const timeoutForCall = remainingMs();
+          const child = this.#spawn(command, workDirectory);
+          const monitor = monitorHostProcess(child.pid);
+          setupMs = Date.now() - startedAt;
+          modelStartedAtMs = Date.now();
+          let result: Awaited<ReturnType<typeof collectGeminiStream>>;
+          try {
+            result = await collectGeminiStream(
+              child,
+              stdinPayload,
+              timeoutForCall,
+              request.signal,
+              this.#options.spawnProcess === undefined,
+            );
+          } finally {
+            hostMetrics = await monitor.stop();
+          }
+          tokenUsage = result.tokenUsage;
+          itemCounts = result.itemCounts;
+
+          if ((itemCounts.toolItems ?? 0) > 0) {
+            retainedErrorCode = "CODEX_TOOL_ITEM";
+            throw new RuntimeProviderExecutionError("CODEX_TOOL_ITEM", diagnostics());
+          }
+          if (result.eventStreamOverflow || result.eventStreamInvalid) {
+            retainedErrorCode = "CODEX_EVENT_STREAM_INVALID";
+            throw new RuntimeProviderExecutionError("CODEX_EVENT_STREAM_INVALID", diagnostics());
+          }
+          if (result.seenInit && !result.initAgentMatches) {
+            retainedErrorCode = "CODEX_EVENT_STREAM_INVALID";
+            throw new RuntimeProviderExecutionError("CODEX_EVENT_STREAM_INVALID", diagnostics());
+          }
+          if (result.cancelled) {
+            retainedErrorCode = "CODEX_CANCELLED";
+            throw new RuntimeProviderCancelledError(diagnostics());
+          }
+          if (result.timedOut) {
+            retainedErrorCode = "CODEX_TIMEOUT";
+            throw new RuntimeProviderTimeoutError(diagnostics());
+          }
+          if (result.exitCode !== 0 || result.exitSignal !== null) {
+            const failureText = [
+              result.stderr,
+              result.streamFailure,
+              result.terminalResult?.error ?? "",
+            ]
+              .filter((text) => text.length > 0)
+              .join("\n");
+            const safeCode = safeGeminiRuntimeFailure(failureText, result.exitSignal);
+            retainedErrorCode = safeCode;
+            throw new RuntimeProviderExecutionError(safeCode, diagnostics());
+          }
+          if (!result.seenInit) {
+            retainedErrorCode = "CODEX_EVENT_STREAM_INVALID";
+            throw new RuntimeProviderExecutionError("CODEX_EVENT_STREAM_INVALID", diagnostics());
+          }
+          if (!result.terminalResult) {
+            retainedErrorCode = "CODEX_OUTPUT_INVALID";
+            throw new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID", diagnostics());
+          }
+          if (result.terminalResult.status !== "SUCCESS") {
+            const failureText = [
+              result.terminalResult.error ?? "",
+              result.terminalResult.response ?? "",
+              result.streamFailure,
+              result.stderr,
+            ]
+              .filter((text) => text.trim().length > 0)
+              .join("\n");
+            delete result.terminalResult;
+            const safeCode = safeGeminiRuntimeFailure(failureText);
+            retainedErrorCode = safeCode;
+            throw new RuntimeProviderExecutionError(safeCode, diagnostics());
+          }
+          let output: unknown;
+          try {
+            output = parseGeminiStructuredOutput(result.terminalResult.response);
+            retainedOutput = output;
+          } catch {
+            retainedErrorCode = "CODEX_OUTPUT_INVALID";
+            throw new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID", diagnostics());
+          } finally {
+            delete result.terminalResult;
+          }
+          return {
+            provider: "gemini-cli",
+            version: `agy ${cliVersion}`,
+            model: this.#profile.model,
+            reasoningEffort: this.#profile.reasoningEffort,
+            output,
+            durationMs: Date.now() - startedAt,
+            hostMetrics,
+            diagnostics: diagnostics(),
+          };
+        },
+        {
+          signal: request.signal,
+          deadlineAtMs,
+          onCancel: () => {
+            retainedErrorCode = "CODEX_CANCELLED";
+            return new RuntimeProviderCancelledError(diagnostics());
+          },
+          onTimeout: () => {
+            retainedErrorCode = "CODEX_TIMEOUT";
+            return new RuntimeProviderTimeoutError(diagnostics());
+          },
+        },
+      );
     } finally {
       if (debugRetentionHours > 0) {
         await persistSafeRetainedRuntimeOutput(outputPath, retainedOutput, retainedErrorCode);
@@ -964,6 +1006,7 @@ export class GeminiRuntimeProvider implements RuntimeProvider {
       } else {
         await rm(workDirectory, { recursive: true, force: true });
       }
+      if (this.#options.pruneHomeState) coordinator.schedulePruneIfNeeded(paths.home);
     }
   }
 }

@@ -116,6 +116,7 @@ export interface BuildMainRuntimeProviderOptions {
   geminiHome?: string | undefined;
   geminiWorkRoot?: string | undefined;
   geminiProfile: AgentRuntimeGeminiProfileName;
+  pruneGeminiHomeState?: boolean | undefined;
   protectedDirectories?: string[];
 }
 
@@ -134,6 +135,9 @@ export function buildMainRuntimeProvider(
       configHome: options.geminiHome,
       workRoot: options.geminiWorkRoot,
       geminiProfile: options.geminiProfile,
+      ...(options.pruneGeminiHomeState !== undefined
+        ? { pruneHomeState: options.pruneGeminiHomeState }
+        : {}),
       protectedDirectories: [
         ...(options.codexHome ? [options.codexHome] : []),
         ...(options.workRoot ? [options.workRoot] : []),

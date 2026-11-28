@@ -36,6 +36,7 @@ import {
   geminiCliArguments,
   parseGeminiResult,
 } from "@/runtime/gemini-cli-provider";
+import { GEMINI_EPHEMERAL_STATE_DIRS } from "@/runtime/gemini-home-retention";
 
 const lead =
   "Kevin Maxwell Warsh (d. 13 Nisan 1970), Federal Rezerv Yönetim Kurulu üyesi ve 17. başkanı olarak görev yapan Amerikalı bir finansçıdır. Daha önce 2006'dan 2011'e kadar da kurul üyesi olarak görev yaptı ve 2008 krizinde piyasalarla bağlantı rolü üstlendi.";
@@ -307,7 +308,10 @@ describe("Gemini CLI sağlayıcısı", () => {
   describe("process handling", () => {
     let workRoot: string | undefined;
     afterEach(async () => {
-      if (workRoot) await rm(workRoot, { recursive: true, force: true });
+      if (workRoot) {
+        await rm(workRoot, { recursive: true, force: true });
+        await rm(`${workRoot}-home`, { recursive: true, force: true });
+      }
       workRoot = undefined;
     });
 
@@ -380,6 +384,17 @@ describe("Gemini CLI sağlayıcısı", () => {
       );
       expect(binds).not.toContain("/bin");
       expect(binds).not.toContain("/usr/bin");
+      expect(
+        args.filter((value, index) => value === "--tmpfs" && args[index + 1] !== "/tmp"),
+      ).toHaveLength(GEMINI_EPHEMERAL_STATE_DIRS.length);
+      for (const [dirName, sizeBytes] of GEMINI_EPHEMERAL_STATE_DIRS) {
+        const mountPath = path.join(`${workRoot}-home`, ".gemini", "antigravity-cli", dirName);
+        const index = args.indexOf(mountPath);
+        expect(index).toBeGreaterThanOrEqual(3);
+        expect(args[index - 1]).toBe("--tmpfs");
+        expect(args[index - 2]).toBe(String(sizeBytes));
+        expect(args[index - 3]).toBe("--size");
+      }
       expect(await readdir(workRoot!)).toEqual([]);
     });
 
@@ -490,6 +505,12 @@ describe("Claude CLI sağlayıcısı", () => {
       ),
     ).toThrow(expect.objectContaining({ safeCode: "CLAUDE_AUTH_REQUIRED" }));
     expect(classifyClaudeFailure("Claude usage limit reached")).toBe("CLAUDE_USAGE_LIMITED");
+    expect(classifyClaudeFailure("You've hit your weekly limit · resets Nov 29, 8am (UTC)")).toBe(
+      "CLAUDE_USAGE_LIMITED",
+    );
+    expect(classifyClaudeFailure("You've hit your limit · resets 3pm (UTC)")).toBe(
+      "CLAUDE_USAGE_LIMITED",
+    );
     expect(classifyClaudeFailure("segfault")).toBe("CLAUDE_EXEC_FAILED");
   });
 

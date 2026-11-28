@@ -243,7 +243,11 @@ export function classifyClaudeFailure(text: string): ClaudeWriterSafeCode {
   const lower = text.toLowerCase();
   if (/not logged in|please run \/login|invalid api key|oauth|authentication|401/u.test(lower))
     return "CLAUDE_AUTH_REQUIRED";
-  if (/usage limit|limit reached|rate limit|429|overloaded|quota/u.test(lower))
+  if (
+    /usage limit|weekly limit|session limit|hit your (?:\w+\s+)?limit|limit reached|rate limit|429|overloaded|quota/u.test(
+      lower,
+    )
+  )
     return "CLAUDE_USAGE_LIMITED";
   return "CLAUDE_EXEC_FAILED";
 }
