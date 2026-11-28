@@ -2,12 +2,13 @@ import { inspect } from "node:util";
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import type { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { GEMINI_EPHEMERAL_STATE_DIRS } from "@/runtime/gemini-home-retention";
 import {
   AGENT_RUNTIME_GEMINI_PROFILES,
   agentRuntimeGeminiProfileNames,
@@ -415,6 +416,14 @@ describe("GeminiRuntimeProvider process handling", () => {
     });
     expect(seenArgs[0]!.join(" ")).not.toContain("BAĞLAM:");
     expect(seenArgs[0]).toContain(path.join(home, ".gemini", "config", "agents"));
+    for (const [dirName, sizeBytes] of GEMINI_EPHEMERAL_STATE_DIRS) {
+      const mountPath = path.join(home, ".gemini", "antigravity-cli", dirName);
+      const idx = seenArgs[0]!.indexOf(mountPath);
+      expect(idx).toBeGreaterThanOrEqual(3);
+      expect(seenArgs[0]![idx - 1]).toBe("--tmpfs");
+      expect(seenArgs[0]![idx - 2]).toBe(String(sizeBytes));
+      expect(seenArgs[0]![idx - 3]).toBe("--size");
+    }
     const ndjson = JSON.parse(seenStdin[0]!.trim()) as {
       event: string;
       message: { role: string; content: string };
@@ -791,5 +800,54 @@ describe("GeminiRuntimeProvider process handling", () => {
     ) as Record<string, unknown>;
     expect(retained).toHaveProperty("candidateActions");
     expect(retained).not.toHaveProperty("state");
+  });
+
+  it("prunes stale antigravity-cli state on startup only when pruneHomeState is true", async () => {
+    const setupHome = async (pruneHomeState: boolean) => {
+      const root = await mkdtemp(path.join(tmpdir(), "gemini-inspect-prune-"));
+      temporaryRoots.push(root);
+      const home = path.join(root, "gemini-home");
+      const workRoot = path.join(root, "gemini-work");
+      const cliDir = path.join(home, ".gemini", "antigravity-cli");
+      await mkdir(path.join(cliDir, "conversations"), { recursive: true });
+      await mkdir(path.join(cliDir, "brain", "b1"), { recursive: true });
+      await mkdir(path.join(cliDir, "builtin"), { recursive: true });
+      await writeFile(path.join(cliDir, "antigravity-oauth-token"), "keep-token");
+      await writeFile(path.join(cliDir, "installation_id"), "keep-id");
+      await writeFile(path.join(cliDir, "jetski_state.pbtxt"), "keep-state");
+      await writeFile(path.join(cliDir, "builtin", "tool.json"), "keep-builtin");
+      await writeFile(path.join(cliDir, "conversation_summaries.db"), "stale-db");
+      await writeFile(path.join(cliDir, "conversations", "old.db"), "stale-conv");
+      await writeFile(path.join(cliDir, "brain", "b1", "note.md"), "stale-brain");
+
+      const provider = new GeminiRuntimeProvider({
+        executable: "/usr/local/bin/agy",
+        sandboxExecutable: "/usr/bin/bwrap",
+        credentialFile: "/var/lib/agent-sozluk-runtime/credentials.json",
+        configHome: home,
+        workRoot,
+        pruneHomeState,
+        spawnProcess: makeSpawn({}).spawnMock,
+      });
+      await provider.inspect();
+      return cliDir;
+    };
+
+    const preservedDir = await setupHome(false);
+    expect(existsSync(path.join(preservedDir, "conversation_summaries.db"))).toBe(true);
+    expect(readdirSync(path.join(preservedDir, "conversations"))).toEqual(["old.db"]);
+
+    const cleanedDir = await setupHome(true);
+    expect(existsSync(path.join(cleanedDir, "conversation_summaries.db"))).toBe(false);
+    expect(readdirSync(path.join(cleanedDir, "conversations"))).toEqual([]);
+    expect(readdirSync(path.join(cleanedDir, "brain"))).toEqual([]);
+    expect(readFileSync(path.join(cleanedDir, "antigravity-oauth-token"), "utf8")).toBe(
+      "keep-token",
+    );
+    expect(readFileSync(path.join(cleanedDir, "installation_id"), "utf8")).toBe("keep-id");
+    expect(readFileSync(path.join(cleanedDir, "jetski_state.pbtxt"), "utf8")).toBe("keep-state");
+    expect(readFileSync(path.join(cleanedDir, "builtin", "tool.json"), "utf8")).toBe(
+      "keep-builtin",
+    );
   });
 });
