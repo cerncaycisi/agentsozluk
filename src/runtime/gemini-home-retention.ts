@@ -1,13 +1,16 @@
-import { lstat, mkdir, readdir, rm, unlink } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { constants as fsConstants } from "node:fs";
+import { lstat, mkdir, open, readdir, rmdir, unlink, type FileHandle } from "node:fs/promises";
 import path from "node:path";
 
 /*
   Gemini CLI (`agy 1.5.18`) her çağrıda `HOME/.gemini/antigravity-cli` altında konuşma SQLite
   dosyaları, brain klasörleri, CLI logları ve özet veritabanı biriktirir. Altı geçici alt dizin
   Bubblewrap `--size ... --tmpfs` ile bellek içinde tutulur; konak diskinde oluşabilecek özet
-  SQLite dosyaları ve artık dizin girdileri ise kimlik dosyalarına (`antigravity-oauth-token`,
-  `installation_id`, `jetski_state.pbtxt`, `builtin/`, `cache/`, `updater/`) dokunmadan eşgüdümlü
-  olarak temizlenir.
+  SQLite dosyaları ve artık dizin girdileri ise sabitlenmiş fd (`/proc/self/fd/<fd>`, O_NOFOLLOW)
+  üzerinden ve gerçek Linux `flock(1)` süreçler arası kilidi altında temizlenir. Kimlik
+  dosyalarına (`antigravity-oauth-token`, `installation_id`, `jetski_state.pbtxt`, `builtin/`,
+  `cache/`, `updater/`) ve `.agentsozluk-home.lock` kilidine dokunulmaz.
 */
 
 export const GEMINI_EPHEMERAL_STATE_DIRS = [
@@ -27,9 +30,15 @@ export const GEMINI_PRUNABLE_STATE_FILES = [
   "cli.log",
 ] as const;
 
+export const GEMINI_HOME_LOCK_FILENAME = ".agentsozluk-home.lock";
 export const DEFAULT_GEMINI_SOFT_THRESHOLD_BYTES = 16 * 1024 * 1024;
 export const DEFAULT_GEMINI_HARD_THRESHOLD_BYTES = 64 * 1024 * 1024;
 export const DEFAULT_GEMINI_MIN_CHECK_INTERVAL_MS = 5 * 60_000;
+const DEFAULT_EXCLUSIVE_LOCK_TIMEOUT_MS = 30_000;
+const MAX_REMOVE_DEPTH = 32;
+
+const DIR_OPEN_FLAGS = fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW;
+const LOCK_OPEN_FLAGS = fsConstants.O_CREAT | fsConstants.O_RDWR | fsConstants.O_NOFOLLOW;
 
 export interface GeminiHomeInspection {
   totalBytes: number;
@@ -41,10 +50,19 @@ export interface GeminiHomeInspection {
 
 export interface PruneGeminiHomeResult {
   pruned: boolean;
-  reason: "pruned" | "interval" | "below_threshold" | "deferred_until_idle" | "unsafe_layout";
+  reason:
+    | "pruned"
+    | "interval"
+    | "below_threshold"
+    | "deferred_until_idle"
+    | "lock_busy"
+    | "partial_failure"
+    | "unsafe_layout";
   deletedBytes: number;
   deletedFiles: number;
   deletedEntries: number;
+  failedCount: number;
+  errorCodes: string[];
 }
 
 export interface GeminiHomePruneOptions {
@@ -52,6 +70,7 @@ export interface GeminiHomePruneOptions {
   softThresholdBytes?: number;
   hardThresholdBytes?: number;
   minCheckIntervalMs?: number;
+  exclusiveTimeoutMs?: number;
 }
 
 export interface GeminiHomeSharedAccessOptions {
@@ -61,30 +80,99 @@ export interface GeminiHomeSharedAccessOptions {
   onTimeout?: (() => Error) | undefined;
 }
 
-async function ensureRealDirectory(targetPath: string, label: string): Promise<void> {
+export interface GeminiCrossProcessLockHandle {
+  release: () => Promise<void>;
+}
+
+export type GeminiExclusiveLockAcquisition =
+  | { status: "acquired"; handle: GeminiCrossProcessLockHandle }
+  | { status: "busy" }
+  | { status: "missing" }
+  | { status: "unsafe_layout" }
+  | { status: "error"; errorCode: string };
+
+export interface GeminiCrossProcessLock {
+  acquireShared(
+    configHome: string,
+    options?: GeminiHomeSharedAccessOptions,
+  ): Promise<GeminiCrossProcessLockHandle>;
+  acquireExclusive(
+    configHome: string,
+    options?: { nonBlocking?: boolean; timeoutMs?: number },
+  ): Promise<GeminiExclusiveLockAcquisition>;
+}
+
+function errorCodeOf(error: unknown): string {
+  const code = (error as NodeJS.ErrnoException | null)?.code;
+  return typeof code === "string" && code.length > 0 ? code : "EIO";
+}
+
+function isSymlinkOrNotDirError(code: string): boolean {
+  return code === "ELOOP" || code === "ENOTDIR";
+}
+
+async function openDirectoryNoFollow(dirPath: string): Promise<FileHandle> {
+  return open(dirPath, DIR_OPEN_FLAGS);
+}
+
+async function ensureChildDirectoryNoFollow(
+  parentFd: number,
+  name: string,
+  label: string,
+): Promise<FileHandle> {
+  const targetPath = `/proc/self/fd/${parentFd}/${name}`;
   try {
-    const stats = await lstat(targetPath);
-    if (stats.isSymbolicLink() || !stats.isDirectory()) {
+    return await openDirectoryNoFollow(targetPath);
+  } catch (error) {
+    const code = errorCodeOf(error);
+    if (isSymlinkOrNotDirError(code)) {
       throw new Error(`${label} sembolik bağ veya dosya olamaz.`);
     }
-    return;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    if (code !== "ENOENT") throw error;
   }
   try {
     await mkdir(targetPath, { mode: 0o700 });
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    const stats = await lstat(targetPath);
-    if (stats.isSymbolicLink() || !stats.isDirectory()) {
+    if (errorCodeOf(error) !== "EEXIST") throw error;
+  }
+  try {
+    return await openDirectoryNoFollow(targetPath);
+  } catch (error) {
+    if (isSymlinkOrNotDirError(errorCodeOf(error))) {
       throw new Error(`${label} sembolik bağ veya dosya olamaz.`);
     }
+    throw error;
+  }
+}
+
+async function ensureRootDirectoryNoFollow(dirPath: string, label: string): Promise<FileHandle> {
+  try {
+    return await openDirectoryNoFollow(dirPath);
+  } catch (error) {
+    const code = errorCodeOf(error);
+    if (isSymlinkOrNotDirError(code)) {
+      throw new Error(`${label} sembolik bağ veya dosya olamaz.`);
+    }
+    if (code !== "ENOENT") throw error;
+  }
+  try {
+    await mkdir(dirPath, { mode: 0o700 });
+  } catch (error) {
+    if (errorCodeOf(error) !== "EEXIST") throw error;
+  }
+  try {
+    return await openDirectoryNoFollow(dirPath);
+  } catch (error) {
+    if (isSymlinkOrNotDirError(errorCodeOf(error))) {
+      throw new Error(`${label} sembolik bağ veya dosya olamaz.`);
+    }
+    throw error;
   }
 }
 
 /**
  * Konfigürasyon kökünden başlayarak `agy` özel ajan bağlama noktasını ve 6 geçici tmpfs
- * bağlama dizinini sembolik bağlara izin vermeden adım adım doğrular/oluşturur.
+ * bağlama dizinini sabitlenmiş fd + O_NOFOLLOW ile sembolik bağlara izin vermeden doğrular.
  */
 export async function prepareGeminiEphemeralMountPoints(
   canonicalConfigHome: string,
@@ -92,18 +180,52 @@ export async function prepareGeminiEphemeralMountPoints(
   if (!path.isAbsolute(canonicalConfigHome)) {
     throw new Error("Gemini config home mutlak olmalıdır.");
   }
-  const geminiDir = path.join(canonicalConfigHome, ".gemini");
-  const configDir = path.join(geminiDir, "config");
-  const agentsDir = path.join(configDir, "agents");
-  const cliDir = path.join(geminiDir, "antigravity-cli");
+  const homeFd = await ensureRootDirectoryNoFollow(canonicalConfigHome, "Gemini config home");
+  try {
+    const geminiFd = await ensureChildDirectoryNoFollow(
+      homeFd.fd,
+      ".gemini",
+      "Gemini durum dizini",
+    );
+    try {
+      const configFd = await ensureChildDirectoryNoFollow(
+        geminiFd.fd,
+        "config",
+        "Gemini yapılandırma dizini",
+      );
+      try {
+        const agentsFd = await ensureChildDirectoryNoFollow(
+          configFd.fd,
+          "agents",
+          "Gemini ajan dizini",
+        );
+        await agentsFd.close();
+      } finally {
+        await configFd.close();
+      }
 
-  await ensureRealDirectory(canonicalConfigHome, "Gemini config home");
-  await ensureRealDirectory(geminiDir, "Gemini durum dizini");
-  await ensureRealDirectory(configDir, "Gemini yapılandırma dizini");
-  await ensureRealDirectory(agentsDir, "Gemini ajan dizini");
-  await ensureRealDirectory(cliDir, "Gemini CLI durum dizini");
-  for (const [name] of GEMINI_EPHEMERAL_STATE_DIRS) {
-    await ensureRealDirectory(path.join(cliDir, name), `Gemini geçici dizini (${name})`);
+      const cliFd = await ensureChildDirectoryNoFollow(
+        geminiFd.fd,
+        "antigravity-cli",
+        "Gemini CLI durum dizini",
+      );
+      try {
+        for (const [name] of GEMINI_EPHEMERAL_STATE_DIRS) {
+          const subFd = await ensureChildDirectoryNoFollow(
+            cliFd.fd,
+            name,
+            `Gemini geçici dizini (${name})`,
+          );
+          await subFd.close();
+        }
+      } finally {
+        await cliFd.close();
+      }
+    } finally {
+      await geminiFd.close();
+    }
+  } finally {
+    await homeFd.close();
   }
 }
 
@@ -118,92 +240,98 @@ export function geminiEphemeralTmpfsArgs(canonicalConfigHome: string): string[] 
   ]);
 }
 
-async function safeLstat(targetPath: string) {
+async function openSafeCliDirectoryHandle(canonicalConfigHome: string): Promise<{
+  cliFd: FileHandle | null;
+  unsafeLayout: boolean;
+  errorCode: string | null;
+}> {
+  let homeFd: FileHandle | undefined;
+  let geminiFd: FileHandle | undefined;
   try {
-    return await lstat(targetPath);
-  } catch {
-    return null;
+    homeFd = await openDirectoryNoFollow(canonicalConfigHome);
+    geminiFd = await openDirectoryNoFollow(`/proc/self/fd/${homeFd.fd}/.gemini`);
+    const cliFd = await openDirectoryNoFollow(`/proc/self/fd/${geminiFd.fd}/antigravity-cli`);
+    return { cliFd, unsafeLayout: false, errorCode: null };
+  } catch (error) {
+    const code = errorCodeOf(error);
+    if (isSymlinkOrNotDirError(code)) {
+      return { cliFd: null, unsafeLayout: true, errorCode: code };
+    }
+    if (code === "ENOENT") {
+      return { cliFd: null, unsafeLayout: false, errorCode: null };
+    }
+    return { cliFd: null, unsafeLayout: false, errorCode: code };
+  } finally {
+    await geminiFd?.close();
+    await homeFd?.close();
   }
 }
 
-async function resolveSafeCliDirectory(
-  canonicalConfigHome: string,
-): Promise<{ cliDir: string | null; unsafeLayout: boolean }> {
-  const homeStat = await safeLstat(canonicalConfigHome);
-  if (!homeStat) return { cliDir: null, unsafeLayout: false };
-  if (homeStat.isSymbolicLink() || !homeStat.isDirectory()) {
-    return { cliDir: null, unsafeLayout: true };
-  }
-  const geminiDir = path.join(canonicalConfigHome, ".gemini");
-  const geminiStat = await safeLstat(geminiDir);
-  if (!geminiStat) return { cliDir: null, unsafeLayout: false };
-  if (geminiStat.isSymbolicLink() || !geminiStat.isDirectory()) {
-    return { cliDir: null, unsafeLayout: true };
-  }
-  const cliDir = path.join(geminiDir, "antigravity-cli");
-  const cliStat = await safeLstat(cliDir);
-  if (!cliStat) return { cliDir: null, unsafeLayout: false };
-  if (cliStat.isSymbolicLink() || !cliStat.isDirectory()) {
-    return { cliDir: null, unsafeLayout: true };
-  }
-  return { cliDir, unsafeLayout: false };
-}
-
-/** Beyaz listedeki özet dosyalarının boyutunu ve 6 geçici dizindeki artık girdileri salt okunur ölçer. */
+/** Beyaz listedeki özet dosyalarının boyutunu ve 6 geçici dizindeki artık girdileri sabitlenmiş fd ile ölçer. */
 export async function inspectGeminiHomeState(
   canonicalConfigHome: string,
 ): Promise<GeminiHomeInspection> {
-  const { cliDir, unsafeLayout } = await resolveSafeCliDirectory(canonicalConfigHome);
-  if (unsafeLayout) {
+  const { cliFd, unsafeLayout } = await openSafeCliDirectoryHandle(canonicalConfigHome);
+  if (!cliFd) {
     return {
       totalBytes: 0,
       fileBytes: 0,
       ephemeralEntries: 0,
       hasEphemeralEntries: false,
-      unsafeLayout: true,
-    };
-  }
-  if (!cliDir) {
-    return {
-      totalBytes: 0,
-      fileBytes: 0,
-      ephemeralEntries: 0,
-      hasEphemeralEntries: false,
-      unsafeLayout: false,
+      unsafeLayout,
     };
   }
 
   let fileBytes = 0;
   let ephemeralBytes = 0;
   let ephemeralEntries = 0;
+  let detectedUnsafe = false;
 
-  for (const fileName of GEMINI_PRUNABLE_STATE_FILES) {
-    const stats = await safeLstat(path.join(cliDir, fileName));
-    if (!stats) continue;
-    if (stats.isFile()) {
-      fileBytes += stats.size;
-    } else if (fileName === "cli.log" && stats.isSymbolicLink()) {
-      ephemeralEntries += 1;
-    }
-  }
-
-  for (const [dirName] of GEMINI_EPHEMERAL_STATE_DIRS) {
-    const dirPath = path.join(cliDir, dirName);
-    const dirStat = await safeLstat(dirPath);
-    if (!dirStat || dirStat.isSymbolicLink() || !dirStat.isDirectory()) continue;
-    let names: string[];
-    try {
-      names = await readdir(dirPath);
-    } catch {
-      continue;
-    }
-    ephemeralEntries += names.length;
-    for (const entry of names) {
-      const childStat = await safeLstat(path.join(dirPath, entry));
-      if (childStat && childStat.isFile()) {
-        ephemeralBytes += childStat.size;
+  try {
+    for (const fileName of GEMINI_PRUNABLE_STATE_FILES) {
+      let stats;
+      try {
+        stats = await lstat(`/proc/self/fd/${cliFd.fd}/${fileName}`);
+      } catch {
+        continue;
+      }
+      if (stats.isFile()) {
+        fileBytes += stats.size;
+      } else if (fileName === "cli.log" && stats.isSymbolicLink()) {
+        ephemeralEntries += 1;
       }
     }
+
+    for (const [dirName] of GEMINI_EPHEMERAL_STATE_DIRS) {
+      let subFd: FileHandle;
+      try {
+        subFd = await openDirectoryNoFollow(`/proc/self/fd/${cliFd.fd}/${dirName}`);
+      } catch (error) {
+        if (isSymlinkOrNotDirError(errorCodeOf(error))) detectedUnsafe = true;
+        continue;
+      }
+      try {
+        let names: string[];
+        try {
+          names = await readdir(`/proc/self/fd/${subFd.fd}`);
+        } catch {
+          continue;
+        }
+        ephemeralEntries += names.length;
+        for (const entry of names) {
+          try {
+            const childStat = await lstat(`/proc/self/fd/${subFd.fd}/${entry}`);
+            if (childStat.isFile()) ephemeralBytes += childStat.size;
+          } catch {
+            // Okuma sırasında kaybolan girdi yoksayılır.
+          }
+        }
+      } finally {
+        await subFd.close();
+      }
+    }
+  } finally {
+    await cliFd.close();
   }
 
   return {
@@ -211,19 +339,105 @@ export async function inspectGeminiHomeState(
     fileBytes,
     ephemeralEntries,
     hasEphemeralEntries: ephemeralEntries > 0,
-    unsafeLayout: false,
+    unsafeLayout: detectedUnsafe,
   };
 }
 
+interface PruneCollector {
+  deletedBytes: number;
+  deletedFiles: number;
+  deletedEntries: number;
+  failedCount: number;
+  errorCodes: Set<string>;
+}
+
+async function removeEntryNoFollow(
+  parentFd: number,
+  entryName: string,
+  collector: PruneCollector,
+  depth = 0,
+): Promise<void> {
+  if (depth > MAX_REMOVE_DEPTH) {
+    collector.failedCount += 1;
+    collector.errorCodes.add("ELOOP");
+    return;
+  }
+  const entryPath = `/proc/self/fd/${parentFd}/${entryName}`;
+  let stats;
+  try {
+    stats = await lstat(entryPath);
+  } catch (error) {
+    const code = errorCodeOf(error);
+    if (code === "ENOENT") return;
+    collector.failedCount += 1;
+    collector.errorCodes.add(code);
+    return;
+  }
+
+  if (stats.isDirectory() && !stats.isSymbolicLink()) {
+    let childDirFd: FileHandle;
+    try {
+      childDirFd = await openDirectoryNoFollow(entryPath);
+    } catch (error) {
+      const code = errorCodeOf(error);
+      if (code === "ENOENT") return;
+      collector.failedCount += 1;
+      collector.errorCodes.add(code);
+      return;
+    }
+    try {
+      let children: string[];
+      try {
+        children = await readdir(`/proc/self/fd/${childDirFd.fd}`);
+      } catch (error) {
+        const code = errorCodeOf(error);
+        if (code !== "ENOENT") {
+          collector.failedCount += 1;
+          collector.errorCodes.add(code);
+        }
+        return;
+      }
+      for (const child of children) {
+        await removeEntryNoFollow(childDirFd.fd, child, collector, depth + 1);
+      }
+    } finally {
+      await childDirFd.close();
+    }
+    try {
+      await rmdir(entryPath);
+      if (depth === 0) collector.deletedEntries += 1;
+    } catch (error) {
+      const code = errorCodeOf(error);
+      if (code !== "ENOENT") {
+        collector.failedCount += 1;
+        collector.errorCodes.add(code);
+      }
+    }
+    return;
+  }
+
+  try {
+    await unlink(entryPath);
+    if (depth === 0) collector.deletedEntries += 1;
+    if (stats.isFile()) collector.deletedBytes += stats.size;
+  } catch (error) {
+    const code = errorCodeOf(error);
+    if (code !== "ENOENT") {
+      collector.failedCount += 1;
+      collector.errorCodes.add(code);
+    }
+  }
+}
+
 /**
- * Yalnız beyaz listedeki 5 özet/log dosyasını ve 6 geçici alt dizinin içeriğini siler.
- * Kimlik ve kurulum dosyalarına (`antigravity-oauth-token`, `installation_id`,
- * `jetski_state.pbtxt`, `builtin`, `cache`, `updater`) dokunmaz ve sembolik bağları izlemez.
+ * Yalnız beyaz listedeki 5 özet/log dosyasını ve 6 geçici alt dizinin içeriğini sabitlenmiş
+ * fd (`O_NOFOLLOW`) ile siler. Kimlik dosyalarına ve sembolik bağ hedeflerine dokunmaz;
+ * `ENOENT` dışındaki silme hatalarını `partial_failure` ile raporlar.
  */
 export async function pruneGeminiHomeStateFiles(
   canonicalConfigHome: string,
 ): Promise<PruneGeminiHomeResult> {
-  const { cliDir, unsafeLayout } = await resolveSafeCliDirectory(canonicalConfigHome);
+  const { cliFd, unsafeLayout, errorCode } = await openSafeCliDirectoryHandle(canonicalConfigHome);
   if (unsafeLayout) {
     return {
       pruned: false,
@@ -231,68 +445,487 @@ export async function pruneGeminiHomeStateFiles(
       deletedBytes: 0,
       deletedFiles: 0,
       deletedEntries: 0,
+      failedCount: 0,
+      errorCodes: errorCode ? [errorCode] : [],
     };
   }
-  if (!cliDir) {
+  if (errorCode) {
+    return {
+      pruned: false,
+      reason: "partial_failure",
+      deletedBytes: 0,
+      deletedFiles: 0,
+      deletedEntries: 0,
+      failedCount: 1,
+      errorCodes: [errorCode],
+    };
+  }
+  if (!cliFd) {
     return {
       pruned: true,
       reason: "pruned",
       deletedBytes: 0,
       deletedFiles: 0,
       deletedEntries: 0,
+      failedCount: 0,
+      errorCodes: [],
     };
   }
 
-  let deletedBytes = 0;
-  let deletedFiles = 0;
-  let deletedEntries = 0;
+  const collector: PruneCollector = {
+    deletedBytes: 0,
+    deletedFiles: 0,
+    deletedEntries: 0,
+    failedCount: 0,
+    errorCodes: new Set<string>(),
+  };
 
-  for (const fileName of GEMINI_PRUNABLE_STATE_FILES) {
-    const filePath = path.join(cliDir, fileName);
-    const stats = await safeLstat(filePath);
-    if (!stats) continue;
-    const allowed =
-      fileName === "cli.log" ? stats.isFile() || stats.isSymbolicLink() : stats.isFile();
-    if (!allowed) continue;
-    try {
-      await unlink(filePath);
-      deletedFiles += 1;
-      if (stats.isFile()) deletedBytes += stats.size;
-    } catch {
-      // Eşzamanlı temizlik veya ENOENT akışı durdurmaz.
-    }
-  }
+  try {
+    for (const fileName of GEMINI_PRUNABLE_STATE_FILES) {
+      const filePath = `/proc/self/fd/${cliFd.fd}/${fileName}`;
+      if (fileName === "cli.log") {
+        let stats;
+        try {
+          stats = await lstat(filePath);
+        } catch (error) {
+          const code = errorCodeOf(error);
+          if (code !== "ENOENT") {
+            collector.failedCount += 1;
+            collector.errorCodes.add(code);
+          }
+          continue;
+        }
+        if (!stats.isFile() && !stats.isSymbolicLink()) {
+          collector.failedCount += 1;
+          collector.errorCodes.add("EISDIR");
+          continue;
+        }
+        try {
+          await unlink(filePath);
+          collector.deletedFiles += 1;
+          if (stats.isFile()) collector.deletedBytes += stats.size;
+        } catch (error) {
+          const code = errorCodeOf(error);
+          if (code !== "ENOENT") {
+            collector.failedCount += 1;
+            collector.errorCodes.add(code);
+          }
+        }
+        continue;
+      }
 
-  for (const [dirName] of GEMINI_EPHEMERAL_STATE_DIRS) {
-    const dirPath = path.join(cliDir, dirName);
-    const dirStat = await safeLstat(dirPath);
-    if (!dirStat || dirStat.isSymbolicLink() || !dirStat.isDirectory()) continue;
-    let names: string[];
-    try {
-      names = await readdir(dirPath);
-    } catch {
-      continue;
-    }
-    for (const entry of names) {
-      const childPath = path.join(dirPath, entry);
-      const childStat = await safeLstat(childPath);
+      let fh: FileHandle;
       try {
-        await rm(childPath, { recursive: true, force: true });
-        deletedEntries += 1;
-        if (childStat && childStat.isFile()) deletedBytes += childStat.size;
-      } catch {
-        // Girdi bazlı temizlik hataları sonraki girdileri ve worker'ı engellemez.
+        fh = await open(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+      } catch (error) {
+        const code = errorCodeOf(error);
+        if (code === "ENOENT" || code === "ELOOP") {
+          continue;
+        }
+        collector.failedCount += 1;
+        collector.errorCodes.add(code);
+        continue;
+      }
+      let size = 0;
+      let regularFile = false;
+      try {
+        const stats = await fh.stat();
+        regularFile = stats.isFile();
+        if (regularFile) size = stats.size;
+      } catch (error) {
+        collector.failedCount += 1;
+        collector.errorCodes.add(errorCodeOf(error));
+      } finally {
+        await fh.close();
+      }
+      if (!regularFile) continue;
+
+      try {
+        await unlink(filePath);
+        collector.deletedFiles += 1;
+        collector.deletedBytes += size;
+      } catch (error) {
+        const code = errorCodeOf(error);
+        if (code !== "ENOENT") {
+          collector.failedCount += 1;
+          collector.errorCodes.add(code);
+        }
       }
     }
+
+    for (const [dirName] of GEMINI_EPHEMERAL_STATE_DIRS) {
+      let subFd: FileHandle;
+      try {
+        subFd = await openDirectoryNoFollow(`/proc/self/fd/${cliFd.fd}/${dirName}`);
+      } catch (error) {
+        const code = errorCodeOf(error);
+        if (code !== "ENOENT") {
+          collector.failedCount += 1;
+          collector.errorCodes.add(code);
+        }
+        continue;
+      }
+      try {
+        let names: string[];
+        try {
+          names = await readdir(`/proc/self/fd/${subFd.fd}`);
+        } catch (error) {
+          const code = errorCodeOf(error);
+          if (code !== "ENOENT") {
+            collector.failedCount += 1;
+            collector.errorCodes.add(code);
+          }
+          continue;
+        }
+        for (const entry of names) {
+          await removeEntryNoFollow(subFd.fd, entry, collector);
+        }
+      } finally {
+        await subFd.close();
+      }
+    }
+  } finally {
+    await cliFd.close();
   }
 
   return {
-    pruned: true,
-    reason: "pruned",
-    deletedBytes,
-    deletedFiles,
-    deletedEntries,
+    pruned: collector.failedCount === 0,
+    reason: collector.failedCount > 0 ? "partial_failure" : "pruned",
+    deletedBytes: collector.deletedBytes,
+    deletedFiles: collector.deletedFiles,
+    deletedEntries: collector.deletedEntries,
+    failedCount: collector.failedCount,
+    errorCodes: [...collector.errorCodes].sort(),
   };
+}
+
+function buildFlockRelease(child: ReturnType<typeof spawn>): GeminiCrossProcessLockHandle {
+  let releasePromise: Promise<void> | undefined;
+  return {
+    release: () => {
+      if (releasePromise) return releasePromise;
+      releasePromise = new Promise<void>((resolve) => {
+        if (child.exitCode !== null || child.signalCode !== null) {
+          resolve();
+          return;
+        }
+        const killTimer = setTimeout(() => {
+          if (child.exitCode === null && child.signalCode === null) {
+            try {
+              child.kill("SIGKILL");
+            } catch {
+              // Süreç zaten çıkmış olabilir.
+            }
+          }
+        }, 2000);
+        killTimer.unref();
+        child.once("exit", () => {
+          clearTimeout(killTimer);
+          resolve();
+        });
+        try {
+          child.stdin?.end();
+        } catch {
+          try {
+            child.kill("SIGKILL");
+          } catch {
+            clearTimeout(killTimer);
+            resolve();
+          }
+        }
+      });
+      return releasePromise;
+    },
+  };
+}
+
+/**
+ * `/usr/bin/flock` + `/usr/bin/cat` alt süreci üzerinden gerçek kernel `LOCK_SH` / `LOCK_EX`
+ * tutarlılığı sağlar; böylece worker ve harici probe (`agent-codex-status.ts`) çarpışmaz.
+ */
+export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
+  readonly #flockPath: string;
+  readonly #catPath: string;
+  readonly #now: () => number;
+
+  constructor(options?: { flockPath?: string; catPath?: string; now?: () => number }) {
+    this.#flockPath = options?.flockPath ?? "/usr/bin/flock";
+    this.#catPath = options?.catPath ?? "/usr/bin/cat";
+    this.#now = options?.now ?? (() => Date.now());
+  }
+
+  async #openLockFile(
+    canonicalConfigHome: string,
+    createMissingDirs: boolean,
+  ): Promise<{
+    lockFd: FileHandle | null;
+    status: "ok" | "missing" | "unsafe_layout" | "error";
+    errorCode?: string;
+  }> {
+    let opened = await openSafeCliDirectoryHandle(canonicalConfigHome);
+    if (!opened.cliFd && !opened.unsafeLayout && !opened.errorCode && createMissingDirs) {
+      await prepareGeminiEphemeralMountPoints(canonicalConfigHome);
+      opened = await openSafeCliDirectoryHandle(canonicalConfigHome);
+    }
+    if (opened.unsafeLayout) return { lockFd: null, status: "unsafe_layout" };
+    if (opened.errorCode) return { lockFd: null, status: "error", errorCode: opened.errorCode };
+    if (!opened.cliFd) return { lockFd: null, status: "missing" };
+
+    try {
+      const lockPath = `/proc/self/fd/${opened.cliFd.fd}/${GEMINI_HOME_LOCK_FILENAME}`;
+      const lockFd = await open(lockPath, LOCK_OPEN_FLAGS, 0o600);
+      try {
+        const stats = await lockFd.stat();
+        if (!stats.isFile()) {
+          await lockFd.close();
+          return { lockFd: null, status: "unsafe_layout" };
+        }
+      } catch (error) {
+        await lockFd.close();
+        return { lockFd: null, status: "error", errorCode: errorCodeOf(error) };
+      }
+      return { lockFd, status: "ok" };
+    } catch (error) {
+      const code = errorCodeOf(error);
+      if (isSymlinkOrNotDirError(code)) return { lockFd: null, status: "unsafe_layout" };
+      return { lockFd: null, status: "error", errorCode: code };
+    } finally {
+      await opened.cliFd.close();
+    }
+  }
+
+  async acquireShared(
+    configHome: string,
+    options?: GeminiHomeSharedAccessOptions,
+  ): Promise<GeminiCrossProcessLockHandle> {
+    if (options?.signal?.aborted) {
+      throw options.onCancel ? options.onCancel() : new Error("Gemini ev kilidi iptal edildi.");
+    }
+    if (options?.deadlineAtMs !== undefined && this.#now() >= options.deadlineAtMs) {
+      throw options.onTimeout
+        ? options.onTimeout()
+        : new Error("Gemini ev kilidi zaman aşımına uğradı.");
+    }
+
+    const opened = await this.#openLockFile(configHome, true);
+    if (opened.status === "unsafe_layout") {
+      throw new Error("Gemini geçici durum dizini sembolik bağ veya dosya olamaz.");
+    }
+    if (!opened.lockFd) {
+      throw new Error(`Gemini kilit dosyası açılamadı (${opened.errorCode ?? "EIO"}).`);
+    }
+
+    const child = spawn(this.#flockPath, ["--shared", "/proc/self/fd/3", this.#catPath], {
+      cwd: "/",
+      shell: false,
+      env: {
+        NODE_ENV: "production",
+        PATH: "/usr/bin:/bin",
+        LANG: "C.UTF-8",
+        LC_ALL: "C.UTF-8",
+      },
+      stdio: ["pipe", "pipe", "ignore", opened.lockFd.fd],
+    });
+    await opened.lockFd.close();
+
+    child.stdin?.on("error", () => undefined);
+
+    return new Promise<GeminiCrossProcessLockHandle>((resolve, reject) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      const cleanupListeners = () => {
+        if (timer) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
+        options?.signal?.removeEventListener("abort", onAbort);
+        child.stdout?.removeListener("data", onData);
+        child.removeListener("error", onError);
+        child.removeListener("exit", onEarlyExit);
+      };
+
+      const abortChild = () => {
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          // ignore
+        }
+      };
+
+      const onAbort = () => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        abortChild();
+        reject(
+          options?.onCancel ? options.onCancel() : new Error("Gemini ev kilidi iptal edildi."),
+        );
+      };
+
+      const onTimeout = () => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        abortChild();
+        reject(
+          options?.onTimeout
+            ? options.onTimeout()
+            : new Error("Gemini ev kilidi zaman aşımına uğradı."),
+        );
+      };
+
+      const onData = (chunk: Buffer) => {
+        if (settled || chunk.length === 0) return;
+        settled = true;
+        cleanupListeners();
+        resolve(buildFlockRelease(child));
+      };
+
+      const onError = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        reject(err);
+      };
+
+      const onEarlyExit = () => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        reject(new Error("Gemini paylaşımlı dosya kilidi alınamadı."));
+      };
+
+      if (options?.signal) {
+        if (options.signal.aborted) {
+          onAbort();
+          return;
+        }
+        options.signal.addEventListener("abort", onAbort, { once: true });
+      }
+      if (options?.deadlineAtMs !== undefined) {
+        const remaining = options.deadlineAtMs - this.#now();
+        if (remaining <= 0) {
+          onTimeout();
+          return;
+        }
+        timer = setTimeout(onTimeout, remaining);
+        timer.unref();
+      }
+
+      child.stdout?.on("data", onData);
+      child.once("error", onError);
+      child.once("exit", onEarlyExit);
+      try {
+        child.stdin?.write("1\n");
+      } catch {
+        // exit listener will settle
+      }
+    });
+  }
+
+  async acquireExclusive(
+    configHome: string,
+    options?: { nonBlocking?: boolean; timeoutMs?: number },
+  ): Promise<GeminiExclusiveLockAcquisition> {
+    const opened = await this.#openLockFile(configHome, false);
+    if (opened.status === "missing") return { status: "missing" };
+    if (opened.status === "unsafe_layout") return { status: "unsafe_layout" };
+    if (opened.status === "error" || !opened.lockFd) {
+      return { status: "error", errorCode: opened.errorCode ?? "EIO" };
+    }
+
+    const nonBlocking = options?.nonBlocking ?? false;
+    const timeoutMs = options?.timeoutMs ?? DEFAULT_EXCLUSIVE_LOCK_TIMEOUT_MS;
+    const args = nonBlocking
+      ? ["--exclusive", "--nonblock", "/proc/self/fd/3", this.#catPath]
+      : [
+          "--exclusive",
+          "--timeout",
+          String(Math.max(1, Math.ceil(timeoutMs / 1000))),
+          "/proc/self/fd/3",
+          this.#catPath,
+        ];
+
+    const child = spawn(this.#flockPath, args, {
+      cwd: "/",
+      shell: false,
+      env: {
+        NODE_ENV: "production",
+        PATH: "/usr/bin:/bin",
+        LANG: "C.UTF-8",
+        LC_ALL: "C.UTF-8",
+      },
+      stdio: ["pipe", "pipe", "ignore", opened.lockFd.fd],
+    });
+    await opened.lockFd.close();
+
+    child.stdin?.on("error", () => undefined);
+
+    return new Promise<GeminiExclusiveLockAcquisition>((resolve) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      const cleanupListeners = () => {
+        if (timer) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
+        child.stdout?.removeListener("data", onData);
+        child.removeListener("error", onError);
+        child.removeListener("exit", onEarlyExit);
+      };
+
+      const onData = (chunk: Buffer) => {
+        if (settled || chunk.length === 0) return;
+        settled = true;
+        cleanupListeners();
+        resolve({ status: "acquired", handle: buildFlockRelease(child) });
+      };
+
+      const onError = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        resolve({ status: "error", errorCode: errorCodeOf(err) });
+      };
+
+      const onEarlyExit = (code: number | null) => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        if (code === 1 || code === null) {
+          resolve({ status: "busy" });
+        } else {
+          resolve({ status: "error", errorCode: `EXIT_${code}` });
+        }
+      };
+
+      if (!nonBlocking) {
+        timer = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          cleanupListeners();
+          try {
+            child.kill("SIGKILL");
+          } catch {
+            // ignore
+          }
+          resolve({ status: "busy" });
+        }, timeoutMs + 1000);
+        timer.unref();
+      }
+
+      child.stdout?.on("data", onData);
+      child.once("error", onError);
+      child.once("exit", onEarlyExit);
+      try {
+        child.stdin?.write("1\n");
+      } catch {
+        // exit listener will settle
+      }
+    });
+  }
 }
 
 interface SharedWaiter {
@@ -313,16 +946,35 @@ interface ConfigHomeState {
   activePrunePromise: Promise<PruneGeminiHomeResult> | null;
 }
 
+function defaultOnPruneFailure(result: PruneGeminiHomeResult): void {
+  const codes = result.errorCodes.length > 0 ? result.errorCodes.join(",") : "-";
+  process.stderr.write(
+    `GEMINI_HOME_PRUNE_FAILED reason=${result.reason} failedCount=${result.failedCount} codes=${codes}\n`,
+  );
+}
+
 /**
- * Aynı `configHome` dizinini kullanan `GeminiRuntimeProvider` ve `GeminiCliProvider` arasında
- * paylaşımlı çalışma ve güvenli temizlik kapısı sağlar.
+ * Aynı `configHome` dizinini kullanan süreç içi (`GeminiRuntimeProvider`, `GeminiCliProvider`) ve
+ * süreçler arası (worker, harici probe) çağrılar için paylaşımlı/özel temizlik koordinatörü.
  */
 export class GeminiHomeCoordinator {
   readonly #states = new Map<string, ConfigHomeState>();
   readonly #now: () => number;
+  readonly #crossProcessLock: GeminiCrossProcessLock;
+  readonly #onPruneFailure: (result: PruneGeminiHomeResult) => void;
 
-  constructor(options?: { now?: () => number }) {
+  constructor(options?: {
+    now?: () => number;
+    crossProcessLock?: GeminiCrossProcessLock;
+    onPruneFailure?: (result: PruneGeminiHomeResult) => void;
+  }) {
     this.#now = options?.now ?? (() => Date.now());
+    this.#crossProcessLock =
+      options?.crossProcessLock ??
+      new FlockGeminiCrossProcessLock({
+        now: this.#now,
+      });
+    this.#onPruneFailure = options?.onPruneFailure ?? defaultOnPruneFailure;
   }
 
   #getState(configHome: string): ConfigHomeState {
@@ -431,17 +1083,85 @@ export class GeminiHomeCoordinator {
     });
   }
 
+  async #runExclusiveUnderOsLock(
+    configHome: string,
+    state: ConfigHomeState,
+    lockOptions: { nonBlocking: boolean; timeoutMs?: number },
+  ): Promise<PruneGeminiHomeResult> {
+    const acquired = await this.#crossProcessLock.acquireExclusive(configHome, lockOptions);
+    state.lastCheckedAtMs = this.#now();
+
+    if (acquired.status === "missing") {
+      return {
+        pruned: true,
+        reason: "pruned",
+        deletedBytes: 0,
+        deletedFiles: 0,
+        deletedEntries: 0,
+        failedCount: 0,
+        errorCodes: [],
+      };
+    }
+    if (acquired.status === "busy") {
+      return {
+        pruned: false,
+        reason: "lock_busy",
+        deletedBytes: 0,
+        deletedFiles: 0,
+        deletedEntries: 0,
+        failedCount: 0,
+        errorCodes: [],
+      };
+    }
+    if (acquired.status === "unsafe_layout") {
+      const failResult: PruneGeminiHomeResult = {
+        pruned: false,
+        reason: "unsafe_layout",
+        deletedBytes: 0,
+        deletedFiles: 0,
+        deletedEntries: 0,
+        failedCount: 0,
+        errorCodes: [],
+      };
+      this.#onPruneFailure(failResult);
+      return failResult;
+    }
+    if (acquired.status === "error") {
+      const failResult: PruneGeminiHomeResult = {
+        pruned: false,
+        reason: "partial_failure",
+        deletedBytes: 0,
+        deletedFiles: 0,
+        deletedEntries: 0,
+        failedCount: 1,
+        errorCodes: [acquired.errorCode],
+      };
+      this.#onPruneFailure(failResult);
+      return failResult;
+    }
+
+    try {
+      const result = await pruneGeminiHomeStateFiles(configHome);
+      state.lastCheckedAtMs = this.#now();
+      if (result.reason === "partial_failure" || result.reason === "unsafe_layout") {
+        this.#onPruneFailure(result);
+      }
+      return result;
+    } finally {
+      await acquired.handle.release().catch(() => undefined);
+    }
+  }
+
   #launchExclusivePrune(
     configHome: string,
     state: ConfigHomeState,
+    lockOptions: { nonBlocking: boolean; timeoutMs?: number },
   ): Promise<PruneGeminiHomeResult> {
     state.pruning = true;
     state.pruneWanted = false;
     const promise = (async (): Promise<PruneGeminiHomeResult> => {
       try {
-        const result = await pruneGeminiHomeStateFiles(configHome);
-        state.lastCheckedAtMs = this.#now();
-        return result;
+        return await this.#runExclusiveUnderOsLock(configHome, state, lockOptions);
       } finally {
         state.pruning = false;
         state.hardBarrier = false;
@@ -463,7 +1183,7 @@ export class GeminiHomeCoordinator {
       return;
     }
     if (state.pruneWanted && !state.pruning && !state.activePrunePromise) {
-      this.#launchExclusivePrune(configHome, state);
+      this.#launchExclusivePrune(configHome, state, { nonBlocking: true });
     }
   }
 
@@ -479,9 +1199,14 @@ export class GeminiHomeCoordinator {
       this.#assertAccessBudget(options);
     }
     state.activeCalls += 1;
+    let osLock: GeminiCrossProcessLockHandle | null = null;
     try {
+      osLock = await this.#crossProcessLock.acquireShared(configHome, options);
       return await fn();
     } finally {
+      if (osLock) {
+        await osLock.release().catch(() => undefined);
+      }
       this.#releaseSharedAccess(configHome, state);
     }
   }
@@ -500,6 +1225,7 @@ export class GeminiHomeCoordinator {
       options?.hardThresholdBytes ?? DEFAULT_GEMINI_HARD_THRESHOLD_BYTES,
     );
     const minCheckIntervalMs = options?.minCheckIntervalMs ?? DEFAULT_GEMINI_MIN_CHECK_INTERVAL_MS;
+    const exclusiveTimeoutMs = options?.exclusiveTimeoutMs ?? DEFAULT_EXCLUSIVE_LOCK_TIMEOUT_MS;
 
     if (!force && this.#now() - state.lastCheckedAtMs < minCheckIntervalMs) {
       return {
@@ -508,6 +1234,8 @@ export class GeminiHomeCoordinator {
         deletedBytes: 0,
         deletedFiles: 0,
         deletedEntries: 0,
+        failedCount: 0,
+        errorCodes: [],
       };
     }
 
@@ -516,13 +1244,17 @@ export class GeminiHomeCoordinator {
       state.lastCheckedAtMs = this.#now();
       if (state.activePrunePromise) return state.activePrunePromise;
       if (inspection.unsafeLayout) {
-        return {
+        const failResult: PruneGeminiHomeResult = {
           pruned: false,
           reason: "unsafe_layout",
           deletedBytes: 0,
           deletedFiles: 0,
           deletedEntries: 0,
+          failedCount: 0,
+          errorCodes: [],
         };
+        this.#onPruneFailure(failResult);
+        return failResult;
       }
       const needsPrune =
         inspection.hasEphemeralEntries || inspection.totalBytes >= softThresholdBytes;
@@ -533,6 +1265,8 @@ export class GeminiHomeCoordinator {
           deletedBytes: 0,
           deletedFiles: 0,
           deletedEntries: 0,
+          failedCount: 0,
+          errorCodes: [],
         };
       }
       if (inspection.totalBytes < hardThresholdBytes) {
@@ -544,15 +1278,20 @@ export class GeminiHomeCoordinator {
             deletedBytes: 0,
             deletedFiles: 0,
             deletedEntries: 0,
+            failedCount: 0,
+            errorCodes: [],
           };
         }
-        return this.#launchExclusivePrune(configHome, state);
+        return this.#launchExclusivePrune(configHome, state, { nonBlocking: true });
       }
     }
 
     if (state.activePrunePromise) return state.activePrunePromise;
     if (state.activeCalls === 0) {
-      return this.#launchExclusivePrune(configHome, state);
+      return this.#launchExclusivePrune(configHome, state, {
+        nonBlocking: false,
+        timeoutMs: exclusiveTimeoutMs,
+      });
     }
 
     state.hardBarrier = true;
@@ -566,9 +1305,10 @@ export class GeminiHomeCoordinator {
         }
         state.pruning = true;
         state.pruneWanted = false;
-        const result = await pruneGeminiHomeStateFiles(configHome);
-        state.lastCheckedAtMs = this.#now();
-        return result;
+        return await this.#runExclusiveUnderOsLock(configHome, state, {
+          nonBlocking: false,
+          timeoutMs: exclusiveTimeoutMs,
+        });
       } finally {
         state.pruning = false;
         state.hardBarrier = false;
