@@ -666,4 +666,37 @@ exec /bin/rm "$@"`,
       /^ExecStart=%h\/\.local\/share\/agentsozluk-yedek\/gecelik-yedek\.sh$/mu,
     );
   });
+
+  it("birim TimeoutStartSec değeri betiğin en kötü durum aşama bütçesinden büyüktür", () => {
+    const unitMatch = service.match(/^TimeoutStartSec=(\d+)min$/mu);
+    expect(unitMatch).not.toBeNull();
+    const serviceTimeoutSeconds = Number(unitMatch![1]) * 60;
+
+    const script = readFileSync(nightly, "utf8");
+    const sshMatch = script.match(/timeout (\d+) ssh\b/u);
+    const restoreMatch = script.match(/timeout --kill-after=(\d+) (\d+) "\$PG_RESTORE"/u);
+    const uploadMaxMatch = script.match(/UPLOAD_TIMEOUT <= (\d+)/u);
+    const uploadKillMatch = script.match(/timeout --kill-after=(\d+) "\$UPLOAD_TIMEOUT"/u);
+    const checkMatch = script.match(/timeout --kill-after=(\d+) (\d+) "\$rclone_bin" check/u);
+    const lsfMatch = script.match(/timeout --kill-after=(\d+) (\d+) "\$rclone_bin" lsf/u);
+
+    expect(sshMatch).not.toBeNull();
+    expect(restoreMatch).not.toBeNull();
+    expect(uploadMaxMatch).not.toBeNull();
+    expect(uploadKillMatch).not.toBeNull();
+    expect(checkMatch).not.toBeNull();
+    expect(lsfMatch).not.toBeNull();
+
+    const worstCaseSeconds =
+      Number(sshMatch![1]) +
+      Number(restoreMatch![1]) +
+      Number(restoreMatch![2]) +
+      Number(uploadKillMatch![1]) +
+      Number(uploadMaxMatch![1]) +
+      Number(checkMatch![1]) +
+      Number(checkMatch![2]) +
+      3 * (Number(lsfMatch![1]) + Number(lsfMatch![2]));
+
+    expect(worstCaseSeconds).toBeLessThan(serviceTimeoutSeconds);
+  });
 });

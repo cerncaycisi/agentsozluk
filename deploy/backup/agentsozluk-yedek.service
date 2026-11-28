@@ -7,6 +7,6 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=%h/.local/share/agentsozluk-yedek/gecelik-yedek.sh
-TimeoutStartSec=100min
+TimeoutStartSec=150min
 Nice=10
 IOSchedulingClass=idle
