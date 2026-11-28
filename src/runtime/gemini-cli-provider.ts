@@ -14,6 +14,12 @@ import {
   type GeminiWriterProfileName,
   type GeminiWriterSafeCode,
 } from "@/runtime/claude-writer-profiles";
+import {
+  defaultGeminiHomeCoordinator,
+  geminiEphemeralTmpfsArgs,
+  prepareGeminiEphemeralMountPoints,
+  type GeminiHomeCoordinator,
+} from "@/runtime/gemini-home-retention";
 
 /*
   Gemini yazar (27 Kasım 2026, Gökhan: "gemini modellerine de yazdıralım", "yes"). Google
@@ -173,6 +179,8 @@ interface GeminiCliProviderOptions {
   workRoot: string;
   protectedDirectories?: string[];
   profile?: GeminiWriterProfileName;
+  pruneHomeState?: boolean;
+  homeCoordinator?: GeminiHomeCoordinator;
   spawnProcess?: typeof spawn;
 }
 
@@ -192,13 +200,14 @@ export class GeminiCliProvider implements EntryWriterProvider {
       cliArguments,
       workDirectory,
     );
-    // Global keşif yolu: çağrıya özel tanım kimlik dizinine kopyalanmaz.
+    // Global keşif yolu ve geçici bellek bağlamaları: kimlik dizinine kalıcı iz bırakılmaz.
     command.args.splice(
       command.args.indexOf("--"),
       0,
       "--ro-bind",
       path.join(workDirectory, ".agents", "agents"),
       path.join(this.#options.configHome, ".gemini", "config", "agents"),
+      ...geminiEphemeralTmpfsArgs(this.#options.configHome),
     );
     return command;
   }
@@ -207,6 +216,7 @@ export class GeminiCliProvider implements EntryWriterProvider {
     const home = await canonicalDirectory(this.#options.configHome);
     const work = await canonicalDirectory(this.#options.workRoot);
     await assertGeminiDirectoryIsolation(home, work, this.#options.protectedDirectories ?? []);
+    await prepareGeminiEphemeralMountPoints(home);
     this.#options.configHome = home;
     this.#options.workRoot = work;
   }
@@ -259,12 +269,24 @@ export class GeminiCliProvider implements EntryWriterProvider {
   /** Sandbox içinden `agy --version`; başarısızsa Gemini kolu kapalı başlar (fail-open). */
   async inspect(timeoutMs = 30_000): Promise<{ version: string }> {
     await this.#canonicalize();
+    const coordinator = this.#options.homeCoordinator ?? defaultGeminiHomeCoordinator;
+    if (this.#options.pruneHomeState) {
+      await coordinator.pruneIfNeeded(this.#options.configHome, { force: true });
+    }
     await mkdir(this.#options.workRoot, { recursive: true, mode: 0o700 });
     const workDirectory = path.join(this.#options.workRoot, `inspect-${Date.now()}`);
     await mkdir(workDirectory, { recursive: false, mode: 0o700 });
     try {
       await prepareWriterAgent(workDirectory);
-      const version = await this.#capability(workDirectory, Date.now() + timeoutMs);
+      const deadlineAtMs = Date.now() + timeoutMs;
+      const version = await coordinator.withSharedAccess(
+        this.#options.configHome,
+        () => this.#capability(workDirectory, deadlineAtMs),
+        {
+          deadlineAtMs,
+          onTimeout: () => new ClaudeWriterError("GEMINI_TIMEOUT"),
+        },
+      );
       return { version };
     } finally {
       await rm(workDirectory, { recursive: true, force: true });
@@ -281,6 +303,7 @@ export class GeminiCliProvider implements EntryWriterProvider {
       throw new ClaudeWriterError("GEMINI_EXEC_FAILED");
     const startedAt = Date.now();
     await this.#canonicalize();
+    const coordinator = this.#options.homeCoordinator ?? defaultGeminiHomeCoordinator;
     await mkdir(this.#options.workRoot, { recursive: true, mode: 0o700 });
     const workDirectory = path.join(
       this.#options.workRoot,
@@ -289,35 +312,47 @@ export class GeminiCliProvider implements EntryWriterProvider {
     await mkdir(workDirectory, { recursive: false, mode: 0o700 });
     try {
       await prepareWriterAgent(workDirectory);
-      await this.#capability(workDirectory, startedAt + request.timeoutMs, request.signal);
-      if (Date.now() >= startedAt + request.timeoutMs)
-        throw new ClaudeWriterError("GEMINI_TIMEOUT");
-      if (request.signal?.aborted) throw new ClaudeWriterError("GEMINI_CANCELLED");
-      const child = this.#spawn(
-        this.#command(geminiCliArguments(this.profile, request.prompt), workDirectory),
-        workDirectory,
+      const deadlineAtMs = startedAt + request.timeoutMs;
+      return await coordinator.withSharedAccess(
+        this.#options.configHome,
+        async () => {
+          await this.#capability(workDirectory, deadlineAtMs, request.signal);
+          if (Date.now() >= deadlineAtMs) throw new ClaudeWriterError("GEMINI_TIMEOUT");
+          if (request.signal?.aborted) throw new ClaudeWriterError("GEMINI_CANCELLED");
+          const child = this.#spawn(
+            this.#command(geminiCliArguments(this.profile, request.prompt), workDirectory),
+            workDirectory,
+          );
+          const result = await collectWriterProcess(
+            child,
+            "",
+            Math.max(1, deadlineAtMs - Date.now()),
+            request.signal,
+            this.#options.spawnProcess === undefined,
+          );
+          if (result.cancelled) throw new ClaudeWriterError("GEMINI_CANCELLED");
+          if (result.timedOut) throw new ClaudeWriterError("GEMINI_TIMEOUT");
+          if (result.overflow) throw new ClaudeWriterError("GEMINI_OUTPUT_INVALID");
+          if (result.exitCode !== 0) {
+            if (result.stdout.includes('"status"')) parseGeminiResult(result.stdout);
+            throw new ClaudeWriterError(classifyGeminiFailure(result.stderr));
+          }
+          return {
+            output: parseGeminiResult(result.stdout).output,
+            model: geminiWriterProfiles[this.profile].model,
+            durationMs: Date.now() - startedAt,
+          };
+        },
+        {
+          signal: request.signal,
+          deadlineAtMs,
+          onCancel: () => new ClaudeWriterError("GEMINI_CANCELLED"),
+          onTimeout: () => new ClaudeWriterError("GEMINI_TIMEOUT"),
+        },
       );
-      const result = await collectWriterProcess(
-        child,
-        "",
-        Math.max(1, startedAt + request.timeoutMs - Date.now()),
-        request.signal,
-        this.#options.spawnProcess === undefined,
-      );
-      if (result.cancelled) throw new ClaudeWriterError("GEMINI_CANCELLED");
-      if (result.timedOut) throw new ClaudeWriterError("GEMINI_TIMEOUT");
-      if (result.overflow) throw new ClaudeWriterError("GEMINI_OUTPUT_INVALID");
-      if (result.exitCode !== 0) {
-        if (result.stdout.includes('"status"')) parseGeminiResult(result.stdout);
-        throw new ClaudeWriterError(classifyGeminiFailure(result.stderr));
-      }
-      return {
-        output: parseGeminiResult(result.stdout).output,
-        model: geminiWriterProfiles[this.profile].model,
-        durationMs: Date.now() - startedAt,
-      };
     } finally {
       await rm(workDirectory, { recursive: true, force: true });
+      if (this.#options.pruneHomeState) coordinator.schedulePruneIfNeeded(this.#options.configHome);
     }
   }
 }
