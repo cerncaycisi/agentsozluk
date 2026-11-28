@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
 import { lstat, mkdir, open, readdir, rmdir, unlink, type FileHandle } from "node:fs/promises";
 import path from "node:path";
@@ -38,7 +38,8 @@ const DEFAULT_EXCLUSIVE_LOCK_TIMEOUT_MS = 30_000;
 const MAX_REMOVE_DEPTH = 32;
 
 const DIR_OPEN_FLAGS = fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW;
-const LOCK_OPEN_FLAGS = fsConstants.O_CREAT | fsConstants.O_RDWR | fsConstants.O_NOFOLLOW;
+const LOCK_OPEN_FLAGS =
+  fsConstants.O_CREAT | fsConstants.O_RDWR | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK;
 
 export interface GeminiHomeInspection {
   totalBytes: number;
@@ -516,7 +517,10 @@ export async function pruneGeminiHomeStateFiles(
 
       let fh: FileHandle;
       try {
-        fh = await open(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+        fh = await open(
+          filePath,
+          fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK,
+        );
       } catch (error) {
         const code = errorCodeOf(error);
         if (code === "ENOENT" || code === "ELOOP") {
@@ -531,7 +535,12 @@ export async function pruneGeminiHomeStateFiles(
       try {
         const stats = await fh.stat();
         regularFile = stats.isFile();
-        if (regularFile) size = stats.size;
+        if (regularFile) {
+          size = stats.size;
+        } else {
+          collector.failedCount += 1;
+          collector.errorCodes.add("EINVAL");
+        }
       } catch (error) {
         collector.failedCount += 1;
         collector.errorCodes.add(errorCodeOf(error));
@@ -599,13 +608,46 @@ export async function pruneGeminiHomeStateFiles(
   };
 }
 
-function buildFlockRelease(child: ReturnType<typeof spawn>): GeminiCrossProcessLockHandle {
+async function terminateFlockChild(child: ChildProcess): Promise<void> {
+  try {
+    child.stdin?.destroy();
+  } catch {
+    // ignore
+  }
+  try {
+    child.stdout?.destroy();
+  } catch {
+    // ignore
+  }
+  if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return;
+  await new Promise<void>((resolve) => {
+    const fallback = setTimeout(resolve, 2000);
+    fallback.unref();
+    child.once("exit", () => {
+      clearTimeout(fallback);
+      resolve();
+    });
+    try {
+      child.kill("SIGKILL");
+    } catch {
+      clearTimeout(fallback);
+      resolve();
+    }
+  });
+}
+
+function buildFlockRelease(child: ChildProcess): GeminiCrossProcessLockHandle {
   let releasePromise: Promise<void> | undefined;
   return {
     release: () => {
       if (releasePromise) return releasePromise;
       releasePromise = new Promise<void>((resolve) => {
-        if (child.exitCode !== null || child.signalCode !== null) {
+        if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) {
+          try {
+            child.stdout?.destroy();
+          } catch {
+            // ignore
+          }
           resolve();
           return;
         }
@@ -640,7 +682,7 @@ function buildFlockRelease(child: ReturnType<typeof spawn>): GeminiCrossProcessL
 }
 
 /**
- * `/usr/bin/flock` + `/usr/bin/cat` alt süreci üzerinden gerçek kernel `LOCK_SH` / `LOCK_EX`
+ * `/usr/bin/flock --no-fork` + `/usr/bin/cat` alt süreci üzerinden gerçek kernel `LOCK_SH` / `LOCK_EX`
  * tutarlılığı sağlar; böylece worker ve harici probe (`agent-codex-status.ts`) çarpışmaz.
  */
 export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
@@ -715,20 +757,35 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
       throw new Error(`Gemini kilit dosyası açılamadı (${opened.errorCode ?? "EIO"}).`);
     }
 
-    const child = spawn(this.#flockPath, ["--shared", "/proc/self/fd/3", this.#catPath], {
-      cwd: "/",
-      shell: false,
-      env: {
-        NODE_ENV: "production",
-        PATH: "/usr/bin:/bin",
-        LANG: "C.UTF-8",
-        LC_ALL: "C.UTF-8",
-      },
-      stdio: ["pipe", "pipe", "ignore", opened.lockFd.fd],
-    });
-    await opened.lockFd.close();
+    if (options?.signal?.aborted) {
+      await opened.lockFd.close().catch(() => undefined);
+      throw options.onCancel ? options.onCancel() : new Error("Gemini ev kilidi iptal edildi.");
+    }
+    if (options?.deadlineAtMs !== undefined && this.#now() >= options.deadlineAtMs) {
+      await opened.lockFd.close().catch(() => undefined);
+      throw options.onTimeout
+        ? options.onTimeout()
+        : new Error("Gemini ev kilidi zaman aşımına uğradı.");
+    }
 
+    const child = spawn(
+      this.#flockPath,
+      ["--no-fork", "--shared", "/proc/self/fd/3", this.#catPath],
+      {
+        cwd: "/",
+        shell: false,
+        env: {
+          NODE_ENV: "production",
+          PATH: "/usr/bin:/bin",
+          LANG: "C.UTF-8",
+          LC_ALL: "C.UTF-8",
+        },
+        stdio: ["pipe", "pipe", "ignore", opened.lockFd.fd],
+      },
+    );
     child.stdin?.on("error", () => undefined);
+    child.stdout?.on("error", () => undefined);
+    const closeParentLockFd = opened.lockFd.close().catch(() => undefined);
 
     return new Promise<GeminiCrossProcessLockHandle>((resolve, reject) => {
       let settled = false;
@@ -745,20 +802,15 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
         child.removeListener("exit", onEarlyExit);
       };
 
-      const abortChild = () => {
-        try {
-          child.kill("SIGKILL");
-        } catch {
-          // ignore
-        }
+      const rejectCleanly = (error: Error) => {
+        void Promise.all([closeParentLockFd, terminateFlockChild(child)]).then(() => reject(error));
       };
 
       const onAbort = () => {
         if (settled) return;
         settled = true;
         cleanupListeners();
-        abortChild();
-        reject(
+        rejectCleanly(
           options?.onCancel ? options.onCancel() : new Error("Gemini ev kilidi iptal edildi."),
         );
       };
@@ -767,8 +819,7 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
         if (settled) return;
         settled = true;
         cleanupListeners();
-        abortChild();
-        reject(
+        rejectCleanly(
           options?.onTimeout
             ? options.onTimeout()
             : new Error("Gemini ev kilidi zaman aşımına uğradı."),
@@ -779,22 +830,26 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
         if (settled || chunk.length === 0) return;
         settled = true;
         cleanupListeners();
-        resolve(buildFlockRelease(child));
+        void closeParentLockFd.then(() => resolve(buildFlockRelease(child)));
       };
 
       const onError = (err: Error) => {
         if (settled) return;
         settled = true;
         cleanupListeners();
-        reject(err);
+        rejectCleanly(err);
       };
 
       const onEarlyExit = () => {
         if (settled) return;
         settled = true;
         cleanupListeners();
-        reject(new Error("Gemini paylaşımlı dosya kilidi alınamadı."));
+        rejectCleanly(new Error("Gemini paylaşımlı dosya kilidi alınamadı."));
       };
+
+      child.stdout?.on("data", onData);
+      child.once("error", onError);
+      child.once("exit", onEarlyExit);
 
       if (options?.signal) {
         if (options.signal.aborted) {
@@ -813,13 +868,10 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
         timer.unref();
       }
 
-      child.stdout?.on("data", onData);
-      child.once("error", onError);
-      child.once("exit", onEarlyExit);
       try {
         child.stdin?.write("1\n");
       } catch {
-        // exit listener will settle
+        // exit or error listener will settle
       }
     });
   }
@@ -838,8 +890,9 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
     const nonBlocking = options?.nonBlocking ?? false;
     const timeoutMs = options?.timeoutMs ?? DEFAULT_EXCLUSIVE_LOCK_TIMEOUT_MS;
     const args = nonBlocking
-      ? ["--exclusive", "--nonblock", "/proc/self/fd/3", this.#catPath]
+      ? ["--no-fork", "--exclusive", "--nonblock", "/proc/self/fd/3", this.#catPath]
       : [
+          "--no-fork",
           "--exclusive",
           "--timeout",
           String(Math.max(1, Math.ceil(timeoutMs / 1000))),
@@ -858,9 +911,9 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
       },
       stdio: ["pipe", "pipe", "ignore", opened.lockFd.fd],
     });
-    await opened.lockFd.close();
-
     child.stdin?.on("error", () => undefined);
+    child.stdout?.on("error", () => undefined);
+    const closeParentLockFd = opened.lockFd.close().catch(() => undefined);
 
     return new Promise<GeminiExclusiveLockAcquisition>((resolve) => {
       let settled = false;
@@ -876,18 +929,26 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
         child.removeListener("exit", onEarlyExit);
       };
 
+      const finishWith = (result: GeminiExclusiveLockAcquisition) => {
+        void Promise.all([closeParentLockFd, terminateFlockChild(child)]).then(() =>
+          resolve(result),
+        );
+      };
+
       const onData = (chunk: Buffer) => {
         if (settled || chunk.length === 0) return;
         settled = true;
         cleanupListeners();
-        resolve({ status: "acquired", handle: buildFlockRelease(child) });
+        void closeParentLockFd.then(() =>
+          resolve({ status: "acquired", handle: buildFlockRelease(child) }),
+        );
       };
 
       const onError = (err: Error) => {
         if (settled) return;
         settled = true;
         cleanupListeners();
-        resolve({ status: "error", errorCode: errorCodeOf(err) });
+        finishWith({ status: "error", errorCode: errorCodeOf(err) });
       };
 
       const onEarlyExit = (code: number | null) => {
@@ -895,34 +956,30 @@ export class FlockGeminiCrossProcessLock implements GeminiCrossProcessLock {
         settled = true;
         cleanupListeners();
         if (code === 1 || code === null) {
-          resolve({ status: "busy" });
+          finishWith({ status: "busy" });
         } else {
-          resolve({ status: "error", errorCode: `EXIT_${code}` });
+          finishWith({ status: "error", errorCode: `EXIT_${code}` });
         }
       };
+
+      child.stdout?.on("data", onData);
+      child.once("error", onError);
+      child.once("exit", onEarlyExit);
 
       if (!nonBlocking) {
         timer = setTimeout(() => {
           if (settled) return;
           settled = true;
           cleanupListeners();
-          try {
-            child.kill("SIGKILL");
-          } catch {
-            // ignore
-          }
-          resolve({ status: "busy" });
+          finishWith({ status: "busy" });
         }, timeoutMs + 1000);
         timer.unref();
       }
 
-      child.stdout?.on("data", onData);
-      child.once("error", onError);
-      child.once("exit", onEarlyExit);
       try {
         child.stdin?.write("1\n");
       } catch {
-        // exit listener will settle
+        // exit or error listener will settle
       }
     });
   }

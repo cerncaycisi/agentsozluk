@@ -1,9 +1,11 @@
+import { execFileSync } from "node:child_process";
 import { lstatSync, readFileSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, readdir, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  FlockGeminiCrossProcessLock,
   GEMINI_EPHEMERAL_STATE_DIRS,
   GEMINI_HOME_LOCK_FILENAME,
   GEMINI_PRUNABLE_STATE_FILES,
@@ -399,5 +401,68 @@ describe("gemini-home-retention", () => {
     await holder;
     await forcedBarrier;
     await expect(survivor).resolves.toBe("SURVIVED");
+  });
+
+  it("leaves no orphan flock/cat lock behind after abort or timeout during acquireShared", async () => {
+    const root = await makeTempDir("gemini-nofork-");
+    const home = path.join(root, "gemini-home");
+    await prepareGeminiEphemeralMountPoints(home);
+    const lock = new FlockGeminiCrossProcessLock();
+
+    // Exclusive kilit tutarken shared edinimi iptal ve timeout ile düşürülür; ardından exclusive hemen alınabilmeli.
+    const held = await lock.acquireExclusive(home, { nonBlocking: true });
+    expect(held.status).toBe("acquired");
+    if (held.status !== "acquired") return;
+
+    const ac = new AbortController();
+    const aborted = lock.acquireShared(home, {
+      signal: ac.signal,
+      onCancel: () => new Error("ABORTED_SHARED"),
+    });
+    await new Promise((r) => setTimeout(r, 25));
+    ac.abort();
+    await expect(aborted).rejects.toThrow("ABORTED_SHARED");
+
+    const timedOut = lock.acquireShared(home, {
+      deadlineAtMs: Date.now() + 25,
+      onTimeout: () => new Error("TIMEOUT_SHARED"),
+    });
+    await expect(timedOut).rejects.toThrow("TIMEOUT_SHARED");
+
+    await held.handle.release();
+
+    // Eğer yetim cat/shared lock kalsaydı nonBlocking exclusive busy dönerdi.
+    const reacquired = await lock.acquireExclusive(home, { nonBlocking: true });
+    expect(reacquired.status).toBe("acquired");
+    if (reacquired.status === "acquired") await reacquired.handle.release();
+  });
+
+  it("handles missing flock executable synchronously without uncaught error events", async () => {
+    const root = await makeTempDir("gemini-bad-flock-");
+    const home = path.join(root, "gemini-home");
+    await prepareGeminiEphemeralMountPoints(home);
+    const missingLock = new FlockGeminiCrossProcessLock({
+      flockPath: path.join(root, "missing-flock-bin"),
+    });
+
+    await expect(missingLock.acquireShared(home)).rejects.toThrow(/ENOENT/u);
+    await expect(missingLock.acquireExclusive(home)).resolves.toEqual({
+      status: "error",
+      errorCode: "ENOENT",
+    });
+  });
+
+  it("rejects writerless FIFOs with O_NONBLOCK without hanging prune", async () => {
+    const root = await makeTempDir("gemini-fifo-");
+    const home = path.join(root, "gemini-home");
+    await prepareGeminiEphemeralMountPoints(home);
+    const fifoPath = path.join(home, ".gemini", "antigravity-cli", "conversation_summaries.db");
+    execFileSync("mkfifo", [fifoPath]);
+
+    const result = await pruneGeminiHomeStateFiles(home);
+    expect(result.pruned).toBe(false);
+    expect(result.reason).toBe("partial_failure");
+    expect(result.failedCount).toBeGreaterThanOrEqual(1);
+    expect(lstatSync(fifoPath).isFIFO()).toBe(true);
   });
 });
